@@ -1,0 +1,12 @@
+{
+  "name": "@interceptor/proxy-core-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interceptor proxy core process",
+  "type": "commonjs",
+  "main": "dist/proxy-core/index.cjs",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  }
+}

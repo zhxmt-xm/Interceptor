@@ -1,0 +1,28 @@
+{
+  "name": "interceptor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cross-platform desktop HTTP debugging proxy",
+  "packageManager": "npm@11.16.0",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "npm": ">=11.16.0 <12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:core": "npm run build --workspace @interceptor/proxy-core-node",
+    "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
+    "package": "npm run build:core && npm run package --workspace @interceptor/desktop",
+    "test": "npm run test:unit",
+    "test:smoke": "npm run package && npm run test:smoke --workspace @interceptor/desktop",
+    "test:unit": "npm run test --workspace @interceptor/desktop",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
+  }
+}
