@@ -5,6 +5,7 @@ import { app, BrowserWindow, ipcMain, session } from 'electron';
 import type { CoreStatus } from '../shared/desktop-api';
 import { CoreSupervisor } from './core/core-supervisor';
 import { createElectronCoreProcess } from './core/electron-core-process';
+import { isTrustedRendererUrl } from './security/trusted-renderer-url';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -50,6 +51,8 @@ app.on('before-quit', (event) => {
 
 function createMainWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
+    autoHideMenuBar: process.platform !== 'darwin',
+    icon: getWindowIconPath(),
     width: 1280,
     height: 800,
     minWidth: 880,
@@ -66,9 +69,17 @@ function createMainWindow(): BrowserWindow {
     },
   });
 
+  if (process.platform !== 'darwin') {
+    mainWindow.setMenuBarVisibility(false);
+  }
+
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isTrustedRendererNavigation(url)) {
+      event.preventDefault();
+    }
+  });
   mainWindow.webContents.session.on('will-download', (event) => {
     event.preventDefault();
   });
@@ -77,10 +88,7 @@ function createMainWindow(): BrowserWindow {
     void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     void mainWindow.loadFile(
-      path.join(
-        __dirname,
-        `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
-      ),
+      getPackagedRendererPath(),
     );
   }
 
@@ -116,18 +124,31 @@ function broadcastCoreStatus(status: CoreStatus): void {
 }
 
 function assertTrustedSender(senderUrl: string | undefined): void {
-  if (!senderUrl) {
-    throw new Error('IPC sender has no URL');
-  }
-
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    const expectedOrigin = new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL).origin;
-    if (new URL(senderUrl).origin === expectedOrigin) {
-      return;
-    }
-  } else if (senderUrl.startsWith('file://')) {
+  if (senderUrl && isTrustedRendererNavigation(senderUrl)) {
     return;
   }
 
   throw new Error('Rejected IPC request from an untrusted sender');
+}
+
+function isTrustedRendererNavigation(url: string): boolean {
+  return isTrustedRendererUrl(url, {
+    devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,
+    packagedRendererPath: getPackagedRendererPath(),
+  });
+}
+
+function getPackagedRendererPath(): string {
+  return path.join(
+    __dirname,
+    `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
+  );
+}
+
+function getWindowIconPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'interceptor-icon.png');
+  }
+
+  return path.resolve(app.getAppPath(), 'assets/interceptor-icon.png');
 }

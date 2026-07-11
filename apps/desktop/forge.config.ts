@@ -17,6 +17,15 @@ const proxyCoreDirectory = path.resolve(
   desktopDirectory,
   '../proxy-core-node/dist/proxy-core',
 );
+const appIconPng = path.join(desktopDirectory, 'assets/interceptor-icon.png');
+const appIconIco = path.join(desktopDirectory, 'assets/interceptor-icon.ico');
+const appIconIcns = path.join(desktopDirectory, 'assets/interceptor-icon.icns');
+const packageIcon =
+  process.platform === 'win32'
+    ? appIconIco
+    : process.platform === 'darwin'
+      ? appIconIcns
+      : undefined;
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -24,8 +33,9 @@ const config: ForgeConfig = {
     download: {
       checksums: electronChecksums,
     },
-    extraResource: [proxyCoreDirectory],
+    extraResource: [proxyCoreDirectory, appIconPng],
     executableName: 'Interceptor',
+    icon: packageIcon,
   },
   rebuildConfig: {},
   makers: [],

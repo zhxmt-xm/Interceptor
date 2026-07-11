@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Interceptor</title>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="#24292f"/>
+  <path d="M174 132c-48 22-78 69-78 124s30 102 78 124" fill="none" stroke="#f5f7f8" stroke-linecap="round" stroke-width="34"/>
+  <path d="M338 132c48 22 78 69 78 124s-30 102-78 124" fill="none" stroke="#f5f7f8" stroke-linecap="round" stroke-width="34"/>
+  <path d="M94 258h94l29-71 43 140 36-99 28 30h94" fill="none" stroke="#50c9bb" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/>
+  <circle cx="260" cy="258" r="14" fill="#f5f7f8"/>
+</svg>

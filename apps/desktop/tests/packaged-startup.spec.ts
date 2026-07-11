@@ -96,7 +96,22 @@ test('packaged app starts with an isolated renderer and healthy core', async ({
     expect(corePid).not.toBeNull();
     await expect(page.getByText(`PID ${corePid}`)).toBeVisible();
 
-    await page.getByLabel('Dark theme').click();
+    await page
+      .getByRole('radio', { name: 'Light theme' })
+      .locator('..')
+      .click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.mouse.move(400, 400);
+    await expect(page.locator('.ant-tooltip')).toBeHidden();
+    await page.screenshot({
+      path: testInfo.outputPath('interceptor-light-1280x800.png'),
+      animations: 'disabled',
+    });
+
+    await page
+      .getByRole('radio', { name: 'Dark theme' })
+      .locator('..')
+      .click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.mouse.move(400, 400);
     await expect(page.locator('.ant-tooltip')).toBeHidden();
@@ -106,7 +121,7 @@ test('packaged app starts with an isolated renderer and healthy core', async ({
     });
 
     await page.setViewportSize({ width: 900, height: 600 });
-    await expect(page.locator('.app-shell')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath('interceptor-dark-900x600.png'),
       animations: 'disabled',
