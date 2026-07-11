@@ -281,9 +281,9 @@ input {
 
 .session-columns {
   display: grid;
-  grid-template-columns: 62px 70px minmax(120px, 1fr) minmax(150px, 1.4fr) 80px;
+  grid-template-columns: 50px 60px minmax(72px, 1fr) minmax(96px, 1.4fr) 56px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 0 12px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);

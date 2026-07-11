@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,11 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
 const desktopDirectory = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const electronChecksums = require('electron/checksums.json') as Record<
+  string,
+  string
+>;
 const proxyCoreDirectory = path.resolve(
   desktopDirectory,
   '../proxy-core-node/dist/proxy-core',
@@ -15,6 +21,9 @@ const proxyCoreDirectory = path.resolve(
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    download: {
+      checksums: electronChecksums,
+    },
     extraResource: [proxyCoreDirectory],
     executableName: 'Interceptor',
   },
@@ -49,6 +58,7 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
+      [FuseV1Options.GrantFileProtocolExtraPrivileges]: true,
     }),
   ],
 };

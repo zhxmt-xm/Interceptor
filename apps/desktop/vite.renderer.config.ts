@@ -11,7 +11,7 @@ const productionCsp = [
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",
-  "frame-ancestors 'none'",
+  "frame-src 'none'",
   "worker-src 'self' blob:",
 ].join('; ');
 
@@ -25,7 +25,7 @@ const developmentCsp = [
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",
-  "frame-ancestors 'none'",
+  "frame-src 'none'",
   "worker-src 'self' blob:",
 ].join('; ');
 

@@ -12,18 +12,18 @@
 ## 项目快照
 
 - 产品：跨平台桌面 HTTP 网络调试代理
-- 总体状态：已暂停（用户于 2026-07-11 主动暂停）
-- 当前里程碑：M0 项目脚手架与工具链
-- 当前工作项：首次 Forge package 的 Copying files 失败诊断
+- 总体状态：进行中
+- 当前里程碑：M1 IPC 通信基座（尚未开始）
+- 当前工作项：M0 已完成，等待开始 M1/T1.1
 - 最后更新：2026-07-11
-- Git 基线：`fa486f3`（产品方案已提交）
-- 下一步：恢复后使用 Forge/Packager DEBUG 日志重跑 `npm run package`，定位 `Copying files` 阶段的具体异常；不要重复已通过的方案梳理、类型检查和单元测试。
+- 进入本 Session 时的 Git 基线：`fb47c7a`（M0 脚手架暂停点）
+- 下一步：开始 M1/T1.1，定义版本化 Protobuf schema；先阅读产品方案第十三章和第二十七章 M1，不复用 M0 临时 parent-port 消息作为持久协议。
 
 ## 里程碑总览
 
 | 里程碑 | 名称 | 状态 | 进度 | 说明 |
 | --- | --- | --- | ---: | --- |
-| M0 | 项目脚手架与工具链 | 已暂停 | 58% | 三入口与应用壳已实现；首次 package 的 Vite 构建通过，但 Packager 复制文件失败 |
+| M0 | 项目脚手架与工具链 | 已完成 | 100% | T0.1–T0.5 全部实现并通过 typecheck、unit、package、packaged smoke、audit 与 HMR 验收 |
 | M1 | IPC 通信基座 | 未开始 | 0% | 依赖 M0 |
 | M2 | 存储层 | 未开始 | 0% | 依赖 M0、M1 的协议基础 |
 | M3 | 最小显式代理（HTTP/1.1） | 未开始 | 0% | 依赖 M2 |
@@ -51,9 +51,9 @@
 7. 已建立本文件作为全项目唯一的跨 Session 进度入口。
 8. 已通过 Windows Package Manager 安装并验证 Node.js `24.18.0` LTS（Krypton）、npm/npx `11.16.0`，工具链阻塞已解除。
 
-## 进行中步骤
+## M0 完成记录
 
-> 暂停说明：以下任务保持“进行中”的真实状态，但当前不执行任何命令或改动。恢复时从“暂停点”继续。
+> 2026-07-11 已从暂停点恢复并完成 M0。以下保留诊断、修复和验收详情，供 Review 与后续 Session 追溯。
 
 ### 暂停点（2026-07-11）
 
@@ -65,10 +65,35 @@
 - 原计划用 `DEBUG=electron-forge:*,electron-packager` 重跑 package 获取被 spinner 隐藏的具体异常；该诊断命令在用户暂停时取消，未产生新结果。
 - 恢复后的第一条命令（PowerShell）：`$env:Path = 'C:\Program Files\nodejs;' + $env:Path; $env:DEBUG = 'electron-forge:*,electron-packager'; npm run package`
 - 首要排查假设：`packagerConfig.extraResource` 指向 sibling workspace 的 Core 目录，可能与 npm workspace 下 Packager 的复制/路径边界有关。必须先看 DEBUG 异常再改配置，不凭假设修改。
+- 恢复状态：已确认提交 `fb47c7a`、工作树干净，下一动作是执行 DEBUG package。
+- DEBUG 诊断结果：Packager 正确解析 `extraResource` 为 `C:\code\Interceptor\apps\proxy-core-node\dist\proxy-core`，并进入下载 `electron-v43.1.0-win32-x64.zip`；下载进度到 100% 后由 `got` 抛出 `RequestError: read ECONNRESET`，因此 UI 显示的 `Copying files` 只是并行任务标签，不是文件复制根因。
+- 假设结论：sibling workspace 资源路径假设已被日志否定，不修改 `extraResource`。
+- 新的最小处理方向：为 Electron Packager 提供校验过的本地 Electron ZIP 或修复其缓存，再重跑相同 package 检查。
+- 下载处理实现：`forge.config.ts` 从锁定的 `electron@43.1.0` npm 包读取 `checksums.json` 并传给 Packager；后续可临时设置 `ELECTRON_MIRROR`，但 ZIP 仍必须匹配 npm 包内官方 SHA-256，且默认未硬编码第三方镜像。
+- 镜像打包结果：设置临时 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后，`@electron/get` 使用 npm 包内 checksums 验证 ZIP 并写入用户缓存；Copying files、ASAR、Finalize 和 postPackage 全部成功。
+- 产物初检：`resources/proxy-core/index.cjs` 存在；ASAR 仅 29 个 Bundle/字体/manifest 条目，不含 Forge、node-gyp、tar 或插件开发依赖；生产 HTML 为本地相对资源并包含 `connect-src 'none'`。
+- Fuse 初检：RunAsNode、`NODE_OPTIONS`、CLI inspect 均禁用，cookie encryption、ASAR integrity 和 OnlyLoadAppFromAsar 均启用。CLI 的未命名第九位经 Electron 43 官方 schema 确认为 `WasmTrapHandlers`，默认启用符合性能需求。
+- `GrantFileProtocolExtraPrivileges` 当前显式保留启用，因为生产 Renderer 仍由 `loadFile` 使用 `file://` 加载模块与资产；后续若迁移到标准自定义协议，再关闭该 Fuse。该状态不提供远程资源能力，生产 CSP 仍禁止网络连接。
+- 命名修正：首次成功产物目录和 Windows ProductName 使用了 workspace 名 `@interceptor/desktop`；Desktop manifest 已增加 `productName: Interceptor` 和 author，下一次 package 验证统一命名。
+- 最终 package：命中经过官方 SHA-256 验证的 Electron 缓存，Copying files、native preparation、ASAR、Finalize、Fuses postPackage 全部成功；输出为 `apps/desktop/out/Interceptor-win32-x64`，Windows ProductName/FileDescription/InternalName 为 `Interceptor`，CompanyName 为 `zhxmt-xm`。
+- 最终产物复验：`Interceptor.exe`、`resources/app.asar`、`resources/proxy-core/index.cjs` 均存在；ASAR 29 项、开发工具链匹配 0 项；生产 CSP、本地脚本和本地样式检查通过，无远程 HTTP(S) URL；实际 Fuse 状态与设计一致。
+- 首次 packaged smoke：30 秒超时；trace 显示唯一未完成步骤是 Playwright `_electron.launch`，页面断言尚未开始且测试清理后无残留进程。
+- Smoke 根因：Playwright Electron launcher 使用 Node inspector 连接 Main，而最终安全产物已通过 Fuse 禁用 `EnableNodeCliInspectArguments`。不能为了测试放宽最终产物 Fuse；测试将改为启动真实 exe 的 Chromium `--remote-debugging-port` 并通过 CDP 自动化 Renderer。
+- 第二次 packaged smoke：CDP 在 5 秒内成功连接最终 exe，应用标题可见；失败于名为 Workspaces 的 navigation landmark 不存在。根因是 accessible name 错放在 `<aside>` 而不是 `<nav>`，已把 `aria-label` 移到真实 navigation 元素。
+- 第三次 packaged smoke：通过，1 个测试耗时 1.3 秒。真实 `Interceptor.exe` 在禁用 Node inspector 的情况下由 CDP 自动化；应用壳、Workspaces landmark、Renderer 无 `process/require`、Preload 恰有两个 API、生产 CSP、Core healthy 与 PID、暗色主题、900×600 布局、窗口关闭、主进程退出及 Core PID 清理全部通过。
+- Smoke 截图：测试生成暗色 1280×800 与 900×600 两种尺寸截图，存于被 Git 忽略的 Playwright test-results，并已完成人工视觉检查。
+- 截图人工检查：1280×800 布局无重叠或截断；900×600 的 Session 列最小宽度总和曾超过左侧 Panel。收紧五列宽度与 gap 后已重打包复验，水平滚动条消失。
+- 紧凑布局复验：重打包后的 smoke 继续通过，新 900×600 截图中水平滚动条已消失，五列表头、Splitter、空状态和状态栏无碰撞或截断。测试将在截图前移开鼠标并等待主题 Tooltip 隐藏，以生成干净 Review 图。
+- 最终截图 smoke：通过，1 test passed；截图前 Tooltip 已隐藏，1280×800 与 900×600 Review 图干净。
+- Dev/HMR 实证：Forge Vite 启动 renderer `http://localhost:5173`、CDP 9333 和 Core PID 25884；开发 CSP 正确，Renderer 中 `process/require` 不存在，Core healthy。给当前 `window` 写入内存标记后临时修改品牌文本，页面在不 reload 的情况下变为 `Interceptor HMR Probe`，内存标记仍在、Core PID 不变、restartCount 0；撤销探针也通过 HMR，终端记录两次 `hmr update`。
+- Dev 清理：停止异步终端后，Interceptor/electron 匹配进程为 0，5173/9333 监听为 0。
+- 首次 Dev 启动观察：Vite optimizer scanning 期间初始 root 曾为空；后续带日志的无 reload 重启直接渲染成功，未形成稳定复现。后续升级 Vite/Forge 时继续观察首次依赖优化路径。
+- 无 reload 启动复验：带 Electron logging 的后续启动直接渲染完整应用壳，品牌为 `Interceptor`、rootChildren 1、Core healthy 且 restartCount 0，无手动 reload。初次空 root 未再次出现，保留为 Vite 首次优化观察项而非已知稳定复现缺陷。
+- Dev console 仅报告 meta CSP 中 `frame-ancestors` 无效；该指令按标准只能由 HTTP header 交付。已将开发/生产 CSP 都改为实际可由 meta 执行的 `frame-src 'none'`，禁止 Renderer 创建子 frame；Main 侧仍拒绝 webview、新窗口和导航。
 
-### 下一步计划
+### M0 恢复计划（已执行）
 
-按以下顺序执行。前一步没有通过时不扩大范围，修复后重跑同一个检查。
+以下计划已按顺序执行完成，保留原步骤作为 Review 索引。
 
 #### 1. 定位 Forge Copying files 失败
 
@@ -129,8 +154,8 @@
 
 ### M0 / T0.1 项目脚手架
 
-- 状态：进行中
-- 进度：45%
+- 状态：已完成
+- 进度：100%
 - 已完成：
   - 完成技术栈、monorepo 目录和 main/preload/renderer 构建入口设计。
   - 安装 Node.js `24.18.0` LTS 和 npm `11.16.0`。
@@ -147,21 +172,21 @@
   - 完成 UtilityProcess 适配、安全 BrowserWindow、IPC sender 校验和窄 Preload API；Desktop typecheck 通过。
   - 完成 Ant Design v6 桌面应用壳、亮暗主题、Core 状态栏和开发/生产分离 CSP；Renderer typecheck 通过。
   - 根级 Desktop/Core typecheck、完整 Vitest 单元测试和 diff whitespace 检查均通过。
-- 剩余：
-  - 审阅安装报告中的 23 个依赖漏洞（3 low、20 high），区分生产与开发依赖影响。
-  - 创建 Desktop 与 Proxy Core 源码入口。
-  - 配置 Forge/Vite/TypeScript 并验证构建和 HMR。
+- 完成依据：
+  - Desktop 与 Proxy Core 源码入口、Forge/Vite/TypeScript 配置和 lockfile 均已落地。
+  - 完整 audit 已区分生产与开发链：生产依赖 0 漏洞，开发链风险有记录且未进入 ASAR。
+  - Windows package、无 reload Dev 启动和 Renderer HMR 均已实证通过。
 - 阻塞：无。
 
-## M0 剩余步骤
+## M0 任务验收结果
 
-| 任务 | 状态 | 当前进展 | 剩余工作 | 完成标准 |
-| --- | --- | --- | --- | --- |
-| T0.1 项目脚手架 | 进行中 | workspace、依赖、三构建入口和 Core 打包资源路径已配置；Desktop/Core 分别通过类型检查或构建 | 创建 Renderer 入口；验证 Forge build、开发窗口和 HMR | main/preload/renderer 三入口就绪，开发窗口可启动且 HMR 生效 |
-| T0.2 UI 应用壳 | 进行中 | Toolbar、Workspace Sidebar、Session/Inspector Content、Status Bar 和亮暗主题已实现并通过 typecheck | 启动应用做视觉/交互检查；Playwright 验证主题切换与布局 | 完整外壳可见，亮色/暗色可切换 |
-| T0.3 安全基线 | 进行中 | sandbox/contextIsolation/webSecurity、禁 Node、权限/导航/弹窗/下载拒绝、sender 校验、窄 Preload API 和环境分离 CSP 均已实现 | 打包 smoke 断言 Renderer 无 Node 全局与 API 边界；检查生产 CSP | Renderer 无 Node.js 全局，危险导航和权限被拒绝 |
-| T0.4 测试工具链 | 进行中 | Vitest 已配置，Supervisor 的 3 条单元测试通过 | 配置 Playwright Electron smoke 并验证打包产物 | 单测通过，打包产物启动 smoke 通过 |
-| T0.5 Proxy Core 骨架 | 进行中 | Core 控制循环、Supervisor 和 UtilityProcess 适配已接通；生命周期单测和 Desktop typecheck 通过 | 打包运行并验证健康状态、崩溃重启与应用退出无残留 | 生命周期自动化测试通过，应用退出不残留 core 进程 |
+| 任务 | 状态 | 验收结果 | 完成标准 |
+| --- | --- | --- | --- |
+| T0.1 项目脚手架 | 已完成 | npm workspaces、main/preload/renderer、独立 Core、Forge package、Dev 启动与 HMR 全通过 | main/preload/renderer 三入口就绪，开发窗口可启动且 HMR 生效 |
+| T0.2 UI 应用壳 | 已完成 | Toolbar、Sidebar、Session/Inspector、Status Bar、亮暗主题及 1280×800/900×600 截图通过 | 完整外壳可见，亮色/暗色可切换 |
+| T0.3 安全基线 | 已完成 | Sandbox、隔离、CSP、权限/导航拦截、窄 API、ASAR/Fuses 和 Renderer 无 Node 断言通过 | Renderer 无 Node.js 全局，危险导航和权限被拒绝 |
+| T0.4 测试工具链 | 已完成 | Vitest 3/3；Packaged Playwright smoke 1/1，通过最终 exe 验证并生成截图 | 单测通过，打包产物启动 smoke 通过 |
+| T0.5 Proxy Core 骨架 | 已完成 | UtilityProcess 启动、heartbeat、health、优雅/强制停止、退避重启与退出无残留均通过 | 生命周期自动化测试通过，应用退出不残留 core 进程 |
 
 ## 步骤实施详情
 
@@ -178,7 +203,7 @@
 #### 实现方案
 
 - 使用 npm workspaces 管理 `apps/*` 与未来的 `packages/*`，根包只负责编排，不承载产品运行时代码。
-- Desktop 使用 Electron Forge 官方 Vite 插件，后续分别配置 main、preload、renderer 构建。
+- Desktop 使用 Electron Forge 官方 Vite 插件，main、preload、renderer 分别配置独立构建入口。
 - Proxy Core 使用独立 `tsc` 构建，产物目标为 CommonJS，便于由 Electron Main 通过 Node 可执行文件启动。
 - 所有直接依赖写精确版本；`.npmrc` 同时启用 `save-exact` 和严格 engine 检查。
 
@@ -221,15 +246,15 @@
 - 已通过：Electron、Forge、Vite、Vitest、Ant Design 和 Playwright 的 engine/peer metadata 人工核对。
 - 已失败并修正：首次 `npm install` 暴露 Fuses 2.x/1.x peer 冲突。
 - 已通过：修正后的 `npm install`，新增 594 个包并审计 597 个包，lockfile 已生成。
-- 待处理：npm 报告 23 个漏洞（3 low、20 high），需要运行详细 audit 并判断对打包运行时的影响。
+- 已审阅：npm 报告的 23 个问题（3 low、20 high）均来自 Forge/CLI 开发链；生产依赖 audit 为 0，ASAR 禁带依赖匹配为 0。
 - 已通过：根级 TypeScript typecheck 和完整 Vitest 单元测试。
-- 尚未执行：Forge package、打包应用启动和 HMR。
+- 已通过：Forge package、Packaged Playwright smoke、无 reload 开发启动和 Renderer HMR。
 
 #### 已知风险与后续 Review
 
 - Forge Vite 插件仍是 Experimental；每次升级必须重新验证 HMR、sandboxed preload 与 packaged asset path。
 - TypeScript 7 为新主版本，后续若 Forge/Vite 类型定义出现兼容问题，优先定位具体类型错误，不放宽整个项目的严格配置。
-- 当前只创建清单，Desktop 与 Core 入口尚未落地，因此 T0.1 不能标记完成。
+- M0 已锁定当前工具链；升级 Forge/Vite/TypeScript/Electron 时必须重跑 package、Fuses、ASAR、smoke 与 HMR 检查。
 
 ### T0.5 Proxy Core 进程骨架
 
@@ -247,8 +272,8 @@
 
 #### Review 关注点
 
-- 当前 heartbeat 周期固定为 1 秒，Main Supervisor 的失联阈值尚未实现；阈值应明显大于单次 heartbeat 周期，避免短暂主线程繁忙导致误重启。
-- `process.exit(0)` 延迟到 `setImmediate`，保证 `stopped` 消息先进入发送队列；Main 仍需有超时后的强制 `kill` 兜底。
+- heartbeat 周期固定为 1 秒，Main Supervisor 已实现 4 秒失联阈值，避免短暂主线程繁忙导致误重启。
+- `process.exit(0)` 延迟到 `setImmediate`，保证 `stopped` 消息先进入发送队列；Main 已实现 1.5 秒超时后的强制 `kill` 兜底。
 - M1 会把临时结构化控制消息迁移到版本化协议和 Named Pipe/UDS；M0 的 UtilityProcess parent port 仅承担进程生命周期控制，不承载网络会话数据。
 - Supervisor 默认每次重启延迟按 250 ms、500 ms、1 s 递增并封顶 5 s；当前计数不会在稳定运行后归零，后续可在 M1 加入“稳定窗口”策略。
 
@@ -261,11 +286,11 @@
 - Main IPC 目前只有 `core:get-status`，并验证 sender URL；Preload 仅暴露 `getCoreStatus` 和 `onCoreStatusChange`，没有通用 send/invoke、文件系统或进程控制 API。
 - Forge Fuses 禁用 RunAsNode、`NODE_OPTIONS` 和 CLI inspect 参数，启用 cookie encryption、ASAR integrity 和 OnlyLoadAppFromAsar。
 
-#### 剩余验证
+#### 验证结果
 
-- Renderer `index.html` 尚需加入严格 CSP；开发态只允许本机 Vite HMR 所需连接，生产态不得允许远程资源。
-- Packaged Playwright smoke 必须断言 `window.process`、`window.require` 不存在，且 `window.interceptor` 只有两个预期方法。
-- 需要检查最终 `resources/app.asar` 不包含 Forge、node-gyp、tar 等开发工具依赖。
+- Renderer 严格 CSP 已按开发/生产环境注入；生产 `connect-src 'none'`、`frame-src 'none'` 且无远程 URL。
+- Packaged smoke 已断言 `window.process`、`window.require` 不存在，`window.interceptor` 恰有两个预期方法。
+- 最终 `resources/app.asar` 共 29 项，不包含 Forge、node-gyp、tar 等开发工具依赖。
 
 ### T0.2 Ant Design 应用壳
 
@@ -282,7 +307,7 @@
 #### CSP 实现
 
 - `vite.renderer.config.ts` 通过 `transformIndexHtml` 注入环境对应 CSP，源码 HTML 不硬编码 Dev Server 端口。
-- 生产 CSP：脚本仅 `'self'`、`connect-src 'none'`、禁止 object/base/form/frame ancestor；仅为 Ant Design CSS-in-JS 保留 `style-src 'unsafe-inline'`。
+- 生产 CSP：脚本仅 `'self'`、`connect-src 'none'`、禁止 object/base/form/child frame；仅为 Ant Design CSS-in-JS 保留 `style-src 'unsafe-inline'`。
 - 开发 CSP：在生产基线上仅增加 Vite React Refresh 所需 inline script 和 localhost WebSocket 连接；远程 HTTP(S) 资源仍未开放。
 
 #### 类型兼容修正
@@ -290,16 +315,16 @@
 1. Ant Design v6 的 `theme.cssVar` 不再接受布尔值，改为 `{ prefix: 'interceptor' }`，避免应用间 CSS 变量命名碰撞。
 2. TypeScript 7 对 CSS-only package root side-effect import 更严格；Fontsource Sans 改用显式导出 `@fontsource-variable/ibm-plex-sans/index.css`，并加入 Vite client 资源模块声明。
 
-#### 待 Review
+#### Review 结论
 
-- 目前最小窗口为 880×560，属于桌面应用，不承诺手机布局；需要在 880×560、1280×800 和高 DPI 下做截图检查。
+- 最小窗口为 880×560，属于桌面应用，不承诺手机布局；1280×800 和紧凑 900×600 截图已检查，无重叠、截断或水平溢出。
 - M0 只提供结构与空状态，Capture 命令保持禁用；不能把 UI 占位误判为 M3/M4 业务能力。
 
 ### M0 依赖审计
 
 - `npm audit --omit=dev`：生产依赖 75 个，漏洞为 0。
 - 完整 `npm audit`：3 low、20 high、0 critical；主要依赖链为 Forge CLI → `@electron/rebuild` / `@electron/node-gyp` → 旧 `tar`，以及 CLI prompts → `external-editor` / `tmp`。
-- 这些包仅用于安装、构建和打包，不应出现在最终 app.asar 运行依赖中；Packaged Artifact 后续必须检查这一点。
+- 这些包仅用于安装、构建和打包；最终 app.asar 已验证不包含相关开发工具链。
 - Forge 7 当前对这些链条没有完整可用修复；`npm audit fix --force` 会打散精确锁定版本，因此不执行。风险暂按开发工具链隔离，并等待 Forge 稳定版修复。
 
 ## 后续未开始步骤
@@ -345,6 +370,23 @@
 | 2026-07-11 | `git diff --check` | 通过；当前全部改动无 whitespace error | 开始打包验证 |
 | 2026-07-11 | 首次 `npm run package` | 部分通过；Core 与 Vite 三入口构建成功，Packager 在 `Copying files` 失败，未生成 `out` | 用 DEBUG 日志定位复制异常 |
 | 2026-07-11 | Packager DEBUG 重跑 | 已取消；用户要求暂停，未继续执行 | 下一次 Session 从该命令恢复 |
+| 2026-07-11 | 恢复后 Packager DEBUG 重跑 | 失败但已定位；下载 Electron 43.1.0 ZIP 到 100% 后 `read ECONNRESET`，`extraResource` 路径正确 | 使用本地 ZIP/缓存规避网络瞬断后重跑 package |
+| 2026-07-11 | 临时镜像 + npm 官方 checksums package | 通过；下载校验后写入缓存，完整生成 Windows x64 package | 修正 productName 后重打包 |
+| 2026-07-11 | productName 修正后 `npm run package` | 通过；输出 `out/Interceptor-win32-x64`，Windows 元数据统一 | 检查最终产物安全边界 |
+| 2026-07-11 | 最终产物路径/ASAR/CSP/Fuses 检查 | 通过；Core 路径正确、禁带依赖 0、无远程资源、实际 Fuses 符合记录 | 运行 Packaged Playwright smoke |
+| 2026-07-11 | 首次 Packaged Playwright smoke | 失败；`_electron.launch` 依赖被安全 Fuse 禁用的 Node inspector | 保留安全 Fuse，改用 Chromium CDP 自动化最终 exe |
+| 2026-07-11 | 第二次 Packaged Playwright smoke | 失败；真实 navigation landmark 缺少 Workspaces accessible name | 将 aria-label 移到 `<nav>` 并重打包 |
+| 2026-07-11 | 第三次 Packaged Playwright smoke | 通过；1 test passed，安全/UI/Core/主题/清理断言全通过 | 检查截图并验证开发 HMR |
+| 2026-07-11 | 紧凑布局修正后 smoke + 截图 | 通过；900×600 水平溢出已消失，最终截图无 Tooltip | 验证开发启动/HMR |
+| 2026-07-11 | Dev Renderer HMR 探针 | 通过；window 内存标记与 Core PID 保持，品牌变更和撤销均热更新 | 无 reload 重启检查后完成 T0.1 |
+| 2026-07-11 | Dev 进程/端口清理检查 | 通过；匹配进程 0、5173/9333 listeners 0 | 再次启动验证初始渲染 |
+| 2026-07-11 | 无 reload Dev 启动复验 | 通过；应用壳直接渲染，Core healthy，无 JavaScript 运行错误 | 修正无效 meta CSP warning 后执行最终验收 |
+| 2026-07-11 | M0 最终 `npm run typecheck` | 通过；Desktop 与 Proxy Core 均无类型错误 | 继续最终验收 |
+| 2026-07-11 | M0 最终 `npm run test:unit` | 通过；1 file、3 tests passed | 继续最终验收 |
+| 2026-07-11 | M0 最终 `npm run package` | 通过；官方 checksum 验证缓存，生成 `out/Interceptor-win32-x64` | 运行最终 smoke |
+| 2026-07-11 | M0 最终 Packaged Playwright smoke | 通过；1 test passed，安全/UI/Core/截图/清理全部通过 | 完成 audit 与 diff check |
+| 2026-07-11 | M0 最终 `npm audit --omit=dev` | 通过；0 vulnerabilities | M0 生产依赖验收完成 |
+| 2026-07-11 | M0 最终 `git diff --check` + 编辑器诊断 | 通过；无 whitespace error、无项目诊断 | M0 完成，进入 M1 |
 
 ## 变更文件
 
@@ -377,7 +419,7 @@
 ## Session 交接规则
 
 1. 新 Session 首先阅读本文件，再按需阅读产品方案中的当前里程碑章节。
-2. 从“项目快照”的“下一步”和“进行中步骤”继续，不重复已完成工作。
+2. 从“项目快照”的“当前工作项”和“下一步”继续，不重复已完成工作。
 3. 任务一旦开始，立即把状态改为 `进行中`，写明进度详情。
 4. 每次实现或验证取得进展后，同步更新里程碑总览、对应步骤、验证记录、变更文件和下一步。
 5. 只有在交付物实现且验证通过后，才把任务标记为 `已完成`。

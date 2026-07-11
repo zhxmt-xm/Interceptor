@@ -196,8 +196,8 @@ export function App(): React.JSX.Element {
           </header>
 
           <div className="workspace-frame">
-            <aside className="sidebar" aria-label="Workspaces">
-              <nav className="workspace-nav">
+            <aside className="sidebar">
+              <nav className="workspace-nav" aria-label="Workspaces">
                 {workspaces.map((item) => (
                   <button
                     className="workspace-button"

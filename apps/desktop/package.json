@@ -1,7 +1,9 @@
 {
   "name": "@interceptor/desktop",
+  "productName": "Interceptor",
   "version": "0.0.0",
   "private": true,
+  "author": "zhxmt-xm",
   "description": "Interceptor Electron desktop application",
   "main": ".vite/build/main.js",
   "scripts": {
