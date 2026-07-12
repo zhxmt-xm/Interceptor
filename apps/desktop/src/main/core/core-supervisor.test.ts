@@ -137,6 +137,36 @@ describe('CoreSupervisor', () => {
       detail: 'Proxy Core was force-stopped',
     });
   });
+
+  it('ignores heartbeats that arrive during graceful shutdown', () => {
+    vi.useFakeTimers();
+    const child = new FakeCoreProcess(4104);
+    const supervisor = new CoreSupervisor({
+      createProcess: () => child,
+    });
+
+    supervisor.start();
+    child.emit('spawn');
+    child.emit('message', {
+      type: 'ready',
+      pid: child.pid,
+      startedAt: '2026-07-11T00:00:00.000Z',
+    });
+    expect(supervisor.getStatus().state).toBe('healthy');
+
+    void supervisor.stop();
+    expect(supervisor.getStatus().state).toBe('stopping');
+
+    child.emit('message', {
+      type: 'heartbeat',
+      pid: child.pid,
+      timestamp: '2026-07-11T00:00:01.000Z',
+    });
+    expect(supervisor.getStatus().state).toBe('stopping');
+
+    child.emit('exit', 0);
+    expect(supervisor.getStatus().state).toBe('stopped');
+  });
 });
 
 function readCorrelationId(message: unknown): string {

@@ -80,6 +80,11 @@ function createMainWindow(): BrowserWindow {
       event.preventDefault();
     }
   });
+  mainWindow.webContents.on('will-redirect', (event, url) => {
+    if (!isTrustedRendererNavigation(url)) {
+      event.preventDefault();
+    }
+  });
   mainWindow.webContents.session.on('will-download', (event) => {
     event.preventDefault();
   });

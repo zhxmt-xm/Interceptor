@@ -66,16 +66,24 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     let active = true;
+    let latestUpdatedAt = initialCoreStatus.updatedAt;
+
+    const applyStatus = (next: CoreStatus): void => {
+      if (!active || next.updatedAt < latestUpdatedAt) {
+        return;
+      }
+
+      latestUpdatedAt = next.updatedAt;
+      setCoreStatus(next);
+    };
+
+    const unsubscribe = window.interceptor.onCoreStatusChange(applyStatus);
 
     void window.interceptor
       .getCoreStatus()
-      .then((status) => {
-        if (active) {
-          setCoreStatus(status);
-        }
-      })
+      .then(applyStatus)
       .catch(() => {
-        if (active) {
+        if (active && latestUpdatedAt === initialCoreStatus.updatedAt) {
           setCoreStatus((current) => ({
             ...current,
             state: 'unhealthy',
@@ -85,7 +93,6 @@ export function App(): React.JSX.Element {
         }
       });
 
-    const unsubscribe = window.interceptor.onCoreStatusChange(setCoreStatus);
     return () => {
       active = false;
       unsubscribe();

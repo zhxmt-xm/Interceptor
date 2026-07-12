@@ -219,6 +219,10 @@ export class CoreSupervisor {
       }
     }
 
+    if (!this.desiredRunning) {
+      return;
+    }
+
     this.lastHeartbeatAtMs = this.now();
     const timestamp =
       coreMessage.type === 'ready'
