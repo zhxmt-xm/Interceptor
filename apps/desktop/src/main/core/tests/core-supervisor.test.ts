@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CoreSupervisor,
   type CoreProcessHandle,
-} from './core-supervisor';
+} from '../core-supervisor';
 
 class FakeCoreProcess extends EventEmitter implements CoreProcessHandle {
   readonly messages: unknown[] = [];
@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe('CoreSupervisor', () => {
-  it('starts, checks health, and stops the core gracefully', async () => {
+  it('starts and stops the core gracefully', async () => {
     vi.useFakeTimers();
     const child = new FakeCoreProcess(4100);
     const supervisor = new CoreSupervisor({
@@ -61,30 +61,18 @@ describe('CoreSupervisor', () => {
       startedAt: '2026-07-11T00:00:00.000Z',
     });
 
-    expect(supervisor.getStatus()).toMatchObject({
-      state: 'healthy',
+    expect(supervisor.getProcessStatus()).toMatchObject({
+      state: 'running',
       pid: 4100,
       restartCount: 0,
     });
-
-    const healthPromise = supervisor.checkHealth();
-    const healthRequest = child.messages.at(-1);
-    expect(healthRequest).toMatchObject({ type: 'health-check' });
-
-    child.emit('message', {
-      type: 'health',
-      correlationId: readCorrelationId(healthRequest),
-      pid: child.pid,
-      timestamp: '2026-07-11T00:00:01.000Z',
-    });
-    await expect(healthPromise).resolves.toBe(true);
 
     const stopPromise = supervisor.stop();
     expect(child.messages.at(-1)).toEqual({ type: 'shutdown' });
     child.emit('exit', 0);
 
     await expect(stopPromise).resolves.toBeUndefined();
-    expect(supervisor.getStatus().state).toBe('stopped');
+    expect(supervisor.getProcessStatus().state).toBe('stopped');
     expect(child.killed).toBe(false);
   });
 
@@ -106,7 +94,7 @@ describe('CoreSupervisor', () => {
     supervisor.start();
     children[0]?.emit('exit', 2);
 
-    expect(supervisor.getStatus()).toMatchObject({
+    expect(supervisor.getProcessStatus()).toMatchObject({
       state: 'restarting',
       restartCount: 1,
     });
@@ -115,7 +103,44 @@ describe('CoreSupervisor', () => {
     expect(createProcess).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(1);
     expect(createProcess).toHaveBeenCalledTimes(2);
-    expect(supervisor.getStatus().state).toBe('starting');
+    expect(supervisor.getProcessStatus().state).toBe('starting');
+  });
+
+  it('kills and restarts a process whose event loop stops heartbeating', () => {
+    vi.useFakeTimers();
+    const children = [new FakeCoreProcess(4105), new FakeCoreProcess(4106)];
+    const createProcess = vi.fn(() => {
+      const child = children[createProcess.mock.calls.length - 1];
+      if (!child) {
+        throw new Error('No fake process available');
+      }
+      return child;
+    });
+    const supervisor = new CoreSupervisor({
+      createProcess,
+      heartbeatTimeoutMs: 4_000,
+      restartBaseDelayMs: 250,
+      now: () => Date.now(),
+    });
+
+    supervisor.start();
+    children[0]?.emit('message', {
+      type: 'ready',
+      pid: 4105,
+      startedAt: '2026-07-12T00:00:00.000Z',
+    });
+
+    vi.advanceTimersByTime(4_000);
+    expect(children[0]?.killed).toBe(true);
+    expect(supervisor.getProcessStatus()).toMatchObject({
+      state: 'unresponsive',
+      detail: 'No heartbeat for 4000 ms',
+    });
+
+    children[0]?.emit('exit', 1);
+    expect(supervisor.getProcessStatus().state).toBe('restarting');
+    vi.advanceTimersByTime(250);
+    expect(createProcess).toHaveBeenCalledTimes(2);
   });
 
   it('force-stops a core that misses the graceful shutdown deadline', async () => {
@@ -132,7 +157,7 @@ describe('CoreSupervisor', () => {
 
     await expect(stopPromise).resolves.toBeUndefined();
     expect(child.killed).toBe(true);
-    expect(supervisor.getStatus()).toMatchObject({
+    expect(supervisor.getProcessStatus()).toMatchObject({
       state: 'stopped',
       detail: 'Proxy Core was force-stopped',
     });
@@ -152,32 +177,19 @@ describe('CoreSupervisor', () => {
       pid: child.pid,
       startedAt: '2026-07-11T00:00:00.000Z',
     });
-    expect(supervisor.getStatus().state).toBe('healthy');
+    expect(supervisor.getProcessStatus().state).toBe('running');
 
     void supervisor.stop();
-    expect(supervisor.getStatus().state).toBe('stopping');
+    expect(supervisor.getProcessStatus().state).toBe('stopping');
 
     child.emit('message', {
       type: 'heartbeat',
       pid: child.pid,
       timestamp: '2026-07-11T00:00:01.000Z',
     });
-    expect(supervisor.getStatus().state).toBe('stopping');
+    expect(supervisor.getProcessStatus().state).toBe('stopping');
 
     child.emit('exit', 0);
-    expect(supervisor.getStatus().state).toBe('stopped');
+    expect(supervisor.getProcessStatus().state).toBe('stopped');
   });
 });
-
-function readCorrelationId(message: unknown): string {
-  if (
-    typeof message === 'object' &&
-    message !== null &&
-    'correlationId' in message &&
-    typeof message.correlationId === 'string'
-  ) {
-    return message.correlationId;
-  }
-
-  throw new Error('Health request is missing a correlation ID');
-}

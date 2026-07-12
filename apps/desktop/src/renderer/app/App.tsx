@@ -24,7 +24,7 @@ import {
 import { startTransition, useEffect, useState } from 'react';
 
 import appIconUrl from '../../../assets/interceptor-icon.png';
-import type { CoreStatus } from '../../shared/desktop-api';
+import type { CoreProcessStatus } from '../../shared/desktop-api';
 import {
   ToolIconButton,
   ToolSegmentedControl,
@@ -34,7 +34,7 @@ import { createAppTheme, type ThemeMode } from '../theme/theme';
 
 type Workspace = 'capture' | 'rules' | 'composer';
 
-const initialCoreStatus: CoreStatus = {
+const initialCoreStatus: CoreProcessStatus = {
   state: 'starting',
   pid: null,
   restartCount: 0,
@@ -68,7 +68,7 @@ export function App(): React.JSX.Element {
     let active = true;
     let latestUpdatedAt = initialCoreStatus.updatedAt;
 
-    const applyStatus = (next: CoreStatus): void => {
+    const applyStatus = (next: CoreProcessStatus): void => {
       if (!active || next.updatedAt < latestUpdatedAt) {
         return;
       }
@@ -77,16 +77,16 @@ export function App(): React.JSX.Element {
       setCoreStatus(next);
     };
 
-    const unsubscribe = window.interceptor.onCoreStatusChange(applyStatus);
+    const unsubscribe = window.interceptor.onCoreProcessStatusChange(applyStatus);
 
     void window.interceptor
-      .getCoreStatus()
+      .getCoreProcessStatus()
       .then(applyStatus)
       .catch(() => {
         if (active && latestUpdatedAt === initialCoreStatus.updatedAt) {
           setCoreStatus((current) => ({
             ...current,
-            state: 'unhealthy',
+            state: 'unresponsive',
             detail: 'Proxy Core status unavailable',
             updatedAt: new Date().toISOString(),
           }));
@@ -253,8 +253,8 @@ function WorkspacePlaceholder({
   );
 }
 
-function StatusBar({ status }: { status: CoreStatus }): React.JSX.Element {
-  const healthy = status.state === 'healthy';
+function StatusBar({ status }: { status: CoreProcessStatus }): React.JSX.Element {
+  const running = status.state === 'running';
 
   return (
     <footer className={styles.statusbar}>
@@ -271,7 +271,7 @@ function StatusBar({ status }: { status: CoreStatus }): React.JSX.Element {
         {status.restartCount > 0 ? (
           <span>Restarts {status.restartCount}</span>
         ) : null}
-        <span>{healthy ? 'Local · 127.0.0.1' : status.detail ?? 'Initializing'}</span>
+        <span>{running ? 'Process responding' : status.detail ?? 'Initializing'}</span>
       </div>
     </footer>
   );
@@ -288,6 +288,6 @@ function readInitialTheme(): ThemeMode {
     : 'light';
 }
 
-function formatCoreState(state: CoreStatus['state']): string {
+function formatCoreState(state: CoreProcessStatus['state']): string {
   return state.charAt(0).toUpperCase() + state.slice(1);
 }

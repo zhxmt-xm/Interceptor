@@ -209,8 +209,8 @@
   background: var(--text-faint);
 }
 
-.captureSourceDot[data-state="healthy"] {
-  background: var(--healthy);
+.captureSourceDot[data-state="running"] {
+  background: var(--success);
 }
 
 .captureSourceDot[data-state="starting"],
@@ -218,7 +218,7 @@
   background: var(--warning);
 }
 
-.captureSourceDot[data-state="unhealthy"] {
+.captureSourceDot[data-state="unresponsive"] {
   background: var(--record);
 }
 
@@ -302,8 +302,8 @@
   background: var(--text-faint);
 }
 
-.statusDot[data-state="healthy"] {
-  background: var(--healthy);
+.statusDot[data-state="running"] {
+  background: var(--success);
 }
 
 .statusDot[data-state="starting"],
@@ -311,7 +311,7 @@
   background: var(--warning);
 }
 
-.statusDot[data-state="unhealthy"] {
+.statusDot[data-state="unresponsive"] {
   background: var(--record);
 }
 

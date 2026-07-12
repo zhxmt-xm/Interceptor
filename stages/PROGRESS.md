@@ -17,21 +17,21 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0 项目脚手架与工具链（100%）。
-- 当前 Stage：M1 IPC 通信基座（0%，尚未开始）。
-- 当前任务：T1.1 定义版本化 Protobuf schema。
-- 下一动作：进入 M1，建立 `packages/protocol`、生成 TypeScript 类型并添加协议 round-trip/兼容性测试。
-- Git 状态：M0 安全、Renderer、图标、smoke 和文档收尾已纳入 M0 收尾提交；新 Session 先用 `git status --short --branch` 和 `git log -1 --oneline` 确认实际 HEAD 与工作树。
+- 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座（均 100%）。
+- 当前 Stage：M2 存储层（0%，尚未开始）。
+- 当前任务：T2.1 SQLite schema + migration。
+- 下一动作：进入 M2，定义 Capture 数据库 schema、只向前 migration 和 fixture 建库；实现前阅读 [M2.md](M2.md) 与完整方案第十二章。
+- Git 状态：M1 基线为 `e173657`；当前工作树包含完整 M1 代码、测试与文档，尚未提交，必须保留。
 - 阻塞：无。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M1.md](M1.md)。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M2.md](M2.md)。
 
 ## Stage 总览
 
 | Stage | 名称 | 状态 | 进度 | 详情 |
 | --- | --- | --- | ---: | --- |
 | M0 | 项目脚手架与工具链 | 已完成 | 100% | [M0.md](M0.md) |
-| M1 | IPC 通信基座 | 未开始 | 0% | [M1.md](M1.md) |
+| M1 | IPC 通信基座 | 已完成 | 100% | [M1.md](M1.md) |
 | M2 | 存储层 | 未开始 | 0% | [M2.md](M2.md) |
 | M3 | 最小显式代理（HTTP/1.1） | 未开始 | 0% | [M3.md](M3.md) |
 | M4 | 会话列表 UI | 未开始 | 0% | [M4.md](M4.md) |
@@ -49,11 +49,14 @@
 
 - Electron Main、Preload、React Renderer 和独立 Proxy Core UtilityProcess 已建立。
 - Renderer sandbox、context isolation、无 Node integration、严格 CSP、可信导航、权限/弹窗/下载/webview 拒绝和安全 Fuses 已落地。
-- Preload 仅暴露 Core 状态查询与订阅；Renderer 不直接访问 Electron、Node、文件系统或 Core。
-- CoreSupervisor 已实现 ready、heartbeat、health、退避重启、优雅停止和强制清理。
+- Preload 仅暴露进程状态、M1 echo 和脱敏 Trace 等意图型 API；Renderer 不直接访问 Electron、Node、MessagePort、文件系统或 Core。
+- CoreSupervisor 已实现 ready、heartbeat 卡死检测、退避重启、优雅停止和强制清理；`running` 只代表进程 Event Loop 可响应。
+- Main/Core 正式业务通信使用每次 spawn 转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
+- Core 结构化 Command/Action Trace、`AsyncLocalStorage`、有界 Ring Buffer、脱敏和 stdout/stderr 后备已实现；日志数据库留在 M2。
+- Renderer 通过窄 API 可读取 Core 进程状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
 - Ant Design v6 应用壳、Traffic/Inspector 占位、亮暗主题、共享工具控件和平台应用图标已完成。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke 和生产依赖审计链已建立。
-- HTTP 捕获、正式 IPC、存储、CA、规则和真实会话 UI 均未实现。
+- HTTP 捕获、持久化存储、CA、规则和真实会话 UI 均未实现。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -69,7 +72,7 @@ M0 历史验收已覆盖：
 - `git diff --check`；
 - Dev 冷启动、Renderer HMR、ASAR/CSP/Fuses 和进程清理。
 
-2026-07-12 M0 收尾回归已通过：根级 typecheck、5 条 Vitest、Forge Windows x64 package、真实最终 exe 的 Playwright smoke（1 test）、生产依赖 audit（0 vulnerabilities）、20 份 Markdown 本地链接检查和 `git diff --check`。Smoke 同时验证了主题 Segmented 的可访问名称修复、亮暗切换、Renderer 隔离、Core 健康和退出清理。
+2026-07-12 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；状态收敛为 heartbeat 驱动的 `CoreProcessStatus`，代码收敛为 `DesktopApplication / CoreSupervisor / CoreRpcClient / CoreProcess / CoreRpcServer / CoreBackend`。复核后根 typecheck、7 files / 38 tests、Windows package 和真实 crash/restart smoke 通过；详情见 [M1.md](M1.md)。
 
 ## 更新规则
 

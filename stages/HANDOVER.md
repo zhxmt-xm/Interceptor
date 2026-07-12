@@ -10,31 +10,34 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M1.md](M1.md)。
+4. 当前 Stage 文件：[M2.md](M2.md)。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
-6. 只有需要追溯 M0 决策、排障或验证时再读 [M0.md](M0.md)。
+6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
 不要只根据聊天摘要开始工作；仓库文档和当前代码是权威来源。
 
 ## 当前状态
 
-- **M0 已完成（100%）**，不再继续增加 M0 范围；详细记录见 [M0.md](M0.md)。
-- **下一 Stage 是 M1 IPC 通信基座（0%，尚未开始）**；当前必须进入 M1，而不是继续扩展 UI 占位或临时生命周期消息。
-- 下一任务是 **M1/T1.1：定义版本化 Protobuf schema、建立协议 workspace 并生成 TypeScript 类型**。
-- M0 安全、Renderer、图标、smoke 和文档收尾已纳入 M0 收尾提交。新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`，以实际 HEAD 和工作树为准；不要 reset、checkout 或覆盖接手时存在的改动。
+- **M0、M1 均已完成（100%）**；M1 正式 MessagePort IPC、Typed Command Schema、背压、Trace 和端到端验证详情见 [M1.md](M1.md)。
+- **当前 Stage 是 M2 存储层（0%，尚未开始）**；不要继续扩展 M1 echo 或用临时内存结构模拟存储。
+- 下一任务是 **M2/T2.1：定义 Capture SQLite schema、只向前 migration 和 fixture 建库**。
+- M1 代码、测试和文档仍在未提交工作树中，基线为 `e173657`。新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`；不要 reset、checkout 或覆盖这些改动。
 - 当前没有真实 Traffic Capture；UI 中 Capture、Search、Filter 和详情相关命令保持 disabled。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 
-## M0 已交付
+## M0 与 M1 已交付
 
 - npm workspaces、严格 TypeScript、Forge/Vite Main/Preload/Renderer 三入口。
 - 安全 BrowserWindow、严格 CSP、可信 Renderer reload、窄 Preload API 和 Electron Fuses。
-- 独立 UtilityProcess Proxy Core 与 Supervisor 生命周期、health、heartbeat、重启和关闭。
+- 独立 UtilityProcess Proxy Core 与 Supervisor 生命周期、heartbeat 卡死检测、重启和关闭。
 - 模块化 Ant Design v6 Renderer：App shell、Traffic workspace、Inspector、亮暗主题和共享工具控件。
 - SVG/PNG/ICO/ICNS 应用图标及可重复生成脚本。
 - Vitest 单测、真实 packaged executable 的 Playwright CDP smoke、package 与生产依赖审计流程。
 - M0 详细实现、排障和验证历史已迁入 [M0.md](M0.md)。
+- Main/Core 专用 MessagePort、TypeScript runtime schema、request correlation、timeout/cancel 和 Core restart recovery。
+- Core 结构化 Command/Action Trace、有界 Ring Buffer、敏感字段脱敏和 stdout/stderr 后备。
+- 窄 Renderer API：Core 进程状态、M1 echo 和脱敏 Trace 查询；无通用 IPC、MessagePort 或 Node 暴露。
 
 ## 已实现功能与代码位置
 
@@ -46,26 +49,31 @@
 | 严格 TypeScript 基线 | `tsconfig.base.json` | Desktop/Core 继承，不应为局部错误放宽全局严格性 |
 | Node/npm 版本约束 | `.nvmrc`、`.npmrc`、根 `package.json` | Node 24.18.0、npm 11.16.0、精确依赖 |
 | Desktop Forge/Vite 构建 | `apps/desktop/forge.config.ts`、`apps/desktop/vite.*.config.ts` | Main/Preload/Renderer 三入口、ASAR、Core extraResource、Fuses、图标 |
-| Proxy Core 构建 | `apps/proxy-core-node/package.json`、`apps/proxy-core-node/tsconfig.json` | 独立 CommonJS UtilityProcess 产物 |
+| Proxy Core 构建 | `apps/proxy-core/package.json`、`apps/proxy-core/tsconfig.json` | 独立 CommonJS UtilityProcess 产物 |
+| Shared Core protocol | `packages/core-protocol/` | 平台中立消息类型、Command/Result mapping、严格 runtime validator 和协议测试 |
 
 ### Electron Main、安全与生命周期
 
 | 已实现内容 | 代码位置 | 说明 |
 | --- | --- | --- |
-| 应用启动/关闭和 BrowserWindow | `apps/desktop/src/main/main.ts` | 创建安全窗口、配置 Session/IPC、启动和停止 CoreSupervisor |
-| Core 生命周期监督 | `apps/desktop/src/main/core/core-supervisor.ts` | ready/heartbeat/health、失联检测、退避重启、优雅停止和 kill 兜底 |
-| Electron UtilityProcess 适配 | `apps/desktop/src/main/core/electron-core-process.ts` | 开发/生产 Core 路径、日志转发、parentPort 适配 |
-| Core 生命周期单测 | `apps/desktop/src/main/core/core-supervisor.test.ts` | fake process/timer 覆盖正常、重启和强制停止路径 |
+| Main 应用所有者 | `apps/desktop/src/main/main.ts` | `DesktopApplication` 集中管理安全窗口、Session/IPC、Supervisor 和 RPC client |
+| Core 生命周期监督 | `apps/desktop/src/main/core/core-supervisor.ts` | ready/heartbeat 卡死检测、退避重启、优雅停止和 kill 兜底 |
+| Electron UtilityProcess 适配 | `apps/desktop/src/main/core/core-process-adapter.ts` | 开发/生产 Core 路径、日志转发、每次 spawn 创建并转交 MessageChannel |
+| Main Core RPC client | `apps/desktop/src/main/core/core-rpc-client.ts` | Promise correlation、timeout/cancel、late/duplicate/disconnect 和 replacement 清理 |
+| Core 生命周期单测 | `apps/desktop/src/main/core/tests/core-supervisor.test.ts` | fake process/timer 覆盖正常、重启和强制停止路径 |
 | Renderer URL 白名单 | `apps/desktop/src/main/security/trusted-renderer-url.ts` | 开发精确同源、生产精确 packaged HTML |
-| URL 安全单测 | `apps/desktop/src/main/security/trusted-renderer-url.test.ts` | 可信 reload 与外部/无效 URL 拒绝 |
-| M0 Core 进程 | `apps/proxy-core-node/src/proxy-core/index.cts` | 只实现生命周期；不得加入正式业务协议 |
+| URL 安全单测 | `apps/desktop/src/main/security/tests/trusted-renderer-url.test.ts` | 可信 reload 与外部/无效 URL 拒绝 |
+| Core 进程生命周期 | `apps/proxy-core/src/proxy-core/core-process.ts` | ready/heartbeat/shutdown/signal 和 RPC port 注入；入口 `core-entry.cts` 只负责启动对象 |
+| Core RPC server | `apps/proxy-core/src/proxy-core/core-rpc-server.ts` | runtime validation、request/cancel、response、connection replacement |
+| Core backend | `apps/proxy-core/src/proxy-core/core-backend.ts` | command 的唯一业务入口，后续注入 Storage/Proxy Service |
+| Core diagnostics | `apps/proxy-core/src/proxy-core/core-diagnostics.ts` | AsyncLocalStorage Trace、Action、三重上限、脱敏和 sink fallback |
 
 ### Preload 与共享契约
 
 | 已实现内容 | 代码位置 | 说明 |
 | --- | --- | --- |
-| Renderer 可见 API 类型 | `apps/desktop/src/shared/desktop-api.ts` | `CoreStatus` 和窄 `InterceptorDesktopApi` |
-| contextBridge 实现 | `apps/desktop/src/preload/preload.ts` | 仅状态查询与订阅，无通用 IPC |
+| Renderer 可见 API 类型 | `apps/desktop/src/shared/desktop-api.ts` | `CoreProcessStatus`、echo、脱敏 Trace 和窄 `InterceptorDesktopApi` |
+| contextBridge 实现 | `apps/desktop/src/preload/preload.ts` | 进程状态订阅和两个意图型 RPC；无通用 IPC |
 | Renderer Window 类型 | `apps/desktop/src/renderer/global.d.ts` | 声明 `window.interceptor` |
 
 ### Renderer
@@ -90,54 +98,52 @@
 | Packaged smoke | `apps/desktop/tests/packaged-startup.spec.ts` | 真实 exe + CDP；覆盖 UI、安全、Core、主题、窗口尺寸和退出清理 |
 | Playwright 配置 | `apps/desktop/playwright.config.ts` | 最终 package smoke 配置 |
 
-完整的职责关系和 Mermaid 图见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+完整 Workflow 图、代码位置索引、20 步流程表和 9 张逐帧 Call Stack 表见 [ARCHITECTURE.md](ARCHITECTURE.md)。排查启动、RPC、heartbeat、重启或关闭问题时先从对应 Call Stack 开始。
 
 ## 当前工作树说明
 
-以下是当前 M0 收尾改动类别，均属于应保留内容：
+M1 开始前 `main` 与 `origin/main` 同步，基线为 `e173657`。当前工作树包含完整 M1 实现，均属于应保留内容：
 
-- `stages/PROGRESS.md`、`README.md`：进度索引和命令手册更新。
-- `stages/ARCHITECTURE.md`、`stages/HANDOVER.md`、`stages/M*.md`：集中式 Stage 文档分层。
-- `AGENTS.md`：Ant Design 优先级、Renderer 所有权、验证/文档节奏。
-- `apps/desktop/forge.config.ts`：官方 checksum 下载校验和平台图标接入。
-- `apps/desktop/src/main/main.ts`、`src/main/security/`：可信 Renderer reload 和窗口图标。
-- 删除旧 `src/renderer/app.tsx`、`styles.css`，以模块化 `app/`、`features/`、`components/`、`theme/`、`styles/` 取代。
-- `apps/desktop/assets/`、`scripts/generate-icon.ps1`：图标管线。
-- `apps/desktop/tests/packaged-startup.spec.ts`：更新后的亮暗主题与窗口 smoke。
+- `packages/core-protocol/`：Typed Command Schema、runtime validator 与 6 条协议测试。
+- `apps/desktop/src/main/core/`、`src/main/main.ts`、`src/preload/`、`src/shared/`：DesktopApplication、Supervisor、RPC client、MessagePort transfer 和窄 API。
+- `apps/proxy-core/src/proxy-core/`：CoreProcess、CoreRpcServer、CoreBackend、CoreDiagnostics 和对象边界测试。
+- `apps/desktop/tests/packaged-startup.spec.ts`：真实 exe 的进程状态、echo/Trace 和 Core crash-restart smoke。
+- 根/package workspace 清单和 lockfile：core-protocol workspace、esbuild Core bundle、全 workspace unit 编排。
+- `stages/` 与 `README.md`：权威方案、M1/M2/M10、Architecture、Progress、Handover 和命令说明。
+- Workspace 命名已收口为 `apps/desktop`、`apps/proxy-core` 和 `packages/core-protocol`；不要恢复旧的实现语言后缀或含糊的通用协议目录名。
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M1/T1.1
+## 下一任务：M2/T2.1
 
-目标：建立产品自有、版本化、可生成的协议模型；本任务不实现 Named Pipe/UDS transport。
+目标：建立 Capture 持久化的第一版 SQLite schema 与只向前 migration；本任务不实现真实 HTTP Capture。
 
 建议执行顺序：
 
 1. 运行 `git status --short --branch`，确认并保留当前 M0 收尾改动。
-2. Review M0 收尾 diff；如需提交，创建独立 M0 polish/docs 提交，不包含 `.vite`、`dist`、`out`、Playwright 报告或截图。
-3. 创建 `packages/protocol` npm workspace，选择与当前 TypeScript/Node 工具链兼容的 Protobuf compiler/runtime，并精确锁定版本。
-4. 定义 package/version、handshake、protocol negotiation、command/response correlation、batch event、paged query、body range、rule lifecycle 和 health schema。
-5. 建立可重复的生成脚本，生成 TypeScript 类型；生成结果和 schema 的提交策略必须明确。
-6. 添加代表性 round-trip、未知字段兼容、无效消息和不兼容版本测试。
-7. 让 Desktop 与 Proxy Core 只引用协议 package 的生成类型，不能反向依赖 Renderer 或 Electron 类型。
-8. 更新 [M1.md](M1.md) 的进度和验证；T1.1 完成后才进入 T1.2 transport/auth。
+2. 阅读 [M2.md](M2.md)、完整方案第十二章和当前 [ARCHITECTURE.md](ARCHITECTURE.md)，确认 Capture 与 Diagnostics 使用独立数据库/Writer。
+3. 评估并精确锁定 Node 24 可用的 SQLite driver；不得在 Core 网络事件循环同步执行数据库 I/O。
+4. 定义 CaptureSession、Connection、Exchange、Headers、BodyRef、WebSocketFrame、RuleHit 和 ErrorEvent schema、索引、外键与 schema version。
+5. 建立只向前 migration runner 和临时目录 fixture；覆盖新建、逐版本升级、重复执行、失败回滚和未来版本拒绝。
+6. T2.1 可先在 storage package/worker 边界内实现；跨进程查询必须复用 M1 protocol，不给 Renderer 暴露 SQL 或数据库路径。
+7. 完成后更新 [M2.md](M2.md) 的实现、决策、验证和下一任务，再进入 T2.2 Storage Worker。
 
 ## 剩余工作项目
 
-### M1 当前剩余任务
+### M2 当前剩余任务
 
-- T1.1 Protobuf schema：未开始。
-- T1.2 Windows Named Pipe / macOS UDS + 长度前缀分帧 + 启动随机 token 认证：未开始，依赖 T1.1。
-- T1.3 correlation、批量事件、有界队列和背压：未开始，依赖 T1.2。
-- T1.4 Renderer → Preload → Main → Core echo command 与 subscription event：未开始，依赖 T1.3。
+- T2.1 SQLite schema + migration：未开始。
+- T2.2 Storage Worker：未开始，依赖 T2.1。
+- T2.3 Content-addressed blob store：未开始，依赖 T2.1。
+- T2.4 分页查询 API：未开始，依赖 T2.2。
+- T2.5 Diagnostics Worker + 独立日志库：未开始，依赖 M1/T1.4 和 T2.1。
 
-详细字段范围、兼容约束和验收标准见 [M1.md](M1.md)。产品设计依据见完整方案第十三章。
+详细字段范围和验收标准见 [M2.md](M2.md)。产品设计依据见完整方案第十二章和第二十七章 M2。
 
 ### 后续 Stage
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M2 | 未开始 | SQLite WAL、migration、Storage Worker、Blob Store、查询/保留策略 | 完整方案第十二章、第二十七章 M2 |
 | M3 | 未开始 | Mockttp 显式 HTTP/1.1 代理、CONNECT tunnel、canonical exchange、增量事件 | 完整方案第八章、第二十七章 M3 |
 | M4 | 未开始 | 真实 Session 列表、虚拟化、筛选、选择联动和 Inspector 数据 | 完整方案第十四章、第二十七章 M4 |
 | M5–M13 | 未开始 | CA/HTTPS、HTTP/2、规则、Composer、WebSocket/gRPC、导入导出、系统代理、发布、更新 | 完整方案对应章节和第二十七章 |
@@ -146,17 +152,22 @@
 
 ## 必须保持的边界
 
-- M0 `UtilityProcess.parentPort` 只用于 ready、heartbeat、health、shutdown 和 stopped；不要演化为持久业务协议。
-- M1 正式 transport 为 Windows Named Pipe / macOS UDS，不使用普通 localhost TCP。
-- 每次启动使用随机认证 token；transport、认证和文件权限属于 T1.2，不提前塞进 T1.1。
+- `UtilityProcess.parentPort` 只用于 ready、heartbeat、rpc-port transfer、shutdown 和 stopped；业务消息只能走转交后的专用 MessagePort。
+- `CoreProcessStatus.running` 只表示最近收到 heartbeat，不是业务健康结论。
+- Core 当前无外部接入且与 Desktop 同包发布；不要引入 Koa/WebSocket、本地监听端口、Named Pipe/UDS、Token 或跨版本协商矩阵。
 - Renderer 继续只通过面向意图的 `window.interceptor` API 访问 Main。
 - Main 不搬运未来请求/响应正文；正文数据路径保持在 Core/Storage。
-- 协议字段不可直接复用 React state、Ant Design props、Electron event 或 Mockttp 运行时对象。
-- Schema 必须显式版本化，枚举零值、字段保留、未知字段和兼容策略需要测试。
+- Protocol 字段不可直接复用 React state、Ant Design props、Electron event、Mockttp 运行时对象或数据库 row。
+- 分页使用有限 metadata + opaque keyset cursor；Body 使用有限 range/chunk；大列表和完整 Body 不通过单条消息传输。
+- 日志必须非阻塞、有界和脱敏；M1 不提前实现日志数据库，M2/T2.5 才引入 Diagnostics Worker 与独立 `diagnostics.sqlite`。
+- Capture SQLite 与 `diagnostics.sqlite` 必须使用独立 Worker/Writer；日志失败不得阻塞或回滚 Capture 写入。
+- M2 实现真实 `sessions.query`、Body range 等 handler 时，继续遵守协议上限、opaque keyset cursor 和结构化错误，不添加通用 Command 逃生口。
 
 ## 已知风险
 
 - Forge Vite Plugin 仍是 Experimental；升级 Electron/Forge/Vite/TypeScript/Fuses 后必须重跑 package、ASAR/Fuses、smoke 和 HMR。
+- UtilityProcess MessagePort 转交、Core restart 后的 port replacement 和 packaged 资源路径必须通过真实 exe smoke；修改 Main/Core 生命周期或打包路径后必须重跑，不能只依赖单元 Fake。
+- 结构化日志的对象分配和 IPC 批次仍有成本；必须限制 attributes、队列记录数/字节数和低优先级采样，不能把完整 Command 或 Body 序列化为日志。
 - 完整开发依赖 audit 含 Forge 工具链已知漏洞；生产依赖 audit 为零，最终 ASAR 不含相关开发包。不要运行 `npm audit fix --force`。
 - `GrantFileProtocolExtraPrivileges` 因 packaged Renderer 使用 `loadFile` 暂时开启；迁移标准自定义协议后再评估。
 - Windows/macOS 签名、安装器、系统代理、证书信任和真实捕获尚未实现。
@@ -164,19 +175,20 @@
 
 ## 最近验证状态
 
-2026-07-12 M0 最终收尾回归：
+2026-07-12 M1 可读性复核后的最终验收：
 
-- `npm run typecheck`：通过，Desktop 与 Proxy Core 均无错误。
-- `npm run test:unit`：通过，2 files / 5 tests。
-- `npm run package`：通过，生成 Windows x64 `Interceptor` package；仅有 Forge Vite `inlineDynamicImports` 弃用警告。
-- `npm run test:smoke --workspace @interceptor/desktop`：通过，1 test / 1.5s；真实最终 exe 的 UI、安全、Core、主题、截图和清理断言通过。
-- 最终截图人工检查：亮色 1280×800、暗色 1280×800、暗色 900×600 均无重叠、截断或水平溢出。
+- `npm run typecheck`：通过，Desktop、Proxy Core、Protocol 三个 workspace 均无错误。
+- `npm run test:unit`：通过，7 files / 38 tests（Desktop 16、Proxy Core 16、Core Protocol 6）。
+- `npm run package`：通过，生成 Windows x64 `Interceptor` package；Core esbuild 单文件 bundle 为 27.3 KB；仅有 Forge Vite `inlineDynamicImports` 弃用警告。
+- `npm run test:smoke --workspace @interceptor/desktop`：通过，1 test / 10.4s；真实最终 exe 覆盖 Renderer 隔离、四项窄 API、`running` 进程状态、echo、完整 Trace、强杀 Core 后新 PID/MessagePort RPC、主题和退出清理。
+- 编辑器诊断：Protocol、Desktop、Proxy Core 源码和测试均为 0 errors。
 - `npm audit --omit=dev`：通过，0 vulnerabilities。
-- 文档检查：四个入口仅存在于 `stages/`；20 份 Markdown 本地链接全部有效。
-- M0 原始进度迁移：Local History 快照 490 行，`M0.md` 存档 490 行，规范化逐行文本差异为 0。
+- 文档检查：19 个 Markdown 文件中的 88 个本地链接全部有效，活动文档已同步简化后的 M1 状态。
 - `git diff --check`：通过。
 
-Smoke 首轮曾卡在主题切换：Ant Design Segmented 的 icon-only radio 名称退化为 `sun/moon`，且原生 input 位于可视区域外。共享控件已用官方 option `label` slot 提供 visually-hidden 文本并隐藏 icon 的辅助语义；测试通过语义 radio 定位后点击其可见 label。不要改回匹配图标名或直接点击隐藏 input。
+M1 可读性复核删除了无生产调用的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和同包场景下多余的 channel handshake；保留 heartbeat 专用于 Event Loop 卡死检测。Main/Core 分别重构为 `DesktopApplication + CoreSupervisor + CoreRpcClient` 与 `CoreProcess + CoreRpcServer + CoreBackend`，并在关键流程添加中文注释。
+
+workspace 命名与可读性重构通过根 typecheck、7 files / 38 tests、Core bundle、Windows package 和真实 packaged smoke；npm/lockfile 只保留 `@interceptor/desktop`、`@interceptor/proxy-core`、`@interceptor/core-protocol`。
 
 如果接手时 [PROGRESS.md](PROGRESS.md)、[M0.md](M0.md) 与本节结果不一致，以最新命令实际输出为准，并先修正文档。
 

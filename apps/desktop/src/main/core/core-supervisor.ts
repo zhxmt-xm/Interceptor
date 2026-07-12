@@ -1,4 +1,4 @@
-import type { CoreStatus } from '../../shared/desktop-api';
+import type { CoreProcessStatus } from '../../shared/desktop-api';
 
 export interface CoreProcessHandle {
   readonly pid: number | undefined;
@@ -13,36 +13,31 @@ export interface CoreProcessHandle {
 interface CoreSupervisorOptions {
   createProcess: () => CoreProcessHandle;
   heartbeatTimeoutMs?: number;
-  healthCheckTimeoutMs?: number;
   restartBaseDelayMs?: number;
   restartMaxDelayMs?: number;
   shutdownTimeoutMs?: number;
   now?: () => number;
 }
 
-interface PendingHealthCheck {
-  resolve: (healthy: boolean) => void;
-  timer: ReturnType<typeof setTimeout>;
-}
-
-type StatusListener = (status: CoreStatus) => void;
+type StatusListener = (status: CoreProcessStatus) => void;
 
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 4_000;
-const DEFAULT_HEALTH_CHECK_TIMEOUT_MS = 1_500;
 const DEFAULT_RESTART_BASE_DELAY_MS = 250;
 const DEFAULT_RESTART_MAX_DELAY_MS = 5_000;
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 1_500;
 
+/**
+ * 只管理 Core 子进程生命周期：启动、heartbeat 卡死检测、退出重启和停止。
+ * 业务 command 不经过这里，而是由 CoreRpcClient 走独立 MessagePort。
+ */
 export class CoreSupervisor {
   private readonly createProcess: () => CoreProcessHandle;
   private readonly heartbeatTimeoutMs: number;
-  private readonly healthCheckTimeoutMs: number;
   private readonly restartBaseDelayMs: number;
   private readonly restartMaxDelayMs: number;
   private readonly shutdownTimeoutMs: number;
   private readonly now: () => number;
   private readonly listeners = new Set<StatusListener>();
-  private readonly pendingHealthChecks = new Map<string, PendingHealthCheck>();
 
   private child: CoreProcessHandle | null = null;
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
@@ -50,16 +45,13 @@ export class CoreSupervisor {
   private shutdownTimer: ReturnType<typeof setTimeout> | null = null;
   private stopResolver: (() => void) | null = null;
   private desiredRunning = false;
-  private healthCheckSequence = 0;
   private lastHeartbeatAtMs: number | null = null;
-  private status: CoreStatus;
+  private status: CoreProcessStatus;
 
   constructor(options: CoreSupervisorOptions) {
     this.createProcess = options.createProcess;
     this.heartbeatTimeoutMs =
       options.heartbeatTimeoutMs ?? DEFAULT_HEARTBEAT_TIMEOUT_MS;
-    this.healthCheckTimeoutMs =
-      options.healthCheckTimeoutMs ?? DEFAULT_HEALTH_CHECK_TIMEOUT_MS;
     this.restartBaseDelayMs =
       options.restartBaseDelayMs ?? DEFAULT_RESTART_BASE_DELAY_MS;
     this.restartMaxDelayMs =
@@ -70,11 +62,11 @@ export class CoreSupervisor {
     this.status = this.createStatus('stopped');
   }
 
-  getStatus(): CoreStatus {
+  getProcessStatus(): CoreProcessStatus {
     return { ...this.status };
   }
 
-  onStatusChange(listener: StatusListener): () => void {
+  onProcessStatusChange(listener: StatusListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -93,7 +85,6 @@ export class CoreSupervisor {
     this.desiredRunning = false;
     this.clearRestartTimer();
     this.clearHeartbeatTimer();
-    this.resolvePendingHealthChecks(false);
 
     const child = this.child;
     if (!child) {
@@ -120,32 +111,6 @@ export class CoreSupervisor {
         () => this.forceStop(child),
         this.shutdownTimeoutMs,
       );
-    });
-  }
-
-  checkHealth(): Promise<boolean> {
-    const child = this.child;
-    if (!child || this.status.state === 'stopping') {
-      return Promise.resolve(false);
-    }
-
-    const correlationId = `health-${this.now()}-${++this.healthCheckSequence}`;
-
-    return new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => {
-        this.pendingHealthChecks.delete(correlationId);
-        resolve(false);
-      }, this.healthCheckTimeoutMs);
-
-      this.pendingHealthChecks.set(correlationId, { resolve, timer });
-
-      try {
-        child.postMessage({ type: 'health-check', correlationId });
-      } catch {
-        clearTimeout(timer);
-        this.pendingHealthChecks.delete(correlationId);
-        resolve(false);
-      }
     });
   }
 
@@ -190,7 +155,7 @@ export class CoreSupervisor {
     child.onMessage((message) => this.handleMessage(child, message));
     child.onError((detail) => {
       if (this.child === child) {
-        this.updateStatus('unhealthy', { detail });
+        this.updateStatus('unresponsive', { detail });
       }
     });
     child.onExit((code) => this.handleExit(child, code));
@@ -210,15 +175,6 @@ export class CoreSupervisor {
       return;
     }
 
-    if (coreMessage.type === 'health') {
-      const pending = this.pendingHealthChecks.get(coreMessage.correlationId);
-      if (pending) {
-        clearTimeout(pending.timer);
-        this.pendingHealthChecks.delete(coreMessage.correlationId);
-        pending.resolve(true);
-      }
-    }
-
     if (!this.desiredRunning) {
       return;
     }
@@ -229,7 +185,9 @@ export class CoreSupervisor {
         ? coreMessage.startedAt
         : coreMessage.timestamp;
 
-    this.updateStatus('healthy', {
+    // 收到 ready/heartbeat 只说明子进程事件循环仍能响应，因此状态叫 running，
+    // 不在这里推断代理监听、数据库或其他业务模块是否健康。
+    this.updateStatus('running', {
       pid: coreMessage.pid,
       startedAt:
         coreMessage.type === 'ready'
@@ -249,7 +207,6 @@ export class CoreSupervisor {
     this.child = null;
     this.clearHeartbeatTimer();
     this.clearShutdownTimer();
-    this.resolvePendingHealthChecks(false);
 
     if (!this.desiredRunning) {
       this.updateStatus('stopped', {
@@ -266,6 +223,8 @@ export class CoreSupervisor {
   }
 
   private armHeartbeatTimer(child: CoreProcessHandle): void {
+    // heartbeat 只回答“Core 事件循环是否仍在运行”。进程卡死但未退出时，
+    // Main 会在超时后杀掉它，再走现有的退避重启流程。
     this.clearHeartbeatTimer();
     this.heartbeatTimer = setTimeout(() => {
       if (this.child !== child || !this.desiredRunning) {
@@ -278,7 +237,7 @@ export class CoreSupervisor {
         return;
       }
 
-      this.updateStatus('unhealthy', {
+      this.updateStatus('unresponsive', {
         detail: `No heartbeat for ${elapsed} ms`,
       });
       child.kill();
@@ -329,8 +288,8 @@ export class CoreSupervisor {
   }
 
   private updateStatus(
-    state: CoreStatus['state'],
-    changes: Partial<CoreStatus> = {},
+    state: CoreProcessStatus['state'],
+    changes: Partial<CoreProcessStatus> = {},
   ): void {
     this.status = {
       ...this.status,
@@ -339,13 +298,15 @@ export class CoreSupervisor {
       updatedAt: new Date(this.now()).toISOString(),
     };
 
-    const snapshot = this.getStatus();
+    const snapshot = this.getProcessStatus();
     for (const listener of this.listeners) {
       listener(snapshot);
     }
   }
 
-  private createStatus(state: CoreStatus['state']): CoreStatus {
+  private createStatus(
+    state: CoreProcessStatus['state'],
+  ): CoreProcessStatus {
     return {
       state,
       pid: null,
@@ -378,14 +339,6 @@ export class CoreSupervisor {
     }
   }
 
-  private resolvePendingHealthChecks(healthy: boolean): void {
-    for (const pending of this.pendingHealthChecks.values()) {
-      clearTimeout(pending.timer);
-      pending.resolve(healthy);
-    }
-    this.pendingHealthChecks.clear();
-  }
-
   private resolveStop(): void {
     const resolve = this.stopResolver;
     this.stopResolver = null;
@@ -396,12 +349,6 @@ export class CoreSupervisor {
 type CoreMessage =
   | { type: 'ready'; pid: number; startedAt: string }
   | { type: 'heartbeat'; pid: number; timestamp: string }
-  | {
-      type: 'health';
-      correlationId: string;
-      pid: number;
-      timestamp: string;
-    }
   | { type: 'stopped'; pid: number; timestamp: string };
 
 function readCoreMessage(value: unknown): CoreMessage | null {
@@ -424,20 +371,6 @@ function readCoreMessage(value: unknown): CoreMessage | null {
   ) {
     return {
       type: value.type,
-      pid: value.pid,
-      timestamp: value.timestamp,
-    };
-  }
-
-  if (
-    value.type === 'health' &&
-    typeof value.correlationId === 'string' &&
-    typeof value.pid === 'number' &&
-    typeof value.timestamp === 'string'
-  ) {
-    return {
-      type: 'health',
-      correlationId: value.correlationId,
       pid: value.pid,
       timestamp: value.timestamp,
     };

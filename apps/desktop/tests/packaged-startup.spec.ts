@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { chromium, expect, test, type Browser } from '@playwright/test';
 
-test('packaged app starts with an isolated renderer and healthy core', async ({
+test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
@@ -72,7 +72,12 @@ test('packaged app starts with an isolated renderer and healthy core', async ({
     }));
 
     expect(securitySnapshot).toEqual({
-      apiKeys: ['getCoreStatus', 'onCoreStatusChange'],
+      apiKeys: [
+        'echoCore',
+        'getCoreProcessStatus',
+        'getCoreTrace',
+        'onCoreProcessStatusChange',
+      ],
       hasNodeProcess: 'undefined',
       hasNodeRequire: 'undefined',
       csp: expect.stringContaining("connect-src 'none'"),
@@ -84,17 +89,79 @@ test('packaged app starts with an isolated renderer and healthy core', async ({
       .poll(
         async () => {
           const status = await page.evaluate(() =>
-            window.interceptor.getCoreStatus(),
+            window.interceptor.getCoreProcessStatus(),
           );
           corePid = status.pid;
           return status.state;
         },
         { timeout: 10_000 },
       )
-      .toBe('healthy');
+      .toBe('running');
 
     expect(corePid).not.toBeNull();
     await expect(page.getByText(`PID ${corePid}`)).toBeVisible();
+
+    const echoResult = await page.evaluate(() =>
+      window.interceptor.echoCore('m1-message-port'),
+    );
+    expect(echoResult).toMatchObject({
+      value: 'm1-message-port',
+      handledAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      traceId: expect.stringMatching(/^trace-/),
+    });
+
+    await expect
+      .poll(
+        async () => {
+          const trace = await page.evaluate((traceId) =>
+            window.interceptor.getCoreTrace(traceId), echoResult.traceId);
+          return trace.records.map(({ phase }) => phase);
+        },
+        { message: 'Echo command trace did not complete', timeout: 5_000 },
+      )
+      .toEqual(expect.arrayContaining([
+        'command.received',
+        'command.validated',
+        'handler.started',
+        'action.started',
+        'action.completed',
+        'response.sent',
+        'command.completed',
+      ]));
+
+    const previousCorePid = corePid;
+    if (previousCorePid === null) {
+      throw new Error('Core PID was unavailable before restart test');
+    }
+    process.kill(previousCorePid);
+
+    await expect
+      .poll(
+        async () => {
+          const status = await page.evaluate(() =>
+            window.interceptor.getCoreProcessStatus(),
+          );
+          if (
+            status.state === 'running' &&
+            status.pid !== null &&
+            status.pid !== previousCorePid
+          ) {
+            corePid = status.pid;
+            return true;
+          }
+          return false;
+        },
+        { message: 'Core did not restart with a new PID', timeout: 15_000 },
+      )
+      .toBe(true);
+
+    await expect
+      .poll(() => isProcessAlive(previousCorePid), { timeout: 5_000 })
+      .toBe(false);
+    const restartedEcho = await page.evaluate(() =>
+      window.interceptor.echoCore('m1-restarted-port'),
+    );
+    expect(restartedEcho.value).toBe('m1-restarted-port');
 
     await page
       .getByRole('radio', { name: 'Light theme' })

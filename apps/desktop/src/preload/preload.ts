@@ -1,22 +1,29 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type {
-  CoreStatus,
+import {
+  DESKTOP_IPC_CHANNELS,
+  CoreProcessStatus,
   InterceptorDesktopApi,
 } from '../shared/desktop-api';
 
-const CORE_STATUS_CHANNEL = 'core:status';
-const CORE_GET_STATUS_CHANNEL = 'core:get-status';
-
 const api: InterceptorDesktopApi = {
-  getCoreStatus: () => ipcRenderer.invoke(CORE_GET_STATUS_CHANNEL),
-  onCoreStatusChange: (listener) => {
-    const handler = (_event: Electron.IpcRendererEvent, status: CoreStatus) => {
+  echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
+  getCoreProcessStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetProcessStatus),
+  getCoreTrace: (traceId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetTrace, traceId),
+  onCoreProcessStatusChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      status: CoreProcessStatus,
+    ) => {
       listener(status);
     };
 
-    ipcRenderer.on(CORE_STATUS_CHANNEL, handler);
-    return () => ipcRenderer.removeListener(CORE_STATUS_CHANNEL, handler);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
+    };
   },
 };
 

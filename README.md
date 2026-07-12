@@ -4,9 +4,9 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 ## Status
 
-M0 (project scaffold and toolchain) is complete. The application currently provides the secure Electron shell, the modular Ant Design traffic workspace, the packaged application icon, and the managed Proxy Core lifecycle. Traffic capture starts in later milestones.
+M0 (project scaffold and toolchain) and M1 (IPC communication foundation) are complete. The application provides the secure Electron shell, modular Ant Design traffic workspace, managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, and structured in-memory Core diagnostics. Traffic capture and its event backpressure start in later milestones.
 
-The next implementation task is M1/T1.1: define the versioned Protobuf protocol package. M0's UtilityProcess `parentPort` messages remain lifecycle-only and must not become the persistent command/event protocol.
+The next implementation task is M2/T2.1: define the Capture SQLite schema, forward-only migrations, and fixture database tests. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
 
 Documentation is split to keep routine context small:
 
@@ -95,7 +95,7 @@ Do not delete `node_modules` for this check; `.vite` is generated cache and is a
 The Main process must allow reloads within the exact Vite origin while denying all external navigation. If the page only appears after pressing reload, verify the trusted Renderer URL policy before changing Vite dependency settings:
 
 ```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/security/trusted-renderer-url.test.ts
+npm run test --workspace @interceptor/desktop -- --run src/main/security/tests/trusted-renderer-url.test.ts
 ```
 
 ### Debug Renderer
@@ -158,18 +158,18 @@ Then run the managed Desktop process:
 npm run dev
 ```
 
-Proxy Core stdout/stderr is forwarded to the Forge terminal with a `[proxy-core]` prefix. The current M0 Core requires Electron `UtilityProcess.parentPort`, so running `index.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
+Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to the Forge terminal with a `[proxy-core]` prefix. Core requires Electron `UtilityProcess.parentPort`, so running `core-entry.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
 
 Run the lifecycle supervisor tests while editing Core process management:
 
 ```powershell
-npm run test:watch --workspace @interceptor/desktop -- src/main/core/core-supervisor.test.ts
+npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/core-supervisor.test.ts
 ```
 
 Run that test once:
 
 ```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/core/core-supervisor.test.ts
+npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/core-supervisor.test.ts
 ```
 
 ### Type Checking
@@ -182,7 +182,8 @@ Check one workspace:
 
 ```powershell
 npm run typecheck --workspace @interceptor/desktop
-npm run typecheck --workspace @interceptor/proxy-core-node
+npm run typecheck --workspace @interceptor/proxy-core
+npm run typecheck --workspace @interceptor/core-protocol
 ```
 
 ### Unit Tests
@@ -190,6 +191,8 @@ npm run typecheck --workspace @interceptor/proxy-core-node
 ```powershell
 npm run test:unit
 ```
+
+The root command runs Desktop, Proxy Core, and Protocol tests.
 
 Watch unit tests:
 
@@ -203,7 +206,7 @@ npm run test:watch --workspace @interceptor/desktop
 npm run package
 ```
 
-`npm run package` builds Proxy Core first, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`.
+`npm run package` validates/builds the Protocol package, bundles Proxy Core and its protocol runtime into one CommonJS file with esbuild, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`.
 
 If the Electron release download is unreliable:
 
@@ -248,7 +251,7 @@ Build a fresh package and then run smoke:
 npm run test:smoke
 ```
 
-The smoke test validates the hardened final executable, Renderer isolation, narrow Preload API, production CSP, Core health, theme switching, 1280×800 and 900×600 layouts, and process cleanup.
+The smoke test validates the hardened final executable, Renderer isolation, narrow Preload API, production CSP, heartbeat-driven Core process status, MessagePort echo and Trace, forced Core crash/restart with a new RPC port, theme layouts, and process cleanup.
 
 ### Inspect Packaged Security
 
@@ -307,7 +310,7 @@ Windows defines `10108` as `WSASERVICE_NOT_FOUND`. Chromium attempted to query t
 No action is required when:
 
 - the Electron window opens;
-- the status bar shows `Core Healthy`;
+- the status bar shows `Core Running`;
 - the Vite page is reachable in development mode; and
 - normal DNS/network access works.
 
@@ -342,7 +345,7 @@ netsh winsock show catalog
 
 Do not run `netsh winsock reset` for this startup log alone. It changes the machine-wide network stack and is only appropriate when Windows networking is genuinely broken outside Interceptor as well.
 
-### Full M0 Regression Sequence
+### Full Stage Regression Sequence
 
 ```powershell
 npm run typecheck
@@ -363,11 +366,12 @@ apps/desktop/src/renderer/features/   Product workspaces such as Traffic
 apps/desktop/src/renderer/components/ Shared Renderer controls
 apps/desktop/src/renderer/theme/      Ant Design theme configuration
 apps/desktop/src/renderer/styles/     Minimal global reset and design variables
-apps/proxy-core-node/                 Independent Node.js Proxy Core process
+apps/proxy-core/                      Independent Node.js Proxy Core process
+packages/core-protocol/               Typed Main/Core messages and runtime validation
 scripts/                              Repeatable repository asset tooling
 ```
 
-Future shared protocol, domain, rules, storage, and inspector packages will be added under `packages/` as their milestones begin.
+Future shared domain, rules, storage, and inspector packages will be added under `packages/` as their milestones begin.
 
 ## Security Baseline
 
@@ -379,3 +383,4 @@ Future shared protocol, domain, rules, storage, and inspector packages will be a
 - Same-application Renderer reloads allowed only for the exact development origin or packaged HTML path
 - ASAR integrity and restrictive Electron Fuses enabled
 - Proxy Core shipped as a separate UtilityProcess resource
+- Main transfers a private business MessagePort to Core; Renderer never receives it

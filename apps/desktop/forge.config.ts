@@ -15,7 +15,7 @@ const electronChecksums = require('electron/checksums.json') as Record<
 >;
 const proxyCoreDirectory = path.resolve(
   desktopDirectory,
-  '../proxy-core-node/dist/proxy-core',
+  '../proxy-core/dist/proxy-core',
 );
 const appIconPng = path.join(desktopDirectory, 'assets/interceptor-icon.png');
 const appIconIco = path.join(desktopDirectory, 'assets/interceptor-icon.ico');

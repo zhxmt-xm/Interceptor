@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { isTrustedRendererUrl } from './trusted-renderer-url';
+import { isTrustedRendererUrl } from '../trusted-renderer-url';
 
 const packagedRendererPath = path.resolve(
   'C:/Interceptor/resources/app.asar/.vite/renderer/main_window/index.html',

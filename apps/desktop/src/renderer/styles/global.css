@@ -18,7 +18,7 @@
   --text-faint: #727d88;
   --accent: #0a84ff;
   --record: #e25555;
-  --healthy: #2e9b64;
+  --success: #2e9b64;
   --warning: #d69a2d;
 }
 
@@ -39,7 +39,7 @@
   --text-faint: #929ba5;
   --accent: #4da3ff;
   --record: #ff7069;
-  --healthy: #4ec27f;
+  --success: #4ec27f;
   --warning: #e1aa45;
 }
 

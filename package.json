@@ -13,12 +13,12 @@
     "packages/*"
   ],
   "scripts": {
-    "build:core": "npm run build --workspace @interceptor/proxy-core-node",
+    "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
     "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
     "package": "npm run build:core && npm run package --workspace @interceptor/desktop",
     "test": "npm run test:unit",
     "test:smoke": "npm run package && npm run test:smoke --workspace @interceptor/desktop",
-    "test:unit": "npm run test --workspace @interceptor/desktop",
+    "test:unit": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
