@@ -18,7 +18,7 @@ export interface CoreRpcPort {
   close(): void;
 }
 
-interface CoreRequestOptions {
+export interface CoreRequestOptions {
   requestId?: string;
   signal?: AbortSignal;
   timeoutMs?: number;

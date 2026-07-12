@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  CoreBackend,
-  CoreCommandError,
-} from '../core-backend';
+import { CoreApplication } from '../core-application';
+import { CoreCommandError } from '../core-rpc-server';
 import { CoreDiagnostics } from '../core-diagnostics';
 
-describe('CoreBackend', () => {
+describe('CoreApplication', () => {
   it('executes echo and records its business action', async () => {
     const diagnostics = createDiagnostics();
-    const backend = new CoreBackend(diagnostics, {
+    const application = new CoreApplication({
+      diagnostics,
       now: () => Date.parse('2026-07-12T00:00:00.000Z'),
     });
 
@@ -17,7 +16,7 @@ describe('CoreBackend', () => {
       'request-1',
       'trace-1',
       'echo',
-      () => backend.execute(
+      () => application.execute(
         { type: 'echo', payload: { value: 'hello' } },
         new AbortController().signal,
       ),
@@ -40,9 +39,9 @@ describe('CoreBackend', () => {
     diagnostics.runWithCommand('request-1', 'trace-1', 'echo', () => {
       diagnostics.info('command.completed');
     });
-    const backend = new CoreBackend(diagnostics);
+    const application = new CoreApplication({ diagnostics });
 
-    const result = await backend.execute({
+    const result = await application.execute({
       type: 'diagnostics.recent',
       payload: { limit: 10, traceId: 'trace-1' },
     }, new AbortController().signal);
@@ -57,11 +56,13 @@ describe('CoreBackend', () => {
   });
 
   it('rejects aborted and future-stage commands with structured errors', async () => {
-    const backend = new CoreBackend(createDiagnostics());
+    const application = new CoreApplication({
+      diagnostics: createDiagnostics(),
+    });
     const controller = new AbortController();
     controller.abort();
 
-    await expect(backend.execute(
+    await expect(application.execute(
       { type: 'echo', payload: { value: 'cancelled' } },
       controller.signal,
     )).rejects.toMatchObject({
@@ -72,7 +73,7 @@ describe('CoreBackend', () => {
       },
     } satisfies Partial<CoreCommandError>);
 
-    await expect(backend.execute({
+    await expect(application.execute({
       type: 'sessions.query',
       payload: { limit: 10, sort: 'started_desc', filter: {} },
     }, new AbortController().signal)).rejects.toMatchObject({

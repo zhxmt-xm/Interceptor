@@ -1,17 +1,25 @@
 import {
   CORE_PROTOCOL_VERSION,
   parseMainToCoreMessage,
+  type CoreCommand,
   type CoreError,
   type CoreRequest,
   type CoreResult,
   type CoreToMainMessage,
 } from '@interceptor/core-protocol';
 
-import {
-  CoreCommandError,
-  type CoreCommandExecutor,
-} from './core-backend';
 import { CoreDiagnostics } from './core-diagnostics';
+
+export interface CoreCommandExecutor {
+  execute(command: CoreCommand, signal: AbortSignal): Promise<CoreResult>;
+}
+
+export class CoreCommandError extends Error {
+  constructor(readonly detail: CoreError) {
+    super(detail.message);
+    this.name = 'CoreCommandError';
+  }
+}
 
 export interface RpcMessageEvent {
   data: unknown;
@@ -41,7 +49,7 @@ interface ActiveRequest {
  * Core 侧 RPC 服务器。
  *
  * 这里只处理连接、消息校验、取消和响应；command 的业务行为统一交给
- * CoreBackend。未来增加存储或代理能力时，不需要改动这套传输状态机。
+ * CoreApplication。未来增加存储或代理能力时，不需要改动这套传输状态机。
  */
 export class CoreRpcServer {
   private readonly activeRequests = new Map<string, ActiveRequest>();
@@ -50,7 +58,7 @@ export class CoreRpcServer {
   private connection: RpcConnection | null = null;
 
   constructor(
-    private readonly backend: CoreCommandExecutor,
+    private readonly executor: CoreCommandExecutor,
     private readonly diagnostics: CoreDiagnostics,
     options: CoreRpcServerOptions = {},
   ) {
@@ -129,7 +137,7 @@ export class CoreRpcServer {
     this.activeRequests.set(request.requestId, activeRequest);
     const startedAt = this.now();
 
-    // 每个 command 自动记录相同的生命周期；Backend 只补充业务 action。
+    // 每个 command 自动记录相同的生命周期；Application 只补充业务 action。
     await this.diagnostics.runWithCommand(
       request.requestId,
       request.traceId,
@@ -139,7 +147,7 @@ export class CoreRpcServer {
         this.diagnostics.info('command.validated');
         this.diagnostics.info('handler.started');
         try {
-          const result = await this.backend.execute(
+          const result = await this.executor.execute(
             request.command,
             activeRequest.controller.signal,
           );

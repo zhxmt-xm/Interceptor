@@ -160,16 +160,16 @@ npm run dev
 
 Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to the Forge terminal with a `[proxy-core]` prefix. Core requires Electron `UtilityProcess.parentPort`, so running `core-entry.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
 
-Run the lifecycle supervisor tests while editing Core process management:
+Run the CoreRuntime lifecycle tests while editing CoreProcess management:
 
 ```powershell
-npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/core-supervisor.test.ts
+npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/core-runtime.test.ts
 ```
 
 Run that test once:
 
 ```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/core-supervisor.test.ts
+npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/core-runtime.test.ts
 ```
 
 ### Type Checking
@@ -251,7 +251,7 @@ Build a fresh package and then run smoke:
 npm run test:smoke
 ```
 
-The smoke test validates the hardened final executable, Renderer isolation, narrow Preload API, production CSP, heartbeat-driven Core process status, MessagePort echo and Trace, forced Core crash/restart with a new RPC port, theme layouts, and process cleanup.
+The smoke test validates the hardened final executable, Renderer isolation, narrow Preload API, production CSP, heartbeat-driven CoreProcess status, MessagePort echo and Trace, forced CoreProcess restart with a new RPC port, theme layouts, and CoreProcess cleanup.
 
 ### Inspect Packaged Security
 

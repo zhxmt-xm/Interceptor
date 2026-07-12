@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-12
+> 最后更新：2026-07-13
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 
 ## 文档导航
@@ -21,7 +21,7 @@
 - 当前 Stage：M2 存储层（0%，尚未开始）。
 - 当前任务：T2.1 SQLite schema + migration。
 - 下一动作：进入 M2，定义 Capture 数据库 schema、只向前 migration 和 fixture 建库；实现前阅读 [M2.md](M2.md) 与完整方案第十二章。
-- Git 状态：M1 基线为 `e173657`；当前工作树包含完整 M1 代码、测试与文档，尚未提交，必须保留。
+- Git 状态：M1 已提交为 `b923117`；当前工作树包含其后的 CoreRuntime/CoreApplication 可读性重构，尚未提交，必须保留。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M2.md](M2.md)。
@@ -49,11 +49,11 @@
 
 - Electron Main、Preload、React Renderer 和独立 Proxy Core UtilityProcess 已建立。
 - Renderer sandbox、context isolation、无 Node integration、严格 CSP、可信导航、权限/弹窗/下载/webview 拒绝和安全 Fuses 已落地。
-- Preload 仅暴露进程状态、M1 echo 和脱敏 Trace 等意图型 API；Renderer 不直接访问 Electron、Node、MessagePort、文件系统或 Core。
-- CoreSupervisor 已实现 ready、heartbeat 卡死检测、退避重启、优雅停止和强制清理；`running` 只代表进程 Event Loop 可响应。
-- Main/Core 正式业务通信使用每次 spawn 转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
+- Preload 仅暴露 CoreProcess 状态、M1 echo 和脱敏 Trace 等意图型 API；Renderer 不直接访问 Electron、Node、MessagePort、文件系统或 Core。
+- CoreRuntime 是 Main 唯一的 Core 入口，集中拥有 CoreProcess、RPC client、ready/heartbeat 卡死检测、退避重启、优雅停止和强制清理；`running` 只代表 CoreProcess Event Loop 可响应。
+- Main/Core 正式业务通信使用 CoreRuntime 每次启动 CoreProcess 时转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
 - Core 结构化 Command/Action Trace、`AsyncLocalStorage`、有界 Ring Buffer、脱敏和 stdout/stderr 后备已实现；日志数据库留在 M2。
-- Renderer 通过窄 API 可读取 Core 进程状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
+- Renderer 通过窄 API 可读取 CoreProcess 状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
 - Ant Design v6 应用壳、Traffic/Inspector 占位、亮暗主题、共享工具控件和平台应用图标已完成。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke 和生产依赖审计链已建立。
 - HTTP 捕获、持久化存储、CA、规则和真实会话 UI 均未实现。
@@ -72,7 +72,7 @@ M0 历史验收已覆盖：
 - `git diff --check`；
 - Dev 冷启动、Renderer HMR、ASAR/CSP/Fuses 和进程清理。
 
-2026-07-12 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；状态收敛为 heartbeat 驱动的 `CoreProcessStatus`，代码收敛为 `DesktopApplication / CoreSupervisor / CoreRpcClient / CoreProcess / CoreRpcServer / CoreBackend`。复核后根 typecheck、7 files / 38 tests、Windows package 和真实 crash/restart smoke 通过；详情见 [M1.md](M1.md)。
+2026-07-13 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；Main 收敛为 `DesktopApplication / CoreRuntime`，Core 收敛为 `CoreProcess / CoreApplication`，RPC client/server 与 Diagnostics 保留为内部状态机。复核后根 typecheck、8 files / 43 tests、Windows package、真实 packaged smoke、生产审计和文档检查通过；详情见 [M1.md](M1.md)。
 
 ## 更新规则
 

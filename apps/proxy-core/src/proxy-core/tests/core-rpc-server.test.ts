@@ -8,9 +8,9 @@ import {
 } from '@interceptor/core-protocol';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CoreCommandExecutor } from '../core-backend';
 import {
   CoreRpcServer,
+  type CoreCommandExecutor,
   type RpcMessagePort,
 } from '../core-rpc-server';
 import { CoreDiagnostics } from '../core-diagnostics';
@@ -45,7 +45,7 @@ class FakeRpcPort extends EventEmitter implements RpcMessagePort {
   }
 }
 
-class FakeBackend implements CoreCommandExecutor {
+class FakeCommandExecutor implements CoreCommandExecutor {
   execute = vi.fn<(
     command: CoreCommand,
     signal: AbortSignal,
@@ -54,8 +54,8 @@ class FakeBackend implements CoreCommandExecutor {
 
 describe('CoreRpcServer', () => {
   it('accepts a request without an extra handshake', async () => {
-    const backend = echoBackend();
-    const server = createServer(backend);
+    const executor = echoExecutor();
+    const server = createServer(executor);
     const port = new FakeRpcPort();
     server.attach(port);
 
@@ -73,7 +73,7 @@ describe('CoreRpcServer', () => {
 
   it('closes a connection that sends an invalid message', () => {
     const fatal = vi.fn();
-    const server = createServer(echoBackend(), fatal);
+    const server = createServer(echoExecutor(), fatal);
     const port = new FakeRpcPort();
     server.attach(port);
 
@@ -85,7 +85,7 @@ describe('CoreRpcServer', () => {
 
   it('closes the previous port without treating replacement as fatal', () => {
     const fatal = vi.fn();
-    const server = createServer(echoBackend(), fatal);
+    const server = createServer(echoExecutor(), fatal);
     const first = new FakeRpcPort();
     const second = new FakeRpcPort();
 
@@ -100,7 +100,7 @@ describe('CoreRpcServer', () => {
 
   it('ignores delayed callbacks captured from a replaced port', () => {
     const fatal = vi.fn();
-    const server = createServer(echoBackend(), fatal);
+    const server = createServer(echoExecutor(), fatal);
     const first = new FakeRpcPort();
     const second = new FakeRpcPort();
     server.attach(first);
@@ -119,11 +119,11 @@ describe('CoreRpcServer', () => {
 
   it('does not send an old in-flight response to a replacement port', async () => {
     const resolvers: Array<(result: CoreResult) => void> = [];
-    const backend = new FakeBackend();
-    backend.execute.mockImplementation(() => new Promise((resolve) => {
+    const executor = new FakeCommandExecutor();
+    executor.execute.mockImplementation(() => new Promise((resolve) => {
       resolvers.push(resolve);
     }));
-    const server = createServer(backend);
+    const server = createServer(executor);
     const first = new FakeRpcPort();
     server.attach(first);
     first.receive(request('request-shared', 'trace-old', 'old'));
@@ -149,7 +149,7 @@ describe('CoreRpcServer', () => {
 
   it('reports remote close and send failure as fatal', async () => {
     const fatal = vi.fn();
-    const server = createServer(echoBackend(), fatal);
+    const server = createServer(echoExecutor(), fatal);
     const remoteClose = new FakeRpcPort();
     server.attach(remoteClose);
     remoteClose.remoteClose();
@@ -165,9 +165,11 @@ describe('CoreRpcServer', () => {
 
   it('records the complete command trace', async () => {
     const diagnostics = createDiagnostics();
-    const server = new CoreRpcServer(echoBackend(), diagnostics, {
-      now: () => Date.parse('2026-07-12T00:00:01.000Z'),
-    });
+    const server = new CoreRpcServer(
+      echoExecutor(),
+      diagnostics,
+      { now: () => Date.parse('2026-07-12T00:00:01.000Z') },
+    );
     const port = new FakeRpcPort();
     server.attach(port);
 
@@ -186,15 +188,15 @@ describe('CoreRpcServer', () => {
   });
 
   it('rejects duplicate request IDs and cancels active requests', async () => {
-    const backend = new FakeBackend();
-    backend.execute.mockImplementation((_command, signal) => new Promise(
+    const executor = new FakeCommandExecutor();
+    executor.execute.mockImplementation((_command, signal) => new Promise(
       (_resolve, reject) => {
         signal.addEventListener('abort', () => reject(new Error('aborted')), {
           once: true,
         });
       },
     ));
-    const server = createServer(backend);
+    const server = createServer(executor);
     const port = new FakeRpcPort();
     server.attach(port);
     const first = request('request-active', 'trace-first', 'first');
@@ -222,25 +224,25 @@ describe('CoreRpcServer', () => {
 });
 
 function createServer(
-  backend: CoreCommandExecutor,
+  executor: CoreCommandExecutor,
   onFatalError = vi.fn(),
 ): CoreRpcServer {
-  return new CoreRpcServer(backend, createDiagnostics(), { onFatalError });
+  return new CoreRpcServer(executor, createDiagnostics(), { onFatalError });
 }
 
 function createDiagnostics(): CoreDiagnostics {
   return new CoreDiagnostics({ sink: () => undefined });
 }
 
-function echoBackend(): FakeBackend {
-  const backend = new FakeBackend();
-  backend.execute.mockImplementation(async (command) => {
+function echoExecutor(): FakeCommandExecutor {
+  const executor = new FakeCommandExecutor();
+  executor.execute.mockImplementation(async (command) => {
     if (command.type !== 'echo') {
       throw new Error('Unexpected command');
     }
     return echoResult(command.payload.value);
   });
-  return backend;
+  return executor;
 }
 
 function request(requestId: string, traceId: string, value: string) {

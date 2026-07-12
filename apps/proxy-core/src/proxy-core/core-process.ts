@@ -1,11 +1,7 @@
 import process from 'node:process';
 
-import { CoreBackend } from './core-backend';
-import {
-  CoreRpcServer,
-  type RpcMessagePort,
-} from './core-rpc-server';
-import { CoreDiagnostics } from './core-diagnostics';
+import { CoreApplication } from './core-application';
+import type { RpcMessagePort } from './core-rpc-server';
 
 export interface ParentMessageEvent {
   data: unknown;
@@ -32,7 +28,7 @@ const HEARTBEAT_INTERVAL_MS = 1_000;
  * “进程仍存在但事件循环已经卡死”的情况并自动重启。
  */
 export class CoreProcess {
-  private readonly rpcServer: CoreRpcServer;
+  private readonly application: CoreApplication;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private stopping = false;
 
@@ -41,9 +37,7 @@ export class CoreProcess {
     private readonly pid = process.pid,
     private readonly now: () => number = Date.now,
   ) {
-    const diagnostics = new CoreDiagnostics({ now });
-    const backend = new CoreBackend(diagnostics, { now });
-    this.rpcServer = new CoreRpcServer(backend, diagnostics, {
+    this.application = new CoreApplication({
       now,
       onFatalError: () => setImmediate(() => process.exit(1)),
     });
@@ -72,7 +66,7 @@ export class CoreProcess {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
-    this.rpcServer.close('shutdown');
+    this.application.close('shutdown');
     this.parentPort.postMessage({
       type: 'stopped',
       pid: this.pid,
@@ -84,7 +78,7 @@ export class CoreProcess {
   private handleParentMessage(event: ParentMessageEvent): void {
     const rpcPort = readRpcPort(event);
     if (rpcPort) {
-      this.rpcServer.attach(rpcPort);
+      this.application.attach(rpcPort);
       return;
     }
     if (isRecord(event.data) && event.data.type === 'shutdown') {
