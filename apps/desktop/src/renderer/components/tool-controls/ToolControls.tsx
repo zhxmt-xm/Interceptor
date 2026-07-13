@@ -3,7 +3,7 @@ import styles from './ToolControls.module.css';
 import { Button, Segmented, Tooltip } from 'antd';
 import type { ButtonProps } from 'antd';
 import type { SizeType } from 'antd/es/config-provider/SizeContext';
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, type ReactNode } from 'react';
 
 export type ToolControlSize = 'compact' | 'regular' | 'prominent';
 
@@ -82,8 +82,9 @@ export function ToolSegmentedControl<Value extends string>({
       onChange={onChange}
       options={options.map((option) => ({
         value: option.value,
-        icon: <span aria-hidden="true">{option.icon}</span>,
-        label: <span className={styles.visuallyHidden}>{option.label}</span>,
+        icon: isValidElement<{ 'aria-label'?: string }>(option.icon)
+          ? cloneElement(option.icon, { 'aria-label': option.label })
+          : option.icon,
         tooltip: option.label,
       }))}
     />
