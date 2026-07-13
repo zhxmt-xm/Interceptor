@@ -1,6 +1,6 @@
 # Interceptor Design System
 
-> 本文件是 Interceptor 桌面端 UI 的**权威视觉规范**,供设计稿(`design/<feature>/`)与真实落地代码(`apps/desktop`)共同引用。
+> 本文件是 Interceptor 桌面端 UI 的**权威视觉规范**,供设计稿(`design/app/`)与真实落地代码(`apps/desktop`)共同引用。
 > 修改视觉语言时先改这里,再同步设计稿与代码。配套流程见 [design/README.md](./README.md) 与 `ui-design-mockup` skill(`.github/skills/ui-design-mockup/`)。
 
 ## 设计语言
@@ -71,7 +71,7 @@
 - **filter 条**(list 上方,`--filter` 底):协议快捷段 `All/H1/H2/WS`(Segmented)+ 计数 `18 of 241` + 列设置/清空图标。
 - **list**:列 `Method / Host·Path / Status / Proto / Type / Size / Time`;Host 双行(host + path,`gap 4`),path 与 proto/type/size/time 用 mono;选中行 `--sel` 底 + 左 2px `--sel-line`。
 - **splitter**(list↔inspector):`col-resize`;默认 1px `--border` 线 + 居中 `4×40` 圆角抓手(`--border-2`);hover/拖拽线与抓手变 `--accent`、抓手拉长到 `52`。
-- **Inspector**:头部 method chip + 语法着色 URL(`dom`=text-2 / `path`=text)+ 右侧状态 pill(如 `200 OK` 绿);Tabs 下划线 `--accent`;分区 `General / Response Headers / Request Headers`,`kv` 栅格 `168px / minmax(0,1fr)`,key `--text-2` mono、value `--text` mono,特殊值(方法/状态/token)用 `--accent`/`--green`。
+- **Inspector**：头部 method chip + 语法着色 URL（`dom`=text-2 / `path`=text）+ 右侧状态 pill（如 `200 OK` 绿）；Tabs 下划线 `--accent`，页签 `Headers / Request / Response / Timing / Cookies / TLS`——Headers 分区 `General / Response Headers / Request Headers`（`kv` 栅格 `168px / minmax(0,1fr)`，key `--text-2` mono、value `--text` mono，特殊值用 `--accent`/`--green`）；Response = 语法着色 body 卡片；Timing = 阶梯瀑布（阶段名 + ms + 偏移条）；Cookies = 请求/响应 cookie 的 kv；TLS = 连接参数 + 证书链卡片（leaf/CA/root）。内容区 `overflow-y:auto` 可滚。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
 ## 交互状态

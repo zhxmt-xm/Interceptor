@@ -1,11 +1,11 @@
 ---
 name: ui-design-mockup
-description: 'Create and iterate high-fidelity UI design mockups for the Interceptor desktop app before writing product code. Use when: designing or redesigning a screen/feature UI, exploring visual styles/themes/layouts, producing design images or screenshots for review, drawing a new feature UI, or updating the visual design system. Produces self-contained HTML mockups rendered to PNG via Playwright, organized under design/<feature>/, following the Interceptor design system. DO NOT use for implementing the design in React — this is the design/mockup phase only.'
+description: 'Create and iterate high-fidelity UI design mockups for the Interceptor desktop app before writing product code. Use when: designing or redesigning a screen/feature UI, exploring visual styles/themes/layouts, producing design images or screenshots for review, drawing a new feature UI, or updating the visual design system. Produces a single interactive design SPA (design/app/) rendered to PNG via Playwright, following the Interceptor design system. DO NOT use for implementing the design in React — this is the design/mockup phase only.'
 ---
 
 # UI Design Mockup (Interceptor)
 
-在写任何产品代码前,用**自包含 HTML 设计稿 + Playwright 截图**快速产出并迭代高保真 UI,供用户评审。落地到 React 是另一个阶段,不在本 skill 范围。
+在写任何产品代码前,用**一个可交互的设计稿 SPA + Playwright 截图**快速产出并迭代高保真 UI,供用户评审。所有 feature 合并在单个 `design/app/index.html` 里(侧栏点击切换 feature,顶部切主题/折叠),既能手点也能被截图脚本参数化驱动。落地到 React 是另一个阶段,不在本 skill 范围。
 
 ## 何时使用
 
@@ -15,17 +15,18 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 
 ## 产物组织(必须遵守)
 
-- 设计稿放 `design/<feature>/`,三件套:`mockup.html` + `shoot.mjs` + `shots/*.png`。
+- **唯一设计稿是单页 SPA `design/app/`**:`index.html`(外壳 + 所有 feature 视图 + overlay)+ `app.css`(令牌 + 外壳 + 各 feature 样式,按 `[data-view]`/`.v-*` 作用域隔离)+ `app.js`(状态控制)+ `sprite.js`(图标)+ `shoot.mjs`(截图)+ `shots/*.png`。
+- 新增/修改任何 feature UI,都直接改这几个文件,不再新建 per-feature 目录。
 - 视觉取值一律引用 `design/design-system.md`(权威 token:颜色/排版/尺寸/组件/交互)。
-- 目录约定与生成命令见 `design/README.md`。参考已定稿实现:`design/traffic/`。
+- 目录约定与生成命令见 `design/README.md`。
 
 ## 流程
 
-1. **建 mockup.html(自包含)**:内联 `<style>` + 内联 SVG `<symbol>` sprite;主题用 `.app[data-theme="light|cool|warm"]` 的 CSS 变量,严格对齐 `design-system.md`;用真实感示例数据(真实 host/状态码/大小/耗时),不要 Lorem。顶部放隐藏的切换器(主题/侧栏/状态)便于截图脚本驱动。
-2. **状态切换用 class/attr**:如 `.app.expanded/.collapsed`、`data-theme`、`.showpop`;截图脚本通过 `page.evaluate` 切换。
-3. **写/复用 shoot.mjs**:参考 `design/traffic/shoot.mjs`——相对路径解析 `mockup.html`、输出到 `./shots/`、每个状态一张 PNG。
-4. **生成**:`node design/<feature>/shoot.mjs`。
-5. **评审**:用 `view_image` 逐张查看,按用户反馈改 `mockup.html` 后重跑,直到定稿。
+1. **在 `index.html` 里加/改 feature**:每个 feature 由三件套组成——`<div class="tv" data-v="X">`(顶栏)、`<div class="mv <feature>main v-X" data-v="X">`(主区域,自带 `grid-template-columns`)、`<div class="sv" data-v="X">`(状态栏);侧栏是共享的,`app.js` 里的 `NAV` 决定条目。用真实感示例数据(真实 host/状态码/大小/耗时),不要 Lorem。overlay(向导/对话框)放 `<div class="ov" data-ov="X">`。
+2. **样式加到 `app.css`**:令牌/外壳/通用原子是全局的;feature 专属布局类若可能与别的 feature 撞名(如 `hhead/hrow/iurl`),用 `.v-<feature>` 或专属容器类作用域隔离。
+3. **状态全部经 `window.__setState({view,theme,sidebar,overlay,step,tab,pop})`**：`view` 切 feature、`theme` 主题、`sidebar` 展开/折叠、`overlay` 向导/导出弹层、`step` 向导步、`tab` Inspector 页签、`pop` 打开 add-filter/add-action 弹窗。人点击侧栏 / 右下角可收起的控件面板切换；截图脚本用 `page.evaluate((s)=>window.__setState(s), state)` 驱动同一套状态。
+4. **生成**:`node design/app/shoot.mjs`。两趟——framed(1280×800 应用态)+ full(注入 CSS 展开所有滚动区,把隐藏内容也截全)。截图覆盖每个 feature × 浅/深 + 关键折叠 + 向导每一步 + overlay。
+5. **评审**:用 `view_image` 逐张查看,按用户反馈改 `index.html`/`app.css` 后重跑,直到定稿。
 
 ## 关键陷阱(务必遵守,均已踩过)
 
@@ -40,4 +41,4 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 
 - 设计规范:`design/design-system.md`
 - 目录约定:`design/README.md`
-- 已定稿范例(含 6 张状态图):`design/traffic/`
+- 唯一设计稿 SPA:`design/app/`(`index.html` + `app.css` + `app.js` + `sprite.js` + `shoot.mjs` + `shots/`)

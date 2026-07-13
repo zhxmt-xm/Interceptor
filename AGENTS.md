@@ -2,8 +2,8 @@
 
 ## Frontend Styling
 
-- The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Every implemented screen MUST match its `design/<feature>/` mockup **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.
-- `design/design-system.md` is the authoritative token/component spec. The `ui-design-mockup` skill (`.github/skills/ui-design-mockup/`) is the required workflow for creating, changing, or reviewing any UI: read it before design work and refer to it whenever drawing or updating a feature UI, then keep the feature's `design/<feature>/` assets in sync.
+- The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Every implemented screen MUST match its view in the single `design/app/` design SPA **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.
+- `design/design-system.md` is the authoritative token/component spec. The `ui-design-mockup` skill (`.github/skills/ui-design-mockup/`) is the required workflow for creating, changing, or reviewing any UI: read it before design work and refer to it whenever drawing or updating a feature UI, then keep the `design/app/` SPA (and its `shots/`) in sync.
 - **One-to-one fidelity to the design outranks tool convenience.** Ant Design v6 is the component/interaction base, but it must never force a visual compromise:
   1. Prefer official component props (`size`, `shape`, `variant`, `color`, `icon`, `tooltip`, `orientation`, `disabled`) → ConfigProvider global/component tokens → semantic `classNames`/`styles` slots.
   2. If Ant Design cannot reproduce the design exactly through the above, **self-implement that piece** with colocated CSS Modules + the design tokens until it matches exactly. Do NOT ship an approximation, and do NOT hack `.ant-*` private/internal DOM (dimensions, padding, line-height, transforms, state styles) to force the look — replace the component with a self-built one instead.
