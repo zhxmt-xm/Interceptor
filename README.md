@@ -6,7 +6,7 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 M0 (project scaffold and toolchain) and M1 (IPC communication foundation) are complete. The application provides the secure Electron shell, modular Ant Design traffic workspace, managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, and structured in-memory Core diagnostics. Traffic capture and its event backpressure start in later milestones.
 
-The next implementation task is M2/T2.1: define the Capture SQLite schema, forward-only migrations, and fixture database tests. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
+The next implementation task is M2/T2.0: align the existing M0/M1 Renderer shell and truthful empty states one-to-one with `design/app`, without enabling unavailable product capabilities. M2/T2.1 SQLite schema and migrations follow that baseline. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
 
 Documentation is split to keep routine context small:
 

@@ -19,8 +19,8 @@
 ## 当前状态
 
 - **M0、M1 均已完成（100%）**；M1 正式 MessagePort IPC、Typed Command Schema、Trace 和端到端验证详情见 [M1.md](M1.md)。
-- **当前 Stage 是 M2 存储层（0%，尚未开始）**；不要继续扩展 M1 echo 或用临时内存结构模拟存储。
-- 下一任务是 **M2/T2.1：定义 Capture SQLite schema、只向前 migration 和 fixture 建库**。
+- **当前 Stage 是 M2 存储层（0%，尚未开始）**；从本阶段起按 Server/Contract/Client 三轨记录进度。
+- 下一任务是 **M2/T2.0：M0/M1 Renderer design baseline**；先一对一迁移现有真实能力，完成后再进入 T2.1 SQLite schema + migration。
 - M1 基线提交为 `b923117`，第一轮对象所有权收敛已提交为 `08690ef`；当前分支已包含进入 M2 前的 Core 子进程根对象进一步简化。新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`，不要 reset、checkout 或覆盖现有改动。
 - 当前没有真实 Traffic Capture；UI 中 Capture、Search、Filter 和详情相关命令保持 disabled。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。
@@ -111,29 +111,29 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M2/T2.1
+## 下一任务：M2/T2.0
 
-目标：建立 Capture 持久化的第一版 SQLite schema 与只向前 migration；本任务不实现真实 HTTP Capture。
+目标：把 M0/M1 现有 Renderer Shell、Capture 空态、Inspector 占位、主题、禁用控制和真实 CoreProcessStatus 一对一迁到 `design/app` 权威基线；本任务不实现或伪造真实 Traffic、System Proxy、Settings、Diagnostics 分析和存储数据。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch`，确认并保留当前 M0 收尾改动。
-2. 阅读 [M2.md](M2.md)、完整方案第十二章和当前 [ARCHITECTURE.md](ARCHITECTURE.md)，确认 Capture 与 Diagnostics 使用独立数据库/Writer。
-3. 评估并精确锁定 Node 24 可用的 SQLite driver；不得在 Core 网络事件循环同步执行数据库 I/O。
-4. 定义 CaptureSession、Connection、Exchange、Headers、BodyRef、WebSocketFrame、RuleHit 和 ErrorEvent schema、索引、外键与 schema version。
-5. 建立只向前 migration runner 和临时目录 fixture；覆盖新建、逐版本升级、重复执行、失败回滚和未来版本拒绝。
-6. T2.1 可先在 storage package/worker 边界内实现；跨进程查询必须复用 M1 protocol，不给 Renderer 暴露 SQL 或数据库路径。
-7. 完成后更新 [M2.md](M2.md) 的实现、决策、验证和下一任务，再进入 T2.2 Storage Worker。
+1. 运行 `git status --short --branch`，确认工作树；阅读 `ui-design-mockup` skill、`design/design-system.md`、`design/app/` 和当前 Renderer。
+2. 建立共享 design token、字体、图标和 Shell 布局，使现有 M0/M1 状态与 Capture 空态匹配设计，不添加假数据或提前启用控件。
+3. 保留真实 CoreProcessStatus、主题切换、Renderer isolation 与窄 Preload API；System Proxy 等未实现状态必须明确 disabled/unavailable。
+4. 对 light/dark、1280×800 和 900×600 做 Playwright screenshot 对照，并运行 typecheck、unit、package 和 packaged smoke。
+5. 在 [M2.md](M2.md) 的 Client 轨道记录实现和视觉验收；T2.0 完成后进入 T2.1，定义 Capture schema、只向前 migration 和 fixture 建库。
 
 ## 剩余工作项目
 
 ### M2 当前剩余任务
 
+- T2.0 M0/M1 Renderer design baseline：未开始。
 - T2.1 SQLite schema + migration：未开始。
 - T2.2 Storage Worker：未开始，依赖 T2.1。
 - T2.3 Content-addressed blob store：未开始，依赖 T2.1。
 - T2.4 分页查询 API：未开始，依赖 T2.2。
 - T2.5 Diagnostics Worker + 独立日志库：未开始，依赖 M1/T1.4 和 T2.1。
+- T2.6 Storage Settings / status：未开始，依赖 T2.0、T2.3 和 T2.4。
 
 详细字段范围和验收标准见 [M2.md](M2.md)。产品设计依据见完整方案第十二章和第二十七章 M2。
 

@@ -44,3 +44,22 @@ node design/app/shoot.mjs   # 渲染 SPA 所有状态,输出到 app/shots/<theme
   - **diagnostics** — 命令诊断表格 + action 时间线
   - **first-run**(overlay)— 首次引导向导(欢迎 → 代理 → 信任 CA → 完成)
   - **import-export**(overlay)— HAR / 无损原生归档导出对话框
+
+## 落地 Stage 映射
+
+设计稿一次性维护，产品代码按 Server/Contract 可用性分步落地；未到对应 Stage 的数据和操作必须保持 disabled/unavailable，不能用假数据填满设计稿状态。
+
+| 设计视图/区域 | 产品落地 Stage |
+| --- | --- |
+| 共享 Shell、导航、主题、Capture 空态、Inspector 占位、真实 CoreProcessStatus | M2/T2.0 |
+| Settings / Appearance | M2/T2.0 |
+| Settings / Storage | M2/T2.6 |
+| Capture 列表、omni 筛选、基础 Inspector | M4 |
+| Settings / Certificates、HTTPS 状态 | M5/T5.6 |
+| Capture HTTP/2 Inspector 增量 | M6/T6.5 |
+| Rules、Composer、Breakpoints、Connection/TLS | M8 |
+| Capture WebSocket / gRPC Inspector 增量 | M9 |
+| Import-export、Settings / Privacy、Diagnostics | M10 |
+| First-run、Settings / Proxy、Emergency Repair | M11/T11.3–T11.5 |
+| 全部已实现视图的 packaged 视觉回归 | M12 |
+| Settings / Updates、更新通知与进度 | M13/T13.4 |

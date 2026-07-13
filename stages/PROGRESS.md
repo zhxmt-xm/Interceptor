@@ -19,8 +19,8 @@
 - 总体状态：进行中。
 - 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座（均 100%）。
 - 当前 Stage：M2 存储层（0%，尚未开始）。
-- 当前任务：T2.1 SQLite schema + migration。
-- 下一动作：进入 M2，定义 Capture 数据库 schema、只向前 migration 和 fixture 建库；实现前阅读 [M2.md](M2.md) 与完整方案第十二章。
+- 当前任务：T2.0 M0/M1 Renderer design baseline。
+- 下一动作：按 `design/app` 一对一重构现有 Shell、Capture 空态、Inspector 占位、Appearance/主题、禁用控制和真实 CoreProcessStatus；只呈现 M0/M1 已有真实能力，完成后进入 T2.1 SQLite schema + migration。
 - Git 状态：M1 基线提交为 `b923117`；当前分支已包含进入 M2 前的 Core 子进程根对象简化。
 - 阻塞：无。
 
@@ -44,6 +44,14 @@
 | M11 | 系统代理适配与恢复 | 未开始 | 0% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
 | M13 | 更新机制 | 未开始 | 0% | [M13.md](M13.md) |
+
+## Client / Server 轨道规则
+
+- 从 M2 起，每个 Stage 文件分别记录 `Server`、`Contract`、`Client` 状态。`Server` 包含 Proxy Core、Storage、Electron Main 和 Native Helper；`Contract` 包含 Protocol、IPC/Preload、事件及跨进程集成；`Client` 包含 Renderer、交互和 `design/app` 一对一视觉验收。
+- 三条轨道各自维护状态和百分比；按归属该轨道的本 Stage 显式任务/验收项计算。标记为“后续 Stage”“依赖前序 Stage”或“不适用”的轨道使用 `—`，不伪造进度。
+- Stage 总进度按该 Stage 的显式任务计算；轨道标记为“后续 Stage”或“不适用”时，不计作本 Stage 未完成。
+- Client 随可用的 Server/Contract 能力分步落地，不显示伪造数据，不提前启用无后端能力的控件。
+- M2/T2.0 先迁移 M0/M1 现有 UI 基线；M4、M5、M6、M8–M11、M13 再增量实现各自功能视图，M12 对全部已实现视图做 packaged 视觉验收。
 
 ## 当前已实现边界
 
