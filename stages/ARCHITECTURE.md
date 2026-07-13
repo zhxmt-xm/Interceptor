@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-13
+> 最后更新：2026-07-14
 > 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -22,11 +22,10 @@ flowchart LR
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Runtime Validation"]
 
   subgraph CORE["Proxy Core UtilityProcess"]
-    ENTRY["8 core-entry.cts<br/>Minimal Bootstrap"]
-    PROCESS["9 CoreProcess<br/>ready · heartbeat · shutdown · rpc-port"]
-    APPLICATION["10 CoreApplication<br/>Business Ownership · Command Routing"]
-    RPC_SERVER["11 CoreRpcServer<br/>Validate · Correlate · Cancel"]
-    DIAGNOSTICS["12 CoreDiagnostics<br/>Trace · Action · Ring Buffer · Redaction"]
+    ENTRY["8 entry.cts<br/>Minimal Bootstrap"]
+    APPLICATION["9 CoreApplication<br/>Lifecycle · Business Ownership · Routing"]
+    RPC_SERVER["10 CoreRpcServer<br/>Validate · Correlate · Cancel"]
+    DIAGNOSTICS["11 CoreDiagnostics<br/>Trace · Action · Ring Buffer · Redaction"]
   end
 
   subgraph FUTURE["M2/M3 后续注入点"]
@@ -36,16 +35,15 @@ flowchart LR
   end
 
   UI_APP --> UI_API --> PRELOAD --> MAIN
-  MAIN --> RUNTIME --> ENTRY --> PROCESS
-  RUNTIME -. "parentPort: rpc-port transfer" .-> PROCESS
-  PROCESS -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
+  MAIN --> RUNTIME --> ENTRY --> APPLICATION
+  RUNTIME -. "parentPort: rpc-port transfer" .-> APPLICATION
+  APPLICATION -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
   RUNTIME --> RPC_CLIENT
   RPC_CLIENT <-->|"MessagePort: request / response / cancel"| RPC_SERVER
   RPC_CLIENT -. "types + validation" .-> PROTOCOL
   RPC_SERVER -. "types + validation" .-> PROTOCOL
-  PROCESS --> APPLICATION
   APPLICATION --> RPC_SERVER
-  RPC_SERVER -->|"execute"| APPLICATION
+  RPC_SERVER -->|"executeCommand"| APPLICATION
   RPC_SERVER --> DIAGNOSTICS
   APPLICATION --> DIAGNOSTICS
   APPLICATION -. "M2" .-> STORAGE
@@ -86,23 +84,23 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 配置安全、IPC、CoreRuntime，并创建窗口 | app 未 ready 前不创建 CoreProcess/窗口 |
 | 2 | 配置安全边界 | `DesktopApplication` → Electron Session/WebContents | permission、webview、navigation、download handlers | `main.ts`、`security/trusted-renderer-url.ts` | Renderer 只加载可信 Dev origin 或 packaged HTML | 非可信导航/权限/下载被拒绝 |
 | 3 | 启动 CoreProcess | `DesktopApplication` → `CoreRuntime` | `start()` | `main.ts`、`core-runtime.ts` | CoreRuntime 调用 `startCoreProcess` | fork 抛错时进入退避重启 |
-| 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(core-entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
+| 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
 | 5 | 创建 RPC 通道 | `CoreRuntime` → Main/CoreProcess | `new MessageChannelMain()`、`coreProcess.postMessage({type:'rpc-port'}, [port2])` | `core-runtime.ts` | `port1` 附加到内部 `CoreRpcClient`，CoreProcess 接收 `port2` | transfer/attach 失败时关闭 port、client 和 CoreProcess |
-| 6 | CoreProcess bootstrap | Electron → `core-entry.cts` | `process.parentPort` | `core-entry.cts` | `new CoreProcess(parentPort).start()` | 无 parentPort 时输出错误并非零退出 |
-| 7 | CoreProcess 生命周期启动 | `CoreProcess` → parentPort | `ready` + 首个 `heartbeat` | `core-process.ts` | Main 状态变为 `running`，随后每秒 heartbeat | parentPort 故障最终表现为 heartbeat timeout/exit |
+| 6 | CoreProcess bootstrap | Electron → `entry.cts` | `process.parentPort` | `entry.cts` | `new CoreApplication(parentPort).start()` | 无 parentPort 时输出错误并非零退出 |
+| 7 | CoreProcess 生命周期启动 | `CoreApplication` → parentPort | `ready` + 首个 `heartbeat` | `core-application.ts` | Main 状态变为 `running`，随后每秒 heartbeat | parentPort 故障最终表现为 heartbeat timeout/exit |
 | 8 | Renderer 获取 CoreProcess 状态 | Renderer → Preload → Main | `getCoreProcessStatus()` | `App.tsx`、`preload.ts`、`main.ts` | 返回只读 `CoreProcessStatus` | IPC 失败时 UI 标记 `unresponsive` |
 | 9 | Renderer 订阅 CoreProcess 状态 | Main → Preload → Renderer | `core:process-status` | `core-runtime.ts`、`main.ts`、`preload.ts`、`App.tsx` | UI 显示 running/restarting/unresponsive/stopping | CoreRuntime.stop 清空状态 listeners；Renderer cleanup 移除 ipcRenderer listener |
 | 10 | 发起业务命令 | Renderer → Main | `echoCore(value)` / `getCoreTrace(traceId)` | `desktop-api.ts`、`preload.ts`、`main.ts` | Main 校验 sender 和参数，构造 typed command | 非可信 sender/非法参数直接拒绝 |
 | 11 | RPC Request→Promise | Main → `CoreRuntime` → `CoreRpcClient` | `request(command, options)` | `core-runtime.ts`、`core-rpc-client.ts` | 生成 requestId/traceId，注册 `PendingRpcRequest` 并发送 | 无连接、duplicate ID 或 postMessage 失败时 Promise reject |
 | 12 | RPC 边界校验 | MessagePort → `CoreRpcServer` | `parseMainToCoreMessage(raw)` | `core-rpc-server.ts`、`core-protocol/validation.ts` | 得到安全的 Request 或 Cancel | 非法消息关闭连接并触发 Core fatal recovery |
-| 13 | command 调度 | `CoreRpcServer` → `CoreApplication` | `execute(command, signal)` | `core-rpc-server.ts`、`core-application.ts` | echo/diagnostics 返回 typed result | 未实现 command 返回 `unsupported-command`；异常转为 `internal` |
+| 13 | command 调度 | `CoreRpcServer` → `CoreApplication` | `executeCommand(command, signal)` | `core-rpc-server.ts`、`core-application.ts` | echo/diagnostics 返回 typed result | 未实现 command 返回 `unsupported-command`；异常转为 `internal` |
 | 14 | 结构化日志 | RpcServer/Application → `CoreDiagnostics` | command lifecycle + action | `core-diagnostics.ts` | traceId 下记录 received/validated/handler/action/response/completed | sink 同步/异步失败回退 stderr；日志不得使 command 失败 |
 | 15 | RPC Response→Promise | Core → Main | Success/Error Response | `core-rpc-server.ts`、`core-rpc-client.ts` | requestId/traceId/result type 匹配后完成 Promise | mismatch 关闭连接；late response 被忽略 |
 | 16 | timeout/cancel | Caller/Timer → Main → Core | `cancel` + AbortController | `PendingRpcRequest`、`CoreRpcServer` | 两端释放 timer/listener/active request | Cancel 消息发送失败时本地 Promise 仍完成清理 |
-| 17 | CoreProcess heartbeat 检测 | `CoreProcess` → `CoreRuntime` | 每秒 heartbeat，4 秒 deadline | `core-process.ts`、`core-runtime.ts` | 持续保持 `running` | 超时标记 `unresponsive`、kill，exit 后退避重启 |
+| 17 | CoreProcess heartbeat 检测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat，4 秒 deadline | `core-application.ts`、`core-runtime.ts` | 持续保持 `running` | 超时标记 `unresponsive`、kill，exit 后退避重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
-| 19 | graceful shutdown | Electron → DesktopApplication → CoreRuntime/CoreProcess | `before-quit`、`shutdown`、`stopped` | `main.ts`、`core-runtime.ts`、`core-process.ts` | CoreProcess 关闭 RPC、停止 heartbeat、退出；CoreRuntime 清空 listeners 后 Main 再 quit | 超过 1.5 秒则 CoreRuntime force kill |
-| 20 | build/package/runtime | npm → esbuild → Forge → packaged app | `core-entry.cts` → `core-entry.cjs` → `extraResource` | root/package scripts、`apps/proxy-core/package.json`、`forge.config.ts`、`core-runtime.ts` | Dev 从 sibling dist 加载；package 从 `resources/proxy-core/core-entry.cjs` 加载 | packaged smoke 直接验证最终路径、CoreProcess restart 和清理 |
+| 19 | graceful shutdown | Electron → DesktopApplication → CoreRuntime/CoreApplication | `before-quit`、`shutdown`、`stopped` | `main.ts`、`core-runtime.ts`、`core-application.ts` | CoreApplication 关闭 RPC、停止 heartbeat、退出；CoreRuntime 清空 listeners 后 Main 再 quit | 超过 1.5 秒则 CoreRuntime force kill |
+| 20 | build/package/runtime | npm → esbuild → Forge → packaged app | `entry.cts` → `entry.cjs` → `extraResource` | root/package scripts、`apps/proxy-core/package.json`、`forge.config.ts`、`core-runtime.ts` | Dev 从 sibling dist 加载；package 从 `resources/proxy-core/entry.cjs` 加载 | packaged smoke 直接验证最终路径、CoreProcess restart 和清理 |
 
 ## 关键数据结构
 

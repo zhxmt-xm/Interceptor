@@ -1,68 +1,156 @@
-import { describe, expect, it } from 'vitest';
+import { EventEmitter } from 'node:events';
+import process from 'node:process';
 
-import { CoreApplication } from '../core-application';
-import { CoreCommandError } from '../core-rpc-server';
-import { CoreDiagnostics } from '../core-diagnostics';
+import type { CoreToMainMessage } from '@interceptor/core-protocol';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  CoreApplication,
+  type CoreLifecycleMessage,
+  type CoreParentPort,
+  type ParentMessageEvent,
+} from '../core-application';
+import {
+  CoreCommandError,
+  type RpcMessagePort,
+} from '../core-rpc-server';
+
+class FakeParentPort implements CoreParentPort {
+  readonly sent: CoreLifecycleMessage[] = [];
+  private messageListener: ((event: ParentMessageEvent) => void) | null = null;
+
+  on(
+    _event: 'message',
+    listener: (event: ParentMessageEvent) => void,
+  ): void {
+    this.messageListener = listener;
+  }
+
+  postMessage(message: CoreLifecycleMessage): void {
+    this.sent.push(message);
+  }
+
+  receive(data: unknown, ports?: unknown[]): void {
+    this.messageListener?.({ data, ports });
+  }
+}
+
+class FakeRpcPort extends EventEmitter implements RpcMessagePort {
+  started = false;
+  closed = false;
+
+  postMessage(_message: CoreToMainMessage): void {}
+
+  start(): void {
+    this.started = true;
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+}
 
 describe('CoreApplication', () => {
-  it('executes echo and records its business action', async () => {
-    const diagnostics = createDiagnostics();
-    const application = new CoreApplication({
-      diagnostics,
-      now: () => Date.parse('2026-07-12T00:00:00.000Z'),
-    });
+  beforeEach(() => {
+    vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+  });
 
-    const result = await diagnostics.runWithCommand(
-      'request-1',
-      'trace-1',
-      'echo',
-      () => application.execute(
-        { type: 'echo', payload: { value: 'hello' } },
-        new AbortController().signal,
-      ),
+  afterEach(async () => {
+    await settle();
+    vi.restoreAllMocks();
+  });
+
+  it('owns lifecycle, heartbeat, RPC attachment, and graceful shutdown', async () => {
+    const parentPort = new FakeParentPort();
+    const rpcPort = new FakeRpcPort();
+    const exitProcess = vi.spyOn(process, 'exit').mockImplementation(
+      (() => undefined) as never,
+    );
+    const application = new CoreApplication(parentPort);
+
+    application.start();
+    parentPort.receive({ type: 'rpc-port' }, [rpcPort]);
+    parentPort.receive({ type: 'shutdown' });
+    await settle();
+
+    expect(parentPort.sent).toEqual([
+      {
+        type: 'ready',
+        pid: process.pid,
+        startedAt: expect.any(String),
+      },
+      {
+        type: 'heartbeat',
+        pid: process.pid,
+        timestamp: expect.any(String),
+      },
+      {
+        type: 'stopped',
+        pid: process.pid,
+        timestamp: expect.any(String),
+      },
+    ]);
+    for (const message of parentPort.sent) {
+      expectIsoTimestamp(
+        message.type === 'ready' ? message.startedAt : message.timestamp,
+      );
+    }
+    expect(rpcPort.started).toBe(true);
+    expect(rpcPort.closed).toBe(true);
+    expect(exitProcess).toHaveBeenCalledWith(0);
+  });
+
+  it('executes echo and records its business action', async () => {
+    const application = new CoreApplication(new FakeParentPort());
+
+    const result = await application.executeCommand(
+      { type: 'echo', payload: { value: 'hello' } },
+      new AbortController().signal,
     );
 
-    expect(result).toEqual({
+    if (result.type !== 'echo') {
+      throw new Error(`Unexpected result type: ${result.type}`);
+    }
+    expect(result).toMatchObject({
       type: 'echo',
       payload: {
         value: 'hello',
-        handledAt: '2026-07-12T00:00:00.000Z',
+        handledAt: expect.any(String),
       },
     });
-    expect(diagnostics.recent(10, 'trace-1').records.map(
-      ({ phase }) => phase,
-    )).toEqual(['action.started', 'action.completed']);
+    expectIsoTimestamp(result.payload.handledAt);
   });
 
-  it('returns recent diagnostics for a trace', async () => {
-    const diagnostics = createDiagnostics();
-    diagnostics.runWithCommand('request-1', 'trace-1', 'echo', () => {
-      diagnostics.info('command.completed');
-    });
-    const application = new CoreApplication({ diagnostics });
+  it('returns recent diagnostics through its command API', async () => {
+    const application = new CoreApplication(new FakeParentPort());
+    await application.executeCommand(
+      { type: 'echo', payload: { value: 'hello' } },
+      new AbortController().signal,
+    );
 
-    const result = await application.execute({
+    const result = await application.executeCommand({
       type: 'diagnostics.recent',
-      payload: { limit: 10, traceId: 'trace-1' },
+      payload: { limit: 10 },
     }, new AbortController().signal);
 
     expect(result).toMatchObject({
       type: 'diagnostics.records',
       payload: {
         droppedCount: 0,
-        records: [{ traceId: 'trace-1', phase: 'command.completed' }],
+        records: [
+          { phase: 'action.started' },
+          { phase: 'action.completed' },
+        ],
       },
     });
   });
 
   it('rejects aborted and future-stage commands with structured errors', async () => {
-    const application = new CoreApplication({
-      diagnostics: createDiagnostics(),
-    });
+    const application = new CoreApplication(new FakeParentPort());
     const controller = new AbortController();
     controller.abort();
 
-    await expect(application.execute(
+    await expect(application.executeCommand(
       { type: 'echo', payload: { value: 'cancelled' } },
       controller.signal,
     )).rejects.toMatchObject({
@@ -73,7 +161,7 @@ describe('CoreApplication', () => {
       },
     } satisfies Partial<CoreCommandError>);
 
-    await expect(application.execute({
+    await expect(application.executeCommand({
       type: 'sessions.query',
       payload: { limit: 10, sort: 'started_desc', filter: {} },
     }, new AbortController().signal)).rejects.toMatchObject({
@@ -82,6 +170,10 @@ describe('CoreApplication', () => {
   });
 });
 
-function createDiagnostics(): CoreDiagnostics {
-  return new CoreDiagnostics({ sink: () => undefined });
+function expectIsoTimestamp(value: string): void {
+  expect(new Date(value).toISOString()).toBe(value);
+}
+
+async function settle(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
 }

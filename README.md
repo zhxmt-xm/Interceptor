@@ -158,7 +158,7 @@ Then run the managed Desktop process:
 npm run dev
 ```
 
-Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to the Forge terminal with a `[proxy-core]` prefix. Core requires Electron `UtilityProcess.parentPort`, so running `core-entry.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
+Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to the Forge terminal with a `[proxy-core]` prefix. Core requires Electron `UtilityProcess.parentPort`, so running `entry.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
 
 Run the CoreRuntime lifecycle tests while editing CoreProcess management:
 

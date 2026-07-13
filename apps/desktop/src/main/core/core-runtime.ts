@@ -508,11 +508,11 @@ export class CoreRuntime {
    */
   private resolveCoreProcessEntry(): string {
     if (app.isPackaged) {
-      return path.join(process.resourcesPath, 'proxy-core', 'core-entry.cjs');
+      return path.join(process.resourcesPath, 'proxy-core', 'entry.cjs');
     }
     return path.resolve(
       app.getAppPath(),
-      '../proxy-core/dist/proxy-core/core-entry.cjs',
+      '../proxy-core/dist/proxy-core/entry.cjs',
     );
   }
 

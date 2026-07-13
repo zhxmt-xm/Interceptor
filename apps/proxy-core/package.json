@@ -4,9 +4,9 @@
   "private": true,
   "description": "Interceptor proxy core process",
   "type": "commonjs",
-  "main": "dist/proxy-core/core-entry.cjs",
+  "main": "dist/proxy-core/entry.cjs",
   "scripts": {
-    "build": "npm run clean && esbuild src/proxy-core/core-entry.cts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/proxy-core/core-entry.cjs --sourcemap",
+    "build": "npm run clean && esbuild src/proxy-core/entry.cts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/proxy-core/entry.cjs --sourcemap",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit"

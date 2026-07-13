@@ -10,10 +10,16 @@ import {
 
 import { CoreDiagnostics } from './core-diagnostics';
 
-export interface CoreCommandExecutor {
-  execute(command: CoreCommand, signal: AbortSignal): Promise<CoreResult>;
-}
+export type CoreCommandHandler = (
+  command: CoreCommand,
+  signal: AbortSignal,
+) => Promise<CoreResult>;
 
+/**
+ * 业务 handler 主动返回给 RPC 边界的结构化错误。
+ * 调用方：CoreApplication command 路由及后续业务 Service；CoreRpcServer 将 detail
+ * 原样映射为失败 response，其他未知异常统一收敛为 internal。
+ */
 export class CoreCommandError extends Error {
   constructor(readonly detail: CoreError) {
     super(detail.message);
@@ -36,6 +42,8 @@ export interface RpcMessagePort {
 }
 
 interface CoreRpcServerOptions {
+  executeCommand: CoreCommandHandler;
+  diagnostics: CoreDiagnostics;
   now?: () => number;
   onFatalError?: (reason: string) => void;
 }
@@ -46,26 +54,36 @@ interface ActiveRequest {
 }
 
 /**
- * Core 侧 RPC 服务器。
+ * Proxy Core 内的 MessagePort RPC 状态机。
  *
- * 这里只处理连接、消息校验、取消和响应；command 的业务行为统一交给
- * CoreApplication。未来增加存储或代理能力时，不需要改动这套传输状态机。
+ * 只拥有当前连接、活动请求、协议校验、取消和 response 投递；command 业务行为
+ * 委托给 CoreApplication 注入的 executeCommand。连接失效属于当前 CoreProcess 的
+ * fatal 故障，由 onFatalError 通知 CoreApplication 退出，再由 Main CoreRuntime 重启。
  */
 export class CoreRpcServer {
   private readonly activeRequests = new Map<string, ActiveRequest>();
+  private readonly executeCommand: CoreCommandHandler;
+  private readonly diagnostics: CoreDiagnostics;
   private readonly now: () => number;
   private readonly onFatalError: (reason: string) => void;
   private connection: RpcConnection | null = null;
 
-  constructor(
-    private readonly executor: CoreCommandExecutor,
-    private readonly diagnostics: CoreDiagnostics,
-    options: CoreRpcServerOptions = {},
-  ) {
+  /**
+   * 固定 command handler、Diagnostics、时间源和 fatal 回调。
+   * 调用方：CoreApplication 构造时创建一个 Server；单元测试可注入 fake handler/clock。
+   */
+  constructor(options: CoreRpcServerOptions) {
+    this.executeCommand = options.executeCommand;
+    this.diagnostics = options.diagnostics;
     this.now = options.now ?? Date.now;
     this.onFatalError = options.onFatalError ?? (() => undefined);
   }
 
+  /**
+   * 将新 MessagePort 设为唯一当前连接，并开始接收 request/cancel。
+   * 调用方：CoreApplication 收到 Main 转交的 rpc-port；测试也用于验证 replacement。
+   * 新连接会先正常关闭旧连接并取消旧请求，但 replacement 本身不触发 fatal。
+   */
   attach(port: RpcMessagePort): void {
     this.close('replaced');
 
@@ -79,6 +97,11 @@ export class CoreRpcServer {
     connection.start();
   }
 
+  /**
+   * 关闭当前连接，并 abort 只属于该连接的全部活动请求。
+   * 调用方：attach 的连接替换、CoreApplication.stop，以及 fail 的故障清理。
+   * 已经从旧连接捕获的异步任务稍后结束时也无法向新连接发送 response。
+   */
   close(reason = 'closed'): void {
     const connection = this.connection;
     this.connection = null;
@@ -94,6 +117,11 @@ export class CoreRpcServer {
     connection?.close();
   }
 
+  /**
+   * 校验当前连接收到的原始消息，并分派 cancel 或异步 request 执行。
+   * 调用方：RpcConnection message listener；旧连接延迟到达的 callback 会被忽略。
+   * 非法 envelope 会关闭连接并进入 fatal recovery，而不是交给业务 handler。
+   */
   private handleMessage(connection: RpcConnection, rawMessage: unknown): void {
     if (this.connection !== connection) {
       return;
@@ -121,6 +149,11 @@ export class CoreRpcServer {
     void this.executeRequest(connection, parsed.value);
   }
 
+  /**
+   * 为 request 建立 AbortController 和诊断上下文，调用业务 handler 并发送 typed response。
+   * 调用方：handleMessage 处理合法 request；同 ID 活动请求转交 respondToDuplicate。
+   * finally 只清理由本次调用登记的实例，避免误删 replacement connection 的同 ID 请求。
+   */
   private async executeRequest(
     connection: RpcConnection,
     request: CoreRequest,
@@ -147,7 +180,7 @@ export class CoreRpcServer {
         this.diagnostics.info('command.validated');
         this.diagnostics.info('handler.started');
         try {
-          const result = await this.executor.execute(
+          const result = await this.executeCommand(
             request.command,
             activeRequest.controller.signal,
           );
@@ -187,6 +220,10 @@ export class CoreRpcServer {
     );
   }
 
+  /**
+   * 取消当前连接上匹配 requestId 的活动 handler。
+   * 调用方：handleMessage 处理合法 cancel；未知、已完成或旧连接 requestId 保持忽略。
+   */
   private cancelRequest(
     connection: RpcConnection,
     requestId: string,
@@ -198,6 +235,10 @@ export class CoreRpcServer {
     }
   }
 
+  /**
+   * 在原请求诊断上下文外单独记录并回复 duplicate requestId conflict。
+   * 调用方：executeRequest 发现 activeRequests 已包含同 ID 时。
+   */
   private async respondToDuplicate(
     connection: RpcConnection,
     request: CoreRequest,
@@ -230,6 +271,10 @@ export class CoreRpcServer {
     );
   }
 
+  /**
+   * 构造协议成功 response 并通过当前连接发送。
+   * 调用方：executeRequest 在 handler 成功且未被取消后。
+   */
   private sendSuccess(
     connection: RpcConnection,
     request: CoreRequest,
@@ -245,6 +290,10 @@ export class CoreRpcServer {
     });
   }
 
+  /**
+   * 构造结构化失败 response 并通过当前连接发送。
+   * 调用方：executeRequest 的失败路径和 respondToDuplicate。
+   */
   private sendError(
     connection: RpcConnection,
     request: CoreRequest,
@@ -260,6 +309,10 @@ export class CoreRpcServer {
     });
   }
 
+  /**
+   * 将 response 限定到创建它的连接代际；发送异常会关闭当前连接并触发 fatal。
+   * 调用方：sendSuccess 和 sendError；返回值表示消息是否确实交给当前 port。
+   */
   private send(connection: RpcConnection, message: CoreToMainMessage): boolean {
     if (this.connection !== connection || !connection.send(message)) {
       if (this.connection === connection) {
@@ -270,6 +323,10 @@ export class CoreRpcServer {
     return true;
   }
 
+  /**
+   * 对当前连接执行一次故障清理并通知应用退出；旧连接故障 callback 保持忽略。
+   * 调用方：非法消息、remote close 和 response send failure。
+   */
   private fail(connection: RpcConnection, reason: string): void {
     if (this.connection !== connection) {
       return;
@@ -278,12 +335,17 @@ export class CoreRpcServer {
     try {
       this.onFatalError(reason);
     } catch {
-      // 故障回调不能阻止 Core 进入 Supervisor 的重启流程。
+      // 故障回调不能阻止 Core 退出并进入 Main CoreRuntime 的重启流程。
     }
   }
 }
 
-/** 封装一个 MessagePort 及其 listener 生命周期。 */
+/**
+ * 单个 RPC MessagePort 的 listener 与发送生命周期封装。
+ *
+ * 由 CoreRpcServer.attach 创建并独占；Server 通过对象 identity 区分连接代际，
+ * RpcConnection 只负责 port 原语，不解析协议或管理 request。
+ */
 class RpcConnection {
   private readonly closeListener = (): void => this.onClose();
   private readonly messageListener = (event: RpcMessageEvent): void => {
@@ -291,18 +353,30 @@ class RpcConnection {
   };
   private closed = false;
 
+  /**
+   * 保存 port 与 Server 回调，不在构造期间注册 listener。
+   * 调用方：CoreRpcServer.attach，随后显式调用 start 完成连接发布。
+   */
   constructor(
     private readonly port: RpcMessagePort,
     private readonly onMessage: (message: unknown) => void,
     private readonly onClose: () => void,
   ) {}
 
+  /**
+   * 注册 message/close listener 并启动 port。
+   * 调用方：CoreRpcServer.attach；每个 RpcConnection 只调用一次。
+   */
   start(): void {
     this.port.on('message', this.messageListener);
     this.port.on('close', this.closeListener);
     this.port.start();
   }
 
+  /**
+   * 向 peer 发送一个已构造的协议 response；关闭或 postMessage 抛错时返回 false。
+   * 调用方：CoreRpcServer.send，异常由 Server 统一升级为连接故障。
+   */
   send(message: CoreToMainMessage): boolean {
     if (this.closed) {
       return false;
@@ -315,6 +389,10 @@ class RpcConnection {
     }
   }
 
+  /**
+   * 幂等移除 listener 并关闭 port，确保 replacement/shutdown 不残留回调。
+   * 调用方：CoreRpcServer.close；port.close 异常在 listener 已清理后被隔离。
+   */
   close(): void {
     if (this.closed) {
       return;

@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-13
+> 最后更新：2026-07-14
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取同目录的 `M*.md` 文件。
 
 ## 新 Session / Agent 必读
@@ -21,7 +21,7 @@
 - **M0、M1 均已完成（100%）**；M1 正式 MessagePort IPC、Typed Command Schema、Trace 和端到端验证详情见 [M1.md](M1.md)。
 - **当前 Stage 是 M2 存储层（0%，尚未开始）**；不要继续扩展 M1 echo 或用临时内存结构模拟存储。
 - 下一任务是 **M2/T2.1：定义 Capture SQLite schema、只向前 migration 和 fixture 建库**。
-- M1 已提交为 `b923117`。当前工作树是其后的对象所有权可读性重构，尚未提交；新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`，不要 reset、checkout 或覆盖这些改动。
+- M1 基线提交为 `b923117`，第一轮对象所有权收敛已提交为 `08690ef`；当前分支已包含进入 M2 前的 Core 子进程根对象进一步简化。新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`，不要 reset、checkout 或覆盖现有改动。
 - 当前没有真实 Traffic Capture；UI 中 Capture、Search、Filter 和详情相关命令保持 disabled。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
@@ -63,8 +63,8 @@
 | Main Renderer utils | `apps/desktop/src/main/utils/renderer-utils.ts` | Renderer IPC 输入校验与 Diagnostics DTO 映射纯函数 |
 | Renderer URL 白名单 | `apps/desktop/src/main/security/trusted-renderer-url.ts` | 开发精确同源、生产精确 packaged HTML |
 | URL 安全单测 | `apps/desktop/src/main/security/tests/trusted-renderer-url.test.ts` | 可信 reload 与外部/无效 URL 拒绝 |
-| CoreProcess 生命周期 | `apps/proxy-core/src/proxy-core/core-process.ts` | ready/heartbeat/shutdown/signal 和 RPC port 注入；入口 `core-entry.cts` 只负责启动对象 |
-| Core application | `apps/proxy-core/src/proxy-core/core-application.ts` | 业务总入口；拥有 RpcServer、Diagnostics 和后续 Storage/Proxy Service |
+| Core application | `apps/proxy-core/src/proxy-core/core-application.ts` | 子进程根对象；拥有 ready/heartbeat/shutdown/signal、RPC、Diagnostics 和后续 Storage/Proxy Service |
+| Core executable entry | `apps/proxy-core/src/proxy-core/entry.cts` | 只解析 UtilityProcess parentPort 并启动 CoreApplication；bundle 为 `entry.cjs` |
 | Core RPC server | `apps/proxy-core/src/proxy-core/core-rpc-server.ts` | runtime validation、request/cancel、response、connection replacement |
 | Core diagnostics | `apps/proxy-core/src/proxy-core/core-diagnostics.ts` | AsyncLocalStorage Trace、Action、三重上限、脱敏和 sink fallback |
 
@@ -100,13 +100,13 @@
 
 当前高层 Workflow 图和 20 步流程表见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-## 当前工作树说明
+## 最近 Core 简化
 
-M1 已提交为 `b923117`。当前工作树包含其后的对象所有权可读性重构，均属于应保留内容：
+当前分支包含进入 M2 前的 Core 子进程根对象简化：
 
 - `apps/desktop/src/main/core/`：删除 Supervisor/adapter，新增统一拥有 CoreProcess、状态、MessageChannel 和 RPC client 的 `CoreRuntime`。
 - `apps/desktop/src/main/utils/`、`src/main/main.ts`：提取 Renderer 输入校验/DTO 映射，DesktopApplication 只持有一个 CoreRuntime。
-- `apps/proxy-core/src/proxy-core/`：删除 Backend，新增统一拥有 RpcServer、Diagnostics 和业务路由的 `CoreApplication`。
+- `apps/proxy-core/src/proxy-core/`：删除重复的 `CoreProcess` 类，由 `CoreApplication` 统一拥有子进程生命周期、RpcServer、Diagnostics 和业务路由；可执行入口改名为 `entry.cts`。
 - `README.md` 与 `stages/`：同步新的对象所有权和高层 Workflow 文档。
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
@@ -175,17 +175,17 @@ M1 已提交为 `b923117`。当前工作树包含其后的对象所有权可读�
 2026-07-13 M1 对象所有权复核后的最终验收：
 
 - `npm run typecheck`：通过，Desktop、Proxy Core、Protocol 三个 workspace 均无错误。
-- `npm run test:unit`：通过，8 files / 43 tests（Desktop 21、Proxy Core 16、Core Protocol 6）。
-- `npm run package`：通过，生成 Windows x64 `Interceptor` package；Core esbuild 单文件 bundle 为 27.6 KB。
+- `npm run test:unit`：通过，8 files / 44 tests（Desktop 21、Proxy Core 17、Core Protocol 6）。
+- `npm run package`：通过，生成 Windows x64 `Interceptor` package；Core `entry.cjs` bundle 为 34.5 KB。
 - `npm run test:smoke --workspace @interceptor/desktop`：通过，1 test / 1.9s；真实最终 exe 覆盖 Renderer 隔离、四项窄 API、`running` CoreProcess 状态、echo、完整 Trace、强杀 CoreProcess 后新 PID/MessagePort RPC、主题和退出清理。
 - 编辑器诊断：Protocol、Desktop、Proxy Core 源码和测试均为 0 errors。
 - `npm audit --omit=dev`：通过，0 vulnerabilities。
 - 文档检查：Markdown 本地链接与行锚全部有效，活动文档已同步新的对象所有权。
 - `git diff --check`：通过。
 
-M1 可读性复核删除了无生产调用的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和同包场景下多余的 channel handshake；保留 heartbeat 专用于 Event Loop 卡死检测。随后对象所有权进一步收敛为 Main 的 `DesktopApplication + CoreRuntime` 与 Core 的 `CoreProcess + CoreApplication`；RPC client/server 和 Diagnostics 作为内部状态机保留。
+M1 可读性复核删除了无生产调用的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和同包场景下多余的 channel handshake；保留 heartbeat 专用于 Event Loop 卡死检测。对象所有权进一步收敛为 Main 的 `DesktopApplication + CoreRuntime` 与子进程内单一的 `CoreApplication`；RPC client/server 和 Diagnostics 作为内部状态机保留。
 
-workspace 命名与对象所有权重构通过根 typecheck、8 files / 43 tests、Core bundle、Windows package 和真实 packaged smoke；npm/lockfile 只保留 `@interceptor/desktop`、`@interceptor/proxy-core`、`@interceptor/core-protocol`。
+workspace 命名与对象所有权重构通过根 typecheck、8 files / 44 tests、Core bundle、Windows package 和真实 packaged smoke；npm/lockfile 只保留 `@interceptor/desktop`、`@interceptor/proxy-core`、`@interceptor/core-protocol`。
 
 如果接手时 [PROGRESS.md](PROGRESS.md)、[M0.md](M0.md) 与本节结果不一致，以最新命令实际输出为准，并先修正文档。
 

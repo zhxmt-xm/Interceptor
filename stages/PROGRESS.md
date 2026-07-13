@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-13
+> 最后更新：2026-07-14
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 
 ## 文档导航
@@ -21,7 +21,7 @@
 - 当前 Stage：M2 存储层（0%，尚未开始）。
 - 当前任务：T2.1 SQLite schema + migration。
 - 下一动作：进入 M2，定义 Capture 数据库 schema、只向前 migration 和 fixture 建库；实现前阅读 [M2.md](M2.md) 与完整方案第十二章。
-- Git 状态：M1 已提交为 `b923117`；当前工作树包含其后的 CoreRuntime/CoreApplication 可读性重构，尚未提交，必须保留。
+- Git 状态：M1 基线提交为 `b923117`；当前分支已包含进入 M2 前的 Core 子进程根对象简化。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M2.md](M2.md)。
@@ -72,7 +72,7 @@ M0 历史验收已覆盖：
 - `git diff --check`；
 - Dev 冷启动、Renderer HMR、ASAR/CSP/Fuses 和进程清理。
 
-2026-07-13 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；Main 收敛为 `DesktopApplication / CoreRuntime`，Core 收敛为 `CoreProcess / CoreApplication`，RPC client/server 与 Diagnostics 保留为内部状态机。复核后根 typecheck、8 files / 43 tests、Windows package、真实 packaged smoke、生产审计和文档检查通过；详情见 [M1.md](M1.md)。
+2026-07-13 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；Main 收敛为 `DesktopApplication / CoreRuntime`，Core 子进程收敛为单一 `CoreApplication`，RPC client/server 与 Diagnostics 保留为内部状态机。最新简化通过根 typecheck、8 files / 44 tests、Windows package、真实 packaged smoke 和文档检查；生产依赖未变化，详情见 [M1.md](M1.md)。
 
 ## 更新规则
 

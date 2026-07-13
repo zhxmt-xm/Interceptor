@@ -41,6 +41,13 @@ const DEFAULT_MAX_BYTES = 512 * 1024;
 const DEFAULT_MAX_OUTPUT_RECORDS = 256;
 const DEFAULT_MAX_RECORDS = 2_000;
 
+/**
+ * Proxy Core 内非阻塞、有界、结构化的诊断记录器。
+ *
+ * CoreRpcServer 用 AsyncLocalStorage 建立 command 上下文，CoreApplication 和后续
+ * Service 只补充业务 action。内存历史、待输出队列和单条记录均受限；sink/fallback
+ * 失败必须被隔离，不能改变 command、网络或存储路径的结果。
+ */
 export class CoreDiagnostics {
   private readonly context = new AsyncLocalStorage<DiagnosticContext>();
   private readonly records: StoredRecord[] = [];
@@ -59,6 +66,10 @@ export class CoreDiagnostics {
   private outputScheduled = false;
   private sequence = 0;
 
+  /**
+   * 固定容量、时间源和输出策略，并初始化空的 ring-like history 与输出队列。
+   * 调用方：CoreApplication 使用生产默认值；CoreDiagnostics 单测注入边界与 sink。
+   */
   constructor(options: CoreDiagnosticsOptions = {}) {
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.maxOutputRecords =
@@ -69,6 +80,10 @@ export class CoreDiagnostics {
     this.fallback = options.fallback ?? writeFallback;
   }
 
+  /**
+   * 在当前异步调用链绑定 requestId、traceId 和 command，供后续日志自动继承。
+   * 调用方：CoreRpcServer.executeRequest 和 respondToDuplicate；operation 结果原样返回。
+   */
   runWithCommand<T>(
     requestId: string,
     traceId: string,
@@ -78,6 +93,10 @@ export class CoreDiagnostics {
     return this.context.run({ requestId, traceId, command }, operation);
   }
 
+  /**
+   * 记录业务 action 的 started/completed/failed 与耗时，同时保持 operation 语义不变。
+   * 调用方：CoreApplication command handler 及后续 Storage/Proxy Service 操作。
+   */
   async action<T>(name: string, operation: () => Promise<T> | T): Promise<T> {
     const startedAt = this.now();
     this.info('action.started', { action: name });
@@ -100,22 +119,30 @@ export class CoreDiagnostics {
     }
   }
 
+  /** 记录 debug 事件；调用方：需要低优先级细节的 Core 内部组件。 */
   debug(phase: string, fields: DiagnosticFields = {}): void {
     this.record('debug', phase, fields);
   }
 
+  /** 记录正常生命周期事件；调用方：CoreRpcServer 和业务 Service。 */
   info(phase: string, fields: DiagnosticFields = {}): void {
     this.record('info', phase, fields);
   }
 
+  /** 记录可恢复异常；调用方：协议边界和未来 Storage/Proxy Service。 */
   warn(phase: string, fields: DiagnosticFields = {}): void {
     this.record('warn', phase, fields);
   }
 
+  /** 记录失败结果；调用方：CoreRpcServer command 失败路径和业务 Service。 */
   error(phase: string, fields: DiagnosticFields = {}): void {
     this.record('error', phase, fields);
   }
 
+  /**
+   * 返回最近的有限记录副本，可选按 traceId 过滤，并附带累计 droppedCount。
+   * 调用方：CoreApplication 的 diagnostics.recent command handler；不会暴露内部对象。
+   */
   recent(limit: number, traceId?: string): {
     records: DiagnosticLogRecord[];
     droppedCount: number;
@@ -132,6 +159,10 @@ export class CoreDiagnostics {
     };
   }
 
+  /**
+   * 规范化并存储一条日志，执行单条/总记录数/总字节数/输出队列四层约束。
+   * 调用方：debug/info/warn/error；只安排异步输出，不同步调用 sink。
+   */
   private record(
     level: DiagnosticLevel,
     phase: string,
@@ -187,6 +218,10 @@ export class CoreDiagnostics {
     this.scheduleOutput();
   }
 
+  /**
+   * 为当前输出批次最多安排一个 setImmediate flush，避免 command 路径同步写 I/O。
+   * 调用方：record 在成功进入 outputQueue 后。
+   */
   private scheduleOutput(): void {
     if (this.outputScheduled) {
       return;
@@ -195,6 +230,10 @@ export class CoreDiagnostics {
     setImmediate(() => this.flushOutput());
   }
 
+  /**
+   * 一次性取走当前输出队列并调用 sink；同步抛错和异步 rejection 都转入 fallback。
+   * 调用方：scheduleOutput 安排的 setImmediate callback。
+   */
   private flushOutput(): void {
     this.outputScheduled = false;
     const batch = this.outputQueue.splice(0);
@@ -218,6 +257,10 @@ export class CoreDiagnostics {
     }
   }
 
+  /**
+   * 尝试报告 Diagnostics 自身故障，并吞掉 fallback 异常以保护业务路径。
+   * 调用方：oversized record 丢弃和 flushOutput sink 失败处理。
+   */
   private fallbackSafely(message: string): void {
     try {
       this.fallback(message);
