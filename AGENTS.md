@@ -2,14 +2,14 @@
 
 ## Frontend Styling
 
-- Use Ant Design v6 as the component and interaction system. Before adding CSS, check the component's official props, semantic `classNames`/`styles`, and ConfigProvider global/component tokens.
-- Prefer this order:
-  1. Official component props such as `size`, `shape`, `variant`, `color`, `icon`, `tooltip`, `orientation`, and `disabled`.
-  2. ConfigProvider global tokens and component tokens.
-  3. Component semantic `classNames` and `styles` slots.
-  4. Colocated CSS Modules for layout and product-specific visual details that Ant Design cannot express.
-- Do not override Ant Design private/internal `.ant-*` DOM dimensions, padding, line heights, transforms, or state styles when an official prop or token exists.
-- Do not introduce Tailwind, Less, Sass, or a second design system unless the user explicitly approves a demonstrated need. Vite-native CSS Modules plus Ant Design tokens are the default.
+- The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Every implemented screen MUST match its `design/<feature>/` mockup **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.
+- `design/design-system.md` is the authoritative token/component spec. The `ui-design-mockup` skill (`.github/skills/ui-design-mockup/`) is the required workflow for creating, changing, or reviewing any UI: read it before design work and refer to it whenever drawing or updating a feature UI, then keep the feature's `design/<feature>/` assets in sync.
+- **One-to-one fidelity to the design outranks tool convenience.** Ant Design v6 is the component/interaction base, but it must never force a visual compromise:
+  1. Prefer official component props (`size`, `shape`, `variant`, `color`, `icon`, `tooltip`, `orientation`, `disabled`) → ConfigProvider global/component tokens → semantic `classNames`/`styles` slots.
+  2. If Ant Design cannot reproduce the design exactly through the above, **self-implement that piece** with colocated CSS Modules + the design tokens until it matches exactly. Do NOT ship an approximation, and do NOT hack `.ant-*` private/internal DOM (dimensions, padding, line-height, transforms, state styles) to force the look — replace the component with a self-built one instead.
+  3. Reach for Ant Design where its interaction is genuinely hard to rebuild (`Splitter` drag, `Popover`/`Dropdown` positioning, `Tooltip`, `Tabs`, `Segmented`) **and** the design can be matched via props/tokens/slots.
+- Drive colors, spacing, and radii from the shared design tokens (ConfigProvider + `:root[data-theme]`) matching `design/design-system.md` exactly; never hardcode ad-hoc values that drift from the tokens.
+- Do not introduce Tailwind, Less, Sass, or a second design system unless the user explicitly approves a demonstrated need. Vite-native CSS Modules plus the design tokens are the default.
 - Keep global CSS limited to reset, root design variables, typography, and accessibility media queries. Feature and component styles belong in colocated `*.module.css` files.
 - Use the shared tool-control primitives for icon actions and mode selectors. See `apps/desktop/src/renderer/components/tool-controls/README.md`.
 - Use Lucide or the installed Ant Design icon set instead of handwritten inline SVG for controls. Product identity assets may use custom SVG/PNG/ICO/ICNS.
