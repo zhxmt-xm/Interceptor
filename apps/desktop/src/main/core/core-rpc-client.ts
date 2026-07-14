@@ -3,8 +3,10 @@ import { randomUUID } from 'node:crypto';
 import {
   CORE_PROTOCOL_VERSION,
   parseCoreToMainMessage,
+  type CaptureExchangeEvent,
   type CoreCommand,
   type CoreError,
+  type CoreEventBatch,
   type CoreResult,
   type CoreResultForCommand,
   type MainToCoreMessage,
@@ -36,10 +38,18 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'body.read-range': 'body.range',
   'breakpoint.resolve': 'breakpoint.resolution',
   'diagnostics.recent': 'diagnostics.records',
+  'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',
   'rules.replace': 'rules.revision',
   'rules.validate': 'rules.validation',
   'sessions.query': 'sessions.page',
+  'sessions.detail': 'sessions.detail',
+  'storage.status': 'storage.status',
+  'storage.cleanup': 'storage.status',
+  'proxy.start': 'proxy.status',
+  'proxy.stop': 'proxy.status',
+  'proxy.status': 'proxy.status',
+  'tls.configure': 'tls.configured',
 };
 
 export class CoreRpcError extends Error {
@@ -62,6 +72,9 @@ export class CoreRpcClient {
   private port: CoreRpcPort | null = null;
   private removeMessageListener: (() => void) | null = null;
   private removeCloseListener: (() => void) | null = null;
+  private captureEventListener:
+    | ((events: CaptureExchangeEvent[]) => void)
+    | null = null;
 
   constructor(options: CoreRpcClientOptions = {}) {
     this.createId = options.createId ?? randomUUID;
@@ -91,6 +104,14 @@ export class CoreRpcClient {
       this.disconnect('Unable to initialize the Core RPC connection.');
       throw new Error('Unable to initialize the Core RPC connection.');
     }
+  }
+
+  /**
+   * 注册捕获事件订阅（跨 Core 重启持续）；每收到一批 event-batch 回调一次并自动 ack。
+   * 调用方：CoreRuntime 向 Main 转发实时捕获事件。
+   */
+  onCaptureEvents(listener: (events: CaptureExchangeEvent[]) => void): void {
+    this.captureEventListener = listener;
   }
 
   request<T extends CoreCommand>(
@@ -159,6 +180,11 @@ export class CoreRpcClient {
       return;
     }
 
+    if (parsed.value.kind === 'event-batch') {
+      this.handleEventBatch(parsed.value);
+      return;
+    }
+
     const response = parsed.value;
     const pending = this.pending.get(response.requestId);
     if (!pending) {
@@ -181,6 +207,23 @@ export class CoreRpcClient {
       pending.resolve(response.result);
     } else {
       pending.reject(new CoreRpcError(response.error));
+    }
+  }
+
+  /**
+   * 处理一批捕获事件：回调订阅者并向 Core 发送 ack 以推进背压窗口。
+   * 调用方：handleResponse 收到 event-batch 时。ack 发送失败不影响本地事件分发。
+   */
+  private handleEventBatch(batch: CoreEventBatch): void {
+    this.captureEventListener?.(batch.events);
+    try {
+      this.port?.postMessage({
+        kind: 'event-ack',
+        protocolVersion: CORE_PROTOCOL_VERSION,
+        batchSequence: batch.batchSequence,
+      });
+    } catch {
+      // ack 发送失败最终由 Core 端窗口停滞体现；不影响已分发的事件。
     }
   }
 

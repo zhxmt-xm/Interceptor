@@ -225,7 +225,7 @@ describe('CoreRpcClient', () => {
       ok: true,
       result: {
         type: 'sessions.page',
-        payload: { itemIds: [], hasMore: false },
+        payload: { items: [], hasMore: false },
       },
     });
 

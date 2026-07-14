@@ -22,3 +22,17 @@
 .yellow .dot {
   background: var(--yellow);
 }
+.red {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+.red .dot {
+  background: var(--red);
+}
+.info {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+}
+.info .dot {
+  background: var(--blue);
+}

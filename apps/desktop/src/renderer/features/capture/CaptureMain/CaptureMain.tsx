@@ -3,11 +3,12 @@ import { useRef, useState } from 'react';
 import { Splitter } from '../../../components';
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
+import { useCaptureData } from '../useCaptureData';
 import styles from './CaptureMain.module.css';
 
 /** Capture workspace body: request list, draggable splitter and inspector. */
 export function CaptureMain(): React.JSX.Element {
-  const [selected, setSelected] = useState(0);
+  useCaptureData();
   const [inspectorWidth, setInspectorWidth] = useState(500);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +35,7 @@ export function CaptureMain(): React.JSX.Element {
       ref={mainRef}
       style={{ gridTemplateColumns: `minmax(0, 1fr) 7px ${inspectorWidth}px` }}
     >
-      <RequestList selected={selected} onSelect={setSelected} />
+      <RequestList />
       <Splitter onPointerDown={startInspectorDrag} />
       <RequestInspector />
     </div>

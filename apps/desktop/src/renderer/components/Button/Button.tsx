@@ -10,6 +10,7 @@ export interface ButtonProps {
   variant?: 'default' | 'primary' | 'danger';
   size?: 'md' | 'sm';
   iconStrokeWidth?: number;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -20,11 +21,13 @@ export function Button({
   variant = 'default',
   size = 'md',
   iconStrokeWidth = 1.9,
+  disabled = false,
   onClick,
 }: ButtonProps): React.JSX.Element {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={cx(
         styles.button,
         size === 'sm' && styles.small,

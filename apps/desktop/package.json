@@ -16,15 +16,24 @@
   },
   "dependencies": {
     "@ant-design/icons": "6.3.2",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/state": "6.7.1",
+    "@codemirror/view": "6.43.6",
     "@fontsource-variable/ibm-plex-sans": "5.2.8",
     "@fontsource-variable/inter": "5.2.8",
     "@fontsource-variable/jetbrains-mono": "5.2.8",
     "@fontsource/ibm-plex-mono": "5.2.7",
     "@interceptor/core-protocol": "0.0.0",
+    "@peculiar/x509": "2.0.0",
+    "@tanstack/react-table": "8.21.3",
+    "@tanstack/react-virtual": "3.14.6",
+    "@uiw/react-codemirror": "4.25.11",
     "antd": "6.5.0",
     "lucide-react": "1.23.0",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "reflect-metadata": "0.2.2",
+    "zustand": "5.0.14"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",

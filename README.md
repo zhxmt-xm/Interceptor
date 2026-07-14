@@ -4,9 +4,9 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 ## Status
 
-M0 (project scaffold and toolchain) and M1 (IPC communication foundation) are complete, and M2/T2.0 has landed the Renderer UI baseline. The application provides the secure Electron shell, a modular Ant Design UI (six feature views with four time-of-day themes and a sidebar theme/language switcher), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, and structured in-memory Core diagnostics. Traffic capture and its event backpressure start in later milestones.
+M0 (project scaffold and toolchain), M1 (IPC communication foundation), M2 (storage layer), M3 (minimal explicit HTTP/1.1 proxy), M4 (session list UI), and M5 (CA and HTTPS MITM) are complete. The application provides the secure Electron shell, a modular Ant Design UI (six feature views with four time-of-day themes and a sidebar theme/language switcher), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured Core diagnostics, an on-disk storage layer (`node:sqlite` + worker threads, content-addressed blob store), a Mockttp-based explicit proxy that captures canonical HTTP/1.1 exchanges, real-time capture events with bounded-queue backpressure, a data-driven virtualized capture list with an on-demand inspector, and HTTPS interception via a locally generated Root CA (private key encrypted with the OS secure store, installed into the current-user trust store only with explicit consent).
 
-The current task is M2/T2.0: the M0/M1 Renderer shell, six truthful feature views and four themes are aligned one-to-one with `design/app` (typecheck passing); full four-theme screenshot, package smoke and parity verification remain. M2/T2.1 SQLite schema and migrations follow that baseline. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
+The current task is M6: HTTP/2 downstream/upstream, the four protocol-conversion combinations, stream-level modelling, and the HTTP/2 inspector. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
 
 Documentation is split to keep routine context small:
 

@@ -16,6 +16,13 @@
 .button:hover {
   background: var(--hover);
 }
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.button:disabled:hover {
+  background: var(--panel);
+}
 .button svg {
   width: 15px;
   height: 15px;

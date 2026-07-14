@@ -2,6 +2,7 @@ import {
   CORE_PROTOCOL_VERSION,
   MAX_BODY_CHUNK_BYTES,
   MAX_DIAGNOSTIC_RECORDS,
+  MAX_EVENT_BATCH_SIZE,
   MAX_QUERY_PAGE_SIZE,
   type CoreCommand,
   type CoreResult,
@@ -17,17 +18,29 @@ export type ValidationResult<T> =
 const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'echo',
   'sessions.query',
+  'sessions.detail',
   'body.read-range',
   'rules.validate',
   'rules.replace',
   'breakpoint.resolve',
   'diagnostics.recent',
+  'diagnostics.query',
+  'storage.status',
+  'storage.cleanup',
+  'proxy.start',
+  'proxy.stop',
+  'proxy.status',
+  'tls.configure',
 ]);
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const ATTRIBUTE_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
 const MAX_CURSOR_LENGTH = 1_024;
 const MAX_ECHO_LENGTH = 4_096;
 const MAX_FILTER_LENGTH = 1_024;
+const MAX_HEADER_COUNT = 1_000;
+const MAX_HEADER_VALUE_LENGTH = 8_192;
+const MAX_PEM_LENGTH = 32_768;
+const MAX_INSECURE_HOSTS = 200;
 const MAX_LOG_ATTRIBUTE_COUNT = 32;
 const MAX_LOG_ATTRIBUTE_STRING_LENGTH = 512;
 const MAX_MESSAGE_LENGTH = 2_048;
@@ -67,6 +80,14 @@ export function parseMainToCoreMessage(
           'shutdown',
         ]);
       break;
+    case 'event-ack':
+      error = validateRecordKeys(value, 'message', [
+        'kind',
+        'protocolVersion',
+        'batchSequence',
+      ]) ?? validateVersion(value.protocolVersion) ??
+        validateNonNegativeSafeInteger(value.batchSequence, 'batchSequence');
+      break;
     default:
       return invalid('message.kind is unknown');
   }
@@ -87,6 +108,9 @@ export function parseCoreToMainMessage(
   switch (value.kind) {
     case 'response':
       error = validateResponse(value);
+      break;
+    case 'event-batch':
+      error = validateEventBatch(value);
       break;
     default:
       return invalid('message.kind is unknown');
@@ -128,6 +152,73 @@ function validateResponse(value: Record<string, unknown>): string | null {
   return 'message.ok must be a boolean';
 }
 
+function validateEventBatch(value: Record<string, unknown>): string | null {
+  const common = validateRecordKeys(value, 'message', [
+    'kind',
+    'protocolVersion',
+    'batchSequence',
+    'events',
+  ]) ?? validateVersion(value.protocolVersion) ??
+    validateNonNegativeSafeInteger(value.batchSequence, 'batchSequence');
+  return common ?? validateCaptureEvents(value.events);
+}
+
+function validateCaptureEvents(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > MAX_EVENT_BATCH_SIZE) {
+    return `message.events must contain at most ${MAX_EVENT_BATCH_SIZE} events`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateCaptureEvent(value[index], `message.events[${index}]`);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateCaptureEvent(value: unknown, name: string): string | null {
+  return validateExactObject(value, name, ['kind', 'summary'], (event) =>
+    validateEnum(event.kind, `${name}.kind`, [
+      'exchange-added',
+      'exchange-updated',
+    ]) ?? validateCaptureSummary(event.summary, `${name}.summary`));
+}
+
+function validateCaptureSummary(value: unknown, name: string): string | null {
+  return validateExactObject(
+    value,
+    name,
+    [
+      'id',
+      'method',
+      'secure',
+      'host',
+      'path',
+      'protocol',
+      'statusCode',
+      'responseMime',
+      'state',
+      'startedAt',
+      'durationMs',
+      'requestBytes',
+      'responseBytes',
+    ],
+    (summary) => validateId(summary.id, `${name}.id`) ??
+      validateBoundedString(summary.method, `${name}.method`, 32) ??
+      validateBoolean(summary.secure, `${name}.secure`) ??
+      validateOptionalBoundedString(summary.host, `${name}.host`, MAX_FILTER_LENGTH) ??
+      validateOptionalBoundedString(summary.path, `${name}.path`, 2_048) ??
+      validateBoundedString(summary.protocol, `${name}.protocol`, 32) ??
+      validateOptionalIntegerRange(summary.statusCode, `${name}.statusCode`, 100, 599) ??
+      validateOptionalBoundedString(summary.responseMime, `${name}.responseMime`, 256) ??
+      validateBoundedString(summary.state, `${name}.state`, 32) ??
+      validateNonNegativeSafeInteger(summary.startedAt, `${name}.startedAt`) ??
+      validateOptionalNonNegativeNumber(summary.durationMs, `${name}.durationMs`) ??
+      validateNonNegativeSafeInteger(summary.requestBytes, `${name}.requestBytes`) ??
+      validateNonNegativeSafeInteger(summary.responseBytes, `${name}.responseBytes`),
+  );
+}
+
 function validateCommand(value: unknown): string | null {
   if (!isRecord(value) || typeof value.type !== 'string') {
     return 'command must contain a type';
@@ -140,6 +231,12 @@ function validateCommand(value: unknown): string | null {
     case 'sessions.query':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateSessionsQuery(value.payload);
+    case 'sessions.detail':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateSessionsDetailRequest(value.payload);
+    case 'tls.configure':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateTlsConfigure(value.payload);
     case 'body.read-range':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBodyRangeRequest(value.payload);
@@ -155,6 +252,24 @@ function validateCommand(value: unknown): string | null {
     case 'diagnostics.recent':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsRecent(value.payload);
+    case 'diagnostics.query':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateDiagnosticsQuery(value.payload);
+    case 'storage.status':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateStorageStatusPayload(value.payload);
+    case 'storage.cleanup':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateStorageCleanup(value.payload);
+    case 'proxy.start':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateProxyStart(value.payload);
+    case 'proxy.stop':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateEmptyPayload(value.payload);
+    case 'proxy.status':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateEmptyPayload(value.payload);
     default:
       return 'command.type is unknown';
   }
@@ -172,6 +287,9 @@ function validateResult(value: unknown): string | null {
     case 'sessions.page':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateSessionsPage(value.payload);
+    case 'sessions.detail':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateSessionsDetailResult(value.payload);
     case 'body.range':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBodyRangeResult(value.payload);
@@ -187,6 +305,18 @@ function validateResult(value: unknown): string | null {
     case 'diagnostics.records':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateDiagnosticsRecords(value.payload);
+    case 'diagnostics.page':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateDiagnosticsPage(value.payload);
+    case 'storage.status':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateStorageStatusResult(value.payload);
+    case 'proxy.status':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateProxyStatusResult(value.payload);
+    case 'tls.configured':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateTlsConfiguredResult(value.payload);
     default:
       return 'result.type is unknown';
   }
@@ -347,20 +477,212 @@ function validateDiagnosticsRecent(value: unknown): string | null {
   );
 }
 
+function validateDiagnosticsQuery(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['cursor', 'limit', 'level', 'traceId'],
+    (payload) => validateOptionalBoundedString(
+      payload.cursor,
+      'command.payload.cursor',
+      MAX_CURSOR_LENGTH,
+    ) ?? validateIntegerRange(
+      payload.limit,
+      'command.payload.limit',
+      1,
+      MAX_DIAGNOSTIC_RECORDS,
+    ) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
+      'debug',
+      'info',
+      'warn',
+      'error',
+    ]) ?? validateOptionalId(payload.traceId, 'command.payload.traceId'),
+  );
+}
+
+function validateStorageStatusPayload(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', [], () => null);
+}
+
+function validateEmptyPayload(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', [], () => null);
+}
+
+function validateProxyStart(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['port'],
+    (payload) =>
+      validateOptionalIntegerRange(payload.port, 'command.payload.port', 1, 65_535),
+  );
+}
+
+function validateStorageCleanup(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['scope', 'sessionId'],
+    (payload) => {
+      const scopeError = validateEnum(payload.scope, 'command.payload.scope', [
+        'all',
+        'session',
+      ]);
+      if (scopeError) {
+        return scopeError;
+      }
+      if (payload.scope === 'session') {
+        return validateId(payload.sessionId, 'command.payload.sessionId');
+      }
+      return payload.sessionId === undefined
+        ? null
+        : 'command.payload.sessionId is not allowed when scope is all';
+    },
+  );
+}
+
 function validateSessionsPage(value: unknown): string | null {
   return validateExactObject(
     value,
     'result.payload',
-    ['itemIds', 'nextCursor', 'hasMore'],
-    (payload) => validateIdArray(
-      payload.itemIds,
-      'result.payload.itemIds',
-      MAX_QUERY_PAGE_SIZE,
-    ) ?? validateOptionalBoundedString(
-      payload.nextCursor,
-      'result.payload.nextCursor',
-      MAX_CURSOR_LENGTH,
-    ) ?? validateBoolean(payload.hasMore, 'result.payload.hasMore'),
+    ['items', 'nextCursor', 'hasMore'],
+    (payload) => validateSummaryArray(payload.items) ??
+      validateOptionalBoundedString(
+        payload.nextCursor,
+        'result.payload.nextCursor',
+        MAX_CURSOR_LENGTH,
+      ) ?? validateBoolean(payload.hasMore, 'result.payload.hasMore'),
+  );
+}
+
+function validateSummaryArray(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > MAX_QUERY_PAGE_SIZE) {
+    return `result.payload.items must contain at most ${MAX_QUERY_PAGE_SIZE} items`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateCaptureSummary(
+      value[index],
+      `result.payload.items[${index}]`,
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateSessionsDetailRequest(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', ['exchangeId'], (payload) =>
+    validateId(payload.exchangeId, 'command.payload.exchangeId'));
+}
+
+function validateTlsConfigure(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', ['ca', 'insecureHosts'], (payload) =>
+    validateCaMaterial(payload.ca) ?? validateInsecureHosts(payload.insecureHosts));
+}
+
+function validateCaMaterial(value: unknown): string | null {
+  if (value === null) {
+    return null;
+  }
+  return validateExactObject(value, 'command.payload.ca', ['key', 'cert'], (ca) =>
+    validateBoundedString(ca.key, 'command.payload.ca.key', MAX_PEM_LENGTH) ??
+    validateBoundedString(ca.cert, 'command.payload.ca.cert', MAX_PEM_LENGTH));
+}
+
+function validateInsecureHosts(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > MAX_INSECURE_HOSTS) {
+    return `command.payload.insecureHosts must contain at most ${MAX_INSECURE_HOSTS} hosts`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateBoundedString(
+      value[index],
+      `command.payload.insecureHosts[${index}]`,
+      MAX_FILTER_LENGTH,
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateTlsConfiguredResult(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['mitmEnabled'], (payload) =>
+    validateBoolean(payload.mitmEnabled, 'result.payload.mitmEnabled'));
+}
+
+function validateSessionsDetailResult(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['detail'], (payload) =>
+    payload.detail === null
+      ? null
+      : validateExchangeDetail(payload.detail, 'result.payload.detail'));
+}
+
+function validateExchangeDetail(value: unknown, name: string): string | null {
+  return validateExactObject(
+    value,
+    name,
+    [
+      'summary',
+      'url',
+      'scheme',
+      'port',
+      'statusText',
+      'requestMime',
+      'errorCode',
+      'requestHeaders',
+      'responseHeaders',
+      'requestBody',
+      'responseBody',
+    ],
+    (detail) => validateCaptureSummary(detail.summary, `${name}.summary`) ??
+      validateBoundedString(detail.url, `${name}.url`, 4_096) ??
+      validateOptionalBoundedString(detail.scheme, `${name}.scheme`, 32) ??
+      validateOptionalIntegerRange(detail.port, `${name}.port`, 0, 65_535) ??
+      validateOptionalBoundedString(detail.statusText, `${name}.statusText`, 256) ??
+      validateOptionalBoundedString(detail.requestMime, `${name}.requestMime`, 256) ??
+      validateOptionalBoundedString(detail.errorCode, `${name}.errorCode`, 128) ??
+      validateHeaderArray(detail.requestHeaders, `${name}.requestHeaders`) ??
+      validateHeaderArray(detail.responseHeaders, `${name}.responseHeaders`) ??
+      validateOptionalBodyRef(detail.requestBody, `${name}.requestBody`) ??
+      validateOptionalBodyRef(detail.responseBody, `${name}.responseBody`),
+  );
+}
+
+function validateHeaderArray(value: unknown, name: string): string | null {
+  if (!Array.isArray(value) || value.length > MAX_HEADER_COUNT) {
+    return `${name} must contain at most ${MAX_HEADER_COUNT} headers`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateExactObject(
+      value[index],
+      `${name}[${index}]`,
+      ['name', 'value'],
+      (header) => validateBoundedString(header.name, `${name}[${index}].name`, 256) ??
+        validateBoundedString(header.value, `${name}[${index}].value`, MAX_HEADER_VALUE_LENGTH),
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateOptionalBodyRef(value: unknown, name: string): string | null {
+  if (value === undefined) {
+    return null;
+  }
+  return validateExactObject(
+    value,
+    name,
+    ['bodyHash', 'mediaType', 'encodedSize', 'decodedSize', 'truncated', 'decodeStatus'],
+    (body) => validateOptionalBoundedString(body.bodyHash, `${name}.bodyHash`, 128) ??
+      validateOptionalBoundedString(body.mediaType, `${name}.mediaType`, 256) ??
+      validateNonNegativeSafeInteger(body.encodedSize, `${name}.encodedSize`) ??
+      validateOptionalNonNegativeNumber(body.decodedSize, `${name}.decodedSize`) ??
+      validateBoolean(body.truncated, `${name}.truncated`) ??
+      validateBoundedString(body.decodeStatus, `${name}.decodeStatus`, 32),
   );
 }
 
@@ -420,6 +742,96 @@ function validateDiagnosticsRecords(value: unknown): string | null {
       validateNonNegativeSafeInteger(
         payload.droppedCount,
         'result.payload.droppedCount',
+      ),
+  );
+}
+
+function validateDiagnosticsPage(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    ['records', 'nextCursor', 'hasMore', 'droppedCount'],
+    (payload) => validateLogRecords(payload.records) ??
+      validateOptionalBoundedString(
+        payload.nextCursor,
+        'result.payload.nextCursor',
+        MAX_CURSOR_LENGTH,
+      ) ?? validateBoolean(payload.hasMore, 'result.payload.hasMore') ??
+      validateNonNegativeSafeInteger(
+        payload.droppedCount,
+        'result.payload.droppedCount',
+      ),
+  );
+}
+
+function validateProxyStatusResult(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    ['listening', 'host', 'port', 'sessionId', 'capturedExchanges'],
+    (payload) =>
+      validateBoolean(payload.listening, 'result.payload.listening') ??
+      validateNullableBoundedString(payload.host, 'result.payload.host', 255) ??
+      validateNullablePort(payload.port, 'result.payload.port') ??
+      validateNullableId(payload.sessionId, 'result.payload.sessionId') ??
+      validateNonNegativeSafeInteger(
+        payload.capturedExchanges,
+        'result.payload.capturedExchanges',
+      ),
+  );
+}
+
+function validateNullableBoundedString(
+  value: unknown,
+  name: string,
+  maxLength: number,
+): string | null {
+  return value === null ? null : validateBoundedString(value, name, maxLength);
+}
+
+function validateNullableId(value: unknown, name: string): string | null {
+  return value === null ? null : validateId(value, name);
+}
+
+function validateNullablePort(value: unknown, name: string): string | null {
+  return value === null ? null : validateIntegerRange(value, name, 1, 65_535);
+}
+
+function validateStorageStatusResult(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    [
+      'sessionCount',
+      'exchangeCount',
+      'bodyCount',
+      'databaseBytes',
+      'blobBytes',
+      'totalBytes',
+      'quotaBytes',
+    ],
+    (payload) =>
+      validateNonNegativeSafeInteger(
+        payload.sessionCount,
+        'result.payload.sessionCount',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.exchangeCount,
+        'result.payload.exchangeCount',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.bodyCount,
+        'result.payload.bodyCount',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.databaseBytes,
+        'result.payload.databaseBytes',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.blobBytes,
+        'result.payload.blobBytes',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.totalBytes,
+        'result.payload.totalBytes',
+      ) ?? validateNonNegativeSafeInteger(
+        payload.quotaBytes,
+        'result.payload.quotaBytes',
       ),
   );
 }
@@ -577,23 +989,6 @@ function validateOptionalCommandType(
   return typeof value === 'string' && COMMAND_TYPES.has(value as CoreCommand['type'])
     ? null
     : `${name} is unknown`;
-}
-
-function validateIdArray(
-  value: unknown,
-  name: string,
-  maxLength: number,
-): string | null {
-  if (!Array.isArray(value) || value.length > maxLength) {
-    return `${name} must contain at most ${maxLength} IDs`;
-  }
-  for (let index = 0; index < value.length; index += 1) {
-    const error = validateId(value[index], `${name}[${index}]`);
-    if (error) {
-      return error;
-    }
-  }
-  return null;
 }
 
 function validateByteArray(value: unknown, name: string): string | null {

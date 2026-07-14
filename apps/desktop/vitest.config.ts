@@ -5,5 +5,7 @@ export default defineConfig({
     clearMocks: true,
     environment: 'node',
     include: ['src/**/tests/**/*.test.ts'],
+    // @peculiar/x509 依赖 tsyringe，需要在任何证书代码加载前建立 reflect-metadata polyfill。
+    setupFiles: ['reflect-metadata'],
   },
 });

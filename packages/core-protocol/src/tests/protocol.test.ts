@@ -87,10 +87,80 @@ describe('core protocol validation', () => {
       result: {
         type: 'sessions.page',
         payload: {
-          itemIds: ['exchange-1', 'exchange-2'],
+          items: [
+            {
+              id: 'exchange-1',
+              method: 'GET',
+              secure: true,
+              host: 'api.test',
+              path: '/a',
+              protocol: 'http/1.1',
+              statusCode: 200,
+              responseMime: 'application/json',
+              state: 'completed',
+              startedAt: 1,
+              durationMs: 12,
+              requestBytes: 0,
+              responseBytes: 12,
+            },
+          ],
           nextCursor: 'cursor-2',
           hasMore: true,
         },
+      },
+    }).ok).toBe(true);
+
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-detail',
+      traceId: 'trace-detail',
+      ok: true,
+      result: {
+        type: 'sessions.detail',
+        payload: {
+          detail: {
+            summary: {
+              id: 'exchange-1',
+              method: 'POST',
+              secure: true,
+              host: 'api.test',
+              path: '/users',
+              protocol: 'http/1.1',
+              statusCode: 201,
+              responseMime: 'application/json',
+              state: 'completed',
+              startedAt: 1,
+              durationMs: 20,
+              requestBytes: 8,
+              responseBytes: 42,
+            },
+            url: 'https://api.test/users',
+            scheme: 'https',
+            statusText: 'Created',
+            requestHeaders: [{ name: 'accept', value: 'application/json' }],
+            responseHeaders: [{ name: 'content-type', value: 'application/json' }],
+            responseBody: {
+              bodyHash: 'a'.repeat(64),
+              mediaType: 'application/json',
+              encodedSize: 42,
+              truncated: false,
+              decodeStatus: 'ok',
+            },
+          },
+        },
+      },
+    }).ok).toBe(true);
+
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-detail-null',
+      traceId: 'trace-detail-null',
+      ok: true,
+      result: {
+        type: 'sessions.detail',
+        payload: { detail: null },
       },
     }).ok).toBe(true);
 

@@ -125,9 +125,12 @@ describe('CoreRpcServer', () => {
 
     resolvers[0]?.(echoResult('old'));
     await settle();
-    expect(second.sent.some((message) => message.traceId === 'trace-old')).toBe(
-      false,
-    );
+    expect(
+      second.sent.some(
+        (message) =>
+          message.kind === 'response' && message.traceId === 'trace-old',
+      ),
+    ).toBe(false);
 
     resolvers[1]?.(echoResult('new'));
     await settle();

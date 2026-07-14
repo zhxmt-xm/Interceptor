@@ -1,11 +1,65 @@
-import { Lock, Shield } from 'lucide-react';
 import { Fragment, type ReactNode, useState } from 'react';
 
+import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
+import { useCaptureStore } from '../captureStore';
 import { INSPECTOR_TABS, type InspectorTab } from '../data';
+import {
+  protocolLabel,
+  sizeLabel,
+  statusLabel,
+  statusTone,
+  timeLabel,
+  typeLabel,
+} from '../row-format';
+import { useExchangeDetail } from '../useExchangeDetail';
+import { BodyView } from './BodyView';
 import styles from './RequestInspector.module.css';
 
 type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g'];
+
+function headersToRows(headers: CaptureHeader[]): KvRow[] {
+  return headers.map((header) => [header.name, header.value]);
+}
+
+/** 从绝对/相对 URL 提取查询参数为 KV 行。 */
+function queryRows(url: string): KvRow[] {
+  const search = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
+  if (!search) {
+    return [];
+  }
+  const params = new URLSearchParams(search);
+  return Array.from(params.entries(), ([key, value]) => [key, value] as KvRow);
+}
+
+/** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
+function requestCookieRows(headers: CaptureHeader[]): KvRow[] {
+  const cookie = headers.find((header) => header.name.toLowerCase() === 'cookie');
+  if (!cookie) {
+    return [];
+  }
+  return cookie.value
+    .split(';')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const eq = pair.indexOf('=');
+      return eq === -1
+        ? ([pair, ''] as KvRow)
+        : ([pair.slice(0, eq), pair.slice(eq + 1)] as KvRow);
+    });
+}
+
+/** 收集响应 Set-Cookie 头（每条一行）为 KV 行。 */
+function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => {
+      const eq = header.value.indexOf('=');
+      const name = eq === -1 ? header.value : header.value.slice(0, eq);
+      return [name, header.value] as KvRow;
+    });
+}
 
 function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
   return (
@@ -44,16 +98,47 @@ function Section({
 /** Right-hand inspector for the selected request. */
 export function RequestInspector(): React.JSX.Element {
   const [tab, setTab] = useState<InspectorTab>('headers');
+  const selectedId = useCaptureStore((state) => state.selectedId);
+  const summary = useCaptureStore((state) => {
+    if (!state.selectedId) {
+      return undefined;
+    }
+    const index = state.indexById.get(state.selectedId);
+    return index === undefined ? undefined : state.rows[index];
+  });
+  const { detail } = useExchangeDetail(selectedId);
+
+  const view = detail?.summary ?? summary;
+
+  const url = view ? detail?.url ?? `${view.host ?? ''}${view.path ?? ''}` : '';
+  const responseHeaders = detail?.responseHeaders ?? [];
+  const requestHeaders = detail?.requestHeaders ?? [];
+  const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
+  const statusText = view
+    ? view.statusCode !== undefined
+      ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
+      : statusLabel(view)
+    : '';
 
   return (
     <div className={styles.inspector}>
       <div className={styles.head}>
-        <span className={styles.methodChip}>GET</span>
+        {view ? (
+          <span className={styles.methodChip}>{view.method.toUpperCase()}</span>
+        ) : null}
         <span className={styles.url}>
-          <span className={styles.urlDomain}>api.github.com</span>
-          <span className={styles.urlPath}>/user</span>
+          {view ? (
+            <>
+              <span className={styles.urlDomain}>{view.host ?? ''}</span>
+              <span className={styles.urlPath}>{view.path ?? ''}</span>
+            </>
+          ) : (
+            <span className={styles.urlDomain}>Select a request to inspect.</span>
+          )}
         </span>
-        <StatusBadge>200 OK</StatusBadge>
+        {view && view.statusCode !== undefined ? (
+          <StatusBadge tone={statusTone(view.statusCode)}>{statusText}</StatusBadge>
+        ) : null}
       </div>
 
       <div className={styles.tabs}>
@@ -68,38 +153,34 @@ export function RequestInspector(): React.JSX.Element {
         {tab === 'headers' ? (
           <div className={styles.panel}>
             <Section title="General">
-              <Kv
-                rows={[
-                  ['Request URL', 'https://api.github.com/user'],
-                  ['Request Method', 'GET', 'a'],
-                  ['Status Code', '200 OK', 'g'],
-                  ['Remote Address', '140.82.112.3:443'],
-                  ['Protocol', 'HTTP/2 · TLS 1.3'],
-                  ['Referrer Policy', 'strict-origin-when-cross-origin'],
-                ]}
-              />
+              {view ? (
+                <Kv
+                  rows={[
+                    ['Request URL', url],
+                    ['Request Method', view.method.toUpperCase(), 'a'],
+                    ['Status Code', statusText, view.statusCode && view.statusCode < 400 ? 'g' : undefined],
+                    ['Protocol', protocolLabel(view.protocol).toUpperCase()],
+                    ['Host', view.host ?? '—'],
+                    ['Duration', timeLabel(view)],
+                  ]}
+                />
+              ) : (
+                <div className={styles.empty}>Select a request to inspect.</div>
+              )}
             </Section>
-            <Section title="Response Headers" count={12}>
-              <Kv
-                rows={[
-                  ['cache-control', 'private, max-age=60, s-maxage=60'],
-                  ['content-encoding', 'gzip'],
-                  ['content-type', 'application/json; charset=utf-8'],
-                  ['date', 'Fri, 10 Jul 2026 12:00:00 GMT'],
-                  ['server', 'GitHub.com'],
-                  ['strict-transport-security', 'max-age=31536000; includeSubDomains'],
-                ]}
-              />
+            <Section title="Response Headers" count={responseHeaders.length}>
+              {responseHeaders.length ? (
+                <Kv rows={headersToRows(responseHeaders)} />
+              ) : (
+                <div className={styles.empty}>No response headers captured.</div>
+              )}
             </Section>
-            <Section title="Request Headers" count={8}>
-              <Kv
-                rows={[
-                  ['accept', 'application/vnd.github.v3+json'],
-                  ['accept-encoding', 'gzip, deflate, br'],
-                  ['authorization', 'Bearer github_pat_11A…', 'a'],
-                  ['user-agent', 'Interceptor/1.0.0 (macOS; arm64)'],
-                ]}
-              />
+            <Section title="Request Headers" count={requestHeaders.length}>
+              {requestHeaders.length ? (
+                <Kv rows={headersToRows(requestHeaders)} />
+              ) : (
+                <div className={styles.empty}>No request headers captured.</div>
+              )}
             </Section>
           </div>
         ) : null}
@@ -107,96 +188,73 @@ export function RequestInspector(): React.JSX.Element {
         {tab === 'request' ? (
           <div className={styles.panel}>
             <Section title="Request line">
-              <Kv
-                rows={[
-                  ['Method', 'GET', 'a'],
-                  ['Path', '/user'],
-                  ['Version', 'HTTP/2'],
-                  ['Scheme', 'https', 'g'],
-                ]}
-              />
+              {view ? (
+                <Kv
+                  rows={[
+                    ['Method', view.method.toUpperCase(), 'a'],
+                    ['Path', view.path ?? '/'],
+                    ['Version', protocolLabel(view.protocol).toUpperCase()],
+                    ['Scheme', scheme, 'g'],
+                  ]}
+                />
+              ) : (
+                <div className={styles.empty}>Select a request to inspect.</div>
+              )}
             </Section>
-            <Section title="Query String Parameters" count={0}>
-              <div className={styles.empty}>No query parameters on this request.</div>
+            <Section title="Query String Parameters" count={queryRows(url).length}>
+              {queryRows(url).length ? (
+                <Kv rows={queryRows(url)} />
+              ) : (
+                <div className={styles.empty}>No query parameters on this request.</div>
+              )}
             </Section>
             <Section title="Request Payload">
-              <div className={styles.empty}>GET requests carry no body.</div>
+              {detail?.requestBody ? (
+                <BodyView body={detail.requestBody} />
+              ) : (
+                <div className={styles.empty}>This request carries no body.</div>
+              )}
             </Section>
           </div>
         ) : null}
 
         {tab === 'response' ? (
           <div className={styles.panel}>
-            <Section title="Body" count="application/json · 1.2 KB">
-              <div className={styles.body}>
-                {'{'}
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;login&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonString}>&quot;octocat&quot;</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;id&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonNumber}>583231</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;type&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonString}>&quot;User&quot;</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;name&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonString}>&quot;The Octocat&quot;</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;company&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonString}>&quot;@github&quot;</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;location&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonString}>&quot;San Francisco&quot;</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;public_repos&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonNumber}>8</span>
-                <span className={styles.jsonPunct}>,</span>
-                <br />
-                &nbsp;&nbsp;<span className={styles.jsonKey}>&quot;followers&quot;</span>
-                <span className={styles.jsonPunct}>:</span>{' '}
-                <span className={styles.jsonNumber}>9999</span>
-                <br />
-                {'}'}
-              </div>
+            <Section
+              title="Body"
+              count={
+                detail?.responseBody
+                  ? `${typeLabel(view?.responseMime)} · ${sizeLabel(view?.responseBytes ?? 0)}`
+                  : undefined
+              }
+            >
+              {detail?.responseBody ? (
+                <BodyView body={detail.responseBody} />
+              ) : (
+                <div className={styles.empty}>No response body captured.</div>
+              )}
             </Section>
           </div>
         ) : null}
 
         {tab === 'timing' ? (
           <div className={styles.panel}>
-            <Section title="Timing" count="142 ms total">
-              <div className={styles.timeline}>
-                {[
-                  ['Stalled', '2 ms', 0, 2],
-                  ['DNS lookup', '8 ms', 2, 6],
-                  ['Initial connection', '20 ms', 8, 14],
-                  ['SSL / TLS', '18 ms', 22, 13],
-                  ['Request sent', '1 ms', 35, 1.5],
-                  ['Waiting (TTFB)', '69 ms', 36, 48],
-                  ['Content download', '24 ms', 84, 16],
-                ].map(([label, ms, left, width], index) => (
-                  <div key={index} className={styles.timelineRow}>
-                    <span className={styles.timelineLabel}>{label}</span>
-                    <span className={styles.timelineTime}>{ms}</span>
-                    <span className={styles.timelineBar}>
-                      <i style={{ left: `${left}%`, width: `${width}%` }} />
-                    </span>
-                  </div>
-                ))}
+            <Section title="Timing" count={view ? timeLabel(view) : undefined}>
+              {view ? (
+                <Kv
+                  rows={[
+                    ['Started', new Date(view.startedAt).toISOString()],
+                    ['Total', timeLabel(view)],
+                    ['Request bytes', sizeLabel(view.requestBytes)],
+                    ['Response bytes', sizeLabel(view.responseBytes)],
+                  ]}
+                />
+              ) : (
+                <div className={styles.empty}>Select a request to inspect.</div>
+              )}
+              <div className={styles.empty}>
+                Per-phase waterfall (DNS, connect, TLS, TTFB) arrives with connection
+                instrumentation in a later milestone.
               </div>
             </Section>
           </div>
@@ -204,24 +262,19 @@ export function RequestInspector(): React.JSX.Element {
 
         {tab === 'cookies' ? (
           <div className={styles.panel}>
-            <Section title="Request Cookies" count={2}>
-              <Kv
-                rows={[
-                  ['_device_id', '8f2a9c1b4e…'],
-                  ['logged_in', 'yes', 'g'],
-                ]}
-              />
+            <Section title="Request Cookies" count={requestCookieRows(requestHeaders).length}>
+              {requestCookieRows(requestHeaders).length ? (
+                <Kv rows={requestCookieRows(requestHeaders)} />
+              ) : (
+                <div className={styles.empty}>No request cookies.</div>
+              )}
             </Section>
-            <Section title="Response Cookies" count={1}>
-              <Kv
-                rows={[
-                  ['_gh_sess', 'VszN7pQ…9Qb2'],
-                  ['Domain', '.github.com'],
-                  ['Path', '/'],
-                  ['Expires', 'Session'],
-                  ['Flags', 'HttpOnly · Secure · SameSite=Lax', 'a'],
-                ]}
-              />
+            <Section title="Response Cookies" count={responseCookieRows(responseHeaders).length}>
+              {responseCookieRows(responseHeaders).length ? (
+                <Kv rows={responseCookieRows(responseHeaders)} />
+              ) : (
+                <div className={styles.empty}>No response cookies.</div>
+              )}
             </Section>
           </div>
         ) : null}
@@ -229,42 +282,23 @@ export function RequestInspector(): React.JSX.Element {
         {tab === 'tls' ? (
           <div className={styles.panel}>
             <Section title="Secure connection">
-              <Kv
-                rows={[
-                  ['Protocol', 'TLS 1.3', 'g'],
-                  ['Cipher suite', 'TLS_AES_128_GCM_SHA256'],
-                  ['Key exchange', 'X25519'],
-                  ['ALPN', 'h2'],
-                  ['SNI', 'api.github.com'],
-                ]}
-              />
+              {!view ? (
+                <div className={styles.empty}>Select a request to inspect.</div>
+              ) : view.secure ? (
+                <Kv
+                  rows={[
+                    ['Scheme', scheme, 'g'],
+                    ['Host', view.host ?? '—'],
+                  ]}
+                />
+              ) : (
+                <div className={styles.empty}>This exchange was sent over plaintext HTTP.</div>
+              )}
             </Section>
-            <Section title="Certificate chain" count={3}>
-              <div className={styles.certs}>
-                <div className={styles.cert}>
-                  <Lock size={16} strokeWidth={2.2} />
-                  <span className={styles.certInfo}>
-                    <b>api.github.com</b>
-                    <span>SAN *.github.com · valid to 2027-02-11</span>
-                  </span>
-                  <span className={styles.certChain}>leaf</span>
-                </div>
-                <div className={styles.cert}>
-                  <Shield size={16} strokeWidth={1.9} />
-                  <span className={styles.certInfo}>
-                    <b>DigiCert TLS Hybrid ECC SHA384 2020 CA1</b>
-                    <span>intermediate · issued by DigiCert Global Root</span>
-                  </span>
-                  <span className={styles.certChain}>CA</span>
-                </div>
-                <div className={styles.cert}>
-                  <Shield size={16} strokeWidth={1.9} />
-                  <span className={styles.certInfo}>
-                    <b>DigiCert Global Root CA</b>
-                    <span>root · trusted in system store</span>
-                  </span>
-                  <span className={styles.certChain}>root</span>
-                </div>
+            <Section title="Certificate chain">
+              <div className={styles.empty}>
+                TLS handshake and certificate inspection become available after enabling
+                HTTPS decryption.
               </div>
             </Section>
           </div>

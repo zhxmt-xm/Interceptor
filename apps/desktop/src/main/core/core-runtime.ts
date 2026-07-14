@@ -13,6 +13,7 @@ import {
   type CoreResultForCommand,
   type MainToCoreMessage,
 } from '@interceptor/core-protocol';
+import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
 import {
@@ -63,6 +64,7 @@ export class CoreRuntime {
   private readonly now: () => number;
   private readonly coreProcessStatusListeners =
     new Set<CoreProcessStatusListener>();
+  private readonly coreProcessReadyListeners = new Set<() => void>();
 
   private coreProcess: CoreProcessHandle | null = null;
   private coreProcessHeartbeatTimeoutTimer:
@@ -128,6 +130,23 @@ export class CoreRuntime {
   }
 
   /**
+   * 注册实时捕获事件监听器（跨 CoreProcess 重启持续）；由内部 CoreRpcClient 收批 + 自动 ack。
+   * 调用方：DesktopApplication.onReady 向 Renderer 广播捕获事件。
+   */
+  onCaptureEvents(listener: (events: CaptureExchangeEvent[]) => void): void {
+    this.coreRpcClient.onCaptureEvents(listener);
+  }
+
+  /**
+   * 注册 CoreProcess 就绪监听器（每代 CoreProcess 收到 ready 时触发一次），
+   * 用于在新 Core 启动后下发 TLS 配置等初始化。调用方：DesktopApplication。
+   */
+  onCoreProcessReady(listener: () => void): () => void {
+    this.coreProcessReadyListeners.add(listener);
+    return () => this.coreProcessReadyListeners.delete(listener);
+  }
+
+  /**
    * 将 CoreProcess 目标状态设为运行，取消残留重启计时并启动一代 CoreProcess。
    * 调用方：DesktopApplication.onReady；目标已是运行且 CoreProcess 存在时返回。
    */
@@ -180,6 +199,7 @@ export class CoreRuntime {
       });
     } finally {
       this.coreProcessStatusListeners.clear();
+      this.coreProcessReadyListeners.clear();
     }
   }
 
@@ -220,7 +240,10 @@ export class CoreRuntime {
   protected launchCoreProcess(): CoreProcessHandle {
     const launchedCoreProcess = utilityProcess.fork(
       this.resolveCoreProcessEntry(),
-      [],
+      [
+        `--data-dir=${this.resolveStorageDirectory()}`,
+        `--app-version=${app.getVersion()}`,
+      ],
       {
         serviceName: 'Interceptor Proxy Core',
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -348,6 +371,13 @@ export class CoreRuntime {
       detail: null,
     });
     this.armCoreProcessHeartbeatTimeout(coreProcess);
+
+    // 每代 CoreProcess 首个 ready 后通知监听器下发初始化（如 TLS 配置）。
+    if (coreProcessLifecycleMessage.type === 'ready') {
+      for (const listener of this.coreProcessReadyListeners) {
+        listener();
+      }
+    }
   }
 
   /**
@@ -514,6 +544,14 @@ export class CoreRuntime {
       app.getAppPath(),
       '../proxy-core/dist/proxy-core/entry.cjs',
     );
+  }
+
+  /**
+   * 解析 CoreProcess 存储根目录（capture.sqlite 与 blobs/ 的父目录）。
+   * 调用方：launchCoreProcess 通过 --data-dir fork 参数注入 Core。
+   */
+  private resolveStorageDirectory(): string {
+    return path.join(app.getPath('userData'), 'storage');
   }
 
   /**

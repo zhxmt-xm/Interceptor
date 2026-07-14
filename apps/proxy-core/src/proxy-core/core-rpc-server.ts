@@ -1,6 +1,7 @@
 import {
   CORE_PROTOCOL_VERSION,
   parseMainToCoreMessage,
+  type CaptureExchangeEvent,
   type CoreCommand,
   type CoreError,
   type CoreRequest,
@@ -46,6 +47,8 @@ interface CoreRpcServerOptions {
   diagnostics: CoreDiagnostics;
   now?: () => number;
   onFatalError?: (reason: string) => void;
+  /** 收到订阅端 event-ack 时回调，供背压窗口退回。 */
+  onEventAck?: (batchSequence: number) => void;
 }
 
 interface ActiveRequest {
@@ -66,7 +69,9 @@ export class CoreRpcServer {
   private readonly diagnostics: CoreDiagnostics;
   private readonly now: () => number;
   private readonly onFatalError: (reason: string) => void;
+  private readonly onEventAck: (batchSequence: number) => void;
   private connection: RpcConnection | null = null;
+  private eventBatchSequence = 0;
 
   /**
    * 固定 command handler、Diagnostics、时间源和 fatal 回调。
@@ -77,6 +82,7 @@ export class CoreRpcServer {
     this.diagnostics = options.diagnostics;
     this.now = options.now ?? Date.now;
     this.onFatalError = options.onFatalError ?? (() => undefined);
+    this.onEventAck = options.onEventAck ?? (() => undefined);
   }
 
   /**
@@ -143,6 +149,11 @@ export class CoreRpcServer {
         parsed.value.requestId,
         parsed.value.reason,
       );
+      return;
+    }
+
+    if (parsed.value.kind === 'event-ack') {
+      this.onEventAck(parsed.value.batchSequence);
       return;
     }
 
@@ -307,6 +318,32 @@ export class CoreRpcServer {
       ok: false,
       error,
     });
+  }
+
+  /**
+   * 当前是否存在可用订阅连接。调用方：CoreApplication 在 drain 前判断，避免取走无法发送的事件。
+   */
+  get hasActiveConnection(): boolean {
+    return this.connection !== null;
+  }
+
+  /**
+   * 向当前订阅连接推送一批捕获事件；无连接、空批或发送失败返回 null。
+   * 调用方：CoreApplication 的事件 flush；返回的 batchSequence 供背压窗口与 ack 对账。
+   */
+  sendEventBatch(events: readonly CaptureExchangeEvent[]): number | null {
+    const connection = this.connection;
+    if (!connection || events.length === 0) {
+      return null;
+    }
+    const batchSequence = ++this.eventBatchSequence;
+    const delivered = this.send(connection, {
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence,
+      events: [...events],
+    });
+    return delivered ? batchSequence : null;
   }
 
   /**

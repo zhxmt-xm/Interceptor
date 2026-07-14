@@ -73,10 +73,25 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     expect(securitySnapshot).toEqual({
       apiKeys: [
+        'clearStorage',
         'echoCore',
+        'generateCertificate',
+        'getCaptureStatus',
+        'getCertificateStatus',
         'getCoreProcessStatus',
         'getCoreTrace',
+        'getExchangeDetail',
+        'getInsecureHosts',
+        'getStorageStatus',
+        'installCertificate',
+        'onCaptureEvents',
         'onCoreProcessStatusChange',
+        'querySessions',
+        'readBody',
+        'setInsecureHosts',
+        'startCapture',
+        'stopCapture',
+        'uninstallCertificate',
       ],
       hasNodeProcess: 'undefined',
       hasNodeRequire: 'undefined',
@@ -164,6 +179,32 @@ test('packaged app starts with an isolated renderer and running core', async ({
       window.interceptor.echoCore('m1-restarted-port'),
     );
     expect(restartedEcho.value).toBe('m1-restarted-port');
+
+    // M2 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → StorageService →
+    // Storage Worker 线程 → node:sqlite 打开磁盘上的 capture.sqlite。
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const status = await window.interceptor.getStorageStatus();
+            return status.quotaBytes;
+          }),
+        { message: 'Storage status was unavailable', timeout: 10_000 },
+      )
+      .toBeGreaterThan(0);
+    const storageQuota = await page.evaluate(
+      () => window.interceptor.getStorageStatus(),
+    );
+    expect(storageQuota.quotaBytes).toBeGreaterThan(0);
+    expect(storageQuota.databaseBytes).toBeGreaterThan(0);
+
+    // 清空后存储应为空，验证 cleanup 全链路（不依赖运行前是否有残留数据）。
+    const clearedStorage = await page.evaluate(() =>
+      window.interceptor.clearStorage(),
+    );
+    expect(clearedStorage.sessionCount).toBe(0);
+    expect(clearedStorage.exchangeCount).toBe(0);
+    expect(clearedStorage.bodyCount).toBe(0);
 
     await page.getByRole('button', { name: 'Theme' }).click();
     await page.getByRole('button', { name: 'Light', exact: true }).click();

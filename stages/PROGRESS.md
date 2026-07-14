@@ -1,8 +1,7 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-14
+> 最后更新：2026-07-15
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
-
 ## 文档导航
 
 - [HANDOVER.md](HANDOVER.md)：新 Session/Agent 的当前接棒入口，包含工作树、代码位置、剩余任务和恢复命令。
@@ -17,14 +16,15 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座（均 100%）。
-- 当前 Stage：M2 存储层（进行中；T2.0 Renderer UI baseline 已落地，存储层 T2.1–T2.6 未开始）。
-- 当前任务：T2.0 M0/M1 Renderer design baseline —— 六视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、扁平组件库、四套时段主题（light/warm/dark/ember）与侧栏底部主题/语言切换器已按 `design/app` 落地，typecheck 通过；完整 screenshot/package smoke/parity 验收待跑。
-- 下一动作：跑 T2.0 完整视觉/打包验收（四主题 screenshot、1280×800 与 900×600 package smoke、parity），通过后进入 T2.1 SQLite schema + migration。
-- Git 状态：M1 基线提交为 `b923117`；当前分支包含进入 M2 前的 Core 子进程根对象简化，以及尚未提交的 M2/T2.0 Renderer UI baseline。
+- 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座、M2 存储层、M3 最小显式代理（HTTP/1.1）、M4 会话列表 UI、M5 CA 与 HTTPS MITM（均 100%）。
+- 当前 Stage：M6 HTTP/2（未开始）。
+- 当前任务：M5 已收官。CA 管理归 Main（`@peculiar/x509` 生成 RSA/SHA-256 Root CA + Electron `safeStorage` DPAPI/Keychain 加密私钥，懒加载证书库避免阻塞启动），经内部 `tls.configure` 命令单向下发 Core；Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM，仅当 CA 已安装信任时才启用，解密 HTTPS Exchange 复用现有捕获管线；`TrustStoreService`（Windows certutil / macOS security）current-user 安装/卸载/检测；per-host 不安全例外经 `ignoreHostHttpsErrors` 生效；Settings/Certificates 面板接真实数据。
+- 下一动作：进入 M6，实现 HTTP/2 下游/上游、四组协议转换、stream 建模与 Inspector 增量。
+- 打包方案已落地：Mockttp 含 WASM（brotli-wasm）与原生插件（tls-impersonate 的 .node），esbuild 以 `--external:mockttp` 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷把依赖闭包随包发（`resources/proxy-core/node_modules`）；packaged smoke 验证 Core 用隔离闭包成功加载 mockttp，`npm audit --omit=dev` 0 漏洞。
+- Git 状态：M1 基线提交为 `b923117`；当前分支包含尚未提交的 M2 存储层、M3 代理与捕获事件管线、M4 会话列表 UI 全量实现（Mockttp + 打包脚本 + `proxy/`、`storage/`、`diagnostics/` 模块 + `features/capture/` 数据层与组件重写 + `@tanstack/*`、`zustand`、CodeMirror 依赖）。
 - 阻塞：无。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M2.md](M2.md)。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M5.md](M5.md)（下一 Stage 见 [M6.md](M6.md)）。
 
 ## Stage 总览
 
@@ -32,10 +32,10 @@
 | --- | --- | --- | ---: | --- |
 | M0 | 项目脚手架与工具链 | 已完成 | 100% | [M0.md](M0.md) |
 | M1 | IPC 通信基座 | 已完成 | 100% | [M1.md](M1.md) |
-| M2 | 存储层 | 进行中 | ~10% | [M2.md](M2.md) |
-| M3 | 最小显式代理（HTTP/1.1） | 未开始 | 0% | [M3.md](M3.md) |
-| M4 | 会话列表 UI | 未开始 | 0% | [M4.md](M4.md) |
-| M5 | CA 与 HTTPS MITM | 未开始 | 0% | [M5.md](M5.md) |
+| M2 | 存储层 | 已完成 | 100% | [M2.md](M2.md) |
+| M3 | 最小显式代理（HTTP/1.1） | 已完成 | 100% | [M3.md](M3.md) |
+| M4 | 会话列表 UI | 已完成 | 100% | [M4.md](M4.md) |
+| M5 | CA 与 HTTPS MITM | 已完成 | 100% | [M5.md](M5.md) |
 | M6 | HTTP/2 | 未开始 | 0% | [M6.md](M6.md) |
 | M7 | 规则引擎 | 未开始 | 0% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 未开始 | 0% | [M8.md](M8.md) |
@@ -62,9 +62,13 @@
 - Main/Core 正式业务通信使用 CoreRuntime 每次启动 CoreProcess 时转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
 - Core 结构化 Command/Action Trace、`AsyncLocalStorage`、有界 Ring Buffer、脱敏和 stdout/stderr 后备已实现；日志数据库留在 M2。
 - Renderer 通过窄 API 可读取 CoreProcess 状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
-- Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地（T2.0，完整验收待跑）。
-- Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke 和生产依赖审计链已建立。
-- HTTP 捕获、持久化存储、CA、规则和真实会话 UI 均未实现。
+- Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地。
+- 存储层已落地：`node:sqlite` + `worker_threads` 的 Capture（`capture.sqlite`，八张核心实体表 + FTS5 + 只向前迁移）与 Diagnostics（`diagnostics.sqlite`，保留 + 丢弃计数 + 分页）双库、独占连接的 Storage/Diagnostics Worker、内容寻址 Blob Store（流式 + 去重 + 配额 + crash-safe GC）、keyset opaque cursor 分页查询，以及 Storage 状态/清空窄 API 与 Storage 设置面板。数据目录由 Main 经 `--data-dir` 注入 Core。
+- HTTP/1.1 显式代理已落地（M3）：基于 Mockttp 的 loopback 显式代理经 `proxy.start/stop/status` 控制，转发 HTTP/1.1、未解密时 CONNECT 直通；规范 Exchange（含请求/响应头与内容寻址正文 Blob）写入 Storage。实时 Capture 事件经 Core 内有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`），Main 订阅后经 `capture:events` 广播 Renderer。
+- 会话列表 UI 已落地（M4）：Capture 工作区数据驱动——TanStack Virtual 固定行高虚拟化列表 + Zustand 视图状态（实时事件按 id 合并/前插、keyset 分页查询、客户端协议分段过滤），Omnibox 关键字搜索与 method/status/host 结构化过滤下推 Core `sessions.query`，录制开关经 `proxy.start/stop`；Inspector 选中行按需 `sessions.detail` 拉取头部/正文引用，正文经 `body.read-range` 分块用 CodeMirror（JSON 高亮）或 hex fallback 预览（256KB 上限）。body/header 不进入全局状态。
+- HTTPS MITM 与 CA 已落地（M5）：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage` 加密私钥（懒加载证书库）；`TrustStoreService` 做 current-user 信任库安装/卸载/检测（certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp MITM 解密 HTTPS（仅信任后启用）并复用现有捕获管线；per-host 不安全例外、Settings/Certificates 面板接真实数据。私钥绝不进 Renderer。
+- Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke（含存储全链路 + 窄 API 面）和生产依赖审计链已建立。
+- HTTP/2、规则、系统代理、导入导出均未实现（M6 起接入）。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -81,6 +85,8 @@ M0 历史验收已覆盖：
 - Dev 冷启动、Renderer HMR、ASAR/CSP/Fuses 和进程清理。
 
 2026-07-13 M1 阶段完成后进行了可读性复核：删除重复的主动 health-check、业务 Health subscription、占位 EventBatchQueue 和 channel handshake；Main 收敛为 `DesktopApplication / CoreRuntime`，Core 子进程收敛为单一 `CoreApplication`，RPC client/server 与 Diagnostics 保留为内部状态机。最新简化通过根 typecheck、8 files / 44 tests、Windows package、真实 packaged smoke 和文档检查；生产依赖未变化，详情见 [M1.md](M1.md)。
+
+2026-07-14 M2 存储层完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 82 passed（Desktop 21、Proxy Core 55、Core Protocol 6），含 capture/blob/diagnostics store、worker host 假通道、真实 worker 线程集成和 10 万行分页稳定性；`npm run package` + `npm run test:smoke` 真实 exe 通过并端到端验证存储栈（真实 Storage Worker 用 `node:sqlite` 落盘 `capture.sqlite`，`getStorageStatus`/`clearStorage` 正常，`window.interceptor` 仅 6 个意图 API）；`npm audit --omit=dev` 0 vulnerabilities（未新增生产依赖）；`git diff --check` 干净。详情见 [M2.md](M2.md)。
 
 ## 更新规则
 

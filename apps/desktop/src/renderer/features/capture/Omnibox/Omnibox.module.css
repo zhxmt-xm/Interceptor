@@ -50,6 +50,19 @@
   color: var(--text-3);
   font-size: 12.5px;
 }
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.input::placeholder {
+  color: var(--text-3);
+}
 .filterButton {
   display: grid;
   place-items: center;

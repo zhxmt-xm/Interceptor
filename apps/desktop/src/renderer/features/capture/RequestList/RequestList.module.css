@@ -53,3 +53,26 @@
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
 }
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+}
+.viewport {
+  position: relative;
+  width: 100%;
+}
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  color: var(--text-3);
+  font-size: 13px;
+  text-align: center;
+}
+.segmented span {
+  user-select: none;
+}
