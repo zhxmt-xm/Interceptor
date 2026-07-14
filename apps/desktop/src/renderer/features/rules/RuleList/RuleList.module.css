@@ -1,0 +1,19 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--filter);
+  border-bottom: 1px solid var(--border);
+}
+.grow {
+  flex: 1;
+}

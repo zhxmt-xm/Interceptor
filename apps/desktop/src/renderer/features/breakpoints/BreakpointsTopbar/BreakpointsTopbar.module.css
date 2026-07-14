@@ -1,0 +1,11 @@
+.count {
+  margin-left: 4px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.breakLabel {
+  margin-right: 6px;
+}

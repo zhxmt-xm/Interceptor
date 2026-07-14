@@ -18,10 +18,10 @@
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
 - 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座（均 100%）。
-- 当前 Stage：M2 存储层（0%，尚未开始）。
-- 当前任务：T2.0 M0/M1 Renderer design baseline。
-- 下一动作：按 `design/app` 一对一重构现有 Shell、Capture 空态、Inspector 占位、Appearance/主题、禁用控制和真实 CoreProcessStatus；只呈现 M0/M1 已有真实能力，完成后进入 T2.1 SQLite schema + migration。
-- Git 状态：M1 基线提交为 `b923117`；当前分支已包含进入 M2 前的 Core 子进程根对象简化。
+- 当前 Stage：M2 存储层（进行中；T2.0 Renderer UI baseline 已落地，存储层 T2.1–T2.6 未开始）。
+- 当前任务：T2.0 M0/M1 Renderer design baseline —— 六视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、扁平组件库、四套时段主题（light/warm/dark/ember）与侧栏底部主题/语言切换器已按 `design/app` 落地，typecheck 通过；完整 screenshot/package smoke/parity 验收待跑。
+- 下一动作：跑 T2.0 完整视觉/打包验收（四主题 screenshot、1280×800 与 900×600 package smoke、parity），通过后进入 T2.1 SQLite schema + migration。
+- Git 状态：M1 基线提交为 `b923117`；当前分支包含进入 M2 前的 Core 子进程根对象简化，以及尚未提交的 M2/T2.0 Renderer UI baseline。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M2.md](M2.md)。
@@ -32,7 +32,7 @@
 | --- | --- | --- | ---: | --- |
 | M0 | 项目脚手架与工具链 | 已完成 | 100% | [M0.md](M0.md) |
 | M1 | IPC 通信基座 | 已完成 | 100% | [M1.md](M1.md) |
-| M2 | 存储层 | 未开始 | 0% | [M2.md](M2.md) |
+| M2 | 存储层 | 进行中 | ~10% | [M2.md](M2.md) |
 | M3 | 最小显式代理（HTTP/1.1） | 未开始 | 0% | [M3.md](M3.md) |
 | M4 | 会话列表 UI | 未开始 | 0% | [M4.md](M4.md) |
 | M5 | CA 与 HTTPS MITM | 未开始 | 0% | [M5.md](M5.md) |
@@ -62,7 +62,7 @@
 - Main/Core 正式业务通信使用 CoreRuntime 每次启动 CoreProcess 时转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
 - Core 结构化 Command/Action Trace、`AsyncLocalStorage`、有界 Ring Buffer、脱敏和 stdout/stderr 后备已实现；日志数据库留在 M2。
 - Renderer 通过窄 API 可读取 CoreProcess 状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
-- Ant Design v6 应用壳、Traffic/Inspector 占位、亮暗主题、共享工具控件和平台应用图标已完成。
+- Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地（T2.0，完整验收待跑）。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke 和生产依赖审计链已建立。
 - HTTP 捕获、持久化存储、CA、规则和真实会话 UI 均未实现。
 

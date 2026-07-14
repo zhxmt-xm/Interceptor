@@ -1,0 +1,3 @@
+export { CaptureTopbar, type CaptureTopbarProps } from './CaptureTopbar/CaptureTopbar';
+export { CaptureMain } from './CaptureMain/CaptureMain';
+export { CaptureStatusbar } from './CaptureStatusbar/CaptureStatusbar';

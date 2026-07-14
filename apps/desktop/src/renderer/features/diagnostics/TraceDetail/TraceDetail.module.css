@@ -1,0 +1,37 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--panel);
+}
+.top {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.command {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ids {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.idpill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-2);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
+}

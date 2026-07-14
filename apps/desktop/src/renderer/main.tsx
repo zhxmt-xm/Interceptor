@@ -1,5 +1,5 @@
-import '@fontsource-variable/ibm-plex-sans/index.css';
-import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
 import 'antd/dist/reset.css';
 import './styles/global.css';
 

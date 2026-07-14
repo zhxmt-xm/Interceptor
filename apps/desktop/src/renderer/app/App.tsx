@@ -1,38 +1,73 @@
-import styles from './App.module.css';
+import { App as AntApp, ConfigProvider } from 'antd';
+import { useEffect, useState } from 'react';
 
-import {
-  CaretRightOutlined,
-  CodeOutlined,
-  DeleteOutlined,
-  FilterOutlined,
-  FolderOpenOutlined,
-  GlobalOutlined,
-  MoonOutlined,
-  PauseOutlined,
-  SearchOutlined,
-  SendOutlined,
-  SettingOutlined,
-  SunOutlined,
-} from '@ant-design/icons';
-import {
-  App as AntApp,
-  ConfigProvider,
-  Input,
-  Space,
-  Typography,
-} from 'antd';
-import { startTransition, useEffect, useState } from 'react';
-
-import appIconUrl from '../../../assets/interceptor-icon.png';
 import type { CoreProcessStatus } from '../../shared/desktop-api';
+import type { LangId } from '../components';
 import {
-  ToolIconButton,
-  ToolSegmentedControl,
-} from '../components/tool-controls';
-import { TrafficWorkspace } from '../features/traffic/TrafficWorkspace';
+  BreakpointsMain,
+  BreakpointsStatusbar,
+  BreakpointsTopbar,
+} from '../features/breakpoints';
+import { CaptureMain, CaptureStatusbar, CaptureTopbar } from '../features/capture';
+import { ComposerMain, ComposerStatusbar, ComposerTopbar } from '../features/composer';
+import {
+  DiagnosticsMain,
+  DiagnosticsStatusbar,
+  DiagnosticsTopbar,
+} from '../features/diagnostics';
+import { RulesMain, RulesStatusbar, RulesTopbar } from '../features/rules';
+import { SettingsMain, SettingsStatusbar, SettingsTopbar } from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
+import { AppShell } from './AppShell';
+import styles from './App.module.css';
+import { Sidebar, type ViewId } from './Sidebar';
 
-type Workspace = 'capture' | 'rules' | 'composer';
+interface FeatureViews {
+  topbar: React.ReactNode;
+  main: React.ReactNode;
+  statusbar: React.ReactNode;
+}
+
+function renderView(view: ViewId, onMenu: () => void): FeatureViews {
+  switch (view) {
+    case 'capture':
+      return {
+        topbar: <CaptureTopbar onMenu={onMenu} />,
+        main: <CaptureMain />,
+        statusbar: <CaptureStatusbar />,
+      };
+    case 'rules':
+      return {
+        topbar: <RulesTopbar onMenu={onMenu} />,
+        main: <RulesMain />,
+        statusbar: <RulesStatusbar />,
+      };
+    case 'composer':
+      return {
+        topbar: <ComposerTopbar onMenu={onMenu} />,
+        main: <ComposerMain />,
+        statusbar: <ComposerStatusbar />,
+      };
+    case 'settings':
+      return {
+        topbar: <SettingsTopbar onMenu={onMenu} />,
+        main: <SettingsMain />,
+        statusbar: <SettingsStatusbar />,
+      };
+    case 'breakpoints':
+      return {
+        topbar: <BreakpointsTopbar onMenu={onMenu} />,
+        main: <BreakpointsMain />,
+        statusbar: <BreakpointsStatusbar />,
+      };
+    case 'diagnostics':
+      return {
+        topbar: <DiagnosticsTopbar onMenu={onMenu} />,
+        main: <DiagnosticsMain />,
+        statusbar: <DiagnosticsStatusbar />,
+      };
+  }
+}
 
 const initialCoreStatus: CoreProcessStatus = {
   state: 'starting',
@@ -44,25 +79,37 @@ const initialCoreStatus: CoreProcessStatus = {
   detail: 'Connecting to Proxy Core',
 };
 
-const workspaces: Array<{
-  id: Workspace;
-  label: string;
-  icon: React.ReactNode;
-}> = [
-  { id: 'capture', label: 'Traffic', icon: <GlobalOutlined /> },
-  { id: 'rules', label: 'Rules', icon: <CodeOutlined /> },
-  { id: 'composer', label: 'Composer', icon: <SendOutlined /> },
-];
-
 export function App(): React.JSX.Element {
+  const [view, setView] = useState<ViewId>('capture');
+  const [collapsed, setCollapsed] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
-  const [workspace, setWorkspace] = useState<Workspace>('capture');
+  const [lang, setLang] = useState<LangId>(readInitialLang);
   const [coreStatus, setCoreStatus] = useState(initialCoreStatus);
+
+  const toggleCollapse = (): void => setCollapsed((value) => !value);
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
     window.localStorage.setItem('interceptor.theme', themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem('interceptor.lang', lang);
+  }, [lang]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+    // Dev-only hooks so the parity harness can drive the same state the
+    // design SPA exposes via window.__setState.
+    const devWindow = window as Window & {
+      __setTheme?: (mode: ThemeMode) => void;
+      __setView?: (view: ViewId) => void;
+    };
+    devWindow.__setTheme = setThemeMode;
+    devWindow.__setView = setView;
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -72,15 +119,14 @@ export function App(): React.JSX.Element {
       if (!active || next.updatedAt < latestUpdatedAt) {
         return;
       }
-
       latestUpdatedAt = next.updatedAt;
       setCoreStatus(next);
     };
 
-    const unsubscribe = window.interceptor.onCoreProcessStatusChange(applyStatus);
+    const unsubscribe = window.interceptor?.onCoreProcessStatusChange(applyStatus);
 
     void window.interceptor
-      .getCoreProcessStatus()
+      ?.getCoreProcessStatus()
       .then(applyStatus)
       .catch(() => {
         if (active && latestUpdatedAt === initialCoreStatus.updatedAt) {
@@ -95,199 +141,50 @@ export function App(): React.JSX.Element {
 
     return () => {
       active = false;
-      unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
+  const feature = renderView(view, toggleCollapse);
+
   return (
     <ConfigProvider componentSize="small" theme={createAppTheme(themeMode)}>
-      <AntApp className={styles.provider}>
-        <div className={styles.shell}>
-          <header className={styles.topbar} aria-label="Application toolbar">
-            <div className={styles.brand} aria-label="Interceptor">
-              <img className={styles.brandMark} src={appIconUrl} alt="" />
-              <Typography.Text className={styles.brandName}>
-                Interceptor
-              </Typography.Text>
-            </div>
-
-            <div className={styles.captureControls} aria-label="Capture controls">
-              <ToolIconButton
-                label="Start capture"
-                icon={<CaretRightOutlined />}
-                disabled
-              />
-              <ToolIconButton
-                label="Pause capture"
-                icon={<PauseOutlined />}
-                disabled
-              />
-              <ToolIconButton
-                label="Clear sessions"
-                icon={<DeleteOutlined />}
-                disabled
-              />
-            </div>
-
-            <div className={styles.trafficFilterTools} aria-label="Traffic filtering">
-              <Input
-                className={styles.globalFilter}
-                disabled
-                prefix={<SearchOutlined />}
-                placeholder="Find host or URL"
-                aria-label="Search captured traffic"
-              />
-              <ToolIconButton
-                label="Traffic filters"
-                icon={<FilterOutlined />}
-                disabled
-              />
-            </div>
-
-            <Space size={8} className={styles.topbarActions}>
-              <ToolSegmentedControl<ThemeMode>
-                label="Color theme"
-                value={themeMode}
-                onChange={(value) => {
-                  startTransition(() => setThemeMode(value));
-                }}
-                options={[
-                  {
-                    value: 'light',
-                    label: 'Light theme',
-                    icon: <SunOutlined />,
-                  },
-                  {
-                    value: 'dark',
-                    label: 'Dark theme',
-                    icon: <MoonOutlined />,
-                  },
-                ]}
-              />
-              <ToolIconButton
-                label="Settings"
-                icon={<SettingOutlined />}
-                disabled
-              />
-            </Space>
-          </header>
-
-          <div className={styles.workspaceFrame}>
-            <aside className={styles.sidebar}>
-              <div>
-                <div className={styles.sidebarSectionLabel}>Workspace</div>
-                <nav className={styles.workspaceNav} aria-label="Workspaces">
-                  {workspaces.map((item) => (
-                    <button
-                      className={styles.workspaceButton}
-                      data-selected={workspace === item.id}
-                      key={item.id}
-                      onClick={() => setWorkspace(item.id)}
-                      type="button"
-                    >
-                      <span className={styles.workspaceIcon} aria-hidden="true">
-                        {item.icon}
-                      </span>
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </nav>
-
-                <div
-                  className={`${styles.sidebarSectionLabel} ${styles.sidebarSectionGap}`}
-                >
-                  Capture
-                </div>
-                <div className={styles.captureSource} aria-label="Local capture source">
-                  <span className={styles.captureSourceIcon} aria-hidden="true">
-                    <FolderOpenOutlined />
-                  </span>
-                  <span className={styles.captureSourceCopy}>
-                    <span>Local traffic</span>
-                    <code>127.0.0.1</code>
-                  </span>
-                  <span
-                    className={styles.captureSourceDot}
-                    data-state={coreStatus.state}
-                    aria-hidden="true"
-                  />
-                </div>
-              </div>
-
-            </aside>
-
-            <main className={styles.workspaceContent}>
-              {workspace === 'capture' ? (
-                <TrafficWorkspace />
-              ) : (
-                <WorkspacePlaceholder workspace={workspace} />
-              )}
-            </main>
-          </div>
-
-          <StatusBar status={coreStatus} />
-        </div>
+      <AntApp className={styles.antApp}>
+        <AppShell
+          collapsed={collapsed}
+          sidebar={
+            <Sidebar
+              activeView={view}
+              collapsed={collapsed}
+              onSelect={setView}
+              theme={themeMode}
+              onThemeChange={setThemeMode}
+              lang={lang}
+              onLangChange={setLang}
+              coreStatus={coreStatus}
+            />
+          }
+          topbar={feature.topbar}
+          main={feature.main}
+          statusbar={feature.statusbar}
+        />
       </AntApp>
     </ConfigProvider>
   );
 }
 
-function WorkspacePlaceholder({
-  workspace,
-}: {
-  workspace: Exclude<Workspace, 'capture'>;
-}): React.JSX.Element {
-  const title = workspace === 'rules' ? 'Rules' : 'Composer';
-  const icon = workspace === 'rules' ? <CodeOutlined /> : <SendOutlined />;
-
-  return (
-    <section className={styles.placeholderWorkspace} aria-label={title}>
-      <div className={styles.placeholderHeading}>
-        <Typography.Text strong>{title}</Typography.Text>
-      </div>
-      <div className={styles.placeholderEmpty}>
-        <span className={styles.placeholderIcon}>{icon}</span>
-        <span>Empty</span>
-      </div>
-    </section>
-  );
-}
-
-function StatusBar({ status }: { status: CoreProcessStatus }): React.JSX.Element {
-  const running = status.state === 'running';
-
-  return (
-    <footer className={styles.statusbar}>
-      <div className={styles.statusGroup}>
-        <span
-          className={styles.statusDot}
-          data-state={status.state}
-          aria-hidden="true"
-        />
-        <span>Core {formatCoreState(status.state)}</span>
-        {status.pid ? <code>PID {status.pid}</code> : null}
-      </div>
-      <div className={`${styles.statusGroup} ${styles.statusRight}`}>
-        {status.restartCount > 0 ? (
-          <span>Restarts {status.restartCount}</span>
-        ) : null}
-        <span>{running ? 'Process responding' : status.detail ?? 'Initializing'}</span>
-      </div>
-    </footer>
-  );
-}
-
 function readInitialTheme(): ThemeMode {
   const stored = window.localStorage.getItem('interceptor.theme');
-  if (stored === 'light' || stored === 'dark') {
+  if (stored === 'light' || stored === 'dark' || stored === 'warm' || stored === 'ember') {
     return stored;
   }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function formatCoreState(state: CoreProcessStatus['state']): string {
-  return state.charAt(0).toUpperCase() + state.slice(1);
+function readInitialLang(): LangId {
+  const stored = window.localStorage.getItem('interceptor.lang');
+  if (stored === 'en' || stored === 'zh' || stored === 'ja' || stored === 'de') {
+    return stored;
+  }
+  return 'en';
 }

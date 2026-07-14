@@ -12,7 +12,7 @@ const fileUrl = pathToFileURL(path.join(dir, 'index.html')).href;
 const shotsRoot = path.join(dir, 'shots');
 
 const FEATURES = ['capture', 'rules', 'composer', 'settings', 'breakpoints', 'diagnostics'];
-const TOKEN = { light: 'light', dark: 'cool' }; // folder name -> data-theme token
+const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
 
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.

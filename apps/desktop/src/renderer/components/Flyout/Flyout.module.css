@@ -1,0 +1,10 @@
+.flyout {
+  position: fixed;
+  z-index: 1000;
+  width: 194px;
+  padding: 7px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}

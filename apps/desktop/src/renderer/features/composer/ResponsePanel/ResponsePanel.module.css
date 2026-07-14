@@ -1,0 +1,50 @@
+.response {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--panel);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.metric svg {
+  width: 13px;
+  height: 13px;
+  color: var(--text-3);
+}
+.spacer {
+  flex: 1;
+}
+.json {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.75;
+  overflow-y: auto;
+}
+.jsonKey {
+  color: var(--purple);
+}
+.jsonString {
+  color: var(--green);
+}
+.jsonNumber {
+  color: var(--blue);
+}
+.jsonPunct {
+  color: var(--text-3);
+}

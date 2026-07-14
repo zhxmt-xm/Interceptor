@@ -1,0 +1,93 @@
+/* trigger: sidebar row with a globe + language name and trailing code */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.trigger > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.text {
+  min-width: 0;
+}
+.trigger:hover,
+.trigger.open {
+  background: var(--hover);
+  color: var(--text);
+}
+.code {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+.collapsed {
+  justify-content: center;
+  padding: 0;
+}
+.collapsed > svg,
+.collapsed .text {
+  display: none;
+}
+.collapsed .code {
+  margin: 0;
+  color: var(--text-2);
+}
+
+/* popover title */
+.title {
+  padding: 3px 8px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* option rows */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.check {
+  margin-left: auto;
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+  flex: 0 0 auto;
+}

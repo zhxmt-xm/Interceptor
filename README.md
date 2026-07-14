@@ -4,9 +4,9 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 ## Status
 
-M0 (project scaffold and toolchain) and M1 (IPC communication foundation) are complete. The application provides the secure Electron shell, modular Ant Design traffic workspace, managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, and structured in-memory Core diagnostics. Traffic capture and its event backpressure start in later milestones.
+M0 (project scaffold and toolchain) and M1 (IPC communication foundation) are complete, and M2/T2.0 has landed the Renderer UI baseline. The application provides the secure Electron shell, a modular Ant Design UI (six feature views with four time-of-day themes and a sidebar theme/language switcher), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, and structured in-memory Core diagnostics. Traffic capture and its event backpressure start in later milestones.
 
-The next implementation task is M2/T2.0: align the existing M0/M1 Renderer shell and truthful empty states one-to-one with `design/app`, without enabling unavailable product capabilities. M2/T2.1 SQLite schema and migrations follow that baseline. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
+The current task is M2/T2.0: the M0/M1 Renderer shell, six truthful feature views and four themes are aligned one-to-one with `design/app` (typecheck passing); full four-theme screenshot, package smoke and parity verification remain. M2/T2.1 SQLite schema and migrations follow that baseline. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
 
 Documentation is split to keep routine context small:
 
@@ -110,9 +110,9 @@ Changes to these files should update through Vite HMR without restarting Electro
 
 ```text
 apps/desktop/src/renderer/app/App.tsx
-apps/desktop/src/renderer/app/App.module.css
-apps/desktop/src/renderer/features/traffic/TrafficWorkspace.tsx
-apps/desktop/src/renderer/features/traffic/TrafficWorkspace.module.css
+apps/desktop/src/renderer/components/
+apps/desktop/src/renderer/features/capture/
+apps/desktop/src/renderer/features/rules/
 apps/desktop/src/renderer/theme/theme.ts
 apps/desktop/src/renderer/styles/global.css
 ```

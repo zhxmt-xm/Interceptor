@@ -1,0 +1,121 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 66px 92px 62px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+}
+.head {
+  height: 34px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--filter);
+}
+.right {
+  text-align: right;
+}
+.row {
+  height: 46px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.row:hover {
+  background: var(--hover);
+}
+.selected {
+  background: var(--sel);
+}
+.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sel-line);
+}
+.time {
+  color: var(--text-3);
+}
+.command {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.level .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.debug {
+  color: var(--text-3);
+}
+.debug .dot {
+  background: var(--text-3);
+}
+.info {
+  color: var(--blue);
+}
+.info .dot {
+  background: var(--blue);
+}
+.warn {
+  color: var(--yellow);
+}
+.warn .dot {
+  background: var(--yellow);
+}
+.error {
+  color: var(--red);
+}
+.error .dot {
+  background: var(--red);
+}
+.outcome {
+  font-size: 11px;
+}
+.ok {
+  color: var(--green);
+}
+.fail {
+  color: var(--red);
+}
+.cx {
+  color: var(--text-3);
+}
+.to {
+  color: var(--yellow);
+}
+.duration {
+  color: var(--text-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

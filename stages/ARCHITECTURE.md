@@ -54,6 +54,16 @@ flowchart LR
 
 图中的实线是当前已实现路径，虚线 `M2/M3` 是明确的后续注入点，不表示当前已有存储、代理或 Capture Event。
 
+## Renderer UI 架构（M2/T2.0，已落地）
+
+> Renderer 仍只通过 `window.interceptor` 意图 API 访问 Main，不触达 Electron/Node/MessagePort；以下为已实现并 typecheck 通过的 UI 结构，视觉取值以 `design/design-system.md` 为准。
+
+- **App shell**：`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember）与 `lang` state，按 `ViewId` 渲染对应 feature 的 topbar/main/statusbar；`app/AppShell.tsx` 是 Grid 外壳，`app/Sidebar.tsx` 是导航 + 底部主题/语言切换器。
+- **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/`，每个拆成 Topbar/Main/Statusbar 子组件 + colocated CSS Module，一对一还原 `design/app` 对应视图；只呈现 M0/M1 真实 CoreProcessStatus，其余为占位/disabled，真实数据随后续 Stage 接入。
+- **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。
+- **主题**：四套时段主题——`theme/theme.ts` 的 Ant ConfigProvider palette + 算法（light/warm=default、dark/ember=dark），`styles/global.css` 的 `:root[data-theme]` CSS 变量；`App.tsx` 把 `themeMode` 写入 `document.documentElement.dataset.theme` 并持久化 localStorage。
+- **验收**：typecheck 通过；四主题 screenshot、1280×800/900×600 package smoke 与 parity 为 T2.0 收尾项，待跑。
+
 ## 两条独立通道
 
 ### 生命周期通道：`UtilityProcess.parentPort`

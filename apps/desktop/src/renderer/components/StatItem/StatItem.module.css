@@ -1,0 +1,28 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.red {
+  background: var(--red);
+}
+.green {
+  background: var(--green);
+}
+.yellow {
+  background: var(--yellow);
+}
+.push {
+  margin-left: auto;
+}

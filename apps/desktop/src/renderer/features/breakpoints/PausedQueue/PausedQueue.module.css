@@ -1,0 +1,130 @@
+.queue {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--filter);
+  border-bottom: 1px solid var(--border);
+}
+.grow {
+  flex: 1;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 68px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+}
+.row:hover {
+  background: var(--hover);
+}
+.selected {
+  background: var(--sel);
+}
+.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sel-line);
+}
+.dir {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+.dir svg {
+  width: 16px;
+  height: 16px;
+}
+.dir.req {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+}
+.dir.resp {
+  color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+}
+.meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.r1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.name {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--yellow);
+  flex: 0 0 auto;
+}
+.countdown svg {
+  width: 13px;
+  height: 13px;
+}
+.countdownMuted {
+  color: var(--text-3);
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+.status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}

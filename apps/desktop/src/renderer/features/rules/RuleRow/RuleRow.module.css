@@ -1,0 +1,111 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 60px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+}
+.row:hover {
+  background: var(--hover);
+}
+.selected {
+  background: var(--sel);
+}
+.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sel-line);
+}
+.disabled .meta,
+.disabled .chips,
+.disabled .hits {
+  opacity: 0.5;
+}
+.drag {
+  color: var(--text-3);
+  display: flex;
+}
+.drag svg {
+  width: 15px;
+  height: 15px;
+}
+.meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.name {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.match {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chips {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.chip.map {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.chip.remote {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.chip.rewrite {
+  color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 15%, transparent);
+}
+.chip.block {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+.chip.throttle {
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+}
+.chip.brk {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.hits {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

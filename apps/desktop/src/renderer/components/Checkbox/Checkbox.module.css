@@ -1,0 +1,19 @@
+.checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-2);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.checkbox svg {
+  width: 11px;
+  height: 11px;
+}

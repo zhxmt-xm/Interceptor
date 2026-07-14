@@ -19,8 +19,8 @@
 ## 当前状态
 
 - **M0、M1 均已完成（100%）**；M1 正式 MessagePort IPC、Typed Command Schema、Trace 和端到端验证详情见 [M1.md](M1.md)。
-- **当前 Stage 是 M2 存储层（0%，尚未开始）**；从本阶段起按 Server/Contract/Client 三轨记录进度。
-- 下一任务是 **M2/T2.0：M0/M1 Renderer design baseline**；先一对一迁移现有真实能力，完成后再进入 T2.1 SQLite schema + migration。
+- **当前 Stage 是 M2 存储层（进行中）**；从本阶段起按 Server/Contract/Client 三轨记录进度。
+- **当前任务 M2/T2.0：M0/M1 Renderer design baseline —— Renderer UI baseline 已落地**：六视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、扁平组件库、四套时段主题（light/warm 浅、dark/ember 深）与侧栏底部主题/语言切换器均按 `design/app` 一对一实现，typecheck 通过；完整 screenshot/package smoke/parity 验收待跑，通过后进入 T2.1。存储层 T2.1–T2.6 未开始。
 - M1 基线提交为 `b923117`，第一轮对象所有权收敛已提交为 `08690ef`；当前分支已包含进入 M2 前的 Core 子进程根对象进一步简化。新 Session 必须先运行 `git status --short --branch` 和 `git log -1 --oneline`，不要 reset、checkout 或覆盖现有改动。
 - 当前没有真实 Traffic Capture；UI 中 Capture、Search、Filter 和详情相关命令保持 disabled。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。
@@ -31,7 +31,7 @@
 - npm workspaces、严格 TypeScript、Forge/Vite Main/Preload/Renderer 三入口。
 - 安全 BrowserWindow、严格 CSP、可信 Renderer reload、窄 Preload API 和 Electron Fuses。
 - 独立 UtilityProcess Proxy Core 与 CoreRuntime 生命周期、heartbeat 卡死检测、重启和关闭。
-- 模块化 Ant Design v6 Renderer：App shell、Traffic workspace、Inspector、亮暗主题和共享工具控件。
+- 模块化 Ant Design v6 Renderer：App shell、六个 feature workspace、Inspector、四套时段主题（light/warm/dark/ember）+ 侧栏主题/语言切换器和扁平共享组件库。
 - SVG/PNG/ICO/ICNS 应用图标及可重复生成脚本。
 - Vitest 单测、真实 packaged executable 的 Playwright CDP smoke、package 与生产依赖审计流程。
 - M0 详细实现、排障和验证历史已迁入 [M0.md](M0.md)。
@@ -81,13 +81,15 @@
 | 已实现内容 | 代码位置 | 说明 |
 | --- | --- | --- |
 | React 入口 | `apps/desktop/src/renderer/main.tsx` | 加载全局样式并挂载 App |
-| App shell | `apps/desktop/src/renderer/app/App.tsx` | Toolbar、唯一 Traffic 搜索、Filter、主题、Sidebar、workspace、Status Bar |
+| App shell | `apps/desktop/src/renderer/app/App.tsx`、`AppShell.tsx`、`Sidebar.tsx` | 持有 `themeMode`/`lang` state、按 view 渲染六个 feature 的 topbar/main/statusbar、Sidebar 导航 + 底部主题/语言切换器 |
 | App shell 布局 | `apps/desktop/src/renderer/app/App.module.css` | 桌面 Grid、Toolbar/Sidebar/Status 布局和状态视觉 |
-| Traffic workspace | `apps/desktop/src/renderer/features/traffic/TrafficWorkspace.tsx` | Structure/Sequence、列头、Request/Response Tabs 和空状态 |
-| Traffic 样式 | `apps/desktop/src/renderer/features/traffic/TrafficWorkspace.module.css` | Splitter、列表/Inspector 密度和 Tabs 布局 |
-| 共享工具控件 | `apps/desktop/src/renderer/components/tool-controls/` | 图标按钮、模式选择和本地使用规范 |
-| Ant Design 主题 | `apps/desktop/src/renderer/theme/theme.ts` | 全局及 Button/Segmented/Splitter/Tabs Token |
-| 全局样式 | `apps/desktop/src/renderer/styles/global.css` | reset、根颜色变量、字体和 reduced-motion |
+| Capture workspace | `apps/desktop/src/renderer/features/capture/` | 子组件 CaptureTopbar/Omnibox/CaptureMain/RequestList/RequestInspector/CaptureStatusbar，各自 colocated CSS Module |
+| Rules workspace | `apps/desktop/src/renderer/features/rules/` | 子组件 RulesTopbar/RulesMain/RuleList/RuleEditor/RulesStatusbar，各自 colocated CSS Module |
+| 其余 workspace | `apps/desktop/src/renderer/features/{composer,settings,breakpoints,diagnostics}/` | 各含 Topbar/Main/Statusbar，colocated CSS Module；一对一还原 `design/app` 对应视图 |
+| 共享 UI 原子 | `apps/desktop/src/renderer/components/` | 扁平库(每个组件独立子目录含 tsx+module.css)：IconButton/Button/Switch/Select/InputBox/Segmented/Checkbox/Chip/Tabs/FilterChip/Timeline/Splitter/MethodBadge/StatusBadge/SectionHeader/StatItem/Count/MenuItem/Title/NavItem/Flyout + cx/index |
+| 主题 / 语言切换器 | `apps/desktop/src/renderer/components/{ThemeSwitcher,LanguageSwitcher}/` | 侧栏底部控件（取代旧 Account）；Flyout 以按钮为锚 portal 弹出、底边对齐，主题四项 hover 浮现时段山水 |
+| Ant Design 主题 | `apps/desktop/src/renderer/theme/theme.ts` | 四套时段主题 palette（light/warm=default、dark/ember=dark 算法）+ 全局/Button/Segmented/Splitter/Tabs/Tooltip Token |
+| 全局样式 | `apps/desktop/src/renderer/styles/global.css` | reset、四套主题 `:root[data-theme]` tokens、字体和 reduced-motion |
 
 ### 图标与测试
 
@@ -127,7 +129,7 @@
 
 ### M2 当前剩余任务
 
-- T2.0 M0/M1 Renderer design baseline：未开始。
+- T2.0 M0/M1 Renderer design baseline：实现已落地（六视图 + 扁平组件库 + 四套时段主题 + 主题/语言切换器，typecheck 通过），剩完整 screenshot/package smoke/parity 验收。
 - T2.1 SQLite schema + migration：未开始。
 - T2.2 Storage Worker：未开始，依赖 T2.1。
 - T2.3 Content-addressed blob store：未开始，依赖 T2.1。

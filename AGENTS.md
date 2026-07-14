@@ -10,8 +10,8 @@
   3. Reach for Ant Design where its interaction is genuinely hard to rebuild (`Splitter` drag, `Popover`/`Dropdown` positioning, `Tooltip`, `Tabs`, `Segmented`) **and** the design can be matched via props/tokens/slots.
 - Drive colors, spacing, and radii from the shared design tokens (ConfigProvider + `:root[data-theme]`) matching `design/design-system.md` exactly; never hardcode ad-hoc values that drift from the tokens.
 - Do not introduce Tailwind, Less, Sass, or a second design system unless the user explicitly approves a demonstrated need. Vite-native CSS Modules plus the design tokens are the default.
-- Keep global CSS limited to reset, root design variables, typography, and accessibility media queries. Feature and component styles belong in colocated `*.module.css` files.
-- Use the shared tool-control primitives for icon actions and mode selectors. See `apps/desktop/src/renderer/components/tool-controls/README.md`.
+- Keep global CSS limited to reset, root design variables, typography, and accessibility media queries. Feature and component styles belong in colocated `*.module.css` files. Name CSS Module classes semantically after the component or element they style (e.g. `.recording`, `.matchRow`, `.methodChip`), never cryptic abbreviations.
+- Use the shared UI primitives directly under `apps/desktop/src/renderer/components/` (IconButton, Button, Switch, Select, InputBox, MethodBadge, StatusBadge, SectionHeader, StatItem, Count, MenuItem, Splitter, Title, NavItem) for repeated controls, toggles, selectors and rows. Each primitive lives in its own subfolder (`Component/Component.tsx` + `Component.module.css`); extend the library rather than re-implementing a control inside a feature.
 - Use Lucide or the installed Ant Design icon set instead of handwritten inline SVG for controls. Product identity assets may use custom SVG/PNG/ICO/ICNS.
 
 ## Renderer Structure

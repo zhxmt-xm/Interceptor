@@ -20,7 +20,7 @@ design/
 规则:
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
-- 状态统一由 `window.__setState({view,theme,sidebar,overlay,step,tab,pop})` 驱动（`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
+- 状态统一由 `window.__setState({view,theme,sidebar,overlay,step,tab,pop,themeui,langui,lang,pop2})` 驱动（`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`themeui`/`langui`=底部主题/语言切换器变体，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
 

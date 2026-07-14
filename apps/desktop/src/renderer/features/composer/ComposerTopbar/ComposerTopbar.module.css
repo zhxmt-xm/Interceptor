@@ -1,0 +1,6 @@
+.actions {
+  display: flex;
+  gap: 3px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}

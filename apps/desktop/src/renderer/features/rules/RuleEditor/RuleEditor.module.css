@@ -1,0 +1,135 @@
+.editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--panel);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+.matchRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.matchRow {
+  display: grid;
+  grid-template-columns: 128px 116px minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+}
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.labelStart {
+  justify-content: flex-start;
+  color: var(--text-2);
+}
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  margin-top: 10px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.addButton svg {
+  width: 13px;
+  height: 13px;
+}
+.actionCards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.optionRow {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+.optionRow.rewrite {
+  grid-template-columns: 96px 116px minmax(0, 1fr) minmax(0, 1fr);
+}
+.optionRow.keyValue {
+  grid-template-columns: 150px minmax(0, 1fr);
+}
+.validation {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 500;
+}
+.validation svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.popover {
+  position: absolute;
+  top: 60px;
+  right: 18px;
+  z-index: 40;
+  width: 250px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+  padding: 7px;
+}
+.popoverTitle {
+  padding: 7px 9px 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.popoverNote {
+  padding: 9px 10px 3px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.45;
+}

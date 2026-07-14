@@ -1,0 +1,121 @@
+.row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 66px 38px 54px 56px 58px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  height: 52px;
+  font-size: 12.5px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  width: 100%;
+}
+.row:hover {
+  background: var(--hover);
+}
+.selected {
+  background: var(--sel);
+}
+.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sel-line);
+}
+.host {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hostName {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hostName svg {
+  width: 12px;
+  height: 12px;
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+.hostPath {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+.status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.ok {
+  color: var(--green);
+}
+.ok .dot {
+  background: var(--green);
+}
+.warn {
+  color: var(--yellow);
+}
+.warn .dot {
+  background: var(--yellow);
+}
+.err {
+  color: var(--red);
+}
+.err .dot {
+  background: var(--red);
+}
+.info2 {
+  color: var(--blue);
+}
+.info2 .dot {
+  background: var(--blue);
+}
+.proto {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.type {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.size,
+.time {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}

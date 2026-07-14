@@ -6,38 +6,38 @@
 ## 设计语言
 
 - 目标:对标 **Linear / Raycast / Proxyman** 的现代桌面工具——克制、精致、信息密度高但有呼吸感。
-- 深浅双主题:`light`(默认)与 `dark`;`warm`(Claude 暖调)为可选第三套。
-- 主强调色:**靛紫 `--accent`**。语义色(绿/蓝/黄/红)只用于状态,不参与装饰。
+- **四套时段主题**(合起来是一天的流转):`warm`(清晨·赤陶)· `light`(中午·靛紫,默认)· `ember`(傍晚·琥珀)· `dark`(夜晚·青绿)。`light`/`warm` 为浅色,`dark`/`ember` 为深色。
+- 强调色 `--accent` 每主题不同(靛紫 / 青绿 / 赤陶 / 琥珀);语义色(绿/蓝/黄/红)只用于状态,不参与装饰。
 - 图标:统一 **Lucide 线性风格**(stroke 1.9、round cap),`1em` SVG;禁止手绘 inline path 之外的随意图标。
 - 字体:`Inter`(界面) + `JetBrains Mono`(URL、header、数值等技术文本);数值列用 `font-variant-numeric: tabular-nums`。
 
 ## 颜色 Token
 
-三套主题以 CSS 变量表达(设计稿:`.app[data-theme="…"]`;代码:ConfigProvider + `:root[data-theme]`)。
+四套主题以 CSS 变量表达(设计稿:`.app[data-theme="…"]`;代码:ConfigProvider + `:root[data-theme]`)。浅色(light/warm)用 Ant `defaultAlgorithm`,深色(dark/ember)用 `darkAlgorithm`。
 
-| Token | light | dark (cool) | warm |
-| --- | --- | --- | --- |
-| `--bg` | `#ffffff` | `#0c0d11` | `#1b1815` |
-| `--chrome`(顶栏/状态栏) | `#fcfcfb` | `#101116` | `#181410` |
-| `--sidebar` | `#f8f8f6` | `#0d0e13` | `#161310` |
-| `--panel`(Inspector) | `#ffffff` | `#0f1116` | `#1e1a16` |
-| `--panel-2`(输入/段) | `#f1f1ef` | `#171922` | `#26201a` |
-| `--filter`(filter 条) | `#faf9f7` | `#0e0f15` | `#191510` |
-| `--hover` | `rgba(20,20,25,.045)` | `rgba(255,255,255,.045)` | `rgba(240,230,214,.05)` |
-| `--sel`(选中行底) | `rgba(106,91,240,.09)` | `rgba(141,123,255,.14)` | `rgba(224,128,80,.15)` |
-| `--sel-line`(选中条) | `#6a5bf0` | `#8d7bff` | `#e08050` |
-| `--border` | `rgba(20,20,25,.08)` | `rgba(255,255,255,.06)` | `rgba(240,230,214,.08)` |
-| `--border-2` | `rgba(20,20,25,.13)` | `rgba(255,255,255,.11)` | `rgba(240,230,214,.14)` |
-| `--text` | `#1a1b1e` | `#f3f4f8` | `#f4eee3` |
-| `--text-2` | `#5b5e65` | `#a4abbb` | `#bdb4a4` |
-| `--text-3` | `#8b8e96` | `#646b7b` | `#8b8273` |
-| `--accent` | `#6a5bf0` | `#8d7bff` | `#e08050` |
-| `--accent-soft` | `rgba(106,91,240,.1)` | `rgba(141,123,255,.15)` | `rgba(224,128,80,.16)` |
-| `--green` | `#12a150` | `#3ecf8e` | `#93c389` |
-| `--blue` | `#2570e0` | `#5b9dff` | `#84b0cf` |
-| `--yellow` | `#b6820a` | `#f5c451` | `#dcb968` |
-| `--red` | `#e0483a` | `#f26d6d` | `#e28470` |
-| `--purple` | `#8b3fd9` | `#c07cff` | `#c6a3d8` |
+| Token | light(中午) | dark(夜晚) | warm(清晨) | ember(傍晚) |
+| --- | --- | --- | --- | --- |
+| `--bg` | `#ffffff` | `#0c0d11` | `#faf6ef` | `#1b1815` |
+| `--chrome`(顶栏/状态栏) | `#fcfcfb` | `#101116` | `#f5efe6` | `#181410` |
+| `--sidebar` | `#f8f8f6` | `#0d0e13` | `#f2ebe0` | `#161310` |
+| `--panel`(Inspector) | `#ffffff` | `#0f1116` | `#fdfbf7` | `#1e1a16` |
+| `--panel-2`(输入/段) | `#f1f1ef` | `#171922` | `#efe7da` | `#26201a` |
+| `--filter`(filter 条) | `#faf9f7` | `#0e0f15` | `#f7f2ea` | `#191510` |
+| `--hover` | `rgba(20,20,25,.045)` | `rgba(255,255,255,.045)` | `rgba(90,70,40,.05)` | `rgba(240,230,214,.05)` |
+| `--sel`(选中行底) | `rgba(106,91,240,.09)` | `rgba(47,212,184,.13)` | `rgba(194,112,58,.12)` | `rgba(217,154,60,.15)` |
+| `--sel-line`(选中条) | `#6a5bf0` | `#2fd4b8` | `#c2703a` | `#d99a3c` |
+| `--border` | `rgba(20,20,25,.08)` | `rgba(255,255,255,.06)` | `rgba(90,70,40,.10)` | `rgba(240,230,214,.08)` |
+| `--border-2` | `rgba(20,20,25,.13)` | `rgba(255,255,255,.11)` | `rgba(90,70,40,.16)` | `rgba(240,230,214,.14)` |
+| `--text` | `#1a1b1e` | `#f3f4f8` | `#2c2620` | `#f4eee3` |
+| `--text-2` | `#5b5e65` | `#a4abbb` | `#6d6355` | `#bdb4a4` |
+| `--text-3` | `#8b8e96` | `#646b7b` | `#9c917f` | `#8b8273` |
+| `--accent` | `#6a5bf0` | `#2fd4b8` | `#c2703a` | `#d99a3c` |
+| `--accent-soft` | `rgba(106,91,240,.1)` | `rgba(47,212,184,.15)` | `rgba(194,112,58,.12)` | `rgba(217,154,60,.16)` |
+| `--green` | `#12a150` | `#3ecf8e` | `#3f8f4f` | `#93c389` |
+| `--blue` | `#2570e0` | `#5b9dff` | `#3f7fb0` | `#84b0cf` |
+| `--yellow` | `#b6820a` | `#f5c451` | `#b07a1a` | `#dcb968` |
+| `--red` | `#e0483a` | `#f26d6d` | `#cf4b3a` | `#e28470` |
+| `--purple` | `#8b3fd9` | `#c07cff` | `#9a5cc0` | `#c6a3d8` |
 
 语义映射:GET=`--blue`,POST=`--yellow`,DELETE=`--red`;2xx=`--green`,3xx/1xx(info)=`--blue`,4xx=`--yellow`,5xx=`--red`;录制=`--red`,健康/在线=`--green`。
 
@@ -64,7 +64,8 @@
 
 ## 组件规范
 
-- **活动栏(侧栏)**:展开 = 图标 + 文字 + 分组标签(WORKSPACE / SESSION)+ 底部 Settings/Account;折叠 = 纯图标居中。折叠态的 active/在线状态一律用**右上角 7px 圆点 badge**(`::after` 或绝对定位),**不得**用左侧竖条或挤压图标。展开态 active 用 `--accent-soft` 底 + 左侧 3px 竖条。
+- **活动栏（侧栏）**：展开 = 图标 + 文字 + 分组标签（WORKSPACE / SESSION）+ 底部 Settings / Language / Theme；折叠 = 纯图标居中。折叠态的 active/在线状态一律用**右上角 7px 圆点 badge**（`::after` 或绝对定位），**不得**用左侧竖条或挤压图标。展开态 active 用 `--accent-soft` 底 + 左侧 3px 竖条。
+- **主题 / 语言切换器**（侧栏底部，取代旧 Account）：触发行本身是一条 nav——主题展开为「当前时段图标 + Theme + 强调点」、语言为「地球 + Language + 代码」，折叠时主题只留当前时段图标、语言只留代码。点击弹出 **flyout**：以按钮为锚**向右弹出、底边与按钮底边对齐、留一小段水平间隙**，portal 到 `body` 以逃逸侧栏 `overflow`，点击外部 / Esc 关闭。主题 flyout 四项按**一天时序** Warm→Light→Ember→Dark，图标与文字保持中性色；hover 时从右侧浮现该时段的**中式写意山水**（日月循抛物线：晨左低 → 午中高 → 暮右低 → 夜居中；画面内缩留边 + 左侧 `--panel` 渐变保证标签可读），当前主题显示 `--accent` 勾。
 - **Method 徽标**:mono `10.5/600`,`color-mix(field 13–16%, transparent)` 底 + 字段色字,圆角 6。
 - **Status**:`6px` 圆点 + mono `12`,用状态语义色。
 - **omni 搜索/筛选**(顶部,居中 `max 500`):`--panel-2` 底;结构 = search icon → 已激活筛选 **pill**(只显示值如 `GET ×`/`2xx ×`,`--accent-soft` 底 + `--accent` 字 + `accent 30%` 边)→ 文本占位 → **末尾 filter 按钮(漏斗)** 弹出"Add filter"字段菜单(Method/Status/Type/Host/Duration…)。顶栏其余只放全局操作(折叠钮、Recording、info/设置/更多),留足间距。

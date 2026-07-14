@@ -1,0 +1,23 @@
+.filterChip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.filterChip:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.filterChip svg {
+  width: 13px;
+  height: 13px;
+  color: var(--text-3);
+}

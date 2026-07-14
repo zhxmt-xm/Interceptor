@@ -99,7 +99,9 @@ test('packaged app starts with an isolated renderer and running core', async ({
       .toBe('running');
 
     expect(corePid).not.toBeNull();
-    await expect(page.getByText(`PID ${corePid}`)).toBeVisible();
+    await expect(
+      page.getByTitle(`Proxy Core running, PID ${corePid}`),
+    ).toBeVisible();
 
     const echoResult = await page.evaluate(() =>
       window.interceptor.echoCore('m1-message-port'),
@@ -163,10 +165,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
     );
     expect(restartedEcho.value).toBe('m1-restarted-port');
 
-    await page
-      .getByRole('radio', { name: 'Light theme' })
-      .locator('..')
-      .click();
+    await page.getByRole('button', { name: 'Theme' }).click();
+    await page.getByRole('button', { name: 'Light', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.mouse.move(400, 400);
     await expect(page.locator('.ant-tooltip')).toBeHidden();
@@ -175,10 +175,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
       animations: 'disabled',
     });
 
-    await page
-      .getByRole('radio', { name: 'Dark theme' })
-      .locator('..')
-      .click();
+    await page.getByRole('button', { name: 'Theme' }).click();
+    await page.getByRole('button', { name: 'Dark', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.mouse.move(400, 400);
     await expect(page.locator('.ant-tooltip')).toBeHidden();

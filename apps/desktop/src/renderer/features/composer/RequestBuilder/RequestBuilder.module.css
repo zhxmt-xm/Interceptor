@@ -1,0 +1,89 @@
+.builder {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+.urlrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.method {
+  width: 104px;
+  flex: 0 0 auto;
+}
+.url {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+.scheme {
+  color: var(--text-3);
+}
+.subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--filter);
+}
+.protocolLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.spacer {
+  flex: 1;
+}
+.headers {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1.2fr) 30px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 16px;
+}
+.head {
+  height: 30px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+.row {
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+}
+.name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.add .name {
+  color: var(--text-3);
+}
