@@ -1,3 +1,5 @@
+import type { RuleDefinition, RuleSet } from './rules';
+
 export const CORE_PROTOCOL_VERSION = 1 as const;
 export const MAX_BODY_CHUNK_BYTES = 1024 * 1024;
 export const MAX_DIAGNOSTIC_RECORDS = 200;
@@ -50,19 +52,21 @@ export interface SessionsDetailCommand {
 export interface RulesValidateCommand {
   type: 'rules.validate';
   payload: {
-    draftId: string;
-    revision: number;
-    ruleCount: number;
+    rules: RuleDefinition[];
   };
 }
 
 export interface RulesReplaceCommand {
   type: 'rules.replace';
   payload: {
-    draftId: string;
     expectedRevision: number;
-    revision: number;
+    rules: RuleDefinition[];
   };
+}
+
+export interface RulesGetCommand {
+  type: 'rules.get';
+  payload: Record<string, never>;
 }
 
 export interface BreakpointResolveCommand {
@@ -141,6 +145,7 @@ export type CoreCommand =
   | BodyReadRangeCommand
   | RulesValidateCommand
   | RulesReplaceCommand
+  | RulesGetCommand
   | BreakpointResolveCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
@@ -190,7 +195,6 @@ export interface BodyRangeResult {
 export interface RuleValidationResult {
   type: 'rules.validation';
   payload: {
-    draftId: string;
     valid: boolean;
     diagnostics: ProtocolDiagnostic[];
   };
@@ -200,6 +204,13 @@ export interface RuleRevisionResult {
   type: 'rules.revision';
   payload: {
     revision: number;
+  };
+}
+
+export interface RulesRuleSetResult {
+  type: 'rules.ruleset';
+  payload: {
+    ruleSet: RuleSet;
   };
 }
 
@@ -291,6 +302,7 @@ export type CoreResult =
   | BodyRangeResult
   | RuleValidationResult
   | RuleRevisionResult
+  | RulesRuleSetResult
   | BreakpointResolutionResult
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
@@ -323,7 +335,9 @@ export type CoreResultForCommand<T extends CoreCommand> =
                               ? ProxyStatusResult
                               : T extends TlsConfigureCommand
                                 ? TlsConfiguredResult
-                                : never;
+                                : T extends RulesGetCommand
+                                  ? RulesRuleSetResult
+                                  : never;
 
 export interface ProtocolDiagnostic {
   code: string;

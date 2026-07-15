@@ -40,6 +40,7 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'diagnostics.recent': 'diagnostics.records',
   'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',
+  'rules.get': 'rules.ruleset',
   'rules.replace': 'rules.revision',
   'rules.validate': 'rules.validation',
   'sessions.query': 'sessions.page',

@@ -168,7 +168,7 @@ describe('CoreApplication', () => {
 
     await expect(application.executeCommand({
       type: 'rules.validate',
-      payload: { draftId: 'draft-1', revision: 1, ruleCount: 0 },
+      payload: { rules: [] },
     }, new AbortController().signal)).rejects.toMatchObject({
       detail: { code: 'unsupported-command', retryable: false },
     });

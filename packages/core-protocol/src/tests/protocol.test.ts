@@ -28,11 +28,37 @@ describe('core protocol validation', () => {
       },
       {
         type: 'rules.validate',
-        payload: { draftId: 'draft-1', revision: 1, ruleCount: 2 },
+        payload: {
+          rules: [
+            {
+              id: 'rule-1',
+              name: 'Tag API',
+              enabled: true,
+              priority: 100,
+              matchers: [
+                { type: 'host', value: 'api.test', mode: 'exact' },
+                { type: 'method', value: 'GET' },
+              ],
+              actions: [
+                {
+                  type: 'header',
+                  phase: 'request',
+                  op: 'set',
+                  name: 'x-tag',
+                  value: 'on',
+                },
+              ],
+            },
+          ],
+        },
       },
       {
         type: 'rules.replace',
-        payload: { draftId: 'draft-1', expectedRevision: 1, revision: 2 },
+        payload: { expectedRevision: 1, rules: [] },
+      },
+      {
+        type: 'rules.get',
+        payload: {},
       },
       {
         type: 'breakpoint.resolve',
@@ -60,6 +86,77 @@ describe('core protocol validation', () => {
       requestId: 'request-1',
       reason: 'caller',
     }).ok).toBe(true);
+  });
+
+  it('accepts rules.get result and rejects malformed rule definitions', () => {
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-rules',
+      traceId: 'trace-rules',
+      ok: true,
+      result: {
+        type: 'rules.ruleset',
+        payload: {
+          ruleSet: {
+            revision: 3,
+            rules: [
+              {
+                id: 'rule-1',
+                name: 'Block ads',
+                enabled: true,
+                priority: 10,
+                matchers: [
+                  { type: 'host', value: '*.ads.test', mode: 'wildcard' },
+                ],
+                actions: [{ type: 'block', mode: 'reset' }],
+              },
+            ],
+          },
+        },
+      },
+    }).ok).toBe(true);
+
+    const badRule = (
+      matchers: unknown,
+      actions: unknown,
+    ): ReturnType<typeof parseMainToCoreMessage> =>
+      parseMainToCoreMessage({
+        kind: 'request',
+        protocolVersion: CORE_PROTOCOL_VERSION,
+        requestId: 'request-bad',
+        traceId: 'trace-bad',
+        command: {
+          type: 'rules.validate',
+          payload: {
+            rules: [
+              {
+                id: 'rule-x',
+                name: 'Bad',
+                enabled: true,
+                priority: 1,
+                matchers,
+                actions,
+              },
+            ],
+          },
+        },
+      });
+
+    // 未知 matcher 类型被拒绝
+    expect(badRule([{ type: 'nonsense', value: 'x' }], [
+      { type: 'block', mode: 'reset' },
+    ]).ok).toBe(false);
+    // 空 matchers 被拒绝
+    expect(badRule([], [{ type: 'block', mode: 'reset' }]).ok).toBe(false);
+    // 未知 action 类型被拒绝
+    expect(badRule([{ type: 'method', value: 'GET' }], [
+      { type: 'explode' },
+    ]).ok).toBe(false);
+    // 非法 status 范围被拒绝
+    expect(badRule([{ type: 'status', min: 10, max: 20 }], [
+      { type: 'block', mode: 'reset' },
+    ]).ok).toBe(false);
   });
 
   it('accepts every Core-to-Main message family', () => {
@@ -196,7 +293,6 @@ describe('core protocol validation', () => {
       result: {
         type: 'rules.validation',
         payload: {
-          draftId: 'draft-1',
           valid: false,
           diagnostics: [{ code: 'rule.invalid', message: 'Invalid matcher' }],
         },

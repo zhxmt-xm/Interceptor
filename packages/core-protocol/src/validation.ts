@@ -10,6 +10,15 @@ import {
   type DiagnosticLogRecord,
   type MainToCoreMessage,
 } from './messages';
+import {
+  MAX_ACTIONS_PER_RULE,
+  MAX_MATCHERS_PER_RULE,
+  MAX_RULE_BODY_LENGTH,
+  MAX_RULE_ID_LENGTH,
+  MAX_RULE_NAME_LENGTH,
+  MAX_RULE_STRING_LENGTH,
+  MAX_RULES,
+} from './rules';
 
 export type ValidationResult<T> =
   | { ok: true; value: T }
@@ -22,6 +31,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'body.read-range',
   'rules.validate',
   'rules.replace',
+  'rules.get',
   'breakpoint.resolve',
   'diagnostics.recent',
   'diagnostics.query',
@@ -246,6 +256,9 @@ function validateCommand(value: unknown): string | null {
     case 'rules.replace':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateRuleReplacementRequest(value.payload);
+    case 'rules.get':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateRulesGetRequest(value.payload);
     case 'breakpoint.resolve':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBreakpointResolutionRequest(value.payload);
@@ -299,6 +312,9 @@ function validateResult(value: unknown): string | null {
     case 'rules.revision':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateRuleRevision(value.payload);
+    case 'rules.ruleset':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateRulesRuleSetResult(value.payload);
     case 'breakpoint.resolution':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBreakpointResolutionResult(value.payload);
@@ -422,37 +438,228 @@ function validateBodyRangeRequest(value: unknown): string | null {
 }
 
 function validateRuleValidationRequest(value: unknown): string | null {
-  return validateExactObject(
-    value,
-    'command.payload',
-    ['draftId', 'revision', 'ruleCount'],
-    (payload) => validateId(payload.draftId, 'command.payload.draftId') ??
-      validatePositiveSafeInteger(
-        payload.revision,
-        'command.payload.revision',
-      ) ?? validateIntegerRange(
-        payload.ruleCount,
-        'command.payload.ruleCount',
-        0,
-        10_000,
-      ),
-  );
+  return validateExactObject(value, 'command.payload', ['rules'], (payload) =>
+    validateRuleArray(payload.rules, 'command.payload.rules'));
 }
 
 function validateRuleReplacementRequest(value: unknown): string | null {
   return validateExactObject(
     value,
     'command.payload',
-    ['draftId', 'expectedRevision', 'revision'],
-    (payload) => validateId(payload.draftId, 'command.payload.draftId') ??
-      validateNonNegativeSafeInteger(
-        payload.expectedRevision,
-        'command.payload.expectedRevision',
-      ) ?? validatePositiveSafeInteger(
-        payload.revision,
-        'command.payload.revision',
-      ),
+    ['expectedRevision', 'rules'],
+    (payload) => validateNonNegativeSafeInteger(
+      payload.expectedRevision,
+      'command.payload.expectedRevision',
+    ) ?? validateRuleArray(payload.rules, 'command.payload.rules'),
   );
+}
+
+function validateRulesGetRequest(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', [], () => null);
+}
+
+function validateRuleArray(value: unknown, name: string): string | null {
+  if (!Array.isArray(value) || value.length > MAX_RULES) {
+    return `${name} must contain at most ${MAX_RULES} rules`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateRuleDefinition(value[index], `${name}[${index}]`);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateRuleDefinition(value: unknown, name: string): string | null {
+  return validateExactObject(
+    value,
+    name,
+    ['id', 'name', 'enabled', 'priority', 'matchers', 'actions'],
+    (rule) => validateBoundedString(rule.id, `${name}.id`, MAX_RULE_ID_LENGTH) ??
+      validateBoundedString(rule.name, `${name}.name`, MAX_RULE_NAME_LENGTH) ??
+      validateBoolean(rule.enabled, `${name}.enabled`) ??
+      validateIntegerRange(rule.priority, `${name}.priority`, 0, 1_000_000) ??
+      validateRuleMatcherArray(rule.matchers, `${name}.matchers`) ??
+      validateRuleActionArray(rule.actions, `${name}.actions`),
+  );
+}
+
+function validateRuleMatcherArray(value: unknown, name: string): string | null {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > MAX_MATCHERS_PER_RULE
+  ) {
+    return `${name} must contain 1 to ${MAX_MATCHERS_PER_RULE} matchers`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateRuleMatcher(value[index], `${name}[${index}]`);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateRuleMatcher(value: unknown, name: string): string | null {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return `${name}.type must be a string`;
+  }
+  switch (value.type) {
+    case 'method':
+      return validateRecordKeys(value, name, ['type', 'value']) ??
+        validateBoundedString(value.value, `${name}.value`, 64);
+    case 'host':
+    case 'path':
+    case 'url':
+      return validateRecordKeys(value, name, ['type', 'value', 'mode']) ??
+        validateBoundedString(value.value, `${name}.value`, MAX_RULE_STRING_LENGTH) ??
+        validateEnum(value.mode, `${name}.mode`, ['exact', 'wildcard', 'regex']);
+    case 'query':
+      return validateRecordKeys(value, name, ['type', 'key', 'mode', 'value']) ??
+        validateBoundedString(value.key, `${name}.key`, 256) ??
+        validateEnum(value.mode, `${name}.mode`, ['present', 'exact', 'regex']) ??
+        validateOptionalBoundedString(value.value, `${name}.value`, MAX_RULE_STRING_LENGTH);
+    case 'header':
+      return validateRecordKeys(value, name, [
+        'type',
+        'phase',
+        'name',
+        'mode',
+        'value',
+      ]) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateBoundedString(value.name, `${name}.name`, 256) ??
+        validateEnum(value.mode, `${name}.mode`, ['present', 'exact', 'regex']) ??
+        validateOptionalBoundedString(value.value, `${name}.value`, MAX_RULE_STRING_LENGTH);
+    case 'status':
+      return validateRecordKeys(value, name, ['type', 'min', 'max']) ??
+        validateIntegerRange(value.min, `${name}.min`, 100, 599) ??
+        validateIntegerRange(value.max, `${name}.max`, 100, 599);
+    case 'mime':
+      return validateRecordKeys(value, name, ['type', 'phase', 'value']) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateBoundedString(value.value, `${name}.value`, 256);
+    default:
+      return `${name}.type is invalid`;
+  }
+}
+
+function validateRuleActionArray(value: unknown, name: string): string | null {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > MAX_ACTIONS_PER_RULE
+  ) {
+    return `${name} must contain 1 to ${MAX_ACTIONS_PER_RULE} actions`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateRuleAction(value[index], `${name}[${index}]`);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateRuleAction(value: unknown, name: string): string | null {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return `${name}.type must be a string`;
+  }
+  switch (value.type) {
+    case 'header':
+      return validateRecordKeys(value, name, [
+        'type',
+        'phase',
+        'op',
+        'name',
+        'value',
+      ]) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateEnum(value.op, `${name}.op`, ['set', 'append', 'remove']) ??
+        validateBoundedString(value.name, `${name}.name`, 256) ??
+        validateOptionalBoundedString(value.value, `${name}.value`, MAX_RULE_STRING_LENGTH);
+    case 'query':
+      return validateRecordKeys(value, name, ['type', 'op', 'name', 'value']) ??
+        validateEnum(value.op, `${name}.op`, ['set', 'remove']) ??
+        validateBoundedString(value.name, `${name}.name`, 256) ??
+        validateOptionalBoundedString(value.value, `${name}.value`, MAX_RULE_STRING_LENGTH);
+    case 'body':
+      return validateRecordKeys(value, name, [
+        'type',
+        'phase',
+        'format',
+        'content',
+      ]) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateEnum(value.format, `${name}.format`, ['text', 'json']) ??
+        validateBoundedString(value.content, `${name}.content`, MAX_RULE_BODY_LENGTH);
+    case 'synthetic':
+      return validateRecordKeys(value, name, [
+        'type',
+        'statusCode',
+        'headers',
+        'body',
+      ]) ??
+        validateIntegerRange(value.statusCode, `${name}.statusCode`, 100, 599) ??
+        validateOptionalRuleHeaderPairs(value.headers, `${name}.headers`) ??
+        validateOptionalBoundedString(value.body, `${name}.body`, MAX_RULE_BODY_LENGTH);
+    case 'block':
+      return validateRecordKeys(value, name, ['type', 'mode']) ??
+        validateEnum(value.mode, `${name}.mode`, ['reset', 'close']);
+    case 'status':
+      return validateRecordKeys(value, name, ['type', 'statusCode']) ??
+        validateIntegerRange(value.statusCode, `${name}.statusCode`, 100, 599);
+    case 'breakpoint':
+      return validateRecordKeys(value, name, [
+        'type',
+        'phase',
+        'timeoutMs',
+        'onTimeout',
+      ]) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateIntegerRange(value.timeoutMs, `${name}.timeoutMs`, 1_000, 600_000) ??
+        validateEnum(value.onTimeout, `${name}.onTimeout`, ['continue', 'drop']);
+    default:
+      return `${name}.type is invalid`;
+  }
+}
+
+function validateOptionalRuleHeaderPairs(
+  value: unknown,
+  name: string,
+): string | null {
+  if (value === undefined) {
+    return null;
+  }
+  if (!Array.isArray(value) || value.length > 128) {
+    return `${name} must contain at most 128 headers`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateExactObject(
+      value[index],
+      `${name}[${index}]`,
+      ['name', 'value'],
+      (header) => validateBoundedString(header.name, `${name}[${index}].name`, 256) ??
+        validateBoundedString(header.value, `${name}[${index}].value`, MAX_RULE_STRING_LENGTH),
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateRuleSet(value: unknown, name: string): string | null {
+  return validateExactObject(value, name, ['revision', 'rules'], (ruleSet) =>
+    validateNonNegativeSafeInteger(ruleSet.revision, `${name}.revision`) ??
+      validateRuleArray(ruleSet.rules, `${name}.rules`));
+}
+
+function validateRulesRuleSetResult(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['ruleSet'], (payload) =>
+    validateRuleSet(payload.ruleSet, 'result.payload.ruleSet'));
 }
 
 function validateBreakpointResolutionRequest(value: unknown): string | null {
@@ -725,9 +932,8 @@ function validateRuleValidationResult(value: unknown): string | null {
   return validateExactObject(
     value,
     'result.payload',
-    ['draftId', 'valid', 'diagnostics'],
-    (payload) => validateId(payload.draftId, 'result.payload.draftId') ??
-      validateBoolean(payload.valid, 'result.payload.valid') ??
+    ['valid', 'diagnostics'],
+    (payload) => validateBoolean(payload.valid, 'result.payload.valid') ??
       validateProtocolDiagnostics(payload.diagnostics),
   );
 }
