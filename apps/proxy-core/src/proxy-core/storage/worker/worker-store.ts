@@ -78,6 +78,7 @@ interface DetailRow extends SummaryRow {
   statusText: string | null;
   requestMime: string | null;
   errorCode: string | null;
+  streamId: number | null;
   requestBodyId: string | null;
   responseBodyId: string | null;
 }
@@ -86,11 +87,13 @@ interface HeaderRow {
   kind: string;
   name: string;
   value: string;
+  isPseudo: number;
 }
 
 interface BodyRefRow {
   blobHash: string | null;
   mediaType: string | null;
+  contentEncoding: string | null;
   encodedSize: number;
   decodedSize: number | null;
   truncated: number;
@@ -98,7 +101,9 @@ interface BodyRefRow {
 }
 
 function toHeader(row: HeaderRow): CaptureHeader {
-  return { name: row.name, value: row.value };
+  return row.isPseudo
+    ? { name: row.name, value: row.value, isPseudo: true }
+    : { name: row.name, value: row.value };
 }
 
 /**
@@ -336,7 +341,7 @@ export class CaptureStore {
                 e.path AS path, e.url AS url, e.port AS port, e.protocol AS protocol,
                 e.status_code AS statusCode, e.status_text AS statusText,
                 e.request_mime AS requestMime, e.response_mime AS responseMime,
-                e.state AS state, e.error_code AS errorCode,
+                e.state AS state, e.error_code AS errorCode, e.stream_id AS streamId,
                 e.started_at AS startedAt, e.completed_at AS completedAt,
                 e.request_bytes AS requestBytes, e.response_bytes AS responseBytes,
                 e.request_body_id AS requestBodyId, e.response_body_id AS responseBodyId,
@@ -352,7 +357,7 @@ export class CaptureStore {
 
     const headers = this.db
       .prepare(
-        `SELECT kind, name, value
+        `SELECT kind, name, value, is_pseudo AS isPseudo
          FROM message_headers
          WHERE exchange_id = :id
          ORDER BY kind, ordinal`,
@@ -367,8 +372,15 @@ export class CaptureStore {
       statusText: row.statusText ?? undefined,
       requestMime: row.requestMime ?? undefined,
       errorCode: row.errorCode ?? undefined,
+      streamId: row.streamId ?? undefined,
       requestHeaders: headers.filter((h) => h.kind === 'request').map(toHeader),
       responseHeaders: headers.filter((h) => h.kind === 'response').map(toHeader),
+      requestTrailers: headers
+        .filter((h) => h.kind === 'request-trailer')
+        .map(toHeader),
+      responseTrailers: headers
+        .filter((h) => h.kind === 'response-trailer')
+        .map(toHeader),
       requestBody: this.readBodyRef(row.requestBodyId),
       responseBody: this.readBodyRef(row.responseBodyId),
     };
@@ -381,6 +393,7 @@ export class CaptureStore {
     const row = this.db
       .prepare(
         `SELECT blob_hash AS blobHash, media_type AS mediaType,
+                content_encoding AS contentEncoding,
                 encoded_size AS encodedSize, decoded_size AS decodedSize,
                 truncated AS truncated, decode_status AS decodeStatus
          FROM body_ref
@@ -393,6 +406,7 @@ export class CaptureStore {
     return {
       bodyHash: row.blobHash ?? undefined,
       mediaType: row.mediaType ?? undefined,
+      contentEncoding: row.contentEncoding ?? undefined,
       encodedSize: row.encodedSize,
       decodedSize: row.decodedSize ?? undefined,
       truncated: row.truncated !== 0,

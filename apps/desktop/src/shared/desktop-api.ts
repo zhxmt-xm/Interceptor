@@ -102,6 +102,8 @@ export interface BodyChunk {
   offset: number;
   data: Uint8Array;
   end: boolean;
+  /** 请求解码时的结果：ok/skipped/failed；未请求解码时为 undefined。 */
+  decodeStatus?: string;
 }
 
 /** 面向 Renderer 的 Root CA 状态；只含公开元数据，绝不含私钥。 */
@@ -154,7 +156,12 @@ export interface InterceptorDesktopApi {
   getCaptureStatus(): Promise<CaptureStatus>;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
-  readBody(bodyId: string, offset: number, length: number): Promise<BodyChunk>;
+  readBody(
+    bodyId: string,
+    offset: number,
+    length: number,
+    options?: { decode?: boolean; encoding?: string },
+  ): Promise<BodyChunk>;
   onCaptureEvents(
     listener: (events: CaptureExchangeEvent[]) => void,
   ): () => void;

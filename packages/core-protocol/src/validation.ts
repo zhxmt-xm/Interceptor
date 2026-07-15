@@ -399,7 +399,7 @@ function validateBodyRangeRequest(value: unknown): string | null {
   return validateExactObject(
     value,
     'command.payload',
-    ['bodyId', 'offset', 'length'],
+    ['bodyId', 'offset', 'length', 'decode', 'encoding'],
     (payload) => validateId(payload.bodyId, 'command.payload.bodyId') ??
       validateNonNegativeSafeInteger(
         payload.offset,
@@ -409,6 +409,14 @@ function validateBodyRangeRequest(value: unknown): string | null {
         'command.payload.length',
         1,
         MAX_BODY_CHUNK_BYTES,
+      ) ??
+      (payload.decode === undefined
+        ? null
+        : validateBoolean(payload.decode, 'command.payload.decode')) ??
+      validateOptionalBoundedString(
+        payload.encoding,
+        'command.payload.encoding',
+        256,
       ),
   );
 }
@@ -631,8 +639,11 @@ function validateExchangeDetail(value: unknown, name: string): string | null {
       'statusText',
       'requestMime',
       'errorCode',
+      'streamId',
       'requestHeaders',
       'responseHeaders',
+      'requestTrailers',
+      'responseTrailers',
       'requestBody',
       'responseBody',
     ],
@@ -643,8 +654,11 @@ function validateExchangeDetail(value: unknown, name: string): string | null {
       validateOptionalBoundedString(detail.statusText, `${name}.statusText`, 256) ??
       validateOptionalBoundedString(detail.requestMime, `${name}.requestMime`, 256) ??
       validateOptionalBoundedString(detail.errorCode, `${name}.errorCode`, 128) ??
+      validateOptionalIntegerRange(detail.streamId, `${name}.streamId`, 0, 2_147_483_647) ??
       validateHeaderArray(detail.requestHeaders, `${name}.requestHeaders`) ??
       validateHeaderArray(detail.responseHeaders, `${name}.responseHeaders`) ??
+      validateHeaderArray(detail.requestTrailers, `${name}.requestTrailers`) ??
+      validateHeaderArray(detail.responseTrailers, `${name}.responseTrailers`) ??
       validateOptionalBodyRef(detail.requestBody, `${name}.requestBody`) ??
       validateOptionalBodyRef(detail.responseBody, `${name}.responseBody`),
   );
@@ -658,9 +672,12 @@ function validateHeaderArray(value: unknown, name: string): string | null {
     const error = validateExactObject(
       value[index],
       `${name}[${index}]`,
-      ['name', 'value'],
+      ['name', 'value', 'isPseudo'],
       (header) => validateBoundedString(header.name, `${name}[${index}].name`, 256) ??
-        validateBoundedString(header.value, `${name}[${index}].value`, MAX_HEADER_VALUE_LENGTH),
+        validateBoundedString(header.value, `${name}[${index}].value`, MAX_HEADER_VALUE_LENGTH) ??
+        (header.isPseudo === undefined
+          ? null
+          : validateBoolean(header.isPseudo, `${name}[${index}].isPseudo`)),
     );
     if (error) {
       return error;
@@ -676,9 +693,10 @@ function validateOptionalBodyRef(value: unknown, name: string): string | null {
   return validateExactObject(
     value,
     name,
-    ['bodyHash', 'mediaType', 'encodedSize', 'decodedSize', 'truncated', 'decodeStatus'],
+    ['bodyHash', 'mediaType', 'contentEncoding', 'encodedSize', 'decodedSize', 'truncated', 'decodeStatus'],
     (body) => validateOptionalBoundedString(body.bodyHash, `${name}.bodyHash`, 128) ??
       validateOptionalBoundedString(body.mediaType, `${name}.mediaType`, 256) ??
+      validateOptionalBoundedString(body.contentEncoding, `${name}.contentEncoding`, 128) ??
       validateNonNegativeSafeInteger(body.encodedSize, `${name}.encodedSize`) ??
       validateOptionalNonNegativeNumber(body.decodedSize, `${name}.decodedSize`) ??
       validateBoolean(body.truncated, `${name}.truncated`) ??
@@ -690,11 +708,16 @@ function validateBodyRangeResult(value: unknown): string | null {
   return validateExactObject(
     value,
     'result.payload',
-    ['bodyId', 'offset', 'data', 'end'],
+    ['bodyId', 'offset', 'data', 'end', 'decodeStatus'],
     (payload) => validateId(payload.bodyId, 'result.payload.bodyId') ??
       validateNonNegativeSafeInteger(payload.offset, 'result.payload.offset') ??
       validateByteArray(payload.data, 'result.payload.data') ??
-      validateBoolean(payload.end, 'result.payload.end'),
+      validateBoolean(payload.end, 'result.payload.end') ??
+      validateOptionalBoundedString(
+        payload.decodeStatus,
+        'result.payload.decodeStatus',
+        32,
+      ),
   );
 }
 

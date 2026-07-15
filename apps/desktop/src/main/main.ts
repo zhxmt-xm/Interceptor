@@ -19,6 +19,7 @@ import {
   assertBoundedString,
   assertIdentifier,
   assertOptionalPort,
+  toBodyDecodeOptions,
   toByteRange,
   toCoreSessionQuery,
   toInsecureHosts,
@@ -283,18 +284,31 @@ class DesktopApplication {
     // 按需分块读取正文字节；offset/length 在边界校验，避免过大读取。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.bodyReadRange,
-      async (event, bodyId: unknown, offset: unknown, length: unknown) => {
+      async (
+        event,
+        bodyId: unknown,
+        offset: unknown,
+        length: unknown,
+        options: unknown,
+      ) => {
         this.assertTrustedSender(event.senderFrame?.url);
         assertIdentifier(bodyId, 'bodyId');
         const range = toByteRange(offset, length, MAX_BODY_CHUNK_BYTES);
+        const decodeOptions = toBodyDecodeOptions(options);
         const result = await this.coreRuntime.request({
           type: 'body.read-range',
-          payload: { bodyId, offset: range.offset, length: range.length },
+          payload: {
+            bodyId,
+            offset: range.offset,
+            length: range.length,
+            ...decodeOptions,
+          },
         });
         return {
           offset: result.payload.offset,
           data: result.payload.data,
           end: result.payload.end,
+          decodeStatus: result.payload.decodeStatus,
         };
       },
     );

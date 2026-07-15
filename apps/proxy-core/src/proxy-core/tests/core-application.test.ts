@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import process from 'node:process';
+import zlib from 'node:zlib';
 
 import type { CoreToMainMessage } from '@interceptor/core-protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -313,6 +314,42 @@ describe('CoreApplication', () => {
     ).resolves.toMatchObject({ type: 'storage.status' });
 
     expect(calls).toEqual(['query', 'detail', 'body', 'cleanup']);
+  });
+
+  it('decodes a gzip body on demand when body.read-range requests decode', async () => {
+    const gzipped = zlib.gzipSync(Buffer.from('{"decoded":true}'));
+    const storage = {
+      initialize: () => Promise.resolve(),
+      readBodyRange: () => Promise.resolve(gzipped),
+      dispose: () => Promise.resolve(),
+    } as unknown as StorageService;
+    const application = new CoreApplication(new FakeParentPort(), {
+      storageService: storage,
+    });
+    const signal = new AbortController().signal;
+
+    const result = await application.executeCommand(
+      {
+        type: 'body.read-range',
+        payload: {
+          bodyId: 'a'.repeat(64),
+          offset: 0,
+          length: 1024,
+          decode: true,
+          encoding: 'gzip',
+        },
+      },
+      signal,
+    );
+
+    expect(result.type).toBe('body.range');
+    if (result.type === 'body.range') {
+      expect(result.payload.decodeStatus).toBe('ok');
+      expect(result.payload.end).toBe(true);
+      expect(new TextDecoder().decode(result.payload.data)).toBe(
+        '{"decoded":true}',
+      );
+    }
   });
 });
 

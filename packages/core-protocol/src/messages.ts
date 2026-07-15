@@ -33,6 +33,10 @@ export interface BodyReadRangeCommand {
     bodyId: string;
     offset: number;
     length: number;
+    /** true 时 Core 按 encoding 解码后返回（一次性返回解码全量），预览压缩正文用。 */
+    decode?: boolean;
+    /** 解码用的 content-encoding（gzip/deflate/br，可逗号分隔多层）。 */
+    encoding?: string;
   };
 }
 
@@ -178,6 +182,8 @@ export interface BodyRangeResult {
     offset: number;
     data: Uint8Array;
     end: boolean;
+    /** 解码结果：ok=已解码，skipped=未解码，failed=解码失败返回原始；未请求解码时省略。 */
+    decodeStatus?: string;
   };
 }
 
@@ -402,12 +408,16 @@ export interface CaptureExchangeEvent {
 export interface CaptureHeader {
   name: string;
   value: string;
+  /** HTTP/2 伪首部（:method/:path/:scheme/:authority/:status）标记；HTTP/1.1 恒为 undefined。 */
+  isPseudo?: boolean;
 }
 
 /** 正文引用元数据；bodyHash 供 body.read-range 分块读取，无正文时省略。 */
 export interface CaptureBodyRef {
   bodyHash?: string;
   mediaType?: string;
+  /** 原始 content-encoding（gzip/deflate/br）；未压缩时省略，供 Inspector 解码预览。 */
+  contentEncoding?: string;
   encodedSize: number;
   decodedSize?: number;
   truncated: boolean;
@@ -426,8 +436,13 @@ export interface CaptureExchangeDetail {
   statusText?: string;
   requestMime?: string;
   errorCode?: string;
+  /** HTTP/2 流标识；HTTP/1.1 或未知时省略。 */
+  streamId?: number;
   requestHeaders: CaptureHeader[];
   responseHeaders: CaptureHeader[];
+  /** HTTP/2 或 chunked trailer；无 trailer 时为空数组。 */
+  requestTrailers: CaptureHeader[];
+  responseTrailers: CaptureHeader[];
   requestBody?: CaptureBodyRef;
   responseBody?: CaptureBodyRef;
 }

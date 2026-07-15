@@ -138,8 +138,14 @@ describe('core protocol validation', () => {
             url: 'https://api.test/users',
             scheme: 'https',
             statusText: 'Created',
-            requestHeaders: [{ name: 'accept', value: 'application/json' }],
+            streamId: 3,
+            requestHeaders: [
+              { name: ':method', value: 'POST', isPseudo: true },
+              { name: 'accept', value: 'application/json' },
+            ],
             responseHeaders: [{ name: 'content-type', value: 'application/json' }],
+            requestTrailers: [],
+            responseTrailers: [{ name: 'x-checksum', value: 'abc123' }],
             responseBody: {
               bodyHash: 'a'.repeat(64),
               mediaType: 'application/json',

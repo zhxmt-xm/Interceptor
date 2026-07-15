@@ -29,7 +29,7 @@ flowchart LR
     STORAGE["12 StorageService<br/>Query · Status · Cleanup · Blob"]
     STORAGE_WORKER["13 Storage Worker Thread<br/>capture.sqlite · 串行写 · seq"]
     DIAG_WORKER["14 Diagnostics Worker Thread<br/>diagnostics.sqlite · 批量 · 保留"]
-    PROXY["15 ProxyService（Mockttp）<br/>HTTP/1.1 显式代理 · CONNECT 直通 · Exchange 捕获"]
+    PROXY["15 ProxyService（Mockttp）<br/>HTTP/1.1+HTTP/2 · CONNECT 直通/MITM · Exchange 捕获"]
   end
 
   subgraph FUTURE["M3/T3.4 后续注入点"]
@@ -58,7 +58,7 @@ flowchart LR
   RUNTIME -->|"CoreProcessStatus"| MAIN --> PRELOAD --> UI_API --> UI_APP
 ```
 
-图中的实线是当前已实现路径，虚线 `M3/T3.4` 是明确的后续注入点。存储层（12–14）与显式代理（15，HTTP/1.1 + CONNECT 直通 + Exchange 捕获）已实现；增量 Capture Event 流与背压（T3.4）、HTTPS 解密（M5）、HTTP/2（M6）尚未实现。
+图中的实线是当前已实现路径，虚线 `M3/T3.4` 是明确的后续注入点。存储层（12–14）与显式代理（15，HTTP/1.1+HTTP/2 + CONNECT 直通/MITM + Exchange 捕获）已实现；增量 Capture Event 流与背压（T3.4）、HTTPS 解密（M5）、HTTP/2（M6）均已实现。
 
 ## Renderer UI 架构（M2/T2.0，已落地）
 
@@ -90,9 +90,10 @@ flowchart LR
 > Mockttp 显式代理把真实 HTTP/1.1 流量采集为规范 Exchange 写入 M2 存储，正文经内容寻址 Blob 持久化，实时事件经有界合并队列 + 窗口背压批量推送给 Main 再广播 Renderer。真正零内存流式正文作为 M5+ 优化项。
 
 - **引擎**：`proxy/proxy-service.ts` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制（默认不捕获）。
+- **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
 - **正文持久化（T3.3）**：请求/响应正文经 `StorageService.writeBody` 写入内容寻址 Blob Store，生成 `body_ref` 并在同事务内绑定 Exchange 的 request/response body id；超单体上限/配额时省略正文保留元数据（truncated/skipped）。当前经 Mockttp 内存缓冲后写盘，真正零内存流式（body-data 事件增量写盘）留后续。
 - **捕获事件管线（T3.4）**：`proxy/capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空（`MAX_INFLIGHT_EVENT_BATCHES`/`EVENT_DRAIN_BATCH`/`EVENT_FLUSH_INTERVAL_MS`）经 `CoreRpcServer.sendEventBatch` 发 `event-batch`；Main `CoreRpcClient` 收批回 `event-ack` 并触发 `CoreRuntime.onCaptureEvents`，Main 经 `capture:events` 广播 Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary` 单行结构。
-- **按需详情（M4 后端）**：`sessions.detail` 命令经 `CaptureStore.getExchangeDetail`（SELECT exchange + message_headers + body_ref）返回 `CaptureExchangeDetail`（头部 + 正文引用元数据）；正文字节经 `body.read-range` → `StorageService.readBodyRange`（按 blob hash 分块）。
+- **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 命令经 `CaptureStore.getExchangeDetail`（SELECT exchange + message_headers + body_ref）返回 `CaptureExchangeDetail`（头部 + 请求/响应 trailer + is_pseudo/stream_id + 正文引用元数据含 content_encoding）；正文字节经 `body.read-range` → `StorageService.readBodyRange`（按 blob hash 分块）。`body.read-range` 的 `decode` 请求由 `proxy/content-decoder.ts` 的 `decodeBody` 按 content-encoding（gzip/deflate/brotli，多层，容错）延迟解压后一次性返回并回传 `decodeStatus`（浏览器 DecompressionStream 不支持 br 故解码在 Core）。
 - **依赖打包**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），无法内联进单文件。因此 esbuild 用 `--external:mockttp` 保留 `require('mockttp')`，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包并补拷 `prebuilds/`/`build/Release/*.node`，按 node_modules 结构（保留嵌套、避免版本互相覆盖）拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
 - **验证**：packaged 真实 exe 启动即 `require('mockttp')`，从隔离随包 node_modules 成功加载并进入 `running`；`npm audit --omit=dev` 0 漏洞。
 
@@ -186,7 +187,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 
 ## 当前未实现
 
-- HTTP/2、WebSocket、gRPC（未 MITM 的 CONNECT 仍字节直通；HTTP/2 下游/上游在 M6，WebSocket/gRPC 在 M9）。
+- WebSocket、gRPC（M9；未 MITM 的 CONNECT 仍字节直通）。HTTP/2 已落地（M6）；深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 详细源站 TLS metadata（version/cipher/ALPN/证书链）记录与 Inspector TLS/Timing 标签填充（当前 HTTPS 已解密捕获，但 TLS/Timing 富数据为诚实空态）。
 - CA 导出、机器级信任库安装（需提权）；规则引擎、系统代理适配、导入导出、签名安装器和更新机制（M6+）。

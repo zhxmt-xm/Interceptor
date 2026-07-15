@@ -16,6 +16,7 @@ import type {
   CaptureSessionInput,
   ExchangeInput,
   HeaderInput,
+  HeaderKind,
 } from '../storage/types';
 
 /**
@@ -130,14 +131,18 @@ export class ProxyService {
     }
   }
 
-  /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM。 */
+  /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM 与 HTTP/2。 */
   private async startServer(port?: number): Promise<ProxyAddress> {
+    // http2:true —— 有 HTTPS(MITM) 时对经 ALPN 声明支持 h2 的客户端启用 HTTP/2，H1-only
+    // 客户端按 ALPN 协商回落 http/1.1。上游由 Mockttp passthrough 按源站 ALPN 独立协商
+    // h2/h1 并做四组协议转换。无 HTTPS(明文显式代理) 时不启用 h2（H2 需 TLS ALPN）。
     const server = this.tlsConfig.ca
       ? getLocal({
           https: {
             key: this.tlsConfig.ca.key,
             cert: this.tlsConfig.ca.cert,
           },
+          http2: true,
         })
       : getLocal();
     this.registerCaptureListeners(server);
@@ -215,7 +220,13 @@ export class ProxyService {
     const startedAt = request.timingEvents?.startTime ?? Date.now();
     const headers: HeaderInput[] = [
       ...toHeaderInputs('request', request.rawHeaders),
+      ...('rawTrailers' in request
+        ? toHeaderInputs('request-trailer', request.rawTrailers)
+        : []),
       ...(response ? toHeaderInputs('response', response.rawHeaders) : []),
+      ...(response
+        ? toHeaderInputs('response-trailer', response.rawTrailers)
+        : []),
     ];
     const requestBody = await this.persistBody(
       'body' in request ? request.body : undefined,
@@ -355,13 +366,18 @@ function httpVersionToProtocol(version: string | undefined): string {
 }
 
 function toHeaderInputs(
-  kind: 'request' | 'response',
+  kind: HeaderKind,
   rawHeaders: readonly (readonly [string, string])[] | undefined,
 ): HeaderInput[] {
   if (!rawHeaders) {
     return [];
   }
-  return rawHeaders.map(([name, value]) => ({ kind, name, value }));
+  // HTTP/2 伪首部（:method/:path/:scheme/:authority/:status）以冒号开头，标记供 Inspector 区分。
+  return rawHeaders.map(([name, value]) =>
+    name.startsWith(':')
+      ? { kind, name, value, isPseudo: true }
+      : { kind, name, value },
+  );
 }
 
 function readHeader(

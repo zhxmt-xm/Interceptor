@@ -22,6 +22,7 @@ import {
 } from './core-rpc-server';
 import { DiagnosticsWorkerHost, type DiagnosticsPage } from './diagnostics/entry';
 import { CaptureEventQueue } from './proxy/capture-event-queue';
+import { decodeBody } from './proxy/content-decoder';
 import { ProxyService } from './proxy/proxy-service';
 import { StorageService } from './storage/entry';
 import type { CleanupScope } from './storage/types';
@@ -252,6 +253,24 @@ export class CoreApplication implements CoreRpcHost {
                 command.payload.length,
               ),
             );
+            // 延迟解码：仅当 Renderer 请求 decode 时按 content-encoding 解压，
+            // 一次性返回解码全量（解压需完整流，不再按 length 分块）。
+            if (command.payload.decode) {
+              const decoded = await decodeBody(
+                new Uint8Array(data),
+                command.payload.encoding,
+              );
+              return {
+                type: 'body.range',
+                payload: {
+                  bodyId: command.payload.bodyId,
+                  offset: command.payload.offset,
+                  data: decoded.data,
+                  end: true,
+                  decodeStatus: decoded.status,
+                },
+              };
+            }
             return {
               type: 'body.range',
               payload: {

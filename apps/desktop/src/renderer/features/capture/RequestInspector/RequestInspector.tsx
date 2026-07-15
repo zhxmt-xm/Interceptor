@@ -19,7 +19,12 @@ import styles from './RequestInspector.module.css';
 type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g'];
 
 function headersToRows(headers: CaptureHeader[]): KvRow[] {
-  return headers.map((header) => [header.name, header.value]);
+  // HTTP/2 伪首部（:method/:status 等）高亮区分于普通头。
+  return headers.map((header) => [
+    header.name,
+    header.value,
+    header.isPseudo ? 'a' : undefined,
+  ]);
 }
 
 /** 从绝对/相对 URL 提取查询参数为 KV 行。 */
@@ -113,6 +118,8 @@ export function RequestInspector(): React.JSX.Element {
   const url = view ? detail?.url ?? `${view.host ?? ''}${view.path ?? ''}` : '';
   const responseHeaders = detail?.responseHeaders ?? [];
   const requestHeaders = detail?.requestHeaders ?? [];
+  const responseTrailers = detail?.responseTrailers ?? [];
+  const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
   const statusText = view
     ? view.statusCode !== undefined
@@ -160,6 +167,9 @@ export function RequestInspector(): React.JSX.Element {
                     ['Request Method', view.method.toUpperCase(), 'a'],
                     ['Status Code', statusText, view.statusCode && view.statusCode < 400 ? 'g' : undefined],
                     ['Protocol', protocolLabel(view.protocol).toUpperCase()],
+                    ...(detail?.streamId !== undefined
+                      ? [['Stream ID', String(detail.streamId)] as KvRow]
+                      : []),
                     ['Host', view.host ?? '—'],
                     ['Duration', timeLabel(view)],
                   ]}
@@ -182,6 +192,16 @@ export function RequestInspector(): React.JSX.Element {
                 <div className={styles.empty}>No request headers captured.</div>
               )}
             </Section>
+            {responseTrailers.length ? (
+              <Section title="Response Trailers" count={responseTrailers.length}>
+                <Kv rows={headersToRows(responseTrailers)} />
+              </Section>
+            ) : null}
+            {requestTrailers.length ? (
+              <Section title="Request Trailers" count={requestTrailers.length}>
+                <Kv rows={headersToRows(requestTrailers)} />
+              </Section>
+            ) : null}
           </div>
         ) : null}
 

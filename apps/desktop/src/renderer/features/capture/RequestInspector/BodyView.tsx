@@ -16,6 +16,7 @@ interface BodyViewProps {
 interface LoadedBody {
   bytes: Uint8Array;
   end: boolean;
+  decodeStatus?: string;
 }
 
 function isTextMime(mime: string | undefined): boolean {
@@ -73,12 +74,28 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
       return;
     }
     let active = true;
-    const length = Math.min(body.encodedSize, PREVIEW_CAP_BYTES);
+    // 解码需完整压缩流：有 content-encoding 时读全压缩正文（Main 端 1MB 上限）并请求
+    // Core 解码；否则按预览上限读原始字节。
+    const shouldDecode = Boolean(body.contentEncoding);
+    const length = shouldDecode
+      ? body.encodedSize
+      : Math.min(body.encodedSize, PREVIEW_CAP_BYTES);
     void api
-      .readBody(body.bodyHash, 0, length)
+      .readBody(
+        body.bodyHash,
+        0,
+        length,
+        shouldDecode
+          ? { decode: true, encoding: body.contentEncoding }
+          : undefined,
+      )
       .then((chunk) => {
         if (active) {
-          setLoaded({ bytes: chunk.data, end: chunk.end });
+          setLoaded({
+            bytes: chunk.data,
+            end: chunk.end,
+            decodeStatus: chunk.decodeStatus,
+          });
         }
       })
       .catch((loadError: unknown) => {
@@ -89,15 +106,24 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
     return () => {
       active = false;
     };
-  }, [body.bodyHash, body.encodedSize]);
+  }, [body.bodyHash, body.encodedSize, body.contentEncoding]);
 
-  const text = useMemo(() => {
-    if (!loaded || !isTextMime(body.mediaType)) {
+  const previewBytes = useMemo(() => {
+    if (!loaded) {
       return null;
     }
-    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(loaded.bytes);
+    return loaded.bytes.length > PREVIEW_CAP_BYTES
+      ? loaded.bytes.subarray(0, PREVIEW_CAP_BYTES)
+      : loaded.bytes;
+  }, [loaded]);
+
+  const text = useMemo(() => {
+    if (!previewBytes || !isTextMime(body.mediaType)) {
+      return null;
+    }
+    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(previewBytes);
     return isJsonMime(body.mediaType) ? prettyJson(decoded) : decoded;
-  }, [loaded, body.mediaType]);
+  }, [previewBytes, body.mediaType]);
 
   if (!body.bodyHash || body.encodedSize === 0) {
     return <div className={styles.empty}>No body captured.</div>;
@@ -109,15 +135,20 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
     return <div className={styles.empty}>Loading body…</div>;
   }
 
-  const truncated = body.encodedSize > PREVIEW_CAP_BYTES;
+  const truncated = loaded ? loaded.bytes.length > PREVIEW_CAP_BYTES : false;
+  const decodeFailed = loaded?.decodeStatus === 'failed';
 
   if (text !== null) {
     return (
       <div className={styles.container}>
+        {decodeFailed ? (
+          <div className={styles.notice}>
+            Failed to decode {body.contentEncoding} body; showing raw bytes.
+          </div>
+        ) : null}
         {truncated ? (
           <div className={styles.notice}>
-            Preview limited to first {PREVIEW_CAP_BYTES / 1024} KB of{' '}
-            {(body.encodedSize / 1024).toFixed(0)} KB.
+            Preview limited to first {PREVIEW_CAP_BYTES / 1024} KB.
           </div>
         ) : null}
         <CodeMirror
@@ -133,12 +164,17 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
 
   return (
     <div className={styles.container}>
+      {decodeFailed ? (
+        <div className={styles.notice}>
+          Failed to decode {body.contentEncoding} body; showing raw bytes.
+        </div>
+      ) : null}
       {truncated ? (
         <div className={styles.notice}>
           Preview limited to first {PREVIEW_CAP_BYTES / 1024} KB of binary body.
         </div>
       ) : null}
-      <pre className={styles.hex}>{toHexDump(loaded.bytes)}</pre>
+      <pre className={styles.hex}>{toHexDump(previewBytes ?? loaded.bytes)}</pre>
     </div>
   );
 }

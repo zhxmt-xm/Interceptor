@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M5.md](M5.md)（已完成）与下一 Stage [M6.md](M6.md)。
+4. 当前 Stage 文件：[M6.md](M6.md)（已完成）与下一 Stage [M7.md](M7.md)。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,15 +18,16 @@
 
 ## 当前状态
 
-- **M0、M1、M2、M3、M4、M5 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
-- **下一 Stage 是 M6 HTTP/2（未开始）**：需 h2 下游/上游、四组协议转换、stream 建模与 Inspector 增量。
+- **M0、M1、M2、M3、M4、M5、M6 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
+- **下一 Stage 是 M7 规则引擎（未开始）**：需规则匹配/改写/断点与 Composer 后端。
+- **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 current-user 信任库安装/卸载/检测（Windows certutil / macOS security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅 CA 已安装信任时启用**）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据。**私钥绝不进 Renderer/日志/导出。**
 - **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
 - **窄 API 已扩展**：`startCapture`/`stopCapture`/`getCaptureStatus`/`querySessions`/`getExchangeDetail`/`readBody`/`onCaptureEvents`（共 13 项 window.interceptor 面）；Main 订阅 `coreRuntime.onCaptureEvents` 经 `capture:events` 广播 Renderer。smoke 的 apiKeys 断言已同步。
 - **Mockttp 打包方案已落地并验证**：esbuild `--external:mockttp` + `scripts/ship-core-deps.mjs`（`@vercel/nft` 追踪运行时闭包 + 补拷 `prebuilds/`/`.node`）随包发到 `resources/proxy-core/node_modules`；packaged smoke 验证 Core 用隔离闭包 `require('mockttp')` 并 `running`。
-- **验证全绿**（M3+M4 收官）：`typecheck` 三 workspace；`test:unit` 94（Desktop 21 / Proxy Core 67 / Core Protocol 6）；`package` 成功（Renderer 打包含 @tanstack/*, zustand, CodeMirror）；`test:smoke` 通过；`npm audit --omit=dev` 0。
-- M1 基线提交为 `b923117`；当前分支包含**尚未提交的 M2 + M3 + M4 全量实现**（`proxy/`、`storage/`、`diagnostics/` 模块 + `scripts/ship-core-deps.mjs` + `features/capture/` 数据层与组件重写 + `@tanstack/*`/`zustand`/CodeMirror 依赖）。新 Session 必须先跑 `git status --short --branch` 与 `git log -1 --oneline`，不要 reset/checkout/覆盖现有改动。
+- **验证全绿**（M6 收官）：`typecheck` 三 workspace；`test:unit` 120（Desktop 36 / Proxy Core 78 / Core Protocol 6）；`build --workspace @interceptor/proxy-core` 成功；`package` + `test:smoke` 真实 exe 通过。
+- M1 基线提交为 `b923117`；M2–M5 与 proxy-core 两轮重构已提交至 `daaa47d`（已推送 origin/main）。当前分支包含**尚未提交的 M6 HTTP/2 实现**（proxy-service http2/trailer/pseudo、`content-decoder`、body decode 链、Inspector H2 展示、协议/校验扩展、H2+decoder 测试、文档）。新 Session 必须先跑 `git status --short --branch` 与 `git log -1 --oneline`，不要 reset/checkout/覆盖现有改动。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction（仓库曾从 `H:\` 迁到 `C:\`，旧 junction 会失效）。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 

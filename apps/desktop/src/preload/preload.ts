@@ -38,8 +38,14 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.sessionsQuery, request),
   getExchangeDetail: (exchangeId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.sessionsDetail, exchangeId),
-  readBody: (bodyId, offset, length) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.bodyReadRange, bodyId, offset, length),
+  readBody: (bodyId, offset, length, options) =>
+    ipcRenderer.invoke(
+      DESKTOP_IPC_CHANNELS.bodyReadRange,
+      bodyId,
+      offset,
+      length,
+      options,
+    ),
   onCaptureEvents: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

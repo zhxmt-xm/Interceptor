@@ -230,3 +230,22 @@ export function toByteRange(
   }
   return { offset, length };
 }
+
+/** 校验按需正文解码选项：decode 须显式为 true 才生效，encoding 为有界字符串。 */
+export function toBodyDecodeOptions(value: unknown): {
+  decode?: boolean;
+  encoding?: string;
+} {
+  if (typeof value !== 'object' || value === null) {
+    return {};
+  }
+  const options = value as { decode?: unknown; encoding?: unknown };
+  const result: { decode?: boolean; encoding?: string } = {};
+  if (options.decode === true) {
+    result.decode = true;
+  }
+  if (typeof options.encoding === 'string' && options.encoding.length <= 256) {
+    result.encoding = options.encoding;
+  }
+  return result;
+}
