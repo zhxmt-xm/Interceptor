@@ -41,6 +41,7 @@ export interface CoreDiagnosticRecord {
   timestamp: string;
   sequence: number;
   level: 'debug' | 'info' | 'warn' | 'error';
+  traceId?: string;
   requestId?: string;
   command?: string;
   phase: string;
@@ -52,6 +53,12 @@ export interface CoreDiagnosticRecord {
 
 export interface CoreDiagnosticTrace {
   traceId: string;
+  records: CoreDiagnosticRecord[];
+  droppedCount: number;
+}
+
+/** 最近诊断记录快照：不限 traceId 的最新 N 条 + 累计丢弃数。 */
+export interface CoreDiagnosticSnapshot {
   records: CoreDiagnosticRecord[];
   droppedCount: number;
 }
@@ -113,17 +120,20 @@ export interface CertificateInfo {
   /** CA 是否已在当前用户信任库（信任后才启用 MITM）。 */
   trusted: boolean;
   /** 当前平台是否支持信任库安装（Windows/macOS）。 */
-  supported: boolean;
-  fingerprint: string | null;
+  supported: boolean;  /** HTTPS 解密(MITM)开关；与 trusted 解耦，仅当 trusted && mitmEnabled 才实际解密。 */
+  mitmEnabled: boolean;  fingerprint: string | null;
   subject: string | null;
   createdAt: string | null;
   expiresAt: string | null;
+  /** Root CA 证书 PEM 文件路径；未生成时为 null。仅公开证书路径，不含私钥。 */
+  path: string | null;
 }
 
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
   coreGetTrace: 'core:get-trace',
+  coreGetDiagnostics: 'core:get-diagnostics',
   coreProcessStatus: 'core:process-status',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
@@ -138,14 +148,20 @@ export const DESKTOP_IPC_CHANNELS = {
   caGenerate: 'ca:generate',
   caInstall: 'ca:install',
   caUninstall: 'ca:uninstall',
+  caDelete: 'ca:delete',
+  caReveal: 'ca:reveal',
+  caView: 'ca:view',
+  caOpenManager: 'ca:open-manager',
   httpsGetInsecureHosts: 'https:get-insecure-hosts',
   httpsSetInsecureHosts: 'https:set-insecure-hosts',
+  httpsSetDecryption: 'https:set-decryption',
 } as const;
 
 export interface InterceptorDesktopApi {
   echoCore(value: string): Promise<CoreEchoResult>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
   getCoreTrace(traceId: string): Promise<CoreDiagnosticTrace>;
+  getRecentDiagnostics(limit?: number): Promise<CoreDiagnosticSnapshot>;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;
@@ -169,6 +185,11 @@ export interface InterceptorDesktopApi {
   generateCertificate(): Promise<CertificateInfo>;
   installCertificate(): Promise<CertificateInfo>;
   uninstallCertificate(): Promise<CertificateInfo>;
+  deleteCertificate(): Promise<CertificateInfo>;
+  revealCertificate(): Promise<void>;
+  viewCertificate(): Promise<void>;
+  openCertificateManager(): Promise<void>;
   getInsecureHosts(): Promise<string[]>;
   setInsecureHosts(hosts: string[]): Promise<string[]>;
+  setHttpsDecryption(enabled: boolean): Promise<CertificateInfo>;
 }

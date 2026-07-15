@@ -13,15 +13,12 @@
   font-weight: 550;
   cursor: pointer;
 }
-.button:hover {
+.button:not(:disabled):hover {
   background: var(--hover);
 }
 .button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-.button:disabled:hover {
-  background: var(--panel);
 }
 .button svg {
   width: 15px;
@@ -37,13 +34,13 @@
   border-color: transparent;
   color: #fff;
 }
-.primary:hover {
+.primary:not(:disabled):hover {
   filter: brightness(1.05);
 }
 .danger {
   color: var(--red);
   border-color: color-mix(in srgb, var(--red) 35%, transparent);
 }
-.danger:hover {
+.danger:not(:disabled):hover {
   background: color-mix(in srgb, var(--red) 10%, transparent);
 }

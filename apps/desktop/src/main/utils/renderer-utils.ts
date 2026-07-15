@@ -37,6 +37,7 @@ export function toRendererDiagnosticRecord(
     timestamp: record.timestamp,
     sequence: record.sequence,
     level: record.level,
+    traceId: record.traceId,
     requestId: record.requestId,
     command: record.command,
     phase: record.phase,

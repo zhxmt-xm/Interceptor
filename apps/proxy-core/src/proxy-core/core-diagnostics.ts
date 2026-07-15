@@ -21,12 +21,22 @@ interface DiagnosticContext {
   command: CoreCommand['type'];
 }
 
-interface DiagnosticFields {
+export interface DiagnosticFields {
   action?: string;
   durationMs?: number;
   outcome?: DiagnosticOutcome;
   errorCode?: string;
   attributes?: Record<string, DiagnosticAttribute>;
+}
+
+/**
+ * 结构化诊断记录器：Core 各组件（RpcServer/Application/Proxy/Storage）用它记录
+ * initialize、action、生命周期与 error 关键节点。CoreDiagnostics 是唯一实现。
+ */
+export interface DiagnosticsRecorder {
+  info(phase: string, fields?: DiagnosticFields): void;
+  warn(phase: string, fields?: DiagnosticFields): void;
+  error(phase: string, fields?: DiagnosticFields): void;
 }
 
 interface StoredRecord {
@@ -51,7 +61,7 @@ const defaultDiagnosticsSink: DiagnosticsSink = { sink: writeJsonLines };
  * Service 只补充业务 action。内存历史、待输出队列和单条记录均受限；sink/fallback
  * 失败必须被隔离，不能改变 command、网络或存储路径的结果。
  */
-export class CoreDiagnostics {
+export class CoreDiagnostics implements DiagnosticsRecorder {
   private readonly context = new AsyncLocalStorage<DiagnosticContext>();
   private readonly records: StoredRecord[] = [];
   private readonly outputQueue: DiagnosticLogRecord[] = [];
@@ -91,7 +101,6 @@ export class CoreDiagnostics {
    */
   async action<T>(name: string, operation: () => Promise<T> | T): Promise<T> {
     const startedAt = Date.now();
-    this.info('action.started', { action: name });
     try {
       const result = await operation();
       this.info('action.completed', {

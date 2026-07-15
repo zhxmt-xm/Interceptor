@@ -35,3 +35,8 @@
   padding: 18px;
   overflow-y: auto;
 }
+.empty {
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 8px 0;
+}

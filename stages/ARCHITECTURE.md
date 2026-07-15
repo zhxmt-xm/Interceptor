@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-14
+> 最后更新：2026-07-15
 > 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -111,10 +111,17 @@ flowchart LR
 > CA 生成/加密/信任库操作全在 Main（Electron `safeStorage` 与平台信任库命令只在 Main 可用），Core 只接收解密后的 CA 做 Mockttp MITM。私钥只在 Main↔Core 内部通道单向下发，绝不进 Renderer/日志/导出。
 
 - **CertificateService**（`apps/desktop/src/main/certificates/certificate-service.ts`）：用 `@peculiar/x509` 生成 RSA 2048/SHA-256 Root CA（BasicConstraints CA、keyCertSign/cRLSign、随机 serial、3 年有效期）；`safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/root-key.enc`，明文 `root-cert.pem` 与 meta（SHA-256 fingerprint + SHA-1 thumbprint）单独存。**证书库懒加载**：模块顶层不 import `@peculiar/x509`（其 tsyringe/reflect-metadata 顶层副作用会阻塞 Main/Chromium/CDP 启动），仅在 `generate()` 内 `await import(...)` 并设 WebCrypto provider。
-- **TrustStoreService**（`trust-store-service.ts`）：Windows `certutil -user` / macOS `security`（登录钥匙串）current-user 安装/卸载/检测；按 SHA-1 thumbprint 精确定位；`execFile` 不经 shell；注入 `CommandRunner` 便于 mock 单测（开发机不真实改系统）。
-- **下发通道**：Main 经内部 `tls.configure` 命令（复用 request/response，Renderer 无对应窄 API 拿不到私钥）把 CA material + `insecureHosts` 下发 Core；`CoreRuntime.onCoreProcessReady` 在每代 Core 就绪后触发 `provisionCoreTls`。**仅当 CA 已安装信任（`trustStore.isTrusted`）时才下发 material 启用 MITM**，否则下发 null（CONNECT 字节直通不解密）。
+- **TrustStoreService**（`trust-store-service.ts`）：**local-machine 信任库**——`@vscode/sudo-prompt` 提权执行 `certutil -addstore -f Root`（Windows，去 `-user`）/ `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain`（macOS）安装/卸载，非提权 `certutil -verifystore Root <sha1>` / `security find-certificate` 检测；按 SHA-1 thumbprint 精确定位；`execFile` 不经 shell；注入 `ElevatedRunner`（默认 `sudoPromptRunner`）+ `CommandRunner` 便于 mock 单测。本机全部用户/进程（含浏览器）统一信任。
+- **下发通道**：Main 经内部 `tls.configure` 命令（复用 request/response，Renderer 无对应窄 API 拿不到私钥）把 CA material + `insecureHosts` 下发 Core；`CoreRuntime.onCoreProcessReady` 在每代 Core 就绪后触发 `provisionCoreTls`。**仅当 CA 已安装信任（`trustStore.isTrusted`）且 `mitmEnabled` 开关开启时才下发 material 启用 MITM**（信任与 MITM 解耦，窄 API `setHttpsDecryption`），否则下发 null（CONNECT 字节直通不解密）。
 - **MITM**（Core）：`ProxyService` 有 CA 时 `getLocal({https:{key,cert}})`，Mockttp 用该 CA 动态签发并缓存 leaf；`thenPassThrough({ignoreHostHttpsErrors})` 默认验证源站证书链/hostname、仅对 per-host 例外忽略。解密的 HTTPS Exchange 复用现有 `request`/`response` 捕获管线（`scheme=https`、`secure=true`）。
-- **窄 API**：`getCertificateStatus`/`generate`/`install`/`uninstall`Certificate、`get`/`setInsecureHosts`（Main 组装 `CertificateInfo`，私钥不出 Main）；Settings/Certificates 面板呈现真实证书状态、信任、fingerprint、MITM 开关与不安全例外。
+- **窄 API**：`getCertificateStatus`/`generate`/`install`/`uninstall`/`delete`/`reveal`/`view`Certificate、`openCertificateManager`、`get`/`setInsecureHosts`、`setHttpsDecryption`（Main 组装 `CertificateInfo` 含 `path`/`mitmEnabled`，私钥不出 Main）；install 不自动生成（要求已 present）；Settings/Certificates 面板呈现真实证书状态、信任、fingerprint、MITM 开关、证书文件入口（reveal/view/系统证书管理器）与不安全例外。
+
+## 诊断可观测性架构（2026-07 增强，已落地）
+
+> 在 M2 Diagnostics 基座（Ring Buffer + Worker 持久化）之上，Core 各组件经共享 `DiagnosticsRecorder` 记结构化关键节点，Renderer Diagnostics 面板轮询 `getRecentDiagnostics` 展示真实命令 trace。
+
+- **DiagnosticsRecorder 全组件注入**：`core-diagnostics.ts` 导出 `DiagnosticsRecorder`（`info/warn/error(phase,fields)`，`CoreDiagnostics` 唯一实现）；RpcServer 内建、Proxy/Storage host 经 `attachDiagnostics` 注入（`CoreApplication` 装配后转交）。各组件记 initialize/生命周期/action/error 关键节点：RpcServer `rpc.connected`/`connection-failed` + 每命令 1 条 `command.completed`；Application `core.started`/`stopping`/`storage.ready`/`diagnostics.ready`；Proxy `proxy.listening`/`stopped`/`tls.reconfigured`/`tls.client-error` + 异常 exchange；Storage `storage.worker-ready`/`fatal`/`error`/`exit`。命令级精简为单条 completed，`diagnostics.recent`/`query` 静默避免轮询自污染。
+- **面板数据流**：Renderer `DiagnosticsProvider`（2s 轮询）→ `getRecentDiagnostics(200)` 窄 API → Main `core:get-diagnostics` → Core `diagnostics.recent`（不带 traceId 拉全部）；`TraceList` 按 requestId 聚合命令行、`TraceDetail` 展示该次执行的 action 时间线、`DiagnosticsStatusbar` 显示 records/dropped。轮询遇 Core 重连瞬间的 `disconnected` 静默返回空。日志来源当前仅 Core，Main/Renderer 日志纳入见 M10 T10.5。
 
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`

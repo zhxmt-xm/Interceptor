@@ -1,6 +1,15 @@
 import { execFile } from 'node:child_process';
-import os from 'node:os';
-import path from 'node:path';
+
+// 懒加载提权库：@vscode/sudo-prompt 被 vite 标 external，只在 install/uninstall 需要提权时
+// 才 import，避免其在 Main 启动路径顶层 require 阻塞进程初始化（含 Chromium/CDP endpoint）。
+type SudoExec = (typeof import('@vscode/sudo-prompt'))['exec'];
+let sudoExecPromise: Promise<SudoExec> | null = null;
+function loadSudoExec(): Promise<SudoExec> {
+  if (!sudoExecPromise) {
+    sudoExecPromise = import('@vscode/sudo-prompt').then((module) => module.exec);
+  }
+  return sudoExecPromise;
+}
 
 /** 平台信任库命令结果。 */
 export interface CommandResult {
@@ -27,11 +36,33 @@ export const execFileRunner: CommandRunner = {
   },
 };
 
+/** 提权命令执行抽象；install/uninstall 需管理员/root 写机器级信任库。 */
+export interface ElevatedRunner {
+  run(command: string): Promise<CommandResult>;
+}
+
+/** 默认提权 runner：@vscode/sudo-prompt 弹系统原生提权对话框执行整条命令行。 */
+export const sudoPromptRunner: ElevatedRunner = {
+  async run(command) {
+    const sudoExec = await loadSudoExec();
+    return new Promise((resolve) => {
+      sudoExec(command, { name: 'Interceptor' }, (error, stdout, stderr) => {
+        resolve({
+          code: error ? 1 : 0,
+          stdout: String(stdout ?? ''),
+          stderr: String(stderr ?? error?.message ?? ''),
+        });
+      });
+    });
+  },
+};
+
 export interface TrustStoreServiceOptions {
   readonly platform?: NodeJS.Platform;
   readonly runner?: CommandRunner;
-  /** macOS 登录钥匙串路径；默认当前用户 login.keychain-db。 */
-  readonly loginKeychainPath?: string;
+  readonly elevatedRunner?: ElevatedRunner;
+  /** macOS 系统钥匙串路径；默认 /Library/Keychains/System.keychain（本地计算机级信任）。 */
+  readonly systemKeychainPath?: string;
 }
 
 export class TrustStoreError extends Error {
@@ -47,23 +78,25 @@ interface PlatformCommand {
 }
 
 /**
- * 当前用户信任库的安装/卸载/检测（仅 Main）。
+ * 本地计算机信任库的安装/卸载/检测（仅 Main）。
  *
- * Windows 用 `certutil -user`，macOS 用 `security`（登录钥匙串）；都只操作当前用户，
- * 不做机器级安装（那需要显式提权）。命令经 execFile 执行、参数数组传入，绝不拼接 shell。
- * 卸载与检测按 SHA-1 thumbprint 精确定位。启动只检测，不自动修改信任库。
+ * Windows 用 `certutil`（本地计算机 Root）、macOS 用 `security`（系统钥匙串）；install/uninstall
+ * 写机器级信任库需管理员权限，经 @vscode/sudo-prompt 弹系统原生提权对话框执行整条命令行；
+ * 只读的 isTrusted 检测用普通 execFile。卸载与检测按 SHA-1 thumbprint 精确定位。
+ * 启动只检测，不自动修改信任库。
  */
 export class TrustStoreService {
   private readonly platform: NodeJS.Platform;
   private readonly runner: CommandRunner;
-  private readonly loginKeychain: string;
+  private readonly elevatedRunner: ElevatedRunner;
+  private readonly systemKeychain: string;
 
   constructor(options: TrustStoreServiceOptions = {}) {
     this.platform = options.platform ?? process.platform;
     this.runner = options.runner ?? execFileRunner;
-    this.loginKeychain =
-      options.loginKeychainPath ??
-      path.join(os.homedir(), 'Library', 'Keychains', 'login.keychain-db');
+    this.elevatedRunner = options.elevatedRunner ?? sudoPromptRunner;
+    this.systemKeychain =
+      options.systemKeychainPath ?? '/Library/Keychains/System.keychain';
   }
 
   /** 当前平台是否支持信任库操作（Windows/macOS）。 */
@@ -71,10 +104,11 @@ export class TrustStoreService {
     return this.platform === 'win32' || this.platform === 'darwin';
   }
 
-  /** 把 Root CA 安装到当前用户信任库。调用方：ca.install（用户在设置里授权后）。 */
+  /** 把 Root CA 安装到本地计算机信任库（需提权）。调用方：ca.install（用户在设置里授权后）。 */
   async install(certPath: string): Promise<void> {
-    const { command, args } = this.installCommand(certPath);
-    const result = await this.runner.run(command, args);
+    const result = await this.elevatedRunner.run(
+      this.installCommandLine(certPath),
+    );
     if (result.code !== 0) {
       throw new TrustStoreError(
         `Trust store install failed (exit ${result.code}): ${result.stderr || result.stdout}`,
@@ -82,10 +116,11 @@ export class TrustStoreService {
     }
   }
 
-  /** 按 SHA-1 thumbprint 精确从当前用户信任库移除。调用方：ca.uninstall。 */
+  /** 按 SHA-1 thumbprint 精确从本地计算机信任库移除（需提权）。调用方：ca.uninstall。 */
   async uninstall(sha1Thumbprint: string): Promise<void> {
-    const { command, args } = this.uninstallCommand(sha1Thumbprint);
-    const result = await this.runner.run(command, args);
+    const result = await this.elevatedRunner.run(
+      this.uninstallCommandLine(sha1Thumbprint),
+    );
     if (result.code !== 0) {
       throw new TrustStoreError(
         `Trust store uninstall failed (exit ${result.code}): ${result.stderr || result.stdout}`,
@@ -103,45 +138,39 @@ export class TrustStoreService {
     if (this.platform === 'win32') {
       return result.code === 0;
     }
-    // macOS：列出登录钥匙串证书的 SHA-1，命中目标即视为已安装。
+    // macOS：列出系统钥匙串证书的 SHA-1，命中目标即视为已安装。
     return (
       result.code === 0 &&
       result.stdout.toUpperCase().includes(sha1Thumbprint.toUpperCase())
     );
   }
 
-  private installCommand(certPath: string): PlatformCommand {
+  private installCommandLine(certPath: string): string {
     if (this.platform === 'win32') {
-      return { command: 'certutil', args: ['-user', '-addstore', '-f', 'Root', certPath] };
+      return `certutil -addstore -f Root "${certPath}"`;
     }
     if (this.platform === 'darwin') {
-      return {
-        command: 'security',
-        args: ['add-trusted-cert', '-r', 'trustRoot', '-k', this.loginKeychain, certPath],
-      };
+      return `security add-trusted-cert -d -r trustRoot -k "${this.systemKeychain}" "${certPath}"`;
     }
     throw new TrustStoreError(`Trust store is not supported on ${this.platform}.`);
   }
 
-  private uninstallCommand(sha1Thumbprint: string): PlatformCommand {
+  private uninstallCommandLine(sha1Thumbprint: string): string {
     if (this.platform === 'win32') {
-      return { command: 'certutil', args: ['-user', '-delstore', 'Root', sha1Thumbprint] };
+      return `certutil -delstore Root ${sha1Thumbprint}`;
     }
     if (this.platform === 'darwin') {
-      return {
-        command: 'security',
-        args: ['delete-certificate', '-Z', sha1Thumbprint, this.loginKeychain],
-      };
+      return `security delete-certificate -Z ${sha1Thumbprint} "${this.systemKeychain}"`;
     }
     throw new TrustStoreError(`Trust store is not supported on ${this.platform}.`);
   }
 
   private isTrustedCommand(sha1Thumbprint: string): PlatformCommand {
     if (this.platform === 'win32') {
-      return { command: 'certutil', args: ['-user', '-verifystore', 'Root', sha1Thumbprint] };
+      return { command: 'certutil', args: ['-verifystore', 'Root', sha1Thumbprint] };
     }
     if (this.platform === 'darwin') {
-      return { command: 'security', args: ['find-certificate', '-a', '-Z', this.loginKeychain] };
+      return { command: 'security', args: ['find-certificate', '-a', '-Z', this.systemKeychain] };
     }
     throw new TrustStoreError(`Trust store is not supported on ${this.platform}.`);
   }

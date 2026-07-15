@@ -42,18 +42,12 @@ describe('CoreDiagnostics', () => {
         requestId: 'request-1',
         traceId: 'trace-1',
         command: 'echo',
-        phase: 'action.started',
-        action: 'echo.copy',
-      },
-      {
-        requestId: 'request-1',
-        traceId: 'trace-1',
-        command: 'echo',
         phase: 'action.completed',
+        action: 'echo.copy',
         outcome: 'success',
       },
     ]);
-    expect(batches.flat()).toHaveLength(2);
+    expect(batches.flat()).toHaveLength(1);
   });
 
   it('keeps records and pending output bounded', async () => {

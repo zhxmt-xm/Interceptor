@@ -11,6 +11,7 @@ import type {
 } from '@interceptor/core-protocol';
 
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
+import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
   BodyRefInput,
   CaptureSessionInput,
@@ -86,11 +87,20 @@ export class ProxyService {
   private sessionId: string | null = null;
   private capturedExchanges = 0;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
+  private diagnostics: DiagnosticsRecorder | null = null;
 
   constructor(
     private readonly storage: CaptureSink,
     private readonly events: CaptureEventSink,
   ) {}
+
+  /**
+   * 注入数据面诊断汇；由 CoreApplication 在 diagnostics 装配后调用一次。
+   * 未注入时所有记录降为 no-op，便于单测直接 new。
+   */
+  attachDiagnostics(sink: DiagnosticsRecorder): void {
+    this.diagnostics = sink;
+  }
 
   /**
    * 启动 Mockttp 代理并登记捕获会话；重复调用先返回既有地址。
@@ -112,6 +122,9 @@ export class ProxyService {
     this.sessionId = sessionId;
     this.host = options.host ?? DEFAULT_PROXY_HOST;
     this.address = await this.startServer(options.port);
+    this.diagnostics?.info('proxy.listening', {
+      attributes: { host: this.address.host, port: this.address.port },
+    });
     return this.address;
   }
 
@@ -129,6 +142,12 @@ export class ProxyService {
       await this.stopServer();
       this.address = await this.startServer(port);
     }
+    this.diagnostics?.info('tls.reconfigured', {
+      attributes: {
+        mitm: config.ca !== null,
+        insecureHosts: config.insecureHosts.length,
+      },
+    });
   }
 
   /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM 与 HTTP/2。 */
@@ -176,6 +195,7 @@ export class ProxyService {
     }
     await this.stopServer();
     this.address = null;
+    this.diagnostics?.info('proxy.stopped');
   }
 
   /** 返回当前代理运行态快照。调用方：proxy.status command handler。 */
@@ -205,6 +225,20 @@ export class ProxyService {
       const pendingRequest = this.pending.get(request.id) ?? request;
       this.pending.delete(request.id);
       void this.captureExchange(pendingRequest, null, 'aborted');
+    });
+    // HTTPS 握手/客户端协议错误是抓包排障关键：CA 未信任、ALPN、证书拒绝等。
+    void server.on('tls-client-error', (error) => {
+      this.diagnostics?.warn('tls.client-error', {
+        attributes: {
+          reason: error.failureCause,
+          host: error.tlsMetadata?.sniHostname ?? 'unknown',
+        },
+      });
+    });
+    void server.on('client-error', (error) => {
+      this.diagnostics?.warn('client.error', {
+        errorCode: error.errorCode ?? 'unknown',
+      });
     });
   }
 
@@ -272,8 +306,29 @@ export class ProxyService {
     try {
       await this.storage.appendExchanges([exchange]);
       this.capturedExchanges += 1;
-    } catch {
-      // 存储失败不得影响已完成的转发；错误由 Storage 层自身诊断。
+    } catch (error) {
+      // 存储失败不得影响已完成的转发，但必须留痕以便排障。
+      this.diagnostics?.error('capture.persist-failed', {
+        attributes: { host: exchange.host ?? 'unknown', method: exchange.method },
+        errorCode: error instanceof Error ? error.name : 'unknown',
+      });
+    }
+    if (state === 'aborted') {
+      this.diagnostics?.warn('exchange.aborted', {
+        attributes: {
+          host: exchange.host ?? 'unknown',
+          method: exchange.method,
+          path: exchange.path ?? '',
+        },
+      });
+    } else if (exchange.statusCode !== undefined && exchange.statusCode >= 500) {
+      this.diagnostics?.warn('exchange.server-error', {
+        attributes: {
+          host: exchange.host ?? 'unknown',
+          method: exchange.method,
+          status: exchange.statusCode,
+        },
+      });
     }
     this.events.enqueue(state === 'completed' ? 'exchange-added' : 'exchange-updated', {
       id: exchange.id,

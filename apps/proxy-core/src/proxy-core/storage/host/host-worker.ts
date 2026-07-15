@@ -23,6 +23,7 @@ import type {
   StorageWorkerRequestEnvelope,
   StorageWorkerResponse,
 } from '../protocol';
+import type { DiagnosticsRecorder } from '../../core-diagnostics';
 
 interface PendingRequest {
   resolve(value: unknown): void;
@@ -45,6 +46,12 @@ export class StorageWorkerHost {
   private readyPromise: Promise<void> | null = null;
   private nextRequestId = 1;
   private closed = false;
+  private diagnostics: DiagnosticsRecorder | null = null;
+
+  /** 注入诊断汇；由 StorageService 在 CoreApplication 装配后转交。 */
+  attachDiagnostics(sink: DiagnosticsRecorder): void {
+    this.diagnostics = sink;
+  }
 
   /**
    * 启动 Worker 并在收到 ready 后解析；重复调用返回同一个启动 Promise。
@@ -67,11 +74,15 @@ export class StorageWorkerHost {
       channel.on('message', (message: StorageWorkerResponse) => {
         if (message.type === 'ready') {
           ready = true;
+          this.diagnostics?.info('storage.worker-ready');
           resolve();
           return;
         }
         if (message.type === 'fatal') {
           const error = new Error(`storage worker fatal: ${message.message}`);
+          this.diagnostics?.error('storage.worker-fatal', {
+            errorCode: 'worker-fatal',
+          });
           if (!ready) {
             reject(error);
           }
@@ -81,6 +92,9 @@ export class StorageWorkerHost {
         this.handleResult(message);
       });
       channel.on('error', (error) => {
+        this.diagnostics?.error('storage.worker-error', {
+          errorCode: error instanceof Error ? error.name : 'unknown',
+        });
         if (!ready) {
           reject(error);
         }
@@ -88,6 +102,11 @@ export class StorageWorkerHost {
       });
       channel.on('exit', (code) => {
         const error = new Error(`storage worker exited with code ${code}`);
+        if (!this.closed) {
+          this.diagnostics?.error('storage.worker-exit', {
+            attributes: { code },
+          });
+        }
         if (!ready) {
           reject(error);
         }

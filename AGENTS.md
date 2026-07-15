@@ -40,3 +40,4 @@
 - Keep `stages/ARCHITECTURE.md` limited to code and boundaries that are currently implemented. Planned architecture remains in the product plan and stage files until validated in code.
 - Update `stages/PROGRESS.md`, the active stage file, `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` commands at stage or milestone boundaries, or when the user explicitly asks.
 - If a stage boundary is unclear, ask before synchronizing those documents.
+- Before committing code, first review the staged diff and update the affected docs (`stages/PROGRESS.md`, the active `stages/M*.md`, `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` as applicable) so they reflect the change; commit only after the docs are in sync.

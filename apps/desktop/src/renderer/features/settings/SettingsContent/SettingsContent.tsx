@@ -1,4 +1,4 @@
-import { Copy, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
+import { Copy, Eye, FolderOpen, Library, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import type {
@@ -69,19 +69,36 @@ function CertificatesPanel(): React.JSX.Element {
     load();
   }, [load]);
 
-  const run = useCallback(
-    (action: (api: InterceptorDesktopApi) => Promise<unknown>): void => {
+  // CA 操作直接用返回的 CertificateInfo 更新，避免重新 load 造成 loading 闪烁。
+  const applyInfo = useCallback(
+    (action: (api: InterceptorDesktopApi) => Promise<CertificateInfo>): void => {
       const api = window.interceptor;
       if (!api || busy) {
         return;
       }
       setBusy(true);
       void Promise.resolve(action(api))
-        .then(() => load())
+        .then((nextInfo) => setInfo(nextInfo))
         .catch(() => setState('error'))
         .finally(() => setBusy(false));
     },
-    [busy, load],
+    [busy],
+  );
+
+  // per-host 例外操作用返回的 hosts 更新，同样不触发整面板重载。
+  const applyHosts = useCallback(
+    (action: (api: InterceptorDesktopApi) => Promise<string[]>): void => {
+      const api = window.interceptor;
+      if (!api || busy) {
+        return;
+      }
+      setBusy(true);
+      void Promise.resolve(action(api))
+        .then((nextHosts) => setHosts(nextHosts))
+        .catch(() => setState('error'))
+        .finally(() => setBusy(false));
+    },
+    [busy],
   );
 
   if (state === 'loading' || !info) {
@@ -103,7 +120,7 @@ function CertificatesPanel(): React.JSX.Element {
       return;
     }
     setDraftHost('');
-    run((api) => api.setInsecureHosts([...hosts, host]));
+    applyHosts((api) => api.setInsecureHosts([...hosts, host]));
   };
 
   return (
@@ -147,12 +164,26 @@ function CertificatesPanel(): React.JSX.Element {
         ) : null}
         <Row
           label="Certificate authority"
-          hint="Generating a fresh CA invalidates the current one"
+          hint={
+            info.trusted
+              ? '需先在下方移除信任（Remove）才能重新生成或删除'
+              : 'Generating a fresh CA invalidates the current one'
+          }
         >
+          {info.present && !info.trusted ? (
+            <Button
+              icon={Trash2}
+              variant="danger"
+              disabled={busy}
+              onClick={() => applyInfo((api) => api.deleteCertificate())}
+            >
+              Delete
+            </Button>
+          ) : null}
           <Button
             icon={RefreshCw}
-            disabled={busy}
-            onClick={() => run((api) => api.generateCertificate())}
+            disabled={busy || info.trusted}
+            onClick={() => applyInfo((api) => api.generateCertificate())}
           >
             {info.present ? 'Regenerate' : 'Generate'}
           </Button>
@@ -161,10 +192,10 @@ function CertificatesPanel(): React.JSX.Element {
 
       <Group title="Trust status">
         <Row
-          label="User store"
+          label="Local machine"
           hint={
             info.supported
-              ? 'Current user only'
+              ? '本机全部用户 · 安装/移除需管理员提权'
               : 'Trust store not supported on this platform'
           }
         >
@@ -175,42 +206,62 @@ function CertificatesPanel(): React.JSX.Element {
                 icon={Trash2}
                 variant="danger"
                 disabled={busy}
-                onClick={() => run((api) => api.uninstallCertificate())}
+                onClick={() => applyInfo((api) => api.uninstallCertificate())}
               >
                 Remove
               </Button>
             </>
           ) : (
             <>
-              <span className={cx(styles.mono, styles.monoMuted)}>Not installed</span>
+              <span className={cx(styles.mono, styles.monoMuted)}>
+                {info.present ? 'Not installed' : '需先生成 CA'}
+              </span>
               <Button
                 icon={Shield}
                 variant="primary"
-                disabled={busy || !info.supported}
-                onClick={() => run((api) => api.installCertificate())}
+                disabled={busy || !info.supported || !info.present}
+                onClick={() => applyInfo((api) => api.installCertificate())}
               >
                 Install…
               </Button>
             </>
           )}
         </Row>
+        {info.present && info.path ? (
+          <Row label="Location" hint="Root CA 证书 PEM 文件在磁盘上的位置">
+            <span className={styles.mono}>{info.path}</span>
+            <IconButton
+              icon={Eye}
+              label="查看证书详情"
+              size="sm"
+              onClick={() => void window.interceptor?.viewCertificate()}
+            />
+            <IconButton
+              icon={Library}
+              label="打开证书管理器"
+              size="sm"
+              onClick={() => void window.interceptor?.openCertificateManager()}
+            />
+            <IconButton
+              icon={FolderOpen}
+              label="在文件管理器中打开"
+              size="sm"
+              onClick={() => void window.interceptor?.revealCertificate()}
+            />
+          </Row>
+        ) : null}
       </Group>
 
       <Group title="HTTPS interception">
         <Row
           label="Decrypt HTTPS (MITM)"
-          hint="Enabled once the CA is installed and trusted"
+          hint="需先安装并信任 CA；开启后代理才对 HTTPS 做解密"
         >
           <Switch
-            checked={info.trusted}
+            checked={info.mitmEnabled && info.trusted}
             onChange={
-              info.supported && !busy
-                ? (checked) =>
-                    run((api) =>
-                      checked
-                        ? api.installCertificate()
-                        : api.uninstallCertificate(),
-                    )
+              info.trusted && !busy
+                ? (checked) => applyInfo((api) => api.setHttpsDecryption(checked))
                 : undefined
             }
           />
@@ -248,7 +299,7 @@ function CertificatesPanel(): React.JSX.Element {
                     label={`Remove ${host}`}
                     size="sm"
                     onClick={() =>
-                      run((api) =>
+                      applyHosts((api) =>
                         api.setInsecureHosts(hosts.filter((h) => h !== host)),
                       )
                     }

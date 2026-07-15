@@ -11,6 +11,15 @@ import {
 
 import { CoreDiagnostics } from './core-diagnostics';
 
+/**
+ * 诊断查询命令自身不写生命周期 trace：Renderer 会周期轮询 diagnostics.recent，
+ * 若记录会用查询日志刷屏并把真正有用的命令挤出有界内存 ring buffer。
+ */
+const SILENT_COMMANDS: ReadonlySet<CoreCommand['type']> = new Set([
+  'diagnostics.recent',
+  'diagnostics.query',
+]);
+
 export type CoreCommandHandler = (
   command: CoreCommand,
   signal: AbortSignal,
@@ -95,6 +104,7 @@ export class CoreRpcServer {
     );
     this.connection = connection;
     connection.start();
+    this.diagnostics.info('rpc.connected');
   }
 
   /**
@@ -174,6 +184,7 @@ export class CoreRpcServer {
     };
     this.activeRequests.set(request.requestId, activeRequest);
     const startedAt = Date.now();
+    const silent = SILENT_COMMANDS.has(request.command.type);
 
     // 每个 command 自动记录相同的生命周期；Application 只补充业务 action。
     await this.diagnostics.runWithCommand(
@@ -181,9 +192,6 @@ export class CoreRpcServer {
       request.traceId,
       request.command.type,
       async () => {
-        this.diagnostics.info('command.received');
-        this.diagnostics.info('command.validated');
-        this.diagnostics.info('handler.started');
         try {
           const result = await this.host.executeCommand(
             request.command,
@@ -196,26 +204,23 @@ export class CoreRpcServer {
             throw disconnectedError();
           }
 
-          this.diagnostics.info('response.sent', {
-            attributes: { resultType: result.type },
-          });
-          this.diagnostics.info('command.completed', {
-            durationMs: Date.now() - startedAt,
-            outcome: 'success',
-          });
+          if (!silent) {
+            this.diagnostics.info('command.completed', {
+              durationMs: Date.now() - startedAt,
+              outcome: 'success',
+              attributes: { resultType: result.type },
+            });
+          }
         } catch (error) {
           const detail = readCoreError(error, activeRequest.controller.signal);
           const delivered = this.sendError(connection, request, detail);
-          if (delivered) {
-            this.diagnostics.info('response.sent', {
-              attributes: { errorCode: detail.code },
+          if (!silent) {
+            this.diagnostics.error('command.completed', {
+              durationMs: Date.now() - startedAt,
+              outcome: toOutcome(delivered ? detail.code : 'disconnected'),
+              errorCode: delivered ? detail.code : 'disconnected',
             });
           }
-          this.diagnostics.error('command.completed', {
-            durationMs: Date.now() - startedAt,
-            outcome: toOutcome(delivered ? detail.code : 'disconnected'),
-            errorCode: delivered ? detail.code : 'disconnected',
-          });
         } finally {
           if (this.activeRequests.get(request.requestId) === activeRequest) {
             this.activeRequests.delete(request.requestId);
@@ -259,14 +264,7 @@ export class CoreRpcServer {
       request.traceId,
       request.command.type,
       async () => {
-        this.diagnostics.info('command.received');
-        this.diagnostics.info('command.validated');
         const delivered = this.sendError(connection, request, detail);
-        if (delivered) {
-          this.diagnostics.info('response.sent', {
-            attributes: { errorCode: detail.code },
-          });
-        }
         this.diagnostics.error('command.completed', {
           durationMs: 0,
           outcome: 'failed',
@@ -362,6 +360,7 @@ export class CoreRpcServer {
     if (this.connection !== connection) {
       return;
     }
+    this.diagnostics.warn('rpc.connection-failed', { errorCode: reason });
     this.close(reason);
     try {
       this.host.handleRpcFatalError(reason);

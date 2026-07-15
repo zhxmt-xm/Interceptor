@@ -142,10 +142,7 @@ describe('CoreApplication', () => {
       type: 'diagnostics.records',
       payload: {
         droppedCount: 0,
-        records: [
-          { phase: 'action.started' },
-          { phase: 'action.completed' },
-        ],
+        records: [{ phase: 'action.completed' }],
       },
     });
   });
@@ -264,6 +261,7 @@ describe('CoreApplication', () => {
         return Promise.resolve(Buffer.from('hello'));
       },
       dispose: () => Promise.resolve(),
+      attachDiagnostics: () => undefined,
     } as unknown as StorageService;
     const application = new CoreApplication(new FakeParentPort(), {
       storageService: storage,
@@ -322,6 +320,7 @@ describe('CoreApplication', () => {
       initialize: () => Promise.resolve(),
       readBodyRange: () => Promise.resolve(gzipped),
       dispose: () => Promise.resolve(),
+      attachDiagnostics: () => undefined,
     } as unknown as StorageService;
     const application = new CoreApplication(new FakeParentPort(), {
       storageService: storage,

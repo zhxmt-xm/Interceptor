@@ -74,6 +74,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(securitySnapshot).toEqual({
       apiKeys: [
         'clearStorage',
+        'deleteCertificate',
         'echoCore',
         'generateCertificate',
         'getCaptureStatus',
@@ -82,16 +83,21 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getCoreTrace',
         'getExchangeDetail',
         'getInsecureHosts',
+        'getRecentDiagnostics',
         'getStorageStatus',
         'installCertificate',
         'onCaptureEvents',
         'onCoreProcessStatusChange',
+        'openCertificateManager',
         'querySessions',
         'readBody',
+        'revealCertificate',
+        'setHttpsDecryption',
         'setInsecureHosts',
         'startCapture',
         'stopCapture',
         'uninstallCertificate',
+        'viewCertificate',
       ],
       hasNodeProcess: 'undefined',
       hasNodeRequire: 'undefined',
@@ -137,12 +143,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         { message: 'Echo command trace did not complete', timeout: 5_000 },
       )
       .toEqual(expect.arrayContaining([
-        'command.received',
-        'command.validated',
-        'handler.started',
-        'action.started',
         'action.completed',
-        'response.sent',
         'command.completed',
       ]));
 

@@ -12,6 +12,7 @@ import { CaptureMain, CaptureStatusbar, CaptureTopbar } from '../features/captur
 import { ComposerMain, ComposerStatusbar, ComposerTopbar } from '../features/composer';
 import {
   DiagnosticsMain,
+  DiagnosticsProvider,
   DiagnosticsStatusbar,
   DiagnosticsTopbar,
 } from '../features/diagnostics';
@@ -147,27 +148,35 @@ export function App(): React.JSX.Element {
 
   const feature = renderView(view, toggleCollapse);
 
+  const shell = (
+    <AppShell
+      collapsed={collapsed}
+      sidebar={
+        <Sidebar
+          activeView={view}
+          collapsed={collapsed}
+          onSelect={setView}
+          theme={themeMode}
+          onThemeChange={setThemeMode}
+          lang={lang}
+          onLangChange={setLang}
+          coreStatus={coreStatus}
+        />
+      }
+      topbar={feature.topbar}
+      main={feature.main}
+      statusbar={feature.statusbar}
+    />
+  );
+
   return (
     <ConfigProvider componentSize="small" theme={createAppTheme(themeMode)}>
       <AntApp className={styles.antApp}>
-        <AppShell
-          collapsed={collapsed}
-          sidebar={
-            <Sidebar
-              activeView={view}
-              collapsed={collapsed}
-              onSelect={setView}
-              theme={themeMode}
-              onThemeChange={setThemeMode}
-              lang={lang}
-              onLangChange={setLang}
-              coreStatus={coreStatus}
-            />
-          }
-          topbar={feature.topbar}
-          main={feature.main}
-          statusbar={feature.statusbar}
-        />
+        {view === 'diagnostics' ? (
+          <DiagnosticsProvider>{shell}</DiagnosticsProvider>
+        ) : (
+          shell
+        )}
       </AntApp>
     </ConfigProvider>
   );

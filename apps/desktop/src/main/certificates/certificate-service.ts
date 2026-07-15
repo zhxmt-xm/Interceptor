@@ -137,6 +137,15 @@ export class CertificateService {
     return this.getStatus();
   }
 
+  /** 删除本地 CA 材料（证书/私钥/元数据），回到“未生成”状态。调用方：ca.delete。 */
+  async delete(): Promise<void> {
+    await Promise.all([
+      fs.rm(this.certPath, { force: true }),
+      fs.rm(this.keyPath, { force: true }),
+      fs.rm(this.metaPath, { force: true }),
+    ]);
+  }
+
   /**
    * 解密并返回 CA 材料，供下发 Core 做 MITM；私钥只在 Main 内存。
    * 无 CA 时返回 null。调用方：Main 在启动/配置 Core MITM 时。

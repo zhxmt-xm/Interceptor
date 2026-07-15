@@ -42,6 +42,7 @@ describe('renderer utils', () => {
       timestamp: '2026-07-13T00:00:00.000Z',
       sequence: 1,
       level: 'info',
+      traceId: 'trace-1',
       requestId: 'request-1',
       command: 'echo',
       phase: 'command.completed',

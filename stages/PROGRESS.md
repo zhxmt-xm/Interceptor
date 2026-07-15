@@ -21,7 +21,7 @@
 - 当前任务：M6 已收官。Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库；新增 `content-decoder`（gzip/deflate/brotli 延迟解码），`body.read-range` 支持 `decode`/`encoding` 由 Core 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解），回传 `decodeStatus`；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览 + 失败提示。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强；h1→纯 h2 上游为 Mockttp 边缘（403）已记限制。
 - 下一动作：M7 Server——SQLite rule_set 存取 + rules.validate/replace/get handler + matcher 编译 + action 执行 + breakpoint 状态机 + Mockttp beforeRequest/beforeResponse 引擎（原子替换）+ RuleHit 审计。
 - 打包方案已落地：Mockttp 含 WASM（brotli-wasm）与原生插件（tls-impersonate 的 .node），esbuild 以 `--external:mockttp` 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷把依赖闭包随包发（`resources/proxy-core/node_modules`）；packaged smoke 验证 Core 用隔离闭包成功加载 mockttp，`npm audit --omit=dev` 0 漏洞。
-- Git 状态：M1 基线提交为 `b923117`；当前分支包含尚未提交的 M2 存储层、M3 代理与捕获事件管线、M4 会话列表 UI 全量实现（Mockttp + 打包脚本 + `proxy/`、`storage/`、`diagnostics/` 模块 + `features/capture/` 数据层与组件重写 + `@tanstack/*`、`zustand`、CodeMirror 依赖）。
+- Git 状态：M1 `b923117`、M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` 均已推送 origin/main。本次提交纳入：M5 CA 可用性增强（local-machine 信任库 + sudo-prompt 提权、证书 reveal/view/管理器/delete 入口、MITM 与信任解耦、install 不自动生成）、诊断日志全组件覆盖与 Diagnostics 面板接真实数据，及若干 UI 修复；详见 M5.md/M2.md 后续增强与 M10.md T10.4/T10.5。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M6.md](M6.md)（下一 Stage 见 [M7.md](M7.md)）。
@@ -66,9 +66,10 @@
 - 存储层已落地：`node:sqlite` + `worker_threads` 的 Capture（`capture.sqlite`，八张核心实体表 + FTS5 + 只向前迁移）与 Diagnostics（`diagnostics.sqlite`，保留 + 丢弃计数 + 分页）双库、独占连接的 Storage/Diagnostics Worker、内容寻址 Blob Store（流式 + 去重 + 配额 + crash-safe GC）、keyset opaque cursor 分页查询，以及 Storage 状态/清空窄 API 与 Storage 设置面板。数据目录由 Main 经 `--data-dir` 注入 Core。
 - HTTP/1.1 显式代理已落地（M3）：基于 Mockttp 的 loopback 显式代理经 `proxy.start/stop/status` 控制，转发 HTTP/1.1、未解密时 CONNECT 直通；规范 Exchange（含请求/响应头与内容寻址正文 Blob）写入 Storage。实时 Capture 事件经 Core 内有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`），Main 订阅后经 `capture:events` 广播 Renderer。
 - 会话列表 UI 已落地（M4）：Capture 工作区数据驱动——TanStack Virtual 固定行高虚拟化列表 + Zustand 视图状态（实时事件按 id 合并/前插、keyset 分页查询、客户端协议分段过滤），Omnibox 关键字搜索与 method/status/host 结构化过滤下推 Core `sessions.query`，录制开关经 `proxy.start/stop`；Inspector 选中行按需 `sessions.detail` 拉取头部/正文引用，正文经 `body.read-range` 分块用 CodeMirror（JSON 高亮）或 hex fallback 预览（256KB 上限）。body/header 不进入全局状态。
-- HTTPS MITM 与 CA 已落地（M5）：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage` 加密私钥（懒加载证书库）；`TrustStoreService` 做 current-user 信任库安装/卸载/检测（certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp MITM 解密 HTTPS（仅信任后启用）并复用现有捕获管线；per-host 不安全例外、Settings/Certificates 面板接真实数据。私钥绝不进 Renderer。
+- HTTPS MITM 与 CA 已落地（M5）：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage` 加密私钥（懒加载证书库）；`TrustStoreService` 做 local-machine 信任库安装/卸载/检测（sudo-prompt 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp MITM 解密 HTTPS（仅信任且 mitmEnabled 开启时启用，信任与 MITM 解耦）并复用现有捕获管线；per-host 不安全例外、Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。私钥绝不进 Renderer。详见 M5.md 后续增强。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke（含存储全链路 + 窄 API 面）和生产依赖审计链已建立。
 - HTTP/2 已落地（M6）：MITM 时 Mockttp `http2:true` 下游 h2 + 上游 ALPN 协商 + 四组转换；trailer/pseudo-header 采集落库；`content-decoder`（gzip/deflate/brotli 延迟解码）经 `body.read-range` 的 `decode` 请求由 Core 解压（浏览器不支持 br 故必须 Core 解）；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强。
+- 诊断可观测性增强（2026-07）：Core 各组件（rpcServer/application/proxy/storage）经共享 `DiagnosticsRecorder` 记 initialize/生命周期/action/error 关键节点（削去每命令模板 phase 噪音）；Diagnostics 面板经 `getRecentDiagnostics` 轮询接真实命令 trace（按 requestId 聚合 + action 时间线 + records/dropped）。Main/Renderer 日志纳入诊断见 M10 T10.5。
 - 规则、系统代理、导入导出均未实现（M7 起接入）。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
@@ -90,6 +91,8 @@ M0 历史验收已覆盖：
 2026-07-14 M2 存储层完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 82 passed（Desktop 21、Proxy Core 55、Core Protocol 6），含 capture/blob/diagnostics store、worker host 假通道、真实 worker 线程集成和 10 万行分页稳定性；`npm run package` + `npm run test:smoke` 真实 exe 通过并端到端验证存储栈（真实 Storage Worker 用 `node:sqlite` 落盘 `capture.sqlite`，`getStorageStatus`/`clearStorage` 正常，`window.interceptor` 仅 6 个意图 API）；`npm audit --omit=dev` 0 vulnerabilities（未新增生产依赖）；`git diff --check` 干净。详情见 [M2.md](M2.md)。
 
 M6 HTTP/2 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 120 passed（Desktop 36、Proxy Core 78、Core Protocol 6），含 content-decoder（gzip/deflate/brotli/多层/容错）、H2 端到端集成（h2↔h2 含 trailer/pseudo、h2→h1）、body.read-range gzip 解码；`npm run build --workspace @interceptor/proxy-core` 通过；`npm run test:smoke` 真实 exe 通过。详情见 [M6.md](M6.md)。
+
+2026-07-16 CA 增强 + 诊断全组件覆盖 + Diagnostics 面板接线后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 121 passed（Desktop 36 / Proxy Core 78 / Core Protocol 7）；`npm run package` + `npm run test:smoke` 真实 exe 通过——`@vscode/sudo-prompt`/`@peculiar/x509` 懒加载后 packaged CDP 与 Preload 面正常，echo trace 精简为 action.completed/command.completed。详见 [M5.md](M5.md)/[M2.md](M2.md) 后续增强。
 
 ## 更新规则
 

@@ -157,7 +157,7 @@ describe('CoreRpcServer', () => {
     expect(fatal).toHaveBeenCalledWith('send-failed');
   });
 
-  it('records the complete command trace', async () => {
+  it('records a concise command.completed trace', async () => {
     const diagnostics = createDiagnostics();
     const server = new CoreRpcServer({
       diagnostics,
@@ -173,13 +173,7 @@ describe('CoreRpcServer', () => {
 
     expect(diagnostics.recent(20, 'trace-complete').records.map(
       ({ phase }) => phase,
-    )).toEqual([
-      'command.received',
-      'command.validated',
-      'handler.started',
-      'response.sent',
-      'command.completed',
-    ]);
+    )).toEqual(['command.completed']);
   });
 
   it('rejects duplicate request IDs and cancels active requests', async () => {

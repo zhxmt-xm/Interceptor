@@ -13,6 +13,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetProcessStatus),
   getCoreTrace: (traceId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetTrace, traceId),
+  getRecentDiagnostics: (limit) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetDiagnostics, limit),
   onCoreProcessStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
@@ -66,10 +68,17 @@ const api: InterceptorDesktopApi = {
   installCertificate: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caInstall),
   uninstallCertificate: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caUninstall),
+  deleteCertificate: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caDelete),
+  revealCertificate: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caReveal),
+  viewCertificate: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caView),
+  openCertificateManager: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.caOpenManager),
   getInsecureHosts: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsGetInsecureHosts),
   setInsecureHosts: (hosts) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts, hosts),
+  setHttpsDecryption: (enabled) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetDecryption, enabled),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

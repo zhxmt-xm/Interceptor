@@ -120,6 +120,8 @@ export class CoreApplication implements CoreRpcHost {
     this.diagnostics = new CoreDiagnostics(
       this.diagnosticsWorkerHost ?? undefined,
     );
+    this.proxyService?.attachDiagnostics(this.diagnostics);
+    this.storageService?.attachDiagnostics(this.diagnostics);
     this.rpcServer = new CoreRpcServer(this);
   }
 
@@ -156,6 +158,7 @@ export class CoreApplication implements CoreRpcHost {
     }
     this.initializeDiagnostics();
     this.initializeStorage();
+    this.diagnostics.info('core.started');
   }
 
   /**
@@ -167,6 +170,7 @@ export class CoreApplication implements CoreRpcHost {
       return;
     }
     this.stopping = true;
+    this.diagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
     void this.storageService?.dispose();
@@ -351,11 +355,16 @@ export class CoreApplication implements CoreRpcHost {
     if (!this.storageService) {
       return;
     }
-    void this.storageService.initialize().catch((error: unknown) => {
-      this.diagnostics.error('storage.init.failed', {
-        errorCode: error instanceof Error ? error.name : 'unknown',
+    void this.storageService
+      .initialize()
+      .then(() => {
+        this.diagnostics.info('storage.ready');
+      })
+      .catch((error: unknown) => {
+        this.diagnostics.error('storage.init.failed', {
+          errorCode: error instanceof Error ? error.name : 'unknown',
+        });
       });
-    });
   }
 
   /**
@@ -366,11 +375,16 @@ export class CoreApplication implements CoreRpcHost {
     if (!this.diagnosticsWorkerHost) {
       return;
     }
-    void this.diagnosticsWorkerHost.start().catch((error: unknown) => {
-      this.diagnostics.error('diagnostics.init.failed', {
-        errorCode: error instanceof Error ? error.name : 'unknown',
+    void this.diagnosticsWorkerHost
+      .start()
+      .then(() => {
+        this.diagnostics.info('diagnostics.ready');
+      })
+      .catch((error: unknown) => {
+        this.diagnostics.error('diagnostics.init.failed', {
+          errorCode: error instanceof Error ? error.name : 'unknown',
+        });
       });
-    });
   }
 
   /**

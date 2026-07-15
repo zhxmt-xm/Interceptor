@@ -1,6 +1,7 @@
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 
 import { GLOBAL_QUOTA_BYTES } from '../constants';
+import type { DiagnosticsRecorder } from '../core-diagnostics';
 import { BlobStore } from './host/host-blob-store';
 import { StorageWorkerHost } from './host/host-worker';
 import type { ExchangeResponsePatch } from './protocol';
@@ -37,6 +38,11 @@ export class StorageService {
   private readonly blobStore = new BlobStore();
   private readonly quotaBytes = GLOBAL_QUOTA_BYTES;
   private ready: Promise<void> | null = null;
+
+  /** 注入诊断汇并转交给 Storage Worker 代理。调用方：CoreApplication 装配后。 */
+  attachDiagnostics(sink: DiagnosticsRecorder): void {
+    this.host.attachDiagnostics(sink);
+  }
 
   /**
    * 启动 Storage Worker 并初始化 Blob Store；重复调用返回同一初始化 Promise。

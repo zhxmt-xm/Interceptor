@@ -1,12 +1,12 @@
-import { useState } from 'react';
-
 import { cx } from '../../../components';
-import { LOGS } from '../data';
+import { aggregateTraces } from '../data';
+import { useDiagnostics } from '../DiagnosticsProvider';
 import styles from './TraceList.module.css';
 
 /** Left diagnostics pane: the scrollable trace/command table. */
 export function TraceList(): React.JSX.Element {
-  const [selected, setSelected] = useState(2);
+  const { records, selectedKey, setSelectedKey } = useDiagnostics();
+  const rows = aggregateTraces(records);
 
   return (
     <div className={styles.list}>
@@ -18,23 +18,31 @@ export function TraceList(): React.JSX.Element {
         <span className={styles.right}>Duration</span>
       </div>
 
-      {LOGS.map((log, index) => (
-        <button
-          type="button"
-          key={index}
-          className={cx(styles.row, index === selected && styles.selected)}
-          onClick={() => setSelected(index)}
-        >
-          <span className={styles.time}>{log.time}</span>
-          <span className={styles.command}>{log.command}</span>
-          <span className={cx(styles.level, styles[log.level])}>
-            <span className={styles.dot} />
-            {log.level}
-          </span>
-          <span className={cx(styles.outcome, styles[log.outcome])}>{log.outcomeLabel}</span>
-          <span className={styles.duration}>{log.duration}</span>
-        </button>
-      ))}
+      <div className={styles.body}>
+        {rows.length === 0 ? (
+          <div className={styles.empty}>No diagnostics recorded yet.</div>
+        ) : (
+          rows.map((row) => (
+            <button
+              type="button"
+              key={row.key}
+              className={cx(styles.row, row.key === selectedKey && styles.selected)}
+              onClick={() => setSelectedKey(row.key)}
+            >
+              <span className={styles.time}>{row.time}</span>
+              <span className={styles.command}>{row.command}</span>
+              <span className={cx(styles.level, styles[row.level])}>
+                <span className={styles.dot} />
+                {row.level}
+              </span>
+              <span className={cx(styles.outcome, styles[row.outcome])}>
+                {row.outcomeLabel}
+              </span>
+              <span className={styles.duration}>{row.duration}</span>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }

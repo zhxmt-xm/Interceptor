@@ -1,7 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { randomUUID, X509Certificate } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { app, BrowserWindow, ipcMain, safeStorage, session } from 'electron';
+import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electron';
 
 import { MAX_BODY_CHUNK_BYTES } from '@interceptor/core-protocol';
 
@@ -38,6 +40,9 @@ class DesktopApplication {
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
+  /** HTTPS 解密（MITM）用户意图开关；与“CA 是否信任”解耦——信任是系统层
+   * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
+  private mitmEnabled = true;
   private quitting = false;
 
   start(): void {
@@ -194,6 +199,39 @@ class DesktopApplication {
         };
       },
     );
+    // 拉取最近诊断记录（不限 traceId），供 Diagnostics 面板列表与时间线展示。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.coreGetDiagnostics,
+      async (event, rawLimit: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const limit =
+          typeof rawLimit === 'number' && Number.isFinite(rawLimit)
+            ? Math.min(Math.max(1, Math.floor(rawLimit)), 200)
+            : 200;
+        try {
+          const result = await this.coreRuntime.request({
+            type: 'diagnostics.recent',
+            payload: { limit },
+          });
+          return {
+            records: result.payload.records.map((record) =>
+              toRendererDiagnosticRecord(record)),
+            droppedCount: result.payload.droppedCount,
+          };
+        } catch (error) {
+          // 诊断面板每 2 秒轮询；Core 重启/重连期间 RPC 连接会短暂关闭，
+          // 这属预期内暂时状态：返回空快照，而非把断连当错误抛出刷 Main 日志。
+          const code =
+            typeof error === 'object' && error !== null && 'code' in error
+              ? (error as { code: unknown }).code
+              : undefined;
+          if (code === 'disconnected') {
+            return { records: [], droppedCount: 0 };
+          }
+          throw error;
+        }
+      },
+    );
 
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.storageGetStatus, async (event) => {
@@ -327,11 +365,15 @@ class DesktopApplication {
       return this.buildCertificateInfo();
     });
 
-    // 安装 CA 到当前用户信任库（用户显式授权的破坏性系统操作），随后启用 MITM。
+    // 安装已生成的 CA 到本地计算机信任库（需提权），随后启用 MITM。要求 CA 已生成，
+    // 不在此自动生成——生成是用户显式的独立操作。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caInstall, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const service = this.requireCertificateService();
-      await service.ensure();
+      const status = await service.getStatus();
+      if (!status.present) {
+        throw new Error('Root CA has not been generated yet.');
+      }
       await this.trustStore.install(service.getCertificatePath());
       await this.provisionCoreTls();
       return this.buildCertificateInfo();
@@ -348,6 +390,56 @@ class DesktopApplication {
       return this.buildCertificateInfo();
     });
 
+    // 删除本地生成的 CA 材料（证书/私钥/元数据）；若仍在信任库先移除（提权）避免孤儿信任。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.caDelete, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const service = this.requireCertificateService();
+      const thumbprints = await service.getThumbprints();
+      if (thumbprints && (await this.trustStore.isTrusted(thumbprints.sha1))) {
+        await this.trustStore.uninstall(thumbprints.sha1);
+      }
+      await service.delete();
+      await this.provisionCoreTls();
+      return this.buildCertificateInfo();
+    });
+
+    // 在系统文件管理器中定位 Root CA 证书文件（只读；私钥文件不暴露）。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.caReveal, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      shell.showItemInFolder(
+        this.requireCertificateService().getCertificatePath(),
+      );
+    });
+
+    // 打开系统证书查看对话框查看 Root CA 详情。.pem 扩展名不被系统证书查看器
+    // 关联，故导出 DER 编码的 .cer（标准证书格式）再由系统默认程序打开
+    // （Windows 证书对话框 / macOS Keychain）。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.caView, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const certPath = this.requireCertificateService().getCertificatePath();
+      const cerPath = certPath.replace(/\.pem$/i, '.cer');
+      const pem = await readFile(certPath, 'utf8');
+      await writeFile(cerPath, new X509Certificate(pem).raw);
+      const error = await shell.openPath(cerPath);
+      if (error) {
+        await shell.openPath(certPath);
+      }
+    });
+
+    // 打开系统证书管理器（Windows certmgr.msc 当前用户存储 / macOS 钥匙串访问）。
+    // 注：MMC 无法经命令行定位到特定证书，用户需在“受信任的根证书颁发机构”
+    // 下按名称/指纹查找；直接查看本 CA 详情用 ca:view。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.caOpenManager, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (process.platform === 'win32') {
+        execFile('cmd.exe', ['/c', 'start', '', 'certmgr.msc'], {
+          windowsHide: true,
+        });
+        return;
+      }
+      execFile('open', ['-a', 'Keychain Access']);
+    });
+
     // 源站证书不安全例外（per-host）只读查询。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.httpsGetInsecureHosts, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -362,6 +454,18 @@ class DesktopApplication {
         this.insecureHosts = toInsecureHosts(hosts);
         await this.provisionCoreTls();
         return [...this.insecureHosts];
+      },
+    );
+
+    // 独立的 HTTPS 解密（MITM）开关：不改信任库，只控制是否对 HTTPS 做 MITM。
+    // 前提是 CA 已安装信任；未信任时即使开启也不会下发 CA 材料（provisionCoreTls 把关）。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.httpsSetDecryption,
+      async (event, enabled: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        this.mitmEnabled = enabled === true;
+        await this.provisionCoreTls();
+        return this.buildCertificateInfo();
       },
     );
   }
@@ -394,9 +498,10 @@ class DesktopApplication {
     }
     try {
       const trusted = await this.isCaTrusted();
-      const material = trusted
-        ? await this.certificateService.getMaterial()
-        : null;
+      const material =
+        trusted && this.mitmEnabled
+          ? await this.certificateService.getMaterial()
+          : null;
       await this.coreRuntime.request({
         type: 'tls.configure',
         payload: { ca: material, insecureHosts: this.insecureHosts },
@@ -421,16 +526,19 @@ class DesktopApplication {
   // 组装面向 Renderer 的证书状态 DTO（公开元数据 + 信任状态）；绝不含私钥。
   private async buildCertificateInfo(): Promise<CertificateInfo> {
     const supported = this.trustStore.supported();
-    const status = await this.requireCertificateService().getStatus();
+    const service = this.requireCertificateService();
+    const status = await service.getStatus();
     const trusted = status.present ? await this.isCaTrusted() : false;
     return {
       present: status.present,
       trusted,
       supported,
+      mitmEnabled: this.mitmEnabled,
       fingerprint: status.fingerprint,
       subject: status.subject,
       createdAt: status.createdAt,
       expiresAt: status.expiresAt,
+      path: status.present ? service.getCertificatePath() : null,
     };
   }
 

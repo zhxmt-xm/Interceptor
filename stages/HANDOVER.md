@@ -21,13 +21,13 @@
 - **M0、M1、M2、M3、M4、M5、M6 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
 - **当前 Stage 是 M7 规则引擎（进行中，Contract 完成）**：规则模型（`packages/core-protocol/src/rules.ts`）+ rules.validate/replace/get 命令 + 完整 wire 校验 + 单测已交付；Server（SQLite rule_set 存取、rules handler、matcher 编译、action 执行、breakpoint 状态机、Mockttp beforeRequest/beforeResponse 原子替换引擎、RuleHit 审计）与 Client(M8) 待续。架构决策与增量规划见 `/memories/session/autonomous-m7-dev.md` 与 [M7.md](M7.md)。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
-- **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 current-user 信任库安装/卸载/检测（Windows certutil / macOS security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅 CA 已安装信任时启用**）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据。**私钥绝不进 Renderer/日志/导出。**
+- **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
 - **窄 API 已扩展**：`startCapture`/`stopCapture`/`getCaptureStatus`/`querySessions`/`getExchangeDetail`/`readBody`/`onCaptureEvents`（共 13 项 window.interceptor 面）；Main 订阅 `coreRuntime.onCaptureEvents` 经 `capture:events` 广播 Renderer。smoke 的 apiKeys 断言已同步。
 - **Mockttp 打包方案已落地并验证**：esbuild `--external:mockttp` + `scripts/ship-core-deps.mjs`（`@vercel/nft` 追踪运行时闭包 + 补拷 `prebuilds/`/`.node`）随包发到 `resources/proxy-core/node_modules`；packaged smoke 验证 Core 用隔离闭包 `require('mockttp')` 并 `running`。
-- **验证全绿**（M6 收官）：`typecheck` 三 workspace；`test:unit` 120（Desktop 36 / Proxy Core 78 / Core Protocol 6）；`build --workspace @interceptor/proxy-core` 成功；`package` + `test:smoke` 真实 exe 通过。
-- M1 基线提交为 `b923117`；M2–M6 已提交至 `caa3bbb`（已推送 origin/main）。当前分支包含**尚未提交的 M7 Contract 实现**（core-protocol rules.ts 规则模型、messages/validation rules 命令与校验、protocol.test 规则用例、core-rpc-client rules.get 映射）。新 Session 必须先跑 `git status --short --branch` 与 `git log -1 --oneline`，不要 reset/checkout/覆盖现有改动。
+- **验证全绿**（本次提交）：`typecheck` 三 workspace；`test:unit` 121（Desktop 36 / Proxy Core 78 / Core Protocol 7）；`build:core` 成功；`package` + `test:smoke` 真实 exe 通过（`@vscode/sudo-prompt`/`@peculiar/x509` 懒加载后 packaged CDP 正常）。
+- M1 基线 `b923117`；M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` 均已推送 origin/main。本次提交纳入：**M5 CA 可用性增强**（local-machine 信任库 + sudo-prompt 提权、证书 reveal/view/管理器/delete 入口、MITM 与信任解耦、install 不自动生成、vite external 修复）、**诊断日志全组件覆盖**（DiagnosticsRecorder + rpcServer/application/proxy/storage 关键节点 + 削噪音）、**Diagnostics 面板接真实数据**，及 TraceList 滚动/升序、Button disabled hover、诊断轮询断连静默等 UI 修复。详见 [M5.md](M5.md)/[M2.md](M2.md) 后续增强、[M10.md](M10.md) T10.4/T10.5。新 Session 先跑 `git status --short --branch` 与 `git log -1 --oneline`，不要 reset/checkout/覆盖现有改动。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction（仓库曾从 `H:\` 迁到 `C:\`，旧 junction 会失效）。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 
@@ -119,32 +119,33 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M6 HTTP/2
+## 下一任务：M7 Server（规则引擎）
 
-目标：实现 HTTP/2 下游（`createSecureServer({allowHTTP1:true})` 或 Mockttp 等效）与上游（`http2.connect` 按源站池化）、四组下游×上游协议转换、stream 级建模与背压，并扩展 Capture Inspector 展示协议/stream ID/pseudo-header/trailer/GOAWAY/RST。
+M7 Contract（规则模型/命令/校验）已提交 `3dc3c59`。下一步 Server：SQLite `rule_set` 存取 + `rules.validate/replace/get` handler + matcher 编译 + action 执行 + breakpoint 状态机 + Mockttp `beforeRequest`/`beforeResponse` 引擎（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计。架构决策与增量规划见 `/memories/session/autonomous-m7-dev.md` 与 [M7.md](M7.md)。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第八章（HTTP/2 行为）和第二十七章 M6。
-2. 先验证 Mockttp 对本产品所需 HTTP/2 组合的覆盖程度，不足路径用 Node 原生 `http2`/`tls`/`net` 补齐；保持与 M3/M5 捕获管线统一。
-3. 四组协议转换（H1×H2）需集成测试；stream/session 级背压与限流；畸形帧存事件不崩溃。
-4. 在 [M6.md](M6.md) 按 Server/Contract/Client 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
+1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十章（规则引擎）和第二十七章 M7。
+2. schema v2 `rule_set` 表 + 迁移；`rules.replace` 乐观并发（expectedRevision）+ `rules.get`/`validate`。
+3. matcher-compiler（规则→匹配函数）+ action-executor；rule-engine 经 Mockttp beforeRequest/beforeResponse 热切换 ruleSet 引用；breakpoint-queue 状态机。
+4. 在 [M7.md](M7.md) 按 Server/Contract/Client 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
 
-> 已完成：M3（Mockttp 显式代理 + 捕获事件）、M4（会话列表 + Inspector）与 M5（CA + HTTPS MITM）全量交付，收官验证全绿（typecheck / unit 110 / package / smoke / audit 0）。
+> 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。
 
 ## 剩余工作项目
 
 ### 已完成 Stage 的后续优化（非阻塞）
 
 - M3 T3.3 真零内存流式正文：改用 Mockttp `request-body-data`/`response-body-data` 事件按 id 增量喂入 `BlobStore.writeStream`，超内存阈值 spill。
-- M5 详细源站 TLS metadata（version/cipher/ALPN/证书链）记录 + Inspector TLS/Timing 标签填充；CA 导出、机器级信任库（需提权）后续。开发机未真实安装 CA（信任库 mock 单测覆盖）。
+- M5 详细源站 TLS metadata（version/cipher/ALPN/证书链）记录 + Inspector TLS/Timing 标签填充；CA 导出（PEM/DER）后续。机器级信任库（sudo-prompt 提权）已完成（见 M5.md 后续增强）。
+- Diagnostics 面板过滤（Level/Outcome）、脱敏 JSONL 导出、Main/Renderer 日志纳入诊断（M10 T10.4/T10.5）。
 
 ### 后续 Stage
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M6 | 未开始 | HTTP/2 下游/上游、四组协议转换、stream 建模、content-encoding、Inspector 增量 | 完整方案第八章、第二十七章 M6 |
-| M7–M13 | 未开始 | 规则、Composer、WebSocket/gRPC、导入导出、系统代理、发布、更新 | 完整方案对应章节和第二十七章 |
+| M7 | 进行中（Contract 完成） | 规则引擎 Server：rule_set 存取、matcher/action、breakpoint、Mockttp 引擎热切换、RuleHit | 完整方案第十章、第二十七章 M7 |
+| M8–M13 | 未开始 | 规则 UI/Composer、WebSocket/gRPC、导入导出与隐私、系统代理、发布、更新 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 
