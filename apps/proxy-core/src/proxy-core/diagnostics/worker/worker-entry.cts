@@ -2,27 +2,27 @@ import { parentPort, workerData } from 'node:worker_threads';
 
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
-import { openDiagnosticsDatabase } from './diagnostics-database';
+import { openDiagnosticsDatabase } from './worker-database';
 import {
   DiagnosticsStore,
   type DiagnosticsQuery,
-} from './diagnostics-store';
+} from './worker-store';
 import type {
   DiagnosticsWorkerData,
   DiagnosticsWorkerRequest,
   DiagnosticsWorkerResponse,
-} from './diagnostics-worker-protocol';
+} from '../protocol';
 
 /**
  * Diagnostics Worker 线程入口。
  *
  * 独占 `diagnostics.sqlite` 连接，批量持久化脱敏日志并服务分页查询。写入失败只累加
  * 丢弃计数、不抛回主线程，从而保证日志链路永不阻塞或回滚捕获数据面。该文件由 esbuild
- * 单独打包为 diagnostics-worker.cjs，与 entry.cjs 同目录部署。
+ * 单独打包为 diagnostics/worker/worker-entry.cjs，随 entry.cjs 同包部署。
  */
 
 if (!parentPort) {
-  throw new Error('diagnostics-worker must run as a worker thread');
+  throw new Error('diagnostics worker must run as a worker thread');
 }
 const channel = parentPort;
 const data = workerData as DiagnosticsWorkerData;
@@ -30,10 +30,7 @@ const data = workerData as DiagnosticsWorkerData;
 let store: DiagnosticsStore;
 try {
   const { db } = openDiagnosticsDatabase(data.databaseLocation);
-  store = new DiagnosticsStore(db, {
-    maxRecords: data.maxRecords,
-    maxAgeMs: data.maxAgeMs,
-  });
+  store = new DiagnosticsStore(db);
 } catch (error) {
   channel.postMessage({
     type: 'fatal',

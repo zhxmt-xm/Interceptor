@@ -9,17 +9,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
 
-import { StorageService } from '../../storage/storage-service';
+import { initializeRuntime } from '../../constants';
+import { StorageService } from '../../storage/entry';
+import { CaptureEventQueue } from '../capture-event-queue';
 import { ProxyService } from '../proxy-service';
 
 /**
  * M3 端到端集成：真实 ProxyService + 真实 StorageService（真实 Storage Worker 线程
  * 打开磁盘 capture.sqlite）+ 真实源站。验证一次代理请求形成规范 Exchange 并落库后
- * 可被分页查询回。需要已构建的 storage-worker.cjs bundle，缺失时跳过（smoke 兜底）。
+ * 可被分页查询回。需要已构建的 worker-entry.cjs bundle，缺失时跳过（smoke 兜底）。
  */
 const workerBundle = path.resolve(
   process.cwd(),
-  'dist/proxy-core/storage/storage-worker.cjs',
+  'dist/proxy-core/storage/worker/worker-entry.cjs',
 );
 
 function startOrigin(): Promise<{ port: number; close: () => Promise<void> }> {
@@ -137,9 +139,10 @@ describe.skipIf(!existsSync(workerBundle))(
 
     it('persists a proxied request as a queryable exchange', async () => {
       dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-m3-'));
-      storage = new StorageService({ dataDir, workerPath: workerBundle });
+      initializeRuntime([`--data-dir=${dataDir}`]);
+      storage = new StorageService();
       await storage.initialize();
-      proxy = new ProxyService({ sink: storage, appVersion: '0.0.0' });
+      proxy = new ProxyService(storage, new CaptureEventQueue());
       const address = await proxy.start();
       const origin = await startOrigin();
 
@@ -178,12 +181,13 @@ describe.skipIf(!existsSync(workerBundle))(
 
     it('decrypts HTTPS traffic via MITM into a queryable exchange', async () => {
       dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-m5-'));
-      storage = new StorageService({ dataDir, workerPath: workerBundle });
+      initializeRuntime([`--data-dir=${dataDir}`]);
+      storage = new StorageService();
       await storage.initialize();
 
       const ca = await generateCACertificate();
       const originCertificate = await generateCACertificate();
-      proxy = new ProxyService({ sink: storage, appVersion: '0.0.0' });
+      proxy = new ProxyService(storage, new CaptureEventQueue());
       // 先配置 CA 再启动，start 直接以 HTTPS MITM 模式监听；源站自签名靠 insecureHosts 例外。
       await proxy.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
       const address = await proxy.start();

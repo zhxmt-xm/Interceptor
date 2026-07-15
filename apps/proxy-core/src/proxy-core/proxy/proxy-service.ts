@@ -10,6 +10,7 @@ import type {
   CaptureExchangeSummary,
 } from '@interceptor/core-protocol';
 
+import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type {
   BodyRefInput,
   CaptureSessionInput,
@@ -31,16 +32,12 @@ export interface CaptureSink {
   ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
 }
 
-export interface ProxyServiceOptions {
-  readonly sink: CaptureSink;
-  readonly appVersion: string;
-  readonly now?: () => number;
-  readonly generateId?: () => string;
-  /** 捕获事件回调；由 CoreApplication 接到有界合并队列并 push 给 Main。 */
-  readonly onCaptureEvent?: (
+/** 捕获事件汇：ProxyService 采集/更新 Exchange 后投递，由 CaptureEventQueue 实现。 */
+export interface CaptureEventSink {
+  enqueue(
     kind: CaptureExchangeEventKind,
     summary: CaptureExchangeSummary,
-  ) => void;
+  ): void;
 }
 
 export interface ProxyStartOptions {
@@ -70,8 +67,6 @@ export interface ProxyTlsConfig {
   readonly insecureHosts: readonly string[];
 }
 
-const DEFAULT_HOST = '127.0.0.1';
-
 /**
  * 基于 Mockttp 的显式代理服务，仅绑定 loopback。
  *
@@ -82,30 +77,19 @@ const DEFAULT_HOST = '127.0.0.1';
  * 因其含 WASM/原生依赖不能内联进单文件，故以 external + nft 依赖闭包随包发。
  */
 export class ProxyService {
-  private readonly sink: CaptureSink;
-  private readonly appVersion: string;
-  private readonly now: () => number;
-  private readonly generateId: () => string;
-  private readonly onCaptureEvent?: (
-    kind: CaptureExchangeEventKind,
-    summary: CaptureExchangeSummary,
-  ) => void;
   private readonly pending = new Map<string, CompletedRequest>();
 
   private server: Mockttp | null = null;
   private address: ProxyAddress | null = null;
-  private host = DEFAULT_HOST;
+  private host = DEFAULT_PROXY_HOST;
   private sessionId: string | null = null;
   private capturedExchanges = 0;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
 
-  constructor(options: ProxyServiceOptions) {
-    this.sink = options.sink;
-    this.appVersion = options.appVersion;
-    this.now = options.now ?? Date.now;
-    this.generateId = options.generateId ?? cryptoRandomId;
-    this.onCaptureEvent = options.onCaptureEvent;
-  }
+  constructor(
+    private readonly storage: CaptureSink,
+    private readonly events: CaptureEventSink,
+  ) {}
 
   /**
    * 启动 Mockttp 代理并登记捕获会话；重复调用先返回既有地址。
@@ -116,16 +100,16 @@ export class ProxyService {
       return this.address;
     }
 
-    const sessionId = `session-${this.generateId()}`;
-    await this.sink.ensureSession({
+    const sessionId = `session-${cryptoRandomId()}`;
+    await this.storage.ensureSession({
       id: sessionId,
       name: 'Local capture',
-      startedAt: this.now(),
+      startedAt: Date.now(),
       captureMode: 'explicit-proxy',
-      appVersion: this.appVersion,
+      appVersion,
     });
     this.sessionId = sessionId;
-    this.host = options.host ?? DEFAULT_HOST;
+    this.host = options.host ?? DEFAULT_PROXY_HOST;
     this.address = await this.startServer(options.port);
     return this.address;
   }
@@ -228,7 +212,7 @@ export class ProxyService {
       return;
     }
     const target = parseTarget(request.url);
-    const startedAt = request.timingEvents?.startTime ?? this.now();
+    const startedAt = request.timingEvents?.startTime ?? Date.now();
     const headers: HeaderInput[] = [
       ...toHeaderInputs('request', request.rawHeaders),
       ...(response ? toHeaderInputs('response', response.rawHeaders) : []),
@@ -247,7 +231,7 @@ export class ProxyService {
       : undefined;
 
     const exchange: ExchangeInput = {
-      id: `ex-${this.generateId()}`,
+      id: `ex-${cryptoRandomId()}`,
       sessionId: this.sessionId,
       method: request.method.toUpperCase(),
       scheme: target.scheme,
@@ -263,8 +247,8 @@ export class ProxyService {
         ? readHeader(response.headers, 'content-type')
         : undefined,
       startedAt,
-      responseStartedAt: response ? this.now() : undefined,
-      completedAt: this.now(),
+      responseStartedAt: response ? Date.now() : undefined,
+      completedAt: Date.now(),
       requestBytes: requestBody?.encodedSize ?? readContentLength(request.headers),
       responseBytes: response
         ? responseBody?.encodedSize ?? readContentLength(response.headers)
@@ -275,12 +259,12 @@ export class ProxyService {
       responseBody,
     };
     try {
-      await this.sink.appendExchanges([exchange]);
+      await this.storage.appendExchanges([exchange]);
       this.capturedExchanges += 1;
     } catch {
       // 存储失败不得影响已完成的转发；错误由 Storage 层自身诊断。
     }
-    this.onCaptureEvent?.(state === 'completed' ? 'exchange-added' : 'exchange-updated', {
+    this.events.enqueue(state === 'completed' ? 'exchange-added' : 'exchange-updated', {
       id: exchange.id,
       method: exchange.method,
       secure: exchange.scheme === 'https',
@@ -314,9 +298,9 @@ export class ProxyService {
     if (!buffer || buffer.byteLength === 0) {
       return undefined;
     }
-    const id = `body-${this.generateId()}`;
+    const id = `body-${cryptoRandomId()}`;
     try {
-      const { hash, size } = await this.sink.writeBody(singleChunk(buffer));
+      const { hash, size } = await this.storage.writeBody(singleChunk(buffer));
       return {
         id,
         blobHash: hash,

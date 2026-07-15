@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import {
   app,
+  dialog,
   MessageChannelMain,
   utilityProcess,
   type MessagePortMain,
@@ -344,10 +345,17 @@ export class CoreRuntime {
     }
 
     const coreProcessLifecycleMessage = readCoreProcessLifecycleMessage(message);
-    if (
-      !coreProcessLifecycleMessage ||
-      coreProcessLifecycleMessage.type === 'stopped'
-    ) {
+    if (!coreProcessLifecycleMessage) {
+      return;
+    }
+    if (coreProcessLifecycleMessage.type === 'fatal') {
+      this.handleCoreProcessFatalStartup(
+        coreProcess,
+        coreProcessLifecycleMessage.message,
+      );
+      return;
+    }
+    if (coreProcessLifecycleMessage.type === 'stopped') {
       return;
     }
     if (!this.coreProcessShouldRun) {
@@ -378,6 +386,27 @@ export class CoreRuntime {
         listener();
       }
     }
+  }
+
+  /**
+   * 处理 CoreProcess 组合根启动失败：这类失败通常不可自愈，故停止重启以免无限重启刷屏，
+   * 并弹窗把错误摘要提示给用户；随后的进程退出按已停止处理。
+   * 调用方：handleCoreProcessMessage 收到 Core 发来的 fatal 生命周期消息。
+   */
+  private handleCoreProcessFatalStartup(
+    coreProcess: CoreProcessHandle,
+    message: string,
+  ): void {
+    if (this.coreProcess !== coreProcess) {
+      return;
+    }
+    this.coreProcessShouldRun = false;
+    this.clearCoreProcessRestartDelay();
+    this.clearCoreProcessHeartbeatTimeout();
+    this.updateCoreProcessStatus('unresponsive', {
+      detail: `Core 启动失败：${message}`,
+    });
+    dialog.showErrorBox('Interceptor Proxy Core 启动失败', message);
   }
 
   /**
@@ -614,7 +643,8 @@ export class CoreRuntime {
 type CoreProcessLifecycleMessage =
   | { type: 'ready'; pid: number; startedAt: string }
   | { type: 'heartbeat'; pid: number; timestamp: string }
-  | { type: 'stopped'; pid: number; timestamp: string };
+  | { type: 'stopped'; pid: number; timestamp: string }
+  | { type: 'fatal'; message: string };
 
 /** handleCoreProcessMessage 调用：把未知 parentPort 数据收窄为 CoreProcess 消息。 */
 function readCoreProcessLifecycleMessage(
@@ -642,6 +672,10 @@ function readCoreProcessLifecycleMessage(
       pid: value.pid,
       timestamp: value.timestamp,
     };
+  }
+
+  if (value.type === 'fatal' && typeof value.message === 'string') {
+    return { type: 'fatal', message: value.message };
   }
 
   return null;

@@ -1,4 +1,4 @@
-import type { Migration } from './migration-runner';
+import type { Migration } from '../../migration-runner';
 
 /**
  * Capture 数据库当前 schema 版本。新增迁移时必须同步更新。

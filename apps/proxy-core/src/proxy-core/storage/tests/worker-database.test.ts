@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
   IN_MEMORY_LOCATION,
   openCaptureDatabase,
-} from '../capture-database';
-import { CAPTURE_SCHEMA_VERSION } from '../capture-schema';
+} from '../worker/worker-database';
+import { CAPTURE_SCHEMA_VERSION } from '../worker/worker-schema';
 import {
   applyMigrations,
   MigrationError,
   readUserVersion,
-} from '../migration-runner';
+} from '../../migration-runner';
 
 const CORE_TABLES = [
   'capture_session',

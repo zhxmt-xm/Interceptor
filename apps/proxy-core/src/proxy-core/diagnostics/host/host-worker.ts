@@ -1,42 +1,19 @@
-import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
-import type { DiagnosticsPage, DiagnosticsQuery } from './diagnostics-store';
+import {
+  DIAGNOSTICS_MAX_PENDING_BATCHES,
+  DIAGNOSTICS_REQUEST_TIMEOUT_MS,
+  diagnosticsDatabasePath,
+  diagnosticsWorkerEntry,
+} from '../../constants';
+import type { DiagnosticsPage, DiagnosticsQuery } from '../worker/worker-store';
 import type {
   DiagnosticsWorkerData,
   DiagnosticsWorkerRequest,
   DiagnosticsWorkerResponse,
-} from './diagnostics-worker-protocol';
-
-/**
- * CoreApplication 依赖的诊断日志汇：生命周期 + 非阻塞写入 + 分页查询。
- */
-export interface DiagnosticsLog {
-  start(): Promise<void>;
-  sink(records: readonly DiagnosticLogRecord[]): void;
-  query(query: DiagnosticsQuery): Promise<DiagnosticsPage>;
-  close(): Promise<void>;
-}
-
-export interface DiagnosticsWorkerChannel {
-  postMessage(message: DiagnosticsWorkerRequest): void;
-  on(event: 'message', listener: (message: DiagnosticsWorkerResponse) => void): void;
-  on(event: 'error', listener: (error: Error) => void): void;
-  on(event: 'exit', listener: (code: number) => void): void;
-  terminate(): void | Promise<number>;
-}
-
-export interface DiagnosticsWorkerHostOptions {
-  readonly databaseLocation: string;
-  readonly workerPath?: string;
-  readonly maxRecords?: number;
-  readonly maxAgeMs?: number;
-  readonly maxPendingBatches?: number;
-  readonly requestTimeoutMs?: number;
-  readonly createChannel?: (data: DiagnosticsWorkerData) => DiagnosticsWorkerChannel;
-}
+} from '../protocol';
 
 interface PendingQuery {
   resolve(page: DiagnosticsPage): void;
@@ -44,51 +21,26 @@ interface PendingQuery {
   timer: ReturnType<typeof setTimeout> | null;
 }
 
-const DEFAULT_MAX_PENDING_BATCHES = 128;
-const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
-
 /**
- * Diagnostics Worker 的主线程代理，实现 DiagnosticsLog。
+ * Diagnostics Worker 的主线程代理：非阻塞写入 + 分页查询 + 生命周期。
  *
  * 写入路径 fire-and-forget 并在 Worker 就绪前有界缓冲，保证日志永不阻塞 command 或
  * 网络路径；查询路径按 requestId 关联。Worker 崩溃时拒绝挂起查询并丢弃缓冲写入，
- * 记录聚合丢弃计数，绝不递归回灌同一 sink。
+ * 记录聚合丢弃计数，绝不递归回灌同一 sink。Worker bundle 与数据库路径从中央运行期变量读取。
  */
-export class DiagnosticsWorkerHost implements DiagnosticsLog {
-  private readonly databaseLocation: string;
-  private readonly workerPath: string;
-  private readonly maxRecords?: number;
-  private readonly maxAgeMs?: number;
-  private readonly maxPendingBatches: number;
-  private readonly requestTimeoutMs: number;
-  private readonly createChannel: (
-    data: DiagnosticsWorkerData,
-  ) => DiagnosticsWorkerChannel;
+export class DiagnosticsWorkerHost {
+  private readonly maxPendingBatches = DIAGNOSTICS_MAX_PENDING_BATCHES;
+  private readonly requestTimeoutMs = DIAGNOSTICS_REQUEST_TIMEOUT_MS;
 
   private readonly pendingWrites: DiagnosticLogRecord[][] = [];
   private readonly pendingQueries = new Map<number, PendingQuery>();
-  private channel: DiagnosticsWorkerChannel | null = null;
+  private channel: Worker | null = null;
   private ready = false;
   private failed = false;
   private closed = false;
   private droppedBeforeReady = 0;
   private nextRequestId = 1;
   private startPromise: Promise<void> | null = null;
-
-  constructor(options: DiagnosticsWorkerHostOptions) {
-    this.databaseLocation = options.databaseLocation;
-    this.workerPath =
-      options.workerPath ??
-      path.join(__dirname, 'diagnostics', 'diagnostics-worker.cjs');
-    this.maxRecords = options.maxRecords;
-    this.maxAgeMs = options.maxAgeMs;
-    this.maxPendingBatches = options.maxPendingBatches ?? DEFAULT_MAX_PENDING_BATCHES;
-    this.requestTimeoutMs =
-      options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-    this.createChannel =
-      options.createChannel ??
-      ((data) => new Worker(this.workerPath, { workerData: data }));
-  }
 
   /**
    * 启动 Diagnostics Worker，就绪后回放缓冲写入；重复调用返回同一启动 Promise。
@@ -99,14 +51,14 @@ export class DiagnosticsWorkerHost implements DiagnosticsLog {
       return this.startPromise;
     }
     this.startPromise = new Promise<void>((resolve, reject) => {
-      const channel = this.createChannel({
-        databaseLocation: this.databaseLocation,
-        maxRecords: this.maxRecords,
-        maxAgeMs: this.maxAgeMs,
+      const channel = new Worker(diagnosticsWorkerEntry, {
+        workerData: {
+          databaseLocation: diagnosticsDatabasePath,
+        } satisfies DiagnosticsWorkerData,
       });
       this.channel = channel;
 
-      channel.on('message', (message) => {
+      channel.on('message', (message: DiagnosticsWorkerResponse) => {
         if (message.type === 'ready') {
           this.ready = true;
           this.flushPendingWrites();
@@ -149,7 +101,10 @@ export class DiagnosticsWorkerHost implements DiagnosticsLog {
       return;
     }
     if (this.ready && this.channel) {
-      this.channel.postMessage({ type: 'write', records: [...records] });
+      this.channel.postMessage({
+        type: 'write',
+        records: [...records],
+      } satisfies DiagnosticsWorkerRequest);
       return;
     }
     if (this.pendingWrites.length >= this.maxPendingBatches) {
@@ -180,7 +135,11 @@ export class DiagnosticsWorkerHost implements DiagnosticsLog {
       }, this.requestTimeoutMs);
       this.pendingQueries.set(requestId, { resolve, reject, timer });
       try {
-        channel.postMessage({ type: 'query', requestId, query });
+        channel.postMessage({
+          type: 'query',
+          requestId,
+          query,
+        } satisfies DiagnosticsWorkerRequest);
       } catch (error) {
         clearTimeout(timer);
         this.pendingQueries.delete(requestId);
@@ -198,7 +157,10 @@ export class DiagnosticsWorkerHost implements DiagnosticsLog {
     const channel = this.channel;
     if (channel && this.ready) {
       try {
-        channel.postMessage({ type: 'close', requestId: this.nextRequestId++ });
+        channel.postMessage({
+          type: 'close',
+          requestId: this.nextRequestId++,
+        } satisfies DiagnosticsWorkerRequest);
       } catch {
         // Worker 可能已退出。
       }
@@ -212,11 +174,17 @@ export class DiagnosticsWorkerHost implements DiagnosticsLog {
       return;
     }
     if (this.droppedBeforeReady > 0) {
-      this.channel.postMessage({ type: 'dropped', count: this.droppedBeforeReady });
+      this.channel.postMessage({
+        type: 'dropped',
+        count: this.droppedBeforeReady,
+      } satisfies DiagnosticsWorkerRequest);
       this.droppedBeforeReady = 0;
     }
     for (const records of this.pendingWrites.splice(0)) {
-      this.channel.postMessage({ type: 'write', records });
+      this.channel.postMessage({
+        type: 'write',
+        records,
+      } satisfies DiagnosticsWorkerRequest);
     }
   }
 

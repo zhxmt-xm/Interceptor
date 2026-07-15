@@ -1,4 +1,4 @@
-import type { Migration } from '../storage/migration-runner';
+import type { Migration } from '../../migration-runner';
 
 /**
  * 诊断日志库当前 schema 版本；与 Capture schema、Command 协议版本相互独立。

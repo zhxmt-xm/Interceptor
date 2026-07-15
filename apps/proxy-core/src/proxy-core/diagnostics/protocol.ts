@@ -1,6 +1,6 @@
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
-import type { DiagnosticsPage, DiagnosticsQuery } from './diagnostics-store';
+import type { DiagnosticsPage, DiagnosticsQuery } from './worker/worker-store';
 
 /**
  * Diagnostics Worker 与主线程 host 之间的进程内消息协议。
@@ -38,6 +38,4 @@ export type DiagnosticsWorkerResponse =
 
 export interface DiagnosticsWorkerData {
   readonly databaseLocation: string;
-  readonly maxRecords?: number;
-  readonly maxAgeMs?: number;
 }

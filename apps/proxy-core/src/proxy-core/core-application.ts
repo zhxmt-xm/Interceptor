@@ -6,17 +6,24 @@ import type {
   CoreResult,
 } from '@interceptor/core-protocol';
 
+import {
+  EVENT_DRAIN_BATCH,
+  EVENT_FLUSH_INTERVAL_MS,
+  HEARTBEAT_INTERVAL_MS,
+  MAX_INFLIGHT_EVENT_BATCHES,
+  dataDir,
+} from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
 import {
   CoreCommandError,
   CoreRpcServer,
+  type CoreRpcHost,
   type RpcMessagePort,
 } from './core-rpc-server';
-import type { DiagnosticsLog } from './diagnostics/diagnostics-worker-host';
-import type { DiagnosticsPage } from './diagnostics/diagnostics-store';
-import type { CaptureEventQueue } from './proxy/capture-event-queue';
-import type { ProxyService } from './proxy/proxy-service';
-import type { StorageService } from './storage/storage-service';
+import { DiagnosticsWorkerHost, type DiagnosticsPage } from './diagnostics/entry';
+import { CaptureEventQueue } from './proxy/capture-event-queue';
+import { ProxyService } from './proxy/proxy-service';
+import { StorageService } from './storage/entry';
 import type { CleanupScope } from './storage/types';
 
 export interface ParentMessageEvent {
@@ -31,24 +38,20 @@ export interface CoreParentPort {
 
 export interface CoreApplicationOptions {
   /** Core 拥有的存储门面；缺省时存储相关 command 返回 internal 错误。 */
-  storage?: StorageService;
+  storageService?: StorageService;
   /** 诊断日志汇；缺省时日志只进内存 Ring Buffer，diagnostics.query 返回空页。 */
-  diagnosticsLog?: DiagnosticsLog;
+  diagnosticsWorkerHost?: DiagnosticsWorkerHost;
   /** 显式代理服务；缺省时 proxy.start/stop 返回 internal，proxy.status 返回未监听。 */
-  proxy?: ProxyService;
+  proxyService?: ProxyService;
   /** 捕获事件有界合并队列；ProxyService 写入，CoreApplication 按背压窗口 push 给 Main。 */
-  captureEvents?: CaptureEventQueue;
+  captureEventQueue?: CaptureEventQueue;
 }
 
 export type CoreLifecycleMessage =
   | { type: 'ready'; pid: number; startedAt: string }
   | { type: 'heartbeat'; pid: number; timestamp: string }
-  | { type: 'stopped'; pid: number; timestamp: string };
-
-const HEARTBEAT_INTERVAL_MS = 1_000;
-const EVENT_FLUSH_INTERVAL_MS = 50;
-const MAX_INFLIGHT_EVENT_BATCHES = 8;
-const EVENT_DRAIN_BATCH = 200;
+  | { type: 'stopped'; pid: number; timestamp: string }
+  | { type: 'fatal'; message: string };
 
 /**
  * Proxy Core UtilityProcess 内唯一的应用根对象。
@@ -57,13 +60,13 @@ const EVENT_DRAIN_BATCH = 200;
  * CoreDiagnostics，以及 M2/M3 后续加入的 Storage/Proxy Service。Main 侧的
  * CoreRuntime 只管理进程代际和连接，不进入这里承载业务逻辑。
  */
-export class CoreApplication {
-  private readonly diagnostics: CoreDiagnostics;
+export class CoreApplication implements CoreRpcHost {
+  readonly diagnostics: CoreDiagnostics;
   private readonly rpcServer: CoreRpcServer;
-  private readonly storage: StorageService | null;
-  private readonly diagnosticsLog: DiagnosticsLog | null;
-  private readonly proxy: ProxyService | null;
-  private readonly captureEvents: CaptureEventQueue | null;
+  private readonly storageService: StorageService | null;
+  private readonly diagnosticsWorkerHost: DiagnosticsWorkerHost | null;
+  private readonly proxyService: ProxyService | null;
+  private readonly captureEventQueue: CaptureEventQueue | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -74,29 +77,49 @@ export class CoreApplication {
   private readonly handleSignal = (): void => this.stop();
 
   /**
+   * 组合根：按运行期配置装配存储/诊断/代理服务并启动应用；组合或启动失败作为 fatal
+   * 生命周期消息上报 Main 并置非零退出码。调用方：entry.cts 确认 parentPort 后调用一次。
+   */
+  static bootstrap(parentPort: CoreParentPort): void {
+    try {
+      const storageService = dataDir ? new StorageService() : undefined;
+      const diagnosticsWorkerHost = dataDir
+        ? new DiagnosticsWorkerHost()
+        : undefined;
+      const captureEventQueue = storageService
+        ? new CaptureEventQueue()
+        : undefined;
+      const proxyService =
+        storageService && captureEventQueue
+          ? new ProxyService(storageService, captureEventQueue)
+          : undefined;
+      new CoreApplication(parentPort, {
+        storageService,
+        diagnosticsWorkerHost,
+        proxyService,
+        captureEventQueue,
+      }).start();
+    } catch (error) {
+      reportFatalStartup(parentPort, error);
+    }
+  }
+
+  /**
    * 使用 UtilityProcess parentPort 建立生命周期边界，并组装 RPC 与 Diagnostics。
-   * 调用方：entry.cts 在确认 process.parentPort 存在后创建一次。
+   * 调用方：bootstrap（生产）与单元测试（注入替身服务）。
    */
   constructor(
     private readonly parentPort: CoreParentPort,
     options: CoreApplicationOptions = {},
   ) {
-    this.storage = options.storage ?? null;
-    this.diagnosticsLog = options.diagnosticsLog ?? null;
-    this.proxy = options.proxy ?? null;
-    this.captureEvents = options.captureEvents ?? null;
+    this.storageService = options.storageService ?? null;
+    this.diagnosticsWorkerHost = options.diagnosticsWorkerHost ?? null;
+    this.proxyService = options.proxyService ?? null;
+    this.captureEventQueue = options.captureEventQueue ?? null;
     this.diagnostics = new CoreDiagnostics(
-      this.diagnosticsLog
-        ? { sink: (records) => this.diagnosticsLog?.sink(records) }
-        : {},
+      this.diagnosticsWorkerHost ?? undefined,
     );
-    this.rpcServer = new CoreRpcServer({
-      executeCommand: (command, signal) =>
-        this.executeCommand(command, signal),
-      diagnostics: this.diagnostics,
-      onFatalError: () => this.requestExit(1),
-      onEventAck: () => this.onEventAck(),
-    });
+    this.rpcServer = new CoreRpcServer(this);
   }
 
   /**
@@ -124,7 +147,7 @@ export class CoreApplication {
       () => this.sendHeartbeat(),
       HEARTBEAT_INTERVAL_MS,
     );
-    if (this.captureEvents) {
+    if (this.captureEventQueue) {
       this.eventFlushTimer = setInterval(
         () => this.flushCaptureEvents(),
         EVENT_FLUSH_INTERVAL_MS,
@@ -145,9 +168,9 @@ export class CoreApplication {
     this.stopping = true;
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
-    void this.storage?.dispose();
-    void this.diagnosticsLog?.close();
-    void this.proxy?.stop();
+    void this.storageService?.dispose();
+    void this.diagnosticsWorkerHost?.close();
+    void this.proxyService?.stop();
     this.parentPort.postMessage({
       type: 'stopped',
       pid: process.pid,
@@ -258,7 +281,7 @@ export class CoreApplication {
         }));
       case 'proxy.start':
         return this.withProxy(async (proxy) => {
-          await this.storage?.initialize();
+          await this.storageService?.initialize();
           await this.diagnostics.action('proxy.start', () =>
             proxy.start({ port: command.payload.port }),
           );
@@ -272,8 +295,8 @@ export class CoreApplication {
       case 'proxy.status':
         return {
           type: 'proxy.status',
-          payload: this.proxy
-            ? this.proxy.status()
+          payload: this.proxyService
+            ? this.proxyService.status()
             : {
                 listening: false,
                 host: null,
@@ -306,10 +329,10 @@ export class CoreApplication {
    * 调用方：start；存储不可用只使相关 command 失败，不使 CoreProcess 退出。
    */
   private initializeStorage(): void {
-    if (!this.storage) {
+    if (!this.storageService) {
       return;
     }
-    void this.storage.initialize().catch((error: unknown) => {
+    void this.storageService.initialize().catch((error: unknown) => {
       this.diagnostics.error('storage.init.failed', {
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
@@ -321,10 +344,10 @@ export class CoreApplication {
    * 调用方：start。
    */
   private initializeDiagnostics(): void {
-    if (!this.diagnosticsLog) {
+    if (!this.diagnosticsWorkerHost) {
       return;
     }
-    void this.diagnosticsLog.start().catch((error: unknown) => {
+    void this.diagnosticsWorkerHost.start().catch((error: unknown) => {
       this.diagnostics.error('diagnostics.init.failed', {
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
@@ -341,10 +364,10 @@ export class CoreApplication {
     level?: 'debug' | 'info' | 'warn' | 'error';
     traceId?: string;
   }): Promise<DiagnosticsPage> {
-    if (!this.diagnosticsLog) {
+    if (!this.diagnosticsWorkerHost) {
       return { records: [], hasMore: false, droppedCount: 0 };
     }
-    return this.diagnosticsLog.query(payload);
+    return this.diagnosticsWorkerHost.query(payload);
   }
 
   /**
@@ -354,15 +377,15 @@ export class CoreApplication {
   private async withStorage<T>(
     operation: (storage: StorageService) => Promise<T>,
   ): Promise<T> {
-    if (!this.storage) {
+    if (!this.storageService) {
       throw commandError({
         code: 'internal',
         message: 'Storage is not available.',
         retryable: false,
       });
     }
-    await this.storage.initialize();
-    return operation(this.storage);
+    await this.storageService.initialize();
+    return operation(this.storageService);
   }
 
   /**
@@ -372,14 +395,14 @@ export class CoreApplication {
   private async withProxy<T>(
     operation: (proxy: ProxyService) => Promise<T>,
   ): Promise<T> {
-    if (!this.proxy) {
+    if (!this.proxyService) {
       throw commandError({
         code: 'internal',
         message: 'Proxy is not available.',
         retryable: false,
       });
     }
-    return operation(this.proxy);
+    return operation(this.proxyService);
   }
 
   /**
@@ -422,11 +445,11 @@ export class CoreApplication {
 
   /**
    * 按背压窗口把队列中的捕获事件分批 push 给 Main；无连接或窗口已满时本轮跳过。
-   * 调用方：start 安排的 flush 定时器和 onEventAck 腾出窗口后。取走前先确认有连接，
+   * 调用方：start 安排的 flush 定时器和 handleEventAck 腾出窗口后。取走前先确认有连接，
    * 避免把事件从队列取走却无法发送而丢失。
    */
   private flushCaptureEvents(): void {
-    const queue = this.captureEvents;
+    const queue = this.captureEventQueue;
     if (!queue || !this.rpcServer.hasActiveConnection) {
       return;
     }
@@ -448,12 +471,20 @@ export class CoreApplication {
   }
 
   /**
-   * 订阅端确认收到一批事件后腾出背压窗口并尝试继续 flush。
+   * 订阅端确认收到一批事件后腾出背压窗口并尝试继续 flush（CoreRpcHost）。
    * 调用方：CoreRpcServer 收到 event-ack 时。
    */
-  private onEventAck(): void {
+  handleEventAck(_batchSequence: number): void {
     this.inFlightEventBatches = Math.max(0, this.inFlightEventBatches - 1);
     this.flushCaptureEvents();
+  }
+
+  /**
+   * RPC 连接失效是当前 CoreProcess 的 fatal 故障：请求以非零码退出，交由 Main 重启（CoreRpcHost）。
+   * 调用方：CoreRpcServer 连接失效时。
+   */
+  handleRpcFatalError(_reason: string): void {
+    this.requestExit(1);
   }
 
   /**
@@ -469,7 +500,7 @@ export class CoreApplication {
 
   /**
    * 移除进程 signal listener 并在当前事件循环末尾退出，防止重入安排多个 exit。
-   * 调用方：stop 使用 code 0；CoreRpcServer fatal callback 使用 code 1。
+   * 调用方：stop 使用 code 0；handleRpcFatalError 使用 code 1。
    */
   private requestExit(code: number): void {
     if (this.exiting) {
@@ -494,6 +525,20 @@ export class CoreApplication {
 
 function commandError(detail: CoreError): CoreCommandError {
   return new CoreCommandError(detail);
+}
+
+/**
+ * 组合根启动失败时上报 Main（fatal 生命周期消息，含错误摘要）并置非零退出码。
+ * 上报本身失败时兜底写 stderr。不强制立即退出，让事件循环自然排空以尽量 flush 该消息。
+ */
+function reportFatalStartup(parentPort: CoreParentPort, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  try {
+    parentPort.postMessage({ type: 'fatal', message });
+  } catch {
+    process.stderr.write(`Proxy Core failed to start: ${message}\n`);
+  }
+  process.exitCode = 1;
 }
 
 /**

@@ -1,20 +1,20 @@
 import { parentPort, workerData } from 'node:worker_threads';
 
-import { openCaptureDatabase } from './capture-database';
-import { CaptureStore } from './capture-store';
-import { applyStorageRequest } from './storage-request-dispatch';
+import { openCaptureDatabase } from './worker-database';
+import { CaptureStore } from './worker-store';
+import { applyStorageRequest } from './worker-request-dispatch';
 import type {
   StorageWorkerData,
   StorageWorkerRequestEnvelope,
   StorageWorkerResponse,
-} from './storage-worker-protocol';
+} from '../protocol';
 
 /**
  * Storage Worker 线程入口。
  *
  * 独占一个 Capture 数据库连接，逐条同步处理主线程请求，从而把 SQLite 写入与查询
  * 完全移出 Core 网络事件循环。worker_threads 天然一次只处理一条消息，写入因此串行化。
- * 该文件由 esbuild 单独打包为 storage-worker.cjs，与 entry.cjs 同目录部署。
+ * 该文件由 esbuild 单独打包为 storage/worker/worker-entry.cjs，随 entry.cjs 同包部署。
  */
 
 const port = parentPort;

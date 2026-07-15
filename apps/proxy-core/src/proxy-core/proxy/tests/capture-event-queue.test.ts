@@ -1,8 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CaptureExchangeSummary } from '@interceptor/core-protocol';
 
+// 不向构造函数注入 capacity：用 getter mock 常量，每个用例构造前设定容量。
+const { queueCapacity } = vi.hoisted(() => ({ queueCapacity: { value: 5_000 } }));
+vi.mock('../../constants', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../constants')>()),
+  get CAPTURE_EVENT_QUEUE_CAPACITY() {
+    return queueCapacity.value;
+  },
+}));
+
 import { CaptureEventQueue } from '../capture-event-queue';
+
+const DEFAULT_CAPACITY = 5_000;
 
 function summary(
   id: string,
@@ -24,6 +35,10 @@ function summary(
 }
 
 describe('CaptureEventQueue', () => {
+  beforeEach(() => {
+    queueCapacity.value = DEFAULT_CAPACITY;
+  });
+
   it('assigns monotonic sequences and drains in order', () => {
     const queue = new CaptureEventQueue();
     queue.enqueue('exchange-added', summary('a'));
@@ -60,7 +75,8 @@ describe('CaptureEventQueue', () => {
   });
 
   it('evicts oldest non-terminal events over capacity and counts drops', () => {
-    const queue = new CaptureEventQueue({ capacity: 2 });
+    queueCapacity.value = 2;
+    const queue = new CaptureEventQueue();
     queue.enqueue('exchange-added', summary('a', { state: 'pending' }));
     queue.enqueue('exchange-added', summary('b', { state: 'pending' }));
     queue.enqueue('exchange-added', summary('c', { state: 'pending' }));
@@ -72,7 +88,8 @@ describe('CaptureEventQueue', () => {
   });
 
   it('never silently drops terminal events under capacity pressure', () => {
-    const queue = new CaptureEventQueue({ capacity: 1 });
+    queueCapacity.value = 1;
+    const queue = new CaptureEventQueue();
     queue.enqueue('exchange-added', summary('done1', { state: 'completed' }));
     queue.enqueue('exchange-added', summary('done2', { state: 'failed' }));
 

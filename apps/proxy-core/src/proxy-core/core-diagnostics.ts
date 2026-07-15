@@ -9,6 +9,12 @@ import type {
   DiagnosticOutcome,
 } from '@interceptor/core-protocol';
 
+import {
+  DIAGNOSTICS_RING_MAX_BYTES,
+  DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS,
+  DIAGNOSTICS_RING_MAX_RECORDS,
+} from './constants';
+
 interface DiagnosticContext {
   traceId: string;
   requestId: string;
@@ -23,23 +29,20 @@ interface DiagnosticFields {
   attributes?: Record<string, DiagnosticAttribute>;
 }
 
-interface CoreDiagnosticsOptions {
-  maxBytes?: number;
-  maxOutputRecords?: number;
-  maxRecords?: number;
-  now?: () => number;
-  sink?: (records: readonly DiagnosticLogRecord[]) => Promise<void> | void;
-  fallback?: (message: string) => void;
-}
-
 interface StoredRecord {
   record: DiagnosticLogRecord;
   bytes: number;
 }
 
-const DEFAULT_MAX_BYTES = 512 * 1024;
-const DEFAULT_MAX_OUTPUT_RECORDS = 256;
-const DEFAULT_MAX_RECORDS = 2_000;
+/**
+ * 诊断输出汇：CoreDiagnostics 把成批脱敏日志投递给它。由 DiagnosticsWorkerHost 实现
+ * （持久化），或默认写 stdout JSON Lines。注入对象而非闭包，避免在装配处构造闭包函数。
+ */
+export interface DiagnosticsSink {
+  sink(records: readonly DiagnosticLogRecord[]): void | Promise<void>;
+}
+
+const defaultDiagnosticsSink: DiagnosticsSink = { sink: writeJsonLines };
 
 /**
  * Proxy Core 内非阻塞、有界、结构化的诊断记录器。
@@ -52,14 +55,9 @@ export class CoreDiagnostics {
   private readonly context = new AsyncLocalStorage<DiagnosticContext>();
   private readonly records: StoredRecord[] = [];
   private readonly outputQueue: DiagnosticLogRecord[] = [];
-  private readonly maxBytes: number;
-  private readonly maxOutputRecords: number;
-  private readonly maxRecords: number;
-  private readonly now: () => number;
-  private readonly sink: (
-    records: readonly DiagnosticLogRecord[],
-  ) => Promise<void> | void;
-  private readonly fallback: (message: string) => void;
+  private readonly maxBytes = DIAGNOSTICS_RING_MAX_BYTES;
+  private readonly maxOutputRecords = DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS;
+  private readonly maxRecords = DIAGNOSTICS_RING_MAX_RECORDS;
 
   private bytes = 0;
   private droppedCount = 0;
@@ -67,18 +65,12 @@ export class CoreDiagnostics {
   private sequence = 0;
 
   /**
-   * 固定容量、时间源和输出策略，并初始化空的 ring-like history 与输出队列。
-   * 调用方：CoreApplication 使用生产默认值；CoreDiagnostics 单测注入边界与 sink。
+   * 固定输出 sink 并初始化空的 ring-like history 与输出队列；容量与时间源固定为常量/系统时钟。
+   * 调用方：CoreApplication 注入 Diagnostics Worker host 作为 sink；无 sink 时默认写 stdout JSON Lines。
    */
-  constructor(options: CoreDiagnosticsOptions = {}) {
-    this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-    this.maxOutputRecords =
-      options.maxOutputRecords ?? DEFAULT_MAX_OUTPUT_RECORDS;
-    this.maxRecords = options.maxRecords ?? DEFAULT_MAX_RECORDS;
-    this.now = options.now ?? Date.now;
-    this.sink = options.sink ?? writeJsonLines;
-    this.fallback = options.fallback ?? writeFallback;
-  }
+  constructor(
+    private readonly sinkTarget: DiagnosticsSink = defaultDiagnosticsSink,
+  ) {}
 
   /**
    * 在当前异步调用链绑定 requestId、traceId 和 command，供后续日志自动继承。
@@ -98,20 +90,20 @@ export class CoreDiagnostics {
    * 调用方：CoreApplication command handler 及后续 Storage/Proxy Service 操作。
    */
   async action<T>(name: string, operation: () => Promise<T> | T): Promise<T> {
-    const startedAt = this.now();
+    const startedAt = Date.now();
     this.info('action.started', { action: name });
     try {
       const result = await operation();
       this.info('action.completed', {
         action: name,
-        durationMs: this.now() - startedAt,
+        durationMs: Date.now() - startedAt,
         outcome: 'success',
       });
       return result;
     } catch (error) {
       this.error('action.failed', {
         action: name,
-        durationMs: this.now() - startedAt,
+        durationMs: Date.now() - startedAt,
         outcome: 'failed',
         errorCode: readErrorCode(error),
       });
@@ -170,7 +162,7 @@ export class CoreDiagnostics {
   ): void {
     const context = this.context.getStore();
     const record: DiagnosticLogRecord = {
-      timestamp: new Date(this.now()).toISOString(),
+      timestamp: new Date().toISOString(),
       sequence: ++this.sequence,
       level,
       process: 'proxy-core',
@@ -242,7 +234,7 @@ export class CoreDiagnostics {
     }
 
     try {
-      const output = this.sink(batch);
+      const output = this.sinkTarget.sink(batch);
       if (isPromiseLike(output)) {
         void output.catch((error: unknown) => {
           this.fallbackSafely(
@@ -263,7 +255,7 @@ export class CoreDiagnostics {
    */
   private fallbackSafely(message: string): void {
     try {
-      this.fallback(message);
+      writeFallback(message);
     } catch {
       // Diagnostics must never fail the command or network path.
     }

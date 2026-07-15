@@ -1,9 +1,9 @@
-import path from 'node:path';
-
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 
-import { BlobStore } from './blob-store';
-import { StorageWorkerHost } from './storage-worker-host';
+import { GLOBAL_QUOTA_BYTES } from '../constants';
+import { BlobStore } from './host/host-blob-store';
+import { StorageWorkerHost } from './host/host-worker';
+import type { ExchangeResponsePatch } from './protocol';
 import type {
   CaptureSessionInput,
   CleanupScope,
@@ -11,19 +11,6 @@ import type {
   SessionQuery,
   SessionQueryPage,
 } from './types';
-import type { ExchangeResponsePatch } from './storage-worker-protocol';
-
-export interface StorageServiceOptions {
-  /** 存储根目录；capture.sqlite 与 blobs/ 都在其下。 */
-  readonly dataDir: string;
-  readonly maxBodyBytes?: number;
-  readonly globalQuotaBytes?: number;
-  /** 覆盖 Storage Worker bundle 路径；仅测试从源码运行时需要。 */
-  readonly workerPath?: string;
-  /** 测试注入：替换 Storage Worker host 与 blob store。 */
-  readonly host?: StorageWorkerHost;
-  readonly blobStore?: BlobStore;
-}
 
 /**
  * 面向 Renderer 用量报表的存储状态快照，合并 SQLite 与 Blob 磁盘占用。
@@ -38,10 +25,6 @@ export interface StorageStatusReport {
   readonly quotaBytes: number;
 }
 
-const CAPTURE_DB_FILE = 'capture.sqlite';
-const BLOB_DIR = 'blobs';
-const DEFAULT_GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
-
 /**
  * Proxy Core 存储门面，由 CoreApplication 独占拥有。
  *
@@ -50,27 +33,10 @@ const DEFAULT_GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
  * 对上只暴露意图型方法，不泄漏数据库句柄或 Blob 路径。
  */
 export class StorageService {
-  private readonly host: StorageWorkerHost;
-  private readonly blobStore: BlobStore;
-  private readonly quotaBytes: number;
+  private readonly host = new StorageWorkerHost();
+  private readonly blobStore = new BlobStore();
+  private readonly quotaBytes = GLOBAL_QUOTA_BYTES;
   private ready: Promise<void> | null = null;
-
-  constructor(options: StorageServiceOptions) {
-    this.quotaBytes = options.globalQuotaBytes ?? DEFAULT_GLOBAL_QUOTA_BYTES;
-    this.host =
-      options.host ??
-      new StorageWorkerHost({
-        databaseLocation: path.join(options.dataDir, CAPTURE_DB_FILE),
-        workerPath: options.workerPath,
-      });
-    this.blobStore =
-      options.blobStore ??
-      new BlobStore({
-        rootDir: path.join(options.dataDir, BLOB_DIR),
-        maxBodyBytes: options.maxBodyBytes,
-        globalQuotaBytes: this.quotaBytes,
-      });
-  }
 
   /**
    * 启动 Storage Worker 并初始化 Blob Store；重复调用返回同一初始化 Promise。

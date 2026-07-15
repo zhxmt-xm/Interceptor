@@ -6,6 +6,14 @@ import {
 import path from 'node:path';
 import { once } from 'node:events';
 
+import {
+  BLOB_TEMP_DIR,
+  GLOBAL_QUOTA_BYTES,
+  MAX_BODY_BYTES,
+  blobDirectory,
+  blobTempDirectory,
+} from '../../constants';
+
 /**
  * 写入正文超过单条上限时抛出；调用方据此把 body_ref 标记为 truncated。
  */
@@ -26,14 +34,6 @@ export class BlobQuotaExceededError extends Error {
   }
 }
 
-export interface BlobStoreOptions {
-  readonly rootDir: string;
-  /** 单条正文最大字节数，超过即拒绝写入。 */
-  readonly maxBodyBytes?: number;
-  /** 全局配额字节数，超过即拒绝新增内容。 */
-  readonly globalQuotaBytes?: number;
-}
-
 export interface BlobWriteResult {
   readonly hash: string;
   readonly size: number;
@@ -46,10 +46,6 @@ export interface BlobGcResult {
   readonly freedBytes: number;
 }
 
-const DEFAULT_MAX_BODY_BYTES = 64 * 1024 * 1024;
-const DEFAULT_GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
-const TEMP_DIR = 'tmp';
-
 /**
  * 内容寻址正文 Blob 存储。
  *
@@ -58,20 +54,12 @@ const TEMP_DIR = 'tmp';
  * 且启动时清理残留临时文件以保证崩溃安全。所有操作使用异步流式 I/O，不阻塞事件循环。
  */
 export class BlobStore {
-  private readonly rootDir: string;
-  private readonly tempDir: string;
-  private readonly maxBodyBytes: number;
-  private readonly globalQuotaBytes: number;
+  private readonly rootDir = blobDirectory;
+  private readonly tempDir = blobTempDirectory;
+  private readonly maxBodyBytes = MAX_BODY_BYTES;
+  private readonly globalQuotaBytes = GLOBAL_QUOTA_BYTES;
   private totalBytes = 0;
   private initialized = false;
-
-  constructor(options: BlobStoreOptions) {
-    this.rootDir = options.rootDir;
-    this.tempDir = path.join(options.rootDir, TEMP_DIR);
-    this.maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
-    this.globalQuotaBytes =
-      options.globalQuotaBytes ?? DEFAULT_GLOBAL_QUOTA_BYTES;
-  }
 
   /**
    * 建立目录结构、清理崩溃残留临时文件并统计现有 Blob 总量。
@@ -211,7 +199,7 @@ export class BlobStore {
     }
 
     for (const shard of shards) {
-      if (shard === TEMP_DIR || shard.length !== 2) {
+      if (shard === BLOB_TEMP_DIR || shard.length !== 2) {
         continue;
       }
       const shardDir = path.join(this.rootDir, shard);

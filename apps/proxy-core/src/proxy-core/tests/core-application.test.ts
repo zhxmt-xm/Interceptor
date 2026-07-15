@@ -14,7 +14,7 @@ import {
   CoreCommandError,
   type RpcMessagePort,
 } from '../core-rpc-server';
-import type { StorageService } from '../storage/storage-service';
+import type { StorageService } from '../storage/entry';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -92,6 +92,9 @@ describe('CoreApplication', () => {
       },
     ]);
     for (const message of parentPort.sent) {
+      if (message.type === 'fatal') {
+        continue;
+      }
       expectIsoTimestamp(
         message.type === 'ready' ? message.startedAt : message.timestamp,
       );
@@ -261,7 +264,9 @@ describe('CoreApplication', () => {
       },
       dispose: () => Promise.resolve(),
     } as unknown as StorageService;
-    const application = new CoreApplication(new FakeParentPort(), { storage });
+    const application = new CoreApplication(new FakeParentPort(), {
+      storageService: storage,
+    });
     const signal = new AbortController().signal;
 
     await expect(

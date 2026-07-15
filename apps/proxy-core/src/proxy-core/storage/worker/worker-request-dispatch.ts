@@ -1,10 +1,10 @@
-import type { CaptureStore } from './capture-store';
-import type { StorageWorkerRequest } from './storage-worker-protocol';
+import type { CaptureStore } from './worker-store';
+import type { StorageWorkerRequest } from '../protocol';
 
 /**
  * 将一条 Storage Worker 请求分派到 CaptureStore 的对应同步操作。
  *
- * 抽成独立函数后，Storage Worker 入口与 host 单元测试共用同一分派逻辑，避免重复。
+ * 抽成独立函数后，Storage Worker 入口逐条同步处理主线程请求时复用同一分派逻辑。
  * 未知 kind 通过穷尽检查在编译期暴露，运行期则抛错并由调用方转为 error 响应。
  */
 export function applyStorageRequest(

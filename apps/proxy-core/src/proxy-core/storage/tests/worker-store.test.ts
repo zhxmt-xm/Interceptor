@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { openCaptureDatabase, IN_MEMORY_LOCATION } from '../capture-database';
-import { CaptureStore, InvalidCursorError } from '../capture-store';
+import { openCaptureDatabase, IN_MEMORY_LOCATION } from '../worker/worker-database';
+import { CaptureStore, InvalidCursorError } from '../worker/worker-store';
 import type { ExchangeInput } from '../types';
 
 function createStore(): CaptureStore {

@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { CAPTURE_MIGRATIONS } from './capture-schema';
-import { applyMigrations, type MigrationResult } from './migration-runner';
+import { applyMigrations, type MigrationResult } from '../../migration-runner';
+import { CAPTURE_MIGRATIONS } from './worker-schema';
 
 /**
  * 内存数据库位置常量；单元测试与 fixture 使用它避免触碰磁盘。

@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { applyMigrations, type MigrationResult } from '../storage/migration-runner';
-import { DIAGNOSTICS_MIGRATIONS } from './diagnostics-schema';
+import { applyMigrations, type MigrationResult } from '../../migration-runner';
+import { DIAGNOSTICS_MIGRATIONS } from './worker-schema';
 
 const BUSY_TIMEOUT_MS = 5_000;
 

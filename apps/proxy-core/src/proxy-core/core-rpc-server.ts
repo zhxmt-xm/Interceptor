@@ -42,13 +42,15 @@ export interface RpcMessagePort {
   close(): void;
 }
 
-interface CoreRpcServerOptions {
-  executeCommand: CoreCommandHandler;
-  diagnostics: CoreDiagnostics;
-  now?: () => number;
-  onFatalError?: (reason: string) => void;
-  /** 收到订阅端 event-ack 时回调，供背压窗口退回。 */
-  onEventAck?: (batchSequence: number) => void;
+/**
+ * CoreRpcServer 回调的宿主（CoreApplication 实现）：注入宿主而非闭包，避免在装配处构造
+ * executeCommand/fatal/ack 闭包函数。
+ */
+export interface CoreRpcHost {
+  readonly diagnostics: CoreDiagnostics;
+  executeCommand(command: CoreCommand, signal: AbortSignal): Promise<CoreResult>;
+  handleRpcFatalError(reason: string): void;
+  handleEventAck(batchSequence: number): void;
 }
 
 interface ActiveRequest {
@@ -65,24 +67,16 @@ interface ActiveRequest {
  */
 export class CoreRpcServer {
   private readonly activeRequests = new Map<string, ActiveRequest>();
-  private readonly executeCommand: CoreCommandHandler;
   private readonly diagnostics: CoreDiagnostics;
-  private readonly now: () => number;
-  private readonly onFatalError: (reason: string) => void;
-  private readonly onEventAck: (batchSequence: number) => void;
   private connection: RpcConnection | null = null;
   private eventBatchSequence = 0;
 
   /**
-   * 固定 command handler、Diagnostics、时间源和 fatal 回调。
-   * 调用方：CoreApplication 构造时创建一个 Server；单元测试可注入 fake handler/clock。
+   * 绑定 RPC host（CoreApplication）：command 执行、诊断、fatal 与 event-ack 都回调其方法。
+   * 调用方：CoreApplication 构造时创建一个 Server。
    */
-  constructor(options: CoreRpcServerOptions) {
-    this.executeCommand = options.executeCommand;
-    this.diagnostics = options.diagnostics;
-    this.now = options.now ?? Date.now;
-    this.onFatalError = options.onFatalError ?? (() => undefined);
-    this.onEventAck = options.onEventAck ?? (() => undefined);
+  constructor(private readonly host: CoreRpcHost) {
+    this.diagnostics = host.diagnostics;
   }
 
   /**
@@ -153,7 +147,7 @@ export class CoreRpcServer {
     }
 
     if (parsed.value.kind === 'event-ack') {
-      this.onEventAck(parsed.value.batchSequence);
+      this.host.handleEventAck(parsed.value.batchSequence);
       return;
     }
 
@@ -179,7 +173,7 @@ export class CoreRpcServer {
       controller: new AbortController(),
     };
     this.activeRequests.set(request.requestId, activeRequest);
-    const startedAt = this.now();
+    const startedAt = Date.now();
 
     // 每个 command 自动记录相同的生命周期；Application 只补充业务 action。
     await this.diagnostics.runWithCommand(
@@ -191,7 +185,7 @@ export class CoreRpcServer {
         this.diagnostics.info('command.validated');
         this.diagnostics.info('handler.started');
         try {
-          const result = await this.executeCommand(
+          const result = await this.host.executeCommand(
             request.command,
             activeRequest.controller.signal,
           );
@@ -206,7 +200,7 @@ export class CoreRpcServer {
             attributes: { resultType: result.type },
           });
           this.diagnostics.info('command.completed', {
-            durationMs: this.now() - startedAt,
+            durationMs: Date.now() - startedAt,
             outcome: 'success',
           });
         } catch (error) {
@@ -218,7 +212,7 @@ export class CoreRpcServer {
             });
           }
           this.diagnostics.error('command.completed', {
-            durationMs: this.now() - startedAt,
+            durationMs: Date.now() - startedAt,
             outcome: toOutcome(delivered ? detail.code : 'disconnected'),
             errorCode: delivered ? detail.code : 'disconnected',
           });
@@ -370,7 +364,7 @@ export class CoreRpcServer {
     }
     this.close(reason);
     try {
-      this.onFatalError(reason);
+      this.host.handleRpcFatalError(reason);
     } catch {
       // 故障回调不能阻止 Core 退出并进入 Main CoreRuntime 的重启流程。
     }

@@ -3,15 +3,12 @@ import type {
   CaptureExchangeSummary,
 } from '@interceptor/core-protocol';
 
+import { CAPTURE_EVENT_QUEUE_CAPACITY } from '../constants';
+
 export interface CaptureEvent {
   readonly sequence: number;
   readonly kind: CaptureExchangeEventKind;
   readonly summary: CaptureExchangeSummary;
-}
-
-export interface CaptureEventQueueOptions {
-  /** 最大待发事件数（按 Exchange 去重合并后计）。 */
-  readonly capacity?: number;
 }
 
 interface PendingEvent {
@@ -21,7 +18,6 @@ interface PendingEvent {
   terminal: boolean;
 }
 
-const DEFAULT_CAPACITY = 5_000;
 const TERMINAL_STATES: ReadonlySet<string> = new Set([
   'completed',
   'failed',
@@ -39,14 +35,10 @@ const TERMINAL_STATES: ReadonlySet<string> = new Set([
  * 跨进程 push/ack 传输与 Renderer 订阅在 T3.4 后续集成；本队列是其算法核心，可独立单测。
  */
 export class CaptureEventQueue {
-  private readonly capacity: number;
+  private readonly capacity = CAPTURE_EVENT_QUEUE_CAPACITY;
   private readonly pending = new Map<string, PendingEvent>();
   private nextSequence = 1;
   private droppedCount = 0;
-
-  constructor(options: CaptureEventQueueOptions = {}) {
-    this.capacity = options.capacity ?? DEFAULT_CAPACITY;
-  }
 
   /**
    * 投递一条 Exchange 事件；对未 drain 的同 id 事件就地合并（摘要取最新）。

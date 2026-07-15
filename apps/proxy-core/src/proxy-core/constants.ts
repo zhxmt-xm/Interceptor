@@ -1,0 +1,123 @@
+/**
+ * Proxy Core 唯一的常量与运行期配置模块。
+ *
+ * 所有静态常量集中在此，是唯一取值来源；单元测试通过 vi.mock 覆盖，不向生产构造函数注入
+ * 仅测试用的参数。读 process.argv / __dirname 的运行期值（dataDir、appVersion、worker
+ * bundle 路径）也集中在此，由 entry 启动时经 initializeCoreRuntime 初始化，深层模块经
+ * coreRuntimeConfig 只读获取，避免 dataDir/worker 路径逐层透传。总览见 apps/proxy-core/CONSTANTS.md。
+ */
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+// ===== CoreApplication 生命周期 =====
+/** CoreApplication 向 Main 发送 heartbeat 的间隔。 */
+export const HEARTBEAT_INTERVAL_MS = 1_000;
+/** 捕获事件批量 flush 的间隔。 */
+export const EVENT_FLUSH_INTERVAL_MS = 50;
+/** 未 ack 的在途事件批次上限（背压窗口）。 */
+export const MAX_INFLIGHT_EVENT_BATCHES = 8;
+/** 单次从捕获事件队列取走的最大事件数。 */
+export const EVENT_DRAIN_BATCH = 200;
+
+// ===== CoreDiagnostics 内存 Ring Buffer =====
+/** 单条记录最大字节数。 */
+export const DIAGNOSTICS_RING_MAX_BYTES = 512 * 1024;
+/** 待输出队列最大条数。 */
+export const DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS = 256;
+/** 内存历史最大记录数。 */
+export const DIAGNOSTICS_RING_MAX_RECORDS = 2_000;
+
+// ===== 存储（Capture 库 + Blob） =====
+/** Capture 数据库文件名（dataDir 下）。 */
+export const CAPTURE_DB_FILE = 'capture.sqlite';
+/** Blob 存储根目录名（dataDir 下）。 */
+export const BLOB_DIR = 'blobs';
+/** Blob 临时目录名（blobs/ 下）。 */
+export const BLOB_TEMP_DIR = 'tmp';
+/** 单条正文最大字节数，超过拒绝写入并标记 truncated。 */
+export const MAX_BODY_BYTES = 64 * 1024 * 1024;
+/** Blob 全局配额字节数。 */
+export const GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
+/** Storage Worker 单请求超时。 */
+export const STORAGE_REQUEST_TIMEOUT_MS = 30_000;
+
+// ===== 诊断（持久化日志库） =====
+/** 诊断数据库文件名（dataDir 下）。 */
+export const DIAGNOSTICS_DB_FILE = 'diagnostics.sqlite';
+/** 持久化日志最多保留条数。 */
+export const DIAGNOSTICS_MAX_RECORDS = 50_000;
+/** 持久化日志最长保留时长（毫秒）；null 表示不按时长清理。 */
+export const DIAGNOSTICS_MAX_AGE_MS: number | null = null;
+/** Diagnostics Worker 就绪前最多缓冲的写入批次数。 */
+export const DIAGNOSTICS_MAX_PENDING_BATCHES = 128;
+/** Diagnostics Worker 单查询超时。 */
+export const DIAGNOSTICS_REQUEST_TIMEOUT_MS = 15_000;
+
+// ===== 代理 =====
+/** 显式代理默认绑定的 loopback 地址。 */
+export const DEFAULT_PROXY_HOST = '127.0.0.1';
+/** 捕获事件队列最大待发事件数（按 Exchange 合并后计）。 */
+export const CAPTURE_EVENT_QUEUE_CAPACITY = 5_000;
+
+// ===== 运行期变量（读 process.argv / __dirname，entry 启动时经 initializeRuntime 赋值） =====
+//
+// 这些是模块级可变变量：Core 启动时由 entry 调用 initializeRuntime 一次确定取值（worker
+// bundle 路径依赖 __dirname、dataDir 依赖 process.argv，必须运行时求值），其余模块直接
+// import 只读使用，避免 dataDir、worker bundle 路径经多层构造函数透传。
+
+/** 存储根目录；无 --data-dir 时为 null，Core 以无存储模式运行。 */
+export let dataDir: string | null = null;
+/** 应用版本（--app-version），用于捕获会话元数据。 */
+export let appVersion = '0.0.0';
+/** capture.sqlite 绝对路径；无 dataDir 时为空串。 */
+export let captureDatabasePath = '';
+/** Blob 存储根目录绝对路径。 */
+export let blobDirectory = '';
+/** Blob 临时目录绝对路径（blobDirectory 下的 tmp）。 */
+export let blobTempDirectory = '';
+/** diagnostics.sqlite 绝对路径。 */
+export let diagnosticsDatabasePath = '';
+/** 已构建的 Storage Worker bundle 绝对路径。 */
+export let storageWorkerEntry = '';
+/** 已构建的 Diagnostics Worker bundle 绝对路径。 */
+export let diagnosticsWorkerEntry = '';
+
+/**
+ * 解析 Main 经 fork 参数注入的运行期值并解析 worker bundle 路径，赋给上面的模块变量。
+ * 调用方：entry.cts 启动时调用一次（确保 path 正确）；单元测试用测试 argv 调用以驱动真实组件。
+ */
+export function initializeRuntime(argv: readonly string[]): void {
+  dataDir = readArg(argv, '--data-dir=') ?? null;
+  appVersion = readArg(argv, '--app-version=') ?? '0.0.0';
+  captureDatabasePath = dataDir ? path.join(dataDir, CAPTURE_DB_FILE) : '';
+  blobDirectory = dataDir ? path.join(dataDir, BLOB_DIR) : '';
+  blobTempDirectory = dataDir
+    ? path.join(dataDir, BLOB_DIR, BLOB_TEMP_DIR)
+    : '';
+  diagnosticsDatabasePath = dataDir
+    ? path.join(dataDir, DIAGNOSTICS_DB_FILE)
+    : '';
+  storageWorkerEntry = resolveWorkerEntry('storage');
+  diagnosticsWorkerEntry = resolveWorkerEntry('diagnostics');
+}
+
+/**
+ * 解析已构建的 worker bundle 路径，无需注入。
+ * 生产：constants 打包进 dist/proxy-core/entry.cjs（__dirname=dist/proxy-core），worker 在
+ * 同包 <module>/worker 下，existsSync 命中。从源码运行（vitest）时回落到工作区已构建 dist。
+ */
+function resolveWorkerEntry(moduleDir: 'storage' | 'diagnostics'): string {
+  const bundled = path.join(__dirname, moduleDir, 'worker', 'worker-entry.cjs');
+  return existsSync(bundled)
+    ? bundled
+    : path.resolve(
+        process.cwd(),
+        `dist/proxy-core/${moduleDir}/worker/worker-entry.cjs`,
+      );
+}
+
+function readArg(argv: readonly string[], prefix: string): string | undefined {
+  const arg = argv.find((value) => value.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : undefined;
+}

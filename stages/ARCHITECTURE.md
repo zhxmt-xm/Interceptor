@@ -74,13 +74,15 @@ flowchart LR
 
 > 存储读写与查询全部在 Core UtilityProcess 内，通过 `worker_threads` 把同步 `node:sqlite` 移出网络事件循环。Renderer 只通过意图 API 拿到 `StorageUsage` DTO，永不接触 SQL、数据库文件或 Blob 路径。
 
-- **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsWorkerHost`（缺省则无存储模式）。
-- **StorageService**（`storage/storage-service.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
-- **Storage Worker**（`storage/storage-worker.cts` + `storage-worker-host.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
-- **Blob Store**（`storage/blob-store.ts`）：内容寻址正文存储，流式写临时文件→SHA-256→按 hash 分片路径原子 rename，命中去重；单条/全局配额、crash-safe GC（删未引用 Blob + 启动清临时文件）。
-- **Diagnostics Worker**（`diagnostics/diagnostics-worker.cts` + `diagnostics-worker-host.ts`）：worker 线程独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页；`CoreDiagnostics` 的 sink 路由到该 host（fire-and-forget，预就绪有界缓冲），写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。内存 Ring Buffer 仍作即时回退。
+- **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsWorkerHost`（缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码；Main `CoreRuntime` 收到后停止重启并 `dialog.showErrorBox` 弹窗提示。
+- **模块结构**：`storage/` 与 `diagnostics/` 各分三块——`entry.ts`（对外门面/桶）、`host/host-*.ts`（Core 主线程侧的 worker 代理与 Blob Store）、`worker/worker-*.ts`（worker 线程侧入口与 SQLite 访问层）；共享的 `constants.ts`、`types.ts`、`protocol.ts` 放模块根。跨模块共享的 SQLite 迁移器在 `proxy-core/migration-runner.ts`。
+- **常量集中**：各模块 `constants.ts`（+ `proxy-core/constants.ts`）是所有数值/路径常量的唯一来源；生产构造函数不再接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
+- **StorageService**（`storage/entry.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
+- **Storage Worker**（`storage/worker/worker-entry.cts` + `storage/host/host-worker.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
+- **Blob Store**（`storage/host/host-blob-store.ts`）：内容寻址正文存储，流式写临时文件→SHA-256→按 hash 分片路径原子 rename，命中去重；单条/全局配额、crash-safe GC（删未引用 Blob + 启动清临时文件）。
+- **Diagnostics Worker**（`diagnostics/worker/worker-entry.cts` + `diagnostics/host/host-worker.ts`）：worker 线程独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页；`CoreDiagnostics` 的 sink 路由到该 host（fire-and-forget，预就绪有界缓冲），写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。内存 Ring Buffer 仍作即时回退。
 - **Capture 与 Diagnostics 强隔离**：两库、两连接、两 Worker 独立；日志写入失败不影响捕获数据。
-- **构建/打包**：`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/storage-worker.cjs` + `diagnostics/diagnostics-worker.cjs`（`--outdir=dist --outbase=src --out-extension:.js=.cjs`）；worker 由 `__dirname` 定位同级目录，Forge `extraResource` 递归复制整个 `dist/proxy-core`。
+- **构建/打包**：`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/worker/worker-entry.cjs` + `diagnostics/worker/worker-entry.cjs`（`--outdir=dist --outbase=src --out-extension:.js=.cjs`）；host 通过 `resolveStorageWorkerEntry`/`resolveDiagnosticsWorkerEntry` 自解析 worker bundle（生产用 `__dirname` 定位同包路径，源码运行回落到工作区 `dist`），Forge `extraResource` 递归复制整个 `dist/proxy-core`。
 - **契约**：新增 `storage.status`/`storage.cleanup`/`diagnostics.query` typed command + 运行时校验；Renderer 经 `getStorageStatus`/`clearStorage` 窄 API 访问。
 
 ## 代理层与捕获管线架构（M3，已落地）

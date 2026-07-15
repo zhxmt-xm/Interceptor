@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CaptureSessionInput, ExchangeInput } from '../../storage/types';
+import { CaptureEventQueue } from '../capture-event-queue';
 import { ProxyService, type CaptureSink } from '../proxy-service';
 
 class RecordingSink implements CaptureSink {
@@ -91,7 +92,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
 
   beforeEach(async () => {
     sink = new RecordingSink();
-    proxy = new ProxyService({ sink, appVersion: '0.0.0' });
+    proxy = new ProxyService(sink, new CaptureEventQueue());
     address = await proxy.start();
   });
 

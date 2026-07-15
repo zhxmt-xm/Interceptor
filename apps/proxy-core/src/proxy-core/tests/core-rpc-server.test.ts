@@ -160,9 +160,10 @@ describe('CoreRpcServer', () => {
   it('records the complete command trace', async () => {
     const diagnostics = createDiagnostics();
     const server = new CoreRpcServer({
-      executeCommand: echoCommandHandler(),
       diagnostics,
-      now: () => Date.parse('2026-07-12T00:00:01.000Z'),
+      executeCommand: echoCommandHandler(),
+      handleRpcFatalError: () => undefined,
+      handleEventAck: () => undefined,
     });
     const port = new FakeRpcPort();
     server.attach(port);
@@ -222,9 +223,10 @@ function createServer(
   onFatalError = vi.fn(),
 ): CoreRpcServer {
   return new CoreRpcServer({
-    executeCommand,
     diagnostics: createDiagnostics(),
-    onFatalError,
+    executeCommand,
+    handleRpcFatalError: onFatalError,
+    handleEventAck: () => undefined,
   });
 }
 

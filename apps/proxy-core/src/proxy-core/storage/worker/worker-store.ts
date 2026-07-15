@@ -17,7 +17,7 @@ import type {
   SessionQuery,
   SessionQueryPage,
   StorageStats,
-} from './types';
+} from '../types';
 
 /**
  * 无效分页游标错误；查询边界据此返回结构化错误而非静默重置。

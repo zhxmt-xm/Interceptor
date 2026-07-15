@@ -6,6 +6,11 @@ import type {
   DiagnosticOutcome,
 } from '@interceptor/core-protocol';
 
+import {
+  DIAGNOSTICS_MAX_AGE_MS,
+  DIAGNOSTICS_MAX_RECORDS,
+} from '../../constants';
+
 export interface DiagnosticsQuery {
   readonly cursor?: string;
   readonly limit: number;
@@ -18,13 +23,6 @@ export interface DiagnosticsPage {
   readonly nextCursor?: string;
   readonly hasMore: boolean;
   readonly droppedCount: number;
-}
-
-export interface DiagnosticsStoreOptions {
-  /** 最多保留的日志条数；超过后按插入顺序淘汰最旧记录。 */
-  readonly maxRecords?: number;
-  /** 最长保留时长（毫秒）；早于该时长的记录在写入时清理。 */
-  readonly maxAgeMs?: number;
 }
 
 interface LogRow {
@@ -45,7 +43,6 @@ interface LogRow {
   attributes: string | null;
 }
 
-const DEFAULT_MAX_RECORDS = 50_000;
 const DROPPED_KEY = 'dropped_count';
 
 /**
@@ -56,15 +53,10 @@ const DROPPED_KEY = 'dropped_count';
  */
 export class DiagnosticsStore {
   private readonly insertStmt: StatementSync;
-  private readonly maxRecords: number;
-  private readonly maxAgeMs: number | null;
+  private readonly maxRecords = DIAGNOSTICS_MAX_RECORDS;
+  private readonly maxAgeMs = DIAGNOSTICS_MAX_AGE_MS;
 
-  constructor(
-    private readonly db: DatabaseSync,
-    options: DiagnosticsStoreOptions = {},
-  ) {
-    this.maxRecords = options.maxRecords ?? DEFAULT_MAX_RECORDS;
-    this.maxAgeMs = options.maxAgeMs ?? null;
+  constructor(private readonly db: DatabaseSync) {
     this.insertStmt = db.prepare(
       `INSERT INTO log_record
         (ts_ms, timestamp, sequence, level, process, trace_id, request_id,
