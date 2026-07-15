@@ -30,6 +30,17 @@
 - Run complete typecheck/unit/package/smoke/screenshot validation once at feature or stage completion, not after every small edit.
 - Run earlier package/security checks only when Main, Preload, IPC, Fuses, CSP, or packaging boundaries change.
 
+## Linux Dev Container / Codespace
+
+The repo targets Windows/macOS desktops but is developed here on a Linux dev container (Ubuntu 24.04, x86_64). Notes below are verified on this environment.
+
+- **Node version**: the project pins Node `24.18.0` (`.nvmrc`) with `engine-strict=true`, so a lower default (e.g. `24.14.0`) makes `npm install` fail with `EBADENGINE`. Fix with `nvm install 24.18.0 && nvm use 24.18.0`; a freshly opened terminal resets to the default Node, so re-run `nvm use 24.18.0` before Node commands.
+- **Dependencies**: install from the repo root with `npm install` (npm workspaces). The `esbuild` and `tls-impersonate` install scripts stay unapproved, but the platform-specific optional deps still provide their binaries, so `build`/`test` work regardless.
+- **Unit tests** (`npm run test:unit`, Vitest `environment: node`) are platform-agnostic and always runnable — OS-specific code (e.g. `TrustStoreService`, whose `supported()` is `win32`/`darwin` only and returns `false` on Linux) is exercised via injected `platform` + fake runners, so nothing touches the real OS.
+- **Integration tests** (real `worker_threads` + `node:sqlite` + HTTP/2) use `describe.skipIf(!existsSync(workerBundle))` and are skipped until the worker bundles exist. Run `npm run build:core` first; then `proxy-core` runs its full suite. These rely on cross-platform Node primitives.
+- **Smoke test** (`npm run test:smoke`) packages the app and drives it over CDP, so it needs a display and a packaged Linux build: `sudo apt-get install -y xvfb`, then `npm run package`, then `xvfb-run -a npm run test:smoke --workspace @interceptor/desktop`. If the packaged Electron reports missing shared libraries, run `npx playwright install-deps`. On Linux this validates the **Linux** package only, not the Win/macOS artifacts.
+- **Design-parity / visual check** (`node apps/desktop/src/tests/visual/parity.mjs`) launches `chromium.launch({ channel: 'msedge' })`, so install Edge once with `npx playwright install msedge` (run from `apps/desktop`, needs sudo). Playwright auto-adds `--no-sandbox --headless` in the container; SwiftShader software rendering makes a full run take several minutes. Linux font rendering differs from the design baselines (font-weight/size/subpixel), which inflates the pixel diff and per-element deltas — treat parity output here as a diagnostic reference, not a strict gate; authoritative parity is on Windows/macOS.
+
 ## Progress And Documentation
 
 - Every new session or agent MUST begin by reading `stages/PROGRESS.md`, then follow its reading order before planning or editing code.
