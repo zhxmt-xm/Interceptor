@@ -13,6 +13,7 @@ import type {
   CaptureSessionInput,
   CleanupScope,
   ExchangeInput,
+  RuleHitCount,
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
@@ -112,6 +113,11 @@ export class StorageService {
     hits: readonly RuleHitInput[],
   ): Promise<void> {
     return this.host.appendRuleHits(exchangeId, hits);
+  }
+
+  /** 按 ruleId 聚合的累计规则命中次数。调用方：rules.hits handler。 */
+  countRuleHits(): Promise<RuleHitCount[]> {
+    return this.host.countRuleHits();
   }
 
   /**

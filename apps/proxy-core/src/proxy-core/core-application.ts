@@ -318,6 +318,13 @@ export class CoreApplication implements CoreRpcHost {
           );
           return { type: 'rules.ruleset', payload: { ruleSet } };
         });
+      case 'rules.hits':
+        return this.withStorage(async (storage) => {
+          const counts = await this.diagnostics.action('rules.hits', () =>
+            storage.countRuleHits(),
+          );
+          return { type: 'rules.hits', payload: { counts } };
+        });
       case 'rules.replace':
         return this.withStorage(async (storage) => {
           const diagnostics = collectRuleDiagnostics(command.payload.rules);

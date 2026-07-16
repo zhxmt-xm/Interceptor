@@ -16,6 +16,7 @@ import type {
   CleanupScope,
   ExchangeInput,
   HeaderInput,
+  RuleHitCount,
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
@@ -596,6 +597,21 @@ export class CaptureStore {
         });
       }
     });
+  }
+
+  /**
+   * 按 ruleId 聚合 rule_hit 表的累计命中次数；无命中的规则不在结果中（调用方按 0 处理）。
+   * 调用方：rules.hits handler，供 Rules UI 的 hit counter 展示。
+   */
+  countRuleHits(): RuleHitCount[] {
+    const rows = this.db
+      .prepare(
+        `SELECT rule_id AS ruleId, COUNT(*) AS count
+         FROM rule_hit
+         GROUP BY rule_id`,
+      )
+      .all() as { ruleId: string; count: number }[];
+    return rows.map((row) => ({ ruleId: row.ruleId, count: row.count }));
   }
 
   /** 关闭底层数据库连接；调用方：Storage Worker 优雅退出。 */

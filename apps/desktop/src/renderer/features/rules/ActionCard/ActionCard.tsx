@@ -1,14 +1,17 @@
 import { type LucideIcon, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { cx, IconButton, Switch } from '../../../components';
+import { cx, IconButton } from '../../../components';
 import styles from './ActionCard.module.css';
+
+export type ActionTone = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'brk';
 
 export interface ActionCardProps {
   icon: LucideIcon;
-  tone: 'map' | 'rewrite';
+  tone: ActionTone;
   title: string;
   sub: string;
+  onRemove: () => void;
   children: ReactNode;
 }
 
@@ -18,6 +21,7 @@ export function ActionCard({
   tone,
   title,
   sub,
+  onRemove,
   children,
 }: ActionCardProps): React.JSX.Element {
   return (
@@ -29,8 +33,13 @@ export function ActionCard({
         <b>{title}</b>
         <span className={styles.sub}>{sub}</span>
         <span className={styles.spacer} />
-        <Switch checked />
-        <IconButton icon={X} label="Remove" size="sm" strokeWidth={2.2} />
+        <IconButton
+          icon={X}
+          label="Remove action"
+          size="sm"
+          strokeWidth={2.2}
+          onClick={onRemove}
+        />
       </div>
       <div className={styles.body}>{children}</div>
     </div>

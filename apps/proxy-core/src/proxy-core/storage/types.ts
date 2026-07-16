@@ -141,3 +141,9 @@ export interface RuleHitInput {
   readonly action: string;
   readonly summary?: string;
 }
+
+/** 单条规则的累计命中次数（按 ruleId 聚合 rule_hit 表）；供 Rules UI hit counter。 */
+export interface RuleHitCount {
+  readonly ruleId: string;
+  readonly count: number;
+}

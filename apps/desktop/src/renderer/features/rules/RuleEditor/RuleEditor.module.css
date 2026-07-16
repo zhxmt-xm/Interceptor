@@ -19,6 +19,36 @@
   font-weight: 600;
   color: var(--text);
 }
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 5px 8px;
+  margin: -5px -8px;
+  outline: none;
+}
+.nameInput:hover {
+  border-color: var(--border-2);
+}
+.nameInput:focus {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+.placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-3);
+  font-size: 13px;
+}
 .scroll {
   flex: 1;
   min-height: 0;
@@ -104,6 +134,17 @@
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
+}
+.validation.invalid {
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
+  align-items: flex-start;
+}
+.diagList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 .popover {
   position: absolute;

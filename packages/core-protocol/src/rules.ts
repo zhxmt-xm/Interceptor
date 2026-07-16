@@ -117,6 +117,12 @@ export interface RuleSet {
   readonly rules: readonly RuleDefinition[];
 }
 
+/** 单条规则的累计命中次数（按 ruleId 聚合 rule_hit 表），供 Rules UI hit counter。 */
+export interface RuleHitCount {
+  readonly ruleId: string;
+  readonly count: number;
+}
+
 /** 规则集资源上限（wire 校验与编译护栏）。 */
 export const MAX_RULES = 500;
 export const MAX_MATCHERS_PER_RULE = 32;

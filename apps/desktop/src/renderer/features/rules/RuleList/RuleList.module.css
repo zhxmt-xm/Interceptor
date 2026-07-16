@@ -17,3 +17,13 @@
 .grow {
   flex: 1;
 }
+.rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.empty {
+  padding: 24px 16px;
+  color: var(--text-3);
+  font-size: 12px;
+}

@@ -21,8 +21,10 @@ import {
   assertBoundedString,
   assertIdentifier,
   assertOptionalPort,
+  assertRevision,
   toBodyDecodeOptions,
   toByteRange,
+  toCoreRuleDefinitions,
   toCoreSessionQuery,
   toInsecureHosts,
   toRendererCaptureStatus,
@@ -468,6 +470,74 @@ class DesktopApplication {
         return this.buildCertificateInfo();
       },
     );
+
+    // 规则集只读查询：返回当前 revision + 全部规则，供 Rules workspace 编辑器加载。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.rulesGet, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const result = await this.coreRuntime.request({
+        type: 'rules.get',
+        payload: {},
+      });
+      return result.payload.ruleSet;
+    });
+
+    // 规则集语义校验（无副作用）：Renderer 编辑时实时校验，返回诊断明细。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.rulesValidate,
+      async (event, rules: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const definitions = toCoreRuleDefinitions(rules);
+        const result = await this.coreRuntime.request({
+          type: 'rules.validate',
+          payload: { rules: definitions },
+        });
+        return {
+          valid: result.payload.valid,
+          diagnostics: result.payload.diagnostics,
+        };
+      },
+    );
+
+    // 乐观并发替换规则集：expectedRevision 需匹配当前 revision，返回新 revision。
+    // 冲突/非法/其它失败以结构化结果返回，避免 IPC 抛错丢失错误码。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.rulesReplace,
+      async (event, expectedRevision: unknown, rules: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertRevision(expectedRevision);
+        const definitions = toCoreRuleDefinitions(rules);
+        try {
+          const result = await this.coreRuntime.request({
+            type: 'rules.replace',
+            payload: { expectedRevision, rules: definitions },
+          });
+          return { ok: true, revision: result.payload.revision };
+        } catch (error) {
+          const code =
+            typeof error === 'object' && error !== null && 'code' in error
+              ? (error as { code: unknown }).code
+              : undefined;
+          const message = error instanceof Error ? error.message : String(error);
+          if (code === 'conflict') {
+            return { ok: false, reason: 'conflict', message };
+          }
+          if (code === 'invalid-message') {
+            return { ok: false, reason: 'invalid', message };
+          }
+          return { ok: false, reason: 'error', message };
+        }
+      },
+    );
+
+    // 规则命中计数（按 ruleId 聚合），供 Rules workspace 的 hit counter。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.rulesHits, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const result = await this.coreRuntime.request({
+        type: 'rules.hits',
+        payload: {},
+      });
+      return result.payload.counts;
+    });
   }
 
   private broadcastCoreProcessStatus(status: CoreProcessStatus): void {

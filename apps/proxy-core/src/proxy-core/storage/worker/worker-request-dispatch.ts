@@ -37,6 +37,8 @@ export function applyStorageRequest(
     case 'append-rule-hits':
       store.appendRuleHits(request.exchangeId, request.hits);
       return undefined;
+    case 'count-rule-hits':
+      return store.countRuleHits();
     case 'close':
       store.close();
       return undefined;

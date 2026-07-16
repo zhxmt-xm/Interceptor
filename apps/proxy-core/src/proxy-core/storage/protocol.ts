@@ -10,6 +10,7 @@ import type {
   CleanupScope,
   ExchangeInput,
   HeaderInput,
+  RuleHitCount,
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
@@ -57,6 +58,7 @@ export type StorageWorkerRequest =
       readonly exchangeId: string;
       readonly hits: readonly RuleHitInput[];
     }
+  | { readonly kind: 'count-rule-hits' }
   | { readonly kind: 'close' };
 
 export interface StorageWorkerRequestEnvelope {
@@ -81,7 +83,9 @@ export type StorageWorkerResultFor<K extends StorageWorkerRequest['kind']> =
                 ? RuleSet
                 : K extends 'load-rule-set'
                   ? RuleSet
-                  : void;
+                  : K extends 'count-rule-hits'
+                    ? RuleHitCount[]
+                    : void;
 
 export type StorageWorkerResponse =
   | { readonly type: 'ready' }

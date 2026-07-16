@@ -79,6 +79,12 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts, hosts),
   setHttpsDecryption: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetDecryption, enabled),
+  getRules: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesGet),
+  validateRules: (rules) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesValidate, rules),
+  replaceRules: (expectedRevision, rules) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, rules),
+  getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

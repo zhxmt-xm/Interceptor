@@ -1,5 +1,5 @@
-import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
-import { MAX_QUERY_PAGE_SIZE } from '@interceptor/core-protocol';
+import type { DiagnosticLogRecord, RuleDefinition } from '@interceptor/core-protocol';
+import { MAX_QUERY_PAGE_SIZE, MAX_RULES } from '@interceptor/core-protocol';
 
 import type {
   CaptureStatus,
@@ -249,4 +249,40 @@ export function toBodyDecodeOptions(value: unknown): {
     result.encoding = options.encoding;
   }
   return result;
+}
+
+/**
+ * 校验 Renderer 传入的规则数组的结构与上限（第一道防线）。
+ * 只做顶层结构与长度校验；matcher/action 的深度语义校验由 Core wire
+ * 校验与 collectRuleDiagnostics 权威完成，避免在 Main 重复实现整套规则模型。
+ */
+export function toCoreRuleDefinitions(value: unknown): RuleDefinition[] {
+  if (!Array.isArray(value) || value.length > MAX_RULES) {
+    throw new Error('rules is invalid');
+  }
+  for (const rule of value) {
+    if (typeof rule !== 'object' || rule === null) {
+      throw new Error('rules[] is invalid');
+    }
+    const record = rule as Record<string, unknown>;
+    assertBoundedString(record.id, 'rule.id', 128);
+    assertBoundedString(record.name, 'rule.name', 256);
+    if (typeof record.enabled !== 'boolean') {
+      throw new Error('rule.enabled is invalid');
+    }
+    if (typeof record.priority !== 'number' || !Number.isInteger(record.priority)) {
+      throw new Error('rule.priority is invalid');
+    }
+    if (!Array.isArray(record.matchers) || !Array.isArray(record.actions)) {
+      throw new Error('rule.matchers/actions is invalid');
+    }
+  }
+  return value as RuleDefinition[];
+}
+
+/** 校验乐观并发的期望 revision：非负整数。 */
+export function assertRevision(value: unknown): asserts value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error('expectedRevision is invalid');
+  }
 }

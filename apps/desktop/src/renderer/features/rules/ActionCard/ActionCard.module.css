@@ -31,6 +31,22 @@
   color: var(--purple);
   background: color-mix(in srgb, var(--purple) 15%, transparent);
 }
+.icon.remote {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.icon.block {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+.icon.throttle {
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+}
+.icon.brk {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
 .head b {
   font-size: 12.5px;
   font-weight: 600;

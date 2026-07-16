@@ -17,3 +17,17 @@
   color: var(--text-3);
   flex: 0 0 auto;
 }
+.field {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+.field::placeholder {
+  color: var(--text-3);
+}

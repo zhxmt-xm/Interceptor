@@ -2,7 +2,7 @@ export { cx } from './cx';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
 export { Switch, type SwitchProps } from './Switch/Switch';
-export { Select, type SelectProps } from './Select/Select';
+export { Select, type SelectProps, type SelectOption } from './Select/Select';
 export { InputBox, type InputBoxProps } from './InputBox/InputBox';
 export { Splitter, type SplitterProps } from './Splitter/Splitter';
 export { Segmented, type SegmentedProps } from './Segmented/Segmented';

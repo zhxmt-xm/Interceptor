@@ -39,6 +39,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'rules.validate',
   'rules.replace',
   'rules.get',
+  'rules.hits',
   'breakpoint.resolve',
   'diagnostics.recent',
   'diagnostics.query',
@@ -266,6 +267,9 @@ function validateCommand(value: unknown): string | null {
     case 'rules.get':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateRulesGetRequest(value.payload);
+    case 'rules.hits':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateEmptyPayload(value.payload);
     case 'breakpoint.resolve':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBreakpointResolutionRequest(value.payload);
@@ -322,6 +326,9 @@ function validateResult(value: unknown): string | null {
     case 'rules.ruleset':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateRulesRuleSetResult(value.payload);
+    case 'rules.hits':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateRulesHitsResult(value.payload);
     case 'breakpoint.resolution':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBreakpointResolutionResult(value.payload);
@@ -831,6 +838,35 @@ function validateRuleSet(value: unknown, name: string): string | null {
 function validateRulesRuleSetResult(value: unknown): string | null {
   return validateExactObject(value, 'result.payload', ['ruleSet'], (payload) =>
     validateRuleSet(payload.ruleSet, 'result.payload.ruleSet'));
+}
+
+function validateRulesHitsResult(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['counts'], (payload) => {
+    if (!Array.isArray(payload.counts) || payload.counts.length > MAX_RULES) {
+      return `result.payload.counts must contain at most ${MAX_RULES} entries`;
+    }
+    for (let index = 0; index < payload.counts.length; index += 1) {
+      const error = validateExactObject(
+        payload.counts[index],
+        `result.payload.counts[${index}]`,
+        ['ruleId', 'count'],
+        (entry) => validateBoundedString(
+          entry.ruleId,
+          `result.payload.counts[${index}].ruleId`,
+          MAX_RULE_ID_LENGTH,
+        ) ?? validateIntegerRange(
+          entry.count,
+          `result.payload.counts[${index}].count`,
+          0,
+          Number.MAX_SAFE_INTEGER,
+        ),
+      );
+      if (error) {
+        return error;
+      }
+    }
+    return null;
+  });
 }
 
 function validateBreakpointResolutionRequest(value: unknown): string | null {

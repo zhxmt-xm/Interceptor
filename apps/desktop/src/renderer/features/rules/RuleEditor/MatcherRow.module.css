@@ -1,0 +1,49 @@
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.conn {
+  width: 34px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.type {
+  width: 116px;
+  flex: 0 0 auto;
+}
+.mode {
+  width: 116px;
+  flex: 0 0 auto;
+}
+.phase {
+  width: 104px;
+  flex: 0 0 auto;
+}
+.value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.key {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.num {
+  width: 84px;
+  flex: 0 0 auto;
+}
+.sep {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.remove {
+  flex: 0 0 auto;
+  margin-left: auto;
+}

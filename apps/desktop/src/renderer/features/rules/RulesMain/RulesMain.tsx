@@ -3,11 +3,12 @@ import { useRef, useState } from 'react';
 import { Splitter } from '../../../components';
 import { RuleEditor } from '../RuleEditor/RuleEditor';
 import { RuleList } from '../RuleList/RuleList';
+import { useRulesData } from '../useRulesData';
 import styles from './RulesMain.module.css';
 
 /** Rules workspace body: rule list, draggable splitter and rule editor. */
 export function RulesMain(): React.JSX.Element {
-  const [selected, setSelected] = useState(0);
+  useRulesData();
   const [listWidth, setListWidth] = useState(432);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +35,7 @@ export function RulesMain(): React.JSX.Element {
       ref={mainRef}
       style={{ gridTemplateColumns: `${listWidth}px 7px minmax(0, 1fr)` }}
     >
-      <RuleList selected={selected} onSelect={setSelected} />
+      <RuleList />
       <Splitter onPointerDown={startListDrag} />
       <RuleEditor />
     </div>

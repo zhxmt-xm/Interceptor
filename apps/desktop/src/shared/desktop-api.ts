@@ -4,6 +4,19 @@ import type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
   CaptureHeader,
+  HeaderOperation,
+  KeyMatchMode,
+  ProtocolDiagnostic,
+  RuleAction,
+  RuleActionType,
+  RuleDefinition,
+  RuleHeaderPair,
+  RuleHitCount,
+  RuleMatcher,
+  RuleMatcherType,
+  RulePhase,
+  RuleSet,
+  StringMatchMode,
 } from '@interceptor/core-protocol';
 
 export type {
@@ -12,6 +25,19 @@ export type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
   CaptureHeader,
+  HeaderOperation,
+  KeyMatchMode,
+  ProtocolDiagnostic,
+  RuleAction,
+  RuleActionType,
+  RuleDefinition,
+  RuleHeaderPair,
+  RuleHitCount,
+  RuleMatcher,
+  RuleMatcherType,
+  RulePhase,
+  RuleSet,
+  StringMatchMode,
 };
 
 export type CoreProcessState =
@@ -114,8 +140,7 @@ export interface BodyChunk {
 }
 
 /** 面向 Renderer 的 Root CA 状态；只含公开元数据，绝不含私钥。 */
-export interface CertificateInfo {
-  /** CA 是否已生成。 */
+export interface CertificateInfo {  /** CA 是否已生成。 */
   present: boolean;
   /** CA 是否已在当前用户信任库（信任后才启用 MITM）。 */
   trusted: boolean;
@@ -128,6 +153,17 @@ export interface CertificateInfo {
   /** Root CA 证书 PEM 文件路径；未生成时为 null。仅公开证书路径，不含私钥。 */
   path: string | null;
 }
+
+/** 规则集语义校验结果：整体是否有效 + 逐项诊断（重复 id、regex 可编译、路径穿越等）。 */
+export interface RuleValidation {
+  valid: boolean;
+  diagnostics: ProtocolDiagnostic[];
+}
+
+/** 规则集替换结果：成功返回新 revision；失败带原因（conflict 表示他处已改需重载）。 */
+export type RuleReplaceResult =
+  | { ok: true; revision: number }
+  | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
@@ -155,6 +191,10 @@ export const DESKTOP_IPC_CHANNELS = {
   httpsGetInsecureHosts: 'https:get-insecure-hosts',
   httpsSetInsecureHosts: 'https:set-insecure-hosts',
   httpsSetDecryption: 'https:set-decryption',
+  rulesGet: 'rules:get',
+  rulesValidate: 'rules:validate',
+  rulesReplace: 'rules:replace',
+  rulesHits: 'rules:hits',
 } as const;
 
 export interface InterceptorDesktopApi {
@@ -192,4 +232,11 @@ export interface InterceptorDesktopApi {
   getInsecureHosts(): Promise<string[]>;
   setInsecureHosts(hosts: string[]): Promise<string[]>;
   setHttpsDecryption(enabled: boolean): Promise<CertificateInfo>;
+  getRules(): Promise<RuleSet>;
+  validateRules(rules: RuleDefinition[]): Promise<RuleValidation>;
+  replaceRules(
+    expectedRevision: number,
+    rules: RuleDefinition[],
+  ): Promise<RuleReplaceResult>;
+  getRuleHits(): Promise<RuleHitCount[]>;
 }

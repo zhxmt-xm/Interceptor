@@ -1,4 +1,4 @@
-import type { RuleDefinition, RuleHeaderPair, RuleSet } from './rules';
+import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 export const MAX_BODY_CHUNK_BYTES = 1024 * 1024;
@@ -66,6 +66,12 @@ export interface RulesReplaceCommand {
 
 export interface RulesGetCommand {
   type: 'rules.get';
+  payload: Record<string, never>;
+}
+
+/** 查询按 ruleId 聚合的累计命中次数，供 Rules workspace 的 hit counter。 */
+export interface RulesHitsCommand {
+  type: 'rules.hits';
   payload: Record<string, never>;
 }
 
@@ -159,6 +165,7 @@ export type CoreCommand =
   | RulesValidateCommand
   | RulesReplaceCommand
   | RulesGetCommand
+  | RulesHitsCommand
   | BreakpointResolveCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
@@ -224,6 +231,13 @@ export interface RulesRuleSetResult {
   type: 'rules.ruleset';
   payload: {
     ruleSet: RuleSet;
+  };
+}
+
+export interface RulesHitsResult {
+  type: 'rules.hits';
+  payload: {
+    counts: RuleHitCount[];
   };
 }
 
@@ -316,6 +330,7 @@ export type CoreResult =
   | RuleValidationResult
   | RuleRevisionResult
   | RulesRuleSetResult
+  | RulesHitsResult
   | BreakpointResolutionResult
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
@@ -350,7 +365,9 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                 ? TlsConfiguredResult
                                 : T extends RulesGetCommand
                                   ? RulesRuleSetResult
-                                  : never;
+                                  : T extends RulesHitsCommand
+                                    ? RulesHitsResult
+                                    : never;
 
 export interface ProtocolDiagnostic {
   code: string;

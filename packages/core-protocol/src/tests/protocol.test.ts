@@ -63,6 +63,10 @@ describe('core protocol validation', () => {
         payload: {},
       },
       {
+        type: 'rules.hits',
+        payload: {},
+      },
+      {
         type: 'breakpoint.resolve',
         payload: { breakpointId: 'breakpoint-1', action: 'continue' },
       },
@@ -159,6 +163,38 @@ describe('core protocol validation', () => {
     expect(badRule([{ type: 'status', min: 10, max: 20 }], [
       { type: 'block', mode: 'reset' },
     ]).ok).toBe(false);
+  });
+
+  it('accepts rules.hits result and rejects malformed hit counts', () => {
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-hits',
+      traceId: 'trace-hits',
+      ok: true,
+      result: {
+        type: 'rules.hits',
+        payload: {
+          counts: [
+            { ruleId: 'rule-1', count: 128 },
+            { ruleId: 'rule-2', count: 0 },
+          ],
+        },
+      },
+    }).ok).toBe(true);
+
+    // 负数命中计数被拒绝
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-hits-bad',
+      traceId: 'trace-hits-bad',
+      ok: true,
+      result: {
+        type: 'rules.hits',
+        payload: { counts: [{ ruleId: 'rule-1', count: -1 }] },
+      },
+    }).ok).toBe(false);
   });
 
   it('accepts every Core-to-Main message family', () => {
