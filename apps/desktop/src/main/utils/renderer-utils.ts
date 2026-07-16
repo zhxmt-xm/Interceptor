@@ -3,6 +3,7 @@ import { MAX_QUERY_PAGE_SIZE, MAX_RULES } from '@interceptor/core-protocol';
 
 import type {
   CaptureStatus,
+  ComposerRequest,
   CoreDiagnosticRecord,
   SessionQueryRequest,
   StorageUsage,
@@ -285,4 +286,55 @@ export function assertRevision(value: unknown): asserts value is number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
     throw new Error('expectedRevision is invalid');
   }
+}
+/**
+ * 校验 Renderer 传入的 Composer 请求（第一道防线）：method/url/protocol、headers 结构与
+ * 上限、可选 body/timeoutMs。深度校验由 Core wire 校验兜底。
+ */
+export function toComposerRequest(value: unknown): ComposerRequest {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('composer request is invalid');
+  }
+  const request = value as Record<string, unknown>;
+  assertBoundedString(request.method, 'composer.method', 64);
+  assertBoundedString(request.url, 'composer.url', 4_096);
+  if (
+    request.protocol !== 'auto' &&
+    request.protocol !== 'http/1.1' &&
+    request.protocol !== 'h2'
+  ) {
+    throw new Error('composer.protocol is invalid');
+  }
+  if (!Array.isArray(request.headers) || request.headers.length > 200) {
+    throw new Error('composer.headers is invalid');
+  }
+  const headers = request.headers.map((item) => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error('composer.headers[] is invalid');
+    }
+    const pair = item as Record<string, unknown>;
+    assertBoundedString(pair.name, 'composer.headers[].name', 256);
+    assertBoundedString(pair.value, 'composer.headers[].value', 8_192);
+    return { name: pair.name as string, value: pair.value as string };
+  });
+  if (request.body !== undefined) {
+    assertBoundedString(request.body, 'composer.body', 1_048_576);
+  }
+  if (
+    request.timeoutMs !== undefined &&
+    (typeof request.timeoutMs !== 'number' ||
+      !Number.isInteger(request.timeoutMs) ||
+      request.timeoutMs < 1 ||
+      request.timeoutMs > 120_000)
+  ) {
+    throw new Error('composer.timeoutMs is invalid');
+  }
+  return {
+    method: request.method as string,
+    url: request.url as string,
+    headers,
+    body: request.body as string | undefined,
+    protocol: request.protocol,
+    timeoutMs: request.timeoutMs as number | undefined,
+  };
 }

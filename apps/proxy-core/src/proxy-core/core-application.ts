@@ -15,6 +15,7 @@ import {
   dataDir,
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
+import { ComposerService } from './composer/composer-service';
 import {
   CoreCommandError,
   CoreRpcServer,
@@ -77,6 +78,7 @@ export class CoreApplication implements CoreRpcHost {
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
   private readonly ruleEngine: RuleEngine | null;
+  private readonly composer = new ComposerService();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -325,6 +327,12 @@ export class CoreApplication implements CoreRpcHost {
           );
           return { type: 'rules.hits', payload: { counts } };
         });
+      case 'composer.send': {
+        const payload = await this.diagnostics.action('composer.send', () =>
+          this.composer.send(command.payload),
+        );
+        return { type: 'composer.response', payload };
+      }
       case 'rules.replace':
         return this.withStorage(async (storage) => {
           const diagnostics = collectRuleDiagnostics(command.payload.rules);

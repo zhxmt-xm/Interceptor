@@ -13,3 +13,11 @@
   color: var(--green);
   background: color-mix(in srgb, var(--green) 14%, transparent);
 }
+.red {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+.yellow {
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+}

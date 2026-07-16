@@ -37,6 +37,7 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
 const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = {
   'body.read-range': 'body.range',
   'breakpoint.resolve': 'breakpoint.resolution',
+  'composer.send': 'composer.response',
   'diagnostics.recent': 'diagnostics.records',
   'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',

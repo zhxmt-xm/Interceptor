@@ -5,7 +5,7 @@ import styles from './Chip.module.css';
 
 export interface ChipProps {
   children: ReactNode;
-  tone?: 'blue' | 'green';
+  tone?: 'blue' | 'green' | 'red' | 'yellow';
   className?: string;
 }
 

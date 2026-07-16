@@ -24,6 +24,7 @@ import {
   assertRevision,
   toBodyDecodeOptions,
   toByteRange,
+  toComposerRequest,
   toCoreRuleDefinitions,
   toCoreSessionQuery,
   toInsecureHosts,
@@ -538,6 +539,20 @@ class DesktopApplication {
       });
       return result.payload.counts;
     });
+
+    // Composer 手工请求：边界校验后转交 Core 用 http/https/http2 执行并回传响应。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.composerSend,
+      async (event, request: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const payload = toComposerRequest(request);
+        const result = await this.coreRuntime.request({
+          type: 'composer.send',
+          payload,
+        });
+        return result.payload;
+      },
+    );
   }
 
   private broadcastCoreProcessStatus(status: CoreProcessStatus): void {

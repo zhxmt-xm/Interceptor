@@ -4,6 +4,7 @@ import type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
   CaptureHeader,
+  ComposerTlsInfo,
   HeaderOperation,
   KeyMatchMode,
   ProtocolDiagnostic,
@@ -25,6 +26,7 @@ export type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
   CaptureHeader,
+  ComposerTlsInfo,
   HeaderOperation,
   KeyMatchMode,
   ProtocolDiagnostic,
@@ -165,6 +167,32 @@ export type RuleReplaceResult =
   | { ok: true; revision: number }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
+/** Composer 手工请求：method/url/头/正文 + 协议偏好。 */
+export interface ComposerRequest {
+  method: string;
+  url: string;
+  headers: RuleHeaderPair[];
+  body?: string;
+  protocol: 'auto' | 'http/1.1' | 'h2';
+  timeoutMs?: number;
+}
+
+/** Composer 响应 DTO：成功带状态/头/有界正文/时序/TLS；失败 ok=false + error。 */
+export interface ComposerResponse {
+  ok: boolean;
+  error?: string;
+  status: number;
+  statusText: string;
+  httpVersion: string;
+  headers: RuleHeaderPair[];
+  body: Uint8Array;
+  bodyTruncated: boolean;
+  totalBytes: number;
+  durationMs: number;
+  tls: ComposerTlsInfo | null;
+  remoteAddress: string | null;
+}
+
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
@@ -195,6 +223,7 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesValidate: 'rules:validate',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
+  composerSend: 'composer:send',
 } as const;
 
 export interface InterceptorDesktopApi {
@@ -239,4 +268,5 @@ export interface InterceptorDesktopApi {
     rules: RuleDefinition[],
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
+  sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
 }

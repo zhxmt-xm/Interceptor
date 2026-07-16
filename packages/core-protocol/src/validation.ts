@@ -40,6 +40,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'rules.replace',
   'rules.get',
   'rules.hits',
+  'composer.send',
   'breakpoint.resolve',
   'diagnostics.recent',
   'diagnostics.query',
@@ -270,6 +271,9 @@ function validateCommand(value: unknown): string | null {
     case 'rules.hits':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateEmptyPayload(value.payload);
+    case 'composer.send':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateComposerSend(value.payload);
     case 'breakpoint.resolve':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBreakpointResolutionRequest(value.payload);
@@ -329,6 +333,9 @@ function validateResult(value: unknown): string | null {
     case 'rules.hits':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateRulesHitsResult(value.payload);
+    case 'composer.response':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateComposerResponse(value.payload);
     case 'breakpoint.resolution':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBreakpointResolutionResult(value.payload);
@@ -867,6 +874,79 @@ function validateRulesHitsResult(value: unknown): string | null {
     }
     return null;
   });
+}
+
+function validateComposerSend(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['method', 'url', 'headers', 'body', 'protocol', 'timeoutMs'],
+    (payload) => validateBoundedString(payload.method, 'command.payload.method', 64) ??
+      validateBoundedString(payload.url, 'command.payload.url', MAX_RULE_STRING_LENGTH) ??
+      (!Array.isArray(payload.headers)
+        ? 'command.payload.headers must be an array'
+        : validateOptionalRuleHeaderPairs(payload.headers, 'command.payload.headers')) ??
+      validateOptionalBoundedString(payload.body, 'command.payload.body', MAX_RULE_BODY_LENGTH) ??
+      validateEnum(payload.protocol, 'command.payload.protocol', ['auto', 'http/1.1', 'h2']) ??
+      (payload.timeoutMs === undefined
+        ? null
+        : validateIntegerRange(payload.timeoutMs, 'command.payload.timeoutMs', 1, 120_000)),
+  );
+}
+
+function validateComposerResponse(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    [
+      'ok',
+      'error',
+      'status',
+      'statusText',
+      'httpVersion',
+      'headers',
+      'body',
+      'bodyTruncated',
+      'totalBytes',
+      'durationMs',
+      'tls',
+      'remoteAddress',
+    ],
+    (payload) => validateBoolean(payload.ok, 'result.payload.ok') ??
+      validateOptionalBoundedString(payload.error, 'result.payload.error', MAX_MESSAGE_LENGTH) ??
+      validateIntegerRange(payload.status, 'result.payload.status', 0, 599) ??
+      validateBoundedString(payload.statusText, 'result.payload.statusText', 256) ??
+      validateBoundedString(payload.httpVersion, 'result.payload.httpVersion', 32) ??
+      (!Array.isArray(payload.headers)
+        ? 'result.payload.headers must be an array'
+        : validateOptionalRuleHeaderPairs(payload.headers, 'result.payload.headers')) ??
+      validateByteArray(payload.body, 'result.payload.body') ??
+      validateBoolean(payload.bodyTruncated, 'result.payload.bodyTruncated') ??
+      validateNonNegativeSafeInteger(payload.totalBytes, 'result.payload.totalBytes') ??
+      validateNonNegativeSafeInteger(payload.durationMs, 'result.payload.durationMs') ??
+      validateComposerTls(payload.tls, 'result.payload.tls') ??
+      (payload.remoteAddress === null
+        ? null
+        : validateBoundedString(payload.remoteAddress, 'result.payload.remoteAddress', 128)),
+  );
+}
+
+function validateComposerTls(value: unknown, name: string): string | null {
+  if (value === null) {
+    return null;
+  }
+  return validateExactObject(
+    value,
+    name,
+    ['protocol', 'cipher', 'alpn', 'subject', 'issuer', 'validFrom', 'validTo'],
+    (tls) => validateBoundedString(tls.protocol, `${name}.protocol`, 64) ??
+      validateBoundedString(tls.cipher, `${name}.cipher`, 128) ??
+      validateBoundedString(tls.alpn, `${name}.alpn`, 32) ??
+      validateBoundedString(tls.subject, `${name}.subject`, 512) ??
+      validateBoundedString(tls.issuer, `${name}.issuer`, 512) ??
+      validateBoundedString(tls.validFrom, `${name}.validFrom`, 64) ??
+      validateBoundedString(tls.validTo, `${name}.validTo`, 64),
+  );
 }
 
 function validateBreakpointResolutionRequest(value: unknown): string | null {

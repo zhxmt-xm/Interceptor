@@ -76,6 +76,22 @@ export interface RulesHitsCommand {
 }
 
 /**
+ * Composer 手工构造的出站请求：由 Core 用 Node http/https/http2 执行并回传响应。
+ * protocol 为传输偏好（auto/HTTP1.1 走 http/https、h2 走 http2）。
+ */
+export interface ComposerSendCommand {
+  type: 'composer.send';
+  payload: {
+    method: string;
+    url: string;
+    headers: RuleHeaderPair[];
+    body?: string;
+    protocol: 'auto' | 'http/1.1' | 'h2';
+    timeoutMs?: number;
+  };
+}
+
+/**
  * 断点放行时对请求/响应的可选编辑（waiting→edited→continued）。
  * 请求阶段用 method/url，响应阶段用 statusCode，headers/body 两阶段通用（完整替换）。
  */
@@ -166,6 +182,7 @@ export type CoreCommand =
   | RulesReplaceCommand
   | RulesGetCommand
   | RulesHitsCommand
+  | ComposerSendCommand
   | BreakpointResolveCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
@@ -238,6 +255,36 @@ export interface RulesHitsResult {
   type: 'rules.hits';
   payload: {
     counts: RuleHitCount[];
+  };
+}
+
+/** Composer 连接的 TLS/ALPN/证书摘要（只包含展示用公开元数据）。 */
+export interface ComposerTlsInfo {
+  protocol: string;
+  cipher: string;
+  alpn: string;
+  subject: string;
+  issuer: string;
+  validFrom: string;
+  validTo: string;
+}
+
+/** Composer 响应：成功时带状态/头/有界正文/时序/TLS；失败时 ok=false + error。 */
+export interface ComposerResponseResult {
+  type: 'composer.response';
+  payload: {
+    ok: boolean;
+    error?: string;
+    status: number;
+    statusText: string;
+    httpVersion: string;
+    headers: RuleHeaderPair[];
+    body: Uint8Array;
+    bodyTruncated: boolean;
+    totalBytes: number;
+    durationMs: number;
+    tls: ComposerTlsInfo | null;
+    remoteAddress: string | null;
   };
 }
 
@@ -331,6 +378,7 @@ export type CoreResult =
   | RuleRevisionResult
   | RulesRuleSetResult
   | RulesHitsResult
+  | ComposerResponseResult
   | BreakpointResolutionResult
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
@@ -367,7 +415,9 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                   ? RulesRuleSetResult
                                   : T extends RulesHitsCommand
                                     ? RulesHitsResult
-                                    : never;
+                                    : T extends ComposerSendCommand
+                                      ? ComposerResponseResult
+                                      : never;
 
 export interface ProtocolDiagnostic {
   code: string;

@@ -85,6 +85,8 @@ const api: InterceptorDesktopApi = {
   replaceRules: (expectedRevision, rules) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, rules),
   getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
+  sendComposerRequest: (request) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

@@ -1,14 +1,27 @@
 import { StatItem } from '../../../components';
+import { useComposerStore } from '../composerStore';
 
-/** Composer status bar: ready state, proxy binding and last send result. */
+/** Composer status bar: ready state, target host and last send result. */
 export function ComposerStatusbar(): React.JSX.Element {
+  const sending = useComposerStore((state) => state.sending);
+  const sendError = useComposerStore((state) => state.sendError);
+  const response = useComposerStore((state) => state.response);
+  const last = useComposerStore((state) => state.history[0]);
+
+  const dot = sending ? 'yellow' : sendError || response?.ok === false ? 'red' : 'green';
+  const label = sending ? 'Sending…' : sendError ? 'Send failed' : 'Ready';
+
   return (
     <>
-      <StatItem dot="green">Ready</StatItem>
-      <StatItem mono>127.0.0.1:8888</StatItem>
-      <StatItem mono push>
-        last send 201 · 142 ms
-      </StatItem>
+      <StatItem dot={dot}>{label}</StatItem>
+      {response?.remoteAddress ? (
+        <StatItem mono>{response.remoteAddress}</StatItem>
+      ) : null}
+      {last ? (
+        <StatItem mono push>
+          last send {last.status || 'ERR'} · {last.durationMs} ms
+        </StatItem>
+      ) : null}
     </>
   );
 }

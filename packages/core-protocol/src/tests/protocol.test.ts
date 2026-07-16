@@ -67,6 +67,16 @@ describe('core protocol validation', () => {
         payload: {},
       },
       {
+        type: 'composer.send',
+        payload: {
+          method: 'POST',
+          url: 'https://api.example.com/v1',
+          headers: [{ name: 'accept', value: 'application/json' }],
+          body: '{}',
+          protocol: 'auto',
+        },
+      },
+      {
         type: 'breakpoint.resolve',
         payload: { breakpointId: 'breakpoint-1', action: 'continue' },
       },
@@ -193,6 +203,65 @@ describe('core protocol validation', () => {
       result: {
         type: 'rules.hits',
         payload: { counts: [{ ruleId: 'rule-1', count: -1 }] },
+      },
+    }).ok).toBe(false);
+  });
+
+  it('accepts composer.response result and rejects malformed status', () => {
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-composer',
+      traceId: 'trace-composer',
+      ok: true,
+      result: {
+        type: 'composer.response',
+        payload: {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          httpVersion: 'HTTP/1.1',
+          headers: [{ name: 'content-type', value: 'application/json' }],
+          body: new Uint8Array([123, 125]),
+          bodyTruncated: false,
+          totalBytes: 2,
+          durationMs: 42,
+          tls: {
+            protocol: 'TLSv1.3',
+            cipher: 'TLS_AES_128_GCM_SHA256',
+            alpn: 'h2',
+            subject: 'example.com',
+            issuer: 'Example CA',
+            validFrom: 'Jan  1 00:00:00 2026 GMT',
+            validTo: 'Jan  1 00:00:00 2027 GMT',
+          },
+          remoteAddress: '93.184.216.34',
+        },
+      },
+    }).ok).toBe(true);
+
+    // 非法 status 被拒绝
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-composer-bad',
+      traceId: 'trace-composer-bad',
+      ok: true,
+      result: {
+        type: 'composer.response',
+        payload: {
+          ok: true,
+          status: 900,
+          statusText: '',
+          httpVersion: 'h2',
+          headers: [],
+          body: new Uint8Array(0),
+          bodyTruncated: false,
+          totalBytes: 0,
+          durationMs: 1,
+          tls: null,
+          remoteAddress: null,
+        },
       },
     }).ok).toBe(false);
   });

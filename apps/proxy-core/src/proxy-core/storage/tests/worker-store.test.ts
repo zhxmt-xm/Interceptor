@@ -353,4 +353,22 @@ describe('CaptureStore', () => {
     expect(() => store.saveRuleSet(0, [])).toThrow(RuleRevisionConflictError);
     expect(store.loadRuleSet().revision).toBe(1);
   });
+
+  it('aggregates rule hit counts by rule id', () => {
+    store.appendExchanges([exchange('e1'), exchange('e2')]);
+    store.appendRuleHits('e1', [
+      { ruleId: 'rule-a', ruleRevision: 1, phase: 'request', action: 'header.set' },
+      { ruleId: 'rule-b', ruleRevision: 1, phase: 'response', action: 'block' },
+    ]);
+    store.appendRuleHits('e2', [
+      { ruleId: 'rule-a', ruleRevision: 1, phase: 'request', action: 'header.set' },
+    ]);
+    const counts = store.countRuleHits();
+    const byRule = Object.fromEntries(counts.map((entry) => [entry.ruleId, entry.count]));
+    expect(byRule).toEqual({ 'rule-a': 2, 'rule-b': 1 });
+  });
+
+  it('returns no rule hit counts for a fresh database', () => {
+    expect(store.countRuleHits()).toEqual([]);
+  });
 });
