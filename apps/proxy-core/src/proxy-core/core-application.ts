@@ -1,5 +1,6 @@
 import process from 'node:process';
 
+import { collectRuleDiagnostics } from '@interceptor/core-protocol';
 import type {
   CoreCommand,
   CoreError,
@@ -286,6 +287,46 @@ export class CoreApplication implements CoreRpcHost {
             };
           } catch (error) {
             throw mapStorageError(error);
+          }
+        });
+      case 'rules.validate': {
+        // 纯语义校验（无 I/O）：wire 校验已在 RPC 边界完成，此处只返回诊断。
+        const diagnostics = collectRuleDiagnostics(command.payload.rules);
+        return {
+          type: 'rules.validation',
+          payload: { valid: diagnostics.length === 0, diagnostics },
+        };
+      }
+      case 'rules.get':
+        return this.withStorage(async (storage) => {
+          const ruleSet = await this.diagnostics.action('rules.get', () =>
+            storage.loadRuleSet(),
+          );
+          return { type: 'rules.ruleset', payload: { ruleSet } };
+        });
+      case 'rules.replace':
+        return this.withStorage(async (storage) => {
+          const diagnostics = collectRuleDiagnostics(command.payload.rules);
+          if (diagnostics.length > 0) {
+            throw commandError({
+              code: 'invalid-message',
+              message: 'The rule set failed semantic validation.',
+              retryable: false,
+            });
+          }
+          try {
+            const ruleSet = await this.diagnostics.action('rules.replace', () =>
+              storage.saveRuleSet(
+                command.payload.expectedRevision,
+                command.payload.rules,
+              ),
+            );
+            return {
+              type: 'rules.revision',
+              payload: { revision: ruleSet.revision },
+            };
+          } catch (error) {
+            throw mapRuleError(error);
           }
         });
       case 'storage.status':
@@ -605,6 +646,32 @@ function mapStorageError(error: unknown): CoreCommandError {
   return new CoreCommandError({
     code: 'internal',
     message: 'The storage command failed.',
+    retryable: false,
+  });
+}
+
+/**
+ * 把规则持久化异常映射为结构化 CoreError：revision 冲突为 conflict（可重取后重试），
+ * 其余归为 internal。通过 name 判定，因错误可能跨 Storage Worker 边界重建丢失原型链。
+ */
+function mapRuleError(error: unknown): CoreCommandError {
+  if (error instanceof CoreCommandError) {
+    return error;
+  }
+  const name = error instanceof Error ? error.name : '';
+  if (name === 'RuleRevisionConflictError') {
+    return new CoreCommandError({
+      code: 'conflict',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'The rule set revision is out of date.',
+      retryable: true,
+    });
+  }
+  return new CoreCommandError({
+    code: 'internal',
+    message: 'Failed to persist the rule set.',
     retryable: false,
   });
 }

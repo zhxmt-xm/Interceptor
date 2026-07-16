@@ -21,6 +21,7 @@ const CORE_TABLES = [
   'websocket_frame',
   'rule_hit',
   'error_event',
+  'rule_set',
 ];
 
 function tableNames(db: DatabaseSync): string[] {
@@ -38,7 +39,9 @@ describe('capture database fixture', () => {
     try {
       expect(migration.fromVersion).toBe(0);
       expect(migration.toVersion).toBe(CAPTURE_SCHEMA_VERSION);
-      expect(migration.applied).toEqual([1]);
+      expect(migration.applied).toEqual(
+        Array.from({ length: CAPTURE_SCHEMA_VERSION }, (_, index) => index + 1),
+      );
       expect(readUserVersion(db)).toBe(CAPTURE_SCHEMA_VERSION);
 
       const names = tableNames(db);
@@ -61,8 +64,8 @@ describe('capture database fixture', () => {
           statements: ['SELECT 1'],
         },
       ]);
-      expect(second.fromVersion).toBe(1);
-      expect(second.toVersion).toBe(1);
+      expect(second.fromVersion).toBe(CAPTURE_SCHEMA_VERSION);
+      expect(second.toVersion).toBe(CAPTURE_SCHEMA_VERSION);
       expect(second.applied).toEqual([]);
     } finally {
       db.close();

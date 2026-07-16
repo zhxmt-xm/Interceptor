@@ -1,6 +1,10 @@
 import { Worker } from 'node:worker_threads';
 
-import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
+import type {
+  CaptureExchangeDetail,
+  RuleDefinition,
+  RuleSet,
+} from '@interceptor/core-protocol';
 
 import {
   STORAGE_REQUEST_TIMEOUT_MS,
@@ -149,6 +153,17 @@ export class StorageWorkerHost {
 
   referencedHashes(): Promise<string[]> {
     return this.request({ kind: 'referenced-hashes' });
+  }
+
+  saveRuleSet(
+    expectedRevision: number,
+    rules: readonly RuleDefinition[],
+  ): Promise<RuleSet> {
+    return this.request({ kind: 'save-rule-set', expectedRevision, rules });
+  }
+
+  loadRuleSet(): Promise<RuleSet> {
+    return this.request({ kind: 'load-rule-set' });
   }
 
   /**

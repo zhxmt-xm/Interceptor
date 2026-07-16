@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import type { RuleDefinition } from '@interceptor/core-protocol';
+
 import { openCaptureDatabase, IN_MEMORY_LOCATION } from '../worker/worker-database';
-import { CaptureStore, InvalidCursorError } from '../worker/worker-store';
+import {
+  CaptureStore,
+  InvalidCursorError,
+  RuleRevisionConflictError,
+} from '../worker/worker-store';
 import type { ExchangeInput } from '../types';
 
 function createStore(): CaptureStore {
@@ -310,5 +316,41 @@ describe('CaptureStore', () => {
     } while (cursor);
 
     expect(seen.size).toBe(total);
+  });
+
+  it('returns an empty rule set for a fresh database', () => {
+    expect(store.loadRuleSet()).toEqual({ revision: 0, rules: [] });
+  });
+
+  it('persists a rule set and bumps revision on each save', () => {
+    const rule: RuleDefinition = {
+      id: 'rule-1',
+      name: 'Tag API',
+      enabled: true,
+      priority: 100,
+      matchers: [{ type: 'host', value: 'api.test', mode: 'exact' }],
+      actions: [
+        {
+          type: 'header',
+          phase: 'request',
+          op: 'set',
+          name: 'x-tag',
+          value: 'on',
+        },
+      ],
+    };
+    const saved = store.saveRuleSet(0, [rule]);
+    expect(saved).toEqual({ revision: 1, rules: [rule] });
+    expect(store.loadRuleSet()).toEqual({ revision: 1, rules: [rule] });
+
+    const next = store.saveRuleSet(1, []);
+    expect(next.revision).toBe(2);
+    expect(store.loadRuleSet()).toEqual({ revision: 2, rules: [] });
+  });
+
+  it('rejects a stale expectedRevision without mutating state', () => {
+    store.saveRuleSet(0, []);
+    expect(() => store.saveRuleSet(0, [])).toThrow(RuleRevisionConflictError);
+    expect(store.loadRuleSet().revision).toBe(1);
   });
 });

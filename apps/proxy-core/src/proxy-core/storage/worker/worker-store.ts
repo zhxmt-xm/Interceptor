@@ -5,6 +5,8 @@ import type {
   CaptureExchangeDetail,
   CaptureExchangeSummary,
   CaptureHeader,
+  RuleDefinition,
+  RuleSet,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -26,6 +28,22 @@ export class InvalidCursorError extends Error {
   constructor() {
     super('The pagination cursor is malformed.');
     this.name = 'InvalidCursorError';
+  }
+}
+
+/**
+ * 规则集乐观并发冲突：expectedRevision 与当前持久化 revision 不一致。
+ * core-application 据 error.name 映射为 CoreError conflict（跨 Worker 边界原型链会丢失）。
+ */
+export class RuleRevisionConflictError extends Error {
+  constructor(
+    readonly expectedRevision: number,
+    readonly actualRevision: number,
+  ) {
+    super(
+      `Rule set revision conflict: expected ${expectedRevision}, found ${actualRevision}.`,
+    );
+    this.name = 'RuleRevisionConflictError';
   }
 }
 
@@ -493,6 +511,60 @@ export class CaptureStore {
         )
         .all() as { hash: string }[]
     ).map((row) => row.hash);
+  }
+
+  /**
+   * 读取持久化的规则集；空库（尚未保存过）返回 revision 0 的空规则集。
+   * 调用方：Storage Worker 处理 load-rule-set 请求（rules.get handler）。
+   */
+  loadRuleSet(): RuleSet {
+    const row = this.db
+      .prepare(
+        'SELECT revision AS revision, rules_json AS rulesJson FROM rule_set WHERE id = 1',
+      )
+      .get() as { revision: number; rulesJson: string } | undefined;
+    if (!row) {
+      return { revision: 0, rules: [] };
+    }
+    return {
+      revision: row.revision,
+      rules: JSON.parse(row.rulesJson) as RuleDefinition[],
+    };
+  }
+
+  /**
+   * 乐观并发替换规则集：expectedRevision 必须等于当前 revision（空库视为 0），
+   * 否则抛 RuleRevisionConflictError；成功则写入 revision+1 并返回新规则集。
+   * 读-比较-写在单事务内完成，保证并发替换的原子性。
+   * 调用方：Storage Worker 处理 save-rule-set 请求（rules.replace handler）。
+   */
+  saveRuleSet(
+    expectedRevision: number,
+    rules: readonly RuleDefinition[],
+  ): RuleSet {
+    return this.inTransaction(() => {
+      const current = this.db
+        .prepare('SELECT revision AS revision FROM rule_set WHERE id = 1')
+        .get() as { revision: number } | undefined;
+      const currentRevision = current?.revision ?? 0;
+      if (currentRevision !== expectedRevision) {
+        throw new RuleRevisionConflictError(expectedRevision, currentRevision);
+      }
+      const nextRevision = currentRevision + 1;
+      this.db
+        .prepare(
+          `INSERT INTO rule_set (id, revision, rules_json, updated_at)
+           VALUES (1, :revision, :rulesJson, :updatedAt)
+           ON CONFLICT(id) DO UPDATE SET
+             revision = :revision, rules_json = :rulesJson, updated_at = :updatedAt`,
+        )
+        .run({
+          revision: nextRevision,
+          rulesJson: JSON.stringify(rules),
+          updatedAt: Date.now(),
+        });
+      return { revision: nextRevision, rules: [...rules] };
+    });
   }
 
   /** 关闭底层数据库连接；调用方：Storage Worker 优雅退出。 */

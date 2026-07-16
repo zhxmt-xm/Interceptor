@@ -5,7 +5,9 @@ import {
   MAX_BODY_CHUNK_BYTES,
   MAX_QUERY_PAGE_SIZE,
 } from '../messages';
+import type { RuleAction, RuleDefinition, RuleMatcher } from '../rules';
 import {
+  collectRuleDiagnostics,
   parseCoreToMainMessage,
   parseMainToCoreMessage,
 } from '../validation';
@@ -444,6 +446,83 @@ describe('core protocol validation', () => {
         },
       },
     }).ok).toBe(false);
+  });
+});
+
+describe('collectRuleDiagnostics', () => {
+  const ruleWith = (
+    matchers: RuleMatcher[],
+    actions: RuleAction[],
+    overrides: Partial<RuleDefinition> = {},
+  ): RuleDefinition => ({
+    id: 'rule-1',
+    name: 'Rule',
+    enabled: true,
+    priority: 100,
+    matchers,
+    actions,
+    ...overrides,
+  });
+
+  it('returns no diagnostics for a semantically valid rule set', () => {
+    expect(
+      collectRuleDiagnostics([
+        ruleWith(
+          [{ type: 'host', value: '^api\\.test$', mode: 'regex' }],
+          [{ type: 'status', statusCode: 200 }],
+        ),
+      ]),
+    ).toEqual([]);
+  });
+
+  it('flags duplicate rule ids', () => {
+    const rule = ruleWith(
+      [{ type: 'method', value: 'GET' }],
+      [{ type: 'block', mode: 'reset' }],
+    );
+    expect(collectRuleDiagnostics([rule, rule])).toContainEqual(
+      expect.objectContaining({ code: 'duplicate-rule-id' }),
+    );
+  });
+
+  it('flags an uncompilable regex matcher', () => {
+    expect(
+      collectRuleDiagnostics([
+        ruleWith(
+          [{ type: 'path', value: '(', mode: 'regex' }],
+          [{ type: 'block', mode: 'reset' }],
+        ),
+      ]),
+    ).toContainEqual(expect.objectContaining({ code: 'invalid-regex' }));
+  });
+
+  it('flags an inverted status range', () => {
+    expect(
+      collectRuleDiagnostics([
+        ruleWith(
+          [{ type: 'status', min: 500, max: 400 }],
+          [{ type: 'block', mode: 'reset' }],
+        ),
+      ]),
+    ).toContainEqual(expect.objectContaining({ code: 'invalid-status-range' }));
+  });
+
+  it('flags an invalid JSON body action', () => {
+    expect(
+      collectRuleDiagnostics([
+        ruleWith(
+          [{ type: 'method', value: 'GET' }],
+          [
+            {
+              type: 'body',
+              phase: 'response',
+              format: 'json',
+              content: '{ not json',
+            },
+          ],
+        ),
+      ]),
+    ).toContainEqual(expect.objectContaining({ code: 'invalid-json-body' }));
   });
 });
 

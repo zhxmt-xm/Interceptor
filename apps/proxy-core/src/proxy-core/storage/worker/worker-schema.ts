@@ -3,7 +3,7 @@ import type { Migration } from '../../migration-runner';
 /**
  * Capture 数据库当前 schema 版本。新增迁移时必须同步更新。
  */
-export const CAPTURE_SCHEMA_VERSION = 1;
+export const CAPTURE_SCHEMA_VERSION = 2;
 
 /**
  * Capture 数据库只向前迁移集，对应产品设计第十二章 12.1 的核心实体。
@@ -12,6 +12,7 @@ export const CAPTURE_SCHEMA_VERSION = 1;
  * body_ref / websocket_frame / rule_hit / error_event 八张表，覆盖
  * time / host / method / status / mime / process 查询维度的索引，以及
  * 用于关键字搜索的 FTS5 虚拟表。时间戳统一使用 epoch 毫秒（INTEGER）。
+ * v2（M7）新增单行 rule_set 表持久化版本化规则集（revision + rules_json）。
  */
 export const CAPTURE_MIGRATIONS: readonly Migration[] = [
   {
@@ -145,6 +146,20 @@ export const CAPTURE_MIGRATIONS: readonly Migration[] = [
         host,
         method,
         response_mime
+      )`,
+    ],
+  },
+  {
+    version: 2,
+    label: 'rule-set',
+    statements: [
+      // 单行表（CHECK id = 1）持久化最新规则集：revision 单调递增用于乐观并发，
+      // rules_json 是 RuleDefinition[] 的可序列化快照（无 callback / 运行时对象）。
+      `CREATE TABLE rule_set (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        revision INTEGER NOT NULL,
+        rules_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
       )`,
     ],
   },

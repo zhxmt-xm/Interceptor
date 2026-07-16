@@ -164,8 +164,8 @@ describe('CoreApplication', () => {
     } satisfies Partial<CoreCommandError>);
 
     await expect(application.executeCommand({
-      type: 'rules.validate',
-      payload: { rules: [] },
+      type: 'breakpoint.resolve',
+      payload: { breakpointId: 'bp-1', action: 'continue' },
     }, new AbortController().signal)).rejects.toMatchObject({
       detail: { code: 'unsupported-command', retryable: false },
     });

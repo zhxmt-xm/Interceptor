@@ -1,4 +1,8 @@
-import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
+import type {
+  CaptureExchangeDetail,
+  RuleDefinition,
+  RuleSet,
+} from '@interceptor/core-protocol';
 
 import { GLOBAL_QUOTA_BYTES } from '../constants';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
@@ -83,6 +87,22 @@ export class StorageService {
   /** 按需读取单条 Exchange 详情（摘要 + 头部 + 正文引用）。调用方：sessions.detail handler。 */
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null> {
     return this.host.getExchangeDetail(exchangeId);
+  }
+
+  /** 读取持久化规则集；未保存过时返回 revision 0 空集。调用方：rules.get handler。 */
+  loadRuleSet(): Promise<RuleSet> {
+    return this.host.loadRuleSet();
+  }
+
+  /**
+   * 乐观并发替换规则集（expectedRevision 需匹配当前 revision），返回新规则集。
+   * 调用方：rules.replace handler。
+   */
+  saveRuleSet(
+    expectedRevision: number,
+    rules: readonly RuleDefinition[],
+  ): Promise<RuleSet> {
+    return this.host.saveRuleSet(expectedRevision, rules);
   }
 
   /**

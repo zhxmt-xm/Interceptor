@@ -19,7 +19,7 @@
 ## 当前状态
 
 - **M0、M1、M2、M3、M4、M5、M6 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
-- **当前 Stage 是 M7 规则引擎（进行中，Contract 完成）**：规则模型（`packages/core-protocol/src/rules.ts`）+ rules.validate/replace/get 命令 + 完整 wire 校验 + 单测已交付；Server（SQLite rule_set 存取、rules handler、matcher 编译、action 执行、breakpoint 状态机、Mockttp beforeRequest/beforeResponse 原子替换引擎、RuleHit 审计）与 Client(M8) 待续。架构决策与增量规划见 `/memories/session/autonomous-m7-dev.md` 与 [M7.md](M7.md)。
+- **当前 Stage 是 M7 规则引擎（进行中，Contract 完成 + Server T7.1 完成）**：规则模型（`packages/core-protocol/src/rules.ts`）+ rules.validate/replace/get 命令 + wire 校验 + 单测已交付；**T7.1 Server 已交付**——schema v2 单行 `rule_set` 表（`storage/worker/worker-schema.ts`）+ `CaptureStore.saveRuleSet/loadRuleSet` 乐观并发（`RuleRevisionConflictError`）+ host↔worker `save/load-rule-set` 链路 + `collectRuleDiagnostics` 语义校验（`validation.ts`）+ `rules.validate/get/replace` handler（`core-application.ts`，冲突→conflict）。Server 剩 T7.2–T7.7（matcher 编译、action 执行、breakpoint 状态机、Mockttp beforeRequest/beforeResponse 原子替换引擎、RuleHit 审计）与 Client(M8) 待续。架构决策见 [M7.md](M7.md)。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
@@ -119,15 +119,15 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M7 Server（规则引擎）
+## 下一任务：M7 Server T7.2（规则引擎）
 
-M7 Contract（规则模型/命令/校验）已提交 `3dc3c59`。下一步 Server：SQLite `rule_set` 存取 + `rules.validate/replace/get` handler + matcher 编译 + action 执行 + breakpoint 状态机 + Mockttp `beforeRequest`/`beforeResponse` 引擎（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计。架构决策与增量规划见 `/memories/session/autonomous-m7-dev.md` 与 [M7.md](M7.md)。
+M7 Contract（规则模型/命令/校验）已提交 `3dc3c59`；Server T7.1（rule_set 持久化 + rules.validate/get/replace handler）已完成。下一步从 T7.2 起：matcher-compiler（规则→匹配函数）→ action-executor（header/query）→ body/map（路径穿越防护）→ block/status/throttle/delay → breakpoint-queue 状态机 + breakpoint.resolve handler → rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十章（规则引擎）和第二十七章 M7。
-2. schema v2 `rule_set` 表 + 迁移；`rules.replace` 乐观并发（expectedRevision）+ `rules.get`/`validate`。
-3. matcher-compiler（规则→匹配函数）+ action-executor；rule-engine 经 Mockttp beforeRequest/beforeResponse 热切换 ruleSet 引用；breakpoint-queue 状态机。
+1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（规则引擎）和第二十七章 M7。
+2. matcher-compiler：把 RuleMatcher 编译为纯函数（method/host/path/url/query/header/status/mime，AND 语义，host/path/url 支持 exact/wildcard/regex）+ 单测。
+3. action-executor + rule-engine 经 Mockttp beforeRequest/beforeResponse 热切换 ruleSet 引用；breakpoint-queue 状态机。
 4. 在 [M7.md](M7.md) 按 Server/Contract/Client 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
 
 > 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。

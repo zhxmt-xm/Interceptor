@@ -9,6 +9,7 @@ import {
   type CoreToMainMessage,
   type DiagnosticLogRecord,
   type MainToCoreMessage,
+  type ProtocolDiagnostic,
 } from './messages';
 import {
   MAX_ACTIONS_PER_RULE,
@@ -18,6 +19,9 @@ import {
   MAX_RULE_NAME_LENGTH,
   MAX_RULE_STRING_LENGTH,
   MAX_RULES,
+  type RuleAction,
+  type RuleDefinition,
+  type RuleMatcher,
 } from './rules';
 
 export type ValidationResult<T> =
@@ -435,6 +439,116 @@ function validateBodyRangeRequest(value: unknown): string | null {
         256,
       ),
   );
+}
+
+/**
+ * 对已通过 wire 校验的规则集做语义级校验，返回诊断列表（空数组表示语义有效）。
+ *
+ * wire 校验（validateRuleDefinition）只保证结构/枚举/上限；此处补充跨字段与运行时
+ * 可行性检查：重复规则 id、regex matcher 可编译性、status 区间 min<=max、JSON body
+ * 可解析。供 rules.validate / rules.replace handler 复用；Renderer 经命令获取诊断。
+ */
+export function collectRuleDiagnostics(
+  rules: readonly RuleDefinition[],
+): ProtocolDiagnostic[] {
+  const diagnostics: ProtocolDiagnostic[] = [];
+  const seenIds = new Set<string>();
+  rules.forEach((rule, index) => {
+    const base = `rules[${index}]`;
+    if (seenIds.has(rule.id)) {
+      diagnostics.push({
+        code: 'duplicate-rule-id',
+        message: `Duplicate rule id "${rule.id}".`,
+        path: `${base}.id`,
+      });
+    }
+    seenIds.add(rule.id);
+    rule.matchers.forEach((matcher, matcherIndex) => {
+      collectMatcherDiagnostics(
+        matcher,
+        `${base}.matchers[${matcherIndex}]`,
+        diagnostics,
+      );
+    });
+    rule.actions.forEach((action, actionIndex) => {
+      collectActionDiagnostics(
+        action,
+        `${base}.actions[${actionIndex}]`,
+        diagnostics,
+      );
+    });
+  });
+  return diagnostics;
+}
+
+function collectMatcherDiagnostics(
+  matcher: RuleMatcher,
+  path: string,
+  diagnostics: ProtocolDiagnostic[],
+): void {
+  if (
+    (matcher.type === 'host' ||
+      matcher.type === 'path' ||
+      matcher.type === 'url') &&
+    matcher.mode === 'regex' &&
+    !isValidRegExp(matcher.value)
+  ) {
+    diagnostics.push(invalidRegexDiagnostic(matcher.value, `${path}.value`));
+  }
+  if (
+    (matcher.type === 'query' || matcher.type === 'header') &&
+    matcher.mode === 'regex' &&
+    matcher.value !== undefined &&
+    !isValidRegExp(matcher.value)
+  ) {
+    diagnostics.push(invalidRegexDiagnostic(matcher.value, `${path}.value`));
+  }
+  if (matcher.type === 'status' && matcher.min > matcher.max) {
+    diagnostics.push({
+      code: 'invalid-status-range',
+      message: `Status range min (${matcher.min}) must not exceed max (${matcher.max}).`,
+      path,
+    });
+  }
+}
+
+function collectActionDiagnostics(
+  action: RuleAction,
+  path: string,
+  diagnostics: ProtocolDiagnostic[],
+): void {
+  if (action.type === 'body' && action.format === 'json') {
+    try {
+      JSON.parse(action.content);
+    } catch {
+      diagnostics.push({
+        code: 'invalid-json-body',
+        message: 'The JSON body action content is not valid JSON.',
+        path: `${path}.content`,
+      });
+    }
+  }
+}
+
+function invalidRegexDiagnostic(
+  pattern: string,
+  path: string,
+): ProtocolDiagnostic {
+  return {
+    code: 'invalid-regex',
+    message: `Pattern "${pattern}" is not a valid regular expression.`,
+    path,
+  };
+}
+
+function isValidRegExp(pattern: string): boolean {
+  try {
+    // 仅测试可编译性；作为函数调用（而非独立 new 语句）避免 no-new lint。
+    RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function validateRuleValidationRequest(value: unknown): string | null {

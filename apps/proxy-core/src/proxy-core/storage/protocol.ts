@@ -1,5 +1,7 @@
 import type {
   CaptureExchangeDetail,
+  RuleDefinition,
+  RuleSet,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -43,6 +45,12 @@ export type StorageWorkerRequest =
   | { readonly kind: 'storage-status' }
   | { readonly kind: 'cleanup'; readonly scope: CleanupScope }
   | { readonly kind: 'referenced-hashes' }
+  | {
+      readonly kind: 'save-rule-set';
+      readonly expectedRevision: number;
+      readonly rules: readonly RuleDefinition[];
+    }
+  | { readonly kind: 'load-rule-set' }
   | { readonly kind: 'close' };
 
 export interface StorageWorkerRequestEnvelope {
@@ -63,7 +71,11 @@ export type StorageWorkerResultFor<K extends StorageWorkerRequest['kind']> =
             ? CleanupResult
             : K extends 'referenced-hashes'
               ? string[]
-              : void;
+              : K extends 'save-rule-set'
+                ? RuleSet
+                : K extends 'load-rule-set'
+                  ? RuleSet
+                  : void;
 
 export type StorageWorkerResponse =
   | { readonly type: 'ready' }
