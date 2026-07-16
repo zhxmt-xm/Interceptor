@@ -13,38 +13,10 @@ import {
   blobDirectory,
   blobTempDirectory,
 } from '../../constants';
-
-/**
- * 写入正文超过单条上限时抛出；调用方据此把 body_ref 标记为 truncated。
- */
-export class BlobTooLargeError extends Error {
-  constructor(readonly limitBytes: number) {
-    super(`Blob exceeds the per-body limit of ${limitBytes} bytes.`);
-    this.name = 'BlobTooLargeError';
-  }
-}
-
-/**
- * 写入会使总量超过全局配额时抛出；调用方据此省略正文但保留元数据。
- */
-export class BlobQuotaExceededError extends Error {
-  constructor(readonly quotaBytes: number) {
-    super(`Blob store global quota of ${quotaBytes} bytes is exhausted.`);
-    this.name = 'BlobQuotaExceededError';
-  }
-}
-
-export interface BlobWriteResult {
-  readonly hash: string;
-  readonly size: number;
-  /** 该内容此前已存在（内容寻址去重命中）。 */
-  readonly deduplicated: boolean;
-}
-
-export interface BlobGcResult {
-  readonly removedBlobs: number;
-  readonly freedBytes: number;
-}
+import type { BlobGcResult, BlobWriteResult } from '../interfaces';
+import * as StorageUtils from '../utils';
+import { BlobQuotaExceededError } from './host-blob-quota-exceeded-error';
+import { BlobTooLargeError } from './host-blob-too-large-error';
 
 /**
  * 内容寻址正文 Blob 存储。
@@ -54,11 +26,17 @@ export interface BlobGcResult {
  * 且启动时清理残留临时文件以保证崩溃安全。所有操作使用异步流式 I/O，不阻塞事件循环。
  */
 export class BlobStore {
+  /** Blob 内容寻址根目录。 */
   private readonly rootDir = blobDirectory;
+  /** 原子写入使用的临时目录。 */
   private readonly tempDir = blobTempDirectory;
+  /** 单条正文最大字节数。 */
   private readonly maxBodyBytes = MAX_BODY_BYTES;
+  /** Blob Store 全局配额。 */
   private readonly globalQuotaBytes = GLOBAL_QUOTA_BYTES;
+  /** 当前去重 Blob 的磁盘总字节数。 */
   private totalBytes = 0;
+  /** 目录与用量是否已初始化。 */
   private initialized = false;
 
   /**
@@ -107,7 +85,7 @@ export class BlobStore {
           await once(out, 'drain');
         }
       }
-      await closeWriteStream(out);
+      await StorageUtils.closeWriteStream(out);
     } catch (error) {
       await this.discardTemp(out, tempPath);
       throw error;
@@ -116,7 +94,7 @@ export class BlobStore {
     const digest = hash.digest('hex');
     const finalPath = this.pathForHash(digest);
 
-    if (await pathExists(finalPath)) {
+    if (await StorageUtils.pathExists(finalPath)) {
       await fs.rm(tempPath, { force: true });
       return { hash: digest, size, deduplicated: true };
     }
@@ -134,7 +112,7 @@ export class BlobStore {
 
   /** 内容是否已存在。调用方：去重预检和测试。 */
   async has(hash: string): Promise<boolean> {
-    return pathExists(this.pathForHash(hash));
+    return StorageUtils.pathExists(this.pathForHash(hash));
   }
 
   /**
@@ -170,7 +148,7 @@ export class BlobStore {
       if (referenced.has(hash)) {
         continue;
       }
-      const size = await fileSize(filePath);
+      const size = await StorageUtils.fileSize(filePath);
       await fs.rm(filePath, { force: true });
       removedBlobs += 1;
       freedBytes += size;
@@ -181,14 +159,16 @@ export class BlobStore {
     return { removedBlobs, freedBytes };
   }
 
+  /** 扫描现有内容寻址文件总量。 */
   private async scanTotalBytes(): Promise<number> {
     let total = 0;
     for (const { filePath } of await this.listBlobs()) {
-      total += await fileSize(filePath);
+      total += await StorageUtils.fileSize(filePath);
     }
     return total;
   }
 
+  /** 枚举分片目录中的全部内容寻址 Blob。 */
   private async listBlobs(): Promise<{ hash: string; filePath: string }[]> {
     const blobs: { hash: string; filePath: string }[] = [];
     let shards: string[];
@@ -216,6 +196,7 @@ export class BlobStore {
     return blobs;
   }
 
+  /** 清理全部崩溃残留临时文件。 */
   private async cleanTempDir(): Promise<void> {
     try {
       const entries = await fs.readdir(this.tempDir);
@@ -229,50 +210,28 @@ export class BlobStore {
     }
   }
 
+  /** 关闭写流并删除失败写入的临时文件。 */
   private async discardTemp(
     out: ReturnType<typeof createWriteStream>,
     tempPath: string,
   ): Promise<void> {
     try {
-      await closeWriteStream(out);
+      await StorageUtils.closeWriteStream(out);
     } catch {
       // 写流可能已因错误销毁。
     }
     await fs.rm(tempPath, { force: true });
   }
 
+  /** 将 SHA-256 hash 映射为两级分片路径。 */
   private pathForHash(hash: string): string {
     return path.join(this.rootDir, hash.slice(0, 2), hash.slice(2));
   }
 
+  /** 防止在 BlobStore 初始化前执行 I/O。 */
   private assertInitialized(): void {
     if (!this.initialized) {
       throw new Error('BlobStore.init() must be called before use.');
     }
-  }
-}
-
-function closeWriteStream(
-  out: ReturnType<typeof createWriteStream>,
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    out.end((error?: Error | null) => (error ? reject(error) : resolve()));
-  });
-}
-
-async function pathExists(target: string): Promise<boolean> {
-  try {
-    await fs.access(target);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function fileSize(target: string): Promise<number> {
-  try {
-    return (await fs.stat(target)).size;
-  } catch {
-    return 0;
   }
 }

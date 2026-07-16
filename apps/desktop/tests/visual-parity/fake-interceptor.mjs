@@ -370,6 +370,7 @@ export function installFakeInterceptor({ fixture, theme }) {
   let breakpointsEnabled = fixture.breakpoints.enabled;
   let insecureHosts = fixture.insecureHosts;
   let storage = fixture.storage;
+  let transferJob = null;
 
   window.interceptor = {
     echoCore: async (value) => ({
@@ -520,6 +521,49 @@ export function installFakeInterceptor({ fixture, theme }) {
       authorized: true,
       certificates: [],
     }),
+    startHarExport: async () => {
+      transferJob = {
+        id: 'transfer-parity-export',
+        kind: 'har-export',
+        state: 'running',
+        fileName: 'interceptor-2026-07-17.har',
+        processed: 0,
+        total: fixture.capture.sessions.length,
+        startedAt: '2026-07-17T12:00:00.000Z',
+        warnings: [],
+      };
+      return transferJob;
+    },
+    startHarImport: async () => {
+      transferJob = {
+        id: 'transfer-parity-import',
+        kind: 'har-import',
+        state: 'running',
+        fileName: 'fixture.har',
+        processed: 0,
+        total: 18,
+        startedAt: '2026-07-17T12:00:00.000Z',
+        warnings: [],
+      };
+      return transferJob;
+    },
+    getTransferJob: async () => {
+      if (transferJob?.state === 'running') {
+        transferJob = {
+          ...transferJob,
+          state: 'completed',
+          processed: transferJob.total,
+          completedAt: '2026-07-17T12:00:01.000Z',
+        };
+      }
+      return transferJob;
+    },
+    cancelTransferJob: async () => {
+      if (transferJob) {
+        transferJob = { ...transferJob, state: 'cancelled' };
+      }
+      return transferJob;
+    },
   };
 }
 

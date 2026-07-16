@@ -28,7 +28,7 @@ function toQueryRequest(
 }
 
 /** 拉取首页并替换视图；供过滤变化与恢复 Live tail 时调用。 */
-async function refetch(): Promise<void> {
+export async function refetchSessions(): Promise<void> {
   const api = window.interceptor;
   if (!api?.querySessions) {
     return;
@@ -75,7 +75,7 @@ export async function toggleCapture(): Promise<void> {
     useCaptureStore.getState().setCapturing(status.listening);
     useCaptureStore.getState().setLive(status.listening);
     if (status.listening) {
-      void refetch();
+      void refetchSessions();
     }
   } catch (error) {
     useCaptureStore.getState().loadFailed(describeError(error));
@@ -129,7 +129,7 @@ export function useCaptureData(): void {
   // Core 过滤条件变化时重查首页；search 输入去抖。
   useEffect(() => {
     const handle = setTimeout(() => {
-      void refetch();
+      void refetchSessions();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [searchKey, method, status, host]);
@@ -137,7 +137,7 @@ export function useCaptureData(): void {
   // 恢复 Live tail 时补拉最新一页，追平暂停期间遗漏的行。
   useEffect(() => {
     if (live) {
-      void refetch();
+      void refetchSessions();
     }
   }, [live]);
 }

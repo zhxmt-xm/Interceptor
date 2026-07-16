@@ -1,12 +1,13 @@
 # Proxy Core 常量与约定
 
 本文件是 `@interceptor/proxy-core` 全部常量与运行期配置的总览，以及命名与单元测试约定的
-权威记录。**唯一取值来源**是单一模块 `src/proxy-core/constants.ts`；本文档与代码同步维护。
+权威记录。跨模块运行期常量位于 `src/proxy-core/constants.ts`；模块私有常量位于对应
+`<module>/<module>-constants.ts`，每个取值仍只有一个代码来源。
 
 ## 静态常量清单
 
-全部静态常量集中在 `src/proxy-core/constants.ts`，生产代码从中 import，单元测试用 `vi.mock`
-覆盖，不向构造函数注入仅测试用的参数。
+跨模块/运行期静态常量集中在 `src/proxy-core/constants.ts`，生产代码从中 import，单元测试用
+`vi.mock` 覆盖，不向构造函数注入仅测试用的参数。
 
 | 常量 | 值 | 用途 |
 | --- | --- | --- |
@@ -31,6 +32,18 @@
 | `DEFAULT_PROXY_HOST` | `'127.0.0.1'` | 显式代理默认绑定的 loopback 地址 |
 | `CAPTURE_EVENT_QUEUE_CAPACITY` | `5_000` | 捕获事件队列最大待发事件数（按 Exchange 合并后计） |
 
+模块私有常量：
+
+| 文件 | 常量范围 |
+| --- | --- |
+| `composer/composer-constants.ts` | 响应正文上限、默认/最大超时 |
+| `connection/connection-constants.ts` | TLS 探测超时、证书链上限 |
+| `diagnostics/diagnostics-constants.ts` | Diagnostics SQLite busy timeout |
+| `har/har-constants.ts` | HAR 文件/entry/header/body/job 上限与批次大小 |
+| `proxy/proxy-constants.ts` | 终态集合、可解码 content-encoding |
+| `rules/rule-constants.ts` | 断点快照正文上限 |
+| `storage/storage-constants.ts` | 内存数据库位置、Capture SQLite busy timeout |
+
 ## 运行期变量（读 process.argv / __dirname，entry 初始化）
 
 依赖 `process.argv` 与 `__dirname` 的值集中为 `constants.ts` 的模块级可变变量（`export let`），
@@ -44,8 +57,8 @@
 | `captureDatabasePath` | `dataDir + CAPTURE_DB_FILE` | Storage Worker 打开的 capture.sqlite |
 | `blobDirectory` | `dataDir + BLOB_DIR` | BlobStore 根目录 |
 | `diagnosticsDatabasePath` | `dataDir + DIAGNOSTICS_DB_FILE` | Diagnostics Worker 打开的 diagnostics.sqlite |
-| `storageWorkerEntry` | `__dirname`/`cwd` 解析 | 已构建的 Storage Worker bundle |
-| `diagnosticsWorkerEntry` | `__dirname`/`cwd` 解析 | 已构建的 Diagnostics Worker bundle |
+| `storageWorkerEntry` | `__dirname`/`cwd` 解析 | `storage/worker/entry.cjs` |
+| `diagnosticsWorkerEntry` | `__dirname`/`cwd` 解析 | `diagnostics/worker/entry.cjs` |
 
 ## 命名约定
 

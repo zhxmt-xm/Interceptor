@@ -17,11 +17,11 @@
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
 - 已完成 Stage：M0–M9（均 100%）。
-- 当前 Stage：M10 导入导出与隐私（未开始）。
-- 当前任务：M9 已收官。WebSocket HTTP/1.1 Upgrade 捕获与有序 Message Blob、有限分页/虚拟化 UI、双向转发前消息断点已交付；原生 gRPC 复用 Mockttp H2 通用 capture，完成后按 5-byte envelope header-only 跳读分页，无 descriptor 时安全回退 raw text/hex。Payload 均复用 `body.read-range`，不进入 Main/Renderer 全局状态。
-- 下一动作：M10 T10.1 HAR 1.2 导入/导出；开始前阅读完整方案第十二、十六章与第二十七章 M10，先定义安全 job/文件选择契约和 HAR 映射边界。
+- 当前 Stage：M10 导入导出与隐私（进行中，20%）。
+- 当前任务：T10.1 HAR 1.2 导入/导出已完成。Core 流式导出/受限导入、异步 job/进度/取消/失败回滚、Main 系统文件对话框、窄 Preload API 与 Capture HAR overlay 已落地；导入只解析 inert JSON/bytes，不执行脚本。详情见 [M10.md](M10.md)。
+- 下一动作：M10 T10.2 原生 archive；定义版本化 ZIP manifest + SQLite snapshot + Blob，并在解压前验证 path/size/hash/schema/compression ratio，复用现有 transfer job 与系统文件对话框边界。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M9 T9.1 `b6eec25`、T9.2 `30a4f4a` 已推送 origin/main；T9.3 与阶段收尾在本次提交，完成后立即 push。
+- Git 状态：M9 已推送至 `750f200`；T10.1 在本次提交，完成后立即 push。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，已完成阶段见 [M9.md](M9.md)，下一 Stage 见 [M10.md](M10.md)。
@@ -40,7 +40,7 @@
 | M7 | 规则引擎 | 已完成 | 100% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 已完成 | 100% | [M8.md](M8.md) |
 | M9 | WebSocket 与 gRPC | 已完成 | 100% | [M9.md](M9.md) |
-| M10 | 导入导出与隐私 | 未开始 | 0% | [M10.md](M10.md) |
+| M10 | 导入导出与隐私 | 进行中 | 20% | [M10.md](M10.md) |
 | M11 | 系统代理适配与恢复 | 未开始 | 0% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
 | M13 | 更新机制 | 未开始 | 0% | [M13.md](M13.md) |
@@ -72,10 +72,13 @@
 - 诊断可观测性增强（2026-07）：Core 各组件（rpcServer/application/proxy/storage）经共享 `DiagnosticsRecorder` 记 initialize/生命周期/action/error 关键节点（削去每命令模板 phase 噪音）；Diagnostics 面板经 `getRecentDiagnostics` 轮询接真实命令 trace（按 requestId 聚合 + action 时间线 + records/dropped）。Main/Renderer 日志纳入诊断见 M10 T10.5。
 - 规则 UI、Composer、Breakpoint 编辑与 Connection/TLS 详情已落地（M8）：Rules workspace 数据驱动（rulesStore/useRulesData + 全类型 Matcher/Action 编辑器 + 实时 rules.validate 诊断 + rules.replace 乐观并发 + rules.hits 命中计数）；Composer（composerStore/useComposer + ComposerService 经 http/https/http2 出站 + 响应/历史/Auth）；Breakpoints（breakpointsStore/useBreakpoints 轮询 breakpoint.list 暂停队列 + 编辑放行 + break-on-match）；Capture Inspector TLS 标签经 connection.probe 实时探测证书链。系统代理、导入导出仍未实现（M10+）。
 - WebSocket/gRPC 已落地（M9）：Mockttp HTTP/1.1 Upgrade + 自定义 `WebSocketBridge` 捕获/转发/消息断点，`websocket_frame` 有序存储与 keyset 页；native gRPC 作为通用 H2 request/response 捕获，`grpc.messages` 每条只读 5B envelope header 并复用 Blob range。Capture Inspector 提供 WebSocket/gRPC Messages 视图；gRPC-Web、H2 Extended CONNECT、descriptor/reflection 与实时 streaming 增量解析未实现。
+- HAR 1.2 已落地（M10/T10.1）：Core 内完成标准 HAR 导出与受限 inert JSON 导入，正文只在 Core/Blob 流转；Main 系统对话框持有路径，Renderer 只经异步 transfer job 查询进度/取消。Capture HAR overlay 支持 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies；Native archive、全局隐私设置和 Diagnostics 导出仍属 T10.2–T10.5。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-17 T10.1 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 通过（Desktop 40 / Proxy Core 160 / Core Protocol 19），HAR 7 项覆盖 round-trip、脚本不执行、输入上限、脱敏、失败回滚和任务取消；HAR parity light/dark 各 11/11 targets、0 missing/flagged（0.89%/0.49%）；`npm audit --omit=dev` 0；Windows package + 真实 packaged smoke 1/1 通过。详情见 [M10.md](M10.md)。
 
 2026-07-17 M9 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 通过（Desktop 39 / Proxy Core 151 / Core Protocol 18），含真实 TLS+ALPN h2 gRPC capture、WebSocket bridge 转发前断点、framing/service 与 Storage/Main/Core 边界；8-view visual parity 完整运行（WebSocket 8/8、gRPC 9/9 targets）；`npm audit --omit=dev` 0 vulnerabilities；Windows `npm run package` + 真实 packaged smoke 1/1 通过。详情见 [M9.md](M9.md)。
 

@@ -16,6 +16,7 @@ import {
   type RpcMessagePort,
 } from '../core-rpc-server';
 import type { StorageService } from '../storage/entry';
+import type { HarService } from '../har/entry';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -179,6 +180,76 @@ describe('CoreApplication', () => {
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ detail: { code: 'internal' } });
+  });
+
+  it('routes HAR start, get, and cancel commands through the HAR facade', async () => {
+    const calls: string[] = [];
+    const snapshot = {
+      id: 'har-job-1',
+      kind: 'har-export' as const,
+      state: 'running' as const,
+      fileName: 'capture.har',
+      processed: 0,
+      total: 2,
+      startedAt: '2026-07-17T10:00:00.000Z',
+      warnings: [],
+    };
+    const har = {
+      startExport: () => {
+        calls.push('start-export');
+        return snapshot;
+      },
+      startImport: () => {
+        calls.push('start-import');
+        return { ...snapshot, kind: 'har-import' as const };
+      },
+      getJob: () => {
+        calls.push('get');
+        return snapshot;
+      },
+      cancelJob: () => {
+        calls.push('cancel');
+        return { ...snapshot, state: 'cancelled' as const };
+      },
+      cancelAll: () => undefined,
+    } as unknown as HarService;
+    const application = new CoreApplication(new FakeParentPort(), {
+      harService: har,
+    });
+    const signal = new AbortController().signal;
+
+    await expect(application.executeCommand({
+      type: 'har.export.start',
+      payload: {
+        jobId: 'har-job-1',
+        filePath: 'C:\\Exports\\capture.har',
+        scope: { kind: 'all' },
+        redaction: { authorization: true, cookies: true, bodies: false },
+      },
+    }, signal)).resolves.toMatchObject({
+      type: 'transfer.job',
+      payload: { job: { kind: 'har-export', state: 'running' } },
+    });
+    await expect(application.executeCommand({
+      type: 'har.import.start',
+      payload: {
+        jobId: 'har-job-2',
+        filePath: 'C:\\Imports\\capture.har',
+      },
+    }, signal)).resolves.toMatchObject({
+      payload: { job: { kind: 'har-import' } },
+    });
+    await application.executeCommand({
+      type: 'transfer.job.get',
+      payload: { jobId: 'har-job-1' },
+    }, signal);
+    await expect(application.executeCommand({
+      type: 'transfer.job.cancel',
+      payload: { jobId: 'har-job-1' },
+    }, signal)).resolves.toMatchObject({
+      payload: { job: { state: 'cancelled' } },
+    });
+    expect(calls).toEqual(['start-export', 'start-import', 'get', 'cancel']);
   });
 
   it('routes storage commands to the injected StorageService', async () => {

@@ -3,7 +3,15 @@ import { randomUUID, X509Certificate } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  safeStorage,
+  session,
+  shell,
+} from 'electron';
 
 import { MAX_BODY_CHUNK_BYTES } from '@interceptor/core-protocol';
 
@@ -29,6 +37,7 @@ import {
   toCoreRuleDefinitions,
   toCoreSessionQuery,
   toGrpcMessageQuery,
+  toHarExportRequest,
   toInsecureHosts,
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
@@ -363,6 +372,84 @@ class DesktopApplication {
           payload: query,
         });
         return result.payload;
+      },
+    );
+
+    // HAR 导出：Renderer 只提交 scope/redaction；路径由 Main 系统对话框生成。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.harExportStart,
+      async (event, request: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const options = toHarExportRequest(request);
+        const selection = await dialog.showSaveDialog({
+          title: 'Export HAR 1.2',
+          defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.har`,
+          filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
+          properties: ['createDirectory', 'showOverwriteConfirmation'],
+        });
+        if (selection.canceled || !selection.filePath) {
+          return null;
+        }
+        const result = await this.coreRuntime.request({
+          type: 'har.export.start',
+          payload: {
+            jobId: `transfer-${randomUUID()}`,
+            filePath: selection.filePath,
+            scope: options.scope,
+            redaction: options.redaction,
+          },
+        });
+        return result.payload.job;
+      },
+    );
+
+    // HAR 导入：系统对话框仅允许选择一个 .har，Renderer 不接触真实路径或文件内容。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const selection = await dialog.showOpenDialog({
+        title: 'Import HAR 1.2',
+        filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
+        properties: ['openFile'],
+      });
+      const [filePath] = selection.filePaths;
+      if (selection.canceled || !filePath) {
+        return null;
+      }
+      const result = await this.coreRuntime.request({
+        type: 'har.import.start',
+        payload: {
+          jobId: `transfer-${randomUUID()}`,
+          filePath,
+        },
+      });
+      return result.payload.job;
+    });
+
+    // 查询一个异步文件任务的公开快照；绝对路径永不返回 Renderer。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.transferJobGet,
+      async (event, jobId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertIdentifier(jobId, 'jobId');
+        const result = await this.coreRuntime.request({
+          type: 'transfer.job.get',
+          payload: { jobId },
+        });
+        return result.payload.job;
+      },
+    );
+
+    // 取消运行中的 HAR 文件任务；终态任务保持幂等。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.transferJobCancel,
+      async (event, jobId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertIdentifier(jobId, 'jobId');
+        const result = await this.coreRuntime.request({
+          type: 'transfer.job.cancel',
+          payload: { jobId },
+        });
+        return result.payload.job;
       },
     );
 

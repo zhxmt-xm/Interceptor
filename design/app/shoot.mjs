@@ -13,6 +13,9 @@ const shotsRoot = path.join(dir, 'shots');
 
 const FEATURES = ['capture', 'rules', 'composer', 'settings', 'breakpoints', 'diagnostics'];
 const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
+const onlyFeature = process.argv
+  .find((argument) => argument.startsWith('--feature='))
+  ?.split('=')[1];
 
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
@@ -56,8 +59,18 @@ const FULL_CSS = `
 .snav,.scontent,.bqueue,.beditor,.bscroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
 
-// Regenerate cleanly so renamed/removed shots never linger.
-await rm(shotsRoot, { recursive: true, force: true });
+const selectedShots = onlyFeature
+  ? shots.filter((shot) => shot.feature === onlyFeature)
+  : shots;
+
+// Only clean feature directories owned by this run; preserve scenes/switchers from their scripts.
+const selectedDirectories = new Set(
+  selectedShots.map((shot) => path.join(shotsRoot, shot.theme, shot.feature)),
+);
+await Promise.all(
+  [...selectedDirectories].map((directory) =>
+    rm(directory, { recursive: true, force: true })),
+);
 await mkdir(shotsRoot, { recursive: true });
 
 const browser = await chromium.launch({ channel: 'msedge' });
@@ -79,8 +92,8 @@ async function shoot(list) {
   }
 }
 
-const framedShots = shots.filter((s) => !s.full);
-const fullShots = shots.filter((s) => s.full);
+const framedShots = selectedShots.filter((shot) => !shot.full);
+const fullShots = selectedShots.filter((shot) => shot.full);
 
 console.log('framed:');
 await shoot(framedShots);
@@ -89,4 +102,4 @@ await page.addStyleTag({ content: FULL_CSS });
 await shoot(fullShots);
 
 await browser.close();
-console.log(`\nDone — ${shots.length} shots → ${shotsRoot}`);
+console.log(`\nDone — ${selectedShots.length} shots → ${shotsRoot}`);

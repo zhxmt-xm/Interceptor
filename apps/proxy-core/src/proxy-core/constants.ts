@@ -108,12 +108,12 @@ export function initializeRuntime(argv: readonly string[]): void {
  * 同包 <module>/worker 下，existsSync 命中。从源码运行（vitest）时回落到工作区已构建 dist。
  */
 function resolveWorkerEntry(moduleDir: 'storage' | 'diagnostics'): string {
-  const bundled = path.join(__dirname, moduleDir, 'worker', 'worker-entry.cjs');
+  const bundled = path.join(__dirname, moduleDir, 'worker', 'entry.cjs');
   return existsSync(bundled)
     ? bundled
     : path.resolve(
         process.cwd(),
-        `dist/proxy-core/${moduleDir}/worker/worker-entry.cjs`,
+        `dist/proxy-core/${moduleDir}/worker/entry.cjs`,
       );
 }
 

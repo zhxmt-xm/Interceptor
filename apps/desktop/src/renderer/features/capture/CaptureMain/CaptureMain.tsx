@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { Splitter } from '../../../components';
+import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
 import { useCaptureData } from '../useCaptureData';
@@ -30,14 +31,17 @@ export function CaptureMain(): React.JSX.Element {
   };
 
   return (
-    <div
-      className={styles.main}
-      ref={mainRef}
-      style={{ gridTemplateColumns: `minmax(0, 1fr) 7px ${inspectorWidth}px` }}
-    >
-      <RequestList />
-      <Splitter onPointerDown={startInspectorDrag} />
-      <RequestInspector />
-    </div>
+    <>
+      <div
+        className={styles.main}
+        ref={mainRef}
+        style={{ gridTemplateColumns: `minmax(0, 1fr) 7px ${inspectorWidth}px` }}
+      >
+        <RequestList />
+        <Splitter onPointerDown={startInspectorDrag} />
+        <RequestInspector />
+      </div>
+      <HarTransferDialog />
+    </>
   );
 }

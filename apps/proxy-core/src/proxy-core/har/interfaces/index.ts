@@ -1,0 +1,190 @@
+import type {
+  CaptureExchangeDetail,
+  CaptureHeader,
+  TransferJobSnapshot,
+} from '@interceptor/core-protocol';
+
+import type {
+  CaptureSessionInput,
+  CleanupScope,
+  ExchangeInput,
+  SessionQuery,
+  SessionQueryFilter,
+  SessionQueryPage,
+} from '../../storage/interfaces';
+
+export interface ParsedHarEntry {
+  /** 请求开始的 Unix 毫秒时间。 */
+  readonly startedAt: number;
+  /** HAR 声明的总耗时毫秒数。 */
+  readonly durationMs: number;
+  /** HTTP 请求方法。 */
+  readonly method: string;
+  /** 已校验 scheme 的完整请求 URL。 */
+  readonly url: string;
+  /** 归一化后的 h1/h2/h3 协议标识。 */
+  readonly protocol: string;
+  /** 大于零时的 HTTP 响应状态码。 */
+  readonly statusCode?: number;
+  /** 可选 HTTP 响应状态文本。 */
+  readonly statusText?: string;
+  /** 保序请求 header。 */
+  readonly requestHeaders: CaptureHeader[];
+  /** 保序响应 header。 */
+  readonly responseHeaders: CaptureHeader[];
+  /** 请求正文 MIME。 */
+  readonly requestMime?: string;
+  /** 响应正文 MIME。 */
+  readonly responseMime?: string;
+  /** 已按文本或 base64 解码的请求正文。 */
+  readonly requestBody?: Buffer;
+  /** 已按文本或 base64 解码的响应正文。 */
+  readonly responseBody?: Buffer;
+}
+
+export interface ParsedHarCreator {
+  /** HAR producer 名称。 */
+  readonly name: string;
+  /** HAR producer 版本。 */
+  readonly version: string;
+}
+
+export interface ParsedHarDocument {
+  /** 文档声明的 producer；缺失时使用稳定占位值。 */
+  readonly creator: ParsedHarCreator;
+  /** 已完成结构、上限与 URL 校验的 entry 列表。 */
+  readonly entries: ParsedHarEntry[];
+}
+
+export interface HarBlobWriteResult {
+  /** 内容寻址 SHA-256 hash。 */
+  readonly hash: string;
+  /** 实际持久化字节数。 */
+  readonly size: number;
+  /** 是否命中已有相同正文。 */
+  readonly deduplicated: boolean;
+}
+
+export interface HarAppendedExchange {
+  /** 已持久化 Exchange ID。 */
+  readonly id: string;
+  /** Storage 分配的单调序列号。 */
+  readonly seq: number;
+}
+
+export interface HarStorage {
+  /** 按 keyset 页枚举待导出的 Exchange 摘要。 */
+  querySessions(query: SessionQuery): Promise<SessionQueryPage>;
+  /** 读取单条 Exchange 的完整 header 与 body 引用。 */
+  getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
+  /** 从内容寻址 Blob 读取有限字节范围。 */
+  readBodyRange(hash: string, offset: number, length: number): Promise<Buffer>;
+  /** 把导入正文写入内容寻址 Blob Store。 */
+  writeBody(source: AsyncIterable<Uint8Array>): Promise<HarBlobWriteResult>;
+  /** 建立一次 HAR 导入对应的 Capture Session。 */
+  ensureSession(session: CaptureSessionInput): Promise<void>;
+  /** 分批持久化从 HAR 映射出的 Exchange。 */
+  appendExchanges(exchanges: ExchangeInput[]): Promise<HarAppendedExchange[]>;
+  /** 在导入失败或取消时回滚新建 Session。 */
+  cleanup(scope: CleanupScope): Promise<unknown>;
+}
+
+export interface HarAllScope {
+  /** 导出全部 Exchange。 */
+  readonly kind: 'all';
+}
+
+export interface HarFilterScope {
+  /** 按当前 Capture filter 导出。 */
+  readonly kind: 'filter';
+  /** 下推 Storage 的查询过滤器。 */
+  readonly filter: SessionQueryFilter;
+}
+
+export interface HarSelectedScope {
+  /** 只导出明确选择的 Exchange。 */
+  readonly kind: 'selected';
+  /** 去重前的有限 Exchange ID 列表。 */
+  readonly exchangeIds: readonly string[];
+}
+
+export type HarExportScope =
+  | HarAllScope
+  | HarFilterScope
+  | HarSelectedScope;
+
+export interface HarRedactionOptions {
+  /** 是否遮罩 Authorization 与 Proxy-Authorization。 */
+  readonly authorization: boolean;
+  /** 是否遮罩 Cookie 与 Set-Cookie。 */
+  readonly cookies: boolean;
+  /** 是否完全移除请求和响应正文。 */
+  readonly bodies: boolean;
+}
+
+export interface HarExportOptions {
+  /** 待导出的全部、当前过滤或选中范围。 */
+  readonly scope: HarExportScope;
+  /** 应用于写文件前的敏感数据处理策略。 */
+  readonly redaction: HarRedactionOptions;
+}
+
+export interface HarTransferProgress {
+  /** 已完成处理的 Exchange 数量。 */
+  readonly processed: number;
+  /** 本任务预计处理的 Exchange 总数。 */
+  readonly total: number;
+}
+
+export interface HarTransferResult extends HarTransferProgress {
+  /** 完成后向用户展示的格式损失或兼容性警告。 */
+  readonly warnings: string[];
+}
+
+export type HarProgressListener = (progress: HarTransferProgress) => void;
+
+export interface HarTransferService {
+  /** 执行一个可取消、可汇报进度的 HAR 导出。 */
+  exportToFile(
+    filePath: string,
+    options: HarExportOptions,
+    signal: AbortSignal,
+    onProgress?: HarProgressListener,
+  ): Promise<HarTransferResult>;
+  /** 执行一个可取消、可汇报进度的 HAR 导入。 */
+  importFromFile(
+    filePath: string,
+    signal: AbortSignal,
+    onProgress?: HarProgressListener,
+  ): Promise<HarTransferResult>;
+}
+
+export interface MutableTransferJob {
+  /** Core 内唯一任务标识。 */
+  readonly id: string;
+  /** HAR 导入或导出任务类型。 */
+  readonly kind: TransferJobSnapshot['kind'];
+  /** 可返回 Renderer 的 basename，不包含绝对目录。 */
+  readonly fileName: string;
+  /** 任务启动时间。 */
+  readonly startedAt: string;
+  /** 只属于该任务的取消控制器。 */
+  readonly controller: AbortController;
+  /** 当前任务状态。 */
+  state: TransferJobSnapshot['state'];
+  /** 已处理 Exchange 数量。 */
+  processed: number;
+  /** 预计处理 Exchange 总数。 */
+  total: number;
+  /** 终态写入的完成时间。 */
+  completedAt?: string;
+  /** 可安全展示且不含绝对路径的状态消息。 */
+  message?: string;
+  /** 格式损失或兼容性警告。 */
+  warnings: string[];
+}
+
+export type HarTransferOperation = (
+  signal: AbortSignal,
+  onProgress: HarProgressListener,
+) => Promise<HarTransferResult>;

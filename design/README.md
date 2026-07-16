@@ -28,6 +28,7 @@ design/
 
 ```powershell
 node design/app/shoot.mjs   # 渲染 SPA 所有状态,输出到 app/shots/<theme>/<feature>/
+node design/app/shoot.mjs --feature=import-export  # 只更新一个 feature,保留其他 shots
 ```
 
 依赖已随仓库存在的 `@playwright/test` + 系统 Edge(`channel: 'msedge'`),无需额外安装浏览器。

@@ -9,11 +9,12 @@ import type {
   CaptureSessionInput,
   ExchangeInput,
   WebSocketFrameInput,
-} from '../../storage/types';
-import { BreakpointQueue } from '../../rules/breakpoint-queue';
-import { RuleEngine } from '../../rules/rule-engine';
-import { CaptureEventQueue } from '../capture-event-queue';
-import { ProxyService, type CaptureSink } from '../proxy-service';
+} from '../../storage/interfaces';
+import { RuleEngine } from '../../rules/entry';
+import { BreakpointQueue } from '../../rules/rule-breakpoint-queue';
+import { ProxyService } from '../entry';
+import type { CaptureSink } from '../interfaces';
+import { CaptureEventQueue } from '../proxy-capture-event-queue';
 
 class RecordingSink implements CaptureSink {
   readonly sessions: CaptureSessionInput[] = [];

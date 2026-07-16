@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 
-import { InvalidGrpcCursorError, queryGrpcMessages } from '../grpc-service';
+import { GrpcService } from '../entry';
+import { InvalidGrpcCursorError } from '../grpc-invalid-cursor-error';
 
 function envelope(payload: Uint8Array, compressed = false): Buffer {
   const header = Buffer.alloc(5);
@@ -66,7 +67,8 @@ describe('queryGrpcMessages', () => {
       },
     };
 
-    const first = await queryGrpcMessages(storage, {
+    const grpc = new GrpcService(storage);
+    const first = await grpc.query({
       exchangeId: 'grpc-1',
       side: 'request',
       limit: 1,
@@ -87,7 +89,7 @@ describe('queryGrpcMessages', () => {
       ],
       hasMore: true,
     });
-    const second = await queryGrpcMessages(storage, {
+    const second = await grpc.query({
       exchangeId: 'grpc-1',
       side: 'request',
       cursor: first.nextCursor,
@@ -118,7 +120,7 @@ describe('queryGrpcMessages', () => {
       readBodyRange: (_hash: string, offset: number, length: number) =>
         Promise.resolve(truncated.subarray(offset, offset + length)),
     };
-    const page = await queryGrpcMessages(storage, {
+    const page = await new GrpcService(storage).query({
       exchangeId: 'grpc-1',
       side: 'response',
       limit: 10,
@@ -130,10 +132,10 @@ describe('queryGrpcMessages', () => {
       summary: { ...grpcDetail.summary, responseMime: 'application/json' },
     };
     await expect(
-      queryGrpcMessages(
-        { ...storage, getExchangeDetail: () => Promise.resolve(nonGrpc) },
-        { exchangeId: 'grpc-1', side: 'response', limit: 10 },
-      ),
+      new GrpcService({
+        ...storage,
+        getExchangeDetail: () => Promise.resolve(nonGrpc),
+      }).query({ exchangeId: 'grpc-1', side: 'response', limit: 10 }),
     ).resolves.toMatchObject({ recognized: false, items: [] });
 
     const grpcWeb = {
@@ -144,10 +146,10 @@ describe('queryGrpcMessages', () => {
       },
     };
     await expect(
-      queryGrpcMessages(
-        { ...storage, getExchangeDetail: () => Promise.resolve(grpcWeb) },
-        { exchangeId: 'grpc-1', side: 'response', limit: 10 },
-      ),
+      new GrpcService({
+        ...storage,
+        getExchangeDetail: () => Promise.resolve(grpcWeb),
+      }).query({ exchangeId: 'grpc-1', side: 'response', limit: 10 }),
     ).resolves.toMatchObject({ recognized: false, items: [] });
   });
 
@@ -158,7 +160,7 @@ describe('queryGrpcMessages', () => {
       readBodyRange: () => Promise.resolve(body.subarray(0, 5)),
     };
     await expect(
-      queryGrpcMessages(storage, {
+      new GrpcService(storage).query({
         exchangeId: 'grpc-1',
         side: 'response',
         cursor: Buffer.from('grpc:request:0:0').toString('base64url'),

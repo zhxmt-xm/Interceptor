@@ -7,8 +7,8 @@ import type {
 import { GLOBAL_QUOTA_BYTES } from '../constants';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import { BlobStore } from './host/host-blob-store';
-import { StorageWorkerHost } from './host/host-worker';
-import type { ExchangeResponsePatch } from './protocol';
+import { StorageWorkerHost } from './host/entry';
+import type { ExchangeResponsePatch } from './interfaces';
 import type {
   CaptureSessionInput,
   CleanupScope,
@@ -17,23 +17,11 @@ import type {
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
+  StorageStatusReport,
   WebSocketFrameInput,
   WebSocketFramePage,
   WebSocketFrameQuery,
-} from './types';
-
-/**
- * 面向 Renderer 用量报表的存储状态快照，合并 SQLite 与 Blob 磁盘占用。
- */
-export interface StorageStatusReport {
-  readonly sessionCount: number;
-  readonly exchangeCount: number;
-  readonly bodyCount: number;
-  readonly databaseBytes: number;
-  readonly blobBytes: number;
-  readonly totalBytes: number;
-  readonly quotaBytes: number;
-}
+} from './interfaces';
 
 /**
  * Proxy Core 存储门面，由 CoreApplication 独占拥有。

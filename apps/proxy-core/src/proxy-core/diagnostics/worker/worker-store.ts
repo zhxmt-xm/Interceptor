@@ -1,47 +1,17 @@
 import type { DatabaseSync, StatementSync } from 'node:sqlite';
 
-import type {
-  DiagnosticLevel,
-  DiagnosticLogRecord,
-  DiagnosticOutcome,
-} from '@interceptor/core-protocol';
+import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
 import {
   DIAGNOSTICS_MAX_AGE_MS,
   DIAGNOSTICS_MAX_RECORDS,
 } from '../../constants';
-
-export interface DiagnosticsQuery {
-  readonly cursor?: string;
-  readonly limit: number;
-  readonly level?: DiagnosticLevel;
-  readonly traceId?: string;
-}
-
-export interface DiagnosticsPage {
-  readonly records: DiagnosticLogRecord[];
-  readonly nextCursor?: string;
-  readonly hasMore: boolean;
-  readonly droppedCount: number;
-}
-
-interface LogRow {
-  id: number;
-  ts_ms: number;
-  timestamp: string;
-  sequence: number;
-  level: string;
-  process: string;
-  trace_id: string | null;
-  request_id: string | null;
-  command: string | null;
-  phase: string;
-  action: string | null;
-  duration_ms: number | null;
-  outcome: string | null;
-  error_code: string | null;
-  attributes: string | null;
-}
+import type {
+  DiagnosticsLogRow,
+  DiagnosticsPage,
+  DiagnosticsQuery,
+} from '../interfaces';
+import * as DiagnosticsUtils from '../utils';
 
 const DROPPED_KEY = 'dropped_count';
 
@@ -52,11 +22,18 @@ const DROPPED_KEY = 'dropped_count';
  * 查询与聚合丢弃计数。与 Capture 库彻底隔离，写入失败只影响诊断自身，绝不阻塞捕获。
  */
 export class DiagnosticsStore {
+  /** 批量日志插入的预编译语句。 */
   private readonly insertStmt: StatementSync;
+  /** 持久化日志最大条数。 */
   private readonly maxRecords = DIAGNOSTICS_MAX_RECORDS;
+  /** 可选的最大保留时长。 */
   private readonly maxAgeMs = DIAGNOSTICS_MAX_AGE_MS;
+  /** Worker 独占的 SQLite 连接。 */
+  private readonly db: DatabaseSync;
 
-  constructor(private readonly db: DatabaseSync) {
+  /** 绑定 Worker 独占数据库并预编译写入语句。 */
+  constructor(db: DatabaseSync) {
+    this.db = db;
     this.insertStmt = db.prepare(
       `INSERT INTO log_record
         (ts_ms, timestamp, sequence, level, process, trace_id, request_id,
@@ -79,7 +56,7 @@ export class DiagnosticsStore {
     try {
       for (const record of records) {
         this.insertStmt.run({
-          tsMs: toEpochMs(record.timestamp),
+          tsMs: DiagnosticsUtils.toEpochMs(record.timestamp),
           timestamp: record.timestamp,
           sequence: record.sequence,
           level: record.level,
@@ -125,7 +102,7 @@ export class DiagnosticsStore {
       conditions.push('trace_id = :traceId');
       params.traceId = query.traceId;
     }
-    const cursorId = decodeCursor(query.cursor);
+    const cursorId = DiagnosticsUtils.decodeCursor(query.cursor);
     if (cursorId !== null) {
       conditions.push('id < :cursorId');
       params.cursorId = cursorId;
@@ -136,14 +113,14 @@ export class DiagnosticsStore {
       .prepare(
         `SELECT * FROM log_record ${where} ORDER BY id DESC LIMIT :limit`,
       )
-      .all(params) as unknown as (LogRow & { id: number })[];
+      .all(params) as unknown as DiagnosticsLogRow[];
 
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
     const lastId = page.at(-1)?.id;
 
     return {
-      records: page.map(toLogRecord),
+      records: page.map(DiagnosticsUtils.toLogRecord),
       nextCursor: hasMore && lastId !== undefined ? String(lastId) : undefined,
       hasMore,
       droppedCount: this.droppedCount(),
@@ -186,6 +163,7 @@ export class DiagnosticsStore {
     this.db.close();
   }
 
+  /** 在当前事务内执行条数与可选时长保留策略。 */
   private enforceRetention(): void {
     this.db
       .prepare(
@@ -199,48 +177,4 @@ export class DiagnosticsStore {
         .run({ cutoff: Date.now() - this.maxAgeMs });
     }
   }
-}
-
-function toLogRecord(row: LogRow): DiagnosticLogRecord {
-  return {
-    timestamp: row.timestamp,
-    sequence: row.sequence,
-    level: row.level as DiagnosticLevel,
-    process: 'proxy-core',
-    traceId: row.trace_id ?? undefined,
-    requestId: row.request_id ?? undefined,
-    command: (row.command ?? undefined) as DiagnosticLogRecord['command'],
-    phase: row.phase,
-    action: row.action ?? undefined,
-    durationMs: row.duration_ms ?? undefined,
-    outcome: (row.outcome ?? undefined) as DiagnosticOutcome | undefined,
-    errorCode: row.error_code ?? undefined,
-    attributes: parseAttributes(row.attributes),
-  };
-}
-
-function parseAttributes(
-  value: string | null,
-): DiagnosticLogRecord['attributes'] {
-  if (!value) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(value) as DiagnosticLogRecord['attributes'];
-  } catch {
-    return undefined;
-  }
-}
-
-function toEpochMs(timestamp: string): number {
-  const parsed = Date.parse(timestamp);
-  return Number.isFinite(parsed) ? parsed : Date.now();
-}
-
-function decodeCursor(cursor: string | undefined): number | null {
-  if (cursor === undefined) {
-    return null;
-  }
-  const value = Number(cursor);
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
 }

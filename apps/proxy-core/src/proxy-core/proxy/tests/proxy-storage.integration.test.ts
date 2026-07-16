@@ -11,17 +11,17 @@ import { generateCACertificate } from 'mockttp';
 
 import { initializeRuntime } from '../../constants';
 import { StorageService } from '../../storage/entry';
-import { CaptureEventQueue } from '../capture-event-queue';
-import { ProxyService } from '../proxy-service';
+import { ProxyService } from '../entry';
+import { CaptureEventQueue } from '../proxy-capture-event-queue';
 
 /**
  * M3 端到端集成：真实 ProxyService + 真实 StorageService（真实 Storage Worker 线程
  * 打开磁盘 capture.sqlite）+ 真实源站。验证一次代理请求形成规范 Exchange 并落库后
- * 可被分页查询回。需要已构建的 worker-entry.cjs bundle，缺失时跳过（smoke 兜底）。
+ * 可被分页查询回。需要已构建的 worker/entry.cjs bundle，缺失时跳过（smoke 兜底）。
  */
 const workerBundle = path.resolve(
   process.cwd(),
-  'dist/proxy-core/storage/worker/worker-entry.cjs',
+  'dist/proxy-core/storage/worker/entry.cjs',
 );
 
 function startOrigin(): Promise<{ port: number; close: () => Promise<void> }> {

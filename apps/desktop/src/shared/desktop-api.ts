@@ -23,6 +23,7 @@ import type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  TransferJobSnapshot,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
@@ -52,6 +53,7 @@ export type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  TransferJobSnapshot,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 };
@@ -136,6 +138,7 @@ export interface SessionQueryRequest {
     mime?: string;
     process?: string;
     search?: string;
+    protocol?: 'h1' | 'h2' | 'ws';
   };
 }
 
@@ -259,6 +262,21 @@ export interface ConnectionProbe {
   certificates: ConnectionCertificate[];
 }
 
+export type HarExportScope =
+  | { kind: 'all' }
+  | { kind: 'filter'; filter: SessionQueryRequest['filter'] }
+  | { kind: 'selected'; exchangeIds: string[] };
+
+/** Renderer 提交的 HAR 导出意图；文件路径由 Main 的系统对话框选择。 */
+export interface HarExportRequest {
+  scope: HarExportScope;
+  redaction: {
+    authorization: boolean;
+    cookies: boolean;
+    bodies: boolean;
+  };
+}
+
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
@@ -297,6 +315,10 @@ export const DESKTOP_IPC_CHANNELS = {
   breakpointResolve: 'breakpoint:resolve',
   breakpointConfigure: 'breakpoint:configure',
   connectionProbe: 'connection:probe',
+  harExportStart: 'har:export-start',
+  harImportStart: 'har:import-start',
+  transferJobGet: 'transfer:job-get',
+  transferJobCancel: 'transfer:job-cancel',
 } as const;
 
 export interface InterceptorDesktopApi {
@@ -353,4 +375,8 @@ export interface InterceptorDesktopApi {
   ): Promise<{ state: string }>;
   setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
   probeConnection(host: string, port: number): Promise<ConnectionProbe>;
+  startHarExport(request: HarExportRequest): Promise<TransferJobSnapshot | null>;
+  startHarImport(): Promise<TransferJobSnapshot | null>;
+  getTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
+  cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
 }

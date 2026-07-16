@@ -41,6 +41,7 @@ export interface CaptureState {
   hasMore: boolean;
   cursor: string | undefined;
   error: string | null;
+  harDialogOpen: boolean;
 
   select(id: string | null): void;
   setSegment(segment: ProtocolSegment): void;
@@ -50,6 +51,7 @@ export interface CaptureState {
   ): void;
   setLive(live: boolean): void;
   setCapturing(capturing: boolean): void;
+  setHarDialogOpen(open: boolean): void;
   clearView(): void;
   beginLoad(): void;
   loadFailed(message: string): void;
@@ -107,6 +109,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   hasMore: false,
   cursor: undefined,
   error: null,
+  harDialogOpen: false,
 
   select: (id) => set({ selectedId: id }),
 
@@ -122,6 +125,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setLive: (live) => set({ live }),
 
   setCapturing: (capturing) => set({ capturing }),
+
+  setHarDialogOpen: (harDialogOpen) => set({ harDialogOpen }),
 
   clearView: () =>
     set({

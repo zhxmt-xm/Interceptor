@@ -4,6 +4,7 @@ import {
   assertBoundedString,
   assertIdentifier,
   toGrpcMessageQuery,
+  toHarExportRequest,
   toRendererDiagnosticRecord,
   toWebSocketFrameQuery,
 } from '../renderer-utils';
@@ -107,5 +108,49 @@ describe('renderer utils', () => {
     expect(() =>
       toGrpcMessageQuery({ exchangeId: 'grpc-1', side: 'request', limit: 501 }),
     ).toThrow('grpc query.limit is invalid');
+  });
+
+  it('validates HAR export scope and redaction at the Renderer boundary', () => {
+    expect(toHarExportRequest({
+      scope: {
+        kind: 'filter',
+        filter: { method: 'GET', status: 200, protocol: 'h2' },
+      },
+      redaction: {
+        authorization: true,
+        cookies: true,
+        bodies: false,
+      },
+    })).toEqual({
+      scope: {
+        kind: 'filter',
+        filter: {
+          host: undefined,
+          method: 'GET',
+          status: 200,
+          mime: undefined,
+          process: undefined,
+          search: undefined,
+          protocol: 'h2',
+        },
+      },
+      redaction: {
+        authorization: true,
+        cookies: true,
+        bodies: false,
+      },
+    });
+    expect(() => toHarExportRequest({
+      scope: { kind: 'selected', exchangeIds: ['../unsafe'] },
+      redaction: { authorization: true, cookies: true, bodies: false },
+    })).toThrow('HAR export exchangeId is invalid');
+    expect(() => toHarExportRequest({
+      scope: { kind: 'all' },
+      redaction: { authorization: true, cookies: 'yes', bodies: false },
+    })).toThrow('HAR export redaction flags are invalid');
+    expect(() => toHarExportRequest({
+      scope: { kind: 'filter', filter: { protocol: 'ftp' } },
+      redaction: { authorization: true, cookies: true, bodies: false },
+    })).toThrow('query.filter.protocol is invalid');
   });
 });

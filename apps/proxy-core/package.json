@@ -6,7 +6,7 @@
   "type": "commonjs",
   "main": "dist/proxy-core/entry.cjs",
   "scripts": {
-    "build": "npm run clean && esbuild src/proxy-core/entry.cts src/proxy-core/storage/worker/worker-entry.cts src/proxy-core/diagnostics/worker/worker-entry.cts --bundle --platform=node --format=cjs --target=node24 --outdir=dist --outbase=src --out-extension:.js=.cjs --external:mockttp --external:ws --sourcemap && node ../../scripts/ship-core-deps.mjs",
+    "build": "npm run clean && esbuild src/proxy-core/entry.cts src/proxy-core/storage/worker/entry.ts src/proxy-core/diagnostics/worker/entry.ts --bundle --platform=node --format=cjs --target=node24 --outdir=dist --outbase=src --out-extension:.js=.cjs --external:mockttp --external:ws --sourcemap && node ../../scripts/ship-core-deps.mjs",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseGrpcEnvelopes } from '../grpc-framing';
+import { parseGrpcEnvelopes } from '../utils';
 
 function envelope(payload: Uint8Array, compressed = false): Buffer {
   const header = Buffer.alloc(5);

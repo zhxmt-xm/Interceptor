@@ -90,7 +90,9 @@ async function applyRendererActions(page, actions = []) {
   }
 }
 
-await rm(outDir, { recursive: true, force: true });
+if (!onlyView) {
+  await rm(outDir, { recursive: true, force: true });
+}
 await mkdir(outDir, { recursive: true });
 
 const server = await createServer({
@@ -150,6 +152,11 @@ for (const view of views) {
   await appPage.waitForTimeout(400);
 
   const shotPath = path.join(outDir, `${view.id}-${view.theme}.png`);
+  await rm(shotPath, { force: true });
+  await rm(
+    path.join(outDir, `${view.id}-${view.theme}-diff.png`),
+    { force: true },
+  );
   await appPage.screenshot({ path: shotPath });
   if (view.designShot) {
     const designShotPath = path.join(

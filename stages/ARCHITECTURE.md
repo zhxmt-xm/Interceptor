@@ -74,26 +74,26 @@ flowchart LR
 
 > 存储读写与查询全部在 Core UtilityProcess 内，通过 `worker_threads` 把同步 `node:sqlite` 移出网络事件循环。Renderer 只通过意图 API 拿到 `StorageUsage` DTO，永不接触 SQL、数据库文件或 Blob 路径。
 
-- **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsWorkerHost`（缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码；Main `CoreRuntime` 收到后停止重启并 `dialog.showErrorBox` 弹窗提示。
-- **模块结构**：`storage/` 与 `diagnostics/` 各分三块——`entry.ts`（对外门面/桶）、`host/host-*.ts`（Core 主线程侧的 worker 代理与 Blob Store）、`worker/worker-*.ts`（worker 线程侧入口与 SQLite 访问层）；共享的 `constants.ts`、`types.ts`、`protocol.ts` 放模块根。跨模块共享的 SQLite 迁移器在 `proxy-core/migration-runner.ts`。
-- **常量集中**：各模块 `constants.ts`（+ `proxy-core/constants.ts`）是所有数值/路径常量的唯一来源；生产构造函数不再接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
+- **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsService`（内部组合 `DiagnosticsWorkerHost`，缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码。
+- **模块结构**：composer/connection/diagnostics/grpc/har/proxy/rules/storage 均以真实 `entry.ts` 门面为根，Service/Engine class 直接定义在 entry；显式类型集中 `interfaces/index.ts`，无状态函数集中 `utils/index.ts`，其余实现文件使用模块前缀且一文件一个 class。host/worker 子模块所有者也使用 `entry.ts`，其余文件保持 `host-*`/`worker-*`。
+- **常量集中**：模块常量使用 `<module>-constants.ts`（+ `proxy-core/constants.ts`），是数值/策略的唯一来源；生产构造函数不接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
 - **StorageService**（`storage/entry.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/queryWebSocketFrames/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
-- **Storage Worker**（`storage/worker/worker-entry.cts` + `storage/host/host-worker.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
+- **Storage Worker**（`storage/worker/entry.ts` + `storage/host/entry.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
 - **Blob Store**（`storage/host/host-blob-store.ts`）：内容寻址正文存储，流式写临时文件→SHA-256→按 hash 分片路径原子 rename，命中去重；单条/全局配额、crash-safe GC（删未引用 Blob + 启动清临时文件）。
-- **Diagnostics Worker**（`diagnostics/worker/worker-entry.cts` + `diagnostics/host/host-worker.ts`）：worker 线程独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页；`CoreDiagnostics` 的 sink 路由到该 host（fire-and-forget，预就绪有界缓冲），写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。内存 Ring Buffer 仍作即时回退。
+- **Diagnostics Worker**（`diagnostics/entry.ts` → `diagnostics/host/entry.ts` + `diagnostics/worker/entry.ts`）：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。
 - **Capture 与 Diagnostics 强隔离**：两库、两连接、两 Worker 独立；日志写入失败不影响捕获数据。
-- **构建/打包**：`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/worker/worker-entry.cjs` + `diagnostics/worker/worker-entry.cjs`（`--outdir=dist --outbase=src --out-extension:.js=.cjs`）；host 通过 `resolveStorageWorkerEntry`/`resolveDiagnosticsWorkerEntry` 自解析 worker bundle（生产用 `__dirname` 定位同包路径，源码运行回落到工作区 `dist`），Forge `extraResource` 递归复制整个 `dist/proxy-core`。
+- **构建/打包**：`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/worker/entry.cjs` + `diagnostics/worker/entry.cjs`（源 worker entry 为 TypeScript，`--format=cjs --out-extension:.js=.cjs` 决定产物格式）；host 通过中央 resolver 自解析同包/工作区 dist 路径，Forge `extraResource` 递归复制整个 `dist/proxy-core`。
 - **契约**：新增 `storage.status`/`storage.cleanup`/`diagnostics.query` typed command + 运行时校验；Renderer 经 `getStorageStatus`/`clearStorage` 窄 API 访问。
 
 ## 代理层与捕获管线架构（M3，已落地）
 
 > Mockttp 显式代理把真实 HTTP/1.1 流量采集为规范 Exchange 写入 M2 存储，正文经内容寻址 Blob 持久化，实时事件经有界合并队列 + 窗口背压批量推送给 Main 再广播 Renderer。真正零内存流式正文作为 M5+ 优化项。
 
-- **引擎**：`proxy/proxy-service.ts` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制（默认不捕获）。
+- **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制（默认不捕获）。
 - **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
 - **正文持久化（T3.3）**：请求/响应正文经 `StorageService.writeBody` 写入内容寻址 Blob Store，生成 `body_ref` 并在同事务内绑定 Exchange 的 request/response body id；超单体上限/配额时省略正文保留元数据（truncated/skipped）。当前经 Mockttp 内存缓冲后写盘，真正零内存流式（body-data 事件增量写盘）留后续。
-- **捕获事件管线（T3.4）**：`proxy/capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空（`MAX_INFLIGHT_EVENT_BATCHES`/`EVENT_DRAIN_BATCH`/`EVENT_FLUSH_INTERVAL_MS`）经 `CoreRpcServer.sendEventBatch` 发 `event-batch`；Main `CoreRpcClient` 收批回 `event-ack` 并触发 `CoreRuntime.onCaptureEvents`，Main 经 `capture:events` 广播 Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary` 单行结构。
-- **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 命令经 `CaptureStore.getExchangeDetail`（SELECT exchange + message_headers + body_ref）返回 `CaptureExchangeDetail`（头部 + 请求/响应 trailer + is_pseudo/stream_id + 正文引用元数据含 content_encoding）；正文字节经 `body.read-range` → `StorageService.readBodyRange`（按 blob hash 分块）。`body.read-range` 的 `decode` 请求由 `proxy/content-decoder.ts` 的 `decodeBody` 按 content-encoding（gzip/deflate/brotli，多层，容错）延迟解压后一次性返回并回传 `decodeStatus`（浏览器 DecompressionStream 不支持 br 故解码在 Core）。
+- **捕获事件管线（T3.4）**：`proxy/proxy-capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空，经 `event-batch`/`event-ack` 推送 Main/Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary`。
+- **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块；`decode` 请求由 `proxy/utils/index.ts` 的 `decodeBody` 按 gzip/deflate/brotli（多层、容错）延迟解压并回传 `decodeStatus`。
 - **依赖打包**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），WebSocket bridge 直接依赖 `ws`。esbuild 用 `--external:mockttp --external:ws` 保留运行时 require（`ws` 内联会阻塞首代 Electron UtilityProcess entry），`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包并补拷原生资产，按 node_modules 结构拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
 - **验证**：packaged 真实 exe 启动即 `require('mockttp')`，从隔离随包 node_modules 成功加载并进入 `running`；`npm audit --omit=dev` 0 漏洞。
 
@@ -104,7 +104,7 @@ flowchart LR
 - **视图状态**：`features/capture/captureStore.ts`（Zustand）只存 `CaptureExchangeSummary` 行 + `indexById`，实时事件按 id 原位更新 / 新行整块前插，`live`/`capturing` 开关、`filter`（分段 + 关键字 + method/status/host）与 `selectedId` 均在此。
 - **数据管线**：`useCaptureData.ts` 订阅 `onCaptureEvents`、按过滤条件去抖重查 `querySessions`、滚动近底 `loadMoreSessions` 按 keyset 游标追加历史页、`toggleCapture` 调 `startCapture`/`stopCapture`；`useExchangeDetail.ts` 选中行按需 `getExchangeDetail`（组件本地 state）。
 - **渲染**：`RequestList` 用 `@tanstack/react-virtual` 固定行高虚拟化；`Omnibox` 关键字下推 Core FTS、method/status/host 结构化过滤显示可移除 pill；`RequestInspector` 各标签接 detail，`BodyView` 用 CodeMirror（JSON 高亮）渲染文本正文、二进制走 hex fallback（256KB 预览上限）。
-- **窄 API**：`shared/desktop-api.ts` 暴露 `startCapture`/`stopCapture`/`getCaptureStatus`/`querySessions`/`getExchangeDetail`/`readBody`/`onCaptureEvents`；Main 在 `main.ts` 做边界校验（`toCoreSessionQuery`/`assertOptionalPort`/`toByteRange`）后转交 CoreRuntime。
+- **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
 
 ## 证书与 HTTPS MITM 架构（M5，已落地）
 
@@ -178,22 +178,33 @@ sequenceDiagram
 > M8 把 M7 规则引擎能力接入 Renderer 并补齐 Composer、Breakpoint 编辑与 Connection/TLS 详情。Renderer 仍只经 `window.interceptor` 意图 API 访问 Main；新增 12 项窄 API 均在 Main 边界做结构/范围校验（`renderer-utils`），Core RPC 边界做权威 wire 校验。
 
 - **Rules workspace（T8.1）**：Renderer `features/rules/` 数据驱动——`rulesStore`（Zustand：`revision` + 可编辑规则草稿 + `diagnostics` + `hits` + `dirty`/`saving`/`conflict`）、`useRulesData`（挂载 `rules.get` 加载、`JSON.stringify(rules)` 去抖调 `rules.validate` 刷诊断、`rules.replace` 乐观并发保存并处理 `conflict` 重载、4s 轮询 `rules.hits`）；`MatcherRow` 覆盖 8 种 matcher、`ActionEditor` 覆盖 11 种 action 的受控编辑（header/query 名值自由输入）。Server 新增 `CaptureStore.countRuleHits`（按 `rule_id` 聚合 `rule_hit`）经 `count-rule-hits` worker 请求链路 + `rules.hits` handler。窄 API：`getRules`/`validateRules`/`replaceRules`（结构化 `RuleReplaceResult` 回传 conflict/invalid）/`getRuleHits`。
-- **Composer（T8.2）**：Core `proxy-core/composer/composer-service.ts` 的 `ComposerService.send` 用 Node `http`/`https`（HTTP/1.1）或 `http2`（h2）出站执行，采集响应状态/头/有界正文（1 MiB）/时序 + 真实 TLS（`getProtocol`/`getCipher`/`alpnProtocol`）/证书主题 + `remoteAddress`，网络错误以 `ok=false` 返回；`composer.send` handler。Renderer `features/composer/` 的 `composerStore`（method/url/protocol/headers(开关)/body/auth/history）+ `useComposer.sendComposerRequest`（合并启用 header + Auth 派生 authorization），UI `RequestBuilder`（Headers/Query/Body/Auth）/`ResponsePanel`（Body/Headers/Cookies/Raw + 状态着色）/`ComposerTopbar`（history 下拉）。窄 API：`sendComposerRequest`。
+- **Composer（T8.2）**：Core `proxy-core/composer/entry.ts` 的 `ComposerService.send` 用 Node `http`/`https`（HTTP/1.1）或 `http2`（h2）出站执行，采集响应状态/头/有界正文（1 MiB）/时序 + 真实 TLS/证书主题 + `remoteAddress`；Renderer 提供请求构造、历史和响应查看。窄 API：`sendComposerRequest`。
 - **Breakpoint 编辑（T8.3）**：`BreakpointQueue.suspend` 存请求/响应快照（ruleName/method/url/statusCode/headers/body）+ `deadline`，`list()` 返回快照；`RuleEngine` 加全局 break-on-match 开关（关闭时命中 breakpoint action 立即 continue），`awaitBreakpoint` 从可变 state 构建快照。`breakpoint.list`（返回 pending 快照 + enabled）/`breakpoint.configure`（设开关）handler；沿用 M7 `breakpoint.resolve`（continue/drop/edit）。Renderer `features/breakpoints/` 的 `breakpointsStore`（暂停列表 + 编辑草稿，轮询期间不覆盖用户编辑）+ `useBreakpoints`（1s 轮询 `breakpoint.list`、`resolveSelected`、`continueAllBreakpoints`、`setBreakOnMatch`）；UI `PausedQueue`（倒计时 + Continue all）/`BreakpointEditor`（编辑 header/body + Drop/Continue/Execute）。**采用轮询而非 push 事件通道**（请求在 Core 侧 await 挂起，1s 轮询延迟可接受）。窄 API：`listBreakpoints`/`resolveBreakpoint`/`setBreakpointsEnabled`。
-- **Connection/TLS 详情（T8.4）**：Core `proxy-core/connection/connection-probe.ts` 的 `probeConnection` 用 `tls.connect`（ALPN h2/http1.1、不发应用数据）读真实协议/套件/ALPN/authorized + 沿 `issuerCertificate` 收集的完整证书链（去重防环、限 10 张，含 SHA-256 指纹）；`connection.probe` handler。Renderer `capture/RequestInspector/TlsPanel` 在 TLS 标签展示捕获连接事实（scheme/host/port/protocol/secure）+ 按需 `probeConnection` 实时证书链（端口从捕获 URL 推断，回退 443/80）。**按需实时探测**（Mockttp 未暴露每 exchange 上游 TLS）。窄 API：`probeConnection`。
+- **Connection/TLS 详情（T8.4）**：Core `proxy-core/connection/entry.ts` 的 `ConnectionService.probe` 用 `tls.connect`（ALPN h2/http1.1、不发应用数据）读取协议/套件/ALPN/authorized 与有限证书链；Renderer TLS 标签展示捕获连接事实 + 按需实时探测。窄 API：`probeConnection`。
 
 ## WebSocket 与 gRPC 架构（M9，已落地）
 
 > M9 在既有 Mockttp HTTP/1.1+HTTP/2 数据面上增加 WebSocket 应用消息和原生 gRPC 完成后 framing 展示。大 payload 始终留在 Core Blob Store；跨进程只传有限 metadata，Renderer 选中项后才走有限 range。
 
 - **WebSocket 握手与生命周期**：Mockttp 独立 WebSocket rule 接收 HTTP/1.1 Upgrade；`websocket-request`/`accepted` 关联成 protocol=`ws` 的 101 Exchange。101 后 state=`request-complete`（open），clean close 经 `StorageService.updateExchange` 更新 completed 并发 `exchange-updated`。仅支持 RFC 6455 H1 Upgrade；RFC 8441 H2 Extended CONNECT 未实现。
-- **WebSocket message 数据面**：`proxy/websocket-bridge.ts` 以 Mockttp 本地 custom step 保留 listener/Upgrade/观测事件，用 `ws` 连接上游并串行桥接双向 text/binary message。独立 `Pause on message` 开关启用后，每条消息在 target `send()` 前 await `RuleEngine.pauseWebSocketMessage`→`BreakpointQueue`；支持 text/hex edit、continue/drop/timeout。close/ping/pong 透传，但不伪造应用消息记录。
+- **WebSocket message 数据面**：`proxy/proxy-websocket-bridge.ts` 以 Mockttp 本地 custom step 保留 listener/Upgrade/观测事件，用 `ws` 连接上游并串行桥接双向 text/binary message。独立 `Pause on message` 开关启用后，每条消息在 target `send()` 前 await `RuleEngine.pauseWebSocketMessage`→`BreakpointQueue`；支持 text/hex edit、continue/drop/timeout。
 - **WebSocket 存储/查询**：payload 写内容寻址 Blob；`websocket_frame` 存 exchange_id/seq/direction/opcode/payload_body_id/size/time。`websocket.frames` 按 seq opaque keyset 分页、可按方向过滤，只返回 metadata + `CaptureBodyRef`；Renderer 用 `body.read-range` 读取选中 payload。
 - **原生 gRPC 捕获**：没有独立 gRPC listener。Mockttp `http2:true` 的通用 `forAnyRequest().thenPassThrough()` 接收 H2 POST，`request/response` 完成事件保存 `application/grpc` / `application/grpc+*` body 与 grpc-status/message trailer。真实 TLS+ALPN h2 集成测试验证双方 envelope bytes 和 trailer。`application/grpc-web*` 明确不按原生 framing 解析。
-- **gRPC framing/query**：`grpc/grpc-framing.ts` 解析 5-byte envelope（flag + uint32 BE length）；`grpc/grpc-service.ts` 的 `grpc.messages` 每条只从 Blob 读 5B header，再按 payload length 跳到下一 offset，返回 request/response side、index、envelope/payload offset、length、compressed/truncated/malformed、encoding/body hash。无需 DB migration/新 Blob；payload 继续走既有 range。
+- **gRPC framing/query**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5-byte envelope；每条只从 Blob 读 5B header，再按 payload length 跳到下一 offset。无需 DB migration/新 Blob；payload 继续走既有 range。
 - **Renderer**：Capture Inspector 对 WS 动态显示 WebSocket Messages（虚拟列表、方向过滤、tail 轮询、断点），对 H2 native gRPC 显示 Request/Response Messages（虚拟列表、compression/truncation/malformed、offset、trailers）。无 descriptor 时 protobuf 只显示 raw hex，`application/grpc+json` 可文本显示；紧凑预览 48B，Copy 上限 256KiB。
 - **窄 API**：M9 新增 `queryWebSocketFrames`、`setWebSocketBreakpointsEnabled`、`queryGrpcMessages`；Main 校验 id/cursor/limit/direction/side，Core protocol 做完整 runtime validation。Parity 测试通过导航前 fake Preload 注入这些意图 API，业务 Renderer 无测试后门。
 - **已知边界**：gRPC 当前依赖 Mockttp 完成后的 body，Unary 可展示；长时间 server-streaming/bidi-streaming 需等 stream 结束。实时消息需接 `request-body-data`/`response-body-data` 并维护跨 chunk framing；descriptor/reflection、message-level 解压均未实现。
+
+## HAR 1.2 导入导出架构（M10/T10.1，已落地）
+
+> 文件系统与大正文始终留在 Main/Core：Renderer 只提交导入/导出意图与 scope/redaction，Main 用系统文件对话框选择路径，Core 从 Storage/Blob 直接转换并通过公开 job snapshot 回报进度。
+
+- **Core 门面**：`har/entry.ts` 的 `HarService` 直接作为模块入口，组合 `HarJobManager`、`HarDocumentParser`、`interfaces/index.ts` 和 `utils/index.ts`。导出按 `sessions.query` keyset 页枚举 ID，再逐条 detail/body range 转 HAR entry；导入先验证完整不可信 JSON，再建立隔离 Session、分批写 Blob/Exchange，失败/取消按 Session cleanup 回滚。
+- **文件任务**：`har.export.start` / `har.import.start` 立即返回 `TransferJobSnapshot`；`transfer.job.get/cancel` 轮询和取消。任务有界保留、每任务独立 AbortController；公开字段只有 id/kind/state/basename/progress/timestamps/message/warnings，不含绝对路径。Core 关闭先 cancelAll，再释放 Storage。
+- **安全边界**：文件 256 MiB、100,000 entries、每 entry 1,000 headers、header value 8 KiB、URL 16 KiB、body 64 MiB；严格 base64，只接受 http/https/ws/wss。导入只使用 `JSON.parse` 和结构化字段，不 eval、不渲染 HTML、不加载远程资源、不执行脚本/插件。Main 与 Core 各自校验参数。
+- **HAR 映射与损失**：HTTP request/response/header/query/content/timings 与 text/base64 body 可互操作；pseudo-header/trailer、WebSocket message、TLS detail、rule history 无法无损表达，Core/UI 明确警告。导出可遮罩 Authorization/Proxy-Authorization、Cookie/Set-Cookie，并可移除正文；T10.3 仍负责更广的默认隐私/URL query/token/确认策略。
+- **Desktop**：`startHarExport/startHarImport/getTransferJob/cancelTransferJob` 是唯一 Renderer API；Main 的 `showSaveDialog/showOpenDialog` 持有路径。Capture `HarTransferDialog` 支持 all/current filter/selected、redaction、进度/取消/终态；导入成功重查列表。Parity 用 fake Preload + 正常点击，业务 Renderer 无测试后门。
+- **验证**：HAR unit 覆盖 round-trip、脚本文本 inert、上限、脱敏、失败回滚、任务取消/路径隐藏；light/dark parity 各 11/11 targets、0 flagged；Windows package + 真实 packaged smoke 验证新 Preload 面和 worker bundle 路径。
 
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`
@@ -253,7 +264,8 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | `CoreError` | `packages/core-protocol/src/messages.ts` | invalid/unsupported/timeout/cancelled/disconnected/conflict/internal |
 | `DiagnosticLogRecord` | `packages/core-protocol/src/messages.ts` | Trace/Action/Duration/Outcome 的结构化日志 |
 | `StorageStatusResult` / `StorageUsage` | `core-protocol/src/messages.ts`、`desktop/src/shared/desktop-api.ts` | 存储用量（会话/Exchange/Body 计数、DB/Blob/总量/配额字节） |
-| `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/storage/types.ts` | Core 内部存储域类型；不跨进程，不复用 core-protocol |
+| `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/storage/interfaces/index.ts` | Core 内部存储域类型；不跨进程，不复用 core-protocol |
+| `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |
 
 ## 后续扩展规则
 
@@ -270,7 +282,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出、系统代理适配、导入导出、签名安装器和更新机制（M10+）未实现。机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
+- CA 导出、原生 archive、系统代理适配、签名安装器和更新机制（M10+）未实现。HAR 1.2、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
 
 ## 更新规则
 

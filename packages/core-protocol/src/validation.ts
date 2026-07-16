@@ -52,6 +52,10 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'diagnostics.query',
   'storage.status',
   'storage.cleanup',
+  'har.export.start',
+  'har.import.start',
+  'transfer.job.get',
+  'transfer.job.cancel',
   'proxy.start',
   'proxy.stop',
   'proxy.status',
@@ -69,6 +73,10 @@ const MAX_INSECURE_HOSTS = 200;
 const MAX_LOG_ATTRIBUTE_COUNT = 32;
 const MAX_LOG_ATTRIBUTE_STRING_LENGTH = 512;
 const MAX_MESSAGE_LENGTH = 2_048;
+const MAX_TRANSFER_PATH_LENGTH = 32_768;
+const MAX_TRANSFER_FILE_NAME_LENGTH = 255;
+const MAX_TRANSFER_WARNINGS = 20;
+const MAX_SELECTED_EXCHANGES = 10_000;
 
 export function parseMainToCoreMessage(
   value: unknown,
@@ -313,6 +321,16 @@ function validateCommand(value: unknown): string | null {
     case 'storage.cleanup':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateStorageCleanup(value.payload);
+    case 'har.export.start':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateHarExportStart(value.payload);
+    case 'har.import.start':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateHarImportStart(value.payload);
+    case 'transfer.job.get':
+    case 'transfer.job.cancel':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateTransferJobRequest(value.payload);
     case 'proxy.start':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateProxyStart(value.payload);
@@ -390,6 +408,9 @@ function validateResult(value: unknown): string | null {
     case 'storage.status':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateStorageStatusResult(value.payload);
+    case 'transfer.job':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateTransferJobResult(value.payload);
     case 'proxy.status':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateProxyStatusResult(value.payload);
@@ -440,37 +461,44 @@ function validateSessionsQuery(value: unknown): string | null {
   );
 }
 
-function validateSessionFilter(value: unknown): string | null {
+function validateSessionFilter(
+  value: unknown,
+  name = 'command.payload.filter',
+): string | null {
   return validateExactObject(
     value,
-    'command.payload.filter',
-    ['host', 'method', 'status', 'mime', 'process', 'search'],
+    name,
+    ['host', 'method', 'status', 'mime', 'process', 'search', 'protocol'],
     (filter) => validateOptionalBoundedString(
       filter.host,
-      'command.payload.filter.host',
+      `${name}.host`,
       MAX_FILTER_LENGTH,
     ) ?? validateOptionalBoundedString(
       filter.method,
-      'command.payload.filter.method',
+      `${name}.method`,
       32,
     ) ?? validateOptionalIntegerRange(
       filter.status,
-      'command.payload.filter.status',
+      `${name}.status`,
       100,
       999,
     ) ?? validateOptionalBoundedString(
       filter.mime,
-      'command.payload.filter.mime',
+      `${name}.mime`,
       256,
     ) ?? validateOptionalBoundedString(
       filter.process,
-      'command.payload.filter.process',
+      `${name}.process`,
       MAX_FILTER_LENGTH,
     ) ?? validateOptionalBoundedString(
       filter.search,
-      'command.payload.filter.search',
+      `${name}.search`,
       MAX_FILTER_LENGTH,
-    ),
+    ) ?? validateOptionalEnum(filter.protocol, `${name}.protocol`, [
+      'h1',
+      'h2',
+      'ws',
+    ]),
   );
 }
 
@@ -1249,6 +1277,103 @@ function validateStorageCleanup(value: unknown): string | null {
   );
 }
 
+function validateHarExportStart(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['jobId', 'filePath', 'scope', 'redaction'],
+    (payload) => validateId(payload.jobId, 'command.payload.jobId') ??
+      validateNonEmptyBoundedString(
+        payload.filePath,
+        'command.payload.filePath',
+        MAX_TRANSFER_PATH_LENGTH,
+      ) ?? validateHarExportScope(payload.scope) ??
+      validateHarRedaction(payload.redaction),
+  );
+}
+
+function validateHarImportStart(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['jobId', 'filePath'],
+    (payload) => validateId(payload.jobId, 'command.payload.jobId') ??
+      validateNonEmptyBoundedString(
+        payload.filePath,
+        'command.payload.filePath',
+        MAX_TRANSFER_PATH_LENGTH,
+      ),
+  );
+}
+
+function validateTransferJobRequest(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', ['jobId'], (payload) =>
+    validateId(payload.jobId, 'command.payload.jobId'));
+}
+
+function validateHarExportScope(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.kind !== 'string') {
+    return 'command.payload.scope must contain a kind';
+  }
+  switch (value.kind) {
+    case 'all':
+      return validateRecordKeys(value, 'command.payload.scope', ['kind']);
+    case 'filter':
+      return validateRecordKeys(value, 'command.payload.scope', [
+        'kind',
+        'filter',
+      ]) ?? validateSessionFilter(
+        value.filter,
+        'command.payload.scope.filter',
+      );
+    case 'selected':
+      return validateRecordKeys(value, 'command.payload.scope', [
+        'kind',
+        'exchangeIds',
+      ]) ?? validateSelectedExchangeIds(value.exchangeIds);
+    default:
+      return 'command.payload.scope.kind is invalid';
+  }
+}
+
+function validateSelectedExchangeIds(value: unknown): string | null {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > MAX_SELECTED_EXCHANGES
+  ) {
+    return `command.payload.scope.exchangeIds must contain 1 to ${MAX_SELECTED_EXCHANGES} IDs`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateId(
+      value[index],
+      `command.payload.scope.exchangeIds[${index}]`,
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateHarRedaction(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload.redaction',
+    ['authorization', 'cookies', 'bodies'],
+    (redaction) => validateBoolean(
+      redaction.authorization,
+      'command.payload.redaction.authorization',
+    ) ?? validateBoolean(
+      redaction.cookies,
+      'command.payload.redaction.cookies',
+    ) ?? validateBoolean(
+      redaction.bodies,
+      'command.payload.redaction.bodies',
+    ),
+  );
+}
+
 function validateSessionsPage(value: unknown): string | null {
   return validateExactObject(
     value,
@@ -1757,6 +1882,71 @@ function validateStorageStatusResult(value: unknown): string | null {
   );
 }
 
+function validateTransferJobResult(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['job'], (payload) =>
+    payload.job === null
+      ? null
+      : validateTransferJob(payload.job, 'result.payload.job'));
+}
+
+function validateTransferJob(value: unknown, name: string): string | null {
+  return validateExactObject(
+    value,
+    name,
+    [
+      'id',
+      'kind',
+      'state',
+      'fileName',
+      'processed',
+      'total',
+      'startedAt',
+      'completedAt',
+      'message',
+      'warnings',
+    ],
+    (job) => validateId(job.id, `${name}.id`) ??
+      validateEnum(job.kind, `${name}.kind`, ['har-export', 'har-import']) ??
+      validateEnum(job.state, `${name}.state`, [
+        'running',
+        'completed',
+        'failed',
+        'cancelled',
+      ]) ?? validateNonEmptyBoundedString(
+        job.fileName,
+        `${name}.fileName`,
+        MAX_TRANSFER_FILE_NAME_LENGTH,
+      ) ?? validateNonNegativeSafeInteger(job.processed, `${name}.processed`) ??
+      validateNonNegativeSafeInteger(job.total, `${name}.total`) ??
+      validateTimestamp(job.startedAt, `${name}.startedAt`) ??
+      (job.completedAt === undefined
+        ? null
+        : validateTimestamp(job.completedAt, `${name}.completedAt`)) ??
+      validateOptionalBoundedString(
+        job.message,
+        `${name}.message`,
+        MAX_MESSAGE_LENGTH,
+      ) ?? validateTransferWarnings(job.warnings, `${name}.warnings`),
+  );
+}
+
+function validateTransferWarnings(value: unknown, name: string): string | null {
+  if (!Array.isArray(value) || value.length > MAX_TRANSFER_WARNINGS) {
+    return `${name} must contain at most ${MAX_TRANSFER_WARNINGS} warnings`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateNonEmptyBoundedString(
+      value[index],
+      `${name}[${index}]`,
+      MAX_MESSAGE_LENGTH,
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
 function validateLogRecords(value: unknown): string | null {
   if (!Array.isArray(value) || value.length > MAX_DIAGNOSTIC_RECORDS) {
     return `result.payload.records must contain at most ${MAX_DIAGNOSTIC_RECORDS} records`;
@@ -1964,6 +2154,16 @@ function validateBoundedString(
   return typeof value === 'string' && value.length <= maxLength
     ? null
     : `${name} must be a string no longer than ${maxLength} characters`;
+}
+
+function validateNonEmptyBoundedString(
+  value: unknown,
+  name: string,
+  maxLength: number,
+): string | null {
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength
+    ? null
+    : `${name} must be a non-empty string no longer than ${maxLength} characters`;
 }
 
 function validateOptionalBoundedString(

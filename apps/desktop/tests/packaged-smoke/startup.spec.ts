@@ -73,6 +73,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     expect(securitySnapshot).toEqual({
       apiKeys: [
+        'cancelTransferJob',
         'clearStorage',
         'deleteCertificate',
         'echoCore',
@@ -87,6 +88,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getRuleHits',
         'getRules',
         'getStorageStatus',
+        'getTransferJob',
         'installCertificate',
         'listBreakpoints',
         'onCaptureEvents',
@@ -106,6 +108,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setInsecureHosts',
         'setWebSocketBreakpointsEnabled',
         'startCapture',
+        'startHarExport',
+        'startHarImport',
         'stopCapture',
         'uninstallCertificate',
         'validateRules',

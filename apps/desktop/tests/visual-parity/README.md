@@ -492,7 +492,7 @@ Fake 应覆盖 `InterceptorDesktopApi` 的完整意图面，即使某个场景�
 renderer-shots/<view>-<theme>.png
 ```
 
-Harness 每次运行前会清空并重建 `renderer-shots/`，因此已删除或重命名的场景不会留下陈旧 PNG。
+Harness 全量运行前会清空并重建 `renderer-shots/`；使用 `--view=<id>` 时只删除并重建该场景的 screenshot/diff，保留其他场景产物，便于局部迭代。
 
 ### Pixel diff
 

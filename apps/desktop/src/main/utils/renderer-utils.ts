@@ -7,6 +7,7 @@ import type {
   ComposerRequest,
   CoreDiagnosticRecord,
   GrpcMessageQuery,
+  HarExportRequest,
   SessionQueryRequest,
   StorageUsage,
   WebSocketFrameQuery,
@@ -178,6 +179,14 @@ function toCoreSessionFilter(value: unknown): SessionQueryRequest['filter'] {
   assertOptionalBoundedString(filter.mime, 'query.filter.mime', 256);
   assertOptionalBoundedString(filter.process, 'query.filter.process', 512);
   assertOptionalBoundedString(filter.search, 'query.filter.search', 512);
+  if (
+    filter.protocol !== undefined &&
+    filter.protocol !== 'h1' &&
+    filter.protocol !== 'h2' &&
+    filter.protocol !== 'ws'
+  ) {
+    throw new Error('query.filter.protocol is invalid');
+  }
 
   return {
     host: filter.host as string | undefined,
@@ -186,6 +195,7 @@ function toCoreSessionFilter(value: unknown): SessionQueryRequest['filter'] {
     mime: filter.mime as string | undefined,
     process: filter.process as string | undefined,
     search: filter.search as string | undefined,
+    protocol: filter.protocol as SessionQueryRequest['filter']['protocol'],
   };
 }
 
@@ -450,5 +460,61 @@ export function toGrpcMessageQuery(value: unknown): GrpcMessageQuery {
     side: request.side,
     cursor: request.cursor as string | undefined,
     limit: request.limit,
+  };
+}
+
+/** 校验 Renderer HAR 导出意图；文件路径不在此 DTO 中，由 Main 系统对话框产生。 */
+export function toHarExportRequest(value: unknown): HarExportRequest {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('HAR export request is invalid');
+  }
+  const request = value as Record<string, unknown>;
+  if (typeof request.scope !== 'object' || request.scope === null) {
+    throw new Error('HAR export scope is invalid');
+  }
+  const rawScope = request.scope as Record<string, unknown>;
+  let scope: HarExportRequest['scope'];
+  if (rawScope.kind === 'all') {
+    scope = { kind: 'all' };
+  } else if (rawScope.kind === 'filter') {
+    scope = {
+      kind: 'filter',
+      filter: toCoreSessionFilter(rawScope.filter),
+    };
+  } else if (rawScope.kind === 'selected') {
+    if (
+      !Array.isArray(rawScope.exchangeIds) ||
+      rawScope.exchangeIds.length < 1 ||
+      rawScope.exchangeIds.length > 10_000
+    ) {
+      throw new Error('HAR export selected IDs are invalid');
+    }
+    const exchangeIds = rawScope.exchangeIds.map((item) => {
+      assertIdentifier(item, 'HAR export exchangeId');
+      return item;
+    });
+    scope = { kind: 'selected', exchangeIds: [...new Set(exchangeIds)] };
+  } else {
+    throw new Error('HAR export scope kind is invalid');
+  }
+
+  if (typeof request.redaction !== 'object' || request.redaction === null) {
+    throw new Error('HAR export redaction is invalid');
+  }
+  const redaction = request.redaction as Record<string, unknown>;
+  if (
+    typeof redaction.authorization !== 'boolean' ||
+    typeof redaction.cookies !== 'boolean' ||
+    typeof redaction.bodies !== 'boolean'
+  ) {
+    throw new Error('HAR export redaction flags are invalid');
+  }
+  return {
+    scope,
+    redaction: {
+      authorization: redaction.authorization,
+      cookies: redaction.cookies,
+      bodies: redaction.bodies,
+    },
   };
 }

@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M9.md](M9.md)（已完成）与下一 Stage [M10.md](M10.md)。
+4. 当前 Stage 文件：[M10.md](M10.md)（进行中，T10.1 已完成）。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,20 +18,24 @@
 
 ## 当前状态
 
-- **M0–M9 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
-- **当前 Stage：M9 WebSocket 与 gRPC 已收官，下一是 M10 导入导出与隐私**：
+- **M0–M9 均已完成（100%）**；M10 进行中（20%），各 Stage 详情见对应 `M*.md`。
+- **当前 Stage：M10 导入导出与隐私；T10.1 HAR 1.2 已完成，下一是 T10.2 原生 archive**：
+  - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
+  - **异步 transfer job**：`har.export.start`/`har.import.start`/`transfer.job.get/cancel`；公开快照只含 basename/进度/状态/警告。Main 用系统 save/open dialog 持有真实路径，Renderer 没有文件系统 API。
+  - **HAR UI**：Capture More 打开 `HarTransferDialog`，支持 all/filter/selected、Authorization/Cookie 遮罩、strip bodies、Import/Export、进度/取消/错误。HAR parity light/dark 均 0 missing/flagged。
+  - **Core 目录规范化**：composer/connection/diagnostics/grpc/har/proxy/rules/storage 根所有者直接位于 `entry.ts`；类型进 `interfaces/index.ts`、纯函数进 `utils/index.ts`，一文件一个 class；host/worker 子模块入口也为 `entry.ts`。真实 worker bundles 现为 `storage/worker/entry.cjs` 与 `diagnostics/worker/entry.cjs`。
   - **T9.1 WebSocket 捕获**：Mockttp HTTP/1.1 Upgrade，text/binary Message 按 direction/opcode/time/payloadRef 有序落 `websocket_frame`，payload 复用 Blob；101 后 Exchange 保持 open，clean close 更新 completed。
   - **T9.2 WebSocket UI/断点**：`WebSocketBridge` 接管双向消息转发并在 send 前 await BreakpointQueue，支持 edit/continue/drop；`websocket.frames` keyset 页 + Body range；Capture Messages 虚拟列表和 Breakpoints text/hex 编辑。仅 H1 Upgrade，H2 Extended CONNECT 未实现。
   - **T9.3 gRPC 基础展示**：原生 gRPC 作为 Mockttp 通用 H2 request/response 捕获；`grpc.messages` 从既有 Blob 每条只读 5B header 跳读分页，UI 显示 request/response、compressed/truncated/malformed、offset、grpc-status trailer 和 raw text/hex。无 descriptor/reflection；完成后扫描，非实时 streaming。
   - **测试架构**：Desktop tests 分为 `tests/packaged-smoke/`（真实 exe/CDP）与 `tests/visual-parity/`（完整 fake Preload + 正常 UI 交互）；业务 Renderer 无 parity fixture/DEV setter。详见 [M9.md](M9.md)。
-- **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
+- **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`，采集 trailer/pseudo-header 并按 kind 落库；`proxy/utils/index.ts` 提供 gzip/deflate/brotli 延迟解码，`body.read-range` 由 Core 解压并回传 `decodeStatus`。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
-- **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
+- **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
-- **窄 API 已扩展**：Capture/CA/Storage/Diagnostics/Rules/Composer/Breakpoints/Connection 之外，M9 新增 `queryWebSocketFrames`、`setWebSocketBreakpointsEnabled`、`queryGrpcMessages`；Main 对 id/cursor/limit/direction/side 做边界校验，Core protocol 做权威 runtime validation，payload 继续只走 `readBody` range。修改 API 面后需同步 packaged smoke 的 apiKeys 断言。
+- **窄 API 已扩展**：M10/T10.1 新增 `startHarExport`、`startHarImport`、`getTransferJob`、`cancelTransferJob`；Preload 仍不暴露 path/readFile/writeFile。修改 API 面后需同步 packaged smoke 的 apiKeys 断言。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
-- **验证全绿**（M9 完成）：`typecheck` 三 workspace；`test:unit` Desktop 39 / Proxy Core 151 / Core Protocol 18；8-view visual parity 完成；`audit --omit=dev` 0；Windows package + 真实 packaged smoke 1/1 通过。
-- M9 T9.1 `b6eec25`、T9.2 `30a4f4a` 已推送 origin/main；T9.3 与 M9 收尾为当前提交，完成后立即 push。新 Session 先跑 `git status --short --branch` 与 `git log -3 --oneline`，不要 reset/checkout/覆盖现有改动。
+- **验证全绿**（T10.1）：`typecheck` 三 workspace；`test:unit` Desktop 40 / Proxy Core 160 / Core Protocol 19；HAR parity light/dark 各 11/11 targets、0 missing/flagged；`audit --omit=dev` 0；Windows package + 真实 packaged smoke 1/1 通过。
+- M9 已推送至 `750f200`；T10.1 为当前提交，完成后立即 push。新 Session 先跑 `git status --short --branch` 与 `git log -3 --oneline`，不要 reset/checkout/覆盖现有改动。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction（仓库曾从 `H:\` 迁到 `C:\`，旧 junction 会失效）。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 
@@ -123,18 +127,18 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M10 T10.1 HAR 导入/导出
+## 下一任务：M10 T10.2 原生 archive
 
-M9 WebSocket 与 gRPC 已全量收官（T9.1–T9.3，见 [M9.md](M9.md)）。下一 Stage M10 进入文件导入导出与隐私边界，首项是 HAR 1.2 互操作。
+T10.1 HAR 1.2 已完成（见 [M10.md](M10.md)）。下一项是可保留 Interceptor 原生能力的版本化 ZIP archive。
 
 建议执行顺序：
 
 1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十二/十六章与第二十七章 M10、[M10.md](M10.md)。
-2. 先定义 import/export job、文件选择、进度/取消/警告的窄 contract；文件系统只在 Main/Core，Renderer 不拿路径读写能力。
-3. 建立 HAR 1.2 映射：Session/Exchange/header/body→HAR，明确 HTTP/2 pseudo/trailer、WebSocket/gRPC/native-only 字段的可逆性损失；导入按不可信 JSON 做大小/数量/schema 上限，不执行脚本。
-4. 先实现安全的小 fixture round-trip 与错误测试，再接 Design SPA 的 import-export overlay 和真实 Renderer UI；任务完成后按 T10.1 标题 commit + push。
+2. 在现有 transfer job/Main 系统对话框边界上增加 native format，不新建第二套任务基础设施；Renderer 仍不拿路径/文件系统。
+3. 定义 versioned manifest（archive/schema/app version、文件列表、hash/size）+ SQLite API 一致 snapshot + 内容寻址 Blob；不要直接复制活动 WAL 数据库。
+4. 解压前先验证 ZIP entry path、声明/实际 size、文件数、compression ratio、hash 与 schema version；拒绝 symlink/绝对路径/`..`/重复 entry/未知必需字段。先写恶意 fixture 测试，再实现导入事务/取消回滚和 UI format 切换；完成后按 T10.2 标题 commit + push。
 
-> 已完成：M0–M9 全量交付；M9 T9.1/T9.2 已推送，T9.3 与阶段收尾为当前提交。
+> 已完成：M0–M9 全量交付 + M10 T10.1 HAR 1.2；当前提交待 push。
 
 ## 剩余工作项目
 
@@ -148,7 +152,7 @@ M9 WebSocket 与 gRPC 已全量收官（T9.1–T9.3，见 [M9.md](M9.md)）。�
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M10 | 未开始 | HAR/native archive、隐私、Diagnostics 导出、Main/Renderer 日志 | 完整方案第十二/十六章、第二十七章 M10 |
+| M10 | 进行中（20%） | HAR 已完成；剩余 native archive、隐私、Diagnostics 导出、Main/Renderer 日志 | 完整方案第十二/十六章、第二十七章 M10 |
 | M11–M13 | 未开始 | 系统代理、发布加固、更新机制 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。

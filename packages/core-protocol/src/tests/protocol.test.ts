@@ -116,6 +116,37 @@ describe('core protocol validation', () => {
         type: 'diagnostics.recent',
         payload: { limit: 50, traceId: 'trace-previous' },
       },
+      {
+        type: 'har.export.start',
+        payload: {
+          jobId: 'har-job-export',
+          filePath: 'C:\\Exports\\capture.har',
+          scope: {
+            kind: 'filter',
+            filter: { method: 'GET', status: 200, protocol: 'h2' },
+          },
+          redaction: {
+            authorization: true,
+            cookies: true,
+            bodies: false,
+          },
+        },
+      },
+      {
+        type: 'har.import.start',
+        payload: {
+          jobId: 'har-job-import',
+          filePath: 'C:\\Imports\\capture.har',
+        },
+      },
+      {
+        type: 'transfer.job.get',
+        payload: { jobId: 'har-job-export' },
+      },
+      {
+        type: 'transfer.job.cancel',
+        payload: { jobId: 'har-job-import' },
+      },
     ];
 
     for (const [index, command] of commands.entries()) {
@@ -134,6 +165,62 @@ describe('core protocol validation', () => {
       requestId: 'request-1',
       reason: 'caller',
     }).ok).toBe(true);
+  });
+
+  it('validates HAR transfer jobs and rejects empty selected scopes', () => {
+    const response = {
+      kind: 'response' as const,
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-transfer',
+      traceId: 'trace-transfer',
+      ok: true as const,
+      result: {
+        type: 'transfer.job',
+        payload: {
+          job: {
+            id: 'har-job-export',
+            kind: 'har-export',
+            state: 'completed',
+            fileName: 'capture.har',
+            processed: 18,
+            total: 18,
+            startedAt: '2026-07-17T10:00:00.000Z',
+            completedAt: '2026-07-17T10:00:01.000Z',
+            warnings: ['HAR omits WebSocket messages.'],
+          },
+        },
+      },
+    };
+    expect(parseCoreToMainMessage(response).ok).toBe(true);
+    expect(parseCoreToMainMessage({
+      ...response,
+      result: {
+        ...response.result,
+        payload: {
+          job: { ...response.result.payload.job, processed: -1 },
+        },
+      },
+    }).ok).toBe(false);
+
+    expect(parseMainToCoreMessage({
+      kind: 'request',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-empty-selection',
+      traceId: 'trace-empty-selection',
+      command: {
+        type: 'har.export.start',
+        payload: {
+          jobId: 'har-job-empty',
+          filePath: 'C:\\Exports\\empty.har',
+          scope: { kind: 'selected', exchangeIds: [] },
+          redaction: {
+            authorization: true,
+            cookies: true,
+            bodies: false,
+          },
+        },
+      },
+    }).ok).toBe(false);
   });
 
   it('accepts rules.get result and rejects malformed rule definitions', () => {

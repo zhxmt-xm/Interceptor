@@ -15,23 +15,25 @@ import {
   dataDir,
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
-import { ComposerService } from './composer/composer-service';
-import { probeConnection } from './connection/connection-probe';
+import { ComposerService } from './composer/entry';
+import { ConnectionService } from './connection/entry';
 import {
   CoreCommandError,
   CoreRpcServer,
   type CoreRpcHost,
   type RpcMessagePort,
 } from './core-rpc-server';
-import { DiagnosticsWorkerHost, type DiagnosticsPage } from './diagnostics/entry';
-import { queryGrpcMessages } from './grpc/grpc-service';
-import { CaptureEventQueue } from './proxy/capture-event-queue';
-import { decodeBody } from './proxy/content-decoder';
-import { ProxyService } from './proxy/proxy-service';
-import { BreakpointQueue } from './rules/breakpoint-queue';
-import { RuleEngine } from './rules/rule-engine';
+import { DiagnosticsService } from './diagnostics/entry';
+import type { DiagnosticsPage } from './diagnostics/interfaces';
+import { GrpcService } from './grpc/entry';
+import { HarService } from './har/entry';
+import { ProxyService } from './proxy/entry';
+import { CaptureEventQueue } from './proxy/proxy-capture-event-queue';
+import { decodeBody } from './proxy/utils';
+import { RuleEngine } from './rules/entry';
+import { BreakpointQueue } from './rules/rule-breakpoint-queue';
 import { StorageService } from './storage/entry';
-import type { CleanupScope } from './storage/types';
+import type { CleanupScope } from './storage/interfaces';
 
 export interface ParentMessageEvent {
   data: unknown;
@@ -47,7 +49,7 @@ export interface CoreApplicationOptions {
   /** Core 拥有的存储门面；缺省时存储相关 command 返回 internal 错误。 */
   storageService?: StorageService;
   /** 诊断日志汇；缺省时日志只进内存 Ring Buffer，diagnostics.query 返回空页。 */
-  diagnosticsWorkerHost?: DiagnosticsWorkerHost;
+  diagnosticsService?: DiagnosticsService;
   /** 显式代理服务；缺省时 proxy.start/stop 返回 internal，proxy.status 返回未监听。 */
   proxyService?: ProxyService;
   /** 捕获事件有界合并队列；ProxyService 写入，CoreApplication 按背压窗口 push 给 Main。 */
@@ -56,6 +58,8 @@ export interface CoreApplicationOptions {
   breakpointQueue?: BreakpointQueue;
   /** 规则引擎；proxy-service beforeRequest/beforeResponse 调用，rules.replace 后热切换。 */
   ruleEngine?: RuleEngine;
+  /** HAR 文件任务门面；缺省时随 StorageService 自动创建。 */
+  harService?: HarService;
 }
 
 export type CoreLifecycleMessage =
@@ -75,12 +79,18 @@ export class CoreApplication implements CoreRpcHost {
   readonly diagnostics: CoreDiagnostics;
   private readonly rpcServer: CoreRpcServer;
   private readonly storageService: StorageService | null;
-  private readonly diagnosticsWorkerHost: DiagnosticsWorkerHost | null;
+  private readonly diagnosticsService: DiagnosticsService | null;
   private readonly proxyService: ProxyService | null;
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
   private readonly ruleEngine: RuleEngine | null;
   private readonly composer = new ComposerService();
+  /** 按需执行只握手 TLS 探测。 */
+  private readonly connection = new ConnectionService();
+  /** 从已捕获 body 分页读取 gRPC envelope。 */
+  private readonly grpc: GrpcService | null;
+  /** HAR 文件转换与异步任务门面；无 Storage 时不可用。 */
+  private readonly har: HarService | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -97,8 +107,8 @@ export class CoreApplication implements CoreRpcHost {
   static bootstrap(parentPort: CoreParentPort): void {
     try {
       const storageService = dataDir ? new StorageService() : undefined;
-      const diagnosticsWorkerHost = dataDir
-        ? new DiagnosticsWorkerHost()
+      const diagnosticsService = dataDir
+        ? new DiagnosticsService()
         : undefined;
       const captureEventQueue = storageService
         ? new CaptureEventQueue()
@@ -111,7 +121,7 @@ export class CoreApplication implements CoreRpcHost {
           : undefined;
       new CoreApplication(parentPort, {
         storageService,
-        diagnosticsWorkerHost,
+        diagnosticsService,
         proxyService,
         captureEventQueue,
         breakpointQueue,
@@ -131,13 +141,16 @@ export class CoreApplication implements CoreRpcHost {
     options: CoreApplicationOptions = {},
   ) {
     this.storageService = options.storageService ?? null;
-    this.diagnosticsWorkerHost = options.diagnosticsWorkerHost ?? null;
+    this.diagnosticsService = options.diagnosticsService ?? null;
     this.proxyService = options.proxyService ?? null;
     this.captureEventQueue = options.captureEventQueue ?? null;
     this.breakpointQueue = options.breakpointQueue ?? null;
     this.ruleEngine = options.ruleEngine ?? null;
+    this.grpc = this.storageService ? new GrpcService(this.storageService) : null;
+    this.har = options.harService ??
+      (this.storageService ? new HarService(this.storageService) : null);
     this.diagnostics = new CoreDiagnostics(
-      this.diagnosticsWorkerHost ?? undefined,
+      this.diagnosticsService ?? undefined,
     );
     this.proxyService?.attachDiagnostics(this.diagnostics);
     this.storageService?.attachDiagnostics(this.diagnostics);
@@ -192,8 +205,9 @@ export class CoreApplication implements CoreRpcHost {
     this.diagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
+    this.har?.cancelAll();
     void this.storageService?.dispose();
-    void this.diagnosticsWorkerHost?.close();
+    void this.diagnosticsService?.close();
     void this.proxyService?.stop();
     this.parentPort.postMessage({
       type: 'stopped',
@@ -298,7 +312,8 @@ export class CoreApplication implements CoreRpcHost {
           try {
             const page = await this.diagnostics.action(
               'storage.query-grpc-messages',
-              () => queryGrpcMessages(storage, command.payload),
+              () => this.grpc?.query(command.payload) ??
+                Promise.reject(new Error('gRPC storage is not available.')),
             );
             return { type: 'grpc.messages', payload: page };
           } catch (error) {
@@ -376,7 +391,7 @@ export class CoreApplication implements CoreRpcHost {
       }
       case 'connection.probe': {
         const payload = await this.diagnostics.action('connection.probe', () =>
-          probeConnection(
+          this.connection.probe(
             command.payload.host,
             command.payload.port,
             command.payload.timeoutMs,
@@ -423,6 +438,40 @@ export class CoreApplication implements CoreRpcHost {
           payload: await this.diagnostics.action('storage.cleanup', () =>
             storage.cleanup(toCleanupScope(command.payload)),
           ),
+        }));
+      case 'har.export.start':
+        return this.withHar((har) => ({
+          type: 'transfer.job',
+          payload: {
+            job: har.startExport(
+              command.payload.jobId,
+              command.payload.filePath,
+              {
+                scope: command.payload.scope,
+                redaction: command.payload.redaction,
+              },
+            ),
+          },
+        }));
+      case 'har.import.start':
+        return this.withHar((har) => ({
+          type: 'transfer.job',
+          payload: {
+            job: har.startImport(
+              command.payload.jobId,
+              command.payload.filePath,
+            ),
+          },
+        }));
+      case 'transfer.job.get':
+        return this.withHar((har) => ({
+          type: 'transfer.job',
+          payload: { job: har.getJob(command.payload.jobId) },
+        }));
+      case 'transfer.job.cancel':
+        return this.withHar((har) => ({
+          type: 'transfer.job',
+          payload: { job: har.cancelJob(command.payload.jobId) },
         }));
       case 'proxy.start':
         return this.withProxy(async (proxy) => {
@@ -560,10 +609,10 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：start。
    */
   private initializeDiagnostics(): void {
-    if (!this.diagnosticsWorkerHost) {
+    if (!this.diagnosticsService) {
       return;
     }
-    void this.diagnosticsWorkerHost
+    void this.diagnosticsService
       .start()
       .then(() => {
         this.diagnostics.info('diagnostics.ready');
@@ -585,10 +634,10 @@ export class CoreApplication implements CoreRpcHost {
     level?: 'debug' | 'info' | 'warn' | 'error';
     traceId?: string;
   }): Promise<DiagnosticsPage> {
-    if (!this.diagnosticsWorkerHost) {
+    if (!this.diagnosticsService) {
       return { records: [], hasMore: false, droppedCount: 0 };
     }
-    return this.diagnosticsWorkerHost.query(payload);
+    return this.diagnosticsService.query(payload);
   }
 
   /**
@@ -607,6 +656,18 @@ export class CoreApplication implements CoreRpcHost {
     }
     await this.storageService.initialize();
     return operation(this.storageService);
+  }
+
+  /** 在 HAR 服务可用时执行文件任务操作；无 Storage 模式返回 internal。 */
+  private withHar<T>(operation: (har: HarService) => T): T {
+    if (!this.har) {
+      throw commandError({
+        code: 'internal',
+        message: 'HAR transfer is not available.',
+        retryable: false,
+      });
+    }
+    return operation(this.har);
   }
 
   /**

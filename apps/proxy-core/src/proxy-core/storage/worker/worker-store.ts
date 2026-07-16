@@ -3,8 +3,6 @@ import type { DatabaseSync, StatementSync } from 'node:sqlite';
 import type {
   CaptureBodyRef,
   CaptureExchangeDetail,
-  CaptureExchangeSummary,
-  CaptureHeader,
   RuleDefinition,
   RuleSet,
 } from '@interceptor/core-protocol';
@@ -20,123 +18,18 @@ import type {
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
+  StorageBodyRefRow,
+  StorageDetailRow,
+  StorageHeaderRow,
+  StorageSummaryRow,
+  StorageWebSocketFrameRow,
   StorageStats,
   WebSocketFrameInput,
   WebSocketFramePage,
   WebSocketFrameQuery,
-} from '../types';
-
-/**
- * 无效分页游标错误；查询边界据此返回结构化错误而非静默重置。
- */
-export class InvalidCursorError extends Error {
-  constructor() {
-    super('The pagination cursor is malformed.');
-    this.name = 'InvalidCursorError';
-  }
-}
-
-/**
- * 规则集乐观并发冲突：expectedRevision 与当前持久化 revision 不一致。
- * core-application 据 error.name 映射为 CoreError conflict（跨 Worker 边界原型链会丢失）。
- */
-export class RuleRevisionConflictError extends Error {
-  constructor(
-    readonly expectedRevision: number,
-    readonly actualRevision: number,
-  ) {
-    super(
-      `Rule set revision conflict: expected ${expectedRevision}, found ${actualRevision}.`,
-    );
-    this.name = 'RuleRevisionConflictError';
-  }
-}
-
-interface KeysetCursor {
-  readonly startedAt: number;
-  readonly seq: number;
-}
-
-interface SummaryRow {
-  id: string;
-  method: string;
-  scheme: string | null;
-  host: string | null;
-  path: string | null;
-  protocol: string;
-  statusCode: number | null;
-  responseMime: string | null;
-  state: string;
-  startedAt: number;
-  completedAt: number | null;
-  requestBytes: number;
-  responseBytes: number;
-  seq: number;
-}
-
-function toSummary(row: SummaryRow): CaptureExchangeSummary {
-  return {
-    id: row.id,
-    method: row.method,
-    secure: row.scheme === 'https' || row.scheme === 'wss',
-    host: row.host ?? undefined,
-    path: row.path ?? undefined,
-    protocol: row.protocol,
-    statusCode: row.statusCode ?? undefined,
-    responseMime: row.responseMime ?? undefined,
-    state: row.state,
-    startedAt: row.startedAt,
-    durationMs:
-      row.completedAt !== null
-        ? Math.max(0, row.completedAt - row.startedAt)
-        : undefined,
-    requestBytes: row.requestBytes,
-    responseBytes: row.responseBytes,
-  };
-}
-
-interface DetailRow extends SummaryRow {
-  url: string;
-  port: number | null;
-  statusText: string | null;
-  requestMime: string | null;
-  errorCode: string | null;
-  streamId: number | null;
-  requestBodyId: string | null;
-  responseBodyId: string | null;
-}
-
-interface HeaderRow {
-  kind: string;
-  name: string;
-  value: string;
-  isPseudo: number;
-}
-
-interface BodyRefRow {
-  blobHash: string | null;
-  mediaType: string | null;
-  contentEncoding: string | null;
-  encodedSize: number;
-  decodedSize: number | null;
-  truncated: number;
-  decodeStatus: string;
-}
-
-interface WebSocketFrameRow extends BodyRefRow {
-  seq: number;
-  direction: 'client-to-server' | 'server-to-client';
-  opcode: 1 | 2;
-  timestamp: number;
-  payloadSize: number;
-  payloadBodyId: string | null;
-}
-
-function toHeader(row: HeaderRow): CaptureHeader {
-  return row.isPseudo
-    ? { name: row.name, value: row.value, isPseudo: true }
-    : { name: row.name, value: row.value };
-}
+} from '../interfaces';
+import * as StorageUtils from '../utils';
+import { RuleRevisionConflictError } from './worker-rule-revision-conflict-error';
 
 /**
  * Capture 数据库的同步访问层，运行在 Storage Worker 线程内独占一个连接。
@@ -320,7 +213,7 @@ export class CaptureStore {
 
   /** 按单 Exchange seq 升序分页查询 WebSocket 应用消息，不加载 payload 字节。 */
   queryWebSocketFrames(query: WebSocketFrameQuery): WebSocketFramePage {
-    const cursorSeq = decodeWebSocketCursor(query.cursor);
+    const cursorSeq = StorageUtils.decodeWebSocketCursor(query.cursor);
     const rows = this.db
       .prepare(
         `SELECT wf.seq AS seq, wf.direction AS direction, wf.opcode AS opcode,
@@ -345,7 +238,7 @@ export class CaptureStore {
         cursorSeq,
         direction: query.direction ?? null,
         fetchLimit: query.limit + 1,
-      }) as unknown as WebSocketFrameRow[];
+      }) as unknown as StorageWebSocketFrameRow[];
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
     const last = page.at(-1);
@@ -370,7 +263,9 @@ export class CaptureStore {
             }
           : {}),
       })),
-      nextCursor: last ? encodeWebSocketCursor(last.seq) : query.cursor,
+      nextCursor: last
+        ? StorageUtils.encodeWebSocketCursor(last.seq)
+        : query.cursor,
       hasMore,
     };
   }
@@ -425,7 +320,7 @@ export class CaptureStore {
     const params: Record<string, string | number> = {};
 
     this.appendFilterConditions(query.filter, conditions, params);
-    const cursor = decodeCursor(query.cursor);
+    const cursor = StorageUtils.decodeStorageCursor(query.cursor);
     if (cursor) {
       const comparator = query.sort === 'started_asc' ? '>' : '<';
       conditions.push(
@@ -452,15 +347,17 @@ export class CaptureStore {
     const rows = this.db.prepare(sql).all({
       ...params,
       limit: query.limit + 1,
-    }) as unknown as SummaryRow[];
+    }) as unknown as StorageSummaryRow[];
 
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
     const last = page.at(-1);
     return {
-      items: page.map(toSummary),
+      items: page.map(StorageUtils.toStorageSummary),
       nextCursor:
-        hasMore && last ? encodeCursor(last.startedAt, last.seq) : undefined,
+        hasMore && last
+          ? StorageUtils.encodeStorageCursor(last.startedAt, last.seq)
+          : undefined,
       hasMore,
     };
   }
@@ -485,7 +382,7 @@ export class CaptureStore {
          FROM exchange e
          WHERE e.id = :id`,
       )
-      .get({ id }) as unknown as DetailRow | undefined;
+      .get({ id }) as unknown as StorageDetailRow | undefined;
 
     if (!row) {
       return null;
@@ -498,10 +395,10 @@ export class CaptureStore {
          WHERE exchange_id = :id
          ORDER BY kind, ordinal`,
       )
-      .all({ id }) as unknown as HeaderRow[];
+      .all({ id }) as unknown as StorageHeaderRow[];
 
     return {
-      summary: toSummary(row),
+      summary: StorageUtils.toStorageSummary(row),
       url: row.url,
       scheme: row.scheme ?? undefined,
       port: row.port ?? undefined,
@@ -509,14 +406,18 @@ export class CaptureStore {
       requestMime: row.requestMime ?? undefined,
       errorCode: row.errorCode ?? undefined,
       streamId: row.streamId ?? undefined,
-      requestHeaders: headers.filter((h) => h.kind === 'request').map(toHeader),
-      responseHeaders: headers.filter((h) => h.kind === 'response').map(toHeader),
+      requestHeaders: headers
+        .filter((header) => header.kind === 'request')
+        .map(StorageUtils.toStorageHeader),
+      responseHeaders: headers
+        .filter((header) => header.kind === 'response')
+        .map(StorageUtils.toStorageHeader),
       requestTrailers: headers
         .filter((h) => h.kind === 'request-trailer')
-        .map(toHeader),
+        .map(StorageUtils.toStorageHeader),
       responseTrailers: headers
         .filter((h) => h.kind === 'response-trailer')
-        .map(toHeader),
+        .map(StorageUtils.toStorageHeader),
       requestBody: this.readBodyRef(row.requestBodyId),
       responseBody: this.readBodyRef(row.responseBodyId),
     };
@@ -535,7 +436,7 @@ export class CaptureStore {
          FROM body_ref
          WHERE id = :id`,
       )
-      .get({ id: bodyId }) as unknown as BodyRefRow | undefined;
+      .get({ id: bodyId }) as unknown as StorageBodyRefRow | undefined;
     if (!row) {
       return undefined;
     }
@@ -822,7 +723,7 @@ export class CaptureStore {
     }
     if (filter.mime) {
       conditions.push("e.response_mime LIKE :mime ESCAPE '\\'");
-      params.mime = `${escapeLike(filter.mime)}%`;
+      params.mime = `${StorageUtils.escapeLike(filter.mime)}%`;
     }
     if (filter.process) {
       conditions.push('e.process_name = :process');
@@ -832,7 +733,14 @@ export class CaptureStore {
       conditions.push(
         'e.id IN (SELECT exchange_id FROM exchange_fts WHERE exchange_fts MATCH :search)',
       );
-      params.search = toMatchQuery(filter.search);
+      params.search = StorageUtils.toMatchQuery(filter.search);
+    }
+    if (filter.protocol === 'h1') {
+      conditions.push("e.protocol IN ('h1', 'http/1.0', 'http/1.1')");
+    } else if (filter.protocol === 'h2') {
+      conditions.push("e.protocol IN ('h2', 'http/2')");
+    } else if (filter.protocol === 'ws') {
+      conditions.push("(e.protocol = 'ws' OR e.protocol LIKE '%websocket%')");
     }
   }
 
@@ -870,66 +778,4 @@ export class CaptureStore {
       throw error;
     }
   }
-}
-
-function encodeCursor(startedAt: number, seq: number): string {
-  return Buffer.from(`${startedAt}:${seq}`, 'utf8').toString('base64url');
-}
-
-function decodeCursor(cursor: string | undefined): KeysetCursor | null {
-  if (cursor === undefined) {
-    return null;
-  }
-  let decoded: string;
-  try {
-    decoded = Buffer.from(cursor, 'base64url').toString('utf8');
-  } catch {
-    throw new InvalidCursorError();
-  }
-  const match = /^(\d+):(\d+)$/.exec(decoded);
-  if (!match) {
-    throw new InvalidCursorError();
-  }
-  const startedAt = Number(match[1]);
-  const seq = Number(match[2]);
-  if (!Number.isSafeInteger(startedAt) || !Number.isSafeInteger(seq)) {
-    throw new InvalidCursorError();
-  }
-  return { startedAt, seq };
-}
-
-function encodeWebSocketCursor(seq: number): string {
-  return Buffer.from(String(seq), 'utf8').toString('base64url');
-}
-
-function decodeWebSocketCursor(cursor: string | undefined): number {
-  if (cursor === undefined) {
-    return 0;
-  }
-  let decoded: string;
-  try {
-    decoded = Buffer.from(cursor, 'base64url').toString('utf8');
-  } catch {
-    throw new InvalidCursorError();
-  }
-  if (!/^\d+$/.test(decoded)) {
-    throw new InvalidCursorError();
-  }
-  const seq = Number(decoded);
-  if (!Number.isSafeInteger(seq) || seq < 0) {
-    throw new InvalidCursorError();
-  }
-  return seq;
-}
-
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
-
-/**
- * 把用户关键字转为安全的 FTS5 短语匹配，避免特殊字符触发语法错误或注入。
- */
-function toMatchQuery(search: string): string {
-  const escaped = search.replace(/"/g, '""');
-  return `"${escaped}"`;
 }

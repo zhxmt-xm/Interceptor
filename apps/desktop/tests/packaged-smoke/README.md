@@ -206,8 +206,8 @@ resources/proxy-core/entry.cjs
 ```text
 resources/proxy-core/
 ├─ entry.cjs
-├─ storage/worker/worker-entry.cjs
-├─ diagnostics/worker/worker-entry.cjs
+├─ storage/worker/entry.cjs
+├─ diagnostics/worker/entry.cjs
 └─ node_modules/                  # Mockttp/WASM/native runtime closure
 ```
 

@@ -100,6 +100,14 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
   probeConnection: (host, port) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.connectionProbe, host, port),
+  startHarExport: (request) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harExportStart, request),
+  startHarImport: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harImportStart),
+  getTransferJob: (jobId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.transferJobGet, jobId),
+  cancelTransferJob: (jobId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.transferJobCancel, jobId),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

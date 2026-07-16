@@ -25,6 +25,7 @@ export interface SessionsQueryCommand {
       mime?: string;
       process?: string;
       search?: string;
+      protocol?: 'h1' | 'h2' | 'ws';
     };
   };
 }
@@ -198,6 +199,52 @@ export interface StorageCleanupCommand {
   };
 }
 
+export interface HarExportStartCommand {
+  type: 'har.export.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+    scope:
+      | { kind: 'all' }
+      | {
+          kind: 'filter';
+          filter: {
+            host?: string;
+            method?: string;
+            status?: number;
+            mime?: string;
+            process?: string;
+            search?: string;
+            protocol?: 'h1' | 'h2' | 'ws';
+          };
+        }
+      | { kind: 'selected'; exchangeIds: string[] };
+    redaction: {
+      authorization: boolean;
+      cookies: boolean;
+      bodies: boolean;
+    };
+  };
+}
+
+export interface HarImportStartCommand {
+  type: 'har.import.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+  };
+}
+
+export interface TransferJobGetCommand {
+  type: 'transfer.job.get';
+  payload: { jobId: string };
+}
+
+export interface TransferJobCancelCommand {
+  type: 'transfer.job.cancel';
+  payload: { jobId: string };
+}
+
 export interface ProxyStartCommand {
   type: 'proxy.start';
   payload: {
@@ -249,6 +296,10 @@ export type CoreCommand =
   | DiagnosticsQueryCommand
   | StorageStatusCommand
   | StorageCleanupCommand
+  | HarExportStartCommand
+  | HarImportStartCommand
+  | TransferJobGetCommand
+  | TransferJobCancelCommand
   | ProxyStartCommand
   | ProxyStopCommand
   | ProxyStatusCommand
@@ -524,6 +575,31 @@ export interface StorageStatusResult {
   };
 }
 
+export type TransferJobKind = 'har-export' | 'har-import';
+export type TransferJobState =
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface TransferJobSnapshot {
+  id: string;
+  kind: TransferJobKind;
+  state: TransferJobState;
+  fileName: string;
+  processed: number;
+  total: number;
+  startedAt: string;
+  completedAt?: string;
+  message?: string;
+  warnings: string[];
+}
+
+export interface TransferJobResult {
+  type: 'transfer.job';
+  payload: { job: TransferJobSnapshot | null };
+}
+
 export interface ProxyStatusResult {
   type: 'proxy.status';
   payload: {
@@ -562,6 +638,7 @@ export type CoreResult =
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
   | StorageStatusResult
+  | TransferJobResult
   | ProxyStatusResult
   | TlsConfiguredResult;
 
@@ -588,6 +665,14 @@ export type CoreResultForCommand<T extends CoreCommand> =
                       ? StorageStatusResult
                       : T extends StorageCleanupCommand
                         ? StorageStatusResult
+                        : T extends HarExportStartCommand
+                          ? TransferJobResult
+                          : T extends HarImportStartCommand
+                            ? TransferJobResult
+                            : T extends TransferJobGetCommand
+                              ? TransferJobResult
+                              : T extends TransferJobCancelCommand
+                                ? TransferJobResult
                         : T extends ProxyStartCommand
                           ? ProxyStatusResult
                           : T extends ProxyStopCommand

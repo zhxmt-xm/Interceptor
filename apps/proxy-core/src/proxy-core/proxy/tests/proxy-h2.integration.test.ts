@@ -10,9 +10,10 @@ import type {
   CaptureSessionInput,
   ExchangeInput,
   WebSocketFrameInput,
-} from '../../storage/types';
-import { CaptureEventQueue } from '../capture-event-queue';
-import { ProxyService, type CaptureSink } from '../proxy-service';
+} from '../../storage/interfaces';
+import { ProxyService } from '../entry';
+import type { CaptureSink } from '../interfaces';
+import { CaptureEventQueue } from '../proxy-capture-event-queue';
 
 /**
  * M6 T6.1/T6.2 端到端集成：真实 HTTP/2 客户端经代理 MITM 隧道，用 ALPN h2 连到真实

@@ -24,6 +24,14 @@
   - `styles/` for the minimal global stylesheet.
 - Keep Electron/Node access out of Renderer components. Renderer communicates only through the typed `window.interceptor` Preload API.
 
+## Proxy Core Module Structure
+
+- Organize each domain under `apps/proxy-core/src/proxy-core/<module>/` around a real `entry.ts` facade. The module's owning Service/Engine class lives directly in `entry.ts`; do not keep a separate `*-service.ts` and use `entry.ts` as a barrel re-export.
+- Except for `entry.ts`, prefix module-owned implementation files with the module name (for example `har-document.ts` and `grpc-invalid-cursor-error.ts`). Apply the same prefix to tests. Module constants use `<module>-constants.ts`. In `host/` and `worker/` subdirectories, the owning entry is also named `entry.ts`; their remaining implementation files keep the `host-*` and `worker-*` prefixes.
+- Put all module-local explicit `interface` and `type` declarations in `interfaces/index.ts`. Put all stateless utility functions in `utils/index.ts`; implementation class files must not accumulate free helper functions.
+- Keep at most one class per TypeScript file. Add a concise responsibility comment to every class property and method, including private members and test helper classes.
+- A host/worker entry rename must update the Proxy Core build script, runtime resolver, tests, and documented bundle paths together, then run a real worker build/test.
+
 ## Validation
 
 - During implementation, run the cheapest focused check that can falsify the current change.

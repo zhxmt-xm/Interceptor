@@ -5,10 +5,10 @@ import type { RuleAction, RuleMatcher } from '@interceptor/core-protocol';
 import type {
   MutableRequestState,
   MutableResponseState,
-} from '../action-executor';
-import { BreakpointQueue } from '../breakpoint-queue';
-import type { MatchContext } from '../matcher-compiler';
-import { RuleEngine } from '../rule-engine';
+  MatchContext,
+} from '../interfaces';
+import { RuleEngine } from '../entry';
+import { BreakpointQueue } from '../rule-breakpoint-queue';
 
 function rule(
   id: string,

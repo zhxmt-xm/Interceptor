@@ -13,6 +13,7 @@ export interface CaptureTopbarProps {
 /** Capture topbar: sidebar toggle, recording chip, omnibox and quick actions. */
 export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element {
   const capturing = useCaptureStore((state) => state.capturing);
+  const setHarDialogOpen = useCaptureStore((state) => state.setHarDialogOpen);
 
   return (
     <>
@@ -30,7 +31,11 @@ export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element
       <div className={styles.actions}>
         <IconButton icon={Info} label="Info" />
         <IconButton icon={Settings} label="Settings" />
-        <IconButton icon={MoreHorizontal} label="More" />
+        <IconButton
+          icon={MoreHorizontal}
+          label="Import or export HAR"
+          onClick={() => setHarDialogOpen(true)}
+        />
       </div>
     </>
   );
