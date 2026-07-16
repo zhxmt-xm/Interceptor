@@ -13,6 +13,17 @@
 .container :global(.cm-editor .cm-scroller) {
   font-family: var(--font-mono);
 }
+.compact :global(.cm-editor) {
+  border-radius: 7px;
+  font-size: 10.5px;
+}
+.compact :global(.cm-editor .cm-content) {
+  min-height: 102px;
+  padding: 10px 12px;
+}
+.compact :global(.cm-editor .cm-line) {
+  line-height: 1.65;
+}
 .notice {
   font-size: 11px;
   color: var(--text-3);

@@ -99,20 +99,6 @@ export function App(): React.JSX.Element {
   }, [lang]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) {
-      return;
-    }
-    // Dev-only hooks so the parity harness can drive the same state the
-    // design SPA exposes via window.__setState.
-    const devWindow = window as Window & {
-      __setTheme?: (mode: ThemeMode) => void;
-      __setView?: (view: ViewId) => void;
-    };
-    devWindow.__setTheme = setThemeMode;
-    devWindow.__setView = setView;
-  }, []);
-
-  useEffect(() => {
     let active = true;
     let latestUpdatedAt = initialCoreStatus.updatedAt;
 

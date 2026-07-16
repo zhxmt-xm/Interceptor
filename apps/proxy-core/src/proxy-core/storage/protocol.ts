@@ -16,6 +16,8 @@ import type {
   SessionQueryPage,
   StorageStats,
   WebSocketFrameInput,
+  WebSocketFramePage,
+  WebSocketFrameQuery,
 } from './types';
 
 /**
@@ -64,6 +66,7 @@ export type StorageWorkerRequest =
       readonly exchangeId: string;
       readonly frames: readonly WebSocketFrameInput[];
     }
+  | { readonly kind: 'query-websocket-frames'; readonly query: WebSocketFrameQuery }
   | { readonly kind: 'count-rule-hits' }
   | { readonly kind: 'close' };
 
@@ -79,6 +82,8 @@ export type StorageWorkerResultFor<K extends StorageWorkerRequest['kind']> =
       ? SessionQueryPage
       : K extends 'exchange-detail'
         ? CaptureExchangeDetail | null
+        : K extends 'query-websocket-frames'
+          ? WebSocketFramePage
         : K extends 'storage-status'
           ? StorageStats
           : K extends 'cleanup'

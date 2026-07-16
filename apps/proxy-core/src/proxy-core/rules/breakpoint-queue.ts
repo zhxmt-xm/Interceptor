@@ -9,7 +9,7 @@
 
 import type { BreakpointEdit, RuleHeaderPair } from '@interceptor/core-protocol';
 
-export type BreakpointPhase = 'request' | 'response';
+export type BreakpointPhase = 'request' | 'response' | 'websocket';
 export type BreakpointResolutionAction = 'continue' | 'drop' | 'timeout';
 export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out';
 export type BreakpointTimeoutPolicy = 'continue' | 'drop';
@@ -20,6 +20,9 @@ export interface BreakpointSnapshot {
   readonly method?: string;
   readonly url?: string;
   readonly statusCode?: number;
+  readonly direction?: 'client-to-server' | 'server-to-client';
+  readonly opcode?: 1 | 2;
+  readonly bodyFormat?: 'text' | 'hex';
   readonly headers: RuleHeaderPair[];
   readonly body?: string;
 }

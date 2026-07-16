@@ -50,6 +50,8 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'rules.validate': 'rules.validation',
   'sessions.query': 'sessions.page',
   'sessions.detail': 'sessions.detail',
+  'websocket.frames': 'websocket.frames',
+  'websocket.breakpoint.configure': 'websocket.breakpoint.config',
   'storage.status': 'storage.status',
   'storage.cleanup': 'storage.status',
   'proxy.start': 'proxy.status',

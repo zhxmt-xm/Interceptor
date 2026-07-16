@@ -40,6 +40,8 @@ export function applyStorageRequest(
     case 'append-websocket-frames':
       store.appendWebSocketFrames(request.exchangeId, request.frames);
       return undefined;
+    case 'query-websocket-frames':
+      return store.queryWebSocketFrames(request.query);
     case 'count-rule-hits':
       return store.countRuleHits();
     case 'close':

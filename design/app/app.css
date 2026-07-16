@@ -230,6 +230,35 @@ body {
 .cert .cc b { font-size: 12.5px; font-weight: 550; }
 .cert .cc span { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
 .cert .cchain { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; flex: 0 0 auto; }
+.ws-only { display: none; }
+.app[data-scene="websocket"] .http-only { display: none; }
+.app[data-scene="websocket"] .ws-only { display: flex; }
+.sbadge.ws { color: var(--blue); background: color-mix(in srgb, var(--blue) 13%, transparent); }
+.sbadge.ws .d { background: var(--blue); }
+.wsmsg { gap: 12px; }
+.wsbar { display: flex; align-items: center; gap: 9px; margin: -5px -4px 0; }
+.wsbar .seg { height: 30px; }
+.wsbar .seg span { padding: 5px 10px; font-size: 11px; }
+.wsbar .sp { flex: 1; }
+.wsrows { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.wsrow { display: grid; grid-template-columns: 26px 48px minmax(0,1fr) 54px 54px; align-items: center; gap: 8px; min-height: 38px; padding: 0 10px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10.5px; }
+.wsrow:last-child { border-bottom: 0; }
+.wsrow.sel { background: var(--sel); box-shadow: inset 2px 0 var(--sel-line); }
+.wsdir { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; }
+.wsdir svg { width: 12px; height: 12px; }
+.wsdir.out { color: var(--blue); background: color-mix(in srgb, var(--blue) 13%, transparent); }
+.wsdir.in { color: var(--green); background: color-mix(in srgb, var(--green) 13%, transparent); }
+.wsdir.in svg { transform: rotate(180deg); }
+.wstype { color: var(--text-2); }
+.wspreview { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wspreview.muted, .wssize, .wstime { color: var(--text-3); }
+.wssize, .wstime { text-align: right; font-variant-numeric: tabular-nums; }
+.wspayload { padding: 12px; border-bottom: 1px solid var(--border); background: var(--filter); }
+.wsphead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.wsphead .cnt { margin-left: auto; }
+.wspayload .bodybox { padding: 12px 14px; border-radius: 7px; font-size: 10.5px; line-height: 1.65; }
+.wsnote { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 11px; }
+.wsnote svg { width: 13px; height: 13px; color: var(--accent); }
 
 /* =====================================================================
    FEATURE: rules — list · split · editor

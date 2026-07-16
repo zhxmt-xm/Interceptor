@@ -22,6 +22,8 @@ import type {
   SessionQueryPage,
   StorageStats,
   WebSocketFrameInput,
+  WebSocketFramePage,
+  WebSocketFrameQuery,
 } from '../types';
 
 /**
@@ -76,7 +78,7 @@ function toSummary(row: SummaryRow): CaptureExchangeSummary {
   return {
     id: row.id,
     method: row.method,
-    secure: row.scheme === 'https',
+    secure: row.scheme === 'https' || row.scheme === 'wss',
     host: row.host ?? undefined,
     path: row.path ?? undefined,
     protocol: row.protocol,
@@ -119,6 +121,15 @@ interface BodyRefRow {
   decodedSize: number | null;
   truncated: number;
   decodeStatus: string;
+}
+
+interface WebSocketFrameRow extends BodyRefRow {
+  seq: number;
+  direction: 'client-to-server' | 'server-to-client';
+  opcode: 1 | 2;
+  timestamp: number;
+  payloadSize: number;
+  payloadBodyId: string | null;
 }
 
 function toHeader(row: HeaderRow): CaptureHeader {
@@ -305,6 +316,63 @@ export class CaptureStore {
         });
       }
     });
+  }
+
+  /** 按单 Exchange seq 升序分页查询 WebSocket 应用消息，不加载 payload 字节。 */
+  queryWebSocketFrames(query: WebSocketFrameQuery): WebSocketFramePage {
+    const cursorSeq = decodeWebSocketCursor(query.cursor);
+    const rows = this.db
+      .prepare(
+        `SELECT wf.seq AS seq, wf.direction AS direction, wf.opcode AS opcode,
+                wf.timestamp AS timestamp, wf.payload_size AS payloadSize,
+                wf.payload_body_id AS payloadBodyId,
+                br.blob_hash AS blobHash, br.media_type AS mediaType,
+                br.content_encoding AS contentEncoding,
+                COALESCE(br.encoded_size, wf.payload_size) AS encodedSize,
+                br.decoded_size AS decodedSize, COALESCE(br.truncated, 0) AS truncated,
+                COALESCE(br.decode_status, 'skipped') AS decodeStatus
+         FROM websocket_frame wf
+         LEFT JOIN body_ref br ON br.id = wf.payload_body_id
+         WHERE wf.exchange_id = :exchangeId
+           AND wf.seq > :cursorSeq
+           AND (:direction IS NULL OR wf.direction = :direction)
+           AND wf.opcode IN (1, 2)
+         ORDER BY wf.seq ASC
+         LIMIT :fetchLimit`,
+      )
+      .all({
+        exchangeId: query.exchangeId,
+        cursorSeq,
+        direction: query.direction ?? null,
+        fetchLimit: query.limit + 1,
+      }) as unknown as WebSocketFrameRow[];
+    const hasMore = rows.length > query.limit;
+    const page = hasMore ? rows.slice(0, query.limit) : rows;
+    const last = page.at(-1);
+    return {
+      items: page.map((row) => ({
+        seq: row.seq,
+        direction: row.direction,
+        opcode: row.opcode,
+        timestamp: row.timestamp,
+        payloadSize: row.payloadSize,
+        ...(row.payloadBodyId
+          ? {
+              payload: {
+                bodyHash: row.blobHash ?? undefined,
+                mediaType: row.mediaType ?? undefined,
+                contentEncoding: row.contentEncoding ?? undefined,
+                encodedSize: row.encodedSize,
+                decodedSize: row.decodedSize ?? undefined,
+                truncated: row.truncated !== 0,
+                decodeStatus: row.decodeStatus,
+              },
+            }
+          : {}),
+      })),
+      nextCursor: last ? encodeWebSocketCursor(last.seq) : query.cursor,
+      hasMore,
+    };
   }
 
   /**
@@ -828,6 +896,30 @@ function decodeCursor(cursor: string | undefined): KeysetCursor | null {
     throw new InvalidCursorError();
   }
   return { startedAt, seq };
+}
+
+function encodeWebSocketCursor(seq: number): string {
+  return Buffer.from(String(seq), 'utf8').toString('base64url');
+}
+
+function decodeWebSocketCursor(cursor: string | undefined): number {
+  if (cursor === undefined) {
+    return 0;
+  }
+  let decoded: string;
+  try {
+    decoded = Buffer.from(cursor, 'base64url').toString('utf8');
+  } catch {
+    throw new InvalidCursorError();
+  }
+  if (!/^\d+$/.test(decoded)) {
+    throw new InvalidCursorError();
+  }
+  const seq = Number(decoded);
+  if (!Number.isSafeInteger(seq) || seq < 0) {
+    throw new InvalidCursorError();
+  }
+  return seq;
 }
 
 function escapeLike(value: string): string {

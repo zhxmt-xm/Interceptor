@@ -18,6 +18,8 @@ import type {
   SessionQuery,
   SessionQueryPage,
   WebSocketFrameInput,
+  WebSocketFramePage,
+  WebSocketFrameQuery,
 } from './types';
 
 /**
@@ -122,6 +124,10 @@ export class StorageService {
     frames: readonly WebSocketFrameInput[],
   ): Promise<void> {
     return this.host.appendWebSocketFrames(exchangeId, frames);
+  }
+
+  queryWebSocketFrames(query: WebSocketFrameQuery): Promise<WebSocketFramePage> {
+    return this.host.queryWebSocketFrames(query);
   }
 
   /** 按 ruleId 聚合的累计规则命中次数。调用方：rules.hits handler。 */

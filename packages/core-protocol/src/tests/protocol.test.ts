@@ -29,6 +29,18 @@ describe('core protocol validation', () => {
         payload: { bodyId: 'body-1', offset: 0, length: 1024 },
       },
       {
+        type: 'websocket.frames',
+        payload: {
+          exchangeId: 'exchange-ws',
+          limit: 100,
+          direction: 'client-to-server',
+        },
+      },
+      {
+        type: 'websocket.breakpoint.configure',
+        payload: { enabled: true },
+      },
+      {
         type: 'rules.validate',
         payload: {
           rules: [
@@ -187,6 +199,43 @@ describe('core protocol validation', () => {
     ]).ok).toBe(false);
   });
 
+  it('accepts websocket.frames result and rejects unsupported opcodes', () => {
+    const response = (opcode: number) => ({
+      kind: 'response' as const,
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-ws',
+      traceId: 'trace-ws',
+      ok: true as const,
+      result: {
+        type: 'websocket.frames',
+        payload: {
+          items: [
+            {
+              seq: 1,
+              direction: 'client-to-server',
+              opcode,
+              timestamp: 1_000,
+              payloadSize: 5,
+              payload: {
+                bodyHash: 'a'.repeat(64),
+                mediaType: 'text/plain; charset=utf-8',
+                encodedSize: 5,
+                truncated: false,
+                decodeStatus: 'ok',
+              },
+            },
+          ],
+          nextCursor: 'opaque-cursor',
+          hasMore: true,
+          breakpointsEnabled: false,
+        },
+      },
+    });
+
+    expect(parseCoreToMainMessage(response(1)).ok).toBe(true);
+    expect(parseCoreToMainMessage(response(9)).ok).toBe(false);
+  });
+
   it('accepts rules.hits result and rejects malformed hit counts', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
@@ -300,6 +349,19 @@ describe('core protocol validation', () => {
               url: 'https://shop.example.com/checkout',
               headers: [{ name: 'content-type', value: 'application/json' }],
               body: '{}',
+            },
+            {
+              id: 'bp-ws',
+              phase: 'websocket',
+              createdAt: 2_000,
+              deadline: 32_000,
+              ruleName: 'WebSocket message',
+              url: 'ws://example.test/socket',
+              direction: 'client-to-server',
+              opcode: 1,
+              bodyFormat: 'text',
+              headers: [],
+              body: 'hello',
             },
           ],
         },

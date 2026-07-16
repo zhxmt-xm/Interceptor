@@ -16,10 +16,13 @@ export interface EditHeaderRow {
 /** 选中断点的可编辑草稿：请求用 method/url、响应用 statusCode，headers/body 两阶段通用。 */
 export interface BreakpointDraft {
   breakpointId: string;
-  phase: 'request' | 'response';
+  phase: 'request' | 'response' | 'websocket';
   method: string;
   url: string;
   statusCode: number;
+  direction?: 'client-to-server' | 'server-to-client';
+  opcode?: 1 | 2;
+  bodyFormat?: 'text' | 'hex';
   headers: EditHeaderRow[];
   body: string;
 }
@@ -37,6 +40,9 @@ function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDraft {
     method: breakpoint.method ?? 'GET',
     url: breakpoint.url ?? '',
     statusCode: breakpoint.statusCode ?? 200,
+    direction: breakpoint.direction,
+    opcode: breakpoint.opcode,
+    bodyFormat: breakpoint.bodyFormat,
     headers: breakpoint.headers.map((header) => ({
       id: rowId(),
       name: header.name,
@@ -160,6 +166,9 @@ export function buildEdit(draft: BreakpointDraft): BreakpointEdit {
     .map((header) => ({ name: header.name, value: header.value }));
   if (draft.phase === 'request') {
     return { method: draft.method, url: draft.url, headers, body: draft.body };
+  }
+  if (draft.phase === 'websocket') {
+    return { body: draft.body };
   }
   return { statusCode: draft.statusCode, headers, body: draft.body };
 }

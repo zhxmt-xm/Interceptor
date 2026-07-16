@@ -22,6 +22,8 @@ import type {
   SessionQueryPage,
   StorageStats,
   WebSocketFrameInput,
+  WebSocketFramePage,
+  WebSocketFrameQuery,
 } from '../types';
 import type {
   ExchangeResponsePatch,
@@ -185,6 +187,10 @@ export class StorageWorkerHost {
       exchangeId,
       frames,
     });
+  }
+
+  queryWebSocketFrames(query: WebSocketFrameQuery): Promise<WebSocketFramePage> {
+    return this.request({ kind: 'query-websocket-frames', query });
   }
 
   countRuleHits(): Promise<RuleHitCount[]> {

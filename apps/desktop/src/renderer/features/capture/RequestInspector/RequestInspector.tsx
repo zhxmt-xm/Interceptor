@@ -1,12 +1,17 @@
-import { Fragment, type ReactNode, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useState } from 'react';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../captureStore';
-import { INSPECTOR_TABS, type InspectorTab } from '../data';
+import {
+  INSPECTOR_TABS,
+  WEBSOCKET_INSPECTOR_TABS,
+  type InspectorTab,
+} from '../data';
 import { TlsPanel } from './TlsPanel';
 import {
   protocolLabel,
+  protocolSegment,
   sizeLabel,
   statusLabel,
   statusTone,
@@ -15,6 +20,7 @@ import {
 } from '../row-format';
 import { useExchangeDetail } from '../useExchangeDetail';
 import { BodyView } from './BodyView';
+import { WebSocketMessages } from './WebSocketMessages';
 import styles from './RequestInspector.module.css';
 
 type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g'];
@@ -50,7 +56,7 @@ function inferPort(url: string | undefined, scheme: string): number {
       /* URL 不可解析时按 scheme 回退。 */
     }
   }
-  return scheme === 'https' ? 443 : 80;
+  return scheme === 'https' || scheme === 'wss' ? 443 : 80;
 }
 
 /** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
@@ -137,12 +143,18 @@ export function RequestInspector(): React.JSX.Element {
   const responseTrailers = detail?.responseTrailers ?? [];
   const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
+  const isWebSocket = view ? protocolSegment(view.protocol) === 'ws' : false;
+  const inspectorTabs = isWebSocket ? WEBSOCKET_INSPECTOR_TABS : INSPECTOR_TABS;
   const tlsPort = inferPort(detail?.url, scheme);
   const statusText = view
     ? view.statusCode !== undefined
       ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
       : statusLabel(view)
     : '';
+
+  useEffect(() => {
+    setTab(isWebSocket ? 'messages' : 'headers');
+  }, [isWebSocket, selectedId]);
 
   return (
     <div className={styles.inspector}>
@@ -161,12 +173,14 @@ export function RequestInspector(): React.JSX.Element {
           )}
         </span>
         {view && view.statusCode !== undefined ? (
-          <StatusBadge tone={statusTone(view.statusCode)}>{statusText}</StatusBadge>
+          <StatusBadge tone={statusTone(view.statusCode)}>
+            {isWebSocket && view.statusCode === 101 ? 'Connected' : statusText}
+          </StatusBadge>
         ) : null}
       </div>
 
       <div className={styles.tabs}>
-        {INSPECTOR_TABS.map(({ id, label }) => (
+        {inspectorTabs.map(({ id, label }) => (
           <span key={id} className={cx(tab === id && styles.active)} onClick={() => setTab(id)}>
             {label}
           </span>
@@ -272,6 +286,10 @@ export function RequestInspector(): React.JSX.Element {
               )}
             </Section>
           </div>
+        ) : null}
+
+        {tab === 'messages' && isWebSocket && view ? (
+          <WebSocketMessages exchangeId={view.id} startedAt={view.startedAt} />
         ) : null}
 
         {tab === 'timing' ? (

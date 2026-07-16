@@ -4,6 +4,7 @@ import {
   assertBoundedString,
   assertIdentifier,
   toRendererDiagnosticRecord,
+  toWebSocketFrameQuery,
 } from '../renderer-utils';
 
 describe('renderer utils', () => {
@@ -51,5 +52,34 @@ describe('renderer utils', () => {
       outcome: undefined,
       errorCode: undefined,
     });
+  });
+
+  it('validates websocket frame queries at the Renderer boundary', () => {
+    expect(
+      toWebSocketFrameQuery({
+        exchangeId: 'exchange-ws-1',
+        cursor: 'opaque-cursor',
+        limit: 100,
+        direction: 'server-to-client',
+      }),
+    ).toEqual({
+      exchangeId: 'exchange-ws-1',
+      cursor: 'opaque-cursor',
+      limit: 100,
+      direction: 'server-to-client',
+    });
+    expect(() =>
+      toWebSocketFrameQuery({ exchangeId: '../unsafe', limit: 100 }),
+    ).toThrow('websocket query.exchangeId is invalid');
+    expect(() =>
+      toWebSocketFrameQuery({ exchangeId: 'exchange-1', limit: 501 }),
+    ).toThrow('websocket query.limit is invalid');
+    expect(() =>
+      toWebSocketFrameQuery({
+        exchangeId: 'exchange-1',
+        limit: 100,
+        direction: 'sideways',
+      }),
+    ).toThrow('websocket query.direction is invalid');
   });
 });

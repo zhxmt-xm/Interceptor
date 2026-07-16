@@ -139,6 +139,37 @@ describe('CaptureStore', () => {
         timestamp: 1_030,
       },
     ]);
+
+    const firstPage = store.queryWebSocketFrames({
+      exchangeId: 'ws-1',
+      limit: 1,
+    });
+    expect(firstPage.items).toEqual([
+      expect.objectContaining({
+        seq: 1,
+        direction: 'client-to-server',
+        opcode: 1,
+        payloadSize: 5,
+        payload: expect.objectContaining({ bodyHash: 'b'.repeat(64) }),
+      }),
+    ]);
+    expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.nextCursor).toBeDefined();
+    const secondPage = store.queryWebSocketFrames({
+      exchangeId: 'ws-1',
+      cursor: firstPage.nextCursor,
+      limit: 2,
+    });
+    expect(secondPage.items.map((frame) => frame.seq)).toEqual([2]);
+    expect(secondPage.hasMore).toBe(false);
+    expect(secondPage.nextCursor).toBeDefined();
+
+    const received = store.queryWebSocketFrames({
+      exchangeId: 'ws-1',
+      limit: 10,
+      direction: 'server-to-client',
+    });
+    expect(received.items.map((frame) => frame.seq)).toEqual([2]);
   });
 
   it('returns full exchange detail with headers and body refs', () => {

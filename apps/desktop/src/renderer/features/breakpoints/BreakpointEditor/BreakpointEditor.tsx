@@ -30,15 +30,23 @@ export function BreakpointEditor(): React.JSX.Element {
   }
 
   const isResponse = draft.phase === 'response';
+  const isWebSocket = draft.phase === 'websocket';
+  const messageLabel = draft.opcode === 2 ? 'Binary' : 'Text';
 
   return (
     <div className={styles.editor}>
       <div className={styles.head}>
         <Chip tone={isResponse ? 'green' : 'blue'}>
-          {isResponse ? draft.statusCode : draft.method}
+          {isWebSocket ? messageLabel : isResponse ? draft.statusCode : draft.method}
         </Chip>
         <span className={styles.url}>{draft.url || breakpoint.url || ''}</span>
-        <span className={styles.phase}>{isResponse ? 'Response paused' : 'Request paused'}</span>
+        <span className={styles.phase}>
+          {isWebSocket
+            ? `${draft.direction === 'client-to-server' ? 'Sent' : 'Received'} message paused`
+            : isResponse
+              ? 'Response paused'
+              : 'Request paused'}
+        </span>
         <span className={styles.countdown}>
           <Clock size={13} strokeWidth={1.9} />
           {formatCountdown(breakpoint.deadline)}
@@ -46,7 +54,7 @@ export function BreakpointEditor(): React.JSX.Element {
       </div>
 
       <div className={styles.scroll}>
-        <div>
+        {!isWebSocket ? <div>
           <SectionHeader count="editable">Headers</SectionHeader>
           <div className={styles.headerHead}>
             <span>Name</span>
@@ -82,10 +90,12 @@ export function BreakpointEditor(): React.JSX.Element {
             <Plus size={12} strokeWidth={2} />
             Add header
           </button>
-        </div>
+        </div> : null}
 
         <div>
-          <SectionHeader count="json · editable">Body</SectionHeader>
+          <SectionHeader count={`${isWebSocket ? draft.bodyFormat ?? 'text' : 'body'} · editable`}>
+            {isWebSocket ? 'Payload' : 'Body'}
+          </SectionHeader>
           <textarea
             className={styles.bodyEdit}
             aria-label="Body"

@@ -7,4 +7,13 @@ export const INSPECTOR_TABS = [
   { id: 'tls', label: 'TLS' },
 ] as const;
 
-export type InspectorTab = (typeof INSPECTOR_TABS)[number]['id'];
+export const WEBSOCKET_INSPECTOR_TABS = [
+  { id: 'headers', label: 'Headers' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'timing', label: 'Timing' },
+  { id: 'tls', label: 'TLS' },
+] as const;
+
+export type InspectorTab =
+  | (typeof INSPECTOR_TABS)[number]['id']
+  | (typeof WEBSOCKET_INSPECTOR_TABS)[number]['id'];

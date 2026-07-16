@@ -11,6 +11,7 @@ const PREVIEW_CAP_BYTES = 256 * 1024;
 
 interface BodyViewProps {
   body: CaptureBodyRef;
+  compact?: boolean;
 }
 
 interface LoadedBody {
@@ -60,7 +61,7 @@ function prettyJson(text: string): string {
 }
 
 /** 按需加载并预览一段正文：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
-export function BodyView({ body }: BodyViewProps): React.JSX.Element {
+export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.Element {
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isDark = document.documentElement.dataset.theme === 'dark'
@@ -140,7 +141,7 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
 
   if (text !== null) {
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
         {decodeFailed ? (
           <div className={styles.notice}>
             Failed to decode {body.contentEncoding} body; showing raw bytes.
@@ -156,14 +157,18 @@ export function BodyView({ body }: BodyViewProps): React.JSX.Element {
           editable={false}
           theme={isDark ? 'dark' : 'light'}
           extensions={isJsonMime(body.mediaType) ? [json(), EditorView.lineWrapping] : [EditorView.lineWrapping]}
-          basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false }}
+          basicSetup={{
+            lineNumbers: !compact,
+            foldGutter: false,
+            highlightActiveLine: false,
+          }}
         />
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
       {decodeFailed ? (
         <div className={styles.notice}>
           Failed to decode {body.contentEncoding} body; showing raw bytes.

@@ -40,6 +40,7 @@ for (const theme of ['light', 'dark']) {
   for (const tab of ['request', 'response', 'timing', 'cookies', 'tls']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab } });
   }
+  shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'websocket', tab: 'messages' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {

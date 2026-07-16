@@ -2,7 +2,7 @@ import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button, SectionHeader } from '../../../components';
-import type { ConnectionProbe } from '../../../shared/desktop-api';
+import type { ConnectionProbe } from '../../../../shared/desktop-api';
 import styles from './TlsPanel.module.css';
 
 export interface TlsPanelProps {

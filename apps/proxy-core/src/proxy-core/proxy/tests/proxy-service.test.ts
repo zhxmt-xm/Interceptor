@@ -10,6 +10,8 @@ import type {
   ExchangeInput,
   WebSocketFrameInput,
 } from '../../storage/types';
+import { BreakpointQueue } from '../../rules/breakpoint-queue';
+import { RuleEngine } from '../../rules/rule-engine';
 import { CaptureEventQueue } from '../capture-event-queue';
 import { ProxyService, type CaptureSink } from '../proxy-service';
 
@@ -17,6 +19,11 @@ class RecordingSink implements CaptureSink {
   readonly sessions: CaptureSessionInput[] = [];
   readonly exchanges: ExchangeInput[] = [];
   readonly bodies: Buffer[] = [];
+  readonly exchangeUpdates: Array<{
+    id: string;
+    completedAt?: number;
+    state: ExchangeInput['state'];
+  }> = [];
   readonly webSocketFrames: Array<{
     exchangeId: string;
     frame: WebSocketFrameInput;
@@ -34,6 +41,15 @@ class RecordingSink implements CaptureSink {
     return Promise.resolve(
       exchanges.map((e, index) => ({ id: e.id, seq: index + 1 })),
     );
+  }
+
+  updateExchange(patch: {
+    id: string;
+    completedAt?: number;
+    state: ExchangeInput['state'];
+  }): Promise<void> {
+    this.exchangeUpdates.push(patch);
+    return Promise.resolve();
   }
 
   async writeBody(
@@ -180,6 +196,20 @@ function sendWebSocketFrame(
   socket.write(frame);
 }
 
+function waitForSocketData(socket: net.Socket, timeoutMs = 250): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      socket.off('data', onData);
+      resolve(null);
+    }, timeoutMs);
+    const onData = (data: Buffer): void => {
+      clearTimeout(timer);
+      resolve(data);
+    };
+    socket.once('data', onData);
+  });
+}
+
 describe('ProxyService (Mockttp explicit proxy)', () => {
   let sink: RecordingSink;
   let proxy: ProxyService;
@@ -290,8 +320,9 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(sink.exchanges[0]).toMatchObject({
         method: 'GET',
         scheme: 'ws',
-        protocol: 'http/1.1',
+        protocol: 'ws',
         statusCode: 101,
+        state: 'request-complete',
       });
       const clientFrames = sink.webSocketFrames
         .map(({ frame }) => frame)
@@ -317,6 +348,60 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(new Set(sink.webSocketFrames.map(({ exchangeId }) => exchangeId)).size).toBe(
         1,
       );
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('pauses websocket messages before forwarding and supports edit/drop', async () => {
+    await proxy.stop();
+    const breakpointQueue = new BreakpointQueue();
+    const ruleEngine = new RuleEngine(breakpointQueue);
+    proxy = new ProxyService(sink, new CaptureEventQueue(), ruleEngine);
+    proxy.setWebSocketBreakpointsEnabled(true);
+    address = await proxy.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      sendWebSocketFrame(socket, 1, Buffer.from('before'));
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      await expect(waitForSocketData(socket)).resolves.toBeNull();
+
+      const first = breakpointQueue.list()[0];
+      expect(first?.snapshot).toMatchObject({
+        direction: 'client-to-server',
+        opcode: 1,
+        bodyFormat: 'text',
+        body: 'before',
+      });
+      breakpointQueue.resolve(first!.id, 'continue', { body: 'after' });
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const echoed = breakpointQueue.list()[0];
+      expect(echoed?.snapshot).toMatchObject({
+        direction: 'server-to-client',
+        opcode: 1,
+        body: 'after',
+      });
+      breakpointQueue.resolve(echoed!.id, 'continue');
+      const editedEcho = await waitForSocketData(socket, 1_000);
+      expect(editedEcho?.includes(Buffer.from('after'))).toBe(true);
+
+      sendWebSocketFrame(socket, 1, Buffer.from('drop-me'));
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const second = breakpointQueue.list()[0];
+      breakpointQueue.resolve(second!.id, 'drop');
+      await expect(waitForSocketData(socket)).resolves.toBeNull();
     } finally {
       if (socket) {
         sendWebSocketFrame(socket, 8, new Uint8Array());

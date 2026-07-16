@@ -29,6 +29,10 @@ import type {
   HeaderKind,
   WebSocketFrameInput,
 } from '../storage/types';
+import {
+  WebSocketBridge,
+  type WebSocketBridgeMessage,
+} from './websocket-bridge';
 
 interface PendingWebSocketCapture {
   readonly request: CompletedRequest;
@@ -68,6 +72,11 @@ export interface CaptureSink {
   appendExchanges(
     exchanges: ExchangeInput[],
   ): Promise<{ id: string; seq: number }[]>;
+  updateExchange(patch: {
+    readonly id: string;
+    readonly completedAt?: number;
+    readonly state: ExchangeInput['state'];
+  }): Promise<void>;
   writeBody(
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
@@ -132,10 +141,12 @@ export class ProxyService {
   private readonly ruleHits = new Map<string, RuleHitRecord[]>();
 
   private server: Mockttp | null = null;
+  private webSocketBridge: WebSocketBridge | null = null;
   private address: ProxyAddress | null = null;
   private host = DEFAULT_PROXY_HOST;
   private sessionId: string | null = null;
   private capturedExchanges = 0;
+  private webSocketBreakpointsOn = false;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
   private diagnostics: DiagnosticsRecorder | null = null;
 
@@ -228,8 +239,19 @@ export class ProxyService {
       beforeRequest: (req) => this.applyRulesToRequest(req),
       beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
     });
-    await server.forAnyWebSocket().thenPassThrough();
+    const webSocketBridge = new WebSocketBridge({
+      intercept: (message) => this.interceptWebSocketMessage(message),
+      ignoreCertificateErrors: (hostname) =>
+        this.tlsConfig.insecureHosts.includes(hostname),
+      onError: (error) => {
+        this.diagnostics?.error('websocket.bridge-failed', {
+          errorCode: error.name,
+        });
+      },
+    });
+    await webSocketBridge.register(server);
     await server.start(port ?? undefined);
+    this.webSocketBridge = webSocketBridge;
     this.server = server;
     return { host: this.host, port: server.port };
   }
@@ -237,6 +259,8 @@ export class ProxyService {
   private async stopServer(): Promise<void> {
     const server = this.server;
     this.server = null;
+    this.webSocketBridge?.close();
+    this.webSocketBridge = null;
     this.pending.clear();
     for (const capture of this.pendingWebSockets.values()) {
       capture.resolveExchange(null);
@@ -269,6 +293,14 @@ export class ProxyService {
       sessionId: this.sessionId,
       capturedExchanges: this.capturedExchanges,
     };
+  }
+
+  get webSocketBreakpointsEnabled(): boolean {
+    return this.webSocketBreakpointsOn;
+  }
+
+  setWebSocketBreakpointsEnabled(enabled: boolean): void {
+    this.webSocketBreakpointsOn = enabled;
   }
 
   private registerCaptureListeners(server: Mockttp): void {
@@ -323,7 +355,11 @@ export class ProxyService {
       if (!capture) {
         return;
       }
-      void this.captureExchange(capture.request, response).then((exchangeId) => {
+      void this.captureExchange(
+        capture.request,
+        response,
+        'request-complete',
+      ).then((exchangeId) => {
         capture.resolveExchange(exchangeId);
       });
     });
@@ -338,9 +374,45 @@ export class ProxyService {
       if (!capture) {
         return;
       }
-      void capture.writeTail.finally(() => {
-        this.pendingWebSockets.delete(close.streamId);
-      });
+      void capture.writeTail
+        .then(async () => {
+          const exchangeId = await capture.exchangeReady;
+          if (!exchangeId) {
+            return;
+          }
+          const completedAt = Date.now();
+          await this.storage.updateExchange({
+            id: exchangeId,
+            completedAt,
+            state: 'completed',
+          });
+          this.events.enqueue('exchange-updated', {
+            id: exchangeId,
+            method: capture.request.method.toUpperCase(),
+            secure: capture.request.url.startsWith('wss:'),
+            host: parseTarget(capture.request.url).hostname,
+            path: parseTarget(capture.request.url).path,
+            protocol: 'ws',
+            statusCode: 101,
+            state: 'completed',
+            startedAt: capture.request.timingEvents?.startTime ?? completedAt,
+            durationMs: Math.max(
+              0,
+              completedAt -
+                (capture.request.timingEvents?.startTime ?? completedAt),
+            ),
+            requestBytes: 0,
+            responseBytes: 0,
+          });
+        })
+        .catch((error: unknown) => {
+          this.diagnostics?.error('websocket.close-persist-failed', {
+            errorCode: error instanceof Error ? error.name : 'unknown',
+          });
+        })
+        .finally(() => {
+          this.pendingWebSockets.delete(close.streamId);
+        });
       this.diagnostics?.info('websocket.closed', {
         attributes: {
           code: close.closeCode ?? 0,
@@ -406,7 +478,10 @@ export class ProxyService {
       port: target.port,
       path: target.path,
       url: request.url,
-      protocol: httpVersionToProtocol(request.httpVersion),
+      protocol:
+        target.scheme === 'ws' || target.scheme === 'wss'
+          ? 'ws'
+          : httpVersionToProtocol(request.httpVersion),
       statusCode: response?.statusCode,
       statusText: response?.statusMessage,
       requestMime: readHeader(request.headers, 'content-type'),
@@ -415,7 +490,7 @@ export class ProxyService {
         : undefined,
       startedAt,
       responseStartedAt: response ? Date.now() : undefined,
-      completedAt: Date.now(),
+      completedAt: state === 'request-complete' ? undefined : Date.now(),
       requestBytes: requestBody?.encodedSize ?? readContentLength(request.headers),
       responseBytes: response
         ? responseBody?.encodedSize ?? readContentLength(response.headers)
@@ -460,10 +535,10 @@ export class ProxyService {
         },
       });
     }
-    this.events.enqueue(state === 'completed' ? 'exchange-added' : 'exchange-updated', {
+    this.events.enqueue('exchange-added', {
       id: exchange.id,
       method: exchange.method,
-      secure: exchange.scheme === 'https',
+      secure: exchange.scheme === 'https' || exchange.scheme === 'wss',
       host: exchange.host,
       path: exchange.path,
       protocol: exchange.protocol,
@@ -523,6 +598,49 @@ export class ProxyService {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
       });
+  }
+
+  private async interceptWebSocketMessage(message: WebSocketBridgeMessage) {
+    if (!this.webSocketBreakpointsOn || !this.ruleEngine) {
+      return {
+        action: 'forward' as const,
+        content: message.content,
+        isBinary: message.isBinary,
+      };
+    }
+    const bodyFormat = message.isBinary ? 'hex' : 'text';
+    const body = message.isBinary
+      ? toHexString(message.content)
+      : message.content.toString('utf8');
+    const outcome = await this.ruleEngine.pauseWebSocketMessage({
+      ruleName: 'WebSocket message',
+      url: message.url,
+      direction: message.direction,
+      opcode: message.isBinary ? 2 : 1,
+      bodyFormat,
+      headers: [],
+      body,
+    });
+    if (
+      outcome.state === 'dropped' ||
+      (outcome.state === 'timed_out' && outcome.timeoutPolicy === 'drop')
+    ) {
+      return { action: 'drop' as const };
+    }
+    if (outcome.state === 'edited' && outcome.edit?.body !== undefined) {
+      return {
+        action: 'forward' as const,
+        content: message.isBinary
+          ? parseHexString(outcome.edit.body)
+          : Buffer.from(outcome.edit.body, 'utf8'),
+        isBinary: message.isBinary,
+      };
+    }
+    return {
+      action: 'forward' as const,
+      content: message.content,
+      isBinary: message.isBinary,
+    };
   }
 
   /**
@@ -793,6 +911,18 @@ function toWallClockTimestamp(
   eventTimestamp: number,
 ): number {
   return Math.round(startTime + Math.max(0, eventTimestamp - startTimestamp));
+}
+
+function toHexString(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
+}
+
+function parseHexString(value: string): Buffer {
+  const compact = value.replace(/\s+/g, '');
+  if (compact.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(compact)) {
+    throw new Error('Edited binary WebSocket payload must be hexadecimal bytes.');
+  }
+  return Buffer.from(compact, 'hex');
 }
 
 function cryptoRandomId(): string {

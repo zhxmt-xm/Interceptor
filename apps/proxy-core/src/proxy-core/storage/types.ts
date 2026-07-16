@@ -6,7 +6,10 @@
  * 使分页查询与实时事件共用同一行结构，避免重复定义。
  */
 
-import type { CaptureExchangeSummary } from '@interceptor/core-protocol';
+import type {
+  CaptureExchangeSummary,
+  WebSocketFrameSummary,
+} from '@interceptor/core-protocol';
 
 export type ExchangeState =
   | 'pending'
@@ -92,6 +95,19 @@ export interface WebSocketFrameInput {
   readonly payloadSize: number;
   readonly timestamp: number;
   readonly payload?: BodyRefInput;
+}
+
+export interface WebSocketFrameQuery {
+  readonly exchangeId: string;
+  readonly cursor?: string;
+  readonly limit: number;
+  readonly direction?: WebSocketFrameDirection;
+}
+
+export interface WebSocketFramePage {
+  readonly items: WebSocketFrameSummary[];
+  readonly nextCursor?: string;
+  readonly hasMore: boolean;
 }
 
 export interface CaptureSessionInput {

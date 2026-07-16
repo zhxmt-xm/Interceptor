@@ -256,6 +256,22 @@ describe('CoreApplication', () => {
           responseHeaders: [],
         });
       },
+      queryWebSocketFrames: () => {
+        calls.push('websocket');
+        return Promise.resolve({
+          items: [
+            {
+              seq: 1,
+              direction: 'client-to-server' as const,
+              opcode: 1 as const,
+              timestamp: 1_000,
+              payloadSize: 5,
+            },
+          ],
+          nextCursor: 'ws-cursor',
+          hasMore: false,
+        });
+      },
       readBodyRange: () => {
         calls.push('body');
         return Promise.resolve(Buffer.from('hello'));
@@ -296,6 +312,23 @@ describe('CoreApplication', () => {
 
     await expect(
       application.executeCommand(
+        {
+          type: 'websocket.frames',
+          payload: { exchangeId: 'e1', limit: 100 },
+        },
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      type: 'websocket.frames',
+      payload: {
+        items: [{ seq: 1, opcode: 1 }],
+        hasMore: false,
+        breakpointsEnabled: false,
+      },
+    });
+
+    await expect(
+      application.executeCommand(
         { type: 'body.read-range', payload: { bodyId: 'a'.repeat(64), offset: 0, length: 1024 } },
         signal,
       ),
@@ -311,7 +344,7 @@ describe('CoreApplication', () => {
       ),
     ).resolves.toMatchObject({ type: 'storage.status' });
 
-    expect(calls).toEqual(['query', 'detail', 'body', 'cleanup']);
+    expect(calls).toEqual(['query', 'detail', 'websocket', 'body', 'cleanup']);
   });
 
   it('decodes a gzip body on demand when body.read-range requests decode', async () => {

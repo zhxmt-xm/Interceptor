@@ -94,20 +94,22 @@
               <div class="ib sm"><svg><use href="#i-trash"/></svg></div>
             </div>
             <div class="lhead"><span>Method</span><span>Host · Path</span><span>Status</span><span>Proto</span><span>Type</span><span>Size</span><span>Time</span></div>
-            <div class="row sel"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">1.2 KB</span><span class="time">142 ms</span></div>
+            <div class="row sel" data-capture-row="http"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">1.2 KB</span><span class="time">142 ms</span></div>
             <div class="row"><span class="m post">POST</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span><span class="p">/common/oauth2/v2.0/token</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
             <div class="row"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>cdn.jsdelivr.net</span><span class="p">/npm/react@18/umd/react.min.js</span></div><span class="st info2"><span class="d"></span>304</span><span class="proto">h2</span><span class="ty">js</span><span class="size">0 B</span><span class="time">18 ms</span></div>
             <div class="row"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>fonts.gstatic.com</span><span class="p">/s/inter/v13/UcC.woff2</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">font</span><span class="size">42 KB</span><span class="time">33 ms</span></div>
             <div class="row"><span class="m post">POST</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.stripe.com</span><span class="p">/v1/charges</span></div><span class="st warn"><span class="d"></span>401</span><span class="proto">h1</span><span class="ty">json</span><span class="size">220 B</span><span class="time">89 ms</span></div>
             <div class="row"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>graph.microsoft.com</span><span class="p">/v1.0/me/messages</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">18 KB</span><span class="time">320 ms</span></div>
-            <div class="row"><span class="m get">GET</span><div class="hc"><span class="h">realtime.example.com</span><span class="p">/socket</span></div><span class="st info2"><span class="d"></span>101</span><span class="proto">ws</span><span class="ty">—</span><span class="size">—</span><span class="time">open</span></div>
+            <div class="row" data-capture-row="websocket"><span class="m get">GET</span><div class="hc"><span class="h">realtime.example.com</span><span class="p">/socket</span></div><span class="st info2"><span class="d"></span>101</span><span class="proto">ws</span><span class="ty">—</span><span class="size">—</span><span class="time">open</span></div>
             <div class="row"><span class="m del">DEL</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/repos/acme/app/hooks/1</span></div><span class="st ok"><span class="d"></span>204</span><span class="proto">h2</span><span class="ty">—</span><span class="size">0 B</span><span class="time">77 ms</span></div>
             <div class="row"><span class="m get">GET</span><div class="hc"><span class="h">api.internal.local</span><span class="p">/v2/report</span></div><span class="st err"><span class="d"></span>500</span><span class="proto">h2</span><span class="ty">json</span><span class="size">512 B</span><span class="time">1.2 s</span></div>
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="insp">
-            <div class="itop"><span class="chip">GET</span><span class="iurl"><span class="dom">api.github.com</span><span class="pth">/user</span></span><span class="sbadge"><span class="d"></span>200 OK</span></div>
-            <div class="tabs" data-tabs="insp"><span class="on" data-tab="headers">Headers</span><span data-tab="request">Request</span><span data-tab="response">Response</span><span data-tab="timing">Timing</span><span data-tab="cookies">Cookies</span><span data-tab="tls">TLS</span></div>
+            <div class="itop http-only"><span class="chip">GET</span><span class="iurl"><span class="dom">api.github.com</span><span class="pth">/user</span></span><span class="sbadge"><span class="d"></span>200 OK</span></div>
+            <div class="itop ws-only"><span class="chip">GET</span><span class="iurl"><span class="dom">realtime.example.com</span><span class="pth">/socket</span></span><span class="sbadge ws"><span class="d"></span>Connected</span></div>
+            <div class="tabs http-only" data-tabs="insp"><span class="on" data-tab="headers">Headers</span><span data-tab="request">Request</span><span data-tab="response">Response</span><span data-tab="timing">Timing</span><span data-tab="cookies">Cookies</span><span data-tab="tls">TLS</span></div>
+            <div class="tabs ws-only" data-tabs="insp"><span data-tab="headers">Headers</span><span class="on" data-tab="messages">Messages</span><span data-tab="timing">Timing</span><span data-tab="tls">TLS</span></div>
             <div class="scroll">
               <div class="tp on" data-tab="headers">
                 <div class="sec"><div class="sh">General</div><div class="kv"><span class="k">Request URL</span><span class="v">https://api.github.com/user</span><span class="k">Request Method</span><span class="v a">GET</span><span class="k">Status Code</span><span class="v g">200 OK</span><span class="k">Remote Address</span><span class="v">140.82.112.3:443</span><span class="k">Protocol</span><span class="v">HTTP/2 · TLS 1.3</span><span class="k">Referrer Policy</span><span class="v">strict-origin-when-cross-origin</span></div></div>
@@ -150,6 +152,25 @@
                     <div class="cert"><svg><use href="#i-shield"/></svg><span class="cc"><b>DigiCert Global Root CA</b><span>root · trusted in system store</span></span><span class="cchain">root</span></div>
                   </div>
                 </div>
+              </div>
+              <div class="tp wsmsg" data-tab="messages">
+                <div class="wsbar">
+                  <div class="seg"><span class="on">All</span><span>Sent</span><span>Received</span></div>
+                  <span class="sp"></span>
+                  <span class="cnt">Pause on message</span>
+                  <div class="sw on"></div>
+                </div>
+                <div class="wsrows">
+                  <div class="wsrow"><span class="wsdir out"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"type":"subscribe","channel":"builds"}</span><span class="wssize">39 B</span><span class="wstime">+0 ms</span></div>
+                  <div class="wsrow"><span class="wsdir in"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"type":"subscribed","channel":"builds"}</span><span class="wssize">40 B</span><span class="wstime">+12 ms</span></div>
+                  <div class="wsrow sel"><span class="wsdir in"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"buildId":8431,"state":"running","branch":"main"}</span><span class="wssize">54 B</span><span class="wstime">+1.4 s</span></div>
+                  <div class="wspayload">
+                    <div class="wsphead"><span>Received text</span><span class="cnt">54 B · message 3</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div>
+                    <div class="bodybox">{<br />&nbsp;&nbsp;<span class="jk">"buildId"</span><span class="jp">:</span> <span class="jn">8431</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"state"</span><span class="jp">:</span> <span class="js">"running"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"branch"</span><span class="jp">:</span> <span class="js">"main"</span><br />}</div>
+                  </div>
+                  <div class="wsrow"><span class="wsdir out"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Binary</span><span class="wspreview muted">89 50 4e 47 0d 0a 1a 0a …</span><span class="wssize">2.8 KB</span><span class="wstime">+2.1 s</span></div>
+                </div>
+                <div class="wsnote"><svg><use href="#i-pause"/></svg>Next matching message pauses in Breakpoints before forwarding.</div>
               </div>
             </div>
           </div>

@@ -32,6 +32,7 @@ import {
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
   toRendererStorageUsage,
+  toWebSocketFrameQuery,
 } from './utils/renderer-utils';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -320,6 +321,34 @@ class DesktopApplication {
           payload: { exchangeId },
         });
         return result.payload.detail;
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.websocketFrames,
+      async (event, request: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const query = toWebSocketFrameQuery(request);
+        const result = await this.coreRuntime.request({
+          type: 'websocket.frames',
+          payload: query,
+        });
+        return result.payload;
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.websocketBreakpointConfigure,
+      async (event, enabled: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof enabled !== 'boolean') {
+          throw new Error('enabled is invalid');
+        }
+        const result = await this.coreRuntime.request({
+          type: 'websocket.breakpoint.configure',
+          payload: { enabled },
+        });
+        return result.payload.enabled;
       },
     );
 

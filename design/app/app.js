@@ -100,7 +100,14 @@ function setState(s = {}) {
     app.setAttribute('data-view', s.view);
     renderSidebar(s.view);
     app.classList.remove('showpop', 'thopen', 'lgopen');
+    if (!s.scene) app.dataset.scene = 'http';
     if (!s.tab) setInspTab('headers');
+  }
+  if (s.scene) {
+    app.dataset.scene = s.scene;
+    app.querySelectorAll('[data-capture-row]').forEach((row) =>
+      row.classList.toggle('sel', row.dataset.captureRow === s.scene),
+    );
   }
   if (s.pop) app.classList.add('showpop');
   if ('pop2' in s) {

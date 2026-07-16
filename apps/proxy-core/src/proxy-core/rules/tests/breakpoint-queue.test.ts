@@ -80,6 +80,28 @@ describe('BreakpointQueue', () => {
     ]);
   });
 
+  it('preserves websocket message metadata and editable body snapshots', () => {
+    const queue = new BreakpointQueue();
+    queue.suspend('websocket', 30_000, 'continue', {
+      ruleName: 'WebSocket message',
+      url: 'ws://example.test/socket',
+      direction: 'client-to-server',
+      opcode: 1,
+      bodyFormat: 'text',
+      headers: [],
+      body: 'hello',
+    });
+    expect(queue.list()[0]).toMatchObject({
+      phase: 'websocket',
+      snapshot: {
+        direction: 'client-to-server',
+        opcode: 1,
+        bodyFormat: 'text',
+        body: 'hello',
+      },
+    });
+  });
+
   it('does not fire the timeout after a manual resolve', async () => {
     const queue = new BreakpointQueue();
     const { id, outcome } = queue.suspend('request', 1_000, 'drop');

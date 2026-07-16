@@ -265,6 +265,33 @@ export class CoreApplication implements CoreRpcHost {
             throw mapStorageError(error);
           }
         });
+      case 'websocket.frames':
+        return this.withStorage(async (storage) => {
+          try {
+            const page = await this.diagnostics.action(
+              'storage.query-websocket-frames',
+              () => storage.queryWebSocketFrames(command.payload),
+            );
+            return {
+              type: 'websocket.frames',
+              payload: {
+                ...page,
+                breakpointsEnabled:
+                  this.proxyService?.webSocketBreakpointsEnabled ?? false,
+              },
+            };
+          } catch (error) {
+            throw mapStorageError(error);
+          }
+        });
+      case 'websocket.breakpoint.configure':
+        return this.withProxy(async (proxy) => {
+          proxy.setWebSocketBreakpointsEnabled(command.payload.enabled);
+          return {
+            type: 'websocket.breakpoint.config',
+            payload: { enabled: proxy.webSocketBreakpointsEnabled },
+          };
+        });
       case 'body.read-range':
         return this.withStorage(async (storage) => {
           try {
@@ -451,6 +478,9 @@ export class CoreApplication implements CoreRpcHost {
               method: entry.snapshot.method,
               url: entry.snapshot.url,
               statusCode: entry.snapshot.statusCode,
+              direction: entry.snapshot.direction,
+              opcode: entry.snapshot.opcode,
+              bodyFormat: entry.snapshot.bodyFormat,
               headers: entry.snapshot.headers,
               body: entry.snapshot.body,
             }))

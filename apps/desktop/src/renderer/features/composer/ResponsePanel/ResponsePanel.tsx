@@ -1,7 +1,7 @@
 import { AlertTriangle, Clock } from 'lucide-react';
 
 import { Chip, StatusBadge, Tabs } from '../../../components';
-import type { ComposerResponse } from '../../../shared/desktop-api';
+import type { ComposerResponse } from '../../../../shared/desktop-api';
 import { useComposerStore } from '../composerStore';
 import styles from './ResponsePanel.module.css';
 

@@ -49,6 +49,24 @@ export interface SessionsDetailCommand {
   };
 }
 
+/** 按 Exchange 查询 WebSocket 应用消息；cursor 为不透明的 seq keyset 游标。 */
+export interface WebSocketFramesCommand {
+  type: 'websocket.frames';
+  payload: {
+    exchangeId: string;
+    cursor?: string;
+    limit: number;
+    direction?: WebSocketFrameDirection;
+  };
+}
+
+export interface WebSocketBreakpointConfigureCommand {
+  type: 'websocket.breakpoint.configure';
+  payload: {
+    enabled: boolean;
+  };
+}
+
 export interface RulesValidateCommand {
   type: 'rules.validate';
   payload: {
@@ -201,6 +219,8 @@ export type CoreCommand =
   | EchoCommand
   | SessionsQueryCommand
   | SessionsDetailCommand
+  | WebSocketFramesCommand
+  | WebSocketBreakpointConfigureCommand
   | BodyReadRangeCommand
   | RulesValidateCommand
   | RulesReplaceCommand
@@ -241,6 +261,35 @@ export interface SessionsDetailResult {
   type: 'sessions.detail';
   payload: {
     detail: CaptureExchangeDetail | null;
+  };
+}
+
+export type WebSocketFrameDirection = 'client-to-server' | 'server-to-client';
+
+/** 一条有序 WebSocket 应用消息摘要；payload 字节仍经 body.read-range 按需读取。 */
+export interface WebSocketFrameSummary {
+  seq: number;
+  direction: WebSocketFrameDirection;
+  opcode: 1 | 2;
+  timestamp: number;
+  payloadSize: number;
+  payload?: CaptureBodyRef;
+}
+
+export interface WebSocketFramesResult {
+  type: 'websocket.frames';
+  payload: {
+    items: WebSocketFrameSummary[];
+    nextCursor?: string;
+    hasMore: boolean;
+    breakpointsEnabled: boolean;
+  };
+}
+
+export interface WebSocketBreakpointConfigResult {
+  type: 'websocket.breakpoint.config';
+  payload: {
+    enabled: boolean;
   };
 }
 
@@ -326,7 +375,7 @@ export interface BreakpointResolutionResult {
 /** 一个等待中的断点：标识/阶段/时序 + 请求或响应快照（flatten）。 */
 export interface PendingBreakpoint {
   id: string;
-  phase: 'request' | 'response';
+  phase: 'request' | 'response' | 'websocket';
   createdAt: number;
   /** 超时时间戳；0 表示无超时。 */
   deadline: number;
@@ -334,6 +383,9 @@ export interface PendingBreakpoint {
   method?: string;
   url?: string;
   statusCode?: number;
+  direction?: WebSocketFrameDirection;
+  opcode?: 1 | 2;
+  bodyFormat?: 'text' | 'hex';
   headers: RuleHeaderPair[];
   body?: string;
 }
@@ -455,6 +507,8 @@ export type CoreResult =
   | EchoResult
   | SessionsPageResult
   | SessionsDetailResult
+  | WebSocketFramesResult
+  | WebSocketBreakpointConfigResult
   | BodyRangeResult
   | RuleValidationResult
   | RuleRevisionResult
@@ -475,7 +529,10 @@ export type CoreResultForCommand<T extends CoreCommand> =
   T extends EchoCommand ? EchoResult
     : T extends SessionsQueryCommand ? SessionsPageResult
       : T extends SessionsDetailCommand ? SessionsDetailResult
-        : T extends BodyReadRangeCommand ? BodyRangeResult
+        : T extends WebSocketFramesCommand ? WebSocketFramesResult
+          : T extends WebSocketBreakpointConfigureCommand
+            ? WebSocketBreakpointConfigResult
+            : T extends BodyReadRangeCommand ? BodyRangeResult
           : T extends RulesValidateCommand ? RuleValidationResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
               : T extends BreakpointResolveCommand

@@ -79,7 +79,7 @@ export type ResponseEvaluation =
 
 export interface BreakpointHitInfo {
   readonly id: string;
-  readonly phase: 'request' | 'response';
+  readonly phase: 'request' | 'response' | 'websocket';
 }
 
 export interface RuleEngineOptions {
@@ -138,6 +138,24 @@ export class RuleEngine {
 
   setBreakpointsEnabled(enabled: boolean): void {
     this.breakpointsOn = enabled;
+  }
+
+  /** 显式 WebSocket 消息断点；由 Proxy bridge 在转发消息前调用。 */
+  async pauseWebSocketMessage(
+    snapshot: BreakpointSnapshot,
+    timeoutMs = 30_000,
+  ): Promise<BreakpointOutcome> {
+    if (!this.breakpointsOn) {
+      return { state: 'continued' };
+    }
+    const { id, outcome } = this.breakpoints.suspend(
+      'websocket',
+      timeoutMs,
+      'continue',
+      snapshot,
+    );
+    this.options.onBreakpointHit?.({ id, phase: 'websocket' });
+    return outcome;
   }
 
   /**

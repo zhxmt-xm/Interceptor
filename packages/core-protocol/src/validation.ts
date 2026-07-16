@@ -35,6 +35,8 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'echo',
   'sessions.query',
   'sessions.detail',
+  'websocket.frames',
+  'websocket.breakpoint.configure',
   'body.read-range',
   'rules.validate',
   'rules.replace',
@@ -256,6 +258,12 @@ function validateCommand(value: unknown): string | null {
     case 'sessions.detail':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateSessionsDetailRequest(value.payload);
+    case 'websocket.frames':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateWebSocketFramesRequest(value.payload);
+    case 'websocket.breakpoint.configure':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateWebSocketBreakpointConfigure(value.payload);
     case 'tls.configure':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateTlsConfigure(value.payload);
@@ -330,6 +338,12 @@ function validateResult(value: unknown): string | null {
     case 'sessions.detail':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateSessionsDetailResult(value.payload);
+    case 'websocket.frames':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateWebSocketFramesResult(value.payload);
+    case 'websocket.breakpoint.config':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateWebSocketBreakpointConfig(value.payload);
     case 'body.range':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBodyRangeResult(value.payload);
@@ -1067,9 +1081,23 @@ function validatePendingBreakpoint(value: unknown, name: string): string | null 
   return validateExactObject(
     value,
     name,
-    ['id', 'phase', 'createdAt', 'deadline', 'ruleName', 'method', 'url', 'statusCode', 'headers', 'body'],
+    [
+      'id',
+      'phase',
+      'createdAt',
+      'deadline',
+      'ruleName',
+      'method',
+      'url',
+      'statusCode',
+      'direction',
+      'opcode',
+      'bodyFormat',
+      'headers',
+      'body',
+    ],
     (bp) => validateBoundedString(bp.id, `${name}.id`, 128) ??
-      validateEnum(bp.phase, `${name}.phase`, ['request', 'response']) ??
+      validateEnum(bp.phase, `${name}.phase`, ['request', 'response', 'websocket']) ??
       validateNonNegativeSafeInteger(bp.createdAt, `${name}.createdAt`) ??
       validateNonNegativeSafeInteger(bp.deadline, `${name}.deadline`) ??
       validateBoundedString(bp.ruleName, `${name}.ruleName`, 256) ??
@@ -1078,6 +1106,14 @@ function validatePendingBreakpoint(value: unknown, name: string): string | null 
       (bp.statusCode === undefined
         ? null
         : validateIntegerRange(bp.statusCode, `${name}.statusCode`, 0, 599)) ??
+      validateOptionalEnum(bp.direction, `${name}.direction`, [
+        'client-to-server',
+        'server-to-client',
+      ]) ??
+      (bp.opcode === undefined
+        ? null
+        : validateIntegerRange(bp.opcode, `${name}.opcode`, 1, 2)) ??
+      validateOptionalEnum(bp.bodyFormat, `${name}.bodyFormat`, ['text', 'hex']) ??
       (!Array.isArray(bp.headers)
         ? `${name}.headers must be an array`
         : validateOptionalRuleHeaderPairs(bp.headers, `${name}.headers`)) ??
@@ -1239,6 +1275,89 @@ function validateSummaryArray(value: unknown): string | null {
 function validateSessionsDetailRequest(value: unknown): string | null {
   return validateExactObject(value, 'command.payload', ['exchangeId'], (payload) =>
     validateId(payload.exchangeId, 'command.payload.exchangeId'));
+}
+
+function validateWebSocketFramesRequest(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['exchangeId', 'cursor', 'limit', 'direction'],
+    (payload) => validateId(payload.exchangeId, 'command.payload.exchangeId') ??
+      validateOptionalBoundedString(
+        payload.cursor,
+        'command.payload.cursor',
+        MAX_CURSOR_LENGTH,
+      ) ??
+      validateIntegerRange(
+        payload.limit,
+        'command.payload.limit',
+        1,
+        MAX_QUERY_PAGE_SIZE,
+      ) ??
+      validateOptionalEnum(payload.direction, 'command.payload.direction', [
+        'client-to-server',
+        'server-to-client',
+      ]),
+  );
+}
+
+function validateWebSocketBreakpointConfigure(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', ['enabled'], (payload) =>
+    validateBoolean(payload.enabled, 'command.payload.enabled'));
+}
+
+function validateWebSocketBreakpointConfig(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['enabled'], (payload) =>
+    validateBoolean(payload.enabled, 'result.payload.enabled'));
+}
+
+function validateWebSocketFramesResult(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    ['items', 'nextCursor', 'hasMore', 'breakpointsEnabled'],
+    (payload) => validateWebSocketFrameArray(payload.items) ??
+      validateOptionalBoundedString(
+        payload.nextCursor,
+        'result.payload.nextCursor',
+        MAX_CURSOR_LENGTH,
+      ) ?? validateBoolean(payload.hasMore, 'result.payload.hasMore') ??
+      validateBoolean(
+        payload.breakpointsEnabled,
+        'result.payload.breakpointsEnabled',
+      ),
+  );
+}
+
+function validateWebSocketFrameArray(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > MAX_QUERY_PAGE_SIZE) {
+    return `result.payload.items must contain at most ${MAX_QUERY_PAGE_SIZE} items`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const name = `result.payload.items[${index}]`;
+    const error = validateExactObject(
+      value[index],
+      name,
+      ['seq', 'direction', 'opcode', 'timestamp', 'payloadSize', 'payload'],
+      (frame) => validateNonNegativeSafeInteger(frame.seq, `${name}.seq`) ??
+        validateEnum(frame.direction, `${name}.direction`, [
+          'client-to-server',
+          'server-to-client',
+        ]) ??
+        validateWebSocketOpcode(frame.opcode, `${name}.opcode`) ??
+        validateNonNegativeSafeInteger(frame.timestamp, `${name}.timestamp`) ??
+        validateNonNegativeSafeInteger(frame.payloadSize, `${name}.payloadSize`) ??
+        validateOptionalBodyRef(frame.payload, `${name}.payload`),
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
+
+function validateWebSocketOpcode(value: unknown, name: string): string | null {
+  return value === 1 || value === 2 ? null : `${name} must be 1 or 2`;
 }
 
 function validateTlsConfigure(value: unknown): string | null {

@@ -6,16 +6,18 @@
   "type": "commonjs",
   "main": "dist/proxy-core/entry.cjs",
   "scripts": {
-    "build": "npm run clean && esbuild src/proxy-core/entry.cts src/proxy-core/storage/worker/worker-entry.cts src/proxy-core/diagnostics/worker/worker-entry.cts --bundle --platform=node --format=cjs --target=node24 --outdir=dist --outbase=src --out-extension:.js=.cjs --external:mockttp --sourcemap && node ../../scripts/ship-core-deps.mjs",
+    "build": "npm run clean && esbuild src/proxy-core/entry.cts src/proxy-core/storage/worker/worker-entry.cts src/proxy-core/diagnostics/worker/worker-entry.cts --bundle --platform=node --format=cjs --target=node24 --outdir=dist --outbase=src --out-extension:.js=.cjs --external:mockttp --external:ws --sourcemap && node ../../scripts/ship-core-deps.mjs",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@interceptor/core-protocol": "0.0.0",
-    "mockttp": "4.5.0"
+    "mockttp": "4.5.0",
+    "ws": "8.21.0"
   },
   "devDependencies": {
+    "@types/ws": "8.18.1",
     "@vercel/nft": "1.10.2",
     "esbuild": "0.27.0",
     "vitest": "4.1.10"

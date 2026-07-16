@@ -1,8 +1,4 @@
-// Parity config — declares which views to verify and which elements to compare.
-// The harness (parity.mjs) drives the design SPA via window.__setState and the
-// renderer via window.__setView/__setTheme, then compares them element-by-element.
-// Add a new entry here when a feature is ported; no harness changes needed.
-
+// Each case declares design state, real Renderer navigation/actions, and comparison targets.
 export const viewport = { width: 1280, height: 800 };
 export const designIndex = 'design/app/index.html';
 export const designShotsDir = 'design/app/shots';
@@ -11,11 +7,9 @@ export const views = [
   {
     id: 'capture',
     theme: 'light',
-    // state pushed to the design SPA (design/app/app.js window.__setState)
     designState: { view: 'capture', theme: 'light', sidebar: 'expanded' },
-    // design baseline PNG under designShotsDir (optional; enables pixel diff)
     designShot: 'light/capture/framed.png',
-    // elements compared by unique visible text (exact match) in both trees
+    rendererActions: [{ type: 'clickText', text: 'api.github.com', index: 0 }],
     targets: [
       'Capture',
       'Rules & Map',
@@ -24,16 +18,45 @@ export const views = [
       'Diagnostics',
       'Local traffic',
       'Settings',
-      'Account',
+      'Theme',
       'api.github.com',
       '/user',
       'Recording',
     ],
   },
-  // Add rules / composer / settings / breakpoints / diagnostics as they are ported.
+  {
+    id: 'capture-websocket',
+    theme: 'light',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      scene: 'websocket',
+      tab: 'messages',
+    },
+    designShot: 'light/capture/inspector-websocket.png',
+    rendererActions: [
+      { type: 'clickText', text: 'realtime.example.com' },
+      {
+        type: 'clickText',
+        text: '{"buildId":8431,"state":"running","branch":"main"}',
+      },
+    ],
+    targets: [
+      'Capture',
+      'realtime.example.com',
+      '/socket',
+      'Connected',
+      'Messages',
+      'Pause on message',
+      'Received text',
+      'Binary',
+    ],
+  },
   {
     id: 'rules',
     theme: 'light',
+    rendererNav: 'Rules & Map',
     designState: { view: 'rules', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/rules/framed.png',
     targets: [
@@ -53,8 +76,26 @@ export const views = [
   {
     id: 'composer',
     theme: 'light',
+    rendererNav: 'Composer',
     designState: { view: 'composer', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/composer/framed.png',
+    rendererActions: [
+      { type: 'selectLabel', label: 'Method', value: 'POST' },
+      {
+        type: 'fillLabel',
+        label: 'Request URL',
+        value: 'https://api.github.com/user/repos',
+      },
+      { type: 'clickText', text: 'Add header…' },
+      { type: 'clickText', text: 'Add header…' },
+      { type: 'fillLabel', label: 'Header name', index: 0, value: 'authorization' },
+      { type: 'fillLabel', label: 'Header value', index: 0, value: 'Bearer github_pat_11A…' },
+      { type: 'fillLabel', label: 'Header name', index: 1, value: 'content-type' },
+      { type: 'fillLabel', label: 'Header value', index: 1, value: 'application/json' },
+      { type: 'fillLabel', label: 'Header name', index: 2, value: 'accept' },
+      { type: 'fillLabel', label: 'Header value', index: 2, value: 'application/vnd.github+json' },
+      { type: 'clickRole', role: 'button', name: 'Send' },
+    ],
     targets: [
       'History',
       'New',
@@ -71,6 +112,7 @@ export const views = [
   {
     id: 'settings',
     theme: 'light',
+    rendererNav: 'Settings',
     designState: { view: 'settings', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/settings/framed.png',
     targets: [
@@ -89,6 +131,7 @@ export const views = [
   {
     id: 'breakpoints',
     theme: 'light',
+    rendererNav: 'Breakpoints',
     designState: { view: 'breakpoints', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/breakpoints/framed.png',
     targets: [
@@ -105,6 +148,7 @@ export const views = [
   {
     id: 'diagnostics',
     theme: 'light',
+    rendererNav: 'Diagnostics',
     designState: { view: 'diagnostics', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/diagnostics/framed.png',
     targets: [

@@ -1,6 +1,6 @@
 ---
 name: ui-parity-check
-description: "Verify and debug that an implemented React UI matches its design mockup 1:1 (spacing, size, alignment, color, fonts). USE WHEN: after porting or changing a feature UI to check fidelity; when a screen looks off vs the design; when the user reports mismatched spacing/alignment/size/fonts; when adding a new screen to the parity suite. Drives the design SPA (window.__setState) and the renderer (window.__setView/__setTheme) into the same state, then reports per-element geometry deltas (auto-subtracting the design card's 1px border) plus a pixel diff. DO NOT use for creating mockups (that's ui-design-mockup) or for runtime/logic debugging."
+description: "Verify and debug that an implemented React UI matches its design mockup 1:1 (spacing, size, alignment, color, fonts). USE WHEN: after porting or changing a feature UI to check fidelity; when a screen looks off vs the design; when the user reports mismatched spacing/alignment/size/fonts; when adding a new screen to the parity suite. Drives the design SPA through window.__setState and the renderer through a fake Preload API plus normal UI interactions, then reports per-element geometry deltas (auto-subtracting the design card's 1px border) plus a pixel diff. DO NOT use for creating mockups (that's ui-design-mockup) or for runtime/logic debugging."
 ---
 
 # UI Parity Check（设计稿一比一还原验证）
@@ -20,31 +20,33 @@ description: "Verify and debug that an implemented React UI matches its design m
 
 ## Harness
 
-- 文件:`apps/desktop/src/tests/visual/parity.mjs`(逻辑)+ `parity.config.mjs`(要验证的 view 与对比元素)。
+- 目录:`apps/desktop/tests/visual-parity/`，其中 `parity.mjs` 是 harness、`parity.config.mjs` 是场景配置、`fake-interceptor.mjs` 是完整 fake Preload API、`renderer-shots/` 是输出。Parity 相关代码和数据不得放进业务 Renderer。
 - 运行(仓库根):
   ```
-  node apps/desktop/src/tests/visual/parity.mjs            # 全部 view
-  node apps/desktop/src/tests/visual/parity.mjs --view=capture
+  node apps/desktop/tests/visual-parity/parity.mjs            # 全部 view
+  node apps/desktop/tests/visual-parity/parity.mjs --view=capture
   ```
 - 它做三件事:
   1. **像素 diff**:renderer 截图 vs `design/app/shots/<...>`,输出 `<view>-<theme>-diff.png`(紫色高亮)。
   2. **逐元素几何**:对每个配置的元素取 `getBoundingClientRect`(相对 shell 根),自动求所有元素偏移的中位数作为**系统偏移**(设计稿 1px 卡片边框)并扣除,只报告真实的 `dx/dy/dw/dh`(`|Δ|≥1px` 标 `!`)。
   3. **字体样式**:对比 `fontSize/fontWeight/color`(不比 `lineHeight` 字符串——用盒高 `dh` 判行高,避免 `normal` vs `px` 假阳性)。
+- 运行结束会在终端打印并写入 `visual-parity/parity-report.md`：Overall Summary（总体结论/平均像素 diff/缺失与 flagged/最差元素）、View Summary 和 Element Geometry 明细表；`renderer-shots/` 只保存 PNG。
 - 依赖:`pixelmatch` + `pngjs`(devDeps)、`playwright-core`(系统 Edge `channel:'msedge'`)、`vite`(programmatic `createServer` 起 renderer)。
 
 ## 前提条件(接入一个项目时需满足)
 
-- **renderer 必须 preload-safe**:所有 `window.interceptor?.…` 用可选链,这样在纯浏览器(无 Electron preload)也能用与设计稿一致的示例数据渲染。
-- **App 在 DEV 暴露驱动接口**:`window.__setView(id)` + `window.__setTheme(mode)`(`import.meta.env.DEV` 内),供 harness 精确导航。
+- **Renderer 走真实 Preload 契约**:harness 在 `page.goto()` 前用 `addInitScript` 注入完整 fake `window.interceptor`；业务组件照常调用窄 API，不包含 parity fixture、`import.meta.env.DEV` 数据分支或测试 setter。
+- **状态通过真实 UI 建立**:主题在导航前写 localStorage，view/选中行/tab/表单通过 Playwright 点击、选择和输入完成；不要暴露 `window.__setView/__setTheme` 之类业务侧测试后门。
 - **设计稿是可编程 SPA**:`design/app/` 暴露 `window.__setState({view,theme,sidebar,…})`。
 - **元素靠唯一可见文本配对**(`getByText(exact)`),两边无需共享 class。文本不唯一/无文本时,给两边加相同 `data-parity="key"` 再按属性配对。
 
 ## 加一个新 view(零改 harness)
 
-在 `parity.config.mjs` 的 `views` 里追加:
+在 `visual-parity/parity.config.mjs` 的 `views` 里追加，数据放 `visual-parity/fake-interceptor.mjs`，交互写 `rendererNav` / `rendererActions`:
 ```js
 { id: 'rules', theme: 'light',
   designState: { view: 'rules', theme: 'light', sidebar: 'expanded' },
+  rendererNav: 'Rules & Map',
   designShot: 'light/rules/framed.png',
   targets: ['Rules', 'Stub /v1/user', 'Apply changes', /* 唯一文本 */] }
 ```

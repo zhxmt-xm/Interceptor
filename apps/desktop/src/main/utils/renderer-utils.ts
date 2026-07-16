@@ -8,6 +8,7 @@ import type {
   CoreDiagnosticRecord,
   SessionQueryRequest,
   StorageUsage,
+  WebSocketFrameQuery,
 } from '../../shared/desktop-api';
 
 export function assertBoundedString(
@@ -391,4 +392,35 @@ export function toBreakpointEdit(value: unknown): BreakpointEdit | undefined {
     result.body = edit.body;
   }
   return result;
+}
+
+/** 校验 WebSocket 消息分页请求；cursor 不透明，方向仅允许上下游两种。 */
+export function toWebSocketFrameQuery(value: unknown): WebSocketFrameQuery {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('websocket query is invalid');
+  }
+  const request = value as Record<string, unknown>;
+  assertIdentifier(request.exchangeId, 'websocket query.exchangeId');
+  if (
+    typeof request.limit !== 'number' ||
+    !Number.isInteger(request.limit) ||
+    request.limit < 1 ||
+    request.limit > MAX_QUERY_PAGE_SIZE
+  ) {
+    throw new Error('websocket query.limit is invalid');
+  }
+  assertOptionalBoundedString(request.cursor, 'websocket query.cursor', 1_024);
+  if (
+    request.direction !== undefined &&
+    request.direction !== 'client-to-server' &&
+    request.direction !== 'server-to-client'
+  ) {
+    throw new Error('websocket query.direction is invalid');
+  }
+  return {
+    exchangeId: request.exchangeId,
+    limit: request.limit,
+    cursor: request.cursor as string | undefined,
+    direction: request.direction as WebSocketFrameQuery['direction'],
+  };
 }

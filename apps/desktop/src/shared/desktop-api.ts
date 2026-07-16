@@ -21,6 +21,8 @@ import type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  WebSocketFrameDirection,
+  WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
 
 export type {
@@ -46,6 +48,8 @@ export type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  WebSocketFrameDirection,
+  WebSocketFrameSummary,
 };
 
 export type CoreProcessState =
@@ -136,6 +140,20 @@ export interface SessionsPage {
   items: CaptureExchangeSummary[];
   nextCursor?: string;
   hasMore: boolean;
+}
+
+export interface WebSocketFrameQuery {
+  exchangeId: string;
+  cursor?: string;
+  limit: number;
+  direction?: WebSocketFrameDirection;
+}
+
+export interface WebSocketFramePage {
+  items: WebSocketFrameSummary[];
+  nextCursor?: string;
+  hasMore: boolean;
+  breakpointsEnabled: boolean;
 }
 
 /** 一段按需读取的正文字节及是否已到结尾。 */
@@ -231,6 +249,8 @@ export const DESKTOP_IPC_CHANNELS = {
   captureEvents: 'capture:events',
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
+  websocketFrames: 'websocket:frames',
+  websocketBreakpointConfigure: 'websocket:breakpoint-configure',
   bodyReadRange: 'body:read-range',
   caStatus: 'ca:status',
   caGenerate: 'ca:generate',
@@ -269,6 +289,8 @@ export interface InterceptorDesktopApi {
   getCaptureStatus(): Promise<CaptureStatus>;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
+  queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;
+  setWebSocketBreakpointsEnabled(enabled: boolean): Promise<boolean>;
   readBody(
     bodyId: string,
     offset: number,

@@ -15,7 +15,7 @@ export function PausedQueue(): React.JSX.Element {
     <div className={styles.queue}>
       <div className={styles.bar}>
         <Count className={styles.grow}>
-          <b>{breakpoints.length}</b> request{breakpoints.length === 1 ? '' : 's'} paused
+          <b>{breakpoints.length}</b> item{breakpoints.length === 1 ? '' : 's'} paused
         </Count>
         <Button
           size="sm"
@@ -28,11 +28,13 @@ export function PausedQueue(): React.JSX.Element {
 
       {breakpoints.length === 0 ? (
         <div className={styles.empty}>
-          No paused requests. Add a rule with a breakpoint action and keep Break on match on.
+          No paused traffic. HTTP rule and WebSocket message breakpoints appear here.
         </div>
       ) : (
         breakpoints.map((breakpoint) => {
           const isResponse = breakpoint.phase === 'response';
+          const isWebSocket = breakpoint.phase === 'websocket';
+          const outgoing = breakpoint.direction === 'client-to-server';
           return (
             <button
               type="button"
@@ -40,7 +42,12 @@ export function PausedQueue(): React.JSX.Element {
               className={cx(styles.row, breakpoint.id === selectedId && styles.selected)}
               onClick={() => select(breakpoint.id)}
             >
-              <span className={cx(styles.dir, isResponse ? styles.resp : styles.req)}>
+              <span
+                className={cx(
+                  styles.dir,
+                  isWebSocket ? (outgoing ? styles.wsOut : styles.wsIn) : isResponse ? styles.resp : styles.req,
+                )}
+              >
                 <ArrowRight size={16} strokeWidth={1.9} />
               </span>
               <div className={styles.meta}>
@@ -54,11 +61,16 @@ export function PausedQueue(): React.JSX.Element {
                       {breakpoint.statusCode ?? '—'}
                     </span>
                   ) : null}
+                  {isWebSocket ? (
+                    <span className={styles.messageType}>
+                      {outgoing ? 'Sent' : 'Received'} · {breakpoint.opcode === 2 ? 'Binary' : 'Text'}
+                    </span>
+                  ) : null}
                   <span className={styles.name}>{breakpoint.ruleName || 'Breakpoint'}</span>
                 </div>
                 <div className={styles.url}>{breakpoint.url ?? ''}</div>
               </div>
-              <span className={cx(styles.countdown, isResponse && styles.countdownMuted)}>
+              <span className={cx(styles.countdown, (isResponse || isWebSocket) && styles.countdownMuted)}>
                 <Clock size={13} strokeWidth={1.9} />
                 {formatCountdown(breakpoint.deadline)}
               </span>

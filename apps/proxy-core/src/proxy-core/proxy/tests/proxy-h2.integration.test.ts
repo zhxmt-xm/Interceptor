@@ -37,6 +37,10 @@ class RecordingSink implements CaptureSink {
     );
   }
 
+  updateExchange(): Promise<void> {
+    return Promise.resolve();
+  }
+
   writeBody(
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }> {

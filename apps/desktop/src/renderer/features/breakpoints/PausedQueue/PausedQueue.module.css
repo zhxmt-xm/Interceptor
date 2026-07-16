@@ -74,6 +74,17 @@
   color: var(--purple);
   background: color-mix(in srgb, var(--purple) 14%, transparent);
 }
+.dir.wsOut {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+}
+.dir.wsIn {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 13%, transparent);
+}
+.dir.wsIn svg {
+  transform: rotate(180deg);
+}
 .meta {
   flex: 1;
   min-width: 0;
@@ -133,4 +144,10 @@
   height: 6px;
   border-radius: 50%;
   background: var(--green);
+}
+.messageType {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
 }
