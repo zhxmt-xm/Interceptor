@@ -15,10 +15,13 @@ import {
   MAX_ACTIONS_PER_RULE,
   MAX_MATCHERS_PER_RULE,
   MAX_RULE_BODY_LENGTH,
+  MAX_RULE_DELAY_MS,
   MAX_RULE_ID_LENGTH,
   MAX_RULE_NAME_LENGTH,
   MAX_RULE_STRING_LENGTH,
+  MAX_RULE_THROTTLE_BPS,
   MAX_RULES,
+  MIN_RULE_THROTTLE_BPS,
   type RuleAction,
   type RuleDefinition,
   type RuleMatcher,
@@ -762,6 +765,23 @@ function validateRuleAction(value: unknown, name: string): string | null {
     case 'status':
       return validateRecordKeys(value, name, ['type', 'statusCode']) ??
         validateIntegerRange(value.statusCode, `${name}.statusCode`, 100, 599);
+    case 'delay':
+      return validateRecordKeys(value, name, ['type', 'phase', 'ms']) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateIntegerRange(value.ms, `${name}.ms`, 0, MAX_RULE_DELAY_MS);
+    case 'throttle':
+      return validateRecordKeys(value, name, [
+        'type',
+        'phase',
+        'bytesPerSecond',
+      ]) ??
+        validateEnum(value.phase, `${name}.phase`, ['request', 'response']) ??
+        validateIntegerRange(
+          value.bytesPerSecond,
+          `${name}.bytesPerSecond`,
+          MIN_RULE_THROTTLE_BPS,
+          MAX_RULE_THROTTLE_BPS,
+        );
     case 'breakpoint':
       return validateRecordKeys(value, name, [
         'type',

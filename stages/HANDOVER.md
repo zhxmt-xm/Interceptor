@@ -119,16 +119,16 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M7 Server T7.5（规则引擎）
+## 下一任务：M7 Server T7.6（规则引擎）
 
-M7 Contract 已提交 `3dc3c59`；Server T7.1（持久化+handler）、T7.2（matcher-compiler）、T7.3（action-executor header/query）、T7.4（body/synthetic/map action + Contract map 扩展，`rules/action-executor.ts` ActionOutcome 模型）已完成。下一步从 T7.5 起：status 覆盖（响应侧改 statusCode）+ throttle（带宽限速）+ delay（请求/响应延迟）——block 的 executor outcome 已在 T7.4，实际生效在 T7.7 引擎 → breakpoint-queue 状态机 + breakpoint.resolve handler（T7.6）→ rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计（T7.7）。
+M7 Contract 已提交 `3dc3c59`；Server T7.1–T7.5 已完成（持久化+handler、matcher-compiler、action-executor 的 header/query/body/synthetic/map/status/delay/throttle/block outcome）。下一步从 T7.6 起：breakpoint-queue 状态机（waiting→continued/edited/dropped/timed_out + 强制 timeout + UI 断开/退出时确定性关闭）+ breakpoint.resolve handler 接入 core-application → T7.7 rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）串起 matcher + action + breakpoint，block 连接 reset/close、delay/throttle 流控在此实际生效 + RuleHit 审计落 rule_hit 表。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（规则引擎）和第二十七章 M7。
-2. T7.5：status action 在 applyResponseAction 覆盖 statusCode；throttle/delay 作为 outcome 元数据供引擎按流控执行。
-3. T7.6 breakpoint-queue：waiting→continued/edited/dropped/timed_out 状态机 + 强制 timeout + 断线确定性关闭；breakpoint.resolve handler 接入 core-application。
-4. T7.7 rule-engine 经 Mockttp beforeRequest/beforeResponse 读最新 ruleSet 引用串起 matcher + action + breakpoint；在 [M7.md](M7.md) 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
+1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（11.5 Breakpoint）和第二十七章 M7。
+2. T7.6 breakpoint-queue：Promise + timeout + 唯一 breakpointId，waiting 态挂起 beforeRequest/beforeResponse 回调；breakpoint.resolve command（continue/drop/timeout）解挂；断线/关闭时全部 timed_out 确定性关闭。
+3. T7.7 rule-engine：proxy-service 单 passthrough 的 beforeRequest/beforeResponse 读最新 ruleSet 引用（原子替换），按 priority/id 排序执行匹配规则的 action，收集 outcome 应用到 Mockttp 回调结果；RuleHit 写 rule_hit。
+4. 在 [M7.md](M7.md) 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
 
 > 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。
 

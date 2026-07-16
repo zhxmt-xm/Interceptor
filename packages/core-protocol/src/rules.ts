@@ -85,6 +85,12 @@ export type RuleAction =
     }
   | { readonly type: 'block'; readonly mode: 'reset' | 'close' }
   | { readonly type: 'status'; readonly statusCode: number }
+  | { readonly type: 'delay'; readonly phase: RulePhase; readonly ms: number }
+  | {
+      readonly type: 'throttle';
+      readonly phase: RulePhase;
+      readonly bytesPerSecond: number;
+    }
   | {
       readonly type: 'breakpoint';
       readonly phase: RulePhase;
@@ -121,3 +127,6 @@ export const MAX_RULE_STRING_LENGTH = 4_096;
 export const MAX_RULE_BODY_LENGTH = 1_048_576;
 export const DEFAULT_RULE_PRIORITY = 100;
 export const DEFAULT_BREAKPOINT_TIMEOUT_MS = 30_000;
+export const MAX_RULE_DELAY_MS = 300_000;
+export const MIN_RULE_THROTTLE_BPS = 1;
+export const MAX_RULE_THROTTLE_BPS = 1_000_000_000;

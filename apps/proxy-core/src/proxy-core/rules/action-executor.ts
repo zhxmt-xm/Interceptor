@@ -9,7 +9,7 @@
  *
  * 已实现：header(set/append/remove)、query(set/remove)、body(text/json 替换)、
  * synthetic 响应、map-remote(改目标)、map-local(本地文件响应，路径规范化 + 允许根
- * 校验防穿越)、block(reset/close)。status 覆盖与 breakpoint 由 T7.5/T7.6 追加。
+ * 校验防穿越)、block(reset/close)、status 覆盖、delay/throttle 流控。breakpoint 由 T7.6 追加。
  */
 
 import { promises as fs } from 'node:fs';
@@ -70,6 +70,16 @@ export type ActionOutcome =
       readonly kind: 'block';
       readonly mode: 'reset' | 'close';
       readonly summary: ActionSummary;
+    }
+  | {
+      readonly kind: 'delay';
+      readonly ms: number;
+      readonly summary: ActionSummary;
+    }
+  | {
+      readonly kind: 'throttle';
+      readonly bytesPerSecond: number;
+      readonly summary: ActionSummary;
     };
 
 export interface ActionExecutorOptions {
@@ -124,8 +134,30 @@ export async function applyRequestAction(
         mode: action.mode,
         summary: { action: 'block', detail: action.mode },
       };
+    case 'status':
+      // status 覆盖仅作用于响应阶段。
+      return NONE;
+    case 'delay':
+      return action.phase === 'request'
+        ? {
+            kind: 'delay',
+            ms: action.ms,
+            summary: { action: 'delay', detail: `${action.ms}ms` },
+          }
+        : NONE;
+    case 'throttle':
+      return action.phase === 'request'
+        ? {
+            kind: 'throttle',
+            bytesPerSecond: action.bytesPerSecond,
+            summary: {
+              action: 'throttle',
+              detail: `${action.bytesPerSecond}bps`,
+            },
+          }
+        : NONE;
     default:
-      // status（响应侧）与 breakpoint 由 T7.5 / T7.6 处理。
+      // breakpoint 由 T7.6 处理。
       return NONE;
   }
 }
@@ -152,6 +184,31 @@ export function applyResponseAction(
         kind: 'mutated',
         summary: { action: 'body.set', detail: action.format },
       };
+    case 'status':
+      state.statusCode = action.statusCode;
+      return {
+        kind: 'mutated',
+        summary: { action: 'status', detail: String(action.statusCode) },
+      };
+    case 'delay':
+      return action.phase === 'response'
+        ? {
+            kind: 'delay',
+            ms: action.ms,
+            summary: { action: 'delay', detail: `${action.ms}ms` },
+          }
+        : NONE;
+    case 'throttle':
+      return action.phase === 'response'
+        ? {
+            kind: 'throttle',
+            bytesPerSecond: action.bytesPerSecond,
+            summary: {
+              action: 'throttle',
+              detail: `${action.bytesPerSecond}bps`,
+            },
+          }
+        : NONE;
     default:
       return NONE;
   }

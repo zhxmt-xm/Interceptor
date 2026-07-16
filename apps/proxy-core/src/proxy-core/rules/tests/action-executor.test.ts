@@ -328,3 +328,76 @@ describe('applyRequestAction — map-local path safety', () => {
     }
   });
 });
+
+describe('status, delay, throttle', () => {
+  it('overrides the response status code', () => {
+    const state = responseState();
+    const outcome = applyResponseAction(state, {
+      type: 'status',
+      statusCode: 503,
+    });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'status', detail: '503' },
+    });
+    expect(state.statusCode).toBe(503);
+  });
+
+  it('ignores status override in the request stage', async () => {
+    expect(
+      await applyRequestAction(requestState(), {
+        type: 'status',
+        statusCode: 503,
+      }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('emits a delay outcome for the matching phase', async () => {
+    expect(
+      await applyRequestAction(requestState(), {
+        type: 'delay',
+        phase: 'request',
+        ms: 250,
+      }),
+    ).toEqual({
+      kind: 'delay',
+      ms: 250,
+      summary: { action: 'delay', detail: '250ms' },
+    });
+    expect(
+      applyResponseAction(responseState(), {
+        type: 'delay',
+        phase: 'response',
+        ms: 100,
+      }),
+    ).toEqual({
+      kind: 'delay',
+      ms: 100,
+      summary: { action: 'delay', detail: '100ms' },
+    });
+  });
+
+  it('ignores a delay whose phase does not match the stage', async () => {
+    expect(
+      await applyRequestAction(requestState(), {
+        type: 'delay',
+        phase: 'response',
+        ms: 250,
+      }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('emits a throttle outcome for the matching phase', async () => {
+    expect(
+      await applyRequestAction(requestState(), {
+        type: 'throttle',
+        phase: 'request',
+        bytesPerSecond: 1024,
+      }),
+    ).toEqual({
+      kind: 'throttle',
+      bytesPerSecond: 1024,
+      summary: { action: 'throttle', detail: '1024bps' },
+    });
+  });
+});
