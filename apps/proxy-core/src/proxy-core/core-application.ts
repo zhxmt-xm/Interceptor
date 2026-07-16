@@ -16,6 +16,7 @@ import {
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
 import { ComposerService } from './composer/composer-service';
+import { probeConnection } from './connection/connection-probe';
 import {
   CoreCommandError,
   CoreRpcServer,
@@ -332,6 +333,16 @@ export class CoreApplication implements CoreRpcHost {
           this.composer.send(command.payload),
         );
         return { type: 'composer.response', payload };
+      }
+      case 'connection.probe': {
+        const payload = await this.diagnostics.action('connection.probe', () =>
+          probeConnection(
+            command.payload.host,
+            command.payload.port,
+            command.payload.timeoutMs,
+          ),
+        );
+        return { type: 'connection.probed', payload };
       }
       case 'rules.replace':
         return this.withStorage(async (storage) => {

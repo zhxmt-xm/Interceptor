@@ -126,6 +126,16 @@ export interface BreakpointConfigureCommand {
   };
 }
 
+/** 对 host:port 发起 TLS 探测，读取当前协议/套件/ALPN/证书链。 */
+export interface ConnectionProbeCommand {
+  type: 'connection.probe';
+  payload: {
+    host: string;
+    port: number;
+    timeoutMs?: number;
+  };
+}
+
 export interface DiagnosticsRecentCommand {
   type: 'diagnostics.recent';
   payload: {
@@ -200,6 +210,7 @@ export type CoreCommand =
   | BreakpointResolveCommand
   | BreakpointListCommand
   | BreakpointConfigureCommand
+  | ConnectionProbeCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
   | StorageStatusCommand
@@ -342,6 +353,31 @@ export interface BreakpointConfigResult {
   };
 }
 
+/** 一张证书的展示摘要（主体/签发者/有效期/序列号/指纹）。 */
+export interface ConnectionCertificate {
+  subject: string;
+  issuer: string;
+  validFrom: string;
+  validTo: string;
+  serialNumber: string;
+  fingerprint256: string;
+}
+
+/** TLS 探测结果：成功带协议/套件/ALPN/授权状态/证书链；失败 ok=false + error。 */
+export interface ConnectionProbeResult {
+  type: 'connection.probed';
+  payload: {
+    ok: boolean;
+    error?: string;
+    protocol: string;
+    cipher: string;
+    alpn: string;
+    authorized: boolean;
+    authorizationError?: string;
+    certificates: ConnectionCertificate[];
+  };
+}
+
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
 export type DiagnosticOutcome =
   | 'success'
@@ -428,6 +464,7 @@ export type CoreResult =
   | BreakpointResolutionResult
   | BreakpointPendingResult
   | BreakpointConfigResult
+  | ConnectionProbeResult
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
   | StorageStatusResult
@@ -467,7 +504,9 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                     ? RulesHitsResult
                                     : T extends ComposerSendCommand
                                       ? ComposerResponseResult
-                                      : never;
+                                      : T extends ConnectionProbeCommand
+                                        ? ConnectionProbeResult
+                                        : never;
 
 export interface ProtocolDiagnostic {
   code: string;

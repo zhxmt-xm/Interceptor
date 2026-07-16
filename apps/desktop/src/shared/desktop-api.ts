@@ -6,6 +6,7 @@ import type {
   CaptureExchangeSummary,
   CaptureHeader,
   ComposerTlsInfo,
+  ConnectionCertificate,
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
@@ -30,6 +31,7 @@ export type {
   CaptureExchangeSummary,
   CaptureHeader,
   ComposerTlsInfo,
+  ConnectionCertificate,
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
@@ -203,6 +205,18 @@ export interface BreakpointsSnapshot {
   enabled: boolean;
 }
 
+/** TLS 探测结果 DTO：协议/套件/ALPN/授权/证书链；失败 ok=false + error。 */
+export interface ConnectionProbe {
+  ok: boolean;
+  error?: string;
+  protocol: string;
+  cipher: string;
+  alpn: string;
+  authorized: boolean;
+  authorizationError?: string;
+  certificates: ConnectionCertificate[];
+}
+
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
@@ -237,6 +251,7 @@ export const DESKTOP_IPC_CHANNELS = {
   breakpointList: 'breakpoint:list',
   breakpointResolve: 'breakpoint:resolve',
   breakpointConfigure: 'breakpoint:configure',
+  connectionProbe: 'connection:probe',
 } as const;
 
 export interface InterceptorDesktopApi {
@@ -289,4 +304,5 @@ export interface InterceptorDesktopApi {
     edit?: BreakpointEdit,
   ): Promise<{ state: string }>;
   setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
+  probeConnection(host: string, port: number): Promise<ConnectionProbe>;
 }

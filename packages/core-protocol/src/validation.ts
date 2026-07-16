@@ -44,6 +44,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'breakpoint.resolve',
   'breakpoint.list',
   'breakpoint.configure',
+  'connection.probe',
   'diagnostics.recent',
   'diagnostics.query',
   'storage.status',
@@ -285,6 +286,9 @@ function validateCommand(value: unknown): string | null {
     case 'breakpoint.configure':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBreakpointConfigure(value.payload);
+    case 'connection.probe':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateConnectionProbe(value.payload);
     case 'diagnostics.recent':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsRecent(value.payload);
@@ -353,6 +357,9 @@ function validateResult(value: unknown): string | null {
     case 'breakpoint.config':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBreakpointConfig(value.payload);
+    case 'connection.probed':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateConnectionProbed(value.payload);
     case 'diagnostics.records':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateDiagnosticsRecords(value.payload);
@@ -966,6 +973,71 @@ function validateComposerTls(value: unknown, name: string): string | null {
 function validateBreakpointConfigure(value: unknown): string | null {
   return validateExactObject(value, 'command.payload', ['enabled'], (payload) =>
     validateBoolean(payload.enabled, 'command.payload.enabled'));
+}
+
+function validateConnectionProbe(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['host', 'port', 'timeoutMs'],
+    (payload) => validateBoundedString(payload.host, 'command.payload.host', 512) ??
+      validateIntegerRange(payload.port, 'command.payload.port', 1, 65_535) ??
+      (payload.timeoutMs === undefined
+        ? null
+        : validateIntegerRange(payload.timeoutMs, 'command.payload.timeoutMs', 1, 60_000)),
+  );
+}
+
+function validateConnectionProbed(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    [
+      'ok',
+      'error',
+      'protocol',
+      'cipher',
+      'alpn',
+      'authorized',
+      'authorizationError',
+      'certificates',
+    ],
+    (payload) => validateBoolean(payload.ok, 'result.payload.ok') ??
+      validateOptionalBoundedString(payload.error, 'result.payload.error', MAX_MESSAGE_LENGTH) ??
+      validateBoundedString(payload.protocol, 'result.payload.protocol', 64) ??
+      validateBoundedString(payload.cipher, 'result.payload.cipher', 128) ??
+      validateBoundedString(payload.alpn, 'result.payload.alpn', 32) ??
+      validateBoolean(payload.authorized, 'result.payload.authorized') ??
+      validateOptionalBoundedString(
+        payload.authorizationError,
+        'result.payload.authorizationError',
+        MAX_MESSAGE_LENGTH,
+      ) ??
+      validateConnectionCertificates(payload.certificates, 'result.payload.certificates'),
+  );
+}
+
+function validateConnectionCertificates(value: unknown, name: string): string | null {
+  if (!Array.isArray(value) || value.length > 10) {
+    return `${name} must contain at most 10 certificates`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateExactObject(
+      value[index],
+      `${name}[${index}]`,
+      ['subject', 'issuer', 'validFrom', 'validTo', 'serialNumber', 'fingerprint256'],
+      (cert) => validateBoundedString(cert.subject, `${name}[${index}].subject`, 512) ??
+        validateBoundedString(cert.issuer, `${name}[${index}].issuer`, 512) ??
+        validateBoundedString(cert.validFrom, `${name}[${index}].validFrom`, 64) ??
+        validateBoundedString(cert.validTo, `${name}[${index}].validTo`, 64) ??
+        validateBoundedString(cert.serialNumber, `${name}[${index}].serialNumber`, 128) ??
+        validateBoundedString(cert.fingerprint256, `${name}[${index}].fingerprint256`, 256),
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
 }
 
 function validateBreakpointConfig(value: unknown): string | null {

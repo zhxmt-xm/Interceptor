@@ -89,6 +89,10 @@ describe('core protocol validation', () => {
         payload: { enabled: false },
       },
       {
+        type: 'connection.probe',
+        payload: { host: 'example.com', port: 443 },
+      },
+      {
         type: 'diagnostics.recent',
         payload: { limit: 50, traceId: 'trace-previous' },
       },
@@ -323,6 +327,56 @@ describe('core protocol validation', () => {
               headers: [],
             },
           ],
+        },
+      },
+    }).ok).toBe(false);
+  });
+
+  it('accepts connection.probed result and rejects invalid protocol length', () => {
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-probe',
+      traceId: 'trace-probe',
+      ok: true,
+      result: {
+        type: 'connection.probed',
+        payload: {
+          ok: true,
+          protocol: 'TLSv1.3',
+          cipher: 'TLS_AES_128_GCM_SHA256',
+          alpn: 'h2',
+          authorized: true,
+          certificates: [
+            {
+              subject: 'CN=example.com',
+              issuer: 'CN=Example CA',
+              validFrom: 'Jan  1 00:00:00 2026 GMT',
+              validTo: 'Jan  1 00:00:00 2027 GMT',
+              serialNumber: '0A1B2C',
+              fingerprint256: 'AA:BB:CC',
+            },
+          ],
+        },
+      },
+    }).ok).toBe(true);
+
+    // protocol 过长被拒绝
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-probe-bad',
+      traceId: 'trace-probe-bad',
+      ok: true,
+      result: {
+        type: 'connection.probed',
+        payload: {
+          ok: true,
+          protocol: 'x'.repeat(65),
+          cipher: '',
+          alpn: '',
+          authorized: false,
+          certificates: [],
         },
       },
     }).ok).toBe(false);

@@ -92,6 +92,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointResolve, breakpointId, action, edit),
   setBreakpointsEnabled: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
+  probeConnection: (host, port) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.connectionProbe, host, port),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

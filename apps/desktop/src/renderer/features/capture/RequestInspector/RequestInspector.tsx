@@ -4,6 +4,7 @@ import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../captureStore';
 import { INSPECTOR_TABS, type InspectorTab } from '../data';
+import { TlsPanel } from './TlsPanel';
 import {
   protocolLabel,
   sizeLabel,
@@ -35,6 +36,21 @@ function queryRows(url: string): KvRow[] {
   }
   const params = new URLSearchParams(search);
   return Array.from(params.entries(), ([key, value]) => [key, value] as KvRow);
+}
+
+/** 从捕获 URL 推断端口，缺失时按 scheme 回退（https→443、http→80）。 */
+function inferPort(url: string | undefined, scheme: string): number {
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.port) {
+        return Number(parsed.port);
+      }
+    } catch {
+      /* URL 不可解析时按 scheme 回退。 */
+    }
+  }
+  return scheme === 'https' ? 443 : 80;
 }
 
 /** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
@@ -121,6 +137,7 @@ export function RequestInspector(): React.JSX.Element {
   const responseTrailers = detail?.responseTrailers ?? [];
   const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
+  const tlsPort = inferPort(detail?.url, scheme);
   const statusText = view
     ? view.statusCode !== undefined
       ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
@@ -300,28 +317,20 @@ export function RequestInspector(): React.JSX.Element {
         ) : null}
 
         {tab === 'tls' ? (
-          <div className={styles.panel}>
-            <Section title="Secure connection">
-              {!view ? (
-                <div className={styles.empty}>Select a request to inspect.</div>
-              ) : view.secure ? (
-                <Kv
-                  rows={[
-                    ['Scheme', scheme, 'g'],
-                    ['Host', view.host ?? '—'],
-                  ]}
-                />
-              ) : (
-                <div className={styles.empty}>This exchange was sent over plaintext HTTP.</div>
-              )}
-            </Section>
-            <Section title="Certificate chain">
-              <div className={styles.empty}>
-                TLS handshake and certificate inspection become available after enabling
-                HTTPS decryption.
-              </div>
-            </Section>
-          </div>
+          view ? (
+            <TlsPanel
+              key={`${view.host ?? ''}:${tlsPort}`}
+              host={view.host ?? ''}
+              port={tlsPort}
+              secure={view.secure}
+              scheme={scheme}
+              protocol={view.protocol}
+            />
+          ) : (
+            <div className={styles.panel}>
+              <div className={styles.empty}>Select a request to inspect.</div>
+            </div>
+          )
         ) : null}
       </div>
     </div>

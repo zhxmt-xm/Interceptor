@@ -598,6 +598,28 @@ class DesktopApplication {
         return result.payload.enabled;
       },
     );
+
+    // TLS 探测：对 host:port 建立 TLS 握手读取协议/套件/ALPN/证书链。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.connectionProbe,
+      async (event, host: unknown, port: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertBoundedString(host, 'host', 512);
+        if (
+          typeof port !== 'number' ||
+          !Number.isInteger(port) ||
+          port < 1 ||
+          port > 65_535
+        ) {
+          throw new Error('port is invalid');
+        }
+        const result = await this.coreRuntime.request({
+          type: 'connection.probe',
+          payload: { host, port },
+        });
+        return result.payload;
+      },
+    );
   }
 
   private broadcastCoreProcessStatus(status: CoreProcessStatus): void {

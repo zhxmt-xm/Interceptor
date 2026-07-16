@@ -40,6 +40,7 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'breakpoint.list': 'breakpoint.pending',
   'breakpoint.configure': 'breakpoint.config',
   'composer.send': 'composer.response',
+  'connection.probe': 'connection.probed',
   'diagnostics.recent': 'diagnostics.records',
   'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',
