@@ -147,7 +147,7 @@ describe('CoreApplication', () => {
     });
   });
 
-  it('rejects aborted and future-stage commands with structured errors', async () => {
+  it('rejects aborted commands and unavailable subsystems with structured errors', async () => {
     const application = new CoreApplication(new FakeParentPort());
     const controller = new AbortController();
     controller.abort();
@@ -167,7 +167,7 @@ describe('CoreApplication', () => {
       type: 'breakpoint.resolve',
       payload: { breakpointId: 'bp-1', action: 'continue' },
     }, new AbortController().signal)).rejects.toMatchObject({
-      detail: { code: 'unsupported-command', retryable: false },
+      detail: { code: 'internal', retryable: false },
     });
   });
 

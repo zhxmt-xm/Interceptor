@@ -25,6 +25,7 @@ import { DiagnosticsWorkerHost, type DiagnosticsPage } from './diagnostics/entry
 import { CaptureEventQueue } from './proxy/capture-event-queue';
 import { decodeBody } from './proxy/content-decoder';
 import { ProxyService } from './proxy/proxy-service';
+import { BreakpointQueue } from './rules/breakpoint-queue';
 import { StorageService } from './storage/entry';
 import type { CleanupScope } from './storage/types';
 
@@ -47,6 +48,8 @@ export interface CoreApplicationOptions {
   proxyService?: ProxyService;
   /** 捕获事件有界合并队列；ProxyService 写入，CoreApplication 按背压窗口 push 给 Main。 */
   captureEventQueue?: CaptureEventQueue;
+  /** 断点状态机；rule-engine 挂起、breakpoint.resolve handler 解挂，退出时确定性关闭。 */
+  breakpointQueue?: BreakpointQueue;
 }
 
 export type CoreLifecycleMessage =
@@ -69,6 +72,7 @@ export class CoreApplication implements CoreRpcHost {
   private readonly diagnosticsWorkerHost: DiagnosticsWorkerHost | null;
   private readonly proxyService: ProxyService | null;
   private readonly captureEventQueue: CaptureEventQueue | null;
+  private readonly breakpointQueue: BreakpointQueue | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -95,11 +99,13 @@ export class CoreApplication implements CoreRpcHost {
         storageService && captureEventQueue
           ? new ProxyService(storageService, captureEventQueue)
           : undefined;
+      const breakpointQueue = new BreakpointQueue();
       new CoreApplication(parentPort, {
         storageService,
         diagnosticsWorkerHost,
         proxyService,
         captureEventQueue,
+        breakpointQueue,
       }).start();
     } catch (error) {
       reportFatalStartup(parentPort, error);
@@ -118,6 +124,7 @@ export class CoreApplication implements CoreRpcHost {
     this.diagnosticsWorkerHost = options.diagnosticsWorkerHost ?? null;
     this.proxyService = options.proxyService ?? null;
     this.captureEventQueue = options.captureEventQueue ?? null;
+    this.breakpointQueue = options.breakpointQueue ?? null;
     this.diagnostics = new CoreDiagnostics(
       this.diagnosticsWorkerHost ?? undefined,
     );
@@ -379,10 +386,30 @@ export class CoreApplication implements CoreRpcHost {
             payload: { mitmEnabled: command.payload.ca !== null },
           };
         });
+      case 'breakpoint.resolve':
+        return this.withBreakpoints((queue) => {
+          const state = queue.resolve(
+            command.payload.breakpointId,
+            command.payload.action,
+            command.payload.edit,
+          );
+          if (state === null) {
+            throw commandError({
+              code: 'conflict',
+              message:
+                'The breakpoint was not found or has already been resolved.',
+              retryable: false,
+            });
+          }
+          return {
+            type: 'breakpoint.resolution',
+            payload: { breakpointId: command.payload.breakpointId, state },
+          };
+        });
       default:
         throw commandError({
           code: 'unsupported-command',
-          message: `${command.type} is not implemented yet.`,
+          message: 'The command is not implemented.',
           retryable: false,
         });
     }
@@ -477,6 +504,21 @@ export class CoreApplication implements CoreRpcHost {
       });
     }
     return operation(this.proxyService);
+  }
+
+  /**
+   * 在断点队列可用时执行操作；缺失时抛出 internal 错误。
+   * 调用方：breakpoint.resolve handler。
+   */
+  private withBreakpoints<T>(operation: (queue: BreakpointQueue) => T): T {
+    if (!this.breakpointQueue) {
+      throw commandError({
+        code: 'internal',
+        message: 'Breakpoints are not available.',
+        retryable: false,
+      });
+    }
+    return operation(this.breakpointQueue);
   }
 
   /**
@@ -583,6 +625,7 @@ export class CoreApplication implements CoreRpcHost {
     this.exiting = true;
     this.clearHeartbeat();
     this.clearEventFlush();
+    this.breakpointQueue?.closeAll();
     process.off('SIGINT', this.handleSignal);
     process.off('SIGTERM', this.handleSignal);
     setImmediate(() => process.exit(code));

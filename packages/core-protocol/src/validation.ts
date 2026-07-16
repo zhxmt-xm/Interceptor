@@ -837,7 +837,7 @@ function validateBreakpointResolutionRequest(value: unknown): string | null {
   return validateExactObject(
     value,
     'command.payload',
-    ['breakpointId', 'action'],
+    ['breakpointId', 'action', 'edit'],
     (payload) => validateId(
       payload.breakpointId,
       'command.payload.breakpointId',
@@ -845,7 +845,34 @@ function validateBreakpointResolutionRequest(value: unknown): string | null {
       'continue',
       'drop',
       'timeout',
-    ]),
+    ]) ?? validateBreakpointEdit(payload.edit, 'command.payload.edit'),
+  );
+}
+
+function validateBreakpointEdit(value: unknown, name: string): string | null {
+  if (value === undefined) {
+    return null;
+  }
+  return validateExactObject(
+    value,
+    name,
+    ['method', 'url', 'statusCode', 'headers', 'body'],
+    (edit) => validateOptionalBoundedString(edit.method, `${name}.method`, 64) ??
+      validateOptionalBoundedString(
+        edit.url,
+        `${name}.url`,
+        MAX_RULE_STRING_LENGTH,
+      ) ?? validateOptionalIntegerRange(
+        edit.statusCode,
+        `${name}.statusCode`,
+        100,
+        599,
+      ) ?? validateOptionalRuleHeaderPairs(edit.headers, `${name}.headers`) ??
+      validateOptionalBoundedString(
+        edit.body,
+        `${name}.body`,
+        MAX_RULE_BODY_LENGTH,
+      ),
   );
 }
 
@@ -1127,6 +1154,7 @@ function validateBreakpointResolutionResult(value: unknown): string | null {
       'result.payload.breakpointId',
     ) ?? validateEnum(payload.state, 'result.payload.state', [
       'continued',
+      'edited',
       'dropped',
       'timed_out',
     ]),

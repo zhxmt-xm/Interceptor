@@ -1,4 +1,4 @@
-import type { RuleDefinition, RuleSet } from './rules';
+import type { RuleDefinition, RuleHeaderPair, RuleSet } from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 export const MAX_BODY_CHUNK_BYTES = 1024 * 1024;
@@ -69,11 +69,24 @@ export interface RulesGetCommand {
   payload: Record<string, never>;
 }
 
+/**
+ * 断点放行时对请求/响应的可选编辑（waiting→edited→continued）。
+ * 请求阶段用 method/url，响应阶段用 statusCode，headers/body 两阶段通用（完整替换）。
+ */
+export interface BreakpointEdit {
+  method?: string;
+  url?: string;
+  statusCode?: number;
+  headers?: RuleHeaderPair[];
+  body?: string;
+}
+
 export interface BreakpointResolveCommand {
   type: 'breakpoint.resolve';
   payload: {
     breakpointId: string;
     action: 'continue' | 'drop' | 'timeout';
+    edit?: BreakpointEdit;
   };
 }
 
@@ -218,7 +231,7 @@ export interface BreakpointResolutionResult {
   type: 'breakpoint.resolution';
   payload: {
     breakpointId: string;
-    state: 'continued' | 'dropped' | 'timed_out';
+    state: 'continued' | 'edited' | 'dropped' | 'timed_out';
   };
 }
 

@@ -119,16 +119,24 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M7 Server T7.6（规则引擎）
+## 下一任务：M7 Server T7.7（规则引擎收官）
 
-M7 Contract 已提交 `3dc3c59`；Server T7.1–T7.5 已完成（持久化+handler、matcher-compiler、action-executor 的 header/query/body/synthetic/map/status/delay/throttle/block outcome）。下一步从 T7.6 起：breakpoint-queue 状态机（waiting→continued/edited/dropped/timed_out + 强制 timeout + UI 断开/退出时确定性关闭）+ breakpoint.resolve handler 接入 core-application → T7.7 rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）串起 matcher + action + breakpoint，block 连接 reset/close、delay/throttle 流控在此实际生效 + RuleHit 审计落 rule_hit 表。
+M7 Contract 已提交 `3dc3c59`；Server T7.1–T7.6 已完成（持久化+handler、matcher-compiler、action-executor、breakpoint-queue 状态机）。仅剩 T7.7 rule-engine 接入，完成后 M7 Server 收官（Client 在 M8）。
+
+T7.7 范围：
+
+- 新建 `rules/rule-engine.ts`：持有当前 ruleSet 引用（原子替换热切换，不 reset server）+ 编译缓存；beforeRequest/beforeResponse 各按 priority/stable id 排序遍历匹配规则，用 action-executor 收集 outcome 应用到 Mockttp 回调结果。
+- proxy-service：单 `forAnyRequest().thenPassThrough({ beforeRequest, beforeResponse, ignoreHostHttpsErrors })` 接入 rule-engine；rules.replace 成功后把新 ruleSet 原子替换进引擎。
+- breakpoint：命中 breakpoint action → engine 调 breakpointQueue.suspend + await outcome，据 state 放行/应用 edit/丢弃；命中事件推送 Renderer（新事件通道或复用 capture events）。
+- RuleHit 审计：改写命中后写 rule_hit 表（exchange_id/rule_id/rule_revision/phase/action/summary）。
+- block 连接 reset/close、delay（setTimeout）、throttle（限速流）实际生效。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（11.5 Breakpoint）和第二十七章 M7。
-2. T7.6 breakpoint-queue：Promise + timeout + 唯一 breakpointId，waiting 态挂起 beforeRequest/beforeResponse 回调；breakpoint.resolve command（continue/drop/timeout）解挂；断线/关闭时全部 timed_out 确定性关闭。
-3. T7.7 rule-engine：proxy-service 单 passthrough 的 beforeRequest/beforeResponse 读最新 ruleSet 引用（原子替换），按 priority/id 排序执行匹配规则的 action，收集 outcome 应用到 Mockttp 回调结果；RuleHit 写 rule_hit。
-4. 在 [M7.md](M7.md) 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
+1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（11.4 执行模型）和第二十七章 M7。
+2. rule-engine 纯逻辑（编译 + 排序 + 遍历 + outcome 聚合）先行 + 单测；再接 proxy-service beforeRequest/beforeResponse 与 Mockttp 回调结果映射。
+3. ruleSet 热切换：Core 持有引擎，rules.replace handler 成功后更新引擎 ruleSet 引用（原子替换）。
+4. 阶段收尾：涉及 Core/代理数据面/打包边界，重跑 typecheck/unit/build:core/package/smoke/audit；M7 Server 收官后同步 PROGRESS/M7/HANDOVER/ARCHITECTURE。
 
 > 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。
 
