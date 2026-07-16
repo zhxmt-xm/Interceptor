@@ -39,9 +39,18 @@ async function collect(page, rootSelector, targets) {
   const origin = await page.locator(rootSelector).first().boundingBox();
   const result = {};
   for (const name of targets) {
-    const element = page.getByText(name, { exact: true }).first();
-    const box = await element.boundingBox().catch(() => null);
-    if (!box || !origin) {
+    const candidates = await page.getByText(name, { exact: true }).all();
+    let element = null;
+    let box = null;
+    for (const candidate of candidates) {
+      const candidateBox = await candidate.boundingBox().catch(() => null);
+      if (candidateBox) {
+        element = candidate;
+        box = candidateBox;
+        break;
+      }
+    }
+    if (!element || !box || !origin) {
       continue;
     }
     const style = await element.evaluate((node, keys) => {

@@ -24,6 +24,7 @@ import {
   type RpcMessagePort,
 } from './core-rpc-server';
 import { DiagnosticsWorkerHost, type DiagnosticsPage } from './diagnostics/entry';
+import { queryGrpcMessages } from './grpc/grpc-service';
 import { CaptureEventQueue } from './proxy/capture-event-queue';
 import { decodeBody } from './proxy/content-decoder';
 import { ProxyService } from './proxy/proxy-service';
@@ -291,6 +292,18 @@ export class CoreApplication implements CoreRpcHost {
             type: 'websocket.breakpoint.config',
             payload: { enabled: proxy.webSocketBreakpointsEnabled },
           };
+        });
+      case 'grpc.messages':
+        return this.withStorage(async (storage) => {
+          try {
+            const page = await this.diagnostics.action(
+              'storage.query-grpc-messages',
+              () => queryGrpcMessages(storage, command.payload),
+            );
+            return { type: 'grpc.messages', payload: page };
+          } catch (error) {
+            throw mapStorageError(error);
+          }
         });
       case 'body.read-range':
         return this.withStorage(async (storage) => {
@@ -786,7 +799,7 @@ function mapStorageError(error: unknown): CoreCommandError {
     return error;
   }
   const name = error instanceof Error ? error.name : '';
-  if (name === 'InvalidCursorError') {
+  if (name === 'InvalidCursorError' || name === 'InvalidGrpcCursorError') {
     return new CoreCommandError({
       code: 'invalid-message',
       message: 'The pagination cursor is malformed.',

@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-16
+> 最后更新：2026-07-17
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 ## 文档导航
 
@@ -16,15 +16,15 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座、M2 存储层、M3 最小显式代理（HTTP/1.1）、M4 会话列表 UI、M5 CA 与 HTTPS MITM、M6 HTTP/2、M7 规则引擎、M8 规则 UI 与 Composer（均 100%）。
-- 当前 Stage：M9 WebSocket 与 gRPC（未开始）。
-- 当前任务：M8 已收官（T8.1–T8.4）。Rules workspace（有序规则列表 + 全类型 Matcher/Action 编辑器 + 实时语义校验 + hit counter，经 rules.get/validate/replace 乐观并发 + rules.hits 即时生效）、Composer（method/url/header/body/protocol + 发送历史 + 响应查看，composer.send 经 Core http/https/http2 出站）、Breakpoint 编辑 UI（轮询 breakpoint.list 暂停队列 + 编辑请求/响应 + continue/drop/all + break-on-match 开关）、Connection/TLS 详情（Capture Inspector TLS 标签 + 按需 connection.probe 实时证书链）均数据驱动接入并 1:1 还原 design/app。
-- 下一动作：M9 T9.1 WebSocket 捕获（HTTP/1.1 upgrade、帧作为有序子记录存储），随后 T9.2 WebSocket UI、T9.3 gRPC 基础展示；先读完整方案第八章与第二十七章 M9。
-- 打包方案已落地：Mockttp 含 WASM（brotli-wasm）与原生插件（tls-impersonate 的 .node），esbuild 以 `--external:mockttp` 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷把依赖闭包随包发（`resources/proxy-core/node_modules`）；packaged smoke 验证 Core 用隔离闭包成功加载 mockttp，`npm audit --omit=dev` 0 漏洞。
-- Git 状态：M1 `b923117`、M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` + Server 分任务提交已推送 origin/main；M8 按任务分提交 `7b9aa5e`(T8.1) / `3a23fbe`(T8.2) / `aeb4b5a`(T8.3) / `470a6b0`(T8.4)，本地已提交（未推送）。
+- 已完成 Stage：M0–M9（均 100%）。
+- 当前 Stage：M10 导入导出与隐私（未开始）。
+- 当前任务：M9 已收官。WebSocket HTTP/1.1 Upgrade 捕获与有序 Message Blob、有限分页/虚拟化 UI、双向转发前消息断点已交付；原生 gRPC 复用 Mockttp H2 通用 capture，完成后按 5-byte envelope header-only 跳读分页，无 descriptor 时安全回退 raw text/hex。Payload 均复用 `body.read-range`，不进入 Main/Renderer 全局状态。
+- 下一动作：M10 T10.1 HAR 1.2 导入/导出；开始前阅读完整方案第十二、十六章与第二十七章 M10，先定义安全 job/文件选择契约和 HAR 映射边界。
+- 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
+- Git 状态：M9 T9.1 `b6eec25`、T9.2 `30a4f4a` 已推送 origin/main；T9.3 与阶段收尾在本次提交，完成后立即 push。
 - 阻塞：无。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M8.md](M8.md)（下一 Stage 见 [M9.md](M9.md)）。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，已完成阶段见 [M9.md](M9.md)，下一 Stage 见 [M10.md](M10.md)。
 
 ## Stage 总览
 
@@ -39,7 +39,7 @@
 | M6 | HTTP/2 | 已完成 | 100% | [M6.md](M6.md) |
 | M7 | 规则引擎 | 已完成 | 100% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 已完成 | 100% | [M8.md](M8.md) |
-| M9 | WebSocket 与 gRPC | 未开始 | 0% | [M9.md](M9.md) |
+| M9 | WebSocket 与 gRPC | 已完成 | 100% | [M9.md](M9.md) |
 | M10 | 导入导出与隐私 | 未开始 | 0% | [M10.md](M10.md) |
 | M11 | 系统代理适配与恢复 | 未开始 | 0% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
@@ -71,10 +71,13 @@
 - HTTP/2 已落地（M6）：MITM 时 Mockttp `http2:true` 下游 h2 + 上游 ALPN 协商 + 四组转换；trailer/pseudo-header 采集落库；`content-decoder`（gzip/deflate/brotli 延迟解码）经 `body.read-range` 的 `decode` 请求由 Core 解压（浏览器不支持 br 故必须 Core 解）；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强。
 - 诊断可观测性增强（2026-07）：Core 各组件（rpcServer/application/proxy/storage）经共享 `DiagnosticsRecorder` 记 initialize/生命周期/action/error 关键节点（削去每命令模板 phase 噪音）；Diagnostics 面板经 `getRecentDiagnostics` 轮询接真实命令 trace（按 requestId 聚合 + action 时间线 + records/dropped）。Main/Renderer 日志纳入诊断见 M10 T10.5。
 - 规则 UI、Composer、Breakpoint 编辑与 Connection/TLS 详情已落地（M8）：Rules workspace 数据驱动（rulesStore/useRulesData + 全类型 Matcher/Action 编辑器 + 实时 rules.validate 诊断 + rules.replace 乐观并发 + rules.hits 命中计数）；Composer（composerStore/useComposer + ComposerService 经 http/https/http2 出站 + 响应/历史/Auth）；Breakpoints（breakpointsStore/useBreakpoints 轮询 breakpoint.list 暂停队列 + 编辑放行 + break-on-match）；Capture Inspector TLS 标签经 connection.probe 实时探测证书链。系统代理、导入导出仍未实现（M10+）。
+- WebSocket/gRPC 已落地（M9）：Mockttp HTTP/1.1 Upgrade + 自定义 `WebSocketBridge` 捕获/转发/消息断点，`websocket_frame` 有序存储与 keyset 页；native gRPC 作为通用 H2 request/response 捕获，`grpc.messages` 每条只读 5B envelope header 并复用 Blob range。Capture Inspector 提供 WebSocket/gRPC Messages 视图；gRPC-Web、H2 Extended CONNECT、descriptor/reflection 与实时 streaming 增量解析未实现。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-17 M9 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 通过（Desktop 39 / Proxy Core 151 / Core Protocol 18），含真实 TLS+ALPN h2 gRPC capture、WebSocket bridge 转发前断点、framing/service 与 Storage/Main/Core 边界；8-view visual parity 完整运行（WebSocket 8/8、gRPC 9/9 targets）；`npm audit --omit=dev` 0 vulnerabilities；Windows `npm run package` + 真实 packaged smoke 1/1 通过。详情见 [M9.md](M9.md)。
 
 2026-07-16 M8 规则 UI 与 Composer 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run build:core` + `npm run test:unit` 通过（Desktop 36 / Proxy Core 139 含 countRuleHits 聚合 + 真实 worker 集成 / Core Protocol 16 含 rules.hits/composer/breakpoint/connection 命令与结果校验）；`npm audit --omit=dev` 0 vulnerabilities（M8 未新增生产依赖，Composer/TLS 探测用 Node 内置 http/https/http2/tls）。窄 API 扩展至 rules.get/validate/replace/hits、composer.send、breakpoint.list/resolve/configure、connection.probe。Linux 环境 packaged smoke 需 GUI 未跑、设计 parity 字体差异不作严格门禁，权威 packaged 验收在 Windows/macOS（M12）。详情见 [M8.md](M8.md)。
 

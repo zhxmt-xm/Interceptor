@@ -41,6 +41,14 @@ describe('core protocol validation', () => {
         payload: { enabled: true },
       },
       {
+        type: 'grpc.messages',
+        payload: {
+          exchangeId: 'exchange-grpc',
+          side: 'response',
+          limit: 50,
+        },
+      },
+      {
         type: 'rules.validate',
         payload: {
           rules: [
@@ -234,6 +242,40 @@ describe('core protocol validation', () => {
 
     expect(parseCoreToMainMessage(response(1)).ok).toBe(true);
     expect(parseCoreToMainMessage(response(9)).ok).toBe(false);
+  });
+
+  it('accepts grpc.messages result and rejects invalid framing metadata', () => {
+    const response = (payloadOffset: number) => ({
+      kind: 'response' as const,
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-grpc',
+      traceId: 'trace-grpc',
+      ok: true as const,
+      result: {
+        type: 'grpc.messages',
+        payload: {
+          recognized: true,
+          side: 'response',
+          contentType: 'application/grpc+proto',
+          encoding: 'gzip',
+          bodyHash: 'a'.repeat(64),
+          bodySize: 42,
+          items: [
+            {
+              index: 0,
+              envelopeOffset: 0,
+              payloadOffset,
+              payloadLength: 37,
+              compressed: false,
+              truncated: false,
+            },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+    expect(parseCoreToMainMessage(response(5)).ok).toBe(true);
+    expect(parseCoreToMainMessage(response(-1)).ok).toBe(false);
   });
 
   it('accepts rules.hits result and rejects malformed hit counts', () => {

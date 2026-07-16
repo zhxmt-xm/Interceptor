@@ -54,6 +54,33 @@ export const views = [
     ],
   },
   {
+    id: 'capture-grpc',
+    theme: 'light',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      scene: 'grpc',
+      tab: 'grpc',
+    },
+    designShot: 'light/capture/inspector-grpc.png',
+    rendererActions: [
+      { type: 'clickText', text: 'orders.example.com' },
+      { type: 'clickText', text: 'Message 2' },
+    ],
+    targets: [
+      'orders.example.com',
+      '/orders.v1.OrderService/Watch',
+      'gRPC 0 OK',
+      'Messages',
+      'Response',
+      'Message 2',
+      'gzip compressed',
+      'Response message 2',
+      'No descriptor loaded. Payload is shown as raw binary.',
+    ],
+  },
+  {
     id: 'rules',
     theme: 'light',
     rendererNav: 'Rules & Map',

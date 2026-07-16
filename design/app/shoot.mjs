@@ -41,6 +41,7 @@ for (const theme of ['light', 'dark']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab } });
   }
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'websocket', tab: 'messages' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'grpc', tab: 'grpc' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {

@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-16
+> 最后更新：2026-07-17
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取同目录的 `M*.md` 文件。
 
 ## 新 Session / Agent 必读
@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M8.md](M8.md)（已完成）与下一 Stage [M9.md](M9.md)。
+4. 当前 Stage 文件：[M9.md](M9.md)（已完成）与下一 Stage [M10.md](M10.md)。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,21 +18,20 @@
 
 ## 当前状态
 
-- **M0–M8 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
-- **当前 Stage：M8 规则 UI 与 Composer 已收官，下一是 M9 WebSocket 与 gRPC**：
-  - **T8.1 Rules workspace**：Renderer 数据驱动规则编辑——`features/rules/` 的 `rulesStore`（Zustand 草稿 + 诊断 + hits + dirty/conflict）、`useRulesData`（加载/去抖 rules.validate/乐观并发 rules.replace/4s 轮询 rules.hits）、全类型 `MatcherRow`（8 种 matcher）/`ActionEditor`（11 种 action）编辑器、`RuleList`/`RuleRow`/`RuleEditor`/`RulesTopbar`/`RulesStatusbar`；新增 rule hit 聚合查询（storage `countRuleHits` + `rules.hits` 命令）。
-  - **T8.2 Composer**：`proxy-core/composer/composer-service.ts` 用 Node http/https/http2 出站执行（返回响应 + 有界正文 + 真实 TLS/ALPN/证书 + remoteAddress），`composer.send` 命令；`features/composer/` 的 `composerStore`/`useComposer` + `RequestBuilder`（method/url/protocol + Headers/Query/Body/Auth）/`ResponsePanel`（Body/Headers/Cookies/Raw）/`ComposerTopbar`（history）/`ComposerStatusbar`。
-  - **T8.3 Breakpoint 编辑 UI**：`BreakpointQueue` 存快照 + deadline，`RuleEngine` 加全局 break-on-match 开关 + 从可变 state 构建快照；`breakpoint.list`/`breakpoint.configure` 命令；`features/breakpoints/` 的 `breakpointsStore`/`useBreakpoints`（1s 轮询暂停队列）+ `PausedQueue`/`BreakpointEditor`（编辑 header/body + Drop/Continue/Execute）/topbar 开关。**采用轮询而非 push 事件通道**。
-  - **T8.4 Connection/TLS 详情**：`proxy-core/connection/connection-probe.ts` 的 `probeConnection`（tls.connect 读协议/套件/ALPN/证书链）+ `connection.probe` 命令；`capture/RequestInspector/TlsPanel` 展示捕获连接事实 + 按需实时 TLS 探测证书链。
-  - **窄 API 扩展**：`rules.get/validate/replace/hits`、`composer.send`、`breakpoint.list/resolve/configure`、`connection.probe`（共 12 项新面，均经 Main 边界校验 + `renderer-utils` 的 `toCoreRuleDefinitions`/`assertRevision`/`toComposerRequest`/`toBreakpointEdit`）。详见 [M8.md](M8.md)。
+- **M0–M9 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
+- **当前 Stage：M9 WebSocket 与 gRPC 已收官，下一是 M10 导入导出与隐私**：
+  - **T9.1 WebSocket 捕获**：Mockttp HTTP/1.1 Upgrade，text/binary Message 按 direction/opcode/time/payloadRef 有序落 `websocket_frame`，payload 复用 Blob；101 后 Exchange 保持 open，clean close 更新 completed。
+  - **T9.2 WebSocket UI/断点**：`WebSocketBridge` 接管双向消息转发并在 send 前 await BreakpointQueue，支持 edit/continue/drop；`websocket.frames` keyset 页 + Body range；Capture Messages 虚拟列表和 Breakpoints text/hex 编辑。仅 H1 Upgrade，H2 Extended CONNECT 未实现。
+  - **T9.3 gRPC 基础展示**：原生 gRPC 作为 Mockttp 通用 H2 request/response 捕获；`grpc.messages` 从既有 Blob 每条只读 5B header 跳读分页，UI 显示 request/response、compressed/truncated/malformed、offset、grpc-status trailer 和 raw text/hex。无 descriptor/reflection；完成后扫描，非实时 streaming。
+  - **测试架构**：Desktop tests 分为 `tests/packaged-smoke/`（真实 exe/CDP）与 `tests/visual-parity/`（完整 fake Preload + 正常 UI 交互）；业务 Renderer 无 parity fixture/DEV setter。详见 [M9.md](M9.md)。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
-- **窄 API 已扩展**：Capture（`startCapture`/`stopCapture`/`getCaptureStatus`/`querySessions`/`getExchangeDetail`/`readBody`/`onCaptureEvents`）、CA/HTTPS、Storage、Diagnostics 之外，M8 新增 Rules（`getRules`/`validateRules`/`replaceRules`/`getRuleHits`）、Composer（`sendComposerRequest`）、Breakpoints（`listBreakpoints`/`resolveBreakpoint`/`setBreakpointsEnabled`）、Connection（`probeConnection`）；Main 订阅 `coreRuntime.onCaptureEvents` 经 `capture:events` 广播 Renderer。修改窄 API 面后需同步 smoke 的 apiKeys 断言。
-- **Mockttp 打包方案已落地并验证**：esbuild `--external:mockttp` + `scripts/ship-core-deps.mjs`（`@vercel/nft` 追踪运行时闭包 + 补拷 `prebuilds/`/`.node`）随包发到 `resources/proxy-core/node_modules`；packaged smoke 验证 Core 用隔离闭包 `require('mockttp')` 并 `running`。
-- **验证全绿**（本次提交）：`typecheck` 三 workspace；`test:unit` 121（Desktop 36 / Proxy Core 78 / Core Protocol 7）；`build:core` 成功；`package` + `test:smoke` 真实 exe 通过（`@vscode/sudo-prompt`/`@peculiar/x509` 懒加载后 packaged CDP 正常）。
-- M1 基线 `b923117`；M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` 均已推送 origin/main。本次提交纳入：**M5 CA 可用性增强**（local-machine 信任库 + sudo-prompt 提权、证书 reveal/view/管理器/delete 入口、MITM 与信任解耦、install 不自动生成、vite external 修复）、**诊断日志全组件覆盖**（DiagnosticsRecorder + rpcServer/application/proxy/storage 关键节点 + 削噪音）、**Diagnostics 面板接真实数据**，及 TraceList 滚动/升序、Button disabled hover、诊断轮询断连静默等 UI 修复。详见 [M5.md](M5.md)/[M2.md](M2.md) 后续增强、[M10.md](M10.md) T10.4/T10.5。新 Session 先跑 `git status --short --branch` 与 `git log -1 --oneline`，不要 reset/checkout/覆盖现有改动。
+- **窄 API 已扩展**：Capture/CA/Storage/Diagnostics/Rules/Composer/Breakpoints/Connection 之外，M9 新增 `queryWebSocketFrames`、`setWebSocketBreakpointsEnabled`、`queryGrpcMessages`；Main 对 id/cursor/limit/direction/side 做边界校验，Core protocol 做权威 runtime validation，payload 继续只走 `readBody` range。修改 API 面后需同步 packaged smoke 的 apiKeys 断言。
+- **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
+- **验证全绿**（M9 完成）：`typecheck` 三 workspace；`test:unit` Desktop 39 / Proxy Core 151 / Core Protocol 18；8-view visual parity 完成；`audit --omit=dev` 0；Windows package + 真实 packaged smoke 1/1 通过。
+- M9 T9.1 `b6eec25`、T9.2 `30a4f4a` 已推送 origin/main；T9.3 与 M9 收尾为当前提交，完成后立即 push。新 Session 先跑 `git status --short --branch` 与 `git log -3 --oneline`，不要 reset/checkout/覆盖现有改动。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction（仓库曾从 `H:\` 迁到 `C:\`，旧 junction 会失效）。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 
@@ -124,22 +123,18 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M9 WebSocket 与 gRPC
+## 下一任务：M10 T10.1 HAR 导入/导出
 
-M8 规则 UI 与 Composer 已全量收官（T8.1–T8.4，见 [M8.md](M8.md)）。下一 Stage M9 扩展协议捕获与查看：
-
-- **T9.1 WebSocket 捕获**：HTTP/1.1 upgrade；帧作为有序子记录（方向/opcode/时间/payloadRef）存储（依赖 T5.4、T2.3）。
-- **T9.2 WebSocket UI**：逐帧查看 + 断点（依赖 T9.1、T8.1）。
-- **T9.3 gRPC 基础展示**：作为 HTTP/2 raw length-prefixed message 展示；schema 不可用时二进制查看（依赖 T6.3）。
+M9 WebSocket 与 gRPC 已全量收官（T9.1–T9.3，见 [M9.md](M9.md)）。下一 Stage M10 进入文件导入导出与隐私边界，首项是 HAR 1.2 互操作。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第八章（协议）与第二十七章 M9；对照 `design/app` 的 capture/inspector 视图。
-2. 先在 Proxy Core 捕获 WebSocket upgrade + 帧（Mockttp WebSocket 支持），存储扩展 `websocket_frame` 子记录（schema 已含该表，见 M2）；再扩展窄 API 与 Renderer 逐帧查看 UI。
-3. gRPC 复用 HTTP/2 捕获，按 length-prefixed message 解析展示。
-4. 阶段收尾：涉及 Core/Storage/Contract/Renderer 边界，重跑 typecheck/unit/build:core/package/audit（Linux smoke 需 GUI、parity 字体差异不作严格门禁）；同步 PROGRESS/M9/HANDOVER/ARCHITECTURE。
+1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十二/十六章与第二十七章 M10、[M10.md](M10.md)。
+2. 先定义 import/export job、文件选择、进度/取消/警告的窄 contract；文件系统只在 Main/Core，Renderer 不拿路径读写能力。
+3. 建立 HAR 1.2 映射：Session/Exchange/header/body→HAR，明确 HTTP/2 pseudo/trailer、WebSocket/gRPC/native-only 字段的可逆性损失；导入按不可信 JSON 做大小/数量/schema 上限，不执行脚本。
+4. 先实现安全的小 fixture round-trip 与错误测试，再接 Design SPA 的 import-export overlay 和真实 Renderer UI；任务完成后按 T10.1 标题 commit + push。
 
-> 已完成：M0–M7 全量交付 + M8 规则 UI 与 Composer（分任务 T8.1–T8.4 提交：`7b9aa5e`/`3a23fbe`/`aeb4b5a`/`470a6b0`，本地未推送）。
+> 已完成：M0–M9 全量交付；M9 T9.1/T9.2 已推送，T9.3 与阶段收尾为当前提交。
 
 ## 剩余工作项目
 
@@ -153,8 +148,8 @@ M8 规则 UI 与 Composer 已全量收官（T8.1–T8.4，见 [M8.md](M8.md)）�
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M7 | 进行中（Contract 完成） | 规则引擎 Server：rule_set 存取、matcher/action、breakpoint、Mockttp 引擎热切换、RuleHit | 完整方案第十章、第二十七章 M7 |
-| M8–M13 | 未开始 | 规则 UI/Composer、WebSocket/gRPC、导入导出与隐私、系统代理、发布、更新 | 完整方案对应章节和第二十七章 |
+| M10 | 未开始 | HAR/native archive、隐私、Diagnostics 导出、Main/Renderer 日志 | 完整方案第十二/十六章、第二十七章 M10 |
+| M11–M13 | 未开始 | 系统代理、发布加固、更新机制 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 
@@ -179,7 +174,7 @@ M8 规则 UI 与 Composer 已全量收官（T8.1–T8.4，见 [M8.md](M8.md)）�
 - 完整开发依赖 audit 含 Forge 工具链已知漏洞；生产依赖 audit 为零，最终 ASAR 不含相关开发包。不要运行 `npm audit fix --force`。
 - `GrantFileProtocolExtraPrivileges` 因 packaged Renderer 使用 `loadFile` 暂时开启；迁移标准自定义协议后再评估。
 - Windows/macOS 签名、安装器、系统代理、证书信任和真实捕获尚未实现。
-- 快速独立 visual harness 已撤回，不要按旧会话记录恢复；阶段 UI 验收继续以 packaged smoke 截图为准，除非重新形成明确需求。
+- Visual parity 已作为正式测试放在 `apps/desktop/tests/visual-parity/`，通过 fake Preload + 正常 UI 交互运行；禁止把 fixture/DEV setter 放回业务 Renderer。Linux 字体差异只作诊断，Windows/macOS 为权威视觉结果。
 
 ## 最近验证状态
 

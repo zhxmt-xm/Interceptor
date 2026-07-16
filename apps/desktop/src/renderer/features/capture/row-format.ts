@@ -87,6 +87,12 @@ export function typeLabel(mime: string | undefined): string {
     return '—';
   }
   const essence = mime.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (essence.startsWith('application/grpc-web')) {
+    return 'grpc-web';
+  }
+  if (essence === 'application/grpc' || essence.startsWith('application/grpc+')) {
+    return 'grpc';
+  }
   const [group, sub = ''] = essence.split('/');
   if (sub === 'json' || sub.endsWith('+json')) {
     return 'json';

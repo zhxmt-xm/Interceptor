@@ -12,6 +12,8 @@ const PREVIEW_CAP_BYTES = 256 * 1024;
 interface BodyViewProps {
   body: CaptureBodyRef;
   compact?: boolean;
+  offset?: number;
+  previewLimit?: number;
 }
 
 interface LoadedBody {
@@ -61,7 +63,12 @@ function prettyJson(text: string): string {
 }
 
 /** 按需加载并预览一段正文：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
-export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.Element {
+export function BodyView({
+  body,
+  compact = false,
+  offset = 0,
+  previewLimit = PREVIEW_CAP_BYTES,
+}: BodyViewProps): React.JSX.Element {
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isDark = document.documentElement.dataset.theme === 'dark'
@@ -80,11 +87,11 @@ export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.El
     const shouldDecode = Boolean(body.contentEncoding);
     const length = shouldDecode
       ? body.encodedSize
-      : Math.min(body.encodedSize, PREVIEW_CAP_BYTES);
+      : Math.min(body.encodedSize, previewLimit);
     void api
       .readBody(
         body.bodyHash,
-        0,
+        offset,
         length,
         shouldDecode
           ? { decode: true, encoding: body.contentEncoding }
@@ -107,16 +114,22 @@ export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.El
     return () => {
       active = false;
     };
-  }, [body.bodyHash, body.encodedSize, body.contentEncoding]);
+  }, [
+    body.bodyHash,
+    body.encodedSize,
+    body.contentEncoding,
+    offset,
+    previewLimit,
+  ]);
 
   const previewBytes = useMemo(() => {
     if (!loaded) {
       return null;
     }
-    return loaded.bytes.length > PREVIEW_CAP_BYTES
-      ? loaded.bytes.subarray(0, PREVIEW_CAP_BYTES)
+    return loaded.bytes.length > previewLimit
+      ? loaded.bytes.subarray(0, previewLimit)
       : loaded.bytes;
-  }, [loaded]);
+  }, [loaded, previewLimit]);
 
   const text = useMemo(() => {
     if (!previewBytes || !isTextMime(body.mediaType)) {
@@ -136,7 +149,8 @@ export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.El
     return <div className={styles.empty}>Loading body…</div>;
   }
 
-  const truncated = loaded ? loaded.bytes.length > PREVIEW_CAP_BYTES : false;
+  const truncated = body.encodedSize > previewLimit
+    || (loaded ? loaded.bytes.length > previewLimit : false);
   const decodeFailed = loaded?.decodeStatus === 'failed';
 
   if (text !== null) {
@@ -149,7 +163,7 @@ export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.El
         ) : null}
         {truncated ? (
           <div className={styles.notice}>
-            Preview limited to first {PREVIEW_CAP_BYTES / 1024} KB.
+            Preview limited to first {previewLimitLabel(previewLimit)}.
           </div>
         ) : null}
         <CodeMirror
@@ -176,10 +190,14 @@ export function BodyView({ body, compact = false }: BodyViewProps): React.JSX.El
       ) : null}
       {truncated ? (
         <div className={styles.notice}>
-          Preview limited to first {PREVIEW_CAP_BYTES / 1024} KB of binary body.
+          Preview limited to first {previewLimitLabel(previewLimit)} of binary body.
         </div>
       ) : null}
       <pre className={styles.hex}>{toHexDump(previewBytes ?? loaded.bytes)}</pre>
     </div>
   );
+}
+
+function previewLimitLabel(bytes: number): string {
+  return bytes < 1024 ? `${bytes} bytes` : `${bytes / 1024} KB`;
 }

@@ -4,6 +4,7 @@ import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../captureStore';
 import {
+  GRPC_INSPECTOR_TABS,
   INSPECTOR_TABS,
   WEBSOCKET_INSPECTOR_TABS,
   type InspectorTab,
@@ -20,6 +21,7 @@ import {
 } from '../row-format';
 import { useExchangeDetail } from '../useExchangeDetail';
 import { BodyView } from './BodyView';
+import { GrpcMessages } from './GrpcMessages';
 import { WebSocketMessages } from './WebSocketMessages';
 import styles from './RequestInspector.module.css';
 
@@ -88,6 +90,19 @@ function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
     });
 }
 
+function isGrpcMime(value: string | undefined): boolean {
+  const essence = value?.split(';', 1)[0]?.trim().toLowerCase();
+  return essence === 'application/grpc'
+    || essence?.startsWith('application/grpc+') === true;
+}
+
+function headerValue(
+  headers: CaptureHeader[],
+  name: string,
+): string | undefined {
+  return headers.find((header) => header.name.toLowerCase() === name)?.value;
+}
+
 function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
   return (
     <div className={styles.kv}>
@@ -144,8 +159,21 @@ export function RequestInspector(): React.JSX.Element {
   const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
   const isWebSocket = view ? protocolSegment(view.protocol) === 'ws' : false;
-  const inspectorTabs = isWebSocket ? WEBSOCKET_INSPECTOR_TABS : INSPECTOR_TABS;
+  const isGrpc = !isWebSocket && Boolean(
+    view &&
+      protocolSegment(view.protocol) === 'h2' &&
+      (isGrpcMime(detail?.requestMime) || isGrpcMime(view.responseMime)),
+  );
+  const inspectorTabs = isWebSocket
+    ? WEBSOCKET_INSPECTOR_TABS
+    : isGrpc
+      ? GRPC_INSPECTOR_TABS
+      : INSPECTOR_TABS;
   const tlsPort = inferPort(detail?.url, scheme);
+  const grpcStatus = headerValue(responseTrailers, 'grpc-status')
+    ?? headerValue(responseHeaders, 'grpc-status');
+  const grpcMessage = headerValue(responseTrailers, 'grpc-message')
+    ?? headerValue(responseHeaders, 'grpc-message');
   const statusText = view
     ? view.statusCode !== undefined
       ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
@@ -153,8 +181,8 @@ export function RequestInspector(): React.JSX.Element {
     : '';
 
   useEffect(() => {
-    setTab(isWebSocket ? 'messages' : 'headers');
-  }, [isWebSocket, selectedId]);
+    setTab(isWebSocket ? 'messages' : isGrpc ? 'grpc' : 'headers');
+  }, [isGrpc, isWebSocket, selectedId]);
 
   return (
     <div className={styles.inspector}>
@@ -173,8 +201,20 @@ export function RequestInspector(): React.JSX.Element {
           )}
         </span>
         {view && view.statusCode !== undefined ? (
-          <StatusBadge tone={statusTone(view.statusCode)}>
-            {isWebSocket && view.statusCode === 101 ? 'Connected' : statusText}
+          <StatusBadge
+            tone={
+              isGrpc && grpcStatus !== undefined
+                ? grpcStatus === '0'
+                  ? 'green'
+                  : 'red'
+                : statusTone(view.statusCode)
+            }
+          >
+            {isWebSocket && view.statusCode === 101
+              ? 'Connected'
+              : isGrpc && grpcStatus !== undefined
+                ? `gRPC ${grpcStatus}${grpcMessage ? ` ${grpcMessage}` : ''}`
+                : statusText}
           </StatusBadge>
         ) : null}
       </div>
@@ -290,6 +330,10 @@ export function RequestInspector(): React.JSX.Element {
 
         {tab === 'messages' && isWebSocket && view ? (
           <WebSocketMessages exchangeId={view.id} startedAt={view.startedAt} />
+        ) : null}
+
+        {tab === 'grpc' && isGrpc && detail ? (
+          <GrpcMessages detail={detail} />
         ) : null}
 
         {tab === 'timing' ? (

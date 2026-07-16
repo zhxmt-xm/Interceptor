@@ -302,6 +302,24 @@ describe('CoreApplication', () => {
 
     await expect(
       application.executeCommand(
+        {
+          type: 'grpc.messages',
+          payload: { exchangeId: 'e1', side: 'response', limit: 10 },
+        },
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      type: 'grpc.messages',
+      payload: {
+        recognized: false,
+        side: 'response',
+        items: [],
+        hasMore: false,
+      },
+    });
+
+    await expect(
+      application.executeCommand(
         { type: 'sessions.detail', payload: { exchangeId: 'e1' } },
         signal,
       ),
@@ -344,7 +362,14 @@ describe('CoreApplication', () => {
       ),
     ).resolves.toMatchObject({ type: 'storage.status' });
 
-    expect(calls).toEqual(['query', 'detail', 'websocket', 'body', 'cleanup']);
+    expect(calls).toEqual([
+      'query',
+      'detail',
+      'detail',
+      'websocket',
+      'body',
+      'cleanup',
+    ]);
   });
 
   it('decodes a gzip body on demand when body.read-range requests decode', async () => {

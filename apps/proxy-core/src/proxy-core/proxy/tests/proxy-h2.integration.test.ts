@@ -22,6 +22,7 @@ import { ProxyService, type CaptureSink } from '../proxy-service';
 class RecordingSink implements CaptureSink {
   readonly sessions: CaptureSessionInput[] = [];
   readonly exchanges: ExchangeInput[] = [];
+  readonly bodies: Buffer[] = [];
 
   ensureSession(session: CaptureSessionInput): Promise<void> {
     this.sessions.push(session);
@@ -45,10 +46,13 @@ class RecordingSink implements CaptureSink {
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }> {
     return (async () => {
-      let size = 0;
+      const chunks: Buffer[] = [];
       for await (const chunk of source) {
-        size += chunk.byteLength;
+        chunks.push(Buffer.from(chunk));
       }
+      const body = Buffer.concat(chunks);
+      this.bodies.push(body);
+      const size = body.byteLength;
       return { hash: `sha-${size}`, size, deduplicated: false };
     })();
   }
@@ -63,6 +67,40 @@ class RecordingSink implements CaptureSink {
   ): Promise<void> {
     return Promise.resolve();
   }
+}
+
+function grpcEnvelope(payload: Uint8Array, compressed = false): Buffer {
+  const header = Buffer.alloc(5);
+  header[0] = compressed ? 1 : 0;
+  header.writeUInt32BE(payload.byteLength, 1);
+  return Buffer.concat([header, Buffer.from(payload)]);
+}
+
+function startGrpcH2Origin(
+  cert: string,
+  key: string,
+  responseBody: Buffer,
+): Promise<{ port: number; close: () => Promise<void> }> {
+  const server = http2.createSecureServer({ cert, key });
+  server.on('stream', (stream) => {
+    stream.respond(
+      { ':status': 200, 'content-type': 'application/grpc+proto' },
+      { waitForTrailers: true },
+    );
+    stream.on('wantTrailers', () => {
+      stream.sendTrailers({ 'grpc-status': '0', 'grpc-message': 'OK' });
+    });
+    stream.end(responseBody);
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo;
+      resolve({
+        port,
+        close: () => new Promise<void>((done) => server.close(() => done())),
+      });
+    });
+  });
 }
 
 function startH2Origin(
@@ -166,6 +204,64 @@ function h2ViaProxy(
   });
 }
 
+function grpcViaProxy(
+  proxyPort: number,
+  originHost: string,
+  originPort: number,
+  caCert: string,
+  requestBody: Buffer,
+): Promise<{ status: number | undefined; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(proxyPort, '127.0.0.1', () => {
+      socket.write(
+        `CONNECT ${originHost}:${originPort} HTTP/1.1\r\n` +
+          `Host: ${originHost}:${originPort}\r\n\r\n`,
+      );
+    });
+    socket.once('data', (chunk: Buffer) => {
+      const statusLine = chunk.toString('utf8').split('\r\n', 1)[0] ?? '';
+      if (!statusLine.includes(' 200 ')) {
+        reject(new Error(`CONNECT failed: ${statusLine}`));
+        return;
+      }
+      const tlsSocket = tls.connect(
+        {
+          socket,
+          servername: originHost,
+          ALPNProtocols: ['h2'],
+          ca: [caCert],
+        },
+        () => {
+          const client = http2.connect(`https://${originHost}:${originPort}`, {
+            createConnection: () => tlsSocket,
+          });
+          client.on('error', reject);
+          const req = client.request({
+            ':path': '/orders.v1.OrderService/Watch',
+            ':method': 'POST',
+            'content-type': 'application/grpc+proto',
+            'te': 'trailers',
+          });
+          let status: number | undefined;
+          const chunks: Buffer[] = [];
+          req.on('response', (headers) => {
+            status = headers[':status'];
+          });
+          req.on('data', (data: Buffer) => chunks.push(Buffer.from(data)));
+          req.on('end', () => {
+            client.close();
+            resolve({ status, body: Buffer.concat(chunks) });
+          });
+          req.on('error', reject);
+          req.end(requestBody);
+        },
+      );
+      tlsSocket.on('error', reject);
+    });
+    socket.on('error', reject);
+  });
+}
+
 async function waitForExchange(sink: RecordingSink): Promise<void> {
   const deadline = Date.now() + 3_000;
   while (sink.exchanges.length === 0 && Date.now() < deadline) {
@@ -251,5 +347,50 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
 
     await waitForExchange(sink);
     expect(sink.exchanges[0]?.protocol).toBe('h2');
+  });
+
+  it('captures native gRPC as a generic HTTP/2 request and response body', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const sink = new RecordingSink();
+    proxy = new ProxyService(sink, new CaptureEventQueue());
+    await proxy.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    const address = await proxy.start();
+    const requestBody = grpcEnvelope(Buffer.from('request-message'));
+    const responseBody = Buffer.concat([
+      grpcEnvelope(Buffer.from('response-one')),
+      grpcEnvelope(Buffer.from('response-two'), true),
+    ]);
+    origin = await startGrpcH2Origin(
+      originCertificate.cert,
+      originCertificate.key,
+      responseBody,
+    );
+
+    const response = await grpcViaProxy(
+      address.port,
+      'localhost',
+      origin.port,
+      ca.cert,
+      requestBody,
+    );
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(responseBody);
+
+    await waitForExchange(sink);
+    expect(sink.exchanges[0]).toMatchObject({
+      protocol: 'h2',
+      method: 'POST',
+      requestMime: 'application/grpc+proto',
+      responseMime: 'application/grpc+proto',
+    });
+    expect(sink.bodies).toEqual([requestBody, responseBody]);
+    expect(
+      sink.exchanges[0]?.headers?.find(
+        (header) =>
+          header.kind === 'response-trailer' &&
+          header.name === 'grpc-status',
+      )?.value,
+    ).toBe('0');
   });
 });

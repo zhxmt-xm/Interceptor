@@ -67,6 +67,19 @@ export interface WebSocketBreakpointConfigureCommand {
   };
 }
 
+export type GrpcMessageSide = 'request' | 'response';
+
+/** 按 HTTP body side 分页扫描 gRPC 5-byte envelope，不返回 payload 字节。 */
+export interface GrpcMessagesCommand {
+  type: 'grpc.messages';
+  payload: {
+    exchangeId: string;
+    side: GrpcMessageSide;
+    cursor?: string;
+    limit: number;
+  };
+}
+
 export interface RulesValidateCommand {
   type: 'rules.validate';
   payload: {
@@ -221,6 +234,7 @@ export type CoreCommand =
   | SessionsDetailCommand
   | WebSocketFramesCommand
   | WebSocketBreakpointConfigureCommand
+  | GrpcMessagesCommand
   | BodyReadRangeCommand
   | RulesValidateCommand
   | RulesReplaceCommand
@@ -290,6 +304,31 @@ export interface WebSocketBreakpointConfigResult {
   type: 'websocket.breakpoint.config';
   payload: {
     enabled: boolean;
+  };
+}
+
+export interface GrpcMessageSummary {
+  index: number;
+  envelopeOffset: number;
+  payloadOffset: number;
+  payloadLength: number;
+  compressed: boolean;
+  truncated: boolean;
+}
+
+export interface GrpcMessagesResult {
+  type: 'grpc.messages';
+  payload: {
+    recognized: boolean;
+    side: GrpcMessageSide;
+    contentType?: string;
+    encoding?: string;
+    bodyHash?: string;
+    bodySize: number;
+    items: GrpcMessageSummary[];
+    nextCursor?: string;
+    hasMore: boolean;
+    malformedOffset?: number;
   };
 }
 
@@ -509,6 +548,7 @@ export type CoreResult =
   | SessionsDetailResult
   | WebSocketFramesResult
   | WebSocketBreakpointConfigResult
+  | GrpcMessagesResult
   | BodyRangeResult
   | RuleValidationResult
   | RuleRevisionResult
@@ -532,7 +572,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
         : T extends WebSocketFramesCommand ? WebSocketFramesResult
           : T extends WebSocketBreakpointConfigureCommand
             ? WebSocketBreakpointConfigResult
-            : T extends BodyReadRangeCommand ? BodyRangeResult
+            : T extends GrpcMessagesCommand ? GrpcMessagesResult
+              : T extends BodyReadRangeCommand ? BodyRangeResult
           : T extends RulesValidateCommand ? RuleValidationResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
               : T extends BreakpointResolveCommand

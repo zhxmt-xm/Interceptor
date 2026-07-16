@@ -465,6 +465,7 @@ Fake 应覆盖 `InterceptorDesktopApi` 的完整意图面，即使某个场景�
 - Core process status；
 - Capture status、session page、exchange detail；
 - WebSocket frame page、payload range 和 breakpoint toggle；
+- gRPC request/response message metadata、raw payload range 和 trailers；
 - Storage usage；
 - Certificate status 和 insecure hosts；
 - Rules / validation / hit counts；

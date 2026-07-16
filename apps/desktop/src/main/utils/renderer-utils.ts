@@ -6,6 +6,7 @@ import type {
   CaptureStatus,
   ComposerRequest,
   CoreDiagnosticRecord,
+  GrpcMessageQuery,
   SessionQueryRequest,
   StorageUsage,
   WebSocketFrameQuery,
@@ -422,5 +423,32 @@ export function toWebSocketFrameQuery(value: unknown): WebSocketFrameQuery {
     limit: request.limit,
     cursor: request.cursor as string | undefined,
     direction: request.direction as WebSocketFrameQuery['direction'],
+  };
+}
+
+/** 校验 gRPC message metadata 分页请求；payload 仍通过 body range 单独读取。 */
+export function toGrpcMessageQuery(value: unknown): GrpcMessageQuery {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('grpc query is invalid');
+  }
+  const request = value as Record<string, unknown>;
+  assertIdentifier(request.exchangeId, 'grpc query.exchangeId');
+  if (request.side !== 'request' && request.side !== 'response') {
+    throw new Error('grpc query.side is invalid');
+  }
+  if (
+    typeof request.limit !== 'number' ||
+    !Number.isInteger(request.limit) ||
+    request.limit < 1 ||
+    request.limit > MAX_QUERY_PAGE_SIZE
+  ) {
+    throw new Error('grpc query.limit is invalid');
+  }
+  assertOptionalBoundedString(request.cursor, 'grpc query.cursor', 1_024);
+  return {
+    exchangeId: request.exchangeId,
+    side: request.side,
+    cursor: request.cursor as string | undefined,
+    limit: request.limit,
   };
 }

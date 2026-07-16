@@ -41,6 +41,7 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'breakpoint.configure': 'breakpoint.config',
   'composer.send': 'composer.response',
   'connection.probe': 'connection.probed',
+  'grpc.messages': 'grpc.messages',
   'diagnostics.recent': 'diagnostics.records',
   'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',

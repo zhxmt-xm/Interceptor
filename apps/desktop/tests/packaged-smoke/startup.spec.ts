@@ -93,6 +93,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onCoreProcessStatusChange',
         'openCertificateManager',
         'probeConnection',
+        'queryGrpcMessages',
         'querySessions',
         'queryWebSocketFrames',
         'readBody',

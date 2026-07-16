@@ -1,5 +1,33 @@
 const startedAt = Date.parse('2026-07-16T12:00:00.000Z');
 
+const grpcRequestPayload = Array.from(
+  new TextEncoder().encode('watch orders for account 42'),
+);
+const grpcResponsePayloads = [
+  Array.from({ length: 37 }, (_, index) => (index * 7 + 3) % 256),
+  Array.from({ length: 1_212 }, (_, index) => (index * 13 + 31) % 256),
+  Array.from({ length: 82 }, (_, index) => (index * 5 + 11) % 256),
+];
+
+function grpcEnvelope(payload, compressed = false) {
+  const length = payload.length;
+  return [
+    compressed ? 1 : 0,
+    (length >>> 24) & 0xff,
+    (length >>> 16) & 0xff,
+    (length >>> 8) & 0xff,
+    length & 0xff,
+    ...payload,
+  ];
+}
+
+const grpcRequestBody = grpcEnvelope(grpcRequestPayload);
+const grpcResponseBody = [
+  ...grpcEnvelope(grpcResponsePayloads[0]),
+  ...grpcEnvelope(grpcResponsePayloads[1], true),
+  ...grpcEnvelope(grpcResponsePayloads[2]),
+];
+
 function summary({
   id,
   host,
@@ -36,6 +64,7 @@ const sessions = [
   summary({ id: 'http-4', host: 'fonts.gstatic.com', path: '/s/inter/v13/UcC.woff2', protocol: 'h2', statusCode: 200, responseMime: 'font/woff2', responseBytes: 43_008, durationMs: 33 }),
   summary({ id: 'http-5', host: 'api.stripe.com', path: '/v1/charges', protocol: 'http/1.1', statusCode: 401, responseMime: 'application/json', responseBytes: 220, durationMs: 89, method: 'POST' }),
   summary({ id: 'http-6', host: 'graph.microsoft.com', path: '/v1.0/me/messages', protocol: 'h2', statusCode: 200, responseMime: 'application/json', responseBytes: 18_432, durationMs: 320 }),
+  summary({ id: 'grpc-fixture', host: 'orders.example.com', path: '/orders.v1.OrderService/Watch', protocol: 'h2', statusCode: 200, responseMime: 'application/grpc+proto', responseBytes: grpcResponseBody.length, durationMs: 1_800, method: 'POST' }),
   {
     id: 'ws-fixture',
     method: 'GET',
@@ -66,6 +95,8 @@ const bodies = {
     ]),
   ),
   'ws-body-4': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'grpc-request-body': grpcRequestBody,
+  'grpc-response-body': grpcResponseBody,
 };
 
 const frame = (seq, direction, opcode, elapsed, bodyHash, payloadSize, mediaType) => ({
@@ -110,7 +141,7 @@ const httpDetail = {
 };
 
 const websocketDetail = {
-  summary: sessions[6],
+  summary: sessions.find((session) => session.id === 'ws-fixture'),
   url: 'ws://realtime.example.com/socket',
   scheme: 'ws',
   port: 80,
@@ -119,6 +150,80 @@ const websocketDetail = {
   responseHeaders: [],
   requestTrailers: [],
   responseTrailers: [],
+};
+
+const grpcDetail = {
+  summary: sessions.find((session) => session.id === 'grpc-fixture'),
+  url: 'https://orders.example.com/orders.v1.OrderService/Watch',
+  scheme: 'https',
+  port: 443,
+  statusText: 'OK',
+  requestMime: 'application/grpc+proto',
+  requestHeaders: [
+    { name: 'content-type', value: 'application/grpc+proto' },
+  ],
+  responseHeaders: [
+    { name: 'content-type', value: 'application/grpc+proto' },
+    { name: 'grpc-encoding', value: 'gzip' },
+  ],
+  requestTrailers: [],
+  responseTrailers: [
+    { name: 'grpc-status', value: '0' },
+    { name: 'grpc-message', value: 'OK' },
+  ],
+  requestBody: {
+    bodyHash: 'grpc-request-body',
+    mediaType: 'application/grpc+proto',
+    encodedSize: grpcRequestBody.length,
+    truncated: false,
+    decodeStatus: 'ok',
+  },
+  responseBody: {
+    bodyHash: 'grpc-response-body',
+    mediaType: 'application/grpc+proto',
+    encodedSize: grpcResponseBody.length,
+    truncated: false,
+    decodeStatus: 'ok',
+  },
+};
+
+const grpcMessages = {
+  request: [
+    {
+      index: 0,
+      envelopeOffset: 0,
+      payloadOffset: 5,
+      payloadLength: grpcRequestPayload.length,
+      compressed: false,
+      truncated: false,
+    },
+  ],
+  response: [
+    {
+      index: 0,
+      envelopeOffset: 0,
+      payloadOffset: 5,
+      payloadLength: 37,
+      compressed: false,
+      truncated: false,
+    },
+    {
+      index: 1,
+      envelopeOffset: 42,
+      payloadOffset: 47,
+      payloadLength: 1_212,
+      compressed: true,
+      truncated: false,
+    },
+    {
+      index: 2,
+      envelopeOffset: 1_259,
+      payloadOffset: 1_264,
+      payloadLength: 82,
+      compressed: false,
+      truncated: false,
+    },
+  ],
 };
 
 const rules = [
@@ -186,9 +291,11 @@ export const fakeInterceptorFixture = {
     details: {
       'http-1': httpDetail,
       'ws-fixture': websocketDetail,
+      'grpc-fixture': grpcDetail,
     },
     websocketFrames,
     websocketBreakpointsEnabled: true,
+    grpcMessages,
     bodies,
   },
   rules: {
@@ -324,6 +431,27 @@ export function installFakeInterceptor({ fixture, theme }) {
     setWebSocketBreakpointsEnabled: async (enabled) => {
       websocketBreakpointsEnabled = enabled;
       return enabled;
+    },
+    queryGrpcMessages: async (request) => {
+      const all = fixture.capture.grpcMessages[request.side];
+      const cursor = request.cursor ? Number(request.cursor) : 0;
+      const eligible = all.filter((message) => message.index >= cursor);
+      const items = eligible.slice(0, request.limit);
+      const nextIndex = (items.at(-1)?.index ?? cursor - 1) + 1;
+      const bodyId = request.side === 'request'
+        ? 'grpc-request-body'
+        : 'grpc-response-body';
+      return {
+        recognized: true,
+        side: request.side,
+        contentType: 'application/grpc+proto',
+        encoding: request.side === 'response' ? 'gzip' : undefined,
+        bodyHash: bodyId,
+        bodySize: fixture.capture.bodies[bodyId].length,
+        items,
+        nextCursor: eligible.length > items.length ? String(nextIndex) : undefined,
+        hasMore: eligible.length > items.length,
+      };
     },
     readBody: async (bodyId, offset, length) => {
       const source = new Uint8Array(fixture.capture.bodies[bodyId] ?? []);

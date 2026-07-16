@@ -37,6 +37,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'sessions.detail',
   'websocket.frames',
   'websocket.breakpoint.configure',
+  'grpc.messages',
   'body.read-range',
   'rules.validate',
   'rules.replace',
@@ -264,6 +265,9 @@ function validateCommand(value: unknown): string | null {
     case 'websocket.breakpoint.configure':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateWebSocketBreakpointConfigure(value.payload);
+    case 'grpc.messages':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateGrpcMessagesRequest(value.payload);
     case 'tls.configure':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateTlsConfigure(value.payload);
@@ -344,6 +348,9 @@ function validateResult(value: unknown): string | null {
     case 'websocket.breakpoint.config':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateWebSocketBreakpointConfig(value.payload);
+    case 'grpc.messages':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateGrpcMessagesResult(value.payload);
     case 'body.range':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBodyRangeResult(value.payload);
@@ -1309,6 +1316,121 @@ function validateWebSocketBreakpointConfigure(value: unknown): string | null {
 function validateWebSocketBreakpointConfig(value: unknown): string | null {
   return validateExactObject(value, 'result.payload', ['enabled'], (payload) =>
     validateBoolean(payload.enabled, 'result.payload.enabled'));
+}
+
+function validateGrpcMessagesRequest(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['exchangeId', 'side', 'cursor', 'limit'],
+    (payload) => validateId(
+      payload.exchangeId,
+      'command.payload.exchangeId',
+    ) ?? validateEnum(payload.side, 'command.payload.side', [
+      'request',
+      'response',
+    ]) ?? validateOptionalBoundedString(
+      payload.cursor,
+      'command.payload.cursor',
+      MAX_CURSOR_LENGTH,
+    ) ?? validateIntegerRange(
+      payload.limit,
+      'command.payload.limit',
+      1,
+      MAX_QUERY_PAGE_SIZE,
+    ),
+  );
+}
+
+function validateGrpcMessagesResult(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'result.payload',
+    [
+      'recognized',
+      'side',
+      'contentType',
+      'encoding',
+      'bodyHash',
+      'bodySize',
+      'items',
+      'nextCursor',
+      'hasMore',
+      'malformedOffset',
+    ],
+    (payload) => validateBoolean(
+      payload.recognized,
+      'result.payload.recognized',
+    ) ?? validateEnum(payload.side, 'result.payload.side', [
+      'request',
+      'response',
+    ]) ?? validateOptionalBoundedString(
+      payload.contentType,
+      'result.payload.contentType',
+      256,
+    ) ?? validateOptionalBoundedString(
+      payload.encoding,
+      'result.payload.encoding',
+      128,
+    ) ?? validateOptionalBoundedString(
+      payload.bodyHash,
+      'result.payload.bodyHash',
+      128,
+    ) ?? validateNonNegativeSafeInteger(
+      payload.bodySize,
+      'result.payload.bodySize',
+    ) ?? validateGrpcMessageArray(payload.items) ??
+      validateOptionalBoundedString(
+        payload.nextCursor,
+        'result.payload.nextCursor',
+        MAX_CURSOR_LENGTH,
+      ) ?? validateBoolean(payload.hasMore, 'result.payload.hasMore') ??
+      (payload.malformedOffset === undefined
+        ? null
+        : validateNonNegativeSafeInteger(
+            payload.malformedOffset,
+            'result.payload.malformedOffset',
+          )),
+  );
+}
+
+function validateGrpcMessageArray(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > MAX_QUERY_PAGE_SIZE) {
+    return `result.payload.items must contain at most ${MAX_QUERY_PAGE_SIZE} items`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const name = `result.payload.items[${index}]`;
+    const error = validateExactObject(
+      value[index],
+      name,
+      [
+        'index',
+        'envelopeOffset',
+        'payloadOffset',
+        'payloadLength',
+        'compressed',
+        'truncated',
+      ],
+      (message) => validateNonNegativeSafeInteger(
+        message.index,
+        `${name}.index`,
+      ) ?? validateNonNegativeSafeInteger(
+        message.envelopeOffset,
+        `${name}.envelopeOffset`,
+      ) ?? validateNonNegativeSafeInteger(
+        message.payloadOffset,
+        `${name}.payloadOffset`,
+      ) ?? validateNonNegativeSafeInteger(
+        message.payloadLength,
+        `${name}.payloadLength`,
+      ) ?? validateBoolean(message.compressed, `${name}.compressed`) ??
+        validateBoolean(message.truncated, `${name}.truncated`),
+    );
+    if (error) {
+      return error;
+    }
+  }
+  return null;
 }
 
 function validateWebSocketFramesResult(value: unknown): string | null {

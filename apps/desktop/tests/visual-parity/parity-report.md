@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-07-16T17:07:53.933Z
+Generated: 2026-07-16T17:41:42.783Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 7 |
-| Average pixel diff | 2.17% |
-| Targets | 68 |
-| Matched | 58 |
-| Missing | 10 |
-| Flagged | 33 |
+| Views checked | 8 |
+| Average pixel diff | 2.24% |
+| Targets | 77 |
+| Matched | 69 |
+| Missing | 8 |
+| Flagged | 39 |
 | Largest geometry delta | 258.2 px |
 | Worst element | rules / Add action |
 
@@ -20,12 +20,13 @@ Generated: 2026-07-16T17:07:53.933Z
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture | 2.48% | 11 | 11 | 0 | 4 | 2.1 px |
-| capture-websocket | 2.31% | 8 | 8 | 0 | 4 | 2.0 px |
+| capture | 2.53% | 11 | 11 | 0 | 4 | 2.1 px |
+| capture-websocket | 2.38% | 8 | 8 | 0 | 4 | 2.0 px |
+| capture-grpc | 2.57% | 9 | 9 | 0 | 5 | 2.0 px |
 | rules | 3.29% | 11 | 11 | 0 | 6 | 258.2 px |
-| composer | 1.71% | 10 | 6 | 4 | 1 | 2.1 px |
+| composer | 1.71% | 10 | 7 | 3 | 2 | 2.0 px |
 | settings | 2.23% | 10 | 8 | 2 | 8 | 107.3 px |
-| breakpoints | 1.50% | 8 | 7 | 1 | 4 | 2.9 px |
+| breakpoints | 1.50% | 8 | 8 | 0 | 4 | 2.9 px |
 | diagnostics | 1.70% | 10 | 7 | 3 | 6 | 92.2 px |
 
 ## Element Geometry
@@ -51,6 +52,15 @@ Generated: 2026-07-16T17:07:53.933Z
 | capture-websocket | Pause on message | 0.0 px | 0.0 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
 | capture-websocket | Received text | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | capture-websocket | Binary | 0.0 px | -0.1 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | orders.example.com | -2.0 px | 0.0 px | 2.0 px | 0.0 px | 2.0 px | none | flagged |
+| capture-grpc | /orders.v1.OrderService/Watch | -2.0 px | 0.0 px | 2.0 px | -0.9 px | 2.0 px | none | flagged |
+| capture-grpc | gRPC 0 OK | 0.0 px | -0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| capture-grpc | Messages | 0.0 px | -0.3 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-grpc | Response | -0.5 px | -0.9 px | -0.3 px | 0.8 px | 0.9 px | none | ok |
+| capture-grpc | Message 2 | 0.0 px | 0.9 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | gzip compressed | 0.0 px | 0.9 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | Response message 2 | 0.0 px | 0.1 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| capture-grpc | No descriptor loaded. Payload is shown as raw binary. | 0.0 px | 1.8 px | 0.0 px | -0.5 px | 1.8 px | none | flagged |
 | rules | Rules | 0.0 px | -0.1 px | -0.3 px | 0.2 px | 0.3 px | none | ok |
 | rules | New rule | 2.8 px | 0.0 px | -0.3 px | 0.0 px | 2.8 px | none | flagged |
 | rules | Apply changes | 2.6 px | 0.0 px | -0.6 px | 0.0 px | 2.6 px | none | flagged |
@@ -62,16 +72,16 @@ Generated: 2026-07-16T17:07:53.933Z
 | rules | Match | 0.0 px | 0.0 px | 2.0 px | -0.5 px | 2.0 px | none | flagged |
 | rules | Add condition | 0.0 px | -42.5 px | -0.5 px | 0.0 px | 42.5 px | none | flagged |
 | rules | Add action | 0.0 px | -258.2 px | -0.4 px | 0.0 px | 258.2 px | none | flagged |
-| composer | History | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
-| composer | New | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| composer | Send | 0.1 px | 0.0 px | -0.2 px | 0.0 px | 0.2 px | none | ok |
-| composer | Protocol | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| composer | TLS 1.3 · h2 | -0.1 px | 0.3 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
-| composer | authorization | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| composer | content-type | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| composer | accept | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| composer | Created | -0.1 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| composer | Add header… | -2.1 px | 0.8 px | 0.9 px | -1.3 px | 2.1 px | none | flagged |
+| composer | History | 0.5 px | 0.0 px | -0.4 px | 0.0 px | 0.5 px | none | ok |
+| composer | New | 0.1 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| composer | Send | 0.2 px | 0.0 px | -0.2 px | 0.0 px | 0.2 px | none | ok |
+| composer | Protocol | -2.0 px | 0.1 px | 0.0 px | -0.5 px | 2.0 px | none | flagged |
+| composer | TLS 1.3 · h2 | 0.0 px | 0.3 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| composer | authorization | n/a | n/a | n/a | n/a | n/a | none | app missing |
+| composer | content-type | n/a | n/a | n/a | n/a | n/a | none | app missing |
+| composer | accept | n/a | n/a | n/a | n/a | n/a | none | app missing |
+| composer | Created | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| composer | Add header… | -2.0 px | 0.8 px | 0.9 px | -1.3 px | 2.0 px | none | flagged |
 | settings | Root Certificate Authority | 0.0 px | -0.8 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
 | settings | Trust status | 0.0 px | 0.0 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
 | settings | HTTPS interception | 0.0 px | 0.4 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
@@ -82,7 +92,7 @@ Generated: 2026-07-16T17:07:53.933Z
 | settings | Regenerate | 2.4 px | 0.0 px | -0.4 px | 0.0 px | 2.4 px | none | flagged |
 | settings | Add host | 2.3 px | 0.8 px | -0.3 px | 0.0 px | 2.3 px | none | flagged |
 | settings | 1 flagged | n/a | n/a | n/a | n/a | n/a | none | app missing |
-| breakpoints | Debug checkout | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| breakpoints | Debug checkout | -0.5 px | 0.0 px | -0.5 px | 0.4 px | 0.5 px | none | ok |
 | breakpoints | Inspect token | -0.5 px | 0.0 px | -0.5 px | 0.4 px | 0.5 px | none | ok |
 | breakpoints | Continue all | 0.0 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | breakpoints | Request paused | 1.5 px | 0.0 px | 0.0 px | -0.5 px | 1.5 px | none | flagged |

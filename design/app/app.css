@@ -230,9 +230,11 @@ body {
 .cert .cc b { font-size: 12.5px; font-weight: 550; }
 .cert .cc span { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
 .cert .cchain { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; flex: 0 0 auto; }
-.ws-only { display: none; }
+.ws-only, .grpc-only { display: none; }
 .app[data-scene="websocket"] .http-only { display: none; }
 .app[data-scene="websocket"] .ws-only { display: flex; }
+.app[data-scene="grpc"] .http-only { display: none; }
+.app[data-scene="grpc"] .grpc-only { display: flex; }
 .sbadge.ws { color: var(--blue); background: color-mix(in srgb, var(--blue) 13%, transparent); }
 .sbadge.ws .d { background: var(--blue); }
 .wsmsg { gap: 12px; }
@@ -259,6 +261,31 @@ body {
 .wspayload .bodybox { padding: 12px 14px; border-radius: 7px; font-size: 10.5px; line-height: 1.65; }
 .wsnote { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 11px; }
 .wsnote svg { width: 13px; height: 13px; color: var(--accent); }
+.grpcmsg { gap: 12px; }
+.grpcbar { display: flex; align-items: center; gap: 9px; margin: -5px -4px 0; }
+.grpcbar .seg { height: 30px; }
+.grpcbar .seg span { padding: 4px 11px; font-size: 12px; }
+.grpcbar .sp { flex: 1; }
+.grpcok { display: flex; align-items: center; gap: 6px; color: var(--green); font-family: var(--font-mono); font-size: 10.5px; }
+.grpcok .d { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.grpcrows { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.grpcrow { display: grid; grid-template-columns: 26px 72px minmax(0,1fr) 54px 62px; align-items: center; gap: 8px; min-height: 38px; padding: 0 10px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10.5px; }
+.grpcrow.sel { background: var(--sel); box-shadow: inset 2px 0 var(--sel-line); }
+.grpcdir { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--green); background: color-mix(in srgb,var(--green) 13%,transparent); }
+.grpcdir svg { width: 12px; height: 12px; }
+.grpcindex { color: var(--text); font-weight: 600; }
+.grpcmeta { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grpcmeta.compressed { color: var(--yellow); }
+.grpcsize, .grpcoffset { color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
+.grpcpayload { padding: 12px; border-bottom: 1px solid var(--border); background: var(--filter); }
+.grpchead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.grpchead .cnt { margin-left: auto; }
+.grpcpreview { margin-bottom: 9px; color: var(--text-3); font-size: 11px; }
+.grpchex { padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.65; white-space: nowrap; overflow: hidden; }
+.grpctrailer { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 10.5px; }
+.grpctrailer code { padding: 3px 7px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-mono); }
+.grpcnote { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 11px; }
+.grpcnote svg { width: 13px; height: 13px; color: var(--accent); }
 
 /* =====================================================================
    FEATURE: rules — list · split · editor

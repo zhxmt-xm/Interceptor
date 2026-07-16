@@ -7,6 +7,8 @@ import type {
   CaptureHeader,
   ComposerTlsInfo,
   ConnectionCertificate,
+  GrpcMessageSide,
+  GrpcMessageSummary,
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
@@ -34,6 +36,8 @@ export type {
   CaptureHeader,
   ComposerTlsInfo,
   ConnectionCertificate,
+  GrpcMessageSide,
+  GrpcMessageSummary,
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
@@ -156,6 +160,26 @@ export interface WebSocketFramePage {
   breakpointsEnabled: boolean;
 }
 
+export interface GrpcMessageQuery {
+  exchangeId: string;
+  side: GrpcMessageSide;
+  cursor?: string;
+  limit: number;
+}
+
+export interface GrpcMessagePage {
+  recognized: boolean;
+  side: GrpcMessageSide;
+  contentType?: string;
+  encoding?: string;
+  bodyHash?: string;
+  bodySize: number;
+  items: GrpcMessageSummary[];
+  nextCursor?: string;
+  hasMore: boolean;
+  malformedOffset?: number;
+}
+
 /** 一段按需读取的正文字节及是否已到结尾。 */
 export interface BodyChunk {
   offset: number;
@@ -251,6 +275,7 @@ export const DESKTOP_IPC_CHANNELS = {
   sessionsDetail: 'sessions:detail',
   websocketFrames: 'websocket:frames',
   websocketBreakpointConfigure: 'websocket:breakpoint-configure',
+  grpcMessages: 'grpc:messages',
   bodyReadRange: 'body:read-range',
   caStatus: 'ca:status',
   caGenerate: 'ca:generate',
@@ -291,6 +316,7 @@ export interface InterceptorDesktopApi {
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;
   setWebSocketBreakpointsEnabled(enabled: boolean): Promise<boolean>;
+  queryGrpcMessages(request: GrpcMessageQuery): Promise<GrpcMessagePage>;
   readBody(
     bodyId: string,
     offset: number,

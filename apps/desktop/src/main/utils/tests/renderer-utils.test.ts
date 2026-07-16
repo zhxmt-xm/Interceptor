@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertBoundedString,
   assertIdentifier,
+  toGrpcMessageQuery,
   toRendererDiagnosticRecord,
   toWebSocketFrameQuery,
 } from '../renderer-utils';
@@ -81,5 +82,30 @@ describe('renderer utils', () => {
         direction: 'sideways',
       }),
     ).toThrow('websocket query.direction is invalid');
+  });
+
+  it('validates grpc message queries at the Renderer boundary', () => {
+    expect(
+      toGrpcMessageQuery({
+        exchangeId: 'exchange-grpc-1',
+        side: 'response',
+        cursor: 'opaque-cursor',
+        limit: 50,
+      }),
+    ).toEqual({
+      exchangeId: 'exchange-grpc-1',
+      side: 'response',
+      cursor: 'opaque-cursor',
+      limit: 50,
+    });
+    expect(() =>
+      toGrpcMessageQuery({ exchangeId: '../unsafe', side: 'request', limit: 10 }),
+    ).toThrow('grpc query.exchangeId is invalid');
+    expect(() =>
+      toGrpcMessageQuery({ exchangeId: 'grpc-1', side: 'both', limit: 10 }),
+    ).toThrow('grpc query.side is invalid');
+    expect(() =>
+      toGrpcMessageQuery({ exchangeId: 'grpc-1', side: 'request', limit: 501 }),
+    ).toThrow('grpc query.limit is invalid');
   });
 });

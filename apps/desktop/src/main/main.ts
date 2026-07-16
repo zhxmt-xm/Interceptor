@@ -28,6 +28,7 @@ import {
   toComposerRequest,
   toCoreRuleDefinitions,
   toCoreSessionQuery,
+  toGrpcMessageQuery,
   toInsecureHosts,
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
@@ -349,6 +350,19 @@ class DesktopApplication {
           payload: { enabled },
         });
         return result.payload.enabled;
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.grpcMessages,
+      async (event, request: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const query = toGrpcMessageQuery(request);
+        const result = await this.coreRuntime.request({
+          type: 'grpc.messages',
+          payload: query,
+        });
+        return result.payload;
       },
     );
 

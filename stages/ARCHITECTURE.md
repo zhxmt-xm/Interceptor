@@ -77,7 +77,7 @@ flowchart LR
 - **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsWorkerHost`（缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码；Main `CoreRuntime` 收到后停止重启并 `dialog.showErrorBox` 弹窗提示。
 - **模块结构**：`storage/` 与 `diagnostics/` 各分三块——`entry.ts`（对外门面/桶）、`host/host-*.ts`（Core 主线程侧的 worker 代理与 Blob Store）、`worker/worker-*.ts`（worker 线程侧入口与 SQLite 访问层）；共享的 `constants.ts`、`types.ts`、`protocol.ts` 放模块根。跨模块共享的 SQLite 迁移器在 `proxy-core/migration-runner.ts`。
 - **常量集中**：各模块 `constants.ts`（+ `proxy-core/constants.ts`）是所有数值/路径常量的唯一来源；生产构造函数不再接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
-- **StorageService**（`storage/entry.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
+- **StorageService**（`storage/entry.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/queryWebSocketFrames/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
 - **Storage Worker**（`storage/worker/worker-entry.cts` + `storage/host/host-worker.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
 - **Blob Store**（`storage/host/host-blob-store.ts`）：内容寻址正文存储，流式写临时文件→SHA-256→按 hash 分片路径原子 rename，命中去重；单条/全局配额、crash-safe GC（删未引用 Blob + 启动清临时文件）。
 - **Diagnostics Worker**（`diagnostics/worker/worker-entry.cts` + `diagnostics/host/host-worker.ts`）：worker 线程独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页；`CoreDiagnostics` 的 sink 路由到该 host（fire-and-forget，预就绪有界缓冲），写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。内存 Ring Buffer 仍作即时回退。
@@ -94,7 +94,7 @@ flowchart LR
 - **正文持久化（T3.3）**：请求/响应正文经 `StorageService.writeBody` 写入内容寻址 Blob Store，生成 `body_ref` 并在同事务内绑定 Exchange 的 request/response body id；超单体上限/配额时省略正文保留元数据（truncated/skipped）。当前经 Mockttp 内存缓冲后写盘，真正零内存流式（body-data 事件增量写盘）留后续。
 - **捕获事件管线（T3.4）**：`proxy/capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空（`MAX_INFLIGHT_EVENT_BATCHES`/`EVENT_DRAIN_BATCH`/`EVENT_FLUSH_INTERVAL_MS`）经 `CoreRpcServer.sendEventBatch` 发 `event-batch`；Main `CoreRpcClient` 收批回 `event-ack` 并触发 `CoreRuntime.onCaptureEvents`，Main 经 `capture:events` 广播 Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary` 单行结构。
 - **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 命令经 `CaptureStore.getExchangeDetail`（SELECT exchange + message_headers + body_ref）返回 `CaptureExchangeDetail`（头部 + 请求/响应 trailer + is_pseudo/stream_id + 正文引用元数据含 content_encoding）；正文字节经 `body.read-range` → `StorageService.readBodyRange`（按 blob hash 分块）。`body.read-range` 的 `decode` 请求由 `proxy/content-decoder.ts` 的 `decodeBody` 按 content-encoding（gzip/deflate/brotli，多层，容错）延迟解压后一次性返回并回传 `decodeStatus`（浏览器 DecompressionStream 不支持 br 故解码在 Core）。
-- **依赖打包**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），无法内联进单文件。因此 esbuild 用 `--external:mockttp` 保留 `require('mockttp')`，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包并补拷 `prebuilds/`/`build/Release/*.node`，按 node_modules 结构（保留嵌套、避免版本互相覆盖）拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
+- **依赖打包**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），WebSocket bridge 直接依赖 `ws`。esbuild 用 `--external:mockttp --external:ws` 保留运行时 require（`ws` 内联会阻塞首代 Electron UtilityProcess entry），`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包并补拷原生资产，按 node_modules 结构拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
 - **验证**：packaged 真实 exe 启动即 `require('mockttp')`，从隔离随包 node_modules 成功加载并进入 `running`；`npm audit --omit=dev` 0 漏洞。
 
 ## Capture 渲染数据层架构（M4，已落地）
@@ -182,6 +182,19 @@ sequenceDiagram
 - **Breakpoint 编辑（T8.3）**：`BreakpointQueue.suspend` 存请求/响应快照（ruleName/method/url/statusCode/headers/body）+ `deadline`，`list()` 返回快照；`RuleEngine` 加全局 break-on-match 开关（关闭时命中 breakpoint action 立即 continue），`awaitBreakpoint` 从可变 state 构建快照。`breakpoint.list`（返回 pending 快照 + enabled）/`breakpoint.configure`（设开关）handler；沿用 M7 `breakpoint.resolve`（continue/drop/edit）。Renderer `features/breakpoints/` 的 `breakpointsStore`（暂停列表 + 编辑草稿，轮询期间不覆盖用户编辑）+ `useBreakpoints`（1s 轮询 `breakpoint.list`、`resolveSelected`、`continueAllBreakpoints`、`setBreakOnMatch`）；UI `PausedQueue`（倒计时 + Continue all）/`BreakpointEditor`（编辑 header/body + Drop/Continue/Execute）。**采用轮询而非 push 事件通道**（请求在 Core 侧 await 挂起，1s 轮询延迟可接受）。窄 API：`listBreakpoints`/`resolveBreakpoint`/`setBreakpointsEnabled`。
 - **Connection/TLS 详情（T8.4）**：Core `proxy-core/connection/connection-probe.ts` 的 `probeConnection` 用 `tls.connect`（ALPN h2/http1.1、不发应用数据）读真实协议/套件/ALPN/authorized + 沿 `issuerCertificate` 收集的完整证书链（去重防环、限 10 张，含 SHA-256 指纹）；`connection.probe` handler。Renderer `capture/RequestInspector/TlsPanel` 在 TLS 标签展示捕获连接事实（scheme/host/port/protocol/secure）+ 按需 `probeConnection` 实时证书链（端口从捕获 URL 推断，回退 443/80）。**按需实时探测**（Mockttp 未暴露每 exchange 上游 TLS）。窄 API：`probeConnection`。
 
+## WebSocket 与 gRPC 架构（M9，已落地）
+
+> M9 在既有 Mockttp HTTP/1.1+HTTP/2 数据面上增加 WebSocket 应用消息和原生 gRPC 完成后 framing 展示。大 payload 始终留在 Core Blob Store；跨进程只传有限 metadata，Renderer 选中项后才走有限 range。
+
+- **WebSocket 握手与生命周期**：Mockttp 独立 WebSocket rule 接收 HTTP/1.1 Upgrade；`websocket-request`/`accepted` 关联成 protocol=`ws` 的 101 Exchange。101 后 state=`request-complete`（open），clean close 经 `StorageService.updateExchange` 更新 completed 并发 `exchange-updated`。仅支持 RFC 6455 H1 Upgrade；RFC 8441 H2 Extended CONNECT 未实现。
+- **WebSocket message 数据面**：`proxy/websocket-bridge.ts` 以 Mockttp 本地 custom step 保留 listener/Upgrade/观测事件，用 `ws` 连接上游并串行桥接双向 text/binary message。独立 `Pause on message` 开关启用后，每条消息在 target `send()` 前 await `RuleEngine.pauseWebSocketMessage`→`BreakpointQueue`；支持 text/hex edit、continue/drop/timeout。close/ping/pong 透传，但不伪造应用消息记录。
+- **WebSocket 存储/查询**：payload 写内容寻址 Blob；`websocket_frame` 存 exchange_id/seq/direction/opcode/payload_body_id/size/time。`websocket.frames` 按 seq opaque keyset 分页、可按方向过滤，只返回 metadata + `CaptureBodyRef`；Renderer 用 `body.read-range` 读取选中 payload。
+- **原生 gRPC 捕获**：没有独立 gRPC listener。Mockttp `http2:true` 的通用 `forAnyRequest().thenPassThrough()` 接收 H2 POST，`request/response` 完成事件保存 `application/grpc` / `application/grpc+*` body 与 grpc-status/message trailer。真实 TLS+ALPN h2 集成测试验证双方 envelope bytes 和 trailer。`application/grpc-web*` 明确不按原生 framing 解析。
+- **gRPC framing/query**：`grpc/grpc-framing.ts` 解析 5-byte envelope（flag + uint32 BE length）；`grpc/grpc-service.ts` 的 `grpc.messages` 每条只从 Blob 读 5B header，再按 payload length 跳到下一 offset，返回 request/response side、index、envelope/payload offset、length、compressed/truncated/malformed、encoding/body hash。无需 DB migration/新 Blob；payload 继续走既有 range。
+- **Renderer**：Capture Inspector 对 WS 动态显示 WebSocket Messages（虚拟列表、方向过滤、tail 轮询、断点），对 H2 native gRPC 显示 Request/Response Messages（虚拟列表、compression/truncation/malformed、offset、trailers）。无 descriptor 时 protobuf 只显示 raw hex，`application/grpc+json` 可文本显示；紧凑预览 48B，Copy 上限 256KiB。
+- **窄 API**：M9 新增 `queryWebSocketFrames`、`setWebSocketBreakpointsEnabled`、`queryGrpcMessages`；Main 校验 id/cursor/limit/direction/side，Core protocol 做完整 runtime validation。Parity 测试通过导航前 fake Preload 注入这些意图 API，业务 Renderer 无测试后门。
+- **已知边界**：gRPC 当前依赖 Mockttp 完成后的 body，Unary 可展示；长时间 server-streaming/bidi-streaming 需等 stream 结束。实时消息需接 `request-body-data`/`response-body-data` 并维护跨 chunk framing；descriptor/reflection、message-level 解压均未实现。
+
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`
 
@@ -253,10 +266,11 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 
 ## 当前未实现
 
-- WebSocket、gRPC（M9；未 MITM 的 CONNECT 仍字节直通）。HTTP/2 已落地（M6）；深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐。
+- HTTP/2 深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐；WebSocket H2 Extended CONNECT 未实现。
+- gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出、机器级信任库安装（需提权）；系统代理适配、导入导出、签名安装器和更新机制（M9+）。规则引擎（M7）与规则 UI/Composer/Breakpoint 编辑/Connection·TLS 详情（M8）已落地。
+- CA 导出、系统代理适配、导入导出、签名安装器和更新机制（M10+）未实现。机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
 
 ## 更新规则
 
