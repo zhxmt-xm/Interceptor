@@ -37,6 +37,9 @@ export function applyStorageRequest(
     case 'append-rule-hits':
       store.appendRuleHits(request.exchangeId, request.hits);
       return undefined;
+    case 'append-websocket-frames':
+      store.appendWebSocketFrames(request.exchangeId, request.frames);
+      return undefined;
     case 'count-rule-hits':
       return store.countRuleHits();
     case 'close':

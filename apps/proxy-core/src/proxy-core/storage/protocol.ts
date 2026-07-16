@@ -15,6 +15,7 @@ import type {
   SessionQuery,
   SessionQueryPage,
   StorageStats,
+  WebSocketFrameInput,
 } from './types';
 
 /**
@@ -57,6 +58,11 @@ export type StorageWorkerRequest =
       readonly kind: 'append-rule-hits';
       readonly exchangeId: string;
       readonly hits: readonly RuleHitInput[];
+    }
+  | {
+      readonly kind: 'append-websocket-frames';
+      readonly exchangeId: string;
+      readonly frames: readonly WebSocketFrameInput[];
     }
   | { readonly kind: 'count-rule-hits' }
   | { readonly kind: 'close' };

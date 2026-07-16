@@ -3,6 +3,8 @@ import type {
   AbortedRequest,
   CompletedRequest,
   CompletedResponse,
+  WebSocketClose,
+  WebSocketMessage,
 } from 'mockttp';
 
 import type {
@@ -25,7 +27,15 @@ import type {
   ExchangeInput,
   HeaderInput,
   HeaderKind,
+  WebSocketFrameInput,
 } from '../storage/types';
+
+interface PendingWebSocketCapture {
+  readonly request: CompletedRequest;
+  readonly exchangeReady: Promise<string | null>;
+  resolveExchange(exchangeId: string | null): void;
+  writeTail: Promise<void>;
+}
 
 /**
  * Mockttp beforeRequest/beforeResponse 回调结果的本地结构类型（对齐 mockttp 语义但不
@@ -64,6 +74,10 @@ export interface CaptureSink {
   appendRuleHits(
     exchangeId: string,
     hits: readonly RuleHitRecord[],
+  ): Promise<void>;
+  appendWebSocketFrames(
+    exchangeId: string,
+    frames: readonly WebSocketFrameInput[],
   ): Promise<void>;
 }
 
@@ -113,6 +127,7 @@ export interface ProxyTlsConfig {
  */
 export class ProxyService {
   private readonly pending = new Map<string, CompletedRequest>();
+  private readonly pendingWebSockets = new Map<string, PendingWebSocketCapture>();
   /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
   private readonly ruleHits = new Map<string, RuleHitRecord[]>();
 
@@ -213,6 +228,7 @@ export class ProxyService {
       beforeRequest: (req) => this.applyRulesToRequest(req),
       beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
     });
+    await server.forAnyWebSocket().thenPassThrough();
     await server.start(port ?? undefined);
     this.server = server;
     return { host: this.host, port: server.port };
@@ -222,6 +238,10 @@ export class ProxyService {
     const server = this.server;
     this.server = null;
     this.pending.clear();
+    for (const capture of this.pendingWebSockets.values()) {
+      capture.resolveExchange(null);
+    }
+    this.pendingWebSockets.clear();
     if (server) {
       await server.stop();
     }
@@ -256,6 +276,14 @@ export class ProxyService {
       this.pending.set(request.id, request);
     });
     void server.on('response', (response: CompletedResponse) => {
+      const webSocketCapture = this.pendingWebSockets.get(response.id);
+      if (webSocketCapture) {
+        void this.captureExchange(webSocketCapture.request, response).then((exchangeId) => {
+          webSocketCapture.resolveExchange(exchangeId);
+          this.pendingWebSockets.delete(response.id);
+        });
+        return;
+      }
       const request = this.pending.get(response.id);
       if (!request) {
         return;
@@ -264,9 +292,61 @@ export class ProxyService {
       void this.captureExchange(request, response);
     });
     void server.on('abort', (request: AbortedRequest) => {
+      const webSocketCapture = this.pendingWebSockets.get(request.id);
+      if (webSocketCapture) {
+        this.pendingWebSockets.delete(request.id);
+        void this.captureExchange(webSocketCapture.request, null, 'aborted').then(
+          (exchangeId) => {
+            webSocketCapture.resolveExchange(exchangeId);
+          },
+        );
+        return;
+      }
       const pendingRequest = this.pending.get(request.id) ?? request;
       this.pending.delete(request.id);
       void this.captureExchange(pendingRequest, null, 'aborted');
+    });
+    void server.on('websocket-request', (request: CompletedRequest) => {
+      let resolveExchange!: (exchangeId: string | null) => void;
+      const exchangeReady = new Promise<string | null>((resolve) => {
+        resolveExchange = resolve;
+      });
+      this.pendingWebSockets.set(request.id, {
+        request,
+        exchangeReady,
+        resolveExchange,
+        writeTail: Promise.resolve(),
+      });
+    });
+    void server.on('websocket-accepted', (response: CompletedResponse) => {
+      const capture = this.pendingWebSockets.get(response.id);
+      if (!capture) {
+        return;
+      }
+      void this.captureExchange(capture.request, response).then((exchangeId) => {
+        capture.resolveExchange(exchangeId);
+      });
+    });
+    void server.on('websocket-message-received', (message: WebSocketMessage) => {
+      this.enqueueWebSocketMessage(message);
+    });
+    void server.on('websocket-message-sent', (message: WebSocketMessage) => {
+      this.enqueueWebSocketMessage(message);
+    });
+    void server.on('websocket-close', (close: WebSocketClose) => {
+      const capture = this.pendingWebSockets.get(close.streamId);
+      if (!capture) {
+        return;
+      }
+      void capture.writeTail.finally(() => {
+        this.pendingWebSockets.delete(close.streamId);
+      });
+      this.diagnostics?.info('websocket.closed', {
+        attributes: {
+          code: close.closeCode ?? 0,
+          reason: close.closeReason,
+        },
+      });
     });
     // HTTPS 握手/客户端协议错误是抓包排障关键：CA 未信任、ALPN、证书拒绝等。
     void server.on('tls-client-error', (error) => {
@@ -288,9 +368,9 @@ export class ProxyService {
     request: CompletedRequest | AbortedRequest,
     response: CompletedResponse | null,
     state: ExchangeInput['state'] = 'completed',
-  ): Promise<void> {
+  ): Promise<string | null> {
     if (!this.sessionId) {
-      return;
+      return null;
     }
     const target = parseTarget(request.url);
     const startedAt = request.timingEvents?.startTime ?? Date.now();
@@ -345,8 +425,10 @@ export class ProxyService {
       requestBody,
       responseBody,
     };
+    let persisted = false;
     try {
       await this.storage.appendExchanges([exchange]);
+      persisted = true;
       this.capturedExchanges += 1;
       const hits = this.ruleHits.get(request.id);
       if (hits && hits.length > 0) {
@@ -396,6 +478,51 @@ export class ProxyService {
       requestBytes: exchange.requestBytes ?? 0,
       responseBytes: exchange.responseBytes ?? 0,
     });
+    return persisted ? exchange.id : null;
+  }
+
+  /** 单 stream Promise 链保持 Mockttp 事件顺序，并等待 101 Exchange 先落库。 */
+  private enqueueWebSocketMessage(message: WebSocketMessage): void {
+    const capture = this.pendingWebSockets.get(message.streamId);
+    if (!capture) {
+      this.diagnostics?.warn('websocket.message-orphaned');
+      return;
+    }
+    capture.writeTail = capture.writeTail
+      .then(async () => {
+        const exchangeId = await capture.exchangeReady;
+        if (!exchangeId) {
+          return;
+        }
+        const payload = await this.persistBody(
+          { buffer: message.content },
+          message.isBinary
+            ? 'application/octet-stream'
+            : 'text/plain; charset=utf-8',
+          undefined,
+        );
+        await this.storage.appendWebSocketFrames(exchangeId, [
+          {
+            direction:
+              message.direction === 'received'
+                ? 'client-to-server'
+                : 'server-to-client',
+            opcode: message.isBinary ? 2 : 1,
+            payloadSize: message.content.byteLength,
+            timestamp: toWallClockTimestamp(
+              message.timingEvents.startTime,
+              message.timingEvents.startTimestamp,
+              message.eventTimestamp,
+            ),
+            ...(payload ? { payload } : {}),
+          },
+        ]);
+      })
+      .catch((error) => {
+        this.diagnostics?.error('websocket.persist-failed', {
+          errorCode: error instanceof Error ? error.name : 'unknown',
+        });
+      });
   }
 
   /**
@@ -658,6 +785,14 @@ function readContentLength(
   const raw = Array.isArray(value) ? value[0] : value;
   const parsed = raw ? Number(raw) : 0;
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function toWallClockTimestamp(
+  startTime: number,
+  startTimestamp: number,
+  eventTimestamp: number,
+): number {
+  return Math.round(startTime + Math.max(0, eventTimestamp - startTimestamp));
 }
 
 function cryptoRandomId(): string {

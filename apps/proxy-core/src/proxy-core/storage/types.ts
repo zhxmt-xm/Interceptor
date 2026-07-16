@@ -83,6 +83,17 @@ export interface ExchangeInput {
   readonly responseBody?: BodyRefInput;
 }
 
+export type WebSocketFrameDirection = 'client-to-server' | 'server-to-client';
+
+/** WebSocket 应用消息子记录；payload 先写 Blob，再随 body_ref 原子绑定到帧。 */
+export interface WebSocketFrameInput {
+  readonly direction: WebSocketFrameDirection;
+  readonly opcode: 1 | 2 | 8;
+  readonly payloadSize: number;
+  readonly timestamp: number;
+  readonly payload?: BodyRefInput;
+}
+
 export interface CaptureSessionInput {
   readonly id: string;
   readonly name: string;

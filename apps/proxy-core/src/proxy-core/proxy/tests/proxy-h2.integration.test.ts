@@ -6,7 +6,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
 
-import type { CaptureSessionInput, ExchangeInput } from '../../storage/types';
+import type {
+  CaptureSessionInput,
+  ExchangeInput,
+  WebSocketFrameInput,
+} from '../../storage/types';
 import { CaptureEventQueue } from '../capture-event-queue';
 import { ProxyService, type CaptureSink } from '../proxy-service';
 
@@ -46,6 +50,13 @@ class RecordingSink implements CaptureSink {
   }
 
   appendRuleHits(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  appendWebSocketFrames(
+    _exchangeId: string,
+    _frames: readonly WebSocketFrameInput[],
+  ): Promise<void> {
     return Promise.resolve();
   }
 }

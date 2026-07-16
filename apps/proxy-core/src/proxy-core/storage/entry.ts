@@ -17,6 +17,7 @@ import type {
   RuleHitInput,
   SessionQuery,
   SessionQueryPage,
+  WebSocketFrameInput,
 } from './types';
 
 /**
@@ -113,6 +114,14 @@ export class StorageService {
     hits: readonly RuleHitInput[],
   ): Promise<void> {
     return this.host.appendRuleHits(exchangeId, hits);
+  }
+
+  /** 追加 WebSocket 有序应用消息；调用方已先把 payload 写入 Blob Store。 */
+  appendWebSocketFrames(
+    exchangeId: string,
+    frames: readonly WebSocketFrameInput[],
+  ): Promise<void> {
+    return this.host.appendWebSocketFrames(exchangeId, frames);
   }
 
   /** 按 ruleId 聚合的累计规则命中次数。调用方：rules.hits handler。 */

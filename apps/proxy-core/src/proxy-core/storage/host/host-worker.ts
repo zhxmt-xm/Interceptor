@@ -21,6 +21,7 @@ import type {
   SessionQuery,
   SessionQueryPage,
   StorageStats,
+  WebSocketFrameInput,
 } from '../types';
 import type {
   ExchangeResponsePatch,
@@ -173,6 +174,17 @@ export class StorageWorkerHost {
     hits: readonly RuleHitInput[],
   ): Promise<void> {
     return this.request<void>({ kind: 'append-rule-hits', exchangeId, hits });
+  }
+
+  appendWebSocketFrames(
+    exchangeId: string,
+    frames: readonly WebSocketFrameInput[],
+  ): Promise<void> {
+    return this.request<void>({
+      kind: 'append-websocket-frames',
+      exchangeId,
+      frames,
+    });
   }
 
   countRuleHits(): Promise<RuleHitCount[]> {

@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
 import http from 'node:http';
-import type { AddressInfo } from 'node:net';
+import net, { type AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CaptureSessionInput, ExchangeInput } from '../../storage/types';
+import { getLocal } from 'mockttp';
+
+import type {
+  CaptureSessionInput,
+  ExchangeInput,
+  WebSocketFrameInput,
+} from '../../storage/types';
 import { CaptureEventQueue } from '../capture-event-queue';
 import { ProxyService, type CaptureSink } from '../proxy-service';
 
@@ -11,6 +17,10 @@ class RecordingSink implements CaptureSink {
   readonly sessions: CaptureSessionInput[] = [];
   readonly exchanges: ExchangeInput[] = [];
   readonly bodies: Buffer[] = [];
+  readonly webSocketFrames: Array<{
+    exchangeId: string;
+    frame: WebSocketFrameInput;
+  }> = [];
 
   ensureSession(session: CaptureSessionInput): Promise<void> {
     this.sessions.push(session);
@@ -43,6 +53,16 @@ class RecordingSink implements CaptureSink {
   }
 
   appendRuleHits(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  appendWebSocketFrames(
+    exchangeId: string,
+    frames: readonly WebSocketFrameInput[],
+  ): Promise<void> {
+    this.webSocketFrames.push(
+      ...frames.map((frame) => ({ exchangeId, frame })),
+    );
     return Promise.resolve();
   }
 }
@@ -87,6 +107,77 @@ async function waitForExchange(sink: RecordingSink): Promise<void> {
   while (sink.exchanges.length === 0 && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 20));
   }
+}
+
+async function waitForWebSocketFrames(
+  sink: RecordingSink,
+  count: number,
+): Promise<void> {
+  const deadline = Date.now() + 3_000;
+  while (sink.webSocketFrames.length < count && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+function openProxiedWebSocket(
+  proxyAddress: { host: string; port: number },
+  targetUrl: string,
+): Promise<net.Socket> {
+  const target = new URL(targetUrl);
+  const proxyTarget = `http://${target.host}${target.pathname}${target.search}`;
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(proxyAddress.port, proxyAddress.host);
+    let response = Buffer.alloc(0);
+    const fail = (error: Error) => {
+      socket.destroy();
+      reject(error);
+    };
+    socket.once('error', fail);
+    socket.on('data', function onData(chunk: Buffer) {
+      response = Buffer.concat([response, chunk]);
+      const headersEnd = response.indexOf('\r\n\r\n');
+      if (headersEnd < 0) {
+        return;
+      }
+      socket.off('data', onData);
+      socket.off('error', fail);
+      const statusLine = response.subarray(0, headersEnd).toString('utf8');
+      if (!statusLine.startsWith('HTTP/1.1 101')) {
+        fail(new Error(`Unexpected WebSocket response: ${response.toString('utf8')}`));
+        return;
+      }
+      resolve(socket);
+    });
+    socket.once('connect', () => {
+      socket.write(
+        `GET ${proxyTarget} HTTP/1.1\r\n` +
+          `Host: ${target.host}\r\n` +
+          'Connection: Upgrade\r\n' +
+          'Upgrade: websocket\r\n' +
+          'Sec-WebSocket-Version: 13\r\n' +
+          'Sec-WebSocket-Key: AAECAwQFBgcICQoLDA0ODw==\r\n\r\n',
+      );
+    });
+  });
+}
+
+function sendWebSocketFrame(
+  socket: net.Socket,
+  opcode: 1 | 2 | 8,
+  payload: Uint8Array,
+): void {
+  if (payload.byteLength > 125) {
+    throw new Error('Test frame payload exceeds the short frame limit.');
+  }
+  const mask = Uint8Array.from([0x11, 0x22, 0x33, 0x44]);
+  const frame = Buffer.alloc(6 + payload.byteLength);
+  frame[0] = 0x80 | opcode;
+  frame[1] = 0x80 | payload.byteLength;
+  frame.set(mask, 2);
+  for (let index = 0; index < payload.byteLength; index += 1) {
+    frame[6 + index] = (payload[index] ?? 0) ^ (mask[index % 4] ?? 0);
+  }
+  socket.write(frame);
 }
 
 describe('ProxyService (Mockttp explicit proxy)', () => {
@@ -178,6 +269,60 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(sink.bodies.length).toBeGreaterThanOrEqual(2);
     } finally {
       await origin.close();
+    }
+  });
+
+  it('captures a websocket upgrade and ordered text/binary messages', async () => {
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      sendWebSocketFrame(socket, 1, Buffer.from('hello'));
+      sendWebSocketFrame(socket, 2, Uint8Array.from([1, 2, 3]));
+
+      await waitForWebSocketFrames(sink, 4);
+      expect(sink.exchanges).toHaveLength(1);
+      expect(sink.exchanges[0]).toMatchObject({
+        method: 'GET',
+        scheme: 'ws',
+        protocol: 'http/1.1',
+        statusCode: 101,
+      });
+      const clientFrames = sink.webSocketFrames
+        .map(({ frame }) => frame)
+        .filter((frame) => frame.direction === 'client-to-server');
+      const serverFrames = sink.webSocketFrames
+        .map(({ frame }) => frame)
+        .filter((frame) => frame.direction === 'server-to-client');
+      expect(
+        clientFrames.map(({ opcode, payloadSize }) => ({ opcode, payloadSize })),
+      ).toEqual([
+        { opcode: 1, payloadSize: 5 },
+        { opcode: 2, payloadSize: 3 },
+      ]);
+      expect(
+        serverFrames.map(({ opcode, payloadSize }) => ({ opcode, payloadSize })),
+      ).toEqual([
+        { opcode: 1, payloadSize: 5 },
+        { opcode: 2, payloadSize: 3 },
+      ]);
+      expect(
+        sink.webSocketFrames.every(({ frame }) => Boolean(frame.payload?.blobHash)),
+      ).toBe(true);
+      expect(new Set(sink.webSocketFrames.map(({ exchangeId }) => exchangeId)).size).toBe(
+        1,
+      );
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
     }
   });
 });

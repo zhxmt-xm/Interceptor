@@ -92,6 +92,35 @@ describe.skipIf(!existsSync(workerBundle))(
       await expect(started.appendExchanges([exchange('dup')])).rejects.toThrow();
     });
 
+    it('persists websocket frame payload references through the worker protocol', async () => {
+      const started = await startHost();
+      await started.ensureSession({
+        id: 's1',
+        name: 'Integration',
+        startedAt: Date.now(),
+        captureMode: 'explicit-proxy',
+        appVersion: '0.0.0',
+      });
+      await started.appendExchanges([exchange('ws')]);
+      const blobHash = 'd'.repeat(64);
+      await started.appendWebSocketFrames('ws', [
+        {
+          direction: 'client-to-server',
+          opcode: 1,
+          payloadSize: 4,
+          timestamp: Date.now(),
+          payload: {
+            id: 'ws-payload',
+            blobHash,
+            encodedSize: 4,
+            mediaType: 'text/plain; charset=utf-8',
+          },
+        },
+      ]);
+
+      await expect(started.referencedHashes()).resolves.toContain(blobHash);
+    });
+
     it('rejects requests issued after close', async () => {
       const started = await startHost();
       await started.close();

@@ -10,8 +10,11 @@ import {
 } from '../worker/worker-store';
 import type { ExchangeInput } from '../types';
 
+let database: ReturnType<typeof openCaptureDatabase>['db'];
+
 function createStore(): CaptureStore {
   const { db } = openCaptureDatabase(IN_MEMORY_LOCATION);
+  database = db;
   const store = new CaptureStore(db);
   store.ensureSession({
     id: 's1',
@@ -64,6 +67,78 @@ describe('CaptureStore', () => {
     store.appendExchanges([exchange('a'), exchange('b')]);
     const next = store.appendExchanges([exchange('c')]);
     expect(next).toEqual([{ id: 'c', seq: 3 }]);
+  });
+
+  it('appends ordered websocket frames with payload body references', () => {
+    store.appendExchanges([exchange('ws-1')]);
+    store.appendWebSocketFrames('ws-1', [
+      {
+        direction: 'client-to-server',
+        opcode: 1,
+        payloadSize: 5,
+        timestamp: 1_010,
+        payload: {
+          id: 'ws-body-1',
+          blobHash: 'b'.repeat(64),
+          encodedSize: 5,
+          mediaType: 'text/plain; charset=utf-8',
+        },
+      },
+      {
+        direction: 'server-to-client',
+        opcode: 2,
+        payloadSize: 3,
+        timestamp: 1_020,
+        payload: {
+          id: 'ws-body-2',
+          blobHash: 'c'.repeat(64),
+          encodedSize: 3,
+          mediaType: 'application/octet-stream',
+        },
+      },
+    ]);
+    store.appendWebSocketFrames('ws-1', [
+      {
+        direction: 'server-to-client',
+        opcode: 8,
+        payloadSize: 0,
+        timestamp: 1_030,
+      },
+    ]);
+
+    const rows = database
+      .prepare(
+        `SELECT seq, direction, opcode, payload_body_id AS payloadBodyId,
+                payload_size AS payloadSize, timestamp
+         FROM websocket_frame WHERE exchange_id = ? ORDER BY seq`,
+      )
+      .all('ws-1');
+    expect(rows).toEqual([
+      {
+        seq: 1,
+        direction: 'client-to-server',
+        opcode: 1,
+        payloadBodyId: 'ws-body-1',
+        payloadSize: 5,
+        timestamp: 1_010,
+      },
+      {
+        seq: 2,
+        direction: 'server-to-client',
+        opcode: 2,
+        payloadBodyId: 'ws-body-2',
+        payloadSize: 3,
+        timestamp: 1_020,
+      },
+      {
+        seq: 3,
+        direction: 'server-to-client',
+        opcode: 8,
+        payloadBodyId: null,
+        payloadSize: 0,
+        timestamp: 1_030,
+      },
+    ]);
   });
 
   it('returns full exchange detail with headers and body refs', () => {

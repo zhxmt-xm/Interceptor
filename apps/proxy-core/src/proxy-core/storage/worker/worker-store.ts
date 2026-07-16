@@ -21,6 +21,7 @@ import type {
   SessionQuery,
   SessionQueryPage,
   StorageStats,
+  WebSocketFrameInput,
 } from '../types';
 
 /**
@@ -143,6 +144,7 @@ export class CaptureStore {
   private readonly updateExchangeStmt: StatementSync;
   private readonly updateFtsResponseMimeStmt: StatementSync;
   private readonly insertRuleHitStmt: StatementSync;
+  private readonly insertWebSocketFrameStmt: StatementSync;
   private nextSeq: number;
 
   /**
@@ -209,6 +211,12 @@ export class CaptureStore {
        VALUES
         (:exchangeId, :ruleId, :ruleRevision, :phase, :action, :summary, :createdAt)`,
     );
+    this.insertWebSocketFrameStmt = db.prepare(
+      `INSERT INTO websocket_frame
+        (exchange_id, seq, direction, opcode, payload_body_id, payload_size, timestamp)
+       VALUES
+        (:exchangeId, :seq, :direction, :opcode, :payloadBodyId, :payloadSize, :timestamp)`,
+    );
 
     const row = db
       .prepare('SELECT COALESCE(MAX(seq), 0) AS maxSeq FROM exchange')
@@ -263,6 +271,39 @@ export class CaptureStore {
         assigned.push({ id: input.id, seq });
       }
       return assigned;
+    });
+  }
+
+  /**
+   * 原子追加同一 WebSocket Exchange 的应用消息，seq 从已有最大值继续递增。
+   * payload body_ref 与帧在同一事务插入，避免留下悬空引用。
+   */
+  appendWebSocketFrames(
+    exchangeId: string,
+    frames: readonly WebSocketFrameInput[],
+  ): void {
+    if (frames.length === 0) {
+      return;
+    }
+    this.inTransaction(() => {
+      const row = this.db
+        .prepare(
+          'SELECT COALESCE(MAX(seq), 0) AS maxSeq FROM websocket_frame WHERE exchange_id = ?',
+        )
+        .get(exchangeId) as { maxSeq: number };
+      let seq = row.maxSeq + 1;
+      for (const frame of frames) {
+        const payloadBodyId = this.insertBodyRef(frame.payload);
+        this.insertWebSocketFrameStmt.run({
+          exchangeId,
+          seq: seq++,
+          direction: frame.direction,
+          opcode: frame.opcode,
+          payloadBodyId: payloadBodyId ?? null,
+          payloadSize: frame.payloadSize,
+          timestamp: frame.timestamp,
+        });
+      }
     });
   }
 
