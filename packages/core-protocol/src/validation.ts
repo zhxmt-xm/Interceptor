@@ -528,6 +528,26 @@ function collectActionDiagnostics(
       });
     }
   }
+  if (action.type === 'map-local' && /(^|[/\\])\.\.([/\\]|$)/.test(action.path)) {
+    diagnostics.push({
+      code: 'unsafe-map-path',
+      message: 'Map Local path must not contain ".." segments.',
+      path: `${path}.path`,
+    });
+  }
+  if (
+    action.type === 'map-remote' &&
+    action.scheme === undefined &&
+    action.host === undefined &&
+    action.port === undefined &&
+    action.path === undefined
+  ) {
+    diagnostics.push({
+      code: 'empty-map-remote',
+      message: 'Map Remote must override at least one of scheme/host/port/path.',
+      path,
+    });
+  }
 }
 
 function invalidRegexDiagnostic(
@@ -719,6 +739,23 @@ function validateRuleAction(value: unknown, name: string): string | null {
         validateIntegerRange(value.statusCode, `${name}.statusCode`, 100, 599) ??
         validateOptionalRuleHeaderPairs(value.headers, `${name}.headers`) ??
         validateOptionalBoundedString(value.body, `${name}.body`, MAX_RULE_BODY_LENGTH);
+    case 'map-local':
+      return validateRecordKeys(value, name, ['type', 'path']) ??
+        validateBoundedString(value.path, `${name}.path`, MAX_RULE_STRING_LENGTH);
+    case 'map-remote':
+      return validateRecordKeys(value, name, [
+        'type',
+        'scheme',
+        'host',
+        'port',
+        'path',
+      ]) ??
+        (value.scheme === undefined
+          ? null
+          : validateEnum(value.scheme, `${name}.scheme`, ['http', 'https'])) ??
+        validateOptionalBoundedString(value.host, `${name}.host`, 256) ??
+        validateOptionalIntegerRange(value.port, `${name}.port`, 1, 65_535) ??
+        validateOptionalBoundedString(value.path, `${name}.path`, MAX_RULE_STRING_LENGTH);
     case 'block':
       return validateRecordKeys(value, name, ['type', 'mode']) ??
         validateEnum(value.mode, `${name}.mode`, ['reset', 'close']);

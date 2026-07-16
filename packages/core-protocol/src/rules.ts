@@ -75,6 +75,14 @@ export type RuleAction =
       readonly headers?: readonly RuleHeaderPair[];
       readonly body?: string;
     }
+  | { readonly type: 'map-local'; readonly path: string }
+  | {
+      readonly type: 'map-remote';
+      readonly scheme?: 'http' | 'https';
+      readonly host?: string;
+      readonly port?: number;
+      readonly path?: string;
+    }
   | { readonly type: 'block'; readonly mode: 'reset' | 'close' }
   | { readonly type: 'status'; readonly statusCode: number }
   | {

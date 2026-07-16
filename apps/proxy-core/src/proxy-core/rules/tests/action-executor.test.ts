@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import type { RuleAction } from '@interceptor/core-protocol';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   applyRequestAction,
@@ -25,22 +27,25 @@ function responseState(): MutableResponseState {
 }
 
 describe('applyRequestAction — headers', () => {
-  it('sets a request header, replacing case-insensitive existing values', () => {
+  it('sets a request header, replacing case-insensitive existing values', async () => {
     const state = requestState({ headers: { 'content-type': 'text/plain' } });
-    const summary = applyRequestAction(state, {
+    const outcome = await applyRequestAction(state, {
       type: 'header',
       phase: 'request',
       op: 'set',
       name: 'Content-Type',
       value: 'application/json',
     });
-    expect(summary).toEqual({ action: 'header.set', detail: 'Content-Type' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'header.set', detail: 'Content-Type' },
+    });
     expect(state.headers).toEqual({ 'Content-Type': 'application/json' });
   });
 
-  it('appends a request header, merging into an array', () => {
+  it('appends a request header, merging into an array', async () => {
     const state = requestState({ headers: { 'x-tag': 'a' } });
-    applyRequestAction(state, {
+    await applyRequestAction(state, {
       type: 'header',
       phase: 'request',
       op: 'append',
@@ -50,79 +55,88 @@ describe('applyRequestAction — headers', () => {
     expect(state.headers['x-tag']).toEqual(['a', 'b']);
   });
 
-  it('appends a new request header when absent', () => {
+  it('appends a new request header when absent', async () => {
     const state = requestState({ headers: {} });
-    const summary = applyRequestAction(state, {
+    const outcome = await applyRequestAction(state, {
       type: 'header',
       phase: 'request',
       op: 'append',
       name: 'x-new',
       value: 'v',
     });
-    expect(summary).toEqual({ action: 'header.append', detail: 'x-new' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'header.append', detail: 'x-new' },
+    });
     expect(state.headers['x-new']).toBe('v');
   });
 
-  it('removes a request header case-insensitively', () => {
+  it('removes a request header case-insensitively', async () => {
     const state = requestState({ headers: { 'Content-Type': 'application/json' } });
-    const summary = applyRequestAction(state, {
+    const outcome = await applyRequestAction(state, {
       type: 'header',
       phase: 'request',
       op: 'remove',
       name: 'content-type',
     });
-    expect(summary).toEqual({ action: 'header.remove', detail: 'content-type' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'header.remove', detail: 'content-type' },
+    });
     expect(state.headers).toEqual({});
   });
 
-  it('returns null when removing an absent header', () => {
+  it('returns none when removing an absent header', async () => {
     const state = requestState({ headers: {} });
     expect(
-      applyRequestAction(state, {
+      await applyRequestAction(state, {
         type: 'header',
         phase: 'request',
         op: 'remove',
         name: 'x-missing',
       }),
-    ).toBeNull();
+    ).toEqual({ kind: 'none' });
   });
 
-  it('returns null for set/append without a value', () => {
+  it('returns none for set/append without a value', async () => {
     const state = requestState();
     expect(
-      applyRequestAction(state, {
+      await applyRequestAction(state, {
         type: 'header',
         phase: 'request',
         op: 'set',
         name: 'x',
       }),
-    ).toBeNull();
+    ).toEqual({ kind: 'none' });
   });
 });
 
 describe('action phase isolation', () => {
-  it('ignores response-phase header actions in the request stage', () => {
+  it('ignores response-phase header actions in the request stage', async () => {
     expect(
-      applyRequestAction(requestState(), {
+      await applyRequestAction(requestState(), {
         type: 'header',
         phase: 'response',
         op: 'set',
         name: 'x',
         value: 'v',
       }),
-    ).toBeNull();
+    ).toEqual({ kind: 'none' });
   });
 
   it('applies response-phase header actions in the response stage', () => {
     const state = responseState();
-    const summary = applyResponseAction(state, {
+    const outcome = applyResponseAction(state, {
       type: 'header',
       phase: 'response',
       op: 'set',
       name: 'X-New',
       value: 'v',
     });
-    expect(summary).toEqual({ action: 'header.set', detail: 'X-New' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'header.set', detail: 'X-New' },
+    });
     expect(state.headers['X-New']).toBe('v');
   });
 
@@ -135,57 +149,182 @@ describe('action phase isolation', () => {
         name: 'x',
         value: 'v',
       }),
-    ).toBeNull();
+    ).toEqual({ kind: 'none' });
   });
 });
 
 describe('applyRequestAction — query', () => {
-  it('sets a query parameter and updates the url', () => {
+  it('sets a query parameter and updates the url', async () => {
     const state = requestState();
-    const summary = applyRequestAction(state, {
+    const outcome = await applyRequestAction(state, {
       type: 'query',
       op: 'set',
       name: 'page',
       value: '2',
     });
-    expect(summary).toEqual({ action: 'query.set', detail: 'page' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'query.set', detail: 'page' },
+    });
     expect(new URL(state.url).searchParams.get('page')).toBe('2');
   });
 
-  it('adds a new query parameter', () => {
+  it('removes a query parameter', async () => {
     const state = requestState();
-    applyRequestAction(state, {
-      type: 'query',
-      op: 'set',
-      name: 'tag',
-      value: 'x',
-    });
-    expect(new URL(state.url).searchParams.get('tag')).toBe('x');
-  });
-
-  it('removes a query parameter', () => {
-    const state = requestState();
-    const summary = applyRequestAction(state, {
+    const outcome = await applyRequestAction(state, {
       type: 'query',
       op: 'remove',
       name: 'page',
     });
-    expect(summary).toEqual({ action: 'query.remove', detail: 'page' });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'query.remove', detail: 'page' },
+    });
     expect(new URL(state.url).searchParams.has('page')).toBe(false);
   });
 
-  it('returns null when removing an absent query parameter', () => {
+  it('returns none when removing an absent query parameter', async () => {
     const state = requestState();
     expect(
-      applyRequestAction(state, { type: 'query', op: 'remove', name: 'missing' }),
-    ).toBeNull();
+      await applyRequestAction(state, { type: 'query', op: 'remove', name: 'missing' }),
+    ).toEqual({ kind: 'none' });
   });
 });
 
-describe('actions handled by later tasks', () => {
-  it('returns null for block actions in both stages', () => {
-    const block: RuleAction = { type: 'block', mode: 'reset' };
-    expect(applyRequestAction(requestState(), block)).toBeNull();
-    expect(applyResponseAction(responseState(), block)).toBeNull();
+describe('applyRequestAction — body, synthetic, map-remote, block', () => {
+  it('replaces the request body', async () => {
+    const state = requestState();
+    const outcome = await applyRequestAction(state, {
+      type: 'body',
+      phase: 'request',
+      format: 'json',
+      content: '{"x":1}',
+    });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'body.set', detail: 'json' },
+    });
+    expect(state.body).toBe('{"x":1}');
+  });
+
+  it('replaces the response body', () => {
+    const state = responseState();
+    const outcome = applyResponseAction(state, {
+      type: 'body',
+      phase: 'response',
+      format: 'text',
+      content: 'hello',
+    });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'body.set', detail: 'text' },
+    });
+    expect(state.body).toBe('hello');
+  });
+
+  it('produces a synthetic response', async () => {
+    const outcome = await applyRequestAction(requestState(), {
+      type: 'synthetic',
+      statusCode: 418,
+      headers: [{ name: 'x-teapot', value: '1' }],
+      body: 'no coffee',
+    });
+    expect(outcome.kind).toBe('respond');
+    if (outcome.kind === 'respond') {
+      expect(outcome.response.statusCode).toBe(418);
+      expect(outcome.response.body).toBe('no coffee');
+      expect(outcome.response.headers['x-teapot']).toBe('1');
+    }
+  });
+
+  it('rewrites the request target for map-remote', async () => {
+    const state = requestState();
+    const outcome = await applyRequestAction(state, {
+      type: 'map-remote',
+      scheme: 'https',
+      host: 'backend.internal',
+      port: 8443,
+    });
+    expect(outcome).toEqual({
+      kind: 'mutated',
+      summary: { action: 'map-remote', detail: 'backend.internal:8443' },
+    });
+    const url = new URL(state.url);
+    expect(url.hostname).toBe('backend.internal');
+    expect(url.port).toBe('8443');
+  });
+
+  it('blocks the request', async () => {
+    const outcome = await applyRequestAction(requestState(), {
+      type: 'block',
+      mode: 'reset',
+    });
+    expect(outcome).toEqual({
+      kind: 'block',
+      mode: 'reset',
+      summary: { action: 'block', detail: 'reset' },
+    });
+  });
+});
+
+describe('applyRequestAction — map-local path safety', () => {
+  let root: string;
+  let servedFile: string;
+
+  beforeAll(async () => {
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-maplocal-'));
+    servedFile = path.join(root, 'mock.json');
+    await fs.writeFile(servedFile, '{"ok":true}');
+  });
+
+  afterAll(async () => {
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it('serves a file within an allowed root', async () => {
+    const outcome = await applyRequestAction(
+      requestState(),
+      { type: 'map-local', path: servedFile },
+      { mapLocalRoots: [root] },
+    );
+    expect(outcome.kind).toBe('respond');
+    if (outcome.kind === 'respond') {
+      expect(outcome.response.statusCode).toBe(200);
+      expect(Buffer.from(outcome.response.body as Uint8Array).toString()).toBe(
+        '{"ok":true}',
+      );
+    }
+  });
+
+  it('refuses map-local when no allowed roots are configured', async () => {
+    expect(
+      await applyRequestAction(requestState(), {
+        type: 'map-local',
+        path: servedFile,
+      }),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('refuses a path escaping the allowed root', async () => {
+    const escape = path.join(root, '..', 'secret.txt');
+    expect(
+      await applyRequestAction(
+        requestState(),
+        { type: 'map-local', path: escape },
+        { mapLocalRoots: [root] },
+      ),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('returns 404 for a missing file within an allowed root', async () => {
+    const outcome = await applyRequestAction(
+      requestState(),
+      { type: 'map-local', path: path.join(root, 'missing.json') },
+      { mapLocalRoots: [root] },
+    );
+    expect(outcome.kind).toBe('respond');
+    if (outcome.kind === 'respond') {
+      expect(outcome.response.statusCode).toBe(404);
+    }
   });
 });

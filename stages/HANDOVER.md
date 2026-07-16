@@ -119,16 +119,16 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M7 Server T7.4（规则引擎）
+## 下一任务：M7 Server T7.5（规则引擎）
 
-M7 Contract 已提交 `3dc3c59`；Server T7.1（rule_set 持久化 + handler）、T7.2（matcher-compiler）、T7.3（action-executor header/query，`rules/action-executor.ts`）已完成。下一步从 T7.4 起：body 与映射 action（限大小 text·json 替换、synthetic 响应、Map Local/Remote 路径规范化 + 允许目录校验，无路径穿越）→ block/reset/close + status 覆盖 + throttle/delay → breakpoint-queue 状态机 + breakpoint.resolve handler → rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计。
+M7 Contract 已提交 `3dc3c59`；Server T7.1（持久化+handler）、T7.2（matcher-compiler）、T7.3（action-executor header/query）、T7.4（body/synthetic/map action + Contract map 扩展，`rules/action-executor.ts` ActionOutcome 模型）已完成。下一步从 T7.5 起：status 覆盖（响应侧改 statusCode）+ throttle（带宽限速）+ delay（请求/响应延迟）——block 的 executor outcome 已在 T7.4，实际生效在 T7.7 引擎 → breakpoint-queue 状态机 + breakpoint.resolve handler（T7.6）→ rule-engine 接入 proxy-service `beforeRequest`/`beforeResponse`（原子替换 `this.ruleSet` 引用热切换）+ RuleHit 审计（T7.7）。
 
 建议执行顺序：
 
 1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（规则引擎）和第二十七章 M7。
-2. body/map action 追加到 `rules/action-executor.ts`：Map Local 必须路径规范化 + 允许目录校验（拒绝 `..` 穿越）；body 限大小。
-3. rule-engine（T7.7）经 Mockttp beforeRequest/beforeResponse 读最新 ruleSet 引用（原子替换热切换）串起 matcher-compiler + action-executor + breakpoint-queue。
-4. 在 [M7.md](M7.md) 按 Server/Contract/Client 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
+2. T7.5：status action 在 applyResponseAction 覆盖 statusCode；throttle/delay 作为 outcome 元数据供引擎按流控执行。
+3. T7.6 breakpoint-queue：waiting→continued/edited/dropped/timed_out 状态机 + 强制 timeout + 断线确定性关闭；breakpoint.resolve handler 接入 core-application。
+4. T7.7 rule-engine 经 Mockttp beforeRequest/beforeResponse 读最新 ruleSet 引用串起 matcher + action + breakpoint；在 [M7.md](M7.md) 记录；涉及 Core/打包边界时阶段收尾重跑 typecheck/unit/package/smoke/audit。
 
 > 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。
 
