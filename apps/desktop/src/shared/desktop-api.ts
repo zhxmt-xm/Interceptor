@@ -1,4 +1,5 @@
 import type {
+  BreakpointEdit,
   CaptureBodyRef,
   CaptureExchangeDetail,
   CaptureExchangeEvent,
@@ -7,6 +8,7 @@ import type {
   ComposerTlsInfo,
   HeaderOperation,
   KeyMatchMode,
+  PendingBreakpoint,
   ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
@@ -21,6 +23,7 @@ import type {
 } from '@interceptor/core-protocol';
 
 export type {
+  BreakpointEdit,
   CaptureBodyRef,
   CaptureExchangeDetail,
   CaptureExchangeEvent,
@@ -29,6 +32,7 @@ export type {
   ComposerTlsInfo,
   HeaderOperation,
   KeyMatchMode,
+  PendingBreakpoint,
   ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
@@ -193,6 +197,12 @@ export interface ComposerResponse {
   remoteAddress: string | null;
 }
 
+/** 当前等待中的断点快照 + 全局 break-on-match 开关。 */
+export interface BreakpointsSnapshot {
+  breakpoints: PendingBreakpoint[];
+  enabled: boolean;
+}
+
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
@@ -224,6 +234,9 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
   composerSend: 'composer:send',
+  breakpointList: 'breakpoint:list',
+  breakpointResolve: 'breakpoint:resolve',
+  breakpointConfigure: 'breakpoint:configure',
 } as const;
 
 export interface InterceptorDesktopApi {
@@ -269,4 +282,11 @@ export interface InterceptorDesktopApi {
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
+  listBreakpoints(): Promise<BreakpointsSnapshot>;
+  resolveBreakpoint(
+    breakpointId: string,
+    action: 'continue' | 'drop',
+    edit?: BreakpointEdit,
+  ): Promise<{ state: string }>;
+  setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
 }

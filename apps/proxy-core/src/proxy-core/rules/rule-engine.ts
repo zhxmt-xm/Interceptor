@@ -23,7 +23,11 @@ import {
   type MutableResponseState,
   type SyntheticResponseInit,
 } from './action-executor';
-import type { BreakpointQueue } from './breakpoint-queue';
+import type {
+  BreakpointOutcome,
+  BreakpointQueue,
+  BreakpointSnapshot,
+} from './breakpoint-queue';
 import {
   compileRuleMatchers,
   type CompiledMatcher,
@@ -96,6 +100,7 @@ interface CompiledRule {
 export class RuleEngine {
   private ruleSet: RuleSet = { revision: 0, rules: [] };
   private compiled: readonly CompiledRule[] = [];
+  private breakpointsOn = true;
   private readonly executorOptions: ActionExecutorOptions;
 
   constructor(
@@ -126,6 +131,15 @@ export class RuleEngine {
     return this.compiled.length > 0;
   }
 
+  /** 全局“break on match”开关；关闭时命中 breakpoint action 直接放行不挂起。 */
+  get breakpointsEnabled(): boolean {
+    return this.breakpointsOn;
+  }
+
+  setBreakpointsEnabled(enabled: boolean): void {
+    this.breakpointsOn = enabled;
+  }
+
   /**
    * 请求阶段评估：按序应用匹配规则的请求侧 action，累积改写与流控，遇短路/阻断即返回。
    */
@@ -146,7 +160,11 @@ export class RuleEngine {
           if (action.phase !== 'request') {
             continue;
           }
-          const resolved = await this.awaitBreakpoint('request', action);
+          const resolved = await this.awaitBreakpoint(
+            'request',
+            action,
+            buildRequestSnapshot(compiled.rule.name, state),
+          );
           hits.push(this.toHit(compiled.rule, 'request', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
             applyRequestEdit(state, resolved.edit);
@@ -202,7 +220,11 @@ export class RuleEngine {
           if (action.phase !== 'response') {
             continue;
           }
-          const resolved = await this.awaitBreakpoint('response', action);
+          const resolved = await this.awaitBreakpoint(
+            'response',
+            action,
+            buildResponseSnapshot(compiled.rule.name, state),
+          );
           hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
             applyResponseEdit(state, resolved.edit);
@@ -235,11 +257,16 @@ export class RuleEngine {
   private async awaitBreakpoint(
     phase: 'request' | 'response',
     action: { timeoutMs: number; onTimeout: 'continue' | 'drop' },
-  ) {
+    snapshot: BreakpointSnapshot,
+  ): Promise<BreakpointOutcome> {
+    if (!this.breakpointsOn) {
+      return { state: 'continued' };
+    }
     const { id, outcome } = this.breakpoints.suspend(
       phase,
       action.timeoutMs,
       action.onTimeout,
+      snapshot,
     );
     this.options.onBreakpointHit?.({ id, phase });
     return outcome;
@@ -321,4 +348,56 @@ function pairsToBag(pairs: readonly RuleHeaderPair[]): HeaderBag {
     }
   }
   return bag;
+}
+
+/** 断点快照正文上限（256 KiB）；仅供 UI 展示/编辑。 */
+const MAX_SNAPSHOT_BODY = 256 * 1024;
+
+function bagToPairs(bag: HeaderBag): RuleHeaderPair[] {
+  const pairs: RuleHeaderPair[] = [];
+  for (const [name, value] of Object.entries(bag)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        pairs.push({ name, value: item });
+      }
+    } else if (value !== undefined) {
+      pairs.push({ name, value: String(value) });
+    }
+  }
+  return pairs;
+}
+
+function bodyToString(body: string | Uint8Array | undefined): string | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+  if (typeof body === 'string') {
+    return body.length > MAX_SNAPSHOT_BODY ? body.slice(0, MAX_SNAPSHOT_BODY) : body;
+  }
+  return new TextDecoder('utf-8', { fatal: false }).decode(body.subarray(0, MAX_SNAPSHOT_BODY));
+}
+
+function buildRequestSnapshot(
+  ruleName: string,
+  state: MutableRequestState,
+): BreakpointSnapshot {
+  return {
+    ruleName,
+    method: state.method,
+    url: state.url,
+    headers: bagToPairs(state.headers),
+    body: bodyToString(state.body),
+  };
+}
+
+function buildResponseSnapshot(
+  ruleName: string,
+  state: MutableResponseState,
+): BreakpointSnapshot {
+  return {
+    ruleName,
+    statusCode: state.statusCode,
+    headers: bagToPairs(state.headers),
+    body: bodyToString(state.body),
+  };
 }

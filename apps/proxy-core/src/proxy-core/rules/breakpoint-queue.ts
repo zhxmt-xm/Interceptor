@@ -7,12 +7,22 @@
  * command 经 core-application 调 resolve；断线/关闭调 closeAll 把全部等待断点关为 timed_out。
  */
 
-import type { BreakpointEdit } from '@interceptor/core-protocol';
+import type { BreakpointEdit, RuleHeaderPair } from '@interceptor/core-protocol';
 
 export type BreakpointPhase = 'request' | 'response';
 export type BreakpointResolutionAction = 'continue' | 'drop' | 'timeout';
 export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out';
 export type BreakpointTimeoutPolicy = 'continue' | 'drop';
+
+/** 挂起断点的请求/响应快照（供 UI 展示与编辑）；不含敏感处理，headers 为原始对。 */
+export interface BreakpointSnapshot {
+  readonly ruleName: string;
+  readonly method?: string;
+  readonly url?: string;
+  readonly statusCode?: number;
+  readonly headers: RuleHeaderPair[];
+  readonly body?: string;
+}
 
 /** 挂起断点解除后的结果：state + 可选编辑（仅 edited 携带）+ 超时兜底策略。 */
 export interface BreakpointOutcome {
@@ -27,12 +37,17 @@ export interface PendingBreakpointInfo {
   readonly id: string;
   readonly phase: BreakpointPhase;
   readonly createdAt: number;
+  /** 超时时间戳（createdAt + timeoutMs）；0 表示无超时。 */
+  readonly deadline: number;
+  readonly snapshot: BreakpointSnapshot;
 }
 
 interface PendingEntry {
   readonly id: string;
   readonly phase: BreakpointPhase;
   readonly createdAt: number;
+  readonly deadline: number;
+  readonly snapshot: BreakpointSnapshot;
   readonly timeoutPolicy: BreakpointTimeoutPolicy;
   readonly settle: (outcome: BreakpointOutcome) => void;
   timer: ReturnType<typeof setTimeout> | null;
@@ -54,6 +69,7 @@ export class BreakpointQueue {
     phase: BreakpointPhase,
     timeoutMs: number,
     timeoutPolicy: BreakpointTimeoutPolicy,
+    snapshot: BreakpointSnapshot = { ruleName: '', headers: [] },
   ): { readonly id: string; readonly outcome: Promise<BreakpointOutcome> } {
     this.sequence += 1;
     const id = `bp-${Date.now().toString(36)}-${this.sequence}`;
@@ -61,10 +77,13 @@ export class BreakpointQueue {
     const outcome = new Promise<BreakpointOutcome>((resolve) => {
       settle = resolve;
     });
+    const createdAt = Date.now();
     const entry: PendingEntry = {
       id,
       phase,
-      createdAt: Date.now(),
+      createdAt,
+      deadline: timeoutMs > 0 ? createdAt + timeoutMs : 0,
+      snapshot,
       timeoutPolicy,
       settle,
       timer: null,
@@ -123,6 +142,8 @@ export class BreakpointQueue {
       id: entry.id,
       phase: entry.phase,
       createdAt: entry.createdAt,
+      deadline: entry.deadline,
+      snapshot: entry.snapshot,
     }));
   }
 

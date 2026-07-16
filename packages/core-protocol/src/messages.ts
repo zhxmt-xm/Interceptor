@@ -112,6 +112,20 @@ export interface BreakpointResolveCommand {
   };
 }
 
+/** 查询当前等待中的断点（含请求/响应快照）与全局 break-on-match 开关。 */
+export interface BreakpointListCommand {
+  type: 'breakpoint.list';
+  payload: Record<string, never>;
+}
+
+/** 设置全局 break-on-match 开关；关闭时命中 breakpoint action 直接放行。 */
+export interface BreakpointConfigureCommand {
+  type: 'breakpoint.configure';
+  payload: {
+    enabled: boolean;
+  };
+}
+
 export interface DiagnosticsRecentCommand {
   type: 'diagnostics.recent';
   payload: {
@@ -184,6 +198,8 @@ export type CoreCommand =
   | RulesHitsCommand
   | ComposerSendCommand
   | BreakpointResolveCommand
+  | BreakpointListCommand
+  | BreakpointConfigureCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
   | StorageStatusCommand
@@ -296,6 +312,36 @@ export interface BreakpointResolutionResult {
   };
 }
 
+/** 一个等待中的断点：标识/阶段/时序 + 请求或响应快照（flatten）。 */
+export interface PendingBreakpoint {
+  id: string;
+  phase: 'request' | 'response';
+  createdAt: number;
+  /** 超时时间戳；0 表示无超时。 */
+  deadline: number;
+  ruleName: string;
+  method?: string;
+  url?: string;
+  statusCode?: number;
+  headers: RuleHeaderPair[];
+  body?: string;
+}
+
+export interface BreakpointPendingResult {
+  type: 'breakpoint.pending';
+  payload: {
+    breakpoints: PendingBreakpoint[];
+    enabled: boolean;
+  };
+}
+
+export interface BreakpointConfigResult {
+  type: 'breakpoint.config';
+  payload: {
+    enabled: boolean;
+  };
+}
+
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
 export type DiagnosticOutcome =
   | 'success'
@@ -380,6 +426,8 @@ export type CoreResult =
   | RulesHitsResult
   | ComposerResponseResult
   | BreakpointResolutionResult
+  | BreakpointPendingResult
+  | BreakpointConfigResult
   | DiagnosticsRecordsResult
   | DiagnosticsPageResult
   | StorageStatusResult
@@ -394,8 +442,10 @@ export type CoreResultForCommand<T extends CoreCommand> =
           : T extends RulesValidateCommand ? RuleValidationResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
               : T extends BreakpointResolveCommand
-                ? BreakpointResolutionResult
-                : T extends DiagnosticsRecentCommand
+                ? BreakpointResolutionResult                : T extends BreakpointListCommand
+                  ? BreakpointPendingResult
+                  : T extends BreakpointConfigureCommand
+                    ? BreakpointConfigResult                : T extends DiagnosticsRecentCommand
                   ? DiagnosticsRecordsResult
                   : T extends DiagnosticsQueryCommand
                     ? DiagnosticsPageResult

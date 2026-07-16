@@ -81,6 +81,14 @@ describe('core protocol validation', () => {
         payload: { breakpointId: 'breakpoint-1', action: 'continue' },
       },
       {
+        type: 'breakpoint.list',
+        payload: {},
+      },
+      {
+        type: 'breakpoint.configure',
+        payload: { enabled: false },
+      },
+      {
         type: 'diagnostics.recent',
         payload: { limit: 50, traceId: 'trace-previous' },
       },
@@ -261,6 +269,60 @@ describe('core protocol validation', () => {
           durationMs: 1,
           tls: null,
           remoteAddress: null,
+        },
+      },
+    }).ok).toBe(false);
+  });
+
+  it('accepts breakpoint.pending result and rejects malformed phase', () => {
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-bp',
+      traceId: 'trace-bp',
+      ok: true,
+      result: {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [
+            {
+              id: 'bp-1',
+              phase: 'request',
+              createdAt: 1_000,
+              deadline: 31_000,
+              ruleName: 'Debug checkout',
+              method: 'POST',
+              url: 'https://shop.example.com/checkout',
+              headers: [{ name: 'content-type', value: 'application/json' }],
+              body: '{}',
+            },
+          ],
+        },
+      },
+    }).ok).toBe(true);
+
+    // 非法 phase 被拒绝
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-bp-bad',
+      traceId: 'trace-bp-bad',
+      ok: true,
+      result: {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [
+            {
+              id: 'bp-2',
+              phase: 'sideways',
+              createdAt: 0,
+              deadline: 0,
+              ruleName: 'x',
+              headers: [],
+            },
+          ],
         },
       },
     }).ok).toBe(false);

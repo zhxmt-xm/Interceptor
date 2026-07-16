@@ -87,6 +87,11 @@ const api: InterceptorDesktopApi = {
   getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
   sendComposerRequest: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
+  listBreakpoints: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointList),
+  resolveBreakpoint: (breakpointId, action, edit) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointResolve, breakpointId, action, edit),
+  setBreakpointsEnabled: (enabled) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
 };
 
 contextBridge.exposeInMainWorld('interceptor', api);

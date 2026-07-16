@@ -42,6 +42,8 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'rules.hits',
   'composer.send',
   'breakpoint.resolve',
+  'breakpoint.list',
+  'breakpoint.configure',
   'diagnostics.recent',
   'diagnostics.query',
   'storage.status',
@@ -277,6 +279,12 @@ function validateCommand(value: unknown): string | null {
     case 'breakpoint.resolve':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateBreakpointResolutionRequest(value.payload);
+    case 'breakpoint.list':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateEmptyPayload(value.payload);
+    case 'breakpoint.configure':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateBreakpointConfigure(value.payload);
     case 'diagnostics.recent':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsRecent(value.payload);
@@ -339,6 +347,12 @@ function validateResult(value: unknown): string | null {
     case 'breakpoint.resolution':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateBreakpointResolutionResult(value.payload);
+    case 'breakpoint.pending':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateBreakpointPending(value.payload);
+    case 'breakpoint.config':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateBreakpointConfig(value.payload);
     case 'diagnostics.records':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateDiagnosticsRecords(value.payload);
@@ -946,6 +960,56 @@ function validateComposerTls(value: unknown, name: string): string | null {
       validateBoundedString(tls.issuer, `${name}.issuer`, 512) ??
       validateBoundedString(tls.validFrom, `${name}.validFrom`, 64) ??
       validateBoundedString(tls.validTo, `${name}.validTo`, 64),
+  );
+}
+
+function validateBreakpointConfigure(value: unknown): string | null {
+  return validateExactObject(value, 'command.payload', ['enabled'], (payload) =>
+    validateBoolean(payload.enabled, 'command.payload.enabled'));
+}
+
+function validateBreakpointConfig(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['enabled'], (payload) =>
+    validateBoolean(payload.enabled, 'result.payload.enabled'));
+}
+
+function validateBreakpointPending(value: unknown): string | null {
+  return validateExactObject(value, 'result.payload', ['breakpoints', 'enabled'], (payload) => {
+    if (!Array.isArray(payload.breakpoints) || payload.breakpoints.length > 1_000) {
+      return 'result.payload.breakpoints must be an array';
+    }
+    for (let index = 0; index < payload.breakpoints.length; index += 1) {
+      const error = validatePendingBreakpoint(
+        payload.breakpoints[index],
+        `result.payload.breakpoints[${index}]`,
+      );
+      if (error) {
+        return error;
+      }
+    }
+    return validateBoolean(payload.enabled, 'result.payload.enabled');
+  });
+}
+
+function validatePendingBreakpoint(value: unknown, name: string): string | null {
+  return validateExactObject(
+    value,
+    name,
+    ['id', 'phase', 'createdAt', 'deadline', 'ruleName', 'method', 'url', 'statusCode', 'headers', 'body'],
+    (bp) => validateBoundedString(bp.id, `${name}.id`, 128) ??
+      validateEnum(bp.phase, `${name}.phase`, ['request', 'response']) ??
+      validateNonNegativeSafeInteger(bp.createdAt, `${name}.createdAt`) ??
+      validateNonNegativeSafeInteger(bp.deadline, `${name}.deadline`) ??
+      validateBoundedString(bp.ruleName, `${name}.ruleName`, 256) ??
+      validateOptionalBoundedString(bp.method, `${name}.method`, 64) ??
+      validateOptionalBoundedString(bp.url, `${name}.url`, MAX_RULE_STRING_LENGTH) ??
+      (bp.statusCode === undefined
+        ? null
+        : validateIntegerRange(bp.statusCode, `${name}.statusCode`, 0, 599)) ??
+      (!Array.isArray(bp.headers)
+        ? `${name}.headers must be an array`
+        : validateOptionalRuleHeaderPairs(bp.headers, `${name}.headers`)) ??
+      validateOptionalBoundedString(bp.body, `${name}.body`, MAX_RULE_BODY_LENGTH),
   );
 }
 

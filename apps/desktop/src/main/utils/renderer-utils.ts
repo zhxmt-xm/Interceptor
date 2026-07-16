@@ -2,6 +2,7 @@ import type { DiagnosticLogRecord, RuleDefinition } from '@interceptor/core-prot
 import { MAX_QUERY_PAGE_SIZE, MAX_RULES } from '@interceptor/core-protocol';
 
 import type {
+  BreakpointEdit,
   CaptureStatus,
   ComposerRequest,
   CoreDiagnosticRecord,
@@ -337,4 +338,57 @@ export function toComposerRequest(value: unknown): ComposerRequest {
     protocol: request.protocol,
     timeoutMs: request.timeoutMs as number | undefined,
   };
+}
+
+/**
+ * 校验断点放行时的可选编辑（第一道防线）：method/url/statusCode/headers/body；
+ * undefined 直接返回 undefined。深度校验由 Core wire 校验兼底。
+ */
+export function toBreakpointEdit(value: unknown): BreakpointEdit | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'object') {
+    throw new Error('breakpoint edit is invalid');
+  }
+  const edit = value as Record<string, unknown>;
+  const result: BreakpointEdit = {};
+  if (edit.method !== undefined) {
+    assertBoundedString(edit.method, 'edit.method', 64);
+    result.method = edit.method;
+  }
+  if (edit.url !== undefined) {
+    assertBoundedString(edit.url, 'edit.url', 4_096);
+    result.url = edit.url;
+  }
+  if (edit.statusCode !== undefined) {
+    if (
+      typeof edit.statusCode !== 'number' ||
+      !Number.isInteger(edit.statusCode) ||
+      edit.statusCode < 100 ||
+      edit.statusCode > 599
+    ) {
+      throw new Error('edit.statusCode is invalid');
+    }
+    result.statusCode = edit.statusCode;
+  }
+  if (edit.headers !== undefined) {
+    if (!Array.isArray(edit.headers) || edit.headers.length > 200) {
+      throw new Error('edit.headers is invalid');
+    }
+    result.headers = edit.headers.map((item) => {
+      if (typeof item !== 'object' || item === null) {
+        throw new Error('edit.headers[] is invalid');
+      }
+      const pair = item as Record<string, unknown>;
+      assertBoundedString(pair.name, 'edit.headers[].name', 256);
+      assertBoundedString(pair.value, 'edit.headers[].value', 8_192);
+      return { name: pair.name as string, value: pair.value as string };
+    });
+  }
+  if (edit.body !== undefined) {
+    assertBoundedString(edit.body, 'edit.body', 1_048_576);
+    result.body = edit.body;
+  }
+  return result;
 }

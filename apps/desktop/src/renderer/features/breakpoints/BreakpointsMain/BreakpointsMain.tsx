@@ -3,10 +3,12 @@ import { useRef, useState } from 'react';
 import { Splitter } from '../../../components';
 import { BreakpointEditor } from '../BreakpointEditor/BreakpointEditor';
 import { PausedQueue } from '../PausedQueue/PausedQueue';
+import { useBreakpoints } from '../useBreakpoints';
 import styles from './BreakpointsMain.module.css';
 
 /** Breakpoints body: paused queue, draggable splitter and the request editor. */
 export function BreakpointsMain(): React.JSX.Element {
+  useBreakpoints();
   const [queueWidth, setQueueWidth] = useState(372);
   const mainRef = useRef<HTMLDivElement>(null);
 

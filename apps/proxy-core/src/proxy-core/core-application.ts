@@ -429,6 +429,37 @@ export class CoreApplication implements CoreRpcHost {
             payload: { breakpointId: command.payload.breakpointId, state },
           };
         });
+      case 'breakpoint.list': {
+        const breakpoints = this.breakpointQueue
+          ? this.breakpointQueue.list().map((entry) => ({
+              id: entry.id,
+              phase: entry.phase,
+              createdAt: entry.createdAt,
+              deadline: entry.deadline,
+              ruleName: entry.snapshot.ruleName,
+              method: entry.snapshot.method,
+              url: entry.snapshot.url,
+              statusCode: entry.snapshot.statusCode,
+              headers: entry.snapshot.headers,
+              body: entry.snapshot.body,
+            }))
+          : [];
+        return {
+          type: 'breakpoint.pending',
+          payload: {
+            breakpoints,
+            enabled: this.ruleEngine?.breakpointsEnabled ?? true,
+          },
+        };
+      }
+      case 'breakpoint.configure':
+        this.ruleEngine?.setBreakpointsEnabled(command.payload.enabled);
+        return {
+          type: 'breakpoint.config',
+          payload: {
+            enabled: this.ruleEngine?.breakpointsEnabled ?? command.payload.enabled,
+          },
+        };
       default:
         throw commandError({
           code: 'unsupported-command',

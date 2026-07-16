@@ -23,6 +23,7 @@ import {
   assertOptionalPort,
   assertRevision,
   toBodyDecodeOptions,
+  toBreakpointEdit,
   toByteRange,
   toComposerRequest,
   toCoreRuleDefinitions,
@@ -551,6 +552,50 @@ class DesktopApplication {
           payload,
         });
         return result.payload;
+      },
+    );
+
+    // 当前等待中断点快照 + break-on-match 开关；Breakpoints 工作区轮询。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.breakpointList, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const result = await this.coreRuntime.request({
+        type: 'breakpoint.list',
+        payload: {},
+      });
+      return {
+        breakpoints: result.payload.breakpoints,
+        enabled: result.payload.enabled,
+      };
+    });
+
+    // 放行断点：continue（可带 edit）/ drop；边界校验 id/action/edit。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.breakpointResolve,
+      async (event, breakpointId: unknown, action: unknown, edit: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertIdentifier(breakpointId, 'breakpointId');
+        if (action !== 'continue' && action !== 'drop') {
+          throw new Error('action is invalid');
+        }
+        const safeEdit = toBreakpointEdit(edit);
+        const result = await this.coreRuntime.request({
+          type: 'breakpoint.resolve',
+          payload: { breakpointId, action, edit: safeEdit },
+        });
+        return { state: result.payload.state };
+      },
+    );
+
+    // 全局 break-on-match 开关：关闭时命中断点直接放行不挂起。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.breakpointConfigure,
+      async (event, enabled: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({
+          type: 'breakpoint.configure',
+          payload: { enabled: enabled === true },
+        });
+        return result.payload.enabled;
       },
     );
   }
