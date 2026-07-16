@@ -173,6 +173,15 @@ sequenceDiagram
 - **命令**：`rules.get`/`rules.validate`/`rules.replace`（乐观并发）、`breakpoint.resolve`（continue/drop/timeout + 可选 edit）。
 - **未实现/限制**：throttle 带宽限速（Mockttp 无流控原语，evaluation 已聚合 throttleBps 待原生增强）；断点命中事件推送 Renderer 与规则 UI 在 M8。
 
+## 规则 UI / Composer / Breakpoint / Connection 架构（M8，已落地）
+
+> M8 把 M7 规则引擎能力接入 Renderer 并补齐 Composer、Breakpoint 编辑与 Connection/TLS 详情。Renderer 仍只经 `window.interceptor` 意图 API 访问 Main；新增 12 项窄 API 均在 Main 边界做结构/范围校验（`renderer-utils`），Core RPC 边界做权威 wire 校验。
+
+- **Rules workspace（T8.1）**：Renderer `features/rules/` 数据驱动——`rulesStore`（Zustand：`revision` + 可编辑规则草稿 + `diagnostics` + `hits` + `dirty`/`saving`/`conflict`）、`useRulesData`（挂载 `rules.get` 加载、`JSON.stringify(rules)` 去抖调 `rules.validate` 刷诊断、`rules.replace` 乐观并发保存并处理 `conflict` 重载、4s 轮询 `rules.hits`）；`MatcherRow` 覆盖 8 种 matcher、`ActionEditor` 覆盖 11 种 action 的受控编辑（header/query 名值自由输入）。Server 新增 `CaptureStore.countRuleHits`（按 `rule_id` 聚合 `rule_hit`）经 `count-rule-hits` worker 请求链路 + `rules.hits` handler。窄 API：`getRules`/`validateRules`/`replaceRules`（结构化 `RuleReplaceResult` 回传 conflict/invalid）/`getRuleHits`。
+- **Composer（T8.2）**：Core `proxy-core/composer/composer-service.ts` 的 `ComposerService.send` 用 Node `http`/`https`（HTTP/1.1）或 `http2`（h2）出站执行，采集响应状态/头/有界正文（1 MiB）/时序 + 真实 TLS（`getProtocol`/`getCipher`/`alpnProtocol`）/证书主题 + `remoteAddress`，网络错误以 `ok=false` 返回；`composer.send` handler。Renderer `features/composer/` 的 `composerStore`（method/url/protocol/headers(开关)/body/auth/history）+ `useComposer.sendComposerRequest`（合并启用 header + Auth 派生 authorization），UI `RequestBuilder`（Headers/Query/Body/Auth）/`ResponsePanel`（Body/Headers/Cookies/Raw + 状态着色）/`ComposerTopbar`（history 下拉）。窄 API：`sendComposerRequest`。
+- **Breakpoint 编辑（T8.3）**：`BreakpointQueue.suspend` 存请求/响应快照（ruleName/method/url/statusCode/headers/body）+ `deadline`，`list()` 返回快照；`RuleEngine` 加全局 break-on-match 开关（关闭时命中 breakpoint action 立即 continue），`awaitBreakpoint` 从可变 state 构建快照。`breakpoint.list`（返回 pending 快照 + enabled）/`breakpoint.configure`（设开关）handler；沿用 M7 `breakpoint.resolve`（continue/drop/edit）。Renderer `features/breakpoints/` 的 `breakpointsStore`（暂停列表 + 编辑草稿，轮询期间不覆盖用户编辑）+ `useBreakpoints`（1s 轮询 `breakpoint.list`、`resolveSelected`、`continueAllBreakpoints`、`setBreakOnMatch`）；UI `PausedQueue`（倒计时 + Continue all）/`BreakpointEditor`（编辑 header/body + Drop/Continue/Execute）。**采用轮询而非 push 事件通道**（请求在 Core 侧 await 挂起，1s 轮询延迟可接受）。窄 API：`listBreakpoints`/`resolveBreakpoint`/`setBreakpointsEnabled`。
+- **Connection/TLS 详情（T8.4）**：Core `proxy-core/connection/connection-probe.ts` 的 `probeConnection` 用 `tls.connect`（ALPN h2/http1.1、不发应用数据）读真实协议/套件/ALPN/authorized + 沿 `issuerCertificate` 收集的完整证书链（去重防环、限 10 张，含 SHA-256 指纹）；`connection.probe` handler。Renderer `capture/RequestInspector/TlsPanel` 在 TLS 标签展示捕获连接事实（scheme/host/port/protocol/secure）+ 按需 `probeConnection` 实时证书链（端口从捕获 URL 推断，回退 443/80）。**按需实时探测**（Mockttp 未暴露每 exchange 上游 TLS）。窄 API：`probeConnection`。
+
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`
 
@@ -246,8 +255,8 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 
 - WebSocket、gRPC（M9；未 MITM 的 CONNECT 仍字节直通）。HTTP/2 已落地（M6）；深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
-- 详细源站 TLS metadata（version/cipher/ALPN/证书链）记录与 Inspector TLS/Timing 标签填充（当前 HTTPS 已解密捕获，但 TLS/Timing 富数据为诚实空态）。
-- CA 导出、机器级信任库安装（需提权）；系统代理适配、导入导出、签名安装器和更新机制（M9+）。规则引擎 Server 已落地（M7），规则 UI 在 M8。
+- 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
+- CA 导出、机器级信任库安装（需提权）；系统代理适配、导入导出、签名安装器和更新机制（M9+）。规则引擎（M7）与规则 UI/Composer/Breakpoint 编辑/Connection·TLS 详情（M8）已落地。
 
 ## 更新规则
 
