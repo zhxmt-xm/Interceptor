@@ -34,6 +34,9 @@ export function applyStorageRequest(
       return store.saveRuleSet(request.expectedRevision, request.rules);
     case 'load-rule-set':
       return store.loadRuleSet();
+    case 'append-rule-hits':
+      store.appendRuleHits(request.exchangeId, request.hits);
+      return undefined;
     case 'close':
       store.close();
       return undefined;

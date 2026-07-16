@@ -19,7 +19,7 @@
 ## 当前状态
 
 - **M0、M1、M2、M3、M4、M5、M6 均已完成（100%）**；各 Stage 详情见对应 `M*.md`。
-- **当前 Stage 是 M7 规则引擎（进行中，Contract 完成 + Server T7.1 完成）**：规则模型（`packages/core-protocol/src/rules.ts`）+ rules.validate/replace/get 命令 + wire 校验 + 单测已交付；**T7.1 Server 已交付**——schema v2 单行 `rule_set` 表（`storage/worker/worker-schema.ts`）+ `CaptureStore.saveRuleSet/loadRuleSet` 乐观并发（`RuleRevisionConflictError`）+ host↔worker `save/load-rule-set` 链路 + `collectRuleDiagnostics` 语义校验（`validation.ts`）+ `rules.validate/get/replace` handler（`core-application.ts`，冲突→conflict）。Server 剩 T7.2–T7.7（matcher 编译、action 执行、breakpoint 状态机、Mockttp beforeRequest/beforeResponse 原子替换引擎、RuleHit 审计）与 Client(M8) 待续。架构决策见 [M7.md](M7.md)。
+- **当前 Stage：M7 规则引擎 Server/Contract 已完成，下一是 M8 规则 UI**：规则模型（`packages/core-protocol/src/rules.ts`）+ rules.get/validate/replace + breakpoint.resolve 命令 + wire/语义校验 + 单测；**Server 全量交付**——schema v2 `rule_set` 乐观并发持久化 + `rule_hit` 审计；`proxy-core/rules/` 的 matcher-compiler / action-executor（header/query/body/synthetic/map-local·remote/block/status/delay/throttle）/ breakpoint-queue 状态机 / rule-engine；proxy-service `beforeRequest`/`beforeResponse` 接入引擎 + 原子替换热切换（不 reset server）+ RuleHit 落库；core-application bootstrap 创建 RuleEngine+BreakpointQueue、存储就绪 loadRuleSet 热加载、rules.replace 后 setRuleSet。**限制**：throttle 限速与断点命中事件推送 Renderer 待后续/M8。**Client（规则 UI）在 M8 接入并与引擎联动。** 详见 [M7.md](M7.md)。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库（schema v1 已含 stream_id/kind/is_pseudo/content_encoding，无需迁移）；新增 `proxy/content-decoder.ts`（gzip/deflate/brotli 延迟解码 + 多层 + 容错），`body.read-range` 加 `decode`/`encoding` 由 Core 用 zlib 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解）并回传 `decodeStatus`；`RequestInspector` 展示 Stream ID/pseudo 高亮/trailer，`BodyView` 解码预览 + 失败提示。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露（`streamId` 字段/UI 已就绪但恒 undefined），后续用原生 http2 补齐；h1→纯 h2 上游 Mockttp 返回 403（边缘罕见）。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy-service.ts` 基于 Mockttp 的 loopback 显式代理（`proxy.start/stop/status` 控制、转发 HTTP/1.1、未解密时 CONNECT 直通），规范 Exchange（含头与内容寻址正文 Blob）写入 `StorageService`；实时 Capture 事件经有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`）。真正零内存流式正文作为 M5+ 优化项。
@@ -119,26 +119,23 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M7 Server T7.7（规则引擎收官）
+## 下一任务：M8 规则 UI 与 Composer
 
-M7 Contract 已提交 `3dc3c59`；Server T7.1–T7.6 已完成（持久化+handler、matcher-compiler、action-executor、breakpoint-queue 状态机）。仅剩 T7.7 rule-engine 接入，完成后 M7 Server 收官（Client 在 M8）。
+M7 规则引擎 Server/Contract 已收官（T7.1–T7.7 交付，见 [M7.md](M7.md)）。下一 Stage M8 把规则引擎能力接入 Renderer 并与后端联动，1:1 还原 `design/app` 对应视图：
 
-T7.7 范围：
-
-- 新建 `rules/rule-engine.ts`：持有当前 ruleSet 引用（原子替换热切换，不 reset server）+ 编译缓存；beforeRequest/beforeResponse 各按 priority/stable id 排序遍历匹配规则，用 action-executor 收集 outcome 应用到 Mockttp 回调结果。
-- proxy-service：单 `forAnyRequest().thenPassThrough({ beforeRequest, beforeResponse, ignoreHostHttpsErrors })` 接入 rule-engine；rules.replace 成功后把新 ruleSet 原子替换进引擎。
-- breakpoint：命中 breakpoint action → engine 调 breakpointQueue.suspend + await outcome，据 state 放行/应用 edit/丢弃；命中事件推送 Renderer（新事件通道或复用 capture events）。
-- RuleHit 审计：改写命中后写 rule_hit 表（exchange_id/rule_id/rule_revision/phase/action/summary）。
-- block 连接 reset/close、delay（setTimeout）、throttle（限速流）实际生效。
+- **T8.1 Rules workspace**：有序规则列表 + Matcher/Action 编辑器 + 校验 + hit counter；增删改经 `rules.get`/`rules.validate`/`rules.replace`（乐观并发 expectedRevision）即时生效。需扩展窄 API（desktop-api/preload/main）暴露 rules 命令。
+- **T8.2 Composer**：method/url/header/body/protocol preference + 发送历史；手工构造请求并看响应。
+- **T8.3 Breakpoint 编辑 UI**：命中暂停面板改请求/响应后放行（`breakpoint.resolve` continue/drop + edit）；需 Core 推送断点命中事件到 Renderer（新事件通道或复用 capture events）。
+- **T8.4 Connection/TLS 详情**：查看连接 TLS/ALPN/证书链信息。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十一章（11.4 执行模型）和第二十七章 M7。
-2. rule-engine 纯逻辑（编译 + 排序 + 遍历 + outcome 聚合）先行 + 单测；再接 proxy-service beforeRequest/beforeResponse 与 Mockttp 回调结果映射。
-3. ruleSet 热切换：Core 持有引擎，rules.replace handler 成功后更新引擎 ruleSet 引用（原子替换）。
-4. 阶段收尾：涉及 Core/代理数据面/打包边界，重跑 typecheck/unit/build:core/package/smoke/audit；M7 Server 收官后同步 PROGRESS/M7/HANDOVER/ARCHITECTURE。
+1. 运行 `git status --short --branch` 与 `git log -1 --oneline` 确认工作树；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十四章（桌面 UI）与第二十七章 M8；对照 `design/app` 的 rules/composer/breakpoints 视图。
+2. 先扩展 rules 窄 API（`shared/desktop-api.ts`/`preload.ts`/`main.ts` + `renderer-utils` 边界校验），再建 Rules workspace 数据层（Zustand 视图态 + 按需拉取）与 UI，1:1 还原设计。
+3. Composer 独立视图；Breakpoint 事件通道 + 暂停面板；Connection/TLS 详情标签。
+4. 阶段收尾：涉及 Main/Preload/IPC/Renderer 边界，重跑 typecheck/unit/package/smoke/audit + 设计 parity；同步 PROGRESS/M8/HANDOVER/ARCHITECTURE。
 
-> 已完成：M0–M6 全量交付 + M7 Contract；CA 可用性增强、诊断全组件覆盖与 Diagnostics 面板接线（本次提交）。
+> 已完成：M0–M6 全量交付 + M7 规则引擎 Server/Contract（分任务 T7.1–T7.7 提交）。
 
 ## 剩余工作项目
 

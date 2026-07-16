@@ -16,6 +16,7 @@ import type {
   CleanupResult,
   CleanupScope,
   ExchangeInput,
+  RuleHitInput,
   SessionQuery,
   SessionQueryPage,
   StorageStats,
@@ -164,6 +165,13 @@ export class StorageWorkerHost {
 
   loadRuleSet(): Promise<RuleSet> {
     return this.request({ kind: 'load-rule-set' });
+  }
+
+  appendRuleHits(
+    exchangeId: string,
+    hits: readonly RuleHitInput[],
+  ): Promise<void> {
+    return this.request<void>({ kind: 'append-rule-hits', exchangeId, hits });
   }
 
   /**

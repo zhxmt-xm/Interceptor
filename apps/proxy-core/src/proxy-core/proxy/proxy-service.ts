@@ -13,12 +13,41 @@ import type {
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
+  MutableRequestState,
+  MutableResponseState,
+  SyntheticResponseInit,
+} from '../rules/action-executor';
+import type { MatchContext } from '../rules/matcher-compiler';
+import type { RuleEngine, RuleHitRecord } from '../rules/rule-engine';
+import type {
   BodyRefInput,
   CaptureSessionInput,
   ExchangeInput,
   HeaderInput,
   HeaderKind,
 } from '../storage/types';
+
+/**
+ * Mockttp beforeRequest/beforeResponse 回调结果的本地结构类型（对齐 mockttp 语义但不
+ * 从其非公开内部路径 import；结构兼容故可直接作为回调返回值与参数）。
+ */
+interface ProxyResponseMessageResult {
+  statusCode?: number;
+  headers?: Record<string, string | string[]>;
+  body?: string | Uint8Array;
+}
+type ProxyResponseResult = ProxyResponseMessageResult | 'close' | 'reset';
+interface ProxyRequestResult {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string | string[]>;
+  body?: string | Uint8Array;
+  response?: ProxyResponseResult;
+}
+interface ProxyPassThroughResponse {
+  statusCode: number;
+  headers: Record<string, string | string[] | undefined>;
+}
 
 /**
  * ProxyService 依赖的捕获落库接口，由 StorageService 结构化实现。
@@ -32,6 +61,10 @@ export interface CaptureSink {
   writeBody(
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
+  appendRuleHits(
+    exchangeId: string,
+    hits: readonly RuleHitRecord[],
+  ): Promise<void>;
 }
 
 /** 捕获事件汇：ProxyService 采集/更新 Exchange 后投递，由 CaptureEventQueue 实现。 */
@@ -80,6 +113,8 @@ export interface ProxyTlsConfig {
  */
 export class ProxyService {
   private readonly pending = new Map<string, CompletedRequest>();
+  /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
+  private readonly ruleHits = new Map<string, RuleHitRecord[]>();
 
   private server: Mockttp | null = null;
   private address: ProxyAddress | null = null;
@@ -92,6 +127,7 @@ export class ProxyService {
   constructor(
     private readonly storage: CaptureSink,
     private readonly events: CaptureEventSink,
+    private readonly ruleEngine?: RuleEngine,
   ) {}
 
   /**
@@ -166,11 +202,17 @@ export class ProxyService {
       : getLocal();
     this.registerCaptureListeners(server);
     // 默认验证源站证书（不关闭）；仅对显式不安全例外 host 忽略源站证书错误。
-    await server.forAnyRequest().thenPassThrough(
+    // 接入规则引擎的 beforeRequest/beforeResponse 做匹配改写/短路/阻断/断点；
+    // 无规则时回调快速返回 undefined，不影响转发。
+    const ignoreHostHttpsErrors =
       this.tlsConfig.insecureHosts.length > 0
-        ? { ignoreHostHttpsErrors: [...this.tlsConfig.insecureHosts] }
-        : {},
-    );
+        ? [...this.tlsConfig.insecureHosts]
+        : undefined;
+    await server.forAnyRequest().thenPassThrough({
+      ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+      beforeRequest: (req) => this.applyRulesToRequest(req),
+      beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
+    });
     await server.start(port ?? undefined);
     this.server = server;
     return { host: this.host, port: server.port };
@@ -306,12 +348,18 @@ export class ProxyService {
     try {
       await this.storage.appendExchanges([exchange]);
       this.capturedExchanges += 1;
+      const hits = this.ruleHits.get(request.id);
+      if (hits && hits.length > 0) {
+        await this.storage.appendRuleHits(exchange.id, hits);
+      }
     } catch (error) {
       // 存储失败不得影响已完成的转发，但必须留痕以便排障。
       this.diagnostics?.error('capture.persist-failed', {
         attributes: { host: exchange.host ?? 'unknown', method: exchange.method },
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
+    } finally {
+      this.ruleHits.delete(request.id);
     }
     if (state === 'aborted') {
       this.diagnostics?.warn('exchange.aborted', {
@@ -387,10 +435,169 @@ export class ProxyService {
       };
     }
   }
+
+  /**
+   * 请求阶段套用规则引擎：无引擎/无规则快速跳过；命中则暂存审计、按需延迟，
+   * 返回 Mockttp 短路响应 / 阻断 / 改写请求。引擎异常不得阻断转发。
+   */
+  private async applyRulesToRequest(
+    request: CompletedRequest,
+  ): Promise<ProxyRequestResult | undefined> {
+    if (!this.ruleEngine || !this.ruleEngine.hasRules) {
+      return undefined;
+    }
+    const state: MutableRequestState = {
+      method: request.method,
+      url: request.url,
+      headers: { ...request.headers },
+    };
+    try {
+      const evaluation = await this.ruleEngine.evaluateRequest(
+        buildRequestContext(request),
+        state,
+      );
+      this.stashHits(request.id, evaluation.hits);
+      if (evaluation.kind === 'respond') {
+        return { response: toCallbackResponse(evaluation.response) };
+      }
+      if (evaluation.kind === 'block') {
+        return { response: evaluation.mode };
+      }
+      if (evaluation.delayMs > 0) {
+        await delay(evaluation.delayMs);
+      }
+      return {
+        method: state.method,
+        url: state.url,
+        headers: toMockttpHeaders(state.headers),
+        ...(state.body !== undefined ? { body: state.body } : {}),
+      };
+    } catch (error) {
+      this.diagnostics?.error('rules.request-failed', {
+        errorCode: error instanceof Error ? error.name : 'unknown',
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * 响应阶段套用规则引擎：命中则暂存审计、按需延迟，返回 Mockttp 阻断 / 改写响应。
+   */
+  private async applyRulesToResponse(
+    response: ProxyPassThroughResponse,
+    request: CompletedRequest,
+  ): Promise<ProxyResponseResult | undefined> {
+    if (!this.ruleEngine || !this.ruleEngine.hasRules) {
+      return undefined;
+    }
+    const state: MutableResponseState = {
+      statusCode: response.statusCode,
+      headers: { ...response.headers },
+    };
+    try {
+      const evaluation = await this.ruleEngine.evaluateResponse(
+        buildResponseContext(request, response),
+        state,
+      );
+      this.stashHits(request.id, evaluation.hits);
+      if (evaluation.kind === 'block') {
+        return evaluation.mode;
+      }
+      if (evaluation.delayMs > 0) {
+        await delay(evaluation.delayMs);
+      }
+      return {
+        statusCode: state.statusCode,
+        headers: toMockttpHeaders(state.headers),
+        ...(state.body !== undefined ? { body: state.body } : {}),
+      };
+    } catch (error) {
+      this.diagnostics?.error('rules.response-failed', {
+        errorCode: error instanceof Error ? error.name : 'unknown',
+      });
+      return undefined;
+    }
+  }
+
+  private stashHits(requestId: string, hits: readonly RuleHitRecord[]): void {
+    if (hits.length === 0) {
+      return;
+    }
+    const existing = this.ruleHits.get(requestId);
+    if (existing) {
+      existing.push(...hits);
+    } else {
+      this.ruleHits.set(requestId, [...hits]);
+    }
+  }
 }
 
 async function* singleChunk(buffer: Uint8Array): AsyncIterable<Uint8Array> {
   yield buffer;
+}
+
+function buildRequestContext(request: CompletedRequest): MatchContext {
+  const target = parseTarget(request.url);
+  return {
+    request: {
+      method: request.method,
+      url: request.url,
+      host: target.hostname,
+      path: target.path,
+      query: safeSearchParams(request.url),
+      headers: request.headers,
+      mime: readHeader(request.headers, 'content-type'),
+    },
+  };
+}
+
+function buildResponseContext(
+  request: CompletedRequest,
+  response: ProxyPassThroughResponse,
+): MatchContext {
+  return {
+    request: buildRequestContext(request).request,
+    response: {
+      statusCode: response.statusCode,
+      headers: response.headers,
+      mime: readHeader(response.headers, 'content-type'),
+    },
+  };
+}
+
+function toCallbackResponse(
+  response: SyntheticResponseInit,
+): ProxyResponseMessageResult {
+  return {
+    statusCode: response.statusCode,
+    headers: toMockttpHeaders(response.headers),
+    ...(response.body !== undefined ? { body: response.body } : {}),
+  };
+}
+
+/** 过滤掉 undefined 值，得到 Mockttp 接受的 header 对象。 */
+function toMockttpHeaders(
+  headers: Record<string, string | string[] | undefined>,
+): Record<string, string | string[]> {
+  const result: Record<string, string | string[]> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (value !== undefined) {
+      result[name] = value;
+    }
+  }
+  return result;
+}
+
+function safeSearchParams(rawUrl: string): URLSearchParams {
+  try {
+    return new URL(rawUrl).searchParams;
+  } catch {
+    return new URLSearchParams();
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 interface ProxyTarget {

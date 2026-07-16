@@ -16,6 +16,7 @@ import type {
   CleanupScope,
   ExchangeInput,
   HeaderInput,
+  RuleHitInput,
   SessionQuery,
   SessionQueryPage,
   StorageStats,
@@ -140,6 +141,7 @@ export class CaptureStore {
   private readonly deleteFtsByExchangeStmt: StatementSync;
   private readonly updateExchangeStmt: StatementSync;
   private readonly updateFtsResponseMimeStmt: StatementSync;
+  private readonly insertRuleHitStmt: StatementSync;
   private nextSeq: number;
 
   /**
@@ -199,6 +201,12 @@ export class CaptureStore {
     this.updateFtsResponseMimeStmt = db.prepare(
       `UPDATE exchange_fts SET response_mime = :responseMime
        WHERE exchange_id = :exchangeId`,
+    );
+    this.insertRuleHitStmt = db.prepare(
+      `INSERT INTO rule_hit
+        (exchange_id, rule_id, rule_revision, phase, action, summary, created_at)
+       VALUES
+        (:exchangeId, :ruleId, :ruleRevision, :phase, :action, :summary, :createdAt)`,
     );
 
     const row = db
@@ -564,6 +572,29 @@ export class CaptureStore {
           updatedAt: Date.now(),
         });
       return { revision: nextRevision, rules: [...rules] };
+    });
+  }
+
+  /**
+   * 记录一批规则命中审计到 rule_hit 表（同事务）；空数组不写。
+   * 调用方：Storage Worker 处理 append-rule-hits（proxy-service 关联 exchange 后）。
+   */
+  appendRuleHits(exchangeId: string, hits: readonly RuleHitInput[]): void {
+    if (hits.length === 0) {
+      return;
+    }
+    this.inTransaction(() => {
+      for (const hit of hits) {
+        this.insertRuleHitStmt.run({
+          exchangeId,
+          ruleId: hit.ruleId,
+          ruleRevision: hit.ruleRevision,
+          phase: hit.phase,
+          action: hit.action,
+          summary: hit.summary ?? null,
+          createdAt: Date.now(),
+        });
+      }
     });
   }
 

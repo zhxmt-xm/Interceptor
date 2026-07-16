@@ -13,6 +13,7 @@ import type {
   CaptureSessionInput,
   CleanupScope,
   ExchangeInput,
+  RuleHitInput,
   SessionQuery,
   SessionQueryPage,
 } from './types';
@@ -103,6 +104,14 @@ export class StorageService {
     rules: readonly RuleDefinition[],
   ): Promise<RuleSet> {
     return this.host.saveRuleSet(expectedRevision, rules);
+  }
+
+  /** 记录一批规则命中审计。调用方：proxy-service 在 captureExchange 关联 exchange 后。 */
+  appendRuleHits(
+    exchangeId: string,
+    hits: readonly RuleHitInput[],
+  ): Promise<void> {
+    return this.host.appendRuleHits(exchangeId, hits);
   }
 
   /**

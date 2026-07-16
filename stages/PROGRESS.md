@@ -18,13 +18,15 @@
 - 总体状态：进行中。
 - 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座、M2 存储层、M3 最小显式代理（HTTP/1.1）、M4 会话列表 UI、M5 CA 与 HTTPS MITM、M6 HTTP/2（均 100%）。
 - 当前 Stage：M7 规则引擎（进行中，Contract 完成；Server T7.1–T7.6 已完成：持久化+handler、matcher、header/query、body/synthetic/map、status/delay/throttle、breakpoint 状态机；仅剩 T7.7 引擎接入）。
-- 当前任务：M6 已收官。Proxy Core 在 MITM 时启用 Mockttp `http2:true`（下游 h2 + 上游按 ALPN 协商 + 四组转换），采集 trailer/pseudo-header 并按 kind 落库；新增 `content-decoder`（gzip/deflate/brotli 延迟解码），`body.read-range` 支持 `decode`/`encoding` 由 Core 解压（浏览器 DecompressionStream 不支持 br 故必须 Core 解），回传 `decodeStatus`；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览 + 失败提示。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强；h1→纯 h2 上游为 Mockttp 边缘（403）已记限制。
-- 下一动作：M7 T7.7 rule-engine 接入 proxy-service beforeRequest/beforeResponse（读最新 ruleSet 引用原子替换热切换，按 priority/id 执行 matcher+action+breakpoint，block/delay/throttle 实际生效，RuleHit 落 rule_hit）——M7 Server 收官（Client 在 M8）。T7.1–T7.6 已交付。
+- 已完成 Stage：M0 项目脚手架与工具链、M1 IPC 通信基座、M2 存储层、M3 最小显式代理（HTTP/1.1）、M4 会话列表 UI、M5 CA 与 HTTPS MITM、M6 HTTP/2、M7 规则引擎 Server/Contract（均 100%）。
+- 当前 Stage：M8 规则 UI 与 Composer（未开始）——M7 规则引擎 Server/Contract 已收官，Client(UI) 在 M8 接入并与引擎联动。
+- 当前任务：M7 已收官（Server/Contract）。规则引擎经 proxy-service beforeRequest/beforeResponse 接入：matcher 编译 + action 执行（header/query/body/synthetic/map-local·remote/block/status/delay/throttle）+ breakpoint 状态机 + 完整 rule set 原子替换热切换（不 reset server）+ RuleHit 落 rule_hit 表；rules.validate/get/replace handler + 语义诊断 + schema v2 rule_set 乐观并发持久化。throttle 限速与断点命中事件推送 Renderer 记为 M8/后续。
+- 下一动作：M8 T8.1 Rules workspace UI（有序规则列表 + Matcher/Action 编辑器 + 校验 + hit counter，增删改经 rules.get/validate/replace 即时生效），随后 T8.2 Composer、T8.3 Breakpoint 编辑 UI、T8.4 Connection/TLS 详情，均与 M7 引擎联动并 1:1 还原 design/app。
 - 打包方案已落地：Mockttp 含 WASM（brotli-wasm）与原生插件（tls-impersonate 的 .node），esbuild 以 `--external:mockttp` 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷把依赖闭包随包发（`resources/proxy-core/node_modules`）；packaged smoke 验证 Core 用隔离闭包成功加载 mockttp，`npm audit --omit=dev` 0 漏洞。
-- Git 状态：M1 `b923117`、M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` 均已推送 origin/main。本次提交纳入：M5 CA 可用性增强（local-machine 信任库 + sudo-prompt 提权、证书 reveal/view/管理器/delete 入口、MITM 与信任解耦、install 不自动生成）、诊断日志全组件覆盖与 Diagnostics 面板接真实数据，及若干 UI 修复；详见 M5.md/M2.md 后续增强与 M10.md T10.4/T10.5。
+- Git 状态：M1 `b923117`、M2–M5 `d364f51`、M6 `caa3bbb`、M7 Contract `3dc3c59` 已推送 origin/main；M7 Server T7.1–T7.7 按任务分提交（8689963 / 02f07be / 7aa95a0 / 1e59a32 / c5aa7dc / 7005ff7 / 本次）依次推送。
 - 阻塞：无。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M6.md](M6.md)（下一 Stage 见 [M7.md](M7.md)）。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，当前任务边界见 [M7.md](M7.md)（下一 Stage 见 [M8.md](M8.md)）。
 
 ## Stage 总览
 
@@ -37,7 +39,7 @@
 | M4 | 会话列表 UI | 已完成 | 100% | [M4.md](M4.md) |
 | M5 | CA 与 HTTPS MITM | 已完成 | 100% | [M5.md](M5.md) |
 | M6 | HTTP/2 | 已完成 | 100% | [M6.md](M6.md) |
-| M7 | 规则引擎 | 进行中 | 85% | [M7.md](M7.md) |
+| M7 | 规则引擎 | 已完成 | 100% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 未开始 | 0% | [M8.md](M8.md) |
 | M9 | WebSocket 与 gRPC | 未开始 | 0% | [M9.md](M9.md) |
 | M10 | 导入导出与隐私 | 未开始 | 0% | [M10.md](M10.md) |

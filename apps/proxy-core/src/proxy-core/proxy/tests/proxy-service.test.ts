@@ -41,6 +41,10 @@ class RecordingSink implements CaptureSink {
       deduplicated: false,
     };
   }
+
+  appendRuleHits(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 function startOrigin(

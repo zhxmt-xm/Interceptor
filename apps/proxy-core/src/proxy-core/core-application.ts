@@ -26,6 +26,7 @@ import { CaptureEventQueue } from './proxy/capture-event-queue';
 import { decodeBody } from './proxy/content-decoder';
 import { ProxyService } from './proxy/proxy-service';
 import { BreakpointQueue } from './rules/breakpoint-queue';
+import { RuleEngine } from './rules/rule-engine';
 import { StorageService } from './storage/entry';
 import type { CleanupScope } from './storage/types';
 
@@ -50,6 +51,8 @@ export interface CoreApplicationOptions {
   captureEventQueue?: CaptureEventQueue;
   /** 断点状态机；rule-engine 挂起、breakpoint.resolve handler 解挂，退出时确定性关闭。 */
   breakpointQueue?: BreakpointQueue;
+  /** 规则引擎；proxy-service beforeRequest/beforeResponse 调用，rules.replace 后热切换。 */
+  ruleEngine?: RuleEngine;
 }
 
 export type CoreLifecycleMessage =
@@ -73,6 +76,7 @@ export class CoreApplication implements CoreRpcHost {
   private readonly proxyService: ProxyService | null;
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
+  private readonly ruleEngine: RuleEngine | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -95,17 +99,19 @@ export class CoreApplication implements CoreRpcHost {
       const captureEventQueue = storageService
         ? new CaptureEventQueue()
         : undefined;
+      const breakpointQueue = new BreakpointQueue();
+      const ruleEngine = new RuleEngine(breakpointQueue);
       const proxyService =
         storageService && captureEventQueue
-          ? new ProxyService(storageService, captureEventQueue)
+          ? new ProxyService(storageService, captureEventQueue, ruleEngine)
           : undefined;
-      const breakpointQueue = new BreakpointQueue();
       new CoreApplication(parentPort, {
         storageService,
         diagnosticsWorkerHost,
         proxyService,
         captureEventQueue,
         breakpointQueue,
+        ruleEngine,
       }).start();
     } catch (error) {
       reportFatalStartup(parentPort, error);
@@ -125,6 +131,7 @@ export class CoreApplication implements CoreRpcHost {
     this.proxyService = options.proxyService ?? null;
     this.captureEventQueue = options.captureEventQueue ?? null;
     this.breakpointQueue = options.breakpointQueue ?? null;
+    this.ruleEngine = options.ruleEngine ?? null;
     this.diagnostics = new CoreDiagnostics(
       this.diagnosticsWorkerHost ?? undefined,
     );
@@ -328,6 +335,7 @@ export class CoreApplication implements CoreRpcHost {
                 command.payload.rules,
               ),
             );
+            this.ruleEngine?.setRuleSet(ruleSet);
             return {
               type: 'rules.revision',
               payload: { revision: ruleSet.revision },
@@ -423,10 +431,22 @@ export class CoreApplication implements CoreRpcHost {
     if (!this.storageService) {
       return;
     }
-    void this.storageService
+    const storage = this.storageService;
+    void storage
       .initialize()
-      .then(() => {
+      .then(async () => {
         this.diagnostics.info('storage.ready');
+        // 存储就绪后把持久化规则集热加载进引擎，使重启后规则立即生效。
+        if (this.ruleEngine) {
+          const ruleSet = await storage.loadRuleSet();
+          this.ruleEngine.setRuleSet(ruleSet);
+          this.diagnostics.info('rules.loaded', {
+            attributes: {
+              revision: ruleSet.revision,
+              rules: ruleSet.rules.length,
+            },
+          });
+        }
       })
       .catch((error: unknown) => {
         this.diagnostics.error('storage.init.failed', {

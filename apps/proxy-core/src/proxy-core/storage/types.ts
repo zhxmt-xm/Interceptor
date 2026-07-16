@@ -132,3 +132,12 @@ export interface CleanupResult {
   /** 清理后仍被引用的 blob hash 集合，供 Blob GC 计算可删除文件。 */
   readonly referencedBlobHashes: string[];
 }
+
+/** 一条规则命中审计（M7/T7.7）；由 rule-engine 产出，proxy-service 关联 exchange 后落 rule_hit 表。 */
+export interface RuleHitInput {
+  readonly ruleId: string;
+  readonly ruleRevision: number;
+  readonly phase: 'request' | 'response';
+  readonly action: string;
+  readonly summary?: string;
+}

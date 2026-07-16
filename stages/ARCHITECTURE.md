@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-15
+> 最后更新：2026-07-16
 > 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -116,12 +116,62 @@ flowchart LR
 - **MITM**（Core）：`ProxyService` 有 CA 时 `getLocal({https:{key,cert}})`，Mockttp 用该 CA 动态签发并缓存 leaf；`thenPassThrough({ignoreHostHttpsErrors})` 默认验证源站证书链/hostname、仅对 per-host 例外忽略。解密的 HTTPS Exchange 复用现有 `request`/`response` 捕获管线（`scheme=https`、`secure=true`）。
 - **窄 API**：`getCertificateStatus`/`generate`/`install`/`uninstall`/`delete`/`reveal`/`view`Certificate、`openCertificateManager`、`get`/`setInsecureHosts`、`setHttpsDecryption`（Main 组装 `CertificateInfo` 含 `path`/`mitmEnabled`，私钥不出 Main）；install 不自动生成（要求已 present）；Settings/Certificates 面板呈现真实证书状态、信任、fingerprint、MITM 开关、证书文件入口（reveal/view/系统证书管理器）与不安全例外。
 
+### 公钥/私钥与握手时序
+
+三对密钥各司其职：**CA 密钥对**（本应用生成管理，CA 私钥签发 leaf、CA 公钥/证书装信任库验签）、**leaf 密钥对**（Mockttp 按 host 现造并缓存，用于与客户端的会话①）、**源站真实密钥对**（真站持有，用于代理↔源站的会话②）。CA 私钥经 `safeStorage` 加密后只在 Main↔Core 内部流转，绝不进 Renderer/日志/导出。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 客户端
+    participant TS as 系统信任库
+    participant P as 代理（Mockttp 持 CA私钥）
+    participant O as 源站 example.com
+    Note over P,TS: 一次性准备
+    Note over P: 生成 CA 密钥对，CA私钥 加密存盘（只在 Main/Core 内存）
+    P->>TS: 安装 CA公钥（证书）到受信任根
+    Note over C,O: 每次 HTTPS 请求
+    C->>P: CONNECT example.com 端口443
+    Note over P: 现造 叶子密钥对（叶子私钥 与 叶子公钥）
+    Note over P: 造 example.com 证书，内嵌 叶子公钥，用 CA私钥 签名
+    P-->>C: 出示 叶子证书（含 叶子公钥 与 CA签名）
+    C->>TS: 读取 CA公钥
+    Note over C: 用 CA公钥 验签 → 链可信、域名匹配 → 通过
+    C->>P: 用 叶子公钥 协商会话密钥
+    Note over P: 用 叶子私钥 完成握手
+    Note over C,P: 派生 对称会话密钥①
+    P->>O: 代理作为客户端另开 TLS
+    O-->>P: 出示 真实证书（真实公钥 与 公共CA签名）
+    Note over P: 用 系统公共CA 验证真实证书
+    Note over P,O: 派生 对称会话密钥②
+    C->>P: 请求（会话密钥①加密）
+    Note over P: 解密成明文，可抓包改包
+    P->>O: 用 会话密钥② 重新加密转发
+    O-->>P: 响应（会话密钥②加密），解密
+    P-->>C: 用 会话密钥① 重新加密回发
+```
+
+> 密钥交换细节：TLS 1.2+RSA 时客户端用 leaf 公钥加密预主密钥、代理用 leaf 私钥解密；TLS 1.3/ECDHE 时会话密钥由临时 DH 生成（前向保密），leaf 私钥只用来签握手、客户端用 leaf 公钥验签。两种情况下客户端信任 leaf 都取决于用信任库里的 CA 公钥验签成功。
+
 ## 诊断可观测性架构（2026-07 增强，已落地）
 
 > 在 M2 Diagnostics 基座（Ring Buffer + Worker 持久化）之上，Core 各组件经共享 `DiagnosticsRecorder` 记结构化关键节点，Renderer Diagnostics 面板轮询 `getRecentDiagnostics` 展示真实命令 trace。
 
 - **DiagnosticsRecorder 全组件注入**：`core-diagnostics.ts` 导出 `DiagnosticsRecorder`（`info/warn/error(phase,fields)`，`CoreDiagnostics` 唯一实现）；RpcServer 内建、Proxy/Storage host 经 `attachDiagnostics` 注入（`CoreApplication` 装配后转交）。各组件记 initialize/生命周期/action/error 关键节点：RpcServer `rpc.connected`/`connection-failed` + 每命令 1 条 `command.completed`；Application `core.started`/`stopping`/`storage.ready`/`diagnostics.ready`；Proxy `proxy.listening`/`stopped`/`tls.reconfigured`/`tls.client-error` + 异常 exchange；Storage `storage.worker-ready`/`fatal`/`error`/`exit`。命令级精简为单条 completed，`diagnostics.recent`/`query` 静默避免轮询自污染。
 - **面板数据流**：Renderer `DiagnosticsProvider`（2s 轮询）→ `getRecentDiagnostics(200)` 窄 API → Main `core:get-diagnostics` → Core `diagnostics.recent`（不带 traceId 拉全部）；`TraceList` 按 requestId 聚合命令行、`TraceDetail` 展示该次执行的 action 时间线、`DiagnosticsStatusbar` 显示 records/dropped。轮询遇 Core 重连瞬间的 `disconnected` 静默返回空。日志来源当前仅 Core，Main/Renderer 日志纳入见 M10 T10.5。
+
+## 规则引擎架构（M7，已落地）
+
+> 规则以可序列化模型持久化（不存 callback/运行时对象），捕获启动/热更新时编译为 Mockttp
+> passthrough 的 beforeRequest/beforeResponse 改写函数；执行在 Core 数据面，Renderer 经
+> rules.get/validate/replace 管理（UI 在 M8）。
+
+- **模型与校验**（`packages/core-protocol/src/rules.ts`+`validation.ts`）：RuleSet{revision,rules}、RuleDefinition{id,name,enabled,priority,matchers,actions}；Matcher（method/host/path/url/query/header/status/mime，AND）与 Action（header/query/body/synthetic/map-local/map-remote/block/status/delay/throttle/breakpoint）纯数据 + 资源上限；wire 校验 + `collectRuleDiagnostics` 语义校验（重复 id / regex 可编译 / status 区间 / JSON body / map 路径穿越 / 空 map-remote）。
+- **持久化**（`storage`，schema v2）：单行 `rule_set` 表（revision + rules_json）；`CaptureStore.saveRuleSet` 单事务乐观并发（expectedRevision 不符抛 RuleRevisionConflictError→conflict）、`loadRuleSet` 空库返回 revision 0；`rule_hit` 表（schema v1）记 RuleHit 审计。
+- **编译与执行**（`proxy-core/rules/`）：`matcher-compiler` 把 Matcher 编译为纯判定（大小写策略遵循 HTTP 语义）；`action-executor` 产出 ActionOutcome（mutate/respond/block/delay/throttle），Map Local 路径规范化 + 允许根校验防穿越；`breakpoint-queue` waiting→continued/edited/dropped/timed_out 状态机（强制 timeout + 断线 closeAll）；`rule-engine` 持有 ruleSet 引用，evaluateRequest/evaluateResponse 按 priority/id 执行、聚合 outcome 与 RuleHit。
+- **接入与热切换**（`proxy-service` + `core-application`）：单 `thenPassThrough` 的 beforeRequest/beforeResponse 调 engine，据评估返回改写/短路/阻断/延迟；按 request id 暂存 hits，captureExchange 关联 exchange id 后写 rule_hit。CoreApplication 组合根创建 RuleEngine+BreakpointQueue 注入 proxy-service，存储就绪 loadRuleSet 热加载，`rules.replace` 成功后 `setRuleSet` 原子替换（不 reset server，热更新不丢流量）。
+- **命令**：`rules.get`/`rules.validate`/`rules.replace`（乐观并发）、`breakpoint.resolve`（continue/drop/timeout + 可选 edit）。
+- **未实现/限制**：throttle 带宽限速（Mockttp 无流控原语，evaluation 已聚合 throttleBps 待原生增强）；断点命中事件推送 Renderer 与规则 UI 在 M8。
 
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`
@@ -197,7 +247,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - WebSocket、gRPC（M9；未 MITM 的 CONNECT 仍字节直通）。HTTP/2 已落地（M6）；深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 详细源站 TLS metadata（version/cipher/ALPN/证书链）记录与 Inspector TLS/Timing 标签填充（当前 HTTPS 已解密捕获，但 TLS/Timing 富数据为诚实空态）。
-- CA 导出、机器级信任库安装（需提权）；规则引擎、系统代理适配、导入导出、签名安装器和更新机制（M6+）。
+- CA 导出、机器级信任库安装（需提权）；系统代理适配、导入导出、签名安装器和更新机制（M9+）。规则引擎 Server 已落地（M7），规则 UI 在 M8。
 
 ## 更新规则
 

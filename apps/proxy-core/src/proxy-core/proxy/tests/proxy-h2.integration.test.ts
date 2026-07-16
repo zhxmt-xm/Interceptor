@@ -44,6 +44,10 @@ class RecordingSink implements CaptureSink {
       return { hash: `sha-${size}`, size, deduplicated: false };
     })();
   }
+
+  appendRuleHits(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 function startH2Origin(
