@@ -127,6 +127,24 @@ export interface CoreDiagnosticPage extends CoreDiagnosticSnapshot {
   hasMore: boolean;
 }
 
+/** 当前用户系统代理的公开状态；不暴露 helper 路径或原始 snapshot。 */
+export interface SystemProxyStatus {
+  supported: boolean;
+  enabled: boolean;
+  owned: boolean;
+  ownershipLost: boolean;
+  proxyServer: string | null;
+  bypassList: string | null;
+  pacUrl: string | null;
+  autoDetect: boolean;
+}
+
+export interface SystemProxyRestoreResult {
+  restored: boolean;
+  reason?: 'not-owned' | 'externally-modified';
+  status: SystemProxyStatus;
+}
+
 /** 诊断 JSONL 导出的可选筛选（按 level / outcome）。 */
 export interface DiagnosticsExportFilter {
   process?: DiagnosticProcess;
@@ -319,6 +337,9 @@ export const DESKTOP_IPC_CHANNELS = {
   coreQueryDiagnostics: 'core:query-diagnostics',
   rendererDiagnosticReport: 'diagnostics:renderer-report',
   coreProcessStatus: 'core:process-status',
+  systemProxyGetStatus: 'system-proxy:get-status',
+  systemProxyEnable: 'system-proxy:enable',
+  systemProxyRestore: 'system-proxy:restore',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
   captureStart: 'capture:start',
@@ -367,6 +388,9 @@ export interface InterceptorDesktopApi {
   getRecentDiagnostics(limit?: number): Promise<CoreDiagnosticSnapshot>;
   queryDiagnostics(request: DiagnosticsQueryRequest): Promise<CoreDiagnosticPage>;
   reportRendererDiagnostic(report: RendererDiagnosticReport): Promise<void>;
+  getSystemProxyStatus(): Promise<SystemProxyStatus>;
+  enableSystemProxy(): Promise<SystemProxyStatus>;
+  restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;

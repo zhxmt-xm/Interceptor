@@ -20,6 +20,10 @@ const proxyCoreDirectory = path.resolve(
 const appIconPng = path.join(desktopDirectory, 'assets/interceptor-icon.png');
 const appIconIco = path.join(desktopDirectory, 'assets/interceptor-icon.ico');
 const appIconIcns = path.join(desktopDirectory, 'assets/interceptor-icon.icns');
+const systemProxyResources = path.join(
+  desktopDirectory,
+  'dist/system-proxy',
+);
 const packageIcon =
   process.platform === 'win32'
     ? appIconIco
@@ -33,7 +37,11 @@ const config: ForgeConfig = {
     download: {
       checksums: electronChecksums,
     },
-    extraResource: [proxyCoreDirectory, appIconPng],
+    extraResource: [
+      proxyCoreDirectory,
+      appIconPng,
+      ...(process.platform === 'win32' ? [systemProxyResources] : []),
+    ],
     executableName: 'Interceptor',
     icon: packageIcon,
   },

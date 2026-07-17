@@ -386,6 +386,30 @@ export function installFakeInterceptor({ fixture, theme }) {
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
     reportRendererDiagnostic: async () => undefined,
+    getSystemProxyStatus: async () => ({
+      supported: true,
+      enabled: true,
+      owned: true,
+      ownershipLost: false,
+      proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
+      bypassList: '<local>',
+      pacUrl: null,
+      autoDetect: false,
+    }),
+    enableSystemProxy: async () => window.interceptor.getSystemProxyStatus(),
+    restoreSystemProxy: async () => ({
+      restored: true,
+      status: {
+        supported: true,
+        enabled: false,
+        owned: false,
+        ownershipLost: false,
+        proxyServer: null,
+        bypassList: null,
+        pacUrl: null,
+        autoDetect: true,
+      },
+    }),
     queryDiagnostics: async (request = {}) => {
       const filtered = fixture.diagnostics.records.filter((record) =>
         (!request.process || record.process === request.process) &&

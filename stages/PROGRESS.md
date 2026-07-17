@@ -17,9 +17,9 @@
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
 - 已完成 Stage：M0–M10（均 100%）。
-- 当前 Stage：M11 系统代理适配与恢复（准备开始）。
-- 当前任务：M10 T10.5 已完成。Core/Main/Renderer 三来源日志经有界窄通道统一入库、查询与脱敏导出，Diagnostics UI 支持 Process/Level/Outcome 筛选。详情见 [M10.md](M10.md)。
-- 下一动作：M11 T11.1 Windows 系统代理；实现当前用户 WinINet snapshot、设置、变更通知与 guarded restore。
+- 当前 Stage：M11 系统代理适配与恢复（进行中，20%）。
+- 当前任务：T11.1 Windows 系统代理已完成。模块内 WinINet helper、完整 snapshot、设置通知、guarded compare restore、窄 API 与退出恢复已落地。详情见 [M11.md](M11.md)。
+- 下一动作：M11 T11.2 macOS 系统代理；实现 Swift/SystemConfiguration 多 Network Service snapshot、设置与 guarded restore。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
 - Git 状态：T10.1 已推送至 `6472781`；T10.2 `23395c7`、T10.3 `3e0ed20` 已本地提交；T10.4 为当前提交，均待用户 review 后决定是否 push。
 - 阻塞：无。
@@ -41,7 +41,7 @@
 | M8 | 规则 UI 与 Composer | 已完成 | 100% | [M8.md](M8.md) |
 | M9 | WebSocket 与 gRPC | 已完成 | 100% | [M9.md](M9.md) |
 | M10 | 导入导出与隐私 | 已完成 | 100% | [M10.md](M10.md) |
-| M11 | 系统代理适配与恢复 | 准备开始 | 0% | [M11.md](M11.md) |
+| M11 | 系统代理适配与恢复 | 进行中 | 20% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
 | M13 | 更新机制 | 未开始 | 0% | [M13.md](M13.md) |
 
@@ -78,6 +78,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-17 M11/T11.1 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` Desktop 53 / Proxy Core 187 / Core Protocol 19 全通过；真实 WinINet helper get + 原值 set/readback 不改变本机设置；Windows package、`resources/system-proxy/` helper、真实 packaged 只读 smoke 1/1、`npm audit --omit=dev` 0 全通过。详情见 [M11.md](M11.md)。
 
 2026-07-17 M10/T10.5 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` Desktop 47 / Proxy Core 187 / Core Protocol 19 全通过；`npm run build:core`、Windows package、真实 packaged smoke 1/1、`npm audit --omit=dev` 0 全通过。Diagnostics parity 1.70%，本次 6/6 targets、0 missing，Process/Level/Outcome 几何 0 px。详情见 [M10.md](M10.md)。
 

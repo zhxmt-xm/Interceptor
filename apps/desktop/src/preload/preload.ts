@@ -19,6 +19,12 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreQueryDiagnostics, request),
   reportRendererDiagnostic: (report) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rendererDiagnosticReport, report),
+  getSystemProxyStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyGetStatus),
+  enableSystemProxy: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyEnable),
+  restoreSystemProxy: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRestore),
   onCoreProcessStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

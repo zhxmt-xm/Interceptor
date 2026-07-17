@@ -26,6 +26,7 @@ import { TrustStoreService } from './certificates/trust-store-service';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { isTrustedRendererUrl } from './security/trusted-renderer-url';
+import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import {
   assertBoundedString,
   assertIdentifier,
@@ -57,6 +58,7 @@ class DesktopApplication {
   private readonly coreRuntime = new CoreRuntime();
   private readonly diagnostics = new MainDiagnostics(this.coreRuntime);
   private certificateService: CertificateService | null = null;
+  private systemProxyService: WindowsSystemProxyService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
@@ -88,6 +90,9 @@ class DesktopApplication {
     this.certificateService = new CertificateService({
       dataDir: path.join(app.getPath('userData'), 'certificates'),
       secureStore: safeStorage,
+    });
+    this.systemProxyService = new WindowsSystemProxyService({
+      helperPath: this.getWinInetProxyHelperPath(),
     });
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
@@ -136,12 +141,21 @@ class DesktopApplication {
       return;
     }
 
-    // 先让 CoreProcess 完成清理；超时强杀由 CoreRuntime 统一兜底。
+    // 先恢复仍由本产品持有的系统代理，再让 CoreProcess 完成清理。
     event.preventDefault();
     this.quitting = true;
-    void this.coreRuntime.stop().finally(() => {
-      app.quit();
-    });
+    void this.restoreSystemProxyBeforeShutdown()
+      .then(() => this.coreRuntime.stop())
+      .then(() => {
+        app.quit();
+      })
+      .catch((error: unknown) => {
+        this.quitting = false;
+        dialog.showErrorBox(
+          'Unable to restore system proxy',
+          `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
+        );
+      });
   }
 
   private createMainWindow(): BrowserWindow {
@@ -353,6 +367,31 @@ class DesktopApplication {
       },
     );
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireSystemProxyService().status();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const proxy = await this.coreRuntime.request({
+        type: 'proxy.status',
+        payload: {},
+      });
+      const { listening, host, port } = proxy.payload;
+      if (!listening || !host || !port) {
+        throw new Error('Start capture before enabling the system proxy.');
+      }
+      return this.runMainAction('main.system-proxy.enable', () =>
+        this.requireSystemProxyService().enable(host, port));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRestore, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.system-proxy.restore', () =>
+        this.requireSystemProxyService().restore());
+    });
+
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.storageGetStatus, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -390,6 +429,7 @@ class DesktopApplication {
     // 停止代理捕获；返回停止后的捕获状态快照。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.captureStop, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      await this.restoreSystemProxyBeforeShutdown();
       const result = await this.coreRuntime.request({
         type: 'proxy.stop',
         payload: {},
@@ -1012,6 +1052,34 @@ class DesktopApplication {
     return this.certificateService;
   }
 
+  private requireSystemProxyService(): WindowsSystemProxyService {
+    if (!this.systemProxyService) {
+      throw new Error('System proxy service is not initialized');
+    }
+    return this.systemProxyService;
+  }
+
+  private async restoreSystemProxyBeforeShutdown(): Promise<void> {
+    if (!this.systemProxyService?.supported()) {
+      return;
+    }
+    try {
+      const result = await this.systemProxyService.restore();
+      if (result.reason === 'externally-modified') {
+        this.diagnostics.warn('main.system-proxy.ownership-lost', {
+          outcome: 'failed',
+        });
+      }
+    } catch (error) {
+      this.diagnostics.error('main.system-proxy.restore-failed', {
+        outcome: 'failed',
+        errorCode: readErrorName(error),
+        attributes: { message: readErrorMessage(error) },
+      });
+      throw error;
+    }
+  }
+
   private async isCaTrusted(): Promise<boolean> {
     const thumbprints = await this.requireCertificateService().getThumbprints();
     return thumbprints ? this.trustStore.isTrusted(thumbprints.sha1) : false;
@@ -1060,6 +1128,18 @@ class DesktopApplication {
     return app.isPackaged
       ? path.join(process.resourcesPath, 'interceptor-icon.png')
       : path.resolve(app.getAppPath(), 'assets/interceptor-icon.png');
+  }
+
+  private getWinInetProxyHelperPath(): string {
+    return app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          'system-proxy/wininet-proxy-helper.exe',
+        )
+      : path.resolve(
+          app.getAppPath(),
+          'dist/system-proxy/wininet-proxy-helper.exe',
+        );
   }
 }
 

@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M11.md](M11.md)（准备开始；M10 已全部完成）。
+4. 当前 Stage 文件：[M11.md](M11.md)（进行中，T11.1 已完成）。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,7 +18,8 @@
 
 ## 当前状态
 
-- **M0–M10 均已完成（100%）**；M11 准备开始，各 Stage 详情见对应 `M*.md`。
+- **M0–M10 均已完成（100%）**；M11 进行中（20%），T11.1 已完成，各 Stage 详情见对应 `M*.md`。
+- **T11.1 Windows 系统代理已完成**：所有实现收拢在 `main/system-proxy/`；WinINet helper 读写完整设置并通知系统，Main 持有 original/owned 快照并做 guarded restore；三项窄 API 已接线，停止/退出先恢复，helper 随包位于 `resources/system-proxy/`。
 - **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
   - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
@@ -129,9 +130,9 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M11 T11.1 Windows 系统代理
+## 下一任务：M11 T11.2 macOS 系统代理
 
-M10 已全部完成（见 [M10.md](M10.md)）。下一项按完整方案第十章与第二十七章 M11，实现当前用户 WinINet 系统代理 snapshot、设置、变更通知与 guarded restore；开始前先读 [M11.md](M11.md) 和本文件要求的 [ARCHITECTURE.md](ARCHITECTURE.md)。
+T11.1 已完成（见 [M11.md](M11.md)）。下一项按完整方案第十章与第二十七章 M11，实现 Swift/SystemConfiguration helper：枚举多个 Network Service，保存 HTTP/HTTPS/SOCKS/PAC/Bypass/Auto Discovery，复用 guarded ownership 语义；开始前先读 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 > 已完成并推送：M0–M10；后续每个 `T11.x`/`T12.x`/`T13.x` 任务需独立提交并 push。
 
@@ -148,7 +149,8 @@ M10 已全部完成（见 [M10.md](M10.md)）。下一项按完整方案第十�
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
 | M10 | 已完成（100%） | HAR、native archive、隐私、三进程 Diagnostics 分析/导出 | 完整方案第十二/十六章、第二十七章 M10 |
-| M11–M13 | 未开始 | 系统代理、发布加固、更新机制 | 完整方案对应章节和第二十七章 |
+| M11 | 进行中（20%） | Windows WinINet 已完成；剩余 macOS、first-run、journal/repair、Settings | 完整方案第十/十六章、第二十七章 M11 |
+| M12–M13 | 未开始 | 发布加固、更新机制 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 

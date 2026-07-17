@@ -77,6 +77,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'clearStorage',
         'deleteCertificate',
         'echoCore',
+        'enableSystemProxy',
         'generateCertificate',
         'getCaptureStatus',
         'getCertificateStatus',
@@ -88,6 +89,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getRuleHits',
         'getRules',
         'getStorageStatus',
+        'getSystemProxyStatus',
         'getTransferJob',
         'installCertificate',
         'listBreakpoints',
@@ -103,6 +105,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'replaceRules',
         'reportRendererDiagnostic',
         'resolveBreakpoint',
+        'restoreSystemProxy',
         'revealCertificate',
         'sendComposerRequest',
         'setBreakpointsEnabled',
@@ -126,6 +129,15 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     expect(securitySnapshot.csp).toContain("frame-src 'none'");
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
+
+    const systemProxy = await page.evaluate(() =>
+      window.interceptor.getSystemProxyStatus(),
+    );
+    expect(systemProxy).toMatchObject({
+      supported: true,
+      owned: false,
+      ownershipLost: false,
+    });
 
     await expect
       .poll(
