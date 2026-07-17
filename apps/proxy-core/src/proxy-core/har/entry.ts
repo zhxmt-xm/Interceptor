@@ -229,17 +229,23 @@ export class HarService {
     const responseMime = detail.summary.responseMime ??
       HarUtils.headerValue(responseHeaders, 'content-type') ??
       'application/octet-stream';
+    const requestUrl = redaction.authorization
+      ? HarUtils.redactUrl(detail.url)
+      : detail.url;
+    const queryString = redaction.authorization
+      ? HarUtils.redactQueryString(HarUtils.readQueryString(detail.url))
+      : HarUtils.readQueryString(detail.url);
 
     return {
       startedDateTime: new Date(detail.summary.startedAt).toISOString(),
       time: duration,
       request: {
         method: detail.summary.method,
-        url: detail.url,
+        url: requestUrl,
         httpVersion: HarUtils.toHarHttpVersion(detail.summary.protocol),
         headers: requestHeaders.map((header) =>
           HarUtils.toHarHeader(header)),
-        queryString: HarUtils.readQueryString(detail.url),
+        queryString,
         cookies: [],
         headersSize: -1,
         bodySize: requestBody?.byteLength ?? detail.summary.requestBytes,

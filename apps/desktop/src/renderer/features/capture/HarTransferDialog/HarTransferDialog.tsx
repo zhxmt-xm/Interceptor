@@ -13,6 +13,7 @@ import type {
   TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
 import { Button, Checkbox, cx } from '../../../components';
+import { usePrivacyStore } from '../../settings/privacyStore';
 import { matchesSegment, useCaptureStore } from '../captureStore';
 import { refetchSessions } from '../useCaptureData';
 import styles from './HarTransferDialog.module.css';
@@ -29,6 +30,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
   const filter = useCaptureStore((state) => state.filter);
   const hasMore = useCaptureStore((state) => state.hasMore);
   const setOpen = useCaptureStore((state) => state.setHarDialogOpen);
+  const warnBeforeUnmasked = usePrivacyStore((state) => state.warnBeforeUnmasked);
   const [format, setFormat] = useState<'har' | 'archive'>('har');
   const [scope, setScope] = useState<ExportScopeKind>('filter');
   const [authorization, setAuthorization] = useState(true);
@@ -56,6 +58,10 @@ export function HarTransferDialog(): React.JSX.Element | null {
     setError(null);
     setSubmitting(false);
     setFormat('har');
+    const prefs = usePrivacyStore.getState();
+    setAuthorization(prefs.maskAuthorization);
+    setCookies(prefs.maskCookies);
+    setBodies(false);
     setAllCount(rows.length);
     void window.interceptor.getStorageStatus().then((usage) => {
       setAllCount(usage.exchangeCount);
@@ -302,6 +308,17 @@ export function HarTransferDialog(): React.JSX.Element | null {
                   </div>
                 </div>
               </>
+            ) : null}
+            {warnBeforeUnmasked &&
+            (format === 'archive' || !authorization || !cookies) ? (
+              <div className={cx(styles.warning, styles.dangerWarning)}>
+                <AlertTriangle size={15} strokeWidth={1.9} />
+                <span>
+                  {format === 'archive'
+                    ? 'This archive contains unmasked headers, cookies, bodies, and URLs. Share it only with people you trust.'
+                    : 'This export will include unmasked sensitive data. Enable masking above to redact authorization, cookies, and URL tokens.'}
+                </span>
+              </div>
             ) : null}
             {error ? <div className={styles.error}>{error}</div> : null}
           </div>

@@ -1,15 +1,20 @@
 import { StatItem } from '../../../components';
+import { useCaptureStore } from '../captureStore';
 
-/** Capture status bar: recording state, proxy binding and live throughput. */
+/** Capture status bar: truthful recording indicator, loopback binding and loaded count. */
 export function CaptureStatusbar(): React.JSX.Element {
+  const capturing = useCaptureStore((state) => state.capturing);
+  const rowCount = useCaptureStore((state) => state.rows.length);
   return (
     <>
-      <StatItem dot="red">Recording</StatItem>
-      <StatItem mono>127.0.0.1:8888</StatItem>
-      <StatItem dot="green">System Proxy</StatItem>
-      <StatItem mono>18 of 241 requests</StatItem>
+      {capturing ? (
+        <StatItem dot="red">Recording</StatItem>
+      ) : (
+        <StatItem>Not recording</StatItem>
+      )}
+      <StatItem mono>127.0.0.1 · loopback only</StatItem>
       <StatItem mono push>
-        {'↑ 12.4 KB/s\u00a0\u00a0↓ 380 B/s'}
+        {rowCount} {rowCount === 1 ? 'request' : 'requests'}
       </StatItem>
     </>
   );

@@ -18,7 +18,7 @@
 
 ## 当前状态
 
-- **M0–M9 均已完成（100%）**；M10 进行中（40%），各 Stage 详情见对应 `M*.md`。
+- **M0–M9 均已完成（100%）**；M10 进行中（60%），各 Stage 详情见对应 `M*.md`。
 - **当前 Stage：M10 导入导出与隐私；T10.1 HAR 与 T10.2 原生 archive 已完成，下一是 T10.3 隐私与录制安全**：
   - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
   - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
@@ -128,17 +128,17 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M10 T10.3 隐私与录制安全
+## 下一任务：M10 T10.4 Diagnostics 分析与导出
 
-T10.1 HAR 与 T10.2 原生 archive 已完成（见 [M10.md](M10.md)）。下一项是把隐私与录制安全落到默认策略与 UI。
+T10.1 HAR、T10.2 原生 archive 与 T10.3 隐私与录制安全已完成（见 [M10.md](M10.md)）。下一项是 Diagnostics 面板的筛选与脱敏 JSONL 导出。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十六章与第二十七章 M10、[M10.md](M10.md)。
-2. 落实默认不捕获（已具备 proxy.start/stop 显式控制，补录制指示与 loopback 默认呈现）、遥测/诊断脱敏（复用 Core 脱敏规则）、导出未脱敏前警告，以及 token/cookie/URL query 的全局遮罩策略与确认流程；Renderer 仍只经既有窄 IPC。
-3. 隐私设置视图按 `design/app` 的 settings/privacy 一对一落地；不放宽 Preload 面。先写脱敏与默认策略的单元测试，再接 UI；完成后按 T10.3 标题 commit + push。
+1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十二章 12.5 与第二十七章 M10、[M10.md](M10.md)。
+2. 面板已接真实诊断（`getRecentDiagnostics` 轮询）；补 Level/Outcome 过滤、按 trace/command/duration 分页筛选（下推 `diagnostics.query`）、以及脱敏 JSONL 导出（复用 Main 系统对话框 + 窄 API，不含 Body/Authorization/Cookie/Token/CA 私钥）。
+3. 完成后按 T10.4 标题 commit。
 
-> 已完成：M0–M9 全量交付 + M10 T10.1 HAR 1.2 + T10.2 原生 archive；当前提交待 push。
+> 已完成：M0–M9 全量交付 + M10 T10.1/T10.2/T10.3；本会话提交均未 push（用户稍后 review）。
 
 ## 剩余工作项目
 

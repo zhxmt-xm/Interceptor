@@ -62,6 +62,60 @@ export function readQueryString(
   }));
 }
 
+/** 常见承载凭据/令牌的 URL query 参数名（小写，大小写不敏感匹配）。 */
+const SENSITIVE_QUERY_PARAMS = new Set([
+  'access_token',
+  'refresh_token',
+  'id_token',
+  'token',
+  'auth',
+  'apikey',
+  'api_key',
+  'key',
+  'client_secret',
+  'secret',
+  'password',
+  'passwd',
+  'pwd',
+  'sig',
+  'signature',
+  'sessionid',
+  'session',
+  'code',
+]);
+
+/** 判断 query 参数名是否为敏感令牌类参数。 */
+function isSensitiveQueryParam(name: string): boolean {
+  return SENSITIVE_QUERY_PARAMS.has(name.toLowerCase());
+}
+
+/** 遮罩 URL 中的敏感 query 令牌，保留结构和其余参数顺序。 */
+export function redactUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    let changed = false;
+    for (const name of [...parsed.searchParams.keys()]) {
+      if (isSensitiveQueryParam(name)) {
+        parsed.searchParams.set(name, '[REDACTED]');
+        changed = true;
+      }
+    }
+    return changed ? parsed.toString() : url;
+  } catch {
+    return url;
+  }
+}
+
+/** 按敏感令牌参数遮罩 HAR queryString 值。 */
+export function redactQueryString(
+  entries: Array<{ name: string; value: string }>,
+): Array<{ name: string; value: string }> {
+  return entries.map((entry) =>
+    isSensitiveQueryParam(entry.name)
+      ? { name: entry.name, value: '[REDACTED]' }
+      : entry);
+}
+
 /** 将请求正文编码为文本或带私有 encoding 标记的 base64 postData。 */
 export function toHarPostData(
   body: Buffer,

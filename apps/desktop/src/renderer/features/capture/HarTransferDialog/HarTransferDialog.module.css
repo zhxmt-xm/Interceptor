@@ -145,6 +145,11 @@
   line-height: 1.5;
 }
 
+.dangerWarning {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+
 .warning svg {
   flex: 0 0 auto;
   margin-top: 1px;

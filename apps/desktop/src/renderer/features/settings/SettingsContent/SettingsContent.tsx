@@ -8,6 +8,7 @@ import type {
 } from '../../../../shared/desktop-api';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { SECTIONS } from '../data';
+import { usePrivacyStore } from '../privacyStore';
 import styles from './SettingsContent.module.css';
 
 function Group({ title, children }: { title: string; children: ReactNode }): React.JSX.Element {
@@ -447,6 +448,72 @@ function StoragePanel(): React.JSX.Element {
   );
 }
 
+/** The Privacy settings section: recording-safety facts and export redaction defaults. */
+function PrivacyPanel(): React.JSX.Element {
+  const maskAuthorization = usePrivacyStore((state) => state.maskAuthorization);
+  const maskCookies = usePrivacyStore((state) => state.maskCookies);
+  const warnBeforeUnmasked = usePrivacyStore((state) => state.warnBeforeUnmasked);
+  const setPreference = usePrivacyStore((state) => state.setPreference);
+  return (
+    <>
+      <h2 className={styles.title}>Privacy</h2>
+      <div className={styles.desc}>
+        Interceptor never records until you start capture, binds only to
+        loopback, and sends no telemetry.
+      </div>
+      <Group title="Recording safety">
+        <Row
+          label="Capture on launch"
+          hint="Interceptor stays idle until you press Record"
+        >
+          <StatusBadge tone="green">Off by default</StatusBadge>
+        </Row>
+        <Row
+          label="Listener binding"
+          hint="The proxy only accepts connections from this machine"
+        >
+          <StatusBadge tone="green">Loopback only</StatusBadge>
+        </Row>
+        <Row
+          label="Telemetry"
+          hint="No URLs, headers, bodies, or certificates leave your machine"
+        >
+          <StatusBadge tone="green">Disabled</StatusBadge>
+        </Row>
+      </Group>
+      <Group title="Export defaults">
+        <Row
+          label="Mask authorization & URL tokens"
+          hint="Redact Authorization headers and token query parameters on export"
+        >
+          <Switch
+            checked={maskAuthorization}
+            onChange={(value) => setPreference('maskAuthorization', value)}
+          />
+        </Row>
+        <Row
+          label="Mask cookies"
+          hint="Redact Cookie and Set-Cookie headers on export"
+        >
+          <Switch
+            checked={maskCookies}
+            onChange={(value) => setPreference('maskCookies', value)}
+          />
+        </Row>
+        <Row
+          label="Warn before unmasked export"
+          hint="Show a warning before exporting data that is not redacted"
+        >
+          <Switch
+            checked={warnBeforeUnmasked}
+            onChange={(value) => setPreference('warnBeforeUnmasked', value)}
+          />
+        </Row>
+      </Group>
+    </>
+  );
+}
+
 /** Placeholder for settings sections without a designed panel yet. */
 function PlaceholderPanel({ label }: { label: string }): React.JSX.Element {
   return (
@@ -468,6 +535,9 @@ function renderPanel(active: string): React.JSX.Element {
   }
   if (active === 'storage') {
     return <StoragePanel />;
+  }
+  if (active === 'privacy') {
+    return <PrivacyPanel />;
   }
   const label = SECTIONS.find((section) => section.id === active)?.label ?? 'Settings';
   return <PlaceholderPanel label={label} />;
