@@ -182,7 +182,7 @@ describe('CoreApplication', () => {
     ).rejects.toMatchObject({ detail: { code: 'internal' } });
   });
 
-  it('routes HAR start, get, and cancel commands through the HAR facade', async () => {
+  it('routes HAR start commands to the HAR facade and get/cancel to the shared job manager', async () => {
     const calls: string[] = [];
     const snapshot = {
       id: 'har-job-1',
@@ -203,15 +203,6 @@ describe('CoreApplication', () => {
         calls.push('start-import');
         return { ...snapshot, kind: 'har-import' as const };
       },
-      getJob: () => {
-        calls.push('get');
-        return snapshot;
-      },
-      cancelJob: () => {
-        calls.push('cancel');
-        return { ...snapshot, state: 'cancelled' as const };
-      },
-      cancelAll: () => undefined,
     } as unknown as HarService;
     const application = new CoreApplication(new FakeParentPort(), {
       harService: har,
@@ -239,17 +230,21 @@ describe('CoreApplication', () => {
     }, signal)).resolves.toMatchObject({
       payload: { job: { kind: 'har-import' } },
     });
-    await application.executeCommand({
+    // get/cancel now target the shared TransferJobManager; the injected fake HAR
+    // facade does not register jobs there, so unknown IDs resolve to null.
+    await expect(application.executeCommand({
       type: 'transfer.job.get',
       payload: { jobId: 'har-job-1' },
-    }, signal);
+    }, signal)).resolves.toMatchObject({
+      payload: { job: null },
+    });
     await expect(application.executeCommand({
       type: 'transfer.job.cancel',
       payload: { jobId: 'har-job-1' },
     }, signal)).resolves.toMatchObject({
-      payload: { job: { state: 'cancelled' } },
+      payload: { job: null },
     });
-    expect(calls).toEqual(['start-export', 'start-import', 'get', 'cancel']);
+    expect(calls).toEqual(['start-export', 'start-import']);
   });
 
   it('routes storage commands to the injected StorageService', async () => {

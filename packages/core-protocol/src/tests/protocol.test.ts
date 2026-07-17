@@ -140,6 +140,20 @@ describe('core protocol validation', () => {
         },
       },
       {
+        type: 'archive.export.start',
+        payload: {
+          jobId: 'archive-job-export',
+          filePath: 'C:\\Exports\\capture.iarchive',
+        },
+      },
+      {
+        type: 'archive.import.start',
+        payload: {
+          jobId: 'archive-job-import',
+          filePath: 'C:\\Imports\\capture.iarchive',
+        },
+      },
+      {
         type: 'transfer.job.get',
         payload: { jobId: 'har-job-export' },
       },

@@ -2,49 +2,42 @@ import path from 'node:path';
 
 import type { TransferJobSnapshot } from '@interceptor/core-protocol';
 
-import { MAX_TRANSFER_JOBS } from './har-constants';
+import { MAX_TRANSFER_JOBS } from './transfer-constants';
 import type {
-  HarExportOptions,
-  HarTransferOperation,
-  HarTransferService,
   MutableTransferJob,
+  TransferOperation,
 } from './interfaces';
 
-export class HarJobManager {
-  /** 有界保存运行中与最近完成的 HAR 任务。 */
+/**
+ * HAR 与原生 archive 共用的异步文件任务管理器。
+ *
+ * 有界保存运行中与最近完成的任务，按 jobId 关联进度、终态和取消，且公开快照绝不
+ * 泄漏绝对路径或 AbortController。HarService 与 ArchiveService 注入同一个实例，
+ * 因此整个 Core 只存在一套任务基础设施，`transfer.job.get/cancel` 直接查询它。
+ */
+export class TransferJobManager {
+  /** 有界保存运行中与最近完成的任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
-  /** 执行实际文件转换的 HAR 服务。 */
-  private readonly service: HarTransferService;
 
-  /** 绑定实际转换服务；manager 只负责任务状态和取消。 */
-  constructor(service: HarTransferService) {
-    this.service = service;
-  }
-
-  /** 创建导出任务并异步启动，不阻塞 start command。 */
-  startExport(
+  /**
+   * 校验 ID 唯一性并异步启动一个可取消、可汇报进度的文件任务。
+   * 调用方：HarService/ArchiveService 的 startExport/startImport。
+   */
+  start(
     jobId: string,
+    kind: TransferJobSnapshot['kind'],
     filePath: string,
-    options: HarExportOptions,
+    operation: TransferOperation,
   ): TransferJobSnapshot {
-    const job = this.create(jobId, 'har-export', filePath);
-    void this.run(job, (signal, onProgress) =>
-      this.service.exportToFile(filePath, options, signal, onProgress));
-    return HarJobManager.toSnapshot(job);
-  }
-
-  /** 创建导入任务并异步启动，不阻塞 start command。 */
-  startImport(jobId: string, filePath: string): TransferJobSnapshot {
-    const job = this.create(jobId, 'har-import', filePath);
-    void this.run(job, (signal, onProgress) =>
-      this.service.importFromFile(filePath, signal, onProgress));
-    return HarJobManager.toSnapshot(job);
+    const job = this.create(jobId, kind, filePath);
+    void this.run(job, operation);
+    return TransferJobManager.toSnapshot(job);
   }
 
   /** 返回指定任务的不可变公开快照；未知 ID 返回 null。 */
   get(jobId: string): TransferJobSnapshot | null {
     const job = this.jobs.get(jobId);
-    return job ? HarJobManager.toSnapshot(job) : null;
+    return job ? TransferJobManager.toSnapshot(job) : null;
   }
 
   /** 取消运行中任务并立即更新公开状态；终态任务保持幂等。 */
@@ -59,7 +52,7 @@ export class HarJobManager {
       job.message = 'Transfer cancelled.';
       job.controller.abort(new DOMException('Transfer cancelled.', 'AbortError'));
     }
-    return HarJobManager.toSnapshot(job);
+    return TransferJobManager.toSnapshot(job);
   }
 
   /** 取消所有运行中任务；CoreApplication 关闭时用于终止文件 I/O。 */
@@ -97,7 +90,7 @@ export class HarJobManager {
   /** 执行转换并把进度、完成、失败或取消归并到同一任务对象。 */
   private async run(
     job: MutableTransferJob,
-    operation: HarTransferOperation,
+    operation: TransferOperation,
   ): Promise<void> {
     try {
       const result = await operation(job.controller.signal, (progress) => {
@@ -120,7 +113,7 @@ export class HarJobManager {
         job.message = 'Transfer cancelled.';
       } else {
         job.state = 'failed';
-        job.message = HarJobManager.publicErrorMessage(error);
+        job.message = TransferJobManager.publicErrorMessage(error);
       }
       job.completedAt ??= new Date().toISOString();
     }
@@ -139,7 +132,7 @@ export class HarJobManager {
         }
       }
     }
-    throw new Error('Too many HAR transfers are active.');
+    throw new Error('Too many transfers are active.');
   }
 
   /** 复制可公开字段，确保绝对路径和 AbortController 不进入 wire。 */
@@ -160,7 +153,10 @@ export class HarJobManager {
 
   /** 将内部异常映射为不泄漏绝对路径的用户可见消息。 */
   private static publicErrorMessage(error: unknown): string {
-    if (error instanceof Error && error.name === 'InvalidHarError') {
+    if (
+      error instanceof Error &&
+      (error.name === 'InvalidHarError' || error.name === 'ArchiveInvalidError')
+    ) {
       return error.message;
     }
     if (
@@ -170,6 +166,6 @@ export class HarJobManager {
     ) {
       return `File operation failed (${error.code}).`;
     }
-    return 'HAR transfer failed.';
+    return 'File transfer failed.';
   }
 }

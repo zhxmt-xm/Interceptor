@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import {
+  createReadStream,
   createWriteStream,
   promises as fs,
+  type ReadStream,
 } from 'node:fs';
 import path from 'node:path';
 import { once } from 'node:events';
@@ -113,6 +115,14 @@ export class BlobStore {
   /** 内容是否已存在。调用方：去重预检和测试。 */
   async has(hash: string): Promise<boolean> {
     return StorageUtils.pathExists(this.pathForHash(hash));
+  }
+
+  /**
+   * 打开一个内容寻址 Blob 的只读流。调用方：ArchiveService 导出原生 archive 时
+   * 逐个把引用 Blob 写入 ZIP，避免把大正文整块读入内存。
+   */
+  openReadStream(hash: string): ReadStream {
+    return createReadStream(this.pathForHash(hash));
   }
 
   /**

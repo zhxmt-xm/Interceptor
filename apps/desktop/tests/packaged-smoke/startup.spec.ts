@@ -107,6 +107,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setHttpsDecryption',
         'setInsecureHosts',
         'setWebSocketBreakpointsEnabled',
+        'startArchiveExport',
+        'startArchiveImport',
         'startCapture',
         'startHarExport',
         'startHarImport',

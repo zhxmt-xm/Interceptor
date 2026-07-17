@@ -425,6 +425,50 @@ class DesktopApplication {
       return result.payload.job;
     });
 
+    // 原生 archive 导出：整库快照，无需 Renderer 提交 scope/redaction；路径由 Main 生成。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const selection = await dialog.showSaveDialog({
+        title: 'Export native archive',
+        defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.iarchive`,
+        filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      });
+      if (selection.canceled || !selection.filePath) {
+        return null;
+      }
+      const result = await this.coreRuntime.request({
+        type: 'archive.export.start',
+        payload: {
+          jobId: `transfer-${randomUUID()}`,
+          filePath: selection.filePath,
+        },
+      });
+      return result.payload.job;
+    });
+
+    // 原生 archive 导入：系统对话框仅允许选择一个 .iarchive，Renderer 不接触真实路径。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const selection = await dialog.showOpenDialog({
+        title: 'Import native archive',
+        filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
+        properties: ['openFile'],
+      });
+      const [filePath] = selection.filePaths;
+      if (selection.canceled || !filePath) {
+        return null;
+      }
+      const result = await this.coreRuntime.request({
+        type: 'archive.import.start',
+        payload: {
+          jobId: `transfer-${randomUUID()}`,
+          filePath,
+        },
+      });
+      return result.payload.job;
+    });
+
     // 查询一个异步文件任务的公开快照；绝对路径永不返回 Renderer。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.transferJobGet,

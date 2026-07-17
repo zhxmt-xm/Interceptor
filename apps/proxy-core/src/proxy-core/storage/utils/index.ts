@@ -66,6 +66,9 @@ export function applyStorageRequest(
       return store.cleanup(request.scope);
     case 'referenced-hashes':
       return store.referencedBlobHashes();
+    case 'snapshot':
+      store.snapshotInto(request.targetPath);
+      return undefined;
     case 'save-rule-set':
       return store.saveRuleSet(request.expectedRevision, request.rules);
     case 'load-rule-set':

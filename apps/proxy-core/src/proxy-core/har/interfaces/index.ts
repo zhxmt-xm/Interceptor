@@ -1,7 +1,6 @@
 import type {
   CaptureExchangeDetail,
   CaptureHeader,
-  TransferJobSnapshot,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -142,49 +141,3 @@ export interface HarTransferResult extends HarTransferProgress {
 }
 
 export type HarProgressListener = (progress: HarTransferProgress) => void;
-
-export interface HarTransferService {
-  /** 执行一个可取消、可汇报进度的 HAR 导出。 */
-  exportToFile(
-    filePath: string,
-    options: HarExportOptions,
-    signal: AbortSignal,
-    onProgress?: HarProgressListener,
-  ): Promise<HarTransferResult>;
-  /** 执行一个可取消、可汇报进度的 HAR 导入。 */
-  importFromFile(
-    filePath: string,
-    signal: AbortSignal,
-    onProgress?: HarProgressListener,
-  ): Promise<HarTransferResult>;
-}
-
-export interface MutableTransferJob {
-  /** Core 内唯一任务标识。 */
-  readonly id: string;
-  /** HAR 导入或导出任务类型。 */
-  readonly kind: TransferJobSnapshot['kind'];
-  /** 可返回 Renderer 的 basename，不包含绝对目录。 */
-  readonly fileName: string;
-  /** 任务启动时间。 */
-  readonly startedAt: string;
-  /** 只属于该任务的取消控制器。 */
-  readonly controller: AbortController;
-  /** 当前任务状态。 */
-  state: TransferJobSnapshot['state'];
-  /** 已处理 Exchange 数量。 */
-  processed: number;
-  /** 预计处理 Exchange 总数。 */
-  total: number;
-  /** 终态写入的完成时间。 */
-  completedAt?: string;
-  /** 可安全展示且不含绝对路径的状态消息。 */
-  message?: string;
-  /** 格式损失或兼容性警告。 */
-  warnings: string[];
-}
-
-export type HarTransferOperation = (
-  signal: AbortSignal,
-  onProgress: HarProgressListener,
-) => Promise<HarTransferResult>;

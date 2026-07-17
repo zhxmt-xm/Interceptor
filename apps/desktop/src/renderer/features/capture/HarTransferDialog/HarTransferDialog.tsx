@@ -29,6 +29,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
   const filter = useCaptureStore((state) => state.filter);
   const hasMore = useCaptureStore((state) => state.hasMore);
   const setOpen = useCaptureStore((state) => state.setHarDialogOpen);
+  const [format, setFormat] = useState<'har' | 'archive'>('har');
   const [scope, setScope] = useState<ExportScopeKind>('filter');
   const [authorization, setAuthorization] = useState(true);
   const [cookies, setCookies] = useState(true);
@@ -54,6 +55,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
     setJob(null);
     setError(null);
     setSubmitting(false);
+    setFormat('har');
     setAllCount(rows.length);
     void window.interceptor.getStorageStatus().then((usage) => {
       setAllCount(usage.exchangeCount);
@@ -75,7 +77,10 @@ export function HarTransferDialog(): React.JSX.Element | null {
         setJob(next);
         if (next.state === 'running') {
           timeout = setTimeout(() => void poll(), JOB_POLL_MS);
-        } else if (next.state === 'completed' && next.kind === 'har-import') {
+        } else if (
+          next.state === 'completed' &&
+          (next.kind === 'har-import' || next.kind === 'archive-import')
+        ) {
           await refetchSessions();
         }
       } catch (reason) {
@@ -117,17 +122,18 @@ export function HarTransferDialog(): React.JSX.Element | null {
   };
 
   const startExport = async (): Promise<void> => {
-    if (scope === 'selected' && !selectedId) {
+    if (format === 'har' && scope === 'selected' && !selectedId) {
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      const request: HarExportRequest = {
-        scope: buildScope(scope, selectedId, filter),
-        redaction: { authorization, cookies, bodies },
-      };
-      const started = await window.interceptor.startHarExport(request);
+      const started = format === 'archive'
+        ? await window.interceptor.startArchiveExport()
+        : await window.interceptor.startHarExport({
+            scope: buildScope(scope, selectedId, filter),
+            redaction: { authorization, cookies, bodies },
+          });
       if (started) {
         setJob(started);
       }
@@ -142,7 +148,9 @@ export function HarTransferDialog(): React.JSX.Element | null {
     setSubmitting(true);
     setError(null);
     try {
-      const started = await window.interceptor.startHarImport();
+      const started = format === 'archive'
+        ? await window.interceptor.startArchiveImport()
+        : await window.interceptor.startHarImport();
       if (started) {
         setJob(started);
       }
@@ -205,64 +213,96 @@ export function HarTransferDialog(): React.JSX.Element | null {
             <div className={styles.field}>
               <span className={styles.label}>Format</span>
               <div className={styles.segmented}>
-                <span className={styles.segmentActive}>HAR 1.2</span>
-                <span className={styles.segmentDisabled}>Native archive</span>
+                <button
+                  type="button"
+                  className={cx(
+                    styles.segmentButton,
+                    format === 'har' && styles.segmentActive,
+                  )}
+                  onClick={() => setFormat('har')}
+                >
+                  HAR 1.2
+                </button>
+                <button
+                  type="button"
+                  className={cx(
+                    styles.segmentButton,
+                    format === 'archive' && styles.segmentActive,
+                  )}
+                  onClick={() => setFormat('archive')}
+                >
+                  Native archive
+                </button>
               </div>
-              <div className={styles.warning}>
-                <AlertTriangle size={15} strokeWidth={1.9} />
-                <span>
-                  HAR omits HTTP/2 pseudo-headers and trailers, WebSocket
-                  messages, TLS detail, and rule history.
-                </span>
-              </div>
+              {format === 'har' ? (
+                <div className={styles.warning}>
+                  <AlertTriangle size={15} strokeWidth={1.9} />
+                  <span>
+                    HAR omits HTTP/2 pseudo-headers and trailers, WebSocket
+                    messages, TLS detail, and rule history.
+                  </span>
+                </div>
+              ) : (
+                <div className={styles.warning}>
+                  <AlertTriangle size={15} strokeWidth={1.9} />
+                  <span>
+                    A native archive is a lossless, versioned snapshot of the
+                    whole capture store that only Interceptor can open.
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className={styles.field}>
-              <span className={styles.label}>Scope</span>
-              <div className={styles.radios}>
-                <ScopeOption
-                  label="All traffic"
-                  count={allCount}
-                  active={scope === 'all'}
-                  onClick={() => setScope('all')}
-                />
-                <ScopeOption
-                  label="Current filter"
-                  detail={formatFilter(filter)}
-                  count={hasMore ? `${visibleCount}+` : visibleCount}
-                  active={scope === 'filter'}
-                  onClick={() => setScope('filter')}
-                />
-                <ScopeOption
-                  label="Selected request"
-                  count={selectedId ? 1 : 0}
-                  active={scope === 'selected'}
-                  disabled={!selectedId}
-                  onClick={() => setScope('selected')}
-                />
-              </div>
-            </div>
+            {format === 'har' ? (
+              <>
+                <div className={styles.field}>
+                  <span className={styles.label}>Scope</span>
+                  <div className={styles.radios}>
+                    <ScopeOption
+                      label="All traffic"
+                      count={allCount}
+                      active={scope === 'all'}
+                      onClick={() => setScope('all')}
+                    />
+                    <ScopeOption
+                      label="Current filter"
+                      detail={formatFilter(filter)}
+                      count={hasMore ? `${visibleCount}+` : visibleCount}
+                      active={scope === 'filter'}
+                      onClick={() => setScope('filter')}
+                    />
+                    <ScopeOption
+                      label="Selected request"
+                      count={selectedId ? 1 : 0}
+                      active={scope === 'selected'}
+                      disabled={!selectedId}
+                      onClick={() => setScope('selected')}
+                    />
+                  </div>
+                </div>
 
-            <div className={styles.field}>
-              <span className={styles.label}>Redaction</span>
-              <div className={styles.checks}>
-                <CheckOption
-                  checked={authorization}
-                  label="Mask authorization tokens"
-                  onChange={setAuthorization}
-                />
-                <CheckOption
-                  checked={cookies}
-                  label="Mask cookies & Set-Cookie"
-                  onChange={setCookies}
-                />
-                <CheckOption
-                  checked={bodies}
-                  label="Strip request/response bodies"
-                  onChange={setBodies}
-                />
-              </div>
-            </div>
+                <div className={styles.field}>
+                  <span className={styles.label}>Redaction</span>
+                  <div className={styles.checks}>
+                    <CheckOption
+                      checked={authorization}
+                      label="Mask authorization tokens"
+                      onChange={setAuthorization}
+                    />
+                    <CheckOption
+                      checked={cookies}
+                      label="Mask cookies & Set-Cookie"
+                      onChange={setCookies}
+                    />
+                    <CheckOption
+                      checked={bodies}
+                      label="Strip request/response bodies"
+                      onChange={setBodies}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
             {error ? <div className={styles.error}>{error}</div> : null}
           </div>
         )}
@@ -286,17 +326,19 @@ export function HarTransferDialog(): React.JSX.Element | null {
                 disabled={submitting}
                 onClick={() => void startImport()}
               >
-                Import HAR
+                {format === 'archive' ? 'Import archive' : 'Import HAR'}
               </Button>
               <Button
                 icon={Download}
                 variant="primary"
-                disabled={submitting || exportCount === 0}
+                disabled={submitting || (format === 'har' && exportCount === 0)}
                 onClick={() => void startExport()}
               >
-                {scope === 'filter' && hasMore
-                  ? 'Export filtered'
-                  : `Export ${exportCount} ${exportCount === 1 ? 'request' : 'requests'}`}
+                {format === 'archive'
+                  ? 'Export archive'
+                  : scope === 'filter' && hasMore
+                    ? 'Export filtered'
+                    : `Export ${exportCount} ${exportCount === 1 ? 'request' : 'requests'}`}
               </Button>
             </>
           )}
@@ -385,9 +427,7 @@ function JobProgress({
           />
         )}
         <div>
-          <strong>
-            {job.kind === 'har-import' ? 'Importing HAR' : 'Exporting HAR'}
-          </strong>
+          <strong>{transferHeading(job.kind)}</strong>
           <span>{job.fileName}</span>
         </div>
       </div>
@@ -395,7 +435,10 @@ function JobProgress({
         <span style={{ width: `${percent}%` }} />
       </div>
       <div className={styles.progressMeta}>
-        <span>{job.processed} of {job.total} requests</span>
+        <span>
+          {job.processed} of {job.total}{' '}
+          {job.kind === 'archive-export' ? 'files' : 'requests'}
+        </span>
         <span>{percent}%</span>
       </div>
       {job.message ? <div className={styles.error}>{job.message}</div> : null}
@@ -448,4 +491,17 @@ function formatFilter(
 
 function describeError(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
+}
+
+function transferHeading(kind: TransferJobSnapshot['kind']): string {
+  switch (kind) {
+    case 'har-import':
+      return 'Importing HAR';
+    case 'har-export':
+      return 'Exporting HAR';
+    case 'archive-import':
+      return 'Importing archive';
+    default:
+      return 'Exporting archive';
+  }
 }

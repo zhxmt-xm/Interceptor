@@ -162,6 +162,11 @@ export class StorageWorkerHost {
     return this.request({ kind: 'referenced-hashes' });
   }
 
+  /** 请求 Worker 通过 SQLite VACUUM INTO 生成一致数据库快照到目标路径。 */
+  snapshot(targetPath: string): Promise<void> {
+    return this.request<void>({ kind: 'snapshot', targetPath });
+  }
+
   saveRuleSet(
     expectedRevision: number,
     rules: readonly RuleDefinition[],

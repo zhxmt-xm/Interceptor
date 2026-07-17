@@ -104,6 +104,10 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harExportStart, request),
   startHarImport: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harImportStart),
+  startArchiveExport: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveExportStart),
+  startArchiveImport: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveImportStart),
   getTransferJob: (jobId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.transferJobGet, jobId),
   cancelTransferJob: (jobId) =>

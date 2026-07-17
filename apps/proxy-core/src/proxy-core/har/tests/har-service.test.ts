@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   HarService,
 } from '../entry';
+import { TransferJobManager } from '../../transfer/entry';
 import type { HarStorage } from '../interfaces';
 import type {
   CaptureSessionInput,
@@ -174,6 +175,7 @@ describe('HarService', () => {
     const filePath = path.join(directory, 'capture.har');
     const exporter = new HarService(
       new FakeHarStorage([FakeHarStorage.capturedDetail()]),
+      new TransferJobManager(),
     );
 
     const exported = await exporter.exportToFile(
@@ -207,10 +209,11 @@ describe('HarService', () => {
     });
 
     const importedStorage = new FakeHarStorage();
-    const imported = await new HarService(importedStorage).importFromFile(
-      filePath,
-      new AbortController().signal,
-    );
+    const imported = await new HarService(importedStorage, new TransferJobManager())
+      .importFromFile(
+        filePath,
+        new AbortController().signal,
+      );
 
     expect(imported.processed).toBe(1);
     expect(importedStorage.sessions).toHaveLength(1);
@@ -233,6 +236,7 @@ describe('HarService', () => {
     const filePath = path.join(directory, 'redacted.har');
     const service = new HarService(
       new FakeHarStorage([FakeHarStorage.capturedDetail()]),
+      new TransferJobManager(),
     );
 
     await service.exportToFile(
@@ -258,6 +262,7 @@ describe('HarService', () => {
     const filePath = path.join(directory, 'capture.har');
     await new HarService(
       new FakeHarStorage([FakeHarStorage.capturedDetail()]),
+      new TransferJobManager(),
     ).exportToFile(
       filePath,
       {
@@ -269,7 +274,7 @@ describe('HarService', () => {
     const storage = new FakeHarStorage([], true);
 
     await expect(
-      new HarService(storage).importFromFile(
+      new HarService(storage, new TransferJobManager()).importFromFile(
         filePath,
         new AbortController().signal,
       ),

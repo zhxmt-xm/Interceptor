@@ -206,6 +206,17 @@ sequenceDiagram
 - **Desktop**：`startHarExport/startHarImport/getTransferJob/cancelTransferJob` 是唯一 Renderer API；Main 的 `showSaveDialog/showOpenDialog` 持有路径。Capture `HarTransferDialog` 支持 all/current filter/selected、redaction、进度/取消/终态；导入成功重查列表。Parity 用 fake Preload + 正常点击，业务 Renderer 无测试后门。
 - **验证**：HAR unit 覆盖 round-trip、脚本文本 inert、上限、脱敏、失败回滚、任务取消/路径隐藏；light/dark parity 各 11/11 targets、0 flagged；Windows package + 真实 packaged smoke 验证新 Preload 面和 worker bundle 路径。
 
+## 原生 archive 导入导出架构（M10/T10.2，已落地）
+
+> 原生 archive 是保留 Interceptor 全保真度的版本化 ZIP 容器；与 HAR 共用同一套异步 transfer job 与 Main 系统对话框边界，文件系统与大正文始终留在 Core，不新增生产依赖。
+
+- **共享任务基础设施**：`transfer/entry.ts` 的 `TransferJobManager`（通用 `start(jobId, kind, filePath, operation)` + get/cancel/cancelAll）由 `CoreApplication` 独占一个实例，`HarService` 与 `ArchiveService` 共用；`transfer.job.get/cancel` 直接查询该实例。`TransferJobKind` 扩展为 `har-export`/`har-import`/`archive-export`/`archive-import`。
+- **依赖零新增的 ZIP**：`archive/archive-zip-writer.ts` 手写流式 ZIP（占位本地头 → 流式 `deflateRaw` → 回填 crc/大小 → central directory/EOCD，FileHandle 定位回填避免数据描述符），`archive/archive-zip-reader.ts` 只信任 central directory；CRC-32、条目名安全、manifest 解析集中在 `archive/utils/index.ts`。全部用 Node `zlib`/`crypto`。
+- **一致快照**：`storage` 新增 worker 请求 `snapshot` → `CaptureStore.snapshotInto` 用 `PRAGMA wal_checkpoint(TRUNCATE)` + `VACUUM INTO ?` 生成紧凑一致快照（不复制活动库文件）；`StorageService` 暴露 `snapshot`/`referencedBlobHashes`/`openBlobStream`（`BlobStore.openReadStream`）。
+- **导出**：`ArchiveService.exportToFile` 生成 `capture.sqlite` 快照 → 逐个流式写入引用 Blob（`blobs/<sha256>`）→ 最后写 `manifest.json`（format/archiveVersion/schemaVersion/appVersion/createdAt + 每文件 path/size/sha256）→ finalize → 原子 rename。
+- **导入（不可信输入）**：stat 大小上限 → 解析 EOCD/central directory → **提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目 → 提取并解析 manifest（拒绝未知 format/不支持版本/`schemaVersion` 高于当前）→ manifest 与 central directory 交叉一致 → 提取快照与 Blob 逐文件校验 size+sha256 → 提取以声明大小为硬上限 + 逐条 CRC-32 → Blob 经内容寻址 `writeBody` 三重校验 → 快照 `PRAGMA integrity_check` → 用 storage 拥有的 `CaptureStore` 读快照，把 Exchange（含 pseudo-header/trailer/正文引用/WebSocket 帧）重插入隔离 Session；失败/取消回滚。不支持 ZIP64，遇到即拒绝。
+- **Desktop**：`startArchiveExport/startArchiveImport` 是唯一 Renderer API；Main `showSaveDialog/showOpenDialog` 持有 `.iarchive` 路径。Capture `HarTransferDialog` 启用 “Native archive” 格式切换（整库无损，隐藏 scope/redaction），进度/取消/终态复用 transfer job 轮询。
+
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`
 
@@ -282,7 +293,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出、原生 archive、系统代理适配、签名安装器和更新机制（M10+）未实现。HAR 1.2、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
+- CA 导出、系统代理适配、签名安装器和更新机制（M11+）未实现。HAR 1.2、原生 archive、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
 
 ## 更新规则
 

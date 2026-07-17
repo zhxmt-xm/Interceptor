@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M10.md](M10.md)（进行中，T10.1 已完成）。
+4. 当前 Stage 文件：[M10.md](M10.md)（进行中，T10.1、T10.2 已完成）。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,8 +18,9 @@
 
 ## 当前状态
 
-- **M0–M9 均已完成（100%）**；M10 进行中（20%），各 Stage 详情见对应 `M*.md`。
-- **当前 Stage：M10 导入导出与隐私；T10.1 HAR 1.2 已完成，下一是 T10.2 原生 archive**：
+- **M0–M9 均已完成（100%）**；M10 进行中（40%），各 Stage 详情见对应 `M*.md`。
+- **当前 Stage：M10 导入导出与隐私；T10.1 HAR 与 T10.2 原生 archive 已完成，下一是 T10.3 隐私与录制安全**：
+  - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
   - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
   - **异步 transfer job**：`har.export.start`/`har.import.start`/`transfer.job.get/cancel`；公开快照只含 basename/进度/状态/警告。Main 用系统 save/open dialog 持有真实路径，Renderer 没有文件系统 API。
   - **HAR UI**：Capture More 打开 `HarTransferDialog`，支持 all/filter/selected、Authorization/Cookie 遮罩、strip bodies、Import/Export、进度/取消/错误。HAR parity light/dark 均 0 missing/flagged。
@@ -32,10 +33,10 @@
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
-- **窄 API 已扩展**：M10/T10.1 新增 `startHarExport`、`startHarImport`、`getTransferJob`、`cancelTransferJob`；Preload 仍不暴露 path/readFile/writeFile。修改 API 面后需同步 packaged smoke 的 apiKeys 断言。
+- **窄 API 已扩展**：M10/T10.1 新增 `startHarExport`、`startHarImport`、`getTransferJob`、`cancelTransferJob`；T10.2 新增 `startArchiveExport`、`startArchiveImport`。Preload 仍不暴露 path/readFile/writeFile。修改 API 面后需同步 packaged smoke 的 apiKeys 断言（已含 archive 两项）。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
-- **验证全绿**（T10.1）：`typecheck` 三 workspace；`test:unit` Desktop 40 / Proxy Core 160 / Core Protocol 19；HAR parity light/dark 各 11/11 targets、0 missing/flagged；`audit --omit=dev` 0；Windows package + 真实 packaged smoke 1/1 通过。
-- M9 已推送至 `750f200`；T10.1 为当前提交，完成后立即 push。新 Session 先跑 `git status --short --branch` 与 `git log -3 --oneline`，不要 reset/checkout/覆盖现有改动。
+- **验证全绿**（T10.2）：`typecheck` 三 workspace；`test:unit` Desktop 40 / Proxy Core 176 / Core Protocol 19（archive 较 T10.1 +16：ZIP 解压前安全校验 8 + round-trip/导入校验 5 + 共享 job manager 3）；`build:core` 通过；未新增生产依赖。设计源已同步启用 Native archive 段，PNG 基线 reshoot 随 M12 视觉验收。
+- M9 已推送至 `750f200`；T10.1 已推送至 `6472781`；T10.2 为当前提交，完成后立即 push。新 Session 先跑 `git status --short --branch` 与 `git log -3 --oneline`，不要 reset/checkout/覆盖现有改动。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction（仓库曾从 `H:\` 迁到 `C:\`，旧 junction 会失效）。
 - 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
 
@@ -127,18 +128,17 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M10 T10.2 原生 archive
+## 下一任务：M10 T10.3 隐私与录制安全
 
-T10.1 HAR 1.2 已完成（见 [M10.md](M10.md)）。下一项是可保留 Interceptor 原生能力的版本化 ZIP archive。
+T10.1 HAR 与 T10.2 原生 archive 已完成（见 [M10.md](M10.md)）。下一项是把隐私与录制安全落到默认策略与 UI。
 
 建议执行顺序：
 
-1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十二/十六章与第二十七章 M10、[M10.md](M10.md)。
-2. 在现有 transfer job/Main 系统对话框边界上增加 native format，不新建第二套任务基础设施；Renderer 仍不拿路径/文件系统。
-3. 定义 versioned manifest（archive/schema/app version、文件列表、hash/size）+ SQLite API 一致 snapshot + 内容寻址 Blob；不要直接复制活动 WAL 数据库。
-4. 解压前先验证 ZIP entry path、声明/实际 size、文件数、compression ratio、hash 与 schema version；拒绝 symlink/绝对路径/`..`/重复 entry/未知必需字段。先写恶意 fixture 测试，再实现导入事务/取消回滚和 UI format 切换；完成后按 T10.2 标题 commit + push。
+1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十六章与第二十七章 M10、[M10.md](M10.md)。
+2. 落实默认不捕获（已具备 proxy.start/stop 显式控制，补录制指示与 loopback 默认呈现）、遥测/诊断脱敏（复用 Core 脱敏规则）、导出未脱敏前警告，以及 token/cookie/URL query 的全局遮罩策略与确认流程；Renderer 仍只经既有窄 IPC。
+3. 隐私设置视图按 `design/app` 的 settings/privacy 一对一落地；不放宽 Preload 面。先写脱敏与默认策略的单元测试，再接 UI；完成后按 T10.3 标题 commit + push。
 
-> 已完成：M0–M9 全量交付 + M10 T10.1 HAR 1.2；当前提交待 push。
+> 已完成：M0–M9 全量交付 + M10 T10.1 HAR 1.2 + T10.2 原生 archive；当前提交待 push。
 
 ## 剩余工作项目
 
@@ -152,7 +152,7 @@ T10.1 HAR 1.2 已完成（见 [M10.md](M10.md)）。下一项是可保留 Interc
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M10 | 进行中（20%） | HAR 已完成；剩余 native archive、隐私、Diagnostics 导出、Main/Renderer 日志 | 完整方案第十二/十六章、第二十七章 M10 |
+| M10 | 进行中（40%） | HAR、native archive 已完成；剩余隐私、Diagnostics 导出、Main/Renderer 日志 | 完整方案第十二/十六章、第二十七章 M10 |
 | M11–M13 | 未开始 | 系统代理、发布加固、更新机制 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。

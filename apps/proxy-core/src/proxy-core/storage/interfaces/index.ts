@@ -205,6 +205,7 @@ export type StorageWorkerRequest =
   | { readonly kind: 'storage-status' }
   | { readonly kind: 'cleanup'; readonly scope: CleanupScope }
   | { readonly kind: 'referenced-hashes' }
+  | { readonly kind: 'snapshot'; readonly targetPath: string }
   | {
       readonly kind: 'save-rule-set';
       readonly expectedRevision: number;

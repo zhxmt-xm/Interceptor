@@ -44,6 +44,8 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'grpc.messages': 'grpc.messages',
   'har.export.start': 'transfer.job',
   'har.import.start': 'transfer.job',
+  'archive.export.start': 'transfer.job',
+  'archive.import.start': 'transfer.job',
   'diagnostics.recent': 'diagnostics.records',
   'diagnostics.query': 'diagnostics.page',
   'echo': 'echo',

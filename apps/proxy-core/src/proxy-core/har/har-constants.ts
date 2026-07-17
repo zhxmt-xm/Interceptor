@@ -8,4 +8,3 @@ export const HAR_EXPORT_PAGE_SIZE = 500;
 export const HAR_IMPORT_BATCH_SIZE = 100;
 export const HAR_BODY_READ_CHUNK_BYTES = 1024 * 1024;
 export const MAX_HAR_SELECTED_EXCHANGES = 10_000;
-export const MAX_TRANSFER_JOBS = 100;

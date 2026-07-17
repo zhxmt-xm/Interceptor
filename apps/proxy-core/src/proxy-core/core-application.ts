@@ -27,6 +27,8 @@ import { DiagnosticsService } from './diagnostics/entry';
 import type { DiagnosticsPage } from './diagnostics/interfaces';
 import { GrpcService } from './grpc/entry';
 import { HarService } from './har/entry';
+import { ArchiveService } from './archive/entry';
+import { TransferJobManager } from './transfer/entry';
 import { ProxyService } from './proxy/entry';
 import { CaptureEventQueue } from './proxy/proxy-capture-event-queue';
 import { decodeBody } from './proxy/utils';
@@ -89,8 +91,12 @@ export class CoreApplication implements CoreRpcHost {
   private readonly connection = new ConnectionService();
   /** 从已捕获 body 分页读取 gRPC envelope。 */
   private readonly grpc: GrpcService | null;
+  /** HAR 与原生 archive 共用的异步文件任务管理器。 */
+  private readonly transferJobs = new TransferJobManager();
   /** HAR 文件转换与异步任务门面；无 Storage 时不可用。 */
   private readonly har: HarService | null;
+  /** 原生 archive 文件转换门面；无 Storage 时不可用。 */
+  private readonly archive: ArchiveService | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   private inFlightEventBatches = 0;
@@ -148,7 +154,12 @@ export class CoreApplication implements CoreRpcHost {
     this.ruleEngine = options.ruleEngine ?? null;
     this.grpc = this.storageService ? new GrpcService(this.storageService) : null;
     this.har = options.harService ??
-      (this.storageService ? new HarService(this.storageService) : null);
+      (this.storageService
+        ? new HarService(this.storageService, this.transferJobs)
+        : null);
+    this.archive = this.storageService
+      ? new ArchiveService(this.storageService, this.transferJobs)
+      : null;
     this.diagnostics = new CoreDiagnostics(
       this.diagnosticsService ?? undefined,
     );
@@ -205,7 +216,7 @@ export class CoreApplication implements CoreRpcHost {
     this.diagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
-    this.har?.cancelAll();
+    this.transferJobs.cancelAll();
     void this.storageService?.dispose();
     void this.diagnosticsService?.close();
     void this.proxyService?.stop();
@@ -463,16 +474,36 @@ export class CoreApplication implements CoreRpcHost {
             ),
           },
         }));
+      case 'archive.export.start':
+        return this.withArchive((archive) => ({
+          type: 'transfer.job',
+          payload: {
+            job: archive.startExport(
+              command.payload.jobId,
+              command.payload.filePath,
+            ),
+          },
+        }));
+      case 'archive.import.start':
+        return this.withArchive((archive) => ({
+          type: 'transfer.job',
+          payload: {
+            job: archive.startImport(
+              command.payload.jobId,
+              command.payload.filePath,
+            ),
+          },
+        }));
       case 'transfer.job.get':
-        return this.withHar((har) => ({
+        return {
           type: 'transfer.job',
-          payload: { job: har.getJob(command.payload.jobId) },
-        }));
+          payload: { job: this.transferJobs.get(command.payload.jobId) },
+        };
       case 'transfer.job.cancel':
-        return this.withHar((har) => ({
+        return {
           type: 'transfer.job',
-          payload: { job: har.cancelJob(command.payload.jobId) },
-        }));
+          payload: { job: this.transferJobs.cancel(command.payload.jobId) },
+        };
       case 'proxy.start':
         return this.withProxy(async (proxy) => {
           await this.storageService?.initialize();
@@ -668,6 +699,18 @@ export class CoreApplication implements CoreRpcHost {
       });
     }
     return operation(this.har);
+  }
+
+  /** 在原生 archive 服务可用时执行文件任务操作；无 Storage 模式返回 internal。 */
+  private withArchive<T>(operation: (archive: ArchiveService) => T): T {
+    if (!this.archive) {
+      throw commandError({
+        code: 'internal',
+        message: 'Archive transfer is not available.',
+        retryable: false,
+      });
+    }
+    return operation(this.archive);
   }
 
   /**

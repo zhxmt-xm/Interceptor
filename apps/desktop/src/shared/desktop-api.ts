@@ -317,6 +317,8 @@ export const DESKTOP_IPC_CHANNELS = {
   connectionProbe: 'connection:probe',
   harExportStart: 'har:export-start',
   harImportStart: 'har:import-start',
+  archiveExportStart: 'archive:export-start',
+  archiveImportStart: 'archive:import-start',
   transferJobGet: 'transfer:job-get',
   transferJobCancel: 'transfer:job-cancel',
 } as const;
@@ -377,6 +379,8 @@ export interface InterceptorDesktopApi {
   probeConnection(host: string, port: number): Promise<ConnectionProbe>;
   startHarExport(request: HarExportRequest): Promise<TransferJobSnapshot | null>;
   startHarImport(): Promise<TransferJobSnapshot | null>;
+  startArchiveExport(): Promise<TransferJobSnapshot | null>;
+  startArchiveImport(): Promise<TransferJobSnapshot | null>;
   getTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
 }

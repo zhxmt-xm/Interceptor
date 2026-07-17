@@ -73,6 +73,24 @@ export class StorageService {
     return this.blobStore.writeStream(source);
   }
 
+  /**
+   * 通过 SQLite VACUUM INTO 把 Capture 库写成一致快照文件（非活动文件复制）。
+   * 调用方：ArchiveService 导出原生 archive。
+   */
+  snapshot(targetPath: string): Promise<void> {
+    return this.host.snapshot(targetPath);
+  }
+
+  /** 当前仍被引用的去重 Blob hash 集合。调用方：ArchiveService 枚举导出 Blob。 */
+  referencedBlobHashes(): Promise<string[]> {
+    return this.host.referencedHashes();
+  }
+
+  /** 打开一个内容寻址 Blob 的只读流。调用方：ArchiveService 逐个写入 ZIP。 */
+  openBlobStream(hash: string) {
+    return this.blobStore.openReadStream(hash);
+  }
+
   querySessions(query: SessionQuery): Promise<SessionQueryPage> {
     return this.host.querySessions(query);
   }

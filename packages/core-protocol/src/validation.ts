@@ -54,6 +54,8 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'storage.cleanup',
   'har.export.start',
   'har.import.start',
+  'archive.export.start',
+  'archive.import.start',
   'transfer.job.get',
   'transfer.job.cancel',
   'proxy.start',
@@ -325,6 +327,10 @@ function validateCommand(value: unknown): string | null {
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateHarExportStart(value.payload);
     case 'har.import.start':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateHarImportStart(value.payload);
+    case 'archive.export.start':
+    case 'archive.import.start':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateHarImportStart(value.payload);
     case 'transfer.job.get':
@@ -1906,7 +1912,12 @@ function validateTransferJob(value: unknown, name: string): string | null {
       'warnings',
     ],
     (job) => validateId(job.id, `${name}.id`) ??
-      validateEnum(job.kind, `${name}.kind`, ['har-export', 'har-import']) ??
+      validateEnum(job.kind, `${name}.kind`, [
+        'har-export',
+        'har-import',
+        'archive-export',
+        'archive-import',
+      ]) ??
       validateEnum(job.state, `${name}.state`, [
         'running',
         'completed',

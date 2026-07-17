@@ -18,7 +18,6 @@ import {
   MAX_HAR_SELECTED_EXCHANGES,
 } from './har-constants';
 import { HarDocumentParser } from './har-document';
-import { HarJobManager } from './har-job-manager';
 import type {
   HarExportOptions,
   HarExportScope,
@@ -29,18 +28,19 @@ import type {
   ParsedHarEntry,
 } from './interfaces';
 import { InvalidHarError } from './har-invalid-error';
+import { TransferJobManager } from '../transfer/entry';
 import * as HarUtils from './utils';
 
 export class HarService {
   /** HAR 转换所需的 Storage 门面。 */
   private readonly storage: HarStorage;
-  /** 有界管理异步导入/导出任务、进度和取消。 */
-  private readonly jobs: HarJobManager;
+  /** 与原生 archive 共用的异步文件任务管理器。 */
+  private readonly jobs: TransferJobManager;
 
-  /** 绑定 Core 内存储门面，文件系统与正文始终留在 Core。 */
-  constructor(storage: HarStorage) {
+  /** 绑定 Core 内存储门面与共享任务管理器；文件系统与正文始终留在 Core。 */
+  constructor(storage: HarStorage, jobs: TransferJobManager) {
     this.storage = storage;
-    this.jobs = new HarJobManager(this);
+    this.jobs = jobs;
   }
 
   /** 启动 HAR 导出任务并立即返回 running 快照。 */
@@ -49,27 +49,14 @@ export class HarService {
     filePath: string,
     options: HarExportOptions,
   ): TransferJobSnapshot {
-    return this.jobs.startExport(jobId, filePath, options);
+    return this.jobs.start(jobId, 'har-export', filePath, (signal, onProgress) =>
+      this.exportToFile(filePath, options, signal, onProgress));
   }
 
   /** 启动 HAR 导入任务并立即返回 running 快照。 */
   startImport(jobId: string, filePath: string): TransferJobSnapshot {
-    return this.jobs.startImport(jobId, filePath);
-  }
-
-  /** 查询 HAR 任务公开快照；未知任务返回 null。 */
-  getJob(jobId: string): TransferJobSnapshot | null {
-    return this.jobs.get(jobId);
-  }
-
-  /** 取消运行中 HAR 任务并返回最新快照。 */
-  cancelJob(jobId: string): TransferJobSnapshot | null {
-    return this.jobs.cancel(jobId);
-  }
-
-  /** Core 关闭时取消所有运行中 HAR 任务。 */
-  cancelAll(): void {
-    this.jobs.cancelAll();
+    return this.jobs.start(jobId, 'har-import', filePath, (signal, onProgress) =>
+      this.importFromFile(filePath, signal, onProgress));
   }
 
   /** 将指定 Capture 范围原子导出为标准 HAR 1.2 文件。 */

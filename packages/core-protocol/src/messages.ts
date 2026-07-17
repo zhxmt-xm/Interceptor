@@ -235,6 +235,22 @@ export interface HarImportStartCommand {
   };
 }
 
+export interface ArchiveExportStartCommand {
+  type: 'archive.export.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+  };
+}
+
+export interface ArchiveImportStartCommand {
+  type: 'archive.import.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+  };
+}
+
 export interface TransferJobGetCommand {
   type: 'transfer.job.get';
   payload: { jobId: string };
@@ -298,6 +314,8 @@ export type CoreCommand =
   | StorageCleanupCommand
   | HarExportStartCommand
   | HarImportStartCommand
+  | ArchiveExportStartCommand
+  | ArchiveImportStartCommand
   | TransferJobGetCommand
   | TransferJobCancelCommand
   | ProxyStartCommand
@@ -575,7 +593,11 @@ export interface StorageStatusResult {
   };
 }
 
-export type TransferJobKind = 'har-export' | 'har-import';
+export type TransferJobKind =
+  | 'har-export'
+  | 'har-import'
+  | 'archive-export'
+  | 'archive-import';
 export type TransferJobState =
   | 'running'
   | 'completed'
@@ -669,6 +691,10 @@ export type CoreResultForCommand<T extends CoreCommand> =
                           ? TransferJobResult
                           : T extends HarImportStartCommand
                             ? TransferJobResult
+                            : T extends ArchiveExportStartCommand
+                              ? TransferJobResult
+                              : T extends ArchiveImportStartCommand
+                                ? TransferJobResult
                             : T extends TransferJobGetCommand
                               ? TransferJobResult
                               : T extends TransferJobCancelCommand

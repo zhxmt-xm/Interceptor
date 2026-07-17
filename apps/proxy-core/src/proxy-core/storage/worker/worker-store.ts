@@ -533,6 +533,16 @@ export class CaptureStore {
   }
 
   /**
+   * 通过 SQLite `VACUUM INTO` 把当前已提交状态写成一致、紧凑的快照文件，
+   * 不直接复制活动数据库文件（避免 WAL 未合并导致的不一致）。目标文件必须不存在。
+   * 调用方：ArchiveService 导出原生 archive 时经 Worker 串行队列请求。
+   */
+  snapshotInto(targetPath: string): void {
+    this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    this.db.prepare('VACUUM INTO ?').run(targetPath);
+  }
+
+  /**
    * 读取持久化的规则集；空库（尚未保存过）返回 revision 0 的空规则集。
    * 调用方：Storage Worker 处理 load-rule-set 请求（rules.get handler）。
    */

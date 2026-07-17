@@ -547,6 +547,32 @@ export function installFakeInterceptor({ fixture, theme }) {
       };
       return transferJob;
     },
+    startArchiveExport: async () => {
+      transferJob = {
+        id: 'transfer-parity-archive-export',
+        kind: 'archive-export',
+        state: 'running',
+        fileName: 'interceptor-2026-07-17.iarchive',
+        processed: 0,
+        total: fixture.capture.sessions.length + 1,
+        startedAt: '2026-07-17T12:00:00.000Z',
+        warnings: [],
+      };
+      return transferJob;
+    },
+    startArchiveImport: async () => {
+      transferJob = {
+        id: 'transfer-parity-archive-import',
+        kind: 'archive-import',
+        state: 'running',
+        fileName: 'fixture.iarchive',
+        processed: 0,
+        total: 18,
+        startedAt: '2026-07-17T12:00:00.000Z',
+        warnings: [],
+      };
+      return transferJob;
+    },
     getTransferJob: async () => {
       if (transferJob?.state === 'running') {
         transferJob = {

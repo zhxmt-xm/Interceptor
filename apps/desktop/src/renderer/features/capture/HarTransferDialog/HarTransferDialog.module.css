@@ -105,11 +105,27 @@
   font-weight: 520;
 }
 
+.segmentButton {
+  padding: 4px 11px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 520;
+  cursor: pointer;
+}
+
 .segmentActive {
   color: var(--text);
   background: var(--bg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
   font-weight: 560 !important;
+}
+
+.segmentActive:hover {
+  color: var(--text);
 }
 
 .segmentDisabled {
