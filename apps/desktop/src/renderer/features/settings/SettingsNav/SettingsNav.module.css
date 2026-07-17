@@ -28,7 +28,7 @@
   background: var(--hover);
   color: var(--text);
 }
-.active {
+.item.active {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;

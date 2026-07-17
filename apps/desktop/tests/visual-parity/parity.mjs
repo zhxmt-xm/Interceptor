@@ -138,6 +138,7 @@ for (const view of views) {
   await appPage.addInitScript(installFakeInterceptor, {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
+    firstRun: view.firstRun === true,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);

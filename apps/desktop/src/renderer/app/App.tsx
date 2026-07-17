@@ -16,6 +16,7 @@ import {
   DiagnosticsStatusbar,
   DiagnosticsTopbar,
 } from '../features/diagnostics';
+import { FirstRunWizard, hasCompletedFirstRun } from '../features/first-run';
 import { RulesMain, RulesStatusbar, RulesTopbar } from '../features/rules';
 import { SettingsMain, SettingsStatusbar, SettingsTopbar } from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
@@ -86,6 +87,7 @@ export function App(): React.JSX.Element {
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [lang, setLang] = useState<LangId>(readInitialLang);
   const [coreStatus, setCoreStatus] = useState(initialCoreStatus);
+  const [firstRunOpen, setFirstRunOpen] = useState(() => !hasCompletedFirstRun());
 
   const toggleCollapse = (): void => setCollapsed((value) => !value);
 
@@ -163,6 +165,9 @@ export function App(): React.JSX.Element {
         ) : (
           shell
         )}
+        {firstRunOpen ? (
+          <FirstRunWizard onComplete={() => setFirstRunOpen(false)} />
+        ) : null}
       </AntApp>
     </ConfigProvider>
   );

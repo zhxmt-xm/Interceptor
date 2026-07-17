@@ -65,7 +65,7 @@ Packager validates Electron artifacts against the official SHA-256 checksums bun
 npm run dev
 ```
 
-This builds Proxy Core, compiles the Windows system-proxy helper from `apps/desktop/src/main/system-proxy/` when running on Windows, starts the Vite renderer server, launches Electron, and enables Renderer HMR. In the running Forge terminal, type `rs` and press Enter to restart Electron Main and Proxy Core.
+This builds Proxy Core and the native system-proxy helper for the current platform, starts the Vite renderer server, launches Electron, and enables Renderer HMR. In the running Forge terminal, type `rs` and press Enter to restart Electron Main and Proxy Core.
 
 The Main process allows same-application Renderer reloads while rejecting external navigation, so a cold `npm run dev` launch can complete Vite's dependency update without a manual reload.
 
@@ -206,7 +206,7 @@ npm run test:watch --workspace @interceptor/desktop
 npm run package
 ```
 
-`npm run package` validates/builds the Protocol package, bundles Proxy Core and its protocol runtime into one CommonJS file with esbuild, compiles the module-owned WinINet helper with the Windows .NET Framework compiler, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`; the helper is under `resources/system-proxy/`.
+`npm run package` validates/builds the Protocol package, bundles Proxy Core and its protocol runtime into CommonJS files, builds the current platform's system-proxy helper, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`; native helpers are under `resources/system-proxy/`. macOS helper builds require Xcode Command Line Tools (`xcrun swiftc`).
 
 If the Electron release download is unreliable:
 
@@ -366,7 +366,7 @@ apps/desktop/src/renderer/features/   Product workspaces such as Traffic
 apps/desktop/src/renderer/components/ Shared Renderer controls
 apps/desktop/src/renderer/theme/      Ant Design theme configuration
 apps/desktop/src/renderer/styles/     Minimal global reset and design variables
-apps/desktop/src/main/system-proxy/   System proxy services, helpers, builders, tests
+apps/desktop/src/main/system-proxy/   System proxy services, native helpers, journal, builders, tests
 apps/proxy-core/                      Independent Node.js Proxy Core process
 packages/core-protocol/               Typed Main/Core messages and runtime validation
 scripts/                              Repeatable repository asset tooling

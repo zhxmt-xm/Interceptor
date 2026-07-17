@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app expanded" data-theme="light" data-view="capture" data-step="ca">
+    <div class="app expanded" data-theme="light" data-view="capture" data-step="ca" data-settings="certificates" data-repair="idle">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -312,14 +312,36 @@
         <!-- settings -->
         <div class="mv smain" data-v="settings">
           <div class="snav">
-            <div class="sni"><svg><use href="#i-wifi"/></svg>Proxy &amp; Listener</div>
-            <div class="sni on"><svg><use href="#i-shield"/></svg>Certificates</div>
-            <div class="sni"><svg><use href="#i-palette"/></svg>Appearance</div>
-            <div class="sni"><svg><use href="#i-database"/></svg>Storage</div>
-            <div class="sni"><svg><use href="#i-lock"/></svg>Privacy</div>
-            <div class="sni"><svg><use href="#i-download"/></svg>Updates</div>
+            <div class="sni" data-settings-nav="proxy"><svg><use href="#i-wifi"/></svg>Proxy &amp; Listener</div>
+            <div class="sni" data-settings-nav="certificates"><svg><use href="#i-shield"/></svg>Certificates</div>
+            <div class="sni" data-settings-nav="appearance"><svg><use href="#i-palette"/></svg>Appearance</div>
+            <div class="sni" data-settings-nav="storage"><svg><use href="#i-database"/></svg>Storage</div>
+            <div class="sni" data-settings-nav="privacy"><svg><use href="#i-lock"/></svg>Privacy</div>
+            <div class="sni" data-settings-nav="updates"><svg><use href="#i-download"/></svg>Updates</div>
           </div>
           <div class="scontent">
+            <div class="spanel" data-settings-panel="proxy">
+              <h2>Proxy &amp; Listener <span class="sbadge"><span class="d"></span>Owned</span></h2>
+              <div class="desc2">Local listener, operating-system routing, ownership and guarded recovery.</div>
+              <div class="sgroup">
+                <div class="gh">Listener</div>
+                <div class="srow"><div class="scap"><b>Status</b><span>Capture accepts local HTTP and HTTPS proxy traffic</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Listening</span></div></div>
+                <div class="srow"><div class="scap"><b>Address</b><span>Loopback only</span></div><div class="sctl"><span class="mono2">127.0.0.1:8888</span><button class="btn"><svg><use href="#i-copy"/></svg>Copy</button></div></div>
+              </div>
+              <div class="sgroup">
+                <div class="gh">System proxy</div>
+                <div class="srow"><div class="scap"><b>Automatic routing</b><span>Restored when capture stops or Interceptor exits</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Owned by Interceptor</span><button class="btn">Restore</button></div></div>
+                <div class="srow"><div class="scap"><b>Current configuration</b><span>HTTP and HTTPS</span></div><div class="sctl"><span class="mono2">127.0.0.1:8888</span></div></div>
+                <div class="srow"><div class="scap"><b>Bypass</b><span>Hosts that connect directly</span></div><div class="sctl"><span class="mono2">&lt;local&gt;</span></div></div>
+                <div class="srow"><div class="scap"><b>PAC / Auto detect</b><span>Temporarily disabled while Interceptor owns routing</span></div><div class="sctl"><span class="mono2">Off</span></div></div>
+              </div>
+              <div class="sgroup">
+                <div class="gh">Recovery</div>
+                <div class="srow"><div class="scap"><b>Ownership journal</b><span>Original values are stored before any system change</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Protected</span></div></div>
+                <div class="srow"><div class="scap"><b>Emergency repair</b><span>Stops capture and restores only settings still owned by Interceptor</span></div><div class="sctl repair-idle"><button class="btn danger"><svg><use href="#i-refresh"/></svg>Emergency repair…</button></div><div class="sctl repair-confirm"><span class="confirmtext">Restore owned settings?</span><button class="btn">Cancel</button><button class="btn danger"><svg><use href="#i-refresh"/></svg>Confirm repair</button></div></div>
+              </div>
+            </div>
+            <div class="spanel" data-settings-panel="certificates">
             <h2>Certificates <span class="sbadge mitm"><span class="d"></span>MITM active</span></h2>
             <div class="desc2">Root CA used to decrypt HTTPS. Trust is only ever installed with your explicit consent.</div>
             <div class="sgroup">
@@ -339,6 +361,7 @@
               <div class="srow"><div class="scap"><b>Decrypt HTTPS (MITM)</b><span>Global switch for TLS interception</span></div><div class="sctl"><div class="sw on"></div></div></div>
               <div class="srow"><div class="scap"><b>Per-host overrides</b><span>api.example.com · *.internal.test</span></div><div class="sctl"><button class="btn"><svg><use href="#i-plus"/></svg>Add host</button></div></div>
               <div class="srow"><div class="scap"><b>Insecure TLS exceptions</b><span>self-signed.local — origin cert not verified</span></div><div class="sctl"><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>1 flagged</span></div></div>
+            </div>
             </div>
           </div>
         </div>
@@ -449,7 +472,7 @@
           <div class="wbody" data-for="welcome">
             <div class="wicon"><svg><use href="#i-zap"/></svg></div>
             <h1>Welcome to Interceptor</h1>
-            <p>A local HTTP/HTTPS debugging proxy. Inspect, map, rewrite and replay traffic — everything runs on your machine.</p>
+            <p>A local HTTP/HTTPS debugging proxy. Inspect, map, rewrite and replay traffic. Everything runs on your machine.</p>
             <div class="consent"><span class="cb on"><svg><use href="#i-check"/></svg></span><span>Capture stays <b>off</b> until you press Start. Nothing is recorded or decrypted without your consent.</span></div>
             <div class="wfoot end" style="margin-top:18px"><button class="btn pri">Get started<svg><use href="#i-arrow"/></svg></button></div>
           </div>
@@ -458,7 +481,7 @@
             <h1>Route traffic through Interceptor</h1>
             <p>Point your system or app at the local proxy. Interceptor can set the system proxy automatically and restore it on exit.</p>
             <div class="wcard">
-              <div class="ckrow"><span class="ckic ok"><svg><use href="#i-check"/></svg></span><div class="ckcap"><b>System proxy configured</b><span>auto-set · restored on exit</span></div><span class="sbadge"><span class="d"></span>Done</span></div>
+              <div class="ckrow"><span class="ckic ok"><svg><use href="#i-check"/></svg></span><div class="ckcap"><b>System proxy ready</b><span>enabled on Start · restored on exit</span></div><span class="sbadge"><span class="d"></span>Ready</span></div>
               <div class="ckrow"><span class="ckic cur"><svg><use href="#i-wifi"/></svg></span><div class="ckcap"><b>Manual proxy address</b><span>127.0.0.1:8888</span></div><button class="btn"><svg><use href="#i-copy"/></svg>Copy</button></div>
             </div>
             <div class="wfoot" style="margin-top:18px"><button class="btn">Back</button><button class="btn pri">Continue<svg><use href="#i-arrow"/></svg></button></div>
@@ -469,7 +492,7 @@
             <p>To decrypt HTTPS, install and trust the local root certificate. Trust is only ever installed with your explicit consent.</p>
             <div class="wcard">
               <div class="ckrow"><span class="ckic ok"><svg><use href="#i-check"/></svg></span><div class="ckcap"><b>Root CA generated on this device</b><span>SHA-256 AB:CD:12:9F:…:73:E1</span></div><span class="sbadge"><span class="d"></span>Done</span></div>
-              <div class="ckrow"><span class="ckic cur"><svg><use href="#i-lock"/></svg></span><div class="ckcap"><b>Install to user trust store</b><span>current user · no elevation</span></div><button class="btn pri"><svg><use href="#i-shield"/></svg>Install</button></div>
+              <div class="ckrow"><span class="ckic cur"><svg><use href="#i-lock"/></svg></span><div class="ckcap"><b>Install to local trust store</b><span>explicit OS authorization required</span></div><button class="btn pri"><svg><use href="#i-shield"/></svg>Install</button></div>
               <div class="ckrow"><span class="ckic todo"><svg><use href="#i-check"/></svg></span><div class="ckcap"><b>Verify trust</b><span>confirm the certificate is trusted</span></div></div>
             </div>
             <div class="wfoot" style="margin-top:18px"><button class="btn">Back</button><button class="btn pri">Continue<svg><use href="#i-arrow"/></svg></button></div>

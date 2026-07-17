@@ -76,6 +76,28 @@
 .monoMuted {
   color: var(--text-3);
 }
+.proxyValue {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.confirmText {
+  color: var(--red);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+.operationResult {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-size: 11.5px;
+}
+.operationError {
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
+}
 .hostInput {
   height: 34px;
   min-width: 160px;

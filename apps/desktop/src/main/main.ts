@@ -26,6 +26,9 @@ import { TrustStoreService } from './certificates/trust-store-service';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { isTrustedRendererUrl } from './security/trusted-renderer-url';
+import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
+import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
+import type { SystemProxyService } from './system-proxy/system-proxy-service';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import {
   assertBoundedString,
@@ -58,7 +61,7 @@ class DesktopApplication {
   private readonly coreRuntime = new CoreRuntime();
   private readonly diagnostics = new MainDiagnostics(this.coreRuntime);
   private certificateService: CertificateService | null = null;
-  private systemProxyService: WindowsSystemProxyService | null = null;
+  private systemProxyService: SystemProxyService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
@@ -66,6 +69,8 @@ class DesktopApplication {
    * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
   private mitmEnabled = true;
   private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
+  /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
+  private systemProxyRecovery: Promise<void> | null = null;
   private quitting = false;
 
   start(): void {
@@ -85,17 +90,17 @@ class DesktopApplication {
     app.on('before-quit', (event) => this.onBeforeQuit(event));
   }
 
-  private onReady(): void {
+  private async onReady(): Promise<void> {
     this.configureSessionSecurity();
     this.certificateService = new CertificateService({
       dataDir: path.join(app.getPath('userData'), 'certificates'),
       secureStore: safeStorage,
     });
-    this.systemProxyService = new WindowsSystemProxyService({
-      helperPath: this.getWinInetProxyHelperPath(),
-    });
+    this.systemProxyService = this.createSystemProxyService();
+    await this.repairSystemProxyOnStartup();
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
+      const previousState = this.lastCoreProcessState;
       if (status.state !== this.lastCoreProcessState) {
         const fields = {
           attributes: {
@@ -110,6 +115,12 @@ class DesktopApplication {
           this.diagnostics.info('main.core-runtime.status', fields);
         }
         this.lastCoreProcessState = status.state;
+      }
+      if (
+        previousState === 'running' &&
+        (status.state === 'unresponsive' || status.state === 'restarting')
+      ) {
+        this.scheduleSystemProxyRecovery('main.system-proxy.core-failure');
       }
       this.broadcastCoreProcessStatus(status);
     });
@@ -390,6 +401,23 @@ class DesktopApplication {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.runMainAction('main.system-proxy.restore', () =>
         this.requireSystemProxyService().restore());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRepair, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.system-proxy.emergency-repair', async () => {
+        const result = await this.requireSystemProxyService().repair();
+        try {
+          await this.coreRuntime.request({ type: 'proxy.stop', payload: {} });
+        } catch (error) {
+          this.diagnostics.warn('main.system-proxy.repair-core-stop-failed', {
+            outcome: 'failed',
+            errorCode: readErrorName(error),
+            attributes: { message: readErrorMessage(error) },
+          });
+        }
+        return result;
+      });
     });
 
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。
@@ -1052,7 +1080,7 @@ class DesktopApplication {
     return this.certificateService;
   }
 
-  private requireSystemProxyService(): WindowsSystemProxyService {
+  private requireSystemProxyService(): SystemProxyService {
     if (!this.systemProxyService) {
       throw new Error('System proxy service is not initialized');
     }
@@ -1077,6 +1105,62 @@ class DesktopApplication {
         attributes: { message: readErrorMessage(error) },
       });
       throw error;
+    }
+  }
+
+  /** Repair a stale journal before Core or Renderer starts, without blocking app access on failure. */
+  private async repairSystemProxyOnStartup(): Promise<void> {
+    if (!this.systemProxyService?.supported()) {
+      return;
+    }
+    try {
+      const result = await this.systemProxyService.repair();
+      this.recordSystemProxyRecovery('main.system-proxy.startup-repair', result);
+    } catch (error) {
+      this.diagnostics.error('main.system-proxy.startup-repair-failed', {
+        outcome: 'failed',
+        errorCode: readErrorName(error),
+        attributes: { message: readErrorMessage(error) },
+      });
+      dialog.showErrorBox(
+        'System proxy recovery required',
+        `${readErrorMessage(error)}\n\nUse Settings > Proxy > Emergency repair after Interceptor opens.`,
+      );
+    }
+  }
+
+  /** Serialize recovery triggered by duplicate Core failure state transitions. */
+  private scheduleSystemProxyRecovery(phase: string): void {
+    if (this.systemProxyRecovery || !this.systemProxyService?.supported()) {
+      return;
+    }
+    this.systemProxyRecovery = this.systemProxyService.repair()
+      .then((result) => this.recordSystemProxyRecovery(phase, result))
+      .catch((error: unknown) => {
+        this.diagnostics.error(`${phase}.failed`, {
+          outcome: 'failed',
+          errorCode: readErrorName(error),
+          attributes: { message: readErrorMessage(error) },
+        });
+        dialog.showErrorBox(
+          'Unable to restore system proxy',
+          `${readErrorMessage(error)}\n\nUse Settings > Proxy > Emergency repair.`,
+        );
+      })
+      .finally(() => {
+        this.systemProxyRecovery = null;
+      });
+  }
+
+  /** Record a guarded recovery outcome without exposing proxy snapshots. */
+  private recordSystemProxyRecovery(
+    phase: string,
+    result: Awaited<ReturnType<SystemProxyService['repair']>>,
+  ): void {
+    if (result.reason === 'externally-modified') {
+      this.diagnostics.warn(`${phase}.ownership-lost`, { outcome: 'failed' });
+    } else if (result.restored) {
+      this.diagnostics.info(`${phase}.completed`, { outcome: 'success' });
     }
   }
 
@@ -1130,6 +1214,23 @@ class DesktopApplication {
       : path.resolve(app.getAppPath(), 'assets/interceptor-icon.png');
   }
 
+  /** Create the native system-proxy owner for the current desktop platform. */
+  private createSystemProxyService(): SystemProxyService {
+    const journal = new SystemProxyJournal(
+      path.join(app.getPath('userData'), 'system-proxy/ownership.json'),
+    );
+    if (process.platform === 'darwin') {
+      return new MacosSystemProxyService({
+        helperPath: this.getMacosProxyHelperPath(),
+        journal,
+      });
+    }
+    return new WindowsSystemProxyService({
+      helperPath: this.getWinInetProxyHelperPath(),
+      journal,
+    });
+  }
+
   private getWinInetProxyHelperPath(): string {
     return app.isPackaged
       ? path.join(
@@ -1139,6 +1240,16 @@ class DesktopApplication {
       : path.resolve(
           app.getAppPath(),
           'dist/system-proxy/wininet-proxy-helper.exe',
+        );
+  }
+
+  /** Resolve the Swift SystemConfiguration helper in development and packages. */
+  private getMacosProxyHelperPath(): string {
+    return app.isPackaged
+      ? path.join(process.resourcesPath, 'system-proxy/macos-proxy-helper')
+      : path.resolve(
+          app.getAppPath(),
+          'dist/system-proxy/macos-proxy-helper',
         );
   }
 }

@@ -22,7 +22,7 @@ const onlyFeature = process.argv
 const shots = [];
 for (const feature of FEATURES) {
   for (const theme of ['light', 'dark']) {
-    const base = { view: feature, theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+    const base = { view: feature, theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates', repair: 'idle' } : {}) };
     shots.push({ feature, theme, variant: 'framed', state: base });
     shots.push({ feature, theme, variant: 'full', full: true, state: base });
   }
@@ -37,6 +37,8 @@ for (const theme of ['light', 'dark']) {
     shots.push({ feature: 'first-run', theme, variant: step, state: { view: 'capture', theme: TOKEN[theme], overlay: 'first-run', step } });
   }
   shots.push({ feature: 'import-export', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export' } });
+  shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
+  shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
 }
 // capture inspector tabs (Headers is the framed default)
 for (const theme of ['light', 'dark']) {

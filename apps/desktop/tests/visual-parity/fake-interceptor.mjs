@@ -359,10 +359,33 @@ export const fakeInterceptorFixture = {
 };
 
 /** Installed with page.addInitScript before Renderer code, mirroring Electron Preload. */
-export function installFakeInterceptor({ fixture, theme }) {
+export function installFakeInterceptor({ fixture, theme, firstRun = false }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.lang', 'en');
-  let captureStatus = { ...fixture.capture.captureStatus };
+  if (firstRun) {
+    window.localStorage.removeItem('interceptor.first-run');
+  } else {
+    window.localStorage.setItem('interceptor.first-run', 'completed');
+  }
+  let captureStatus = {
+    ...fixture.capture.captureStatus,
+    listening: firstRun ? false : fixture.capture.captureStatus.listening,
+  };
+  let systemProxyStatus = {
+    supported: true,
+    enabled: !firstRun,
+    owned: !firstRun,
+    ownershipLost: false,
+    proxyServer: firstRun
+      ? null
+      : 'http=127.0.0.1:8888;https=127.0.0.1:8888',
+    bypassList: firstRun ? null : '<local>',
+    pacUrl: null,
+    autoDetect: false,
+  };
+  let certificate = firstRun
+    ? { ...fixture.certificate, trusted: false }
+    : { ...fixture.certificate };
   let websocketBreakpointsEnabled = fixture.capture.websocketBreakpointsEnabled;
   let ruleRevision = fixture.rules.revision;
   let currentRules = fixture.rules.rules;
@@ -386,30 +409,28 @@ export function installFakeInterceptor({ fixture, theme }) {
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
     reportRendererDiagnostic: async () => undefined,
-    getSystemProxyStatus: async () => ({
-      supported: true,
-      enabled: true,
-      owned: true,
-      ownershipLost: false,
-      proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
-      bypassList: '<local>',
-      pacUrl: null,
-      autoDetect: false,
-    }),
-    enableSystemProxy: async () => window.interceptor.getSystemProxyStatus(),
+    getSystemProxyStatus: async () => systemProxyStatus,
+    enableSystemProxy: async () => {
+      systemProxyStatus = {
+        ...systemProxyStatus,
+        enabled: true,
+        owned: true,
+        proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
+        bypassList: '<local>',
+      };
+      return systemProxyStatus;
+    },
     restoreSystemProxy: async () => ({
       restored: true,
-      status: {
-        supported: true,
+      status: (systemProxyStatus = {
+        ...systemProxyStatus,
         enabled: false,
         owned: false,
-        ownershipLost: false,
         proxyServer: null,
         bypassList: null,
-        pacUrl: null,
-        autoDetect: true,
-      },
+      }),
     }),
+    repairSystemProxy: async () => window.interceptor.restoreSystemProxy(),
     queryDiagnostics: async (request = {}) => {
       const filtered = fixture.diagnostics.records.filter((record) =>
         (!request.process || record.process === request.process) &&
@@ -510,12 +531,21 @@ export function installFakeInterceptor({ fixture, theme }) {
         end: offset + data.length >= source.length,
       };
     },
-    getCertificateStatus: async () => fixture.certificate,
-    generateCertificate: async () => fixture.certificate,
-    installCertificate: async () => fixture.certificate,
-    uninstallCertificate: async () => ({ ...fixture.certificate, trusted: false }),
+    getCertificateStatus: async () => certificate,
+    generateCertificate: async () => {
+      certificate = { ...fixture.certificate, trusted: false };
+      return certificate;
+    },
+    installCertificate: async () => {
+      certificate = { ...certificate, present: true, trusted: true };
+      return certificate;
+    },
+    uninstallCertificate: async () => {
+      certificate = { ...certificate, trusted: false };
+      return certificate;
+    },
     deleteCertificate: async () => ({
-      ...fixture.certificate,
+      ...certificate,
       present: false,
       trusted: false,
       fingerprint: null,
@@ -532,10 +562,10 @@ export function installFakeInterceptor({ fixture, theme }) {
       insecureHosts = hosts;
       return insecureHosts;
     },
-    setHttpsDecryption: async (enabled) => ({
-      ...fixture.certificate,
-      mitmEnabled: enabled,
-    }),
+    setHttpsDecryption: async (enabled) => {
+      certificate = { ...certificate, mitmEnabled: enabled };
+      return certificate;
+    },
     getRules: async () => ({ revision: ruleRevision, rules: currentRules }),
     validateRules: async () => ({ valid: true, diagnostics: [] }),
     replaceRules: async (_expectedRevision, rules) => {

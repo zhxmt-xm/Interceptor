@@ -57,6 +57,13 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     await page.waitForLoadState('domcontentloaded');
 
+    // Packaged smoke validates the post-setup workspace without mutating trust stores.
+    // First-run behavior itself is covered by the light/dark visual-parity flow.
+    await page.evaluate(() => {
+      window.localStorage.setItem('interceptor.first-run', 'completed');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
     await expect(page.getByText('Interceptor', { exact: true })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
@@ -102,6 +109,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'querySessions',
         'queryWebSocketFrames',
         'readBody',
+        'repairSystemProxy',
         'replaceRules',
         'reportRendererDiagnostic',
         'resolveBreakpoint',
@@ -137,6 +145,13 @@ test('packaged app starts with an isolated renderer and running core', async ({
       supported: true,
       owned: false,
       ownershipLost: false,
+    });
+    const repair = await page.evaluate(() =>
+      window.interceptor.repairSystemProxy(),
+    );
+    expect(repair).toMatchObject({
+      restored: false,
+      status: { supported: true, owned: false },
     });
 
     await expect

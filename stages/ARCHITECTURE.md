@@ -162,14 +162,17 @@ sequenceDiagram
 - **Main/Renderer 汇入（T10.5）**：Main `MainDiagnostics` 是最多 128 条的串行 fire-and-forget 队列，记录 CoreRuntime 状态跃迁、统一 IPC 失败、证书/信任/TLS action；发送失败只累计 dropped。Preload 的 `reportRendererDiagnostic` 只接受 Renderer `uncaught-error`/`unhandled-rejection` 短摘要，Main 固定来源和 phase 后走内部 `diagnostics.ingest`。Core 重建 timestamp/sequence，并执行与 Core 日志相同的上限、敏感键、凭据片段与 URL query 脱敏；外部记录不继承 ingest command 的 ALS 上下文。
 - **脱敏 JSONL（T10.4/T10.5）**：`diagnostics.export.start` 复用共享 `TransferJobManager`，Main 系统 Save Dialog 独占路径，Core 按可选 process/level/outcome 分页逐行写临时文件、fsync 后原子替换。日志入库由 CoreDiagnostics 脱敏，导出前 `redactRecordForExport` 再次遮罩敏感 attribute 与 URL Query，Renderer 只拿 job snapshot。
 
-## Windows 系统代理架构（M11/T11.1，已落地）
+## 系统代理与恢复架构（M11，已落地）
 
-> 系统代理归 Electron Main 所有，Renderer 只表达 status/enable/restore 意图；Proxy Core 不直接读写操作系统设置。实现全部位于 `apps/desktop/src/main/system-proxy/`，外部文件仅做组合与打包接线。
+> 系统代理归 Electron Main 所有，Renderer 只表达 status/enable/restore/repair 意图；Proxy Core 不读写操作系统设置。所有 native helper、平台 service 与 journal 位于 `apps/desktop/src/main/system-proxy/`。
 
-- **原生 helper**：扁平模块内 `windows-helper.cs` 使用 WinINet per-connection API 读写 flags、Proxy Server、Bypass、PAC URL、Auto Detect，并在写入后广播 settings-changed + refresh。`build-windows-helper.mjs` 用 Windows 自带 `csc.exe` 编译，不新增运行时依赖；Forge 随包放到 `resources/system-proxy/`。
-- **所有权状态机**：`WindowsSystemProxyService` 在 enable 前保存 original，写入后保存精确 owned 快照；restore 先重新读取当前值，只有 current==owned 才恢复 original。外部修改使 ownershipLost 变为 true 并返回 conflict，绝不覆盖用户值。
-- **窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`。enable 必须从 Core `proxy.status` 获得正在监听的 loopback host/port；helper 参数经 `execFile` 数组传递，nullable 字符串 Base64 编码，不经 shell。
-- **关闭顺序**：停止 Capture 或退出应用时，Main 先 guarded restore，再停止 Core listener。恢复 I/O 失败会取消退出并保留 listener；检测到外部修改则不写回并允许正常关闭。T11.4 将把内存 original/owned 快照扩展为 crash-safe startup journal。
+- **Windows**：`windows-helper.cs` 使用当前用户 WinINet per-connection API 读写 flags、Proxy Server、Bypass、PAC URL、Auto Detect，并广播 settings changed/refresh。`WindowsSystemProxyService` 只允许 loopback listener。
+- **macOS**：`macos-helper.swift` 通过 Authorization Services + SystemConfiguration 枚举当前 Network Set 的全部活动 service；完整校验后在单个 preferences session 中 set/commit/apply。`MacosSystemProxyService` 把多 service 字典作为一个 ownership 单元。
+- **Guarded ownership**：enable 前读取 original 并计算 owned；restore/repair 重新读取 current，只有 `current == owned` 才写回 original。外部修改导致 `ownershipLost`，零写入且不会覆盖用户值。
+- **Startup journal**：`SystemProxyJournal` 在 native write 前原子持久化 version/platform/phase/original/owned，临时文件同步后 rename。启动时 `current == owned` 恢复，`current == original` 清 journal，其余保留冲突。Core 从 running 进入 unresponsive/restarting、停止 Capture 和应用退出时复用同一 guarded decision。
+- **窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`、`repairSystemProxy`。Emergency repair 先恢复仍 owned 的设置，再尽力停止 listener；Main 日志不包含 snapshot。
+- **首次运行/UI**：first-run 四步走真实 API，最终 Start 先启动 8888 loopback listener 再启用系统代理；CA 生成/信任需显式 OS 授权。Proxy Settings 展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
+- **构建/打包**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。
 
 ## 规则引擎架构（M7，已落地）
 
@@ -304,7 +307,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出、macOS 系统代理、代理 startup journal/repair、签名安装器和更新机制仍未实现。Windows 当前用户 WinINet 显式代理、HAR 1.2、原生 archive、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
+- CA 导出、签名安装器和更新机制（M12+）未实现。Windows/macOS 显式系统代理、startup journal/repair、HAR 1.2、原生 archive、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
 
 ## 更新规则
 

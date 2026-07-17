@@ -116,6 +116,8 @@ function setState(s = {}) {
     else if (s.pop2 === 'lang') app.classList.add('lgopen');
   }
   if (s.tab) setInspTab(s.tab);
+  if (s.settings) app.dataset.settings = s.settings;
+  if (s.repair) app.dataset.repair = s.repair;
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
@@ -183,6 +185,14 @@ app.addEventListener('click', (e) => {
   if (e.target.closest('.fbtn') || e.target.closest('#addaction')) {
     app.classList.toggle('showpop');
   }
+});
+
+// Settings section and guarded repair confirmation states.
+app.addEventListener('click', (e) => {
+  const settingsNav = e.target.closest('[data-settings-nav]');
+  if (settingsNav) return setState({ settings: settingsNav.dataset.settingsNav, repair: 'idle' });
+  if (e.target.closest('.repair-idle .danger')) return setState({ repair: 'confirm' });
+  if (e.target.closest('.repair-confirm .btn:not(.danger)')) return setState({ repair: 'idle' });
 });
 
 // Inspector tab clicks.

@@ -40,7 +40,9 @@ const config: ForgeConfig = {
     extraResource: [
       proxyCoreDirectory,
       appIconPng,
-      ...(process.platform === 'win32' ? [systemProxyResources] : []),
+      ...(process.platform === 'win32' || process.platform === 'darwin'
+        ? [systemProxyResources]
+        : []),
     ],
     executableName: 'Interceptor',
     icon: packageIcon,

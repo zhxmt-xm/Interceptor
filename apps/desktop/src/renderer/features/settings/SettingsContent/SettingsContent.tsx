@@ -1,5 +1,5 @@
 import { Copy, Eye, FolderOpen, Library, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type {
   CertificateInfo,
@@ -9,36 +9,9 @@ import type {
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { SECTIONS } from '../data';
 import { usePrivacyStore } from '../privacyStore';
+import { ProxyPanel } from './ProxyPanel';
+import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
 import styles from './SettingsContent.module.css';
-
-function Group({ title, children }: { title: string; children: ReactNode }): React.JSX.Element {
-  return (
-    <div className={styles.group}>
-      <div className={styles.groupHead}>{title}</div>
-      {children}
-    </div>
-  );
-}
-
-function Row({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className={styles.row}>
-      <div className={styles.caption}>
-        <b>{label}</b>
-        {hint ? <span>{hint}</span> : null}
-      </div>
-      <div className={styles.control}>{children}</div>
-    </div>
-  );
-}
 
 type CertState = 'loading' | 'ready' | 'error';
 
@@ -530,6 +503,9 @@ export function SettingsContent({ active }: { active: string }): React.JSX.Eleme
 }
 
 function renderPanel(active: string): React.JSX.Element {
+  if (active === 'proxy') {
+    return <ProxyPanel />;
+  }
   if (active === 'certificates') {
     return <CertificatesPanel />;
   }

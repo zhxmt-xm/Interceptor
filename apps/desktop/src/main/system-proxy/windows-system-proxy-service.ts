@@ -1,4 +1,21 @@
-import { execFile } from 'node:child_process';
+import {
+  SystemProxyError,
+  systemProxyCommandRunner,
+  type SystemProxyCommandResult,
+  type SystemProxyCommandRunner,
+  type SystemProxyRestoreResult,
+  type SystemProxyService,
+  type SystemProxyStatus,
+} from './system-proxy-service';
+import type { SystemProxyJournalStore } from './system-proxy-journal';
+
+export {
+  SystemProxyError,
+  type SystemProxyCommandResult,
+  type SystemProxyCommandRunner,
+  type SystemProxyRestoreResult,
+  type SystemProxyStatus,
+} from './system-proxy-service';
 
 const PROXY_TYPE_DIRECT = 1;
 const PROXY_TYPE_PROXY = 2;
@@ -14,68 +31,15 @@ export interface WinInetProxySettings {
   readonly pacUrl: string | null;
 }
 
-export interface SystemProxyStatus {
-  readonly supported: boolean;
-  readonly enabled: boolean;
-  readonly owned: boolean;
-  readonly ownershipLost: boolean;
-  readonly proxyServer: string | null;
-  readonly bypassList: string | null;
-  readonly pacUrl: string | null;
-  readonly autoDetect: boolean;
-}
-
-export interface SystemProxyRestoreResult {
-  readonly restored: boolean;
-  readonly reason?: 'not-owned' | 'externally-modified';
-  readonly status: SystemProxyStatus;
-}
-
-export interface SystemProxyCommandResult {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
-export interface SystemProxyCommandRunner {
-  run(command: string, args: readonly string[]): Promise<SystemProxyCommandResult>;
-}
-
-export const systemProxyCommandRunner: SystemProxyCommandRunner = {
-  run(command, args) {
-    return new Promise((resolve) => {
-      execFile(
-        command,
-        [...args],
-        { windowsHide: true },
-        (error, stdout, stderr) => {
-          const rawCode = (error as { code?: number | string } | null)?.code;
-          resolve({
-            code: typeof rawCode === 'number' ? rawCode : error ? 1 : 0,
-            stdout: String(stdout ?? ''),
-            stderr: String(stderr ?? ''),
-          });
-        },
-      );
-    });
-  },
-};
-
 export interface WindowsSystemProxyServiceOptions {
   readonly platform?: NodeJS.Platform;
   readonly helperPath: string;
   readonly runner?: SystemProxyCommandRunner;
-}
-
-export class SystemProxyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SystemProxyError';
-  }
+  readonly journal?: SystemProxyJournalStore;
 }
 
 /** Current-user WinINet proxy ownership, guarded restoration and helper I/O. */
-export class WindowsSystemProxyService {
+export class WindowsSystemProxyService implements SystemProxyService {
   /** Original settings captured immediately before this process enabled the proxy. */
   private originalSettings: WinInetProxySettings | null = null;
   /** Exact settings written by this process; restoration requires an exact current match. */
@@ -88,11 +52,14 @@ export class WindowsSystemProxyService {
   private readonly helperPath: string;
   /** Injectable command runner; production uses execFile without a shell. */
   private readonly runner: SystemProxyCommandRunner;
+  /** Optional crash-safe journal supplied by the DesktopApplication. */
+  private readonly journal: SystemProxyJournalStore | null;
 
   constructor(options: WindowsSystemProxyServiceOptions) {
     this.platform = options.platform ?? process.platform;
     this.helperPath = options.helperPath;
     this.runner = options.runner ?? systemProxyCommandRunner;
+    this.journal = options.journal ?? null;
   }
 
   /** Whether this service can manage the current-user WinINet proxy. */
@@ -132,6 +99,7 @@ export class WindowsSystemProxyService {
 
     const target = ownedProxySettings(current, authority);
     this.originalSettings = current;
+    await this.journal?.begin('win32', current, target);
     await this.writeSettings(target);
     const written = await this.readSettings();
     if (!equalSettings(written, target)) {
@@ -139,6 +107,7 @@ export class WindowsSystemProxyService {
       throw new SystemProxyError('WinINet proxy settings did not match after write.');
     }
     this.ownedSettings = written;
+    await this.journal?.markOwned('win32');
     this.ownershipLost = false;
     return toStatus(written, true, false);
   }
@@ -149,6 +118,9 @@ export class WindowsSystemProxyService {
       return { restored: false, reason: 'not-owned', status: unsupportedStatus() };
     }
     if (!this.originalSettings || !this.ownedSettings) {
+      if (this.journal) {
+        return this.repairFromJournal();
+      }
       return {
         restored: false,
         reason: 'not-owned',
@@ -156,8 +128,59 @@ export class WindowsSystemProxyService {
       };
     }
 
+    return this.restoreOwned(this.originalSettings, this.ownedSettings);
+  }
+
+  /** Recover ownership from disk and perform the same guarded restoration decision. */
+  async repair(): Promise<SystemProxyRestoreResult> {
+    if (!this.supported()) {
+      return { restored: false, reason: 'not-owned', status: unsupportedStatus() };
+    }
+    if (this.originalSettings && this.ownedSettings) {
+      return this.restoreOwned(this.originalSettings, this.ownedSettings);
+    }
+    if (this.journal) {
+      return this.repairFromJournal();
+    }
+    return { restored: false, reason: 'not-owned', status: await this.status() };
+  }
+
+  /** Parse one Windows journal and restore only from its exact owned value. */
+  private async repairFromJournal(): Promise<SystemProxyRestoreResult> {
+    const record = await this.journal?.read();
+    if (!record) {
+      return { restored: false, reason: 'not-owned', status: await this.status() };
+    }
+    if (record.platform !== 'win32') {
+      throw new SystemProxyError('System proxy journal belongs to another platform.');
+    }
+    const original = parseSettings(record.original);
+    const owned = parseSettings(record.owned);
     const current = await this.readSettings();
-    if (!equalSettings(current, this.ownedSettings)) {
+    if (equalSettings(current, original)) {
+      await this.journal?.clear();
+      this.originalSettings = null;
+      this.ownedSettings = null;
+      this.ownershipLost = false;
+      return {
+        restored: false,
+        reason: 'not-owned',
+        status: toStatus(current, false, false),
+      };
+    }
+    this.originalSettings = original;
+    this.ownedSettings = owned;
+    return this.restoreOwned(original, owned, current);
+  }
+
+  /** Restore one known snapshot after an exact current-versus-owned comparison. */
+  private async restoreOwned(
+    original: WinInetProxySettings,
+    owned: WinInetProxySettings,
+    knownCurrent?: WinInetProxySettings,
+  ): Promise<SystemProxyRestoreResult> {
+    const current = knownCurrent ?? await this.readSettings();
+    if (!equalSettings(current, owned)) {
       this.ownershipLost = true;
       return {
         restored: false,
@@ -166,12 +189,12 @@ export class WindowsSystemProxyService {
       };
     }
 
-    const original = this.originalSettings;
     await this.writeSettings(original);
     const restored = await this.readSettings();
     if (!equalSettings(restored, original)) {
       throw new SystemProxyError('WinINet proxy settings did not match after restore.');
     }
+    await this.journal?.clear();
     this.originalSettings = null;
     this.ownedSettings = null;
     this.ownershipLost = false;

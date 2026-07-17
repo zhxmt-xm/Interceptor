@@ -340,6 +340,7 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyGetStatus: 'system-proxy:get-status',
   systemProxyEnable: 'system-proxy:enable',
   systemProxyRestore: 'system-proxy:restore',
+  systemProxyRepair: 'system-proxy:repair',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
   captureStart: 'capture:start',
@@ -391,6 +392,7 @@ export interface InterceptorDesktopApi {
   getSystemProxyStatus(): Promise<SystemProxyStatus>;
   enableSystemProxy(): Promise<SystemProxyStatus>;
   restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
+  repairSystemProxy(): Promise<SystemProxyRestoreResult>;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;

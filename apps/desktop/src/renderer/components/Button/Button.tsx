@@ -9,6 +9,7 @@ export interface ButtonProps {
   icon?: LucideIcon;
   variant?: 'default' | 'primary' | 'danger';
   size?: 'md' | 'sm';
+  iconPosition?: 'start' | 'end';
   iconStrokeWidth?: number;
   disabled?: boolean;
   onClick?: () => void;
@@ -20,6 +21,7 @@ export function Button({
   icon: Icon,
   variant = 'default',
   size = 'md',
+  iconPosition = 'start',
   iconStrokeWidth = 1.9,
   disabled = false,
   onClick,
@@ -36,8 +38,13 @@ export function Button({
       )}
       onClick={onClick}
     >
-      {Icon ? <Icon size={15} strokeWidth={iconStrokeWidth} /> : null}
+      {Icon && iconPosition === 'start' ? (
+        <Icon size={15} strokeWidth={iconStrokeWidth} />
+      ) : null}
       {children}
+      {Icon && iconPosition === 'end' ? (
+        <Icon size={15} strokeWidth={iconStrokeWidth} />
+      ) : null}
     </button>
   );
 }
