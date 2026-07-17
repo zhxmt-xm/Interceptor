@@ -38,6 +38,8 @@ import {
   toCoreSessionQuery,
   toGrpcMessageQuery,
   toHarExportRequest,
+  toDiagnosticsExportFilter,
+  toDiagnosticsQueryRequest,
   toInsecureHosts,
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
@@ -242,6 +244,37 @@ class DesktopApplication {
               : undefined;
           if (code === 'disconnected') {
             return { records: [], droppedCount: 0 };
+          }
+          throw error;
+        }
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.coreQueryDiagnostics,
+      async (event, request: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const query = toDiagnosticsQueryRequest(request);
+        try {
+          const result = await this.coreRuntime.request({
+            type: 'diagnostics.query',
+            payload: query,
+          });
+          return {
+            records: result.payload.records.map(toRendererDiagnosticRecord),
+            nextCursor: result.payload.nextCursor,
+            hasMore: result.payload.hasMore,
+            droppedCount: result.payload.droppedCount,
+          };
+        } catch (error) {
+          // 与 coreGetDiagnostics 一致：面板每 2 秒轮询，Core 重启/重连期间
+          // 连接短暂关闭属预期，返回空页而非把断连当错误抛出刷 Main 日志。
+          const code =
+            typeof error === 'object' && error !== null && 'code' in error
+              ? (error as { code: unknown }).code
+              : undefined;
+          if (code === 'disconnected') {
+            return { records: [], hasMore: false, droppedCount: 0 };
           }
           throw error;
         }
@@ -468,6 +501,34 @@ class DesktopApplication {
       });
       return result.payload.job;
     });
+
+    // 诊断 JSONL 导出：Renderer 只提交 level/outcome 过滤；路径由 Main 系统对话框生成。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.diagnosticsExportStart,
+      async (event, filter: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const parsedFilter = toDiagnosticsExportFilter(filter);
+        const selection = await dialog.showSaveDialog({
+          title: 'Export diagnostics (JSON Lines)',
+          defaultPath: `interceptor-diagnostics-${new Date().toISOString().slice(0, 10)}.jsonl`,
+          filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
+          properties: ['createDirectory', 'showOverwriteConfirmation'],
+        });
+        if (selection.canceled || !selection.filePath) {
+          return null;
+        }
+        const result = await this.coreRuntime.request({
+          type: 'diagnostics.export.start',
+          payload: {
+            jobId: `transfer-${randomUUID()}`,
+            filePath: selection.filePath,
+            ...(parsedFilter.level ? { level: parsedFilter.level } : {}),
+            ...(parsedFilter.outcome ? { outcome: parsedFilter.outcome } : {}),
+          },
+        });
+        return result.payload.job;
+      },
+    );
 
     // 查询一个异步文件任务的公开快照；绝对路径永不返回 Renderer。
     ipcMain.handle(

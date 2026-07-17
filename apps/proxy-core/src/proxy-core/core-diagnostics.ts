@@ -313,7 +313,9 @@ function sanitizeDuration(value: number | undefined): number | undefined {
 }
 
 function isSensitiveAttributeKey(key: string): boolean {
-  return /authorization|body|cookie|password|query|secret|token/i.test(key);
+  return /authorization|body|cookie|password|query|secret|token|url|certificate|private[_-]?key|api[_-]?key/i.test(
+    key,
+  );
 }
 
 function approximateBytes(record: DiagnosticLogRecord): number {

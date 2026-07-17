@@ -155,10 +155,11 @@ sequenceDiagram
 
 ## 诊断可观测性架构（2026-07 增强，已落地）
 
-> 在 M2 Diagnostics 基座（Ring Buffer + Worker 持久化）之上，Core 各组件经共享 `DiagnosticsRecorder` 记结构化关键节点，Renderer Diagnostics 面板轮询 `getRecentDiagnostics` 展示真实命令 trace。
+> 在 M2 Diagnostics 基座（Ring Buffer + Worker 持久化）之上，Core 各组件经共享 `DiagnosticsRecorder` 记结构化关键节点，Renderer Diagnostics 面板通过持久化分页查询展示真实命令 trace。
 
 - **DiagnosticsRecorder 全组件注入**：`core-diagnostics.ts` 导出 `DiagnosticsRecorder`（`info/warn/error(phase,fields)`，`CoreDiagnostics` 唯一实现）；RpcServer 内建、Proxy/Storage host 经 `attachDiagnostics` 注入（`CoreApplication` 装配后转交）。各组件记 initialize/生命周期/action/error 关键节点：RpcServer `rpc.connected`/`connection-failed` + 每命令 1 条 `command.completed`；Application `core.started`/`stopping`/`storage.ready`/`diagnostics.ready`；Proxy `proxy.listening`/`stopped`/`tls.reconfigured`/`tls.client-error` + 异常 exchange；Storage `storage.worker-ready`/`fatal`/`error`/`exit`。命令级精简为单条 completed，`diagnostics.recent`/`query` 静默避免轮询自污染。
-- **面板数据流**：Renderer `DiagnosticsProvider`（2s 轮询）→ `getRecentDiagnostics(200)` 窄 API → Main `core:get-diagnostics` → Core `diagnostics.recent`（不带 traceId 拉全部）；`TraceList` 按 requestId 聚合命令行、`TraceDetail` 展示该次执行的 action 时间线、`DiagnosticsStatusbar` 显示 records/dropped。轮询遇 Core 重连瞬间的 `disconnected` 静默返回空。日志来源当前仅 Core，Main/Renderer 日志纳入见 M10 T10.5。
+- **分页分析数据流（T10.4）**：Renderer `DiagnosticsProvider`（2s 轮询）→ `queryDiagnostics` 窄 API → Main `core:query-diagnostics` → Core `diagnostics.query` → Diagnostics Worker。支持 trace/command/level/outcome/duration 条件与递减 id keyset cursor；Provider 默认拉 200 条，过滤变化重查首页，`TraceList` 可加载更旧记录并按 sequence 去重；`TraceDetail` 继续展示 Action 时间线，Statusbar 展示 records/dropped。
+- **脱敏 JSONL（T10.4）**：`diagnostics.export.start` 复用共享 `TransferJobManager`，Main 系统 Save Dialog 独占路径，Core 分页逐行写临时文件、fsync 后原子替换。日志入库由 CoreDiagnostics 脱敏，导出前 `redactRecordForExport` 再次遮罩敏感 attribute 与 URL Query，Renderer 只拿 job snapshot。日志来源当前仅 Core，Main/Renderer 汇入见 T10.5。
 
 ## 规则引擎架构（M7，已落地）
 

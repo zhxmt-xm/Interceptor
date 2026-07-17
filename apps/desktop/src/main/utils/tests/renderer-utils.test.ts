@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   assertBoundedString,
   assertIdentifier,
+  toDiagnosticsExportFilter,
+  toDiagnosticsQueryRequest,
   toGrpcMessageQuery,
   toHarExportRequest,
   toRendererDiagnosticRecord,
@@ -153,4 +155,47 @@ describe('renderer utils', () => {
       redaction: { authorization: true, cookies: true, bodies: false },
     })).toThrow('query.filter.protocol is invalid');
   });
+
+  it('validates diagnostics export filters at the Renderer boundary', () => {
+    expect(toDiagnosticsExportFilter({
+      level: 'warn',
+      outcome: 'timed_out',
+    })).toEqual({ level: 'warn', outcome: 'timed_out' });
+    expect(toDiagnosticsExportFilter(undefined)).toEqual({});
+    expect(() => toDiagnosticsExportFilter({ level: 'fatal' })).toThrow(
+      'Diagnostics export level is invalid',
+    );
+    expect(() => toDiagnosticsExportFilter({ outcome: 'unknown' })).toThrow(
+      'Diagnostics export outcome is invalid',
+    );
+  });
+
+    it('validates a full diagnostics page query at the Renderer boundary', () => {
+      expect(toDiagnosticsQueryRequest({
+        cursor: '42',
+        limit: 100,
+        level: 'error',
+        outcome: 'failed',
+        traceId: 'trace-1',
+        command: 'proxy.start',
+        minDurationMs: 10,
+        maxDurationMs: 500,
+      })).toEqual({
+        cursor: '42',
+        limit: 100,
+        level: 'error',
+        outcome: 'failed',
+        traceId: 'trace-1',
+        command: 'proxy.start',
+        minDurationMs: 10,
+        maxDurationMs: 500,
+      });
+      expect(() => toDiagnosticsQueryRequest({
+        minDurationMs: 100,
+        maxDurationMs: 10,
+      })).toThrow('Diagnostics query duration range is invalid');
+      expect(() => toDiagnosticsQueryRequest({ limit: 501 })).toThrow(
+        'Diagnostics query.limit is invalid',
+      );
+    });
 });

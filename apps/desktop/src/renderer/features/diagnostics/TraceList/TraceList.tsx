@@ -5,7 +5,14 @@ import styles from './TraceList.module.css';
 
 /** Left diagnostics pane: the scrollable trace/command table. */
 export function TraceList(): React.JSX.Element {
-  const { records, selectedKey, setSelectedKey } = useDiagnostics();
+  const {
+    records,
+    selectedKey,
+    setSelectedKey,
+    hasMore,
+    loadingMore,
+    loadMore,
+  } = useDiagnostics();
   const rows = aggregateTraces(records);
 
   return (
@@ -42,6 +49,16 @@ export function TraceList(): React.JSX.Element {
             </button>
           ))
         )}
+        {hasMore ? (
+          <button
+            type="button"
+            className={styles.loadMore}
+            disabled={loadingMore}
+            onClick={loadMore}
+          >
+            {loadingMore ? 'Loading…' : 'Load earlier records'}
+          </button>
+        ) : null}
       </div>
     </div>
   );

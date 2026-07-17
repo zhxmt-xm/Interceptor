@@ -1,6 +1,7 @@
 import type {
   DiagnosticLevel,
   DiagnosticLogRecord,
+  DiagnosticOutcome,
 } from '@interceptor/core-protocol';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -13,8 +14,16 @@ export interface DiagnosticsQuery {
   readonly limit: number;
   /** 可选日志级别过滤。 */
   readonly level?: DiagnosticLevel;
+  /** 可选命令结果过滤。 */
+  readonly outcome?: DiagnosticOutcome;
   /** 可选 trace 过滤。 */
   readonly traceId?: string;
+  /** 可选 command 名称过滤。 */
+  readonly command?: string;
+  /** 可选最小耗时（毫秒，含边界）。 */
+  readonly minDurationMs?: number;
+  /** 可选最大耗时（毫秒，含边界）。 */
+  readonly maxDurationMs?: number;
 }
 
 export interface DiagnosticsPage {

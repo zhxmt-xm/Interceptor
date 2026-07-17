@@ -98,9 +98,25 @@ export class DiagnosticsStore {
       conditions.push('level = :level');
       params.level = query.level;
     }
+    if (query.outcome) {
+      conditions.push('outcome = :outcome');
+      params.outcome = query.outcome;
+    }
     if (query.traceId) {
       conditions.push('trace_id = :traceId');
       params.traceId = query.traceId;
+    }
+    if (query.command) {
+      conditions.push('command = :command');
+      params.command = query.command;
+    }
+    if (query.minDurationMs !== undefined) {
+      conditions.push('duration_ms >= :minDurationMs');
+      params.minDurationMs = query.minDurationMs;
+    }
+    if (query.maxDurationMs !== undefined) {
+      conditions.push('duration_ms <= :maxDurationMs');
+      params.maxDurationMs = query.maxDurationMs;
     }
     const cursorId = DiagnosticsUtils.decodeCursor(query.cursor);
     if (cursorId !== null) {

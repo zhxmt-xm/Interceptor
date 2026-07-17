@@ -53,6 +53,8 @@ export const DIAGNOSTICS_MAX_AGE_MS: number | null = null;
 export const DIAGNOSTICS_MAX_PENDING_BATCHES = 128;
 /** Diagnostics Worker 单查询超时。 */
 export const DIAGNOSTICS_REQUEST_TIMEOUT_MS = 15_000;
+/** Diagnostics JSONL 导出时每页读取的记录数。 */
+export const DIAGNOSTICS_EXPORT_PAGE_SIZE = 1_000;
 
 // ===== 代理 =====
 /** 显式代理默认绑定的 loopback 地址。 */

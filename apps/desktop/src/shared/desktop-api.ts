@@ -107,6 +107,28 @@ export interface CoreDiagnosticSnapshot {
   droppedCount: number;
 }
 
+export interface DiagnosticsQueryRequest {
+  cursor?: string;
+  limit?: number;
+  level?: CoreDiagnosticRecord['level'];
+  outcome?: NonNullable<CoreDiagnosticRecord['outcome']>;
+  traceId?: string;
+  command?: string;
+  minDurationMs?: number;
+  maxDurationMs?: number;
+}
+
+export interface CoreDiagnosticPage extends CoreDiagnosticSnapshot {
+  nextCursor?: string;
+  hasMore: boolean;
+}
+
+/** 诊断 JSONL 导出的可选筛选（按 level / outcome）。 */
+export interface DiagnosticsExportFilter {
+  level?: 'debug' | 'info' | 'warn' | 'error';
+  outcome?: 'success' | 'failed' | 'cancelled' | 'timed_out';
+}
+
 export interface StorageUsage {
   sessionCount: number;
   exchangeCount: number;
@@ -282,6 +304,7 @@ export const DESKTOP_IPC_CHANNELS = {
   coreGetProcessStatus: 'core:get-process-status',
   coreGetTrace: 'core:get-trace',
   coreGetDiagnostics: 'core:get-diagnostics',
+  coreQueryDiagnostics: 'core:query-diagnostics',
   coreProcessStatus: 'core:process-status',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
@@ -319,6 +342,7 @@ export const DESKTOP_IPC_CHANNELS = {
   harImportStart: 'har:import-start',
   archiveExportStart: 'archive:export-start',
   archiveImportStart: 'archive:import-start',
+  diagnosticsExportStart: 'diagnostics:export-start',
   transferJobGet: 'transfer:job-get',
   transferJobCancel: 'transfer:job-cancel',
 } as const;
@@ -328,6 +352,7 @@ export interface InterceptorDesktopApi {
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
   getCoreTrace(traceId: string): Promise<CoreDiagnosticTrace>;
   getRecentDiagnostics(limit?: number): Promise<CoreDiagnosticSnapshot>;
+  queryDiagnostics(request: DiagnosticsQueryRequest): Promise<CoreDiagnosticPage>;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;
@@ -381,6 +406,9 @@ export interface InterceptorDesktopApi {
   startHarImport(): Promise<TransferJobSnapshot | null>;
   startArchiveExport(): Promise<TransferJobSnapshot | null>;
   startArchiveImport(): Promise<TransferJobSnapshot | null>;
+  startDiagnosticsExport(
+    filter: DiagnosticsExportFilter,
+  ): Promise<TransferJobSnapshot | null>;
   getTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
 }

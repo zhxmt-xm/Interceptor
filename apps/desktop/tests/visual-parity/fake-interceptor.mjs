@@ -385,6 +385,27 @@ export function installFakeInterceptor({ fixture, theme }) {
       droppedCount: fixture.diagnostics.droppedCount,
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
+    queryDiagnostics: async (request = {}) => {
+      const filtered = fixture.diagnostics.records.filter((record) =>
+        (!request.level || record.level === request.level) &&
+        (!request.outcome || record.outcome === request.outcome) &&
+        (!request.traceId || record.traceId === request.traceId) &&
+        (!request.command || record.command === request.command) &&
+        (request.minDurationMs === undefined ||
+          (record.durationMs ?? 0) >= request.minDurationMs) &&
+        (request.maxDurationMs === undefined ||
+          (record.durationMs ?? 0) <= request.maxDurationMs));
+      const offset = Number(request.cursor ?? 0);
+      const limit = request.limit ?? 200;
+      const records = filtered.slice(offset, offset + limit);
+      const nextOffset = offset + records.length;
+      return {
+        records,
+        ...(nextOffset < filtered.length ? { nextCursor: String(nextOffset) } : {}),
+        hasMore: nextOffset < filtered.length,
+        droppedCount: fixture.diagnostics.droppedCount,
+      };
+    },
     onCoreProcessStatusChange: () => () => undefined,
     getStorageStatus: async () => storage,
     clearStorage: async () => {
@@ -568,6 +589,19 @@ export function installFakeInterceptor({ fixture, theme }) {
         fileName: 'fixture.iarchive',
         processed: 0,
         total: 18,
+        startedAt: '2026-07-17T12:00:00.000Z',
+        warnings: [],
+      };
+      return transferJob;
+    },
+    startDiagnosticsExport: async () => {
+      transferJob = {
+        id: 'transfer-parity-diagnostics-export',
+        kind: 'diagnostics-export',
+        state: 'running',
+        fileName: 'interceptor-diagnostics-2026-07-17.jsonl',
+        processed: 0,
+        total: 200,
         startedAt: '2026-07-17T12:00:00.000Z',
         warnings: [],
       };

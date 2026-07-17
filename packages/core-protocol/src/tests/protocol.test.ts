@@ -117,6 +117,27 @@ describe('core protocol validation', () => {
         payload: { limit: 50, traceId: 'trace-previous' },
       },
       {
+        type: 'diagnostics.query',
+        payload: {
+          limit: 20,
+          level: 'error',
+          outcome: 'failed',
+          traceId: 'trace-query',
+          command: 'proxy.start',
+          minDurationMs: 10,
+          maxDurationMs: 500,
+        },
+      },
+      {
+        type: 'diagnostics.export.start',
+        payload: {
+          jobId: 'diagnostics-job-export',
+          filePath: 'C:\\Exports\\diagnostics.jsonl',
+          level: 'warn',
+          outcome: 'timed_out',
+        },
+      },
+      {
         type: 'har.export.start',
         payload: {
           jobId: 'har-job-export',

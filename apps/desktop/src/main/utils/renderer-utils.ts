@@ -6,6 +6,8 @@ import type {
   CaptureStatus,
   ComposerRequest,
   CoreDiagnosticRecord,
+  DiagnosticsExportFilter,
+  DiagnosticsQueryRequest,
   GrpcMessageQuery,
   HarExportRequest,
   SessionQueryRequest,
@@ -516,5 +518,103 @@ export function toHarExportRequest(value: unknown): HarExportRequest {
       cookies: redaction.cookies,
       bodies: redaction.bodies,
     },
+  };
+}
+
+const DIAGNOSTIC_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+const DIAGNOSTIC_OUTCOMES = [
+  'success',
+  'failed',
+  'cancelled',
+  'timed_out',
+] as const;
+
+/** 校验 Renderer 诊断 JSONL 导出的可选 level/outcome 过滤；文件路径由 Main 对话框产生。 */
+export function toDiagnosticsExportFilter(
+  value: unknown,
+): DiagnosticsExportFilter {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value !== 'object') {
+    throw new Error('Diagnostics export filter is invalid');
+  }
+  const request = value as Record<string, unknown>;
+  const filter: DiagnosticsExportFilter = {};
+  if (request.level !== undefined) {
+    if (
+      typeof request.level !== 'string' ||
+      !(DIAGNOSTIC_LEVELS as readonly string[]).includes(request.level)
+    ) {
+      throw new Error('Diagnostics export level is invalid');
+    }
+    filter.level = request.level as DiagnosticsExportFilter['level'];
+  }
+  if (request.outcome !== undefined) {
+    if (
+      typeof request.outcome !== 'string' ||
+      !(DIAGNOSTIC_OUTCOMES as readonly string[]).includes(request.outcome)
+    ) {
+      throw new Error('Diagnostics export outcome is invalid');
+    }
+    filter.outcome = request.outcome as DiagnosticsExportFilter['outcome'];
+  }
+  return filter;
+}
+
+/** 校验 Renderer 发起的 Diagnostics 分页查询并填充有界默认 limit。 */
+export function toDiagnosticsQueryRequest(
+  value: unknown,
+): Required<Pick<DiagnosticsQueryRequest, 'limit'>> & DiagnosticsQueryRequest {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('Diagnostics query is invalid');
+  }
+  const query = value as Record<string, unknown>;
+  const limit = query.limit ?? 200;
+  if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 500) {
+    throw new Error('Diagnostics query.limit is invalid');
+  }
+  const filter = toDiagnosticsExportFilter({
+    level: query.level,
+    outcome: query.outcome,
+  });
+  for (const key of ['cursor', 'command'] as const) {
+    if (
+      query[key] !== undefined &&
+      (typeof query[key] !== 'string' || query[key].length < 1 || query[key].length > 1_024)
+    ) {
+      throw new Error(`Diagnostics query.${key} is invalid`);
+    }
+  }
+  if (query.traceId !== undefined) {
+    assertIdentifier(query.traceId, 'Diagnostics query.traceId');
+  }
+  for (const key of ['minDurationMs', 'maxDurationMs'] as const) {
+    if (
+      query[key] !== undefined &&
+      (!Number.isInteger(query[key]) || (query[key] as number) < 0 || (query[key] as number) > 86_400_000)
+    ) {
+      throw new Error(`Diagnostics query.${key} is invalid`);
+    }
+  }
+  if (
+    typeof query.minDurationMs === 'number' &&
+    typeof query.maxDurationMs === 'number' &&
+    query.minDurationMs > query.maxDurationMs
+  ) {
+    throw new Error('Diagnostics query duration range is invalid');
+  }
+  return {
+    limit: limit as number,
+    ...(query.cursor ? { cursor: query.cursor as string } : {}),
+    ...filter,
+    ...(query.traceId ? { traceId: query.traceId as string } : {}),
+    ...(query.command ? { command: query.command as string } : {}),
+    ...(query.minDurationMs !== undefined
+      ? { minDurationMs: query.minDurationMs as number }
+      : {}),
+    ...(query.maxDurationMs !== undefined
+      ? { maxDurationMs: query.maxDurationMs as number }
+      : {}),
   };
 }

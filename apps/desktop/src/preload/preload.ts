@@ -15,6 +15,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetTrace, traceId),
   getRecentDiagnostics: (limit) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetDiagnostics, limit),
+  queryDiagnostics: (request) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreQueryDiagnostics, request),
   onCoreProcessStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
@@ -108,6 +110,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveExportStart),
   startArchiveImport: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveImportStart),
+  startDiagnosticsExport: (filter) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.diagnosticsExportStart, filter),
   getTransferJob: (jobId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.transferJobGet, jobId),
   cancelTransferJob: (jobId) =>

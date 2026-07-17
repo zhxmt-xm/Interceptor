@@ -63,6 +63,50 @@ export function parseAttributes(
   }
 }
 
+/**
+ * 导出前再次脱敏诊断属性，防止旧库、损坏数据或未来日志调用绕过入库侧规则。
+ * 敏感键整体遮罩；普通字符串若是带 query 的 URL，则遮罩全部 query 值。
+ */
+export function redactRecordForExport(
+  record: DiagnosticLogRecord,
+): DiagnosticLogRecord {
+  if (!record.attributes) {
+    return record;
+  }
+  const attributes = Object.fromEntries(
+    Object.entries(record.attributes).map(([key, value]) => [
+      key,
+      isSensitiveAttributeKey(key)
+        ? '[REDACTED]'
+        : redactUrlQuery(value),
+    ]),
+  );
+  return { ...record, attributes };
+}
+
+function isSensitiveAttributeKey(key: string): boolean {
+  return /authorization|body|cookie|password|query|secret|token|url|certificate|private[_-]?key|api[_-]?key/i.test(
+    key,
+  );
+}
+
+function redactUrlQuery(
+  value: string | number | boolean,
+): string | number | boolean {
+  if (typeof value !== 'string' || !value.includes('?')) {
+    return value;
+  }
+  try {
+    const parsed = new URL(value);
+    for (const name of [...parsed.searchParams.keys()]) {
+      parsed.searchParams.set(name, '[REDACTED]');
+    }
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
 /** 将 ISO 时间戳转换为 epoch 毫秒，无效值回退当前时间。 */
 export function toEpochMs(timestamp: string): number {
   const parsed = Date.parse(timestamp);

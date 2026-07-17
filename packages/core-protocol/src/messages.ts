@@ -182,7 +182,21 @@ export interface DiagnosticsQueryCommand {
     cursor?: string;
     limit: number;
     level?: DiagnosticLevel;
+    outcome?: DiagnosticOutcome;
     traceId?: string;
+    command?: string;
+    minDurationMs?: number;
+    maxDurationMs?: number;
+  };
+}
+
+export interface DiagnosticsExportStartCommand {
+  type: 'diagnostics.export.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+    level?: DiagnosticLevel;
+    outcome?: DiagnosticOutcome;
   };
 }
 
@@ -310,6 +324,7 @@ export type CoreCommand =
   | ConnectionProbeCommand
   | DiagnosticsRecentCommand
   | DiagnosticsQueryCommand
+  | DiagnosticsExportStartCommand
   | StorageStatusCommand
   | StorageCleanupCommand
   | HarExportStartCommand
@@ -597,7 +612,8 @@ export type TransferJobKind =
   | 'har-export'
   | 'har-import'
   | 'archive-export'
-  | 'archive-import';
+  | 'archive-import'
+  | 'diagnostics-export';
 export type TransferJobState =
   | 'running'
   | 'completed'
@@ -683,6 +699,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                   ? DiagnosticsRecordsResult
                   : T extends DiagnosticsQueryCommand
                     ? DiagnosticsPageResult
+                    : T extends DiagnosticsExportStartCommand
+                      ? TransferJobResult
                     : T extends StorageStatusCommand
                       ? StorageStatusResult
                       : T extends StorageCleanupCommand

@@ -17,11 +17,11 @@
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
 - 已完成 Stage：M0–M9（均 100%）。
-- 当前 Stage：M10 导入导出与隐私（进行中，60%）。
-- 当前任务：T10.3 隐私与录制安全已完成。真实录制指示 + loopback 标注、持久化隐私偏好（默认遮罩 Authorization/Cookie/URL 令牌）、导出未脱敏警告、URL 令牌 query 遮罩与 Privacy 设置面板已落地。详情见 [M10.md](M10.md)。
-- 下一动作：M10 T10.4 Diagnostics 分析与导出；Level/Outcome 过滤、按 trace/command/duration 分页筛选与脱敏 JSONL 导出。
+- 当前 Stage：M10 导入导出与隐私（进行中，80%）。
+- 当前任务：T10.4 Diagnostics 分析与导出已完成。trace/command/level/outcome/duration keyset 分页查询、Level/Outcome UI、Load earlier records、共享 transfer job 的双层脱敏 JSONL 原子导出已落地。详情见 [M10.md](M10.md)。
+- 下一动作：M10 T10.5 Main/Renderer 日志纳入诊断；统一 process 来源、窄上报通道、有界策略与统一脱敏。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M9 已推送至 `750f200`；T10.1 已推送至 `6472781`；T10.2 在本次提交，完成后立即 push。
+- Git 状态：T10.1 已推送至 `6472781`；T10.2 `23395c7`、T10.3 `3e0ed20` 已本地提交；T10.4 为当前提交，均待用户 review 后决定是否 push。
 - 阻塞：无。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，已完成阶段见 [M9.md](M9.md)，下一 Stage 见 [M10.md](M10.md)。
@@ -40,7 +40,7 @@
 | M7 | 规则引擎 | 已完成 | 100% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 已完成 | 100% | [M8.md](M8.md) |
 | M9 | WebSocket 与 gRPC | 已完成 | 100% | [M9.md](M9.md) |
-| M10 | 导入导出与隐私 | 进行中 | 60% | [M10.md](M10.md) |
+| M10 | 导入导出与隐私 | 进行中 | 80% | [M10.md](M10.md) |
 | M11 | 系统代理适配与恢复 | 未开始 | 0% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
 | M13 | 更新机制 | 未开始 | 0% | [M13.md](M13.md) |
@@ -78,6 +78,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-17 T10.4 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` Desktop 44 / Proxy Core 184 / Core Protocol 19 全通过；`npm run build:core`、Windows package、真实 packaged smoke 1/1、`npm audit --omit=dev` 0 全通过。新增五维分页查询、Main 双边界校验、JSONL 分页/原子替换/双层脱敏测试。Diagnostics parity 像素差 1.69%，既有 fixture/几何报告 3 missing / 6 flagged，初始 topbar 结构无变化。详情见 [M10.md](M10.md)。
 
 2026-07-17 T10.3 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` 通过（Desktop 42 / Proxy Core 181 / Core Protocol 19），新增 privacyStore 默认/更新 2 项与 redactUrl/redactQueryString 5 项；真实录制指示、loopback 标注、导出未脱敏警告、URL 令牌遮罩与 Privacy 面板已落地。Privacy 面板由现有设计系统原子搭建，design SPA 专用 mockup 与 PNG 基线随 M12 视觉验收。详情见 [M10.md](M10.md)。
 

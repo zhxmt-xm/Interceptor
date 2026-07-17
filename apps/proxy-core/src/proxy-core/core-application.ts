@@ -267,6 +267,29 @@ export class CoreApplication implements CoreRpcHost {
           type: 'diagnostics.page',
           payload: await this.queryDiagnostics(command.payload),
         };
+      case 'diagnostics.export.start': {
+        const service = this.diagnosticsService;
+        if (!service) {
+          throw commandError({
+            code: 'internal',
+            message: 'Diagnostics export is not available.',
+            retryable: false,
+          });
+        }
+        const { jobId, filePath, level, outcome } = command.payload;
+        return {
+          type: 'transfer.job',
+          payload: {
+            job: this.transferJobs.start(
+              jobId,
+              'diagnostics-export',
+              filePath,
+              (signal, onProgress) =>
+                service.exportJsonl(filePath, { level, outcome }, signal, onProgress),
+            ),
+          },
+        };
+      }
       case 'sessions.query':
         return this.withStorage(async (storage) => {
           try {
@@ -663,7 +686,11 @@ export class CoreApplication implements CoreRpcHost {
     cursor?: string;
     limit: number;
     level?: 'debug' | 'info' | 'warn' | 'error';
+    outcome?: 'success' | 'failed' | 'cancelled' | 'timed_out';
     traceId?: string;
+    command?: string;
+    minDurationMs?: number;
+    maxDurationMs?: number;
   }): Promise<DiagnosticsPage> {
     if (!this.diagnosticsService) {
       return { records: [], hasMore: false, droppedCount: 0 };

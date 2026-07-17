@@ -50,6 +50,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'connection.probe',
   'diagnostics.recent',
   'diagnostics.query',
+  'diagnostics.export.start',
   'storage.status',
   'storage.cleanup',
   'har.export.start',
@@ -317,6 +318,9 @@ function validateCommand(value: unknown): string | null {
     case 'diagnostics.query':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsQuery(value.payload);
+    case 'diagnostics.export.start':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateDiagnosticsExportStart(value.payload);
     case 'storage.status':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateStorageStatusPayload(value.payload);
@@ -1223,7 +1227,16 @@ function validateDiagnosticsQuery(value: unknown): string | null {
   return validateExactObject(
     value,
     'command.payload',
-    ['cursor', 'limit', 'level', 'traceId'],
+    [
+      'cursor',
+      'limit',
+      'level',
+      'outcome',
+      'traceId',
+      'command',
+      'minDurationMs',
+      'maxDurationMs',
+    ],
     (payload) => validateOptionalBoundedString(
       payload.cursor,
       'command.payload.cursor',
@@ -1238,7 +1251,57 @@ function validateDiagnosticsQuery(value: unknown): string | null {
       'info',
       'warn',
       'error',
-    ]) ?? validateOptionalId(payload.traceId, 'command.payload.traceId'),
+    ]) ?? validateOptionalEnum(payload.outcome, 'command.payload.outcome', [
+      'success',
+      'failed',
+      'cancelled',
+      'timed_out',
+    ]) ?? validateOptionalId(payload.traceId, 'command.payload.traceId') ??
+      validateOptionalBoundedString(
+        payload.command,
+        'command.payload.command',
+        128,
+      ) ?? validateOptionalIntegerRange(
+        payload.minDurationMs,
+        'command.payload.minDurationMs',
+        0,
+        86_400_000,
+      ) ?? validateOptionalIntegerRange(
+        payload.maxDurationMs,
+        'command.payload.maxDurationMs',
+        0,
+        86_400_000,
+      ) ?? (
+        typeof payload.minDurationMs === 'number' &&
+          typeof payload.maxDurationMs === 'number' &&
+          payload.minDurationMs > payload.maxDurationMs
+          ? 'command.payload.minDurationMs must not exceed maxDurationMs'
+          : null
+      ),
+  );
+}
+
+function validateDiagnosticsExportStart(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['jobId', 'filePath', 'level', 'outcome'],
+    (payload) => validateId(payload.jobId, 'command.payload.jobId') ??
+      validateNonEmptyBoundedString(
+        payload.filePath,
+        'command.payload.filePath',
+        MAX_TRANSFER_PATH_LENGTH,
+      ) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
+        'debug',
+        'info',
+        'warn',
+        'error',
+      ]) ?? validateOptionalEnum(payload.outcome, 'command.payload.outcome', [
+        'success',
+        'failed',
+        'cancelled',
+        'timed_out',
+      ]),
   );
 }
 
@@ -1917,6 +1980,7 @@ function validateTransferJob(value: unknown, name: string): string | null {
         'har-import',
         'archive-export',
         'archive-import',
+        'diagnostics-export',
       ]) ??
       validateEnum(job.state, `${name}.state`, [
         'running',

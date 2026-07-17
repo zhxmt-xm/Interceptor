@@ -74,6 +74,33 @@ describe('DiagnosticsStore', () => {
       ).toEqual([2]);
     });
 
+    it('filters by outcome', () => {
+      store.insertBatch([
+        record(1, { outcome: 'failed' }),
+        record(2, { outcome: 'success' }),
+        record(3, { outcome: 'failed' }),
+      ]);
+      expect(
+        store.query({ limit: 10, outcome: 'failed' }).records.map((r) => r.sequence),
+      ).toEqual([3, 1]);
+    });
+
+      it('filters by command and duration range', () => {
+        store.insertBatch([
+          record(1, { command: 'echo', durationMs: 5 }),
+          record(2, { command: 'echo', durationMs: 25 }),
+          record(3, { command: 'proxy.start', durationMs: 50 }),
+        ]);
+        expect(
+          store.query({
+            limit: 10,
+            command: 'echo',
+            minDurationMs: 10,
+            maxDurationMs: 30,
+          }).records.map((item) => item.sequence),
+        ).toEqual([2]);
+      });
+
     it('preserves redacted attributes across a round trip', () => {
       store.insertBatch([
         record(1, { attributes: { action: 'echo.copy', count: 3 } }),
