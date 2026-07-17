@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   build: {
-    sourcemap: true,
+    sourcemap: mode !== 'production',
   },
-});
+}));

@@ -1,9 +1,6 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 interface TrustedRendererUrlOptions {
   devServerUrl: string | undefined;
-  packagedRendererPath: string;
+  packagedRendererUrl: string;
 }
 
 export function isTrustedRendererUrl(
@@ -17,14 +14,12 @@ export function isTrustedRendererUrl(
       return candidate.origin === new URL(options.devServerUrl).origin;
     }
 
-    if (candidate.protocol !== 'file:') {
-      return false;
-    }
-
-    return (
-      path.normalize(fileURLToPath(candidate)) ===
-      path.normalize(options.packagedRendererPath)
-    );
+    const packaged = new URL(options.packagedRendererUrl);
+    return candidate.protocol === packaged.protocol &&
+      candidate.host === packaged.host &&
+      candidate.username === packaged.username &&
+      candidate.password === packaged.password &&
+      candidate.pathname === packaged.pathname;
   } catch {
     return false;
   }

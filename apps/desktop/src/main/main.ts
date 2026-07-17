@@ -26,6 +26,7 @@ import { TrustStoreService } from './certificates/trust-store-service';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { isTrustedRendererUrl } from './security/trusted-renderer-url';
+import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
 import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import type { SystemProxyService } from './system-proxy/system-proxy-service';
@@ -56,11 +57,15 @@ import {
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
+PackagedRendererProtocol.registerScheme();
+
 /** Electron Main 应用所有者：窗口、安全策略、CoreRuntime 、证书与 Renderer IPC。 */
 class DesktopApplication {
   private readonly coreRuntime = new CoreRuntime();
   private readonly diagnostics = new MainDiagnostics(this.coreRuntime);
   private certificateService: CertificateService | null = null;
+  /** Secure packaged Renderer protocol, installed only outside development. */
+  private packagedRendererProtocol: PackagedRendererProtocol | null = null;
   private systemProxyService: SystemProxyService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
@@ -92,6 +97,12 @@ class DesktopApplication {
 
   private async onReady(): Promise<void> {
     this.configureSessionSecurity();
+    if (app.isPackaged) {
+      this.packagedRendererProtocol = new PackagedRendererProtocol(
+        path.dirname(this.getPackagedRendererPath()),
+      );
+      this.packagedRendererProtocol.install();
+    }
     this.certificateService = new CertificateService({
       dataDir: path.join(app.getPath('userData'), 'certificates'),
       secureStore: safeStorage,
@@ -212,7 +223,7 @@ class DesktopApplication {
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
-      void mainWindow.loadFile(this.getPackagedRendererPath());
+      void mainWindow.loadURL(PackagedRendererProtocol.entryUrl);
     }
     return mainWindow;
   }
@@ -1197,7 +1208,7 @@ class DesktopApplication {
   private isTrustedRendererNavigation(url: string): boolean {
     return isTrustedRendererUrl(url, {
       devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,
-      packagedRendererPath: this.getPackagedRendererPath(),
+      packagedRendererUrl: PackagedRendererProtocol.entryUrl,
     });
   }
 

@@ -208,6 +208,19 @@ npm run package
 
 `npm run package` validates/builds the Protocol package, bundles Proxy Core and its protocol runtime into CommonJS files, builds the current platform's system-proxy helper, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`; native helpers are under `resources/system-proxy/`. macOS helper builds require Xcode Command Line Tools (`xcrun swiftc`).
 
+Create release installers/artifacts:
+
+```powershell
+# Windows: prepare portable WiX 3.14.1 once for this terminal
+.\scripts\prepare-wix.ps1
+npm run make
+
+# Audit the existing packaged artifact
+npm run test:package-audit
+```
+
+Windows produces an x64 per-user MSI under `apps/desktop/out/make/wix/x64/`. macOS produces DMG and ZIP artifacts under `apps/desktop/out/make/`. `WINDOWS_CERTIFICATE_FILE`/`WINDOWS_CERTIFICATE_PASSWORD` enable Authenticode; `APPLE_SIGN_IDENTITY` enables Developer ID signing, while `APPLE_ID`/`APPLE_ID_PASSWORD`/`APPLE_TEAM_ID` additionally enable notarization and staple. Never commit these values.
+
 If the Electron release download is unreliable:
 
 ```powershell
@@ -251,7 +264,17 @@ Build a fresh package and then run smoke:
 npm run test:smoke
 ```
 
-The smoke test validates the hardened final executable, Renderer isolation, narrow Preload API, production CSP, heartbeat-driven CoreProcess status, MessagePort echo and Trace, forced CoreProcess restart with a new RPC port, theme layouts, and CoreProcess cleanup.
+The smoke test validates the hardened final executable, `interceptor://app` origin, Renderer isolation, narrow Preload API, production CSP, real explicit-proxy capture and detail, Composer/Rules/Breakpoints/Diagnostics, forced CoreProcess restart, Storage, 42 release screenshots (all views × themes/minimum size/language states), overflow, and cleanup.
+
+Release-specific checks:
+
+```powershell
+npm run test:package-audit
+npm run test:installer:windows
+npm run test:release:macos
+```
+
+The Windows installer smoke requires WiX 3.14.1 on `PATH` (the preparation script adds it for the current shell). It builds two isolated MSI versions, installs, launches, upgrades, launches again, and uninstalls. The macOS command explicitly skips elsewhere; on macOS it validates the Swift helper, nested signature, DMG/ZIP and any configured Gatekeeper/notarization credentials.
 
 ### Inspect Packaged Security
 
@@ -352,6 +375,7 @@ npm run typecheck
 npm run test:unit
 $env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
 npm run package
+npm run test:package-audit
 npm run test:smoke --workspace @interceptor/desktop
 npm audit --omit=dev
 git diff --check
@@ -381,7 +405,8 @@ Future shared domain, rules, storage, and inspector packages will be added under
 - Narrow, typed Preload API
 - Environment-specific CSP with no production network access
 - Permissions, navigation, popups, downloads, and webviews denied by default
-- Same-application Renderer reloads allowed only for the exact development origin or packaged HTML path
-- ASAR integrity and restrictive Electron Fuses enabled
+- Same-application Renderer reloads allowed only for the exact development origin or `interceptor://app/index.html`
+- Packaged Renderer served by a bounded secure custom protocol; `file://` extra privileges disabled
+- ASAR integrity and all nine Electron 43 Fuses explicitly locked before code signing
 - Proxy Core shipped as a separate UtilityProcess resource
 - Main transfers a private business MessagePort to Core; Renderer never receives it

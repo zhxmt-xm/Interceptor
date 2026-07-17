@@ -408,6 +408,7 @@ describe('CaptureStore', () => {
   });
 
   it('paginates 100k rows without duplicates or gaps', () => {
+    const startedAt = performance.now();
     const total = 100_000;
     const inputs: ExchangeInput[] = [];
     for (let index = 0; index < total; index += 1) {
@@ -437,6 +438,7 @@ describe('CaptureStore', () => {
     } while (cursor);
 
     expect(seen.size).toBe(total);
+    expect(performance.now() - startedAt).toBeLessThan(10_000);
   });
 
   it('returns an empty rule set for a fresh database', () => {

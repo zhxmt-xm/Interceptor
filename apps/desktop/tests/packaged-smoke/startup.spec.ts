@@ -1,10 +1,267 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
+import {
+  createServer as createHttpServer,
+  request as requestHttp,
+  type Server as HttpServer,
+} from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 
-import { chromium, expect, test, type Browser } from '@playwright/test';
+import {
+  chromium,
+  expect,
+  test,
+  type Browser,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 
+class ReleaseScreenshotMatrix {
+  /** All implemented workspaces addressed through the production sidebar. */
+  private static readonly views = [
+    { label: 'Capture', slug: 'capture' },
+    { label: 'Rules & Map', slug: 'rules' },
+    { label: 'Composer', slug: 'composer' },
+    { label: 'Breakpoints', slug: 'breakpoints' },
+    { label: 'Diagnostics', slug: 'diagnostics' },
+    { label: 'Settings', slug: 'settings' },
+  ] as const;
+  /** Every language selector state currently exposed by the product. */
+  private static readonly languages = [
+    { label: 'English', id: 'en' },
+    { label: '简体中文', id: 'zh' },
+    { label: '日本語', id: 'ja' },
+    { label: 'Deutsch', id: 'de' },
+  ] as const;
+
+  /** Capture all release screenshot dimensions through normal UI interactions. */
+  static async capture(page: Page, testInfo: TestInfo): Promise<void> {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const theme of ['light', 'dark'] as const) {
+      await this.selectTheme(page, theme);
+      for (const view of this.views) {
+        await this.selectView(page, view.label);
+        await this.screenshot(page, testInfo, `${view.slug}-${theme}-1280x800.png`);
+      }
+    }
+
+    await page.setViewportSize({ width: 900, height: 600 });
+    for (const view of this.views) {
+      await this.selectView(page, view.label);
+      await this.screenshot(page, testInfo, `${view.slug}-dark-900x600.png`);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const language of this.languages) {
+      await this.selectLanguage(page, language.label, language.id);
+      for (const view of this.views) {
+        await this.selectView(page, view.label);
+        await this.screenshot(page, testInfo, `${view.slug}-lang-${language.id}.png`);
+      }
+    }
+  }
+
+  /** Select one sidebar workspace and wait for its main surface to remain visible. */
+  private static async selectView(page: Page, label: string): Promise<void> {
+    await page
+      .getByRole('navigation', { name: 'Workspaces' })
+      .getByRole('button', { name: label, exact: true })
+      .click();
+    await expect(page.getByRole('main')).toBeVisible();
+  }
+
+  /** Select a time-of-day theme and verify persisted application state. */
+  private static async selectTheme(
+    page: Page,
+    theme: 'light' | 'dark',
+  ): Promise<void> {
+    await page.getByRole('button', { name: 'Theme' }).click();
+    await page.getByRole('button', {
+      name: theme === 'light' ? 'Light' : 'Dark',
+      exact: true,
+    }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expect.poll(() => page.evaluate(() =>
+      window.localStorage.getItem('interceptor.theme'))).toBe(theme);
+  }
+
+  /** Select one language state and verify its persisted profile value. */
+  private static async selectLanguage(
+    page: Page,
+    label: string,
+    id: string,
+  ): Promise<void> {
+    await page.getByRole('button', { name: 'Language' }).click();
+    await page.getByRole('button', { name: label, exact: true }).click();
+    await expect.poll(() => page.evaluate(() =>
+      window.localStorage.getItem('interceptor.lang'))).toBe(id);
+  }
+
+  /** Write one stable screenshot without tooltip or animation noise. */
+  private static async screenshot(
+    page: Page,
+    testInfo: TestInfo,
+    name: string,
+  ): Promise<void> {
+    const overflow = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth - window.innerWidth,
+      height: document.documentElement.scrollHeight - window.innerHeight,
+    }));
+    expect(overflow.width).toBeLessThanOrEqual(0);
+    expect(overflow.height).toBeLessThanOrEqual(0);
+    await page.mouse.move(400, 400);
+    await expect(page.locator('.ant-tooltip')).toBeHidden();
+    await page.screenshot({
+      path: testInfo.outputPath(name),
+      animations: 'disabled',
+    });
+  }
+}
+
+class PackagedWorkflowSmoke {
+  /** Execute real Core workflows against an isolated loopback origin. */
+  static async run(page: Page): Promise<void> {
+    const origin = await this.startOrigin();
+    const proxyPort = await reservePort();
+    try {
+      const capture = await page.evaluate((port) =>
+        window.interceptor.startCapture(port), proxyPort);
+      expect(capture).toMatchObject({
+        listening: true,
+        host: '127.0.0.1',
+        port: proxyPort,
+      });
+
+      const response = await this.requestThroughProxy(proxyPort, origin.port);
+      expect(response).toMatchObject({
+        statusCode: 200,
+        body: '{"releaseSmoke":true}',
+      });
+
+      let exchangeId: string | null = null;
+      await expect.poll(async () => {
+        exchangeId = await page.evaluate(async () => {
+          const sessions = await window.interceptor.querySessions({
+            limit: 20,
+            sort: 'started_desc',
+            filter: { host: '127.0.0.1' },
+          });
+          return sessions.items.find((item) =>
+            item.path === '/release-smoke')?.id ?? null;
+        });
+        return exchangeId;
+      }, {
+        message: 'Proxied release-smoke exchange was not persisted',
+        timeout: 10_000,
+      }).not.toBeNull();
+      if (!exchangeId) {
+        throw new Error('Captured exchange id is unavailable.');
+      }
+      const detail = await page.evaluate((id) =>
+        window.interceptor.getExchangeDetail(id), exchangeId);
+      expect(detail).toMatchObject({
+        url: `http://127.0.0.1:${origin.port}/release-smoke`,
+        statusText: 'OK',
+        summary: { statusCode: 200 },
+      });
+
+      const composer = await page.evaluate((url) =>
+        window.interceptor.sendComposerRequest({
+          method: 'GET',
+          url,
+          headers: [],
+          protocol: 'http/1.1',
+          timeoutMs: 5_000,
+        }), `http://127.0.0.1:${origin.port}/composer-smoke`);
+      expect(composer).toMatchObject({ ok: true, status: 200 });
+
+      const rules = await page.evaluate(() => window.interceptor.getRules());
+      const validation = await page.evaluate((definitions) =>
+        window.interceptor.validateRules([...definitions]), rules.rules);
+      expect(validation.valid).toBe(true);
+
+      const breakpoints = await page.evaluate(() =>
+        window.interceptor.listBreakpoints());
+      const disabled = await page.evaluate(() =>
+        window.interceptor.setBreakpointsEnabled(false));
+      expect(disabled).toBe(false);
+      const restored = await page.evaluate((enabled) =>
+        window.interceptor.setBreakpointsEnabled(enabled), breakpoints.enabled);
+      expect(restored).toBe(breakpoints.enabled);
+
+      const diagnostics = await page.evaluate(() =>
+        window.interceptor.queryDiagnostics({ limit: 20 }));
+      expect(diagnostics.records.length).toBeGreaterThan(0);
+    } finally {
+      await page.evaluate(() => window.interceptor.stopCapture())
+        .catch(() => undefined);
+      await this.closeOrigin(origin.server);
+    }
+  }
+
+  /** Start one deterministic JSON origin on a random loopback port. */
+  private static async startOrigin(): Promise<{
+    server: HttpServer;
+    port: number;
+  }> {
+    const server = createHttpServer((_request, response) => {
+      response.writeHead(200, {
+        'content-type': 'application/json',
+        connection: 'close',
+      });
+      response.end('{"releaseSmoke":true}');
+    });
+    const port = await new Promise<number>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => {
+        const address = server.address();
+        if (!address || typeof address === 'string') {
+          reject(new Error('Unable to bind release-smoke origin.'));
+          return;
+        }
+        resolve(address.port);
+      });
+    });
+    return { server, port };
+  }
+
+  /** Send one absolute-form HTTP request through the packaged explicit proxy. */
+  private static async requestThroughProxy(
+    proxyPort: number,
+    originPort: number,
+  ): Promise<{ statusCode: number | undefined; body: string }> {
+    return new Promise((resolve, reject) => {
+      const request = requestHttp({
+        host: '127.0.0.1',
+        port: proxyPort,
+        method: 'GET',
+        path: `http://127.0.0.1:${originPort}/release-smoke`,
+        headers: {
+          host: `127.0.0.1:${originPort}`,
+          connection: 'close',
+        },
+      }, (response) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.once('error', reject);
+        response.once('end', () => resolve({
+          statusCode: response.statusCode,
+          body: Buffer.concat(chunks).toString('utf8'),
+        }));
+      });
+      request.once('error', reject);
+      request.end();
+    });
+  }
+
+  /** Close the loopback origin after all in-flight requests complete. */
+  private static async closeOrigin(server: HttpServer): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+}
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
   const executablePath = resolvePackagedExecutable();
@@ -69,6 +326,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect(page.getByRole('main')).toBeVisible();
 
     const securitySnapshot = await page.evaluate(() => ({
+      url: window.location.href,
       apiKeys: Object.keys(window.interceptor).sort(),
       hasNodeProcess: typeof (window as unknown as { process?: unknown }).process,
       hasNodeRequire: typeof (window as unknown as { require?: unknown }).require,
@@ -79,6 +337,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     }));
 
     expect(securitySnapshot).toEqual({
+      url: 'interceptor://app/index.html',
       apiKeys: [
         'cancelTransferJob',
         'clearStorage',
@@ -255,32 +514,9 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(clearedStorage.exchangeCount).toBe(0);
     expect(clearedStorage.bodyCount).toBe(0);
 
-    await page.getByRole('button', { name: 'Theme' }).click();
-    await page.getByRole('button', { name: 'Light', exact: true }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await page.mouse.move(400, 400);
-    await expect(page.locator('.ant-tooltip')).toBeHidden();
-    await page.screenshot({
-      path: testInfo.outputPath('interceptor-light-1280x800.png'),
-      animations: 'disabled',
-    });
+    await PackagedWorkflowSmoke.run(page);
 
-    await page.getByRole('button', { name: 'Theme' }).click();
-    await page.getByRole('button', { name: 'Dark', exact: true }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await page.mouse.move(400, 400);
-    await expect(page.locator('.ant-tooltip')).toBeHidden();
-    await page.screenshot({
-      path: testInfo.outputPath('interceptor-dark-1280x800.png'),
-      animations: 'disabled',
-    });
-
-    await page.setViewportSize({ width: 900, height: 600 });
-    await expect(page.getByRole('main')).toBeVisible();
-    await page.screenshot({
-      path: testInfo.outputPath('interceptor-dark-900x600.png'),
-      animations: 'disabled',
-    });
+    await ReleaseScreenshotMatrix.capture(page, testInfo);
 
     await page.evaluate(() => window.close());
     await expect

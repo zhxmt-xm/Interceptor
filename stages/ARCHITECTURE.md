@@ -68,7 +68,7 @@ flowchart LR
 - **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/`，每个拆成 Topbar/Main/Statusbar 子组件 + colocated CSS Module，一对一还原 `design/app` 对应视图。Capture 工作区已在 M4 数据驱动（见「Capture 渲染数据层架构」小节），Settings 存储面板呈现真实 `StorageUsage`，其余视图仍为占位/disabled，随后续 Stage 接入。
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。
 - **主题**：四套时段主题——`theme/theme.ts` 的 Ant ConfigProvider palette + 算法（light/warm=default、dark/ember=dark），`styles/global.css` 的 `:root[data-theme]` CSS 变量；`App.tsx` 把 `themeMode` 写入 `document.documentElement.dataset.theme` 并持久化 localStorage。
-- **验收**：typecheck 通过；四主题 screenshot、1280×800/900×600 package smoke 与 parity 为 T2.0 收尾项，待跑。
+- **验收**：M12 最终 Windows packaged smoke 覆盖六视图双主题、900×600 与四语言状态，共 42 张截图且无页面级溢出；Renderer parity 21 views。
 
 ## 存储层架构（M2，已落地）
 
@@ -174,6 +174,16 @@ sequenceDiagram
 - **首次运行/UI**：first-run 四步走真实 API，最终 Start 先启动 8888 loopback listener 再启用系统代理；CA 生成/信任需显式 OS 授权。Proxy Settings 展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
 - **构建/打包**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。
 
+## 发布与产物安全架构（M12，已落地）
+
+- **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID/AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
+- **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install/launch/major-upgrade/launch/uninstall。
+- **macOS maker**：无身份 ad-hoc；有 `APPLE_SIGN_IDENTITY` 时 Developer ID；身份和三项 notarize 凭据齐全才提交并自动 staple。DMG + ZIP 同时产出，平台 smoke 验证 helper、deep signature、Gatekeeper/stapler（按凭据）。
+- **Renderer origin**：production 从固定 `interceptor://app/index.html` 加载。协议只服务 Renderer root 内 GET 文件，standard/secure/fetch/stream/code-cache，禁止 CSP bypass/Service Worker/CORS；可信导航逐项比较 scheme/authority/path。
+- **Fuses**：`@electron/fuses` 2.1.3 在 packageAfterCopy、平台签名前以 strict all-fuses 写入 Electron 43 全九项；RunAsNode/NodeOptions/CLI inspect/file extras 关闭，cookie encryption/ASAR integrity/only-ASAR/WasmTrapHandlers 开启。
+- **产物最小化**：Main/Preload production 与 Core release 默认 0 source maps；artifact audit 拒绝 maps/env/tests/source，验证 ASAR、Worker、native helper、文件/体积上限、Fuses 和签名策略。
+- **发布 CI**：GitHub Actions Windows/macOS 原生 jobs，所有 actions 固定 commit SHA；签名材料只从 Secrets 进入临时文件/keychain。workflow 只构建/验收/上传 artifact，不自动发布。
+
 ## 规则引擎架构（M7，已落地）
 
 > 规则以可序列化模型持久化（不存 callback/运行时对象），捕获启动/热更新时编译为 Mockttp
@@ -258,7 +268,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | # | Workflow | 发起方 → 接收方 | 数据/调用 | 代码位置 | 成功结果 | 失败与清理 |
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 配置安全、IPC、CoreRuntime，并创建窗口 | app 未 ready 前不创建 CoreProcess/窗口 |
-| 2 | 配置安全边界 | `DesktopApplication` → Electron Session/WebContents | permission、webview、navigation、download handlers | `main.ts`、`security/trusted-renderer-url.ts` | Renderer 只加载可信 Dev origin 或 packaged HTML | 非可信导航/权限/下载被拒绝 |
+| 2 | 配置安全边界 | `DesktopApplication` → Electron Session/WebContents | permission、webview、navigation、download + packaged protocol handlers | `main.ts`、`security/{trusted-renderer-url,packaged-renderer-protocol}.ts` | Renderer 只加载可信 Dev origin 或 `interceptor://app/index.html` | 非可信 authority/path/navigation/权限/下载被拒绝 |
 | 3 | 启动 CoreProcess | `DesktopApplication` → `CoreRuntime` | `start()` | `main.ts`、`core-runtime.ts` | CoreRuntime 调用 `startCoreProcess` | fork 抛错时进入退避重启 |
 | 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
 | 5 | 创建 RPC 通道 | `CoreRuntime` → Main/CoreProcess | `new MessageChannelMain()`、`coreProcess.postMessage({type:'rpc-port'}, [port2])` | `core-runtime.ts` | `port1` 附加到内部 `CoreRpcClient`，CoreProcess 接收 `port2` | transfer/attach 失败时关闭 port、client 和 CoreProcess |
@@ -276,7 +286,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | 17 | CoreProcess heartbeat 检测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat，4 秒 deadline | `core-application.ts`、`core-runtime.ts` | 持续保持 `running` | 超时标记 `unresponsive`、kill，exit 后退避重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
 | 19 | graceful shutdown | Electron → DesktopApplication → CoreRuntime/CoreApplication | `before-quit`、`shutdown`、`stopped` | `main.ts`、`core-runtime.ts`、`core-application.ts` | CoreApplication 关闭 RPC、停止 heartbeat、退出；CoreRuntime 清空 listeners 后 Main 再 quit | 超过 1.5 秒则 CoreRuntime force kill |
-| 20 | build/package/runtime | npm → esbuild → Forge → packaged app | `entry.cts` → `entry.cjs` → `extraResource` | root/package scripts、`apps/proxy-core/package.json`、`forge.config.ts`、`core-runtime.ts` | Dev 从 sibling dist 加载；package 从 `resources/proxy-core/entry.cjs` 加载 | packaged smoke 直接验证最终路径、CoreProcess restart 和清理 |
+| 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
 
 ## 关键数据结构
 
@@ -307,7 +317,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出、签名安装器和更新机制（M12+）未实现。Windows/macOS 显式系统代理、startup journal/repair、HAR 1.2、原生 archive、机器级信任库、规则引擎、规则 UI/Composer/Breakpoint、WebSocket/gRPC 基础能力已落地。
+- CA 导出和更新机制（M13）未实现。发布 maker/installer/CI 已落地；生产 Authenticode、Developer ID/notarization 仍需仓库外凭据与真实 macOS runner 留证。
 
 ## 更新规则
 

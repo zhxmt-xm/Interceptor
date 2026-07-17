@@ -16,8 +16,12 @@
     "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
     "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
     "package": "npm run build:core && npm run package --workspace @interceptor/desktop",
+    "make": "npm run build:core && npm run make --workspace @interceptor/desktop",
     "test": "npm run test:unit",
     "test:smoke": "npm run package && npm run test:smoke --workspace @interceptor/desktop",
+    "test:installer:windows": "npm run test:installer:windows --workspace @interceptor/desktop",
+    "test:package-audit": "npm run test:package-audit --workspace @interceptor/desktop",
+    "test:release:macos": "npm run test:release:macos --workspace @interceptor/desktop",
     "test:unit": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

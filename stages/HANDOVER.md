@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M12.md](M12.md)（准备开始；M11 已全部完成）。
+4. 当前 Stage 文件：[M13.md](M13.md)（准备开始；M12 代码与 Windows 本机验收已完成）。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,7 +18,9 @@
 
 ## 当前状态
 
-- **M0–M11 均已完成（100%）**；M12 准备开始，各 Stage 详情见对应 `M*.md`。
+- **M0–M12 已完成**；M12 的生产实签/公证和真实 macOS runner 证据因外部凭据/平台缺失待发布时补齐。M13 准备开始。
+- **M12 发布加固已完成**：Desktop 0.1.0；Windows x64 per-user MSI 完整 lifecycle 已实测；macOS ad-hoc/Developer ID/notarize 与 DMG+ZIP 配置/原生 smoke 已落地；固定 SHA 的 Windows/macOS release workflow 可直接在原生 runner 验收。
+- **Package 安全已收紧**：Renderer 使用固定 `interceptor://app`；file extra privileges 关闭；Electron 43 九项 Fuse strict 锁定；Main/Preload/Core release 0 maps；artifact audit 拒绝 source/env/test 泄漏并校验签名策略。
 - **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、first-run、Proxy Settings 与 emergency repair 均已落地。四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
 - **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
@@ -37,10 +39,10 @@
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
 - **窄 API 已扩展**：M10 新增 HAR/archive/Diagnostics；M11 新增 `getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`、`repairSystemProxy`。Preload 仍不暴露通用日志、helper、snapshot、path/readFile/writeFile，packaged smoke apiKeys 已同步。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
-- **M11 验证全绿**：三 workspace typecheck；271 unit tests；Core build、Windows package、真实 packaged smoke、生产 audit 0、21-view parity 与 diff check 通过。first-run/Proxy Settings 11 场景均 0 missing。
-- M11 阶段提交为当前 `main` HEAD，已推送到跟踪远端。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline`。
+- **M12 Windows 验证全绿**：274 unit tests；typecheck/Core build；正式 package audit；真实全工作流 + 42 screenshot matrix；两版 x64 MSI install/launch/upgrade/launch/uninstall；生产 audit 0；actionlint。完整数字见 [M12.md](M12.md)。
+- Git：M11 本地提交 `641d02f`，首次 push 因 GitHub connection reset 失败；M12 工作树待阶段提交。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline`，再重试 push。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
-- 当前验证目标平台为 Windows x64；macOS 图标已生成，但 macOS package、签名和运行验证尚未执行。
+- 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
 ## M0、M1 与 M2 已交付
 
@@ -78,7 +80,7 @@
 | Main Core RPC client | `apps/desktop/src/main/core/core-rpc-client.ts` | CoreRuntime 内部 Promise correlation、timeout/cancel、late/duplicate/disconnect 和 replacement 清理 |
 | CoreRuntime 单测 | `apps/desktop/src/main/core/tests/core-runtime.test.ts` | fake CoreProcess/timer 覆盖正常、重启、listener 清理和强制停止路径 |
 | Main Renderer utils | `apps/desktop/src/main/utils/renderer-utils.ts` | Renderer IPC 输入校验与 Diagnostics DTO 映射纯函数 |
-| Renderer URL 白名单 | `apps/desktop/src/main/security/trusted-renderer-url.ts` | 开发精确同源、生产精确 packaged HTML |
+| Renderer URL 白名单 | `apps/desktop/src/main/security/trusted-renderer-url.ts` | 开发精确同源、生产精确 `interceptor://app/index.html` |
 | URL 安全单测 | `apps/desktop/src/main/security/tests/trusted-renderer-url.test.ts` | 可信 reload 与外部/无效 URL 拒绝 |
 | Core application | `apps/proxy-core/src/proxy-core/core-application.ts` | 子进程根对象；拥有 ready/heartbeat/shutdown/signal、RPC、Diagnostics 和后续 Storage/Proxy Service |
 | Core executable entry | `apps/proxy-core/src/proxy-core/entry.cts` | 只解析 UtilityProcess parentPort 并启动 CoreApplication；bundle 为 `entry.cjs` |
@@ -130,11 +132,11 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M12 T12.1 Windows 打包
+## 下一任务：M13 T13.1 Windows 整包自动更新
 
-M11 已全部完成（见 [M11.md](M11.md)）。下一项按完整方案第十七、十八章与第二十七章 M12，完善 Windows maker/安装器、可选代码签名与安装/升级/卸载验收；开始前先读 [M12.md](M12.md) 和本文件要求的 [ARCHITECTURE.md](ARCHITECTURE.md)。
+M12 代码与 Windows 本机验收已完成（见 [M12.md](M12.md)）。下一项按完整方案第十七章与第二十七章 M13，在既有版本/maker/signing 边界上实现 Windows 整包更新、可信状态与重启要求；开始前先读 [M13.md](M13.md) 和本文件要求的 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-> 已完成并推送：M0–M11；后续每个 `T12.x`/`T13.x` 任务需独立提交并 push。
+> M0–M10 已在远端；M11/M12 阶段边界因临时网络 reset 待重试 push。M13 任务完成后继续提交并 push。
 
 ## 剩余工作项目
 
@@ -148,9 +150,8 @@ M11 已全部完成（见 [M11.md](M11.md)）。下一项按完整方案第十�
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M11 | 已完成（100%） | 两平台显式系统代理、journal/repair、first-run、Proxy Settings | 完整方案第十/十六章、第二十七章 M11 |
-| M12 | 准备开始（0%） | Windows/macOS 发布加固与最终验收 | 完整方案第十七/十八章、第二十七章 M12 |
-| M13 | 未开始 | 整包/资源更新、验签回退、Updates UI | 完整方案第十七章、第二十七章 M13 |
+| M12 | 已完成（外部签名/macOS 证据待补） | MSI/DMG/ZIP、strict Fuses、artifact/installer/package smoke、release CI | 完整方案第十七/十八章、第二十七章 M12 |
+| M13 | 准备开始（0%） | 整包/资源更新、验签回退、Updates UI | 完整方案第十七章、第二十七章 M13 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 
@@ -174,7 +175,7 @@ M11 已全部完成（见 [M11.md](M11.md)）。下一项按完整方案第十�
 - 结构化日志的对象分配和 IPC 批次仍有成本；必须限制 attributes、队列记录数/字节数和低优先级采样，不能把完整 Command 或 Body 序列化为日志。
 - 完整开发依赖 audit 含 Forge 工具链已知漏洞；生产依赖 audit 为零，最终 ASAR 不含相关开发包。不要运行 `npm audit fix --force`。
 - `GrantFileProtocolExtraPrivileges` 因 packaged Renderer 使用 `loadFile` 暂时开启；迁移标准自定义协议后再评估。
-- Windows/macOS 签名与安装器尚未实现；macOS helper 的 Swift 编译、Authorization 与真实系统代理 round-trip 尚未在 macOS 主机验证。Windows 系统代理 helper 与 packaged app 已验证。
+- Windows/macOS 生产可信签名、公证和 macOS helper/SystemConfiguration round-trip 需要仓库外凭据及原生 runner；发布 workflow 已提供验收入口。Windows unsigned MSI/package 全生命周期已验证。
 - Visual parity 已作为正式测试放在 `apps/desktop/tests/visual-parity/`，通过 fake Preload + 正常 UI 交互运行；禁止把 fixture/DEV setter 放回业务 Renderer。Linux 字体差异只作诊断，Windows/macOS 为权威视觉结果。
 
 ## 最近验证状态
