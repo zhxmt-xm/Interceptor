@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-16
+> 最后更新：2026-07-18
 > 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -15,11 +15,13 @@ flowchart LR
   subgraph DESKTOP["Electron Desktop"]
     PRELOAD["3 preload.ts<br/>contextBridge"]
     MAIN["4 DesktopApplication<br/>Window · Security · Renderer IPC"]
+    UPDATE["GitHubReleaseUpdateService<br/>Check · Changelog · Manual Download"]
     RUNTIME["5 CoreRuntime<br/>CoreProcess · Status · MessageChannel"]
     RPC_CLIENT["6 CoreRpcClient<br/>Request → Promise · Timeout · Cancel"]
   end
 
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Runtime Validation"]
+  GITHUB["Public GitHub Releases<br/>Metadata · MSI · DMG · ZIP"]
 
   subgraph CORE["Proxy Core UtilityProcess"]
     ENTRY["8 entry.cts<br/>Minimal Bootstrap · --data-dir"]
@@ -37,6 +39,7 @@ flowchart LR
   end
 
   UI_APP --> UI_API --> PRELOAD --> MAIN
+  MAIN --> UPDATE --> GITHUB
   MAIN --> RUNTIME --> ENTRY --> APPLICATION
   RUNTIME -. "parentPort: rpc-port transfer" .-> APPLICATION
   APPLICATION -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
@@ -69,6 +72,7 @@ flowchart LR
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。
 - **主题**：四套时段主题——`theme/theme.ts` 的 Ant ConfigProvider palette + 算法（light/warm=default、dark/ember=dark），`styles/global.css` 的 `:root[data-theme]` CSS 变量；`App.tsx` 把 `themeMode` 写入 `document.documentElement.dataset.theme` 并持久化 localStorage。
 - **验收**：M12 最终 Windows packaged smoke 覆盖六视图双主题、900×600 与四语言状态，共 42 张截图且无页面级溢出；Renderer parity 21 views。
+- **Updates（M13）**：App级`UpdateActions`订阅Main状态；Settings展示当前/最新版本、GitHub changelog、用户触发下载进度、失败/已下载；topbar通知仅在available/downloaded显示。Renderer只调用意图API，不接触URL、路径或文件流。
 
 ## 存储层架构（M2，已落地）
 
@@ -182,7 +186,19 @@ sequenceDiagram
 - **Renderer origin**：production 从固定 `interceptor://app/index.html` 加载。协议只服务 Renderer root 内 GET 文件，standard/secure/fetch/stream/code-cache，禁止 CSP bypass/Service Worker/CORS；可信导航逐项比较 scheme/authority/path。
 - **Fuses**：`@electron/fuses` 2.1.3 在 packageAfterCopy、平台签名前以 strict all-fuses 写入 Electron 43 全九项；RunAsNode/NodeOptions/CLI inspect/file extras 关闭，cookie encryption/ASAR integrity/only-ASAR/WasmTrapHandlers 开启。
 - **产物最小化**：Main/Preload production 与 Core release 默认 0 source maps；artifact audit 拒绝 maps/env/tests/source，验证 ASAR、Worker、native helper、文件/体积上限、Fuses 和签名策略。
-- **发布 CI**：GitHub Actions Windows/macOS 原生 jobs，所有 actions 固定 commit SHA；签名材料只从 Secrets 进入临时文件/keychain。workflow 只构建/验收/上传 artifact，不自动发布。
+- **发布 CI**：GitHub Actions Windows/macOS原生jobs，所有actions固定commit SHA；签名材料只从Secrets进入临时文件/keychain。tag构建验收后发布MSI/DMG/ZIP到同一GitHub Release并用`--generate-notes`生成changelog；测试诊断使用独立artifact，绝不混入Release assets。
+
+## GitHub Releases更新架构（M13，已落地）
+
+> GitHub Releases是唯一远端更新基础设施。应用自动检查与通知，但下载必须由用户显式触发，安装必须由用户打开平台安装器；无自建服务、资源热更新、Squirrel或静默安装。
+
+- **Main所有者**：`main/updates/github-release-update-service.ts`在packaged Windows/macOS启动时检查一次，随后每小时检查。固定调用`api.github.com/repos/zhxmt-xm/Interceptor/releases/latest`，只接受非draft/non-prerelease SemVer tag。
+- **Metadata/changelog**：解析字段只限tag、draft/prerelease、body和assets；response上限512KiB、10s timeout。Release body保留有限换行并限制16KiB，作为不可信纯文本经窄DTO进入Renderer，React不使用HTML渲染。
+- **Asset选择**：Windows只接受单一`.msi`，macOS只接受单一`.dmg`。下载URL必须是`https://github.com/zhxmt-xm/Interceptor/releases/download/<validated-tag>/<basename>`，拒绝凭据/query/hash、路径编码逃逸、外域、重复候选和显式架构错配。
+- **下载**：用户调用`downloadUpdate`后才开始。Main跟随GitHub CDN redirect，强制Release声明size与1GiB总上限，流式写入`<userData>/updates/downloads/.<name>.<uuid>.part`，累计字节和进度有界广播；完成后校验size及必需的`sha256:` digest、FileHandle sync并原子rename。失败删除临时文件且不改变当前应用。
+- **打开安装器**：Renderer调用无参数`openDownloadedUpdate`；Main只对当前进程内成功下载并保留的绝对路径调用`shell.openPath`。Renderer无法提交任意URL/path。Windows交给MSI，macOS交给DMG；无自动安装或重启。
+- **窄契约**：`UpdateStatus`仅含supported/state/currentVersion/latestVersion/progress/downloadedBytes/totalBytes/releaseNotes/message/lastCheckedAt；状态为unsupported/idle/checking/available/downloading/downloaded/up-to-date/failed。Preload暴露get/check/download/openDownloaded/status event。
+- **生命周期**：`DesktopApplication`在创建窗口前构造服务，窗口后启动检查；状态通过`update:status`广播。退出时`stop()`清timer、abort活动下载并移除listeners。packaged Renderer始终从受保护ASAR经`interceptor://app`协议加载，不存在远程代码覆盖层。
 
 ## 规则引擎架构（M7，已落地）
 
@@ -287,6 +303,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
 | 19 | graceful shutdown | Electron → DesktopApplication → CoreRuntime/CoreApplication | `before-quit`、`shutdown`、`stopped` | `main.ts`、`core-runtime.ts`、`core-application.ts` | CoreApplication 关闭 RPC、停止 heartbeat、退出；CoreRuntime 清空 listeners 后 Main 再 quit | 超过 1.5 秒则 CoreRuntime force kill |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
+| 21 | 检查并手动下载更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | app内changelog/进度；完整安装包原子落盘后由系统打开 | 非stable、外域/路径/架构/size/hash错误拒绝；失败清`.part`且当前应用不变 |
 
 ## 关键数据结构
 
@@ -317,7 +334,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。
 - 每 exchange 上游 TLS metadata 落库（M8 的 Connection/TLS 详情用按需 `connection.probe` 实时探测替代；Mockttp 未暴露数据面上游 TLS，逐 exchange 记录待原生 http 数据面）。
-- CA 导出和更新机制（M13）未实现。发布 maker/installer/CI 已落地；生产 Authenticode、Developer ID/notarization 仍需仓库外凭据与真实 macOS runner 留证。
+- CA导出未实现。M13 GitHub Release检查/手动下载已落地；生产Authenticode、Developer ID/notarization与真实macOS DMG下载/打开仍需仓库外凭据和原生runner留证。
 
 ## 更新规则
 

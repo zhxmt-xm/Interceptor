@@ -77,7 +77,9 @@ class PackageArtifactAuditor {
       path.join(this.desktopRoot, 'package.json'),
       'utf8',
     ));
-    if (packageJson.version !== expectedPackage.version) {
+    const expectedVersion = process.env.INTERCEPTOR_BUILD_VERSION ??
+      expectedPackage.version;
+    if (packageJson.version !== expectedVersion) {
       throw new Error(`Unexpected packaged version: ${String(packageJson.version)}.`);
     }
     const forbidden = listPackage(asarPath, { isPack: false })

@@ -335,6 +335,18 @@ export const fakeInterceptorFixture = {
     totalBytes: 21_233_664,
     quotaBytes: 536_870_912,
   },
+  update: {
+    supported: true,
+    state: 'available',
+    currentVersion: '0.1.0',
+    latestVersion: '0.1.1',
+    progress: null,
+    downloadedBytes: null,
+    totalBytes: 147_324_928,
+    releaseNotes: 'Improves capture navigation and release reliability. Plain text only; links and markup are never executed.',
+    message: 'A newer installer is available from GitHub Releases.',
+    lastCheckedAt: '2026-07-17T12:00:00.000Z',
+  },
   composerResponse: {
     ok: true,
     status: 201,
@@ -359,7 +371,7 @@ export const fakeInterceptorFixture = {
 };
 
 /** Installed with page.addInitScript before Renderer code, mirroring Electron Preload. */
-export function installFakeInterceptor({ fixture, theme, firstRun = false }) {
+export function installFakeInterceptor({ fixture, theme, firstRun = false, updateState = 'unsupported' }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.lang', 'en');
   if (firstRun) {
@@ -394,6 +406,62 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false }) {
   let insecureHosts = fixture.insecureHosts;
   let storage = fixture.storage;
   let transferJob = null;
+  let updateStatus = updateState === 'unsupported'
+    ? {
+        ...fixture.update,
+        supported: false,
+        state: 'unsupported',
+        latestVersion: null,
+        progress: null,
+        downloadedBytes: null,
+        totalBytes: null,
+        releaseNotes: null,
+        message: 'Release checks run only in packaged Windows and macOS builds.',
+      }
+    : updateState === 'checking'
+      ? {
+          ...fixture.update,
+          state: 'checking',
+          latestVersion: null,
+          totalBytes: null,
+          releaseNotes: null,
+          message: 'Checking public GitHub Releases…',
+        }
+      : updateState === 'up-to-date'
+        ? {
+            ...fixture.update,
+            state: 'up-to-date',
+            latestVersion: '0.1.0',
+            totalBytes: null,
+            releaseNotes: null,
+            message: 'Interceptor is up to date.',
+          }
+        : updateState === 'failed'
+          ? {
+              ...fixture.update,
+              state: 'failed',
+              latestVersion: null,
+              totalBytes: null,
+              releaseNotes: null,
+              message: 'GitHub Releases could not be reached. The installed app was not changed.',
+            }
+          : {
+              ...fixture.update,
+              state: updateState,
+              progress: updateState === 'downloading'
+                ? 0.42
+                : updateState === 'downloaded'
+                  ? 1
+                  : null,
+              downloadedBytes: updateState === 'downloading'
+                ? 61_876_470
+                : updateState === 'downloaded'
+                  ? fixture.update.totalBytes
+                  : null,
+              message: updateState === 'downloaded'
+                ? 'Interceptor 0.1.1 is downloaded and ready to open.'
+                : fixture.update.message,
+            };
 
   window.interceptor = {
     echoCore: async (value) => ({
@@ -409,6 +477,19 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false }) {
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
     reportRendererDiagnostic: async () => undefined,
+    getUpdateStatus: async () => updateStatus,
+    checkForUpdates: async () => updateStatus,
+    downloadUpdate: async () => {
+      updateStatus = {
+        ...updateStatus,
+        state: 'downloaded',
+        progress: 1,
+        downloadedBytes: updateStatus.totalBytes,
+      };
+      return updateStatus;
+    },
+    openDownloadedUpdate: async () => undefined,
+    onUpdateStatusChange: () => () => undefined,
     getSystemProxyStatus: async () => systemProxyStatus,
     enableSystemProxy: async () => {
       systemProxyStatus = {

@@ -1,0 +1,51 @@
+.notice {
+  width: min(380px, 38vw);
+  height: 44px;
+  min-width: 230px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 7px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.icon svg {
+  width: 17px;
+  height: 17px;
+}
+.caption {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.caption b {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.caption small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1050px) {
+  .notice {
+    display: none;
+  }
+}

@@ -18,7 +18,13 @@ import {
 } from '../features/diagnostics';
 import { FirstRunWizard, hasCompletedFirstRun } from '../features/first-run';
 import { RulesMain, RulesStatusbar, RulesTopbar } from '../features/rules';
-import { SettingsMain, SettingsStatusbar, SettingsTopbar } from '../features/settings';
+import {
+  SettingsMain,
+  SettingsStatusbar,
+  SettingsTopbar,
+  UpdateActions,
+  UpdateNotification,
+} from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { AppShell } from './AppShell';
 import styles from './App.module.css';
@@ -100,6 +106,8 @@ export function App(): React.JSX.Element {
     window.localStorage.setItem('interceptor.lang', lang);
   }, [lang]);
 
+  useEffect(() => UpdateActions.subscribe(), []);
+
   useEffect(() => {
     let active = true;
     let latestUpdatedAt = initialCoreStatus.updatedAt;
@@ -152,6 +160,7 @@ export function App(): React.JSX.Element {
         />
       }
       topbar={feature.topbar}
+      notification={<UpdateNotification />}
       main={feature.main}
       statusbar={feature.statusbar}
     />

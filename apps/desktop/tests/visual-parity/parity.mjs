@@ -139,6 +139,7 @@ for (const view of views) {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
     firstRun: view.firstRun === true,
+    updateState: view.updateState ?? 'unsupported',
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);

@@ -385,7 +385,8 @@ body {
 .scontent { min-height: 0; overflow-y: auto; padding: 22px 26px; }
 .spanel { display: none; }
 .app[data-settings="proxy"] .spanel[data-settings-panel="proxy"],
-.app[data-settings="certificates"] .spanel[data-settings-panel="certificates"] { display: block; }
+.app[data-settings="certificates"] .spanel[data-settings-panel="certificates"],
+.app[data-settings="updates"] .spanel[data-settings-panel="updates"] { display: block; }
 .scontent h2 { font-size: 16px; font-weight: 640; letter-spacing: -.01em; margin-bottom: 3px; display: flex; align-items: center; gap: 9px; }
 .scontent h2 .mitm { font-size: 11px; font-weight: 600; }
 .scontent .desc2 { font-size: 12.5px; color: var(--text-3); margin-bottom: 20px; }
@@ -402,6 +403,31 @@ body {
 .app[data-repair="confirm"] .repair-idle { display: none; }
 .app[data-repair="confirm"] .repair-confirm { display: flex; }
 .confirmtext { color: var(--red); font-size: 11.5px; font-weight: 550; }
+.update-state,.update-version,.update-whole-tag,.update-current-tag,.update-check-row,.update-progress-row,.update-failed-row,.update-unsupported-row,.update-download,.update-open,.update-notice-downloaded,.update-notice-open { display: none; }
+.app[data-update="checking"] .update-checking,.app[data-update="checking"] .update-version-checking,.app[data-update="checking"] .update-check-row { display: flex; }
+.app[data-update="available"] .update-available,.app[data-update="available"] .update-version-new,.app[data-update="available"] .update-whole-tag,.app[data-update="available"] .update-download { display: flex; }
+.app[data-update="downloading"] .update-downloading,.app[data-update="downloading"] .update-version-new,.app[data-update="downloading"] .update-whole-tag,.app[data-update="downloading"] .update-progress-row { display: flex; }
+.app[data-update="downloaded"] .update-downloaded,.app[data-update="downloaded"] .update-version-new,.app[data-update="downloaded"] .update-whole-tag,.app[data-update="downloaded"] .update-open { display: flex; }
+.app[data-update="available"] .update-release-notes,.app[data-update="downloading"] .update-release-notes,.app[data-update="downloaded"] .update-release-notes { display: block; }
+.app[data-update="up-to-date"] .update-current,.app[data-update="up-to-date"] .update-version-current,.app[data-update="up-to-date"] .update-current-tag { display: flex; }
+.app[data-update="failed"] .update-failed,.app[data-update="failed"] .update-version-unknown,.app[data-update="failed"] .update-failed-row { display: flex; }
+.app[data-update="unsupported"] .update-unsupported,.app[data-update="unsupported"] .update-version-unknown,.app[data-update="unsupported"] .update-unsupported-row { display: flex; }
+.app[data-update="available"] .update-check,.app[data-update="downloading"] .update-action-row,.app[data-update="downloaded"] .update-check,.app[data-update="checking"] .update-action-row,.app[data-update="unsupported"] .update-action-row { display: none; }
+.update-release-notes { display: none; }
+.progressctl { min-width: 250px; }
+.progress { width: 190px; height: 6px; overflow: hidden; border-radius: 999px; background: var(--panel-2); }
+.progress i { display: block; width: 42%; height: 100%; border-radius: inherit; background: var(--accent); }
+.unotice { position: absolute; z-index: 90; right: 12px; top: 5px; width: 380px; height: 44px; display: none; align-items: center; gap: 9px; padding: 5px 7px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.app[data-update="available"] .unotice,.app[data-update="downloaded"] .unotice { display: flex; }
+.unotice .update-notice-downloaded,.unotice .update-notice-open { display: none; }
+.app[data-update="downloaded"] .update-notice-available,.app[data-update="downloaded"] .update-notice-download { display: none; }
+.app[data-update="downloaded"] .update-notice-downloaded,.app[data-update="downloaded"] .update-notice-open { display: flex; }
+.unicon { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; color: var(--accent); background: var(--accent-soft); }
+.unicon svg { width: 17px; height: 17px; }
+.uncap { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.uncap b { font-size: 12.5px; font-weight: 600; }
+.uncap small { overflow: hidden; color: var(--text-3); font-family: var(--font-mono); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.unotice .btn { height: 32px; padding: 0 11px; }
 
 /* =====================================================================
    FEATURE: breakpoints — paused queue · split · editor

@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 
 import type { CaptureStatus, CertificateInfo, SystemProxyStatus } from '../../../../shared/desktop-api';
 import { StatItem } from '../../../components';
+import { UpdateFormat } from '../update-format';
+import { useUpdateStore } from '../updateStore';
 
 /** Settings status bar: core state, proxy binding and trust summary. */
 export function SettingsStatusbar(): React.JSX.Element {
   const [capture, setCapture] = useState<CaptureStatus | null>(null);
   const [proxy, setProxy] = useState<SystemProxyStatus | null>(null);
   const [certificate, setCertificate] = useState<CertificateInfo | null>(null);
+  const update = useUpdateStore((state) => state.status);
 
   useEffect(() => {
     let active = true;
@@ -39,6 +42,11 @@ export function SettingsStatusbar(): React.JSX.Element {
       <StatItem dot={proxy?.owned ? 'green' : proxy?.ownershipLost ? 'red' : 'yellow'}>
         {proxy?.owned ? 'System Proxy' : proxy?.ownershipLost ? 'Ownership lost' : 'System Proxy off'}
       </StatItem>
+      {update && update.state !== 'unsupported' ? (
+        <StatItem dot={update.state === 'failed' ? 'red' : 'green'}>
+          Update {UpdateFormat.stateLabel(update).toLowerCase()}
+        </StatItem>
+      ) : null}
       <StatItem mono push>
         {certificate?.trusted
           ? `CA trusted · MITM ${certificate.mitmEnabled ? 'on' : 'off'}`

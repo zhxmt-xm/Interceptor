@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-17
+> 最后更新：2026-07-18
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 ## 文档导航
 
@@ -16,15 +16,15 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0–M12（M12 代码与 Windows 本机验收 100%；生产实签/公证和真实 macOS runner 为外部发布验收）。
-- 当前 Stage：M13 更新机制（准备开始）。
-- 当前任务：M12 已完成。Windows x64 per-user MSI lifecycle、macOS ad-hoc/Developer ID+notarize 配置、strict Fuses、artifact audit、真实 packaged 全工作流和 42 张 screenshot matrix 已落地。详情见 [M12.md](M12.md)。
-- 下一动作：M13 T13.1 Windows 整包更新；在已完成的版本/maker/签名边界上实现可信 update manifest、下载与重启状态。
+- 已完成 Stage：M0–M13（生产实签/公证和真实macOS runner为外部发布验收）。
+- 当前 Stage：M13 GitHub Releases更新通知与手动下载（已完成）。
+- 当前任务：公开GitHub Release检查、app内changelog、用户触发MSI/DMG流式下载、Open installer、Updates七态UI和tag发布链已落地。详情见 [M13.md](M13.md)。
+- 下一动作：使用仓库外签名/公证凭据运行首个真实tag release；之后按产品优先级规划下一Stage。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M11 本地提交 `641d02f` 因远端连接 reset 尚未 push；M12 当前工作树待提交。阶段边界重试 push。
-- 阻塞：生产签名/公证需要仓库外凭据；真实 macOS 平台验收需原生 runner，不阻塞 M13 代码开发。
+- Git 状态：M11/M12已在`origin/main`；M13阶段改动在本次边界提交并push，接手时以`git status`/`git log`为准。
+- 阻塞：无代码阻塞。生产签名/公证需要仓库外凭据；真实macOS DMG与应用内打开需原生runner留证。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，已完成阶段见 [M12.md](M12.md)，下一 Stage 见 [M13.md](M13.md)。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，最新完成阶段见 [M13.md](M13.md)。
 
 ## Stage 总览
 
@@ -43,7 +43,7 @@
 | M10 | 导入导出与隐私 | 已完成 | 100% | [M10.md](M10.md) |
 | M11 | 系统代理适配与恢复 | 已完成 | 100% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 已完成（外部签名/macOS 验收待凭据） | 100% | [M12.md](M12.md) |
-| M13 | 更新机制 | 准备开始 | 0% | [M13.md](M13.md) |
+| M13 | GitHub Releases 更新通知与手动下载 | 已完成（外部签名/macOS证据待补） | 100% | [M13.md](M13.md) |
 
 ## Client / Server 轨道规则
 
@@ -76,10 +76,13 @@
 - 原生 archive 已落地（M10/T10.2）：版本化 ZIP（manifest + `VACUUM INTO` 一致 SQLite 快照 + 内容寻址 Blob）。HAR 与 archive 共用单一 `TransferJobManager`；手写零依赖 ZIP writer/reader（Node zlib/crypto）在解压前校验加密位/压缩方法/符号链接/绝对路径/`..`/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取时硬上限 + 逐条 CRC-32 + Blob 内容寻址 hash 三重校验；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。窄 API 新增 `startArchiveExport`/`startArchiveImport`；Capture overlay 启用 “Native archive” 格式切换。
 - 系统代理与恢复已落地（M11）：Windows WinINet 与 macOS Swift/SystemConfiguration helper 完成当前值 snapshot、loopback 设置、完整 guarded compare restore；原子 startup journal 支持新进程/Core failure 恢复且不覆盖外部修改。first-run 真实完成 listener/CA/系统代理流程；Proxy Settings 展示 ownership/PAC/bypass/授权结果与二次确认 emergency repair。当前 Windows package/smoke 已验证，macOS helper 编译/授权 round-trip 留 M12.2 真实平台验收。
 - 发布加固已落地（M12）：Desktop 0.1.0；Windows x64 per-user WiX MSI 通过双版本 install/launch/upgrade/launch/uninstall；macOS ad-hoc/Developer ID/notarize + DMG/ZIP 与原生 smoke 已配置。Renderer 迁至 `interceptor://app`，file extras 关闭，Electron 43 九项 Fuse strict 锁定，release 0 maps。Artifact audit、真实 packaged 全工作流、42 张视图矩阵、10 万行门槛与固定 SHA GitHub Actions 完成。生产实签/公证和真实 macOS 证据待外部凭据/runner。
+- GitHub Releases更新已落地（M13）：packaged Windows/macOS启动及每小时读取固定仓库latest stable Release；app内显示有界纯文本changelog。下载只由用户触发，Main选择当前平台单一MSI/DMG并经仓库URL、tag、路径、架构、size和强制GitHub SHA-256校验后流式原子落盘；Renderer只拿状态/进度并可请求打开已下载安装器。无自建服务、Squirrel、资源热更新或静默安装。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-18 M13完成后的集中验收：`npm run typecheck`三workspace；`npm run test:unit` Desktop 80 / Proxy Core 187 / Protocol 19，共286项；Windows package audit 1,292 files / 376,709,663 bytes；真实packaged smoke 1/1；正式WiX MSI构建；0.0.1→0.0.2 install/launch/upgrade/launch/uninstall；生产audit 0；actionlint通过。完整parity 35 views，Updates七态light/dark共14场景全部0 missing。详情见 [M13.md](M13.md)。
 
 2026-07-17 M12 完成后的集中验收：`npm run typecheck` 三 workspace；`npm run test:unit` Desktop 68 / Proxy Core 187 / Protocol 19，共 274 项；Core release 0 maps。正式 0.1.0 package audit 1,292 files / 376,666,107 bytes，九项 Fuse匹配；真实 packaged 全工作流 + 42 screenshot matrix 1/1；WiX x64 MSI 0.0.1→0.0.2 install/launch/upgrade/launch/uninstall 通过；正式 MSI 148,381,932 bytes、per-user、x64、稳定 UpgradeCode；生产 audit 0、actionlint 通过。当前无签名凭据，产物如实 NotSigned；macOS 真实验收待 runner。详情见 [M12.md](M12.md)。
 

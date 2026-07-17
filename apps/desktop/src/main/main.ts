@@ -20,6 +20,7 @@ import {
   type CaptureExchangeEvent,
   type CertificateInfo,
   type CoreProcessStatus,
+  type UpdateStatus,
 } from '../shared/desktop-api';
 import { CertificateService } from './certificates/certificate-service';
 import { TrustStoreService } from './certificates/trust-store-service';
@@ -31,6 +32,8 @@ import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-servi
 import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import type { SystemProxyService } from './system-proxy/system-proxy-service';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
+import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
+import type { UpdateService } from './updates/update-service';
 import {
   assertBoundedString,
   assertIdentifier,
@@ -67,6 +70,8 @@ class DesktopApplication {
   /** Secure packaged Renderer protocol, installed only outside development. */
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
   private systemProxyService: SystemProxyService | null = null;
+  /** Public GitHub release checker; downloads always remain user-controlled. */
+  private updateService: UpdateService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
@@ -97,17 +102,22 @@ class DesktopApplication {
 
   private async onReady(): Promise<void> {
     this.configureSessionSecurity();
+    this.certificateService = new CertificateService({
+      dataDir: path.join(app.getPath('userData'), 'certificates'),
+      secureStore: safeStorage,
+    });
+    this.systemProxyService = this.createSystemProxyService();
+    this.createUpdateService();
+    const updateService = this.requireUpdateService();
+    updateService.onStatusChange((status) => {
+      this.broadcastUpdateStatus(status);
+    });
     if (app.isPackaged) {
       this.packagedRendererProtocol = new PackagedRendererProtocol(
         path.dirname(this.getPackagedRendererPath()),
       );
       this.packagedRendererProtocol.install();
     }
-    this.certificateService = new CertificateService({
-      dataDir: path.join(app.getPath('userData'), 'certificates'),
-      secureStore: safeStorage,
-    });
-    this.systemProxyService = this.createSystemProxyService();
     await this.repairSystemProxyOnStartup();
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
@@ -144,6 +154,7 @@ class DesktopApplication {
     });
     this.coreRuntime.start();
     this.createMainWindow();
+    updateService.start();
   }
 
   private onActivate(): void {
@@ -166,6 +177,7 @@ class DesktopApplication {
     // 先恢复仍由本产品持有的系统代理，再让 CoreProcess 完成清理。
     event.preventDefault();
     this.quitting = true;
+    this.updateService?.stop();
     void this.restoreSystemProxyBeforeShutdown()
       .then(() => this.coreRuntime.stop())
       .then(() => {
@@ -429,6 +441,29 @@ class DesktopApplication {
         }
         return result;
       });
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateGetStatus, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireUpdateService().status();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateCheck, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.update.check', async () =>
+        Promise.resolve(this.requireUpdateService().check()));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateDownload, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.update.download', () =>
+        this.requireUpdateService().download());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateOpenDownloaded, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      await this.runMainAction('main.update.open-downloaded', () =>
+        this.requireUpdateService().openDownloaded());
     });
 
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。
@@ -1035,6 +1070,15 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast one bounded update-state snapshot to every trusted Renderer. */
+  private broadcastUpdateStatus(status: UpdateStatus): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.updateStatus, status);
+      }
+    }
+  }
+
   // 解密当前 CA 材料并经内部 tls.configure 命令下发 Core（私钥不经 Renderer）。
   // 仅当 CA 已安装信任时才下发 material 启用 MITM；否则下发 null，CONNECT 直通不解密。
   private async provisionCoreTls(): Promise<void> {
@@ -1096,6 +1140,25 @@ class DesktopApplication {
       throw new Error('System proxy service is not initialized');
     }
     return this.systemProxyService;
+  }
+
+  /** Return the initialized GitHub release notification owner. */
+  private requireUpdateService(): UpdateService {
+    if (!this.updateService) {
+      throw new Error('Update service is not initialized');
+    }
+    return this.updateService;
+  }
+
+  /** Create one user-triggered installer downloader backed by GitHub Releases. */
+  private createUpdateService(): void {
+    this.updateService = new GitHubReleaseUpdateService({
+      packaged: app.isPackaged,
+      currentVersion: app.getVersion(),
+      dataDirectory: app.getPath('userData'),
+      diagnostics: this.diagnostics,
+      openPath: (filePath) => shell.openPath(filePath),
+    });
   }
 
   private async restoreSystemProxyBeforeShutdown(): Promise<void> {

@@ -23,6 +23,14 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Resolve tagged application version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          node -e "if (!require('semver').valid(process.argv[1])) process.exit(1)" $version
+          if ($LASTEXITCODE -ne 0) { throw "Invalid release tag: $env:GITHUB_REF_NAME" }
+          "INTERCEPTOR_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Prepare WiX 3.14.1
         shell: pwsh
         run: ./scripts/prepare-wix.ps1 -Destination "$env:RUNNER_TEMP/wix314"
@@ -36,6 +44,13 @@ jobs:
             [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
           )
           "WINDOWS_CERTIFICATE_FILE=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Require signing for a public release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          if (-not $env:WINDOWS_CERTIFICATE_FILE) {
+            throw 'WINDOWS_CERTIFICATE_BASE64 is required for tag releases.'
+          }
       - run: npm run build:core
       - run: npm run typecheck
       - run: npm run test:unit
@@ -45,13 +60,16 @@ jobs:
       - run: npm run test:installer:windows
       - run: npm audit --omit=dev
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: interceptor-release-windows-x64
+          path: apps/desktop/out/make/**/*.msi
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: interceptor-windows-x64
-          path: |
-            apps/desktop/out/make/**/*.msi
-            apps/desktop/test-results/windows-installer-smoke/**/*.log
-          if-no-files-found: warn
+          name: interceptor-diagnostics-windows-x64
+          path: apps/desktop/test-results/**/*
+          if-no-files-found: ignore
 
   macos:
     name: macOS DMG and ZIP
@@ -69,6 +87,22 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Resolve tagged application version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "if (!require('semver').valid(process.argv[1])) process.exit(1)" "$VERSION"
+          echo "INTERCEPTOR_BUILD_VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Require signing and notarization for a public release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          test -n "$APPLE_CERTIFICATE_BASE64"
+          test -n "$APPLE_CERTIFICATE_PASSWORD"
+          test -n "$APPLE_ID"
+          test -n "$APPLE_ID_PASSWORD"
+          test -n "$APPLE_TEAM_ID"
       - name: Restore Developer ID certificate
         if: env.APPLE_CERTIFICATE_BASE64 != ''
         shell: bash
@@ -94,11 +128,59 @@ jobs:
       - run: npm run test:smoke --workspace @interceptor/desktop
       - run: npm audit --omit=dev
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
         with:
-          name: interceptor-macos-${{ runner.arch }}
+          name: interceptor-release-macos-${{ runner.arch }}
           path: |
             apps/desktop/out/make/**/*.dmg
             apps/desktop/out/make/**/*.zip
-            apps/desktop/test-results/**/*
-          if-no-files-found: warn
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: interceptor-diagnostics-macos-${{ runner.arch }}
+          path: apps/desktop/test-results/**/*
+          if-no-files-found: ignore
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: interceptor-release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish verified release artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' ASSETS < <(find release-assets -type f \( \
+            -name '*.msi' -o -name '*.dmg' -o -name '*.zip' \
+          \) -print0)
+          test "${#ASSETS[@]}" -eq 3
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+              --verify-tag \
+              --generate-notes \
+              --title "Interceptor ${GITHUB_REF_NAME#v}"
+          fi
+          read -r TOTAL VALID < <(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+              --jq '[
+                (.assets | length),
+                ([.assets[] | select(
+                  .state == "uploaded" and
+                  .size > 0 and
+                  ((.digest // "") | test("^sha256:[a-f0-9]{64}$"))
+                )] | length)
+              ] | @tsv'
+          )
+          test "$TOTAL" -eq 3
+          test "$VALID" -eq 3

@@ -39,6 +39,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'import-export', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
+  for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
+    shots.push({ feature: 'settings', theme, variant: `updates-${update}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update } });
+  }
 }
 // capture inspector tabs (Headers is the framed default)
 for (const theme of ['light', 'dark']) {

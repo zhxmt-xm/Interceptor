@@ -341,6 +341,11 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyEnable: 'system-proxy:enable',
   systemProxyRestore: 'system-proxy:restore',
   systemProxyRepair: 'system-proxy:repair',
+  updateGetStatus: 'update:get-status',
+  updateCheck: 'update:check',
+  updateDownload: 'update:download',
+  updateOpenDownloaded: 'update:open-downloaded',
+  updateStatus: 'update:status',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
   captureStart: 'capture:start',
@@ -393,6 +398,11 @@ export interface InterceptorDesktopApi {
   enableSystemProxy(): Promise<SystemProxyStatus>;
   restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
   repairSystemProxy(): Promise<SystemProxyRestoreResult>;
+  getUpdateStatus(): Promise<UpdateStatus>;
+  checkForUpdates(): Promise<UpdateStatus>;
+  downloadUpdate(): Promise<UpdateStatus>;
+  openDownloadedUpdate(): Promise<void>;
+  onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;
@@ -451,4 +461,28 @@ export interface InterceptorDesktopApi {
   ): Promise<TransferJobSnapshot | null>;
   getTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
+}
+
+export type UpdateState =
+  | 'unsupported'
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'up-to-date'
+  | 'failed';
+
+/** Public update state; release notes are bounded plain text, never rendered as HTML. */
+export interface UpdateStatus {
+  supported: boolean;
+  state: UpdateState;
+  currentVersion: string;
+  latestVersion: string | null;
+  progress: number | null;
+  downloadedBytes: number | null;
+  totalBytes: number | null;
+  releaseNotes: string | null;
+  message: string | null;
+  lastCheckedAt: string | null;
 }

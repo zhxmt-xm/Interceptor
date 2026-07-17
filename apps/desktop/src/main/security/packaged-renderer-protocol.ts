@@ -69,20 +69,31 @@ export class PackagedRendererProtocol {
     } catch {
       return new Response('Bad Request', { status: 400 });
     }
-    const targetPath = path.resolve(
-      this.rendererRoot,
-      relativePath || 'index.html',
-    );
-    const relation = path.relative(this.rendererRoot, targetPath);
+    const requestedPath = relativePath || 'index.html';
+    return await this.fetchFromRoot(this.rendererRoot, requestedPath) ??
+      new Response('Not Found', { status: 404 });
+  }
+
+  /** Resolve and fetch one asset only while it remains inside the selected root. */
+  private async fetchFromRoot(
+    root: string,
+    relativePath: string,
+  ): Promise<Response | null> {
+    const targetPath = path.resolve(root, relativePath);
+    const relation = path.relative(root, targetPath);
     if (
       relation === '..' ||
       relation.startsWith(`..${path.sep}`) ||
       path.isAbsolute(relation)
     ) {
-      return new Response('Not Found', { status: 404 });
+      return null;
     }
-    return net.fetch(pathToFileURL(targetPath).toString(), {
-      bypassCustomProtocolHandlers: true,
-    });
+    try {
+      return await net.fetch(pathToFileURL(targetPath).toString(), {
+        bypassCustomProtocolHandlers: true,
+      });
+    } catch {
+      return null;
+    }
   }
 }

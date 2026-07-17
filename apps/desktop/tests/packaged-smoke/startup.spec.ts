@@ -120,6 +120,14 @@ class ReleaseScreenshotMatrix {
 }
 
 class PackagedWorkflowSmoke {
+  /** Resolve the package version used by local or tagged release builds. */
+  static expectedVersion(): string {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8'),
+    ) as { version: string };
+    return process.env.INTERCEPTOR_BUILD_VERSION ?? packageJson.version;
+  }
+
   /** Execute real Core workflows against an isolated loopback origin. */
   static async run(page: Page): Promise<void> {
     const origin = await this.startOrigin();
@@ -340,8 +348,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
       url: 'interceptor://app/index.html',
       apiKeys: [
         'cancelTransferJob',
+        'checkForUpdates',
         'clearStorage',
         'deleteCertificate',
+        'downloadUpdate',
         'echoCore',
         'enableSystemProxy',
         'generateCertificate',
@@ -357,11 +367,14 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getStorageStatus',
         'getSystemProxyStatus',
         'getTransferJob',
+        'getUpdateStatus',
         'installCertificate',
         'listBreakpoints',
         'onCaptureEvents',
         'onCoreProcessStatusChange',
+        'onUpdateStatusChange',
         'openCertificateManager',
+        'openDownloadedUpdate',
         'probeConnection',
         'queryDiagnostics',
         'queryGrpcMessages',
@@ -396,6 +409,22 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     expect(securitySnapshot.csp).toContain("frame-src 'none'");
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
+
+    const updateSnapshot = await page.evaluate(() =>
+      window.interceptor.getUpdateStatus());
+    expect(updateSnapshot).toMatchObject({
+      supported: true,
+      currentVersion: PackagedWorkflowSmoke.expectedVersion(),
+      progress: null,
+      downloadedBytes: null,
+    });
+    expect([
+      'idle',
+      'checking',
+      'available',
+      'up-to-date',
+      'failed',
+    ]).toContain(updateSnapshot.state);
 
     const systemProxy = await page.evaluate(() =>
       window.interceptor.getSystemProxyStatus(),

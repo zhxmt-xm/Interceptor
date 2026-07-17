@@ -10,6 +10,7 @@ import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components
 import { SECTIONS } from '../data';
 import { usePrivacyStore } from '../privacyStore';
 import { ProxyPanel } from './ProxyPanel';
+import { UpdatesPanel } from './UpdatesPanel';
 import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
 import styles from './SettingsContent.module.css';
 
@@ -514,6 +515,9 @@ function renderPanel(active: string): React.JSX.Element {
   }
   if (active === 'privacy') {
     return <PrivacyPanel />;
+  }
+  if (active === 'updates') {
+    return <UpdatesPanel />;
   }
   const label = SECTIONS.find((section) => section.id === active)?.label ?? 'Settings';
   return <PlaceholderPanel label={label} />;

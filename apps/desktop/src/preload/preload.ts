@@ -5,6 +5,7 @@ import {
   CoreProcessStatus,
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
+  type UpdateStatus,
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
@@ -27,6 +28,26 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRestore),
   repairSystemProxy: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRepair),
+  getUpdateStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateGetStatus),
+  checkForUpdates: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateCheck),
+  downloadUpdate: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateDownload),
+  openDownloadedUpdate: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateOpenDownloaded),
+  onUpdateStatusChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      status: UpdateStatus,
+    ) => {
+      listener(status);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.updateStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.updateStatus, handler);
+    };
+  },
   onCoreProcessStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

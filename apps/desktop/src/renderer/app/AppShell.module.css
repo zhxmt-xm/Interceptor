@@ -29,6 +29,11 @@
   position: relative;
   min-width: 0;
 }
+.notification {
+  min-width: 0;
+  margin-left: auto;
+  flex: 0 1 auto;
+}
 
 .main {
   grid-area: main;

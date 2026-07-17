@@ -118,6 +118,7 @@ function setState(s = {}) {
   if (s.tab) setInspTab(s.tab);
   if (s.settings) app.dataset.settings = s.settings;
   if (s.repair) app.dataset.repair = s.repair;
+  if (s.update) app.dataset.update = s.update;
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');

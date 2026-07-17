@@ -10,3 +10,5 @@ blob-report/
 .env
 .env.*
 !.env.example
+.secrets/
+.tools/

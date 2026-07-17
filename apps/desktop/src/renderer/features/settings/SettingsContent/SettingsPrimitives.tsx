@@ -23,16 +23,18 @@ export function SettingsRow({
   label,
   hint,
   children,
+  hintClassName,
 }: {
   label: string;
   hint?: string;
+  hintClassName?: string;
   children: ReactNode;
 }): React.JSX.Element {
   return (
     <div className={styles.row}>
       <div className={styles.caption}>
         <b>{label}</b>
-        {hint ? <span>{hint}</span> : null}
+        {hint ? <span className={hintClassName}>{hint}</span> : null}
       </div>
       <div className={styles.control}>{children}</div>
     </div>
