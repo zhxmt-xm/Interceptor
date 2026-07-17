@@ -101,6 +101,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'queryWebSocketFrames',
         'readBody',
         'replaceRules',
+        'reportRendererDiagnostic',
         'resolveBreakpoint',
         'revealCertificate',
         'sendComposerRequest',

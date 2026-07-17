@@ -20,6 +20,49 @@ afterEach(() => {
 });
 
 describe('CoreDiagnostics', () => {
+  it('rebuilds and redacts externally ingested renderer records', async () => {
+    const batches: unknown[][] = [];
+    const diagnostics = new CoreDiagnostics({
+      sink: (records) => {
+        batches.push([...records]);
+      },
+    });
+
+    diagnostics.runWithCommand(
+      'request-ingest',
+      'trace-ingest',
+      'diagnostics.ingest',
+      () => diagnostics.ingest({
+        process: 'renderer',
+        level: 'error',
+        phase: 'renderer.unhandled-error',
+        errorCode: 'TypeError',
+        attributes: {
+          authorization: 'Bearer secret',
+          message: 'GET https://example.com/path?token=secret Bearer abc123',
+        },
+      }),
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(batches.flat()).toMatchObject([
+      {
+        process: 'renderer',
+        level: 'error',
+        phase: 'renderer.unhandled-error',
+        errorCode: 'TypeError',
+        traceId: undefined,
+        requestId: undefined,
+        attributes: {
+          authorization_0: '[REDACTED]',
+          message_1:
+            'GET https://example.com/path?token=%5BREDACTED%5D Bearer [REDACTED]',
+        },
+      },
+    ]);
+    expect(batches.flat()[0]).not.toHaveProperty('command');
+  });
+
   it('propagates command context through asynchronous actions', async () => {
     const batches: unknown[][] = [];
     const diagnostics = new CoreDiagnostics({

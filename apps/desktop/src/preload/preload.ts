@@ -17,6 +17,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetDiagnostics, limit),
   queryDiagnostics: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreQueryDiagnostics, request),
+  reportRendererDiagnostic: (report) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rendererDiagnosticReport, report),
   onCoreProcessStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

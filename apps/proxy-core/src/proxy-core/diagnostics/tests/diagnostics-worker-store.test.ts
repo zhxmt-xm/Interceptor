@@ -19,7 +19,7 @@ function record(
     timestamp: new Date(1_700_000_000_000 + sequence).toISOString(),
     sequence,
     level: 'info',
-    process: 'proxy-core',
+    process: 'core',
     phase: 'command.completed',
     ...overrides,
   };
@@ -83,6 +83,22 @@ describe('DiagnosticsStore', () => {
       expect(
         store.query({ limit: 10, outcome: 'failed' }).records.map((r) => r.sequence),
       ).toEqual([3, 1]);
+    });
+
+    it('filters by process and maps legacy proxy-core records to core', () => {
+      store.insertBatch([
+        record(1, { process: 'core' }),
+        record(2, { process: 'main' }),
+        record(3, { process: 'renderer' }),
+      ]);
+      expect(
+        store.query({ limit: 10, process: 'main' }).records.map((item) =>
+          item.sequence),
+      ).toEqual([2]);
+      expect(
+        store.query({ limit: 10, process: 'core' }).records.map((item) =>
+          item.sequence),
+      ).toEqual([1]);
     });
 
       it('filters by command and duration range', () => {

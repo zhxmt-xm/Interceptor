@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 当前 Stage 文件：[M10.md](M10.md)（进行中，T10.1–T10.4 已完成）。
+4. 当前 Stage 文件：[M11.md](M11.md)（准备开始；M10 已全部完成）。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,8 +18,8 @@
 
 ## 当前状态
 
-- **M0–M9 均已完成（100%）**；M10 进行中（80%），各 Stage 详情见对应 `M*.md`。
-- **当前 Stage：M10 导入导出与隐私；T10.1–T10.4 已完成，下一是 T10.5 Main/Renderer 日志纳入诊断**：
+- **M0–M10 均已完成（100%）**；M11 准备开始，各 Stage 详情见对应 `M*.md`。
+- **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
   - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
   - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
@@ -34,7 +34,7 @@
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
-- **窄 API 已扩展**：M10/T10.1 新增 HAR/transfer；T10.2 新增 archive；T10.4 新增 `queryDiagnostics`、`startDiagnosticsExport`。Preload 仍不暴露 path/readFile/writeFile，packaged smoke apiKeys 已同步。
+- **窄 API 已扩展**：M10/T10.1 新增 HAR/transfer；T10.2 新增 archive；T10.4 新增 `queryDiagnostics`、`startDiagnosticsExport`；T10.5 新增固定 `reportRendererDiagnostic`。Preload 仍不暴露通用日志、path/readFile/writeFile，packaged smoke apiKeys 已同步。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
 - **验证全绿**（T10.4）：`typecheck` 三 workspace；`test:unit` Desktop 44 / Proxy Core 184 / Core Protocol 19；`build:core`、Windows package、真实 packaged smoke 1/1、`audit --omit=dev` 0 通过；Diagnostics parity 完整执行（1.69%，既有 fixture/几何 flags）。
 - T10.1 已推送至 `6472781`；T10.2 `23395c7`、T10.3 `3e0ed20` 已本地提交；T10.4 为当前提交，均待用户 review 后决定是否 push。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline`。
@@ -129,17 +129,11 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一任务：M10 T10.5 Main/Renderer 日志纳入诊断
+## 下一任务：M11 T11.1 Windows 系统代理
 
-T10.1–T10.4 已完成（见 [M10.md](M10.md)）。下一项是把 Main 与 Renderer 的结构化日志经窄通道汇入同一 Diagnostics Worker。
+M10 已全部完成（见 [M10.md](M10.md)）。下一项按完整方案第十章与第二十七章 M11，实现当前用户 WinINet 系统代理 snapshot、设置、变更通知与 guarded restore；开始前先读 [M11.md](M11.md) 和本文件要求的 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-建议执行顺序：
-
-1. 运行 `git status --short --branch` 与 `git log -3 --oneline`；阅读 [ARCHITECTURE.md](ARCHITECTURE.md)、完整方案第十二章 12.5 与第二十七章 M10、[M10.md](M10.md)。
-2. 扩展 `DiagnosticLogRecord.process` 为 core/main/renderer；Main 侧关键 IPC/CoreRuntime/证书错误用有界 fire-and-forget ingest，Renderer 只经窄 `reportRendererDiagnostic` 上报未捕获错误，不提供通用日志逃生口。
-3. 所有来源在 Core 入库前统一走 `CoreDiagnostics` 脱敏/上限；补 process 筛选与导出验证，完成后按 T10.5 标题 commit。
-
-> 已完成：M0–M9 全量交付 + M10 T10.1–T10.4；本会话提交均未 push（用户稍后 review）。
+> 已完成并推送：M0–M10；后续每个 `T11.x`/`T12.x`/`T13.x` 任务需独立提交并 push。
 
 ## 剩余工作项目
 
@@ -153,7 +147,7 @@ T10.1–T10.4 已完成（见 [M10.md](M10.md)）。下一项是把 Main 与 Ren
 
 | Stage | 状态 | 主要范围 | 产品设计入口 |
 | --- | --- | --- | --- |
-| M10 | 进行中（80%） | HAR、native archive、隐私、Diagnostics 分析/导出已完成；剩余 Main/Renderer 日志汇入 | 完整方案第十二/十六章、第二十七章 M10 |
+| M10 | 已完成（100%） | HAR、native archive、隐私、三进程 Diagnostics 分析/导出 | 完整方案第十二/十六章、第二十七章 M10 |
 | M11–M13 | 未开始 | 系统代理、发布加固、更新机制 | 完整方案对应章节和第二十七章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。

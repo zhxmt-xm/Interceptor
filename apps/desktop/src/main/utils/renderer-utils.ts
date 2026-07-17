@@ -10,6 +10,7 @@ import type {
   DiagnosticsQueryRequest,
   GrpcMessageQuery,
   HarExportRequest,
+  RendererDiagnosticReport,
   SessionQueryRequest,
   StorageUsage,
   WebSocketFrameQuery,
@@ -44,6 +45,7 @@ export function toRendererDiagnosticRecord(
     timestamp: record.timestamp,
     sequence: record.sequence,
     level: record.level,
+    process: record.process,
     traceId: record.traceId,
     requestId: record.requestId,
     command: record.command,
@@ -522,6 +524,7 @@ export function toHarExportRequest(value: unknown): HarExportRequest {
 }
 
 const DIAGNOSTIC_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+const DIAGNOSTIC_PROCESSES = ['core', 'main', 'renderer'] as const;
 const DIAGNOSTIC_OUTCOMES = [
   'success',
   'failed',
@@ -541,6 +544,15 @@ export function toDiagnosticsExportFilter(
   }
   const request = value as Record<string, unknown>;
   const filter: DiagnosticsExportFilter = {};
+  if (request.process !== undefined) {
+    if (
+      typeof request.process !== 'string' ||
+      !(DIAGNOSTIC_PROCESSES as readonly string[]).includes(request.process)
+    ) {
+      throw new Error('Diagnostics export process is invalid');
+    }
+    filter.process = request.process as DiagnosticsExportFilter['process'];
+  }
   if (request.level !== undefined) {
     if (
       typeof request.level !== 'string' ||
@@ -575,6 +587,7 @@ export function toDiagnosticsQueryRequest(
     throw new Error('Diagnostics query.limit is invalid');
   }
   const filter = toDiagnosticsExportFilter({
+    process: query.process,
     level: query.level,
     outcome: query.outcome,
   });
@@ -616,5 +629,28 @@ export function toDiagnosticsQueryRequest(
     ...(query.maxDurationMs !== undefined
       ? { maxDurationMs: query.maxDurationMs as number }
       : {}),
+  };
+}
+
+/** 校验 Renderer 全局错误的固定短摘要；phase/process 由 Main 决定。 */
+export function toRendererDiagnosticReport(
+  value: unknown,
+): RendererDiagnosticReport {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('Renderer diagnostic report is invalid');
+  }
+  const report = value as Record<string, unknown>;
+  if (
+    report.kind !== 'uncaught-error' &&
+    report.kind !== 'unhandled-rejection'
+  ) {
+    throw new Error('Renderer diagnostic kind is invalid');
+  }
+  assertIdentifier(report.name, 'Renderer diagnostic name');
+  assertBoundedString(report.message, 'Renderer diagnostic message', 512);
+  return {
+    kind: report.kind,
+    name: report.name,
+    message: report.message,
   };
 }

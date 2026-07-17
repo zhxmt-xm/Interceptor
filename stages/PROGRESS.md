@@ -16,10 +16,10 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0–M9（均 100%）。
-- 当前 Stage：M10 导入导出与隐私（进行中，80%）。
-- 当前任务：T10.4 Diagnostics 分析与导出已完成。trace/command/level/outcome/duration keyset 分页查询、Level/Outcome UI、Load earlier records、共享 transfer job 的双层脱敏 JSONL 原子导出已落地。详情见 [M10.md](M10.md)。
-- 下一动作：M10 T10.5 Main/Renderer 日志纳入诊断；统一 process 来源、窄上报通道、有界策略与统一脱敏。
+- 已完成 Stage：M0–M10（均 100%）。
+- 当前 Stage：M11 系统代理适配与恢复（准备开始）。
+- 当前任务：M10 T10.5 已完成。Core/Main/Renderer 三来源日志经有界窄通道统一入库、查询与脱敏导出，Diagnostics UI 支持 Process/Level/Outcome 筛选。详情见 [M10.md](M10.md)。
+- 下一动作：M11 T11.1 Windows 系统代理；实现当前用户 WinINet snapshot、设置、变更通知与 guarded restore。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
 - Git 状态：T10.1 已推送至 `6472781`；T10.2 `23395c7`、T10.3 `3e0ed20` 已本地提交；T10.4 为当前提交，均待用户 review 后决定是否 push。
 - 阻塞：无。
@@ -40,8 +40,8 @@
 | M7 | 规则引擎 | 已完成 | 100% | [M7.md](M7.md) |
 | M8 | 规则 UI 与 Composer | 已完成 | 100% | [M8.md](M8.md) |
 | M9 | WebSocket 与 gRPC | 已完成 | 100% | [M9.md](M9.md) |
-| M10 | 导入导出与隐私 | 进行中 | 80% | [M10.md](M10.md) |
-| M11 | 系统代理适配与恢复 | 未开始 | 0% | [M11.md](M11.md) |
+| M10 | 导入导出与隐私 | 已完成 | 100% | [M10.md](M10.md) |
+| M11 | 系统代理适配与恢复 | 准备开始 | 0% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 未开始 | 0% | [M12.md](M12.md) |
 | M13 | 更新机制 | 未开始 | 0% | [M13.md](M13.md) |
 
@@ -69,7 +69,7 @@
 - HTTPS MITM 与 CA 已落地（M5）：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage` 加密私钥（懒加载证书库）；`TrustStoreService` 做 local-machine 信任库安装/卸载/检测（sudo-prompt 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp MITM 解密 HTTPS（仅信任且 mitmEnabled 开启时启用，信任与 MITM 解耦）并复用现有捕获管线；per-host 不安全例外、Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。私钥绝不进 Renderer。详见 M5.md 后续增强。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke（含存储全链路 + 窄 API 面）和生产依赖审计链已建立。
 - HTTP/2 已落地（M6）：MITM 时 Mockttp `http2:true` 下游 h2 + 上游 ALPN 协商 + 四组转换；trailer/pseudo-header 采集落库；`content-decoder`（gzip/deflate/brotli 延迟解码）经 `body.read-range` 的 `decode` 请求由 Core 解压（浏览器不支持 br 故必须 Core 解）；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强。
-- 诊断可观测性增强（2026-07）：Core 各组件（rpcServer/application/proxy/storage）经共享 `DiagnosticsRecorder` 记 initialize/生命周期/action/error 关键节点（削去每命令模板 phase 噪音）；Diagnostics 面板经 `getRecentDiagnostics` 轮询接真实命令 trace（按 requestId 聚合 + action 时间线 + records/dropped）。Main/Renderer 日志纳入诊断见 M10 T10.5。
+- 诊断可观测性增强（2026-07）：Core 各组件及 Electron Main/Renderer 的关键生命周期、IPC/证书错误和未捕获 UI 错误，经有界非阻塞窄通道统一写入 Diagnostics Worker；按 core/main/renderer、trace/command/level/outcome/duration 分页查询与双层脱敏 JSONL 导出。
 - 规则 UI、Composer、Breakpoint 编辑与 Connection/TLS 详情已落地（M8）：Rules workspace 数据驱动（rulesStore/useRulesData + 全类型 Matcher/Action 编辑器 + 实时 rules.validate 诊断 + rules.replace 乐观并发 + rules.hits 命中计数）；Composer（composerStore/useComposer + ComposerService 经 http/https/http2 出站 + 响应/历史/Auth）；Breakpoints（breakpointsStore/useBreakpoints 轮询 breakpoint.list 暂停队列 + 编辑放行 + break-on-match）；Capture Inspector TLS 标签经 connection.probe 实时探测证书链。系统代理、导入导出仍未实现（M10+）。
 - WebSocket/gRPC 已落地（M9）：Mockttp HTTP/1.1 Upgrade + 自定义 `WebSocketBridge` 捕获/转发/消息断点，`websocket_frame` 有序存储与 keyset 页；native gRPC 作为通用 H2 request/response 捕获，`grpc.messages` 每条只读 5B envelope header 并复用 Blob range。Capture Inspector 提供 WebSocket/gRPC Messages 视图；gRPC-Web、H2 Extended CONNECT、descriptor/reflection 与实时 streaming 增量解析未实现。
 - HAR 1.2 已落地（M10/T10.1）：Core 内完成标准 HAR 导出与受限 inert JSON 导入，正文只在 Core/Blob 流转；Main 系统对话框持有路径，Renderer 只经异步 transfer job 查询进度/取消。Capture HAR overlay 支持 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。
@@ -78,6 +78,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-17 M10/T10.5 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` Desktop 47 / Proxy Core 187 / Core Protocol 19 全通过；`npm run build:core`、Windows package、真实 packaged smoke 1/1、`npm audit --omit=dev` 0 全通过。Diagnostics parity 1.70%，本次 6/6 targets、0 missing，Process/Level/Outcome 几何 0 px。详情见 [M10.md](M10.md)。
 
 2026-07-17 T10.4 完成后的集中验收：`npm run typecheck` 三 workspace 通过；`npm run test:unit` Desktop 44 / Proxy Core 184 / Core Protocol 19 全通过；`npm run build:core`、Windows package、真实 packaged smoke 1/1、`npm audit --omit=dev` 0 全通过。新增五维分页查询、Main 双边界校验、JSONL 分页/原子替换/双层脱敏测试。Diagnostics parity 像素差 1.69%，既有 fixture/几何报告 3 missing / 6 flagged，初始 topbar 结构无变化。详情见 [M10.md](M10.md)。
 

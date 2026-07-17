@@ -37,7 +37,10 @@ export function TraceList(): React.JSX.Element {
               onClick={() => setSelectedKey(row.key)}
             >
               <span className={styles.time}>{row.time}</span>
-              <span className={styles.command}>{row.command}</span>
+              <span className={styles.command}>
+                <span className={styles.process}>{row.process} · </span>
+                {row.command}
+              </span>
               <span className={cx(styles.level, styles[row.level])}>
                 <span className={styles.dot} />
                 {row.level}

@@ -27,7 +27,7 @@ function record(
     timestamp: new Date(1_700_000_000_000 + sequence).toISOString(),
     sequence,
     level: 'warn',
-    process: 'proxy-core',
+    process: 'core',
     phase: 'command.completed',
     outcome: 'failed',
     attributes,
@@ -59,13 +59,14 @@ describe('DiagnosticsService.exportJsonl', () => {
 
     const result = await new DiagnosticsService().exportJsonl(
       filePath,
-      { level: 'warn', outcome: 'failed' },
+      { process: 'renderer', level: 'warn', outcome: 'failed' },
       new AbortController().signal,
       progress,
     );
 
     expect(result).toEqual({ processed: 2, total: 2, warnings: [] });
     expect(query).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      process: 'renderer',
       level: 'warn',
       outcome: 'failed',
       cursor: undefined,

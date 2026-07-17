@@ -39,6 +39,7 @@ export function TraceDetail(): React.JSX.Element {
       <div className={styles.top}>
         <span className={styles.command}>{command}</span>
         <div className={styles.ids}>
+          <span className={styles.idpill}>{first.process}</span>
           {first.traceId ? (
             <span className={styles.idpill}>trace {shortenId(first.traceId)}</span>
           ) : null}

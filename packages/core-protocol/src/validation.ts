@@ -49,6 +49,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'breakpoint.configure',
   'connection.probe',
   'diagnostics.recent',
+  'diagnostics.ingest',
   'diagnostics.query',
   'diagnostics.export.start',
   'storage.status',
@@ -315,6 +316,9 @@ function validateCommand(value: unknown): string | null {
     case 'diagnostics.recent':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsRecent(value.payload);
+    case 'diagnostics.ingest':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateDiagnosticsIngest(value.payload);
     case 'diagnostics.query':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateDiagnosticsQuery(value.payload);
@@ -412,6 +416,9 @@ function validateResult(value: unknown): string | null {
     case 'diagnostics.records':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateDiagnosticsRecords(value.payload);
+    case 'diagnostics.ingested':
+      return validateRecordKeys(value, 'result', ['type', 'payload']) ??
+        validateEmptyPayload(value.payload);
     case 'diagnostics.page':
       return validateRecordKeys(value, 'result', ['type', 'payload']) ??
         validateDiagnosticsPage(value.payload);
@@ -1223,6 +1230,49 @@ function validateDiagnosticsRecent(value: unknown): string | null {
   );
 }
 
+function validateDiagnosticsIngest(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    [
+      'process',
+      'level',
+      'phase',
+      'traceId',
+      'requestId',
+      'action',
+      'durationMs',
+      'outcome',
+      'errorCode',
+      'attributes',
+    ],
+    (payload) => validateEnum(
+      payload.process,
+      'command.payload.process',
+      ['main', 'renderer'],
+    ) ?? validateEnum(payload.level, 'command.payload.level', [
+      'info',
+      'warn',
+      'error',
+    ]) ?? validateId(payload.phase, 'command.payload.phase') ??
+      validateOptionalId(payload.traceId, 'command.payload.traceId') ??
+      validateOptionalId(payload.requestId, 'command.payload.requestId') ??
+      validateOptionalId(payload.action, 'command.payload.action') ??
+      validateOptionalIntegerRange(
+        payload.durationMs,
+        'command.payload.durationMs',
+        0,
+        86_400_000,
+      ) ?? validateOptionalEnum(payload.outcome, 'command.payload.outcome', [
+        'success',
+        'failed',
+        'cancelled',
+        'timed_out',
+      ]) ?? validateOptionalId(payload.errorCode, 'command.payload.errorCode') ??
+      validateLogAttributes(payload.attributes, 'command.payload.attributes'),
+  );
+}
+
 function validateDiagnosticsQuery(value: unknown): string | null {
   return validateExactObject(
     value,
@@ -1230,6 +1280,7 @@ function validateDiagnosticsQuery(value: unknown): string | null {
     [
       'cursor',
       'limit',
+      'process',
       'level',
       'outcome',
       'traceId',
@@ -1246,7 +1297,11 @@ function validateDiagnosticsQuery(value: unknown): string | null {
       'command.payload.limit',
       1,
       MAX_DIAGNOSTIC_RECORDS,
-    ) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
+    ) ?? validateOptionalEnum(payload.process, 'command.payload.process', [
+      'core',
+      'main',
+      'renderer',
+    ]) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
       'debug',
       'info',
       'warn',
@@ -1285,13 +1340,17 @@ function validateDiagnosticsExportStart(value: unknown): string | null {
   return validateExactObject(
     value,
     'command.payload',
-    ['jobId', 'filePath', 'level', 'outcome'],
+    ['jobId', 'filePath', 'process', 'level', 'outcome'],
     (payload) => validateId(payload.jobId, 'command.payload.jobId') ??
       validateNonEmptyBoundedString(
         payload.filePath,
         'command.payload.filePath',
         MAX_TRANSFER_PATH_LENGTH,
-      ) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
+      ) ?? validateOptionalEnum(payload.process, 'command.payload.process', [
+        'core',
+        'main',
+        'renderer',
+      ]) ?? validateOptionalEnum(payload.level, 'command.payload.level', [
         'debug',
         'info',
         'warn',
@@ -2064,7 +2123,11 @@ function validateLogRecord(value: unknown, name: string): string | null {
         'info',
         'warn',
         'error',
-      ]) ?? validateEnum(record.process, `${name}.process`, ['proxy-core']) ??
+      ]) ?? validateEnum(record.process, `${name}.process`, [
+        'core',
+        'main',
+        'renderer',
+      ]) ??
       validateOptionalId(record.traceId, `${name}.traceId`) ??
       validateOptionalId(record.requestId, `${name}.requestId`) ??
       validateOptionalCommandType(record.command, `${name}.command`) ??

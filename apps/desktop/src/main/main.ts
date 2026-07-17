@@ -7,7 +7,7 @@ import {
   app,
   BrowserWindow,
   dialog,
-  ipcMain,
+  ipcMain as electronIpcMain,
   safeStorage,
   session,
   shell,
@@ -24,6 +24,7 @@ import {
 import { CertificateService } from './certificates/certificate-service';
 import { TrustStoreService } from './certificates/trust-store-service';
 import { CoreRuntime } from './core/core-runtime';
+import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { isTrustedRendererUrl } from './security/trusted-renderer-url';
 import {
   assertBoundedString,
@@ -41,6 +42,7 @@ import {
   toDiagnosticsExportFilter,
   toDiagnosticsQueryRequest,
   toInsecureHosts,
+  toRendererDiagnosticReport,
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
   toRendererStorageUsage,
@@ -53,6 +55,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 /** Electron Main 应用所有者：窗口、安全策略、CoreRuntime 、证书与 Renderer IPC。 */
 class DesktopApplication {
   private readonly coreRuntime = new CoreRuntime();
+  private readonly diagnostics = new MainDiagnostics(this.coreRuntime);
   private certificateService: CertificateService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
@@ -60,9 +63,20 @@ class DesktopApplication {
   /** HTTPS 解密（MITM）用户意图开关；与“CA 是否信任”解耦——信任是系统层
    * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
   private mitmEnabled = true;
+  private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
   private quitting = false;
 
   start(): void {
+    process.on('uncaughtExceptionMonitor', (error, origin) => {
+      this.diagnostics.error('main.uncaught-exception', {
+        errorCode: error.name,
+        outcome: 'failed',
+        attributes: {
+          message: error.message,
+          origin,
+        },
+      });
+    });
     void app.whenReady().then(() => this.onReady());
     app.on('activate', () => this.onActivate());
     app.on('window-all-closed', () => this.onAllWindowsClosed());
@@ -77,6 +91,21 @@ class DesktopApplication {
     });
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
+      if (status.state !== this.lastCoreProcessState) {
+        const fields = {
+          attributes: {
+            state: status.state,
+            restartCount: status.restartCount,
+            ...(status.pid === null ? {} : { pid: status.pid }),
+          },
+        };
+        if (status.state === 'unresponsive' || status.state === 'restarting') {
+          this.diagnostics.warn('main.core-runtime.status', fields);
+        } else {
+          this.diagnostics.info('main.core-runtime.status', fields);
+        }
+        this.lastCoreProcessState = status.state;
+      }
       this.broadcastCoreProcessStatus(status);
     });
     this.coreRuntime.onCaptureEvents((events) => {
@@ -175,6 +204,31 @@ class DesktopApplication {
   }
 
   private configureRendererIpc(): void {
+    const ipcMain = {
+      handle: (
+        channel: string,
+        listener: Parameters<typeof electronIpcMain.handle>[1],
+      ): void => {
+        electronIpcMain.handle(channel, async (event, ...args) => {
+          const startedAt = Date.now();
+          try {
+            return await listener(event, ...args);
+          } catch (error) {
+            this.diagnostics.error('main.ipc.failed', {
+              durationMs: Date.now() - startedAt,
+              outcome: 'failed',
+              errorCode: readErrorName(error),
+              attributes: {
+                channel,
+                message: readErrorMessage(error),
+              },
+            });
+            throw error;
+          }
+        });
+      },
+    };
+
     // CoreProcess 状态只来自 heartbeat，不代表代理监听、存储等业务一定可用。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.coreGetProcessStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -278,6 +332,24 @@ class DesktopApplication {
           }
           throw error;
         }
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.rendererDiagnosticReport,
+      (event, report: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const parsed = toRendererDiagnosticReport(report);
+        this.diagnostics.rendererError(
+          parsed.kind === 'uncaught-error'
+            ? 'renderer.uncaught-error'
+            : 'renderer.unhandled-rejection',
+          {
+            errorCode: parsed.name,
+            outcome: 'failed',
+            attributes: { message: parsed.message },
+          },
+        );
       },
     );
 
@@ -502,7 +574,7 @@ class DesktopApplication {
       return result.payload.job;
     });
 
-    // 诊断 JSONL 导出：Renderer 只提交 level/outcome 过滤；路径由 Main 系统对话框生成。
+    // 诊断 JSONL 导出：Renderer 只提交 process/level/outcome 过滤；路径由 Main 生成。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.diagnosticsExportStart,
       async (event, filter: unknown) => {
@@ -522,6 +594,7 @@ class DesktopApplication {
           payload: {
             jobId: `transfer-${randomUUID()}`,
             filePath: selection.filePath,
+            ...(parsedFilter.process ? { process: parsedFilter.process } : {}),
             ...(parsedFilter.level ? { level: parsedFilter.level } : {}),
             ...(parsedFilter.outcome ? { outcome: parsedFilter.outcome } : {}),
           },
@@ -599,9 +672,11 @@ class DesktopApplication {
     // 生成（或重新生成）Root CA；生成不自动信任，需用户单独安装后才启用 MITM。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caGenerate, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      await this.requireCertificateService().regenerate();
-      await this.provisionCoreTls();
-      return this.buildCertificateInfo();
+      return this.runMainAction('main.certificate.generate', async () => {
+        await this.requireCertificateService().regenerate();
+        await this.provisionCoreTls();
+        return this.buildCertificateInfo();
+      });
     });
 
     // 安装已生成的 CA 到本地计算机信任库（需提权），随后启用 MITM。要求 CA 已生成，
@@ -613,20 +688,24 @@ class DesktopApplication {
       if (!status.present) {
         throw new Error('Root CA has not been generated yet.');
       }
-      await this.trustStore.install(service.getCertificatePath());
-      await this.provisionCoreTls();
-      return this.buildCertificateInfo();
+      return this.runMainAction('main.trust-store.install', async () => {
+        await this.trustStore.install(service.getCertificatePath());
+        await this.provisionCoreTls();
+        return this.buildCertificateInfo();
+      });
     });
 
     // 按 SHA-1 thumbprint 从信任库精确移除 CA，随后禁用 MITM。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caUninstall, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const thumbprints = await this.requireCertificateService().getThumbprints();
-      if (thumbprints) {
-        await this.trustStore.uninstall(thumbprints.sha1);
-      }
-      await this.provisionCoreTls();
-      return this.buildCertificateInfo();
+      return this.runMainAction('main.trust-store.uninstall', async () => {
+        if (thumbprints) {
+          await this.trustStore.uninstall(thumbprints.sha1);
+        }
+        await this.provisionCoreTls();
+        return this.buildCertificateInfo();
+      });
     });
 
     // 删除本地生成的 CA 材料（证书/私钥/元数据）；若仍在信任库先移除（提权）避免孤儿信任。
@@ -893,8 +972,36 @@ class DesktopApplication {
         type: 'tls.configure',
         payload: { ca: material, insecureHosts: this.insecureHosts },
       });
-    } catch {
+    } catch (error) {
+      this.diagnostics.warn('main.tls.provision-failed', {
+        errorCode: readErrorName(error),
+        outcome: 'failed',
+        attributes: { message: readErrorMessage(error) },
+      });
       // Core 尚未就绪、无代理或无存储时不阻断启动。
+    }
+  }
+
+  private async runMainAction<T>(
+    phase: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const startedAt = Date.now();
+    try {
+      const result = await operation();
+      this.diagnostics.info(`${phase}.completed`, {
+        durationMs: Date.now() - startedAt,
+        outcome: 'success',
+      });
+      return result;
+    } catch (error) {
+      this.diagnostics.error(`${phase}.failed`, {
+        durationMs: Date.now() - startedAt,
+        outcome: 'failed',
+        errorCode: readErrorName(error),
+        attributes: { message: readErrorMessage(error) },
+      });
+      throw error;
     }
   }
 
@@ -957,3 +1064,11 @@ class DesktopApplication {
 }
 
 new DesktopApplication().start();
+
+function readErrorName(error: unknown): string {
+  return error instanceof Error ? error.name : 'unknown';
+}
+
+function readErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

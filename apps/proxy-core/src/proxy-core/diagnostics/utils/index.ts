@@ -36,7 +36,9 @@ export function toLogRecord(row: DiagnosticsLogRow): DiagnosticLogRecord {
     timestamp: row.timestamp,
     sequence: row.sequence,
     level: row.level as DiagnosticLevel,
-    process: 'proxy-core',
+    process: row.process === 'proxy-core'
+      ? 'core'
+      : row.process as DiagnosticLogRecord['process'],
     traceId: row.trace_id ?? undefined,
     requestId: row.request_id ?? undefined,
     command: (row.command ?? undefined) as DiagnosticLogRecord['command'],

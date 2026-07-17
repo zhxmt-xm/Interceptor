@@ -7,6 +7,7 @@ import type {
   CaptureHeader,
   ComposerTlsInfo,
   ConnectionCertificate,
+  DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
   HeaderOperation,
@@ -37,6 +38,7 @@ export type {
   CaptureHeader,
   ComposerTlsInfo,
   ConnectionCertificate,
+  DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
   HeaderOperation,
@@ -85,6 +87,7 @@ export interface CoreDiagnosticRecord {
   timestamp: string;
   sequence: number;
   level: 'debug' | 'info' | 'warn' | 'error';
+  process: DiagnosticProcess;
   traceId?: string;
   requestId?: string;
   command?: string;
@@ -110,6 +113,7 @@ export interface CoreDiagnosticSnapshot {
 export interface DiagnosticsQueryRequest {
   cursor?: string;
   limit?: number;
+  process?: DiagnosticProcess;
   level?: CoreDiagnosticRecord['level'];
   outcome?: NonNullable<CoreDiagnosticRecord['outcome']>;
   traceId?: string;
@@ -125,8 +129,16 @@ export interface CoreDiagnosticPage extends CoreDiagnosticSnapshot {
 
 /** 诊断 JSONL 导出的可选筛选（按 level / outcome）。 */
 export interface DiagnosticsExportFilter {
+  process?: DiagnosticProcess;
   level?: 'debug' | 'info' | 'warn' | 'error';
   outcome?: 'success' | 'failed' | 'cancelled' | 'timed_out';
+}
+
+/** Renderer 仅可上报两类全局错误的短摘要，不提供通用日志入口。 */
+export interface RendererDiagnosticReport {
+  kind: 'uncaught-error' | 'unhandled-rejection';
+  name: string;
+  message: string;
 }
 
 export interface StorageUsage {
@@ -305,6 +317,7 @@ export const DESKTOP_IPC_CHANNELS = {
   coreGetTrace: 'core:get-trace',
   coreGetDiagnostics: 'core:get-diagnostics',
   coreQueryDiagnostics: 'core:query-diagnostics',
+  rendererDiagnosticReport: 'diagnostics:renderer-report',
   coreProcessStatus: 'core:process-status',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
@@ -353,6 +366,7 @@ export interface InterceptorDesktopApi {
   getCoreTrace(traceId: string): Promise<CoreDiagnosticTrace>;
   getRecentDiagnostics(limit?: number): Promise<CoreDiagnosticSnapshot>;
   queryDiagnostics(request: DiagnosticsQueryRequest): Promise<CoreDiagnosticPage>;
+  reportRendererDiagnostic(report: RendererDiagnosticReport): Promise<void>;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;

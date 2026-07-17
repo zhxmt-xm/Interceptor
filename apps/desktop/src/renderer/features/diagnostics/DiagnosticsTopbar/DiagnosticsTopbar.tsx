@@ -11,8 +11,10 @@ export interface DiagnosticsTopbarProps {
 /** Diagnostics topbar: toggle, title, level/outcome filters and JSONL export. */
 export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX.Element {
   const {
+    processFilter,
     levelFilter,
     outcomeFilter,
+    cycleProcess,
     cycleLevel,
     cycleOutcome,
     exporting,
@@ -24,6 +26,9 @@ export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX
       <IconButton icon={Menu} label="Toggle sidebar" onClick={onMenu} />
       <Title>Diagnostics</Title>
       <div className={styles.actions}>
+        <FilterChip onClick={cycleProcess}>
+          {processFilter ? `Process: ${processFilter}` : 'Process'}
+        </FilterChip>
         <FilterChip onClick={cycleLevel}>
           {levelFilter ? `Level: ${levelFilter}` : 'Level'}
         </FilterChip>

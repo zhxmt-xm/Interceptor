@@ -158,8 +158,9 @@ sequenceDiagram
 > 在 M2 Diagnostics 基座（Ring Buffer + Worker 持久化）之上，Core 各组件经共享 `DiagnosticsRecorder` 记结构化关键节点，Renderer Diagnostics 面板通过持久化分页查询展示真实命令 trace。
 
 - **DiagnosticsRecorder 全组件注入**：`core-diagnostics.ts` 导出 `DiagnosticsRecorder`（`info/warn/error(phase,fields)`，`CoreDiagnostics` 唯一实现）；RpcServer 内建、Proxy/Storage host 经 `attachDiagnostics` 注入（`CoreApplication` 装配后转交）。各组件记 initialize/生命周期/action/error 关键节点：RpcServer `rpc.connected`/`connection-failed` + 每命令 1 条 `command.completed`；Application `core.started`/`stopping`/`storage.ready`/`diagnostics.ready`；Proxy `proxy.listening`/`stopped`/`tls.reconfigured`/`tls.client-error` + 异常 exchange；Storage `storage.worker-ready`/`fatal`/`error`/`exit`。命令级精简为单条 completed，`diagnostics.recent`/`query` 静默避免轮询自污染。
-- **分页分析数据流（T10.4）**：Renderer `DiagnosticsProvider`（2s 轮询）→ `queryDiagnostics` 窄 API → Main `core:query-diagnostics` → Core `diagnostics.query` → Diagnostics Worker。支持 trace/command/level/outcome/duration 条件与递减 id keyset cursor；Provider 默认拉 200 条，过滤变化重查首页，`TraceList` 可加载更旧记录并按 sequence 去重；`TraceDetail` 继续展示 Action 时间线，Statusbar 展示 records/dropped。
-- **脱敏 JSONL（T10.4）**：`diagnostics.export.start` 复用共享 `TransferJobManager`，Main 系统 Save Dialog 独占路径，Core 分页逐行写临时文件、fsync 后原子替换。日志入库由 CoreDiagnostics 脱敏，导出前 `redactRecordForExport` 再次遮罩敏感 attribute 与 URL Query，Renderer 只拿 job snapshot。日志来源当前仅 Core，Main/Renderer 汇入见 T10.5。
+- **分页分析数据流（T10.4/T10.5）**：Renderer `DiagnosticsProvider`（2s 轮询）→ `queryDiagnostics` 窄 API → Main `core:query-diagnostics` → Core `diagnostics.query` → Diagnostics Worker。支持 process(core/main/renderer)/trace/command/level/outcome/duration 条件与递减 id keyset cursor；Provider 默认拉 200 条，过滤变化重查首页，按 process+timestamp+sequence 去重并可加载更旧记录；`TraceDetail` 展示来源、标识与 Action 时间线。
+- **Main/Renderer 汇入（T10.5）**：Main `MainDiagnostics` 是最多 128 条的串行 fire-and-forget 队列，记录 CoreRuntime 状态跃迁、统一 IPC 失败、证书/信任/TLS action；发送失败只累计 dropped。Preload 的 `reportRendererDiagnostic` 只接受 Renderer `uncaught-error`/`unhandled-rejection` 短摘要，Main 固定来源和 phase 后走内部 `diagnostics.ingest`。Core 重建 timestamp/sequence，并执行与 Core 日志相同的上限、敏感键、凭据片段与 URL query 脱敏；外部记录不继承 ingest command 的 ALS 上下文。
+- **脱敏 JSONL（T10.4/T10.5）**：`diagnostics.export.start` 复用共享 `TransferJobManager`，Main 系统 Save Dialog 独占路径，Core 按可选 process/level/outcome 分页逐行写临时文件、fsync 后原子替换。日志入库由 CoreDiagnostics 脱敏，导出前 `redactRecordForExport` 再次遮罩敏感 attribute 与 URL Query，Renderer 只拿 job snapshot。
 
 ## 规则引擎架构（M7，已落地）
 
@@ -274,7 +275,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | `CoreResultForCommand<T>` | `packages/core-protocol/src/messages.ts` | 编译期保证 command/result 配对 |
 | `CoreRequest` / Response / Cancel | `packages/core-protocol/src/messages.ts` | MessagePort RPC envelope |
 | `CoreError` | `packages/core-protocol/src/messages.ts` | invalid/unsupported/timeout/cancelled/disconnected/conflict/internal |
-| `DiagnosticLogRecord` | `packages/core-protocol/src/messages.ts` | Trace/Action/Duration/Outcome 的结构化日志 |
+| `DiagnosticLogRecord` | `packages/core-protocol/src/messages.ts` | core/main/renderer 来源、Trace/Action/Duration/Outcome 的结构化日志 |
 | `StorageStatusResult` / `StorageUsage` | `core-protocol/src/messages.ts`、`desktop/src/shared/desktop-api.ts` | 存储用量（会话/Exchange/Body 计数、DB/Blob/总量/配额字节） |
 | `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/storage/interfaces/index.ts` | Core 内部存储域类型；不跨进程，不复用 core-protocol |
 | `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |

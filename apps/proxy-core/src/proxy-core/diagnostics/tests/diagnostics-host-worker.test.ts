@@ -22,7 +22,7 @@ function record(sequence: number): DiagnosticLogRecord {
     timestamp: new Date(1_700_000_000_000 + sequence).toISOString(),
     sequence,
     level: 'info',
-    process: 'proxy-core',
+    process: 'core',
     phase: 'command.completed',
   };
 }

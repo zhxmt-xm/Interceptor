@@ -12,6 +12,7 @@ import {
 import {
   type CoreCommand,
   type CoreResultForCommand,
+  type DiagnosticIngestPayload,
   type MainToCoreMessage,
 } from '@interceptor/core-protocol';
 import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
@@ -128,6 +129,11 @@ export class CoreRuntime {
     options: CoreRequestOptions = {},
   ): Promise<CoreResultForCommand<T>> {
     return this.coreRpcClient.request(command, options);
+  }
+
+  /** MainDiagnostics 专用的窄入口；成功结果无业务载荷，调用方只关心投递完成。 */
+  async ingestDiagnostic(payload: DiagnosticIngestPayload): Promise<void> {
+    await this.request({ type: 'diagnostics.ingest', payload });
   }
 
   /**

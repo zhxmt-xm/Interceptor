@@ -98,6 +98,14 @@ export class DiagnosticsStore {
       conditions.push('level = :level');
       params.level = query.level;
     }
+    if (query.process) {
+      if (query.process === 'core') {
+        conditions.push("process IN ('core', 'proxy-core')");
+      } else {
+        conditions.push('process = :process');
+        params.process = query.process;
+      }
+    }
     if (query.outcome) {
       conditions.push('outcome = :outcome');
       params.outcome = query.outcome;

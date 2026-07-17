@@ -74,6 +74,7 @@
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Diagnostics</span>
           <div class="tacts end">
+            <div class="fchip">Process<svg><use href="#i-chev"/></svg></div>
             <div class="fchip">Level<svg><use href="#i-chev"/></svg></div>
             <div class="fchip">Outcome<svg><use href="#i-chev"/></svg></div>
             <button class="btn"><svg><use href="#i-download"/></svg>Export JSONL</button>
@@ -391,8 +392,8 @@
         <div class="mv dmain" data-v="diagnostics">
           <div class="dlist">
             <div class="dhead"><span>Time</span><span>Command</span><span>Level</span><span>Outcome</span><span style="text-align:right">Duration</span></div>
-            <div class="drow"><span class="dts">12:00:01.234</span><span class="dcmd">core:echo</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">2 ms</span></div>
-            <div class="drow"><span class="dts">12:00:02.100</span><span class="dcmd">rules:apply</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">18 ms</span></div>
+            <div class="drow"><span class="dts">12:00:01.234</span><span class="dcmd">core · core:echo</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">2 ms</span></div>
+            <div class="drow"><span class="dts">12:00:02.100</span><span class="dcmd">main · rules:apply</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">18 ms</span></div>
             <div class="drow sel"><span class="dts">12:00:03.450</span><span class="dcmd">capture:query</span><span class="lvl debug"><span class="d"></span>debug</span><span class="oc ok">success</span><span class="ddur">5 ms</span></div>
             <div class="drow"><span class="dts">12:00:04.100</span><span class="dcmd">body:decode</span><span class="lvl warn"><span class="d"></span>warn</span><span class="oc to">timed_out</span><span class="ddur">1.2 s</span></div>
             <div class="drow"><span class="dts">12:00:05.000</span><span class="dcmd">breakpoint:continue</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">0 ms</span></div>
@@ -404,7 +405,7 @@
           <div class="ddetail">
             <div class="dtop">
               <span class="cmd2">capture:query</span>
-              <div class="ids"><span class="idpill">trace 6f2a…c19b</span><span class="idpill">req 00A4</span><span class="idpill">success · 5.0 ms</span></div>
+              <div class="ids"><span class="idpill">core</span><span class="idpill">trace 6f2a…c19b</span><span class="idpill">req 00A4</span><span class="idpill">success · 5.0 ms</span></div>
             </div>
             <div class="dscroll">
               <div class="sh">Action timeline</div>

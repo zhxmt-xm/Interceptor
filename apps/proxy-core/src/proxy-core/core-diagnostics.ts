@@ -4,9 +4,11 @@ import process from 'node:process';
 import type {
   CoreCommand,
   DiagnosticAttribute,
+  DiagnosticIngestPayload,
   DiagnosticLevel,
   DiagnosticLogRecord,
   DiagnosticOutcome,
+  DiagnosticProcess,
 } from '@interceptor/core-protocol';
 
 import {
@@ -140,6 +142,15 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
     this.record('error', phase, fields);
   }
 
+  /** 接收 Main/Renderer 的有限摘要；时间、序号、容量约束与脱敏仍由 Core 统一负责。 */
+  ingest(payload: DiagnosticIngestPayload): void {
+    this.record(payload.level, payload.phase, payload, {
+      process: payload.process,
+      traceId: payload.traceId,
+      requestId: payload.requestId,
+    });
+  }
+
   /**
    * 返回最近的有限记录副本，可选按 traceId 过滤，并附带累计 droppedCount。
    * 调用方：CoreApplication 的 diagnostics.recent command handler；不会暴露内部对象。
@@ -168,15 +179,25 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
     level: DiagnosticLevel,
     phase: string,
     fields: DiagnosticFields,
+    source: {
+      process: DiagnosticProcess;
+      traceId?: string;
+      requestId?: string;
+    } = { process: 'core' },
   ): void {
-    const context = this.context.getStore();
+    const context = source.process === 'core'
+      ? this.context.getStore()
+      : undefined;
     const record: DiagnosticLogRecord = {
       timestamp: new Date().toISOString(),
       sequence: ++this.sequence,
       level,
-      process: 'proxy-core',
+      process: source.process,
       phase: sanitizeIdentifier(phase, 'log.phase'),
-      ...(context ?? {}),
+      ...(context ?? {
+        traceId: source.traceId,
+        requestId: source.requestId,
+      }),
       action: fields.action
         ? sanitizeIdentifier(fields.action, 'log.action')
         : undefined,
@@ -283,7 +304,7 @@ function sanitizeAttributes(
     sanitized[safeKey] = isSensitiveAttributeKey(key)
       ? '[REDACTED]'
       : typeof value === 'string'
-        ? value.slice(0, 512)
+        ? redactSensitiveText(value.slice(0, 512))
         : value;
   }
   return sanitized;
@@ -351,4 +372,26 @@ function isPromiseLike(value: unknown): value is Promise<void> {
     value !== null &&
     'then' in value &&
     typeof value.then === 'function';
+}
+
+function redactSensitiveText(value: string): string {
+  return value
+    .replace(/\b(Bearer|Basic)\s+[^\s,;]+/gi, '$1 [REDACTED]')
+    .replace(
+      /\b(access_token|api_key|code|password|secret|sig|signature|token)=([^\s&#,;]+)/gi,
+      '$1=[REDACTED]',
+    )
+    .replace(/\b(?:https?|wss?):\/\/[^\s"'<>]+/gi, redactUrlQuery);
+}
+
+function redactUrlQuery(value: string): string {
+  try {
+    const url = new URL(value);
+    for (const key of [...url.searchParams.keys()]) {
+      url.searchParams.set(key, '[REDACTED]');
+    }
+    return url.toString();
+  } catch {
+    return value;
+  }
 }

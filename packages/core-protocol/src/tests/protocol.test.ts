@@ -117,9 +117,20 @@ describe('core protocol validation', () => {
         payload: { limit: 50, traceId: 'trace-previous' },
       },
       {
+        type: 'diagnostics.ingest',
+        payload: {
+          process: 'renderer',
+          level: 'error',
+          phase: 'renderer.unhandled-error',
+          errorCode: 'TypeError',
+          attributes: { message: 'render failed' },
+        },
+      },
+      {
         type: 'diagnostics.query',
         payload: {
           limit: 20,
+          process: 'main',
           level: 'error',
           outcome: 'failed',
           traceId: 'trace-query',
@@ -133,6 +144,7 @@ describe('core protocol validation', () => {
         payload: {
           jobId: 'diagnostics-job-export',
           filePath: 'C:\\Exports\\diagnostics.jsonl',
+          process: 'renderer',
           level: 'warn',
           outcome: 'timed_out',
         },
@@ -787,6 +799,15 @@ describe('core protocol validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-8-ingest',
+      traceId: 'trace-8-ingest',
+      ok: true,
+      result: { type: 'diagnostics.ingested', payload: {} },
+    }).ok).toBe(true);
+
+    expect(parseCoreToMainMessage({
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-9',
       traceId: 'trace-9',
       ok: false,
@@ -988,7 +1009,7 @@ function diagnosticRecord(): Record<string, unknown> {
     timestamp: '2026-07-12T00:00:00.000Z',
     sequence: 1,
     level: 'info',
-    process: 'proxy-core',
+    process: 'core',
     traceId: 'trace-1',
     requestId: 'request-1',
     command: 'echo',

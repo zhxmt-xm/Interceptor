@@ -10,6 +10,7 @@ import {
 import type { CoreDiagnosticRecord } from '../../../shared/desktop-api';
 
 export type DiagnosticLevelFilter = CoreDiagnosticRecord['level'] | null;
+export type DiagnosticProcessFilter = CoreDiagnosticRecord['process'] | null;
 export type DiagnosticOutcomeFilter =
   | NonNullable<CoreDiagnosticRecord['outcome']>
   | null;
@@ -21,8 +22,10 @@ interface DiagnosticsContextValue {
   selectedKey: string | null;
   setSelectedKey: (key: string | null) => void;
   refresh: () => void;
+  processFilter: DiagnosticProcessFilter;
   levelFilter: DiagnosticLevelFilter;
   outcomeFilter: DiagnosticOutcomeFilter;
+  cycleProcess: () => void;
   cycleLevel: () => void;
   cycleOutcome: () => void;
   exporting: boolean;
@@ -46,6 +49,12 @@ const LEVEL_CYCLE: DiagnosticLevelFilter[] = [
   'info',
   'debug',
 ];
+const PROCESS_CYCLE: DiagnosticProcessFilter[] = [
+  null,
+  'core',
+  'main',
+  'renderer',
+];
 const OUTCOME_CYCLE: DiagnosticOutcomeFilter[] = [
   null,
   'success',
@@ -68,6 +77,8 @@ export function DiagnosticsProvider({
   const [droppedCount, setDroppedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [processFilter, setProcessFilter] =
+    useState<DiagnosticProcessFilter>(null);
   const [levelFilter, setLevelFilter] = useState<DiagnosticLevelFilter>(null);
   const [outcomeFilter, setOutcomeFilter] =
     useState<DiagnosticOutcomeFilter>(null);
@@ -83,6 +94,7 @@ export function DiagnosticsProvider({
       void window.interceptor
         ?.queryDiagnostics({
           limit: RECENT_LIMIT,
+          ...(processFilter ? { process: processFilter } : {}),
           ...(levelFilter ? { level: levelFilter } : {}),
           ...(outcomeFilter ? { outcome: outcomeFilter } : {}),
         })
@@ -102,9 +114,9 @@ export function DiagnosticsProvider({
           // 轮询：仅把新产生的记录按 sequence 去重后并入列表头部，保留用户经
           // “Load earlier records” 已加载的历史与分页游标，不整体替换。
           setRecords((current) => {
-            const seen = new Set(current.map((record) => record.sequence));
+            const seen = new Set(current.map(diagnosticRecordKey));
             const fresh = page.records.filter(
-              (record) => !seen.has(record.sequence),
+              (record) => !seen.has(diagnosticRecordKey(record)),
             );
             return fresh.length ? [...fresh, ...current] : current;
           });
@@ -115,7 +127,7 @@ export function DiagnosticsProvider({
           }
         });
     },
-    [levelFilter, outcomeFilter],
+    [levelFilter, outcomeFilter, processFilter],
   );
 
   const refresh = useCallback(() => loadFirstPage('reset'), [loadFirstPage]);
@@ -148,6 +160,7 @@ export function DiagnosticsProvider({
       .queryDiagnostics({
         cursor: nextCursor,
         limit: RECENT_LIMIT,
+        ...(processFilter ? { process: processFilter } : {}),
         ...(levelFilter ? { level: levelFilter } : {}),
         ...(outcomeFilter ? { outcome: outcomeFilter } : {}),
       })
@@ -156,10 +169,12 @@ export function DiagnosticsProvider({
           return;
         }
         setRecords((current) => {
-          const seen = new Set(current.map((record) => record.sequence));
+          const seen = new Set(current.map(diagnosticRecordKey));
           return [
             ...current,
-            ...page.records.filter((record) => !seen.has(record.sequence)),
+            ...page.records.filter(
+              (record) => !seen.has(diagnosticRecordKey(record)),
+            ),
           ];
         });
         setDroppedCount(page.droppedCount);
@@ -171,7 +186,21 @@ export function DiagnosticsProvider({
           setLoadingMore(false);
         }
       });
-  }, [hasMore, levelFilter, loadingMore, nextCursor, outcomeFilter]);
+  }, [
+    hasMore,
+    levelFilter,
+    loadingMore,
+    nextCursor,
+    outcomeFilter,
+    processFilter,
+  ]);
+
+  const cycleProcess = useCallback(() => {
+    setProcessFilter((current) => {
+      const index = PROCESS_CYCLE.indexOf(current);
+      return PROCESS_CYCLE[(index + 1) % PROCESS_CYCLE.length] ?? null;
+    });
+  }, []);
 
   const cycleLevel = useCallback(() => {
     setLevelFilter((current) => {
@@ -196,6 +225,7 @@ export function DiagnosticsProvider({
     setExportError(null);
     void api
       .startDiagnosticsExport({
+        ...(processFilter ? { process: processFilter } : {}),
         ...(levelFilter ? { level: levelFilter } : {}),
         ...(outcomeFilter ? { outcome: outcomeFilter } : {}),
       })
@@ -239,7 +269,7 @@ export function DiagnosticsProvider({
         );
         setExporting(false);
       });
-  }, [exporting, levelFilter, outcomeFilter]);
+  }, [exporting, levelFilter, outcomeFilter, processFilter]);
 
   const value: DiagnosticsContextValue = {
     records,
@@ -248,8 +278,10 @@ export function DiagnosticsProvider({
     selectedKey,
     setSelectedKey,
     refresh,
+    processFilter,
     levelFilter,
     outcomeFilter,
+    cycleProcess,
     cycleLevel,
     cycleOutcome,
     exporting,
@@ -273,4 +305,8 @@ export function useDiagnostics(): DiagnosticsContextValue {
     throw new Error('useDiagnostics must be used within a DiagnosticsProvider');
   }
   return value;
+}
+
+function diagnosticRecordKey(record: CoreDiagnosticRecord): string {
+  return `${record.process}:${record.timestamp}:${record.sequence}`;
 }

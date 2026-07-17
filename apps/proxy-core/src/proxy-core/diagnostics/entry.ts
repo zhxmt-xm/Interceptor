@@ -6,6 +6,7 @@ import type {
   DiagnosticLevel,
   DiagnosticLogRecord,
   DiagnosticOutcome,
+  DiagnosticProcess,
 } from '@interceptor/core-protocol';
 
 import { DIAGNOSTICS_EXPORT_PAGE_SIZE } from '../constants';
@@ -15,6 +16,7 @@ import { redactRecordForExport } from './utils';
 
 /** Diagnostics JSONL 导出的可选过滤与进度类型。 */
 export interface DiagnosticsExportFilter {
+  readonly process?: DiagnosticProcess;
   readonly level?: DiagnosticLevel;
   readonly outcome?: DiagnosticOutcome;
 }
@@ -67,6 +69,7 @@ export class DiagnosticsService {
         const page = await this.host.query({
           limit: DIAGNOSTICS_EXPORT_PAGE_SIZE,
           cursor,
+          process: filter.process,
           level: filter.level,
           outcome: filter.outcome,
         });

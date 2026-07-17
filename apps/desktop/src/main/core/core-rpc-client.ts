@@ -47,6 +47,7 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'archive.export.start': 'transfer.job',
   'archive.import.start': 'transfer.job',
   'diagnostics.recent': 'diagnostics.records',
+  'diagnostics.ingest': 'diagnostics.ingested',
   'diagnostics.query': 'diagnostics.page',
   'diagnostics.export.start': 'transfer.job',
   'echo': 'echo',

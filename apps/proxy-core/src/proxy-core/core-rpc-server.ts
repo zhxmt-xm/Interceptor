@@ -17,6 +17,7 @@ import { CoreDiagnostics } from './core-diagnostics';
  */
 const SILENT_COMMANDS: ReadonlySet<CoreCommand['type']> = new Set([
   'diagnostics.recent',
+  'diagnostics.ingest',
   'diagnostics.query',
 ]);
 

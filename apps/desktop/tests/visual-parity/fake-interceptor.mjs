@@ -238,10 +238,10 @@ const rules = [
 ];
 
 const diagnostics = [
-  diagnostic(1, 'req-echo', 'core:echo', 'info', 'success', 4),
-  diagnostic(2, 'req-rules', 'rules:apply', 'info', 'success', 12),
-  diagnostic(3, 'req-body', 'body:decode', 'warn', 'timed_out', 500),
-  diagnostic(4, 'req-export', 'export:jsonl', 'error', 'failed', 31),
+  diagnostic(1, 'req-echo', 'core:echo', 'info', 'success', 4, 'core'),
+  diagnostic(2, 'req-rules', 'rules:apply', 'info', 'success', 12, 'main'),
+  diagnostic(3, 'req-body', 'body:decode', 'warn', 'timed_out', 500, 'core'),
+  diagnostic(4, 'req-export', 'export:jsonl', 'error', 'failed', 31, 'renderer'),
 ];
 
 const pendingBreakpoints = [
@@ -385,8 +385,10 @@ export function installFakeInterceptor({ fixture, theme }) {
       droppedCount: fixture.diagnostics.droppedCount,
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
+    reportRendererDiagnostic: async () => undefined,
     queryDiagnostics: async (request = {}) => {
       const filtered = fixture.diagnostics.records.filter((record) =>
+        (!request.process || record.process === request.process) &&
         (!request.level || record.level === request.level) &&
         (!request.outcome || record.outcome === request.outcome) &&
         (!request.traceId || record.traceId === request.traceId) &&
@@ -641,11 +643,20 @@ function rule(id, name, host, path, action) {
   };
 }
 
-function diagnostic(sequence, requestId, command, level, outcome, durationMs) {
+function diagnostic(
+  sequence,
+  requestId,
+  command,
+  level,
+  outcome,
+  durationMs,
+  process,
+) {
   return {
     timestamp: `2026-07-16T12:00:0${sequence}.000Z`,
     sequence,
     level,
+    process,
     traceId: `trace-${sequence}`,
     requestId,
     command,

@@ -176,11 +176,17 @@ export interface DiagnosticsRecentCommand {
   };
 }
 
+export interface DiagnosticsIngestCommand {
+  type: 'diagnostics.ingest';
+  payload: DiagnosticIngestPayload;
+}
+
 export interface DiagnosticsQueryCommand {
   type: 'diagnostics.query';
   payload: {
     cursor?: string;
     limit: number;
+    process?: DiagnosticProcess;
     level?: DiagnosticLevel;
     outcome?: DiagnosticOutcome;
     traceId?: string;
@@ -195,6 +201,7 @@ export interface DiagnosticsExportStartCommand {
   payload: {
     jobId: string;
     filePath: string;
+    process?: DiagnosticProcess;
     level?: DiagnosticLevel;
     outcome?: DiagnosticOutcome;
   };
@@ -323,6 +330,7 @@ export type CoreCommand =
   | BreakpointConfigureCommand
   | ConnectionProbeCommand
   | DiagnosticsRecentCommand
+  | DiagnosticsIngestCommand
   | DiagnosticsQueryCommand
   | DiagnosticsExportStartCommand
   | StorageStatusCommand
@@ -554,6 +562,7 @@ export interface ConnectionProbeResult {
 }
 
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
+export type DiagnosticProcess = 'core' | 'main' | 'renderer';
 export type DiagnosticOutcome =
   | 'success'
   | 'failed'
@@ -561,11 +570,24 @@ export type DiagnosticOutcome =
   | 'timed_out';
 export type DiagnosticAttribute = string | number | boolean;
 
+export interface DiagnosticIngestPayload {
+  process: Exclude<DiagnosticProcess, 'core'>;
+  level: Exclude<DiagnosticLevel, 'debug'>;
+  phase: string;
+  traceId?: string;
+  requestId?: string;
+  action?: string;
+  durationMs?: number;
+  outcome?: DiagnosticOutcome;
+  errorCode?: string;
+  attributes?: Record<string, DiagnosticAttribute>;
+}
+
 export interface DiagnosticLogRecord {
   timestamp: string;
   sequence: number;
   level: DiagnosticLevel;
-  process: 'proxy-core';
+  process: DiagnosticProcess;
   traceId?: string;
   requestId?: string;
   command?: CoreCommand['type'];
@@ -583,6 +605,11 @@ export interface DiagnosticsRecordsResult {
     records: DiagnosticLogRecord[];
     droppedCount: number;
   };
+}
+
+export interface DiagnosticsIngestedResult {
+  type: 'diagnostics.ingested';
+  payload: Record<string, never>;
 }
 
 export interface DiagnosticsPageResult {
@@ -674,6 +701,7 @@ export type CoreResult =
   | BreakpointConfigResult
   | ConnectionProbeResult
   | DiagnosticsRecordsResult
+  | DiagnosticsIngestedResult
   | DiagnosticsPageResult
   | StorageStatusResult
   | TransferJobResult
@@ -697,6 +725,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                   : T extends BreakpointConfigureCommand
                     ? BreakpointConfigResult                : T extends DiagnosticsRecentCommand
                   ? DiagnosticsRecordsResult
+                  : T extends DiagnosticsIngestCommand
+                    ? DiagnosticsIngestedResult
                   : T extends DiagnosticsQueryCommand
                     ? DiagnosticsPageResult
                     : T extends DiagnosticsExportStartCommand

@@ -262,6 +262,9 @@ export class CoreApplication implements CoreRpcHost {
             command.payload.traceId,
           ),
         };
+      case 'diagnostics.ingest':
+        this.diagnostics.ingest(command.payload);
+        return { type: 'diagnostics.ingested', payload: {} };
       case 'diagnostics.query':
         return {
           type: 'diagnostics.page',
@@ -276,7 +279,7 @@ export class CoreApplication implements CoreRpcHost {
             retryable: false,
           });
         }
-        const { jobId, filePath, level, outcome } = command.payload;
+        const { jobId, filePath, process, level, outcome } = command.payload;
         return {
           type: 'transfer.job',
           payload: {
@@ -285,7 +288,12 @@ export class CoreApplication implements CoreRpcHost {
               'diagnostics-export',
               filePath,
               (signal, onProgress) =>
-                service.exportJsonl(filePath, { level, outcome }, signal, onProgress),
+                service.exportJsonl(
+                  filePath,
+                  { process, level, outcome },
+                  signal,
+                  onProgress,
+                ),
             ),
           },
         };
@@ -685,6 +693,7 @@ export class CoreApplication implements CoreRpcHost {
   private async queryDiagnostics(payload: {
     cursor?: string;
     limit: number;
+    process?: 'core' | 'main' | 'renderer';
     level?: 'debug' | 'info' | 'warn' | 'error';
     outcome?: 'success' | 'failed' | 'cancelled' | 'timed_out';
     traceId?: string;

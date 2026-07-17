@@ -7,6 +7,7 @@ import {
   toDiagnosticsQueryRequest,
   toGrpcMessageQuery,
   toHarExportRequest,
+  toRendererDiagnosticReport,
   toRendererDiagnosticRecord,
   toWebSocketFrameQuery,
 } from '../renderer-utils';
@@ -37,7 +38,7 @@ describe('renderer utils', () => {
       timestamp: '2026-07-13T00:00:00.000Z',
       sequence: 1,
       level: 'info',
-      process: 'proxy-core',
+      process: 'core',
       traceId: 'trace-1',
       requestId: 'request-1',
       command: 'echo',
@@ -47,6 +48,7 @@ describe('renderer utils', () => {
       timestamp: '2026-07-13T00:00:00.000Z',
       sequence: 1,
       level: 'info',
+      process: 'core',
       traceId: 'trace-1',
       requestId: 'request-1',
       command: 'echo',
@@ -158,9 +160,14 @@ describe('renderer utils', () => {
 
   it('validates diagnostics export filters at the Renderer boundary', () => {
     expect(toDiagnosticsExportFilter({
+      process: 'renderer',
       level: 'warn',
       outcome: 'timed_out',
-    })).toEqual({ level: 'warn', outcome: 'timed_out' });
+    })).toEqual({
+      process: 'renderer',
+      level: 'warn',
+      outcome: 'timed_out',
+    });
     expect(toDiagnosticsExportFilter(undefined)).toEqual({});
     expect(() => toDiagnosticsExportFilter({ level: 'fatal' })).toThrow(
       'Diagnostics export level is invalid',
@@ -168,12 +175,16 @@ describe('renderer utils', () => {
     expect(() => toDiagnosticsExportFilter({ outcome: 'unknown' })).toThrow(
       'Diagnostics export outcome is invalid',
     );
+    expect(() => toDiagnosticsExportFilter({ process: 'browser' })).toThrow(
+      'Diagnostics export process is invalid',
+    );
   });
 
     it('validates a full diagnostics page query at the Renderer boundary', () => {
       expect(toDiagnosticsQueryRequest({
         cursor: '42',
         limit: 100,
+        process: 'main',
         level: 'error',
         outcome: 'failed',
         traceId: 'trace-1',
@@ -183,6 +194,7 @@ describe('renderer utils', () => {
       })).toEqual({
         cursor: '42',
         limit: 100,
+        process: 'main',
         level: 'error',
         outcome: 'failed',
         traceId: 'trace-1',
@@ -198,4 +210,26 @@ describe('renderer utils', () => {
         'Diagnostics query.limit is invalid',
       );
     });
+
+  it('accepts only fixed, bounded Renderer error reports', () => {
+    expect(toRendererDiagnosticReport({
+      kind: 'uncaught-error',
+      name: 'TypeError',
+      message: 'render failed',
+    })).toEqual({
+      kind: 'uncaught-error',
+      name: 'TypeError',
+      message: 'render failed',
+    });
+    expect(() => toRendererDiagnosticReport({
+      kind: 'log',
+      name: 'Error',
+      message: 'not allowed',
+    })).toThrow('Renderer diagnostic kind is invalid');
+    expect(() => toRendererDiagnosticReport({
+      kind: 'unhandled-rejection',
+      name: '../unsafe',
+      message: 'failed',
+    })).toThrow('Renderer diagnostic name is invalid');
+  });
 });

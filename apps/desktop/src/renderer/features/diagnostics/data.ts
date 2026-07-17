@@ -9,6 +9,7 @@ export interface TraceRow {
   key: string;
   traceId?: string;
   requestId?: string;
+  process: CoreDiagnosticRecord['process'];
   command: string;
   time: string;
   level: LogLevel;
@@ -27,7 +28,8 @@ const LEVEL_RANK: Record<LogLevel, number> = {
 
 /** 聚合键：一次 command 执行共享 requestId；无 requestId 的记录按 sequence 独立成行。 */
 function groupKey(record: CoreDiagnosticRecord): string {
-  return record.requestId ?? `seq-${record.sequence}`;
+  return record.requestId ??
+    `${record.process}:${record.timestamp}:${record.sequence}`;
 }
 
 /** 把扁平的诊断记录按 requestId 聚合成一次次 command 执行行，最新在前。 */
@@ -62,6 +64,7 @@ export function aggregateTraces(
       key,
       traceId: first.traceId,
       requestId: first.requestId,
+      process: first.process,
       command: sorted.find((record) => record.command)?.command ?? first.phase,
       time: formatClock(first.timestamp),
       level,

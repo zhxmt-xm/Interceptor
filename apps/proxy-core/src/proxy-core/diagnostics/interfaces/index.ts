@@ -2,6 +2,7 @@ import type {
   DiagnosticLevel,
   DiagnosticLogRecord,
   DiagnosticOutcome,
+  DiagnosticProcess,
 } from '@interceptor/core-protocol';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -14,6 +15,8 @@ export interface DiagnosticsQuery {
   readonly limit: number;
   /** 可选日志级别过滤。 */
   readonly level?: DiagnosticLevel;
+  /** 可选进程来源过滤。 */
+  readonly process?: DiagnosticProcess;
   /** 可选命令结果过滤。 */
   readonly outcome?: DiagnosticOutcome;
   /** 可选 trace 过滤。 */
