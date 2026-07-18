@@ -16,7 +16,10 @@ import {
   type RpcMessagePort,
 } from '../core-rpc-server';
 import type { StorageService } from '../storage/entry';
+import type { CleanupScope } from '../storage/interfaces';
 import type { HarService } from '../har/entry';
+import type { ProxyService } from '../proxy/entry';
+import type { CaptureEventQueue } from '../proxy/proxy-capture-event-queue';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -249,6 +252,8 @@ describe('CoreApplication', () => {
 
   it('routes storage commands to the injected StorageService', async () => {
     const calls: string[] = [];
+    const cleanupScopes: CleanupScope[] = [];
+    let eventQueueResets = 0;
     const storage = {
       initialize: () => Promise.resolve(),
       querySessions: () => {
@@ -292,8 +297,9 @@ describe('CoreApplication', () => {
           quotaBytes: 1_000_000,
         });
       },
-      cleanup: () => {
+      cleanup: (scope: CleanupScope) => {
         calls.push('cleanup');
+        cleanupScopes.push(scope);
         return Promise.resolve({
           sessionCount: 0,
           exchangeCount: 0,
@@ -345,8 +351,19 @@ describe('CoreApplication', () => {
       dispose: () => Promise.resolve(),
       attachDiagnostics: () => undefined,
     } as unknown as StorageService;
+    const proxy = {
+      attachDiagnostics: () => undefined,
+      prepareCaptureReset: () => 'active-session',
+    } as unknown as ProxyService;
+    const captureEventQueue = {
+      reset: () => {
+        eventQueueResets += 1;
+      },
+    } as unknown as CaptureEventQueue;
     const application = new CoreApplication(new FakeParentPort(), {
       storageService: storage,
+      proxyService: proxy,
+      captureEventQueue,
     });
     const signal = new AbortController().signal;
 
@@ -436,6 +453,10 @@ describe('CoreApplication', () => {
       'body',
       'cleanup',
     ]);
+    expect(cleanupScopes).toEqual([
+      { kind: 'all-except-session', sessionId: 'active-session' },
+    ]);
+    expect(eventQueueResets).toBe(1);
   });
 
   it('decodes a gzip body on demand when body.read-range requests decode', async () => {

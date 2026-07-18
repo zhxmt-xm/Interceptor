@@ -133,7 +133,7 @@ body {
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-  user-select: none;
+  user-select: text;
 }
 
 button,

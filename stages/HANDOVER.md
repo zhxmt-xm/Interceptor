@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 最新 Stage 文件：[M13.md](M13.md)（已完成；生产实签/公证与真实macOS证据待外部发布环境补齐）。
+4. 最新完成 Stage 文件：[M13.md](M13.md)；当前 Capture 后续增强见 [M4.md](M4.md)、[M5.md](M5.md)、[M11.md](M11.md) 的 2026-07-18 小节。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -19,13 +19,15 @@
 ## 当前状态
 
 - **M0–M13 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
+- **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 Recording/系统代理；HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
+- **Capture 正确性已收敛**：当前 Session 隔离；Clear/Stop 删除 Core 数据且 cutoff 拒绝迟到事件；实时前插保持选中行视觉位置；feature 往返保留 selection/scroll/tab/splitter；Cookies/Timing 使用完整真实输入；Payload 提供 Auto/Text/JSON/Hex。
 - **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整 659-key catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl` 日期/数字/字节/时长和 Main 原生 HAR/archive/Diagnostics 文件对话框同步切换；俄/波/乌 CLDR 多复数已覆盖。设计 SPA 只保留当前 Theme flyout 与 Language list，旧 Theme B/C/D、Language L2/L3 和专用截图脚本已删除。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
 - **M13下载安全边界**：Main严格校验SemVer、draft/prerelease、仓库URL/tag/asset basename、平台扩展名、显式架构、1GiB上限、声明size和强制GitHub SHA-256；随机`.part`写入`<userData>/updates/downloads`、sync后原子rename。Renderer永远拿不到URL/path。
 - **M13 UI/Contract**：Preload仅新增`getUpdateStatus/checkForUpdates/downloadUpdate/openDownloadedUpdate/onUpdateStatusChange`；Settings与顶部通知覆盖checking/available/downloading/downloaded/up-to-date/failed/unsupported七态，changelog不执行远程markup。
 - **M12 发布加固已完成**：Desktop 0.1.0；Windows x64 per-user MSI完整lifecycle已实测；macOS ad-hoc/Developer ID/notarize与DMG+ZIP配置/原生smoke已落地；固定SHA release workflow在tag构建后发布MSI/DMG/ZIP并生成GitHub changelog。
 - **Package 安全已收紧**：Renderer 使用固定 `interceptor://app`；file extra privileges 关闭；Electron 43 九项 Fuse strict 锁定；Main/Preload/Core release 0 maps；artifact audit 拒绝 source/env/test 泄漏并校验签名策略。
-- **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、first-run、Proxy Settings 与 emergency repair 均已落地。四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
+- **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、Proxy Settings 与 emergency repair 均已落地。后续已删除 first-run，改由 Capture bootstrap 启动 Recording/接管代理；四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
 - **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
   - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
@@ -40,12 +42,13 @@
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`，采集 trailer/pseudo-header 并按 kind 落库；`proxy/utils/index.ts` 提供 gzip/deflate/brotli 延迟解码，`body.read-range` 由 Core 解压并回传 `decodeStatus`。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
-- **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 视图状态（实时事件合并 + keyset 分页查询 + 客户端分段过滤）、Omnibox 搜索/结构化过滤下推 Core、按需 `sessions.detail` + `body.read-range` 驱动的 Inspector（headers/cookies + CodeMirror 正文 + hex fallback）。body/header 不入全局状态。
+- **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 轻量 summary 状态、当前 Session 过滤、实时前插滚动补偿、feature 往返状态保持；按需 `sessions.detail` + `body.read-range` 驱动 Inspector（完整 cookies、真实 Timing、Auto/Text/JSON/Hex）。body/header 不入全局状态。
 - **窄 API 已扩展**：M10新增HAR/archive/Diagnostics；M11新增系统代理意图；M13新增GitHub Release状态/检查/下载/打开已下载文件。Preload仍不暴露通用日志、helper、snapshot、URL、path/readFile/writeFile，packaged smoke apiKeys已同步。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
 - **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [M13.md](M13.md)。
 - **多语言增强验证全绿**：293 unit tests；三 workspace typecheck；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 逐项验证 15 种语言、持久化、侧栏译文、页面无溢出与 Main language IPC 非法值拒绝；生产 audit 0。
-- Git：M11/M12已在`origin/main`；M13在本次阶段边界提交并push。新Session先跑`git status --short --branch`与`git log -4 --oneline`确认远端状态。
+- **Capture 后续增强验证全绿**：311 unit tests；三 workspace typecheck；Windows package；真实 packaged smoke 1/1（活动 Recording Clear 后保留 Session 壳、Exchange/Body 归零）；生产 audit 0。Payload/Cookies/Timing/Tunnel/topbar 目标场景已完成浏览器与视觉检查。
+- Git：M0–M13 与 15 种语言增强已在 `origin/main`；Capture 后续增强在当前边界提交并 push。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认远端状态。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
 - 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
@@ -141,11 +144,11 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一动作：首个真实tag发布
+## 下一动作：临时 Capture Session 阶段
 
-M13代码与Windows本机验收已完成（见 [M13.md](M13.md)）。下一动作是在仓库Secrets配置Windows签名证书、Apple Developer ID与公证凭据后推送SemVer tag，让release workflow在原生runner生成、验收并发布MSI/DMG/ZIP与自动changelog；随后在真实macOS验证app内DMG下载和打开。无凭据时不要放宽tag发布门禁。
+本次 Capture/HTTPS 增强提交并推送后，下一动作是把 Capture 从跨 Recording 持久历史改为单次 Recording 临时会话：Core 保留 detail/body/WS/gRPC 重数据，Renderer 保留完整轻量 summary/tree 状态，RuleSet/Diagnostics 继续持久化。开始前先建立独立 Stage 文档和权威任务清单，不把完整 request/body/sensitive header 放入 Renderer。
 
-若暂不发布，则按新的产品优先级创建下一Stage；不要恢复已删除的Squirrel、自建更新服务或资源OTA基础设施。
+首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
 ## 剩余工作项目
 
@@ -161,6 +164,7 @@ M13代码与Windows本机验收已完成（见 [M13.md](M13.md)）。下一动�
 | --- | --- | --- | --- |
 | M12 | 已完成（外部签名/macOS 证据待补） | MSI/DMG/ZIP、strict Fuses、artifact/installer/package smoke、release CI | 完整方案第十七/十八章、第二十七章 M12 |
 | M13 | 已完成（100%，外部签名/macOS证据待补） | GitHub Release检查、app内changelog、手动下载MSI/DMG、Updates UI | 完整方案第十七章、第二十七章 M13 |
+| 下一阶段 | 待建立 | 临时 Capture Session、Core/Renderer 轻重数据分层、RuleSet 独立持久化、HAR/archive 适配 | 完整方案第十二、十四章 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 

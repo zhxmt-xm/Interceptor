@@ -82,6 +82,11 @@ export class CaptureEventQueue {
     return this.droppedCount;
   }
 
+  /** 丢弃清空时间切面之前尚未发送的事件；调用方：storage.cleanup(all)。 */
+  reset(): void {
+    this.pending.clear();
+  }
+
   /** 淘汰最旧非终态事件直到满足容量，终态事件永不静默丢弃。 */
   private enforceCapacity(): void {
     while (this.pending.size > this.capacity) {

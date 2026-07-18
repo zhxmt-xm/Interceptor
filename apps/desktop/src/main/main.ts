@@ -199,7 +199,7 @@ class DesktopApplication {
   private insecureHosts: string[] = [];
   /** HTTPS 解密（MITM）用户意图开关；与“CA 是否信任”解耦——信任是系统层
    * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
-  private mitmEnabled = true;
+  private mitmEnabled = false;
   private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
   /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
   private systemProxyRecovery: Promise<void> | null = null;
@@ -633,13 +633,17 @@ class DesktopApplication {
       },
     );
 
-    // 停止代理捕获；返回停止后的捕获状态快照。
+    // 停止代理捕获后物理删除全部临时 Capture 数据；Rules/Diagnostics 独立保留。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.captureStop, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       await this.restoreSystemProxyBeforeShutdown();
       const result = await this.coreRuntime.request({
         type: 'proxy.stop',
         payload: {},
+      });
+      await this.coreRuntime.request({
+        type: 'storage.cleanup',
+        payload: { scope: 'all' },
       });
       return toRendererCaptureStatus(result.payload);
     });

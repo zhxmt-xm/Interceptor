@@ -184,6 +184,7 @@ export interface SessionQueryRequest {
   limit: number;
   sort: 'started_desc' | 'started_asc';
   filter: {
+    sessionId?: string;
     host?: string;
     method?: string;
     status?: number;

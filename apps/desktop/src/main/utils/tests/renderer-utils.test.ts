@@ -118,7 +118,12 @@ describe('renderer utils', () => {
     expect(toHarExportRequest({
       scope: {
         kind: 'filter',
-        filter: { method: 'GET', status: 200, protocol: 'h2' },
+        filter: {
+          sessionId: 'session-current',
+          method: 'GET',
+          status: 200,
+          protocol: 'h2',
+        },
       },
       redaction: {
         authorization: true,
@@ -129,6 +134,7 @@ describe('renderer utils', () => {
       scope: {
         kind: 'filter',
         filter: {
+          sessionId: 'session-current',
           host: undefined,
           method: 'GET',
           status: 200,

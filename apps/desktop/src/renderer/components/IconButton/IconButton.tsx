@@ -9,6 +9,7 @@ export interface IconButtonProps {
   label: string;
   size?: 'md' | 'sm';
   strokeWidth?: number;
+  disabled?: boolean;
   onClick?: () => void;
   className?: string;
 }
@@ -19,12 +20,14 @@ export function IconButton({
   label,
   size = 'md',
   strokeWidth = 1.9,
+  disabled = false,
   onClick,
   className,
 }: IconButtonProps): React.JSX.Element {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={cx(styles.button, size === 'sm' && styles.small, className)}
       onClick={onClick}
       aria-label={label}

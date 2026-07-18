@@ -68,16 +68,19 @@
 - **主题 / 语言切换器**（侧栏底部，取代旧 Account）：触发行本身是一条 nav——主题展开为「当前时段图标 + Theme + 强调点」、语言为「地球 + Language + 代码」，折叠时主题只留当前时段图标、语言只留代码。点击弹出 **flyout**：以按钮为锚**向右弹出、底边与按钮底边对齐、留一小段水平间隙**，portal 到 `body` 以逃逸侧栏 `overflow`，点击外部 / Esc 关闭。语言项使用各语言自己的名称；超过可用高度时列表在 420px 内滚动，不改变锚点位置。主题 flyout 四项按**一天时序** Warm→Light→Ember→Dark，图标与文字保持中性色；hover 时从右侧浮现该时段的**中式写意山水**（日月循抛物线：晨左低 → 午中高 → 暮右低 → 夜居中；画面内缩留边 + 左侧 `--panel` 渐变保证标签可读），当前主题显示 `--accent` 勾。
 - **Method 徽标**:mono `10.5/600`,`color-mix(field 13–16%, transparent)` 底 + 字段色字,圆角 6。
 - **Status**:`6px` 圆点 + mono `12`,用状态语义色。
-- **omni 搜索/筛选**(顶部,居中 `max 500`):`--panel-2` 底;结构 = search icon → 已激活筛选 **pill**(只显示值如 `GET ×`/`2xx ×`,`--accent-soft` 底 + `--accent` 字 + `accent 30%` 边)→ 文本占位 → **末尾 filter 按钮(漏斗)** 弹出"Add filter"字段菜单(Method/Status/Type/Host/Duration…)。顶栏其余只放全局操作(折叠钮、Recording、info/设置/更多),留足间距。
-- **filter 条**(list 上方,`--filter` 底):协议快捷段 `All/H1/H2/WS`(Segmented)+ 计数 `18 of 241` + 列设置/清空图标。
+- **omni 搜索/筛选**(顶部):Capture 顶栏必须与正文共用 `minmax(0,1fr) · 7px · inspectorWidth` 三列；list 列放折叠钮、Recording、可收缩 omni，Inspector 列右对齐 info/设置/更多，搜索框不得跨过 splitter，顶部 7px 只作对齐占位、不绘制额外竖线。omni 用 `--panel-2` 底;结构 = search icon → 已激活筛选 **pill**(只显示值如 `GET ×`/`2xx ×`,`--accent-soft` 底 + `--accent` 字 + `accent 30%` 边)→ 文本占位 → **末尾 filter 按钮(漏斗)** 弹出"Add filter"字段菜单(Method/Status/Type/Host/Duration…)。
+- **filter 条**(list 上方,`--filter` 底):协议快捷段 `All/H1/H2/WS`(Segmented)+ 计数 `18 of 241` + 列设置/清空图标；严格限制在 list 列。list 小于 420px 时隐藏计数与 Columns、收紧 segmented padding，只保留协议切换与 Clear，禁止横向溢出。
+- **操作按钮**:enabled 一律 `cursor:pointer`;default 用 `--panel` 底 + `--border-2` 边,hover 在 `--panel` 上混入 6% `--text`,不得替换成透明 `--hover`;primary 用 `--accent` 实底 + 白字,hover 按 88% `--accent` + 12% `--text` 提升当前主题下的对比;danger 用中性实底 + 红字/红边,hover 按 10% `--red` + 90% `--panel` 着色。disabled 不保留 primary/danger 强语义色,统一 `--panel-2` 底 + `--border` 边 + `--text-3` 字,`cursor:not-allowed`,且 hover/filter/阴影均不得变化。图标按钮 enabled 可用透明底 + `--hover`,disabled 同样不响应 hover并使用 `not-allowed`。
 - **list**:列 `Method / Host·Path / Status / Proto / Type / Size / Time`;Host 双行(host + path,`gap 4`),path 与 proto/type/size/time 用 mono;选中行 `--sel` 底 + 左 2px `--sel-line`。
 - **splitter**(list↔inspector):`col-resize`;默认 1px `--border` 线 + 居中 `4×40` 圆角抓手(`--border-2`);hover/拖拽线与抓手变 `--accent`、抓手拉长到 `52`。
-- **Inspector**：头部 method chip + 语法着色 URL（`dom`=text-2 / `path`=text）+ 右侧状态 pill（如 `200 OK` 绿）；Tabs 下划线 `--accent`，页签 `Headers / Request / Response / Timing / Cookies / TLS`——Headers 分区 `General / Response Headers / Request Headers`（`kv` 栅格 `168px / minmax(0,1fr)`，key `--text-2` mono、value `--text` mono，特殊值用 `--accent`/`--green`）；Response = 语法着色 body 卡片；Timing = 阶梯瀑布（阶段名 + ms + 偏移条）；Cookies = 请求/响应 cookie 的 kv；TLS = 连接参数 + 证书链卡片（leaf/CA/root）。内容区 `overflow-y:auto` 可滚。
+- **Inspector**：头部 method chip + 语法着色 URL（`dom`=text-2 / `path`=text）+ 右侧状态 pill（如 `200 OK` 绿）；Tabs 下划线 `--accent`，页签 `Headers / Request / Response / Timing / Cookies / TLS`。Detail 内小节标题使用高对比 `--text-2`、700 weight、左侧 2px accent 标记与底部分隔线，不能只靠浅灰大写字。Headers 分区 `General / Response Headers / Request Headers`（`kv` 栅格 `168px / minmax(0,1fr)`，key `--text-2` mono、value `--text` mono，特殊值用 `--accent`/`--green`）；`Cookie`/`Set-Cookie` 不在 Headers 重复出现，只归入 Cookies tab。Body 预览提供 `Auto / Text / JSON / Hex`：Auto 按 MIME + 内容探测，Text 强制 UTF-8 replacement 文本，JSON 尝试格式化且失败时保留原文，Hex 显示精确字节并随容器宽度重排；任何模式不得横向撑开 Inspector。Timing 只显示持久化的真实 Waiting(TTFB)/Response body 时间段，不伪造 DNS/TLS 阶段。内容区 `overflow-y:auto` 可滚。
+- **默认捕获与 HTTPS**：应用进入 Capture 后自动启动 loopback listener 并尝试接管系统代理，不弹启动向导。默认不生成、不安装 CA，也不解密 HTTPS；CONNECT 以 `TLS / encrypted` tunnel 摘要展示，只保存 host/port/open-close/duration 等连接元数据。选中 tunnel 时 Inspector 只显示 TLS tunnel 页和明确的隐私说明；`Decrypt HTTPS` 打开三步弹层（生成本地 CA → 显式系统信任 → 开启 MITM）。信任成功后第三步显示黄色 `Ready` 提示，但不得自动开启 MITM，必须等待用户点击 `Start decrypting`；未完成前 HTTPS 始终原样透传。禁用或未完成步骤使用统一 disabled 视觉，不以 hover 暗示可操作。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
 ## 交互状态
 
-- hover:`--hover` 底;可点图标额外 `--text → --text`/`--accent`。
+- 文本选择:界面中的所有文本都允许选择与复制，包括 button/nav/tab/switch/segmented 标签，以及 Inspector URL/header/body、Cookie、Diagnostics 与技术值；不得使用 `user-select:none`。
+- hover:行、导航与透明图标控件使用 `--hover` 底;带实底的操作按钮按「操作按钮」规范从自身底色计算 hover,不得直接替换成透明 `--hover`。可点图标额外 `--text → --text`/`--accent`。
 - selected(list 行):`--sel` + 左竖条。
 - active(nav):`--accent-soft` + `--accent`。
 - focus-visible:`0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent)`。

@@ -19,6 +19,7 @@ export interface SessionsQueryCommand {
     limit: number;
     sort: 'started_desc' | 'started_asc';
     filter: {
+      sessionId?: string;
       host?: string;
       method?: string;
       status?: number;
@@ -873,6 +874,10 @@ export interface CaptureExchangeDetail {
   url: string;
   scheme?: string;
   port?: number;
+  /** 响应首字节到达时间；用于真实 TTFB/下载分段。 */
+  responseStartedAt?: number;
+  /** Exchange 完成时间；用于真实下载分段。 */
+  completedAt?: number;
   statusText?: string;
   requestMime?: string;
   errorCode?: string;

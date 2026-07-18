@@ -158,6 +158,16 @@ export function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/** Convert Mockttp's monotonic event timestamp to epoch milliseconds. */
+export function timingEventToEpoch(
+  timing: { startTime: number; startTimestamp: number },
+  eventTimestamp: number | undefined,
+): number | undefined {
+  return eventTimestamp === undefined
+    ? undefined
+    : timing.startTime + Math.max(0, eventTimestamp - timing.startTimestamp);
+}
+
 /** 从完整或畸形 URL 推导代理目标。 */
 export function parseTarget(rawUrl: string): ProxyTarget {
   try {

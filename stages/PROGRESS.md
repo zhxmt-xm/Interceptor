@@ -17,11 +17,11 @@
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
 - 已完成 Stage：M0–M13（生产实签/公证和真实macOS runner为外部发布验收）。
-- 当前 Stage：M13 GitHub Releases更新通知与手动下载（已完成）。
-- 当前任务：公开GitHub Release检查、app内changelog、用户触发MSI/DMG流式下载、Open installer、Updates七态UI和tag发布链已落地。详情见 [M13.md](M13.md)。
-- 下一动作：使用仓库外签名/公证凭据运行首个真实tag release；之后按产品优先级规划下一Stage。
+- 当前工作：M13 后续 Capture/HTTPS 交互与 Recording 生命周期增强已完成；详见 [M4.md](M4.md)、[M5.md](M5.md) 和 [M11.md](M11.md) 的 2026-07-18 后续增强。
+- 当前结果：应用默认启动 8888 Recording 和系统代理、默认 HTTPS 直通；用户可从 Tunnel 面板显式完成 HTTPS setup。Clear/Stop 真清理、当前 Session 隔离、列表/Inspector 状态保持、Cookies/Timing/Payload 四模式与工具栏布局已落地。
+- 下一动作：先提交并推送本次 Capture 增强，再开始临时 Capture Session 与轻重数据分层阶段；首个真实 tag release 仍待仓库外签名/公证凭据。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M11/M12已在`origin/main`；M13阶段改动在本次边界提交并push，接手时以`git status`/`git log`为准。
+- Git 状态：M0–M13 与 15 种语言增强已在 `origin/main`；Capture 后续增强在当前边界提交，接手时以 `git status`/`git log` 为准。
 - 阻塞：无代码阻塞。生产签名/公证需要仓库外凭据；真实macOS DMG与应用内打开需原生runner留证。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，最新完成阶段见 [M13.md](M13.md)。
@@ -65,7 +65,7 @@
 - Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）、15 种完整界面语言与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地。默认英语；语言即时切换并持久化，同步 Ant Design locale、文档 `lang`、区域格式与 Main 原生文件对话框。
 - 存储层已落地：`node:sqlite` + `worker_threads` 的 Capture（`capture.sqlite`，八张核心实体表 + FTS5 + 只向前迁移）与 Diagnostics（`diagnostics.sqlite`，保留 + 丢弃计数 + 分页）双库、独占连接的 Storage/Diagnostics Worker、内容寻址 Blob Store（流式 + 去重 + 配额 + crash-safe GC）、keyset opaque cursor 分页查询，以及 Storage 状态/清空窄 API 与 Storage 设置面板。数据目录由 Main 经 `--data-dir` 注入 Core。
 - HTTP/1.1 显式代理已落地（M3）：基于 Mockttp 的 loopback 显式代理经 `proxy.start/stop/status` 控制，转发 HTTP/1.1、未解密时 CONNECT 直通；规范 Exchange（含请求/响应头与内容寻址正文 Blob）写入 Storage。实时 Capture 事件经 Core 内有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`），Main 订阅后经 `capture:events` 广播 Renderer。
-- 会话列表 UI 已落地（M4）：Capture 工作区数据驱动——TanStack Virtual 固定行高虚拟化列表 + Zustand 视图状态（实时事件按 id 合并/前插、keyset 分页查询、客户端协议分段过滤），Omnibox 关键字搜索与 method/status/host 结构化过滤下推 Core `sessions.query`，录制开关经 `proxy.start/stop`；Inspector 选中行按需 `sessions.detail` 拉取头部/正文引用，正文经 `body.read-range` 分块用 CodeMirror（JSON 高亮）或 hex fallback 预览（256KB 上限）。body/header 不进入全局状态。
+- 会话列表 UI 已落地（M4）：Capture 工作区数据驱动——TanStack Virtual 固定行高虚拟化列表 + Zustand 视图状态（实时事件按 id 合并/前插且补偿选中行滚动、keyset 分页、客户端协议分段），Omnibox 过滤下推当前 `sessionId`；选择/滚动/Inspector tab/宽度跨 feature 保留。Inspector 按需拉取 header/body，正文提供 Auto/Text/JSON/Hex 四模式，Cookies 读取全部重复 header，Timing 只显示 Mockttp 可证明的真实阶段。body/header 不进入全局状态。
 - HTTPS MITM 与 CA 已落地（M5）：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage` 加密私钥（懒加载证书库）；`TrustStoreService` 做 local-machine 信任库安装/卸载/检测（sudo-prompt 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp MITM 解密 HTTPS（仅信任且 mitmEnabled 开启时启用，信任与 MITM 解耦）并复用现有捕获管线；per-host 不安全例外、Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。私钥绝不进 Renderer。详见 M5.md 后续增强。
 - Vitest、Forge package、真实 packaged executable 的 Playwright CDP smoke（含存储全链路 + 窄 API 面）和生产依赖审计链已建立。
 - HTTP/2 已落地（M6）：MITM 时 Mockttp `http2:true` 下游 h2 + 上游 ALPN 协商 + 四组转换；trailer/pseudo-header 采集落库；`content-decoder`（gzip/deflate/brotli 延迟解码）经 `body.read-range` 的 `decode` 请求由 Core 解压（浏览器不支持 br 故必须 Core 解）；Inspector 展示 Stream ID/pseudo 高亮/trailer，BodyView 解码预览。streamId/GOAWAY/RST/背压 Mockttp 未暴露，列为后续原生 http2 增强。
@@ -74,13 +74,15 @@
 - WebSocket/gRPC 已落地（M9）：Mockttp HTTP/1.1 Upgrade + 自定义 `WebSocketBridge` 捕获/转发/消息断点，`websocket_frame` 有序存储与 keyset 页；native gRPC 作为通用 H2 request/response 捕获，`grpc.messages` 每条只读 5B envelope header 并复用 Blob range。Capture Inspector 提供 WebSocket/gRPC Messages 视图；gRPC-Web、H2 Extended CONNECT、descriptor/reflection 与实时 streaming 增量解析未实现。
 - HAR 1.2 已落地（M10/T10.1）：Core 内完成标准 HAR 导出与受限 inert JSON 导入，正文只在 Core/Blob 流转；Main 系统对话框持有路径，Renderer 只经异步 transfer job 查询进度/取消。Capture HAR overlay 支持 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。
 - 原生 archive 已落地（M10/T10.2）：版本化 ZIP（manifest + `VACUUM INTO` 一致 SQLite 快照 + 内容寻址 Blob）。HAR 与 archive 共用单一 `TransferJobManager`；手写零依赖 ZIP writer/reader（Node zlib/crypto）在解压前校验加密位/压缩方法/符号链接/绝对路径/`..`/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取时硬上限 + 逐条 CRC-32 + Blob 内容寻址 hash 三重校验；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。窄 API 新增 `startArchiveExport`/`startArchiveImport`；Capture overlay 启用 “Native archive” 格式切换。
-- 系统代理与恢复已落地（M11）：Windows WinINet 与 macOS Swift/SystemConfiguration helper 完成当前值 snapshot、loopback 设置、完整 guarded compare restore；原子 startup journal 支持新进程/Core failure 恢复且不覆盖外部修改。first-run 真实完成 listener/CA/系统代理流程；Proxy Settings 展示 ownership/PAC/bypass/授权结果与二次确认 emergency repair。当前 Windows package/smoke 已验证，macOS helper 编译/授权 round-trip 留 M12.2 真实平台验收。
+- 系统代理与恢复已落地（M11）：Windows WinINet 与 macOS Swift/SystemConfiguration helper 完成当前值 snapshot、loopback 设置、完整 guarded compare restore；原子 startup journal 支持新进程/Core failure 恢复且不覆盖外部修改。后续已移除 first-run，改为 Capture 启动时自动 Recording/接管系统代理、Stop 时先恢复再清理；HTTPS setup 保持用户显式授权。Proxy Settings 与 emergency repair 仍保留。当前 Windows package/smoke 已验证，macOS helper 编译/授权 round-trip 留真实平台验收。
 - 发布加固已落地（M12）：Desktop 0.1.0；Windows x64 per-user WiX MSI 通过双版本 install/launch/upgrade/launch/uninstall；macOS ad-hoc/Developer ID/notarize + DMG/ZIP 与原生 smoke 已配置。Renderer 迁至 `interceptor://app`，file extras 关闭，Electron 43 九项 Fuse strict 锁定，release 0 maps。Artifact audit、真实 packaged 全工作流、42 张视图矩阵、10 万行门槛与固定 SHA GitHub Actions 完成。生产实签/公证和真实 macOS 证据待外部凭据/runner。
 - GitHub Releases更新已落地（M13）：packaged Windows/macOS启动及每小时读取固定仓库latest stable Release；app内显示有界纯文本changelog。下载只由用户触发，Main选择当前平台单一MSI/DMG并经仓库URL、tag、路径、架构、size和强制GitHub SHA-256校验后流式原子落盘；Renderer只拿状态/进度并可请求打开已下载安装器。无自建服务、Squirrel、资源热更新或静默安装。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-18 Capture/HTTPS 后续增强提交前验收：三 workspace typecheck 通过；Desktop 99 / Proxy Core 193 / Protocol 19，共 311 项单测通过；Windows package 成功；真实 packaged smoke 1/1 通过，覆盖启动默认 Recording、窄 API、Core 重启与活动 Session Clear 后 Exchange/Body 归零；生产依赖 audit 0。Payload 四模式、Cookies、Timing、Tunnel setup 与 1280/900 topbar 已完成目标场景浏览器/视觉检查。
 
 2026-07-18 多语言界面增强验收：`i18next` + `react-i18next` 接入 15 个完整 catalog（每种 659 个主 key，俄/波/乌补齐 CLDR `few/many`）；所有 Renderer 用户文案外部化，Main 经受限 `setUiLanguage` 意图同步 HAR/archive/Diagnostics 原生文件对话框。三 workspace typecheck 通过；Desktop 87 / Proxy Core 187 / Protocol 19，共 293 项单测通过；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 1/1，逐项切换 15 种语言并验证 `html lang`、持久化、侧栏译文、页面无溢出及非法语言拒绝；生产 audit 0。设计源仅保留当前 Theme flyout 与 Language list，已删除 Theme B/C/D、Language L2/L3 及其专用截图矩阵。
 

@@ -31,6 +31,7 @@ export function RequestRow({
 }: RequestRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const kind = statusKind(summary.statusCode);
+  const isTlsTunnel = protocolLabel(summary.protocol) === 'tls';
   const timeLabels = {
     closed: t('capture.closed'),
     open: t('capture.open'),
@@ -49,7 +50,9 @@ export function RequestRow({
           {summary.secure ? <Lock size={12} strokeWidth={2.2} /> : null}
           {summary.host ?? '—'}
         </span>
-        <span className={styles.hostPath}>{summary.path ?? ''}</span>
+        <span className={styles.hostPath}>
+          {isTlsTunnel ? t('capture.httpsEncrypted') : summary.path ?? ''}
+        </span>
       </span>
       <span className={cx(styles.status, styles[kind])}>
         <span className={styles.dot} />

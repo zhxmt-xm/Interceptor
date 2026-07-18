@@ -94,15 +94,15 @@ export class CaptureStore {
     );
     this.updateExchangeStmt = db.prepare(
       `UPDATE exchange SET
-         status_code = :statusCode,
-         status_text = :statusText,
-         response_mime = :responseMime,
-         response_started_at = :responseStartedAt,
-         completed_at = :completedAt,
-         response_bytes = :responseBytes,
-         response_body_id = :responseBodyId,
+        status_code = COALESCE(:statusCode, status_code),
+        status_text = COALESCE(:statusText, status_text),
+        response_mime = COALESCE(:responseMime, response_mime),
+        response_started_at = COALESCE(:responseStartedAt, response_started_at),
+        completed_at = COALESCE(:completedAt, completed_at),
+        response_bytes = COALESCE(:responseBytes, response_bytes),
+        response_body_id = COALESCE(:responseBodyId, response_body_id),
          state = :state,
-         error_code = :errorCode
+        error_code = COALESCE(:errorCode, error_code)
        WHERE id = :id`,
     );
     this.updateFtsResponseMimeStmt = db.prepare(
@@ -295,15 +295,17 @@ export class CaptureStore {
         responseMime: patch.responseMime ?? null,
         responseStartedAt: patch.responseStartedAt ?? null,
         completedAt: patch.completedAt ?? null,
-        responseBytes: patch.responseBytes ?? 0,
+        responseBytes: patch.responseBytes ?? null,
         responseBodyId: patch.responseBodyId ?? null,
         state: patch.state,
         errorCode: patch.errorCode ?? null,
       });
-      this.updateFtsResponseMimeStmt.run({
-        exchangeId: patch.id,
-        responseMime: patch.responseMime ?? '',
-      });
+      if (patch.responseMime !== undefined) {
+        this.updateFtsResponseMimeStmt.run({
+          exchangeId: patch.id,
+          responseMime: patch.responseMime,
+        });
+      }
       if (patch.headers) {
         this.insertHeaders(patch.id, patch.headers);
       }
@@ -375,7 +377,8 @@ export class CaptureStore {
                 e.status_code AS statusCode, e.status_text AS statusText,
                 e.request_mime AS requestMime, e.response_mime AS responseMime,
                 e.state AS state, e.error_code AS errorCode, e.stream_id AS streamId,
-                e.started_at AS startedAt, e.completed_at AS completedAt,
+                e.started_at AS startedAt, e.response_started_at AS responseStartedAt,
+                e.completed_at AS completedAt,
                 e.request_bytes AS requestBytes, e.response_bytes AS responseBytes,
                 e.request_body_id AS requestBodyId, e.response_body_id AS responseBodyId,
                 e.seq AS seq
@@ -402,6 +405,8 @@ export class CaptureStore {
       url: row.url,
       scheme: row.scheme ?? undefined,
       port: row.port ?? undefined,
+      responseStartedAt: row.responseStartedAt ?? undefined,
+      completedAt: row.completedAt ?? undefined,
       statusText: row.statusText ?? undefined,
       requestMime: row.requestMime ?? undefined,
       errorCode: row.errorCode ?? undefined,
@@ -493,6 +498,23 @@ export class CaptureStore {
           );
           this.db.exec('DELETE FROM capture_session');
           this.db.exec('DELETE FROM exchange_fts');
+          this.db.exec('DELETE FROM body_ref');
+          return { removedSessions, removedExchanges };
+        }
+
+        if (scope.kind === 'all-except-session') {
+          const removedSessions = this.scalar(
+            'SELECT COUNT(*) AS value FROM capture_session WHERE id <> :sessionId',
+            { sessionId: scope.sessionId },
+          );
+          const removedExchanges = this.scalar(
+            'SELECT COUNT(*) AS value FROM exchange',
+          );
+          this.db.exec('DELETE FROM exchange_fts');
+          this.db.exec('DELETE FROM exchange');
+          this.db
+            .prepare('DELETE FROM capture_session WHERE id <> :sessionId')
+            .run({ sessionId: scope.sessionId });
           this.db.exec('DELETE FROM body_ref');
           return { removedSessions, removedExchanges };
         }
@@ -719,6 +741,10 @@ export class CaptureStore {
     conditions: string[],
     params: Record<string, string | number>,
   ): void {
+    if (filter.sessionId) {
+      conditions.push('e.session_id = :sessionId');
+      params.sessionId = filter.sessionId;
+    }
     if (filter.host) {
       conditions.push('e.host = :host');
       params.host = filter.host;

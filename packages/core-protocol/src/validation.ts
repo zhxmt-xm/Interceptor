@@ -485,8 +485,12 @@ function validateSessionFilter(
   return validateExactObject(
     value,
     name,
-    ['host', 'method', 'status', 'mime', 'process', 'search', 'protocol'],
+    ['sessionId', 'host', 'method', 'status', 'mime', 'process', 'search', 'protocol'],
     (filter) => validateOptionalBoundedString(
+      filter.sessionId,
+      `${name}.sessionId`,
+      128,
+    ) ?? validateOptionalBoundedString(
       filter.host,
       `${name}.host`,
       MAX_FILTER_LENGTH,
@@ -1787,6 +1791,8 @@ function validateExchangeDetail(value: unknown, name: string): string | null {
       'url',
       'scheme',
       'port',
+      'responseStartedAt',
+      'completedAt',
       'statusText',
       'requestMime',
       'errorCode',
@@ -1802,6 +1808,11 @@ function validateExchangeDetail(value: unknown, name: string): string | null {
       validateBoundedString(detail.url, `${name}.url`, 4_096) ??
       validateOptionalBoundedString(detail.scheme, `${name}.scheme`, 32) ??
       validateOptionalIntegerRange(detail.port, `${name}.port`, 0, 65_535) ??
+      validateOptionalNonNegativeNumber(
+        detail.responseStartedAt,
+        `${name}.responseStartedAt`,
+      ) ??
+      validateOptionalNonNegativeNumber(detail.completedAt, `${name}.completedAt`) ??
       validateOptionalBoundedString(detail.statusText, `${name}.statusText`, 256) ??
       validateOptionalBoundedString(detail.requestMime, `${name}.requestMime`, 256) ??
       validateOptionalBoundedString(detail.errorCode, `${name}.errorCode`, 128) ??

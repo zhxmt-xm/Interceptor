@@ -93,7 +93,8 @@ flowchart LR
 
 > Mockttp 显式代理把真实 HTTP/1.1 流量采集为规范 Exchange 写入 M2 存储，正文经内容寻址 Blob 持久化，实时事件经有界合并队列 + 窗口背压批量推送给 Main 再广播 Renderer。真正零内存流式正文作为 M5+ 优化项。
 
-- **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制（默认不捕获）。
+- **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。
+- **Recording 隔离/清理**：`proxy.status` 返回当前 `sessionId`，Renderer 所有列表查询都带该过滤条件。Clear 通过 `prepareCaptureReset` 推进 cutoff、重置 event queue，并在保留活动 Session 的同时删除其 Exchange/Body；Stop 先由 Main guarded restore 系统代理，再停止 listener 和全量 cleanup，迟到事件不能回填已清空视图。
 - **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
 - **正文持久化（T3.3）**：请求/响应正文经 `StorageService.writeBody` 写入内容寻址 Blob Store，生成 `body_ref` 并在同事务内绑定 Exchange 的 request/response body id；超单体上限/配额时省略正文保留元数据（truncated/skipped）。当前经 Mockttp 内存缓冲后写盘，真正零内存流式（body-data 事件增量写盘）留后续。
 - **捕获事件管线（T3.4）**：`proxy/proxy-capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空，经 `event-batch`/`event-ack` 推送 Main/Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary`。
@@ -105,9 +106,9 @@ flowchart LR
 
 > Capture 工作区把占位 UI 升级为真实数据驱动，仍只经 `window.interceptor` 意图 API 访问 Main；Exchange 摘要进 Zustand 视图状态，header/body 均不进入全局状态，按需从 Core 拉取。
 
-- **视图状态**：`features/capture/captureStore.ts`（Zustand）只存 `CaptureExchangeSummary` 行 + `indexById`，实时事件按 id 原位更新 / 新行整块前插，`live`/`capturing` 开关、`filter`（分段 + 关键字 + method/status/host）与 `selectedId` 均在此。
-- **数据管线**：`useCaptureData.ts` 订阅 `onCaptureEvents`、按过滤条件去抖重查 `querySessions`、滚动近底 `loadMoreSessions` 按 keyset 游标追加历史页、`toggleCapture` 调 `startCapture`/`stopCapture`；`useExchangeDetail.ts` 选中行按需 `getExchangeDetail`（组件本地 state）。
-- **渲染**：`RequestList` 用 `@tanstack/react-virtual` 固定行高虚拟化；`Omnibox` 关键字下推 Core FTS、method/status/host 结构化过滤显示可移除 pill；`RequestInspector` 各标签接 detail，`BodyView` 用 CodeMirror（JSON 高亮）渲染文本正文、二进制走 hex fallback（256KB 预览上限）。
+- **视图状态**：`features/capture/captureStore.ts`（Zustand）只存 `CaptureExchangeSummary` 行 + `indexById`，实时事件按 id 原位更新 / 新行整块前插，`live`/`capturing`、当前 `activeSessionId`、filter、selection、scrollTop、Inspector tab/width 均在此；header/body 不进入全局状态。
+- **数据管线**：`useCaptureData.ts` 在 Renderer 生命周期只 bootstrap 一次：有界等待 Core running，启动或复用 8888 listener，尽力接管系统代理，并按当前 Session 拉首页。订阅 `onCaptureEvents`、过滤去抖重查、keyset 加载历史页；Stop 清空活动 Session 与视图。`useExchangeDetail.ts` 仍按选择局部拉 detail。
+- **渲染**：`RequestList` 用固定 52px TanStack Virtual 行，实时前插时按选中项 index delta 补偿 scrollTop；`Omnibox` 关键字下推 Core FTS。Inspector Cookies 收集所有重复 Cookie header；Timing 使用真实 response-start/completed 时间；`BodyView` 提供 Auto/Text/JSON/Hex、未知 MIME UTF-8 探测、JSON pretty print 与响应式 hex（256KB 预览上限）。
 - **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
 
 ## 证书与 HTTPS MITM 架构（M5，已落地）
@@ -117,6 +118,7 @@ flowchart LR
 - **CertificateService**（`apps/desktop/src/main/certificates/certificate-service.ts`）：用 `@peculiar/x509` 生成 RSA 2048/SHA-256 Root CA（BasicConstraints CA、keyCertSign/cRLSign、随机 serial、3 年有效期）；`safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/root-key.enc`，明文 `root-cert.pem` 与 meta（SHA-256 fingerprint + SHA-1 thumbprint）单独存。**证书库懒加载**：模块顶层不 import `@peculiar/x509`（其 tsyringe/reflect-metadata 顶层副作用会阻塞 Main/Chromium/CDP 启动），仅在 `generate()` 内 `await import(...)` 并设 WebCrypto provider。
 - **TrustStoreService**（`trust-store-service.ts`）：**local-machine 信任库**——`@vscode/sudo-prompt` 提权执行 `certutil -addstore -f Root`（Windows，去 `-user`）/ `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain`（macOS）安装/卸载，非提权 `certutil -verifystore Root <sha1>` / `security find-certificate` 检测；按 SHA-1 thumbprint 精确定位；`execFile` 不经 shell；注入 `ElevatedRunner`（默认 `sudoPromptRunner`）+ `CommandRunner` 便于 mock 单测。本机全部用户/进程（含浏览器）统一信任。
 - **下发通道**：Main 经内部 `tls.configure` 命令（复用 request/response，Renderer 无对应窄 API 拿不到私钥）把 CA material + `insecureHosts` 下发 Core；`CoreRuntime.onCoreProcessReady` 在每代 Core 就绪后触发 `provisionCoreTls`。**仅当 CA 已安装信任（`trustStore.isTrusted`）且 `mitmEnabled` 开关开启时才下发 material 启用 MITM**（信任与 MITM 解耦，窄 API `setHttpsDecryption`），否则下发 null（CONNECT 字节直通不解密）。
+- **默认 HTTPS 直通**：Main 每次进程启动都从 `mitmEnabled=false` 开始。Core 无 CA material 时以 `tlsInterceptOnly: []` 保证所有 TLS passthrough，并把 opened/closed 事件记录为有限 `CONNECT` tunnel metadata（目标、时间、duration），不读取隧道 header/body。Capture Tunnel 面板只在用户点击后打开 HTTPS Setup，按需 Generate CA、Install trust、Start decrypting。
 - **MITM**（Core）：`ProxyService` 有 CA 时 `getLocal({https:{key,cert}})`，Mockttp 用该 CA 动态签发并缓存 leaf；`thenPassThrough({ignoreHostHttpsErrors})` 默认验证源站证书链/hostname、仅对 per-host 例外忽略。解密的 HTTPS Exchange 复用现有 `request`/`response` 捕获管线（`scheme=https`、`secure=true`）。
 - **窄 API**：`getCertificateStatus`/`generate`/`install`/`uninstall`/`delete`/`reveal`/`view`Certificate、`openCertificateManager`、`get`/`setInsecureHosts`、`setHttpsDecryption`（Main 组装 `CertificateInfo` 含 `path`/`mitmEnabled`，私钥不出 Main）；install 不自动生成（要求已 present）；Settings/Certificates 面板呈现真实证书状态、信任、fingerprint、MITM 开关、证书文件入口（reveal/view/系统证书管理器）与不安全例外。
 
@@ -175,7 +177,7 @@ sequenceDiagram
 - **Guarded ownership**：enable 前读取 original 并计算 owned；restore/repair 重新读取 current，只有 `current == owned` 才写回 original。外部修改导致 `ownershipLost`，零写入且不会覆盖用户值。
 - **Startup journal**：`SystemProxyJournal` 在 native write 前原子持久化 version/platform/phase/original/owned，临时文件同步后 rename。启动时 `current == owned` 恢复，`current == original` 清 journal，其余保留冲突。Core 从 running 进入 unresponsive/restarting、停止 Capture 和应用退出时复用同一 guarded decision。
 - **窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`、`repairSystemProxy`。Emergency repair 先恢复仍 owned 的设置，再尽力停止 listener；Main 日志不包含 snapshot。
-- **首次运行/UI**：first-run 四步走真实 API，最终 Start 先启动 8888 loopback listener 再启用系统代理；CA 生成/信任需显式 OS 授权。Proxy Settings 展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
+- **启动/UI**：first-run 已移除。默认 Capture 视图在 Core ready 后启动 8888 loopback listener，并在支持的平台尽力启用系统代理；CA 生成/信任从启动流程中拆出，只能由用户在 HTTPS Setup 显式授权。Proxy Settings 继续展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
 - **构建/打包**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。
 
 ## 发布与产物安全架构（M12，已落地）

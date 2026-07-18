@@ -13,7 +13,7 @@
   cursor: pointer;
 }
 .filterChip:hover {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--panel) 94%, var(--text));
   color: var(--text);
 }
 .filterChip svg {

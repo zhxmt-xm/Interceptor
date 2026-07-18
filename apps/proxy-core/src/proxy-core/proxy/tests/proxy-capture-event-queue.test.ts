@@ -74,6 +74,19 @@ describe('CaptureEventQueue', () => {
     expect(queue.drain(2).map((e) => e.summary.id)).toEqual(['e4']);
   });
 
+  it('drops every pending event when a capture clear establishes a new timeline', () => {
+    const queue = new CaptureEventQueue();
+    queue.enqueue('exchange-added', summary('old-pending'));
+    queue.enqueue('exchange-updated', summary('old-complete', { state: 'completed' }));
+
+    queue.reset();
+
+    expect(queue.pendingCount).toBe(0);
+    expect(queue.drain(10)).toEqual([]);
+    queue.enqueue('exchange-added', summary('new'));
+    expect(queue.drain(10).map((event) => event.summary.id)).toEqual(['new']);
+  });
+
   it('evicts oldest non-terminal events over capacity and counts drops', () => {
     queueCapacity.value = 2;
     const queue = new CaptureEventQueue();

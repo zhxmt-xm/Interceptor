@@ -1,10 +1,46 @@
-import type { CaptureExchangeSummary } from '../../../shared/desktop-api';
+import type { CaptureExchangeSummary, CaptureHeader } from '../../../shared/desktop-api';
 
 /** 列表状态点的语义分类，对应 RequestRow.module.css 的 ok/warn/err/info2。 */
 export type StatusKind = 'ok' | 'warn' | 'err' | 'info2';
 
 /** 协议分段（列表顶部 Segmented：All / H1 / H2 / WS）。 */
 export type ProtocolSegment = 'all' | 'h1' | 'h2' | 'ws';
+
+/** Cookie headers live exclusively in the Cookies tab, not the generic Headers tab. */
+export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[] {
+  return headers.filter((header) => {
+    const name = header.name.toLowerCase();
+    return name !== 'cookie' && name !== 'set-cookie';
+  });
+}
+
+/** Parse every request Cookie header; HTTP/2 may emit one header row per cookie pair. */
+export function requestCookiePairs(headers: CaptureHeader[]): Array<[string, string]> {
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'cookie')
+    .flatMap((header) => header.value.split(';'))
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const separator = pair.indexOf('=');
+      return separator === -1
+        ? [pair, '']
+        : [pair.slice(0, separator), pair.slice(separator + 1)];
+    });
+}
+
+/** Preserve each Set-Cookie response header as one row keyed by its cookie name. */
+export function responseCookiePairs(headers: CaptureHeader[]): Array<[string, string]> {
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => {
+      const separator = header.value.indexOf('=');
+      const name = separator === -1
+        ? header.value
+        : header.value.slice(0, separator);
+      return [name, header.value];
+    });
+}
 
 /** 由 HTTP 状态码推导状态点语义：2xx 绿、1xx/3xx 蓝、4xx 黄、5xx 红。 */
 export function statusKind(code: number | undefined): StatusKind {
@@ -87,6 +123,9 @@ export function typeLabel(mime: string | undefined): string {
     return '—';
   }
   const essence = mime.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (essence === 'application/x-encrypted-tunnel') {
+    return 'encrypted';
+  }
   if (essence.startsWith('application/grpc-web')) {
     return 'grpc-web';
   }
@@ -143,12 +182,55 @@ export interface TimeLabels {
   failed: string;
 }
 
+export interface TimingSegment {
+  readonly id: 'waiting' | 'download';
+  readonly durationMs: number;
+  readonly offsetPercent: number;
+  readonly widthPercent: number;
+}
+
+/** Build honest response timing segments from persisted timestamps only. */
+export function responseTimingSegments(
+  startedAt: number,
+  responseStartedAt: number | undefined,
+  completedAt: number | undefined,
+): TimingSegment[] {
+  if (
+    responseStartedAt === undefined
+    || completedAt === undefined
+    || responseStartedAt < startedAt
+    || completedAt < responseStartedAt
+  ) {
+    return [];
+  }
+  const waitingMs = responseStartedAt - startedAt;
+  const downloadMs = completedAt - responseStartedAt;
+  const totalMs = Math.max(1, completedAt - startedAt);
+  return [
+    {
+      id: 'waiting',
+      durationMs: waitingMs,
+      offsetPercent: 0,
+      widthPercent: (waitingMs / totalMs) * 100,
+    },
+    {
+      id: 'download',
+      durationMs: downloadMs,
+      offsetPercent: (waitingMs / totalMs) * 100,
+      widthPercent: (downloadMs / totalMs) * 100,
+    },
+  ];
+}
+
 /** 列表 Time 列文本：已完成显示耗时，WebSocket 显示 open，进行中显示占位。 */
 export function timeLabel(
   summary: CaptureExchangeSummary,
   locale = 'en',
   labels: TimeLabels = { closed: 'closed', open: 'open', failed: 'failed' },
 ): string {
+  if (protocolLabel(summary.protocol) === 'tls' && summary.durationMs === undefined) {
+    return labels.open;
+  }
   if (protocolSegment(summary.protocol) === 'ws') {
     return summary.state === 'completed' || summary.state === 'failed' ? labels.closed : labels.open;
   }

@@ -6,6 +6,7 @@ import type {
   SessionsPage,
 } from '../../../shared/desktop-api';
 import type { ProtocolSegment } from './row-format';
+import type { InspectorTab } from './data';
 import { protocolSegment } from './row-format';
 
 /** 结构化过滤条件；segment 为客户端视图过滤，其余下推 Core 分页查询。 */
@@ -35,13 +36,23 @@ export interface CaptureState {
   filter: CaptureFilter;
   /** Live tail 开关；关闭时忽略实时事件，仅保留已加载视图。 */
   live: boolean;
+  /** 最近一次持久化清空的点击时间；更早开始的迟到事件不得重新进入视图。 */
+  clearedBefore: number;
   /** 代理是否正在监听捕获（proxy.status.listening）。 */
   capturing: boolean;
+  /** 当前 Recording 对应的 Core Capture Session；列表查询只读取这一代。 */
+  activeSessionId: string | null;
   loading: boolean;
   hasMore: boolean;
   cursor: string | undefined;
   error: string | null;
   harDialogOpen: boolean;
+  /** 切换 feature 前的列表滚动位置；Capture 重新挂载时恢复。 */
+  listScrollTop: number;
+  /** 用户最后选择的 Inspector tab；仅在新请求类型不支持时 fallback。 */
+  inspectorTab: InspectorTab;
+  /** 用户拖拽后的 Inspector 宽度；Capture 重新挂载时恢复。 */
+  inspectorWidth: number;
 
   select(id: string | null): void;
   setSegment(segment: ProtocolSegment): void;
@@ -51,8 +62,12 @@ export interface CaptureState {
   ): void;
   setLive(live: boolean): void;
   setCapturing(capturing: boolean): void;
+  setActiveSessionId(sessionId: string | null): void;
   setHarDialogOpen(open: boolean): void;
-  clearView(): void;
+  setListScrollTop(scrollTop: number): void;
+  setInspectorTab(tab: InspectorTab): void;
+  setInspectorWidth(width: number): void;
+  clearView(clearedBefore?: number): void;
   beginLoad(): void;
   loadFailed(message: string): void;
   replaceRows(page: SessionsPage): void;
@@ -104,12 +119,17 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   selectedId: null,
   filter: EMPTY_FILTER,
   live: true,
+  clearedBefore: 0,
   capturing: false,
+  activeSessionId: null,
   loading: false,
   hasMore: false,
   cursor: undefined,
   error: null,
   harDialogOpen: false,
+  listScrollTop: 0,
+  inspectorTab: 'headers',
+  inspectorWidth: 500,
 
   select: (id) => set({ selectedId: id }),
 
@@ -126,15 +146,26 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
   setCapturing: (capturing) => set({ capturing }),
 
+  setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
+
   setHarDialogOpen: (harDialogOpen) => set({ harDialogOpen }),
 
-  clearView: () =>
+  setListScrollTop: (listScrollTop) => set({ listScrollTop }),
+
+  setInspectorTab: (inspectorTab) => set({ inspectorTab }),
+
+  setInspectorWidth: (inspectorWidth) => set({ inspectorWidth }),
+
+  clearView: (clearedBefore = get().clearedBefore) =>
     set({
       rows: [],
       indexById: new Map(),
       selectedId: null,
+      listScrollTop: 0,
+      clearedBefore,
       cursor: undefined,
       hasMore: false,
+      loading: false,
       error: null,
     }),
 
@@ -179,6 +210,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     let mutated = false;
 
     for (const event of events) {
+      if (event.summary.startedAt <= state.clearedBefore) {
+        continue;
+      }
       if (!matchesCoreFilter(event.summary, state.filter)) {
         continue;
       }

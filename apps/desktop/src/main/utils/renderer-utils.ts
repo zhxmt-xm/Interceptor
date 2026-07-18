@@ -178,6 +178,7 @@ function toCoreSessionFilter(value: unknown): SessionQueryRequest['filter'] {
     throw new Error('query.filter.status is invalid');
   }
 
+  assertOptionalBoundedString(filter.sessionId, 'query.filter.sessionId', 128);
   assertOptionalBoundedString(filter.host, 'query.filter.host', 512);
   assertOptionalBoundedString(filter.method, 'query.filter.method', 32);
   assertOptionalBoundedString(filter.mime, 'query.filter.mime', 256);
@@ -193,6 +194,7 @@ function toCoreSessionFilter(value: unknown): SessionQueryRequest['filter'] {
   }
 
   return {
+    sessionId: filter.sessionId as string | undefined,
     host: filter.host as string | undefined,
     method: filter.method as string | undefined,
     status: status as number | undefined,

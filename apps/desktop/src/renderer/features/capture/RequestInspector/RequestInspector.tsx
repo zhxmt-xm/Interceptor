@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
@@ -7,16 +7,23 @@ import { useCaptureStore } from '../captureStore';
 import {
   GRPC_INSPECTOR_TABS,
   INSPECTOR_TABS,
+  TLS_TUNNEL_INSPECTOR_TABS,
+  retainInspectorTab,
   WEBSOCKET_INSPECTOR_TABS,
   type InspectorTab,
 } from '../data';
 import { TlsPanel } from './TlsPanel';
+import { TlsTunnelPanel } from './TlsTunnelPanel';
 import {
   protocolLabel,
   protocolSegment,
+  headersWithoutCookies,
+  requestCookiePairs,
+  responseCookiePairs,
   sizeLabel,
   statusLabel,
   statusTone,
+  responseTimingSegments,
   timeLabel,
   typeLabel,
 } from '../row-format';
@@ -64,31 +71,12 @@ function inferPort(url: string | undefined, scheme: string): number {
 
 /** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
 function requestCookieRows(headers: CaptureHeader[]): KvRow[] {
-  const cookie = headers.find((header) => header.name.toLowerCase() === 'cookie');
-  if (!cookie) {
-    return [];
-  }
-  return cookie.value
-    .split(';')
-    .map((pair) => pair.trim())
-    .filter(Boolean)
-    .map((pair) => {
-      const eq = pair.indexOf('=');
-      return eq === -1
-        ? ([pair, ''] as KvRow)
-        : ([pair.slice(0, eq), pair.slice(eq + 1)] as KvRow);
-    });
+  return requestCookiePairs(headers);
 }
 
 /** 收集响应 Set-Cookie 头（每条一行）为 KV 行。 */
 function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
-  return headers
-    .filter((header) => header.name.toLowerCase() === 'set-cookie')
-    .map((header) => {
-      const eq = header.value.indexOf('=');
-      const name = eq === -1 ? header.value : header.value.slice(0, eq);
-      return [name, header.value] as KvRow;
-    });
+  return responseCookiePairs(headers);
 }
 
 function isGrpcMime(value: string | undefined): boolean {
@@ -138,10 +126,15 @@ function Section({
   );
 }
 
+export interface RequestInspectorProps {
+  onSetupHttps: () => void;
+}
+
 /** Right-hand inspector for the selected request. */
-export function RequestInspector(): React.JSX.Element {
+export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
-  const [tab, setTab] = useState<InspectorTab>('headers');
+  const tab = useCaptureStore((state) => state.inspectorTab);
+  const setTab = useCaptureStore((state) => state.setInspectorTab);
   const selectedId = useCaptureStore((state) => state.selectedId);
   const summary = useCaptureStore((state) => {
     if (!state.selectedId) {
@@ -157,20 +150,27 @@ export function RequestInspector(): React.JSX.Element {
   const url = view ? detail?.url ?? `${view.host ?? ''}${view.path ?? ''}` : '';
   const responseHeaders = detail?.responseHeaders ?? [];
   const requestHeaders = detail?.requestHeaders ?? [];
+  const visibleResponseHeaders = headersWithoutCookies(responseHeaders);
+  const visibleRequestHeaders = headersWithoutCookies(requestHeaders);
   const responseTrailers = detail?.responseTrailers ?? [];
   const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
   const isWebSocket = view ? protocolSegment(view.protocol) === 'ws' : false;
+  const isTlsTunnel = view
+    ? view.method.toUpperCase() === 'CONNECT' && protocolLabel(view.protocol) === 'tls'
+    : false;
   const isGrpc = !isWebSocket && Boolean(
     view &&
       protocolSegment(view.protocol) === 'h2' &&
       (isGrpcMime(detail?.requestMime) || isGrpcMime(view.responseMime)),
   );
-  const inspectorTabs = isWebSocket
-    ? WEBSOCKET_INSPECTOR_TABS
-    : isGrpc
-      ? GRPC_INSPECTOR_TABS
-      : INSPECTOR_TABS;
+  const inspectorTabs = isTlsTunnel
+    ? TLS_TUNNEL_INSPECTOR_TABS
+    : isWebSocket
+      ? WEBSOCKET_INSPECTOR_TABS
+      : isGrpc
+        ? GRPC_INSPECTOR_TABS
+        : INSPECTOR_TABS;
   const tlsPort = inferPort(detail?.url, scheme);
   const grpcStatus = headerValue(responseTrailers, 'grpc-status')
     ?? headerValue(responseHeaders, 'grpc-status');
@@ -189,10 +189,27 @@ export function RequestInspector(): React.JSX.Element {
   const exchangeTime = view
     ? timeLabel(view, i18n.language, timeLabels)
     : '';
+  const timingSegments = view
+    ? responseTimingSegments(
+        view.startedAt,
+        detail?.responseStartedAt,
+        detail?.completedAt,
+      )
+    : [];
 
   useEffect(() => {
-    setTab(isWebSocket ? 'messages' : isGrpc ? 'grpc' : 'headers');
-  }, [isGrpc, isWebSocket, selectedId]);
+    const fallback = isTlsTunnel
+      ? 'tunnel'
+      : isWebSocket
+        ? 'messages'
+        : isGrpc
+          ? 'grpc'
+          : 'headers';
+    const nextTab = retainInspectorTab(tab, inspectorTabs, fallback);
+    if (nextTab !== tab) {
+      setTab(nextTab);
+    }
+  }, [inspectorTabs, isGrpc, isTlsTunnel, isWebSocket, tab]);
 
   return (
     <div className={styles.inspector}>
@@ -204,13 +221,15 @@ export function RequestInspector(): React.JSX.Element {
           {view ? (
             <>
               <span className={styles.urlDomain}>{view.host ?? ''}</span>
-              <span className={styles.urlPath}>{view.path ?? ''}</span>
+              <span className={styles.urlPath}>{isTlsTunnel ? `:${tlsPort}` : view.path ?? ''}</span>
             </>
           ) : (
             <span className={styles.urlDomain}>{t('capture.selectRequest')}</span>
           )}
         </span>
-        {view && view.statusCode !== undefined ? (
+        {view && isTlsTunnel ? (
+          <StatusBadge tone="yellow">{t('capture.encrypted')}</StatusBadge>
+        ) : view && view.statusCode !== undefined ? (
           <StatusBadge
             tone={
               isGrpc && grpcStatus !== undefined
@@ -238,6 +257,15 @@ export function RequestInspector(): React.JSX.Element {
       </div>
 
       <div className={styles.scroll}>
+        {tab === 'tunnel' && isTlsTunnel && view ? (
+          <TlsTunnelPanel
+            host={view.host ?? ''}
+            port={tlsPort}
+            open={view.state !== 'completed' && view.state !== 'failed'}
+            onSetupHttps={onSetupHttps}
+          />
+        ) : null}
+
         {tab === 'headers' ? (
           <div className={styles.panel}>
             <Section title={t('capture.general')}>
@@ -259,16 +287,16 @@ export function RequestInspector(): React.JSX.Element {
                 <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
             </Section>
-            <Section title={t('capture.responseHeaders')} count={responseHeaders.length}>
-              {responseHeaders.length ? (
-                <Kv rows={headersToRows(responseHeaders)} />
+            <Section title={t('capture.responseHeaders')} count={visibleResponseHeaders.length}>
+              {visibleResponseHeaders.length ? (
+                <Kv rows={headersToRows(visibleResponseHeaders)} />
               ) : (
                 <div className={styles.empty}>{t('capture.noResponseHeaders')}</div>
               )}
             </Section>
-            <Section title={t('capture.requestHeaders')} count={requestHeaders.length}>
-              {requestHeaders.length ? (
-                <Kv rows={headersToRows(requestHeaders)} />
+            <Section title={t('capture.requestHeaders')} count={visibleRequestHeaders.length}>
+              {visibleRequestHeaders.length ? (
+                <Kv rows={headersToRows(visibleRequestHeaders)} />
               ) : (
                 <div className={styles.empty}>{t('capture.noRequestHeaders')}</div>
               )}
@@ -311,7 +339,12 @@ export function RequestInspector(): React.JSX.Element {
             </Section>
             <Section title={t('capture.requestPayload')}>
               {detail?.requestBody ? (
-                <BodyView body={detail.requestBody} />
+                <BodyView
+                  body={{
+                    ...detail.requestBody,
+                    mediaType: detail.requestBody.mediaType ?? detail.requestMime,
+                  }}
+                />
               ) : (
                 <div className={styles.empty}>{t('capture.noRequestBody')}</div>
               )}
@@ -330,7 +363,12 @@ export function RequestInspector(): React.JSX.Element {
               }
             >
               {detail?.responseBody ? (
-                <BodyView body={detail.responseBody} />
+                <BodyView
+                  body={{
+                    ...detail.responseBody,
+                    mediaType: detail.responseBody.mediaType ?? view?.responseMime,
+                  }}
+                />
               ) : (
                 <div className={styles.empty}>{t('capture.noResponseBody')}</div>
               )}
@@ -349,6 +387,32 @@ export function RequestInspector(): React.JSX.Element {
         {tab === 'timing' ? (
           <div className={styles.panel}>
             <Section title={t('capture.timing')} count={view ? exchangeTime : undefined}>
+              {timingSegments.length > 0 ? (
+                <div className={styles.timeline}>
+                  {timingSegments.map((segment) => (
+                    <div key={segment.id} className={styles.timelineRow}>
+                      <span className={styles.timelineLabel}>
+                        {segment.id === 'waiting'
+                          ? `${t('settings.update.waiting')} (TTFB)`
+                          : t('settings.responseBodies')}
+                      </span>
+                      <span className={styles.timelineTime}>
+                        {segment.durationMs < 1
+                          ? '<1 ms'
+                          : `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 0 }).format(segment.durationMs)} ms`}
+                      </span>
+                      <span className={styles.timelineBar}>
+                        <i
+                          style={{
+                            left: `${segment.offsetPercent}%`,
+                            width: `${Math.max(segment.widthPercent, 1)}%`,
+                          }}
+                        />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {view ? (
                 <Kv
                   rows={[
@@ -361,9 +425,9 @@ export function RequestInspector(): React.JSX.Element {
               ) : (
                 <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
-              <div className={styles.empty}>
-                {t('capture.waterfallLater')}
-              </div>
+              {timingSegments.length === 0 ? (
+                <div className={styles.empty}>{t('capture.waterfallLater')}</div>
+              ) : null}
             </Section>
           </div>
         ) : null}

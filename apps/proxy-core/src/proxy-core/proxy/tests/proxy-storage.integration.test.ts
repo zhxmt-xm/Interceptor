@@ -120,6 +120,50 @@ function mitmHttpsGet(
   });
 }
 
+// 无用户 CA 时，经 CONNECT 原样完成 TLS，仅验证源站响应和 tunnel 元数据落库。
+function passthroughHttpsGet(
+  proxyPort: number,
+  originPort: number,
+): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      host: '127.0.0.1',
+      port: proxyPort,
+      method: 'CONNECT',
+      path: `127.0.0.1:${originPort}`,
+    });
+    request.on('connect', (response, socket, head) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`CONNECT failed: ${response.statusCode ?? 0}`));
+        return;
+      }
+      if (head.length > 0) {
+        socket.unshift(head);
+      }
+      const tlsSocket = tls.connect(
+        { socket, servername: 'localhost', rejectUnauthorized: false },
+        () => {
+          tlsSocket.write(
+            `GET /secure HTTP/1.1\r\nHost: 127.0.0.1:${originPort}\r\n` +
+              'Connection: close\r\n\r\n',
+          );
+        },
+      );
+      let body = '';
+      tlsSocket.on('data', (data: Buffer) => {
+        body += data.toString('utf8');
+      });
+      tlsSocket.on('end', () => {
+        const status = body.match(/HTTP\/1\.\d (\d{3})/)?.[1];
+        resolve(status ? Number(status) : undefined);
+      });
+      tlsSocket.on('error', reject);
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
+
 describe.skipIf(!existsSync(workerBundle))(
   'Proxy → Storage capture pipeline (real worker)',
   () => {
@@ -178,6 +222,43 @@ describe.skipIf(!existsSync(workerBundle))(
         await origin.close();
       }
     });
+
+    it('persists an undecrypted HTTPS connection as a queryable TLS tunnel', async () => {
+      dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-tunnel-'));
+      initializeRuntime([`--data-dir=${dataDir}`]);
+      storage = new StorageService();
+      await storage.initialize();
+      proxy = new ProxyService(storage, new CaptureEventQueue());
+      const address = await proxy.start();
+      const originCertificate = await generateCACertificate();
+      const origin = await startHttpsOrigin(
+        originCertificate.cert,
+        originCertificate.key,
+      );
+
+      try {
+        await expect(passthroughHttpsGet(address.port, origin.port)).resolves.toBe(200);
+        await expect
+          .poll(async () => {
+            const page = await storage!.querySessions({
+              limit: 10,
+              sort: 'started_desc',
+              filter: {},
+            });
+            return page.items[0];
+          }, { timeout: 8_000 })
+          .toMatchObject({
+            method: 'CONNECT',
+            secure: true,
+            host: '127.0.0.1',
+            protocol: 'tls',
+            statusCode: 200,
+            responseMime: 'application/x-encrypted-tunnel',
+          });
+      } finally {
+        await origin.close();
+      }
+    }, 20_000);
 
     it('decrypts HTTPS traffic via MITM into a queryable exchange', async () => {
       dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-m5-'));

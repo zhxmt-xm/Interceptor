@@ -59,6 +59,19 @@ function summary({
 
 const sessions = [
   summary({ id: 'http-1', host: 'api.github.com', path: '/user', protocol: 'h2', statusCode: 200, responseMime: 'application/json', responseBytes: 1_229, durationMs: 142 }),
+  {
+    id: 'tls-tunnel',
+    method: 'CONNECT',
+    secure: true,
+    host: 'accounts.google.com',
+    protocol: 'tls',
+    statusCode: 200,
+    responseMime: 'application/x-encrypted-tunnel',
+    state: 'request-complete',
+    startedAt: startedAt - 500,
+    requestBytes: 0,
+    responseBytes: 0,
+  },
   summary({ id: 'http-2', host: 'login.microsoftonline.com', path: '/common/oauth2/v2.0/token', protocol: 'h2', statusCode: 200, responseMime: 'application/json', responseBytes: 3_482, durationMs: 210, method: 'POST' }),
   summary({ id: 'http-3', host: 'cdn.jsdelivr.net', path: '/npm/react@18/umd/react.min.js', protocol: 'h2', statusCode: 304, responseMime: 'application/javascript', responseBytes: 0, durationMs: 18 }),
   summary({ id: 'http-4', host: 'fonts.gstatic.com', path: '/s/inter/v13/UcC.woff2', protocol: 'h2', statusCode: 200, responseMime: 'font/woff2', responseBytes: 43_008, durationMs: 33 }),
@@ -83,6 +96,7 @@ const sessions = [
 ];
 
 const bodyText = {
+  'http-request-body': '{"name":"interceptor","enabled":true,"limits":{"requests":250}}',
   'ws-body-1': '{"type":"subscribe","channel":"builds"}',
   'ws-body-2': '{"type":"subscribed","channel":"builds"}',
   'ws-body-3': '{"buildId":8431,"state":"running","branch":"main"}',
@@ -126,18 +140,30 @@ const httpDetail = {
   url: 'https://api.github.com/user',
   scheme: 'https',
   port: 443,
+  responseStartedAt: sessions[0].startedAt + 118,
+  completedAt: sessions[0].startedAt + 142,
   statusText: 'OK',
   requestMime: 'application/json',
   requestHeaders: [
     { name: 'accept', value: 'application/vnd.github.v3+json' },
     { name: 'accept-encoding', value: 'gzip, deflate, br' },
+    { name: 'cookie', value: '_device_id=8f2a9c1b4e' },
+    { name: 'cookie', value: 'logged_in=yes' },
   ],
   responseHeaders: [
     { name: 'cache-control', value: 'private, max-age=60, s-maxage=60' },
     { name: 'content-type', value: 'application/json; charset=utf-8' },
+    { name: 'set-cookie', value: '_gh_sess=VszN7pQ…9Qb2' },
   ],
   requestTrailers: [],
   responseTrailers: [],
+  requestBody: {
+    bodyHash: 'http-request-body',
+    mediaType: 'application/json',
+    encodedSize: bodyText['http-request-body'].length,
+    truncated: false,
+    decodeStatus: 'ok',
+  },
 };
 
 const websocketDetail = {
@@ -146,6 +172,18 @@ const websocketDetail = {
   scheme: 'ws',
   port: 80,
   statusText: 'Switching Protocols',
+  requestHeaders: [],
+  responseHeaders: [],
+  requestTrailers: [],
+  responseTrailers: [],
+};
+
+const tunnelDetail = {
+  summary: sessions.find((session) => session.id === 'tls-tunnel'),
+  url: 'https://accounts.google.com:443',
+  scheme: 'https',
+  port: 443,
+  statusText: 'OK',
   requestHeaders: [],
   responseHeaders: [],
   requestTrailers: [],
@@ -290,6 +328,7 @@ export const fakeInterceptorFixture = {
     sessions,
     details: {
       'http-1': httpDetail,
+      'tls-tunnel': tunnelDetail,
       'ws-fixture': websocketDetail,
       'grpc-fixture': grpcDetail,
     },
@@ -371,32 +410,33 @@ export const fakeInterceptorFixture = {
 };
 
 /** Installed with page.addInitScript before Renderer code, mirroring Electron Preload. */
-export function installFakeInterceptor({ fixture, theme, firstRun = false, updateState = 'unsupported' }) {
+export function installFakeInterceptor({ fixture, theme, freshProfile = false, updateState = 'unsupported' }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
-  if (firstRun) {
-    window.localStorage.removeItem('interceptor.first-run');
-  } else {
-    window.localStorage.setItem('interceptor.first-run', 'completed');
-  }
-  let captureStatus = {
-    ...fixture.capture.captureStatus,
-    listening: firstRun ? false : fixture.capture.captureStatus.listening,
-  };
+  let captureStatus = { ...fixture.capture.captureStatus };
+  let captureGeneration = 1;
   let systemProxyStatus = {
     supported: true,
-    enabled: !firstRun,
-    owned: !firstRun,
+    enabled: true,
+    owned: true,
     ownershipLost: false,
-    proxyServer: firstRun
-      ? null
-      : 'http=127.0.0.1:8888;https=127.0.0.1:8888',
-    bypassList: firstRun ? null : '<local>',
+    proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
+    bypassList: '<local>',
     pacUrl: null,
     autoDetect: false,
   };
-  let certificate = firstRun
-    ? { ...fixture.certificate, trusted: false }
+  let certificate = freshProfile
+    ? {
+        ...fixture.certificate,
+        present: false,
+        trusted: false,
+        mitmEnabled: false,
+        fingerprint: null,
+        subject: null,
+        createdAt: null,
+        expiresAt: null,
+        path: null,
+      }
     : { ...fixture.certificate };
   let websocketBreakpointsEnabled = fixture.capture.websocketBreakpointsEnabled;
   let ruleRevision = fixture.rules.revision;
@@ -550,7 +590,13 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false, updat
     },
     getCaptureStatus: async () => captureStatus,
     startCapture: async () => {
-      captureStatus = { ...captureStatus, listening: true };
+      captureGeneration += 1;
+      captureStatus = {
+        ...captureStatus,
+        listening: true,
+        sessionId: `parity-session-${captureGeneration}`,
+        capturedExchanges: 0,
+      };
       return captureStatus;
     },
     stopCapture: async () => {
@@ -558,8 +604,10 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false, updat
       return captureStatus;
     },
     onCaptureEvents: () => () => undefined,
-    querySessions: async () => ({
-      items: fixture.capture.sessions,
+    querySessions: async (request) => ({
+      items: request.filter?.sessionId === fixture.capture.captureStatus.sessionId
+        ? fixture.capture.sessions
+        : [],
       hasMore: false,
     }),
     getExchangeDetail: async (exchangeId) =>
@@ -615,7 +663,11 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false, updat
     },
     getCertificateStatus: async () => certificate,
     generateCertificate: async () => {
-      certificate = { ...fixture.certificate, trusted: false };
+      certificate = {
+        ...fixture.certificate,
+        trusted: false,
+        mitmEnabled: certificate.mitmEnabled,
+      };
       return certificate;
     },
     installCertificate: async () => {

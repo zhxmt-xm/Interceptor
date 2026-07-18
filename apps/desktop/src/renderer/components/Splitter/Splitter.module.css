@@ -1,5 +1,8 @@
 .splitter {
   position: relative;
+  z-index: 1;
+  width: 7px;
+  justify-self: center;
   cursor: col-resize;
 }
 .splitter::after {

@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Columns2, Trash2 } from 'lucide-react';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Count, cx, IconButton } from '../../../components';
@@ -18,6 +18,11 @@ const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
 ];
 const ROW_HEIGHT = 52;
 
+interface SelectedPosition {
+  id: string;
+  index: number;
+}
+
 /** Filterable request table (protocol segment, counts and virtualized rows). */
 export function RequestList(): React.JSX.Element {
   const { t } = useTranslation();
@@ -28,21 +33,57 @@ export function RequestList(): React.JSX.Element {
   const setSegment = useCaptureStore((state) => state.setSegment);
   const select = useCaptureStore((state) => state.select);
   const clearView = useCaptureStore((state) => state.clearView);
+  const [clearing, setClearing] = useState(false);
+  const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
 
   const visible =
     segment === 'all' ? rows : rows.filter((row) => matchesSegment(row, segment));
 
   const parentRef = useRef<HTMLDivElement>(null);
+  const selectedPositionRef = useRef<SelectedPosition | null>(null);
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 12,
+    initialOffset: initialScrollTopRef.current,
   });
+
+  useLayoutEffect(() => {
+    const element = parentRef.current;
+    if (element) {
+      element.scrollTop = initialScrollTopRef.current;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const nextSelectedIndex = selectedId
+      ? visible.findIndex((row) => row.id === selectedId)
+      : -1;
+    const previousPosition = selectedPositionRef.current;
+    const element = parentRef.current;
+    if (
+      element
+      && selectedId
+      && previousPosition?.id === selectedId
+      && nextSelectedIndex >= 0
+      && nextSelectedIndex !== previousPosition.index
+    ) {
+      element.scrollTop += (nextSelectedIndex - previousPosition.index) * ROW_HEIGHT;
+      useCaptureStore.getState().setListScrollTop(element.scrollTop);
+    }
+    selectedPositionRef.current = selectedId && nextSelectedIndex >= 0
+      ? { id: selectedId, index: nextSelectedIndex }
+      : null;
+  }, [selectedId, visible]);
 
   const handleScroll = (): void => {
     const element = parentRef.current;
-    if (!element || !hasMore) {
+    if (!element) {
+      return;
+    }
+    useCaptureStore.getState().setListScrollTop(element.scrollTop);
+    if (!hasMore) {
       return;
     }
     const distanceToBottom =
@@ -50,6 +91,22 @@ export function RequestList(): React.JSX.Element {
     if (distanceToBottom < ROW_HEIGHT * 8) {
       void loadMoreSessions();
     }
+  };
+
+  const clearRecordedTraffic = (): void => {
+    if (clearing) {
+      return;
+    }
+    const clearedBefore = Date.now();
+    setClearing(true);
+    void window.interceptor.clearStorage()
+      .then(() => clearView(clearedBefore))
+      .catch((error: unknown) => {
+        useCaptureStore.getState().loadFailed(
+          error instanceof Error ? error.message : String(error),
+        );
+      })
+      .finally(() => setClearing(false));
   };
 
   return (
@@ -67,11 +124,22 @@ export function RequestList(): React.JSX.Element {
           ))}
         </div>
         <span className={styles.spacer} />
-        <Count>
+        <Count className={styles.count}>
           {t('capture.visibleCount', { visible: visible.length, total: rows.length })}
         </Count>
-        <IconButton icon={Columns2} label={t('capture.columns')} size="sm" />
-        <IconButton icon={Trash2} label={t('capture.clear')} size="sm" onClick={clearView} />
+        <IconButton
+          icon={Columns2}
+          label={t('capture.columns')}
+          size="sm"
+          className={styles.columns}
+        />
+        <IconButton
+          icon={Trash2}
+          label={t('capture.clear')}
+          size="sm"
+          disabled={clearing}
+          onClick={clearRecordedTraffic}
+        />
       </div>
 
       <div className={styles.head}>

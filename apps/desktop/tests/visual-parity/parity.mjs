@@ -138,7 +138,7 @@ for (const view of views) {
   await appPage.addInitScript(installFakeInterceptor, {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
-    firstRun: view.firstRun === true,
+    freshProfile: view.freshProfile === true,
     updateState: view.updateState ?? 'unsupported',
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });

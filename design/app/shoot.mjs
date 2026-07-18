@@ -33,10 +33,9 @@ for (const feature of ['capture', 'rules']) {
   }
 }
 for (const theme of ['light', 'dark']) {
-  for (const step of ['welcome', 'proxy', 'ca', 'ready']) {
-    shots.push({ feature: 'first-run', theme, variant: step, state: { view: 'capture', theme: TOKEN[theme], overlay: 'first-run', step } });
-  }
   shots.push({ feature: 'import-export', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export' } });
+  shots.push({ feature: 'https-setup', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel' } });
+  shots.push({ feature: 'https-setup', theme, variant: 'ready', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel', https: 'ready' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
   for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
@@ -50,6 +49,7 @@ for (const theme of ['light', 'dark']) {
   }
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'grpc', tab: 'grpc' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'tunnel', tab: 'tunnel' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {

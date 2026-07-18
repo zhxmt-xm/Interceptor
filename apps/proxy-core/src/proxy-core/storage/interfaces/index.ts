@@ -126,6 +126,7 @@ export interface CaptureSessionInput {
 }
 
 export interface SessionQueryFilter {
+  readonly sessionId?: string;
   readonly host?: string;
   readonly method?: string;
   readonly status?: number;
@@ -158,6 +159,7 @@ export interface StorageStats {
 
 export type CleanupScope =
   | { readonly kind: 'all' }
+  | { readonly kind: 'all-except-session'; readonly sessionId: string }
   | { readonly kind: 'session'; readonly sessionId: string };
 
 export interface CleanupResult {
@@ -334,6 +336,7 @@ export interface StorageSummaryRow {
 export interface StorageDetailRow extends StorageSummaryRow {
   url: string;
   port: number | null;
+  responseStartedAt: number | null;
   statusText: string | null;
   requestMime: string | null;
   errorCode: string | null;

@@ -1,10 +1,10 @@
 // Interceptor design SPA — state controller.
-// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,step,tab,pop}).
+// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https}).
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
 
-// Unified sidebar. Active item follows data-view. first-run/import-export are overlays,
+// Unified sidebar. Active item follows data-view. HTTPS setup/import-export are overlays,
 // so they are NOT nav items — they are triggered from the floating controls / __setState.
 const NAV = [
   { id: 'capture', icon: 'i-activity', label: 'Capture' },
@@ -63,19 +63,6 @@ function renderSidebar(active) {
   );
 }
 
-// first-run wizard step progress.
-const STEP_ORDER = ['welcome', 'proxy', 'ca', 'ready'];
-function paintSteps() {
-  const ci = STEP_ORDER.indexOf(app.dataset.step || 'ca');
-  app.querySelectorAll('.step').forEach((el, i) => {
-    el.classList.toggle('done', i < ci);
-    el.classList.toggle('cur', i === ci);
-    const n = el.querySelector('.snum');
-    if (n) n.innerHTML = i < ci ? '<svg><use href="#i-check"/></svg>' : String(i + 1);
-  });
-  app.querySelectorAll('.sline').forEach((el, i) => el.classList.toggle('done', i < ci));
-}
-
 // Inspector (capture) tab switching.
 function setInspTab(tab) {
   app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) => s.classList.toggle('on', s.dataset.tab === tab));
@@ -112,13 +99,10 @@ function setState(s = {}) {
   if (s.settings) app.dataset.settings = s.settings;
   if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
+  if (s.https) app.dataset.https = s.https;
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
-  }
-  if (s.step) {
-    app.setAttribute('data-step', s.step);
-    paintSteps();
   }
   // Re-render the sidebar whenever anything affecting the footer switchers changes.
   if (!s.view && (s.theme || s.sidebar || s.lang)) {
@@ -150,7 +134,6 @@ function syncControls() {
     theme: app.getAttribute('data-theme'),
     sidebar: app.classList.contains('collapsed') ? 'collapsed' : 'expanded',
     overlay: app.getAttribute('data-overlay') || 'none',
-    step: app.getAttribute('data-step') || 'ca',
   };
   document.querySelectorAll('.dock .switch').forEach((box) => {
     const key = box.dataset.key;
@@ -192,6 +175,17 @@ app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) =>
   s.addEventListener('click', () => setInspTab(s.dataset.tab)),
 );
 
+// Capture rows switch the inspector scene; encrypted tunnels open directly on their TLS summary.
+app.addEventListener('click', (e) => {
+  const captureRow = e.target.closest('[data-capture-row]');
+  if (captureRow) {
+    const scene = captureRow.dataset.captureRow;
+    return setState({ scene, tab: scene === 'tunnel' ? 'tunnel' : scene === 'websocket' ? 'messages' : scene === 'grpc' ? 'grpc' : 'headers' });
+  }
+  if (e.target.closest('[data-open-https]')) return setState({ overlay: 'https-setup' });
+  if (e.target.closest('[data-close-overlay]')) return setState({ overlay: '' });
+});
+
 // Footer theme and language popovers.
 app.addEventListener('click', (e) => {
   const tset = e.target.closest('[data-themeset]');
@@ -207,5 +201,4 @@ app.addEventListener('click', (e) => {
 // Initial paint.
 app.dataset.lang = app.dataset.lang || 'en';
 renderSidebar(app.getAttribute('data-view') || 'capture');
-paintSteps();
 syncControls();

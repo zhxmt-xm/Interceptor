@@ -97,6 +97,16 @@ export interface ProxyPassThroughResponse {
   headers: Record<string, string | string[] | undefined>;
 }
 
+/** 已持久化的原始 CONNECT 隧道，用于 close 事件更新同一条 Exchange。 */
+export interface PendingTunnelCapture {
+  readonly exchangeId: string;
+  readonly startedAt: number;
+  readonly host: string;
+  readonly port: number;
+  readonly secure: boolean;
+  readonly protocol: string;
+}
+
 export interface CaptureSink {
   ensureSession(session: CaptureSessionInput): Promise<void>;
   appendExchanges(

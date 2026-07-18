@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import http from 'node:http';
 import net, { type AddressInfo } from 'node:net';
+import tls from 'node:tls';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getLocal } from 'mockttp';
+import { generateCACertificate, getLocal } from 'mockttp';
 
 import type {
   CaptureSessionInput,
@@ -96,6 +97,55 @@ function startOrigin(
         close: () => new Promise<void>((done) => server.close(() => done())),
       });
     });
+  });
+}
+
+/** 经显式代理建立 CONNECT 后完成一笔不受信任本地源站的 TLS 请求。 */
+function passthroughHttpsGet(
+  proxyPort: number,
+  originPort: number,
+): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      host: '127.0.0.1',
+      port: proxyPort,
+      method: 'CONNECT',
+      path: `127.0.0.1:${originPort}`,
+    });
+    request.on('connect', (response, socket, head) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`CONNECT failed: ${response.statusCode ?? 0}`));
+        return;
+      }
+      if (head.length > 0) {
+        socket.unshift(head);
+      }
+      const tlsSocket = tls.connect(
+        { socket, servername: 'localhost', rejectUnauthorized: false },
+        () => {
+          tlsSocket.write(
+            `GET /secure HTTP/1.1\r\nHost: 127.0.0.1:${originPort}\r\n` +
+              'Connection: close\r\n\r\n',
+          );
+        },
+      );
+      let responseText = '';
+      tlsSocket.on('data', (data: Buffer) => {
+        responseText += data.toString('utf8');
+      });
+      tlsSocket.on('end', () => {
+        const line = responseText.split('\r\n', 1)[0] ?? '';
+        const match = line.match(/HTTP\/1\.\d (\d{3})/);
+        if (!match) {
+          reject(new Error(`HTTPS tunnel returned no HTTP status: ${JSON.stringify(responseText)}`));
+          return;
+        }
+        resolve(Number(match[1]));
+      });
+      tlsSocket.on('error', reject);
+    });
+    request.on('error', reject);
+    request.end();
   });
 }
 
@@ -260,11 +310,45 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         responseMime: 'application/json',
         state: 'completed',
       });
+      expect(exchange?.responseStartedAt).toBeGreaterThanOrEqual(exchange?.startedAt ?? 0);
+      expect(exchange?.completedAt).toBeGreaterThanOrEqual(exchange?.responseStartedAt ?? 0);
       expect(exchange?.headers?.some((h) => h.kind === 'response')).toBe(true);
     } finally {
       await origin.close();
     }
   });
+
+  it('passes HTTPS through without a CA and captures only encrypted tunnel metadata', async () => {
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    try {
+      await expect(passthroughHttpsGet(address.port, origin.port)).resolves.toBe(200);
+      await waitForExchange(sink);
+
+      expect(sink.exchanges).toHaveLength(1);
+      expect(sink.exchanges[0]).toMatchObject({
+        method: 'CONNECT',
+        scheme: 'https',
+        host: '127.0.0.1',
+        port: origin.port,
+        protocol: 'tls',
+        statusCode: 200,
+        responseMime: 'application/x-encrypted-tunnel',
+        state: 'request-complete',
+        headers: [],
+      });
+      expect(sink.bodies).toHaveLength(0);
+      await expect.poll(() => sink.exchangeUpdates.length).toBe(1);
+      expect(sink.exchangeUpdates[0]).toMatchObject({
+        id: sink.exchanges[0]?.id,
+        state: 'completed',
+      });
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
 
   it('persists request and response bodies as body_ref references', async () => {
     const origin = await startOrigin((_req, res) => {

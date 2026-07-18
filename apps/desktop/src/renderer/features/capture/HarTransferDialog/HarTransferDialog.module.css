@@ -64,7 +64,7 @@
 
 .close:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .body {
@@ -177,17 +177,23 @@
 }
 
 .scope:hover:not(:disabled) {
-  background: var(--hover);
-}
-
-.scope:disabled {
-  opacity: 0.45;
-  cursor: default;
+  background: color-mix(in srgb, var(--panel) 94%, var(--text));
 }
 
 .scopeActive {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
+}
+
+.scopeActive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+.scope:disabled {
+  border-color: var(--border);
+  background: var(--panel-2);
+  color: var(--text-3);
+  cursor: not-allowed;
 }
 
 .radio {

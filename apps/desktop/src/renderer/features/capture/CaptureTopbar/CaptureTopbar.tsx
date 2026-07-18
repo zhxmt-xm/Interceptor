@@ -18,19 +18,21 @@ export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element
   const setHarDialogOpen = useCaptureStore((state) => state.setHarDialogOpen);
 
   return (
-    <>
-      <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
-      <button
-        type="button"
-        className={cx(styles.recording, !capturing && styles.paused)}
-        onClick={() => void toggleCapture()}
-        aria-pressed={capturing}
-      >
-        <span className={styles.recordingDot} />
-        {capturing ? t('capture.recording') : t('capture.paused')}
-      </button>
-      <Omnibox />
-      <div className={styles.actions}>
+    <div className={styles.layout}>
+      <div className={styles.captureControls}>
+        <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
+        <button
+          type="button"
+          className={cx(styles.recording, !capturing && styles.paused)}
+          onClick={() => void toggleCapture()}
+          aria-pressed={capturing}
+        >
+          <span className={styles.recordingDot} />
+          {capturing ? t('capture.recording') : t('capture.paused')}
+        </button>
+      </div>
+      <div className={styles.filtering}><Omnibox /></div>
+      <div className={styles.inspectorTools}>
         <IconButton icon={Info} label={t('capture.info')} />
         <IconButton icon={Settings} label={t('capture.settings')} />
         <IconButton
@@ -39,6 +41,6 @@ export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element
           onClick={() => setHarDialogOpen(true)}
         />
       </div>
-    </>
+    </div>
   );
 }

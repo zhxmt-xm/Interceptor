@@ -1,17 +1,35 @@
 .container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   gap: 10px;
   min-width: 0;
+  overflow: hidden;
 }
 .container :global(.cm-editor) {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 9px;
   font-size: 11.5px;
   background: var(--panel-2);
 }
 .container :global(.cm-editor .cm-scroller) {
+  min-width: 0;
+  overflow-x: hidden;
   font-family: var(--font-mono);
+}
+.container :global(.cm-editor .cm-content) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modeBar {
+  display: flex;
+  justify-content: flex-end;
+}
+.modeBar :global(span) {
+  padding-right: 9px;
+  padding-left: 9px;
 }
 .compact :global(.cm-editor) {
   border-radius: 7px;
@@ -44,5 +62,6 @@
   line-height: 1.55;
   color: var(--text-2);
   white-space: pre;
-  overflow-x: auto;
+  max-width: 100%;
+  overflow: hidden;
 }

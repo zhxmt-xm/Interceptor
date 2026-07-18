@@ -475,12 +475,24 @@ export class CoreApplication implements CoreRpcHost {
           ),
         }));
       case 'storage.cleanup':
-        return this.withStorage(async (storage) => ({
-          type: 'storage.status',
-          payload: await this.diagnostics.action('storage.cleanup', () =>
-            storage.cleanup(toCleanupScope(command.payload)),
-          ),
-        }));
+        return this.withStorage(async (storage) => {
+          const requestedScope = toCleanupScope(command.payload);
+          const activeSessionId = requestedScope.kind === 'all'
+            ? this.proxyService?.prepareCaptureReset() ?? null
+            : null;
+          if (requestedScope.kind === 'all') {
+            this.captureEventQueue?.reset();
+          }
+          const cleanupScope: CleanupScope = activeSessionId
+            ? { kind: 'all-except-session', sessionId: activeSessionId }
+            : requestedScope;
+          return {
+            type: 'storage.status',
+            payload: await this.diagnostics.action('storage.cleanup', () =>
+              storage.cleanup(cleanupScope),
+            ),
+          };
+        });
       case 'har.export.start':
         return this.withHar((har) => ({
           type: 'transfer.job',

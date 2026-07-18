@@ -14,7 +14,6 @@ import {
   DiagnosticsStatusbar,
   DiagnosticsTopbar,
 } from '../features/diagnostics';
-import { FirstRunWizard, hasCompletedFirstRun } from '../features/first-run';
 import { RulesMain, RulesStatusbar, RulesTopbar } from '../features/rules';
 import {
   SettingsMain,
@@ -94,7 +93,6 @@ export function App(): React.JSX.Element {
     ...initialCoreStatus,
     detail: t('app.connectingToCore'),
   }));
-  const [firstRunOpen, setFirstRunOpen] = useState(() => !hasCompletedFirstRun());
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
 
@@ -194,7 +192,6 @@ export function App(): React.JSX.Element {
     >
       <AntApp className={styles.antApp}>
         {view === 'diagnostics' ? <DiagnosticsProvider>{shell}</DiagnosticsProvider> : shell}
-        {firstRunOpen ? <FirstRunWizard onComplete={() => setFirstRunOpen(false)} /> : null}
       </AntApp>
     </ConfigProvider>
   );

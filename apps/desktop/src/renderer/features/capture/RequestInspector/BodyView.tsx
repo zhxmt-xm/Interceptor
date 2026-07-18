@@ -1,10 +1,11 @@
 import { json } from '@codemirror/lang-json';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
+import { Segmented } from '../../../components';
 import { sizeLabel } from '../row-format';
 import styles from './BodyView.module.css';
 
@@ -24,7 +25,9 @@ interface LoadedBody {
   decodeStatus?: string;
 }
 
-function isTextMime(mime: string | undefined): boolean {
+export type BodyViewMode = 'auto' | 'text' | 'json' | 'hex';
+
+export function isTextMime(mime: string | undefined): boolean {
   if (!mime) {
     return false;
   }
@@ -34,24 +37,92 @@ function isTextMime(mime: string | undefined): boolean {
     essence === 'application/json' ||
     essence.endsWith('+json') ||
     essence === 'application/javascript' ||
+    essence === 'application/x-javascript' ||
+    essence === 'application/ecmascript' ||
     essence === 'application/xml' ||
     essence.endsWith('+xml') ||
-    essence === 'application/x-www-form-urlencoded'
+    essence === 'application/x-www-form-urlencoded' ||
+    essence === 'application/graphql' ||
+    essence === 'application/yaml' ||
+    essence === 'application/x-yaml' ||
+    essence.endsWith('+yaml') ||
+    essence === 'application/x-ndjson' ||
+    essence === 'application/json-seq' ||
+    essence === 'application/x-json-stream'
   );
 }
 
-function isJsonMime(mime: string | undefined): boolean {
+export function isJsonMime(mime: string | undefined): boolean {
   const essence = mime?.split(';')[0]?.trim().toLowerCase() ?? '';
-  return essence === 'application/json' || essence.endsWith('+json');
+  return essence === 'application/json'
+    || essence.endsWith('+json')
+    || essence === 'application/x-ndjson'
+    || essence === 'application/json-seq'
+    || essence === 'application/x-json-stream';
 }
 
-function toHexDump(bytes: Uint8Array): string {
+/** Unknown MIME falls back to text only for valid UTF-8 with no binary controls. */
+export function detectTextBody(
+  bytes: Uint8Array,
+  mime: string | undefined,
+): { text: string; json: boolean } | null {
+  let decoded: string;
+  try {
+    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+  if (!isTextMime(mime)) {
+    for (const character of decoded) {
+      const code = character.charCodeAt(0);
+      if (code < 32 && character !== '\n' && character !== '\r' && character !== '\t') {
+        return null;
+      }
+    }
+  }
+  const trimmed = decoded.trim();
+  const json = isJsonMime(mime) || (
+    (trimmed.startsWith('{') || trimmed.startsWith('['))
+    && (() => {
+      try {
+        JSON.parse(trimmed);
+        return true;
+      } catch {
+        return false;
+      }
+    })()
+  );
+  return { text: json ? prettyJson(decoded) : decoded, json };
+}
+
+/** Resolve the selected display mode without hiding malformed text from the user. */
+export function bodyTextForMode(
+  bytes: Uint8Array,
+  mime: string | undefined,
+  mode: BodyViewMode,
+): { text: string; json: boolean } | null {
+  if (mode === 'hex') {
+    return null;
+  }
+  if (mode === 'auto') {
+    return detectTextBody(bytes, mime);
+  }
+  const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  return mode === 'json'
+    ? { text: prettyJson(decoded), json: true }
+    : { text: decoded, json: false };
+}
+
+export function toHexDump(bytes: Uint8Array, bytesPerLine = 16): string {
   const lines: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += 16) {
-    const slice = bytes.subarray(offset, offset + 16);
+  const lineWidth = Math.max(4, bytesPerLine);
+  for (let offset = 0; offset < bytes.length; offset += lineWidth) {
+    const slice = bytes.subarray(offset, offset + lineWidth);
     const hex = Array.from(slice, (b) => b.toString(16).padStart(2, '0')).join(' ');
     const ascii = Array.from(slice, (b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.')).join('');
-    lines.push(`${offset.toString(16).padStart(8, '0')}  ${hex.padEnd(47, ' ')}  ${ascii}`);
+    lines.push(
+      `${offset.toString(16).padStart(8, '0')}  ${hex.padEnd(lineWidth * 3 - 1, ' ')}  ${ascii}`,
+    );
   }
   return lines.join('\n');
 }
@@ -74,6 +145,9 @@ export function BodyView({
   const { i18n, t } = useTranslation();
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<BodyViewMode>('auto');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hexBytesPerLine, setHexBytesPerLine] = useState(16);
   const isDark = document.documentElement.dataset.theme === 'dark'
     || document.documentElement.dataset.theme === 'ember';
 
@@ -135,12 +209,26 @@ export function BodyView({
   }, [loaded, previewLimit]);
 
   const text = useMemo(() => {
-    if (!previewBytes || !isTextMime(body.mediaType)) {
+    if (!previewBytes) {
       return null;
     }
-    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(previewBytes);
-    return isJsonMime(body.mediaType) ? prettyJson(decoded) : decoded;
-  }, [previewBytes, body.mediaType]);
+    return bodyTextForMode(previewBytes, body.mediaType, mode);
+  }, [previewBytes, body.mediaType, mode]);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || text !== null) {
+      return;
+    }
+    const update = (): void => {
+      const available = Math.max(120, element.clientWidth - 24);
+      setHexBytesPerLine(Math.max(4, Math.floor((available - 96) / 31)));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text]);
 
   if (!body.bodyHash || body.encodedSize === 0) {
     return <div className={styles.empty}>{t('capture.noBody')}</div>;
@@ -155,10 +243,26 @@ export function BodyView({
   const truncated = body.encodedSize > previewLimit
     || (loaded ? loaded.bytes.length > previewLimit : false);
   const decodeFailed = loaded?.decodeStatus === 'failed';
+  const bodyViewModes = [
+    { label: t('capture.auto'), value: 'auto' },
+    { label: t('capture.text'), value: 'text' },
+    { label: 'JSON', value: 'json' },
+    { label: 'Hex', value: 'hex' },
+  ];
+  const modeControl = (
+    <div className={styles.modeBar}>
+      <Segmented
+        options={bodyViewModes}
+        value={mode}
+        onChange={(value) => setMode(value as BodyViewMode)}
+      />
+    </div>
+  );
 
   if (text !== null) {
     return (
-      <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+      <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+        {modeControl}
         {decodeFailed ? (
           <div className={styles.notice}>
             {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
@@ -170,10 +274,10 @@ export function BodyView({
           </div>
         ) : null}
         <CodeMirror
-          value={text}
+          value={text.text}
           editable={false}
           theme={isDark ? 'dark' : 'light'}
-          extensions={isJsonMime(body.mediaType) ? [json(), EditorView.lineWrapping] : [EditorView.lineWrapping]}
+          extensions={text.json ? [json(), EditorView.lineWrapping] : [EditorView.lineWrapping]}
           basicSetup={{
             lineNumbers: !compact,
             foldGutter: false,
@@ -185,7 +289,8 @@ export function BodyView({
   }
 
   return (
-    <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+    <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+      {modeControl}
       {decodeFailed ? (
         <div className={styles.notice}>
           {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
@@ -196,7 +301,9 @@ export function BodyView({
           {t('capture.binaryPreviewLimited', { size: sizeLabel(previewLimit, i18n.language) })}
         </div>
       ) : null}
-      <pre className={styles.hex}>{toHexDump(previewBytes ?? loaded.bytes)}</pre>
+      <pre className={styles.hex}>
+        {toHexDump(previewBytes ?? loaded.bytes, hexBytesPerLine)}
+      </pre>
     </div>
   );
 }

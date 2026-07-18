@@ -154,6 +154,12 @@ class PackagedWorkflowSmoke {
 
   /** Execute real Core workflows against an isolated loopback origin. */
   static async run(page: Page): Promise<void> {
+    await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureStatus()), {
+      message: 'Default Capture listener did not start',
+      timeout: 15_000,
+    }).toMatchObject({ listening: true, host: '127.0.0.1', port: 8888 });
+    await page.evaluate(() => window.interceptor.stopCapture());
+
     const origin = await this.startOrigin();
     const proxyPort = await reservePort();
     try {
@@ -228,6 +234,10 @@ class PackagedWorkflowSmoke {
     } finally {
       await page.evaluate(() => window.interceptor.stopCapture())
         .catch(() => undefined);
+      await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
+        message: 'Stopping Capture did not delete temporary recording data',
+        timeout: 10_000,
+      }).toMatchObject({ sessionCount: 0, exchangeCount: 0, bodyCount: 0, blobBytes: 0 });
       await this.closeOrigin(origin.server);
     }
   }
@@ -346,10 +356,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     await page.waitForLoadState('domcontentloaded');
 
-    // Packaged smoke validates the post-setup workspace without mutating trust stores.
-    // First-run behavior itself is covered by the light/dark visual-parity flow.
+    // Keep the packaged UI deterministic; HTTPS trust remains user-initiated and untouched.
     await page.evaluate(() => {
-      window.localStorage.setItem('interceptor.first-run', 'completed');
       window.localStorage.setItem('interceptor.language', 'en');
       window.localStorage.removeItem('interceptor.lang');
     });
@@ -573,11 +581,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(storageQuota.quotaBytes).toBeGreaterThan(0);
     expect(storageQuota.databaseBytes).toBeGreaterThan(0);
 
-    // 清空后存储应为空，验证 cleanup 全链路（不依赖运行前是否有残留数据）。
+    // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
     const clearedStorage = await page.evaluate(() =>
       window.interceptor.clearStorage(),
     );
-    expect(clearedStorage.sessionCount).toBe(0);
+    expect(clearedStorage.sessionCount).toBe(1);
     expect(clearedStorage.exchangeCount).toBe(0);
     expect(clearedStorage.bodyCount).toBe(0);
 

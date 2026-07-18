@@ -1,8 +1,9 @@
-import { getLocal, type Mockttp } from 'mockttp';
+import { generateCACertificate, getLocal, type Mockttp } from 'mockttp';
 import type {
   AbortedRequest,
   CompletedRequest,
   CompletedResponse,
+  TlsPassthroughEvent,
   WebSocketClose,
   WebSocketMessage,
 } from 'mockttp';
@@ -25,6 +26,7 @@ import type {
 import type {
   CaptureEventSink,
   CaptureSink,
+  PendingTunnelCapture,
   PendingWebSocketCapture,
   ProxyAddress,
   ProxyPassThroughResponse,
@@ -50,6 +52,11 @@ import * as ProxyUtils from './utils';
 export class ProxyService {
   private readonly pending = new Map<string, CompletedRequest>();
   private readonly pendingWebSockets = new Map<string, PendingWebSocketCapture>();
+  /** 原始 CONNECT tunnel id → 持久化结果；closed 事件等待 opened 落库后更新。 */
+  private readonly pendingTunnels = new Map<
+    string,
+    Promise<PendingTunnelCapture | null>
+  >();
   /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
   private readonly ruleHits = new Map<string, RuleHitRecord[]>();
 
@@ -59,8 +66,12 @@ export class ProxyService {
   private host = DEFAULT_PROXY_HOST;
   private sessionId: string | null = null;
   private capturedExchanges = 0;
+  /** 最近一次用户清空的时间切面；更早开始但迟到完成的请求不再持久化或推送。 */
+  private captureCutoff = 0;
   private webSocketBreakpointsOn = false;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
+  /** Mockttp TLS 分流器所需的进程内临时身份；所有 host passthrough，证书永不出示。 */
+  private tlsPassthroughIdentity: { key: string; cert: string } | null = null;
   private diagnostics: DiagnosticsRecorder | null = null;
 
   constructor(
@@ -130,15 +141,24 @@ export class ProxyService {
     // http2:true —— 有 HTTPS(MITM) 时对经 ALPN 声明支持 h2 的客户端启用 HTTP/2，H1-only
     // 客户端按 ALPN 协商回落 http/1.1。上游由 Mockttp passthrough 按源站 ALPN 独立协商
     // h2/h1 并做四组协议转换。无 HTTPS(明文显式代理) 时不启用 h2（H2 需 TLS ALPN）。
-    const server = this.tlsConfig.ca
-      ? getLocal({
+    let server: Mockttp;
+    if (this.tlsConfig.ca) {
+      server = getLocal({
           https: {
             key: this.tlsConfig.ca.key,
             cert: this.tlsConfig.ca.cert,
           },
           http2: true,
-        })
-      : getLocal();
+        });
+    } else {
+      this.tlsPassthroughIdentity ??= await generateCACertificate();
+      server = getLocal({
+        https: {
+          ...this.tlsPassthroughIdentity,
+          tlsInterceptOnly: [],
+        },
+      });
+    }
     this.registerCaptureListeners(server);
     // 默认验证源站证书（不关闭）；仅对显式不安全例外 host 忽略源站证书错误。
     // 接入规则引擎的 beforeRequest/beforeResponse 做匹配改写/短路/阻断/断点；
@@ -179,6 +199,7 @@ export class ProxyService {
       capture.resolveExchange(null);
     }
     this.pendingWebSockets.clear();
+    this.pendingTunnels.clear();
     if (server) {
       await server.stop();
     }
@@ -208,6 +229,23 @@ export class ProxyService {
     };
   }
 
+  /**
+   * 切断当前时间点之前的请求关联并重置计数，返回仍在录制的活动 Session。
+   * 调用方：CoreApplication 在 storage.cleanup(all) 入队前建立清空时间切面。
+   */
+  prepareCaptureReset(): string | null {
+    this.captureCutoff = Date.now();
+    this.pending.clear();
+    for (const capture of this.pendingWebSockets.values()) {
+      capture.resolveExchange(null);
+    }
+    this.pendingWebSockets.clear();
+    this.pendingTunnels.clear();
+    this.ruleHits.clear();
+    this.capturedExchanges = 0;
+    return this.server ? this.sessionId : null;
+  }
+
   get webSocketBreakpointsEnabled(): boolean {
     return this.webSocketBreakpointsOn;
   }
@@ -217,6 +255,32 @@ export class ProxyService {
   }
 
   private registerCaptureListeners(server: Mockttp): void {
+    void server.on('tls-passthrough-opened', (tunnel: TlsPassthroughEvent) => {
+      const capture = this.captureTunnelOpened(tunnel).catch((error: unknown) => {
+        this.diagnostics?.error('tunnel.open-persist-failed', {
+          errorCode: error instanceof Error ? error.name : 'unknown',
+          attributes: {
+            message: (error instanceof Error ? error.message : String(error)).slice(0, 256),
+          },
+        });
+        return null;
+      });
+      this.pendingTunnels.set(tunnel.id, capture);
+    });
+    void server.on('tls-passthrough-closed', (tunnel: TlsPassthroughEvent) => {
+      const capture = this.pendingTunnels.get(tunnel.id);
+      if (!capture) {
+        return;
+      }
+      void capture
+        .then((pending) => this.captureTunnelClosed(pending))
+        .catch((error: unknown) => {
+          this.diagnostics?.error('tunnel.close-persist-failed', {
+            errorCode: error instanceof Error ? error.name : 'unknown',
+          });
+        })
+        .finally(() => this.pendingTunnels.delete(tunnel.id));
+    });
     void server.on('request', (request: CompletedRequest) => {
       this.pending.set(request.id, request);
     });
@@ -349,16 +413,102 @@ export class ProxyService {
     });
   }
 
+  /** 持久化一个未解密 CONNECT 隧道的有限目标元数据并推送 open 摘要。 */
+  private async captureTunnelOpened(
+    tunnel: TlsPassthroughEvent,
+  ): Promise<PendingTunnelCapture | null> {
+    const sessionId = this.sessionId;
+    const startedAt = tunnel.timingEvents.startTime;
+    if (!sessionId || startedAt <= this.captureCutoff) {
+      return null;
+    }
+    const secure = true;
+    const protocol = 'tls';
+    const exchangeId = `ex-${ProxyUtils.cryptoRandomId()}`;
+    const exchange: ExchangeInput = {
+      id: exchangeId,
+      sessionId,
+      method: 'CONNECT',
+      scheme: 'https',
+      host: tunnel.destination.hostname,
+      port: tunnel.destination.port,
+      url: `https://${tunnel.destination.hostname}:${tunnel.destination.port}`,
+      protocol,
+      statusCode: 200,
+      responseMime: 'application/x-encrypted-tunnel',
+      startedAt,
+      requestBytes: 0,
+      responseBytes: 0,
+      state: 'request-complete',
+      headers: [],
+    };
+    await this.storage.appendExchanges([exchange]);
+    if (startedAt <= this.captureCutoff) {
+      return null;
+    }
+    this.capturedExchanges += 1;
+    this.events.enqueue('exchange-added', {
+      id: exchangeId,
+      method: exchange.method,
+      secure,
+      host: exchange.host,
+      protocol,
+      statusCode: exchange.statusCode,
+      responseMime: exchange.responseMime,
+      state: exchange.state,
+      startedAt,
+      requestBytes: 0,
+      responseBytes: 0,
+    });
+    return {
+      exchangeId,
+      startedAt,
+      host: tunnel.destination.hostname,
+      port: tunnel.destination.port,
+      secure,
+      protocol,
+    };
+  }
+
+  /** 将原始 CONNECT 隧道标记为完成，并推送同 id 的 duration 更新。 */
+  private async captureTunnelClosed(
+    pending: PendingTunnelCapture | null,
+  ): Promise<void> {
+    if (!pending || pending.startedAt <= this.captureCutoff) {
+      return;
+    }
+    const completedAt = Date.now();
+    await this.storage.updateExchange({
+      id: pending.exchangeId,
+      completedAt,
+      state: 'completed',
+    });
+    this.events.enqueue('exchange-updated', {
+      id: pending.exchangeId,
+      method: 'CONNECT',
+      secure: pending.secure,
+      host: pending.host,
+      protocol: pending.protocol,
+      statusCode: 200,
+      responseMime: 'application/x-encrypted-tunnel',
+      state: 'completed',
+      startedAt: pending.startedAt,
+      durationMs: Math.max(0, completedAt - pending.startedAt),
+      requestBytes: 0,
+      responseBytes: 0,
+    });
+  }
+
   private async captureExchange(
     request: CompletedRequest | AbortedRequest,
     response: CompletedResponse | null,
     state: ExchangeInput['state'] = 'completed',
   ): Promise<string | null> {
-    if (!this.sessionId) {
+    const startedAt = request.timingEvents?.startTime ?? Date.now();
+    if (!this.sessionId || startedAt <= this.captureCutoff) {
       return null;
     }
     const target = ProxyUtils.parseTarget(request.url);
-    const startedAt = request.timingEvents?.startTime ?? Date.now();
     const headers: HeaderInput[] = [
       ...ProxyUtils.toHeaderInputs('request', request.rawHeaders),
       ...('rawTrailers' in request
@@ -384,6 +534,28 @@ export class ProxyService {
         )
       : undefined;
 
+    if (!this.sessionId || startedAt <= this.captureCutoff) {
+      return null;
+    }
+
+    const responseStartedAt = response
+      ? ProxyUtils.timingEventToEpoch(
+          response.timingEvents,
+          response.timingEvents.headersSentTimestamp,
+        )
+      : undefined;
+    const completedAt = state === 'request-complete'
+      ? undefined
+      : response
+        ? ProxyUtils.timingEventToEpoch(
+            response.timingEvents,
+            response.timingEvents.responseSentTimestamp,
+          ) ?? Date.now()
+        : ProxyUtils.timingEventToEpoch(
+            request.timingEvents,
+            request.timingEvents.abortedTimestamp,
+          ) ?? Date.now();
+
     const exchange: ExchangeInput = {
       id: `ex-${ProxyUtils.cryptoRandomId()}`,
       sessionId: this.sessionId,
@@ -404,8 +576,8 @@ export class ProxyService {
         ? ProxyUtils.readHeader(response.headers, 'content-type')
         : undefined,
       startedAt,
-      responseStartedAt: response ? Date.now() : undefined,
-      completedAt: state === 'request-complete' ? undefined : Date.now(),
+      responseStartedAt,
+      completedAt,
       requestBytes: requestBody?.encodedSize ??
         ProxyUtils.readContentLength(request.headers),
       responseBytes: response

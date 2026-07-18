@@ -289,6 +289,54 @@ describe('CaptureStore', () => {
     ).toEqual(['json']);
   });
 
+  it('filters exchanges to the active recording session', () => {
+    store.ensureSession({
+      id: 'current-recording',
+      name: 'Current recording',
+      startedAt: 2_000,
+      captureMode: 'explicit-proxy',
+      appVersion: '0.0.0',
+    });
+    store.appendExchanges([
+      exchange('historical'),
+      exchange('current', { sessionId: 'current-recording', startedAt: 2_000 }),
+    ]);
+
+    expect(store.querySessions({
+      limit: 10,
+      sort: 'started_desc',
+      filter: { sessionId: 'current-recording' },
+    }).items.map((item) => item.id)).toEqual(['current']);
+  });
+
+  it('preserves response metadata when a close update only changes state and time', () => {
+    store.appendExchanges([
+      exchange('tunnel', {
+        protocol: 'tls',
+        statusCode: 200,
+        responseMime: 'application/x-encrypted-tunnel',
+        responseBytes: 42,
+        state: 'request-complete',
+      }),
+    ]);
+
+    store.updateExchangeResponse({
+      id: 'tunnel',
+      completedAt: 2_000,
+      state: 'completed',
+    });
+
+    expect(store.querySessions({ limit: 10, sort: 'started_desc', filter: {} }).items[0])
+      .toMatchObject({
+        id: 'tunnel',
+        protocol: 'tls',
+        statusCode: 200,
+        responseMime: 'application/x-encrypted-tunnel',
+        responseBytes: 42,
+        state: 'completed',
+      });
+  });
+
   it('supports full-text search over url and host', () => {
     store.appendExchanges([
       exchange('users', { url: 'https://api.example.com/users/42' }),
@@ -380,6 +428,41 @@ describe('CaptureStore', () => {
     expect(result.removedExchanges).toBe(2);
     expect(result.referencedBlobHashes).toEqual([]);
     expect(store.getStorageStats().exchangeCount).toBe(0);
+  });
+
+  it('clears captured exchanges while preserving the active recording session', () => {
+    store.ensureSession({
+      id: 'active',
+      name: 'Active recording',
+      startedAt: 2_000,
+      captureMode: 'explicit-proxy',
+      appVersion: '0.0.0',
+    });
+    store.appendExchanges([
+      exchange('old'),
+      exchange('active-old', { sessionId: 'active' }),
+    ]);
+
+    const result = store.cleanup({
+      kind: 'all-except-session',
+      sessionId: 'active',
+    });
+
+    expect(result.removedSessions).toBe(1);
+    expect(result.removedExchanges).toBe(2);
+    expect(result.referencedBlobHashes).toEqual([]);
+    expect(store.getStorageStats()).toMatchObject({
+      sessionCount: 1,
+      exchangeCount: 0,
+      bodyRefCount: 0,
+    });
+
+    expect(() => {
+      store.appendExchanges([
+        exchange('after-clear', { sessionId: 'active', startedAt: 3_000 }),
+      ]);
+    }).not.toThrow();
+    expect(store.getStorageStats().exchangeCount).toBe(1);
   });
 
   it('deletes a single session and its exchanges', () => {
