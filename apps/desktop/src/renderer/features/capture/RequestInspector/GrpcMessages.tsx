@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy, Download, Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   CaptureExchangeDetail,
@@ -20,6 +21,7 @@ export function GrpcMessages({
 }: {
   detail: CaptureExchangeDetail;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const [side, setSide] = useState<GrpcMessageSide>(
     detail.responseBody ? 'response' : 'request',
   );
@@ -62,9 +64,12 @@ export function GrpcMessages({
     <div className={styles.messages}>
       <div className={styles.toolbar}>
         <Segmented
-          options={['Request', 'Response']}
-          value={side === 'request' ? 'Request' : 'Response'}
-          onChange={(value) => setSide(value === 'Request' ? 'request' : 'response')}
+          options={[
+            { value: 'request', label: t('capture.request') },
+            { value: 'response', label: t('capture.response') },
+          ]}
+          value={side}
+          onChange={(value) => setSide(value === 'request' ? 'request' : 'response')}
         />
         <span className={styles.spacer} />
         <Count>{page?.contentType ?? 'application/grpc'}</Count>
@@ -77,15 +82,19 @@ export function GrpcMessages({
 
       <div className={styles.messageList}>
         <div className={styles.messageScroll} ref={scrollRef} onScroll={handleScroll}>
-          {loading ? <div className={styles.empty}>Loading gRPC messages...</div> : null}
+          {loading ? <div className={styles.empty}>{t('capture.loadingGrpcMessages')}</div> : null}
           {!loading && error ? (
-            <div className={styles.empty}>Failed to load messages: {error}</div>
+            <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
           ) : null}
           {!loading && !error && page && !page.recognized ? (
-            <div className={styles.empty}>This {side} body is not application/grpc.</div>
+            <div className={styles.empty}>
+              {t(side === 'request' ? 'capture.requestBodyNotGrpc' : 'capture.responseBodyNotGrpc')}
+            </div>
           ) : null}
           {!loading && !error && page?.recognized && messages.length === 0 ? (
-            <div className={styles.empty}>No gRPC messages in this {side} body.</div>
+            <div className={styles.empty}>
+              {t(side === 'request' ? 'capture.noRequestGrpcMessages' : 'capture.noResponseGrpcMessages')}
+            </div>
           ) : null}
           {messages.length > 0 ? (
             <div className={styles.viewport} style={{ height: virtualizer.getTotalSize() }}>
@@ -127,19 +136,19 @@ export function GrpcMessages({
               })}
             </div>
           ) : null}
-          {loadingMore ? <div className={styles.loadingMore}>Loading more...</div> : null}
+          {loadingMore ? <div className={styles.loadingMore}>{t('capture.loadingMore')}</div> : null}
         </div>
       </div>
 
       {page?.malformedOffset !== undefined ? (
         <div className={styles.warning}>
-          Invalid gRPC envelope at byte {page.malformedOffset}.
+          {t('capture.invalidGrpcEnvelope', { offset: page.malformedOffset })}
         </div>
       ) : null}
 
       {grpcStatus || grpcMessage ? (
         <div className={styles.trailers}>
-          <span>Response trailers</span>
+          <span>{t('capture.responseTrailers')}</span>
           {grpcStatus ? <code>grpc-status: {grpcStatus}</code> : null}
           {grpcMessage ? <code>grpc-message: {grpcMessage}</code> : null}
         </div>
@@ -147,7 +156,7 @@ export function GrpcMessages({
 
       <div className={styles.note}>
         <Info size={13} strokeWidth={1.9} />
-        No descriptor loaded. Payload is shown as raw binary.
+        {t('capture.noDescriptor')}
       </div>
     </div>
   );
@@ -164,11 +173,12 @@ function MessageRow({
   encoding: string | undefined;
   onSelect(): void;
 }): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const state = message.truncated
-    ? 'truncated'
+    ? t('capture.truncated')
     : message.compressed
-      ? `${encoding ?? 'unknown'} compressed`
-      : 'protobuf · raw';
+      ? t('capture.compressed', { encoding: encoding ?? 'unknown' })
+      : t('capture.rawProtobuf');
   return (
     <button
       type="button"
@@ -178,7 +188,7 @@ function MessageRow({
       <span className={styles.direction}>
         <Download size={12} strokeWidth={1.9} />
       </span>
-      <span className={styles.index}>Message {message.index + 1}</span>
+      <span className={styles.index}>{t('capture.message', { index: message.index + 1 })}</span>
       <span
         className={cx(
           styles.metadata,
@@ -188,7 +198,7 @@ function MessageRow({
       >
         {state}
       </span>
-      <span className={styles.size}>{sizeLabel(message.payloadLength)}</span>
+      <span className={styles.size}>{sizeLabel(message.payloadLength, i18n.language)}</span>
       <span className={styles.offset}>@ 0x{message.payloadOffset.toString(16).padStart(4, '0')}</span>
     </button>
   );
@@ -205,15 +215,20 @@ function MessagePayload({
   bodyHash: string;
   contentType: string | undefined;
 }): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const json = contentType?.split(';', 1)[0]?.trim().toLowerCase().endsWith('+json');
   return (
     <div className={styles.payload}>
       <div className={styles.payloadHead}>
-        <b>{side === 'request' ? 'Request' : 'Response'} message {message.index + 1}</b>
-        <Count>{json ? 'raw JSON' : 'raw protobuf'} · {sizeLabel(message.payloadLength)}</Count>
+        <b>
+          {t(side === 'request' ? 'capture.requestMessage' : 'capture.responseMessage', { index: message.index + 1 })}
+        </b>
+        <Count>
+          {json ? t('capture.rawJson') : t('capture.rawProtobufLabel')} · {sizeLabel(message.payloadLength, i18n.language)}
+        </Count>
         <IconButton
           icon={Copy}
-          label="Copy payload"
+          label={t('capture.copyPayload')}
           size="sm"
           onClick={() => copyPayload(bodyHash, message, json)}
         />

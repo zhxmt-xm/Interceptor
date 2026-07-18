@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowRight, Copy, Pause } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   WebSocketFrameDirection,
@@ -13,7 +14,7 @@ import { useWebSocketFrames } from './useWebSocketFrames';
 import styles from './WebSocketMessages.module.css';
 
 const ROW_HEIGHT = 38;
-type DirectionFilter = 'All' | 'Sent' | 'Received';
+type DirectionFilter = 'all' | 'sent' | 'received';
 
 interface WebSocketMessagesProps {
   exchangeId: string;
@@ -24,7 +25,8 @@ export function WebSocketMessages({
   exchangeId,
   startedAt,
 }: WebSocketMessagesProps): React.JSX.Element {
-  const [filter, setFilter] = useState<DirectionFilter>('All');
+  const { t } = useTranslation();
+  const [filter, setFilter] = useState<DirectionFilter>('all');
   const [selectedSequence, setSelectedSequence] = useState<number | null>(null);
   const direction = filterDirection(filter);
   const {
@@ -69,23 +71,27 @@ export function WebSocketMessages({
     <div className={styles.messages}>
       <div className={styles.toolbar}>
         <Segmented
-          options={['All', 'Sent', 'Received']}
+          options={[
+            { value: 'all', label: t('capture.all') },
+            { value: 'sent', label: t('capture.sent') },
+            { value: 'received', label: t('capture.received') },
+          ]}
           value={filter}
           onChange={(value) => setFilter(value as DirectionFilter)}
         />
         <span className={styles.spacer} />
-        <Count>Pause on message</Count>
+        <Count>{t('capture.pauseOnMessage')}</Count>
         <Switch checked={breakpointsEnabled} onChange={setBreakpointsEnabled} />
       </div>
 
       <div className={styles.frameList}>
         <div className={styles.frameScroll} ref={scrollRef} onScroll={handleScroll}>
-          {loading ? <div className={styles.empty}>Loading messages...</div> : null}
+          {loading ? <div className={styles.empty}>{t('capture.loadingMessages')}</div> : null}
           {!loading && error ? (
-            <div className={styles.empty}>Failed to load messages: {error}</div>
+            <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
           ) : null}
           {!loading && !error && frames.length === 0 ? (
-            <div className={styles.empty}>No WebSocket messages captured.</div>
+            <div className={styles.empty}>{t('capture.noWebSocketMessages')}</div>
           ) : null}
           {frames.length > 0 ? (
             <div className={styles.viewport} style={{ height: virtualizer.getTotalSize() }}>
@@ -122,7 +128,7 @@ export function WebSocketMessages({
               })}
             </div>
           ) : null}
-          {loadingMore ? <div className={styles.loadingMore}>Loading more...</div> : null}
+          {loadingMore ? <div className={styles.loadingMore}>{t('capture.loadingMore')}</div> : null}
         </div>
 
       </div>
@@ -130,8 +136,8 @@ export function WebSocketMessages({
       <div className={styles.note}>
         <Pause size={13} strokeWidth={1.9} />
         {breakpointsEnabled
-          ? 'Next message pauses in Breakpoints before forwarding.'
-          : 'Enable to inspect, edit, continue, or drop messages before forwarding.'}
+          ? t('capture.nextMessagePauses')
+          : t('capture.enableMessageBreakpoints')}
       </div>
     </div>
   );
@@ -148,6 +154,7 @@ function FrameRow({
   selected: boolean;
   onSelect(): void;
 }): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const outgoing = frame.direction === 'client-to-server';
   return (
     <button
@@ -158,10 +165,10 @@ function FrameRow({
       <span className={cx(styles.direction, outgoing ? styles.outgoing : styles.incoming)}>
         <ArrowRight size={12} strokeWidth={1.9} />
       </span>
-      <span className={styles.kind}>{frame.opcode === 1 ? 'Text' : 'Binary'}</span>
+      <span className={styles.kind}>{frame.opcode === 1 ? t('capture.text') : t('capture.binary')}</span>
       <FramePreview frame={frame} />
-      <span className={styles.size}>{sizeLabel(frame.payloadSize)}</span>
-      <span className={styles.time}>{relativeTime(startedAt, frame.timestamp)}</span>
+      <span className={styles.size}>{sizeLabel(frame.payloadSize, i18n.language)}</span>
+      <span className={styles.time}>{relativeTime(startedAt, frame.timestamp, i18n.language)}</span>
     </button>
   );
 }
@@ -169,22 +176,21 @@ function FrameRow({
 function filterDirection(
   filter: DirectionFilter,
 ): WebSocketFrameDirection | undefined {
-  if (filter === 'Sent') {
+  if (filter === 'sent') {
     return 'client-to-server';
   }
-  if (filter === 'Received') {
+  if (filter === 'received') {
     return 'server-to-client';
   }
   return undefined;
 }
 
-function directionLabel(frame: WebSocketFrameSummary): string {
-  return frame.direction === 'client-to-server' ? 'Sent' : 'Received';
-}
-
 function FramePreview({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState(
-    frame.opcode === 1 ? `Text message ${frame.seq}` : `Binary message ${frame.seq}`,
+    frame.opcode === 1
+      ? t('capture.textMessage', { sequence: frame.seq })
+      : t('capture.binaryMessage', { sequence: frame.seq }),
   );
 
   useEffect(() => {
@@ -220,9 +226,11 @@ function FramePreview({ frame }: { frame: WebSocketFrameSummary }): React.JSX.El
   return <span className={styles.preview}>{preview}</span>;
 }
 
-function relativeTime(startedAt: number, timestamp: number): string {
+function relativeTime(startedAt: number, timestamp: number, locale: string): string {
   const elapsed = Math.max(0, timestamp - startedAt);
-  return elapsed < 1_000 ? `+${elapsed} ms` : `+${(elapsed / 1_000).toFixed(1)} s`;
+  return elapsed < 1_000
+    ? `+${new Intl.NumberFormat(locale).format(elapsed)} ms`
+    : `+${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(elapsed / 1_000)} s`;
 }
 
 function copyPayload(frame: WebSocketFrameSummary): void {
@@ -240,14 +248,18 @@ function copyPayload(frame: WebSocketFrameSummary): void {
 }
 
 function Payload({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   return (
     <div className={styles.payload}>
       <div className={styles.payloadHead}>
-        <b>{directionLabel(frame)} {frame.opcode === 1 ? 'text' : 'binary'}</b>
-        <Count>{sizeLabel(frame.payloadSize)} · message {frame.seq}</Count>
+        <b>
+          {frame.direction === 'client-to-server' ? t('capture.sent') : t('capture.received')}{' '}
+          {frame.opcode === 1 ? t('capture.text').toLocaleLowerCase(i18n.language) : t('capture.binary').toLocaleLowerCase(i18n.language)}
+        </b>
+        <Count>{sizeLabel(frame.payloadSize, i18n.language)} · {t('capture.messageNumber', { sequence: frame.seq })}</Count>
         <IconButton
           icon={Copy}
-          label="Copy payload"
+          label={t('capture.copyPayload')}
           size="sm"
           onClick={() => copyPayload(frame)}
         />
@@ -255,7 +267,7 @@ function Payload({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element
       {frame.payload ? (
         <BodyView body={frame.payload} compact />
       ) : (
-        <div className={styles.empty}>Payload was not retained.</div>
+        <div className={styles.empty}>{t('capture.payloadNotRetained')}</div>
       )}
     </div>
   );

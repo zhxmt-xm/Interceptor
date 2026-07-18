@@ -4,6 +4,22 @@ import type { TimelineEntry } from '../../components';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type Outcome = 'ok' | 'fail' | 'cx' | 'to';
 
+export interface OutcomeLabels {
+  success: string;
+  failed: string;
+  cancelled: string;
+  timedOut: string;
+  ok: string;
+}
+
+const ENGLISH_OUTCOME_LABELS: OutcomeLabels = {
+  success: 'success',
+  failed: 'failed',
+  cancelled: 'cancelled',
+  timedOut: 'timed_out',
+  ok: 'ok',
+};
+
 /** 一次 command 执行聚合出的表格行（按 requestId 归并 phase 记录）。 */
 export interface TraceRow {
   key: string;
@@ -35,6 +51,8 @@ function groupKey(record: CoreDiagnosticRecord): string {
 /** 把扁平的诊断记录按 requestId 聚合成一次次 command 执行行，最新在前。 */
 export function aggregateTraces(
   records: readonly CoreDiagnosticRecord[],
+  locale = 'en',
+  labels: OutcomeLabels = ENGLISH_OUTCOME_LABELS,
 ): TraceRow[] {
   const groups = new Map<string, CoreDiagnosticRecord[]>();
   for (const record of records) {
@@ -59,20 +77,20 @@ export function aggregateTraces(
     );
     const outcomeSource = completed ?? sorted[sorted.length - 1] ?? first;
     const level = pickLevel(sorted);
-    const { outcome, outcomeLabel } = mapOutcome(outcomeSource.outcome, level);
+    const { outcome, outcomeLabel } = mapOutcome(outcomeSource.outcome, level, labels);
     rows.push({
       key,
       traceId: first.traceId,
       requestId: first.requestId,
       process: first.process,
       command: sorted.find((record) => record.command)?.command ?? first.phase,
-      time: formatClock(first.timestamp),
+      time: formatClock(first.timestamp, locale),
       level,
       outcome,
       outcomeLabel,
       duration:
         completed?.durationMs != null
-          ? formatDuration(completed.durationMs)
+          ? formatDuration(completed.durationMs, locale)
           : '—',
       seq: first.sequence,
     });
@@ -95,6 +113,7 @@ export function selectTraceRecords(
 /** 把某次 command 执行的记录展开成 Action 时间线条目（按 sequence 递增）。 */
 export function buildTimeline(
   records: readonly CoreDiagnosticRecord[],
+  locale = 'en',
 ): TimelineEntry[] {
   const sorted = [...records].sort((a, b) => a.sequence - b.sequence);
   const [firstRecord] = sorted;
@@ -106,7 +125,7 @@ export function buildTimeline(
     const offset = Date.parse(record.timestamp) - base;
     return {
       label: record.action ? `${record.phase} · ${record.action}` : record.phase,
-      time: formatDuration(record.durationMs ?? offset),
+      time: formatDuration(record.durationMs ?? offset, locale),
       width: Math.max(4, Math.round(((index + 1) / sorted.length) * 100)),
     };
   });
@@ -123,35 +142,40 @@ function pickLevel(records: readonly CoreDiagnosticRecord[]): LogLevel {
 function mapOutcome(
   outcome: CoreDiagnosticRecord['outcome'],
   level: LogLevel,
+  labels: OutcomeLabels,
 ): { outcome: Outcome; outcomeLabel: string } {
   switch (outcome) {
     case 'success':
-      return { outcome: 'ok', outcomeLabel: 'success' };
+      return { outcome: 'ok', outcomeLabel: labels.success };
     case 'failed':
-      return { outcome: 'fail', outcomeLabel: 'failed' };
+      return { outcome: 'fail', outcomeLabel: labels.failed };
     case 'cancelled':
-      return { outcome: 'cx', outcomeLabel: 'cancelled' };
+      return { outcome: 'cx', outcomeLabel: labels.cancelled };
     case 'timed_out':
-      return { outcome: 'to', outcomeLabel: 'timed_out' };
+      return { outcome: 'to', outcomeLabel: labels.timedOut };
     default:
       return level === 'error'
-        ? { outcome: 'fail', outcomeLabel: 'failed' }
-        : { outcome: 'ok', outcomeLabel: 'ok' };
+        ? { outcome: 'fail', outcomeLabel: labels.failed }
+        : { outcome: 'ok', outcomeLabel: labels.ok };
   }
 }
 
-function formatClock(iso: string): string {
+function formatClock(iso: string, locale: string): string {
   const date = new Date(iso);
-  const pad = (value: number, length = 2): string =>
-    String(value).padStart(length, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-    date.getSeconds(),
-  )}.${pad(date.getMilliseconds(), 3)}`;
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+    hour12: false,
+  }).format(date);
 }
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number, locale: string): string {
   if (!Number.isFinite(ms) || ms < 0) {
     return '0 ms';
   }
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
+  return ms < 1000
+    ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(ms)} ms`
+    : `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ms / 1000)} s`;
 }

@@ -1,24 +1,24 @@
 export const INSPECTOR_TABS = [
-  { id: 'headers', label: 'Headers' },
-  { id: 'request', label: 'Request' },
-  { id: 'response', label: 'Response' },
-  { id: 'timing', label: 'Timing' },
-  { id: 'cookies', label: 'Cookies' },
-  { id: 'tls', label: 'TLS' },
+  { id: 'headers', labelKey: 'capture.headers' },
+  { id: 'request', labelKey: 'capture.request' },
+  { id: 'response', labelKey: 'capture.response' },
+  { id: 'timing', labelKey: 'capture.timing' },
+  { id: 'cookies', labelKey: 'capture.cookies' },
+  { id: 'tls', labelKey: 'TLS' },
 ] as const;
 
 export const WEBSOCKET_INSPECTOR_TABS = [
-  { id: 'headers', label: 'Headers' },
-  { id: 'messages', label: 'Messages' },
-  { id: 'timing', label: 'Timing' },
-  { id: 'tls', label: 'TLS' },
+  { id: 'headers', labelKey: 'capture.headers' },
+  { id: 'messages', labelKey: 'capture.messages' },
+  { id: 'timing', labelKey: 'capture.timing' },
+  { id: 'tls', labelKey: 'TLS' },
 ] as const;
 
 export const GRPC_INSPECTOR_TABS = [
-  { id: 'headers', label: 'Headers' },
-  { id: 'grpc', label: 'Messages' },
-  { id: 'timing', label: 'Timing' },
-  { id: 'tls', label: 'TLS' },
+  { id: 'headers', labelKey: 'capture.headers' },
+  { id: 'grpc', labelKey: 'capture.messages' },
+  { id: 'timing', labelKey: 'capture.timing' },
+  { id: 'tls', labelKey: 'TLS' },
 ] as const;
 
 export type InspectorTab =

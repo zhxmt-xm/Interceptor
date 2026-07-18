@@ -2,8 +2,10 @@ import { json } from '@codemirror/lang-json';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
+import { sizeLabel } from '../row-format';
 import styles from './BodyView.module.css';
 
 /** 单次预览最多加载的正文字节（Inspector 只做预览，非完整下载）。 */
@@ -69,6 +71,7 @@ export function BodyView({
   offset = 0,
   previewLimit = PREVIEW_CAP_BYTES,
 }: BodyViewProps): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isDark = document.documentElement.dataset.theme === 'dark'
@@ -140,13 +143,13 @@ export function BodyView({
   }, [previewBytes, body.mediaType]);
 
   if (!body.bodyHash || body.encodedSize === 0) {
-    return <div className={styles.empty}>No body captured.</div>;
+    return <div className={styles.empty}>{t('capture.noBody')}</div>;
   }
   if (error) {
-    return <div className={styles.empty}>Failed to load body: {error}</div>;
+    return <div className={styles.empty}>{t('capture.failedLoadBody', { error })}</div>;
   }
   if (!loaded) {
-    return <div className={styles.empty}>Loading body…</div>;
+    return <div className={styles.empty}>{t('capture.loadingBody')}</div>;
   }
 
   const truncated = body.encodedSize > previewLimit
@@ -158,12 +161,12 @@ export function BodyView({
       <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
         {decodeFailed ? (
           <div className={styles.notice}>
-            Failed to decode {body.contentEncoding} body; showing raw bytes.
+            {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
           </div>
         ) : null}
         {truncated ? (
           <div className={styles.notice}>
-            Preview limited to first {previewLimitLabel(previewLimit)}.
+            {t('capture.previewLimited', { size: sizeLabel(previewLimit, i18n.language) })}
           </div>
         ) : null}
         <CodeMirror
@@ -185,19 +188,15 @@ export function BodyView({
     <div className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
       {decodeFailed ? (
         <div className={styles.notice}>
-          Failed to decode {body.contentEncoding} body; showing raw bytes.
+          {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
         </div>
       ) : null}
       {truncated ? (
         <div className={styles.notice}>
-          Preview limited to first {previewLimitLabel(previewLimit)} of binary body.
+          {t('capture.binaryPreviewLimited', { size: sizeLabel(previewLimit, i18n.language) })}
         </div>
       ) : null}
       <pre className={styles.hex}>{toHexDump(previewBytes ?? loaded.bytes)}</pre>
     </div>
   );
-}
-
-function previewLimitLabel(bytes: number): string {
-  return bytes < 1024 ? `${bytes} bytes` : `${bytes / 1024} KB`;
 }

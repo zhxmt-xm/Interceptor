@@ -1,5 +1,6 @@
 import { type LucideIcon, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { cx, IconButton } from '../../../components';
 import styles from './ActionCard.module.css';
@@ -24,6 +25,7 @@ export function ActionCard({
   onRemove,
   children,
 }: ActionCardProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className={styles.card}>
       <div className={styles.head}>
@@ -35,7 +37,7 @@ export function ActionCard({
         <span className={styles.spacer} />
         <IconButton
           icon={X}
-          label="Remove action"
+          label={t('rules.removeAction')}
           size="sm"
           strokeWidth={2.2}
           onClick={onRemove}

@@ -2,15 +2,15 @@ import { Database, Download, Lock, type LucideIcon, Palette, Shield, Wifi } from
 
 export interface SettingsSection {
   id: string;
-  label: string;
+  labelKey: string;
   Icon: LucideIcon;
 }
 
 export const SECTIONS: SettingsSection[] = [
-  { id: 'proxy', label: 'Proxy & Listener', Icon: Wifi },
-  { id: 'certificates', label: 'Certificates', Icon: Shield },
-  { id: 'appearance', label: 'Appearance', Icon: Palette },
-  { id: 'storage', label: 'Storage', Icon: Database },
-  { id: 'privacy', label: 'Privacy', Icon: Lock },
-  { id: 'updates', label: 'Updates', Icon: Download },
+  { id: 'proxy', labelKey: 'settings.nav.proxy', Icon: Wifi },
+  { id: 'certificates', labelKey: 'settings.nav.certificates', Icon: Shield },
+  { id: 'appearance', labelKey: 'settings.nav.appearance', Icon: Palette },
+  { id: 'storage', labelKey: 'settings.nav.storage', Icon: Database },
+  { id: 'privacy', labelKey: 'settings.nav.privacy', Icon: Lock },
+  { id: 'updates', labelKey: 'settings.nav.updates', Icon: Download },
 ];

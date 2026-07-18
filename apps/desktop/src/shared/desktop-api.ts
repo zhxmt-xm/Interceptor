@@ -329,6 +329,26 @@ export interface HarExportRequest {
   };
 }
 
+export const DESKTOP_UI_LANGUAGES = [
+  'en',
+  'zh-CN',
+  'zh-TW',
+  'ja',
+  'ko',
+  'de',
+  'fr',
+  'es',
+  'it',
+  'pt-BR',
+  'ru',
+  'nl',
+  'pl',
+  'tr',
+  'uk',
+] as const;
+
+export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
+
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
@@ -336,6 +356,7 @@ export const DESKTOP_IPC_CHANNELS = {
   coreGetDiagnostics: 'core:get-diagnostics',
   coreQueryDiagnostics: 'core:query-diagnostics',
   rendererDiagnosticReport: 'diagnostics:renderer-report',
+  uiSetLanguage: 'ui:set-language',
   coreProcessStatus: 'core:process-status',
   systemProxyGetStatus: 'system-proxy:get-status',
   systemProxyEnable: 'system-proxy:enable',
@@ -388,6 +409,7 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  setUiLanguage(language: DesktopUiLanguage): Promise<void>;
   echoCore(value: string): Promise<CoreEchoResult>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
   getCoreTrace(traceId: string): Promise<CoreDiagnosticTrace>;

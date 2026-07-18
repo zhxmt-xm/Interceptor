@@ -1,5 +1,6 @@
 import { Copy, Eye, FolderOpen, Library, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   CertificateInfo,
@@ -18,6 +19,7 @@ type CertState = 'loading' | 'ready' | 'error';
 
 /** The Certificates settings section, backed by the Main CA + trust-store services. */
 function CertificatesPanel(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [info, setInfo] = useState<CertificateInfo | null>(null);
   const [hosts, setHosts] = useState<string[]>([]);
   const [state, setState] = useState<CertState>('loading');
@@ -79,11 +81,11 @@ function CertificatesPanel(): React.JSX.Element {
   if (state === 'loading' || !info) {
     return (
       <>
-        <h2 className={styles.title}>Certificates</h2>
+        <h2 className={styles.title}>{t('settings.certificates')}</h2>
         <div className={styles.desc}>
           {state === 'error'
-            ? 'Certificate status unavailable.'
-            : 'Loading certificate status…'}
+            ? t('settings.certificateUnavailable')
+            : t('settings.loadingCertificate')}
         </div>
       </>
     );
@@ -101,30 +103,30 @@ function CertificatesPanel(): React.JSX.Element {
   return (
     <>
       <h2 className={styles.title}>
-        Certificates
+        {t('settings.certificates')}
         {info.trusted ? (
-          <StatusBadge className={styles.mitm}>MITM active</StatusBadge>
+          <StatusBadge className={styles.mitm}>{t('settings.mitmActive')}</StatusBadge>
         ) : null}
       </h2>
       <div className={styles.desc}>
-        Root CA used to decrypt HTTPS. Trust is only ever installed with your explicit consent.
+        {t('settings.certificateDescription')}
       </div>
 
-      <Group title="Root Certificate Authority">
+      <Group title={t('settings.rootCertificateAuthority')}>
         <Row
-          label="Status"
-          hint={info.present ? info.subject ?? undefined : 'No CA generated yet'}
+          label={t('settings.status')}
+          hint={info.present ? info.subject ?? undefined : t('settings.noCaGenerated')}
         >
           <StatusBadge tone={info.present ? 'green' : 'yellow'}>
-            {info.present ? 'Generated' : 'Not generated'}
+            {info.present ? t('settings.generated') : t('settings.notGenerated')}
           </StatusBadge>
         </Row>
         {info.present ? (
-          <Row label="SHA-256 fingerprint">
+          <Row label={t('settings.sha256Fingerprint')}>
             <span className={styles.mono}>{info.fingerprint}</span>
             <IconButton
               icon={Copy}
-              label="Copy fingerprint"
+              label={t('settings.copyFingerprint')}
               size="sm"
               onClick={() =>
                 void navigator.clipboard?.writeText(info.fingerprint ?? '')
@@ -133,16 +135,16 @@ function CertificatesPanel(): React.JSX.Element {
           </Row>
         ) : null}
         {info.present && info.expiresAt ? (
-          <Row label="Valid until">
-            <span className={styles.mono}>{info.expiresAt.slice(0, 10)}</span>
+          <Row label={t('settings.validUntil')}>
+            <span className={styles.mono}>{formatDate(info.expiresAt, i18n.language)}</span>
           </Row>
         ) : null}
         <Row
-          label="Certificate authority"
+          label={t('settings.certificateAuthority')}
           hint={
             info.trusted
-              ? '需先在下方移除信任（Remove）才能重新生成或删除'
-              : 'Generating a fresh CA invalidates the current one'
+              ? t('settings.removeTrustBeforeChange')
+              : t('settings.newCaInvalidates')
           }
         >
           {info.present && !info.trusted ? (
@@ -152,7 +154,7 @@ function CertificatesPanel(): React.JSX.Element {
               disabled={busy}
               onClick={() => applyInfo((api) => api.deleteCertificate())}
             >
-              Delete
+              {t('settings.delete')}
             </Button>
           ) : null}
           <Button
@@ -160,36 +162,36 @@ function CertificatesPanel(): React.JSX.Element {
             disabled={busy || info.trusted}
             onClick={() => applyInfo((api) => api.generateCertificate())}
           >
-            {info.present ? 'Regenerate' : 'Generate'}
+            {info.present ? t('settings.regenerate') : t('settings.generate')}
           </Button>
         </Row>
       </Group>
 
-      <Group title="Trust status">
+      <Group title={t('settings.trustStatus')}>
         <Row
-          label="Local machine"
+          label={t('settings.localMachine')}
           hint={
             info.supported
-              ? '本机全部用户 · 安装/移除需管理员提权'
-              : 'Trust store not supported on this platform'
+              ? t('settings.allUsersAdmin')
+              : t('settings.trustUnsupported')
           }
         >
           {info.trusted ? (
             <>
-              <StatusBadge>Trusted</StatusBadge>
+              <StatusBadge>{t('settings.trusted')}</StatusBadge>
               <Button
                 icon={Trash2}
                 variant="danger"
                 disabled={busy}
                 onClick={() => applyInfo((api) => api.uninstallCertificate())}
               >
-                Remove
+                {t('settings.remove')}
               </Button>
             </>
           ) : (
             <>
               <span className={cx(styles.mono, styles.monoMuted)}>
-                {info.present ? 'Not installed' : '需先生成 CA'}
+                {info.present ? t('settings.notInstalled') : t('settings.generateCaFirst')}
               </span>
               <Button
                 icon={Shield}
@@ -197,29 +199,29 @@ function CertificatesPanel(): React.JSX.Element {
                 disabled={busy || !info.supported || !info.present}
                 onClick={() => applyInfo((api) => api.installCertificate())}
               >
-                Install…
+                {t('settings.install')}
               </Button>
             </>
           )}
         </Row>
         {info.present && info.path ? (
-          <Row label="Location" hint="Root CA 证书 PEM 文件在磁盘上的位置">
+          <Row label={t('settings.location')} hint={t('settings.certificatePathHint')}>
             <span className={styles.mono}>{info.path}</span>
             <IconButton
               icon={Eye}
-              label="查看证书详情"
+              label={t('settings.viewCertificate')}
               size="sm"
               onClick={() => void window.interceptor?.viewCertificate()}
             />
             <IconButton
               icon={Library}
-              label="打开证书管理器"
+              label={t('settings.openCertificateManager')}
               size="sm"
               onClick={() => void window.interceptor?.openCertificateManager()}
             />
             <IconButton
               icon={FolderOpen}
-              label="在文件管理器中打开"
+              label={t('settings.revealCertificate')}
               size="sm"
               onClick={() => void window.interceptor?.revealCertificate()}
             />
@@ -227,10 +229,10 @@ function CertificatesPanel(): React.JSX.Element {
         ) : null}
       </Group>
 
-      <Group title="HTTPS interception">
+      <Group title={t('settings.httpsInterception')}>
         <Row
-          label="Decrypt HTTPS (MITM)"
-          hint="需先安装并信任 CA；开启后代理才对 HTTPS 做解密"
+          label={t('settings.decryptHttps')}
+          hint={t('settings.decryptHttpsHint')}
         >
           <Switch
             checked={info.mitmEnabled && info.trusted}
@@ -242,13 +244,13 @@ function CertificatesPanel(): React.JSX.Element {
           />
         </Row>
         <Row
-          label="Per-host overrides"
-          hint="Origins whose certificate errors are ignored"
+          label={t('settings.perHostOverrides')}
+          hint={t('settings.perHostOverridesHint')}
         >
           <input
             className={styles.hostInput}
             value={draftHost}
-            placeholder="add host…"
+            placeholder={t('settings.addHostPlaceholder')}
             onChange={(event) => setDraftHost(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -257,13 +259,13 @@ function CertificatesPanel(): React.JSX.Element {
             }}
           />
           <Button icon={Plus} disabled={busy} onClick={addHost}>
-            Add host
+            {t('settings.addHost')}
           </Button>
         </Row>
         {hosts.length > 0 ? (
           <Row
-            label="Insecure TLS exceptions"
-            hint="Origin certificate is not verified"
+            label={t('settings.insecureTlsExceptions')}
+            hint={t('settings.originNotVerified')}
           >
             <span className={styles.hostList}>
               {hosts.map((host) => (
@@ -271,7 +273,7 @@ function CertificatesPanel(): React.JSX.Element {
                   {host}
                   <IconButton
                     icon={X}
-                    label={`Remove ${host}`}
+                    label={t('settings.removeHost', { host })}
                     size="sm"
                     onClick={() =>
                       applyHosts((api) =>
@@ -293,6 +295,7 @@ type StorageState = 'loading' | 'ready' | 'error';
 
 /** The Storage settings section, backed by the Core storage.status command. */
 function StoragePanel(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [state, setState] = useState<StorageState>('loading');
   const [confirming, setConfirming] = useState(false);
@@ -338,82 +341,81 @@ function StoragePanel(): React.JSX.Element {
   }, []);
 
   const value = (bytes: number | undefined): string =>
-    state === 'ready' && bytes !== undefined ? formatBytes(bytes) : '—';
+    state === 'ready' && bytes !== undefined ? formatBytes(bytes, i18n.language) : '—';
   const count = (n: number | undefined): string =>
-    state === 'ready' && n !== undefined ? String(n) : '—';
+    state === 'ready' && n !== undefined ? new Intl.NumberFormat(i18n.language).format(n) : '—';
 
   return (
     <>
       <h2 className={styles.title}>
-        Storage
+        {t('settings.storage')}
         {state === 'ready' && usage ? (
-          <StatusBadge className={styles.mitm}>{formatBytes(usage.totalBytes)}</StatusBadge>
+          <StatusBadge className={styles.mitm}>{formatBytes(usage.totalBytes, i18n.language)}</StatusBadge>
         ) : null}
       </h2>
       <div className={styles.desc}>
-        Captured sessions and response bodies are stored locally on this device. Nothing is
-        uploaded.
+        {t('settings.storageDescription')}
       </div>
 
       {state === 'error' ? (
-        <Group title="Usage">
-          <Row label="Storage status" hint="The Proxy Core storage is not available yet">
-            <StatusBadge tone="yellow">Unavailable</StatusBadge>
+        <Group title={t('settings.usage')}>
+          <Row label={t('settings.storageStatus')} hint={t('settings.storageUnavailableHint')}>
+            <StatusBadge tone="yellow">{t('settings.unavailable')}</StatusBadge>
           </Row>
         </Group>
       ) : (
         <>
-          <Group title="Usage">
-            <Row label="Total on disk" hint="Capture database and response bodies">
+          <Group title={t('settings.usage')}>
+            <Row label={t('settings.totalOnDisk')} hint={t('settings.totalOnDiskHint')}>
               <span className={styles.mono}>{value(usage?.totalBytes)}</span>
             </Row>
-            <Row label="Quota" hint="Maximum local storage before new bodies are omitted">
+            <Row label={t('settings.quota')} hint={t('settings.quotaHint')}>
               <span className={cx(styles.mono, styles.monoMuted)}>
                 {value(usage?.quotaBytes)}
               </span>
             </Row>
-            <Row label="Capture database">
+            <Row label={t('settings.captureDatabase')}>
               <span className={styles.mono}>{value(usage?.databaseBytes)}</span>
             </Row>
-            <Row label="Response bodies">
+            <Row label={t('settings.responseBodies')}>
               <span className={styles.mono}>{value(usage?.blobBytes)}</span>
             </Row>
           </Group>
 
-          <Group title="Contents">
-            <Row label="Sessions">
+          <Group title={t('settings.contents')}>
+            <Row label={t('settings.sessions')}>
               <span className={styles.mono}>{count(usage?.sessionCount)}</span>
             </Row>
-            <Row label="Exchanges">
+            <Row label={t('settings.exchanges')}>
               <span className={styles.mono}>{count(usage?.exchangeCount)}</span>
             </Row>
-            <Row label="Stored bodies">
+            <Row label={t('settings.storedBodies')}>
               <span className={styles.mono}>{count(usage?.bodyCount)}</span>
             </Row>
           </Group>
         </>
       )}
 
-      <Group title="Maintenance">
-        <Row label="Refresh usage" hint="Re-read current storage usage from the Proxy Core">
+      <Group title={t('settings.maintenance')}>
+        <Row label={t('settings.refreshUsage')} hint={t('settings.refreshUsageHint')}>
           <Button icon={RefreshCw} onClick={load}>
-            Refresh
+            {t('settings.refresh')}
           </Button>
         </Row>
         <Row
-          label="Clear all captured data"
-          hint="Removes every session, exchange and stored body. This cannot be undone."
+          label={t('settings.clearCapturedData')}
+          hint={t('settings.clearCapturedDataHint')}
         >
           {confirming ? (
             <>
-              <Button onClick={() => setConfirming(false)}>Cancel</Button>
+              <Button onClick={() => setConfirming(false)}>{t('settings.cancel')}</Button>
               <Button icon={Trash2} variant="danger" onClick={clearAll}>
-                {busy ? 'Clearing…' : 'Confirm clear'}
+                {busy ? t('settings.clearing') : t('settings.confirmClear')}
               </Button>
             </>
           ) : (
             <Button icon={Trash2} variant="danger" onClick={() => setConfirming(true)}>
-              Clear…
+              {t('settings.clear')}
             </Button>
           )}
         </Row>
@@ -424,41 +426,41 @@ function StoragePanel(): React.JSX.Element {
 
 /** The Privacy settings section: recording-safety facts and export redaction defaults. */
 function PrivacyPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const maskAuthorization = usePrivacyStore((state) => state.maskAuthorization);
   const maskCookies = usePrivacyStore((state) => state.maskCookies);
   const warnBeforeUnmasked = usePrivacyStore((state) => state.warnBeforeUnmasked);
   const setPreference = usePrivacyStore((state) => state.setPreference);
   return (
     <>
-      <h2 className={styles.title}>Privacy</h2>
+      <h2 className={styles.title}>{t('settings.privacy')}</h2>
       <div className={styles.desc}>
-        Interceptor never records until you start capture, binds only to
-        loopback, and sends no telemetry.
+        {t('settings.privacyDescription')}
       </div>
-      <Group title="Recording safety">
+      <Group title={t('settings.recordingSafety')}>
         <Row
-          label="Capture on launch"
-          hint="Interceptor stays idle until you press Record"
+          label={t('settings.captureOnLaunch')}
+          hint={t('settings.captureOnLaunchHint')}
         >
-          <StatusBadge tone="green">Off by default</StatusBadge>
+          <StatusBadge tone="green">{t('settings.offByDefault')}</StatusBadge>
         </Row>
         <Row
-          label="Listener binding"
-          hint="The proxy only accepts connections from this machine"
+          label={t('settings.listenerBinding')}
+          hint={t('settings.listenerBindingHint')}
         >
-          <StatusBadge tone="green">Loopback only</StatusBadge>
+          <StatusBadge tone="green">{t('settings.loopbackOnly')}</StatusBadge>
         </Row>
         <Row
-          label="Telemetry"
-          hint="No URLs, headers, bodies, or certificates leave your machine"
+          label={t('settings.telemetry')}
+          hint={t('settings.telemetryHint')}
         >
-          <StatusBadge tone="green">Disabled</StatusBadge>
+          <StatusBadge tone="green">{t('settings.disabled')}</StatusBadge>
         </Row>
       </Group>
-      <Group title="Export defaults">
+      <Group title={t('settings.exportDefaults')}>
         <Row
-          label="Mask authorization & URL tokens"
-          hint="Redact Authorization headers and token query parameters on export"
+          label={t('settings.maskAuthorization')}
+          hint={t('settings.maskAuthorizationHint')}
         >
           <Switch
             checked={maskAuthorization}
@@ -466,8 +468,8 @@ function PrivacyPanel(): React.JSX.Element {
           />
         </Row>
         <Row
-          label="Mask cookies"
-          hint="Redact Cookie and Set-Cookie headers on export"
+          label={t('settings.maskCookies')}
+          hint={t('settings.maskCookiesHint')}
         >
           <Switch
             checked={maskCookies}
@@ -475,8 +477,8 @@ function PrivacyPanel(): React.JSX.Element {
           />
         </Row>
         <Row
-          label="Warn before unmasked export"
-          hint="Show a warning before exporting data that is not redacted"
+          label={t('settings.warnUnmasked')}
+          hint={t('settings.warnUnmaskedHint')}
         >
           <Switch
             checked={warnBeforeUnmasked}
@@ -490,20 +492,22 @@ function PrivacyPanel(): React.JSX.Element {
 
 /** Placeholder for settings sections without a designed panel yet. */
 function PlaceholderPanel({ label }: { label: string }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <>
       <h2 className={styles.title}>{label}</h2>
-      <div className={styles.desc}>This section is not available yet.</div>
+      <div className={styles.desc}>{t('settings.sectionUnavailable')}</div>
     </>
   );
 }
 
 /** Right settings pane: renders the panel for the active section. */
 export function SettingsContent({ active }: { active: string }): React.JSX.Element {
-  return <div className={styles.content}>{renderPanel(active)}</div>;
+  const { t } = useTranslation();
+  return <div className={styles.content}>{renderPanel(active, (key) => t(key))}</div>;
 }
 
-function renderPanel(active: string): React.JSX.Element {
+function renderPanel(active: string, translate: (key: string) => string): React.JSX.Element {
   if (active === 'proxy') {
     return <ProxyPanel />;
   }
@@ -519,13 +523,14 @@ function renderPanel(active: string): React.JSX.Element {
   if (active === 'updates') {
     return <UpdatesPanel />;
   }
-  const label = SECTIONS.find((section) => section.id === active)?.label ?? 'Settings';
+  const labelKey = SECTIONS.find((section) => section.id === active)?.labelKey;
+  const label = labelKey ? translate(labelKey) : translate('settings.title');
   return <PlaceholderPanel label={label} />;
 }
 
-function formatBytes(bytes: number): string {
+function formatBytes(bytes: number, locale: string): string {
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return `${new Intl.NumberFormat(locale).format(bytes)} B`;
   }
   const units = ['KB', 'MB', 'GB', 'TB'];
   let value = bytes / 1024;
@@ -534,5 +539,12 @@ function formatBytes(bytes: number): string {
     value /= 1024;
     unitIndex += 1;
   }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unitIndex]}`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: value < 10 ? 1 : 0 }).format(value)} ${units[unitIndex]}`;
+}
+
+function formatDate(value: string, locale: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value.slice(0, 10)
+    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
 }

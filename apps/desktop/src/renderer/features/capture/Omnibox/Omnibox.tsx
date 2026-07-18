@@ -1,5 +1,6 @@
 import { Activity, Dot, Filter, GitBranch, Globe, Layers, Search, X } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { cx, MenuItem } from '../../../components';
 import { useCaptureStore } from '../captureStore';
@@ -7,6 +8,7 @@ import styles from './Omnibox.module.css';
 
 /** Search/filter omnibox with active filter pills and an add-filter popover. */
 export function Omnibox(): React.JSX.Element {
+  const { t } = useTranslation();
   const [showFilter, setShowFilter] = useState(false);
   const search = useCaptureStore((state) => state.filter.search);
   const method = useCaptureStore((state) => state.filter.method);
@@ -77,41 +79,41 @@ export function Omnibox(): React.JSX.Element {
         className={styles.input}
         type="text"
         value={search}
-        placeholder="Filter requests…"
+        placeholder={t('capture.filterRequests')}
         onChange={(event) => setSearch(event.target.value)}
-        aria-label="Filter requests"
+        aria-label={t('capture.filterRequests')}
       />
       <button
         type="button"
         className={cx(styles.filterButton, showFilter && styles.active)}
         onClick={() => setShowFilter((value) => !value)}
-        aria-label="Add filter"
+        aria-label={t('capture.addFilter')}
       >
         <Filter size={16} strokeWidth={1.9} />
       </button>
       {showFilter ? (
         <div className={styles.popover}>
-          <div className={styles.popoverTitle}>Add filter</div>
+          <div className={styles.popoverTitle}>{t('capture.addFilter')}</div>
           <MenuItem
             icon={GitBranch}
-            name="Method"
+            name={t('capture.method')}
             hint="GET, POST, DELETE…"
             onClick={() => promoteToFilter('method')}
           />
           <MenuItem
             icon={Dot}
-            name="Status"
+            name={t('capture.status')}
             hint="2xx · 3xx · 4xx · 5xx"
             onClick={() => promoteToFilter('status')}
           />
-          <MenuItem icon={Layers} name="Type" hint="json, js, font, ws…" />
+          <MenuItem icon={Layers} name={t('capture.type')} hint="json, js, font, ws…" />
           <MenuItem
             icon={Globe}
-            name="Host"
-            hint="contains…"
+            name={t('capture.host')}
+            hint={t('capture.contains')}
             onClick={() => promoteToFilter('host')}
           />
-          <MenuItem icon={Activity} name="Duration" hint="> 500 ms" />
+          <MenuItem icon={Activity} name={t('capture.duration')} hint="> 500 ms" />
         </div>
       ) : null}
     </div>

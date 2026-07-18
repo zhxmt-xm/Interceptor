@@ -1,4 +1,5 @@
 import { Download, Menu } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, FilterChip, IconButton, Title } from '../../../components';
 import { useDiagnostics } from '../DiagnosticsProvider';
@@ -10,6 +11,7 @@ export interface DiagnosticsTopbarProps {
 
 /** Diagnostics topbar: toggle, title, level/outcome filters and JSONL export. */
 export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const {
     processFilter,
     levelFilter,
@@ -23,17 +25,17 @@ export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX
   } = useDiagnostics();
   return (
     <>
-      <IconButton icon={Menu} label="Toggle sidebar" onClick={onMenu} />
-      <Title>Diagnostics</Title>
+      <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
+      <Title>{t('diagnostics.title')}</Title>
       <div className={styles.actions}>
         <FilterChip onClick={cycleProcess}>
-          {processFilter ? `Process: ${processFilter}` : 'Process'}
+          {processFilter ? `${t('diagnostics.process')}: ${processFilter}` : t('diagnostics.process')}
         </FilterChip>
         <FilterChip onClick={cycleLevel}>
-          {levelFilter ? `Level: ${levelFilter}` : 'Level'}
+          {levelFilter ? `${t('diagnostics.level')}: ${levelFilter}` : t('diagnostics.level')}
         </FilterChip>
         <FilterChip onClick={cycleOutcome}>
-          {outcomeFilter ? `Outcome: ${outcomeFilter}` : 'Outcome'}
+          {outcomeFilter ? `${t('diagnostics.outcome')}: ${outcomeFilter}` : t('diagnostics.outcome')}
         </FilterChip>
         <Button
           icon={Download}
@@ -42,10 +44,10 @@ export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX
           onClick={exportJsonl}
         >
           {exporting
-            ? 'Exporting…'
+            ? t('diagnostics.exporting')
             : exportError
-              ? 'Export failed'
-              : 'Export JSONL'}
+              ? t('diagnostics.exportFailed')
+              : t('diagnostics.exportJsonl')}
         </Button>
       </div>
     </>

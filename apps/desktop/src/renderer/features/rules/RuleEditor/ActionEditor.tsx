@@ -11,6 +11,7 @@ import {
   Reply,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { IconButton, InputBox, Select } from '../../../components';
 import type {
@@ -25,6 +26,7 @@ import {
   BLOCK_MODE_OPTIONS,
   BODY_FORMAT_OPTIONS,
   HEADER_OP_OPTIONS,
+  localizeOptions,
   PHASE_OPTIONS,
   QUERY_OP_OPTIONS,
   SCHEME_OPTIONS,
@@ -35,22 +37,22 @@ import styles from './ActionEditor.module.css';
 interface ActionMeta {
   icon: typeof Code;
   tone: ActionTone;
-  title: string;
-  sub: string;
+  titleKey: string;
+  subKey: string;
 }
 
 const ACTION_META: Record<RuleActionType, ActionMeta> = {
-  header: { icon: Code, tone: 'rewrite', title: 'Rewrite', sub: 'header' },
-  query: { icon: Code, tone: 'rewrite', title: 'Rewrite', sub: 'query' },
-  body: { icon: FileText, tone: 'rewrite', title: 'Rewrite', sub: 'body' },
-  status: { icon: Code, tone: 'rewrite', title: 'Status', sub: 'override' },
-  synthetic: { icon: Reply, tone: 'block', title: 'Synthetic', sub: 'response' },
-  'map-local': { icon: MapPin, tone: 'map', title: 'Map Local', sub: 'serve file' },
-  'map-remote': { icon: Globe, tone: 'remote', title: 'Map Remote', sub: 'reroute' },
-  block: { icon: Ban, tone: 'block', title: 'Block', sub: 'reset / close' },
-  delay: { icon: Clock, tone: 'throttle', title: 'Delay', sub: 'latency' },
-  throttle: { icon: Gauge, tone: 'throttle', title: 'Throttle', sub: 'bandwidth' },
-  breakpoint: { icon: Pause, tone: 'brk', title: 'Breakpoint', sub: 'pause & edit' },
+  header: { icon: Code, tone: 'rewrite', titleKey: 'rules.rewrite', subKey: 'rules.header' },
+  query: { icon: Code, tone: 'rewrite', titleKey: 'rules.rewrite', subKey: 'rules.query' },
+  body: { icon: FileText, tone: 'rewrite', titleKey: 'rules.rewrite', subKey: 'rules.body' },
+  status: { icon: Code, tone: 'rewrite', titleKey: 'rules.status', subKey: 'rules.override' },
+  synthetic: { icon: Reply, tone: 'block', titleKey: 'rules.synthetic', subKey: 'rules.response' },
+  'map-local': { icon: MapPin, tone: 'map', titleKey: 'rules.mapLocal', subKey: 'rules.serveFile' },
+  'map-remote': { icon: Globe, tone: 'remote', titleKey: 'rules.mapRemote', subKey: 'rules.reroute' },
+  block: { icon: Ban, tone: 'block', titleKey: 'rules.block', subKey: 'rules.resetClose' },
+  delay: { icon: Clock, tone: 'throttle', titleKey: 'rules.delay', subKey: 'rules.latency' },
+  throttle: { icon: Gauge, tone: 'throttle', titleKey: 'rules.throttle', subKey: 'rules.bandwidth' },
+  breakpoint: { icon: Pause, tone: 'brk', titleKey: 'rules.breakpoint', subKey: 'rules.pauseEdit' },
 };
 
 function toInt(value: string, fallback: number): number {
@@ -70,13 +72,15 @@ export function ActionEditor({
   onChange,
   onRemove,
 }: ActionEditorProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const translate = (key: string): string => t(key);
   const meta = ACTION_META[action.type];
   if (!meta) {
     return <span />;
   }
   return (
-    <ActionCard icon={meta.icon} tone={meta.tone} title={meta.title} sub={meta.sub} onRemove={onRemove}>
-      {renderBody(action, onChange)}
+    <ActionCard icon={meta.icon} tone={meta.tone} title={t(meta.titleKey)} sub={t(meta.subKey)} onRemove={onRemove}>
+      {renderBody(action, onChange, translate)}
     </ActionCard>
   );
 }
@@ -84,6 +88,7 @@ export function ActionEditor({
 function renderBody(
   action: RuleAction,
   onChange: (action: RuleAction) => void,
+  translate: (key: string) => string,
 ): React.JSX.Element {
   switch (action.type) {
     case 'header': {
@@ -92,21 +97,21 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
           <Select
             className={styles.op}
-            ariaLabel="Operation"
+            ariaLabel={translate('rules.operation')}
             value={current.op}
-            options={HEADER_OP_OPTIONS}
+            options={localizeOptions(HEADER_OP_OPTIONS, 'rules.operation', translate)}
             onValueChange={(op) => onChange({ ...current, op: op as HeaderOperation })}
           />
           <InputBox
             className={styles.grow}
-            ariaLabel="Header name"
+            ariaLabel={translate('rules.headerName')}
             value={current.name}
             placeholder="header-name"
             onValueChange={(name) => onChange({ ...current, name })}
@@ -114,7 +119,7 @@ function renderBody(
           {current.op !== 'remove' ? (
             <InputBox
               className={styles.grow}
-              ariaLabel="Header value"
+              ariaLabel={translate('rules.headerValue')}
               value={current.value ?? ''}
               placeholder="value"
               onValueChange={(value) => onChange({ ...current, value })}
@@ -129,14 +134,14 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.op}
-            ariaLabel="Operation"
+            ariaLabel={translate('rules.operation')}
             value={current.op}
-            options={QUERY_OP_OPTIONS}
+            options={localizeOptions(QUERY_OP_OPTIONS, 'rules.operation', translate)}
             onValueChange={(op) => onChange({ ...current, op: op as 'set' | 'remove' })}
           />
           <InputBox
             className={styles.grow}
-            ariaLabel="Query name"
+            ariaLabel={translate('rules.queryName')}
             value={current.name}
             placeholder="param"
             onValueChange={(name) => onChange({ ...current, name })}
@@ -144,7 +149,7 @@ function renderBody(
           {current.op !== 'remove' ? (
             <InputBox
               className={styles.grow}
-              ariaLabel="Query value"
+              ariaLabel={translate('rules.queryValue')}
               value={current.value ?? ''}
               placeholder="value"
               onValueChange={(value) => onChange({ ...current, value })}
@@ -160,22 +165,22 @@ function renderBody(
           <div className={styles.row}>
             <Select
               className={styles.phase}
-              ariaLabel="Phase"
+              ariaLabel={translate('rules.phase')}
               value={current.phase}
-              options={PHASE_OPTIONS}
+              options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
               onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
             />
             <Select
               className={styles.mode}
-              ariaLabel="Format"
+              ariaLabel={translate('rules.format')}
               value={current.format}
-              options={BODY_FORMAT_OPTIONS}
+              options={localizeOptions(BODY_FORMAT_OPTIONS, 'rules.bodyFormat', translate)}
               onValueChange={(format) => onChange({ ...current, format: format as 'text' | 'json' })}
             />
           </div>
           <textarea
             className={styles.textarea}
-            aria-label="Body content"
+            aria-label={translate('rules.bodyContent')}
             value={current.content}
             spellCheck={false}
             onChange={(event) => onChange({ ...current, content: event.target.value })}
@@ -191,10 +196,10 @@ function renderBody(
       return (
         <div className={styles.stack}>
           <div className={styles.row}>
-            <span className={styles.label}>Status</span>
+            <span className={styles.label}>{translate('rules.status')}</span>
             <InputBox
               className={styles.num}
-              ariaLabel="Status code"
+              ariaLabel={translate('rules.statusCode')}
               type="number"
               value={String(current.statusCode)}
               onValueChange={(value) =>
@@ -206,7 +211,7 @@ function renderBody(
             <div className={styles.row} key={index}>
               <InputBox
                 className={styles.grow}
-                ariaLabel="Header name"
+                ariaLabel={translate('rules.headerName')}
                 value={pair.name}
                 placeholder="header-name"
                 onValueChange={(name) =>
@@ -216,7 +221,7 @@ function renderBody(
               />
               <InputBox
                 className={styles.grow}
-                ariaLabel="Header value"
+                ariaLabel={translate('rules.headerValue')}
                 value={pair.value}
                 placeholder="value"
                 onValueChange={(value) =>
@@ -226,7 +231,7 @@ function renderBody(
               />
               <IconButton
                 icon={X}
-                label="Remove header"
+                label={translate('rules.removeHeader')}
                 size="sm"
                 strokeWidth={2.2}
                 onClick={() => setHeaders(headers.filter((_, position) => position !== index))}
@@ -239,13 +244,13 @@ function renderBody(
             onClick={() => setHeaders([...headers, { name: '', value: '' }])}
           >
             <Plus size={12} strokeWidth={2} />
-            Add header
+            {translate('rules.addHeader')}
           </button>
           <textarea
             className={styles.textarea}
-            aria-label="Response body"
+            aria-label={translate('rules.responseBody')}
             value={current.body ?? ''}
-            placeholder="response body"
+            placeholder={translate('rules.responseBody')}
             spellCheck={false}
             onChange={(event) => onChange({ ...current, body: event.target.value })}
           />
@@ -258,7 +263,7 @@ function renderBody(
         <div className={styles.row}>
           <InputBox
             className={styles.grow}
-            ariaLabel="Local path"
+            ariaLabel={translate('rules.localPath')}
             value={current.path}
             placeholder="/absolute/path/or/dir"
             onValueChange={(path) => onChange({ ...current, path })}
@@ -299,21 +304,21 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.mode}
-            ariaLabel="Scheme"
+            ariaLabel={translate('rules.scheme')}
             value={current.scheme ?? ''}
-            options={SCHEME_OPTIONS}
+            options={localizeOptions(SCHEME_OPTIONS, 'rules.scheme', translate)}
             onValueChange={(value) => rebuild('scheme', value)}
           />
           <InputBox
             className={styles.grow}
-            ariaLabel="Host"
+            ariaLabel={translate('rules.host')}
             value={current.host ?? ''}
             placeholder="staging.example.com"
             onValueChange={(value) => rebuild('host', value)}
           />
           <InputBox
             className={styles.num}
-            ariaLabel="Port"
+            ariaLabel={translate('rules.port')}
             type="number"
             value={current.port === undefined ? '' : String(current.port)}
             placeholder="port"
@@ -321,7 +326,7 @@ function renderBody(
           />
           <InputBox
             className={styles.grow}
-            ariaLabel="Path"
+            ariaLabel={translate('rules.path')}
             value={current.path ?? ''}
             placeholder="/new/path"
             onValueChange={(value) => rebuild('path', value)}
@@ -333,12 +338,12 @@ function renderBody(
       const current = action;
       return (
         <div className={styles.row}>
-          <span className={styles.label}>Mode</span>
+          <span className={styles.label}>{translate('rules.mode')}</span>
           <Select
             className={styles.mode}
-            ariaLabel="Block mode"
+            ariaLabel={translate('rules.blockMode')}
             value={current.mode}
-            options={BLOCK_MODE_OPTIONS}
+            options={localizeOptions(BLOCK_MODE_OPTIONS, 'rules.blockMode', translate)}
             onValueChange={(mode) => onChange({ ...current, mode: mode as 'reset' | 'close' })}
           />
         </div>
@@ -348,10 +353,10 @@ function renderBody(
       const current = action;
       return (
         <div className={styles.row}>
-          <span className={styles.label}>Status code</span>
+          <span className={styles.label}>{translate('rules.statusCode')}</span>
           <InputBox
             className={styles.num}
-            ariaLabel="Status code"
+            ariaLabel={translate('rules.statusCode')}
             type="number"
             value={String(current.statusCode)}
             onValueChange={(value) =>
@@ -367,15 +372,15 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
-          <span className={styles.label}>Delay (ms)</span>
+          <span className={styles.label}>{translate('rules.delayMs')}</span>
           <InputBox
             className={styles.num}
-            ariaLabel="Delay milliseconds"
+            ariaLabel={translate('rules.delayMilliseconds')}
             type="number"
             value={String(current.ms)}
             onValueChange={(value) => onChange({ ...current, ms: toInt(value, current.ms) })}
@@ -389,15 +394,15 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
-          <span className={styles.label}>Bytes / s</span>
+          <span className={styles.label}>{translate('rules.bytesPerSecond')}</span>
           <InputBox
             className={styles.num}
-            ariaLabel="Bytes per second"
+            ariaLabel={translate('rules.bytesPerSecond')}
             type="number"
             value={String(current.bytesPerSecond)}
             onValueChange={(value) =>
@@ -413,15 +418,15 @@ function renderBody(
         <div className={styles.row}>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
-          <span className={styles.label}>Timeout (ms)</span>
+          <span className={styles.label}>{translate('rules.timeoutMs')}</span>
           <InputBox
             className={styles.num}
-            ariaLabel="Timeout milliseconds"
+            ariaLabel={translate('rules.timeoutMilliseconds')}
             type="number"
             value={String(current.timeoutMs)}
             onValueChange={(value) =>
@@ -430,9 +435,9 @@ function renderBody(
           />
           <Select
             className={styles.mode}
-            ariaLabel="On timeout"
+            ariaLabel={translate('rules.onTimeout')}
             value={current.onTimeout}
-            options={TIMEOUT_POLICY_OPTIONS}
+            options={localizeOptions(TIMEOUT_POLICY_OPTIONS, 'rules.timeout', translate)}
             onValueChange={(value) => onChange({ ...current, onTimeout: value as 'continue' | 'drop' })}
           />
         </div>

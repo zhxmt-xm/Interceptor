@@ -1,5 +1,6 @@
 import { Copy, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   CaptureStatus,
@@ -15,6 +16,7 @@ type ProxyPanelState = 'loading' | 'ready' | 'error';
 
 /** Real listener, system-routing ownership and crash-recovery settings. */
 export function ProxyPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<SystemProxyStatus | null>(null);
   const [capture, setCapture] = useState<CaptureStatus | null>(null);
   const [state, setState] = useState<ProxyPanelState>('loading');
@@ -54,13 +56,13 @@ export function ProxyPanel(): React.JSX.Element {
     void operation()
       .then((nextStatus) => {
         setStatus(nextStatus);
-        setResult({ tone: 'success', message: 'System proxy settings updated.' });
+        setResult({ tone: 'success', message: t('settings.proxyUpdated') });
       })
       .catch((error: unknown) => {
         setResult({ tone: 'error', message: describeError(error) });
       })
       .finally(() => setBusy(false));
-  }, [busy]);
+  }, [busy, t]);
 
   /** Apply one guarded restore and describe ownership conflicts without hiding them. */
   const applyRestoreResult = useCallback((restore: SystemProxyRestoreResult): void => {
@@ -68,14 +70,14 @@ export function ProxyPanel(): React.JSX.Element {
     if (restore.reason === 'externally-modified') {
       setResult({
         tone: 'error',
-        message: 'Settings changed outside Interceptor. No system values were overwritten.',
+        message: t('settings.externalChange'),
       });
     } else if (restore.restored) {
-      setResult({ tone: 'success', message: 'Original system proxy settings restored.' });
+      setResult({ tone: 'success', message: t('settings.originalRestored') });
     } else {
-      setResult({ tone: 'success', message: 'No Interceptor-owned proxy settings remain.' });
+      setResult({ tone: 'success', message: t('settings.noOwnedSettings') });
     }
-  }, []);
+  }, [t]);
 
   /** Restore normal ownership without stopping the listener. */
   const restore = useCallback((): void => {
@@ -116,9 +118,9 @@ export function ProxyPanel(): React.JSX.Element {
   if (state === 'loading' || !status || !capture) {
     return (
       <>
-        <h2 className={styles.title}>Proxy &amp; Listener</h2>
+        <h2 className={styles.title}>{t('settings.proxyTitle')}</h2>
         <div className={styles.desc}>
-          {state === 'error' ? 'System proxy status unavailable.' : 'Loading system proxy status…'}
+          {state === 'error' ? t('settings.systemProxyUnavailable') : t('settings.loadingSystemProxy')}
         </div>
       </>
     );
@@ -132,97 +134,97 @@ export function ProxyPanel(): React.JSX.Element {
   return (
     <>
       <h2 className={styles.title}>
-        Proxy &amp; Listener
-        <StatusBadge tone={titleStatus.tone}>{titleStatus.label}</StatusBadge>
+        {t('settings.proxyTitle')}
+        <StatusBadge tone={titleStatus.tone}>{t(titleStatus.labelKey)}</StatusBadge>
       </h2>
       <div className={styles.desc}>
-        Local listener, operating-system routing, ownership and guarded recovery.
+        {t('settings.proxyDescription')}
       </div>
 
-      <Group title="Listener">
+      <Group title={t('settings.listener')}>
         <Row
-          label="Status"
-          hint="Capture accepts local HTTP and HTTPS proxy traffic"
+          label={t('settings.status')}
+          hint={t('settings.listenerStatusHint')}
         >
           <StatusBadge tone={capture.listening ? 'green' : 'yellow'}>
-            {capture.listening ? 'Listening' : 'Stopped'}
+            {capture.listening ? t('settings.listening') : t('settings.stopped')}
           </StatusBadge>
         </Row>
-        <Row label="Address" hint="Loopback only">
-          <span className={styles.mono}>{endpoint ?? 'Not listening'}</span>
+        <Row label={t('settings.address')} hint={t('settings.loopbackOnly')}>
+          <span className={styles.mono}>{endpoint ?? t('settings.notListening')}</span>
           <Button
             icon={Copy}
             disabled={!endpoint}
             onClick={() => void navigator.clipboard?.writeText(endpoint ?? '')}
           >
-            Copy
+            {t('settings.copy')}
           </Button>
         </Row>
       </Group>
 
-      <Group title="System proxy">
+      <Group title={t('settings.systemProxy')}>
         <Row
-          label="Automatic routing"
+          label={t('settings.automaticRouting')}
           hint={status.supported
-            ? 'Restored when capture stops or Interceptor exits'
-            : 'Native system proxy integration is unavailable on this platform'}
+            ? t('settings.restoredOnExit')
+            : t('settings.nativeProxyUnavailable')}
         >
           <ProxyOwnershipBadge status={status} />
           {status.owned ? (
-            <Button disabled={busy} onClick={restore}>Restore</Button>
+            <Button disabled={busy} onClick={restore}>{t('settings.restore')}</Button>
           ) : (
             <Button
               variant="primary"
               disabled={busy || !status.supported || !capture.listening}
               onClick={() => runAction(() => window.interceptor.enableSystemProxy())}
             >
-              Enable
+              {t('settings.enable')}
             </Button>
           )}
         </Row>
-        <Row label="Current configuration" hint="HTTP and HTTPS">
+        <Row label={t('settings.currentConfiguration')} hint="HTTP and HTTPS">
           <span className={cx(styles.mono, styles.proxyValue)}>
-            {status.owned && endpoint ? endpoint : status.proxyServer ?? 'Direct'}
+            {status.owned && endpoint ? endpoint : status.proxyServer ?? t('settings.direct')}
           </span>
         </Row>
-        <Row label="Bypass" hint="Hosts that connect directly">
+        <Row label={t('settings.bypass')} hint={t('settings.bypassHint')}>
           <span className={cx(styles.mono, styles.proxyValue)}>
-            {status.bypassList ?? 'None'}
+            {status.bypassList ?? t('settings.none')}
           </span>
         </Row>
         <Row
-          label="PAC / Auto detect"
+          label={t('settings.pacAutoDetect')}
           hint={status.owned
-            ? 'Temporarily disabled while Interceptor owns routing'
-            : 'Current operating-system automatic proxy configuration'}
+            ? t('settings.pacOwnedHint')
+            : t('settings.pacCurrentHint')}
         >
           <span className={cx(styles.mono, styles.proxyValue)}>
-            {status.pacUrl ?? (status.autoDetect ? 'Auto detect' : 'Off')}
+            {status.pacUrl ?? (status.autoDetect ? t('settings.autoDetect') : t('settings.off'))}
           </span>
         </Row>
       </Group>
 
-      <Group title="Recovery">
+      <Group title={t('settings.recovery')}>
         <Row
-          label="Ownership journal"
-          hint="Original values are stored before any system change"
+          label={t('settings.ownershipJournal')}
+          hint={t('settings.ownershipJournalHint')}
         >
           <StatusBadge tone={status.supported ? 'green' : 'yellow'}>
-            {status.supported ? 'Protected' : 'Unavailable'}
+            {status.supported ? t('settings.protected') : t('settings.unavailable')}
           </StatusBadge>
         </Row>
         <Row
-          label="Emergency repair"
-          hint="Stops capture and restores only settings still owned by Interceptor"
+          label={t('settings.emergencyRepair')}
+          hint={t('settings.emergencyRepairHint')}
         >
           {confirmingRepair ? (
             <>
-              <span className={styles.confirmText}>Restore owned settings?</span>
+              <span className={styles.confirmText}>{t('settings.restoreOwned')}</span>
               <Button disabled={busy} onClick={() => setConfirmingRepair(false)}>
-                Cancel
+                {t('settings.cancel')}
               </Button>
               <Button icon={RefreshCw} variant="danger" disabled={busy} onClick={repair}>
-                Confirm repair
+                {t('settings.confirmRepair')}
               </Button>
             </>
           ) : (
@@ -232,7 +234,7 @@ export function ProxyPanel(): React.JSX.Element {
               disabled={busy || !status.supported}
               onClick={() => setConfirmingRepair(true)}
             >
-              Emergency repair…
+              {t('settings.emergencyRepairAction')}
             </Button>
           )}
         </Row>
@@ -252,30 +254,31 @@ export function ProxyPanel(): React.JSX.Element {
 
 /** Ownership-specific status badge for normal, conflict and unsupported states. */
 function ProxyOwnershipBadge({ status }: { status: SystemProxyStatus }): React.JSX.Element {
+  const { t } = useTranslation();
   const value = proxyTitleStatus(status);
   return <StatusBadge tone={value.tone}>{
-    status.owned ? 'Owned by Interceptor' : value.label
+    status.owned ? t('settings.ownedByInterceptor') : t(value.labelKey)
   }</StatusBadge>;
 }
 
 /** Map public ownership facts to one stable semantic label and color. */
 function proxyTitleStatus(status: SystemProxyStatus): {
-  label: string;
+  labelKey: string;
   tone: 'green' | 'yellow' | 'red' | 'info';
 } {
   if (!status.supported) {
-    return { label: 'Unavailable', tone: 'yellow' };
+    return { labelKey: 'settings.unavailable', tone: 'yellow' };
   }
   if (status.ownershipLost) {
-    return { label: 'Ownership lost', tone: 'red' };
+    return { labelKey: 'settings.ownershipLost', tone: 'red' };
   }
   if (status.owned) {
-    return { label: 'Owned', tone: 'green' };
+    return { labelKey: 'settings.owned', tone: 'green' };
   }
   if (status.enabled) {
-    return { label: 'External', tone: 'yellow' };
+    return { labelKey: 'settings.external', tone: 'yellow' };
   }
-  return { label: 'Direct', tone: 'info' };
+  return { labelKey: 'settings.direct', tone: 'info' };
 }
 
 /** Convert unknown IPC failures to bounded operation feedback. */

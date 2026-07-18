@@ -12,28 +12,28 @@ import type {
 export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'brk';
 
 /** 把一个 action 映射为规则行 chip（着色 + 标签）。 */
-export function actionChip(type: RuleActionType): { kind: ChipKind; label: string } {
+export function actionChip(type: RuleActionType): { kind: ChipKind; labelKey: string } {
   switch (type) {
     case 'map-local':
-      return { kind: 'map', label: 'Map Local' };
+      return { kind: 'map', labelKey: 'rules.mapLocal' };
     case 'map-remote':
-      return { kind: 'remote', label: 'Map Remote' };
+      return { kind: 'remote', labelKey: 'rules.mapRemote' };
     case 'block':
-      return { kind: 'block', label: 'Block' };
+      return { kind: 'block', labelKey: 'rules.block' };
     case 'synthetic':
-      return { kind: 'block', label: 'Synthetic' };
+      return { kind: 'block', labelKey: 'rules.synthetic' };
     case 'throttle':
-      return { kind: 'throttle', label: 'Throttle' };
+      return { kind: 'throttle', labelKey: 'rules.throttle' };
     case 'delay':
-      return { kind: 'throttle', label: 'Delay' };
+      return { kind: 'throttle', labelKey: 'rules.delay' };
     case 'breakpoint':
-      return { kind: 'brk', label: 'Breakpoint' };
+      return { kind: 'brk', labelKey: 'rules.breakpoint' };
     case 'header':
     case 'query':
     case 'body':
     case 'status':
     default:
-      return { kind: 'rewrite', label: 'Rewrite' };
+      return { kind: 'rewrite', labelKey: 'rules.rewrite' };
   }
 }
 
@@ -43,16 +43,16 @@ export function deriveChips(rule: RuleDefinition): Array<[ChipKind, string]> {
   const chips: Array<[ChipKind, string]> = [];
   for (const action of rule.actions) {
     const chip = actionChip(action.type);
-    if (!seen.has(chip.label)) {
-      seen.add(chip.label);
-      chips.push([chip.kind, chip.label]);
+    if (!seen.has(chip.labelKey)) {
+      seen.add(chip.labelKey);
+      chips.push([chip.kind, chip.labelKey]);
     }
   }
   return chips;
 }
 
 /** 从规则的 matchers 派生人类可读的匹配摘要（host · path 等）。 */
-export function matchSummary(rule: RuleDefinition): string {
+export function matchSummary(rule: RuleDefinition, emptySummary?: string): string {
   const parts: string[] = [];
   const host = rule.matchers.find((matcher) => matcher.type === 'host');
   const path = rule.matchers.find((matcher) => matcher.type === 'path');
@@ -76,7 +76,7 @@ export function matchSummary(rule: RuleDefinition): string {
     parts.push(`${status.min}–${status.max}`);
   }
   if (parts.length === 0) {
-    return `${rule.matchers.length} condition${rule.matchers.length === 1 ? '' : 's'}`;
+    return emptySummary ?? `${rule.matchers.length} condition${rule.matchers.length === 1 ? '' : 's'}`;
   }
   return parts.join(' · ');
 }
@@ -91,10 +91,10 @@ function createRuleId(): string {
 }
 
 /** 新建一条规则：默认一个 host 通配匹配 + 一个请求 header set 动作，保证 wire 校验通过。 */
-export function createRule(priority: number): RuleDefinition {
+export function createRule(priority: number, name = 'New rule'): RuleDefinition {
   return {
     id: createRuleId(),
-    name: 'New rule',
+    name,
     enabled: true,
     priority,
     matchers: [{ type: 'host', value: '', mode: 'wildcard' }],
@@ -232,3 +232,15 @@ export const TIMEOUT_POLICY_OPTIONS: SelectOption[] = [
   { value: 'continue', label: 'continue' },
   { value: 'drop', label: 'drop' },
 ];
+
+/** Translate option labels without changing the stable values stored in rule models. */
+export function localizeOptions(
+  options: SelectOption[],
+  keyPrefix: string,
+  translate: (key: string) => string,
+): SelectOption[] {
+  return options.map((option) => ({
+    ...option,
+    label: translate(`${keyPrefix}.${option.value || 'keep'}`),
+  }));
+}

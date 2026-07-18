@@ -1,10 +1,12 @@
 import { SectionHeader, Timeline } from '../../../components';
+import { useTranslation } from 'react-i18next';
 import { buildTimeline, selectTraceRecords } from '../data';
 import { useDiagnostics } from '../DiagnosticsProvider';
 import styles from './TraceDetail.module.css';
 
 /** Right diagnostics pane: identifiers and the action timeline. */
 export function TraceDetail(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const { records, selectedKey } = useDiagnostics();
   const traceRecords = selectTraceRecords(records, selectedKey);
   const sorted = [...traceRecords].sort((a, b) => a.sequence - b.sequence);
@@ -14,9 +16,9 @@ export function TraceDetail(): React.JSX.Element {
     return (
       <div className={styles.detail}>
         <div className={styles.scroll}>
-          <SectionHeader>Action timeline</SectionHeader>
+          <SectionHeader>{t('diagnostics.actionTimeline')}</SectionHeader>
           <div className={styles.empty}>
-            Select a command to inspect its trace.
+            {t('diagnostics.selectCommand')}
           </div>
         </div>
       </div>
@@ -32,7 +34,9 @@ export function TraceDetail(): React.JSX.Element {
   const outcomeLabel =
     completed.outcome ?? (completed.level === 'error' ? 'failed' : 'ok');
   const duration =
-    completed.durationMs != null ? ` · ${completed.durationMs} ms` : '';
+    completed.durationMs != null
+      ? ` · ${new Intl.NumberFormat(i18n.language).format(completed.durationMs)} ms`
+      : '';
 
   return (
     <div className={styles.detail}>
@@ -56,8 +60,8 @@ export function TraceDetail(): React.JSX.Element {
         </div>
       </div>
       <div className={styles.scroll}>
-        <SectionHeader>Action timeline</SectionHeader>
-        <Timeline entries={buildTimeline(sorted)} />
+        <SectionHeader>{t('diagnostics.actionTimeline')}</SectionHeader>
+        <Timeline entries={buildTimeline(sorted, i18n.language)} />
       </div>
     </div>
   );

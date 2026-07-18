@@ -1,20 +1,26 @@
 import { AlertTriangle, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Chip, StatusBadge, Tabs } from '../../../components';
 import type { ComposerResponse } from '../../../../shared/desktop-api';
 import { useComposerStore } from '../composerStore';
+import { sizeLabel } from '../../capture/row-format';
 import styles from './ResponsePanel.module.css';
 
 /** HTTP 状态码短语（缺省时按状态类给出）。 */
-function statusLabel(status: number, statusText: string): string {
+function statusLabel(
+  status: number,
+  statusText: string,
+  translate: (key: string) => string,
+): string {
   if (statusText) {
     return statusText;
   }
   if (status >= 200 && status < 300) return 'OK';
-  if (status >= 300 && status < 400) return 'Redirect';
-  if (status >= 400 && status < 500) return 'Client error';
-  if (status >= 500) return 'Server error';
-  return 'No status';
+  if (status >= 300 && status < 400) return translate('composer.redirect');
+  if (status >= 400 && status < 500) return translate('composer.clientError');
+  if (status >= 500) return translate('composer.serverError');
+  return translate('composer.noStatus');
 }
 
 function statusTone(status: number): 'green' | 'yellow' | 'red' | 'blue' {
@@ -22,12 +28,6 @@ function statusTone(status: number): 'green' | 'yellow' | 'red' | 'blue' {
   if (status >= 300 && status < 400) return 'blue';
   if (status >= 400 && status < 500) return 'yellow';
   return 'red';
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function decodeBody(body: Uint8Array): string {
@@ -61,6 +61,8 @@ function setCookies(response: ComposerResponse): string[] {
 
 /** Right composer pane: response status, metrics and pretty-printed body. */
 export function ResponsePanel(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
+  const translate = (key: string): string => t(key);
   const response = useComposerStore((state) => state.response);
   const tab = useComposerStore((state) => state.responseTab);
   const sending = useComposerStore((state) => state.sending);
@@ -70,7 +72,7 @@ export function ResponsePanel(): React.JSX.Element {
   if (sending) {
     return (
       <div className={styles.response}>
-        <div className={styles.placeholder}>Sending request…</div>
+        <div className={styles.placeholder}>{t('composer.sendingRequest')}</div>
       </div>
     );
   }
@@ -79,7 +81,7 @@ export function ResponsePanel(): React.JSX.Element {
     return (
       <div className={styles.response}>
         <div className={styles.placeholder}>
-          {sendError ?? 'Send a request to see the response.'}
+          {sendError ?? t('composer.sendToSeeResponse')}
         </div>
       </div>
     );
@@ -89,16 +91,16 @@ export function ResponsePanel(): React.JSX.Element {
     return (
       <div className={styles.response}>
         <div className={styles.head}>
-          <Chip tone="red">Failed</Chip>
+          <Chip tone="red">{t('composer.failed')}</Chip>
           <span className={styles.spacer} />
           <span className={styles.metric}>
             <Clock size={13} strokeWidth={1.9} />
-            {response.durationMs} ms
+            {formatDuration(response.durationMs, i18n.language)}
           </span>
         </div>
         <div className={styles.errorBox}>
           <AlertTriangle size={15} strokeWidth={2} />
-          {response.error ?? 'Request failed.'}
+          {response.error ?? t('composer.requestFailed')}
         </div>
       </div>
     );
@@ -107,23 +109,23 @@ export function ResponsePanel(): React.JSX.Element {
   const bodyText = decodeBody(response.body);
   const cookies = setCookies(response);
   const responseTabs = [
-    { id: 'body', label: 'Body' },
-    { id: 'headers', label: 'Headers', count: response.headers.length },
-    { id: 'cookies', label: 'Cookies', count: cookies.length || undefined },
-    { id: 'raw', label: 'Raw' },
+    { id: 'body', label: t('composer.body') },
+    { id: 'headers', label: t('composer.headers'), count: response.headers.length },
+    { id: 'cookies', label: t('composer.cookies'), count: cookies.length || undefined },
+    { id: 'raw', label: t('composer.raw') },
   ];
 
   return (
     <div className={styles.response}>
       <div className={styles.head}>
         <Chip tone={statusTone(response.status)}>{response.status || '—'}</Chip>
-        <StatusBadge>{statusLabel(response.status, response.statusText)}</StatusBadge>
+        <StatusBadge>{statusLabel(response.status, response.statusText, translate)}</StatusBadge>
         <span className={styles.spacer} />
         <span className={styles.metric}>
           <Clock size={13} strokeWidth={1.9} />
-          {response.durationMs} ms
+          {formatDuration(response.durationMs, i18n.language)}
         </span>
-        <span className={styles.metric}>{formatBytes(response.totalBytes)}</span>
+        <span className={styles.metric}>{sizeLabel(response.totalBytes, i18n.language)}</span>
         <span className={styles.metric}>{response.httpVersion}</span>
       </div>
 
@@ -132,7 +134,7 @@ export function ResponsePanel(): React.JSX.Element {
       {tab === 'body' ? (
         <pre className={styles.bodyText}>
           {prettyBody(bodyText)}
-          {response.bodyTruncated ? '\n\n… response truncated (1 MB preview limit)' : ''}
+          {response.bodyTruncated ? `\n\n${t('composer.responseTruncated')}` : ''}
         </pre>
       ) : null}
 
@@ -150,7 +152,7 @@ export function ResponsePanel(): React.JSX.Element {
       {tab === 'cookies' ? (
         <div className={styles.hdrList}>
           {cookies.length === 0 ? (
-            <div className={styles.placeholder}>No Set-Cookie headers.</div>
+            <div className={styles.placeholder}>{t('composer.noSetCookie')}</div>
           ) : (
             cookies.map((cookie, index) => (
               <div key={index} className={styles.hdrRow}>
@@ -172,4 +174,8 @@ export function ResponsePanel(): React.JSX.Element {
       ) : null}
     </div>
   );
+}
+
+function formatDuration(milliseconds: number, locale: string): string {
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(milliseconds)} ms`;
 }

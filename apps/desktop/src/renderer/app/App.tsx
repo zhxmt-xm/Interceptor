@@ -1,13 +1,11 @@
 import { App as AntApp, ConfigProvider } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
-import type { LangId } from '../components';
-import {
-  BreakpointsMain,
-  BreakpointsStatusbar,
-  BreakpointsTopbar,
-} from '../features/breakpoints';
+import type { LanguageId } from '../i18n/languages';
+import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
+import { BreakpointsMain, BreakpointsStatusbar, BreakpointsTopbar } from '../features/breakpoints';
 import { CaptureMain, CaptureStatusbar, CaptureTopbar } from '../features/capture';
 import { ComposerMain, ComposerStatusbar, ComposerTopbar } from '../features/composer';
 import {
@@ -84,16 +82,21 @@ const initialCoreStatus: CoreProcessStatus = {
   startedAt: null,
   lastHeartbeatAt: null,
   updatedAt: new Date(0).toISOString(),
-  detail: 'Connecting to Proxy Core',
+  detail: '',
 };
 
 export function App(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
-  const [lang, setLang] = useState<LangId>(readInitialLang);
-  const [coreStatus, setCoreStatus] = useState(initialCoreStatus);
+  const [coreStatus, setCoreStatus] = useState<CoreProcessStatus>(() => ({
+    ...initialCoreStatus,
+    detail: t('app.connectingToCore'),
+  }));
   const [firstRunOpen, setFirstRunOpen] = useState(() => !hasCompletedFirstRun());
+  const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
+  const languageDefinition = getLanguageDefinition(language);
 
   const toggleCollapse = (): void => setCollapsed((value) => !value);
 
@@ -103,8 +106,20 @@ export function App(): React.JSX.Element {
   }, [themeMode]);
 
   useEffect(() => {
-    window.localStorage.setItem('interceptor.lang', lang);
-  }, [lang]);
+    document.documentElement.lang = language;
+    document.documentElement.dir = 'ltr';
+    window.localStorage.setItem('interceptor.language', language);
+    window.localStorage.removeItem('interceptor.lang');
+    void window.interceptor.setUiLanguage(language).catch(() => undefined);
+  }, [language]);
+
+  useEffect(() => {
+    setCoreStatus((current) =>
+      current.updatedAt === initialCoreStatus.updatedAt
+        ? { ...current, detail: t('app.connectingToCore') }
+        : current,
+    );
+  }, [t]);
 
   useEffect(() => UpdateActions.subscribe(), []);
 
@@ -130,7 +145,7 @@ export function App(): React.JSX.Element {
           setCoreStatus((current) => ({
             ...current,
             state: 'unresponsive',
-            detail: 'Proxy Core status unavailable',
+            detail: t('app.coreStatusUnavailable'),
             updatedAt: new Date().toISOString(),
           }));
         }
@@ -140,7 +155,11 @@ export function App(): React.JSX.Element {
       active = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [t]);
+
+  const changeLanguage = (nextLanguage: LanguageId): void => {
+    void i18n.changeLanguage(nextLanguage);
+  };
 
   const feature = renderView(view, toggleCollapse);
 
@@ -154,8 +173,8 @@ export function App(): React.JSX.Element {
           onSelect={setView}
           theme={themeMode}
           onThemeChange={setThemeMode}
-          lang={lang}
-          onLangChange={setLang}
+          lang={language}
+          onLangChange={changeLanguage}
           coreStatus={coreStatus}
         />
       }
@@ -167,16 +186,15 @@ export function App(): React.JSX.Element {
   );
 
   return (
-    <ConfigProvider componentSize="small" theme={createAppTheme(themeMode)}>
+    <ConfigProvider
+      componentSize="small"
+      direction="ltr"
+      locale={languageDefinition.antdLocale}
+      theme={createAppTheme(themeMode)}
+    >
       <AntApp className={styles.antApp}>
-        {view === 'diagnostics' ? (
-          <DiagnosticsProvider>{shell}</DiagnosticsProvider>
-        ) : (
-          shell
-        )}
-        {firstRunOpen ? (
-          <FirstRunWizard onComplete={() => setFirstRunOpen(false)} />
-        ) : null}
+        {view === 'diagnostics' ? <DiagnosticsProvider>{shell}</DiagnosticsProvider> : shell}
+        {firstRunOpen ? <FirstRunWizard onComplete={() => setFirstRunOpen(false)} /> : null}
       </AntApp>
     </ConfigProvider>
   );
@@ -188,12 +206,4 @@ function readInitialTheme(): ThemeMode {
     return stored;
   }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function readInitialLang(): LangId {
-  const stored = window.localStorage.getItem('interceptor.lang');
-  if (stored === 'en' || stored === 'zh' || stored === 'ja' || stored === 'de') {
-    return stored;
-  }
-  return 'en';
 }

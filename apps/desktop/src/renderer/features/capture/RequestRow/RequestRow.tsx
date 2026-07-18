@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
 import { cx, MethodBadge } from '../../../components';
@@ -28,7 +29,13 @@ export function RequestRow({
   onSelect,
   style,
 }: RequestRowProps): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const kind = statusKind(summary.statusCode);
+  const timeLabels = {
+    closed: t('capture.closed'),
+    open: t('capture.open'),
+    failed: t('capture.failed'),
+  };
   return (
     <button
       type="button"
@@ -50,8 +57,8 @@ export function RequestRow({
       </span>
       <span className={styles.proto}>{protocolLabel(summary.protocol)}</span>
       <span className={styles.type}>{typeLabel(summary.responseMime)}</span>
-      <span className={styles.size}>{sizeLabel(displayBytes(summary))}</span>
-      <span className={styles.time}>{timeLabel(summary)}</span>
+      <span className={styles.size}>{sizeLabel(displayBytes(summary), i18n.language)}</span>
+      <span className={styles.time}>{timeLabel(summary, i18n.language, timeLabels)}</span>
     </button>
   );
 }

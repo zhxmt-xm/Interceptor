@@ -1,4 +1,5 @@
 import { Download, ExternalLink, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, IconButton } from '../../../components';
 import { UpdateActions, useUpdateStore } from '../updateStore';
@@ -6,6 +7,7 @@ import styles from './UpdateNotification.module.css';
 
 /** Non-overlapping topbar notification for available and downloaded installers. */
 export function UpdateNotification(): React.JSX.Element | null {
+  const { t } = useTranslation();
   const status = useUpdateStore((state) => state.status);
   const dismissed = useUpdateStore((state) => state.dismissed);
   const busy = useUpdateStore((state) => state.busy);
@@ -23,9 +25,9 @@ export function UpdateNotification(): React.JSX.Element | null {
     <div className={styles.notice} role="status">
       <span className={styles.icon}><Download aria-hidden="true" /></span>
       <span className={styles.caption}>
-        <b>{downloaded ? 'Installer downloaded' : 'Update available'}</b>
+        <b>{downloaded ? t('settings.installerDownloaded') : t('settings.updateAvailable')}</b>
         <small>
-          {status.latestVersion ?? 'New version'} · {downloaded ? 'ready to open' : 'changelog ready'}
+          {status.latestVersion ?? t('settings.newVersion')} · {downloaded ? t('settings.readyToOpen') : t('settings.changelogReady')}
         </small>
       </span>
       <Button
@@ -36,9 +38,9 @@ export function UpdateNotification(): React.JSX.Element | null {
           downloaded ? UpdateActions.openDownloaded() : UpdateActions.download()
         )}
       >
-        {downloaded ? 'Open' : 'Download'}
+        {downloaded ? t('settings.open') : t('settings.download')}
       </Button>
-      <IconButton icon={X} label="Dismiss update notification" size="sm" onClick={dismiss} />
+      <IconButton icon={X} label={t('settings.dismissUpdate')} size="sm" onClick={dismiss} />
     </div>
   );
 }

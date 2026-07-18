@@ -16,10 +16,12 @@ import {
 import { MAX_BODY_CHUNK_BYTES } from '@interceptor/core-protocol';
 
 import {
+  DESKTOP_UI_LANGUAGES,
   DESKTOP_IPC_CHANNELS,
   type CaptureExchangeEvent,
   type CertificateInfo,
   type CoreProcessStatus,
+  type DesktopUiLanguage,
   type UpdateStatus,
 } from '../shared/desktop-api';
 import { CertificateService } from './certificates/certificate-service';
@@ -60,6 +62,124 @@ import {
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
+type NativeDialogKind =
+  | 'exportHar'
+  | 'importHar'
+  | 'exportArchive'
+  | 'importArchive'
+  | 'exportDiagnostics';
+
+const NATIVE_DIALOG_TITLES: Record<
+  DesktopUiLanguage,
+  Record<NativeDialogKind, string>
+> = {
+  en: {
+    exportHar: 'Export HAR 1.2',
+    importHar: 'Import HAR 1.2',
+    exportArchive: 'Export native archive',
+    importArchive: 'Import native archive',
+    exportDiagnostics: 'Export diagnostics (JSON Lines)',
+  },
+  'zh-CN': {
+    exportHar: '导出 HAR 1.2',
+    importHar: '导入 HAR 1.2',
+    exportArchive: '导出原生归档',
+    importArchive: '导入原生归档',
+    exportDiagnostics: '导出诊断日志（JSON Lines）',
+  },
+  'zh-TW': {
+    exportHar: '匯出 HAR 1.2',
+    importHar: '匯入 HAR 1.2',
+    exportArchive: '匯出原生封存檔',
+    importArchive: '匯入原生封存檔',
+    exportDiagnostics: '匯出診斷記錄（JSON Lines）',
+  },
+  ja: {
+    exportHar: 'HAR 1.2 をエクスポート',
+    importHar: 'HAR 1.2 をインポート',
+    exportArchive: 'ネイティブアーカイブをエクスポート',
+    importArchive: 'ネイティブアーカイブをインポート',
+    exportDiagnostics: '診断ログをエクスポート（JSON Lines）',
+  },
+  ko: {
+    exportHar: 'HAR 1.2 내보내기',
+    importHar: 'HAR 1.2 가져오기',
+    exportArchive: '네이티브 아카이브 내보내기',
+    importArchive: '네이티브 아카이브 가져오기',
+    exportDiagnostics: '진단 로그 내보내기(JSON Lines)',
+  },
+  de: {
+    exportHar: 'HAR 1.2 exportieren',
+    importHar: 'HAR 1.2 importieren',
+    exportArchive: 'Natives Archiv exportieren',
+    importArchive: 'Natives Archiv importieren',
+    exportDiagnostics: 'Diagnoseprotokoll exportieren (JSON Lines)',
+  },
+  fr: {
+    exportHar: 'Exporter HAR 1.2',
+    importHar: 'Importer HAR 1.2',
+    exportArchive: 'Exporter l’archive native',
+    importArchive: 'Importer l’archive native',
+    exportDiagnostics: 'Exporter les diagnostics (JSON Lines)',
+  },
+  es: {
+    exportHar: 'Exportar HAR 1.2',
+    importHar: 'Importar HAR 1.2',
+    exportArchive: 'Exportar archivo nativo',
+    importArchive: 'Importar archivo nativo',
+    exportDiagnostics: 'Exportar diagnósticos (JSON Lines)',
+  },
+  it: {
+    exportHar: 'Esporta HAR 1.2',
+    importHar: 'Importa HAR 1.2',
+    exportArchive: 'Esporta archivio nativo',
+    importArchive: 'Importa archivio nativo',
+    exportDiagnostics: 'Esporta diagnostica (JSON Lines)',
+  },
+  'pt-BR': {
+    exportHar: 'Exportar HAR 1.2',
+    importHar: 'Importar HAR 1.2',
+    exportArchive: 'Exportar arquivo nativo',
+    importArchive: 'Importar arquivo nativo',
+    exportDiagnostics: 'Exportar diagnósticos (JSON Lines)',
+  },
+  ru: {
+    exportHar: 'Экспорт HAR 1.2',
+    importHar: 'Импорт HAR 1.2',
+    exportArchive: 'Экспорт собственного архива',
+    importArchive: 'Импорт собственного архива',
+    exportDiagnostics: 'Экспорт диагностики (JSON Lines)',
+  },
+  nl: {
+    exportHar: 'HAR 1.2 exporteren',
+    importHar: 'HAR 1.2 importeren',
+    exportArchive: 'Native archief exporteren',
+    importArchive: 'Native archief importeren',
+    exportDiagnostics: 'Diagnostiek exporteren (JSON Lines)',
+  },
+  pl: {
+    exportHar: 'Eksportuj HAR 1.2',
+    importHar: 'Importuj HAR 1.2',
+    exportArchive: 'Eksportuj archiwum natywne',
+    importArchive: 'Importuj archiwum natywne',
+    exportDiagnostics: 'Eksportuj diagnostykę (JSON Lines)',
+  },
+  tr: {
+    exportHar: 'HAR 1.2 dışa aktar',
+    importHar: 'HAR 1.2 içe aktar',
+    exportArchive: 'Yerel arşivi dışa aktar',
+    importArchive: 'Yerel arşivi içe aktar',
+    exportDiagnostics: 'Tanılamayı dışa aktar (JSON Lines)',
+  },
+  uk: {
+    exportHar: 'Експорт HAR 1.2',
+    importHar: 'Імпорт HAR 1.2',
+    exportArchive: 'Експорт нативного архіву',
+    importArchive: 'Імпорт нативного архіву',
+    exportDiagnostics: 'Експорт діагностики (JSON Lines)',
+  },
+};
+
 PackagedRendererProtocol.registerScheme();
 
 /** Electron Main 应用所有者：窗口、安全策略、CoreRuntime 、证书与 Renderer IPC。 */
@@ -72,6 +192,8 @@ class DesktopApplication {
   private systemProxyService: SystemProxyService | null = null;
   /** Public GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
+  /** Renderer-selected UI language used only for Main-owned native dialogs. */
+  private uiLanguage: DesktopUiLanguage = 'en';
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
@@ -401,6 +523,17 @@ class DesktopApplication {
       },
     );
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiSetLanguage, (event, language: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (
+        typeof language !== 'string' ||
+        !DESKTOP_UI_LANGUAGES.includes(language as DesktopUiLanguage)
+      ) {
+        throw new Error('language is invalid');
+      }
+      this.uiLanguage = language as DesktopUiLanguage;
+    });
+
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.requireSystemProxyService().status();
@@ -601,7 +734,7 @@ class DesktopApplication {
         this.assertTrustedSender(event.senderFrame?.url);
         const options = toHarExportRequest(request);
         const selection = await dialog.showSaveDialog({
-          title: 'Export HAR 1.2',
+          title: this.nativeDialogTitle('exportHar'),
           defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.har`,
           filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -626,7 +759,7 @@ class DesktopApplication {
     ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const selection = await dialog.showOpenDialog({
-        title: 'Import HAR 1.2',
+        title: this.nativeDialogTitle('importHar'),
         filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
         properties: ['openFile'],
       });
@@ -648,7 +781,7 @@ class DesktopApplication {
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const selection = await dialog.showSaveDialog({
-        title: 'Export native archive',
+        title: this.nativeDialogTitle('exportArchive'),
         defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.iarchive`,
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -670,7 +803,7 @@ class DesktopApplication {
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const selection = await dialog.showOpenDialog({
-        title: 'Import native archive',
+        title: this.nativeDialogTitle('importArchive'),
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['openFile'],
       });
@@ -695,7 +828,7 @@ class DesktopApplication {
         this.assertTrustedSender(event.senderFrame?.url);
         const parsedFilter = toDiagnosticsExportFilter(filter);
         const selection = await dialog.showSaveDialog({
-          title: 'Export diagnostics (JSON Lines)',
+          title: this.nativeDialogTitle('exportDiagnostics'),
           defaultPath: `interceptor-diagnostics-${new Date().toISOString().slice(0, 10)}.jsonl`,
           filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -1140,6 +1273,13 @@ class DesktopApplication {
       throw new Error('System proxy service is not initialized');
     }
     return this.systemProxyService;
+  }
+
+  /** Return one localized title for a Main-owned native file dialog. */
+  private nativeDialogTitle(
+    dialogKind: NativeDialogKind,
+  ): string {
+    return NATIVE_DIALOG_TITLES[this.uiLanguage][dialogKind];
   }
 
   /** Return the initialized GitHub release notification owner. */

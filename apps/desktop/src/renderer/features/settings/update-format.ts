@@ -3,16 +3,19 @@ import type { UpdateStatus } from '../../../shared/desktop-api';
 /** Pure update status presentation rules shared across Renderer surfaces. */
 export class UpdateFormat {
   /** Return one concise state label. */
-  static stateLabel(status: UpdateStatus): string {
+  static stateLabel(
+    status: UpdateStatus,
+    translate: (key: string) => string = defaultTranslate,
+  ): string {
     switch (status.state) {
-      case 'unsupported': return 'Unavailable';
-      case 'idle': return 'Ready';
-      case 'checking': return 'Checking';
-      case 'available': return 'Available';
-      case 'downloading': return 'Downloading';
-      case 'downloaded': return 'Downloaded';
-      case 'up-to-date': return 'Up to date';
-      case 'failed': return 'Failed';
+      case 'unsupported': return translate('settings.update.unavailable');
+      case 'idle': return translate('settings.update.ready');
+      case 'checking': return translate('settings.update.checking');
+      case 'available': return translate('settings.update.available');
+      case 'downloading': return translate('settings.update.downloading');
+      case 'downloaded': return translate('settings.update.downloaded');
+      case 'up-to-date': return translate('settings.update.upToDate');
+      case 'failed': return translate('settings.update.failed');
     }
   }
 
@@ -36,31 +39,57 @@ export class UpdateFormat {
   }
 
   /** Return bounded progress text for a determinate installer download. */
-  static progress(status: UpdateStatus): string {
+  static progress(
+    status: UpdateStatus,
+    locale = 'en',
+    waitingLabel = 'Waiting',
+  ): string {
     return status.progress === null
-      ? 'Waiting'
-      : `${Math.round(status.progress * 100)}%`;
+      ? waitingLabel
+      : new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 })
+          .format(status.progress);
   }
 
   /** Return downloaded and total installer sizes in compact binary units. */
-  static bytes(status: UpdateStatus): string {
+  static bytes(
+    status: UpdateStatus,
+    locale = 'en',
+    unavailableLabel = 'Size unavailable',
+  ): string {
     if (status.totalBytes === null) {
-      return 'Size unavailable';
+      return unavailableLabel;
     }
-    const total = this.fileSize(status.totalBytes);
+    const total = this.fileSize(status.totalBytes, locale);
     return status.downloadedBytes === null
       ? total
-      : `${this.fileSize(status.downloadedBytes)} / ${total}`;
+      : `${this.fileSize(status.downloadedBytes, locale)} / ${total}`;
   }
 
   /** Format one non-negative byte count without exposing locale variance. */
-  private static fileSize(bytes: number): string {
+  private static fileSize(bytes: number, locale: string): string {
+    const format = (value: number, digits: number): string =>
+      new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
     if (bytes < 1024) {
-      return `${bytes} B`;
+      return `${format(bytes, 0)} B`;
     }
     if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${format(bytes / 1024, 1)} KB`;
     }
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${format(bytes / (1024 * 1024), 1)} MB`;
   }
+}
+
+const ENGLISH_UPDATE_LABELS: Record<string, string> = {
+  'settings.update.unavailable': 'Unavailable',
+  'settings.update.ready': 'Ready',
+  'settings.update.checking': 'Checking',
+  'settings.update.available': 'Available',
+  'settings.update.downloading': 'Downloading',
+  'settings.update.downloaded': 'Downloaded',
+  'settings.update.upToDate': 'Up to date',
+  'settings.update.failed': 'Failed',
+};
+
+function defaultTranslate(key: string): string {
+  return ENGLISH_UPDATE_LABELS[key] ?? key;
 }

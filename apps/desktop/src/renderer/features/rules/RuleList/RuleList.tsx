@@ -1,4 +1,5 @@
 import { MoreHorizontal, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Count, IconButton } from '../../../components';
 import { useRulesStore } from '../rulesStore';
@@ -7,6 +8,7 @@ import styles from './RuleList.module.css';
 
 /** Ordered, toggleable list of rules driven by the rules store. */
 export function RuleList(): React.JSX.Element {
+  const { t } = useTranslation();
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => state.dirty);
@@ -19,15 +21,15 @@ export function RuleList(): React.JSX.Element {
     <div className={styles.list}>
       <div className={styles.bar}>
         <Count className={styles.grow}>
-          <b>Rev {revision}</b> · {dirty ? 'unsaved changes' : 'applied'}
+          <b>{t('rules.revision', { revision })}</b> · {dirty ? t('rules.unsavedChanges') : t('rules.applied')}
         </Count>
-        <IconButton icon={Search} label="Search rules" size="sm" />
-        <IconButton icon={MoreHorizontal} label="More" size="sm" />
+        <IconButton icon={Search} label={t('rules.searchRules')} size="sm" />
+        <IconButton icon={MoreHorizontal} label={t('rules.more')} size="sm" />
       </div>
 
       <div className={styles.rows}>
         {rules.length === 0 ? (
-          <div className={styles.empty}>No rules yet — add a rule to start.</div>
+          <div className={styles.empty}>{t('rules.empty')}</div>
         ) : (
           rules.map((rule) => (
             <RuleRow

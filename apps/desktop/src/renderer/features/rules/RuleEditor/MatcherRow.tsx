@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { IconButton, InputBox, Select } from '../../../components';
 import type {
@@ -11,6 +12,7 @@ import type {
 import {
   createMatcher,
   KEY_MODE_OPTIONS,
+  localizeOptions,
   MATCHER_TYPE_OPTIONS,
   PHASE_OPTIONS,
   STRING_MODE_OPTIONS,
@@ -36,21 +38,23 @@ export function MatcherRow({
   onChange,
   onRemove,
 }: MatcherRowProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const translate = (key: string): string => t(key);
   return (
     <div className={styles.row}>
-      <span className={styles.conn}>{first ? 'IF' : 'AND'}</span>
+      <span className={styles.conn}>{first ? t('rules.if') : t('rules.and')}</span>
       <Select
         className={styles.type}
-        ariaLabel="Condition field"
+        ariaLabel={t('rules.conditionField')}
         value={matcher.type}
-        options={MATCHER_TYPE_OPTIONS}
+        options={localizeOptions(MATCHER_TYPE_OPTIONS, 'rules.matcher', translate)}
         onValueChange={(value) => onChange(createMatcher(value as RuleMatcherType))}
       />
-      {renderControls(matcher, onChange)}
+      {renderControls(matcher, onChange, translate)}
       <IconButton
         className={styles.remove}
         icon={X}
-        label="Remove condition"
+        label={t('rules.removeCondition')}
         size="sm"
         strokeWidth={2.2}
         onClick={onRemove}
@@ -62,13 +66,14 @@ export function MatcherRow({
 function renderControls(
   matcher: RuleMatcher,
   onChange: (matcher: RuleMatcher) => void,
+  translate: (key: string) => string,
 ): React.JSX.Element {
   switch (matcher.type) {
     case 'method':
       return (
         <InputBox
           className={styles.value}
-          ariaLabel="Method"
+          ariaLabel={translate('rules.method')}
           value={matcher.value}
           placeholder="GET"
           onValueChange={(value) => onChange({ type: 'method', value })}
@@ -88,14 +93,14 @@ function renderControls(
         <>
           <Select
             className={styles.mode}
-            ariaLabel="Match mode"
+            ariaLabel={translate('rules.matchMode')}
             value={current.mode}
-            options={STRING_MODE_OPTIONS}
+            options={localizeOptions(STRING_MODE_OPTIONS, 'rules.matchMode', translate)}
             onValueChange={(mode) => onChange({ ...current, mode: mode as StringMatchMode })}
           />
           <InputBox
             className={styles.value}
-            ariaLabel="Value"
+            ariaLabel={translate('rules.value')}
             value={current.value}
             placeholder={placeholder}
             onValueChange={(value) => onChange({ ...current, value })}
@@ -109,22 +114,22 @@ function renderControls(
         <>
           <InputBox
             className={styles.key}
-            ariaLabel="Query key"
+            ariaLabel={translate('rules.queryKey')}
             value={current.key}
             placeholder="key"
             onValueChange={(key) => onChange({ ...current, key })}
           />
           <Select
             className={styles.mode}
-            ariaLabel="Match mode"
+            ariaLabel={translate('rules.matchMode')}
             value={current.mode}
-            options={KEY_MODE_OPTIONS}
+            options={localizeOptions(KEY_MODE_OPTIONS, 'rules.matchMode', translate)}
             onValueChange={(mode) => onChange({ ...current, mode: mode as KeyMatchMode })}
           />
           {current.mode !== 'present' ? (
             <InputBox
               className={styles.value}
-              ariaLabel="Value"
+              ariaLabel={translate('rules.value')}
               value={current.value ?? ''}
               onValueChange={(value) => onChange({ ...current, value })}
             />
@@ -138,29 +143,29 @@ function renderControls(
         <>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
           <InputBox
             className={styles.key}
-            ariaLabel="Header name"
+            ariaLabel={translate('rules.headerName')}
             value={current.name}
             placeholder="content-type"
             onValueChange={(name) => onChange({ ...current, name })}
           />
           <Select
             className={styles.mode}
-            ariaLabel="Match mode"
+            ariaLabel={translate('rules.matchMode')}
             value={current.mode}
-            options={KEY_MODE_OPTIONS}
+            options={localizeOptions(KEY_MODE_OPTIONS, 'rules.matchMode', translate)}
             onValueChange={(mode) => onChange({ ...current, mode: mode as KeyMatchMode })}
           />
           {current.mode !== 'present' ? (
             <InputBox
               className={styles.value}
-              ariaLabel="Value"
+              ariaLabel={translate('rules.value')}
               value={current.value ?? ''}
               onValueChange={(value) => onChange({ ...current, value })}
             />
@@ -174,15 +179,15 @@ function renderControls(
         <>
           <InputBox
             className={styles.num}
-            ariaLabel="Min status"
+            ariaLabel={translate('rules.minStatus')}
             type="number"
             value={String(current.min)}
             onValueChange={(value) => onChange({ ...current, min: toInt(value, current.min) })}
           />
-          <span className={styles.sep}>to</span>
+          <span className={styles.sep}>{translate('rules.to')}</span>
           <InputBox
             className={styles.num}
-            ariaLabel="Max status"
+            ariaLabel={translate('rules.maxStatus')}
             type="number"
             value={String(current.max)}
             onValueChange={(value) => onChange({ ...current, max: toInt(value, current.max) })}
@@ -196,9 +201,9 @@ function renderControls(
         <>
           <Select
             className={styles.phase}
-            ariaLabel="Phase"
+            ariaLabel={translate('rules.phase')}
             value={current.phase}
-            options={PHASE_OPTIONS}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
           <InputBox

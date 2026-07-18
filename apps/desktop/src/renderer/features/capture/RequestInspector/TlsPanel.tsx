@@ -1,5 +1,6 @@
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, SectionHeader } from '../../../components';
 import type { ConnectionProbe } from '../../../../shared/desktop-api';
@@ -24,6 +25,7 @@ export function TlsPanel({
   scheme,
   protocol,
 }: TlsPanelProps): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [probe, setProbe] = useState<ConnectionProbe | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function TlsPanel({
       const result = await api.probeConnection(host, port);
       setProbe(result);
       if (!result.ok) {
-        setError(result.error ?? 'The TLS probe failed.');
+        setError(result.error ?? t('capture.tlsProbeFailed'));
       }
     } catch (probeError) {
       setError(probeError instanceof Error ? probeError.message : String(probeError));
@@ -51,37 +53,37 @@ export function TlsPanel({
   return (
     <div className={styles.panel}>
       <div>
-        <SectionHeader>Connection</SectionHeader>
+        <SectionHeader>{t('capture.connection')}</SectionHeader>
         <div className={styles.rows}>
-          <Row label="Scheme" value={scheme} mono />
-          <Row label="Host" value={host || '—'} mono />
-          <Row label="Port" value={String(port)} mono />
-          <Row label="Protocol" value={protocol || '—'} mono />
-          <Row label="Secure" value={secure ? 'TLS' : 'plaintext'} />
+          <Row label={t('capture.scheme')} value={scheme} mono />
+          <Row label={t('capture.host')} value={host || '—'} mono />
+          <Row label={t('capture.port')} value={String(port)} mono />
+          <Row label={t('capture.protocol')} value={protocol || '—'} mono />
+          <Row label={t('capture.secure')} value={secure ? 'TLS' : t('capture.plaintext')} />
         </div>
       </div>
 
       <div>
-        <SectionHeader>Live TLS probe</SectionHeader>
+        <SectionHeader>{t('capture.liveTlsProbe')}</SectionHeader>
         {!secure ? (
-          <div className={styles.empty}>This exchange was sent over plaintext HTTP.</div>
+          <div className={styles.empty}>{t('capture.plaintextExchange')}</div>
         ) : (
           <>
             <div className={styles.probeBar}>
               <Button size="sm" disabled={loading || !host} onClick={() => void runProbe()}>
-                {loading ? 'Probing…' : 'Probe TLS'}
+                {loading ? t('capture.probing') : t('capture.probeTls')}
               </Button>
-              <span className={styles.probeHint}>Connects to {host}:{port} now.</span>
+              <span className={styles.probeHint}>{t('capture.connectsNow', { host, port })}</span>
             </div>
             {error ? <div className={styles.error}>{error}</div> : null}
             {probe && probe.ok ? (
               <div className={styles.rows}>
-                <Row label="Version" value={probe.protocol || '—'} mono />
-                <Row label="Cipher" value={probe.cipher || '—'} mono />
+                <Row label={t('capture.version')} value={probe.protocol || '—'} mono />
+                <Row label={t('capture.cipher')} value={probe.cipher || '—'} mono />
                 <Row label="ALPN" value={probe.alpn || '—'} mono />
                 <Row
-                  label="Trust"
-                  value={probe.authorized ? 'authorized' : probe.authorizationError ?? 'not authorized'}
+                  label={t('capture.trust')}
+                  value={probe.authorized ? t('capture.authorized') : probe.authorizationError ?? t('capture.notAuthorized')}
                 />
               </div>
             ) : null}
@@ -91,7 +93,7 @@ export function TlsPanel({
 
       {probe && probe.ok && probe.certificates.length > 0 ? (
         <div>
-          <SectionHeader count={probe.certificates.length}>Certificate chain</SectionHeader>
+          <SectionHeader count={probe.certificates.length}>{t('capture.certificateChain')}</SectionHeader>
           <div className={styles.certs}>
             {probe.certificates.map((cert, index) => (
               <div key={index} className={styles.cert}>
@@ -103,10 +105,10 @@ export function TlsPanel({
                   )}
                   <span className={styles.certSubject}>{cert.subject || '—'}</span>
                 </div>
-                <Row label="Issuer" value={cert.issuer || '—'} mono />
-                <Row label="Valid from" value={cert.validFrom || '—'} mono />
-                <Row label="Valid to" value={cert.validTo || '—'} mono />
-                <Row label="Serial" value={cert.serialNumber || '—'} mono />
+                <Row label={t('capture.issuer')} value={cert.issuer || '—'} mono />
+                <Row label={t('capture.validFrom')} value={formatCertificateDate(cert.validFrom, i18n.language)} mono />
+                <Row label={t('capture.validTo')} value={formatCertificateDate(cert.validTo, i18n.language)} mono />
+                <Row label={t('capture.serial')} value={cert.serialNumber || '—'} mono />
                 <Row label="SHA-256" value={cert.fingerprint256 || '—'} mono />
               </div>
             ))}
@@ -115,6 +117,16 @@ export function TlsPanel({
       ) : null}
     </div>
   );
+}
+
+function formatCertificateDate(value: string | undefined, locale: string): string {
+  if (!value) {
+    return '—';
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function Row({

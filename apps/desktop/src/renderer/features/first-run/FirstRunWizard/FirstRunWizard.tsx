@@ -9,6 +9,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   CertificateInfo,
@@ -31,6 +32,7 @@ export interface FirstRunWizardProps {
 
 /** First-run setup for explicit proxy routing, CA trust and the first capture. */
 export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [step, setStep] = useState<FirstRunStep>('welcome');
   const [systemProxy, setSystemProxy] = useState<SystemProxyStatus | null>(null);
   const [useSystemProxy, setUseSystemProxy] = useState(false);
@@ -99,7 +101,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
     }
     setBusy(true);
     setError(null);
-    void startFirstCapture(useSystemProxy)
+    void startFirstCapture(useSystemProxy, t('firstRun.proxyDidNotStart'))
       .then(() => {
         window.localStorage.setItem(FIRST_RUN_STORAGE_KEY, 'completed');
         onComplete();
@@ -113,10 +115,10 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
       <section className={styles.wizard}>
         <header className={styles.header}>
           <span className={styles.logo}><Zap aria-hidden="true" /></span>
-          <b>Set up Interceptor</b>
+          <b>{t('firstRun.setup')}</b>
         </header>
 
-        <div className={styles.steps} aria-label="Setup progress">
+        <div className={styles.steps} aria-label={t('firstRun.setupProgress')}>
           {STEPS.map((item, index) => (
             <Fragment key={item}>
               {index > 0 ? (
@@ -133,23 +135,22 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                 <span className={styles.stepNumber}>
                   {index < currentIndex ? <Check aria-hidden="true" /> : index + 1}
                 </span>
-                <span className={styles.stepName}>{stepLabel(item)}</span>
+                <span className={styles.stepName}>{stepLabel(item, (key) => t(key))}</span>
               </span>
             </Fragment>
           ))}
         </div>
 
         {step === 'welcome' ? (
-          <WizardBody icon={Zap} title="Welcome to Interceptor">
+          <WizardBody icon={Zap} title={t('firstRun.welcomeTitle')}>
             <p>
-              A local HTTP/HTTPS debugging proxy. Inspect, map, rewrite and replay
-              traffic. Everything runs on your machine.
+              {t('firstRun.welcomeDescription')}
             </p>
             <div className={styles.consent}>
               <span className={styles.consentCheck}><Check aria-hidden="true" /></span>
               <span>
-                Capture stays <b>off</b> until you press Start. Nothing is recorded
-                or decrypted without your consent.
+                {t('firstRun.captureStays')} <b>{t('firstRun.off')}</b>{' '}
+                {t('firstRun.captureConsent')}
               </span>
             </div>
             <WizardFooter alignEnd>
@@ -159,17 +160,16 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                 variant="primary"
                 onClick={() => goTo('proxy')}
               >
-                Get started
+                {t('firstRun.getStarted')}
               </Button>
             </WizardFooter>
           </WizardBody>
         ) : null}
 
         {step === 'proxy' ? (
-          <WizardBody icon={Wifi} title="Route traffic through Interceptor">
+          <WizardBody icon={Wifi} title={t('firstRun.routeTitle')}>
             <p>
-              Point your system or app at the local proxy. Interceptor can set the
-              system proxy automatically and restore it on exit.
+              {t('firstRun.routeDescription')}
             </p>
             <div className={styles.card}>
               <button
@@ -182,21 +182,21 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
               >
                 <StateIcon state={systemProxy?.supported && useSystemProxy ? 'done' : 'todo'} icon={Check} />
                 <span className={styles.cardCaption}>
-                  <b>{systemProxy?.supported ? 'System proxy ready' : 'Automatic setup unavailable'}</b>
+                  <b>{systemProxy?.supported ? t('firstRun.systemProxyReady') : t('firstRun.automaticUnavailable')}</b>
                   <span>
                     {systemProxy?.supported
-                      ? 'enabled on Start · restored on exit'
-                      : 'configure the application proxy manually'}
+                      ? t('firstRun.enabledOnStart')
+                      : t('firstRun.configureManually')}
                   </span>
                 </span>
                 <StatusBadge tone={systemProxy?.supported ? 'green' : 'yellow'}>
-                  {systemProxy?.supported ? (useSystemProxy ? 'Ready' : 'Off') : 'Manual'}
+                  {systemProxy?.supported ? (useSystemProxy ? t('firstRun.ready') : t('firstRun.off')) : t('firstRun.manual')}
                 </StatusBadge>
               </button>
               <div className={styles.cardRow}>
                 <StateIcon state="current" icon={Wifi} />
                 <span className={styles.cardCaption}>
-                  <b>Manual proxy address</b>
+                  <b>{t('firstRun.manualProxyAddress')}</b>
                   <span>{WIZARD_PROXY_HOST}:{WIZARD_PROXY_PORT}</span>
                 </span>
                 <Button
@@ -205,13 +205,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                     `${WIZARD_PROXY_HOST}:${WIZARD_PROXY_PORT}`,
                   )}
                 >
-                  Copy
+                  {t('firstRun.copy')}
                 </Button>
               </div>
             </div>
             <ErrorMessage message={error} />
             <WizardFooter>
-              <Button onClick={() => goTo('welcome')}>Back</Button>
+              <Button onClick={() => goTo('welcome')}>{t('firstRun.back')}</Button>
               <Button
                 icon={ArrowRight}
                 iconPosition="end"
@@ -219,45 +219,44 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                 disabled={systemProxy === null}
                 onClick={() => goTo('ca')}
               >
-                Continue
+                {t('firstRun.continue')}
               </Button>
             </WizardFooter>
           </WizardBody>
         ) : null}
 
         {step === 'ca' ? (
-          <WizardBody icon={Shield} title="Trust the Interceptor CA">
+          <WizardBody icon={Shield} title={t('firstRun.trustTitle')}>
             <p>
-              To decrypt HTTPS, install and trust the local root certificate.
-              Trust is only ever installed with your explicit consent.
+              {t('firstRun.trustDescription')}
             </p>
             <div className={styles.card}>
               <div className={styles.cardRow}>
                 <StateIcon state={certificate?.present ? 'done' : 'current'} icon={Shield} />
                 <span className={styles.cardCaption}>
-                  <b>Root CA generated on this device</b>
-                  <span>{certificate?.fingerprint ?? 'not generated'}</span>
+                  <b>{t('firstRun.rootGenerated')}</b>
+                  <span>{certificate?.fingerprint ?? t('firstRun.notGenerated')}</span>
                 </span>
                 {certificate?.present ? (
-                  <StatusBadge>Done</StatusBadge>
+                  <StatusBadge>{t('firstRun.done')}</StatusBadge>
                 ) : (
                   <Button
                     variant="primary"
                     disabled={busy || certificate === null}
                     onClick={generateCertificate}
                   >
-                    Generate
+                    {t('firstRun.generate')}
                   </Button>
                 )}
               </div>
               <div className={styles.cardRow}>
                 <StateIcon state={certificate?.trusted ? 'done' : certificate?.present ? 'current' : 'todo'} icon={LockKeyhole} />
                 <span className={styles.cardCaption}>
-                  <b>Install to local trust store</b>
-                  <span>explicit OS authorization required</span>
+                  <b>{t('firstRun.installTrustStore')}</b>
+                  <span>{t('firstRun.explicitAuthorization')}</span>
                 </span>
                 {certificate?.trusted ? (
-                  <StatusBadge>Done</StatusBadge>
+                  <StatusBadge>{t('firstRun.done')}</StatusBadge>
                 ) : (
                   <Button
                     icon={Shield}
@@ -265,21 +264,21 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                     disabled={busy || !certificate?.present || !certificate.supported}
                     onClick={installCertificate}
                   >
-                    Install
+                    {t('firstRun.install')}
                   </Button>
                 )}
               </div>
               <div className={styles.cardRow}>
                 <StateIcon state={certificate?.trusted ? 'done' : 'todo'} icon={Check} />
                 <span className={styles.cardCaption}>
-                  <b>Verify trust</b>
-                  <span>{certificate?.trusted ? 'certificate is trusted' : 'waiting for trust installation'}</span>
+                  <b>{t('firstRun.verifyTrust')}</b>
+                  <span>{certificate?.trusted ? t('firstRun.certificateTrusted') : t('firstRun.waitingForTrust')}</span>
                 </span>
               </div>
             </div>
             <ErrorMessage message={error} />
             <WizardFooter>
-              <Button onClick={() => goTo('proxy')}>Back</Button>
+              <Button onClick={() => goTo('proxy')}>{t('firstRun.back')}</Button>
               <Button
                 icon={ArrowRight}
                 iconPosition="end"
@@ -287,40 +286,39 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps): React.JSX.E
                 disabled={busy || !certificate?.trusted}
                 onClick={() => goTo('ready')}
               >
-                Continue
+                {t('firstRun.continue')}
               </Button>
             </WizardFooter>
           </WizardBody>
         ) : null}
 
         {step === 'ready' ? (
-          <WizardBody icon={Check} iconTone="success" title="You're all set">
+          <WizardBody icon={Check} iconTone="success" title={t('firstRun.allSetTitle')}>
             <p>
-              Interceptor is ready to capture. Start capturing to see live traffic,
-              then add rules to map, rewrite or block.
+              {t('firstRun.allSetDescription')}
             </p>
             <div className={styles.card}>
               <div className={styles.cardRow}>
                 <StateIcon state="done" icon={Check} />
-                <span className={styles.cardCaption}><b>Proxy configured</b></span>
+                <span className={styles.cardCaption}><b>{t('firstRun.proxyConfigured')}</b></span>
                 <span className={styles.mono}>{WIZARD_PROXY_HOST}:{WIZARD_PROXY_PORT}</span>
               </div>
               <div className={styles.cardRow}>
                 <StateIcon state="done" icon={Check} />
-                <span className={styles.cardCaption}><b>CA trusted</b></span>
-                <StatusBadge>MITM ready</StatusBadge>
+                <span className={styles.cardCaption}><b>{t('firstRun.caTrusted')}</b></span>
+                <StatusBadge>{t('firstRun.mitmReady')}</StatusBadge>
               </div>
             </div>
             <ErrorMessage message={error} />
             <WizardFooter>
-              <Button onClick={() => goTo('ca')}>Back</Button>
+              <Button onClick={() => goTo('ca')}>{t('firstRun.back')}</Button>
               <Button
                 icon={Activity}
                 variant="primary"
                 disabled={busy}
                 onClick={startCapture}
               >
-                {busy ? 'Starting…' : 'Start capturing'}
+                {busy ? t('firstRun.starting') : t('firstRun.startCapturing')}
               </Button>
             </WizardFooter>
           </WizardBody>
@@ -380,21 +378,24 @@ function ErrorMessage({ message }: { message: string | null }): React.JSX.Elemen
 }
 
 /** Stable display label for one setup step. */
-function stepLabel(step: FirstRunStep): string {
+function stepLabel(step: FirstRunStep, translate: (key: string) => string): string {
   switch (step) {
-    case 'welcome': return 'Welcome';
-    case 'proxy': return 'Proxy';
-    case 'ca': return 'Trust CA';
-    case 'ready': return 'Ready';
+    case 'welcome': return translate('firstRun.stepWelcome');
+    case 'proxy': return translate('firstRun.stepProxy');
+    case 'ca': return translate('firstRun.stepTrustCa');
+    case 'ready': return translate('firstRun.stepReady');
   }
 }
 
 /** Start the first listener and apply system routing only after it is live. */
-async function startFirstCapture(useSystemProxy: boolean): Promise<void> {
+async function startFirstCapture(
+  useSystemProxy: boolean,
+  proxyDidNotStartMessage: string,
+): Promise<void> {
   const api = window.interceptor;
   const status = await api.startCapture(WIZARD_PROXY_PORT);
   if (!status.listening || !status.host || !status.port) {
-    throw new Error('The local proxy did not start.');
+    throw new Error(proxyDidNotStartMessage);
   }
   useCaptureStore.getState().setCapturing(true);
   useCaptureStore.getState().setLive(true);

@@ -4,9 +4,9 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 ## Status
 
-M0 (project scaffold and toolchain), M1 (IPC communication foundation), M2 (storage layer), M3 (minimal explicit HTTP/1.1 proxy), M4 (session list UI), and M5 (CA and HTTPS MITM) are complete. The application provides the secure Electron shell, a modular Ant Design UI (six feature views with four time-of-day themes and a sidebar theme/language switcher), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured Core diagnostics, an on-disk storage layer (`node:sqlite` + worker threads, content-addressed blob store), a Mockttp-based explicit proxy that captures canonical HTTP/1.1 exchanges, real-time capture events with bounded-queue backpressure, a data-driven virtualized capture list with an on-demand inspector, and HTTPS interception via a locally generated Root CA (private key encrypted with the OS secure store, installed into the current-user trust store only with explicit consent).
+M0–M13 are complete; production signing/notarization and real macOS release evidence remain external release checks. The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, hardened installers, and user-triggered GitHub Release downloads.
 
-The current task is M6: HTTP/2 downstream/upstream, the four protocol-conversion combinations, stream-level modelling, and the HTTP/2 inspector. UtilityProcess `parentPort` remains lifecycle-only apart from transferring the dedicated business MessagePort.
+The next release action is a real signed tag build with repository-external Windows and Apple credentials, followed by native macOS download/open validation.
 
 Documentation is split to keep routine context small:
 

@@ -40,7 +40,7 @@ export interface RulesState {
   setDiagnostics(diagnostics: ProtocolDiagnostic[]): void;
   select(id: string | null): void;
 
-  addRule(): void;
+  addRule(name?: string): void;
   removeRule(id: string): void;
   toggleRule(id: string): void;
   renameRule(id: string, name: string): void;
@@ -125,9 +125,9 @@ export const useRulesStore = create<RulesState>((set, get) => ({
 
   select: (id) => set({ selectedId: id }),
 
-  addRule: () =>
+  addRule: (name) =>
     set((state) => {
-      const rule = createRule(nextPriority(state.rules));
+      const rule = createRule(nextPriority(state.rules), name);
       return { rules: [...state.rules, rule], selectedId: rule.id, dirty: true };
     }),
 

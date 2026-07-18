@@ -1,4 +1,5 @@
 import { Menu } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Count, IconButton, Switch, Title } from '../../../components';
 import { useBreakpointsStore } from '../breakpointsStore';
@@ -11,18 +12,19 @@ export interface BreakpointsTopbarProps {
 
 /** Breakpoints topbar: toggle, title, paused count and break-on-match switch. */
 export function BreakpointsTopbar({ onMenu }: BreakpointsTopbarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const count = useBreakpointsStore((state) => state.breakpoints.length);
   const enabled = useBreakpointsStore((state) => state.enabled);
 
   return (
     <>
-      <IconButton icon={Menu} label="Toggle sidebar" onClick={onMenu} />
-      <Title>Breakpoints</Title>
+      <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
+      <Title>{t('breakpoints.title')}</Title>
       <Count className={styles.count}>
-        <b>{count}</b> paused
+        {t('breakpoints.pausedCount', { count })}
       </Count>
       <div className={styles.actions}>
-        <Count className={styles.breakLabel}>Break on match</Count>
+        <Count className={styles.breakLabel}>{t('breakpoints.breakOnMatch')}</Count>
         <Switch checked={enabled} onChange={(next) => void setBreakOnMatch(next)} />
       </div>
     </>

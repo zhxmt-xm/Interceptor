@@ -1,10 +1,12 @@
 import { cx } from '../../../components';
+import { useTranslation } from 'react-i18next';
 import { aggregateTraces } from '../data';
 import { useDiagnostics } from '../DiagnosticsProvider';
 import styles from './TraceList.module.css';
 
 /** Left diagnostics pane: the scrollable trace/command table. */
 export function TraceList(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const {
     records,
     selectedKey,
@@ -13,21 +15,27 @@ export function TraceList(): React.JSX.Element {
     loadingMore,
     loadMore,
   } = useDiagnostics();
-  const rows = aggregateTraces(records);
+  const rows = aggregateTraces(records, i18n.language, {
+    success: t('diagnostics.success'),
+    failed: t('diagnostics.failed'),
+    cancelled: t('diagnostics.cancelled'),
+    timedOut: t('diagnostics.timedOut'),
+    ok: t('diagnostics.ok'),
+  });
 
   return (
     <div className={styles.list}>
       <div className={styles.head}>
-        <span>Time</span>
-        <span>Command</span>
-        <span>Level</span>
-        <span>Outcome</span>
-        <span className={styles.right}>Duration</span>
+        <span>{t('diagnostics.time')}</span>
+        <span>{t('diagnostics.command')}</span>
+        <span>{t('diagnostics.level')}</span>
+        <span>{t('diagnostics.outcome')}</span>
+        <span className={styles.right}>{t('diagnostics.duration')}</span>
       </div>
 
       <div className={styles.body}>
         {rows.length === 0 ? (
-          <div className={styles.empty}>No diagnostics recorded yet.</div>
+          <div className={styles.empty}>{t('diagnostics.empty')}</div>
         ) : (
           rows.map((row) => (
             <button
@@ -59,7 +67,7 @@ export function TraceList(): React.JSX.Element {
             disabled={loadingMore}
             onClick={loadMore}
           >
-            {loadingMore ? 'Loading…' : 'Load earlier records'}
+            {loadingMore ? t('diagnostics.loading') : t('diagnostics.loadEarlier')}
           </button>
         ) : null}
       </div>

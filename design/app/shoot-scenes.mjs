@@ -24,7 +24,7 @@ const pop = page.locator('.footpop.theme');
 
 async function shoot(name, theme, { hover, all } = {}) {
   await page.evaluate(
-    (t) => window.__setState({ view: 'capture', theme: t, sidebar: 'expanded', themeui: 'a', langui: 'l1', pop2: 'theme' }),
+    (t) => window.__setState({ view: 'capture', theme: t, sidebar: 'expanded', pop2: 'theme' }),
     theme,
   );
   await page.evaluate((on) => {
@@ -50,14 +50,14 @@ await shoot('hover-ember', 'light', { hover: 'ember' });
 await shoot('hover-dark', 'dark', { hover: 'dark' });
 
 // full-app shot: popover docked to the right of the expanded sidebar
-await page.evaluate(() => window.__setState({ view: 'capture', theme: 'light', sidebar: 'expanded', themeui: 'a', langui: 'l1', pop2: 'theme' }));
+await page.evaluate(() => window.__setState({ view: 'capture', theme: 'light', sidebar: 'expanded', pop2: 'theme' }));
 await page.evaluate(() => { const s = document.getElementById('__allart'); if (s) s.textContent = ''; });
 await page.locator('.footpop.theme .thi[data-themeset="ember"]').hover();
 await page.waitForTimeout(180);
 await page.locator('.app').screenshot({ path: path.join(out, 'app-popover-right.png') });
 console.log('  \u2713 app-popover-right');
 
-await page.evaluate(() => window.__setState({ view: 'capture', theme: 'light', sidebar: 'collapsed', themeui: 'a', langui: 'l1', pop2: 'theme' }));
+await page.evaluate(() => window.__setState({ view: 'capture', theme: 'light', sidebar: 'collapsed', pop2: 'theme' }));
 await page.locator('.footpop.theme .thi[data-themeset="ember"]').hover();
 await page.waitForTimeout(180);
 await page.locator('.app').screenshot({ path: path.join(out, 'app-popover-collapsed.png') });

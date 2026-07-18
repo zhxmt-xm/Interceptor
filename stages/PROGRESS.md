@@ -62,7 +62,7 @@
 - Main/Core 正式业务通信使用 CoreRuntime 每次启动 CoreProcess 时转交的专用 MessagePort；Typed RPC Schema、运行时校验、correlation、timeout/cancel 和 restart recovery 已实现。
 - Core 结构化 Command/Action Trace、`AsyncLocalStorage`、有界 Ring Buffer、脱敏和 stdout/stderr 后备已实现；日志数据库留在 M2。
 - Renderer 通过窄 API 可读取 CoreProcess 状态、执行 M1 echo 和查询脱敏 Trace；无通用 IPC 或 MessagePort 暴露。
-- Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地。
+- Ant Design v6 应用壳、六个 feature 视图（Capture/Rules/Composer/Breakpoints/Diagnostics/Settings）、四套时段主题（light/warm/dark/ember）、15 种完整界面语言与侧栏主题/语言切换器、扁平共享组件库和平台应用图标已落地。默认英语；语言即时切换并持久化，同步 Ant Design locale、文档 `lang`、区域格式与 Main 原生文件对话框。
 - 存储层已落地：`node:sqlite` + `worker_threads` 的 Capture（`capture.sqlite`，八张核心实体表 + FTS5 + 只向前迁移）与 Diagnostics（`diagnostics.sqlite`，保留 + 丢弃计数 + 分页）双库、独占连接的 Storage/Diagnostics Worker、内容寻址 Blob Store（流式 + 去重 + 配额 + crash-safe GC）、keyset opaque cursor 分页查询，以及 Storage 状态/清空窄 API 与 Storage 设置面板。数据目录由 Main 经 `--data-dir` 注入 Core。
 - HTTP/1.1 显式代理已落地（M3）：基于 Mockttp 的 loopback 显式代理经 `proxy.start/stop/status` 控制，转发 HTTP/1.1、未解密时 CONNECT 直通；规范 Exchange（含请求/响应头与内容寻址正文 Blob）写入 Storage。实时 Capture 事件经 Core 内有界合并队列 + 窗口背压批量推送（`event-batch`/`event-ack`），Main 订阅后经 `capture:events` 广播 Renderer。
 - 会话列表 UI 已落地（M4）：Capture 工作区数据驱动——TanStack Virtual 固定行高虚拟化列表 + Zustand 视图状态（实时事件按 id 合并/前插、keyset 分页查询、客户端协议分段过滤），Omnibox 关键字搜索与 method/status/host 结构化过滤下推 Core `sessions.query`，录制开关经 `proxy.start/stop`；Inspector 选中行按需 `sessions.detail` 拉取头部/正文引用，正文经 `body.read-range` 分块用 CodeMirror（JSON 高亮）或 hex fallback 预览（256KB 上限）。body/header 不进入全局状态。
@@ -81,6 +81,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-18 多语言界面增强验收：`i18next` + `react-i18next` 接入 15 个完整 catalog（每种 659 个主 key，俄/波/乌补齐 CLDR `few/many`）；所有 Renderer 用户文案外部化，Main 经受限 `setUiLanguage` 意图同步 HAR/archive/Diagnostics 原生文件对话框。三 workspace typecheck 通过；Desktop 87 / Proxy Core 187 / Protocol 19，共 293 项单测通过；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 1/1，逐项切换 15 种语言并验证 `html lang`、持久化、侧栏译文、页面无溢出及非法语言拒绝；生产 audit 0。设计源仅保留当前 Theme flyout 与 Language list，已删除 Theme B/C/D、Language L2/L3 及其专用截图矩阵。
 
 2026-07-18 M13完成后的集中验收：`npm run typecheck`三workspace；`npm run test:unit` Desktop 80 / Proxy Core 187 / Protocol 19，共286项；Windows package audit 1,292 files / 376,709,663 bytes；真实packaged smoke 1/1；正式WiX MSI构建；0.0.1→0.0.2 install/launch/upgrade/launch/uninstall；生产audit 0；actionlint通过。完整parity 35 views，Updates七态light/dark共14场景全部0 missing。详情见 [M13.md](M13.md)。
 

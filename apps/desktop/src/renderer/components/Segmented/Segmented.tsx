@@ -2,7 +2,7 @@ import { cx } from '../cx';
 import styles from './Segmented.module.css';
 
 export interface SegmentedProps {
-  options: string[];
+  options: Array<string | { label: string; value: string }>;
   value: string;
   onChange?: (value: string) => void;
 }
@@ -11,15 +11,18 @@ export interface SegmentedProps {
 export function Segmented({ options, value, onChange }: SegmentedProps): React.JSX.Element {
   return (
     <div className={styles.segmented}>
-      {options.map((option) => (
-        <span
-          key={option}
-          className={cx(styles.option, option === value && styles.active)}
-          onClick={onChange ? () => onChange(option) : undefined}
-        >
-          {option}
-        </span>
-      ))}
+      {options.map((option) => {
+        const item = typeof option === 'string' ? { label: option, value: option } : option;
+        return (
+          <span
+            key={item.value}
+            className={cx(styles.option, item.value === value && styles.active)}
+            onClick={onChange ? () => onChange(item.value) : undefined}
+          >
+            {item.label}
+          </span>
+        );
+      })}
     </div>
   );
 }

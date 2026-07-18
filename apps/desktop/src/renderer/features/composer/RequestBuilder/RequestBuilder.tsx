@@ -1,4 +1,5 @@
 import { Send, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import {
   Button,
@@ -20,25 +21,9 @@ const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTION
   (method) => ({ value: method, label: method }),
 );
 
-const PROTOCOL_LABELS: Record<ComposerProtocol, string> = {
-  auto: 'Auto',
-  'http/1.1': 'HTTP/1.1',
-  h2: 'HTTP/2',
-};
-const LABEL_TO_PROTOCOL: Record<string, ComposerProtocol> = {
-  Auto: 'auto',
-  'HTTP/1.1': 'http/1.1',
-  'HTTP/2': 'h2',
-};
-
-const AUTH_OPTIONS = [
-  { value: 'none', label: 'None' },
-  { value: 'bearer', label: 'Bearer' },
-  { value: 'basic', label: 'Basic' },
-];
-
 /** Left composer pane: method + URL, protocol and the request tabs/headers. */
 export function RequestBuilder(): React.JSX.Element {
+  const { t } = useTranslation();
   const method = useComposerStore((state) => state.method);
   const url = useComposerStore((state) => state.url);
   const protocol = useComposerStore((state) => state.protocol);
@@ -68,10 +53,10 @@ export function RequestBuilder(): React.JSX.Element {
       : '—';
 
   const requestTabs = [
-    { id: 'headers', label: 'Headers', count: enabledHeaders },
-    { id: 'query', label: 'Query', count: queryParams.length || undefined },
-    { id: 'body', label: 'Body' },
-    { id: 'auth', label: 'Auth' },
+    { id: 'headers', label: t('composer.headers'), count: enabledHeaders },
+    { id: 'query', label: t('composer.query'), count: queryParams.length || undefined },
+    { id: 'body', label: t('composer.body') },
+    { id: 'auth', label: t('composer.auth') },
   ];
 
   return (
@@ -79,14 +64,14 @@ export function RequestBuilder(): React.JSX.Element {
       <div className={styles.urlrow}>
         <Select
           className={styles.method}
-          ariaLabel="Method"
+          ariaLabel={t('composer.method')}
           value={method}
           options={METHOD_OPTIONS}
           onValueChange={setMethod}
         />
         <InputBox
           className={styles.url}
-          ariaLabel="Request URL"
+          ariaLabel={t('composer.requestUrl')}
           value={url}
           placeholder="https://example.com/path"
           onValueChange={setUrl}
@@ -97,16 +82,20 @@ export function RequestBuilder(): React.JSX.Element {
           disabled={sending}
           onClick={() => void sendComposerRequest()}
         >
-          {sending ? 'Sending…' : 'Send'}
+          {sending ? t('composer.sending') : t('composer.send')}
         </Button>
       </div>
 
       <div className={styles.subrow}>
-        <span className={styles.protocolLabel}>Protocol</span>
+        <span className={styles.protocolLabel}>{t('composer.protocol')}</span>
         <Segmented
-          options={['Auto', 'HTTP/1.1', 'HTTP/2']}
-          value={PROTOCOL_LABELS[protocol]}
-          onChange={(label) => setProtocol(LABEL_TO_PROTOCOL[label] ?? 'auto')}
+          options={[
+            { value: 'auto', label: t('composer.auto') },
+            { value: 'http/1.1', label: 'HTTP/1.1' },
+            { value: 'h2', label: 'HTTP/2' },
+          ]}
+          value={protocol}
+          onChange={(value) => setProtocol(value as ComposerProtocol)}
         />
         <span className={styles.spacer} />
         <Count>{tlsLabel}</Count>
@@ -118,8 +107,8 @@ export function RequestBuilder(): React.JSX.Element {
         <div className={styles.headers}>
           <div className={styles.head}>
             <span />
-            <span>Name</span>
-            <span>Value</span>
+            <span>{t('composer.name')}</span>
+            <span>{t('composer.value')}</span>
             <span />
           </div>
           {headers.map((header) => (
@@ -130,7 +119,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <input
                 className={styles.cellInput}
-                aria-label="Header name"
+                aria-label={t('composer.headerName')}
                 value={header.name}
                 placeholder="header-name"
                 spellCheck={false}
@@ -138,7 +127,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <input
                 className={styles.cellInput}
-                aria-label="Header value"
+                aria-label={t('composer.headerValue')}
                 value={header.value}
                 placeholder="value"
                 spellCheck={false}
@@ -146,7 +135,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <IconButton
                 icon={X}
-                label="Remove header"
+                label={t('composer.removeHeader')}
                 size="sm"
                 strokeWidth={2.2}
                 onClick={() => removeHeader(header.id)}
@@ -155,7 +144,7 @@ export function RequestBuilder(): React.JSX.Element {
           ))}
           <button type="button" className={cx(styles.row, styles.add)} onClick={addHeader}>
             <span className={styles.plus}>+</span>
-            <span className={styles.name}>Add header…</span>
+            <span className={styles.name}>{t('composer.addHeader')}</span>
             <span className={styles.value} />
             <span />
           </button>
@@ -166,8 +155,8 @@ export function RequestBuilder(): React.JSX.Element {
         <div className={styles.headers}>
           <div className={styles.head}>
             <span />
-            <span>Name</span>
-            <span>Value</span>
+            <span>{t('composer.name')}</span>
+            <span>{t('composer.value')}</span>
             <span />
           </div>
           {queryParams.map((param, index) => (
@@ -175,7 +164,7 @@ export function RequestBuilder(): React.JSX.Element {
               <span />
               <input
                 className={styles.cellInput}
-                aria-label="Query name"
+                aria-label={t('composer.queryName')}
                 value={param.name}
                 spellCheck={false}
                 onChange={(event) => {
@@ -186,7 +175,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <input
                 className={styles.cellInput}
-                aria-label="Query value"
+                aria-label={t('composer.queryValue')}
                 value={param.value}
                 spellCheck={false}
                 onChange={(event) => {
@@ -197,7 +186,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <IconButton
                 icon={X}
-                label="Remove query param"
+                label={t('composer.removeQuery')}
                 size="sm"
                 strokeWidth={2.2}
                 onClick={() => setQueryParams(queryParams.filter((_, position) => position !== index))}
@@ -210,7 +199,7 @@ export function RequestBuilder(): React.JSX.Element {
             onClick={() => setQueryParams([...queryParams, { name: '', value: '' }])}
           >
             <span className={styles.plus}>+</span>
-            <span className={styles.name}>Add parameter…</span>
+            <span className={styles.name}>{t('composer.addParameter')}</span>
             <span className={styles.value} />
             <span />
           </button>
@@ -221,9 +210,9 @@ export function RequestBuilder(): React.JSX.Element {
         <div className={styles.bodyPane}>
           <textarea
             className={styles.textarea}
-            aria-label="Request body"
+            aria-label={t('composer.requestBody')}
             value={body}
-            placeholder="Request body (JSON, text, …)"
+            placeholder={t('composer.requestBodyPlaceholder')}
             spellCheck={false}
             onChange={(event) => setBody(event.target.value)}
           />
@@ -233,21 +222,25 @@ export function RequestBuilder(): React.JSX.Element {
       {tab === 'auth' ? (
         <div className={styles.authPane}>
           <div className={styles.authRow}>
-            <span className={styles.authLabel}>Type</span>
+            <span className={styles.authLabel}>{t('composer.type')}</span>
             <Select
               className={styles.authType}
-              ariaLabel="Auth type"
+              ariaLabel={t('composer.authType')}
               value={auth.type}
-              options={AUTH_OPTIONS}
+              options={[
+                { value: 'none', label: t('composer.none') },
+                { value: 'bearer', label: t('composer.bearer') },
+                { value: 'basic', label: t('composer.basic') },
+              ]}
               onValueChange={(value) => setAuth({ type: value as never })}
             />
           </div>
           {auth.type === 'bearer' ? (
             <div className={styles.authRow}>
-              <span className={styles.authLabel}>Token</span>
+              <span className={styles.authLabel}>{t('composer.token')}</span>
               <InputBox
                 className={styles.authField}
-                ariaLabel="Bearer token"
+                ariaLabel={t('composer.bearerToken')}
                 value={auth.token}
                 placeholder="token"
                 onValueChange={(token) => setAuth({ token })}
@@ -257,19 +250,19 @@ export function RequestBuilder(): React.JSX.Element {
           {auth.type === 'basic' ? (
             <>
               <div className={styles.authRow}>
-                <span className={styles.authLabel}>Username</span>
+                <span className={styles.authLabel}>{t('composer.username')}</span>
                 <InputBox
                   className={styles.authField}
-                  ariaLabel="Username"
+                  ariaLabel={t('composer.username')}
                   value={auth.username}
                   onValueChange={(username) => setAuth({ username })}
                 />
               </div>
               <div className={styles.authRow}>
-                <span className={styles.authLabel}>Password</span>
+                <span className={styles.authLabel}>{t('composer.password')}</span>
                 <InputBox
                   className={styles.authField}
-                  ariaLabel="Password"
+                  ariaLabel={t('composer.password')}
                   value={auth.password}
                   onValueChange={(password) => setAuth({ password })}
                 />
@@ -277,9 +270,9 @@ export function RequestBuilder(): React.JSX.Element {
             </>
           ) : null}
           {auth.type === 'none' ? (
-            <div className={styles.authNote}>No authorization header added.</div>
+            <div className={styles.authNote}>{t('composer.noAuthorization')}</div>
           ) : (
-            <div className={styles.authNote}>Adds an authorization header when you send.</div>
+            <div className={styles.authNote}>{t('composer.authorizationOnSend')}</div>
           )}
         </div>
       ) : null}

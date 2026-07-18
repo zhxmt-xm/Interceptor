@@ -1,4 +1,5 @@
 import { Check, Menu, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Count, IconButton, Title } from '../../../components';
 import { enabledCount, useRulesStore } from '../rulesStore';
@@ -11,6 +12,7 @@ export interface RulesTopbarProps {
 
 /** Rules topbar: sidebar toggle, title, rule count and apply/new actions. */
 export function RulesTopbar({ onMenu }: RulesTopbarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const rules = useRulesStore((state) => state.rules);
   const dirty = useRulesStore((state) => state.dirty);
   const saving = useRulesStore((state) => state.saving);
@@ -19,14 +21,14 @@ export function RulesTopbar({ onMenu }: RulesTopbarProps): React.JSX.Element {
 
   return (
     <>
-      <IconButton icon={Menu} label="Toggle sidebar" onClick={onMenu} />
-      <Title>Rules</Title>
+      <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
+      <Title>{t('rules.title')}</Title>
       <Count className={styles.count}>
-        <b>{rules.length}</b> rule{rules.length === 1 ? '' : 's'} · {enabled} enabled
+        {t('rules.summary', { count: rules.length, enabled })}
       </Count>
       <div className={styles.actions}>
-        <Button icon={Plus} onClick={addRule}>
-          New rule
+        <Button icon={Plus} onClick={() => addRule(t('rules.newRuleName'))}>
+          {t('rules.newRule')}
         </Button>
         <Button
           icon={Check}
@@ -35,7 +37,7 @@ export function RulesTopbar({ onMenu }: RulesTopbarProps): React.JSX.Element {
           disabled={!dirty || saving}
           onClick={() => void applyRules()}
         >
-          {saving ? 'Applying…' : 'Apply changes'}
+          {saving ? t('rules.applying') : t('rules.applyChanges')}
         </Button>
       </div>
     </>

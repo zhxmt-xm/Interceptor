@@ -1,8 +1,10 @@
 import { StatItem } from '../../../components';
+import { useTranslation } from 'react-i18next';
 import { enabledCount, useRulesStore } from '../rulesStore';
 
 /** Rules status bar: rule-set state, revision and validation summary. */
 export function RulesStatusbar(): React.JSX.Element {
+  const { t } = useTranslation();
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => state.dirty);
@@ -14,23 +16,23 @@ export function RulesStatusbar(): React.JSX.Element {
 
   const dot = invalid ? 'red' : dirty ? 'yellow' : 'green';
   const label = conflict
-    ? 'Reloaded after conflict'
+    ? t('rules.reloadedAfterConflict')
     : invalid
-      ? 'Validation errors'
+      ? t('rules.validationErrors')
       : dirty
-        ? 'Unsaved changes'
-        : 'Rule set applied';
+        ? t('rules.unsavedChanges')
+        : t('rules.ruleSetApplied');
 
   return (
     <>
       <StatItem dot={dot}>{label}</StatItem>
-      <StatItem mono>rev {revision}</StatItem>
+      <StatItem mono>{t('rules.revision', { revision })}</StatItem>
       <StatItem>
-        {enabled} of {rules.length} enabled
+        {t('rules.enabledSummary', { enabled, total: rules.length })}
       </StatItem>
       {invalid ? (
         <StatItem mono push>
-          {diagnostics.length} issue{diagnostics.length === 1 ? '' : 's'}
+          {t('rules.issueCount', { count: diagnostics.length })}
         </StatItem>
       ) : error ? (
         <StatItem mono push>

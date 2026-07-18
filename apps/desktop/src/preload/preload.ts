@@ -9,6 +9,8 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  setUiLanguage: (language) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiSetLanguage, language),
   echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   getCoreProcessStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetProcessStatus),

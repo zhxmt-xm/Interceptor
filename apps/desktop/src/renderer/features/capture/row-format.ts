@@ -122,31 +122,43 @@ export function typeLabel(mime: string | undefined): string {
 }
 
 /** 人类可读的字节数；进行中或无正文显示破折号。 */
-export function sizeLabel(bytes: number): string {
+export function sizeLabel(bytes: number, locale = 'en'): string {
+  const format = (value: number, maximumFractionDigits: number): string =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value);
   if (bytes <= 0) {
     return '0 B';
   }
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return `${format(bytes, 0)} B`;
   }
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+    return `${format(bytes / 1024, bytes < 10 * 1024 ? 1 : 0)} KB`;
   }
-  return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+  return `${format(bytes / (1024 * 1024), bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
+
+export interface TimeLabels {
+  closed: string;
+  open: string;
+  failed: string;
 }
 
 /** 列表 Time 列文本：已完成显示耗时，WebSocket 显示 open，进行中显示占位。 */
-export function timeLabel(summary: CaptureExchangeSummary): string {
+export function timeLabel(
+  summary: CaptureExchangeSummary,
+  locale = 'en',
+  labels: TimeLabels = { closed: 'closed', open: 'open', failed: 'failed' },
+): string {
   if (protocolSegment(summary.protocol) === 'ws') {
-    return summary.state === 'completed' || summary.state === 'failed' ? 'closed' : 'open';
+    return summary.state === 'completed' || summary.state === 'failed' ? labels.closed : labels.open;
   }
   if (summary.durationMs === undefined) {
-    return summary.state === 'failed' ? 'failed' : '···';
+    return summary.state === 'failed' ? labels.failed : '···';
   }
   if (summary.durationMs < 1000) {
-    return `${Math.round(summary.durationMs)} ms`;
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(summary.durationMs)} ms`;
   }
-  return `${(summary.durationMs / 1000).toFixed(2)} s`;
+  return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(summary.durationMs / 1000)} s`;
 }
 
 /** 列表显示的字节数：优先响应，否则请求。 */

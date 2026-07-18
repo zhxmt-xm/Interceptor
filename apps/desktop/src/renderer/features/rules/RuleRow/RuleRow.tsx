@@ -1,4 +1,5 @@
 import { GripVertical } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { cx, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
@@ -15,12 +16,12 @@ const CHIP_CLASS: Record<ChipKind, string | undefined> = {
 };
 
 /** 命中数紧凑格式：1200 → 1.2k。 */
-function formatHits(count: number): string {
+function formatHits(count: number, locale = 'en'): string {
   if (count >= 1_000) {
     const scaled = count / 1_000;
-    return `${scaled >= 10 ? Math.round(scaled) : scaled.toFixed(1)}k`;
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: scaled >= 10 ? 0 : 1 }).format(scaled)}k`;
   }
-  return String(count);
+  return new Intl.NumberFormat(locale).format(count);
 }
 
 export interface RuleRowProps {
@@ -39,6 +40,7 @@ export function RuleRow({
   onSelect,
   onToggle,
 }: RuleRowProps): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const chips = deriveChips(rule);
   return (
     <button
@@ -60,16 +62,18 @@ export function RuleRow({
       </span>
       <div className={styles.meta}>
         <span className={styles.name}>{rule.name}</span>
-        <span className={styles.match}>{matchSummary(rule)}</span>
+        <span className={styles.match}>
+          {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
+        </span>
       </div>
       <div className={styles.chips}>
-        {chips.map(([kind, label], index) => (
+        {chips.map(([kind, labelKey], index) => (
           <span key={index} className={cx(styles.chip, CHIP_CLASS[kind])}>
-            {label}
+            {t(labelKey)}
           </span>
         ))}
       </div>
-      <span className={styles.hits}>{formatHits(hits)}</span>
+      <span className={styles.hits}>{formatHits(hits, i18n.language)}</span>
     </button>
   );
 }

@@ -1,4 +1,5 @@
 import { Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, cx, StatusBadge } from '../../../components';
 import { UpdateFormat } from '../update-format';
@@ -8,6 +9,7 @@ import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives
 
 /** GitHub Release status, user-triggered installer download and changelog. */
 export function UpdatesPanel(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const status = useUpdateStore((state) => state.status);
   const busy = useUpdateStore((state) => state.busy);
   const error = useUpdateStore((state) => state.error);
@@ -15,8 +17,8 @@ export function UpdatesPanel(): React.JSX.Element {
   if (!status) {
     return (
       <>
-        <h2 className={styles.title}>Updates</h2>
-        <div className={styles.desc}>Loading update status…</div>
+        <h2 className={styles.title}>{t('settings.updates')}</h2>
+        <div className={styles.desc}>{t('settings.loadingUpdates')}</div>
       </>
     );
   }
@@ -28,45 +30,45 @@ export function UpdatesPanel(): React.JSX.Element {
   return (
     <>
       <h2 className={styles.title}>
-        Updates
+        {t('settings.updates')}
         <StatusBadge tone={UpdateFormat.stateTone(status)}>
-          {UpdateFormat.stateLabel(status)}
+          {UpdateFormat.stateLabel(status, (key) => t(key))}
         </StatusBadge>
       </h2>
       <div className={styles.desc}>
-        Checks and downloads signed installers from public GitHub Releases. Downloads start only when you choose.
+        {t('settings.updateDescription')}
       </div>
 
-      <Group title="Version">
-        <Row label="Current application" hint="Installed whole-app version">
+      <Group title={t('settings.version')}>
+        <Row label={t('settings.currentApplication')} hint={t('settings.installedVersionHint')}>
           <span className={styles.mono}>{status.currentVersion}</span>
-          <StatusBadge>Stable</StatusBadge>
+          <StatusBadge>{t('settings.stable')}</StatusBadge>
         </Row>
-        <Row label="Latest GitHub release" hint="Newest public stable release">
-          <span className={styles.mono}>{status.latestVersion ?? 'Unknown'}</span>
-          {hasRelease ? <StatusBadge tone="info">Whole app</StatusBadge> : null}
-          {status.state === 'up-to-date' ? <StatusBadge>Current</StatusBadge> : null}
+        <Row label={t('settings.latestGithubRelease')} hint={t('settings.latestReleaseHint')}>
+          <span className={styles.mono}>{status.latestVersion ?? t('settings.unknown')}</span>
+          {hasRelease ? <StatusBadge tone="info">{t('settings.wholeApp')}</StatusBadge> : null}
+          {status.state === 'up-to-date' ? <StatusBadge>{t('settings.current')}</StatusBadge> : null}
         </Row>
       </Group>
 
-      <Group title="Delivery">
-        <Row label="Release source" hint="GitHub-hosted metadata and artifacts">
+      <Group title={t('settings.delivery')}>
+        <Row label={t('settings.releaseSource')} hint={t('settings.releaseSourceHint')}>
           <span className={styles.mono}>zhxmt-xm/Interceptor</span>
-          <StatusBadge>Public</StatusBadge>
+          <StatusBadge>{t('settings.public')}</StatusBadge>
         </Row>
-        <Row label="Check policy" hint="Checks on launch and every hour">
+        <Row label={t('settings.checkPolicy')} hint={t('settings.checkPolicyHint')}>
           <span className={styles.mono}>stable</span>
-          <StatusBadge>Notify</StatusBadge>
+          <StatusBadge>{t('settings.notify')}</StatusBadge>
         </Row>
-        <Row label="Download policy" hint="Starts only when you click Download update">
-          <StatusBadge>Manual</StatusBadge>
+        <Row label={t('settings.downloadPolicy')} hint={t('settings.downloadPolicyHint')}>
+          <StatusBadge>{t('settings.manual')}</StatusBadge>
         </Row>
         {working ? (
           <Row
-            label={status.state === 'checking' ? 'Check' : 'Download'}
+            label={status.state === 'checking' ? t('settings.check') : t('settings.download')}
             hint={status.state === 'checking'
-              ? 'Reading the latest stable release metadata'
-              : 'Signed installer from GitHub Releases'}
+              ? t('settings.readingMetadata')
+              : t('settings.signedInstaller')}
           >
             <div className={styles.updateProgress}>
               <span
@@ -77,27 +79,27 @@ export function UpdatesPanel(): React.JSX.Element {
             <span className={styles.mono}>
               {status.state === 'checking'
                 ? 'GitHub'
-                : `${UpdateFormat.progress(status)} · ${UpdateFormat.bytes(status)}`}
+                : `${UpdateFormat.progress(status, i18n.language, t('settings.update.waiting'))} · ${UpdateFormat.bytes(status, i18n.language, t('settings.update.sizeUnavailable'))}`}
             </span>
           </Row>
         ) : null}
         {status.state === 'failed' ? (
-          <Row label="Last update action" hint={status.message ?? 'The installed app was not changed.'}>
-            <StatusBadge tone="red">Retry available</StatusBadge>
+          <Row label={t('settings.lastUpdateAction')} hint={status.message ?? t('settings.appNotChanged')}>
+            <StatusBadge tone="red">{t('settings.retryAvailable')}</StatusBadge>
           </Row>
         ) : null}
         {status.state === 'unsupported' ? (
           <Row
-            label="Release checks unavailable"
-            hint="Release checks run only in packaged Windows and macOS builds."
+            label={t('settings.releaseChecksUnavailable')}
+            hint={t('settings.releaseChecksPackagedOnly')}
           >
-            <StatusBadge tone="yellow">Development</StatusBadge>
+            <StatusBadge tone="yellow">{t('settings.development')}</StatusBadge>
           </Row>
         ) : null}
         {status.state !== 'checking' && status.state !== 'downloading' && status.supported ? (
           <Row
-            label="Update action"
-            hint="Public stable channel · no account or update server required"
+            label={t('settings.updateAction')}
+            hint={t('settings.stableChannelHint')}
           >
             {status.state !== 'available' && status.state !== 'downloaded' ? (
               <Button
@@ -105,7 +107,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 disabled={busy}
                 onClick={() => void UpdateActions.check()}
               >
-                Check now
+                {t('settings.checkNow')}
               </Button>
             ) : null}
             {status.state === 'available' ? (
@@ -115,7 +117,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 disabled={busy}
                 onClick={() => void UpdateActions.download()}
               >
-                Download update
+                {t('settings.downloadUpdate')}
               </Button>
             ) : null}
             {status.state === 'downloaded' ? (
@@ -125,7 +127,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 disabled={busy}
                 onClick={() => void UpdateActions.openDownloaded()}
               >
-                Open installer
+                {t('settings.openInstaller')}
               </Button>
             ) : null}
           </Row>
@@ -133,10 +135,10 @@ export function UpdatesPanel(): React.JSX.Element {
       </Group>
 
       {hasRelease ? (
-        <Group title="Release notes">
+        <Group title={t('settings.releaseNotes')}>
           <Row
-            label={`${status.latestVersion} changelog`}
-            hint={status.releaseNotes ?? 'No changelog was provided for this release.'}
+            label={t('settings.changelog', { version: status.latestVersion })}
+            hint={status.releaseNotes ?? t('settings.noChangelog')}
             hintClassName={styles.releaseNotes}
           >
             <span className={styles.mono}>GitHub</span>

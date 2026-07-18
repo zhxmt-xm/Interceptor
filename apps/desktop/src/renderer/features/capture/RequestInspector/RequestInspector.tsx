@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
@@ -139,6 +140,7 @@ function Section({
 
 /** Right-hand inspector for the selected request. */
 export function RequestInspector(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const [tab, setTab] = useState<InspectorTab>('headers');
   const selectedId = useCaptureStore((state) => state.selectedId);
   const summary = useCaptureStore((state) => {
@@ -179,6 +181,14 @@ export function RequestInspector(): React.JSX.Element {
       ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
       : statusLabel(view)
     : '';
+  const timeLabels = {
+    closed: t('capture.closed'),
+    open: t('capture.open'),
+    failed: t('capture.failed'),
+  };
+  const exchangeTime = view
+    ? timeLabel(view, i18n.language, timeLabels)
+    : '';
 
   useEffect(() => {
     setTab(isWebSocket ? 'messages' : isGrpc ? 'grpc' : 'headers');
@@ -197,7 +207,7 @@ export function RequestInspector(): React.JSX.Element {
               <span className={styles.urlPath}>{view.path ?? ''}</span>
             </>
           ) : (
-            <span className={styles.urlDomain}>Select a request to inspect.</span>
+            <span className={styles.urlDomain}>{t('capture.selectRequest')}</span>
           )}
         </span>
         {view && view.statusCode !== undefined ? (
@@ -211,7 +221,7 @@ export function RequestInspector(): React.JSX.Element {
             }
           >
             {isWebSocket && view.statusCode === 101
-              ? 'Connected'
+              ? t('capture.connected')
               : isGrpc && grpcStatus !== undefined
                 ? `gRPC ${grpcStatus}${grpcMessage ? ` ${grpcMessage}` : ''}`
                 : statusText}
@@ -220,9 +230,9 @@ export function RequestInspector(): React.JSX.Element {
       </div>
 
       <div className={styles.tabs}>
-        {inspectorTabs.map(({ id, label }) => (
+        {inspectorTabs.map(({ id, labelKey }) => (
           <span key={id} className={cx(tab === id && styles.active)} onClick={() => setTab(id)}>
-            {label}
+            {labelKey === 'TLS' ? 'TLS' : t(labelKey)}
           </span>
         ))}
       </div>
@@ -230,46 +240,46 @@ export function RequestInspector(): React.JSX.Element {
       <div className={styles.scroll}>
         {tab === 'headers' ? (
           <div className={styles.panel}>
-            <Section title="General">
+            <Section title={t('capture.general')}>
               {view ? (
                 <Kv
                   rows={[
-                    ['Request URL', url],
-                    ['Request Method', view.method.toUpperCase(), 'a'],
-                    ['Status Code', statusText, view.statusCode && view.statusCode < 400 ? 'g' : undefined],
-                    ['Protocol', protocolLabel(view.protocol).toUpperCase()],
+                    [t('capture.requestUrl'), url],
+                    [t('capture.requestMethod'), view.method.toUpperCase(), 'a'],
+                    [t('capture.statusCode'), statusText, view.statusCode && view.statusCode < 400 ? 'g' : undefined],
+                    [t('capture.protocol'), protocolLabel(view.protocol).toUpperCase()],
                     ...(detail?.streamId !== undefined
-                      ? [['Stream ID', String(detail.streamId)] as KvRow]
+                      ? [[t('capture.streamId'), String(detail.streamId)] as KvRow]
                       : []),
-                    ['Host', view.host ?? '—'],
-                    ['Duration', timeLabel(view)],
+                    [t('capture.host'), view.host ?? '—'],
+                    [t('capture.duration'), exchangeTime],
                   ]}
                 />
               ) : (
-                <div className={styles.empty}>Select a request to inspect.</div>
+                <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
             </Section>
-            <Section title="Response Headers" count={responseHeaders.length}>
+            <Section title={t('capture.responseHeaders')} count={responseHeaders.length}>
               {responseHeaders.length ? (
                 <Kv rows={headersToRows(responseHeaders)} />
               ) : (
-                <div className={styles.empty}>No response headers captured.</div>
+                <div className={styles.empty}>{t('capture.noResponseHeaders')}</div>
               )}
             </Section>
-            <Section title="Request Headers" count={requestHeaders.length}>
+            <Section title={t('capture.requestHeaders')} count={requestHeaders.length}>
               {requestHeaders.length ? (
                 <Kv rows={headersToRows(requestHeaders)} />
               ) : (
-                <div className={styles.empty}>No request headers captured.</div>
+                <div className={styles.empty}>{t('capture.noRequestHeaders')}</div>
               )}
             </Section>
             {responseTrailers.length ? (
-              <Section title="Response Trailers" count={responseTrailers.length}>
+              <Section title={t('capture.responseTrailers')} count={responseTrailers.length}>
                 <Kv rows={headersToRows(responseTrailers)} />
               </Section>
             ) : null}
             {requestTrailers.length ? (
-              <Section title="Request Trailers" count={requestTrailers.length}>
+              <Section title={t('capture.requestTrailers')} count={requestTrailers.length}>
                 <Kv rows={headersToRows(requestTrailers)} />
               </Section>
             ) : null}
@@ -278,32 +288,32 @@ export function RequestInspector(): React.JSX.Element {
 
         {tab === 'request' ? (
           <div className={styles.panel}>
-            <Section title="Request line">
+            <Section title={t('capture.requestLine')}>
               {view ? (
                 <Kv
                   rows={[
-                    ['Method', view.method.toUpperCase(), 'a'],
-                    ['Path', view.path ?? '/'],
-                    ['Version', protocolLabel(view.protocol).toUpperCase()],
-                    ['Scheme', scheme, 'g'],
+                    [t('capture.method'), view.method.toUpperCase(), 'a'],
+                    [t('capture.path'), view.path ?? '/'],
+                    [t('capture.version'), protocolLabel(view.protocol).toUpperCase()],
+                    [t('capture.scheme'), scheme, 'g'],
                   ]}
                 />
               ) : (
-                <div className={styles.empty}>Select a request to inspect.</div>
+                <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
             </Section>
-            <Section title="Query String Parameters" count={queryRows(url).length}>
+            <Section title={t('capture.queryParameters')} count={queryRows(url).length}>
               {queryRows(url).length ? (
                 <Kv rows={queryRows(url)} />
               ) : (
-                <div className={styles.empty}>No query parameters on this request.</div>
+                <div className={styles.empty}>{t('capture.noQueryParameters')}</div>
               )}
             </Section>
-            <Section title="Request Payload">
+            <Section title={t('capture.requestPayload')}>
               {detail?.requestBody ? (
                 <BodyView body={detail.requestBody} />
               ) : (
-                <div className={styles.empty}>This request carries no body.</div>
+                <div className={styles.empty}>{t('capture.noRequestBody')}</div>
               )}
             </Section>
           </div>
@@ -312,17 +322,17 @@ export function RequestInspector(): React.JSX.Element {
         {tab === 'response' ? (
           <div className={styles.panel}>
             <Section
-              title="Body"
+              title={t('capture.body')}
               count={
                 detail?.responseBody
-                  ? `${typeLabel(view?.responseMime)} · ${sizeLabel(view?.responseBytes ?? 0)}`
+                  ? `${typeLabel(view?.responseMime)} · ${sizeLabel(view?.responseBytes ?? 0, i18n.language)}`
                   : undefined
               }
             >
               {detail?.responseBody ? (
                 <BodyView body={detail.responseBody} />
               ) : (
-                <div className={styles.empty}>No response body captured.</div>
+                <div className={styles.empty}>{t('capture.noResponseBody')}</div>
               )}
             </Section>
           </div>
@@ -338,22 +348,21 @@ export function RequestInspector(): React.JSX.Element {
 
         {tab === 'timing' ? (
           <div className={styles.panel}>
-            <Section title="Timing" count={view ? timeLabel(view) : undefined}>
+            <Section title={t('capture.timing')} count={view ? exchangeTime : undefined}>
               {view ? (
                 <Kv
                   rows={[
-                    ['Started', new Date(view.startedAt).toISOString()],
-                    ['Total', timeLabel(view)],
-                    ['Request bytes', sizeLabel(view.requestBytes)],
-                    ['Response bytes', sizeLabel(view.responseBytes)],
+                    [t('capture.started'), formatTimestamp(view.startedAt, i18n.language)],
+                    [t('capture.total'), exchangeTime],
+                    [t('capture.requestBytes'), sizeLabel(view.requestBytes, i18n.language)],
+                    [t('capture.responseBytes'), sizeLabel(view.responseBytes, i18n.language)],
                   ]}
                 />
               ) : (
-                <div className={styles.empty}>Select a request to inspect.</div>
+                <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
               <div className={styles.empty}>
-                Per-phase waterfall (DNS, connect, TLS, TTFB) arrives with connection
-                instrumentation in a later milestone.
+                {t('capture.waterfallLater')}
               </div>
             </Section>
           </div>
@@ -361,18 +370,18 @@ export function RequestInspector(): React.JSX.Element {
 
         {tab === 'cookies' ? (
           <div className={styles.panel}>
-            <Section title="Request Cookies" count={requestCookieRows(requestHeaders).length}>
+            <Section title={t('capture.requestCookies')} count={requestCookieRows(requestHeaders).length}>
               {requestCookieRows(requestHeaders).length ? (
                 <Kv rows={requestCookieRows(requestHeaders)} />
               ) : (
-                <div className={styles.empty}>No request cookies.</div>
+                <div className={styles.empty}>{t('capture.noRequestCookies')}</div>
               )}
             </Section>
-            <Section title="Response Cookies" count={responseCookieRows(responseHeaders).length}>
+            <Section title={t('capture.responseCookies')} count={responseCookieRows(responseHeaders).length}>
               {responseCookieRows(responseHeaders).length ? (
                 <Kv rows={responseCookieRows(responseHeaders)} />
               ) : (
-                <div className={styles.empty}>No response cookies.</div>
+                <div className={styles.empty}>{t('capture.noResponseCookies')}</div>
               )}
             </Section>
           </div>
@@ -390,11 +399,22 @@ export function RequestInspector(): React.JSX.Element {
             />
           ) : (
             <div className={styles.panel}>
-              <div className={styles.empty}>Select a request to inspect.</div>
+              <div className={styles.empty}>{t('capture.selectRequest')}</div>
             </div>
           )
         ) : null}
       </div>
     </div>
   );
+}
+
+function formatTimestamp(timestamp: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(timestamp));
 }

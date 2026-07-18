@@ -7,6 +7,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type {
   HarExportRequest,
@@ -24,6 +25,7 @@ type ExportScopeKind = HarExportRequest['scope']['kind'];
 
 /** HAR 1.2 import/export options, progress, cancellation and completion overlay. */
 export function HarTransferDialog(): React.JSX.Element | null {
+  const { t } = useTranslation();
   const open = useCaptureStore((state) => state.harDialogOpen);
   const rows = useCaptureStore((state) => state.rows);
   const selectedId = useCaptureStore((state) => state.selectedId);
@@ -200,11 +202,11 @@ export function HarTransferDialog(): React.JSX.Element | null {
           <span className={styles.headerIcon}>
             <Download size={16} strokeWidth={1.9} />
           </span>
-          <h2 id="har-transfer-title">HAR import / export</h2>
+          <h2 id="har-transfer-title">{t('capture.harTransferTitle')}</h2>
           <button
             type="button"
             className={styles.close}
-            aria-label="Close HAR import and export"
+            aria-label={t('capture.closeTransfer')}
             disabled={running}
             onClick={close}
           >
@@ -217,7 +219,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
         ) : (
           <div className={styles.body}>
             <div className={styles.field}>
-              <span className={styles.label}>Format</span>
+              <span className={styles.label}>{t('capture.format')}</span>
               <div className={styles.segmented}>
                 <button
                   type="button"
@@ -237,23 +239,21 @@ export function HarTransferDialog(): React.JSX.Element | null {
                   )}
                   onClick={() => setFormat('archive')}
                 >
-                  Native archive
+                  {t('capture.nativeArchive')}
                 </button>
               </div>
               {format === 'har' ? (
                 <div className={styles.warning}>
                   <AlertTriangle size={15} strokeWidth={1.9} />
                   <span>
-                    HAR omits HTTP/2 pseudo-headers and trailers, WebSocket
-                    messages, TLS detail, and rule history.
+                    {t('capture.harWarning')}
                   </span>
                 </div>
               ) : (
                 <div className={styles.warning}>
                   <AlertTriangle size={15} strokeWidth={1.9} />
                   <span>
-                    A native archive is a lossless, versioned snapshot of the
-                    whole capture store that only Interceptor can open.
+                    {t('capture.archiveWarning')}
                   </span>
                 </div>
               )}
@@ -262,23 +262,23 @@ export function HarTransferDialog(): React.JSX.Element | null {
             {format === 'har' ? (
               <>
                 <div className={styles.field}>
-                  <span className={styles.label}>Scope</span>
+                  <span className={styles.label}>{t('capture.scope')}</span>
                   <div className={styles.radios}>
                     <ScopeOption
-                      label="All traffic"
+                      label={t('capture.allTraffic')}
                       count={allCount}
                       active={scope === 'all'}
                       onClick={() => setScope('all')}
                     />
                     <ScopeOption
-                      label="Current filter"
-                      detail={formatFilter(filter)}
+                      label={t('capture.currentFilter')}
+                      detail={formatFilter(filter, t('capture.noActiveFilter'))}
                       count={hasMore ? `${visibleCount}+` : visibleCount}
                       active={scope === 'filter'}
                       onClick={() => setScope('filter')}
                     />
                     <ScopeOption
-                      label="Selected request"
+                      label={t('capture.selectedRequest')}
                       count={selectedId ? 1 : 0}
                       active={scope === 'selected'}
                       disabled={!selectedId}
@@ -288,21 +288,21 @@ export function HarTransferDialog(): React.JSX.Element | null {
                 </div>
 
                 <div className={styles.field}>
-                  <span className={styles.label}>Redaction</span>
+                  <span className={styles.label}>{t('capture.redaction')}</span>
                   <div className={styles.checks}>
                     <CheckOption
                       checked={authorization}
-                      label="Mask authorization tokens"
+                      label={t('capture.maskAuthorization')}
                       onChange={setAuthorization}
                     />
                     <CheckOption
                       checked={cookies}
-                      label="Mask cookies & Set-Cookie"
+                      label={t('capture.maskCookies')}
                       onChange={setCookies}
                     />
                     <CheckOption
                       checked={bodies}
-                      label="Strip request/response bodies"
+                      label={t('capture.stripBodies')}
                       onChange={setBodies}
                     />
                   </div>
@@ -315,8 +315,8 @@ export function HarTransferDialog(): React.JSX.Element | null {
                 <AlertTriangle size={15} strokeWidth={1.9} />
                 <span>
                   {format === 'archive'
-                    ? 'This archive contains unmasked headers, cookies, bodies, and URLs. Share it only with people you trust.'
-                    : 'This export will include unmasked sensitive data. Enable masking above to redact authorization, cookies, and URL tokens.'}
+                    ? t('capture.archiveSensitiveWarning')
+                    : t('capture.harSensitiveWarning')}
                 </span>
               </div>
             ) : null}
@@ -329,21 +329,21 @@ export function HarTransferDialog(): React.JSX.Element | null {
             <>
               {running ? (
                 <Button variant="danger" onClick={() => void cancel()}>
-                  Cancel transfer
+                  {t('capture.cancelTransfer')}
                 </Button>
               ) : (
-                <Button onClick={close}>Close</Button>
+                <Button onClick={close}>{t('capture.close')}</Button>
               )}
             </>
           ) : (
             <>
-              <Button onClick={close}>Cancel</Button>
+              <Button onClick={close}>{t('capture.cancel')}</Button>
               <Button
                 icon={Upload}
                 disabled={submitting}
                 onClick={() => void startImport()}
               >
-                {format === 'archive' ? 'Import archive' : 'Import HAR'}
+                {format === 'archive' ? t('capture.importArchive') : t('capture.importHar')}
               </Button>
               <Button
                 icon={Download}
@@ -352,10 +352,10 @@ export function HarTransferDialog(): React.JSX.Element | null {
                 onClick={() => void startExport()}
               >
                 {format === 'archive'
-                  ? 'Export archive'
+                  ? t('capture.exportArchive')
                   : scope === 'filter' && hasMore
-                    ? 'Export filtered'
-                    : `Export ${exportCount} ${exportCount === 1 ? 'request' : 'requests'}`}
+                    ? t('capture.exportFiltered')
+                    : t('capture.exportRequestCount', { count: exportCount })}
               </Button>
             </>
           )}
@@ -425,6 +425,7 @@ function JobProgress({
   job: TransferJobSnapshot;
   error: string | null;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const percent = job.total > 0
     ? Math.min(100, Math.round((job.processed / job.total) * 100))
     : job.state === 'completed'
@@ -444,7 +445,7 @@ function JobProgress({
           />
         )}
         <div>
-          <strong>{transferHeading(job.kind)}</strong>
+          <strong>{t(TRANSFER_HEADING_KEYS[job.kind])}</strong>
           <span>{job.fileName}</span>
         </div>
       </div>
@@ -453,8 +454,12 @@ function JobProgress({
       </div>
       <div className={styles.progressMeta}>
         <span>
-          {job.processed} of {job.total}{' '}
-          {job.kind === 'archive-export' ? 'files' : 'requests'}
+          {t(
+            job.kind === 'archive-export'
+              ? 'capture.processedFiles'
+              : 'capture.processedRequests',
+            { processed: job.processed, total: job.total },
+          )}
         </span>
         <span>{percent}%</span>
       </div>
@@ -495,6 +500,7 @@ function buildScope(
 
 function formatFilter(
   filter: ReturnType<typeof useCaptureStore.getState>['filter'],
+  emptyLabel: string,
 ): string {
   const parts = [
     filter.method ? `method:${filter.method}` : '',
@@ -503,22 +509,17 @@ function formatFilter(
     filter.search ? `search:${filter.search}` : '',
     filter.segment !== 'all' ? `protocol:${filter.segment.toUpperCase()}` : '',
   ].filter(Boolean);
-  return parts.length > 0 ? parts.join(' ') : 'No active filter';
+  return parts.length > 0 ? parts.join(' ') : emptyLabel;
 }
 
 function describeError(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-function transferHeading(kind: TransferJobSnapshot['kind']): string {
-  switch (kind) {
-    case 'har-import':
-      return 'Importing HAR';
-    case 'har-export':
-      return 'Exporting HAR';
-    case 'archive-import':
-      return 'Importing archive';
-    default:
-      return 'Exporting archive';
-  }
-}
+const TRANSFER_HEADING_KEYS: Record<TransferJobSnapshot['kind'], string> = {
+  'har-import': 'capture.importingHar',
+  'har-export': 'capture.exportingHar',
+  'archive-import': 'capture.importingArchive',
+  'archive-export': 'capture.exportingArchive',
+  'diagnostics-export': 'capture.exportingDiagnostics',
+};

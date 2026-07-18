@@ -1,4 +1,5 @@
 import { ArrowRight, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Count, cx, type HttpMethod, MethodBadge } from '../../../components';
 import { formatCountdown, useBreakpointsStore } from '../breakpointsStore';
@@ -7,6 +8,7 @@ import styles from './PausedQueue.module.css';
 
 /** Left breakpoints pane: the queue of paused requests/responses. */
 export function PausedQueue(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const breakpoints = useBreakpointsStore((state) => state.breakpoints);
   const selectedId = useBreakpointsStore((state) => state.selectedId);
   const select = useBreakpointsStore((state) => state.select);
@@ -15,20 +17,20 @@ export function PausedQueue(): React.JSX.Element {
     <div className={styles.queue}>
       <div className={styles.bar}>
         <Count className={styles.grow}>
-          <b>{breakpoints.length}</b> item{breakpoints.length === 1 ? '' : 's'} paused
+          {t('breakpoints.itemsPaused', { count: breakpoints.length })}
         </Count>
         <Button
           size="sm"
           disabled={breakpoints.length === 0}
           onClick={() => void continueAllBreakpoints()}
         >
-          Continue all
+          {t('breakpoints.continueAll')}
         </Button>
       </div>
 
       {breakpoints.length === 0 ? (
         <div className={styles.empty}>
-          No paused traffic. HTTP rule and WebSocket message breakpoints appear here.
+          {t('breakpoints.empty')}
         </div>
       ) : (
         breakpoints.map((breakpoint) => {
@@ -63,16 +65,16 @@ export function PausedQueue(): React.JSX.Element {
                   ) : null}
                   {isWebSocket ? (
                     <span className={styles.messageType}>
-                      {outgoing ? 'Sent' : 'Received'} · {breakpoint.opcode === 2 ? 'Binary' : 'Text'}
+                      {outgoing ? t('capture.sent') : t('capture.received')} · {breakpoint.opcode === 2 ? t('capture.binary') : t('capture.text')}
                     </span>
                   ) : null}
-                  <span className={styles.name}>{breakpoint.ruleName || 'Breakpoint'}</span>
+                  <span className={styles.name}>{breakpoint.ruleName || t('breakpoints.defaultName')}</span>
                 </div>
                 <div className={styles.url}>{breakpoint.url ?? ''}</div>
               </div>
               <span className={cx(styles.countdown, (isResponse || isWebSocket) && styles.countdownMuted)}>
                 <Clock size={13} strokeWidth={1.9} />
-                {formatCountdown(breakpoint.deadline)}
+                {formatCountdown(breakpoint.deadline, i18n.language)}
               </span>
             </button>
           );

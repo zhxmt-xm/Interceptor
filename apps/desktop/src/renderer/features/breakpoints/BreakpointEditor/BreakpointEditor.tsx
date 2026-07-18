@@ -1,4 +1,5 @@
 import { Clock, Play, Plus, Slash, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Chip, IconButton, SectionHeader } from '../../../components';
 import {
@@ -11,6 +12,7 @@ import styles from './BreakpointEditor.module.css';
 
 /** Right breakpoints pane: editable headers/body for the paused request. */
 export function BreakpointEditor(): React.JSX.Element {
+  const { i18n, t } = useTranslation();
   const draft = useBreakpointsStore((state) => state.draft);
   const breakpoint = useBreakpointsStore(selectedBreakpoint);
   const resolving = useBreakpointsStore((state) => state.resolving);
@@ -23,7 +25,7 @@ export function BreakpointEditor(): React.JSX.Element {
     return (
       <div className={styles.editor}>
         <div className={styles.placeholder}>
-          No request selected. Paused requests appear here for inspection and editing.
+          {t('breakpoints.noSelection')}
         </div>
       </div>
     );
@@ -31,7 +33,7 @@ export function BreakpointEditor(): React.JSX.Element {
 
   const isResponse = draft.phase === 'response';
   const isWebSocket = draft.phase === 'websocket';
-  const messageLabel = draft.opcode === 2 ? 'Binary' : 'Text';
+  const messageLabel = draft.opcode === 2 ? t('capture.binary') : t('capture.text');
 
   return (
     <div className={styles.editor}>
@@ -42,44 +44,46 @@ export function BreakpointEditor(): React.JSX.Element {
         <span className={styles.url}>{draft.url || breakpoint.url || ''}</span>
         <span className={styles.phase}>
           {isWebSocket
-            ? `${draft.direction === 'client-to-server' ? 'Sent' : 'Received'} message paused`
+            ? draft.direction === 'client-to-server'
+              ? t('breakpoints.sentMessagePaused')
+              : t('breakpoints.receivedMessagePaused')
             : isResponse
-              ? 'Response paused'
-              : 'Request paused'}
+              ? t('breakpoints.responsePaused')
+              : t('breakpoints.requestPaused')}
         </span>
         <span className={styles.countdown}>
           <Clock size={13} strokeWidth={1.9} />
-          {formatCountdown(breakpoint.deadline)}
+          {formatCountdown(breakpoint.deadline, i18n.language)}
         </span>
       </div>
 
       <div className={styles.scroll}>
         {!isWebSocket ? <div>
-          <SectionHeader count="editable">Headers</SectionHeader>
+          <SectionHeader count={t('breakpoints.editable')}>{t('breakpoints.headers')}</SectionHeader>
           <div className={styles.headerHead}>
-            <span>Name</span>
-            <span>Value</span>
+            <span>{t('breakpoints.name')}</span>
+            <span>{t('breakpoints.value')}</span>
             <span />
           </div>
           {draft.headers.map((header) => (
             <div key={header.id} className={styles.headerRow}>
               <input
                 className={styles.cellInput}
-                aria-label="Header name"
+                aria-label={t('breakpoints.headerName')}
                 value={header.name}
                 spellCheck={false}
                 onChange={(event) => updateHeader(header.id, { name: event.target.value })}
               />
               <input
                 className={styles.cellInput}
-                aria-label="Header value"
+                aria-label={t('breakpoints.headerValue')}
                 value={header.value}
                 spellCheck={false}
                 onChange={(event) => updateHeader(header.id, { value: event.target.value })}
               />
               <IconButton
                 icon={X}
-                label="Remove header"
+                label={t('breakpoints.removeHeader')}
                 size="sm"
                 strokeWidth={2.2}
                 onClick={() => removeHeader(header.id)}
@@ -88,17 +92,17 @@ export function BreakpointEditor(): React.JSX.Element {
           ))}
           <button type="button" className={styles.addHeader} onClick={addHeader}>
             <Plus size={12} strokeWidth={2} />
-            Add header
+            {t('breakpoints.addHeader')}
           </button>
         </div> : null}
 
         <div>
-          <SectionHeader count={`${isWebSocket ? draft.bodyFormat ?? 'text' : 'body'} · editable`}>
-            {isWebSocket ? 'Payload' : 'Body'}
+          <SectionHeader count={`${isWebSocket ? draft.bodyFormat ?? 'text' : t('breakpoints.body').toLocaleLowerCase(i18n.language)} · ${t('breakpoints.editable')}`}>
+            {isWebSocket ? t('breakpoints.payload') : t('breakpoints.body')}
           </SectionHeader>
           <textarea
             className={styles.bodyEdit}
-            aria-label="Body"
+            aria-label={isWebSocket ? t('breakpoints.payload') : t('breakpoints.body')}
             value={draft.body}
             spellCheck={false}
             onChange={(event) => setBody(event.target.value)}
@@ -113,11 +117,11 @@ export function BreakpointEditor(): React.JSX.Element {
           disabled={resolving}
           onClick={() => void resolveSelected('drop', false)}
         >
-          Drop
+          {t('breakpoints.drop')}
         </Button>
         <span className={styles.spacer} />
         <Button disabled={resolving} onClick={() => void resolveSelected('continue', false)}>
-          Continue unmodified
+          {t('breakpoints.continueUnmodified')}
         </Button>
         <Button
           icon={Play}
@@ -125,7 +129,7 @@ export function BreakpointEditor(): React.JSX.Element {
           disabled={resolving}
           onClick={() => void resolveSelected('continue', true)}
         >
-          Execute edited
+          {t('breakpoints.executeEdited')}
         </Button>
       </div>
     </div>

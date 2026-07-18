@@ -29,10 +29,21 @@ class ReleaseScreenshotMatrix {
   ] as const;
   /** Every language selector state currently exposed by the product. */
   private static readonly languages = [
-    { label: 'English', id: 'en' },
-    { label: '简体中文', id: 'zh' },
-    { label: '日本語', id: 'ja' },
-    { label: 'Deutsch', id: 'de' },
+    { name: 'English', id: 'en', languageLabel: 'Language', captureLabel: 'Capture' },
+    { name: '简体中文', id: 'zh-CN', languageLabel: '语言', captureLabel: '抓包' },
+    { name: '繁體中文', id: 'zh-TW', languageLabel: '語言', captureLabel: '擷取' },
+    { name: '日本語', id: 'ja', languageLabel: '言語', captureLabel: 'キャプチャ' },
+    { name: '한국어', id: 'ko', languageLabel: '언어', captureLabel: '캡처' },
+    { name: 'Deutsch', id: 'de', languageLabel: 'Sprache', captureLabel: 'Aufzeichnung' },
+    { name: 'Français', id: 'fr', languageLabel: 'Langue', captureLabel: 'Capture réseau' },
+    { name: 'Español', id: 'es', languageLabel: 'Idioma', captureLabel: 'Captura' },
+    { name: 'Italiano', id: 'it', languageLabel: 'Lingua', captureLabel: 'Cattura' },
+    { name: 'Português (Brasil)', id: 'pt-BR', languageLabel: 'Idioma', captureLabel: 'Captura' },
+    { name: 'Русский', id: 'ru', languageLabel: 'Язык', captureLabel: 'Захват' },
+    { name: 'Nederlands', id: 'nl', languageLabel: 'Taal', captureLabel: 'Verkeer' },
+    { name: 'Polski', id: 'pl', languageLabel: 'Język', captureLabel: 'Przechwytywanie' },
+    { name: 'Türkçe', id: 'tr', languageLabel: 'Dil', captureLabel: 'Yakalama' },
+    { name: 'Українська', id: 'uk', languageLabel: 'Мова', captureLabel: 'Перехоплення' },
   ] as const;
 
   /** Capture all release screenshot dimensions through normal UI interactions. */
@@ -53,13 +64,13 @@ class ReleaseScreenshotMatrix {
     }
 
     await page.setViewportSize({ width: 1280, height: 800 });
+    let currentLanguageLabel = 'Language';
     for (const language of this.languages) {
-      await this.selectLanguage(page, language.label, language.id);
-      for (const view of this.views) {
-        await this.selectView(page, view.label);
-        await this.screenshot(page, testInfo, `${view.slug}-lang-${language.id}.png`);
-      }
+      await this.selectLanguage(page, currentLanguageLabel, language);
+      currentLanguageLabel = language.languageLabel;
     }
+    await this.screenshot(page, testInfo, 'capture-lang-uk.png');
+    await this.selectLanguage(page, currentLanguageLabel, this.languages[0]);
   }
 
   /** Select one sidebar workspace and wait for its main surface to remain visible. */
@@ -89,13 +100,21 @@ class ReleaseScreenshotMatrix {
   /** Select one language state and verify its persisted profile value. */
   private static async selectLanguage(
     page: Page,
-    label: string,
-    id: string,
+    currentLanguageLabel: string,
+    language: (typeof ReleaseScreenshotMatrix.languages)[number],
   ): Promise<void> {
-    await page.getByRole('button', { name: 'Language' }).click();
-    await page.getByRole('button', { name: label, exact: true }).click();
+    await page.getByRole('button', { name: currentLanguageLabel, exact: true }).click();
+    await page.getByRole('button', { name: language.name, exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', language.id);
     await expect.poll(() => page.evaluate(() =>
-      window.localStorage.getItem('interceptor.lang'))).toBe(id);
+      window.localStorage.getItem('interceptor.language'))).toBe(language.id);
+    await expect(
+      page.getByRole('navigation').getByRole('button', {
+        name: language.captureLabel,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await this.expectNoPageOverflow(page);
   }
 
   /** Write one stable screenshot without tooltip or animation noise. */
@@ -104,18 +123,23 @@ class ReleaseScreenshotMatrix {
     testInfo: TestInfo,
     name: string,
   ): Promise<void> {
-    const overflow = await page.evaluate(() => ({
-      width: document.documentElement.scrollWidth - window.innerWidth,
-      height: document.documentElement.scrollHeight - window.innerHeight,
-    }));
-    expect(overflow.width).toBeLessThanOrEqual(0);
-    expect(overflow.height).toBeLessThanOrEqual(0);
+    await this.expectNoPageOverflow(page);
     await page.mouse.move(400, 400);
     await expect(page.locator('.ant-tooltip')).toBeHidden();
     await page.screenshot({
       path: testInfo.outputPath(name),
       animations: 'disabled',
     });
+  }
+
+  /** Assert that localized page content remains inside the BrowserWindow viewport. */
+  private static async expectNoPageOverflow(page: Page): Promise<void> {
+    const overflow = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth - window.innerWidth,
+      height: document.documentElement.scrollHeight - window.innerHeight,
+    }));
+    expect(overflow.width).toBeLessThanOrEqual(0);
+    expect(overflow.height).toBeLessThanOrEqual(0);
   }
 }
 
@@ -326,6 +350,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
     // First-run behavior itself is covered by the light/dark visual-parity flow.
     await page.evaluate(() => {
       window.localStorage.setItem('interceptor.first-run', 'completed');
+      window.localStorage.setItem('interceptor.language', 'en');
+      window.localStorage.removeItem('interceptor.lang');
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
@@ -391,6 +417,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setBreakpointsEnabled',
         'setHttpsDecryption',
         'setInsecureHosts',
+        'setUiLanguage',
         'setWebSocketBreakpointsEnabled',
         'startArchiveExport',
         'startArchiveImport',
@@ -409,6 +436,17 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     expect(securitySnapshot.csp).toContain("frame-src 'none'");
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
+
+    const invalidLanguageError = await page.evaluate(async () => {
+      try {
+        await window.interceptor.setUiLanguage('invalid' as never);
+        return null;
+      } catch (error) {
+        return String(error);
+      }
+    });
+    expect(invalidLanguageError).toContain('language is invalid');
+    await page.evaluate(() => window.interceptor.setUiLanguage('en'));
 
     const updateSnapshot = await page.evaluate(() =>
       window.interceptor.getUpdateStatus());
@@ -457,7 +495,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     expect(corePid).not.toBeNull();
     await expect(
-      page.getByTitle(`Proxy Core running, PID ${corePid}`),
+      page.getByTitle(`Proxy Core · Running · PID ${corePid}`),
     ).toBeVisible();
 
     const echoResult = await page.evaluate(() =>

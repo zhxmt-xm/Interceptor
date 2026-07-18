@@ -1,4 +1,5 @@
 import { cx } from '../../../components';
+import { useTranslation } from 'react-i18next';
 import { SECTIONS } from '../data';
 import styles from './SettingsNav.module.css';
 
@@ -12,16 +13,17 @@ export function SettingsNav({
   active,
   onSelect,
 }: SettingsNavProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className={styles.nav}>
-      {SECTIONS.map(({ id, label, Icon }) => (
+      {SECTIONS.map(({ id, labelKey, Icon }) => (
         <div
           key={id}
           className={cx(styles.item, id === active && styles.active)}
           onClick={() => onSelect(id)}
         >
           <Icon size={16} strokeWidth={1.9} />
-          {label}
+          {t(labelKey)}
         </div>
       ))}
     </div>

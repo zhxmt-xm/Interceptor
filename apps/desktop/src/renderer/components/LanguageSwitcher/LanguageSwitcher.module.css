@@ -50,6 +50,11 @@
   color: var(--text-2);
 }
 
+.flyout {
+  max-height: min(420px, calc(100vh - 24px));
+  overflow-y: auto;
+}
+
 /* popover title */
 .title {
   padding: 3px 8px 7px;

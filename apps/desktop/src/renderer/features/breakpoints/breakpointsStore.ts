@@ -174,12 +174,14 @@ export function buildEdit(draft: BreakpointDraft): BreakpointEdit {
 }
 
 /** 断点倒计时格式化（deadline 时间戳 → M:SS）；0/无超时显示 ∞。 */
-export function formatCountdown(deadline: number): string {
+export function formatCountdown(deadline: number, locale = 'en'): string {
   if (deadline <= 0) {
     return '∞';
   }
   const totalSec = Math.max(0, Math.ceil((deadline - Date.now()) / 1_000));
   const minutes = Math.floor(totalSec / 60);
   const seconds = totalSec % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const minuteLabel = new Intl.NumberFormat(locale).format(minutes);
+  const secondLabel = new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(seconds);
+  return `${minuteLabel}:${secondLabel}`;
 }

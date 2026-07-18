@@ -1,5 +1,6 @@
 import { Clock, Menu, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Button, IconButton, Title } from '../../../components';
 import { useComposerStore } from '../composerStore';
@@ -11,6 +12,7 @@ export interface ComposerTopbarProps {
 
 /** Composer topbar: sidebar toggle, title, history and new-request actions. */
 export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const history = useComposerStore((state) => state.history);
   const loadFromHistory = useComposerStore((state) => state.loadFromHistory);
@@ -18,17 +20,17 @@ export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Eleme
 
   return (
     <>
-      <IconButton icon={Menu} label="Toggle sidebar" onClick={onMenu} />
-      <Title>Composer</Title>
+      <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
+      <Title>{t('composer.title')}</Title>
       <div className={styles.actions}>
         <div className={styles.historyWrap}>
           <Button icon={Clock} onClick={() => setOpen((value) => !value)}>
-            History
+            {t('composer.history')}
           </Button>
           {open ? (
             <div className={styles.historyPanel}>
               {history.length === 0 ? (
-                <div className={styles.historyEmpty}>No requests sent yet.</div>
+                <div className={styles.historyEmpty}>{t('composer.noHistory')}</div>
               ) : (
                 history.map((entry) => (
                   <button
@@ -50,7 +52,7 @@ export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Eleme
           ) : null}
         </div>
         <Button icon={Plus} onClick={resetForNew}>
-          New
+          {t('composer.new')}
         </Button>
       </div>
     </>

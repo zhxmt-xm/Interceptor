@@ -9,6 +9,7 @@ import {
   Terminal,
   Zap,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
 import { cx, LanguageSwitcher, NavItem, ThemeSwitcher, type LangId } from '../components';
@@ -23,13 +24,22 @@ export type ViewId =
   | 'diagnostics'
   | 'settings';
 
-const NAV: Array<{ id: ViewId; label: string; Icon: LucideIcon }> = [
-  { id: 'capture', label: 'Capture', Icon: Activity },
-  { id: 'rules', label: 'Rules & Map', Icon: GitBranch },
-  { id: 'composer', label: 'Composer', Icon: Send },
-  { id: 'breakpoints', label: 'Breakpoints', Icon: Pause },
-  { id: 'diagnostics', label: 'Diagnostics', Icon: Terminal },
-];
+const NAV = [
+  { id: 'capture', labelKey: 'sidebar.capture', Icon: Activity },
+  { id: 'rules', labelKey: 'sidebar.rulesMap', Icon: GitBranch },
+  { id: 'composer', labelKey: 'sidebar.composer', Icon: Send },
+  { id: 'breakpoints', labelKey: 'sidebar.breakpoints', Icon: Pause },
+  { id: 'diagnostics', labelKey: 'sidebar.diagnostics', Icon: Terminal },
+] satisfies Array<{ id: ViewId; labelKey: string; Icon: LucideIcon }>;
+
+const CORE_STATE_KEYS: Record<CoreProcessStatus['state'], string> = {
+  starting: 'coreState.starting',
+  running: 'coreState.running',
+  unresponsive: 'coreState.unresponsive',
+  restarting: 'coreState.restarting',
+  stopping: 'coreState.stopping',
+  stopped: 'coreState.stopped',
+};
 
 interface SidebarProps {
   activeView: ViewId;
@@ -54,16 +64,18 @@ export function Sidebar({
   coreStatus,
   sessionEndpoint = '127.0.0.1:8888',
 }: SidebarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const coreOnline = coreStatus.state === 'running';
-  const coreTitle = `Proxy Core ${coreStatus.state}${
-    coreStatus.pid != null ? `, PID ${coreStatus.pid}` : ''
-  }`;
+  const coreTitle = t('sidebar.coreTitle', {
+    state: t(CORE_STATE_KEYS[coreStatus.state]),
+    pid: coreStatus.pid != null ? ` · PID ${coreStatus.pid}` : '',
+  });
 
   return (
     <aside
       className={cx(styles.sidebar, collapsed && styles.collapsed)}
       role="navigation"
-      aria-label="Workspaces"
+      aria-label={t('sidebar.navigation')}
     >
       <div className={styles.brand}>
         <span className={styles.logo}>
@@ -72,22 +84,22 @@ export function Sidebar({
         <b className={styles.brandName}>Interceptor</b>
       </div>
 
-      <div className={styles.label}>Workspace</div>
-      {NAV.map(({ id, label, Icon }) => (
+      <div className={styles.label}>{t('sidebar.workspace')}</div>
+      {NAV.map(({ id, labelKey, Icon }) => (
         <NavItem
           key={id}
           icon={Icon}
-          label={label}
+          label={t(labelKey)}
           active={activeView === id}
           collapsed={collapsed}
           onClick={() => onSelect(id)}
         />
       ))}
 
-      <div className={styles.label}>Session</div>
+      <div className={styles.label}>{t('sidebar.session')}</div>
       <NavItem
         icon={Globe}
-        label="Local traffic"
+        label={t('sidebar.localTraffic')}
         sub={sessionEndpoint}
         live={coreOnline}
         title={coreTitle}
@@ -98,7 +110,7 @@ export function Sidebar({
 
       <NavItem
         icon={Settings}
-        label="Settings"
+        label={t('sidebar.settings')}
         active={activeView === 'settings'}
         collapsed={collapsed}
         onClick={() => onSelect('settings')}

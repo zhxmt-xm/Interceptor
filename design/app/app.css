@@ -579,8 +579,7 @@ body {
 .dlgfoot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--panel-2); }
 
 /* =====================================================================
-   FOOTER SWITCHERS (design exploration) — theme & language variants.
-   Toggled via dock keys `themeui` (a/b/c/d) and `langui` (l1/l2/l3).
+   FOOTER SWITCHERS — current theme and language controls.
    Popovers are children of .app (not .side) so .side overflow can't clip.
    ===================================================================== */
 .footpop { position: absolute; left: 222px; bottom: 12px; z-index: 60; width: 194px; padding: 7px; background: var(--panel); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow); display: none; }
@@ -602,49 +601,31 @@ body {
 .app[data-theme="dark"]  .footpop.theme .thi[data-themeset="dark"]  .ck,
 .app[data-theme="ember"] .footpop.theme .thi[data-themeset="ember"] .ck,
 .app[data-lang="en"] .footpop.lang .thi[data-langset="en"] .ck,
-.app[data-lang="zh"] .footpop.lang .thi[data-langset="zh"] .ck,
+.app[data-lang="zh-CN"] .footpop.lang .thi[data-langset="zh-CN"] .ck,
+.app[data-lang="zh-TW"] .footpop.lang .thi[data-langset="zh-TW"] .ck,
 .app[data-lang="ja"] .footpop.lang .thi[data-langset="ja"] .ck,
-.app[data-lang="de"] .footpop.lang .thi[data-langset="de"] .ck { display: block; }
-.app.thopen .thtrigger, .app.lgopen .lgtrigger, .app.lgopen .lgchip { background: var(--hover); color: var(--text); }
+.app[data-lang="ko"] .footpop.lang .thi[data-langset="ko"] .ck,
+.app[data-lang="de"] .footpop.lang .thi[data-langset="de"] .ck,
+.app[data-lang="fr"] .footpop.lang .thi[data-langset="fr"] .ck,
+.app[data-lang="es"] .footpop.lang .thi[data-langset="es"] .ck,
+.app[data-lang="it"] .footpop.lang .thi[data-langset="it"] .ck,
+.app[data-lang="pt-BR"] .footpop.lang .thi[data-langset="pt-BR"] .ck,
+.app[data-lang="ru"] .footpop.lang .thi[data-langset="ru"] .ck,
+.app[data-lang="nl"] .footpop.lang .thi[data-langset="nl"] .ck,
+.app[data-lang="pl"] .footpop.lang .thi[data-langset="pl"] .ck,
+.app[data-lang="tr"] .footpop.lang .thi[data-langset="tr"] .ck,
+.app[data-lang="uk"] .footpop.lang .thi[data-langset="uk"] .ck { display: block; }
+.app.thopen .thtrigger, .app.lgopen .lgtrigger { background: var(--hover); color: var(--text); }
 
-/* A · popover trigger with a trailing accent swatch */
+/* Theme popover trigger with a trailing accent swatch. */
 .thdot { margin-left: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--sidebar), 0 0 0 3px var(--border-2); flex: 0 0 auto; }
 .collapsed .thdot { display: none; }
 
-/* B · segmented icon toggle */
-.thseg { display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--border); }
-.thseg span { flex: 1; display: grid; place-items: center; height: 28px; border-radius: 6px; color: var(--text-3); cursor: pointer; }
-.thseg span svg { width: 16px; height: 16px; }
-.thseg span:hover { color: var(--text); }
-.thseg span.on { background: var(--bg); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-
-/* C · color swatches */
-.thsw .tsw { width: 15px; height: 15px; border-radius: 50%; cursor: pointer; flex: 0 0 auto; }
-.thsw .tsw.s-light { margin-left: auto; }
-.tsw.s-light { background: #6a5bf0; } .tsw.s-warm { background: #c2703a; } .tsw.s-dark { background: #2fd4b8; } .tsw.s-ember { background: #d99a3c; }
-.thsw .tsw.on { box-shadow: 0 0 0 2px var(--sidebar), 0 0 0 3.5px var(--text-3); }
-.collapsed .thsw { justify-content: center; }
-.collapsed .thsw .tsw:not(.on) { display: none; }
-.collapsed .thsw .tsw.s-light { margin-left: 0; }
-
-/* L1 · language popover trigger with trailing code */
+/* Language popover trigger with trailing code. */
+.footpop.lang { max-height: 420px; overflow-y: auto; }
 .lgcode { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-3); }
 .collapsed .lgtrigger > svg:first-child { display: none; }
 .collapsed .lgtrigger .lgcode { margin: 0; color: var(--text-2); }
-
-/* L2 · compact code chip */
-.lgchip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px; border-radius: 9px; border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer; }
-.lgchip > svg:first-child { width: 15px; height: 15px; color: var(--text-3); flex: 0 0 auto; }
-.lgchip .cx { margin-left: auto; display: flex; }
-.lgchip .cx svg { width: 13px; height: 13px; color: var(--text-3); }
-.collapsed .lgchip { justify-content: center; padding: 0; }
-.collapsed .lgchip > svg:first-child, .collapsed .lgchip .cx { display: none; }
-
-/* L3 · settings-style row with trailing value */
-.lgval { margin-left: auto; font-size: 12px; color: var(--text-3); white-space: nowrap; }
-.lgrow .cx { margin-left: 6px; color: var(--text-3); flex: 0 0 auto; display: flex; }
-.lgrow .cx svg { width: 14px; height: 14px; }
-.collapsed .lgval, .collapsed .lgrow .cx { display: none; }
 
 /* =====================================================================
    DESIGN DOCK — collapsible controls; open/close with the round button

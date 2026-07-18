@@ -373,7 +373,7 @@ export const fakeInterceptorFixture = {
 /** Installed with page.addInitScript before Renderer code, mirroring Electron Preload. */
 export function installFakeInterceptor({ fixture, theme, firstRun = false, updateState = 'unsupported' }) {
   window.localStorage.setItem('interceptor.theme', theme);
-  window.localStorage.setItem('interceptor.lang', 'en');
+  window.localStorage.setItem('interceptor.language', 'en');
   if (firstRun) {
     window.localStorage.removeItem('interceptor.first-run');
   } else {
@@ -464,6 +464,7 @@ export function installFakeInterceptor({ fixture, theme, firstRun = false, updat
             };
 
   window.interceptor = {
+    setUiLanguage: async () => undefined,
     echoCore: async (value) => ({
       value,
       handledAt: '2026-07-16T12:00:00.000Z',
