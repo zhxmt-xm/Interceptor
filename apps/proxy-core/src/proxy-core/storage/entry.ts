@@ -84,14 +84,12 @@ export class StorageService {
     return this.bodyStore.writeStream(source);
   }
 
-  /** 同步捕获 Exchange/Body hash 时间切面并持有 Body lease。 */
+  /** 捕获点击时的 Exchange/Body hash 时间切面。 */
   createArchiveSnapshot(batchSize: number): CaptureArchiveSnapshot {
     const source = this.captureStore.createSnapshotSource(batchSize);
-    const release = this.bodyStore.acquireLease(source.bodyHashes);
     return {
       bodyHashes: source.bodyHashes,
       batches: source.batches,
-      release,
     };
   }
 

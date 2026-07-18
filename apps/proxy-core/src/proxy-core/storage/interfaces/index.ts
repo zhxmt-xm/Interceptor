@@ -162,12 +162,6 @@ export interface CaptureSnapshotExchange {
   readonly frames: readonly WebSocketFrameInput[];
 }
 
-/** Native archive 一次性 Worker 接收的完整 Capture 时间切面。 */
-export interface CaptureSnapshot {
-  readonly sessions: readonly CaptureSessionInput[];
-  readonly exchanges: readonly CaptureSnapshotExchange[];
-}
-
 /** 发送给一次性 Archive Worker 的有界 Capture 快照批次。 */
 export interface CaptureSnapshotBatch {
   /** 仅首批携带 Session 元数据。 */
@@ -175,12 +169,10 @@ export interface CaptureSnapshotBatch {
   readonly exchanges: readonly CaptureSnapshotExchange[];
 }
 
-/** Archive 导出在 Core 内捕获的一致时间切面与 Body lease。 */
+/** Archive 导出在点击时捕获的 request 与 Body hash 时间切面。 */
 export interface CaptureArchiveSnapshot {
   readonly bodyHashes: readonly string[];
   readonly batches: AsyncIterable<CaptureSnapshotBatch>;
-  /** 释放 TemporaryBodyStore 对时间切面正文的保留。 */
-  release(): void;
 }
 
 export type CleanupScope =

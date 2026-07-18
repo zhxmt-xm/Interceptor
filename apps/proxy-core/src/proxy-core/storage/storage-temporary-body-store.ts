@@ -34,24 +34,12 @@ export class TemporaryBodyStore {
   private readonly memoryThresholdBytes = BODY_MEMORY_THRESHOLD_BYTES;
   /** hash 到内存或 spill 位置。 */
   private readonly entries = new Map<string, TemporaryBodyEntry>();
-  /** archive 时间切面对正文的临时保留计数。 */
-  private readonly leases = new Map<string, number>();
   /** 当前去重正文总字节数。 */
   private totalBytes = 0;
-  /** 当前生命周期代际；reset 后旧写入不得提交。 */
-  private generation = 0;
-  /** 当前正在进行的正文写入。 */
-  private readonly activeWrites = new Set<Promise<BlobWriteResult>>();
-  /** reset barrier；新写入必须等待目录重建完成。 */
-  private resetBarrier: Promise<void> = Promise.resolve();
-  /** 写入登记与 reset 切换 generation 的串行门闩。 */
-  private lifecycleTail: Promise<void> = Promise.resolve();
   /** hash 去重/配额/rename 的串行提交尾。 */
   private finalizeTail: Promise<void> = Promise.resolve();
   /** Store 是否已初始化。 */
   private initialized = false;
-  /** 是否正在切换 generation 并重建 spill 目录。 */
-  private resetting = false;
 
   /** 清理旧持久 Blob 与崩溃残留 spill，并建立空临时目录。 */
   async init(): Promise<void> {
@@ -85,23 +73,10 @@ export class TemporaryBodyStore {
     return this.totalBytes - this.memoryBytes;
   }
 
-  /**
-   * 流式写入正文并返回内容 hash；超过内存阈值后把已收集与后续 chunk 写入临时文件。
-   * Clear/Stop 推进 generation 后，旧写入即使完成也不会挂回 Store。
-   */
+  /** 流式写入正文；超过内存阈值后把已收集与后续 chunk 写入临时文件。 */
   async writeStream(source: AsyncIterable<Uint8Array>): Promise<BlobWriteResult> {
     this.assertInitialized();
-    let operation!: Promise<BlobWriteResult>;
-    await this.withLifecycleLock(async () => {
-      await this.resetBarrier;
-      operation = this.performWrite(source, this.generation);
-      this.activeWrites.add(operation);
-    });
-    try {
-      return await operation;
-    } finally {
-      this.activeWrites.delete(operation);
-    }
+    return this.performWrite(source);
   }
 
   /** 判断指定正文是否仍在当前 Core 临时 Store。 */
@@ -146,7 +121,7 @@ export class TemporaryBodyStore {
     let removedBlobs = 0;
     let freedBytes = 0;
     for (const [hash, entry] of this.entries) {
-      if (referenced.has(hash) || this.leases.has(hash)) {
+      if (referenced.has(hash)) {
         continue;
       }
       this.entries.delete(hash);
@@ -160,36 +135,13 @@ export class TemporaryBodyStore {
     return { removedBlobs, freedBytes };
   }
 
-  /**
-   * 切断当前 generation、等待旧写入退出并物理重建 spill 目录。
-   * 新写入会在 resetBarrier 后进入下一 generation。
-   */
+  /** 直接清空全部临时正文并重建 spill 目录。 */
   async reset(): Promise<void> {
     this.assertInitialized();
-    let reset!: Promise<void>;
-    await this.withLifecycleLock(() => {
-      if (this.leases.size > 0) {
-        throw new Error('Temporary bodies are still leased by an active transfer.');
-      }
-      this.resetting = true;
-      this.generation += 1;
-      const previousBarrier = this.resetBarrier;
-      reset = (async (): Promise<void> => {
-        try {
-          await previousBarrier;
-          await Promise.allSettled(Array.from(this.activeWrites));
-          await this.finalizeTail;
-          this.entries.clear();
-          this.totalBytes = 0;
-          await fs.rm(this.rootDir, { recursive: true, force: true });
-          await fs.mkdir(this.rootDir, { recursive: true });
-        } finally {
-          this.resetting = false;
-        }
-      })();
-      this.resetBarrier = reset;
-    });
-    await reset;
+    this.entries.clear();
+    this.totalBytes = 0;
+    await fs.rm(this.rootDir, { recursive: true, force: true });
+    await fs.mkdir(this.rootDir, { recursive: true });
   }
 
   /** Reset 后移除临时目录，供 Core dispose。 */
@@ -202,46 +154,9 @@ export class TemporaryBodyStore {
     this.initialized = false;
   }
 
-  /** 保留一组当前正文，直到 archive 导出 finally 调用 release。 */
-  acquireLease(hashes: readonly string[]): () => void {
-    if (this.resetting) {
-      throw new Error('Temporary bodies are being reset.');
-    }
-    const acquired: string[] = [];
-    for (const hash of hashes) {
-      if (!this.entries.has(hash)) {
-        this.releaseHashes(acquired);
-        throw new Error(`Temporary body '${hash}' does not exist.`);
-      }
-      this.leases.set(hash, (this.leases.get(hash) ?? 0) + 1);
-      acquired.push(hash);
-    }
-    let released = false;
-    return () => {
-      if (released) {
-        return;
-      }
-      released = true;
-      this.releaseHashes(acquired);
-    };
-  }
-
-  /** 递减一组 Body lease，归零时移除计数。 */
-  private releaseHashes(hashes: readonly string[]): void {
-    for (const hash of hashes) {
-      const count = this.leases.get(hash) ?? 0;
-      if (count <= 1) {
-        this.leases.delete(hash);
-      } else {
-        this.leases.set(hash, count - 1);
-      }
-    }
-  }
-
   /** 消费输入、增量 hash，并按阈值选择内存或 spill。 */
   private async performWrite(
     source: AsyncIterable<Uint8Array>,
-    writeGeneration: number,
   ): Promise<BlobWriteResult> {
     const hash = createHash('sha256');
     const memoryChunks: Buffer[] = [];
@@ -290,7 +205,6 @@ export class TemporaryBodyStore {
       size,
       memory,
       spillPath,
-      writeGeneration,
     );
   }
 
@@ -300,7 +214,6 @@ export class TemporaryBodyStore {
     size: number,
     memory: Buffer | null,
     spillPath: string | null,
-    writeGeneration: number,
   ): Promise<BlobWriteResult> {
     let result: BlobWriteResult | undefined;
     let failure: unknown;
@@ -308,9 +221,6 @@ export class TemporaryBodyStore {
     const current = (async (): Promise<void> => {
       await previous;
       try {
-        if (writeGeneration !== this.generation) {
-          throw new Error('Temporary body write belongs to a cleared generation.');
-        }
         const existing = this.entries.get(hash);
         if (existing) {
           if (spillPath) {
@@ -361,21 +271,6 @@ export class TemporaryBodyStore {
       throw new Error(`Temporary body '${hash}' does not exist.`);
     }
     return entry;
-  }
-
-  /** 在写入/Reset 生命周期门闩内执行一个短操作。 */
-  private async withLifecycleLock(operation: () => void | Promise<void>): Promise<void> {
-    const previous = this.lifecycleTail;
-    let release!: () => void;
-    this.lifecycleTail = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await previous;
-    try {
-      await operation();
-    } finally {
-      release();
-    }
   }
 
   /** 循环写完整个 Buffer，处理 FileHandle.write 的合法 partial write。 */

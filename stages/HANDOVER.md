@@ -20,6 +20,7 @@
 
 - **M0–M14 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
 - **M14 临时 Capture 架构已完成**：Core 直接拥有内存 Capture + 内存/spill Body；RuleSet 直接持久 `rules.sqlite`；Diagnostics Worker 保留；native archive 使用一次性 Archive Worker。常驻 Storage Worker、运行时 `capture.sqlite` 和持久 blobs 已删除。
+- **Transfer 简化边界**：import/export 到达 Core 后直接读取当前 Store；全屏 Loading 阻止正常 UI 操作并只保留 Cancel。无 Body lease/generation/barrier，无 Core action 门禁。
 - **Stop 语义**：Main 恢复系统代理，Core 真关闭 Mockttp/WebSocket listener，旧端口不可连接，但已有 Core/Renderer 记录保留；Start 新 Session 继续追加；Clear 才删除记录和 spill；Core 重启释放临时数据。
 - **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 Recording/系统代理；HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
 - **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。

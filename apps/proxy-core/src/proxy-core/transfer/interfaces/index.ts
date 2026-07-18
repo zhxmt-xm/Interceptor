@@ -37,8 +37,6 @@ export interface MutableTransferJob {
   readonly startedAt: string;
   /** 只属于该任务的取消控制器。 */
   readonly controller: AbortController;
-  /** 实际 operation 已退出的 Promise；取消后用于等待 Worker/I/O 收尾。 */
-  completion?: Promise<void>;
   /** 当前任务状态。 */
   state: TransferJobSnapshot['state'];
   /** 已处理条目数量。 */

@@ -15,7 +15,7 @@ import type {
  * 清理路径。ArchiveService 不直接触碰活动 SQLite 连接或 Blob 磁盘布局。
  */
 export interface ArchiveStorage {
-  /** 一次同步捕获 copy-on-write Exchange/Body 时间切面并持有 Body lease。 */
+  /** 捕获用户点击时的 Exchange/Body 时间切面。 */
   createArchiveSnapshot(batchSize: number): CaptureArchiveSnapshot;
   /** 打开一个临时正文异步字节流；可来自内存或 spill 文件。 */
   openBlobStream(hash: string): AsyncIterable<Uint8Array>;
@@ -50,12 +50,6 @@ export type ArchiveWorkerRequest =
   | { readonly kind: 'read-batch'; readonly cursor?: string; readonly limit: number }
   | { readonly kind: 'finish' };
 
-/** 带关联 ID 的 Archive Worker 请求。 */
-export interface ArchiveWorkerRequestEnvelope {
-  readonly requestId: number;
-  readonly request: ArchiveWorkerRequest;
-}
-
 /** Archive SQLite 快照的一页 Exchange。 */
 export interface ArchiveSnapshotPage {
   readonly exchanges: readonly CaptureSnapshotExchange[];
@@ -70,23 +64,14 @@ export type ArchiveWorkerResponse =
   | { readonly type: 'fatal'; readonly message: string }
   | {
       readonly type: 'result';
-      readonly requestId: number;
       readonly ok: true;
       readonly result: unknown;
     }
   | {
       readonly type: 'result';
-      readonly requestId: number;
       readonly ok: false;
       readonly error: { readonly name: string; readonly message: string };
     };
-
-/** Archive Worker Host 的在途 Promise。 */
-export interface PendingArchiveWorkerRequest {
-  resolve(value: unknown): void;
-  reject(error: Error): void;
-  timer: ReturnType<typeof setTimeout>;
-}
 
 export interface ArchiveManifestFile {
   /** archive 内条目相对路径。 */

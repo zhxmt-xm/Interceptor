@@ -1,18 +1,16 @@
+import { once } from 'node:events';
 import { Worker } from 'node:worker_threads';
 
 import { archiveWorkerEntry } from '../../constants';
 import type { CaptureSnapshotBatch } from '../../storage/interfaces';
 import {
   ARCHIVE_WORKER_BATCH_SIZE,
-  ARCHIVE_WORKER_REQUEST_TIMEOUT_MS,
 } from '../archive-constants';
 import type {
   ArchiveSnapshotPage,
   ArchiveWorkerData,
   ArchiveWorkerRequest,
-  ArchiveWorkerRequestEnvelope,
   ArchiveWorkerResponse,
-  PendingArchiveWorkerRequest,
 } from '../interfaces';
 
 /** Core 侧的一次性 Archive Worker Host；每次导入/导出独占一个线程。 */
@@ -21,10 +19,6 @@ export class ArchiveWorkerHost {
   private worker: Worker | null = null;
   /** Worker ready Promise。 */
   private ready: Promise<void> | null = null;
-  /** requestId 到在途 Promise。 */
-  private readonly pending = new Map<number, PendingArchiveWorkerRequest>();
-  /** 下一个 requestId。 */
-  private nextRequestId = 1;
   /** Host 是否已结束。 */
   private closed = false;
 
@@ -39,7 +33,7 @@ export class ArchiveWorkerHost {
     if (this.ready) {
       return this.ready;
     }
-    this.ready = new Promise<void>((resolve, reject) => {
+    this.ready = (async (): Promise<void> => {
       const worker = new Worker(archiveWorkerEntry, {
         workerData: {
           mode: this.mode,
@@ -47,38 +41,15 @@ export class ArchiveWorkerHost {
         } satisfies ArchiveWorkerData,
       });
       this.worker = worker;
-      let ready = false;
-      worker.on('message', (message: ArchiveWorkerResponse) => {
-        if (message.type === 'ready') {
-          ready = true;
-          resolve();
-          return;
-        }
-        if (message.type === 'fatal') {
-          const error = new Error(`archive worker fatal: ${message.message}`);
-          if (!ready) {
-            reject(error);
-          }
-          this.failPending(error);
-          return;
-        }
-        this.handleResult(message);
-      });
-      worker.on('error', (error) => {
-        if (!ready) {
-          reject(error);
-        }
-        this.failPending(error);
-      });
-      worker.on('exit', (code) => {
-        if (!ready) {
-          reject(new Error(`archive worker exited before ready with code ${code}`));
-        }
-        if (!this.closed && code !== 0) {
-          this.failPending(new Error(`archive worker exited with code ${code}`));
-        }
-      });
-    });
+      const message = await this.receive();
+      if (message.type !== 'ready') {
+        throw new Error(
+          message.type === 'fatal'
+            ? `archive worker fatal: ${message.message}`
+            : 'archive worker did not become ready',
+        );
+      }
+    })();
     return this.ready;
   }
 
@@ -151,66 +122,38 @@ export class ArchiveWorkerHost {
     this.closed = true;
     await this.worker?.terminate();
     this.worker = null;
-    this.failPending(new Error('archive worker closed'));
   }
 
-  /** 发送关联请求并应用固定超时。 */
-  private request<T>(request: ArchiveWorkerRequest): Promise<T> {
+  /** 严格串行发送一个请求并等待下一条响应。 */
+  private async request<T>(request: ArchiveWorkerRequest): Promise<T> {
     if (this.closed || !this.worker) {
-      return Promise.reject(new Error('archive worker is not running'));
+      throw new Error('archive worker is not running');
     }
-    const requestId = this.nextRequestId++;
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(requestId);
-        reject(
-          new Error(
-            `archive request '${request.kind}' timed out after ${ARCHIVE_WORKER_REQUEST_TIMEOUT_MS}ms`,
-          ),
-        );
-      }, ARCHIVE_WORKER_REQUEST_TIMEOUT_MS);
-      this.pending.set(requestId, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-        timer,
-      });
-      const envelope: ArchiveWorkerRequestEnvelope = { requestId, request };
-      try {
-        this.worker?.postMessage(envelope);
-      } catch (error) {
-        clearTimeout(timer);
-        this.pending.delete(requestId);
-        reject(error instanceof Error ? error : new Error('archive postMessage failed'));
-      }
-    });
-  }
-
-  /** 完成关联请求。 */
-  private handleResult(
-    message: Extract<ArchiveWorkerResponse, { type: 'result' }>,
-  ): void {
-    const pending = this.pending.get(message.requestId);
-    if (!pending) {
-      return;
+    const response = this.receive();
+    this.worker.postMessage(request);
+    const message = await response;
+    if (message.type !== 'result') {
+      throw new Error(
+        message.type === 'fatal'
+          ? `archive worker fatal: ${message.message}`
+          : 'archive worker returned an unexpected response',
+      );
     }
-    clearTimeout(pending.timer);
-    this.pending.delete(message.requestId);
     if (message.ok) {
-      pending.resolve(message.result);
-    } else {
-      const error = new Error(message.error.message);
-      error.name = message.error.name;
-      pending.reject(error);
+      return message.result as T;
     }
+    const error = new Error(message.error.message);
+    error.name = message.error.name;
+    throw error;
   }
 
-  /** 拒绝全部在途请求。 */
-  private failPending(error: Error): void {
-    for (const [requestId, pending] of this.pending) {
-      clearTimeout(pending.timer);
-      this.pending.delete(requestId);
-      pending.reject(error);
+  /** 等待 Worker 的下一条消息；Worker error 会由 events.once 自动拒绝。 */
+  private async receive(): Promise<ArchiveWorkerResponse> {
+    if (!this.worker) {
+      throw new Error('archive worker is not running');
     }
+    const [message] = await once(this.worker, 'message');
+    return message as ArchiveWorkerResponse;
   }
 
   /** 在取消后终止当前任务。 */

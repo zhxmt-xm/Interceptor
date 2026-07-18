@@ -148,7 +148,7 @@ describe('TemporaryBodyStore', () => {
     expect(await fixture.store.has(drop.hash)).toBe(false);
   });
 
-  it('rejects per-body and generation quota overflows without leftovers', async () => {
+  it('rejects per-body and total quota overflows without leftovers', async () => {
     limits.maxBodyBytes = 4;
     limits.quotaBytes = 6;
     fixture.store = new TemporaryBodyStore();
@@ -163,27 +163,6 @@ describe('TemporaryBodyStore', () => {
       fixture.store.writeStream(fixture.chunks(Buffer.from('567'))),
     ).rejects.toBeInstanceOf(BodyQuotaExceededError);
     expect(fixture.store.usageBytes).toBe(4);
-  });
-
-  it('prevents a write from an old generation from reappearing after reset', async () => {
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const source = (async function* (): AsyncIterable<Uint8Array> {
-      yield Buffer.from('before');
-      await gate;
-      yield Buffer.from('after');
-    })();
-    const write = fixture.store.writeStream(source);
-    await Promise.resolve();
-    const reset = fixture.store.reset();
-    release();
-
-    await expect(write).rejects.toThrow('cleared generation');
-    await reset;
-    expect(fixture.store.usageBytes).toBe(0);
-    expect(await fs.readdir(limits.captureTempDir)).toEqual([]);
   });
 
   it('removes legacy persistent blobs during initialization', async () => {

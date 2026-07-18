@@ -167,7 +167,7 @@ export class HarService {
     };
   }
 
-  /** 根据导出范围枚举稳定的 Exchange ID 列表。 */
+  /** 根据导出范围枚举 Exchange ID。 */
   private async listExchangeIds(
     scope: HarExportScope,
     signal: AbortSignal,

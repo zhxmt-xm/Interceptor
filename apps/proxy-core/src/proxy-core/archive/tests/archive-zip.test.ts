@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdtemp, open, readFile, rm } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { deflateRawSync } from 'node:zlib';
@@ -11,8 +12,12 @@ import { ArchiveZipWriter } from '../archive-zip-writer';
 import { crc32 } from '../utils';
 
 const tempDirectories: string[] = [];
+const openHandles: FileHandle[] = [];
 
 afterEach(async () => {
+  await Promise.all(
+    openHandles.splice(0).map((handle) => handle.close()),
+  );
   await Promise.all(
     tempDirectories.splice(0).map((directory) =>
       rm(directory, { recursive: true, force: true }),
@@ -92,8 +97,14 @@ function rawZip(specs: RawEntrySpec[]): Buffer {
 async function readerFor(bytes: Buffer): Promise<ArchiveZipReader> {
   const directory = await tempDir();
   const filePath = path.join(directory, 'input.iarchive');
-  await (await open(filePath, 'w')).write(bytes).then((r) => r.buffer);
+  const output = await open(filePath, 'w');
+  try {
+    await output.write(bytes);
+  } finally {
+    await output.close();
+  }
   const handle = await open(filePath, 'r');
+  openHandles.push(handle);
   const reader = new ArchiveZipReader(handle, bytes.length);
   await reader.open();
   return reader;

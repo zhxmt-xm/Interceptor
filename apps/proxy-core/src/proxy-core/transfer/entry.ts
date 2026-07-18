@@ -30,8 +30,7 @@ export class TransferJobManager {
     operation: TransferOperation,
   ): TransferJobSnapshot {
     const job = this.create(jobId, kind, filePath);
-    job.completion = this.run(job, operation);
-    void job.completion;
+    void this.run(job, operation);
     return TransferJobManager.toSnapshot(job);
   }
 
@@ -61,16 +60,6 @@ export class TransferJobManager {
     for (const jobId of this.jobs.keys()) {
       this.cancel(jobId);
     }
-  }
-
-  /** 取消所有运行中任务，并等待其 Worker/文件 I/O 实际退出。 */
-  async cancelAllAndWait(): Promise<void> {
-    this.cancelAll();
-    await Promise.all(
-      Array.from(this.jobs.values(), (job) => job.completion).filter(
-        (completion): completion is Promise<void> => completion !== undefined,
-      ),
-    );
   }
 
   /** 校验 ID 唯一性、清理历史并建立初始 running 状态。 */

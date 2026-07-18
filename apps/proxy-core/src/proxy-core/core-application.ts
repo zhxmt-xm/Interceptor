@@ -103,8 +103,6 @@ export class CoreApplication implements CoreRpcHost {
   private started = false;
   private stopping = false;
   private exiting = false;
-  /** 幂等共享的异步 shutdown 序列。 */
-  private shutdownPromise: Promise<void> | null = null;
 
   private readonly handleSignal = (): void => this.stop();
 
@@ -211,15 +209,14 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：Main 发来的 shutdown 消息或 SIGINT/SIGTERM；重复调用保持幂等。
    */
   stop(): void {
-    if (this.shutdownPromise) {
+    if (this.stopping) {
       return;
     }
     this.stopping = true;
     this.diagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
-    this.shutdownPromise = this.shutdown();
-    void this.shutdownPromise;
+    void this.shutdown();
   }
 
   /**
@@ -470,7 +467,6 @@ export class CoreApplication implements CoreRpcHost {
         }));
       case 'storage.cleanup':
         return this.withStorage(async (storage) => {
-          await this.transferJobs.cancelAllAndWait();
           const requestedScope = toCleanupScope(command.payload);
           const activeSessionId = requestedScope.kind === 'all'
             ? this.proxyService?.prepareCaptureReset() ?? null
@@ -884,7 +880,7 @@ export class CoreApplication implements CoreRpcHost {
 
   /** 等待传输、代理、临时 Storage 与 Diagnostics 退出后再确认 stopped。 */
   private async shutdown(): Promise<void> {
-    await this.transferJobs.cancelAllAndWait().catch(() => undefined);
+    this.transferJobs.cancelAll();
     await this.proxyService?.stop().catch(() => undefined);
     await Promise.allSettled([
       this.storageService?.dispose(),

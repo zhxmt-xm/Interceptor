@@ -141,7 +141,6 @@ export class ArchiveService {
       await rm(zipPath, { force: true });
       throw error;
     } finally {
-      snapshot.release();
       await rm(snapshotPath, { force: true });
     }
 

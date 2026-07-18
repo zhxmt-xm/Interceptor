@@ -83,7 +83,7 @@
 
 ## 当前验证摘要
 
-2026-07-19 M14完成验收：三 workspace typecheck；Desktop 101 / Proxy Core 179 / Protocol 19，共299项单测；10万 summary 完整稳定分页；真实 Archive Worker 三批/空库/取消退出；Windows package audit 1,292 files / 377,346,899 bytes；真实 packaged smoke 1/1。Smoke 实测 Stop 后 Mockttp 旧端口关闭而记录保持，Clear 后临时 Capture/Body 归零。
+2026-07-19 M14完成验收：三 workspace typecheck；Desktop 101 / Proxy Core 178 / Protocol 19，共298项单测；10万 summary 完整稳定分页；真实 Archive Worker 三批/空库/取消退出；Windows package audit 1,292 files / 377,341,393 bytes；真实 packaged smoke 1/1。Smoke 实测 Stop 后 Mockttp 旧端口关闭而记录保持，Clear 后临时 Capture/Body 归零。
 
 2026-07-18 Capture/HTTPS 后续增强提交前验收：三 workspace typecheck 通过；Desktop 99 / Proxy Core 193 / Protocol 19，共 311 项单测通过；Windows package 成功；真实 packaged smoke 1/1 通过，覆盖启动默认 Recording、窄 API、Core 重启与活动 Session Clear 后 Exchange/Body 归零；生产依赖 audit 0。Payload 四模式、Cookies、Timing、Tunnel setup 与 1280/900 topbar 已完成目标场景浏览器/视觉检查。
 

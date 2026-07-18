@@ -2,7 +2,7 @@ import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 
 import type {
   ArchiveWorkerData,
-  ArchiveWorkerRequestEnvelope,
+  ArchiveWorkerRequest,
   ArchiveWorkerResponse,
 } from '../interfaces';
 import { ArchiveSnapshotStore } from './worker-snapshot-store';
@@ -30,14 +30,13 @@ class ArchiveWorkerApplication {
   /** 发布 ready 并串行处理有界批次请求。 */
   start(): void {
     this.port.postMessage({ type: 'ready' } satisfies ArchiveWorkerResponse);
-    this.port.on('message', (envelope: ArchiveWorkerRequestEnvelope) => {
-      this.handle(envelope);
+    this.port.on('message', (request: ArchiveWorkerRequest) => {
+      this.handle(request);
     });
   }
 
-  /** 按模式分派请求并返回关联响应。 */
-  private handle(envelope: ArchiveWorkerRequestEnvelope): void {
-    const { requestId, request } = envelope;
+  /** 按模式分派请求并返回响应。 */
+  private handle(request: ArchiveWorkerRequest): void {
     try {
       let result: unknown;
       if (request.kind === 'append-batch') {
@@ -51,7 +50,6 @@ class ArchiveWorkerApplication {
       }
       this.port.postMessage({
         type: 'result',
-        requestId,
         ok: true,
         result,
       } satisfies ArchiveWorkerResponse);
@@ -61,7 +59,6 @@ class ArchiveWorkerApplication {
     } catch (error) {
       this.port.postMessage({
         type: 'result',
-        requestId,
         ok: false,
         error: {
           name: error instanceof Error ? error.name : 'Error',

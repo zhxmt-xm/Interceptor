@@ -83,11 +83,11 @@ export function HarTransferDialog(): React.JSX.Element | null {
         setJob(next);
         if (next.state === 'running') {
           timeout = setTimeout(() => void poll(), JOB_POLL_MS);
-        } else if (
-          next.state === 'completed' &&
-          (next.kind === 'har-import' || next.kind === 'archive-import')
-        ) {
-          await refetchSessions();
+        } else if (next.state === 'completed') {
+          if (next.kind === 'har-import' || next.kind === 'archive-import') {
+            await refetchSessions();
+          }
+          setOpen(false);
         }
       } catch (reason) {
         if (active) {
@@ -175,6 +175,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
       const next = await window.interceptor.cancelTransferJob(job.id);
       if (next) {
         setJob(next);
+        setOpen(false);
       }
     } catch (reason) {
       setError(describeError(reason));

@@ -84,6 +84,7 @@ flowchart LR
 - **StorageService**（`storage/entry.ts`）：直接组合 `TemporaryCaptureStore`、`TemporaryBodyStore` 与 `RuleStore`。Capture 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于1MiB驻内存，较大正文 spill 到 `capture-temp/`；RuleSet 低频直接读写 `rules.sqlite`。
 - **Recording 生命周期**：Stop 由 Main 先恢复系统代理，再经 `proxy.stop` 真关闭 Mockttp listener/WebSocket bridge，并等待在途 Capture 退出；已有 Core/Renderer 记录保留。Start 创建新 Session 继续追加。Clear 才推进 cutoff、取消 transfer、清 Capture/Body；Core 退出自然释放临时数据。
 - **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按100条批次把内存 Capture materialize/读取兼容 `capture.sqlite`；完成、取消或失败即退出。
+- **Transfer 交互**：命令到达 Core 后直接读取当前 Store；Renderer 全屏 Loading 在运行时只提供 Cancel，取消即 Abort 并恢复 UI。Core 不增加特殊 action 门禁。
 - **Diagnostics Worker**（`diagnostics/entry.ts` → `diagnostics/host/entry.ts` + `diagnostics/worker/entry.ts`）：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。
 - **Capture 与 Diagnostics 强隔离**：Capture 无数据库；Diagnostics Worker 独占 `diagnostics.sqlite`，日志失败不影响抓包。
 - **构建/打包**：`proxy-core` 输出 `entry.cjs` + 按需 `archive/worker/entry.cjs` + 常驻 `diagnostics/worker/entry.cjs`；Forge 递归复制整个 `dist/proxy-core`。

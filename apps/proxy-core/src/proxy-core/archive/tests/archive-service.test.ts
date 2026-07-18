@@ -168,7 +168,6 @@ class ExportFake implements ArchiveStorage {
     return {
       bodyHashes: source.bodyHashes,
       batches: source.batches,
-      release: () => undefined,
     };
   }
 
@@ -204,7 +203,6 @@ class ImportFake implements ArchiveStorage {
     return {
       bodyHashes: [],
       batches: (async function* (): AsyncIterable<CaptureSnapshotBatch> {})(),
-      release: () => undefined,
     };
   }
   openBlobStream(): AsyncIterable<Uint8Array> {
