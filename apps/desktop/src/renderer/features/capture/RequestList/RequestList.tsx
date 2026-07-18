@@ -4,10 +4,9 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Count, cx, IconButton } from '../../../components';
-import { matchesSegment, useCaptureStore } from '../captureStore';
+import { useCaptureStore, visibleCaptureRows } from '../captureStore';
 import type { ProtocolSegment } from '../row-format';
 import { RequestRow } from '../RequestRow/RequestRow';
-import { loadMoreSessions } from '../useCaptureData';
 import styles from './RequestList.module.css';
 
 const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
@@ -27,17 +26,15 @@ interface SelectedPosition {
 export function RequestList(): React.JSX.Element {
   const { t } = useTranslation();
   const rows = useCaptureStore((state) => state.rows);
-  const segment = useCaptureStore((state) => state.filter.segment);
+  const filter = useCaptureStore((state) => state.filter);
   const selectedId = useCaptureStore((state) => state.selectedId);
-  const hasMore = useCaptureStore((state) => state.hasMore);
   const setSegment = useCaptureStore((state) => state.setSegment);
   const select = useCaptureStore((state) => state.select);
   const clearView = useCaptureStore((state) => state.clearView);
   const [clearing, setClearing] = useState(false);
   const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
 
-  const visible =
-    segment === 'all' ? rows : rows.filter((row) => matchesSegment(row, segment));
+  const visible = visibleCaptureRows(rows, filter);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const selectedPositionRef = useRef<SelectedPosition | null>(null);
@@ -83,14 +80,6 @@ export function RequestList(): React.JSX.Element {
       return;
     }
     useCaptureStore.getState().setListScrollTop(element.scrollTop);
-    if (!hasMore) {
-      return;
-    }
-    const distanceToBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight;
-    if (distanceToBottom < ROW_HEIGHT * 8) {
-      void loadMoreSessions();
-    }
   };
 
   const clearRecordedTraffic = (): void => {
@@ -116,7 +105,7 @@ export function RequestList(): React.JSX.Element {
           {SEGMENTS.map(({ id, labelKey, label }) => (
             <span
               key={id}
-              className={cx(segment === id && styles.active)}
+              className={cx(filter.segment === id && styles.active)}
               onClick={() => setSegment(id)}
             >
               {labelKey ? t(labelKey) : label}

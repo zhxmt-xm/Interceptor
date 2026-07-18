@@ -15,7 +15,7 @@ import type {
 } from '../../../../shared/desktop-api';
 import { Button, Checkbox, cx } from '../../../components';
 import { usePrivacyStore } from '../../settings/privacyStore';
-import { matchesSegment, useCaptureStore } from '../captureStore';
+import { useCaptureStore, visibleCaptureRows } from '../captureStore';
 import { refetchSessions } from '../useCaptureData';
 import styles from './HarTransferDialog.module.css';
 
@@ -30,7 +30,6 @@ export function HarTransferDialog(): React.JSX.Element | null {
   const rows = useCaptureStore((state) => state.rows);
   const selectedId = useCaptureStore((state) => state.selectedId);
   const filter = useCaptureStore((state) => state.filter);
-  const hasMore = useCaptureStore((state) => state.hasMore);
   const setOpen = useCaptureStore((state) => state.setHarDialogOpen);
   const warnBeforeUnmasked = usePrivacyStore((state) => state.warnBeforeUnmasked);
   const [format, setFormat] = useState<'har' | 'archive'>('har');
@@ -43,8 +42,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
   const [error, setError] = useState<string | null>(null);
   const [allCount, setAllCount] = useState(rows.length);
 
-  const visibleCount = rows.filter((row) =>
-    matchesSegment(row, filter.segment)).length;
+  const visibleCount = visibleCaptureRows(rows, filter).length;
   const exportCount = scope === 'all'
     ? allCount
     : scope === 'selected'
@@ -273,7 +271,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
                     <ScopeOption
                       label={t('capture.currentFilter')}
                       detail={formatFilter(filter, t('capture.noActiveFilter'))}
-                      count={hasMore ? `${visibleCount}+` : visibleCount}
+                      count={visibleCount}
                       active={scope === 'filter'}
                       onClick={() => setScope('filter')}
                     />
@@ -353,9 +351,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
               >
                 {format === 'archive'
                   ? t('capture.exportArchive')
-                  : scope === 'filter' && hasMore
-                    ? t('capture.exportFiltered')
-                    : t('capture.exportRequestCount', { count: exportCount })}
+                  : t('capture.exportRequestCount', { count: exportCount })}
               </Button>
             </>
           )}

@@ -3,22 +3,91 @@ import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import type { ReadStream } from 'node:fs';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ArchiveService } from '../entry';
 import { ArchiveZipWriter } from '../archive-zip-writer';
-import type { ArchiveStorage } from '../interfaces';
-import { TransferJobManager } from '../../transfer/entry';
-import { openCaptureDatabase } from '../../storage/utils';
-import { CaptureStore } from '../../storage/worker/worker-store';
 import type {
+  ArchiveSnapshotPage,
+  ArchiveStorage,
+} from '../interfaces';
+import { TransferJobManager } from '../../transfer/entry';
+import type {
+  CaptureArchiveSnapshot,
+  CaptureSnapshotBatch,
   CaptureSessionInput,
   CleanupScope,
   ExchangeInput,
   WebSocketFrameInput,
 } from '../../storage/interfaces';
+import { TemporaryCaptureStore } from '../../storage/storage-temporary-capture-store';
+
+vi.mock('../host/entry', async () => {
+  const { ArchiveSnapshotStore } = await import(
+    '../worker/worker-snapshot-store.js'
+  );
+
+  /** 测试内同步使用真实 SQLite 编解码 Store，生产代码仍启动一次性 Worker。 */
+  class InProcessArchiveWorkerHost {
+    /** 当前测试任务模式。 */
+    private readonly mode: 'export' | 'import';
+    /** 当前测试 snapshot 路径。 */
+    private readonly snapshotPath: string;
+
+    /** 保存任务模式与 snapshot 路径。 */
+    constructor(mode: 'export' | 'import', snapshotPath: string) {
+      this.mode = mode;
+      this.snapshotPath = snapshotPath;
+    }
+
+    /** 逐批写入真实兼容 SQLite Store。 */
+    async writeSnapshot(
+      batches: AsyncIterable<CaptureSnapshotBatch>,
+      signal: AbortSignal,
+    ): Promise<void> {
+      const store = new ArchiveSnapshotStore(this.snapshotPath, this.mode);
+      try {
+        for await (const batch of batches) {
+          if (signal.aborted) {
+            throw signal.reason;
+          }
+          store.appendBatch(batch);
+        }
+      } finally {
+        store.close();
+      }
+    }
+
+    /** 逐批读取真实兼容 SQLite Store。 */
+    async *readSnapshotBatches(
+      signal: AbortSignal,
+    ): AsyncIterable<ArchiveSnapshotPage> {
+      const store = new ArchiveSnapshotStore(this.snapshotPath, this.mode);
+      let cursor: string | undefined;
+      try {
+        do {
+          if (signal.aborted) {
+            throw signal.reason;
+          }
+          const page = store.readBatch(cursor, 100);
+          yield page;
+          cursor = page.nextCursor;
+          if (!page.hasMore || !cursor) {
+            break;
+          }
+        } while (true);
+      } finally {
+        store.close();
+      }
+    }
+
+    /** 测试内没有独立线程需要终止。 */
+    async close(): Promise<void> {}
+  }
+
+  return { ArchiveWorkerHost: InProcessArchiveWorkerHost };
+});
 
 const tempDirectories: string[] = [];
 
@@ -39,12 +108,9 @@ async function tempDir(): Promise<string> {
 const BODY_BYTES = Buffer.from('<script>notExecuted()</script>');
 const BODY_HASH = createHash('sha256').update(BODY_BYTES).digest('hex');
 
-/** 建立一个含 pseudo-header、trailer、认证头与正文引用的真实源 capture.sqlite。 */
-async function buildSourceDatabase(): Promise<string> {
-  const directory = await tempDir();
-  const dbPath = path.join(directory, 'capture.sqlite');
-  const { db } = openCaptureDatabase(dbPath);
-  const store = new CaptureStore(db);
+/** 建立一个含 pseudo-header、trailer、认证头与正文引用的内存 Capture。 */
+function buildSourceCapture(): TemporaryCaptureStore {
+  const store = new TemporaryCaptureStore();
   store.ensureSession({
     id: 'session-1',
     name: 'source',
@@ -86,32 +152,28 @@ async function buildSourceDatabase(): Promise<string> {
       },
     },
   ]);
-  db.close();
-  return dbPath;
+  return store;
 }
 
-/** 导出侧存储替身：从真实源库生成快照并流式提供引用 Blob。 */
+/** 导出侧存储替身：从内存 Capture 生成批次并流式提供引用 Body。 */
 class ExportFake implements ArchiveStorage {
   constructor(
-    private readonly sourceDbPath: string,
+    private readonly capture: TemporaryCaptureStore,
     private readonly blobs: Map<string, Buffer>,
   ) {}
 
-  async snapshot(targetPath: string): Promise<void> {
-    const { db } = openCaptureDatabase(this.sourceDbPath);
-    new CaptureStore(db).snapshotInto(targetPath);
-    db.close();
+  /** 一次捕获内存 Capture 的 Exchange/Body hash 时间切面。 */
+  createArchiveSnapshot(batchSize: number): CaptureArchiveSnapshot {
+    const source = this.capture.createSnapshotSource(batchSize);
+    return {
+      bodyHashes: source.bodyHashes,
+      batches: source.batches,
+      release: () => undefined,
+    };
   }
 
-  async referencedBlobHashes(): Promise<string[]> {
-    const { db } = openCaptureDatabase(this.sourceDbPath);
-    const hashes = new CaptureStore(db).referencedBlobHashes();
-    db.close();
-    return hashes;
-  }
-
-  openBlobStream(hash: string): ReadStream {
-    return Readable.from([this.blobs.get(hash)!]) as unknown as ReadStream;
+  openBlobStream(hash: string): AsyncIterable<Uint8Array> {
+    return Readable.from([this.blobs.get(hash)!]);
   }
 
   writeBody(): never {
@@ -137,11 +199,15 @@ class ImportFake implements ArchiveStorage {
 
   constructor(private readonly failAppend = false) {}
 
-  async snapshot(): Promise<void> {}
-  async referencedBlobHashes(): Promise<string[]> {
-    return [];
+  /** 导入侧不产生 Capture 快照。 */
+  createArchiveSnapshot(): CaptureArchiveSnapshot {
+    return {
+      bodyHashes: [],
+      batches: (async function* (): AsyncIterable<CaptureSnapshotBatch> {})(),
+      release: () => undefined,
+    };
   }
-  openBlobStream(): ReadStream {
+  openBlobStream(): AsyncIterable<Uint8Array> {
     throw new Error('unused');
   }
   async writeBody(
@@ -180,12 +246,12 @@ class ImportFake implements ArchiveStorage {
   }
 }
 
-async function exportArchive(sourceDbPath: string): Promise<string> {
+async function exportArchive(capture: TemporaryCaptureStore): Promise<string> {
   const directory = await tempDir();
   const archivePath = path.join(directory, 'capture.iarchive');
   const blobs = new Map<string, Buffer>([[BODY_HASH, BODY_BYTES]]);
   const service = new ArchiveService(
-    new ExportFake(sourceDbPath, blobs),
+    new ExportFake(capture, blobs),
     new TransferJobManager(),
   );
   const result = await service.exportToFile(
@@ -198,8 +264,7 @@ async function exportArchive(sourceDbPath: string): Promise<string> {
 
 describe('ArchiveService', () => {
   it('round-trips a native archive preserving pseudo-headers, trailers, and bodies', async () => {
-    const sourceDbPath = await buildSourceDatabase();
-    const archivePath = await exportArchive(sourceDbPath);
+    const archivePath = await exportArchive(buildSourceCapture());
 
     const importFake = new ImportFake();
     const importer = new ArchiveService(importFake, new TransferJobManager());
@@ -230,8 +295,7 @@ describe('ArchiveService', () => {
   });
 
   it('rolls back the imported session when persistence fails', async () => {
-    const sourceDbPath = await buildSourceDatabase();
-    const archivePath = await exportArchive(sourceDbPath);
+    const archivePath = await exportArchive(buildSourceCapture());
     const importFake = new ImportFake(true);
     const importer = new ArchiveService(importFake, new TransferJobManager());
 

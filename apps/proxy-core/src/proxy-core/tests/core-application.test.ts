@@ -77,6 +77,7 @@ describe('CoreApplication', () => {
     application.start();
     parentPort.receive({ type: 'rpc-port' }, [rpcPort]);
     parentPort.receive({ type: 'shutdown' });
+    await settleShutdown(parentPort);
     await settle();
 
     expect(parentPort.sent).toEqual([
@@ -503,4 +504,14 @@ function expectIsoTimestamp(value: string): void {
 
 async function settle(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+async function settleShutdown(parentPort: FakeParentPort): Promise<void> {
+  for (let turn = 0; turn < 10; turn += 1) {
+    if (parentPort.sent.some((message) => message.type === 'stopped')) {
+      return;
+    }
+    await settle();
+  }
+  throw new Error('Core shutdown did not complete within ten event-loop turns.');
 }

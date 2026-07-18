@@ -1,6 +1,7 @@
-import type { ReadStream } from 'node:fs';
-
 import type {
+  CaptureArchiveSnapshot,
+  CaptureSnapshotBatch,
+  CaptureSnapshotExchange,
   CaptureSessionInput,
   CleanupScope,
   ExchangeInput,
@@ -14,13 +15,11 @@ import type {
  * 清理路径。ArchiveService 不直接触碰活动 SQLite 连接或 Blob 磁盘布局。
  */
 export interface ArchiveStorage {
-  /** 通过 SQLite VACUUM INTO 生成一致数据库快照。 */
-  snapshot(targetPath: string): Promise<void>;
-  /** 枚举仍被引用的去重 Blob hash。 */
-  referencedBlobHashes(): Promise<string[]>;
-  /** 打开一个内容寻址 Blob 的只读流。 */
-  openBlobStream(hash: string): ReadStream;
-  /** 把导入正文写入内容寻址 Blob Store。 */
+  /** 一次同步捕获 copy-on-write Exchange/Body 时间切面并持有 Body lease。 */
+  createArchiveSnapshot(batchSize: number): CaptureArchiveSnapshot;
+  /** 打开一个临时正文异步字节流；可来自内存或 spill 文件。 */
+  openBlobStream(hash: string): AsyncIterable<Uint8Array>;
+  /** 把导入正文写入内容寻址 TemporaryBodyStore。 */
   writeBody(
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
@@ -37,6 +36,56 @@ export interface ArchiveStorage {
   ): Promise<void>;
   /** 在导入失败或取消时回滚新建 Session。 */
   cleanup(scope: CleanupScope): Promise<unknown>;
+}
+
+/** 一次性 Archive Worker 的启动参数。 */
+export interface ArchiveWorkerData {
+  readonly mode: 'export' | 'import';
+  readonly snapshotPath: string;
+}
+
+/** Core 向一次性 Archive Worker 发出的有界请求。 */
+export type ArchiveWorkerRequest =
+  | { readonly kind: 'append-batch'; readonly batch: CaptureSnapshotBatch }
+  | { readonly kind: 'read-batch'; readonly cursor?: string; readonly limit: number }
+  | { readonly kind: 'finish' };
+
+/** 带关联 ID 的 Archive Worker 请求。 */
+export interface ArchiveWorkerRequestEnvelope {
+  readonly requestId: number;
+  readonly request: ArchiveWorkerRequest;
+}
+
+/** Archive SQLite 快照的一页 Exchange。 */
+export interface ArchiveSnapshotPage {
+  readonly exchanges: readonly CaptureSnapshotExchange[];
+  readonly total: number;
+  readonly nextCursor?: string;
+  readonly hasMore: boolean;
+}
+
+/** Archive Worker 生命周期与请求响应。 */
+export type ArchiveWorkerResponse =
+  | { readonly type: 'ready' }
+  | { readonly type: 'fatal'; readonly message: string }
+  | {
+      readonly type: 'result';
+      readonly requestId: number;
+      readonly ok: true;
+      readonly result: unknown;
+    }
+  | {
+      readonly type: 'result';
+      readonly requestId: number;
+      readonly ok: false;
+      readonly error: { readonly name: string; readonly message: string };
+    };
+
+/** Archive Worker Host 的在途 Promise。 */
+export interface PendingArchiveWorkerRequest {
+  resolve(value: unknown): void;
+  reject(error: Error): void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 export interface ArchiveManifestFile {

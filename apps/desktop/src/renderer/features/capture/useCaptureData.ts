@@ -1,77 +1,47 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
-import type { SessionQueryRequest } from '../../../shared/desktop-api';
-import { useCaptureStore, type CaptureFilter } from './captureStore';
+import type {
+  CoreProcessStatus,
+  SessionQueryRequest,
+} from '../../../shared/desktop-api';
+import { useCaptureStore } from './captureStore';
 
-const PAGE_SIZE = 200;
-const SEARCH_DEBOUNCE_MS = 180;
+const PAGE_SIZE = 500;
 const DEFAULT_CAPTURE_PORT = 8888;
 const BOOTSTRAP_MAX_ATTEMPTS = 30;
 const BOOTSTRAP_RETRY_MS = 300;
 let captureBootstrapPromise: Promise<void> | null = null;
+let captureCoreGeneration: string | null = null;
 
-/** 由视图过滤条件构造 Core 分页查询请求；segment 为客户端过滤不下推。 */
+/** 构造当前 Core 代际的无过滤分页请求；包含 Stop 前的全部 Recording Session。 */
 function toQueryRequest(
-  filter: CaptureFilter,
-  sessionId: string,
   cursor?: string,
 ): SessionQueryRequest {
-  const queryFilter: SessionQueryRequest['filter'] = { sessionId };
-  if (filter.search) {
-    queryFilter.search = filter.search;
-  }
-  if (filter.method) {
-    queryFilter.method = filter.method;
-  }
-  if (filter.status !== null) {
-    queryFilter.status = filter.status;
-  }
-  if (filter.host) {
-    queryFilter.host = filter.host;
-  }
-  return { limit: PAGE_SIZE, sort: 'started_desc', cursor, filter: queryFilter };
+  return {
+    limit: PAGE_SIZE,
+    sort: 'started_desc',
+    cursor,
+    filter: {},
+  };
 }
 
-/** 拉取首页并替换视图；供过滤变化与恢复 Live tail 时调用。 */
+/** 分批拉取当前 Core 代际的完整 summary 镜像，完成后一次合并进 Zustand。 */
 export async function refetchSessions(): Promise<void> {
   const api = window.interceptor;
   if (!api?.querySessions) {
     return;
   }
   const store = useCaptureStore.getState();
-  if (!store.activeSessionId) {
-    return;
-  }
-  store.beginLoad();
+  const syncRevision = store.beginLoad();
   try {
-    const page = await api.querySessions(
-      toQueryRequest(store.filter, store.activeSessionId),
-    );
-    useCaptureStore.getState().replaceRows(page);
-  } catch (error) {
-    useCaptureStore.getState().loadFailed(describeError(error));
-  }
-}
-
-/** 按游标追加下一页历史行；列表滚动接近底部时调用。 */
-export async function loadMoreSessions(): Promise<void> {
-  const api = window.interceptor;
-  const store = useCaptureStore.getState();
-  if (
-    !api?.querySessions
-    || !store.activeSessionId
-    || store.loading
-    || !store.hasMore
-    || !store.cursor
-  ) {
-    return;
-  }
-  store.beginLoad();
-  try {
-    const page = await api.querySessions(
-      toQueryRequest(store.filter, store.activeSessionId, store.cursor),
-    );
-    useCaptureStore.getState().appendRows(page);
+    const rows = [];
+    let cursor: string | undefined;
+    do {
+      const page = await api.querySessions(toQueryRequest(cursor));
+      rows.push(...page.items);
+      cursor = page.hasMore ? page.nextCursor : undefined;
+    } while (cursor);
+    useCaptureStore.getState().replaceAllRows(rows, syncRevision);
   } catch (error) {
     useCaptureStore.getState().loadFailed(describeError(error));
   }
@@ -89,25 +59,18 @@ export async function toggleCapture(): Promise<void> {
   }
   const store = useCaptureStore.getState();
   try {
-    const recordingStartedAt = Date.now();
     if (store.capturing) {
       const status = await api.stopCapture();
-      useCaptureStore.getState().clearView(Date.now());
-      useCaptureStore.getState().setActiveSessionId(null);
       useCaptureStore.getState().setCapturing(status.listening);
-      useCaptureStore.getState().setLive(false);
+      await refetchSessions();
       return;
     }
 
     const status = await api.startCapture(DEFAULT_CAPTURE_PORT);
-    if (status.listening) {
-      useCaptureStore.getState().clearView(recordingStartedAt - 1);
-      useCaptureStore.getState().setActiveSessionId(status.sessionId);
-    }
     useCaptureStore.getState().setCapturing(status.listening);
-    useCaptureStore.getState().setLive(status.listening);
     if (status.listening) {
       await enableSystemProxyWhenSupported();
+      await refetchSessions();
     }
   } catch (error) {
     useCaptureStore.getState().loadFailed(describeError(error));
@@ -117,14 +80,44 @@ export async function toggleCapture(): Promise<void> {
 /** 首次进入 Capture 时启动固定 loopback listener，并尽力接管系统代理。 */
 async function bootstrapCapture(): Promise<void> {
   const status = await waitForCaptureListener();
-  useCaptureStore.getState().setActiveSessionId(status.sessionId);
   useCaptureStore.getState().setCapturing(status.listening);
-  useCaptureStore.getState().setLive(status.listening);
   if (status.listening) {
     await enableSystemProxyWhenSupported();
     if (useCaptureStore.getState().rows.length === 0) {
       await refetchSessions();
     }
+  }
+}
+
+/** 对齐 Core 进程代际：同代际 Stop/Start 保留行，PID 变化则清空失效详情并重新 bootstrap。 */
+function applyCoreStatus(status: CoreProcessStatus): void {
+  if (status.state === 'running' && status.pid !== null) {
+    const generation = `${status.pid}:${status.startedAt ?? ''}:${status.restartCount}`;
+    if (captureCoreGeneration === generation && captureBootstrapPromise) {
+      return;
+    }
+    if (captureCoreGeneration !== null && captureCoreGeneration !== generation) {
+      useCaptureStore.getState().clearView(Date.now());
+    }
+    captureCoreGeneration = generation;
+    const bootstrap = bootstrapCapture().catch((error: unknown) => {
+      if (
+        captureBootstrapPromise === bootstrap
+        && captureCoreGeneration === generation
+      ) {
+        useCaptureStore.getState().loadFailed(describeError(error));
+        captureBootstrapPromise = null;
+      }
+    });
+    captureBootstrapPromise = bootstrap;
+    return;
+  }
+
+  if (captureCoreGeneration !== null) {
+    captureCoreGeneration = null;
+    captureBootstrapPromise = null;
+    useCaptureStore.getState().clearView(Date.now());
+    useCaptureStore.getState().setCapturing(false);
   }
 }
 
@@ -161,19 +154,11 @@ async function enableSystemProxyWhenSupported(): Promise<void> {
 }
 
 /**
- * 会话列表数据管线：订阅 Core 实时捕获事件、按过滤条件分页查询，写入 Zustand 视图状态。
- * 在 Capture 工作区挂载一次；不持有 body/header，全部按需从 Core 拉取。
+ * App 生命周期数据管线：持续订阅 Core 事件并维护当前 Core 的全量轻量 summary。
+ * 切换 feature 不卸载；body/header 仍按需从 Core 拉取。
  */
 export function useCaptureData(): void {
-  const searchKey = useCaptureStore((state) => state.filter.search);
-  const method = useCaptureStore((state) => state.filter.method);
-  const status = useCaptureStore((state) => state.filter.status);
-  const host = useCaptureStore((state) => state.filter.host);
-  const live = useCaptureStore((state) => state.live);
-  const filterEffectMounted = useRef(false);
-  const liveEffectMounted = useRef(false);
-
-  // 实时事件订阅：批量合并进视图（store 内部按 Live 开关与过滤条件裁剪）。
+  // 实时事件订阅：无论当前 feature/filter/live 状态都合并进全量 summary 镜像。
   useEffect(() => {
     const api = window.interceptor;
     if (!api?.onCaptureEvents) {
@@ -184,35 +169,24 @@ export function useCaptureData(): void {
     });
   }, []);
 
-  // Renderer 生命周期只自动初始化一次；StrictMode 重挂载复用同一 Promise。
+  // 订阅 Core 代际；同一 PID 内 Stop/Start 不清行，重启后新 Core 自动建立空 Capture。
   useEffect(() => {
-    captureBootstrapPromise ??= bootstrapCapture().catch((error: unknown) => {
-      useCaptureStore.getState().loadFailed(describeError(error));
+    let active = true;
+    const apply = (status: CoreProcessStatus): void => {
+      if (active) {
+        applyCoreStatus(status);
+      }
+    };
+    const unsubscribe = window.interceptor.onCoreProcessStatusChange(apply);
+    void window.interceptor.getCoreProcessStatus().then(apply).catch((error) => {
+      if (active) {
+        useCaptureStore.getState().loadFailed(describeError(error));
+      }
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
-  // Core 过滤条件变化时重查首页；search 输入去抖。
-  useEffect(() => {
-    if (!filterEffectMounted.current) {
-      filterEffectMounted.current = true;
-      if (useCaptureStore.getState().rows.length > 0) {
-        return;
-      }
-    }
-    const handle = setTimeout(() => {
-      void refetchSessions();
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(handle);
-  }, [searchKey, method, status, host]);
-
-  // 恢复 Live tail 时补拉最新一页，追平暂停期间遗漏的行。
-  useEffect(() => {
-    if (!liveEffectMounted.current) {
-      liveEffectMounted.current = true;
-      return;
-    }
-    if (live) {
-      void refetchSessions();
-    }
-  }, [live]);
 }

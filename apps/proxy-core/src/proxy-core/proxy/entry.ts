@@ -57,6 +57,8 @@ export class ProxyService {
     string,
     Promise<PendingTunnelCapture | null>
   >();
+  /** 已启动但尚未完成的 Capture 持久化；Stop 返回前必须全部退出。 */
+  private readonly captureOperations = new Set<Promise<unknown>>();
   /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
   private readonly ruleHits = new Map<string, RuleHitRecord[]>();
 
@@ -214,7 +216,10 @@ export class ProxyService {
       return;
     }
     await this.stopServer();
+    await Promise.allSettled(Array.from(this.captureOperations));
+    this.pendingTunnels.clear();
     this.address = null;
+    this.sessionId = null;
     this.diagnostics?.info('proxy.stopped');
   }
 
@@ -256,7 +261,7 @@ export class ProxyService {
 
   private registerCaptureListeners(server: Mockttp): void {
     void server.on('tls-passthrough-opened', (tunnel: TlsPassthroughEvent) => {
-      const capture = this.captureTunnelOpened(tunnel).catch((error: unknown) => {
+      const capture = this.trackCapture(this.captureTunnelOpened(tunnel)).catch((error: unknown) => {
         this.diagnostics?.error('tunnel.open-persist-failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
           attributes: {
@@ -273,7 +278,7 @@ export class ProxyService {
         return;
       }
       void capture
-        .then((pending) => this.captureTunnelClosed(pending))
+        .then((pending) => this.trackCapture(this.captureTunnelClosed(pending)))
         .catch((error: unknown) => {
           this.diagnostics?.error('tunnel.close-persist-failed', {
             errorCode: error instanceof Error ? error.name : 'unknown',
@@ -287,7 +292,9 @@ export class ProxyService {
     void server.on('response', (response: CompletedResponse) => {
       const webSocketCapture = this.pendingWebSockets.get(response.id);
       if (webSocketCapture) {
-        void this.captureExchange(webSocketCapture.request, response).then((exchangeId) => {
+        void this.trackCapture(
+          this.captureExchange(webSocketCapture.request, response),
+        ).then((exchangeId) => {
           webSocketCapture.resolveExchange(exchangeId);
           this.pendingWebSockets.delete(response.id);
         });
@@ -298,13 +305,15 @@ export class ProxyService {
         return;
       }
       this.pending.delete(response.id);
-      void this.captureExchange(request, response);
+      void this.trackCapture(this.captureExchange(request, response));
     });
     void server.on('abort', (request: AbortedRequest) => {
       const webSocketCapture = this.pendingWebSockets.get(request.id);
       if (webSocketCapture) {
         this.pendingWebSockets.delete(request.id);
-        void this.captureExchange(webSocketCapture.request, null, 'aborted').then(
+        void this.trackCapture(
+          this.captureExchange(webSocketCapture.request, null, 'aborted'),
+        ).then(
           (exchangeId) => {
             webSocketCapture.resolveExchange(exchangeId);
           },
@@ -313,7 +322,7 @@ export class ProxyService {
       }
       const pendingRequest = this.pending.get(request.id) ?? request;
       this.pending.delete(request.id);
-      void this.captureExchange(pendingRequest, null, 'aborted');
+      void this.trackCapture(this.captureExchange(pendingRequest, null, 'aborted'));
     });
     void server.on('websocket-request', (request: CompletedRequest) => {
       let resolveExchange!: (exchangeId: string | null) => void;
@@ -332,10 +341,12 @@ export class ProxyService {
       if (!capture) {
         return;
       }
-      void this.captureExchange(
-        capture.request,
-        response,
-        'request-complete',
+      void this.trackCapture(
+        this.captureExchange(
+          capture.request,
+          response,
+          'request-complete',
+        ),
       ).then((exchangeId) => {
         capture.resolveExchange(exchangeId);
       });
@@ -419,7 +430,7 @@ export class ProxyService {
   ): Promise<PendingTunnelCapture | null> {
     const sessionId = this.sessionId;
     const startedAt = tunnel.timingEvents.startTime;
-    if (!sessionId || startedAt <= this.captureCutoff) {
+    if (!this.server || !sessionId || startedAt <= this.captureCutoff) {
       return null;
     }
     const secure = true;
@@ -505,7 +516,7 @@ export class ProxyService {
     state: ExchangeInput['state'] = 'completed',
   ): Promise<string | null> {
     const startedAt = request.timingEvents?.startTime ?? Date.now();
-    if (!this.sessionId || startedAt <= this.captureCutoff) {
+    if (!this.server || !this.sessionId || startedAt <= this.captureCutoff) {
       return null;
     }
     const target = ProxyUtils.parseTarget(request.url);
@@ -534,7 +545,7 @@ export class ProxyService {
         )
       : undefined;
 
-    if (!this.sessionId || startedAt <= this.captureCutoff) {
+    if (!this.server || !this.sessionId || startedAt <= this.captureCutoff) {
       return null;
     }
 
@@ -645,6 +656,16 @@ export class ProxyService {
     return persisted ? exchange.id : null;
   }
 
+  /** 登记一项在途 Capture 工作，并在完成后自动移除。 */
+  private trackCapture<T>(operation: Promise<T>): Promise<T> {
+    this.captureOperations.add(operation);
+    void operation.then(
+      () => this.captureOperations.delete(operation),
+      () => this.captureOperations.delete(operation),
+    );
+    return operation;
+  }
+
   /** 单 stream Promise 链保持 Mockttp 事件顺序，并等待 101 Exchange 先落库。 */
   private enqueueWebSocketMessage(message: WebSocketMessage): void {
     const capture = this.pendingWebSockets.get(message.streamId);
@@ -733,7 +754,7 @@ export class ProxyService {
   }
 
   /**
-   * 把一段正文写入内容寻址 Blob Store 并生成 body_ref 引用；超单体上限/配额时
+  * 把一段正文写入 TemporaryBodyStore 并生成 hash metadata；超单体上限/配额时
    * 省略正文但保留元数据（size/mime）。注意：Mockttp 默认已在内存缓冲正文，真正的
    * 零内存流式（订阅 body-data 事件增量写盘）留待后续 T3.3 细化。
    */
@@ -766,7 +787,7 @@ export class ProxyService {
         encodedSize: buffer.byteLength,
         mediaType,
         contentEncoding,
-        truncated: name === 'BlobTooLargeError',
+        truncated: name === 'BodyTooLargeError',
         decodeStatus: 'skipped',
       };
     }

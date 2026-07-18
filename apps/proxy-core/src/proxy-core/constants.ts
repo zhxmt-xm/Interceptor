@@ -28,20 +28,21 @@ export const DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS = 256;
 /** 内存历史最大记录数。 */
 export const DIAGNOSTICS_RING_MAX_RECORDS = 2_000;
 
-// ===== 存储（Capture 库 + Blob） =====
-/** Capture 数据库文件名（dataDir 下）。 */
+// ===== 存储（临时 Capture/Body + 持久 Rule） =====
+/** 旧 Capture 数据库文件名；M14 仅用于一次性迁移 RuleSet 后删除。 */
 export const CAPTURE_DB_FILE = 'capture.sqlite';
-/** Blob 存储根目录名（dataDir 下）。 */
+/** 持久 RuleSet 数据库文件名（dataDir 下）。 */
+export const RULES_DB_FILE = 'rules.sqlite';
+/** 旧持久 Blob 根目录名；M14 启动时删除。 */
 export const BLOB_DIR = 'blobs';
-/** Blob 临时目录名（blobs/ 下）。 */
-export const BLOB_TEMP_DIR = 'tmp';
+/** 当前 Core 代际的临时 Body spill 目录名。 */
+export const CAPTURE_TEMP_DIR = 'capture-temp';
+/** Body 保留在内存中的最大字节数；超过后异步 spill。 */
+export const BODY_MEMORY_THRESHOLD_BYTES = 1024 * 1024;
 /** 单条正文最大字节数，超过拒绝写入并标记 truncated。 */
 export const MAX_BODY_BYTES = 64 * 1024 * 1024;
-/** Blob 全局配额字节数。 */
+/** 单个 Core 代际的临时 Body 总配额。 */
 export const GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
-/** Storage Worker 单请求超时。 */
-export const STORAGE_REQUEST_TIMEOUT_MS = 30_000;
-
 // ===== 诊断（持久化日志库） =====
 /** 诊断数据库文件名（dataDir 下）。 */
 export const DIAGNOSTICS_DB_FILE = 'diagnostics.sqlite';
@@ -72,16 +73,18 @@ export const CAPTURE_EVENT_QUEUE_CAPACITY = 5_000;
 export let dataDir: string | null = null;
 /** 应用版本（--app-version），用于捕获会话元数据。 */
 export let appVersion = '0.0.0';
-/** capture.sqlite 绝对路径；无 dataDir 时为空串。 */
+/** 旧 capture.sqlite 绝对路径；仅作为 RuleSet 一次性迁移源。 */
 export let captureDatabasePath = '';
-/** Blob 存储根目录绝对路径。 */
+/** rules.sqlite 绝对路径；持久保存跨 Recording 的 RuleSet。 */
+export let rulesDatabasePath = '';
+/** 旧持久 Blob 根目录绝对路径；启动时删除。 */
 export let blobDirectory = '';
-/** Blob 临时目录绝对路径（blobDirectory 下的 tmp）。 */
-export let blobTempDirectory = '';
+/** 当前 Core 代际的临时 Body spill 目录绝对路径。 */
+export let captureTempDirectory = '';
 /** diagnostics.sqlite 绝对路径。 */
 export let diagnosticsDatabasePath = '';
-/** 已构建的 Storage Worker bundle 绝对路径。 */
-export let storageWorkerEntry = '';
+/** 已构建的一次性 Archive Worker bundle 绝对路径。 */
+export let archiveWorkerEntry = '';
 /** 已构建的 Diagnostics Worker bundle 绝对路径。 */
 export let diagnosticsWorkerEntry = '';
 
@@ -93,14 +96,13 @@ export function initializeRuntime(argv: readonly string[]): void {
   dataDir = readArg(argv, '--data-dir=') ?? null;
   appVersion = readArg(argv, '--app-version=') ?? '0.0.0';
   captureDatabasePath = dataDir ? path.join(dataDir, CAPTURE_DB_FILE) : '';
+  rulesDatabasePath = dataDir ? path.join(dataDir, RULES_DB_FILE) : '';
   blobDirectory = dataDir ? path.join(dataDir, BLOB_DIR) : '';
-  blobTempDirectory = dataDir
-    ? path.join(dataDir, BLOB_DIR, BLOB_TEMP_DIR)
-    : '';
+  captureTempDirectory = dataDir ? path.join(dataDir, CAPTURE_TEMP_DIR) : '';
   diagnosticsDatabasePath = dataDir
     ? path.join(dataDir, DIAGNOSTICS_DB_FILE)
     : '';
-  storageWorkerEntry = resolveWorkerEntry('storage');
+  archiveWorkerEntry = resolveWorkerEntry('archive');
   diagnosticsWorkerEntry = resolveWorkerEntry('diagnostics');
 }
 
@@ -109,7 +111,7 @@ export function initializeRuntime(argv: readonly string[]): void {
  * 生产：constants 打包进 dist/proxy-core/entry.cjs（__dirname=dist/proxy-core），worker 在
  * 同包 <module>/worker 下，existsSync 命中。从源码运行（vitest）时回落到工作区已构建 dist。
  */
-function resolveWorkerEntry(moduleDir: 'storage' | 'diagnostics'): string {
+function resolveWorkerEntry(moduleDir: 'archive' | 'diagnostics'): string {
   const bundled = path.join(__dirname, moduleDir, 'worker', 'entry.cjs');
   return existsSync(bundled)
     ? bundled

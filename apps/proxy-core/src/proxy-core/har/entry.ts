@@ -342,7 +342,7 @@ export class HarService {
     };
   }
 
-  /** 把导入正文写入 Blob Store 并生成 body_ref 输入。 */
+  /** 把导入正文写入 TemporaryBodyStore 并生成 hash metadata。 */
   private async persistBody(
     body: Buffer | undefined,
     mediaType: string | undefined,
@@ -366,7 +366,7 @@ export class HarService {
     };
   }
 
-  /** 按有限 chunk 从 Blob Store 读取完整单条 HAR 正文。 */
+  /** 按有限 chunk 从 TemporaryBodyStore 读取完整单条 HAR 正文。 */
   private async readBody(
     body: CaptureBodyRef | undefined,
     signal: AbortSignal,

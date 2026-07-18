@@ -1,4 +1,4 @@
-import { existsSync, promises as fs } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
 import net, { type AddressInfo } from 'node:net';
@@ -15,14 +15,9 @@ import { ProxyService } from '../entry';
 import { CaptureEventQueue } from '../proxy-capture-event-queue';
 
 /**
- * M3 端到端集成：真实 ProxyService + 真实 StorageService（真实 Storage Worker 线程
- * 打开磁盘 capture.sqlite）+ 真实源站。验证一次代理请求形成规范 Exchange 并落库后
- * 可被分页查询回。需要已构建的 worker/entry.cjs bundle，缺失时跳过（smoke 兜底）。
+ * 端到端集成：真实 ProxyService + Core 内 Temporary Capture/Body Store + 真实源站。
+ * 验证请求形成规范 Exchange 后可被分页查询，Capture 不依赖预构建 Worker bundle。
  */
-const workerBundle = path.resolve(
-  process.cwd(),
-  'dist/proxy-core/storage/worker/entry.cjs',
-);
 
 function startOrigin(): Promise<{ port: number; close: () => Promise<void> }> {
   const server = http.createServer((_req, res) => {
@@ -164,8 +159,8 @@ function passthroughHttpsGet(
   });
 }
 
-describe.skipIf(!existsSync(workerBundle))(
-  'Proxy → Storage capture pipeline (real worker)',
+describe(
+  'Proxy → Core temporary capture pipeline',
   () => {
     let dataDir: string;
     let storage: StorageService | null = null;

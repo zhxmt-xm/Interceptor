@@ -16,10 +16,10 @@
 
 - 产品：跨平台桌面 HTTP 网络调试代理。
 - 总体状态：进行中。
-- 已完成 Stage：M0–M13（生产实签/公证和真实macOS runner为外部发布验收）。
-- 当前工作：M13 后续 Capture/HTTPS 交互与 Recording 生命周期增强已完成；详见 [M4.md](M4.md)、[M5.md](M5.md) 和 [M11.md](M11.md) 的 2026-07-18 后续增强。
-- 当前结果：应用默认启动 8888 Recording 和系统代理、默认 HTTPS 直通；用户可从 Tunnel 面板显式完成 HTTPS setup。Clear/Stop 真清理、当前 Session 隔离、列表/Inspector 状态保持、Cookies/Timing/Payload 四模式与工具栏布局已落地。
-- 下一动作：先提交并推送本次 Capture 增强，再开始临时 Capture Session 与轻重数据分层阶段；首个真实 tag release 仍待仓库外签名/公证凭据。
+- 已完成 Stage：M0–M14（生产实签/公证和真实macOS runner为外部发布验收）。
+- 当前 Stage：M14 临时 Capture Session 与轻重数据分层（已完成）。
+- 当前结果：Capture/Body 为当前 Core 代际临时数据，RuleSet/Diagnostics 独立持久；Stop 真关闭 Mockttp 但保留记录，Start 继续追加，Clear 才删除。详情见 [M14.md](M14.md)。
+- 下一动作：提交并推送 M14；首个真实 tag release 仍待仓库外签名/公证凭据。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
 - Git 状态：M0–M13 与 15 种语言增强已在 `origin/main`；Capture 后续增强在当前边界提交，接手时以 `git status`/`git log` 为准。
 - 阻塞：无代码阻塞。生产签名/公证需要仓库外凭据；真实macOS DMG与应用内打开需原生runner留证。
@@ -44,6 +44,7 @@
 | M11 | 系统代理适配与恢复 | 已完成 | 100% | [M11.md](M11.md) |
 | M12 | 打包发布加固 | 已完成（外部签名/macOS 验收待凭据） | 100% | [M12.md](M12.md) |
 | M13 | GitHub Releases 更新通知与手动下载 | 已完成（外部签名/macOS证据待补） | 100% | [M13.md](M13.md) |
+| M14 | 临时 Capture Session 与轻重数据分层 | 已完成 | 100% | [M14.md](M14.md) |
 
 ## Client / Server 轨道规则
 
@@ -81,6 +82,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-19 M14完成验收：三 workspace typecheck；Desktop 101 / Proxy Core 179 / Protocol 19，共299项单测；10万 summary 完整稳定分页；真实 Archive Worker 三批/空库/取消退出；Windows package audit 1,292 files / 377,346,899 bytes；真实 packaged smoke 1/1。Smoke 实测 Stop 后 Mockttp 旧端口关闭而记录保持，Clear 后临时 Capture/Body 归零。
 
 2026-07-18 Capture/HTTPS 后续增强提交前验收：三 workspace typecheck 通过；Desktop 99 / Proxy Core 193 / Protocol 19，共 311 项单测通过；Windows package 成功；真实 packaged smoke 1/1 通过，覆盖启动默认 Recording、窄 API、Core 重启与活动 Session Clear 后 Exchange/Body 归零；生产依赖 audit 0。Payload 四模式、Cookies、Timing、Tunnel setup 与 1280/900 topbar 已完成目标场景浏览器/视觉检查。
 

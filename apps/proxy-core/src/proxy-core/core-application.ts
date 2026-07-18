@@ -103,6 +103,8 @@ export class CoreApplication implements CoreRpcHost {
   private started = false;
   private stopping = false;
   private exiting = false;
+  /** 幂等共享的异步 shutdown 序列。 */
+  private shutdownPromise: Promise<void> | null = null;
 
   private readonly handleSignal = (): void => this.stop();
 
@@ -209,23 +211,15 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：Main 发来的 shutdown 消息或 SIGINT/SIGTERM；重复调用保持幂等。
    */
   stop(): void {
-    if (this.stopping) {
+    if (this.shutdownPromise) {
       return;
     }
     this.stopping = true;
     this.diagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.rpcServer.close('shutdown');
-    this.transferJobs.cancelAll();
-    void this.storageService?.dispose();
-    void this.diagnosticsService?.close();
-    void this.proxyService?.stop();
-    this.parentPort.postMessage({
-      type: 'stopped',
-      pid: process.pid,
-      timestamp: this.timestamp(),
-    });
-    this.requestExit(0);
+    this.shutdownPromise = this.shutdown();
+    void this.shutdownPromise;
   }
 
   /**
@@ -476,6 +470,7 @@ export class CoreApplication implements CoreRpcHost {
         }));
       case 'storage.cleanup':
         return this.withStorage(async (storage) => {
+          await this.transferJobs.cancelAllAndWait();
           const requestedScope = toCleanupScope(command.payload);
           const activeSessionId = requestedScope.kind === 'all'
             ? this.proxyService?.prepareCaptureReset() ?? null
@@ -558,6 +553,7 @@ export class CoreApplication implements CoreRpcHost {
       case 'proxy.stop':
         return this.withProxy(async (proxy) => {
           await this.diagnostics.action('proxy.stop', () => proxy.stop());
+          await this.storageService?.collectUnreferencedBodies();
           return { type: 'proxy.status', payload: proxy.status() };
         });
       case 'proxy.status':
@@ -886,6 +882,22 @@ export class CoreApplication implements CoreRpcHost {
     }
   }
 
+  /** 等待传输、代理、临时 Storage 与 Diagnostics 退出后再确认 stopped。 */
+  private async shutdown(): Promise<void> {
+    await this.transferJobs.cancelAllAndWait().catch(() => undefined);
+    await this.proxyService?.stop().catch(() => undefined);
+    await Promise.allSettled([
+      this.storageService?.dispose(),
+      this.diagnosticsService?.close(),
+    ]);
+    this.parentPort.postMessage({
+      type: 'stopped',
+      pid: process.pid,
+      timestamp: this.timestamp(),
+    });
+    this.requestExit(0);
+  }
+
   /**
    * 移除进程 signal listener 并在当前事件循环末尾退出，防止重入安排多个 exit。
    * 调用方：stop 使用 code 0；handleRpcFatalError 使用 code 1。
@@ -944,7 +956,7 @@ function toCleanupScope(payload: {
 
 /**
  * 把存储层异常映射为结构化 CoreError：无效游标属于协议输入错误，其余归为 internal。
- * 通过 name 判定，因为错误可能跨 Storage Worker 边界重建、丢失原型链。
+ * 通过 name 判定，使内部错误映射不依赖具体实现类原型。
  */
 function mapStorageError(error: unknown): CoreCommandError {
   if (error instanceof CoreCommandError) {
@@ -967,7 +979,7 @@ function mapStorageError(error: unknown): CoreCommandError {
 
 /**
  * 把规则持久化异常映射为结构化 CoreError：revision 冲突为 conflict（可重取后重试），
- * 其余归为 internal。通过 name 判定，因错误可能跨 Storage Worker 边界重建丢失原型链。
+ * 其余归为 internal。通过 name 判定，使持久层实现可替换而不改变错误契约。
  */
 function mapRuleError(error: unknown): CoreCommandError {
   if (error instanceof CoreCommandError) {

@@ -1,23 +1,16 @@
-import type { Migration } from '../../migration-runner';
+import type { Migration } from '../migration-runner';
+
+/** Native archive 兼容的 Capture SQLite schema 版本。 */
+export const ARCHIVE_CAPTURE_SCHEMA_VERSION = 2;
 
 /**
- * Capture 数据库当前 schema 版本。新增迁移时必须同步更新。
+ * Native archive 内 capture.sqlite 的只向前 schema。
+ * 这是交换格式兼容层，不是活动 Capture 的运行时存储。
  */
-export const CAPTURE_SCHEMA_VERSION = 2;
-
-/**
- * Capture 数据库只向前迁移集，对应产品设计第十二章 12.1 的核心实体。
- *
- * v1 建立 capture_session / connection / exchange / message_headers /
- * body_ref / websocket_frame / rule_hit / error_event 八张表，覆盖
- * time / host / method / status / mime / process 查询维度的索引，以及
- * 用于关键字搜索的 FTS5 虚拟表。时间戳统一使用 epoch 毫秒（INTEGER）。
- * v2（M7）新增单行 rule_set 表持久化版本化规则集（revision + rules_json）。
- */
-export const CAPTURE_MIGRATIONS: readonly Migration[] = [
+export const ARCHIVE_CAPTURE_MIGRATIONS: readonly Migration[] = [
   {
     version: 1,
-    label: 'core-capture-entities',
+    label: 'archive-capture-entities',
     statements: [
       `CREATE TABLE capture_session (
         id TEXT PRIMARY KEY,
@@ -125,7 +118,6 @@ export const CAPTURE_MIGRATIONS: readonly Migration[] = [
         recoverable INTEGER NOT NULL DEFAULT 1,
         timestamp INTEGER NOT NULL
       )`,
-      // time / host / method / status / mime / process 查询维度索引。
       'CREATE INDEX idx_exchange_session_seq ON exchange(session_id, seq)',
       'CREATE INDEX idx_exchange_started ON exchange(started_at)',
       'CREATE INDEX idx_exchange_host ON exchange(host)',
@@ -139,7 +131,6 @@ export const CAPTURE_MIGRATIONS: readonly Migration[] = [
       'CREATE INDEX idx_rule_hit_exchange ON rule_hit(exchange_id)',
       'CREATE INDEX idx_error_event_exchange ON error_event(exchange_id)',
       'CREATE INDEX idx_error_event_session ON error_event(session_id)',
-      // 关键字搜索：独立 FTS5 表由 Storage Worker 与 exchange 同步维护。
       `CREATE VIRTUAL TABLE exchange_fts USING fts5(
         exchange_id UNINDEXED,
         url,
@@ -151,10 +142,8 @@ export const CAPTURE_MIGRATIONS: readonly Migration[] = [
   },
   {
     version: 2,
-    label: 'rule-set',
+    label: 'legacy-rule-set-compatibility',
     statements: [
-      // 单行表（CHECK id = 1）持久化最新规则集：revision 单调递增用于乐观并发，
-      // rules_json 是 RuleDefinition[] 的可序列化快照（无 callback / 运行时对象）。
       `CREATE TABLE rule_set (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         revision INTEGER NOT NULL,

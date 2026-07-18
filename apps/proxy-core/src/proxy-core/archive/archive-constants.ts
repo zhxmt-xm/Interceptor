@@ -44,6 +44,10 @@ export const ARCHIVE_IMPORT_BATCH_SIZE = 100;
 export const ARCHIVE_WS_FRAME_PAGE_SIZE = 500;
 /** 逐块读取 Blob / 条目字节的块大小。 */
 export const ARCHIVE_CHUNK_BYTES = 1024 * 1024;
+/** Core 与一次性 Archive Worker 间每批 Exchange 数量。 */
+export const ARCHIVE_WORKER_BATCH_SIZE = 100;
+/** 单次 Archive Worker 请求超时。 */
+export const ARCHIVE_WORKER_REQUEST_TIMEOUT_MS = 30_000;
 
 /** SHA-256 内容寻址 hash 的严格字符串格式。 */
 export const SHA256_PATTERN = /^[0-9a-f]{64}$/;

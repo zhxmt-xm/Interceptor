@@ -582,7 +582,7 @@ export class CoreRuntime {
   }
 
   /**
-   * 解析 CoreProcess 存储根目录（capture.sqlite 与 blobs/ 的父目录）。
+  * 解析 CoreProcess 数据根目录（rules/diagnostics SQLite 与临时 Body spill）。
    * 调用方：launchCoreProcess 通过 --data-dir fork 参数注入 Core。
    */
   private resolveStorageDirectory(): string {

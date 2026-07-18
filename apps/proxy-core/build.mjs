@@ -18,7 +18,7 @@ class ProxyCoreBuilder {
     await build({
       entryPoints: [
         path.join(this.sourceRoot, 'proxy-core/entry.cts'),
-        path.join(this.sourceRoot, 'proxy-core/storage/worker/entry.ts'),
+        path.join(this.sourceRoot, 'proxy-core/archive/worker/entry.ts'),
         path.join(this.sourceRoot, 'proxy-core/diagnostics/worker/entry.ts'),
       ],
       bundle: true,

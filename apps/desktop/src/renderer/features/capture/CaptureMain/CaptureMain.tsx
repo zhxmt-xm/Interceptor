@@ -5,7 +5,6 @@ import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
 import { HttpsDecryptionDialog } from '../HttpsDecryptionDialog/HttpsDecryptionDialog';
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
-import { useCaptureData } from '../useCaptureData';
 import { useCaptureStore } from '../captureStore';
 import styles from './CaptureMain.module.css';
 
@@ -15,7 +14,6 @@ const MIN_INSPECTOR_WIDTH = 360;
 
 /** Capture workspace body: request list, draggable splitter and inspector. */
 export function CaptureMain(): React.JSX.Element {
-  useCaptureData();
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
   const [httpsSetupOpen, setHttpsSetupOpen] = useState(false);

@@ -33,11 +33,9 @@ describe('captureStore clear timeline', () => {
       listScrollTop: 0,
       inspectorTab: 'headers',
       inspectorWidth: 500,
-      live: true,
       clearedBefore: 0,
+      syncRevision: 0,
       loading: false,
-      hasMore: false,
-      cursor: undefined,
       error: null,
     });
   });
@@ -73,5 +71,32 @@ describe('captureStore clear timeline', () => {
       inspectorTab: 'cookies',
       inspectorWidth: 620,
     });
+  });
+
+  it('keeps every summary while filtering the visible view', () => {
+    const store = useCaptureStore.getState();
+    store.setSearch('only-visible');
+    store.applyEvents([
+      captureEvent('only-visible', 100),
+      captureEvent('hidden-by-filter', 101),
+    ]);
+
+    expect(useCaptureStore.getState().rows.map((row) => row.id)).toEqual([
+      'hidden-by-filter',
+      'only-visible',
+    ]);
+  });
+
+  it('does not let an obsolete full sync refill rows after Clear', () => {
+    const store = useCaptureStore.getState();
+    const revision = store.beginLoad();
+    store.clearView(200);
+    useCaptureStore.getState().replaceAllRows(
+      [captureEvent('stale-page', 100).summary],
+      revision,
+    );
+
+    expect(useCaptureStore.getState().rows).toEqual([]);
+    expect(useCaptureStore.getState().loading).toBe(false);
   });
 });

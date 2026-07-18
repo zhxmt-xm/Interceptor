@@ -82,7 +82,7 @@ async function inflateMaybeRaw(data: Uint8Array): Promise<Buffer> {
   }
 }
 
-/** 将单段正文包装为 Blob Store 接受的异步序列。 */
+/** 将单段正文包装为 TemporaryBodyStore 接受的异步序列。 */
 export async function* singleChunk(
   buffer: Uint8Array,
 ): AsyncIterable<Uint8Array> {

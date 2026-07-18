@@ -28,8 +28,8 @@ flowchart LR
     APPLICATION["9 CoreApplication<br/>Lifecycle · Business Ownership · Routing"]
     RPC_SERVER["10 CoreRpcServer<br/>Validate · Correlate · Cancel"]
     DIAGNOSTICS["11 CoreDiagnostics<br/>Trace · Action · Ring Buffer · Redaction"]
-    STORAGE["12 StorageService<br/>Query · Status · Cleanup · Blob"]
-    STORAGE_WORKER["13 Storage Worker Thread<br/>capture.sqlite · 串行写 · seq"]
+    STORAGE["12 StorageService<br/>Temporary Capture · Body Spill · Rule Store"]
+    ARCHIVE_WORKER["13 Archive Worker（按需）<br/>SQLite Snapshot Read/Write"]
     DIAG_WORKER["14 Diagnostics Worker Thread<br/>diagnostics.sqlite · 批量 · 保留"]
     PROXY["15 ProxyService（Mockttp）<br/>HTTP/1.1+HTTP/2 · CONNECT 直通/MITM · Exchange 捕获"]
   end
@@ -52,7 +52,7 @@ flowchart LR
   RPC_SERVER --> DIAGNOSTICS
   APPLICATION --> DIAGNOSTICS
   APPLICATION --> STORAGE
-  STORAGE --> STORAGE_WORKER
+  STORAGE -. "archive import/export only" .-> ARCHIVE_WORKER
   APPLICATION --> DIAG_WORKER
   DIAGNOSTICS -. "sink" .-> DIAG_WORKER
   APPLICATION --> PROXY
@@ -76,27 +76,27 @@ flowchart LR
 
 ## 存储层架构（M2，已落地）
 
-> 存储读写与查询全部在 Core UtilityProcess 内，通过 `worker_threads` 把同步 `node:sqlite` 移出网络事件循环。Renderer 只通过意图 API 拿到 `StorageUsage` DTO，永不接触 SQL、数据库文件或 Blob 路径。
+> Capture/Body 直接属于当前 Core UtilityProcess；活动抓包不使用 SQLite 或常驻 Storage Worker。Renderer 只持有全量轻量 summary，不接触 SQL、临时文件或完整正文。
 
 - **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsService`（内部组合 `DiagnosticsWorkerHost`，缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码。
 - **模块结构**：composer/connection/diagnostics/grpc/har/proxy/rules/storage 均以真实 `entry.ts` 门面为根，Service/Engine class 直接定义在 entry；显式类型集中 `interfaces/index.ts`，无状态函数集中 `utils/index.ts`，其余实现文件使用模块前缀且一文件一个 class。host/worker 子模块所有者也使用 `entry.ts`，其余文件保持 `host-*`/`worker-*`。
 - **常量集中**：模块常量使用 `<module>-constants.ts`（+ `proxy-core/constants.ts`），是数值/策略的唯一来源；生产构造函数不接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
-- **StorageService**（`storage/entry.ts`）：CoreApplication 独占拥有的存储门面，组合 Storage Worker host 与 Blob Store，暴露 `ensureSession/appendExchanges/updateExchange/querySessions/queryWebSocketFrames/status/cleanup/readBodyRange`。清理时先删 DB 记录再按剩余引用集合 GC 孤立 Blob。
-- **Storage Worker**（`storage/worker/entry.ts` + `storage/host/entry.ts`）：worker 线程独占 `capture.sqlite` 连接，`worker_threads` 一次处理一条消息天然串行化写入；`CaptureStore` 分配单调 `seq`、维护 `exchange_fts` FTS5、执行 keyset opaque cursor 分页（不 hydrate body）。host 在主线程按 requestId 关联请求/响应。
-- **Blob Store**（`storage/host/host-blob-store.ts`）：内容寻址正文存储，流式写临时文件→SHA-256→按 hash 分片路径原子 rename，命中去重；单条/全局配额、crash-safe GC（删未引用 Blob + 启动清临时文件）。
+- **StorageService**（`storage/entry.ts`）：直接组合 `TemporaryCaptureStore`、`TemporaryBodyStore` 与 `RuleStore`。Capture 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于1MiB驻内存，较大正文 spill 到 `capture-temp/`；RuleSet 低频直接读写 `rules.sqlite`。
+- **Recording 生命周期**：Stop 由 Main 先恢复系统代理，再经 `proxy.stop` 真关闭 Mockttp listener/WebSocket bridge，并等待在途 Capture 退出；已有 Core/Renderer 记录保留。Start 创建新 Session 继续追加。Clear 才推进 cutoff、取消 transfer、清 Capture/Body；Core 退出自然释放临时数据。
+- **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按100条批次把内存 Capture materialize/读取兼容 `capture.sqlite`；完成、取消或失败即退出。
 - **Diagnostics Worker**（`diagnostics/entry.ts` → `diagnostics/host/entry.ts` + `diagnostics/worker/entry.ts`）：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。
-- **Capture 与 Diagnostics 强隔离**：两库、两连接、两 Worker 独立；日志写入失败不影响捕获数据。
-- **构建/打包**：`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/worker/entry.cjs` + `diagnostics/worker/entry.cjs`（源 worker entry 为 TypeScript，`--format=cjs --out-extension:.js=.cjs` 决定产物格式）；host 通过中央 resolver 自解析同包/工作区 dist 路径，Forge `extraResource` 递归复制整个 `dist/proxy-core`。
+- **Capture 与 Diagnostics 强隔离**：Capture 无数据库；Diagnostics Worker 独占 `diagnostics.sqlite`，日志失败不影响抓包。
+- **构建/打包**：`proxy-core` 输出 `entry.cjs` + 按需 `archive/worker/entry.cjs` + 常驻 `diagnostics/worker/entry.cjs`；Forge 递归复制整个 `dist/proxy-core`。
 - **契约**：新增 `storage.status`/`storage.cleanup`/`diagnostics.query` typed command + 运行时校验；Renderer 经 `getStorageStatus`/`clearStorage` 窄 API 访问。
 
 ## 代理层与捕获管线架构（M3，已落地）
 
-> Mockttp 显式代理把真实 HTTP/1.1 流量采集为规范 Exchange 写入 M2 存储，正文经内容寻址 Blob 持久化，实时事件经有界合并队列 + 窗口背压批量推送给 Main 再广播 Renderer。真正零内存流式正文作为 M5+ 优化项。
+> Mockttp 显式代理把流量采集为 Core 临时 Exchange，正文进入内存+spill TemporaryBodyStore，实时 summary 经有界队列推送 Renderer。
 
 - **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。
-- **Recording 隔离/清理**：`proxy.status` 返回当前 `sessionId`，Renderer 所有列表查询都带该过滤条件。Clear 通过 `prepareCaptureReset` 推进 cutoff、重置 event queue，并在保留活动 Session 的同时删除其 Exchange/Body；Stop 先由 Main guarded restore 系统代理，再停止 listener 和全量 cleanup，迟到事件不能回填已清空视图。
+- **Recording 暂停/清理**：Stop 恢复系统代理并停止 listener，但不清 Capture；Start 新 Session 继续追加。Clear 是唯一用户删除入口，重置 event queue/cutoff 并删除所有临时 Exchange/Body。
 - **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
-- **正文持久化（T3.3）**：请求/响应正文经 `StorageService.writeBody` 写入内容寻址 Blob Store，生成 `body_ref` 并在同事务内绑定 Exchange 的 request/response body id；超单体上限/配额时省略正文保留元数据（truncated/skipped）。当前经 Mockttp 内存缓冲后写盘，真正零内存流式（body-data 事件增量写盘）留后续。
+- **正文存储（M14）**：请求/响应/WS/gRPC payload 经 `StorageService.writeBody` 写入 TemporaryBodyStore，按 hash 去重；小正文驻内存，大正文异步 spill；超上限/配额保留 truncated/skipped metadata。
 - **捕获事件管线（T3.4）**：`proxy/proxy-capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空，经 `event-batch`/`event-ack` 推送 Main/Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary`。
 - **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块；`decode` 请求由 `proxy/utils/index.ts` 的 `decodeBody` 按 gzip/deflate/brotli（多层、容错）延迟解压并回传 `decodeStatus`。
 - **依赖打包**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），WebSocket bridge 直接依赖 `ws`。esbuild 用 `--external:mockttp --external:ws` 保留运行时 require（`ws` 内联会阻塞首代 Electron UtilityProcess entry），`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包并补拷原生资产，按 node_modules 结构拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
@@ -106,8 +106,8 @@ flowchart LR
 
 > Capture 工作区把占位 UI 升级为真实数据驱动，仍只经 `window.interceptor` 意图 API 访问 Main；Exchange 摘要进 Zustand 视图状态，header/body 均不进入全局状态，按需从 Core 拉取。
 
-- **视图状态**：`features/capture/captureStore.ts`（Zustand）只存 `CaptureExchangeSummary` 行 + `indexById`，实时事件按 id 原位更新 / 新行整块前插，`live`/`capturing`、当前 `activeSessionId`、filter、selection、scrollTop、Inspector tab/width 均在此；header/body 不进入全局状态。
-- **数据管线**：`useCaptureData.ts` 在 Renderer 生命周期只 bootstrap 一次：有界等待 Core running，启动或复用 8888 listener，尽力接管系统代理，并按当前 Session 拉首页。订阅 `onCaptureEvents`、过滤去抖重查、keyset 加载历史页；Stop 清空活动 Session 与视图。`useExchangeDetail.ts` 仍按选择局部拉 detail。
+- **视图状态**：Zustand 持有当前 Core 的全部 `CaptureExchangeSummary` + id索引、filter、selection、scrollTop、Inspector tab/width；header/body 不进入 Renderer 全局状态。
+- **数据管线**：`useCaptureData` 常驻 App，跨 feature 持续接收事件；bootstrap/重连以500条有界页同步当前 Core 全量 summary，过滤完全在 Renderer 派生。Stop/Start 保留行，Core generation 变化或 Clear 才清空。
 - **渲染**：`RequestList` 用固定 52px TanStack Virtual 行，实时前插时按选中项 index delta 补偿 scrollTop；`Omnibox` 关键字下推 Core FTS。Inspector Cookies 收集所有重复 Cookie header；Timing 使用真实 response-start/completed 时间；`BodyView` 提供 Auto/Text/JSON/Hex、未知 MIME UTF-8 探测、JSON pretty print 与响应式 hex（256KB 预览上限）。
 - **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
 

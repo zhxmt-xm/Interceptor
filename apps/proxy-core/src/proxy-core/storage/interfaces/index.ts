@@ -9,26 +9,14 @@
 import type {
   CaptureExchangeDetail,
   CaptureExchangeSummary,
-  RuleDefinition,
-  RuleSet,
   WebSocketFrameSummary,
-} from '@interceptor/core-protocol';
-import type { DatabaseSync } from 'node:sqlite';
-
-import type { MigrationResult } from '../../migration-runner';
+} from "@interceptor/core-protocol";
 
 export type ExchangeState =
-  | 'pending'
-  | 'request-complete'
-  | 'completed'
-  | 'failed'
-  | 'aborted';
+  "pending" | "request-complete" | "completed" | "failed" | "aborted";
 
 export type HeaderKind =
-  | 'request'
-  | 'response'
-  | 'request-trailer'
-  | 'response-trailer';
+  "request" | "response" | "request-trailer" | "response-trailer";
 
 export interface HeaderInput {
   readonly kind: HeaderKind;
@@ -37,11 +25,11 @@ export interface HeaderInput {
   readonly isPseudo?: boolean;
 }
 
-export type BodyDecodeStatus = 'ok' | 'failed' | 'skipped';
+export type BodyDecodeStatus = "ok" | "failed" | "skipped";
 
 /**
- * 一段正文的内容寻址引用。写入 Blob Store 后由代理数据面提供，
- * appendExchanges 会据此插入 body_ref 行并绑定到 Exchange 的 body id。
+ * 一段正文的内容寻址引用。写入 TemporaryBodyStore 后由代理数据面提供，
+ * appendExchanges 据此把 hash metadata 绑定到内存 Exchange。
  */
 export interface BodyRefInput {
   readonly id: string;
@@ -57,7 +45,7 @@ export interface BodyRefInput {
 
 /**
  * 追加一条 Exchange 时由上游（M3 代理数据面）提供的字段。
- * `seq` 由 Storage Worker 分配，不由调用方提供。
+ * `seq` 由 TemporaryCaptureStore 分配，不由调用方提供。
  */
 export interface ExchangeInput {
   readonly id: string;
@@ -87,14 +75,14 @@ export interface ExchangeInput {
   readonly state: ExchangeState;
   readonly errorCode?: string;
   readonly headers?: readonly HeaderInput[];
-  /** 请求/响应正文引用；提供时 appendExchanges 会插入 body_ref 并绑定 body id。 */
+  /** 请求/响应正文引用；提供时 appendExchanges 会绑定临时 hash metadata。 */
   readonly requestBody?: BodyRefInput;
   readonly responseBody?: BodyRefInput;
 }
 
-export type WebSocketFrameDirection = 'client-to-server' | 'server-to-client';
+export type WebSocketFrameDirection = "client-to-server" | "server-to-client";
 
-/** WebSocket 应用消息子记录；payload 先写 Blob，再随 body_ref 原子绑定到帧。 */
+/** WebSocket 应用消息子记录；payload 先写 TemporaryBodyStore，再绑定到帧 metadata。 */
 export interface WebSocketFrameInput {
   readonly direction: WebSocketFrameDirection;
   readonly opcode: 1 | 2 | 8;
@@ -133,13 +121,13 @@ export interface SessionQueryFilter {
   readonly mime?: string;
   readonly process?: string;
   readonly search?: string;
-  readonly protocol?: 'h1' | 'h2' | 'ws';
+  readonly protocol?: "h1" | "h2" | "ws";
 }
 
 export interface SessionQuery {
   readonly cursor?: string;
   readonly limit: number;
-  readonly sort: 'started_desc' | 'started_asc';
+  readonly sort: "started_desc" | "started_asc";
   readonly filter: SessionQueryFilter;
 }
 
@@ -157,10 +145,48 @@ export interface StorageStats {
   readonly referencedBodyBytes: number;
 }
 
+/** Core 内单条临时 Exchange 记录；详情与排序序号只保存一份。 */
+export interface TemporaryExchangeRecord {
+  readonly seq: number;
+  readonly exchange: ExchangeInput;
+}
+
+/** Core 内单条临时 WebSocket frame 记录。 */
+export interface TemporaryWebSocketFrameRecord extends WebSocketFrameInput {
+  readonly seq: number;
+}
+
+/** Native archive 导出使用的不可变单 Exchange 快照。 */
+export interface CaptureSnapshotExchange {
+  readonly exchange: ExchangeInput;
+  readonly frames: readonly WebSocketFrameInput[];
+}
+
+/** Native archive 一次性 Worker 接收的完整 Capture 时间切面。 */
+export interface CaptureSnapshot {
+  readonly sessions: readonly CaptureSessionInput[];
+  readonly exchanges: readonly CaptureSnapshotExchange[];
+}
+
+/** 发送给一次性 Archive Worker 的有界 Capture 快照批次。 */
+export interface CaptureSnapshotBatch {
+  /** 仅首批携带 Session 元数据。 */
+  readonly sessions: readonly CaptureSessionInput[];
+  readonly exchanges: readonly CaptureSnapshotExchange[];
+}
+
+/** Archive 导出在 Core 内捕获的一致时间切面与 Body lease。 */
+export interface CaptureArchiveSnapshot {
+  readonly bodyHashes: readonly string[];
+  readonly batches: AsyncIterable<CaptureSnapshotBatch>;
+  /** 释放 TemporaryBodyStore 对时间切面正文的保留。 */
+  release(): void;
+}
+
 export type CleanupScope =
-  | { readonly kind: 'all' }
-  | { readonly kind: 'all-except-session'; readonly sessionId: string }
-  | { readonly kind: 'session'; readonly sessionId: string };
+  | { readonly kind: "all" }
+  | { readonly kind: "all-except-session"; readonly sessionId: string }
+  | { readonly kind: "session"; readonly sessionId: string };
 
 export interface CleanupResult {
   readonly removedSessions: number;
@@ -173,7 +199,7 @@ export interface CleanupResult {
 export interface RuleHitInput {
   readonly ruleId: string;
   readonly ruleRevision: number;
-  readonly phase: 'request' | 'response';
+  readonly phase: "request" | "response";
   readonly action: string;
   readonly summary?: string;
 }
@@ -193,90 +219,9 @@ export interface ExchangeResponsePatch {
   readonly completedAt?: number;
   readonly responseBytes?: number;
   readonly responseBodyId?: string;
-  readonly state: ExchangeInput['state'];
+  readonly state: ExchangeInput["state"];
   readonly errorCode?: string;
   readonly headers?: readonly HeaderInput[];
-}
-
-export type StorageWorkerRequest =
-  | { readonly kind: 'ensure-session'; readonly session: CaptureSessionInput }
-  | { readonly kind: 'append-exchanges'; readonly exchanges: ExchangeInput[] }
-  | { readonly kind: 'update-exchange'; readonly patch: ExchangeResponsePatch }
-  | { readonly kind: 'query-sessions'; readonly query: SessionQuery }
-  | { readonly kind: 'exchange-detail'; readonly exchangeId: string }
-  | { readonly kind: 'storage-status' }
-  | { readonly kind: 'cleanup'; readonly scope: CleanupScope }
-  | { readonly kind: 'referenced-hashes' }
-  | { readonly kind: 'snapshot'; readonly targetPath: string }
-  | {
-      readonly kind: 'save-rule-set';
-      readonly expectedRevision: number;
-      readonly rules: readonly RuleDefinition[];
-    }
-  | { readonly kind: 'load-rule-set' }
-  | {
-      readonly kind: 'append-rule-hits';
-      readonly exchangeId: string;
-      readonly hits: readonly RuleHitInput[];
-    }
-  | {
-      readonly kind: 'append-websocket-frames';
-      readonly exchangeId: string;
-      readonly frames: readonly WebSocketFrameInput[];
-    }
-  | {
-      readonly kind: 'query-websocket-frames';
-      readonly query: WebSocketFrameQuery;
-    }
-  | { readonly kind: 'count-rule-hits' }
-  | { readonly kind: 'close' };
-
-export interface StorageWorkerRequestEnvelope {
-  readonly requestId: number;
-  readonly request: StorageWorkerRequest;
-}
-
-export type StorageWorkerResultFor<K extends StorageWorkerRequest['kind']> =
-  K extends 'append-exchanges'
-    ? { id: string; seq: number }[]
-    : K extends 'query-sessions'
-      ? SessionQueryPage
-      : K extends 'exchange-detail'
-        ? CaptureExchangeDetail | null
-        : K extends 'query-websocket-frames'
-          ? WebSocketFramePage
-          : K extends 'storage-status'
-            ? StorageStats
-            : K extends 'cleanup'
-              ? CleanupResult
-              : K extends 'referenced-hashes'
-                ? string[]
-                : K extends 'save-rule-set'
-                  ? RuleSet
-                  : K extends 'load-rule-set'
-                    ? RuleSet
-                    : K extends 'count-rule-hits'
-                      ? RuleHitCount[]
-                      : void;
-
-export type StorageWorkerResponse =
-  | { readonly type: 'ready' }
-  | { readonly type: 'fatal'; readonly message: string }
-  | {
-      readonly type: 'result';
-      readonly requestId: number;
-      readonly ok: true;
-      readonly result: unknown;
-    }
-  | {
-      readonly type: 'result';
-      readonly requestId: number;
-      readonly ok: false;
-      readonly error: { readonly name: string; readonly message: string };
-    };
-
-export interface StorageWorkerData {
-  readonly databaseLocation: string;
 }
 
 export interface StorageStatusReport {
@@ -300,73 +245,27 @@ export interface BlobGcResult {
   readonly freedBytes: number;
 }
 
-export interface PendingStorageRequest {
-  resolve(value: unknown): void;
-  reject(error: Error): void;
-  timer: ReturnType<typeof setTimeout> | null;
+/** TemporaryBodyStore 中驻内存的内容寻址正文。 */
+export interface TemporaryMemoryBodyEntry {
+  readonly kind: "memory";
+  readonly hash: string;
+  readonly size: number;
+  readonly data: Buffer;
 }
 
-export interface OpenCaptureDatabaseResult {
-  readonly db: DatabaseSync;
-  readonly migration: MigrationResult;
+/** TemporaryBodyStore 中 spill 到 Core 临时目录的正文。 */
+export interface TemporarySpillBodyEntry {
+  readonly kind: "spill";
+  readonly hash: string;
+  readonly size: number;
+  readonly filePath: string;
 }
+
+/** TemporaryBodyStore 的正文位置索引。 */
+export type TemporaryBodyEntry =
+  TemporaryMemoryBodyEntry | TemporarySpillBodyEntry;
 
 export interface StorageKeysetCursor {
   readonly startedAt: number;
   readonly seq: number;
-}
-
-export interface StorageSummaryRow {
-  id: string;
-  method: string;
-  scheme: string | null;
-  host: string | null;
-  path: string | null;
-  protocol: string;
-  statusCode: number | null;
-  responseMime: string | null;
-  state: string;
-  startedAt: number;
-  completedAt: number | null;
-  requestBytes: number;
-  responseBytes: number;
-  seq: number;
-}
-
-export interface StorageDetailRow extends StorageSummaryRow {
-  url: string;
-  port: number | null;
-  responseStartedAt: number | null;
-  statusText: string | null;
-  requestMime: string | null;
-  errorCode: string | null;
-  streamId: number | null;
-  requestBodyId: string | null;
-  responseBodyId: string | null;
-}
-
-export interface StorageHeaderRow {
-  kind: string;
-  name: string;
-  value: string;
-  isPseudo: number;
-}
-
-export interface StorageBodyRefRow {
-  blobHash: string | null;
-  mediaType: string | null;
-  contentEncoding: string | null;
-  encodedSize: number;
-  decodedSize: number | null;
-  truncated: number;
-  decodeStatus: string;
-}
-
-export interface StorageWebSocketFrameRow extends StorageBodyRefRow {
-  seq: number;
-  direction: 'client-to-server' | 'server-to-client';
-  opcode: 1 | 2;
-  timestamp: number;
-  payloadSize: number;
-  payloadBodyId: string | null;
 }

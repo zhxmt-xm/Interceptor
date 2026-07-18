@@ -78,7 +78,7 @@ export interface HarStorage {
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   /** 从内容寻址 Blob 读取有限字节范围。 */
   readBodyRange(hash: string, offset: number, length: number): Promise<Buffer>;
-  /** 把导入正文写入内容寻址 Blob Store。 */
+  /** 把导入正文写入内容寻址 TemporaryBodyStore。 */
   writeBody(source: AsyncIterable<Uint8Array>): Promise<HarBlobWriteResult>;
   /** 建立一次 HAR 导入对应的 Capture Session。 */
   ensureSession(session: CaptureSessionInput): Promise<void>;

@@ -155,7 +155,7 @@ function isTextualBody(body: Buffer, mimeType: string): boolean {
   );
 }
 
-/** 将一个 Buffer 包装成 Blob Store 接受的单块异步序列。 */
+/** 将一个 Buffer 包装成 TemporaryBodyStore 接受的单块异步序列。 */
 export async function* singleChunk(
   body: Buffer,
 ): AsyncGenerator<Uint8Array> {

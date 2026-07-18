@@ -633,17 +633,13 @@ class DesktopApplication {
       },
     );
 
-    // 停止代理捕获后物理删除全部临时 Capture 数据；Rules/Diagnostics 独立保留。
+    // Stop 只暂停 Recording 并恢复系统代理；Capture 记录保留到用户手动 Clear。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.captureStop, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       await this.restoreSystemProxyBeforeShutdown();
       const result = await this.coreRuntime.request({
         type: 'proxy.stop',
         payload: {},
-      });
-      await this.coreRuntime.request({
-        type: 'storage.cleanup',
-        payload: { scope: 'all' },
       });
       return toRendererCaptureStatus(result.payload);
     });

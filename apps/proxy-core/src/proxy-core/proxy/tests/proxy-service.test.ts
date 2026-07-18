@@ -284,6 +284,50 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     expect(status.port).toBe(address.port);
   });
 
+  it('stops the Mockttp listener, preserves records, and appends after restart', async () => {
+    const origin = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain' });
+      response.end('ok');
+    });
+    try {
+      await expect(
+        proxiedGet(address, `http://127.0.0.1:${origin.port}/before-stop`),
+      ).resolves.toMatchObject({ status: 200 });
+      await waitForExchange(sink);
+      expect(sink.exchanges).toHaveLength(1);
+      const firstSessionId = sink.sessions[0]?.id;
+
+      const stoppedPort = address.port;
+      await proxy.stop();
+      expect(proxy.status()).toMatchObject({
+        listening: false,
+        port: null,
+        sessionId: null,
+      });
+      await expect(
+        proxiedGet(
+          { host: '127.0.0.1', port: stoppedPort },
+          `http://127.0.0.1:${origin.port}/while-stopped`,
+        ),
+      ).rejects.toThrow();
+      expect(sink.exchanges).toHaveLength(1);
+
+      address = await proxy.start();
+      expect(sink.sessions).toHaveLength(2);
+      expect(sink.sessions[1]?.id).not.toBe(firstSessionId);
+      await expect(
+        proxiedGet(address, `http://127.0.0.1:${origin.port}/after-restart`),
+      ).resolves.toMatchObject({ status: 200 });
+      await expect.poll(() => sink.exchanges.length).toBe(2);
+      expect(sink.exchanges.map((exchange) => exchange.path)).toEqual([
+        '/before-stop',
+        '/after-restart',
+      ]);
+    } finally {
+      await origin.close();
+    }
+  });
+
   it('forwards an absolute-form request and captures a canonical exchange', async () => {
     const origin = await startOrigin((_req, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });

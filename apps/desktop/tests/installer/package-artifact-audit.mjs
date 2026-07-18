@@ -36,7 +36,7 @@ class PackageArtifactAuditor {
       access(executablePath),
       access(asarPath),
       access(path.join(resourcesPath, 'proxy-core/entry.cjs')),
-      access(path.join(resourcesPath, 'proxy-core/storage/worker/entry.cjs')),
+      access(path.join(resourcesPath, 'proxy-core/archive/worker/entry.cjs')),
       access(path.join(resourcesPath, 'proxy-core/diagnostics/worker/entry.cjs')),
       access(path.join(resourcesPath, `system-proxy/${this.systemProxyHelperName()}`)),
     ]);

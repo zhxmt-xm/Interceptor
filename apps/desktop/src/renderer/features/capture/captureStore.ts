@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
-  SessionsPage,
 } from '../../../shared/desktop-api';
 import type { ProtocolSegment } from './row-format';
 import type { InspectorTab } from './data';
@@ -28,23 +27,19 @@ const EMPTY_FILTER: CaptureFilter = {
 
 /** 会话列表视图状态：只存 Exchange 摘要，不存 header/body。 */
 export interface CaptureState {
-  /** 命中当前 Core 过滤条件的行，按 startedAt 降序（最新在前）。 */
+  /** 当前 Recording 的全部轻量 Exchange summary，按 startedAt 降序。 */
   rows: CaptureExchangeSummary[];
   /** id → rows 下标，供实时事件 O(1) 定位更新。 */
   indexById: Map<string, number>;
   selectedId: string | null;
   filter: CaptureFilter;
-  /** Live tail 开关；关闭时忽略实时事件，仅保留已加载视图。 */
-  live: boolean;
   /** 最近一次持久化清空的点击时间；更早开始的迟到事件不得重新进入视图。 */
   clearedBefore: number;
   /** 代理是否正在监听捕获（proxy.status.listening）。 */
   capturing: boolean;
-  /** 当前 Recording 对应的 Core Capture Session；列表查询只读取这一代。 */
-  activeSessionId: string | null;
   loading: boolean;
-  hasMore: boolean;
-  cursor: string | undefined;
+  /** Clear/Core 代际切换时递增，阻止旧分页结果回填。 */
+  syncRevision: number;
   error: string | null;
   harDialogOpen: boolean;
   /** 切换 feature 前的列表滚动位置；Capture 重新挂载时恢复。 */
@@ -60,18 +55,15 @@ export interface CaptureState {
   setStructuredFilter(
     patch: Partial<Pick<CaptureFilter, 'method' | 'status' | 'host'>>,
   ): void;
-  setLive(live: boolean): void;
   setCapturing(capturing: boolean): void;
-  setActiveSessionId(sessionId: string | null): void;
   setHarDialogOpen(open: boolean): void;
   setListScrollTop(scrollTop: number): void;
   setInspectorTab(tab: InspectorTab): void;
   setInspectorWidth(width: number): void;
   clearView(clearedBefore?: number): void;
-  beginLoad(): void;
+  beginLoad(): number;
   loadFailed(message: string): void;
-  replaceRows(page: SessionsPage): void;
-  appendRows(page: SessionsPage): void;
+  replaceAllRows(rows: CaptureExchangeSummary[], syncRevision: number): void;
   applyEvents(events: CaptureExchangeEvent[]): void;
 }
 
@@ -107,6 +99,16 @@ export function matchesSegment(
   return segment === 'all' || protocolSegment(summary.protocol) === segment;
 }
 
+/** 从全量 summary 镜像派生当前可见列表。 */
+export function visibleCaptureRows(
+  rows: readonly CaptureExchangeSummary[],
+  filter: CaptureFilter,
+): CaptureExchangeSummary[] {
+  return rows.filter(
+    (row) => matchesCoreFilter(row, filter) && matchesSegment(row, filter.segment),
+  );
+}
+
 function buildIndex(rows: CaptureExchangeSummary[]): Map<string, number> {
   const index = new Map<string, number>();
   rows.forEach((row, position) => index.set(row.id, position));
@@ -118,13 +120,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   indexById: new Map(),
   selectedId: null,
   filter: EMPTY_FILTER,
-  live: true,
   clearedBefore: 0,
   capturing: false,
-  activeSessionId: null,
   loading: false,
-  hasMore: false,
-  cursor: undefined,
+  syncRevision: 0,
   error: null,
   harDialogOpen: false,
   listScrollTop: 0,
@@ -142,11 +141,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setStructuredFilter: (patch) =>
     set((state) => ({ filter: { ...state.filter, ...patch } })),
 
-  setLive: (live) => set({ live }),
-
   setCapturing: (capturing) => set({ capturing }),
-
-  setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
 
   setHarDialogOpen: (harDialogOpen) => set({ harDialogOpen }),
 
@@ -157,52 +152,53 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setInspectorWidth: (inspectorWidth) => set({ inspectorWidth }),
 
   clearView: (clearedBefore = get().clearedBefore) =>
-    set({
+    set((state) => ({
       rows: [],
       indexById: new Map(),
       selectedId: null,
       listScrollTop: 0,
       clearedBefore,
-      cursor: undefined,
-      hasMore: false,
+      syncRevision: state.syncRevision + 1,
       loading: false,
       error: null,
-    }),
+    })),
 
-  beginLoad: () => set({ loading: true, error: null }),
+  beginLoad: () => {
+    const revision = get().syncRevision;
+    set({ loading: true, error: null });
+    return revision;
+  },
 
   loadFailed: (message) => set({ loading: false, error: message }),
 
-  replaceRows: (page) =>
-    set({
-      rows: page.items,
-      indexById: buildIndex(page.items),
-      cursor: page.nextCursor,
-      hasMore: page.hasMore,
-      loading: false,
-      error: null,
-    }),
-
-  appendRows: (page) =>
+  replaceAllRows: (loadedRows, syncRevision) => {
+    if (get().syncRevision !== syncRevision) {
+      return;
+    }
     set((state) => {
-      const merged = state.rows.slice();
-      for (const item of page.items) {
-        if (!state.indexById.has(item.id)) {
-          merged.push(item);
+      const byId = new Map(
+        loadedRows.map((row) => [row.id, row] as const),
+      );
+      for (const row of state.rows) {
+        if (row.startedAt > state.clearedBefore) {
+          byId.set(row.id, row);
         }
       }
+      const rows = Array.from(byId.values()).sort(
+        (left, right) => right.startedAt - left.startedAt,
+      );
       return {
-        rows: merged,
-        indexById: buildIndex(merged),
-        cursor: page.nextCursor,
-        hasMore: page.hasMore,
+        rows,
+        indexById: buildIndex(rows),
         loading: false,
+        error: null,
       };
-    }),
+    });
+  },
 
   applyEvents: (events) => {
     const state = get();
-    if (!state.live || events.length === 0) {
+    if (events.length === 0) {
       return;
     }
     const rows = state.rows.slice();
@@ -211,9 +207,6 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
     for (const event of events) {
       if (event.summary.startedAt <= state.clearedBefore) {
-        continue;
-      }
-      if (!matchesCoreFilter(event.summary, state.filter)) {
         continue;
       }
       const position = state.indexById.get(event.summary.id);

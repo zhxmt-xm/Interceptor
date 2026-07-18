@@ -6,32 +6,28 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type {
-  CaptureExchangeDetail,
   TransferJobSnapshot,
 } from '@interceptor/core-protocol';
 
 import { appVersion } from '../constants';
-import { openCaptureDatabase } from '../storage/utils';
-import { CaptureStore } from '../storage/worker/worker-store';
-import { CAPTURE_SCHEMA_VERSION } from '../storage/worker/worker-schema';
 import type {
   BodyRefInput,
   ExchangeInput,
-  ExchangeState,
-  HeaderInput,
   WebSocketFrameInput,
 } from '../storage/interfaces';
 import { TransferJobManager } from '../transfer/entry';
 import {
   ARCHIVE_EXTENSION,
   ARCHIVE_IMPORT_BATCH_SIZE,
-  ARCHIVE_WS_FRAME_PAGE_SIZE,
+  ARCHIVE_WORKER_BATCH_SIZE,
   BLOB_ENTRY_PREFIX,
   MANIFEST_ENTRY_NAME,
   MAX_ARCHIVE_BYTES,
   SNAPSHOT_ENTRY_NAME,
 } from './archive-constants';
 import { ArchiveInvalidError } from './archive-invalid-error';
+import { ARCHIVE_CAPTURE_SCHEMA_VERSION } from './archive-snapshot-schema';
+import { ArchiveWorkerHost } from './host/entry';
 import { ArchiveZipReader } from './archive-zip-reader';
 import { ArchiveZipWriter } from './archive-zip-writer';
 import type {
@@ -43,14 +39,6 @@ import type {
   ValidatedZipEntry,
 } from './interfaces';
 import * as ArchiveUtils from './utils';
-
-const EXCHANGE_STATES: readonly ExchangeState[] = [
-  'pending',
-  'request-complete',
-  'completed',
-  'failed',
-  'aborted',
-];
 
 export class ArchiveService {
   /** archive 转换所需的 Storage 门面。 */
@@ -85,8 +73,8 @@ export class ArchiveService {
   }
 
   /**
-   * 把整个 Capture 库原子导出为版本化 ZIP archive：一致 SQLite 快照 + 引用 Blob + manifest。
-   * 快照经 VACUUM INTO 生成，Blob 逐个流式写入，manifest 最后写并列出全部文件的 size/sha256。
+  * 把当前 Capture 时间切面导出为版本化 ZIP archive：一次性 Worker 生成兼容 SQLite
+  * snapshot，Body 逐个流式写入，manifest 最后列出全部文件的 size/sha256。
    */
   async exportToFile(
     filePath: string,
@@ -97,14 +85,20 @@ export class ArchiveService {
     const token = randomUUID();
     const snapshotPath = `${filePath}.${token}.snapshot`;
     const zipPath = `${filePath}.${token}.tmp`;
-    const hashes = await this.storage.referencedBlobHashes();
-    const total = hashes.length + 1;
+    const snapshot = this.storage.createArchiveSnapshot(
+      ARCHIVE_WORKER_BATCH_SIZE,
+    );
+    const total = snapshot.bodyHashes.length + 1;
     let processed = 0;
     let handle: FileHandle | undefined;
 
     try {
       ArchiveUtils.throwIfAborted(signal);
-      await this.storage.snapshot(snapshotPath);
+      const worker = new ArchiveWorkerHost('export', snapshotPath);
+      await worker.writeSnapshot(
+        snapshot.batches,
+        signal,
+      );
       handle = await open(zipPath, 'wx+');
       const writer = new ArchiveZipWriter(handle);
       const files: ArchiveManifestFile[] = [];
@@ -116,7 +110,7 @@ export class ArchiveService {
       processed += 1;
       onProgress?.({ processed, total });
 
-      for (const hash of hashes) {
+      for (const hash of snapshot.bodyHashes) {
         ArchiveUtils.throwIfAborted(signal);
         files.push(
           await this.addFileEntry(writer, `${BLOB_ENTRY_PREFIX}${hash}`, () =>
@@ -127,7 +121,7 @@ export class ArchiveService {
       }
 
       const manifest = ArchiveUtils.buildManifest(
-        CAPTURE_SCHEMA_VERSION,
+        ARCHIVE_CAPTURE_SCHEMA_VERSION,
         appVersion,
         files,
       );
@@ -147,6 +141,7 @@ export class ArchiveService {
       await rm(zipPath, { force: true });
       throw error;
     } finally {
+      snapshot.release();
       await rm(snapshotPath, { force: true });
     }
 
@@ -202,11 +197,9 @@ export class ArchiveService {
       );
       return { processed: result.processed, total: result.total, warnings: [] };
     } catch (error) {
-      if (sessionCreated) {
-        await this.storage
-          .cleanup({ kind: 'session', sessionId })
-          .catch(() => undefined);
-      }
+      await this.storage
+        .cleanup({ kind: 'session', sessionId })
+        .catch(() => undefined);
       throw error;
     } finally {
       await readHandle.close().catch(() => undefined);
@@ -249,7 +242,7 @@ export class ArchiveService {
     const manifestPath = path.join(extractDir, MANIFEST_ENTRY_NAME);
     await reader.extractEntry(manifestEntry, manifestPath);
     const manifest = ArchiveUtils.parseManifest(await readFile(manifestPath));
-    if (manifest.schemaVersion > CAPTURE_SCHEMA_VERSION) {
+    if (manifest.schemaVersion > ARCHIVE_CAPTURE_SCHEMA_VERSION) {
       throw new ArchiveInvalidError(
         'Archive was created by a newer, unsupported version.',
       );
@@ -333,203 +326,81 @@ export class ArchiveService {
     }
   }
 
-  /** 打开快照库、做完整性检查并把其 Exchange 重插入隔离 Session。 */
+  /** 通过一次性 Worker 分批读取快照并把 Exchange 重插入隔离 Session。 */
   private async importSnapshot(
     snapshotPath: string,
     sessionId: string,
     signal: AbortSignal,
     onProgress?: ArchiveProgressListener,
   ): Promise<{ processed: number; total: number }> {
-    const { db } = openCaptureDatabase(snapshotPath);
+    const worker = new ArchiveWorkerHost('import', snapshotPath);
+    let processed = 0;
+    let total = 0;
     try {
-      const integrity = db.prepare('PRAGMA integrity_check').all() as {
-        integrity_check?: string;
-      }[];
-      if (integrity[0]?.integrity_check !== 'ok') {
-        throw new ArchiveInvalidError('Archive database failed its integrity check.');
-      }
-      const store = new CaptureStore(db);
-      const exchangeIds = this.listSnapshotExchangeIds(store);
-      let processed = 0;
-      const total = exchangeIds.length;
-
-      for (let offset = 0; offset < exchangeIds.length; offset += ARCHIVE_IMPORT_BATCH_SIZE) {
+      for await (const page of worker.readSnapshotBatches(signal)) {
         ArchiveUtils.throwIfAborted(signal);
-        const batchIds = exchangeIds.slice(offset, offset + ARCHIVE_IMPORT_BATCH_SIZE);
         const exchanges: ExchangeInput[] = [];
-        const wsSources: { newId: string; oldId: string; protocol: string }[] = [];
-        for (const oldId of batchIds) {
-          const detail = store.getExchangeDetail(oldId);
-          if (!detail) {
-            continue;
-          }
+        const framesByExchange = new Map<string, readonly WebSocketFrameInput[]>();
+        total = page.total;
+        for (const snapshot of page.exchanges) {
           const newId = `archive-exchange-${randomUUID()}`;
-          exchanges.push(this.toExchange(detail, newId, sessionId));
-          wsSources.push({ newId, oldId, protocol: detail.summary.protocol });
+          exchanges.push(this.remapSnapshotExchange(snapshot.exchange, newId, sessionId));
+          framesByExchange.set(newId, snapshot.frames);
         }
         await this.storage.appendExchanges(exchanges);
-        for (const source of wsSources) {
-          if (source.protocol === 'ws') {
-            await this.importWebSocketFrames(store, source.oldId, source.newId);
+        for (const exchange of exchanges) {
+          const frames = framesByExchange.get(exchange.id) ?? [];
+          if (frames.length > 0) {
+            await this.storage.appendWebSocketFrames(
+              exchange.id,
+              frames.map((frame) => this.remapFrame(frame)),
+            );
           }
         }
         processed += exchanges.length;
         onProgress?.({ processed, total });
       }
       return { processed, total };
-    } finally {
-      db.close();
+    } catch (error) {
+      await worker.close();
+      throw error;
     }
   }
 
-  /** 枚举快照中全部 Exchange ID（按开始时间升序）。 */
-  private listSnapshotExchangeIds(store: CaptureStore): string[] {
-    const ids: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = store.querySessions({
-        cursor,
-        limit: ARCHIVE_WS_FRAME_PAGE_SIZE,
-        sort: 'started_asc',
-        filter: {},
-      });
-      ids.push(...page.items.map((item) => item.id));
-      if (!page.hasMore || !page.nextCursor || page.nextCursor === cursor) {
-        break;
-      }
-      cursor = page.nextCursor;
-    } while (true);
-    return ids;
-  }
-
-  /** 从快照读取一条 Exchange 的 WebSocket 帧并重插入到新 Exchange。 */
-  private async importWebSocketFrames(
-    store: CaptureStore,
-    oldExchangeId: string,
-    newExchangeId: string,
-  ): Promise<void> {
-    let cursor: string | undefined;
-    do {
-      const page = store.queryWebSocketFrames({
-        exchangeId: oldExchangeId,
-        cursor,
-        limit: ARCHIVE_WS_FRAME_PAGE_SIZE,
-      });
-      const frames: WebSocketFrameInput[] = page.items.map((item) => ({
-        direction: item.direction,
-        opcode: item.opcode,
-        payloadSize: item.payloadSize,
-        timestamp: item.timestamp,
-        ...(item.payload?.bodyHash
-          ? {
-              payload: {
-                id: `archive-ws-${randomUUID()}`,
-                blobHash: item.payload.bodyHash,
-                encodedSize: item.payload.encodedSize,
-                decodedSize: item.payload.decodedSize,
-                contentEncoding: item.payload.contentEncoding,
-                mediaType: item.payload.mediaType,
-                truncated: item.payload.truncated,
-                decodeStatus: item.payload.decodeStatus as BodyRefInput['decodeStatus'],
-              },
-            }
-          : {}),
-      }));
-      if (frames.length > 0) {
-        await this.storage.appendWebSocketFrames(newExchangeId, frames);
-      }
-      if (!page.hasMore || !page.nextCursor || page.nextCursor === cursor) {
-        break;
-      }
-      cursor = page.nextCursor;
-    } while (true);
-  }
-
-  /** 把快照 Exchange 详情映射成可持久化的 ExchangeInput（保留 pseudo/trailer/正文引用）。 */
-  private toExchange(
-    detail: CaptureExchangeDetail,
-    newId: string,
+  /** 把 archive snapshot Exchange 改写到本次隔离 Session，并为 body ref 分配新 id。 */
+  private remapSnapshotExchange(
+    exchange: ExchangeInput,
+    id: string,
     sessionId: string,
   ): ExchangeInput {
-    const headers: HeaderInput[] = [
-      ...detail.requestHeaders.map((header) => ({
-        kind: 'request' as const,
-        name: header.name,
-        value: header.value,
-        isPseudo: header.isPseudo,
-      })),
-      ...detail.responseHeaders.map((header) => ({
-        kind: 'response' as const,
-        name: header.name,
-        value: header.value,
-        isPseudo: header.isPseudo,
-      })),
-      ...detail.requestTrailers.map((header) => ({
-        kind: 'request-trailer' as const,
-        name: header.name,
-        value: header.value,
-      })),
-      ...detail.responseTrailers.map((header) => ({
-        kind: 'response-trailer' as const,
-        name: header.name,
-        value: header.value,
-      })),
-    ];
-    const startedAt = detail.summary.startedAt;
     return {
-      id: newId,
+      ...exchange,
+      id,
       sessionId,
-      streamId: detail.streamId,
-      method: detail.summary.method,
-      scheme: detail.scheme,
-      host: detail.summary.host,
-      port: detail.port,
-      path: detail.summary.path,
-      url: detail.url,
-      protocol: detail.summary.protocol,
-      statusCode: detail.summary.statusCode,
-      statusText: detail.statusText,
-      requestMime: detail.requestMime,
-      responseMime: detail.summary.responseMime,
-      startedAt,
-      completedAt:
-        detail.summary.durationMs !== undefined
-          ? startedAt + detail.summary.durationMs
-          : undefined,
-      requestBytes: detail.summary.requestBytes,
-      responseBytes: detail.summary.responseBytes,
-      state: this.toExchangeState(detail.summary.state),
-      errorCode: detail.errorCode,
-      headers,
-      requestBody: this.toBodyRef(detail.requestBody),
-      responseBody: this.toBodyRef(detail.responseBody),
+      headers: exchange.headers?.map((header) => ({ ...header })),
+      requestBody: this.remapBodyRef(exchange.requestBody),
+      responseBody: this.remapBodyRef(exchange.responseBody),
+      requestBodyId: undefined,
+      responseBodyId: undefined,
     };
   }
 
-  /** 把快照正文引用映射成新的 body_ref 输入（Blob 已在 importBlobs 导入）。 */
-  private toBodyRef(
-    body: CaptureExchangeDetail['requestBody'],
-  ): BodyRefInput | undefined {
-    if (!body?.bodyHash) {
-      return undefined;
-    }
+  /** 为导入的 WebSocket frame 与 payload 分配当前 Session 内的新 body id。 */
+  private remapFrame(frame: WebSocketFrameInput): WebSocketFrameInput {
     return {
-      id: `archive-body-${randomUUID()}`,
-      blobHash: body.bodyHash,
-      encodedSize: body.encodedSize,
-      decodedSize: body.decodedSize,
-      contentEncoding: body.contentEncoding,
-      mediaType: body.mediaType,
-      truncated: body.truncated,
-      decodeStatus: body.decodeStatus as BodyRefInput['decodeStatus'],
+      direction: frame.direction,
+      opcode: frame.opcode,
+      payloadSize: frame.payloadSize,
+      timestamp: frame.timestamp,
+      payload: this.remapBodyRef(frame.payload),
     };
   }
 
-  /** 把快照中的 state 字符串收敛为已知 ExchangeState。 */
-  private toExchangeState(value: string): ExchangeState {
-    return EXCHANGE_STATES.includes(value as ExchangeState)
-      ? (value as ExchangeState)
-      : 'completed';
+  /** 保留 body hash/metadata，但替换 archive 内部 body id。 */
+  private remapBodyRef(body: BodyRefInput | undefined): BodyRefInput | undefined {
+    return body
+      ? { ...body, id: `archive-body-${randomUUID()}` }
+      : undefined;
   }
 
   /** 流式计算一个文件的 sha256 与字节数。 */

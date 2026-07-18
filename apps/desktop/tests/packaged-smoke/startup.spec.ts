@@ -232,12 +232,32 @@ class PackagedWorkflowSmoke {
         window.interceptor.queryDiagnostics({ limit: 20 }));
       expect(diagnostics.records.length).toBeGreaterThan(0);
     } finally {
+      const beforeStop = await page.evaluate(() =>
+        window.interceptor.getStorageStatus());
       await page.evaluate(() => window.interceptor.stopCapture())
         .catch(() => undefined);
+      await expect(
+        this.requestThroughProxy(proxyPort, origin.port),
+      ).rejects.toThrow();
       await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
-        message: 'Stopping Capture did not delete temporary recording data',
+        message: 'Stopping Capture changed retained recording data',
         timeout: 10_000,
-      }).toMatchObject({ sessionCount: 0, exchangeCount: 0, bodyCount: 0, blobBytes: 0 });
+      }).toMatchObject({
+        sessionCount: beforeStop.sessionCount,
+        exchangeCount: beforeStop.exchangeCount,
+        bodyCount: beforeStop.bodyCount,
+        blobBytes: beforeStop.blobBytes,
+      });
+      await page.evaluate(() => window.interceptor.clearStorage());
+      await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
+        message: 'Manual Clear did not delete temporary recording data',
+        timeout: 10_000,
+      }).toMatchObject({
+        sessionCount: 0,
+        exchangeCount: 0,
+        bodyCount: 0,
+        blobBytes: 0,
+      });
       await this.closeOrigin(origin.server);
     }
   }
@@ -563,8 +583,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     );
     expect(restartedEcho.value).toBe('m1-restarted-port');
 
-    // M2 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → StorageService →
-    // Storage Worker 线程 → node:sqlite 打开磁盘上的 capture.sqlite。
+    // 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → Core 内临时 Capture/Body Store。
     await expect
       .poll(
         async () =>
@@ -579,7 +598,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       () => window.interceptor.getStorageStatus(),
     );
     expect(storageQuota.quotaBytes).toBeGreaterThan(0);
-    expect(storageQuota.databaseBytes).toBeGreaterThan(0);
+    expect(storageQuota.databaseBytes).toBe(0);
 
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
     const clearedStorage = await page.evaluate(() =>

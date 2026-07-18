@@ -10,7 +10,7 @@
 1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
 3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 最新完成 Stage 文件：[M13.md](M13.md)；当前 Capture 后续增强见 [M4.md](M4.md)、[M5.md](M5.md)、[M11.md](M11.md) 的 2026-07-18 小节。
+4. 最新完成 Stage 文件：[M14.md](M14.md)。
 5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
 6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
 
@@ -18,9 +18,11 @@
 
 ## 当前状态
 
-- **M0–M13 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
+- **M0–M14 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
+- **M14 临时 Capture 架构已完成**：Core 直接拥有内存 Capture + 内存/spill Body；RuleSet 直接持久 `rules.sqlite`；Diagnostics Worker 保留；native archive 使用一次性 Archive Worker。常驻 Storage Worker、运行时 `capture.sqlite` 和持久 blobs 已删除。
+- **Stop 语义**：Main 恢复系统代理，Core 真关闭 Mockttp/WebSocket listener，旧端口不可连接，但已有 Core/Renderer 记录保留；Start 新 Session 继续追加；Clear 才删除记录和 spill；Core 重启释放临时数据。
 - **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 Recording/系统代理；HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
-- **Capture 正确性已收敛**：当前 Session 隔离；Clear/Stop 删除 Core 数据且 cutoff 拒绝迟到事件；实时前插保持选中行视觉位置；feature 往返保留 selection/scroll/tab/splitter；Cookies/Timing 使用完整真实输入；Payload 提供 Auto/Text/JSON/Hex。
+- **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。
 - **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整 659-key catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl` 日期/数字/字节/时长和 Main 原生 HAR/archive/Diagnostics 文件对话框同步切换；俄/波/乌 CLDR 多复数已覆盖。设计 SPA 只保留当前 Theme flyout 与 Language list，旧 Theme B/C/D、Language L2/L3 和专用截图脚本已删除。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
 - **M13下载安全边界**：Main严格校验SemVer、draft/prerelease、仓库URL/tag/asset basename、平台扩展名、显式架构、1GiB上限、声明size和强制GitHub SHA-256；随机`.part`写入`<userData>/updates/downloads`、sync后原子rename。Renderer永远拿不到URL/path。
@@ -30,11 +32,11 @@
 - **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、Proxy Settings 与 emergency repair 均已落地。后续已删除 first-run，改由 Capture bootstrap 启动 Recording/接管代理；四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
 - **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
-  - **原生 archive（T10.2）**：`archive/entry.ts` 的 `ArchiveService` 导出版本化 ZIP（`manifest.json` + `VACUUM INTO` 一致 `capture.sqlite` 快照 + `blobs/<sha256>`），导入把不可信 ZIP 当攻击输入——手写零依赖 `archive-zip-reader.ts` 在**提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取按声明大小设硬上限 + 逐条 CRC-32，Blob 再经内容寻址 hash 校验；`manifest` 校验 format/`archiveVersion`/`schemaVersion`（不得高于当前）；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。HAR 与 archive 共用 `transfer/entry.ts` 的单一 `TransferJobManager`。storage 新增 `snapshot`(worker `VACUUM INTO`)/`referencedBlobHashes`/`openBlobStream`。
+  - **原生 archive（M14 当前实现）**：`ArchiveService` 导出版本化 ZIP（manifest + 兼容 `capture.sqlite` snapshot + Body）；每个导入/导出任务单独启动 `archive/host/entry.ts` + `archive/worker/entry.ts`，按100条批次读写 snapshot，完成/取消/失败即退出。不可信 ZIP 的路径/大小/hash/压缩比/CRC/内容寻址校验保持不变，失败/取消回滚隔离 Session。
   - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
   - **异步 transfer job**：`har.export.start`/`har.import.start`/`transfer.job.get/cancel`；公开快照只含 basename/进度/状态/警告。Main 用系统 save/open dialog 持有真实路径，Renderer 没有文件系统 API。
   - **HAR UI**：Capture More 打开 `HarTransferDialog`，支持 all/filter/selected、Authorization/Cookie 遮罩、strip bodies、Import/Export、进度/取消/错误。HAR parity light/dark 均 0 missing/flagged。
-  - **Core 目录规范化**：composer/connection/diagnostics/grpc/har/proxy/rules/storage 根所有者直接位于 `entry.ts`；类型进 `interfaces/index.ts`、纯函数进 `utils/index.ts`，一文件一个 class；host/worker 子模块入口也为 `entry.ts`。真实 worker bundles 现为 `storage/worker/entry.cjs` 与 `diagnostics/worker/entry.cjs`。
+  - **Core 目录规范化**：业务根所有者直接位于 `entry.ts`；类型进 `interfaces/index.ts`、纯函数进 `utils/index.ts`，一文件一个 class。真实 worker bundles 现为按需 `archive/worker/entry.cjs` 与持续 `diagnostics/worker/entry.cjs`；Storage 无 host/worker 子目录。
   - **T9.1 WebSocket 捕获**：Mockttp HTTP/1.1 Upgrade，text/binary Message 按 direction/opcode/time/payloadRef 有序落 `websocket_frame`，payload 复用 Blob；101 后 Exchange 保持 open，clean close 更新 completed。
   - **T9.2 WebSocket UI/断点**：`WebSocketBridge` 接管双向消息转发并在 send 前 await BreakpointQueue，支持 edit/continue/drop；`websocket.frames` keyset 页 + Body range；Capture Messages 虚拟列表和 Breakpoints text/hex 编辑。仅 H1 Upgrade，H2 Extended CONNECT 未实现。
   - **T9.3 gRPC 基础展示**：原生 gRPC 作为 Mockttp 通用 H2 request/response 捕获；`grpc.messages` 从既有 Blob 每条只读 5B header 跳读分页，UI 显示 request/response、compressed/truncated/malformed、offset、grpc-status trailer 和 raw text/hex。无 descriptor/reflection；完成后扫描，非实时 streaming。
@@ -144,9 +146,9 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一动作：临时 Capture Session 阶段
+## 下一动作：提交 M14
 
-本次 Capture/HTTPS 增强提交并推送后，下一动作是把 Capture 从跨 Recording 持久历史改为单次 Recording 临时会话：Core 保留 detail/body/WS/gRPC 重数据，Renderer 保留完整轻量 summary/tree 状态，RuleSet/Diagnostics 继续持久化。开始前先建立独立 Stage 文档和权威任务清单，不把完整 request/body/sensitive header 放入 Renderer。
+M14 代码、文档和 Windows 验收已完成，下一动作是审阅并提交/推送本阶段改动。
 
 首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
@@ -164,7 +166,7 @@
 | --- | --- | --- | --- |
 | M12 | 已完成（外部签名/macOS 证据待补） | MSI/DMG/ZIP、strict Fuses、artifact/installer/package smoke、release CI | 完整方案第十七/十八章、第二十七章 M12 |
 | M13 | 已完成（100%，外部签名/macOS证据待补） | GitHub Release检查、app内changelog、手动下载MSI/DMG、Updates UI | 完整方案第十七章、第二十七章 M13 |
-| 下一阶段 | 待建立 | 临时 Capture Session、Core/Renderer 轻重数据分层、RuleSet 独立持久化、HAR/archive 适配 | 完整方案第十二、十四章 |
+| M14 | 已完成（100%） | 临时 Capture/Body、Renderer 全量 summary、RuleSet 拆分、按需 Archive Worker | 完整方案第十二、十四章、第二十七章 M14 |
 
 进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
 

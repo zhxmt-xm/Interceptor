@@ -18,12 +18,13 @@
 | `DIAGNOSTICS_RING_MAX_BYTES` | `512 * 1024` | CoreDiagnostics 内存 Ring Buffer 单条记录最大字节数 |
 | `DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS` | `256` | CoreDiagnostics 待输出队列最大条数 |
 | `DIAGNOSTICS_RING_MAX_RECORDS` | `2_000` | CoreDiagnostics 内存历史最大记录数 |
-| `CAPTURE_DB_FILE` | `'capture.sqlite'` | Capture 数据库文件名（dataDir 下） |
-| `BLOB_DIR` | `'blobs'` | Blob 存储根目录名（dataDir 下） |
-| `BLOB_TEMP_DIR` | `'tmp'` | Blob 临时目录名（blobs/ 下） |
+| `CAPTURE_DB_FILE` | `'capture.sqlite'` | 旧 Capture 库名；迁移 RuleSet 后删除 |
+| `RULES_DB_FILE` | `'rules.sqlite'` | 低频持久 RuleSet 库名 |
+| `BLOB_DIR` | `'blobs'` | 旧持久 Body 目录名；M14 启动时删除 |
+| `CAPTURE_TEMP_DIR` | `'capture-temp'` | 当前 Core 代际的临时 Body spill 目录 |
+| `BODY_MEMORY_THRESHOLD_BYTES` | `1 * 1024 * 1024` | Body 从内存切换到 spill 的阈值 |
 | `MAX_BODY_BYTES` | `64 * 1024 * 1024` | 单条正文最大字节数，超过拒绝并标记 truncated |
-| `GLOBAL_QUOTA_BYTES` | `2 * 1024 * 1024 * 1024` | Blob 全局配额字节数 |
-| `STORAGE_REQUEST_TIMEOUT_MS` | `30_000` | Storage Worker 单请求超时 |
+| `GLOBAL_QUOTA_BYTES` | `2 * 1024 * 1024 * 1024` | 单 Core 代际临时 Body 总配额 |
 | `DIAGNOSTICS_DB_FILE` | `'diagnostics.sqlite'` | 诊断数据库文件名（dataDir 下） |
 | `DIAGNOSTICS_MAX_RECORDS` | `50_000` | 持久化日志最多保留条数 |
 | `DIAGNOSTICS_MAX_AGE_MS` | `null` | 持久化日志最长保留时长；null 表示不启用按时长清理 |
@@ -42,7 +43,7 @@
 | `har/har-constants.ts` | HAR 文件/entry/header/body/job 上限与批次大小 |
 | `proxy/proxy-constants.ts` | 终态集合、可解码 content-encoding |
 | `rules/rule-constants.ts` | 断点快照正文上限 |
-| `storage/storage-constants.ts` | 内存数据库位置、Capture SQLite busy timeout |
+| `storage/storage-constants.ts` | 低频 Rule SQLite busy timeout |
 
 ## 运行期变量（读 process.argv / __dirname，entry 初始化）
 
@@ -54,10 +55,12 @@
 | --- | --- | --- |
 | `dataDir` | `--data-dir=` | 存储根目录；null 时无存储模式 |
 | `appVersion` | `--app-version=` | 捕获会话元数据；ProxyService 读取 |
-| `captureDatabasePath` | `dataDir + CAPTURE_DB_FILE` | Storage Worker 打开的 capture.sqlite |
-| `blobDirectory` | `dataDir + BLOB_DIR` | BlobStore 根目录 |
+| `captureDatabasePath` | `dataDir + CAPTURE_DB_FILE` | M14 启动时迁移 RuleSet 后删除的旧 capture.sqlite |
+| `rulesDatabasePath` | `dataDir + RULES_DB_FILE` | Core 直接打开的低频持久 rules.sqlite |
+| `blobDirectory` | `dataDir + BLOB_DIR` | 启动时删除的旧持久 Body 目录 |
+| `captureTempDirectory` | `dataDir + CAPTURE_TEMP_DIR` | 当前 Core 临时 Body spill 目录 |
 | `diagnosticsDatabasePath` | `dataDir + DIAGNOSTICS_DB_FILE` | Diagnostics Worker 打开的 diagnostics.sqlite |
-| `storageWorkerEntry` | `__dirname`/`cwd` 解析 | `storage/worker/entry.cjs` |
+| `archiveWorkerEntry` | `__dirname`/`cwd` 解析 | 按需启动的 `archive/worker/entry.cjs` |
 | `diagnosticsWorkerEntry` | `__dirname`/`cwd` 解析 | `diagnostics/worker/entry.cjs` |
 
 ## 命名约定
@@ -66,11 +69,9 @@
    （如 `new StorageService()` → `storageService`、`new CaptureEventQueue()` → `captureEventQueue`）。
 2. **`Core` 前缀类去前缀**：类名以 `Core` 开头时，实例/字段名去掉 `Core`
    （如 `new CoreDiagnostics()` → `diagnostics`、`new CoreRpcServer()` → `rpcServer`）。
-3. **语义明确的简单名可保留**：像 `host` 这类在其作用域内含义明确、简单直接的名字可以保留
-   （如 `StorageService` 内部持有的 `StorageWorkerHost` 字段命名为 `host`）。
+3. **语义明确的简单名可保留**：像 `host` 这类在其作用域内含义明确、简单直接的名字可以保留。
 4. **接口命名一致、优先删除单实现接口**：接口命名与其角色/实现保持一致；只有单一实现的接口优先删除,
-   直接使用具体类，保持模块对称（如删除 `DiagnosticsLog` 接口，直接用 `DiagnosticsWorkerHost`，
-   与 storage 侧直接用 `StorageWorkerHost` 对称）。
+  直接使用具体类（如删除 `DiagnosticsLog` 接口，直接用 `DiagnosticsWorkerHost`）。
 5. **组合根集中、装配处避免闭包**：`CoreApplication.bootstrap` 是唯一组合根（按运行期变量装配
    服务并启动）；装配子对象时注入协作者/宿主（application）而非闭包回调——CoreRpcServer 注入
    实现 `CoreRpcHost` 的 CoreApplication，CoreDiagnostics 注入 `DiagnosticsSink`（Diagnostics
@@ -81,7 +82,7 @@
 生产构造函数**不接收仅供测试的注入参数**。需要在测试中改变行为时，用以下手段替代：
 
 - **数值/路径常量** → 用 `vi.mock('.../constants')` 覆盖。需按用例变化时用
-  `vi.hoisted` 持有一个可变对象并以 getter 暴露常量（如 blob store 的 `MAX_BODY_BYTES`、
+  `vi.hoisted` 持有一个可变对象并以 getter 暴露常量（如 body store 的 `MAX_BODY_BYTES`、
   捕获队列的 `CAPTURE_EVENT_QUEUE_CAPACITY`）。
 - **Worker 通道与路径** → 起真实 `worker_threads` Worker 测试，不注入假通道。测试调
   `initializeRuntime(['--data-dir=<temp>'])` 设置运行期变量，`constants` 的 `resolveWorkerEntry`

@@ -33,7 +33,7 @@ Packaged smoke 回答以下问题：
 - Proxy Core UtilityProcess 是否从 packaged resources 启动并持续 heartbeat？
 - Main 与 Core 的专用 MessagePort RPC 是否工作？
 - Core 被强制终止后是否能以新 PID 自动重启？
-- StorageService、Storage Worker、`node:sqlite` 和真实磁盘数据库是否可用？
+- Core 临时 Capture/Body、持久 RuleStore、Diagnostics Worker 与按需 Archive Worker 是否可用？
 - 主题与窗口尺寸切换是否仍能渲染？
 - 应用退出后 Main/Core/Renderer 进程是否被清理？
 
@@ -99,7 +99,7 @@ sequenceDiagram
     participant M as Electron Main
     participant R as Renderer
     participant C as Proxy Core UtilityProcess
-    participant S as Storage Worker
+    participant S as Core Temporary Stores
 
     T->>T: reserve random CDP port
     T->>E: spawn --remote-debugging-port
@@ -173,21 +173,21 @@ sequenceDiagram
 
 `running` 只表示 UtilityProcess heartbeat 正常，不代表代理 listener、Storage 等所有业务能力都健康。
 
-### Storage 全链路
+### 临时 Capture 全链路
 
 Smoke 使用 packaged Core 中的真实：
 
 - `StorageService`；
-- `worker_threads`；
-- Storage Worker bundle；
-- Electron 内置 `node:sqlite`；
-- 用户数据目录中的 `capture.sqlite`；
-- Blob Store 和配额状态。
+- Core 内 `TemporaryCaptureStore`；
+- 内存 + spill `TemporaryBodyStore`；
+- Core 直接管理的 `rules.sqlite`；
+- 按需 Archive Worker 与持续 Diagnostics Worker。
 
 测试确认：
 
-- `getStorageStatus()` 返回非零 quota/database bytes；
-- `clearStorage()` 后 session/exchange/body count 为 0。
+- `getStorageStatus()` 返回非零 quota，Capture database bytes 为 0；
+- Stop 真关闭代理端口但保持 session/exchange/body count；
+- `clearStorage()` 后 session/exchange/body/spill 为 0。
 
 ### 退出清理
 
@@ -206,7 +206,7 @@ resources/proxy-core/entry.cjs
 ```text
 resources/proxy-core/
 ├─ entry.cjs
-├─ storage/worker/entry.cjs
+├─ archive/worker/entry.cjs
 ├─ diagnostics/worker/entry.cjs
 └─ node_modules/                  # Mockttp/WASM/native runtime closure
 ```
@@ -301,11 +301,11 @@ Get-Content $stderr
 
 检查：
 
-- Storage Worker bundle 路径；
-- Worker 内 `node:sqlite`；
+- Archive/Diagnostics Worker bundle 路径；
+- Rule/Diagnostics SQLite 与 Archive snapshot；
 - `--data-dir` 注入；
 - 数据目录权限；
-- capture migration；
+- 旧 RuleSet migration；
 - Core 是否只 heartbeat 正常但 Storage 初始化失败。
 
 ### 测试后残留进程

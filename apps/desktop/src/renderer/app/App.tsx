@@ -6,7 +6,12 @@ import type { CoreProcessStatus } from '../../shared/desktop-api';
 import type { LanguageId } from '../i18n/languages';
 import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
 import { BreakpointsMain, BreakpointsStatusbar, BreakpointsTopbar } from '../features/breakpoints';
-import { CaptureMain, CaptureStatusbar, CaptureTopbar } from '../features/capture';
+import {
+  CaptureMain,
+  CaptureStatusbar,
+  CaptureTopbar,
+  useCaptureData,
+} from '../features/capture';
 import { ComposerMain, ComposerStatusbar, ComposerTopbar } from '../features/composer';
 import {
   DiagnosticsMain,
@@ -85,6 +90,7 @@ const initialCoreStatus: CoreProcessStatus = {
 };
 
 export function App(): React.JSX.Element {
+  useCaptureData();
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(false);
