@@ -1,7 +1,7 @@
 import { Download, Menu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, FilterChip, IconButton, Title } from '../../../components';
+import { FilterChip, IconButton, Title } from '../../../components';
 import { useDiagnostics } from '../DiagnosticsProvider';
 import styles from './DiagnosticsTopbar.module.css';
 
@@ -37,18 +37,18 @@ export function DiagnosticsTopbar({ onMenu }: DiagnosticsTopbarProps): React.JSX
         <FilterChip onClick={cycleOutcome}>
           {outcomeFilter ? `${t('diagnostics.outcome')}: ${outcomeFilter}` : t('diagnostics.outcome')}
         </FilterChip>
-        <Button
+        <IconButton
           icon={Download}
-          variant={exportError ? 'danger' : 'default'}
-          disabled={exporting}
-          onClick={exportJsonl}
-        >
-          {exporting
+          label={exporting
             ? t('diagnostics.exporting')
             : exportError
               ? t('diagnostics.exportFailed')
               : t('diagnostics.exportJsonl')}
-        </Button>
+          size="sm"
+          className={exportError ? styles.exportError : undefined}
+          disabled={exporting}
+          onClick={exportJsonl}
+        />
       </div>
     </>
   );

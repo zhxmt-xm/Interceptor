@@ -351,6 +351,9 @@ export const DESKTOP_UI_LANGUAGES = [
 export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 
 export const DESKTOP_IPC_CHANNELS = {
+  appQuit: 'app:quit',
+  windowMinimize: 'window:minimize',
+  windowToggleMaximize: 'window:toggle-maximize',
   coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
   coreGetTrace: 'core:get-trace',
@@ -410,6 +413,9 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  closeApplication(): Promise<void>;
+  minimizeWindow(): Promise<void>;
+  toggleMaximizeWindow(): Promise<boolean>;
   setUiLanguage(language: DesktopUiLanguage): Promise<void>;
   echoCore(value: string): Promise<CoreEchoResult>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;

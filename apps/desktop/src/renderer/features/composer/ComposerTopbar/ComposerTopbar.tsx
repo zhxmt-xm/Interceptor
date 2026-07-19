@@ -2,7 +2,7 @@ import { Clock, Menu, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, IconButton, Title } from '../../../components';
+import { IconButton, Title } from '../../../components';
 import { useComposerStore } from '../composerStore';
 import styles from './ComposerTopbar.module.css';
 
@@ -24,9 +24,12 @@ export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Eleme
       <Title>{t('composer.title')}</Title>
       <div className={styles.actions}>
         <div className={styles.historyWrap}>
-          <Button icon={Clock} onClick={() => setOpen((value) => !value)}>
-            {t('composer.history')}
-          </Button>
+          <IconButton
+            icon={Clock}
+            label={t('composer.history')}
+            size="sm"
+            onClick={() => setOpen((value) => !value)}
+          />
           {open ? (
             <div className={styles.historyPanel}>
               {history.length === 0 ? (
@@ -51,9 +54,7 @@ export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Eleme
             </div>
           ) : null}
         </div>
-        <Button icon={Plus} onClick={resetForNew}>
-          {t('composer.new')}
-        </Button>
+        <IconButton icon={Plus} label={t('composer.new')} size="sm" onClick={resetForNew} />
       </div>
     </>
   );

@@ -44,83 +44,43 @@ function New-InterceptorBitmap {
         -Width (456 * $scale) `
         -Height (456 * $scale) `
         -Radius (112 * $scale)
-    $backgroundBrush = New-Object System.Drawing.SolidBrush(
-        [System.Drawing.ColorTranslator]::FromHtml('#24292f')
+    $gradientBounds = New-Object System.Drawing.RectangleF(
+        (28 * $scale),
+        (28 * $scale),
+        (456 * $scale),
+        (456 * $scale)
+    )
+    $backgroundBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+        $gradientBounds,
+        [System.Drawing.ColorTranslator]::FromHtml('#2fd4b8'),
+        [System.Drawing.ColorTranslator]::FromHtml('#c07cff'),
+        [System.Drawing.Drawing2D.LinearGradientMode]::ForwardDiagonal
     )
     $graphics.FillPath($backgroundBrush, $backgroundPath)
 
-    $bracketPen = New-Object System.Drawing.Pen(
-        [System.Drawing.ColorTranslator]::FromHtml('#f5f7f8'),
-        (34 * $scale)
+    $boltPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $boltPoints = @(
+        (New-Object System.Drawing.PointF((272 * $scale), (96 * $scale))),
+        (New-Object System.Drawing.PointF((112 * $scale), (288 * $scale))),
+        (New-Object System.Drawing.PointF((256 * $scale), (288 * $scale))),
+        (New-Object System.Drawing.PointF((240 * $scale), (416 * $scale))),
+        (New-Object System.Drawing.PointF((400 * $scale), (224 * $scale))),
+        (New-Object System.Drawing.PointF((256 * $scale), (224 * $scale)))
     )
-    $bracketPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $bracketPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $boltPath.AddPolygon($boltPoints)
+    $boltPen = New-Object System.Drawing.Pen(
+        [System.Drawing.ColorTranslator]::FromHtml('#ffffff'),
+        (32 * $scale)
+    )
+    $boltPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $boltPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $boltPen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $graphics.DrawPath($boltPen, $boltPath)
 
-    $leftBracket = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $leftBracket.AddBezier(
-        (174 * $scale), (132 * $scale),
-        (126 * $scale), (154 * $scale),
-        (96 * $scale), (201 * $scale),
-        (96 * $scale), (256 * $scale)
-    )
-    $leftBracket.AddBezier(
-        (96 * $scale), (256 * $scale),
-        (96 * $scale), (311 * $scale),
-        (126 * $scale), (358 * $scale),
-        (174 * $scale), (380 * $scale)
-    )
-    $graphics.DrawPath($bracketPen, $leftBracket)
-
-    $rightBracket = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $rightBracket.AddBezier(
-        (338 * $scale), (132 * $scale),
-        (386 * $scale), (154 * $scale),
-        (416 * $scale), (201 * $scale),
-        (416 * $scale), (256 * $scale)
-    )
-    $rightBracket.AddBezier(
-        (416 * $scale), (256 * $scale),
-        (416 * $scale), (311 * $scale),
-        (386 * $scale), (358 * $scale),
-        (338 * $scale), (380 * $scale)
-    )
-    $graphics.DrawPath($bracketPen, $rightBracket)
-
-    $pulsePen = New-Object System.Drawing.Pen(
-        [System.Drawing.ColorTranslator]::FromHtml('#50c9bb'),
-        (24 * $scale)
-    )
-    $pulsePen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $pulsePen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $pulsePen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
-    $pulsePoints = @(
-        (New-Object System.Drawing.PointF((94 * $scale), (258 * $scale))),
-        (New-Object System.Drawing.PointF((188 * $scale), (258 * $scale))),
-        (New-Object System.Drawing.PointF((217 * $scale), (187 * $scale))),
-        (New-Object System.Drawing.PointF((260 * $scale), (327 * $scale))),
-        (New-Object System.Drawing.PointF((296 * $scale), (228 * $scale))),
-        (New-Object System.Drawing.PointF((324 * $scale), (258 * $scale))),
-        (New-Object System.Drawing.PointF((418 * $scale), (258 * $scale)))
-    )
-    $graphics.DrawLines($pulsePen, $pulsePoints)
-
-    $centerBrush = New-Object System.Drawing.SolidBrush(
-        [System.Drawing.ColorTranslator]::FromHtml('#f5f7f8')
-    )
-    $graphics.FillEllipse(
-        $centerBrush,
-        (246 * $scale),
-        (244 * $scale),
-        (28 * $scale),
-        (28 * $scale)
-    )
-
-    $centerBrush.Dispose()
-    $pulsePen.Dispose()
-    $rightBracket.Dispose()
-    $leftBracket.Dispose()
-    $bracketPen.Dispose()
+    $boltPen.Dispose()
+    $boltPath.Dispose()
     $backgroundBrush.Dispose()
+    $gradientBounds = $null
     $backgroundPath.Dispose()
     $graphics.Dispose()
 

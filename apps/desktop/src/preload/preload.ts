@@ -9,6 +9,10 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  closeApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appQuit),
+  minimizeWindow: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowMinimize),
+  toggleMaximizeWindow: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowToggleMaximize),
   setUiLanguage: (language) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiSetLanguage, language),
   echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),

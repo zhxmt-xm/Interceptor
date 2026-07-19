@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-18
+> 最后更新：2026-07-20
 > 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -68,6 +68,7 @@ flowchart LR
 > Renderer 仍只通过 `window.interceptor` 意图 API 访问 Main，不触达 Electron/Node/MessagePort；以下为已实现并 typecheck 通过的 UI 结构，视觉取值以 `design/design-system.md` 为准。
 
 - **App shell**：`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言并按 `ViewId` 渲染对应 feature 的 topbar/main/statusbar；`app/AppShell.tsx` 是 Grid 外壳，`app/Sidebar.tsx` 是导航 + 底部主题/语言切换器。
+- **自有窗口 Chrome**：Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 54px 顶栏是 drag region，交互控件为 no-drag。AppShell 右上角固定 Minimize / Maximize-or-restore / Close 三按钮，经窄 Preload IPC 操作当前可信窗口；Close 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown，不使用 Renderer 直接销毁进程。各 workspace 的纯命令 action 使用 icon-only 并贴近窗口控制组；空 UpdateNotification 不占 flex 布局。
 - **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/`，每个拆成 Topbar/Main/Statusbar 子组件 + colocated CSS Module，一对一还原 `design/app` 对应视图。Capture 工作区已在 M4 数据驱动（见「Capture 渲染数据层架构」小节），Settings 存储面板呈现真实 `StorageUsage`，其余视图仍为占位/disabled，随后续 Stage 接入。
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。设计源只保留当前 Theme flyout 与 Language list，不保留替代变体。
 - **主题与语言**：四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。`renderer/i18n/` 用 `i18next` + `react-i18next` 注册 15 个本地静态完整 catalog，英语为默认/回退；切换同步 Ant `ConfigProvider.locale`、`html lang`、localStorage 与 `Intl` 格式。Renderer 经受限 `setUiLanguage` Preload 意图把 15 值枚举同步给 Main，Main 只用内存状态本地化自己持有的 HAR/archive/Diagnostics 文件对话框，不把路径或通用 IPC 暴露给 Renderer。
@@ -178,7 +179,7 @@ sequenceDiagram
 - **Guarded ownership**：enable 前读取 original 并计算 owned；restore/repair 重新读取 current，只有 `current == owned` 才写回 original。外部修改导致 `ownershipLost`，零写入且不会覆盖用户值。
 - **Startup journal**：`SystemProxyJournal` 在 native write 前原子持久化 version/platform/phase/original/owned，临时文件同步后 rename。启动时 `current == owned` 恢复，`current == original` 清 journal，其余保留冲突。Core 从 running 进入 unresponsive/restarting、停止 Capture 和应用退出时复用同一 guarded decision。
 - **窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`、`repairSystemProxy`。Emergency repair 先恢复仍 owned 的设置，再尽力停止 listener；Main 日志不包含 snapshot。
-- **启动/UI**：first-run 已移除。默认 Capture 视图在 Core ready 后启动 8888 loopback listener，并在支持的平台尽力启用系统代理；CA 生成/信任从启动流程中拆出，只能由用户在 HTTPS Setup 显式授权。Proxy Settings 继续展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
+- **启动/UI**：first-run 已移除。默认 Capture 视图在 Core ready 后启动 8888 loopback listener，随后只检查系统代理 readiness；未 owned、ownership lost 或 listener 失败时 `capturing=false` 并弹出全局引导，用户显式点击 Enable 后才调用系统代理接管，或进入 Proxy Settings。只有 listener+routing 同时 ready 才显示 Recording；手动 Start 与 Core 重启复用同一检查。CA 生成/信任从启动流程中拆出，只能由用户在 HTTPS Setup 显式授权。Proxy Settings 继续展示 listener、ownership、PAC/bypass、授权结果与 repair 二次确认。
 - **构建/打包**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。
 
 ## 发布与产物安全架构（M12，已落地）
@@ -245,8 +246,8 @@ sequenceDiagram
 - **Core 门面**：`har/entry.ts` 的 `HarService` 直接作为模块入口，组合 `HarJobManager`、`HarDocumentParser`、`interfaces/index.ts` 和 `utils/index.ts`。导出按 `sessions.query` keyset 页枚举 ID，再逐条 detail/body range 转 HAR entry；导入先验证完整不可信 JSON，再建立隔离 Session、分批写 Blob/Exchange，失败/取消按 Session cleanup 回滚。
 - **文件任务**：`har.export.start` / `har.import.start` 立即返回 `TransferJobSnapshot`；`transfer.job.get/cancel` 轮询和取消。任务有界保留、每任务独立 AbortController；公开字段只有 id/kind/state/basename/progress/timestamps/message/warnings，不含绝对路径。Core 关闭先 cancelAll，再释放 Storage。
 - **安全边界**：文件 256 MiB、100,000 entries、每 entry 1,000 headers、header value 8 KiB、URL 16 KiB、body 64 MiB；严格 base64，只接受 http/https/ws/wss。导入只使用 `JSON.parse` 和结构化字段，不 eval、不渲染 HTML、不加载远程资源、不执行脚本/插件。Main 与 Core 各自校验参数。
-- **HAR 映射与损失**：HTTP request/response/header/query/content/timings 与 text/base64 body 可互操作；pseudo-header/trailer、WebSocket message、TLS detail、rule history 无法无损表达，Core/UI 明确警告。导出可遮罩 Authorization/Proxy-Authorization、Cookie/Set-Cookie，并可移除正文；T10.3 仍负责更广的默认隐私/URL query/token/确认策略。
-- **Desktop**：`startHarExport/startHarImport/getTransferJob/cancelTransferJob` 是唯一 Renderer API；Main 的 `showSaveDialog/showOpenDialog` 持有路径。Capture `HarTransferDialog` 支持 all/current filter/selected、redaction、进度/取消/终态；导入成功重查列表。Parity 用 fake Preload + 正常点击，业务 Renderer 无测试后门。
+- **HAR 映射与损失**：HTTP request/response/header/query/content/timings 与 text/base64 body 可互操作；压缩 Response 在导出时先按 gzip/deflate/br 解码，`bodySize` 保持线上编码大小，`content.size`/`compression` 表达解码资源与压缩收益。pseudo-header/trailer、WebSocket message、TLS detail、rule history 无法无损表达，Core/UI 明确警告。导出可遮罩 Authorization/Proxy-Authorization、Cookie/Set-Cookie，并可移除正文；T10.3 仍负责更广的默认隐私/URL query/token/确认策略。
+- **Desktop**：`startHarExport/startHarImport/getTransferJob/cancelTransferJob` 是唯一 Renderer API；Main 的 `showSaveDialog/showOpenDialog` 持有路径。Capture 顶栏 Import/Export 菜单分别提供 `Import HAR` / `Export HAR`；HAR Export 单一动作弹层支持 all/current filter/selected、redaction、进度/取消/终态，导入成功重查列表。Parity 用 fake Preload + 正常点击，业务 Renderer 无测试后门。
 - **验证**：HAR unit 覆盖 round-trip、脚本文本 inert、上限、脱敏、失败回滚、任务取消/路径隐藏；light/dark parity 各 11/11 targets、0 flagged；Windows package + 真实 packaged smoke 验证新 Preload 面和 worker bundle 路径。
 
 ## 原生 archive 导入导出架构（M10/T10.2，已落地）
@@ -258,7 +259,7 @@ sequenceDiagram
 - **一致快照**：`storage` 新增 worker 请求 `snapshot` → `CaptureStore.snapshotInto` 用 `PRAGMA wal_checkpoint(TRUNCATE)` + `VACUUM INTO ?` 生成紧凑一致快照（不复制活动库文件）；`StorageService` 暴露 `snapshot`/`referencedBlobHashes`/`openBlobStream`（`BlobStore.openReadStream`）。
 - **导出**：`ArchiveService.exportToFile` 生成 `capture.sqlite` 快照 → 逐个流式写入引用 Blob（`blobs/<sha256>`）→ 最后写 `manifest.json`（format/archiveVersion/schemaVersion/appVersion/createdAt + 每文件 path/size/sha256）→ finalize → 原子 rename。
 - **导入（不可信输入）**：stat 大小上限 → 解析 EOCD/central directory → **提取任何字节前**校验加密位/压缩方法/符号链接/绝对·`..`·反斜杠·穿越/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目 → 提取并解析 manifest（拒绝未知 format/不支持版本/`schemaVersion` 高于当前）→ manifest 与 central directory 交叉一致 → 提取快照与 Blob 逐文件校验 size+sha256 → 提取以声明大小为硬上限 + 逐条 CRC-32 → Blob 经内容寻址 `writeBody` 三重校验 → 快照 `PRAGMA integrity_check` → 用 storage 拥有的 `CaptureStore` 读快照，把 Exchange（含 pseudo-header/trailer/正文引用/WebSocket 帧）重插入隔离 Session；失败/取消回滚。不支持 ZIP64，遇到即拒绝。
-- **Desktop**：`startArchiveExport/startArchiveImport` 是唯一 Renderer API；Main `showSaveDialog/showOpenDialog` 持有 `.iarchive` 路径。Capture `HarTransferDialog` 启用 “Native archive” 格式切换（整库无损，隐藏 scope/redaction），进度/取消/终态复用 transfer job 轮询。
+- **Desktop**：`startArchiveExport/startArchiveImport` 是唯一 Renderer API；Main `showSaveDialog/showOpenDialog` 持有 `.iarchive` 路径。Capture 顶栏把 archive 呈现为独立的 `Open Capture` / `Save Capture` 命令（整库无损，不与 HAR 共用 Format），进度/取消/终态复用 transfer job 轮询。
 
 ## 两条独立通道
 ### 生命周期通道：`UtilityProcess.parentPort`

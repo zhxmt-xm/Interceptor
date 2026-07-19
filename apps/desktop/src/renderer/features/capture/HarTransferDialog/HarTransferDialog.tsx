@@ -23,16 +23,15 @@ const JOB_POLL_MS = 350;
 
 type ExportScopeKind = HarExportRequest['scope']['kind'];
 
-/** HAR 1.2 import/export options, progress, cancellation and completion overlay. */
+/** Action-specific HAR/Capture transfer options, progress and cancellation overlay. */
 export function HarTransferDialog(): React.JSX.Element | null {
   const { t } = useTranslation();
-  const open = useCaptureStore((state) => state.harDialogOpen);
+  const action = useCaptureStore((state) => state.transferAction);
   const rows = useCaptureStore((state) => state.rows);
   const selectedId = useCaptureStore((state) => state.selectedId);
   const filter = useCaptureStore((state) => state.filter);
-  const setOpen = useCaptureStore((state) => state.setHarDialogOpen);
+  const setAction = useCaptureStore((state) => state.setTransferAction);
   const warnBeforeUnmasked = usePrivacyStore((state) => state.warnBeforeUnmasked);
-  const [format, setFormat] = useState<'har' | 'archive'>('har');
   const [scope, setScope] = useState<ExportScopeKind>('filter');
   const [authorization, setAuthorization] = useState(true);
   const [cookies, setCookies] = useState(true);
@@ -42,6 +41,10 @@ export function HarTransferDialog(): React.JSX.Element | null {
   const [error, setError] = useState<string | null>(null);
   const [allCount, setAllCount] = useState(rows.length);
 
+  const open = action !== null;
+  const isHarExport = action === 'har-export';
+  const isArchiveExport = action === 'archive-export';
+  const isImport = action === 'har-import' || action === 'archive-import';
   const visibleCount = visibleCaptureRows(rows, filter).length;
   const exportCount = scope === 'all'
     ? allCount
@@ -57,16 +60,17 @@ export function HarTransferDialog(): React.JSX.Element | null {
     setJob(null);
     setError(null);
     setSubmitting(false);
-    setFormat('har');
     const prefs = usePrivacyStore.getState();
     setAuthorization(prefs.maskAuthorization);
     setCookies(prefs.maskCookies);
     setBodies(false);
-    setAllCount(rows.length);
-    void window.interceptor.getStorageStatus().then((usage) => {
-      setAllCount(usage.exchangeCount);
-    }).catch(() => undefined);
-  }, [open]);
+    if (action === 'har-export') {
+      setAllCount(useCaptureStore.getState().rows.length);
+      void window.interceptor.getStorageStatus().then((usage) => {
+        setAllCount(usage.exchangeCount);
+      }).catch(() => undefined);
+    }
+  }, [action]);
 
   useEffect(() => {
     if (!job || job.state !== 'running') {
@@ -87,7 +91,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
           if (next.kind === 'har-import' || next.kind === 'archive-import') {
             await refetchSessions();
           }
-          setOpen(false);
+          setAction(null);
         }
       } catch (reason) {
         if (active) {
@@ -102,7 +106,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
         clearTimeout(timeout);
       }
     };
-  }, [job?.id, job?.state]);
+  }, [job?.id, job?.state, setAction]);
 
   useEffect(() => {
     if (!open || running) {
@@ -110,12 +114,12 @@ export function HarTransferDialog(): React.JSX.Element | null {
     }
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        setOpen(false);
+        setAction(null);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, running, setOpen]);
+  }, [open, running, setAction]);
 
   if (!open) {
     return null;
@@ -123,42 +127,31 @@ export function HarTransferDialog(): React.JSX.Element | null {
 
   const close = (): void => {
     if (!running) {
-      setOpen(false);
+      setAction(null);
     }
   };
 
-  const startExport = async (): Promise<void> => {
-    if (format === 'har' && scope === 'selected' && !selectedId) {
+  const startTransfer = async (): Promise<void> => {
+    if (!action || (action === 'har-export' && scope === 'selected' && !selectedId)) {
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      const started = format === 'archive'
-        ? await window.interceptor.startArchiveExport()
-        : await window.interceptor.startHarExport({
+      const started = action === 'har-export'
+        ? await window.interceptor.startHarExport({
             scope: buildScope(scope, selectedId, filter),
             redaction: { authorization, cookies, bodies },
-          });
+          })
+        : action === 'archive-export'
+          ? await window.interceptor.startArchiveExport()
+          : action === 'archive-import'
+            ? await window.interceptor.startArchiveImport()
+            : await window.interceptor.startHarImport();
       if (started) {
         setJob(started);
-      }
-    } catch (reason) {
-      setError(describeError(reason));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const startImport = async (): Promise<void> => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const started = format === 'archive'
-        ? await window.interceptor.startArchiveImport()
-        : await window.interceptor.startHarImport();
-      if (started) {
-        setJob(started);
+      } else {
+        setAction(null);
       }
     } catch (reason) {
       setError(describeError(reason));
@@ -175,7 +168,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
       const next = await window.interceptor.cancelTransferJob(job.id);
       if (next) {
         setJob(next);
-        setOpen(false);
+        setAction(null);
       }
     } catch (reason) {
       setError(describeError(reason));
@@ -199,9 +192,21 @@ export function HarTransferDialog(): React.JSX.Element | null {
       >
         <header className={styles.header}>
           <span className={styles.headerIcon}>
-            <Download size={16} strokeWidth={1.9} />
+            {isImport ? (
+              <Upload size={16} strokeWidth={1.9} />
+            ) : (
+              <Download size={16} strokeWidth={1.9} />
+            )}
           </span>
-          <h2 id="har-transfer-title">{t('capture.harTransferTitle')}</h2>
+          <h2 id="har-transfer-title">
+            {action === 'har-import'
+              ? t('capture.importHar')
+              : action === 'archive-import'
+                ? t('capture.openCapture')
+                : action === 'archive-export'
+                  ? t('capture.saveCapture')
+                  : t('capture.exportHar')}
+          </h2>
           <button
             type="button"
             className={styles.close}
@@ -217,48 +222,16 @@ export function HarTransferDialog(): React.JSX.Element | null {
           <JobProgress job={job} error={error} />
         ) : (
           <div className={styles.body}>
-            <div className={styles.field}>
-              <span className={styles.label}>{t('capture.format')}</span>
-              <div className={styles.segmented}>
-                <button
-                  type="button"
-                  className={cx(
-                    styles.segmentButton,
-                    format === 'har' && styles.segmentActive,
-                  )}
-                  onClick={() => setFormat('har')}
-                >
-                  HAR 1.2
-                </button>
-                <button
-                  type="button"
-                  className={cx(
-                    styles.segmentButton,
-                    format === 'archive' && styles.segmentActive,
-                  )}
-                  onClick={() => setFormat('archive')}
-                >
-                  {t('capture.nativeArchive')}
-                </button>
-              </div>
-              {format === 'har' ? (
-                <div className={styles.warning}>
-                  <AlertTriangle size={15} strokeWidth={1.9} />
-                  <span>
-                    {t('capture.harWarning')}
-                  </span>
-                </div>
-              ) : (
-                <div className={styles.warning}>
-                  <AlertTriangle size={15} strokeWidth={1.9} />
-                  <span>
-                    {t('capture.archiveWarning')}
-                  </span>
-                </div>
-              )}
+            <div className={styles.warning}>
+              <AlertTriangle size={15} strokeWidth={1.9} />
+              <span>
+                {action === 'har-import' || action === 'har-export'
+                  ? t('capture.harWarning')
+                  : t('capture.archiveWarning')}
+              </span>
             </div>
 
-            {format === 'har' ? (
+            {isHarExport ? (
               <>
                 <div className={styles.field}>
                   <span className={styles.label}>{t('capture.scope')}</span>
@@ -309,11 +282,11 @@ export function HarTransferDialog(): React.JSX.Element | null {
               </>
             ) : null}
             {warnBeforeUnmasked &&
-            (format === 'archive' || !authorization || !cookies) ? (
+            (isArchiveExport || (isHarExport && (!authorization || !cookies))) ? (
               <div className={cx(styles.warning, styles.dangerWarning)}>
                 <AlertTriangle size={15} strokeWidth={1.9} />
                 <span>
-                  {format === 'archive'
+                  {isArchiveExport
                     ? t('capture.archiveSensitiveWarning')
                     : t('capture.harSensitiveWarning')}
                 </span>
@@ -338,21 +311,18 @@ export function HarTransferDialog(): React.JSX.Element | null {
             <>
               <Button onClick={close}>{t('capture.cancel')}</Button>
               <Button
-                icon={Upload}
-                disabled={submitting}
-                onClick={() => void startImport()}
-              >
-                {format === 'archive' ? t('capture.importArchive') : t('capture.importHar')}
-              </Button>
-              <Button
-                icon={Download}
+                icon={isImport ? Upload : Download}
                 variant="primary"
-                disabled={submitting || (format === 'har' && exportCount === 0)}
-                onClick={() => void startExport()}
+                disabled={submitting || (isHarExport && exportCount === 0)}
+                onClick={() => void startTransfer()}
               >
-                {format === 'archive'
-                  ? t('capture.exportArchive')
-                  : t('capture.exportRequestCount', { count: exportCount })}
+                {action === 'har-import'
+                  ? t('capture.importHar')
+                  : action === 'archive-import'
+                    ? t('capture.openCapture')
+                    : action === 'archive-export'
+                      ? t('capture.saveCapture')
+                      : t('capture.exportRequestCount', { count: exportCount })}
               </Button>
             </>
           )}

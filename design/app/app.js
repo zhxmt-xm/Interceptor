@@ -100,6 +100,11 @@ function setState(s = {}) {
   if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
   if (s.https) app.dataset.https = s.https;
+  if (s.transfer) app.dataset.transfer = s.transfer;
+  if ('fileMenu' in s) {
+    if (s.fileMenu) app.dataset.fileMenu = s.fileMenu;
+    else delete app.dataset.fileMenu;
+  }
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
@@ -157,6 +162,13 @@ dock.querySelectorAll('.switch').forEach((box) => {
 
 // Toggle the omni / add-action popover on filter-button click (capture + rules).
 app.addEventListener('click', (e) => {
+  const fileTrigger = e.target.closest('[data-file-trigger]');
+  if (fileTrigger) {
+    const next = app.dataset.fileMenu === fileTrigger.dataset.fileTrigger
+      ? ''
+      : fileTrigger.dataset.fileTrigger;
+    return setState({ fileMenu: next });
+  }
   if (e.target.closest('.fbtn') || e.target.closest('#addaction')) {
     app.classList.toggle('showpop');
   }

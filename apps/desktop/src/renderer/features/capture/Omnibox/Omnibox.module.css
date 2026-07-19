@@ -12,6 +12,7 @@
   border-radius: 10px;
   background: var(--panel-2);
   border: 1px solid var(--border);
+  -webkit-app-region: no-drag;
 }
 .searchIcon {
   width: 16px;

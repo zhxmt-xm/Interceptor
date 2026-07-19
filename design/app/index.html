@@ -15,7 +15,7 @@
       <!-- ============================ TOPBAR ============================ -->
       <header class="topbar">
         <div class="tv capture-tools" data-v="capture">
-          <div class="cap-controls"><div class="ib"><svg><use href="#i-menu"/></svg></div><div class="rec"><span class="dot"></span>Recording</div></div>
+          <div class="cap-controls"><div class="ib"><svg><use href="#i-menu"/></svg></div><div class="rec"><span class="dot"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></div></div>
           <div class="cap-filtering"><div class="omni">
               <svg class="si"><use href="#i-search"/></svg>
               <span class="pill">GET<span class="x"><svg><use href="#i-x"/></svg></span></span>
@@ -32,7 +32,18 @@
                 <div class="fi"><svg><use href="#i-activity"/></svg><span class="n">Duration</span><span class="ex">&gt; 500 ms</span></div>
               </div>
           </div></div>
-          <div class="cap-inspector-tools"><div class="ib"><svg><use href="#i-info"/></svg></div><div class="ib"><svg><use href="#i-settings"/></svg></div><div class="ib"><svg><use href="#i-more"/></svg></div></div>
+          <div class="cap-inspector-tools">
+            <button class="ib sm file-trigger" data-file-trigger="import" aria-label="Import" title="Import"><svg><use href="#i-upload"/></svg></button>
+            <button class="ib sm file-trigger" data-file-trigger="export" aria-label="Export" title="Export"><svg><use href="#i-download"/></svg></button>
+            <div class="filemenu import-menu">
+              <button class="file-command"><svg><use href="#i-upload"/></svg><span>Import HAR</span><code>.har</code></button>
+              <button class="file-command"><svg><use href="#i-file"/></svg><span>Open Capture</span><code>.iarchive</code></button>
+            </div>
+            <div class="filemenu export-menu">
+              <button class="file-command"><svg><use href="#i-download"/></svg><span>Export HAR</span><code>.har</code></button>
+              <button class="file-command"><svg><use href="#i-file"/></svg><span>Save Capture</span><code>.iarchive</code></button>
+            </div>
+          </div>
         </div>
 
         <div class="tv" data-v="rules">
@@ -40,8 +51,8 @@
           <span class="ttl">Rules</span>
           <span class="cnt" style="margin-left:4px"><b>8</b> rules · 6 enabled</span>
           <div class="tacts end">
-            <button class="btn"><svg><use href="#i-plus"/></svg>New rule</button>
-            <button class="btn pri" disabled><svg><use href="#i-check"/></svg>Apply changes</button>
+            <button class="ib sm" aria-label="New rule" title="New rule"><svg><use href="#i-plus"/></svg></button>
+            <button class="ib sm" aria-label="Apply changes" title="Apply changes" disabled><svg><use href="#i-check"/></svg></button>
           </div>
         </div>
 
@@ -49,8 +60,8 @@
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Composer</span>
           <div class="tacts end">
-            <button class="btn"><svg><use href="#i-clock"/></svg>History</button>
-            <button class="btn"><svg><use href="#i-plus"/></svg>New</button>
+            <button class="ib sm" aria-label="History" title="History"><svg><use href="#i-clock"/></svg></button>
+            <button class="ib sm" aria-label="New" title="New"><svg><use href="#i-plus"/></svg></button>
           </div>
         </div>
 
@@ -76,8 +87,13 @@
             <div class="fchip">Process<svg><use href="#i-chev"/></svg></div>
             <div class="fchip">Level<svg><use href="#i-chev"/></svg></div>
             <div class="fchip">Outcome<svg><use href="#i-chev"/></svg></div>
-            <button class="btn"><svg><use href="#i-download"/></svg>Export JSONL</button>
+            <button class="ib sm" aria-label="Export JSONL" title="Export JSONL"><svg><use href="#i-download"/></svg></button>
           </div>
+        </div>
+        <div class="window-controls">
+          <button class="ib sm window-control" aria-label="Minimize" title="Minimize"><svg><use href="#i-minus"/></svg></button>
+          <button class="ib sm window-control" aria-label="Maximize or restore" title="Maximize or restore"><svg><use href="#i-maximize"/></svg></button>
+          <button class="ib sm window-close" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button>
         </div>
       </header>
 
@@ -87,7 +103,7 @@
         <div class="mv tmain v-capture" data-v="capture">
           <div class="listwrap">
             <div class="listbar">
-              <div class="seg"><span class="on">All</span><span>H1</span><span>H2</span><span>WS</span></div>
+              <div class="seg protocol-switch"><span class="on">All</span><span>H1</span><span>H2</span><span>WS</span></div>
               <div class="sp"></div>
               <span class="cnt"><b>18</b> of 241</span>
               <div class="ib sm"><svg><use href="#i-columns"/></svg></div>
@@ -278,7 +294,7 @@
             </div>
             <div class="subrow">
               <span class="lbl2">Protocol</span>
-              <div class="seg"><span class="on">Auto</span><span>HTTP/1.1</span><span>HTTP/2</span></div>
+              <div class="seg protocol-switch"><span class="on">Auto</span><span>HTTP/1.1</span><span>HTTP/2</span></div>
               <span class="sp" style="flex:1"></span>
               <span class="cnt">TLS 1.3 · h2</span>
             </div>
@@ -479,7 +495,7 @@
 
       <!-- =========================== STATUSBAR =========================== -->
       <footer class="statusbar">
-        <div class="sv" data-v="capture"><div class="g"><span class="rd"></span>Recording</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="g mono">18 of 241 requests</div><div class="sp g mono">↑ 12.4 KB/s&nbsp;&nbsp;↓ 380 B/s</div></div>
+        <div class="sv" data-v="capture"><div class="g capture-recording-status"><span class="rd"></span><span class="recording-label">Recording</span><span class="paused-label">Not recording</span></div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="g mono">18 of 241 requests</div><div class="sp g mono">↑ 12.4 KB/s&nbsp;&nbsp;↓ 380 B/s</div></div>
         <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">6 of 8 enabled</div><div class="sp g mono">2 force body buffering</div></div>
         <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g mono">127.0.0.1:8888</div><div class="sp g mono">last send 201 · 142 ms</div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>
@@ -489,15 +505,20 @@
 
       <!-- ============================ OVERLAYS ============================ -->
       <div class="ov" data-ov="import-export">
-        <div class="dlg">
-          <div class="dlghead"><span class="di"><svg><use href="#i-download"/></svg></span><b>HAR import / export</b><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
+        <div class="dlg transfer-dialog">
+          <div class="dlghead">
+            <span class="di transfer-import-only"><svg><use href="#i-upload"/></svg></span>
+            <span class="di transfer-export-only"><svg><use href="#i-download"/></svg></span>
+            <b class="transfer-only transfer-har-import">Import HAR</b>
+            <b class="transfer-only transfer-har-export">Export HAR</b>
+            <b class="transfer-only transfer-archive-import">Open Capture</b>
+            <b class="transfer-only transfer-archive-export">Save Capture</b>
+            <div class="ib sm"><svg><use href="#i-x"/></svg></div>
+          </div>
           <div class="dlgbody">
-            <div class="frow">
-              <span class="fl">Format</span>
-              <div class="seg" style="align-self:flex-start"><span class="on">HAR 1.2</span><span>Native archive</span></div>
-              <div class="wnote"><svg><use href="#i-alert"/></svg><span>HAR omits HTTP/2 pseudo-headers and trailers, WebSocket messages, TLS detail, and rule history.</span></div>
-            </div>
-            <div class="frow">
+            <div class="wnote transfer-har-only"><svg><use href="#i-alert"/></svg><span>HAR omits HTTP/2 pseudo-headers and trailers, WebSocket messages, TLS detail, and rule history.</span></div>
+            <div class="wnote transfer-archive-only"><svg><use href="#i-alert"/></svg><span>An Interceptor Capture preserves bodies, HTTP/2 metadata, WebSocket frames, and capture details.</span></div>
+            <div class="frow transfer-only transfer-har-export">
               <span class="fl">Scope</span>
               <div class="radios">
                 <div class="ritem"><span class="rd"></span><div class="rc"><b>All traffic</b></div><span class="cnt">241</span></div>
@@ -505,7 +526,7 @@
                 <div class="ritem"><span class="rd"></span><div class="rc"><b>Selected request</b></div><span class="cnt">1</span></div>
               </div>
             </div>
-            <div class="frow">
+            <div class="frow transfer-only transfer-har-export">
               <span class="fl">Redaction</span>
               <div class="checks">
                 <label class="chk"><span class="cb on"><svg><use href="#i-check"/></svg></span>Mask authorization tokens</label>
@@ -513,11 +534,14 @@
                 <label class="chk"><span class="cb"></span>Strip request/response bodies</label>
               </div>
             </div>
+            <div class="wnote danger transfer-only transfer-archive-export"><svg><use href="#i-alert"/></svg><span>This capture contains complete headers, cookies, bodies, and URLs. Share it only with people you trust.</span></div>
           </div>
           <div class="dlgfoot">
             <button class="btn">Cancel</button>
-            <button class="btn"><svg><use href="#i-upload"/></svg>Import HAR</button>
-            <button class="btn pri"><svg><use href="#i-download"/></svg>Export 10 requests</button>
+            <button class="btn pri transfer-only transfer-har-import"><svg><use href="#i-upload"/></svg>Import HAR</button>
+            <button class="btn pri transfer-only transfer-har-export"><svg><use href="#i-download"/></svg>Export 10 requests</button>
+            <button class="btn pri transfer-only transfer-archive-import"><svg><use href="#i-upload"/></svg>Open Capture</button>
+            <button class="btn pri transfer-only transfer-archive-export"><svg><use href="#i-download"/></svg>Save Capture</button>
           </div>
         </div>
       </div>
@@ -538,6 +562,18 @@
             <div class="privacy-note"><svg><use href="#i-lock"/></svg><span>Until setup completes, HTTPS continues through encrypted and uninterrupted.</span></div>
           </div>
           <div class="dlgfoot"><button class="btn" data-close-overlay>Cancel</button><button class="btn pri https-fresh-only" disabled><svg><use href="#i-shield"/></svg>Start decrypting</button><button class="btn pri https-ready-only"><svg><use href="#i-shield"/></svg>Start decrypting</button></div>
+        </div>
+      </div>
+
+      <div class="ov" data-ov="proxy-not-ready">
+        <div class="dlg proxy-ready-dialog">
+          <div class="dlghead"><span class="di warning"><svg><use href="#i-alert"/></svg></span><b>Proxy not ready</b><button class="ib sm" data-close-overlay><svg><use href="#i-x"/></svg></button></div>
+          <div class="proxy-ready-body">
+            <p>The local proxy listener is running, but recording is paused because system traffic is not routed through Interceptor.</p>
+            <div class="proxy-ready-status"><span class="proxy-ready-dot"></span><div><b>System Proxy off</b></div></div>
+            <div class="privacy-note"><svg><use href="#i-shield"/></svg><span>Interceptor only takes ownership after the current configuration is saved for guarded restoration.</span></div>
+          </div>
+          <div class="dlgfoot"><button class="btn" data-close-overlay>Cancel</button><button class="btn">Proxy &amp; Listener</button><button class="btn pri">Enable</button></div>
         </div>
       </div>
 

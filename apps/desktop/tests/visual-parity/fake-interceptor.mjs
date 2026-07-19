@@ -41,6 +41,9 @@ function summary({
   state = 'completed',
 }) {
   return {
+    closeApplication: async () => undefined,
+    minimizeWindow: async () => undefined,
+    toggleMaximizeWindow: async () => true,
     id,
     method,
     secure: protocol === 'h2',
@@ -410,18 +413,26 @@ export const fakeInterceptorFixture = {
 };
 
 /** Installed with page.addInitScript before Renderer code, mirroring Electron Preload. */
-export function installFakeInterceptor({ fixture, theme, freshProfile = false, updateState = 'unsupported' }) {
+export function installFakeInterceptor({
+  fixture,
+  theme,
+  freshProfile = false,
+  updateState = 'unsupported',
+  proxyReady = true,
+}) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
   let captureStatus = { ...fixture.capture.captureStatus };
   let captureGeneration = 1;
   let systemProxyStatus = {
     supported: true,
-    enabled: true,
-    owned: true,
+    enabled: proxyReady,
+    owned: proxyReady,
     ownershipLost: false,
-    proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
-    bypassList: '<local>',
+    proxyServer: proxyReady
+      ? 'http=127.0.0.1:8888;https=127.0.0.1:8888'
+      : null,
+    bypassList: proxyReady ? '<local>' : null,
     pacUrl: null,
     autoDetect: false,
   };

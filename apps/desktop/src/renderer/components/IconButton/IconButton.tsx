@@ -31,6 +31,7 @@ export function IconButton({
       className={cx(styles.button, size === 'sm' && styles.small, className)}
       onClick={onClick}
       aria-label={label}
+      title={label}
     >
       <Icon size={size === 'sm' ? 15 : 18} strokeWidth={strokeWidth} />
     </button>

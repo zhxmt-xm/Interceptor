@@ -8,6 +8,18 @@ import type { ProtocolSegment } from './row-format';
 import type { InspectorTab } from './data';
 import { protocolSegment } from './row-format';
 
+export type CaptureTransferAction =
+  | 'har-import'
+  | 'har-export'
+  | 'archive-import'
+  | 'archive-export';
+
+export interface ProxyReadinessIssue {
+  kind: 'listener' | 'system-proxy';
+  ownershipLost: boolean;
+  message: string | null;
+}
+
 /** 结构化过滤条件；segment 为客户端视图过滤，其余下推 Core 分页查询。 */
 export interface CaptureFilter {
   segment: ProtocolSegment;
@@ -41,7 +53,10 @@ export interface CaptureState {
   /** Clear/Core 代际切换时递增，阻止旧分页结果回填。 */
   syncRevision: number;
   error: string | null;
-  harDialogOpen: boolean;
+  /** 当前文件传输命令；null 表示弹层关闭。 */
+  transferAction: CaptureTransferAction | null;
+  /** Listener 或系统代理未就绪时的统一用户引导状态。 */
+  proxyReadinessIssue: ProxyReadinessIssue | null;
   /** 切换 feature 前的列表滚动位置；Capture 重新挂载时恢复。 */
   listScrollTop: number;
   /** 用户最后选择的 Inspector tab；仅在新请求类型不支持时 fallback。 */
@@ -56,7 +71,8 @@ export interface CaptureState {
     patch: Partial<Pick<CaptureFilter, 'method' | 'status' | 'host'>>,
   ): void;
   setCapturing(capturing: boolean): void;
-  setHarDialogOpen(open: boolean): void;
+  setTransferAction(action: CaptureTransferAction | null): void;
+  setProxyReadinessIssue(issue: ProxyReadinessIssue | null): void;
   setListScrollTop(scrollTop: number): void;
   setInspectorTab(tab: InspectorTab): void;
   setInspectorWidth(width: number): void;
@@ -125,7 +141,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   loading: false,
   syncRevision: 0,
   error: null,
-  harDialogOpen: false,
+  transferAction: null,
+  proxyReadinessIssue: null,
   listScrollTop: 0,
   inspectorTab: 'headers',
   inspectorWidth: 500,
@@ -143,7 +160,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
   setCapturing: (capturing) => set({ capturing }),
 
-  setHarDialogOpen: (harDialogOpen) => set({ harDialogOpen }),
+  setTransferAction: (transferAction) => set({ transferAction }),
+
+  setProxyReadinessIssue: (proxyReadinessIssue) => set({ proxyReadinessIssue }),
 
   setListScrollTop: (listScrollTop) => set({ listScrollTop }),
 

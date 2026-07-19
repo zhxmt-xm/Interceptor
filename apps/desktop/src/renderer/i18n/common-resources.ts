@@ -1,6 +1,8 @@
 export const commonEnglishMessages = {
   'app.connectingToCore': 'Connecting to Proxy Core',
   'app.coreStatusUnavailable': 'Proxy Core status unavailable',
+  'app.minimizeWindow': 'Minimize',
+  'app.toggleMaximizeWindow': 'Maximize or restore',
   'common.language': 'Language',
   'common.theme': 'Theme',
   'theme.warm': 'Warm',

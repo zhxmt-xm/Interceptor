@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-18
+> 最后更新：2026-07-20
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 ## 文档导航
 
@@ -19,9 +19,9 @@
 - 已完成 Stage：M0–M14（生产实签/公证和真实macOS runner为外部发布验收）。
 - 当前 Stage：M14 临时 Capture Session 与轻重数据分层（已完成）。
 - 当前结果：Capture/Body 为当前 Core 代际临时数据，RuleSet/Diagnostics 独立持久；Stop 真关闭 Mockttp 但保留记录，Start 继续追加，Clear 才删除。详情见 [M14.md](M14.md)。
-- 下一动作：提交并推送 M14；首个真实 tag release 仍待仓库外签名/公证凭据。
+- 下一动作：首个真实 tag release 仍待仓库外签名/公证凭据。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M0–M13 与 15 种语言增强已在 `origin/main`；Capture 后续增强在当前边界提交，接手时以 `git status`/`git log` 为准。
+- Git 状态：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已在 `origin/main`；接手时以 `git status`/`git log` 为准。
 - 阻塞：无代码阻塞。生产签名/公证需要仓库外凭据；真实macOS DMG与应用内打开需原生runner留证。
 
 详细接棒说明见 [HANDOVER.md](HANDOVER.md)，最新完成阶段见 [M13.md](M13.md)。
@@ -73,15 +73,18 @@
 - 诊断可观测性增强（2026-07）：Core 各组件及 Electron Main/Renderer 的关键生命周期、IPC/证书错误和未捕获 UI 错误，经有界非阻塞窄通道统一写入 Diagnostics Worker；按 core/main/renderer、trace/command/level/outcome/duration 分页查询与双层脱敏 JSONL 导出。
 - 规则 UI、Composer、Breakpoint 编辑与 Connection/TLS 详情已落地（M8）：Rules workspace 数据驱动（rulesStore/useRulesData + 全类型 Matcher/Action 编辑器 + 实时 rules.validate 诊断 + rules.replace 乐观并发 + rules.hits 命中计数）；Composer（composerStore/useComposer + ComposerService 经 http/https/http2 出站 + 响应/历史/Auth）；Breakpoints（breakpointsStore/useBreakpoints 轮询 breakpoint.list 暂停队列 + 编辑放行 + break-on-match）；Capture Inspector TLS 标签经 connection.probe 实时探测证书链。
 - WebSocket/gRPC 已落地（M9）：Mockttp HTTP/1.1 Upgrade + 自定义 `WebSocketBridge` 捕获/转发/消息断点，`websocket_frame` 有序存储与 keyset 页；native gRPC 作为通用 H2 request/response 捕获，`grpc.messages` 每条只读 5B envelope header 并复用 Blob range。Capture Inspector 提供 WebSocket/gRPC Messages 视图；gRPC-Web、H2 Extended CONNECT、descriptor/reflection 与实时 streaming 增量解析未实现。
-- HAR 1.2 已落地（M10/T10.1）：Core 内完成标准 HAR 导出与受限 inert JSON 导入，正文只在 Core/Blob 流转；Main 系统对话框持有路径，Renderer 只经异步 transfer job 查询进度/取消。Capture HAR overlay 支持 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。
-- 原生 archive 已落地（M10/T10.2）：版本化 ZIP（manifest + `VACUUM INTO` 一致 SQLite 快照 + 内容寻址 Blob）。HAR 与 archive 共用单一 `TransferJobManager`；手写零依赖 ZIP writer/reader（Node zlib/crypto）在解压前校验加密位/压缩方法/符号链接/绝对路径/`..`/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取时硬上限 + 逐条 CRC-32 + Blob 内容寻址 hash 三重校验；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。窄 API 新增 `startArchiveExport`/`startArchiveImport`；Capture overlay 启用 “Native archive” 格式切换。
+- HAR 1.2 已落地（M10/T10.1）：Core 内完成标准 HAR 导出与受限 inert JSON 导入，压缩 Response 按 gzip/deflate/br 解码后写入 `content.text`，同时保留编码 `bodySize` 与标准 `content.size`/`compression`；正文只在 Core/Blob 流转，Main 系统对话框持有路径，Renderer 只经异步 transfer job 查询进度/取消。Capture 顶栏提供独立 `Import HAR` / `Export HAR` 命令，HAR Export 支持 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。
+- 原生 archive 已落地（M10/T10.2）：版本化 ZIP（manifest + `VACUUM INTO` 一致 SQLite 快照 + 内容寻址 Blob）。HAR 与 archive 共用单一 `TransferJobManager`；手写零依赖 ZIP writer/reader（Node zlib/crypto）在解压前校验加密位/压缩方法/符号链接/绝对路径/`..`/白名单外条目/单条与总解压上限/压缩比 zip-bomb/重复条目，提取时硬上限 + 逐条 CRC-32 + Blob 内容寻址 hash 三重校验；导入保真（pseudo-header/trailer/正文/WebSocket 帧）重插入隔离 Session，失败/取消回滚。Capture 顶栏将其定位为独立 `Open Capture` / `Save Capture` 工作流，不再与 HAR 共用 Format。
 - 系统代理与恢复已落地（M11）：Windows WinINet 与 macOS Swift/SystemConfiguration helper 完成当前值 snapshot、loopback 设置、完整 guarded compare restore；原子 startup journal 支持新进程/Core failure 恢复且不覆盖外部修改。后续已移除 first-run，改为 Capture 启动时自动 Recording/接管系统代理、Stop 时先恢复再清理；HTTPS setup 保持用户显式授权。Proxy Settings 与 emergency repair 仍保留。当前 Windows package/smoke 已验证，macOS helper 编译/授权 round-trip 留真实平台验收。
 - 发布加固已落地（M12）：Desktop 0.1.0；Windows x64 per-user WiX MSI 通过双版本 install/launch/upgrade/launch/uninstall；macOS ad-hoc/Developer ID/notarize + DMG/ZIP 与原生 smoke 已配置。Renderer 迁至 `interceptor://app`，file extras 关闭，Electron 43 九项 Fuse strict 锁定，release 0 maps。Artifact audit、真实 packaged 全工作流、42 张视图矩阵、10 万行门槛与固定 SHA GitHub Actions 完成。生产实签/公证和真实 macOS 证据待外部凭据/runner。
 - GitHub Releases更新已落地（M13）：packaged Windows/macOS启动及每小时读取固定仓库latest stable Release；app内显示有界纯文本changelog。下载只由用户触发，Main选择当前平台单一MSI/DMG并经仓库URL、tag、路径、架构、size和强制GitHub SHA-256校验后流式原子落盘；Renderer只拿状态/进度并可请求打开已下载安装器。无自建服务、Squirrel、资源热更新或静默安装。
+- 跨平台窗口已改为 frameless 自有 Chrome：顶栏 drag/no-drag 分区，右上角 Minimize/Maximize-or-restore/Close 走窄 IPC；Close 复用 guarded 系统代理恢复与 Core shutdown。Capture 自动 bootstrap 或手动 Start 若 listener/系统代理未 ready，保持 Paused/Not recording，并要求用户显式 Enable 或进入 Proxy Settings。
 
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-20 HAR/文件菜单/frameless/Proxy readiness 后续增强：三 workspace typecheck；Desktop 106 / Proxy Core 179 / Protocol 19，共304项单测；真实 Windows package 成功；隔离 userData 的 packaged smoke 1/1（22.0s），覆盖 frameless、三窗口控制 API、readiness 收敛、Paused/Not recording、Core 重启复查与 Close graceful quit。Export 菜单 parity 0 missing/flagged、几何0px；readiness 弹层5/5 targets、0 flagged、像素差0.46%；Settings 引导1/1 target、0 flagged。系统 PNG/ICO/ICNS 为固定 dark 主题 Lucide Zap，Sidebar Logo 继续随主题变色。
 
 2026-07-19 M14完成验收：三 workspace typecheck；Desktop 101 / Proxy Core 178 / Protocol 19，共298项单测；10万 summary 完整稳定分页；真实 Archive Worker 三批/空库/取消退出；Windows package audit 1,292 files / 377,341,393 bytes；真实 packaged smoke 1/1。Smoke 实测 Stop 后 Mockttp 旧端口关闭而记录保持，Clear 后临时 Capture/Body 归零。
 

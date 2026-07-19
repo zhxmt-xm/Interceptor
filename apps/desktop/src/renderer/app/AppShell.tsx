@@ -1,4 +1,6 @@
+import { Maximize2, Minus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './AppShell.module.css';
 
@@ -24,12 +26,45 @@ export function AppShell({
   main,
   statusbar,
 }: AppShellProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className={styles.app} data-collapsed={collapsed}>
       {sidebar}
       <header className={styles.top}>
         {topbar}
-        {notification ? <div className={styles.notification}>{notification}</div> : null}
+        {notification}
+        <div className={styles.windowControls}>
+          <button
+            type="button"
+            className={styles.windowControl}
+            aria-label={t('app.minimizeWindow')}
+            title={t('app.minimizeWindow')}
+            onClick={() => void window.interceptor.minimizeWindow()}
+          >
+            <Minus size={15} strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            className={styles.windowControl}
+            aria-label={t('app.toggleMaximizeWindow')}
+            title={t('app.toggleMaximizeWindow')}
+            onClick={() => void window.interceptor.toggleMaximizeWindow()}
+          >
+            <Maximize2 size={14} strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            className={styles.close}
+            aria-label={t('capture.close')}
+            title={t('capture.close')}
+            onClick={() => {
+              void window.interceptor.closeApplication().catch(() => window.close());
+            }}
+          >
+            <X size={15} strokeWidth={1.9} />
+          </button>
+        </div>
       </header>
       <main className={styles.main}>{main}</main>
       <footer className={styles.status}>{statusbar}</footer>

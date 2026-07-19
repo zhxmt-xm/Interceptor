@@ -23,18 +23,53 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 0 18px;
+  padding: 0 118px 0 18px;
   background: var(--chrome);
   border-bottom: 1px solid var(--border);
   position: relative;
   min-width: 0;
-}
-.notification {
-  min-width: 0;
-  margin-left: auto;
-  flex: 0 1 auto;
+  -webkit-app-region: drag;
 }
 
+.top :where(button, input, [role="button"], [role="menu"], [role="menuitem"]) {
+  -webkit-app-region: no-drag;
+}
+
+.windowControls {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transform: translateY(-50%);
+  -webkit-app-region: no-drag;
+}
+
+.windowControl,
+.close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.windowControl:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.close:hover {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
 .main {
   grid-area: main;
   position: relative;

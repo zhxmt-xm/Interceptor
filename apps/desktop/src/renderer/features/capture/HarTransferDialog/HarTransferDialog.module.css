@@ -88,51 +88,6 @@
   text-transform: uppercase;
 }
 
-.segmented {
-  align-self: flex-start;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--panel-2);
-}
-
-.segmented span {
-  padding: 4px 11px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 520;
-}
-
-.segmentButton {
-  padding: 4px 11px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-3);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 520;
-  cursor: pointer;
-}
-
-.segmentActive {
-  color: var(--text);
-  background: var(--bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  font-weight: 560 !important;
-}
-
-.segmentActive:hover {
-  color: var(--text);
-}
-
-.segmentDisabled {
-  color: var(--text-3);
-  opacity: 0.45;
-}
-
 .warning {
   display: flex;
   align-items: flex-start;

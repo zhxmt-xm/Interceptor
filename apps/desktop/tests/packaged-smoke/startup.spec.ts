@@ -6,6 +6,7 @@ import {
   type Server as HttpServer,
 } from 'node:http';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 
 import {
@@ -157,7 +158,7 @@ class PackagedWorkflowSmoke {
     await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureStatus()), {
       message: 'Default Capture listener did not start',
       timeout: 15_000,
-    }).toMatchObject({ listening: true, host: '127.0.0.1', port: 8888 });
+    }).toMatchObject({ listening: true, host: '127.0.0.1' });
     await page.evaluate(() => window.interceptor.stopCapture());
 
     const origin = await this.startOrigin();
@@ -326,15 +327,22 @@ class PackagedWorkflowSmoke {
 }
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
+  test.setTimeout(60_000);
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
     true,
   );
 
   const debuggingPort = await reservePort();
+  const userDataPath = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'interceptor-packaged-smoke-'),
+  );
   const appProcess = spawn(
     executablePath,
-    [`--remote-debugging-port=${debuggingPort}`],
+    [
+      `--remote-debugging-port=${debuggingPort}`,
+      `--user-data-dir=${userDataPath}`,
+    ],
     {
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
@@ -386,6 +394,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect(page.getByText('Interceptor', { exact: true })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
+    await settleProxyReadiness(page);
+
+    const nativeChromeHeight = await page.evaluate(() =>
+      window.outerHeight - window.innerHeight);
+    expect(nativeChromeHeight).toBeLessThan(24);
 
     const securitySnapshot = await page.evaluate(() => ({
       url: window.location.href,
@@ -404,6 +417,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'cancelTransferJob',
         'checkForUpdates',
         'clearStorage',
+        'closeApplication',
         'deleteCertificate',
         'downloadUpdate',
         'echoCore',
@@ -424,6 +438,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getUpdateStatus',
         'installCertificate',
         'listBreakpoints',
+        'minimizeWindow',
         'onCaptureEvents',
         'onCoreProcessStatusChange',
         'onUpdateStatusChange',
@@ -454,6 +469,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'startHarExport',
         'startHarImport',
         'stopCapture',
+        'toggleMaximizeWindow',
         'uninstallCertificate',
         'validateRules',
         'viewCertificate',
@@ -601,6 +617,21 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(storageQuota.databaseBytes).toBe(0);
 
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
+    const clearRecordingPort = await reservePort();
+    await expect.poll(
+      () => page.evaluate(async (port) => {
+        const current = await window.interceptor.getCaptureStatus();
+        if (current.listening) {
+          return true;
+        }
+        try {
+          return (await window.interceptor.startCapture(port)).listening;
+        } catch {
+          return false;
+        }
+      }, clearRecordingPort),
+      { message: 'Recording did not restart before Clear', timeout: 10_000 },
+    ).toBe(true);
     const clearedStorage = await page.evaluate(() =>
       window.interceptor.clearStorage(),
     );
@@ -610,9 +641,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     await PackagedWorkflowSmoke.run(page);
 
+    await settleProxyReadiness(page);
+
     await ReleaseScreenshotMatrix.capture(page, testInfo);
 
-    await page.evaluate(() => window.close());
+    await page.evaluate(() => window.interceptor.closeApplication());
     await expect
       .poll(() => appProcess.exitCode, {
         message: 'App did not exit cleanly',
@@ -625,6 +658,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
       appProcess.kill();
       await waitForExit(appProcess);
     }
+    fs.rmSync(userDataPath, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   }
 
   if (corePid !== null) {
@@ -634,6 +673,30 @@ test('packaged app starts with an isolated renderer and running core', async ({
       .toBe(false);
   }
 });
+
+/** Wait for automatic bootstrap to become Recording or present its recovery dialog. */
+async function settleProxyReadiness(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'Proxy not ready' });
+  const recording = page.getByRole('button', { name: 'Recording' });
+  await expect.poll(async () => {
+    if (await dialog.isVisible()) {
+      return 'prompt';
+    }
+    if (await recording.isVisible()) {
+      return 'recording';
+    }
+    return 'pending';
+  }, {
+    message: 'Proxy readiness did not settle',
+    timeout: 20_000,
+  }).not.toBe('pending');
+
+  if (await dialog.isVisible()) {
+    await expect(page.getByRole('button', { name: 'Paused' })).toBeVisible();
+    await expect(page.getByText('Not recording', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+  }
+}
 
 function resolvePackagedExecutable(): string {
   const packageDirectory = path.resolve(

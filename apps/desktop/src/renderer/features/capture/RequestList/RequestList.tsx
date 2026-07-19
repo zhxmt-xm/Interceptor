@@ -3,7 +3,7 @@ import { Columns2, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Count, cx, IconButton } from '../../../components';
+import { Count, IconButton, Segmented } from '../../../components';
 import { useCaptureStore, visibleCaptureRows } from '../captureStore';
 import type { ProtocolSegment } from '../row-format';
 import { RequestRow } from '../RequestRow/RequestRow';
@@ -101,34 +101,35 @@ export function RequestList(): React.JSX.Element {
   return (
     <div className={styles.list}>
       <div className={styles.bar}>
-        <div className={styles.segmented}>
-          {SEGMENTS.map(({ id, labelKey, label }) => (
-            <span
-              key={id}
-              className={cx(filter.segment === id && styles.active)}
-              onClick={() => setSegment(id)}
-            >
-              {labelKey ? t(labelKey) : label}
-            </span>
-          ))}
-        </div>
+        <Segmented
+          className={styles.protocol}
+          ariaLabel={t('capture.protocolShort')}
+          options={SEGMENTS.map(({ id, labelKey, label }) => ({
+            value: id,
+            label: labelKey ? t(labelKey) : label ?? id,
+          }))}
+          value={filter.segment}
+          onChange={(value) => setSegment(value as ProtocolSegment)}
+        />
         <span className={styles.spacer} />
         <Count className={styles.count}>
           {t('capture.visibleCount', { visible: visible.length, total: rows.length })}
         </Count>
-        <IconButton
-          icon={Columns2}
-          label={t('capture.columns')}
-          size="sm"
-          className={styles.columns}
-        />
-        <IconButton
-          icon={Trash2}
-          label={t('capture.clear')}
-          size="sm"
-          disabled={clearing}
-          onClick={clearRecordedTraffic}
-        />
+        <div className={styles.actions}>
+          <IconButton
+            icon={Columns2}
+            label={t('capture.columns')}
+            size="sm"
+            className={styles.columns}
+          />
+          <IconButton
+            icon={Trash2}
+            label={t('capture.clear')}
+            size="sm"
+            disabled={clearing}
+            onClick={clearRecordedTraffic}
+          />
+        </div>
       </div>
 
       <div className={styles.head}>

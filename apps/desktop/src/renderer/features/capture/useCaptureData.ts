@@ -62,30 +62,40 @@ export async function toggleCapture(): Promise<void> {
     if (store.capturing) {
       const status = await api.stopCapture();
       useCaptureStore.getState().setCapturing(status.listening);
+      useCaptureStore.getState().setProxyReadinessIssue(null);
       await refetchSessions();
       return;
     }
 
     const status = await api.startCapture(DEFAULT_CAPTURE_PORT);
-    useCaptureStore.getState().setCapturing(status.listening);
     if (status.listening) {
-      await enableSystemProxyWhenSupported();
+      const ready = await checkSystemProxyReadiness();
+      useCaptureStore.getState().setCapturing(ready);
       await refetchSessions();
+    } else {
+      useCaptureStore.getState().setCapturing(false);
+      setProxyReadinessIssue(
+        'listener',
+        new Error('Local proxy listener did not start.'),
+      );
     }
   } catch (error) {
     useCaptureStore.getState().loadFailed(describeError(error));
+    setProxyReadinessIssue('listener', error);
   }
 }
 
 /** 首次进入 Capture 时启动固定 loopback listener，并尽力接管系统代理。 */
 async function bootstrapCapture(): Promise<void> {
   const status = await waitForCaptureListener();
-  useCaptureStore.getState().setCapturing(status.listening);
   if (status.listening) {
-    await enableSystemProxyWhenSupported();
+    const ready = await checkSystemProxyReadiness();
+    useCaptureStore.getState().setCapturing(ready);
     if (useCaptureStore.getState().rows.length === 0) {
       await refetchSessions();
     }
+  } else {
+    useCaptureStore.getState().setCapturing(false);
   }
 }
 
@@ -106,6 +116,7 @@ function applyCoreStatus(status: CoreProcessStatus): void {
         && captureCoreGeneration === generation
       ) {
         useCaptureStore.getState().loadFailed(describeError(error));
+        setProxyReadinessIssue('listener', error);
         captureBootstrapPromise = null;
       }
     });
@@ -118,6 +129,7 @@ function applyCoreStatus(status: CoreProcessStatus): void {
     captureBootstrapPromise = null;
     useCaptureStore.getState().clearView(Date.now());
     useCaptureStore.getState().setCapturing(false);
+    useCaptureStore.getState().setProxyReadinessIssue(null);
   }
 }
 
@@ -144,13 +156,88 @@ async function waitForCaptureListener(): Promise<Awaited<ReturnType<typeof windo
   throw lastError;
 }
 
-/** 支持的平台上启用系统代理；已由 Interceptor 持有时保持幂等。 */
-async function enableSystemProxyWhenSupported(): Promise<void> {
+/** 检查系统代理 readiness；未持有时只提示，不静默修改操作系统设置。 */
+async function checkSystemProxyReadiness(): Promise<boolean> {
   const api = window.interceptor;
-  const status = await api.getSystemProxyStatus();
-  if (status.supported && !status.owned) {
-    await api.enableSystemProxy();
+  try {
+    const status = await api.getSystemProxyStatus();
+    if (!status.supported || (status.owned && !status.ownershipLost)) {
+      useCaptureStore.getState().setProxyReadinessIssue(null);
+      return true;
+    }
+    useCaptureStore.getState().setProxyReadinessIssue({
+      kind: 'system-proxy',
+      ownershipLost: status.ownershipLost,
+      message: null,
+    });
+    return false;
+  } catch (error) {
+    setProxyReadinessIssue('system-proxy', error);
+    return false;
   }
+}
+
+/** 用户从 readiness 弹层显式重试 listener 并启用系统代理。 */
+export async function retryCaptureProxyReadiness(): Promise<boolean> {
+  const api = window.interceptor;
+  let ownershipLost = false;
+  try {
+    const current = await api.getCaptureStatus();
+    const capture = current.listening
+      ? current
+      : await api.startCapture(DEFAULT_CAPTURE_PORT);
+    if (!capture.listening) {
+      throw new Error('Local proxy listener did not start.');
+    }
+
+    const status = await api.getSystemProxyStatus();
+    ownershipLost = status.ownershipLost;
+    if (!status.supported) {
+      useCaptureStore.getState().setCapturing(true);
+      useCaptureStore.getState().setProxyReadinessIssue(null);
+      return true;
+    }
+    const enabled = status.owned && !status.ownershipLost
+      ? status
+      : await api.enableSystemProxy();
+    if (!enabled.owned || enabled.ownershipLost) {
+      useCaptureStore.getState().setProxyReadinessIssue({
+        kind: 'system-proxy',
+        ownershipLost: enabled.ownershipLost,
+        message: null,
+      });
+      useCaptureStore.getState().setCapturing(false);
+      return false;
+    }
+    useCaptureStore.getState().setCapturing(true);
+    useCaptureStore.getState().setProxyReadinessIssue(null);
+    await refetchSessions();
+    return true;
+  } catch (error) {
+    useCaptureStore.getState().setCapturing(false);
+    const listening = await api.getCaptureStatus()
+      .then((status) => status.listening)
+      .catch(() => false);
+    setProxyReadinessIssue(
+      listening ? 'system-proxy' : 'listener',
+      error,
+      ownershipLost,
+    );
+    return false;
+  }
+}
+
+/** Store one bounded readiness failure for the global recovery dialog. */
+function setProxyReadinessIssue(
+  kind: 'listener' | 'system-proxy',
+  error: unknown,
+  ownershipLost = false,
+): void {
+  useCaptureStore.getState().setProxyReadinessIssue({
+    kind,
+    ownershipLost,
+    message: describeError(error).slice(0, 512),
+  });
 }
 
 /**

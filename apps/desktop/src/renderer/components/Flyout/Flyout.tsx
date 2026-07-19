@@ -6,10 +6,11 @@ import styles from './Flyout.module.css';
 
 export interface FlyoutProps {
   open: boolean;
-  /** Trigger the flyout anchors to: opens just past its right edge, bottom edges flush. */
+  /** Trigger element used to position the portal. */
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   className?: string;
+  placement?: 'right-end' | 'bottom-end';
   children: ReactNode;
 }
 
@@ -23,6 +24,7 @@ export function Flyout({
   anchorRef,
   onClose,
   className,
+  placement = 'right-end',
   children,
 }: FlyoutProps): React.ReactPortal | null {
   const popRef = useRef<HTMLDivElement>(null);
@@ -38,13 +40,26 @@ export function Flyout({
         return;
       }
       const rect = anchor.getBoundingClientRect();
-      pop.style.left = `${Math.round(rect.right + 6)}px`;
-      pop.style.top = `${Math.round(rect.bottom - pop.offsetHeight)}px`;
+      if (placement === 'bottom-end') {
+        const left = Math.max(
+          8,
+          Math.min(rect.right - pop.offsetWidth, window.innerWidth - pop.offsetWidth - 8),
+        );
+        const below = rect.bottom + 6;
+        const top = below + pop.offsetHeight <= window.innerHeight - 8
+          ? below
+          : Math.max(8, rect.top - pop.offsetHeight - 6);
+        pop.style.left = `${Math.round(left)}px`;
+        pop.style.top = `${Math.round(top)}px`;
+      } else {
+        pop.style.left = `${Math.round(rect.right + 6)}px`;
+        pop.style.top = `${Math.round(rect.bottom - pop.offsetHeight)}px`;
+      }
     };
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-  }, [open, anchorRef]);
+  }, [open, anchorRef, placement]);
 
   useLayoutEffect(() => {
     if (!open) {

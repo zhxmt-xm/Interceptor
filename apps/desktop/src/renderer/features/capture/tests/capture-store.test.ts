@@ -37,6 +37,8 @@ describe('captureStore clear timeline', () => {
       syncRevision: 0,
       loading: false,
       error: null,
+      transferAction: null,
+      proxyReadinessIssue: null,
     });
   });
 
@@ -98,5 +100,31 @@ describe('captureStore clear timeline', () => {
 
     expect(useCaptureStore.getState().rows).toEqual([]);
     expect(useCaptureStore.getState().loading).toBe(false);
+  });
+
+  it('tracks one explicit file transfer action at a time', () => {
+    useCaptureStore.getState().setTransferAction('har-export');
+    expect(useCaptureStore.getState().transferAction).toBe('har-export');
+
+    useCaptureStore.getState().setTransferAction('archive-import');
+    expect(useCaptureStore.getState().transferAction).toBe('archive-import');
+
+    useCaptureStore.getState().setTransferAction(null);
+    expect(useCaptureStore.getState().transferAction).toBeNull();
+  });
+
+  it('tracks and dismisses one proxy readiness issue', () => {
+    useCaptureStore.getState().setProxyReadinessIssue({
+      kind: 'system-proxy',
+      ownershipLost: true,
+      message: 'ownership changed',
+    });
+    expect(useCaptureStore.getState().proxyReadinessIssue).toMatchObject({
+      kind: 'system-proxy',
+      ownershipLost: true,
+    });
+
+    useCaptureStore.getState().setProxyReadinessIssue(null);
+    expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();
   });
 });

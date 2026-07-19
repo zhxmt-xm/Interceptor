@@ -9,6 +9,7 @@ import type {
 } from '@interceptor/core-protocol';
 
 import { MAX_BODY_BYTES, appVersion } from '../constants';
+import { decodeBody } from '../proxy/utils';
 import type { ExchangeInput } from '../storage/interfaces';
 import {
   HAR_BODY_READ_CHUNK_BYTES,
@@ -220,9 +221,22 @@ export class HarService {
     const requestBody = redaction.bodies
       ? undefined
       : await this.readBody(detail.requestBody, signal);
-    const responseBody = redaction.bodies
+    const encodedResponseBody = redaction.bodies
       ? undefined
       : await this.readBody(detail.responseBody, signal);
+    let responseBody = encodedResponseBody;
+    let responseCompression: number | undefined;
+    if (encodedResponseBody && detail.responseBody?.contentEncoding) {
+      const decoded = await decodeBody(
+        encodedResponseBody,
+        detail.responseBody.contentEncoding,
+      );
+      if (decoded.status === 'ok') {
+        responseBody = Buffer.from(decoded.data);
+        responseCompression =
+          responseBody.byteLength - encodedResponseBody.byteLength;
+      }
+    }
     const duration = detail.summary.durationMs ?? 0;
     const requestMime = detail.requestMime ??
       HarUtils.headerValue(requestHeaders, 'content-type');
@@ -260,16 +274,21 @@ export class HarService {
         headers: responseHeaders.map((header) =>
           HarUtils.toHarHeader(header)),
         cookies: [],
-        content: HarUtils.toHarContent(
-          responseBody,
-          detail.responseBody?.decodedSize ??
+        content: {
+          ...HarUtils.toHarContent(
+            responseBody,
             responseBody?.byteLength ??
-            detail.summary.responseBytes,
-          responseMime,
-        ),
+              detail.responseBody?.decodedSize ??
+              detail.summary.responseBytes,
+            responseMime,
+          ),
+          ...(responseCompression !== undefined
+            ? { compression: responseCompression }
+            : {}),
+        },
         redirectURL: HarUtils.headerValue(responseHeaders, 'location') ?? '',
         headersSize: -1,
-        bodySize: responseBody?.byteLength ?? detail.summary.responseBytes,
+        bodySize: encodedResponseBody?.byteLength ?? detail.summary.responseBytes,
       },
       cache: {},
       timings: {

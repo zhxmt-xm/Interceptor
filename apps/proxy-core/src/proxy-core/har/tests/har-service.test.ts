@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -228,6 +229,69 @@ describe('HarService', () => {
       '<script>notExecuted()</script>',
     );
     expect((globalThis as { notExecuted?: () => void }).notExecuted).toBeUndefined();
+  });
+
+  it('exports decoded response content for content-encoded bodies', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'interceptor-har-'));
+    tempDirectories.push(directory);
+    const filePath = path.join(directory, 'compressed.har');
+    const responseBody = Buffer.from(JSON.stringify({ value: 'x'.repeat(512) }));
+    const encodedBody = gzipSync(responseBody);
+    const capturedDetail = FakeHarStorage.capturedDetail();
+    const detail: CaptureExchangeDetail = {
+      ...capturedDetail,
+      summary: {
+        ...capturedDetail.summary,
+        responseBytes: encodedBody.byteLength,
+      },
+      responseHeaders: [
+        { name: 'content-type', value: 'application/json' },
+        { name: 'content-encoding', value: 'gzip' },
+      ],
+      responseBody: {
+        bodyHash: 'response-hash',
+        mediaType: 'application/json',
+        encodedSize: encodedBody.byteLength,
+        contentEncoding: 'gzip',
+        truncated: false,
+        decodeStatus: 'ok',
+      },
+    };
+    const storage = new FakeHarStorage([detail]);
+    storage.bodies.set('response-hash', encodedBody);
+
+    await new HarService(storage, new TransferJobManager()).exportToFile(
+      filePath,
+      {
+        scope: { kind: 'all' },
+        redaction: { authorization: false, cookies: false, bodies: false },
+      },
+      new AbortController().signal,
+    );
+
+    const har = JSON.parse(await readFile(filePath, 'utf8')) as {
+      log: {
+        entries: Array<{
+          response: {
+            bodySize: number;
+            content: {
+              size: number;
+              compression?: number;
+              text?: string;
+              encoding?: string;
+            };
+          };
+        }>;
+      };
+    };
+    const response = har.log.entries[0]?.response;
+    expect(response?.bodySize).toBe(encodedBody.byteLength);
+    expect(response?.content).toMatchObject({
+      size: responseBody.byteLength,
+      compression: responseBody.byteLength - encodedBody.byteLength,
+      text: responseBody.toString('utf8'),
+    });
+    expect(response?.content.encoding).toBeUndefined();
   });
 
   it('redacts sensitive headers and strips bodies before writing HAR', async () => {

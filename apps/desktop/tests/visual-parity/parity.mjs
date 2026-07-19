@@ -140,6 +140,7 @@ for (const view of views) {
     theme: view.theme,
     freshProfile: view.freshProfile === true,
     updateState: view.updateState ?? 'unsupported',
+    proxyReady: view.proxyReady !== false,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);

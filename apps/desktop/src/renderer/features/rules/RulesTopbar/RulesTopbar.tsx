@@ -1,7 +1,7 @@
 import { Check, Menu, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Count, IconButton, Title } from '../../../components';
+import { Count, IconButton, Title } from '../../../components';
 import { enabledCount, useRulesStore } from '../rulesStore';
 import { applyRules } from '../useRulesData';
 import styles from './RulesTopbar.module.css';
@@ -27,18 +27,20 @@ export function RulesTopbar({ onMenu }: RulesTopbarProps): React.JSX.Element {
         {t('rules.summary', { count: rules.length, enabled })}
       </Count>
       <div className={styles.actions}>
-        <Button icon={Plus} onClick={() => addRule(t('rules.newRuleName'))}>
-          {t('rules.newRule')}
-        </Button>
-        <Button
+        <IconButton
+          icon={Plus}
+          label={t('rules.newRule')}
+          size="sm"
+          onClick={() => addRule(t('rules.newRuleName'))}
+        />
+        <IconButton
           icon={Check}
-          variant="primary"
-          iconStrokeWidth={2.4}
+          label={saving ? t('rules.applying') : t('rules.applyChanges')}
+          size="sm"
+          strokeWidth={2.4}
           disabled={!dirty || saving}
           onClick={() => void applyRules()}
-        >
-          {saving ? t('rules.applying') : t('rules.applyChanges')}
-        </Button>
+        />
       </div>
     </>
   );

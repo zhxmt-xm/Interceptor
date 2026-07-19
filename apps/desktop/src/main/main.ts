@@ -325,6 +325,7 @@ class DesktopApplication {
       backgroundColor: '#f2f4f5',
       show: false,
       title: 'Interceptor',
+      frame: false,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -398,6 +399,28 @@ class DesktopApplication {
         });
       },
     };
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appQuit, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      setImmediate(() => app.quit());
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.windowMinimize, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      BrowserWindow.fromWebContents(event.sender)?.minimize();
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.windowToggleMaximize, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        return false;
+      }
+      if (window.isMaximized()) {
+        window.unmaximize();
+      } else {
+        window.maximize();
+      }
+      return window.isMaximized();
+    });
 
     // CoreProcess 状态只来自 heartbeat，不代表代理监听、存储等业务一定可用。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.coreGetProcessStatus, (event) => {

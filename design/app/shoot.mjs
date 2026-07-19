@@ -33,9 +33,15 @@ for (const feature of ['capture', 'rules']) {
   }
 }
 for (const theme of ['light', 'dark']) {
-  shots.push({ feature: 'import-export', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export' } });
+  shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', fileMenu: 'import' } });
+  shots.push({ feature: 'capture', theme, variant: 'export-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', fileMenu: 'export' } });
+  shots.push({ feature: 'import-export', theme, variant: 'export-har', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export', transfer: 'har-export' } });
+  shots.push({ feature: 'import-export', theme, variant: 'import-har', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export', transfer: 'har-import' } });
+  shots.push({ feature: 'import-export', theme, variant: 'save-capture', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export', transfer: 'archive-export' } });
+  shots.push({ feature: 'import-export', theme, variant: 'open-capture', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export', transfer: 'archive-import' } });
   shots.push({ feature: 'https-setup', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel' } });
   shots.push({ feature: 'https-setup', theme, variant: 'ready', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel', https: 'ready' } });
+  shots.push({ feature: 'proxy-not-ready', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'proxy-not-ready' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
   for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
@@ -68,7 +74,7 @@ const selectedShots = onlyFeature
   ? shots.filter((shot) => shot.feature === onlyFeature)
   : shots;
 
-// Only clean feature directories owned by this run; preserve scenes/switchers from their scripts.
+// Only clean feature directories owned by this run; preserve scene scripts.
 const selectedDirectories = new Set(
   selectedShots.map((shot) => path.join(shotsRoot, shot.theme, shot.feature)),
 );

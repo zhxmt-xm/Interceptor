@@ -8,6 +8,7 @@ import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
 import { BreakpointsMain, BreakpointsStatusbar, BreakpointsTopbar } from '../features/breakpoints';
 import {
   CaptureMain,
+  ProxyReadinessDialog,
   CaptureStatusbar,
   CaptureTopbar,
   useCaptureData,
@@ -38,7 +39,11 @@ interface FeatureViews {
   statusbar: React.ReactNode;
 }
 
-function renderView(view: ViewId, onMenu: () => void): FeatureViews {
+function renderView(
+  view: ViewId,
+  onMenu: () => void,
+  settingsSection: string,
+): FeatureViews {
   switch (view) {
     case 'capture':
       return {
@@ -61,7 +66,7 @@ function renderView(view: ViewId, onMenu: () => void): FeatureViews {
     case 'settings':
       return {
         topbar: <SettingsTopbar onMenu={onMenu} />,
-        main: <SettingsMain />,
+        main: <SettingsMain section={settingsSection} />,
         statusbar: <SettingsStatusbar />,
       };
     case 'breakpoints':
@@ -95,6 +100,7 @@ export function App(): React.JSX.Element {
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
+  const [settingsSection, setSettingsSection] = useState('certificates');
   const [coreStatus, setCoreStatus] = useState<CoreProcessStatus>(() => ({
     ...initialCoreStatus,
     detail: t('app.connectingToCore'),
@@ -165,28 +171,36 @@ export function App(): React.JSX.Element {
     void i18n.changeLanguage(nextLanguage);
   };
 
-  const feature = renderView(view, toggleCollapse);
+  const feature = renderView(view, toggleCollapse, settingsSection);
 
   const shell = (
-    <AppShell
-      collapsed={collapsed}
-      sidebar={
-        <Sidebar
-          activeView={view}
-          collapsed={collapsed}
-          onSelect={setView}
-          theme={themeMode}
-          onThemeChange={setThemeMode}
-          lang={language}
-          onLangChange={changeLanguage}
-          coreStatus={coreStatus}
-        />
-      }
-      topbar={feature.topbar}
-      notification={<UpdateNotification />}
-      main={feature.main}
-      statusbar={feature.statusbar}
-    />
+    <>
+      <AppShell
+        collapsed={collapsed}
+        sidebar={
+          <Sidebar
+            activeView={view}
+            collapsed={collapsed}
+            onSelect={setView}
+            theme={themeMode}
+            onThemeChange={setThemeMode}
+            lang={language}
+            onLangChange={changeLanguage}
+            coreStatus={coreStatus}
+          />
+        }
+        topbar={feature.topbar}
+        notification={<UpdateNotification />}
+        main={feature.main}
+        statusbar={feature.statusbar}
+      />
+      <ProxyReadinessDialog
+        onOpenSettings={() => {
+          setSettingsSection('proxy');
+          setView('settings');
+        }}
+      />
+    </>
   );
 
   return (

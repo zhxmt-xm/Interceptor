@@ -25,11 +25,7 @@
 }
 .modeBar {
   display: flex;
-  justify-content: flex-end;
-}
-.modeBar :global(span) {
-  padding-right: 9px;
-  padding-left: 9px;
+  justify-content: flex-start;
 }
 .compact :global(.cm-editor) {
   border-radius: 7px;
