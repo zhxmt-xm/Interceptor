@@ -162,7 +162,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
   setTransferAction: (transferAction) => set({ transferAction }),
 
-  setProxyReadinessIssue: (proxyReadinessIssue) => set({ proxyReadinessIssue }),
+  setProxyReadinessIssue: (proxyReadinessIssue) => set({
+    proxyReadinessIssue,
+    ...(proxyReadinessIssue ? { capturing: false } : {}),
+  }),
 
   setListScrollTop: (listScrollTop) => set({ listScrollTop }),
 

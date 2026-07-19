@@ -41,7 +41,7 @@ export const itCatalog = {
   'capture.openCapture': 'Apri acquisizione',
   'capture.saveCapture': 'Salva acquisizione',
   'capture.proxyNotReadyTitle': 'Proxy non pronto',
-  'capture.proxyNotReadyDescription': 'Il listener proxy locale è attivo, ma la registrazione è in pausa perché il traffico di sistema non passa attraverso Interceptor.',
+  'capture.proxyNotReadyDescription': 'Abilita il proxy prima di avviare la registrazione.',
   'capture.proxyListenerNotReadyDescription': 'Il listener proxy locale non è pronto. Riprova quando Proxy Core è disponibile.',
   'capture.proxyOwnershipNote': 'Interceptor assume il controllo solo dopo aver salvato la configurazione corrente per un ripristino protetto.',
   'capture.notRecording': 'Registrazione non attiva',

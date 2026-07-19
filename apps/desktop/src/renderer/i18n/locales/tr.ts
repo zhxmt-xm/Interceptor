@@ -41,7 +41,7 @@ export const trCatalog = {
   'capture.openCapture': 'Yakalamayı aç',
   'capture.saveCapture': 'Yakalamayı kaydet',
   'capture.proxyNotReadyTitle': 'Proxy hazır değil',
-  'capture.proxyNotReadyDescription': 'Yerel proxy dinleyicisi çalışıyor ancak sistem trafiği Interceptor üzerinden yönlendirilmediği için kayıt duraklatıldı.',
+  'capture.proxyNotReadyDescription': 'Kaydı başlatmadan önce proxy’yi etkinleştirin.',
   'capture.proxyListenerNotReadyDescription': 'Yerel proxy dinleyicisi hazır değil. Proxy Core kullanılabilir olduğunda yeniden deneyin.',
   'capture.proxyOwnershipNote': 'Interceptor, korumalı geri yükleme için mevcut yapılandırma kaydedildikten sonra kontrolü devralır.',
   'capture.notRecording': 'Kayıt yapılmıyor',

@@ -40,7 +40,7 @@ export const zhCNCatalog = {
   'capture.openCapture': '打开捕获',
   'capture.saveCapture': '保存捕获',
   'capture.proxyNotReadyTitle': '代理尚未就绪',
-  'capture.proxyNotReadyDescription': '本地代理监听器已运行，但系统流量尚未经过 Interceptor，因此录制已暂停。',
+  'capture.proxyNotReadyDescription': '请先启用代理，再开始录制。',
   'capture.proxyListenerNotReadyDescription': '本地代理监听器尚未就绪。请在代理核心可用后重试。',
   'capture.proxyOwnershipNote': 'Interceptor 仅在保存当前配置以便安全恢复后才会接管系统代理。',
   'capture.notRecording': '未录制',

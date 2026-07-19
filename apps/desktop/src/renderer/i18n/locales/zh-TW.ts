@@ -40,7 +40,7 @@ export const zhTWCatalog = {
   'capture.openCapture': '開啟擷取',
   'capture.saveCapture': '儲存擷取',
   'capture.proxyNotReadyTitle': '代理尚未就緒',
-  'capture.proxyNotReadyDescription': '本機代理監聽器已執行，但系統流量尚未經過 Interceptor，因此錄製已暫停。',
+  'capture.proxyNotReadyDescription': '請先啟用代理，再開始錄製。',
   'capture.proxyListenerNotReadyDescription': '本機代理監聽器尚未就緒。請在 Proxy Core 可用後重試。',
   'capture.proxyOwnershipNote': 'Interceptor 只會在儲存目前設定以便安全還原後接管系統代理。',
   'capture.notRecording': '未擷取',

@@ -41,7 +41,7 @@ export const ukCatalog = {
   'capture.openCapture': 'Відкрити захоплення',
   'capture.saveCapture': 'Зберегти захоплення',
   'capture.proxyNotReadyTitle': 'Проксі не готовий',
-  'capture.proxyNotReadyDescription': 'Локальний proxy listener працює, але запис призупинено, оскільки системний трафік не спрямовується через Interceptor.',
+  'capture.proxyNotReadyDescription': 'Увімкніть проксі перед початком запису.',
   'capture.proxyListenerNotReadyDescription': 'Локальний proxy listener не готовий. Повторіть спробу, коли Proxy Core стане доступним.',
   'capture.proxyOwnershipNote': 'Interceptor отримує контроль лише після збереження поточної конфігурації для захищеного відновлення.',
   'capture.notRecording': 'Запис вимкнено',

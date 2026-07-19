@@ -84,7 +84,7 @@
 
 ## 当前验证摘要
 
-2026-07-20 HAR/文件菜单/frameless/Proxy readiness 后续增强：三 workspace typecheck；Desktop 106 / Proxy Core 179 / Protocol 19，共304项单测；真实 Windows package 成功；隔离 userData 的 packaged smoke 1/1（22.0s），覆盖 frameless、三窗口控制 API、readiness 收敛、Paused/Not recording、Core 重启复查与 Close graceful quit。Export 菜单 parity 0 missing/flagged、几何0px；readiness 弹层5/5 targets、0 flagged、像素差0.46%；Settings 引导1/1 target、0 flagged。系统 PNG/ICO/ICNS 为固定 dark 主题 Lucide Zap，Sidebar Logo 继续随主题变色。
+2026-07-20 HAR/文件菜单/frameless/Proxy readiness 后续增强：三 workspace typecheck；Desktop 106 / Proxy Core 179 / Protocol 19，共304项单测；真实 Windows package 成功；隔离 userData 的 packaged smoke 1/1（12.8s），覆盖 frameless、三窗口控制 API、readiness 收敛、Paused/Not recording、Core 重启复查与 Close graceful quit。Export 菜单 parity 0 missing/flagged、几何0px；readiness 弹层5/5 targets、0 flagged、像素差0.46%；Settings 引导1/1 target、0 flagged。系统 PNG/ICO/ICNS 为固定 dark 主题 Lucide Zap，Sidebar Logo 继续随主题变色。
 
 2026-07-19 M14完成验收：三 workspace typecheck；Desktop 101 / Proxy Core 178 / Protocol 19，共298项单测；10万 summary 完整稳定分页；真实 Archive Worker 三批/空库/取消退出；Windows package audit 1,292 files / 377,341,393 bytes；真实 packaged smoke 1/1。Smoke 实测 Stop 后 Mockttp 旧端口关闭而记录保持，Clear 后临时 Capture/Body 归零。
 

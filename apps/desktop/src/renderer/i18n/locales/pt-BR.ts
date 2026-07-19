@@ -41,7 +41,7 @@ export const ptBRCatalog = {
   'capture.openCapture': 'Abrir captura',
   'capture.saveCapture': 'Salvar captura',
   'capture.proxyNotReadyTitle': 'Proxy não está pronto',
-  'capture.proxyNotReadyDescription': 'O listener do proxy local está ativo, mas a gravação está pausada porque o tráfego do sistema não passa pelo Interceptor.',
+  'capture.proxyNotReadyDescription': 'Ative o proxy antes de iniciar a gravação.',
   'capture.proxyListenerNotReadyDescription': 'O listener do proxy local não está pronto. Tente novamente quando o Proxy Core estiver disponível.',
   'capture.proxyOwnershipNote': 'O Interceptor só assume o controle depois de salvar a configuração atual para restauração protegida.',
   'capture.notRecording': 'Captura desativada',

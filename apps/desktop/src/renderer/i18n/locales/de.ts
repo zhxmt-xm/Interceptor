@@ -40,7 +40,7 @@ export const deCatalog = {
   'capture.openCapture': 'Aufzeichnung öffnen',
   'capture.saveCapture': 'Aufzeichnung speichern',
   'capture.proxyNotReadyTitle': 'Proxy nicht bereit',
-  'capture.proxyNotReadyDescription': 'Der lokale Proxy-Listener läuft, aber die Aufzeichnung ist pausiert, weil der Systemverkehr nicht durch Interceptor geleitet wird.',
+  'capture.proxyNotReadyDescription': 'Aktivieren Sie den Proxy, bevor Sie die Aufzeichnung starten.',
   'capture.proxyListenerNotReadyDescription': 'Der lokale Proxy-Listener ist nicht bereit. Versuchen Sie es erneut, sobald Proxy Core verfügbar ist.',
   'capture.proxyOwnershipNote': 'Interceptor übernimmt die Kontrolle erst, nachdem die aktuelle Konfiguration für eine geschützte Wiederherstellung gespeichert wurde.',
   'capture.notRecording': 'Keine Aufzeichnung',

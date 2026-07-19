@@ -41,7 +41,7 @@ export const jaCatalog = {
   'capture.openCapture': 'キャプチャを開く',
   'capture.saveCapture': 'キャプチャを保存',
   'capture.proxyNotReadyTitle': 'プロキシの準備ができていません',
-  'capture.proxyNotReadyDescription': 'ローカルプロキシリスナーは動作中ですが、システムトラフィックが Interceptor を経由していないため記録は一時停止しています。',
+  'capture.proxyNotReadyDescription': '記録を開始する前にプロキシを有効にしてください。',
   'capture.proxyListenerNotReadyDescription': 'ローカルプロキシリスナーの準備ができていません。Proxy Core が利用可能になってから再試行してください。',
   'capture.proxyOwnershipNote': 'Interceptor は、安全に復元できるよう現在の設定を保存してから制御を引き継ぎます。',
   'capture.notRecording': '記録していません',

@@ -11,7 +11,7 @@ export const captureEnglishMessages = {
   'capture.openCapture': 'Open Capture',
   'capture.saveCapture': 'Save Capture',
   'capture.proxyNotReadyTitle': 'Proxy not ready',
-  'capture.proxyNotReadyDescription': 'The local proxy listener is running, but recording is paused because system traffic is not routed through Interceptor.',
+  'capture.proxyNotReadyDescription': 'Enable the proxy before starting recording.',
   'capture.proxyListenerNotReadyDescription': 'The local proxy listener is not ready. Retry after Proxy Core becomes available.',
   'capture.proxyOwnershipNote': 'Interceptor only takes ownership after the current configuration is saved for guarded restoration.',
   'capture.notRecording': 'Not recording',

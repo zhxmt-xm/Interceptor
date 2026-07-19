@@ -36,6 +36,7 @@ describe('captureStore clear timeline', () => {
       clearedBefore: 0,
       syncRevision: 0,
       loading: false,
+      capturing: false,
       error: null,
       transferAction: null,
       proxyReadinessIssue: null,
@@ -114,6 +115,7 @@ describe('captureStore clear timeline', () => {
   });
 
   it('tracks and dismisses one proxy readiness issue', () => {
+    useCaptureStore.getState().setCapturing(true);
     useCaptureStore.getState().setProxyReadinessIssue({
       kind: 'system-proxy',
       ownershipLost: true,
@@ -123,6 +125,7 @@ describe('captureStore clear timeline', () => {
       kind: 'system-proxy',
       ownershipLost: true,
     });
+    expect(useCaptureStore.getState().capturing).toBe(false);
 
     useCaptureStore.getState().setProxyReadinessIssue(null);
     expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();

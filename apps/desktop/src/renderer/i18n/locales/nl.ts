@@ -40,7 +40,7 @@ export const nlCatalog = {
   'capture.openCapture': 'Opname openen',
   'capture.saveCapture': 'Opname opslaan',
   'capture.proxyNotReadyTitle': 'Proxy niet gereed',
-  'capture.proxyNotReadyDescription': 'De lokale proxy-listener draait, maar de opname is gepauzeerd omdat systeemverkeer niet via Interceptor wordt geleid.',
+  'capture.proxyNotReadyDescription': 'Schakel de proxy in voordat u de opname start.',
   'capture.proxyListenerNotReadyDescription': 'De lokale proxy-listener is niet gereed. Probeer opnieuw wanneer Proxy Core beschikbaar is.',
   'capture.proxyOwnershipNote': 'Interceptor neemt pas de controle over nadat de huidige configuratie is opgeslagen voor beveiligd herstel.',
   'capture.notRecording': 'Geen opname',

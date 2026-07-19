@@ -41,7 +41,7 @@ export const ruCatalog = {
   'capture.openCapture': 'Открыть захват',
   'capture.saveCapture': 'Сохранить захват',
   'capture.proxyNotReadyTitle': 'Прокси не готов',
-  'capture.proxyNotReadyDescription': 'Локальный прокси-listener работает, но запись приостановлена, поскольку системный трафик не направляется через Interceptor.',
+  'capture.proxyNotReadyDescription': 'Включите прокси перед началом записи.',
   'capture.proxyListenerNotReadyDescription': 'Локальный прокси-listener не готов. Повторите попытку, когда Proxy Core станет доступен.',
   'capture.proxyOwnershipNote': 'Interceptor получает контроль только после сохранения текущей конфигурации для защищённого восстановления.',
   'capture.notRecording': 'Запись не ведётся',

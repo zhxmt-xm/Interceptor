@@ -41,7 +41,7 @@ export const plCatalog = {
   'capture.openCapture': 'Otwórz przechwycenie',
   'capture.saveCapture': 'Zapisz przechwycenie',
   'capture.proxyNotReadyTitle': 'Proxy nie jest gotowy',
-  'capture.proxyNotReadyDescription': 'Lokalny listener proxy działa, ale nagrywanie jest wstrzymane, ponieważ ruch systemowy nie jest kierowany przez Interceptor.',
+  'capture.proxyNotReadyDescription': 'Włącz proxy przed rozpoczęciem nagrywania.',
   'capture.proxyListenerNotReadyDescription': 'Lokalny listener proxy nie jest gotowy. Spróbuj ponownie, gdy Proxy Core będzie dostępny.',
   'capture.proxyOwnershipNote': 'Interceptor przejmuje kontrolę dopiero po zapisaniu bieżącej konfiguracji do bezpiecznego przywrócenia.',
   'capture.notRecording': 'Nagrywanie wyłączone',

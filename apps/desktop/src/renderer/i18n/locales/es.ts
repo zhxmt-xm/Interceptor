@@ -41,7 +41,7 @@ export const esCatalog = {
   'capture.openCapture': 'Abrir captura',
   'capture.saveCapture': 'Guardar captura',
   'capture.proxyNotReadyTitle': 'El proxy no está listo',
-  'capture.proxyNotReadyDescription': 'El listener del proxy local está activo, pero la grabación está en pausa porque el tráfico del sistema no pasa por Interceptor.',
+  'capture.proxyNotReadyDescription': 'Activa el proxy antes de iniciar la grabación.',
   'capture.proxyListenerNotReadyDescription': 'El listener del proxy local no está listo. Reinténtalo cuando Proxy Core esté disponible.',
   'capture.proxyOwnershipNote': 'Interceptor solo toma el control después de guardar la configuración actual para una restauración protegida.',
   'capture.notRecording': 'No se está capturando',

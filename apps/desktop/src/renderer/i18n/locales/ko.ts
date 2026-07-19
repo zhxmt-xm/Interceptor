@@ -41,7 +41,7 @@ export const koCatalog = {
   'capture.openCapture': '캡처 열기',
   'capture.saveCapture': '캡처 저장',
   'capture.proxyNotReadyTitle': '프록시가 준비되지 않음',
-  'capture.proxyNotReadyDescription': '로컬 프록시 리스너는 실행 중이지만 시스템 트래픽이 Interceptor를 통과하지 않아 녹화가 일시 중지되었습니다.',
+  'capture.proxyNotReadyDescription': '녹화를 시작하기 전에 프록시를 활성화하세요.',
   'capture.proxyListenerNotReadyDescription': '로컬 프록시 리스너가 준비되지 않았습니다. Proxy Core가 사용 가능해지면 다시 시도하세요.',
   'capture.proxyOwnershipNote': 'Interceptor는 보호된 복원을 위해 현재 구성을 저장한 후에만 제어권을 가져옵니다.',
   'capture.notRecording': '캡처하지 않음',

@@ -18,7 +18,8 @@ export interface CaptureTopbarProps {
 /** Capture topbar: sidebar toggle, recording chip, omnibox and quick actions. */
 export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element {
   const { t } = useTranslation();
-  const capturing = useCaptureStore((state) => state.capturing);
+  const capturing = useCaptureStore((state) =>
+    state.capturing && state.proxyReadinessIssue === null);
   const setTransferAction = useCaptureStore((state) => state.setTransferAction);
   const [fileMenu, setFileMenu] = useState<'import' | 'export' | null>(null);
   const importAnchorRef = useRef<HTMLSpanElement>(null);

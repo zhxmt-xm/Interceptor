@@ -5,7 +5,8 @@ import { useCaptureStore } from '../captureStore';
 /** Capture status bar: truthful recording indicator, loopback binding and loaded count. */
 export function CaptureStatusbar(): React.JSX.Element {
   const { t } = useTranslation();
-  const capturing = useCaptureStore((state) => state.capturing);
+  const capturing = useCaptureStore((state) =>
+    state.capturing && state.proxyReadinessIssue === null);
   const rowCount = useCaptureStore((state) => state.rows.length);
   return (
     <>
