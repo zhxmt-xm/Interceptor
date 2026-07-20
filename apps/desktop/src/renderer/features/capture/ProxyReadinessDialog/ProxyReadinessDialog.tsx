@@ -9,11 +9,14 @@ import styles from './ProxyReadinessDialog.module.css';
 
 export interface ProxyReadinessDialogProps {
   onOpenSettings(): void;
+  /** Close when the pointer goes down on the backdrop. Default true. */
+  dismissOnOutsideClick?: boolean;
 }
 
 /** Global recovery dialog shown when Recording cannot receive system traffic. */
 export function ProxyReadinessDialog({
   onOpenSettings,
+  dismissOnOutsideClick = true,
 }: ProxyReadinessDialogProps): React.JSX.Element | null {
   const { t } = useTranslation();
   const issue = useCaptureStore((state) => state.proxyReadinessIssue);
@@ -53,7 +56,15 @@ export function ProxyReadinessDialog({
   };
 
   return (
-    <div className={styles.overlay} role="presentation">
+    <div
+      className={styles.overlay}
+      role="presentation"
+      onMouseDown={(event) => {
+        if (dismissOnOutsideClick && !busy && event.target === event.currentTarget) {
+          setIssue(null);
+        }
+      }}
+    >
       <section
         className={styles.dialog}
         role="dialog"

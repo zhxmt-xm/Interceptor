@@ -17,9 +17,9 @@ const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
 ];
 const ROW_HEIGHT = 52;
 
-interface SelectedPosition {
-  id: string;
-  index: number;
+/** 判断滚动容器是否已停靠在底部（容差一行高）。 */
+function isScrolledToBottom(element: HTMLDivElement): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= ROW_HEIGHT;
 }
 
 /** Filterable request table (protocol segment, counts and virtualized rows). */
@@ -33,11 +33,12 @@ export function RequestList(): React.JSX.Element {
   const clearView = useCaptureStore((state) => state.clearView);
   const [clearing, setClearing] = useState(false);
   const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
+  // 用户是否停靠在底部（最新）；新流量到达时决定是否自动跟随到底部。
+  const stickToBottomRef = useRef(true);
 
   const visible = visibleCaptureRows(rows, filter);
 
   const parentRef = useRef<HTMLDivElement>(null);
-  const selectedPositionRef = useRef<SelectedPosition | null>(null);
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => parentRef.current,
@@ -50,35 +51,25 @@ export function RequestList(): React.JSX.Element {
     const element = parentRef.current;
     if (element) {
       element.scrollTop = initialScrollTopRef.current;
+      stickToBottomRef.current = isScrolledToBottom(element);
     }
   }, []);
 
+  // 列表按时间升序（最新在底部）；用户仍停靠底部时随新流量自动跟随，保持最新可见。
   useLayoutEffect(() => {
-    const nextSelectedIndex = selectedId
-      ? visible.findIndex((row) => row.id === selectedId)
-      : -1;
-    const previousPosition = selectedPositionRef.current;
     const element = parentRef.current;
-    if (
-      element
-      && selectedId
-      && previousPosition?.id === selectedId
-      && nextSelectedIndex >= 0
-      && nextSelectedIndex !== previousPosition.index
-    ) {
-      element.scrollTop += (nextSelectedIndex - previousPosition.index) * ROW_HEIGHT;
+    if (element && stickToBottomRef.current) {
+      element.scrollTop = element.scrollHeight;
       useCaptureStore.getState().setListScrollTop(element.scrollTop);
     }
-    selectedPositionRef.current = selectedId && nextSelectedIndex >= 0
-      ? { id: selectedId, index: nextSelectedIndex }
-      : null;
-  }, [selectedId, visible]);
+  }, [visible.length]);
 
   const handleScroll = (): void => {
     const element = parentRef.current;
     if (!element) {
       return;
     }
+    stickToBottomRef.current = isScrolledToBottom(element);
     useCaptureStore.getState().setListScrollTop(element.scrollTop);
   };
 

@@ -149,6 +149,8 @@ export interface ProxyAddress {
 
 export interface ProxyRuntimeStatus {
   readonly listening: boolean;
+  /** 是否正在记录新流量；监听器暂停时为 false，但 listening 仍可为 true。 */
+  readonly recording: boolean;
   readonly host: string | null;
   readonly port: number | null;
   readonly sessionId: string | null;

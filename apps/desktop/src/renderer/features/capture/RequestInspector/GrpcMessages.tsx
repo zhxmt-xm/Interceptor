@@ -121,7 +121,9 @@ export function GrpcMessages({
                       message={message}
                       selected={message.index === selectedIndex}
                       encoding={page?.encoding}
-                      onSelect={() => setSelectedIndex(message.index)}
+                      onSelect={() =>
+                        setSelectedIndex((current) =>
+                          current === message.index ? null : message.index)}
                     />
                     {message.index === selectedIndex && page?.bodyHash ? (
                       <MessagePayload

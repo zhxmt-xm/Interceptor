@@ -1,8 +1,8 @@
 import { Clock, Menu, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { IconButton, Title } from '../../../components';
+import { IconButton, Title, useDismissOnOutside } from '../../../components';
 import { useComposerStore } from '../composerStore';
 import styles from './ComposerTopbar.module.css';
 
@@ -14,16 +14,19 @@ export interface ComposerTopbarProps {
 export function ComposerTopbar({ onMenu }: ComposerTopbarProps): React.JSX.Element {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const historyWrapRef = useRef<HTMLDivElement>(null);
   const history = useComposerStore((state) => state.history);
   const loadFromHistory = useComposerStore((state) => state.loadFromHistory);
   const resetForNew = useComposerStore((state) => state.resetForNew);
+
+  useDismissOnOutside(open, () => setOpen(false), [historyWrapRef]);
 
   return (
     <>
       <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
       <Title>{t('composer.title')}</Title>
       <div className={styles.actions}>
-        <div className={styles.historyWrap}>
+        <div ref={historyWrapRef} className={styles.historyWrap}>
           <IconButton
             icon={Clock}
             label={t('composer.history')}

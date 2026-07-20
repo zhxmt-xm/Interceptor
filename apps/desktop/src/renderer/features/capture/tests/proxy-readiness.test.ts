@@ -56,6 +56,7 @@ describe('capture proxy readiness', () => {
     installApi({
       startCapture: vi.fn().mockResolvedValue({
         listening: true,
+        recording: true,
         host: '127.0.0.1',
         port: 8888,
         sessionId: 'session-1',
@@ -78,6 +79,7 @@ function installApi(overrides: Partial<InterceptorDesktopApi>): void {
   const api = {
     getCaptureStatus: vi.fn().mockResolvedValue({
       listening: true,
+      recording: true,
       host: '127.0.0.1',
       port: 8888,
       sessionId: 'session-1',

@@ -9,12 +9,15 @@ import styles from './HttpsDecryptionDialog.module.css';
 export interface HttpsDecryptionDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Close when the pointer goes down on the backdrop. Default true. */
+  dismissOnOutsideClick?: boolean;
 }
 
 /** User-initiated CA generation, trust installation and HTTPS MITM enablement. */
 export function HttpsDecryptionDialog({
   open,
   onClose,
+  dismissOnOutsideClick = true,
 }: HttpsDecryptionDialogProps): React.JSX.Element | null {
   const { t } = useTranslation();
   const [certificate, setCertificate] = useState<CertificateInfo | null>(null);
@@ -82,7 +85,15 @@ export function HttpsDecryptionDialog({
   const enabled = certificate?.mitmEnabled === true && trusted;
 
   return (
-    <div className={styles.overlay} role="presentation">
+    <div
+      className={styles.overlay}
+      role="presentation"
+      onMouseDown={(event) => {
+        if (dismissOnOutsideClick && !busy && event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <section
         className={styles.dialog}
         role="dialog"

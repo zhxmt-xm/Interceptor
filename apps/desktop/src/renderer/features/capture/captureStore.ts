@@ -6,7 +6,7 @@ import type {
 } from '../../../shared/desktop-api';
 import type { ProtocolSegment } from './row-format';
 import type { InspectorTab } from './data';
-import { protocolSegment } from './row-format';
+import { protocolSegment, typeLabel } from './row-format';
 
 export type CaptureTransferAction =
   | 'har-import'
@@ -20,13 +20,17 @@ export interface ProxyReadinessIssue {
   message: string | null;
 }
 
-/** 结构化过滤条件；segment 为客户端视图过滤，其余下推 Core 分页查询。 */
+/** 结构化过滤条件；segment/type/duration 为客户端视图过滤，其余可下推 Core 分页查询。 */
 export interface CaptureFilter {
   segment: ProtocolSegment;
   search: string;
   method: string | null;
   status: number | null;
   host: string | null;
+  /** 响应类型短标签（json/js/html/font…）子串匹配，对齐列表 Type 列。 */
+  type: string | null;
+  /** 最小耗时（毫秒）；仅保留 durationMs ≥ 该值的已完成 Exchange。 */
+  minDurationMs: number | null;
 }
 
 const EMPTY_FILTER: CaptureFilter = {
@@ -35,11 +39,13 @@ const EMPTY_FILTER: CaptureFilter = {
   method: null,
   status: null,
   host: null,
+  type: null,
+  minDurationMs: null,
 };
 
 /** 会话列表视图状态：只存 Exchange 摘要，不存 header/body。 */
 export interface CaptureState {
-  /** 当前 Recording 的全部轻量 Exchange summary，按 startedAt 降序。 */
+  /** 当前 Recording 的全部轻量 Exchange summary，按 startedAt 升序（最新在末尾）。 */
   rows: CaptureExchangeSummary[];
   /** id → rows 下标，供实时事件 O(1) 定位更新。 */
   indexById: Map<string, number>;
@@ -68,7 +74,9 @@ export interface CaptureState {
   setSegment(segment: ProtocolSegment): void;
   setSearch(search: string): void;
   setStructuredFilter(
-    patch: Partial<Pick<CaptureFilter, 'method' | 'status' | 'host'>>,
+    patch: Partial<
+      Pick<CaptureFilter, 'method' | 'status' | 'host' | 'type' | 'minDurationMs'>
+    >,
   ): void;
   setCapturing(capturing: boolean): void;
   setTransferAction(action: CaptureTransferAction | null): void;
@@ -83,7 +91,7 @@ export interface CaptureState {
   applyEvents(events: CaptureExchangeEvent[]): void;
 }
 
-/** 判断摘要是否命中 Core 过滤（search/method/status/host），供实时事件复用。 */
+/** 判断摘要是否命中字段过滤（search/method/status/host/type/duration），供实时事件复用。 */
 export function matchesCoreFilter(
   summary: CaptureExchangeSummary,
   filter: CaptureFilter,
@@ -95,6 +103,15 @@ export function matchesCoreFilter(
     return false;
   }
   if (filter.host && !(summary.host ?? '').toLowerCase().includes(filter.host.toLowerCase())) {
+    return false;
+  }
+  if (filter.type && !typeLabel(summary.responseMime).toLowerCase().includes(filter.type.toLowerCase())) {
+    return false;
+  }
+  if (
+    filter.minDurationMs !== null
+    && (summary.durationMs === undefined || summary.durationMs < filter.minDurationMs)
+  ) {
     return false;
   }
   if (filter.search) {
@@ -207,7 +224,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
         }
       }
       const rows = Array.from(byId.values()).sort(
-        (left, right) => right.startedAt - left.startedAt,
+        (left, right) => left.startedAt - right.startedAt,
       );
       return {
         rows,
@@ -241,9 +258,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     }
 
     if (inserts.length > 0) {
-      // 实时新增的 Exchange 时间戳单调递增，作为一整块前插即保持 startedAt 降序。
-      inserts.sort((a, b) => b.startedAt - a.startedAt);
-      const next = [...inserts, ...rows];
+      // 实时新增的 Exchange 时间戳单调递增，作为一整块后插即保持 startedAt 升序（最新在末尾）。
+      inserts.sort((a, b) => a.startedAt - b.startedAt);
+      const next = [...rows, ...inserts];
       set({ rows: next, indexById: buildIndex(next) });
     } else if (mutated) {
       set({ rows });

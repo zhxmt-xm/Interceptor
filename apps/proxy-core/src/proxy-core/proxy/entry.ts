@@ -68,6 +68,8 @@ export class ProxyService {
   private host = DEFAULT_PROXY_HOST;
   private sessionId: string | null = null;
   private capturedExchanges = 0;
+  /** 是否正在记录；暂停时监听器继续转发但不再持久化/推送新 Exchange。 */
+  private recording = true;
   /** 最近一次用户清空的时间切面；更早开始但迟到完成的请求不再持久化或推送。 */
   private captureCutoff = 0;
   private webSocketBreakpointsOn = false;
@@ -95,7 +97,14 @@ export class ProxyService {
    * 调用方：proxy.start command handler（用户显式开始捕获）。
    */
   async start(options: ProxyStartOptions = {}): Promise<ProxyAddress> {
+    // 启动/恢复均意味着恢复记录；暂停后再次 Start 等价于 Resume。
+    this.recording = true;
     if (this.server && this.address) {
+      // 已在监听：显式请求不同端口时在同一会话上迁移监听端口，否则直接复用。
+      if (options.port !== undefined && options.port !== this.address.port) {
+        await this.stopServer();
+        this.address = await this.startServer(options.port);
+      }
       return this.address;
     }
 
@@ -227,11 +236,24 @@ export class ProxyService {
   status(): ProxyRuntimeStatus {
     return {
       listening: this.server !== null,
+      recording: this.recording && this.server !== null,
       host: this.address?.host ?? null,
       port: this.address?.port ?? null,
       sessionId: this.sessionId,
       capturedExchanges: this.capturedExchanges,
     };
+  }
+
+  /**
+   * 暂停/恢复捕获记录。暂停时 Mockttp 监听器与系统代理保持不变，流量继续
+   * 转发，仅不再为新连接创建 Exchange 记录；已在途的 Exchange 自然完成落库。
+   * 调用方：proxy.setRecording command handler（用户 Stop/Start Recording）。
+   */
+  setRecording(enabled: boolean): void {
+    this.recording = enabled;
+    this.diagnostics?.info(
+      enabled ? 'proxy.recording-resumed' : 'proxy.recording-paused',
+    );
   }
 
   /**
@@ -261,6 +283,9 @@ export class ProxyService {
 
   private registerCaptureListeners(server: Mockttp): void {
     void server.on('tls-passthrough-opened', (tunnel: TlsPassthroughEvent) => {
+      if (!this.recording) {
+        return;
+      }
       const capture = this.trackCapture(this.captureTunnelOpened(tunnel)).catch((error: unknown) => {
         this.diagnostics?.error('tunnel.open-persist-failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
@@ -287,6 +312,9 @@ export class ProxyService {
         .finally(() => this.pendingTunnels.delete(tunnel.id));
     });
     void server.on('request', (request: CompletedRequest) => {
+      if (!this.recording) {
+        return;
+      }
       this.pending.set(request.id, request);
     });
     void server.on('response', (response: CompletedResponse) => {
@@ -322,9 +350,16 @@ export class ProxyService {
       }
       const pendingRequest = this.pending.get(request.id) ?? request;
       this.pending.delete(request.id);
+      // 暂停中：只为已跟踪（录制时开始）的在途请求补录终态，不为新连接建记录。
+      if (!this.recording && pendingRequest === request) {
+        return;
+      }
       void this.trackCapture(this.captureExchange(pendingRequest, null, 'aborted'));
     });
     void server.on('websocket-request', (request: CompletedRequest) => {
+      if (!this.recording) {
+        return;
+      }
       let resolveExchange!: (exchangeId: string | null) => void;
       const exchangeReady = new Promise<string | null>((resolve) => {
         resolveExchange = resolve;

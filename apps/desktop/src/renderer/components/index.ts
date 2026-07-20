@@ -1,4 +1,8 @@
 export { cx } from './cx';
+export {
+  useDismissOnOutside,
+  type DismissOnOutsideOptions,
+} from './useDismissOnOutside';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
 export { Switch, type SwitchProps } from './Switch/Switch';

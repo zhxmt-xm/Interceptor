@@ -107,7 +107,7 @@ export function ProxyPanel(): React.JSX.Element {
         applyRestoreResult(restore);
         const nextCapture = await window.interceptor.getCaptureStatus();
         setCapture(nextCapture);
-        useCaptureStore.getState().setCapturing(nextCapture.listening);
+        useCaptureStore.getState().setCapturing(nextCapture.recording);
       })
       .catch((error: unknown) => {
         setResult({ tone: 'error', message: describeError(error) });

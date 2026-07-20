@@ -51,7 +51,7 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** 切换代理捕获开关：启动/停止 Core 代理并同步录制与 Live tail 状态。 */
+/** 切换记录开关：Start 确保监听器/系统代理就绪并恢复记录；Stop 只暂停记录，保留代理管线。 */
 export async function toggleCapture(): Promise<void> {
   const api = window.interceptor;
   if (!api?.startCapture || !api.stopCapture) {
@@ -60,17 +60,16 @@ export async function toggleCapture(): Promise<void> {
   const store = useCaptureStore.getState();
   try {
     if (store.capturing) {
+      // Stop 只暂停记录：监听器与系统代理保持运行，流量继续转发，记录保留。
       const status = await api.stopCapture();
-      useCaptureStore.getState().setCapturing(status.listening);
-      useCaptureStore.getState().setProxyReadinessIssue(null);
-      await refetchSessions();
+      useCaptureStore.getState().setCapturing(status.recording);
       return;
     }
 
     const status = await api.startCapture(DEFAULT_CAPTURE_PORT);
     if (status.listening) {
       const ready = await checkSystemProxyReadiness();
-      useCaptureStore.getState().setCapturing(ready);
+      useCaptureStore.getState().setCapturing(ready && status.recording);
       await refetchSessions();
     } else {
       useCaptureStore.getState().setCapturing(false);
@@ -90,7 +89,7 @@ async function bootstrapCapture(): Promise<void> {
   const status = await waitForCaptureListener();
   if (status.listening) {
     const ready = await checkSystemProxyReadiness();
-    useCaptureStore.getState().setCapturing(ready);
+    useCaptureStore.getState().setCapturing(ready && status.recording);
     if (useCaptureStore.getState().rows.length === 0) {
       await refetchSessions();
     }

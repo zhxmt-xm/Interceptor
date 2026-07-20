@@ -23,8 +23,15 @@ const JOB_POLL_MS = 350;
 
 type ExportScopeKind = HarExportRequest['scope']['kind'];
 
+export interface HarTransferDialogProps {
+  /** Close when the pointer goes down on the backdrop. Default true. */
+  dismissOnOutsideClick?: boolean;
+}
+
 /** Action-specific HAR/Capture transfer options, progress and cancellation overlay. */
-export function HarTransferDialog(): React.JSX.Element | null {
+export function HarTransferDialog({
+  dismissOnOutsideClick = true,
+}: HarTransferDialogProps = {}): React.JSX.Element | null {
   const { t } = useTranslation();
   const action = useCaptureStore((state) => state.transferAction);
   const rows = useCaptureStore((state) => state.rows);
@@ -179,7 +186,7 @@ export function HarTransferDialog(): React.JSX.Element | null {
     <div
       className={styles.overlay}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
+        if (dismissOnOutsideClick && event.target === event.currentTarget) {
           close();
         }
       }}

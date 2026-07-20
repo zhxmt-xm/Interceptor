@@ -63,6 +63,7 @@ const COMMAND_TYPES = new Set<CoreCommand['type']>([
   'proxy.start',
   'proxy.stop',
   'proxy.status',
+  'proxy.setRecording',
   'tls.configure',
 ]);
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -354,6 +355,9 @@ function validateCommand(value: unknown): string | null {
     case 'proxy.status':
       return validateRecordKeys(value, 'command', ['type', 'payload']) ??
         validateEmptyPayload(value.payload);
+    case 'proxy.setRecording':
+      return validateRecordKeys(value, 'command', ['type', 'payload']) ??
+        validateProxySetRecording(value.payload);
     default:
       return 'command.type is unknown';
   }
@@ -1386,6 +1390,15 @@ function validateProxyStart(value: unknown): string | null {
   );
 }
 
+function validateProxySetRecording(value: unknown): string | null {
+  return validateExactObject(
+    value,
+    'command.payload',
+    ['recording'],
+    (payload) => validateBoolean(payload.recording, 'command.payload.recording'),
+  );
+}
+
 function validateStorageCleanup(value: unknown): string | null {
   return validateExactObject(
     value,
@@ -1953,9 +1966,10 @@ function validateProxyStatusResult(value: unknown): string | null {
   return validateExactObject(
     value,
     'result.payload',
-    ['listening', 'host', 'port', 'sessionId', 'capturedExchanges'],
+    ['listening', 'recording', 'host', 'port', 'sessionId', 'capturedExchanges'],
     (payload) =>
       validateBoolean(payload.listening, 'result.payload.listening') ??
+      validateBoolean(payload.recording, 'result.payload.recording') ??
       validateNullableBoundedString(payload.host, 'result.payload.host', 255) ??
       validateNullablePort(payload.port, 'result.payload.port') ??
       validateNullableId(payload.sessionId, 'result.payload.sessionId') ??

@@ -67,6 +67,15 @@ const api: InterceptorDesktopApi = {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
     };
   },
+  onWindowChromePress: (listener) => {
+    const handler = (): void => {
+      listener();
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.windowChromePress, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.windowChromePress, handler);
+    };
+  },
   getStorageStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.storageGetStatus),
   clearStorage: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.storageClear),

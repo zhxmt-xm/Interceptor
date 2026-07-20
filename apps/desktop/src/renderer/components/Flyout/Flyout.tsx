@@ -11,13 +11,16 @@ export interface FlyoutProps {
   onClose: () => void;
   className?: string;
   placement?: 'right-end' | 'bottom-end';
+  /** Dismiss on an outside press. Default true. */
+  dismissOnOutsideClick?: boolean;
   children: ReactNode;
 }
 
 /**
  * A portal popover anchored to the right of its trigger button with bottom edges
- * aligned. Portals to <body> so the sidebar's overflow can't clip it; closes on
- * outside pointer-down or Escape.
+ * aligned. Portals to <body> so the sidebar's overflow can't clip it. Dismissal is a
+ * non-intrusive capture-phase outside press (never preventDefault, so other controls
+ * stay clickable) plus Escape.
  */
 export function Flyout({
   open,
@@ -25,6 +28,7 @@ export function Flyout({
   onClose,
   className,
   placement = 'right-end',
+  dismissOnOutsideClick = true,
   children,
 }: FlyoutProps): React.ReactPortal | null {
   const popRef = useRef<HTMLDivElement>(null);
@@ -65,9 +69,12 @@ export function Flyout({
     if (!open) {
       return;
     }
-    const onPointerDown = (event: MouseEvent): void => {
-      const target = event.target as Node;
-      if (!popRef.current?.contains(target) && !anchorRef.current?.contains(target)) {
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!dismissOnOutsideClick) {
+        return;
+      }
+      const target = event.target as Node | null;
+      if (target && !popRef.current?.contains(target) && !anchorRef.current?.contains(target)) {
         onClose();
       }
     };
@@ -76,13 +83,19 @@ export function Flyout({
         onClose();
       }
     };
-    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown);
+    // Frameless title-bar / resize-border presses are OS-owned and never reach the DOM;
+    // Main forwards them so grabbing the title bar (drag/resize) also dismisses the flyout.
+    const offChrome = dismissOnOutsideClick
+      ? window.interceptor?.onWindowChromePress?.(() => onClose())
+      : undefined;
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
+      offChrome?.();
+      document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open, anchorRef, onClose]);
+  }, [open, anchorRef, onClose, dismissOnOutsideClick]);
 
   if (!open) {
     return null;

@@ -323,6 +323,7 @@ export const fakeInterceptorFixture = {
     },
     captureStatus: {
       listening: true,
+      recording: true,
       host: '127.0.0.1',
       port: 8888,
       sessionId: 'parity-session',
@@ -542,6 +543,7 @@ export function installFakeInterceptor({
     },
     openDownloadedUpdate: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
+    onWindowChromePress: () => () => undefined,
     getSystemProxyStatus: async () => systemProxyStatus,
     enableSystemProxy: async () => {
       systemProxyStatus = {
@@ -605,13 +607,14 @@ export function installFakeInterceptor({
       captureStatus = {
         ...captureStatus,
         listening: true,
+        recording: true,
         sessionId: `parity-session-${captureGeneration}`,
         capturedExchanges: 0,
       };
       return captureStatus;
     },
     stopCapture: async () => {
-      captureStatus = { ...captureStatus, listening: false };
+      captureStatus = { ...captureStatus, recording: false };
       return captureStatus;
     },
     onCaptureEvents: () => () => undefined,

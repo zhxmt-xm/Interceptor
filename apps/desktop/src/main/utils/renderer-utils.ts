@@ -107,6 +107,7 @@ export function assertOptionalPort(
  */
 export function toRendererCaptureStatus(payload: {
   listening: boolean;
+  recording: boolean;
   host: string | null;
   port: number | null;
   sessionId: string | null;
@@ -114,6 +115,7 @@ export function toRendererCaptureStatus(payload: {
 }): CaptureStatus {
   return {
     listening: payload.listening,
+    recording: payload.recording,
     host: payload.host,
     port: payload.port,
     sessionId: payload.sessionId,

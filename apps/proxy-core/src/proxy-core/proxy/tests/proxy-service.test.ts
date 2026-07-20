@@ -328,6 +328,43 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it('pauses recording without stopping the listener, then resumes', async () => {
+    const origin = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain' });
+      response.end('ok');
+    });
+    try {
+      // 记录中：请求被捕获。
+      await expect(
+        proxiedGet(address, `http://127.0.0.1:${origin.port}/while-recording`),
+      ).resolves.toMatchObject({ status: 200 });
+      await waitForExchange(sink);
+      expect(sink.exchanges).toHaveLength(1);
+
+      // 暂停记录：监听器仍在，流量继续转发但新连接不再落库。
+      proxy.setRecording(false);
+      expect(proxy.status()).toMatchObject({ listening: true, recording: false });
+      await expect(
+        proxiedGet(address, `http://127.0.0.1:${origin.port}/while-paused`),
+      ).resolves.toMatchObject({ status: 200 });
+      expect(sink.exchanges).toHaveLength(1);
+
+      // 恢复记录：新请求重新被捕获，暂停期间的请求不出现在记录中。
+      proxy.setRecording(true);
+      expect(proxy.status()).toMatchObject({ listening: true, recording: true });
+      await expect(
+        proxiedGet(address, `http://127.0.0.1:${origin.port}/after-resume`),
+      ).resolves.toMatchObject({ status: 200 });
+      await expect.poll(() => sink.exchanges.length).toBe(2);
+      expect(sink.exchanges.map((exchange) => exchange.path)).toEqual([
+        '/while-recording',
+        '/after-resume',
+      ]);
+    } finally {
+      await origin.close();
+    }
+  });
+
   it('forwards an absolute-form request and captures a canonical exchange', async () => {
     const origin = await startOrigin((_req, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });

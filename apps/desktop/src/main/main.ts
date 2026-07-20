@@ -355,6 +355,22 @@ class DesktopApplication {
       event.preventDefault();
     });
 
+    // A title-bar grab that moves/resizes the frameless window is OS-owned and never
+    // reaches the renderer DOM. Forward move/resize (throttled) so open popovers dismiss
+    // the instant the user starts dragging the window — the popover closes and the native
+    // drag/resize proceed in one gesture. Cross-platform: move/resize fire on all OSes.
+    let lastChromeSignalAt = 0;
+    const signalWindowChrome = (): void => {
+      const now = Date.now();
+      if (now - lastChromeSignalAt < 100 || mainWindow.isDestroyed()) {
+        return;
+      }
+      lastChromeSignalAt = now;
+      mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.windowChromePress);
+    };
+    mainWindow.on('move', signalWindowChrome);
+    mainWindow.on('resize', signalWindowChrome);
+
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
@@ -656,13 +672,13 @@ class DesktopApplication {
       },
     );
 
-    // Stop 只暂停 Recording 并恢复系统代理；Capture 记录保留到用户手动 Clear。
+    // Stop 只暂停记录（proxy.setRecording:false）：监听器与系统代理保持不变，
+    // 流量继续转发；已有 Capture 记录保留到用户手动 Clear。系统代理只在退出/修复时恢复。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.captureStop, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      await this.restoreSystemProxyBeforeShutdown();
       const result = await this.coreRuntime.request({
-        type: 'proxy.stop',
-        payload: {},
+        type: 'proxy.setRecording',
+        payload: { recording: false },
       });
       return toRendererCaptureStatus(result.payload);
     });

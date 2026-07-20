@@ -186,7 +186,7 @@ Smoke 使用 packaged Core 中的真实：
 测试确认：
 
 - `getStorageStatus()` 返回非零 quota，Capture database bytes 为 0；
-- Stop 真关闭代理端口但保持 session/exchange/body count；
+- Stop 暂停记录（监听器保持运行、listening 仍为 true、recording 置 false）但保持 session/exchange/body count；
 - `clearStorage()` 后 session/exchange/body/spill 为 0。
 
 ### 退出清理

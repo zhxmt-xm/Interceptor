@@ -13,7 +13,7 @@ import {
   Reply,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -23,6 +23,7 @@ import {
   SectionHeader,
   StatusBadge,
   Switch,
+  useDismissOnOutside,
 } from '../../../components';
 import type { RuleActionType } from '../../../../shared/desktop-api';
 import { ruleIndexFromPath } from '../rule-format';
@@ -35,6 +36,8 @@ import styles from './RuleEditor.module.css';
 export function RuleEditor(): React.JSX.Element {
   const { t } = useTranslation();
   const [showAddAction, setShowAddAction] = useState(false);
+  const addActionButtonRef = useRef<HTMLButtonElement>(null);
+  const addActionPopoverRef = useRef<HTMLDivElement>(null);
   const rule = useRulesStore(selectedRule);
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
@@ -49,6 +52,12 @@ export function RuleEditor(): React.JSX.Element {
   const addAction = useRulesStore((state) => state.addAction);
   const updateAction = useRulesStore((state) => state.updateAction);
   const removeAction = useRulesStore((state) => state.removeAction);
+
+  useDismissOnOutside(
+    showAddAction,
+    () => setShowAddAction(false),
+    [addActionPopoverRef, addActionButtonRef],
+  );
 
   if (!rule) {
     return (
@@ -125,6 +134,7 @@ export function RuleEditor(): React.JSX.Element {
             ))}
           </div>
           <button
+            ref={addActionButtonRef}
             type="button"
             className={styles.addButton}
             onClick={() => setShowAddAction((value) => !value)}
@@ -154,7 +164,7 @@ export function RuleEditor(): React.JSX.Element {
       </div>
 
       {showAddAction ? (
-        <div className={styles.popover}>
+        <div ref={addActionPopoverRef} className={styles.popover}>
           <div className={styles.popoverTitle}>{t('rules.addAction')}</div>
           <MenuItem icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
           <MenuItem icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />

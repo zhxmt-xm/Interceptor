@@ -235,13 +235,14 @@ class PackagedWorkflowSmoke {
     } finally {
       const beforeStop = await page.evaluate(() =>
         window.interceptor.getStorageStatus());
-      await page.evaluate(() => window.interceptor.stopCapture())
-        .catch(() => undefined);
-      await expect(
-        this.requestThroughProxy(proxyPort, origin.port),
-      ).rejects.toThrow();
+      // 暂停记录：监听器与系统代理保持运行、流量继续转发，已录数据保留到手动 Clear。
+      const paused = await page.evaluate(() => window.interceptor.stopCapture())
+        .catch(() => null);
+      if (paused) {
+        expect(paused).toMatchObject({ listening: true, recording: false });
+      }
       await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
-        message: 'Stopping Capture changed retained recording data',
+        message: 'Pausing Capture changed retained recording data',
         timeout: 10_000,
       }).toMatchObject({
         sessionCount: beforeStop.sessionCount,
@@ -442,6 +443,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onCaptureEvents',
         'onCoreProcessStatusChange',
         'onUpdateStatusChange',
+        'onWindowChromePress',
         'openCertificateManager',
         'openDownloadedUpdate',
         'probeConnection',

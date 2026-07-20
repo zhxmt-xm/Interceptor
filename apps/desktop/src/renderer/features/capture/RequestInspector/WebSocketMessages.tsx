@@ -118,7 +118,9 @@ export function WebSocketMessages({
                       frame={frame}
                       startedAt={startedAt}
                       selected={frame.seq === selectedSequence}
-                      onSelect={() => setSelectedSequence(frame.seq)}
+                      onSelect={() =>
+                        setSelectedSequence((current) =>
+                          current === frame.seq ? null : frame.seq)}
                     />
                     {frame.seq === selectedSequence ? (
                       <Payload frame={frame} />

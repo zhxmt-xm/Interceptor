@@ -301,6 +301,17 @@ export interface ProxyStatusCommand {
 }
 
 /**
+ * 暂停/恢复捕获记录。暂停时监听器与系统代理保持运行、流量继续转发，
+ * 仅停止持久化与推送新 Exchange；恢复后继续在同一会话追加。
+ */
+export interface ProxySetRecordingCommand {
+  type: 'proxy.setRecording';
+  payload: {
+    recording: boolean;
+  };
+}
+
+/**
  * 由 Main 内部下发的 TLS 配置（非 Renderer 发起）：下发解密后的 CA 材料
  * 供 Core 做 HTTPS MITM，以及 per-host 不安全例外。ca 为 null 时关闭 MITM。
  * 私钥只在 Main↔Core 内部通道流转，绝不经 Renderer。
@@ -345,6 +356,7 @@ export type CoreCommand =
   | ProxyStartCommand
   | ProxyStopCommand
   | ProxyStatusCommand
+  | ProxySetRecordingCommand
   | TlsConfigureCommand;
 
 export interface EchoResult {
@@ -670,6 +682,8 @@ export interface ProxyStatusResult {
   type: 'proxy.status';
   payload: {
     listening: boolean;
+    /** 是否正在记录新流量；监听器暂停时为 false，但 listening 仍可为 true。 */
+    recording: boolean;
     host: string | null;
     port: number | null;
     sessionId: string | null;
@@ -754,6 +768,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                             ? ProxyStatusResult
                             : T extends ProxyStatusCommand
                               ? ProxyStatusResult
+                              : T extends ProxySetRecordingCommand
+                                ? ProxyStatusResult
                               : T extends TlsConfigureCommand
                                 ? TlsConfiguredResult
                                 : T extends RulesGetCommand

@@ -66,6 +66,7 @@ const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = 
   'proxy.start': 'proxy.status',
   'proxy.stop': 'proxy.status',
   'proxy.status': 'proxy.status',
+  'proxy.setRecording': 'proxy.status',
   'tls.configure': 'tls.configured',
 };
 

@@ -172,6 +172,8 @@ export interface StorageUsage {
 /** 代理捕获运行态：监听地址、当前会话与已捕获 Exchange 计数。 */
 export interface CaptureStatus {
   listening: boolean;
+  /** 是否正在记录新流量；暂停（Stop recording）时为 false，但 listening 仍可为 true。 */
+  recording: boolean;
   host: string | null;
   port: number | null;
   sessionId: string | null;
@@ -371,6 +373,7 @@ export const DESKTOP_IPC_CHANNELS = {
   updateDownload: 'update:download',
   updateOpenDownloaded: 'update:open-downloaded',
   updateStatus: 'update:status',
+  windowChromePress: 'window:chrome-press',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
   captureStart: 'capture:start',
@@ -432,6 +435,12 @@ export interface InterceptorDesktopApi {
   downloadUpdate(): Promise<UpdateStatus>;
   openDownloadedUpdate(): Promise<void>;
   onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void;
+  /**
+   * Fires when the user drags the frameless window's title bar to move or resize it (an
+   * OS-owned gesture that never reaches the DOM). Lets open popovers dismiss the instant
+   * the window starts moving/resizing, within the same gesture. Cross-platform.
+   */
+  onWindowChromePress(listener: () => void): () => void;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;

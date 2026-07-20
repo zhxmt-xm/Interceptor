@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { CaptureExchangeEvent } from '../../../../shared/desktop-api';
-import { useCaptureStore } from '../captureStore';
+import type {
+  CaptureExchangeEvent,
+  CaptureExchangeSummary,
+} from '../../../../shared/desktop-api';
+import { type CaptureFilter, useCaptureStore, visibleCaptureRows } from '../captureStore';
 
 /** 构造只含列表所需字段的实时捕获事件。 */
 function captureEvent(id: string, startedAt: number): CaptureExchangeEvent {
@@ -85,8 +88,8 @@ describe('captureStore clear timeline', () => {
     ]);
 
     expect(useCaptureStore.getState().rows.map((row) => row.id)).toEqual([
-      'hidden-by-filter',
       'only-visible',
+      'hidden-by-filter',
     ]);
   });
 
@@ -129,5 +132,73 @@ describe('captureStore clear timeline', () => {
 
     useCaptureStore.getState().setProxyReadinessIssue(null);
     expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();
+  });
+});
+
+describe('captureStore structured filters', () => {
+  const baseFilter: CaptureFilter = {
+    segment: 'all',
+    search: '',
+    method: null,
+    status: null,
+    host: null,
+    type: null,
+    minDurationMs: null,
+  };
+
+  beforeEach(() => {
+    useCaptureStore.setState({ filter: baseFilter });
+  });
+
+  function summary(
+    id: string,
+    overrides: Partial<CaptureExchangeSummary>,
+  ): CaptureExchangeSummary {
+    return {
+      id,
+      method: 'GET',
+      secure: false,
+      host: 'example.test',
+      path: `/${id}`,
+      protocol: 'http/1.1',
+      statusCode: 200,
+      state: 'completed',
+      startedAt: 100,
+      durationMs: 10,
+      requestBytes: 0,
+      responseBytes: 12,
+      ...overrides,
+    };
+  }
+
+  const rows: CaptureExchangeSummary[] = [
+    summary('json', { responseMime: 'application/json; charset=utf-8', durationMs: 20 }),
+    summary('css', { responseMime: 'text/css', durationMs: 800 }),
+    summary('pending', { responseMime: undefined, durationMs: undefined, state: 'pending' }),
+  ];
+
+  it('filters by response type label (json matches application/json)', () => {
+    expect(visibleCaptureRows(rows, { ...baseFilter, type: 'json' }).map((row) => row.id))
+      .toEqual(['json']);
+  });
+
+  it('keeps only completed exchanges at or above the minimum duration', () => {
+    expect(
+      visibleCaptureRows(rows, { ...baseFilter, minDurationMs: 500 }).map((row) => row.id),
+    ).toEqual(['css']);
+  });
+
+  it('sets and clears type / duration via setStructuredFilter', () => {
+    useCaptureStore.getState().setStructuredFilter({ type: 'json', minDurationMs: 500 });
+    expect(useCaptureStore.getState().filter).toMatchObject({
+      type: 'json',
+      minDurationMs: 500,
+    });
+
+    useCaptureStore.getState().setStructuredFilter({ type: null, minDurationMs: null });
+    expect(useCaptureStore.getState().filter).toMatchObject({
+      type: null,
+      minDurationMs: null,
+    });
   });
 });
