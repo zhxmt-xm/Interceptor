@@ -14,8 +14,42 @@
   background: var(--filter);
   border-bottom: 1px solid var(--border);
 }
-.grow {
+.search {
+  display: flex;
+  height: 30px;
+  min-width: 0;
   flex: 1;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text-3);
+}
+.search svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+.search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 12px var(--font-ui);
+}
+.search input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
 }
 .rows {
   flex: 1;

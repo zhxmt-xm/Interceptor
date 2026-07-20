@@ -1,4 +1,4 @@
-import { Maximize2, Minus, X } from 'lucide-react';
+import { Maximize2, Menu, Minus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,7 +7,8 @@ import styles from './AppShell.module.css';
 interface AppShellProps {
   collapsed: boolean;
   sidebar: ReactNode;
-  topbar: ReactNode;
+  featureName: string;
+  onToggleSidebar: () => void;
   notification?: ReactNode;
   main: ReactNode;
   statusbar: ReactNode;
@@ -21,7 +22,8 @@ interface AppShellProps {
 export function AppShell({
   collapsed,
   sidebar,
-  topbar,
+  featureName,
+  onToggleSidebar,
   notification,
   main,
   statusbar,
@@ -32,8 +34,16 @@ export function AppShell({
     <div className={styles.app} data-collapsed={collapsed}>
       {sidebar}
       <header className={styles.top}>
-        {topbar}
-        {notification}
+        <button
+          type="button"
+          className={styles.sidebarToggle}
+          aria-label={t('capture.toggleSidebar')}
+          title={t('capture.toggleSidebar')}
+          onClick={onToggleSidebar}
+        >
+          <Menu size={15} strokeWidth={1.9} />
+        </button>
+        <span className={styles.featureName} data-parity="window-header-title">{featureName}</span>
         <div className={styles.windowControls}>
           <button
             type="button"
@@ -66,6 +76,7 @@ export function AppShell({
           </button>
         </div>
       </header>
+      {notification ? <div className={styles.notification}>{notification}</div> : null}
       <main className={styles.main}>{main}</main>
       <footer className={styles.status}>{statusbar}</footer>
     </div>

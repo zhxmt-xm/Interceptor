@@ -5,26 +5,23 @@ import { useTranslation } from 'react-i18next';
 import type { CoreProcessStatus } from '../../shared/desktop-api';
 import type { LanguageId } from '../i18n/languages';
 import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
-import { BreakpointsMain, BreakpointsStatusbar, BreakpointsTopbar } from '../features/breakpoints';
+import { BreakpointsMain, BreakpointsStatusbar } from '../features/breakpoints';
 import {
   CaptureMain,
   ProxyReadinessDialog,
   CaptureStatusbar,
-  CaptureTopbar,
   useCaptureData,
 } from '../features/capture';
-import { ComposerMain, ComposerStatusbar, ComposerTopbar } from '../features/composer';
+import { ComposerMain, ComposerStatusbar } from '../features/composer';
 import {
   DiagnosticsMain,
   DiagnosticsProvider,
   DiagnosticsStatusbar,
-  DiagnosticsTopbar,
 } from '../features/diagnostics';
-import { RulesMain, RulesStatusbar, RulesTopbar } from '../features/rules';
+import { RulesMain, RulesStatusbar } from '../features/rules';
 import {
   SettingsMain,
   SettingsStatusbar,
-  SettingsTopbar,
   UpdateActions,
   UpdateNotification,
 } from '../features/settings';
@@ -34,50 +31,52 @@ import styles from './App.module.css';
 import { Sidebar, type ViewId } from './Sidebar';
 
 interface FeatureViews {
-  topbar: React.ReactNode;
   main: React.ReactNode;
   statusbar: React.ReactNode;
 }
 
+const VIEW_LABEL_KEYS: Record<ViewId, string> = {
+  capture: 'sidebar.capture',
+  rules: 'rules.title',
+  composer: 'composer.title',
+  breakpoints: 'breakpoints.title',
+  diagnostics: 'diagnostics.title',
+  settings: 'settings.title',
+};
+
 function renderView(
   view: ViewId,
-  onMenu: () => void,
   settingsSection: string,
+  coreStatus: CoreProcessStatus,
 ): FeatureViews {
   switch (view) {
     case 'capture':
       return {
-        topbar: <CaptureTopbar onMenu={onMenu} />,
         main: <CaptureMain />,
-        statusbar: <CaptureStatusbar />,
+        statusbar: <CaptureStatusbar coreStatus={coreStatus} />,
       };
     case 'rules':
       return {
-        topbar: <RulesTopbar onMenu={onMenu} />,
         main: <RulesMain />,
         statusbar: <RulesStatusbar />,
       };
     case 'composer':
       return {
-        topbar: <ComposerTopbar onMenu={onMenu} />,
         main: <ComposerMain />,
         statusbar: <ComposerStatusbar />,
       };
     case 'settings':
       return {
-        topbar: <SettingsTopbar onMenu={onMenu} />,
         main: <SettingsMain section={settingsSection} />,
         statusbar: <SettingsStatusbar />,
       };
     case 'breakpoints':
       return {
-        topbar: <BreakpointsTopbar onMenu={onMenu} />,
         main: <BreakpointsMain />,
         statusbar: <BreakpointsStatusbar />,
       };
     case 'diagnostics':
       return {
-        topbar: <DiagnosticsTopbar onMenu={onMenu} />,
         main: <DiagnosticsMain />,
         statusbar: <DiagnosticsStatusbar />,
       };
@@ -171,7 +170,7 @@ export function App(): React.JSX.Element {
     void i18n.changeLanguage(nextLanguage);
   };
 
-  const feature = renderView(view, toggleCollapse, settingsSection);
+  const feature = renderView(view, settingsSection, coreStatus);
 
   const shell = (
     <>
@@ -189,7 +188,8 @@ export function App(): React.JSX.Element {
             coreStatus={coreStatus}
           />
         }
-        topbar={feature.topbar}
+        featureName={t(VIEW_LABEL_KEYS[view])}
+        onToggleSidebar={toggleCollapse}
         notification={<UpdateNotification />}
         main={feature.main}
         statusbar={feature.statusbar}

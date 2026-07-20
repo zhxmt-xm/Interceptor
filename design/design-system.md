@@ -50,15 +50,19 @@
 ## 尺寸与间距
 
 - 圆角:app `16`,面板/输入/omni `9–10`,小控件/badge `6–8`,pill/胶囊 `999`。
-- 行/条高度:topbar `54`,statusbar `30`,filter/omni `38–40`,list header `34`,**list row `52`**(刻意不紧凑),nav `38`。
+- 行/条高度:窗口 Header `46`,Capture 工作栏 `54`,内容工具栏 `40`,omni `38`,statusbar `30`,list header `34`,**list row `52`**(刻意不紧凑),nav `38`。
 - 强调色阴影:`0 4px 12px -3px color-mix(in srgb, var(--accent) 55%, transparent)`(logo 等)。
 
 ## 布局(Traffic 为参考基准)
 
 - 基准画布 `1280 × 800`。
-- 三区栅格 `side / list / inspector`,顶部 `topbar` 与底部 `statusbar` 横跨:
-  - 展开:`220px · minmax(0,1fr) · 7px(splitter) · 500px`
-  - 折叠:`60px · minmax(0,1fr) · 7px · 500px`
+- Header V2 是设计 SPA 默认且已批准的落地基线。侧栏从顶部到底部保持完整，右侧内容区按自然流依次为窗口 Header、feature 工作栏、主体和状态栏；业务布局不得依赖浮动、绝对定位或 `z-index` 拼接。
+- 主体横向布局为 `list / splitter / inspector`:
+  - 展开:`220px(side) · minmax(0,1fr)(list) · 1px(splitter) · 500px(inspector)`
+  - 折叠:`60px(side) · minmax(0,1fr)(list) · 1px(splitter) · 500px(inspector)`
+- 右侧窗口 Header 高 `46px`，左侧只保留 30px 侧栏折叠按钮和当前 feature 名称，右侧只保留窗口控制；不得放 feature 图标、业务命令、Core/revision/count 等状态摘要。所有状态统一进入底部 30px 状态栏。左侧原始 Logo/品牌继续属于完整侧栏，不复制到 Header；六个 feature 使用同一骨架、间距和 padding。46px 与侧栏顶部 `12px + 34px` 品牌区节奏对齐。
+- Capture feature 工作栏高 `54px`：Recording 左对齐、omni 在整个右侧内容区视觉居中、Import/Export 图标右对齐；不显示 `Session files` 标签。小窗口可隐藏 pill/占位文字，但三组不得重叠或跨越 Inspector。
+- 各 feature 的业务命令放在内容区首行或最接近其作用对象的 `40px` 工具栏中。工具栏按纵向自然流排列，行内使用横向 flex；Rules 的 revision/applied/数量状态留在 Header，Search 输入位于内容工具栏左侧，New/Apply/More 位于右侧。
 - **所有会被 `nowrap` 文本撑破的 `1fr` 轨道必须写 `minmax(0,1fr)`**,否则整页横向溢出。
 - Inspector 默认略宽于 list(内容更多);list 收窄后长 host 省略,由 **splitter 拖拽**与 Inspector 的完整 URL 兜底。
 
@@ -68,17 +72,18 @@
 - **主题 / 语言切换器**（侧栏底部，取代旧 Account）：触发行本身是一条 nav——主题展开为「当前时段图标 + Theme + 强调点」、语言为「地球 + Language + 代码」，折叠时主题只留当前时段图标、语言只留代码。点击弹出 **flyout**：以按钮为锚**向右弹出、底边与按钮底边对齐、留一小段水平间隙**，portal 到 `body` 以逃逸侧栏 `overflow`，点击外部 / Esc 关闭。语言项使用各语言自己的名称；超过可用高度时列表在 420px 内滚动，不改变锚点位置。主题 flyout 四项按**一天时序** Warm→Light→Ember→Dark，图标与文字保持中性色；hover 时从右侧浮现该时段的**中式写意山水**（日月循抛物线：晨左低 → 午中高 → 暮右低 → 夜居中；画面内缩留边 + 左侧 `--panel` 渐变保证标签可读），当前主题显示 `--accent` 勾。
 - **Method 徽标**:mono `10.5/600`,`color-mix(field 13–16%, transparent)` 底 + 字段色字,圆角 6。
 - **Status**:`6px` 圆点 + mono `12`,用状态语义色。
-- **omni 搜索/筛选**(顶部):Capture 顶栏必须与正文共用 `minmax(0,1fr) · 7px · inspectorWidth` 三列；list 列放折叠钮、Recording、可收缩 omni，Inspector 列右对齐 `Import` / `Export` 两个 30px 图标按钮（Upload/Download，hover tooltip 命名），删除无行为的 info/设置/更多。搜索框不得跨过 splitter，顶部 7px 只作对齐占位、不绘制额外竖线。omni 用 `--panel-2` 底;结构 = search icon → 已激活筛选 **pill**(只显示值如 `GET ×`/`2xx ×`,`--accent-soft` 底 + `--accent` 字 + `accent 30%` 边)→ 文本占位 → **末尾 filter 按钮(漏斗)** 弹出"Add filter"字段菜单(Method/Status/Type/Host/Duration…)。Import 菜单提供 `Import HAR` / `Open Capture`，Export 菜单提供 `Export HAR` / `Save Capture`；HAR 是跨工具交换，Interceptor Capture 是完整会话保存，两者不得再表现为同一 Format 切换。
-- **顶栏命令**：New/Apply/History/Export 等无需显示当前值的明确命令统一使用 30px IconButton + tooltip；Process/Level/Outcome、Break on match 等承载当前值或二元状态的控件保留文字。所有 feature 的右侧 actions 与 Capture 一样贴近窗口控制组，不能被空通知容器推到中间。
-- **窗口控制**：产品窗口跨平台 frameless；54px 顶栏是拖拽区，所有 button/input/menu 必须 `no-drag`。最右固定 30px Minimize / Maximize-or-restore / Close 三图标按钮，距右 8px、组内 gap 3px；各 feature 的右侧 actions 使用相同补偿贴近窗口控制组。Close hover 用轻红色，其他窗口按钮用中性 hover。
+- **omni 搜索/筛选**(Capture 工作栏):Recording 左对齐、可收缩 omni 在整个右侧内容区视觉居中，右侧只放 `Import` / `Export` 两个 30px 图标按钮（Upload/Download，hover tooltip 命名）；三组之间不用竖分隔线。omni 高 `38px`、整体使用 `--panel` 白底；最左 Search 区域撑满内部高度并保持 `1:1` 正方形，同样使用 `--panel` 白底，图标居中，不再铺独立灰色块。结构 = 满高 Search 方块 → 已激活筛选 **pill**(只显示值如 `GET ×`/`2xx ×`,`22px` 高、`--accent-soft` 底 + `--accent` 字 + `accent 30%` 边)→ 文本占位 → **末尾 filter 按钮(漏斗)** 弹出"Add filter"字段菜单(Method/Status/Type/Host/Duration…)。Import 菜单提供 `Import HAR` / `Open Capture`，Export 菜单提供 `Export HAR` / `Save Capture`；HAR 是跨工具交换，Interceptor Capture 是完整会话保存，两者不得再表现为同一 Format 切换。
+- **内容区命令**：New/Apply/History/Export 等无需显示当前值的明确命令统一使用 `30×30px` IconButton + tooltip，图标 `15×15px`，连续图标按钮组 gap `3px`；该规格以 Capture 的 Columns/Clear 组为基准，全 feature 共用。Process/Level/Outcome、Break on match 等承载当前值或二元状态的控件保留文字。窗口 Header 不放业务命令。
+- **窗口控制**：产品窗口跨平台 frameless；右侧 46px 窗口 Header 是拖拽区，所有 button/input/menu 必须 `no-drag`。最右固定 30px Minimize / Maximize-or-restore / Close 三图标按钮，距右 8px、组内 gap 3px；feature 命令不再进入窗口 Header，统一放各自内容工作栏。Close hover 用轻红色，其他窗口按钮用中性 hover。
 - **品牌 Logo**：左上角 30px 渐变方块继续由当前主题 `--accent → --purple` 驱动并使用 Lucide Zap；系统 PNG/ICO/ICNS 使用固定 dark 主题 `#2fd4b8 → #c07cff` 与白色 Zap，保证任务栏/安装器识别稳定。Lucide 依 ISC 许可使用。
 - **Proxy readiness 弹层**：自动 Recording、手动 Start 或 Core 重启后，如果 listener 或受支持平台的系统代理未 ready，`capturing` 必须为 false，顶栏显示 Paused、状态栏显示 Not recording，并显示阻塞弹层。结构为 warning 标题、readiness 说明、单一状态行、guarded restore 隐私说明和 Cancel / Proxy & Listener / Enable；只有 Enable 是 primary，禁止静默接管系统设置。Enable 成功且 listener+routing 都 ready 后才允许显示 Recording。
 - **filter 条**(list 上方,`--filter` 底):协议快捷段 `All/H1/H2/WS`(Segmented)+ 计数 `18 of 241` + 列设置/清空图标；严格限制在 list 列。list 小于 420px 时隐藏计数与 Columns、收紧 segmented padding，只保留协议切换与 Clear，禁止横向溢出。相邻图标按钮成组，组内间距 `3px`（不沿用 filter 条的 `10px`）。
 - **Segmented 开关**（协议 `All/H1/H2/WS`、Body `Auto/Text/JSON/Hex`、Composer 协议、导出 Format 共用）：无轨道、透明容器，只有选中项显示为**实心 `--accent` 圆角块 + 白字**（未选中 `--text-3`，hover `--text-2` + `--hover` 底）。容器 `height 28`、`align-self:center`、`width:max-content`、`gap 2`、`radius 9`；选项 `height 22`、`padding 0 9`、`radius 7`、`font-weight 520`（选中 600）。与同行控件（30px 图标按钮）同一垂直中线；协议段用 mono `10.5`、大写、`min-width 30`。Body mode 左对齐于正文预览。
 - **操作按钮**:enabled 一律 `cursor:pointer`;default 用 `--panel` 底 + `--border-2` 边,hover 在 `--panel` 上混入 6% `--text`,不得替换成透明 `--hover`;primary 用 `--accent` 实底 + 白字,hover 按 88% `--accent` + 12% `--text` 提升当前主题下的对比;danger 用中性实底 + 红字/红边,hover 按 10% `--red` + 90% `--panel` 着色。disabled 不保留 primary/danger 强语义色,统一 `--panel-2` 底 + `--border` 边 + `--text-3` 字,`cursor:not-allowed`,且 hover/filter/阴影均不得变化。图标按钮 enabled 可用透明底 + `--hover`,disabled 同样不响应 hover并使用 `not-allowed`。
 - **list**:列 `Method / Host·Path / Status / Proto / Type / Size / Time`;Host 双行(host + path,`gap 4`),path 与 proto/type/size/time 用 mono;选中行 `--sel` 底 + 左 2px `--sel-line`。
-- **splitter**(list↔inspector):`col-resize`;默认 1px `--border` 线 + 居中 `4×40` 圆角抓手(`--border-2`);hover/拖拽线与抓手变 `--accent`、抓手拉长到 `52`。
-- **Inspector**：头部 method chip + 语法着色 URL（`dom`=text-2 / `path`=text）+ 右侧状态 pill（如 `200 OK` 绿）；Tabs 下划线 `--accent`，页签 `Headers / Request / Response / Timing / Cookies / TLS`。Detail 内小节标题使用高对比 `--text-2`、700 weight、左侧 2px accent 标记与底部分隔线，不能只靠浅灰大写字。Headers 分区 `General / Response Headers / Request Headers`（`kv` 栅格 `168px / minmax(0,1fr)`，key `--text-2` mono、value `--text` mono，特殊值用 `--accent`/`--green`）；`Cookie`/`Set-Cookie` 不在 Headers 重复出现，只归入 Cookies tab。Body 预览提供 `Auto / Text / JSON / Hex`：Auto 按 MIME + 内容探测，Text 强制 UTF-8 replacement 文本，JSON 尝试格式化且失败时保留原文，Hex 显示精确字节并随容器宽度重排；任何模式不得横向撑开 Inspector。Timing 只显示持久化的真实 Waiting(TTFB)/Response body 时间段，不伪造 DNS/TLS 阶段。内容区 `overflow-y:auto` 可滚。
+- **splitter**(list↔inspector):在布局中只占 `1px`，自身绘制 `--border` 竖线；`4×40px` 圆角抓手是同一 flex 中轴上的普通子项，不使用绝对定位或 transform。抓手可溢出到线两侧但不得被相邻面板裁切；hover/拖拽时线与抓手变 `--accent`、抓手拉长到 `52px`。所有 feature 共用这一实现，list 与 Detail 都直接贴线，不保留额外 gutter。
+- **分隔与层级**：侧栏右边界、窗口 Header 下边界、状态栏上边界、list↔Inspector 可拖 splitter、List Header 下方与数据行使用低对比 `1px --border`，不使用面板级阴影。Capture 工作栏、Detail method 行、Tabs 和 Detail 正文统一使用 `--panel`；只有左侧 All/H1/Clear 内容工具栏使用 `--filter`。色块之间不画额外 splitter。Tabs 只用 active `--accent` 下划线和正文顶部留白。Detail 小节使用左侧 2px accent 与向右消失的短线。输入和独立浮层仍使用自身边框。
+- **Inspector**：整个 Detail 区域从 method 行到 Tabs、正文都使用 `--panel`，不得出现灰色衬底。头部 method chip + 语法着色 URL（`dom`=text-2 / `path`=text）+ 右侧状态 pill（如 `200 OK` 绿）保持原内容结构，并由独立白色 Request 摘要 box 包裹。外层行与 box 都使用 `40px` 高度，与左侧 All/H1/Clear 行同轨对齐；box 左右外间距均为 `14px`，横向 padding `8px / 18px`、`gap:10px`，内容垂直居中。box 使用 9px 圆角和两层无方向偏移的均匀浅阴影，不使用 solid border；阴影四周必须完整，不得由工作栏、splitter、Tabs 或 overflow 裁切。box 与 Tabs 之间使用普通文档流 `6px` 间距，Detail 区域不使用定位、浮动或 `z-index` 拼接。页签为 `Headers / Request / Response / Timing / Cookies / TLS`。Detail 内小节标题使用高对比 `--text-2`、700 weight、左侧 2px accent 标记与向右渐隐短线，不能只靠浅灰大写字。Headers 分区 `General / Response Headers / Request Headers`（`kv` 栅格 `168px / minmax(0,1fr)`，key `--text-2` mono、value `--text` mono，特殊值用 `--accent`/`--green`）；`Cookie`/`Set-Cookie` 不在 Headers 重复出现，只归入 Cookies tab。Body 预览提供 `Auto / Text / JSON / Hex`：Auto 按 MIME + 内容探测，Text 强制 UTF-8 replacement 文本，JSON 尝试格式化且失败时保留原文，Hex 显示精确字节并随容器宽度重排；任何模式不得横向撑开 Inspector。Timing 只显示持久化的真实 Waiting(TTFB)/Response body 时间段，不伪造 DNS/TLS 阶段。内容区 `overflow-y:auto` 可滚。
 - **默认捕获与 HTTPS**：应用进入 Capture 后自动启动 loopback listener 并尝试接管系统代理，不弹启动向导。默认不生成、不安装 CA，也不解密 HTTPS；CONNECT 以 `TLS / encrypted` tunnel 摘要展示，只保存 host/port/open-close/duration 等连接元数据。选中 tunnel 时 Inspector 只显示 TLS tunnel 页和明确的隐私说明；`Decrypt HTTPS` 打开三步弹层（生成本地 CA → 显式系统信任 → 开启 MITM）。信任成功后第三步显示黄色 `Ready` 提示，但不得自动开启 MITM，必须等待用户点击 `Start decrypting`；未完成前 HTTPS 始终原样透传。禁用或未完成步骤使用统一 disabled 视觉，不以 hover 暗示可操作。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 

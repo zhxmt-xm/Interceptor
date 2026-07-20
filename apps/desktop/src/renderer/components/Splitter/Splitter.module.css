@@ -1,31 +1,23 @@
 .splitter {
-  position: relative;
   z-index: 1;
-  width: 7px;
-  justify-self: center;
-  cursor: col-resize;
-}
-.splitter::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
+  display: flex;
   width: 1px;
-  transform: translateX(-50%);
+  min-width: 1px;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  overflow: visible;
   background: var(--border);
+  cursor: col-resize;
   transition: background 0.15s ease;
 }
-.splitter:hover::after {
+.splitter:hover {
   background: var(--accent);
 }
 .grip {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   width: 4px;
   height: 40px;
+  flex: 0 0 4px;
   border-radius: 3px;
   background: var(--border-2);
   transition: background 0.15s ease, height 0.15s ease;

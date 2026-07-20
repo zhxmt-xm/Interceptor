@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-20
+> 最后更新：2026-07-21
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取同目录的 `M*.md` 文件。
 
 ## 新 Session / Agent 必读
@@ -25,6 +25,7 @@
 - **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 loopback Recording；系统代理由 readiness 弹层要求用户显式 Enable。HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
 - **Proxy readiness 已改为显式授权**：自动 Capture bootstrap、手动 Start 与 Core 重启均先启动 listener，再检查系统代理；未 ready 时 UI 必须是 Paused / Not recording 并弹 `Proxy not ready`，只有用户点击 Enable 且 listener+routing ready 后才显示 Recording，或进入 Settings → Proxy & Listener。失败保留有界错误，不循环静默写系统设置。
 - **自有窗口 Chrome**：跨平台 `frame:false`，自有顶栏可拖拽并提供 Minimize / Maximize-or-restore / Close；Close 走窄 IPC → `app.quit()`，继续执行系统代理恢复与 Core shutdown。
+- **Header V2 已一对一落地**：`design/app` 与 React Renderer 均默认使用 Header V2；保留全高侧栏，右侧依次为 46px Window Header、feature 内容工作栏、主体和 30px 状态栏。Capture 使用 54px `CaptureWorkbar`，内容命令行统一 40px、图标按钮统一 30×30px/15px icon/3px gap；Detail 全白且 Request 摘要为 40px 白色均匀阴影 box；所有 workspace 共用 1px splitter + 4×40px 共轴 grip。Window Header 只保留折叠按钮、feature 名称和窗口控制，业务命令与状态分别进入内容工具栏和底栏。旧 Rules/Composer/Breakpoints/Diagnostics/Settings Topbar 已删除。
 - **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。
 - **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整 659-key catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl` 日期/数字/字节/时长和 Main 原生 HAR/archive/Diagnostics 文件对话框同步切换；俄/波/乌 CLDR 多复数已覆盖。设计 SPA 只保留当前 Theme flyout 与 Language list，旧 Theme B/C/D、Language L2/L3 和专用截图脚本已删除。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
@@ -53,7 +54,7 @@
 - **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [M13.md](M13.md)。
 - **多语言增强验证全绿**：293 unit tests；三 workspace typecheck；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 逐项验证 15 种语言、持久化、侧栏译文、页面无溢出与 Main language IPC 非法值拒绝；生产 audit 0。
 - **Capture 后续增强验证全绿**：311 unit tests；三 workspace typecheck；Windows package；真实 packaged smoke 1/1（活动 Recording Clear 后保留 Session 壳、Exchange/Body 归零）；生产 audit 0。Payload/Cookies/Timing/Tunnel/topbar 目标场景已完成浏览器与视觉检查。
-- Git：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已提交到 `origin/main`。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认远端状态。
+- Git：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已提交到 `origin/main`。当前未提交工作树包含 Header V2 的 `design/` SPA/截图/规范、`apps/desktop/src/renderer` 实现、visual parity、packaged smoke 断言和阶段文档。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
 - 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
 - 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
@@ -116,12 +117,12 @@
 | 已实现内容 | 代码位置 | 说明 |
 | --- | --- | --- |
 | React 入口 | `apps/desktop/src/renderer/main.tsx` | 加载全局样式并挂载 App |
-| App shell | `apps/desktop/src/renderer/app/App.tsx`、`AppShell.tsx`、`Sidebar.tsx` | 持有 `themeMode`，消费 i18next 当前语言，按 view 渲染六个 feature 的 topbar/main/statusbar、Sidebar 导航 + 底部主题/语言切换器 |
-| App shell 布局 | `apps/desktop/src/renderer/app/App.module.css` | 桌面 Grid、Toolbar/Sidebar/Status 布局和状态视觉 |
-| Capture workspace | `apps/desktop/src/renderer/features/capture/` | 子组件 CaptureTopbar/Omnibox/CaptureMain/RequestList/RequestInspector/CaptureStatusbar，各自 colocated CSS Module |
-| Rules workspace | `apps/desktop/src/renderer/features/rules/` | 子组件 RulesTopbar/RulesMain/RuleList/RuleEditor/RulesStatusbar，各自 colocated CSS Module |
-| 其余 workspace | `apps/desktop/src/renderer/features/{composer,settings,breakpoints,diagnostics}/` | 各含 Topbar/Main/Statusbar，colocated CSS Module；一对一还原 `design/app` 对应视图 |
-| Updates UI | `features/settings/{updateStore.ts,update-format.ts,SettingsContent/UpdatesPanel.tsx,UpdateNotification/}` | 七态更新面板、进度、纯文本changelog与顶部通知 |
+| App shell | `apps/desktop/src/renderer/app/App.tsx`、`AppShell.tsx`、`Sidebar.tsx` | 持有 `themeMode`，消费 i18next 当前语言，按 view 渲染 Window Header、六个 feature 的 main/statusbar、Sidebar 导航 + 底部主题/语言切换器 |
+| App shell 布局 | `apps/desktop/src/renderer/app/AppShell.module.css` | 46px Window Header、全高 Sidebar、Main、30px Status 与窗口控制视觉 |
+| Capture workspace | `apps/desktop/src/renderer/features/capture/` | 子组件 CaptureWorkbar/Omnibox/CaptureMain/RequestList/RequestInspector/CaptureStatusbar，各自 colocated CSS Module |
+| Rules workspace | `apps/desktop/src/renderer/features/rules/` | RulesMain/RuleList/RuleEditor/RulesStatusbar；搜索/New/Apply/More 位于 RuleList 内容工具栏 |
+| 其余 workspace | `apps/desktop/src/renderer/features/{composer,settings,breakpoints,diagnostics}/` | Main/Statusbar + 内容工具栏，colocated CSS Module；一对一还原 `design/app` 对应视图 |
+| Updates UI | `features/settings/{updateStore.ts,update-format.ts,SettingsContent/UpdatesPanel.tsx,UpdateNotification/}` | 七态更新面板、进度、纯文本changelog与 Header 下方独立通知 |
 | 共享 UI 原子 | `apps/desktop/src/renderer/components/` | 扁平库(每个组件独立子目录含 tsx+module.css)：IconButton/Button/Switch/Select/InputBox/Segmented/Checkbox/Chip/Tabs/FilterChip/Timeline/Splitter/MethodBadge/StatusBadge/SectionHeader/StatItem/Count/MenuItem/Title/NavItem/Flyout + cx/index |
 | 主题 / 语言切换器 | `apps/desktop/src/renderer/components/{ThemeSwitcher,LanguageSwitcher}/`、`renderer/i18n/` | 侧栏底部控件（取代旧 Account）；Flyout 以按钮为锚 portal 弹出、底边对齐。语言列表提供 15 种完整本地 catalog；主题四项 hover 浮现时段山水 |
 | Ant Design 主题 | `apps/desktop/src/renderer/theme/theme.ts` | 四套时段主题 palette（light/warm=default、dark/ember=dark 算法）+ 全局/Button/Segmented/Splitter/Tabs/Tooltip Token |
@@ -149,11 +150,13 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一动作：首个真实 tag release 验收
+## 下一动作：评审并提交 Header V2 UI
 
-M0–M14 与后续 HAR/文件菜单/frameless/Proxy readiness 增强已完成；下一代码外动作是准备首个真实 tag release。
+Header V2 Renderer、设计资产、parity 和文档已经同步。提交前检查 staged diff 不包含 `.vite/`、package 产物或 `test-results/`；保留 `design/app/shots` 与 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
 
-首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
+本次验证：三 workspace typecheck；308 unit tests；Windows package；packaged smoke 1/1；96 张设计截图；visual parity 45 views / 330 targets / 0 missing。Capture light/dark/collapsed 0 flagged；全量仍有字体、CodeMirror 和 Settings Updates 文案宽度类诊断差异，详见 parity report，不应通过产品测试后门掩盖。
+
+提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
 ## 剩余工作项目
 

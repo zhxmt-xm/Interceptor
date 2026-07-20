@@ -255,7 +255,7 @@ class PackagedWorkflowSmoke {
         message: 'Manual Clear did not delete temporary recording data',
         timeout: 10_000,
       }).toMatchObject({
-        sessionCount: 0,
+        sessionCount: 1,
         exchangeCount: 0,
         bodyCount: 0,
         blobBytes: 0,

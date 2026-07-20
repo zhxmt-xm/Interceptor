@@ -14,7 +14,7 @@
   height: 40px;
   padding: 0 8px 0 18px;
   background: var(--filter);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0;
 }
 .protocol button {
   min-width: 30px;
@@ -45,6 +45,7 @@
   color: var(--text-3);
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
+  background: var(--panel);
 }
 .scroll {
   flex: 1;

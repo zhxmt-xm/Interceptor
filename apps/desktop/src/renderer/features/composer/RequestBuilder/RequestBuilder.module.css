@@ -26,9 +26,10 @@
 }
 .subrow {
   display: flex;
+  height: 40px;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--border);
   background: var(--filter);
 }
@@ -39,6 +40,67 @@
 }
 .spacer {
   flex: 1;
+}
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+}
+.historyAnchor {
+  display: inline-flex;
+}
+.historyPanel {
+  width: 380px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.historyEmpty {
+  padding: 14px 12px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.historyItem:hover {
+  background: var(--hover);
+}
+.historyMethod {
+  width: 52px;
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.historyUrl {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.historyStatus {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 .headers {
   flex: 1;

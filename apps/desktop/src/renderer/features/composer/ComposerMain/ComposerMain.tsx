@@ -31,7 +31,7 @@ export function ComposerMain(): React.JSX.Element {
     <div
       className={styles.main}
       ref={mainRef}
-      style={{ gridTemplateColumns: `minmax(0, 1fr) 7px ${responseWidth}px` }}
+      style={{ gridTemplateColumns: `minmax(0, 1fr) 1px ${responseWidth}px` }}
     >
       <RequestBuilder />
       <Splitter onPointerDown={startDrag} />

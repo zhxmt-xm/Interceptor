@@ -38,8 +38,11 @@ const median = (numbers) => {
 async function collect(page, rootSelector, targets) {
   const origin = await page.locator(rootSelector).first().boundingBox();
   const result = {};
-  for (const name of targets) {
-    const candidates = await page.getByText(name, { exact: true }).all();
+  for (const target of targets) {
+    const name = typeof target === 'string' ? target : target.name;
+    const candidates = typeof target === 'string'
+      ? await page.getByText(name, { exact: true }).all()
+      : await page.locator(`[data-parity="${target.parity}"]`).all();
     let element = null;
     let box = null;
     for (const candidate of candidates) {
@@ -114,6 +117,9 @@ const designPage = await browser.newPage({
   colorScheme: 'light',
 });
 await designPage.goto(designIndexUrl, { waitUntil: 'networkidle' });
+await designPage.addStyleTag({
+  content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}',
+});
 
 let totalFlags = 0;
 const viewSummaries = [];
@@ -126,7 +132,14 @@ for (const view of views) {
   let viewMissing = 0;
   let viewMaxGeometryDelta = 0;
 
-  await designPage.evaluate((state) => window.__setState?.(state), view.designState);
+  await designPage.evaluate((state) => window.__setState?.({
+    layout: 'header-v2',
+    fileMenu: '',
+    settings: 'certificates',
+    repair: 'idle',
+    update: 'up-to-date',
+    ...state,
+  }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
   await designPage.waitForTimeout(400);
 
@@ -207,7 +220,9 @@ for (const view of views) {
 
   const design = await collect(designPage, '.app', view.targets);
   const app = await collect(appPage, '[data-collapsed]', view.targets);
-  const matched = view.targets.filter((name) => design[name] && app[name]);
+  const targetNames = view.targets.map((target) =>
+    typeof target === 'string' ? target : target.name);
+  const matched = targetNames.filter((name) => design[name] && app[name]);
   const systemX = median(
     matched.map((name) => app[name].x - design[name].x),
   );
@@ -218,7 +233,7 @@ for (const view of views) {
     `  systematic offset x ${systemX.toFixed(1)} y ${systemY.toFixed(1)} (design card border - subtracted below)`,
   );
 
-  for (const name of view.targets) {
+  for (const name of targetNames) {
     if (!design[name] || !app[name]) {
       viewMissing += 1;
       elementDiffs.push({

@@ -1,4 +1,6 @@
-import { cx } from '../../../components';
+import { Download } from 'lucide-react';
+
+import { Count, cx, FilterChip, IconButton } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { aggregateTraces } from '../data';
 import { useDiagnostics } from '../DiagnosticsProvider';
@@ -14,6 +16,15 @@ export function TraceList(): React.JSX.Element {
     hasMore,
     loadingMore,
     loadMore,
+    processFilter,
+    levelFilter,
+    outcomeFilter,
+    cycleProcess,
+    cycleLevel,
+    cycleOutcome,
+    exporting,
+    exportError,
+    exportJsonl,
   } = useDiagnostics();
   const rows = aggregateTraces(records, i18n.language, {
     success: t('diagnostics.success'),
@@ -25,6 +36,35 @@ export function TraceList(): React.JSX.Element {
 
   return (
     <div className={styles.list}>
+      <div className={styles.toolbar}>
+        <Count>
+          {t('diagnostics.records', {
+            count: new Intl.NumberFormat(i18n.language).format(records.length),
+          })}
+        </Count>
+        <span className={styles.spacer} />
+        <FilterChip onClick={cycleProcess}>
+          {processFilter ? `${t('diagnostics.process')}: ${processFilter}` : t('diagnostics.process')}
+        </FilterChip>
+        <FilterChip onClick={cycleLevel}>
+          {levelFilter ? `${t('diagnostics.level')}: ${levelFilter}` : t('diagnostics.level')}
+        </FilterChip>
+        <FilterChip onClick={cycleOutcome}>
+          {outcomeFilter ? `${t('diagnostics.outcome')}: ${outcomeFilter}` : t('diagnostics.outcome')}
+        </FilterChip>
+        <IconButton
+          icon={Download}
+          label={exporting
+            ? t('diagnostics.exporting')
+            : exportError
+              ? t('diagnostics.exportFailed')
+              : t('diagnostics.exportJsonl')}
+          size="sm"
+          className={exportError ? styles.exportError : undefined}
+          disabled={exporting}
+          onClick={exportJsonl}
+        />
+      </div>
       <div className={styles.head}>
         <span>{t('diagnostics.time')}</span>
         <span>{t('diagnostics.command')}</span>

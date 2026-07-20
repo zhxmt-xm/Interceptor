@@ -61,7 +61,7 @@ export function RuleRow({
         <Switch checked={rule.enabled} />
       </span>
       <div className={styles.meta}>
-        <span className={styles.name}>{rule.name}</span>
+        <span className={styles.name} data-parity={`rule-name-${rule.id}`}>{rule.name}</span>
         <span className={styles.match}>
           {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
         </span>

@@ -214,38 +214,40 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
   return (
     <div className={styles.inspector}>
       <div className={styles.head}>
-        {view ? (
-          <span className={styles.methodChip}>{view.method.toUpperCase()}</span>
-        ) : null}
-        <span className={styles.url}>
+        <div className={styles.summaryCard}>
           {view ? (
-            <>
-              <span className={styles.urlDomain}>{view.host ?? ''}</span>
-              <span className={styles.urlPath}>{isTlsTunnel ? `:${tlsPort}` : view.path ?? ''}</span>
-            </>
-          ) : (
-            <span className={styles.urlDomain}>{t('capture.selectRequest')}</span>
-          )}
-        </span>
-        {view && isTlsTunnel ? (
-          <StatusBadge tone="yellow">{t('capture.encrypted')}</StatusBadge>
-        ) : view && view.statusCode !== undefined ? (
-          <StatusBadge
-            tone={
-              isGrpc && grpcStatus !== undefined
-                ? grpcStatus === '0'
-                  ? 'green'
-                  : 'red'
-                : statusTone(view.statusCode)
-            }
-          >
-            {isWebSocket && view.statusCode === 101
-              ? t('capture.connected')
-              : isGrpc && grpcStatus !== undefined
-                ? `gRPC ${grpcStatus}${grpcMessage ? ` ${grpcMessage}` : ''}`
-                : statusText}
-          </StatusBadge>
-        ) : null}
+            <span className={styles.methodChip} data-parity="capture-inspector-method">{view.method.toUpperCase()}</span>
+          ) : null}
+          <span className={styles.url}>
+            {view ? (
+              <>
+                <span className={styles.urlDomain} data-parity="capture-inspector-host">{view.host ?? ''}</span>
+                <span className={styles.urlPath} data-parity="capture-inspector-path">{isTlsTunnel ? `:${tlsPort}` : view.path ?? ''}</span>
+              </>
+            ) : (
+              <span className={styles.urlDomain}>{t('capture.selectRequest')}</span>
+            )}
+          </span>
+          {view && isTlsTunnel ? (
+            <StatusBadge tone="yellow">{t('capture.encrypted')}</StatusBadge>
+          ) : view && view.statusCode !== undefined ? (
+            <StatusBadge
+              tone={
+                isGrpc && grpcStatus !== undefined
+                  ? grpcStatus === '0'
+                    ? 'green'
+                    : 'red'
+                  : statusTone(view.statusCode)
+              }
+            >
+              {isWebSocket && view.statusCode === 101
+                ? t('capture.connected')
+                : isGrpc && grpcStatus !== undefined
+                  ? `gRPC ${grpcStatus}${grpcMessage ? ` ${grpcMessage}` : ''}`
+                  : statusText}
+            </StatusBadge>
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.tabs}>

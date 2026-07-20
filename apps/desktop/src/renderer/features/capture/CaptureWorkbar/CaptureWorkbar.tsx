@@ -1,4 +1,4 @@
-import { Archive, Download, FileJson, Menu, Upload } from 'lucide-react';
+import { Archive, Download, FileJson, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,14 +9,10 @@ import {
 } from '../captureStore';
 import { toggleCapture } from '../useCaptureData';
 import { Omnibox } from '../Omnibox/Omnibox';
-import styles from './CaptureTopbar.module.css';
+import styles from './CaptureWorkbar.module.css';
 
-export interface CaptureTopbarProps {
-  onMenu?: () => void;
-}
-
-/** Capture topbar: sidebar toggle, recording chip, omnibox and quick actions. */
-export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element {
+/** Capture content workbar: recording, omnibox and file actions. */
+export function CaptureWorkbar(): React.JSX.Element {
   const { t } = useTranslation();
   const capturing = useCaptureStore((state) =>
     state.capturing && state.proxyReadinessIssue === null);
@@ -33,7 +29,6 @@ export function CaptureTopbar({ onMenu }: CaptureTopbarProps): React.JSX.Element
   return (
     <div className={styles.layout}>
       <div className={styles.captureControls}>
-        <IconButton icon={Menu} label={t('capture.toggleSidebar')} onClick={onMenu} />
         <button
           type="button"
           className={cx(styles.recording, !capturing && styles.paused)}

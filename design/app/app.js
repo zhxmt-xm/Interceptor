@@ -71,6 +71,7 @@ function setInspTab(tab) {
 
 function setState(s = {}) {
   if (s.theme) app.setAttribute('data-theme', s.theme);
+  if (s.layout) app.setAttribute('data-layout', s.layout);
   if (s.sidebar) {
     app.classList.remove('expanded', 'collapsed');
     app.classList.add(s.sidebar);
@@ -136,6 +137,7 @@ function positionFootpop() {
 function syncControls() {
   const map = {
     view: app.getAttribute('data-view'),
+    layout: app.getAttribute('data-layout') || 'header-v2',
     theme: app.getAttribute('data-theme'),
     sidebar: app.classList.contains('collapsed') ? 'collapsed' : 'expanded',
     overlay: app.getAttribute('data-overlay') || 'none',
@@ -162,6 +164,9 @@ dock.querySelectorAll('.switch').forEach((box) => {
 
 // Toggle the omni / add-action popover on filter-button click (capture + rules).
 app.addEventListener('click', (e) => {
+  if (e.target.closest('.header-sidebar-toggle-v2')) {
+    return setState({ sidebar: app.classList.contains('collapsed') ? 'expanded' : 'collapsed' });
+  }
   const fileTrigger = e.target.closest('[data-file-trigger]');
   if (fileTrigger) {
     const next = app.dataset.fileMenu === fileTrigger.dataset.fileTrigger

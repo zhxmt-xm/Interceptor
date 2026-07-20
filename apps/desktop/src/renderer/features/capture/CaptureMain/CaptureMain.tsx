@@ -5,6 +5,7 @@ import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
 import { HttpsDecryptionDialog } from '../HttpsDecryptionDialog/HttpsDecryptionDialog';
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
+import { CaptureWorkbar } from '../CaptureWorkbar/CaptureWorkbar';
 import { useCaptureStore } from '../captureStore';
 import styles from './CaptureMain.module.css';
 
@@ -73,14 +74,17 @@ export function CaptureMain(): React.JSX.Element {
 
   return (
     <>
-      <div
-        className={styles.main}
-        ref={mainRef}
-        style={{ gridTemplateColumns: `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px` }}
-      >
-        <RequestList />
-        <Splitter onPointerDown={startInspectorDrag} />
-        <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
+      <div className={styles.workspace}>
+        <CaptureWorkbar />
+        <div
+          className={styles.main}
+          ref={mainRef}
+          style={{ gridTemplateColumns: `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px` }}
+        >
+          <RequestList />
+          <Splitter onPointerDown={startInspectorDrag} />
+          <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
+        </div>
       </div>
       <HarTransferDialog />
       <HttpsDecryptionDialog

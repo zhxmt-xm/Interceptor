@@ -1,24 +1,25 @@
 import { ArrowRight, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Count, cx, type HttpMethod, MethodBadge } from '../../../components';
+import { Button, Count, cx, type HttpMethod, MethodBadge, Switch } from '../../../components';
 import { formatCountdown, useBreakpointsStore } from '../breakpointsStore';
-import { continueAllBreakpoints } from '../useBreakpoints';
+import { continueAllBreakpoints, setBreakOnMatch } from '../useBreakpoints';
 import styles from './PausedQueue.module.css';
 
 /** Left breakpoints pane: the queue of paused requests/responses. */
 export function PausedQueue(): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const breakpoints = useBreakpointsStore((state) => state.breakpoints);
+  const enabled = useBreakpointsStore((state) => state.enabled);
   const selectedId = useBreakpointsStore((state) => state.selectedId);
   const select = useBreakpointsStore((state) => state.select);
 
   return (
     <div className={styles.queue}>
       <div className={styles.bar}>
-        <Count className={styles.grow}>
-          {t('breakpoints.itemsPaused', { count: breakpoints.length })}
-        </Count>
+        <Count>{t('breakpoints.pausedCount', { count: breakpoints.length })}</Count>
+        <span className={styles.breakLabel}>{t('breakpoints.breakOnMatch')}</span>
+        <Switch checked={enabled} onChange={(next) => void setBreakOnMatch(next)} />
         <Button
           size="sm"
           disabled={breakpoints.length === 0}

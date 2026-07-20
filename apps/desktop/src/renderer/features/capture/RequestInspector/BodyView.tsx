@@ -261,7 +261,7 @@ export function BodyView({
 
   if (text !== null) {
     return (
-      <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+      <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} data-parity="capture-body-view">
         {modeControl}
         {decodeFailed ? (
           <div className={styles.notice}>
@@ -289,7 +289,7 @@ export function BodyView({
   }
 
   return (
-    <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`}>
+    <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} data-parity="capture-body-view">
       {modeControl}
       {decodeFailed ? (
         <div className={styles.notice}>

@@ -1,36 +1,37 @@
 .layout {
-  display: grid;
-  width: calc(100% + 36px);
-  height: 100%;
+  display: flex;
+  width: 100%;
+  height: 54px;
+  flex: 0 0 54px;
   min-width: 0;
-  margin: 0 -18px;
-  padding: 0 18px;
-  grid-template-columns: minmax(150px, 1fr) minmax(180px, 500px) minmax(150px, 1fr);
-  column-gap: 16px;
+  gap: 16px;
+  padding: 0 14px;
   align-items: center;
+  background: var(--panel);
 }
 
 .captureControls {
   display: flex;
+  flex: 1 1 0;
   min-width: 0;
   align-items: center;
-  gap: 10px;
-  justify-self: start;
+  justify-content: flex-start;
 }
 
 .filtering {
-  width: 100%;
+  width: 500px;
+  max-width: 500px;
+  flex: 0 1 500px;
   min-width: 0;
 }
 
 .inspectorTools {
   display: flex;
+  flex: 1 1 0;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 3px;
-  justify-self: end;
-  margin-right: -10px;
 }
 
 .fileAnchor {
@@ -93,6 +94,7 @@
   flex: 0 0 auto;
   cursor: pointer;
 }
+
 .recordingDot {
   width: 7px;
   height: 7px;
@@ -100,11 +102,31 @@
   background: var(--red);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 24%, transparent);
 }
+
 .paused {
   background: var(--panel-2);
   color: var(--text-3);
 }
+
 .paused .recordingDot {
   background: var(--text-3);
   box-shadow: none;
+}
+
+@container (max-width: 1040px) {
+  .layout {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .recording {
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .recording > span:last-child {
+    display: none;
+  }
 }

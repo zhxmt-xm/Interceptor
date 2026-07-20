@@ -201,7 +201,7 @@ getComputedStyle(element)
 
 ### 系统性偏移扣除
 
-Design SPA 是带边框的 1280×800 画布，内容通常从 `(1, 1)` 开始；真实 Renderer 填满 BrowserWindow，从 `(0, 0)` 开始。如果直接相减，所有元素都会得到相同的约 1px 偏差。
+Design PNG 保留带边框的 1280×800 画布用于像素对比；几何测量页会注入样式移除 `.app` 的 border/radius/shadow，让 Design 与真实 Renderer 都使用完整 1280×800 内容盒，避免边框同时造成约 1px 位置差和 2px 可用宽高差。
 
 Harness 对全部匹配 target 的位置差求中位数：
 
@@ -544,7 +544,7 @@ parity-report.md
 
 ## 如何解读几何差
 
-Harness 先计算所有匹配目标的系统性中位偏移，再从每个元素的 `dx/dy` 中扣除。Design SPA 画布自带 1px 边框，而真实 Renderer 从 `(0, 0)` 开始，这种全局差异不应误报为布局错误。
+Harness 的几何页先移除 Design SPA 卡片边框，再计算所有匹配目标的系统性中位偏移并从每个元素的 `dx/dy` 中扣除。PNG 像素 diff 仍保留原始 1px 设计边框；几何报告不应再把这层边框误报成位置或宽高错误。
 
 Flag 条件：
 

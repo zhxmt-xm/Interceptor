@@ -1,4 +1,4 @@
-import { Copy, Eye, FolderOpen, Library, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
+import { Copy, FolderOpen, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -140,12 +140,8 @@ function CertificatesPanel(): React.JSX.Element {
           </Row>
         ) : null}
         <Row
-          label={t('settings.certificateAuthority')}
-          hint={
-            info.trusted
-              ? t('settings.removeTrustBeforeChange')
-              : t('settings.newCaInvalidates')
-          }
+          label={t('settings.location')}
+          hint={t('settings.certificatePathHint')}
         >
           {info.present && !info.trusted ? (
             <Button
@@ -155,6 +151,15 @@ function CertificatesPanel(): React.JSX.Element {
               onClick={() => applyInfo((api) => api.deleteCertificate())}
             >
               {t('settings.delete')}
+            </Button>
+          ) : null}
+          {info.present ? (
+            <Button
+              icon={FolderOpen}
+              disabled={busy}
+              onClick={() => void window.interceptor?.revealCertificate()}
+            >
+              {t('settings.revealCertificate')}
             </Button>
           ) : null}
           <Button
@@ -204,29 +209,6 @@ function CertificatesPanel(): React.JSX.Element {
             </>
           )}
         </Row>
-        {info.present && info.path ? (
-          <Row label={t('settings.location')} hint={t('settings.certificatePathHint')}>
-            <span className={styles.mono}>{info.path}</span>
-            <IconButton
-              icon={Eye}
-              label={t('settings.viewCertificate')}
-              size="sm"
-              onClick={() => void window.interceptor?.viewCertificate()}
-            />
-            <IconButton
-              icon={Library}
-              label={t('settings.openCertificateManager')}
-              size="sm"
-              onClick={() => void window.interceptor?.openCertificateManager()}
-            />
-            <IconButton
-              icon={FolderOpen}
-              label={t('settings.revealCertificate')}
-              size="sm"
-              onClick={() => void window.interceptor?.revealCertificate()}
-            />
-          </Row>
-        ) : null}
       </Group>
 
       <Group title={t('settings.httpsInterception')}>

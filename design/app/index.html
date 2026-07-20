@@ -9,11 +9,37 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app expanded" data-theme="light" data-view="capture" data-https="fresh" data-settings="certificates" data-repair="idle" data-update="up-to-date">
+    <div class="app expanded" data-theme="light" data-view="capture" data-layout="header-v2" data-https="fresh" data-settings="certificates" data-repair="idle" data-update="up-to-date">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
       <header class="topbar">
+        <div class="window-header-v2">
+          <div class="header-context-v2" data-v="capture">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Capture</span>
+          </div>
+          <div class="header-context-v2" data-v="rules">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Rules</span>
+          </div>
+          <div class="header-context-v2" data-v="composer">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Composer</span>
+          </div>
+          <div class="header-context-v2" data-v="settings">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Settings</span>
+          </div>
+          <div class="header-context-v2" data-v="breakpoints">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Breakpoints</span>
+          </div>
+          <div class="header-context-v2" data-v="diagnostics">
+            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
+            <span class="header-view-title-v2" data-parity="window-header-title">Diagnostics</span>
+          </div>
+        </div>
         <div class="tv capture-tools" data-v="capture">
           <div class="cap-controls"><div class="ib"><svg><use href="#i-menu"/></svg></div><div class="rec"><span class="dot"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></div></div>
           <div class="cap-filtering"><div class="omni">
@@ -49,20 +75,12 @@
         <div class="tv" data-v="rules">
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Rules</span>
-          <span class="cnt" style="margin-left:4px"><b>8</b> rules · 6 enabled</span>
-          <div class="tacts end">
-            <button class="ib sm" aria-label="New rule" title="New rule"><svg><use href="#i-plus"/></svg></button>
-            <button class="ib sm" aria-label="Apply changes" title="Apply changes" disabled><svg><use href="#i-check"/></svg></button>
-          </div>
+          <span class="cnt" style="margin-left:4px"><b>Rev 42</b> · applied · 8 rules · 6 enabled</span>
         </div>
 
         <div class="tv" data-v="composer">
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Composer</span>
-          <div class="tacts end">
-            <button class="ib sm" aria-label="History" title="History"><svg><use href="#i-clock"/></svg></button>
-            <button class="ib sm" aria-label="New" title="New"><svg><use href="#i-plus"/></svg></button>
-          </div>
         </div>
 
         <div class="tv" data-v="settings">
@@ -74,21 +92,11 @@
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Breakpoints</span>
           <span class="cnt" style="margin-left:4px"><b>2</b> paused</span>
-          <div class="tacts end">
-            <span class="cnt" style="margin-right:6px">Break on match</span>
-            <div class="sw on"></div>
-          </div>
         </div>
 
         <div class="tv" data-v="diagnostics">
           <div class="ib"><svg><use href="#i-menu"/></svg></div>
           <span class="ttl">Diagnostics</span>
-          <div class="tacts end">
-            <div class="fchip">Process<svg><use href="#i-chev"/></svg></div>
-            <div class="fchip">Level<svg><use href="#i-chev"/></svg></div>
-            <div class="fchip">Outcome<svg><use href="#i-chev"/></svg></div>
-            <button class="ib sm" aria-label="Export JSONL" title="Export JSONL"><svg><use href="#i-download"/></svg></button>
-          </div>
         </div>
         <div class="window-controls">
           <button class="ib sm window-control" aria-label="Minimize" title="Minimize"><svg><use href="#i-minus"/></svg></button>
@@ -101,13 +109,46 @@
       <div class="mainhost">
         <!-- capture -->
         <div class="mv tmain v-capture" data-v="capture">
+          <div class="capture-workbar-v2">
+            <div class="capture-workbar-list-v2">
+              <div class="capture-workbar-recording-v2"><div class="rec"><span class="dot"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></div></div>
+              <div class="omni">
+                <span class="omni-search-v2"><svg class="si"><use href="#i-search"/></svg></span>
+                <span class="pill">GET<span class="x"><svg><use href="#i-x"/></svg></span></span>
+                <span class="pill">2xx<span class="x"><svg><use href="#i-x"/></svg></span></span>
+                <span class="ph">Filter requests…</span>
+                <span class="sp"></span>
+                <button class="fbtn"><svg><use href="#i-filter"/></svg></button>
+                <div class="ompop">
+                  <div class="po-t">Add filter</div>
+                  <div class="fi"><svg><use href="#i-branch"/></svg><span class="n">Method</span><span class="ex">GET, POST, DELETE…</span></div>
+                  <div class="fi"><svg><use href="#i-dot"/></svg><span class="n">Status</span><span class="ex">2xx · 3xx · 4xx · 5xx</span></div>
+                  <div class="fi"><svg><use href="#i-layers"/></svg><span class="n">Type</span><span class="ex">json, js, font, ws…</span></div>
+                  <div class="fi"><svg><use href="#i-globe"/></svg><span class="n">Host</span><span class="ex">contains…</span></div>
+                  <div class="fi"><svg><use href="#i-activity"/></svg><span class="n">Duration</span><span class="ex">&gt; 500 ms</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="capture-workbar-inspector-v2">
+              <button class="ib sm file-trigger" data-file-trigger="import" aria-label="Import" title="Import"><svg><use href="#i-upload"/></svg></button>
+              <button class="ib sm file-trigger" data-file-trigger="export" aria-label="Export" title="Export"><svg><use href="#i-download"/></svg></button>
+              <div class="filemenu import-menu">
+                <button class="file-command"><svg><use href="#i-upload"/></svg><span>Import HAR</span><code>.har</code></button>
+                <button class="file-command"><svg><use href="#i-file"/></svg><span>Open Capture</span><code>.iarchive</code></button>
+              </div>
+              <div class="filemenu export-menu">
+                <button class="file-command"><svg><use href="#i-download"/></svg><span>Export HAR</span><code>.har</code></button>
+                <button class="file-command"><svg><use href="#i-file"/></svg><span>Save Capture</span><code>.iarchive</code></button>
+              </div>
+            </div>
+          </div>
+          <div class="capture-content-v2">
           <div class="listwrap">
             <div class="listbar">
               <div class="seg protocol-switch"><span class="on">All</span><span>H1</span><span>H2</span><span>WS</span></div>
               <div class="sp"></div>
               <span class="cnt"><b>18</b> of 241</span>
-              <div class="ib sm"><svg><use href="#i-columns"/></svg></div>
-              <div class="ib sm"><svg><use href="#i-trash"/></svg></div>
+              <div class="icon-actions"><div class="ib sm"><svg><use href="#i-columns"/></svg></div><div class="ib sm"><svg><use href="#i-trash"/></svg></div></div>
             </div>
             <div class="lhead"><span>Method</span><span>Host · Path</span><span>Status</span><span>Proto</span><span>Type</span><span>Size</span><span>Time</span></div>
             <div class="row sel" data-capture-row="http"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">1.2 KB</span><span class="time">142 ms</span></div>
@@ -124,10 +165,10 @@
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="insp">
-            <div class="itop http-only"><span class="chip">GET</span><span class="iurl"><span class="dom">api.github.com</span><span class="pth">/user</span></span><span class="sbadge"><span class="d"></span>200 OK</span></div>
-            <div class="itop tunnel-only"><span class="chip">CONNECT</span><span class="iurl"><span class="dom">accounts.google.com</span><span class="pth">:443</span></span><span class="sbadge tunnel"><span class="d"></span>Encrypted</span></div>
-            <div class="itop ws-only"><span class="chip">GET</span><span class="iurl"><span class="dom">realtime.example.com</span><span class="pth">/socket</span></span><span class="sbadge ws"><span class="d"></span>Connected</span></div>
-            <div class="itop grpc-only"><span class="chip" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 14%,transparent)">POST</span><span class="iurl"><span class="dom">orders.example.com</span><span class="pth">/orders.v1.OrderService/Watch</span></span><span class="sbadge"><span class="d"></span>gRPC 0 OK</span></div>
+            <div class="itop http-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">api.github.com</span><span class="pth" data-parity="capture-inspector-path">/user</span></span><span class="sbadge"><span class="d"></span>200 OK</span></div></div>
+            <div class="itop tunnel-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">CONNECT</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">accounts.google.com</span><span class="pth" data-parity="capture-inspector-path">:443</span></span><span class="sbadge tunnel"><span class="d"></span>Encrypted</span></div></div>
+            <div class="itop ws-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">realtime.example.com</span><span class="pth" data-parity="capture-inspector-path">/socket</span></span><span class="sbadge ws"><span class="d"></span>Connected</span></div></div>
+            <div class="itop grpc-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 14%,transparent)">POST</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">orders.example.com</span><span class="pth" data-parity="capture-inspector-path">/orders.v1.OrderService/Watch</span></span><span class="sbadge"><span class="d"></span>gRPC 0 OK</span></div></div>
             <div class="tabs http-only" data-tabs="insp"><span class="on" data-tab="headers">Headers</span><span data-tab="request">Request</span><span data-tab="response">Response</span><span data-tab="timing">Timing</span><span data-tab="cookies">Cookies</span><span data-tab="tls">TLS</span></div>
             <div class="tabs tunnel-only" data-tabs="insp"><span class="on" data-tab="tunnel">TLS tunnel</span></div>
             <div class="tabs ws-only" data-tabs="insp"><span data-tab="headers">Headers</span><span class="on" data-tab="messages">Messages</span><span data-tab="timing">Timing</span><span data-tab="tls">TLS</span></div>
@@ -141,7 +182,7 @@
               <div class="tp" data-tab="request">
                 <div class="sec"><div class="sh">Request line</div><div class="kv"><span class="k">Method</span><span class="v a">GET</span><span class="k">Path</span><span class="v">/user</span><span class="k">Version</span><span class="v">HTTP/2</span><span class="k">Scheme</span><span class="v g">https</span></div></div>
                 <div class="sec"><div class="sh">Query String Parameters <span class="c">0</span></div><div class="emptyv">No query parameters on this request.</div></div>
-                <div class="sec"><div class="sh">Request Payload</div><div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="bodybox">{<br />&nbsp;&nbsp;<span class="jk">"name"</span><span class="jp">:</span> <span class="js">"interceptor"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"enabled"</span><span class="jp">:</span> <span class="jn">true</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"limits"</span><span class="jp">:</span> { <span class="jk">"requests"</span><span class="jp">:</span> <span class="jn">250</span> }<br />}</div></div>
+                <div class="sec"><div class="sh">Request Payload</div><div class="bodyview" data-parity="capture-body-view"><div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="bodybox">{<br />&nbsp;&nbsp;<span class="jk">"name"</span><span class="jp">:</span> <span class="js">"interceptor"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"enabled"</span><span class="jp">:</span> <span class="jn">true</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"limits"</span><span class="jp">:</span> { <span class="jk">"requests"</span><span class="jp">:</span> <span class="jn">250</span> }<br />}</div></div></div>
               </div>
               <div class="tp" data-tab="response">
                 <div class="sec"><div class="sh">Body <span class="c">application/json · 1.2 KB</span></div>
@@ -193,6 +234,7 @@
                   <div class="wsrow sel"><span class="wsdir in"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"buildId":8431,"state":"running","branch":"main"}</span><span class="wssize">54 B</span><span class="wstime">+1.4 s</span></div>
                   <div class="wspayload">
                     <div class="wsphead"><span>Received text</span><span class="cnt">54 B · message 3</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div>
+                    <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div>
                     <div class="bodybox">{<br />&nbsp;&nbsp;<span class="jk">"buildId"</span><span class="jp">:</span> <span class="jn">8431</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"state"</span><span class="jp">:</span> <span class="js">"running"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"branch"</span><span class="jp">:</span> <span class="js">"main"</span><br />}</div>
                   </div>
                   <div class="wsrow"><span class="wsdir out"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Binary</span><span class="wspreview muted">89 50 4e 47 0d 0a 1a 0a …</span><span class="wssize">2.8 KB</span><span class="wstime">+2.1 s</span></div>
@@ -211,6 +253,7 @@
                   <div class="grpcrow sel"><span class="grpcdir"><svg><use href="#i-download"/></svg></span><span class="grpcindex">Message 2</span><span class="grpcmeta compressed">gzip compressed</span><span class="grpcsize">1.2 KB</span><span class="grpcoffset">@ 0x002f</span></div>
                   <div class="grpcpayload">
                     <div class="grpchead"><span>Response message 2</span><span class="cnt">raw protobuf · 1.2 KB</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div>
+                    <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div>
                     <div class="grpcpreview">Preview limited to first 48 bytes of binary body.</div>
                     <div class="grpchex">00000000&nbsp; 1f 8b 08 00 00 00 00 00 00 03 e3 62 e1 60 4a 2d<br />00000010&nbsp; ca 2f 2d 29 2e 51 48 ce cf 2b 49 cd 2b 01 00 7a<br />00000020&nbsp; 63 98 31 18 00 00 00</div>
                   </div>
@@ -221,20 +264,21 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- rules -->
         <div class="mv rmain" data-v="rules">
           <div class="rlist">
-            <div class="rlbar"><span class="cnt"><b>Rev 42</b> · applied</span><div class="ib sm"><svg><use href="#i-search"/></svg></div><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
-            <div class="rrow sel"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Stub /v1/user</span><span class="rmatch">api.example.com · /v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span></div><span class="rhit">128</span></div>
+            <div class="rlbar"><label class="rules-search"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search rules…" aria-label="Search rules" /></label><div class="icon-actions"><button class="ib sm" aria-label="New rule" title="New rule"><svg><use href="#i-plus"/></svg></button><button class="ib sm" aria-label="Apply changes" title="Apply changes" disabled><svg><use href="#i-check"/></svg></button><button class="ib sm" aria-label="More rule actions" title="More rule actions"><svg><use href="#i-more"/></svg></button></div></div>
+            <div class="rrow sel"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname" data-parity="rule-name-rule-stub">Stub /v1/user</span><span class="rmatch">api.example.com · /v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">128</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Force CORS + JSON</span><span class="rmatch">*.api.com · response</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">512</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Redirect to staging</span><span class="rmatch">prod.example.com → stg</span></div><div class="rchips"><span class="rchip remote">Map Remote</span></div><span class="rhit">44</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Block trackers</span><span class="rmatch">*.doubleclick.net</span></div><div class="rchips"><span class="rchip block">Block</span></div><span class="rhit">1.2k</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Throttle uploads</span><span class="rmatch">upload.example.com · 3G</span></div><div class="rchips"><span class="rchip throttle">Throttle</span></div><span class="rhit">8</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Debug checkout</span><span class="rmatch">shop.example.com · /checkout</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">3</span></div>
             <div class="rrow off"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw"></div><div class="rmeta"><span class="rname">Rewrite auth header</span><span class="rmatch">api.github.com · request</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">76</span></div>
-            <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Mock payment</span><span class="rmatch">api.stripe.com · /v1/charges</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">21</span></div>
+            <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname" data-parity="rule-name-rule-payment">Mock payment</span><span class="rmatch">api.stripe.com · /v1/charges</span></div><div class="rchips"><span class="rchip block">Synthetic</span></div><span class="rhit">21</span></div>
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="reditor">
@@ -256,8 +300,6 @@
                     <div class="ahead"><span class="aicon map"><svg><use href="#i-map"/></svg></span><b>Map Local</b><span class="asub">serve file</span><span class="sp" style="flex:1"></span><div class="sw on"></div><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
                     <div class="abody">
                       <div class="orow kv2"><div class="lg" style="justify-content:flex-start;color:var(--text-2)">Local path</div><div class="inp"><svg><use href="#i-file"/></svg>~/mocks/user.json</div></div>
-                      <div class="orow kv2"><div class="lg" style="justify-content:flex-start;color:var(--text-2)">Content-Type</div><div class="inp">application/json</div></div>
-                      <div class="orow kv2"><div class="lg" style="justify-content:flex-start;color:var(--text-2)">Status</div><div class="inp">200</div></div>
                     </div>
                   </div>
                   <div class="acard">
@@ -297,13 +339,14 @@
               <div class="seg protocol-switch"><span class="on">Auto</span><span>HTTP/1.1</span><span>HTTP/2</span></div>
               <span class="sp" style="flex:1"></span>
               <span class="cnt">TLS 1.3 · h2</span>
+              <div class="icon-actions"><button class="ib sm" data-parity="composer-history" aria-label="History" title="History"><svg><use href="#i-clock"/></svg></button><button class="ib sm" aria-label="New request" title="New request"><svg><use href="#i-plus"/></svg></button></div>
             </div>
             <div class="tabs"><span class="on">Headers <span style="color:var(--text-3)">4</span></span><span>Query</span><span>Body</span><span>Auth</span></div>
             <div class="htab">
               <div class="hhead"><span></span><span>Name</span><span>Value</span><span></span></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2">authorization</span><span class="v2">Bearer github_pat_11A…</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2">content-type</span><span class="v2">application/json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2">accept</span><span class="v2">application/vnd.github+json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
+              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-0">authorization</span><span class="v2">Bearer github_pat_11A…</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
+              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-1">content-type</span><span class="v2">application/json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
+              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-2">accept</span><span class="v2">application/vnd.github+json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
               <div class="hrow"><span class="cb"></span><span class="k2">user-agent</span><span class="v2">Interceptor/1.0.0</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
               <div class="hrow add2"><span class="cb"></span><span class="k2">Add header…</span><span class="v2"></span><span></span></div>
             </div>
@@ -352,7 +395,7 @@
                 <div class="srow"><div class="scap"><b>Address</b><span>Loopback only</span></div><div class="sctl"><span class="mono2">127.0.0.1:8888</span><button class="btn"><svg><use href="#i-copy"/></svg>Copy</button></div></div>
               </div>
               <div class="sgroup">
-                <div class="gh">System proxy</div>
+                <div class="gh">System Proxy</div>
                 <div class="srow"><div class="scap"><b>Automatic routing</b><span>Restored when capture stops or Interceptor exits</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Owned by Interceptor</span><button class="btn">Restore</button></div></div>
                 <div class="srow"><div class="scap"><b>Current configuration</b><span>HTTP and HTTPS</span></div><div class="sctl"><span class="mono2">127.0.0.1:8888</span></div></div>
                 <div class="srow"><div class="scap"><b>Bypass</b><span>Hosts that connect directly</span></div><div class="sctl"><span class="mono2">&lt;local&gt;</span></div></div>
@@ -372,18 +415,17 @@
               <div class="srow"><div class="scap"><b>Status</b><span>Generated on this device</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Generated</span></div></div>
               <div class="srow"><div class="scap"><b>SHA-256 fingerprint</b></div><div class="sctl"><span class="mono2">AB:CD:12:9F:…:73:E1</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div></div>
               <div class="srow"><div class="scap"><b>Valid until</b></div><div class="sctl"><span class="mono2">2035-07-10</span></div></div>
-              <div class="srow"><div class="scap"><b>Certificate file</b><span>Export the CA to trust it on another device</span></div><div class="sctl"><button class="btn"><svg><use href="#i-download"/></svg>Export</button><button class="btn" disabled><svg><use href="#i-refresh"/></svg>Regenerate</button></div></div>
+              <div class="srow"><div class="scap"><b>Location</b><span>Location of the root CA certificate PEM file on disk</span></div><div class="sctl"><button class="btn"><svg><use href="#i-file"/></svg>Show in file manager</button><button class="btn" disabled><svg><use href="#i-refresh"/></svg>Regenerate</button></div></div>
             </div>
             <div class="sgroup">
               <div class="gh">Trust status</div>
-              <div class="srow"><div class="scap"><b>User store</b><span>Current user only</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Trusted</span></div></div>
-              <div class="srow"><div class="scap"><b>System store</b><span>All users · requires administrator elevation</span></div><div class="sctl"><span class="mono2" style="color:var(--text-3)">Not installed</span><button class="btn pri"><svg><use href="#i-shield"/></svg>Install…</button></div></div>
+              <div class="srow"><div class="scap"><b>Local machine</b><span>All users on this machine · administrator approval required to install or remove</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Trusted</span><button class="btn danger"><svg><use href="#i-trash"/></svg>Remove</button></div></div>
             </div>
             <div class="sgroup">
               <div class="gh">HTTPS interception</div>
               <div class="srow"><div class="scap"><b>Decrypt HTTPS (MITM)</b><span>Global switch for TLS interception</span></div><div class="sctl"><div class="sw on"></div></div></div>
-              <div class="srow"><div class="scap"><b>Per-host overrides</b><span>api.example.com · *.internal.test</span></div><div class="sctl"><button class="btn"><svg><use href="#i-plus"/></svg>Add host</button></div></div>
-              <div class="srow"><div class="scap"><b>Insecure TLS exceptions</b><span>self-signed.local — origin cert not verified</span></div><div class="sctl"><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>1 flagged</span></div></div>
+              <div class="srow"><div class="scap"><b>Per-host overrides</b><span>Origins whose certificate errors are ignored</span></div><div class="sctl"><div class="inp">add host…</div><button class="btn"><svg><use href="#i-plus"/></svg>Add host</button></div></div>
+              <div class="srow"><div class="scap"><b>Insecure TLS exceptions</b><span>Origin certificate is not verified</span></div><div class="sctl"><span class="hostchip">api.internal.local <span class="ib sm"><svg><use href="#i-x"/></svg></span></span></div></div>
             </div>
             </div>
             <div class="spanel" data-settings-panel="updates">
@@ -416,7 +458,7 @@
         <!-- breakpoints -->
         <div class="mv bmain v-breakpoints" data-v="breakpoints">
           <div class="bqueue">
-            <div class="bqbar"><span class="cnt" style="flex:1"><b>2</b> requests paused</span><button class="btn" style="height:28px;padding:0 10px;font-size:11.5px">Continue all</button></div>
+            <div class="bqbar"><span class="cnt"><b>2</b> paused</span><span class="break-match-label">Break on match</span><div class="sw on"></div><button class="btn" style="height:28px;padding:0 10px;font-size:11.5px">Continue all</button></div>
             <div class="bqrow sel">
               <span class="pdir req"><svg><use href="#i-arrow"/></svg></span>
               <div class="bqmeta"><div class="r1"><span class="m post">POST</span><span class="rn">Debug checkout</span></div><div class="r2">shop.example.com/checkout</div></div>
@@ -461,6 +503,7 @@
         <!-- diagnostics -->
         <div class="mv dmain" data-v="diagnostics">
           <div class="dlist">
+            <div class="dtoolbar"><span class="cnt"><b>2,481</b> records</span><span class="sp"></span><div class="fchip">Process<svg><use href="#i-chev"/></svg></div><div class="fchip">Level<svg><use href="#i-chev"/></svg></div><div class="fchip">Outcome<svg><use href="#i-chev"/></svg></div><button class="ib sm" aria-label="Export JSONL" title="Export JSONL"><svg><use href="#i-download"/></svg></button></div>
             <div class="dhead"><span>Time</span><span>Command</span><span>Level</span><span>Outcome</span><span style="text-align:right">Duration</span></div>
             <div class="drow"><span class="dts">12:00:01.234</span><span class="dcmd">core · core:echo</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">2 ms</span></div>
             <div class="drow"><span class="dts">12:00:02.100</span><span class="dcmd">main · rules:apply</span><span class="lvl info"><span class="d"></span>info</span><span class="oc ok">success</span><span class="ddur">18 ms</span></div>
@@ -495,7 +538,7 @@
 
       <!-- =========================== STATUSBAR =========================== -->
       <footer class="statusbar">
-        <div class="sv" data-v="capture"><div class="g capture-recording-status"><span class="rd"></span><span class="recording-label">Recording</span><span class="paused-label">Not recording</span></div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="g mono">18 of 241 requests</div><div class="sp g mono">↑ 12.4 KB/s&nbsp;&nbsp;↓ 380 B/s</div></div>
+        <div class="sv" data-v="capture"><div class="g capture-recording-status"><span class="rd"></span><span class="recording-label">Recording</span><span class="paused-label">Not recording</span></div><div class="g"><span class="gd"></span>Proxy Core · Running</div><div class="g mono">127.0.0.1 · loopback only</div><div class="g mono">18 of 241 requests</div><div class="sp g mono">↑ 12.4 KB/s&nbsp;&nbsp;↓ 380 B/s</div></div>
         <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">6 of 8 enabled</div><div class="sp g mono">2 force body buffering</div></div>
         <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g mono">127.0.0.1:8888</div><div class="sp g mono">last send 201 · 142 ms</div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>
@@ -619,6 +662,7 @@
       <button class="dock-toggle" aria-label="Toggle design controls"><svg><use href="#i-settings"/></svg></button>
       <div class="dock-panel">
         <div class="grp"><span class="lbl">Feature</span><div class="switch" data-key="view"><button data-set="capture">Capture</button><button data-set="rules">Rules</button><button data-set="composer">Composer</button><button data-set="breakpoints">Breaks</button><button data-set="diagnostics">Diag</button><button data-set="settings">Settings</button></div></div>
+        <div class="grp"><span class="lbl">Layout</span><div class="switch" data-key="layout"><button data-set="current">Current</button><button data-set="header-v2">Header V2</button></div></div>
         <div class="grp"><span class="lbl">Theme</span><div class="switch" data-key="theme"><button data-set="light">Light</button><button data-set="warm">Warm</button><button data-set="dark">Dark</button><button data-set="ember">Ember</button></div></div>
         <div class="grp"><span class="lbl">Sidebar</span><div class="switch" data-key="sidebar"><button data-set="expanded">Expand</button><button data-set="collapsed">Collapse</button></div></div>
         <div class="grp"><span class="lbl">Overlay</span><div class="switch" data-key="overlay"><button data-set="none">None</button><button data-set="https-setup">HTTPS</button><button data-set="import-export">Export</button></div></div>

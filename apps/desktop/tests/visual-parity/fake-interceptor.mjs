@@ -97,6 +97,9 @@ const sessions = [
   summary({ id: 'http-7', host: 'api.github.com', path: '/repos/acme/app/hooks/1', protocol: 'h2', statusCode: 204, responseBytes: 0, durationMs: 77, method: 'DELETE' }),
   summary({ id: 'http-8', host: 'api.internal.local', path: '/v2/report', protocol: 'h2', statusCode: 500, responseMime: 'application/json', responseBytes: 512, durationMs: 1_200 }),
 ];
+sessions.forEach((session, index) => {
+  session.startedAt = startedAt + index * 1_000;
+});
 
 const bodyText = {
   'http-request-body': '{"name":"interceptor","enabled":true,"limits":{"requests":250}}',
@@ -267,8 +270,19 @@ const grpcMessages = {
   ],
 };
 
+const stubRule = rule('rule-stub', 'Stub /v1/user', 'api.example.com', '/v1/user', { type: 'map-local', path: 'mocks/user.json' });
+stubRule.matchers = [
+  { type: 'host', value: 'api.example.com', mode: 'exact' },
+  { type: 'path', value: '/v1/user', mode: 'prefix' },
+  { type: 'method', value: 'GET, POST' },
+];
+stubRule.actions = [
+  { type: 'map-local', path: 'mocks/user.json' },
+  { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' },
+];
+
 const rules = [
-  rule('rule-stub', 'Stub /v1/user', 'api.example.com', '/v1/user', { type: 'map-local', path: 'mocks/user.json' }),
+  stubRule,
   rule('rule-cors', 'Force CORS + JSON', '*.api.com', '/', { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' }),
   rule('rule-staging', 'Redirect to staging', 'prod.example.com', '/', { type: 'map-remote', scheme: 'https', host: 'stg.example.com' }),
   rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' }),
@@ -619,7 +633,7 @@ export function installFakeInterceptor({
     },
     onCaptureEvents: () => () => undefined,
     querySessions: async (request) => ({
-      items: request.filter?.sessionId === fixture.capture.captureStatus.sessionId
+      items: !request.filter?.sessionId || request.filter.sessionId === captureStatus.sessionId
         ? fixture.capture.sessions
         : [],
       hasMore: false,

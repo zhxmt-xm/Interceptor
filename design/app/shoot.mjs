@@ -61,6 +61,14 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
 }
+// Shell exploration: a dedicated global window header with feature tools inside content.
+for (const theme of ['light', 'dark']) {
+  shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', layout: 'header-v2', overlay: '' } });
+  shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', layout: 'header-v2', overlay: '' } });
+  for (const feature of ['rules', 'composer', 'settings', 'breakpoints', 'diagnostics']) {
+    shots.push({ feature: 'shell-v2', theme, variant: feature, state: { view: feature, theme: TOKEN[theme], sidebar: 'expanded', layout: 'header-v2', overlay: '' } });
+  }
+}
 
 const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}';
 const FULL_CSS = `
@@ -94,7 +102,14 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
-    await page.evaluate((st) => window.__setState(st), s.state);
+    await page.evaluate((st) => window.__setState({
+      layout: 'header-v2',
+      fileMenu: '',
+      settings: 'certificates',
+      repair: 'idle',
+      update: 'up-to-date',
+      ...st,
+    }), s.state);
     await page.waitForTimeout(140);
     const dest = path.join(shotsRoot, s.theme, s.feature);
     await mkdir(dest, { recursive: true });

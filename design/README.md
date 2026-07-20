@@ -20,7 +20,8 @@ design/
 规则:
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
-- 状态统一由 `window.__setState({view,theme,sidebar,overlay,tab,pop,lang,pop2,https})` 驱动（`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，`https`=HTTPS setup 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
+- Header V2 是 SPA 的默认布局与已批准落地基线；旧布局只保留为设计对照。Header 左侧只承载侧栏折叠按钮和 feature 名称，右侧只保留窗口控制；状态统一放到底部状态栏，业务命令位于各 feature 内容工具栏。
+- 状态统一由 `window.__setState({view,theme,sidebar,layout,overlay,tab,pop,lang,pop2,https})` 驱动（`layout`=`header-v2`/`current`，`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，`https`=HTTPS setup 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
 
@@ -29,6 +30,7 @@ design/
 ```powershell
 node design/app/shoot.mjs   # 渲染 SPA 所有状态,输出到 app/shots/<theme>/<feature>/
 node design/app/shoot.mjs --feature=import-export  # 只更新一个 feature,保留其他 shots
+node design/app/shoot.mjs --feature=shell-v2       # 更新 Header V2 的六个 workspace + Capture 折叠态
 ```
 
 依赖已随仓库存在的 `@playwright/test` + 系统 Edge(`channel: 'msedge'`),无需额外安装浏览器。
@@ -43,6 +45,7 @@ node design/app/shoot.mjs --feature=import-export  # 只更新一个 feature,保
   - **breakpoints** — 运行时暂停队列 + 编辑请求 / 响应 + 放行
   - **settings** — Proxy / Certificates / Appearance / Storage / Privacy / Updates
   - **diagnostics** — 命令诊断表格 + action 时间线
+  - **shell-v2** — 默认 46px Window Header、全高侧栏、内容工具栏与六个 workspace 的明暗主题基线
   - **https-setup**(overlay)— 用户从 TLS tunnel Detail 主动开启的 CA 生成 → 系统信任 → HTTPS 解密流程
   - **import-export**(overlay)— HAR / 无损原生归档导出对话框
 

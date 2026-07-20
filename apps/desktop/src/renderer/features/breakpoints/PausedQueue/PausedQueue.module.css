@@ -20,8 +20,12 @@
   background: var(--filter);
   border-bottom: 1px solid var(--border);
 }
-.grow {
-  flex: 1;
+.breakLabel {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 550;
+  white-space: nowrap;
 }
 .row {
   display: flex;

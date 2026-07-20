@@ -31,7 +31,7 @@ export function DiagnosticsMain(): React.JSX.Element {
     <div
       className={styles.main}
       ref={mainRef}
-      style={{ gridTemplateColumns: `minmax(0, 1fr) 7px ${detailWidth}px` }}
+      style={{ gridTemplateColumns: `minmax(0, 1fr) 1px ${detailWidth}px` }}
     >
       <TraceList />
       <Splitter onPointerDown={startDrag} />

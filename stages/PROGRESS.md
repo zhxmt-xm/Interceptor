@@ -1,6 +1,6 @@
 # Interceptor 项目进度
 
-> 最后更新：2026-07-20
+> 最后更新：2026-07-21
 > 本文件只保存当前状态和 Stage 索引。实施、诊断和验证详情放在 `stages/M*.md`，避免默认上下文持续膨胀。
 ## 文档导航
 
@@ -19,12 +19,13 @@
 - 已完成 Stage：M0–M14（生产实签/公证和真实macOS runner为外部发布验收）。
 - 当前 Stage：M14 临时 Capture Session 与轻重数据分层（已完成）。
 - 当前结果：Capture/Body 为当前 Core 代际临时数据，RuleSet/Diagnostics 独立持久；Stop 只暂停记录（监听器与系统代理保持运行、流量继续转发、记录保留），Start 恢复记录并继续追加，Clear 才删除。详情见 [M14.md](M14.md)。
-- 下一动作：首个真实 tag release 仍待仓库外签名/公证凭据。
+- 当前 UI 工作流：Header V2 已于 2026-07-21 在设计 SPA 与 React Renderer 一对一落地。共享 AppShell 使用 46px Window Header（只保留侧栏折叠、feature 名称和窗口控制），Capture 使用 54px Recording/Filtering/Import/Export 工作栏，业务命令下沉到各 feature 的 40px 内容工具栏；全高侧栏、1px 共享 splitter、Capture Detail 白色阴影摘要框、底栏状态与 light/dark/collapsed 状态均已实现。旧 Feature Topbar 组件已删除。
+- 下一动作：评审并提交 Header V2 UI 里程碑；首个真实 tag release 的签名/公证仍是后续仓库外验收。
 - 打包方案已落地：Mockttp 与 `ws` 均 external 保留 require，`scripts/ship-core-deps.mjs` 用 `@vercel/nft` + 原生 prebuilds 补拷依赖闭包到 `resources/proxy-core/node_modules`；最终 Windows package/smoke 已验证首代 Core、重启和 Storage。
-- Git 状态：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已在 `origin/main`；接手时以 `git status`/`git log` 为准。
+- Git 状态：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已在 `origin/main`；当前未提交工作树包含 Header V2 的 `design/` 资产、Renderer 实现、visual parity、smoke 语义修正和文档同步。接手时仍以 `git status`/`git log` 为准。
 - 阻塞：无代码阻塞。生产签名/公证需要仓库外凭据；真实macOS DMG与应用内打开需原生runner留证。
 
-详细接棒说明见 [HANDOVER.md](HANDOVER.md)，最新完成阶段见 [M13.md](M13.md)。
+详细接棒说明见 [HANDOVER.md](HANDOVER.md)，最新完成阶段见 [M14.md](M14.md)。
 
 ## Stage 总览
 
@@ -83,6 +84,8 @@
 当前代码架构的权威说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 当前验证摘要
+
+2026-07-21 Header V2 UI 里程碑：三 workspace typecheck 通过；Desktop 109 / Proxy Core 180 / Protocol 19，共 308 项单测通过；Windows x64 package 成功；真实 packaged smoke 1/1（7.7s）通过。设计 SPA 全量重出 96 张 Header V2 截图；visual parity 45 views / 330 targets / 0 missing，Capture light/dark/collapsed 均 0 flagged、最大几何差 0.6px。全量平均像素差 1.84%；剩余 flagged 主要来自 CodeMirror/字体度量与 Settings Updates 文案宽度，未发现 Header、工作栏或 splitter 结构缺失。
 
 2026-07-20 HAR/文件菜单/frameless/Proxy readiness 后续增强：三 workspace typecheck；Desktop 106 / Proxy Core 179 / Protocol 19，共304项单测；真实 Windows package 成功；隔离 userData 的 packaged smoke 1/1（12.8s），覆盖 frameless、三窗口控制 API、readiness 收敛、Paused/Not recording、Core 重启复查与 Close graceful quit。Export 菜单 parity 0 missing/flagged、几何0px；readiness 弹层5/5 targets、0 flagged、像素差0.46%；Settings 引导1/1 target、0 flagged。系统 PNG/ICO/ICNS 为固定 dark 主题 Lucide Zap，Sidebar Logo 继续随主题变色。
 

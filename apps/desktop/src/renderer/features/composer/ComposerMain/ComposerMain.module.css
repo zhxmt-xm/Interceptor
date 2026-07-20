@@ -1,5 +1,5 @@
 .main {
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 7px 540px;
+  grid-template-columns: minmax(0, 1fr) 1px 540px;
 }

@@ -33,7 +33,7 @@ export function BreakpointsMain(): React.JSX.Element {
     <div
       className={styles.main}
       ref={mainRef}
-      style={{ gridTemplateColumns: `${queueWidth}px 7px minmax(0, 1fr)` }}
+      style={{ gridTemplateColumns: `${queueWidth}px 1px minmax(0, 1fr)` }}
     >
       <PausedQueue />
       <Splitter onPointerDown={startDrag} />

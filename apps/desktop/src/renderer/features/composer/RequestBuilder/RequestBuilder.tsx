@@ -1,4 +1,5 @@
-import { Send, X } from 'lucide-react';
+import { Clock, Plus, Send, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -6,6 +7,7 @@ import {
   Checkbox,
   Count,
   cx,
+  Flyout,
   IconButton,
   InputBox,
   Segmented,
@@ -24,6 +26,8 @@ const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTION
 /** Left composer pane: method + URL, protocol and the request tabs/headers. */
 export function RequestBuilder(): React.JSX.Element {
   const { t } = useTranslation();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyAnchorRef = useRef<HTMLSpanElement>(null);
   const method = useComposerStore((state) => state.method);
   const url = useComposerStore((state) => state.url);
   const protocol = useComposerStore((state) => state.protocol);
@@ -33,6 +37,9 @@ export function RequestBuilder(): React.JSX.Element {
   const tab = useComposerStore((state) => state.requestTab);
   const sending = useComposerStore((state) => state.sending);
   const response = useComposerStore((state) => state.response);
+  const history = useComposerStore((state) => state.history);
+  const loadFromHistory = useComposerStore((state) => state.loadFromHistory);
+  const resetForNew = useComposerStore((state) => state.resetForNew);
   const setMethod = useComposerStore((state) => state.setMethod);
   const setUrl = useComposerStore((state) => state.setUrl);
   const setProtocol = useComposerStore((state) => state.setProtocol);
@@ -99,6 +106,44 @@ export function RequestBuilder(): React.JSX.Element {
         />
         <span className={styles.spacer} />
         <Count>{tlsLabel}</Count>
+        <div className={styles.actions}>
+          <span ref={historyAnchorRef} className={styles.historyAnchor} data-parity="composer-history">
+            <IconButton
+              icon={Clock}
+              label={t('composer.history')}
+              size="sm"
+              onClick={() => setHistoryOpen((value) => !value)}
+            />
+          </span>
+          <IconButton icon={Plus} label={t('composer.new')} size="sm" onClick={resetForNew} />
+        </div>
+        <Flyout
+          open={historyOpen}
+          anchorRef={historyAnchorRef}
+          placement="bottom-end"
+          className={styles.historyPanel}
+          onClose={() => setHistoryOpen(false)}
+        >
+          {history.length === 0 ? (
+            <div className={styles.historyEmpty}>{t('composer.noHistory')}</div>
+          ) : (
+            history.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={styles.historyItem}
+                onClick={() => {
+                  loadFromHistory(entry);
+                  setHistoryOpen(false);
+                }}
+              >
+                <span className={styles.historyMethod}>{entry.method}</span>
+                <span className={styles.historyUrl}>{entry.url}</span>
+                <span className={styles.historyStatus}>{entry.status || '—'}</span>
+              </button>
+            ))
+          )}
+        </Flyout>
       </div>
 
       <Tabs items={requestTabs} active={tab} onSelect={(id) => setRequestTab(id as never)} />
@@ -111,7 +156,7 @@ export function RequestBuilder(): React.JSX.Element {
             <span>{t('composer.value')}</span>
             <span />
           </div>
-          {headers.map((header) => (
+          {headers.map((header, index) => (
             <div key={header.id} className={styles.row}>
               <Checkbox
                 checked={header.on}
@@ -119,6 +164,7 @@ export function RequestBuilder(): React.JSX.Element {
               />
               <input
                 className={styles.cellInput}
+                data-parity={`composer-header-name-${index}`}
                 aria-label={t('composer.headerName')}
                 value={header.name}
                 placeholder="header-name"

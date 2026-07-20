@@ -1,15 +1,17 @@
 /* App shell grid — mirrors design/app/app.css .app / .topbar / .mainhost / .statusbar.
    Fluid: columns/rows fill the Electron window instead of the fixed 1280×800 canvas. */
 .app {
+  position: relative;
   display: grid;
   grid-template-areas: "side top" "side main" "side status";
-  grid-template-rows: 54px minmax(0, 1fr) 30px;
+  grid-template-rows: 46px minmax(0, 1fr) 30px;
   height: 100%;
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
   line-height: 1.23;
   overflow: hidden;
+  container-type: inline-size;
 }
 .app[data-collapsed="false"] {
   grid-template-columns: 220px minmax(0, 1fr);
@@ -22,13 +24,47 @@
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 118px 0 18px;
+  gap: 10px;
+  padding: 0 108px 0 18px;
   background: var(--chrome);
   border-bottom: 1px solid var(--border);
   position: relative;
   min-width: 0;
   -webkit-app-region: drag;
+}
+
+.sidebarToggle,
+.windowControl,
+.close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.sidebarToggle {
+  margin-right: 2px;
+}
+
+.sidebarToggle:hover,
+.windowControl:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.featureName {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .top :where(button, input, [role="button"], [role="menu"], [role="menuitem"]) {
@@ -46,29 +82,16 @@
   -webkit-app-region: no-drag;
 }
 
-.windowControl,
-.close {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-2);
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-}
-
-.windowControl:hover {
-  color: var(--text);
-  background: var(--hover);
-}
-
 .close:hover {
   color: var(--red);
   background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+.notification {
+  position: absolute;
+  z-index: 90;
+  top: 51px;
+  right: 12px;
 }
 .main {
   grid-area: main;

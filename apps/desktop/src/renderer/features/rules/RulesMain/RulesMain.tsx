@@ -33,7 +33,7 @@ export function RulesMain(): React.JSX.Element {
     <div
       className={styles.main}
       ref={mainRef}
-      style={{ gridTemplateColumns: `${listWidth}px 7px minmax(0, 1fr)` }}
+      style={{ gridTemplateColumns: `${listWidth}px 1px minmax(0, 1fr)` }}
     >
       <RuleList />
       <Splitter onPointerDown={startListDrag} />

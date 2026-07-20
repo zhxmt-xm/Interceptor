@@ -57,7 +57,9 @@ export function Omnibox(): React.JSX.Element {
 
   return (
     <div className={styles.omnibox}>
-      <Search className={styles.searchIcon} size={16} strokeWidth={1.9} />
+      <span className={styles.searchArea}>
+        <Search className={styles.searchIcon} size={14} strokeWidth={1.9} />
+      </span>
       {method ? (
         <span className={styles.pill}>
           {method}
