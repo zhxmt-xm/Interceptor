@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Segmented } from '../../../components';
 import { sizeLabel } from '../utils';
 import styles from './BodyView.module.css';
@@ -255,6 +256,7 @@ export function BodyView({
         options={bodyViewModes}
         value={mode}
         onChange={(value) => setMode(value as BodyViewMode)}
+        automationIds={AUTOMATION_IDS.capture.inspector.bodyMode}
       />
     </div>
   );

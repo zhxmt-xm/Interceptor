@@ -1,6 +1,7 @@
 import { Check, LockKeyhole, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, SectionHeader } from '../../../components';
 import styles from './TlsTunnelPanel.module.css';
 
@@ -27,7 +28,12 @@ export function TlsTunnelPanel({
           <b>{t('capture.httpsEncrypted')}</b>
           <span>{t('capture.httpsPassthroughDescription')}</span>
         </span>
-        <Button icon={Shield} variant="primary" onClick={onSetupHttps}>
+        <Button
+          icon={Shield}
+          variant="primary"
+          onClick={onSetupHttps}
+          automationId={AUTOMATION_IDS.capture.inspector.setupHttps}
+        >
           {t('settings.decryptHttps')}
         </Button>
       </div>

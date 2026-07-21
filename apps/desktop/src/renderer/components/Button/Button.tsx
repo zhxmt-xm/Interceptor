@@ -1,6 +1,7 @@
 ﻿import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './Button.module.css';
 
@@ -13,6 +14,7 @@ export interface ButtonProps {
   iconStrokeWidth?: number;
   disabled?: boolean;
   onClick?: () => void;
+  automationId?: AutomationId;
 }
 
 /** Labelled action button (optionally with a leading icon). */
@@ -25,6 +27,7 @@ export function Button({
   iconStrokeWidth = 1.9,
   disabled = false,
   onClick,
+  automationId,
 }: ButtonProps): React.JSX.Element {
   return (
     <button
@@ -37,6 +40,7 @@ export function Button({
         variant === 'danger' && styles.danger,
       )}
       onClick={onClick}
+      data-automation-id={automationId}
     >
       {Icon && iconPosition === 'start' ? (
         <Icon size={15} strokeWidth={iconStrokeWidth} />

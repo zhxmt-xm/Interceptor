@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../shared/automation-ids';
 import { cx, LanguageSwitcher, NavItem, ThemeSwitcher, type LangId } from '../components';
 import type { ThemeMode } from '../theme/theme';
 import styles from './Sidebar.module.css';
@@ -76,6 +77,7 @@ export function Sidebar({
       className={cx(styles.sidebar, collapsed && styles.collapsed)}
       role="navigation"
       aria-label={t('sidebar.navigation')}
+      data-automation-id={AUTOMATION_IDS.shell.navigation}
     >
       <div className={styles.brand}>
         <span className={styles.logo}>
@@ -93,6 +95,7 @@ export function Sidebar({
           active={activeView === id}
           collapsed={collapsed}
           onClick={() => onSelect(id)}
+          automationId={AUTOMATION_IDS.shell.workspace[id]}
         />
       ))}
 
@@ -114,6 +117,7 @@ export function Sidebar({
         active={activeView === 'settings'}
         collapsed={collapsed}
         onClick={() => onSelect('settings')}
+        automationId={AUTOMATION_IDS.shell.workspace.settings}
       />
       <LanguageSwitcher lang={lang} collapsed={collapsed} onChange={onLangChange} />
       <ThemeSwitcher theme={theme} collapsed={collapsed} onChange={onThemeChange} />

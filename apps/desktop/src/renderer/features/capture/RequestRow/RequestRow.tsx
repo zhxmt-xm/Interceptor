@@ -3,6 +3,7 @@ import { memo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, MethodBadge } from '../../../components';
 import {
   displayBytes,
@@ -51,6 +52,7 @@ export const RequestRow = memo(function RequestRow({
       className={cx(styles.row, selected && styles.selected)}
       onClick={() => onSelect(summary.id)}
       style={style}
+      data-automation-id={AutomationIdFactory.captureRequestRow(summary.id)}
     >
       <MethodBadge method={summary.method} />
       <span className={styles.host}>

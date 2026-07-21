@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../shared/automation-ids';
 import type { LanguageId } from '../i18n/languages';
 import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
 import { BreakpointsMain, BreakpointsStatusbar } from '../features/breakpoints';
@@ -172,7 +173,11 @@ export function App(): React.JSX.Element {
   const feature = renderView(view, settingsSection, coreStatus);
 
   const content = (
-    <div className={styles.app} data-collapsed={collapsed}>
+    <div
+      className={styles.app}
+      data-collapsed={collapsed}
+      data-automation-id={AUTOMATION_IDS.app.root}
+    >
       <Sidebar
         activeView={view}
         collapsed={collapsed}
@@ -190,6 +195,7 @@ export function App(): React.JSX.Element {
           aria-label={t('capture.toggleSidebar')}
           title={t('capture.toggleSidebar')}
           onClick={toggleCollapse}
+          data-automation-id={AUTOMATION_IDS.shell.sidebarToggle}
         >
           <Menu size={15} strokeWidth={1.9} />
         </button>
@@ -203,6 +209,7 @@ export function App(): React.JSX.Element {
             aria-label={t('app.minimizeWindow')}
             title={t('app.minimizeWindow')}
             onClick={() => void window.interceptor.minimizeWindow()}
+            data-automation-id={AUTOMATION_IDS.shell.window.minimize}
           >
             <Minus size={15} strokeWidth={1.9} />
           </button>
@@ -212,6 +219,7 @@ export function App(): React.JSX.Element {
             aria-label={t('app.toggleMaximizeWindow')}
             title={t('app.toggleMaximizeWindow')}
             onClick={() => void window.interceptor.toggleMaximizeWindow()}
+            data-automation-id={AUTOMATION_IDS.shell.window.maximizeRestore}
           >
             <Maximize2 size={14} strokeWidth={1.9} />
           </button>
@@ -223,6 +231,7 @@ export function App(): React.JSX.Element {
             onClick={() => {
               void window.interceptor.closeApplication().catch(() => window.close());
             }}
+            data-automation-id={AUTOMATION_IDS.shell.window.close}
           >
             <X size={15} strokeWidth={1.9} />
           </button>
@@ -231,8 +240,8 @@ export function App(): React.JSX.Element {
       <div className={styles.notification}>
         <UpdateNotification />
       </div>
-      <main className={styles.main}>{feature.main}</main>
-      <footer className={styles.footer}>{feature.statusbar}</footer>
+      <main className={styles.main} data-automation-id={AUTOMATION_IDS.app.main}>{feature.main}</main>
+      <footer className={styles.footer} data-automation-id={AUTOMATION_IDS.app.statusbar}>{feature.statusbar}</footer>
     </div>
   );
 

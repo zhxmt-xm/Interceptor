@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Splitter } from '../../../components';
 import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
 import { HttpsDecryptionDialog } from '../HttpsDecryptionDialog/HttpsDecryptionDialog';
@@ -82,7 +83,10 @@ export function CaptureMain(): React.JSX.Element {
           style={{ gridTemplateColumns: `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px` }}
         >
           <RequestList />
-          <Splitter onPointerDown={startInspectorDrag} />
+          <Splitter
+            onPointerDown={startInspectorDrag}
+            automationId={AUTOMATION_IDS.capture.inspector.splitter}
+          />
           <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
         </div>
       </div>

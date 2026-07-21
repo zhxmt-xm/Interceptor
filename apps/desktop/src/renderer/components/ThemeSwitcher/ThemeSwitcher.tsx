@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { ThemeMode } from '../../theme/theme';
+import { AUTOMATION_IDS } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import { Flyout } from '../Flyout/Flyout';
 import { ThemeScene } from './scenes';
@@ -47,6 +48,7 @@ export function ThemeSwitcher({
               key={id}
               type="button"
               className={styles.item}
+              data-automation-id={AUTOMATION_IDS.shell.theme[id]}
               onClick={() => {
                 onChange(id);
                 setOpen(false);
@@ -69,6 +71,7 @@ export function ThemeSwitcher({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('common.theme')}
+        data-automation-id={AUTOMATION_IDS.shell.theme.trigger}
       >
         <CurrentIcon size={18} strokeWidth={1.9} />
         <span className={styles.text}>{t('common.theme')}</span>

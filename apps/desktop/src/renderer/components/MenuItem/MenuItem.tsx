@@ -1,6 +1,7 @@
 ﻿import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './MenuItem.module.css';
 
@@ -15,6 +16,7 @@ export interface MenuItemProps {
   warn?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  automationId?: AutomationId;
 }
 
 /** A single row inside a filter / add-action popover menu. */
@@ -26,16 +28,20 @@ export function MenuItem({
   warn,
   disabled,
   onClick,
+  automationId,
 }: MenuItemProps): React.JSX.Element {
   return (
-    <div
+    <button
+      type="button"
       className={cx(styles.item, disabled && styles.disabled)}
-      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      onClick={onClick}
+      data-automation-id={automationId}
     >
       <Icon size={16} strokeWidth={1.9} />
       <span className={styles.name}>{name}</span>
       <span className={cx(styles.hint, tag && styles.tag, warn && styles.warn)}>{hint}</span>
-    </div>
+    </button>
   );
 }
 

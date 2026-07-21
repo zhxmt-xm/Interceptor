@@ -8,6 +8,7 @@ import type {
   GrpcMessageSide,
   GrpcMessageSummary,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented } from '../../../components';
 import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
@@ -74,6 +75,10 @@ export function GrpcMessages({
           ]}
           value={side}
           onChange={(value) => setSide(value === 'request' ? 'request' : 'response')}
+          automationIds={{
+            request: AUTOMATION_IDS.capture.grpc.requestSide,
+            response: AUTOMATION_IDS.capture.grpc.responseSide,
+          }}
         />
         <span className={styles.spacer} />
         <Count>{page?.contentType ?? 'application/grpc'}</Count>
@@ -123,6 +128,8 @@ export function GrpcMessages({
                   >
                     <MessageRow
                       message={message}
+                      exchangeId={detail.summary.id}
+                      side={side}
                       selected={message.index === selectedIndex}
                       encoding={page?.encoding}
                       onSelect={handleSelectMessage}
@@ -133,6 +140,7 @@ export function GrpcMessages({
                         side={side}
                         bodyHash={page.bodyHash}
                         contentType={page.contentType}
+                        exchangeId={detail.summary.id}
                       />
                     ) : null}
                   </div>
@@ -168,11 +176,15 @@ export function GrpcMessages({
 
 const MessageRow = memo(function MessageRow({
   message,
+  exchangeId,
+  side,
   selected,
   encoding,
   onSelect,
 }: {
   message: GrpcMessageSummary;
+  exchangeId: string;
+  side: GrpcMessageSide;
   selected: boolean;
   encoding: string | undefined;
   onSelect: (index: number) => void;
@@ -188,6 +200,11 @@ const MessageRow = memo(function MessageRow({
       type="button"
       className={cx(styles.message, selected && styles.selected)}
       onClick={() => onSelect(message.index)}
+      data-automation-id={AutomationIdFactory.grpcMessage(
+        exchangeId,
+        side,
+        message.index,
+      )}
     >
       <span className={styles.direction}>
         <Download size={12} strokeWidth={1.9} />
@@ -213,11 +230,13 @@ function MessagePayload({
   side,
   bodyHash,
   contentType,
+  exchangeId,
 }: {
   message: GrpcMessageSummary;
   side: GrpcMessageSide;
   bodyHash: string;
   contentType: string | undefined;
+  exchangeId: string;
 }): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const json = contentType?.split(';', 1)[0]?.trim().toLowerCase().endsWith('+json');
@@ -235,6 +254,11 @@ function MessagePayload({
           label={t('capture.copyPayload')}
           size="sm"
           onClick={() => copyPayload(bodyHash, message, json)}
+          automationId={AutomationIdFactory.grpcPayloadCopy(
+            exchangeId,
+            side,
+            message.index,
+          )}
         />
       </div>
       <BodyView

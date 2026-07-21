@@ -1,5 +1,6 @@
 ﻿import type { LucideIcon } from 'lucide-react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './NavItem.module.css';
 
@@ -17,6 +18,7 @@ export interface NavItemProps {
   avatar?: boolean;
   /** Native tooltip / accessible title (e.g. live Proxy Core status). */
   title?: string;
+  automationId?: AutomationId;
 }
 
 /**
@@ -33,6 +35,7 @@ export function NavItem({
   live,
   avatar,
   title,
+  automationId,
 }: NavItemProps): React.JSX.Element {
   const className = cx(styles.navItem, active && styles.active, collapsed && styles.collapsed);
   const inner = (
@@ -55,7 +58,14 @@ export function NavItem({
   );
 
   return onClick ? (
-    <button type="button" className={className} onClick={onClick} title={title}>
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      aria-label={collapsed ? label : undefined}
+      title={title ?? (collapsed ? label : undefined)}
+      data-automation-id={automationId}
+    >
       {inner}
     </button>
   ) : (

@@ -1,6 +1,7 @@
 ﻿import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './Select.module.css';
 
@@ -18,6 +19,7 @@ export interface SelectProps {
   options?: SelectOption[];
   onValueChange?: (value: string) => void;
   ariaLabel?: string;
+  automationId?: AutomationId;
 }
 
 /**
@@ -32,6 +34,7 @@ export function Select({
   options,
   onValueChange,
   ariaLabel,
+  automationId,
 }: SelectProps): React.JSX.Element {
   if (options) {
     return (
@@ -40,6 +43,7 @@ export function Select({
           className={styles.native}
           value={value}
           aria-label={ariaLabel}
+          data-automation-id={automationId}
           onChange={(event) => onValueChange?.(event.target.value)}
         >
           {options.map((option) => (
@@ -55,7 +59,11 @@ export function Select({
     );
   }
   return (
-    <div className={cx(styles.select, className)} onClick={onClick}>
+    <div
+      className={cx(styles.select, className)}
+      onClick={onClick}
+      data-automation-id={automationId}
+    >
       {children}
       <span className={styles.caret}>
         <ChevronDown size={14} strokeWidth={2} />

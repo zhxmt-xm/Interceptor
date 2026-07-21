@@ -3,6 +3,7 @@ import { AlertTriangle, Shield, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, IconButton } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import { retryCaptureProxyReadiness } from '../data/useCaptureData';
@@ -70,6 +71,7 @@ export function ProxyReadinessDialog({
             label={t('capture.close')}
             size="sm"
             onClick={() => setIssue(null)}
+            automationId={AUTOMATION_IDS.capture.readiness.close}
           />
         </header>
         <div className={styles.body}>
@@ -91,16 +93,27 @@ export function ProxyReadinessDialog({
           {issue?.message ? <div className={styles.error} role="alert">{issue?.message}</div> : null}
         </div>
         <footer className={styles.footer}>
-          <Button onClick={() => setIssue(null)}>{t('settings.cancel')}</Button>
+          <Button
+            onClick={() => setIssue(null)}
+            automationId={AUTOMATION_IDS.capture.readiness.cancel}
+          >
+            {t('settings.cancel')}
+          </Button>
           <Button
             onClick={() => {
               setIssue(null);
               onOpenSettings();
             }}
+            automationId={AUTOMATION_IDS.capture.readiness.openProxySettings}
           >
             {t('settings.nav.proxy')}
           </Button>
-          <Button variant="primary" disabled={busy} onClick={retry}>
+          <Button
+            variant="primary"
+            disabled={busy}
+            onClick={retry}
+            automationId={AUTOMATION_IDS.capture.readiness.enable}
+          >
             {t('settings.enable')}
           </Button>
         </footer>

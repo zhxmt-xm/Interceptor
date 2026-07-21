@@ -3,6 +3,7 @@ import { Columns2, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Count, IconButton, Segmented } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import type { ProtocolSegment } from '../interfaces';
@@ -102,6 +103,7 @@ export function RequestList(): React.JSX.Element {
           }))}
           value={filter.segment}
           onChange={(value) => setSegment(value as ProtocolSegment)}
+          automationIds={AUTOMATION_IDS.capture.protocol}
         />
         <span className={styles.spacer} />
         <Count className={styles.count}>
@@ -113,6 +115,7 @@ export function RequestList(): React.JSX.Element {
             label={t('capture.columns')}
             size="sm"
             className={styles.columns}
+            automationId={AUTOMATION_IDS.capture.columns}
           />
           <IconButton
             icon={Trash2}
@@ -120,6 +123,7 @@ export function RequestList(): React.JSX.Element {
             size="sm"
             disabled={clearing}
             onClick={clearRecordedTraffic}
+            automationId={AUTOMATION_IDS.capture.clear}
           />
         </div>
       </div>

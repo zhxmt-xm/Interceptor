@@ -198,6 +198,24 @@ Watch unit tests:
 npm run test:watch --workspace @interceptor/desktop
 ```
 
+### Local Workflow E2E
+
+Build the unpackaged production Main, Preload, Renderer, Core, and native helper bundles used by the local Electron driver:
+
+```powershell
+npm run e2e:prepare-local --workspace @interceptor/desktop
+```
+
+This reuses the Forge Vite configuration but does not run Electron Packager. The local driver launches the resulting application through Playwright `_electron.launch()` and the same `interceptor://app` Renderer origin used by production.
+
+Once at least one workflow implementation exists, run the suite from the repository root:
+
+```powershell
+npm run test:e2e:workflow
+```
+
+The workflow inventory and implementation status live in [apps/desktop/tests/e2e-workflow-tests/README.md](apps/desktop/tests/e2e-workflow-tests/README.md). The `workflows/` directory is currently reset and empty, so the full command has no executable tests yet and must not be reported as passing workflow coverage. The bundle preparation command remains the infrastructure check while workflows are rebuilt.
+
 ### Package Application
 
 ```powershell

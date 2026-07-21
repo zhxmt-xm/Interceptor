@@ -1,5 +1,6 @@
 ﻿import { useRef, type KeyboardEvent } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './Segmented.module.css';
 
@@ -11,6 +12,7 @@ export interface SegmentedProps {
   className?: string;
   /** Accessible group label for the radiogroup. */
   ariaLabel?: string;
+  automationIds?: Partial<Record<string, AutomationId>>;
 }
 
 /** Compact single-choice switch: solid accent chip marks the active option. */
@@ -20,6 +22,7 @@ export function Segmented({
   onChange,
   className,
   ariaLabel,
+  automationIds,
 }: SegmentedProps): React.JSX.Element {
   const items = options.map((option) =>
     typeof option === 'string' ? { label: option, value: option } : option);
@@ -71,6 +74,7 @@ export function Segmented({
           className={cx(styles.option, item.value === value && styles.active)}
           onClick={onChange ? () => onChange(item.value) : undefined}
           onKeyDown={(event) => handleKeyDown(event, index)}
+          data-automation-id={automationIds?.[item.value]}
         >
           {item.label}
         </button>

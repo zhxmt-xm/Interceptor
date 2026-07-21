@@ -2,6 +2,7 @@ import { Activity, Dot, Filter, GitBranch, Globe, Layers, Search, X } from 'luci
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { cx, Flyout, MenuItem } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import type { StructuredCaptureFilterField } from '../interfaces';
@@ -80,6 +81,7 @@ export function Omnibox(): React.JSX.Element {
             className={styles.pillClose}
             aria-label={`${t('capture.clear')} ${pendingLabel}`}
             onClick={cancelStructuredFilter}
+            data-automation-id={AUTOMATION_IDS.capture.pendingFilterCancel}
           >
             <X size={10} strokeWidth={2.2} />
           </button>
@@ -88,56 +90,71 @@ export function Omnibox(): React.JSX.Element {
       {method ? (
         <span className={styles.pill}>
           {method}
-          <span
+          <button
+            type="button"
             className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${method}`}
             onClick={() => setStructuredFilter({ method: null })}
+            data-automation-id={AUTOMATION_IDS.capture.filterRemove.method}
           >
             <X size={10} strokeWidth={2.2} />
-          </span>
+          </button>
         </span>
       ) : null}
       {status !== null ? (
         <span className={styles.pill}>
           {status}
-          <span
+          <button
+            type="button"
             className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${status}`}
             onClick={() => setStructuredFilter({ status: null })}
+            data-automation-id={AUTOMATION_IDS.capture.filterRemove.status}
           >
             <X size={10} strokeWidth={2.2} />
-          </span>
+          </button>
         </span>
       ) : null}
       {host ? (
         <span className={styles.pill}>
           {host}
-          <span
+          <button
+            type="button"
             className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${host}`}
             onClick={() => setStructuredFilter({ host: null })}
+            data-automation-id={AUTOMATION_IDS.capture.filterRemove.host}
           >
             <X size={10} strokeWidth={2.2} />
-          </span>
+          </button>
         </span>
       ) : null}
       {type ? (
         <span className={styles.pill}>
           {type}
-          <span
+          <button
+            type="button"
             className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${type}`}
             onClick={() => setStructuredFilter({ type: null })}
+            data-automation-id={AUTOMATION_IDS.capture.filterRemove.type}
           >
             <X size={10} strokeWidth={2.2} />
-          </span>
+          </button>
         </span>
       ) : null}
       {minDurationMs !== null ? (
         <span className={styles.pill}>
           {`≥ ${minDurationMs} ms`}
-          <span
+          <button
+            type="button"
             className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${minDurationMs} ms`}
             onClick={() => setStructuredFilter({ minDurationMs: null })}
+            data-automation-id={AUTOMATION_IDS.capture.filterRemove.duration}
           >
             <X size={10} strokeWidth={2.2} />
-          </span>
+          </button>
         </span>
       ) : null}
       <input
@@ -164,6 +181,9 @@ export function Omnibox(): React.JSX.Element {
         aria-label={pendingLabel
           ? `${t('capture.addFilter')}: ${pendingLabel}`
           : t('capture.filterRequests')}
+        data-automation-id={pendingField
+          ? AUTOMATION_IDS.capture.pendingFilterInput
+          : AUTOMATION_IDS.capture.keywordFilter}
       />
       <Flyout
         open={showFilter}
@@ -177,30 +197,35 @@ export function Omnibox(): React.JSX.Element {
               icon={GitBranch}
               name={t('capture.method')}
               hint="GET, POST, DELETE…"
+              automationId={AUTOMATION_IDS.capture.filterOption.method}
               onClick={() => beginStructuredFilter('method')}
             />
             <MenuItem
               icon={Dot}
               name={t('capture.status')}
               hint="200 · 404 · 500"
+              automationId={AUTOMATION_IDS.capture.filterOption.status}
               onClick={() => beginStructuredFilter('status')}
             />
             <MenuItem
               icon={Layers}
               name={t('capture.type')}
               hint="json, js, font, ws…"
+              automationId={AUTOMATION_IDS.capture.filterOption.type}
               onClick={() => beginStructuredFilter('type')}
             />
             <MenuItem
               icon={Globe}
               name={t('capture.host')}
               hint={t('capture.contains')}
+              automationId={AUTOMATION_IDS.capture.filterOption.host}
               onClick={() => beginStructuredFilter('host')}
             />
             <MenuItem
               icon={Activity}
               name={t('capture.duration')}
               hint="≥ 500 ms"
+              automationId={AUTOMATION_IDS.capture.filterOption.duration}
               onClick={() => beginStructuredFilter('duration')}
             />
           </>
@@ -210,6 +235,7 @@ export function Omnibox(): React.JSX.Element {
           type="button"
           className={cx(styles.filterButton, showFilter && styles.active)}
           aria-label={t('capture.addFilter')}
+          data-automation-id={AUTOMATION_IDS.capture.addFilter}
         >
           <Filter size={16} strokeWidth={1.9} />
         </button>

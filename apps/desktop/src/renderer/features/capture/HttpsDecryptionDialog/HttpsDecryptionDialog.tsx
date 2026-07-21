@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CertificateInfo } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, cx, IconButton, StatusBadge } from '../../../components';
 import styles from './HttpsDecryptionDialog.module.css';
 
@@ -96,6 +97,7 @@ export function HttpsDecryptionDialog({
             size="sm"
             disabled={busy}
             onClick={onClose}
+            automationId={AUTOMATION_IDS.capture.httpsSetup.close}
           />
         </header>
 
@@ -115,6 +117,7 @@ export function HttpsDecryptionDialog({
                   variant="primary"
                   disabled={busy || certificate === null}
                   onClick={() => run(() => window.interceptor.generateCertificate())}
+                  automationId={AUTOMATION_IDS.capture.httpsSetup.generate}
                 >
                   {t('settings.generate')}
                 </Button>
@@ -135,6 +138,7 @@ export function HttpsDecryptionDialog({
                   icon={LockKeyhole}
                   disabled={busy || !generated || certificate?.supported !== true}
                   onClick={() => run(() => window.interceptor.installCertificate())}
+                  automationId={AUTOMATION_IDS.capture.httpsSetup.install}
                 >
                   {t('settings.install')}
                 </Button>
@@ -166,12 +170,19 @@ export function HttpsDecryptionDialog({
         </div>
 
         <footer className={styles.footer}>
-          <Button disabled={busy} onClick={onClose}>{t('capture.cancel')}</Button>
+          <Button
+            disabled={busy}
+            onClick={onClose}
+            automationId={AUTOMATION_IDS.capture.httpsSetup.cancel}
+          >
+            {t('capture.cancel')}
+          </Button>
           <Button
             icon={Shield}
             variant="primary"
             disabled={busy || !trusted || enabled}
             onClick={() => run(() => window.interceptor.setHttpsDecryption(true), true)}
+            automationId={AUTOMATION_IDS.capture.httpsSetup.startDecrypting}
           >
             {busy ? t('firstRun.starting') : t('capture.startDecrypting')}
           </Button>

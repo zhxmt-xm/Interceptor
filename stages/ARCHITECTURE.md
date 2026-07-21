@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-20
+> 最后更新：2026-07-22
 > 范围：只描述已经实现并验证的代码；历史产品设计见 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -73,9 +73,19 @@ flowchart LR
 - **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module；旧 Feature Topbar 已删除。Capture 由 `CaptureWorkbar` 承载 Recording/Omnibox/Import/Export；Rules、Composer、Breakpoints、Diagnostics 的业务命令分别位于列表、协议、暂停队列和日志内容工具栏。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
 - **Filtering / Rules 交互**：Capture Omnibox 支持 Method/Status/Host/Type/Duration 字段选择、规范化输入与 Enter 提交；Rules 支持八种 matcher 创建、列表操作菜单及 grip 拖放排序，Renderer 始终同步 `priority`，保证列表顺序与 Core 执行顺序一致。
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。设计源只保留当前 Theme flyout 与 Language list，不保留替代变体。
+- **Automation contract**：`apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell 与 Capture 的已接线元素使用同一公共契约。其余 feature 在实现对应 workflow 时继续接线，禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。
 - **主题与语言**：四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。`renderer/i18n/` 用 `i18next` + `react-i18next` 注册 15 个本地静态完整 catalog，英语为默认/回退；切换同步 Ant `ConfigProvider.locale`、`html lang`、localStorage 与 `Intl` 格式。Renderer 经受限 `setUiLanguage` Preload 意图把 15 值枚举同步给 Main，Main 只用内存状态本地化自己持有的 HAR/archive/Diagnostics 文件对话框，不把路径或通用 IPC 暴露给 Renderer。
 - **验收**：M12 历史验收覆盖六视图双主题、900×600 与四语言状态，共 42 张截图且无页面级溢出。2026-07-18 多语言增强 smoke 在真实 Windows package 中逐项切换 15 种语言，验证持久化、UI 文案、页面无溢出及 Main IPC 非法值拒绝；catalog 契约测试校验 659 个主 key、插值与 CLDR 多复数。
 - **Updates（M13）**：App级`UpdateActions`订阅Main状态；Settings展示当前/最新版本、GitHub changelog、用户触发下载进度、失败/已下载；Header 下方通知仅在available/downloaded显示。Renderer只调用意图API，不接触URL、路径或文件流。
+
+## Desktop 测试架构（2026-07-22，基础设施已落地，Workflow 待实现）
+
+- **Local production driver**：`apps/desktop/tests/e2e-workflow-tests/` 使用 Playwright `_electron.launch()` 启动测试拥有的 Electron，不附着人工 Forge 进程。`prepare-local.mjs` 复用 Forge Vite entry/config 生成 `.vite/build` 与 `.vite/renderer/main_window` 的 production bundle，不执行 Electron Packager；Core、协议包和 native system-proxy helper 仍走真实构建。
+- **统一安全 Renderer origin**：Main 只要没有 `MAIN_WINDOW_VITE_DEV_SERVER_URL` 就安装 `PackagedRendererProtocol`，因此 local production bundle 与最终 package 都从 `interceptor://app/index.html` 加载；开发 HMR 仍使用精确 Vite origin。该条件不依赖 `app.isPackaged`，但可信导航与 CSP 边界不放宽。
+- **生命周期与证据**：`fixtures/local-electron-driver.ts` 为每个测试创建独立临时 `userData`，启动 BrowserContext trace，等待真实 Renderer/Core/8888 listener，并在 workflow 后保存 `trace.zip`、`final.png`、Main/Renderer 日志和 PID/端口 metadata；产品 Close 后验证 Main/Core 退出与 8888 可重新 bind，强制关闭只作 finally 兜底。
+- **零 Mock 输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有 loopback origin/client、输入文件、证据和清理。`fixtures/loopback-lab.ts` 提供随机 origin port，但被测 Proxy listener 保持产品默认 `127.0.0.1:8888`。禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。
+- **当前实现状态**：60 条验收规格与 Inventory 位于 `README.md`、`docs/`，但 `workflows/` 已重置为空，全部状态为 planned（`rules.apply-conflict` 另保留真实双实例前置 blocker）；当前没有 local workflow 自动化通过证据。后续每实现一条，才可更新其状态并把同一 contract 接入 packaged driver。
+- **测试分层**：`packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用 60 条 workflow contract；`visual-parity/` 继续用测试目录内 fake Preload 做设计一致性检查，业务 Renderer 无 parity fixture/DEV setter。三套测试职责独立，不能互相冒充覆盖。
 
 ## 存储层架构（M2，已落地）
 
@@ -98,7 +108,7 @@ flowchart LR
 > Mockttp 显式代理把流量采集为 Core 临时 Exchange，正文进入内存+spill TemporaryBodyStore，实时 summary 经有界队列推送 Renderer。
 
 - **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。
-- **Recording 暂停/清理**：Stop 恢复系统代理并停止 listener，但不清 Capture；Start 新 Session 继续追加。Clear 是唯一用户删除入口，重置 event queue/cutoff 并删除所有临时 Exchange/Body。
+- **Recording 暂停/清理**：Stop 只设置 `recording=false`，不停止 Mockttp/WebSocket listener，也不恢复系统代理；流量继续转发但新连接不落 Capture，已有记录与在途 Exchange 保留。Start 在同一 Core 代际恢复记录并继续追加。Clear 是唯一用户删除入口，重置 event queue/cutoff 并删除所有临时 Exchange/Body；系统代理只在应用退出、Core failure guarded recovery、用户显式 Restore 或 emergency repair 时恢复。
 - **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
 - **正文存储（M14）**：请求/响应/WS/gRPC payload 经 `StorageService.writeBody` 写入 TemporaryBodyStore，按 hash 去重；小正文驻内存，大正文异步 spill；超上限/配额保留 truncated/skipped metadata。
 - **捕获事件管线（T3.4）**：`proxy/proxy-capture-event-queue.ts` 的 `CaptureEventQueue` 有界、按 Exchange id 合并、保留终态、分配单调 sequence；`CoreApplication.flushCaptureEvents` 按窗口背压排空，经 `event-batch`/`event-ack` 推送 Main/Renderer。分页 `sessions.query` 与实时事件共用 `CaptureExchangeSummary`。
@@ -336,6 +346,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 
 ## 当前未实现
 
+- Local E2E 的 60 条 feature workflow 与 packaged 共享 driver/contract 尚未实现；当前只有 production bundle builder、driver、fixture、automation contract 和验收规格，`workflows/` 为空。
 - HTTP/2 深度 stream 健壮性（streamId/GOAWAY/RST/settings/背压）Mockttp 未暴露，待原生 http2 补齐；WebSocket H2 Extended CONNECT 未实现。
 - gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection 未实现；当前为完成后 raw message 展示。
 - 真正零内存流式正文落盘（M3/T3.3 优化项；当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续）。

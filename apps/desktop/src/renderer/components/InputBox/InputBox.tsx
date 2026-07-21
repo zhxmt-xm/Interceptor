@@ -1,5 +1,6 @@
 ﻿import type { ReactNode } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './InputBox.module.css';
 
@@ -12,6 +13,7 @@ export interface InputBoxProps {
   placeholder?: string;
   type?: 'text' | 'number';
   ariaLabel?: string;
+  automationId?: AutomationId;
 }
 
 /**
@@ -26,6 +28,7 @@ export function InputBox({
   placeholder,
   type = 'text',
   ariaLabel,
+  automationId,
 }: InputBoxProps): React.JSX.Element {
   if (onValueChange) {
     return (
@@ -37,6 +40,7 @@ export function InputBox({
           value={value ?? ''}
           placeholder={placeholder}
           aria-label={ariaLabel}
+          data-automation-id={automationId}
           spellCheck={false}
           autoComplete="off"
           onChange={(event) => onValueChange(event.target.value)}
@@ -44,6 +48,6 @@ export function InputBox({
       </div>
     );
   }
-  return <div className={cx(styles.input, className)}>{children}</div>;
+  return <div className={cx(styles.input, className)} data-automation-id={automationId}>{children}</div>;
 }
 

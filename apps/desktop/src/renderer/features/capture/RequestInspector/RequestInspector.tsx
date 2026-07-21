@@ -2,6 +2,7 @@ import { Fragment, type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import {
@@ -34,6 +35,9 @@ import { WebSocketMessages } from './WebSocketMessages';
 import styles from './RequestInspector.module.css';
 
 type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g'];
+
+const INSPECTOR_TAB_AUTOMATION_IDS: Record<InspectorTab, AutomationId> =
+  AUTOMATION_IDS.capture.inspector.tab;
 
 function headersToRows(headers: CaptureHeader[]): KvRow[] {
   // HTTP/2 伪首部（:method/:status 等）高亮区分于普通头。
@@ -252,7 +256,12 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
 
       <div className={styles.tabs}>
         {inspectorTabs.map(({ id, labelKey }) => (
-          <span key={id} className={cx(tab === id && styles.active)} onClick={() => setTab(id)}>
+          <span
+            key={id}
+            className={cx(tab === id && styles.active)}
+            onClick={() => setTab(id)}
+            data-automation-id={INSPECTOR_TAB_AUTOMATION_IDS[id]}
+          >
             {labelKey === 'TLS' ? 'TLS' : t(labelKey)}
           </span>
         ))}

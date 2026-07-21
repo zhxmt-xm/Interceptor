@@ -3,9 +3,28 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { LANGUAGES, type LanguageId } from '../../i18n/languages';
+import { AUTOMATION_IDS, type AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import { Flyout } from '../Flyout/Flyout';
 import styles from './LanguageSwitcher.module.css';
+
+const LANGUAGE_AUTOMATION_IDS: Record<LanguageId, AutomationId> = {
+  en: AUTOMATION_IDS.shell.language.en,
+  'zh-CN': AUTOMATION_IDS.shell.language.zhCN,
+  'zh-TW': AUTOMATION_IDS.shell.language.zhTW,
+  ja: AUTOMATION_IDS.shell.language.ja,
+  ko: AUTOMATION_IDS.shell.language.ko,
+  de: AUTOMATION_IDS.shell.language.de,
+  fr: AUTOMATION_IDS.shell.language.fr,
+  es: AUTOMATION_IDS.shell.language.es,
+  it: AUTOMATION_IDS.shell.language.it,
+  'pt-BR': AUTOMATION_IDS.shell.language.ptBR,
+  ru: AUTOMATION_IDS.shell.language.ru,
+  nl: AUTOMATION_IDS.shell.language.nl,
+  pl: AUTOMATION_IDS.shell.language.pl,
+  tr: AUTOMATION_IDS.shell.language.tr,
+  uk: AUTOMATION_IDS.shell.language.uk,
+};
 
 export type LangId = LanguageId;
 
@@ -40,6 +59,7 @@ export function LanguageSwitcher({
               key={id}
               type="button"
               className={styles.item}
+              data-automation-id={LANGUAGE_AUTOMATION_IDS[id]}
               onClick={() => {
                 onChange(id);
                 setOpen(false);
@@ -58,6 +78,7 @@ export function LanguageSwitcher({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('common.language')}
+        data-automation-id={AUTOMATION_IDS.shell.language.trigger}
       >
         <Globe size={18} strokeWidth={1.9} />
         <span className={styles.text}>{t('common.language')}</span>

@@ -1,5 +1,6 @@
 ﻿import type { LucideIcon } from 'lucide-react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './IconButton.module.css';
 
@@ -12,6 +13,7 @@ export interface IconButtonProps {
   disabled?: boolean;
   onClick?: () => void;
   className?: string;
+  automationId?: AutomationId;
 }
 
 /** Transparent square icon button used across topbars, list bars and editors. */
@@ -23,6 +25,7 @@ export function IconButton({
   disabled = false,
   onClick,
   className,
+  automationId,
 }: IconButtonProps): React.JSX.Element {
   return (
     <button
@@ -32,6 +35,7 @@ export function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
+      data-automation-id={automationId}
     >
       <Icon size={size === 'sm' ? 15 : 18} strokeWidth={strokeWidth} />
     </button>

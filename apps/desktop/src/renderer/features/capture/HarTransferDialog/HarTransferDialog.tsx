@@ -14,6 +14,7 @@ import type {
   HarExportRequest,
   TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { Button, Checkbox, cx } from '../../../components';
 import { usePrivacyStore } from '../../settings/data/privacyStore';
 import { useCaptureStore } from '../data/captureStore';
@@ -209,6 +210,7 @@ export function HarTransferDialog({
             aria-label={t('capture.closeTransfer')}
             disabled={running}
             onClick={close}
+            data-automation-id={AUTOMATION_IDS.capture.transfer.headerClose}
           >
             <X size={18} strokeWidth={1.9} />
           </button>
@@ -236,6 +238,7 @@ export function HarTransferDialog({
                       label={t('capture.allTraffic')}
                       count={allCount}
                       active={scope === 'all'}
+                      automationId={AUTOMATION_IDS.capture.transfer.scopeAll}
                       onClick={() => setScope('all')}
                     />
                     <ScopeOption
@@ -243,6 +246,7 @@ export function HarTransferDialog({
                       detail={formatFilter(filter, t('capture.noActiveFilter'))}
                       count={visibleCount}
                       active={scope === 'filter'}
+                      automationId={AUTOMATION_IDS.capture.transfer.scopeFilter}
                       onClick={() => setScope('filter')}
                     />
                     <ScopeOption
@@ -250,6 +254,7 @@ export function HarTransferDialog({
                       count={selectedId ? 1 : 0}
                       active={scope === 'selected'}
                       disabled={!selectedId}
+                      automationId={AUTOMATION_IDS.capture.transfer.scopeSelected}
                       onClick={() => setScope('selected')}
                     />
                   </div>
@@ -261,16 +266,19 @@ export function HarTransferDialog({
                     <CheckOption
                       checked={authorization}
                       label={t('capture.maskAuthorization')}
+                      automationId={AUTOMATION_IDS.capture.transfer.maskAuthorization}
                       onChange={setAuthorization}
                     />
                     <CheckOption
                       checked={cookies}
                       label={t('capture.maskCookies')}
+                      automationId={AUTOMATION_IDS.capture.transfer.maskCookies}
                       onChange={setCookies}
                     />
                     <CheckOption
                       checked={bodies}
                       label={t('capture.stripBodies')}
+                      automationId={AUTOMATION_IDS.capture.transfer.stripBodies}
                       onChange={setBodies}
                     />
                   </div>
@@ -296,21 +304,36 @@ export function HarTransferDialog({
           {job ? (
             <>
               {running ? (
-                <Button variant="danger" onClick={() => void cancel()}>
+                <Button
+                  variant="danger"
+                  onClick={() => void cancel()}
+                  automationId={AUTOMATION_IDS.capture.transfer.cancel}
+                >
                   {t('capture.cancelTransfer')}
                 </Button>
               ) : (
-                <Button onClick={close}>{t('capture.close')}</Button>
+                <Button
+                  onClick={close}
+                  automationId={AUTOMATION_IDS.capture.transfer.close}
+                >
+                  {t('capture.close')}
+                </Button>
               )}
             </>
           ) : (
             <>
-              <Button onClick={close}>{t('capture.cancel')}</Button>
+              <Button
+                onClick={close}
+                automationId={AUTOMATION_IDS.capture.transfer.cancel}
+              >
+                {t('capture.cancel')}
+              </Button>
               <Button
                 icon={isImport ? Upload : Download}
                 variant="primary"
                 disabled={submitting || (isHarExport && exportCount === 0)}
                 onClick={() => void startTransfer()}
+                automationId={AUTOMATION_IDS.capture.transfer.start}
               >
                 {action === 'har-import'
                   ? t('capture.importHar')
@@ -333,6 +356,7 @@ interface ScopeOptionProps {
   count: number | string;
   active: boolean;
   disabled?: boolean;
+  automationId: AutomationId;
   onClick(): void;
 }
 
@@ -342,6 +366,7 @@ function ScopeOption({
   count,
   active,
   disabled = false,
+  automationId,
   onClick,
 }: ScopeOptionProps): React.JSX.Element {
   return (
@@ -350,6 +375,7 @@ function ScopeOption({
       className={cx(styles.scope, active && styles.scopeActive)}
       disabled={disabled}
       onClick={onClick}
+      data-automation-id={automationId}
     >
       <span className={styles.radio} />
       <span className={styles.scopeCopy}>
@@ -364,17 +390,19 @@ function ScopeOption({
 interface CheckOptionProps {
   checked: boolean;
   label: string;
+  automationId: AutomationId;
   onChange(checked: boolean): void;
 }
 
 function CheckOption({
   checked,
   label,
+  automationId,
   onChange,
 }: CheckOptionProps): React.JSX.Element {
   return (
     <label className={styles.check}>
-      <Checkbox checked={checked} onChange={onChange} />
+      <Checkbox checked={checked} onChange={onChange} automationId={automationId} />
       {label}
     </label>
   );

@@ -7,6 +7,7 @@ import type {
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented, Switch } from '../../../components';
 import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
@@ -82,10 +83,19 @@ export function WebSocketMessages({
           ]}
           value={filter}
           onChange={(value) => setFilter(value as DirectionFilter)}
+          automationIds={{
+            all: AUTOMATION_IDS.capture.websocket.directionAll,
+            sent: AUTOMATION_IDS.capture.websocket.directionSent,
+            received: AUTOMATION_IDS.capture.websocket.directionReceived,
+          }}
         />
         <span className={styles.spacer} />
         <Count>{t('capture.pauseOnMessage')}</Count>
-        <Switch checked={breakpointsEnabled} onChange={setBreakpointsEnabled} />
+        <Switch
+          checked={breakpointsEnabled}
+          onChange={setBreakpointsEnabled}
+          automationId={AUTOMATION_IDS.capture.websocket.pauseOnMessage}
+        />
       </div>
 
       <div className={styles.frameList}>
@@ -120,12 +130,13 @@ export function WebSocketMessages({
                   >
                     <FrameRow
                       frame={frame}
+                      exchangeId={exchangeId}
                       startedAt={startedAt}
                       selected={frame.seq === selectedSequence}
                       onSelect={handleSelectFrame}
                     />
                     {frame.seq === selectedSequence ? (
-                      <Payload frame={frame} />
+                      <Payload frame={frame} exchangeId={exchangeId} />
                     ) : null}
                   </div>
                 );
@@ -149,11 +160,13 @@ export function WebSocketMessages({
 
 const FrameRow = memo(function FrameRow({
   frame,
+  exchangeId,
   startedAt,
   selected,
   onSelect,
 }: {
   frame: WebSocketFrameSummary;
+  exchangeId: string;
   startedAt: number;
   selected: boolean;
   onSelect: (seq: number) => void;
@@ -165,6 +178,7 @@ const FrameRow = memo(function FrameRow({
       type="button"
       className={cx(styles.frame, selected && styles.selected)}
       onClick={() => onSelect(frame.seq)}
+      data-automation-id={AutomationIdFactory.websocketFrame(exchangeId, frame.seq)}
     >
       <span className={cx(styles.direction, outgoing ? styles.outgoing : styles.incoming)}>
         <ArrowRight size={12} strokeWidth={1.9} />
@@ -251,7 +265,13 @@ function copyPayload(frame: WebSocketFrameSummary): void {
     });
 }
 
-function Payload({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element {
+function Payload({
+  frame,
+  exchangeId,
+}: {
+  frame: WebSocketFrameSummary;
+  exchangeId: string;
+}): React.JSX.Element {
   const { i18n, t } = useTranslation();
   return (
     <div className={styles.payload}>
@@ -266,6 +286,7 @@ function Payload({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element
           label={t('capture.copyPayload')}
           size="sm"
           onClick={() => copyPayload(frame)}
+          automationId={AutomationIdFactory.websocketPayloadCopy(exchangeId, frame.seq)}
         />
       </div>
       {frame.payload ? (

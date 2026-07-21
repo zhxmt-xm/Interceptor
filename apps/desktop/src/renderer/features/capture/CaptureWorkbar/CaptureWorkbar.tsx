@@ -2,6 +2,7 @@ import { Archive, Download, FileJson, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, Flyout, IconButton } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import type { CaptureTransferAction } from '../interfaces';
@@ -30,6 +31,7 @@ export function CaptureWorkbar(): React.JSX.Element {
           className={cx(styles.recording, !capturing && styles.paused)}
           onClick={() => void toggleCapture()}
           aria-pressed={capturing}
+          data-automation-id={AUTOMATION_IDS.capture.recordingToggle}
         >
           <span className={styles.recordingDot} />
           <span>{capturing ? t('capture.recording') : t('capture.paused')}</span>
@@ -48,12 +50,14 @@ export function CaptureWorkbar(): React.JSX.Element {
                 icon={FileJson}
                 label={t('capture.importHar')}
                 extension=".har"
+                automationId={AUTOMATION_IDS.capture.importHar}
                 onClick={() => openTransfer('har-import')}
               />
               <FileCommand
                 icon={Archive}
                 label={t('capture.openCapture')}
                 extension=".iarchive"
+                automationId={AUTOMATION_IDS.capture.openArchive}
                 onClick={() => openTransfer('archive-import')}
               />
             </>
@@ -64,6 +68,7 @@ export function CaptureWorkbar(): React.JSX.Element {
               icon={Upload}
               size="sm"
               label={t('capture.importTraffic')}
+              automationId={AUTOMATION_IDS.capture.importMenu}
             />
           </span>
         </Flyout>
@@ -78,12 +83,14 @@ export function CaptureWorkbar(): React.JSX.Element {
                 icon={FileJson}
                 label={t('capture.exportHar')}
                 extension=".har"
+                automationId={AUTOMATION_IDS.capture.exportHar}
                 onClick={() => openTransfer('har-export')}
               />
               <FileCommand
                 icon={Archive}
                 label={t('capture.saveCapture')}
                 extension=".iarchive"
+                automationId={AUTOMATION_IDS.capture.saveArchive}
                 onClick={() => openTransfer('archive-export')}
               />
             </>
@@ -94,6 +101,7 @@ export function CaptureWorkbar(): React.JSX.Element {
               icon={Download}
               size="sm"
               label={t('capture.exportTraffic')}
+              automationId={AUTOMATION_IDS.capture.exportMenu}
             />
           </span>
         </Flyout>
@@ -106,6 +114,7 @@ interface FileCommandProps {
   icon: typeof Archive;
   label: string;
   extension: string;
+  automationId: AutomationId;
   onClick(): void;
 }
 
@@ -114,10 +123,17 @@ function FileCommand({
   icon: Icon,
   label,
   extension,
+  automationId,
   onClick,
 }: FileCommandProps): React.JSX.Element {
   return (
-    <button type="button" role="menuitem" className={styles.fileCommand} onClick={onClick}>
+    <button
+      type="button"
+      role="menuitem"
+      className={styles.fileCommand}
+      onClick={onClick}
+      data-automation-id={automationId}
+    >
       <Icon size={16} strokeWidth={1.9} />
       <span>{label}</span>
       <code>{extension}</code>

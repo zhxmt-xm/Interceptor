@@ -1,13 +1,26 @@
-# Desktop Packaged Smoke
+# Desktop Packaged Application E2E
 
-本目录验证 Interceptor 的真实 Electron 打包产物。测试不是在 Vite dev server、JSDOM 或 fake Electron 中运行，而是启动 `electron-forge package` 生成的最终 Windows 可执行文件，通过 Chrome DevTools Protocol（CDP）连接真实 Renderer，检查安全边界、Preload API、Proxy Core、Storage 和退出清理。
+本目录验证 Interceptor 的真实 Electron **production package**。目录名保留 `packaged-smoke`，但目标职责是生产包完整验收：启动 `electron-forge package` 生成的最终 Windows 可执行文件或 macOS `.app`，通过 Chrome DevTools Protocol（CDP）连接真实 Renderer，执行与 [`../e2e-workflow-tests/`](../e2e-workflow-tests/) 相同的应用生命周期、destroy 契约和全部 feature workflow，再追加 production package 特有的安全、资源和启动边界。
+
+测试不在 Vite dev server、JSDOM 或 fake Electron 中运行。被测 Main、Preload、Renderer、Proxy Core UtilityProcess、Worker、ASAR、Fuses 与 extra resources 都来自最终 package。
+
+## 零 Mock 硬性原则
+
+生产包 workflow 与本地 E2E 遵守同一原则：所有业务操作都必须由 Playwright 通过真实 App UI 发起，随后经过真实 Preload、Main、Core、Storage、Proxy 和 Worker。禁止 fake Preload、状态注入、service mock、直接业务 API arrange、测试专用 Renderer setter 或隐藏 IPC。
+
+测试侧只允许创建 loopback 协议 origin/客户端、输入文件与证据采集设施。Open/Save Dialog、UAC、macOS Authorization 等原生 UI必须由 package 真实发起；无法无人值守完成时应标记为需要本机人工操作或独立平台验收，不得用 mock 代替。
+
+> 当前状态：现有 `startup.spec.ts` 已覆盖生产启动、安全边界、关键跨进程路径、真实 Capture、截图矩阵和退出清理，但仍是一条综合测试，尚未复用完整 workflow contract，也尚未做到每条 workflow 独立 trace。本文同时记录当前实现与目标架构；不得把目标清单误报为现有覆盖。
 
 ## 目录结构
 
 ```text
 apps/desktop/tests/packaged-smoke/
-├─ README.md       # 本文档
-└─ startup.spec.ts # 真实 packaged app 启动与端到端 smoke
+├─ README.md                    # 本文档
+├─ startup.spec.ts              # 当前综合 production package 测试
+├─ fixtures/                    # 目标：packaged CDP driver
+│  └─ packaged-cdp-driver.ts
+└─ packaged-boundaries.spec.ts  # 目标：package 特有安全/资源断言
 ```
 
 Playwright 配置位于：
@@ -22,9 +35,9 @@ apps/desktop/playwright.config.ts
 apps/desktop/test-results/
 ```
 
-## 测试目标
+## 权威职责
 
-Packaged smoke 回答以下问题：
+本套件必须回答：
 
 - Forge/Vite 是否成功生成可启动的最终应用？
 - Main、Preload、Renderer 三个 production bundle 是否能协同运行？
@@ -34,10 +47,24 @@ Packaged smoke 回答以下问题：
 - Main 与 Core 的专用 MessagePort RPC 是否工作？
 - Core 被强制终止后是否能以新 PID 自动重启？
 - Core 临时 Capture/Body、持久 RuleStore、Diagnostics Worker 与按需 Archive Worker 是否可用？
-- 主题与窗口尺寸切换是否仍能渲染？
-- 应用退出后 Main/Core/Renderer 进程是否被清理？
+- `e2e-workflow-tests` 登记的全部用户 workflow 是否在最终 package 上得到相同结果？
+- 正常关闭、窗口关闭、Core 重启和失败清理是否符合生命周期约定？
+- 应用退出后 Main/Core/Renderer/Worker 是否全部退出，listener 和临时 profile 是否释放？
+- 每条 workflow 是否生成独立 trace、截图和进程日志供人工回放？
 
-它是发布产物级 smoke，不承担完整业务覆盖或逐像素设计比较。
+本目录不承担逐像素设计比较或安装器 lifecycle。前者属于 `visual-parity/`，后者属于 `installer/`。
+
+## 与本地 Workflow E2E 的关系
+
+[`../e2e-workflow-tests/`](../e2e-workflow-tests/) 是共享 workflow contract、manifest 和业务 specs 的所有者：
+
+- local 目标用 Playwright `_electron.launch()` 启动未打包应用；
+- packaged 目标用 `spawn()` 启动最终 `exe/.app`，再用 `chromium.connectOverCDP()` 获得标准 `Page`；
+- 两个目标执行相同的 selector、用户操作和核心断言；
+- Driver 只负责不同的启动、Main 能力、trace 和清理机制；
+- 不允许在本目录复制一份独立业务 workflow。
+
+生产 CDP 无法直接执行 Main `evaluate()`。Open/Save Dialog、提权窗口和外部程序等原生边界，按本 README 的“原生 OS UI 边界”处理，不得通过产品测试后门伪造。
 
 ## 运行前提
 
@@ -124,7 +151,7 @@ sequenceDiagram
     T->>T: verify process cleanup
 ```
 
-## 当前覆盖内容
+## 当前已实现覆盖
 
 ### UI 与窗口
 
@@ -193,6 +220,8 @@ Smoke 使用 packaged Core 中的真实：
 
 测试结束时会关闭 CDP/browser 和应用进程，并验证被测进程退出。失败路径也必须执行清理，避免残留 Electron/Core 影响下一次运行。
 
+以上是当前 `startup.spec.ts` 已实现范围。完整 feature workflow 及逐用例 trace 以 `e2e-workflow-tests/README.md` 的 inventory 为目标台账，需后续逐项实现并在 local 与 packaged 两个目标上验收。
+
 ## Packaged 资源路径
 
 生产 Core 入口：
@@ -221,14 +250,36 @@ CoreRuntime 在 packaged 模式通过 `process.resourcesPath` 解析入口。修
 - Main/Core 生命周期；
 - Preload/API/CSP/Fuses。
 
-## 输出与调试产物
+## Trace 与人工回放
 
-失败时 Playwright 在 `apps/desktop/test-results/` 保存：
+目标状态下，每条 shared workflow 都必须独立保存 trace，而不只在失败时保留：
 
-- `error-context.md`；
-- trace zip；
-- 测试截图；
-- 其他 attachment。
+```ts
+await context.tracing.start({
+  screenshots: true,
+  snapshots: true,
+  sources: true,
+  title: testInfo.title,
+});
+
+await context.tracing.stop({
+  path: testInfo.outputPath('trace.zip'),
+});
+```
+
+CDP context 的 trace 必须由 packaged driver 显式启停；不能只依赖 Playwright config 中对 runner-owned context 的 `trace` 选项。
+
+每个结果目录至少保留：
+
+```text
+trace.zip
+final.png
+renderer-console.log
+process-output.log
+metadata.json
+```
+
+当前综合测试已经通过 `testInfo.outputPath()` 留存截图，失败时 Playwright 可保存诊断附件；逐 workflow 的 always-retained trace 是后续实现项。
 
 查看 trace：
 
@@ -315,14 +366,26 @@ Get-Content $stderr
 ## 修改测试时的原则
 
 - 只测试最终 package 可观察行为，不 import Main/Renderer 内部对象绕过边界。
-- 通过 CDP 和 `window.interceptor` 使用真实 Renderer/Preload。
+- 通过 CDP 获得标准 Playwright `Page`，核心 workflow 使用 selector、用户操作和 UI 断言。
+- 不得直接调用 `window.interceptor` 完成业务 arrange/act；workflow 必须通过带 `data-automation-id` 的真实 UI 操作。
 - 不把测试 fixture 或 DEV setter 加入产品代码。
 - 不放宽 API keys 精确断言来隐藏意外 API。
 - 不用固定 CDP 端口，避免并发/残留冲突。
 - 所有进程和 browser handle 在成功/失败路径都必须清理。
 - 对启动、重启和 worker 等异步状态使用 `expect.poll`，不要使用固定 sleep。
 - 测试失败时保留足够 stdout/stderr/trace 上下文。
-- Smoke 保持高信号：覆盖启动、安全、关键跨进程路径和清理，不扩成完整 E2E 业务套件。
+- shared workflow 必须从 `e2e-workflow-tests` 导入，不复制业务操作脚本。
+- 每条 workflow 都必须验证 graceful destroy；强制 kill 只能作为 finally 兜底，不能掩盖退出失败。
+
+## 原生 OS UI 边界
+
+纯 CDP 无法控制 Electron Main 持有的 Open/Save Dialog、Windows UAC、macOS Authorization、系统证书管理器、Explorer/Finder 或安装器窗口。处理原则：
+
+- Renderer 到 Main 的正式意图及取消路径必须在 package 上验证；
+- 能通过真实文件结果观察的流程应使用平台测试 fixture 或独立 native harness；
+- 系统代理与信任库测试只能在可恢复、隔离的本地环境运行；
+- 不在 production API 中加入任意 path、测试开关或 E2E setter；
+- local `_electron` 目标可以在测试侧安排 Main dialog，但这不替代 package 的安全边界断言。
 
 ## 何时必须运行
 

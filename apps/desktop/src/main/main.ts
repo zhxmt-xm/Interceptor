@@ -116,7 +116,7 @@ class DesktopApplication {
     updateService.onStatusChange((status) => {
       this.broadcastUpdateStatus(status);
     });
-    if (app.isPackaged) {
+    if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       this.packagedRendererProtocol = new PackagedRendererProtocol(
         path.dirname(this.getPackagedRendererPath()),
       );

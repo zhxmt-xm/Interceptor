@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-21
+> 最后更新：2026-07-22
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取 `archived/`。
 
 ## 新 Session / Agent 必读
@@ -17,6 +17,7 @@
 ## 当前状态
 
 - **M0–M14 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
+- **Local E2E 基础设施已建立，workflow 实现已重置**：`apps/desktop/tests/e2e-workflow-tests/` 现有 production bundle builder、Playwright `_electron.launch()` driver、独立 profile/trace/evidence/destroy fixture、loopback lab、60 条完整验收规格和公共 automation ID contract；`workflows/` 当前为空，Inventory 无 `implemented` 条目，不能把基础设施构建成功表述为 feature workflow 已通过。
 - **M14 临时 Capture 架构已完成**：Core 直接拥有内存 Capture + 内存/spill Body；RuleSet 直接持久 `rules.sqlite`；Diagnostics Worker 保留；native archive 使用一次性 Archive Worker。常驻 Storage Worker、运行时 `capture.sqlite` 和持久 blobs 已删除。
 - **Transfer 简化边界**：import/export 到达 Core 后直接读取当前 Store；全屏 Loading 阻止正常 UI 操作并只保留 Cancel。无 Body lease/generation/barrier，无 Core action 门禁。
 - **Stop 语义**：Stop 只暂停记录（`proxy.setRecording{false}`）——Mockttp/WebSocket listener 与系统代理保持运行、流量继续转发、已有记录保留，暂停期间新连接不落库；Start 恢复 `recording=true` 并继续追加；系统代理只在应用退出与紧急修复时恢复；Clear 才删除记录和 spill；Core 重启释放临时数据。
@@ -44,7 +45,7 @@
   - **T9.1 WebSocket 捕获**：Mockttp HTTP/1.1 Upgrade，text/binary Message 按 direction/opcode/time/payloadRef 有序落 `websocket_frame`，payload 复用 Blob；101 后 Exchange 保持 open，clean close 更新 completed。
   - **T9.2 WebSocket UI/断点**：`WebSocketBridge` 接管双向消息转发并在 send 前 await BreakpointQueue，支持 edit/continue/drop；`websocket.frames` keyset 页 + Body range；Capture Messages 虚拟列表和 Breakpoints text/hex 编辑。仅 H1 Upgrade，H2 Extended CONNECT 未实现。
   - **T9.3 gRPC 基础展示**：原生 gRPC 作为 Mockttp 通用 H2 request/response 捕获；`grpc.messages` 从既有 Blob 每条只读 5B header 跳读分页，UI 显示 request/response、compressed/truncated/malformed、offset、grpc-status trailer 和 raw text/hex。无 descriptor/reflection；完成后扫描，非实时 streaming。
-  - **测试架构**：Desktop tests 分为 `tests/packaged-smoke/`（真实 exe/CDP）与 `tests/visual-parity/`（完整 fake Preload + 正常 UI 交互）；业务 Renderer 无 parity fixture/DEV setter。详见 [archived/M9.md](archived/M9.md)。
+  - **测试架构**：Desktop tests 现在分为三层：`tests/e2e-workflow-tests/`（local production `_electron.launch()`，基础设施已完成但 workflow 为0）、`tests/packaged-smoke/`（真实 exe/CDP 的现有综合 smoke，尚未复用 workflow contract）与 `tests/visual-parity/`（测试目录内完整 fake Preload + 正常 UI 交互）。业务 Renderer 无 parity fixture/DEV setter；local 与 packaged 的目标 workflow 都禁止直接调用 `window.interceptor` 完成业务 arrange/act。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`，采集 trailer/pseudo-header 并按 kind 落库；`proxy/utils/index.ts` 提供 gzip/deflate/brotli 延迟解码，`body.read-range` 由 Core 解压并回传 `decodeStatus`。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [archived/M5.md](archived/M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
@@ -54,8 +55,8 @@
 - **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [archived/M13.md](archived/M13.md)。
 - **多语言增强验证全绿**：293 unit tests；三 workspace typecheck；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 逐项验证 15 种语言、持久化、侧栏译文、页面无溢出与 Main language IPC 非法值拒绝；生产 audit 0。
 - **Capture 后续增强验证全绿**：311 unit tests；三 workspace typecheck；Windows package；真实 packaged smoke 1/1（活动 Recording Clear 后保留 Session 壳、Exchange/Body 归零）；生产 audit 0。Payload/Cookies/Timing/Tunnel/topbar 目标场景已完成浏览器与视觉检查。
-- Git：`main` 已包含 Stage 文档归档、Core/Main/Renderer 模块结构对齐、App/AppShell 合并、Capture 结构化过滤、Rules matcher/菜单/排序交互、Shell V2 唯一设计收敛，以及 packaged smoke readiness 稳定性修正和以 Ant Popover 实现为准的 Capture 文件菜单设计基线。本轮提交并 push 后应与 `origin/main` 对齐且工作树干净；没有 package、`.vite/` 或 `test-results/` 产物。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
-- 当前工作目录：`H:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
+- Git：`main` 在既有 M14/Shell V2/packaged smoke 基线上新增 local E2E 基础设施、公共 automation ID contract、Shell/Capture 初始接线、local production `interceptor://app` 启动路径、60 条 planned workflow 规格及 packaged workflow 目标说明；旧 workflow 实现已全部删除。本轮提交并 push 后应与 `origin/main` 对齐且工作树干净；不要提交 `.vite/`、package、Playwright report 或 `test-results/` 产物。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
+- 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
 - 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
 ## M0、M1 与 M2 已交付
@@ -124,6 +125,7 @@
 | 其余 workspace | `apps/desktop/src/renderer/features/{composer,settings,breakpoints,diagnostics}/` | Main/Statusbar + 内容工具栏，colocated CSS Module；一对一还原 `design/app` 对应视图 |
 | Updates UI | `features/settings/{updateStore.ts,update-format.ts,SettingsContent/UpdatesPanel.tsx,UpdateNotification/}` | 七态更新面板、进度、纯文本changelog与 Header 下方独立通知 |
 | 共享 UI 原子 | `apps/desktop/src/renderer/components/` | 扁平库(每个组件独立子目录含 tsx+module.css)：IconButton/Button/Switch/Select/InputBox/Segmented/Checkbox/Chip/Tabs/FilterChip/Timeline/Splitter/MethodBadge/StatusBadge/SectionHeader/StatItem/Count/MenuItem/NavItem/Flyout + cx/index |
+| Automation ID contract | `apps/desktop/src/shared/automation-ids.ts`、Renderer Shell/Capture/共享组件 | 静态ID、动态前缀与factory的唯一来源；当前完成Shell/Capture初始接线，其余feature随workflow实现补齐；无测试状态或隐藏IPC |
 | 主题 / 语言切换器 | `apps/desktop/src/renderer/components/{ThemeSwitcher,LanguageSwitcher}/`、`renderer/i18n/` | 侧栏底部控件（取代旧 Account）；Flyout 以按钮为锚 portal 弹出、底边对齐。语言列表提供 15 种完整本地 catalog；主题四项 hover 浮现时段山水 |
 | Ant Design 主题 | `apps/desktop/src/renderer/theme/theme.ts` | 四套时段主题 palette（light/warm=default、dark/ember=dark 算法）+ 全局/Button/Segmented/Splitter/Tabs/Tooltip Token |
 | 全局样式 | `apps/desktop/src/renderer/styles/global.css` | reset、四套主题 `:root[data-theme]` tokens、字体和 reduced-motion |
@@ -134,7 +136,8 @@
 | --- | --- | --- |
 | 图标源与产物 | `apps/desktop/assets/interceptor-icon.{svg,png,ico,icns}` | SVG 为源；PNG/ICO/ICNS 供 Renderer/Windows/macOS 使用 |
 | 图标生成脚本 | `scripts/generate-icon.ps1` | 可重复生成平台图标，修改后需人工检查所有格式 |
-| Packaged smoke | `apps/desktop/tests/packaged-smoke/startup.spec.ts` | 真实 exe + CDP；覆盖 UI、安全、Core、主题、窗口尺寸和退出清理 |
+| Local workflow E2E | `apps/desktop/tests/e2e-workflow-tests/` | `_electron.launch()` + 未打包production bundle；driver/fixture/60条规格已完成，`workflows/`为空、0条已实现 |
+| Packaged smoke | `apps/desktop/tests/packaged-smoke/startup.spec.ts` | 真实 exe + CDP；当前综合覆盖 UI、安全、Core、主题、窗口尺寸和退出清理，尚未复用60条workflow contract |
 | Playwright 配置 | `apps/desktop/playwright.config.ts` | 最终 package smoke 配置 |
 
 当前高层 Workflow 图和 20 步流程表见 [ARCHITECTURE.md](ARCHITECTURE.md)。
@@ -152,9 +155,9 @@
 
 ## 最近验收与下一动作
 
-本次验证：三 workspace typecheck；Desktop 115 / Proxy Core 180 / Protocol 19，共 314 项 unit tests；设计 SPA 重出 26 张 Capture 明暗主题截图，并以当前 Ant Popover 为基线同步文件菜单的锚点与内容间距。Visual parity 45 views / 330 targets / 0 missing，平均像素差 1.83%、94 个既有 flagged；Capture Export 菜单绝对偏移 `0/0`、2 个目标 0 flagged，真实 `Export → Export HAR` 命令链进入对话框且 7 个目标 0 flagged。Windows x64 package 通过；package audit 1,292 文件 / 377,399,178 bytes 全通过；真实 packaged smoke 1/1 通过；`npm audit --omit=dev` 为 0 vulnerabilities；`git diff --check` 通过。
+2026-07-22 本次提交前验证：三 workspace typecheck通过；Desktop 115 / Proxy Core 180 / Protocol 19，共314项unit tests通过；`e2e:prepare-local`成功构建Core、Windows helper和未打包production Main/Preload/Renderer bundles。Visual parity保持既有基线：45 views / 330 targets / 0 missing / 平均像素差1.83% / 94 flagged。Windows x64 package通过；package audit 1,292文件 / 377,412,874 bytes全通过；真实 packaged smoke 1/1通过；`npm audit --omit=dev`为0 vulnerabilities。因为`workflows/`为空，本次没有运行或宣称任何local feature workflow通过。
 
-下一动作：保持 `main` 与 `origin/main` 对齐并等待下一项产品需求。不要加入 `.vite/`、package 产物或 `test-results/`；继续保留 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
+下一动作：从 `application.startup.ready` 开始重新实现第一条 local workflow，只通过公共 automation ID 操作真实App UI；成功保存独立trace/evidence并验证destroy后，才把该单条Inventory状态改为implemented。随后逐条扩展60条规格；packaged目标复用同一业务contract，不能复制第二套workflow。不要加入`.vite/`、package、Playwright report或`test-results/`；继续保留`apps/desktop/tests/visual-parity/parity-report.md`作为验收资产。
 
 提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
