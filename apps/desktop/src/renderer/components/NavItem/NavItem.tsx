@@ -1,6 +1,6 @@
-import type { LucideIcon } from 'lucide-react';
+﻿import type { LucideIcon } from 'lucide-react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './NavItem.module.css';
 
 export interface NavItemProps {
@@ -64,3 +64,4 @@ export function NavItem({
     </div>
   );
 }
+

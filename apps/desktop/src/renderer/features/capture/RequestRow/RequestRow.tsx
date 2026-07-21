@@ -1,5 +1,5 @@
 import { Lock } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
@@ -12,22 +12,23 @@ import {
   statusLabel,
   timeLabel,
   typeLabel,
-} from '../row-format';
+} from '../utils';
 import styles from './RequestRow.module.css';
 
 export interface RequestRowProps {
   summary: CaptureExchangeSummary;
   selected: boolean;
-  onSelect: () => void;
-  style?: CSSProperties;
+  /** 虚拟化定位偏移（像素）；由父列表的 virtualizer 提供。 */
+  offsetTop: number;
+  onSelect: (id: string) => void;
 }
 
-/** A single request row in the capture list. */
-export function RequestRow({
+/** 虚拟化列表的行组件：memo 化，实时数据更新时仅内容/位置变化的行才 re-render。 */
+export const RequestRow = memo(function RequestRow({
   summary,
   selected,
+  offsetTop,
   onSelect,
-  style,
 }: RequestRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const kind = statusKind(summary.statusCode);
@@ -37,11 +38,18 @@ export function RequestRow({
     open: t('capture.open'),
     failed: t('capture.failed'),
   };
+  const style: CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    transform: `translateY(${offsetTop}px)`,
+  };
   return (
     <button
       type="button"
       className={cx(styles.row, selected && styles.selected)}
-      onClick={onSelect}
+      onClick={() => onSelect(summary.id)}
       style={style}
     >
       <MethodBadge method={summary.method} />
@@ -64,5 +72,5 @@ export function RequestRow({
       <span className={styles.time}>{timeLabel(summary, i18n.language, timeLabels)}</span>
     </button>
   );
-}
+});
 

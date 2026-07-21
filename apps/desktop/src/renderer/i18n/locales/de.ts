@@ -222,6 +222,8 @@ export const deCatalog = {
   'rules.applied': 'angewendet',
   'rules.searchRules': 'Regeln durchsuchen',
   'rules.more': 'Mehr',
+  'rules.moveUp': 'Nach oben',
+  'rules.moveDown': 'Nach unten',
   'rules.empty': 'Noch keine Regeln. Fügen Sie zum Start eine Regel hinzu.',
   'rules.conditionCount_one': '{{count}} Bedingung',
   'rules.conditionCount_other': '{{count}} Bedingungen',

@@ -1,81 +1,13 @@
 import { execFile } from 'node:child_process';
 
-// 懒加载提权库：@vscode/sudo-prompt 被 vite 标 external，只在 install/uninstall 需要提权时
-// 才 import，避免其在 Main 启动路径顶层 require 阻塞进程初始化（含 Chromium/CDP endpoint）。
-type SudoExec = (typeof import('@vscode/sudo-prompt'))['exec'];
-let sudoExecPromise: Promise<SudoExec> | null = null;
-function loadSudoExec(): Promise<SudoExec> {
-  if (!sudoExecPromise) {
-    sudoExecPromise = import('@vscode/sudo-prompt').then((module) => module.exec);
-  }
-  return sudoExecPromise;
-}
-
-/** 平台信任库命令结果。 */
-export interface CommandResult {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
-/** 平台命令执行抽象；抽成接口以便注入 fake 做单元测试（不真实修改系统）。 */
-export interface CommandRunner {
-  run(command: string, args: string[]): Promise<CommandResult>;
-}
-
-/** 默认 runner：execFile 不经 shell，参数以数组传入，避免命令注入。 */
-export const execFileRunner: CommandRunner = {
-  run(command, args) {
-    return new Promise((resolve) => {
-      execFile(command, args, { windowsHide: true }, (error, stdout, stderr) => {
-        const rawCode = (error as { code?: number | string } | null)?.code;
-        const code = typeof rawCode === 'number' ? rawCode : error ? 1 : 0;
-        resolve({ code, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
-      });
-    });
-  },
-};
-
-/** 提权命令执行抽象；install/uninstall 需管理员/root 写机器级信任库。 */
-export interface ElevatedRunner {
-  run(command: string): Promise<CommandResult>;
-}
-
-/** 默认提权 runner：@vscode/sudo-prompt 弹系统原生提权对话框执行整条命令行。 */
-export const sudoPromptRunner: ElevatedRunner = {
-  async run(command) {
-    const sudoExec = await loadSudoExec();
-    return new Promise((resolve) => {
-      sudoExec(command, { name: 'Interceptor' }, (error, stdout, stderr) => {
-        resolve({
-          code: error ? 1 : 0,
-          stdout: String(stdout ?? ''),
-          stderr: String(stderr ?? error?.message ?? ''),
-        });
-      });
-    });
-  },
-};
-
-export interface TrustStoreServiceOptions {
-  readonly platform?: NodeJS.Platform;
-  readonly runner?: CommandRunner;
-  readonly elevatedRunner?: ElevatedRunner;
-  /** macOS 系统钥匙串路径；默认 /Library/Keychains/System.keychain（本地计算机级信任）。 */
-  readonly systemKeychainPath?: string;
-}
-
-export class TrustStoreError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'TrustStoreError';
-  }
-}
-
-interface PlatformCommand {
-  readonly command: string;
-  readonly args: string[];
-}
+import type {
+  CommandRunner,
+  ElevatedRunner,
+  PlatformCommand,
+  SudoExec,
+  TrustStoreServiceOptions,
+} from '../interfaces';
+import { TrustStoreError } from './trust-store-error';
 
 /**
  * 本地计算机信任库的安装/卸载/检测（仅 Main）。
@@ -86,6 +18,36 @@ interface PlatformCommand {
  * 启动只检测，不自动修改信任库。
  */
 export class TrustStoreService {
+  /** 默认 runner：execFile 不经 shell，参数以数组传入，避免命令注入。 */
+  private static readonly EXEC_FILE_RUNNER: CommandRunner = {
+    run(command, args) {
+      return new Promise((resolve) => {
+        execFile(command, args, { windowsHide: true }, (error, stdout, stderr) => {
+          const rawCode = (error as { code?: number | string } | null)?.code;
+          const code = typeof rawCode === 'number' ? rawCode : error ? 1 : 0;
+          resolve({ code, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
+        });
+      });
+    },
+  };
+  /** 懒加载的 @vscode/sudo-prompt exec 单例；仅在提权时加载，避免顶层 require 阻塞启动。 */
+  private static sudoExecPromise: Promise<SudoExec> | null = null;
+  /** 默认提权 runner：弹系统原生提权对话框执行整条命令行。 */
+  private static readonly SUDO_PROMPT_RUNNER: ElevatedRunner = {
+    async run(command) {
+      const sudoExec = await TrustStoreService.loadSudoExec();
+      return new Promise((resolve) => {
+        sudoExec(command, { name: 'Interceptor' }, (error, stdout, stderr) => {
+          resolve({
+            code: error ? 1 : 0,
+            stdout: String(stdout ?? ''),
+            stderr: String(stderr ?? error?.message ?? ''),
+          });
+        });
+      });
+    },
+  };
+
   private readonly platform: NodeJS.Platform;
   private readonly runner: CommandRunner;
   private readonly elevatedRunner: ElevatedRunner;
@@ -93,8 +55,9 @@ export class TrustStoreService {
 
   constructor(options: TrustStoreServiceOptions = {}) {
     this.platform = options.platform ?? process.platform;
-    this.runner = options.runner ?? execFileRunner;
-    this.elevatedRunner = options.elevatedRunner ?? sudoPromptRunner;
+    this.runner = options.runner ?? TrustStoreService.EXEC_FILE_RUNNER;
+    this.elevatedRunner =
+      options.elevatedRunner ?? TrustStoreService.SUDO_PROMPT_RUNNER;
     this.systemKeychain =
       options.systemKeychainPath ?? '/Library/Keychains/System.keychain';
   }
@@ -173,5 +136,15 @@ export class TrustStoreService {
       return { command: 'security', args: ['find-certificate', '-a', '-Z', this.systemKeychain] };
     }
     throw new TrustStoreError(`Trust store is not supported on ${this.platform}.`);
+  }
+
+  /** 懒加载 @vscode/sudo-prompt 的 exec；仅在 install/uninstall 需要提权时加载。 */
+  private static loadSudoExec(): Promise<SudoExec> {
+    if (!TrustStoreService.sudoExecPromise) {
+      TrustStoreService.sudoExecPromise = import('@vscode/sudo-prompt').then(
+        (module) => module.exec,
+      );
+    }
+    return TrustStoreService.sudoExecPromise;
   }
 }

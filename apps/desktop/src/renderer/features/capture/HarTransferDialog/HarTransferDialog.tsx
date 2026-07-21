@@ -1,3 +1,4 @@
+import { Modal } from 'antd';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -14,9 +15,10 @@ import type {
   TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
 import { Button, Checkbox, cx } from '../../../components';
-import { usePrivacyStore } from '../../settings/privacyStore';
-import { useCaptureStore, visibleCaptureRows } from '../captureStore';
-import { refetchSessions } from '../useCaptureData';
+import { usePrivacyStore } from '../../settings/data/privacyStore';
+import { useCaptureStore } from '../data/captureStore';
+import { refetchSessions } from '../data/useCaptureData';
+import { visibleCaptureRows } from '../utils';
 import styles from './HarTransferDialog.module.css';
 
 const JOB_POLL_MS = 350;
@@ -115,23 +117,6 @@ export function HarTransferDialog({
     };
   }, [job?.id, job?.state, setAction]);
 
-  useEffect(() => {
-    if (!open || running) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setAction(null);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, running, setAction]);
-
-  if (!open) {
-    return null;
-  }
-
   const close = (): void => {
     if (!running) {
       setAction(null);
@@ -149,12 +134,12 @@ export function HarTransferDialog({
         ? await window.interceptor.startHarExport({
             scope: buildScope(scope, selectedId, filter),
             redaction: { authorization, cookies, bodies },
-          })
+          }, t('capture.exportHar'))
         : action === 'archive-export'
-          ? await window.interceptor.startArchiveExport()
+          ? await window.interceptor.startArchiveExport(t('capture.saveCapture'))
           : action === 'archive-import'
-            ? await window.interceptor.startArchiveImport()
-            : await window.interceptor.startHarImport();
+            ? await window.interceptor.startArchiveImport(t('capture.openCapture'))
+            : await window.interceptor.startHarImport(t('capture.importHar'));
       if (started) {
         setJob(started);
       } else {
@@ -183,20 +168,24 @@ export function HarTransferDialog({
   };
 
   return (
-    <div
-      className={styles.overlay}
-      onMouseDown={(event) => {
-        if (dismissOnOutsideClick && event.target === event.currentTarget) {
-          close();
-        }
+    <Modal
+      open={open}
+      centered
+      width={512}
+      closable={false}
+      footer={null}
+      title={null}
+      mask={{ closable: dismissOnOutsideClick && !running }}
+      keyboard={!running}
+      destroyOnHidden
+      onCancel={close}
+      classNames={{ container: styles.panel, body: styles.panelBody }}
+      styles={{
+        container: { padding: 0, border: '1px solid var(--border-2)' },
+        body: { padding: 0, lineHeight: 1.23 },
       }}
+      aria-labelledby="har-transfer-title"
     >
-      <section
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="har-transfer-title"
-      >
         <header className={styles.header}>
           <span className={styles.headerIcon}>
             {isImport ? (
@@ -334,8 +323,7 @@ export function HarTransferDialog({
             </>
           )}
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }
 

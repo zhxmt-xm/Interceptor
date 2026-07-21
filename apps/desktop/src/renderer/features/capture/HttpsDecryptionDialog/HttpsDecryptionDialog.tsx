@@ -1,3 +1,4 @@
+import { Modal } from 'antd';
 import { Check, LockKeyhole, Shield, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,19 +47,6 @@ export function HttpsDecryptionDialog({
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !busy) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [busy, onClose, open]);
-
   const run = (operation: () => Promise<CertificateInfo>, close = false): void => {
     if (busy) {
       return;
@@ -76,30 +64,29 @@ export function HttpsDecryptionDialog({
       .finally(() => setBusy(false));
   };
 
-  if (!open) {
-    return null;
-  }
-
   const generated = certificate?.present === true;
   const trusted = certificate?.trusted === true;
   const enabled = certificate?.mitmEnabled === true && trusted;
 
   return (
-    <div
-      className={styles.overlay}
-      role="presentation"
-      onMouseDown={(event) => {
-        if (dismissOnOutsideClick && !busy && event.target === event.currentTarget) {
-          onClose();
-        }
+    <Modal
+      open={open}
+      centered
+      width={560}
+      closable={false}
+      footer={null}
+      title={null}
+      mask={{ closable: dismissOnOutsideClick && !busy }}
+      keyboard={!busy}
+      destroyOnHidden
+      onCancel={onClose}
+      classNames={{ container: styles.panel, body: styles.panelBody }}
+      styles={{
+        container: { padding: 0, border: '1px solid var(--border-2)' },
+        body: { padding: 0, lineHeight: 1.23 },
       }}
+      aria-labelledby="https-decryption-title"
     >
-      <section
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="https-decryption-title"
-      >
         <header className={styles.header}>
           <span className={styles.headerIcon}><Shield aria-hidden="true" /></span>
           <h2 id="https-decryption-title">{t('settings.decryptHttps')}</h2>
@@ -189,8 +176,7 @@ export function HttpsDecryptionDialog({
             {busy ? t('firstRun.starting') : t('capture.startDecrypting')}
           </Button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowRight, Copy, Pause } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -8,7 +8,7 @@ import type {
   WebSocketFrameSummary,
 } from '../../../../shared/desktop-api';
 import { Count, cx, IconButton, Segmented, Switch } from '../../../components';
-import { sizeLabel } from '../row-format';
+import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
 import { useWebSocketFrames } from './useWebSocketFrames';
 import styles from './WebSocketMessages.module.css';
@@ -67,6 +67,10 @@ export function WebSocketMessages({
     }
   };
 
+  const handleSelectFrame = useCallback((seq: number): void => {
+    setSelectedSequence((current) => (current === seq ? null : seq));
+  }, []);
+
   return (
     <div className={styles.messages}>
       <div className={styles.toolbar}>
@@ -118,9 +122,7 @@ export function WebSocketMessages({
                       frame={frame}
                       startedAt={startedAt}
                       selected={frame.seq === selectedSequence}
-                      onSelect={() =>
-                        setSelectedSequence((current) =>
-                          current === frame.seq ? null : frame.seq)}
+                      onSelect={handleSelectFrame}
                     />
                     {frame.seq === selectedSequence ? (
                       <Payload frame={frame} />
@@ -145,7 +147,7 @@ export function WebSocketMessages({
   );
 }
 
-function FrameRow({
+const FrameRow = memo(function FrameRow({
   frame,
   startedAt,
   selected,
@@ -154,7 +156,7 @@ function FrameRow({
   frame: WebSocketFrameSummary;
   startedAt: number;
   selected: boolean;
-  onSelect(): void;
+  onSelect: (seq: number) => void;
 }): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const outgoing = frame.direction === 'client-to-server';
@@ -162,7 +164,7 @@ function FrameRow({
     <button
       type="button"
       className={cx(styles.frame, selected && styles.selected)}
-      onClick={onSelect}
+      onClick={() => onSelect(frame.seq)}
     >
       <span className={cx(styles.direction, outgoing ? styles.outgoing : styles.incoming)}>
         <ArrowRight size={12} strokeWidth={1.9} />
@@ -173,7 +175,7 @@ function FrameRow({
       <span className={styles.time}>{relativeTime(startedAt, frame.timestamp, i18n.language)}</span>
     </button>
   );
-}
+});
 
 function filterDirection(
   filter: DirectionFilter,

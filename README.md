@@ -10,11 +10,9 @@ The next release action is a real signed tag build with repository-external Wind
 
 Documentation is split to keep routine context small:
 
-- [stages/PROGRESS.md](stages/PROGRESS.md) is the required first read, concise Stage index, and current snapshot.
-- [stages/HANDOVER.md](stages/HANDOVER.md) contains the detailed current continuation state, code locations, remaining work, and next action.
-- [stages/ARCHITECTURE.md](stages/ARCHITECTURE.md) describes only the architecture already implemented in code.
-- [stages/](stages/) contains one implementation and validation record per Stage.
-- [stages/桌面网络调试代理完整方案.md](stages/桌面网络调试代理完整方案.md) is the authoritative product design for every Stage.
+- [stages/HANDOVER.md](stages/HANDOVER.md) is the required first read and contains the current continuation state, code locations, remaining work, and next action.
+- [stages/ARCHITECTURE.md](stages/ARCHITECTURE.md) is the second required read and describes only the architecture already implemented in code.
+- [stages/archived/](stages/archived/) contains the completed Stage records, former progress index, and complete product plan for historical reference.
 
 ## Prerequisites
 

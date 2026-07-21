@@ -1,6 +1,4 @@
-.flyout {
-  position: fixed;
-  z-index: 1000;
+.panel {
   width: 194px;
   padding: 7px;
   background: var(--panel);

@@ -222,6 +222,8 @@ export const zhTWCatalog = {
   'rules.applied': '已套用',
   'rules.searchRules': '搜尋規則',
   'rules.more': '更多',
+  'rules.moveUp': '上移',
+  'rules.moveDown': '下移',
   'rules.empty': '尚無規則，請新增規則以開始使用。',
   'rules.conditionCount_one': '{{count}} 個條件',
   'rules.conditionCount_other': '{{count}} 個條件',

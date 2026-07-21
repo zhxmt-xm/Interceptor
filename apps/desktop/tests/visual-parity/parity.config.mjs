@@ -194,6 +194,7 @@ export const views = [
       overlay: 'https-setup',
       scene: 'tunnel',
       tab: 'tunnel',
+      https: 'fresh',
     },
     designShot: 'light/https-setup/dialog.png',
     rendererActions: [
@@ -223,6 +224,7 @@ export const views = [
       overlay: 'https-setup',
       scene: 'tunnel',
       tab: 'tunnel',
+      https: 'fresh',
     },
     designShot: 'dark/https-setup/dialog.png',
     rendererActions: [
@@ -279,6 +281,10 @@ export const views = [
     },
     designShot: 'light/import-export/export-har.png',
     rendererActions: [
+      {
+        type: 'clickText',
+        text: '/user',
+      },
       {
         type: 'clickRole',
         role: 'button',
@@ -603,7 +609,7 @@ export const views = [
   {
     id: 'shell-v2-capture-dark',
     theme: 'dark',
-    designState: { view: 'capture', theme: 'dark', sidebar: 'expanded', layout: 'header-v2' },
+    designState: { view: 'capture', theme: 'dark', sidebar: 'expanded' },
     designShot: 'dark/shell-v2/capture.png',
     rendererActions: [{ type: 'clickText', text: '/user' }],
     targets: [
@@ -615,7 +621,7 @@ export const views = [
   {
     id: 'shell-v2-capture-collapsed',
     theme: 'light',
-    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed', layout: 'header-v2' },
+    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed' },
     designShot: 'light/shell-v2/capture-collapsed.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
@@ -641,7 +647,6 @@ export const views = [
       view: feature,
       theme: 'dark',
       sidebar: 'expanded',
-      layout: 'header-v2',
       ...(feature === 'settings' ? { settings: 'certificates' } : {}),
     },
     designShot: `dark/shell-v2/${feature}.png`,

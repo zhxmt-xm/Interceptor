@@ -2,14 +2,19 @@ import { Activity, Dot, Filter, GitBranch, Globe, Layers, Search, X } from 'luci
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { cx, MenuItem, useDismissOnOutside } from '../../../components';
-import { useCaptureStore } from '../captureStore';
+import { cx, Flyout, MenuItem } from '../../../components';
+import { useCaptureStore } from '../data/captureStore';
+import type { StructuredCaptureFilterField } from '../interfaces';
+import { parseStructuredFilter } from '../utils';
 import styles from './Omnibox.module.css';
 
 /** Search/filter omnibox with active filter pills and an add-filter popover. */
 export function Omnibox(): React.JSX.Element {
   const { t } = useTranslation();
   const [showFilter, setShowFilter] = useState(false);
+  const [pendingField, setPendingField] =
+    useState<StructuredCaptureFilterField | null>(null);
+  const [pendingValue, setPendingValue] = useState('');
   const search = useCaptureStore((state) => state.filter.search);
   const method = useCaptureStore((state) => state.filter.method);
   const status = useCaptureStore((state) => state.filter.status);
@@ -19,47 +24,67 @@ export function Omnibox(): React.JSX.Element {
   const setSearch = useCaptureStore((state) => state.setSearch);
   const setStructuredFilter = useCaptureStore((state) => state.setStructuredFilter);
   const inputRef = useRef<HTMLInputElement>(null);
-  const filterButtonRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
 
-  useDismissOnOutside(showFilter, () => setShowFilter(false), [popoverRef, filterButtonRef]);
-
-  // 从当前关键字文本提炼一个结构化过滤条件，随后清空关键字。
-  const promoteToFilter = (
-    field: 'method' | 'status' | 'host' | 'type' | 'duration',
-  ): void => {
+  const beginStructuredFilter = (field: StructuredCaptureFilterField): void => {
     setShowFilter(false);
-    const text = search.trim();
-    if (field === 'method' && text) {
-      setStructuredFilter({ method: text.toUpperCase() });
-      setSearch('');
-    } else if (field === 'status') {
-      const code = Number(text);
-      if (Number.isInteger(code) && code >= 100 && code <= 599) {
-        setStructuredFilter({ status: code });
-        setSearch('');
-      }
-    } else if (field === 'host' && text) {
-      setStructuredFilter({ host: text });
-      setSearch('');
-    } else if (field === 'type' && text) {
-      setStructuredFilter({ type: text.toLowerCase() });
-      setSearch('');
-    } else if (field === 'duration') {
-      const ms = Number.parseInt(text.replace(/[^0-9]/g, ''), 10);
-      if (Number.isInteger(ms) && ms > 0) {
-        setStructuredFilter({ minDurationMs: ms });
-        setSearch('');
-      }
-    }
-    inputRef.current?.focus();
+    setPendingValue(pendingField ? pendingValue : search);
+    setPendingField(field);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
   };
+
+  const cancelStructuredFilter = (): void => {
+    setPendingField(null);
+    setPendingValue('');
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const submitStructuredFilter = (): void => {
+    if (!pendingField) {
+      return;
+    }
+    const patch = parseStructuredFilter(pendingField, pendingValue);
+    if (!patch) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      return;
+    }
+    setStructuredFilter(patch);
+    setSearch('');
+    setPendingField(null);
+    setPendingValue('');
+  };
+
+  const pendingLabel = pendingField ? t(`capture.${pendingField}`) : null;
+  const pendingPlaceholder = pendingField === 'method'
+    ? 'GET, POST, DELETE…'
+    : pendingField === 'status'
+      ? '200, 404, 500…'
+      : pendingField === 'type'
+        ? 'json, js, font, ws…'
+        : pendingField === 'duration'
+          ? '≥ 500 ms'
+          : pendingField === 'host'
+            ? t('capture.contains')
+            : t('capture.filterRequests');
 
   return (
     <div className={styles.omnibox}>
       <span className={styles.searchArea}>
         <Search className={styles.searchIcon} size={14} strokeWidth={1.9} />
       </span>
+      {pendingLabel ? (
+        <span className={styles.pill}>
+          {pendingLabel}
+          <button
+            type="button"
+            className={styles.pillClose}
+            aria-label={`${t('capture.clear')} ${pendingLabel}`}
+            onClick={cancelStructuredFilter}
+          >
+            <X size={10} strokeWidth={2.2} />
+          </button>
+        </span>
+      ) : null}
       {method ? (
         <span className={styles.pill}>
           {method}
@@ -119,55 +144,76 @@ export function Omnibox(): React.JSX.Element {
         ref={inputRef}
         className={styles.input}
         type="text"
-        value={search}
-        placeholder={t('capture.filterRequests')}
-        onChange={(event) => setSearch(event.target.value)}
-        aria-label={t('capture.filterRequests')}
+        value={pendingField ? pendingValue : search}
+        placeholder={pendingPlaceholder}
+        onChange={(event) => {
+          if (pendingField) {
+            setPendingValue(event.target.value);
+          } else {
+            setSearch(event.target.value);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && pendingField) {
+            event.preventDefault();
+            submitStructuredFilter();
+          } else if (event.key === 'Escape' && pendingField) {
+            cancelStructuredFilter();
+          }
+        }}
+        aria-label={pendingLabel
+          ? `${t('capture.addFilter')}: ${pendingLabel}`
+          : t('capture.filterRequests')}
       />
-      <button
-        ref={filterButtonRef}
-        type="button"
-        className={cx(styles.filterButton, showFilter && styles.active)}
-        onClick={() => setShowFilter((value) => !value)}
-        aria-label={t('capture.addFilter')}
+      <Flyout
+        open={showFilter}
+        onOpenChange={setShowFilter}
+        placement="bottomRight"
+        className={styles.popover}
+        content={
+          <>
+            <div className={styles.popoverTitle}>{t('capture.addFilter')}</div>
+            <MenuItem
+              icon={GitBranch}
+              name={t('capture.method')}
+              hint="GET, POST, DELETE…"
+              onClick={() => beginStructuredFilter('method')}
+            />
+            <MenuItem
+              icon={Dot}
+              name={t('capture.status')}
+              hint="200 · 404 · 500"
+              onClick={() => beginStructuredFilter('status')}
+            />
+            <MenuItem
+              icon={Layers}
+              name={t('capture.type')}
+              hint="json, js, font, ws…"
+              onClick={() => beginStructuredFilter('type')}
+            />
+            <MenuItem
+              icon={Globe}
+              name={t('capture.host')}
+              hint={t('capture.contains')}
+              onClick={() => beginStructuredFilter('host')}
+            />
+            <MenuItem
+              icon={Activity}
+              name={t('capture.duration')}
+              hint="≥ 500 ms"
+              onClick={() => beginStructuredFilter('duration')}
+            />
+          </>
+        }
       >
-        <Filter size={16} strokeWidth={1.9} />
-      </button>
-      {showFilter ? (
-        <div ref={popoverRef} className={styles.popover}>
-          <div className={styles.popoverTitle}>{t('capture.addFilter')}</div>
-          <MenuItem
-            icon={GitBranch}
-            name={t('capture.method')}
-            hint="GET, POST, DELETE…"
-            onClick={() => promoteToFilter('method')}
-          />
-          <MenuItem
-            icon={Dot}
-            name={t('capture.status')}
-            hint="2xx · 3xx · 4xx · 5xx"
-            onClick={() => promoteToFilter('status')}
-          />
-          <MenuItem
-            icon={Layers}
-            name={t('capture.type')}
-            hint="json, js, font, ws…"
-            onClick={() => promoteToFilter('type')}
-          />
-          <MenuItem
-            icon={Globe}
-            name={t('capture.host')}
-            hint={t('capture.contains')}
-            onClick={() => promoteToFilter('host')}
-          />
-          <MenuItem
-            icon={Activity}
-            name={t('capture.duration')}
-            hint="> 500 ms"
-            onClick={() => promoteToFilter('duration')}
-          />
-        </div>
-      ) : null}
+        <button
+          type="button"
+          className={cx(styles.filterButton, showFilter && styles.active)}
+          aria-label={t('capture.addFilter')}
+        >
+          <Filter size={16} strokeWidth={1.9} />
+        </button>
+      </Flyout>
     </div>
   );
 }

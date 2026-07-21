@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app expanded" data-theme="light" data-view="capture" data-layout="header-v2" data-https="fresh" data-settings="certificates" data-repair="idle" data-update="up-to-date">
+    <div class="app shell-v2 expanded" data-theme="light" data-view="capture" data-https="fresh" data-settings="certificates" data-repair="idle" data-update="up-to-date">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -39,64 +39,6 @@
             <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
             <span class="header-view-title-v2" data-parity="window-header-title">Diagnostics</span>
           </div>
-        </div>
-        <div class="tv capture-tools" data-v="capture">
-          <div class="cap-controls"><div class="ib"><svg><use href="#i-menu"/></svg></div><div class="rec"><span class="dot"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></div></div>
-          <div class="cap-filtering"><div class="omni">
-              <svg class="si"><use href="#i-search"/></svg>
-              <span class="pill">GET<span class="x"><svg><use href="#i-x"/></svg></span></span>
-              <span class="pill">2xx<span class="x"><svg><use href="#i-x"/></svg></span></span>
-              <span class="ph">Filter requests…</span>
-              <span class="sp"></span>
-              <button class="fbtn"><svg><use href="#i-filter"/></svg></button>
-              <div class="ompop">
-                <div class="po-t">Add filter</div>
-                <div class="fi"><svg><use href="#i-branch"/></svg><span class="n">Method</span><span class="ex">GET, POST, DELETE…</span></div>
-                <div class="fi"><svg><use href="#i-dot"/></svg><span class="n">Status</span><span class="ex">2xx · 3xx · 4xx · 5xx</span></div>
-                <div class="fi"><svg><use href="#i-layers"/></svg><span class="n">Type</span><span class="ex">json, js, font, ws…</span></div>
-                <div class="fi"><svg><use href="#i-globe"/></svg><span class="n">Host</span><span class="ex">contains…</span></div>
-                <div class="fi"><svg><use href="#i-activity"/></svg><span class="n">Duration</span><span class="ex">&gt; 500 ms</span></div>
-              </div>
-          </div></div>
-          <div class="cap-inspector-tools">
-            <button class="ib sm file-trigger" data-file-trigger="import" aria-label="Import" title="Import"><svg><use href="#i-upload"/></svg></button>
-            <button class="ib sm file-trigger" data-file-trigger="export" aria-label="Export" title="Export"><svg><use href="#i-download"/></svg></button>
-            <div class="filemenu import-menu">
-              <button class="file-command"><svg><use href="#i-upload"/></svg><span>Import HAR</span><code>.har</code></button>
-              <button class="file-command"><svg><use href="#i-file"/></svg><span>Open Capture</span><code>.iarchive</code></button>
-            </div>
-            <div class="filemenu export-menu">
-              <button class="file-command"><svg><use href="#i-download"/></svg><span>Export HAR</span><code>.har</code></button>
-              <button class="file-command"><svg><use href="#i-file"/></svg><span>Save Capture</span><code>.iarchive</code></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="tv" data-v="rules">
-          <div class="ib"><svg><use href="#i-menu"/></svg></div>
-          <span class="ttl">Rules</span>
-          <span class="cnt" style="margin-left:4px"><b>Rev 42</b> · applied · 8 rules · 6 enabled</span>
-        </div>
-
-        <div class="tv" data-v="composer">
-          <div class="ib"><svg><use href="#i-menu"/></svg></div>
-          <span class="ttl">Composer</span>
-        </div>
-
-        <div class="tv" data-v="settings">
-          <div class="ib"><svg><use href="#i-menu"/></svg></div>
-          <span class="ttl">Settings</span>
-        </div>
-
-        <div class="tv" data-v="breakpoints">
-          <div class="ib"><svg><use href="#i-menu"/></svg></div>
-          <span class="ttl">Breakpoints</span>
-          <span class="cnt" style="margin-left:4px"><b>2</b> paused</span>
-        </div>
-
-        <div class="tv" data-v="diagnostics">
-          <div class="ib"><svg><use href="#i-menu"/></svg></div>
-          <span class="ttl">Diagnostics</span>
         </div>
         <div class="window-controls">
           <button class="ib sm window-control" aria-label="Minimize" title="Minimize"><svg><use href="#i-minus"/></svg></button>
@@ -662,7 +604,6 @@
       <button class="dock-toggle" aria-label="Toggle design controls"><svg><use href="#i-settings"/></svg></button>
       <div class="dock-panel">
         <div class="grp"><span class="lbl">Feature</span><div class="switch" data-key="view"><button data-set="capture">Capture</button><button data-set="rules">Rules</button><button data-set="composer">Composer</button><button data-set="breakpoints">Breaks</button><button data-set="diagnostics">Diag</button><button data-set="settings">Settings</button></div></div>
-        <div class="grp"><span class="lbl">Layout</span><div class="switch" data-key="layout"><button data-set="current">Current</button><button data-set="header-v2">Header V2</button></div></div>
         <div class="grp"><span class="lbl">Theme</span><div class="switch" data-key="theme"><button data-set="light">Light</button><button data-set="warm">Warm</button><button data-set="dark">Dark</button><button data-set="ember">Ember</button></div></div>
         <div class="grp"><span class="lbl">Sidebar</span><div class="switch" data-key="sidebar"><button data-set="expanded">Expand</button><button data-set="collapsed">Collapse</button></div></div>
         <div class="grp"><span class="lbl">Overlay</span><div class="switch" data-key="overlay"><button data-set="none">None</button><button data-set="https-setup">HTTPS</button><button data-set="import-export">Export</button></div></div>

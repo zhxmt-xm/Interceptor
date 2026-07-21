@@ -1,7 +1,7 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import type { CoreProcessStatus } from '../../../../shared/desktop-api';
-import { useCaptureStore } from '../captureStore';
+import { useCaptureStore } from '../data/captureStore';
 
 const CORE_STATE_KEYS: Record<CoreProcessStatus['state'], string> = {
   starting: 'coreState.starting',

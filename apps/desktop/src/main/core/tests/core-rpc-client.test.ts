@@ -5,11 +5,9 @@ import {
 } from '@interceptor/core-protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  CoreRpcClient,
-  CoreRpcError,
-  type CoreRpcPort,
-} from '../core-rpc-client';
+import { CoreRpcClient } from '../core-rpc-client';
+import { CoreRpcError } from '../core-rpc-error';
+import type { CoreRpcPort } from '../../interfaces';
 
 class FakeRpcPort implements CoreRpcPort {
   readonly sent: MainToCoreMessage[] = [];

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './Count.module.css';
 
 export interface CountProps {
@@ -12,3 +12,4 @@ export interface CountProps {
 export function Count({ children, className }: CountProps): React.JSX.Element {
   return <span className={cx(styles.count, className)}>{children}</span>;
 }
+

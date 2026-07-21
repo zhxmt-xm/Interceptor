@@ -16,31 +16,33 @@ import {
 import { MAX_BODY_CHUNK_BYTES } from '@interceptor/core-protocol';
 
 import {
-  DESKTOP_UI_LANGUAGES,
   DESKTOP_IPC_CHANNELS,
   type CaptureExchangeEvent,
   type CertificateInfo,
   type CoreProcessStatus,
-  type DesktopUiLanguage,
   type UpdateStatus,
 } from '../shared/desktop-api';
 import { CertificateService } from './certificates/certificate-service';
 import { TrustStoreService } from './certificates/trust-store-service';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
-import { isTrustedRendererUrl } from './security/trusted-renderer-url';
+import type {
+  SystemProxyService,
+  UpdateService,
+} from './interfaces';
+import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
 import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
-import type { SystemProxyService } from './system-proxy/system-proxy-service';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
-import type { UpdateService } from './updates/update-service';
 import {
   assertBoundedString,
   assertIdentifier,
   assertOptionalPort,
   assertRevision,
+  readErrorMessage,
+  readErrorName,
   toBodyDecodeOptions,
   toBreakpointEdit,
   toByteRange,
@@ -57,128 +59,10 @@ import {
   toRendererDiagnosticRecord,
   toRendererStorageUsage,
   toWebSocketFrameQuery,
-} from './utils/renderer-utils';
+} from './utils';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
-
-type NativeDialogKind =
-  | 'exportHar'
-  | 'importHar'
-  | 'exportArchive'
-  | 'importArchive'
-  | 'exportDiagnostics';
-
-const NATIVE_DIALOG_TITLES: Record<
-  DesktopUiLanguage,
-  Record<NativeDialogKind, string>
-> = {
-  en: {
-    exportHar: 'Export HAR 1.2',
-    importHar: 'Import HAR 1.2',
-    exportArchive: 'Export native archive',
-    importArchive: 'Import native archive',
-    exportDiagnostics: 'Export diagnostics (JSON Lines)',
-  },
-  'zh-CN': {
-    exportHar: '导出 HAR 1.2',
-    importHar: '导入 HAR 1.2',
-    exportArchive: '导出原生归档',
-    importArchive: '导入原生归档',
-    exportDiagnostics: '导出诊断日志（JSON Lines）',
-  },
-  'zh-TW': {
-    exportHar: '匯出 HAR 1.2',
-    importHar: '匯入 HAR 1.2',
-    exportArchive: '匯出原生封存檔',
-    importArchive: '匯入原生封存檔',
-    exportDiagnostics: '匯出診斷記錄（JSON Lines）',
-  },
-  ja: {
-    exportHar: 'HAR 1.2 をエクスポート',
-    importHar: 'HAR 1.2 をインポート',
-    exportArchive: 'ネイティブアーカイブをエクスポート',
-    importArchive: 'ネイティブアーカイブをインポート',
-    exportDiagnostics: '診断ログをエクスポート（JSON Lines）',
-  },
-  ko: {
-    exportHar: 'HAR 1.2 내보내기',
-    importHar: 'HAR 1.2 가져오기',
-    exportArchive: '네이티브 아카이브 내보내기',
-    importArchive: '네이티브 아카이브 가져오기',
-    exportDiagnostics: '진단 로그 내보내기(JSON Lines)',
-  },
-  de: {
-    exportHar: 'HAR 1.2 exportieren',
-    importHar: 'HAR 1.2 importieren',
-    exportArchive: 'Natives Archiv exportieren',
-    importArchive: 'Natives Archiv importieren',
-    exportDiagnostics: 'Diagnoseprotokoll exportieren (JSON Lines)',
-  },
-  fr: {
-    exportHar: 'Exporter HAR 1.2',
-    importHar: 'Importer HAR 1.2',
-    exportArchive: 'Exporter l’archive native',
-    importArchive: 'Importer l’archive native',
-    exportDiagnostics: 'Exporter les diagnostics (JSON Lines)',
-  },
-  es: {
-    exportHar: 'Exportar HAR 1.2',
-    importHar: 'Importar HAR 1.2',
-    exportArchive: 'Exportar archivo nativo',
-    importArchive: 'Importar archivo nativo',
-    exportDiagnostics: 'Exportar diagnósticos (JSON Lines)',
-  },
-  it: {
-    exportHar: 'Esporta HAR 1.2',
-    importHar: 'Importa HAR 1.2',
-    exportArchive: 'Esporta archivio nativo',
-    importArchive: 'Importa archivio nativo',
-    exportDiagnostics: 'Esporta diagnostica (JSON Lines)',
-  },
-  'pt-BR': {
-    exportHar: 'Exportar HAR 1.2',
-    importHar: 'Importar HAR 1.2',
-    exportArchive: 'Exportar arquivo nativo',
-    importArchive: 'Importar arquivo nativo',
-    exportDiagnostics: 'Exportar diagnósticos (JSON Lines)',
-  },
-  ru: {
-    exportHar: 'Экспорт HAR 1.2',
-    importHar: 'Импорт HAR 1.2',
-    exportArchive: 'Экспорт собственного архива',
-    importArchive: 'Импорт собственного архива',
-    exportDiagnostics: 'Экспорт диагностики (JSON Lines)',
-  },
-  nl: {
-    exportHar: 'HAR 1.2 exporteren',
-    importHar: 'HAR 1.2 importeren',
-    exportArchive: 'Native archief exporteren',
-    importArchive: 'Native archief importeren',
-    exportDiagnostics: 'Diagnostiek exporteren (JSON Lines)',
-  },
-  pl: {
-    exportHar: 'Eksportuj HAR 1.2',
-    importHar: 'Importuj HAR 1.2',
-    exportArchive: 'Eksportuj archiwum natywne',
-    importArchive: 'Importuj archiwum natywne',
-    exportDiagnostics: 'Eksportuj diagnostykę (JSON Lines)',
-  },
-  tr: {
-    exportHar: 'HAR 1.2 dışa aktar',
-    importHar: 'HAR 1.2 içe aktar',
-    exportArchive: 'Yerel arşivi dışa aktar',
-    importArchive: 'Yerel arşivi içe aktar',
-    exportDiagnostics: 'Tanılamayı dışa aktar (JSON Lines)',
-  },
-  uk: {
-    exportHar: 'Експорт HAR 1.2',
-    importHar: 'Імпорт HAR 1.2',
-    exportArchive: 'Експорт нативного архіву',
-    importArchive: 'Імпорт нативного архіву',
-    exportDiagnostics: 'Експорт діагностики (JSON Lines)',
-  },
-};
 
 PackagedRendererProtocol.registerScheme();
 
@@ -192,8 +76,6 @@ class DesktopApplication {
   private systemProxyService: SystemProxyService | null = null;
   /** Public GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
-  /** Renderer-selected UI language used only for Main-owned native dialogs. */
-  private uiLanguage: DesktopUiLanguage = 'en';
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
@@ -355,22 +237,6 @@ class DesktopApplication {
       event.preventDefault();
     });
 
-    // A title-bar grab that moves/resizes the frameless window is OS-owned and never
-    // reaches the renderer DOM. Forward move/resize (throttled) so open popovers dismiss
-    // the instant the user starts dragging the window — the popover closes and the native
-    // drag/resize proceed in one gesture. Cross-platform: move/resize fire on all OSes.
-    let lastChromeSignalAt = 0;
-    const signalWindowChrome = (): void => {
-      const now = Date.now();
-      if (now - lastChromeSignalAt < 100 || mainWindow.isDestroyed()) {
-        return;
-      }
-      lastChromeSignalAt = now;
-      mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.windowChromePress);
-    };
-    mainWindow.on('move', signalWindowChrome);
-    mainWindow.on('resize', signalWindowChrome);
-
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
@@ -416,6 +282,7 @@ class DesktopApplication {
       },
     };
 
+    // 自绘窗口栏的窗口控制：退出走 guarded shutdown，最小化/最大化只作用于发起窗口。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appQuit, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       setImmediate(() => app.quit());
@@ -561,17 +428,6 @@ class DesktopApplication {
         );
       },
     );
-
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiSetLanguage, (event, language: unknown) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      if (
-        typeof language !== 'string' ||
-        !DESKTOP_UI_LANGUAGES.includes(language as DesktopUiLanguage)
-      ) {
-        throw new Error('language is invalid');
-      }
-      this.uiLanguage = language as DesktopUiLanguage;
-    });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -769,11 +625,12 @@ class DesktopApplication {
     // HAR 导出：Renderer 只提交 scope/redaction；路径由 Main 系统对话框生成。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.harExportStart,
-      async (event, request: unknown) => {
+      async (event, request: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const options = toHarExportRequest(request);
+        assertBoundedString(title, 'dialog title', 256);
         const selection = await dialog.showSaveDialog({
-          title: this.nativeDialogTitle('exportHar'),
+          title,
           defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.har`,
           filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -795,10 +652,11 @@ class DesktopApplication {
     );
 
     // HAR 导入：系统对话框仅允许选择一个 .har，Renderer 不接触真实路径或文件内容。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event) => {
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showOpenDialog({
-        title: this.nativeDialogTitle('importHar'),
+        title,
         filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
         properties: ['openFile'],
       });
@@ -817,10 +675,11 @@ class DesktopApplication {
     });
 
     // 原生 archive 导出：整库快照，无需 Renderer 提交 scope/redaction；路径由 Main 生成。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event) => {
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showSaveDialog({
-        title: this.nativeDialogTitle('exportArchive'),
+        title,
         defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.iarchive`,
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -839,10 +698,11 @@ class DesktopApplication {
     });
 
     // 原生 archive 导入：系统对话框仅允许选择一个 .iarchive，Renderer 不接触真实路径。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event) => {
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showOpenDialog({
-        title: this.nativeDialogTitle('importArchive'),
+        title,
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['openFile'],
       });
@@ -863,11 +723,12 @@ class DesktopApplication {
     // 诊断 JSONL 导出：Renderer 只提交 process/level/outcome 过滤；路径由 Main 生成。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.diagnosticsExportStart,
-      async (event, filter: unknown) => {
+      async (event, filter: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const parsedFilter = toDiagnosticsExportFilter(filter);
+        assertBoundedString(title, 'dialog title', 256);
         const selection = await dialog.showSaveDialog({
-          title: this.nativeDialogTitle('exportDiagnostics'),
+          title,
           defaultPath: `interceptor-diagnostics-${new Date().toISOString().slice(0, 10)}.jsonl`,
           filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -1314,13 +1175,6 @@ class DesktopApplication {
     return this.systemProxyService;
   }
 
-  /** Return one localized title for a Main-owned native file dialog. */
-  private nativeDialogTitle(
-    dialogKind: NativeDialogKind,
-  ): string {
-    return NATIVE_DIALOG_TITLES[this.uiLanguage][dialogKind];
-  }
-
   /** Return the initialized GitHub release notification owner. */
   private requireUpdateService(): UpdateService {
     if (!this.updateService) {
@@ -1448,7 +1302,7 @@ class DesktopApplication {
   }
 
   private isTrustedRendererNavigation(url: string): boolean {
-    return isTrustedRendererUrl(url, {
+    return TrustedRendererUrl.isTrusted(url, {
       devServerUrl: MAIN_WINDOW_VITE_DEV_SERVER_URL,
       packagedRendererUrl: PackagedRendererProtocol.entryUrl,
     });
@@ -1508,11 +1362,3 @@ class DesktopApplication {
 }
 
 new DesktopApplication().start();
-
-function readErrorName(error: unknown): string {
-  return error instanceof Error ? error.name : 'unknown';
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

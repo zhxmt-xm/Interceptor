@@ -1,4 +1,5 @@
 import { App as AntApp, ConfigProvider } from 'antd';
+import { Maximize2, Menu, Minus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +27,6 @@ import {
   UpdateNotification,
 } from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
-import { AppShell } from './AppShell';
 import styles from './App.module.css';
 import { Sidebar, type ViewId } from './Sidebar';
 
@@ -119,7 +119,6 @@ export function App(): React.JSX.Element {
     document.documentElement.dir = 'ltr';
     window.localStorage.setItem('interceptor.language', language);
     window.localStorage.removeItem('interceptor.lang');
-    void window.interceptor.setUiLanguage(language).catch(() => undefined);
   }, [language]);
 
   useEffect(() => {
@@ -172,35 +171,69 @@ export function App(): React.JSX.Element {
 
   const feature = renderView(view, settingsSection, coreStatus);
 
-  const shell = (
-    <>
-      <AppShell
+  const content = (
+    <div className={styles.app} data-collapsed={collapsed}>
+      <Sidebar
+        activeView={view}
         collapsed={collapsed}
-        sidebar={
-          <Sidebar
-            activeView={view}
-            collapsed={collapsed}
-            onSelect={setView}
-            theme={themeMode}
-            onThemeChange={setThemeMode}
-            lang={language}
-            onLangChange={changeLanguage}
-            coreStatus={coreStatus}
-          />
-        }
-        featureName={t(VIEW_LABEL_KEYS[view])}
-        onToggleSidebar={toggleCollapse}
-        notification={<UpdateNotification />}
-        main={feature.main}
-        statusbar={feature.statusbar}
+        onSelect={setView}
+        theme={themeMode}
+        onThemeChange={setThemeMode}
+        lang={language}
+        onLangChange={changeLanguage}
+        coreStatus={coreStatus}
       />
-      <ProxyReadinessDialog
-        onOpenSettings={() => {
-          setSettingsSection('proxy');
-          setView('settings');
-        }}
-      />
-    </>
+      <header className={styles.header}>
+        <button
+          type="button"
+          className={styles.sidebarToggle}
+          aria-label={t('capture.toggleSidebar')}
+          title={t('capture.toggleSidebar')}
+          onClick={toggleCollapse}
+        >
+          <Menu size={15} strokeWidth={1.9} />
+        </button>
+        <span className={styles.featureName} data-parity="window-header-title">
+          {t(VIEW_LABEL_KEYS[view])}
+        </span>
+        <div className={styles.windowControls}>
+          <button
+            type="button"
+            className={styles.windowControl}
+            aria-label={t('app.minimizeWindow')}
+            title={t('app.minimizeWindow')}
+            onClick={() => void window.interceptor.minimizeWindow()}
+          >
+            <Minus size={15} strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            className={styles.windowControl}
+            aria-label={t('app.toggleMaximizeWindow')}
+            title={t('app.toggleMaximizeWindow')}
+            onClick={() => void window.interceptor.toggleMaximizeWindow()}
+          >
+            <Maximize2 size={14} strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            className={styles.windowClose}
+            aria-label={t('capture.close')}
+            title={t('capture.close')}
+            onClick={() => {
+              void window.interceptor.closeApplication().catch(() => window.close());
+            }}
+          >
+            <X size={15} strokeWidth={1.9} />
+          </button>
+        </div>
+      </header>
+      <div className={styles.notification}>
+        <UpdateNotification />
+      </div>
+      <main className={styles.main}>{feature.main}</main>
+      <footer className={styles.footer}>{feature.statusbar}</footer>
+    </div>
   );
 
   return (
@@ -211,7 +244,15 @@ export function App(): React.JSX.Element {
       theme={createAppTheme(themeMode)}
     >
       <AntApp className={styles.antApp}>
-        {view === 'diagnostics' ? <DiagnosticsProvider>{shell}</DiagnosticsProvider> : shell}
+        {view === 'diagnostics' ? (
+          <DiagnosticsProvider>{content}</DiagnosticsProvider>
+        ) : content}
+        <ProxyReadinessDialog
+          onOpenSettings={() => {
+            setSettingsSection('proxy');
+            setView('settings');
+          }}
+        />
       </AntApp>
     </ConfigProvider>
   );

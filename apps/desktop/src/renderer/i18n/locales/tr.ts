@@ -224,6 +224,8 @@ export const trCatalog = {
   'rules.applied': 'uygulandı',
   'rules.searchRules': 'Kurallarda ara',
   'rules.more': 'Daha fazla',
+  'rules.moveUp': 'Yukarı taşı',
+  'rules.moveDown': 'Aşağı taşı',
   'rules.empty': 'Henüz kural yok. Başlamak için bir kural ekleyin.',
   'rules.conditionCount_one': '{{count}} koşul',
   'rules.conditionCount_other': '{{count}} koşul',

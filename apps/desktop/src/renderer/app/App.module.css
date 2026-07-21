@@ -1,6 +1,120 @@
-/* Shell-only style: a full-height Ant App wrapper so the sidebar's flex spring
-   reaches the window bottom. Topbar/title/placeholder styles now live in their
-   own components under components/. */
 .antApp {
   height: 100%;
+}
+
+/* Mirrors design/app/app.css while filling the resizable Electron window. */
+.app {
+  position: relative;
+  display: grid;
+  grid-template-areas: "side header" "side main" "side footer";
+  grid-template-rows: 46px minmax(0, 1fr) 30px;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.23;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.app[data-collapsed="false"] {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.app[data-collapsed="true"] {
+  grid-template-columns: 60px minmax(0, 1fr);
+}
+
+.header {
+  grid-area: header;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 108px 0 18px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.header :where(button, input, [role="button"], [role="menu"], [role="menuitem"]) {
+  -webkit-app-region: no-drag;
+}
+
+.sidebarToggle,
+.windowControl,
+.windowClose {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.sidebarToggle {
+  margin-right: 2px;
+}
+
+.sidebarToggle:hover,
+.windowControl:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.windowControls {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transform: translateY(-50%);
+  -webkit-app-region: no-drag;
+}
+
+.windowClose:hover {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+.featureName {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification {
+  position: absolute;
+  z-index: 90;
+  top: 51px;
+  right: 12px;
+}
+
+.main {
+  grid-area: main;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.footer {
+  grid-area: footer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--chrome);
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-2);
 }

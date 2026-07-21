@@ -9,19 +9,20 @@ design/
 ├── design-system.md         # 权威视觉规范(颜色/排版/尺寸/组件/交互)
 ├── README.md                # 本文件
 └── app/                     # 唯一的可交互设计稿 SPA(所有 feature 合并于此)
-    ├── index.html           # 外壳 + 所有 feature 视图(tv/mv/sv)+ overlay
+    ├── index.html           # Shell V2 外壳 + 所有 feature 主视图/状态栏 + overlay
     ├── app.css              # 令牌 + 外壳 + 各 feature 样式(按 [data-view]/.v-* 作用域)
     ├── app.js               # 状态控制：侧栏导航/主题/折叠/overlay/页签/弹窗 + window.__setState
     ├── sprite.js            # 注入 SVG 图标 sprite
     ├── shoot.mjs            # Playwright 截图:framed + full(滚动全展开)
-    └── shots/               # 导出图:shots/<theme>/<feature>/<variant>.png(light/dark 顶层分开)
+    ├── shoot-scenes.mjs     # 当前主题 switcher 的场景截图
+    └── shots/               # 当前设计截图:light/dark feature 矩阵 + scenes
 ```
 
 规则:
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
-- Header V2 是 SPA 的默认布局与已批准落地基线；旧布局只保留为设计对照。Header 左侧只承载侧栏折叠按钮和 feature 名称，右侧只保留窗口控制；状态统一放到底部状态栏，业务命令位于各 feature 内容工具栏。
-- 状态统一由 `window.__setState({view,theme,sidebar,layout,overlay,tab,pop,lang,pop2,https})` 驱动（`layout`=`header-v2`/`current`，`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，`https`=HTTPS setup 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
+- Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧只承载侧栏折叠按钮和 feature 名称，右侧只保留窗口控制；状态统一放到底部状态栏，业务命令位于各 feature 内容工具栏。
+- 状态统一由 `window.__setState({view,theme,sidebar,overlay,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu})` 驱动（`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，其余字段驱动当前细节与 overlay 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
 
@@ -31,6 +32,7 @@ design/
 node design/app/shoot.mjs   # 渲染 SPA 所有状态,输出到 app/shots/<theme>/<feature>/
 node design/app/shoot.mjs --feature=import-export  # 只更新一个 feature,保留其他 shots
 node design/app/shoot.mjs --feature=shell-v2       # 更新 Header V2 的六个 workspace + Capture 折叠态
+node design/app/shoot-scenes.mjs                   # 更新当前主题 switcher 场景
 ```
 
 依赖已随仓库存在的 `@playwright/test` + 系统 Edge(`channel: 'msedge'`),无需额外安装浏览器。

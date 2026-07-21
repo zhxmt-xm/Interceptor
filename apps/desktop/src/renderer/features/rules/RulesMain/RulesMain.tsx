@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Splitter } from '../../../components';
 import { RuleEditor } from '../RuleEditor/RuleEditor';
 import { RuleList } from '../RuleList/RuleList';
-import { useRulesData } from '../useRulesData';
+import { useRulesData } from '../data/useRulesData';
 import styles from './RulesMain.module.css';
 
 /** Rules workspace body: rule list, draggable splitter and rule editor. */

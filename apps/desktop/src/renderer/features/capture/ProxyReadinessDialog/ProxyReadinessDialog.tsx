@@ -1,10 +1,11 @@
+import { Modal } from 'antd';
 import { AlertTriangle, Shield, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, IconButton } from '../../../components';
-import { useCaptureStore } from '../captureStore';
-import { retryCaptureProxyReadiness } from '../useCaptureData';
+import { useCaptureStore } from '../data/captureStore';
+import { retryCaptureProxyReadiness } from '../data/useCaptureData';
 import styles from './ProxyReadinessDialog.module.css';
 
 export interface ProxyReadinessDialogProps {
@@ -23,27 +24,11 @@ export function ProxyReadinessDialog({
   const setIssue = useCaptureStore((state) => state.setProxyReadinessIssue);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!issue || busy) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setIssue(null);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [busy, issue, setIssue]);
-
-  if (!issue) {
-    return null;
-  }
-
-  const listenerUnavailable = issue.kind === 'listener';
+  const open = issue !== null;
+  const listenerUnavailable = issue?.kind === 'listener';
   const statusLabel = listenerUnavailable
     ? t('settings.listenerStopped')
-    : issue.ownershipLost
+    : issue?.ownershipLost
       ? t('settings.ownershipLost')
       : t('settings.systemProxyOff');
 
@@ -56,21 +41,25 @@ export function ProxyReadinessDialog({
   };
 
   return (
-    <div
-      className={styles.overlay}
-      role="presentation"
-      onMouseDown={(event) => {
-        if (dismissOnOutsideClick && !busy && event.target === event.currentTarget) {
-          setIssue(null);
-        }
+    <Modal
+      open={open}
+      centered
+      width={500}
+      zIndex={1200}
+      closable={false}
+      footer={null}
+      title={null}
+      mask={{ closable: dismissOnOutsideClick && !busy }}
+      keyboard={!busy}
+      destroyOnHidden
+      onCancel={() => setIssue(null)}
+      classNames={{ container: styles.panel, body: styles.panelBody }}
+      styles={{
+        container: { padding: 0, border: '1px solid var(--border-2)' },
+        body: { padding: 0, lineHeight: 1.23 },
       }}
+      aria-labelledby="proxy-readiness-title"
     >
-      <section
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="proxy-readiness-title"
-      >
         <header className={styles.header}>
           <span className={styles.headerIcon}>
             <AlertTriangle size={16} strokeWidth={1.9} />
@@ -99,7 +88,7 @@ export function ProxyReadinessDialog({
             <Shield size={15} strokeWidth={1.9} />
             <span>{t('capture.proxyOwnershipNote')}</span>
           </div>
-          {issue.message ? <div className={styles.error} role="alert">{issue.message}</div> : null}
+          {issue?.message ? <div className={styles.error} role="alert">{issue?.message}</div> : null}
         </div>
         <footer className={styles.footer}>
           <Button onClick={() => setIssue(null)}>{t('settings.cancel')}</Button>
@@ -115,7 +104,6 @@ export function ProxyReadinessDialog({
             {t('settings.enable')}
           </Button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }

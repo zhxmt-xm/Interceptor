@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './SectionHeader.module.css';
 
 export interface SectionHeaderProps {
@@ -19,3 +19,4 @@ export function SectionHeader({ children, count, className }: SectionHeaderProps
     </div>
   );
 }
+

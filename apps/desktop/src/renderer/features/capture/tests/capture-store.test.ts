@@ -4,7 +4,9 @@ import type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
 } from '../../../../shared/desktop-api';
-import { type CaptureFilter, useCaptureStore, visibleCaptureRows } from '../captureStore';
+import { useCaptureStore } from '../data/captureStore';
+import type { CaptureFilter } from '../interfaces';
+import { parseStructuredFilter, visibleCaptureRows } from '../utils';
 
 /** 构造只含列表所需字段的实时捕获事件。 */
 function captureEvent(id: string, startedAt: number): CaptureExchangeEvent {
@@ -200,5 +202,26 @@ describe('captureStore structured filters', () => {
       type: null,
       minDurationMs: null,
     });
+  });
+
+  it('parses and normalizes every structured Omnibox field', () => {
+    expect(parseStructuredFilter('method', ' post ')).toEqual({ method: 'POST' });
+    expect(parseStructuredFilter('status', '404')).toEqual({ status: 404 });
+    expect(parseStructuredFilter('host', ' api.example.test ')).toEqual({
+      host: 'api.example.test',
+    });
+    expect(parseStructuredFilter('type', ' JSON ')).toEqual({ type: 'json' });
+    expect(parseStructuredFilter('duration', '>= 500 ms')).toEqual({
+      minDurationMs: 500,
+    });
+  });
+
+  it('rejects empty or invalid structured filter values', () => {
+    expect(parseStructuredFilter('method', 'GET POST')).toBeNull();
+    expect(parseStructuredFilter('status', '2xx')).toBeNull();
+    expect(parseStructuredFilter('status', '99')).toBeNull();
+    expect(parseStructuredFilter('status', '600')).toBeNull();
+    expect(parseStructuredFilter('duration', '5 seconds')).toBeNull();
+    expect(parseStructuredFilter('host', '   ')).toBeNull();
   });
 });

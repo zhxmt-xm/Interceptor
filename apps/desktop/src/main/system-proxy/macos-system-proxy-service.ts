@@ -1,30 +1,15 @@
-import {
-  SystemProxyError,
-  systemProxyCommandRunner,
-  type SystemProxyCommandResult,
-  type SystemProxyCommandRunner,
-  type SystemProxyRestoreResult,
-  type SystemProxyService,
-  type SystemProxyStatus,
-} from './system-proxy-service';
-import type { SystemProxyJournalStore } from './system-proxy-journal';
-
-export interface MacosNetworkServiceProxySettings {
-  readonly id: string;
-  readonly name: string;
-  readonly settings: Readonly<Record<string, unknown>>;
-}
-
-export interface MacosSystemProxySnapshot {
-  readonly services: readonly MacosNetworkServiceProxySettings[];
-}
-
-export interface MacosSystemProxyServiceOptions {
-  readonly platform?: NodeJS.Platform;
-  readonly helperPath: string;
-  readonly runner?: SystemProxyCommandRunner;
-  readonly journal?: SystemProxyJournalStore;
-}
+import { SystemProxyError } from './system-proxy-error';
+import type {
+  MacosSystemProxySnapshot,
+  MacosSystemProxyServiceOptions,
+  SystemProxyCommandResult,
+  SystemProxyCommandRunner,
+  SystemProxyJournalStore,
+  SystemProxyRestoreResult,
+  SystemProxyService,
+  SystemProxyStatus,
+} from '../interfaces';
+import { systemProxyCommandRunner } from '../utils';
 
 /** macOS SystemConfiguration proxy ownership across all active network services. */
 export class MacosSystemProxyService implements SystemProxyService {

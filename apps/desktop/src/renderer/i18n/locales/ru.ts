@@ -230,6 +230,8 @@ export const ruCatalog = {
   'rules.applied': 'применено',
   'rules.searchRules': 'Поиск правил',
   'rules.more': 'Ещё',
+  'rules.moveUp': 'Переместить вверх',
+  'rules.moveDown': 'Переместить вниз',
   'rules.empty': 'Правил пока нет. Добавьте первое правило.',
   'rules.conditionCount_one': '{{count}} условие',
   'rules.conditionCount_few': '{{count}} условия',

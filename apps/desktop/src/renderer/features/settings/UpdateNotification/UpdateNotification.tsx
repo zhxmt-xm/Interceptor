@@ -2,7 +2,7 @@ import { Download, ExternalLink, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, IconButton } from '../../../components';
-import { UpdateActions, useUpdateStore } from '../updateStore';
+import { UpdateActions, useUpdateStore } from '../data/updateStore';
 import styles from './UpdateNotification.module.css';
 
 /** Non-overlapping topbar notification for available and downloaded installers. */

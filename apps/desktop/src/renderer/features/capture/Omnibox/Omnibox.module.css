@@ -48,7 +48,11 @@
   place-items: center;
   width: 13px;
   height: 13px;
+  padding: 0;
+  border: 0;
   border-radius: 4px;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
 }
 .pillClose:hover {
@@ -103,16 +107,7 @@
   margin-left: auto;
 }
 .popover {
-  position: absolute;
-  top: 46px;
-  right: 0;
-  z-index: 40;
   width: 306px;
-  background: var(--panel);
-  border: 1px solid var(--border-2);
-  border-radius: 12px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
-  padding: 7px;
 }
 .popoverTitle {
   padding: 7px 9px 8px;

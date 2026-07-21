@@ -10,13 +10,12 @@ import type {
   StringMatchMode,
 } from '../../../../shared/desktop-api';
 import {
-  createMatcher,
   KEY_MODE_OPTIONS,
-  localizeOptions,
   MATCHER_TYPE_OPTIONS,
   PHASE_OPTIONS,
   STRING_MODE_OPTIONS,
-} from '../rule-format';
+} from '../constants';
+import { createMatcher, localizeOptions } from '../utils';
 import styles from './MatcherRow.module.css';
 
 export interface MatcherRowProps {

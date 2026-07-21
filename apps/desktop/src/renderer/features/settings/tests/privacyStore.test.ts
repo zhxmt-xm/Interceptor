@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { usePrivacyStore } from '../privacyStore';
+import { usePrivacyStore } from '../data/privacyStore';
 
 const initial = usePrivacyStore.getState();
 

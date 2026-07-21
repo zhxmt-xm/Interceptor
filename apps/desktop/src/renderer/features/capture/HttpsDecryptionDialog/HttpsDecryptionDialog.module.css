@@ -1,19 +1,15 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
-}
-
-.dialog {
-  width: min(560px, calc(100vw - 40px));
+.panel {
+  padding: 0;
   overflow: hidden;
   border: 1px solid var(--border-2);
   border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+.panelBody {
+  padding: 0;
+  line-height: 1.23;
 }
 
 .header {
@@ -126,14 +122,20 @@
 .copy b {
   font-size: 12.5px;
   font-weight: 580;
+  line-height: 1.23;
 }
 
 .copy > span {
   overflow: hidden;
   color: var(--text-3);
   font-size: 11.5px;
+  line-height: 1.23;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.step > :last-child {
+  line-height: 1.23;
 }
 
 .privacy {

@@ -222,6 +222,8 @@ export const nlCatalog = {
   'rules.applied': 'toegepast',
   'rules.searchRules': 'Regels zoeken',
   'rules.more': 'Meer',
+  'rules.moveUp': 'Omhoog',
+  'rules.moveDown': 'Omlaag',
   'rules.empty': 'Nog geen regels — voeg een regel toe om te beginnen.',
   'rules.conditionCount_one': '{{count}} voorwaarde',
   'rules.conditionCount_other': '{{count}} voorwaarden',

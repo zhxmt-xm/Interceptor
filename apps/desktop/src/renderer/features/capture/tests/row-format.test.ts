@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   headersWithoutCookies,
   requestCookiePairs,
-  responseTimingSegments,
   responseCookiePairs,
+  responseTimingSegments,
   typeLabel,
-} from '../row-format';
+} from '../utils';
 
 describe('capture row format', () => {
   it('normalizes native gRPC content types to a compact label', () => {

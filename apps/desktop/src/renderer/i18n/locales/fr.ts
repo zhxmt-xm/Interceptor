@@ -224,6 +224,8 @@ export const frCatalog = {
   'rules.applied': 'appliqué',
   'rules.searchRules': 'Rechercher des règles',
   'rules.more': 'Plus',
+  'rules.moveUp': 'Monter',
+  'rules.moveDown': 'Descendre',
   'rules.empty': 'Aucune règle. Ajoutez-en une pour commencer.',
   'rules.conditionCount_one': '{{count}} condition',
   'rules.conditionCount_other': '{{count}} conditions',

@@ -224,6 +224,8 @@ export const itCatalog = {
   'rules.applied': 'applicate',
   'rules.searchRules': 'Cerca regole',
   'rules.more': 'Altro',
+  'rules.moveUp': 'Sposta su',
+  'rules.moveDown': 'Sposta giù',
   'rules.empty': 'Nessuna regola: aggiungine una per iniziare.',
   'rules.conditionCount_one': '{{count}} condizione',
   'rules.conditionCount_other': '{{count}} condizioni',

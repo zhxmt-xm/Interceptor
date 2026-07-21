@@ -1,14 +1,14 @@
-import { Check, Moon, Sun, Sunrise, Sunset, type LucideIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
+﻿import { Check, Moon, Sun, Sunrise, Sunset, type LucideIcon } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { ThemeMode } from '../../theme/theme';
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import { Flyout } from '../Flyout/Flyout';
 import { ThemeScene } from './scenes';
 import styles from './ThemeSwitcher.module.css';
 
-// Ordered as one day: dawn (warm) → noon (light) → dusk (ember) → night (dark).
+// Ordered as one day: dawn (warm) 鈫?noon (light) 鈫?dusk (ember) 鈫?night (dark).
 const THEMES: Array<{ id: ThemeMode; labelKey: string; Icon: LucideIcon }> = [
   { id: 'warm', labelKey: 'theme.warm', Icon: Sunrise },
   { id: 'light', labelKey: 'theme.light', Icon: Sun },
@@ -31,17 +31,41 @@ export function ThemeSwitcher({
 }: ThemeSwitcherProps): React.JSX.Element {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const current = THEMES.find((entry) => entry.id === theme);
   const CurrentIcon = current?.Icon ?? Sun;
 
   return (
-    <>
+    <Flyout
+      open={open}
+      onOpenChange={setOpen}
+      placement="rightBottom"
+      content={
+        <>
+          <div className={styles.title}>{t('common.theme')}</div>
+          {THEMES.map(({ id, labelKey, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={styles.item}
+              onClick={() => {
+                onChange(id);
+                setOpen(false);
+              }}
+            >
+              <Icon size={16} strokeWidth={1.9} />
+              <span className={styles.name}>{t(labelKey)}</span>
+              {theme === id ? <Check size={15} strokeWidth={2.4} className={styles.check} /> : null}
+              <span className={styles.art}>
+                <ThemeScene theme={id} />
+              </span>
+            </button>
+          ))}
+        </>
+      }
+    >
       <button
-        ref={triggerRef}
         type="button"
         className={cx(styles.trigger, collapsed && styles.collapsed, open && styles.open)}
-        onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('common.theme')}
@@ -50,27 +74,7 @@ export function ThemeSwitcher({
         <span className={styles.text}>{t('common.theme')}</span>
         <span className={styles.dot} />
       </button>
-      <Flyout open={open} anchorRef={triggerRef} onClose={() => setOpen(false)}>
-        <div className={styles.title}>{t('common.theme')}</div>
-        {THEMES.map(({ id, labelKey, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className={styles.item}
-            onClick={() => {
-              onChange(id);
-              setOpen(false);
-            }}
-          >
-            <Icon size={16} strokeWidth={1.9} />
-            <span className={styles.name}>{t(labelKey)}</span>
-            {theme === id ? <Check size={15} strokeWidth={2.4} className={styles.check} /> : null}
-            <span className={styles.art}>
-              <ThemeScene theme={id} />
-            </span>
-          </button>
-        ))}
-      </Flyout>
-    </>
+    </Flyout>
   );
 }
+

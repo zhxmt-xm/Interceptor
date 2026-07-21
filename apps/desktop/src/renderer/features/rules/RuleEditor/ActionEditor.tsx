@@ -26,12 +26,12 @@ import {
   BLOCK_MODE_OPTIONS,
   BODY_FORMAT_OPTIONS,
   HEADER_OP_OPTIONS,
-  localizeOptions,
   PHASE_OPTIONS,
   QUERY_OP_OPTIONS,
   SCHEME_OPTIONS,
   TIMEOUT_POLICY_OPTIONS,
-} from '../rule-format';
+} from '../constants';
+import { localizeOptions } from '../utils';
 import styles from './ActionEditor.module.css';
 
 interface ActionMeta {

@@ -1,6 +1,6 @@
-import { useRef, type KeyboardEvent } from 'react';
+﻿import { useRef, type KeyboardEvent } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './Segmented.module.css';
 
 export interface SegmentedProps {
@@ -78,3 +78,4 @@ export function Segmented({
     </div>
   );
 }
+

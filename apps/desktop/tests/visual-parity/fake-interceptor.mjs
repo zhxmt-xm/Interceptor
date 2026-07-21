@@ -41,9 +41,6 @@ function summary({
   state = 'completed',
 }) {
   return {
-    closeApplication: async () => undefined,
-    minimizeWindow: async () => undefined,
-    toggleMaximizeWindow: async () => true,
     id,
     method,
     secure: protocol === 'h2',
@@ -530,7 +527,6 @@ export function installFakeInterceptor({
             };
 
   window.interceptor = {
-    setUiLanguage: async () => undefined,
     echoCore: async (value) => ({
       value,
       handledAt: '2026-07-16T12:00:00.000Z',
@@ -557,7 +553,9 @@ export function installFakeInterceptor({
     },
     openDownloadedUpdate: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
-    onWindowChromePress: () => () => undefined,
+    closeApplication: async () => undefined,
+    minimizeWindow: async () => undefined,
+    toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
     enableSystemProxy: async () => {
       systemProxyStatus = {

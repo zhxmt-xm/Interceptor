@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './Chip.module.css';
 
 export interface ChipProps {
@@ -13,3 +13,4 @@ export interface ChipProps {
 export function Chip({ children, tone = 'blue', className }: ChipProps): React.JSX.Element {
   return <span className={cx(styles.chip, styles[tone], className)}>{children}</span>;
 }
+

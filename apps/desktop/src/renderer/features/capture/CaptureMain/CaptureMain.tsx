@@ -6,7 +6,7 @@ import { HttpsDecryptionDialog } from '../HttpsDecryptionDialog/HttpsDecryptionD
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
 import { CaptureWorkbar } from '../CaptureWorkbar/CaptureWorkbar';
-import { useCaptureStore } from '../captureStore';
+import { useCaptureStore } from '../data/captureStore';
 import styles from './CaptureMain.module.css';
 
 const SPLITTER_TRACK_WIDTH = 1;

@@ -18,36 +18,15 @@ import {
 import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
-import {
-  CoreRpcClient,
-  type CoreRequestOptions,
-  type CoreRpcPort,
-} from './core-rpc-client';
-
-export interface CoreProcessHandle {
-  readonly pid: number | undefined;
-  onSpawn(listener: () => void): void;
-  onMessage(listener: (message: unknown) => void): void;
-  onExit(listener: (code: number) => void): void;
-  onError(listener: (detail: string) => void): void;
-  postMessage(message: unknown): void;
-  kill(): boolean;
-}
-
-interface CoreRuntimeOptions {
-  coreProcessHeartbeatTimeoutMs?: number;
-  coreProcessRestartBaseDelayMs?: number;
-  coreProcessRestartMaxDelayMs?: number;
-  coreProcessShutdownTimeoutMs?: number;
-  now?: () => number;
-}
-
-type CoreProcessStatusListener = (status: CoreProcessStatus) => void;
-
-const DEFAULT_CORE_PROCESS_HEARTBEAT_TIMEOUT_MS = 4_000;
-const DEFAULT_CORE_PROCESS_RESTART_BASE_DELAY_MS = 250;
-const DEFAULT_CORE_PROCESS_RESTART_MAX_DELAY_MS = 5_000;
-const DEFAULT_CORE_PROCESS_SHUTDOWN_TIMEOUT_MS = 1_500;
+import type {
+  CoreProcessHandle,
+  CoreProcessLifecycleMessage,
+  CoreProcessStatusListener,
+  CoreRequestOptions,
+  CoreRpcPort,
+  CoreRuntimeOptions,
+} from '../interfaces';
+import { CoreRpcClient } from './core-rpc-client';
 
 /**
  * Main 侧 CoreRuntime 总入口。
@@ -58,6 +37,15 @@ const DEFAULT_CORE_PROCESS_SHUTDOWN_TIMEOUT_MS = 1_500;
  * CoreApplication 内部业务逻辑。
  */
 export class CoreRuntime {
+  /** 默认 CoreProcess heartbeat 超时（ms）。 */
+  private static readonly DEFAULT_HEARTBEAT_TIMEOUT_MS = 4_000;
+  /** 默认 CoreProcess 重启退避基数（ms）。 */
+  private static readonly DEFAULT_RESTART_BASE_DELAY_MS = 250;
+  /** 默认 CoreProcess 重启退避上限（ms）。 */
+  private static readonly DEFAULT_RESTART_MAX_DELAY_MS = 5_000;
+  /** 默认 CoreProcess 优雅关闭强杀期限（ms）。 */
+  private static readonly DEFAULT_SHUTDOWN_TIMEOUT_MS = 1_500;
+
   private readonly coreRpcClient = new CoreRpcClient();
   private readonly coreProcessHeartbeatTimeoutMs: number;
   private readonly coreProcessRestartBaseDelayMs: number;
@@ -89,16 +77,16 @@ export class CoreRuntime {
   constructor(options: CoreRuntimeOptions = {}) {
     this.coreProcessHeartbeatTimeoutMs =
       options.coreProcessHeartbeatTimeoutMs ??
-      DEFAULT_CORE_PROCESS_HEARTBEAT_TIMEOUT_MS;
+      CoreRuntime.DEFAULT_HEARTBEAT_TIMEOUT_MS;
     this.coreProcessRestartBaseDelayMs =
       options.coreProcessRestartBaseDelayMs ??
-      DEFAULT_CORE_PROCESS_RESTART_BASE_DELAY_MS;
+      CoreRuntime.DEFAULT_RESTART_BASE_DELAY_MS;
     this.coreProcessRestartMaxDelayMs =
       options.coreProcessRestartMaxDelayMs ??
-      DEFAULT_CORE_PROCESS_RESTART_MAX_DELAY_MS;
+      CoreRuntime.DEFAULT_RESTART_MAX_DELAY_MS;
     this.coreProcessShutdownTimeoutMs =
       options.coreProcessShutdownTimeoutMs ??
-      DEFAULT_CORE_PROCESS_SHUTDOWN_TIMEOUT_MS;
+      CoreRuntime.DEFAULT_SHUTDOWN_TIMEOUT_MS;
     this.now = options.now ?? Date.now;
     this.coreProcessStatus = this.createCoreProcessStatus('stopped');
   }
@@ -230,7 +218,9 @@ export class CoreRuntime {
     try {
       coreProcess = this.launchCoreProcess();
     } catch (error) {
-      this.scheduleCoreProcessRestart(readCoreProcessStartError(error));
+      this.scheduleCoreProcessRestart(
+        CoreRuntime.readCoreProcessStartError(error),
+      );
       return;
     }
 
@@ -350,7 +340,8 @@ export class CoreRuntime {
       return;
     }
 
-    const coreProcessLifecycleMessage = readCoreProcessLifecycleMessage(message);
+    const coreProcessLifecycleMessage =
+      CoreRuntime.readCoreProcessLifecycleMessage(message);
     if (!coreProcessLifecycleMessage) {
       return;
     }
@@ -644,55 +635,49 @@ export class CoreRuntime {
     this.pendingCoreRuntimeStopResolver = null;
     resolve?.();
   }
-}
 
-type CoreProcessLifecycleMessage =
-  | { type: 'ready'; pid: number; startedAt: string }
-  | { type: 'heartbeat'; pid: number; timestamp: string }
-  | { type: 'stopped'; pid: number; timestamp: string }
-  | { type: 'fatal'; message: string };
+  /** handleCoreProcessMessage 调用：把未知 parentPort 数据收窄为 CoreProcess 消息。 */
+  private static readCoreProcessLifecycleMessage(
+    value: unknown,
+  ): CoreProcessLifecycleMessage | null {
+    if (!CoreRuntime.isRecord(value) || typeof value.type !== 'string') {
+      return null;
+    }
 
-/** handleCoreProcessMessage 调用：把未知 parentPort 数据收窄为 CoreProcess 消息。 */
-function readCoreProcessLifecycleMessage(
-  value: unknown,
-): CoreProcessLifecycleMessage | null {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+    if (
+      value.type === 'ready' &&
+      typeof value.pid === 'number' &&
+      typeof value.startedAt === 'string'
+    ) {
+      return { type: 'ready', pid: value.pid, startedAt: value.startedAt };
+    }
+
+    if (
+      (value.type === 'heartbeat' || value.type === 'stopped') &&
+      typeof value.pid === 'number' &&
+      typeof value.timestamp === 'string'
+    ) {
+      return {
+        type: value.type,
+        pid: value.pid,
+        timestamp: value.timestamp,
+      };
+    }
+
+    if (value.type === 'fatal' && typeof value.message === 'string') {
+      return { type: 'fatal', message: value.message };
+    }
+
     return null;
   }
 
-  if (
-    value.type === 'ready' &&
-    typeof value.pid === 'number' &&
-    typeof value.startedAt === 'string'
-  ) {
-    return { type: 'ready', pid: value.pid, startedAt: value.startedAt };
+  /** readCoreProcessLifecycleMessage 调用：排除 null 和非对象值后读取字段。 */
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
   }
 
-  if (
-    (value.type === 'heartbeat' || value.type === 'stopped') &&
-    typeof value.pid === 'number' &&
-    typeof value.timestamp === 'string'
-  ) {
-    return {
-      type: value.type,
-      pid: value.pid,
-      timestamp: value.timestamp,
-    };
+  /** startCoreProcess 调用：把未知启动异常转换成可展示的 CoreProcess 重启原因。 */
+  private static readCoreProcessStartError(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unable to start CoreProcess';
   }
-
-  if (value.type === 'fatal' && typeof value.message === 'string') {
-    return { type: 'fatal', message: value.message };
-  }
-
-  return null;
-}
-
-/** readCoreProcessLifecycleMessage 调用：排除 null 和非对象值后读取字段。 */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/** startCoreProcess 调用：把未知启动异常转换成可展示的 CoreProcess 重启原因。 */
-function readCoreProcessStartError(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unable to start CoreProcess';
 }

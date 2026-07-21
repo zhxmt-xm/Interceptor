@@ -1,6 +1,6 @@
-import type { LucideIcon } from 'lucide-react';
+﻿import type { LucideIcon } from 'lucide-react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './IconButton.module.css';
 
 export interface IconButtonProps {
@@ -37,3 +37,4 @@ export function IconButton({
     </button>
   );
 }
+

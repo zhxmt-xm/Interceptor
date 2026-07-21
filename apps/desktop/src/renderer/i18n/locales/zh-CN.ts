@@ -222,6 +222,8 @@ export const zhCNCatalog = {
   'rules.applied': '已应用',
   'rules.searchRules': '搜索规则',
   'rules.more': '更多',
+  'rules.moveUp': '上移',
+  'rules.moveDown': '下移',
   'rules.empty': '尚无规则，请添加一条规则以开始。',
   'rules.conditionCount_one': '{{count}} 个条件',
   'rules.conditionCount_other': '{{count}} 个条件',

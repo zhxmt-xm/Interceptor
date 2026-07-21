@@ -9,13 +9,11 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   closeApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appQuit),
   minimizeWindow: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowMinimize),
   toggleMaximizeWindow: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowToggleMaximize),
-  setUiLanguage: (language) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiSetLanguage, language),
-  echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   getCoreProcessStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreGetProcessStatus),
   getCoreTrace: (traceId) =>
@@ -65,15 +63,6 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.on(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
     return () => {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
-    };
-  },
-  onWindowChromePress: (listener) => {
-    const handler = (): void => {
-      listener();
-    };
-    ipcRenderer.on(DESKTOP_IPC_CHANNELS.windowChromePress, handler);
-    return () => {
-      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.windowChromePress, handler);
     };
   },
   getStorageStatus: () =>
@@ -148,16 +137,16 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
   probeConnection: (host, port) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.connectionProbe, host, port),
-  startHarExport: (request) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harExportStart, request),
-  startHarImport: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harImportStart),
-  startArchiveExport: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveExportStart),
-  startArchiveImport: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveImportStart),
-  startDiagnosticsExport: (filter) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.diagnosticsExportStart, filter),
+  startHarExport: (request, title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harExportStart, request, title),
+  startHarImport: (title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harImportStart, title),
+  startArchiveExport: (title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveExportStart, title),
+  startArchiveImport: (title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.archiveImportStart, title),
+  startDiagnosticsExport: (filter, title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.diagnosticsExportStart, filter, title),
   getTransferJob: (jobId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.transferJobGet, jobId),
   cancelTransferJob: (jobId) =>

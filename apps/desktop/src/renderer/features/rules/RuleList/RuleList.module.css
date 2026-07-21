@@ -51,6 +51,12 @@
   align-items: center;
   gap: 3px;
 }
+.menuAnchor {
+  display: inline-flex;
+}
+.moreMenu {
+  width: 214px;
+}
 .rows {
   flex: 1;
   min-height: 0;

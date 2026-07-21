@@ -224,6 +224,8 @@ export const jaCatalog = {
   'rules.applied': '適用済み',
   'rules.searchRules': 'ルールを検索',
   'rules.more': 'その他',
+  'rules.moveUp': '上へ移動',
+  'rules.moveDown': '下へ移動',
   'rules.empty': 'ルールはまだありません。まずルールを追加してください。',
   'rules.conditionCount_one': '{{count}} 件の条件',
   'rules.conditionCount_other': '{{count}} 件の条件',

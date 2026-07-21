@@ -1,7 +1,7 @@
-import type { LucideIcon } from 'lucide-react';
+﻿import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './MenuItem.module.css';
 
 export interface MenuItemProps {
@@ -38,3 +38,4 @@ export function MenuItem({
     </div>
   );
 }
+

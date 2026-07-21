@@ -61,12 +61,12 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
 }
-// Shell exploration: a dedicated global window header with feature tools inside content.
+// Default shell: a dedicated global window header with feature tools inside content.
 for (const theme of ['light', 'dark']) {
-  shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', layout: 'header-v2', overlay: '' } });
-  shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', layout: 'header-v2', overlay: '' } });
+  shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
+  shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
   for (const feature of ['rules', 'composer', 'settings', 'breakpoints', 'diagnostics']) {
-    shots.push({ feature: 'shell-v2', theme, variant: feature, state: { view: feature, theme: TOKEN[theme], sidebar: 'expanded', layout: 'header-v2', overlay: '' } });
+    shots.push({ feature: 'shell-v2', theme, variant: feature, state: { view: feature, theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   }
 }
 
@@ -103,11 +103,11 @@ const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
     await page.evaluate((st) => window.__setState({
-      layout: 'header-v2',
       fileMenu: '',
       settings: 'certificates',
       repair: 'idle',
       update: 'up-to-date',
+      https: 'fresh',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

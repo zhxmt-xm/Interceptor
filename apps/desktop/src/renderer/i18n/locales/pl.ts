@@ -230,6 +230,8 @@ export const plCatalog = {
   'rules.applied': 'zastosowano',
   'rules.searchRules': 'Szukaj reguł',
   'rules.more': 'Więcej',
+  'rules.moveUp': 'Przenieś w górę',
+  'rules.moveDown': 'Przenieś w dół',
   'rules.empty': 'Brak reguł. Dodaj regułę, aby rozpocząć.',
   'rules.conditionCount_one': '{{count}} warunek',
   'rules.conditionCount_few': '{{count}} warunki',

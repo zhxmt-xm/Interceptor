@@ -1,18 +1,16 @@
 # Interceptor Handover
 
 > 最后更新：2026-07-21
-> 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取同目录的 `M*.md` 文件。
+> 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取 `archived/`。
 
 ## 新 Session / Agent 必读
 
 开始任何实现前，按以下顺序阅读：
 
-1. [PROGRESS.md](PROGRESS.md)：确认当前 Stage、进度和文档索引。
+1. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
-3. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
-4. 最新完成 Stage 文件：[M14.md](M14.md)。
-5. **每个 Stage 的产品详细设计都必须参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应章节和第二十七章任务清单。Stage 文件负责实施记录，不替代产品设计。**
-6. 只有需要追溯正式 IPC、结构化日志或 M0 决策时再读 [M1.md](M1.md) 或 [M0.md](M0.md)。
+3. 只有需要历史索引时再读 [archived/PROGRESS.md](archived/PROGRESS.md) 与最新完成 Stage [archived/M14.md](archived/M14.md)。
+4. 只有需要产品设计或早期决策时再读 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)、[archived/M1.md](archived/M1.md) 或 [archived/M0.md](archived/M0.md)。
 
 不要只根据聊天摘要开始工作；仓库文档和当前代码是权威来源。
 
@@ -25,7 +23,9 @@
 - **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 loopback Recording；系统代理由 readiness 弹层要求用户显式 Enable。HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
 - **Proxy readiness 已改为显式授权**：自动 Capture bootstrap、手动 Start 与 Core 重启均先启动 listener，再检查系统代理；未 ready 时 UI 必须是 Paused / Not recording 并弹 `Proxy not ready`，只有用户点击 Enable 且 listener+routing ready 后才显示 Recording，或进入 Settings → Proxy & Listener。失败保留有界错误，不循环静默写系统设置。
 - **自有窗口 Chrome**：跨平台 `frame:false`，自有顶栏可拖拽并提供 Minimize / Maximize-or-restore / Close；Close 走窄 IPC → `app.quit()`，继续执行系统代理恢复与 Core shutdown。
-- **Header V2 已一对一落地**：`design/app` 与 React Renderer 均默认使用 Header V2；保留全高侧栏，右侧依次为 46px Window Header、feature 内容工作栏、主体和 30px 状态栏。Capture 使用 54px `CaptureWorkbar`，内容命令行统一 40px、图标按钮统一 30×30px/15px icon/3px gap；Detail 全白且 Request 摘要为 40px 白色均匀阴影 box；所有 workspace 共用 1px splitter + 4×40px 共轴 grip。Window Header 只保留折叠按钮、feature 名称和窗口控制，业务命令与状态分别进入内容工具栏和底栏。旧 Rules/Composer/Breakpoints/Diagnostics/Settings Topbar 已删除。
+- **Header V2 已一对一落地并成为唯一设计**：`design/app` 与 React Renderer 只使用 Shell V2；旧 `layout=current` / `data-layout` 分支、六组 feature `.tv` 顶栏和 Layout 切换器已删除。保留全高侧栏，右侧依次为 46px Window Header、feature 内容工作栏、主体和 30px 状态栏。Capture 使用 54px `CaptureWorkbar`，内容命令行统一 40px、图标按钮统一 30×30px/15px icon/3px gap；Detail 全白且 Request 摘要为 40px 白色均匀阴影 box；所有 workspace 共用 1px splitter + 4×40px 共轴 grip。Window Header 只保留折叠按钮、feature 名称和窗口控制，业务命令与状态分别进入内容工具栏和底栏。
+- **Renderer 壳与编辑交互已简化**：`App.tsx` 直接拥有 Sidebar/Header/Main/Footer Grid，原 `AppShell` 转发层已删除；Diagnostics 仍只在当前视图通过条件 `DiagnosticsProvider` 挂载。Capture Omnibox 的 Method/Status/Host/Type/Duration 过滤可选择字段后输入并提交；Rules 可创建全部八种 matcher，并通过 More 菜单或 grip 拖放调整真实执行优先级。
+- **Modal 以设计稿为准**：HAR/Archive、HTTPS Setup、Proxy readiness 保持设计内容宽度 `512/560/500px`；Ant v6 只作为交互底座，通过官方 `styles.container/body` 清除默认 content padding、应用设计边框和 `1.23` 行高，不允许反向缩窄设计稿迁就 Ant 默认值。三类 Modal 已移除弃用的 `maskClosable`，改用 `mask.closable`。
 - **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。
 - **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整 659-key catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl` 日期/数字/字节/时长和 Main 原生 HAR/archive/Diagnostics 文件对话框同步切换；俄/波/乌 CLDR 多复数已覆盖。设计 SPA 只保留当前 Theme flyout 与 Language list，旧 Theme B/C/D、Language L2/L3 和专用截图脚本已删除。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
@@ -44,18 +44,18 @@
   - **T9.1 WebSocket 捕获**：Mockttp HTTP/1.1 Upgrade，text/binary Message 按 direction/opcode/time/payloadRef 有序落 `websocket_frame`，payload 复用 Blob；101 后 Exchange 保持 open，clean close 更新 completed。
   - **T9.2 WebSocket UI/断点**：`WebSocketBridge` 接管双向消息转发并在 send 前 await BreakpointQueue，支持 edit/continue/drop；`websocket.frames` keyset 页 + Body range；Capture Messages 虚拟列表和 Breakpoints text/hex 编辑。仅 H1 Upgrade，H2 Extended CONNECT 未实现。
   - **T9.3 gRPC 基础展示**：原生 gRPC 作为 Mockttp 通用 H2 request/response 捕获；`grpc.messages` 从既有 Blob 每条只读 5B header 跳读分页，UI 显示 request/response、compressed/truncated/malformed、offset、grpc-status trailer 和 raw text/hex。无 descriptor/reflection；完成后扫描，非实时 streaming。
-  - **测试架构**：Desktop tests 分为 `tests/packaged-smoke/`（真实 exe/CDP）与 `tests/visual-parity/`（完整 fake Preload + 正常 UI 交互）；业务 Renderer 无 parity fixture/DEV setter。详见 [M9.md](M9.md)。
+  - **测试架构**：Desktop tests 分为 `tests/packaged-smoke/`（真实 exe/CDP）与 `tests/visual-parity/`（完整 fake Preload + 正常 UI 交互）；业务 Renderer 无 parity fixture/DEV setter。详见 [archived/M9.md](archived/M9.md)。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`，采集 trailer/pseudo-header 并按 kind 落库；`proxy/utils/index.ts` 提供 gzip/deflate/brotli 延迟解码，`body.read-range` 由 Core 解压并回传 `decodeStatus`。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露。
-- **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [M5.md](M5.md) 后续增强。
+- **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [archived/M5.md](archived/M5.md) 后续增强。
 - **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 轻量 summary 状态、当前 Session 过滤、实时前插滚动补偿、feature 往返状态保持；按需 `sessions.detail` + `body.read-range` 驱动 Inspector（完整 cookies、真实 Timing、Auto/Text/JSON/Hex）。body/header 不入全局状态。
 - **窄 API 已扩展**：M10新增HAR/archive/Diagnostics；M11新增系统代理意图；M13新增GitHub Release状态/检查/下载/打开已下载文件。Preload仍不暴露通用日志、helper、snapshot、URL、path/readFile/writeFile，packaged smoke apiKeys已同步。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
-- **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [M13.md](M13.md)。
+- **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [archived/M13.md](archived/M13.md)。
 - **多语言增强验证全绿**：293 unit tests；三 workspace typecheck；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 逐项验证 15 种语言、持久化、侧栏译文、页面无溢出与 Main language IPC 非法值拒绝；生产 audit 0。
 - **Capture 后续增强验证全绿**：311 unit tests；三 workspace typecheck；Windows package；真实 packaged smoke 1/1（活动 Recording Clear 后保留 Session 壳、Exchange/Body 归零）；生产 audit 0。Payload/Cookies/Timing/Tunnel/topbar 目标场景已完成浏览器与视觉检查。
-- Git：M0–M14、15 种语言、HAR/文件菜单、frameless 窗口控制与 Proxy readiness 增强已提交到 `origin/main`。当前未提交工作树包含 Header V2 的 `design/` SPA/截图/规范、`apps/desktop/src/renderer` 实现、visual parity、packaged smoke 断言和阶段文档。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
-- 当前工作目录：`C:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
+- Git：本轮开始时 `main` 与 `origin/main` 对齐且工作树干净。当前未提交工作树包含 Stage 文档归档、App/AppShell 合并、Capture 结构化过滤、Rules matcher/菜单/排序交互、15 种语言新增命令键、未使用 `Title` 删除、旧空目录清理、Shell V2 唯一设计收敛、Dark 场景截图命名修正、单测与 visual parity 报告；没有 package、`.vite/` 或 `test-results/` 产物。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
+- 当前工作目录：`H:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
 - 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
 ## M0、M1 与 M2 已交付
@@ -66,11 +66,11 @@
 - 模块化 Ant Design v6 Renderer：App shell、六个 feature workspace、Inspector、四套时段主题（light/warm/dark/ember）+ 侧栏主题/语言切换器和扁平共享组件库。
 - SVG/PNG/ICO/ICNS 应用图标及可重复生成脚本。
 - Vitest 单测、真实 packaged executable 的 Playwright CDP smoke、package 与生产依赖审计流程。
-- M0 详细实现、排障和验证历史已迁入 [M0.md](M0.md)。
+- M0 详细实现、排障和验证历史已迁入 [archived/M0.md](archived/M0.md)。
 - Main/Core 专用 MessagePort、TypeScript runtime schema、request correlation、timeout/cancel 和 CoreProcess restart recovery。
 - Core 结构化 Command/Action Trace、有界 Ring Buffer、敏感字段脱敏和 stdout/stderr 后备。
 - 窄 Renderer API：CoreProcess 状态、M1 echo 和脱敏 Trace 查询；无通用 IPC、MessagePort 或 Node 暴露。
-- **M2 存储层**：`node:sqlite` + `worker_threads` 的 Capture/Diagnostics 双库、内容寻址 Blob Store、keyset 分页查询、Storage 状态/清空窄 API 与 Storage 设置面板；代码位于 `apps/proxy-core/src/proxy-core/{storage,diagnostics}/`，协议扩展在 `packages/core-protocol/src/{messages,validation}.ts`，桌面接线在 `shared/desktop-api.ts`、`preload/preload.ts`、`main/main.ts`、`main/utils/renderer-utils.ts`、`features/settings/`。详见 [M2.md](M2.md) 的实施记录。
+- **M2 存储层**：`node:sqlite` + `worker_threads` 的 Capture/Diagnostics 双库、内容寻址 Blob Store、keyset 分页查询、Storage 状态/清空窄 API 与 Storage 设置面板；代码位于 `apps/proxy-core/src/proxy-core/{storage,diagnostics}/`，协议扩展在 `packages/core-protocol/src/{messages,validation}.ts`，桌面接线在 `shared/desktop-api.ts`、`preload/preload.ts`、`main/main.ts`、`main/utils/renderer-utils.ts`、`features/settings/`。详见 [archived/M2.md](archived/M2.md) 的实施记录。
 
 ## 已实现功能与代码位置
 
@@ -117,13 +117,13 @@
 | 已实现内容 | 代码位置 | 说明 |
 | --- | --- | --- |
 | React 入口 | `apps/desktop/src/renderer/main.tsx` | 加载全局样式并挂载 App |
-| App shell | `apps/desktop/src/renderer/app/App.tsx`、`AppShell.tsx`、`Sidebar.tsx` | 持有 `themeMode`，消费 i18next 当前语言，按 view 渲染 Window Header、六个 feature 的 main/statusbar、Sidebar 导航 + 底部主题/语言切换器 |
-| App shell 布局 | `apps/desktop/src/renderer/app/AppShell.module.css` | 46px Window Header、全高 Sidebar、Main、30px Status 与窗口控制视觉 |
+| App shell | `apps/desktop/src/renderer/app/App.tsx`、`Sidebar.tsx` | `App.tsx` 直接拥有 Sidebar/Header/Main/Footer Grid，按 view 渲染六个 feature 的 main/statusbar；Sidebar 提供导航与主题/语言切换器 |
+| App shell 布局 | `apps/desktop/src/renderer/app/App.module.css` | 46px Window Header、全高 Sidebar、Main、30px Footer 与窗口控制视觉 |
 | Capture workspace | `apps/desktop/src/renderer/features/capture/` | 子组件 CaptureWorkbar/Omnibox/CaptureMain/RequestList/RequestInspector/CaptureStatusbar，各自 colocated CSS Module |
 | Rules workspace | `apps/desktop/src/renderer/features/rules/` | RulesMain/RuleList/RuleEditor/RulesStatusbar；搜索/New/Apply/More 位于 RuleList 内容工具栏 |
 | 其余 workspace | `apps/desktop/src/renderer/features/{composer,settings,breakpoints,diagnostics}/` | Main/Statusbar + 内容工具栏，colocated CSS Module；一对一还原 `design/app` 对应视图 |
 | Updates UI | `features/settings/{updateStore.ts,update-format.ts,SettingsContent/UpdatesPanel.tsx,UpdateNotification/}` | 七态更新面板、进度、纯文本changelog与 Header 下方独立通知 |
-| 共享 UI 原子 | `apps/desktop/src/renderer/components/` | 扁平库(每个组件独立子目录含 tsx+module.css)：IconButton/Button/Switch/Select/InputBox/Segmented/Checkbox/Chip/Tabs/FilterChip/Timeline/Splitter/MethodBadge/StatusBadge/SectionHeader/StatItem/Count/MenuItem/Title/NavItem/Flyout + cx/index |
+| 共享 UI 原子 | `apps/desktop/src/renderer/components/` | 扁平库(每个组件独立子目录含 tsx+module.css)：IconButton/Button/Switch/Select/InputBox/Segmented/Checkbox/Chip/Tabs/FilterChip/Timeline/Splitter/MethodBadge/StatusBadge/SectionHeader/StatItem/Count/MenuItem/NavItem/Flyout + cx/index |
 | 主题 / 语言切换器 | `apps/desktop/src/renderer/components/{ThemeSwitcher,LanguageSwitcher}/`、`renderer/i18n/` | 侧栏底部控件（取代旧 Account）；Flyout 以按钮为锚 portal 弹出、底边对齐。语言列表提供 15 种完整本地 catalog；主题四项 hover 浮现时段山水 |
 | Ant Design 主题 | `apps/desktop/src/renderer/theme/theme.ts` | 四套时段主题 palette（light/warm=default、dark/ember=dark 算法）+ 全局/Button/Segmented/Splitter/Tabs/Tooltip Token |
 | 全局样式 | `apps/desktop/src/renderer/styles/global.css` | reset、四套主题 `:root[data-theme]` tokens、字体和 reduced-motion |
@@ -150,11 +150,11 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一动作：评审并提交 Header V2 UI
+## 下一动作：评审并提交文档归档与 Renderer 交互增强
 
-Header V2 Renderer、设计资产、parity 和文档已经同步。提交前检查 staged diff 不包含 `.vite/`、package 产物或 `test-results/`；保留 `design/app/shots` 与 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
+提交前检查 staged diff：`stages/` 根目录应只含 `HANDOVER.md` 与 `ARCHITECTURE.md`，17 份历史文档位于 `stages/archived/`；`AppShell.tsx`/CSS 与未使用 `Title` 已删除；旧空目录均不存在；设计 SPA 无 `layout=current/data-layout/.tv` 分支且只保留静态 Shell V2；场景资产使用 `all-dark.png`/`hover-dark.png`；Rules 新增测试文件应纳入。不要加入 `.vite/`、package 产物或 `test-results/`；保留 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
 
-本次验证：三 workspace typecheck；308 unit tests；Windows package；packaged smoke 1/1；96 张设计截图；visual parity 45 views / 330 targets / 0 missing。Capture light/dark/collapsed 0 flagged；全量仍有字体、CodeMirror 和 Settings Updates 文案宽度类诊断差异，详见 parity report，不应通过产品测试后门掩盖。
+本次验证：三 workspace typecheck；Desktop 115 / Proxy Core 180 / Protocol 19，共 314 项 unit tests；浏览器真实交互验证 Capture Type 过滤规范化、Rules Status matcher 创建、More 下移、Apply 持久化和 grip 拖放 priority；Markdown 24 文件本地链接检查通过。设计 SPA 全量重出 96 张唯一 Shell V2 截图和 9 张当前 Theme scenes。Visual parity 45 views / 330 targets / 0 missing，平均像素差 1.83%、94 flagged；Capture、HTTPS Setup 三态、Import/Export light、Proxy readiness 与所有 Shell V2 专项场景均 0 flagged，Rules 仅保留既有 Add action 1px 阈值差。Main/Preload/IPC/Fuses/CSP/打包边界未改，本轮未重复 package/smoke。
 
 提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
@@ -174,7 +174,7 @@ Header V2 Renderer、设计资产、parity 和文档已经同步。提交前检�
 | M13 | 已完成（100%，外部签名/macOS证据待补） | GitHub Release检查、app内changelog、手动下载MSI/DMG、Updates UI | 完整方案第十七章、第二十七章 M13 |
 | M14 | 已完成（100%） | 临时 Capture/Body、Renderer 全量 summary、RuleSet 拆分、按需 Archive Worker | 完整方案第十二、十四章、第二十七章 M14 |
 
-进入任何后续 Stage 时才扩充对应 `M*.md`；不要在当前上下文预加载全部未来阶段详情。
+归档的 `M*.md` 不再追加日常进度；新工作更新本 Handover 与已落地架构，只有追溯历史设计时才读取对应归档文件。
 
 ## 必须保持的边界
 
@@ -212,7 +212,7 @@ Header V2 Renderer、设计资产、parity 和文档已经同步。提交前检�
 
 M2 存储层用 `node:sqlite`（Electron 43 内置 Node 24.18.0，已探测 WAL/外键/FTS5/`user_version` 均可用）配合 `worker_threads` 把同步 SQLite 移出网络事件循环；Capture 与 Diagnostics 双库/双 Worker 强隔离，日志写入失败只计数不阻塞或回滚捕获。真实 worker 集成测试 + packaged smoke 已验证 worker spawn、worker 内 `node:sqlite` 与 bundle 路径解析。
 
-如果接手时 [PROGRESS.md](PROGRESS.md)、[M2.md](M2.md) 与本节结果不一致，以最新命令实际输出为准，并先修正文档。
+如果接手时 [archived/PROGRESS.md](archived/PROGRESS.md)、[archived/M2.md](archived/M2.md) 与本节结果不一致，以最新命令实际输出为准；归档内容只作历史参考。
 
 ## 常用恢复命令
 
@@ -240,6 +240,6 @@ git diff --check
 - 每次 handover 必须写明：当前 Stage 和百分比、已完成任务、已实现功能及代码位置、工作树状态、剩余任务、阻塞/风险、下一条可执行任务和验证状态。
 - 如果当前 Stage 已完成，必须明确标记“进入下一 Stage”，并链接下一 Stage 文件；如果未完成，必须逐项列出当前 Stage 的剩余工作。
 - 每次都必须提醒接手者先阅读 [ARCHITECTURE.md](ARCHITECTURE.md)。
-- 每个 Stage 都必须提醒接手者参考 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md) 中对应的产品详细设计。
-- 一个任务完成后，把实施、决策和验证细节写入对应 `stages/M*.md`，然后更新本文件；不要把历史全部堆入 `PROGRESS.md`。
+- 需要追溯产品设计时参考 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)；归档 Stage 文件不再用于日常进度追加。
+- 一个任务完成后更新本文件的当前状态、验证和精确下一动作；历史流水不要持续堆入接棒入口。
 - 架构已落地的变化同步到 [ARCHITECTURE.md](ARCHITECTURE.md)；只有命令或环境发生变化时更新 README。

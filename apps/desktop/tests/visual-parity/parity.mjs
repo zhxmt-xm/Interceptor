@@ -133,7 +133,6 @@ for (const view of views) {
   let viewMaxGeometryDelta = 0;
 
   await designPage.evaluate((state) => window.__setState?.({
-    layout: 'header-v2',
     fileMenu: '',
     settings: 'certificates',
     repair: 'idle',

@@ -10,7 +10,7 @@ import {
   toRendererDiagnosticReport,
   toRendererDiagnosticRecord,
   toWebSocketFrameQuery,
-} from '../renderer-utils';
+} from '..';
 
 describe('renderer utils', () => {
   it('validates bounded strings', () => {

@@ -1,12 +1,13 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Columns2, Trash2 } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Count, IconButton, Segmented } from '../../../components';
-import { useCaptureStore, visibleCaptureRows } from '../captureStore';
-import type { ProtocolSegment } from '../row-format';
+import { useCaptureStore } from '../data/captureStore';
+import type { ProtocolSegment } from '../interfaces';
 import { RequestRow } from '../RequestRow/RequestRow';
+import { visibleCaptureRows } from '../utils';
 import styles from './RequestList.module.css';
 
 const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
@@ -36,7 +37,7 @@ export function RequestList(): React.JSX.Element {
   // 用户是否停靠在底部（最新）；新流量到达时决定是否自动跟随到底部。
   const stickToBottomRef = useRef(true);
 
-  const visible = visibleCaptureRows(rows, filter);
+  const visible = useMemo(() => visibleCaptureRows(rows, filter), [rows, filter]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -151,14 +152,8 @@ export function RequestList(): React.JSX.Element {
                   key={row.id}
                   summary={row}
                   selected={row.id === selectedId}
-                  onSelect={() => select(row.id)}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
+                  offsetTop={virtualRow.start}
+                  onSelect={select}
                 />
               );
             })}

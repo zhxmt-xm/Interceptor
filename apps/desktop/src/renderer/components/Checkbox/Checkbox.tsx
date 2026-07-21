@@ -1,6 +1,6 @@
-import { Check } from 'lucide-react';
+﻿import { Check } from 'lucide-react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './Checkbox.module.css';
 
 export interface CheckboxProps {
@@ -22,3 +22,4 @@ export function Checkbox({ checked, onChange, className }: CheckboxProps): React
     </span>
   );
 }
+

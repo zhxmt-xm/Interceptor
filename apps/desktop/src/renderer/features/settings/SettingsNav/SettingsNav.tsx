@@ -1,6 +1,6 @@
 import { cx } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { SECTIONS } from '../data';
+import { SECTIONS } from '../constants';
 import styles from './SettingsNav.module.css';
 
 export interface SettingsNavProps {

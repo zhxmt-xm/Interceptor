@@ -462,7 +462,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setBreakpointsEnabled',
         'setHttpsDecryption',
         'setInsecureHosts',
-        'setUiLanguage',
         'setWebSocketBreakpointsEnabled',
         'startArchiveExport',
         'startArchiveImport',
@@ -482,17 +481,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     expect(securitySnapshot.csp).toContain("frame-src 'none'");
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
-
-    const invalidLanguageError = await page.evaluate(async () => {
-      try {
-        await window.interceptor.setUiLanguage('invalid' as never);
-        return null;
-      } catch (error) {
-        return String(error);
-      }
-    });
-    expect(invalidLanguageError).toContain('language is invalid');
-    await page.evaluate(() => window.interceptor.setUiLanguage('en'));
 
     const updateSnapshot = await page.evaluate(() =>
       window.interceptor.getUpdateStatus());

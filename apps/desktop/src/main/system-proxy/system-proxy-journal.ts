@@ -2,43 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 
-const JOURNAL_VERSION = 1;
-const MAX_JOURNAL_BYTES = 1024 * 1024;
-
-export type SystemProxyPlatform = 'win32' | 'darwin';
-export type SystemProxyJournalPhase = 'preparing' | 'owned';
-
-export interface SystemProxyJournalRecord {
-  readonly version: typeof JOURNAL_VERSION;
-  readonly platform: SystemProxyPlatform;
-  readonly phase: SystemProxyJournalPhase;
-  readonly original: unknown;
-  readonly owned: unknown;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-export interface SystemProxyJournalStore {
-  read(): Promise<SystemProxyJournalRecord | null>;
-  begin(
-    platform: SystemProxyPlatform,
-    original: unknown,
-    owned: unknown,
-  ): Promise<void>;
-  markOwned(platform: SystemProxyPlatform): Promise<void>;
-  clear(): Promise<void>;
-}
-
-export class SystemProxyJournalError extends Error {
-  /** Create one bounded ownership-journal failure. */
-  constructor(message: string) {
-    super(message);
-    this.name = 'SystemProxyJournalError';
-  }
-}
+import type {
+  SystemProxyJournalRecord,
+  SystemProxyJournalStore,
+  SystemProxyPlatform,
+} from '../interfaces';
+import { SystemProxyJournalError } from './system-proxy-journal-error';
 
 /** Crash-safe ownership journal for guarded system-proxy restoration. */
 export class SystemProxyJournal implements SystemProxyJournalStore {
+  /** Journal schema version. */
+  private static readonly JOURNAL_VERSION = 1;
+  /** Maximum accepted journal size in bytes. */
+  private static readonly MAX_JOURNAL_BYTES = 1024 * 1024;
   /** Absolute journal path under Electron userData. */
   private readonly journalPath: string;
 
@@ -61,7 +37,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     if (!metadata.isFile() || metadata.isSymbolicLink()) {
       throw new SystemProxyJournalError('System proxy journal is not a regular file.');
     }
-    if (metadata.size > MAX_JOURNAL_BYTES) {
+    if (metadata.size > SystemProxyJournal.MAX_JOURNAL_BYTES) {
       throw new SystemProxyJournalError('System proxy journal exceeded the size limit.');
     }
 
@@ -82,7 +58,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
   ): Promise<void> {
     const timestamp = new Date().toISOString();
     await this.write({
-      version: JOURNAL_VERSION,
+      version: SystemProxyJournal.JOURNAL_VERSION,
       platform,
       phase: 'preparing',
       original,
@@ -113,7 +89,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
   /** Atomically replace the journal after syncing its complete temporary file. */
   private async write(record: SystemProxyJournalRecord): Promise<void> {
     const serialized = JSON.stringify(record);
-    if (Buffer.byteLength(serialized, 'utf8') > MAX_JOURNAL_BYTES) {
+    if (Buffer.byteLength(serialized, 'utf8') > SystemProxyJournal.MAX_JOURNAL_BYTES) {
       throw new SystemProxyJournalError('System proxy journal exceeded the size limit.');
     }
     const directory = path.dirname(this.journalPath);
@@ -144,7 +120,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     }
     const record = value as Record<string, unknown>;
     if (
-      record.version !== JOURNAL_VERSION ||
+      record.version !== SystemProxyJournal.JOURNAL_VERSION ||
       (record.platform !== 'win32' && record.platform !== 'darwin') ||
       (record.phase !== 'preparing' && record.phase !== 'owned') ||
       typeof record.createdAt !== 'string' ||
@@ -155,7 +131,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
       throw new SystemProxyJournalError('System proxy journal fields are invalid.');
     }
     return {
-      version: JOURNAL_VERSION,
+      version: SystemProxyJournal.JOURNAL_VERSION,
       platform: record.platform,
       phase: record.phase,
       original: record.original,

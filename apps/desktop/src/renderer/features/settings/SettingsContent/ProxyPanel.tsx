@@ -8,7 +8,7 @@ import type {
   SystemProxyStatus,
 } from '../../../../shared/desktop-api';
 import { Button, cx, StatusBadge } from '../../../components';
-import { useCaptureStore } from '../../capture/captureStore';
+import { useCaptureStore } from '../../capture/data/captureStore';
 import styles from './SettingsContent.module.css';
 import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
 

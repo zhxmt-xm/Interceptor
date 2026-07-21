@@ -1,45 +1,26 @@
-import {
-  SystemProxyError,
-  systemProxyCommandRunner,
-  type SystemProxyCommandResult,
-  type SystemProxyCommandRunner,
-  type SystemProxyRestoreResult,
-  type SystemProxyService,
-  type SystemProxyStatus,
-} from './system-proxy-service';
-import type { SystemProxyJournalStore } from './system-proxy-journal';
-
-export {
-  SystemProxyError,
-  type SystemProxyCommandResult,
-  type SystemProxyCommandRunner,
-  type SystemProxyRestoreResult,
-  type SystemProxyStatus,
-} from './system-proxy-service';
-
-const PROXY_TYPE_DIRECT = 1;
-const PROXY_TYPE_PROXY = 2;
-const PROXY_TYPE_AUTO_PROXY_URL = 4;
-const PROXY_TYPE_AUTO_DETECT = 8;
-
-export interface WinInetProxySettings {
-  readonly flags: number;
-  readonly proxyEnabled: boolean;
-  readonly autoDetect: boolean;
-  readonly proxyServer: string | null;
-  readonly bypassList: string | null;
-  readonly pacUrl: string | null;
-}
-
-export interface WindowsSystemProxyServiceOptions {
-  readonly platform?: NodeJS.Platform;
-  readonly helperPath: string;
-  readonly runner?: SystemProxyCommandRunner;
-  readonly journal?: SystemProxyJournalStore;
-}
+import { SystemProxyError } from './system-proxy-error';
+import type {
+  SystemProxyCommandResult,
+  SystemProxyCommandRunner,
+  SystemProxyJournalStore,
+  SystemProxyRestoreResult,
+  SystemProxyService,
+  SystemProxyStatus,
+  WinInetProxySettings,
+  WindowsSystemProxyServiceOptions,
+} from '../interfaces';
+import { systemProxyCommandRunner } from '../utils';
 
 /** Current-user WinINet proxy ownership, guarded restoration and helper I/O. */
 export class WindowsSystemProxyService implements SystemProxyService {
+  /** WinINet PROXY_TYPE 位标志：直连。 */
+  private static readonly PROXY_TYPE_DIRECT = 1;
+  /** WinINet PROXY_TYPE 位标志：显式代理。 */
+  private static readonly PROXY_TYPE_PROXY = 2;
+  /** WinINet PROXY_TYPE 位标志：PAC 脚本。 */
+  private static readonly PROXY_TYPE_AUTO_PROXY_URL = 4;
+  /** WinINet PROXY_TYPE 位标志：自动检测。 */
+  private static readonly PROXY_TYPE_AUTO_DETECT = 8;
   /** Original settings captured immediately before this process enabled the proxy. */
   private originalSettings: WinInetProxySettings | null = null;
   /** Exact settings written by this process; restoration requires an exact current match. */
@@ -70,52 +51,52 @@ export class WindowsSystemProxyService implements SystemProxyService {
   /** Read current settings and derive whether they are still exactly owned by this process. */
   async status(): Promise<SystemProxyStatus> {
     if (!this.supported()) {
-      return unsupportedStatus();
+      return WindowsSystemProxyService.unsupportedStatus();
     }
     const current = await this.readSettings();
     const owned = this.ownedSettings !== null &&
-      equalSettings(current, this.ownedSettings);
+      WindowsSystemProxyService.equalSettings(current, this.ownedSettings);
     if (this.ownedSettings !== null && !owned) {
       this.ownershipLost = true;
     }
-    return toStatus(current, owned, this.ownershipLost);
+    return WindowsSystemProxyService.toStatus(current, owned, this.ownershipLost);
   }
 
   /** Snapshot current values, write the loopback proxy and verify exact helper readback. */
   async enable(host: string, port: number): Promise<SystemProxyStatus> {
     this.assertSupported();
-    const authority = loopbackAuthority(host, port);
+    const authority = WindowsSystemProxyService.loopbackAuthority(host, port);
     const current = await this.readSettings();
 
     if (this.ownedSettings !== null) {
-      if (!equalSettings(current, this.ownedSettings)) {
+      if (!WindowsSystemProxyService.equalSettings(current, this.ownedSettings)) {
         this.ownershipLost = true;
         throw new SystemProxyError(
           'System proxy ownership was lost because settings were modified externally.',
         );
       }
-      return toStatus(current, true, false);
+      return WindowsSystemProxyService.toStatus(current, true, false);
     }
 
-    const target = ownedProxySettings(current, authority);
+    const target = WindowsSystemProxyService.ownedProxySettings(current, authority);
     this.originalSettings = current;
     await this.journal?.begin('win32', current, target);
     await this.writeSettings(target);
     const written = await this.readSettings();
-    if (!equalSettings(written, target)) {
+    if (!WindowsSystemProxyService.equalSettings(written, target)) {
       this.originalSettings = null;
       throw new SystemProxyError('WinINet proxy settings did not match after write.');
     }
     this.ownedSettings = written;
     await this.journal?.markOwned('win32');
     this.ownershipLost = false;
-    return toStatus(written, true, false);
+    return WindowsSystemProxyService.toStatus(written, true, false);
   }
 
   /** Restore only when current settings still exactly equal this process's written values. */
   async restore(): Promise<SystemProxyRestoreResult> {
     if (!this.supported()) {
-      return { restored: false, reason: 'not-owned', status: unsupportedStatus() };
+      return { restored: false, reason: 'not-owned', status: WindowsSystemProxyService.unsupportedStatus() };
     }
     if (!this.originalSettings || !this.ownedSettings) {
       if (this.journal) {
@@ -134,7 +115,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
   /** Recover ownership from disk and perform the same guarded restoration decision. */
   async repair(): Promise<SystemProxyRestoreResult> {
     if (!this.supported()) {
-      return { restored: false, reason: 'not-owned', status: unsupportedStatus() };
+      return { restored: false, reason: 'not-owned', status: WindowsSystemProxyService.unsupportedStatus() };
     }
     if (this.originalSettings && this.ownedSettings) {
       return this.restoreOwned(this.originalSettings, this.ownedSettings);
@@ -154,10 +135,10 @@ export class WindowsSystemProxyService implements SystemProxyService {
     if (record.platform !== 'win32') {
       throw new SystemProxyError('System proxy journal belongs to another platform.');
     }
-    const original = parseSettings(record.original);
-    const owned = parseSettings(record.owned);
+    const original = WindowsSystemProxyService.parseSettings(record.original);
+    const owned = WindowsSystemProxyService.parseSettings(record.owned);
     const current = await this.readSettings();
-    if (equalSettings(current, original)) {
+    if (WindowsSystemProxyService.equalSettings(current, original)) {
       await this.journal?.clear();
       this.originalSettings = null;
       this.ownedSettings = null;
@@ -165,7 +146,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
       return {
         restored: false,
         reason: 'not-owned',
-        status: toStatus(current, false, false),
+        status: WindowsSystemProxyService.toStatus(current, false, false),
       };
     }
     this.originalSettings = original;
@@ -180,25 +161,25 @@ export class WindowsSystemProxyService implements SystemProxyService {
     knownCurrent?: WinInetProxySettings,
   ): Promise<SystemProxyRestoreResult> {
     const current = knownCurrent ?? await this.readSettings();
-    if (!equalSettings(current, owned)) {
+    if (!WindowsSystemProxyService.equalSettings(current, owned)) {
       this.ownershipLost = true;
       return {
         restored: false,
         reason: 'externally-modified',
-        status: toStatus(current, false, true),
+        status: WindowsSystemProxyService.toStatus(current, false, true),
       };
     }
 
     await this.writeSettings(original);
     const restored = await this.readSettings();
-    if (!equalSettings(restored, original)) {
+    if (!WindowsSystemProxyService.equalSettings(restored, original)) {
       throw new SystemProxyError('WinINet proxy settings did not match after restore.');
     }
     await this.journal?.clear();
     this.originalSettings = null;
     this.ownedSettings = null;
     this.ownershipLost = false;
-    return { restored: true, status: toStatus(restored, false, false) };
+    return { restored: true, status: WindowsSystemProxyService.toStatus(restored, false, false) };
   }
 
   /** Invoke the helper's read-only command and validate its bounded JSON result. */
@@ -210,7 +191,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
     } catch {
       throw new SystemProxyError('WinINet helper returned invalid JSON.');
     }
-    return parseSettings(parsed);
+    return WindowsSystemProxyService.parseSettings(parsed);
   }
 
   /** Encode nullable strings without shell interpolation and invoke the helper's set command. */
@@ -218,9 +199,9 @@ export class WindowsSystemProxyService implements SystemProxyService {
     await this.run([
       'set',
       String(settings.flags),
-      encodeNullable(settings.proxyServer),
-      encodeNullable(settings.bypassList),
-      encodeNullable(settings.pacUrl),
+      WindowsSystemProxyService.encodeNullable(settings.proxyServer),
+      WindowsSystemProxyService.encodeNullable(settings.bypassList),
+      WindowsSystemProxyService.encodeNullable(settings.pacUrl),
     ]);
   }
 
@@ -244,108 +225,122 @@ export class WindowsSystemProxyService implements SystemProxyService {
       );
     }
   }
-}
 
-function ownedProxySettings(
-  current: WinInetProxySettings,
-  authority: string,
-): WinInetProxySettings {
-  const flags = (
-    current.flags & ~(PROXY_TYPE_PROXY | PROXY_TYPE_AUTO_PROXY_URL | PROXY_TYPE_AUTO_DETECT)
-  ) | PROXY_TYPE_DIRECT | PROXY_TYPE_PROXY;
-  return {
-    flags,
-    proxyEnabled: true,
-    autoDetect: false,
-    proxyServer: `http=${authority};https=${authority}`,
-    bypassList: '<local>',
-    pacUrl: null,
-  };
-}
-
-function loopbackAuthority(host: string, port: number): string {
-  if (host !== '127.0.0.1' && host !== '::1') {
-    throw new SystemProxyError('System proxy requires a loopback listener.');
+  /** Build the loopback-owned WinINet settings from the current snapshot. */
+  private static ownedProxySettings(
+    current: WinInetProxySettings,
+    authority: string,
+  ): WinInetProxySettings {
+    const flags = (
+      current.flags &
+      ~(
+        WindowsSystemProxyService.PROXY_TYPE_PROXY |
+        WindowsSystemProxyService.PROXY_TYPE_AUTO_PROXY_URL |
+        WindowsSystemProxyService.PROXY_TYPE_AUTO_DETECT
+      )
+    ) | WindowsSystemProxyService.PROXY_TYPE_DIRECT |
+      WindowsSystemProxyService.PROXY_TYPE_PROXY;
+    return {
+      flags,
+      proxyEnabled: true,
+      autoDetect: false,
+      proxyServer: `http=${authority};https=${authority}`,
+      bypassList: '<local>',
+      pacUrl: null,
+    };
   }
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new SystemProxyError('System proxy port is invalid.');
+
+  /** Validate a loopback host/port and format the WinINet authority. */
+  private static loopbackAuthority(host: string, port: number): string {
+    if (host !== '127.0.0.1' && host !== '::1') {
+      throw new SystemProxyError('System proxy requires a loopback listener.');
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+      throw new SystemProxyError('System proxy port is invalid.');
+    }
+    return host === '::1' ? `[::1]:${port}` : `${host}:${port}`;
   }
-  return host === '::1' ? `[::1]:${port}` : `${host}:${port}`;
-}
 
-function parseSettings(value: unknown): WinInetProxySettings {
-  if (typeof value !== 'object' || value === null) {
-    throw new SystemProxyError('WinINet helper result must be an object.');
+  /** Validate one bounded WinINet helper JSON result. */
+  private static parseSettings(value: unknown): WinInetProxySettings {
+    if (typeof value !== 'object' || value === null) {
+      throw new SystemProxyError('WinINet helper result must be an object.');
+    }
+    const record = value as Record<string, unknown>;
+    if (
+      !Number.isInteger(record.flags) ||
+      (record.flags as number) < 0 ||
+      typeof record.proxyEnabled !== 'boolean' ||
+      typeof record.autoDetect !== 'boolean'
+    ) {
+      throw new SystemProxyError('WinINet helper result has invalid flags.');
+    }
+    return {
+      flags: record.flags as number,
+      proxyEnabled: record.proxyEnabled,
+      autoDetect: record.autoDetect,
+      proxyServer: WindowsSystemProxyService.nullableString(record.proxyServer, 'proxyServer'),
+      bypassList: WindowsSystemProxyService.nullableString(record.bypassList, 'bypassList'),
+      pacUrl: WindowsSystemProxyService.nullableString(record.pacUrl, 'pacUrl'),
+    };
   }
-  const record = value as Record<string, unknown>;
-  if (
-    !Number.isInteger(record.flags) ||
-    (record.flags as number) < 0 ||
-    typeof record.proxyEnabled !== 'boolean' ||
-    typeof record.autoDetect !== 'boolean'
-  ) {
-    throw new SystemProxyError('WinINet helper result has invalid flags.');
+
+  /** Validate one bounded nullable helper string field. */
+  private static nullableString(value: unknown, name: string): string | null {
+    if (value === null) {
+      return null;
+    }
+    if (typeof value !== 'string' || value.length > 32_768) {
+      throw new SystemProxyError(`WinINet helper result ${name} is invalid.`);
+    }
+    return value;
   }
-  return {
-    flags: record.flags as number,
-    proxyEnabled: record.proxyEnabled,
-    autoDetect: record.autoDetect,
-    proxyServer: nullableString(record.proxyServer, 'proxyServer'),
-    bypassList: nullableString(record.bypassList, 'bypassList'),
-    pacUrl: nullableString(record.pacUrl, 'pacUrl'),
-  };
-}
 
-function nullableString(value: unknown, name: string): string | null {
-  if (value === null) {
-    return null;
+  /** Base64-encode a nullable string for the helper's set command. */
+  private static encodeNullable(value: string | null): string {
+    return value === null ? '-' : Buffer.from(value, 'utf8').toString('base64');
   }
-  if (typeof value !== 'string' || value.length > 32_768) {
-    throw new SystemProxyError(`WinINet helper result ${name} is invalid.`);
+
+  /** Compare only the ownership-relevant WinINet fields. */
+  private static equalSettings(
+    left: WinInetProxySettings,
+    right: WinInetProxySettings,
+  ): boolean {
+    return left.flags === right.flags &&
+      left.proxyServer === right.proxyServer &&
+      left.bypassList === right.bypassList &&
+      left.pacUrl === right.pacUrl;
   }
-  return value;
-}
 
-function encodeNullable(value: string | null): string {
-  return value === null ? '-' : Buffer.from(value, 'utf8').toString('base64');
-}
+  /** Map WinINet settings to the public system-proxy status. */
+  private static toStatus(
+    settings: WinInetProxySettings,
+    owned: boolean,
+    ownershipLost: boolean,
+  ): SystemProxyStatus {
+    return {
+      supported: true,
+      enabled: settings.proxyEnabled,
+      owned,
+      ownershipLost,
+      proxyServer: settings.proxyServer,
+      bypassList: settings.bypassList,
+      pacUrl: settings.pacUrl,
+      autoDetect: settings.autoDetect,
+    };
+  }
 
-function equalSettings(
-  left: WinInetProxySettings,
-  right: WinInetProxySettings,
-): boolean {
-  return left.flags === right.flags &&
-    left.proxyServer === right.proxyServer &&
-    left.bypassList === right.bypassList &&
-    left.pacUrl === right.pacUrl;
-}
-
-function toStatus(
-  settings: WinInetProxySettings,
-  owned: boolean,
-  ownershipLost: boolean,
-): SystemProxyStatus {
-  return {
-    supported: true,
-    enabled: settings.proxyEnabled,
-    owned,
-    ownershipLost,
-    proxyServer: settings.proxyServer,
-    bypassList: settings.bypassList,
-    pacUrl: settings.pacUrl,
-    autoDetect: settings.autoDetect,
-  };
-}
-
-function unsupportedStatus(): SystemProxyStatus {
-  return {
-    supported: false,
-    enabled: false,
-    owned: false,
-    ownershipLost: false,
-    proxyServer: null,
-    bypassList: null,
-    pacUrl: null,
-    autoDetect: false,
-  };
+  /** Fixed unsupported-platform status. */
+  private static unsupportedStatus(): SystemProxyStatus {
+    return {
+      supported: false,
+      enabled: false,
+      owned: false,
+      ownershipLost: false,
+      proxyServer: null,
+      bypassList: null,
+      pacUrl: null,
+      autoDetect: false,
+    };
+  }
 }

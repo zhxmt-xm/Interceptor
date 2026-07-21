@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import type { CaptureStatus, CertificateInfo, SystemProxyStatus } from '../../../../shared/desktop-api';
 import { StatItem } from '../../../components';
-import { UpdateFormat } from '../update-format';
-import { useUpdateStore } from '../updateStore';
+import { UpdateFormat } from '../utils';
+import { useUpdateStore } from '../data/updateStore';
 
 /** Settings status bar: core state, proxy binding and trust summary. */
 export function SettingsStatusbar(): React.JSX.Element {

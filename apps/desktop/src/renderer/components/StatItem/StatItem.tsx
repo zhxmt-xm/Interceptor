@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './StatItem.module.css';
 
 export interface StatItemProps {
@@ -22,3 +22,4 @@ export function StatItem({ children, dot, mono, push }: StatItemProps): React.JS
     </div>
   );
 }
+

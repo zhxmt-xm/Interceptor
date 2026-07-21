@@ -2,8 +2,8 @@ import { Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, cx, StatusBadge } from '../../../components';
-import { UpdateFormat } from '../update-format';
-import { UpdateActions, useUpdateStore } from '../updateStore';
+import { UpdateFormat } from '../utils';
+import { UpdateActions, useUpdateStore } from '../data/updateStore';
 import styles from './SettingsContent.module.css';
 import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
 

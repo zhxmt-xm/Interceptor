@@ -2,8 +2,9 @@ import { ArrowRight, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Count, cx, type HttpMethod, MethodBadge, Switch } from '../../../components';
-import { formatCountdown, useBreakpointsStore } from '../breakpointsStore';
-import { continueAllBreakpoints, setBreakOnMatch } from '../useBreakpoints';
+import { useBreakpointsStore } from '../data/breakpointsStore';
+import { continueAllBreakpoints, setBreakOnMatch } from '../data/useBreakpoints';
+import { formatCountdown } from '../utils';
 import styles from './PausedQueue.module.css';
 
 /** Left breakpoints pane: the queue of paused requests/responses. */

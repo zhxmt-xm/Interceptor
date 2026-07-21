@@ -4,10 +4,8 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  SystemProxyJournal,
-  SystemProxyJournalError,
-} from '../system-proxy-journal';
+import { SystemProxyJournal } from '../system-proxy-journal';
+import { SystemProxyJournalError } from '../system-proxy-journal-error';
 
 describe('SystemProxyJournal', () => {
   /** Temporary directories removed by the operating system after the test run. */

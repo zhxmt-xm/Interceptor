@@ -13,21 +13,21 @@ import {
   Reply,
   Trash2,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
   cx,
+  Flyout,
   IconButton,
   MenuItem,
   SectionHeader,
   StatusBadge,
   Switch,
-  useDismissOnOutside,
 } from '../../../components';
-import type { RuleActionType } from '../../../../shared/desktop-api';
-import { ruleIndexFromPath } from '../rule-format';
-import { selectedRule, useRulesStore } from '../rulesStore';
+import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
+import { useRulesStore } from '../data/rulesStore';
+import { ruleIndexFromPath, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -35,9 +35,8 @@ import styles from './RuleEditor.module.css';
 /** Editor for the selected rule: match conditions, actions and validation. */
 export function RuleEditor(): React.JSX.Element {
   const { t } = useTranslation();
+  const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
-  const addActionButtonRef = useRef<HTMLButtonElement>(null);
-  const addActionPopoverRef = useRef<HTMLDivElement>(null);
   const rule = useRulesStore(selectedRule);
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
@@ -52,12 +51,6 @@ export function RuleEditor(): React.JSX.Element {
   const addAction = useRulesStore((state) => state.addAction);
   const updateAction = useRulesStore((state) => state.updateAction);
   const removeAction = useRulesStore((state) => state.removeAction);
-
-  useDismissOnOutside(
-    showAddAction,
-    () => setShowAddAction(false),
-    [addActionPopoverRef, addActionButtonRef],
-  );
 
   if (!rule) {
     return (
@@ -75,6 +68,11 @@ export function RuleEditor(): React.JSX.Element {
   const addAndClose = (type: RuleActionType): void => {
     addAction(rule.id, type);
     setShowAddAction(false);
+  };
+
+  const addConditionAndClose = (type: RuleMatcherType): void => {
+    addMatcher(rule.id, type);
+    setShowAddCondition(false);
   };
 
   return (
@@ -111,14 +109,37 @@ export function RuleEditor(): React.JSX.Element {
               />
             ))}
           </div>
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => addMatcher(rule.id, 'host')}
+          <Flyout
+            open={showAddCondition}
+            onOpenChange={(next) => {
+              setShowAddCondition(next);
+              if (next) {
+                setShowAddAction(false);
+              }
+            }}
+            placement="bottomRight"
+            className={styles.conditionMenu}
+            content={
+              <>
+                <MenuItem icon={Code} name={t('rules.matcher.method')} hint="GET" onClick={() => addConditionAndClose('method')} />
+                <MenuItem icon={Globe} name={t('rules.matcher.host')} hint="*.example.com" onClick={() => addConditionAndClose('host')} />
+                <MenuItem icon={MapPin} name={t('rules.matcher.path')} hint="/v1/users" onClick={() => addConditionAndClose('path')} />
+                <MenuItem icon={Globe} name={t('rules.matcher.url')} hint="https://…" onClick={() => addConditionAndClose('url')} />
+                <MenuItem icon={Code} name={t('rules.matcher.query')} hint="key=value" onClick={() => addConditionAndClose('query')} />
+                <MenuItem icon={FileText} name={t('rules.matcher.header')} hint="name: value" onClick={() => addConditionAndClose('header')} />
+                <MenuItem icon={Reply} name={t('rules.matcher.status')} hint="200–299" onClick={() => addConditionAndClose('status')} />
+                <MenuItem icon={FileText} name={t('rules.matcher.mime')} hint="application/json" onClick={() => addConditionAndClose('mime')} />
+              </>
+            }
           >
-            <Plus size={13} strokeWidth={2} />
-            {t('rules.addCondition')}
-          </button>
+            <button
+              type="button"
+              className={styles.addButton}
+            >
+              <Plus size={13} strokeWidth={2} />
+              {t('rules.addCondition')}
+            </button>
+          </Flyout>
         </div>
 
         <div>
@@ -133,15 +154,41 @@ export function RuleEditor(): React.JSX.Element {
               />
             ))}
           </div>
-          <button
-            ref={addActionButtonRef}
-            type="button"
-            className={styles.addButton}
-            onClick={() => setShowAddAction((value) => !value)}
+          <Flyout
+            open={showAddAction}
+            onOpenChange={(next) => {
+              setShowAddAction(next);
+              if (next) {
+                setShowAddCondition(false);
+              }
+            }}
+            placement="bottomRight"
+            className={styles.popover}
+            content={
+              <>
+                <div className={styles.popoverTitle}>{t('rules.addAction')}</div>
+                <MenuItem icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
+                <MenuItem icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />
+                <MenuItem icon={FileText} name={t('rules.rewriteBody')} hint={t('rules.rewriteBodyHint')} onClick={() => addAndClose('body')} />
+                <MenuItem icon={Code} name={t('rules.setStatus')} hint={t('rules.override')} onClick={() => addAndClose('status')} />
+                <MenuItem icon={Reply} name={t('rules.synthetic')} hint={t('rules.returnResponse')} onClick={() => addAndClose('synthetic')} />
+                <MenuItem icon={MapPin} name={t('rules.mapLocal')} hint={t('rules.serveFile')} onClick={() => addAndClose('map-local')} />
+                <MenuItem icon={Globe} name={t('rules.mapRemote')} hint={t('rules.reroute')} onClick={() => addAndClose('map-remote')} />
+                <MenuItem icon={Ban} name={t('rules.block')} hint={t('rules.resetClose')} onClick={() => addAndClose('block')} />
+                <MenuItem icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
+                <MenuItem icon={Gauge} name={t('rules.throttle')} hint={t('rules.bandwidth')} onClick={() => addAndClose('throttle')} />
+                <MenuItem icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />
+              </>
+            }
           >
-            <Plus size={13} strokeWidth={2} />
-            {t('rules.addAction')}
-          </button>
+            <button
+              type="button"
+              className={styles.addButton}
+            >
+              <Plus size={13} strokeWidth={2} />
+              {t('rules.addAction')}
+            </button>
+          </Flyout>
         </div>
 
         {ruleDiagnostics.length === 0 ? (
@@ -162,23 +209,6 @@ export function RuleEditor(): React.JSX.Element {
           </div>
         )}
       </div>
-
-      {showAddAction ? (
-        <div ref={addActionPopoverRef} className={styles.popover}>
-          <div className={styles.popoverTitle}>{t('rules.addAction')}</div>
-          <MenuItem icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
-          <MenuItem icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />
-          <MenuItem icon={FileText} name={t('rules.rewriteBody')} hint={t('rules.rewriteBodyHint')} onClick={() => addAndClose('body')} />
-          <MenuItem icon={Code} name={t('rules.setStatus')} hint={t('rules.override')} onClick={() => addAndClose('status')} />
-          <MenuItem icon={Reply} name={t('rules.synthetic')} hint={t('rules.returnResponse')} onClick={() => addAndClose('synthetic')} />
-          <MenuItem icon={MapPin} name={t('rules.mapLocal')} hint={t('rules.serveFile')} onClick={() => addAndClose('map-local')} />
-          <MenuItem icon={Globe} name={t('rules.mapRemote')} hint={t('rules.reroute')} onClick={() => addAndClose('map-remote')} />
-          <MenuItem icon={Ban} name={t('rules.block')} hint={t('rules.resetClose')} onClick={() => addAndClose('block')} />
-          <MenuItem icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
-          <MenuItem icon={Gauge} name={t('rules.throttle')} hint={t('rules.bandwidth')} onClick={() => addAndClose('throttle')} />
-          <MenuItem icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />
-        </div>
-      ) : null}
     </div>
   );
 }

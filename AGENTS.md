@@ -11,7 +11,7 @@
 - Drive colors, spacing, and radii from the shared design tokens (ConfigProvider + `:root[data-theme]`) matching `design/design-system.md` exactly; never hardcode ad-hoc values that drift from the tokens.
 - Do not introduce Tailwind, Less, Sass, or a second design system unless the user explicitly approves a demonstrated need. Vite-native CSS Modules plus the design tokens are the default.
 - Keep global CSS limited to reset, root design variables, typography, and accessibility media queries. Feature and component styles belong in colocated `*.module.css` files. Name CSS Module classes semantically after the component or element they style (e.g. `.recording`, `.matchRow`, `.methodChip`), never cryptic abbreviations.
-- Use the shared UI primitives directly under `apps/desktop/src/renderer/components/` (IconButton, Button, Switch, Select, InputBox, MethodBadge, StatusBadge, SectionHeader, StatItem, Count, MenuItem, Splitter, Title, NavItem) for repeated controls, toggles, selectors and rows. Each primitive lives in its own subfolder (`Component/Component.tsx` + `Component.module.css`); extend the library rather than re-implementing a control inside a feature.
+- Use the shared UI primitives directly under `apps/desktop/src/renderer/components/` (IconButton, Button, Switch, Select, InputBox, MethodBadge, StatusBadge, SectionHeader, StatItem, Count, MenuItem, Splitter, NavItem) for repeated controls, toggles, selectors and rows. Each primitive lives in its own subfolder (`Component/Component.tsx` + `Component.module.css`); extend the library rather than re-implementing a control inside a feature.
 - Use Lucide or the installed Ant Design icon set instead of handwritten inline SVG for controls. Product identity assets may use custom SVG/PNG/ICO/ICNS.
 
 ## Renderer Structure
@@ -51,12 +51,10 @@ The repo targets Windows/macOS desktops but is developed here on a Linux dev con
 
 ## Progress And Documentation
 
-- Every new session or agent MUST begin by reading `stages/PROGRESS.md`, then follow its reading order before planning or editing code.
-- Keep `stages/PROGRESS.md` as a concise stage index and current snapshot; do not accumulate implementation or debugging history there.
-- Record each stage's scope, task status, implementation, decisions, risks, validation, and remaining work in its matching `stages/M*.md` file.
-- Treat `stages/桌面网络调试代理完整方案.md` as the authoritative product design for every stage; read the relevant chapters before starting that stage.
+- Every new session or agent MUST begin by reading `stages/HANDOVER.md`, then `stages/ARCHITECTURE.md`, before planning or editing code.
+- Historical Stage records, the former progress index, and the complete product plan live under `stages/archived/`. Read them only when historical or product-design context is needed; do not resume routine progress tracking there.
 - Keep `stages/HANDOVER.md` detailed enough for a context-free new session or agent: current stage, completed work, code locations, working tree, remaining work, risks, validation, and exact next action. The handover must instruct readers to read `stages/ARCHITECTURE.md`.
 - Keep `stages/ARCHITECTURE.md` limited to code and boundaries that are currently implemented. Planned architecture remains in the product plan and stage files until validated in code.
-- Update `stages/PROGRESS.md`, the active stage file, `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` commands at stage or milestone boundaries, or when the user explicitly asks.
+- Update `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` commands at milestone boundaries, or when the user explicitly asks.
 - If a stage boundary is unclear, ask before synchronizing those documents.
-- Before committing code, first review the staged diff and update the affected docs (`stages/PROGRESS.md`, the active `stages/M*.md`, `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` as applicable) so they reflect the change; commit only after the docs are in sync.
+- Before committing code, first review the staged diff and update `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` as applicable so they reflect the change; commit only after the docs are in sync.

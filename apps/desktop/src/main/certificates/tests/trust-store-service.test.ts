@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  TrustStoreError,
-  TrustStoreService,
-  type CommandResult,
-  type CommandRunner,
-  type ElevatedRunner,
-} from '../trust-store-service';
+import { TrustStoreService } from '../trust-store-service';
+import { TrustStoreError } from '../trust-store-error';
+import type {
+  CommandResult,
+  CommandRunner,
+  ElevatedRunner,
+} from '../../interfaces';
 
 /** 记录只读命令（isTrusted）；绝不真实执行平台命令。 */
 class RecordingRunner implements CommandRunner {

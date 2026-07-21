@@ -37,10 +37,20 @@
 .drag {
   color: var(--text-3);
   display: flex;
+  cursor: grab;
+}
+.drag:active {
+  cursor: grabbing;
 }
 .drag svg {
   width: 15px;
   height: 15px;
+}
+.dragging {
+  opacity: 0.55;
+}
+.dropTarget {
+  box-shadow: inset 0 2px var(--accent);
 }
 .toggle {
   display: flex;

@@ -1,19 +1,16 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
-}
-.dialog {
-  width: min(500px, calc(100vw - 32px));
+.panel {
   max-height: calc(100vh - 32px);
+  padding: 0;
   overflow: hidden auto;
   border: 1px solid var(--border-2);
   border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+.panelBody {
+  padding: 0;
+  line-height: 1.23;
 }
 .header {
   display: flex;

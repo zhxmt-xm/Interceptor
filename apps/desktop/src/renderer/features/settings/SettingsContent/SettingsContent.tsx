@@ -8,8 +8,8 @@ import type {
   StorageUsage,
 } from '../../../../shared/desktop-api';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
-import { SECTIONS } from '../data';
-import { usePrivacyStore } from '../privacyStore';
+import { SECTIONS } from '../constants';
+import { usePrivacyStore } from '../data/privacyStore';
 import { ProxyPanel } from './ProxyPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';

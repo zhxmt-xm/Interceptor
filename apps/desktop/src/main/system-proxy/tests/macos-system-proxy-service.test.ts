@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  MacosSystemProxyService,
-  type MacosSystemProxySnapshot,
-} from '../macos-system-proxy-service';
-import {
-  SystemProxyError,
-  type SystemProxyCommandResult,
-  type SystemProxyCommandRunner,
-} from '../system-proxy-service';
+import { MacosSystemProxyService } from '../macos-system-proxy-service';
+import { SystemProxyError } from '../system-proxy-error';
 import type {
+  MacosSystemProxySnapshot,
+  SystemProxyCommandResult,
+  SystemProxyCommandRunner,
   SystemProxyJournalRecord,
   SystemProxyJournalStore,
   SystemProxyPlatform,
-} from '../system-proxy-journal';
+} from '../../interfaces';
 
 class FakeJournal implements SystemProxyJournalStore {
   /** Current persisted record shared across simulated process generations. */

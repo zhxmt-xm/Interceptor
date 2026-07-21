@@ -1,7 +1,7 @@
 import { SectionHeader, Timeline } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { buildTimeline, selectTraceRecords } from '../data';
-import { useDiagnostics } from '../DiagnosticsProvider';
+import { buildTimeline, selectTraceRecords } from '../utils';
+import { useDiagnostics } from '../data/DiagnosticsProvider';
 import styles from './TraceDetail.module.css';
 
 /** Right diagnostics pane: identifiers and the action timeline. */

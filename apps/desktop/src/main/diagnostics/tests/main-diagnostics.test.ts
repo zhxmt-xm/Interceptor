@@ -1,10 +1,8 @@
 import type { DiagnosticIngestPayload } from '@interceptor/core-protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  MainDiagnostics,
-  type MainDiagnosticsTransport,
-} from '../main-diagnostics';
+import { MainDiagnostics } from '../main-diagnostics';
+import type { MainDiagnosticsTransport } from '../../interfaces';
 
 class FakeTransport implements MainDiagnosticsTransport {
   readonly records: DiagnosticIngestPayload[] = [];

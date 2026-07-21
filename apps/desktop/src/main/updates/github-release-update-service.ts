@@ -5,36 +5,12 @@ import path from 'node:path';
 import semver from 'semver';
 
 import type { UpdateStatus } from '../../shared/desktop-api';
-import type { UpdateService } from './update-service';
-
-export interface GitHubReleaseUpdateDiagnostics {
-  info(phase: string, fields?: GitHubReleaseUpdateDiagnosticFields): void;
-  error(phase: string, fields?: GitHubReleaseUpdateDiagnosticFields): void;
-}
-
-interface GitHubReleaseUpdateDiagnosticFields {
-  readonly errorCode?: string;
-  readonly outcome?: 'success' | 'failed';
-}
-
-interface GitHubReleaseUpdateServiceOptions {
-  readonly platform?: NodeJS.Platform;
-  readonly architecture?: NodeJS.Architecture;
-  readonly packaged: boolean;
-  readonly currentVersion: string;
-  readonly dataDirectory: string;
-  readonly diagnostics: GitHubReleaseUpdateDiagnostics;
-  readonly fetcher?: typeof fetch;
-  readonly openPath: (filePath: string) => Promise<string>;
-  readonly now?: () => Date;
-}
-
-interface GitHubReleaseAsset {
-  readonly name: string;
-  readonly url: string;
-  readonly size: number;
-  readonly sha256: string;
-}
+import type {
+  GitHubReleaseAsset,
+  GitHubReleaseUpdateDiagnostics,
+  GitHubReleaseUpdateServiceOptions,
+  UpdateService,
+} from '../interfaces';
 
 /** Checks and manually downloads installers from one public GitHub repository. */
 export class GitHubReleaseUpdateService implements UpdateService {

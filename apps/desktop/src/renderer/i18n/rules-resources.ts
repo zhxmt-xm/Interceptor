@@ -16,6 +16,8 @@ export const rulesEnglishMessages = {
   'rules.applied': 'applied',
   'rules.searchRules': 'Search rules',
   'rules.more': 'More',
+  'rules.moveUp': 'Move up',
+  'rules.moveDown': 'Move down',
   'rules.empty': 'No rules yet — add a rule to start.',
   'rules.conditionCount_one': '{{count}} condition',
   'rules.conditionCount_other': '{{count}} conditions',

@@ -3,31 +3,31 @@ import { useTranslation } from 'react-i18next';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { cx, SectionHeader, StatusBadge } from '../../../components';
-import { useCaptureStore } from '../captureStore';
+import { useCaptureStore } from '../data/captureStore';
 import {
   GRPC_INSPECTOR_TABS,
   INSPECTOR_TABS,
   TLS_TUNNEL_INSPECTOR_TABS,
-  retainInspectorTab,
   WEBSOCKET_INSPECTOR_TABS,
-  type InspectorTab,
-} from '../data';
+} from '../constants';
+import type { InspectorTab } from '../interfaces';
 import { TlsPanel } from './TlsPanel';
 import { TlsTunnelPanel } from './TlsTunnelPanel';
 import {
+  headersWithoutCookies,
   protocolLabel,
   protocolSegment,
-  headersWithoutCookies,
   requestCookiePairs,
   responseCookiePairs,
+  responseTimingSegments,
+  retainInspectorTab,
   sizeLabel,
   statusLabel,
   statusTone,
-  responseTimingSegments,
   timeLabel,
   typeLabel,
-} from '../row-format';
-import { useExchangeDetail } from '../useExchangeDetail';
+} from '../utils';
+import { useExchangeDetail } from '../data/useExchangeDetail';
 import { BodyView } from './BodyView';
 import { GrpcMessages } from './GrpcMessages';
 import { WebSocketMessages } from './WebSocketMessages';

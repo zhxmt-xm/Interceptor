@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   INSPECTOR_TABS,
   TLS_TUNNEL_INSPECTOR_TABS,
-  retainInspectorTab,
-} from '../data';
+} from '../constants';
+import { retainInspectorTab } from '../utils';
 
 describe('Inspector tab retention', () => {
   it('preserves a valid tab when selecting another request of the same type', () => {

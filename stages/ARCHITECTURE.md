@@ -1,7 +1,7 @@
 # Interceptor 当前实现架构与 Workflow
 
 > 最后更新：2026-07-20
-> 范围：只描述已经实现并验证的代码；未来设计见 [桌面网络调试代理完整方案.md](桌面网络调试代理完整方案.md)。
+> 范围：只描述已经实现并验证的代码；历史产品设计见 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
 
@@ -67,9 +67,11 @@ flowchart LR
 
 > Renderer 仍只通过 `window.interceptor` 意图 API 访问 Main，不触达 Electron/Node/MessagePort；以下为已实现并 typecheck 通过的 UI 结构，视觉取值以 `design/design-system.md` 为准。
 
-- **App shell**：`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言并按 `ViewId` 渲染对应 feature 的 main/statusbar；`app/AppShell.tsx` 是全高侧栏 + 46px Window Header + 主体 + 30px 状态栏的 Grid 外壳，`app/Sidebar.tsx` 是导航 + 底部主题/语言切换器。
+- **App shell**：`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。`app/Sidebar.tsx` 负责导航 + 底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。
+- **设计源**：`design/app` 只保留静态 `shell-v2` 根布局；旧 `layout=current` / `data-layout` 状态、六组 feature `.tv` 顶栏和 Layout 设计切换器已删除。其余 Capture/Rules/overlay 截图均由同一 Shell V2 布局生成，是当前细节场景而非旧版设计。
 - **自有窗口 Chrome**：Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 侧栏折叠按钮和 feature 名称，右侧固定 Minimize / Maximize-or-restore / Close 三按钮。Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。业务命令不进入 Header；UpdateNotification 是 Header 下方独立 overlay，不占 Header flex。
 - **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module；旧 Feature Topbar 已删除。Capture 由 `CaptureWorkbar` 承载 Recording/Omnibox/Import/Export；Rules、Composer、Breakpoints、Diagnostics 的业务命令分别位于列表、协议、暂停队列和日志内容工具栏。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+- **Filtering / Rules 交互**：Capture Omnibox 支持 Method/Status/Host/Type/Duration 字段选择、规范化输入与 Enter 提交；Rules 支持八种 matcher 创建、列表操作菜单及 grip 拖放排序，Renderer 始终同步 `priority`，保证列表顺序与 Core 执行顺序一致。
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。设计源只保留当前 Theme flyout 与 Language list，不保留替代变体。
 - **主题与语言**：四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。`renderer/i18n/` 用 `i18next` + `react-i18next` 注册 15 个本地静态完整 catalog，英语为默认/回退；切换同步 Ant `ConfigProvider.locale`、`html lang`、localStorage 与 `Intl` 格式。Renderer 经受限 `setUiLanguage` Preload 意图把 15 值枚举同步给 Main，Main 只用内存状态本地化自己持有的 HAR/archive/Diagnostics 文件对话框，不把路径或通用 IPC 暴露给 Renderer。
 - **验收**：M12 历史验收覆盖六视图双主题、900×600 与四语言状态，共 42 张截图且无页面级溢出。2026-07-18 多语言增强 smoke 在真实 Windows package 中逐项切换 15 种语言，验证持久化、UI 文案、页面无溢出及 Main IPC 非法值拒绝；catalog 契约测试校验 659 个主 key、插值与 CLDR 多复数。
@@ -344,4 +346,4 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 
 - 本文件只记录已经实现并验证的 workflow。
 - 计划能力留在完整方案和对应 Stage 文件。
-- 阶段边界同步核对 [PROGRESS.md](PROGRESS.md)、[HANDOVER.md](HANDOVER.md) 和对应 `M*.md`。
+- 里程碑边界同步核对 [HANDOVER.md](HANDOVER.md) 与本文件；历史 Stage 资料只保留在 [archived/](archived/)。

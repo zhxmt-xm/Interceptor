@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-07-20T19:03:26.038Z
+Generated: 2026-07-21T07:25:31.769Z
 
 ## Overall Summary
 
@@ -8,11 +8,11 @@ Generated: 2026-07-20T19:03:26.038Z
 | --- | ---: |
 | Result | Review required |
 | Views checked | 45 |
-| Average pixel diff | 1.84% |
+| Average pixel diff | 1.83% |
 | Targets | 330 |
 | Matched | 330 |
 | Missing | 0 |
-| Flagged | 95 |
+| Flagged | 94 |
 | Largest geometry delta | 13.8 px |
 | Worst element | settings-updates-checking / Latest GitHub release |
 
@@ -28,13 +28,13 @@ Generated: 2026-07-20T19:03:26.038Z
 | capture-grpc | 2.82% | 9 | 9 | 0 | 3 | 1.4 px |
 | capture-tunnel | 2.66% | 8 | 8 | 0 | 3 | 3.5 px |
 | capture-tunnel-dark | 2.71% | 6 | 6 | 0 | 1 | 1.0 px |
-| https-setup | 0.52% | 9 | 9 | 0 | 0 | 0.7 px |
-| https-setup-dark | 0.95% | 5 | 5 | 0 | 0 | 0.7 px |
-| https-setup-ready | 0.55% | 7 | 7 | 0 | 0 | 0.7 px |
-| import-export | 0.69% | 7 | 7 | 0 | 1 | 0.9 px |
-| import-export-dark | 0.30% | 7 | 7 | 0 | 1 | 0.9 px |
+| https-setup | 0.68% | 9 | 9 | 0 | 0 | 0.7 px |
+| https-setup-dark | 0.13% | 5 | 5 | 0 | 0 | 0.7 px |
+| https-setup-ready | 0.70% | 7 | 7 | 0 | 0 | 0.7 px |
+| import-export | 0.83% | 7 | 7 | 0 | 0 | 0.9 px |
+| import-export-dark | 0.25% | 7 | 7 | 0 | 1 | 0.9 px |
 | capture-export-menu | 2.82% | 2 | 2 | 0 | 0 | 0.0 px |
-| proxy-not-ready | 0.46% | 5 | 5 | 0 | 0 | 0.8 px |
+| proxy-not-ready | 0.58% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 2.01% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | 2.46% | 9 | 9 | 0 | 1 | 1.0 px |
 | composer | 1.54% | 9 | 9 | 0 | 5 | 4.0 px |
@@ -144,14 +144,14 @@ Generated: 2026-07-20T19:03:26.038Z
 | https-setup-ready | Trusted | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | https-setup-ready | Ready | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | https-setup-ready | Start decrypting | 0.7 px | 0.1 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| import-export | Export HAR | 0.0 px | 0.5 px | 0.0 px | -0.2 px | 0.5 px | none | ok |
+| import-export | Export HAR | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | import-export | All traffic | 0.0 px | -0.2 px | 0.9 px | 0.4 px | 0.9 px | none | ok |
 | import-export | Current filter | 0.0 px | 0.0 px | 0.6 px | 0.4 px | 0.6 px | none | ok |
-| import-export | Selected request | 0.0 px | 0.3 px | 0.3 px | 0.4 px | 0.4 px | color rgb(26, 27, 30)->rgb(139, 142, 150) | flagged |
+| import-export | Selected request | 0.0 px | 0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
 | import-export | Mask authorization tokens | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | import-export | Mask cookies & Set-Cookie | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | import-export | Strip request/response bodies | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| import-export-dark | Export HAR | 0.0 px | 0.5 px | 0.0 px | -0.2 px | 0.5 px | none | ok |
+| import-export-dark | Export HAR | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | import-export-dark | All traffic | 0.0 px | -0.2 px | 0.9 px | 0.4 px | 0.9 px | none | ok |
 | import-export-dark | Current filter | 0.0 px | 0.0 px | 0.6 px | 0.4 px | 0.6 px | none | ok |
 | import-export-dark | Selected request | 0.0 px | 0.3 px | 0.3 px | 0.4 px | 0.4 px | color rgb(243, 244, 248)->rgb(100, 107, 123) | flagged |

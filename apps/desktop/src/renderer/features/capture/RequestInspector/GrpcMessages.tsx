@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy, Download, Info } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -9,7 +9,7 @@ import type {
   GrpcMessageSummary,
 } from '../../../../shared/desktop-api';
 import { Count, cx, IconButton, Segmented } from '../../../components';
-import { sizeLabel } from '../row-format';
+import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
 import { useGrpcMessages } from './useGrpcMessages';
 import styles from './GrpcMessages.module.css';
@@ -54,6 +54,10 @@ export function GrpcMessages({
       loadMore();
     }
   };
+
+  const handleSelectMessage = useCallback((index: number): void => {
+    setSelectedIndex((current) => (current === index ? null : index));
+  }, []);
 
   const grpcStatus = readHeader(detail.responseTrailers, 'grpc-status')
     ?? readHeader(detail.responseHeaders, 'grpc-status');
@@ -121,9 +125,7 @@ export function GrpcMessages({
                       message={message}
                       selected={message.index === selectedIndex}
                       encoding={page?.encoding}
-                      onSelect={() =>
-                        setSelectedIndex((current) =>
-                          current === message.index ? null : message.index)}
+                      onSelect={handleSelectMessage}
                     />
                     {message.index === selectedIndex && page?.bodyHash ? (
                       <MessagePayload
@@ -164,7 +166,7 @@ export function GrpcMessages({
   );
 }
 
-function MessageRow({
+const MessageRow = memo(function MessageRow({
   message,
   selected,
   encoding,
@@ -173,7 +175,7 @@ function MessageRow({
   message: GrpcMessageSummary;
   selected: boolean;
   encoding: string | undefined;
-  onSelect(): void;
+  onSelect: (index: number) => void;
 }): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const state = message.truncated
@@ -185,7 +187,7 @@ function MessageRow({
     <button
       type="button"
       className={cx(styles.message, selected && styles.selected)}
-      onClick={onSelect}
+      onClick={() => onSelect(message.index)}
     >
       <span className={styles.direction}>
         <Download size={12} strokeWidth={1.9} />
@@ -204,7 +206,7 @@ function MessageRow({
       <span className={styles.offset}>@ 0x{message.payloadOffset.toString(16).padStart(4, '0')}</span>
     </button>
   );
-}
+});
 
 function MessagePayload({
   message,

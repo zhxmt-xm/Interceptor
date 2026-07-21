@@ -1,20 +1,16 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
-}
-
-.dialog {
-  width: min(512px, calc(100vw - 32px));
+.panel {
   max-height: calc(100vh - 32px);
+  padding: 0;
   overflow: hidden auto;
   border: 1px solid var(--border-2);
   border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+.panelBody {
+  padding: 0;
+  line-height: 1.23;
 }
 
 .header {
@@ -42,6 +38,7 @@
   margin: 0;
   font-size: 14.5px;
   font-weight: 640;
+  line-height: 18px;
   letter-spacing: 0;
 }
 
@@ -185,6 +182,7 @@
   overflow: hidden;
   font-size: 12.5px;
   font-weight: 550;
+  line-height: 1.23;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -193,6 +191,7 @@
   overflow: hidden;
   color: var(--text-3);
   font-size: 11.5px;
+  line-height: 1.23;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -217,6 +216,7 @@
   gap: 10px;
   color: var(--text);
   font-size: 12.5px;
+  line-height: 1.23;
   cursor: pointer;
 }
 

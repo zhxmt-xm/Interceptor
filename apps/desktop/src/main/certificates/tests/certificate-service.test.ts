@@ -5,11 +5,9 @@ import path from 'node:path';
 import * as x509 from '@peculiar/x509';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  CertificateError,
-  CertificateService,
-  type SecureStore,
-} from '../certificate-service';
+import { CertificateService } from '../certificate-service';
+import { CertificateError } from '../certificate-error';
+import type { SecureStore } from '../../interfaces';
 
 /** 明文前缀“加密”，用于断言私钥确实经 SecureStore 加密后落盘。 */
 class FakeSecureStore implements SecureStore {

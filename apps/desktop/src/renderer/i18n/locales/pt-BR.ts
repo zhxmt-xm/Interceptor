@@ -224,6 +224,8 @@ export const ptBRCatalog = {
   'rules.applied': 'aplicado',
   'rules.searchRules': 'Pesquisar regras',
   'rules.more': 'Mais',
+  'rules.moveUp': 'Mover para cima',
+  'rules.moveDown': 'Mover para baixo',
   'rules.empty': 'Nenhuma regra ainda — adicione uma para começar.',
   'rules.conditionCount_one': '{{count}} condição',
   'rules.conditionCount_other': '{{count}} condições',

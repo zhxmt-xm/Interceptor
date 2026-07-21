@@ -1,6 +1,6 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { useComposerStore } from '../composerStore';
+import { useComposerStore } from '../data/composerStore';
 
 /** Composer status bar: ready state, target host and last send result. */
 export function ComposerStatusbar(): React.JSX.Element {

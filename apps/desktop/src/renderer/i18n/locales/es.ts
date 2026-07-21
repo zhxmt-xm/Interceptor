@@ -224,6 +224,8 @@ export const esCatalog = {
   'rules.applied': 'aplicado',
   'rules.searchRules': 'Buscar reglas',
   'rules.more': 'Más',
+  'rules.moveUp': 'Subir',
+  'rules.moveDown': 'Bajar',
   'rules.empty': 'Aún no hay reglas. Añade una para empezar.',
   'rules.conditionCount_one': '{{count}} condición',
   'rules.conditionCount_other': '{{count}} condiciones',

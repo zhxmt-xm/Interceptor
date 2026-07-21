@@ -1,10 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  CoreRuntime,
-  type CoreProcessHandle,
-} from '../core-runtime';
+import { CoreRuntime } from '../core-runtime';
+import type { CoreProcessHandle } from '../../interfaces';
 
 type TestCoreRuntimeOptions = NonNullable<
   ConstructorParameters<typeof CoreRuntime>[0]

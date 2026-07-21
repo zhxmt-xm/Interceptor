@@ -224,6 +224,8 @@ export const koCatalog = {
   'rules.applied': '적용됨',
   'rules.searchRules': '규칙 검색',
   'rules.more': '더 보기',
+  'rules.moveUp': '위로 이동',
+  'rules.moveDown': '아래로 이동',
   'rules.empty': '아직 규칙이 없습니다. 시작하려면 규칙을 추가하세요.',
   'rules.conditionCount_one': '조건 {{count}}개',
   'rules.conditionCount_other': '조건 {{count}}개',

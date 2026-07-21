@@ -353,16 +353,15 @@ export const DESKTOP_UI_LANGUAGES = [
 export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 
 export const DESKTOP_IPC_CHANNELS = {
+  coreEcho: 'core:echo',
   appQuit: 'app:quit',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
-  coreEcho: 'core:echo',
   coreGetProcessStatus: 'core:get-process-status',
   coreGetTrace: 'core:get-trace',
   coreGetDiagnostics: 'core:get-diagnostics',
   coreQueryDiagnostics: 'core:query-diagnostics',
   rendererDiagnosticReport: 'diagnostics:renderer-report',
-  uiSetLanguage: 'ui:set-language',
   coreProcessStatus: 'core:process-status',
   systemProxyGetStatus: 'system-proxy:get-status',
   systemProxyEnable: 'system-proxy:enable',
@@ -373,7 +372,6 @@ export const DESKTOP_IPC_CHANNELS = {
   updateDownload: 'update:download',
   updateOpenDownloaded: 'update:open-downloaded',
   updateStatus: 'update:status',
-  windowChromePress: 'window:chrome-press',
   storageGetStatus: 'storage:get-status',
   storageClear: 'storage:clear',
   captureStart: 'capture:start',
@@ -416,11 +414,10 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  echoCore(value: string): Promise<CoreEchoResult>;
   closeApplication(): Promise<void>;
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<boolean>;
-  setUiLanguage(language: DesktopUiLanguage): Promise<void>;
-  echoCore(value: string): Promise<CoreEchoResult>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
   getCoreTrace(traceId: string): Promise<CoreDiagnosticTrace>;
   getRecentDiagnostics(limit?: number): Promise<CoreDiagnosticSnapshot>;
@@ -435,12 +432,6 @@ export interface InterceptorDesktopApi {
   downloadUpdate(): Promise<UpdateStatus>;
   openDownloadedUpdate(): Promise<void>;
   onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void;
-  /**
-   * Fires when the user drags the frameless window's title bar to move or resize it (an
-   * OS-owned gesture that never reaches the DOM). Lets open popovers dismiss the instant
-   * the window starts moving/resizing, within the same gesture. Cross-platform.
-   */
-  onWindowChromePress(listener: () => void): () => void;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;
@@ -490,12 +481,16 @@ export interface InterceptorDesktopApi {
   ): Promise<{ state: string }>;
   setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
   probeConnection(host: string, port: number): Promise<ConnectionProbe>;
-  startHarExport(request: HarExportRequest): Promise<TransferJobSnapshot | null>;
-  startHarImport(): Promise<TransferJobSnapshot | null>;
-  startArchiveExport(): Promise<TransferJobSnapshot | null>;
-  startArchiveImport(): Promise<TransferJobSnapshot | null>;
+  startHarExport(
+    request: HarExportRequest,
+    title: string,
+  ): Promise<TransferJobSnapshot | null>;
+  startHarImport(title: string): Promise<TransferJobSnapshot | null>;
+  startArchiveExport(title: string): Promise<TransferJobSnapshot | null>;
+  startArchiveImport(title: string): Promise<TransferJobSnapshot | null>;
   startDiagnosticsExport(
     filter: DiagnosticsExportFilter,
+    title: string,
   ): Promise<TransferJobSnapshot | null>;
   getTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;

@@ -1,9 +1,10 @@
 import { Download } from 'lucide-react';
+import { useMemo } from 'react';
 
 import { Count, cx, FilterChip, IconButton } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { aggregateTraces } from '../data';
-import { useDiagnostics } from '../DiagnosticsProvider';
+import { aggregateTraces } from '../utils';
+import { useDiagnostics } from '../data/DiagnosticsProvider';
 import styles from './TraceList.module.css';
 
 /** Left diagnostics pane: the scrollable trace/command table. */
@@ -26,13 +27,17 @@ export function TraceList(): React.JSX.Element {
     exportError,
     exportJsonl,
   } = useDiagnostics();
-  const rows = aggregateTraces(records, i18n.language, {
-    success: t('diagnostics.success'),
-    failed: t('diagnostics.failed'),
-    cancelled: t('diagnostics.cancelled'),
-    timedOut: t('diagnostics.timedOut'),
-    ok: t('diagnostics.ok'),
-  });
+  const rows = useMemo(
+    () =>
+      aggregateTraces(records, i18n.language, {
+        success: t('diagnostics.success'),
+        failed: t('diagnostics.failed'),
+        cancelled: t('diagnostics.cancelled'),
+        timedOut: t('diagnostics.timedOut'),
+        ok: t('diagnostics.ok'),
+      }),
+    [records, i18n.language, t],
+  );
 
   return (
     <div className={styles.list}>

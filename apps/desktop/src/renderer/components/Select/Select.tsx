@@ -1,7 +1,7 @@
-import { ChevronDown } from 'lucide-react';
+﻿import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './Select.module.css';
 
 export interface SelectOption {
@@ -13,7 +13,7 @@ export interface SelectProps {
   children?: ReactNode;
   onClick?: () => void;
   className?: string;
-  /** 受控值；与 options 一同提供时渲染为原生下拉选择。 */
+  /** 鍙楁帶鍊硷紱涓?options 涓€鍚屾彁渚涙椂娓叉煋涓哄師鐢熶笅鎷夐€夋嫨銆?*/
   value?: string;
   options?: SelectOption[];
   onValueChange?: (value: string) => void;
@@ -21,8 +21,8 @@ export interface SelectProps {
 }
 
 /**
- * 下拉选择触发器：默认只读展示 children；提供 options 时渲染为受控原生
- * <select>（保持同一视觉与尾部 caret）。
+ * 涓嬫媺閫夋嫨瑙﹀彂鍣細榛樿鍙灞曠ず children锛涙彁渚?options 鏃舵覆鏌撲负鍙楁帶鍘熺敓
+ * <select>锛堜繚鎸佸悓涓€瑙嗚涓庡熬閮?caret锛夈€?
  */
 export function Select({
   children,
@@ -63,3 +63,4 @@ export function Select({
     </div>
   );
 }
+

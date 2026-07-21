@@ -5,85 +5,63 @@ import {
   parseCoreToMainMessage,
   type CaptureExchangeEvent,
   type CoreCommand,
-  type CoreError,
   type CoreEventBatch,
   type CoreResult,
   type CoreResultForCommand,
-  type MainToCoreMessage,
 } from '@interceptor/core-protocol';
 
-export interface CoreRpcPort {
-  onMessage(listener: (message: unknown) => void): () => void;
-  onClose(listener: () => void): () => void;
-  postMessage(message: MainToCoreMessage): void;
-  start(): void;
-  close(): void;
-}
-
-export interface CoreRequestOptions {
-  requestId?: string;
-  signal?: AbortSignal;
-  timeoutMs?: number;
-  traceId?: string;
-}
-
-interface CoreRpcClientOptions {
-  createId?: () => string;
-  requestTimeoutMs?: number;
-}
-
-const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
-
-const RESULT_TYPE_BY_COMMAND: Record<CoreCommand['type'], CoreResult['type']> = {
-  'body.read-range': 'body.range',
-  'breakpoint.resolve': 'breakpoint.resolution',
-  'breakpoint.list': 'breakpoint.pending',
-  'breakpoint.configure': 'breakpoint.config',
-  'composer.send': 'composer.response',
-  'connection.probe': 'connection.probed',
-  'grpc.messages': 'grpc.messages',
-  'har.export.start': 'transfer.job',
-  'har.import.start': 'transfer.job',
-  'archive.export.start': 'transfer.job',
-  'archive.import.start': 'transfer.job',
-  'diagnostics.recent': 'diagnostics.records',
-  'diagnostics.ingest': 'diagnostics.ingested',
-  'diagnostics.query': 'diagnostics.page',
-  'diagnostics.export.start': 'transfer.job',
-  'echo': 'echo',
-  'rules.get': 'rules.ruleset',
-  'rules.hits': 'rules.hits',
-  'rules.replace': 'rules.revision',
-  'rules.validate': 'rules.validation',
-  'sessions.query': 'sessions.page',
-  'sessions.detail': 'sessions.detail',
-  'websocket.frames': 'websocket.frames',
-  'websocket.breakpoint.configure': 'websocket.breakpoint.config',
-  'storage.status': 'storage.status',
-  'storage.cleanup': 'storage.status',
-  'transfer.job.cancel': 'transfer.job',
-  'transfer.job.get': 'transfer.job',
-  'proxy.start': 'proxy.status',
-  'proxy.stop': 'proxy.status',
-  'proxy.status': 'proxy.status',
-  'proxy.setRecording': 'proxy.status',
-  'tls.configure': 'tls.configured',
-};
-
-export class CoreRpcError extends Error {
-  readonly code: CoreError['code'];
-  readonly retryable: boolean;
-
-  constructor(error: CoreError) {
-    super(error.message);
-    this.name = 'CoreRpcError';
-    this.code = error.code;
-    this.retryable = error.retryable;
-  }
-}
+import type {
+  CoreRequestOptions,
+  CoreRpcClientOptions,
+  CoreRpcPort,
+} from '../interfaces';
+import { CoreRpcError } from './core-rpc-error';
+import { PendingRpcRequest } from './pending-rpc-request';
 
 /** Main 侧唯一的 Core 业务入口：把 typed command 映射成 Promise。 */
 export class CoreRpcClient {
+  /** 默认单次 Core 请求超时（ms）。 */
+  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
+  /** 每个 Command type 对应的期望 Result type；用于校验响应与请求匹配。 */
+  private static readonly RESULT_TYPE_BY_COMMAND: Record<
+    CoreCommand['type'],
+    CoreResult['type']
+  > = {
+    'body.read-range': 'body.range',
+    'breakpoint.resolve': 'breakpoint.resolution',
+    'breakpoint.list': 'breakpoint.pending',
+    'breakpoint.configure': 'breakpoint.config',
+    'composer.send': 'composer.response',
+    'connection.probe': 'connection.probed',
+    'grpc.messages': 'grpc.messages',
+    'har.export.start': 'transfer.job',
+    'har.import.start': 'transfer.job',
+    'archive.export.start': 'transfer.job',
+    'archive.import.start': 'transfer.job',
+    'diagnostics.recent': 'diagnostics.records',
+    'diagnostics.ingest': 'diagnostics.ingested',
+    'diagnostics.query': 'diagnostics.page',
+    'diagnostics.export.start': 'transfer.job',
+    'echo': 'echo',
+    'rules.get': 'rules.ruleset',
+    'rules.hits': 'rules.hits',
+    'rules.replace': 'rules.revision',
+    'rules.validate': 'rules.validation',
+    'sessions.query': 'sessions.page',
+    'sessions.detail': 'sessions.detail',
+    'websocket.frames': 'websocket.frames',
+    'websocket.breakpoint.configure': 'websocket.breakpoint.config',
+    'storage.status': 'storage.status',
+    'storage.cleanup': 'storage.status',
+    'transfer.job.cancel': 'transfer.job',
+    'transfer.job.get': 'transfer.job',
+    'proxy.start': 'proxy.status',
+    'proxy.stop': 'proxy.status',
+    'proxy.status': 'proxy.status',
+    'proxy.setRecording': 'proxy.status',
+    'tls.configure': 'tls.configured',
+  };
+
   private readonly createId: () => string;
   private readonly pending = new Map<string, PendingRpcRequest>();
   private readonly requestTimeoutMs: number;
@@ -97,7 +75,7 @@ export class CoreRpcClient {
   constructor(options: CoreRpcClientOptions = {}) {
     this.createId = options.createId ?? randomUUID;
     this.requestTimeoutMs =
-      options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+      options.requestTimeoutMs ?? CoreRpcClient.DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   attach(port: CoreRpcPort): void {
@@ -138,13 +116,13 @@ export class CoreRpcClient {
   ): Promise<CoreResultForCommand<T>> {
     const port = this.port;
     if (!port) {
-      return Promise.reject(rpcError(
+      return Promise.reject(CoreRpcError.of(
         'disconnected',
         'Core RPC connection is unavailable.',
       ));
     }
     if (options.signal?.aborted) {
-      return Promise.reject(rpcError(
+      return Promise.reject(CoreRpcError.of(
         'cancelled',
         'The Core request was cancelled.',
       ));
@@ -153,7 +131,7 @@ export class CoreRpcClient {
     const requestId = options.requestId ?? `request-${this.createId()}`;
     const traceId = options.traceId ?? `trace-${this.createId()}`;
     if (this.pending.has(requestId)) {
-      return Promise.reject(rpcError(
+      return Promise.reject(CoreRpcError.of(
         'conflict',
         'The request ID is already active.',
       ));
@@ -180,7 +158,7 @@ export class CoreRpcClient {
     } catch {
       this.finishWithError(
         requestId,
-        rpcError('disconnected', 'Unable to send the Core request.'),
+        CoreRpcError.of('disconnected', 'Unable to send the Core request.'),
       );
     }
 
@@ -214,7 +192,8 @@ export class CoreRpcClient {
     if (
       response.traceId !== pending.traceId ||
       (response.ok &&
-        response.result.type !== RESULT_TYPE_BY_COMMAND[pending.commandType])
+        response.result.type !==
+          CoreRpcClient.RESULT_TYPE_BY_COMMAND[pending.commandType])
     ) {
       this.disconnect('Core response does not match its request.');
       return;
@@ -264,7 +243,7 @@ export class CoreRpcClient {
     }
     this.finishWithError(
       requestId,
-      rpcError(
+      CoreRpcError.of(
         reason === 'timeout' ? 'timeout' : 'cancelled',
         reason === 'timeout'
           ? 'The Core request timed out.'
@@ -297,72 +276,7 @@ export class CoreRpcClient {
 
     for (const [requestId, pending] of this.pending) {
       this.pending.delete(requestId);
-      pending.reject(rpcError('disconnected', message));
+      pending.reject(CoreRpcError.of('disconnected', message));
     }
   }
-}
-
-/** 一个 RPC Promise 的全部本地资源，完成后统一释放。 */
-class PendingRpcRequest {
-  readonly promise: Promise<CoreResult>;
-  private resolvePromise!: (result: CoreResult) => void;
-  private rejectPromise!: (error: Error) => void;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private removeAbortListener: (() => void) | null = null;
-  private settled = false;
-
-  constructor(
-    readonly commandType: CoreCommand['type'],
-    readonly traceId: string,
-  ) {
-    this.promise = new Promise<CoreResult>((resolve, reject) => {
-      this.resolvePromise = resolve;
-      this.rejectPromise = reject;
-    });
-  }
-
-  start(
-    timeoutMs: number,
-    signal: AbortSignal | undefined,
-    cancel: (reason: 'caller' | 'timeout') => void,
-  ): void {
-    this.timer = setTimeout(() => cancel('timeout'), timeoutMs);
-    if (signal) {
-      const listener = (): void => cancel('caller');
-      signal.addEventListener('abort', listener, { once: true });
-      this.removeAbortListener = () => signal.removeEventListener('abort', listener);
-      if (signal.aborted) {
-        cancel('caller');
-      }
-    }
-  }
-
-  resolve(result: CoreResult): void {
-    if (!this.settled) {
-      this.settled = true;
-      this.cleanup();
-      this.resolvePromise(result);
-    }
-  }
-
-  reject(error: Error): void {
-    if (!this.settled) {
-      this.settled = true;
-      this.cleanup();
-      this.rejectPromise(error);
-    }
-  }
-
-  private cleanup(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-    this.removeAbortListener?.();
-    this.removeAbortListener = null;
-  }
-}
-
-function rpcError(code: CoreError['code'], message: string): CoreRpcError {
-  return new CoreRpcError({ code, message, retryable: false });
 }

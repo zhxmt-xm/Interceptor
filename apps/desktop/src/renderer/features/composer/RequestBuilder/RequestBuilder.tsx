@@ -1,5 +1,5 @@
 import { Clock, Plus, Send, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -14,9 +14,10 @@ import {
   Select,
   Tabs,
 } from '../../../components';
-import type { ComposerProtocol } from '../composerStore';
-import { parseQueryParams, useComposerStore } from '../composerStore';
-import { sendComposerRequest } from '../useComposer';
+import { useComposerStore } from '../data/composerStore';
+import type { ComposerProtocol } from '../interfaces';
+import { sendComposerRequest } from '../data/useComposer';
+import { parseQueryParams } from '../utils';
 import styles from './RequestBuilder.module.css';
 
 const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].map(
@@ -27,7 +28,6 @@ const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTION
 export function RequestBuilder(): React.JSX.Element {
   const { t } = useTranslation();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const historyAnchorRef = useRef<HTMLSpanElement>(null);
   const method = useComposerStore((state) => state.method);
   const url = useComposerStore((state) => state.url);
   const protocol = useComposerStore((state) => state.protocol);
@@ -107,43 +107,43 @@ export function RequestBuilder(): React.JSX.Element {
         <span className={styles.spacer} />
         <Count>{tlsLabel}</Count>
         <div className={styles.actions}>
-          <span ref={historyAnchorRef} className={styles.historyAnchor} data-parity="composer-history">
-            <IconButton
-              icon={Clock}
-              label={t('composer.history')}
-              size="sm"
-              onClick={() => setHistoryOpen((value) => !value)}
-            />
-          </span>
+          <Flyout
+            open={historyOpen}
+            onOpenChange={setHistoryOpen}
+            placement="bottomRight"
+            className={styles.historyPanel}
+            content={
+              history.length === 0 ? (
+                <div className={styles.historyEmpty}>{t('composer.noHistory')}</div>
+              ) : (
+                history.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={styles.historyItem}
+                    onClick={() => {
+                      loadFromHistory(entry);
+                      setHistoryOpen(false);
+                    }}
+                  >
+                    <span className={styles.historyMethod}>{entry.method}</span>
+                    <span className={styles.historyUrl}>{entry.url}</span>
+                    <span className={styles.historyStatus}>{entry.status || '—'}</span>
+                  </button>
+                ))
+              )
+            }
+          >
+            <span className={styles.historyAnchor} data-parity="composer-history">
+              <IconButton
+                icon={Clock}
+                label={t('composer.history')}
+                size="sm"
+              />
+            </span>
+          </Flyout>
           <IconButton icon={Plus} label={t('composer.new')} size="sm" onClick={resetForNew} />
         </div>
-        <Flyout
-          open={historyOpen}
-          anchorRef={historyAnchorRef}
-          placement="bottom-end"
-          className={styles.historyPanel}
-          onClose={() => setHistoryOpen(false)}
-        >
-          {history.length === 0 ? (
-            <div className={styles.historyEmpty}>{t('composer.noHistory')}</div>
-          ) : (
-            history.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className={styles.historyItem}
-                onClick={() => {
-                  loadFromHistory(entry);
-                  setHistoryOpen(false);
-                }}
-              >
-                <span className={styles.historyMethod}>{entry.method}</span>
-                <span className={styles.historyUrl}>{entry.url}</span>
-                <span className={styles.historyStatus}>{entry.status || '—'}</span>
-              </button>
-            ))
-          )}
-        </Flyout>
       </div>
 
       <Tabs items={requestTabs} active={tab} onSelect={(id) => setRequestTab(id as never)} />

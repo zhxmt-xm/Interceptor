@@ -56,7 +56,7 @@
 ## 布局(Traffic 为参考基准)
 
 - 基准画布 `1280 × 800`。
-- Header V2 是设计 SPA 默认且已批准的落地基线。侧栏从顶部到底部保持完整，右侧内容区按自然流依次为窗口 Header、feature 工作栏、主体和状态栏；业务布局不得依赖浮动、绝对定位或 `z-index` 拼接。
+- Header V2 是设计 SPA 唯一且已批准的落地基线。侧栏从顶部到底部保持完整，右侧内容区按自然流依次为窗口 Header、feature 工作栏、主体和状态栏；业务布局不得依赖浮动、绝对定位或 `z-index` 拼接。
 - 主体横向布局为 `list / splitter / inspector`:
   - 展开:`220px(side) · minmax(0,1fr)(list) · 1px(splitter) · 500px(inspector)`
   - 折叠:`60px(side) · minmax(0,1fr)(list) · 1px(splitter) · 500px(inspector)`

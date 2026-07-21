@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
 import { Segmented } from '../../../components';
-import { sizeLabel } from '../row-format';
+import { sizeLabel } from '../utils';
 import styles from './BodyView.module.css';
 
 /** 单次预览最多加载的正文字节（Inspector 只做预览，非完整下载）。 */

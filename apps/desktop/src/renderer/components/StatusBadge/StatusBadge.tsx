@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './StatusBadge.module.css';
 
 export interface StatusBadgeProps {
@@ -26,3 +26,4 @@ export function StatusBadge({ children, tone = 'green', className }: StatusBadge
     </span>
   );
 }
+

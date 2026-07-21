@@ -1,4 +1,4 @@
-import { cx } from '../cx';
+﻿import { cx } from '../share/cx';
 import styles from './Switch.module.css';
 
 export interface SwitchProps {
@@ -18,3 +18,4 @@ export function Switch({ checked, onChange, className }: SwitchProps): React.JSX
     />
   );
 }
+

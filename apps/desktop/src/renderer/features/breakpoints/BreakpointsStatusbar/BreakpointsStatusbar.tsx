@@ -1,6 +1,6 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { useBreakpointsStore } from '../breakpointsStore';
+import { useBreakpointsStore } from '../data/breakpointsStore';
 
 /** Breakpoints status bar: paused count, timeout policy and match state. */
 export function BreakpointsStatusbar(): React.JSX.Element {

@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
+﻿import type { CSSProperties } from 'react';
 
-import { cx } from '../cx';
+import { cx } from '../share/cx';
 import styles from './MethodBadge.module.css';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'del';
@@ -8,8 +8,8 @@ export type HttpMethod = 'get' | 'post' | 'put' | 'del';
 type MethodTone = 'get' | 'post' | 'put' | 'del';
 
 /**
- * 把原始 HTTP 方法（任意大小写、短写或全称）归一为徽标标签与配色。
- * 已知方法映射到设计定义的 4 种配色；未知方法（HEAD/OPTIONS 等）用中性色。
+ * 鎶婂師濮?HTTP 鏂规硶锛堜换鎰忓ぇ灏忓啓銆佺煭鍐欐垨鍏ㄧО锛夊綊涓€涓哄窘鏍囨爣绛句笌閰嶈壊銆?
+ * 宸茬煡鏂规硶鏄犲皠鍒拌璁″畾涔夌殑 4 绉嶉厤鑹诧紱鏈煡鏂规硶锛圚EAD/OPTIONS 绛夛級鐢ㄤ腑鎬ц壊銆?
  */
 function classifyMethod(method: string): { label: string; tone?: MethodTone } {
   switch (method.toUpperCase()) {
@@ -44,3 +44,4 @@ export function MethodBadge({ method, className, style }: MethodBadgeProps): Rea
     </span>
   );
 }
+

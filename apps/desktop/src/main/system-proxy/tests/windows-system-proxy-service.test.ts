@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  SystemProxyError,
-  WindowsSystemProxyService,
-  type SystemProxyCommandResult,
-  type SystemProxyCommandRunner,
-  type WinInetProxySettings,
-} from '../windows-system-proxy-service';
+import { WindowsSystemProxyService } from '../windows-system-proxy-service';
+import { SystemProxyError } from '../system-proxy-error';
 import type {
+  SystemProxyCommandResult,
+  SystemProxyCommandRunner,
   SystemProxyJournalRecord,
   SystemProxyJournalStore,
   SystemProxyPlatform,
-} from '../system-proxy-journal';
+  WinInetProxySettings,
+} from '../../interfaces';
 
 class FakeJournal implements SystemProxyJournalStore {
   /** Current persisted record shared across simulated process generations. */

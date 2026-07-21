@@ -35,6 +35,8 @@ export function createAppTheme(mode: ThemeMode): ThemeConfig {
       colorSplit: 'var(--border)',
       colorBorder: 'var(--border-2)',
       colorBgContainer: 'var(--panel)',
+      colorBgElevated: 'var(--panel)',
+      colorBgMask: 'color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75))',
       colorText: 'var(--text)',
       colorTextSecondary: 'var(--text-2)',
       colorTextTertiary: 'var(--text-3)',
@@ -75,6 +77,11 @@ export function createAppTheme(mode: ThemeMode): ThemeConfig {
         itemSelectedColor: 'var(--text)',
         trackPadding: 3,
         borderRadius: 9,
+      },
+      Modal: {
+        // The panel border/radius/shadow are supplied per-dialog via the `container`
+        // semantic slot; this only sets the elevated surface color as a token fallback.
+        contentBg: 'var(--panel)',
       },
     },
   };

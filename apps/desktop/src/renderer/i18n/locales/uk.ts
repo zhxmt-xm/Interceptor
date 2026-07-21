@@ -230,6 +230,8 @@ export const ukCatalog = {
   'rules.applied': 'застосовано',
   'rules.searchRules': 'Шукати правила',
   'rules.more': 'Більше',
+  'rules.moveUp': 'Перемістити вгору',
+  'rules.moveDown': 'Перемістити вниз',
   'rules.empty': 'Правил ще немає — додайте перше.',
   'rules.conditionCount_one': '{{count}} умова',
   'rules.conditionCount_few': '{{count}} умови',

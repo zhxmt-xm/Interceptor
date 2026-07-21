@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { Chip, StatusBadge, Tabs } from '../../../components';
 import type { ComposerResponse } from '../../../../shared/desktop-api';
-import { useComposerStore } from '../composerStore';
-import { sizeLabel } from '../../capture/row-format';
+import { useComposerStore } from '../data/composerStore';
+import { sizeLabel } from '../../capture/utils';
 import styles from './ResponsePanel.module.css';
 
 /** HTTP 状态码短语（缺省时按状态类给出）。 */

@@ -147,16 +147,7 @@
   min-width: 0;
 }
 .popover {
-  position: absolute;
-  top: 60px;
-  right: 18px;
-  z-index: 40;
   width: 250px;
-  background: var(--panel);
-  border: 1px solid var(--border-2);
-  border-radius: 12px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
-  padding: 7px;
 }
 .popoverTitle {
   padding: 7px 9px 8px;
@@ -165,6 +156,11 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-3);
+}
+.conditionMenu {
+  width: 254px;
+  max-height: min(420px, calc(100vh - 16px));
+  overflow-y: auto;
 }
 .popoverNote {
   padding: 9px 10px 3px;

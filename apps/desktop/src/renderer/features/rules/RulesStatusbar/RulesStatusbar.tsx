@@ -1,6 +1,7 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { enabledCount, useRulesStore } from '../rulesStore';
+import { useRulesStore } from '../data/rulesStore';
+import { enabledCount } from '../utils';
 
 /** Rules status bar: rule-set state, revision and validation summary. */
 export function RulesStatusbar(): React.JSX.Element {

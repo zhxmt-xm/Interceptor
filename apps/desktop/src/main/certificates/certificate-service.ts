@@ -2,86 +2,15 @@ import { createHash, randomBytes, webcrypto } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-type X509Module = typeof import('@peculiar/x509');
-
-let x509Promise: Promise<X509Module> | null = null;
-
-// 懒加载证书库：只在生成 CA 时加载 @peculiar/x509（其依赖 tsyringe/reflect-metadata
-// 有全局副作用）。避免其在 Main 启动路径的顶层副作用影响进程初始化（含 Chromium/CDP）。
-async function loadX509(): Promise<X509Module> {
-  if (!x509Promise) {
-    x509Promise = (async () => {
-      await import('reflect-metadata');
-      const module = await import('@peculiar/x509');
-      module.cryptoProvider.set(webcrypto as unknown as Crypto);
-      return module;
-    })();
-  }
-  return x509Promise;
-}
-
-const SIGNING_ALGORITHM = {
-  name: 'RSASSA-PKCS1-v1_5',
-  hash: 'SHA-256',
-  publicExponent: new Uint8Array([1, 0, 1]),
-  modulusLength: 2048,
-} as const;
-
-const CA_SUBJECT = 'CN=Interceptor CA, O=Interceptor';
-const CA_VALIDITY_DAYS = 3 * 365;
-const CERT_FILE = 'root-cert.pem';
-const KEY_FILE = 'root-key.enc';
-const META_FILE = 'ca-meta.json';
-
-/**
- * OS 级安全存储抽象（Electron `safeStorage`：Windows DPAPI / macOS Keychain）。
- * 抽成接口以便注入 fake 做单元测试；Root 私钥只经它加密后落盘。
- */
-export interface SecureStore {
-  isEncryptionAvailable(): boolean;
-  encryptString(plaintext: string): Buffer;
-  decryptString(data: Buffer): string;
-}
-
-export interface CertificateServiceOptions {
-  /** 证书目录（`<userData>/certificates`）；cert/加密 key/meta 都在其下。 */
-  readonly dataDir: string;
-  readonly secureStore: SecureStore;
-  readonly now?: () => Date;
-}
-
-/**
- * CA 材料（PEM）。私钥只在 Main 内存与下发 Core 做 MITM 时出现，
- * 绝不进入 Renderer、日志、导出文件或遥测。
- */
-export interface CaMaterial {
-  readonly key: string;
-  readonly cert: string;
-}
-
-/** 面向 Renderer 的 CA 状态；只含公开元数据，绝不含私钥。 */
-export interface CertificateStatus {
-  readonly present: boolean;
-  readonly fingerprint: string | null;
-  readonly subject: string | null;
-  readonly createdAt: string | null;
-  readonly expiresAt: string | null;
-}
-
-interface CaMeta {
-  fingerprint: string;
-  sha1: string;
-  subject: string;
-  createdAt: string;
-  expiresAt: string;
-}
-
-export class CertificateError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CertificateError';
-  }
-}
+import type {
+  CaMaterial,
+  CaMeta,
+  CertificateServiceOptions,
+  CertificateStatus,
+  SecureStore,
+  X509Module,
+} from '../interfaces';
+import { CertificateError } from './certificate-error';
 
 /**
  * Root CA 生命周期所有者（仅 Main）。
@@ -92,6 +21,26 @@ export class CertificateError extends Error {
  * 动态签发。CertificateService 不触达系统信任库（由 TrustStoreService 负责）。
  */
 export class CertificateService {
+  /** RSA/SHA-256 签名算法参数（兼容性优先）。 */
+  private static readonly SIGNING_ALGORITHM = {
+    name: 'RSASSA-PKCS1-v1_5',
+    hash: 'SHA-256',
+    publicExponent: new Uint8Array([1, 0, 1]),
+    modulusLength: 2048,
+  } as const;
+  /** Root CA 主题。 */
+  private static readonly CA_SUBJECT = 'CN=Interceptor CA, O=Interceptor';
+  /** Root CA 有效期（天）。 */
+  private static readonly CA_VALIDITY_DAYS = 3 * 365;
+  /** 证书 PEM 文件名。 */
+  private static readonly CERT_FILE = 'root-cert.pem';
+  /** 加密私钥文件名。 */
+  private static readonly KEY_FILE = 'root-key.enc';
+  /** 公开元数据文件名。 */
+  private static readonly META_FILE = 'ca-meta.json';
+  /** 懒加载的 @peculiar/x509 单例；仅在生成 CA 时加载以避免顶层副作用。 */
+  private static x509Promise: Promise<X509Module> | null = null;
+
   private readonly dataDir: string;
   private readonly secureStore: SecureStore;
   private readonly now: () => Date;
@@ -178,24 +127,26 @@ export class CertificateService {
       );
     }
 
-    const x509 = await loadX509();
-    const keys = (await webcrypto.subtle.generateKey(SIGNING_ALGORITHM, true, [
-      'sign',
-      'verify',
-    ])) as CryptoKeyPair;
+    const x509 = await CertificateService.loadX509();
+    const keys = (await webcrypto.subtle.generateKey(
+      CertificateService.SIGNING_ALGORITHM,
+      true,
+      ['sign', 'verify'],
+    )) as CryptoKeyPair;
 
     const notBefore = new Date(this.now().getTime() - 5 * 60 * 1000);
     const notAfter = new Date(
-      this.now().getTime() + CA_VALIDITY_DAYS * 24 * 60 * 60 * 1000,
+      this.now().getTime() +
+        CertificateService.CA_VALIDITY_DAYS * 24 * 60 * 60 * 1000,
     );
 
     const certificate = await x509.X509CertificateGenerator.createSelfSigned({
-      serialNumber: randomSerial(),
-      name: CA_SUBJECT,
+      serialNumber: CertificateService.randomSerial(),
+      name: CertificateService.CA_SUBJECT,
       notBefore,
       notAfter,
       keys,
-      signingAlgorithm: SIGNING_ALGORITHM,
+      signingAlgorithm: CertificateService.SIGNING_ALGORITHM,
       extensions: [
         new x509.BasicConstraintsExtension(true, 0, true),
         new x509.KeyUsagesExtension(
@@ -208,8 +159,8 @@ export class CertificateService {
 
     const certPem = certificate.toString('pem');
     const pkcs8 = await webcrypto.subtle.exportKey('pkcs8', keys.privateKey);
-    const keyPem = toPem(Buffer.from(pkcs8), 'PRIVATE KEY');
-    const fingerprint = formatFingerprint(
+    const keyPem = CertificateService.toPem(Buffer.from(pkcs8), 'PRIVATE KEY');
+    const fingerprint = CertificateService.formatFingerprint(
       createHash('sha256').update(Buffer.from(certificate.rawData)).digest(),
     );
     const sha1 = createHash('sha1')
@@ -219,7 +170,7 @@ export class CertificateService {
     const meta: CaMeta = {
       fingerprint,
       sha1,
-      subject: CA_SUBJECT,
+      subject: CertificateService.CA_SUBJECT,
       createdAt: notBefore.toISOString(),
       expiresAt: notAfter.toISOString(),
     };
@@ -231,19 +182,22 @@ export class CertificateService {
   }
 
   private get certPath(): string {
-    return path.join(this.dataDir, CERT_FILE);
+    return path.join(this.dataDir, CertificateService.CERT_FILE);
   }
 
   private get keyPath(): string {
-    return path.join(this.dataDir, KEY_FILE);
+    return path.join(this.dataDir, CertificateService.KEY_FILE);
   }
 
   private get metaPath(): string {
-    return path.join(this.dataDir, META_FILE);
+    return path.join(this.dataDir, CertificateService.META_FILE);
   }
 
   private async hasKeyAndCert(): Promise<boolean> {
-    return (await exists(this.certPath)) && (await exists(this.keyPath));
+    return (
+      (await CertificateService.exists(this.certPath)) &&
+      (await CertificateService.exists(this.keyPath))
+    );
   }
 
   private async readMeta(): Promise<CaMeta | null> {
@@ -253,30 +207,48 @@ export class CertificateService {
       return null;
     }
   }
-}
 
-/** 16 字节随机 serial（首位清高位保证正数），hex 字符串。 */
-function randomSerial(): string {
-  const bytes = randomBytes(16);
-  bytes.writeUInt8(bytes.readUInt8(0) & 0x7f, 0);
-  return bytes.toString('hex');
-}
+  /**
+   * 懒加载 @peculiar/x509（其 tsyringe/reflect-metadata 有全局副作用），
+   * 只在生成 CA 时加载，避免顶层副作用阻塞 Main/Chromium/CDP 启动。
+   */
+  private static async loadX509(): Promise<X509Module> {
+    if (!CertificateService.x509Promise) {
+      CertificateService.x509Promise = (async () => {
+        await import('reflect-metadata');
+        const module = await import('@peculiar/x509');
+        module.cryptoProvider.set(webcrypto as unknown as Crypto);
+        return module;
+      })();
+    }
+    return CertificateService.x509Promise;
+  }
 
-function toPem(der: Buffer, label: string): string {
-  const lines = der.toString('base64').match(/.{1,64}/g) ?? [];
-  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
-}
+  /** 16 字节随机 serial（首位清高位保证正数），hex 字符串。 */
+  private static randomSerial(): string {
+    const bytes = randomBytes(16);
+    bytes.writeUInt8(bytes.readUInt8(0) & 0x7f, 0);
+    return bytes.toString('hex');
+  }
 
-/** SHA-256 fingerprint 格式化为大写冒号分隔 hex。 */
-function formatFingerprint(digest: Buffer): string {
-  return (digest.toString('hex').toUpperCase().match(/.{2}/g) ?? []).join(':');
-}
+  /** DER 缓冲编码为 PEM 文本块。 */
+  private static toPem(der: Buffer, label: string): string {
+    const lines = der.toString('base64').match(/.{1,64}/g) ?? [];
+    return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
+  }
 
-async function exists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
+  /** SHA-256 fingerprint 格式化为大写冒号分隔 hex。 */
+  private static formatFingerprint(digest: Buffer): string {
+    return (digest.toString('hex').toUpperCase().match(/.{2}/g) ?? []).join(':');
+  }
+
+  /** 文件是否存在（access 检测）。 */
+  private static async exists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

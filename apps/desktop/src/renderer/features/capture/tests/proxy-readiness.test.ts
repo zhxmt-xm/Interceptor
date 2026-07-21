@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterceptorDesktopApi } from '../../../../shared/desktop-api';
-import { useCaptureStore } from '../captureStore';
-import { retryCaptureProxyReadiness, toggleCapture } from '../useCaptureData';
+import { useCaptureStore } from '../data/captureStore';
+import { retryCaptureProxyReadiness, toggleCapture } from '../data/useCaptureData';
 
 const originalWindow = globalThis.window;
 

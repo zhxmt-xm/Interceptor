@@ -2,12 +2,9 @@ import { Clock, Play, Plus, Slash, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Chip, IconButton, SectionHeader } from '../../../components';
-import {
-  formatCountdown,
-  selectedBreakpoint,
-  useBreakpointsStore,
-} from '../breakpointsStore';
-import { resolveSelected } from '../useBreakpoints';
+import { useBreakpointsStore } from '../data/breakpointsStore';
+import { resolveSelected } from '../data/useBreakpoints';
+import { formatCountdown, selectedBreakpoint } from '../utils';
 import styles from './BreakpointEditor.module.css';
 
 /** Right breakpoints pane: editable headers/body for the paused request. */
