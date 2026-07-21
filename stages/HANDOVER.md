@@ -54,7 +54,7 @@
 - **M13验证全绿**：286 unit tests；全typecheck；package audit；真实packaged smoke；正式MSI；两版x64 MSI lifecycle；生产audit 0；actionlint；Updates 14个parity场景0 missing。完整数字见 [archived/M13.md](archived/M13.md)。
 - **多语言增强验证全绿**：293 unit tests；三 workspace typecheck；Windows package audit 1,292 files / 377,348,054 bytes；真实 packaged smoke 逐项验证 15 种语言、持久化、侧栏译文、页面无溢出与 Main language IPC 非法值拒绝；生产 audit 0。
 - **Capture 后续增强验证全绿**：311 unit tests；三 workspace typecheck；Windows package；真实 packaged smoke 1/1（活动 Recording Clear 后保留 Session 壳、Exchange/Body 归零）；生产 audit 0。Payload/Cookies/Timing/Tunnel/topbar 目标场景已完成浏览器与视觉检查。
-- Git：本轮开始时 `main` 与 `origin/main` 对齐且工作树干净。当前未提交工作树包含 Stage 文档归档、App/AppShell 合并、Capture 结构化过滤、Rules matcher/菜单/排序交互、15 种语言新增命令键、未使用 `Title` 删除、旧空目录清理、Shell V2 唯一设计收敛、Dark 场景截图命名修正、单测与 visual parity 报告；没有 package、`.vite/` 或 `test-results/` 产物。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
+- Git：`main` 已包含 Stage 文档归档、Core/Main/Renderer 模块结构对齐、App/AppShell 合并、Capture 结构化过滤、Rules matcher/菜单/排序交互、Shell V2 唯一设计收敛，以及 packaged smoke readiness 稳定性修正和以 Ant Popover 实现为准的 Capture 文件菜单设计基线。本轮提交并 push 后应与 `origin/main` 对齐且工作树干净；没有 package、`.vite/` 或 `test-results/` 产物。新 Session 先跑 `git status --short --branch` 与 `git log -4 --oneline` 确认实际状态。
 - 当前工作目录：`H:\code\Interceptor`；默认分支：`main`。若 `tsc` 报找不到 `@interceptor/core-protocol`，先跑 `npm install` 重建 workspace junction。
 - 当前已验证 Windows x64 package/MSI。macOS 配置和 smoke 已实现，但 Swift helper、DMG/ZIP、Gatekeeper/staple 尚未在真实 macOS runner 执行；生产签名凭据不在仓库。
 
@@ -150,11 +150,11 @@
 
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
-## 下一动作：评审并提交文档归档与 Renderer 交互增强
+## 最近验收与下一动作
 
-提交前检查 staged diff：`stages/` 根目录应只含 `HANDOVER.md` 与 `ARCHITECTURE.md`，17 份历史文档位于 `stages/archived/`；`AppShell.tsx`/CSS 与未使用 `Title` 已删除；旧空目录均不存在；设计 SPA 无 `layout=current/data-layout/.tv` 分支且只保留静态 Shell V2；场景资产使用 `all-dark.png`/`hover-dark.png`；Rules 新增测试文件应纳入。不要加入 `.vite/`、package 产物或 `test-results/`；保留 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
+本次验证：三 workspace typecheck；Desktop 115 / Proxy Core 180 / Protocol 19，共 314 项 unit tests；设计 SPA 重出 26 张 Capture 明暗主题截图，并以当前 Ant Popover 为基线同步文件菜单的锚点与内容间距。Visual parity 45 views / 330 targets / 0 missing，平均像素差 1.83%、94 个既有 flagged；Capture Export 菜单绝对偏移 `0/0`、2 个目标 0 flagged，真实 `Export → Export HAR` 命令链进入对话框且 7 个目标 0 flagged。Windows x64 package 通过；package audit 1,292 文件 / 377,399,178 bytes 全通过；真实 packaged smoke 1/1 通过；`npm audit --omit=dev` 为 0 vulnerabilities；`git diff --check` 通过。
 
-本次验证：三 workspace typecheck；Desktop 115 / Proxy Core 180 / Protocol 19，共 314 项 unit tests；浏览器真实交互验证 Capture Type 过滤规范化、Rules Status matcher 创建、More 下移、Apply 持久化和 grip 拖放 priority；Markdown 24 文件本地链接检查通过。设计 SPA 全量重出 96 张唯一 Shell V2 截图和 9 张当前 Theme scenes。Visual parity 45 views / 330 targets / 0 missing，平均像素差 1.83%、94 flagged；Capture、HTTPS Setup 三态、Import/Export light、Proxy readiness 与所有 Shell V2 专项场景均 0 flagged，Rules 仅保留既有 Add action 1px 阈值差。Main/Preload/IPC/Fuses/CSP/打包边界未改，本轮未重复 package/smoke。
+下一动作：保持 `main` 与 `origin/main` 对齐并等待下一项产品需求。不要加入 `.vite/`、package 产物或 `test-results/`；继续保留 `apps/desktop/tests/visual-parity/parity-report.md` 作为验收资产。
 
 提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 

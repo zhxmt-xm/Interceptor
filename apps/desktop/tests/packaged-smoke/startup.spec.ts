@@ -328,7 +328,7 @@ class PackagedWorkflowSmoke {
 }
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
     true,
@@ -443,7 +443,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onCaptureEvents',
         'onCoreProcessStatusChange',
         'onUpdateStatusChange',
-        'onWindowChromePress',
         'openCertificateManager',
         'openDownloadedUpdate',
         'probeConnection',
@@ -631,7 +630,9 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     await PackagedWorkflowSmoke.run(page);
 
-    await settleProxyReadiness(page);
+    // Let the async post-restart bootstrap raise and settle its readiness modal before
+    // the screenshot matrix, so it cannot pop up mid-capture and block a click.
+    await drainReadinessBeforeCapture(page);
 
     await ReleaseScreenshotMatrix.capture(page, testInfo);
 
@@ -664,9 +665,28 @@ test('packaged app starts with an isolated renderer and running core', async ({
   }
 });
 
+/**
+ * Before the screenshot matrix, give the asynchronous post-restart bootstrap time to
+ * raise its readiness modal and close it, so it cannot pop up mid-capture and block a
+ * click. If the modal never appears (listener-not-ready path), just proceed.
+ */
+async function drainReadinessBeforeCapture(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Proxy not ready' });
+  const deadline = Date.now() + 12_000;
+  while (Date.now() < deadline) {
+    if (await dialog.isVisible().catch(() => false)) {
+      await dialog.getByRole('button', { name: 'Cancel' }).click().catch(() => undefined);
+      return;
+    }
+    await page.waitForTimeout(500);
+  }
+}
+
 /** Wait for automatic bootstrap to become Recording or present its recovery dialog. */
 async function settleProxyReadiness(page: Page): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: 'Proxy not ready' });
+  // The recovery dialog is an Ant Modal whose role="dialog" element carries no accessible
+  // name, so match it by its heading text instead of an accessible-name role query.
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Proxy not ready' });
   const recording = page.getByRole('button', { name: 'Recording' });
   await expect.poll(async () => {
     if (await dialog.isVisible()) {

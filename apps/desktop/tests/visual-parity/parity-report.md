@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-07-21T07:25:31.769Z
+Generated: 2026-07-21T13:40:22.873Z
 
 ## Overall Summary
 
@@ -22,9 +22,9 @@ Generated: 2026-07-21T07:25:31.769Z
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.74% | 11 | 11 | 0 | 0 | 0.5 px |
 | capture-websocket | 2.61% | 8 | 8 | 0 | 1 | 1.1 px |
-| capture-request-json | 2.46% | 4 | 4 | 0 | 2 | 7.3 px |
-| capture-timing | 2.24% | 4 | 4 | 0 | 0 | 0.9 px |
-| capture-cookies | 2.20% | 3 | 3 | 0 | 0 | 0.9 px |
+| capture-request-json | 2.44% | 4 | 4 | 0 | 2 | 7.3 px |
+| capture-timing | 2.22% | 4 | 4 | 0 | 0 | 0.9 px |
+| capture-cookies | 2.19% | 3 | 3 | 0 | 0 | 0.9 px |
 | capture-grpc | 2.82% | 9 | 9 | 0 | 3 | 1.4 px |
 | capture-tunnel | 2.66% | 8 | 8 | 0 | 3 | 3.5 px |
 | capture-tunnel-dark | 2.71% | 6 | 6 | 0 | 1 | 1.0 px |
@@ -33,7 +33,7 @@ Generated: 2026-07-21T07:25:31.769Z
 | https-setup-ready | 0.70% | 7 | 7 | 0 | 0 | 0.7 px |
 | import-export | 0.83% | 7 | 7 | 0 | 0 | 0.9 px |
 | import-export-dark | 0.25% | 7 | 7 | 0 | 1 | 0.9 px |
-| capture-export-menu | 2.82% | 2 | 2 | 0 | 0 | 0.0 px |
+| capture-export-menu | 2.74% | 2 | 2 | 0 | 0 | 0.0 px |
 | proxy-not-ready | 0.58% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 2.01% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | 2.46% | 9 | 9 | 0 | 1 | 1.0 px |
