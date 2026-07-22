@@ -147,7 +147,7 @@ export const views = [
       tab: 'tunnel',
     },
     designShot: 'light/capture/inspector-tunnel.png',
-    rendererActions: [{ type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' }],
+    rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'Inspector method', parity: 'capture-inspector-method' },
       { name: 'Inspector host', parity: 'capture-inspector-host' },
@@ -170,7 +170,7 @@ export const views = [
       tab: 'tunnel',
     },
     designShot: 'dark/capture/inspector-tunnel.png',
-    rendererActions: [{ type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' }],
+    rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       'Encrypted',
@@ -195,7 +195,7 @@ export const views = [
     },
     designShot: 'light/https-setup/dialog.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
+      { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
@@ -225,7 +225,7 @@ export const views = [
     },
     designShot: 'dark/https-setup/dialog.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
+      { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
@@ -251,7 +251,7 @@ export const views = [
     },
     designShot: 'light/https-setup/ready.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
+      { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
       { type: 'clickRole', role: 'button', name: 'Generate' },
       { type: 'clickRole', role: 'button', name: 'Install…' },

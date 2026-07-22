@@ -67,6 +67,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'add-filter', theme, variant: 'method', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'method' } });
   shots.push({ feature: 'add-filter', theme, variant: 'status', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'status' } });
   shots.push({ feature: 'add-filter', theme, variant: 'pill-overflow', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tip: 'method' } });
+  shots.push({ feature: 'capture', theme, variant: 'recording-loading', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', recording: 'pending' } });
 }
 // Default shell: a dedicated global window header with feature tools inside content.
 for (const theme of ['light', 'dark']) {

@@ -117,6 +117,10 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .window-close:hover { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
 .rec { display: flex; align-items: center; gap: 7px; padding: 6px 13px 6px 10px; border-radius: 999px; background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); font-size: 12.5px; font-weight: 560; flex: 0 0 auto; }
 .rec .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 24%, transparent); }
+.rec .rec-spinner { display: none; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: recspin 0.75s linear infinite; }
+.app[data-recording="pending"] .rec .dot { display: none; }
+.app[data-recording="pending"] .rec .rec-spinner { display: inline-block; }
+@keyframes recspin { to { transform: rotate(360deg); } }
 .paused-label { display: none; }
 .app[data-overlay="proxy-not-ready"] .rec { background: var(--panel-2); color: var(--text-3); }
 .app[data-overlay="proxy-not-ready"] .rec .dot { background: var(--text-3); box-shadow: none; }

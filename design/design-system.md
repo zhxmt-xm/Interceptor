@@ -79,7 +79,7 @@
 - **Proxy readiness 弹层**：自动 Recording、手动 Start 或 Core 重启后，如果 listener 或受支持平台的系统代理未 ready，`capturing` 必须为 false，顶栏显示 Paused、状态栏显示 Not recording，并显示阻塞弹层。结构为 warning 标题、readiness 说明、单一状态行、guarded restore 隐私说明和 Cancel / Proxy & Listener / Enable；只有 Enable 是 primary，禁止静默接管系统设置。Enable 成功且 listener+routing 都 ready 后才允许显示 Recording。
 - **filter 条**(list 上方,`--filter` 底):协议快捷段 `All/H1/H2/WS`(Segmented)+ 计数 `18 of 241` + 列设置/清空图标；严格限制在 list 列。list 小于 420px 时隐藏计数与 Columns、收紧 segmented padding，只保留协议切换与 Clear，禁止横向溢出。相邻图标按钮成组，组内间距 `3px`（不沿用 filter 条的 `10px`）。
 - **Segmented 开关**（协议 `All/H1/H2/WS`、Body `Auto/Text/JSON/Hex`、Composer 协议、导出 Format 共用）：无轨道、透明容器，只有选中项显示为**实心 `--accent` 圆角块 + 白字**（未选中 `--text-3`，hover `--text-2` + `--hover` 底）。容器 `height 28`、`align-self:center`、`width:max-content`、`gap 2`、`radius 9`；选项 `height 22`、`padding 0 9`、`radius 7`、`font-weight 520`（选中 600）。与同行控件（30px 图标按钮）同一垂直中线；协议段用 mono `10.5`、大写、`min-width 30`。Body mode 左对齐于正文预览。
-- **操作按钮**:enabled 一律 `cursor:pointer`;default 用 `--panel` 底 + `--border-2` 边,hover 在 `--panel` 上混入 6% `--text`,不得替换成透明 `--hover`;primary 用 `--accent` 实底 + 白字,hover 按 88% `--accent` + 12% `--text` 提升当前主题下的对比;danger 用中性实底 + 红字/红边,hover 按 10% `--red` + 90% `--panel` 着色。disabled 不保留 primary/danger 强语义色,统一 `--panel-2` 底 + `--border` 边 + `--text-3` 字,`cursor:not-allowed`,且 hover/filter/阴影均不得变化。图标按钮 enabled 可用透明底 + `--hover`,disabled 同样不响应 hover并使用 `not-allowed`。
+- **操作按钮**:enabled 一律 `cursor:pointer`;default 用 `--panel` 底 + `--border-2` 边,hover 在 `--panel` 上混入 6% `--text`,不得替换成透明 `--hover`;primary 用 `--accent` 实底 + 白字,hover 按 88% `--accent` + 12% `--text` 提升当前主题下的对比;danger 用中性实底 + 红字/红边,hover 按 10% `--red` + 90% `--panel` 着色。disabled 不保留 primary/danger 强语义色,统一 `--panel-2` 底 + `--border` 边 + `--text-3` 字,`cursor:not-allowed`,且 hover/filter/阴影均不得变化。图标按钮 enabled 可用透明底 + `--hover`,disabled 同样不响应 hover并使用 `not-allowed`。异步操作进行中显示 loading:图标替换为旋转 spinner、文字保持不变并临时阻断点击;录制开关的 loading 只把圆点替换为 spinner、不改 `Recording/Paused` 文案,以避免快速往返时的文字闪烁。
 - **list**:列 `Method / Host·Path / Status / Proto / Type / Size / Time`;Host 双行(host + path,`gap 4`),path 与 proto/type/size/time 用 mono;选中行 `--sel` 底 + 左 2px `--sel-line`。
 - **splitter**(list↔inspector):在布局中只占 `1px`，自身绘制 `--border` 竖线；`4×40px` 圆角抓手是同一 flex 中轴上的普通子项，不使用绝对定位或 transform。抓手可溢出到线两侧但不得被相邻面板裁切；hover/拖拽时线与抓手变 `--accent`、抓手拉长到 `52px`。所有 feature 共用这一实现，list 与 Detail 都直接贴线，不保留额外 gutter。
 - **分隔与层级**：侧栏右边界、窗口 Header 下边界、状态栏上边界、list↔Inspector 可拖 splitter、List Header 下方与数据行使用低对比 `1px --border`，不使用面板级阴影。Capture 工作栏、Detail method 行、Tabs 和 Detail 正文统一使用 `--panel`；只有左侧 All/H1/Clear 内容工具栏使用 `--filter`。色块之间不画额外 splitter。Tabs 只用 active `--accent` 下划线和正文顶部留白。Detail 小节使用左侧 2px accent 与向右消失的短线。输入和独立浮层仍使用自身边框。
@@ -95,6 +95,8 @@
 - active(nav):`--accent-soft` + `--accent`。
 - focus-visible:`0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent)`。
 - 过渡:`120–180ms ease`;尊重 `prefers-reduced-motion`。
+- loading:与 Core 交互的异步操作(录制开关、导入/导出提交、HTTPS 安装、诊断修复等)在进行中显示旋转 spinner 并阻断重复触发;只替换图标、不改按钮文案。
+- tooltip:所有图标按钮统一用 **Ant Design Tooltip** 承载名称提示(取代原生 `title`),`0.4s` 延迟;禁用态用 `disabledTooltip` 说明禁用原因(如无流量可导出)。
 
 ## 与落地代码的关系
 

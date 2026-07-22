@@ -111,6 +111,10 @@ function setState(s = {}) {
   if (s.update) app.dataset.update = s.update;
   if (s.https) app.dataset.https = s.https;
   if (s.transfer) app.dataset.transfer = s.transfer;
+  if ('recording' in s) {
+    if (s.recording) app.dataset.recording = s.recording;
+    else delete app.dataset.recording;
+  }
   if ('fileMenu' in s) {
     if (s.fileMenu) app.dataset.fileMenu = s.fileMenu;
     else delete app.dataset.fileMenu;
