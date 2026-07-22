@@ -9,7 +9,7 @@ export const views = [
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: '/user', index: 0 }],
+    rendererActions: [{ type: 'clickText', text: 'api.github.com/user', index: 0 }],
     targets: [
       'Capture',
       'Rules & Map',
@@ -20,7 +20,6 @@ export const views = [
       'Settings',
       'Theme',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      { name: 'Inspector path', parity: 'capture-inspector-path' },
       'Recording',
     ],
   },
@@ -36,7 +35,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-websocket.png',
     rendererActions: [
-      { type: 'clickText', text: '/socket' },
+      { type: 'clickText', text: 'realtime.example.com/socket' },
       { type: 'clickText', text: 'Messages' },
       {
         type: 'clickText',
@@ -46,7 +45,6 @@ export const views = [
     targets: [
       'Capture',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      { name: 'Inspector path', parity: 'capture-inspector-path' },
       'Connected',
       'Messages',
       'Pause on message',
@@ -65,7 +63,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-request.png',
     rendererActions: [
-      { type: 'clickText', text: '/user' },
+      { type: 'clickText', text: 'api.github.com/user' },
       { type: 'clickText', text: 'Request' },
     ],
     targets: [
@@ -86,7 +84,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-timing.png',
     rendererActions: [
-      { type: 'clickText', text: '/user' },
+      { type: 'clickText', text: 'api.github.com/user' },
       { type: 'clickText', text: 'Timing' },
     ],
     targets: ['Waiting (TTFB)', '118 ms', 'Response bodies', '24 ms'],
@@ -102,7 +100,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-cookies.png',
     rendererActions: [
-      { type: 'clickText', text: '/user' },
+      { type: 'clickText', text: 'api.github.com/user' },
       { type: 'clickText', text: 'Cookies' },
     ],
     targets: [
@@ -123,13 +121,12 @@ export const views = [
     },
     designShot: 'light/capture/inspector-grpc.png',
     rendererActions: [
-      { type: 'clickText', text: '/orders.v1.OrderService/Watch' },
+      { type: 'clickText', text: 'orders.example.com/orders.v1.OrderService/Watch' },
       { type: 'clickText', text: 'Messages' },
       { type: 'clickText', text: 'Message 2' },
     ],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      { name: 'Inspector path', parity: 'capture-inspector-path' },
       'gRPC 0 OK',
       'Messages',
       'Response',
@@ -150,7 +147,7 @@ export const views = [
       tab: 'tunnel',
     },
     designShot: 'light/capture/inspector-tunnel.png',
-    rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
+    rendererActions: [{ type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' }],
     targets: [
       { name: 'Inspector method', parity: 'capture-inspector-method' },
       { name: 'Inspector host', parity: 'capture-inspector-host' },
@@ -173,7 +170,7 @@ export const views = [
       tab: 'tunnel',
     },
     designShot: 'dark/capture/inspector-tunnel.png',
-    rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
+    rendererActions: [{ type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       'Encrypted',
@@ -198,7 +195,7 @@ export const views = [
     },
     designShot: 'light/https-setup/dialog.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com' },
+      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
@@ -228,7 +225,7 @@ export const views = [
     },
     designShot: 'dark/https-setup/dialog.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com' },
+      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
@@ -254,7 +251,7 @@ export const views = [
     },
     designShot: 'light/https-setup/ready.png',
     rendererActions: [
-      { type: 'clickText', text: 'accounts.google.com' },
+      { type: 'clickText', text: 'accounts.google.com HTTPS content is encrypted' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
       { type: 'clickRole', role: 'button', name: 'Generate' },
       { type: 'clickRole', role: 'button', name: 'Install…' },
@@ -283,7 +280,7 @@ export const views = [
     rendererActions: [
       {
         type: 'clickText',
-        text: '/user',
+        text: 'api.github.com/user',
       },
       {
         type: 'clickRole',
@@ -611,7 +608,7 @@ export const views = [
     theme: 'dark',
     designState: { view: 'capture', theme: 'dark', sidebar: 'expanded' },
     designShot: 'dark/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: '/user' }],
+    rendererActions: [{ type: 'clickText', text: 'api.github.com/user' }],
     targets: [
       { name: 'Capture header', parity: 'window-header-title' },
       'Recording',
@@ -625,7 +622,7 @@ export const views = [
     designShot: 'light/shell-v2/capture-collapsed.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
-      { type: 'clickText', text: '/user' },
+      { type: 'clickText', text: 'api.github.com/user' },
     ],
     targets: [
       { name: 'Capture header', parity: 'window-header-title' },

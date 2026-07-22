@@ -1,4 +1,5 @@
-import { Archive, Download, FileJson, Upload } from 'lucide-react';
+import { Tooltip } from 'antd';
+import { Archive, Download, FileJson, Loader2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -15,27 +16,51 @@ export function CaptureWorkbar(): React.JSX.Element {
   const { t } = useTranslation();
   const capturing = useCaptureStore((state) =>
     state.capturing && state.proxyReadinessIssue === null);
+  const hasRecords = useCaptureStore((state) => state.rows.length > 0);
   const setTransferAction = useCaptureStore((state) => state.setTransferAction);
   const [fileMenu, setFileMenu] = useState<'import' | 'export' | null>(null);
+  const [recordingPending, setRecordingPending] = useState(false);
 
   const openTransfer = (action: CaptureTransferAction): void => {
     setFileMenu(null);
     setTransferAction(action);
   };
 
+  const onToggleRecording = async (): Promise<void> => {
+    if (recordingPending) {
+      return;
+    }
+    setRecordingPending(true);
+    try {
+      await toggleCapture();
+    } finally {
+      setRecordingPending(false);
+    }
+  };
+
   return (
     <div className={styles.layout}>
       <div className={styles.captureControls}>
-        <button
-          type="button"
-          className={cx(styles.recording, !capturing && styles.paused)}
-          onClick={() => void toggleCapture()}
-          aria-pressed={capturing}
-          data-automation-id={AUTOMATION_IDS.capture.recordingToggle}
+        <Tooltip
+          title={capturing ? t('capture.stopRecording') : t('capture.startRecording')}
+          mouseEnterDelay={0.4}
         >
-          <span className={styles.recordingDot} />
-          <span>{capturing ? t('capture.recording') : t('capture.paused')}</span>
-        </button>
+          <button
+            type="button"
+            className={cx(styles.recording, !capturing && styles.paused)}
+            onClick={() => void onToggleRecording()}
+            aria-pressed={capturing}
+            aria-busy={recordingPending}
+            data-automation-id={AUTOMATION_IDS.capture.recordingToggle}
+          >
+            {recordingPending ? (
+              <Loader2 className={styles.recordingSpinner} size={13} strokeWidth={2} />
+            ) : (
+              <span className={styles.recordingDot} />
+            )}
+            <span>{capturing ? t('capture.recording') : t('capture.paused')}</span>
+          </button>
+        </Tooltip>
       </div>
       <div className={styles.filtering}><Omnibox /></div>
       <div className={styles.inspectorTools}>
@@ -73,8 +98,8 @@ export function CaptureWorkbar(): React.JSX.Element {
           </span>
         </Flyout>
         <Flyout
-          open={fileMenu === 'export'}
-          onOpenChange={(next) => setFileMenu(next ? 'export' : null)}
+          open={fileMenu === 'export' && hasRecords}
+          onOpenChange={(next) => setFileMenu(next && hasRecords ? 'export' : null)}
           placement="bottomRight"
           className={styles.fileMenu}
           content={
@@ -100,6 +125,8 @@ export function CaptureWorkbar(): React.JSX.Element {
             <IconButton
               icon={Download}
               size="sm"
+              disabled={!hasRecords}
+              disabledTooltip={t('capture.noRecordsToExport')}
               label={t('capture.exportTraffic')}
               automationId={AUTOMATION_IDS.capture.exportMenu}
             />

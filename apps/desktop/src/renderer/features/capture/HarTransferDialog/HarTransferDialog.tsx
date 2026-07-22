@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
+  CaptureExchangeSummary,
   HarExportRequest,
   TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
@@ -49,12 +50,13 @@ export function HarTransferDialog({
   const [job, setJob] = useState<TransferJobSnapshot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [allCount, setAllCount] = useState(rows.length);
 
   const open = action !== null;
   const isHarExport = action === 'har-export';
   const isArchiveExport = action === 'archive-export';
   const isImport = action === 'har-import' || action === 'archive-import';
+  // All traffic 直接反映当前全量镜像行数，与列表底部 total 一致并随实时抓包更新。
+  const allCount = rows.length;
   const visibleCount = visibleCaptureRows(rows, filter).length;
   const exportCount = scope === 'all'
     ? allCount
@@ -74,12 +76,6 @@ export function HarTransferDialog({
     setAuthorization(prefs.maskAuthorization);
     setCookies(prefs.maskCookies);
     setBodies(false);
-    if (action === 'har-export') {
-      setAllCount(useCaptureStore.getState().rows.length);
-      void window.interceptor.getStorageStatus().then((usage) => {
-        setAllCount(usage.exchangeCount);
-      }).catch(() => undefined);
-    }
   }, [action]);
 
   useEffect(() => {
@@ -133,7 +129,7 @@ export function HarTransferDialog({
     try {
       const started = action === 'har-export'
         ? await window.interceptor.startHarExport({
-            scope: buildScope(scope, selectedId, filter),
+            scope: buildScope(scope, selectedId, filter, rows),
             redaction: { authorization, cookies, bodies },
           }, t('capture.exportHar'))
         : action === 'archive-export'
@@ -331,7 +327,8 @@ export function HarTransferDialog({
               <Button
                 icon={isImport ? Upload : Download}
                 variant="primary"
-                disabled={submitting || (isHarExport && exportCount === 0)}
+                loading={submitting}
+                disabled={isHarExport && exportCount === 0}
                 onClick={() => void startTransfer()}
                 automationId={AUTOMATION_IDS.capture.transfer.start}
               >
@@ -469,20 +466,15 @@ function buildScope(
   kind: ExportScopeKind,
   selectedId: string | null,
   filter: ReturnType<typeof useCaptureStore.getState>['filter'],
+  rows: readonly CaptureExchangeSummary[],
 ): HarExportRequest['scope'] {
   if (kind === 'selected' && selectedId) {
     return { kind: 'selected', exchangeIds: [selectedId] };
   }
   if (kind === 'filter') {
     return {
-      kind: 'filter',
-      filter: {
-        ...(filter.search ? { search: filter.search } : {}),
-        ...(filter.method ? { method: filter.method } : {}),
-        ...(filter.status !== null ? { status: filter.status } : {}),
-        ...(filter.host ? { host: filter.host } : {}),
-        ...(filter.segment !== 'all' ? { protocol: filter.segment } : {}),
-      },
+      kind: 'selected',
+      exchangeIds: visibleCaptureRows(rows, filter).map((row) => row.id),
     };
   }
   return { kind: 'all' };
@@ -493,9 +485,8 @@ function formatFilter(
   emptyLabel: string,
 ): string {
   const parts = [
-    filter.method ? `method:${filter.method}` : '',
-    filter.status !== null ? `status:${filter.status}` : '',
-    filter.host ? `host:${filter.host}` : '',
+    filter.method.length > 0 ? `method:${filter.method.join(',')}` : '',
+    filter.status.length > 0 ? `status:${filter.status.join(',')}` : '',
     filter.search ? `search:${filter.search}` : '',
     filter.segment !== 'all' ? `protocol:${filter.segment.toUpperCase()}` : '',
   ].filter(Boolean);

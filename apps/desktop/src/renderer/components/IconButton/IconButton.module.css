@@ -31,3 +31,11 @@
   width: 15px;
   height: 15px;
 }
+.spinner {
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

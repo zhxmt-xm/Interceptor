@@ -56,18 +56,32 @@
               <div class="capture-workbar-recording-v2"><div class="rec"><span class="dot"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></div></div>
               <div class="omni">
                 <span class="omni-search-v2"><svg class="si"><use href="#i-search"/></svg></span>
-                <span class="pill">GET<span class="x"><svg><use href="#i-x"/></svg></span></span>
-                <span class="pill">2xx<span class="x"><svg><use href="#i-x"/></svg></span></span>
+                <span class="pill" data-field="method">GET …<span class="x"><svg><use href="#i-x"/></svg></span><span class="filttip">GET, POST, PUT, DELETE</span></span>
+                <span class="pill" data-field="status">200 …<span class="x"><svg><use href="#i-x"/></svg></span><span class="filttip">200, 404</span></span>
                 <span class="ph">Filter requests…</span>
                 <span class="sp"></span>
-                <button class="fbtn"><svg><use href="#i-filter"/></svg></button>
+                <span class="omni-actions">
+                  <button class="fbtn"><svg><use href="#i-filter"/></svg></button>
+                  <button class="cbtn" aria-label="Clear filters" title="Clear filters"><svg><use href="#i-x"/></svg></button>
+                </span>
                 <div class="ompop">
                   <div class="po-t">Add filter</div>
-                  <div class="fi"><svg><use href="#i-branch"/></svg><span class="n">Method</span><span class="ex">GET, POST, DELETE…</span></div>
-                  <div class="fi"><svg><use href="#i-dot"/></svg><span class="n">Status</span><span class="ex">2xx · 3xx · 4xx · 5xx</span></div>
-                  <div class="fi"><svg><use href="#i-layers"/></svg><span class="n">Type</span><span class="ex">json, js, font, ws…</span></div>
-                  <div class="fi"><svg><use href="#i-globe"/></svg><span class="n">Host</span><span class="ex">contains…</span></div>
-                  <div class="fi"><svg><use href="#i-activity"/></svg><span class="n">Duration</span><span class="ex">&gt; 500 ms</span></div>
+                  <div class="fi" data-field="method"><svg><use href="#i-branch"/></svg><span class="n">Method</span><span class="ex">GET, POST …</span><svg class="chev"><use href="#i-chev-right"/></svg>
+                    <div class="fisub">
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="m get">GET</span><span class="sp"></span><span class="subcnt">18</span></div>
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="m post">POST</span><span class="sp"></span><span class="subcnt">7</span></div>
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="m put">PUT</span><span class="sp"></span><span class="subcnt">3</span></div>
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="m del">DELETE</span><span class="sp"></span><span class="subcnt">1</span></div>
+                    </div>
+                  </div>
+                  <div class="fi" data-field="status"><svg><use href="#i-dot"/></svg><span class="n">Status</span><span class="ex">200, 404</span><svg class="chev"><use href="#i-chev-right"/></svg>
+                    <div class="fisub">
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="st ok"><span class="d"></span>200</span><span class="sp"></span><span class="subcnt">21</span></div>
+                      <div class="fisub-item"><span class="cb"></span><span class="st info2"><span class="d"></span>301</span><span class="sp"></span><span class="subcnt">2</span></div>
+                      <div class="fisub-item on"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="st warn"><span class="d"></span>404</span><span class="sp"></span><span class="subcnt">4</span></div>
+                      <div class="fisub-item"><span class="cb"></span><span class="st err"><span class="d"></span>500</span><span class="sp"></span><span class="subcnt">2</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -90,7 +104,7 @@
               <div class="seg protocol-switch"><span class="on">All</span><span>H1</span><span>H2</span><span>WS</span></div>
               <div class="sp"></div>
               <span class="cnt"><b>18</b> of 241</span>
-              <div class="icon-actions"><div class="ib sm"><svg><use href="#i-columns"/></svg></div><div class="ib sm"><svg><use href="#i-trash"/></svg></div></div>
+              <div class="icon-actions"><div class="ib sm" title="Query parameters"><svg><use href="#i-ampersand"/></svg></div><div class="ib sm"><svg><use href="#i-trash"/></svg></div></div>
             </div>
             <div class="lhead"><span>Method</span><span>Host · Path</span><span>Status</span><span>Proto</span><span>Type</span><span>Size</span><span>Time</span></div>
             <div class="row sel" data-capture-row="http"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">1.2 KB</span><span class="time">142 ms</span></div>
@@ -107,10 +121,10 @@
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="insp">
-            <div class="itop http-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">api.github.com</span><span class="pth" data-parity="capture-inspector-path">/user</span></span><span class="sbadge"><span class="d"></span>200 OK</span></div></div>
-            <div class="itop tunnel-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">CONNECT</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">accounts.google.com</span><span class="pth" data-parity="capture-inspector-path">:443</span></span><span class="sbadge tunnel"><span class="d"></span>Encrypted</span></div></div>
-            <div class="itop ws-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">realtime.example.com</span><span class="pth" data-parity="capture-inspector-path">/socket</span></span><span class="sbadge ws"><span class="d"></span>Connected</span></div></div>
-            <div class="itop grpc-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 14%,transparent)">POST</span><span class="iurl"><span class="dom" data-parity="capture-inspector-host">orders.example.com</span><span class="pth" data-parity="capture-inspector-path">/orders.v1.OrderService/Watch</span></span><span class="sbadge"><span class="d"></span>gRPC 0 OK</span></div></div>
+            <div class="itop http-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl" data-parity="capture-inspector-host">api.github.com/user</span><span class="sbadge"><span class="d"></span>200 OK</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+            <div class="itop tunnel-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">CONNECT</span><span class="iurl" data-parity="capture-inspector-host">accounts.google.com:443</span><span class="sbadge tunnel"><span class="d"></span>Encrypted</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+            <div class="itop ws-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurl" data-parity="capture-inspector-host">realtime.example.com/socket</span><span class="sbadge ws"><span class="d"></span>Connected</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+            <div class="itop grpc-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 14%,transparent)">POST</span><span class="iurl" data-parity="capture-inspector-host">orders.example.com/orders.v1.OrderService/Watch</span><span class="sbadge"><span class="d"></span>gRPC 0 OK</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
             <div class="tabs http-only" data-tabs="insp"><span class="on" data-tab="headers">Headers</span><span data-tab="request">Request</span><span data-tab="response">Response</span><span data-tab="timing">Timing</span><span data-tab="cookies">Cookies</span><span data-tab="tls">TLS</span></div>
             <div class="tabs tunnel-only" data-tabs="insp"><span class="on" data-tab="tunnel">TLS tunnel</span></div>
             <div class="tabs ws-only" data-tabs="insp"><span data-tab="headers">Headers</span><span class="on" data-tab="messages">Messages</span><span data-tab="timing">Timing</span><span data-tab="tls">TLS</span></div>
@@ -416,7 +430,7 @@
           <div class="beditor">
             <div class="bhead">
               <span class="chip">POST</span>
-              <span class="iurl"><span class="dom">shop.example.com</span><span class="pth">/checkout</span></span>
+              <span class="iurl">shop.example.com/checkout</span>
               <span class="phase req">Request paused</span>
               <span class="cd"><svg><use href="#i-clock"/></svg>0:24</span>
             </div>

@@ -1,4 +1,4 @@
-import { App as AntApp, ConfigProvider } from 'antd';
+import { App as AntApp, ConfigProvider, Tooltip } from 'antd';
 import { Maximize2, Menu, Minus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -189,52 +189,56 @@ export function App(): React.JSX.Element {
         coreStatus={coreStatus}
       />
       <header className={styles.header}>
-        <button
-          type="button"
-          className={styles.sidebarToggle}
-          aria-label={t('capture.toggleSidebar')}
-          title={t('capture.toggleSidebar')}
-          onClick={toggleCollapse}
-          data-automation-id={AUTOMATION_IDS.shell.sidebarToggle}
-        >
-          <Menu size={15} strokeWidth={1.9} />
-        </button>
+        <Tooltip title={t('capture.toggleSidebar')} mouseEnterDelay={0.4}>
+          <button
+            type="button"
+            className={styles.sidebarToggle}
+            aria-label={t('capture.toggleSidebar')}
+            onClick={toggleCollapse}
+            data-automation-id={AUTOMATION_IDS.shell.sidebarToggle}
+          >
+            <Menu size={15} strokeWidth={1.9} />
+          </button>
+        </Tooltip>
         <span className={styles.featureName} data-parity="window-header-title">
           {t(VIEW_LABEL_KEYS[view])}
         </span>
         <div className={styles.windowControls}>
-          <button
-            type="button"
-            className={styles.windowControl}
-            aria-label={t('app.minimizeWindow')}
-            title={t('app.minimizeWindow')}
-            onClick={() => void window.interceptor.minimizeWindow()}
-            data-automation-id={AUTOMATION_IDS.shell.window.minimize}
-          >
-            <Minus size={15} strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            className={styles.windowControl}
-            aria-label={t('app.toggleMaximizeWindow')}
-            title={t('app.toggleMaximizeWindow')}
-            onClick={() => void window.interceptor.toggleMaximizeWindow()}
-            data-automation-id={AUTOMATION_IDS.shell.window.maximizeRestore}
-          >
-            <Maximize2 size={14} strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            className={styles.windowClose}
-            aria-label={t('capture.close')}
-            title={t('capture.close')}
-            onClick={() => {
-              void window.interceptor.closeApplication().catch(() => window.close());
-            }}
-            data-automation-id={AUTOMATION_IDS.shell.window.close}
-          >
-            <X size={15} strokeWidth={1.9} />
-          </button>
+          <Tooltip title={t('app.minimizeWindow')} mouseEnterDelay={0.4}>
+            <button
+              type="button"
+              className={styles.windowControl}
+              aria-label={t('app.minimizeWindow')}
+              onClick={() => void window.interceptor.minimizeWindow()}
+              data-automation-id={AUTOMATION_IDS.shell.window.minimize}
+            >
+              <Minus size={15} strokeWidth={1.9} />
+            </button>
+          </Tooltip>
+          <Tooltip title={t('app.toggleMaximizeWindow')} mouseEnterDelay={0.4}>
+            <button
+              type="button"
+              className={styles.windowControl}
+              aria-label={t('app.toggleMaximizeWindow')}
+              onClick={() => void window.interceptor.toggleMaximizeWindow()}
+              data-automation-id={AUTOMATION_IDS.shell.window.maximizeRestore}
+            >
+              <Maximize2 size={14} strokeWidth={1.9} />
+            </button>
+          </Tooltip>
+          <Tooltip title={t('capture.close')} mouseEnterDelay={0.4}>
+            <button
+              type="button"
+              className={styles.windowClose}
+              aria-label={t('capture.close')}
+              onClick={() => {
+                void window.interceptor.closeApplication().catch(() => window.close());
+              }}
+              data-automation-id={AUTOMATION_IDS.shell.window.close}
+            >
+              <X size={15} strokeWidth={1.9} />
+            </button>
+          </Tooltip>
         </div>
       </header>
       <div className={styles.notification}>

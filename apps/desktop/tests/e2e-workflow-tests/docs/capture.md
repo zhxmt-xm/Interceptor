@@ -120,11 +120,11 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 ### Steps
 
 1. 创建profile/evidence和loopback origin；启动trace/Electron，等待App/Core/8888/readiness；检查结构化filters均为空、列表空、Paused。
-2. 点击 `capture.readiness.enable`并完成授权，等待Recording；制造不同method、status、host、MIME和duration的真实请求集合。
-3. 点击 `capture.filter.add`→`capture.filter.option.method`；在 `capture.filter.pending-input` 输入`post`并Enter。
-4. 依次通过Add filter添加Status、Host、Type、Duration，逐步检查可见row和计数。
-5. 输入非法method/status/duration，按Enter；确认不产生pill且输入保留/选中。
-6. 通过 `capture.filter.remove.method/status/host/type/duration` 逐项移除。
+2. 点击 `capture.readiness.enable`并完成授权，等待Recording；制造method与status各不相同的真实请求集合。
+3. 点击 `capture.filter.add` 打开Add filter；确认只列出Method与Status两项，hint预览当前列表出现的值。
+4. 点击 `capture.filter.option.method` 进入级联，从列表实际出现的值中点选（如POST）；确认生成method pill、可见row与计数同步收窄。
+5. 再次打开Add filter→`capture.filter.option.status`，从实际出现的值中点选（如404）；`capture.filter.back` 可返回上一级。
+6. 通过 `capture.filter.remove.method` 与 `capture.filter.remove.status` 逐项移除。
 7. 验证每次只清目标字段，最终恢复全量与原排序。
 8. 进入Proxy点击Restore，确认非owned；保存evidence并点击Close。
 9. 验证Main/Core/Worker销毁、8888释放和系统代理恢复。

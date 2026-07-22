@@ -1,4 +1,5 @@
-﻿import type { LucideIcon } from 'lucide-react';
+﻿import { Tooltip } from 'antd';
+import { Loader2, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { AutomationId } from '../../../shared/automation-ids';
@@ -13,6 +14,12 @@ export interface ButtonProps {
   iconPosition?: 'start' | 'end';
   iconStrokeWidth?: number;
   disabled?: boolean;
+  /** Shows a spinner in the leading icon slot and blocks clicks while an async action runs. */
+  loading?: boolean;
+  /** Tooltip text; when omitted no tooltip is shown (button text is already visible). */
+  tooltip?: string;
+  /** Tooltip shown while blocked to explain why. */
+  disabledTooltip?: string;
   onClick?: () => void;
   automationId?: AutomationId;
 }
@@ -26,13 +33,18 @@ export function Button({
   iconPosition = 'start',
   iconStrokeWidth = 1.9,
   disabled = false,
+  loading = false,
+  tooltip,
+  disabledTooltip,
   onClick,
   automationId,
 }: ButtonProps): React.JSX.Element {
-  return (
+  const blocked = disabled || loading;
+  const tip = blocked && disabledTooltip ? disabledTooltip : tooltip;
+  const button = (
     <button
       type="button"
-      disabled={disabled}
+      disabled={blocked}
       className={cx(
         styles.button,
         size === 'sm' && styles.small,
@@ -42,14 +54,24 @@ export function Button({
       onClick={onClick}
       data-automation-id={automationId}
     >
-      {Icon && iconPosition === 'start' ? (
+      {loading ? (
+        <Loader2 size={15} strokeWidth={iconStrokeWidth} className={styles.spinner} />
+      ) : Icon && iconPosition === 'start' ? (
         <Icon size={15} strokeWidth={iconStrokeWidth} />
       ) : null}
       {children}
-      {Icon && iconPosition === 'end' ? (
+      {!loading && Icon && iconPosition === 'end' ? (
         <Icon size={15} strokeWidth={iconStrokeWidth} />
       ) : null}
     </button>
+  );
+  if (!tip) {
+    return button;
+  }
+  return (
+    <Tooltip title={tip} mouseEnterDelay={0.4}>
+      {button}
+    </Tooltip>
   );
 }
 

@@ -47,29 +47,25 @@ export interface ProxyReadinessIssue {
   message: string | null;
 }
 
-/** 结构化过滤条件；segment/type/duration 为客户端视图过滤，其余可下推 Core 分页查询。 */
+/** 结构化过滤条件；segment 为客户端分段视图过滤；method/status 由 Add filter 级联多选当前列表出现的值。 */
 export interface CaptureFilter {
   segment: ProtocolSegment;
   search: string;
-  method: string | null;
-  status: number | null;
-  host: string | null;
-  /** 响应类型短标签（json/js/html/font…）子串匹配，对齐列表 Type 列。 */
-  type: string | null;
-  /** 最小耗时（毫秒）；仅保留 durationMs ≥ 该值的已完成 Exchange。 */
-  minDurationMs: number | null;
+  method: string[];
+  status: number[];
 }
 
-export type StructuredCaptureFilterField =
-  | 'method'
-  | 'status'
-  | 'host'
-  | 'type'
-  | 'duration';
+export type StructuredCaptureFilterField = 'method' | 'status';
 
 export type StructuredCaptureFilterPatch = Partial<
-  Pick<CaptureFilter, 'method' | 'status' | 'host' | 'type' | 'minDurationMs'>
+  Pick<CaptureFilter, 'method' | 'status'>
 >;
+
+/** Add filter 级联的单个可选值及其在当前列表中的出现次数。 */
+export interface FilterValueOption<T extends string | number> {
+  readonly value: T;
+  readonly count: number;
+}
 
 /** 会话列表视图状态：只存 Exchange 摘要，不存 header/body。 */
 export interface CaptureState {
@@ -97,21 +93,21 @@ export interface CaptureState {
   inspectorTab: InspectorTab;
   /** 用户拖拽后的 Inspector 宽度；Capture 重新挂载时恢复。 */
   inspectorWidth: number;
+  /** 列表/详情 path 是否展示 query 参数；默认关闭（只显示 path，不含 params）。持久化到 localStorage。 */
+  showQueryParams: boolean;
 
   select(id: string | null): void;
   setSegment(segment: ProtocolSegment): void;
   setSearch(search: string): void;
-  setStructuredFilter(
-    patch: Partial<
-      Pick<CaptureFilter, 'method' | 'status' | 'host' | 'type' | 'minDurationMs'>
-    >,
-  ): void;
+  setStructuredFilter(patch: StructuredCaptureFilterPatch): void;
   setCapturing(capturing: boolean): void;
   setTransferAction(action: CaptureTransferAction | null): void;
   setProxyReadinessIssue(issue: ProxyReadinessIssue | null): void;
   setListScrollTop(scrollTop: number): void;
   setInspectorTab(tab: InspectorTab): void;
   setInspectorWidth(width: number): void;
+  /** 切换列表/详情 path 是否包含 query 参数，并持久化。 */
+  toggleQueryParams(): void;
   clearView(clearedBefore?: number): void;
   beginLoad(): number;
   loadFailed(message: string): void;

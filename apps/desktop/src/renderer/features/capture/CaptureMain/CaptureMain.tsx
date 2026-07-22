@@ -18,6 +18,7 @@ const MIN_INSPECTOR_WIDTH = 360;
 export function CaptureMain(): React.JSX.Element {
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
+  const selectedId = useCaptureStore((state) => state.selectedId);
   const [httpsSetupOpen, setHttpsSetupOpen] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -80,14 +81,20 @@ export function CaptureMain(): React.JSX.Element {
         <div
           className={styles.main}
           ref={mainRef}
-          style={{ gridTemplateColumns: `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px` }}
+          style={{ gridTemplateColumns: selectedId
+            ? `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px`
+            : 'minmax(0, 1fr)' }}
         >
           <RequestList />
-          <Splitter
-            onPointerDown={startInspectorDrag}
-            automationId={AUTOMATION_IDS.capture.inspector.splitter}
-          />
-          <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
+          {selectedId ? (
+            <>
+              <Splitter
+                onPointerDown={startInspectorDrag}
+                automationId={AUTOMATION_IDS.capture.inspector.splitter}
+              />
+              <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
+            </>
+          ) : null}
         </div>
       </div>
       <HarTransferDialog />

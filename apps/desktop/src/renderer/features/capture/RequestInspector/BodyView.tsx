@@ -1,5 +1,8 @@
 import { json } from '@codemirror/lang-json';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { tags } from '@lezer/highlight';
 import CodeMirror from '@uiw/react-codemirror';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +15,31 @@ import styles from './BodyView.module.css';
 
 /** 单次预览最多加载的正文字节（Inspector 只做预览，非完整下载）。 */
 const PREVIEW_CAP_BYTES = 256 * 1024;
+
+/** JSON 语法高亮：纯文本色（key 紫 / string 绿 / number-bool-null 蓝 / 标点浅灰），
+ *  无 token 背景，1:1 对应 design/app/app.css 的 .jsonv jk/js/jn/jp。 */
+const jsonHighlightStyle = HighlightStyle.define([
+  { tag: tags.propertyName, color: 'var(--purple)' },
+  { tag: tags.string, color: 'var(--green)' },
+  { tag: [tags.number, tags.bool, tags.null], color: 'var(--blue)' },
+  {
+    tag: [tags.punctuation, tags.separator, tags.bracket, tags.squareBracket, tags.brace],
+    color: 'var(--text-3)',
+    backgroundColor: 'transparent',
+  },
+]);
+
+/** 编辑器外观（前景/gutter/选区）取代 CodeMirror 内置 light/dark 预设，改走设计 token。 */
+function createEditorTheme(dark: boolean): Extension {
+  return EditorView.theme({
+    '&': { color: 'var(--text)', backgroundColor: 'transparent' },
+    '.cm-content': { caretColor: 'var(--text)' },
+    '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-3)', border: 'none' },
+    '.cm-activeLine': { backgroundColor: 'transparent' },
+    '.cm-activeLineGutter': { backgroundColor: 'transparent' },
+    '.cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'var(--sel) !important' },
+  }, { dark });
+}
 
 interface BodyViewProps {
   body: CaptureBodyRef;
@@ -151,6 +179,7 @@ export function BodyView({
   const [hexBytesPerLine, setHexBytesPerLine] = useState(16);
   const isDark = document.documentElement.dataset.theme === 'dark'
     || document.documentElement.dataset.theme === 'ember';
+  const editorTheme = useMemo(() => createEditorTheme(isDark), [isDark]);
 
   useEffect(() => {
     setLoaded(null);
@@ -278,8 +307,10 @@ export function BodyView({
         <CodeMirror
           value={text.text}
           editable={false}
-          theme={isDark ? 'dark' : 'light'}
-          extensions={text.json ? [json(), EditorView.lineWrapping] : [EditorView.lineWrapping]}
+          theme={editorTheme}
+          extensions={text.json
+            ? [json(), syntaxHighlighting(jsonHighlightStyle), EditorView.lineWrapping]
+            : [EditorView.lineWrapping]}
           basicSetup={{
             lineNumbers: !compact,
             foldGutter: false,

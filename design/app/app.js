@@ -79,7 +79,9 @@ function setState(s = {}) {
   if (s.view) {
     app.setAttribute('data-view', s.view);
     renderSidebar(s.view);
-    app.classList.remove('showpop', 'thopen', 'lgopen');
+    app.classList.remove('showpop', 'thopen', 'lgopen', 'nodetail');
+    delete app.dataset.filtersub;
+    delete app.dataset.tip;
     if (!s.scene) app.dataset.scene = 'http';
     if (!s.tab) setInspTab('headers');
   }
@@ -90,6 +92,14 @@ function setState(s = {}) {
     );
   }
   if (s.pop) app.classList.add('showpop');
+  if ('filtersub' in s) {
+    if (s.filtersub) app.dataset.filtersub = s.filtersub;
+    else delete app.dataset.filtersub;
+  }
+  if ('tip' in s) {
+    if (s.tip) app.dataset.tip = s.tip;
+    else delete app.dataset.tip;
+  }
   if ('pop2' in s) {
     app.classList.remove('thopen', 'lgopen');
     if (s.pop2 === 'theme') app.classList.add('thopen');
@@ -190,10 +200,44 @@ app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) =>
   s.addEventListener('click', () => setInspTab(s.dataset.tab)),
 );
 
-// Capture rows switch the inspector scene; encrypted tunnels open directly on their TLS summary.
+// Capture filter cascade, pill / clear actions and inspector close (interactive preview).
 app.addEventListener('click', (e) => {
+  // Submenu option -> toggle its multi-select checkbox (innermost match first).
+  const opt = e.target.closest('.fisub-item');
+  if (opt) {
+    const on = !opt.classList.contains('on');
+    opt.classList.toggle('on', on);
+    const cb = opt.querySelector('.cb');
+    cb.classList.toggle('on', on);
+    cb.innerHTML = on ? '<svg><use href="#i-check"/></svg>' : '';
+    return;
+  }
+  // Filter field row -> expand / collapse its checkbox submenu.
+  const field = e.target.closest('.ompop .fi[data-field]');
+  if (field) {
+    const key = field.dataset.field;
+    return setState({ filtersub: app.dataset.filtersub === key ? '' : key });
+  }
+  // Filter pill remove.
+  const pillClose = e.target.closest('.omni .pill .x');
+  if (pillClose) {
+    pillClose.closest('.pill').remove();
+    return;
+  }
+  // Clear all filters.
+  if (e.target.closest('.cbtn')) {
+    app.querySelectorAll('.omni .pill').forEach((p) => p.remove());
+    return;
+  }
+  // Inspector close -> hide the detail pane; the list expands to full width.
+  if (e.target.closest('.iclose')) {
+    app.classList.add('nodetail');
+    return;
+  }
+  // Capture rows switch the inspector scene and reopen the detail pane.
   const captureRow = e.target.closest('[data-capture-row]');
   if (captureRow) {
+    app.classList.remove('nodetail');
     const scene = captureRow.dataset.captureRow;
     return setState({ scene, tab: scene === 'tunnel' ? 'tunnel' : scene === 'websocket' ? 'messages' : scene === 'grpc' ? 'grpc' : 'headers' });
   }

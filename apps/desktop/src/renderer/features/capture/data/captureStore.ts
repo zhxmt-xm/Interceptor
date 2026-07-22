@@ -5,6 +5,18 @@ import { EMPTY_FILTER } from '../constants';
 import type { CaptureState } from '../interfaces';
 import { buildIndex } from '../utils';
 
+/** path 是否展示 query 参数的持久化键。 */
+const QUERY_PARAMS_KEY = 'interceptor.capture.showQueryParams';
+
+/** 读取持久化的 query 参数显示偏好；缺失或异常时默认关闭（不显示 params）。 */
+function loadShowQueryParams(): boolean {
+  try {
+    return window.localStorage.getItem(QUERY_PARAMS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export const useCaptureStore = create<CaptureState>((set, get) => ({
   rows: [],
   indexById: new Map(),
@@ -20,6 +32,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   listScrollTop: 0,
   inspectorTab: 'headers',
   inspectorWidth: 500,
+  showQueryParams: loadShowQueryParams(),
 
   select: (id) => set({ selectedId: id }),
 
@@ -46,6 +59,17 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),
 
   setInspectorWidth: (inspectorWidth) => set({ inspectorWidth }),
+
+  toggleQueryParams: () =>
+    set((state) => {
+      const showQueryParams = !state.showQueryParams;
+      try {
+        window.localStorage.setItem(QUERY_PARAMS_KEY, showQueryParams ? '1' : '0');
+      } catch {
+        /* localStorage 不可用时保持内存状态即可。 */
+      }
+      return { showQueryParams };
+    }),
 
   clearView: (clearedBefore = get().clearedBefore) =>
     set((state) => ({

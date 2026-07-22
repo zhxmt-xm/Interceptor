@@ -6,22 +6,18 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   height: 38px;
-  padding: 0 6px 0 0;
+  padding: 0 6px 0 10px;
   border-radius: 10px;
   background: var(--panel);
   border: 1px solid var(--border);
   -webkit-app-region: no-drag;
 }
 .searchArea {
-  display: grid;
-  height: 100%;
-  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: 9px 0 0 9px;
-  background: var(--panel);
 }
 .searchIcon {
   width: 14px;
@@ -62,6 +58,9 @@
   width: 9px;
   height: 9px;
 }
+.pillEllipsis {
+  margin-left: 3px;
+}
 .placeholder {
   color: var(--text-3);
   font-size: 12.5px;
@@ -99,33 +98,201 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
+.filterButton:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+.filterButton:disabled:hover {
+  background: transparent;
+  color: var(--text-3);
+}
 .filterButton svg {
   width: 16px;
   height: 16px;
+}
+.omniActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.clearButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.clearButton:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.clearButton svg {
+  width: 15px;
+  height: 15px;
 }
 .spacer {
   margin-left: auto;
 }
 .popover {
   width: 306px;
+  padding: 5px 7px 5px;
+  line-height: 1.23;
 }
 .popoverTitle {
-  padding: 7px 9px 8px;
+  padding: 4px 9px 8px;
   font-size: 10.5px;
   font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-3);
+  line-height: 1.23;
 }
-
-@container (max-width: 1040px) {
-  .omnibox {
-    min-width: 60px;
-    gap: 4px;
-    padding-right: 4px;
-  }
-
-  .pill {
-    display: none;
-  }
+.fieldRow {
+  position: relative;
+}
+.fieldTrigger {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  line-height: 1.23;
+  cursor: pointer;
+  text-align: left;
+}
+.fieldTrigger:hover,
+.fieldTriggerOpen {
+  background: var(--hover);
+}
+.fieldTrigger > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-2);
+  flex: 0 0 auto;
+}
+.fieldDot {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.fieldDot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-2);
+}
+.fieldName {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+.fieldHint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.fieldChevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+.submenu {
+  position: absolute;
+  left: 100%;
+  top: -8px;
+  z-index: 41;
+  width: 196px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+  padding: 7px;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.option:hover {
+  background: var(--hover);
+}
+.checkbox {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-2);
+  color: #fff;
+  flex: 0 0 auto;
+}
+.checkboxOn {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.optionSpacer {
+  margin-left: auto;
+}
+.statusValue {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.ok {
+  color: var(--green);
+}
+.ok .statusDot {
+  background: var(--green);
+}
+.warn {
+  color: var(--yellow);
+}
+.warn .statusDot {
+  background: var(--yellow);
+}
+.err {
+  color: var(--red);
+}
+.err .statusDot {
+  background: var(--red);
+}
+.info2 {
+  color: var(--blue);
+}
+.info2 .statusDot {
+  background: var(--blue);
 }

@@ -2,9 +2,12 @@
 
 ## Frontend Styling
 
-- The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Every implemented screen MUST match its view in the single `design/app/` design SPA **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.
+- The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Once a screen has a view in the single `design/app/` design SPA, its implementation MUST match that view **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.
+- **Pick the design approach by whether a design already exists:**
+  - **Existing feature that already has a `design/app/` view** — reproduce that view one-to-one; the mockup is authoritative and outranks tool convenience.
+  - **A new feature, or a screen/interaction with no design yet** — first evaluate whether Ant Design v6 can deliver the interaction and whether ConfigProvider tokens, official props and semantic `classNames`/`styles` slots can restyle it into the app's visual language **without hacking `.ant-*` private DOM**. If they can, **prefer the Ant Design-achievable form and author the `design/app/` mockup to match what Ant Design can actually render**, then implement it. Only fall back to a self-built piece when Ant Design cannot reach the target without hacking private DOM.
 - `design/design-system.md` is the authoritative token/component spec. The `ui-design-mockup` skill (`.github/skills/ui-design-mockup/`) is the required workflow for creating, changing, or reviewing any UI: read it before design work and refer to it whenever drawing or updating a feature UI, then keep the `design/app/` SPA (and its `shots/`) in sync.
-- **One-to-one fidelity to the design outranks tool convenience.** Ant Design v6 is the component/interaction base, but it must never force a visual compromise:
+- **When reproducing an existing design, one-to-one fidelity outranks tool convenience.** Ant Design v6 is the component/interaction base, but it must never force a visual compromise:
   1. Prefer official component props (`size`, `shape`, `variant`, `color`, `icon`, `tooltip`, `orientation`, `disabled`) → ConfigProvider global/component tokens → semantic `classNames`/`styles` slots.
   2. If Ant Design cannot reproduce the design exactly through the above, **self-implement that piece** with colocated CSS Modules + the design tokens until it matches exactly. Do NOT ship an approximation, and do NOT hack `.ant-*` private/internal DOM (dimensions, padding, line-height, transforms, state styles) to force the look — replace the component with a self-built one instead.
   3. Reach for Ant Design where its interaction is genuinely hard to rebuild (`Splitter` drag, `Popover`/`Dropdown` positioning, `Tooltip`, `Tabs`, `Segmented`) **and** the design can be matched via props/tokens/slots.

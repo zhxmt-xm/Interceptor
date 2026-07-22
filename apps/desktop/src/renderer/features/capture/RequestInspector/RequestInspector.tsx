@@ -1,3 +1,5 @@
+import { Tooltip } from 'antd';
+import { X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -15,6 +17,7 @@ import type { InspectorTab } from '../interfaces';
 import { TlsPanel } from './TlsPanel';
 import { TlsTunnelPanel } from './TlsTunnelPanel';
 import {
+  displayPath,
   headersWithoutCookies,
   protocolLabel,
   protocolSegment,
@@ -140,6 +143,8 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
   const tab = useCaptureStore((state) => state.inspectorTab);
   const setTab = useCaptureStore((state) => state.setInspectorTab);
   const selectedId = useCaptureStore((state) => state.selectedId);
+  const select = useCaptureStore((state) => state.select);
+  const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const summary = useCaptureStore((state) => {
     if (!state.selectedId) {
       return undefined;
@@ -222,16 +227,17 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
           {view ? (
             <span className={styles.methodChip} data-parity="capture-inspector-method">{view.method.toUpperCase()}</span>
           ) : null}
-          <span className={styles.url}>
-            {view ? (
-              <>
-                <span className={styles.urlDomain} data-parity="capture-inspector-host">{view.host ?? ''}</span>
-                <span className={styles.urlPath} data-parity="capture-inspector-path">{isTlsTunnel ? `:${tlsPort}` : view.path ?? ''}</span>
-              </>
-            ) : (
-              <span className={styles.urlDomain}>{t('capture.selectRequest')}</span>
-            )}
-          </span>
+          <Tooltip title={view ? url : ''} placement="topLeft" mouseEnterDelay={0.4}>
+            <span className={styles.url} data-parity="capture-inspector-host">
+              {view ? (
+                <span className={styles.urlText}>
+                  {view.host ?? ''}{isTlsTunnel ? `:${tlsPort}` : displayPath(view.path, showQueryParams)}
+                </span>
+              ) : (
+                <span className={styles.urlText}>{t('capture.selectRequest')}</span>
+              )}
+            </span>
+          </Tooltip>
           {view && isTlsTunnel ? (
             <StatusBadge tone="yellow">{t('capture.encrypted')}</StatusBadge>
           ) : view && view.statusCode !== undefined ? (
@@ -252,6 +258,17 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
             </StatusBadge>
           ) : null}
         </div>
+        <Tooltip title={t('capture.close')} mouseEnterDelay={0.4}>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={() => select(null)}
+            aria-label={t('capture.close')}
+            data-automation-id={AUTOMATION_IDS.capture.inspector.close}
+          >
+            <X size={15} strokeWidth={2} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className={styles.tabs}>

@@ -1,232 +1,239 @@
-import { Activity, Dot, Filter, GitBranch, Globe, Layers, Search, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Tooltip } from 'antd';
+import { Check, ChevronRight, Filter, GitBranch, Search, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { cx, Flyout, MenuItem } from '../../../components';
+import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
+import { Count, cx, Flyout, MethodBadge } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
-import type { StructuredCaptureFilterField } from '../interfaces';
-import { parseStructuredFilter } from '../utils';
+import type { FilterValueOption } from '../interfaces';
+import { distinctMethodOptions, distinctStatusOptions, statusKind } from '../utils';
 import styles from './Omnibox.module.css';
 
-/** Search/filter omnibox with active filter pills and an add-filter popover. */
+/** 字段行 hint：有已选显示前 2 个（超出加…），否则预览可选值。 */
+function fieldHint(
+  selected: readonly (string | number)[],
+  optionValues: readonly (string | number)[],
+): string {
+  const source = selected.length > 0 ? selected : optionValues;
+  if (source.length === 0) {
+    return '—';
+  }
+  const head = source.slice(0, 2).join(', ');
+  return source.length > 2 ? `${head} …` : head;
+}
+
+/** 单条 filter pill：最多显示第一个值，超出用「…」并以 antd Tooltip 展示全部值。 */
+function FilterPill({
+  values,
+  onClear,
+  clearLabel,
+  automationId,
+}: {
+  values: readonly (string | number)[];
+  onClear: () => void;
+  clearLabel: string;
+  automationId: AutomationId;
+}): React.JSX.Element {
+  const overflow = values.length > 1;
+  const pill = (
+    <span className={styles.pill}>
+      {values[0]}
+      {overflow ? <span className={styles.pillEllipsis}>…</span> : null}
+      <button
+        type="button"
+        className={styles.pillClose}
+        aria-label={clearLabel}
+        onClick={onClear}
+        data-automation-id={automationId}
+      >
+        <X size={10} strokeWidth={2.2} />
+      </button>
+    </span>
+  );
+  return overflow ? (
+    <Tooltip title={values.join(', ')} placement="bottom">
+      {pill}
+    </Tooltip>
+  ) : (
+    pill
+  );
+}
+
+/** 一级字段行 + 点击右侧浮出的多选子面板（1:1 还原设计稿 ADD FILTER）。 */
+function FieldRow<T extends string | number>({
+  icon,
+  name,
+  hint,
+  options,
+  selected,
+  onToggle,
+  renderValue,
+  automationId,
+  open,
+  onToggleOpen,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  hint: string;
+  options: readonly FilterValueOption<T>[];
+  selected: readonly T[];
+  onToggle: (value: T) => void;
+  renderValue: (value: T) => React.ReactNode;
+  automationId: AutomationId;
+  open: boolean;
+  onToggleOpen: () => void;
+}): React.JSX.Element {
+  return (
+    <div className={styles.fieldRow}>
+      <button
+        type="button"
+        className={cx(styles.fieldTrigger, open && styles.fieldTriggerOpen)}
+        onClick={onToggleOpen}
+        aria-expanded={open}
+        data-automation-id={automationId}
+      >
+        {icon}
+        <span className={styles.fieldName}>{name}</span>
+        <span className={styles.fieldHint}>{hint}</span>
+        <ChevronRight className={styles.fieldChevron} size={14} strokeWidth={2} />
+      </button>
+      {open ? (
+        <div className={styles.submenu}>
+          {options.map((option) => {
+            const checked = selected.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={styles.option}
+                onClick={() => onToggle(option.value)}
+              >
+                <span className={cx(styles.checkbox, checked && styles.checkboxOn)}>
+                  {checked ? <Check size={11} strokeWidth={3} /> : null}
+                </span>
+                {renderValue(option.value)}
+                <span className={styles.optionSpacer} />
+                <Count>{option.count}</Count>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Search/filter omnibox：关键词搜索 + method/status 多选级联（antd Popover 底座，值取自当前列表）。 */
 export function Omnibox(): React.JSX.Element {
   const { t } = useTranslation();
   const [showFilter, setShowFilter] = useState(false);
-  const [pendingField, setPendingField] =
-    useState<StructuredCaptureFilterField | null>(null);
-  const [pendingValue, setPendingValue] = useState('');
+  const [activeField, setActiveField] = useState<'method' | 'status' | null>(null);
   const search = useCaptureStore((state) => state.filter.search);
   const method = useCaptureStore((state) => state.filter.method);
   const status = useCaptureStore((state) => state.filter.status);
-  const host = useCaptureStore((state) => state.filter.host);
-  const type = useCaptureStore((state) => state.filter.type);
-  const minDurationMs = useCaptureStore((state) => state.filter.minDurationMs);
+  const rows = useCaptureStore((state) => state.rows);
   const setSearch = useCaptureStore((state) => state.setSearch);
   const setStructuredFilter = useCaptureStore((state) => state.setStructuredFilter);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const beginStructuredFilter = (field: StructuredCaptureFilterField): void => {
-    setShowFilter(false);
-    setPendingValue(pendingField ? pendingValue : search);
-    setPendingField(field);
-    window.requestAnimationFrame(() => inputRef.current?.focus());
+  const methodOptions = useMemo(() => distinctMethodOptions(rows), [rows]);
+  const statusOptions = useMemo(() => distinctStatusOptions(rows), [rows]);
+  const noFilterData = methodOptions.length === 0 && statusOptions.length === 0;
+
+  const toggleMethod = (value: string): void => {
+    setStructuredFilter({
+      method: method.includes(value)
+        ? method.filter((item) => item !== value)
+        : [...method, value],
+    });
+  };
+  const toggleStatus = (value: number): void => {
+    setStructuredFilter({
+      status: status.includes(value)
+        ? status.filter((item) => item !== value)
+        : [...status, value],
+    });
   };
 
-  const cancelStructuredFilter = (): void => {
-    setPendingField(null);
-    setPendingValue('');
-    window.requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
-  const submitStructuredFilter = (): void => {
-    if (!pendingField) {
-      return;
-    }
-    const patch = parseStructuredFilter(pendingField, pendingValue);
-    if (!patch) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-      return;
-    }
-    setStructuredFilter(patch);
+  const clearAll = (): void => {
+    setStructuredFilter({ method: [], status: [] });
     setSearch('');
-    setPendingField(null);
-    setPendingValue('');
   };
-
-  const pendingLabel = pendingField ? t(`capture.${pendingField}`) : null;
-  const pendingPlaceholder = pendingField === 'method'
-    ? 'GET, POST, DELETE…'
-    : pendingField === 'status'
-      ? '200, 404, 500…'
-      : pendingField === 'type'
-        ? 'json, js, font, ws…'
-        : pendingField === 'duration'
-          ? '≥ 500 ms'
-          : pendingField === 'host'
-            ? t('capture.contains')
-            : t('capture.filterRequests');
 
   return (
     <div className={styles.omnibox}>
       <span className={styles.searchArea}>
         <Search className={styles.searchIcon} size={14} strokeWidth={1.9} />
       </span>
-      {pendingLabel ? (
-        <span className={styles.pill}>
-          {pendingLabel}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${pendingLabel}`}
-            onClick={cancelStructuredFilter}
-            data-automation-id={AUTOMATION_IDS.capture.pendingFilterCancel}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
+      {method.length > 0 ? (
+        <FilterPill
+          values={method}
+          onClear={() => setStructuredFilter({ method: [] })}
+          clearLabel={`${t('capture.clear')} ${t('capture.method')}`}
+          automationId={AUTOMATION_IDS.capture.filterRemove.method}
+        />
       ) : null}
-      {method ? (
-        <span className={styles.pill}>
-          {method}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${method}`}
-            onClick={() => setStructuredFilter({ method: null })}
-            data-automation-id={AUTOMATION_IDS.capture.filterRemove.method}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
-      ) : null}
-      {status !== null ? (
-        <span className={styles.pill}>
-          {status}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${status}`}
-            onClick={() => setStructuredFilter({ status: null })}
-            data-automation-id={AUTOMATION_IDS.capture.filterRemove.status}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
-      ) : null}
-      {host ? (
-        <span className={styles.pill}>
-          {host}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${host}`}
-            onClick={() => setStructuredFilter({ host: null })}
-            data-automation-id={AUTOMATION_IDS.capture.filterRemove.host}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
-      ) : null}
-      {type ? (
-        <span className={styles.pill}>
-          {type}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${type}`}
-            onClick={() => setStructuredFilter({ type: null })}
-            data-automation-id={AUTOMATION_IDS.capture.filterRemove.type}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
-      ) : null}
-      {minDurationMs !== null ? (
-        <span className={styles.pill}>
-          {`≥ ${minDurationMs} ms`}
-          <button
-            type="button"
-            className={styles.pillClose}
-            aria-label={`${t('capture.clear')} ${minDurationMs} ms`}
-            onClick={() => setStructuredFilter({ minDurationMs: null })}
-            data-automation-id={AUTOMATION_IDS.capture.filterRemove.duration}
-          >
-            <X size={10} strokeWidth={2.2} />
-          </button>
-        </span>
+      {status.length > 0 ? (
+        <FilterPill
+          values={status}
+          onClear={() => setStructuredFilter({ status: [] })}
+          clearLabel={`${t('capture.clear')} ${t('capture.status')}`}
+          automationId={AUTOMATION_IDS.capture.filterRemove.status}
+        />
       ) : null}
       <input
-        ref={inputRef}
         className={styles.input}
         type="text"
-        value={pendingField ? pendingValue : search}
-        placeholder={pendingPlaceholder}
-        onChange={(event) => {
-          if (pendingField) {
-            setPendingValue(event.target.value);
-          } else {
-            setSearch(event.target.value);
-          }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && pendingField) {
-            event.preventDefault();
-            submitStructuredFilter();
-          } else if (event.key === 'Escape' && pendingField) {
-            cancelStructuredFilter();
-          }
-        }}
-        aria-label={pendingLabel
-          ? `${t('capture.addFilter')}: ${pendingLabel}`
-          : t('capture.filterRequests')}
-        data-automation-id={pendingField
-          ? AUTOMATION_IDS.capture.pendingFilterInput
-          : AUTOMATION_IDS.capture.keywordFilter}
+        value={search}
+        placeholder={t('capture.filterRequests')}
+        onChange={(event) => setSearch(event.target.value)}
+        aria-label={t('capture.filterRequests')}
+        data-automation-id={AUTOMATION_IDS.capture.keywordFilter}
       />
+      <span className={styles.omniActions}>
       <Flyout
-        open={showFilter}
-        onOpenChange={setShowFilter}
+        open={showFilter && !noFilterData}
+        onOpenChange={(open) => {
+          setShowFilter(open);
+          if (!open) {
+            setActiveField(null);
+          }
+        }}
         placement="bottomRight"
         className={styles.popover}
         content={
           <>
             <div className={styles.popoverTitle}>{t('capture.addFilter')}</div>
-            <MenuItem
-              icon={GitBranch}
+            <FieldRow
+              icon={<GitBranch size={16} strokeWidth={1.9} />}
               name={t('capture.method')}
-              hint="GET, POST, DELETE…"
+              hint={fieldHint(method, methodOptions.map((option) => option.value))}
+              options={methodOptions}
+              selected={method}
+              onToggle={toggleMethod}
+              renderValue={(value) => <MethodBadge method={value} />}
               automationId={AUTOMATION_IDS.capture.filterOption.method}
-              onClick={() => beginStructuredFilter('method')}
+              open={activeField === 'method'}
+              onToggleOpen={() =>
+                setActiveField((current) => (current === 'method' ? null : 'method'))}
             />
-            <MenuItem
-              icon={Dot}
+            <FieldRow
+              icon={<span className={styles.fieldDot} />}
               name={t('capture.status')}
-              hint="200 · 404 · 500"
+              hint={fieldHint(status, statusOptions.map((option) => option.value))}
+              options={statusOptions}
+              selected={status}
+              onToggle={toggleStatus}
+              renderValue={(value) => (
+                <span className={cx(styles.statusValue, styles[statusKind(value)])}>
+                  <span className={styles.statusDot} />
+                  {value}
+                </span>
+              )}
               automationId={AUTOMATION_IDS.capture.filterOption.status}
-              onClick={() => beginStructuredFilter('status')}
-            />
-            <MenuItem
-              icon={Layers}
-              name={t('capture.type')}
-              hint="json, js, font, ws…"
-              automationId={AUTOMATION_IDS.capture.filterOption.type}
-              onClick={() => beginStructuredFilter('type')}
-            />
-            <MenuItem
-              icon={Globe}
-              name={t('capture.host')}
-              hint={t('capture.contains')}
-              automationId={AUTOMATION_IDS.capture.filterOption.host}
-              onClick={() => beginStructuredFilter('host')}
-            />
-            <MenuItem
-              icon={Activity}
-              name={t('capture.duration')}
-              hint="≥ 500 ms"
-              automationId={AUTOMATION_IDS.capture.filterOption.duration}
-              onClick={() => beginStructuredFilter('duration')}
+              open={activeField === 'status'}
+              onToggleOpen={() =>
+                setActiveField((current) => (current === 'status' ? null : 'status'))}
             />
           </>
         }
@@ -235,11 +242,24 @@ export function Omnibox(): React.JSX.Element {
           type="button"
           className={cx(styles.filterButton, showFilter && styles.active)}
           aria-label={t('capture.addFilter')}
+          disabled={noFilterData}
           data-automation-id={AUTOMATION_IDS.capture.addFilter}
         >
           <Filter size={16} strokeWidth={1.9} />
         </button>
       </Flyout>
+      <Tooltip title={t('capture.clear')} mouseEnterDelay={0.4}>
+        <button
+          type="button"
+          className={styles.clearButton}
+          aria-label={t('capture.clear')}
+          onClick={clearAll}
+          data-automation-id={AUTOMATION_IDS.capture.clearFilters}
+        >
+          <X size={15} strokeWidth={2} />
+        </button>
+      </Tooltip>
+      </span>
     </div>
   );
 }

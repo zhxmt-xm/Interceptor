@@ -51,21 +51,14 @@ export const AUTOMATION_IDS = {
     recordingToggle: 'capture.recording.toggle',
     keywordFilter: 'capture.filter.keyword',
     addFilter: 'capture.filter.add',
-    pendingFilterInput: 'capture.filter.pending-input',
-    pendingFilterCancel: 'capture.filter.pending-cancel',
+    clearFilters: 'capture.filter.clear',
     filterOption: {
       method: 'capture.filter.option.method',
       status: 'capture.filter.option.status',
-      type: 'capture.filter.option.type',
-      host: 'capture.filter.option.host',
-      duration: 'capture.filter.option.duration',
     },
     filterRemove: {
       method: 'capture.filter.remove.method',
       status: 'capture.filter.remove.status',
-      type: 'capture.filter.remove.type',
-      host: 'capture.filter.remove.host',
-      duration: 'capture.filter.remove.duration',
     },
     protocol: {
       all: 'capture.protocol.all',
@@ -73,7 +66,7 @@ export const AUTOMATION_IDS = {
       h2: 'capture.protocol.h2',
       ws: 'capture.protocol.ws',
     },
-    columns: 'capture.columns',
+    queryParams: 'capture.query-params',
     clear: 'capture.clear',
     importMenu: 'capture.import-menu',
     exportMenu: 'capture.export-menu',
@@ -96,6 +89,7 @@ export const AUTOMATION_IDS = {
     },
     inspector: {
       splitter: 'capture.inspector.splitter',
+      close: 'capture.inspector.close',
       tab: {
         headers: 'capture.inspector.tab.headers',
         request: 'capture.inspector.tab.request',

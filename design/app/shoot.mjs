@@ -61,6 +61,13 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
 }
+// capture add-filter popover + right-flyout multi-select cascade
+for (const theme of ['light', 'dark']) {
+  shots.push({ feature: 'add-filter', theme, variant: 'menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
+  shots.push({ feature: 'add-filter', theme, variant: 'method', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'method' } });
+  shots.push({ feature: 'add-filter', theme, variant: 'status', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'status' } });
+  shots.push({ feature: 'add-filter', theme, variant: 'pill-overflow', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tip: 'method' } });
+}
 // Default shell: a dedicated global window header with feature tools inside content.
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });

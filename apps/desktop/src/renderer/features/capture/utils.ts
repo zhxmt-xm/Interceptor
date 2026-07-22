@@ -4,47 +4,13 @@ import type {
 } from '../../../shared/desktop-api';
 import type {
   CaptureFilter,
+  FilterValueOption,
   InspectorTab,
   ProtocolSegment,
   StatusKind,
-  StructuredCaptureFilterField,
-  StructuredCaptureFilterPatch,
   TimeLabels,
   TimingSegment,
 } from './interfaces';
-
-/** Parse one field-specific Omnibox value into a normalized filter patch. */
-export function parseStructuredFilter(
-  field: StructuredCaptureFilterField,
-  rawValue: string,
-): StructuredCaptureFilterPatch | null {
-  const value = rawValue.trim();
-  if (!value) {
-    return null;
-  }
-
-  switch (field) {
-    case 'method':
-      return /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(value)
-        ? { method: value.toUpperCase() }
-        : null;
-    case 'status': {
-      const status = /^\d{3}$/.test(value) ? Number(value) : Number.NaN;
-      return status >= 100 && status <= 599 ? { status } : null;
-    }
-    case 'host':
-      return { host: value };
-    case 'type':
-      return { type: value.toLowerCase() };
-    case 'duration': {
-      const match = /^(?:>=?|≥)?\s*(\d+)\s*(?:ms)?$/i.exec(value);
-      const minDurationMs = match?.[1] ? Number(match[1]) : Number.NaN;
-      return Number.isSafeInteger(minDurationMs) && minDurationMs > 0
-        ? { minDurationMs }
-        : null;
-    }
-  }
-}
 
 /** Cookie headers live exclusively in the Cookies tab, not the generic Headers tab. */
 export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[] {
@@ -275,28 +241,21 @@ export function displayBytes(summary: CaptureExchangeSummary): number {
   return summary.responseBytes > 0 ? summary.responseBytes : summary.requestBytes;
 }
 
-/** 判断摘要是否命中字段过滤（search/method/status/host/type/duration），供实时事件复用。 */
+/** 判断摘要是否命中字段过滤（method/status 精确匹配 + search 子串），供实时事件复用。 */
 export function matchesCoreFilter(
   summary: CaptureExchangeSummary,
   filter: CaptureFilter,
 ): boolean {
-  if (filter.method && summary.method.toUpperCase() !== filter.method.toUpperCase()) {
-    return false;
+  if (filter.method.length > 0) {
+    const summaryMethod = summary.method.toUpperCase();
+    if (!filter.method.some((value) => value.toUpperCase() === summaryMethod)) {
+      return false;
+    }
   }
-  if (filter.status !== null && summary.statusCode !== filter.status) {
-    return false;
-  }
-  if (filter.host && !(summary.host ?? '').toLowerCase().includes(filter.host.toLowerCase())) {
-    return false;
-  }
-  if (filter.type && !typeLabel(summary.responseMime).toLowerCase().includes(filter.type.toLowerCase())) {
-    return false;
-  }
-  if (
-    filter.minDurationMs !== null
-    && (summary.durationMs === undefined || summary.durationMs < filter.minDurationMs)
-  ) {
-    return false;
+  if (filter.status.length > 0) {
+    if (summary.statusCode === undefined || !filter.status.includes(summary.statusCode)) {
+      return false;
+    }
   }
   if (filter.search) {
     const needle = filter.search.toLowerCase();
@@ -306,6 +265,35 @@ export function matchesCoreFilter(
     }
   }
   return true;
+}
+
+/** 当前列表出现过的 distinct method 及计数，按计数降序、同数按字母序，供 Add filter 级联。 */
+export function distinctMethodOptions(
+  rows: readonly CaptureExchangeSummary[],
+): FilterValueOption<string>[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const method = row.method.toUpperCase();
+    counts.set(method, (counts.get(method) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value));
+}
+
+/** 当前列表出现过的 distinct 状态码及计数，按状态码升序，供 Add filter 级联。 */
+export function distinctStatusOptions(
+  rows: readonly CaptureExchangeSummary[],
+): FilterValueOption<number>[] {
+  const counts = new Map<number, number>();
+  for (const row of rows) {
+    if (row.statusCode !== undefined) {
+      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((left, right) => left.value - right.value);
 }
 
 /** 判断摘要是否命中当前 Segmented 分段（客户端视图过滤）。 */
@@ -331,6 +319,16 @@ export function buildIndex(rows: CaptureExchangeSummary[]): Map<string, number> 
   const index = new Map<string, number>();
   rows.forEach((row, position) => index.set(row.id, position));
   return index;
+}
+
+/** 列表/详情展示的请求 path：showQueryParams 关闭时去掉 `?` 之后的 query 串，path 始终保留。 */
+export function displayPath(path: string | undefined, showQueryParams: boolean): string {
+  const value = path ?? '';
+  if (showQueryParams) {
+    return value;
+  }
+  const queryIndex = value.indexOf('?');
+  return queryIndex === -1 ? value : value.slice(0, queryIndex);
 }
 
 /** Preserve the user's tab across request selection unless the new request cannot show it. */

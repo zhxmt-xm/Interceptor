@@ -6,7 +6,11 @@ import type {
 } from '../../../../shared/desktop-api';
 import { useCaptureStore } from '../data/captureStore';
 import type { CaptureFilter } from '../interfaces';
-import { parseStructuredFilter, visibleCaptureRows } from '../utils';
+import {
+  distinctMethodOptions,
+  distinctStatusOptions,
+  visibleCaptureRows,
+} from '../utils';
 
 /** 构造只含列表所需字段的实时捕获事件。 */
 function captureEvent(id: string, startedAt: number): CaptureExchangeEvent {
@@ -141,11 +145,8 @@ describe('captureStore structured filters', () => {
   const baseFilter: CaptureFilter = {
     segment: 'all',
     search: '',
-    method: null,
-    status: null,
-    host: null,
-    type: null,
-    minDurationMs: null,
+    method: [],
+    status: [],
   };
 
   beforeEach(() => {
@@ -174,54 +175,47 @@ describe('captureStore structured filters', () => {
   }
 
   const rows: CaptureExchangeSummary[] = [
-    summary('json', { responseMime: 'application/json; charset=utf-8', durationMs: 20 }),
-    summary('css', { responseMime: 'text/css', durationMs: 800 }),
-    summary('pending', { responseMime: undefined, durationMs: undefined, state: 'pending' }),
+    summary('a', { method: 'GET', statusCode: 200 }),
+    summary('b', { method: 'POST', statusCode: 404 }),
+    summary('c', { method: 'POST', statusCode: 200 }),
+    summary('pending', { method: 'GET', statusCode: undefined, state: 'pending' }),
   ];
 
-  it('filters by response type label (json matches application/json)', () => {
-    expect(visibleCaptureRows(rows, { ...baseFilter, type: 'json' }).map((row) => row.id))
-      .toEqual(['json']);
+  it('filters by a single selected method (case-insensitive)', () => {
+    expect(visibleCaptureRows(rows, { ...baseFilter, method: ['post'] }).map((row) => row.id))
+      .toEqual(['b', 'c']);
   });
 
-  it('keeps only completed exchanges at or above the minimum duration', () => {
-    expect(
-      visibleCaptureRows(rows, { ...baseFilter, minDurationMs: 500 }).map((row) => row.id),
-    ).toEqual(['css']);
+  it('filters by multiple selected status codes', () => {
+    expect(visibleCaptureRows(rows, { ...baseFilter, status: [200, 404] }).map((row) => row.id))
+      .toEqual(['a', 'b', 'c']);
   });
 
-  it('sets and clears type / duration via setStructuredFilter', () => {
-    useCaptureStore.getState().setStructuredFilter({ type: 'json', minDurationMs: 500 });
+  it('lists distinct method options from current rows by count then name', () => {
+    expect(distinctMethodOptions(rows)).toEqual([
+      { value: 'GET', count: 2 },
+      { value: 'POST', count: 2 },
+    ]);
+  });
+
+  it('lists distinct status options ascending and ignores pending rows', () => {
+    expect(distinctStatusOptions(rows)).toEqual([
+      { value: 200, count: 2 },
+      { value: 404, count: 1 },
+    ]);
+  });
+
+  it('sets and clears method / status via setStructuredFilter', () => {
+    useCaptureStore.getState().setStructuredFilter({ method: ['POST'], status: [404] });
     expect(useCaptureStore.getState().filter).toMatchObject({
-      type: 'json',
-      minDurationMs: 500,
+      method: ['POST'],
+      status: [404],
     });
 
-    useCaptureStore.getState().setStructuredFilter({ type: null, minDurationMs: null });
+    useCaptureStore.getState().setStructuredFilter({ method: [], status: [] });
     expect(useCaptureStore.getState().filter).toMatchObject({
-      type: null,
-      minDurationMs: null,
+      method: [],
+      status: [],
     });
-  });
-
-  it('parses and normalizes every structured Omnibox field', () => {
-    expect(parseStructuredFilter('method', ' post ')).toEqual({ method: 'POST' });
-    expect(parseStructuredFilter('status', '404')).toEqual({ status: 404 });
-    expect(parseStructuredFilter('host', ' api.example.test ')).toEqual({
-      host: 'api.example.test',
-    });
-    expect(parseStructuredFilter('type', ' JSON ')).toEqual({ type: 'json' });
-    expect(parseStructuredFilter('duration', '>= 500 ms')).toEqual({
-      minDurationMs: 500,
-    });
-  });
-
-  it('rejects empty or invalid structured filter values', () => {
-    expect(parseStructuredFilter('method', 'GET POST')).toBeNull();
-    expect(parseStructuredFilter('status', '2xx')).toBeNull();
-    expect(parseStructuredFilter('status', '99')).toBeNull();
-    expect(parseStructuredFilter('status', '600')).toBeNull();
-    expect(parseStructuredFilter('duration', '5 seconds')).toBeNull();
-    expect(parseStructuredFilter('host', '   ')).toBeNull();
   });
 });

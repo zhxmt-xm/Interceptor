@@ -1,4 +1,5 @@
-﻿import type { LucideIcon } from 'lucide-react';
+﻿import { Tooltip } from 'antd';
+import { Loader2, type LucideIcon } from 'lucide-react';
 
 import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
@@ -6,11 +7,17 @@ import styles from './IconButton.module.css';
 
 export interface IconButtonProps {
   icon: LucideIcon;
-  /** Accessible label (rendered as aria-label). */
+  /** Accessible label (rendered as aria-label) and default tooltip text. */
   label: string;
   size?: 'md' | 'sm';
   strokeWidth?: number;
   disabled?: boolean;
+  /** Shows a spinner and blocks clicks while an async action runs. */
+  loading?: boolean;
+  /** Tooltip text; defaults to `label`. Pass null to suppress the tooltip. */
+  tooltip?: string | null;
+  /** Tooltip shown while blocked to explain why; falls back to the normal tooltip. */
+  disabledTooltip?: string;
   onClick?: () => void;
   className?: string;
   automationId?: AutomationId;
@@ -23,22 +30,40 @@ export function IconButton({
   size = 'md',
   strokeWidth = 1.9,
   disabled = false,
+  loading = false,
+  tooltip,
+  disabledTooltip,
   onClick,
   className,
   automationId,
 }: IconButtonProps): React.JSX.Element {
-  return (
+  const iconSize = size === 'sm' ? 15 : 18;
+  const blocked = disabled || loading;
+  const defaultTip = tooltip === undefined ? label : tooltip;
+  const tip = blocked && disabledTooltip ? disabledTooltip : defaultTip;
+  const button = (
     <button
       type="button"
-      disabled={disabled}
+      disabled={blocked}
       className={cx(styles.button, size === 'sm' && styles.small, className)}
       onClick={onClick}
       aria-label={label}
-      title={label}
       data-automation-id={automationId}
     >
-      <Icon size={size === 'sm' ? 15 : 18} strokeWidth={strokeWidth} />
+      {loading ? (
+        <Loader2 size={iconSize} strokeWidth={strokeWidth} className={styles.spinner} />
+      ) : (
+        <Icon size={iconSize} strokeWidth={strokeWidth} />
+      )}
     </button>
+  );
+  if (!tip) {
+    return button;
+  }
+  return (
+    <Tooltip title={tip} mouseEnterDelay={0.4}>
+      {button}
+    </Tooltip>
   );
 }
 

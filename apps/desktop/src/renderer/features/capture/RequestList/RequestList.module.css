@@ -32,6 +32,15 @@
   align-items: center;
   gap: 3px;
 }
+/** Query 参数 toggle 激活态：与设计稿 .ib.on 一致（accent 柔和底 + accent 前景）。 */
+.queryParamsOn {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.queryParamsOn:not(:disabled):hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 .head {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 66px 38px 54px 56px 58px;
@@ -66,20 +75,4 @@
   color: var(--text-3);
   font-size: 13px;
   text-align: center;
-}
-@container (max-width: 420px) {
-  .bar {
-    gap: 6px;
-    padding: 0 6px 0 12px;
-  }
-
-  .protocol button {
-    padding: 0 7px;
-    min-width: 0;
-  }
-
-  .count,
-  .columns {
-    display: none;
-  }
 }

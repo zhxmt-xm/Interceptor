@@ -1,10 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Columns2, Trash2 } from 'lucide-react';
+import { Ampersand, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Count, IconButton, Segmented } from '../../../components';
+import { Count, cx, IconButton, Segmented } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import type { ProtocolSegment } from '../interfaces';
 import { RequestRow } from '../RequestRow/RequestRow';
@@ -33,6 +33,8 @@ export function RequestList(): React.JSX.Element {
   const setSegment = useCaptureStore((state) => state.setSegment);
   const select = useCaptureStore((state) => state.select);
   const clearView = useCaptureStore((state) => state.clearView);
+  const showQueryParams = useCaptureStore((state) => state.showQueryParams);
+  const toggleQueryParams = useCaptureStore((state) => state.toggleQueryParams);
   const [clearing, setClearing] = useState(false);
   const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
   // 用户是否停靠在底部（最新）；新流量到达时决定是否自动跟随到底部。
@@ -111,11 +113,12 @@ export function RequestList(): React.JSX.Element {
         </Count>
         <div className={styles.actions}>
           <IconButton
-            icon={Columns2}
-            label={t('capture.columns')}
+            icon={Ampersand}
+            label={t('capture.queryParams')}
             size="sm"
-            className={styles.columns}
-            automationId={AUTOMATION_IDS.capture.columns}
+            className={cx(styles.queryParams, showQueryParams && styles.queryParamsOn)}
+            onClick={toggleQueryParams}
+            automationId={AUTOMATION_IDS.capture.queryParams}
           />
           <IconButton
             icon={Trash2}
@@ -157,7 +160,7 @@ export function RequestList(): React.JSX.Element {
                   summary={row}
                   selected={row.id === selectedId}
                   offsetTop={virtualRow.start}
-                  onSelect={select}
+                  onSelect={(id) => select(id === selectedId ? null : id)}
                 />
               );
             })}

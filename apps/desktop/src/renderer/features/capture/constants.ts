@@ -31,9 +31,6 @@ export const TLS_TUNNEL_INSPECTOR_TABS = [
 export const EMPTY_FILTER: CaptureFilter = {
   segment: 'all',
   search: '',
-  method: null,
-  status: null,
-  host: null,
-  type: null,
-  minDurationMs: null,
+  method: [],
+  status: [],
 };

@@ -5,8 +5,10 @@ import { useTranslation } from 'react-i18next';
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, MethodBadge } from '../../../components';
+import { useCaptureStore } from '../data/captureStore';
 import {
   displayBytes,
+  displayPath,
   protocolLabel,
   sizeLabel,
   statusKind,
@@ -34,6 +36,7 @@ export const RequestRow = memo(function RequestRow({
   const { i18n, t } = useTranslation();
   const kind = statusKind(summary.statusCode);
   const isTlsTunnel = protocolLabel(summary.protocol) === 'tls';
+  const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const timeLabels = {
     closed: t('capture.closed'),
     open: t('capture.open'),
@@ -61,7 +64,7 @@ export const RequestRow = memo(function RequestRow({
           {summary.host ?? '—'}
         </span>
         <span className={styles.hostPath}>
-          {isTlsTunnel ? t('capture.httpsEncrypted') : summary.path ?? ''}
+          {isTlsTunnel ? t('capture.httpsEncrypted') : displayPath(summary.path, showQueryParams)}
         </span>
       </span>
       <span className={cx(styles.status, styles[kind])}>
