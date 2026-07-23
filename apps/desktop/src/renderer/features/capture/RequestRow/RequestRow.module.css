@@ -2,6 +2,7 @@
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 66px 38px 54px 56px 58px;
   align-items: center;
+  justify-items: start;
   gap: 12px;
   padding: 0 18px;
   height: 52px;
@@ -33,6 +34,7 @@
 }
 .host {
   min-width: 0;
+  justify-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 4px;

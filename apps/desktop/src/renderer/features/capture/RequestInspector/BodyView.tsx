@@ -4,12 +4,13 @@ import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import CodeMirror from '@uiw/react-codemirror';
+import { Copy } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Segmented } from '../../../components';
+import { IconButton, Segmented, useClipboardCopy } from '../../../components';
 import { sizeLabel } from '../utils';
 import styles from './BodyView.module.css';
 
@@ -172,6 +173,7 @@ export function BodyView({
   previewLimit = PREVIEW_CAP_BYTES,
 }: BodyViewProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
+  const copy = useClipboardCopy();
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<BodyViewMode>('auto');
@@ -279,6 +281,12 @@ export function BodyView({
     { label: 'JSON', value: 'json' },
     { label: 'Hex', value: 'hex' },
   ];
+  const copyBody = (): void => {
+    const content = text !== null
+      ? text.text
+      : toHexDump(previewBytes ?? loaded.bytes, hexBytesPerLine);
+    copy(content);
+  };
   const modeControl = (
     <div className={styles.modeBar}>
       <Segmented
@@ -287,6 +295,15 @@ export function BodyView({
         onChange={(value) => setMode(value as BodyViewMode)}
         automationIds={AUTOMATION_IDS.capture.inspector.bodyMode}
       />
+      {compact ? null : (
+        <IconButton
+          className={styles.bodyCopy}
+          icon={Copy}
+          label={t('capture.copy')}
+          size="sm"
+          onClick={copyBody}
+        />
+      )}
     </div>
   );
 

@@ -1,4 +1,5 @@
 ﻿export { cx } from './share/cx';
+export { useClipboardCopy } from './share/useClipboardCopy';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
 export { Switch, type SwitchProps } from './Switch/Switch';

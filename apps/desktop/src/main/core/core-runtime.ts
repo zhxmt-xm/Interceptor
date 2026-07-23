@@ -37,8 +37,20 @@ import { CoreRpcClient } from './core-rpc-client';
  * CoreApplication 内部业务逻辑。
  */
 export class CoreRuntime {
-  /** 默认 CoreProcess heartbeat 超时（ms）。 */
-  private static readonly DEFAULT_HEARTBEAT_TIMEOUT_MS = 4_000;
+  /**
+   * CoreProcess 首个 ready 的启动宽限期（ms）。
+   * 与运行期 heartbeat 超时解耦：Core 需先加载完整 bundle（含 mockttp/ws/http2/node:sqlite）
+   * 才能发出首个 ready，冷启动（磁盘缓存冷、杀软扫描、CPU 争抢）常明显慢于运行期心跳间隔；
+   * 取较宽松的 30s 给冷启动加载留足空间，避免把还在加载的 Core 误判 unresponsive 而反复重启。
+   */
+  private static readonly DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
+  /**
+   * 收到首个 ready 之后的 CoreProcess heartbeat 超时（ms）。
+   * Core 每 1s 发一次心跳；看门狗只应恢复真正死锁的 Core，因此取较宽松的 10s（≈连丢 10 个
+   * 心跳）：合法的繁忙期（大响应体 gzip/brotli 解码、高流量捕获批处理、GC 或 CPU 争抢）很少
+   * 连续阻塞事件循环 10s，避免把健康但一时繁忙的 Core 误判为 unresponsive 而在录制中途突然重启。
+   */
+  private static readonly DEFAULT_HEARTBEAT_TIMEOUT_MS = 10_000;
   /** 默认 CoreProcess 重启退避基数（ms）。 */
   private static readonly DEFAULT_RESTART_BASE_DELAY_MS = 250;
   /** 默认 CoreProcess 重启退避上限（ms）。 */
@@ -47,6 +59,7 @@ export class CoreRuntime {
   private static readonly DEFAULT_SHUTDOWN_TIMEOUT_MS = 1_500;
 
   private readonly coreRpcClient = new CoreRpcClient();
+  private readonly coreProcessStartupTimeoutMs: number;
   private readonly coreProcessHeartbeatTimeoutMs: number;
   private readonly coreProcessRestartBaseDelayMs: number;
   private readonly coreProcessRestartMaxDelayMs: number;
@@ -67,6 +80,8 @@ export class CoreRuntime {
     | null = null;
   private pendingCoreRuntimeStopResolver: (() => void) | null = null;
   private coreProcessShouldRun = false;
+  /** 当前 CoreProcess 代际是否已收到首个 ready/heartbeat；决定 heartbeat 看门狗用启动宽限期还是运行期超时。 */
+  private coreProcessReceivedFirstBeat = false;
   private lastCoreProcessHeartbeatAtMs: number | null = null;
   private coreProcessStatus: CoreProcessStatus;
 
@@ -75,6 +90,9 @@ export class CoreRuntime {
    * 调用方：生产环境由 DesktopApplication 创建；单元测试由 TestCoreRuntime 子类创建。
    */
   constructor(options: CoreRuntimeOptions = {}) {
+    this.coreProcessStartupTimeoutMs =
+      options.coreProcessStartupTimeoutMs ??
+      CoreRuntime.DEFAULT_STARTUP_TIMEOUT_MS;
     this.coreProcessHeartbeatTimeoutMs =
       options.coreProcessHeartbeatTimeoutMs ??
       CoreRuntime.DEFAULT_HEARTBEAT_TIMEOUT_MS;
@@ -225,6 +243,7 @@ export class CoreRuntime {
     }
 
     this.coreProcess = coreProcess;
+    this.coreProcessReceivedFirstBeat = false;
     this.lastCoreProcessHeartbeatAtMs = this.now();
     this.bindCoreProcessEvents(coreProcess);
     this.armCoreProcessHeartbeatTimeout(coreProcess);
@@ -359,6 +378,8 @@ export class CoreRuntime {
       return;
     }
 
+    // 首个 ready/heartbeat 后从启动宽限期切换到运行期 heartbeat 存活检测。
+    this.coreProcessReceivedFirstBeat = true;
     this.lastCoreProcessHeartbeatAtMs = this.now();
     const timestamp =
       coreProcessLifecycleMessage.type === 'ready'
@@ -440,29 +461,35 @@ export class CoreRuntime {
   }
 
   /**
-   * 为当前 CoreProcess 设置 heartbeat deadline；超时后标记 unresponsive 并 kill。
+   * 为当前 CoreProcess 设置存活期限；首个 ready 前用较宽松的启动宽限期，之后用运行期
+   * heartbeat 超时。超时后标记 unresponsive 并 kill。
    * 调用方：startCoreProcess 建立期限，handleCoreProcessMessage 收到消息后续期。
    */
   private armCoreProcessHeartbeatTimeout(
     coreProcess: CoreProcessHandle,
   ): void {
     this.clearCoreProcessHeartbeatTimeout();
+    const timeoutMs = this.coreProcessReceivedFirstBeat
+      ? this.coreProcessHeartbeatTimeoutMs
+      : this.coreProcessStartupTimeoutMs;
     this.coreProcessHeartbeatTimeoutTimer = setTimeout(() => {
       if (this.coreProcess !== coreProcess || !this.coreProcessShouldRun) {
         return;
       }
 
       const elapsed = this.now() - (this.lastCoreProcessHeartbeatAtMs ?? 0);
-      if (elapsed < this.coreProcessHeartbeatTimeoutMs) {
+      if (elapsed < timeoutMs) {
         this.armCoreProcessHeartbeatTimeout(coreProcess);
         return;
       }
 
       this.updateCoreProcessStatus('unresponsive', {
-        detail: `No heartbeat for ${elapsed} ms`,
+        detail: this.coreProcessReceivedFirstBeat
+          ? `No heartbeat for ${elapsed} ms`
+          : `No ready signal for ${elapsed} ms`,
       });
       coreProcess.kill();
-    }, this.coreProcessHeartbeatTimeoutMs);
+    }, timeoutMs);
   }
 
   /**

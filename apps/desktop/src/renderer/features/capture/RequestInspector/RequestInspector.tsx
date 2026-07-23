@@ -1,11 +1,11 @@
 import { Tooltip } from 'antd';
-import { X } from 'lucide-react';
-import { Fragment, type ReactNode, useEffect } from 'react';
+import { Copy, X } from 'lucide-react';
+import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureHeader } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
-import { cx, SectionHeader, StatusBadge } from '../../../components';
+import { cx, IconButton, MethodBadge, SectionHeader, StatusBadge, useClipboardCopy } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import {
   GRPC_INSPECTOR_TABS,
@@ -13,7 +13,7 @@ import {
   TLS_TUNNEL_INSPECTOR_TABS,
   WEBSOCKET_INSPECTOR_TABS,
 } from '../constants';
-import type { InspectorTab } from '../interfaces';
+import type { InspectorTab, StatusKind } from '../interfaces';
 import { TlsPanel } from './TlsPanel';
 import { TlsTunnelPanel } from './TlsTunnelPanel';
 import {
@@ -26,6 +26,7 @@ import {
   responseTimingSegments,
   retainInspectorTab,
   sizeLabel,
+  statusKind,
   statusLabel,
   statusTone,
   timeLabel,
@@ -37,7 +38,7 @@ import { GrpcMessages } from './GrpcMessages';
 import { WebSocketMessages } from './WebSocketMessages';
 import styles from './RequestInspector.module.css';
 
-type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g'];
+type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g', copyText?: string];
 
 const INSPECTOR_TAB_AUTOMATION_IDS: Record<InspectorTab, AutomationId> =
   AUTOMATION_IDS.capture.inspector.tab;
@@ -92,27 +93,44 @@ function isGrpcMime(value: string | undefined): boolean {
     || essence?.startsWith('application/grpc+') === true;
 }
 
-function headerValue(
-  headers: CaptureHeader[],
-  name: string,
-): string | undefined {
-  return headers.find((header) => header.name.toLowerCase() === name)?.value;
-}
-
 function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
+  const { t } = useTranslation();
+  const copy = useClipboardCopy();
   return (
     <div className={styles.kv}>
-      {rows.map(([key, value, accent], index) => (
-        <Fragment key={index}>
-          <span className={styles.key}>{key}</span>
-          <span
-            className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
-          >
-            {value}
-          </span>
-        </Fragment>
-      ))}
+      {rows.map(([key, value, accent, copyText], index) => {
+        const copyValue = copyText ?? (typeof value === 'string' ? value : undefined);
+        return (
+          <div className={styles.kvRow} key={index}>
+            <span className={styles.key}>{key}</span>
+            <span
+              className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
+            >
+              {value}
+              {copyValue ? (
+                <IconButton
+                  className={styles.copyBtn}
+                  icon={Copy}
+                  label={t('capture.copy')}
+                  size="sm"
+                  onClick={() => copy(copyValue)}
+                />
+              ) : null}
+            </span>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** Status value styled like the request list: a colored dot plus the original status text. */
+function StatusValue({ kind, children }: { kind: StatusKind; children: ReactNode }): React.JSX.Element {
+  return (
+    <span className={cx(styles.statusValue, styles[kind])}>
+      <span className={styles.statusDot} />
+      {children}
+    </span>
   );
 }
 
@@ -140,6 +158,7 @@ export interface RequestInspectorProps {
 /** Right-hand inspector for the selected request. */
 export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
+  const copy = useClipboardCopy();
   const tab = useCaptureStore((state) => state.inspectorTab);
   const setTab = useCaptureStore((state) => state.setInspectorTab);
   const selectedId = useCaptureStore((state) => state.selectedId);
@@ -181,10 +200,6 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
         ? GRPC_INSPECTOR_TABS
         : INSPECTOR_TABS;
   const tlsPort = inferPort(detail?.url, scheme);
-  const grpcStatus = headerValue(responseTrailers, 'grpc-status')
-    ?? headerValue(responseHeaders, 'grpc-status');
-  const grpcMessage = headerValue(responseTrailers, 'grpc-message')
-    ?? headerValue(responseHeaders, 'grpc-message');
   const statusText = view
     ? view.statusCode !== undefined
       ? `${view.statusCode}${detail?.statusText ? ` ${detail.statusText}` : ''}`
@@ -227,35 +242,30 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
           {view ? (
             <span className={styles.methodChip} data-parity="capture-inspector-method">{view.method.toUpperCase()}</span>
           ) : null}
-          <Tooltip title={view ? url : ''} placement="topLeft" mouseEnterDelay={0.4}>
-            <span className={styles.url} data-parity="capture-inspector-host">
-              {view ? (
-                <span className={styles.urlText}>
-                  {view.host ?? ''}{isTlsTunnel ? `:${tlsPort}` : displayPath(view.path, showQueryParams)}
-                </span>
-              ) : (
-                <span className={styles.urlText}>{t('capture.selectRequest')}</span>
-              )}
-            </span>
-          </Tooltip>
-          {view && isTlsTunnel ? (
-            <StatusBadge tone="yellow">{t('capture.encrypted')}</StatusBadge>
-          ) : view && view.statusCode !== undefined ? (
-            <StatusBadge
-              tone={
-                isGrpc && grpcStatus !== undefined
-                  ? grpcStatus === '0'
-                    ? 'green'
-                    : 'red'
-                  : statusTone(view.statusCode)
-              }
-            >
-              {isWebSocket && view.statusCode === 101
-                ? t('capture.connected')
-                : isGrpc && grpcStatus !== undefined
-                  ? `gRPC ${grpcStatus}${grpcMessage ? ` ${grpcMessage}` : ''}`
-                  : statusText}
-            </StatusBadge>
+          <span className={styles.urlWrap}>
+            <Tooltip title={view ? url : ''} placement="topLeft" mouseEnterDelay={0.4}>
+              <span className={styles.url} data-parity="capture-inspector-host">
+                {view ? (
+                  <span className={styles.urlText}>
+                    {view.host ?? ''}{isTlsTunnel ? `:${tlsPort}` : displayPath(view.path, showQueryParams)}
+                  </span>
+                ) : (
+                  <span className={styles.urlText}>{t('capture.selectRequest')}</span>
+                )}
+              </span>
+            </Tooltip>
+            {view ? (
+              <IconButton
+                className={styles.urlCopy}
+                icon={Copy}
+                label={t('capture.copyUrl')}
+                size="sm"
+                onClick={() => copy(url)}
+              />
+            ) : null}
+          </span>
+          {view ? (
+            <StatusBadge tone={statusTone(view.statusCode)}>{statusLabel(view)}</StatusBadge>
           ) : null}
         </div>
         <Tooltip title={t('capture.close')} mouseEnterDelay={0.4}>
@@ -301,8 +311,8 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
                 <Kv
                   rows={[
                     [t('capture.requestUrl'), url],
-                    [t('capture.requestMethod'), view.method.toUpperCase(), 'a'],
-                    [t('capture.statusCode'), statusText, view.statusCode && view.statusCode < 400 ? 'g' : undefined],
+                    [t('capture.requestMethod'), <MethodBadge method={view.method} />, undefined, view.method.toUpperCase()],
+                    [t('capture.statusCode'), <StatusValue kind={statusKind(view.statusCode)}>{statusText}</StatusValue>, undefined, statusText],
                     [t('capture.protocol'), protocolLabel(view.protocol).toUpperCase()],
                     ...(detail?.streamId !== undefined
                       ? [[t('capture.streamId'), String(detail.streamId)] as KvRow]

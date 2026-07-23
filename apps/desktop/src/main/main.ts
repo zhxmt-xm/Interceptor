@@ -64,6 +64,10 @@ import {
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
+// 采用 Chromium overlay 滚动条：滚动条悬浮在内容上、不占布局宽度，
+// 避免独立表头与虚拟滚动列表因滚动条占位产生的列错位。
+app.commandLine.appendSwitch('enable-features', 'OverlayScrollbar');
+
 PackagedRendererProtocol.registerScheme();
 
 /** Electron Main 应用所有者：窗口、安全策略、CoreRuntime 、证书与 Renderer IPC。 */
@@ -246,10 +250,18 @@ class DesktopApplication {
   }
 
   private configureSessionSecurity(): void {
+    // 仅放开剪贴板读写权限以支持复制操作；其余权限（相机/麦克风/定位/通知等）一律拒绝。
+    const allowedPermissions = new Set([
+      'clipboard-read',
+      'clipboard-sanitized-write',
+    ]);
     session.defaultSession.setPermissionRequestHandler(
-      (_webContents, _permission, callback) => callback(false),
+      (_webContents, permission, callback) =>
+        callback(allowedPermissions.has(permission)),
     );
-    session.defaultSession.setPermissionCheckHandler(() => false);
+    session.defaultSession.setPermissionCheckHandler(
+      (_webContents, permission) => allowedPermissions.has(permission),
+    );
     app.on('web-contents-created', (_event, contents) => {
       contents.on('will-attach-webview', (event) => event.preventDefault());
     });

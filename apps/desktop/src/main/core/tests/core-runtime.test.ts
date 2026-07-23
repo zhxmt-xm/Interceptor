@@ -161,6 +161,48 @@ describe('CoreRuntime', () => {
     expect(launchCoreProcess).toHaveBeenCalledTimes(2);
   });
 
+  it('waits for the startup grace period before killing a CoreProcess that never signals ready', () => {
+    vi.useFakeTimers();
+    const coreProcesses = [
+      new FakeCoreProcessHandle(4108),
+      new FakeCoreProcessHandle(4109),
+    ];
+    const launchCoreProcess = vi.fn(() => {
+      const coreProcess = coreProcesses[launchCoreProcess.mock.calls.length - 1];
+      if (!coreProcess) {
+        throw new Error('No fake CoreProcess available');
+      }
+      return coreProcess;
+    });
+    const coreRuntime = new TestCoreRuntime(launchCoreProcess, {
+      coreProcessStartupTimeoutMs: 10_000,
+      coreProcessHeartbeatTimeoutMs: 4_000,
+      coreProcessRestartBaseDelayMs: 250,
+      now: () => Date.now(),
+    });
+
+    coreRuntime.start();
+    coreProcesses[0]?.emit('spawn');
+
+    // 运行期 heartbeat 超时（4s）不能在首个 ready 之前触发，否则冷启动的 Core 会被反复误杀。
+    vi.advanceTimersByTime(4_000);
+    expect(coreProcesses[0]?.killed).toBe(false);
+    expect(coreRuntime.getCoreProcessStatus().state).toBe('starting');
+
+    // 只有越过启动宽限期后才判定 unresponsive 并 kill。
+    vi.advanceTimersByTime(6_000);
+    expect(coreProcesses[0]?.killed).toBe(true);
+    expect(coreRuntime.getCoreProcessStatus()).toMatchObject({
+      state: 'unresponsive',
+      detail: 'No ready signal for 10000 ms',
+    });
+
+    coreProcesses[0]?.emit('exit', 1);
+    expect(coreRuntime.getCoreProcessStatus().state).toBe('restarting');
+    vi.advanceTimersByTime(250);
+    expect(launchCoreProcess).toHaveBeenCalledTimes(2);
+  });
+
   it('force-stops CoreProcess after the shutdown deadline', async () => {
     vi.useFakeTimers();
     const coreProcess = new FakeCoreProcessHandle(4103);

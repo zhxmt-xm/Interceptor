@@ -30,6 +30,7 @@ export interface CoreProcessHandle {
 
 /** CoreRuntime 构造可选项：CoreProcess 生命周期超时、重启退避与时间源注入。 */
 export interface CoreRuntimeOptions {
+  coreProcessStartupTimeoutMs?: number;
   coreProcessHeartbeatTimeoutMs?: number;
   coreProcessRestartBaseDelayMs?: number;
   coreProcessRestartMaxDelayMs?: number;

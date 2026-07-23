@@ -25,7 +25,12 @@
 }
 .modeBar {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.bodyCopy {
+  flex: 0 0 auto;
 }
 .compact :global(.cm-editor) {
   border-radius: 7px;
