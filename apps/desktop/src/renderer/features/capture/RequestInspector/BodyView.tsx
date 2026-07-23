@@ -11,11 +11,8 @@ import { useTranslation } from 'react-i18next';
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { IconButton, Segmented, useClipboardCopy } from '../../../components';
-import { sizeLabel } from '../utils';
+import { readCompleteBody } from '../data/readCompleteBody';
 import styles from './BodyView.module.css';
-
-/** 单次预览最多加载的正文字节（Inspector 只做预览，非完整下载）。 */
-const PREVIEW_CAP_BYTES = 256 * 1024;
 
 /** JSON 语法高亮：纯文本色（key 紫 / string 绿 / number-bool-null 蓝 / 标点浅灰），
  *  无 token 背景，1:1 对应 design/app/app.css 的 .jsonv jk/js/jn/jp。 */
@@ -46,7 +43,6 @@ interface BodyViewProps {
   body: CaptureBodyRef;
   compact?: boolean;
   offset?: number;
-  previewLimit?: number;
 }
 
 interface LoadedBody {
@@ -165,14 +161,13 @@ function prettyJson(text: string): string {
   }
 }
 
-/** 按需加载并预览一段正文：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
+/** 按需加载完整正文：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
 export function BodyView({
   body,
   compact = false,
   offset = 0,
-  previewLimit = PREVIEW_CAP_BYTES,
 }: BodyViewProps): React.JSX.Element {
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
   const copy = useClipboardCopy();
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -191,17 +186,12 @@ export function BodyView({
       return;
     }
     let active = true;
-    // 解码需完整压缩流：有 content-encoding 时读全压缩正文（Main 端 1MB 上限）并请求
-    // Core 解码；否则按预览上限读原始字节。
+    // 解码需完整压缩流；未压缩正文同样完整读取，不做 preview 截断。
     const shouldDecode = Boolean(body.contentEncoding);
-    const length = shouldDecode
-      ? body.encodedSize
-      : Math.min(body.encodedSize, previewLimit);
-    void api
-      .readBody(
+    void readCompleteBody(
         body.bodyHash,
         offset,
-        length,
+        body.encodedSize,
         shouldDecode
           ? { decode: true, encoding: body.contentEncoding }
           : undefined,
@@ -209,7 +199,7 @@ export function BodyView({
       .then((chunk) => {
         if (active) {
           setLoaded({
-            bytes: chunk.data,
+            bytes: chunk.bytes,
             end: chunk.end,
             decodeStatus: chunk.decodeStatus,
           });
@@ -228,24 +218,14 @@ export function BodyView({
     body.encodedSize,
     body.contentEncoding,
     offset,
-    previewLimit,
   ]);
 
-  const previewBytes = useMemo(() => {
+  const text = useMemo(() => {
     if (!loaded) {
       return null;
     }
-    return loaded.bytes.length > previewLimit
-      ? loaded.bytes.subarray(0, previewLimit)
-      : loaded.bytes;
-  }, [loaded, previewLimit]);
-
-  const text = useMemo(() => {
-    if (!previewBytes) {
-      return null;
-    }
-    return bodyTextForMode(previewBytes, body.mediaType, mode);
-  }, [previewBytes, body.mediaType, mode]);
+    return bodyTextForMode(loaded.bytes, body.mediaType, mode);
+  }, [loaded, body.mediaType, mode]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -272,8 +252,6 @@ export function BodyView({
     return <div className={styles.empty}>{t('capture.loadingBody')}</div>;
   }
 
-  const truncated = body.encodedSize > previewLimit
-    || (loaded ? loaded.bytes.length > previewLimit : false);
   const decodeFailed = loaded?.decodeStatus === 'failed';
   const bodyViewModes = [
     { label: t('capture.auto'), value: 'auto' },
@@ -284,7 +262,7 @@ export function BodyView({
   const copyBody = (): void => {
     const content = text !== null
       ? text.text
-      : toHexDump(previewBytes ?? loaded.bytes, hexBytesPerLine);
+      : toHexDump(loaded.bytes, hexBytesPerLine);
     copy(content);
   };
   const modeControl = (
@@ -316,11 +294,6 @@ export function BodyView({
             {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
           </div>
         ) : null}
-        {truncated ? (
-          <div className={styles.notice}>
-            {t('capture.previewLimited', { size: sizeLabel(previewLimit, i18n.language) })}
-          </div>
-        ) : null}
         <CodeMirror
           value={text.text}
           editable={false}
@@ -346,13 +319,8 @@ export function BodyView({
           {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
         </div>
       ) : null}
-      {truncated ? (
-        <div className={styles.notice}>
-          {t('capture.binaryPreviewLimited', { size: sizeLabel(previewLimit, i18n.language) })}
-        </div>
-      ) : null}
       <pre className={styles.hex}>
-        {toHexDump(previewBytes ?? loaded.bytes, hexBytesPerLine)}
+        {toHexDump(loaded.bytes, hexBytesPerLine)}
       </pre>
     </div>
   );

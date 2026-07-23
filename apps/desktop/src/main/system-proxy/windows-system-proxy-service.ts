@@ -209,7 +209,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
   private async run(args: readonly string[]): Promise<SystemProxyCommandResult> {
     const result = await this.runner.run(this.helperPath, args);
     if (result.code !== 0) {
-      const detail = (result.stderr || result.stdout || 'unknown error').slice(0, 512);
+      const detail = result.stderr || result.stdout || 'unknown error';
       throw new SystemProxyError(
         `WinINet helper failed (exit ${result.code}): ${detail}`,
       );
@@ -285,12 +285,12 @@ export class WindowsSystemProxyService implements SystemProxyService {
     };
   }
 
-  /** Validate one bounded nullable helper string field. */
+  /** Validate one nullable helper string field without changing its content. */
   private static nullableString(value: unknown, name: string): string | null {
     if (value === null) {
       return null;
     }
-    if (typeof value !== 'string' || value.length > 32_768) {
+    if (typeof value !== 'string') {
       throw new SystemProxyError(`WinINet helper result ${name} is invalid.`);
     }
     return value;

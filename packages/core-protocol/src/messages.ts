@@ -1,9 +1,6 @@
 import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
-export const MAX_BODY_CHUNK_BYTES = 1024 * 1024;
-export const MAX_DIAGNOSTIC_RECORDS = 200;
-export const MAX_QUERY_PAGE_SIZE = 500;
 
 export interface EchoCommand {
   type: 'echo';
@@ -489,7 +486,7 @@ export interface ComposerTlsInfo {
   validTo: string;
 }
 
-/** Composer 响应：成功时带状态/头/有界正文/时序/TLS；失败时 ok=false + error。 */
+/** Composer 响应：成功时带状态/头/完整正文/时序/TLS；失败时 ok=false + error。 */
 export interface ComposerResponseResult {
   type: 'composer.response';
   payload: {
@@ -500,7 +497,6 @@ export interface ComposerResponseResult {
     httpVersion: string;
     headers: RuleHeaderPair[];
     body: Uint8Array;
-    bodyTruncated: boolean;
     totalBytes: number;
     durationMs: number;
     tls: ComposerTlsInfo | null;
@@ -644,7 +640,6 @@ export interface StorageStatusResult {
     databaseBytes: number;
     blobBytes: number;
     totalBytes: number;
-    quotaBytes: number;
   };
 }
 
@@ -929,5 +924,4 @@ export type CoreToMainMessage =
   | CoreSuccessResponse
   | CoreErrorResponse
   | CoreEventBatch;
-
-export const MAX_EVENT_BATCH_SIZE = 500;
+/** RPC payload 由同版本 TypeScript 契约负责，传输层不施加内容上限。 */

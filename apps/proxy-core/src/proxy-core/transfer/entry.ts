@@ -2,7 +2,6 @@ import path from 'node:path';
 
 import type { TransferJobSnapshot } from '@interceptor/core-protocol';
 
-import { MAX_TRANSFER_JOBS } from './transfer-constants';
 import type {
   MutableTransferJob,
   TransferOperation,
@@ -11,12 +10,12 @@ import type {
 /**
  * HAR 与原生 archive 共用的异步文件任务管理器。
  *
- * 有界保存运行中与最近完成的任务，按 jobId 关联进度、终态和取消，且公开快照绝不
+ * 保存全部运行中与完成任务，按 jobId 关联进度、终态和取消，且公开快照绝不
  * 泄漏绝对路径或 AbortController。HarService 与 ArchiveService 注入同一个实例，
  * 因此整个 Core 只存在一套任务基础设施，`transfer.job.get/cancel` 直接查询它。
  */
 export class TransferJobManager {
-  /** 有界保存运行中与最近完成的任务。 */
+  /** 保存当前 Core 代际创建的全部任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
 
   /**
@@ -62,7 +61,7 @@ export class TransferJobManager {
     }
   }
 
-  /** 校验 ID 唯一性、清理历史并建立初始 running 状态。 */
+  /** 校验 ID 唯一性并建立初始 running 状态。 */
   private create(
     jobId: string,
     kind: TransferJobSnapshot['kind'],
@@ -71,7 +70,6 @@ export class TransferJobManager {
     if (this.jobs.has(jobId)) {
       throw new Error('Transfer job ID is already active.');
     }
-    this.prune();
     const job: MutableTransferJob = {
       id: jobId,
       kind,
@@ -117,22 +115,6 @@ export class TransferJobManager {
       }
       job.completedAt ??= new Date().toISOString();
     }
-  }
-
-  /** 在达到容量上限时优先淘汰已结束任务，绝不丢弃运行中任务。 */
-  private prune(): void {
-    if (this.jobs.size < MAX_TRANSFER_JOBS) {
-      return;
-    }
-    for (const [jobId, job] of this.jobs) {
-      if (job.state !== 'running') {
-        this.jobs.delete(jobId);
-        if (this.jobs.size < MAX_TRANSFER_JOBS) {
-          return;
-        }
-      }
-    }
-    throw new Error('Too many transfers are active.');
   }
 
   /** 复制可公开字段，确保绝对路径和 AbortController 不进入 wire。 */

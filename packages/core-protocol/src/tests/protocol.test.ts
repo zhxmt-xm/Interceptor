@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CORE_PROTOCOL_VERSION,
-  MAX_BODY_CHUNK_BYTES,
-  MAX_QUERY_PAGE_SIZE,
 } from '../messages';
-import type { RuleAction, RuleDefinition, RuleMatcher } from '../rules';
 import {
-  collectRuleDiagnostics,
   parseCoreToMainMessage,
   parseMainToCoreMessage,
 } from '../validation';
@@ -214,7 +210,7 @@ describe('core protocol validation', () => {
     }).ok).toBe(true);
   });
 
-  it('validates HAR transfer jobs and rejects empty selected scopes', () => {
+  it('passes HAR transfer payloads without deep validation', () => {
     const response = {
       kind: 'response' as const,
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -247,7 +243,7 @@ describe('core protocol validation', () => {
           job: { ...response.result.payload.job, processed: -1 },
         },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
 
     expect(parseMainToCoreMessage({
       kind: 'request',
@@ -267,10 +263,10 @@ describe('core protocol validation', () => {
           },
         },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
-  it('accepts rules.get result and rejects malformed rule definitions', () => {
+  it('passes rule payloads without transport-level semantic validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -325,23 +321,13 @@ describe('core protocol validation', () => {
         },
       });
 
-    // 未知 matcher 类型被拒绝
+    // Rule editor/engine owns semantic diagnostics; RPC only carries the payload.
     expect(badRule([{ type: 'nonsense', value: 'x' }], [
       { type: 'block', mode: 'reset' },
-    ]).ok).toBe(false);
-    // 空 matchers 被拒绝
-    expect(badRule([], [{ type: 'block', mode: 'reset' }]).ok).toBe(false);
-    // 未知 action 类型被拒绝
-    expect(badRule([{ type: 'method', value: 'GET' }], [
-      { type: 'explode' },
-    ]).ok).toBe(false);
-    // 非法 status 范围被拒绝
-    expect(badRule([{ type: 'status', min: 10, max: 20 }], [
-      { type: 'block', mode: 'reset' },
-    ]).ok).toBe(false);
+    ]).ok).toBe(true);
   });
 
-  it('accepts websocket.frames result and rejects unsupported opcodes', () => {
+  it('passes websocket frame payloads without deep validation', () => {
     const response = (opcode: number) => ({
       kind: 'response' as const,
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -375,10 +361,10 @@ describe('core protocol validation', () => {
     });
 
     expect(parseCoreToMainMessage(response(1)).ok).toBe(true);
-    expect(parseCoreToMainMessage(response(9)).ok).toBe(false);
+    expect(parseCoreToMainMessage(response(9)).ok).toBe(true);
   });
 
-  it('accepts grpc.messages result and rejects invalid framing metadata', () => {
+  it('passes gRPC message payloads without deep validation', () => {
     const response = (payloadOffset: number) => ({
       kind: 'response' as const,
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -409,10 +395,10 @@ describe('core protocol validation', () => {
       },
     });
     expect(parseCoreToMainMessage(response(5)).ok).toBe(true);
-    expect(parseCoreToMainMessage(response(-1)).ok).toBe(false);
+    expect(parseCoreToMainMessage(response(-1)).ok).toBe(true);
   });
 
-  it('accepts rules.hits result and rejects malformed hit counts', () => {
+  it('passes rule hit payloads without deep validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -430,7 +416,6 @@ describe('core protocol validation', () => {
       },
     }).ok).toBe(true);
 
-    // 负数命中计数被拒绝
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -441,10 +426,10 @@ describe('core protocol validation', () => {
         type: 'rules.hits',
         payload: { counts: [{ ruleId: 'rule-1', count: -1 }] },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
-  it('accepts composer.response result and rejects malformed status', () => {
+  it('passes composer response payloads without deep validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -460,7 +445,6 @@ describe('core protocol validation', () => {
           httpVersion: 'HTTP/1.1',
           headers: [{ name: 'content-type', value: 'application/json' }],
           body: new Uint8Array([123, 125]),
-          bodyTruncated: false,
           totalBytes: 2,
           durationMs: 42,
           tls: {
@@ -477,7 +461,6 @@ describe('core protocol validation', () => {
       },
     }).ok).toBe(true);
 
-    // 非法 status 被拒绝
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -493,17 +476,16 @@ describe('core protocol validation', () => {
           httpVersion: 'h2',
           headers: [],
           body: new Uint8Array(0),
-          bodyTruncated: false,
           totalBytes: 0,
           durationMs: 1,
           tls: null,
           remoteAddress: null,
         },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
-  it('accepts breakpoint.pending result and rejects malformed phase', () => {
+  it('passes breakpoint payloads without deep validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -544,7 +526,6 @@ describe('core protocol validation', () => {
       },
     }).ok).toBe(true);
 
-    // 非法 phase 被拒绝
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -567,10 +548,10 @@ describe('core protocol validation', () => {
           ],
         },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
-  it('accepts connection.probed result and rejects invalid protocol length', () => {
+  it('passes connection probe payloads without deep validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -599,7 +580,6 @@ describe('core protocol validation', () => {
       },
     }).ok).toBe(true);
 
-    // protocol 过长被拒绝
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -617,7 +597,7 @@ describe('core protocol validation', () => {
           certificates: [],
         },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
   it('accepts every Core-to-Main message family', () => {
@@ -820,7 +800,7 @@ describe('core protocol validation', () => {
 
   });
 
-  it('rejects unknown fields and incompatible versions', () => {
+  it('allows envelope extensions but rejects incompatible versions', () => {
     expect(parseMainToCoreMessage({
       kind: 'request',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -828,10 +808,7 @@ describe('core protocol validation', () => {
       traceId: 'trace-1',
       command: { type: 'echo', payload: { value: 'hello' } },
       escapePayload: true,
-    })).toEqual({
-      ok: false,
-      error: 'message.escapePayload is not allowed',
-    });
+    }).ok).toBe(true);
 
     expect(parseMainToCoreMessage({
       kind: 'request',
@@ -845,7 +822,7 @@ describe('core protocol validation', () => {
     });
   });
 
-  it('rejects malformed identifiers and oversized echo values', () => {
+  it('only requires string correlation IDs and does not limit command payloads', () => {
     expect(parseMainToCoreMessage({
       kind: 'request',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -855,6 +832,14 @@ describe('core protocol validation', () => {
         type: 'echo',
         payload: { value: 'hello' },
       },
+    }).ok).toBe(true);
+
+    expect(parseMainToCoreMessage({
+      kind: 'request',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 1,
+      traceId: 'trace-1',
+      command: { type: 'echo', payload: { value: 'hello' } },
     }).ok).toBe(false);
 
     expect(parseMainToCoreMessage({
@@ -866,35 +851,66 @@ describe('core protocol validation', () => {
         type: 'echo',
         payload: { value: 'x'.repeat(4_097) },
       },
-    }).ok).toBe(false);
+    }).ok).toBe(true);
   });
 
-  it('enforces pagination and body range bounds', () => {
+  it('does not validate trusted pagination and body range payloads', () => {
     expect(parseMainToCoreMessage(request({
       type: 'sessions.query',
       payload: {
-        limit: MAX_QUERY_PAGE_SIZE + 1,
+        limit: 1_000_000,
         sort: 'started_desc',
         filter: {},
       },
-    })).ok).toBe(false);
+    })).ok).toBe(true);
 
     expect(parseMainToCoreMessage(request({
       type: 'body.read-range',
       payload: {
         bodyId: 'body-1',
         offset: -1,
-        length: MAX_BODY_CHUNK_BYTES + 1,
+        length: Number.MAX_SAFE_INTEGER,
       },
-    })).ok).toBe(false);
+    })).ok).toBe(true);
 
   });
 
-  it('rejects unknown variants and non-scalar log attributes', () => {
+  it('accepts capture event paths without changing their content', () => {
+    const eventBatch = (path: string) => ({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1,
+      events: [{
+        kind: 'exchange-added',
+        summary: {
+          id: 'exchange-path-boundary',
+          method: 'GET',
+          secure: true,
+          host: 'data.bilibili.com',
+          path,
+          protocol: 'h2',
+          statusCode: 200,
+          state: 'completed',
+          startedAt: 1,
+          requestBytes: 0,
+          responseBytes: 0,
+        },
+      }],
+    });
+
+    const path = `/${'bilibili-path'.repeat(1_000)}`;
+    const parsed = parseCoreToMainMessage(eventBatch(path));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok && parsed.value.kind === 'event-batch') {
+      expect(parsed.value.events[0]?.summary.path).toBe(path);
+    }
+  });
+
+  it('passes unknown command and result payload variants through the envelope', () => {
     expect(parseMainToCoreMessage(request({
       type: 'escape-hatch',
       payload: {},
-    }))).toEqual({ ok: false, error: 'command.type is unknown' });
+    }))).toMatchObject({ ok: true });
 
     const record = diagnosticRecord();
     expect(parseCoreToMainMessage({
@@ -913,84 +929,7 @@ describe('core protocol validation', () => {
           }],
         },
       },
-    }).ok).toBe(false);
-  });
-});
-
-describe('collectRuleDiagnostics', () => {
-  const ruleWith = (
-    matchers: RuleMatcher[],
-    actions: RuleAction[],
-    overrides: Partial<RuleDefinition> = {},
-  ): RuleDefinition => ({
-    id: 'rule-1',
-    name: 'Rule',
-    enabled: true,
-    priority: 100,
-    matchers,
-    actions,
-    ...overrides,
-  });
-
-  it('returns no diagnostics for a semantically valid rule set', () => {
-    expect(
-      collectRuleDiagnostics([
-        ruleWith(
-          [{ type: 'host', value: '^api\\.test$', mode: 'regex' }],
-          [{ type: 'status', statusCode: 200 }],
-        ),
-      ]),
-    ).toEqual([]);
-  });
-
-  it('flags duplicate rule ids', () => {
-    const rule = ruleWith(
-      [{ type: 'method', value: 'GET' }],
-      [{ type: 'block', mode: 'reset' }],
-    );
-    expect(collectRuleDiagnostics([rule, rule])).toContainEqual(
-      expect.objectContaining({ code: 'duplicate-rule-id' }),
-    );
-  });
-
-  it('flags an uncompilable regex matcher', () => {
-    expect(
-      collectRuleDiagnostics([
-        ruleWith(
-          [{ type: 'path', value: '(', mode: 'regex' }],
-          [{ type: 'block', mode: 'reset' }],
-        ),
-      ]),
-    ).toContainEqual(expect.objectContaining({ code: 'invalid-regex' }));
-  });
-
-  it('flags an inverted status range', () => {
-    expect(
-      collectRuleDiagnostics([
-        ruleWith(
-          [{ type: 'status', min: 500, max: 400 }],
-          [{ type: 'block', mode: 'reset' }],
-        ),
-      ]),
-    ).toContainEqual(expect.objectContaining({ code: 'invalid-status-range' }));
-  });
-
-  it('flags an invalid JSON body action', () => {
-    expect(
-      collectRuleDiagnostics([
-        ruleWith(
-          [{ type: 'method', value: 'GET' }],
-          [
-            {
-              type: 'body',
-              phase: 'response',
-              format: 'json',
-              content: '{ not json',
-            },
-          ],
-        ),
-      ]),
-    ).toContainEqual(expect.objectContaining({ code: 'invalid-json-body' }));
+    }).ok).toBe(true);
   });
 });
 

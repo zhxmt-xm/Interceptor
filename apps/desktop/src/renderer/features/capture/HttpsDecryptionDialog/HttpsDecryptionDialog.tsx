@@ -11,6 +11,7 @@ import styles from './HttpsDecryptionDialog.module.css';
 export interface HttpsDecryptionDialogProps {
   open: boolean;
   onClose: () => void;
+  onCertificateChange?: (certificate: CertificateInfo) => void;
   /** Close when the pointer goes down on the backdrop. Default true. */
   dismissOnOutsideClick?: boolean;
 }
@@ -19,6 +20,7 @@ export interface HttpsDecryptionDialogProps {
 export function HttpsDecryptionDialog({
   open,
   onClose,
+  onCertificateChange,
   dismissOnOutsideClick = true,
 }: HttpsDecryptionDialogProps): React.JSX.Element | null {
   const { t } = useTranslation();
@@ -36,6 +38,7 @@ export function HttpsDecryptionDialog({
       .then((next) => {
         if (active) {
           setCertificate(next);
+          onCertificateChange?.(next);
         }
       })
       .catch((reason: unknown) => {
@@ -46,7 +49,7 @@ export function HttpsDecryptionDialog({
     return () => {
       active = false;
     };
-  }, [open]);
+  }, [onCertificateChange, open]);
 
   const run = (operation: () => Promise<CertificateInfo>, close = false): void => {
     if (busy) {
@@ -57,6 +60,7 @@ export function HttpsDecryptionDialog({
     void operation()
       .then((next) => {
         setCertificate(next);
+        onCertificateChange?.(next);
         if (close) {
           onClose();
         }
@@ -223,7 +227,7 @@ function SetupStep({
   );
 }
 
-/** Convert unknown IPC failures into bounded dialog text. */
+/** Convert unknown IPC failures into complete dialog text. */
 function describeError(reason: unknown): string {
-  return (reason instanceof Error ? reason.message : String(reason)).slice(0, 512);
+  return reason instanceof Error ? reason.message : String(reason);
 }

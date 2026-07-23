@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-22
+> 最后更新：2026-07-23
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取 `archived/`。
 
 ## 新 Session / Agent 必读
@@ -22,23 +22,23 @@
 - **Transfer 简化边界**：import/export 到达 Core 后直接读取当前 Store；全屏 Loading 阻止正常 UI 操作并只保留 Cancel。无 Body lease/generation/barrier，无 Core action 门禁。
 - **Stop 语义**：Stop 只暂停记录（`proxy.setRecording{false}`）——Mockttp/WebSocket listener 与系统代理保持运行、流量继续转发、已有记录保留，暂停期间新连接不落库；Start 恢复 `recording=true` 并继续追加；系统代理只在应用退出与紧急修复时恢复；Clear 才删除记录和 spill；Core 重启释放临时数据。
 - **Capture 后续增强已完成**：默认进入 Capture 后等待 Core 并启动 8888 loopback Recording；系统代理由 readiness 弹层要求用户显式 Enable。HTTPS 默认 passthrough，只记录有限 Tunnel metadata，用户从 Tunnel 面板显式执行 CA/Trust/Start decrypting。first-run 代码与设计资产已删除。
-- **Proxy readiness 已改为显式授权**：自动 Capture bootstrap、手动 Start 与 Core 重启均先启动 listener，再检查系统代理；未 ready 时 UI 必须是 Paused / Not recording 并弹 `Proxy not ready`，只有用户点击 Enable 且 listener+routing ready 后才显示 Recording，或进入 Settings → Proxy & Listener。失败保留有界错误，不循环静默写系统设置。
+- **Proxy readiness 已改为显式授权**：自动 Capture bootstrap、手动 Start 与 Core 重启均先启动 listener，再检查系统代理；未 ready 时 UI 必须是 Paused / Not recording 并弹 `Proxy not ready`，只有用户点击 Enable 且 listener+routing ready 后才显示 Recording，或进入 Settings → Proxy & Listener。错误文本完整保留，不循环静默写系统设置。
 - **自有窗口 Chrome**：跨平台 `frame:false`，自有顶栏可拖拽并提供 Minimize / Maximize-or-restore / Close；Close 走窄 IPC → `app.quit()`，继续执行系统代理恢复与 Core shutdown。
 - **Header V2 已一对一落地并成为唯一设计**：`design/app` 与 React Renderer 只使用 Shell V2；旧 `layout=current` / `data-layout` 分支、六组 feature `.tv` 顶栏和 Layout 切换器已删除。保留全高侧栏，右侧依次为 46px Window Header、feature 内容工作栏、主体和 30px 状态栏。Capture 使用 54px `CaptureWorkbar`，内容命令行统一 40px、图标按钮统一 30×30px/15px icon/3px gap；Detail 全白且 Request 摘要为 40px 白色均匀阴影 box；所有 workspace 共用 1px splitter + 4×40px 共轴 grip。Window Header 只保留折叠按钮、feature 名称和窗口控制，业务命令与状态分别进入内容工具栏和底栏。
 - **Renderer 壳与编辑交互已简化**：`App.tsx` 直接拥有 Sidebar/Header/Main/Footer Grid，原 `AppShell` 转发层已删除；Diagnostics 仍只在当前视图通过条件 `DiagnosticsProvider` 挂载。Capture Omnibox 过滤精简为 Method/Status 两项级联多选（可选值取自当前请求列表、逗号分隔、溢出省略号+Tooltip），并配 Clear 清空与无数据禁用；Detail 改为点击行展开/收起、摘要 box 外提供 Close；录制与异步操作使用 spinner loading（录制只替换 icon 不改文字以避免闪烁），图标按钮统一 antd Tooltip、禁用态显示原因提示。Rules 可创建全部八种 matcher，并通过 More 菜单或 grip 拖放调整真实执行优先级。
 - **Modal 以设计稿为准**：HAR/Archive、HTTPS Setup、Proxy readiness 保持设计内容宽度 `512/560/500px`；Ant v6 只作为交互底座，通过官方 `styles.container/body` 清除默认 content padding、应用设计边框和 `1.23` 行高，不允许反向缩窄设计稿迁就 Ant 默认值。三类 Modal 已移除弃用的 `maskClosable`，改用 `mask.closable`。
 - **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。
-- **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整 659-key catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl` 日期/数字/字节/时长和 Main 原生 HAR/archive/Diagnostics 文件对话框同步切换；俄/波/乌 CLDR 多复数已覆盖。设计 SPA 只保留当前 Theme flyout 与 Language list，旧 Theme B/C/D、Language L2/L3 和专用截图脚本已删除。
+- **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl`格式和Main原生文件对话框同步切换；俄/波/乌CLDR多复数已覆盖。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
-- **M13下载安全边界**：Main严格校验SemVer、draft/prerelease、仓库URL/tag/asset basename、平台扩展名、显式架构、1GiB上限、声明size和强制GitHub SHA-256；随机`.part`写入`<userData>/updates/downloads`、sync后原子rename。Renderer永远拿不到URL/path。
+- **M13下载安全边界**：Main校验SemVer、draft/prerelease、仓库URL/tag/asset basename、平台扩展名、显式架构、声明size和GitHub SHA-256；不设metadata/changelog/installer大小上限。Renderer永远拿不到URL/path。
 - **M13 UI/Contract**：Preload仅新增`getUpdateStatus/checkForUpdates/downloadUpdate/openDownloadedUpdate/onUpdateStatusChange`；Settings与顶部通知覆盖checking/available/downloading/downloaded/up-to-date/failed/unsupported七态，changelog不执行远程markup。
 - **M12 发布加固已完成**：Desktop 0.1.0；Windows x64 per-user MSI完整lifecycle已实测；macOS ad-hoc/Developer ID/notarize与DMG+ZIP配置/原生smoke已落地；固定SHA release workflow在tag构建后发布MSI/DMG/ZIP并生成GitHub changelog。
 - **Package 安全已收紧**：Renderer 使用固定 `interceptor://app`；file extra privileges 关闭；Electron 43 九项 Fuse strict 锁定；Main/Preload/Core release 0 maps；artifact audit 拒绝 source/env/test 泄漏并校验签名策略。
 - **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、Proxy Settings 与 emergency repair 均已落地。后续已删除 first-run，改由 Capture bootstrap 启动 Recording/接管代理；四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
-- **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；Main 有界队列覆盖 CoreRuntime、IPC、证书/信任/TLS，Renderer 只有固定未捕获错误上报；查询/UI/JSONL 支持 process 来源并统一脱敏。
+- **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；内存、待写队列和SQLite不按数量/字节/时长淘汰，Core断开期间Main保留并在恢复后续传；查询/UI/JSONL支持process来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
-  - **原生 archive（M14 当前实现）**：`ArchiveService` 导出版本化 ZIP（manifest + 兼容 `capture.sqlite` snapshot + Body）；每个导入/导出任务单独启动 `archive/host/entry.ts` + `archive/worker/entry.ts`，按100条批次读写 snapshot，完成/取消/失败即退出。不可信 ZIP 的路径/大小/hash/压缩比/CRC/内容寻址校验保持不变，失败/取消回滚隔离 Session。
-  - **HAR Core**：`har/entry.ts` 直接定义 `HarService`，完成标准 HAR 1.2 导出、受限 inert JSON 导入、正文 Blob 读写、失败/取消回滚；压缩 Response 导出前按 gzip/deflate/br 解码，HAR `bodySize`/`content.size`/`compression` 保持标准语义。文件上限 256 MiB、100,000 entries、1,000 headers/entry、64 MiB/body，只接受 http/https/ws/wss。导入不执行脚本、插件或远程内容。
+  - **原生 archive（M14 当前实现）**：`ArchiveService` 导出版本化 ZIP；按批次读写snapshot但不设文件、entry、解压总量或压缩比上限，保留格式、路径、CRC、size、hash与SQLite完整性检查。当前不支持ZIP64。
+  - **HAR Core**：`HarService` 完成标准 HAR 1.2 导入导出；不限制文件、entries、headers、URL或body大小/数量，只保留HAR结构、base64和可映射网络scheme检查，不执行脚本、插件或远程内容。
   - **异步 transfer job**：`har.export.start`/`har.import.start`/`transfer.job.get/cancel`；公开快照只含 basename/进度/状态/警告。Main 用系统 save/open dialog 持有真实路径，Renderer 没有文件系统 API。
   - **Capture 文件 UI**：顶栏删除无行为 Info/Settings/More，改为 Import/Export 菜单：`Import HAR` / `Export HAR` 用于跨工具交换，`Open Capture` / `Save Capture` 用于 Interceptor 全保真恢复。四种命令各自进入单一动作弹层；HAR Export 保留 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。15 种语言已同步；Export 菜单 parity 0 missing/flagged、几何差 0 px。
   - **Core 目录规范化**：业务根所有者直接位于 `entry.ts`；类型进 `interfaces/index.ts`、纯函数进 `utils/index.ts`，一文件一个 class。真实 worker bundles 现为按需 `archive/worker/entry.cjs` 与持续 `diagnostics/worker/entry.cjs`；Storage 无 host/worker 子目录。
@@ -48,7 +48,7 @@
   - **测试架构**：Desktop tests 现在分为三层：`tests/e2e-workflow-tests/`（local production `_electron.launch()`，基础设施已完成但 workflow 为0）、`tests/packaged-smoke/`（真实 exe/CDP 的现有综合 smoke，尚未复用 workflow contract）与 `tests/visual-parity/`（测试目录内完整 fake Preload + 正常 UI 交互）。业务 Renderer 无 parity fixture/DEV setter；local 与 packaged 的目标 workflow 都禁止直接调用 `window.interceptor` 完成业务 arrange/act。
 - **M6 HTTP/2 已交付**：Proxy Core 在 MITM 时启用 Mockttp `http2:true`，采集 trailer/pseudo-header 并按 kind 落库；`proxy/utils/index.ts` 提供 gzip/deflate/brotli 延迟解码，`body.read-range` 由 Core 解压并回传 `decodeStatus`。**已知限制**：streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露。
 - **M5 CA 与 HTTPS MITM 已交付**：Main 用 `@peculiar/x509` 生成 RSA/SHA-256 Root CA、Electron `safeStorage`（DPAPI/Keychain）加密私钥存 `<userData>/certificates/`（**证书库懒加载**避免阻塞 Main/CDP 启动）；`TrustStoreService` 做 **local-machine 信任库**安装/卸载/检测（`@vscode/sudo-prompt` 提权 certutil/security）；CA 经内部 `tls.configure` 单向下发 Core，Core 用 Mockttp `getLocal({https})` 对 CONNECT 做 MITM（**仅信任且 `mitmEnabled` 开启时启用**，信任与 MITM 解耦）解密 HTTPS 复用现有捕获管线；per-host 不安全例外（`ignoreHostHttpsErrors`）；Settings/Certificates 面板接真实数据（含 reveal/view/系统证书管理器/delete 入口）。**私钥绝不进 Renderer/日志/导出。** 详见 [archived/M5.md](archived/M5.md) 后续增强。
-- **M3 最小显式代理已交付**：`proxy/entry.ts` 的 `ProxyService` 基于 Mockttp loopback 显式代理，规范 Exchange 写入 `StorageService`；实时事件经 `proxy/proxy-capture-event-queue.ts` 有界合并 + 窗口背压推送。真正零内存流式正文仍是后续优化。
+- **M3 最小显式代理已交付**：`ProxyService` 基于Mockttp loopback显式代理；实时事件经无淘汰合并队列+窗口背压推送。正文无单体/总量配额，超过1MiB自动spill。
 - **M4 会话列表 UI 已交付**：Capture 工作区数据驱动——TanStack Virtual 虚拟化列表 + Zustand 轻量 summary 状态、当前 Session 过滤、实时前插滚动补偿、feature 往返状态保持；按需 `sessions.detail` + `body.read-range` 驱动 Inspector（完整 cookies、真实 Timing、Auto/Text/JSON/Hex）。body/header 不入全局状态。
 - **窄 API 已扩展**：M10新增HAR/archive/Diagnostics；M11新增系统代理意图；M13新增GitHub Release状态/检查/下载/打开已下载文件。Preload仍不暴露通用日志、helper、snapshot、URL、path/readFile/writeFile，packaged smoke apiKeys已同步。
 - **Mockttp/ws 打包方案已落地并验证**：esbuild `--external:mockttp --external:ws` + `scripts/ship-core-deps.mjs` 随包发布依赖闭包；`ws` 内联会阻塞首代 UtilityProcess entry，external 后最终 package 首代 Core 正常 ready/heartbeat。
@@ -63,13 +63,13 @@
 
 - npm workspaces、严格 TypeScript、Forge/Vite Main/Preload/Renderer 三入口。
 - 安全 BrowserWindow、严格 CSP、可信 Renderer reload、窄 Preload API 和 Electron Fuses。
-- 独立 UtilityProcess Proxy Core 与 CoreRuntime 生命周期、heartbeat 卡死检测、重启和关闭。
+- 独立UtilityProcess Proxy Core与CoreRuntime生命周期；heartbeat仅观测，自动重启只由启动无ready、真实异常退出或真实MessagePort关闭触发。
 - 模块化 Ant Design v6 Renderer：App shell、六个 feature workspace、Inspector、四套时段主题（light/warm/dark/ember）+ 侧栏主题/语言切换器和扁平共享组件库。
 - SVG/PNG/ICO/ICNS 应用图标及可重复生成脚本。
 - Vitest 单测、真实 packaged executable 的 Playwright CDP smoke、package 与生产依赖审计流程。
 - M0 详细实现、排障和验证历史已迁入 [archived/M0.md](archived/M0.md)。
 - Main/Core 专用 MessagePort、TypeScript runtime schema、request correlation、timeout/cancel 和 CoreProcess restart recovery。
-- Core 结构化 Command/Action Trace、有界 Ring Buffer、敏感字段脱敏和 stdout/stderr 后备。
+- Core 结构化 Command/Action Trace、完整内存/持久记录、敏感字段脱敏和 stdout/stderr 后备。
 - 窄 Renderer API：CoreProcess 状态、M1 echo 和脱敏 Trace 查询；无通用 IPC、MessagePort 或 Node 暴露。
 - **M2 存储层**：`node:sqlite` + `worker_threads` 的 Capture/Diagnostics 双库、内容寻址 Blob Store、keyset 分页查询、Storage 状态/清空窄 API 与 Storage 设置面板；代码位于 `apps/proxy-core/src/proxy-core/{storage,diagnostics}/`，协议扩展在 `packages/core-protocol/src/{messages,validation}.ts`，桌面接线在 `shared/desktop-api.ts`、`preload/preload.ts`、`main/main.ts`、`main/utils/renderer-utils.ts`、`features/settings/`。详见 [archived/M2.md](archived/M2.md) 的实施记录。
 
@@ -101,8 +101,8 @@
 | 更新服务测试 | `apps/desktop/src/main/updates/tests/github-release-update-service.test.ts` | Windows MSI/macOS DMG、哈希/截断/外域/tag/架构/目录失败/旧文件清理/开发态/轮询12项 |
 | Core application | `apps/proxy-core/src/proxy-core/core-application.ts` | 子进程根对象；拥有 ready/heartbeat/shutdown/signal、RPC、Diagnostics 和后续 Storage/Proxy Service |
 | Core executable entry | `apps/proxy-core/src/proxy-core/entry.cts` | 只解析 UtilityProcess parentPort 并启动 CoreApplication；bundle 为 `entry.cjs` |
-| Core RPC server | `apps/proxy-core/src/proxy-core/core-rpc-server.ts` | runtime validation、request/cancel、response、connection replacement |
-| Core diagnostics | `apps/proxy-core/src/proxy-core/core-diagnostics.ts` | AsyncLocalStorage Trace、Action、三重上限、脱敏和 sink fallback |
+| Core RPC server | `apps/proxy-core/src/proxy-core/core-rpc-server.ts` | 信封/version/关联、request/cancel、response、connection replacement |
+| Core diagnostics | `apps/proxy-core/src/proxy-core/core-diagnostics.ts` | AsyncLocalStorage Trace、Action、完整记录、脱敏和 sink fallback |
 
 ### Preload 与共享契约
 
@@ -188,9 +188,9 @@
 - Main 不搬运未来请求/响应正文；正文数据路径保持在 Core/Storage。
 - Protocol 字段不可直接复用 React state、Ant Design props、Electron event、Mockttp 运行时对象或数据库 row。
 - 分页使用有限 metadata + opaque keyset cursor；Body 使用有限 range/chunk；大列表和完整 Body 不通过单条消息传输。
-- 日志必须非阻塞、有界和脱敏；M1 不提前实现日志数据库，M2/T2.5 才引入 Diagnostics Worker 与独立 `diagnostics.sqlite`。
+- 日志必须非阻塞并脱敏；不得因队列、记录数、字节或保留期淘汰。
 - Capture SQLite 与 `diagnostics.sqlite` 必须使用独立 Worker/Writer；日志失败不得阻塞或回滚 Capture 写入。
-- M2 实现真实 `sessions.query`、Body range 等 handler 时，继续遵守协议上限、opaque keyset cursor 和结构化错误，不添加通用 Command 逃生口。
+- `sessions.query`、Body range等handler使用typed payload与opaque keyset cursor；Protocol只校验信封/version/关联字段，数据或请求错误不能改变连接与进程状态。
 
 ## 已知风险
 
@@ -209,7 +209,7 @@
 - `npm run typecheck`：通过，Desktop、Proxy Core、Protocol 三个 workspace 均无错误。
 - `npm run test:unit`：通过，82 tests（Desktop 21、Proxy Core 55、Core Protocol 6）；Proxy Core 覆盖 capture/blob/diagnostics store、Storage/Diagnostics Worker host（假通道）、真实 worker 线程集成和 10 万行 keyset 分页稳定性。
 - `npm run package`：通过，生成 Windows x64 `Interceptor` package；`proxy-core` esbuild 多入口输出 `entry.cjs` + `storage/storage-worker.cjs` + `diagnostics/diagnostics-worker.cjs`，Forge `extraResource` 递归复制。
-- `npm run test:smoke --workspace @interceptor/desktop`：通过；真实最终 exe 覆盖 Renderer 隔离、6 项窄 API、`running` CoreProcess、echo、完整 Trace、CoreProcess 强杀重启，并端到端验证存储栈——`getStorageStatus` 返回真实计数与 `databaseBytes`/`quotaBytes`（真实 Storage Worker 用 `node:sqlite` 落盘 `capture.sqlite`），`clearStorage` 正常，主题与退出清理正常。
+- `npm run test:smoke --workspace @interceptor/desktop`：历史验证通过；当前`getStorageStatus`返回真实计数与临时正文用量，不含quota；Capture database bytes为0，`clearStorage`正常。
 - `npm audit --omit=dev`：通过，0 vulnerabilities（M2 未新增生产依赖，全部用 `node:sqlite`/`worker_threads` 等内置模块）。
 - `git diff --check`：通过。
 

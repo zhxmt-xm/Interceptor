@@ -122,17 +122,4 @@ export interface RuleHitCount {
   readonly ruleId: string;
   readonly count: number;
 }
-
-/** 规则集资源上限（wire 校验与编译护栏）。 */
-export const MAX_RULES = 500;
-export const MAX_MATCHERS_PER_RULE = 32;
-export const MAX_ACTIONS_PER_RULE = 32;
-export const MAX_RULE_NAME_LENGTH = 256;
-export const MAX_RULE_ID_LENGTH = 128;
-export const MAX_RULE_STRING_LENGTH = 4_096;
-export const MAX_RULE_BODY_LENGTH = 1_048_576;
-export const DEFAULT_RULE_PRIORITY = 100;
-export const DEFAULT_BREAKPOINT_TIMEOUT_MS = 30_000;
-export const MAX_RULE_DELAY_MS = 300_000;
-export const MIN_RULE_THROTTLE_BPS = 1;
-export const MAX_RULE_THROTTLE_BPS = 1_000_000_000;
+/** 规则 payload 不在 Core Protocol 传输层施加资源上限。 */

@@ -16,7 +16,6 @@ import type {
 import { RuleActionExecutor } from './rule-action-executor';
 import { BreakpointQueue } from './rule-breakpoint-queue';
 import type {
-  ActionExecutorOptions,
   BreakpointOutcome,
   BreakpointSnapshot,
   CompiledRule,
@@ -48,17 +47,14 @@ export class RuleEngine {
   /** 请求与响应 action 执行器。 */
   private readonly actionExecutor: RuleActionExecutor;
 
-  /** 绑定断点队列并固定 action/通知配置。 */
+  /** 绑定断点队列并固定通知配置。 */
   constructor(
     breakpoints: BreakpointQueue,
     options: RuleEngineOptions = {},
   ) {
     this.breakpoints = breakpoints;
     this.options = options;
-    const executorOptions: ActionExecutorOptions = {
-      mapLocalRoots: options.mapLocalRoots,
-    };
-    this.actionExecutor = new RuleActionExecutor(executorOptions);
+    this.actionExecutor = new RuleActionExecutor();
   }
 
   /**
@@ -100,7 +96,7 @@ export class RuleEngine {
   /** 显式 WebSocket 消息断点；由 Proxy bridge 在转发消息前调用。 */
   async pauseWebSocketMessage(
     snapshot: BreakpointSnapshot,
-    timeoutMs = 30_000,
+    timeoutMs = 0,
   ): Promise<BreakpointOutcome> {
     if (!this.breakpointsOn) {
       return { state: 'continued' };

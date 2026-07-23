@@ -112,7 +112,6 @@ class FakeHarStorage implements HarStorage {
       databaseBytes: 0,
       blobBytes: 0,
       totalBytes: 0,
-      quotaBytes: 0,
     });
   }
 

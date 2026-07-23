@@ -1,16 +1,15 @@
 import * as tls from 'node:tls';
 
-import { DEFAULT_TIMEOUT_MS } from './connection-constants';
 import type { ConnectionProbeResult } from './interfaces';
 import * as ConnectionUtils from './utils';
 
 /** 对目标建立只握手 TLS 连接并返回协议、套件、ALPN 与证书链。 */
 export class ConnectionService {
-  /** 发起一次有界 TLS 探测；允许不可信证书但如实返回授权状态。 */
+  /** 发起一次 TLS 探测；仅在调用方显式提供 timeout 时设置期限。 */
   probe(
     host: string,
     port: number,
-    timeoutMs = DEFAULT_TIMEOUT_MS,
+    timeoutMs?: number,
   ): Promise<ConnectionProbeResult> {
     return new Promise((resolve) => {
       let settled = false;
@@ -29,7 +28,7 @@ export class ConnectionService {
           servername: host,
           ALPNProtocols: ['h2', 'http/1.1'],
           rejectUnauthorized: false,
-          timeout: timeoutMs,
+          ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
         },
         () => {
           finish({

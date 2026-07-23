@@ -284,5 +284,5 @@ function proxyTitleStatus(status: SystemProxyStatus): {
 /** Convert unknown IPC failures to bounded operation feedback. */
 function describeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return message.slice(0, 512);
+  return message;
 }

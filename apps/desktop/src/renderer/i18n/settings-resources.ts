@@ -67,8 +67,6 @@ export const settingsEnglishMessages = {
   'settings.unavailable': 'Unavailable',
   'settings.totalOnDisk': 'Total on disk',
   'settings.totalOnDiskHint': 'Capture database and response bodies',
-  'settings.quota': 'Quota',
-  'settings.quotaHint': 'Maximum local storage before new bodies are omitted',
   'settings.captureDatabase': 'Capture database',
   'settings.responseBodies': 'Response bodies',
   'settings.contents': 'Contents',

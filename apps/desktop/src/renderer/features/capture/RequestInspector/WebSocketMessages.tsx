@@ -13,6 +13,7 @@ import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
 import { useWebSocketFrames } from './useWebSocketFrames';
 import styles from './WebSocketMessages.module.css';
+import { readCompleteBody } from '../data/readCompleteBody';
 
 const ROW_HEIGHT = 38;
 type DirectionFilter = 'all' | 'sent' | 'received';
@@ -228,11 +229,10 @@ function FramePreview({ frame }: { frame: WebSocketFrameSummary }): React.JSX.El
       return;
     }
     let active = true;
-    void api
-      .readBody(hash, 0, Math.min(frame.payload?.encodedSize ?? 160, 160))
+    void readCompleteBody(hash, 0, frame.payload?.encodedSize ?? 0)
       .then((chunk) => {
         if (active) {
-          apply(chunk.data);
+          apply(chunk.bytes);
         }
       })
       .catch(() => undefined);
@@ -255,12 +255,11 @@ function copyPayload(frame: WebSocketFrameSummary): void {
   if (!frame.payload?.bodyHash) {
     return;
   }
-  void window.interceptor
-    .readBody(frame.payload.bodyHash, 0, Math.min(frame.payload.encodedSize, 256 * 1024))
+  void readCompleteBody(frame.payload.bodyHash, 0, frame.payload.encodedSize)
     .then((chunk) => {
       const text = frame.opcode === 1
-        ? new TextDecoder().decode(chunk.data)
-        : Array.from(chunk.data, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
+        ? new TextDecoder().decode(chunk.bytes)
+        : Array.from(chunk.bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
       return navigator.clipboard.writeText(text);
     });
 }

@@ -151,6 +151,7 @@ for (const view of views) {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
     freshProfile: view.freshProfile === true,
+    mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     proxyReady: view.proxyReady !== false,
   });

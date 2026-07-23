@@ -7,10 +7,16 @@ export interface StatusBadgeProps {
   children: ReactNode;
   tone?: 'green' | 'yellow' | 'red' | 'info';
   className?: string;
+  parityId?: string;
 }
 
 /** Rounded status badge with a leading dot (e.g. 200 OK, 404, 500, Enabled). */
-export function StatusBadge({ children, tone = 'green', className }: StatusBadgeProps): React.JSX.Element {
+export function StatusBadge({
+  children,
+  tone = 'green',
+  className,
+  parityId,
+}: StatusBadgeProps): React.JSX.Element {
   return (
     <span
       className={cx(
@@ -20,6 +26,7 @@ export function StatusBadge({ children, tone = 'green', className }: StatusBadge
         tone === 'info' && styles.info,
         className,
       )}
+      data-parity={parityId}
     >
       <span className={styles.dot} />
       {children}

@@ -93,6 +93,8 @@ const sessions = [
   },
   summary({ id: 'http-7', host: 'api.github.com', path: '/repos/acme/app/hooks/1', protocol: 'h2', statusCode: 204, responseBytes: 0, durationMs: 77, method: 'DELETE' }),
   summary({ id: 'http-8', host: 'api.internal.local', path: '/v2/report', protocol: 'h2', statusCode: 500, responseMime: 'application/json', responseBytes: 512, durationMs: 1_200 }),
+  summary({ id: 'http-9', host: 'assets.example.com', path: '/app.css', protocol: 'h2', statusCode: 200, responseMime: 'text/css', responseBytes: 8_240, durationMs: 64 }),
+  summary({ id: 'http-10', host: 'telemetry.example.com', path: '/v1/events', protocol: 'h2', statusCode: 202, responseMime: 'application/json', responseBytes: 32, durationMs: 91, method: 'POST' }),
 ];
 sessions.forEach((session, index) => {
   session.startedAt = startedAt + index * 1_000;
@@ -387,7 +389,6 @@ export const fakeInterceptorFixture = {
     databaseBytes: 2_359_296,
     blobBytes: 18_874_368,
     totalBytes: 21_233_664,
-    quotaBytes: 536_870_912,
   },
   update: {
     supported: true,
@@ -408,7 +409,6 @@ export const fakeInterceptorFixture = {
     httpVersion: 'h2',
     headers: [{ name: 'content-type', value: 'application/json' }],
     body: Array.from(new TextEncoder().encode('{"id":843102775,"name":"interceptor","full_name":"acme/interceptor","private":true}')),
-    bodyTruncated: false,
     totalBytes: 1_229,
     durationMs: 142,
     tls: {
@@ -429,6 +429,7 @@ export function installFakeInterceptor({
   fixture,
   theme,
   freshProfile = false,
+  mitmActive = true,
   updateState = 'unsupported',
   proxyReady = true,
 }) {
@@ -460,7 +461,7 @@ export function installFakeInterceptor({
         expiresAt: null,
         path: null,
       }
-    : { ...fixture.certificate };
+    : { ...fixture.certificate, mitmEnabled: mitmActive };
   let websocketBreakpointsEnabled = fixture.capture.websocketBreakpointsEnabled;
   let ruleRevision = fixture.rules.revision;
   let currentRules = fixture.rules.rules;

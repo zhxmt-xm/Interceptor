@@ -295,7 +295,6 @@ describe('CoreApplication', () => {
           databaseBytes: 4_096,
           blobBytes: 0,
           totalBytes: 4_096,
-          quotaBytes: 1_000_000,
         });
       },
       cleanup: (scope: CleanupScope) => {
@@ -308,7 +307,6 @@ describe('CoreApplication', () => {
           databaseBytes: 4_096,
           blobBytes: 0,
           totalBytes: 4_096,
-          quotaBytes: 1_000_000,
         });
       },
       getExchangeDetail: (exchangeId: string) => {

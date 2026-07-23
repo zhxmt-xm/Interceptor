@@ -14,6 +14,7 @@ import { sizeLabel } from '../utils';
 import { BodyView } from './BodyView';
 import { useGrpcMessages } from './useGrpcMessages';
 import styles from './GrpcMessages.module.css';
+import { readCompleteBody } from '../data/readCompleteBody';
 
 const ROW_HEIGHT = 38;
 
@@ -271,7 +272,6 @@ function MessagePayload({
         }}
         compact
         offset={message.payloadOffset}
-        previewLimit={48}
       />
     </div>
   );
@@ -282,12 +282,11 @@ function copyPayload(
   message: GrpcMessageSummary,
   asText: boolean | undefined,
 ): void {
-  void window.interceptor
-    .readBody(bodyHash, message.payloadOffset, Math.min(message.payloadLength, 256 * 1024))
+  void readCompleteBody(bodyHash, message.payloadOffset, message.payloadLength)
     .then((chunk) => {
       const value = asText
-        ? new TextDecoder().decode(chunk.data)
-        : Array.from(chunk.data, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
+        ? new TextDecoder().decode(chunk.bytes)
+        : Array.from(chunk.bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
       return navigator.clipboard.writeText(value);
     });
 }

@@ -8,6 +8,10 @@ import tls from 'node:tls';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
+import {
+  CORE_PROTOCOL_VERSION,
+  parseCoreToMainMessage,
+} from '@interceptor/core-protocol';
 
 import { initializeRuntime } from '../../constants';
 import { StorageService } from '../../storage/entry';
@@ -213,6 +217,59 @@ describe(
 
         const usage = await storage.status();
         expect(usage.exchangeCount).toBe(1);
+      } finally {
+        await origin.close();
+      }
+    });
+
+    it('preserves a long URL path across events, pages, and detail', async () => {
+      dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-long-path-'));
+      initializeRuntime([`--data-dir=${dataDir}`]);
+      storage = new StorageService();
+      await storage.initialize();
+      const events = new CaptureEventQueue();
+      proxy = new ProxyService(storage, events);
+      const address = await proxy.start();
+      const origin = await startOrigin();
+      const longPath = `/${'segment'.repeat(320)}`;
+
+      try {
+        await expect(proxiedGet(
+          address,
+          `http://127.0.0.1:${origin.port}${longPath}`,
+        )).resolves.toBe(200);
+        await expect.poll(async () => {
+          const page = await storage!.querySessions({
+            limit: 10,
+            sort: 'started_desc',
+            filter: {},
+          });
+          return page.items[0];
+        }).toMatchObject({ statusCode: 200 });
+
+        const page = await storage.querySessions({
+          limit: 10,
+          sort: 'started_desc',
+          filter: {},
+        });
+        const summary = page.items[0];
+        const detail = summary
+          ? await storage.getExchangeDetail(summary.id)
+          : null;
+        const batch = events.drain(10).map(({ kind, summary: eventSummary }) => ({
+          kind,
+          summary: eventSummary,
+        }));
+
+        expect(summary?.path).toBe(longPath);
+        expect(detail?.summary.path).toBe(longPath);
+        expect(detail?.url).toBe(`http://127.0.0.1:${origin.port}${longPath}`);
+        expect(parseCoreToMainMessage({
+          kind: 'event-batch',
+          protocolVersion: CORE_PROTOCOL_VERSION,
+          batchSequence: 1,
+          events: batch,
+        }).ok).toBe(true);
       } finally {
         await origin.close();
       }

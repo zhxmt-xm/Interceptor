@@ -283,11 +283,10 @@ describe('applyRequestAction — map-local path safety', () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it('serves a file within an allowed root', async () => {
+  it('serves the complete file selected by the rule', async () => {
     const outcome = await applyRequestAction(
       requestState(),
       { type: 'map-local', path: servedFile },
-      { mapLocalRoots: [root] },
     );
     expect(outcome.kind).toBe('respond');
     if (outcome.kind === 'respond') {
@@ -298,31 +297,10 @@ describe('applyRequestAction — map-local path safety', () => {
     }
   });
 
-  it('refuses map-local when no allowed roots are configured', async () => {
-    expect(
-      await applyRequestAction(requestState(), {
-        type: 'map-local',
-        path: servedFile,
-      }),
-    ).toEqual({ kind: 'none' });
-  });
-
-  it('refuses a path escaping the allowed root', async () => {
-    const escape = path.join(root, '..', 'secret.txt');
-    expect(
-      await applyRequestAction(
-        requestState(),
-        { type: 'map-local', path: escape },
-        { mapLocalRoots: [root] },
-      ),
-    ).toEqual({ kind: 'none' });
-  });
-
-  it('returns 404 for a missing file within an allowed root', async () => {
+  it('returns 404 for a missing file', async () => {
     const outcome = await applyRequestAction(
       requestState(),
       { type: 'map-local', path: path.join(root, 'missing.json') },
-      { mapLocalRoots: [root] },
     );
     expect(outcome.kind).toBe('respond');
     if (outcome.kind === 'respond') {

@@ -223,7 +223,6 @@ export interface StorageStatusReport {
   readonly databaseBytes: number;
   readonly blobBytes: number;
   readonly totalBytes: number;
-  readonly quotaBytes: number;
 }
 
 export interface BlobWriteResult {

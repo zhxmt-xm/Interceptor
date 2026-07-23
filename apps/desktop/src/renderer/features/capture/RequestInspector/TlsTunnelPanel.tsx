@@ -2,11 +2,12 @@ import { Check, LockKeyhole, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Button, SectionHeader } from '../../../components';
+import { Button, SectionHeader, StatusBadge } from '../../../components';
 import styles from './TlsTunnelPanel.module.css';
 
 export interface TlsTunnelPanelProps {
   host: string;
+  mitmActive: boolean;
   port: number;
   open: boolean;
   onSetupHttps: () => void;
@@ -15,6 +16,7 @@ export interface TlsTunnelPanelProps {
 /** Limited connection metadata for HTTPS that is forwarded without MITM decryption. */
 export function TlsTunnelPanel({
   host,
+  mitmActive,
   port,
   open,
   onSetupHttps,
@@ -28,14 +30,18 @@ export function TlsTunnelPanel({
           <b>{t('capture.httpsEncrypted')}</b>
           <span>{t('capture.httpsPassthroughDescription')}</span>
         </span>
-        <Button
-          icon={Shield}
-          variant="primary"
-          onClick={onSetupHttps}
-          automationId={AUTOMATION_IDS.capture.inspector.setupHttps}
-        >
-          {t('settings.decryptHttps')}
-        </Button>
+        {mitmActive ? (
+          <StatusBadge>{t('settings.mitmActive')}</StatusBadge>
+        ) : (
+          <Button
+            icon={Shield}
+            variant="primary"
+            onClick={onSetupHttps}
+            automationId={AUTOMATION_IDS.capture.inspector.setupHttps}
+          >
+            {t('settings.decryptHttps')}
+          </Button>
+        )}
       </div>
 
       <div>
@@ -51,7 +57,13 @@ export function TlsTunnelPanel({
 
       <div className={styles.privacy}>
         <Check aria-hidden="true" />
-        <span>{t('capture.connectionMetadataOnly')}</span>
+        <span>
+          {t(
+            mitmActive
+              ? 'capture.mitmActiveForNewConnections'
+              : 'capture.connectionMetadataOnly',
+          )}
+        </span>
       </div>
     </div>
   );

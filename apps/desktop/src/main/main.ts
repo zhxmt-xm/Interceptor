@@ -13,8 +13,6 @@ import {
   shell,
 } from 'electron';
 
-import { MAX_BODY_CHUNK_BYTES } from '@interceptor/core-protocol';
-
 import {
   DESKTOP_IPC_CHANNELS,
   type CaptureExchangeEvent,
@@ -37,10 +35,6 @@ import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
-  assertBoundedString,
-  assertIdentifier,
-  assertOptionalPort,
-  assertRevision,
   readErrorMessage,
   readErrorName,
   toBodyDecodeOptions,
@@ -87,6 +81,8 @@ class DesktopApplication {
    * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
   private mitmEnabled = false;
   private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
+  /** Core 不可用期间暂存的首个失败原因；新 Core running 后补记到持久 Diagnostics。 */
+  private pendingCoreFailureDetail: string | null = null;
   /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
   private systemProxyRecovery: Promise<void> | null = null;
   private quitting = false;
@@ -131,11 +127,19 @@ class DesktopApplication {
     this.coreRuntime.onCoreProcessStatusChange((status) => {
       const previousState = this.lastCoreProcessState;
       if (status.state !== this.lastCoreProcessState) {
+        if (
+          (status.state === 'unresponsive' || status.state === 'restarting')
+          && status.detail
+          && this.pendingCoreFailureDetail === null
+        ) {
+          this.pendingCoreFailureDetail = status.detail;
+        }
         const fields = {
           attributes: {
             state: status.state,
             restartCount: status.restartCount,
             ...(status.pid === null ? {} : { pid: status.pid }),
+            ...(status.detail === null ? {} : { detail: status.detail }),
           },
         };
         if (status.state === 'unresponsive' || status.state === 'restarting') {
@@ -144,6 +148,20 @@ class DesktopApplication {
           this.diagnostics.info('main.core-runtime.status', fields);
         }
         this.lastCoreProcessState = status.state;
+      }
+      if (status.state === 'running' && this.pendingCoreFailureDetail) {
+        const failureDetail = this.pendingCoreFailureDetail;
+        this.pendingCoreFailureDetail = null;
+        this.diagnostics.warn('main.core-runtime.recovered', {
+          attributes: {
+            failureDetail,
+            restartCount: status.restartCount,
+            ...(status.pid === null ? {} : { pid: status.pid }),
+          },
+        });
+      }
+      if (status.state === 'running') {
+        this.diagnostics.resume();
       }
       if (
         previousState === 'running' &&
@@ -156,10 +174,14 @@ class DesktopApplication {
     this.coreRuntime.onCaptureEvents((events) => {
       this.broadcastCaptureEvents(events);
     });
-    // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM。
-    this.coreRuntime.onCoreProcessReady(() => {
-      void this.provisionCoreTls();
+    this.coreRuntime.onCoreRpcProtocolIssue((detail) => {
+      this.diagnostics.warn('main.core-rpc.message-rejected', {
+        errorCode: 'invalid-message',
+        attributes: { detail },
+      });
     });
+    // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM。
+    this.coreRuntime.onCoreProcessReady(() => this.provisionCoreTls());
     this.coreRuntime.start();
     this.createMainWindow();
     updateService.start();
@@ -328,10 +350,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.coreEcho,
       async (event, value: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertBoundedString(value, 'value', 4_096);
         const traceId = `trace-${randomUUID()}`;
         const result = await this.coreRuntime.request(
-          { type: 'echo', payload: { value } },
+          { type: 'echo', payload: { value: value as string } },
           { traceId },
         );
         return {
@@ -345,13 +366,12 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.coreGetTrace,
       async (event, traceId: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(traceId, 'traceId');
         const result = await this.coreRuntime.request({
           type: 'diagnostics.recent',
-          payload: { limit: 200, traceId },
+          payload: { limit: 200, traceId: traceId as string },
         });
         return {
-          traceId,
+          traceId: traceId as string,
           records: result.payload.records.map((record) =>
             toRendererDiagnosticRecord(record)),
           droppedCount: result.payload.droppedCount,
@@ -363,10 +383,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.coreGetDiagnostics,
       async (event, rawLimit: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        const limit =
-          typeof rawLimit === 'number' && Number.isFinite(rawLimit)
-            ? Math.min(Math.max(1, Math.floor(rawLimit)), 200)
-            : 200;
+        const limit = rawLimit === undefined ? 200 : rawLimit as number;
         try {
           const result = await this.coreRuntime.request({
             type: 'diagnostics.recent',
@@ -531,10 +548,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.captureStart,
       async (event, port: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertOptionalPort(port);
         const result = await this.coreRuntime.request({
           type: 'proxy.start',
-          payload: port === undefined ? {} : { port },
+          payload: port === undefined ? {} : { port: port as number },
         });
         return toRendererCaptureStatus(result.payload);
       },
@@ -561,7 +577,7 @@ class DesktopApplication {
       return toRendererCaptureStatus(result.payload);
     });
 
-    // 会话分页查询；对 Renderer 不可信输入做结构与范围校验后转交 Core。
+    // 会话分页查询；Renderer 属于可信应用代码，Main 原样转交 payload。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.sessionsQuery,
       async (event, request: unknown) => {
@@ -584,10 +600,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.sessionsDetail,
       async (event, exchangeId: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(exchangeId, 'exchangeId');
         const result = await this.coreRuntime.request({
           type: 'sessions.detail',
-          payload: { exchangeId },
+          payload: { exchangeId: exchangeId as string },
         });
         return result.payload.detail;
       },
@@ -610,12 +625,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.websocketBreakpointConfigure,
       async (event, enabled: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        if (typeof enabled !== 'boolean') {
-          throw new Error('enabled is invalid');
-        }
         const result = await this.coreRuntime.request({
           type: 'websocket.breakpoint.configure',
-          payload: { enabled },
+          payload: { enabled: enabled as boolean },
         });
         return result.payload.enabled;
       },
@@ -640,9 +652,8 @@ class DesktopApplication {
       async (event, request: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const options = toHarExportRequest(request);
-        assertBoundedString(title, 'dialog title', 256);
         const selection = await dialog.showSaveDialog({
-          title,
+          title: title as string,
           defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.har`,
           filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -666,9 +677,8 @@ class DesktopApplication {
     // HAR 导入：系统对话框仅允许选择一个 .har，Renderer 不接触真实路径或文件内容。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showOpenDialog({
-        title,
+        title: title as string,
         filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
         properties: ['openFile'],
       });
@@ -689,9 +699,8 @@ class DesktopApplication {
     // 原生 archive 导出：整库快照，无需 Renderer 提交 scope/redaction；路径由 Main 生成。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showSaveDialog({
-        title,
+        title: title as string,
         defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.iarchive`,
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -712,9 +721,8 @@ class DesktopApplication {
     // 原生 archive 导入：系统对话框仅允许选择一个 .iarchive，Renderer 不接触真实路径。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      assertBoundedString(title, 'dialog title', 256);
       const selection = await dialog.showOpenDialog({
-        title,
+        title: title as string,
         filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
         properties: ['openFile'],
       });
@@ -738,9 +746,8 @@ class DesktopApplication {
       async (event, filter: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const parsedFilter = toDiagnosticsExportFilter(filter);
-        assertBoundedString(title, 'dialog title', 256);
         const selection = await dialog.showSaveDialog({
-          title,
+          title: title as string,
           defaultPath: `interceptor-diagnostics-${new Date().toISOString().slice(0, 10)}.jsonl`,
           filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
           properties: ['createDirectory', 'showOverwriteConfirmation'],
@@ -767,10 +774,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.transferJobGet,
       async (event, jobId: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(jobId, 'jobId');
         const result = await this.coreRuntime.request({
           type: 'transfer.job.get',
-          payload: { jobId },
+          payload: { jobId: jobId as string },
         });
         return result.payload.job;
       },
@@ -781,16 +787,15 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.transferJobCancel,
       async (event, jobId: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(jobId, 'jobId');
         const result = await this.coreRuntime.request({
           type: 'transfer.job.cancel',
-          payload: { jobId },
+          payload: { jobId: jobId as string },
         });
         return result.payload.job;
       },
     );
 
-    // 按需分块读取正文字节；offset/length 在边界校验，避免过大读取。
+    // 按需读取正文字节；offset/length 由可信 Renderer 决定并原样转交。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.bodyReadRange,
       async (
@@ -801,13 +806,12 @@ class DesktopApplication {
         options: unknown,
       ) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(bodyId, 'bodyId');
-        const range = toByteRange(offset, length, MAX_BODY_CHUNK_BYTES);
+        const range = toByteRange(offset, length);
         const decodeOptions = toBodyDecodeOptions(options);
         const result = await this.coreRuntime.request({
           type: 'body.read-range',
           payload: {
-            bodyId,
+            bodyId: bodyId as string,
             offset: range.offset,
             length: range.length,
             ...decodeOptions,
@@ -923,7 +927,7 @@ class DesktopApplication {
       return [...this.insecureHosts];
     });
 
-    // 更新 per-host 不安全例外并重下发给 Core；每项在边界校验为有界 host。
+    // 更新 per-host 不安全例外并重下发给 Core；Main 不修改 Renderer 提交的数据。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts,
       async (event, hosts: unknown) => {
@@ -940,7 +944,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.httpsSetDecryption,
       async (event, enabled: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        this.mitmEnabled = enabled === true;
+        this.mitmEnabled = enabled as boolean;
         await this.provisionCoreTls();
         return this.buildCertificateInfo();
       },
@@ -979,12 +983,14 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.rulesReplace,
       async (event, expectedRevision: unknown, rules: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertRevision(expectedRevision);
         const definitions = toCoreRuleDefinitions(rules);
         try {
           const result = await this.coreRuntime.request({
             type: 'rules.replace',
-            payload: { expectedRevision, rules: definitions },
+            payload: {
+              expectedRevision: expectedRevision as number,
+              rules: definitions,
+            },
           });
           return { ok: true, revision: result.payload.revision };
         } catch (error) {
@@ -1014,7 +1020,7 @@ class DesktopApplication {
       return result.payload.counts;
     });
 
-    // Composer 手工请求：边界校验后转交 Core 用 http/https/http2 执行并回传响应。
+    // Composer 手工请求：原样转交 Core 用 http/https/http2 执行并回传响应。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.composerSend,
       async (event, request: unknown) => {
@@ -1041,19 +1047,19 @@ class DesktopApplication {
       };
     });
 
-    // 放行断点：continue（可带 edit）/ drop；边界校验 id/action/edit。
+    // 放行断点：continue（可带 edit）/ drop；payload 原样转交 Core。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.breakpointResolve,
       async (event, breakpointId: unknown, action: unknown, edit: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertIdentifier(breakpointId, 'breakpointId');
-        if (action !== 'continue' && action !== 'drop') {
-          throw new Error('action is invalid');
-        }
         const safeEdit = toBreakpointEdit(edit);
         const result = await this.coreRuntime.request({
           type: 'breakpoint.resolve',
-          payload: { breakpointId, action, edit: safeEdit },
+          payload: {
+            breakpointId: breakpointId as string,
+            action: action as 'continue' | 'drop',
+            edit: safeEdit,
+          },
         });
         return { state: result.payload.state };
       },
@@ -1066,7 +1072,7 @@ class DesktopApplication {
         this.assertTrustedSender(event.senderFrame?.url);
         const result = await this.coreRuntime.request({
           type: 'breakpoint.configure',
-          payload: { enabled: enabled === true },
+          payload: { enabled: enabled as boolean },
         });
         return result.payload.enabled;
       },
@@ -1077,18 +1083,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.connectionProbe,
       async (event, host: unknown, port: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        assertBoundedString(host, 'host', 512);
-        if (
-          typeof port !== 'number' ||
-          !Number.isInteger(port) ||
-          port < 1 ||
-          port > 65_535
-        ) {
-          throw new Error('port is invalid');
-        }
         const result = await this.coreRuntime.request({
           type: 'connection.probe',
-          payload: { host, port },
+          payload: { host: host as string, port: port as number },
         });
         return result.payload;
       },

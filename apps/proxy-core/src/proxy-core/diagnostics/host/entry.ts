@@ -3,8 +3,6 @@ import { Worker } from 'node:worker_threads';
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
 import {
-  DIAGNOSTICS_MAX_PENDING_BATCHES,
-  DIAGNOSTICS_REQUEST_TIMEOUT_MS,
   diagnosticsDatabasePath,
   diagnosticsWorkerEntry,
 } from '../../constants';
@@ -20,17 +18,13 @@ import type {
 /**
  * Diagnostics Worker 的主线程代理：非阻塞写入 + 分页查询 + 生命周期。
  *
- * 写入路径 fire-and-forget 并在 Worker 就绪前有界缓冲，保证日志永不阻塞 command 或
+ * 写入路径 fire-and-forget 并在 Worker 就绪前完整缓冲，保证日志永不阻塞 command 或
  * 网络路径；查询路径按 requestId 关联。Worker 崩溃时拒绝挂起查询并丢弃缓冲写入，
  * 记录聚合丢弃计数，绝不递归回灌同一 sink。Worker bundle 与数据库路径从中央运行期变量读取。
  */
 export class DiagnosticsWorkerHost {
-  /** Worker 就绪前允许缓冲的最大写入批次数。 */
-  private readonly maxPendingBatches = DIAGNOSTICS_MAX_PENDING_BATCHES;
-  /** 单次分页查询的超时毫秒数。 */
-  private readonly requestTimeoutMs = DIAGNOSTICS_REQUEST_TIMEOUT_MS;
 
-  /** Worker 就绪前的有界写入批次。 */
+  /** Worker 就绪前的完整写入批次。 */
   private readonly pendingWrites: DiagnosticLogRecord[][] = [];
   /** 按 requestId 关联的在途查询。 */
   private readonly pendingQueries = new Map<number, PendingDiagnosticsQuery>();
@@ -97,7 +91,7 @@ export class DiagnosticsWorkerHost {
   }
 
   /**
-   * 非阻塞写入一批日志：就绪则直接投递，否则有界缓冲；超限丢弃并累计计数。
+  * 非阻塞写入一批日志：就绪则直接投递，否则完整缓冲。
    * 调用方：CoreDiagnostics 的 sink。
    */
   sink(records: readonly DiagnosticLogRecord[]): void {
@@ -113,10 +107,6 @@ export class DiagnosticsWorkerHost {
         records: [...records],
       } satisfies DiagnosticsWorkerRequest);
       return;
-    }
-    if (this.pendingWrites.length >= this.maxPendingBatches) {
-      const dropped = this.pendingWrites.shift();
-      this.droppedBeforeReady += dropped?.length ?? 0;
     }
     this.pendingWrites.push([...records]);
   }
@@ -136,11 +126,7 @@ export class DiagnosticsWorkerHost {
 
     const requestId = this.nextRequestId++;
     return new Promise<DiagnosticsPage>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingQueries.delete(requestId);
-        reject(new Error('diagnostics query timed out'));
-      }, this.requestTimeoutMs);
-      this.pendingQueries.set(requestId, { resolve, reject, timer });
+      this.pendingQueries.set(requestId, { resolve, reject });
       try {
         channel.postMessage({
           type: 'query',
@@ -148,7 +134,6 @@ export class DiagnosticsWorkerHost {
           query,
         } satisfies DiagnosticsWorkerRequest);
       } catch (error) {
-        clearTimeout(timer);
         this.pendingQueries.delete(requestId);
         reject(error instanceof Error ? error : new Error('postMessage failed'));
       }
@@ -205,9 +190,6 @@ export class DiagnosticsWorkerHost {
       return;
     }
     this.pendingQueries.delete(message.requestId);
-    if (pending.timer) {
-      clearTimeout(pending.timer);
-    }
     if (message.ok) {
       pending.resolve(message.result);
     } else {
@@ -223,12 +205,9 @@ export class DiagnosticsWorkerHost {
     this.failAllQueries(error);
   }
 
-  /** 清理 timer 并以同一错误拒绝所有在途查询。 */
+  /** 以同一错误拒绝所有在途查询。 */
   private failAllQueries(error: Error): void {
     for (const [requestId, pending] of this.pendingQueries) {
-      if (pending.timer) {
-        clearTimeout(pending.timer);
-      }
       this.pendingQueries.delete(requestId);
       pending.reject(error);
     }

@@ -171,14 +171,13 @@ export function throwIfAborted(signal: AbortSignal): void {
   }
 }
 
-/** 要求 Core 收到的文件路径为绝对路径、有限长度和预期扩展名。 */
+/** 要求 Core 收到的文件路径为绝对路径和预期扩展名。 */
 export function assertTransferPath(
   filePath: string,
   extension: string,
 ): void {
   if (
     !path.isAbsolute(filePath) ||
-    filePath.length > 32_768 ||
     path.extname(filePath).toLowerCase() !== extension
   ) {
     throw new InvalidHarError(

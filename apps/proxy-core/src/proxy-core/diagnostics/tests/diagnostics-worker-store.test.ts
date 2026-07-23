@@ -1,15 +1,9 @@
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { openDiagnosticsDatabase } from '../utils';
 import { DIAGNOSTICS_SCHEMA_VERSION } from '../worker/worker-schema';
 import { DiagnosticsStore } from '../worker/worker-store';
-
-// 不向构造函数注入测试参数：直接把保留条数常量 mock 成小值来驱动淘汰。
-vi.mock('../../constants', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../constants')>()),
-  DIAGNOSTICS_MAX_RECORDS: 3,
-}));
 
 function record(
   sequence: number,
@@ -135,13 +129,13 @@ describe('DiagnosticsStore', () => {
     });
   });
 
-  it('enforces the record-count retention policy', () => {
+  it('retains every inserted record', () => {
     const { db } = openDiagnosticsDatabase(':memory:');
     const store = new DiagnosticsStore(db);
     store.insertBatch([record(1), record(2), record(3), record(4), record(5)]);
-    expect(store.count()).toBe(3);
+    expect(store.count()).toBe(5);
     expect(store.query({ limit: 10 }).records.map((r) => r.sequence)).toEqual([
-      5, 4, 3,
+      5, 4, 3, 2, 1,
     ]);
   });
 });

@@ -207,7 +207,7 @@ describe('CoreRpcClient', () => {
     await secondRejection;
   });
 
-  it('disconnects when result type does not match the command', async () => {
+  it('rejects only the request when result type does not match', async () => {
     const { client, port } = connectedClient();
     const response = client.request(
       { type: 'echo', payload: { value: 'hello' } },
@@ -228,7 +228,54 @@ describe('CoreRpcClient', () => {
     });
 
     await rejection;
-    expect(port.closed).toBe(true);
+    expect(port.closed).toBe(false);
+  });
+
+  it('drops and acknowledges an invalid event batch without closing the connection', () => {
+    const { client, port } = connectedClient();
+    const onProtocolIssue = vi.fn();
+    client.onProtocolIssue(onProtocolIssue);
+
+    port.receive({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1,
+      events: 'invalid',
+    });
+
+    expect(onProtocolIssue).toHaveBeenCalledOnce();
+    expect(port.sent.at(-1)).toEqual({
+      kind: 'event-ack',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1,
+    });
+    expect(port.closed).toBe(false);
+  });
+
+  it('acknowledges a batch when the event consumer throws', () => {
+    const { client, port } = connectedClient();
+    const onProtocolIssue = vi.fn();
+    client.onProtocolIssue(onProtocolIssue);
+    client.onCaptureEvents(() => {
+      throw new Error('window was destroyed');
+    });
+
+    port.receive({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 2,
+      events: [],
+    });
+
+    expect(onProtocolIssue).toHaveBeenCalledWith(
+      'Capture event consumer failed: window was destroyed',
+    );
+    expect(port.sent.at(-1)).toEqual({
+      kind: 'event-ack',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 2,
+    });
+    expect(port.closed).toBe(false);
   });
 
   it('cleans up when attaching or posting fails', async () => {

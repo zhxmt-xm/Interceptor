@@ -1,7 +1,6 @@
 import type { PeerCertificate } from 'node:tls';
 import type * as tls from 'node:tls';
 
-import { MAX_CHAIN } from '../connection-constants';
 import type {
   ConnectionCertificate,
   ConnectionProbeResult,
@@ -39,7 +38,7 @@ export function distinguishedName(
   return parts.join(', ');
 }
 
-/** 沿 issuerCertificate 收集去重、有限长证书链并防止自签环路。 */
+/** 沿 issuerCertificate 收集完整去重证书链，并防止自签环路。 */
 export function collectChain(socket: tls.TLSSocket): ConnectionCertificate[] {
   const chain: ConnectionCertificate[] = [];
   const seen = new Set<string>();
@@ -49,8 +48,7 @@ export function collectChain(socket: tls.TLSSocket): ConnectionCertificate[] {
     cert &&
     typeof cert.fingerprint256 === 'string' &&
     cert.fingerprint256.length > 0 &&
-    !seen.has(cert.fingerprint256) &&
-    chain.length < MAX_CHAIN
+    !seen.has(cert.fingerprint256)
   ) {
     seen.add(cert.fingerprint256);
     chain.push({

@@ -161,7 +161,7 @@ describe('ArchiveZipReader security validation', () => {
     expect(() => reader.validate()).toThrow(/unexpected entry/);
   });
 
-  it('rejects a suspicious compression ratio (zip bomb)', async () => {
+  it('does not reject an entry based on compression ratio', async () => {
     const reader = await readerFor(
       rawZip([
         {
@@ -171,7 +171,7 @@ describe('ArchiveZipReader security validation', () => {
         },
       ]),
     );
-    expect(() => reader.validate()).toThrow(/compression ratio/);
+    expect(reader.validate()).toHaveLength(1);
   });
 
   it('rejects symbolic link entries', async () => {

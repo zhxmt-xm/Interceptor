@@ -4,11 +4,7 @@ import * as http2 from 'node:http2';
 import * as https from 'node:https';
 import type { TLSSocket } from 'node:tls';
 
-import { BoundedBody } from './composer-bounded-body';
-import {
-  DEFAULT_TIMEOUT_MS,
-  MAX_TIMEOUT_MS,
-} from './composer-constants';
+import { ComposerResponseBody } from './composer-response-body';
 import type {
   ComposerHeaderPair,
   ComposerRequestInput,
@@ -17,7 +13,7 @@ import type {
 import * as ComposerUtils from './utils';
 
 /**
- * 执行 Renderer 主动构造的 HTTP/1.1 或 HTTP/2 请求，并返回有界正文、时序和 TLS 摘要。
+ * 执行 Renderer 主动构造的 HTTP/1.1 或 HTTP/2 请求，并返回完整正文、时序和 TLS 摘要。
  */
 export class ComposerService {
   /** 执行一次出站请求；网络错误转换为 ok=false 结果供 UI 展示。 */
@@ -31,10 +27,7 @@ export class ComposerService {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return this.failure('Only http and https URLs are supported.', 0);
     }
-    const timeoutMs = Math.min(
-      Math.max(request.timeoutMs ?? DEFAULT_TIMEOUT_MS, 1),
-      MAX_TIMEOUT_MS,
-    );
+    const timeoutMs = request.timeoutMs;
     const useH2 = request.protocol === 'h2' && url.protocol === 'https:';
     try {
       return useH2
@@ -61,7 +54,6 @@ export class ComposerService {
       httpVersion: '',
       headers: [],
       body: new Uint8Array(0),
-      bodyTruncated: false,
       totalBytes: 0,
       durationMs,
       tls: null,
@@ -73,7 +65,7 @@ export class ComposerService {
   private sendH1(
     url: URL,
     request: ComposerRequestInput,
-    timeoutMs: number,
+    timeoutMs: number | undefined,
   ): Promise<ComposerResponseOutput> {
     return new Promise((resolve, reject) => {
       const isHttps = url.protocol === 'https:';
@@ -87,7 +79,7 @@ export class ComposerService {
           rejectUnauthorized: false,
         },
         (response) => {
-          const body = new BoundedBody();
+          const body = new ComposerResponseBody();
           response.on('data', (chunk: Buffer) => body.push(chunk));
           response.on('end', () => {
             const socket = response.socket as TLSSocket;
@@ -98,7 +90,6 @@ export class ComposerService {
               httpVersion: `HTTP/${response.httpVersion}`,
               headers: ComposerUtils.rawHeaderPairs(response.rawHeaders),
               body: body.bytes,
-              bodyTruncated: body.truncated,
               totalBytes: body.totalBytes,
               durationMs: Date.now() - start,
               tls: isHttps ? ComposerUtils.readTls(socket) : null,
@@ -109,9 +100,11 @@ export class ComposerService {
         },
       );
       clientRequest.on('error', reject);
-      clientRequest.setTimeout(timeoutMs, () => {
-        clientRequest.destroy(new Error('Composer request timed out.'));
-      });
+      if (timeoutMs !== undefined) {
+        clientRequest.setTimeout(timeoutMs, () => {
+          clientRequest.destroy(new Error('Composer request timed out.'));
+        });
+      }
       if (request.body) {
         clientRequest.write(Buffer.from(request.body, 'utf8'));
       }
@@ -123,7 +116,7 @@ export class ComposerService {
   private sendH2(
     url: URL,
     request: ComposerRequestInput,
-    timeoutMs: number,
+    timeoutMs: number | undefined,
   ): Promise<ComposerResponseOutput> {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -157,7 +150,7 @@ export class ComposerService {
         ...ComposerUtils.buildOutgoingHeaders(request.headers),
       };
       const stream = client.request(requestHeaders);
-      const body = new BoundedBody();
+      const body = new ComposerResponseBody();
       let status = 0;
       let headerPairs: ComposerHeaderPair[] = [];
 
@@ -175,7 +168,6 @@ export class ComposerService {
           httpVersion: 'h2',
           headers: headerPairs,
           body: body.bytes,
-          bodyTruncated: body.truncated,
           totalBytes: body.totalBytes,
           durationMs: Date.now() - start,
           tls: ComposerUtils.readTls(socket),
@@ -183,9 +175,11 @@ export class ComposerService {
         });
       });
       stream.on('error', (error) => finish(null, error));
-      stream.setTimeout(timeoutMs, () => {
-        finish(null, new Error('Composer request timed out.'));
-      });
+      if (timeoutMs !== undefined) {
+        stream.setTimeout(timeoutMs, () => {
+          finish(null, new Error('Composer request timed out.'));
+        });
+      }
       if (request.body) {
         stream.write(Buffer.from(request.body, 'utf8'));
       }

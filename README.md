@@ -241,9 +241,9 @@ Windows produces an x64 per-user MSI under `apps/desktop/out/make/wix/x64/`. mac
 
 Public GitHub Releases are the only update backend; no self-hosted update service or app-store integration is required. A `v<semver>` tag runs `.github/workflows/release-artifacts.yml`, requires platform signing credentials, validates both native builds, and publishes exactly one Windows MSI, one macOS DMG, and one macOS ZIP. GitHub-generated release notes become the changelog shown in the app.
 
-Packaged Windows and macOS builds check the latest stable Release at launch and every hour. The app never downloads automatically: an available update shows its bounded plain-text changelog, and `Download update` starts a user-requested installer download with progress. Completed installers are stored under the application `userData/updates/downloads` directory; `Open installer` hands the verified MSI/DMG to the operating system. Renderer code never receives the asset URL or local path.
+Packaged Windows and macOS builds check the latest stable Release at launch and every hour. The app never downloads automatically: an available update shows its complete plain-text changelog, and `Download update` starts a user-requested installer download with progress. Completed installers are stored under the application `userData/updates/downloads` directory; `Open installer` hands the verified MSI/DMG to the operating system. Renderer code never receives the asset URL or local path.
 
-The update client rejects drafts, prereleases, non-SemVer tags, foreign URLs, path escapes, explicit architecture mismatches, oversized/truncated assets, and mismatched GitHub SHA-256 digests. The macOS ZIP remains a direct-download release artifact but is not selected by the in-app installer flow.
+The update client rejects drafts, prereleases, non-SemVer tags, foreign URLs, path escapes, explicit architecture mismatches, incomplete assets, and mismatched GitHub SHA-256 digests. The macOS ZIP remains a direct-download release artifact but is not selected by the in-app installer flow.
 
 If the Electron release download is unreliable:
 

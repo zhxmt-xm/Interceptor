@@ -9,12 +9,12 @@ class FakeTransport implements MainDiagnosticsTransport {
   failure: Error | null = null;
 
   async ingestDiagnostic(payload: DiagnosticIngestPayload): Promise<void> {
-    this.records.push(payload);
     if (this.failure) {
       const failure = this.failure;
       this.failure = null;
       throw failure;
     }
+    this.records.push(payload);
   }
 }
 
@@ -54,33 +54,20 @@ describe('MainDiagnostics', () => {
     ]);
   });
 
-  it('contains transport failures and reports an aggregate drop later', async () => {
+  it('retains transport failures and sends every record after recovery', async () => {
     const transport = new FakeTransport();
     transport.failure = new Error('disconnected');
     const diagnostics = new MainDiagnostics(transport);
 
     expect(() => diagnostics.error('main.ipc.failed')).not.toThrow();
     await settle();
+    expect(transport.records).toEqual([]);
     diagnostics.info('main.core-runtime.status');
     await settle();
 
-    expect(transport.records).toEqual([
-      {
-        process: 'main',
-        level: 'error',
-        phase: 'main.ipc.failed',
-      },
-      {
-        process: 'main',
-        level: 'warn',
-        phase: 'main.diagnostics.dropped',
-        attributes: { count: 1 },
-      },
-      {
-        process: 'main',
-        level: 'info',
-        phase: 'main.core-runtime.status',
-      },
+    expect(transport.records.map(({ phase }) => phase)).toEqual([
+      'main.ipc.failed',
+      'main.core-runtime.status',
     ]);
   });
 });

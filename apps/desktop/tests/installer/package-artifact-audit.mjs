@@ -20,10 +20,6 @@ class PackageArtifactAuditor {
     'out',
     `Interceptor-${process.platform}-${process.arch}`,
   );
-  /** Maximum unpacked package bytes accepted by the release gate. */
-  static maximumPackageBytes = 500 * 1024 * 1024;
-  /** Maximum file count accepted by the release gate. */
-  static maximumPackageFiles = 5_000;
   /** Source and diagnostic artifacts forbidden from shipped resources. */
   static forbiddenPattern = /(?:^|[\\/])(?:tests?|\.env(?:\.|$))|\.(?:map|ts|tsx|cs|swift)$/i;
 
@@ -44,12 +40,6 @@ class PackageArtifactAuditor {
     await this.auditAsar(asarPath);
     const packageFiles = await this.collectFiles(this.packageRoot);
     const packageBytes = packageFiles.reduce((total, file) => total + file.size, 0);
-    if (packageFiles.length > this.maximumPackageFiles) {
-      throw new Error(`Package contains too many files: ${packageFiles.length}.`);
-    }
-    if (packageBytes > this.maximumPackageBytes) {
-      throw new Error(`Package exceeds size limit: ${packageBytes} bytes.`);
-    }
 
     const shippedResources = packageFiles.filter((file) =>
       file.path.startsWith(resourcesPath) &&

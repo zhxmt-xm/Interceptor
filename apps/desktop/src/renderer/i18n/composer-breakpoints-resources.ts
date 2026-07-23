@@ -46,7 +46,6 @@ export const composerBreakpointsEnglishMessages = {
   'composer.noStatus': 'No status',
   'composer.cookies': 'Cookies',
   'composer.raw': 'Raw',
-  'composer.responseTruncated': '… response truncated (1 MB preview limit)',
   'composer.noSetCookie': 'No Set-Cookie headers.',
   'composer.sendFailed': 'Send failed',
   'composer.ready': 'Ready',

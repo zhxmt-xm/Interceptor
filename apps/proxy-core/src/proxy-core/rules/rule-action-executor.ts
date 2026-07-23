@@ -8,7 +8,6 @@ import type {
 } from '@interceptor/core-protocol';
 
 import type {
-  ActionExecutorOptions,
   ActionOutcome,
   ActionSummary,
   HeaderBag,
@@ -21,14 +20,6 @@ import type {
 export class RuleActionExecutor {
   /** 未应用或未产生改动时复用的稳定结果。 */
   private static readonly NONE: ActionOutcome = { kind: 'none' };
-  /** Map Local 允许读取的规范化根目录白名单。 */
-  private readonly mapLocalRoots: readonly string[];
-
-  /** 固定 Map Local 根目录策略。 */
-  constructor(options: ActionExecutorOptions = {}) {
-    this.mapLocalRoots = options.mapLocalRoots ?? [];
-  }
-
   /** 对请求状态应用一个请求侧 action；Map Local 文件读取保持异步。 */
   async applyRequest(
     state: MutableRequestState,
@@ -313,15 +304,9 @@ export class RuleActionExecutor {
     return { statusCode: action.statusCode, headers, body: action.body };
   }
 
-  /** 在根目录白名单内读取 Map Local 文件并构造短路响应。 */
+  /** 读取可信 Renderer 指定的 Map Local 文件并构造短路响应。 */
   private async mapLocalOutcome(filePath: string): Promise<ActionOutcome> {
     const resolved = path.resolve(filePath);
-    const permitted = this.mapLocalRoots.length > 0 &&
-      this.mapLocalRoots.some((root) =>
-        this.isWithin(path.resolve(root), resolved));
-    if (!permitted) {
-      return RuleActionExecutor.NONE;
-    }
     try {
       const data = await fs.readFile(resolved);
       return {
@@ -344,17 +329,6 @@ export class RuleActionExecutor {
         summary: { action: 'map-local', detail: 'not-found' },
       };
     }
-  }
-
-  /** 判断规范化 target 是否位于规范化 root 内。 */
-  private isWithin(root: string, target: string): boolean {
-    if (target === root) {
-      return true;
-    }
-    const relative = path.relative(root, target);
-    return relative !== '' &&
-      !relative.startsWith('..') &&
-      !path.isAbsolute(relative);
   }
 
   /** 根据文件扩展名推断有限 MIME。 */

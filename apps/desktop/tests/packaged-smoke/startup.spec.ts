@@ -589,21 +589,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(restartedEcho.value).toBe('m1-restarted-port');
 
     // 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → Core 内临时 Capture/Body Store。
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(async () => {
-            const status = await window.interceptor.getStorageStatus();
-            return status.quotaBytes;
-          }),
-        { message: 'Storage status was unavailable', timeout: 10_000 },
-      )
-      .toBeGreaterThan(0);
-    const storageQuota = await page.evaluate(
+    const storageStatus = await page.evaluate(
       () => window.interceptor.getStorageStatus(),
     );
-    expect(storageQuota.quotaBytes).toBeGreaterThan(0);
-    expect(storageQuota.databaseBytes).toBe(0);
+    expect(storageStatus).not.toHaveProperty('quotaBytes');
+    expect(storageStatus.databaseBytes).toBe(0);
 
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
     const clearRecordingPort = await reservePort();

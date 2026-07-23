@@ -95,6 +95,6 @@ export class UpdateActions {
 
   /** Convert unknown IPC failures to bounded UI text. */
   private static describeError(error: unknown): string {
-    return (error instanceof Error ? error.message : String(error)).slice(0, 512);
+    return error instanceof Error ? error.message : String(error);
   }
 }

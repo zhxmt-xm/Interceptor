@@ -155,34 +155,34 @@
 .copyBtn.copyBtn {
   display: inline-flex;
   vertical-align: middle;
-  width: 20px;
-  height: 20px;
-  margin-left: 4px;
+  width: 22px;
+  height: 22px;
+  margin-left: 6px;
   border-radius: 5px;
+  transform: translateY(2px);
   opacity: 0;
   transition: opacity 0.12s ease;
 }
 .copyBtn.copyBtn svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 .kvRow:hover .copyBtn {
   opacity: 1;
 }
 .statusValue {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 7px;
+  display: inline;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
 }
 .statusValue .statusDot {
-  margin-top: 0.35em;
+  display: inline-block;
   width: 6px;
   height: 6px;
+  margin-right: 7px;
   border-radius: 50%;
-  flex: 0 0 auto;
+  vertical-align: 0.08em;
 }
 .statusValue.ok {
   color: var(--green);

@@ -23,7 +23,6 @@ export interface PendingCaptureEvent {
   sequence: number;
   kind: CaptureExchangeEventKind;
   summary: CaptureExchangeSummary;
-  terminal: boolean;
 }
 
 export type BodyDecodeOutcome = 'ok' | 'skipped' | 'failed';

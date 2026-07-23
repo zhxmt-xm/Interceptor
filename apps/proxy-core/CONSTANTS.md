@@ -13,37 +13,22 @@
 | --- | --- | --- |
 | `HEARTBEAT_INTERVAL_MS` | `1_000` | CoreApplication 向 Main 发 heartbeat 的间隔 |
 | `EVENT_FLUSH_INTERVAL_MS` | `50` | 捕获事件批量 flush 间隔 |
-| `MAX_INFLIGHT_EVENT_BATCHES` | `8` | 未 ack 的在途事件批次上限（背压窗口） |
+| `EVENT_INFLIGHT_WINDOW_SIZE` | `8` | 同时在途、等待ack的批次数；队列总量不限 |
 | `EVENT_DRAIN_BATCH` | `200` | 单次从捕获事件队列取走的最大事件数 |
-| `DIAGNOSTICS_RING_MAX_BYTES` | `512 * 1024` | CoreDiagnostics 内存 Ring Buffer 单条记录最大字节数 |
-| `DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS` | `256` | CoreDiagnostics 待输出队列最大条数 |
-| `DIAGNOSTICS_RING_MAX_RECORDS` | `2_000` | CoreDiagnostics 内存历史最大记录数 |
 | `CAPTURE_DB_FILE` | `'capture.sqlite'` | 旧 Capture 库名；迁移 RuleSet 后删除 |
 | `RULES_DB_FILE` | `'rules.sqlite'` | 低频持久 RuleSet 库名 |
 | `BLOB_DIR` | `'blobs'` | 旧持久 Body 目录名；M14 启动时删除 |
 | `CAPTURE_TEMP_DIR` | `'capture-temp'` | 当前 Core 代际的临时 Body spill 目录 |
 | `BODY_MEMORY_THRESHOLD_BYTES` | `1 * 1024 * 1024` | Body 从内存切换到 spill 的阈值 |
-| `MAX_BODY_BYTES` | `64 * 1024 * 1024` | 单条正文最大字节数，超过拒绝并标记 truncated |
-| `GLOBAL_QUOTA_BYTES` | `2 * 1024 * 1024 * 1024` | 单 Core 代际临时 Body 总配额 |
 | `DIAGNOSTICS_DB_FILE` | `'diagnostics.sqlite'` | 诊断数据库文件名（dataDir 下） |
-| `DIAGNOSTICS_MAX_RECORDS` | `50_000` | 持久化日志最多保留条数 |
-| `DIAGNOSTICS_MAX_AGE_MS` | `null` | 持久化日志最长保留时长；null 表示不启用按时长清理 |
-| `DIAGNOSTICS_MAX_PENDING_BATCHES` | `128` | Diagnostics Worker 就绪前最多缓冲的写入批次数 |
-| `DIAGNOSTICS_REQUEST_TIMEOUT_MS` | `15_000` | Diagnostics Worker 单查询超时 |
 | `DEFAULT_PROXY_HOST` | `'127.0.0.1'` | 显式代理默认绑定的 loopback 地址 |
-| `CAPTURE_EVENT_QUEUE_CAPACITY` | `5_000` | 捕获事件队列最大待发事件数（按 Exchange 合并后计） |
 
 模块私有常量：
 
 | 文件 | 常量范围 |
 | --- | --- |
-| `composer/composer-constants.ts` | 响应正文上限、默认/最大超时 |
-| `connection/connection-constants.ts` | TLS 探测超时、证书链上限 |
-| `diagnostics/diagnostics-constants.ts` | Diagnostics SQLite busy timeout |
-| `har/har-constants.ts` | HAR 文件/entry/header/body/job 上限与批次大小 |
+| `har/har-constants.ts` | HAR 无损分页、导入批次与正文读取 chunk 大小 |
 | `proxy/proxy-constants.ts` | 终态集合、可解码 content-encoding |
-| `rules/rule-constants.ts` | 断点快照正文上限 |
-| `storage/storage-constants.ts` | 低频 Rule SQLite busy timeout |
 
 ## 运行期变量（读 process.argv / __dirname，entry 初始化）
 
@@ -82,8 +67,7 @@
 生产构造函数**不接收仅供测试的注入参数**。需要在测试中改变行为时，用以下手段替代：
 
 - **数值/路径常量** → 用 `vi.mock('.../constants')` 覆盖。需按用例变化时用
-  `vi.hoisted` 持有一个可变对象并以 getter 暴露常量（如 body store 的 `MAX_BODY_BYTES`、
-  捕获队列的 `CAPTURE_EVENT_QUEUE_CAPACITY`）。
+  `vi.hoisted` 持有一个可变对象并以 getter暴露常量（如Body spill阈值）。
 - **Worker 通道与路径** → 起真实 `worker_threads` Worker 测试，不注入假通道。测试调
   `initializeRuntime(['--data-dir=<temp>'])` 设置运行期变量，`constants` 的 `resolveWorkerEntry`
   自解析已构建 bundle（生产用 `__dirname`，源码运行回落到工作区 `dist`）；这类测试需先

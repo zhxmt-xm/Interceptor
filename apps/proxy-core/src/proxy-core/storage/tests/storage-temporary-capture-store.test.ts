@@ -68,6 +68,45 @@ describe('TemporaryCaptureStore', () => {
     expect(page.items[0]).toMatchObject({ statusCode: 204, durationMs: 40 });
   });
 
+  it('preserves public capture metadata without truncation', () => {
+    const longPath = `/${'p'.repeat(12_000)}`;
+    const longUrl = `https://data.bilibili.com${longPath}?${'q'.repeat(12_000)}`;
+    const responseMime = 'm'.repeat(2_000);
+    const requestMime = 'r'.repeat(2_000);
+    const statusText = 's'.repeat(2_000);
+    const headerName = 'n'.repeat(2_000);
+    const headerValue = 'v'.repeat(20_000);
+    fixture.store.appendExchanges([
+      fixture.exchange('bounded', {
+        path: longPath,
+        url: longUrl,
+        responseMime,
+        requestMime,
+        statusText,
+        headers: [{
+          kind: 'request',
+          name: headerName,
+          value: headerValue,
+        }],
+      }),
+    ]);
+
+    const page = fixture.store.querySessions({
+      limit: 10,
+      sort: 'started_desc',
+      filter: {},
+    });
+    const detail = fixture.store.getExchangeDetail('bounded');
+
+    expect(page.items[0]?.path).toBe(longPath);
+    expect(page.items[0]?.responseMime).toBe(responseMime);
+    expect(detail?.url).toBe(longUrl);
+    expect(detail?.requestMime).toBe(requestMime);
+    expect(detail?.statusText).toBe(statusText);
+    expect(detail?.requestHeaders[0]?.name).toBe(headerName);
+    expect(detail?.requestHeaders[0]?.value).toBe(headerValue);
+  });
+
   it('paginates from opaque cursors without duplicates or gaps', () => {
     fixture.store.appendExchanges(
       Array.from({ length: 25 }, (_, index) =>

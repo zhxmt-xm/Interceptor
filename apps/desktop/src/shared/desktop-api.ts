@@ -166,7 +166,6 @@ export interface StorageUsage {
   databaseBytes: number;
   blobBytes: number;
   totalBytes: number;
-  quotaBytes: number;
 }
 
 /** 代理捕获运行态：监听地址、当前会话与已捕获 Exchange 计数。 */
@@ -292,7 +291,6 @@ export interface ComposerResponse {
   httpVersion: string;
   headers: RuleHeaderPair[];
   body: Uint8Array;
-  bodyTruncated: boolean;
   totalBytes: number;
   durationMs: number;
   tls: ComposerTlsInfo | null;

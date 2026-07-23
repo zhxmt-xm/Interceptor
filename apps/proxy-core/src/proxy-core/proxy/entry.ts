@@ -290,7 +290,7 @@ export class ProxyService {
         this.diagnostics?.error('tunnel.open-persist-failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
           attributes: {
-            message: (error instanceof Error ? error.message : String(error)).slice(0, 256),
+            message: error instanceof Error ? error.message : String(error),
           },
         });
         return null;
@@ -816,13 +816,11 @@ export class ProxyService {
         decodeStatus: 'ok',
       };
     } catch (error) {
-      const name = error instanceof Error ? error.name : '';
       return {
         id,
         encodedSize: buffer.byteLength,
         mediaType,
         contentEncoding,
-        truncated: name === 'BodyTooLargeError',
         decodeStatus: 'skipped',
       };
     }

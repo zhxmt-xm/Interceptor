@@ -11,6 +11,7 @@ import {
 } from '@interceptor/core-protocol';
 
 import type {
+  CoreRpcProtocolIssueListener,
   CoreRequestOptions,
   CoreRpcClientOptions,
   CoreRpcPort,
@@ -20,8 +21,6 @@ import { PendingRpcRequest } from './pending-rpc-request';
 
 /** Main 侧唯一的 Core 业务入口：把 typed command 映射成 Promise。 */
 export class CoreRpcClient {
-  /** 默认单次 Core 请求超时（ms）。 */
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
   /** 每个 Command type 对应的期望 Result type；用于校验响应与请求匹配。 */
   private static readonly RESULT_TYPE_BY_COMMAND: Record<
     CoreCommand['type'],
@@ -64,18 +63,19 @@ export class CoreRpcClient {
 
   private readonly createId: () => string;
   private readonly pending = new Map<string, PendingRpcRequest>();
-  private readonly requestTimeoutMs: number;
+  private readonly requestTimeoutMs: number | undefined;
   private port: CoreRpcPort | null = null;
   private removeMessageListener: (() => void) | null = null;
   private removeCloseListener: (() => void) | null = null;
   private captureEventListener:
     | ((events: CaptureExchangeEvent[]) => void)
     | null = null;
+  /** 单条 Core 消息无法关联/解析时的诊断监听器；不代表连接失效。 */
+  private protocolIssueListener: CoreRpcProtocolIssueListener | null = null;
 
   constructor(options: CoreRpcClientOptions = {}) {
     this.createId = options.createId ?? randomUUID;
-    this.requestTimeoutMs =
-      options.requestTimeoutMs ?? CoreRpcClient.DEFAULT_REQUEST_TIMEOUT_MS;
+    this.requestTimeoutMs = options.requestTimeoutMs;
   }
 
   attach(port: CoreRpcPort): void {
@@ -108,6 +108,11 @@ export class CoreRpcClient {
    */
   onCaptureEvents(listener: (events: CaptureExchangeEvent[]) => void): void {
     this.captureEventListener = listener;
+  }
+
+  /** 注册单消息协议问题监听器；问题只影响该消息或对应 request。 */
+  onProtocolIssue(listener: CoreRpcProtocolIssueListener): void {
+    this.protocolIssueListener = listener;
   }
 
   request<T extends CoreCommand>(
@@ -172,7 +177,7 @@ export class CoreRpcClient {
   private handleResponse(message: unknown): void {
     const parsed = parseCoreToMainMessage(message);
     if (!parsed.ok) {
-      this.disconnect(`Invalid Core response: ${parsed.error}`);
+      this.rejectInvalidMessage(message, `Invalid Core response: ${parsed.error}`);
       return;
     }
 
@@ -187,15 +192,20 @@ export class CoreRpcClient {
       return; // timeout/cancel 后到达的 late response 可以安全忽略。
     }
 
-    // requestId、traceId、result type 都匹配才能完成 Promise；否则说明
-    // 两端协议状态已经失去同步，继续复用这条连接是不安全的。
+    // requestId、traceId、result type 都匹配才能完成 Promise；不匹配只拒绝
+    // 该 request，不能把单条响应的数据问题升级为连接或进程故障。
     if (
       response.traceId !== pending.traceId ||
       (response.ok &&
         response.result.type !==
           CoreRpcClient.RESULT_TYPE_BY_COMMAND[pending.commandType])
     ) {
-      this.disconnect('Core response does not match its request.');
+      const detail = 'Core response does not match its request.';
+      this.reportProtocolIssue(detail);
+      this.finishWithError(
+        response.requestId,
+        CoreRpcError.of('invalid-message', detail),
+      );
       return;
     }
 
@@ -212,7 +222,13 @@ export class CoreRpcClient {
    * 调用方：handleResponse 收到 event-batch 时。ack 发送失败不影响本地事件分发。
    */
   private handleEventBatch(batch: CoreEventBatch): void {
-    this.captureEventListener?.(batch.events);
+    try {
+      this.captureEventListener?.(batch.events);
+    } catch (error) {
+      this.reportProtocolIssue(
+        `Capture event consumer failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     try {
       this.port?.postMessage({
         kind: 'event-ack',
@@ -261,6 +277,44 @@ export class CoreRpcClient {
     pending.reject(error);
   }
 
+  /**
+   * 隔离一条非法 Core 消息：event-batch 在可关联时 ack 后丢弃，response 只拒绝
+   * 对应 request；两者都不关闭 MessagePort。
+   */
+  private rejectInvalidMessage(message: unknown, detail: string): void {
+    this.reportProtocolIssue(detail);
+    if (!CoreRpcClient.isRecord(message)) {
+      return;
+    }
+    if (message.kind === 'response' && typeof message.requestId === 'string') {
+      this.finishWithError(
+        message.requestId,
+        CoreRpcError.of('invalid-message', detail),
+      );
+      return;
+    }
+    if (
+      message.kind === 'event-batch'
+      && Number.isSafeInteger(message.batchSequence)
+      && Number(message.batchSequence) >= 0
+    ) {
+      try {
+        this.port?.postMessage({
+          kind: 'event-ack',
+          protocolVersion: CORE_PROTOCOL_VERSION,
+          batchSequence: Number(message.batchSequence),
+        });
+      } catch {
+        // 下一次真实 port close/send failure 由传输生命周期处理。
+      }
+    }
+  }
+
+  /** 报告单消息协议问题；不改变 CoreProcess 或 MessagePort 状态。 */
+  private reportProtocolIssue(detail: string): void {
+    this.protocolIssueListener?.(detail);
+  }
+
   private disconnect(message: string): void {
     const port = this.port;
     this.port = null;
@@ -278,5 +332,10 @@ export class CoreRpcClient {
       this.pending.delete(requestId);
       pending.reject(CoreRpcError.of('disconnected', message));
     }
+  }
+
+  /** 将未知 structured-clone 数据收窄为可读取信封字段的对象。 */
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
   }
 }

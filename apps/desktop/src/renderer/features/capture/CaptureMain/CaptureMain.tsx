@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import type { CertificateInfo } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Splitter } from '../../../components';
 import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
@@ -20,7 +21,24 @@ export function CaptureMain(): React.JSX.Element {
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
   const selectedId = useCaptureStore((state) => state.selectedId);
   const [httpsSetupOpen, setHttpsSetupOpen] = useState(false);
+  const [certificate, setCertificate] = useState<CertificateInfo | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void window.interceptor.getCertificateStatus()
+      .then((next) => {
+        if (active) {
+          setCertificate(next);
+        }
+      })
+      .catch(() => {
+        /* Tunnel setup remains available when certificate status cannot be read. */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     document.documentElement.style.setProperty(
@@ -92,7 +110,10 @@ export function CaptureMain(): React.JSX.Element {
                 onPointerDown={startInspectorDrag}
                 automationId={AUTOMATION_IDS.capture.inspector.splitter}
               />
-              <RequestInspector onSetupHttps={() => setHttpsSetupOpen(true)} />
+              <RequestInspector
+                mitmActive={certificate?.trusted === true && certificate.mitmEnabled}
+                onSetupHttps={() => setHttpsSetupOpen(true)}
+              />
             </>
           ) : null}
         </div>
@@ -101,6 +122,7 @@ export function CaptureMain(): React.JSX.Element {
       <HttpsDecryptionDialog
         open={httpsSetupOpen}
         onClose={() => setHttpsSetupOpen(false)}
+        onCertificateChange={setCertificate}
       />
     </>
   );

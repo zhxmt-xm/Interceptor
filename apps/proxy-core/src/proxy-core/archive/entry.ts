@@ -22,7 +22,6 @@ import {
   ARCHIVE_WORKER_BATCH_SIZE,
   BLOB_ENTRY_PREFIX,
   MANIFEST_ENTRY_NAME,
-  MAX_ARCHIVE_BYTES,
   SNAPSHOT_ENTRY_NAME,
 } from './archive-constants';
 import { ArchiveInvalidError } from './archive-invalid-error';
@@ -160,10 +159,6 @@ export class ArchiveService {
     if (!stats.isFile()) {
       throw new ArchiveInvalidError('Archive source must be a regular file.');
     }
-    if (stats.size > MAX_ARCHIVE_BYTES) {
-      throw new ArchiveInvalidError('Archive file exceeds the size limit.');
-    }
-
     const extractDir = await mkdtemp(path.join(tmpdir(), 'interceptor-archive-'));
     const readHandle = await open(filePath, 'r');
     const sessionId = `archive-${randomUUID()}`;

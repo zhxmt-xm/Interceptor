@@ -67,14 +67,25 @@ export const RequestRow = memo(function RequestRow({
           {isTlsTunnel ? t('capture.httpsEncrypted') : displayPath(summary.path, showQueryParams)}
         </span>
       </span>
-      <span className={cx(styles.status, styles[kind])}>
+      <span
+        className={cx(styles.status, styles[kind])}
+        data-parity="capture-list-status-cell"
+      >
         <span className={styles.dot} />
         {statusLabel(summary)}
       </span>
-      <span className={styles.proto}>{protocolLabel(summary.protocol)}</span>
-      <span className={styles.type}>{typeLabel(summary.responseMime)}</span>
-      <span className={styles.size}>{sizeLabel(displayBytes(summary), i18n.language)}</span>
-      <span className={styles.time}>{timeLabel(summary, i18n.language, timeLabels)}</span>
+      <span className={styles.proto} data-parity="capture-list-proto-cell">
+        {protocolLabel(summary.protocol)}
+      </span>
+      <span className={styles.type} data-parity="capture-list-type-cell">
+        {typeLabel(summary.responseMime)}
+      </span>
+      <span className={styles.size} data-parity="capture-list-size-cell">
+        {sizeLabel(displayBytes(summary), i18n.language)}
+      </span>
+      <span className={styles.time} data-parity="capture-list-time-cell">
+        {timeLabel(summary, i18n.language, timeLabels)}
+      </span>
     </button>
   );
 });

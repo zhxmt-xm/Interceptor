@@ -152,11 +152,12 @@ function Section({
 }
 
 export interface RequestInspectorProps {
+  mitmActive: boolean;
   onSetupHttps: () => void;
 }
 
 /** Right-hand inspector for the selected request. */
-export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React.JSX.Element {
+export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
   const tab = useCaptureStore((state) => state.inspectorTab);
@@ -265,7 +266,12 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
             ) : null}
           </span>
           {view ? (
-            <StatusBadge tone={statusTone(view.statusCode)}>{statusLabel(view)}</StatusBadge>
+            <StatusBadge
+              tone={statusTone(view.statusCode)}
+              parityId="capture-inspector-status"
+            >
+              {statusLabel(view)}
+            </StatusBadge>
           ) : null}
         </div>
         <Tooltip title={t('capture.close')} mouseEnterDelay={0.4}>
@@ -298,6 +304,7 @@ export function RequestInspector({ onSetupHttps }: RequestInspectorProps): React
         {tab === 'tunnel' && isTlsTunnel && view ? (
           <TlsTunnelPanel
             host={view.host ?? ''}
+            mitmActive={mitmActive}
             port={tlsPort}
             open={view.state !== 'completed' && view.state !== 'failed'}
             onSetupHttps={onSetupHttps}

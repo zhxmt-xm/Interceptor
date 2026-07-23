@@ -6,10 +6,6 @@ import { createInflateRaw } from 'node:zlib';
 
 import {
   ALLOWED_ZIP_METHODS,
-  MAX_ARCHIVE_ENTRIES,
-  MAX_COMPRESSION_RATIO,
-  MAX_ENTRY_UNCOMPRESSED_BYTES,
-  MAX_TOTAL_UNCOMPRESSED_BYTES,
 } from './archive-constants';
 import { ArchiveInvalidError } from './archive-invalid-error';
 import type { ValidatedZipEntry, ZipCentralEntry } from './interfaces';
@@ -26,16 +22,15 @@ const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_HEADER_SIGNATURE = 0x02014b50;
 const LOCAL_HEADER_SIGNATURE = 0x04034b50;
 const EOCD_MAX_SCAN = 22 + 0xffff;
-const MAX_CENTRAL_DIRECTORY_BYTES = 128 * 1024 * 1024;
 const UINT16_MAX = 0xffff;
 const UINT32_MAX = 0xffffffff;
 
 /**
- * 依赖零新增的最小 ZIP 读取器，把不可信 ZIP 当攻击输入处理。
+ * 依赖零新增的最小 ZIP 读取器。
  *
  * 只信任 central directory：先解析全部条目，在提取任何字节前完成路径穿越、符号链接、
- * 加密位、压缩方法、单条/总解压上限与压缩比校验；提取时按声明大小设硬上限并逐条校验
- * CRC-32，防 zip bomb 与谎报大小。不支持 ZIP64（本产品写入器也不产生），遇到即拒绝。
+ * 加密位和压缩方法；提取时按声明大小逐条校验 CRC-32，拒绝损坏或谎报大小的数据。
+ * 不支持 ZIP64（本产品写入器也不产生），遇到即拒绝。
  */
 export class ArchiveZipReader {
   /** 只读文件句柄（由调用方创建并负责关闭）。 */
@@ -53,13 +48,7 @@ export class ArchiveZipReader {
   /** 定位 EOCD、读取并解析 central directory 全部条目。 */
   async open(): Promise<void> {
     const { centralOffset, centralSize, count } = await this.readEndOfCentralDirectory();
-    if (count > MAX_ARCHIVE_ENTRIES) {
-      throw new ArchiveInvalidError('Archive declares too many entries.');
-    }
-    if (
-      centralSize > MAX_CENTRAL_DIRECTORY_BYTES ||
-      centralOffset + centralSize > this.fileSize
-    ) {
+    if (centralOffset + centralSize > this.fileSize) {
       throw new ArchiveInvalidError('Archive central directory is out of range.');
     }
     const buffer = Buffer.alloc(centralSize);
@@ -73,7 +62,6 @@ export class ArchiveZipReader {
    */
   validate(): ValidatedZipEntry[] {
     const seen = new Set<string>();
-    let totalUncompressed = 0;
     const validated: ValidatedZipEntry[] = [];
     for (const entry of this.entries) {
       if ((entry.flag & 0x1) === 0x1) {
@@ -93,24 +81,11 @@ export class ArchiveZipReader {
         throw new ArchiveInvalidError('Archive contains duplicate entries.');
       }
       seen.add(safeName);
-      if (entry.uncompressedSize > MAX_ENTRY_UNCOMPRESSED_BYTES) {
-        throw new ArchiveInvalidError('Archive entry exceeds the size limit.');
-      }
       if (
         entry.localHeaderOffset >= this.fileSize ||
         entry.compressedSize > this.fileSize
       ) {
         throw new ArchiveInvalidError('Archive entry offset is out of range.');
-      }
-      if (
-        entry.compressedSize > 0 &&
-        entry.uncompressedSize / entry.compressedSize > MAX_COMPRESSION_RATIO
-      ) {
-        throw new ArchiveInvalidError('Archive entry compression ratio is suspicious.');
-      }
-      totalUncompressed += entry.uncompressedSize;
-      if (totalUncompressed > MAX_TOTAL_UNCOMPRESSED_BYTES) {
-        throw new ArchiveInvalidError('Archive total size exceeds the limit.');
       }
       validated.push({ ...entry, safeName });
     }

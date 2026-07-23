@@ -53,9 +53,11 @@ for (const theme of ['light', 'dark']) {
   for (const tab of ['request', 'response', 'timing', 'cookies', 'tls']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab } });
   }
+  shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'headers', copy: 'error' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'grpc', tab: 'grpc' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'tunnel', tab: 'tunnel' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel-mitm-active', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'tunnel', tab: 'tunnel', mitm: 'active' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
@@ -116,6 +118,8 @@ async function shoot(list) {
       repair: 'idle',
       update: 'up-to-date',
       https: 'fresh',
+      mitm: 'inactive',
+      copy: 'hidden',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

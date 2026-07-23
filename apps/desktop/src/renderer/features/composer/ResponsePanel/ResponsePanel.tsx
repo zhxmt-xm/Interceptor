@@ -134,7 +134,6 @@ export function ResponsePanel(): React.JSX.Element {
       {tab === 'body' ? (
         <pre className={styles.bodyText}>
           {prettyBody(bodyText)}
-          {response.bodyTruncated ? `\n\n${t('composer.responseTruncated')}` : ''}
         </pre>
       ) : null}
 

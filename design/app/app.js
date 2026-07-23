@@ -1,5 +1,5 @@
 // Interceptor design SPA — state controller.
-// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https}).
+// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https,mitm,copy}).
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
@@ -69,6 +69,13 @@ function setInspTab(tab) {
   app.querySelectorAll('.tp[data-tab]').forEach((p) => p.classList.toggle('on', p.dataset.tab === tab));
 }
 
+function syncCaptureListScrollbar() {
+  const scroll = app.querySelector('.list-scroll');
+  const head = app.querySelector('.lhead');
+  if (!scroll || !head) return;
+  head.style.paddingRight = `${18 + scroll.offsetWidth - scroll.clientWidth}px`;
+}
+
 function setState(s = {}) {
   if (s.theme) app.setAttribute('data-theme', s.theme);
   if (s.sidebar) {
@@ -110,6 +117,8 @@ function setState(s = {}) {
   if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
   if (s.https) app.dataset.https = s.https;
+  if (s.mitm) app.dataset.mitm = s.mitm;
+  if (s.copy) app.dataset.copy = s.copy;
   if (s.transfer) app.dataset.transfer = s.transfer;
   if ('recording' in s) {
     if (s.recording) app.dataset.recording = s.recording;
@@ -128,9 +137,15 @@ function setState(s = {}) {
     renderSidebar(app.getAttribute('data-view'));
   }
   positionFootpop();
+  syncCaptureListScrollbar();
   syncControls();
 }
 window.__setState = setState;
+
+const captureListScroll = app.querySelector('.list-scroll');
+if (captureListScroll) {
+  new ResizeObserver(syncCaptureListScrollbar).observe(captureListScroll);
+}
 
 // Anchor the open footer popover to the trigger button: just past the button's right edge, bottom edges flush.
 function positionFootpop() {

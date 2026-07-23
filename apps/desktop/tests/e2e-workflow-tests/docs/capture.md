@@ -194,7 +194,7 @@ TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspa
 4. 点击 `capture.inspector.body-mode.text`，验证原始UTF-8文本。
 5. 点击 `capture.inspector.body-mode.json`，验证显式格式化；另用非法JSON验证保留原文。
 6. 点击 `capture.inspector.body-mode.hex`，逐字节比对offset、hex和ASCII。
-7. 制造超过preview上限的body，验证truncated/preview提示。
+7. 制造大 body，验证完整正文仍可查看与复制。
 8. 在Proxy点击Restore，确认非owned；保存evidence并点击Close。
 9. 验证销毁和系统代理恢复。
 10. 关闭origin并删除profile。

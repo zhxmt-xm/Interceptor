@@ -1,9 +1,8 @@
 /**
- * 原生 archive 格式常量与安全上限。
+ * 原生 archive 格式与无损调度常量。
  *
  * archive 是版本化 ZIP：manifest.json + 一致 SQLite 快照（capture.sqlite）+ 内容寻址
- * Blob（blobs/<sha256>）。所有上限用于把不可信 ZIP 当作攻击输入处理——解压前即校验
- * 路径、条目数、单条与总解压字节、压缩比，防目录穿越与 zip bomb。
+ * Blob（blobs/<sha256>）。导入校验路径、格式、CRC 与内容 hash；不限制数据大小或数量。
  */
 
 /** manifest 声明的稳定格式标识。 */
@@ -22,19 +21,6 @@ export const BLOB_ENTRY_PREFIX = 'blobs/';
 
 /** 允许的压缩方法：0=store、8=deflate。 */
 export const ALLOWED_ZIP_METHODS: readonly number[] = [0, 8];
-
-/** 导入源 ZIP 文件（压缩后）最大字节数。 */
-export const MAX_ARCHIVE_BYTES = 4 * 1024 * 1024 * 1024 - 1;
-/** archive 内最多条目数。 */
-export const MAX_ARCHIVE_ENTRIES = 500_000;
-/** 单条目解压后最大字节数（SQLite 快照可能接近全局配额）。 */
-export const MAX_ENTRY_UNCOMPRESSED_BYTES = 3 * 1024 * 1024 * 1024;
-/** 所有条目解压后总字节上限（zip bomb 绝对护栏）。 */
-export const MAX_TOTAL_UNCOMPRESSED_BYTES = 6 * 1024 * 1024 * 1024;
-/** 单条目允许的最大压缩比（解压/压缩），超过视为 zip bomb 拒绝。 */
-export const MAX_COMPRESSION_RATIO = 300;
-/** manifest.json 解压后最大字节数（含大文件列表时的上限）。 */
-export const MAX_MANIFEST_BYTES = 256 * 1024 * 1024;
 
 /** 导出时每页枚举的 Exchange 数量。 */
 export const ARCHIVE_EXPORT_PAGE_SIZE = 500;

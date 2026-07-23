@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-import { MAX_HISTORY } from '../constants';
 import type { ComposerState, HistoryEntry } from '../interfaces';
 import { defaultHeaders, nextId } from '../utils';
 
@@ -75,7 +74,7 @@ export const useComposerStore = create<ComposerState>((set) => ({
         response,
         sending: false,
         responseTab: 'body',
-        history: [entry, ...state.history].slice(0, MAX_HISTORY),
+        history: [entry, ...state.history],
       };
     }),
 

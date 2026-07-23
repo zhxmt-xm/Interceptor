@@ -20,6 +20,16 @@ export const views = [
       'Settings',
       'Theme',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
+      { name: 'List status header', parity: 'capture-list-status-header' },
+      { name: 'List status cell', parity: 'capture-list-status-cell' },
+      { name: 'List protocol header', parity: 'capture-list-proto-header' },
+      { name: 'List protocol cell', parity: 'capture-list-proto-cell' },
+      { name: 'List type header', parity: 'capture-list-type-header' },
+      { name: 'List type cell', parity: 'capture-list-type-cell' },
+      { name: 'List size header', parity: 'capture-list-size-header' },
+      { name: 'List size cell', parity: 'capture-list-size-cell' },
+      { name: 'List time header', parity: 'capture-list-time-header' },
+      { name: 'List time cell', parity: 'capture-list-time-cell' },
       'Recording',
     ],
   },
@@ -45,7 +55,7 @@ export const views = [
     targets: [
       'Capture',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      'Connected',
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
       'Messages',
       'Pause on message',
       'Received text',
@@ -127,7 +137,7 @@ export const views = [
     ],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      'gRPC 0 OK',
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
       'Messages',
       'Response',
       'Message 2',
@@ -139,6 +149,7 @@ export const views = [
   {
     id: 'capture-tunnel',
     theme: 'light',
+    mitmActive: false,
     designState: {
       view: 'capture',
       theme: 'light',
@@ -151,7 +162,7 @@ export const views = [
     targets: [
       { name: 'Inspector method', parity: 'capture-inspector-method' },
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      'Encrypted',
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
       'HTTPS content is encrypted',
       'Decrypt HTTPS (MITM)',
@@ -162,6 +173,7 @@ export const views = [
   {
     id: 'capture-tunnel-dark',
     theme: 'dark',
+    mitmActive: false,
     designState: {
       view: 'capture',
       theme: 'dark',
@@ -173,11 +185,34 @@ export const views = [
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
-      'Encrypted',
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
       'HTTPS content is encrypted',
       'Decrypt HTTPS (MITM)',
       'TLS passthrough',
+    ],
+  },
+  {
+    id: 'capture-tunnel-mitm-active',
+    theme: 'light',
+    mitmActive: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      scene: 'tunnel',
+      tab: 'tunnel',
+      mitm: 'active',
+    },
+    designShot: 'light/capture/inspector-tunnel-mitm-active.png',
+    rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
+    targets: [
+      { name: 'Inspector host', parity: 'capture-inspector-host' },
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
+      'TLS tunnel',
+      'HTTPS content is encrypted',
+      'MITM active',
+      'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
     ],
   },
   {

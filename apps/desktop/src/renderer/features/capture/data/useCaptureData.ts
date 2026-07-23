@@ -8,7 +8,6 @@ import { useCaptureStore } from './captureStore';
 
 const PAGE_SIZE = 500;
 const DEFAULT_CAPTURE_PORT = 8888;
-const BOOTSTRAP_MAX_ATTEMPTS = 30;
 const BOOTSTRAP_RETRY_MS = 300;
 let captureBootstrapPromise: Promise<void> | null = null;
 let captureCoreGeneration: string | null = null;
@@ -135,8 +134,7 @@ function applyCoreStatus(status: CoreProcessStatus): void {
 /** 等待可用 Core 代际并启动 listener；启动期间的断连只在此有界重试。 */
 async function waitForCaptureListener(): Promise<Awaited<ReturnType<typeof window.interceptor.getCaptureStatus>>> {
   const api = window.interceptor;
-  let lastError: unknown = new Error('Proxy Core did not become ready.');
-  for (let attempt = 0; attempt < BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
+  while (true) {
     try {
       const core = await api.getCoreProcessStatus();
       if (core.state === 'running') {
@@ -145,14 +143,13 @@ async function waitForCaptureListener(): Promise<Awaited<ReturnType<typeof windo
           ? current
           : await api.startCapture(DEFAULT_CAPTURE_PORT);
       }
-    } catch (error) {
-      lastError = error;
+    } catch {
+      // Core generation transitions are transient; keep waiting for a running generation.
     }
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, BOOTSTRAP_RETRY_MS);
     });
   }
-  throw lastError;
 }
 
 /** 检查系统代理 readiness；未持有时只提示，不静默修改操作系统设置。 */
@@ -226,7 +223,7 @@ export async function retryCaptureProxyReadiness(): Promise<boolean> {
   }
 }
 
-/** Store one bounded readiness failure for the global recovery dialog. */
+/** Store one complete readiness failure for the global recovery dialog. */
 function setProxyReadinessIssue(
   kind: 'listener' | 'system-proxy',
   error: unknown,
@@ -235,7 +232,7 @@ function setProxyReadinessIssue(
   useCaptureStore.getState().setProxyReadinessIssue({
     kind,
     ownershipLost,
-    message: describeError(error).slice(0, 512),
+    message: describeError(error),
   });
 }
 

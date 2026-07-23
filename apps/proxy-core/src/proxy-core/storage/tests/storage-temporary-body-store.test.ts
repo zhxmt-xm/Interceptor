@@ -5,8 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { limits } = vi.hoisted(() => ({
   limits: {
-    maxBodyBytes: 64 * 1024 * 1024,
-    quotaBytes: 2 * 1024 * 1024 * 1024,
     memoryThresholdBytes: 1024 * 1024,
     legacyBlobDir: '',
     captureTempDir: '',
@@ -15,12 +13,6 @@ const { limits } = vi.hoisted(() => ({
 
 vi.mock('../../constants', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../constants')>()),
-  get MAX_BODY_BYTES() {
-    return limits.maxBodyBytes;
-  },
-  get GLOBAL_QUOTA_BYTES() {
-    return limits.quotaBytes;
-  },
   get BODY_MEMORY_THRESHOLD_BYTES() {
     return limits.memoryThresholdBytes;
   },
@@ -32,8 +24,6 @@ vi.mock('../../constants', async (importOriginal) => ({
   },
 }));
 
-import { BodyQuotaExceededError } from '../storage-body-quota-exceeded-error';
-import { BodyTooLargeError } from '../storage-body-too-large-error';
 import { TemporaryBodyStore } from '../storage-temporary-body-store';
 
 /** TemporaryBodyStore 的临时目录与字节源夹具。 */
@@ -43,10 +33,8 @@ class TemporaryBodyStoreFixture {
   /** 当前 Store。 */
   store = new TemporaryBodyStore();
 
-  /** 重置上限并初始化临时目录。 */
+  /** 重置 spill 阈值并初始化临时目录。 */
   async initialize(): Promise<void> {
-    limits.maxBodyBytes = 64 * 1024 * 1024;
-    limits.quotaBytes = 2 * 1024 * 1024 * 1024;
     limits.memoryThresholdBytes = 1024 * 1024;
     this.root = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-body-'));
     limits.legacyBlobDir = path.join(this.root, 'blobs');
@@ -70,6 +58,18 @@ class TemporaryBodyStoreFixture {
     for (let offset = 0; offset < data.length; offset += chunkSize) {
       yield data.subarray(offset, offset + chunkSize);
     }
+  }
+
+  /** 生成不预先聚合到内存的重复大块正文。 */
+  async *repeatedChunks(
+    chunk: Buffer,
+    count: number,
+    tail: Buffer,
+  ): AsyncIterable<Uint8Array> {
+    for (let index = 0; index < count; index += 1) {
+      yield chunk;
+    }
+    yield tail;
   }
 
   /** 读取异步流的全部内容。 */
@@ -148,22 +148,21 @@ describe('TemporaryBodyStore', () => {
     expect(await fixture.store.has(drop.hash)).toBe(false);
   });
 
-  it('rejects per-body and total quota overflows without leftovers', async () => {
-    limits.maxBodyBytes = 4;
-    limits.quotaBytes = 6;
-    fixture.store = new TemporaryBodyStore();
-    await fixture.store.init();
+  it('stores a body larger than the former 64 MiB limit without truncation', async () => {
+    const chunk = Buffer.alloc(1024 * 1024, 0x61);
+    const tail = Buffer.from('complete');
+    const expectedSize = chunk.byteLength * 64 + tail.byteLength;
 
-    await expect(
-      fixture.store.writeStream(fixture.chunks(Buffer.from('12345'))),
-    ).rejects.toBeInstanceOf(BodyTooLargeError);
-    limits.maxBodyBytes = 64;
-    await fixture.store.writeStream(fixture.chunks(Buffer.from('1234')));
-    await expect(
-      fixture.store.writeStream(fixture.chunks(Buffer.from('567'))),
-    ).rejects.toBeInstanceOf(BodyQuotaExceededError);
-    expect(fixture.store.usageBytes).toBe(4);
-  });
+    const stored = await fixture.store.writeStream(
+      fixture.repeatedChunks(chunk, 64, tail),
+    );
+
+    expect(stored.size).toBe(expectedSize);
+    expect(fixture.store.usageBytes).toBe(expectedSize);
+    expect(fixture.store.spillBytes).toBe(expectedSize);
+    expect(await fixture.store.readRange(stored.hash, expectedSize - tail.length, tail.length))
+      .toEqual(tail);
+  }, 20_000);
 
   it('removes legacy persistent blobs during initialization', async () => {
     await fs.mkdir(limits.legacyBlobDir, { recursive: true });

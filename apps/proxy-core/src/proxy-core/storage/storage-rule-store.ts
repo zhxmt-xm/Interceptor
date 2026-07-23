@@ -5,7 +5,6 @@ import type { RuleDefinition, RuleSet } from '@interceptor/core-protocol';
 
 import { captureDatabasePath, rulesDatabasePath } from '../constants';
 import { applyMigrations } from '../migration-runner';
-import { BUSY_TIMEOUT_MS } from './storage-constants';
 import { RuleRevisionConflictError } from './storage-rule-revision-conflict-error';
 import { RULE_MIGRATIONS } from './storage-rule-schema';
 
@@ -24,7 +23,6 @@ export class RuleStore {
       database.exec('PRAGMA journal_mode = WAL');
       database.exec('PRAGMA foreign_keys = ON');
       database.exec('PRAGMA synchronous = NORMAL');
-      database.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
       applyMigrations(database, RULE_MIGRATIONS);
       this.database = database;
       this.migrateLegacyCapture();

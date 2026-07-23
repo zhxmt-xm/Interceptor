@@ -31,7 +31,6 @@ export interface CoreProcessHandle {
 /** CoreRuntime 构造可选项：CoreProcess 生命周期超时、重启退避与时间源注入。 */
 export interface CoreRuntimeOptions {
   coreProcessStartupTimeoutMs?: number;
-  coreProcessHeartbeatTimeoutMs?: number;
   coreProcessRestartBaseDelayMs?: number;
   coreProcessRestartMaxDelayMs?: number;
   coreProcessShutdownTimeoutMs?: number;
@@ -40,6 +39,9 @@ export interface CoreRuntimeOptions {
 
 /** CoreProcess 状态变更监听器。 */
 export type CoreProcessStatusListener = (status: CoreProcessStatus) => void;
+
+/** CoreProcess 首次 ready 后、公开 running 前执行的初始化监听器。 */
+export type CoreProcessReadyListener = () => void | Promise<void>;
 
 /** CoreProcess 经 parentPort 上报的生命周期消息（收窄后使用）。 */
 export type CoreProcessLifecycleMessage =
@@ -66,6 +68,9 @@ export interface CoreRequestOptions {
   timeoutMs?: number;
   traceId?: string;
 }
+
+/** Main 收到无法用于当前消息/请求的 Core RPC 信封时接收诊断原因。 */
+export type CoreRpcProtocolIssueListener = (detail: string) => void;
 
 /** CoreRpcClient 构造可选项：id 生成器与默认请求超时注入。 */
 export interface CoreRpcClientOptions {

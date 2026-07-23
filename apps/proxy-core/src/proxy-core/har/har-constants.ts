@@ -1,10 +1,3 @@
-export const MAX_HAR_ENTRIES = 100_000;
-export const MAX_HAR_HEADERS = 1_000;
-export const MAX_HAR_DOCUMENT_BYTES = 256 * 1024 * 1024;
-export const MAX_HAR_URL_LENGTH = 16_384;
-export const MAX_HAR_HEADER_NAME_LENGTH = 256;
-export const MAX_HAR_HEADER_VALUE_LENGTH = 8_192;
 export const HAR_EXPORT_PAGE_SIZE = 500;
 export const HAR_IMPORT_BATCH_SIZE = 100;
 export const HAR_BODY_READ_CHUNK_BYTES = 1024 * 1024;
-export const MAX_HAR_SELECTED_EXCHANGES = 10_000;

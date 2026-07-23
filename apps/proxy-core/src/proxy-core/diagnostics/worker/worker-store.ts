@@ -2,10 +2,6 @@ import type { DatabaseSync, StatementSync } from 'node:sqlite';
 
 import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 
-import {
-  DIAGNOSTICS_MAX_AGE_MS,
-  DIAGNOSTICS_MAX_RECORDS,
-} from '../../constants';
 import type {
   DiagnosticsLogRow,
   DiagnosticsPage,
@@ -18,16 +14,12 @@ const DROPPED_KEY = 'dropped_count';
 /**
  * `diagnostics.sqlite` 的同步访问层，运行在 Diagnostics Worker 线程内。
  *
- * 批量事务写入脱敏日志，按条数/时长保留策略淘汰旧记录，并提供按 id keyset 的分页
+ * 批量事务写入脱敏日志，不按条数或时长淘汰，并提供按 id keyset 的分页
  * 查询与聚合丢弃计数。与 Capture 库彻底隔离，写入失败只影响诊断自身，绝不阻塞捕获。
  */
 export class DiagnosticsStore {
   /** 批量日志插入的预编译语句。 */
   private readonly insertStmt: StatementSync;
-  /** 持久化日志最大条数。 */
-  private readonly maxRecords = DIAGNOSTICS_MAX_RECORDS;
-  /** 可选的最大保留时长。 */
-  private readonly maxAgeMs = DIAGNOSTICS_MAX_AGE_MS;
   /** Worker 独占的 SQLite 连接。 */
   private readonly db: DatabaseSync;
 
@@ -45,7 +37,7 @@ export class DiagnosticsStore {
   }
 
   /**
-   * 在单事务内批量持久化日志记录，随后执行条数与时长保留策略。
+  * 在单事务内批量持久化全部日志记录。
    * 调用方：Diagnostics Worker 处理 write 批次。空批次直接返回。
    */
   insertBatch(records: readonly DiagnosticLogRecord[]): void {
@@ -74,7 +66,6 @@ export class DiagnosticsStore {
             : null,
         });
       }
-      this.enforceRetention();
       this.db.exec('COMMIT');
     } catch (error) {
       try {
@@ -187,18 +178,4 @@ export class DiagnosticsStore {
     this.db.close();
   }
 
-  /** 在当前事务内执行条数与可选时长保留策略。 */
-  private enforceRetention(): void {
-    this.db
-      .prepare(
-        `DELETE FROM log_record
-         WHERE id <= (SELECT MAX(id) FROM log_record) - :maxRecords`,
-      )
-      .run({ maxRecords: this.maxRecords });
-    if (this.maxAgeMs !== null) {
-      this.db
-        .prepare('DELETE FROM log_record WHERE ts_ms < :cutoff')
-        .run({ cutoff: Date.now() - this.maxAgeMs });
-    }
-  }
 }

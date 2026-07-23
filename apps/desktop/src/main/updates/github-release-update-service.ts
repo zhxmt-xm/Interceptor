@@ -17,10 +17,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
   /** Fixed repository API endpoint; no Renderer-controlled URL is accepted. */
   private static readonly latestReleaseApi =
     'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/latest';
-  /** Maximum GitHub response accepted into memory. */
-  private static readonly maximumResponseBytes = 512 * 1024;
-  /** Maximum installer bytes accepted from one release asset. */
-  private static readonly maximumInstallerBytes = 1024 * 1024 * 1024;
   /** Current immutable status exposed through the narrow desktop API. */
   private statusValue: UpdateStatus;
   /** Status subscribers owned by Main. */
@@ -140,7 +136,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     }
     const error = await this.openPath(this.downloadedInstallerPath);
     if (error) {
-      throw new Error(error.slice(0, 512));
+      throw new Error(error);
     }
   }
 
@@ -189,7 +185,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
           cache: 'no-store',
           credentials: 'omit',
           referrerPolicy: 'no-referrer',
-          signal: AbortSignal.timeout(10_000),
         },
       );
       if (response.status === 404) {
@@ -202,17 +197,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       if (!response.ok) {
         throw new Error(`GitHub returned HTTP ${response.status}.`);
       }
-      const declared = Number(response.headers.get('content-length'));
-      if (
-        Number.isFinite(declared) &&
-        declared > GitHubReleaseUpdateService.maximumResponseBytes
-      ) {
-        throw new Error('GitHub release metadata exceeds the size limit.');
-      }
       const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength > GitHubReleaseUpdateService.maximumResponseBytes) {
-        throw new Error('GitHub release metadata exceeds the size limit.');
-      }
       const release = this.parseRelease(new TextDecoder().decode(bytes));
       const currentVersion = this.statusValue.currentVersion;
       if (semver.gt(release.version, currentVersion)) {
@@ -247,7 +232,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
         downloadedBytes: null,
         totalBytes: null,
         releaseNotes: null,
-        message: (error instanceof Error ? error.message : String(error)).slice(0, 512),
+        message: error instanceof Error ? error.message : String(error),
       });
       return this.status();
     }
@@ -302,10 +287,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
             break;
           }
           received += value.byteLength;
-          if (
-            received > asset.size ||
-            received > GitHubReleaseUpdateService.maximumInstallerBytes
-          ) {
+          if (received > asset.size) {
             throw new Error('GitHub installer exceeds its declared size.');
           }
           digest.update(value);
@@ -357,7 +339,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
         state: 'failed',
         progress: null,
         downloadedBytes: null,
-        message: (error instanceof Error ? error.message : String(error)).slice(0, 512),
+        message: error instanceof Error ? error.message : String(error),
       });
       return this.status();
     } finally {
@@ -441,14 +423,12 @@ export class GitHubReleaseUpdateService implements UpdateService {
     if (
       typeof asset.name !== 'string' ||
       asset.name.length === 0 ||
-      asset.name.length > 160 ||
       path.basename(asset.name) !== asset.name ||
       typeof asset.browser_download_url !== 'string' ||
       asset.state !== 'uploaded' ||
       typeof asset.size !== 'number' ||
       !Number.isSafeInteger(asset.size) ||
       asset.size <= 0 ||
-      asset.size > GitHubReleaseUpdateService.maximumInstallerBytes ||
       typeof asset.digest !== 'string' ||
       !/^sha256:[a-f0-9]{64}$/.test(asset.digest)
     ) {
@@ -491,7 +471,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     };
   }
 
-  /** Convert untrusted Markdown/HTML release notes to bounded display text. */
+  /** Convert untrusted Markdown/HTML release notes to complete display text. */
   private plainText(value: string): string | null {
     const text = value
       .replace(/\r\n?/g, '\n')
@@ -502,8 +482,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       .split('\n')
       .map((line) => line.trim())
       .join('\n')
-      .trim()
-      .slice(0, 16_384);
+      .trim();
     return text || null;
   }
 

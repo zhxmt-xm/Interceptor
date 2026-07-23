@@ -45,8 +45,6 @@ export interface PendingDiagnosticsQuery {
   resolve(page: DiagnosticsPage): void;
   /** 拒绝查询 Promise。 */
   reject(error: Error): void;
-  /** 查询超时定时器。 */
-  timer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface DiagnosticsLogRow {

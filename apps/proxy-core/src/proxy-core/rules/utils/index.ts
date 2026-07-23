@@ -17,10 +17,8 @@ import type {
   StringMatchMode,
 } from '@interceptor/core-protocol';
 
-import { MAX_SNAPSHOT_BODY } from '../rule-constants';
 import { RuleActionExecutor } from '../rule-action-executor';
 import type {
-  ActionExecutorOptions,
   ActionOutcome,
   BreakpointSnapshot,
   BreakpointState,
@@ -35,9 +33,8 @@ import type {
 export function applyRequestAction(
   state: MutableRequestState,
   action: RuleAction,
-  options: ActionExecutorOptions = {},
 ): Promise<ActionOutcome> {
-  return new RuleActionExecutor(options).applyRequest(state, action);
+  return new RuleActionExecutor().applyRequest(state, action);
 }
 
 /** 以默认执行器应用响应 action；供独立 action 调用与测试。 */
@@ -49,8 +46,7 @@ export function applyResponseAction(
 }
 
 /**
- * 把单个 RuleMatcher 编译为判定函数；正则在编译期预构建，非法正则退化为恒不匹配
- * （collectRuleDiagnostics 已在保存前拦截非法正则，此处为防御性回退）。
+ * 把单个 RuleMatcher 编译为判定函数；正则在编译期预构建，非法正则退化为恒不匹配。
  * 需要响应字段的 matcher（status / response header / response mime）在请求阶段
  * （无 response）返回 false，由引擎按阶段调度。
  */
@@ -316,7 +312,7 @@ export function bagToPairs(bag: HeaderBag): RuleHeaderPair[] {
   return pairs;
 }
 
-/** 将正文转为有界 UTF-8 断点快照。 */
+/** 将完整正文转为 UTF-8 断点快照。 */
 export function bodyToString(
   body: string | Uint8Array | undefined,
 ): string | undefined {
@@ -324,13 +320,9 @@ export function bodyToString(
     return undefined;
   }
   if (typeof body === 'string') {
-    return body.length > MAX_SNAPSHOT_BODY
-      ? body.slice(0, MAX_SNAPSHOT_BODY)
-      : body;
+    return body;
   }
-  return new TextDecoder('utf-8', { fatal: false }).decode(
-    body.subarray(0, MAX_SNAPSHOT_BODY),
-  );
+  return new TextDecoder('utf-8', { fatal: false }).decode(body);
 }
 
 /** 构造请求阶段断点快照。 */

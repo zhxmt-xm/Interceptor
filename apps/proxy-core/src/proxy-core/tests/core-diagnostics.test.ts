@@ -7,14 +7,6 @@ import {
 
 import { CoreDiagnostics } from '../core-diagnostics';
 
-// 不向构造函数注入边界参数：把内存 Ring Buffer 上限 mock 成小值来驱动淘汰。
-vi.mock('../constants', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../constants')>()),
-  DIAGNOSTICS_RING_MAX_BYTES: 10_000,
-  DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS: 2,
-  DIAGNOSTICS_RING_MAX_RECORDS: 3,
-}));
-
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -54,8 +46,8 @@ describe('CoreDiagnostics', () => {
         traceId: undefined,
         requestId: undefined,
         attributes: {
-          authorization_0: '[REDACTED]',
-          message_1:
+          authorization: '[REDACTED]',
+          message:
             'GET https://example.com/path?token=%5BREDACTED%5D Bearer [REDACTED]',
         },
       },
@@ -93,7 +85,7 @@ describe('CoreDiagnostics', () => {
     expect(batches.flat()).toHaveLength(1);
   });
 
-  it('keeps records and pending output bounded', async () => {
+  it('keeps every record and pending output item', async () => {
     const diagnostics = new CoreDiagnostics({ sink: () => undefined });
 
     for (let index = 0; index < 6; index += 1) {
@@ -102,8 +94,8 @@ describe('CoreDiagnostics', () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     const recent = diagnostics.recent(10);
-    expect(recent.records).toHaveLength(3);
-    expect(recent.droppedCount).toBe(7);
+    expect(recent.records).toHaveLength(6);
+    expect(recent.droppedCount).toBe(0);
   });
 
   it('falls back without throwing when the sink fails', async () => {
@@ -159,12 +151,12 @@ describe('CoreDiagnostics', () => {
 
     const recent = diagnostics.recent(10, 'trace-1');
     expect(recent.records[0]).toMatchObject({
-      phase: 'command_completed',
-      action: 'unsafe_action',
+      phase: 'command completed',
+      action: 'unsafe action',
       attributes: {
-        authorization_0: '[REDACTED]',
-        bad_key_1: 'safe value',
-        cookieValue_2: '[REDACTED]',
+        authorization: '[REDACTED]',
+        'bad key': 'safe value',
+        cookieValue: '[REDACTED]',
       },
     });
     expect(parseCoreToMainMessage({

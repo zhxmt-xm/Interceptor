@@ -37,12 +37,12 @@ function reportRendererDiagnostic(
     .reportRendererDiagnostic({
       kind,
       name: normalizeErrorName(error.name),
-      message: error.message.slice(0, 512),
+      message: error.message,
     })
     .catch(() => undefined);
 }
 
 function normalizeErrorName(name: string): string {
   const normalized = name.replace(/[^A-Za-z0-9._:-]/g, '_');
-  return normalized.slice(0, 128) || 'Error';
+  return normalized || 'Error';
 }

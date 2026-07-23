@@ -71,9 +71,10 @@ interface ActiveRequest {
 /**
  * Proxy Core 内的 MessagePort RPC 状态机。
  *
- * 只拥有当前连接、活动请求、协议校验、取消和 response 投递；command 业务行为
- * 委托给 CoreApplication 注入的 executeCommand。连接失效属于当前 CoreProcess 的
- * fatal 故障，由 onFatalError 通知 CoreApplication 退出，再由 Main CoreRuntime 重启。
+ * 只拥有当前连接、活动请求、信封关联、取消和 response 投递；command 业务行为
+ * 委托给 CoreApplication 注入的 executeCommand。数据/请求错误只影响单条消息；
+ * 只有真实 remote close 属于传输故障并让 Core 退出恢复；单次 postMessage 失败只影响
+ * 当前 response/event，连接保留给后续消息。
  */
 export class CoreRpcServer {
   private readonly activeRequests = new Map<string, ActiveRequest>();
@@ -129,9 +130,9 @@ export class CoreRpcServer {
   }
 
   /**
-   * 校验当前连接收到的原始消息，并分派 cancel 或异步 request 执行。
-   * 调用方：RpcConnection message listener；旧连接延迟到达的 callback 会被忽略。
-   * 非法 envelope 会关闭连接并进入 fatal recovery，而不是交给业务 handler。
+  * 解析当前连接收到的信封，并分派 cancel 或异步 request 执行。
+  * 调用方：RpcConnection message listener；旧连接延迟到达的 callback 会被忽略。
+  * 非法信封只丢弃或对可关联 request 返回错误，不关闭连接。
    */
   private handleMessage(connection: RpcConnection, rawMessage: unknown): void {
     if (this.connection !== connection) {
@@ -144,7 +145,7 @@ export class CoreRpcServer {
         outcome: 'failed',
         errorCode: 'invalid-message',
       });
-      this.fail(connection, 'invalid-message');
+      this.respondToInvalidRequest(connection, rawMessage, parsed.error);
       return;
     }
 
@@ -163,6 +164,38 @@ export class CoreRpcServer {
     }
 
     void this.executeRequest(connection, parsed.value);
+  }
+
+  /**
+   * 对具有合法关联信封但 payload 不可用的 request 返回结构化错误；无法关联的消息只丢弃。
+   * send 失败仍属于真实传输故障，并由 send 进入 fatal recovery。
+   */
+  private respondToInvalidRequest(
+    connection: RpcConnection,
+    rawMessage: unknown,
+    detail: string,
+  ): void {
+    if (
+      !CoreRpcServer.isRecord(rawMessage)
+      || rawMessage.kind !== 'request'
+      || rawMessage.protocolVersion !== CORE_PROTOCOL_VERSION
+      || !CoreRpcServer.isCorrelationId(rawMessage.requestId)
+      || !CoreRpcServer.isCorrelationId(rawMessage.traceId)
+    ) {
+      return;
+    }
+    this.send(connection, {
+      kind: 'response',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: rawMessage.requestId,
+      traceId: rawMessage.traceId,
+      ok: false,
+      error: {
+        code: 'invalid-message',
+        message: detail,
+        retryable: false,
+      },
+    });
   }
 
   /**
@@ -340,22 +373,25 @@ export class CoreRpcServer {
   }
 
   /**
-   * 将 response 限定到创建它的连接代际；发送异常会关闭当前连接并触发 fatal。
+  * 将 response 限定到创建它的连接代际；单次发送异常只返回 false。
    * 调用方：sendSuccess 和 sendError；返回值表示消息是否确实交给当前 port。
    */
   private send(connection: RpcConnection, message: CoreToMainMessage): boolean {
-    if (this.connection !== connection || !connection.send(message)) {
-      if (this.connection === connection) {
-        this.fail(connection, 'send-failed');
-      }
+    if (this.connection !== connection) {
       return false;
     }
-    return true;
+    const delivered = connection.send(message);
+    if (!delivered) {
+      this.diagnostics.warn('rpc.message-send-failed', {
+        errorCode: 'send-failed',
+      });
+    }
+    return delivered;
   }
 
   /**
    * 对当前连接执行一次故障清理并通知应用退出；旧连接故障 callback 保持忽略。
-   * 调用方：非法消息、remote close 和 response send failure。
+  * 调用方：remote close。单消息 send failure 不进入此路径。
    */
   private fail(connection: RpcConnection, reason: string): void {
     if (this.connection !== connection) {
@@ -368,6 +404,17 @@ export class CoreRpcServer {
     } catch {
       // 故障回调不能阻止 Core 退出并进入 Main CoreRuntime 的重启流程。
     }
+  }
+
+  /** 将未知 structured-clone 数据收窄为可读取信封字段的对象。 */
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  /** 校验只用于 request/response 关联的稳定 ID，不检查业务 payload。 */
+  private static isCorrelationId(value: unknown): value is string {
+    return typeof value === 'string'
+      && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
   }
 }
 

@@ -104,7 +104,7 @@ function CertificatesPanel(): React.JSX.Element {
     <>
       <h2 className={styles.title}>
         {t('settings.certificates')}
-        {info.trusted ? (
+        {info.trusted && info.mitmEnabled ? (
           <StatusBadge className={styles.mitm}>{t('settings.mitmActive')}</StatusBadge>
         ) : null}
       </h2>
@@ -350,11 +350,6 @@ function StoragePanel(): React.JSX.Element {
           <Group title={t('settings.usage')}>
             <Row label={t('settings.totalOnDisk')} hint={t('settings.totalOnDiskHint')}>
               <span className={styles.mono}>{value(usage?.totalBytes)}</span>
-            </Row>
-            <Row label={t('settings.quota')} hint={t('settings.quotaHint')}>
-              <span className={cx(styles.mono, styles.monoMuted)}>
-                {value(usage?.quotaBytes)}
-              </span>
             </Row>
             <Row label={t('settings.captureDatabase')}>
               <span className={styles.mono}>{value(usage?.databaseBytes)}</span>

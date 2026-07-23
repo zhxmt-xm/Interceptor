@@ -33,7 +33,7 @@ describe('SystemProxyJournal', () => {
     expect(await journal.read()).toBeNull();
   });
 
-  it('rejects malformed and oversized journal input', async () => {
+  it('rejects malformed JSON and accepts data beyond the former size limit', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-proxy-'));
     directories.push(directory);
     const journalPath = path.join(directory, 'ownership.json');
@@ -42,8 +42,11 @@ describe('SystemProxyJournal', () => {
     await writeFile(journalPath, '{bad', 'utf8');
     await expect(journal.read()).rejects.toBeInstanceOf(SystemProxyJournalError);
 
-    await writeFile(journalPath, 'x'.repeat(1024 * 1024 + 1), 'utf8');
-    await expect(journal.read()).rejects.toThrow('size limit');
+    const completeValue = 'x'.repeat(1024 * 1024 + 1);
+    await journal.begin('win32', { completeValue }, { flags: 3 });
+    expect(await journal.read()).toMatchObject({
+      original: { completeValue },
+    });
   });
 
   it('writes a complete JSON record without leaving temporary content', async () => {

@@ -21,6 +21,7 @@ import type { CoreProcessStatus } from '../../shared/desktop-api';
 import type {
   CoreProcessHandle,
   CoreProcessLifecycleMessage,
+  CoreProcessReadyListener,
   CoreProcessStatusListener,
   CoreRequestOptions,
   CoreRpcPort,
@@ -39,18 +40,11 @@ import { CoreRpcClient } from './core-rpc-client';
 export class CoreRuntime {
   /**
    * CoreProcess 首个 ready 的启动宽限期（ms）。
-   * 与运行期 heartbeat 超时解耦：Core 需先加载完整 bundle（含 mockttp/ws/http2/node:sqlite）
+  * Core 需先加载完整 bundle（含 mockttp/ws/http2/node:sqlite）
    * 才能发出首个 ready，冷启动（磁盘缓存冷、杀软扫描、CPU 争抢）常明显慢于运行期心跳间隔；
    * 取较宽松的 30s 给冷启动加载留足空间，避免把还在加载的 Core 误判 unresponsive 而反复重启。
    */
   private static readonly DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
-  /**
-   * 收到首个 ready 之后的 CoreProcess heartbeat 超时（ms）。
-   * Core 每 1s 发一次心跳；看门狗只应恢复真正死锁的 Core，因此取较宽松的 10s（≈连丢 10 个
-   * 心跳）：合法的繁忙期（大响应体 gzip/brotli 解码、高流量捕获批处理、GC 或 CPU 争抢）很少
-   * 连续阻塞事件循环 10s，避免把健康但一时繁忙的 Core 误判为 unresponsive 而在录制中途突然重启。
-   */
-  private static readonly DEFAULT_HEARTBEAT_TIMEOUT_MS = 10_000;
   /** 默认 CoreProcess 重启退避基数（ms）。 */
   private static readonly DEFAULT_RESTART_BASE_DELAY_MS = 250;
   /** 默认 CoreProcess 重启退避上限（ms）。 */
@@ -60,16 +54,21 @@ export class CoreRuntime {
 
   private readonly coreRpcClient = new CoreRpcClient();
   private readonly coreProcessStartupTimeoutMs: number;
-  private readonly coreProcessHeartbeatTimeoutMs: number;
   private readonly coreProcessRestartBaseDelayMs: number;
   private readonly coreProcessRestartMaxDelayMs: number;
   private readonly coreProcessShutdownTimeoutMs: number;
   private readonly now: () => number;
   private readonly coreProcessStatusListeners =
     new Set<CoreProcessStatusListener>();
-  private readonly coreProcessReadyListeners = new Set<() => void>();
+  private readonly coreProcessReadyListeners =
+    new Set<CoreProcessReadyListener>();
+  /** 单条 Core RPC 协议问题监听器；与 CoreProcess 生命周期状态隔离。 */
+  private readonly coreRpcProtocolIssueListeners =
+    new Set<(detail: string) => void>();
 
   private coreProcess: CoreProcessHandle | null = null;
+  /** 正在执行 ready 初始化屏障的 CoreProcess；完成前 heartbeat 不公开 running。 */
+  private initializingCoreProcess: CoreProcessHandle | null = null;
   private coreProcessHeartbeatTimeoutTimer:
     | ReturnType<typeof setTimeout>
     | null = null;
@@ -80,9 +79,11 @@ export class CoreRuntime {
     | null = null;
   private pendingCoreRuntimeStopResolver: (() => void) | null = null;
   private coreProcessShouldRun = false;
-  /** 当前 CoreProcess 代际是否已收到首个 ready/heartbeat；决定 heartbeat 看门狗用启动宽限期还是运行期超时。 */
-  private coreProcessReceivedFirstBeat = false;
+  /** 当前 CoreProcess 代际是否已收到 ready；只有 ready 才结束启动期限。 */
+  private coreProcessReceivedReady = false;
   private lastCoreProcessHeartbeatAtMs: number | null = null;
+  /** 最近一次 ready/heartbeat 携带的时间戳，供初始化屏障完成后发布准确快照。 */
+  private lastCoreProcessHeartbeatTimestamp: string | null = null;
   private coreProcessStatus: CoreProcessStatus;
 
   /**
@@ -93,9 +94,6 @@ export class CoreRuntime {
     this.coreProcessStartupTimeoutMs =
       options.coreProcessStartupTimeoutMs ??
       CoreRuntime.DEFAULT_STARTUP_TIMEOUT_MS;
-    this.coreProcessHeartbeatTimeoutMs =
-      options.coreProcessHeartbeatTimeoutMs ??
-      CoreRuntime.DEFAULT_HEARTBEAT_TIMEOUT_MS;
     this.coreProcessRestartBaseDelayMs =
       options.coreProcessRestartBaseDelayMs ??
       CoreRuntime.DEFAULT_RESTART_BASE_DELAY_MS;
@@ -107,6 +105,11 @@ export class CoreRuntime {
       CoreRuntime.DEFAULT_SHUTDOWN_TIMEOUT_MS;
     this.now = options.now ?? Date.now;
     this.coreProcessStatus = this.createCoreProcessStatus('stopped');
+    this.coreRpcClient.onProtocolIssue((detail) => {
+      for (const listener of this.coreRpcProtocolIssueListeners) {
+        listener(detail);
+      }
+    });
   }
 
   /**
@@ -154,9 +157,15 @@ export class CoreRuntime {
    * 注册 CoreProcess 就绪监听器（每代 CoreProcess 收到 ready 时触发一次），
    * 用于在新 Core 启动后下发 TLS 配置等初始化。调用方：DesktopApplication。
    */
-  onCoreProcessReady(listener: () => void): () => void {
+  onCoreProcessReady(listener: CoreProcessReadyListener): () => void {
     this.coreProcessReadyListeners.add(listener);
     return () => this.coreProcessReadyListeners.delete(listener);
+  }
+
+  /** 注册单消息 RPC 协议问题监听器；不会映射为 CoreProcess 状态变化。 */
+  onCoreRpcProtocolIssue(listener: (detail: string) => void): () => void {
+    this.coreRpcProtocolIssueListeners.add(listener);
+    return () => this.coreRpcProtocolIssueListeners.delete(listener);
   }
 
   /**
@@ -213,6 +222,7 @@ export class CoreRuntime {
     } finally {
       this.coreProcessStatusListeners.clear();
       this.coreProcessReadyListeners.clear();
+      this.coreRpcProtocolIssueListeners.clear();
     }
   }
 
@@ -243,8 +253,10 @@ export class CoreRuntime {
     }
 
     this.coreProcess = coreProcess;
-    this.coreProcessReceivedFirstBeat = false;
+    this.initializingCoreProcess = null;
+    this.coreProcessReceivedReady = false;
     this.lastCoreProcessHeartbeatAtMs = this.now();
+    this.lastCoreProcessHeartbeatTimestamp = null;
     this.bindCoreProcessEvents(coreProcess);
     this.armCoreProcessHeartbeatTimeout(coreProcess);
   }
@@ -378,32 +390,90 @@ export class CoreRuntime {
       return;
     }
 
-    // 首个 ready/heartbeat 后从启动宽限期切换到运行期 heartbeat 存活检测。
-    this.coreProcessReceivedFirstBeat = true;
+    // 首个 ready/heartbeat 记录活跃时间；运行期 heartbeat 只作观测，不触发 kill/restart。
+    if (coreProcessLifecycleMessage.type === 'ready') {
+      this.coreProcessReceivedReady = true;
+    }
     this.lastCoreProcessHeartbeatAtMs = this.now();
     const timestamp =
       coreProcessLifecycleMessage.type === 'ready'
         ? coreProcessLifecycleMessage.startedAt
         : coreProcessLifecycleMessage.timestamp;
+    this.lastCoreProcessHeartbeatTimestamp = timestamp;
+    if (coreProcessLifecycleMessage.type === 'ready') {
+      this.clearCoreProcessHeartbeatTimeout();
+    }
 
-    // ready/heartbeat 只说明 CoreProcess Event Loop 可响应，不代表业务模块健康。
+    if (coreProcessLifecycleMessage.type === 'ready') {
+      this.initializeReadyCoreProcess(
+        coreProcess,
+        coreProcessLifecycleMessage.pid,
+        coreProcessLifecycleMessage.startedAt,
+      );
+      return;
+    }
+
+    if (this.initializingCoreProcess === coreProcess) {
+      return;
+    }
+
+    // heartbeat 只说明 CoreProcess Event Loop 可响应，不代表业务模块健康。
     this.updateCoreProcessStatus('running', {
       pid: coreProcessLifecycleMessage.pid,
-      startedAt:
-        coreProcessLifecycleMessage.type === 'ready'
-          ? coreProcessLifecycleMessage.startedAt
-          : this.coreProcessStatus.startedAt,
+      startedAt: this.coreProcessStatus.startedAt,
       lastHeartbeatAt: timestamp,
       detail: null,
     });
-    this.armCoreProcessHeartbeatTimeout(coreProcess);
+  }
 
-    // 每代 CoreProcess 首个 ready 后通知监听器下发初始化（如 TLS 配置）。
-    if (coreProcessLifecycleMessage.type === 'ready') {
-      for (const listener of this.coreProcessReadyListeners) {
-        listener();
-      }
+  /**
+   * 等待每代 CoreProcess 的必要初始化（当前为 TLS 配置）完成后再公开 running；
+   * 调用方：handleCoreProcessMessage 收到首个 ready。
+   */
+  private initializeReadyCoreProcess(
+    coreProcess: CoreProcessHandle,
+    pid: number,
+    startedAt: string,
+  ): void {
+    const listeners = [...this.coreProcessReadyListeners];
+    if (listeners.length === 0) {
+      this.updateCoreProcessStatus('running', {
+        pid,
+        startedAt,
+        lastHeartbeatAt: this.lastCoreProcessHeartbeatTimestamp,
+        detail: null,
+      });
+      return;
     }
+
+    this.initializingCoreProcess = coreProcess;
+    const initializers = listeners.map(async (listener) => listener());
+    void Promise.all(initializers).then(
+      () => {
+        if (this.coreProcess !== coreProcess || !this.coreProcessShouldRun) {
+          return;
+        }
+        this.initializingCoreProcess = null;
+        this.updateCoreProcessStatus('running', {
+          pid,
+          startedAt,
+          lastHeartbeatAt: this.lastCoreProcessHeartbeatTimestamp,
+          detail: null,
+        });
+      },
+      (error: unknown) => {
+        if (this.coreProcess !== coreProcess || !this.coreProcessShouldRun) {
+          return;
+        }
+        this.initializingCoreProcess = null;
+        this.updateCoreProcessStatus('running', {
+          pid,
+          startedAt,
+          lastHeartbeatAt: this.lastCoreProcessHeartbeatTimestamp,
+          detail: `Core initialization failed: ${CoreRuntime.readCoreProcessStartError(error)}`,
+        });
+      },
+    );
   }
 
   /**
@@ -440,6 +510,7 @@ export class CoreRuntime {
     }
 
     this.coreProcess = null;
+    this.initializingCoreProcess = null;
     this.coreRpcClient.close();
     this.clearCoreProcessHeartbeatTimeout();
     this.clearCoreProcessShutdownTimeout();
@@ -461,17 +532,17 @@ export class CoreRuntime {
   }
 
   /**
-   * 为当前 CoreProcess 设置存活期限；首个 ready 前用较宽松的启动宽限期，之后用运行期
-   * heartbeat 超时。超时后标记 unresponsive 并 kill。
-   * 调用方：startCoreProcess 建立期限，handleCoreProcessMessage 收到消息后续期。
+   * 为当前 CoreProcess 设置一次启动 ready 期限；ready 后立即清除且不再设置运行期
+   * heartbeat kill。调用方：startCoreProcess。
    */
   private armCoreProcessHeartbeatTimeout(
     coreProcess: CoreProcessHandle,
   ): void {
     this.clearCoreProcessHeartbeatTimeout();
-    const timeoutMs = this.coreProcessReceivedFirstBeat
-      ? this.coreProcessHeartbeatTimeoutMs
-      : this.coreProcessStartupTimeoutMs;
+    if (this.coreProcessReceivedReady) {
+      return;
+    }
+    const timeoutMs = this.coreProcessStartupTimeoutMs;
     this.coreProcessHeartbeatTimeoutTimer = setTimeout(() => {
       if (this.coreProcess !== coreProcess || !this.coreProcessShouldRun) {
         return;
@@ -484,9 +555,7 @@ export class CoreRuntime {
       }
 
       this.updateCoreProcessStatus('unresponsive', {
-        detail: this.coreProcessReceivedFirstBeat
-          ? `No heartbeat for ${elapsed} ms`
-          : `No ready signal for ${elapsed} ms`,
+        detail: `No ready signal for ${elapsed} ms`,
       });
       coreProcess.kill();
     }, timeoutMs);
@@ -533,6 +602,7 @@ export class CoreRuntime {
 
     const killed = coreProcess.kill();
     this.coreProcess = null;
+    this.initializingCoreProcess = null;
     this.coreRpcClient.close();
     this.clearCoreProcessShutdownTimeout();
     this.updateCoreProcessStatus('stopped', {
@@ -620,10 +690,7 @@ export class CoreRuntime {
     });
   }
 
-  /**
-   * 取消当前 CoreProcess heartbeat deadline，允许消息或新 CoreProcess 重新计时。
-   * 调用方：stop、handleCoreProcessExit 和 armCoreProcessHeartbeatTimeout。
-   */
+  /** 取消当前 CoreProcess 的启动 ready deadline。 */
   private clearCoreProcessHeartbeatTimeout(): void {
     if (this.coreProcessHeartbeatTimeoutTimer) {
       clearTimeout(this.coreProcessHeartbeatTimeoutTimer);

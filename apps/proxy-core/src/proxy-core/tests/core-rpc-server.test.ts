@@ -62,16 +62,37 @@ describe('CoreRpcServer', () => {
     });
   });
 
-  it('closes a connection that sends an invalid message', () => {
+  it('isolates invalid messages without closing the connection', async () => {
     const fatal = vi.fn();
     const server = createServer(echoCommandHandler(), fatal);
     const port = new FakeRpcPort();
     server.attach(port);
 
     port.receive({ kind: 'unknown' });
+    port.receive({
+      kind: 'request',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      requestId: 'request-invalid',
+      traceId: 'trace-invalid',
+      command: { payload: {} },
+    });
+    await settle();
 
-    expect(port.closed).toBe(true);
-    expect(fatal).toHaveBeenCalledWith('invalid-message');
+    expect(port.sent.at(-1)).toMatchObject({
+      kind: 'response',
+      requestId: 'request-invalid',
+      ok: false,
+      error: { code: 'invalid-message' },
+    });
+    expect(port.closed).toBe(false);
+    expect(fatal).not.toHaveBeenCalled();
+
+    port.receive(request('request-after-invalid', 'trace-after-invalid', 'ok'));
+    await settle();
+    expect(port.sent.at(-1)).toMatchObject({
+      requestId: 'request-after-invalid',
+      ok: true,
+    });
   });
 
   it('closes the previous port without treating replacement as fatal', () => {
@@ -141,7 +162,7 @@ describe('CoreRpcServer', () => {
     });
   });
 
-  it('reports remote close and send failure as fatal', async () => {
+  it('treats remote close as fatal but isolates one send failure', async () => {
     const fatal = vi.fn();
     const server = createServer(echoCommandHandler(), fatal);
     const remoteClose = new FakeRpcPort();
@@ -154,7 +175,77 @@ describe('CoreRpcServer', () => {
     server.attach(sendFailure);
     sendFailure.receive(request('request-send', 'trace-send', 'hello'));
     await settle();
-    expect(fatal).toHaveBeenCalledWith('send-failed');
+    expect(sendFailure.closed).toBe(false);
+    expect(fatal).not.toHaveBeenCalledWith('send-failed');
+
+    sendFailure.postError = null;
+    sendFailure.receive(request('request-after-send', 'trace-after-send', 'ok'));
+    await settle();
+    expect(sendFailure.sent.at(-1)).toMatchObject({
+      requestId: 'request-after-send',
+      ok: true,
+    });
+  });
+
+  it('keeps the connection after one event batch send failure', () => {
+    const fatal = vi.fn();
+    const server = createServer(echoCommandHandler(), fatal);
+    const port = new FakeRpcPort();
+    server.attach(port);
+    port.postError = new Error('message rejected');
+
+    expect(server.sendEventBatch([{
+      kind: 'exchange-added',
+      summary: {
+        id: 'exchange-1',
+        method: 'GET',
+        secure: false,
+        protocol: 'h1',
+        state: 'completed',
+        startedAt: 1,
+        requestBytes: 0,
+        responseBytes: 0,
+      },
+    }])).toBeNull();
+    expect(port.closed).toBe(false);
+    expect(fatal).not.toHaveBeenCalled();
+
+    port.postError = null;
+    expect(server.sendEventBatch([{
+      kind: 'exchange-added',
+      summary: {
+        id: 'exchange-1',
+        method: 'GET',
+        secure: false,
+        protocol: 'h1',
+        state: 'completed',
+        startedAt: 1,
+        requestBytes: 0,
+        responseBytes: 0,
+      },
+    }])).not.toBeNull();
+  });
+
+  it('forwards the exact event batch acknowledgement sequence', () => {
+    const handleEventAck = vi.fn();
+    const server = new CoreRpcServer({
+      diagnostics: createDiagnostics(),
+      executeCommand: echoCommandHandler(),
+      handleRpcFatalError: vi.fn(),
+      handleEventAck,
+    });
+    const port = new FakeRpcPort();
+    server.attach(port);
+
+    port.receive({
+      kind: 'event-ack',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 42,
+    });
+
+    expect(handleEventAck).toHaveBeenCalledOnce();
+    expect(handleEventAck).toHaveBeenCalledWith(42);
+    expect(port.closed).toBe(false);
   });
 
   it('records a concise command.completed trace', async () => {

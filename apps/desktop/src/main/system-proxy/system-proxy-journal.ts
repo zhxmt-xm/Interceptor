@@ -13,8 +13,6 @@ import { SystemProxyJournalError } from './system-proxy-journal-error';
 export class SystemProxyJournal implements SystemProxyJournalStore {
   /** Journal schema version. */
   private static readonly JOURNAL_VERSION = 1;
-  /** Maximum accepted journal size in bytes. */
-  private static readonly MAX_JOURNAL_BYTES = 1024 * 1024;
   /** Absolute journal path under Electron userData. */
   private readonly journalPath: string;
 
@@ -23,7 +21,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     this.journalPath = journalPath;
   }
 
-  /** Read and validate one bounded regular-file journal. */
+  /** Read and validate one complete regular-file journal. */
   async read(): Promise<SystemProxyJournalRecord | null> {
     let metadata;
     try {
@@ -37,10 +35,6 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     if (!metadata.isFile() || metadata.isSymbolicLink()) {
       throw new SystemProxyJournalError('System proxy journal is not a regular file.');
     }
-    if (metadata.size > SystemProxyJournal.MAX_JOURNAL_BYTES) {
-      throw new SystemProxyJournalError('System proxy journal exceeded the size limit.');
-    }
-
     let value: unknown;
     try {
       value = JSON.parse(await readFile(this.journalPath, 'utf8'));
@@ -89,9 +83,6 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
   /** Atomically replace the journal after syncing its complete temporary file. */
   private async write(record: SystemProxyJournalRecord): Promise<void> {
     const serialized = JSON.stringify(record);
-    if (Buffer.byteLength(serialized, 'utf8') > SystemProxyJournal.MAX_JOURNAL_BYTES) {
-      throw new SystemProxyJournalError('System proxy journal exceeded the size limit.');
-    }
     const directory = path.dirname(this.journalPath);
     const temporaryPath = path.join(
       directory,

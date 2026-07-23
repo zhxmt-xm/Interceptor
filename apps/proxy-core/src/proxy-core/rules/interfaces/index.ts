@@ -78,10 +78,6 @@ export type ActionOutcome =
       readonly summary: ActionSummary;
     };
 
-export interface ActionExecutorOptions {
-  readonly mapLocalRoots?: readonly string[];
-}
-
 export type BreakpointPhase = 'request' | 'response' | 'websocket';
 export type BreakpointResolutionAction = 'continue' | 'drop' | 'timeout';
 export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out';
@@ -169,7 +165,6 @@ export interface BreakpointHitInfo {
 }
 
 export interface RuleEngineOptions {
-  readonly mapLocalRoots?: readonly string[];
   readonly onBreakpointHit?: (info: BreakpointHitInfo) => void;
 }
 

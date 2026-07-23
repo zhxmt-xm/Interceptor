@@ -6,7 +6,6 @@ import type {
 import { DatabaseSync } from 'node:sqlite';
 
 import { applyMigrations } from '../../migration-runner';
-import { DIAGNOSTICS_BUSY_TIMEOUT_MS } from '../diagnostics-constants';
 import type {
   DiagnosticsLogRow,
   OpenDiagnosticsDatabaseResult,
@@ -21,7 +20,6 @@ export function openDiagnosticsDatabase(
   try {
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA synchronous = NORMAL');
-    db.exec(`PRAGMA busy_timeout = ${DIAGNOSTICS_BUSY_TIMEOUT_MS}`);
     const migration = applyMigrations(db, DIAGNOSTICS_MIGRATIONS);
     return { db, migration };
   } catch (error) {

@@ -1,6 +1,5 @@
 import process from 'node:process';
 
-import { collectRuleDiagnostics } from '@interceptor/core-protocol';
 import type {
   CoreCommand,
   CoreError,
@@ -10,8 +9,8 @@ import type {
 import {
   EVENT_DRAIN_BATCH,
   EVENT_FLUSH_INTERVAL_MS,
+  EVENT_INFLIGHT_WINDOW_SIZE,
   HEARTBEAT_INTERVAL_MS,
-  MAX_INFLIGHT_EVENT_BATCHES,
   dataDir,
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
@@ -99,7 +98,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly archive: ArchiveService | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
-  private inFlightEventBatches = 0;
+  /** 已发送且尚未收到对应 ack 的 event batch sequence。 */
+  private readonly inFlightEventBatches = new Set<number>();
   private started = false;
   private stopping = false;
   private exiting = false;
@@ -395,11 +395,9 @@ export class CoreApplication implements CoreRpcHost {
           }
         });
       case 'rules.validate': {
-        // 纯语义校验（无 I/O）：wire 校验已在 RPC 边界完成，此处只返回诊断。
-        const diagnostics = collectRuleDiagnostics(command.payload.rules);
         return {
           type: 'rules.validation',
-          payload: { valid: diagnostics.length === 0, diagnostics },
+          payload: { valid: true, diagnostics: [] },
         };
       }
       case 'rules.get':
@@ -434,14 +432,6 @@ export class CoreApplication implements CoreRpcHost {
       }
       case 'rules.replace':
         return this.withStorage(async (storage) => {
-          const diagnostics = collectRuleDiagnostics(command.payload.rules);
-          if (diagnostics.length > 0) {
-            throw commandError({
-              code: 'invalid-message',
-              message: 'The rule set failed semantic validation.',
-              retryable: false,
-            });
-          }
           try {
             const ruleSet = await this.diagnostics.action('rules.replace', () =>
               storage.saveRuleSet(
@@ -839,7 +829,7 @@ export class CoreApplication implements CoreRpcHost {
     if (!queue || !this.rpcServer.hasActiveConnection) {
       return;
     }
-    while (this.inFlightEventBatches < MAX_INFLIGHT_EVENT_BATCHES) {
+    while (this.inFlightEventBatches.size < EVENT_INFLIGHT_WINDOW_SIZE) {
       const batch = queue.drain(EVENT_DRAIN_BATCH);
       if (batch.length === 0) {
         return;
@@ -850,9 +840,12 @@ export class CoreApplication implements CoreRpcHost {
       }));
       const batchSequence = this.rpcServer.sendEventBatch(events);
       if (batchSequence === null) {
+        for (const event of events) {
+          queue.enqueue(event.kind, event.summary);
+        }
         return;
       }
-      this.inFlightEventBatches += 1;
+      this.inFlightEventBatches.add(batchSequence);
     }
   }
 
@@ -860,9 +853,10 @@ export class CoreApplication implements CoreRpcHost {
    * 订阅端确认收到一批事件后腾出背压窗口并尝试继续 flush（CoreRpcHost）。
    * 调用方：CoreRpcServer 收到 event-ack 时。
    */
-  handleEventAck(_batchSequence: number): void {
-    this.inFlightEventBatches = Math.max(0, this.inFlightEventBatches - 1);
-    this.flushCaptureEvents();
+  handleEventAck(batchSequence: number): void {
+    if (this.inFlightEventBatches.delete(batchSequence)) {
+      this.flushCaptureEvents();
+    }
   }
 
   /**

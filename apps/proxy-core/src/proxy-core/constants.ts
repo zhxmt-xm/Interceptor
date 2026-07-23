@@ -15,18 +15,10 @@ import process from 'node:process';
 export const HEARTBEAT_INTERVAL_MS = 1_000;
 /** 捕获事件批量 flush 的间隔。 */
 export const EVENT_FLUSH_INTERVAL_MS = 50;
-/** 未 ack 的在途事件批次上限（背压窗口）。 */
-export const MAX_INFLIGHT_EVENT_BATCHES = 8;
+/** 同时在途、等待ack的事件批次数；队列总量不受此窗口限制。 */
+export const EVENT_INFLIGHT_WINDOW_SIZE = 8;
 /** 单次从捕获事件队列取走的最大事件数。 */
 export const EVENT_DRAIN_BATCH = 200;
-
-// ===== CoreDiagnostics 内存 Ring Buffer =====
-/** 单条记录最大字节数。 */
-export const DIAGNOSTICS_RING_MAX_BYTES = 512 * 1024;
-/** 待输出队列最大条数。 */
-export const DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS = 256;
-/** 内存历史最大记录数。 */
-export const DIAGNOSTICS_RING_MAX_RECORDS = 2_000;
 
 // ===== 存储（临时 Capture/Body + 持久 Rule） =====
 /** 旧 Capture 数据库文件名；M14 仅用于一次性迁移 RuleSet 后删除。 */
@@ -39,30 +31,15 @@ export const BLOB_DIR = 'blobs';
 export const CAPTURE_TEMP_DIR = 'capture-temp';
 /** Body 保留在内存中的最大字节数；超过后异步 spill。 */
 export const BODY_MEMORY_THRESHOLD_BYTES = 1024 * 1024;
-/** 单条正文最大字节数，超过拒绝写入并标记 truncated。 */
-export const MAX_BODY_BYTES = 64 * 1024 * 1024;
-/** 单个 Core 代际的临时 Body 总配额。 */
-export const GLOBAL_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
 // ===== 诊断（持久化日志库） =====
 /** 诊断数据库文件名（dataDir 下）。 */
 export const DIAGNOSTICS_DB_FILE = 'diagnostics.sqlite';
-/** 持久化日志最多保留条数。 */
-export const DIAGNOSTICS_MAX_RECORDS = 50_000;
-/** 持久化日志最长保留时长（毫秒）；null 表示不按时长清理。 */
-export const DIAGNOSTICS_MAX_AGE_MS: number | null = null;
-/** Diagnostics Worker 就绪前最多缓冲的写入批次数。 */
-export const DIAGNOSTICS_MAX_PENDING_BATCHES = 128;
-/** Diagnostics Worker 单查询超时。 */
-export const DIAGNOSTICS_REQUEST_TIMEOUT_MS = 15_000;
 /** Diagnostics JSONL 导出时每页读取的记录数。 */
 export const DIAGNOSTICS_EXPORT_PAGE_SIZE = 1_000;
 
 // ===== 代理 =====
 /** 显式代理默认绑定的 loopback 地址。 */
 export const DEFAULT_PROXY_HOST = '127.0.0.1';
-/** 捕获事件队列最大待发事件数（按 Exchange 合并后计）。 */
-export const CAPTURE_EVENT_QUEUE_CAPACITY = 5_000;
-
 // ===== 运行期变量（读 process.argv / __dirname，entry 启动时经 initializeRuntime 赋值） =====
 //
 // 这些是模块级可变变量：Core 启动时由 entry 调用 initializeRuntime 一次确定取值（worker

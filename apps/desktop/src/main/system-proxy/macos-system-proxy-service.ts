@@ -13,12 +13,6 @@ import { systemProxyCommandRunner } from '../utils';
 
 /** macOS SystemConfiguration proxy ownership across all active network services. */
 export class MacosSystemProxyService implements SystemProxyService {
-  /** Maximum accepted helper output and encoded snapshot size. */
-  private static readonly MAX_SNAPSHOT_BYTES = 512 * 1024;
-  /** Maximum active network services accepted from the helper. */
-  private static readonly MAX_SERVICE_COUNT = 128;
-  /** Maximum nesting accepted in proxy property-list JSON values. */
-  private static readonly MAX_JSON_DEPTH = 8;
   /** Original multi-service snapshot captured immediately before enable. */
   private originalSnapshot: MacosSystemProxySnapshot | null = null;
   /** Exact helper readback after enable; restoration requires an exact match. */
@@ -199,12 +193,9 @@ export class MacosSystemProxyService implements SystemProxyService {
     };
   }
 
-  /** Invoke the helper's read command and validate its bounded JSON snapshot. */
+  /** Invoke the helper's read command and validate its JSON snapshot structure. */
   private async readSnapshot(): Promise<MacosSystemProxySnapshot> {
     const result = await this.run(['get']);
-    if (Buffer.byteLength(result.stdout, 'utf8') > MacosSystemProxyService.MAX_SNAPSHOT_BYTES) {
-      throw new SystemProxyError('macOS proxy helper output exceeded the limit.');
-    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(result.stdout);
@@ -217,17 +208,14 @@ export class MacosSystemProxyService implements SystemProxyService {
   /** Encode one complete snapshot and ask the helper to commit it atomically. */
   private async writeSnapshot(snapshot: MacosSystemProxySnapshot): Promise<void> {
     const json = JSON.stringify(snapshot);
-    if (Buffer.byteLength(json, 'utf8') > MacosSystemProxyService.MAX_SNAPSHOT_BYTES) {
-      throw new SystemProxyError('macOS proxy snapshot exceeded the limit.');
-    }
     await this.run(['set', Buffer.from(json, 'utf8').toString('base64')]);
   }
 
-  /** Execute one helper command and contain output in a bounded error. */
+  /** Execute one helper command and preserve its complete error output. */
   private async run(args: readonly string[]): Promise<SystemProxyCommandResult> {
     const result = await this.runner.run(this.helperPath, args);
     if (result.code !== 0) {
-      const detail = (result.stderr || result.stdout || 'unknown error').slice(0, 512);
+      const detail = result.stderr || result.stdout || 'unknown error';
       throw new SystemProxyError(
         `macOS proxy helper failed (exit ${result.code}): ${detail}`,
       );
@@ -250,7 +238,7 @@ export class MacosSystemProxyService implements SystemProxyService {
       throw new SystemProxyError('macOS proxy snapshot must be an object.');
     }
     const services = (value as Record<string, unknown>).services;
-    if (!Array.isArray(services) || services.length > this.MAX_SERVICE_COUNT) {
+    if (!Array.isArray(services)) {
       throw new SystemProxyError('macOS proxy snapshot has invalid services.');
     }
 
@@ -263,9 +251,7 @@ export class MacosSystemProxyService implements SystemProxyService {
       if (
         typeof record.id !== 'string' ||
         record.id.length === 0 ||
-        record.id.length > 256 ||
         typeof record.name !== 'string' ||
-        record.name.length > 256 ||
         typeof record.settings !== 'object' ||
         record.settings === null ||
         Array.isArray(record.settings)
@@ -276,7 +262,7 @@ export class MacosSystemProxyService implements SystemProxyService {
         throw new SystemProxyError('macOS proxy snapshot has duplicate services.');
       }
       identifiers.add(record.id);
-      this.assertJsonValue(record.settings, 0);
+      this.assertJsonValue(record.settings);
       return {
         id: record.id,
         name: record.name,
@@ -287,11 +273,8 @@ export class MacosSystemProxyService implements SystemProxyService {
     return { services: parsed };
   }
 
-  /** Bound recursive JSON values accepted from SystemConfiguration. */
-  private static assertJsonValue(value: unknown, depth: number): void {
-    if (depth > this.MAX_JSON_DEPTH) {
-      throw new SystemProxyError('macOS proxy snapshot is nested too deeply.');
-    }
+  /** Validate recursive JSON value types accepted from SystemConfiguration. */
+  private static assertJsonValue(value: unknown): void {
     if (
       value === null ||
       typeof value === 'boolean' ||
@@ -300,30 +283,18 @@ export class MacosSystemProxyService implements SystemProxyService {
       return;
     }
     if (typeof value === 'string') {
-      if (value.length > 32_768) {
-        throw new SystemProxyError('macOS proxy snapshot string is too large.');
-      }
       return;
     }
     if (Array.isArray(value)) {
-      if (value.length > 1_024) {
-        throw new SystemProxyError('macOS proxy snapshot array is too large.');
-      }
       for (const item of value) {
-        this.assertJsonValue(item, depth + 1);
+        this.assertJsonValue(item);
       }
       return;
     }
     if (typeof value === 'object') {
       const entries = Object.entries(value as Record<string, unknown>);
-      if (entries.length > 1_024) {
-        throw new SystemProxyError('macOS proxy snapshot object is too large.');
-      }
-      for (const [key, item] of entries) {
-        if (key.length > 256) {
-          throw new SystemProxyError('macOS proxy snapshot key is too large.');
-        }
-        this.assertJsonValue(item, depth + 1);
+      for (const [, item] of entries) {
+        this.assertJsonValue(item);
       }
       return;
     }

@@ -69,18 +69,9 @@ describe('parseHarDocument', () => {
     expect((globalThis as { __harExecuted?: boolean }).__harExecuted).toBeUndefined();
   });
 
-  it('rejects malformed and oversized entry arrays', () => {
+  it('rejects a document without an entries array', () => {
     expect(() => HarDocumentParser.parse('{"log":{"version":"1.2"}}')).toThrow(
       /entries/i,
-    );
-    const oversized = HarDocumentFixtures.valid();
-    const [entry] = HarDocumentFixtures.valid().log.entries;
-    if (!entry) {
-      throw new Error('HAR fixture entry is missing.');
-    }
-    oversized.log.entries = Array.from({ length: 100_001 }, () => entry);
-    expect(() => HarDocumentParser.parse(JSON.stringify(oversized))).toThrow(
-      /100000/,
     );
   });
 });

@@ -4,7 +4,6 @@ import type {
   RuleSet,
 } from '@interceptor/core-protocol';
 
-import { GLOBAL_QUOTA_BYTES } from '../constants';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type { ExchangeResponsePatch } from './interfaces';
 import type {
@@ -39,7 +38,6 @@ export class StorageService {
   private readonly bodyStore = new TemporaryBodyStore();
   /** 跨 Recording 持久的低频 RuleSet。 */
   private readonly ruleStore = new RuleStore();
-  private readonly quotaBytes = GLOBAL_QUOTA_BYTES;
   private ready: Promise<void> | null = null;
   /** 可选结构化诊断汇。 */
   private diagnostics: DiagnosticsRecorder | null = null;
@@ -162,7 +160,6 @@ export class StorageService {
       databaseBytes: 0,
       blobBytes: bodyBytes,
       totalBytes: bodyBytes,
-      quotaBytes: this.quotaBytes,
     };
   }
 

@@ -174,7 +174,7 @@ MITM switch、Trusted状态和Core配置同步；insecure host会trim/去重并�
 1. 创建profile/evidence和HTTP/WS origins，启动trace/Electron，等待App/Core/8888/readiness；检查Storage/Capture初始空态。
 2. 点击readiness Enable并完成授权，等待Recording；制造含request/response bodies和WS frames的真实Capture。
 3. 进入Settings Storage，点击 `settings.storage.refresh`。
-4. 记录session/exchange/body/bytes/quota，确认非零且与可见Capture一致。
+4. 记录session/exchange/body/bytes，确认非零且与可见Capture一致。
 5. 点击 `settings.storage.clear`，再点击 `settings.storage.clear-cancel`；确认数值不变。
 6. 再次点击Clear，点击 `settings.storage.clear-confirm`。
 7. 等待usage更新：Exchange/Body/bytes归零，Session保留1；进入Rules/Diagnostics确认未误删。

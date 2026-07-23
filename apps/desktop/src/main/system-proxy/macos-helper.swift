@@ -4,14 +4,10 @@ import SystemConfiguration
 
 /** Reads and atomically writes proxy dictionaries for every active network service. */
 final class SystemProxyHelper {
-    /** Maximum decoded snapshot accepted from the desktop process. */
-    private static let maximumSnapshotBytes = 512 * 1024
-    /** Maximum active services accepted in one transaction. */
-    private static let maximumServiceCount = 128
     /** Stable preferences application identifier. */
     private static let applicationIdentifier = "com.interceptor.system-proxy"
 
-    /** Dispatch the bounded get or set command. */
+    /** Dispatch the get or set command. */
     static func run(arguments: [String]) throws {
         guard let command = arguments.first else {
             throw HelperError.usage
@@ -92,8 +88,7 @@ final class SystemProxyHelper {
         _ snapshot: [String: Any],
         preferences: SCPreferences
     ) throws {
-        guard let requestedServices = snapshot["services"] as? [[String: Any]],
-              requestedServices.count <= maximumServiceCount else {
+          guard let requestedServices = snapshot["services"] as? [[String: Any]] else {
             throw HelperError.invalidSnapshot
         }
         let currentServices = try activeServices(preferences: preferences)
@@ -162,16 +157,12 @@ final class SystemProxyHelper {
                 proxyProtocol: proxyProtocol
             )
         }
-        guard active.count <= maximumServiceCount else {
-            throw HelperError.tooManyServices
-        }
         return active.sorted { $0.identifier < $1.identifier }
     }
 
     /** Decode and validate one base64 JSON snapshot. */
     private static func decodeSnapshot(_ encoded: String) throws -> [String: Any] {
-        guard let data = Data(base64Encoded: encoded),
-              data.count <= maximumSnapshotBytes,
+          guard let data = Data(base64Encoded: encoded),
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               JSONSerialization.isValidJSONObject(object) else {
             throw HelperError.invalidSnapshot
@@ -185,9 +176,6 @@ final class SystemProxyHelper {
             throw HelperError.invalidSnapshot
         }
         let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
-        guard data.count <= maximumSnapshotBytes else {
-            throw HelperError.snapshotTooLarge
-        }
         FileHandle.standardOutput.write(data)
         FileHandle.standardOutput.write(Data([0x0A]))
     }
@@ -203,14 +191,12 @@ private struct ActiveNetworkService {
     let proxyProtocol: SCNetworkProtocol
 }
 
-/** Bounded helper failures surfaced to Electron Main through stderr and exit status. */
+/** Helper failures surfaced to Electron Main through stderr and exit status. */
 private enum HelperError: Error, CustomStringConvertible {
     case usage
     case preferencesUnavailable
     case authorizationFailed(OSStatus)
     case invalidSnapshot
-    case snapshotTooLarge
-    case tooManyServices
     case serviceSetChanged
     case configurationRejected
     case commitFailed
@@ -227,10 +213,6 @@ private enum HelperError: Error, CustomStringConvertible {
             return "authorization failed with status \(status)"
         case .invalidSnapshot:
             return "proxy snapshot is invalid"
-        case .snapshotTooLarge:
-            return "proxy snapshot exceeds the size limit"
-        case .tooManyServices:
-            return "too many active network services"
         case .serviceSetChanged:
             return "active network services changed before commit"
         case .configurationRejected:

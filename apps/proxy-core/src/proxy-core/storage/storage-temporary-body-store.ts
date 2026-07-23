@@ -7,8 +7,6 @@ import { Readable, Readable as NodeReadable } from 'node:stream';
 
 import {
   BODY_MEMORY_THRESHOLD_BYTES,
-  GLOBAL_QUOTA_BYTES,
-  MAX_BODY_BYTES,
   blobDirectory,
   captureTempDirectory,
 } from '../constants';
@@ -17,8 +15,6 @@ import type {
   BlobWriteResult,
   TemporaryBodyEntry,
 } from './interfaces';
-import { BodyQuotaExceededError } from './storage-body-quota-exceeded-error';
-import { BodyTooLargeError } from './storage-body-too-large-error';
 
 /** 当前 Core 代际的内容寻址 Body Store；小正文驻内存，大正文异步 spill。 */
 export class TemporaryBodyStore {
@@ -26,10 +22,6 @@ export class TemporaryBodyStore {
   private readonly rootDir = captureTempDirectory;
   /** 旧版本持久 Blob 目录，初始化时一次性删除。 */
   private readonly legacyBlobDir = blobDirectory;
-  /** 单条正文上限。 */
-  private readonly maxBodyBytes = MAX_BODY_BYTES;
-  /** 全部临时正文配额。 */
-  private readonly quotaBytes = GLOBAL_QUOTA_BYTES;
   /** 正文从内存切换到 spill 的阈值。 */
   private readonly memoryThresholdBytes = BODY_MEMORY_THRESHOLD_BYTES;
   /** hash 到内存或 spill 位置。 */
@@ -104,8 +96,9 @@ export class TemporaryBodyStore {
     }
     const handle = await fs.open(entry.filePath, 'r');
     try {
-      const buffer = Buffer.allocUnsafe(length);
-      const { bytesRead } = await handle.read(buffer, 0, length, offset);
+      const available = Math.max(0, Math.min(length, entry.size - offset));
+      const buffer = Buffer.allocUnsafe(available);
+      const { bytesRead } = await handle.read(buffer, 0, available, offset);
       return buffer.subarray(0, bytesRead);
     } finally {
       await handle.close();
@@ -168,9 +161,6 @@ export class TemporaryBodyStore {
       for await (const chunk of source) {
         const buffer = Buffer.from(chunk);
         size += buffer.length;
-        if (size > this.maxBodyBytes) {
-          throw new BodyTooLargeError(this.maxBodyBytes);
-        }
         hash.update(buffer);
         if (!output && size > this.memoryThresholdBytes) {
           spillPath = path.join(this.rootDir, `.${randomUUID()}.tmp`);
@@ -228,9 +218,6 @@ export class TemporaryBodyStore {
           }
           result = { hash, size, deduplicated: true };
           return;
-        }
-        if (this.totalBytes + size > this.quotaBytes) {
-          throw new BodyQuotaExceededError(this.quotaBytes);
         }
         if (spillPath) {
           const finalPath = path.join(this.rootDir, hash);

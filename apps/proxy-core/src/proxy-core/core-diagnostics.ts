@@ -11,12 +11,6 @@ import type {
   DiagnosticProcess,
 } from '@interceptor/core-protocol';
 
-import {
-  DIAGNOSTICS_RING_MAX_BYTES,
-  DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS,
-  DIAGNOSTICS_RING_MAX_RECORDS,
-} from './constants';
-
 interface DiagnosticContext {
   traceId: string;
   requestId: string;
@@ -41,11 +35,6 @@ export interface DiagnosticsRecorder {
   error(phase: string, fields?: DiagnosticFields): void;
 }
 
-interface StoredRecord {
-  record: DiagnosticLogRecord;
-  bytes: number;
-}
-
 /**
  * 诊断输出汇：CoreDiagnostics 把成批脱敏日志投递给它。由 DiagnosticsWorkerHost 实现
  * （持久化），或默认写 stdout JSON Lines。注入对象而非闭包，避免在装配处构造闭包函数。
@@ -57,21 +46,17 @@ export interface DiagnosticsSink {
 const defaultDiagnosticsSink: DiagnosticsSink = { sink: writeJsonLines };
 
 /**
- * Proxy Core 内非阻塞、有界、结构化的诊断记录器。
+ * Proxy Core 内非阻塞、结构化的诊断记录器。
  *
  * CoreRpcServer 用 AsyncLocalStorage 建立 command 上下文，CoreApplication 和后续
- * Service 只补充业务 action。内存历史、待输出队列和单条记录均受限；sink/fallback
- * 失败必须被隔离，不能改变 command、网络或存储路径的结果。
+ * Service 只补充业务 action。内存历史与待输出队列不按数量或字节淘汰；sink/fallback
+ * 失败仍被隔离，不能改变 command、网络或存储路径的结果。
  */
 export class CoreDiagnostics implements DiagnosticsRecorder {
   private readonly context = new AsyncLocalStorage<DiagnosticContext>();
-  private readonly records: StoredRecord[] = [];
+  private readonly records: DiagnosticLogRecord[] = [];
   private readonly outputQueue: DiagnosticLogRecord[] = [];
-  private readonly maxBytes = DIAGNOSTICS_RING_MAX_BYTES;
-  private readonly maxOutputRecords = DIAGNOSTICS_RING_MAX_OUTPUT_RECORDS;
-  private readonly maxRecords = DIAGNOSTICS_RING_MAX_RECORDS;
 
-  private bytes = 0;
   private droppedCount = 0;
   private outputScheduled = false;
   private sequence = 0;
@@ -160,10 +145,10 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
     droppedCount: number;
   } {
     const matching = traceId
-      ? this.records.filter(({ record }) => record.traceId === traceId)
+      ? this.records.filter((record) => record.traceId === traceId)
       : this.records;
     return {
-      records: matching.slice(-limit).map(({ record }) => ({
+      records: matching.slice(-limit).map((record) => ({
         ...record,
         attributes: record.attributes ? { ...record.attributes } : undefined,
       })),
@@ -172,7 +157,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
   }
 
   /**
-   * 规范化并存储一条日志，执行单条/总记录数/总字节数/输出队列四层约束。
+  * 脱敏并存储一条完整日志，不按数量或字节淘汰。
    * 调用方：debug/info/warn/error；只安排异步输出，不同步调用 sink。
    */
   private record(
@@ -193,49 +178,20 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
       sequence: ++this.sequence,
       level,
       process: source.process,
-      phase: sanitizeIdentifier(phase, 'log.phase'),
+      phase,
       ...(context ?? {
         traceId: source.traceId,
         requestId: source.requestId,
       }),
-      action: fields.action
-        ? sanitizeIdentifier(fields.action, 'log.action')
-        : undefined,
-      durationMs: sanitizeDuration(fields.durationMs),
+      action: fields.action,
+      durationMs: fields.durationMs,
       outcome: fields.outcome,
-      errorCode: fields.errorCode
-        ? sanitizeIdentifier(fields.errorCode, 'log.error')
-        : undefined,
+      errorCode: fields.errorCode,
       attributes: fields.attributes
         ? sanitizeAttributes(fields.attributes)
         : undefined,
     };
-    const bytes = approximateBytes(record);
-
-    if (bytes > this.maxBytes) {
-      this.droppedCount += 1;
-      this.fallbackSafely('Oversized diagnostic record was dropped.');
-      return;
-    }
-
-    this.records.push({ record, bytes });
-    this.bytes += bytes;
-    while (
-      this.records.length > this.maxRecords ||
-      this.bytes > this.maxBytes
-    ) {
-      const removed = this.records.shift();
-      if (!removed) {
-        break;
-      }
-      this.bytes -= removed.bytes;
-      this.droppedCount += 1;
-    }
-
-    if (this.outputQueue.length >= this.maxOutputRecords) {
-      this.droppedCount += 1;
-      return;
-    }
+    this.records.push(record);
     this.outputQueue.push(record);
     this.scheduleOutput();
   }
@@ -281,7 +237,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
 
   /**
    * 尝试报告 Diagnostics 自身故障，并吞掉 fallback 异常以保护业务路径。
-   * 调用方：oversized record 丢弃和 flushOutput sink 失败处理。
+  * 调用方：flushOutput sink 失败处理。
    */
   private fallbackSafely(message: string): void {
     try {
@@ -296,55 +252,20 @@ function sanitizeAttributes(
   attributes: Record<string, DiagnosticAttribute>,
 ): Record<string, DiagnosticAttribute> {
   const sanitized: Record<string, DiagnosticAttribute> = {};
-  for (const [index, [key, value]] of Object.entries(attributes).entries()) {
-    if (index >= 32) {
-      break;
-    }
-    const safeKey = sanitizeAttributeKey(key, index);
-    sanitized[safeKey] = isSensitiveAttributeKey(key)
+  for (const [key, value] of Object.entries(attributes)) {
+    sanitized[key] = isSensitiveAttributeKey(key)
       ? '[REDACTED]'
       : typeof value === 'string'
-        ? redactSensitiveText(value.slice(0, 512))
+        ? redactSensitiveText(value)
         : value;
   }
   return sanitized;
-}
-
-function sanitizeAttributeKey(key: string, index: number): string {
-  const normalized = key.replace(/[^A-Za-z0-9._-]/g, '_');
-  const prefixed = /^[A-Za-z]/.test(normalized)
-    ? normalized
-    : `attribute_${normalized}`;
-  const suffix = `_${index}`;
-  return `${prefixed.slice(0, 64 - suffix.length)}${suffix}`;
-}
-
-function sanitizeIdentifier(value: string, fallback: string): string {
-  const normalized = value.replace(/[^A-Za-z0-9._:-]/g, '_');
-  const prefixed = /^[A-Za-z0-9]/.test(normalized)
-    ? normalized
-    : `${fallback}_${normalized}`;
-  return prefixed.slice(0, 128) || fallback;
-}
-
-function sanitizeDuration(value: number | undefined): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0
-    ? value
-    : undefined;
 }
 
 function isSensitiveAttributeKey(key: string): boolean {
   return /authorization|body|cookie|password|query|secret|token|url|certificate|private[_-]?key|api[_-]?key/i.test(
     key,
   );
-}
-
-function approximateBytes(record: DiagnosticLogRecord): number {
-  try {
-    return Buffer.byteLength(JSON.stringify(record), 'utf8');
-  } catch {
-    return Number.MAX_SAFE_INTEGER;
-  }
 }
 
 function writeJsonLines(records: readonly DiagnosticLogRecord[]): void {
@@ -362,7 +283,7 @@ function readErrorCode(error: unknown): string {
     'code' in error &&
     typeof error.code === 'string'
   ) {
-    return error.code.slice(0, 128);
+    return error.code;
   }
   return error instanceof Error ? error.name : 'unknown';
 }

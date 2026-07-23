@@ -50,11 +50,9 @@ export interface ComposerResponseOutput {
   readonly httpVersion: string;
   /** 保序响应 header。 */
   readonly headers: ComposerHeaderPair[];
-  /** 有界响应正文。 */
+  /** 完整响应正文。 */
   readonly body: Uint8Array;
-  /** 正文是否因上限被截断。 */
-  readonly bodyTruncated: boolean;
-  /** 截断前的响应总字节数。 */
+  /** 完整响应总字节数。 */
   readonly totalBytes: number;
   /** 完整请求耗时毫秒数。 */
   readonly durationMs: number;

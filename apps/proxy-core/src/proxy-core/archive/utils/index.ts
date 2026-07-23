@@ -5,8 +5,6 @@ import {
   ARCHIVE_VERSION,
   BLOB_ENTRY_PREFIX,
   MANIFEST_ENTRY_NAME,
-  MAX_ARCHIVE_ENTRIES,
-  MAX_ENTRY_UNCOMPRESSED_BYTES,
   SHA256_PATTERN,
   SNAPSHOT_ENTRY_NAME,
 } from '../archive-constants';
@@ -66,8 +64,8 @@ export function crc32(data: Uint8Array): number {
  * 解压前对每个条目调用，任何异常都阻止后续提取。返回安全的相对名。
  */
 export function assertSafeEntryName(name: string): string {
-  if (!name || name.length > 512) {
-    throw new ArchiveInvalidError('Archive entry name has invalid length.');
+  if (!name) {
+    throw new ArchiveInvalidError('Archive entry name must not be empty.');
   }
   if (name.includes('\\') || name.includes('\0')) {
     throw new ArchiveInvalidError('Archive entry name has illegal characters.');
@@ -135,8 +133,7 @@ function parseManifestFile(value: unknown): ArchiveManifestFile {
   if (
     typeof size !== 'number' ||
     !Number.isInteger(size) ||
-    size < 0 ||
-    size > MAX_ENTRY_UNCOMPRESSED_BYTES
+    size < 0
   ) {
     throw new ArchiveInvalidError('Archive manifest declares an invalid size.');
   }
@@ -177,13 +174,13 @@ export function parseManifest(bytes: Buffer): ArchiveManifest {
   ) {
     throw new ArchiveInvalidError('Archive manifest schema version is invalid.');
   }
-  if (typeof appVersion !== 'string' || appVersion.length > 100) {
+  if (typeof appVersion !== 'string') {
     throw new ArchiveInvalidError('Archive manifest app version is invalid.');
   }
-  if (typeof createdAt !== 'string' || createdAt.length > 64) {
+  if (typeof createdAt !== 'string') {
     throw new ArchiveInvalidError('Archive manifest timestamp is invalid.');
   }
-  if (!Array.isArray(files) || files.length > MAX_ARCHIVE_ENTRIES) {
+  if (!Array.isArray(files)) {
     throw new ArchiveInvalidError('Archive manifest file list is invalid.');
   }
   return {
@@ -214,11 +211,10 @@ export async function* singleChunk(
   yield data;
 }
 
-/** 要求 Core 收到的文件路径为绝对路径、有限长度和预期扩展名。 */
+/** 要求 Core 收到的文件路径为绝对路径和预期扩展名。 */
 export function assertTransferPath(filePath: string, extension: string): void {
   if (
     !path.isAbsolute(filePath) ||
-    filePath.length > 32_768 ||
     path.extname(filePath).toLowerCase() !== extension
   ) {
     throw new ArchiveInvalidError(

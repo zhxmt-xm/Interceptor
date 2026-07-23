@@ -8,15 +8,13 @@ import type {
   TransferJobSnapshot,
 } from '@interceptor/core-protocol';
 
-import { MAX_BODY_BYTES, appVersion } from '../constants';
+import { appVersion } from '../constants';
 import { decodeBody } from '../proxy/utils';
 import type { ExchangeInput } from '../storage/interfaces';
 import {
   HAR_BODY_READ_CHUNK_BYTES,
   HAR_EXPORT_PAGE_SIZE,
   HAR_IMPORT_BATCH_SIZE,
-  MAX_HAR_DOCUMENT_BYTES,
-  MAX_HAR_SELECTED_EXCHANGES,
 } from './har-constants';
 import { HarDocumentParser } from './har-document';
 import type {
@@ -120,11 +118,6 @@ export class HarService {
     if (!fileStats.isFile()) {
       throw new InvalidHarError('HAR source must be a regular file.');
     }
-    if (fileStats.size > MAX_HAR_DOCUMENT_BYTES) {
-      throw new InvalidHarError(
-        `HAR document exceeds ${MAX_HAR_DOCUMENT_BYTES} bytes.`,
-      );
-    }
     HarUtils.throwIfAborted(signal);
     const source = await readFile(filePath, { signal });
     const document = HarDocumentParser.parse(source);
@@ -174,11 +167,6 @@ export class HarService {
     signal: AbortSignal,
   ): Promise<string[]> {
     if (scope.kind === 'selected') {
-      if (scope.exchangeIds.length > MAX_HAR_SELECTED_EXCHANGES) {
-        throw new InvalidHarError(
-          `Selected export cannot exceed ${MAX_HAR_SELECTED_EXCHANGES} exchanges.`,
-        );
-      }
       return [...new Set(scope.exchangeIds)];
     }
 
@@ -392,9 +380,6 @@ export class HarService {
   ): Promise<Buffer | undefined> {
     if (!body?.bodyHash) {
       return undefined;
-    }
-    if (body.encodedSize > MAX_BODY_BYTES) {
-      throw new InvalidHarError(`Body exceeds ${MAX_BODY_BYTES} bytes.`);
     }
     const chunks: Buffer[] = [];
     let offset = 0;
