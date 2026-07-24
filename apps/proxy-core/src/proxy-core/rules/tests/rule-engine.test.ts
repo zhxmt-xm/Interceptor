@@ -69,6 +69,44 @@ describe('RuleEngine — request evaluation', () => {
     ]);
   });
 
+  it('records set, append and remove header effects in execution order', async () => {
+    const engine = new RuleEngine(new BreakpointQueue());
+    engine.setRuleSet({
+      revision: 4,
+      rules: [
+        rule('r1', [{ type: 'method', value: 'GET' }], [
+          { type: 'header', phase: 'request', op: 'set', name: 'x-set', value: 'after' },
+          { type: 'header', phase: 'request', op: 'append', name: 'x-append', value: 'second' },
+          { type: 'header', phase: 'request', op: 'remove', name: 'x-remove' },
+        ]),
+      ],
+    });
+    const context = requestContext();
+    context.request.headers['x-set'] = 'before';
+    context.request.headers['x-append'] = 'first';
+    context.request.headers['x-remove'] = ['one', 'two'];
+    const state: MutableRequestState = {
+      method: 'GET',
+      url: context.request.url,
+      headers: { ...context.request.headers },
+    };
+
+    const result = await engine.evaluateRequest(context, state);
+
+    expect(result.headerEffects).toEqual([
+      { phase: 'request', effect: 'replace', name: 'x-set', value: 'before' },
+      { phase: 'request', effect: 'set', name: 'x-set', value: 'after' },
+      { phase: 'request', effect: 'append', name: 'x-append', value: 'second' },
+      { phase: 'request', effect: 'remove', name: 'x-remove', value: 'one' },
+      { phase: 'request', effect: 'remove', name: 'x-remove', value: 'two' },
+    ]);
+    expect(state.headers).toMatchObject({
+      'x-set': 'after',
+      'x-append': ['first', 'second'],
+    });
+    expect(state.headers['x-remove']).toBeUndefined();
+  });
+
   it('skips non-matching and disabled rules', async () => {
     const engine = new RuleEngine(new BreakpointQueue());
     engine.setRuleSet({
@@ -257,5 +295,33 @@ describe('RuleEngine — response evaluation', () => {
       action: 'status',
       summary: '201',
     });
+  });
+
+  it('records response header replacement and final set value', async () => {
+    const engine = new RuleEngine(new BreakpointQueue());
+    engine.setRuleSet({
+      revision: 5,
+      rules: [
+        rule('r1', [{ type: 'method', value: 'GET' }], [
+          { type: 'header', phase: 'response', op: 'set', name: 'x-result', value: 'after' },
+        ]),
+      ],
+    });
+    const context: MatchContext = {
+      request: requestContext().request,
+      response: { statusCode: 200, headers: { 'x-result': 'before' } },
+    };
+    const state: MutableResponseState = {
+      statusCode: 200,
+      headers: { 'x-result': 'before' },
+    };
+
+    const result = await engine.evaluateResponse(context, state);
+
+    expect(result.headerEffects).toEqual([
+      { phase: 'response', effect: 'replace', name: 'x-result', value: 'before' },
+      { phase: 'response', effect: 'set', name: 'x-result', value: 'after' },
+    ]);
+    expect(state.headers['x-result']).toBe('after');
   });
 });

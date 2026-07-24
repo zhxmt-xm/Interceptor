@@ -148,6 +148,8 @@
 }
 .popover {
   width: 250px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 .popoverTitle {
   padding: 7px 9px 8px;

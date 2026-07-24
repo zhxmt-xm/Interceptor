@@ -9,6 +9,7 @@
 import type {
   CaptureExchangeDetail,
   CaptureExchangeSummary,
+  CaptureHeaderRuleEffect,
   WebSocketFrameSummary,
 } from "@interceptor/core-protocol";
 
@@ -23,6 +24,7 @@ export interface HeaderInput {
   readonly name: string;
   readonly value: string;
   readonly isPseudo?: boolean;
+  readonly ruleEffect?: CaptureHeaderRuleEffect;
 }
 
 export type BodyDecodeStatus = "ok" | "failed" | "skipped";

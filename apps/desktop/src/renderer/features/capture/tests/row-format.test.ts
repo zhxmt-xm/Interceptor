@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   headersWithoutCookies,
+  headersWithRuleEffects,
   requestCookiePairs,
   responseCookiePairs,
   responseTimingSegments,
@@ -27,6 +28,25 @@ describe('capture row format', () => {
     expect(headersWithoutCookies(headers)).toEqual([
       { name: ':method', value: 'GET', isPseudo: true },
       { name: 'content-type', value: 'application/json' },
+    ]);
+  });
+
+  it('deduplicates request/response wire headers against exact rule effects', () => {
+    expect(headersWithRuleEffects([
+      { name: 'x-old', value: 'before' },
+      { name: 'x-old', value: 'before', ruleEffect: 'replace' },
+      { name: 'x-old', value: 'after', ruleEffect: 'set' },
+    ], 'request')).toEqual([
+      { name: 'x-old', value: 'before', ruleEffect: 'replace' },
+      { name: 'x-old', value: 'after', ruleEffect: 'set' },
+    ]);
+    expect(headersWithRuleEffects([
+      { name: 'x-old', value: 'after' },
+      { name: 'x-old', value: 'before', ruleEffect: 'replace' },
+      { name: 'x-old', value: 'after', ruleEffect: 'set' },
+    ], 'response')).toEqual([
+      { name: 'x-old', value: 'before', ruleEffect: 'replace' },
+      { name: 'x-old', value: 'after', ruleEffect: 'set' },
     ]);
   });
 

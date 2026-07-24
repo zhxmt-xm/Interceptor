@@ -11,6 +11,8 @@ import type {
   ExchangeInput,
   WebSocketFrameInput,
 } from '../../storage/interfaces';
+import { RuleEngine } from '../../rules/entry';
+import { BreakpointQueue } from '../../rules/rule-breakpoint-queue';
 import { ProxyService } from '../entry';
 import type { CaptureSink } from '../interfaces';
 import { CaptureEventQueue } from '../proxy-capture-event-queue';
@@ -155,7 +157,12 @@ function h2ViaProxy(
   originHost: string,
   originPort: number,
   caCert: string,
-): Promise<{ status: number | undefined; body: string; alpn: string | false }> {
+): Promise<{
+  status: number | undefined;
+  headers: http2.IncomingHttpHeaders;
+  body: string;
+  alpn: string | false;
+}> {
   return new Promise((resolve, reject) => {
     const socket = net.connect(proxyPort, '127.0.0.1', () => {
       socket.write(
@@ -183,9 +190,11 @@ function h2ViaProxy(
           client.on('error', reject);
           const req = client.request({ ':path': '/h2', ':method': 'GET' });
           let status: number | undefined;
+          let responseHeaders: http2.IncomingHttpHeaders = {};
           let body = '';
           req.on('response', (headers) => {
             status = headers[':status'];
+            responseHeaders = headers;
           });
           req.setEncoding('utf8');
           req.on('data', (data: string) => {
@@ -193,7 +202,12 @@ function h2ViaProxy(
           });
           req.on('end', () => {
             client.close();
-            resolve({ status, body, alpn: tlsSocket.alpnProtocol ?? false });
+            resolve({
+              status,
+              headers: responseHeaders,
+              body,
+              alpn: tlsSocket.alpnProtocol ?? false,
+            });
           });
           req.on('error', reject);
           req.end();
@@ -323,6 +337,62 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     expect(sink.exchanges[0]?.headers?.some((header) => header.isPseudo)).toBe(
       true,
     );
+  });
+
+  it('matches an HTTP/2 URL written as host/path and applies a response action', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const sink = new RecordingSink();
+    const ruleEngine = new RuleEngine(new BreakpointQueue());
+    origin = await startH2Origin(
+      originCertificate.cert,
+      originCertificate.key,
+    );
+    ruleEngine.setRuleSet({
+      revision: 1,
+      rules: [{
+        id: 'h2-url-rule',
+        name: 'H2 URL rule',
+        enabled: true,
+        priority: 100,
+        matchers: [{
+          type: 'url',
+          value: `localhost:${origin.port}/h2`,
+          mode: 'contains',
+        }],
+        actions: [{
+          type: 'header',
+          phase: 'response',
+          op: 'append',
+          name: 'interceptor',
+          value: 'test',
+        }],
+      }],
+    });
+    proxy = new ProxyService(sink, new CaptureEventQueue(), ruleEngine);
+    await proxy.configureTls({
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+    });
+    const address = await proxy.start();
+
+    const response = await h2ViaProxy(
+      address.port,
+      'localhost',
+      origin.port,
+      ca.cert,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.interceptor).toBe('test');
+    await waitForExchange(sink);
+    expect(
+      sink.exchanges[0]?.headers?.find(
+        (header) =>
+          header.kind === 'response'
+          && header.name === 'interceptor'
+          && header.ruleEffect === 'append',
+      )?.value,
+    ).toBe('test');
   });
 
   it('converts an h2 downstream request to an h1 upstream origin', async () => {

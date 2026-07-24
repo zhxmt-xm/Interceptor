@@ -28,6 +28,7 @@
 - **Renderer 壳与编辑交互已简化**：`App.tsx` 直接拥有 Sidebar/Header/Main/Footer Grid，原 `AppShell` 转发层已删除；Diagnostics 仍只在当前视图通过条件 `DiagnosticsProvider` 挂载。Capture Omnibox 过滤精简为 Method/Status 两项级联多选（可选值取自当前请求列表、逗号分隔、溢出省略号+Tooltip），并配 Clear 清空与无数据禁用；Detail 改为点击行展开/收起、摘要 box 外提供 Close；录制与异步操作使用 spinner loading（录制只替换 icon 不改文字以避免闪烁），图标按钮统一 antd Tooltip、禁用态显示原因提示。Rules 可创建全部八种 matcher，并通过 More 菜单或 grip 拖放调整真实执行优先级；host/path/url/query/header 的值匹配去掉 mode 下拉，改为值输入框右侧内嵌的 `Aa`/`ab`/`.*` 三个开关（区分大小写／精确／正则，默认 contains），对应协议新增 `contains` 模式与可选 `caseSensitive`（已移除 wildcard/present，rules.sqlite 旧数据不兼容需清空）；Apply 改为对草稿与已应用快照做内容深度比较（改回原值即视为未改动）。共享 `Select` 组件改用 Ant Design，全局下拉浮层统一 antd 风格（controlHeight 34，与输入框等高）。Add action 菜单按 改写/映射/流控/中断 分组；map-local/map-remote/synthetic/block 四者为请求归宿互斥（菜单 added/conflict 引导禁用）。matcher 保留全部八种。
 - **Modal 以设计稿为准**：HAR/Archive、HTTPS Setup、Proxy readiness 保持设计内容宽度 `512/560/500px`；Ant v6 只作为交互底座，通过官方 `styles.container/body` 清除默认 content padding、应用设计边框和 `1.23` 行高，不允许反向缩窄设计稿迁就 Ant 默认值。三类 Modal 已移除弃用的 `maskClosable`，改用 `mask.closable`。
 - **Renderer 轻重分层**：App 常驻 Zustand 保存当前 Core 全量轻量 summary 和视图状态；完整 header/body/WS/gRPC payload 留在 Core 按需读取。
+- **规则 Header 效果可观测**：RuleEngine 按执行顺序记录 request/response header 的 `set/append/replace/remove`；Capture Inspector 显示生效值与被替代/删除旧值，分别使用绿/蓝/黄/红 marker，失效值加删除线。Request marker 表示代理发往上游的值，Response marker 对应浏览器实际收到的最终响应；HAR 只导出最终 wire headers，Native Archive 保真保存 marker。
 - **15 种界面语言已完成**：默认英语；`en/zh-CN/zh-TW/ja/ko/de/fr/es/it/pt-BR/ru/nl/pl/tr/uk` 每种均有完整catalog，切换即时生效并持久化。Ant Design locale、`html lang`、`Intl`格式和Main原生文件对话框同步切换；俄/波/乌CLDR多复数已覆盖。
 - **M13 GitHub Releases更新已完成**：`GitHubReleaseUpdateService`只访问固定公开仓库，packaged Windows/macOS启动及每小时检查latest stable Release；Release body作为app内纯文本changelog。用户显式点击后才流式下载当前平台的MSI/DMG，完整后通过`Open installer`交给系统；不自建服务、不做Squirrel、资源热更新、静默下载或自动安装。
 - **M13下载安全边界**：Main校验SemVer、draft/prerelease、仓库URL/tag/asset basename、平台扩展名、显式架构、声明size和GitHub SHA-256；不设metadata/changelog/installer大小上限。Renderer永远拿不到URL/path。
@@ -37,7 +38,7 @@
 - **M11 系统代理与恢复已完成**：Windows WinINet 和 macOS SystemConfiguration helper、多服务/多字段精确 ownership、原子 startup journal、启动/Core failure guarded restore、Proxy Settings 与 emergency repair 均已落地。后续已删除 first-run，改由 Capture bootstrap 启动 Recording/接管代理；四项 Renderer API 仍是窄意图，不暴露 helper 路径或 snapshot。
 - **M10/T10.5 三进程诊断已完成**：Core/Main/Renderer 记录经同一 Diagnostics Worker 持久化；内存、待写队列和SQLite不按数量/字节/时长淘汰，Core断开期间Main保留并在恢复后续传；查询/UI/JSONL支持process来源并统一脱敏。
   - **Diagnostics 分析/导出（T10.4）**：`diagnostics.query` 支持 trace/command/level/outcome/duration keyset 分页；Renderer `DiagnosticsProvider` 走持久化分页并可加载更旧记录；`diagnostics.export.start` 经共享 transfer job + Main Save Dialog 原子导出 JSONL。入库和导出前双层脱敏，敏感 attributes 与 URL Query 不落盘。
-  - **原生 archive（M14 当前实现）**：`ArchiveService` 导出版本化 ZIP；按批次读写snapshot但不设文件、entry、解压总量或压缩比上限，保留格式、路径、CRC、size、hash与SQLite完整性检查。当前不支持ZIP64。
+  - **原生 archive（M14 当前实现）**：`ArchiveService` 导出固定格式 ZIP；按批次读写snapshot但不设文件、entry、解压总量或压缩比上限，保留格式、路径、CRC、size、hash与SQLite完整性检查。Archive、Rules、Diagnostics 直接创建当前 SQLite 表结构，无 schema version、migration runner 或旧数据搬运路径；不兼容旧 Archive schema，也不支持ZIP64。
   - **HAR Core**：`HarService` 完成标准 HAR 1.2 导入导出；不限制文件、entries、headers、URL或body大小/数量，只保留HAR结构、base64和可映射网络scheme检查，不执行脚本、插件或远程内容。
   - **异步 transfer job**：`har.export.start`/`har.import.start`/`transfer.job.get/cancel`；公开快照只含 basename/进度/状态/警告。Main 用系统 save/open dialog 持有真实路径，Renderer 没有文件系统 API。
   - **Capture 文件 UI**：顶栏删除无行为 Info/Settings/More，改为 Import/Export 菜单：`Import HAR` / `Export HAR` 用于跨工具交换，`Open Capture` / `Save Capture` 用于 Interceptor 全保真恢复。四种命令各自进入单一动作弹层；HAR Export 保留 all/filter/selected、Authorization/Cookie 遮罩与 strip bodies。15 种语言已同步；Export 菜单 parity 0 missing/flagged、几何差 0 px。
@@ -154,6 +155,8 @@
 接手后必须以 `git status --short` 和 `git diff` 为准复核；不要假设聊天中列出的文件清单永远完整。
 
 ## 最近验收与下一动作
+
+2026-07-25 Header effects / dropdown / SQLite schema 简化提交前验证：三 workspace typecheck 通过；Desktop 119 / Proxy Core 185 / Protocol 15，共319项unit tests通过；Core 与真实 Archive/Diagnostics Worker bundles重建成功，Archive Worker真实线程3项round-trip通过。Rules Add action最小窗口由Ant自动 `right→left`、整块面板最大几何差0.6px；Rules Select 8项自然高度272px、无滚动、整块面板0px差；Capture四种Rule Header marker尺寸/字体/颜色0差，位置残差0.9–1.2px，整体剩余flag为既有字体子像素级1.3–1.6px。`git diff --check`通过。未运行package/packaged smoke：本轮未改Main/Preload/IPC/Fuses/CSP或打包边界。
 
 2026-07-22 本次提交前验证：三 workspace typecheck通过；Desktop 115 / Proxy Core 180 / Protocol 19，共314项unit tests通过；`e2e:prepare-local`成功构建Core、Windows helper和未打包production Main/Preload/Renderer bundles。Visual parity保持既有基线：45 views / 330 targets / 0 missing / 平均像素差1.83% / 94 flagged。Windows x64 package通过；package audit 1,292文件 / 377,412,874 bytes全通过；真实 packaged smoke 1/1通过；`npm audit --omit=dev`为0 vulnerabilities。因为`workflows/`为空，本次没有运行或宣称任何local feature workflow通过。
 

@@ -1,5 +1,6 @@
 import type {
   BreakpointEdit,
+  CaptureHeaderRuleEffect,
   RuleDefinition,
   RuleHeaderPair,
 } from '@interceptor/core-protocol';
@@ -128,10 +129,19 @@ export interface RuleHitRecord {
   readonly summary: string;
 }
 
+/** 单次 header action 产生的可展示值；按规则执行顺序保留。 */
+export interface RuleHeaderEffect {
+  readonly phase: 'request' | 'response';
+  readonly effect: CaptureHeaderRuleEffect;
+  readonly name: string;
+  readonly value: string;
+}
+
 export type RequestEvaluation =
   | {
       readonly kind: 'continue';
       readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
       readonly delayMs: number;
       readonly throttleBps?: number;
     }
@@ -139,17 +149,20 @@ export type RequestEvaluation =
       readonly kind: 'respond';
       readonly response: SyntheticResponseInit;
       readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
     }
   | {
       readonly kind: 'block';
       readonly mode: 'reset' | 'close';
       readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
     };
 
 export type ResponseEvaluation =
   | {
       readonly kind: 'continue';
       readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
       readonly delayMs: number;
       readonly throttleBps?: number;
     }
@@ -157,6 +170,7 @@ export type ResponseEvaluation =
       readonly kind: 'block';
       readonly mode: 'reset' | 'close';
       readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
     };
 
 export interface BreakpointHitInfo {

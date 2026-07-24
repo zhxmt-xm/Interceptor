@@ -5,14 +5,12 @@ import type {
 } from '@interceptor/core-protocol';
 import { DatabaseSync } from 'node:sqlite';
 
-import { applyMigrations } from '../../migration-runner';
 import type {
   DiagnosticsLogRow,
   OpenDiagnosticsDatabaseResult,
 } from '../interfaces';
-import { DIAGNOSTICS_MIGRATIONS } from '../worker/worker-schema';
 
-/** 打开独立 Diagnostics SQLite、配置 pragma 并执行迁移。 */
+/** 打开独立 Diagnostics SQLite、配置 pragma 并确保当前表存在。 */
 export function openDiagnosticsDatabase(
   location: string,
 ): OpenDiagnosticsDatabaseResult {
@@ -20,8 +18,38 @@ export function openDiagnosticsDatabase(
   try {
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA synchronous = NORMAL');
-    const migration = applyMigrations(db, DIAGNOSTICS_MIGRATIONS);
-    return { db, migration };
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS log_record (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts_ms INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        level TEXT NOT NULL,
+        process TEXT NOT NULL,
+        trace_id TEXT,
+        request_id TEXT,
+        command TEXT,
+        phase TEXT NOT NULL,
+        action TEXT,
+        duration_ms REAL,
+        outcome TEXT,
+        error_code TEXT,
+        attributes TEXT
+      );
+      CREATE TABLE IF NOT EXISTS diagnostics_meta (
+        key TEXT PRIMARY KEY,
+        value INTEGER NOT NULL
+      );
+      INSERT OR IGNORE INTO diagnostics_meta (key, value) VALUES ('dropped_count', 0);
+      CREATE INDEX IF NOT EXISTS idx_log_ts ON log_record(ts_ms);
+      CREATE INDEX IF NOT EXISTS idx_log_trace ON log_record(trace_id);
+      CREATE INDEX IF NOT EXISTS idx_log_request ON log_record(request_id);
+      CREATE INDEX IF NOT EXISTS idx_log_command ON log_record(command);
+      CREATE INDEX IF NOT EXISTS idx_log_level ON log_record(level);
+      CREATE INDEX IF NOT EXISTS idx_log_outcome ON log_record(outcome);
+      CREATE INDEX IF NOT EXISTS idx_log_duration ON log_record(duration_ms);
+    `);
+    return { db };
   } catch (error) {
     db.close();
     throw error;
@@ -34,9 +62,7 @@ export function toLogRecord(row: DiagnosticsLogRow): DiagnosticLogRecord {
     timestamp: row.timestamp,
     sequence: row.sequence,
     level: row.level as DiagnosticLevel,
-    process: row.process === 'proxy-core'
-      ? 'core'
-      : row.process as DiagnosticLogRecord['process'],
+    process: row.process as DiagnosticLogRecord['process'],
     traceId: row.trace_id ?? undefined,
     requestId: row.request_id ?? undefined,
     command: (row.command ?? undefined) as DiagnosticLogRecord['command'],

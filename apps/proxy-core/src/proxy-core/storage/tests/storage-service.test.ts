@@ -5,23 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { locations } = vi.hoisted(() => ({
   locations: {
-    capture: '',
     rules: '',
-    legacyBlobs: '',
     captureTemp: '',
   },
 }));
 
 vi.mock('../../constants', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../constants')>()),
-  get captureDatabasePath() {
-    return locations.capture;
-  },
   get rulesDatabasePath() {
     return locations.rules;
-  },
-  get blobDirectory() {
-    return locations.legacyBlobs;
   },
   get captureTempDirectory() {
     return locations.captureTemp;
@@ -38,9 +30,7 @@ class StorageServiceFixture {
   /** 建立所有运行时路径。 */
   async initialize(): Promise<void> {
     this.directory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-storage-service-'));
-    locations.capture = path.join(this.directory, 'capture.sqlite');
     locations.rules = path.join(this.directory, 'rules.sqlite');
-    locations.legacyBlobs = path.join(this.directory, 'blobs');
     locations.captureTemp = path.join(this.directory, 'capture-temp');
   }
 

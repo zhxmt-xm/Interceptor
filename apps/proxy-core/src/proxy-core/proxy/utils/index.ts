@@ -5,7 +5,9 @@ import type { CompletedRequest } from 'mockttp';
 import WebSocket, { type RawData } from 'ws';
 
 import type {
+  HeaderBag,
   MatchContext,
+  RuleHeaderEffect,
   SyntheticResponseInit,
 } from '../../rules/interfaces';
 import type { HeaderInput, HeaderKind } from '../../storage/interfaces';
@@ -118,6 +120,26 @@ export function buildResponseContext(
       mime: readHeader(response.headers, 'content-type'),
     },
   };
+}
+
+/** 复制 header bag，并断开多值数组与 Mockttp 原始事件对象的引用。 */
+export function cloneHeaders(headers: HeaderBag): HeaderBag {
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name,
+      Array.isArray(value) ? [...value] : value,
+    ]),
+  );
+}
+
+/** 将规则引擎的精确 header action 事件映射为 Capture 附加行。 */
+export function toRuleHeaderInputs(effects: readonly RuleHeaderEffect[]): HeaderInput[] {
+  return effects.map((effect) => ({
+    kind: effect.phase,
+    name: effect.name,
+    value: effect.value,
+    ruleEffect: effect.effect,
+  }));
 }
 
 /** 将规则 synthetic response 映射为 Mockttp callback 结果。 */

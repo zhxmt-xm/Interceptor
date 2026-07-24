@@ -1,19 +1,25 @@
-import { existsSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
 import type { RuleDefinition, RuleSet } from '@interceptor/core-protocol';
 
-import { captureDatabasePath, rulesDatabasePath } from '../constants';
-import { applyMigrations } from '../migration-runner';
+import { rulesDatabasePath } from '../constants';
 import { RuleRevisionConflictError } from './storage-rule-revision-conflict-error';
-import { RULE_MIGRATIONS } from './storage-rule-schema';
 
 /** Core 直接拥有的低频持久 RuleSet Store；不使用常驻 Worker。 */
 export class RuleStore {
+  /** rules.sqlite 直接创建的完整当前 schema。 */
+  private static readonly SCHEMA = `
+    CREATE TABLE IF NOT EXISTS rule_set (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      revision INTEGER NOT NULL,
+      rules_json TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `;
   /** rules.sqlite 同步连接；只在 initialize 后存在。 */
   private database: DatabaseSync | null = null;
 
-  /** 打开并迁移 rules.sqlite，再消费旧 capture.sqlite 中的 RuleSet。 */
+  /** 打开 rules.sqlite 并确保当前表存在。 */
   initialize(): void {
     if (this.database) {
       return;
@@ -23,9 +29,8 @@ export class RuleStore {
       database.exec('PRAGMA journal_mode = WAL');
       database.exec('PRAGMA foreign_keys = ON');
       database.exec('PRAGMA synchronous = NORMAL');
-      applyMigrations(database, RULE_MIGRATIONS);
+      database.exec(RuleStore.SCHEMA);
       this.database = database;
-      this.migrateLegacyCapture();
     } catch (error) {
       database.close();
       this.database = null;
@@ -65,53 +70,6 @@ export class RuleStore {
   dispose(): void {
     this.database?.close();
     this.database = null;
-  }
-
-  /** 新规则库为空时迁移旧 rule_set，随后物理删除旧 Capture DB/WAL/SHM。 */
-  private migrateLegacyCapture(): void {
-    if (!captureDatabasePath || !existsSync(captureDatabasePath)) {
-      return;
-    }
-    if (this.readRow()) {
-      this.removeLegacyCaptureFiles();
-      return;
-    }
-    const legacy = new DatabaseSync(captureDatabasePath, { readOnly: true });
-    try {
-      const table = legacy
-        .prepare(
-          "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = 'rule_set'",
-        )
-        .get() as { found: number } | undefined;
-      if (table) {
-        const row = legacy
-          .prepare(
-            'SELECT revision AS revision, rules_json AS rulesJson, updated_at AS updatedAt FROM rule_set WHERE id = 1',
-          )
-          .get() as
-          | { revision: number; rulesJson: string; updatedAt: number }
-          | undefined;
-        if (row) {
-          const parsed = JSON.parse(row.rulesJson);
-          if (!Array.isArray(parsed)) {
-            throw new Error('Legacy rule_set rules_json must contain an array.');
-          }
-          this.inTransaction(() => {
-            this.writeRow(row.revision, row.rulesJson, row.updatedAt);
-          });
-        }
-      }
-    } finally {
-      legacy.close();
-    }
-    this.removeLegacyCaptureFiles();
-  }
-
-  /** 删除旧 Capture SQLite 主文件及 sidecar。 */
-  private removeLegacyCaptureFiles(): void {
-    for (const suffix of ['', '-wal', '-shm']) {
-      rmSync(`${captureDatabasePath}${suffix}`, { force: true });
-    }
   }
 
   /** 读取持久规则单行。 */

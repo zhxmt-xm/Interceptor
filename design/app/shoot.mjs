@@ -62,6 +62,7 @@ for (const theme of ['light', 'dark']) {
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
+  shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
 }
 // capture add-filter popover + right-flyout multi-select cascade
 for (const theme of ['light', 'dark']) {

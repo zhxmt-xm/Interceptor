@@ -89,6 +89,7 @@ export function createAppTheme(mode: ThemeMode): ThemeConfig {
         selectorBg: 'var(--panel-2)',
         optionSelectedBg: 'var(--accent-soft)',
         optionSelectedColor: 'var(--accent)',
+        optionHeight: 34,
         borderRadius: 8,
         fontSize: 12,
       },

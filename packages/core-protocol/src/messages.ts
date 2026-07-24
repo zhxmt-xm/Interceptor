@@ -857,11 +857,15 @@ export interface CaptureExchangeEvent {
 }
 
 /** 单个 HTTP 头部（名/值）；detail 请求/响应头按 ordinal 顺序返回。 */
+export type CaptureHeaderRuleEffect = 'set' | 'append' | 'replace' | 'remove';
+
 export interface CaptureHeader {
   name: string;
   value: string;
   /** HTTP/2 伪首部（:method/:path/:scheme/:authority/:status）标记；HTTP/1.1 恒为 undefined。 */
   isPseudo?: boolean;
+  /** 规则在代理转发前产生的 request header 净效果；原始 header 行不设置。 */
+  ruleEffect?: CaptureHeaderRuleEffect;
 }
 
 /** 正文引用元数据；bodyHash 供 body.read-range 分块读取，无正文时省略。 */

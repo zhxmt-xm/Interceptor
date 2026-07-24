@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { limits } = vi.hoisted(() => ({
   limits: {
     memoryThresholdBytes: 1024 * 1024,
-    legacyBlobDir: '',
     captureTempDir: '',
   },
 }));
@@ -15,9 +14,6 @@ vi.mock('../../constants', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../constants')>()),
   get BODY_MEMORY_THRESHOLD_BYTES() {
     return limits.memoryThresholdBytes;
-  },
-  get blobDirectory() {
-    return limits.legacyBlobDir;
   },
   get captureTempDirectory() {
     return limits.captureTempDir;
@@ -37,7 +33,6 @@ class TemporaryBodyStoreFixture {
   async initialize(): Promise<void> {
     limits.memoryThresholdBytes = 1024 * 1024;
     this.root = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-body-'));
-    limits.legacyBlobDir = path.join(this.root, 'blobs');
     limits.captureTempDir = path.join(this.root, 'capture-temp');
     this.store = new TemporaryBodyStore();
     await this.store.init();
@@ -163,12 +158,4 @@ describe('TemporaryBodyStore', () => {
     expect(await fixture.store.readRange(stored.hash, expectedSize - tail.length, tail.length))
       .toEqual(tail);
   }, 20_000);
-
-  it('removes legacy persistent blobs during initialization', async () => {
-    await fs.mkdir(limits.legacyBlobDir, { recursive: true });
-    await fs.writeFile(path.join(limits.legacyBlobDir, 'legacy'), 'old');
-    const store = new TemporaryBodyStore();
-    await store.init();
-    await expect(fs.access(limits.legacyBlobDir)).rejects.toThrow();
-  });
 });

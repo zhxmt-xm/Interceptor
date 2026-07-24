@@ -10,8 +10,12 @@ import { InvalidHarError } from '../har-invalid-error';
 export function redactHeaders(
   headers: readonly CaptureHeader[],
   options: HarRedactionOptions,
+  phase: 'request' | 'response',
 ): CaptureHeader[] {
-  return headers
+  const wireHeaders = phase === 'request'
+    ? applyRequestRuleEffects(headers)
+    : headers.filter((header) => !header.ruleEffect);
+  return wireHeaders
     .filter((header) => !header.isPseudo)
     .map((header) => {
       const name = header.name.toLowerCase();
@@ -23,6 +27,30 @@ export function redactHeaders(
         ? { name: header.name, value: '[REDACTED]' }
         : { name: header.name, value: header.value };
     });
+}
+
+/** 将 request 规则操作按执行顺序应用到客户端原始 headers，得到实际上游 headers。 */
+function applyRequestRuleEffects(
+  headers: readonly CaptureHeader[],
+): CaptureHeader[] {
+  const effective = headers
+    .filter((header) => !header.ruleEffect)
+    .map((header) => ({ ...header }));
+  for (const effect of headers.filter((header) => header.ruleEffect)) {
+    if (effect.ruleEffect === 'replace' || effect.ruleEffect === 'remove') {
+      const index = effective.findIndex(
+        (header) =>
+          header.name.toLowerCase() === effect.name.toLowerCase()
+          && header.value === effect.value,
+      );
+      if (index >= 0) {
+        effective.splice(index, 1);
+      }
+    } else {
+      effective.push({ name: effect.name, value: effect.value });
+    }
+  }
+  return effective;
 }
 
 /** 将 Capture header 投影为 HAR 标准 name/value 对。 */

@@ -15,9 +15,7 @@
 | `EVENT_FLUSH_INTERVAL_MS` | `50` | 捕获事件批量 flush 间隔 |
 | `EVENT_INFLIGHT_WINDOW_SIZE` | `8` | 同时在途、等待ack的批次数；队列总量不限 |
 | `EVENT_DRAIN_BATCH` | `200` | 单次从捕获事件队列取走的最大事件数 |
-| `CAPTURE_DB_FILE` | `'capture.sqlite'` | 旧 Capture 库名；迁移 RuleSet 后删除 |
 | `RULES_DB_FILE` | `'rules.sqlite'` | 低频持久 RuleSet 库名 |
-| `BLOB_DIR` | `'blobs'` | 旧持久 Body 目录名；M14 启动时删除 |
 | `CAPTURE_TEMP_DIR` | `'capture-temp'` | 当前 Core 代际的临时 Body spill 目录 |
 | `BODY_MEMORY_THRESHOLD_BYTES` | `1 * 1024 * 1024` | Body 从内存切换到 spill 的阈值 |
 | `DIAGNOSTICS_DB_FILE` | `'diagnostics.sqlite'` | 诊断数据库文件名（dataDir 下） |
@@ -40,9 +38,7 @@
 | --- | --- | --- |
 | `dataDir` | `--data-dir=` | 存储根目录；null 时无存储模式 |
 | `appVersion` | `--app-version=` | 捕获会话元数据；ProxyService 读取 |
-| `captureDatabasePath` | `dataDir + CAPTURE_DB_FILE` | M14 启动时迁移 RuleSet 后删除的旧 capture.sqlite |
 | `rulesDatabasePath` | `dataDir + RULES_DB_FILE` | Core 直接打开的低频持久 rules.sqlite |
-| `blobDirectory` | `dataDir + BLOB_DIR` | 启动时删除的旧持久 Body 目录 |
 | `captureTempDirectory` | `dataDir + CAPTURE_TEMP_DIR` | 当前 Core 临时 Body spill 目录 |
 | `diagnosticsDatabasePath` | `dataDir + DIAGNOSTICS_DB_FILE` | Diagnostics Worker 打开的 diagnostics.sqlite |
 | `archiveWorkerEntry` | `__dirname`/`cwd` 解析 | 按需启动的 `archive/worker/entry.cjs` |

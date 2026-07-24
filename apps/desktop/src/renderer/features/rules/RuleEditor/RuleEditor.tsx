@@ -129,7 +129,7 @@ export function RuleEditor(): React.JSX.Element {
                 setShowAddAction(false);
               }
             }}
-            placement="bottomRight"
+            placement="right"
             className={styles.conditionMenu}
             content={
               <>
@@ -174,7 +174,7 @@ export function RuleEditor(): React.JSX.Element {
                 setShowAddCondition(false);
               }
             }}
-            placement="bottomRight"
+            placement="right"
             className={styles.popover}
             content={
               <>

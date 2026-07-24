@@ -41,7 +41,7 @@ vi.mock('../host/entry', async () => {
       this.snapshotPath = snapshotPath;
     }
 
-    /** 逐批写入真实兼容 SQLite Store。 */
+    /** 逐批写入真实 SQLite Store。 */
     async writeSnapshot(
       batches: AsyncIterable<CaptureSnapshotBatch>,
       signal: AbortSignal,
@@ -59,7 +59,7 @@ vi.mock('../host/entry', async () => {
       }
     }
 
-    /** 逐批读取真实兼容 SQLite Store。 */
+    /** 逐批读取真实 SQLite Store。 */
     async *readSnapshotBatches(
       signal: AbortSignal,
     ): AsyncIterable<ArchiveSnapshotPage> {
@@ -138,6 +138,7 @@ function buildSourceCapture(): TemporaryCaptureStore {
       headers: [
         { kind: 'request', name: ':method', value: 'POST', isPseudo: true },
         { kind: 'request', name: 'authorization', value: 'Bearer secret' },
+        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set' },
         { kind: 'response', name: 'content-type', value: 'application/json' },
         { kind: 'response-trailer', name: 'grpc-status', value: '0' },
       ],
@@ -288,6 +289,9 @@ describe('ArchiveService', () => {
     expect(headerNames).toContain('response-trailer:grpc-status');
     const pseudo = exchange?.headers?.find((header) => header.name === ':method');
     expect(pseudo?.isPseudo).toBe(true);
+    expect(
+      exchange?.headers?.find((header) => header.name === 'x-rule')?.ruleEffect,
+    ).toBe('set');
     expect(exchange?.requestBody?.blobHash).toBe(BODY_HASH);
     expect(importFake.blobs.get(BODY_HASH)?.equals(BODY_BYTES)).toBe(true);
   });
@@ -322,7 +326,7 @@ describe('ArchiveService', () => {
     ).rejects.toThrow(/missing its manifest/);
   });
 
-  it('rejects an archive from an unsupported version', async () => {
+  it('rejects a manifest with unexpected fields', async () => {
     const directory = await tempDir();
     const archivePath = path.join(directory, 'future.iarchive');
     const handle = await open(archivePath, 'wx+');
@@ -330,11 +334,10 @@ describe('ArchiveService', () => {
     const manifest = Buffer.from(
       JSON.stringify({
         format: 'interceptor-capture-archive',
-        archiveVersion: 999,
-        schemaVersion: 2,
         appVersion: '1.0.0',
         createdAt: new Date().toISOString(),
         files: [],
+        unexpected: true,
       }),
     );
     await writer.addStream('manifest.json', (async function* () {
@@ -351,7 +354,7 @@ describe('ArchiveService', () => {
         archivePath,
         new AbortController().signal,
       ),
-    ).rejects.toThrow(/Unsupported archive version/);
+    ).rejects.toThrow(/unexpected fields/);
   });
 
   it('generates unique job identifiers', () => {

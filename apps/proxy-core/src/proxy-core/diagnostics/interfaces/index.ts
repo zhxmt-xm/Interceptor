@@ -6,7 +6,6 @@ import type {
 } from '@interceptor/core-protocol';
 import type { DatabaseSync } from 'node:sqlite';
 
-import type { MigrationResult } from '../../migration-runner';
 
 export interface DiagnosticsQuery {
   /** 不透明的递减 id 游标。 */
@@ -115,6 +114,4 @@ export interface DiagnosticsWorkerData {
 export interface OpenDiagnosticsDatabaseResult {
   /** Worker 独占 SQLite 连接。 */
   readonly db: DatabaseSync;
-  /** 本次迁移执行结果。 */
-  readonly migration: MigrationResult;
 }

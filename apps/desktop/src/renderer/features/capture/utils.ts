@@ -20,6 +20,35 @@ export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[]
   });
 }
 
+/**
+ * 合并 wire header 与规则效果行：request wire 是规则前原值，response wire 是规则后终值。
+ * 精确匹配的重复行从 wire 集合移除，四态 effect 按规则执行顺序统一追加展示。
+ */
+export function headersWithRuleEffects(
+  headers: CaptureHeader[],
+  phase: 'request' | 'response',
+): CaptureHeader[] {
+  const wire = headers.filter((header) => !header.ruleEffect);
+  const effects = headers.filter((header) => header.ruleEffect);
+  const duplicateEffects = phase === 'request'
+    ? new Set(['replace', 'remove'])
+    : new Set(['set', 'append']);
+  for (const effect of effects) {
+    if (!effect.ruleEffect || !duplicateEffects.has(effect.ruleEffect)) {
+      continue;
+    }
+    const index = wire.findIndex(
+      (header) =>
+        header.name.toLowerCase() === effect.name.toLowerCase()
+        && header.value === effect.value,
+    );
+    if (index >= 0) {
+      wire.splice(index, 1);
+    }
+  }
+  return [...wire, ...effects];
+}
+
 /** Parse every request Cookie header; HTTP/2 may emit one header row per cookie pair. */
 export function requestCookiePairs(headers: CaptureHeader[]): Array<[string, string]> {
   return headers

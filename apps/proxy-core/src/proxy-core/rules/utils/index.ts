@@ -27,6 +27,7 @@ import type {
   HeaderBag,
   MutableRequestState,
   MutableResponseState,
+  RuleHeaderEffect,
 } from '../interfaces';
 
 /** 以一次性执行器应用请求 action；供独立 action 调用与测试。 */
@@ -114,6 +115,55 @@ export function compileRuleMatchers(
 ): CompiledMatcher {
   const compiled = matchers.map(compileMatcher);
   return (ctx) => compiled.every((test) => test(ctx));
+}
+
+/**
+ * 将一次真实生效的 header action 展开成 Inspector 事件：set 先替代旧值再设置新值，
+ * append 只标新增值，remove 标记全部被删除旧值。
+ */
+export function buildHeaderEffects(
+  action: Extract<RuleAction, { type: 'header' }>,
+  previousValues: readonly string[],
+): RuleHeaderEffect[] {
+  switch (action.op) {
+    case 'set':
+      return [
+        ...previousValues.map((value) => ({
+          phase: action.phase,
+          effect: 'replace' as const,
+          name: action.name,
+          value,
+        })),
+        ...(action.value === undefined
+          ? []
+          : [{
+              phase: action.phase,
+              effect: 'set' as const,
+              name: action.name,
+              value: action.value,
+            }]),
+      ];
+    case 'append':
+      return action.value === undefined
+        ? []
+        : [{
+            phase: action.phase,
+            effect: 'append',
+            name: action.name,
+            value: action.value,
+          }];
+    case 'remove':
+      return previousValues.map((value) => ({
+        phase: action.phase,
+        effect: 'remove',
+        name: action.name,
+        value,
+      }));
+    default: {
+      const exhaustive: never = action.op;
+      throw new Error(`Unknown header operation: ${String(exhaustive)}`);
+    }
+  }
 }
 
 /**
@@ -220,7 +270,7 @@ function escapeRegExp(input: string): string {
 }
 
 /** 大小写不敏感收集某个 header 名下的全部值（含重复头）。 */
-function headerValues(headers: HeaderBag, name: string): string[] {
+export function headerValues(headers: HeaderBag, name: string): string[] {
   const lower = name.toLowerCase();
   const values: string[] = [];
   for (const key of Object.keys(headers)) {

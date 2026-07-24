@@ -25,7 +25,6 @@ import {
   SNAPSHOT_ENTRY_NAME,
 } from './archive-constants';
 import { ArchiveInvalidError } from './archive-invalid-error';
-import { ARCHIVE_CAPTURE_SCHEMA_VERSION } from './archive-snapshot-schema';
 import { ArchiveWorkerHost } from './host/entry';
 import { ArchiveZipReader } from './archive-zip-reader';
 import { ArchiveZipWriter } from './archive-zip-writer';
@@ -72,7 +71,7 @@ export class ArchiveService {
   }
 
   /**
-  * 把当前 Capture 时间切面导出为版本化 ZIP archive：一次性 Worker 生成兼容 SQLite
+  * 把当前 Capture 时间切面导出为固定格式 ZIP archive：一次性 Worker 生成 SQLite
   * snapshot，Body 逐个流式写入，manifest 最后列出全部文件的 size/sha256。
    */
   async exportToFile(
@@ -120,7 +119,6 @@ export class ArchiveService {
       }
 
       const manifest = ArchiveUtils.buildManifest(
-        ARCHIVE_CAPTURE_SCHEMA_VERSION,
         appVersion,
         files,
       );
@@ -147,7 +145,7 @@ export class ArchiveService {
   }
 
   /**
-   * 校验并导入版本化 ZIP archive；解压前完成全部安全校验，失败或取消回滚隔离 Session。
+  * 校验并导入固定格式 ZIP archive；解压前完成全部安全校验，失败或取消回滚隔离 Session。
    */
   async importFromFile(
     filePath: string,
@@ -236,11 +234,6 @@ export class ArchiveService {
     const manifestPath = path.join(extractDir, MANIFEST_ENTRY_NAME);
     await reader.extractEntry(manifestEntry, manifestPath);
     const manifest = ArchiveUtils.parseManifest(await readFile(manifestPath));
-    if (manifest.schemaVersion > ARCHIVE_CAPTURE_SCHEMA_VERSION) {
-      throw new ArchiveInvalidError(
-        'Archive was created by a newer, unsupported version.',
-      );
-    }
     if (!manifest.files.some((file) => file.path === SNAPSHOT_ENTRY_NAME)) {
       throw new ArchiveInvalidError('Archive manifest omits the database snapshot.');
     }

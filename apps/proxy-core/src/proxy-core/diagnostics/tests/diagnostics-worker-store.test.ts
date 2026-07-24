@@ -2,7 +2,6 @@ import type { DiagnosticLogRecord } from '@interceptor/core-protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { openDiagnosticsDatabase } from '../utils';
-import { DIAGNOSTICS_SCHEMA_VERSION } from '../worker/worker-schema';
 import { DiagnosticsStore } from '../worker/worker-store';
 
 function record(
@@ -20,10 +19,14 @@ function record(
 }
 
 describe('DiagnosticsStore', () => {
-  it('migrates the diagnostics database to the current version', () => {
-    const { db, migration } = openDiagnosticsDatabase(':memory:');
+  it('creates the current diagnostics schema', () => {
+    const { db } = openDiagnosticsDatabase(':memory:');
     try {
-      expect(migration.toVersion).toBe(DIAGNOSTICS_SCHEMA_VERSION);
+      expect(
+        db.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'log_record'",
+        ).get(),
+      ).toEqual({ name: 'log_record' });
     } finally {
       db.close();
     }
@@ -79,7 +82,7 @@ describe('DiagnosticsStore', () => {
       ).toEqual([3, 1]);
     });
 
-    it('filters by process and maps legacy proxy-core records to core', () => {
+    it('filters by process', () => {
       store.insertBatch([
         record(1, { process: 'core' }),
         record(2, { process: 'main' }),

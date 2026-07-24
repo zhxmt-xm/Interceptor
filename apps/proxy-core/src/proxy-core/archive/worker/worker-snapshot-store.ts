@@ -8,14 +8,140 @@ import type {
   HeaderInput,
   WebSocketFrameInput,
 } from '../../storage/interfaces';
-import { applyMigrations } from '../../migration-runner';
-import {
-  ARCHIVE_CAPTURE_MIGRATIONS,
-} from '../archive-snapshot-schema';
 import type { ArchiveSnapshotPage } from '../interfaces';
 
-/** 一次性 Archive Worker 内的兼容 SQLite 编解码 Store。 */
+/** 一次性 Archive Worker 内的当前 SQLite 编解码 Store。 */
 export class ArchiveSnapshotStore {
+  /** 新 Archive 快照直接创建的完整 SQLite schema。 */
+  private static readonly SCHEMA = `
+    CREATE TABLE capture_session (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      started_at INTEGER NOT NULL,
+      ended_at INTEGER,
+      capture_mode TEXT NOT NULL,
+      app_version TEXT NOT NULL,
+      rule_set_revision INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE connection (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL REFERENCES capture_session(id) ON DELETE CASCADE,
+      seq INTEGER NOT NULL,
+      client_host TEXT,
+      client_port INTEGER,
+      destination_host TEXT,
+      destination_port INTEGER,
+      process_name TEXT,
+      process_id INTEGER,
+      tls_version TEXT,
+      tls_cipher TEXT,
+      alpn TEXT,
+      opened_at INTEGER NOT NULL,
+      closed_at INTEGER
+    );
+    CREATE TABLE body_ref (
+      id TEXT PRIMARY KEY,
+      blob_hash TEXT,
+      encoded_size INTEGER NOT NULL DEFAULT 0,
+      decoded_size INTEGER,
+      content_encoding TEXT,
+      media_type TEXT,
+      truncated INTEGER NOT NULL DEFAULT 0,
+      decode_status TEXT NOT NULL DEFAULT 'ok',
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE exchange (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL REFERENCES capture_session(id) ON DELETE CASCADE,
+      connection_id TEXT REFERENCES connection(id) ON DELETE SET NULL,
+      seq INTEGER NOT NULL UNIQUE,
+      stream_id INTEGER,
+      method TEXT NOT NULL,
+      scheme TEXT,
+      host TEXT,
+      port INTEGER,
+      path TEXT,
+      url TEXT NOT NULL,
+      protocol TEXT NOT NULL,
+      status_code INTEGER,
+      status_text TEXT,
+      request_mime TEXT,
+      response_mime TEXT,
+      process_name TEXT,
+      started_at INTEGER NOT NULL,
+      request_sent_at INTEGER,
+      response_started_at INTEGER,
+      completed_at INTEGER,
+      request_bytes INTEGER NOT NULL DEFAULT 0,
+      response_bytes INTEGER NOT NULL DEFAULT 0,
+      request_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
+      response_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
+      state TEXT NOT NULL,
+      error_code TEXT
+    );
+    CREATE TABLE message_headers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      exchange_id TEXT NOT NULL REFERENCES exchange(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      ordinal INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      value TEXT NOT NULL,
+      is_pseudo INTEGER NOT NULL DEFAULT 0,
+      rule_effect TEXT CHECK (rule_effect IN ('set', 'append', 'replace', 'remove'))
+    );
+    CREATE TABLE websocket_frame (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      exchange_id TEXT NOT NULL REFERENCES exchange(id) ON DELETE CASCADE,
+      seq INTEGER NOT NULL,
+      direction TEXT NOT NULL,
+      opcode INTEGER NOT NULL,
+      payload_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
+      payload_size INTEGER NOT NULL DEFAULT 0,
+      timestamp INTEGER NOT NULL
+    );
+    CREATE TABLE rule_hit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      exchange_id TEXT NOT NULL REFERENCES exchange(id) ON DELETE CASCADE,
+      rule_id TEXT NOT NULL,
+      rule_revision INTEGER NOT NULL,
+      phase TEXT NOT NULL,
+      action TEXT NOT NULL,
+      summary TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE error_event (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT REFERENCES capture_session(id) ON DELETE CASCADE,
+      exchange_id TEXT REFERENCES exchange(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      code TEXT NOT NULL,
+      message TEXT NOT NULL,
+      protocol_detail TEXT,
+      recoverable INTEGER NOT NULL DEFAULT 1,
+      timestamp INTEGER NOT NULL
+    );
+    CREATE INDEX idx_exchange_session_seq ON exchange(session_id, seq);
+    CREATE INDEX idx_exchange_started ON exchange(started_at);
+    CREATE INDEX idx_exchange_host ON exchange(host);
+    CREATE INDEX idx_exchange_method ON exchange(method);
+    CREATE INDEX idx_exchange_status ON exchange(status_code);
+    CREATE INDEX idx_exchange_response_mime ON exchange(response_mime);
+    CREATE INDEX idx_exchange_process ON exchange(process_name);
+    CREATE INDEX idx_connection_session_seq ON connection(session_id, seq);
+    CREATE INDEX idx_headers_exchange ON message_headers(exchange_id, kind, ordinal);
+    CREATE INDEX idx_ws_frame_exchange_seq ON websocket_frame(exchange_id, seq);
+    CREATE INDEX idx_rule_hit_exchange ON rule_hit(exchange_id);
+    CREATE INDEX idx_error_event_exchange ON error_event(exchange_id);
+    CREATE INDEX idx_error_event_session ON error_event(session_id);
+    CREATE VIRTUAL TABLE exchange_fts USING fts5(
+      exchange_id UNINDEXED,
+      url,
+      host,
+      method,
+      response_mime
+    );
+  `;
   /** 独占的 archive snapshot SQLite 连接。 */
   private readonly database: DatabaseSync;
   /** 导出写入时分配的全局 Exchange sequence。 */
@@ -32,7 +158,7 @@ export class ArchiveSnapshotStore {
     if (mode === 'export') {
       this.database.exec('PRAGMA journal_mode = DELETE');
       this.database.exec('PRAGMA synchronous = NORMAL');
-      applyMigrations(this.database, ARCHIVE_CAPTURE_MIGRATIONS);
+      this.database.exec(ArchiveSnapshotStore.SCHEMA);
       this.totalExchanges = 0;
     } else {
       const integrity = this.database.prepare('PRAGMA integrity_check').all() as {
@@ -245,8 +371,8 @@ export class ArchiveSnapshotStore {
     this.database
       .prepare(
         `INSERT INTO message_headers
-          (exchange_id, kind, ordinal, name, value, is_pseudo)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+          (exchange_id, kind, ordinal, name, value, is_pseudo, rule_effect)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         exchangeId,
@@ -255,6 +381,7 @@ export class ArchiveSnapshotStore {
         header.name,
         header.value,
         header.isPseudo ? 1 : 0,
+        header.ruleEffect ?? null,
       );
   }
 
@@ -280,7 +407,8 @@ export class ArchiveSnapshotStore {
     }
     const headers = this.database
       .prepare(
-        `SELECT kind, name, value, is_pseudo AS isPseudo
+        `SELECT kind, name, value, is_pseudo AS isPseudo,
+              rule_effect AS ruleEffect
          FROM message_headers WHERE exchange_id = ? ORDER BY id ASC`,
       )
       .all(id) as {
@@ -288,6 +416,7 @@ export class ArchiveSnapshotStore {
         name: string;
         value: string;
         isPseudo: number;
+        ruleEffect: HeaderInput['ruleEffect'] | null;
       }[];
     const requestBody = this.readBody(row.requestBodyId as string | null);
     const responseBody = this.readBody(row.responseBodyId as string | null);
@@ -322,6 +451,7 @@ export class ArchiveSnapshotStore {
         name: header.name,
         value: header.value,
         ...(header.isPseudo !== 0 ? { isPseudo: true } : {}),
+        ...(header.ruleEffect ? { ruleEffect: header.ruleEffect } : {}),
       })),
     };
     return {

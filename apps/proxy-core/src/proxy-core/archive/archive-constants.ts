@@ -1,14 +1,12 @@
 /**
  * 原生 archive 格式与无损调度常量。
  *
- * archive 是版本化 ZIP：manifest.json + 一致 SQLite 快照（capture.sqlite）+ 内容寻址
+ * archive 是固定格式 ZIP：manifest.json + 一致 SQLite 快照（capture.sqlite）+ 内容寻址
  * Blob（blobs/<sha256>）。导入校验路径、格式、CRC 与内容 hash；不限制数据大小或数量。
  */
 
 /** manifest 声明的稳定格式标识。 */
 export const ARCHIVE_FORMAT = 'interceptor-capture-archive';
-/** 当前 archive 容器版本；导入时只接受已知版本。 */
-export const ARCHIVE_VERSION = 1;
 /** Renderer 系统对话框使用的原生 archive 扩展名。 */
 export const ARCHIVE_EXTENSION = '.iarchive';
 

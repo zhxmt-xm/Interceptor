@@ -37,11 +37,21 @@ export function Flyout({
     <Popover
       trigger="click"
       arrow={false}
+      autoAdjustOverflow
       open={open}
       onOpenChange={onOpenChange}
       placement={placement}
       content={content}
       classNames={{ container: cx(styles.panel, className) }}
+      styles={{
+        container: {
+          padding: 7,
+          background: 'var(--panel)',
+          border: '1px solid var(--border-2)',
+          borderRadius: 12,
+          boxShadow: '0 18px 44px rgba(0, 0, 0, 0.2)',
+        },
+      }}
     >
       {children}
     </Popover>

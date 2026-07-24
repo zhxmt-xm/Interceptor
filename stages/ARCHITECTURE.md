@@ -111,7 +111,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 - **常量集中**：模块常量使用 `<module>-constants.ts`（+ `proxy-core/constants.ts`），是数值/策略的唯一来源；生产构造函数不接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
 - **StorageService**（`storage/entry.ts`）：直接组合 `TemporaryCaptureStore`、`TemporaryBodyStore` 与 `RuleStore`。Capture 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于1MiB驻内存，较大正文 spill 到 `capture-temp/`；RuleSet 低频直接读写 `rules.sqlite`。
 - **Recording 生命周期**：Stop 只经 `proxy.setRecording{recording:false}` 暂停记录——Mockttp listener 与系统代理保持运行、流量继续转发，暂停期间的新连接不再落库/推送，已在途的 Exchange 自然完成；监听器与系统代理不受影响。Start（含首次 bootstrap）经 `proxy.start` 恢复 `recording=true`（若未监听则先启动 listener，显式换端口时在同会话迁移监听端口）；系统代理只在应用退出与紧急修复时由 Main 恢复。Clear 才推进 cutoff、取消 transfer、清 Capture/Body；Core 退出自然释放临时数据。`proxy.status` 同时上报 `listening` 与 `recording`，Renderer 的 `capturing` 取 `recording`。
-- **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按100条批次把内存 Capture materialize/读取兼容 `capture.sqlite`；完成、取消或失败即退出。
+- **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按100条批次把内存 Capture materialize/读取当前固定 `capture.sqlite`；完整 schema 直接属于 Worker Store，无版本数组、迁移文件或旧格式分支；完成、取消或失败即退出。
 - **Transfer 交互**：命令到达 Core 后直接读取当前 Store；Renderer 全屏 Loading 在运行时只提供 Cancel，取消即 Abort 并恢复 UI。Core 不增加特殊 action 门禁。
 - **Diagnostics Worker**（`diagnostics/entry.ts` → `diagnostics/host/entry.ts` + `diagnostics/worker/entry.ts`）：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。写入失败只计数，绝不阻塞或回滚捕获，也不递归回灌同一 sink。
 - **Capture 与 Diagnostics 强隔离**：Capture 无数据库；Diagnostics Worker 独占 `diagnostics.sqlite`，日志失败不影响抓包。
@@ -241,6 +241,7 @@ sequenceDiagram
 - **持久化**（`storage`，schema v2）：单行 `rule_set` 表（revision + rules_json）；`CaptureStore.saveRuleSet` 单事务乐观并发（expectedRevision 不符抛 RuleRevisionConflictError→conflict）、`loadRuleSet` 空库返回 revision 0；`rule_hit` 表（schema v1）记 RuleHit 审计。
 - **编译与执行**（`proxy-core/rules/`）：`matcher-compiler` 把 Matcher 编译为纯判定（host/path/url/query/header 值匹配为 contains 默认/exact/regex，大小写由可选 `caseSensitive` 控制、默认不敏感）；`action-executor` 产出 ActionOutcome（mutate/respond/block/delay/throttle），Map Local 路径规范化 + 允许根校验防穿越；`breakpoint-queue` waiting→continued/edited/dropped/timed_out 状态机（强制 timeout + 断线 closeAll）；`rule-engine` 持有 ruleSet 引用，evaluateRequest/evaluateResponse 按 priority/id 执行、聚合 outcome 与 RuleHit。
 - **接入与热切换**（`proxy-service` + `core-application`）：单 `thenPassThrough` 的 beforeRequest/beforeResponse 调 engine，据评估返回改写/短路/阻断/延迟；按 request id 暂存 hits，captureExchange 关联 exchange id 后写 rule_hit。CoreApplication 组合根创建 RuleEngine+BreakpointQueue 注入 proxy-service，存储就绪 loadRuleSet 热加载，`rules.replace` 成功后 `setRuleSet` 原子替换（不 reset server，热更新不丢流量）。
+- **Header 效果记录**：RuleEngine 在每次真实生效的 header action 后按序产出 `set/append/replace/remove`；ProxyService 与 request id 关联后随 Exchange header metadata 保存。Request 原始行表示客户端输入，规则效果行表示上游实际值；Response 原始行是浏览器实际收到的最终值，效果行补充被替代/删除历史。Renderer 去重 wire/effect 重复项并用四种语义色标记；HAR materialize 最终 request/response headers 且不导出 marker，Native Archive 完整保真。
 - **命令**：`rules.get`/`rules.validate`/`rules.replace`（乐观并发）、`breakpoint.resolve`（continue/drop/timeout + 可选 edit）。
 - **未实现/限制**：throttle 带宽限速（Mockttp 无流控原语，evaluation 已聚合 throttleBps 待原生增强）；断点命中事件推送 Renderer 与规则 UI 在 M8。
 
@@ -279,12 +280,12 @@ sequenceDiagram
 
 ## 原生 archive 导入导出架构（M10/T10.2，已落地）
 
-> 原生 archive 是保留 Interceptor 全保真度的版本化 ZIP 容器；与 HAR 共用同一套异步 transfer job 与 Main 系统对话框边界，文件系统与大正文始终留在 Core，不新增生产依赖。
+> 原生 archive 是保留 Interceptor 全保真度的固定格式 ZIP 容器；与 HAR 共用同一套异步 transfer job 与 Main 系统对话框边界，文件系统与大正文始终留在 Core，不新增生产依赖。当前阶段不兼容旧 Archive schema。
 
 - **共享任务基础设施**：`transfer/entry.ts` 的 `TransferJobManager`（通用 `start(jobId, kind, filePath, operation)` + get/cancel/cancelAll）由 `CoreApplication` 独占一个实例，`HarService` 与 `ArchiveService` 共用；`transfer.job.get/cancel` 直接查询该实例。`TransferJobKind` 扩展为 `har-export`/`har-import`/`archive-export`/`archive-import`。
 - **依赖零新增的 ZIP**：`archive/archive-zip-writer.ts` 手写流式 ZIP（占位本地头 → 流式 `deflateRaw` → 回填 crc/大小 → central directory/EOCD，FileHandle 定位回填避免数据描述符），`archive/archive-zip-reader.ts` 只信任 central directory；CRC-32、条目名安全、manifest 解析集中在 `archive/utils/index.ts`。全部用 Node `zlib`/`crypto`。
 - **一致快照**：`storage` 新增 worker 请求 `snapshot` → `CaptureStore.snapshotInto` 用 `PRAGMA wal_checkpoint(TRUNCATE)` + `VACUUM INTO ?` 生成紧凑一致快照（不复制活动库文件）；`StorageService` 暴露 `snapshot`/`referencedBlobHashes`/`openBlobStream`（`BlobStore.openReadStream`）。
-- **导出**：`ArchiveService.exportToFile` 生成 `capture.sqlite` 快照 → 逐个流式写入引用 Blob（`blobs/<sha256>`）→ 最后写 `manifest.json`（format/archiveVersion/schemaVersion/appVersion/createdAt + 每文件 path/size/sha256）→ finalize → 原子 rename。
+- **导出**：`ArchiveService.exportToFile` 按当前唯一 schema 生成 `capture.sqlite` 快照 → 逐个流式写入引用 Blob（`blobs/<sha256>`）→ 最后写 `manifest.json`（format/appVersion/createdAt + 每文件 path/size/sha256）→ finalize → 原子 rename。Archive、Rules 与 Diagnostics SQLite 均直接创建当前表结构，不保留 `user_version`、迁移步骤或旧数据库搬运路径。
 - **导入**：解析EOCD/central directory并校验格式、路径、重复条目、声明size、CRC与SHA-256；不设文件、entry、解压总量或压缩比上限。当前ZIP实现不支持ZIP64，这是格式能力边界。
 - **Desktop**：`startArchiveExport/startArchiveImport` 是唯一 Renderer API；Main `showSaveDialog/showOpenDialog` 持有 `.iarchive` 路径。Capture 顶栏把 archive 呈现为独立的 `Open Capture` / `Save Capture` 命令（整库无损，不与 HAR 共用 Format），进度/取消/终态复用 transfer job 轮询。
 

@@ -25,6 +25,7 @@ import type {
   RequestEvaluation,
   ResponseEvaluation,
   RuleEngineOptions,
+  RuleHeaderEffect,
   RuleHitRecord,
 } from './interfaces';
 import * as RuleUtils from './utils';
@@ -119,6 +120,7 @@ export class RuleEngine {
     state: MutableRequestState,
   ): Promise<RequestEvaluation> {
     const hits: RuleHitRecord[] = [];
+    const headerEffects: RuleHeaderEffect[] = [];
     let delayMs = 0;
     let throttleBps: number | undefined;
 
@@ -141,22 +143,28 @@ export class RuleEngine {
             RuleUtils.applyRequestEdit(state, resolved.edit);
           }
           if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-            return { kind: 'block', mode: 'close', hits };
+            return { kind: 'block', mode: 'close', hits, headerEffects };
           }
           continue;
         }
+        const previousHeaderValues = action.type === 'header'
+          ? RuleUtils.headerValues(state.headers, action.name)
+          : [];
         const outcome = await this.actionExecutor.applyRequest(state, action);
         if (outcome.kind === 'none') {
           continue;
+        }
+        if (action.type === 'header' && action.phase === 'request') {
+          headerEffects.push(...RuleUtils.buildHeaderEffects(action, previousHeaderValues));
         }
         hits.push(
           this.toHit(compiled.rule, 'request', outcome.summary.action, outcome.summary.detail),
         );
         if (outcome.kind === 'respond') {
-          return { kind: 'respond', response: outcome.response, hits };
+          return { kind: 'respond', response: outcome.response, hits, headerEffects };
         }
         if (outcome.kind === 'block') {
-          return { kind: 'block', mode: outcome.mode, hits };
+          return { kind: 'block', mode: outcome.mode, hits, headerEffects };
         }
         if (outcome.kind === 'delay') {
           delayMs = Math.max(delayMs, outcome.ms);
@@ -168,7 +176,7 @@ export class RuleEngine {
         }
       }
     }
-    return { kind: 'continue', hits, delayMs, throttleBps };
+    return { kind: 'continue', hits, headerEffects, delayMs, throttleBps };
   }
 
   /**
@@ -179,6 +187,7 @@ export class RuleEngine {
     state: MutableResponseState,
   ): Promise<ResponseEvaluation> {
     const hits: RuleHitRecord[] = [];
+    const headerEffects: RuleHeaderEffect[] = [];
     let delayMs = 0;
     let throttleBps: number | undefined;
 
@@ -201,13 +210,19 @@ export class RuleEngine {
             RuleUtils.applyResponseEdit(state, resolved.edit);
           }
           if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-            return { kind: 'block', mode: 'close', hits };
+            return { kind: 'block', mode: 'close', hits, headerEffects };
           }
           continue;
         }
+        const previousHeaderValues = action.type === 'header'
+          ? RuleUtils.headerValues(state.headers, action.name)
+          : [];
         const outcome = this.actionExecutor.applyResponse(state, action);
         if (outcome.kind === 'none') {
           continue;
+        }
+        if (action.type === 'header' && action.phase === 'response') {
+          headerEffects.push(...RuleUtils.buildHeaderEffects(action, previousHeaderValues));
         }
         hits.push(
           this.toHit(compiled.rule, 'response', outcome.summary.action, outcome.summary.detail),
@@ -222,7 +237,7 @@ export class RuleEngine {
         }
       }
     }
-    return { kind: 'continue', hits, delayMs, throttleBps };
+    return { kind: 'continue', hits, headerEffects, delayMs, throttleBps };
   }
 
   /** 挂起规则断点并发布命中通知；关闭开关时直接继续。 */

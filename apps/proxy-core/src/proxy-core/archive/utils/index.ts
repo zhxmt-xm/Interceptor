@@ -2,7 +2,6 @@ import path from 'node:path';
 
 import {
   ARCHIVE_FORMAT,
-  ARCHIVE_VERSION,
   BLOB_ENTRY_PREFIX,
   MANIFEST_ENTRY_NAME,
   SHA256_PATTERN,
@@ -101,14 +100,11 @@ export function isSymlinkEntry(externalAttributes: number): boolean {
 
 /** 构建导出 manifest。 */
 export function buildManifest(
-  schemaVersion: number,
   appVersion: string,
   files: readonly ArchiveManifestFile[],
 ): ArchiveManifest {
   return {
     format: ARCHIVE_FORMAT,
-    archiveVersion: ARCHIVE_VERSION,
-    schemaVersion,
     appVersion,
     createdAt: new Date().toISOString(),
     files: [...files],
@@ -144,8 +140,7 @@ function parseManifestFile(value: unknown): ArchiveManifestFile {
 }
 
 /**
- * 严格解析 manifest.json：拒绝未知 format、未支持版本、非法 schema/字段和超量文件列表。
- * 未知扩展字段忽略，但所有必需字段类型/取值必须正确。
+ * 严格解析 manifest.json：只接受当前固定字段集合与格式标识。
  */
 export function parseManifest(bytes: Buffer): ArchiveManifest {
   let raw: unknown;
@@ -157,22 +152,13 @@ export function parseManifest(bytes: Buffer): ArchiveManifest {
   if (!isRecord(raw)) {
     throw new ArchiveInvalidError('Archive manifest must be an object.');
   }
-  const { format, archiveVersion, schemaVersion, appVersion, createdAt, files } =
-    raw;
+  const allowedKeys = new Set(['format', 'appVersion', 'createdAt', 'files']);
+  if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
+    throw new ArchiveInvalidError('Archive manifest contains unexpected fields.');
+  }
+  const { format, appVersion, createdAt, files } = raw;
   if (format !== ARCHIVE_FORMAT) {
     throw new ArchiveInvalidError('Unknown archive format.');
-  }
-  if (archiveVersion !== ARCHIVE_VERSION) {
-    throw new ArchiveInvalidError(
-      `Unsupported archive version ${String(archiveVersion)}.`,
-    );
-  }
-  if (
-    typeof schemaVersion !== 'number' ||
-    !Number.isInteger(schemaVersion) ||
-    schemaVersion < 1
-  ) {
-    throw new ArchiveInvalidError('Archive manifest schema version is invalid.');
   }
   if (typeof appVersion !== 'string') {
     throw new ArchiveInvalidError('Archive manifest app version is invalid.');
@@ -185,8 +171,6 @@ export function parseManifest(bytes: Buffer): ArchiveManifest {
   }
   return {
     format,
-    archiveVersion,
-    schemaVersion,
     appVersion,
     createdAt,
     files: files.map(parseManifestFile),

@@ -85,10 +85,6 @@ export interface ArchiveManifestFile {
 export interface ArchiveManifest {
   /** 稳定格式标识。 */
   readonly format: string;
-  /** archive 容器版本。 */
-  readonly archiveVersion: number;
-  /** 快照对应的 Capture 数据库 schema 版本。 */
-  readonly schemaVersion: number;
   /** 产生 archive 的应用版本。 */
   readonly appVersion: string;
   /** ISO 8601 创建时间。 */

@@ -7,7 +7,6 @@ import { Readable, Readable as NodeReadable } from 'node:stream';
 
 import {
   BODY_MEMORY_THRESHOLD_BYTES,
-  blobDirectory,
   captureTempDirectory,
 } from '../constants';
 import type {
@@ -20,8 +19,6 @@ import type {
 export class TemporaryBodyStore {
   /** 当前 Core 的临时 spill 根目录。 */
   private readonly rootDir = captureTempDirectory;
-  /** 旧版本持久 Blob 目录，初始化时一次性删除。 */
-  private readonly legacyBlobDir = blobDirectory;
   /** 正文从内存切换到 spill 的阈值。 */
   private readonly memoryThresholdBytes = BODY_MEMORY_THRESHOLD_BYTES;
   /** hash 到内存或 spill 位置。 */
@@ -33,12 +30,11 @@ export class TemporaryBodyStore {
   /** Store 是否已初始化。 */
   private initialized = false;
 
-  /** 清理旧持久 Blob 与崩溃残留 spill，并建立空临时目录。 */
+  /** 清理崩溃残留 spill 并建立空临时目录。 */
   async init(): Promise<void> {
     if (this.initialized) {
       return;
     }
-    await fs.rm(this.legacyBlobDir, { recursive: true, force: true });
     await fs.rm(this.rootDir, { recursive: true, force: true });
     await fs.mkdir(this.rootDir, { recursive: true });
     this.initialized = true;

@@ -27,6 +27,15 @@ const designIndexUrl = pathToFileURL(
 const onlyView = process.argv
   .find((arg) => arg.startsWith('--view='))
   ?.split('=')[1];
+const viewportArg = process.argv
+  .find((arg) => arg.startsWith('--viewport='))
+  ?.split('=')[1];
+const viewportMatch = viewportArg?.match(/^(\d+)x(\d+)$/);
+const rendererViewport = viewportMatch
+  ? { width: Number(viewportMatch[1]), height: Number(viewportMatch[2]) }
+  : config.viewport;
+const inspectPopover = process.argv.includes('--inspect-popover');
+const inspectSelect = process.argv.includes('--inspect-select');
 const views = config.views.filter((view) => !onlyView || view.id === onlyView);
 const STYLE_KEYS = ['fontSize', 'fontWeight', 'color'];
 
@@ -35,14 +44,17 @@ const median = (numbers) => {
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
 };
 
-async function collect(page, rootSelector, targets) {
+async function collect(page, rootSelector, targets, side) {
   const origin = await page.locator(rootSelector).first().boundingBox();
   const result = {};
   for (const target of targets) {
     const name = typeof target === 'string' ? target : target.name;
-    const candidates = typeof target === 'string'
-      ? await page.getByText(name, { exact: true }).all()
-      : await page.locator(`[data-parity="${target.parity}"]`).all();
+    const selector = typeof target === 'string' ? undefined : target[`${side}Selector`];
+    const candidates = selector
+      ? await page.locator(selector).all()
+      : typeof target === 'string'
+        ? await page.getByText(name, { exact: true }).all()
+        : await page.locator(`[data-parity="${target.parity}"]`).all();
     let element = null;
     let box = null;
     for (const candidate of candidates) {
@@ -143,7 +155,7 @@ for (const view of views) {
   await designPage.waitForTimeout(400);
 
   const appPage = await browser.newPage({
-    viewport: config.viewport,
+    viewport: rendererViewport,
     deviceScaleFactor: 2,
     colorScheme: view.theme === 'dark' ? 'dark' : 'light',
   });
@@ -166,6 +178,86 @@ for (const view of views) {
   }
   await applyRendererActions(appPage, view.rendererActions);
   await appPage.waitForTimeout(400);
+
+  if (inspectPopover) {
+    const popover = appPage.locator('.ant-popover:visible').last();
+    if (await popover.count()) {
+      const diagnostics = await popover.evaluate((node) => {
+        const container = node.querySelector('.ant-popover-container');
+        const rect = node.getBoundingClientRect();
+        const containerRect = container?.getBoundingClientRect();
+        const content = container?.querySelector('.ant-popover-content');
+        const groups = container
+          ? [...container.querySelectorAll('div')]
+              .filter((element) => {
+                const text = element.textContent?.trim();
+                return text && text === text.toUpperCase();
+              })
+              .map((element) => ({
+                text: element.textContent?.trim(),
+                height: element.getBoundingClientRect().height,
+              }))
+          : [];
+        const menuItems = container
+          ? [...container.querySelectorAll('button')].map((element) => ({
+              text: element.textContent,
+              height: element.getBoundingClientRect().height,
+            }))
+          : [];
+        return {
+          className: node.className,
+          rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          container: container && containerRect
+            ? {
+                y: containerRect.y,
+                height: containerRect.height,
+                clientHeight: container.clientHeight,
+                scrollHeight: container.scrollHeight,
+                overflowY: getComputedStyle(container).overflowY,
+              }
+            : null,
+          contentHeight: content?.getBoundingClientRect().height ?? null,
+          groups,
+          menuItems,
+        };
+      });
+      const trigger = await appPage
+        .getByRole('button', { name: 'Add action', exact: true })
+        .boundingBox();
+      console.log('  popover diagnostics', JSON.stringify({ viewport: rendererViewport, trigger, ...diagnostics }));
+    }
+  }
+
+  if (inspectSelect) {
+    const dropdown = appPage.locator('.ant-select-dropdown:visible').last();
+    if (await dropdown.count()) {
+      const diagnostics = await dropdown.evaluate((node) => {
+        const list = node.querySelector('[role="listbox"]');
+        const holder = node.querySelector('.rc-virtual-list-holder');
+        const content = node.querySelector('.rc-virtual-list-holder-inner');
+        const rect = node.getBoundingClientRect();
+        return {
+          rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          list: list
+            ? {
+                clientHeight: list.clientHeight,
+                scrollHeight: list.scrollHeight,
+                overflowY: getComputedStyle(list).overflowY,
+              }
+            : null,
+          holder: holder
+            ? {
+                clientHeight: holder.clientHeight,
+                scrollHeight: holder.scrollHeight,
+                overflowY: getComputedStyle(holder).overflowY,
+              }
+            : null,
+          contentHeight: content?.getBoundingClientRect().height ?? null,
+        };
+      });
+      console.log('  select diagnostics', JSON.stringify({ viewport: rendererViewport, ...diagnostics }));
+    }
+  }
 
   const shotPath = path.join(outDir, `${view.id}-${view.theme}.png`);
   await rm(shotPath, { force: true });
@@ -218,8 +310,8 @@ for (const view of views) {
     }
   }
 
-  const design = await collect(designPage, '.app', view.targets);
-  const app = await collect(appPage, '[data-collapsed]', view.targets);
+  const design = await collect(designPage, '.app', view.targets, 'design');
+  const app = await collect(appPage, '[data-collapsed]', view.targets, 'app');
   const targetNames = view.targets.map((target) =>
     typeof target === 'string' ? target : target.name);
   const matched = targetNames.filter((name) => design[name] && app[name]);

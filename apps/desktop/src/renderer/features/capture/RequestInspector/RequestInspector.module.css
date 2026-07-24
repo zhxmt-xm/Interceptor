@@ -152,6 +152,42 @@
   color: var(--text);
   word-break: break-all;
 }
+.ruleInactive {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.ruleEffect {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  margin-left: 7px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.ruleEffect[data-effect='append'] {
+  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
+}
+.ruleEffect[data-effect='replace'] {
+  border-color: color-mix(in srgb, var(--yellow) 28%, transparent);
+  background: color-mix(in srgb, var(--yellow) 11%, transparent);
+  color: var(--yellow);
+}
+.ruleEffect[data-effect='remove'] {
+  border-color: color-mix(in srgb, var(--red) 24%, transparent);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
+}
 .copyBtn.copyBtn {
   display: inline-flex;
   vertical-align: middle;

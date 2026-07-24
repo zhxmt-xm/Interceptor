@@ -3,7 +3,10 @@ import { Copy, X } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { CaptureHeader } from '../../../../shared/desktop-api';
+import type {
+  CaptureHeader,
+  CaptureHeaderRuleEffect,
+} from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, IconButton, MethodBadge, SectionHeader, StatusBadge, useClipboardCopy } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
@@ -19,10 +22,9 @@ import { TlsTunnelPanel } from './TlsTunnelPanel';
 import {
   displayPath,
   headersWithoutCookies,
+  headersWithRuleEffects,
   protocolLabel,
   protocolSegment,
-  requestCookiePairs,
-  responseCookiePairs,
   responseTimingSegments,
   retainInspectorTab,
   sizeLabel,
@@ -38,7 +40,13 @@ import { GrpcMessages } from './GrpcMessages';
 import { WebSocketMessages } from './WebSocketMessages';
 import styles from './RequestInspector.module.css';
 
-type KvRow = [key: string, value: ReactNode, accent?: 'a' | 'g', copyText?: string];
+type KvRow = [
+  key: string,
+  value: ReactNode,
+  accent?: 'a' | 'g',
+  copyText?: string,
+  ruleEffect?: CaptureHeaderRuleEffect,
+];
 
 const INSPECTOR_TAB_AUTOMATION_IDS: Record<InspectorTab, AutomationId> =
   AUTOMATION_IDS.capture.inspector.tab;
@@ -49,6 +57,8 @@ function headersToRows(headers: CaptureHeader[]): KvRow[] {
     header.name,
     header.value,
     header.isPseudo ? 'a' : undefined,
+    undefined,
+    header.ruleEffect,
   ]);
 }
 
@@ -79,12 +89,40 @@ function inferPort(url: string | undefined, scheme: string): number {
 
 /** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
 function requestCookieRows(headers: CaptureHeader[]): KvRow[] {
-  return requestCookiePairs(headers);
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'cookie')
+    .flatMap((header) =>
+      header.value
+        .split(';')
+        .map((pair) => pair.trim())
+        .filter(Boolean)
+        .map((pair) => {
+          const separator = pair.indexOf('=');
+          return [
+            separator === -1 ? pair : pair.slice(0, separator),
+            separator === -1 ? '' : pair.slice(separator + 1),
+            undefined,
+            undefined,
+            header.ruleEffect,
+          ] as KvRow;
+        }),
+    );
 }
 
 /** 收集响应 Set-Cookie 头（每条一行）为 KV 行。 */
 function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
-  return responseCookiePairs(headers);
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => {
+      const separator = header.value.indexOf('=');
+      return [
+        separator === -1 ? header.value : header.value.slice(0, separator),
+        header.value,
+        undefined,
+        undefined,
+        header.ruleEffect,
+      ] as KvRow;
+    });
 }
 
 function isGrpcMime(value: string | undefined): boolean {
@@ -98,15 +136,21 @@ function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
   const copy = useClipboardCopy();
   return (
     <div className={styles.kv}>
-      {rows.map(([key, value, accent, copyText], index) => {
+      {rows.map(([key, value, accent, copyText, ruleEffect], index) => {
         const copyValue = copyText ?? (typeof value === 'string' ? value : undefined);
+        const inactive = ruleEffect === 'replace' || ruleEffect === 'remove';
         return (
           <div className={styles.kvRow} key={index}>
             <span className={styles.key}>{key}</span>
             <span
               className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
             >
-              {value}
+              <span className={cx(inactive && styles.ruleInactive)}>{value}</span>
+              {ruleEffect ? (
+                <span className={styles.ruleEffect} data-effect={ruleEffect}>
+                  {t(`capture.ruleEffect.${ruleEffect}`)}
+                </span>
+              ) : null}
               {copyValue ? (
                 <IconButton
                   className={styles.copyBtn}
@@ -177,8 +221,14 @@ export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorP
   const view = detail?.summary ?? summary;
 
   const url = view ? detail?.url ?? `${view.host ?? ''}${view.path ?? ''}` : '';
-  const responseHeaders = detail?.responseHeaders ?? [];
-  const requestHeaders = detail?.requestHeaders ?? [];
+  const responseHeaders = headersWithRuleEffects(
+    detail?.responseHeaders ?? [],
+    'response',
+  );
+  const requestHeaders = headersWithRuleEffects(
+    detail?.requestHeaders ?? [],
+    'request',
+  );
   const visibleResponseHeaders = headersWithoutCookies(responseHeaders);
   const visibleRequestHeaders = headersWithoutCookies(requestHeaders);
   const responseTrailers = detail?.responseTrailers ?? [];

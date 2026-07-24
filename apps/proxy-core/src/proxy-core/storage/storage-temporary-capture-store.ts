@@ -456,11 +456,12 @@ export class TemporaryCaptureStore {
   ): CaptureHeader[] {
     return headers
       .filter((header) => header.kind === kind)
-      .map((header) =>
-        header.isPseudo
-          ? { name: header.name, value: header.value, isPseudo: true }
-          : { name: header.name, value: header.value },
-      );
+      .map((header) => ({
+        name: header.name,
+        value: header.value,
+        ...(header.isPseudo ? { isPseudo: true } : {}),
+        ...(header.ruleEffect ? { ruleEffect: header.ruleEffect } : {}),
+      }));
   }
 
   /** 映射完整 Exchange 到列表摘要。 */

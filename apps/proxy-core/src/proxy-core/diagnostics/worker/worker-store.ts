@@ -90,12 +90,8 @@ export class DiagnosticsStore {
       params.level = query.level;
     }
     if (query.process) {
-      if (query.process === 'core') {
-        conditions.push("process IN ('core', 'proxy-core')");
-      } else {
-        conditions.push('process = :process');
-        params.process = query.process;
-      }
+      conditions.push('process = :process');
+      params.process = query.process;
     }
     if (query.outcome) {
       conditions.push('outcome = :outcome');

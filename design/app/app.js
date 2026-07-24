@@ -89,6 +89,7 @@ function setState(s = {}) {
     app.classList.remove('showpop', 'thopen', 'lgopen', 'nodetail');
     delete app.dataset.filtersub;
     delete app.dataset.tip;
+    delete app.dataset.ruleSelect;
     if (!s.scene) app.dataset.scene = 'http';
     if (!s.tab) setInspTab('headers');
   }
@@ -128,6 +129,10 @@ function setState(s = {}) {
     if (s.fileMenu) app.dataset.fileMenu = s.fileMenu;
     else delete app.dataset.fileMenu;
   }
+  if ('ruleSelect' in s) {
+    if (s.ruleSelect) app.dataset.ruleSelect = s.ruleSelect;
+    else delete app.dataset.ruleSelect;
+  }
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
@@ -137,10 +142,55 @@ function setState(s = {}) {
     renderSidebar(app.getAttribute('data-view'));
   }
   positionFootpop();
+  positionActionPopover();
+  positionRuleSelectPopover();
   syncCaptureListScrollbar();
   syncControls();
 }
 window.__setState = setState;
+
+function positionActionPopover() {
+  const trigger = app.querySelector('#addaction');
+  const popEl = app.querySelector('.apop');
+  const editor = app.querySelector('.reditor');
+  if (!trigger || !popEl || !editor || app.dataset.view !== 'rules' || !app.classList.contains('showpop')) return;
+
+  const gap = 4;
+  const appRect = app.getBoundingClientRect();
+  const editorRect = editor.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const fitsRight = triggerRect.right + gap + popEl.offsetWidth <= appRect.right;
+  const left = fitsRight
+    ? triggerRect.right - editorRect.left + gap
+    : triggerRect.left - editorRect.left - popEl.offsetWidth - gap;
+  const centeredTop = triggerRect.top - editorRect.top
+    + (triggerRect.height - popEl.offsetHeight) / 2;
+  const minTop = appRect.top - editorRect.top;
+  const maxTop = appRect.bottom - editorRect.top - popEl.offsetHeight;
+
+  popEl.style.left = `${left}px`;
+  popEl.style.top = `${Math.min(Math.max(centeredTop, minTop), maxTop)}px`;
+}
+
+function positionRuleSelectPopover() {
+  const trigger = app.querySelector('[data-rule-select-trigger]');
+  const popEl = app.querySelector('.rule-select-pop');
+  const editor = app.querySelector('.reditor');
+  if (!trigger || !popEl || !editor || app.dataset.ruleSelect !== 'open') return;
+
+  const gap = 4;
+  const appRect = app.getBoundingClientRect();
+  const editorRect = editor.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const fitsBelow = triggerRect.bottom + gap + popEl.offsetHeight <= appRect.bottom;
+  const top = fitsBelow
+    ? triggerRect.bottom - editorRect.top + gap
+    : triggerRect.top - editorRect.top - popEl.offsetHeight - gap;
+
+  popEl.style.top = `${top}px`;
+  popEl.style.left = `${triggerRect.left - editorRect.left}px`;
+  popEl.style.width = `${triggerRect.width}px`;
+}
 
 const captureListScroll = app.querySelector('.list-scroll');
 if (captureListScroll) {
@@ -203,8 +253,16 @@ app.addEventListener('click', (e) => {
   }
   if (e.target.closest('.fbtn') || e.target.closest('#addaction')) {
     app.classList.toggle('showpop');
+    positionActionPopover();
+  }
+  if (e.target.closest('[data-rule-select-trigger]')) {
+    const open = app.dataset.ruleSelect === 'open';
+    setState({ ruleSelect: open ? '' : 'open' });
   }
 });
+
+window.addEventListener('resize', positionActionPopover);
+window.addEventListener('resize', positionRuleSelectPopover);
 
 // Settings section and guarded repair confirmation states.
 app.addEventListener('click', (e) => {

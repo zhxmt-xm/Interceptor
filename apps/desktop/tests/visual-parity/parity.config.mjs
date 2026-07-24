@@ -30,6 +30,10 @@ export const views = [
       { name: 'List size cell', parity: 'capture-list-size-cell' },
       { name: 'List time header', parity: 'capture-list-time-header' },
       { name: 'List time cell', parity: 'capture-list-time-cell' },
+      'Rule replaced',
+      'Rule set',
+      'Rule appended',
+      'Rule removed',
       'Recording',
     ],
   },
@@ -444,6 +448,50 @@ export const views = [
       'Match',
       'Add condition',
       'Add action',
+    ],
+  },
+  {
+    id: 'rules-add-action',
+    theme: 'light',
+    rendererNav: 'Rules & Map',
+    designState: {
+      view: 'rules',
+      theme: 'light',
+      sidebar: 'expanded',
+      pop: true,
+    },
+    designShot: 'light/rules/add-action.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Add action' },
+    ],
+    targets: [
+      {
+        name: 'Add action menu',
+        designSelector: '.apop',
+        appSelector: '.ant-popover:visible',
+      },
+    ],
+  },
+  {
+    id: 'rules-select-dropdown',
+    theme: 'light',
+    rendererNav: 'Rules & Map',
+    designState: {
+      view: 'rules',
+      theme: 'light',
+      sidebar: 'expanded',
+      ruleSelect: 'open',
+    },
+    designShot: 'light/rules/select-dropdown.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'combobox', name: 'Condition field' },
+    ],
+    targets: [
+      {
+        name: 'Condition field menu',
+        designSelector: '.rule-select-pop',
+        appSelector: '.ant-select-dropdown:visible',
+      },
     ],
   },
   {

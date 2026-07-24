@@ -152,7 +152,11 @@ function passthroughHttpsGet(
 function proxiedGet(
   proxy: { host: string; port: number },
   absoluteUrl: string,
-): Promise<{ status: number | undefined; body: string }> {
+): Promise<{
+  status: number | undefined;
+  headers: http.IncomingHttpHeaders;
+  body: string;
+}> {
   return new Promise((resolve, reject) => {
     const req = http.request(
       { host: proxy.host, port: proxy.port, method: 'GET', path: absoluteUrl },
@@ -161,7 +165,11 @@ function proxiedGet(
         res.on('data', (chunk) => {
           body += chunk;
         });
-        res.on('end', () => resolve({ status: res.statusCode, body }));
+        res.on('end', () => resolve({
+          status: res.statusCode,
+          headers: res.headers,
+          body,
+        }));
       },
     );
     req.on('error', reject);
@@ -282,6 +290,84 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const status = proxy.status();
     expect(status.listening).toBe(true);
     expect(status.port).toBe(address.port);
+  });
+
+  it('matches a URL written as host/path and applies a response action', async () => {
+    let upstreamRequestHeader: string | undefined;
+    const origin = await startOrigin((request, response) => {
+      upstreamRequestHeader = request.headers['x-request-rule'] as string | undefined;
+      response.writeHead(200, {
+        'content-type': 'text/plain',
+        'x-response-rule': 'before',
+      });
+      response.end('ok');
+    });
+    await proxy.stop();
+    const ruleEngine = new RuleEngine(new BreakpointQueue());
+    ruleEngine.setRuleSet({
+      revision: 1,
+      rules: [{
+        id: 'url-rule',
+        name: 'URL rule',
+        enabled: true,
+        priority: 100,
+        matchers: [{
+          type: 'url',
+          value: `127.0.0.1:${origin.port}/link_setting/v1/link_setting/get`,
+          mode: 'contains',
+        }],
+        actions: [
+          {
+            type: 'header',
+            phase: 'request',
+            op: 'append',
+            name: 'x-request-rule',
+            value: 'upstream',
+          },
+          {
+            type: 'header',
+            phase: 'response',
+            op: 'set',
+            name: 'x-response-rule',
+            value: 'after',
+          },
+        ],
+      }],
+    });
+    proxy = new ProxyService(sink, new CaptureEventQueue(), ruleEngine);
+    address = await proxy.start();
+    try {
+      const response = await proxiedGet(
+        address,
+        `http://127.0.0.1:${origin.port}/link_setting/v1/link_setting/get`,
+      );
+      expect(response.status).toBe(200);
+      expect(upstreamRequestHeader).toBe('upstream');
+      expect(response.headers['x-response-rule']).toBe('after');
+      await waitForExchange(sink);
+      expect(sink.exchanges[0]?.headers).toEqual(expect.arrayContaining([
+        {
+          kind: 'request',
+          name: 'x-request-rule',
+          value: 'upstream',
+          ruleEffect: 'append',
+        },
+        {
+          kind: 'response',
+          name: 'x-response-rule',
+          value: 'before',
+          ruleEffect: 'replace',
+        },
+        {
+          kind: 'response',
+          name: 'x-response-rule',
+          value: 'after',
+          ruleEffect: 'set',
+        },
+      ]));
+    } finally {
+      await origin.close();
+    }
   });
 
   it('stops the Mockttp listener, preserves records, and appends after restart', async () => {

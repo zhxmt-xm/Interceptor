@@ -51,6 +51,7 @@ class ArchiveWorkerFixture {
       state: 'completed',
       headers: [
         { kind: 'request', name: ':method', value: 'GET', isPseudo: true },
+        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set' },
         { kind: 'response-trailer', name: 'grpc-status', value: '0' },
       ],
       responseBody: {
@@ -141,6 +142,7 @@ describe.skipIf(!existsSync(workerBundle))(
           responseBody: { blobHash: '0'.repeat(64) },
           headers: [
             { name: ':method', isPseudo: true },
+            { name: 'x-rule', ruleEffect: 'set' },
             { name: 'grpc-status' },
           ],
         },

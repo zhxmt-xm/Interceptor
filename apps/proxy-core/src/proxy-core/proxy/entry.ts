@@ -15,6 +15,7 @@ import type {
   MutableResponseState,
   SyntheticResponseInit,
   MatchContext,
+  RuleHeaderEffect,
   RuleHitRecord,
 } from '../rules/interfaces';
 import type { RuleEngine } from '../rules/entry';
@@ -61,6 +62,8 @@ export class ProxyService {
   private readonly captureOperations = new Set<Promise<unknown>>();
   /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
   private readonly ruleHits = new Map<string, RuleHitRecord[]>();
+  /** 按 Mockttp request id 暂存规则产生的 request header 净效果。 */
+  private readonly ruleHeaderEffects = new Map<string, HeaderInput[]>();
 
   private server: Mockttp | null = null;
   private webSocketBridge: WebSocketBridge | null = null;
@@ -269,6 +272,7 @@ export class ProxyService {
     this.pendingWebSockets.clear();
     this.pendingTunnels.clear();
     this.ruleHits.clear();
+    this.ruleHeaderEffects.clear();
     this.capturedExchanges = 0;
     return this.server ? this.sessionId : null;
   }
@@ -566,6 +570,7 @@ export class ProxyService {
       ...(response
         ? ProxyUtils.toHeaderInputs('response-trailer', response.rawTrailers)
         : []),
+      ...(this.ruleHeaderEffects.get(request.id) ?? []),
     ];
     const requestBody = await this.persistBody(
       'body' in request ? request.body : undefined,
@@ -652,6 +657,7 @@ export class ProxyService {
       });
     } finally {
       this.ruleHits.delete(request.id);
+      this.ruleHeaderEffects.delete(request.id);
     }
     if (state === 'aborted') {
       this.diagnostics?.warn('exchange.aborted', {
@@ -839,13 +845,14 @@ export class ProxyService {
     const state: MutableRequestState = {
       method: request.method,
       url: request.url,
-      headers: { ...request.headers },
+      headers: ProxyUtils.cloneHeaders(request.headers),
     };
     try {
       const evaluation = await this.ruleEngine.evaluateRequest(
         ProxyUtils.buildRequestContext(request),
         state,
       );
+      this.stashHeaderEffects(request.id, evaluation.headerEffects);
       this.stashHits(request.id, evaluation.hits);
       if (evaluation.kind === 'respond') {
         return { response: ProxyUtils.toCallbackResponse(evaluation.response) };
@@ -882,13 +889,14 @@ export class ProxyService {
     }
     const state: MutableResponseState = {
       statusCode: response.statusCode,
-      headers: { ...response.headers },
+      headers: ProxyUtils.cloneHeaders(response.headers),
     };
     try {
       const evaluation = await this.ruleEngine.evaluateResponse(
         ProxyUtils.buildResponseContext(request, response),
         state,
       );
+      this.stashHeaderEffects(request.id, evaluation.headerEffects);
       this.stashHits(request.id, evaluation.hits);
       if (evaluation.kind === 'block') {
         return evaluation.mode;
@@ -918,6 +926,23 @@ export class ProxyService {
       existing.push(...hits);
     } else {
       this.ruleHits.set(requestId, [...hits]);
+    }
+  }
+
+  /** 累加 request/response 阶段按执行顺序产生的 header effect。 */
+  private stashHeaderEffects(
+    requestId: string,
+    effects: readonly RuleHeaderEffect[],
+  ): void {
+    if (effects.length === 0) {
+      return;
+    }
+    const inputs = ProxyUtils.toRuleHeaderInputs(effects);
+    const existing = this.ruleHeaderEffects.get(requestId);
+    if (existing) {
+      existing.push(...inputs);
+    } else {
+      this.ruleHeaderEffects.set(requestId, inputs);
     }
   }
 }

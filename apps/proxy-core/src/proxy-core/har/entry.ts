@@ -201,10 +201,12 @@ export class HarService {
     const requestHeaders = HarUtils.redactHeaders(
       detail.requestHeaders,
       redaction,
+      'request',
     );
     const responseHeaders = HarUtils.redactHeaders(
       detail.responseHeaders,
       redaction,
+      'response',
     );
     const requestBody = redaction.bodies
       ? undefined
