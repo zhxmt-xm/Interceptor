@@ -1,5 +1,17 @@
 # Interceptor Agent Guidelines
 
+## 语言
+
+- 始终使用**中文**进行交流、说明和分析（含思路讲解、方案权衡、代码评审与结论）。
+- 代码、标识符、命令、文件路径、API 名称等保持原文，不做翻译。
+
+## 实现原则
+
+- 避免过度设计：只做被直接要求或明确必要的改动或非常相关的改动，如果有更好的建议可以询问用户。
+- 不要为不可能发生的场景添加错误处理；只在系统边界做校验。
+- 不要为一次性操作创建辅助函数或抽象。
+- 改动尽量彻底，不要为了兼容旧代码增加更多的垃圾代码，代码可以彻底优化、简化，提高可读性
+
 ## Frontend Styling
 
 - The mockups and tokens under `design/` are the **single source of truth** for all UI styling. Once a screen has a view in the single `design/app/` design SPA, its implementation MUST match that view **one-to-one** — layout, spacing, color, typography, radii, and interaction states. An approximate look is not acceptable.

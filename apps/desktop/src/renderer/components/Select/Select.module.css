@@ -23,22 +23,7 @@
   color: var(--text-3);
   flex: 0 0 auto;
 }
-.native {
-  flex: 1 1 auto;
+.antSelect {
+  width: 100%;
   min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  padding: 0;
-}
-.native option {
-  background: var(--panel-2);
-  color: var(--text);
 }

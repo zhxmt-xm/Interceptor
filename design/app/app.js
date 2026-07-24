@@ -276,6 +276,21 @@ app.addEventListener('click', (e) => {
     return setState({ pop2: app.classList.contains('lgopen') ? '' : 'lang' });
 });
 
+// Rules matcher value toggles: Aa (case, independent) + = (exact) / .* (regex) mutually exclusive.
+app.addEventListener('click', (e) => {
+  const mtg = e.target.closest('.mtg');
+  if (!mtg) return;
+  if (mtg.dataset.mtg === 'case') {
+    mtg.classList.toggle('on');
+    return;
+  }
+  const turnOn = !mtg.classList.contains('on');
+  mtg.closest('.mtoggles')
+    .querySelectorAll('[data-mtg="exact"],[data-mtg="regex"]')
+    .forEach((b) => b.classList.remove('on'));
+  mtg.classList.toggle('on', turnOn);
+});
+
 // Initial paint.
 app.dataset.lang = app.dataset.lang || 'en';
 renderSidebar(app.getAttribute('data-view') || 'capture');

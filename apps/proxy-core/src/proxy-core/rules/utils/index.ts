@@ -57,23 +57,23 @@ export function compileMatcher(matcher: RuleMatcher): CompiledMatcher {
       return (ctx) => ctx.request.method.toUpperCase() === expected;
     }
     case 'host': {
-      const test = compileStringMatch(matcher.mode, matcher.value, false);
+      const test = compileStringMatch(matcher.mode, matcher.value, matcher.caseSensitive ?? false);
       return (ctx) => test(ctx.request.host);
     }
     case 'path': {
-      const test = compileStringMatch(matcher.mode, matcher.value, true);
+      const test = compileStringMatch(matcher.mode, matcher.value, matcher.caseSensitive ?? false);
       return (ctx) => test(ctx.request.path);
     }
     case 'url': {
-      const test = compileStringMatch(matcher.mode, matcher.value, true);
+      const test = compileStringMatch(matcher.mode, matcher.value, matcher.caseSensitive ?? false);
       return (ctx) => test(ctx.request.url);
     }
     case 'query': {
-      const test = compileKeyMatch(matcher.mode, matcher.value);
+      const test = compileKeyMatch(matcher.mode, matcher.value, matcher.caseSensitive ?? false);
       return (ctx) => test(ctx.request.query.getAll(matcher.key));
     }
     case 'header': {
-      const test = compileKeyMatch(matcher.mode, matcher.value);
+      const test = compileKeyMatch(matcher.mode, matcher.value, matcher.caseSensitive ?? false);
       const name = matcher.name;
       const phase = matcher.phase;
       return (ctx) => {
@@ -90,12 +90,8 @@ export function compileMatcher(matcher: RuleMatcher): CompiledMatcher {
         ctx.response.statusCode <= max;
     }
     case 'mime': {
-      const test = compileStringMatch(
-        matcher.value.includes('*') ? 'wildcard' : 'exact',
-        matcher.value,
-        false,
-      );
       const phase = matcher.phase;
+      const test = compileMimeMatch(matcher.value);
       return (ctx) => {
         const mime =
           phase === 'response' ? ctx.response?.mime : ctx.request.mime;
@@ -141,16 +137,19 @@ function compileStringMatch(
   caseSensitive: boolean,
 ): (value: string) => boolean {
   switch (mode) {
+    case 'contains': {
+      if (caseSensitive) {
+        return (value) => value.includes(pattern);
+      }
+      const lower = pattern.toLowerCase();
+      return (value) => value.toLowerCase().includes(lower);
+    }
     case 'exact': {
       if (caseSensitive) {
         return (value) => value === pattern;
       }
       const lower = pattern.toLowerCase();
       return (value) => value.toLowerCase() === lower;
-    }
-    case 'wildcard': {
-      const regex = wildcardToRegExp(pattern, caseSensitive);
-      return (value) => regex.test(value);
     }
     case 'regex': {
       const regex = safeRegExp(pattern, caseSensitive);
@@ -166,14 +165,26 @@ function compileStringMatch(
 function compileKeyMatch(
   mode: KeyMatchMode,
   expected: string | undefined,
+  caseSensitive: boolean,
 ): (values: string[]) => boolean {
+  const needle = expected ?? '';
   switch (mode) {
-    case 'present':
-      return (values) => values.length > 0;
-    case 'exact':
-      return (values) => expected !== undefined && values.includes(expected);
+    case 'contains': {
+      if (caseSensitive) {
+        return (values) => values.some((value) => value.includes(needle));
+      }
+      const lower = needle.toLowerCase();
+      return (values) => values.some((value) => value.toLowerCase().includes(lower));
+    }
+    case 'exact': {
+      if (caseSensitive) {
+        return (values) => values.includes(needle);
+      }
+      const lower = needle.toLowerCase();
+      return (values) => values.some((value) => value.toLowerCase() === lower);
+    }
     case 'regex': {
-      const regex = expected !== undefined ? safeRegExp(expected, true) : null;
+      const regex = safeRegExp(needle, caseSensitive);
       return regex
         ? (values) => values.some((value) => regex.test(value))
         : () => false;
@@ -185,21 +196,23 @@ function compileKeyMatch(
   }
 }
 
-/** 把通配符模式（`*` 匹配任意字符）编译为锚定整串的正则。 */
-function wildcardToRegExp(pattern: string, caseSensitive: boolean): RegExp {
-  const body = pattern
-    .split('*')
-    .map((segment) => escapeRegExp(segment))
-    .join('.*');
-  return new RegExp(`^${body}$`, caseSensitive ? '' : 'i');
-}
-
 function safeRegExp(pattern: string, caseSensitive: boolean): RegExp | null {
   try {
     return new RegExp(pattern, caseSensitive ? '' : 'i');
   } catch {
     return null;
   }
+}
+
+/** MIME 匹配：大小写不敏感；value 含 `*` 时按通配（如 `application/*`），否则精确相等。 */
+function compileMimeMatch(pattern: string): (mime: string) => boolean {
+  if (pattern.includes('*')) {
+    const body = pattern.split('*').map(escapeRegExp).join('.*');
+    const regex = new RegExp(`^${body}$`, 'i');
+    return (mime) => regex.test(mime);
+  }
+  const lower = pattern.toLowerCase();
+  return (mime) => mime.toLowerCase() === lower;
 }
 
 function escapeRegExp(input: string): string {

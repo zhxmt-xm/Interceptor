@@ -1,4 +1,5 @@
-﻿import { ChevronDown } from 'lucide-react';
+﻿import { Select as AntSelect } from 'antd';
+import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { AutomationId } from '../../../shared/automation-ids';
@@ -38,24 +39,14 @@ export function Select({
 }: SelectProps): React.JSX.Element {
   if (options) {
     return (
-      <div className={cx(styles.select, className)}>
-        <select
-          className={styles.native}
-          value={value}
-          aria-label={ariaLabel}
-          data-automation-id={automationId}
-          onChange={(event) => onValueChange?.(event.target.value)}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <span className={styles.caret}>
-          <ChevronDown size={14} strokeWidth={2} />
-        </span>
-      </div>
+      <AntSelect
+        className={cx(styles.antSelect, className)}
+        value={value}
+        options={options}
+        onChange={onValueChange}
+        aria-label={ariaLabel}
+        suffixIcon={<ChevronDown size={14} strokeWidth={2} />}
+      />
     );
   }
   return (

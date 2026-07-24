@@ -39,34 +39,36 @@ describe('compileMatcher', () => {
 
   it('matches host case-insensitively across modes', () => {
     expect(matches({ type: 'host', value: 'API.EXAMPLE.COM', mode: 'exact' })).toBe(true);
-    expect(matches({ type: 'host', value: '*.example.com', mode: 'wildcard' })).toBe(true);
+    expect(matches({ type: 'host', value: 'EXAMPLE', mode: 'contains' })).toBe(true);
     expect(matches({ type: 'host', value: '^api\\.', mode: 'regex' })).toBe(true);
     expect(matches({ type: 'host', value: 'other.com', mode: 'exact' })).toBe(false);
   });
 
-  it('matches path and url case-sensitively', () => {
-    expect(matches({ type: 'path', value: '/Users', mode: 'exact' })).toBe(true);
-    expect(matches({ type: 'path', value: '/users', mode: 'exact' })).toBe(false);
-    expect(matches({ type: 'path', value: '/User*', mode: 'wildcard' })).toBe(true);
-    expect(matches({ type: 'url', value: 'https://*/Users*', mode: 'wildcard' })).toBe(true);
+  it('matches path/url by contains default and honours caseSensitive', () => {
+    expect(matches({ type: 'path', value: '/USERS', mode: 'contains' })).toBe(true);
+    expect(matches({ type: 'path', value: '/users', mode: 'exact' })).toBe(true);
+    expect(matches({ type: 'path', value: '/users', mode: 'exact', caseSensitive: true })).toBe(false);
+    expect(matches({ type: 'path', value: '/Users', mode: 'exact', caseSensitive: true })).toBe(true);
+    expect(matches({ type: 'url', value: 'tag=a', mode: 'contains' })).toBe(true);
+    expect(matches({ type: 'url', value: 'nope', mode: 'contains' })).toBe(false);
   });
 
-  it('matches query keys by presence, value, and regex including repeats', () => {
-    expect(matches({ type: 'query', key: 'page', mode: 'present' })).toBe(true);
-    expect(matches({ type: 'query', key: 'missing', mode: 'present' })).toBe(false);
+  it('matches query values by contains, exact and regex including repeats', () => {
+    expect(matches({ type: 'query', key: 'page', mode: 'contains', value: '' })).toBe(true);
+    expect(matches({ type: 'query', key: 'missing', mode: 'contains', value: '' })).toBe(false);
     expect(matches({ type: 'query', key: 'page', mode: 'exact', value: '2' })).toBe(true);
     expect(matches({ type: 'query', key: 'tag', mode: 'exact', value: 'b' })).toBe(true);
     expect(matches({ type: 'query', key: 'tag', mode: 'regex', value: '^a$' })).toBe(true);
   });
 
   it('matches headers by phase with case-insensitive names and multi-value support', () => {
-    expect(matches({ type: 'header', phase: 'request', name: 'x-req', mode: 'present' })).toBe(true);
+    expect(matches({ type: 'header', phase: 'request', name: 'x-req', mode: 'contains', value: '' })).toBe(true);
     expect(
       matches({ type: 'header', phase: 'request', name: 'content-type', mode: 'exact', value: 'application/json' }),
     ).toBe(true);
-    expect(matches({ type: 'header', phase: 'response', name: 'set-cookie', mode: 'present' })).toBe(true);
+    expect(matches({ type: 'header', phase: 'response', name: 'set-cookie', mode: 'contains', value: '' })).toBe(true);
     // 请求头在响应阶段查找不到
-    expect(matches({ type: 'header', phase: 'response', name: 'x-req', mode: 'present' })).toBe(false);
+    expect(matches({ type: 'header', phase: 'response', name: 'x-req', mode: 'contains', value: '' })).toBe(false);
   });
 
   it('matches status ranges only when a response is present', () => {
@@ -110,7 +112,7 @@ describe('requiresResponsePhase', () => {
   it('detects response-only matchers', () => {
     expect(requiresResponsePhase([{ type: 'status', min: 200, max: 299 }])).toBe(true);
     expect(
-      requiresResponsePhase([{ type: 'header', phase: 'response', name: 'x', mode: 'present' }]),
+      requiresResponsePhase([{ type: 'header', phase: 'response', name: 'x', mode: 'contains', value: '' }]),
     ).toBe(true);
     expect(requiresResponsePhase([{ type: 'mime', phase: 'response', value: 'text/html' }])).toBe(true);
   });
@@ -119,7 +121,7 @@ describe('requiresResponsePhase', () => {
     expect(
       requiresResponsePhase([
         { type: 'method', value: 'GET' },
-        { type: 'header', phase: 'request', name: 'x', mode: 'present' },
+        { type: 'header', phase: 'request', name: 'x', mode: 'contains', value: '' },
       ]),
     ).toBe(false);
   });

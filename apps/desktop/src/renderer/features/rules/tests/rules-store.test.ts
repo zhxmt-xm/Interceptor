@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
+import { isRulesDirty } from '../utils';
 
 function rule(id: string, priority: number): RuleDefinition {
   return {
@@ -20,9 +21,9 @@ describe('rulesStore ordering', () => {
       revision: 1,
       rules: [rule('first', 100), rule('second', 200), rule('third', 300)],
       selectedId: 'second',
+      applied: [rule('first', 100), rule('second', 200), rule('third', 300)],
       diagnostics: [],
       hits: {},
-      dirty: false,
       loading: false,
       saving: false,
       error: null,
@@ -39,7 +40,8 @@ describe('rulesStore ordering', () => {
         { id: 'first', priority: 200 },
         { id: 'third', priority: 300 },
       ]);
-    expect(useRulesStore.getState().dirty).toBe(true);
+    const moved = useRulesStore.getState();
+    expect(isRulesDirty(moved.rules, moved.applied)).toBe(true);
   });
 
   it('ignores a move beyond the list boundary', () => {
@@ -47,7 +49,8 @@ describe('rulesStore ordering', () => {
 
     expect(useRulesStore.getState().rules.map((item) => item.id))
       .toEqual(['first', 'second', 'third']);
-    expect(useRulesStore.getState().dirty).toBe(false);
+    const unchanged = useRulesStore.getState();
+    expect(isRulesDirty(unchanged.rules, unchanged.applied)).toBe(false);
   });
 
   it('moves a dragged rule directly to its drop target', () => {

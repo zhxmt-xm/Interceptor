@@ -1,14 +1,14 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { useRulesStore } from '../data/rulesStore';
-import { enabledCount } from '../utils';
+import { enabledCount, isRulesDirty } from '../utils';
 
 /** Rules status bar: rule-set state, revision and validation summary. */
 export function RulesStatusbar(): React.JSX.Element {
   const { t } = useTranslation();
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
-  const dirty = useRulesStore((state) => state.dirty);
+  const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
   const diagnostics = useRulesStore((state) => state.diagnostics);
   const conflict = useRulesStore((state) => state.conflict);
   const error = useRulesStore((state) => state.error);

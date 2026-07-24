@@ -1,22 +1,65 @@
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { IconButton, InputBox, Select } from '../../../components';
+import { cx, IconButton, InputBox, Select } from '../../../components';
 import type {
-  KeyMatchMode,
   RuleMatcher,
   RuleMatcherType,
   RulePhase,
-  StringMatchMode,
 } from '../../../../shared/desktop-api';
-import {
-  KEY_MODE_OPTIONS,
-  MATCHER_TYPE_OPTIONS,
-  PHASE_OPTIONS,
-  STRING_MODE_OPTIONS,
-} from '../constants';
+import { MATCHER_TYPE_OPTIONS, PHASE_OPTIONS } from '../constants';
 import { createMatcher, localizeOptions } from '../utils';
 import styles from './MatcherRow.module.css';
+
+/** 匹配方式（与 StringMatchMode/KeyMatchMode 共用值域）。 */
+type MatchToggleMode = 'contains' | 'exact' | 'regex';
+
+/** value 输入框右侧的匹配开关：区分大小写、精确相等（默认关＝包含）、正则（精确/正则互斥）。 */
+function ModeToggles({
+  mode,
+  caseSensitive,
+  onModeChange,
+  onCaseToggle,
+  t,
+}: {
+  mode: MatchToggleMode;
+  caseSensitive: boolean;
+  onModeChange: (mode: MatchToggleMode) => void;
+  onCaseToggle: () => void;
+  t: (key: string) => string;
+}): React.JSX.Element {
+  return (
+    <div className={styles.modeToggles}>
+      <button
+        type="button"
+        className={cx(styles.toggle, caseSensitive && styles.toggleOn)}
+        aria-pressed={caseSensitive}
+        title={t('rules.caseSensitive')}
+        onClick={onCaseToggle}
+      >
+        Aa
+      </button>
+      <button
+        type="button"
+        className={cx(styles.toggle, mode === 'exact' && styles.toggleOn)}
+        aria-pressed={mode === 'exact'}
+        title={t('rules.exactMatch')}
+        onClick={() => onModeChange(mode === 'exact' ? 'contains' : 'exact')}
+      >
+        <u>ab</u>
+      </button>
+      <button
+        type="button"
+        className={cx(styles.toggle, mode === 'regex' && styles.toggleOn)}
+        aria-pressed={mode === 'regex'}
+        title={t('rules.regexMatch')}
+        onClick={() => onModeChange(mode === 'regex' ? 'contains' : 'regex')}
+      >
+        .*
+      </button>
+    </div>
+  );
+}
 
 export interface MatcherRowProps {
   matcher: RuleMatcher;
@@ -89,22 +132,22 @@ function renderControls(
             ? '/v1/users'
             : 'https://example.com/…';
       return (
-        <>
-          <Select
-            className={styles.mode}
-            ariaLabel={translate('rules.matchMode')}
-            value={current.mode}
-            options={localizeOptions(STRING_MODE_OPTIONS, 'rules.matchMode', translate)}
-            onValueChange={(mode) => onChange({ ...current, mode: mode as StringMatchMode })}
-          />
-          <InputBox
-            className={styles.value}
-            ariaLabel={translate('rules.value')}
-            value={current.value}
-            placeholder={placeholder}
-            onValueChange={(value) => onChange({ ...current, value })}
-          />
-        </>
+        <InputBox
+          className={styles.value}
+          ariaLabel={translate('rules.value')}
+          value={current.value}
+          placeholder={placeholder}
+          onValueChange={(value) => onChange({ ...current, value })}
+          trailing={
+            <ModeToggles
+              mode={current.mode}
+              caseSensitive={current.caseSensitive ?? false}
+              onModeChange={(mode) => onChange({ ...current, mode })}
+              onCaseToggle={() => onChange({ ...current, caseSensitive: !(current.caseSensitive ?? false) })}
+              t={translate}
+            />
+          }
+        />
       );
     }
     case 'query': {
@@ -118,21 +161,22 @@ function renderControls(
             placeholder="key"
             onValueChange={(key) => onChange({ ...current, key })}
           />
-          <Select
-            className={styles.mode}
-            ariaLabel={translate('rules.matchMode')}
-            value={current.mode}
-            options={localizeOptions(KEY_MODE_OPTIONS, 'rules.matchMode', translate)}
-            onValueChange={(mode) => onChange({ ...current, mode: mode as KeyMatchMode })}
+          <InputBox
+            className={styles.value}
+            ariaLabel={translate('rules.value')}
+            value={current.value ?? ''}
+            placeholder={translate('rules.valueOptional')}
+            onValueChange={(value) => onChange({ ...current, value })}
+            trailing={
+              <ModeToggles
+                mode={current.mode}
+                caseSensitive={current.caseSensitive ?? false}
+                onModeChange={(mode) => onChange({ ...current, mode })}
+                onCaseToggle={() => onChange({ ...current, caseSensitive: !(current.caseSensitive ?? false) })}
+                t={translate}
+              />
+            }
           />
-          {current.mode !== 'present' ? (
-            <InputBox
-              className={styles.value}
-              ariaLabel={translate('rules.value')}
-              value={current.value ?? ''}
-              onValueChange={(value) => onChange({ ...current, value })}
-            />
-          ) : null}
         </>
       );
     }
@@ -154,21 +198,22 @@ function renderControls(
             placeholder="content-type"
             onValueChange={(name) => onChange({ ...current, name })}
           />
-          <Select
-            className={styles.mode}
-            ariaLabel={translate('rules.matchMode')}
-            value={current.mode}
-            options={localizeOptions(KEY_MODE_OPTIONS, 'rules.matchMode', translate)}
-            onValueChange={(mode) => onChange({ ...current, mode: mode as KeyMatchMode })}
+          <InputBox
+            className={styles.value}
+            ariaLabel={translate('rules.value')}
+            value={current.value ?? ''}
+            placeholder={translate('rules.valueOptional')}
+            onValueChange={(value) => onChange({ ...current, value })}
+            trailing={
+              <ModeToggles
+                mode={current.mode}
+                caseSensitive={current.caseSensitive ?? false}
+                onModeChange={(mode) => onChange({ ...current, mode })}
+                onCaseToggle={() => onChange({ ...current, caseSensitive: !(current.caseSensitive ?? false) })}
+                t={translate}
+              />
+            }
           />
-          {current.mode !== 'present' ? (
-            <InputBox
-              className={styles.value}
-              ariaLabel={translate('rules.value')}
-              value={current.value ?? ''}
-              onValueChange={(value) => onChange({ ...current, value })}
-            />
-          ) : null}
         </>
       );
     }

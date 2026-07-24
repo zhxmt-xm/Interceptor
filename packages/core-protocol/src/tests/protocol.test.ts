@@ -285,7 +285,7 @@ describe('core protocol validation', () => {
                 enabled: true,
                 priority: 10,
                 matchers: [
-                  { type: 'host', value: '*.ads.test', mode: 'wildcard' },
+                  { type: 'host', value: 'ads.test', mode: 'contains' },
                 ],
                 actions: [{ type: 'block', mode: 'reset' }],
               },

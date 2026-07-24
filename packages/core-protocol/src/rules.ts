@@ -9,23 +9,39 @@
 /** 规则作用阶段：请求发往上游前，或响应返回客户端前。 */
 export type RulePhase = 'request' | 'response';
 
-/** 字符串匹配模式：精确、通配符（`*`）、正则。 */
-export type StringMatchMode = 'exact' | 'wildcard' | 'regex';
+/** 字符串匹配模式：包含（默认）、精确、正则。 */
+export type StringMatchMode = 'contains' | 'exact' | 'regex';
 
-/** 键值匹配模式：存在性、精确、正则。 */
-export type KeyMatchMode = 'present' | 'exact' | 'regex';
+/** 键值匹配模式：包含（默认）、精确、正则。 */
+export type KeyMatchMode = 'contains' | 'exact' | 'regex';
 
 /** 单个 Matcher（同一规则内多个 Matcher 为 AND 关系）。 */
 export type RuleMatcher =
   | { readonly type: 'method'; readonly value: string }
-  | { readonly type: 'host'; readonly value: string; readonly mode: StringMatchMode }
-  | { readonly type: 'path'; readonly value: string; readonly mode: StringMatchMode }
-  | { readonly type: 'url'; readonly value: string; readonly mode: StringMatchMode }
+  | {
+      readonly type: 'host';
+      readonly value: string;
+      readonly mode: StringMatchMode;
+      readonly caseSensitive?: boolean;
+    }
+  | {
+      readonly type: 'path';
+      readonly value: string;
+      readonly mode: StringMatchMode;
+      readonly caseSensitive?: boolean;
+    }
+  | {
+      readonly type: 'url';
+      readonly value: string;
+      readonly mode: StringMatchMode;
+      readonly caseSensitive?: boolean;
+    }
   | {
       readonly type: 'query';
       readonly key: string;
       readonly mode: KeyMatchMode;
       readonly value?: string;
+      readonly caseSensitive?: boolean;
     }
   | {
       readonly type: 'header';
@@ -33,6 +49,7 @@ export type RuleMatcher =
       readonly name: string;
       readonly mode: KeyMatchMode;
       readonly value?: string;
+      readonly caseSensitive?: boolean;
     }
   | { readonly type: 'status'; readonly min: number; readonly max: number }
   | { readonly type: 'mime'; readonly phase: RulePhase; readonly value: string };

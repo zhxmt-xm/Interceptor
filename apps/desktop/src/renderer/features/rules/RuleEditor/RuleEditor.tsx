@@ -27,7 +27,7 @@ import {
 } from '../../../components';
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
-import { ruleIndexFromPath, selectedRule } from '../utils';
+import { ruleIndexFromPath, isRulesDirty, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -40,7 +40,7 @@ export function RuleEditor(): React.JSX.Element {
   const rule = useRulesStore(selectedRule);
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
-  const dirty = useRulesStore((state) => state.dirty);
+  const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
   const diagnostics = useRulesStore((state) => state.diagnostics);
   const renameRule = useRulesStore((state) => state.renameRule);
   const toggleRule = useRulesStore((state) => state.toggleRule);

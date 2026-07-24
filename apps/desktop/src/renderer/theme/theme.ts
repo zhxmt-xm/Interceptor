@@ -83,6 +83,14 @@ export function createAppTheme(mode: ThemeMode): ThemeConfig {
         // semantic slot; this only sets the elevated surface color as a token fallback.
         contentBg: 'var(--panel)',
       },
+      Select: {
+        // 全局下拉：填充式选择器 + antd 浮层菜单，视觉对齐设计稿 sel2（panel-2 底、8px 圆角、12px 字）。
+        selectorBg: 'var(--panel-2)',
+        optionSelectedBg: 'var(--accent-soft)',
+        optionSelectedColor: 'var(--accent)',
+        borderRadius: 8,
+        fontSize: 12,
+      },
     },
   };
 }

@@ -27,8 +27,8 @@ export interface RulesState {
   diagnostics: ProtocolDiagnostic[];
   /** ruleId → 累计命中次数。 */
   hits: Record<string, number>;
-  /** 草稿相对已保存快照是否有改动。 */
-  dirty: boolean;
+  /** 最近一次成功应用或加载的规则快照，用于内容级脏检查（改回原值即视为未改动）。 */
+  applied: RuleDefinition[];
   loading: boolean;
   saving: boolean;
   error: string | null;

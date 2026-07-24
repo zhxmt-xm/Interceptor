@@ -95,7 +95,7 @@ export function createRule(priority: number, name = 'New rule'): RuleDefinition 
     name,
     enabled: true,
     priority,
-    matchers: [{ type: 'host', value: '', mode: 'wildcard' }],
+    matchers: [{ type: 'host', value: '', mode: 'contains' }],
     actions: [{ type: 'header', phase: 'request', op: 'set', name: '', value: '' }],
   };
 }
@@ -106,21 +106,21 @@ export function createMatcher(type: RuleMatcherType): RuleMatcher {
     case 'method':
       return { type: 'method', value: 'GET' };
     case 'host':
-      return { type: 'host', value: '', mode: 'wildcard' };
+      return { type: 'host', value: '', mode: 'contains' };
     case 'path':
-      return { type: 'path', value: '', mode: 'exact' };
+      return { type: 'path', value: '', mode: 'contains' };
     case 'url':
-      return { type: 'url', value: '', mode: 'wildcard' };
+      return { type: 'url', value: '', mode: 'contains' };
     case 'query':
-      return { type: 'query', key: '', mode: 'present', value: '' };
+      return { type: 'query', key: '', mode: 'contains', value: '' };
     case 'header':
-      return { type: 'header', phase: 'request', name: '', mode: 'present', value: '' };
+      return { type: 'header', phase: 'request', name: '', mode: 'contains', value: '' };
     case 'status':
       return { type: 'status', min: 200, max: 299 };
     case 'mime':
       return { type: 'mime', phase: 'response', value: '' };
     default:
-      return { type: 'host', value: '', mode: 'wildcard' };
+      return { type: 'host', value: '', mode: 'contains' };
   }
 }
 
@@ -190,6 +190,23 @@ export function mapRule(
   update: (rule: RuleDefinition) => RuleDefinition,
 ): RuleDefinition[] {
   return rules.map((rule) => (rule.id === id ? update(rule) : rule));
+}
+
+/** 深拷贝规则数组（matchers/actions 也复制），用于保存已应用快照。 */
+export function cloneRules(rules: readonly RuleDefinition[]): RuleDefinition[] {
+  return rules.map((rule) => ({
+    ...rule,
+    matchers: [...rule.matchers],
+    actions: [...rule.actions],
+  }));
+}
+
+/** 内容级脏检查：草稿与已应用快照深度不等（改回原值即视为未改动）。 */
+export function isRulesDirty(
+  rules: readonly RuleDefinition[],
+  applied: readonly RuleDefinition[],
+): boolean {
+  return JSON.stringify(rules) !== JSON.stringify(applied);
 }
 
 /** 计算新增规则的优先级：取现有最大值 + 10，空集从 100 起。 */

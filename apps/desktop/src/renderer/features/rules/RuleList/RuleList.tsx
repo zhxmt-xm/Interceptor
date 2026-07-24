@@ -6,6 +6,7 @@ import { Flyout, IconButton, MenuItem } from '../../../components';
 import { useRulesStore } from '../data/rulesStore';
 import { RuleRow } from '../RuleRow/RuleRow';
 import { applyRules } from '../data/useRulesData';
+import { isRulesDirty } from '../utils';
 import styles from './RuleList.module.css';
 
 /** Ordered, toggleable list of rules driven by the rules store. */
@@ -16,7 +17,7 @@ export function RuleList(): React.JSX.Element {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const rules = useRulesStore((state) => state.rules);
-  const dirty = useRulesStore((state) => state.dirty);
+  const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
   const saving = useRulesStore((state) => state.saving);
   const selectedId = useRulesStore((state) => state.selectedId);
   const hits = useRulesStore((state) => state.hits);

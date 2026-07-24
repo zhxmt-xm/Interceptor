@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import type { RulesState } from '../interfaces';
 import {
+  cloneRules,
   createAction,
   createMatcher,
   createRule,
@@ -10,13 +11,13 @@ import {
   reorderRules,
 } from '../utils';
 
-export const useRulesStore = create<RulesState>((set, get) => ({
+export const useRulesStore = create<RulesState>((set) => ({
   revision: 0,
   rules: [],
+  applied: [],
   selectedId: null,
   diagnostics: [],
   hits: {},
-  dirty: false,
   loading: false,
   saving: false,
   error: null,
@@ -24,11 +25,7 @@ export const useRulesStore = create<RulesState>((set, get) => ({
 
   loadRuleSet: (ruleSet) =>
     set((state) => {
-      const rules = ruleSet.rules.map((rule) => ({
-        ...rule,
-        matchers: [...rule.matchers],
-        actions: [...rule.actions],
-      }));
+      const rules = cloneRules(ruleSet.rules);
       const selectedId =
         state.selectedId && rules.some((rule) => rule.id === state.selectedId)
           ? state.selectedId
@@ -36,8 +33,8 @@ export const useRulesStore = create<RulesState>((set, get) => ({
       return {
         revision: ruleSet.revision,
         rules,
+        applied: cloneRules(ruleSet.rules),
         selectedId,
-        dirty: false,
         loading: false,
         saving: false,
         conflict: false,
@@ -61,7 +58,7 @@ export const useRulesStore = create<RulesState>((set, get) => ({
   addRule: (name) =>
     set((state) => {
       const rule = createRule(nextPriority(state.rules), name);
-      return { rules: [...state.rules, rule], selectedId: rule.id, dirty: true };
+      return { rules: [...state.rules, rule], selectedId: rule.id };
     }),
 
   removeRule: (id) =>
@@ -69,19 +66,17 @@ export const useRulesStore = create<RulesState>((set, get) => ({
       const rules = state.rules.filter((rule) => rule.id !== id);
       const selectedId =
         state.selectedId === id ? (rules[0]?.id ?? null) : state.selectedId;
-      return { rules, selectedId, dirty: true };
+      return { rules, selectedId };
     }),
 
   toggleRule: (id) =>
     set((state) => ({
       rules: mapRule(state.rules, id, (rule) => ({ ...rule, enabled: !rule.enabled })),
-      dirty: true,
     })),
 
   renameRule: (id, name) =>
     set((state) => ({
       rules: mapRule(state.rules, id, (rule) => ({ ...rule, name })),
-      dirty: true,
     })),
 
   moveRule: (id, direction) =>
@@ -91,7 +86,7 @@ export const useRulesStore = create<RulesState>((set, get) => ({
       if (index < 0 || target < 0 || target >= state.rules.length) {
         return state;
       }
-      return { rules: reorderRules(state.rules, index, target), dirty: true };
+      return { rules: reorderRules(state.rules, index, target) };
     }),
 
   moveRuleTo: (id, targetId) =>
@@ -103,7 +98,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
       }
       return {
         rules: reorderRules(state.rules, sourceIndex, targetIndex),
-        dirty: true,
       };
     }),
 
@@ -113,7 +107,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         ...rule,
         matchers: [...rule.matchers, createMatcher(type)],
       })),
-      dirty: true,
     })),
 
   updateMatcher: (ruleId, index, matcher) =>
@@ -123,7 +116,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         matchers: rule.matchers.map((item, position) =>
           position === index ? matcher : item),
       })),
-      dirty: true,
     })),
 
   removeMatcher: (ruleId, index) =>
@@ -132,7 +124,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         ...rule,
         matchers: rule.matchers.filter((_, position) => position !== index),
       })),
-      dirty: true,
     })),
 
   addAction: (ruleId, type) =>
@@ -141,7 +132,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         ...rule,
         actions: [...rule.actions, createAction(type)],
       })),
-      dirty: true,
     })),
 
   updateAction: (ruleId, index, action) =>
@@ -151,7 +141,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         actions: rule.actions.map((item, position) =>
           position === index ? action : item),
       })),
-      dirty: true,
     })),
 
   removeAction: (ruleId, index) =>
@@ -160,7 +149,6 @@ export const useRulesStore = create<RulesState>((set, get) => ({
         ...rule,
         actions: rule.actions.filter((_, position) => position !== index),
       })),
-      dirty: true,
     })),
 
   beginLoad: () => set({ loading: true, error: null }),
@@ -170,7 +158,13 @@ export const useRulesStore = create<RulesState>((set, get) => ({
   beginSave: () => set({ saving: true, error: null, conflict: false }),
 
   saveSucceeded: (revision) =>
-    set({ revision, saving: false, dirty: false, conflict: false, error: null }),
+    set((state) => ({
+      revision,
+      applied: cloneRules(state.rules),
+      saving: false,
+      conflict: false,
+      error: null,
+    })),
 
   saveFailed: (message, conflict) =>
     set({ saving: false, error: message, conflict }),

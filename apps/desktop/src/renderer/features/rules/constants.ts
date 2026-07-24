@@ -11,18 +11,6 @@ export const MATCHER_TYPE_OPTIONS: SelectOption[] = [
   { value: 'mime', label: 'MIME' },
 ];
 
-export const STRING_MODE_OPTIONS: SelectOption[] = [
-  { value: 'exact', label: 'equals' },
-  { value: 'wildcard', label: 'wildcard' },
-  { value: 'regex', label: 'regex' },
-];
-
-export const KEY_MODE_OPTIONS: SelectOption[] = [
-  { value: 'present', label: 'present' },
-  { value: 'exact', label: 'equals' },
-  { value: 'regex', label: 'regex' },
-];
-
 export const PHASE_OPTIONS: SelectOption[] = [
   { value: 'request', label: 'request' },
   { value: 'response', label: 'response' },

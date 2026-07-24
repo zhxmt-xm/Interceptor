@@ -6,6 +6,8 @@ import styles from './InputBox.module.css';
 
 export interface InputBoxProps {
   children?: ReactNode;
+  /** 尾部内嵌插槽（渲染在输入框右侧，如匹配开关）。 */
+  trailing?: ReactNode;
   className?: string;
   /** 鍙楁帶鍊硷紱涓?onValueChange 涓€鍚屾彁渚涙椂娓叉煋涓哄彲缂栬緫杈撳叆妗嗐€?*/
   value?: string;
@@ -22,6 +24,7 @@ export interface InputBoxProps {
  */
 export function InputBox({
   children,
+  trailing,
   className,
   value,
   onValueChange,
@@ -45,6 +48,7 @@ export function InputBox({
           autoComplete="off"
           onChange={(event) => onValueChange(event.target.value)}
         />
+        {trailing}
       </div>
     );
   }

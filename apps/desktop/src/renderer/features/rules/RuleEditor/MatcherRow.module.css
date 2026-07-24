@@ -15,12 +15,39 @@
   color: var(--text-3);
 }
 .type {
-  width: 116px;
+  width: 128px;
   flex: 0 0 auto;
 }
-.mode {
-  width: 116px;
+.modeToggles {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   flex: 0 0 auto;
+}
+.toggle {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font: 600 13px/1 var(--font-ui);
+}
+.toggle u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.toggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.toggleOn {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .phase {
   width: 104px;
