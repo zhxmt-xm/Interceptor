@@ -32,6 +32,9 @@ import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
 
+/** 决定“请求最终归宿”的互斥 action：本地响应/转发/合成响应/阻断，一个规则最多一个。 */
+const ORIGIN_ACTIONS: RuleActionType[] = ['map-local', 'map-remote', 'synthetic', 'block'];
+
 /** Editor for the selected rule: match conditions, actions and validation. */
 export function RuleEditor(): React.JSX.Element {
   const { t } = useTranslation();
@@ -74,6 +77,15 @@ export function RuleEditor(): React.JSX.Element {
     addMatcher(rule.id, type);
     setShowAddCondition(false);
   };
+
+  // “请求归宿”互斥：已存在其一时，其余在 Add action 菜单里标记 conflict 并禁用。
+  const existingOrigin = rule.actions.find((action) => ORIGIN_ACTIONS.includes(action.type))?.type;
+  const originItem = (type: RuleActionType, defaultHint: string) =>
+    existingOrigin === undefined
+      ? { hint: defaultHint }
+      : existingOrigin === type
+        ? { hint: t('rules.added'), tag: true, disabled: true }
+        : { hint: t('rules.conflict'), tag: true, warn: true, disabled: true };
 
   return (
     <div className={styles.editor}>
@@ -166,17 +178,20 @@ export function RuleEditor(): React.JSX.Element {
             className={styles.popover}
             content={
               <>
-                <div className={styles.popoverTitle}>{t('rules.addAction')}</div>
+                <div className={styles.popoverGroup}>{t('rules.groupRewrite')}</div>
                 <MenuItem icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
                 <MenuItem icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />
                 <MenuItem icon={FileText} name={t('rules.rewriteBody')} hint={t('rules.rewriteBodyHint')} onClick={() => addAndClose('body')} />
                 <MenuItem icon={Code} name={t('rules.setStatus')} hint={t('rules.override')} onClick={() => addAndClose('status')} />
-                <MenuItem icon={Reply} name={t('rules.synthetic')} hint={t('rules.returnResponse')} onClick={() => addAndClose('synthetic')} />
-                <MenuItem icon={MapPin} name={t('rules.mapLocal')} hint={t('rules.serveFile')} onClick={() => addAndClose('map-local')} />
-                <MenuItem icon={Globe} name={t('rules.mapRemote')} hint={t('rules.reroute')} onClick={() => addAndClose('map-remote')} />
-                <MenuItem icon={Ban} name={t('rules.block')} hint={t('rules.resetClose')} onClick={() => addAndClose('block')} />
+                <div className={styles.popoverGroup}>{t('rules.groupMap')}</div>
+                <MenuItem icon={MapPin} name={t('rules.mapLocal')} {...originItem('map-local', t('rules.serveFile'))} onClick={() => addAndClose('map-local')} />
+                <MenuItem icon={Globe} name={t('rules.mapRemote')} {...originItem('map-remote', t('rules.reroute'))} onClick={() => addAndClose('map-remote')} />
+                <MenuItem icon={Reply} name={t('rules.synthetic')} {...originItem('synthetic', t('rules.returnResponse'))} onClick={() => addAndClose('synthetic')} />
+                <div className={styles.popoverGroup}>{t('rules.groupTraffic')}</div>
                 <MenuItem icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
                 <MenuItem icon={Gauge} name={t('rules.throttle')} hint={t('rules.bandwidth')} onClick={() => addAndClose('throttle')} />
+                <div className={styles.popoverGroup}>{t('rules.groupControl')}</div>
+                <MenuItem icon={Ban} name={t('rules.block')} {...originItem('block', t('rules.resetClose'))} onClick={() => addAndClose('block')} />
                 <MenuItem icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />
               </>
             }

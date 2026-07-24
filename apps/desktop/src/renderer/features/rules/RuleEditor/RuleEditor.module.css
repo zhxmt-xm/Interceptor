@@ -157,6 +157,19 @@
   text-transform: uppercase;
   color: var(--text-3);
 }
+.popoverGroup {
+  padding: 7px 9px 5px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.popoverGroup:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
 .conditionMenu {
   width: 254px;
   max-height: min(420px, calc(100vh - 16px));

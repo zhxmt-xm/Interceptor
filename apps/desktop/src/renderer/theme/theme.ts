@@ -84,7 +84,8 @@ export function createAppTheme(mode: ThemeMode): ThemeConfig {
         contentBg: 'var(--panel)',
       },
       Select: {
-        // 全局下拉：填充式选择器 + antd 浮层菜单，视觉对齐设计稿 sel2（panel-2 底、8px 圆角、12px 字）。
+        // 全局下拉：填充式选择器 + antd 浮层菜单，视觉对齐设计稿 sel2/inp（34px 高、panel-2 底、8px 圆角、12px 字）。
+        controlHeight: 34,
         selectorBg: 'var(--panel-2)',
         optionSelectedBg: 'var(--accent-soft)',
         optionSelectedColor: 'var(--accent)',

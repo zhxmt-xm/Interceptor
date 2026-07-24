@@ -274,14 +274,22 @@
               <div class="vnote"><svg><use href="#i-check"/></svg>Compiles cleanly · applied at revision 42</div>
             </div>
             <div class="apop">
-              <div class="po-t">Add action</div>
-              <div class="fi"><svg><use href="#i-code"/></svg><span class="n">Rewrite</span><span class="ex">header / body / status</span></div>
+              <div class="po-t">Rewrite</div>
+              <div class="fi"><svg><use href="#i-code"/></svg><span class="n">Rewrite header</span><span class="ex">name / value</span></div>
+              <div class="fi"><svg><use href="#i-code"/></svg><span class="n">Rewrite query</span><span class="ex">name / value</span></div>
+              <div class="fi"><svg><use href="#i-file"/></svg><span class="n">Rewrite body</span><span class="ex">text / json</span></div>
+              <div class="fi"><svg><use href="#i-code"/></svg><span class="n">Set status</span><span class="ex">override</span></div>
+              <div class="po-t">Serve &amp; reroute</div>
               <div class="fi dis"><svg><use href="#i-map"/></svg><span class="n">Map Local</span><span class="ex tag">added</span></div>
               <div class="fi dis"><svg><use href="#i-globe"/></svg><span class="n">Map Remote</span><span class="ex tag warn">conflict</span></div>
-              <div class="fi"><svg><use href="#i-slash"/></svg><span class="n">Block</span><span class="ex">drop / synthetic</span></div>
-              <div class="fi"><svg><use href="#i-gauge"/></svg><span class="n">Throttle &amp; Delay</span><span class="ex">bandwidth / latency</span></div>
+              <div class="fi dis"><svg><use href="#i-arrow"/></svg><span class="n">Synthetic</span><span class="ex tag warn">conflict</span></div>
+              <div class="po-t">Traffic</div>
+              <div class="fi"><svg><use href="#i-clock"/></svg><span class="n">Delay</span><span class="ex">latency</span></div>
+              <div class="fi"><svg><use href="#i-gauge"/></svg><span class="n">Throttle</span><span class="ex">bandwidth</span></div>
+              <div class="po-t">Control</div>
+              <div class="fi dis"><svg><use href="#i-slash"/></svg><span class="n">Block</span><span class="ex tag warn">conflict</span></div>
               <div class="fi"><svg><use href="#i-pause"/></svg><span class="n">Breakpoint</span><span class="ex">pause &amp; edit</span></div>
-              <div class="po-note">Map Local &amp; Map Remote are mutually exclusive — a request is either served from a local file or rerouted to another origin, not both.</div>
+              <div class="po-note">Map Local / Map Remote / Synthetic / Block decide the request’s outcome — only one per rule.</div>
             </div>
           </div>
         </div>
