@@ -503,4 +503,5 @@ const TRANSFER_HEADING_KEYS: Record<TransferJobSnapshot['kind'], string> = {
   'archive-import': 'capture.importingArchive',
   'archive-export': 'capture.exportingArchive',
   'diagnostics-export': 'capture.exportingDiagnostics',
+  'body-export': 'capture.savingBody',
 };

@@ -131,6 +131,7 @@ export interface RuleHitRecord {
 
 /** 单次 header action 产生的可展示值；按规则执行顺序保留。 */
 export interface RuleHeaderEffect {
+  readonly ruleId: string;
   readonly phase: 'request' | 'response';
   readonly effect: CaptureHeaderRuleEffect;
   readonly name: string;

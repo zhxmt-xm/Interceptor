@@ -25,7 +25,7 @@ export interface PendingCaptureEvent {
   summary: CaptureExchangeSummary;
 }
 
-export type BodyDecodeOutcome = 'ok' | 'skipped' | 'failed';
+export type BodyDecodeOutcome = 'ok' | 'limited' | 'skipped' | 'failed';
 
 export interface DecodeResult {
   readonly status: BodyDecodeOutcome;

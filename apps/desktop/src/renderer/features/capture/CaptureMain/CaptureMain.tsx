@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { CertificateInfo } from '../../../../shared/desktop-api';
+import type {
+  CaptureExchangeSummary,
+  CertificateInfo,
+  RuleActionType,
+} from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Splitter } from '../../../components';
 import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
@@ -15,8 +19,20 @@ const SPLITTER_TRACK_WIDTH = 1;
 const MIN_LIST_WIDTH = 300;
 const MIN_INSPECTOR_WIDTH = 360;
 
+export interface CaptureMainProps {
+  onCreateRequestRule: (
+    summary: CaptureExchangeSummary,
+    actionType: RuleActionType,
+    name: string,
+  ) => void;
+  onOpenRule: (ruleId: string) => void;
+}
+
 /** Capture workspace body: request list, draggable splitter and inspector. */
-export function CaptureMain(): React.JSX.Element {
+export function CaptureMain({
+  onCreateRequestRule,
+  onOpenRule,
+}: CaptureMainProps): React.JSX.Element {
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
   const selectedId = useCaptureStore((state) => state.selectedId);
@@ -103,7 +119,7 @@ export function CaptureMain(): React.JSX.Element {
             ? `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px`
             : 'minmax(0, 1fr)' }}
         >
-          <RequestList />
+          <RequestList onCreateRequestRule={onCreateRequestRule} />
           {selectedId ? (
             <>
               <Splitter
@@ -113,6 +129,7 @@ export function CaptureMain(): React.JSX.Element {
               <RequestInspector
                 mitmActive={certificate?.trusted === true && certificate.mitmEnabled}
                 onSetupHttps={() => setHttpsSetupOpen(true)}
+                onOpenRule={onOpenRule}
               />
             </>
           ) : null}

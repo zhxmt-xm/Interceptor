@@ -311,6 +311,41 @@ describe('TemporaryCaptureStore', () => {
     expect(fixture.store.countRuleHits()).toEqual([]);
   });
 
+  it('exposes unique rule ids on summary and detail after recording hits', () => {
+    fixture.store.appendExchanges([fixture.exchange('one')]);
+    fixture.store.appendRuleHits('one', [
+      {
+        ruleId: 'rule-a',
+        ruleRevision: 1,
+        phase: 'request',
+        action: 'header.set',
+      },
+      {
+        ruleId: 'rule-a',
+        ruleRevision: 1,
+        phase: 'request',
+        action: 'query.set',
+      },
+      {
+        ruleId: 'rule-b',
+        ruleRevision: 1,
+        phase: 'response',
+        action: 'delay',
+      },
+    ]);
+
+    const page = fixture.store.querySessions({
+      limit: 10,
+      sort: 'started_asc',
+      filter: {},
+    });
+    expect(page.items[0]?.ruleIds).toEqual(['rule-a', 'rule-b']);
+    expect(fixture.store.getExchangeDetail('one')?.summary.ruleIds).toEqual([
+      'rule-a',
+      'rule-b',
+    ]);
+  });
+
   it('handles 100k rows with stable complete pagination under the existing gate', () => {
     const startedAt = performance.now();
     fixture.store.appendExchanges(

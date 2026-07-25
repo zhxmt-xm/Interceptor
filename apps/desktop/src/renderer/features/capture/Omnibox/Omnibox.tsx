@@ -6,8 +6,14 @@ import { useTranslation } from 'react-i18next';
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { Count, cx, Flyout, MethodBadge } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
+import { useRulesStore } from '../../rules/data/rulesStore';
 import type { FilterValueOption } from '../interfaces';
-import { distinctMethodOptions, distinctStatusOptions, statusKind } from '../utils';
+import {
+  distinctMethodOptions,
+  distinctRuleOptions,
+  distinctStatusOptions,
+  statusKind,
+} from '../utils';
 import styles from './Omnibox.module.css';
 
 /** 字段行 hint：有已选显示前 2 个（超出加…），否则预览可选值。 */
@@ -26,18 +32,23 @@ function fieldHint(
 /** 单条 filter pill：最多显示第一个值，超出用「…」并以 antd Tooltip 展示全部值。 */
 function FilterPill({
   values,
+  prefix,
+  parityId,
   onClear,
   clearLabel,
   automationId,
 }: {
   values: readonly (string | number)[];
+  prefix?: string;
+  parityId?: string;
   onClear: () => void;
   clearLabel: string;
   automationId: AutomationId;
 }): React.JSX.Element {
   const overflow = values.length > 1;
   const pill = (
-    <span className={styles.pill}>
+    <span className={styles.pill} data-parity={parityId}>
+      {prefix ? `${prefix} · ` : null}
       {values[0]}
       {overflow ? <span className={styles.pillEllipsis}>…</span> : null}
       <button
@@ -70,6 +81,8 @@ function FieldRow<T extends string | number>({
   onToggle,
   renderValue,
   automationId,
+  optionParityPrefix,
+  disabled = false,
   open,
   onToggleOpen,
 }: {
@@ -81,6 +94,8 @@ function FieldRow<T extends string | number>({
   onToggle: (value: T) => void;
   renderValue: (value: T) => React.ReactNode;
   automationId: AutomationId;
+  optionParityPrefix?: string;
+  disabled?: boolean;
   open: boolean;
   onToggleOpen: () => void;
 }): React.JSX.Element {
@@ -90,7 +105,8 @@ function FieldRow<T extends string | number>({
         type="button"
         className={cx(styles.fieldTrigger, open && styles.fieldTriggerOpen)}
         onClick={onToggleOpen}
-        aria-expanded={open}
+        aria-expanded={disabled ? false : open}
+        disabled={disabled}
         data-automation-id={automationId}
       >
         {icon}
@@ -98,7 +114,7 @@ function FieldRow<T extends string | number>({
         <span className={styles.fieldHint}>{hint}</span>
         <ChevronRight className={styles.fieldChevron} size={14} strokeWidth={2} />
       </button>
-      {open ? (
+      {open && !disabled ? (
         <div className={styles.submenu}>
           {options.map((option) => {
             const checked = selected.includes(option.value);
@@ -108,6 +124,9 @@ function FieldRow<T extends string | number>({
                 type="button"
                 className={styles.option}
                 onClick={() => onToggle(option.value)}
+                data-parity={optionParityPrefix
+                  ? `${optionParityPrefix}-${option.value}`
+                  : undefined}
               >
                 <span className={cx(styles.checkbox, checked && styles.checkboxOn)}>
                   {checked ? <Check size={11} strokeWidth={3} /> : null}
@@ -124,21 +143,31 @@ function FieldRow<T extends string | number>({
   );
 }
 
-/** Search/filter omnibox：关键词搜索 + method/status 多选级联（antd Popover 底座，值取自当前列表）。 */
+/** Search/filter omnibox：关键词搜索 + method/status/rule 多选级联。 */
 export function Omnibox(): React.JSX.Element {
   const { t } = useTranslation();
   const [showFilter, setShowFilter] = useState(false);
-  const [activeField, setActiveField] = useState<'method' | 'status' | null>(null);
+  const [activeField, setActiveField] = useState<'method' | 'status' | 'rule' | null>(null);
   const search = useCaptureStore((state) => state.filter.search);
   const method = useCaptureStore((state) => state.filter.method);
   const status = useCaptureStore((state) => state.filter.status);
+  const ruleIds = useCaptureStore((state) => state.filter.ruleIds);
   const rows = useCaptureStore((state) => state.rows);
+  const rules = useRulesStore((state) => state.rules);
   const setSearch = useCaptureStore((state) => state.setSearch);
   const setStructuredFilter = useCaptureStore((state) => state.setStructuredFilter);
 
   const methodOptions = useMemo(() => distinctMethodOptions(rows), [rows]);
   const statusOptions = useMemo(() => distinctStatusOptions(rows), [rows]);
-  const noFilterData = methodOptions.length === 0 && statusOptions.length === 0;
+  const ruleOptions = useMemo(() => distinctRuleOptions(rows), [rows]);
+  const ruleNames = useMemo(
+    () => new Map(rules.map((rule) => [rule.id, rule.name] as const)),
+    [rules],
+  );
+  const selectedRuleNames = ruleIds.map((ruleId) => ruleNames.get(ruleId) ?? ruleId);
+  const noFilterData = methodOptions.length === 0
+    && statusOptions.length === 0
+    && ruleOptions.length === 0;
 
   const toggleMethod = (value: string): void => {
     setStructuredFilter({
@@ -154,9 +183,16 @@ export function Omnibox(): React.JSX.Element {
         : [...status, value],
     });
   };
+  const toggleRule = (value: string): void => {
+    setStructuredFilter({
+      ruleIds: ruleIds.includes(value)
+        ? ruleIds.filter((item) => item !== value)
+        : [...ruleIds, value],
+    });
+  };
 
   const clearAll = (): void => {
-    setStructuredFilter({ method: [], status: [] });
+    setStructuredFilter({ method: [], status: [], ruleIds: [] });
     setSearch('');
   };
 
@@ -179,6 +215,16 @@ export function Omnibox(): React.JSX.Element {
           onClear={() => setStructuredFilter({ status: [] })}
           clearLabel={`${t('capture.clear')} ${t('capture.status')}`}
           automationId={AUTOMATION_IDS.capture.filterRemove.status}
+        />
+      ) : null}
+      {ruleIds.length > 0 ? (
+        <FilterPill
+          values={selectedRuleNames}
+          prefix={t('capture.rule')}
+          parityId="capture-rule-filter-pill"
+          onClear={() => setStructuredFilter({ ruleIds: [] })}
+          clearLabel={`${t('capture.clear')} ${t('capture.rule')}`}
+          automationId={AUTOMATION_IDS.capture.filterRemove.rule}
         />
       ) : null}
       <input
@@ -234,6 +280,33 @@ export function Omnibox(): React.JSX.Element {
               open={activeField === 'status'}
               onToggleOpen={() =>
                 setActiveField((current) => (current === 'status' ? null : 'status'))}
+            />
+            <FieldRow
+              icon={<GitBranch size={16} strokeWidth={1.9} />}
+              name={t('capture.rule')}
+              hint={fieldHint(
+                selectedRuleNames,
+                ruleOptions.map((option) => ruleNames.get(option.value) ?? option.value),
+              )}
+              options={ruleOptions}
+              selected={ruleIds}
+              onToggle={toggleRule}
+              renderValue={(value) => (
+                <span
+                  className={styles.ruleName}
+                  data-parity={`capture-rule-option-${value}`}
+                >
+                  {ruleNames.get(value) ?? value}
+                </span>
+              )}
+              automationId={AUTOMATION_IDS.capture.filterOption.rule}
+              optionParityPrefix="capture-rule-option"
+              disabled={ruleOptions.length === 0}
+              open={ruleOptions.length > 0 && activeField === 'rule'}
+              onToggleOpen={() =>
+                ruleOptions.length > 0
+                  ? setActiveField((current) => (current === 'rule' ? null : 'rule'))
+                  : undefined}
             />
           </>
         }

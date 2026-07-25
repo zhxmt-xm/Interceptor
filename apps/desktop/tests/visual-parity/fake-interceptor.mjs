@@ -96,6 +96,7 @@ const sessions = [
   summary({ id: 'http-9', host: 'assets.example.com', path: '/app.css', protocol: 'h2', statusCode: 200, responseMime: 'text/css', responseBytes: 8_240, durationMs: 64 }),
   summary({ id: 'http-10', host: 'telemetry.example.com', path: '/v1/events', protocol: 'h2', statusCode: 202, responseMime: 'application/json', responseBytes: 32, durationMs: 91, method: 'POST' }),
 ];
+sessions[0].ruleIds = ['rule-auth'];
 sessions.forEach((session, index) => {
   session.startedAt = startedAt + index * 1_000;
 });
@@ -156,9 +157,9 @@ const httpDetail = {
     { name: 'user-agent', value: 'Interceptor/1.0.0 (macOS; arm64)' },
     { name: 'cookie', value: '_device_id=8f2a9c1b4e' },
     { name: 'cookie', value: 'logged_in=yes' },
-    { name: 'interceptor', value: 'test', ruleEffect: 'append' },
+    { name: 'interceptor', value: 'test', ruleEffect: 'append', ruleId: 'rule-auth' },
     { name: 'x-retired', value: 'legacy' },
-    { name: 'x-retired', value: 'legacy', ruleEffect: 'remove' },
+    { name: 'x-retired', value: 'legacy', ruleEffect: 'remove', ruleId: 'rule-auth' },
   ],
   responseHeaders: [
     { name: 'cache-control', value: 'private, max-age=60, s-maxage=60' },
@@ -169,8 +170,8 @@ const httpDetail = {
     { name: 'strict-transport-security', value: 'max-age=31536000; includeSubDomains' },
     { name: 'set-cookie', value: '_gh_sess=VszN7pQ…9Qb2' },
     { name: 'x-response-rule', value: 'after' },
-    { name: 'x-response-rule', value: 'before', ruleEffect: 'replace' },
-    { name: 'x-response-rule', value: 'after', ruleEffect: 'set' },
+    { name: 'x-response-rule', value: 'before', ruleEffect: 'replace', ruleId: 'rule-auth' },
+    { name: 'x-response-rule', value: 'after', ruleEffect: 'set', ruleId: 'rule-auth' },
   ],
   requestTrailers: [],
   responseTrailers: [],
@@ -441,12 +442,70 @@ export function installFakeInterceptor({
   fixture,
   theme,
   freshProfile = false,
+  largeBody = false,
+  largeTextBody = false,
+  noRuleHits = false,
   mitmActive = true,
   updateState = 'unsupported',
   proxyReady = true,
 }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
+  if (noRuleHits) {
+    fixture.capture.sessions = fixture.capture.sessions.map((summary) => {
+      const { ruleIds: _ruleIds, ...withoutRuleIds } = summary;
+      return withoutRuleIds;
+    });
+  }
+  if (largeBody) {
+    const largeSummary = {
+      ...fixture.capture.sessions[0],
+      responseMime: 'video/mp4',
+      responseBytes: 67 * 1024 * 1024,
+    };
+    fixture.capture.sessions[0] = largeSummary;
+    fixture.capture.bodies['large-response-body'] = Array.from(
+      { length: 64 * 1024 },
+      (_value, index) => index % 251,
+    );
+    fixture.capture.details['http-1'] = {
+      ...fixture.capture.details['http-1'],
+      summary: largeSummary,
+      responseBody: {
+        bodyHash: 'large-response-body',
+        mediaType: 'video/mp4',
+        encodedSize: 67 * 1024 * 1024,
+        truncated: false,
+        decodeStatus: 'ok',
+      },
+    };
+  }
+  if (largeTextBody) {
+    const largeSummary = {
+      ...fixture.capture.sessions[0],
+      responseMime: 'text/html; charset=utf-8',
+      responseBytes: 2.4 * 1024 * 1024,
+    };
+    fixture.capture.sessions[0] = largeSummary;
+    fixture.capture.bodies['large-text-response-body'] = Array.from(
+      new TextEncoder().encode(
+        `<!doctype html><html lang="zh-CN"><head><title>大唐 EV</title></head><body>\n${
+          Array.from({ length: 120 }, (_value, index) => `<section>配置参数 ${index + 1}</section>`).join('\n')
+        }\n</body></html>`,
+      ),
+    );
+    fixture.capture.details['http-1'] = {
+      ...fixture.capture.details['http-1'],
+      summary: largeSummary,
+      responseBody: {
+        bodyHash: 'large-text-response-body',
+        mediaType: 'text/html; charset=utf-8',
+        encodedSize: 2.4 * 1024 * 1024,
+        truncated: false,
+        decodeStatus: 'ok',
+      },
+    };
+  }
   let captureStatus = { ...fixture.capture.captureStatus };
   let captureGeneration = 1;
   let systemProxyStatus = {
@@ -692,6 +751,9 @@ export function installFakeInterceptor({
       };
     },
     readBody: async (bodyId, offset, length) => {
+      if (largeBody && bodyId === 'large-response-body') {
+        throw new Error('Media bodies must not be read into the Renderer.');
+      }
       const source = new Uint8Array(fixture.capture.bodies[bodyId] ?? []);
       const data = source.slice(offset, offset + length);
       return {
@@ -784,6 +846,7 @@ export function installFakeInterceptor({
       };
       return transferJob;
     },
+    startBodyExport: async () => null,
     startHarImport: async () => {
       transferJob = {
         id: 'transfer-parity-import',

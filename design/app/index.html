@@ -58,6 +58,7 @@
                 <span class="omni-search-v2"><svg class="si"><use href="#i-search"/></svg></span>
                 <span class="pill" data-field="method">GET …<span class="x"><svg><use href="#i-x"/></svg></span><span class="filttip">GET, POST, PUT, DELETE</span></span>
                 <span class="pill" data-field="status">200 …<span class="x"><svg><use href="#i-x"/></svg></span><span class="filttip">200, 404</span></span>
+                <span class="pill rule-filter-pill" data-field="rule" data-parity="capture-rule-filter-pill">Rule · Rewrite auth header<span class="x"><svg><use href="#i-x"/></svg></span><span class="filttip">Rewrite auth header</span></span>
                 <span class="ph">Filter requests…</span>
                 <span class="sp"></span>
                 <span class="omni-actions">
@@ -82,6 +83,13 @@
                       <div class="fisub-item"><span class="cb"></span><span class="st err"><span class="d"></span>500</span><span class="sp"></span><span class="subcnt">2</span></div>
                     </div>
                   </div>
+                  <div class="fi" data-field="rule"><svg><use href="#i-branch"/></svg><span class="n">Rule</span><span class="ex">Rewrite auth header</span><svg class="chev"><use href="#i-chev-right"/></svg>
+                    <div class="fisub">
+                      <div class="fisub-item on" data-parity="capture-rule-option-rule-auth"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="rule-filter-name">Rewrite auth header</span><span class="sp"></span><span class="subcnt">76</span></div>
+                      <div class="fisub-item"><span class="cb"></span><span class="rule-filter-name">Stub /v1/user</span><span class="sp"></span><span class="subcnt">128</span></div>
+                      <div class="fisub-item"><span class="cb"></span><span class="rule-filter-name">Block trackers</span><span class="sp"></span><span class="subcnt">1.2k</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -103,12 +111,12 @@
             <div class="listbar">
               <div class="seg protocol-switch"><span class="on">All</span><span>H1</span><span>H2</span><span>WS</span></div>
               <div class="sp"></div>
-              <span class="cnt"><b>18</b> of 241</span>
+              <span class="cnt"><span class="capture-count-normal"><b>18</b> of 241</span><span class="capture-count-rule"><b>1</b> of 13</span></span>
               <div class="icon-actions"><div class="ib sm" title="Query parameters"><svg><use href="#i-ampersand"/></svg></div><div class="ib sm"><svg><use href="#i-trash"/></svg></div></div>
             </div>
             <div class="lhead"><span>Method</span><span>Host · Path</span><span data-parity="capture-list-status-header">Status</span><span data-parity="capture-list-proto-header">Proto</span><span data-parity="capture-list-type-header">Type</span><span data-parity="capture-list-size-header">Size</span><span data-parity="capture-list-time-header">Time</span></div>
             <div class="list-scroll">
-            <div class="row sel" data-capture-row="http"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
+            <div class="row sel" data-capture-row="http" data-request-rule-anchor><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span><span class="p">/user</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
             <div class="row" data-capture-row="tunnel"><span class="m">CONNECT</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>accounts.google.com</span><span class="p">HTTPS content is encrypted</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">tls</span><span class="ty">encrypted</span><span class="size">0 B</span><span class="time">open</span></div>
             <div class="row"><span class="m post">POST</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span><span class="p">/common/oauth2/v2.0/token</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
             <div class="row"><span class="m get">GET</span><div class="hc"><span class="h"><svg><use href="#i-lock"/></svg>cdn.jsdelivr.net</span><span class="p">/npm/react@18/umd/react.min.js</span></div><span class="st info2"><span class="d"></span>304</span><span class="proto">h2</span><span class="ty">js</span><span class="size">0 B</span><span class="time">18 ms</span></div>
@@ -136,8 +144,8 @@
             <div class="scroll">
               <div class="tp on" data-tab="headers">
                 <div class="sec"><div class="sh">General</div><div class="kv"><span class="k">Request URL</span><span class="v">https://api.github.com/user<button class="kv-copy" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></span><span class="k">Request Method</span><span class="v a">GET</span><span class="k">Status Code</span><span class="v status-copy-value"><span class="status-copy-ok"><i></i>200 OK</span><span class="status-copy-error"><i></i>502 Error communicating with upstream server</span><button class="kv-copy" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></span><span class="k">Remote Address</span><span class="v">140.82.112.3:443</span><span class="k">Protocol</span><span class="v">HTTP/2 · TLS 1.3</span><span class="k">Referrer Policy</span><span class="v">strict-origin-when-cross-origin</span></div></div>
-                <div class="sec"><div class="sh">Response Headers <span class="c">8</span></div><div class="kv"><span class="k">cache-control</span><span class="v">private, max-age=60, s-maxage=60</span><span class="k">content-encoding</span><span class="v">gzip</span><span class="k">content-type</span><span class="v">application/json; charset=utf-8</span><span class="k">date</span><span class="v">Fri, 10 Jul 2026 12:00:00 GMT</span><span class="k">server</span><span class="v">GitHub.com</span><span class="k">strict-transport-security</span><span class="v">max-age=31536000; includeSubDomains</span><span class="k">x-response-rule</span><span class="v"><span class="rulefx-old">before</span><span class="rulefx replace">Rule replaced</span></span><span class="k">x-response-rule</span><span class="v">after<span class="rulefx set">Rule set</span></span></div></div>
-                <div class="sec"><div class="sh">Request Headers <span class="c">6</span></div><div class="kv"><span class="k">accept</span><span class="v">application/vnd.github.v3+json</span><span class="k">accept-encoding</span><span class="v">gzip, deflate, br</span><span class="k">authorization</span><span class="v a">Bearer github_pat_11A…</span><span class="k">user-agent</span><span class="v">Interceptor/1.0.0 (macOS; arm64)</span><span class="k">interceptor</span><span class="v">test<span class="rulefx append">Rule appended</span></span><span class="k">x-retired</span><span class="v"><span class="rulefx-old">legacy</span><span class="rulefx remove">Rule removed</span></span></div></div>
+                <div class="sec"><div class="sh">Response Headers <span class="c">8</span></div><div class="kv"><span class="k">cache-control</span><span class="v">private, max-age=60, s-maxage=60</span><span class="k">content-encoding</span><span class="v">gzip</span><span class="k">content-type</span><span class="v">application/json; charset=utf-8</span><span class="k">date</span><span class="v">Fri, 10 Jul 2026 12:00:00 GMT</span><span class="k">server</span><span class="v">GitHub.com</span><span class="k">strict-transport-security</span><span class="v">max-age=31536000; includeSubDomains</span><span class="k">x-response-rule</span><span class="v"><span class="rulefx-old">before</span><button class="rulefx replace" data-rule-link>Rule replaced</button></span><span class="k">x-response-rule</span><span class="v">after<button class="rulefx set" data-rule-link>Rule set</button></span></div></div>
+                <div class="sec"><div class="sh">Request Headers <span class="c">6</span></div><div class="kv"><span class="k">accept</span><span class="v">application/vnd.github.v3+json</span><span class="k">accept-encoding</span><span class="v">gzip, deflate, br</span><span class="k">authorization</span><span class="v a">Bearer github_pat_11A…</span><span class="k">user-agent</span><span class="v">Interceptor/1.0.0 (macOS; arm64)</span><span class="k">interceptor</span><span class="v">test<button class="rulefx append" data-rule-link>Rule appended</button></span><span class="k">x-retired</span><span class="v"><span class="rulefx-old">legacy</span><button class="rulefx remove" data-rule-link>Rule removed</button></span></div></div>
               </div>
               <div class="tp" data-tab="request">
                 <div class="sec"><div class="sh">Request line</div><div class="kv"><span class="k">Method</span><span class="v a">GET</span><span class="k">Path</span><span class="v">/user</span><span class="k">Version</span><span class="v">HTTP/2</span><span class="k">Scheme</span><span class="v g">https</span></div></div>
@@ -145,8 +153,15 @@
                 <div class="sec"><div class="sh">Request Payload</div><div class="bodyview" data-parity="capture-body-view"><div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="bodybox">{<br />&nbsp;&nbsp;<span class="jk">"name"</span><span class="jp">:</span> <span class="js">"interceptor"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"enabled"</span><span class="jp">:</span> <span class="jn">true</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"limits"</span><span class="jp">:</span> { <span class="jk">"requests"</span><span class="jp">:</span> <span class="jn">250</span> }<br />}</div></div></div>
               </div>
               <div class="tp" data-tab="response">
-                <div class="sec"><div class="sh">Body <span class="c">application/json · 1.2 KB</span></div>
-                  <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="bodybox">{&nbsp;<br />&nbsp;&nbsp;<span class="jk">"login"</span><span class="jp">:</span> <span class="js">"octocat"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"id"</span><span class="jp">:</span> <span class="jn">583231</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"type"</span><span class="jp">:</span> <span class="js">"User"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"name"</span><span class="jp">:</span> <span class="js">"The Octocat"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"company"</span><span class="jp">:</span> <span class="js">"@github"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"location"</span><span class="jp">:</span> <span class="js">"San Francisco"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"public_repos"</span><span class="jp">:</span> <span class="jn">8</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"followers"</span><span class="jp">:</span> <span class="jn">9999</span><br />}</div>
+                <div class="sec"><div class="sh">Body <span class="c body-normal-meta">application/json · 1.2 KB</span><span class="c body-limited-meta">HTML · 2.4 MB</span><span class="c body-media-meta">MP4 · 67 MB</span></div><div class="bodyview" data-parity="capture-body-view">
+                  <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="body-limit-note"><svg><use href="#i-info"/></svg>Showing the first 1 MB of 2.4 MB. The full body remains captured for export.</div><div class="bodybox body-preview-normal">{&nbsp;<br />&nbsp;&nbsp;<span class="jk">"login"</span><span class="jp">:</span> <span class="js">"octocat"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"id"</span><span class="jp">:</span> <span class="jn">583231</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"type"</span><span class="jp">:</span> <span class="js">"User"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"name"</span><span class="jp">:</span> <span class="js">"The Octocat"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"company"</span><span class="jp">:</span> <span class="js">"@github"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"location"</span><span class="jp">:</span> <span class="js">"San Francisco"</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"public_repos"</span><span class="jp">:</span> <span class="jn">8</span><span class="jp">,</span><br />&nbsp;&nbsp;<span class="jk">"followers"</span><span class="jp">:</span> <span class="jn">9999</span><br />}</div><pre class="bodybox body-preview-limited" data-parity="capture-body-preview">&lt;!doctype html&gt;
+&lt;html lang="zh-CN"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8" /&gt;
+    &lt;title&gt;大唐 EV&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;…&lt;/body&gt;
+&lt;/html&gt;</pre><div class="body-media" data-parity="capture-media-body"><span class="body-media-icon"><svg><use href="#i-file"/></svg></span><div><b>video/mp4</b><span>67 MB · Preview unavailable</span></div><button class="btn sm"><svg><use href="#i-download"/></svg>Save body</button></div></div>
                 </div>
               </div>
               <div class="tp" data-tab="timing">
@@ -225,6 +240,24 @@
             </div>
           </div>
           </div>
+          <div class="request-rule-menu" role="menu" aria-label="Create rule from request">
+            <div class="request-rule-title">Create rule for this request</div>
+            <div class="po-t">Rewrite</div>
+            <button class="fi" data-parity="request-rule-header"><svg><use href="#i-code"/></svg><span class="n">Rewrite header</span><span class="ex">name / value</span></button>
+            <button class="fi"><svg><use href="#i-code"/></svg><span class="n">Rewrite query</span><span class="ex">name / value</span></button>
+            <button class="fi"><svg><use href="#i-file"/></svg><span class="n">Rewrite body</span><span class="ex">text / json</span></button>
+            <button class="fi"><svg><use href="#i-code"/></svg><span class="n">Set status</span><span class="ex">override</span></button>
+            <div class="po-t">Serve &amp; reroute</div>
+            <button class="fi"><svg><use href="#i-map"/></svg><span class="n">Map Local</span><span class="ex">serve file</span></button>
+            <button class="fi"><svg><use href="#i-globe"/></svg><span class="n">Map Remote</span><span class="ex">reroute</span></button>
+            <button class="fi"><svg><use href="#i-arrow"/></svg><span class="n">Synthetic</span><span class="ex">return response</span></button>
+            <div class="po-t">Traffic</div>
+            <button class="fi"><svg><use href="#i-clock"/></svg><span class="n">Delay</span><span class="ex">latency</span></button>
+            <button class="fi"><svg><use href="#i-gauge"/></svg><span class="n">Throttle</span><span class="ex">bandwidth</span></button>
+            <div class="po-t">Control</div>
+            <button class="fi"><svg><use href="#i-slash"/></svg><span class="n">Block</span><span class="ex">reset / close</span></button>
+            <button class="fi" data-parity="request-rule-breakpoint"><svg><use href="#i-pause"/></svg><span class="n">Breakpoint</span><span class="ex">pause &amp; edit</span></button>
+          </div>
         </div>
 
         <!-- rules -->
@@ -242,7 +275,7 @@
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="reditor">
-            <div class="edhead"><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
+            <div class="edhead"><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><button class="ib sm" data-show-rule-requests aria-label="Show matching requests" title="Show matching requests"><svg><use href="#i-filter"/></svg></button><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
             <div class="edscroll">
               <div class="esec">
                 <div class="sh">Match</div>

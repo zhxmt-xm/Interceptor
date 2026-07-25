@@ -33,4 +33,5 @@ export const EMPTY_FILTER: CaptureFilter = {
   search: '',
   method: [],
   status: [],
+  ruleIds: [],
 };

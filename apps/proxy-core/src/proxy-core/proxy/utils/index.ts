@@ -1,4 +1,5 @@
 import { promisify } from 'node:util';
+import { Readable, type Transform } from 'node:stream';
 import zlib from 'node:zlib';
 
 import type { CompletedRequest } from 'mockttp';
@@ -23,6 +24,7 @@ import type {
 export async function decodeBody(
   data: Uint8Array,
   contentEncoding: string | undefined,
+  maxOutputLength?: number,
 ): Promise<DecodeResult> {
   const encodings = parseEncodings(contentEncoding);
   if (encodings.length === 0) {
@@ -38,12 +40,150 @@ export async function decodeBody(
       continue;
     }
     try {
-      current = await decodeOne(current, encoding);
+      const decoded = await decodeOne(current, encoding, maxOutputLength);
+      current = decoded.data;
+      if (decoded.limited) {
+        return index === 0
+          ? { status: 'limited', data: current }
+          : { status: 'failed', data };
+      }
     } catch {
       return { status: 'failed', data };
     }
   }
   return { status: 'ok', data: current };
+}
+
+/** 从可重开正文流解码有限明文前缀，不把完整压缩输入或输出加载进内存。 */
+export async function decodeBodyStream(
+  openSource: () => AsyncIterable<Uint8Array>,
+  contentEncoding: string | undefined,
+  maxOutputLength: number,
+): Promise<DecodeResult> {
+  const encodings = parseEncodings(contentEncoding);
+  if (encodings.length === 0) {
+    const prefix = await readStreamPrefix(openSource(), maxOutputLength);
+    return {
+      status: prefix.limited ? 'limited' : 'skipped',
+      data: prefix.data,
+    };
+  }
+  if (encodings.some((encoding) => !SUPPORTED_ENCODINGS.has(encoding))) {
+    return {
+      status: 'failed',
+      data: (await readStreamPrefix(openSource(), maxOutputLength)).data,
+    };
+  }
+  try {
+    return await decodeStreamOnce(openSource(), encodings, maxOutputLength);
+  } catch {
+    for (let index = 0; index < encodings.length; index += 1) {
+      if (encodings[index] !== 'deflate') {
+        continue;
+      }
+      try {
+        return await decodeStreamOnce(openSource(), encodings, maxOutputLength, index);
+      } catch {
+        // Try the next deflate layer before falling back to raw bytes.
+      }
+    }
+    return {
+      status: 'failed',
+      data: (await readStreamPrefix(openSource(), maxOutputLength)).data,
+    };
+  }
+}
+
+/** 建立解码链并收集有限输出；rawDeflateIndex 指定兼容重试的 deflate 层。 */
+async function decodeStreamOnce(
+  source: AsyncIterable<Uint8Array>,
+  encodings: readonly string[],
+  maxOutputLength: number,
+  rawDeflateIndex?: number,
+): Promise<DecodeResult> {
+  const streams: Readable[] = [Readable.from(source)];
+  let decoded = streams[0]!;
+  for (let index = encodings.length - 1; index >= 0; index -= 1) {
+    const encoding = encodings[index];
+    if (!encoding) {
+      continue;
+    }
+    decoded = decoded.pipe(createDecoder(encoding, rawDeflateIndex === index));
+    streams.push(decoded);
+  }
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for await (const chunk of decoded) {
+      const buffer = Buffer.from(chunk);
+      const remaining = maxOutputLength - total;
+      if (buffer.byteLength > remaining) {
+        if (remaining > 0) {
+          chunks.push(buffer.subarray(0, remaining));
+          total += remaining;
+        }
+        for (const stream of streams) {
+          stream.destroy();
+        }
+        return {
+          status: 'limited',
+          data: new Uint8Array(Buffer.concat(chunks, total)),
+        };
+      }
+      chunks.push(buffer);
+      total += buffer.byteLength;
+    }
+  } catch (error) {
+    for (const stream of streams) {
+      stream.destroy();
+    }
+    throw error;
+  }
+  return { status: 'ok', data: new Uint8Array(Buffer.concat(chunks, total)) };
+}
+
+/** 创建单层 content-encoding 解码器。 */
+function createDecoder(encoding: string, rawDeflate: boolean): Transform {
+  switch (encoding) {
+    case 'gzip':
+    case 'x-gzip':
+      return zlib.createGunzip();
+    case 'deflate':
+      return rawDeflate ? zlib.createInflateRaw() : zlib.createInflate();
+    case 'br':
+      return zlib.createBrotliDecompress();
+    default:
+      throw new Error(`unsupported content-encoding: ${encoding}`);
+  }
+}
+
+/** 读取流的有限原始前缀，供不支持或损坏编码的安全回退。 */
+async function readStreamPrefix(
+  source: AsyncIterable<Uint8Array>,
+  maxLength: number,
+): Promise<{ data: Uint8Array; limited: boolean }> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  let limited = false;
+  for await (const chunk of source) {
+    const buffer = Buffer.from(chunk);
+    const remaining = maxLength - total;
+    if (remaining === 0) {
+      limited = true;
+      break;
+    }
+    if (buffer.byteLength > remaining) {
+      if (remaining > 0) {
+        chunks.push(buffer.subarray(0, remaining));
+        total += remaining;
+      }
+      limited = true;
+      break;
+    }
+    chunks.push(buffer);
+    total += buffer.byteLength;
+  }
+  return { data: new Uint8Array(Buffer.concat(chunks, total)), limited };
 }
 
 /** 解析并规范化逗号分隔的 content-encoding。 */
@@ -61,22 +201,92 @@ function parseEncodings(header: string | undefined): string[] {
 async function decodeOne(
   data: Uint8Array,
   encoding: string,
-): Promise<Uint8Array> {
+  maxOutputLength?: number,
+): Promise<{ data: Uint8Array; limited: boolean }> {
+  if (maxOutputLength !== undefined) {
+    switch (encoding) {
+      case 'gzip':
+      case 'x-gzip':
+        return decodeWithLimit(data, zlib.createGunzip(), maxOutputLength);
+      case 'deflate':
+        try {
+          return await decodeWithLimit(data, zlib.createInflate(), maxOutputLength);
+        } catch {
+          return decodeWithLimit(data, zlib.createInflateRaw(), maxOutputLength);
+        }
+      case 'br':
+        return decodeWithLimit(data, zlib.createBrotliDecompress(), maxOutputLength);
+      default:
+        throw new Error(`unsupported content-encoding: ${encoding}`);
+    }
+  }
   switch (encoding) {
     case 'gzip':
     case 'x-gzip':
-      return new Uint8Array(await promisify(zlib.gunzip)(data));
+      return { data: new Uint8Array(await promisify(zlib.gunzip)(data)), limited: false };
     case 'deflate':
-      return new Uint8Array(await inflateMaybeRaw(data));
+      return { data: new Uint8Array(await inflateMaybeRaw(data)), limited: false };
     case 'br':
-      return new Uint8Array(await promisify(zlib.brotliDecompress)(data));
+      return {
+        data: new Uint8Array(await promisify(zlib.brotliDecompress)(data)),
+        limited: false,
+      };
     default:
       throw new Error(`unsupported content-encoding: ${encoding}`);
   }
 }
 
+/** 流式解码并只保留有限前缀；不会分配完整解压结果。 */
+function decodeWithLimit(
+  data: Uint8Array,
+  decoder: zlib.Gunzip | zlib.Inflate | zlib.InflateRaw | zlib.BrotliDecompress,
+  maxOutputLength: number,
+): Promise<{ data: Uint8Array; limited: boolean }> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let settled = false;
+
+    const finish = (limited: boolean): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve({ data: new Uint8Array(Buffer.concat(chunks, total)), limited });
+    };
+
+    decoder.on('data', (chunk: Buffer) => {
+      if (settled) {
+        return;
+      }
+      const remaining = maxOutputLength - total;
+      if (chunk.byteLength > remaining) {
+        if (remaining > 0) {
+          chunks.push(chunk.subarray(0, remaining));
+          total += remaining;
+        }
+        finish(true);
+        decoder.destroy();
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+      total += chunk.byteLength;
+    });
+    decoder.once('end', () => finish(false));
+    decoder.once('error', (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    });
+    decoder.end(data);
+  });
+}
+
 /** 兼容 zlib 包裹和裸 DEFLATE 流。 */
-async function inflateMaybeRaw(data: Uint8Array): Promise<Buffer> {
+async function inflateMaybeRaw(
+  data: Uint8Array,
+): Promise<Buffer> {
   try {
     return await promisify(zlib.inflate)(data);
   } catch {
@@ -139,6 +349,7 @@ export function toRuleHeaderInputs(effects: readonly RuleHeaderEffect[]): Header
     name: effect.name,
     value: effect.value,
     ruleEffect: effect.effect,
+    ruleId: effect.ruleId,
   }));
 }
 

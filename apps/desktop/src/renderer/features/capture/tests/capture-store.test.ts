@@ -8,7 +8,9 @@ import { useCaptureStore } from '../data/captureStore';
 import type { CaptureFilter } from '../interfaces';
 import {
   distinctMethodOptions,
+  distinctRuleOptions,
   distinctStatusOptions,
+  suggestedBodyFileName,
   visibleCaptureRows,
 } from '../utils';
 
@@ -147,10 +149,11 @@ describe('captureStore structured filters', () => {
     search: '',
     method: [],
     status: [],
+    ruleIds: [],
   };
 
   beforeEach(() => {
-    useCaptureStore.setState({ filter: baseFilter });
+    useCaptureStore.setState({ filter: baseFilter, rows: [], selectedId: null });
   });
 
   function summary(
@@ -175,9 +178,9 @@ describe('captureStore structured filters', () => {
   }
 
   const rows: CaptureExchangeSummary[] = [
-    summary('a', { method: 'GET', statusCode: 200 }),
-    summary('b', { method: 'POST', statusCode: 404 }),
-    summary('c', { method: 'POST', statusCode: 200 }),
+    summary('a', { method: 'GET', statusCode: 200, ruleIds: ['rule-a'] }),
+    summary('b', { method: 'POST', statusCode: 404, ruleIds: ['rule-b'] }),
+    summary('c', { method: 'POST', statusCode: 200, ruleIds: ['rule-a', 'rule-b'] }),
     summary('pending', { method: 'GET', statusCode: undefined, state: 'pending' }),
   ];
 
@@ -189,6 +192,18 @@ describe('captureStore structured filters', () => {
   it('filters by multiple selected status codes', () => {
     expect(visibleCaptureRows(rows, { ...baseFilter, status: [200, 404] }).map((row) => row.id))
       .toEqual(['a', 'b', 'c']);
+  });
+
+  it('matches any selected rule id while composing with other filters', () => {
+    expect(visibleCaptureRows(rows, {
+      ...baseFilter,
+      method: ['POST'],
+      ruleIds: ['rule-a', 'missing'],
+    }).map((row) => row.id)).toEqual(['c']);
+    expect(visibleCaptureRows(rows, {
+      ...baseFilter,
+      ruleIds: ['rule-a', 'rule-b'],
+    }).map((row) => row.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('lists distinct method options from current rows by count then name', () => {
@@ -205,17 +220,55 @@ describe('captureStore structured filters', () => {
     ]);
   });
 
-  it('sets and clears method / status via setStructuredFilter', () => {
-    useCaptureStore.getState().setStructuredFilter({ method: ['POST'], status: [404] });
+  it('counts each rule once per exchange and sorts by request count', () => {
+    expect(distinctRuleOptions([
+      ...rows,
+      summary('duplicate', { ruleIds: ['rule-a', 'rule-a'] }),
+    ])).toEqual([
+      { value: 'rule-a', count: 3 },
+      { value: 'rule-b', count: 2 },
+    ]);
+  });
+
+  it('returns no Rule options until at least one captured exchange has a rule hit', () => {
+    expect(distinctRuleOptions(rows.filter((row) => !row.ruleIds))).toEqual([]);
+  });
+
+  it('derives safe body filename suggestions from URL and media MIME', () => {
+    expect(suggestedBodyFileName(
+      'https://www.byd.com/material/video/video-1.mp4?range=1',
+      'video/mp4',
+      'response-body',
+    )).toBe('video-1.mp4');
+    expect(suggestedBodyFileName('not a url', 'audio/mpeg', 'response-body'))
+      .toBe('response-body.mp3');
+  });
+
+  it('sets and clears structured filters, and isolates one rule from Rules', () => {
+    useCaptureStore.getState().setStructuredFilter({
+      method: ['POST'],
+      status: [404],
+      ruleIds: ['rule-b'],
+    });
     expect(useCaptureStore.getState().filter).toMatchObject({
       method: ['POST'],
       status: [404],
+      ruleIds: ['rule-b'],
     });
 
-    useCaptureStore.getState().setStructuredFilter({ method: [], status: [] });
+    useCaptureStore.setState({ rows });
+    useCaptureStore.getState().filterByRule('rule-a');
+    expect(useCaptureStore.getState().filter).toEqual({
+      ...baseFilter,
+      ruleIds: ['rule-a'],
+    });
+    expect(useCaptureStore.getState().selectedId).toBe('c');
+
+    useCaptureStore.getState().setStructuredFilter({ method: [], status: [], ruleIds: [] });
     expect(useCaptureStore.getState().filter).toMatchObject({
       method: [],
       status: [],
+      ruleIds: [],
     });
   });
 });

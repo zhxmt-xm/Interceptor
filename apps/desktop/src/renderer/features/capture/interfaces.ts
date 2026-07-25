@@ -47,18 +47,20 @@ export interface ProxyReadinessIssue {
   message: string | null;
 }
 
-/** 结构化过滤条件；segment 为客户端分段视图过滤；method/status 由 Add filter 级联多选当前列表出现的值。 */
+/** 结构化过滤条件；method/status/ruleIds 由 Add filter 级联多选当前列表出现的值。 */
 export interface CaptureFilter {
   segment: ProtocolSegment;
   search: string;
   method: string[];
   status: number[];
+  /** 多个规则按 OR 匹配；与 method/status/search 之间仍为 AND。 */
+  ruleIds: string[];
 }
 
-export type StructuredCaptureFilterField = 'method' | 'status';
+export type StructuredCaptureFilterField = 'method' | 'status' | 'ruleIds';
 
 export type StructuredCaptureFilterPatch = Partial<
-  Pick<CaptureFilter, 'method' | 'status'>
+  Pick<CaptureFilter, 'method' | 'status' | 'ruleIds'>
 >;
 
 /** Add filter 级联的单个可选值及其在当前列表中的出现次数。 */
@@ -100,6 +102,7 @@ export interface CaptureState {
   setSegment(segment: ProtocolSegment): void;
   setSearch(search: string): void;
   setStructuredFilter(patch: StructuredCaptureFilterPatch): void;
+  filterByRule(ruleId: string): void;
   setCapturing(capturing: boolean): void;
   setTransferAction(action: CaptureTransferAction | null): void;
   setProxyReadinessIssue(issue: ProxyReadinessIssue | null): void;

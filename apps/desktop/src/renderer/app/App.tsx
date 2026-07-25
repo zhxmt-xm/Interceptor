@@ -3,7 +3,11 @@ import { Maximize2, Menu, Minus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { CoreProcessStatus } from '../../shared/desktop-api';
+import type {
+  CaptureExchangeSummary,
+  CoreProcessStatus,
+  RuleActionType,
+} from '../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../shared/automation-ids';
 import type { LanguageId } from '../i18n/languages';
 import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
@@ -14,13 +18,20 @@ import {
   CaptureStatusbar,
   useCaptureData,
 } from '../features/capture';
+import { useCaptureStore } from '../features/capture/data/captureStore';
 import { ComposerMain, ComposerStatusbar } from '../features/composer';
 import {
   DiagnosticsMain,
   DiagnosticsProvider,
   DiagnosticsStatusbar,
 } from '../features/diagnostics';
-import { RulesMain, RulesStatusbar } from '../features/rules';
+import {
+  addRequestRuleDraft,
+  RulesMain,
+  RulesStatusbar,
+  selectRuleDraft,
+  useRulesData,
+} from '../features/rules';
 import {
   SettingsMain,
   SettingsStatusbar,
@@ -36,6 +47,16 @@ interface FeatureViews {
   statusbar: React.ReactNode;
 }
 
+interface FeatureActions {
+  createRequestRule(
+    summary: CaptureExchangeSummary,
+    actionType: RuleActionType,
+    name: string,
+  ): void;
+  openRule(ruleId: string): void;
+  showRuleRequests(ruleId: string): void;
+}
+
 const VIEW_LABEL_KEYS: Record<ViewId, string> = {
   capture: 'sidebar.capture',
   rules: 'rules.title',
@@ -49,16 +70,22 @@ function renderView(
   view: ViewId,
   settingsSection: string,
   coreStatus: CoreProcessStatus,
+  actions: FeatureActions,
 ): FeatureViews {
   switch (view) {
     case 'capture':
       return {
-        main: <CaptureMain />,
+        main: (
+          <CaptureMain
+            onCreateRequestRule={actions.createRequestRule}
+            onOpenRule={actions.openRule}
+          />
+        ),
         statusbar: <CaptureStatusbar coreStatus={coreStatus} />,
       };
     case 'rules':
       return {
-        main: <RulesMain />,
+        main: <RulesMain onShowRuleRequests={actions.showRuleRequests} />,
         statusbar: <RulesStatusbar />,
       };
     case 'composer':
@@ -96,6 +123,7 @@ const initialCoreStatus: CoreProcessStatus = {
 
 export function App(): React.JSX.Element {
   useCaptureData();
+  useRulesData();
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(false);
@@ -170,7 +198,33 @@ export function App(): React.JSX.Element {
     void i18n.changeLanguage(nextLanguage);
   };
 
-  const feature = renderView(view, settingsSection, coreStatus);
+  const actions: FeatureActions = {
+    createRequestRule: (summary, actionType, name) => {
+      void (async () => {
+        const detail = await window.interceptor.getExchangeDetail(summary.id).catch(() => null);
+        const fallbackPath = summary.path?.startsWith('/')
+          ? summary.path
+          : `/${summary.path ?? ''}`;
+        const url = detail?.url
+          ?? `${summary.secure ? 'https' : 'http'}://${summary.host ?? ''}${fallbackPath}`;
+        if (await addRequestRuleDraft(name, url, actionType)) {
+          setView('rules');
+        }
+      })();
+    },
+    openRule: (ruleId) => {
+      void selectRuleDraft(ruleId).then((selected) => {
+        if (selected) {
+          setView('rules');
+        }
+      });
+    },
+    showRuleRequests: (ruleId) => {
+      useCaptureStore.getState().filterByRule(ruleId);
+      setView('capture');
+    },
+  };
+  const feature = renderView(view, settingsSection, coreStatus, actions);
 
   const content = (
     <div

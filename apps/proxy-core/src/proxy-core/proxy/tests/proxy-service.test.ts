@@ -351,20 +351,24 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
           name: 'x-request-rule',
           value: 'upstream',
           ruleEffect: 'append',
+          ruleId: 'url-rule',
         },
         {
           kind: 'response',
           name: 'x-response-rule',
           value: 'before',
           ruleEffect: 'replace',
+          ruleId: 'url-rule',
         },
         {
           kind: 'response',
           name: 'x-response-rule',
           value: 'after',
           ruleEffect: 'set',
+          ruleId: 'url-rule',
         },
       ]));
+      expect(sink.exchanges[0]?.ruleIds).toEqual(['url-rule']);
     } finally {
       await origin.close();
     }

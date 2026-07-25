@@ -90,6 +90,9 @@ async function applyRendererActions(page, actions = []) {
       case 'clickText':
         await page.getByText(action.text, { exact: true }).nth(index).click();
         break;
+      case 'contextMenuText':
+        await page.getByText(action.text, { exact: true }).nth(index).click({ button: 'right' });
+        break;
       case 'clickRole':
         await page.getByRole(action.role, { name: action.name, exact: true }).nth(index).click();
         break;
@@ -97,7 +100,18 @@ async function applyRendererActions(page, actions = []) {
         await page.getByLabel(action.label, { exact: true }).nth(index).fill(action.value);
         break;
       case 'selectLabel':
-        await page.getByLabel(action.label, { exact: true }).nth(index).selectOption(action.value);
+        {
+          const control = page.getByLabel(action.label, { exact: true }).nth(index);
+          const tagName = await control.evaluate((element) => element.tagName);
+          if (tagName === 'SELECT') {
+            await control.selectOption(action.value);
+          } else {
+            await control.focus();
+            await control.press('ArrowDown');
+            await control.press('ArrowDown');
+            await control.press('Enter');
+          }
+        }
         break;
       default:
         throw new Error(`Unknown Renderer parity action: ${action.type}`);
@@ -149,6 +163,9 @@ for (const view of views) {
     settings: 'certificates',
     repair: 'idle',
     update: 'up-to-date',
+    requestMenu: '',
+    ruleFilter: '',
+    bodyPreview: '',
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
@@ -163,6 +180,9 @@ for (const view of views) {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
     freshProfile: view.freshProfile === true,
+    largeBody: view.largeBody === true,
+    largeTextBody: view.largeTextBody === true,
+    noRuleHits: view.noRuleHits === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     proxyReady: view.proxyReady !== false,

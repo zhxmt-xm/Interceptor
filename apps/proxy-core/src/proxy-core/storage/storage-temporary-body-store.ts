@@ -72,6 +72,11 @@ export class TemporaryBodyStore {
     return this.entries.has(hash);
   }
 
+  /** 返回正文完整编码字节数；不存在时抛稳定错误。 */
+  getSize(hash: string): number {
+    return this.requireEntry(hash).size;
+  }
+
   /** 打开正文只读流；驻内存正文通过 Node Readable 暴露同一异步流接口。 */
   openReadStream(hash: string): Readable {
     const entry = this.requireEntry(hash);

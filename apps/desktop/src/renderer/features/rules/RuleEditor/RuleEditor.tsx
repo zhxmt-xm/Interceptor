@@ -5,6 +5,7 @@ import {
   Clock,
   Code,
   FileText,
+  Filter,
   Gauge,
   Globe,
   MapPin,
@@ -26,6 +27,7 @@ import {
   Switch,
 } from '../../../components';
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
 import { ruleIndexFromPath, isRulesDirty, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
@@ -35,8 +37,12 @@ import styles from './RuleEditor.module.css';
 /** 决定“请求最终归宿”的互斥 action：本地响应/转发/合成响应/阻断，一个规则最多一个。 */
 const ORIGIN_ACTIONS: RuleActionType[] = ['map-local', 'map-remote', 'synthetic', 'block'];
 
+export interface RuleEditorProps {
+  onShowRuleRequests: (ruleId: string) => void;
+}
+
 /** Editor for the selected rule: match conditions, actions and validation. */
-export function RuleEditor(): React.JSX.Element {
+export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.Element {
   const { t } = useTranslation();
   const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
@@ -99,6 +105,13 @@ export function RuleEditor(): React.JSX.Element {
         />
         <StatusBadge>{rule.enabled ? t('rules.enabled') : t('rules.disabled')}</StatusBadge>
         <Switch checked={rule.enabled} onChange={() => toggleRule(rule.id)} />
+        <IconButton
+          icon={Filter}
+          label={t('rules.showMatchingRequests')}
+          size="sm"
+          onClick={() => onShowRuleRequests(rule.id)}
+          automationId={AUTOMATION_IDS.rules.showMatchingRequests}
+        />
         <IconButton
           icon={Trash2}
           label={t('rules.deleteRule')}

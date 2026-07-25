@@ -54,6 +54,11 @@ for (const theme of ['light', 'dark']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab } });
   }
   shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'headers', copy: 'error' } });
+  shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'headers', requestMenu: 'open' } });
+  shots.push({ feature: 'capture', theme, variant: 'rule-filter', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'headers', ruleFilter: 'rule-stub' } });
+    shots.push({ feature: 'capture', theme, variant: 'rule-filter-disabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, ruleOptions: 'empty' } });
+  shots.push({ feature: 'capture', theme, variant: 'body-preview-limited', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'response', bodyPreview: 'limited' } });
+  shots.push({ feature: 'capture', theme, variant: 'body-media-save', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tab: 'response', bodyPreview: 'media' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'grpc', tab: 'grpc' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', scene: 'tunnel', tab: 'tunnel' } });
@@ -69,6 +74,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'add-filter', theme, variant: 'menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
   shots.push({ feature: 'add-filter', theme, variant: 'method', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'method' } });
   shots.push({ feature: 'add-filter', theme, variant: 'status', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'status' } });
+  shots.push({ feature: 'add-filter', theme, variant: 'rule', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true, filtersub: 'rule' } });
   shots.push({ feature: 'add-filter', theme, variant: 'pill-overflow', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', tip: 'method' } });
   shots.push({ feature: 'capture', theme, variant: 'recording-loading', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', recording: 'pending' } });
 }
@@ -121,6 +127,10 @@ async function shoot(list) {
       https: 'fresh',
       mitm: 'inactive',
       copy: 'hidden',
+      requestMenu: '',
+      ruleFilter: '',
+        ruleOptions: '',
+      bodyPreview: '',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

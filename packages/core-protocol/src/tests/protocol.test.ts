@@ -183,6 +183,14 @@ describe('core protocol validation', () => {
         },
       },
       {
+        type: 'body.export.start',
+        payload: {
+          jobId: 'body-job-export',
+          filePath: 'C:\\Exports\\video.mp4',
+          bodyId: 'a'.repeat(64),
+        },
+      },
+      {
         type: 'transfer.job.get',
         payload: { jobId: 'har-job-export' },
       },

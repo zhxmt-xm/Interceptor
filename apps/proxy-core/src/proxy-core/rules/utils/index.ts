@@ -122,6 +122,7 @@ export function compileRuleMatchers(
  * append 只标新增值，remove 标记全部被删除旧值。
  */
 export function buildHeaderEffects(
+  ruleId: string,
   action: Extract<RuleAction, { type: 'header' }>,
   previousValues: readonly string[],
 ): RuleHeaderEffect[] {
@@ -129,6 +130,7 @@ export function buildHeaderEffects(
     case 'set':
       return [
         ...previousValues.map((value) => ({
+          ruleId,
           phase: action.phase,
           effect: 'replace' as const,
           name: action.name,
@@ -137,6 +139,7 @@ export function buildHeaderEffects(
         ...(action.value === undefined
           ? []
           : [{
+              ruleId,
               phase: action.phase,
               effect: 'set' as const,
               name: action.name,
@@ -147,6 +150,7 @@ export function buildHeaderEffects(
       return action.value === undefined
         ? []
         : [{
+          ruleId,
             phase: action.phase,
             effect: 'append',
             name: action.name,
@@ -154,6 +158,7 @@ export function buildHeaderEffects(
           }];
     case 'remove':
       return previousValues.map((value) => ({
+        ruleId,
         phase: action.phase,
         effect: 'remove',
         name: action.name,
@@ -179,6 +184,49 @@ export function requiresResponsePhase(
       (matcher.type === 'header' && matcher.phase === 'response') ||
       (matcher.type === 'mime' && matcher.phase === 'response'),
   );
+}
+
+/** 判断 action 是否需要在上游响应到达后执行。 */
+export function isResponseAction(action: RuleAction): boolean {
+  return action.type === 'status'
+    || (action.type === 'header' && action.phase === 'response')
+    || (action.type === 'body' && action.phase === 'response')
+    || (action.type === 'delay' && action.phase === 'response')
+    || (action.type === 'throttle' && action.phase === 'response')
+    || (action.type === 'breakpoint' && action.phase === 'response');
+}
+
+/** 判断 action 是否需要在请求发往上游前执行。 */
+export function isRequestAction(action: RuleAction): boolean {
+  return action.type === 'query'
+    || action.type === 'synthetic'
+    || action.type === 'map-local'
+    || action.type === 'map-remote'
+    || action.type === 'block'
+    || (action.type === 'header' && action.phase === 'request')
+    || (action.type === 'body' && action.phase === 'request')
+    || (action.type === 'delay' && action.phase === 'request')
+    || (action.type === 'throttle' && action.phase === 'request')
+    || (action.type === 'breakpoint' && action.phase === 'request');
+}
+
+/** 判断请求 action 是否可能改变后续响应规则使用的 request 匹配字段。 */
+export function mutatesResponseMatchContext(action: RuleAction): boolean {
+  return action.type === 'query'
+    || action.type === 'map-remote'
+    || (action.type === 'header' && action.phase === 'request')
+    || (action.type === 'breakpoint' && action.phase === 'request');
+}
+
+/** 只编译请求阶段可判定的 matcher，供响应 hook 的保守预筛选。 */
+export function compileRequestPhaseMatchers(
+  matchers: readonly RuleMatcher[],
+): CompiledMatcher {
+  return compileRuleMatchers(matchers.filter((matcher) => !(
+    matcher.type === 'status'
+    || (matcher.type === 'header' && matcher.phase === 'response')
+    || (matcher.type === 'mime' && matcher.phase === 'response')
+  )));
 }
 
 function compileStringMatch(

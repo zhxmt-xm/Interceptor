@@ -261,17 +261,25 @@ export class TemporaryCaptureStore {
     exchangeId: string,
     hits: readonly RuleHitInput[],
   ): void {
-    if (!this.exchanges.has(exchangeId)) {
+    const record = this.exchanges.get(exchangeId);
+    if (!record) {
       throw new Error(`Exchange '${exchangeId}' does not exist.`);
     }
     const counts = this.ruleHitsByExchange.get(exchangeId) ?? new Map();
+    const ruleIds = new Set(record.exchange.ruleIds ?? []);
     for (const hit of hits) {
       counts.set(
         hit.ruleId,
         (counts.get(hit.ruleId) ?? 0) + 1,
       );
+      ruleIds.add(hit.ruleId);
     }
     this.ruleHitsByExchange.set(exchangeId, counts);
+    this.exchanges.set(exchangeId, {
+      seq: record.seq,
+      exchange: { ...record.exchange, ruleIds: [...ruleIds] },
+    });
+    this.orderedIndexDirty = true;
   }
 
   /** 返回当前 Recording 按 rule id 聚合的命中次数。 */
@@ -461,6 +469,7 @@ export class TemporaryCaptureStore {
         value: header.value,
         ...(header.isPseudo ? { isPseudo: true } : {}),
         ...(header.ruleEffect ? { ruleEffect: header.ruleEffect } : {}),
+        ...(header.ruleId ? { ruleId: header.ruleId } : {}),
       }));
   }
 
@@ -483,6 +492,7 @@ export class TemporaryCaptureStore {
           : undefined,
       requestBytes: exchange.requestBytes ?? 0,
       responseBytes: exchange.responseBytes ?? 0,
+      ...(exchange.ruleIds?.length ? { ruleIds: [...exchange.ruleIds] } : {}),
     };
   }
 

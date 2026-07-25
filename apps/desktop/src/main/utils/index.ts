@@ -1,11 +1,13 @@
 /** Main-layer stateless DTO mappers and shared process runner. */
 
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 
 import type { DiagnosticLogRecord, RuleDefinition } from '@interceptor/core-protocol';
 
 import type {
   BreakpointEdit,
+  BodyExportRequest,
   CaptureStatus,
   ComposerRequest,
   CoreDiagnosticRecord,
@@ -84,6 +86,20 @@ export function toBodyDecodeOptions(value: unknown): {
   encoding?: string;
 } {
   return (value ?? {}) as { decode?: boolean; encoding?: string };
+}
+
+/** Pass a trusted body export intent through; Main still owns the final path. */
+export function toBodyExportRequest(value: unknown): BodyExportRequest {
+  return value as BodyExportRequest;
+}
+
+/** Reduce an untrusted URL-derived suggestion to a portable file basename. */
+export function toSafeBodyFileName(value: string): string {
+  const basename = path.win32.basename(path.posix.basename(value))
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  return basename || 'response-body.bin';
 }
 
 /** Pass trusted Renderer rules through to the Core rule engine. */

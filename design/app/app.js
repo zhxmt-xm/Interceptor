@@ -1,5 +1,5 @@
 // Interceptor design SPA — state controller.
-// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https,mitm,copy}).
+// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https,mitm,copy,requestMenu,ruleFilter,bodyPreview}).
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
@@ -90,6 +90,7 @@ function setState(s = {}) {
     delete app.dataset.filtersub;
     delete app.dataset.tip;
     delete app.dataset.ruleSelect;
+    delete app.dataset.requestMenu;
     if (!s.scene) app.dataset.scene = 'http';
     if (!s.tab) setInspTab('headers');
   }
@@ -133,6 +134,22 @@ function setState(s = {}) {
     if (s.ruleSelect) app.dataset.ruleSelect = s.ruleSelect;
     else delete app.dataset.ruleSelect;
   }
+  if ('requestMenu' in s) {
+    if (s.requestMenu) app.dataset.requestMenu = s.requestMenu;
+    else delete app.dataset.requestMenu;
+  }
+  if ('ruleFilter' in s) {
+      if ('ruleOptions' in s) {
+        if (s.ruleOptions) app.dataset.ruleOptions = s.ruleOptions;
+        else delete app.dataset.ruleOptions;
+      }
+    if (s.ruleFilter) app.dataset.ruleFilter = s.ruleFilter;
+    else delete app.dataset.ruleFilter;
+  }
+  if ('bodyPreview' in s) {
+    if (s.bodyPreview) app.dataset.bodyPreview = s.bodyPreview;
+    else delete app.dataset.bodyPreview;
+  }
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
@@ -144,10 +161,26 @@ function setState(s = {}) {
   positionFootpop();
   positionActionPopover();
   positionRuleSelectPopover();
+  positionRequestRuleMenu();
   syncCaptureListScrollbar();
   syncControls();
 }
 window.__setState = setState;
+
+function positionRequestRuleMenu(clientX, clientY) {
+  const menu = app.querySelector('.request-rule-menu');
+  const anchor = app.querySelector('[data-request-rule-anchor]');
+  if (!menu || !anchor || app.dataset.requestMenu !== 'open') return;
+  const appRect = app.getBoundingClientRect();
+  const targetRect = (anchor.querySelector('.hc') || anchor).getBoundingClientRect();
+  const parentRect = menu.offsetParent.getBoundingClientRect();
+  const desiredLeft = clientX ?? targetRect.left + targetRect.width / 2;
+  const desiredTop = clientY ?? targetRect.top + targetRect.height / 2;
+  const clampedLeft = Math.min(Math.max(desiredLeft, appRect.left + 8), appRect.right - menu.offsetWidth - 8);
+  const clampedTop = Math.min(Math.max(desiredTop, appRect.top + 8), appRect.bottom - menu.offsetHeight - 8);
+  menu.style.left = `${clampedLeft - parentRect.left}px`;
+  menu.style.top = `${clampedTop - parentRect.top}px`;
+}
 
 function positionActionPopover() {
   const trigger = app.querySelector('#addaction');
@@ -263,6 +296,14 @@ app.addEventListener('click', (e) => {
 
 window.addEventListener('resize', positionActionPopover);
 window.addEventListener('resize', positionRuleSelectPopover);
+window.addEventListener('resize', positionRequestRuleMenu);
+
+app.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('[data-request-rule-anchor]')) return;
+  e.preventDefault();
+  setState({ requestMenu: 'open' });
+  positionRequestRuleMenu(e.clientX, e.clientY);
+});
 
 // Settings section and guarded repair confirmation states.
 app.addEventListener('click', (e) => {
@@ -310,6 +351,15 @@ app.addEventListener('click', (e) => {
   if (e.target.closest('.iclose')) {
     app.classList.add('nodetail');
     return;
+  }
+  if (e.target.closest('.request-rule-menu .fi')) {
+    return setState({ view: 'rules', requestMenu: '' });
+  }
+  if (e.target.closest('[data-show-rule-requests]')) {
+    return setState({ view: 'capture', ruleFilter: 'rule-stub' });
+  }
+  if (e.target.closest('[data-rule-link]')) {
+    return setState({ view: 'rules' });
   }
   // Capture rows switch the inspector scene and reopen the detail pane.
   const captureRow = e.target.closest('[data-capture-row]');

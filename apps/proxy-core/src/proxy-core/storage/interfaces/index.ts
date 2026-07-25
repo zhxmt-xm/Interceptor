@@ -25,6 +25,7 @@ export interface HeaderInput {
   readonly value: string;
   readonly isPseudo?: boolean;
   readonly ruleEffect?: CaptureHeaderRuleEffect;
+  readonly ruleId?: string;
 }
 
 export type BodyDecodeStatus = "ok" | "failed" | "skipped";
@@ -76,6 +77,8 @@ export interface ExchangeInput {
   readonly responseBodyId?: string;
   readonly state: ExchangeState;
   readonly errorCode?: string;
+  /** 实际执行过 action 的规则 id，按首次命中顺序去重。 */
+  readonly ruleIds?: readonly string[];
   readonly headers?: readonly HeaderInput[];
   /** 请求/响应正文引用；提供时 appendExchanges 会绑定临时 hash metadata。 */
   readonly requestBody?: BodyRefInput;

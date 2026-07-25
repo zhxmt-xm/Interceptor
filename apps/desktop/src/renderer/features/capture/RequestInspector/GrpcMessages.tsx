@@ -8,6 +8,7 @@ import type {
   GrpcMessageSide,
   GrpcMessageSummary,
 } from '../../../../shared/desktop-api';
+import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented } from '../../../components';
 import { sizeLabel } from '../utils';
@@ -282,7 +283,11 @@ function copyPayload(
   message: GrpcMessageSummary,
   asText: boolean | undefined,
 ): void {
-  void readCompleteBody(bodyHash, message.payloadOffset, message.payloadLength)
+  void readCompleteBody(
+    bodyHash,
+    message.payloadOffset,
+    Math.min(message.payloadLength, BODY_PREVIEW_MAX_BYTES),
+  )
     .then((chunk) => {
       const value = asText
         ? new TextDecoder().decode(chunk.bytes)

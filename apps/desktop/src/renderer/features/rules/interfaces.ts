@@ -20,6 +20,8 @@ export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'br
 export interface RulesState {
   /** 已持久化的规则集 revision，用于乐观并发（rules.replace 的 expectedRevision）。 */
   revision: number;
+  /** 是否已从 Core 载入过规则集；用于跨 feature 创建草稿前去重加载。 */
+  initialized: boolean;
   /** 可编辑的规则草稿（本地副本）。 */
   rules: RuleDefinition[];
   selectedId: string | null;
@@ -41,6 +43,7 @@ export interface RulesState {
   select(id: string | null): void;
 
   addRule(name?: string): void;
+  addRuleDraft(rule: RuleDefinition): void;
   removeRule(id: string): void;
   toggleRule(id: string): void;
   renameRule(id: string, name: string): void;

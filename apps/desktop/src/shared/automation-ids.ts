@@ -55,10 +55,12 @@ export const AUTOMATION_IDS = {
     filterOption: {
       method: 'capture.filter.option.method',
       status: 'capture.filter.option.status',
+      rule: 'capture.filter.option.rule',
     },
     filterRemove: {
       method: 'capture.filter.remove.method',
       status: 'capture.filter.remove.status',
+      rule: 'capture.filter.remove.rule',
     },
     protocol: {
       all: 'capture.protocol.all',
@@ -145,6 +147,7 @@ export const AUTOMATION_IDS = {
     addAction: 'rules.add-action',
     editorName: 'rules.editor.name',
     editorEnabled: 'rules.editor.enabled',
+    showMatchingRequests: 'rules.show-matching-requests',
     conditionOption: {
       method: 'rules.condition.method',
       host: 'rules.condition.host',
@@ -279,6 +282,11 @@ export class AutomationIdFactory {
   /** Identify one captured exchange row by its stable Core exchange ID. */
   static captureRequestRow(exchangeId: string): string {
     return `${AUTOMATION_ID_PREFIXES.captureRequestRow}${exchangeId}`;
+  }
+
+  /** Identify one request-derived Rule action in the row context menu. */
+  static captureCreateRule(exchangeId: string, actionType: string): string {
+    return `capture.create-rule.${exchangeId}.${actionType}`;
   }
 
   /** Identify one captured WebSocket frame by exchange and sequence. */

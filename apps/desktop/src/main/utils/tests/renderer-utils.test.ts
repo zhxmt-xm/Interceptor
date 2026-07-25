@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   toBodyDecodeOptions,
+  toBodyExportRequest,
   toByteRange,
   toCoreSessionQuery,
   toDiagnosticsExportFilter,
@@ -11,6 +12,7 @@ import {
   toInsecureHosts,
   toRendererDiagnosticReport,
   toRendererDiagnosticRecord,
+  toSafeBodyFileName,
   toWebSocketFrameQuery,
 } from '..';
 
@@ -83,6 +85,10 @@ describe('renderer utils', () => {
       },
     };
     expect(toHarExportRequest(request)).toBe(request);
+    const bodyRequest = { bodyId: 'a'.repeat(64), suggestedName: '../video?.mp4' };
+    expect(toBodyExportRequest(bodyRequest)).toBe(bodyRequest);
+    expect(toSafeBodyFileName(bodyRequest.suggestedName)).toBe('video_.mp4');
+    expect(toSafeBodyFileName('..')).toBe('response-body.bin');
   });
 
   it('does not constrain body range or decode values', () => {

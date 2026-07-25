@@ -395,6 +395,140 @@ export const views = [
     ],
   },
   {
+    id: 'capture-request-rule-menu',
+    theme: 'light',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      requestMenu: 'open',
+    },
+    designShot: 'light/capture/request-rule-menu.png',
+    rendererActions: [
+      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'contextMenuText', text: 'api.github.com/user', index: 0 },
+    ],
+    targets: [
+      {
+        name: 'Request rule menu',
+        designSelector: '.request-rule-menu',
+        appSelector: '.ant-dropdown:visible',
+      },
+      'Create rule for this request',
+      { name: 'Rewrite header row', parity: 'request-rule-header' },
+      { name: 'Breakpoint row', parity: 'request-rule-breakpoint' },
+    ],
+  },
+  {
+    id: 'capture-rule-filter',
+    theme: 'light',
+    rendererNav: 'Rules & Map',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      ruleFilter: 'rule-auth',
+    },
+    designShot: 'light/capture/rule-filter.png',
+    rendererActions: [
+      { type: 'clickText', text: 'Rewrite auth header' },
+      { type: 'clickRole', role: 'button', name: 'Show matching requests' },
+    ],
+    targets: [
+      { name: 'Rule filter pill', parity: 'capture-rule-filter-pill' },
+      { name: 'Inspector host', parity: 'capture-inspector-host' },
+      'Rule appended',
+    ],
+  },
+  {
+    id: 'capture-add-rule-filter',
+    theme: 'light',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      pop: true,
+      filtersub: 'rule',
+    },
+    designShot: 'light/add-filter/rule.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Add filter' },
+      { type: 'clickText', text: 'Rule' },
+    ],
+    targets: [
+      { name: 'Rule filter option', parity: 'capture-rule-option-rule-auth' },
+    ],
+  },
+  {
+    id: 'capture-rule-filter-disabled',
+    theme: 'light',
+    noRuleHits: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      pop: true,
+      ruleOptions: 'empty',
+    },
+    designShot: 'light/capture/rule-filter-disabled.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Add filter' },
+    ],
+    targets: [
+      {
+        name: 'Disabled Rule filter',
+        designSelector: '.ompop .fi[data-field="rule"]',
+        appSelector: '[data-automation-id="capture.filter.option.rule"]',
+      },
+    ],
+  },
+  {
+    id: 'capture-body-preview-limited',
+    theme: 'light',
+    largeTextBody: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      tab: 'response',
+      bodyPreview: 'limited',
+    },
+    designShot: 'light/capture/body-preview-limited.png',
+    rendererActions: [
+      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: 'Response' },
+    ],
+    targets: [
+      {
+        name: 'Limited body preview',
+        designSelector: '.body-preview-limited',
+        appSelector: '[data-parity="capture-body-view"] .cm-editor',
+      },
+      'Showing the first 1 MB of 2.4 MB. The full body remains captured for export.',
+    ],
+  },
+  {
+    id: 'capture-body-media-save',
+    theme: 'light',
+    largeBody: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'expanded',
+      tab: 'response',
+      bodyPreview: 'media',
+    },
+    designShot: 'light/capture/body-media-save.png',
+    rendererActions: [
+      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: 'Response' },
+    ],
+    targets: [
+      { name: 'Media body', parity: 'capture-media-body' },
+      'Save body',
+    ],
+  },
+  {
     id: 'proxy-not-ready',
     theme: 'light',
     proxyReady: false,

@@ -38,6 +38,7 @@ import {
   readErrorMessage,
   readErrorName,
   toBodyDecodeOptions,
+  toBodyExportRequest,
   toBreakpointEdit,
   toByteRange,
   toComposerRequest,
@@ -52,6 +53,7 @@ import {
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
   toRendererStorageUsage,
+  toSafeBodyFileName,
   toWebSocketFrameQuery,
 } from './utils';
 
@@ -823,6 +825,32 @@ class DesktopApplication {
           end: result.payload.end,
           decodeStatus: result.payload.decodeStatus,
         };
+      },
+    );
+
+    // 单正文保存：Renderer 只提交 hash/建议文件名，路径由 Main 系统对话框生成。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.bodyExportStart,
+      async (event, value: unknown, title: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const request = toBodyExportRequest(value);
+        const selection = await dialog.showSaveDialog({
+          title: title as string,
+          defaultPath: toSafeBodyFileName(request.suggestedName),
+          properties: ['createDirectory', 'showOverwriteConfirmation'],
+        });
+        if (selection.canceled || !selection.filePath) {
+          return null;
+        }
+        const result = await this.coreRuntime.request({
+          type: 'body.export.start',
+          payload: {
+            jobId: `transfer-${randomUUID()}`,
+            filePath: selection.filePath,
+            bodyId: request.bodyId,
+          },
+        });
+        return result.payload.job;
       },
     );
 

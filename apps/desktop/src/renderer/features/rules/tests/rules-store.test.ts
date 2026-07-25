@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
-import { isRulesDirty } from '../utils';
+import { addRequestRuleDraft, selectRuleDraft } from '../data/useRulesData';
+import { createRuleFromRequest, isRulesDirty } from '../utils';
 
 function rule(id: string, priority: number): RuleDefinition {
   return {
@@ -16,9 +17,14 @@ function rule(id: string, priority: number): RuleDefinition {
 }
 
 describe('rulesStore ordering', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     useRulesStore.setState({
       revision: 1,
+      initialized: true,
       rules: [rule('first', 100), rule('second', 200), rule('third', 300)],
       selectedId: 'second',
       applied: [rule('first', 100), rule('second', 200), rule('third', 300)],
@@ -72,5 +78,68 @@ describe('rulesStore ordering', () => {
 
     expect(useRulesStore.getState().rules.map((item) => item.id))
       .toEqual(['z-rule', 'b-rule', 'a-rule']);
+  });
+
+  it('adds an exact-URL request rule as an unsaved selected draft', () => {
+    const draft = createRuleFromRequest(
+      400,
+      'Block api.test/items',
+      'https://api.test/items?active=true',
+      'block',
+    );
+    useRulesStore.getState().addRuleDraft(draft);
+
+    const state = useRulesStore.getState();
+    expect(state.selectedId).toBe(draft.id);
+    expect(state.rules.at(-1)).toMatchObject({
+      name: 'Block api.test/items',
+      priority: 400,
+      matchers: [{
+        type: 'url',
+        value: 'https://api.test/items?active=true',
+        mode: 'exact',
+      }],
+      actions: [{ type: 'block', mode: 'reset' }],
+    });
+    expect(isRulesDirty(state.rules, state.applied)).toBe(true);
+  });
+
+  it('loads Core rules before adding a Capture draft and resolves marker targets', async () => {
+    const persisted = rule('persisted', 100);
+    useRulesStore.setState({
+      revision: 0,
+      initialized: false,
+      rules: [],
+      selectedId: null,
+      applied: [],
+      diagnostics: [],
+      hits: {},
+      loading: false,
+      saving: false,
+      error: null,
+      conflict: false,
+    });
+    const getRules = vi.fn(async () => ({ revision: 7, rules: [persisted] }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    const draftId = await addRequestRuleDraft(
+      'Delay api.test/items',
+      'https://api.test/items',
+      'delay',
+    );
+
+    expect(getRules).toHaveBeenCalledTimes(1);
+    expect(draftId).toBeTruthy();
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 7,
+      initialized: true,
+      selectedId: draftId,
+    });
+    expect(useRulesStore.getState().rules).toHaveLength(2);
+
+    expect(await selectRuleDraft('persisted')).toBe(true);
+    expect(useRulesStore.getState().selectedId).toBe('persisted');
+    expect(await selectRuleDraft('deleted-rule')).toBe(false);
+    expect(useRulesStore.getState().selectedId).toBe('persisted');
   });
 });

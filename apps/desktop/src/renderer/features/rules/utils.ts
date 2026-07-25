@@ -100,6 +100,23 @@ export function createRule(priority: number, name = 'New rule'): RuleDefinition 
   };
 }
 
+/** 基于 Capture 请求完整 URL 创建一条 action 草稿；不会自动 Apply。 */
+export function createRuleFromRequest(
+  priority: number,
+  name: string,
+  url: string,
+  actionType: RuleActionType,
+): RuleDefinition {
+  return {
+    id: createRuleId(),
+    name,
+    enabled: true,
+    priority,
+    matchers: [{ type: 'url', value: url, mode: 'exact' }],
+    actions: [createAction(actionType)],
+  };
+}
+
 /** 按类型创建默认 matcher（供“Add condition”）。 */
 export function createMatcher(type: RuleMatcherType): RuleMatcher {
   switch (type) {

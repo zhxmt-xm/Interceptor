@@ -91,6 +91,8 @@ const api: InterceptorDesktopApi = {
       length,
       options,
     ),
+  startBodyExport: (request, title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.bodyExportStart, request, title),
   onCaptureEvents: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

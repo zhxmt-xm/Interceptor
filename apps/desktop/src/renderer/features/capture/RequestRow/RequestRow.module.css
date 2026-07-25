@@ -121,3 +121,67 @@
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
+.contextItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.contextItem:hover {
+  background: var(--hover);
+}
+.contextMenu {
+  width: 234px;
+}
+.contextTitle {
+  padding: 7px 9px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.23;
+}
+.contextGroup {
+  padding: 7px 9px 8px;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.23;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.contextItem > svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--text-2);
+}
+.contextName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.23;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contextHint {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.23;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

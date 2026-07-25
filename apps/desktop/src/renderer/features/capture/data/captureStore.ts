@@ -45,6 +45,13 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setStructuredFilter: (patch) =>
     set((state) => ({ filter: { ...state.filter, ...patch } })),
 
+  filterByRule: (ruleId) => set((state) => ({
+    filter: { ...EMPTY_FILTER, ruleIds: [ruleId] },
+    selectedId: [...state.rows].reverse()
+      .find((row) => row.ruleIds?.includes(ruleId))?.id ?? null,
+    listScrollTop: 0,
+  })),
+
   setCapturing: (capturing) => set({ capturing }),
 
   setTransferAction: (transferAction) => set({ transferAction }),

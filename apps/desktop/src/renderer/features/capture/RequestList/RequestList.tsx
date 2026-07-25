@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
 import { Count, cx, IconButton, Segmented } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import type { ProtocolSegment } from '../interfaces';
@@ -19,13 +20,21 @@ const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
 ];
 const ROW_HEIGHT = 52;
 
+export interface RequestListProps {
+  onCreateRequestRule: (
+    summary: CaptureExchangeSummary,
+    actionType: RuleActionType,
+    name: string,
+  ) => void;
+}
+
 /** 判断滚动容器是否已停靠在底部（容差一行高）。 */
 function isScrolledToBottom(element: HTMLDivElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= ROW_HEIGHT;
 }
 
 /** Filterable request table (protocol segment, counts and virtualized rows). */
-export function RequestList(): React.JSX.Element {
+export function RequestList({ onCreateRequestRule }: RequestListProps): React.JSX.Element {
   const { t } = useTranslation();
   const rows = useCaptureStore((state) => state.rows);
   const filter = useCaptureStore((state) => state.filter);
@@ -179,6 +188,7 @@ export function RequestList(): React.JSX.Element {
                   selected={row.id === selectedId}
                   offsetTop={virtualRow.start}
                   onSelect={(id) => select(id === selectedId ? null : id)}
+                  onCreateRule={onCreateRequestRule}
                 />
               );
             })}

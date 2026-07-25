@@ -195,6 +195,37 @@ export function typeLabel(mime: string | undefined): string {
   return sub || group || '—';
 }
 
+/** 从请求 URL 与 MIME 推导正文保存建议文件名；Main 会再次清理 basename。 */
+export function suggestedBodyFileName(
+  url: string,
+  mime: string | undefined,
+  fallback: 'request-body' | 'response-body',
+): string {
+  try {
+    const segment = new URL(url).pathname.split('/').filter(Boolean).at(-1);
+    if (segment) {
+      return decodeURIComponent(segment);
+    }
+  } catch {
+    /* URL 不可解析时使用 MIME fallback。 */
+  }
+  const essence = mime?.split(';', 1)[0]?.trim().toLowerCase();
+  const extension = essence === 'video/mp4'
+    ? 'mp4'
+    : essence === 'video/webm'
+      ? 'webm'
+      : essence === 'audio/mpeg'
+        ? 'mp3'
+        : essence === 'audio/mp4'
+          ? 'm4a'
+          : essence === 'audio/ogg'
+            ? 'ogg'
+            : essence === 'video/ogg'
+              ? 'ogv'
+              : 'bin';
+  return `${fallback}.${extension}`;
+}
+
 /** 人类可读的字节数；进行中或无正文显示破折号。 */
 export function sizeLabel(bytes: number, locale = 'en'): string {
   const format = (value: number, maximumFractionDigits: number): string =>
@@ -286,6 +317,12 @@ export function matchesCoreFilter(
       return false;
     }
   }
+  if (
+    filter.ruleIds.length > 0
+    && !filter.ruleIds.some((ruleId) => summary.ruleIds?.includes(ruleId))
+  ) {
+    return false;
+  }
   if (filter.search) {
     const needle = filter.search.toLowerCase();
     const haystack = `${summary.host ?? ''}${summary.path ?? ''}`.toLowerCase();
@@ -323,6 +360,21 @@ export function distinctStatusOptions(
   return [...counts.entries()]
     .map(([value, count]) => ({ value, count }))
     .sort((left, right) => left.value - right.value);
+}
+
+/** 当前列表实际命中过的 distinct rule id 及 Exchange 数量，按计数降序。 */
+export function distinctRuleOptions(
+  rows: readonly CaptureExchangeSummary[],
+): FilterValueOption<string>[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    for (const ruleId of new Set(row.ruleIds ?? [])) {
+      counts.set(ruleId, (counts.get(ruleId) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value));
 }
 
 /** 判断摘要是否命中当前 Segmented 分段（客户端视图过滤）。 */

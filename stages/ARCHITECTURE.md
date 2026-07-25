@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-23
+> 最后更新：2026-07-25
 > 范围：只描述已经实现并验证的代码；历史产品设计见 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -72,7 +72,7 @@ Main/Core 通信严格区分四类状态，单条业务数据或请求失败不�
 | 通道错误 | MessagePort 真实 `remote-close`，或 `postMessage` 发送失败 | Core 以 code 1 退出；Main 从进程退出路径恢复 | 是 |
 | 进程错误 | Core 启动失败、异常退出、启动期无 ready | Main 按 startup deadline 与指数退避恢复；fatal 组合根启动失败停止重试并提示 | 是（fatal 启动失败除外） |
 
-`CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，不做运行时长度、数量、枚举或内容校验。捕获的 URL、path、headers、MIME、status text 与 Body 不截断。Live Capture Body 小于 1 MiB 驻内存，超过后 spill 到 Core 临时目录；没有单正文或总量配额，磁盘 I/O 失败只跳过该正文捕获，不影响流量转发、RPC 或进程状态。
+`CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，不做运行时长度、数量、枚举或内容校验。捕获的 URL、path、headers、MIME、status text 与 Body 在 Core 存储/导出边界不截断。Live Capture Body 小于 1 MiB 驻内存，超过后 spill 到 Core 临时目录；没有单正文或总量配额，磁盘 I/O 失败只跳过该正文捕获，不影响流量转发、RPC 或进程状态。Renderer Inspector 是独立展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `1 MiB`，文本/Hex viewport 最大 `320px`，压缩解码输出同样限制为 `1 MiB`；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
 
 Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保持同一 Core PID 为 running 并记录 detail，不 kill/restart；显式应用退出时的 shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
 
@@ -86,7 +86,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 - **设计源**：`design/app` 只保留静态 `shell-v2` 根布局；旧 `layout=current` / `data-layout` 状态、六组 feature `.tv` 顶栏和 Layout 设计切换器已删除。其余 Capture/Rules/overlay 截图均由同一 Shell V2 布局生成，是当前细节场景而非旧版设计。
 - **自有窗口 Chrome**：Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 侧栏折叠按钮和 feature 名称，右侧固定 Minimize / Maximize-or-restore / Close 三按钮。Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。业务命令不进入 Header；UpdateNotification 是 Header 下方独立 overlay，不占 Header flex。
 - **Feature workspaces**：`features/{capture,rules,composer,breakpoints,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module；旧 Feature Topbar 已删除。Capture 由 `CaptureWorkbar` 承载 Recording/Omnibox/Import/Export；Rules、Composer、Breakpoints、Diagnostics 的业务命令分别位于列表、协议、暂停队列和日志内容工具栏。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
-- **Filtering / Rules 交互**：Capture Omnibox 支持 Method/Status/Host/Type/Duration 字段选择、规范化输入与 Enter 提交；Rules 支持八种 matcher 创建、列表操作菜单及 grip 拖放排序，Renderer 始终同步 `priority`，保证列表顺序与 Core 执行顺序一致。
+- **Filtering / Rules 交互**：Capture Omnibox 支持 Method/Status/Rule 级联多选与关键词搜索；多个 Rule id 按 OR 匹配，并与其它字段按 AND 组合。请求行右键菜单按 11 种 Action type 创建当前完整 URL 的 exact matcher 草稿，只打开 Rules editor、不自动 Apply。Rules editor 可一键切回 Capture 并清空旧条件、过滤当前 Rule 的命中请求；Inspector Rule marker 可直达仍存在的 Rule detail。Rules 继续支持八种 matcher、列表菜单及 grip 拖放排序，Renderer 始终同步 `priority`。
 - **共享组件库**：`components/` 扁平库，每组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部，取代旧 Account）。设计源只保留当前 Theme flyout 与 Language list，不保留替代变体。
 - **Automation contract**：`apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell 与 Capture 的已接线元素使用同一公共契约。其余 feature 在实现对应 workflow 时继续接线，禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。
 - **主题与语言**：四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。`renderer/i18n/` 用 `i18next` + `react-i18next` 注册 15 个本地静态完整 catalog，英语为默认/回退；切换同步 Ant `ConfigProvider.locale`、`html lang`、localStorage 与 `Intl` 格式。Renderer 经受限 `setUiLanguage` Preload 意图把 15 值枚举同步给 Main，Main 只用内存状态本地化自己持有的 HAR/archive/Diagnostics 文件对话框，不把路径或通用 IPC 暴露给 Renderer。
@@ -124,7 +124,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 
 - **引擎**：`proxy/entry.ts` 的 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理（`thenPassThrough` 转发，未配置解密时 CONNECT 字节直通），`request`/`response`/`abort` 事件按 id 关联采集 Exchange，写入结构化 `CaptureSink`（`StorageService`）。仅绑 loopback，由 `proxy.start`/`proxy.stop`/`proxy.status` 命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。
 - **Recording 暂停/清理**：Stop 只设置 `recording=false`，不停止 Mockttp/WebSocket listener，也不恢复系统代理；流量继续转发但新连接不落 Capture，已有记录与在途 Exchange 保留。Start 在同一 Core 代际恢复记录并继续追加。Clear 是唯一用户删除入口，重置 event queue/cutoff 并删除所有临时 Exchange/Body；系统代理只在应用退出、Core failure guarded recovery、用户显式 Restore 或 emergency repair 时恢复。
-- **HTTP/2（M6）**：有 CA（MITM）时 `getLocal({https, http2:true})` 对经 ALPN 声明 h2 的客户端启用 HTTP/2、H1-only 回落 http/1.1，上游由 passthrough 按源站 ALPN 独立协商 h2/h1 并做四组转换（无 CA 的明文代理不启用 h2）；`captureExchange` 采集 request/response header 与 `rawTrailers`（按 kind 落库，`:` 前缀标记 pseudo），protocol 记 `h2`/`http/1.1`。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
+- **HTTP/2（M6 + 大媒体修复）**：有 CA（MITM）时继续使用 Mockttp `http2:true`，双协议浏览器与 H2-only/gRPC 均可协商 H2，上游按源站 ALPN 独立协商 h2/h1。Mockttp 4.5 只要配置 `beforeResponse` 就会先 `streamToBuffer` 完整响应；Proxy 因此用动态 request matcher 分流：只有请求阶段可能命中响应 action 的请求才走带 `beforeResponse` 的 passthrough，其余走无 response hook 的流式 fallback rule。这样 67 MB Range 视频被取消时不会全量缓冲或污染复用 H2 session，同时保留浏览器 H2 pseudo-header/trailer。真实 BYD MITM 两页各首载+连续两次刷新、双协议/H2-only/gRPC 集成测试均覆盖。streamId/GOAWAY/RST/settings/背压 Mockttp 未暴露，待原生 http2 补齐。
 - **正文存储（M14）**：请求/响应/WS/gRPC payload 经 `StorageService.writeBody` 写入 TemporaryBodyStore，按 hash 去重；小正文驻内存，超过1MiB后异步spill；没有单正文或总量配额，不截断正文。
 - **捕获事件管线（T3.4）**：`CaptureEventQueue` 按 Exchange id 合并并分配单调 sequence，不按容量淘汰；`CoreApplication.flushCaptureEvents` 按窗口背压排空，经 `event-batch`/`event-ack` 推送 Main/Renderer。
 - **按需详情（M4 后端 + M6 扩展）**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块；`decode` 请求由 `proxy/utils/index.ts` 的 `decodeBody` 按 gzip/deflate/brotli（多层、容错）延迟解压并回传 `decodeStatus`。
@@ -137,7 +137,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 
 - **视图状态**：Zustand 持有当前 Core 的全部 `CaptureExchangeSummary` + id索引、filter、selection、scrollTop、Inspector tab/width；header/body 不进入 Renderer 全局状态。
 - **数据管线**：`useCaptureData` 常驻 App，跨 feature 持续接收事件；bootstrap/重连以500条分页批次同步当前 Core 全量 summary，过滤完全在 Renderer 派生。Stop/Start 保留行，Core generation 变化或 Clear 才清空。
-- **渲染**：`RequestList` 用固定 52px TanStack Virtual 行。`BodyView`、WebSocket 与 gRPC 查看/复制均读取完整正文；提供 Auto/Text/JSON/Hex、UTF-8 探测、JSON pretty print 与响应式 hex。
+- **渲染**：`RequestList` 用固定 52px TanStack Virtual 行。完整 header/body/WS/gRPC payload 留在 Core；Renderer 的文本/结构化 `BodyView`、WebSocket 行预览和 WS/gRPC Copy 只读取前 `1 MiB`，CodeMirror/Hex 在最大 `320px` viewport 内滚动。BodyView 继续提供 Auto/Text/JSON/Hex、UTF-8 探测、JSON pretty print 与响应式 hex；超限时明确显示预览大小与完整大小。`video/*`/`audio/*` 不预览字节，通过 `body.export.start` 在 Core 流式保存完整编码正文。
 - **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
 
 ## 证书与 HTTPS MITM 架构（M5，已落地）
@@ -240,8 +240,8 @@ sequenceDiagram
 - **模型**（`packages/core-protocol/src/rules.ts`）：RuleSet、RuleDefinition、Matcher 与 Action 是纯 TypeScript 数据。RPC 只校验信封关联，不对规则payload做运行时数量、长度或语义校验；规则请求失败只返回当前request错误。
 - **持久化**（`storage`，schema v2）：单行 `rule_set` 表（revision + rules_json）；`CaptureStore.saveRuleSet` 单事务乐观并发（expectedRevision 不符抛 RuleRevisionConflictError→conflict）、`loadRuleSet` 空库返回 revision 0；`rule_hit` 表（schema v1）记 RuleHit 审计。
 - **编译与执行**（`proxy-core/rules/`）：`matcher-compiler` 把 Matcher 编译为纯判定（host/path/url/query/header 值匹配为 contains 默认/exact/regex，大小写由可选 `caseSensitive` 控制、默认不敏感）；`action-executor` 产出 ActionOutcome（mutate/respond/block/delay/throttle），Map Local 路径规范化 + 允许根校验防穿越；`breakpoint-queue` waiting→continued/edited/dropped/timed_out 状态机（强制 timeout + 断线 closeAll）；`rule-engine` 持有 ruleSet 引用，evaluateRequest/evaluateResponse 按 priority/id 执行、聚合 outcome 与 RuleHit。
-- **接入与热切换**（`proxy-service` + `core-application`）：单 `thenPassThrough` 的 beforeRequest/beforeResponse 调 engine，据评估返回改写/短路/阻断/延迟；按 request id 暂存 hits，captureExchange 关联 exchange id 后写 rule_hit。CoreApplication 组合根创建 RuleEngine+BreakpointQueue 注入 proxy-service，存储就绪 loadRuleSet 热加载，`rules.replace` 成功后 `setRuleSet` 原子替换（不 reset server，热更新不丢流量）。
-- **Header 效果记录**：RuleEngine 在每次真实生效的 header action 后按序产出 `set/append/replace/remove`；ProxyService 与 request id 关联后随 Exchange header metadata 保存。Request 原始行表示客户端输入，规则效果行表示上游实际值；Response 原始行是浏览器实际收到的最终值，效果行补充被替代/删除历史。Renderer 去重 wire/effect 重复项并用四种语义色标记；HAR materialize 最终 request/response headers 且不导出 marker，Native Archive 完整保真。
+- **接入与热切换**（`proxy-service` + `core-application`）：RuleEngine 对当前热更新规则集实时预筛选 request/response action 候选，Proxy 以四档优先级注册“request+response hook / response-only hook / request-only hook / 无 hook 流式 fallback” passthrough；只有可能执行对应 action 的请求才进入 Mockttp callback 全量缓冲。Hook 据评估返回改写/短路/阻断/延迟；按 request id 暂存 hits，`captureExchange` 关联 exchange id 后写 rule hit。CoreApplication 组合根创建 RuleEngine+BreakpointQueue 注入 Proxy，存储就绪 `loadRuleSet` 热加载，`rules.replace` 成功后 `setRuleSet` 原子替换（不 reset server，热更新不丢流量）。
+- **Header 效果与规则身份**：RuleEngine 在每次真实生效的 header action 后按序产出 `set/append/replace/remove + ruleId`；ProxyService 与 request id 关联后随 Exchange header metadata 保存，并把实际执行过 action 的唯一 `ruleIds` 放入 summary/detail。Request 原始行表示客户端输入，规则效果行表示上游实际值；Response 原始行是浏览器实际收到的最终值，效果行补充被替代/删除历史。Renderer 去重 wire/effect 重复项并用四种语义色标记；HAR materialize 最终 wire headers 且不导出 marker，Native Archive 的 `exchange.rule_ids` / `message_headers.rule_id` 完整保真。
 - **命令**：`rules.get`/`rules.validate`/`rules.replace`（乐观并发）、`breakpoint.resolve`（continue/drop/timeout + 可选 edit）。
 - **未实现/限制**：throttle 带宽限速（Mockttp 无流控原语，evaluation 已聚合 throttleBps 待原生增强）；断点命中事件推送 Renderer 与规则 UI 在 M8。
 
@@ -249,21 +249,21 @@ sequenceDiagram
 
 > M8 把 M7 规则引擎能力接入 Renderer 并补齐 Composer、Breakpoint 编辑与 Connection/TLS 详情。Renderer payload 原样转交，Core RPC 只检查信封/version/关联字段。
 
-- **Rules workspace（T8.1）**：Renderer `features/rules/` 数据驱动——`rulesStore`（Zustand：`revision` + 可编辑规则草稿 + `diagnostics` + `hits` + `dirty`/`saving`/`conflict`）、`useRulesData`（挂载 `rules.get` 加载、`JSON.stringify(rules)` 去抖调 `rules.validate` 刷诊断、`rules.replace` 乐观并发保存并处理 `conflict` 重载、4s 轮询 `rules.hits`）；`MatcherRow` 覆盖 8 种 matcher、`ActionEditor` 覆盖 11 种 action 的受控编辑（header/query 名值自由输入）。Server 新增 `CaptureStore.countRuleHits`（按 `rule_id` 聚合 `rule_hit`）经 `count-rule-hits` worker 请求链路 + `rules.hits` handler。窄 API：`getRules`/`validateRules`/`replaceRules`（结构化 `RuleReplaceResult` 回传 conflict/invalid）/`getRuleHits`。
+- **Rules workspace（T8.1）**：Renderer `features/rules/` 数据驱动——`rulesStore`（Zustand：`revision` + 可编辑规则草稿 + `diagnostics` + `hits` + `dirty`/`saving`/`conflict`）、App 常驻 `useRulesData`（首次 `rules.get` 只加载一次，避免跨 feature 新草稿被覆盖；`JSON.stringify(rules)` 去抖调 `rules.validate`；`rules.replace` 乐观并发；4s 轮询 `rules.hits`）；`MatcherRow` 覆盖 8 种 matcher、`ActionEditor` 覆盖 11 种 action 的受控编辑（header/query 名值自由输入）。Server 的 `countRuleHits` 按 `rule_id` 聚合当前 Capture 命中。窄 API：`getRules`/`validateRules`/`replaceRules`（结构化 `RuleReplaceResult` 回传 conflict/invalid）/`getRuleHits`。
 - **Composer（T8.2）**：`ComposerService.send` 采集完整响应状态/头/正文/时序、TLS完整证书链与remoteAddress；未显式提供timeout时不设期限，Renderer历史不淘汰。
 - **Breakpoint 编辑（T8.3）**：`BreakpointQueue.suspend` 存请求/响应快照（ruleName/method/url/statusCode/headers/body）+ `deadline`，`list()` 返回快照；`RuleEngine` 加全局 break-on-match 开关（关闭时命中 breakpoint action 立即 continue），`awaitBreakpoint` 从可变 state 构建快照。`breakpoint.list`（返回 pending 快照 + enabled）/`breakpoint.configure`（设开关）handler；沿用 M7 `breakpoint.resolve`（continue/drop/edit）。Renderer `features/breakpoints/` 的 `breakpointsStore`（暂停列表 + 编辑草稿，轮询期间不覆盖用户编辑）+ `useBreakpoints`（1s 轮询 `breakpoint.list`、`resolveSelected`、`continueAllBreakpoints`、`setBreakOnMatch`）；UI `PausedQueue`（倒计时 + Continue all）/`BreakpointEditor`（编辑 header/body + Drop/Continue/Execute）。**采用轮询而非 push 事件通道**（请求在 Core 侧 await 挂起，1s 轮询延迟可接受）。窄 API：`listBreakpoints`/`resolveBreakpoint`/`setBreakpointsEnabled`。
 - **Connection/TLS 详情（T8.4）**：`ConnectionService.probe` 用 `tls.connect` 读取协议/套件/ALPN/authorized 与完整去重证书链；未显式提供timeout时不设期限。
 
 ## WebSocket 与 gRPC 架构（M9，已落地）
 
-> M9 在既有 Mockttp HTTP/1.1+HTTP/2 数据面上增加 WebSocket 应用消息和原生 gRPC framing 展示。payload 留在 Core Blob Store，Renderer 按需读取完整内容。
+> M9 在既有 Mockttp HTTP/1.1+HTTP/2 数据面上增加 WebSocket 应用消息和原生 gRPC framing 展示。payload 完整留在 Core Body Store，Renderer 按需读取有限预览。
 
 - **WebSocket 握手与生命周期**：Mockttp 独立 WebSocket rule 接收 HTTP/1.1 Upgrade；`websocket-request`/`accepted` 关联成 protocol=`ws` 的 101 Exchange。101 后 state=`request-complete`（open），clean close 经 `StorageService.updateExchange` 更新 completed 并发 `exchange-updated`。仅支持 RFC 6455 H1 Upgrade；RFC 8441 H2 Extended CONNECT 未实现。
 - **WebSocket message 数据面**：`proxy/proxy-websocket-bridge.ts` 以 Mockttp 本地 custom step 保留 listener/Upgrade/观测事件，用 `ws` 连接上游并串行桥接双向 text/binary message。独立 `Pause on message` 开关启用后，每条消息在 target `send()` 前 await `RuleEngine.pauseWebSocketMessage`→`BreakpointQueue`；支持 text/hex edit、continue/drop/timeout。
 - **WebSocket 存储/查询**：payload 写内容寻址 Blob；`websocket_frame` 存 exchange_id/seq/direction/opcode/payload_body_id/size/time。`websocket.frames` 按 seq opaque keyset 分页、可按方向过滤，只返回 metadata + `CaptureBodyRef`；Renderer 用 `body.read-range` 读取选中 payload。
 - **原生 gRPC 捕获**：没有独立 gRPC listener。Mockttp `http2:true` 的通用 `forAnyRequest().thenPassThrough()` 接收 H2 POST，`request/response` 完成事件保存 `application/grpc` / `application/grpc+*` body 与 grpc-status/message trailer。真实 TLS+ALPN h2 集成测试验证双方 envelope bytes 和 trailer。`application/grpc-web*` 明确不按原生 framing 解析。
 - **gRPC framing/query**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5-byte envelope；每条只从 Blob 读 5B header，再按 payload length 跳到下一 offset。无需 DB migration/新 Blob；payload 继续走既有 range。
-- **Renderer**：Capture Inspector 对 WS 与原生 gRPC 显示完整消息payload；compression/truncation/malformed只描述源帧事实。无descriptor时protobuf显示完整raw hex，Copy读取完整payload。
+- **Renderer**：Capture Inspector 对 WS 与原生 gRPC 显示前 `1 MiB` payload 预览；compression/truncation/malformed只描述源帧事实。无 descriptor 时 protobuf 显示有限 raw hex，Copy 复制当前有限预览；完整 payload 仍保存在 Core。
 - **窄 API**：M9意图API的payload原样转交，Core protocol只校验RPC信封/version/关联字段。
 - **已知边界**：gRPC 当前依赖 Mockttp 完成后的 body，Unary 可展示；长时间 server-streaming/bidi-streaming 需等 stream 结束。实时消息需接 `request-body-data`/`response-body-data` 并维护跨 chunk framing；descriptor/reflection、message-level 解压均未实现。
 

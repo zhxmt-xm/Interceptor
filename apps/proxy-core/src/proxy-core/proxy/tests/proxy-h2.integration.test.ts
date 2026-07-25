@@ -19,8 +19,8 @@ import { CaptureEventQueue } from '../proxy-capture-event-queue';
 
 /**
  * M6 T6.1/T6.2 端到端集成：真实 HTTP/2 客户端经代理 MITM 隧道，用 ALPN h2 连到真实
- * HTTP/2 源站。验证 Mockttp 的 http2:'fallback' 下游 + passthrough 上游 h2 协商 +
- * 四组协议转换开箱可用，且捕获管线把 Exchange 记为 protocol='h2'。
+ * HTTP/2 源站。验证 Mockttp 的 http2:true 对双协议与 H2-only/gRPC 下游协商 H2，
+ * 同时按请求动态避开无关 beforeResponse 缓冲。
  */
 class RecordingSink implements CaptureSink {
   readonly sessions: CaptureSessionInput[] = [];
@@ -180,7 +180,7 @@ function h2ViaProxy(
         {
           socket,
           servername: originHost,
-          ALPNProtocols: ['h2', 'http/1.1'],
+          ALPNProtocols: ['h2'],
           ca: [caCert],
         },
         () => {
@@ -213,6 +213,42 @@ function h2ViaProxy(
           req.end();
         },
       );
+      tlsSocket.on('error', reject);
+    });
+    socket.on('error', reject);
+  });
+}
+
+/** 只协商 TLS ALPN，用于验证普通双协议客户端仍优先 H2。 */
+function negotiateAlpnViaProxy(
+  proxyPort: number,
+  originHost: string,
+  originPort: number,
+  caCert: string,
+): Promise<string | false> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(proxyPort, '127.0.0.1', () => {
+      socket.write(
+        `CONNECT ${originHost}:${originPort} HTTP/1.1\r\n` +
+          `Host: ${originHost}:${originPort}\r\n\r\n`,
+      );
+    });
+    socket.once('data', (chunk: Buffer) => {
+      const statusLine = chunk.toString('utf8').split('\r\n', 1)[0] ?? '';
+      if (!statusLine.includes(' 200 ')) {
+        reject(new Error(`CONNECT failed: ${statusLine}`));
+        return;
+      }
+      const tlsSocket = tls.connect({
+        socket,
+        servername: originHost,
+        ALPNProtocols: ['h2', 'http/1.1'],
+        ca: [caCert],
+      }, () => {
+        const negotiated = tlsSocket.alpnProtocol ?? false;
+        tlsSocket.destroy();
+        resolve(negotiated);
+      });
       tlsSocket.on('error', reject);
     });
     socket.on('error', reject);
@@ -293,6 +329,23 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     await origin?.close();
     proxy = null;
     origin = null;
+  });
+
+  it('prefers HTTP/2 for dual-protocol browser clients', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const sink = new RecordingSink();
+    proxy = new ProxyService(sink, new CaptureEventQueue());
+    await proxy.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    const address = await proxy.start();
+    origin = await startH2Origin(originCertificate.cert, originCertificate.key);
+
+    await expect(negotiateAlpnViaProxy(
+      address.port,
+      'localhost',
+      origin.port,
+      ca.cert,
+    )).resolves.toBe('h2');
   });
 
   it('captures an HTTP/2 exchange with h2 downstream and h2 upstream', async () => {

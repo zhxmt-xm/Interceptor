@@ -27,6 +27,7 @@ export class CoreRpcClient {
     CoreResult['type']
   > = {
     'body.read-range': 'body.range',
+    'body.export.start': 'transfer.job',
     'breakpoint.resolve': 'breakpoint.resolution',
     'breakpoint.list': 'breakpoint.pending',
     'breakpoint.configure': 'breakpoint.config',

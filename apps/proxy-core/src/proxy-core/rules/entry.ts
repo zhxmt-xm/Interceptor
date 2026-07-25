@@ -39,6 +39,12 @@ export class RuleEngine {
   private ruleSet: RuleSet = { revision: 0, rules: [] };
   /** 当前启用且已编译的规则，按优先级排序。 */
   private compiled: readonly CompiledRule[] = [];
+  /** 含响应动作的规则及其请求阶段预筛选器。 */
+  private responseCandidates: readonly CompiledRule[] = [];
+  /** 含请求动作且可在请求阶段完整判定的规则。 */
+  private requestCandidates: readonly CompiledRule[] = [];
+  /** 可能改变响应规则 request 匹配字段的请求规则。 */
+  private responseContextMutators: readonly CompiledRule[] = [];
   /** 全局断点命中开关。 */
   private breakpointsOn = true;
   /** 共享等待中断点队列。 */
@@ -72,6 +78,16 @@ export class RuleEngine {
         rule,
         matcher: RuleUtils.compileRuleMatchers(rule.matchers),
       }));
+    this.responseCandidates = this.compiled
+      .filter(({ rule }) => rule.actions.some(RuleUtils.isResponseAction))
+      .map(({ rule }) => ({
+        rule,
+        matcher: RuleUtils.compileRequestPhaseMatchers(rule.matchers),
+      }));
+    this.requestCandidates = this.compiled
+      .filter(({ rule }) => rule.actions.some(RuleUtils.isRequestAction));
+    this.responseContextMutators = this.requestCandidates
+      .filter(({ rule }) => rule.actions.some(RuleUtils.mutatesResponseMatchContext));
   }
 
   /** 返回当前规则集 revision。 */
@@ -82,6 +98,20 @@ export class RuleEngine {
   /** 返回是否存在至少一条启用规则。 */
   get hasRules(): boolean {
     return this.compiled.length > 0;
+  }
+
+  /** 判断请求是否可能命中响应动作；用于避免无关响应进入 Mockttp 全量缓冲 hook。 */
+  mightHandleResponse(context: MatchContext): boolean {
+    return this.responseCandidates.some(({ matcher }) => matcher(context))
+      || (
+        this.responseCandidates.length > 0
+        && this.responseContextMutators.some(({ matcher }) => matcher(context))
+      );
+  }
+
+  /** 判断请求是否可能命中请求 action；用于避免无关请求进入 Mockttp 全量缓冲 hook。 */
+  mightHandleRequest(context: MatchContext): boolean {
+    return this.requestCandidates.some(({ matcher }) => matcher(context));
   }
 
   /** 全局“break on match”开关；关闭时命中 breakpoint action 直接放行不挂起。 */
@@ -155,7 +185,11 @@ export class RuleEngine {
           continue;
         }
         if (action.type === 'header' && action.phase === 'request') {
-          headerEffects.push(...RuleUtils.buildHeaderEffects(action, previousHeaderValues));
+          headerEffects.push(...RuleUtils.buildHeaderEffects(
+            compiled.rule.id,
+            action,
+            previousHeaderValues,
+          ));
         }
         hits.push(
           this.toHit(compiled.rule, 'request', outcome.summary.action, outcome.summary.detail),
@@ -222,7 +256,11 @@ export class RuleEngine {
           continue;
         }
         if (action.type === 'header' && action.phase === 'response') {
-          headerEffects.push(...RuleUtils.buildHeaderEffects(action, previousHeaderValues));
+          headerEffects.push(...RuleUtils.buildHeaderEffects(
+            compiled.rule.id,
+            action,
+            previousHeaderValues,
+          ));
         }
         hits.push(
           this.toHit(compiled.rule, 'response', outcome.summary.action, outcome.summary.detail),

@@ -3,12 +3,14 @@ import { useRef, useState } from 'react';
 import { Splitter } from '../../../components';
 import { RuleEditor } from '../RuleEditor/RuleEditor';
 import { RuleList } from '../RuleList/RuleList';
-import { useRulesData } from '../data/useRulesData';
 import styles from './RulesMain.module.css';
 
+export interface RulesMainProps {
+  onShowRuleRequests: (ruleId: string) => void;
+}
+
 /** Rules workspace body: rule list, draggable splitter and rule editor. */
-export function RulesMain(): React.JSX.Element {
-  useRulesData();
+export function RulesMain({ onShowRuleRequests }: RulesMainProps): React.JSX.Element {
   const [listWidth, setListWidth] = useState(432);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +39,7 @@ export function RulesMain(): React.JSX.Element {
     >
       <RuleList />
       <Splitter onPointerDown={startListDrag} />
-      <RuleEditor />
+      <RuleEditor onShowRuleRequests={onShowRuleRequests} />
     </div>
   );
 }

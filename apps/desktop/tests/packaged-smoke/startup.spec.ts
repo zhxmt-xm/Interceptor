@@ -464,6 +464,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setWebSocketBreakpointsEnabled',
         'startArchiveExport',
         'startArchiveImport',
+        'startBodyExport',
         'startCapture',
         'startDiagnosticsExport',
         'startHarExport',

@@ -13,6 +13,7 @@ import {
 
 export const useRulesStore = create<RulesState>((set) => ({
   revision: 0,
+  initialized: false,
   rules: [],
   applied: [],
   selectedId: null,
@@ -32,6 +33,7 @@ export const useRulesStore = create<RulesState>((set) => ({
           : (rules[0]?.id ?? null);
       return {
         revision: ruleSet.revision,
+        initialized: true,
         rules,
         applied: cloneRules(ruleSet.rules),
         selectedId,
@@ -60,6 +62,9 @@ export const useRulesStore = create<RulesState>((set) => ({
       const rule = createRule(nextPriority(state.rules), name);
       return { rules: [...state.rules, rule], selectedId: rule.id };
     }),
+
+  addRuleDraft: (rule) =>
+    set((state) => ({ rules: [...state.rules, rule], selectedId: rule.id })),
 
   removeRule: (id) =>
     set((state) => {

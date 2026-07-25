@@ -25,6 +25,7 @@ export const rulesEnglishMessages = {
   'rules.ruleName': 'Rule name',
   'rules.enabled': 'Enabled',
   'rules.disabled': 'Disabled',
+  'rules.showMatchingRequests': 'Show matching requests',
   'rules.deleteRule': 'Delete rule',
   'rules.match': 'Match',
   'rules.addCondition': 'Add condition',

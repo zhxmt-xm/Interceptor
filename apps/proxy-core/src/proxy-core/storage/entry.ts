@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { open, rename, rm } from 'node:fs/promises';
+
 import type {
   CaptureExchangeDetail,
   RuleDefinition,
@@ -5,6 +8,10 @@ import type {
 } from '@interceptor/core-protocol';
 
 import type { DiagnosticsRecorder } from '../core-diagnostics';
+import type {
+  TransferProgressListener,
+  TransferResult,
+} from '../transfer/interfaces';
 import type { ExchangeResponsePatch } from './interfaces';
 import type {
   CaptureSessionInput,
@@ -194,6 +201,49 @@ export class StorageService {
     length: number,
   ): Promise<Buffer> {
     return this.bodyStore.readRange(blobHash, offset, length);
+  }
+
+  /** 将完整编码正文流式、原子保存到 Main 选择的路径。 */
+  async exportBodyToFile(
+    blobHash: string,
+    filePath: string,
+    signal: AbortSignal,
+    onProgress: TransferProgressListener,
+  ): Promise<TransferResult> {
+    const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+    const total = this.bodyStore.getSize(blobHash);
+    const output = await open(temporaryPath, 'wx');
+    let source: ReturnType<TemporaryBodyStore['openReadStream']> | null = null;
+    let processed = 0;
+
+    try {
+      if (signal.aborted) {
+        throw signal.reason ?? new DOMException('Transfer cancelled.', 'AbortError');
+      }
+      source = this.bodyStore.openReadStream(blobHash);
+      for await (const chunk of source) {
+        if (signal.aborted) {
+          throw signal.reason ?? new DOMException('Transfer cancelled.', 'AbortError');
+        }
+        const buffer = Buffer.from(chunk);
+        await output.writeFile(buffer);
+        processed += buffer.byteLength;
+        onProgress({ processed, total });
+      }
+      if (signal.aborted) {
+        throw signal.reason ?? new DOMException('Transfer cancelled.', 'AbortError');
+      }
+      await output.sync();
+      await output.close();
+      await rm(filePath, { force: true });
+      await rename(temporaryPath, filePath);
+      return { processed, total, warnings: [] };
+    } catch (error) {
+      source?.destroy();
+      await output.close().catch(() => undefined);
+      await rm(temporaryPath, { force: true });
+      throw error;
+    }
   }
 
   /** 释放全部临时 Capture/Body 并关闭持久 RuleStore。 */

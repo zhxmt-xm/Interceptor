@@ -135,10 +135,11 @@ function buildSourceCapture(): TemporaryCaptureStore {
       requestBytes: BODY_BYTES.length,
       responseBytes: 0,
       state: 'completed',
+      ruleIds: ['rule-a'],
       headers: [
         { kind: 'request', name: ':method', value: 'POST', isPseudo: true },
         { kind: 'request', name: 'authorization', value: 'Bearer secret' },
-        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set' },
+        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set', ruleId: 'rule-a' },
         { kind: 'response', name: 'content-type', value: 'application/json' },
         { kind: 'response-trailer', name: 'grpc-status', value: '0' },
       ],
@@ -282,6 +283,7 @@ describe('ArchiveService', () => {
       statusCode: 201,
       statusText: 'Created',
       state: 'completed',
+      ruleIds: ['rule-a'],
     });
     const headerNames = exchange?.headers?.map((header) => `${header.kind}:${header.name}`);
     expect(headerNames).toContain('request::method');
@@ -292,6 +294,9 @@ describe('ArchiveService', () => {
     expect(
       exchange?.headers?.find((header) => header.name === 'x-rule')?.ruleEffect,
     ).toBe('set');
+    expect(
+      exchange?.headers?.find((header) => header.name === 'x-rule')?.ruleId,
+    ).toBe('rule-a');
     expect(exchange?.requestBody?.blobHash).toBe(BODY_HASH);
     expect(importFake.blobs.get(BODY_HASH)?.equals(BODY_BYTES)).toBe(true);
   });

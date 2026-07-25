@@ -8,7 +8,7 @@ import type {
 } from './interfaces';
 
 /**
- * HAR 与原生 archive 共用的异步文件任务管理器。
+ * HAR、原生 archive、诊断与单正文保存共用的异步文件任务管理器。
  *
  * 保存全部运行中与完成任务，按 jobId 关联进度、终态和取消，且公开快照绝不
  * 泄漏绝对路径或 AbortController。HarService 与 ArchiveService 注入同一个实例，

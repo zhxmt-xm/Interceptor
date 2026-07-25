@@ -143,12 +143,14 @@
 .kv .key {
   font-family: var(--font-mono);
   font-size: 11.5px;
+  line-height: 18px;
   color: var(--text-2);
   overflow-wrap: anywhere;
 }
 .kv .value {
   font-family: var(--font-mono);
   font-size: 11.5px;
+  line-height: 18px;
   color: var(--text);
   word-break: break-all;
 }
@@ -161,7 +163,7 @@
   display: inline-flex;
   align-items: center;
   height: 18px;
-  margin-left: 7px;
+  margin-left: 4px;
   padding: 0 6px;
   border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
   border-radius: 5px;
@@ -170,8 +172,15 @@
   font-family: var(--font-ui);
   font-size: 9.5px;
   font-weight: 600;
-  vertical-align: middle;
+  line-height: normal;
+  vertical-align: top;
   white-space: nowrap;
+}
+button.ruleEffect {
+  cursor: pointer;
+}
+button.ruleEffect:hover {
+  filter: brightness(0.96);
 }
 .ruleEffect[data-effect='append'] {
   border-color: color-mix(in srgb, var(--blue) 24%, transparent);
@@ -189,13 +198,12 @@
   color: var(--red);
 }
 .copyBtn.copyBtn {
-  display: inline-flex;
-  vertical-align: middle;
-  width: 22px;
-  height: 22px;
-  margin-left: 6px;
+  display: inline-grid;
+  place-items: center;
+  vertical-align: top;
+  width: 18px;
+  height: 18px;
   border-radius: 5px;
-  transform: translateY(2px);
   opacity: 0;
   transition: opacity 0.12s ease;
 }

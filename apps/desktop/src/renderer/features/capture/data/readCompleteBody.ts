@@ -7,8 +7,8 @@ export interface CompleteBodyRead {
 }
 
 /**
- * 无损读取指定正文范围。1MiB 只是一条 IPC 的调度块大小，循环没有总量上限。
- * content-encoding 解码需要完整压缩流，因此 decode 请求由 Core 一次完成。
+ * 读取调用方指定的正文范围。1MiB 只是一条 IPC 的调度块大小；预览总量由调用方限制。
+ * content-encoding 解码需要完整压缩输入，因此 decode 请求由 Core 流式产出有限明文前缀。
  */
 export async function readCompleteBody(
   bodyHash: string,

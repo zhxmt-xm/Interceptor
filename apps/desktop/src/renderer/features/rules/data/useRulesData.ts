@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 
+import type { RuleActionType } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
+import { createRuleFromRequest, nextPriority } from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
 const VALIDATE_DEBOUNCE_MS = 300;
+let initialLoad: Promise<void> | null = null;
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -22,6 +25,49 @@ export async function loadRules(): Promise<void> {
   } catch (error) {
     useRulesStore.getState().loadFailed(describeError(error));
   }
+}
+
+/** 首次跨 feature 使用 Rules 前只发起一次加载，避免并发结果覆盖新草稿。 */
+export function ensureRulesLoaded(): Promise<void> {
+  if (useRulesStore.getState().initialized) {
+    return Promise.resolve();
+  }
+  initialLoad ??= loadRules().finally(() => {
+    initialLoad = null;
+  });
+  return initialLoad;
+}
+
+/** 创建一条由 Capture 请求派生的未应用规则草稿。 */
+export async function addRequestRuleDraft(
+  name: string,
+  url: string,
+  actionType: RuleActionType,
+): Promise<string | null> {
+  await ensureRulesLoaded();
+  const store = useRulesStore.getState();
+  if (!store.initialized) {
+    return null;
+  }
+  const rule = createRuleFromRequest(
+    nextPriority(store.rules),
+    name,
+    url,
+    actionType,
+  );
+  store.addRuleDraft(rule);
+  return rule.id;
+}
+
+/** 选择一条仍存在的规则；已删除的历史 marker 不触发导航。 */
+export async function selectRuleDraft(ruleId: string): Promise<boolean> {
+  await ensureRulesLoaded();
+  const store = useRulesStore.getState();
+  if (!store.rules.some((rule) => rule.id === ruleId)) {
+    return false;
+  }
+  store.select(ruleId);
+  return true;
 }
 
 /** 拉取规则命中计数；失败静默（命中计数为增强信息，不阻塞编辑）。 */
@@ -77,7 +123,7 @@ export async function applyRules(): Promise<void> {
 export function useRulesData(): void {
   // 挂载时加载规则集与命中计数。
   useEffect(() => {
-    void loadRules();
+    void ensureRulesLoaded();
     void loadRuleHits();
   }, []);
 

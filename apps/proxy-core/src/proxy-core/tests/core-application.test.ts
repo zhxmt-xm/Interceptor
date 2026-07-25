@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import process from 'node:process';
+import { Readable } from 'node:stream';
 import zlib from 'node:zlib';
 
 import type { CoreToMainMessage } from '@interceptor/core-protocol';
@@ -347,6 +348,16 @@ describe('CoreApplication', () => {
         calls.push('body');
         return Promise.resolve(Buffer.from('hello'));
       },
+      exportBodyToFile: (
+        _bodyId: string,
+        _filePath: string,
+        _signal: AbortSignal,
+        onProgress: (progress: { processed: number; total: number }) => void,
+      ) => {
+        calls.push('body-export');
+        onProgress({ processed: 5, total: 5 });
+        return Promise.resolve({ processed: 5, total: 5, warnings: [] });
+      },
       dispose: () => Promise.resolve(),
       attachDiagnostics: () => undefined,
     } as unknown as StorageService;
@@ -439,6 +450,23 @@ describe('CoreApplication', () => {
 
     await expect(
       application.executeCommand(
+        {
+          type: 'body.export.start',
+          payload: {
+            jobId: 'body-export-test',
+            filePath: 'C:\\Exports\\body.bin',
+            bodyId: 'a'.repeat(64),
+          },
+        },
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      type: 'transfer.job',
+      payload: { job: { kind: 'body-export', state: 'running' } },
+    });
+
+    await expect(
+      application.executeCommand(
         { type: 'storage.cleanup', payload: { scope: 'all' } },
         signal,
       ),
@@ -450,6 +478,7 @@ describe('CoreApplication', () => {
       'detail',
       'websocket',
       'body',
+      'body-export',
       'cleanup',
     ]);
     expect(cleanupScopes).toEqual([
@@ -463,6 +492,7 @@ describe('CoreApplication', () => {
     const storage = {
       initialize: () => Promise.resolve(),
       readBodyRange: () => Promise.resolve(gzipped),
+      openBlobStream: () => Readable.from([gzipped]),
       dispose: () => Promise.resolve(),
       attachDiagnostics: () => undefined,
     } as unknown as StorageService;

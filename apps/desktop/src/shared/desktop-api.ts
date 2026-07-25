@@ -30,6 +30,8 @@ import type {
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
 
+export { BODY_PREVIEW_MAX_BYTES } from '@interceptor/core-protocol';
+
 export type {
   BreakpointEdit,
   CaptureBodyRef,
@@ -244,8 +246,14 @@ export interface BodyChunk {
   offset: number;
   data: Uint8Array;
   end: boolean;
-  /** 请求解码时的结果：ok/skipped/failed；未请求解码时为 undefined。 */
+  /** 请求解码时的结果：ok/limited/skipped/failed；未请求解码时为 undefined。 */
   decodeStatus?: string;
+}
+
+/** Renderer 提交的单正文保存意图；目录与最终路径始终由 Main 选择。 */
+export interface BodyExportRequest {
+  bodyId: string;
+  suggestedName: string;
 }
 
 /** 面向 Renderer 的 Root CA 状态；只含公开元数据，绝不含私钥。 */
@@ -384,6 +392,7 @@ export const DESKTOP_IPC_CHANNELS = {
   websocketBreakpointConfigure: 'websocket:breakpoint-configure',
   grpcMessages: 'grpc:messages',
   bodyReadRange: 'body:read-range',
+  bodyExportStart: 'body:export-start',
   caStatus: 'ca:status',
   caGenerate: 'ca:generate',
   caInstall: 'ca:install',
@@ -451,6 +460,10 @@ export interface InterceptorDesktopApi {
     length: number,
     options?: { decode?: boolean; encoding?: string },
   ): Promise<BodyChunk>;
+  startBodyExport(
+    request: BodyExportRequest,
+    title: string,
+  ): Promise<TransferJobSnapshot | null>;
   onCaptureEvents(
     listener: (events: CaptureExchangeEvent[]) => void,
   ): () => void;

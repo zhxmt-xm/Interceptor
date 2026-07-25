@@ -49,9 +49,10 @@ class ArchiveWorkerFixture {
       startedAt: index,
       completedAt: index + 10,
       state: 'completed',
+      ruleIds: ['rule-a'],
       headers: [
         { kind: 'request', name: ':method', value: 'GET', isPseudo: true },
-        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set' },
+        { kind: 'request', name: 'x-rule', value: 'new', ruleEffect: 'set', ruleId: 'rule-a' },
         { kind: 'response-trailer', name: 'grpc-status', value: '0' },
       ],
       responseBody: {
@@ -139,10 +140,11 @@ describe.skipIf(!existsSync(workerBundle))(
       expect(pages[0]?.exchanges[0]).toMatchObject({
         exchange: {
           id: 'exchange-0',
+          ruleIds: ['rule-a'],
           responseBody: { blobHash: '0'.repeat(64) },
           headers: [
             { name: ':method', isPseudo: true },
-            { name: 'x-rule', ruleEffect: 'set' },
+            { name: 'x-rule', ruleEffect: 'set', ruleId: 'rule-a' },
             { name: 'grpc-status' },
           ],
         },

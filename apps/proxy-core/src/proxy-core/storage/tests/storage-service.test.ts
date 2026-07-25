@@ -139,4 +139,64 @@ describe('StorageService temporary lifecycle', () => {
     });
     await reopened.dispose();
   });
+
+  it('streams a complete body to an atomic user-selected file', async () => {
+    const storage = new StorageService();
+    await storage.initialize();
+    const expected = Buffer.alloc(1024 * 1024 + 17, 0x5a);
+    const body = await storage.writeBody((async function* () {
+      yield expected.subarray(0, 700_000);
+      yield expected.subarray(700_000);
+    })());
+    const destination = path.join(fixture.directory, 'saved-body.txt');
+    const progress: Array<{ processed: number; total: number }> = [];
+    await fs.writeFile(destination, 'old');
+
+    const result = await storage.exportBodyToFile(
+      body.hash,
+      destination,
+      new AbortController().signal,
+      (update) => progress.push(update),
+    );
+
+    expect(await fs.readFile(destination)).toEqual(expected);
+    expect(result).toEqual({
+      processed: expected.byteLength,
+      total: expected.byteLength,
+      warnings: [],
+    });
+    expect(progress.at(-1)).toEqual({
+      processed: expected.byteLength,
+      total: expected.byteLength,
+    });
+    await storage.dispose();
+  });
+
+  it('leaves no destination or temp file when body export cannot start', async () => {
+    const storage = new StorageService();
+    await storage.initialize();
+    const destination = path.join(fixture.directory, 'cancelled.bin');
+    const controller = new AbortController();
+    controller.abort();
+    const body = await storage.writeBody((async function* () {
+      yield Buffer.from('payload');
+    })());
+
+    await expect(storage.exportBodyToFile(
+      body.hash,
+      destination,
+      controller.signal,
+      () => undefined,
+    )).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(storage.exportBodyToFile(
+      'missing',
+      destination,
+      new AbortController().signal,
+      () => undefined,
+    )).rejects.toThrow("Temporary body 'missing' does not exist.");
+    expect(await fs.readdir(fixture.directory)).not.toContain('cancelled.bin');
+    expect((await fs.readdir(fixture.directory)).some((name) => name.endsWith('.tmp')))
+      .toBe(false);
+    await storage.dispose();
+  });
 });

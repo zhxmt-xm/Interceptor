@@ -152,18 +152,16 @@ export class ProxyService {
 
   /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM 与 HTTP/2。 */
   private async startServer(port?: number): Promise<ProxyAddress> {
-    // http2:true —— 有 HTTPS(MITM) 时对经 ALPN 声明支持 h2 的客户端启用 HTTP/2，H1-only
-    // 客户端按 ALPN 协商回落 http/1.1。上游由 Mockttp passthrough 按源站 ALPN 独立协商
-    // h2/h1 并做四组协议转换。无 HTTPS(明文显式代理) 时不启用 h2（H2 需 TLS ALPN）。
+    // H2-capable clients negotiate HTTP/2; H1-only clients fall back through ALPN.
     let server: Mockttp;
     if (this.tlsConfig.ca) {
       server = getLocal({
-          https: {
-            key: this.tlsConfig.ca.key,
-            cert: this.tlsConfig.ca.cert,
-          },
-          http2: true,
-        });
+        https: {
+          key: this.tlsConfig.ca.key,
+          cert: this.tlsConfig.ca.cert,
+        },
+        http2: true,
+      });
     } else {
       this.tlsPassthroughIdentity ??= await generateCACertificate();
       server = getLocal({
@@ -181,10 +179,42 @@ export class ProxyService {
       this.tlsConfig.insecureHosts.length > 0
         ? [...this.tlsConfig.insecureHosts]
         : undefined;
-    await server.forAnyRequest().thenPassThrough({
+    if (this.ruleEngine) {
+      await server.forAnyRequest()
+        .matching((request) => {
+          const context = ProxyUtils.buildRequestContext(request);
+          return Boolean(
+            this.ruleEngine?.mightHandleRequest(context)
+            && this.ruleEngine.mightHandleResponse(context),
+          );
+        })
+        .asPriority(3)
+        .thenPassThrough({
+          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+          beforeRequest: (req) => this.applyRulesToRequest(req),
+          beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
+        });
+      await server.forAnyRequest()
+        .matching((request) => this.ruleEngine?.mightHandleResponse(
+          ProxyUtils.buildRequestContext(request),
+        ) ?? false)
+        .asPriority(2)
+        .thenPassThrough({
+          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+          beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
+        });
+      await server.forAnyRequest()
+        .matching((request) => this.ruleEngine?.mightHandleRequest(
+          ProxyUtils.buildRequestContext(request),
+        ) ?? false)
+        .asPriority(1)
+        .thenPassThrough({
+          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+          beforeRequest: (req) => this.applyRulesToRequest(req),
+        });
+    }
+    await server.forUnmatchedRequest().thenPassThrough({
       ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-      beforeRequest: (req) => this.applyRulesToRequest(req),
-      beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
     });
     const webSocketBridge = new WebSocketBridge({
       intercept: (message) => this.interceptWebSocketMessage(message),
@@ -606,6 +636,8 @@ export class ProxyService {
             request.timingEvents,
             request.timingEvents.abortedTimestamp,
           ) ?? Date.now();
+      const hits = this.ruleHits.get(request.id) ?? [];
+      const ruleIds = [...new Set(hits.map((hit) => hit.ruleId))];
 
     const exchange: ExchangeInput = {
       id: `ex-${ProxyUtils.cryptoRandomId()}`,
@@ -636,6 +668,7 @@ export class ProxyService {
           ProxyUtils.readContentLength(response.headers)
         : 0,
       state,
+      ruleIds,
       headers,
       requestBody,
       responseBody,
@@ -645,8 +678,7 @@ export class ProxyService {
       await this.storage.appendExchanges([exchange]);
       persisted = true;
       this.capturedExchanges += 1;
-      const hits = this.ruleHits.get(request.id);
-      if (hits && hits.length > 0) {
+      if (hits.length > 0) {
         await this.storage.appendRuleHits(exchange.id, hits);
       }
     } catch (error) {
@@ -693,6 +725,7 @@ export class ProxyService {
           : undefined,
       requestBytes: exchange.requestBytes ?? 0,
       responseBytes: exchange.responseBytes ?? 0,
+      ...(exchange.ruleIds?.length ? { ruleIds: [...exchange.ruleIds] } : {}),
     });
     return persisted ? exchange.id : null;
   }

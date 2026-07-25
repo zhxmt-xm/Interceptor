@@ -43,6 +43,54 @@ function requestState(): MutableRequestState {
   return { method: 'GET', url: 'https://api.test/users', headers: {} };
 }
 
+describe('RuleEngine — response hook routing', () => {
+  it('buffers only requests that can reach an enabled response action', () => {
+    const engine = new RuleEngine(new BreakpointQueue());
+    engine.setRuleSet({
+      revision: 1,
+      rules: [
+        rule('request-only', [{ type: 'method', value: 'GET' }], [
+          { type: 'delay', phase: 'request', ms: 10 },
+        ]),
+        rule('matching-response', [{ type: 'host', value: 'api.test', mode: 'exact' }], [
+          { type: 'header', phase: 'response', op: 'set', name: 'x', value: '1' },
+        ]),
+        rule('other-host-response', [{ type: 'host', value: 'media.test', mode: 'exact' }], [
+          { type: 'status', statusCode: 201 },
+        ]),
+        rule('disabled-response', [], [{ type: 'status', statusCode: 202 }], {
+          enabled: false,
+        }),
+      ],
+    });
+
+    expect(engine.mightHandleResponse(requestContext())).toBe(true);
+    expect(engine.mightHandleRequest(requestContext())).toBe(true);
+    const base = requestContext();
+    const mediaContext: MatchContext = {
+      request: {
+        ...base.request,
+        host: 'unrelated.test',
+        url: 'https://unrelated.test/video.mp4',
+      },
+    };
+    expect(engine.mightHandleResponse(mediaContext)).toBe(false);
+    expect(engine.mightHandleRequest(mediaContext)).toBe(true);
+  });
+
+  it('conservatively buffers a response-only matcher until the response is known', () => {
+    const engine = new RuleEngine(new BreakpointQueue());
+    engine.setRuleSet({
+      revision: 1,
+      rules: [rule('status-response', [{ type: 'status', min: 500, max: 599 }], [
+        { type: 'body', phase: 'response', format: 'text', content: 'fallback' },
+      ])],
+    });
+
+    expect(engine.mightHandleResponse(requestContext())).toBe(true);
+  });
+});
+
 describe('RuleEngine — request evaluation', () => {
   it('applies a matching rule and records a hit with the revision', async () => {
     const engine = new RuleEngine(new BreakpointQueue());
@@ -94,11 +142,11 @@ describe('RuleEngine — request evaluation', () => {
     const result = await engine.evaluateRequest(context, state);
 
     expect(result.headerEffects).toEqual([
-      { phase: 'request', effect: 'replace', name: 'x-set', value: 'before' },
-      { phase: 'request', effect: 'set', name: 'x-set', value: 'after' },
-      { phase: 'request', effect: 'append', name: 'x-append', value: 'second' },
-      { phase: 'request', effect: 'remove', name: 'x-remove', value: 'one' },
-      { phase: 'request', effect: 'remove', name: 'x-remove', value: 'two' },
+      { ruleId: 'r1', phase: 'request', effect: 'replace', name: 'x-set', value: 'before' },
+      { ruleId: 'r1', phase: 'request', effect: 'set', name: 'x-set', value: 'after' },
+      { ruleId: 'r1', phase: 'request', effect: 'append', name: 'x-append', value: 'second' },
+      { ruleId: 'r1', phase: 'request', effect: 'remove', name: 'x-remove', value: 'one' },
+      { ruleId: 'r1', phase: 'request', effect: 'remove', name: 'x-remove', value: 'two' },
     ]);
     expect(state.headers).toMatchObject({
       'x-set': 'after',
@@ -319,8 +367,8 @@ describe('RuleEngine — response evaluation', () => {
     const result = await engine.evaluateResponse(context, state);
 
     expect(result.headerEffects).toEqual([
-      { phase: 'response', effect: 'replace', name: 'x-result', value: 'before' },
-      { phase: 'response', effect: 'set', name: 'x-result', value: 'after' },
+      { ruleId: 'r1', phase: 'response', effect: 'replace', name: 'x-result', value: 'before' },
+      { ruleId: 'r1', phase: 'response', effect: 'set', name: 'x-result', value: 'after' },
     ]);
     expect(state.headers['x-result']).toBe('after');
   });

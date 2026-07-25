@@ -4,14 +4,19 @@ import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import CodeMirror from '@uiw/react-codemirror';
-import { Copy } from 'lucide-react';
+import { Copy, Download, FileAudio2, FileVideo2, Info } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { CaptureBodyRef } from '../../../../shared/desktop-api';
+import {
+  BODY_PREVIEW_MAX_BYTES,
+  type CaptureBodyRef,
+  type TransferJobSnapshot,
+} from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { IconButton, Segmented, useClipboardCopy } from '../../../components';
+import { Button, IconButton, Segmented, useClipboardCopy } from '../../../components';
 import { readCompleteBody } from '../data/readCompleteBody';
+import { sizeLabel } from '../utils';
 import styles from './BodyView.module.css';
 
 /** JSON 语法高亮：纯文本色（key 紫 / string 绿 / number-bool-null 蓝 / 标点浅灰），
@@ -43,6 +48,7 @@ interface BodyViewProps {
   body: CaptureBodyRef;
   compact?: boolean;
   offset?: number;
+  suggestedFileName?: string;
 }
 
 interface LoadedBody {
@@ -52,6 +58,26 @@ interface LoadedBody {
 }
 
 export type BodyViewMode = 'auto' | 'text' | 'json' | 'hex';
+
+export interface BodyPreviewRequest {
+  length: number;
+  decode: boolean;
+  limited: boolean;
+}
+
+/** 计算安全的正文预览读取范围；压缩输入不完整时禁止尝试解码。 */
+export function bodyPreviewRequest(body: CaptureBodyRef): BodyPreviewRequest {
+  const length = Math.min(body.encodedSize, BODY_PREVIEW_MAX_BYTES);
+  const encodings = body.contentEncoding
+    ?.split(',')
+    .map((encoding) => encoding.trim().toLowerCase())
+    .filter((encoding) => encoding && encoding !== 'identity') ?? [];
+  return {
+    length,
+    decode: encodings.length > 0,
+    limited: body.encodedSize > length,
+  };
+}
 
 export function isTextMime(mime: string | undefined): boolean {
   if (!mime) {
@@ -78,6 +104,12 @@ export function isTextMime(mime: string | undefined): boolean {
   );
 }
 
+/** 音视频正文不进入 Renderer 预览，只允许 Core 流式保存。 */
+export function isMediaMime(mime: string | undefined): boolean {
+  const essence = mime?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  return essence.startsWith('video/') || essence.startsWith('audio/');
+}
+
 export function isJsonMime(mime: string | undefined): boolean {
   const essence = mime?.split(';')[0]?.trim().toLowerCase() ?? '';
   return essence === 'application/json'
@@ -94,7 +126,7 @@ export function detectTextBody(
 ): { text: string; json: boolean } | null {
   let decoded: string;
   try {
-    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    decoded = new TextDecoder('utf-8', { fatal: !isTextMime(mime) }).decode(bytes);
   } catch {
     return null;
   }
@@ -161,38 +193,46 @@ function prettyJson(text: string): string {
   }
 }
 
-/** 按需加载完整正文：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
+/** 按需加载有限正文预览：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
 export function BodyView({
   body,
   compact = false,
   offset = 0,
+  suggestedFileName = 'response-body.bin',
 }: BodyViewProps): React.JSX.Element {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
   const [loaded, setLoaded] = useState<LoadedBody | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<BodyViewMode>('auto');
+  const [saveJob, setSaveJob] = useState<TransferJobSnapshot | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hexBytesPerLine, setHexBytesPerLine] = useState(16);
   const isDark = document.documentElement.dataset.theme === 'dark'
     || document.documentElement.dataset.theme === 'ember';
   const editorTheme = useMemo(() => createEditorTheme(isDark), [isDark]);
+  const media = isMediaMime(body.mediaType);
+
+  useEffect(() => {
+    setSaveJob(null);
+    setSaveError(null);
+  }, [body.bodyHash]);
 
   useEffect(() => {
     setLoaded(null);
     setError(null);
     const api = window.interceptor;
-    if (!body.bodyHash || body.encodedSize === 0 || !api?.readBody) {
+    if (media || !body.bodyHash || body.encodedSize === 0 || !api?.readBody) {
       return;
     }
     let active = true;
-    // 解码需完整压缩流；未压缩正文同样完整读取，不做 preview 截断。
-    const shouldDecode = Boolean(body.contentEncoding);
+    const preview = bodyPreviewRequest(body);
     void readCompleteBody(
         body.bodyHash,
         offset,
-        body.encodedSize,
-        shouldDecode
+      preview.length,
+      preview.decode
           ? { decode: true, encoding: body.contentEncoding }
           : undefined,
       )
@@ -217,15 +257,58 @@ export function BodyView({
     body.bodyHash,
     body.encodedSize,
     body.contentEncoding,
+    media,
     offset,
   ]);
 
+  useEffect(() => {
+    if (!saveJob || saveJob.state !== 'running') {
+      return;
+    }
+    let active = true;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const poll = async (): Promise<void> => {
+      try {
+        const next = await window.interceptor.getTransferJob(saveJob.id);
+        if (!active) {
+          return;
+        }
+        setSaveJob(next);
+        if (next?.state === 'running') {
+          timeout = setTimeout(() => void poll(), 350);
+        } else if (next?.state === 'failed') {
+          setSaveError(next.message ?? t('capture.failedSaveBody', { error: 'unknown' }));
+        }
+      } catch (jobError) {
+        if (active) {
+          setSaveError(t('capture.failedSaveBody', {
+            error: jobError instanceof Error ? jobError.message : String(jobError),
+          }));
+          setSaveJob(null);
+        }
+      }
+    };
+    timeout = setTimeout(() => void poll(), 350);
+    return () => {
+      active = false;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [saveJob?.id, saveJob?.state, t]);
+
+  const preview = bodyPreviewRequest(body);
+  const decodeFailed = loaded?.decodeStatus === 'failed'
+    || (preview.decode && loaded?.decodeStatus === 'skipped');
   const text = useMemo(() => {
     if (!loaded) {
       return null;
     }
+    if (decodeFailed && mode === 'auto') {
+      return null;
+    }
     return bodyTextForMode(loaded.bytes, body.mediaType, mode);
-  }, [loaded, body.mediaType, mode]);
+  }, [loaded, body.mediaType, decodeFailed, mode]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -245,6 +328,42 @@ export function BodyView({
   if (!body.bodyHash || body.encodedSize === 0) {
     return <div className={styles.empty}>{t('capture.noBody')}</div>;
   }
+  if (media) {
+    const MediaIcon = body.mediaType?.toLowerCase().startsWith('audio/')
+      ? FileAudio2
+      : FileVideo2;
+    const saveBody = (): void => {
+      setSaveError(null);
+      void window.interceptor.startBodyExport(
+        { bodyId: body.bodyHash!, suggestedName: suggestedFileName },
+        t('capture.saveBody'),
+      ).then(setSaveJob).catch((saveFailure: unknown) => {
+        setSaveError(t('capture.failedSaveBody', {
+          error: saveFailure instanceof Error ? saveFailure.message : String(saveFailure),
+        }));
+      });
+    };
+    return (
+      <div className={styles.media} data-parity="capture-media-body">
+        <span className={styles.mediaIcon}><MediaIcon aria-hidden="true" /></span>
+        <div className={styles.mediaCopy}>
+          <strong>{body.mediaType?.split(';', 1)[0] ?? 'media'}</strong>
+          <span>
+            {sizeLabel(body.encodedSize, i18n.language)} · {t('capture.mediaPreviewUnavailable')}
+          </span>
+          {saveError ? <span className={styles.saveError}>{saveError}</span> : null}
+        </div>
+        <Button
+          icon={Download}
+          size="sm"
+          loading={saveJob?.state === 'running'}
+          onClick={saveBody}
+        >
+          {t('capture.saveBody')}
+        </Button>
+      </div>
+    );
+  }
   if (error) {
     return <div className={styles.empty}>{t('capture.failedLoadBody', { error })}</div>;
   }
@@ -252,7 +371,7 @@ export function BodyView({
     return <div className={styles.empty}>{t('capture.loadingBody')}</div>;
   }
 
-  const decodeFailed = loaded?.decodeStatus === 'failed';
+  const decodedLimited = loaded?.decodeStatus === 'limited';
   const bodyViewModes = [
     { label: t('capture.auto'), value: 'auto' },
     { label: t('capture.text'), value: 'text' },
@@ -284,11 +403,28 @@ export function BodyView({
       )}
     </div>
   );
+  const previewNotice = decodedLimited ? (
+    <div className={styles.limitNotice}>
+      <Info aria-hidden="true" />
+      {t('capture.decodedBodyPreviewLimited', {
+        preview: sizeLabel(loaded.bytes.byteLength, i18n.language),
+      })}
+    </div>
+  ) : !preview.decode && preview.limited ? (
+    <div className={styles.limitNotice}>
+      <Info aria-hidden="true" />
+      {t('capture.bodyPreviewLimited', {
+        preview: sizeLabel(preview.length, i18n.language),
+        total: sizeLabel(body.encodedSize, i18n.language),
+      })}
+    </div>
+  ) : null;
 
   if (text !== null) {
     return (
       <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} data-parity="capture-body-view">
         {modeControl}
+        {previewNotice}
         {decodeFailed ? (
           <div className={styles.notice}>
             {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
@@ -314,12 +450,13 @@ export function BodyView({
   return (
     <div ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} data-parity="capture-body-view">
       {modeControl}
+      {previewNotice}
       {decodeFailed ? (
         <div className={styles.notice}>
           {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
         </div>
       ) : null}
-      <pre className={styles.hex}>
+      <pre className={styles.hex} data-parity="capture-body-preview">
         {toHexDump(loaded.bytes, hexBytesPerLine)}
       </pre>
     </div>

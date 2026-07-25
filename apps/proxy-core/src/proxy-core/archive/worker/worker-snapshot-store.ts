@@ -78,7 +78,8 @@ export class ArchiveSnapshotStore {
       request_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
       response_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
       state TEXT NOT NULL,
-      error_code TEXT
+      error_code TEXT,
+      rule_ids TEXT
     );
     CREATE TABLE message_headers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,7 +89,8 @@ export class ArchiveSnapshotStore {
       name TEXT NOT NULL,
       value TEXT NOT NULL,
       is_pseudo INTEGER NOT NULL DEFAULT 0,
-      rule_effect TEXT CHECK (rule_effect IN ('set', 'append', 'replace', 'remove'))
+      rule_effect TEXT CHECK (rule_effect IN ('set', 'append', 'replace', 'remove')),
+      rule_id TEXT
     );
     CREATE TABLE websocket_frame (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -256,13 +258,13 @@ export class ArchiveSnapshotStore {
            port, path, url, protocol, status_code, status_text, request_mime,
            response_mime, process_name, started_at, request_sent_at,
            response_started_at, completed_at, request_bytes, response_bytes,
-           request_body_id, response_body_id, state, error_code)
+           request_body_id, response_body_id, state, error_code, rule_ids)
          VALUES
           (:id, :sessionId, :connectionId, :seq, :streamId, :method, :scheme,
            :host, :port, :path, :url, :protocol, :statusCode, :statusText,
            :requestMime, :responseMime, :processName, :startedAt, :requestSentAt,
            :responseStartedAt, :completedAt, :requestBytes, :responseBytes,
-           :requestBodyId, :responseBodyId, :state, :errorCode)`,
+           :requestBodyId, :responseBodyId, :state, :errorCode, :ruleIds)`,
       )
       .run({
         id: exchange.id,
@@ -293,6 +295,7 @@ export class ArchiveSnapshotStore {
           exchange.responseBody?.id ?? exchange.responseBodyId ?? null,
         state: exchange.state,
         errorCode: exchange.errorCode ?? null,
+        ruleIds: exchange.ruleIds?.length ? JSON.stringify(exchange.ruleIds) : null,
       });
     this.database
       .prepare(
@@ -371,8 +374,8 @@ export class ArchiveSnapshotStore {
     this.database
       .prepare(
         `INSERT INTO message_headers
-          (exchange_id, kind, ordinal, name, value, is_pseudo, rule_effect)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (exchange_id, kind, ordinal, name, value, is_pseudo, rule_effect, rule_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         exchangeId,
@@ -382,6 +385,7 @@ export class ArchiveSnapshotStore {
         header.value,
         header.isPseudo ? 1 : 0,
         header.ruleEffect ?? null,
+        header.ruleId ?? null,
       );
   }
 
@@ -398,7 +402,8 @@ export class ArchiveSnapshotStore {
                 response_started_at AS responseStartedAt,
                 completed_at AS completedAt, request_bytes AS requestBytes,
                 response_bytes AS responseBytes, request_body_id AS requestBodyId,
-                response_body_id AS responseBodyId, state, error_code AS errorCode
+                response_body_id AS responseBodyId, state, error_code AS errorCode,
+                rule_ids AS ruleIds
          FROM exchange WHERE id = ?`,
       )
       .get(id) as Record<string, unknown> | undefined;
@@ -408,7 +413,7 @@ export class ArchiveSnapshotStore {
     const headers = this.database
       .prepare(
         `SELECT kind, name, value, is_pseudo AS isPseudo,
-              rule_effect AS ruleEffect
+            rule_effect AS ruleEffect, rule_id AS ruleId
          FROM message_headers WHERE exchange_id = ? ORDER BY id ASC`,
       )
       .all(id) as {
@@ -417,6 +422,7 @@ export class ArchiveSnapshotStore {
         value: string;
         isPseudo: number;
         ruleEffect: HeaderInput['ruleEffect'] | null;
+        ruleId: string | null;
       }[];
     const requestBody = this.readBody(row.requestBodyId as string | null);
     const responseBody = this.readBody(row.responseBodyId as string | null);
@@ -446,18 +452,32 @@ export class ArchiveSnapshotStore {
       responseBody,
       state: row.state as ExchangeInput['state'],
       errorCode: (row.errorCode as string | null) ?? undefined,
+      ruleIds: this.readRuleIds(row.ruleIds),
       headers: headers.map((header) => ({
         kind: header.kind,
         name: header.name,
         value: header.value,
         ...(header.isPseudo !== 0 ? { isPseudo: true } : {}),
         ...(header.ruleEffect ? { ruleEffect: header.ruleEffect } : {}),
+        ...(header.ruleId ? { ruleId: header.ruleId } : {}),
       })),
     };
     return {
       exchange,
       frames: this.readFrames(id),
     };
+  }
+
+  /** 解析 Archive 中结构化保存的规则 id 数组。 */
+  private readRuleIds(value: unknown): string[] | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    const parsed: unknown = JSON.parse(String(value));
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
+      throw new Error('Archive exchange rule_ids must be a string array.');
+    }
+    return parsed.length > 0 ? parsed : undefined;
   }
 
   /** 读取单条 body metadata。 */

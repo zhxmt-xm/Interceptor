@@ -28,6 +28,7 @@ import {
   responseTimingSegments,
   retainInspectorTab,
   sizeLabel,
+  suggestedBodyFileName,
   statusKind,
   statusLabel,
   statusTone,
@@ -46,6 +47,7 @@ type KvRow = [
   accent?: 'a' | 'g',
   copyText?: string,
   ruleEffect?: CaptureHeaderRuleEffect,
+  ruleId?: string,
 ];
 
 const INSPECTOR_TAB_AUTOMATION_IDS: Record<InspectorTab, AutomationId> =
@@ -59,6 +61,7 @@ function headersToRows(headers: CaptureHeader[]): KvRow[] {
     header.isPseudo ? 'a' : undefined,
     undefined,
     header.ruleEffect,
+    header.ruleId,
   ]);
 }
 
@@ -104,6 +107,7 @@ function requestCookieRows(headers: CaptureHeader[]): KvRow[] {
             undefined,
             undefined,
             header.ruleEffect,
+            header.ruleId,
           ] as KvRow;
         }),
     );
@@ -121,6 +125,7 @@ function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
         undefined,
         undefined,
         header.ruleEffect,
+        header.ruleId,
       ] as KvRow;
     });
 }
@@ -131,12 +136,18 @@ function isGrpcMime(value: string | undefined): boolean {
     || essence?.startsWith('application/grpc+') === true;
 }
 
-function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
+function Kv({
+  rows,
+  onOpenRule,
+}: {
+  rows: KvRow[];
+  onOpenRule?: (ruleId: string) => void;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const copy = useClipboardCopy();
   return (
     <div className={styles.kv}>
-      {rows.map(([key, value, accent, copyText, ruleEffect], index) => {
+      {rows.map(([key, value, accent, copyText, ruleEffect, ruleId], index) => {
         const copyValue = copyText ?? (typeof value === 'string' ? value : undefined);
         const inactive = ruleEffect === 'replace' || ruleEffect === 'remove';
         return (
@@ -146,7 +157,16 @@ function Kv({ rows }: { rows: KvRow[] }): React.JSX.Element {
               className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
             >
               <span className={cx(inactive && styles.ruleInactive)}>{value}</span>
-              {ruleEffect ? (
+              {ruleEffect && ruleId && onOpenRule ? (
+                <button
+                  type="button"
+                  className={styles.ruleEffect}
+                  data-effect={ruleEffect}
+                  onClick={() => onOpenRule(ruleId)}
+                >
+                  {t(`capture.ruleEffect.${ruleEffect}`)}
+                </button>
+              ) : ruleEffect ? (
                 <span className={styles.ruleEffect} data-effect={ruleEffect}>
                   {t(`capture.ruleEffect.${ruleEffect}`)}
                 </span>
@@ -198,10 +218,15 @@ function Section({
 export interface RequestInspectorProps {
   mitmActive: boolean;
   onSetupHttps: () => void;
+  onOpenRule: (ruleId: string) => void;
 }
 
 /** Right-hand inspector for the selected request. */
-export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorProps): React.JSX.Element {
+export function RequestInspector({
+  mitmActive,
+  onSetupHttps,
+  onOpenRule,
+}: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
   const tab = useCaptureStore((state) => state.inspectorTab);
@@ -384,26 +409,26 @@ export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorP
             </Section>
             <Section title={t('capture.responseHeaders')} count={visibleResponseHeaders.length}>
               {visibleResponseHeaders.length ? (
-                <Kv rows={headersToRows(visibleResponseHeaders)} />
+                <Kv rows={headersToRows(visibleResponseHeaders)} onOpenRule={onOpenRule} />
               ) : (
                 <div className={styles.empty}>{t('capture.noResponseHeaders')}</div>
               )}
             </Section>
             <Section title={t('capture.requestHeaders')} count={visibleRequestHeaders.length}>
               {visibleRequestHeaders.length ? (
-                <Kv rows={headersToRows(visibleRequestHeaders)} />
+                <Kv rows={headersToRows(visibleRequestHeaders)} onOpenRule={onOpenRule} />
               ) : (
                 <div className={styles.empty}>{t('capture.noRequestHeaders')}</div>
               )}
             </Section>
             {responseTrailers.length ? (
               <Section title={t('capture.responseTrailers')} count={responseTrailers.length}>
-                <Kv rows={headersToRows(responseTrailers)} />
+                <Kv rows={headersToRows(responseTrailers)} onOpenRule={onOpenRule} />
               </Section>
             ) : null}
             {requestTrailers.length ? (
               <Section title={t('capture.requestTrailers')} count={requestTrailers.length}>
-                <Kv rows={headersToRows(requestTrailers)} />
+                <Kv rows={headersToRows(requestTrailers)} onOpenRule={onOpenRule} />
               </Section>
             ) : null}
           </div>
@@ -439,6 +464,11 @@ export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorP
                     ...detail.requestBody,
                     mediaType: detail.requestBody.mediaType ?? detail.requestMime,
                   }}
+                  suggestedFileName={suggestedBodyFileName(
+                    url,
+                    detail.requestBody.mediaType ?? detail.requestMime,
+                    'request-body',
+                  )}
                 />
               ) : (
                 <div className={styles.empty}>{t('capture.noRequestBody')}</div>
@@ -463,6 +493,11 @@ export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorP
                     ...detail.responseBody,
                     mediaType: detail.responseBody.mediaType ?? view?.responseMime,
                   }}
+                  suggestedFileName={suggestedBodyFileName(
+                    url,
+                    detail.responseBody.mediaType ?? view?.responseMime,
+                    'response-body',
+                  )}
                 />
               ) : (
                 <div className={styles.empty}>{t('capture.noResponseBody')}</div>
@@ -531,14 +566,14 @@ export function RequestInspector({ mitmActive, onSetupHttps }: RequestInspectorP
           <div className={styles.panel}>
             <Section title={t('capture.requestCookies')} count={requestCookieRows(requestHeaders).length}>
               {requestCookieRows(requestHeaders).length ? (
-                <Kv rows={requestCookieRows(requestHeaders)} />
+                <Kv rows={requestCookieRows(requestHeaders)} onOpenRule={onOpenRule} />
               ) : (
                 <div className={styles.empty}>{t('capture.noRequestCookies')}</div>
               )}
             </Section>
             <Section title={t('capture.responseCookies')} count={responseCookieRows(responseHeaders).length}>
               {responseCookieRows(responseHeaders).length ? (
-                <Kv rows={responseCookieRows(responseHeaders)} />
+                <Kv rows={responseCookieRows(responseHeaders)} onOpenRule={onOpenRule} />
               ) : (
                 <div className={styles.empty}>{t('capture.noResponseCookies')}</div>
               )}

@@ -5,6 +5,7 @@ import type {
   CoreError,
   CoreResult,
 } from '@interceptor/core-protocol';
+import { BODY_PREVIEW_MAX_BYTES } from '@interceptor/core-protocol';
 
 import {
   EVENT_DRAIN_BATCH,
@@ -30,7 +31,7 @@ import { ArchiveService } from './archive/entry';
 import { TransferJobManager } from './transfer/entry';
 import { ProxyService } from './proxy/entry';
 import { CaptureEventQueue } from './proxy/proxy-capture-event-queue';
-import { decodeBody } from './proxy/utils';
+import { decodeBodyStream } from './proxy/utils';
 import { RuleEngine } from './rules/entry';
 import { BreakpointQueue } from './rules/rule-breakpoint-queue';
 import { StorageService } from './storage/entry';
@@ -356,19 +357,15 @@ export class CoreApplication implements CoreRpcHost {
       case 'body.read-range':
         return this.withStorage(async (storage) => {
           try {
-            const data = await this.diagnostics.action('storage.body-range', () =>
-              storage.readBodyRange(
-                command.payload.bodyId,
-                command.payload.offset,
-                command.payload.length,
-              ),
-            );
-            // 延迟解码：仅当 Renderer 请求 decode 时按 content-encoding 解压，
-            // 一次性返回解码全量（解压需完整流，不再按 length 分块）。
+            // 延迟解码：Core 从 Body Store 读取完整压缩流，只返回有限明文前缀。
             if (command.payload.decode) {
-              const decoded = await decodeBody(
-                new Uint8Array(data),
-                command.payload.encoding,
+              const decoded = await this.diagnostics.action(
+                'storage.body-decode-preview',
+                () => decodeBodyStream(
+                  () => storage.openBlobStream(command.payload.bodyId),
+                  command.payload.encoding,
+                  BODY_PREVIEW_MAX_BYTES,
+                ),
               );
               return {
                 type: 'body.range',
@@ -376,11 +373,18 @@ export class CoreApplication implements CoreRpcHost {
                   bodyId: command.payload.bodyId,
                   offset: command.payload.offset,
                   data: decoded.data,
-                  end: true,
+                  end: decoded.status !== 'limited',
                   decodeStatus: decoded.status,
                 },
               };
             }
+            const data = await this.diagnostics.action('storage.body-range', () =>
+              storage.readBodyRange(
+                command.payload.bodyId,
+                command.payload.offset,
+                command.payload.length,
+              ),
+            );
             return {
               type: 'body.range',
               payload: {
@@ -515,6 +519,23 @@ export class CoreApplication implements CoreRpcHost {
             job: archive.startImport(
               command.payload.jobId,
               command.payload.filePath,
+            ),
+          },
+        }));
+      case 'body.export.start':
+        return this.withStorage(async (storage) => ({
+          type: 'transfer.job',
+          payload: {
+            job: this.transferJobs.start(
+              command.payload.jobId,
+              'body-export',
+              command.payload.filePath,
+              (signal, onProgress) => storage.exportBodyToFile(
+                command.payload.bodyId,
+                command.payload.filePath,
+                signal,
+                onProgress,
+              ),
             ),
           },
         }));

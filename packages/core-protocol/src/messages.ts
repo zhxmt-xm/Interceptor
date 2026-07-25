@@ -2,6 +2,9 @@ import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './ru
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
+/** Renderer Inspector 单个正文预览的最大字节数；Core 仍完整保留正文。 */
+export const BODY_PREVIEW_MAX_BYTES = 1024 * 1024;
+
 export interface EchoCommand {
   type: 'echo';
   payload: {
@@ -34,7 +37,7 @@ export interface BodyReadRangeCommand {
     bodyId: string;
     offset: number;
     length: number;
-    /** true 时 Core 按 encoding 解码后返回（一次性返回解码全量），预览压缩正文用。 */
+    /** true 时 Core 忽略 range，直接从 Body Store 流式解码并返回有限明文前缀。 */
     decode?: boolean;
     /** 解码用的 content-encoding（gzip/deflate/br，可逗号分隔多层）。 */
     encoding?: string;
@@ -270,6 +273,15 @@ export interface ArchiveImportStartCommand {
   };
 }
 
+export interface BodyExportStartCommand {
+  type: 'body.export.start';
+  payload: {
+    jobId: string;
+    filePath: string;
+    bodyId: string;
+  };
+}
+
 export interface TransferJobGetCommand {
   type: 'transfer.job.get';
   payload: { jobId: string };
@@ -348,6 +360,7 @@ export type CoreCommand =
   | HarImportStartCommand
   | ArchiveExportStartCommand
   | ArchiveImportStartCommand
+  | BodyExportStartCommand
   | TransferJobGetCommand
   | TransferJobCancelCommand
   | ProxyStartCommand
@@ -441,7 +454,7 @@ export interface BodyRangeResult {
     offset: number;
     data: Uint8Array;
     end: boolean;
-    /** 解码结果：ok=已解码，skipped=未解码，failed=解码失败返回原始；未请求解码时省略。 */
+    /** 解码结果：ok=完整，limited=有限明文前缀，skipped=未解码，failed=失败返回原始。 */
     decodeStatus?: string;
   };
 }
@@ -648,6 +661,7 @@ export type TransferJobKind =
   | 'har-import'
   | 'archive-export'
   | 'archive-import'
+  | 'body-export'
   | 'diagnostics-export';
 export type TransferJobState =
   | 'running'
@@ -753,6 +767,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                               ? TransferJobResult
                               : T extends ArchiveImportStartCommand
                                 ? TransferJobResult
+                                : T extends BodyExportStartCommand
+                                  ? TransferJobResult
                             : T extends TransferJobGetCommand
                               ? TransferJobResult
                               : T extends TransferJobCancelCommand
@@ -849,6 +865,8 @@ export interface CaptureExchangeSummary {
   durationMs?: number;
   requestBytes: number;
   responseBytes: number;
+  /** 对该 Exchange 实际执行过至少一个 action 的规则 id，按首次命中顺序去重。 */
+  ruleIds?: string[];
 }
 
 export interface CaptureExchangeEvent {
@@ -866,6 +884,8 @@ export interface CaptureHeader {
   isPseudo?: boolean;
   /** 规则在代理转发前产生的 request header 净效果；原始 header 行不设置。 */
   ruleEffect?: CaptureHeaderRuleEffect;
+  /** 产生该 header effect 的规则 id；仅与 ruleEffect 同时存在。 */
+  ruleId?: string;
 }
 
 /** 正文引用元数据；bodyHash 供 body.read-range 分块读取，无正文时省略。 */

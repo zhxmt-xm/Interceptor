@@ -7,6 +7,7 @@ import type {
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '../../../../shared/desktop-api';
+import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented, Switch } from '../../../components';
 import { sizeLabel } from '../utils';
@@ -229,7 +230,11 @@ function FramePreview({ frame }: { frame: WebSocketFrameSummary }): React.JSX.El
       return;
     }
     let active = true;
-    void readCompleteBody(hash, 0, frame.payload?.encodedSize ?? 0)
+    void readCompleteBody(
+      hash,
+      0,
+      Math.min(frame.payload?.encodedSize ?? 0, BODY_PREVIEW_MAX_BYTES),
+    )
       .then((chunk) => {
         if (active) {
           apply(chunk.bytes);
@@ -255,7 +260,11 @@ function copyPayload(frame: WebSocketFrameSummary): void {
   if (!frame.payload?.bodyHash) {
     return;
   }
-  void readCompleteBody(frame.payload.bodyHash, 0, frame.payload.encodedSize)
+  void readCompleteBody(
+    frame.payload.bodyHash,
+    0,
+    Math.min(frame.payload.encodedSize, BODY_PREVIEW_MAX_BYTES),
+  )
     .then((chunk) => {
       const text = frame.opcode === 1
         ? new TextDecoder().decode(chunk.bytes)
