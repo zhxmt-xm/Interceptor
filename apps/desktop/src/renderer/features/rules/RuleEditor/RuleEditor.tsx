@@ -28,7 +28,7 @@ import {
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
-import { isRulesDirty, ruleIssues, selectedRule } from '../utils';
+import { isRuleComplete, isRulesDirty, ruleIssues, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -49,6 +49,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
+  const hits = useRulesStore((state) => state.hits);
   const renameRule = useRulesStore((state) => state.renameRule);
   const toggleRule = useRulesStore((state) => state.toggleRule);
   const removeRule = useRulesStore((state) => state.removeRule);
@@ -69,6 +70,8 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
 
   const ruleIndex = rules.findIndex((item) => item.id === rule.id);
   const issues = ruleIssues(rule);
+  const matchedRequests = hits[rule.id] ?? 0;
+  const enableBlocked = !rule.enabled && !isRuleComplete(rule);
 
   const addAndClose = (type: RuleActionType): void => {
     addAction(rule.id, type);
@@ -100,11 +103,20 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           onChange={(event) => renameRule(rule.id, event.target.value)}
         />
         <StatusBadge>{rule.enabled ? t('rules.enabled') : t('rules.disabled')}</StatusBadge>
-        <Switch checked={rule.enabled} onChange={() => toggleRule(rule.id)} />
+        <Switch
+          checked={rule.enabled}
+          disabled={enableBlocked}
+          onChange={() => toggleRule(rule.id)}
+        />
         <IconButton
           icon={Filter}
-          label={t('rules.showMatchingRequests')}
+          label={
+            matchedRequests === 0
+              ? t('rules.noMatchingRequests')
+              : t('rules.showMatchingRequests')
+          }
           size="sm"
+          disabled={matchedRequests === 0}
           onClick={() => onShowRuleRequests(rule.id)}
           automationId={AUTOMATION_IDS.rules.showMatchingRequests}
         />

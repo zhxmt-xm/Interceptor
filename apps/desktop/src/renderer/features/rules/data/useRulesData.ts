@@ -84,8 +84,10 @@ export async function loadRuleHits(): Promise<void> {
 }
 
 /**
- * 应用当前草稿：乐观并发 replaceRules。成功后更新 revision 并刷新命中计数；
- * 冲突时重新加载最新规则集并提示；其它失败记录错误。
+ * 应用当前草稿：乐观并发 replaceRules。成功后更新 revision 并刷新命中计数。
+ *
+ * 冲突（他处已改）时**保留本地草稿与冲突提示**，不自动重载：草稿是用户刚写的，
+ * 静默覆盖等于丢工作。用户看到提示后可显式 Reload 放弃草稿、取回最新规则集。
  */
 export async function applyRules(): Promise<void> {
   const api = window.interceptor;
@@ -107,9 +109,6 @@ export async function applyRules(): Promise<void> {
     useRulesStore
       .getState()
       .saveFailed(result.message, result.reason === 'conflict');
-    if (result.reason === 'conflict') {
-      await loadRules();
-    }
   } catch (error) {
     useRulesStore.getState().saveFailed(describeError(error), false);
   }

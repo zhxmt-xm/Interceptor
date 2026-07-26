@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
 import { Count, cx, IconButton, Segmented } from '../../../components';
+import { useRulesStore } from '../../rules/data/rulesStore';
 import { useCaptureStore } from '../data/captureStore';
 import type { ProtocolSegment } from '../interfaces';
 import { RequestRow } from '../RequestRow/RequestRow';
@@ -108,7 +109,11 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
     const clearedBefore = Date.now();
     setClearing(true);
     void window.interceptor.clearStorage()
-      .then(() => clearView(clearedBefore))
+      .then(() => {
+        clearView(clearedBefore);
+        // 命中数是从 Capture 记录派生的，清空后必须立即归零，而不是等下一次轮询。
+        useRulesStore.getState().setHits([]);
+      })
       .catch((error: unknown) => {
         useCaptureStore.getState().loadFailed(
           error instanceof Error ? error.message : String(error),

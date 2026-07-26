@@ -240,7 +240,8 @@ export class StorageService {
       }
       await output.sync();
       await output.close();
-      await rm(filePath, { force: true });
+      // 直接 rename 覆盖：先 rm 再 rename 会留下一个旧文件已删、新文件未就位的窗口，
+      // 一旦 rename 因权限/磁盘/杀软失败，用户的原文件就再也找不回来了。
       await rename(temporaryPath, filePath);
       return { processed, total, warnings: [] };
     } catch (error) {

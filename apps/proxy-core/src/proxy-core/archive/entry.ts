@@ -129,7 +129,7 @@ export class ArchiveService {
       await writer.finalize();
       await handle.close();
       handle = undefined;
-      await rm(filePath, { force: true });
+      // 直接 rename 覆盖，不留旧文件已删、新文件未就位的窗口。
       await rename(zipPath, filePath);
     } catch (error) {
       if (handle) {

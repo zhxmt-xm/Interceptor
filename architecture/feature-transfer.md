@@ -131,7 +131,7 @@ sequenceDiagram
 4. 失败时销毁流、关闭句柄、删除临时文件
 ```
 
-**已知缺陷 [改造中]**：`StorageService.exportBodyToFile` 当前先 `rm(filePath)` 再 `rename(temp, filePath)`。Windows Node `fs.rename` 已实测可直接覆盖普通现有文件，因此这个 `rm` 引入了**旧文件丢失窗口**——若 rm 成功而 rename 因权限、磁盘或杀软失败，旧文件已不可恢复。必须改为直接 rename 覆盖。
+**已修复**：四处导出（body / HAR / diagnostics / archive）均改为写临时文件 + `fsync` + **直接 `rename` 覆盖**。之前先 `rm(filePath)` 再 `rename(temp, filePath)` 会留下旧文件已删、新文件未就位的窗口，一旦 rename 因权限/磁盘/杀软失败，用户原文件就不可恢复。
 
 ## 5. 格式约定
 

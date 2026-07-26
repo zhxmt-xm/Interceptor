@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-07-25T12:45:42.692Z
+Generated: 2026-07-26T14:54:48.115Z
 
 ## Overall Summary
 
@@ -8,7 +8,7 @@ Generated: 2026-07-25T12:45:42.692Z
 | --- | ---: |
 | Result | Review required |
 | Views checked | 54 |
-| Average pixel diff | 2.00% |
+| Average pixel diff | 2.01% |
 | Targets | 362 |
 | Matched | 362 |
 | Missing | 0 |
@@ -35,17 +35,17 @@ Generated: 2026-07-25T12:45:42.692Z
 | import-export | 0.79% | 7 | 7 | 0 | 1 | 7.5 px |
 | import-export-dark | 0.22% | 7 | 7 | 0 | 2 | 7.5 px |
 | capture-export-menu | 2.93% | 2 | 2 | 0 | 2 | 10.0 px |
-| capture-request-rule-menu | 2.90% | 4 | 4 | 0 | 0 | 0.6 px |
-| capture-rule-filter | 1.87% | 3 | 3 | 0 | 1 | 1.6 px |
+| capture-request-rule-menu | 3.13% | 4 | 4 | 0 | 0 | 0.6 px |
+| capture-rule-filter | 1.88% | 3 | 3 | 0 | 1 | 1.6 px |
 | capture-add-rule-filter | 3.69% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-rule-filter-disabled | 3.29% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-body-preview-limited | 2.96% | 2 | 2 | 0 | 0 | 0.1 px |
 | capture-body-media-save | 2.10% | 2 | 2 | 0 | 0 | 0.3 px |
 | proxy-not-ready | 0.58% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 2.01% | 1 | 1 | 0 | 0 | 0.0 px |
-| rules | 2.48% | 9 | 9 | 0 | 1 | 1.0 px |
-| rules-add-action | 2.84% | 1 | 1 | 0 | 0 | 0.6 px |
-| rules-select-dropdown | 2.38% | 1 | 1 | 0 | 0 | 0.0 px |
+| rules | 2.47% | 9 | 9 | 0 | 1 | 1.0 px |
+| rules-add-action | 2.81% | 1 | 1 | 0 | 0 | 0.6 px |
+| rules-select-dropdown | 2.37% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 1.54% | 9 | 9 | 0 | 5 | 4.0 px |
 | settings | 1.89% | 10 | 10 | 0 | 2 | 1.0 px |
 | settings-proxy | 1.84% | 14 | 14 | 0 | 5 | 2.0 px |
@@ -65,14 +65,14 @@ Generated: 2026-07-25T12:45:42.692Z
 | settings-updates-failed-dark | 1.81% | 10 | 10 | 0 | 5 | 1.7 px |
 | settings-updates-unsupported | 1.63% | 10 | 10 | 0 | 5 | 1.7 px |
 | settings-updates-unsupported-dark | 1.60% | 10 | 10 | 0 | 5 | 1.7 px |
-| breakpoints | 1.46% | 8 | 8 | 0 | 1 | 1.4 px |
+| breakpoints | 1.52% | 8 | 8 | 0 | 1 | 1.4 px |
 | diagnostics | 1.71% | 5 | 5 | 0 | 0 | 0.9 px |
 | shell-v2-capture-dark | 2.83% | 3 | 3 | 0 | 1 | 1.6 px |
 | shell-v2-capture-collapsed | 2.79% | 3 | 3 | 0 | 1 | 1.6 px |
-| shell-v2-rules-dark | 2.55% | 5 | 5 | 0 | 0 | 0.6 px |
+| shell-v2-rules-dark | 2.54% | 5 | 5 | 0 | 0 | 0.6 px |
 | shell-v2-composer-dark | 1.30% | 5 | 5 | 0 | 0 | 0.6 px |
 | shell-v2-settings-dark | 1.87% | 4 | 4 | 0 | 0 | 0.7 px |
-| shell-v2-breakpoints-dark | 1.50% | 5 | 5 | 0 | 0 | 0.9 px |
+| shell-v2-breakpoints-dark | 1.56% | 5 | 5 | 0 | 0 | 0.9 px |
 | shell-v2-diagnostics-dark | 1.78% | 6 | 6 | 0 | 0 | 0.9 px |
 
 ## Element Geometry

@@ -97,7 +97,24 @@ export function createRule(priority: number, name = 'New rule'): RuleDefinition 
   };
 }
 
-/** 基于 Capture 请求完整 URL 创建一条 action 草稿；action 参数待填，默认不启用、不自动 Apply。 */
+/**
+ * 去掉 URL 的 query 与 fragment，只保留 scheme + host + path。
+ *
+ * 右键建规则的意图是“针对这个接口”，而不是“针对这次请求”：query 里常带
+ * access_token / signature / 缓存戳，写进 `rules.sqlite` 既是秘密明文落盘，
+ * 也会让 exact 规则在下一次请求（换了 token）后永远不再命中。
+ */
+function toEndpointUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    const cut = url.search(/[?#]/);
+    return cut === -1 ? url : url.slice(0, cut);
+  }
+}
+
+/** 基于 Capture 请求创建一条 action 草稿：action 参数待填，默认不启用、不自动 Apply。 */
 export function createRuleFromRequest(
   priority: number,
   name: string,
@@ -109,7 +126,7 @@ export function createRuleFromRequest(
     name,
     enabled: false,
     priority,
-    matchers: [{ type: 'url', value: url, mode: 'exact' }],
+    matchers: [{ type: 'url', value: toEndpointUrl(url), mode: 'exact' }],
     actions: [createAction(actionType)],
   };
 }

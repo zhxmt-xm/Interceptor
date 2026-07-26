@@ -41,8 +41,8 @@ export class TemporaryCaptureStore {
     string,
     TemporaryWebSocketFrameRecord[]
   >();
-  /** Exchange id 到该 Exchange 的 RuleHit 聚合。 */
-  private readonly ruleHitsByExchange = new Map<string, Map<string, number>>();
+  /** Exchange id 到在该 Exchange 上执行过 action 的规则集合。 */
+  private readonly ruleHitsByExchange = new Map<string, Set<string>>();
   /** 下一个全局 Exchange sequence。 */
   private nextSeq = 1;
   /** 按 startedAt/seq 升序的惰性索引缓存。 */
@@ -276,7 +276,11 @@ export class TemporaryCaptureStore {
     };
   }
 
-  /** 累加当前 Recording 的 RuleHit 审计计数。 */
+  /**
+   * 登记当前 Recording 的 RuleHit 审计。
+   * 同一 Exchange 上同一条规则只记一次，因为命中数的语义是“拦到多少个请求”，
+   * 而不是“执行了多少个 action”（一条规则可以有多个 action）。
+   */
   appendRuleHits(
     exchangeId: string,
     hits: readonly RuleHitInput[],
@@ -285,16 +289,13 @@ export class TemporaryCaptureStore {
     if (!record) {
       throw new Error(`Exchange '${exchangeId}' does not exist.`);
     }
-    const counts = this.ruleHitsByExchange.get(exchangeId) ?? new Map();
+    const matchedRules = this.ruleHitsByExchange.get(exchangeId) ?? new Set<string>();
     const ruleIds = new Set(record.exchange.ruleIds ?? []);
     for (const hit of hits) {
-      counts.set(
-        hit.ruleId,
-        (counts.get(hit.ruleId) ?? 0) + 1,
-      );
+      matchedRules.add(hit.ruleId);
       ruleIds.add(hit.ruleId);
     }
-    this.ruleHitsByExchange.set(exchangeId, counts);
+    this.ruleHitsByExchange.set(exchangeId, matchedRules);
     this.exchanges.set(exchangeId, {
       seq: record.seq,
       exchange: { ...record.exchange, ruleIds: [...ruleIds] },
@@ -302,12 +303,12 @@ export class TemporaryCaptureStore {
     this.orderedIndexDirty = true;
   }
 
-  /** 返回当前 Recording 按 rule id 聚合的命中次数。 */
+  /** 返回当前 Recording 里每条规则命中的请求数。 */
   countRuleHits(): RuleHitCount[] {
     const totals = new Map<string, number>();
-    for (const counts of this.ruleHitsByExchange.values()) {
-      for (const [ruleId, count] of counts) {
-        totals.set(ruleId, (totals.get(ruleId) ?? 0) + count);
+    for (const matchedRules of this.ruleHitsByExchange.values()) {
+      for (const ruleId of matchedRules) {
+        totals.set(ruleId, (totals.get(ruleId) ?? 0) + 1);
       }
     }
     return Array.from(totals, ([ruleId, count]) => ({ ruleId, count }));

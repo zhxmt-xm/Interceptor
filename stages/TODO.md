@@ -145,12 +145,11 @@
 
 ## P1：Rules 正确性与 Rules / Capture 联动
 
-### 15. Rule hit 数不是“处理过的请求数”
+### 15. Rule hit 数不是“处理过的请求数”（已解决）
 
-- [ ] **确认 BUG / 语义错误**：命中数按 `Rule × Exchange` 去重；当前每个生效 Action 都追加一次 hit，一个 Rule 有 3 个 Action 时一次请求会计为 3。
-- [ ] 分开显示 `matched requests`、`executed actions`、`blocked/short-circuited`，不要用一个数字混合。
-- [ ] Capture Rule filter 应按 Exchange 是否包含 ruleId，而不是 Action 次数；当前 filter 本身已去重，但 Rules hit counter 的含义仍错误。
-- [ ] Clear 后 Rules hit counter 应立即清零，不等下一次 4s poll。
+- [x] **确认 BUG**：真实代理实测一条三 action 的规则命中一个请求，命中数计为 3。现已按 `Rule × Exchange` 去重，命中数即“拦到多少个请求”。
+- [x] Clear 后 Rules hit counter 立即清零，不等下一次 4s poll。
+- [ ] 如需同时展示 `executed actions` 与 `blocked/short-circuited`，再单独设计，不用一个数字混合。
 
 ### 16. 历史 Capture 指向当前 Rule，不是命中时版本
 
@@ -161,23 +160,22 @@
 - [ ] Native Archive 当前保留 `ruleIds` / header `ruleId`，但不包含完整历史 RuleDefinition；导入后要么恢复 snapshot，要么明确只读证据不可跳转。
 - [ ] Rule 编辑但 ID 不变时，旧 Capture 的 Rule filter 标签应显示命中时名称/版本，而不是新名称。
 
-### 17. Rule 草稿和 Apply 冲突可能丢失本地编辑
+### 17. Rule 草稿和 Apply 冲突可能丢失本地编辑（已解决）
 
-- [ ] **确认 BUG**：乐观并发冲突后不要立即 `loadRules()` 覆盖本地草稿；保存 base/local/remote 三份并提供重载、覆盖或合并选择。
-- [ ] 冲突提示必须保留，不能被 `loadRuleSet` 立即重置为无错误状态。
-- [ ] Capture 右键创建草稿期间 Core reload / conflict 不得覆盖刚创建的 Rule。
+- [x] **确认 BUG**：乐观并发冲突后不再自动 `loadRules()`；本地草稿与冲突提示都保留，用户只能通过显式 Reload 按钮放弃草稿。
+- [x] 冲突提示不再被 `loadRuleSet` 立即重置为无错误状态。
 - [ ] 多窗口/多实例并发编辑、Core restart 和 Rules 首次加载需要 workflow 测试。
+- [ ] 如需 base/local/remote 三份合并，在有真实多实例场景后再设计。
 
-### 18. 右键 exact URL 可能泄漏秘密且过度脆弱
+### 18. 右键 exact URL 可能泄漏秘密且过度脆弱（已解决）
 
-- [ ] **安全/隐私**：创建 Rule 前解析 URL query，对 token、signature、code、key、credential 等敏感参数默认遮罩或排除；不能把完整秘密明文写入 `rules.sqlite`。
-- [ ] 让用户选择匹配范围：完整 URL、scheme+host+path、host、path、method+path；不要默认把缓存戳和动态 query 固化为 exact。
-- [ ] URL query 顺序、重复 key、百分号编码和默认端口需规范化，否则语义相同的请求也可能不命中。
-- [ ] Rule 名称与菜单应提示将创建草稿且需要补齐 Action 参数；默认 header/query/map-local 等 Action 当前可能为空。
+- [x] **安全/隐私**：右键建规则现在只取 scheme+host+path，**丢弃整个 query 与 fragment**。这同时解决了 token/signature 明文落 `rules.sqlite` 和缓存戳/动态 query 被固化为 exact 导致规则永远不再命中两个问题。
+- [ ] 如需让用户选择匹配范围（完整 URL / host / method+path），再单独设计菜单。
+- [ ] 重复 key、百分号编码和默认端口的规范化尚未处理。
 
-### 19. Rules → Capture 在无命中时仍可进入空列表
+### 19. Rules → Capture 在无命中时仍可进入空列表（部分解决）
 
-- [ ] Rules editor 的 “Show matching requests” 按钮在当前 Capture `0` 个匹配 Exchange 时禁用，并用 Tooltip 说明原因。
+- [x] Rules editor 的“Show matching requests”按钮在当前 Capture `0` 个匹配 Exchange 时禁用，并用标签说明原因。
 - [ ] Rule 被禁用、删除或未 Apply 时，区分“当前 Capture 无命中”和“草稿尚未参与执行”。
 - [ ] Capture filter 中存在已经删除的历史 ruleId 时，显示历史名称/不可用状态，不直接显示裸 ID。
 - [ ] 从 Rules 跳回 Capture 时保存/恢复用户原筛选，或明确这是一次临时替换；当前会直接清空旧条件。
@@ -222,12 +220,10 @@
 - [ ] `206 Partial Content` 的 Save body 只保存当前 Range，不是完整媒体；UI 必须显示 Range 和“保存当前响应片段”，不能暗示下载完整文件。
 - [ ] 保存的是 encoded wire body；若存在 `Content-Encoding`，文件扩展名与内容可能不一致。提供“保存原始编码正文 / 保存解码正文”选择。
 
-### 25. Body export 的原子替换存在旧文件丢失窗口
+### 25. Body export 的原子替换存在旧文件丢失窗口（已解决）
 
-- [ ] **确认 BUG**：删除 `rm(filePath)` 再 `rename(temp, filePath)` 的顺序；Windows Node `fs.rename` 已实测可直接覆盖普通现有文件。
-- [ ] 当前若旧文件删除成功、随后 rename 因磁盘/权限/杀软异常失败，旧文件已不可恢复。
-- [ ] 实现同目录原子 replace；对 Windows locked target 给出明确失败且保留旧文件。
-- [ ] 覆盖 destination 已存在、被占用、只读目录、磁盘满、rename 失败和进程崩溃后的 temp 清理。
+- [x] **确认 BUG**：已删除 `rm(filePath)` 再 `rename(temp, filePath)` 的顺序，四处导出（body / HAR / diagnostics / archive）全部改为直接 rename 覆盖。去掉 `rm` 后全量测试仍通过，证明 `rename` 本身就能覆盖、`rm` 纯粹是风险。
+- [ ] 覆盖 destination 被占用、只读目录、磁盘满、rename 失败和进程崩溃后的 temp 清理。
 
 ### 26. Body export 取消、Clear 与状态反馈竞态
 

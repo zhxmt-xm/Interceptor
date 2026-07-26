@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
-import { addRequestRuleDraft, selectRuleDraft } from '../data/useRulesData';
+import { addRequestRuleDraft, applyRules, loadRules, selectRuleDraft } from '../data/useRulesData';
 import { createRuleFromRequest, isRulesDirty } from '../utils';
 
 function rule(id: string, priority: number): RuleDefinition {
@@ -95,7 +95,7 @@ describe('rulesStore ordering', () => {
       priority: 400,
       matchers: [{
         type: 'url',
-        value: 'https://api.test/items?active=true',
+        value: 'https://api.test/items',
         mode: 'exact',
       }],
       actions: [{ type: 'block', mode: 'reset' }],
@@ -139,6 +139,36 @@ describe('rulesStore ordering', () => {
     expect(useRulesStore.getState().selectedId).toBe('persisted');
     expect(await selectRuleDraft('deleted-rule')).toBe(false);
     expect(useRulesStore.getState().selectedId).toBe('persisted');
+  });
+
+  it('never persists query secrets from the captured URL into the rule', async () => {
+    useRulesStore.setState({
+      revision: 1,
+      initialized: true,
+      rules: [],
+      selectedId: null,
+      applied: [],
+      hits: {},
+      loading: false,
+      saving: false,
+      error: null,
+      conflict: false,
+    });
+
+    await addRequestRuleDraft(
+      'Delay api.test/items',
+      'https://api.test/items?access_token=super-secret&sig=abcdef&page=2',
+      'delay',
+    );
+
+    const [draft] = useRulesStore.getState().rules;
+    // 右键建规则的意图是“针对这个接口”，不是“针对这次带着一次性 token 的请求”。
+    // 一次性 query 既是秘密泄漏，也会让 exact 规则永远不再命中。
+    expect(draft?.matchers).toEqual([
+      { type: 'url', value: 'https://api.test/items', mode: 'exact' },
+    ]);
+    expect(JSON.stringify(draft)).not.toContain('super-secret');
+    expect(JSON.stringify(draft)).not.toContain('abcdef');
   });
 });
 
@@ -207,5 +237,67 @@ describe('rulesStore enable guard', () => {
     useRulesStore.getState().toggleRule('live');
 
     expect(useRulesStore.getState().rules[0]?.enabled).toBe(false);
+  });
+});
+
+describe('rulesStore apply conflict', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+
+  it('keeps the local draft and the conflict flag when Core rejects the revision', async () => {
+    useRulesStore.setState({
+      revision: 3,
+      initialized: true,
+      rules: [rule('local-draft', 100)],
+      applied: [],
+      selectedId: 'local-draft',
+      hits: {},
+      loading: false,
+      saving: false,
+      error: null,
+      conflict: false,
+    });
+    const replaceRules = vi.fn(async () => ({
+      ok: false as const,
+      reason: 'conflict' as const,
+      message: 'The rule set changed elsewhere.',
+    }));
+    const getRules = vi.fn(async () => ({ revision: 9, rules: [rule('remote', 100)] }));
+    vi.stubGlobal('window', { interceptor: { replaceRules, getRules } });
+
+    await applyRules();
+
+    // 冲突不能静默丢掉用户刚写的草稿，也不能把冲突提示立刻重置掉。
+    expect(getRules).not.toHaveBeenCalled();
+    expect(useRulesStore.getState().rules.map((item) => item.id)).toEqual(['local-draft']);
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 3,
+      conflict: true,
+      saving: false,
+    });
+  });
+
+  it('replaces the draft only when the user explicitly reloads', async () => {
+    useRulesStore.setState({
+      revision: 3,
+      initialized: true,
+      rules: [rule('local-draft', 100)],
+      applied: [],
+      selectedId: 'local-draft',
+      hits: {},
+      loading: false,
+      saving: false,
+      error: 'The rule set changed elsewhere.',
+      conflict: true,
+    });
+    const getRules = vi.fn(async () => ({ revision: 9, rules: [rule('remote', 100)] }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    await loadRules();
+
+    expect(useRulesStore.getState().rules.map((item) => item.id)).toEqual(['remote']);
+    expect(useRulesStore.getState()).toMatchObject({ revision: 9, conflict: false });
   });
 });

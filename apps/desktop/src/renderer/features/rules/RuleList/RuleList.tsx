@@ -1,11 +1,11 @@
-import { ArrowDown, ArrowUp, Check, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, MoreHorizontal, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Flyout, IconButton, MenuItem } from '../../../components';
 import { useRulesStore } from '../data/rulesStore';
 import { RuleRow } from '../RuleRow/RuleRow';
-import { applyRules } from '../data/useRulesData';
+import { applyRules, loadRules } from '../data/useRulesData';
 import { isRulesDirty } from '../utils';
 import styles from './RuleList.module.css';
 
@@ -19,6 +19,7 @@ export function RuleList(): React.JSX.Element {
   const rules = useRulesStore((state) => state.rules);
   const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
   const saving = useRulesStore((state) => state.saving);
+  const conflict = useRulesStore((state) => state.conflict);
   const selectedId = useRulesStore((state) => state.selectedId);
   const hits = useRulesStore((state) => state.hits);
   const select = useRulesStore((state) => state.select);
@@ -112,6 +113,16 @@ export function RuleList(): React.JSX.Element {
             disabled={!dirty || saving}
             onClick={() => void applyRules()}
           />
+          {conflict ? (
+            // 冲突时本地草稿被保留；Reload 是用户显式放弃草稿、取回最新规则集的唯一入口。
+            <IconButton
+              icon={RotateCcw}
+              label={t('rules.reloadFromCore')}
+              size="sm"
+              strokeWidth={2.4}
+              onClick={() => void loadRules()}
+            />
+          ) : null}
           <Flyout
             open={moreOpen}
             onOpenChange={setMoreOpen}
