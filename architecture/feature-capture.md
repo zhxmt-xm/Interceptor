@@ -333,9 +333,10 @@ sequenceDiagram
 
 `pendingTunnels` 保存 `Promise<PendingTunnelCapture | null>`，确保 closed 事件等待 opened 落库后才更新。隧道内不读取任何 header 或 body。
 
-### 5.3 WebSocket [改造中]
+### 5.3 WebSocket [已实现]
 
-当前实现依赖 completed `response` 事件完成 101 Exchange，退订后必须改用 `websocket-accepted`。
+101 Exchange 由 `websocket-accepted` 完成。不能依赖 completed `response`，因为订阅它会
+触发全量正文缓冲（见 3.2）。
 
 ```mermaid
 sequenceDiagram
@@ -410,7 +411,7 @@ sequenceDiagram
 
 ## 6. 正文存储
 
-### 6.1 增量写入 [改造中]
+### 6.1 增量写入 [已实现]
 
 ```mermaid
 flowchart LR
@@ -427,22 +428,23 @@ flowchart LR
 
 UI 表现为：大小实时增长，但预览与保存要等传输完成。
 
-### 6.2 阈值语义变更
+### 6.2 阈值语义 [已实现]
 
-| | 当前 | 目标 |
+| | 改造前 | 现在 |
 | --- | --- | --- |
 | 判断依据 | 完整 buffer 的总大小 | 累计写入字节数 |
 | spill 时机 | 拿到完整 buffer 后 | 累计跨过阈值立即 |
 
-否则 67 MB 视频会先在内存里攒满再 spill，失去改造意义。
+差别关键：增量场景下每个 chunk 都小于阈值，只有累计后才跨过。若仍按完整大小判断，
+67 MB 视频会先在内存里攒满再 spill，改造就失去意义。
 
 ### 6.3 背压
 
-Mockttp 不等待 Capture，因此需要自行限制：
+Mockttp 不等待 Capture 落盘，因此限制责任在我们这侧：
 
-1. 每个 body writer 维护有界待写队列。
-2. 队列超限时降级：停止保存内容，仅累计 observed bytes，标记 `decodeStatus: 'skipped'` 与 `truncated`。
-3. 降级必须在 UI 明示，不得让用户误以为正文为空。
+1. [已实现] 每个 body writer 维护有界待写队列，上限为 `BODY_WRITER_PENDING_LIMIT_BYTES`。
+2. [已实现] 队列超限时降级：停止保存内容，仅累计 observed bytes，`finalize()` 返回 `null` 不绑定 bodyRef。
+3. [待做] 降级状态必须在 UI 明示，不得让用户误以为正文为空。
 
 磁盘写入失败只跳过该正文，绝不影响转发、RPC 或进程状态。
 
@@ -458,22 +460,23 @@ Mockttp 不等待 Capture，因此需要自行限制：
 
 Stop 不停止转发，也不恢复系统代理。系统代理只在应用退出、Core 故障恢复、用户显式 Restore 或紧急修复时恢复。
 
-### 7.2 Capture generation [改造中]
+### 7.2 Capture generation [已实现]
 
 ```mermaid
 sequenceDiagram
     participant Proxy as ProxyService
+    participant Tracker as ExchangeTracker
     participant Storage as StorageService
 
-    Note over Proxy: request-initiated 时固定<br/>captureGeneration = 当前值
-    Proxy->>Proxy: exchange.generation = current
+    Note over Tracker: request-initiated 时固定<br/>entry.generation = 当前值
 
     Note over Proxy: 用户点击 Clear
-    Proxy->>Proxy: prepareCaptureReset()<br/>generation += 1<br/>captureCutoff = now
+    Proxy->>Tracker: reset()
+    Note over Tracker: generation += 1<br/>abort 全部在途 body writer<br/>清空 entries 与孤儿表
     Proxy->>Storage: cleanup(all)
 
-    Note over Proxy: 旧 generation 的迟到事件
-    Proxy->>Proxy: 检查 generation 不匹配则丢弃
+    Note over Tracker: 旧 generation 的迟到事件
+    Tracker->>Tracker: generation 不匹配则丢弃
 ```
 
 **判定规则：以请求开始时的状态为准。**
@@ -486,24 +489,28 @@ sequenceDiagram
 
 ### 8.1 Core 内部接口
 
-`CaptureSink`（`proxy/interfaces/index.ts`）[改造中]：
+`CaptureSink`（`proxy/interfaces/index.ts`）[已实现]：
 
 ```ts
 interface CaptureSink {
   ensureSession(session: CaptureSessionInput): Promise<void>;
   appendExchanges(exchanges: ExchangeInput[]): Promise<{ id: string; seq: number }[]>;
-  updateExchange(patch: ExchangePatch): Promise<void>;      // 需扩宽
-  openBodyWriter(exchangeId: string, kind: 'request' | 'response'): BodyWriter;  // 新增
+  updateExchange(patch: ExchangePatch): Promise<void>;
+  writeBody(source: AsyncIterable<Uint8Array>): Promise<BlobWriteResult>;
+  createBodyWriter(): BodyWriter;
   appendRuleHits(exchangeId: string, hits: readonly RuleHitRecord[]): Promise<void>;
   appendWebSocketFrames(exchangeId: string, frames: readonly WebSocketFrameInput[]): Promise<void>;
 }
 ```
 
-当前 `updateExchange` 只接受 `{ id, completedAt, state }`，比 Storage 侧的 `ExchangeResponsePatch` 还窄。目标需覆盖：
+`ExchangePatch` 除 `id` 外全部可选，未提供的字段保持原值，覆盖：
 
-- 请求侧：`requestBytes`、`requestBodyId`、`requestMime`
-- 响应侧：`statusCode`、`statusText`、`responseMime`、`responseStartedAt`、`responseBytes`、`responseBodyId`
-- 通用：`headers` 追加、`ruleIds`、`errorCode`、`state`
+- 请求侧：`requestBytes`、`requestBodyId`、`requestMime`、`requestSentAt`、`requestBody`
+- 响应侧：`statusCode`、`statusText`、`responseMime`、`responseStartedAt`、`responseBytes`、`responseBodyId`、`responseBody`
+- 通用：`headers`（追加）、`ruleIds`（去重合并）、`errorCode`、`state`、`completedAt`
+
+`writeBody` 是 pull 式、可背压，用于 WebSocket 单条消息；`createBodyWriter` 是 push 式、
+不可阻塞，用于 HTTP 正文的 body-data 事件。两者语义不同，不能互相替代。
 
 ### 8.2 事件契约
 
