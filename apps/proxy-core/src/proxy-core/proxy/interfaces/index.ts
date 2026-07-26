@@ -153,6 +153,20 @@ export interface ProxyPassThroughResponse {
   headers: Record<string, string | string[] | undefined>;
 }
 
+/** headers 阶段规则判定所需的最小请求字段。 */
+export interface RuleRequestInput {
+  readonly id: string;
+  readonly method: string;
+  readonly url: string;
+  readonly headers: Record<string, string | string[] | undefined>;
+}
+
+/** headers 阶段规则判定所需的最小响应字段。 */
+export interface RuleResponseInput {
+  readonly statusCode: number;
+  readonly headers: Record<string, string | string[] | undefined>;
+}
+
 /** 已持久化的原始 CONNECT 隧道，用于 close 事件更新同一条 Exchange。 */
 export interface PendingTunnelCapture {
   readonly exchangeId: string;

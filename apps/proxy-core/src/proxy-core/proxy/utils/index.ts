@@ -15,9 +15,10 @@ import type { HeaderInput, HeaderKind } from '../../storage/interfaces';
 import { SUPPORTED_ENCODINGS } from '../proxy-constants';
 import type {
   DecodeResult,
-  ProxyPassThroughResponse,
   ProxyResponseMessageResult,
   ProxyTarget,
+  RuleRequestInput,
+  RuleResponseInput,
 } from '../interfaces';
 
 /** 按 content-encoding 逆序延迟解码正文，失败时返回原始字节。 */
@@ -302,7 +303,7 @@ export async function* singleChunk(
 }
 
 /** 将 Mockttp 请求映射为规则 matcher 上下文。 */
-export function buildRequestContext(request: CompletedRequest): MatchContext {
+export function buildRequestContext(request: RuleRequestInput): MatchContext {
   const target = parseTarget(request.url);
   return {
     request: {
@@ -319,8 +320,8 @@ export function buildRequestContext(request: CompletedRequest): MatchContext {
 
 /** 将 Mockttp 请求与响应映射为响应阶段规则上下文。 */
 export function buildResponseContext(
-  request: CompletedRequest,
-  response: ProxyPassThroughResponse,
+  request: RuleRequestInput,
+  response: RuleResponseInput,
 ): MatchContext {
   return {
     request: buildRequestContext(request).request,

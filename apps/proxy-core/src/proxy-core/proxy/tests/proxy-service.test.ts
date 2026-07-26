@@ -113,7 +113,14 @@ function proxiedRequest(
 ): Promise<{ status: number | undefined; body: string }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { host: proxy.host, port: proxy.port, method, path: absoluteUrl },
+      {
+        host: proxy.host,
+        port: proxy.port,
+        method,
+        path: absoluteUrl,
+        // 独立连接：避免复用上一个测试遗留的 keep-alive socket。
+        agent: false,
+      },
       (res) => {
         let text = '';
         res.on('data', (chunk) => {
@@ -129,6 +136,75 @@ function proxiedRequest(
     }
     req.end();
   });
+}
+
+/** 分两块慢速上传，用于验证请求头不被正文阻塞。 */
+function slowUpload(
+  proxy: { host: string; port: number },
+  absoluteUrl: string,
+  gapMs: number,
+): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        host: proxy.host,
+        port: proxy.port,
+        method: 'POST',
+        path: absoluteUrl,
+        agent: false,
+      },
+      (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode));
+      },
+    );
+    req.on('error', reject);
+    req.write(Buffer.alloc(512, 1));
+    setTimeout(() => {
+      req.write(Buffer.alloc(512, 2));
+      req.end();
+    }, gapMs);
+  });
+}
+
+/** 分离响应头与响应体的到达时机，用于验证下载流式。 */
+function proxiedGetStreaming(
+  proxy: { host: string; port: number },
+  absoluteUrl: string,
+): {
+  head: Promise<number | undefined>;
+  body: Promise<string>;
+} {
+  let resolveHead!: (status: number | undefined) => void;
+  let resolveBody!: (text: string) => void;
+  let rejectAll!: (error: Error) => void;
+  const head = new Promise<number | undefined>((resolve) => {
+    resolveHead = resolve;
+  });
+  const body = new Promise<string>((resolve, reject) => {
+    resolveBody = resolve;
+    rejectAll = reject;
+  });
+  const req = http.request(
+    {
+      host: proxy.host,
+      port: proxy.port,
+      method: 'GET',
+      path: absoluteUrl,
+      agent: false,
+    },
+    (res) => {
+      resolveHead(res.statusCode);
+      let text = '';
+      res.on('data', (chunk) => {
+        text += chunk;
+      });
+      res.on('end', () => resolveBody(text));
+    },
+  );
+  req.on('error', rejectAll);
+  req.end();
+  return { head, body };
 }
 
 async function waitForExchange(sink: RecordingSink): Promise<void> {
@@ -341,6 +417,104 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(sink.exchangeUpdates).toHaveLength(0);
     } finally {
       releaseResponse();
+      await origin.close();
+    }
+  });
+
+  it('sends request headers upstream before a slow upload finishes, even with rules', async () => {
+    let headersReceivedAt = 0;
+    let bodyCompletedAt = 0;
+    const origin = await startOrigin((request, response) => {
+      headersReceivedAt = Date.now();
+      request.resume();
+      request.on('end', () => {
+        bodyCompletedAt = Date.now();
+        response.writeHead(200, { 'content-type': 'text/plain' });
+        response.end('ok');
+      });
+    });
+    await proxy.stop();
+    const ruleEngine = new RuleEngine(new BreakpointQueue());
+    ruleEngine.setRuleSet({
+      revision: 1,
+      rules: [{
+        id: 'upload-rule',
+        name: 'Upload rule',
+        enabled: true,
+        priority: 100,
+        matchers: [{ type: 'path', value: '/slow-upload', mode: 'contains' }],
+        actions: [{
+          type: 'header',
+          phase: 'request',
+          op: 'set',
+          name: 'x-upload-rule',
+          value: 'applied',
+        }],
+      }],
+    });
+    proxy = new ProxyService(sink, new CaptureEventQueue(), ruleEngine);
+    address = await proxy.start();
+    try {
+      const gapMs = 300;
+      const startedAt = Date.now();
+      await expect(
+        slowUpload(address, `http://127.0.0.1:${origin.port}/slow-upload`, gapMs),
+      ).resolves.toBe(200);
+
+      // 规则命中仍不得等待完整上传：源站必须在第二块发出前就收到请求头。
+      expect(headersReceivedAt - startedAt).toBeLessThan(gapMs);
+      expect(bodyCompletedAt - headersReceivedAt).toBeGreaterThanOrEqual(
+        gapMs - 50,
+      );
+    } finally {
+      await origin.close();
+    }
+  });
+
+  it('streams response headers to the client before the origin finishes the body', async () => {
+    let releaseBody!: () => void;
+    const bodyGate = new Promise<void>((resolve) => {
+      releaseBody = resolve;
+    });
+    const origin = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain' });
+      response.write('first-');
+      void bodyGate.then(() => response.end('last'));
+    });
+    await proxy.stop();
+    const ruleEngine = new RuleEngine(new BreakpointQueue());
+    ruleEngine.setRuleSet({
+      revision: 1,
+      rules: [{
+        id: 'download-rule',
+        name: 'Download rule',
+        enabled: true,
+        priority: 100,
+        matchers: [{ type: 'path', value: '/slow-download', mode: 'contains' }],
+        actions: [{
+          type: 'header',
+          phase: 'response',
+          op: 'set',
+          name: 'x-download-rule',
+          value: 'applied',
+        }],
+      }],
+    });
+    proxy = new ProxyService(sink, new CaptureEventQueue(), ruleEngine);
+    address = await proxy.start();
+    try {
+      const stream = proxiedGetStreaming(
+        address,
+        `http://127.0.0.1:${origin.port}/slow-download`,
+      );
+
+      // 命中响应规则仍必须流式：响应头在源站结束正文之前就到达客户端。
+      await expect(stream.head).resolves.toBe(200);
+
+      releaseBody();
+      await expect(stream.body).resolves.toBe('first-last');
+    } finally {
+      releaseBody();
       await origin.close();
     }
   });

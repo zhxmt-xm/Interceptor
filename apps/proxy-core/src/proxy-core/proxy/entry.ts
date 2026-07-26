@@ -25,12 +25,13 @@ import type {
   CaptureSink,
   PendingTunnelCapture,
   ProxyAddress,
-  ProxyPassThroughResponse,
   ProxyRequestResult,
   ProxyResponseResult,
   ProxyRuntimeStatus,
   ProxyStartOptions,
   ProxyTlsConfig,
+  RuleRequestInput,
+  RuleResponseInput,
   WebSocketBridgeMessage,
 } from './interfaces';
 import { ExchangeTracker } from './proxy-exchange-tracker';
@@ -171,48 +172,23 @@ export class ProxyService {
     }
     this.registerCaptureListeners(server);
     // 默认验证源站证书（不关闭）；仅对显式不安全例外 host 忽略源站证书错误。
-    // 接入规则引擎的 beforeRequest/beforeResponse 做匹配改写/短路/阻断/断点；
-    // 无规则时回调快速返回 undefined，不影响转发。
+    //
+    // 单一 passthrough 规则 + headers 阶段钩子：不使用 `.matching(callback)`，因为
+    // Mockttp 的 CallbackMatcher 会先 waitForCompletedRequest 读完整个上传正文；也不
+    // 使用 beforeRequest/beforeResponse，因为它们分别会等待完整请求与响应正文。
+    // beforeRequestHead / beforeResponseHead 在头部阶段执行全部规则，正文始终流式。
     const ignoreHostHttpsErrors =
       this.tlsConfig.insecureHosts.length > 0
         ? [...this.tlsConfig.insecureHosts]
         : undefined;
-    if (this.ruleEngine) {
-      await server.forAnyRequest()
-        .matching((request) => {
-          const context = ProxyUtils.buildRequestContext(request);
-          return Boolean(
-            this.ruleEngine?.mightHandleRequest(context)
-            && this.ruleEngine.mightHandleResponse(context),
-          );
-        })
-        .asPriority(3)
-        .thenPassThrough({
-          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-          beforeRequest: (req) => this.applyRulesToRequest(req),
-          beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
-        });
-      await server.forAnyRequest()
-        .matching((request) => this.ruleEngine?.mightHandleResponse(
-          ProxyUtils.buildRequestContext(request),
-        ) ?? false)
-        .asPriority(2)
-        .thenPassThrough({
-          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-          beforeResponse: (res, req) => this.applyRulesToResponse(res, req),
-        });
-      await server.forAnyRequest()
-        .matching((request) => this.ruleEngine?.mightHandleRequest(
-          ProxyUtils.buildRequestContext(request),
-        ) ?? false)
-        .asPriority(1)
-        .thenPassThrough({
-          ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-          beforeRequest: (req) => this.applyRulesToRequest(req),
-        });
-    }
-    await server.forUnmatchedRequest().thenPassThrough({
+    await server.forAnyRequest().thenPassThrough({
       ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+      ...(this.ruleEngine
+        ? {
+            beforeRequestHead: (req) => this.applyRulesToRequest(req),
+            beforeResponseHead: (res, req) => this.applyRulesToResponse(res, req),
+          }
+        : {}),
     });
     const webSocketBridge = new WebSocketBridge({
       intercept: (message) => this.interceptWebSocketMessage(message),
@@ -603,11 +579,11 @@ export class ProxyService {
   }
 
   /**
-   * 请求阶段套用规则引擎：无引擎/无规则快速跳过；命中则暂存审计、按需延迟，
-   * 返回 Mockttp 短路响应 / 阻断 / 改写请求。引擎异常不得阻断转发。
+   * 请求头阶段套用规则引擎：不等待请求正文，因此上传全程流式。
+   * 命中则记录审计、按需延迟，返回短路响应 / 阻断 / 改写后的请求头。
    */
   private async applyRulesToRequest(
-    request: CompletedRequest,
+    request: RuleRequestInput,
   ): Promise<ProxyRequestResult | undefined> {
     if (!this.ruleEngine || !this.ruleEngine.hasRules) {
       return undefined;
@@ -651,11 +627,12 @@ export class ProxyService {
   }
 
   /**
-   * 响应阶段套用规则引擎：命中则暂存审计、按需延迟，返回 Mockttp 阻断 / 改写响应。
+   * 响应头阶段套用规则引擎：不缓冲响应正文，因此下载全程流式。
+   * 命中则记录审计、按需延迟，返回阻断或改写后的响应头。
    */
   private async applyRulesToResponse(
-    response: ProxyPassThroughResponse,
-    request: CompletedRequest,
+    response: RuleResponseInput,
+    request: RuleRequestInput,
   ): Promise<ProxyResponseResult | undefined> {
     if (!this.ruleEngine || !this.ruleEngine.hasRules) {
       return undefined;

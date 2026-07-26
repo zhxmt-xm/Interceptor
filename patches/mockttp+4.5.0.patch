@@ -48,6 +48,258 @@ index 3dd0793..31b4347 100644
  /**
   * @hidden
   */
+diff --git a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts b/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
+index 3f57894..3631162 100644
+--- a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
++++ b/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
+@@ -1,7 +1,7 @@
+ import { Readable } from 'stream';
+ import { Operation as JsonPatchOperation } from 'fast-json-patch';
+ import { MaybePromise } from '@httptoolkit/util';
+-import { Headers, Trailers, CompletedRequest, CompletedBody, Explainable, RawHeaders } from "../../types";
++import { Headers, Trailers, CompletedRequest, CompletedBody, Explainable, RawHeaders, Destination, TimingEvents } from "../../types";
+ import { Replace } from '../../util/type-utils';
+ import { MatchReplacePairs, SerializedMatchReplacePairs } from '../match-replace';
+ import { Serializable, ClientServerChannel, SerializedProxyConfig } from "../../serialization/serialization";
+@@ -94,6 +94,62 @@ export interface CallbackRequestResult {
+     response?: CallbackResponseResult;
+ }
+ export type CallbackResponseResult = CallbackResponseMessageResult | 'close' | 'reset';
++/**
++ * The request headers seen at the point where the request head is about to be sent
++ * upstream. Provided to `beforeRequestHead`, which runs without waiting for the
++ * request body.
++ */
++export interface RequestHead {
++    id: string;
++    method: string;
++    url: string;
++    protocol: string;
++    headers: Headers;
++    rawHeaders: RawHeaders;
++    destination: Destination;
++    timingEvents: TimingEvents;
++    tags: string[];
++}
++/**
++ * Modifications that may be applied to a request head without buffering the body.
++ */
++export interface CallbackRequestHeadResult {
++    method?: string;
++    url?: string;
++    headers?: Headers;
++    /**
++     * Replaces the request body without waiting for the real one, so the request can
++     * be sent upstream immediately.
++     */
++    body?: string | Buffer | Uint8Array;
++    json?: any;
++    response?: CallbackResponseResult;
++}
++/**
++ * The upstream response headers, before any rule transforms are applied. Provided to
++ * `beforeResponseHead`, which runs without waiting for the response body.
++ */
++export interface ResponseHead {
++    id: string;
++    statusCode: number;
++    statusMessage?: string;
++    headers: Headers;
++    rawHeaders: RawHeaders;
++}
++/**
++ * Modifications that may be applied to a response head without buffering the body.
++ */
++export interface CallbackResponseHeadResult {
++    statusCode?: number;
++    statusMessage?: string;
++    headers?: Headers;
++    /**
++     * Replaces the response body without waiting for the real one, so the response can
++     * be sent downstream immediately.
++     */
++    body?: string | Buffer | Uint8Array;
++    json?: any;
++}
+ /**
+  * Can be returned from callbacks to define parts of a response, or
+  * override parts when given an existing repsonse.
+@@ -289,6 +345,14 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
+      * See {@link CallbackRequestResult} for the possible fields that can be set.
+      */
+     beforeRequest?: (req: CompletedRequest) => MaybePromise<CallbackRequestResult | void> | void;
++    /**
++     * A callback that receives the request head just before it is sent upstream.
++     *
++     * Unlike `beforeRequest` this never waits for the request body, so request bodies
++     * continue streaming upstream while the callback runs. Use it for method, URL and
++     * header changes, or to short-circuit the request entirely.
++     */
++    beforeRequestHead?: (req: RequestHead) => MaybePromise<CallbackRequestHeadResult | void> | void;
+     /**
+      * A callback that will be passed the full response before it is passed through,
+      * and which returns a value that defines how the the response content should
+@@ -305,6 +369,20 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
+      * See {@link CallbackResponseMessageResult} for the possible fields that can be set.
+      */
+     beforeResponse?: (res: PassThroughResponse, req: CompletedRequest) => MaybePromise<CallbackResponseResult | void> | void;
++    /**
++     * A callback that receives the upstream response head as soon as it arrives.
++     *
++     * Unlike `beforeResponse` this never buffers the response body, so responses keep
++     * streaming to the client while the callback runs. Use it for status and header
++     * changes, or to close/reset the connection.
++     */
++    beforeResponseHead?: (res: ResponseHead, req: {
++        id: string;
++        method: string;
++        url: string;
++        headers: Headers;
++        rawHeaders: RawHeaders;
++    }) => MaybePromise<CallbackResponseHeadResult | 'close' | 'reset' | void> | void;
+ }
+ export interface RequestTransform extends PassThroughInitialTransforms {
+     /**
+diff --git a/node_modules/mockttp/dist/rules/requests/request-step-definitions.js b/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
+index 8371f80..b8fa876 100644
+--- a/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
++++ b/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
+@@ -186,8 +186,12 @@ class PassThroughStep extends serialization_1.Serializable {
+     lookupOptions;
+     simulateConnectionErrors;
+     mirrorTlsFingerprint;
++    beforeRequestHead;
++    beforeResponseHead;
+     constructor(options = {}) {
+         super();
++        this.beforeRequestHead = options.beforeRequestHead;
++        this.beforeResponseHead = options.beforeResponseHead;
+         this.ignoreHostHttpsErrors = options.ignoreHostHttpsErrors || [];
+         if (!Array.isArray(this.ignoreHostHttpsErrors) && typeof this.ignoreHostHttpsErrors !== 'boolean') {
+             throw new Error("ignoreHostHttpsErrors must be an array or a boolean");
+diff --git a/node_modules/mockttp/dist/rules/requests/request-step-impls.js b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
+index 8ba0d3d..b0b7a50 100644
+--- a/node_modules/mockttp/dist/rules/requests/request-step-impls.js
++++ b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
+@@ -425,6 +425,64 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+             }
+             rawHeaders = (0, header_utils_1.objectHeadersToRaw)(headers);
+         }
++        // Interceptor patch: headers-stage request hook. Unlike beforeRequest this never
++        // calls waitForCompletedRequest, so request bodies keep streaming upstream.
++        if (this.beforeRequestHead) {
++            const headHeaders = (0, header_utils_1.rawHeadersToObject)(rawHeaders);
++            const modifiedHead = await this.beforeRequestHead({
++                id: clientReq.id,
++                method,
++                url: reqUrl,
++                protocol: protocol?.replace(':', '') ?? '',
++                headers: _.cloneDeep(headHeaders),
++                rawHeaders: _.cloneDeep(rawHeaders),
++                destination: { hostname: hostname || 'localhost', port: parseInt(port, 10) },
++                timingEvents: clientReq.timingEvents,
++                tags: clientReq.tags
++            });
++            if (modifiedHead?.response) {
++                if (modifiedHead.response === 'close') {
++                    clientSocket.end();
++                    throw new abort_error_1.AbortError('Connection closed intentionally by rule', 'E_RULE_BREQ_CLOSE');
++                }
++                else if (modifiedHead.response === 'reset') {
++                    (0, socket_util_1.requireSocketResetSupport)();
++                    (0, socket_util_1.resetOrDestroy)(clientReq);
++                    throw new abort_error_1.AbortError('Connection reset intentionally by rule', 'E_RULE_BREQ_RESET');
++                }
++                else {
++                    await writeResponseFromCallback(modifiedHead.response, clientRes);
++                    return;
++                }
++            }
++            method = modifiedHead?.method || method;
++            if (modifiedHead?.url) {
++                if (!(0, url_1.isAbsoluteUrl)(modifiedHead.url))
++                    throw new Error("Overridden request URLs must be absolute");
++                reqUrl = modifiedHead.url;
++                const parsedUrl = url.parse(reqUrl);
++                ({ protocol, port, pathname, search: query } = parsedUrl);
++                hostname = parsedUrl.hostname;
++                hostAddress = hostname;
++            }
++            if (modifiedHead?.headers || modifiedHead?.url) {
++                const headers = modifiedHead?.headers || headHeaders;
++                Object.assign(headers, isH2Downstream
++                    ? (0, passthrough_handling_1.getH2HeadersAfterModification)(reqUrl, headHeaders, modifiedHead?.headers)
++                    : { 'host': (0, passthrough_handling_1.getHostAfterModification)(reqUrl, headHeaders, modifiedHead?.headers) });
++                validateCustomHeaders(headHeaders, modifiedHead?.headers, passthrough_handling_1.MODIFIABLE_PSEUDOHEADERS);
++                rawHeaders = (0, header_utils_1.objectHeadersToRaw)(headers);
++            }
++            if (modifiedHead?.body !== undefined) {
++                // Replaced without waiting for the real body, matching transformRequest semantics.
++                reqBodyOverride = await (0, passthrough_handling_1.buildOverriddenBody)(modifiedHead, (0, header_utils_1.rawHeadersToObject)(rawHeaders));
++                if (reqBodyOverride) {
++                    rawHeaders = (0, header_utils_1.updateRawHeaders)(rawHeaders, {
++                        'content-length': reqBodyOverride.byteLength.toString()
++                    });
++                }
++            }
++        }
+         const effectivePort = (0, url_1.getEffectivePort)({ protocol, port });
+         const trustedCAs = await this.trustedCACertificates();
+         // We only do H2 upstream for HTTPS. Http2-wrapper doesn't support H2C, it's rarely used
+@@ -569,6 +627,53 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+                 if (isH2Downstream) {
+                     serverRawHeaders = (0, header_utils_1.h1HeadersToH2)(serverRawHeaders);
+                 }
++                // Interceptor patch: headers-stage response hook. Unlike beforeResponse this
++                // never calls streamToBuffer, so response bodies keep streaming downstream.
++                if (this.beforeResponseHead) {
++                    const headHeaders = (0, header_utils_1.rawHeadersToObject)(serverRawHeaders);
++                    const modifiedHead = await this.beforeResponseHead({
++                        id: clientReq.id,
++                        statusCode: serverStatusCode,
++                        statusMessage: serverStatusMessage,
++                        headers: _.cloneDeep(headHeaders),
++                        rawHeaders: _.cloneDeep(serverRawHeaders)
++                    }, {
++                        id: clientReq.id,
++                        method: method,
++                        url: reqUrl,
++                        headers: (0, header_utils_1.rawHeadersToObject)(rawHeaders),
++                        rawHeaders: rawHeaders
++                    });
++                    if (modifiedHead === 'close' || modifiedHead === 'reset') {
++                        if (modifiedHead === 'close') {
++                            clientSocket.end();
++                        }
++                        else {
++                            (0, socket_util_1.requireSocketResetSupport)();
++                            (0, socket_util_1.resetOrDestroy)(clientReq);
++                        }
++                        serverRes.resume();
++                        throw new abort_error_1.AbortError(`Connection ${modifiedHead === 'close' ? 'closed' : 'reset'} intentionally by rule`, `E_RULE_BRES_${modifiedHead.toUpperCase()}`);
++                    }
++                    if (modifiedHead?.statusCode !== undefined) {
++                        serverStatusCode = modifiedHead.statusCode;
++                        serverStatusMessage = modifiedHead.statusMessage;
++                    }
++                    if (modifiedHead?.headers) {
++                        validateCustomHeaders(headHeaders, modifiedHead.headers);
++                        serverRawHeaders = (0, header_utils_1.objectHeadersToRaw)(modifiedHead.headers);
++                    }
++                    if (modifiedHead?.body !== undefined) {
++                        // Replaced without waiting for the real body: the upstream stream is
++                        // drained below rather than buffered.
++                        resBodyOverride = await (0, passthrough_handling_1.buildOverriddenBody)(modifiedHead, (0, header_utils_1.rawHeadersToObject)(serverRawHeaders));
++                        if (resBodyOverride) {
++                            serverRawHeaders = (0, header_utils_1.updateRawHeaders)(serverRawHeaders, {
++                                'content-length': resBodyOverride.byteLength.toString()
++                            });
++                        }
++                    }
++                }
+                 if (this.transformResponse) {
+                     const { replaceStatus, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformResponse;
+                     if (replaceStatus) {
 diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
 index db33b85..24548cf 100644
 --- a/node_modules/mockttp/dist/server/mockttp-server.js

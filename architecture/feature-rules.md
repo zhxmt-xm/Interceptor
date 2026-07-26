@@ -107,8 +107,13 @@ Mockttp 提供四种介入形态，代价差异极大。
 | --- | --- | --- | --- |
 | A 纯 passthrough | 无 hook | 否 | 否 |
 | B 静态转换 | `transformRequest` / `transformResponse` | 否 | 否 |
-| C headers 钩子 | `beforeResponseHead`（需 patch） | 否 | 否 |
+| C headers 钩子 | `beforeRequestHead` / `beforeResponseHead`（**本仓库 patch**） | 否 | 否 |
 | D 完整回调 | `beforeRequest` / `beforeResponse` | **是** | **是** |
+
+**当前实现只用路径 C。** 单一 `forAnyRequest().thenPassThrough({ beforeRequestHead, beforeResponseHead })`，
+既不使用 `.matching(callback)`（CallbackMatcher 会 `waitForCompletedRequest`），也不使用
+`beforeRequest` / `beforeResponse`（分别等待完整请求与响应正文）。所有规则在头部阶段执行，
+正文始终流式。
 
 ### 4.1 为什么路径 D 昂贵
 
@@ -427,17 +432,27 @@ flowchart LR
 
 ## 11. 与当前实现的差异
 
+已落地：
+
+| 项 | 改造前 | 现在 |
+| --- | --- | --- |
+| 路由方式 | 四档 `.matching(callback)` 预筛选 | 单一 `forAnyRequest`，无 callback matcher |
+| request body | callback matcher 强制等完整 body | 请求头阶段判定 |
+| response 改写 | 一律 `beforeResponse` 全量缓冲 | `beforeResponseHead` 流式 |
+| 响应侧 matcher | 必须缓冲 | 头部阶段直接判定 |
+| `header` `append` | 需原值因而缓冲 | 头部阶段可见原值 |
+
+待做：
+
 | 项 | 当前 | 目标 |
 | --- | --- | --- |
-| 路由方式 | 四档 `.matching(callback)` 预筛选 | 单规则 + 请求内编译，无 callback matcher |
-| request body | callback matcher 强制等待完整 body | 请求头阶段判定 |
-| response 改写 | 一律 `beforeResponse` 全量缓冲 | 优先 `transformResponse` 流式 |
 | `validate` | 空实现 | 真实语义校验 |
 | `throttle` | 只计算不消费，是假功能 | 实现或从 UI 移除 |
-| breakpoint body | `Mutable*State` 不带原始 body，快照常为空 | 带入有限预览 |
+| breakpoint body | `Mutable*State` 不带原始 body | 带入 Capture 已接收片段 |
 | hit 计数 | 按 action 次数 | 按 Rule × Exchange 去重 |
 | revision | request/response 可能跨版本 | 请求阶段固定快照 |
 | 冲突处理 | 立即 reload 覆盖草稿 | 保留三份供选择 |
+| Evidence 四组 headers | 仅自有执行记录 | 叠加 `rule-event` |
 
 ## 12. 验收要点
 
