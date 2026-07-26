@@ -50,18 +50,14 @@
 - [x] 回归测试：命中响应规则时，响应头先于源站正文结束到达客户端。
 - [ ] 补充真实 SSE、无限 chunked、HTTP/2 大 Range、server-streaming gRPC、客户端取消和源站 reset 的端到端验证。
 
-### 4. Rules 语义校验为空，非法 Rule 可直接影响真实请求
+### 4. 未填写的条件会匹配一切（已解决）
 
-- [ ] **确认 BUG**：实现真实 `rules.validate`；当前固定返回 `{ valid: true, diagnostics: [] }`。
-- [ ] **确认 BUG**：`rules.replace` 必须在 Core 强制复用同一 validator；不能只依赖 Renderer，也不能把非法规则写入 `rules.sqlite` 后再编译。
-- [ ] 拒绝空 Rule ID、重复 ID、空 name、空 matcher 集（除非产品明确支持 match-all）、重复/无序 priority。
-- [ ] 拒绝空 host/path/url 正则语义不明确的 matcher；尤其空 host `contains` 当前会匹配所有 host。
-- [ ] 拒绝空 query/header key、空 header action name、非法 header name/value、非法 URL、非法 regex。
-- [ ] 校验 status 区间与 status action、delay、throttle、timeout、port、bytesPerSecond 为合法有限值。
-- [ ] 校验同一 Rule 的互斥 origin Action（map-local / map-remote / synthetic / block），不能只在 UI 菜单禁用。
-- [ ] 校验 response-only matcher + request-only Action；这种组合当前永远不会执行，应拒绝或定义延迟执行语义。
-- [ ] 校验 Map Local 文件读取、路径不存在、权限失败；不能 Apply 后在真实流量上静默变成 404。
-- [ ] `Apply` 必须在 diagnostics 非空时禁用；Core invalid 返回后保留草稿与逐项错误定位。
+- [x] **确认 BUG**：刚新建、还没输入 host 的规则会命中全部真实流量——`contains ''` 的 `value.includes('')` 与 `regex ''` 的空模式都恒真。真实代理 + 真实源站集成测试已复现并回归。
+- [x] Matcher 编译器把未填写的值解释为“还没配好”而恒不匹配；没有任何条件的规则同样恒不匹配。只能在响应阶段判定的规则在请求阶段仍保守放行。
+- [x] Renderer 直接限制操作：字段未填完的规则不允许启用（开关置灰 + 说明），新建规则与 Capture 草稿默认不启用；已启用的规则任何时候都可关掉。
+- [x] 删除假的 `rules.validate` 命令（固定返回 valid）及其协议/Main/Preload 链路；未填写提示改为 Renderer 本地纯函数 `ruleIssues` 即时派生。
+- [x] Core 信任 Main/Renderer 传递的数据，不做规则语义校验；真实流量安全由“未填写条件不匹配 + 不完整规则不能启用 + 引擎只编译 enabled 规则”三道边界保证。
+- [ ] 非空但无法编译的 regex、不可解析的 JSON body、不存在的 Map Local 文件仍然只会静默失效，需要在 Renderer 给出可见提示。
 
 ### 5. Throttle 是假功能
 

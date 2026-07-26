@@ -988,23 +988,6 @@ class DesktopApplication {
       return result.payload.ruleSet;
     });
 
-    // 规则集语义校验（无副作用）：Renderer 编辑时实时校验，返回诊断明细。
-    ipcMain.handle(
-      DESKTOP_IPC_CHANNELS.rulesValidate,
-      async (event, rules: unknown) => {
-        this.assertTrustedSender(event.senderFrame?.url);
-        const definitions = toCoreRuleDefinitions(rules);
-        const result = await this.coreRuntime.request({
-          type: 'rules.validate',
-          payload: { rules: definitions },
-        });
-        return {
-          valid: result.payload.valid,
-          diagnostics: result.payload.diagnostics,
-        };
-      },
-    );
-
     // 乐观并发替换规则集：expectedRevision 需匹配当前 revision，返回新 revision。
     // 冲突/非法/其它失败以结构化结果返回，避免 IPC 抛错丢失错误码。
     ipcMain.handle(

@@ -29,7 +29,7 @@ import {
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
-import { ruleIndexFromPath, isRulesDirty, selectedRule } from '../utils';
+import { isRulesDirty, ruleIssues, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -50,7 +50,6 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
-  const diagnostics = useRulesStore((state) => state.diagnostics);
   const renameRule = useRulesStore((state) => state.renameRule);
   const toggleRule = useRulesStore((state) => state.toggleRule);
   const removeRule = useRulesStore((state) => state.removeRule);
@@ -70,9 +69,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   }
 
   const ruleIndex = rules.findIndex((item) => item.id === rule.id);
-  const ruleDiagnostics = diagnostics.filter(
-    (diagnostic) => ruleIndexFromPath(diagnostic.path) === ruleIndex,
-  );
+  const issues = ruleIssues(rule);
 
   const addAndClose = (type: RuleActionType): void => {
     addAction(rule.id, type);
@@ -219,7 +216,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           </Flyout>
         </div>
 
-        {ruleDiagnostics.length === 0 ? (
+        {issues.length === 0 ? (
           <div className={styles.validation}>
             <Check size={15} strokeWidth={2} />
             {dirty
@@ -230,8 +227,8 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           <div className={cx(styles.validation, styles.invalid)}>
             <AlertTriangle size={15} strokeWidth={2} />
             <div className={styles.diagList}>
-              {ruleDiagnostics.map((diagnostic, index) => (
-                <span key={index}>{diagnostic.message}</span>
+              {issues.map((issue, index) => (
+                <span key={index}>{t(issue.messageKey, { index: issue.index })}</span>
               ))}
             </div>
           </div>

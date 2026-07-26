@@ -45,8 +45,9 @@ describe('core protocol validation', () => {
         },
       },
       {
-        type: 'rules.validate',
+        type: 'rules.replace',
         payload: {
+          expectedRevision: 2,
           rules: [
             {
               id: 'rule-1',
@@ -313,8 +314,9 @@ describe('core protocol validation', () => {
         requestId: 'request-bad',
         traceId: 'trace-bad',
         command: {
-          type: 'rules.validate',
+          type: 'rules.replace',
           payload: {
+            expectedRevision: 0,
             rules: [
               {
                 id: 'rule-x',
@@ -740,10 +742,9 @@ describe('core protocol validation', () => {
       traceId: 'trace-5',
       ok: true,
       result: {
-        type: 'rules.validation',
+        type: 'rules.revision',
         payload: {
-          valid: false,
-          diagnostics: [{ code: 'rule.invalid', message: 'Invalid matcher' }],
+          revision: 8,
         },
       },
     }).ok).toBe(true);

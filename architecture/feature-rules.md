@@ -387,33 +387,29 @@ sequenceDiagram
 
 Capture 数据完全不使用 SQLite，两者强隔离。
 
-### 9.2 校验 [改造中]
+### 9.2 未填写的规则 [已实现]
 
-当前 `rules.validate` 固定返回 `{ valid: true, diagnostics: [] }`，是**空实现**。目标必须在 Core 强制执行，`rules.replace` 复用同一 validator。
+Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历史上的 `rules.validate` 命令固定返回 valid，已连同协议/Main/Preload 链路一并删除）。“刚新建、还没填完”的规则不能影响真实流量，靠三道边界保证：
 
-拒绝项：
+| 边界 | 位置 | 行为 |
+| --- | --- | --- |
+| 未填写的条件恒不匹配 | `rules/utils/index.ts` 的 `compileStringMatch` / `compileRuleMatchers` | 空值条件与空条件集编译为恒 false，而不是 `includes('')` / 空 regex 的恒 true |
+| 不完整的规则不能启用 | Renderer `rulesStore.toggleRule` + `RuleRow` 开关 | 字段未填完时开关置灰并拒绝启用；已启用的规则任何时候都可关掉 |
+| 引擎只执行已启用规则 | `RuleEngine.setRuleSet` | `filter(rule => rule.enabled)` 后才编译 |
 
-- 空 Rule ID、重复 ID、空 name
-- 空 matcher 集（除非产品明确支持 match-all）
-- 空 host `contains`（当前会匹配所有 host）
-- 空 query/header key、非法 header name/value
-- 非法 URL、非法 regex
-- 越界 status 区间、非有限 delay/throttle/timeout/port
-- 同一 Rule 内互斥的 origin action（`map-local` / `map-remote` / `synthetic` / `block`）
-- response-only matcher + request-only action（当前永远不执行）
-- Map Local 路径不存在或不可读
+未填写项的提示由 Renderer 本地纯函数 `ruleIssues(rule)` 即时派生（不入状态、不往返 Core），驱动 RuleEditor 的问题列表、Statusbar 计数和启用开关的可用性。新建规则与 Capture 右键草稿都默认 `enabled: false`。
 
-`Apply` 在 diagnostics 非空时必须禁用。
+**尚未覆盖**：非空但无法编译的 regex、不可解析的 JSON body、不存在的 Map Local 文件仍会静默失效。
 
 ## 10. Renderer 交互
 
 ```mermaid
 flowchart LR
-    A["rulesStore<br/>revision + 草稿 + diagnostics + hits"] --> B["RuleList"]
+    A["rulesStore<br/>revision + 草稿 + hits"] --> B["RuleList"]
     A --> C["RuleEditor"]
     C --> D["MatcherRow · 8 种"]
     C --> E["ActionEditor · 11 种"]
-    A -->|"去抖"| F["rules.validate"]
+    A -->|"本地纯函数"| F["ruleIssues（未填写项）"]
     A -->|"Apply"| G["rules.replace"]
     A -->|"4s 轮询"| H["rules.hits"]
 ```

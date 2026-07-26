@@ -398,12 +398,6 @@ export class CoreApplication implements CoreRpcHost {
             throw mapStorageError(error);
           }
         });
-      case 'rules.validate': {
-        return {
-          type: 'rules.validation',
-          payload: { valid: true, diagnostics: [] },
-        };
-      }
       case 'rules.get':
         return this.withStorage(async (storage) => {
           const ruleSet = await this.diagnostics.action('rules.get', () =>

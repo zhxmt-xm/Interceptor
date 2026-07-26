@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { cx, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import type { ChipKind } from '../interfaces';
-import { deriveChips, matchSummary } from '../utils';
+import { deriveChips, isRuleComplete, matchSummary } from '../utils';
 import styles from './RuleRow.module.css';
 
 const CHIP_CLASS: Record<ChipKind, string | undefined> = {
@@ -58,6 +58,8 @@ export const RuleRow = memo(function RuleRow({
 }: RuleRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const chips = deriveChips(rule);
+  // 字段还没填完的规则不允许启用；已启用的任何时候都可以关掉。
+  const enableBlocked = !rule.enabled && !isRuleComplete(rule);
   return (
     <button
       type="button"
@@ -85,12 +87,13 @@ export const RuleRow = memo(function RuleRow({
       </span>
       <span
         className={styles.toggle}
+        title={enableBlocked ? t('rules.enableBlocked') : undefined}
         onClick={(event) => {
           event.stopPropagation();
           onToggle(rule.id);
         }}
       >
-        <Switch checked={rule.enabled} />
+        <Switch checked={rule.enabled} disabled={enableBlocked} />
       </span>
       <div className={styles.meta}>
         <span className={styles.name} data-parity={`rule-name-${rule.id}`}>{rule.name}</span>

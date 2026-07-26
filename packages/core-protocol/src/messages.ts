@@ -82,13 +82,6 @@ export interface GrpcMessagesCommand {
   };
 }
 
-export interface RulesValidateCommand {
-  type: 'rules.validate';
-  payload: {
-    rules: RuleDefinition[];
-  };
-}
-
 export interface RulesReplaceCommand {
   type: 'rules.replace';
   payload: {
@@ -341,7 +334,6 @@ export type CoreCommand =
   | WebSocketBreakpointConfigureCommand
   | GrpcMessagesCommand
   | BodyReadRangeCommand
-  | RulesValidateCommand
   | RulesReplaceCommand
   | RulesGetCommand
   | RulesHitsCommand
@@ -456,14 +448,6 @@ export interface BodyRangeResult {
     end: boolean;
     /** 解码结果：ok=完整，limited=有限明文前缀，skipped=未解码，failed=失败返回原始。 */
     decodeStatus?: string;
-  };
-}
-
-export interface RuleValidationResult {
-  type: 'rules.validation';
-  payload: {
-    valid: boolean;
-    diagnostics: ProtocolDiagnostic[];
   };
 }
 
@@ -715,7 +699,6 @@ export type CoreResult =
   | WebSocketBreakpointConfigResult
   | GrpcMessagesResult
   | BodyRangeResult
-  | RuleValidationResult
   | RuleRevisionResult
   | RulesRuleSetResult
   | RulesHitsResult
@@ -741,7 +724,6 @@ export type CoreResultForCommand<T extends CoreCommand> =
             ? WebSocketBreakpointConfigResult
             : T extends GrpcMessagesCommand ? GrpcMessagesResult
               : T extends BodyReadRangeCommand ? BodyRangeResult
-          : T extends RulesValidateCommand ? RuleValidationResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
               : T extends BreakpointResolveCommand
                 ? BreakpointResolutionResult                : T extends BreakpointListCommand
@@ -792,12 +774,6 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                       : T extends ConnectionProbeCommand
                                         ? ConnectionProbeResult
                                         : never;
-
-export interface ProtocolDiagnostic {
-  code: string;
-  message: string;
-  path?: string;
-}
 
 export interface CoreError {
   code:

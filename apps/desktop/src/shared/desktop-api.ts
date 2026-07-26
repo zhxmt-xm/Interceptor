@@ -14,7 +14,6 @@ import type {
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
-  ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
   RuleDefinition,
@@ -48,7 +47,6 @@ export type {
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
-  ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
   RuleDefinition,
@@ -271,12 +269,6 @@ export interface CertificateInfo {  /** CA 是否已生成。 */
   path: string | null;
 }
 
-/** 规则集语义校验结果：整体是否有效 + 逐项诊断（重复 id、regex 可编译、路径穿越等）。 */
-export interface RuleValidation {
-  valid: boolean;
-  diagnostics: ProtocolDiagnostic[];
-}
-
 /** 规则集替换结果：成功返回新 revision；失败带原因（conflict 表示他处已改需重载）。 */
 export type RuleReplaceResult =
   | { ok: true; revision: number }
@@ -405,7 +397,6 @@ export const DESKTOP_IPC_CHANNELS = {
   httpsSetInsecureHosts: 'https:set-insecure-hosts',
   httpsSetDecryption: 'https:set-decryption',
   rulesGet: 'rules:get',
-  rulesValidate: 'rules:validate',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
   composerSend: 'composer:send',
@@ -479,7 +470,6 @@ export interface InterceptorDesktopApi {
   setInsecureHosts(hosts: string[]): Promise<string[]>;
   setHttpsDecryption(enabled: boolean): Promise<CertificateInfo>;
   getRules(): Promise<RuleSet>;
-  validateRules(rules: RuleDefinition[]): Promise<RuleValidation>;
   replaceRules(
     expectedRevision: number,
     rules: RuleDefinition[],

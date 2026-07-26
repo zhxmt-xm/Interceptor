@@ -802,7 +802,6 @@ export function installFakeInterceptor({
       return certificate;
     },
     getRules: async () => ({ revision: ruleRevision, rules: currentRules }),
-    validateRules: async () => ({ valid: true, diagnostics: [] }),
     replaceRules: async (_expectedRevision, rules) => {
       ruleRevision += 1;
       currentRules = rules;

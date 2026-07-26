@@ -1,5 +1,4 @@
 import type {
-  ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
   RuleDefinition,
@@ -12,10 +11,18 @@ import type {
 /** Rule row chip kind；复用 RuleRow.module.css 的着色类。 */
 export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'brk';
 
+/** 一条规则里还没填完的地方；纯 Renderer 本地概念，不进 wire。 */
+export interface RuleIssue {
+  /** 描述缺什么的 i18n key。 */
+  messageKey: string;
+  /** 条件/动作序号（从 1 起），供文案插值。 */
+  index?: number;
+}
+
 /**
- * Rules workspace 视图状态：只持有可编辑的规则草稿（revision + rules）、命中计数、
- * 校验诊断与保存/加载状态。所有编辑产出合法的规则模型对象，经 rules.replace 乐观并发
- * 落库。header/body 值均为普通字段，不涉及全局捕获状态。
+ * Rules workspace 视图状态：只持有可编辑的规则草稿（revision + rules）、命中计数与
+ * 保存/加载状态。规则完整性在本地纯函数即时派生（`ruleIssues`），不入状态、也不
+ * 往返 Core；不完整的规则无法启用，因此永远不会作用于真实流量。
  */
 export interface RulesState {
   /** 已持久化的规则集 revision，用于乐观并发（rules.replace 的 expectedRevision）。 */
@@ -25,8 +32,6 @@ export interface RulesState {
   /** 可编辑的规则草稿（本地副本）。 */
   rules: RuleDefinition[];
   selectedId: string | null;
-  /** 语义诊断（重复 id / regex 可编译 / status 区间 / JSON body / map 穿越）。 */
-  diagnostics: ProtocolDiagnostic[];
   /** ruleId → 累计命中次数。 */
   hits: Record<string, number>;
   /** 最近一次成功应用或加载的规则快照，用于内容级脏检查（改回原值即视为未改动）。 */
@@ -39,12 +44,12 @@ export interface RulesState {
 
   loadRuleSet(ruleSet: RuleSet): void;
   setHits(counts: RuleHitCount[]): void;
-  setDiagnostics(diagnostics: ProtocolDiagnostic[]): void;
   select(id: string | null): void;
 
   addRule(name?: string): void;
   addRuleDraft(rule: RuleDefinition): void;
   removeRule(id: string): void;
+  /** 切换启用；字段未填完的规则不允许被启用，已启用的任何时候都可关闭。 */
   toggleRule(id: string): void;
   renameRule(id: string, name: string): void;
   moveRule(id: string, direction: -1 | 1): void;

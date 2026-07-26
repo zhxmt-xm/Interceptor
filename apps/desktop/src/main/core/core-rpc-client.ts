@@ -46,7 +46,6 @@ export class CoreRpcClient {
     'rules.get': 'rules.ruleset',
     'rules.hits': 'rules.hits',
     'rules.replace': 'rules.revision',
-    'rules.validate': 'rules.validation',
     'sessions.query': 'sessions.page',
     'sessions.detail': 'sessions.detail',
     'websocket.frames': 'websocket.frames',

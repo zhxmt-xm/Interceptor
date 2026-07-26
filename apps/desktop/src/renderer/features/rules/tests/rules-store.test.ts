@@ -28,7 +28,6 @@ describe('rulesStore ordering', () => {
       rules: [rule('first', 100), rule('second', 200), rule('third', 300)],
       selectedId: 'second',
       applied: [rule('first', 100), rule('second', 200), rule('third', 300)],
-      diagnostics: [],
       hits: {},
       loading: false,
       saving: false,
@@ -112,7 +111,6 @@ describe('rulesStore ordering', () => {
       rules: [],
       selectedId: null,
       applied: [],
-      diagnostics: [],
       hits: {},
       loading: false,
       saving: false,
@@ -141,5 +139,73 @@ describe('rulesStore ordering', () => {
     expect(useRulesStore.getState().selectedId).toBe('persisted');
     expect(await selectRuleDraft('deleted-rule')).toBe(false);
     expect(useRulesStore.getState().selectedId).toBe('persisted');
+  });
+});
+
+describe('rulesStore enable guard', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('creates new rules disabled and refuses to enable them until fields are filled', () => {
+    useRulesStore.setState({
+      revision: 1,
+      initialized: true,
+      rules: [],
+      applied: [],
+      selectedId: null,
+      hits: {},
+      loading: false,
+      saving: false,
+      error: null,
+      conflict: false,
+    });
+
+    useRulesStore.getState().addRule('New rule');
+    const draft = useRulesStore.getState().rules[0];
+    if (!draft) {
+      throw new Error('The new rule draft is missing.');
+    }
+    // 默认草稿的 host 条件与 header 名都还是空的，不能声称它在工作。
+    expect(draft.enabled).toBe(false);
+
+    useRulesStore.getState().toggleRule(draft.id);
+    expect(useRulesStore.getState().rules[0]?.enabled).toBe(false);
+
+    useRulesStore.getState().updateMatcher(draft.id, 0, {
+      type: 'host',
+      value: 'api.test',
+      mode: 'contains',
+    });
+    useRulesStore.getState().updateAction(draft.id, 0, {
+      type: 'header',
+      phase: 'request',
+      op: 'set',
+      name: 'x-tag',
+      value: 'on',
+    });
+
+    useRulesStore.getState().toggleRule(draft.id);
+    expect(useRulesStore.getState().rules[0]?.enabled).toBe(true);
+  });
+
+  it('always allows disabling a rule, even after its fields are cleared', () => {
+    useRulesStore.setState({
+      revision: 1,
+      initialized: true,
+      rules: [rule('live', 100)],
+      applied: [rule('live', 100)],
+      selectedId: 'live',
+      hits: {},
+      loading: false,
+      saving: false,
+      error: null,
+      conflict: false,
+    });
+
+    useRulesStore.getState().updateMatcher('live', 0, { type: 'method', value: '' });
+    useRulesStore.getState().toggleRule('live');
+
+    expect(useRulesStore.getState().rules[0]?.enabled).toBe(false);
   });
 });

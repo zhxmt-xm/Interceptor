@@ -108,11 +108,14 @@ export function compileMatcher(matcher: RuleMatcher): CompiledMatcher {
 
 /**
  * 把一条规则的 matcher 数组编译为 AND 组合判定。
- * 规则至少含 1 个 matcher（wire 校验保证），空数组会恒真——调用方不应传空。
+ * 没有任何条件的规则视为“还没配好”而恒不匹配，不能退化成匹配全部流量。
  */
 export function compileRuleMatchers(
   matchers: readonly RuleMatcher[],
 ): CompiledMatcher {
+  if (matchers.length === 0) {
+    return () => false;
+  }
   const compiled = matchers.map(compileMatcher);
   return (ctx) => compiled.every((test) => test(ctx));
 }
@@ -222,11 +225,20 @@ export function mutatesResponseMatchContext(action: RuleAction): boolean {
 export function compileRequestPhaseMatchers(
   matchers: readonly RuleMatcher[],
 ): CompiledMatcher {
-  return compileRuleMatchers(matchers.filter((matcher) => !(
+  if (matchers.length === 0) {
+    // 没有任何条件的规则永不命中，预筛选也不必放行。
+    return () => false;
+  }
+  const requestPhase = matchers.filter((matcher) => !(
     matcher.type === 'status'
     || (matcher.type === 'header' && matcher.phase === 'response')
     || (matcher.type === 'mime' && matcher.phase === 'response')
-  )));
+  ));
+  if (requestPhase.length === 0) {
+    // 全部条件都只能在响应阶段判定：请求阶段无从判断，必须保守放行。
+    return () => true;
+  }
+  return compileRuleMatchers(requestPhase);
 }
 
 function compileStringMatch(
@@ -234,6 +246,12 @@ function compileStringMatch(
   pattern: string,
   caseSensitive: boolean,
 ): (value: string) => boolean {
+  // 未填写的值意味着“这个条件还没配好”：必须恒不匹配。否则 contains 的
+  // `value.includes('')` 与 regex 的空模式都恒真，刚新建、还没输入 host 的规则
+  // 会直接命中全部真实流量。
+  if (pattern === '') {
+    return () => false;
+  }
   switch (mode) {
     case 'contains': {
       if (caseSensitive) {

@@ -216,9 +216,7 @@ class PackagedWorkflowSmoke {
       expect(composer).toMatchObject({ ok: true, status: 200 });
 
       const rules = await page.evaluate(() => window.interceptor.getRules());
-      const validation = await page.evaluate((definitions) =>
-        window.interceptor.validateRules([...definitions]), rules.rules);
-      expect(validation.valid).toBe(true);
+      expect(Array.isArray(rules.rules)).toBe(true);
 
       const breakpoints = await page.evaluate(() =>
         window.interceptor.listBreakpoints());
@@ -472,7 +470,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'stopCapture',
         'toggleMaximizeWindow',
         'uninstallCertificate',
-        'validateRules',
         'viewCertificate',
       ],
       hasNodeProcess: 'undefined',

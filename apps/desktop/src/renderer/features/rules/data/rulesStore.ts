@@ -6,6 +6,7 @@ import {
   createAction,
   createMatcher,
   createRule,
+  isRuleComplete,
   mapRule,
   nextPriority,
   reorderRules,
@@ -17,7 +18,6 @@ export const useRulesStore = create<RulesState>((set) => ({
   rules: [],
   applied: [],
   selectedId: null,
-  diagnostics: [],
   hits: {},
   loading: false,
   saving: false,
@@ -53,8 +53,6 @@ export const useRulesStore = create<RulesState>((set) => ({
       return { hits };
     }),
 
-  setDiagnostics: (diagnostics) => set({ diagnostics }),
-
   select: (id) => set({ selectedId: id }),
 
   addRule: (name) =>
@@ -76,7 +74,11 @@ export const useRulesStore = create<RulesState>((set) => ({
 
   toggleRule: (id) =>
     set((state) => ({
-      rules: mapRule(state.rules, id, (rule) => ({ ...rule, enabled: !rule.enabled })),
+      rules: mapRule(state.rules, id, (rule) =>
+        // 字段还没填完的规则不允许启用；已启用的任何时候都可以关掉。
+        rule.enabled || isRuleComplete(rule)
+          ? { ...rule, enabled: !rule.enabled }
+          : rule),
     })),
 
   renameRule: (id, name) =>

@@ -1,5 +1,4 @@
 import type {
-  ProtocolDiagnostic,
   RuleAction,
   RuleActionType,
   RuleDefinition,
@@ -7,7 +6,7 @@ import type {
   RuleMatcherType,
 } from '../../../shared/desktop-api';
 import type { SelectOption } from '../../components';
-import type { ChipKind, RulesState } from './interfaces';
+import type { ChipKind, RuleIssue, RulesState } from './interfaces';
 
 /** 把一个 action 映射为规则行 chip（着色 + 标签）。 */
 export function actionChip(type: RuleActionType): { kind: ChipKind; labelKey: string } {
@@ -88,19 +87,19 @@ function createRuleId(): string {
   return `rule-${uuid}`;
 }
 
-/** 新建一条规则：默认一个 host 通配匹配 + 一个请求 header set 动作，保证 wire 校验通过。 */
+/** 新建一条规则：默认一个 host 条件 + 一个请求 header 动作，字段留空待填，因此默认不启用。 */
 export function createRule(priority: number, name = 'New rule'): RuleDefinition {
   return {
     id: createRuleId(),
     name,
-    enabled: true,
+    enabled: false,
     priority,
     matchers: [{ type: 'host', value: '', mode: 'contains' }],
     actions: [{ type: 'header', phase: 'request', op: 'set', name: '', value: '' }],
   };
 }
 
-/** 基于 Capture 请求完整 URL 创建一条 action 草稿；不会自动 Apply。 */
+/** 基于 Capture 请求完整 URL 创建一条 action 草稿；action 参数待填，默认不启用、不自动 Apply。 */
 export function createRuleFromRequest(
   priority: number,
   name: string,
@@ -110,7 +109,7 @@ export function createRuleFromRequest(
   return {
     id: createRuleId(),
     name,
-    enabled: true,
+    enabled: false,
     priority,
     matchers: [{ type: 'url', value: url, mode: 'exact' }],
     actions: [createAction(actionType)],
@@ -171,21 +170,76 @@ export function createAction(type: RuleActionType): RuleAction {
   }
 }
 
-/** 从诊断 path（如 `rules[2].matchers[0]`）解析规则下标，供按规则聚合诊断。 */
-export function ruleIndexFromPath(path: string | undefined): number | null {
-  if (!path) {
-    return null;
+/** 判断 matcher 是否还有必填字段为空；为空的条件会退化成“匹配一切”。 */
+function matcherIsIncomplete(matcher: RuleMatcher): boolean {
+  switch (matcher.type) {
+    case 'method':
+    case 'host':
+    case 'path':
+    case 'url':
+    case 'mime':
+      return matcher.value.trim() === '';
+    case 'query':
+      return matcher.key.trim() === '';
+    case 'header':
+      return matcher.name.trim() === '';
+    case 'status':
+      return false;
+    default:
+      return false;
   }
-  const match = /^rules\[(\d+)\]/.exec(path);
-  return match ? Number(match[1]) : null;
 }
 
-/** 判断某规则（按下标）是否有语义诊断。 */
-export function ruleHasDiagnostic(
-  index: number,
-  diagnostics: readonly ProtocolDiagnostic[],
-): boolean {
-  return diagnostics.some((diagnostic) => ruleIndexFromPath(diagnostic.path) === index);
+/** 判断 action 是否还有必填字段为空；为空的动作要么无效要么行为不可预期。 */
+function actionIsIncomplete(action: RuleAction): boolean {
+  switch (action.type) {
+    case 'header':
+    case 'query':
+      return action.name.trim() === '';
+    case 'map-local':
+      return action.path.trim() === '';
+    case 'map-remote':
+      return (
+        action.scheme === undefined
+        && (action.host ?? '').trim() === ''
+        && action.port === undefined
+        && (action.path ?? '').trim() === ''
+      );
+    default:
+      return false;
+  }
+}
+
+/**
+ * 列出让规则无法安全启用的空字段；空数组表示这条规则可以启用。
+ *
+ * 只检查“填没填”，不做正则可编译性之类的深度语义判断：真实流量安全由
+ * “不完整的规则不能启用、Core 只执行启用的规则”这条边界保证。
+ */
+export function ruleIssues(rule: RuleDefinition): RuleIssue[] {
+  const issues: RuleIssue[] = [];
+  if (rule.matchers.length === 0) {
+    issues.push({ messageKey: 'rules.issueNoConditions' });
+  }
+  if (rule.actions.length === 0) {
+    issues.push({ messageKey: 'rules.issueNoActions' });
+  }
+  for (const [index, matcher] of rule.matchers.entries()) {
+    if (matcherIsIncomplete(matcher)) {
+      issues.push({ messageKey: 'rules.issueEmptyCondition', index: index + 1 });
+    }
+  }
+  for (const [index, action] of rule.actions.entries()) {
+    if (actionIsIncomplete(action)) {
+      issues.push({ messageKey: 'rules.issueEmptyAction', index: index + 1 });
+    }
+  }
+  return issues;
+}
+
+/** 规则是否填写完整到可以启用。 */
+export function isRuleComplete(rule: RuleDefinition): boolean {
+  return ruleIssues(rule).length === 0;
 }
 
 /** Translate option labels without changing the stable values stored in rule models. */
