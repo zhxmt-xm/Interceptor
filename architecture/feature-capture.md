@@ -53,7 +53,7 @@ Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/p
 | `response` | `CompletedResponse` | 完整响应 | 是 |
 | `abort` | `AbortedRequest` | 请求中断 | — |
 | `request-trailers` / `response-trailers` | `TrailerData` | trailer（**本仓库 patch 新增**） | 响应侧为是 |
-| `rule-event` | `RuleEvent<T>` | 转发过程内部细节 | 见下 |
+| `rule-event` | `RuleEvent<T>` | 转发过程内部细节（Mockttp 原生，**当前未订阅**） | 见 3.3 |
 | `websocket-request` / `websocket-accepted` / `websocket-message-received` / `websocket-message-sent` / `websocket-close` | — | WebSocket 生命周期 | — |
 | `tls-passthrough-opened` / `tls-passthrough-closed` | `TlsPassthroughEvent` | 未解密 CONNECT 隧道 | — |
 | `tls-client-error` / `client-error` | — | 握手与协议错误 | — |
@@ -78,50 +78,79 @@ Capture 必须**退订这两个事件**，改用 initiated + body-data 组合。
 
 ### 3.2.1 trailer 需要 patch [已实现]
 
-退订 completed 事件后产生一个直接后果：Mockttp **没有 trailer 专用事件**，trailer 只存在于
-`CompletedRequest.rawTrailers` / `CompletedResponse.rawTrailers`。而 gRPC 的 `grpc-status`
-正是一个 response trailer。
+**什么是 trailer**：HTTP 允许在 chunked 正文**结束之后**再发一组 header，叫 trailer。它存在的
+理由是有些值只有传完正文才知道——校验和、签名、以及最重要的 **gRPC 状态**。
 
-因此仓库维护一个最小 patch（`patches/mockttp+4.5.0.patch`，约 138 行），给 Mockttp 增加
-`request-trailers` / `response-trailers` 事件：
+gRPC 的调用结果不在响应头里，而在 trailer：
+
+```text
+:status: 200
+content-type: application/grpc+proto
+<...gRPC 消息帧...>
+grpc-status: 0        ← trailer，正文之后才发出
+grpc-message: OK
+```
+
+也就是说，**没有 trailer 就读不到 gRPC 的成功/失败状态**。请求侧 trailer 在实践中极少使用
+（客户端上传完再附校验和），但响应侧 trailer 是 gRPC 的必需品。
+
+**为什么需要 patch**：Mockttp 只在 `CompletedRequest.rawTrailers` / `CompletedResponse.rawTrailers`
+暴露 trailer，而拿到 completed 对象就意味着全量缓冲正文（见 3.2）。阶段一退订 completed 事件后，
+trailer 会随之丢失，gRPC 面板的状态列会坏掉。
+
+因此仓库维护 patch（`patches/mockttp+4.5.0.patch`）给 Mockttp 增加独立的
+`request-trailers` / `response-trailers` 事件，让 trailer 与正文缓冲解耦：
 
 - `request-utils.js` 的 `rawTrailers` setter 与 `addTrailers` override 中回调 `options.onTrailers`
 - `mockttp-server.js` 增加 `announceTrailersAsync`，仅在有 listener 时启用
 - `mockttp.d.ts` / `types.d.ts` 补齐 `TrailerData` 与事件签名
 
+代理转发上游 trailer 时走的正是 `clientRes.addTrailers()`，而 `trackResponse` 已经 override 了
+该方法，因此这个 patch 点能覆盖 H1 与 H2 两条路径。
+
 patch 经 `patch-package` + 根 `postinstall` 自动重放，升级 Mockttp 时若不适用会直接报错。
 
-### 3.3 `rule-event` 提供保真证据且零缓冲
+### 3.3 `rule-event`：Mockttp 原生能力，当前未使用
 
-`request-step-impls.js` 在转发过程中发出：
+`rule-event` 是 Mockttp **自带**的公开事件（不是本仓库 patch 新增的），`request-step-impls.js`
+在转发过程中发出：
 
 | `eventType` | 内容 | 位置 |
 | --- | --- | --- |
-| `passthrough-request-head` | 发往 Origin 的**最终**请求（method/protocol/hostname/port/path/rawHeaders） | L922 |
+| `passthrough-request-head` | 发往 Origin 的**最终** wire 请求头 | L922 |
 | `passthrough-request-body` | `{ overridden, rawBody? }` | L931 |
-| `passthrough-response-head` | Origin **原始**响应（statusCode/statusMessage/httpVersion/rawHeaders） | L562 |
+| `passthrough-response-head` | Origin **原始**响应头 | L562 |
 | `passthrough-response-body` | `{ overridden, rawBody? }` | L682/762/769 |
 | `passthrough-abort` | 上游中断 | L847 |
 
-`passthrough-response-head` 的触发点在 `if (this.transformResponse)` 与 `else if (this.beforeResponse)` **之前**，因此无论走哪条规则路径都能拿到源站原始响应头，且不触发缓冲。
+设计早期曾打算用它采集四组 headers，**因为那时假设规则改写由 Mockttp 内部的
+`transformResponse` 执行，我们看不到执行过程**，只能靠对比前后快照反推。
 
-启用条件是零成本的：
+阶段二引入 `beforeRequestHead` / `beforeResponseHead` 后这个前提不成立了：规则改写回到
+`RuleEngine` 自己手中，所以**不再需要 `rule-event`**，当前代码也没有订阅它。
+
+仍然只有 `rule-event` 能提供、但当前不需要的两项：
+
+- **wire 级精确的上游请求头**。钩子返回值之后，Mockttp 还会自己调整 host 与 content-length，因此 `passthrough-request-head` 与钩子返回值可能有细微差异。
+- **区分上游中断与客户端中断**。`abort` 事件只代表客户端侧。
+
+如果将来需要这两项，再订阅即可；启用成本为零：
 
 ```js
 emitEventCallback: (emitter.listenerCount('rule-event') !== 0) ? ... : undefined
 ```
 
-### 3.4 四组 headers 全部可零缓冲 [阶段二]
+### 3.4 四组 headers 全部零缓冲 [已实现]
 
 | Evidence | 来源 |
 | --- | --- |
 | 客户端原始请求头 | `request-initiated` |
-| 发往 Origin 的最终请求头 | `rule-event: passthrough-request-head` |
-| Origin 原始响应头 | `rule-event: passthrough-response-head` |
+| 发往 Origin 的最终请求头 | `beforeRequestHead` 返回值（由 RuleEngine 构造） |
+| Origin 原始响应头 | `beforeResponseHead` 参数 |
 | 回客户端的最终响应头 | `response-initiated` |
 
-这使得 Rule 效果 marker（生效值、被替代旧值、被删除值）可以完整保留，无需 `beforeResponse`。
-当前已接入前两项中的 `request-initiated` 与 `response-initiated`；`rule-event` 两组在阶段二接入。
+四者均不缓冲正文。Rule 效果 marker（生效值、被替代旧值、被删除值）由 `RuleEngine` 在
+执行每个 header action 时直接记录 `previousValues` 产出，不需要从前后快照反推。
 
 ### 3.5 顺序不保证
 
@@ -223,10 +252,11 @@ sequenceDiagram
     Main-->>UI: 显示 pending 行
     Main-->>App: event-ack
 
-    Mockttp->>Proxy: 规则钩子
+    Mockttp->>Proxy: beforeRequestHead
     Proxy->>Rules: evaluateRequest
     Rules-->>Proxy: RequestEvaluation
-    Proxy-->>Mockttp: 改写结果
+    Proxy-->>Mockttp: 改写后的请求头
+    Proxy->>Storage: 记录上游请求头与 rule effects
 
     Client->>Mockttp: 请求体分块
     Mockttp-->>Proxy: request-body-data
@@ -234,17 +264,14 @@ sequenceDiagram
     Proxy->>Queue: enqueue exchange-updated
 
     Mockttp->>Origin: 最终请求
-    Mockttp-->>Proxy: rule-event passthrough-request-head
-    Proxy->>Storage: 记录上游请求头
-
     Origin-->>Mockttp: 原始响应头
-    Mockttp-->>Proxy: rule-event passthrough-response-head
-    Proxy->>Storage: 记录源站原始响应头
 
-    Mockttp->>Proxy: 响应规则钩子
+    Mockttp->>Proxy: beforeResponseHead
+    Note over Proxy: 参数即源站原始响应头
     Proxy->>Rules: evaluateResponse
     Rules-->>Proxy: ResponseEvaluation
-    Proxy-->>Mockttp: 改写结果
+    Proxy-->>Mockttp: 改写后的响应头
+    Proxy->>Storage: 记录原始响应头与 rule effects
 
     Mockttp-->>Client: 最终响应头
     Mockttp-->>Proxy: response-initiated
@@ -258,6 +285,8 @@ sequenceDiagram
     Proxy->>Queue: enqueue exchange-updated
 
     Mockttp-->>Proxy: response-body-data isEnded
+    Mockttp-->>Proxy: response-trailers
+    Note over Proxy: gRPC 的 grpc-status 在此到达
     Proxy->>Storage: finalize body 得到 hash
     Proxy->>Storage: 绑定 bodyRef 与终态 completed
     Proxy->>Queue: enqueue exchange-updated
@@ -268,13 +297,13 @@ sequenceDiagram
 
 **逐步说明：**
 
-1. **请求头到达**：`ProxyService` 在 `request-initiated` 回调内检查 `recording` 与 `captureCutoff`，通过后分配 `exchangeId`，固定 `captureGeneration`，写入 `ExchangeInput{ state: 'pending' }`，立即 enqueue `exchange-added`。UI 在一个 flush 周期内看到该行。
-2. **规则介入**：与步骤 1 并行，不保证先后。`ProxyService` 用同一 `request.id` 找到（或创建）Exchange 记录，附加 `ruleIds` 与 header effects。
+1. **请求头到达**：`ProxyService` 在 `request-initiated` 回调内检查 `recording` 与 capture generation，通过后分配 `exchangeId`，写入 `ExchangeInput{ state: 'pending' }`，立即 enqueue `exchange-added`。UI 在一个 flush 周期内看到该行。
+2. **请求规则**：`beforeRequestHead` 与步骤 1 并行，不保证先后。`ProxyService` 用同一 `request.id` 找到（或暂存到孤儿表等待）Exchange 记录，附加 `ruleIds` 与 header effects。钩子**不等请求正文**。
 3. **请求体**：每个 `request-body-data` 把 `content` 追加进该 Exchange 的 request body writer，更新 `requestBytes`。`isEnded` 时 finalize 得到 hash 并绑定 `requestBodyId`。
-4. **上游请求头**：`passthrough-request-head` 提供发往 Origin 的最终值，作为 request Rule 效果的对照。
-5. **源站响应头**：`passthrough-response-head` 提供 Origin 原始值，作为 response Rule 效果的对照。
-6. **最终响应头**：`response-initiated` 提供实际写回客户端的值，更新 `statusCode`、`responseMime`、`responseStartedAt`，状态转 `response-streaming`。
-7. **响应体**：同请求体，写入 response body writer。
+4. **源站响应头**：`beforeResponseHead` 的参数就是 Origin 原始响应头，作为 response Rule 效果的对照。钩子**不缓冲响应正文**。
+5. **最终响应头**：`response-initiated` 提供实际写回客户端的值，更新 `statusCode`、`responseMime`、`responseStartedAt`，状态转 `response-streaming`。
+6. **响应体**：同请求体，写入 response body writer。
+7. **trailer**：`response-trailers` 追加记录；gRPC 的 `grpc-status` 由此路径获得。
 8. **终态**：响应体 `isEnded` 后写入 `completedAt` 与 `state: 'completed'`。
 
 ### 5.2 CONNECT 隧道（未解密）[已实现]
@@ -374,9 +403,6 @@ sequenceDiagram
     else 客户端中断
         Mockttp-->>Proxy: abort
         Proxy->>Storage: state aborted，errorCode 记录原因
-    else Origin 中断
-        Mockttp-->>Proxy: rule-event passthrough-abort
-        Proxy->>Storage: state aborted
     end
 ```
 
@@ -548,21 +574,31 @@ flowchart LR
 | body 阈值 | 按总大小 | 按累计字节 |
 | generation | 仅 `captureCutoff` 时间切面 | 显式 generation |
 
-阶段二待做：
+阶段二已落地：
+
+| 项 | 改造前 | 现在 |
+| --- | --- | --- |
+| 请求规则预筛选 | `.matching(callback)` 等完整 body | `beforeRequestHead` 头部阶段判定 |
+| 响应规则执行 | 一律 `beforeResponse` 全量缓冲 | `beforeResponseHead` 流式 |
+| Rule evidence | 需要从前后快照反推 | `RuleEngine` 执行时直接记录 `previousValues` |
+
+仍待完成：
 
 | 项 | 当前 | 目标 |
 | --- | --- | --- |
-| Rule evidence | 仅自有执行记录 | 叠加 `rule-event` 四组 headers |
-| 响应规则执行 | 一律 `beforeResponse` 全量缓冲 | 优先 `transformResponse` 流式 |
-| 请求规则预筛选 | `.matching(callback)` 等完整 body | 请求头阶段判定 |
+| Breakpoint 正文 | 快照不带正文 | 带入 Capture 已接收的增量片段 |
+| Clear 与文件任务 | 无 lease 保护 | snapshot / lease 语义 |
+| 进行中状态展示 | Renderer 仅按状态码占位 | 明示 pending / streaming 与已接收字节 |
 
 ## 11. 验收要点
 
-- [ ] 无规则慢上传：Origin 在 body 完成前收到 headers，不出现 `12ms → 507ms` 回归。
+- [x] 规则命中时的慢上传：Origin 在第二块正文发出前收到 headers。
+- [x] 规则命中时的下载：响应头先于源站正文结束到达客户端。
+- [x] 早期 401/413/417：Exchange 完整保留。
+- [x] Clear 后旧 generation 的迟到事件被全部丢弃。
+- [x] WebSocket 捕获在退订 completed 事件后仍完整。
+- [x] gRPC `grpc-status` trailer 在退订 completed 事件后仍可读。
 - [ ] 67 MB Range 视频：全程流式，Core 内存峰值不随文件大小线性增长。
 - [ ] SSE 与无限 chunked 响应：行立即出现，字节持续增长。
-- [ ] 早期 401/413/417：Exchange 完整保留。
 - [ ] Pause 前开始、Pause 后完成的请求继续记录。
-- [ ] Clear 瞬间的 in-flight H1/H2/WebSocket/gRPC 不残留、不复活。
-- [ ] WebSocket 捕获在退订 completed 事件后仍完整。
 - [ ] 四组 headers 在 Inspector 中可区分展示。

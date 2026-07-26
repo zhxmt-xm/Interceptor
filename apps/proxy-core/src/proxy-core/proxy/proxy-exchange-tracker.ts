@@ -27,10 +27,10 @@ import * as ProxyUtils from './utils';
 /**
  * 按 Mockttp request id 聚合单条 Exchange 的完整生命周期。
  *
- * 设计前提：Mockttp 的 `request-initiated`、`*-body-data`、`rule-event` 均经
- * `setImmediate` 异步发出，而规则钩子走独立 Promise 链，两者顺序不保证。因此所有
- * 入口都是幂等 upsert；规则结果若先于 `request-initiated` 到达，先存入孤儿表，
- * 待 Exchange 建立后合并。
+ * 设计前提：Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 均经
+ * `setImmediate` 异步发出，而规则钩子（`beforeRequestHead` / `beforeResponseHead`）
+ * 走独立 Promise 链，两者顺序不保证。因此所有入口都是幂等 upsert；规则结果若先于
+ * `request-initiated` 到达，先存入孤儿表，待 Exchange 建立后合并。
  *
  * 每条 Exchange 用自己的 `tail` Promise 串行化存储写入，保证顺序且不阻塞事件回调。
  */

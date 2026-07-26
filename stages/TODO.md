@@ -6,6 +6,10 @@
 
 ## 已完成且必须保持的基线
 
+- [x] **Capture 增量管线**：Exchange 在 `request-initiated` 即创建并推送（`state='pending'`），不再等 completed 事件配对。已退订 completed `request`/`response`，Mockttp 不再无条件缓冲完整正文。
+- [x] **规则头部阶段执行**：单一 `forAnyRequest` + `beforeRequestHead`/`beforeResponseHead`，无 CallbackMatcher、无全量缓冲；上传与下载全程流式。
+- [x] **Mockttp patch**：`patches/mockttp+4.5.0.patch` 提供 trailer 事件与 headers 阶段钩子，经 `patch-package` + `postinstall` 重放，已验证随包发布。
+- [x] **架构设计文档**：`architecture/feature-*.md` 记录每个 feature 的调用流程与边界。
 - [x] Capture request 右键可按 11 种 Action 创建当前完整 URL 的 exact Rule 草稿；只打开 Rules，不自动 Apply。
 - [x] Capture 支持 Rule 多选 OR 过滤；Rules 可跳回 Capture；Header Rule marker 可跳转仍存在的 Rule。
 - [x] 当前 Capture 没有任何 Rule 命中时，Add filter 的 Rule 字段禁用且不打开空菜单。
@@ -21,31 +25,30 @@
 
 ## P0：真实请求透明性与稳定性
 
-### 1. Mockttp 动态 Rule 预筛选会阻塞所有上传
+### 1. Mockttp 动态 Rule 预筛选会阻塞所有上传（已解决）
 
-- [ ] **确认 BUG**：移除 `forAnyRequest().matching(callback)` 形式的 Rule 预筛选。Mockttp `CallbackMatcher.matches()` 会先 `waitForCompletedRequest()`，再调用 callback；即使没有启用 Rule或最终返回 `false`，也会先完整读取 request body。
-- [ ] **确认实证**：保留自动回归——同一慢上传中，纯 fallback 时 origin 在约 `12ms` 收到请求；加入当前 CallbackMatcher 后，要等客户端 `500ms` 发完 body，origin 才在约 `507ms` 收到请求。
-- [ ] 改为不消费 body 的同步 header/method/URL matcher，或把 Rule 路由移入不改变转发时序的数据面；任何“不命中”判定都不得等待 body 完成。
-- [ ] 验证无 Rule、request-only Rule、response-only Rule、request+response Rule 四条路径都不会让无关上传延迟到 body 完成后才连接 origin。
-- [ ] 验证 chunked、未知长度、慢上传、大文件上传、客户端中途断开和 `Expect: 100-continue`。
+- [x] **确认 BUG**：已移除 `forAnyRequest().matching(callback)` 形式的 Rule 预筛选。Mockttp `CallbackMatcher.matches()` 会先 `waitForCompletedRequest()`，即使最终返回 `false` 也已读完整 request body。
+- [x] 改为单一 `forAnyRequest().thenPassThrough({ beforeRequestHead, beforeResponseHead })`，所有判定在头部阶段完成，不消费 body。
+- [x] 回归测试：规则命中时的慢上传，源站必须在第二块正文发出前就收到请求头。
+- [ ] 补充验证 chunked、未知长度、大文件上传、客户端中途断开和 `Expect: 100-continue`。
 
-### 2. Capture completed-event 仍会完整缓存所有正文
+### 2. Capture completed-event 仍会完整缓存所有正文（已解决）
 
-- [ ] **确认 BUG / 容量风险**：停止依赖 Mockttp completed `request` / `response` 事件读取完整 body。Mockttp 默认 `maxBodySize = Infinity`；只要注册 completed listener，就会为 Capture 调用 `waitForCompletedRequest/Response`。
-- [ ] 区分“转发透明性”和“Capture 内存成本”：completed listener 通常不延迟 origin（本地实测约 `10ms` 即到达），但会在 Mockttp 内额外缓存完整请求/响应。
-- [ ] 使用 `request-initiated` / `response-initiated` 建立 Exchange，使用 `request-body-data` / `response-body-data` 增量写 TemporaryBodyStore。
-- [ ] 单正文跨过内存阈值时立即 spill；不能等 Mockttp 已在内存组装完整 67 MB / 1 GB body 后才 spill。
-- [ ] Paused 时不得继续因已注册 completed listener 隐式缓存所有正文。
-- [ ] 为并发大媒体、并发上传和磁盘慢写建立内存峰值 / 背压测试。
+- [x] **确认 BUG / 容量风险**：已停止订阅 Mockttp completed `request` / `response`。只要注册 completed listener，Mockttp 就会调用 `waitForCompletedRequest` / `body.asBuffer()` 无条件缓冲。
+- [x] 使用 `request-initiated` / `response-initiated` 建立 Exchange，使用 `request-body-data` / `response-body-data` 增量写 TemporaryBodyStore。
+- [x] 单正文按**累计字节**跨过内存阈值时立即 spill，不再等 Mockttp 在内存组装完整 body。
+- [x] Paused 时不再因已注册 completed listener 隐式缓存所有正文。
+- [x] 待落盘字节超过 `BODY_WRITER_PENDING_LIMIT_BYTES` 时降级为只计数，保证 Core 内存有界。
+- [ ] 为并发大媒体、并发上传和磁盘慢写建立内存峰值测试，并在 UI 明示降级状态。
 
-### 3. Response Rule 破坏流式响应语义
+### 3. Response Rule 破坏流式响应语义（已解决）
 
-- [ ] **确认 BUG / 实现限制**：带 `beforeResponse` 的请求会先完整 `streamToBuffer`，再返回客户端；SSE、无限响应、长下载、gRPC streaming 可能长期无首字节或永远不完成。
-- [ ] 为只改 status/header、只 delay、body rewrite、response breakpoint 分别定义是否允许流式；不能把所有 response Action 都统一建模为“完整 body 后执行”。
-- [ ] Header/status-only Action 应在 response headers 到达时执行，不应等待 body。
-- [ ] Body rewrite / body breakpoint 若必须缓冲，应在 UI 明示并提供单独容量策略；对无限流必须拒绝或明确不支持。
-- [ ] Delay 语义需明确：延迟 response headers、每 chunk，还是完整 response；当前实现是完整 body 收完后再延迟，和用户预期不一致。
-- [ ] 覆盖 SSE、chunked stream、HTTP/2 大 Range、server-streaming gRPC、客户端取消和源站 reset。
+- [x] **确认 BUG / 实现限制**：已改用 `beforeResponseHead`，不再 `streamToBuffer`。SSE、无限响应、长下载、gRPC streaming 不再因规则命中而无首字节。
+- [x] Header/status-only Action 在 response headers 到达时执行，不等待 body。
+- [x] Body 整体替换不等原文，上游流直接 `resume()` 倒掉。
+- [x] Delay 语义明确：现在延迟的是响应头，不是完整 body 收完后。
+- [x] 回归测试：命中响应规则时，响应头先于源站正文结束到达客户端。
+- [ ] 补充真实 SSE、无限 chunked、HTTP/2 大 Range、server-streaming gRPC、客户端取消和源站 reset 的端到端验证。
 
 ### 4. Rules 语义校验为空，非法 Rule 可直接影响真实请求
 
@@ -68,8 +71,10 @@
 
 ### 6. Breakpoint 没有原始 HTTP body
 
-- [ ] **确认 BUG**：Request/Response `Mutable*State` 初始化时带入原始 body；当前只初始化 method/url/status/headers，Breakpoint snapshot 的 body 通常为空。
-- [ ] 对大正文不能为 Breakpoint 再制造第二份无界内存；定义有限预览、按需编辑和替换语义。
+- [ ] **确认 BUG**：断点快照的 body 仍为空。阶段二后断点在 **headers 阶段**挂起（`beforeRequestHead` / `beforeResponseHead`），此时正文尚未到达，因此不能再指望从 `Mutable*State` 拿到完整 body。
+- [ ] 正确做法：从 `ExchangeTracker` 的增量 writer 读取**当前已接收片段**作为预览，不为断点再制造第二份无界内存。
+- [ ] 编辑后的替换走钩子返回值的整体 body 覆盖（不等原文，上游流直接 `resume()` 倒掉）。
+- [ ] 需要完整正文才能展示的场景，必须显式声明为缓冲模式并在 UI 明示，不得默认开启。
 - [ ] Binary body 不能一律 UTF-8 replacement；提供 text / hex，并保留编码/长度信息。
 - [ ] 验证 Execute edited 后 content-length、content-encoding、transfer-encoding 和 H2 framing 正确。
 
@@ -85,32 +90,33 @@
 
 ## P1：Capture 生命周期与准确性
 
-### 8. Exchange 只在 completed 后出现
+### 8. Exchange 只在 completed 后出现（已解决）
 
-- [ ] Request headers 到达时立即创建 `pending` Exchange 并推送行；Response headers 到达时更新 status/mime；正文与 trailer 增量更新；完成/失败/abort 只负责终态。
-- [ ] SSE、长下载、长上传和 gRPC streaming 在进行中必须可见，不能等连接结束后才出现在列表。
-- [ ] 为状态机定义唯一合法迁移：`initiated → request headers/body → response headers/body → completed | aborted | failed`。
-- [ ] 事件必须幂等；重复、乱序、迟到事件不能回退终态或重复累计 bytes。
+- [x] Request headers 到达时立即创建 `pending` Exchange 并推送行；Response headers 到达时更新 status/mime；正文与 trailer 增量更新；完成/失败/abort 只负责终态。
+- [x] 为状态机定义合法迁移：请求侧 `headers → body → complete | aborted`、响应侧 `none → headers → body → complete | aborted` 独立推进，对外聚合为 `pending / request-complete / response-streaming / completed / aborted / failed`。
+- [x] 事件幂等：所有入口按 request id upsert，终态不可回退，bytes 用 observed 计数覆盖而非累加。
+- [ ] 补充 SSE、长下载、长上传和 gRPC streaming 的进行中可见性端到端验证。
 
-### 9. 早期响应可能丢 Exchange 并残留 pending
+### 9. 早期响应可能丢 Exchange 并残留 pending（已解决）
 
-- [ ] **确认风险**：处理 origin 在 request body 完成前返回 `401/413/417` 的顺序。当前 `pending` 只在 completed `request` 事件建立；若 `response` 先到，会找不到 request 并直接丢弃。
-- [ ] 用 request initiated ID 关联 response；response 可以先完成，request body 仍可继续/abort，最终合并为同一 Exchange。
-- [ ] 覆盖 early hints、100 Continue、客户端停止上传、源站提前 close/reset。
+- [x] **确认风险**：改用 `request-initiated` 建立 Exchange 后，origin 在 request body 完成前返回 `401/413/417` 不再丢失记录。
+- [x] 用 request id 关联 response；response 可以先完成，request body 仍可继续/abort，最终合并为同一 Exchange。
+- [x] 1xx 中间响应经 `response-information` 追加记录，不改变主状态。
+- [ ] 补充 early hints、100 Continue、客户端停止上传、源站提前 close/reset 的端到端覆盖。
 
-### 10. Pause / Resume 的时间切面不准确
+### 10. Pause / Resume 的时间切面不准确（已解决）
 
-- [ ] 明确定义以“请求开始时 recording 状态”还是“每个事件发生时状态”决定 Capture；推荐请求开始时固定 capture generation。
-- [ ] 录制中开始、暂停后才完成的长请求必须按定义继续完成记录，不能因为 completed request 到达时已 Paused 而丢失。
-- [ ] 暂停期间开始、Resume 后才完成的请求不能因为 completed request 到达时已 Recording 而混入。
-- [ ] Stop 仍只暂停记录、不停止转发或系统代理；测试必须覆盖进行中的 upload/download/SSE/WebSocket/gRPC。
+- [x] 已定义为“请求开始时固定 capture generation”：`request-initiated` 时判定 `recording` 并固定 generation，后续事件沿用。
+- [x] 录制中开始、暂停后才完成的长请求继续完成记录；暂停期间开始的请求始终不建记录。
+- [x] Stop 仍只暂停记录，不停止转发或系统代理。
+- [ ] 补充进行中 upload/download/SSE/WebSocket/gRPC 跨 Pause/Resume 的测试。
 
-### 11. Clear 与迟到事件 / 文件任务竞态
+### 11. Clear 与迟到事件 / 文件任务竞态（部分解决）
 
-- [ ] 给每个 Exchange/body write 绑定 capture generation；Clear 后旧 generation 的 request/body/response/trailer 必须全部拒绝。
+- [x] 每个 Exchange 绑定 capture generation；Clear 经 `prepareCaptureReset()` 递增 generation 并 abort 全部在途 body writer，旧 generation 的 request/body/response/trailer 全部拒绝。
+- [x] Clear 后迟到 event 不会重新创建 row、body ref、rule hit 或 WebSocket frame（已有回归测试）。
 - [ ] Clear 与 Body save、HAR export、Archive export/import 同时发生时定义 snapshot / lease / cancel 语义。
 - [ ] 当前 Body save 不阻塞 Clear；Clear 删除 spill 时，正在读取的 export stream 可能失败。
-- [ ] Clear 后迟到 event 不得重新创建 row、body ref、rule hit 或 WebSocket frame。
 - [ ] 覆盖 Clear 点击瞬间的 in-flight H1、H2 多 stream、WebSocket 和 gRPC。
 
 ### 12. Capture bytes、framing 与网络事实需进一步明确
@@ -181,10 +187,10 @@
 
 ### 20. Rule phase 组合和热更新一致性
 
+- [x] 新增/删除 response Rule 对已在途请求的生效方式已确定：只有单一 passthrough 规则，不再由“请求最初选中哪个 Mockttp hook”偶然决定；响应阶段按 `beforeResponseHead` 执行时的规则集求值。
 - [ ] response-only matcher + request Action 当前永远不执行；validator 必须拒绝或重新定义语义。
 - [ ] 明确 request Action 改写后的 method/URL/headers 是否参与 response Rule matcher；为 map-remote、query/header rewrite 后再匹配 response Rule 添加真实集成测试。
-- [ ] 同一请求的 request phase 与 response phase 应固定在同一 RuleSet revision，或明确允许跨 revision；当前热更新可能让请求阶段用 N、响应阶段用 N+1。
-- [ ] 新增/删除 response Rule 对已在途请求是否生效需确定；不能由请求最初选中的 Mockttp hook 偶然决定。
+- [ ] 同一请求的 request phase 与 response phase 应固定在同一 RuleSet revision；当前两个钩子各自读 `this.compiled`，热更新窗口内仍可能跨 revision。
 - [ ] Rule priority、短路 Action、多个 Rule 对同一 header/body/status 的执行顺序必须有可审计记录。
 
 ### 21. Rule observability 不完整
@@ -310,15 +316,17 @@
 
 ### 36. 透明转发与时序
 
-- [ ] 无 Rule 慢上传：origin 在 body 完成前收到 headers/chunks；对照不能再出现 `12ms → 507ms` 回归。
+- [x] 规则命中时的慢上传：origin 在第二块正文发出前收到 headers（已有自动回归）。
+- [x] 规则命中时的下载：响应头先于源站正文结束到达客户端（已有自动回归）。
 - [ ] request matcher 不命中、request-only、response-only、request+response 各自验证首字节、总时长、内存峰值和 wire bytes。
 - [ ] 早期 401/413、100 Continue、chunked upload、客户端 abort、origin reset。
 - [ ] SSE 首字节与持续事件、无限 chunked response、Range video cancel、H2 多 stream、WebSocket、gRPC unary/server-stream/bidi。
 
 ### 37. Capture 生命周期
 
-- [ ] initiated row 立即出现；headers/body/trailers/bytes 增量更新；completed/abort/failed 状态准确。
-- [ ] Pause 前开始/后完成、Pause 中开始/Resume 后完成、Clear 瞬间迟到事件。
+- [x] initiated row 立即出现；bytes 增量更新；completed/abort 状态准确（已有自动回归）。
+- [x] Clear 瞬间迟到事件被丢弃（已有自动回归）。
+- [ ] Pause 前开始/后完成、Pause 中开始/Resume 后完成。
 - [ ] Core restart、Renderer reload、event ACK 阻塞、10万+ rows、大量小 body、并发 spill、磁盘满。
 
 ### 38. Rules 行为
@@ -341,9 +349,16 @@
 
 ## 建议实施顺序
 
-1. [ ] **Stage A / Stop-ship correctness**：移除 CallbackMatcher body 等待；实现真实 rules validator；隐藏或实现 Throttle；修复 Breakpoint 原始 body。
-2. [ ] **Stage B / Capture state machine**：initiated + body-data 增量管线、早期响应、Pause/Resume/Clear generation、SSE/streaming。
-3. [ ] **Stage C / Rule evidence**：按 Exchange 去重 hit、固定 RuleSet revision、历史 snapshot、冲突保留草稿、联动空态/错误反馈。
+已完成：
+
+- [x] **Stage B / Capture state machine**：initiated + body-data 增量管线、早期响应合并、Pause/Resume/Clear generation。剩余 SSE/streaming 端到端验证归入 Stage F。
+- [x] **Stage A 的转发透明性部分**：移除 CallbackMatcher body 等待，规则改到 headers 阶段执行，上传与下载全程流式。
+
+进行中/待办：
+
+1. [ ] **Stage A' / Stop-ship correctness 余项**：实现真实 rules validator；隐藏或实现 Throttle；用 Capture 增量片段修复 Breakpoint 正文。
+2. [ ] **Stage C / Rule evidence**：按 Exchange 去重 hit、固定 RuleSet revision、历史 snapshot、冲突保留草稿、联动空态/错误反馈。
+3. [ ] **Stage C' / 进行中状态展示**：Renderer 明示 pending / streaming 与已接收字节，区分 persist failed、decode failed、preview limited。
 4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded 语义、原子保存、Cancel/Clear lease、HAR 流式化。
 5. [ ] **Stage E / Network compatibility**：upstream proxy/PAC chaining、异常恢复、per-host passthrough、pinning/mTLS/QUIC 诊断。
-6. [ ] **Stage F / Capacity & release gates**：无界增长观测、真实 workflow、压力/故障注入、Windows/macOS packaged 发布门禁。
+6. [ ] **Stage F / Capacity & release gates**：无界增长观测、SSE/大媒体内存峰值、真实 workflow、压力/故障注入、Windows/macOS packaged 发布门禁。
