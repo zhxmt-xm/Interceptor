@@ -13,7 +13,7 @@ import type {
   CleanupResult,
   CleanupScope,
   ExchangeInput,
-  ExchangeResponsePatch,
+  ExchangePatch,
   HeaderInput,
   RuleHitCount,
   RuleHitInput,
@@ -84,14 +84,29 @@ export class TemporaryCaptureStore {
     return assigned;
   }
 
-  /** 更新 Exchange 响应生命周期字段，未提供字段保持原值。 */
-  updateExchangeResponse(patch: ExchangeResponsePatch): void {
+  /** 增量更新 Exchange；未提供的字段保持原值，headers 追加、ruleIds 去重合并。 */
+  updateExchange(patch: ExchangePatch): void {
     const record = this.exchanges.get(patch.id);
     if (!record) {
       return;
     }
+    this.storeBodyRef(patch.requestBody);
+    this.storeBodyRef(patch.responseBody);
     const exchange: ExchangeInput = {
       ...record.exchange,
+      ...(patch.state !== undefined ? { state: patch.state } : {}),
+      ...(patch.requestMime !== undefined
+        ? { requestMime: patch.requestMime }
+        : {}),
+      ...(patch.requestSentAt !== undefined
+        ? { requestSentAt: patch.requestSentAt }
+        : {}),
+      ...(patch.requestBytes !== undefined
+        ? { requestBytes: patch.requestBytes }
+        : {}),
+      ...(patch.requestBodyId !== undefined
+        ? { requestBodyId: patch.requestBodyId }
+        : {}),
       ...(patch.statusCode !== undefined ? { statusCode: patch.statusCode } : {}),
       ...(patch.statusText !== undefined ? { statusText: patch.statusText } : {}),
       ...(patch.responseMime !== undefined
@@ -100,20 +115,25 @@ export class TemporaryCaptureStore {
       ...(patch.responseStartedAt !== undefined
         ? { responseStartedAt: patch.responseStartedAt }
         : {}),
-      ...(patch.completedAt !== undefined
-        ? { completedAt: patch.completedAt }
-        : {}),
       ...(patch.responseBytes !== undefined
         ? { responseBytes: patch.responseBytes }
         : {}),
       ...(patch.responseBodyId !== undefined
         ? { responseBodyId: patch.responseBodyId }
         : {}),
+      ...(patch.completedAt !== undefined
+        ? { completedAt: patch.completedAt }
+        : {}),
       ...(patch.errorCode !== undefined ? { errorCode: patch.errorCode } : {}),
-      state: patch.state,
       headers: patch.headers
-        ? [...(record.exchange.headers ?? []), ...patch.headers.map((header) => ({ ...header }))]
+        ? [
+            ...(record.exchange.headers ?? []),
+            ...patch.headers.map((header) => ({ ...header })),
+          ]
         : record.exchange.headers,
+      ruleIds: patch.ruleIds
+        ? [...new Set([...(record.exchange.ruleIds ?? []), ...patch.ruleIds])]
+        : record.exchange.ruleIds,
     };
     this.exchanges.set(patch.id, { seq: record.seq, exchange });
     this.orderedIndexDirty = true;

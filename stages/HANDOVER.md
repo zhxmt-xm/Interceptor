@@ -9,13 +9,17 @@
 
 1. 本文件：确认工作树状态、已实现功能、剩余工作和精确恢复步骤。
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)：理解当前已经落地的进程边界、代码所有权、通信路径、安全策略和打包路径。未经阅读不要调整 Main、Preload、Core 或 Renderer 边界。**
-3. 只有需要历史索引时再读 [archived/PROGRESS.md](archived/PROGRESS.md) 与最新完成 Stage [archived/M14.md](archived/M14.md)。
-4. 只有需要产品设计或早期决策时再读 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)、[archived/M1.md](archived/M1.md) 或 [archived/M0.md](archived/M0.md)。
+3. **[../architecture/](../architecture/)：按 feature 组织的目标架构设计、service 调用流程与 Client/Origin 交互步骤。修改某个 feature 前先读对应的 `feature-*.md`。**
+4. 只有需要历史索引时再读 [archived/PROGRESS.md](archived/PROGRESS.md) 与最新完成 Stage [archived/M14.md](archived/M14.md)。
+5. 只有需要产品设计或早期决策时再读 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)、[archived/M1.md](archived/M1.md) 或 [archived/M0.md](archived/M0.md)。
 
 不要只根据聊天摘要开始工作；仓库文档和当前代码是权威来源。
 
 ## 当前状态
 
+- **架构设计文档已建立**：根目录 `architecture/` 按 feature 记录目标架构、service 调用流程与 Client/Origin 交互，包含 `feature-capture` / `feature-rules` / `feature-breakpoints` / `feature-composer` / `feature-transfer` / `feature-diagnostics` / `feature-settings` 七篇与一份 `README.md` 索引。文档用 `[已实现]` / `[改造中]` / `[阶段二]` 标记区分现状与目标。
+- **Capture 增量管线已落地（阶段一）**：Exchange 在 `request-initiated` 即创建并推送（`state='pending'`），不再等 completed 事件配对。已**退订** completed 的 `request`/`response`，因为 Mockttp 检测到这两个 listener 就会 `waitForCompletedRequest` / `body.asBuffer()` 无条件缓冲完整正文。新增 `ExchangeTracker`（`proxy/proxy-exchange-tracker.ts`）按 request id 幂等 upsert，新增 `TemporaryBodyWriter`（`storage/storage-temporary-body-writer.ts`）按累计字节 spill 并在待落盘超限时降级为只计数。WebSocket 101 改由 `websocket-accepted` 驱动。
+- **Mockttp trailer patch 已引入**：`patches/mockttp+4.5.0.patch`（138 行）给 Mockttp 增加 `request-trailers` / `response-trailers` 事件。退订 completed 事件后 trailer 本会丢失，而 gRPC 的 `grpc-status` 正是 response trailer。已加 `patch-package` 与根 `postinstall`；`ship-core-deps.mjs` 从 `node_modules` 拷贝，已验证 patch 后代码进入 `dist/proxy-core/node_modules`。**升级 Mockttp 时 patch 若不适用会直接报错，必须人工 review。**
 - **M0–M14 已完成**；生产实签/公证和真实macOS runner证据因外部凭据/平台缺失待首个tag发布时补齐。
 - **Local E2E 基础设施已建立，workflow 实现已重置**：`apps/desktop/tests/e2e-workflow-tests/` 现有 production bundle builder、Playwright `_electron.launch()` driver、独立 profile/trace/evidence/destroy fixture、loopback lab、60 条完整验收规格和公共 automation ID contract；`workflows/` 当前为空，Inventory 无 `implemented` 条目，不能把基础设施构建成功表述为 feature workflow 已通过。
 - **M14 临时 Capture 架构已完成**：Core 直接拥有内存 Capture + 内存/spill Body；RuleSet 直接持久 `rules.sqlite`；Diagnostics Worker 保留；native archive 使用一次性 Archive Worker。常驻 Storage Worker、运行时 `capture.sqlite` 和持久 blobs 已删除。

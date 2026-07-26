@@ -1,0 +1,138 @@
+diff --git a/node_modules/mockttp/dist/mockttp.d.ts b/node_modules/mockttp/dist/mockttp.d.ts
+index 3dd0793..31b4347 100644
+--- a/node_modules/mockttp/dist/mockttp.d.ts
++++ b/node_modules/mockttp/dist/mockttp.d.ts
+@@ -2,7 +2,7 @@ import * as cors from 'cors';
+ import type { CAOptions } from './util/certificates';
+ import { RequestRuleBuilder } from "./rules/requests/request-rule-builder";
+ import { WebSocketRuleBuilder } from "./rules/websockets/websocket-rule-builder";
+-import { ProxyEnvConfig, MockedEndpoint, CompletedRequest, CompletedResponse, TlsPassthroughEvent, TlsHandshakeFailure, InitiatedRequest, ClientError, WebSocketMessage, WebSocketClose, AbortedRequest, RuleEvent, RawPassthroughEvent, RawPassthroughDataEvent, InitiatedResponse, InformationalResponse, BodyData } from "./types";
++import { ProxyEnvConfig, MockedEndpoint, CompletedRequest, CompletedResponse, TlsPassthroughEvent, TlsHandshakeFailure, InitiatedRequest, ClientError, WebSocketMessage, WebSocketClose, AbortedRequest, RuleEvent, RawPassthroughEvent, RawPassthroughDataEvent, InitiatedResponse, InformationalResponse, BodyData, TrailerData } from "./types";
+ import type { RequestRuleData } from "./rules/requests/request-rule";
+ import type { WebSocketRuleData } from "./rules/websockets/websocket-rule";
+ import type { SocksServerOptions } from "./server/socks-server";
+@@ -332,6 +332,13 @@ export interface Mockttp {
+      * @category Events
+      */
+     on(event: 'request-body-data', callback: (req: BodyData) => void): Promise<void>;
++    /**
++     * Subscribe to hear about request trailers, as soon as they are received. This
++     * does not require buffering the request body.
++     *
++     * @category Events
++     */
++    on(event: 'request-trailers', callback: (trailers: TrailerData) => void): Promise<void>;
+     /**
+      * Subscribe to hear about request details once the request is fully received.
+      *
+@@ -359,6 +366,13 @@ export interface Mockttp {
+      * @category Events
+      */
+     on(event: 'response-initiated', callback: (req: InitiatedResponse) => void): Promise<void>;
++    /**
++     * Subscribe to hear about response trailers, as soon as they are written. This
++     * does not require buffering the response body.
++     *
++     * @category Events
++     */
++    on(event: 'response-trailers', callback: (trailers: TrailerData) => void): Promise<void>;
+     /**
+      * Subscribe to hear about HTTP 1xx informational responses (e.g. 102 Processing,
+      * 103 Early Hints) sent before the final response.
+@@ -883,7 +897,7 @@ export interface MockttpOptions {
+      */
+     maxBodySize?: number;
+ }
+-export type SubscribableEvent = 'request-initiated' | 'request-body-data' | 'request' | 'response-initiated' | 'response-information' | 'response-body-data' | 'response' | 'websocket-request' | 'websocket-accepted' | 'websocket-message-received' | 'websocket-message-sent' | 'websocket-close' | 'abort' | 'tls-passthrough-opened' | 'tls-passthrough-closed' | 'tls-client-error' | 'client-error' | 'raw-passthrough-opened' | 'raw-passthrough-closed' | 'raw-passthrough-data' | 'rule-event';
++export type SubscribableEvent = 'request-initiated' | 'request-body-data' | 'request-trailers' | 'request' | 'response-initiated' | 'response-information' | 'response-body-data' | 'response-trailers' | 'response' | 'websocket-request' | 'websocket-accepted' | 'websocket-message-received' | 'websocket-message-sent' | 'websocket-close' | 'abort' | 'tls-passthrough-opened' | 'tls-passthrough-closed' | 'tls-client-error' | 'client-error' | 'raw-passthrough-opened' | 'raw-passthrough-closed' | 'raw-passthrough-data' | 'rule-event';
+ /**
+  * @hidden
+  */
+diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
+index db33b85..24548cf 100644
+--- a/node_modules/mockttp/dist/server/mockttp-server.js
++++ b/node_modules/mockttp/dist/server/mockttp-server.js
+@@ -256,6 +256,14 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+             emitter.emit('request-initiated', initiatedReq);
+         });
+     }
++    announceTrailersAsync(emitter, type, id, rawTrailers) {
++        setImmediate(() => {
++            emitter.emit(`${type}-trailers`, {
++                id,
++                rawTrailers: rawTrailers.map(([key, value]) => [key, value])
++            });
++        });
++    }
+     announceCompletedRequestAsync(emitter, request) {
+         if (emitter.listenerCount('request') === 0)
+             return;
+@@ -483,6 +491,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+                 serverPort: this.port,
+                 onBodyData: emitter.listenerCount('request-body-data') > 0
+                     ? this.announceBodyDataAsync.bind(this, emitter, 'request')
++                    : undefined,
++                onTrailers: emitter.listenerCount('request-trailers') > 0
++                    ? this.announceTrailersAsync.bind(this, emitter, 'request')
+                     : undefined
+             });
+         }
+@@ -531,6 +542,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+             onBodyData: emitter.listenerCount('response-body-data') > 0
+                 ? this.announceBodyDataAsync.bind(this, emitter, 'response')
+                 : undefined,
++            onTrailers: emitter.listenerCount('response-trailers') > 0
++                ? this.announceTrailersAsync.bind(this, emitter, 'response')
++                : undefined,
+             onInformationalResponse: (status, flatHeaders) => this.announceResponseInformationAsync(emitter, response, status, flatHeaders)
+         });
+         // If the request had Expect: 100-continue, we trigger the auto response now.
+diff --git a/node_modules/mockttp/dist/types.d.ts b/node_modules/mockttp/dist/types.d.ts
+index 2664cf5..f2d0933 100644
+--- a/node_modules/mockttp/dist/types.d.ts
++++ b/node_modules/mockttp/dist/types.d.ts
+@@ -314,6 +314,20 @@ export interface CompletedResponse extends InitiatedResponse {
+     rawTrailers: RawTrailers;
+     trailers: Trailers;
+ }
++/**
++ * Trailers observed for a request or response, emitted without requiring the
++ * full body to be buffered.
++ */
++export interface TrailerData {
++    /**
++     * The id of the request or response these trailers belong to.
++     */
++    id: string;
++    /**
++     * The raw trailer key/value pairs, in wire order.
++     */
++    rawTrailers: RawTrailers;
++}
+ export interface WebSocketMessage {
+     /**
+      * The id of this websocket stream. This will match the id of the request,
+diff --git a/node_modules/mockttp/dist/util/request-utils.js b/node_modules/mockttp/dist/util/request-utils.js
+index 7f00865..6399d8e 100644
+--- a/node_modules/mockttp/dist/util/request-utils.js
++++ b/node_modules/mockttp/dist/util/request-utils.js
+@@ -327,6 +327,9 @@ function preprocessRequest(req, options) {
+             rawTrailers = flatRawTrailers
+                 ? (0, header_utils_1.pairFlatRawHeaders)(flatRawTrailers)
+                 : undefined;
++            if (rawTrailers?.length && options.onTrailers) {
++                options.onTrailers(id, rawTrailers);
++            }
+         }
+     });
+     const ongoingReq = Object.assign(req, {
+@@ -497,6 +500,9 @@ function trackResponse(response, timingEvents, tags, options) {
+     trackedResponse.addTrailers = function (...args) {
+         const trailersArg = args[0];
+         writtenTrailers = getHeaderPairsFromArgument(trailersArg);
++        if (writtenTrailers?.length && options.onTrailers) {
++            options.onTrailers(trackedResponse.id, writtenTrailers);
++        }
+         return originalAddTrailers.apply(this, args);
+     };
+     const trackingWrite = function (...args) {

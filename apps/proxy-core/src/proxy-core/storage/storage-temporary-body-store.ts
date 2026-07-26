@@ -12,8 +12,10 @@ import {
 import type {
   BlobGcResult,
   BlobWriteResult,
+  BodyWriter,
   TemporaryBodyEntry,
 } from './interfaces';
+import { TemporaryBodyWriter } from './storage-temporary-body-writer';
 
 /** 当前 Core 代际的内容寻址 Body Store；小正文驻内存，大正文异步 spill。 */
 export class TemporaryBodyStore {
@@ -65,6 +67,20 @@ export class TemporaryBodyStore {
   async writeStream(source: AsyncIterable<Uint8Array>): Promise<BlobWriteResult> {
     this.assertInitialized();
     return this.performWrite(source);
+  }
+
+  /**
+   * 创建 push 式增量写入器；调用方按 chunk 到达顺序 write，结束时 finalize。
+   * 调用方：ProxyService 消费 Mockttp 的 request/response body-data 事件。
+   */
+  createWriter(): BodyWriter {
+    this.assertInitialized();
+    return new TemporaryBodyWriter(
+      this.rootDir,
+      this.memoryThresholdBytes,
+      (hash, size, memory, spillPath) =>
+        this.finalizeWrite(hash, size, memory, spillPath),
+    );
   }
 
   /** 判断指定正文是否仍在当前 Core 临时 Store。 */

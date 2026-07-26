@@ -27,6 +27,12 @@ export const RULES_DB_FILE = 'rules.sqlite';
 export const CAPTURE_TEMP_DIR = 'capture-temp';
 /** Body 保留在内存中的最大字节数；超过后异步 spill。 */
 export const BODY_MEMORY_THRESHOLD_BYTES = 1024 * 1024;
+/**
+ * 单个增量正文写入器允许积压的待落盘字节数上限。
+ * Mockttp 不等待 Capture 落盘，超过该上限后写入器降级为只计数不保存内容，
+ * 保证 Core 内存有界。
+ */
+export const BODY_WRITER_PENDING_LIMIT_BYTES = 8 * 1024 * 1024;
 // ===== 诊断（持久化日志库） =====
 /** 诊断数据库文件名（dataDir 下）。 */
 export const DIAGNOSTICS_DB_FILE = 'diagnostics.sqlite';

@@ -14,7 +14,12 @@ import type {
 } from "@interceptor/core-protocol";
 
 export type ExchangeState =
-  "pending" | "request-complete" | "completed" | "failed" | "aborted";
+  | "pending"
+  | "request-complete"
+  | "response-streaming"
+  | "completed"
+  | "failed"
+  | "aborted";
 
 export type HeaderKind =
   "request" | "response" | "request-trailer" | "response-trailer";
@@ -207,18 +212,29 @@ export interface RuleHitCount {
   readonly count: number;
 }
 
-export interface ExchangeResponsePatch {
+/**
+ * 对已存在 Exchange 的增量更新。除 `id` 外全部可选，未提供的字段保持原值；
+ * `headers` 为追加语义，`ruleIds` 按首次出现顺序去重合并。
+ */
+export interface ExchangePatch {
   readonly id: string;
+  readonly state?: ExchangeInput["state"];
+  readonly requestMime?: string;
+  readonly requestSentAt?: number;
+  readonly requestBytes?: number;
+  readonly requestBodyId?: string;
   readonly statusCode?: number;
   readonly statusText?: string;
   readonly responseMime?: string;
   readonly responseStartedAt?: number;
-  readonly completedAt?: number;
   readonly responseBytes?: number;
   readonly responseBodyId?: string;
-  readonly state: ExchangeInput["state"];
+  readonly completedAt?: number;
   readonly errorCode?: string;
   readonly headers?: readonly HeaderInput[];
+  readonly ruleIds?: readonly string[];
+  readonly requestBody?: BodyRefInput;
+  readonly responseBody?: BodyRefInput;
 }
 
 export interface StorageStatusReport {
@@ -234,6 +250,20 @@ export interface BlobWriteResult {
   readonly hash: string;
   readonly size: number;
   readonly deduplicated: boolean;
+}
+
+/** 增量正文写入器：chunk 到达即写，结束时才产出内容寻址结果。 */
+export interface BodyWriter {
+  /** 已观察到的完整编码字节数，包含降级后未保存的部分。 */
+  readonly observedBytes: number;
+  /** 是否因排队超限停止保存内容，只继续计数。 */
+  readonly degraded: boolean;
+  /** 追加一段正文；非阻塞，内部串行落盘。 */
+  write(chunk: Uint8Array): void;
+  /** 结束写入并提交内容寻址结果；降级或空正文返回 null。 */
+  finalize(): Promise<BlobWriteResult | null>;
+  /** 放弃写入并清理半成品临时文件。 */
+  abort(): Promise<void>;
 }
 
 export interface BlobGcResult {

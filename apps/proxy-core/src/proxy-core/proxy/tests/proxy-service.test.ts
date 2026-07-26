@@ -6,84 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate, getLocal } from 'mockttp';
 
-import type {
-  CaptureSessionInput,
-  ExchangeInput,
-  WebSocketFrameInput,
-} from '../../storage/interfaces';
 import { RuleEngine } from '../../rules/entry';
 import { BreakpointQueue } from '../../rules/rule-breakpoint-queue';
 import { ProxyService } from '../entry';
-import type { CaptureSink } from '../interfaces';
 import { CaptureEventQueue } from '../proxy-capture-event-queue';
-
-class RecordingSink implements CaptureSink {
-  readonly sessions: CaptureSessionInput[] = [];
-  readonly exchanges: ExchangeInput[] = [];
-  readonly bodies: Buffer[] = [];
-  readonly exchangeUpdates: Array<{
-    id: string;
-    completedAt?: number;
-    state: ExchangeInput['state'];
-  }> = [];
-  readonly webSocketFrames: Array<{
-    exchangeId: string;
-    frame: WebSocketFrameInput;
-  }> = [];
-
-  ensureSession(session: CaptureSessionInput): Promise<void> {
-    this.sessions.push(session);
-    return Promise.resolve();
-  }
-
-  appendExchanges(
-    exchanges: ExchangeInput[],
-  ): Promise<{ id: string; seq: number }[]> {
-    this.exchanges.push(...exchanges);
-    return Promise.resolve(
-      exchanges.map((e, index) => ({ id: e.id, seq: index + 1 })),
-    );
-  }
-
-  updateExchange(patch: {
-    id: string;
-    completedAt?: number;
-    state: ExchangeInput['state'];
-  }): Promise<void> {
-    this.exchangeUpdates.push(patch);
-    return Promise.resolve();
-  }
-
-  async writeBody(
-    source: AsyncIterable<Uint8Array>,
-  ): Promise<{ hash: string; size: number; deduplicated: boolean }> {
-    const chunks: Buffer[] = [];
-    for await (const chunk of source) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const buffer = Buffer.concat(chunks);
-    this.bodies.push(buffer);
-    return {
-      hash: createHash('sha256').update(buffer).digest('hex'),
-      size: buffer.length,
-      deduplicated: false,
-    };
-  }
-
-  appendRuleHits(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  appendWebSocketFrames(
-    exchangeId: string,
-    frames: readonly WebSocketFrameInput[],
-  ): Promise<void> {
-    this.webSocketFrames.push(
-      ...frames.map((frame) => ({ exchangeId, frame })),
-    );
-    return Promise.resolve();
-  }
-}
+import { RecordingSink } from './proxy-test-capture-sink';
 
 function startOrigin(
   handler: http.RequestListener,
@@ -173,6 +100,33 @@ function proxiedGet(
       },
     );
     req.on('error', reject);
+    req.end();
+  });
+}
+
+/** 经显式代理发起带正文的请求，正文按多个 chunk 写出以覆盖增量路径。 */
+function proxiedRequest(
+  proxy: { host: string; port: number },
+  absoluteUrl: string,
+  method: string,
+  body: Buffer,
+): Promise<{ status: number | undefined; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: proxy.host, port: proxy.port, method, path: absoluteUrl },
+      (res) => {
+        let text = '';
+        res.on('data', (chunk) => {
+          text += chunk;
+        });
+        res.on('end', () => resolve({ status: res.statusCode, body: text }));
+      },
+    );
+    req.on('error', reject);
+    const chunkSize = 1024;
+    for (let offset = 0; offset < body.byteLength; offset += chunkSize) {
+      req.write(body.subarray(offset, offset + chunkSize));
+    }
     req.end();
   });
 }
@@ -290,6 +244,105 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const status = proxy.status();
     expect(status.listening).toBe(true);
     expect(status.port).toBe(address.port);
+  });
+
+  it('creates a pending exchange as soon as request headers arrive', async () => {
+    let releaseResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    const origin = await startOrigin((_request, response) => {
+      void responseGate.then(() => {
+        response.writeHead(200, { 'content-type': 'text/plain' });
+        response.end('done');
+      });
+    });
+    try {
+      const inFlight = proxiedGet(
+        address,
+        `http://127.0.0.1:${origin.port}/slow`,
+      );
+
+      // 响应尚未开始，但 Exchange 必须已经落库并可见。
+      await expect.poll(() => sink.exchanges.length).toBe(1);
+      expect(sink.exchanges[0]).toMatchObject({
+        method: 'GET',
+        path: '/slow',
+        state: 'pending',
+      });
+      expect(sink.exchanges[0]?.statusCode).toBeUndefined();
+
+      releaseResponse();
+      await expect(inFlight).resolves.toMatchObject({ status: 200 });
+      await expect.poll(() => sink.exchanges[0]?.state).toBe('completed');
+      expect(sink.exchanges).toHaveLength(1);
+      expect(sink.exchanges[0]).toMatchObject({
+        statusCode: 200,
+        responseBytes: 4,
+      });
+    } finally {
+      releaseResponse();
+      await origin.close();
+    }
+  });
+
+  it('accumulates request body bytes incrementally across chunks', async () => {
+    const received: Buffer[] = [];
+    const origin = await startOrigin((request, response) => {
+      request.on('data', (chunk: Buffer) => received.push(chunk));
+      request.on('end', () => {
+        response.writeHead(200, { 'content-type': 'text/plain' });
+        response.end('ok');
+      });
+    });
+    try {
+      const body = Buffer.alloc(3 * 1024, 9);
+      const response = await proxiedRequest(
+        address,
+        `http://127.0.0.1:${origin.port}/upload`,
+        'POST',
+        body,
+      );
+      expect(response.status).toBe(200);
+      await expect.poll(() => sink.exchanges[0]?.state).toBe('completed');
+      expect(sink.exchanges[0]?.requestBytes).toBe(body.byteLength);
+      expect(Buffer.concat(received).byteLength).toBe(body.byteLength);
+      expect(sink.bodies.some((entry) => entry.equals(body))).toBe(true);
+    } finally {
+      await origin.close();
+    }
+  });
+
+  it('drops in-flight state and rejects late events after a capture reset', async () => {
+    let releaseResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    const origin = await startOrigin((_request, response) => {
+      void responseGate.then(() => {
+        response.writeHead(200, { 'content-type': 'text/plain' });
+        response.end('late');
+      });
+    });
+    try {
+      const inFlight = proxiedGet(
+        address,
+        `http://127.0.0.1:${origin.port}/cleared`,
+      );
+      await expect.poll(() => sink.exchanges.length).toBe(1);
+
+      // Clear 推进 generation，此后该请求的所有迟到事件都必须被丢弃。
+      proxy.prepareCaptureReset();
+      sink.exchangeUpdates.length = 0;
+
+      releaseResponse();
+      await expect(inFlight).resolves.toMatchObject({ status: 200 });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(sink.exchangeUpdates).toHaveLength(0);
+    } finally {
+      releaseResponse();
+      await origin.close();
+    }
   });
 
   it('matches a URL written as host/path and applies a response action', async () => {

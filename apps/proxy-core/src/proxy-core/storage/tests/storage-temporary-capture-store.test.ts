@@ -52,7 +52,7 @@ describe('TemporaryCaptureStore', () => {
       fixture.exchange('b', { startedAt: 100 }),
       fixture.exchange('c', { startedAt: 200 }),
     ]);
-    fixture.store.updateExchangeResponse({
+    fixture.store.updateExchange({
       id: 'b',
       statusCode: 204,
       completedAt: 140,

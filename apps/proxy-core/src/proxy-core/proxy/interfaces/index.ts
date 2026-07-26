@@ -8,8 +8,11 @@ import type {
 
 import type { RuleHitRecord } from '../../rules/interfaces';
 import type {
+  BodyWriter,
   CaptureSessionInput,
   ExchangeInput,
+  ExchangePatch,
+  HeaderInput,
   WebSocketFrameInput,
 } from '../../storage/interfaces';
 
@@ -72,6 +75,60 @@ export interface PendingWebSocketCapture {
   writeTail: Promise<void>;
 }
 
+/** 请求侧生命周期阶段。 */
+export type RequestPhase = 'headers' | 'body' | 'complete' | 'aborted';
+
+/** 响应侧生命周期阶段；请求与响应独立推进以支持早期响应。 */
+export type ResponsePhase =
+  | 'none'
+  | 'headers'
+  | 'body'
+  | 'complete'
+  | 'aborted';
+
+/** 单条进行中 Exchange 的聚合状态；由 ExchangeTracker 独占维护。 */
+export interface TrackedExchange {
+  /** 分配的 Exchange id。 */
+  readonly exchangeId: string;
+  /** 创建时固定的 capture generation；Clear 后旧代际事件全部丢弃。 */
+  readonly generation: number;
+  /** 客户端请求开始时间。 */
+  readonly startedAt: number;
+  /** 是否 HTTPS/WSS。 */
+  readonly secure: boolean;
+  /** 归一化后的请求元数据。 */
+  readonly method: string;
+  readonly host?: string;
+  readonly path?: string;
+  readonly protocol: string;
+  /** 请求侧阶段。 */
+  requestPhase: RequestPhase;
+  /** 响应侧阶段。 */
+  responsePhase: ResponsePhase;
+  /** 是否已进入终态，终态不可回退。 */
+  terminal: boolean;
+  /** 请求正文增量写入器；无正文时为 null。 */
+  requestWriter: BodyWriter | null;
+  /** 响应正文增量写入器。 */
+  responseWriter: BodyWriter | null;
+  /** 已观察到的请求/响应字节数。 */
+  requestBytes: number;
+  responseBytes: number;
+  /** 最终响应状态。 */
+  statusCode?: number;
+  responseMime?: string;
+  /** 命中的规则 id，按首次出现顺序去重。 */
+  readonly ruleIds: Set<string>;
+  /** 串行化该 Exchange 的所有存储写入，保证顺序与幂等。 */
+  tail: Promise<void>;
+}
+
+/** request-initiated 之前到达的规则结果，等 Exchange 建立后合并。 */
+export interface OrphanRuleOutcome {
+  hits: RuleHitRecord[];
+  headers: HeaderInput[];
+}
+
 export interface ProxyResponseMessageResult {
   statusCode?: number;
   headers?: Record<string, string | string[]>;
@@ -111,14 +168,11 @@ export interface CaptureSink {
   appendExchanges(
     exchanges: ExchangeInput[],
   ): Promise<{ id: string; seq: number }[]>;
-  updateExchange(patch: {
-    readonly id: string;
-    readonly completedAt?: number;
-    readonly state: ExchangeInput['state'];
-  }): Promise<void>;
+  updateExchange(patch: ExchangePatch): Promise<void>;
   writeBody(
     source: AsyncIterable<Uint8Array>,
   ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
+  createBodyWriter(): BodyWriter;
   appendRuleHits(
     exchangeId: string,
     hits: readonly RuleHitRecord[],

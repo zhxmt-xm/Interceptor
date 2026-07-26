@@ -1,9 +1,13 @@
 import { generateCACertificate, getLocal, type Mockttp } from 'mockttp';
 import type {
   AbortedRequest,
+  BodyData,
   CompletedRequest,
   CompletedResponse,
+  InitiatedRequest,
+  InitiatedResponse,
   TlsPassthroughEvent,
+  TrailerData,
   WebSocketClose,
   WebSocketMessage,
 } from 'mockttp';
@@ -13,22 +17,13 @@ import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
   MutableRequestState,
   MutableResponseState,
-  SyntheticResponseInit,
-  MatchContext,
-  RuleHeaderEffect,
-  RuleHitRecord,
 } from '../rules/interfaces';
 import type { RuleEngine } from '../rules/entry';
-import type {
-  BodyRefInput,
-  ExchangeInput,
-  HeaderInput,
-} from '../storage/interfaces';
+import type { BodyRefInput, ExchangeInput } from '../storage/interfaces';
 import type {
   CaptureEventSink,
   CaptureSink,
   PendingTunnelCapture,
-  PendingWebSocketCapture,
   ProxyAddress,
   ProxyPassThroughResponse,
   ProxyRequestResult,
@@ -38,6 +33,7 @@ import type {
   ProxyTlsConfig,
   WebSocketBridgeMessage,
 } from './interfaces';
+import { ExchangeTracker } from './proxy-exchange-tracker';
 import { WebSocketBridge } from './proxy-websocket-bridge';
 import * as ProxyUtils from './utils';
 
@@ -45,14 +41,17 @@ import * as ProxyUtils from './utils';
  * 基于 Mockttp 的显式代理服务，仅绑定 loopback。
  *
  * 用 Mockttp 的 `getLocal()` 作为显式代理：`thenPassThrough()` 转发 HTTP/1.1
- * absolute-form 请求，未配置 HTTPS 解密时对 CONNECT 做不解密的字节直通。通过
- * `request`/`response` 事件按 id 关联，采集规范 Exchange 写入 StorageService。
- * Mockttp 选型的动机与打包方案见 M3.md：它同时支撑 M5 HTTPS MITM 与 M6 HTTP/2，
- * 因其含 WASM/原生依赖不能内联进单文件，故以 external + nft 依赖闭包随包发。
+ * absolute-form 请求，未配置 HTTPS 解密时对 CONNECT 做不解密的字节直通。
+ *
+ * Capture 只订阅 initiated / body-data 类增量事件，绝不订阅 completed 的
+ * `request` / `response`：Mockttp 一旦发现 completed listener 就会调用
+ * `waitForCompletedRequest` 与 `body.asBuffer()` 无条件缓冲完整正文。
  */
 export class ProxyService {
-  private readonly pending = new Map<string, CompletedRequest>();
-  private readonly pendingWebSockets = new Map<string, PendingWebSocketCapture>();
+  /** 按 Mockttp request id 聚合的 Exchange 生命周期。 */
+  private readonly tracker: ExchangeTracker;
+  /** WebSocket stream id 到有序 frame 写入链。 */
+  private readonly webSocketTails = new Map<string, Promise<void>>();
   /** 原始 CONNECT tunnel id → 持久化结果；closed 事件等待 opened 落库后更新。 */
   private readonly pendingTunnels = new Map<
     string,
@@ -60,10 +59,6 @@ export class ProxyService {
   >();
   /** 已启动但尚未完成的 Capture 持久化；Stop 返回前必须全部退出。 */
   private readonly captureOperations = new Set<Promise<unknown>>();
-  /** 按 Mockttp request id 暂存规则命中，captureExchange 关联 exchange id 后落库。 */
-  private readonly ruleHits = new Map<string, RuleHitRecord[]>();
-  /** 按 Mockttp request id 暂存规则产生的 request header 净效果。 */
-  private readonly ruleHeaderEffects = new Map<string, HeaderInput[]>();
 
   private server: Mockttp | null = null;
   private webSocketBridge: WebSocketBridge | null = null;
@@ -73,8 +68,6 @@ export class ProxyService {
   private capturedExchanges = 0;
   /** 是否正在记录；暂停时监听器继续转发但不再持久化/推送新 Exchange。 */
   private recording = true;
-  /** 最近一次用户清空的时间切面；更早开始但迟到完成的请求不再持久化或推送。 */
-  private captureCutoff = 0;
   private webSocketBreakpointsOn = false;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
   /** Mockttp TLS 分流器所需的进程内临时身份；所有 host passthrough，证书永不出示。 */
@@ -85,7 +78,9 @@ export class ProxyService {
     private readonly storage: CaptureSink,
     private readonly events: CaptureEventSink,
     private readonly ruleEngine?: RuleEngine,
-  ) {}
+  ) {
+    this.tracker = new ExchangeTracker(storage, events);
+  }
 
   /**
    * 注入数据面诊断汇；由 CoreApplication 在 diagnostics 装配后调用一次。
@@ -93,6 +88,7 @@ export class ProxyService {
    */
   attachDiagnostics(sink: DiagnosticsRecorder): void {
     this.diagnostics = sink;
+    this.tracker.attachDiagnostics(sink);
   }
 
   /**
@@ -102,6 +98,7 @@ export class ProxyService {
   async start(options: ProxyStartOptions = {}): Promise<ProxyAddress> {
     // 启动/恢复均意味着恢复记录；暂停后再次 Start 等价于 Resume。
     this.recording = true;
+    this.tracker.setRecording(true);
     if (this.server && this.address) {
       // 已在监听：显式请求不同端口时在同一会话上迁移监听端口，否则直接复用。
       if (options.port !== undefined && options.port !== this.address.port) {
@@ -120,6 +117,7 @@ export class ProxyService {
       appVersion,
     });
     this.sessionId = sessionId;
+    this.tracker.setSession(sessionId);
     this.host = options.host ?? DEFAULT_PROXY_HOST;
     this.address = await this.startServer(options.port);
     this.diagnostics?.info('proxy.listening', {
@@ -238,11 +236,8 @@ export class ProxyService {
     this.server = null;
     this.webSocketBridge?.close();
     this.webSocketBridge = null;
-    this.pending.clear();
-    for (const capture of this.pendingWebSockets.values()) {
-      capture.resolveExchange(null);
-    }
-    this.pendingWebSockets.clear();
+    this.tracker.reset();
+    this.webSocketTails.clear();
     this.pendingTunnels.clear();
     if (server) {
       await server.stop();
@@ -258,10 +253,12 @@ export class ProxyService {
       return;
     }
     await this.stopServer();
+    await this.tracker.settle();
     await Promise.allSettled(Array.from(this.captureOperations));
     this.pendingTunnels.clear();
     this.address = null;
     this.sessionId = null;
+    this.tracker.setSession(null);
     this.diagnostics?.info('proxy.stopped');
   }
 
@@ -284,25 +281,20 @@ export class ProxyService {
    */
   setRecording(enabled: boolean): void {
     this.recording = enabled;
+    this.tracker.setRecording(enabled);
     this.diagnostics?.info(
       enabled ? 'proxy.recording-resumed' : 'proxy.recording-paused',
     );
   }
 
   /**
-   * 切断当前时间点之前的请求关联并重置计数，返回仍在录制的活动 Session。
-   * 调用方：CoreApplication 在 storage.cleanup(all) 入队前建立清空时间切面。
+   * 推进 capture generation 并丢弃全部在途状态，返回仍在录制的活动 Session。
+   * 调用方：CoreApplication 在 storage.cleanup(all) 入队前建立清空切面。
    */
   prepareCaptureReset(): string | null {
-    this.captureCutoff = Date.now();
-    this.pending.clear();
-    for (const capture of this.pendingWebSockets.values()) {
-      capture.resolveExchange(null);
-    }
-    this.pendingWebSockets.clear();
+    this.tracker.reset();
+    this.webSocketTails.clear();
     this.pendingTunnels.clear();
-    this.ruleHits.clear();
-    this.ruleHeaderEffects.clear();
     this.capturedExchanges = 0;
     return this.server ? this.sessionId : null;
   }
@@ -345,80 +337,40 @@ export class ProxyService {
         })
         .finally(() => this.pendingTunnels.delete(tunnel.id));
     });
-    void server.on('request', (request: CompletedRequest) => {
-      if (!this.recording) {
-        return;
-      }
-      this.pending.set(request.id, request);
+    // 只订阅增量事件。绝不订阅 completed 的 'request' / 'response'：Mockttp 检测到
+    // 这两个 listener 后会调用 waitForCompletedRequest 与 body.asBuffer()，
+    // 无条件把完整正文缓冲进内存。
+    void server.on('request-initiated', (request: InitiatedRequest) => {
+      this.tracker.beginRequest(request);
+      this.capturedExchanges = this.tracker.totalCaptured;
     });
-    void server.on('response', (response: CompletedResponse) => {
-      const webSocketCapture = this.pendingWebSockets.get(response.id);
-      if (webSocketCapture) {
-        void this.trackCapture(
-          this.captureExchange(webSocketCapture.request, response),
-        ).then((exchangeId) => {
-          webSocketCapture.resolveExchange(exchangeId);
-          this.pendingWebSockets.delete(response.id);
-        });
-        return;
-      }
-      const request = this.pending.get(response.id);
-      if (!request) {
-        return;
-      }
-      this.pending.delete(response.id);
-      void this.trackCapture(this.captureExchange(request, response));
+    void server.on('request-body-data', (data: BodyData) => {
+      this.tracker.appendRequestBody(data);
+    });
+    void server.on('request-trailers', (trailers: TrailerData) => {
+      this.tracker.recordRequestTrailers(trailers.id, trailers.rawTrailers);
+    });
+    void server.on('response-initiated', (response: InitiatedResponse) => {
+      this.tracker.beginResponse(response);
+    });
+    void server.on('response-information', (response: InitiatedResponse) => {
+      this.tracker.recordInformationalResponse(response);
+    });
+    void server.on('response-body-data', (data: BodyData) => {
+      this.tracker.appendResponseBody(data);
+    });
+    void server.on('response-trailers', (trailers: TrailerData) => {
+      this.tracker.recordResponseTrailers(trailers.id, trailers.rawTrailers);
     });
     void server.on('abort', (request: AbortedRequest) => {
-      const webSocketCapture = this.pendingWebSockets.get(request.id);
-      if (webSocketCapture) {
-        this.pendingWebSockets.delete(request.id);
-        void this.trackCapture(
-          this.captureExchange(webSocketCapture.request, null, 'aborted'),
-        ).then(
-          (exchangeId) => {
-            webSocketCapture.resolveExchange(exchangeId);
-          },
-        );
-        return;
-      }
-      const pendingRequest = this.pending.get(request.id) ?? request;
-      this.pending.delete(request.id);
-      // 暂停中：只为已跟踪（录制时开始）的在途请求补录终态，不为新连接建记录。
-      if (!this.recording && pendingRequest === request) {
-        return;
-      }
-      void this.trackCapture(this.captureExchange(pendingRequest, null, 'aborted'));
+      this.tracker.abortExchange(request);
     });
     void server.on('websocket-request', (request: CompletedRequest) => {
-      if (!this.recording) {
-        return;
-      }
-      let resolveExchange!: (exchangeId: string | null) => void;
-      const exchangeReady = new Promise<string | null>((resolve) => {
-        resolveExchange = resolve;
-      });
-      this.pendingWebSockets.set(request.id, {
-        request,
-        exchangeReady,
-        resolveExchange,
-        writeTail: Promise.resolve(),
-      });
+      this.tracker.beginWebSocketRequest(request);
+      this.capturedExchanges = this.tracker.totalCaptured;
     });
     void server.on('websocket-accepted', (response: CompletedResponse) => {
-      const capture = this.pendingWebSockets.get(response.id);
-      if (!capture) {
-        return;
-      }
-      void this.trackCapture(
-        this.captureExchange(
-          capture.request,
-          response,
-          'request-complete',
-        ),
-      ).then((exchangeId) => {
-        capture.resolveExchange(exchangeId);
-      });
+      this.tracker.acceptWebSocket(response.id, response.statusCode);
     });
     void server.on('websocket-message-received', (message: WebSocketMessage) => {
       this.enqueueWebSocketMessage(message);
@@ -427,40 +379,10 @@ export class ProxyService {
       this.enqueueWebSocketMessage(message);
     });
     void server.on('websocket-close', (close: WebSocketClose) => {
-      const capture = this.pendingWebSockets.get(close.streamId);
-      if (!capture) {
-        return;
-      }
-      void capture.writeTail
-        .then(async () => {
-          const exchangeId = await capture.exchangeReady;
-          if (!exchangeId) {
-            return;
-          }
-          const completedAt = Date.now();
-          await this.storage.updateExchange({
-            id: exchangeId,
-            completedAt,
-            state: 'completed',
-          });
-          this.events.enqueue('exchange-updated', {
-            id: exchangeId,
-            method: capture.request.method.toUpperCase(),
-            secure: capture.request.url.startsWith('wss:'),
-            host: ProxyUtils.parseTarget(capture.request.url).hostname,
-            path: ProxyUtils.parseTarget(capture.request.url).path,
-            protocol: 'ws',
-            statusCode: 101,
-            state: 'completed',
-            startedAt: capture.request.timingEvents?.startTime ?? completedAt,
-            durationMs: Math.max(
-              0,
-              completedAt -
-                (capture.request.timingEvents?.startTime ?? completedAt),
-            ),
-            requestBytes: 0,
-            responseBytes: 0,
-          });
+      const tail = this.webSocketTails.get(close.streamId) ?? Promise.resolve();
+      void tail
+        .then(() => {
+          this.tracker.closeWebSocket(close.streamId);
         })
         .catch((error: unknown) => {
           this.diagnostics?.error('websocket.close-persist-failed', {
@@ -468,7 +390,7 @@ export class ProxyService {
           });
         })
         .finally(() => {
-          this.pendingWebSockets.delete(close.streamId);
+          this.webSocketTails.delete(close.streamId);
         });
       this.diagnostics?.info('websocket.closed', {
         attributes: {
@@ -499,14 +421,13 @@ export class ProxyService {
   ): Promise<PendingTunnelCapture | null> {
     const sessionId = this.sessionId;
     const startedAt = tunnel.timingEvents.startTime;
-    if (!this.server || !sessionId || startedAt <= this.captureCutoff) {
+    if (!this.server || !sessionId) {
       return null;
     }
     const secure = true;
     const protocol = 'tls';
-    const exchangeId = `ex-${ProxyUtils.cryptoRandomId()}`;
     const exchange: ExchangeInput = {
-      id: exchangeId,
+      id: `ex-${ProxyUtils.cryptoRandomId()}`,
       sessionId,
       method: 'CONNECT',
       scheme: 'https',
@@ -522,24 +443,11 @@ export class ProxyService {
       state: 'request-complete',
       headers: [],
     };
-    await this.storage.appendExchanges([exchange]);
-    if (startedAt <= this.captureCutoff) {
+    const exchangeId = await this.tracker.trackTunnel(exchange);
+    if (!exchangeId) {
       return null;
     }
-    this.capturedExchanges += 1;
-    this.events.enqueue('exchange-added', {
-      id: exchangeId,
-      method: exchange.method,
-      secure,
-      host: exchange.host,
-      protocol,
-      statusCode: exchange.statusCode,
-      responseMime: exchange.responseMime,
-      state: exchange.state,
-      startedAt,
-      requestBytes: 0,
-      responseBytes: 0,
-    });
+    this.capturedExchanges = this.tracker.totalCaptured;
     return {
       exchangeId,
       startedAt,
@@ -554,180 +462,16 @@ export class ProxyService {
   private async captureTunnelClosed(
     pending: PendingTunnelCapture | null,
   ): Promise<void> {
-    if (!pending || pending.startedAt <= this.captureCutoff) {
+    if (!pending) {
       return;
     }
-    const completedAt = Date.now();
-    await this.storage.updateExchange({
-      id: pending.exchangeId,
-      completedAt,
-      state: 'completed',
-    });
-    this.events.enqueue('exchange-updated', {
-      id: pending.exchangeId,
-      method: 'CONNECT',
-      secure: pending.secure,
-      host: pending.host,
-      protocol: pending.protocol,
-      statusCode: 200,
-      responseMime: 'application/x-encrypted-tunnel',
-      state: 'completed',
-      startedAt: pending.startedAt,
-      durationMs: Math.max(0, completedAt - pending.startedAt),
-      requestBytes: 0,
-      responseBytes: 0,
-    });
-  }
-
-  private async captureExchange(
-    request: CompletedRequest | AbortedRequest,
-    response: CompletedResponse | null,
-    state: ExchangeInput['state'] = 'completed',
-  ): Promise<string | null> {
-    const startedAt = request.timingEvents?.startTime ?? Date.now();
-    if (!this.server || !this.sessionId || startedAt <= this.captureCutoff) {
-      return null;
-    }
-    const target = ProxyUtils.parseTarget(request.url);
-    const headers: HeaderInput[] = [
-      ...ProxyUtils.toHeaderInputs('request', request.rawHeaders),
-      ...('rawTrailers' in request
-        ? ProxyUtils.toHeaderInputs('request-trailer', request.rawTrailers)
-        : []),
-      ...(response
-        ? ProxyUtils.toHeaderInputs('response', response.rawHeaders)
-        : []),
-      ...(response
-        ? ProxyUtils.toHeaderInputs('response-trailer', response.rawTrailers)
-        : []),
-      ...(this.ruleHeaderEffects.get(request.id) ?? []),
-    ];
-    const requestBody = await this.persistBody(
-      'body' in request ? request.body : undefined,
-      ProxyUtils.readHeader(request.headers, 'content-type'),
-      ProxyUtils.readHeader(request.headers, 'content-encoding'),
+    await this.tracker.completeTunnel(
+      pending.exchangeId,
+      pending.startedAt,
+      pending.host,
+      pending.secure,
+      pending.protocol,
     );
-    const responseBody = response
-      ? await this.persistBody(
-          response.body,
-          ProxyUtils.readHeader(response.headers, 'content-type'),
-          ProxyUtils.readHeader(response.headers, 'content-encoding'),
-        )
-      : undefined;
-
-    if (!this.server || !this.sessionId || startedAt <= this.captureCutoff) {
-      return null;
-    }
-
-    const responseStartedAt = response
-      ? ProxyUtils.timingEventToEpoch(
-          response.timingEvents,
-          response.timingEvents.headersSentTimestamp,
-        )
-      : undefined;
-    const completedAt = state === 'request-complete'
-      ? undefined
-      : response
-        ? ProxyUtils.timingEventToEpoch(
-            response.timingEvents,
-            response.timingEvents.responseSentTimestamp,
-          ) ?? Date.now()
-        : ProxyUtils.timingEventToEpoch(
-            request.timingEvents,
-            request.timingEvents.abortedTimestamp,
-          ) ?? Date.now();
-      const hits = this.ruleHits.get(request.id) ?? [];
-      const ruleIds = [...new Set(hits.map((hit) => hit.ruleId))];
-
-    const exchange: ExchangeInput = {
-      id: `ex-${ProxyUtils.cryptoRandomId()}`,
-      sessionId: this.sessionId,
-      method: request.method.toUpperCase(),
-      scheme: target.scheme,
-      host: target.hostname,
-      port: target.port,
-      path: target.path,
-      url: request.url,
-      protocol:
-        target.scheme === 'ws' || target.scheme === 'wss'
-          ? 'ws'
-          : ProxyUtils.httpVersionToProtocol(request.httpVersion),
-      statusCode: response?.statusCode,
-      statusText: response?.statusMessage,
-      requestMime: ProxyUtils.readHeader(request.headers, 'content-type'),
-      responseMime: response
-        ? ProxyUtils.readHeader(response.headers, 'content-type')
-        : undefined,
-      startedAt,
-      responseStartedAt,
-      completedAt,
-      requestBytes: requestBody?.encodedSize ??
-        ProxyUtils.readContentLength(request.headers),
-      responseBytes: response
-        ? responseBody?.encodedSize ??
-          ProxyUtils.readContentLength(response.headers)
-        : 0,
-      state,
-      ruleIds,
-      headers,
-      requestBody,
-      responseBody,
-    };
-    let persisted = false;
-    try {
-      await this.storage.appendExchanges([exchange]);
-      persisted = true;
-      this.capturedExchanges += 1;
-      if (hits.length > 0) {
-        await this.storage.appendRuleHits(exchange.id, hits);
-      }
-    } catch (error) {
-      // 存储失败不得影响已完成的转发，但必须留痕以便排障。
-      this.diagnostics?.error('capture.persist-failed', {
-        attributes: { host: exchange.host ?? 'unknown', method: exchange.method },
-        errorCode: error instanceof Error ? error.name : 'unknown',
-      });
-    } finally {
-      this.ruleHits.delete(request.id);
-      this.ruleHeaderEffects.delete(request.id);
-    }
-    if (state === 'aborted') {
-      this.diagnostics?.warn('exchange.aborted', {
-        attributes: {
-          host: exchange.host ?? 'unknown',
-          method: exchange.method,
-          path: exchange.path ?? '',
-        },
-      });
-    } else if (exchange.statusCode !== undefined && exchange.statusCode >= 500) {
-      this.diagnostics?.warn('exchange.server-error', {
-        attributes: {
-          host: exchange.host ?? 'unknown',
-          method: exchange.method,
-          status: exchange.statusCode,
-        },
-      });
-    }
-    this.events.enqueue('exchange-added', {
-      id: exchange.id,
-      method: exchange.method,
-      secure: exchange.scheme === 'https' || exchange.scheme === 'wss',
-      host: exchange.host,
-      path: exchange.path,
-      protocol: exchange.protocol,
-      statusCode: exchange.statusCode,
-      responseMime: exchange.responseMime,
-      state: exchange.state,
-      startedAt: exchange.startedAt,
-      durationMs:
-        exchange.completedAt !== undefined
-          ? Math.max(0, exchange.completedAt - exchange.startedAt)
-          : undefined,
-      requestBytes: exchange.requestBytes ?? 0,
-      responseBytes: exchange.responseBytes ?? 0,
-      ...(exchange.ruleIds?.length ? { ruleIds: [...exchange.ruleIds] } : {}),
-    });
-    return persisted ? exchange.id : null;
   }
 
   /** 登记一项在途 Capture 工作，并在完成后自动移除。 */
@@ -742,23 +486,20 @@ export class ProxyService {
 
   /** 单 stream Promise 链保持 Mockttp 事件顺序，并等待 101 Exchange 先落库。 */
   private enqueueWebSocketMessage(message: WebSocketMessage): void {
-    const capture = this.pendingWebSockets.get(message.streamId);
-    if (!capture) {
-      this.diagnostics?.warn('websocket.message-orphaned');
-      return;
-    }
-    capture.writeTail = capture.writeTail
+    const tail = this.webSocketTails.get(message.streamId) ?? Promise.resolve();
+    const next = tail
       .then(async () => {
-        const exchangeId = await capture.exchangeReady;
+        const exchangeId = await this.tracker.whenExchangeReady(
+          message.streamId,
+        );
         if (!exchangeId) {
           return;
         }
         const payload = await this.persistBody(
-          { buffer: message.content },
+          message.content,
           message.isBinary
             ? 'application/octet-stream'
             : 'text/plain; charset=utf-8',
-          undefined,
         );
         await this.storage.appendWebSocketFrames(exchangeId, [
           {
@@ -782,6 +523,7 @@ export class ProxyService {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
       });
+    this.webSocketTails.set(message.streamId, next);
   }
 
   private async interceptWebSocketMessage(message: WebSocketBridgeMessage) {
@@ -828,17 +570,14 @@ export class ProxyService {
   }
 
   /**
-  * 把一段正文写入 TemporaryBodyStore 并生成 hash metadata；超单体上限/配额时
-   * 省略正文但保留元数据（size/mime）。注意：Mockttp 默认已在内存缓冲正文，真正的
-   * 零内存流式（订阅 body-data 事件增量写盘）留待后续 T3.3 细化。
+   * 把一段完整正文写入 TemporaryBodyStore 并生成 hash metadata。
+   * 仅用于 WebSocket 单条消息 payload —— HTTP 正文走 ExchangeTracker 的增量写入器。
    */
   private async persistBody(
-    body: { buffer?: Uint8Array } | undefined,
-    mediaType: string | undefined,
-    contentEncoding: string | undefined,
+    buffer: Uint8Array,
+    mediaType: string,
   ): Promise<BodyRefInput | undefined> {
-    const buffer = body?.buffer;
-    if (!buffer || buffer.byteLength === 0) {
+    if (buffer.byteLength === 0) {
       return undefined;
     }
     const id = `body-${ProxyUtils.cryptoRandomId()}`;
@@ -851,15 +590,13 @@ export class ProxyService {
         blobHash: hash,
         encodedSize: size,
         mediaType,
-        contentEncoding,
         decodeStatus: 'ok',
       };
-    } catch (error) {
+    } catch {
       return {
         id,
         encodedSize: buffer.byteLength,
         mediaType,
-        contentEncoding,
         decodeStatus: 'skipped',
       };
     }
@@ -885,8 +622,11 @@ export class ProxyService {
         ProxyUtils.buildRequestContext(request),
         state,
       );
-      this.stashHeaderEffects(request.id, evaluation.headerEffects);
-      this.stashHits(request.id, evaluation.hits);
+      this.tracker.recordRuleOutcome(
+        request.id,
+        evaluation.hits,
+        evaluation.headerEffects,
+      );
       if (evaluation.kind === 'respond') {
         return { response: ProxyUtils.toCallbackResponse(evaluation.response) };
       }
@@ -929,8 +669,11 @@ export class ProxyService {
         ProxyUtils.buildResponseContext(request, response),
         state,
       );
-      this.stashHeaderEffects(request.id, evaluation.headerEffects);
-      this.stashHits(request.id, evaluation.hits);
+      this.tracker.recordRuleOutcome(
+        request.id,
+        evaluation.hits,
+        evaluation.headerEffects,
+      );
       if (evaluation.kind === 'block') {
         return evaluation.mode;
       }
@@ -947,35 +690,6 @@ export class ProxyService {
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
       return undefined;
-    }
-  }
-
-  private stashHits(requestId: string, hits: readonly RuleHitRecord[]): void {
-    if (hits.length === 0) {
-      return;
-    }
-    const existing = this.ruleHits.get(requestId);
-    if (existing) {
-      existing.push(...hits);
-    } else {
-      this.ruleHits.set(requestId, [...hits]);
-    }
-  }
-
-  /** 累加 request/response 阶段按执行顺序产生的 header effect。 */
-  private stashHeaderEffects(
-    requestId: string,
-    effects: readonly RuleHeaderEffect[],
-  ): void {
-    if (effects.length === 0) {
-      return;
-    }
-    const inputs = ProxyUtils.toRuleHeaderInputs(effects);
-    const existing = this.ruleHeaderEffects.get(requestId);
-    if (existing) {
-      existing.push(...inputs);
-    } else {
-      this.ruleHeaderEffects.set(requestId, inputs);
     }
   }
 }

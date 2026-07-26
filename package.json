@@ -13,6 +13,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "patch-package",
     "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
     "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
     "package": "npm run build:core && npm run package --workspace @interceptor/desktop",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "24.13.3",
+    "patch-package": "8.0.1",
     "typescript": "7.0.2"
   }
 }

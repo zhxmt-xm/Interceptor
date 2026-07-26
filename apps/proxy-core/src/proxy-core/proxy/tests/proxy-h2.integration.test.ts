@@ -6,71 +6,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
 
-import type {
-  CaptureSessionInput,
-  ExchangeInput,
-  WebSocketFrameInput,
-} from '../../storage/interfaces';
 import { RuleEngine } from '../../rules/entry';
 import { BreakpointQueue } from '../../rules/rule-breakpoint-queue';
 import { ProxyService } from '../entry';
-import type { CaptureSink } from '../interfaces';
 import { CaptureEventQueue } from '../proxy-capture-event-queue';
+import { RecordingSink } from './proxy-test-capture-sink';
 
 /**
  * M6 T6.1/T6.2 端到端集成：真实 HTTP/2 客户端经代理 MITM 隧道，用 ALPN h2 连到真实
  * HTTP/2 源站。验证 Mockttp 的 http2:true 对双协议与 H2-only/gRPC 下游协商 H2，
  * 同时按请求动态避开无关 beforeResponse 缓冲。
  */
-class RecordingSink implements CaptureSink {
-  readonly sessions: CaptureSessionInput[] = [];
-  readonly exchanges: ExchangeInput[] = [];
-  readonly bodies: Buffer[] = [];
-
-  ensureSession(session: CaptureSessionInput): Promise<void> {
-    this.sessions.push(session);
-    return Promise.resolve();
-  }
-
-  appendExchanges(
-    exchanges: ExchangeInput[],
-  ): Promise<{ id: string; seq: number }[]> {
-    this.exchanges.push(...exchanges);
-    return Promise.resolve(
-      exchanges.map((exchange, index) => ({ id: exchange.id, seq: index + 1 })),
-    );
-  }
-
-  updateExchange(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  writeBody(
-    source: AsyncIterable<Uint8Array>,
-  ): Promise<{ hash: string; size: number; deduplicated: boolean }> {
-    return (async () => {
-      const chunks: Buffer[] = [];
-      for await (const chunk of source) {
-        chunks.push(Buffer.from(chunk));
-      }
-      const body = Buffer.concat(chunks);
-      this.bodies.push(body);
-      const size = body.byteLength;
-      return { hash: `sha-${size}`, size, deduplicated: false };
-    })();
-  }
-
-  appendRuleHits(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  appendWebSocketFrames(
-    _exchangeId: string,
-    _frames: readonly WebSocketFrameInput[],
-  ): Promise<void> {
-    return Promise.resolve();
-  }
-}
 
 function grpcEnvelope(payload: Uint8Array, compressed = false): Buffer {
   const header = Buffer.alloc(5);

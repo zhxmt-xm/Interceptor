@@ -12,7 +12,7 @@ import type {
   TransferProgressListener,
   TransferResult,
 } from '../transfer/interfaces';
-import type { ExchangeResponsePatch } from './interfaces';
+import type { ExchangePatch } from './interfaces';
 import type {
   CaptureSessionInput,
   CaptureArchiveSnapshot,
@@ -80,13 +80,18 @@ export class StorageService {
     return this.captureStore.appendExchanges(exchanges);
   }
 
-  async updateExchange(patch: ExchangeResponsePatch): Promise<void> {
-    this.captureStore.updateExchangeResponse(patch);
+  async updateExchange(patch: ExchangePatch): Promise<void> {
+    this.captureStore.updateExchange(patch);
   }
 
   /** 写入一段临时正文，返回内容寻址结果供 Capture metadata 引用。 */
   writeBody(source: AsyncIterable<Uint8Array>) {
     return this.bodyStore.writeStream(source);
+  }
+
+  /** 创建 push 式增量正文写入器；调用方：Proxy 消费 body-data 事件。 */
+  createBodyWriter() {
+    return this.bodyStore.createWriter();
   }
 
   /** 捕获点击时的 Exchange/Body hash 时间切面。 */
