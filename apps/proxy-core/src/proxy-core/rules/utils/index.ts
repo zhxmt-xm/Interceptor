@@ -195,7 +195,6 @@ export function isResponseAction(action: RuleAction): boolean {
     || (action.type === 'header' && action.phase === 'response')
     || (action.type === 'body' && action.phase === 'response')
     || (action.type === 'delay' && action.phase === 'response')
-    || (action.type === 'throttle' && action.phase === 'response')
     || (action.type === 'breakpoint' && action.phase === 'response');
 }
 
@@ -209,7 +208,6 @@ export function isRequestAction(action: RuleAction): boolean {
     || (action.type === 'header' && action.phase === 'request')
     || (action.type === 'body' && action.phase === 'request')
     || (action.type === 'delay' && action.phase === 'request')
-    || (action.type === 'throttle' && action.phase === 'request')
     || (action.type === 'breakpoint' && action.phase === 'request');
 }
 

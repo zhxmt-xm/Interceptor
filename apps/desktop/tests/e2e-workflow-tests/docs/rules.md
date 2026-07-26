@@ -81,10 +81,10 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 进入Rules，检查rules=[]、dirty=false和Editor未选择；创建专用rule。
-3. 每次点击 `rules.add-action`，依次选择 `rules.action.header/query/body/status/synthetic/map-local/map-remote/block/delay/throttle/breakpoint`。
-4. 通过动态 `rules.action.<ruleId>.<index>.<field>` 编辑phase、operation、name/value、JSON body、path、URL、status、delay和throttle。
+3. 每次点击 `rules.add-action`，依次选择 `rules.action.header/query/body/status/synthetic/map-local/map-remote/block/delay/breakpoint`。
+4. 通过动态 `rules.action.<ruleId>.<index>.<field>` 编辑phase、operation、name/value、JSON body、path、URL、status和delay。
 5. 验证request/response phase只显示适用字段，默认值与协议模型一致。
-6. 输入map-local路径穿越、非法remote URL、非法JSON、越界status/delay/throttle，确认Apply disabled和精确diagnostics。
+6. 清空条件与action的必填字段，确认启用开关置灰、Editor列出未填写项，且该规则不会命中任何真实请求。
 7. 修复后逐项删除action，确认相邻action不变、顺序稳定。
 8. 保存evidence并Close。
 9. 验证进程/8888销毁。

@@ -104,11 +104,6 @@ export type RuleAction =
   | { readonly type: 'status'; readonly statusCode: number }
   | { readonly type: 'delay'; readonly phase: RulePhase; readonly ms: number }
   | {
-      readonly type: 'throttle';
-      readonly phase: RulePhase;
-      readonly bytesPerSecond: number;
-    }
-  | {
       readonly type: 'breakpoint';
       readonly phase: RulePhase;
       readonly timeoutMs: number;

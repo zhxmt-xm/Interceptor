@@ -6,7 +6,6 @@ import {
   Code,
   FileText,
   Filter,
-  Gauge,
   Globe,
   MapPin,
   Pause,
@@ -199,7 +198,6 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
                 <MenuItem icon={Reply} name={t('rules.synthetic')} {...originItem('synthetic', t('rules.returnResponse'))} onClick={() => addAndClose('synthetic')} />
                 <div className={styles.popoverGroup}>{t('rules.groupTraffic')}</div>
                 <MenuItem icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
-                <MenuItem icon={Gauge} name={t('rules.throttle')} hint={t('rules.bandwidth')} onClick={() => addAndClose('throttle')} />
                 <div className={styles.popoverGroup}>{t('rules.groupControl')}</div>
                 <MenuItem icon={Ban} name={t('rules.block')} {...originItem('block', t('rules.resetClose'))} onClick={() => addAndClose('block')} />
                 <MenuItem icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />

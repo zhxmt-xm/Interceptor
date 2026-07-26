@@ -309,7 +309,7 @@ describe('applyRequestAction — map-local path safety', () => {
   });
 });
 
-describe('status, delay, throttle', () => {
+describe('status and delay', () => {
   it('overrides the response status code', () => {
     const state = responseState();
     const outcome = applyResponseAction(state, {
@@ -365,19 +365,5 @@ describe('status, delay, throttle', () => {
         ms: 250,
       }),
     ).toEqual({ kind: 'none' });
-  });
-
-  it('emits a throttle outcome for the matching phase', async () => {
-    expect(
-      await applyRequestAction(requestState(), {
-        type: 'throttle',
-        phase: 'request',
-        bytesPerSecond: 1024,
-      }),
-    ).toEqual({
-      kind: 'throttle',
-      bytesPerSecond: 1024,
-      summary: { action: 'throttle', detail: '1024bps' },
-    });
   });
 });

@@ -9,7 +9,7 @@ import type {
 } from '../../../shared/desktop-api';
 
 /** Rule row chip kind；复用 RuleRow.module.css 的着色类。 */
-export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'brk';
+export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'flow' | 'brk';
 
 /** 一条规则里还没填完的地方；纯 Renderer 本地概念，不进 wire。 */
 export interface RuleIssue {

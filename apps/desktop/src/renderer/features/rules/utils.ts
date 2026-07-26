@@ -19,10 +19,8 @@ export function actionChip(type: RuleActionType): { kind: ChipKind; labelKey: st
       return { kind: 'block', labelKey: 'rules.block' };
     case 'synthetic':
       return { kind: 'block', labelKey: 'rules.synthetic' };
-    case 'throttle':
-      return { kind: 'throttle', labelKey: 'rules.throttle' };
     case 'delay':
-      return { kind: 'throttle', labelKey: 'rules.delay' };
+      return { kind: 'flow', labelKey: 'rules.delay' };
     case 'breakpoint':
       return { kind: 'brk', labelKey: 'rules.breakpoint' };
     case 'header':
@@ -161,8 +159,6 @@ export function createAction(type: RuleActionType): RuleAction {
       return { type: 'status', statusCode: 200 };
     case 'delay':
       return { type: 'delay', phase: 'response', ms: 1_000 };
-    case 'throttle':
-      return { type: 'throttle', phase: 'response', bytesPerSecond: 51_200 };
     case 'breakpoint':
       return { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' };
     default:

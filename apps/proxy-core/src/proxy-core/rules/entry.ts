@@ -152,7 +152,6 @@ export class RuleEngine {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
     let delayMs = 0;
-    let throttleBps: number | undefined;
 
     for (const compiled of this.compiled) {
       if (!compiled.matcher(context)) {
@@ -202,15 +201,10 @@ export class RuleEngine {
         }
         if (outcome.kind === 'delay') {
           delayMs = Math.max(delayMs, outcome.ms);
-        } else if (outcome.kind === 'throttle') {
-          throttleBps =
-            throttleBps === undefined
-              ? outcome.bytesPerSecond
-              : Math.min(throttleBps, outcome.bytesPerSecond);
         }
       }
     }
-    return { kind: 'continue', hits, headerEffects, delayMs, throttleBps };
+    return { kind: 'continue', hits, headerEffects, delayMs };
   }
 
   /**
@@ -223,7 +217,6 @@ export class RuleEngine {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
     let delayMs = 0;
-    let throttleBps: number | undefined;
 
     for (const compiled of this.compiled) {
       if (!compiled.matcher(context)) {
@@ -267,15 +260,10 @@ export class RuleEngine {
         );
         if (outcome.kind === 'delay') {
           delayMs = Math.max(delayMs, outcome.ms);
-        } else if (outcome.kind === 'throttle') {
-          throttleBps =
-            throttleBps === undefined
-              ? outcome.bytesPerSecond
-              : Math.min(throttleBps, outcome.bytesPerSecond);
         }
       }
     }
-    return { kind: 'continue', hits, headerEffects, delayMs, throttleBps };
+    return { kind: 'continue', hits, headerEffects, delayMs };
   }
 
   /** 挂起规则断点并发布命中通知；关闭开关时直接继续。 */

@@ -4,7 +4,6 @@ import {
   Clock,
   Code,
   FileText,
-  Gauge,
   Globe,
   Lock,
   MapPin,
@@ -82,7 +81,6 @@ export const RequestRow = memo(function RequestRow({
     'map-remote': t('rules.mapRemote'),
     block: t('rules.block'),
     delay: t('rules.delay'),
-    throttle: t('rules.throttle'),
     breakpoint: t('rules.breakpoint'),
   };
   const contextGroups: Array<{
@@ -110,7 +108,6 @@ export const RequestRow = memo(function RequestRow({
       label: t('rules.groupTraffic'),
       items: [
         { type: 'delay', icon: Clock, hint: t('rules.latency') },
-        { type: 'throttle', icon: Gauge, hint: t('rules.bandwidth') },
       ],
     },
     {

@@ -71,7 +71,6 @@ interface RuleDefinition {
 | `map-remote` | 请求 | 否（改写目标） |
 | `block` | 请求 | 否（短路） |
 | `delay` | 双向 | 否（但需 await） |
-| `throttle` | 双向 | 否（需流控原语） |
 | `breakpoint` | 双向 | **是**（需给用户看完整内容） |
 
 **重要事实**：`body` action 是整体替换，不依赖源站原文：
@@ -184,7 +183,6 @@ function requiresResponseBuffering(rule: RuleDefinition): boolean {
   const hasBufferingAction = rule.actions.some(a =>
     (a.type === 'header' && a.phase === 'response' && a.op === 'append') ||
     (a.type === 'delay' && a.phase === 'response') ||
-    (a.type === 'throttle' && a.phase === 'response') ||
     (a.type === 'breakpoint' && a.phase === 'response'));
 
   return hasResponsePhaseMatcher || hasBufferingAction;
@@ -442,8 +440,6 @@ flowchart LR
 
 | 项 | 当前 | 目标 |
 | --- | --- | --- |
-| `validate` | 空实现 | 真实语义校验 |
-| `throttle` | 只计算不消费，是假功能 | 实现或从 UI 移除 |
 | breakpoint body | `Mutable*State` 不带原始 body | 带入 Capture 已接收片段 |
 | hit 计数 | 按 action 次数 | 按 Rule × Exchange 去重 |
 | revision | request/response 可能跨版本 | 请求阶段固定快照 |

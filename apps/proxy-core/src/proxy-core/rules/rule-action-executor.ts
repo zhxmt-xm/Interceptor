@@ -67,17 +67,6 @@ export class RuleActionExecutor {
               summary: { action: 'delay', detail: `${action.ms}ms` },
             }
           : RuleActionExecutor.NONE;
-      case 'throttle':
-        return action.phase === 'request'
-          ? {
-              kind: 'throttle',
-              bytesPerSecond: action.bytesPerSecond,
-              summary: {
-                action: 'throttle',
-                detail: `${action.bytesPerSecond}bps`,
-              },
-            }
-          : RuleActionExecutor.NONE;
       default:
         return RuleActionExecutor.NONE;
     }
@@ -114,17 +103,6 @@ export class RuleActionExecutor {
               kind: 'delay',
               ms: action.ms,
               summary: { action: 'delay', detail: `${action.ms}ms` },
-            }
-          : RuleActionExecutor.NONE;
-      case 'throttle':
-        return action.phase === 'response'
-          ? {
-              kind: 'throttle',
-              bytesPerSecond: action.bytesPerSecond,
-              summary: {
-                action: 'throttle',
-                detail: `${action.bytesPerSecond}bps`,
-              },
             }
           : RuleActionExecutor.NONE;
       default:

@@ -298,7 +298,7 @@ const rules = [
   rule('rule-cors', 'Force CORS + JSON', '*.api.com', '/', { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' }),
   rule('rule-staging', 'Redirect to staging', 'prod.example.com', '/', { type: 'map-remote', scheme: 'https', host: 'stg.example.com' }),
   rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' }),
-  rule('rule-upload', 'Throttle uploads', 'upload.example.com', '/', { type: 'throttle', phase: 'request', bytesPerSecond: 51_200 }),
+  rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 }),
   rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' }),
   { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false },
   rule('rule-payment', 'Mock payment', 'api.stripe.com', '/v1/charges', { type: 'synthetic', statusCode: 200, headers: [{ name: 'content-type', value: 'application/json' }], body: '{"ok":true}' }),

@@ -168,7 +168,6 @@ export const AUTOMATION_IDS = {
       mapRemote: 'rules.action.map-remote',
       block: 'rules.action.block',
       delay: 'rules.action.delay',
-      throttle: 'rules.action.throttle',
       breakpoint: 'rules.action.breakpoint',
     },
   },

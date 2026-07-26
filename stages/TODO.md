@@ -59,11 +59,12 @@
 - [x] Core 信任 Main/Renderer 传递的数据，不做规则语义校验；真实流量安全由“未填写条件不匹配 + 不完整规则不能启用 + 引擎只编译 enabled 规则”三道边界保证。
 - [ ] 非空但无法编译的 regex、不可解析的 JSON body、不存在的 Map Local 文件仍然只会静默失效，需要在 Renderer 给出可见提示。
 
-### 5. Throttle 是假功能
+### 5. Throttle 是假功能（已移除）
 
-- [ ] **确认 BUG**：实现真正的 request / response 带宽限制，或在实现前从 UI / 协议中移除 Throttle Action。
-- [ ] 当前 RuleEngine 只计算 `throttleBps` 并记录 hit，Proxy 从未消费；界面会声称命中，但真实流量速度不变。
-- [ ] 实现后验证 H1/H2、上传/下载、多个 Rule 取最小带宽、取消、背压和连接公平性。
+- [x] **确认 BUG**：真实代理 + 真实源站实测，规则设 8 KiB/s、下载 128 KiB，**17 ms** 完成（真限速需 ≥16 s），而 UI 仍显示命中。
+- [x] 选择移除而不是实现：限速必须介入正文流，而规则全部在头部阶段执行，需扩 `patches/mockttp+4.5.0.patch`（约 60 行，含 override 分支流式化与 resolve 时序改造）；浏览器 DevTools 本身就支持限速，不值得为此增加 patch 复杂度与升级风险。
+- [x] 已从协议、RuleEngine、action executor、Renderer（菜单/编辑器/chip/右键菜单）、automation ID、15 种语言文案与 `design/app` 设计稿中删除。
+- [ ] 若以后重新引入，必须同时覆盖：body 被规则替换时也要限速（否则静默失效）、resolve 等 `clientRes` finish、gRPC trailer 时序、客户端取消与 Stop/Clear 中断。
 
 ### 6. Breakpoint 没有原始 HTTP body
 
@@ -192,7 +193,7 @@
 ### 21. Rule observability 不完整
 
 - [ ] 当前只有 Header Action 有可点击 marker；为 query/body/status/map/delay/block/breakpoint/synthetic 提供统一 Rule evidence timeline。
-- [ ] Throttle 未实现时不得记录为“已处理”；无实际变化的 remove/matcher 不应冒充 wire effect。
+- [ ] 无实际变化的 remove/matcher 不应冒充 wire effect。
 - [ ] Capture detail 应区分客户端原始值、Rule 中间状态、发往 origin 的最终值、origin 原始响应和发给客户端的最终值。
 
 ---
@@ -330,7 +331,7 @@
 - [ ] 8 种 matcher × 11 种 Action 的 request/response phase 合法矩阵。
 - [ ] invalid Rule 必须 validate/replace 双重拒绝；不能进入持久化或真实流量。
 - [ ] priority、短路、header/body/status 冲突、hot update/in-flight revision、双实例 conflict。
-- [ ] Throttle 有真实吞吐证据；Breakpoint 有原始/编辑后的 body 证据。
+- [ ] Breakpoint 有原始/编辑后的 body 证据。
 - [ ] Rule hit request 去重、历史 revision、Archive restore、删除 Rule marker。
 
 ### 39. 文件与安全边界
@@ -352,7 +353,7 @@
 
 进行中/待办：
 
-1. [ ] **Stage A' / Stop-ship correctness 余项**：实现真实 rules validator；隐藏或实现 Throttle；用 Capture 增量片段修复 Breakpoint 正文。
+1. [ ] **Stage A' / Stop-ship correctness 余项**：用 Capture 增量片段修复 Breakpoint 正文。
 2. [ ] **Stage C / Rule evidence**：按 Exchange 去重 hit、固定 RuleSet revision、历史 snapshot、冲突保留草稿、联动空态/错误反馈。
 3. [ ] **Stage C' / 进行中状态展示**：Renderer 明示 pending / streaming 与已接收字节，区分 persist failed、decode failed、preview limited。
 4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded 语义、原子保存、Cancel/Clear lease、HAR 流式化。

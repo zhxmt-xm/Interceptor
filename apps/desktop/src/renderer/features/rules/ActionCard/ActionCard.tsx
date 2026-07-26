@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { cx, IconButton } from '../../../components';
 import styles from './ActionCard.module.css';
 
-export type ActionTone = 'map' | 'remote' | 'rewrite' | 'block' | 'throttle' | 'brk';
+export type ActionTone = 'map' | 'remote' | 'rewrite' | 'block' | 'flow' | 'brk';
 
 export interface ActionCardProps {
   icon: LucideIcon;

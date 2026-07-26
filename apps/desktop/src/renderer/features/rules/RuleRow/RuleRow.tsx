@@ -13,7 +13,7 @@ const CHIP_CLASS: Record<ChipKind, string | undefined> = {
   remote: styles.remote,
   rewrite: styles.rewrite,
   block: styles.block,
-  throttle: styles.throttle,
+  flow: styles.flow,
   brk: styles.brk,
 };
 

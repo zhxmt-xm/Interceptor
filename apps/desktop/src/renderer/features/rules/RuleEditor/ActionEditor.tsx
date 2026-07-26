@@ -3,7 +3,6 @@ import {
   Clock,
   Code,
   FileText,
-  Gauge,
   Globe,
   MapPin,
   Pause,
@@ -50,8 +49,7 @@ const ACTION_META: Record<RuleActionType, ActionMeta> = {
   'map-local': { icon: MapPin, tone: 'map', titleKey: 'rules.mapLocal', subKey: 'rules.serveFile' },
   'map-remote': { icon: Globe, tone: 'remote', titleKey: 'rules.mapRemote', subKey: 'rules.reroute' },
   block: { icon: Ban, tone: 'block', titleKey: 'rules.block', subKey: 'rules.resetClose' },
-  delay: { icon: Clock, tone: 'throttle', titleKey: 'rules.delay', subKey: 'rules.latency' },
-  throttle: { icon: Gauge, tone: 'throttle', titleKey: 'rules.throttle', subKey: 'rules.bandwidth' },
+  delay: { icon: Clock, tone: 'flow', titleKey: 'rules.delay', subKey: 'rules.latency' },
   breakpoint: { icon: Pause, tone: 'brk', titleKey: 'rules.breakpoint', subKey: 'rules.pauseEdit' },
 };
 
@@ -384,30 +382,6 @@ function renderBody(
             type="number"
             value={String(current.ms)}
             onValueChange={(value) => onChange({ ...current, ms: toInt(value, current.ms) })}
-          />
-        </div>
-      );
-    }
-    case 'throttle': {
-      const current = action;
-      return (
-        <div className={styles.row}>
-          <Select
-            className={styles.phase}
-            ariaLabel={translate('rules.phase')}
-            value={current.phase}
-            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
-            onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
-          />
-          <span className={styles.label}>{translate('rules.bytesPerSecond')}</span>
-          <InputBox
-            className={styles.num}
-            ariaLabel={translate('rules.bytesPerSecond')}
-            type="number"
-            value={String(current.bytesPerSecond)}
-            onValueChange={(value) =>
-              onChange({ ...current, bytesPerSecond: toInt(value, current.bytesPerSecond) })
-            }
           />
         </div>
       );

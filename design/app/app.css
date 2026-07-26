@@ -469,7 +469,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rchip.remote { color: var(--accent); background: var(--accent-soft); }
 .rchip.rewrite { color: var(--purple); background: color-mix(in srgb, var(--purple) 15%, transparent); }
 .rchip.block { color: var(--red); background: color-mix(in srgb, var(--red) 13%, transparent); }
-.rchip.throttle { color: var(--yellow); background: color-mix(in srgb, var(--yellow) 16%, transparent); }
+.rchip.flow { color: var(--yellow); background: color-mix(in srgb, var(--yellow) 16%, transparent); }
 .rchip.brk { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
 .rhit { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
 .reditor { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--panel); }

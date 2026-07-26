@@ -72,11 +72,6 @@ export type ActionOutcome =
       readonly kind: 'delay';
       readonly ms: number;
       readonly summary: ActionSummary;
-    }
-  | {
-      readonly kind: 'throttle';
-      readonly bytesPerSecond: number;
-      readonly summary: ActionSummary;
     };
 
 export type BreakpointPhase = 'request' | 'response' | 'websocket';
@@ -144,7 +139,6 @@ export type RequestEvaluation =
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
       readonly delayMs: number;
-      readonly throttleBps?: number;
     }
   | {
       readonly kind: 'respond';
@@ -165,7 +159,6 @@ export type ResponseEvaluation =
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
       readonly delayMs: number;
-      readonly throttleBps?: number;
     }
   | {
       readonly kind: 'block';

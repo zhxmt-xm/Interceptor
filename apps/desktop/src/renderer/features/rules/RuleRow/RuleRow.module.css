@@ -107,7 +107,7 @@
   color: var(--red);
   background: color-mix(in srgb, var(--red) 13%, transparent);
 }
-.chip.throttle {
+.chip.flow {
   color: var(--yellow);
   background: color-mix(in srgb, var(--yellow) 16%, transparent);
 }
