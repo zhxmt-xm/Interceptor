@@ -285,6 +285,7 @@ export class ExchangeTracker {
         request.timingEvents.abortedTimestamp,
       ) ?? Date.now();
     this.diagnostics?.warn('exchange.aborted', {
+      ...(request.error?.code ? { errorCode: request.error.code } : {}),
       attributes: {
         host: entry.host ?? 'unknown',
         method: entry.method,

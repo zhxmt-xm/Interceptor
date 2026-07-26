@@ -215,7 +215,7 @@ stateDiagram-v2
 | `request-complete` | 请求已完整，等待响应（WebSocket 101 后也用此值） |
 | `response-streaming` | 已收到响应头，正文传输中 |
 | `completed` | 双向完成 |
-| `aborted` | 客户端或 Origin 中断 |
+| `aborted` | 客户端中断，或上游连接失败（DNS/TCP/TLS）被镜像为客户端连接错误 |
 | `failed` | Capture 持久化失败或协议错误 |
 
 **迁移规则：**
@@ -401,11 +401,13 @@ sequenceDiagram
         Client->>Mockttp: 停止上传
         Mockttp-->>Proxy: abort 或 request-body-data isEnded
         Proxy->>Storage: 合并为同一 Exchange 终态
-    else 客户端中断
+    else 客户端中断或上游连接失败
         Mockttp-->>Proxy: abort
         Proxy->>Storage: state aborted，errorCode 记录原因
     end
 ```
+
+**上游失败语义**：passthrough 固定 `simulateConnectionErrors: true`，上游 DNS/TCP/TLS 失败会 reset/close 客户端连接并进入上面的 abort 分支，而不是回一个伪造的 502 响应。客户端因此看到与不挂代理时一致的失败形态，Capture 里也是一条带真实 `errorCode` 的 `aborted` 记录，而不是一条假响应。
 
 **关键修复点**：当前实现只在 completed `request` 事件建立 `pending` 映射，若 `response` 先到会找不到请求而**直接丢弃整条记录**。改用 `request-initiated` 后，Exchange 在请求头阶段就已存在，早期响应可以正常合并。
 

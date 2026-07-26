@@ -182,6 +182,11 @@ export class ProxyService {
         ? [...this.tlsConfig.insecureHosts]
         : undefined;
     await server.forAnyRequest().thenPassThrough({
+      // 上游连接失败（DNS/TCP/TLS）按真实网络故障镜像给客户端，而不是伪造一个
+      // 502 响应：Interceptor 是透明调试代理，客户端必须看到与不挂代理时一致的
+      // 失败形态，Capture 里也才会记成 aborted + 真实 errorCode 而非假响应。
+      // 副作用是 Mockttp 走 AbortError 分支，不再向 stdout 打印上游错误堆栈。
+      simulateConnectionErrors: true,
       ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
       ...(this.ruleEngine
         ? {

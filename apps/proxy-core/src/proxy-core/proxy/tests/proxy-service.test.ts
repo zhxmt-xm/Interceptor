@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import net, { type AddressInfo } from 'node:net';
 import tls from 'node:tls';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { generateCACertificate, getLocal } from 'mockttp';
 
@@ -296,6 +296,17 @@ function waitForSocketData(socket: net.Socket, timeoutMs = 250): Promise<Buffer 
       resolve(data);
     };
     socket.once('data', onData);
+  });
+}
+
+/** 占用一个端口后立即释放，得到一个确定无人监听的本地端口。 */
+function reserveClosedPort(): Promise<number> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo;
+      server.close(() => resolve(port));
+    });
   });
 }
 
@@ -714,6 +725,22 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     } finally {
       await origin.close();
     }
+  });
+
+  it('mirrors an unreachable upstream as a client connection error', async () => {
+    const consoleError = vi.spyOn(console, 'error');
+    const deadPort = await reserveClosedPort();
+    // 上游连不上时不得伪造 502：客户端必须收到连接错误，Exchange 记 aborted +
+    // 真实 errorCode，且 Mockttp 不再把上游错误堆栈打到 Core 控制台。
+    await expect(
+      proxiedGet(address, `http://localhost:${deadPort}/unreachable`),
+    ).rejects.toMatchObject({ code: 'ECONNRESET' });
+
+    await expect.poll(() => sink.exchanges[0]?.state).toBe('aborted');
+    expect(sink.exchanges[0]?.errorCode).toBe('ECONNREFUSED');
+    expect(sink.exchanges[0]?.statusCode).toBeUndefined();
+    expect(sink.bodies).toHaveLength(0);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it('passes HTTPS through without a CA and captures only encrypted tunnel metadata', async () => {
