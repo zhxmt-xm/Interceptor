@@ -526,6 +526,8 @@ export class ProxyService {
       opcode: message.isBinary ? 2 : 1,
       bodyFormat,
       headers: [],
+      // 消息断点持有完整 payload，与头部阶段的 HTTP 断点不同。
+      bodyAvailable: true,
       body,
     });
     if (

@@ -28,6 +28,7 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
       name: header.name,
       value: header.value,
     })),
+    bodyAvailable: breakpoint.bodyAvailable,
     body: breakpoint.body ?? '',
   };
 }
@@ -37,18 +38,24 @@ export function selectedBreakpoint(state: BreakpointsState): PendingBreakpoint |
   return state.breakpoints.find((bp) => bp.id === state.selectedId) ?? null;
 }
 
-/** 由草稿组装 BreakpointEdit（按阶段包含 method/url 或 statusCode，headers/body 通用）。 */
+/**
+ * 由草稿组装 BreakpointEdit（按阶段包含 method/url 或 statusCode，headers/body 通用）。
+ *
+ * 原文不可见且用户没输入新正文时，**不能**带上 `body`：否则只改一个 header 就
+ * 点 Continue，也会把真实上传/响应正文整体替换成空字符串。
+ */
 export function buildEdit(draft: BreakpointDraft): BreakpointEdit {
   const headers = draft.headers
     .filter((header) => header.name.trim() !== '')
     .map((header) => ({ name: header.name, value: header.value }));
+  const body = draft.bodyAvailable || draft.body !== '' ? { body: draft.body } : {};
   if (draft.phase === 'request') {
-    return { method: draft.method, url: draft.url, headers, body: draft.body };
+    return { method: draft.method, url: draft.url, headers, ...body };
   }
   if (draft.phase === 'websocket') {
-    return { body: draft.body };
+    return { ...body };
   }
-  return { statusCode: draft.statusCode, headers, body: draft.body };
+  return { statusCode: draft.statusCode, headers, ...body };
 }
 
 /** 断点倒计时格式化（deadline 时间戳 → M:SS）；0/无超时显示 ∞。 */

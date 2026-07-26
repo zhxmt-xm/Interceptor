@@ -15,7 +15,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 
 断点由 `breakpoint` 类型的 Rule Action 触发，因此它是 Rules 的子系统，共享 `RuleEngine` 的执行上下文。
 
-**代价明确**：断点必须看到完整内容才有意义，因此它是唯一**必须缓冲**的 action 类型。请求断点会等完整 request body，响应断点会等完整 response body。
+**正文可见性边界（已实现）**：HTTP 断点在**头部阶段**（`beforeRequestHead` / `beforeResponseHead`）挂起，此时正文尚未到达，所以快照的 `bodyAvailable` 为 `false` 且不带 `body`。UI 因此把正文区域展示为“Replace body / 原文尚未到达”，留空即原样转发。WebSocket 消息断点持有完整 payload，`bodyAvailable` 为 `true`。**不为断点引入正文缓冲**，也不制造第二份无界内存。
 
 ## 2. 参与者
 
@@ -156,7 +156,9 @@ interface BreakpointSnapshot {
   opcode?: 1 | 2;                    // WebSocket
   bodyFormat: 'text' | 'hex';
   headers: readonly RuleHeaderPair[];
-  body: string;
+  /** 挂起时是否能看到原始正文；HTTP 头部阶段断点为 false。 */
+  bodyAvailable: boolean;
+  body?: string;
 }
 
 interface BreakpointOutcome {
@@ -179,14 +181,14 @@ interface BreakpointOutcome {
 
 | 项 | 当前 | 目标 |
 | --- | --- | --- |
-| 快照 body | `Mutable*State` 初始化不带原始 body，快照常为空 | 带入有限预览 |
+| 快照 body | 头部阶段看不到原文，已用 `bodyAvailable=false` 如实标注 | 如需展示已接收片段，从 Capture 增量 writer 读取 |
 | 大正文 | 无策略 | 有限预览 + 按需编辑，不制造第二份无界内存 |
 | Binary body | 一律 UTF-8 replacement | text / hex 双模式，保留编码与长度 |
 | 编辑后 framing | 未验证 | 校验 content-length、content-encoding、H2 framing |
 
 ## 8. 验收要点
 
-- [ ] 断点快照包含真实原始 body，不是空字符串。
+- [x] 快照如实告知正文是否可见，不把空输入框冒充原文；只改 header 放行不会抹掉真实正文。
 - [ ] 大正文断点有明确的预览上限与提示，不 OOM。
 - [ ] Binary 消息可用 hex 编辑并正确还原。
 - [ ] 超时按 `onTimeout` 策略正确 continue 或 drop。

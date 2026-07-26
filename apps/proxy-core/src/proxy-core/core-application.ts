@@ -621,6 +621,7 @@ export class CoreApplication implements CoreRpcHost {
               opcode: entry.snapshot.opcode,
               bodyFormat: entry.snapshot.bodyFormat,
               headers: entry.snapshot.headers,
+              bodyAvailable: entry.snapshot.bodyAvailable,
               body: entry.snapshot.body,
             }))
           : [];

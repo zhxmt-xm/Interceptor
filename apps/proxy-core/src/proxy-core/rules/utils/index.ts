@@ -452,7 +452,7 @@ export function bodyToString(
   return new TextDecoder('utf-8', { fatal: false }).decode(body);
 }
 
-/** 构造请求阶段断点快照。 */
+/** 构造请求阶段断点快照；头部阶段挂起，正文还没到达。 */
 export function buildRequestSnapshot(
   ruleName: string,
   state: MutableRequestState,
@@ -462,11 +462,12 @@ export function buildRequestSnapshot(
     method: state.method,
     url: state.url,
     headers: bagToPairs(state.headers),
+    bodyAvailable: state.body !== undefined,
     body: bodyToString(state.body),
   };
 }
 
-/** 构造响应阶段断点快照。 */
+/** 构造响应阶段断点快照；头部阶段挂起，正文还没到达。 */
 export function buildResponseSnapshot(
   ruleName: string,
   state: MutableResponseState,
@@ -475,6 +476,7 @@ export function buildResponseSnapshot(
     ruleName,
     statusCode: state.statusCode,
     headers: bagToPairs(state.headers),
+    bodyAvailable: state.body !== undefined,
     body: bodyToString(state.body),
   };
 }

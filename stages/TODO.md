@@ -66,12 +66,12 @@
 - [x] 已从协议、RuleEngine、action executor、Renderer（菜单/编辑器/chip/右键菜单）、automation ID、15 种语言文案与 `design/app` 设计稿中删除。
 - [ ] 若以后重新引入，必须同时覆盖：body 被规则替换时也要限速（否则静默失效）、resolve 等 `clientRes` finish、gRPC trailer 时序、客户端取消与 Stop/Clear 中断。
 
-### 6. Breakpoint 没有原始 HTTP body
+### 6. Breakpoint 没有原始 HTTP body（已处理）
 
-- [ ] **确认 BUG**：断点快照的 body 仍为空。阶段二后断点在 **headers 阶段**挂起（`beforeRequestHead` / `beforeResponseHead`），此时正文尚未到达，因此不能再指望从 `Mutable*State` 拿到完整 body。
-- [ ] 正确做法：从 `ExchangeTracker` 的增量 writer 读取**当前已接收片段**作为预览，不为断点再制造第二份无界内存。
-- [ ] 编辑后的替换走钩子返回值的整体 body 覆盖（不等原文，上游流直接 `resume()` 倒掉）。
-- [ ] 需要完整正文才能展示的场景，必须显式声明为缓冲模式并在 UI 明示，不得默认开启。
+- [x] **确认 BUG**：真实代理集成测试证实断点快照的 body 恒为 `undefined`，而 UI 却显示一个标着“body · editable”的空输入框。
+- [x] **发现更严重的数据破坏**：`buildEdit` 无条件发送 `body: ''`，因此在断点面板只改一个 header 就点 Continue，会把真实上传/响应正文整体替换成空。
+- [x] 快照新增 `bodyAvailable`：HTTP 头部阶段断点为 false，WebSocket 消息断点为 true。Renderer 在不可见且用户未输入时不再发送 `body`，UI 改为“Replace body / 原文尚未到达 / 留空则原样转发”；`design/app` 同步。
+- [ ] 若要展示“已接收片段”，从 `ExchangeTracker` 增量 writer 读取，不为断点再制造第二份无界内存。
 - [ ] Binary body 不能一律 UTF-8 replacement；提供 text / hex，并保留编码/长度信息。
 - [ ] 验证 Execute edited 后 content-length、content-encoding、transfer-encoding 和 H2 framing 正确。
 
@@ -353,7 +353,7 @@
 
 进行中/待办：
 
-1. [ ] **Stage A' / Stop-ship correctness 余项**：用 Capture 增量片段修复 Breakpoint 正文。
+1. [ ] **Stage A' / Stop-ship correctness 余项**：断点大正文预览上限与 binary text/hex 双模式。
 2. [ ] **Stage C / Rule evidence**：按 Exchange 去重 hit、固定 RuleSet revision、历史 snapshot、冲突保留草稿、联动空态/错误反馈。
 3. [ ] **Stage C' / 进行中状态展示**：Renderer 明示 pending / streaming 与已接收字节，区分 persist failed、decode failed、preview limited。
 4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded 语义、原子保存、Cancel/Clear lease、HAR 流式化。

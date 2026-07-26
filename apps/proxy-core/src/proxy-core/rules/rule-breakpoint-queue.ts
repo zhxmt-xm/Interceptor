@@ -38,7 +38,11 @@ export class BreakpointQueue {
     phase: BreakpointPhase,
     timeoutMs: number,
     timeoutPolicy: BreakpointTimeoutPolicy,
-    snapshot: BreakpointSnapshot = { ruleName: '', headers: [] },
+    snapshot: BreakpointSnapshot = {
+      ruleName: '',
+      headers: [],
+      bodyAvailable: false,
+    },
   ): BreakpointSuspension {
     this.sequence += 1;
     const id = `bp-${Date.now().toString(36)}-${this.sequence}`;

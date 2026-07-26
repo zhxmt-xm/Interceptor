@@ -524,6 +524,12 @@ export interface PendingBreakpoint {
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: RuleHeaderPair[];
+  /**
+   * 此刻是否能看到原始正文。HTTP 规则断点在头部阶段挂起，此时正文还没到达，
+   * 因此为 false；WebSocket 消息断点拿得到完整 payload，为 true。
+   * false 时 UI 不得把空输入框当作原文，也不得把空值当作“把正文改成空”。
+   */
+  bodyAvailable: boolean;
   body?: string;
 }
 

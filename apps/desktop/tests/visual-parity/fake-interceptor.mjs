@@ -321,7 +321,7 @@ const pendingBreakpoints = [
     method: 'POST',
     url: 'shop.example.com/checkout',
     headers: [{ name: 'content-type', value: 'application/json' }],
-    body: '{"sku":"pro"}',
+    bodyAvailable: false,
   },
   {
     id: 'bp-token',

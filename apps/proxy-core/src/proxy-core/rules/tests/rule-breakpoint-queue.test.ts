@@ -89,6 +89,7 @@ describe('BreakpointQueue', () => {
       opcode: 1,
       bodyFormat: 'text',
       headers: [],
+      bodyAvailable: true,
       body: 'hello',
     });
     expect(queue.list()[0]).toMatchObject({

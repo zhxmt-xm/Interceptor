@@ -94,14 +94,25 @@ export function BreakpointEditor(): React.JSX.Element {
         </div> : null}
 
         <div>
-          <SectionHeader count={`${isWebSocket ? draft.bodyFormat ?? 'text' : t('breakpoints.body').toLocaleLowerCase(i18n.language)} · ${t('breakpoints.editable')}`}>
-            {isWebSocket ? t('breakpoints.payload') : t('breakpoints.body')}
+          <SectionHeader
+            count={
+              draft.bodyAvailable
+                ? `${isWebSocket ? draft.bodyFormat ?? 'text' : t('breakpoints.body').toLocaleLowerCase(i18n.language)} · ${t('breakpoints.editable')}`
+                : t('breakpoints.bodyNotReceived')
+            }
+          >
+            {isWebSocket
+              ? t('breakpoints.payload')
+              : draft.bodyAvailable
+                ? t('breakpoints.body')
+                : t('breakpoints.replaceBody')}
           </SectionHeader>
           <textarea
             className={styles.bodyEdit}
             aria-label={isWebSocket ? t('breakpoints.payload') : t('breakpoints.body')}
             value={draft.body}
             spellCheck={false}
+            placeholder={draft.bodyAvailable ? undefined : t('breakpoints.replaceBodyHint')}
             onChange={(event) => setBody(event.target.value)}
           />
         </div>

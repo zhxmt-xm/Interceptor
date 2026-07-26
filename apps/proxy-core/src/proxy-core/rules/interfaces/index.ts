@@ -88,6 +88,8 @@ export interface BreakpointSnapshot {
   readonly opcode?: 1 | 2;
   readonly bodyFormat?: 'text' | 'hex';
   readonly headers: RuleHeaderPair[];
+  /** 此刻是否能看到原始正文；HTTP 头部阶段断点为 false。 */
+  readonly bodyAvailable: boolean;
   readonly body?: string;
 }
 

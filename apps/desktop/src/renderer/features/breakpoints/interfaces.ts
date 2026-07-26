@@ -21,6 +21,8 @@ export interface BreakpointDraft {
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: EditHeaderRow[];
+  /** 挂起时是否能看到原始正文；HTTP 头部阶段断点为 false。 */
+  bodyAvailable: boolean;
   body: string;
 }
 

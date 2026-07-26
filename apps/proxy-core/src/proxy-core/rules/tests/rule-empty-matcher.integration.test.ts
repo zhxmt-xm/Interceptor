@@ -102,7 +102,7 @@ describe('Rule matchers with unfilled values (real proxy)', () => {
     await storage.initialize();
     const engine = new RuleEngine(new BreakpointQueue());
     proxy = new ProxyService(storage, new CaptureEventQueue(), engine);
-    const address = await proxy.start();
+    const address = await proxy.start({ port: 0 });
     const seenHeaders: http.IncomingHttpHeaders[] = [];
     origin = await startOrigin((request) => {
       seenHeaders.push(request.headers);
