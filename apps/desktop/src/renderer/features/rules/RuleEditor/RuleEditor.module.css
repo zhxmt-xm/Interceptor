@@ -119,6 +119,19 @@
 .optionRow.keyValue {
   grid-template-columns: 150px minmax(0, 1fr);
 }
+/** 规则适用范围说明：Tooltip 内的多行文本块。 */
+.scopeHelp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 260px;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.scopeHelpAnchor {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
 .validation {
   display: flex;
   align-items: center;

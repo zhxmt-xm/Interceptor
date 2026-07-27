@@ -2,8 +2,9 @@ import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './ru
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
-/** Renderer Inspector 单个正文预览的最大字节数；Core 仍完整保留正文。 */
-export const BODY_PREVIEW_MAX_BYTES = 1024 * 1024;
+/** Renderer Inspector 单个正文预览的最大字节数；Core 仍完整保留正文。
+ *  超出部分只影响预览，用户仍可经 Save body 导出完整内容。 */
+export const BODY_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
 
 export interface EchoCommand {
   type: 'echo';

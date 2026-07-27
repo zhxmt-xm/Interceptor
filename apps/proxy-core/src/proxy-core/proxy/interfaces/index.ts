@@ -61,6 +61,12 @@ export interface WebSocketBridgeOptions {
   ) => Promise<WebSocketBridgeDecision>;
   readonly ignoreCertificateErrors: (hostname: string) => boolean;
   readonly onError?: (error: Error) => void;
+  /**
+   * 上游 Upgrade 失败时回调（streamId 即 request.id）。
+   * Mockttp 对这条路径只发 completed `response`，Capture 为避免全量缓冲已退订，
+   * 不显式回调就会让 Exchange 永远停在 `pending`。
+   */
+  readonly onUpgradeFailed?: (streamId: string, error: Error) => void;
 }
 
 export interface WebSocketPair {

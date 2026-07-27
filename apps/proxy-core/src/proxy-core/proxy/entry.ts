@@ -204,6 +204,12 @@ export class ProxyService {
           errorCode: error.name,
         });
       },
+      onUpgradeFailed: (streamId, error) => {
+        this.tracker.failWebSocketUpgrade(
+          streamId,
+          ProxyUtils.readErrorCode(error),
+        );
+      },
     });
     await webSocketBridge.register(server);
     await server.start(port ?? undefined);

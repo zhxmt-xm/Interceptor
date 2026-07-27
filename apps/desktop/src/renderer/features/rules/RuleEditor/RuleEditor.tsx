@@ -7,12 +7,14 @@ import {
   FileText,
   Filter,
   Globe,
+  HelpCircle,
   MapPin,
   Pause,
   Plus,
   Reply,
   Trash2,
 } from 'lucide-react';
+import { Tooltip } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -120,6 +122,26 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           onClick={() => onShowRuleRequests(rule.id)}
           automationId={AUTOMATION_IDS.rules.showMatchingRequests}
         />
+        <Tooltip
+          placement="bottomRight"
+          title={
+            <div className={styles.scopeHelp}>
+              <b>{t('rules.scopeTitle')}</b>
+              <span>{t('rules.scopeHttps')}</span>
+              <span>{t('rules.scopeWebSocket')}</span>
+            </div>
+          }
+        >
+          {/* IconButton 自带 Tooltip 只支持纯文本，此处需要多行说明。 */}
+          <span className={styles.scopeHelpAnchor}>
+            <IconButton
+              icon={HelpCircle}
+              label={t('rules.scopeTitle')}
+              size="sm"
+              tooltip={null}
+            />
+          </span>
+        </Tooltip>
         <IconButton
           icon={Trash2}
           label={t('rules.deleteRule')}

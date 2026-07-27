@@ -563,6 +563,18 @@ export function toBuffer(data: RawData): Buffer {
   throw new Error(`Unsupported WebSocket payload: ${String(exhaustive)}`);
 }
 
+/** 取错误的稳定短码（Node 的 `code` 优先，其次 `name`），用于落库 errorCode。 */
+export function readErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === 'string' && code.length > 0) {
+    return code;
+  }
+  return error instanceof Error ? error.name : undefined;
+}
+
 /** 发送应用消息并把 callback 转为 Promise。 */
 export function sendMessage(
   socket: WebSocket,

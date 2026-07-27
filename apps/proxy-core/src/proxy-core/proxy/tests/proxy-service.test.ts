@@ -5,6 +5,7 @@ import tls from 'node:tls';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { generateCACertificate, getLocal } from 'mockttp';
+import { WebSocketServer } from 'ws';
 
 import { RuleEngine } from '../../rules/entry';
 import { BreakpointQueue } from '../../rules/rule-breakpoint-queue';
@@ -809,6 +810,137 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(sink.bodies.length).toBeGreaterThanOrEqual(2);
     } finally {
       await origin.close();
+    }
+  });
+
+  it('keeps the uploaded request body when the origin responds early', async () => {
+    // 源站收到部分正文后立即返回 413 并结束响应，此时客户端仍在上传：
+    // 响应侧先进入终态，请求侧 writer 仍在写，必须一并收尾。
+    const origin = await startOrigin((req, res) => {
+      req.once('data', () => {
+        // 等 Mockttp 的 body-data 攒批（20ms）投递到 Capture 后再结束响应。
+        setTimeout(() => {
+          res.writeHead(413, { 'content-type': 'text/plain' });
+          res.end('too large');
+        }, 150);
+      });
+    });
+    let request: http.ClientRequest | undefined;
+    try {
+      const status = await new Promise<number | undefined>((resolve, reject) => {
+        request = http.request(
+          {
+            host: address.host,
+            port: address.port,
+            method: 'POST',
+            path: `http://127.0.0.1:${origin.port}/upload`,
+            headers: { 'content-type': 'application/octet-stream' },
+          },
+          (res) => {
+            res.resume();
+            resolve(res.statusCode);
+          },
+        );
+        request.on('error', reject);
+        // 只写一块且不 end，保持请求侧停在 body 阶段。
+        request.write(Buffer.alloc(4_096, 0x61));
+      });
+      expect(status).toBe(413);
+
+      await expect
+        .poll(() => sink.exchanges[0]?.state, { timeout: 5_000 })
+        .toBe('completed');
+      const exchange = sink.exchanges[0];
+      // 前提：确实观察到了已上传的字节，否则本用例没有覆盖到目标路径。
+      expect(exchange?.requestBytes).toBeGreaterThan(0);
+      // 回归点：已上传的部分必须 finalize 并绑定 body 引用，而不是被丢弃。
+      expect(exchange?.requestBodyId).toBeDefined();
+      expect(exchange?.requestBody?.blobHash).toBeDefined();
+    } finally {
+      request?.destroy();
+      await origin.close();
+    }
+  });
+
+  it('marks the exchange aborted when the upstream websocket upgrade fails', async () => {
+    // 上游端口无人监听：bridge 的 waitForOpen 失败并抛出，Mockttp 只会发出
+    // completed `response`（Capture 已退订），必须由 bridge 自己判终态。
+    const closedPort = await reserveClosedPort();
+    await expect(
+      openProxiedWebSocket(address, `ws://127.0.0.1:${closedPort}/ws`),
+    ).rejects.toThrow();
+
+    await expect
+      .poll(() => sink.exchanges[0]?.state, { timeout: 5_000 })
+      .toBe('aborted');
+  });
+
+  it('closes the upstream websocket when the client disconnects during the upgrade', async () => {
+    // 源站握手由测试显式放行，用来精确制造「客户端已断开但上游才刚建立」的竞态。
+    const upstreamServer = new WebSocketServer({ noServer: true });
+    let upstreamOpened = false;
+    let upstreamClosed = false;
+    upstreamServer.on('connection', (upstream) => {
+      upstreamOpened = true;
+      upstream.on('close', () => {
+        upstreamClosed = true;
+      });
+    });
+    let releaseUpstream = (): void => undefined;
+    const upstreamGate = new Promise<void>((resolve) => {
+      releaseUpstream = resolve;
+    });
+    let upgradeReceived = false;
+    const originHttp = http.createServer();
+    originHttp.on('upgrade', (request, socket, head) => {
+      upgradeReceived = true;
+      void upstreamGate.then(() => {
+        upstreamServer.handleUpgrade(request, socket, head, (upstream) => {
+          upstreamServer.emit('connection', upstream, request);
+        });
+      });
+    });
+    await new Promise<void>((resolve) => {
+      originHttp.listen(0, '127.0.0.1', resolve);
+    });
+    const originPort = (originHttp.address() as AddressInfo).port;
+
+    const client = net.connect(address.port, address.host);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        client.once('connect', () => resolve());
+        client.once('error', reject);
+      });
+      client.write(
+        `GET http://127.0.0.1:${originPort}/ws HTTP/1.1\r\n` +
+          `Host: 127.0.0.1:${originPort}\r\n` +
+          'Connection: Upgrade\r\n' +
+          'Upgrade: websocket\r\n' +
+          'Sec-WebSocket-Version: 13\r\n' +
+          'Sec-WebSocket-Key: AAECAwQFBgcICQoLDA0ODw==\r\n\r\n',
+      );
+
+      // bridge 已把 Upgrade 转给源站，此时上游握手仍被 gate 挡着。
+      await expect.poll(() => upgradeReceived, { timeout: 5_000 }).toBe(true);
+      client.destroy();
+      // 等 Capture 观察到断开（5.5.3 的终态），确保下游确实先于上游结束。
+      await expect
+        .poll(() => sink.exchanges[0]?.state, { timeout: 5_000 })
+        .toBe('aborted');
+
+      releaseUpstream();
+      // 前提：源站仍会完成握手，上游连接确实建立了。
+      await expect.poll(() => upstreamOpened, { timeout: 5_000 }).toBe(true);
+      // 回归点：下游已不可用，ws 的 completeUpgrade 不会回调，
+      // bridge 必须自己关掉这条孤儿上游连接。
+      await expect.poll(() => upstreamClosed, { timeout: 5_000 }).toBe(true);
+    } finally {
+      releaseUpstream();
+      client.destroy();
+      upstreamServer.close();
+      await new Promise<void>((resolve) => {
+        originHttp.close(() => resolve());
+      });
     }
   });
 

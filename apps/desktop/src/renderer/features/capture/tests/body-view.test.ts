@@ -55,7 +55,7 @@ describe('BodyView content classification', () => {
   });
 
   it('limits large previews and asks Core to stream-decode compressed input', () => {
-    expect(BODY_PREVIEW_MAX_BYTES).toBe(1024 * 1024);
+    expect(BODY_PREVIEW_MAX_BYTES).toBe(5 * 1024 * 1024);
     expect(bodyPreviewRequest({
       bodyHash: 'a'.repeat(64),
       encodedSize: BODY_PREVIEW_MAX_BYTES + 1,

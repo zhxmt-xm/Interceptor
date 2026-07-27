@@ -88,6 +88,12 @@ export class WebSocketBridge {
       await ProxyUtils.waitForOpen(upstream);
     } catch (error) {
       upstream.terminate();
+      // Mockttp 随后只会发 completed `response`（Capture 已退订），
+      // 在抛出前先把该 Exchange 判为终态，否则会永远停在 pending。
+      this.options.onUpgradeFailed?.(
+        request.id,
+        error instanceof Error ? error : new Error(String(error)),
+      );
       throw error;
     }
 
@@ -98,7 +104,22 @@ export class WebSocketBridge {
     }
     delete request.headers['sec-websocket-extensions'];
 
+    // 客户端可能在等待上游握手期间就断开。此时 ws 的 completeUpgrade 只会 destroy
+    // 下游 socket 并**静默跳过回调**，connectPair 不会执行，上游连接既进不了 pairs
+    // 也无人 terminate，会一直挂在源站上。故这里必须自己兜住上游。
+    if (socket.destroyed || !socket.readable || !socket.writable) {
+      upstream.terminate();
+      return;
+    }
+    let paired = false;
+    socket.once('close', () => {
+      if (!paired) {
+        upstream.terminate();
+      }
+    });
+
     this.downstreamServer.handleUpgrade(request, socket, head, (downstream) => {
+      paired = true;
       socket.emit('ws-upgrade', downstream);
       this.connectPair(request, downstream, upstream);
     });

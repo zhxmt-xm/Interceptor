@@ -394,6 +394,24 @@ export class ExchangeTracker {
     this.finishExchange(requestId, entry, 'completed', Date.now(), {});
   }
 
+  /**
+   * WebSocket 上游升级失败：直接判终态。
+   * Mockttp 对这条路径只发 completed `response`（Capture 为避免全量缓冲已退订），
+   * 不显式收尾就会永远停在 `pending`，故由 Bridge 主动调用。
+   */
+  failWebSocketUpgrade(requestId: string, errorCode: string | undefined): void {
+    const entry = this.entries.get(requestId);
+    if (!entry || entry.generation !== this.generation) {
+      this.resolveExchangeReady(requestId, null);
+      return;
+    }
+    entry.requestPhase = 'aborted';
+    entry.responsePhase = 'aborted';
+    this.finishExchange(requestId, entry, 'aborted', Date.now(), {
+      ...(errorCode ? { errorCode } : {}),
+    });
+  }
+
   /** 直接登记一条已完成的 Exchange（CONNECT 隧道）。 */
   async trackTunnel(exchange: ExchangeInput): Promise<string | null> {
     if (!this.recording || !this.sessionId) {
@@ -507,12 +525,17 @@ export class ExchangeTracker {
 
   /** 响应正文结束：finalize writer、绑定 body 引用并进入终态。 */
   private completeExchange(requestId: string, entry: TrackedExchange): void {
+    // 早期响应（401/413/417）时请求体可能仍在上传：请求侧 writer 必须一并收尾，
+    // 否则已上传部分既不会绑定 body 引用，其 spill 临时文件也失去引用无法清理。
+    const requestWriter = entry.requestWriter;
     const writer = entry.responseWriter;
+    entry.requestWriter = null;
     entry.responseWriter = null;
     const completedAt = Date.now();
     entry.terminal = true;
     this.entries.delete(requestId);
     this.schedule(entry, async () => {
+      const requestResult = requestWriter ? await requestWriter.finalize() : null;
       const result = writer ? await writer.finalize() : null;
       const body: BodyRefInput | undefined = result
         ? {
@@ -525,12 +548,27 @@ export class ExchangeTracker {
             decodeStatus: 'ok',
           }
         : undefined;
+      const requestBody: BodyRefInput | undefined = requestResult
+        ? {
+            id: `body-${ProxyUtils.cryptoRandomId()}`,
+            blobHash: requestResult.hash,
+            encodedSize: requestResult.size,
+            decodeStatus: 'ok',
+          }
+        : undefined;
       await this.storage.updateExchange({
         id: entry.exchangeId,
         state: 'completed',
         completedAt,
         responseBytes: entry.responseBytes,
         ...(body ? { responseBody: body, responseBodyId: body.id } : {}),
+        ...(requestBody
+          ? {
+              requestBytes: entry.requestBytes,
+              requestBody,
+              requestBodyId: requestBody.id,
+            }
+          : {}),
       });
     });
     this.events.enqueue('exchange-updated', {

@@ -26,13 +26,16 @@ export const RULES_DB_FILE = 'rules.sqlite';
 /** 当前 Core 代际的临时 Body spill 目录名。 */
 export const CAPTURE_TEMP_DIR = 'capture-temp';
 /** Body 保留在内存中的最大字节数；超过后异步 spill。 */
-export const BODY_MEMORY_THRESHOLD_BYTES = 1024 * 1024;
+export const BODY_MEMORY_THRESHOLD_BYTES = 3 * 1024 * 1024;
 /**
- * 单个增量正文写入器允许积压的待落盘字节数上限。
- * Mockttp 不等待 Capture 落盘，超过该上限后写入器降级为只计数不保存内容，
- * 保证 Core 内存有界。
+ * 单个增量正文写入器允许积压的待落盘字节上限。
+ *
+ * `write()` 由 Mockttp 的 body-data 回调同步调用且返回值被忽略，无法向上游施加背压，
+ * 因此 chunk 只能先入内存队列再串行落盘。本上限是**病态兜底**而非常规限制：取值远高于
+ * 真实流量的积压水位，保证正常场景（含大文件下载）正文完整保留；只有当磁盘持续远慢于
+ * 接收速度（磁盘异常或极端本地源站）时才触发降级，避免 Core 内存无界增长。
  */
-export const BODY_WRITER_PENDING_LIMIT_BYTES = 8 * 1024 * 1024;
+export const BODY_WRITER_PENDING_LIMIT_BYTES = 128 * 1024 * 1024;
 // ===== 诊断（持久化日志库） =====
 /** 诊断数据库文件名（dataDir 下）。 */
 export const DIAGNOSTICS_DB_FILE = 'diagnostics.sqlite';
