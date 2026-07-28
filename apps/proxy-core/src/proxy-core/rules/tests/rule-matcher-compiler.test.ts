@@ -5,7 +5,6 @@ import type { RuleMatcher } from '@interceptor/core-protocol';
 import {
   compileMatcher,
   compileRuleMatchers,
-  requiresResponsePhase,
 } from '../utils';
 import type { MatchContext } from '../interfaces';
 
@@ -105,24 +104,5 @@ describe('compileRuleMatchers', () => {
       { type: 'host', value: 'other.com', mode: 'exact' },
     ]);
     expect(test(context())).toBe(false);
-  });
-});
-
-describe('requiresResponsePhase', () => {
-  it('detects response-only matchers', () => {
-    expect(requiresResponsePhase([{ type: 'status', min: 200, max: 299 }])).toBe(true);
-    expect(
-      requiresResponsePhase([{ type: 'header', phase: 'response', name: 'x', mode: 'contains', value: '' }]),
-    ).toBe(true);
-    expect(requiresResponsePhase([{ type: 'mime', phase: 'response', value: 'text/html' }])).toBe(true);
-  });
-
-  it('returns false for request-only matchers', () => {
-    expect(
-      requiresResponsePhase([
-        { type: 'method', value: 'GET' },
-        { type: 'header', phase: 'request', name: 'x', mode: 'contains', value: '' },
-      ]),
-    ).toBe(false);
   });
 });

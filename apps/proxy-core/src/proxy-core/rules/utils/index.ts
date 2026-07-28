@@ -1,8 +1,8 @@
 /**
  * M7/T7.2 Matcher 编译器：把可序列化的 RuleMatcher 编译为纯匹配判定函数。
  *
- * 编译产物只在 Core 内存，不持久化。匹配在 Mockttp passthrough 的 beforeRequest
- * （请求阶段）/beforeResponse（响应阶段）回调内对每个 Exchange 求值；同一规则的
+ * 编译产物只在 Core 内存，不持久化。匹配在 Mockttp passthrough 的 beforeRequestHead
+ * （请求阶段）/beforeResponseHead（响应阶段）回调内对每个 Exchange 求值；同一规则的
  * 多个 matcher 为 AND 关系。字符串匹配的大小写策略遵循 HTTP 语义：method/host/
  * header 名/MIME 大小写不敏感，path/url/header 值/query 大小写敏感。
  */
@@ -17,9 +17,7 @@ import type {
   StringMatchMode,
 } from '@interceptor/core-protocol';
 
-import { RuleActionExecutor } from '../rule-action-executor';
 import type {
-  ActionOutcome,
   BreakpointSnapshot,
   BreakpointState,
   BreakpointTimeoutPolicy,
@@ -29,22 +27,6 @@ import type {
   MutableResponseState,
   RuleHeaderEffect,
 } from '../interfaces';
-
-/** 以一次性执行器应用请求 action；供独立 action 调用与测试。 */
-export function applyRequestAction(
-  state: MutableRequestState,
-  action: RuleAction,
-): Promise<ActionOutcome> {
-  return new RuleActionExecutor().applyRequest(state, action);
-}
-
-/** 以默认执行器应用响应 action；供独立 action 调用与测试。 */
-export function applyResponseAction(
-  state: MutableResponseState,
-  action: RuleAction,
-): ActionOutcome {
-  return new RuleActionExecutor().applyResponse(state, action);
-}
 
 /**
  * 把单个 RuleMatcher 编译为判定函数；正则在编译期预构建，非法正则退化为恒不匹配。
@@ -172,71 +154,6 @@ export function buildHeaderEffects(
       throw new Error(`Unknown header operation: ${String(exhaustive)}`);
     }
   }
-}
-
-/**
- * 判断规则是否含只能在响应阶段判定的 matcher（status / response header / response mime）。
- * 供 T7.7 引擎决定请求阶段 action 能否安全求值。
- */
-export function requiresResponsePhase(
-  matchers: readonly RuleMatcher[],
-): boolean {
-  return matchers.some(
-    (matcher) =>
-      matcher.type === 'status' ||
-      (matcher.type === 'header' && matcher.phase === 'response') ||
-      (matcher.type === 'mime' && matcher.phase === 'response'),
-  );
-}
-
-/** 判断 action 是否需要在上游响应到达后执行。 */
-export function isResponseAction(action: RuleAction): boolean {
-  return action.type === 'status'
-    || (action.type === 'header' && action.phase === 'response')
-    || (action.type === 'body' && action.phase === 'response')
-    || (action.type === 'delay' && action.phase === 'response')
-    || (action.type === 'breakpoint' && action.phase === 'response');
-}
-
-/** 判断 action 是否需要在请求发往上游前执行。 */
-export function isRequestAction(action: RuleAction): boolean {
-  return action.type === 'query'
-    || action.type === 'synthetic'
-    || action.type === 'map-local'
-    || action.type === 'map-remote'
-    || action.type === 'block'
-    || (action.type === 'header' && action.phase === 'request')
-    || (action.type === 'body' && action.phase === 'request')
-    || (action.type === 'delay' && action.phase === 'request')
-    || (action.type === 'breakpoint' && action.phase === 'request');
-}
-
-/** 判断请求 action 是否可能改变后续响应规则使用的 request 匹配字段。 */
-export function mutatesResponseMatchContext(action: RuleAction): boolean {
-  return action.type === 'query'
-    || action.type === 'map-remote'
-    || (action.type === 'header' && action.phase === 'request')
-    || (action.type === 'breakpoint' && action.phase === 'request');
-}
-
-/** 只编译请求阶段可判定的 matcher，供响应 hook 的保守预筛选。 */
-export function compileRequestPhaseMatchers(
-  matchers: readonly RuleMatcher[],
-): CompiledMatcher {
-  if (matchers.length === 0) {
-    // 没有任何条件的规则永不命中，预筛选也不必放行。
-    return () => false;
-  }
-  const requestPhase = matchers.filter((matcher) => !(
-    matcher.type === 'status'
-    || (matcher.type === 'header' && matcher.phase === 'response')
-    || (matcher.type === 'mime' && matcher.phase === 'response')
-  ));
-  if (requestPhase.length === 0) {
-    // 全部条件都只能在响应阶段判定：请求阶段无从判断，必须保守放行。
-    return () => true;
-  }
-  return compileRuleMatchers(requestPhase);
 }
 
 function compileStringMatch(

@@ -17,6 +17,7 @@
 - **[已实现]**：代码已落地并有测试覆盖。
 - **[改造中]**：目标设计已确定，当前代码尚未完全达成，差异在文末「与当前实现的差异」列出。
 - **[待定]**：需要产品决策后才能实现。
+- **[阶段一] / [阶段二]**：尚未落地的 feature 内部的实现顺序，阶段一先做、阶段二按需追加。
 
 ## Feature 索引
 
@@ -29,6 +30,7 @@
 | [feature-transfer.md](feature-transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [feature-diagnostics.md](feature-diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [feature-settings.md](feature-settings.md) | 证书/MITM、系统代理、更新、存储状态、语言主题 | `storage/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
+| [feature-mcp.md](feature-mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；主体在 Main `mcp/` | `features/settings/` + App 级审批弹层 |
 
 ## 进程边界
 

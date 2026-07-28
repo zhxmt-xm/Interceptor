@@ -17,7 +17,8 @@
 
 ## 当前状态
 
-- **架构设计文档已建立**：根目录 `architecture/` 按 feature 记录目标架构、service 调用流程与 Client/Origin 交互，包含 `feature-capture` / `feature-rules` / `feature-breakpoints` / `feature-composer` / `feature-transfer` / `feature-diagnostics` / `feature-settings` 七篇与一份 `README.md` 索引。文档用 `[已实现]` / `[改造中]` / `[阶段二]` 标记区分现状与目标。
+- **架构设计文档已建立**：根目录 `architecture/` 按 feature 记录目标架构、service 调用流程与 Client/Origin 交互，包含 `feature-capture` / `feature-rules` / `feature-breakpoints` / `feature-composer` / `feature-transfer` / `feature-diagnostics` / `feature-settings` / `feature-mcp` 八篇与一份 `README.md` 索引。文档用 `[已实现]` / `[改造中]` / `[阶段一]` / `[阶段二]` / `[待定]` 标记区分现状与目标。
+- **`feature-mcp.md` 为纯设计、零代码**：对外 AI Host 暴露 MCP 工具的目标方案，阶段一 stdio + bridge、阶段二 Streamable HTTP 分章独立。关键结论：监听端必须在 Main（Core 不得对外监听）；`packages/core-protocol` 零改动，MCP 只复用既有 command；写工具强制用户审批；`RunAsNode` fuse 已锁死，bridge 阶段一依赖用户机器上的 `node`。实现前先读该文档。
 - **Capture 增量管线已落地（阶段一）**：Exchange 在 `request-initiated` 即创建并推送（`state='pending'`），不再等 completed 事件配对。已**退订** completed 的 `request`/`response`，因为 Mockttp 检测到这两个 listener 就会 `waitForCompletedRequest` / `body.asBuffer()` 无条件缓冲完整正文。新增 `ExchangeTracker`（`proxy/proxy-exchange-tracker.ts`）按 request id 幂等 upsert，新增 `TemporaryBodyWriter`（`storage/storage-temporary-body-writer.ts`）按累计字节 spill 并在待落盘超限时降级为只计数。WebSocket 101 改由 `websocket-accepted` 驱动。
 - **规则安全边界改为“不完整就不生效”**：未填写的条件值与空条件集在 matcher 编译器里恒不匹配（此前 `contains ''` 的 `includes('')` 与 `regex ''` 都恒真，刚新建、还没输入 host 的规则会改写全部真实流量）；只能在响应阶段判定的规则在请求阶段仍保守放行。Renderer 直接限制操作：字段未填完的规则不允许启用，新建规则与 Capture 草稿默认 `enabled:false`，未填写项由本地纯函数 `ruleIssues` 即时派生。**Core 信任 Main/Renderer 传递的数据，不做规则语义校验**；固定返回 valid 的假 `rules.validate` 命令已从协议/Main/Preload/Renderer 整条链路删除。
 - **Throttle 已移除**：真实代理实测 8 KiB/s 规则下载 128 KiB 只用 17 ms（真限速需 ≥16 s），但 UI 会显示命中。限速必须介入正文流，而规则全在头部阶段执行，需再扩 patch 约 60 行（含 override 分支流式化与 resolve 时序改造）；浏览器 DevTools 自带限速，因此从协议、引擎、UI、automation ID、15 种语言和 `design/app` 一并删除；delay 仍在用的黄色调名改为 `flow`。

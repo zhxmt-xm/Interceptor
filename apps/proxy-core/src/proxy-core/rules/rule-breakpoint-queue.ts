@@ -2,8 +2,8 @@
  * M7/T7.6 Breakpoint 状态机：规则命中 breakpoint action 时挂起请求/响应，等待用户
  * resolve（continue/edited/drop）或超时（timed_out），并在断线/退出时确定性关闭。
  *
- * 纯逻辑（Promise + timer），不触碰 Mockttp/IPC：rule-engine（T7.7）在 beforeRequest/
- * beforeResponse 调 suspend 并 await outcome，据 state 放行/编辑/丢弃；breakpoint.resolve
+ * 纯逻辑（Promise + timer），不触碰 Mockttp/IPC：rule-engine（T7.7）在 beforeRequestHead/
+ * beforeResponseHead 调 suspend 并 await outcome，据 state 放行/编辑/丢弃；breakpoint.resolve
  * command 经 core-application 调 resolve；断线/关闭调 closeAll 把全部等待断点关为 timed_out。
  */
 
@@ -32,7 +32,7 @@ export class BreakpointQueue {
 
   /**
    * 挂起一个断点，返回稳定 id 与解除结果 Promise；timeoutMs>0 时到期自动 timed_out。
-   * 调用方：rule-engine 在 beforeRequest/beforeResponse 命中 breakpoint action 时。
+   * 调用方：rule-engine 在 beforeRequestHead/beforeResponseHead 命中 breakpoint action 时。
    */
   suspend(
     phase: BreakpointPhase,

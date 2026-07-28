@@ -197,7 +197,7 @@ export interface CleanupResult {
   readonly referencedBlobHashes: string[];
 }
 
-/** 一条规则命中审计（M7/T7.7）；由 rule-engine 产出，proxy-service 关联 exchange 后落 rule_hit 表。 */
+/** 一条规则命中审计；由 rule-engine 产出，proxy-service 关联 exchange 后交给 Capture Store。 */
 export interface RuleHitInput {
   readonly ruleId: string;
   readonly ruleRevision: number;
@@ -206,7 +206,7 @@ export interface RuleHitInput {
   readonly summary?: string;
 }
 
-/** 单条规则的累计命中次数（按 ruleId 聚合 rule_hit 表）；供 Rules UI hit counter。 */
+/** 单条规则命中的请求数（按 Rule × Exchange 去重）；供 Rules UI hit counter。 */
 export interface RuleHitCount {
   readonly ruleId: string;
   readonly count: number;

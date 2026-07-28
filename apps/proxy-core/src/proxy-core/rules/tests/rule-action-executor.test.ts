@@ -4,14 +4,13 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  applyRequestAction,
-  applyResponseAction,
-} from '../utils';
+import { RuleActionExecutor } from '../rule-action-executor';
 import type {
   MutableRequestState,
   MutableResponseState,
 } from '../interfaces';
+
+const executor = new RuleActionExecutor();
 
 function requestState(
   overrides: Partial<MutableRequestState> = {},
@@ -28,10 +27,10 @@ function responseState(): MutableResponseState {
   return { statusCode: 200, headers: { 'X-Old': 'v' } };
 }
 
-describe('applyRequestAction — headers', () => {
+describe('applyRequest — headers', () => {
   it('sets a request header, replacing case-insensitive existing values', async () => {
     const state = requestState({ headers: { 'content-type': 'text/plain' } });
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'header',
       phase: 'request',
       op: 'set',
@@ -47,7 +46,7 @@ describe('applyRequestAction — headers', () => {
 
   it('appends a request header, merging into an array', async () => {
     const state = requestState({ headers: { 'x-tag': 'a' } });
-    await applyRequestAction(state, {
+    await executor.applyRequest(state, {
       type: 'header',
       phase: 'request',
       op: 'append',
@@ -59,7 +58,7 @@ describe('applyRequestAction — headers', () => {
 
   it('appends a new request header when absent', async () => {
     const state = requestState({ headers: {} });
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'header',
       phase: 'request',
       op: 'append',
@@ -75,7 +74,7 @@ describe('applyRequestAction — headers', () => {
 
   it('removes a request header case-insensitively', async () => {
     const state = requestState({ headers: { 'Content-Type': 'application/json' } });
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'header',
       phase: 'request',
       op: 'remove',
@@ -91,7 +90,7 @@ describe('applyRequestAction — headers', () => {
   it('returns none when removing an absent header', async () => {
     const state = requestState({ headers: {} });
     expect(
-      await applyRequestAction(state, {
+      await executor.applyRequest(state, {
         type: 'header',
         phase: 'request',
         op: 'remove',
@@ -103,7 +102,7 @@ describe('applyRequestAction — headers', () => {
   it('returns none for set/append without a value', async () => {
     const state = requestState();
     expect(
-      await applyRequestAction(state, {
+      await executor.applyRequest(state, {
         type: 'header',
         phase: 'request',
         op: 'set',
@@ -116,7 +115,7 @@ describe('applyRequestAction — headers', () => {
 describe('action phase isolation', () => {
   it('ignores response-phase header actions in the request stage', async () => {
     expect(
-      await applyRequestAction(requestState(), {
+      await executor.applyRequest(requestState(), {
         type: 'header',
         phase: 'response',
         op: 'set',
@@ -128,7 +127,7 @@ describe('action phase isolation', () => {
 
   it('applies response-phase header actions in the response stage', () => {
     const state = responseState();
-    const outcome = applyResponseAction(state, {
+    const outcome = executor.applyResponse(state, {
       type: 'header',
       phase: 'response',
       op: 'set',
@@ -144,7 +143,7 @@ describe('action phase isolation', () => {
 
   it('ignores request-phase header actions in the response stage', () => {
     expect(
-      applyResponseAction(responseState(), {
+      executor.applyResponse(responseState(), {
         type: 'header',
         phase: 'request',
         op: 'set',
@@ -155,10 +154,10 @@ describe('action phase isolation', () => {
   });
 });
 
-describe('applyRequestAction — query', () => {
+describe('applyRequest — query', () => {
   it('sets a query parameter and updates the url', async () => {
     const state = requestState();
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'query',
       op: 'set',
       name: 'page',
@@ -173,7 +172,7 @@ describe('applyRequestAction — query', () => {
 
   it('removes a query parameter', async () => {
     const state = requestState();
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'query',
       op: 'remove',
       name: 'page',
@@ -188,15 +187,15 @@ describe('applyRequestAction — query', () => {
   it('returns none when removing an absent query parameter', async () => {
     const state = requestState();
     expect(
-      await applyRequestAction(state, { type: 'query', op: 'remove', name: 'missing' }),
+      await executor.applyRequest(state, { type: 'query', op: 'remove', name: 'missing' }),
     ).toEqual({ kind: 'none' });
   });
 });
 
-describe('applyRequestAction — body, synthetic, map-remote, block', () => {
+describe('applyRequest — body, synthetic, map-remote, block', () => {
   it('replaces the request body', async () => {
     const state = requestState();
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'body',
       phase: 'request',
       format: 'json',
@@ -211,7 +210,7 @@ describe('applyRequestAction — body, synthetic, map-remote, block', () => {
 
   it('replaces the response body', () => {
     const state = responseState();
-    const outcome = applyResponseAction(state, {
+    const outcome = executor.applyResponse(state, {
       type: 'body',
       phase: 'response',
       format: 'text',
@@ -225,7 +224,7 @@ describe('applyRequestAction — body, synthetic, map-remote, block', () => {
   });
 
   it('produces a synthetic response', async () => {
-    const outcome = await applyRequestAction(requestState(), {
+    const outcome = await executor.applyRequest(requestState(), {
       type: 'synthetic',
       statusCode: 418,
       headers: [{ name: 'x-teapot', value: '1' }],
@@ -241,7 +240,7 @@ describe('applyRequestAction — body, synthetic, map-remote, block', () => {
 
   it('rewrites the request target for map-remote', async () => {
     const state = requestState();
-    const outcome = await applyRequestAction(state, {
+    const outcome = await executor.applyRequest(state, {
       type: 'map-remote',
       scheme: 'https',
       host: 'backend.internal',
@@ -257,7 +256,7 @@ describe('applyRequestAction — body, synthetic, map-remote, block', () => {
   });
 
   it('blocks the request', async () => {
-    const outcome = await applyRequestAction(requestState(), {
+    const outcome = await executor.applyRequest(requestState(), {
       type: 'block',
       mode: 'reset',
     });
@@ -269,7 +268,7 @@ describe('applyRequestAction — body, synthetic, map-remote, block', () => {
   });
 });
 
-describe('applyRequestAction — map-local path safety', () => {
+describe('applyRequest — map-local path safety', () => {
   let root: string;
   let servedFile: string;
 
@@ -284,7 +283,7 @@ describe('applyRequestAction — map-local path safety', () => {
   });
 
   it('serves the complete file selected by the rule', async () => {
-    const outcome = await applyRequestAction(
+    const outcome = await executor.applyRequest(
       requestState(),
       { type: 'map-local', path: servedFile },
     );
@@ -298,7 +297,7 @@ describe('applyRequestAction — map-local path safety', () => {
   });
 
   it('returns 404 for a missing file', async () => {
-    const outcome = await applyRequestAction(
+    const outcome = await executor.applyRequest(
       requestState(),
       { type: 'map-local', path: path.join(root, 'missing.json') },
     );
@@ -312,7 +311,7 @@ describe('applyRequestAction — map-local path safety', () => {
 describe('status and delay', () => {
   it('overrides the response status code', () => {
     const state = responseState();
-    const outcome = applyResponseAction(state, {
+    const outcome = executor.applyResponse(state, {
       type: 'status',
       statusCode: 503,
     });
@@ -325,7 +324,7 @@ describe('status and delay', () => {
 
   it('ignores status override in the request stage', async () => {
     expect(
-      await applyRequestAction(requestState(), {
+      await executor.applyRequest(requestState(), {
         type: 'status',
         statusCode: 503,
       }),
@@ -334,7 +333,7 @@ describe('status and delay', () => {
 
   it('emits a delay outcome for the matching phase', async () => {
     expect(
-      await applyRequestAction(requestState(), {
+      await executor.applyRequest(requestState(), {
         type: 'delay',
         phase: 'request',
         ms: 250,
@@ -345,7 +344,7 @@ describe('status and delay', () => {
       summary: { action: 'delay', detail: '250ms' },
     });
     expect(
-      applyResponseAction(responseState(), {
+      executor.applyResponse(responseState(), {
         type: 'delay',
         phase: 'response',
         ms: 100,
@@ -359,7 +358,7 @@ describe('status and delay', () => {
 
   it('ignores a delay whose phase does not match the stage', async () => {
     expect(
-      await applyRequestAction(requestState(), {
+      await executor.applyRequest(requestState(), {
         type: 'delay',
         phase: 'response',
         ms: 250,

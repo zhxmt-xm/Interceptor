@@ -2,8 +2,8 @@
  * M7 规则引擎的可序列化模型：Rule、Matcher、Action、RuleSet。
  *
  * 纯数据（无 callback 或运行时对象），可存 SQLite、经 wire 传输、按 revision 版本化。
- * 捕获启动/热更新时由 Core 编译为 Mockttp passthrough 的 beforeRequest/beforeResponse
- * 改写函数；持久化模型绝不包含 JavaScript 代码或 Mockttp 运行时句柄。
+ * Core 在内存中把 matcher 编译为判定函数，在 Mockttp passthrough 的 beforeRequestHead/
+ * beforeResponseHead 头部阶段求值；持久化模型绝不包含 JavaScript 代码或 Mockttp 运行时句柄。
  */
 
 /** 规则作用阶段：请求发往上游前，或响应返回客户端前。 */
@@ -129,7 +129,7 @@ export interface RuleSet {
   readonly rules: readonly RuleDefinition[];
 }
 
-/** 单条规则的累计命中次数（按 ruleId 聚合 rule_hit 表），供 Rules UI hit counter。 */
+/** 单条规则命中的请求数（按 Rule × Exchange 去重），供 Rules UI hit counter。 */
 export interface RuleHitCount {
   readonly ruleId: string;
   readonly count: number;

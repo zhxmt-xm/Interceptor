@@ -58,7 +58,7 @@ export interface CoreApplicationOptions {
   captureEventQueue?: CaptureEventQueue;
   /** 断点状态机；rule-engine 挂起、breakpoint.resolve handler 解挂，退出时确定性关闭。 */
   breakpointQueue?: BreakpointQueue;
-  /** 规则引擎；proxy-service beforeRequest/beforeResponse 调用，rules.replace 后热切换。 */
+  /** 规则引擎；proxy-service beforeRequestHead/beforeResponseHead 调用，rules.replace 后热切换。 */
   ruleEngine?: RuleEngine;
   /** HAR 文件任务门面；缺省时随 StorageService 自动创建。 */
   harService?: HarService;
