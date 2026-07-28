@@ -120,9 +120,15 @@ export interface TrackedExchange {
   /** 已观察到的请求/响应字节数。 */
   requestBytes: number;
   responseBytes: number;
+  /** 请求正文的 content-type；无正文时为 undefined。 */
+  requestMime?: string;
+  /** 请求正文的 content-encoding；未压缩时为 undefined。 */
+  requestEncoding?: string;
   /** 最终响应状态。 */
   statusCode?: number;
   responseMime?: string;
+  /** 响应正文的 content-encoding；未压缩时为 undefined。 */
+  responseEncoding?: string;
   /** 命中的规则 id，按首次出现顺序去重。 */
   readonly ruleIds: Set<string>;
   /** 串行化该 Exchange 的所有存储写入，保证顺序与幂等。 */

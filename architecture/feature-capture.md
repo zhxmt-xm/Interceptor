@@ -982,6 +982,31 @@ Promise 链上排队，真正落盘在后台进行。`pendingBytes` 就是「已
 
 磁盘写入失败只跳过该正文，绝不影响转发、RPC 或进程状态。
 
+### 6.4 正文按线上编码保存，解码元数据随 bodyRef [已实现]
+
+`body-data` 事件给出的是**线上原始字节**：`gzip` / `br` / `deflate` 压缩的响应体在这里就是压缩流。
+Capture 原样落 Body Store，**不在数据面解压**——解压需要完整输入，会毁掉流式，也会让内容寻址
+hash 与真实传输内容对不上。
+
+代价是渲染端必须知道怎么还原，因此 `BodyRefInput` 必须同时携带两项元数据，请求侧与响应侧对称：
+
+| 字段 | 来源 | 用途 |
+| --- | --- | --- |
+| `contentEncoding` | 该方向 headers 的 `content-encoding` | `body.read-range{decode:true}` 时选择解码链 |
+| `mediaType` | 该方向 headers 的 `content-type` | Inspector 判定文本/二进制，决定 Auto 走文本还是 Hex |
+
+`ExchangeTracker` 在 `beginRequest` / `beginResponse` 的头部阶段就把两个值读进 `TrackedExchange`，
+再在三个收尾点（`finalizeRequestBody`、`completeExchange`、`finishExchange`）绑定到 bodyRef 上。
+必须在头部阶段取：正文结束时 Mockttp 的 headers 对象已不在手边。
+
+**漏掉 `contentEncoding` 的后果是静默的**：正文字节完好、逐字节可还原，但 Renderer 不会请求解码，
+于是把压缩流当 UTF-8 渲染成乱码，HAR 导出也会把压缩字节写成 `text`。回归用例按 H1 / H2 / HTTPS MITM
+三条链路各自断言 origin 收到的请求正文、客户端收到的响应正文、以及落库正文三者逐字节一致，
+并校验 bodyRef 上的 `mediaType` + `contentEncoding` 能把正文还原成明文。
+
+WebSocket 不走这条路径：bridge 两端都关掉 `permessage-deflate` 并剥掉 `sec-websocket-extensions`，
+帧 payload 永远是未压缩字节，只按 opcode 记 `text/plain; charset=utf-8` 或 `application/octet-stream`。
+
 ## 7. Recording、Pause 与 Clear
 
 ### 7.1 三种状态
@@ -1182,6 +1207,8 @@ flowchart LR
 - [x] Clear 后旧 generation 的迟到事件被全部丢弃。
 - [x] WebSocket 捕获在退订 completed 事件后仍完整。
 - [x] gRPC `grpc-status` trailer 在退订 completed 事件后仍可读。
+- [x] H1 / H2 / HTTPS MITM 三条链路上压缩正文双向逐字节保真，且 bodyRef 记录了还原所需的 `mediaType` 与 `contentEncoding`（回归用例 *forwards compressed bodies byte-for-byte …*）。
+- [x] WebSocket 文本（多字节 UTF-8）与二进制（全 256 字节值）消息回显与落库逐字节一致，未编辑的断点不做 hex/utf8 回转（回归用例 *forwards and stores websocket text and binary payloads byte-for-byte*、*keeps binary websocket payloads intact through an unedited breakpoint*）。
 - [ ] 67 MB Range 视频：全程流式，Core 内存峰值不随文件大小线性增长。
 - [ ] SSE 与无限 chunked 响应：行立即出现，字节持续增长。
 - [ ] Pause 前开始、Pause 后完成的请求继续记录。

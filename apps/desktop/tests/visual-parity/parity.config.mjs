@@ -83,7 +83,7 @@ export const views = [
     targets: [
       'Capture',
       'Local traffic',
-      'Request Payload',
+      'json · 63 B',
       { name: 'Request body view', parity: 'capture-body-view' },
     ],
   },

@@ -119,6 +119,9 @@ const bodies = {
   'grpc-response-body': grpcResponseBody,
 };
 
+// http-1 携带请求正文，摘要的 requestBytes 必须等于线上正文大小。
+sessions[0].requestBytes = bodyText['http-request-body'].length;
+
 const frame = (seq, direction, opcode, elapsed, bodyHash, payloadSize, mediaType) => ({
   seq,
   direction,

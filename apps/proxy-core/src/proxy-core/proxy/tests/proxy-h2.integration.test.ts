@@ -2,6 +2,8 @@ import http2 from 'node:http2';
 import https from 'node:https';
 import net, { type AddressInfo } from 'node:net';
 import tls from 'node:tls';
+import zlib from 'node:zlib';
+import { randomBytes } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
@@ -14,8 +16,7 @@ import { RecordingSink } from './proxy-test-capture-sink';
 
 /**
  * M6 T6.1/T6.2 端到端集成：真实 HTTP/2 客户端经代理 MITM 隧道，用 ALPN h2 连到真实
- * HTTP/2 源站。验证 Mockttp 的 http2:true 对双协议与 H2-only/gRPC 下游协商 H2，
- * 同时按请求动态避开无关 beforeResponse 缓冲。
+ * HTTP/2 源站。验证 Mockttp 的 http2:true 对双协议与 H2-only/gRPC 下游协商 H2。
  */
 
 function grpcEnvelope(payload: Uint8Array, compressed = false): Buffer {
@@ -78,6 +79,43 @@ function startH2Origin(
   });
 }
 
+/** 记录 origin 实际收到的请求正文，并以 gzip 正文回复，用于校验 H2 双向线上保真。 */
+function startCompressedH2Origin(
+  cert: string,
+  key: string,
+  responseWire: Buffer,
+): Promise<{
+  port: number;
+  received: () => Buffer;
+  close: () => Promise<void>;
+}> {
+  let received = Buffer.alloc(0);
+  const server = http2.createSecureServer({ cert, key });
+  server.on('stream', (stream) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    stream.on('end', () => {
+      received = Buffer.concat(chunks);
+      stream.respond({
+        ':status': 200,
+        'content-type': 'application/json',
+        'content-encoding': 'gzip',
+      });
+      stream.end(responseWire);
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo;
+      resolve({
+        port,
+        received: () => received,
+        close: () => new Promise<void>((done) => server.close(() => done())),
+      });
+    });
+  });
+}
+
 function startH1Origin(
   cert: string,
   key: string,
@@ -94,6 +132,60 @@ function startH1Origin(
         close: () => new Promise<void>((done) => server.close(() => done())),
       });
     });
+  });
+}
+
+/** 经代理 MITM 隧道用 HTTP/2 发 POST，并原样收集响应字节（不做任何自动解压）。 */
+function h2PostViaProxy(
+  proxyPort: number,
+  originHost: string,
+  originPort: number,
+  caCert: string,
+  requestBody: Buffer,
+  headers: Record<string, string>,
+): Promise<{ status: number | undefined; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(proxyPort, '127.0.0.1', () => {
+      socket.write(
+        `CONNECT ${originHost}:${originPort} HTTP/1.1\r\n` +
+          `Host: ${originHost}:${originPort}\r\n\r\n`,
+      );
+    });
+    socket.once('data', (chunk: Buffer) => {
+      const statusLine = chunk.toString('utf8').split('\r\n', 1)[0] ?? '';
+      if (!statusLine.includes(' 200 ')) {
+        reject(new Error(`CONNECT failed: ${statusLine}`));
+        return;
+      }
+      const tlsSocket = tls.connect(
+        { socket, servername: originHost, ALPNProtocols: ['h2'], ca: [caCert] },
+        () => {
+          const client = http2.connect(`https://${originHost}:${originPort}`, {
+            createConnection: () => tlsSocket,
+          });
+          client.on('error', reject);
+          const req = client.request({
+            ...headers,
+            ':path': '/compressed',
+            ':method': 'POST',
+          });
+          let status: number | undefined;
+          const chunks: Buffer[] = [];
+          req.on('response', (responseHeaders) => {
+            status = responseHeaders[':status'];
+          });
+          req.on('data', (data: Buffer) => chunks.push(Buffer.from(data)));
+          req.on('end', () => {
+            client.close();
+            resolve({ status, body: Buffer.concat(chunks) });
+          });
+          req.on('error', reject);
+          req.end(requestBody);
+        },
+      );
+      tlsSocket.on('error', reject);
+    });
+    socket.on('error', reject);
   });
 }
 
@@ -337,6 +429,62 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       true,
     );
   });
+
+  it('forwards compressed HTTP/2 bodies byte-for-byte and records the content-encoding', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const sink = new RecordingSink();
+    proxy = new ProxyService(sink, new CaptureEventQueue());
+    await proxy.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    const address = await proxy.start();
+    // 随机二进制经 gzip：任何转码、截断或字符集损坏都会让逐字节比较失败。
+    const responsePlain = randomBytes(192 * 1024);
+    const responseWire = zlib.gzipSync(responsePlain);
+    const requestPlain = randomBytes(64 * 1024);
+    const requestWire = zlib.gzipSync(requestPlain);
+    const compressedOrigin = await startCompressedH2Origin(
+      originCertificate.cert,
+      originCertificate.key,
+      responseWire,
+    );
+    origin = compressedOrigin;
+
+    const response = await h2PostViaProxy(
+      address.port,
+      'localhost',
+      compressedOrigin.port,
+      ca.cert,
+      requestWire,
+      { 'content-type': 'application/json', 'content-encoding': 'gzip' },
+    );
+
+    // Origin 侧：上游收到的请求正文与客户端发出的完全一致。
+    expect(response.status).toBe(200);
+    expect(compressedOrigin.received().equals(requestWire)).toBe(true);
+    expect(zlib.gunzipSync(compressedOrigin.received()).equals(requestPlain)).toBe(true);
+
+    // Client 侧：客户端收到的响应正文与源站发出的完全一致。
+    expect(response.body.equals(responseWire)).toBe(true);
+    expect(zlib.gunzipSync(response.body).equals(responsePlain)).toBe(true);
+
+    // Capture 侧：落库的是线上编码字节，且记录了还原所需的 content-encoding。
+    await expect.poll(() => sink.exchanges[0]?.responseBody).toMatchObject({
+      contentEncoding: 'gzip',
+      encodedSize: responseWire.byteLength,
+    });
+    expect(sink.exchanges[0]?.protocol).toBe('h2');
+    expect(sink.exchanges[0]?.requestBody).toMatchObject({
+      mediaType: 'application/json',
+      contentEncoding: 'gzip',
+      encodedSize: requestWire.byteLength,
+    });
+    expect(
+      sink.bodies.some((body) => body.equals(responseWire)),
+    ).toBe(true);
+    expect(
+      sink.bodies.some((body) => body.equals(requestWire)),
+    ).toBe(true);
+  }, 20_000);
 
   it('matches an HTTP/2 URL written as host/path and applies a response action', async () => {
     const ca = await generateCACertificate();

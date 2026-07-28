@@ -96,6 +96,12 @@ export class ExchangeTracker {
     }
     const startedAt = request.timingEvents?.startTime ?? Date.now();
     const target = ProxyUtils.parseTarget(request.url);
+    const requestMime = ProxyUtils.readHeader(request.headers, 'content-type');
+    // 正文按线上编码原样落库，解码信息必须随 body 引用保存，否则 Inspector 只能显示压缩字节。
+    const requestEncoding = ProxyUtils.readHeader(
+      request.headers,
+      'content-encoding',
+    );
     const entry: TrackedExchange = {
       exchangeId: `ex-${ProxyUtils.cryptoRandomId()}`,
       generation: this.generation,
@@ -115,6 +121,8 @@ export class ExchangeTracker {
       responseWriter: null,
       requestBytes: 0,
       responseBytes: 0,
+      ...(requestMime !== undefined ? { requestMime } : {}),
+      ...(requestEncoding !== undefined ? { requestEncoding } : {}),
       ruleIds: new Set<string>(),
       tail: Promise.resolve(),
     };
@@ -131,7 +139,6 @@ export class ExchangeTracker {
       headers.push(...orphan.headers);
     }
 
-    const requestMime = ProxyUtils.readHeader(request.headers, 'content-type');
     const exchange: ExchangeInput = {
       id: entry.exchangeId,
       sessionId: this.sessionId,
@@ -207,6 +214,11 @@ export class ExchangeTracker {
     entry.statusCode = response.statusCode;
     const responseMime = ProxyUtils.readHeader(response.headers, 'content-type');
     entry.responseMime = responseMime;
+    // 正文按线上编码原样落库，解码信息必须随 body 引用保存，否则 Inspector 只能显示压缩字节。
+    entry.responseEncoding = ProxyUtils.readHeader(
+      response.headers,
+      'content-encoding',
+    );
     const rawResponseStartedAt = ProxyUtils.timingEventToEpoch(
       response.timingEvents,
       response.timingEvents.headersSentTimestamp,
@@ -511,6 +523,12 @@ export class ExchangeTracker {
             id: `body-${ProxyUtils.cryptoRandomId()}`,
             blobHash: result.hash,
             encodedSize: result.size,
+            ...(entry.requestMime !== undefined
+              ? { mediaType: entry.requestMime }
+              : {}),
+            ...(entry.requestEncoding !== undefined
+              ? { contentEncoding: entry.requestEncoding }
+              : {}),
             decodeStatus: 'ok',
           }
         : undefined;
@@ -545,6 +563,9 @@ export class ExchangeTracker {
             ...(entry.responseMime !== undefined
               ? { mediaType: entry.responseMime }
               : {}),
+            ...(entry.responseEncoding !== undefined
+              ? { contentEncoding: entry.responseEncoding }
+              : {}),
             decodeStatus: 'ok',
           }
         : undefined;
@@ -553,6 +574,12 @@ export class ExchangeTracker {
             id: `body-${ProxyUtils.cryptoRandomId()}`,
             blobHash: requestResult.hash,
             encodedSize: requestResult.size,
+            ...(entry.requestMime !== undefined
+              ? { mediaType: entry.requestMime }
+              : {}),
+            ...(entry.requestEncoding !== undefined
+              ? { contentEncoding: entry.requestEncoding }
+              : {}),
             decodeStatus: 'ok',
           }
         : undefined;
@@ -613,6 +640,12 @@ export class ExchangeTracker {
                 id: `body-${ProxyUtils.cryptoRandomId()}`,
                 blobHash: requestResult.hash,
                 encodedSize: requestResult.size,
+                ...(entry.requestMime !== undefined
+                  ? { mediaType: entry.requestMime }
+                  : {}),
+                ...(entry.requestEncoding !== undefined
+                  ? { contentEncoding: entry.requestEncoding }
+                  : {}),
                 decodeStatus: 'ok',
               },
             }
@@ -623,6 +656,12 @@ export class ExchangeTracker {
                 id: `body-${ProxyUtils.cryptoRandomId()}`,
                 blobHash: responseResult.hash,
                 encodedSize: responseResult.size,
+                ...(entry.responseMime !== undefined
+                  ? { mediaType: entry.responseMime }
+                  : {}),
+                ...(entry.responseEncoding !== undefined
+                  ? { contentEncoding: entry.responseEncoding }
+                  : {}),
                 decodeStatus: 'ok',
               },
             }

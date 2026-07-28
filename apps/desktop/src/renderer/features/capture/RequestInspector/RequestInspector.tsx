@@ -457,7 +457,14 @@ export function RequestInspector({
                 <div className={styles.empty}>{t('capture.noQueryParameters')}</div>
               )}
             </Section>
-            <Section title={t('capture.requestPayload')}>
+            <Section
+              title={t('capture.requestPayload')}
+              count={
+                detail?.requestBody
+                  ? `${typeLabel(detail.requestBody.mediaType ?? detail.requestMime)} · ${sizeLabel(view?.requestBytes ?? 0, i18n.language)}`
+                  : undefined
+              }
+            >
               {detail?.requestBody ? (
                 <BodyView
                   body={{

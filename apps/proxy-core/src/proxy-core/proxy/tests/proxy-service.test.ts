@@ -272,18 +272,88 @@ function sendWebSocketFrame(
   opcode: 1 | 2 | 8,
   payload: Uint8Array,
 ): void {
-  if (payload.byteLength > 125) {
-    throw new Error('Test frame payload exceeds the short frame limit.');
+  if (payload.byteLength > 0xffff) {
+    throw new Error('Test frame payload exceeds the 16-bit length limit.');
   }
+  const short = payload.byteLength <= 125;
+  const headerLength = short ? 2 : 4;
   const mask = Uint8Array.from([0x11, 0x22, 0x33, 0x44]);
-  const frame = Buffer.alloc(6 + payload.byteLength);
+  const frame = Buffer.alloc(headerLength + mask.length + payload.byteLength);
   frame[0] = 0x80 | opcode;
-  frame[1] = 0x80 | payload.byteLength;
-  frame.set(mask, 2);
+  if (short) {
+    frame[1] = 0x80 | payload.byteLength;
+  } else {
+    frame[1] = 0x80 | 126;
+    frame.writeUInt16BE(payload.byteLength, 2);
+  }
+  frame.set(mask, headerLength);
   for (let index = 0; index < payload.byteLength; index += 1) {
-    frame[6 + index] = (payload[index] ?? 0) ^ (mask[index % 4] ?? 0);
+    frame[headerLength + mask.length + index] =
+      (payload[index] ?? 0) ^ (mask[index % 4] ?? 0);
   }
   socket.write(frame);
+}
+
+/** 累积解析下行（未掩码）数据帧，直到收满 count 条，用于逐字节校验回显正文。 */
+function readWebSocketFrames(
+  socket: net.Socket,
+  count: number,
+  timeoutMs = 3_000,
+): Promise<Array<{ opcode: number; payload: Buffer }>> {
+  return new Promise((resolve, reject) => {
+    const frames: Array<{ opcode: number; payload: Buffer }> = [];
+    let buffer = Buffer.alloc(0);
+    const cleanup = (): void => {
+      clearTimeout(timer);
+      socket.off('data', onData);
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timed out with ${frames.length}/${count} frames.`));
+    }, timeoutMs);
+    const onData = (chunk: Buffer): void => {
+      buffer = Buffer.concat([buffer, chunk]);
+      for (;;) {
+        if (buffer.byteLength < 2) {
+          return;
+        }
+        const opcode = buffer[0]! & 0x0f;
+        const masked = (buffer[1]! & 0x80) !== 0;
+        let length = buffer[1]! & 0x7f;
+        let offset = 2;
+        if (length === 126) {
+          if (buffer.byteLength < 4) {
+            return;
+          }
+          length = buffer.readUInt16BE(2);
+          offset = 4;
+        } else if (length === 127) {
+          if (buffer.byteLength < 10) {
+            return;
+          }
+          length = Number(buffer.readBigUInt64BE(2));
+          offset = 10;
+        }
+        if (masked) {
+          offset += 4;
+        }
+        if (buffer.byteLength < offset + length) {
+          return;
+        }
+        const payload = Buffer.from(buffer.subarray(offset, offset + length));
+        buffer = buffer.subarray(offset + length);
+        if (opcode === 1 || opcode === 2) {
+          frames.push({ opcode, payload });
+          if (frames.length === count) {
+            cleanup();
+            resolve(frames);
+            return;
+          }
+        }
+      }
+    };
+    socket.on('data', onData);
+  });
 }
 
 function waitForSocketData(socket: net.Socket, timeoutMs = 250): Promise<Buffer | null> {
@@ -370,6 +440,66 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       });
     } finally {
       releaseResponse();
+      await origin.close();
+    }
+  });
+
+  it('stores a small single-segment request body without losing its head', async () => {
+    const origin = await startOrigin((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        // 源站主动关闭，避免收尾时代理仍持有闲置上游连接而抛出无人处理的 reset。
+        response.writeHead(200, {
+          'content-type': 'text/plain',
+          connection: 'close',
+        });
+        response.end('ok');
+      });
+    });
+    // 头部与正文同段到达时，body-data 事件可能先于 request-initiated；丢首块会直接变乱码。
+    const body = Buffer.from('{"tiny":"single-segment-request-body"}');
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const request = http.request(
+            {
+              host: address.host,
+              port: address.port,
+              method: 'POST',
+              path: `http://127.0.0.1:${origin.port}/tiny`,
+              agent: false,
+              headers: {
+                'content-type': 'application/json',
+                'content-length': String(body.byteLength),
+                // 每笔用独立且立即关闭的连接，避免闲置连接在收尾时抛出无人处理的 reset。
+                connection: 'close',
+              },
+            },
+            (response) => {
+              response.resume();
+              response.on('end', () => {
+                settled = true;
+                resolve();
+              });
+            },
+          );
+          request.on('error', (error) => {
+            if (!settled) {
+              reject(error);
+            }
+          });
+          request.end(body);
+        });
+      }
+
+      await expect
+        .poll(() => sink.bodies.filter((stored) => stored.equals(body)).length)
+        .toBe(5);
+      expect(
+        sink.exchanges.map((exchange) => exchange.requestBytes),
+      ).toEqual(Array.from({ length: 5 }, () => body.byteLength));
+    } finally {
       await origin.close();
     }
   });
@@ -990,6 +1120,124 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(new Set(sink.webSocketFrames.map(({ exchangeId }) => exchangeId)).size).toBe(
         1,
       );
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('forwards and stores websocket text and binary payloads byte-for-byte', async () => {
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    // 多字节 UTF-8 与全 256 字节值：任何字符集转换或掩码错误都会让逐字节比较失败。
+    const text = Buffer.from('中文 — naïve café 🎈🚀 \u00e9\u0301 end', 'utf8');
+    const binary = Buffer.from(
+      Uint8Array.from({ length: 256 }, (_value, index) => index),
+    );
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      const echoed = readWebSocketFrames(socket, 2);
+      sendWebSocketFrame(socket, 1, text);
+      sendWebSocketFrame(socket, 2, binary);
+
+      // Client 侧：回显帧的 opcode 与正文与发出的完全一致。
+      await expect(echoed).resolves.toEqual([
+        { opcode: 1, payload: text },
+        { opcode: 2, payload: binary },
+      ]);
+
+      // Capture 侧：payload 内容寻址 hash 等于原始字节的 hash，即逐字节一致。
+      // 两个方向各自串行落库，跨方向顺序不保证，故按方向分别断言。
+      await waitForWebSocketFrames(sink, 4);
+      const textHash = createHash('sha256').update(text).digest('hex');
+      const binaryHash = createHash('sha256').update(binary).digest('hex');
+      const expectedSequence = [
+        {
+          opcode: 1,
+          payloadSize: text.byteLength,
+          blobHash: textHash,
+          mediaType: 'text/plain; charset=utf-8',
+        },
+        {
+          opcode: 2,
+          payloadSize: binary.byteLength,
+          blobHash: binaryHash,
+          mediaType: 'application/octet-stream',
+        },
+      ];
+      const recorded = (direction: string) =>
+        sink.webSocketFrames
+          .map(({ frame }) => frame)
+          .filter((frame) => frame.direction === direction)
+          .map((frame) => ({
+            opcode: frame.opcode,
+            payloadSize: frame.payloadSize,
+            blobHash: frame.payload?.blobHash,
+            mediaType: frame.payload?.mediaType,
+          }));
+      expect(recorded('client-to-server')).toEqual(expectedSequence);
+      expect(recorded('server-to-client')).toEqual(expectedSequence);
+      expect(sink.bodies.some((body) => body.equals(text))).toBe(true);
+      expect(sink.bodies.some((body) => body.equals(binary))).toBe(true);
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('keeps binary websocket payloads intact through an unedited breakpoint', async () => {
+    await proxy.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxy = new ProxyService(
+      sink,
+      new CaptureEventQueue(),
+      new RuleEngine(breakpointQueue),
+    );
+    proxy.setWebSocketBreakpointsEnabled(true);
+    address = await proxy.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    // 断点面板把二进制正文渲染成 hex 字符串；未编辑时必须原样转发，不能走 hex 回转。
+    const binary = Buffer.from(
+      Uint8Array.from({ length: 256 }, (_value, index) => index),
+    );
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      const echoed = readWebSocketFrames(socket, 1);
+      sendWebSocketFrame(socket, 2, binary);
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const outbound = breakpointQueue.list()[0];
+      expect(outbound?.snapshot).toMatchObject({
+        direction: 'client-to-server',
+        opcode: 2,
+        bodyFormat: 'hex',
+      });
+      breakpointQueue.resolve(outbound!.id, 'continue');
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const inbound = breakpointQueue.list()[0];
+      expect(inbound?.snapshot.direction).toBe('server-to-client');
+      breakpointQueue.resolve(inbound!.id, 'continue');
+
+      await expect(echoed).resolves.toEqual([{ opcode: 2, payload: binary }]);
     } finally {
       if (socket) {
         sendWebSocketFrame(socket, 8, new Uint8Array());
