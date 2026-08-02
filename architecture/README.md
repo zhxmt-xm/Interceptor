@@ -23,7 +23,7 @@
 
 | 文档 | 覆盖范围 | Core 模块 | Renderer 模块 |
 | --- | --- | --- | --- |
-| [feature-capture.md](feature-capture.md) | 流量捕获、Exchange 生命周期、正文存储、事件推送 | `proxy/`、`storage/` | `features/capture/` |
+| [feature-capture.md](feature-capture.md) | 流量捕获、Exchange 生命周期、正文存储、事件推送、客户端应用归属 | `proxy/`、`storage/`、`client-app/` | `features/capture/` |
 | [feature-rules.md](feature-rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
 | [feature-breakpoints.md](feature-breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/rule-breakpoint-queue.ts` | `features/breakpoints/` |
 | [feature-composer.md](feature-composer.md) | 手工构造请求、连接探测 | `composer/`、`connection/` | `features/composer/` |

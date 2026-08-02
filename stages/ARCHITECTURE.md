@@ -1,6 +1,6 @@
 # Interceptor 当前实现架构与 Workflow
 
-> 最后更新：2026-07-25
+> 最后更新：2026-07-31
 > 范围：只描述已经实现并验证的代码；历史产品设计见 [archived/桌面网络调试代理完整方案.md](archived/桌面网络调试代理完整方案.md)。
 
 ## 完整 Workflow 架构图
@@ -107,7 +107,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 > Capture/Body 直接属于当前 Core UtilityProcess；活动抓包不使用 SQLite 或常驻 Storage Worker。Renderer 只持有全量轻量 summary，不接触 SQL、临时文件或完整正文。
 
 - **数据目录注入**：Main `CoreRuntime.launchCoreProcess` fork Core 时传 `--data-dir=<userData>/storage`；`entry.cts` 据此构建 `StorageService` 与 `DiagnosticsService`（内部组合 `DiagnosticsWorkerHost`，缺省则无存储模式）。`entry.cts` 用 try/catch 包住组合根装配与启动，失败时向 Main 发 `fatal` 生命周期消息并置非零退出码。
-- **模块结构**：composer/connection/diagnostics/grpc/har/proxy/rules/storage 均以真实 `entry.ts` 门面为根，Service/Engine class 直接定义在 entry；显式类型集中 `interfaces/index.ts`，无状态函数集中 `utils/index.ts`，其余实现文件使用模块前缀且一文件一个 class。host/worker 子模块所有者也使用 `entry.ts`，其余文件保持 `host-*`/`worker-*`。
+- **模块结构**：client-app/composer/connection/diagnostics/grpc/har/proxy/rules/storage 均以真实 `entry.ts` 门面为根，Service/Engine class 直接定义在 entry；显式类型集中 `interfaces/index.ts`，无状态函数集中 `utils/index.ts`，其余实现文件使用模块前缀且一文件一个 class。host/worker 子模块所有者也使用 `entry.ts`，其余文件保持 `host-*`/`worker-*`。
 - **常量集中**：模块常量使用 `<module>-constants.ts`（+ `proxy-core/constants.ts`），是数值/策略的唯一来源；生产构造函数不接收仅测试用的注入参数，单元测试用 `vi.mock` 覆盖常量、用真实 Worker 覆盖通道，详见 `apps/proxy-core/CONSTANTS.md`。
 - **StorageService**（`storage/entry.ts`）：直接组合 `TemporaryCaptureStore`、`TemporaryBodyStore` 与 `RuleStore`。Capture 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于 3 MiB 驻内存，较大正文 spill 到 `capture-temp/`；RuleSet 低频直接读写 `rules.sqlite`。
 - **Recording 生命周期**：Stop 只经 `proxy.setRecording{recording:false}` 暂停记录——Mockttp listener 与系统代理保持运行、流量继续转发，暂停期间的新连接不再落库/推送，已在途的 Exchange 自然完成；监听器与系统代理不受影响。Start（含首次 bootstrap）经 `proxy.start` 恢复 `recording=true`（若未监听则先启动 listener，显式换端口时在同会话迁移监听端口）；系统代理只在应用退出与紧急修复时由 Main 恢复。Clear 才推进 cutoff、取消 transfer、清 Capture/Body；Core 退出自然释放临时数据。`proxy.status` 同时上报 `listening` 与 `recording`，Renderer 的 `capturing` 取 `recording`。
@@ -143,6 +143,17 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 - **数据管线**：`useCaptureData` 常驻 App，跨 feature 持续接收事件；bootstrap/重连以500条分页批次同步当前 Core 全量 summary，过滤完全在 Renderer 派生。Stop/Start 保留行，Core generation 变化或 Clear 才清空。
 - **渲染**：`RequestList` 用固定 52px TanStack Virtual 行。完整 header/body/WS/gRPC payload 留在 Core；Renderer 的文本/结构化 `BodyView`、WebSocket 行预览和 WS/gRPC Copy 只读取前 `5 MiB`，CodeMirror/Hex 在最大 `320px` viewport 内滚动。BodyView 继续提供 Auto/Text/JSON/Hex、UTF-8 探测、JSON pretty print 与响应式 hex；超限时明确显示预览大小与完整大小。`video/*`/`audio/*` 不预览字节，通过 `body.export.start` 在 Core 流式保存完整编码正文。
 - **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
+
+## 客户端应用归属架构（2026-07-31，已落地，仅 Windows）
+
+> Capture 列表与 Inspector 显示发起流量的本机应用名称与系统图标。反查与取图标全部在原生 helper 完成，Renderer 只见 `appId` 与 data URL，拿不到可执行文件路径。
+
+- **原生 helper**：`apps/desktop/src/main/client-app/windows-helper.cs` 是归属与图标的唯一来源，编译为单文件 exe 随包发布；Main 在 fork Core 时以 `--client-app-helper=<path>` 注入路径，Main 自己取图标时复用同一个 exe。三个子命令：`<proxyPort>` 输出 TSV `sourcePort/PID/displayName/imagePath`，`--icon <path>` 输出 base64 PNG，`--resolve <pid>` 为排查用途。
+- **归属规则**：`GetExtendedTcpTable` 拿到源端口对应 PID，再沿父进程链向上最多 4 层，一旦当前进程是“系统已安装应用”就停——打包应用看 AUMID，传统桌面应用看卸载登记表中 `DisplayName` 存在且 `SystemComponent != 1` 的安装目录。不比较发布者（宿主常用别家运行时），不追进 Windows 目录，没有任何硬编码进程名。
+- **图标**：走 `IShellItemImageFactory`（与资源管理器同源），不用 `SHGetFileInfo` / `app.getFileIcon`；MSIX/UWP 应用的 exe 只是 stub，后者只能拿到通用图标。取得的 HBITMAP 手工按 32bpp ARGB 拷贝以保留 alpha。
+- **不阻塞捕获**：`ClientAppService`（`proxy-core/src/proxy-core/client-app/entry.ts`）持有端口→应用快照，`beginRequest` 只做同步命中；未命中时经 `setImmediate` 排出捕获栈后再拉 helper，结果以 `exchange-updated` 补齐。`execFile` 的 spawn 是同步系统调用，若在 `beginRequest` 内直接调用会把 `exchange-added` 推迟到子进程创建之后。快照 15 秒过期（防端口复用错认），helper 失败后在同一窗口退避，失败只记 `client-app.lookup-failed` 诊断。
+- **传递边界**：Core 只把 `appId`（exe 路径 sha256 前 16 位）与 `appName` 放进 summary；完整身份（含 path）随 `event-batch` 的 `clientApps` 字段按应用一次性交给 Main，Main 读图标后经 `client-app:icons` 主动推给 Renderer，Renderer 无拉取 API。Renderer 重新加载时 Main 在 `did-finish-load` 补发已知集合。
+- **平台边界**：非 Windows 上 `ClientAppService.supported` 为 false，列表图标列保留占位但不渲染内容；远程客户端（手机经代理）不做反查。
 
 ## 证书与 HTTPS MITM 架构（M5，已落地）
 
@@ -355,6 +366,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | `StorageStatusResult` / `StorageUsage` | `core-protocol/src/messages.ts`、`desktop/src/shared/desktop-api.ts` | 存储用量（会话/Exchange/Body计数、DB/Blob/总量；无配额） |
 | `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/storage/interfaces/index.ts` | Core 内部存储域类型；不跨进程，不复用 core-protocol |
 | `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |
+| `ClientAppIdentity` | `packages/core-protocol/src/messages.ts` | 客户端应用身份（id/name/path）；随 `event-batch` 只到 Main，path 不进 Renderer |
 
 ## 后续扩展规则
 

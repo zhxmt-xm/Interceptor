@@ -1,7 +1,7 @@
 # Feature: Capture
 
-> 最后更新：2026-07-26
-> Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/storage/`
+> 最后更新：2026-07-31
+> Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/storage/`、`apps/proxy-core/src/proxy-core/client-app/`
 > Renderer 模块：`apps/desktop/src/renderer/features/capture/`
 
 ## 1. 职责与边界
@@ -28,6 +28,7 @@ Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/p
 | `ProxyService` | `proxy/entry.ts` | 拥有 Mockttp server，订阅事件，协调规则与存储 |
 | `RuleEngine` | `rules/entry.ts` | 计算规则决策（详见 feature-rules） |
 | `StorageService` | `storage/entry.ts` | Exchange 记录、正文内容寻址存储 |
+| `ClientAppService` | `client-app/entry.ts` | 把客户端源端口反查成发起流量的本机应用（见 8） |
 | `CaptureEventQueue` | `proxy/proxy-capture-event-queue.ts` | 按 Exchange 合并的非阻塞事件队列 |
 | `CoreApplication` | `core-application.ts` | 定时 drain 队列，按背压窗口推送 |
 | Main | Desktop | 转发 event batch，不持有正文 |
@@ -1071,9 +1072,137 @@ scope 随之收窄为 `all-except-session`——Exchange 与 Body 全部归零�
 - 暂停期间开始、恢复后完成的请求：始终不记录。
 - Clear 后旧 generation 的所有 request/body/response/trailer/rule hit 全部拒绝，不得重新创建行。
 
-## 8. 数据契约
+## 8. 客户端应用归属 [已实现·仅 Windows]
 
-### 8.1 Core 内部接口
+Capture 在创建 Exchange 时同时记录**发起这条请求的本机应用**，用于列表图标与 Inspector 展示。
+
+### 8.1 解析链路
+
+| 环节 | 数据源 | 说明 |
+| --- | --- | --- |
+| 连接 → PID | `GetExtendedTcpTable` | `request-initiated` 给出客户端源端口，在系统 TCP 表里查 owning PID |
+| PID → 可执行文件 | `QueryFullProcessImageName` | — |
+| 进程 → 应用 | 见 8.2 | 容器进程需沿进程树上溯 |
+| 应用 → 图标 | `IShellItemImageFactory` | 与资源管理器同源。**不能**用 `SHGetFileInfo` / `app.getFileIcon`：MSIX/UWP 应用的 exe 只是 stub，图标在包的 Assets 里，后者只能拿到通用图标 |
+
+全部经 `client-app-helper`（Windows C# 单文件，`apps/desktop/src/main/client-app/`）完成，Main 在 fork Core 时以 `--client-app-helper` 注入路径。其他平台 `ClientAppService.supported` 为 false，列表不显示图标。只有 loopback 客户端才反查；远程设备（手机经代理）不存在本地进程。
+
+helper 另提供 `--resolve <pid>` 诊断子命令，用于排查归属结果。
+
+一条请求从到达到图标上屏的完整链路：
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant Mockttp
+    participant Tracker as ExchangeTracker
+    participant AppSvc as ClientAppService
+    participant Helper as client-app-helper
+    participant Queue as CaptureEventQueue
+    participant App as CoreApplication
+    participant Main
+    participant UI as Renderer
+
+    Client->>Mockttp: 请求头（客户端源端口 51234）
+    Mockttp-->>Tracker: request-initiated（remotePort）
+    Tracker->>AppSvc: cachedAppForPort(51234)
+    Note over Tracker,AppSvc: 纯内存同步读，带 TTL 判定，<br/>不触碰子进程
+
+    alt 快照命中且未过期
+        AppSvc-->>Tracker: appId + appName
+        Note over Tracker: 直接写进 ExchangeInput，<br/>一条 exchange-added 带全
+    else 未命中或已过期
+        AppSvc-->>Tracker: 无
+    end
+
+    Tracker->>Queue: enqueue exchange-added
+    Note over Tracker,Queue: 无论是否命中都先入队，<br/>helper 绝不出现在这条路径上
+
+    opt 仅未命中时发生
+        Tracker->>Tracker: setImmediate 排出当前捕获栈
+        Note over Tracker: execFile 的 spawn 是同步系统调用，<br/>在 beginRequest 内直接调用会推迟 exchange-added
+        Tracker->>AppSvc: resolveAppForPort(51234, arrivedAt)
+        AppSvc->>Helper: execFile(helper, proxyPort)
+        Note over Helper: GetExtendedTcpTable 取全表，<br/>再沿父进程链上溯到已安装应用
+        Helper-->>AppSvc: TSV sourcePort/PID/displayName/imagePath
+        AppSvc->>AppSvc: 整表替换 appByPort，<br/>新应用记入 undeliveredApps
+        AppSvc-->>Tracker: appId + appName，或解析不到
+        Tracker->>Queue: enqueue exchange-updated
+    end
+
+    App->>Queue: drain（每 50ms）
+    App->>AppSvc: pendingAppsForMain()
+    AppSvc-->>App: ClientAppIdentity[]（含 path）
+    App->>Main: event-batch events 与 clientApps
+    Main-->>UI: 请求行（此时只有应用名，无图标）
+    App->>AppSvc: markAppsDelivered()
+
+    loop 每个首次出现的应用
+        Main->>Helper: execFile(helper, --icon path)
+        Note over Helper: IShellItemImageFactory，<br/>与资源管理器同源
+        Helper-->>Main: base64 PNG 或空
+        Main->>Main: 写入图标缓存（解析不到也缓存 null）
+    end
+
+    Main-->>UI: client-app:icons 的 clientAppId 与 data URL
+    UI->>UI: applyClientAppIcons，已渲染的行重新取图
+```
+
+### 8.2 容器进程归属
+
+WebView2 宿主、微信小程序容器这类进程自己不是用户心目中的应用，因此沿进程树向上追溯，**一旦命中系统已安装应用就停**，不追到最顶层（最多 4 层）。
+
+| 应用类型 | 判据 |
+| --- | --- |
+| 打包应用（MSIX/UWP） | `GetApplicationUserModelId` 返回 AUMID |
+| 传统桌面应用 | 卸载登记表中 `DisplayName` 存在且 `SystemComponent != 1` 的安装目录 |
+
+`SystemComponent = 1` 是 Windows 标记运行时组件的官方标志（WebView2 Runtime 即属此列），因此它不会成为归属终点。
+
+两个边界条件：
+
+- **不比较发布者**。宿主应用经常使用别家的运行时（实测中 GlobalProtect 用微软的 WebView2），按发布者限制会直接误伤。
+- **不追进 Windows 目录**，否则会归到 `explorer.exe` / `services.exe` 这类系统宿主上。
+
+实测（`--resolve`）：`WeChatAppEx → 微信`、`msedgewebview2 → 实际宿主应用`、`msedge` / `Code` 保持自身、`node` 不被吞进启动它的终端。
+
+### 8.3 不阻塞捕获管线 [已实现]
+
+`resolveAppForPort` 会拉起 helper 子进程，而 `execFile` 的 spawn 是**同步系统调用**。因此 `beginRequest` 只做纯内存的快照命中：
+
+- 命中 → 同步写入 entry，`exchange-added` 一次带全，不产生额外事件
+- 未命中 → `setImmediate` 排出当前栈后再解析，结果以 `exchange-updated` 补齐
+
+这保证 helper 慢、挂起或失败都不会延后 `exchange-added` 与转发。解析失败只记 `client-app.lookup-failed` 诊断；孤儿 Promise 带 `catch`，Node 默认 `unhandled-rejections=throw` 会终止 Core 进程并中断抓包。
+
+### 8.4 快照与缓存
+
+`ClientAppService` 持有两张表：
+
+| 字段 | 内容 | 生命周期 |
+| --- | --- | --- |
+| `appByPort` | 源端口 → 应用 | 每次 helper 调用整表替换，`CLIENT_APP_SNAPSHOT_TTL_MS`（15s）后作废 |
+| `undeliveredApps` | 尚未交给 Main 的应用身份 | 随 event-batch 下发成功后清除 |
+
+TTL 防的是端口复用错认：连接关闭后源端口会被系统重新分配给其它进程，过期快照会把请求归给错误的应用。
+
+并发解析共享同一次 helper 调用；解析时每一轮都先 `await` 快照再判断，**绝不在快照飞行中直接放弃**（请求到达时 TCP 连接必然已建立，只需一张采样时刻不早于此刻的快照）。helper 失败后在同一窗口内退避，避免反复拉起子进程。
+
+### 8.5 身份与图标的传递边界
+
+- Core 只把 `appId`（可执行文件路径 sha256 前 16 位）与 `appName` 放进 `CaptureExchangeSummary`
+- 完整身份（含 `path`）随 `event-batch` 的 `clientApps` 字段一次性交给 Main，**每个应用一次**；Main 无需再按 id 回问 Core
+- Main 读取图标后经 `client-app:icons` 主动推给 Renderer，Renderer 从不发起索取
+- Renderer 全程只见 `appId` 与 PNG data URL，拿不到可执行文件路径
+
+图标按应用而非按请求去重，因此不会随每条 Exchange 重复传输（一张 data URL 2–4 KB，`appId` 只有 16 字符）。Renderer 侧 `clientAppIcons` 是响应式 map：图标总是晚于 Exchange 到达，已渲染的行需要在图标到达时重新取图。
+
+批次发送失败时身份留在 `undeliveredApps` 里下一轮继续带上；Renderer 重新加载会丢失已推送的图标，Main 在 `did-finish-load` 时补发一次已知集合。
+
+## 9. 数据契约
+
+### 9.1 Core 内部接口
 
 `CaptureSink`（`proxy/interfaces/index.ts`）[已实现]：
 
@@ -1098,7 +1227,7 @@ interface CaptureSink {
 `writeBody` 是 pull 式、可背压，用于 WebSocket 单条消息；`createBodyWriter` 是 push 式、
 不可阻塞，用于 HTTP 正文的 body-data 事件。两者语义不同，不能互相替代。
 
-### 8.2 事件契约
+### 9.2 事件契约
 
 ```ts
 interface CaptureEventSink {
@@ -1106,7 +1235,9 @@ interface CaptureEventSink {
 }
 ```
 
-`CaptureExchangeSummary` 需支持 pending 表达：`statusCode` 与 `durationMs` 可缺省，Renderer 据此渲染进行中状态。
+`CaptureExchangeSummary` 需支持 pending 表达：`statusCode` 与 `durationMs` 可缺省，Renderer 据此渲染进行中状态。`appId` / `appName` 同样可缺省（非 Windows、远程客户端、反查失败）。
+
+事件批次 `CoreEventBatch` 除 `events` 外带可选 `clientApps: ClientAppIdentity[]`，只携带本批新出现的应用身份（见 8.5）。
 
 队列合并行为：同 id 事件就地合并，**保留首次 sequence、摘要取最新、kind 不更新**。因此 `exchange-added` 尚未 drain 时到来的 `exchange-updated` 会被正确压成一条 added。
 
@@ -1114,7 +1245,7 @@ interface CaptureEventSink {
 
 由此产生的可见语义：每次 `patch()`（含每个 body chunk）都会同步 enqueue，但 UI 收到的是**每 50ms 一帧的最新快照**，而不是每个 chunk 一帧。中间值会被跳过（例如 `responseBytes` 不会逐块呈现），这是保护数据面与限制 IPC 频率的有意取舍。
 
-### 8.3 Renderer 命令
+### 9.3 Renderer 命令
 
 | 命令 | 用途 |
 | --- | --- |
@@ -1130,7 +1261,7 @@ interface CaptureEventSink {
 
 `proxy.stop` 不对 Renderer 开放常规入口，仅在 Main 的紧急修复路径中调用。
 
-## 9. Renderer 数据层
+## 10. Renderer 数据层
 
 ```mermaid
 flowchart LR
@@ -1163,7 +1294,7 @@ flowchart LR
 超出时 UI 显示截断提示，用户可经 **Save body**（`exportBodyToFile`）把完整内容流式写到自选文件，
 该路径不受预览上限限制。
 
-## 10. 与当前实现的差异
+## 11. 与当前实现的差异
 
 阶段一已落地：
 
@@ -1186,6 +1317,7 @@ flowchart LR
 | 请求规则预筛选 | `.matching(callback)` 等完整 body | `beforeRequestHead` 头部阶段判定 |
 | 响应规则执行 | 一律 `beforeResponse` 全量缓冲 | `beforeResponseHead` 流式 |
 | Rule evidence | 需要从前后快照反推 | `RuleEngine` 执行时直接记录 `previousValues` |
+| 客户端应用 | `processName` 字段保留但从未写入 | Windows 上反查真实发起应用，列表与 Inspector 展示名称与系统图标（见 8） |
 
 仍待完成：
 
@@ -1196,7 +1328,7 @@ flowchart LR
 | Clear 与文件任务 | 无 lease 保护 | snapshot / lease 语义 |
 | 进行中状态展示 | Renderer 仅按状态码占位 | 明示 pending / streaming 与已接收字节 |
 
-## 11. 验收要点
+## 12. 验收要点
 
 - [x] 规则命中时的慢上传：Origin 在第二块正文发出前收到 headers。
 - [x] 规则命中时的下载：响应头先于源站正文结束到达客户端。

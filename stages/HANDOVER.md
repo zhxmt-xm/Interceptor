@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-07-25
+> 最后更新：2026-07-31
 > 用途：只保留下一位开发者或下一 Session 继续工作所需的必要上下文。历史细节请按需读取 `archived/`。
 
 ## 新 Session / Agent 必读
@@ -19,6 +19,7 @@
 
 - **架构设计文档已建立**：根目录 `architecture/` 按 feature 记录目标架构、service 调用流程与 Client/Origin 交互，包含 `feature-capture` / `feature-rules` / `feature-breakpoints` / `feature-composer` / `feature-transfer` / `feature-diagnostics` / `feature-settings` / `feature-mcp` 八篇与一份 `README.md` 索引。文档用 `[已实现]` / `[改造中]` / `[阶段一]` / `[阶段二]` / `[待定]` 标记区分现状与目标。
 - **`feature-mcp.md` 为纯设计、零代码**：对外 AI Host 暴露 MCP 工具的目标方案，阶段一 stdio + bridge、阶段二 Streamable HTTP 分章独立。关键结论：监听端必须在 Main（Core 不得对外监听）；`packages/core-protocol` 零改动，MCP 只复用既有 command；写工具强制用户审批；`RunAsNode` fuse 已锁死，bridge 阶段一依赖用户机器上的 `node`。实现前先读该文档。
+- **Capture 已显示发起请求的客户端应用（仅 Windows）**：列表首列显示系统图标，Inspector General 增加 `Client Application` 行。归属与图标由单一原生 helper `apps/desktop/src/main/client-app/windows-helper.cs` 提供（`GetExtendedTcpTable` 端口→PID、父进程链上溯、`IShellItemImageFactory` 取图标）。“已安装应用”的判定用 AUMID 或卸载登记表中 `SystemComponent != 1` 的安装目录，**没有硬编码进程名，也不比较发布者**（宿主常用别家运行时，实测 GlobalProtect 用微软的 WebView2），只不追进 Windows 目录。图标必须走 Shell 层：`app.getFileIcon`/`SHGetFileInfo` 对 MSIX/UWP（Teams、Outlook）只能拿到通用图标，因为其 exe 是 stub。`execFile` 的 spawn 是同步系统调用，因此 `beginRequest` 只做同步快照命中，未命中时经 `setImmediate` 排出捕获栈再解析，`exchange-added` 绝不被子进程创建推迟（已有回归用例用“永不返回的 helper”锁住）；端口快照 15 秒过期防复用错认。协议上 `processName` 已改名为 `appId`/`appName`，完整身份（含 path）随 `event-batch` 的 `clientApps` 只到 Main，Main 经 `client-app:icons` 单向推图标，Renderer 无拉取 API 也拿不到路径。详见 [ARCHITECTURE.md](ARCHITECTURE.md) 与 [../architecture/feature-capture.md](../architecture/feature-capture.md) 第 8 节。
 - **Capture 增量管线已落地（阶段一）**：Exchange 在 `request-initiated` 即创建并推送（`state='pending'`），不再等 completed 事件配对。已**退订** completed 的 `request`/`response`，因为 Mockttp 检测到这两个 listener 就会 `waitForCompletedRequest` / `body.asBuffer()` 无条件缓冲完整正文。新增 `ExchangeTracker`（`proxy/proxy-exchange-tracker.ts`）按 request id 幂等 upsert，新增 `TemporaryBodyWriter`（`storage/storage-temporary-body-writer.ts`）按累计字节 spill 并在待落盘超限时降级为只计数。WebSocket 101 改由 `websocket-accepted` 驱动。
 - **规则安全边界改为“不完整就不生效”**：未填写的条件值与空条件集在 matcher 编译器里恒不匹配（此前 `contains ''` 的 `includes('')` 与 `regex ''` 都恒真，刚新建、还没输入 host 的规则会改写全部真实流量）；只能在响应阶段判定的规则在请求阶段仍保守放行。Renderer 直接限制操作：字段未填完的规则不允许启用，新建规则与 Capture 草稿默认 `enabled:false`，未填写项由本地纯函数 `ruleIssues` 即时派生。**Core 信任 Main/Renderer 传递的数据，不做规则语义校验**；固定返回 valid 的假 `rules.validate` 命令已从协议/Main/Preload/Renderer 整条链路删除。
 - **Throttle 已移除**：真实代理实测 8 KiB/s 规则下载 128 KiB 只用 17 ms（真限速需 ≥16 s），但 UI 会显示命中。限速必须介入正文流，而规则全在头部阶段执行，需再扩 patch 约 60 行（含 override 分支流式化与 resolve 时序改造）；浏览器 DevTools 自带限速，因此从协议、引擎、UI、automation ID、15 种语言和 `design/app` 一并删除；delay 仍在用的黄色调名改为 `flow`。
@@ -168,6 +169,8 @@
 
 ## 最近验收与下一动作
 
+2026-07-31 客户端应用归属（idea 第 1 条）提交前验证：三 workspace typecheck 通过；Desktop 138 / Proxy Core 238 / Protocol 15，共 **391 项 unit tests** 通过（新增 11 项 `ClientAppService` 与 6 项 tracker 时序用例，其中一项用“永不返回的 helper”锁住 `exchange-added` 不被子进程创建推迟）。Visual parity **54 views / 366 targets / 366 matched / 0 missing / 114 flagged / 平均像素差 2.07%**：新增的 `List app header` / `List app cell` / `List app cell empty` / `Inspector client app` 四个 target 全为 `ok`（前三者 0.0 px），相比旧基线 362 targets / 113 flagged 只多出 `capture / List status cell` 一项 1.3 px 字体子像素偏差。过程中修了一处**设计稿结构错误**：`design/app/index.html` 把 `client-app-value` 直接加在 `.v` 上，使它成为 grid item 被 blockify 成 flex、宽度拉满列并把后续 kv 行整体下移（`Inspector client app` 差 159.4 px、四个 Rule marker 差 1.5–1.8 px）；改为内层 span 后五项全部转 `ok`。本轮未跑 package / packaged smoke：只新增了 Main 的图标读取与 `client-app:icons` 推送，未改 Fuses、CSP 或导航边界；但 `dist/client-app` 作为 extraResource 随包发布，**下次 package 时要一并核对 artifact audit 文件数**。用户未在 dev 真机复验最终归属规则（helper 路径在 Core fork 时注入，需重启 dev app）。
+
 2026-07-26 P1 一批（TODO #15/#17/#18/#19/#25）提交前**全面验证**：三 workspace typecheck 通过；Desktop 134 / Proxy Core 215 / Protocol 15，共 **364 项 unit tests** 通过；`npm audit --omit=dev` 0 vulnerabilities；Windows x64 package 通过；artifact audit **1,292 files / 377,565,157 bytes** 全通过；**真实 packaged smoke 1/1 通过**（本轮删除了 `validateRules` 窄 API，apiKeys 断言已同步并由 smoke 实证）；visual parity **54 views / 362 targets / 0 missing / 113 flagged / 平均像素差 2.01%**，与既有基线一致，说明删 Throttle 菜单、chip 改名、断点正文区域、Reload 按钮与 Filter 禁用态都能对上设计稿且无新增几何偏差；dev 真机经 8888 请求 `example.com` 返回 200、请求死端口被镜像为连接错误且终端零 `[proxy-core]` 报错。本轮改动：Rule 命中数改为按 `Rule × Exchange` 去重（一条三 action 的规则命中一次请求由计 3 改为计 1）并在 Clear 后立即归零；Apply 冲突不再自动重载覆盖本地草稿，改为保留草稿+冲突提示并提供显式 Reload；右键建规则只取 scheme+host+path，不再把 `access_token`/`signature` 写进 `rules.sqlite`；无命中时 Filter 按钮禁用并说明原因；body/HAR/diagnostics/archive 四处导出去掉多余的 `rm`，改为直接 `rename` 覆盖以消除旧文件丢失窗口。
 
 2026-07-26 Stage A' （TODO #4/#5/#6）提交前验证：三项都先用真实代理 + 真实源站的集成测试复现再修。证据：空 host 条件的规则确实给源站注入了 `x-injected`；8 KiB/s 限速下载 128 KiB 实测 17 ms；断点快照 `body` 恒为 `undefined` 且无任何可见性标注。修复后三 workspace typecheck 通过；Desktop 131 / Proxy Core 212 / Protocol 15，共 358 项 unit tests 通过，proxy-core 全量连跑三次无间歇失败（新增集成测试改用随机端口并在清理时先放行挂起断点）。dev 真机启动正常、经 8888 请求 `http://example.com/` 返回 200。local E2E workflow 套件仍是 0 条规格，因此本轮一律用真实 Mockttp 集成测试作为最高可达层级的证据。
@@ -180,7 +183,7 @@
 
 2026-07-22 本次提交前验证：三 workspace typecheck通过；Desktop 115 / Proxy Core 180 / Protocol 19，共314项unit tests通过；`e2e:prepare-local`成功构建Core、Windows helper和未打包production Main/Preload/Renderer bundles。Visual parity保持既有基线：45 views / 330 targets / 0 missing / 平均像素差1.83% / 94 flagged。Windows x64 package通过；package audit 1,292文件 / 377,412,874 bytes全通过；真实 packaged smoke 1/1通过；`npm audit --omit=dev`为0 vulnerabilities。因为`workflows/`为空，本次没有运行或宣称任何local feature workflow通过。
 
-下一动作：从 `application.startup.ready` 开始重新实现第一条 local workflow，只通过公共 automation ID 操作真实App UI；成功保存独立trace/evidence并验证destroy后，才把该单条Inventory状态改为implemented。随后逐条扩展60条规格；packaged目标复用同一业务contract，不能复制第二套workflow。不要加入`.vite/`、package、Playwright report或`test-results/`；继续保留`apps/desktop/tests/visual-parity/parity-report.md`作为验收资产。
+下一动作：按 [idea.md](idea.md) 的清单逐条推进，第 1 条（客户端应用与图标）已完成，下一条是**左侧 filter 分栏重构 + sidebar 默认收起**；该条会牼动 Breakpoint 交互重构（idea 最后一条明确依赖 filter 设计定稿），因此先出设计稿再动代码。local E2E 方面仍是：从 `application.startup.ready` 开始重新实现第一条 local workflow，只通过公共 automation ID 操作真实App UI；成功保存独立trace/evidence并验证destroy后，才把该单条Inventory状态改为implemented。随后逐条扩展60条规格；packaged目标复用同一业务contract，不能复制第二套workflow。不要加入`.vite/`、package、Playwright report或`test-results/`；继续保留`apps/desktop/tests/visual-parity/parity-report.md`作为验收资产。
 
 提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 
