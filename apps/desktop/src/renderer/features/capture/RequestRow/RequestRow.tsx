@@ -1,5 +1,6 @@
 import { Dropdown } from 'antd';
 import {
+  AppWindow,
   Ban,
   Clock,
   Code,
@@ -59,8 +60,9 @@ export const RequestRow = memo(function RequestRow({
   const kind = statusKind(summary.statusCode);
   const isTlsTunnel = protocolLabel(summary.protocol) === 'tls';
   // 图标由 Main 异步推送，通常晚于本行渲染；订阅 map 才能在到达时重新取图。
+  // undefined 为还在路上，null 为取不到（如系统权限进程没有可执行文件路径）。
   const clientAppIcon = useCaptureStore((state) =>
-    summary.appId ? state.clientAppIcons.get(summary.appId) ?? null : null,
+    summary.appId ? state.clientAppIcons.get(summary.appId) : undefined,
   );
   const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const timeLabels = {
@@ -187,14 +189,23 @@ export const RequestRow = memo(function RequestRow({
             clientAppIcon ? 'capture-list-app-cell' : 'capture-list-app-cell-empty'
           }
         >
-          {clientAppIcon ? (
+          {summary.appId === undefined ? null : clientAppIcon ? (
             <img
               className={styles.clientAppIcon}
               src={clientAppIcon}
               alt={summary.appName ?? ''}
               title={summary.appName ?? ''}
             />
-          ) : null}
+          ) : clientAppIcon === null ? (
+            <AppWindow
+              className={styles.clientAppUnknown}
+              size={16}
+              strokeWidth={1.8}
+              aria-label={summary.appName ?? ''}
+            />
+          ) : (
+            <span className={styles.clientAppLoading} />
+          )}
         </span>
         <MethodBadge method={summary.method} />
         <span className={styles.host}>

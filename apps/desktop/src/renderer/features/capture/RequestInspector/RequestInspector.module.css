@@ -240,6 +240,19 @@ button.ruleEffect:hover {
   height: 16px;
   flex: 0 0 auto;
 }
+.clientAppUnknown {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+.clientAppLoading {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: var(--hover);
+}
 .statusValue .statusDot {
   display: inline-block;
   width: 6px;

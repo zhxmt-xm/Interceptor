@@ -1137,6 +1137,11 @@ class DesktopApplication {
       }
       // 先占位，避免同一应用在读取期间被重复发起。
       this.clientAppIcons.set(clientApp.id, null);
+      if (clientApp.path.length === 0) {
+        // 系统权限进程只反查到了进程名，没有可执行文件路径就取不到图标。
+        this.broadcastClientAppIcons([{ clientAppId: clientApp.id, icon: null }]);
+        continue;
+      }
       void readClientAppIcon(helperPath, clientApp.path)
         .catch((error: unknown) => {
           this.diagnostics.warn('main.client-app.icon-failed', {

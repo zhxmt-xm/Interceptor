@@ -29,6 +29,7 @@ export function resolveClientAppHelperPath(): string | null {
 
 /**
  * 读取应用图标并返回 PNG data URL；helper 取不到图标时返回 null。
+ * imagePath 可能是可执行文件路径，也可能是 `shell:AppsFolder\<AUMID>`。
  *
  * 必须走 helper 的 shell 图标 API，不能用 `app.getFileIcon`：MSIX/UWP 应用（新版
  * Teams、Outlook）的 exe 只是 stub，图标存在包的 Assets 里，`SHGetFileInfo` 只会

@@ -26,7 +26,7 @@ export const clientAppLookupRunner: ClientAppLookupRunner = async (
   return stdout;
 };
 
-/** 由可执行文件路径派生稳定应用 id；大小写归一以适配 Windows 路径。 */
+/** 由应用标识派生稳定应用 id；大小写归一以适配 Windows 路径。 */
 export function toClientAppId(imagePath: string): string {
   return createHash('sha256')
     .update(imagePath.toLowerCase())
@@ -60,8 +60,9 @@ export function toClientAppName(
 
 /**
  * 把 helper 的 TSV 输出解析成「客户端源端口 → 应用」表。
- * 每行格式为 `源端口 \t 进程 ID \t 显示名 \t 可执行文件路径`；路径为空表示进程不可读
- * （通常是系统权限进程），该行直接丢弃而不是伪造条目。
+ * 每行格式为 `源端口 \t 进程 ID \t 显示名 \t 应用标识`；标识通常是可执行文件路径，
+ * 已安装应用则是它的代表程序或 `shell:AppsFolder\<AUMID>`。系统权限进程只有显示名
+ * 而没有标识，仍然登记（UI 用未知图标展示）；两者都缺时才丢弃该行。
  */
 export function parseAppsByPort(
   output: string,
@@ -74,13 +75,15 @@ export function parseAppsByPort(
     }
     const columns = line.split('\t');
     const sourcePort = Number(columns[0]);
+    const displayName = columns[2] ?? '';
     const imagePath = columns[3] ?? '';
-    if (!Number.isInteger(sourcePort) || sourcePort <= 0 || imagePath.length === 0) {
+    const identity = imagePath.length > 0 ? imagePath : displayName;
+    if (!Number.isInteger(sourcePort) || sourcePort <= 0 || identity.length === 0) {
       continue;
     }
     appByPort.set(sourcePort, {
-      id: toClientAppId(imagePath),
-      name: toClientAppName(columns[2], imagePath),
+      id: toClientAppId(identity),
+      name: toClientAppName(displayName, imagePath),
       path: imagePath,
     });
   }

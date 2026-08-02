@@ -49,6 +49,17 @@
   width: 16px;
   height: 16px;
 }
+.clientAppUnknown {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.clientAppLoading {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--hover);
+}
 .hostName {
   display: flex;
   align-items: center;

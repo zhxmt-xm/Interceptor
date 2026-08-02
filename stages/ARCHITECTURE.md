@@ -148,11 +148,15 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 
 > Capture 列表与 Inspector 显示发起流量的本机应用名称与系统图标。反查与取图标全部在原生 helper 完成，Renderer 只见 `appId` 与 data URL，拿不到可执行文件路径。
 
-- **原生 helper**：`apps/desktop/src/main/client-app/windows-helper.cs` 是归属与图标的唯一来源，编译为单文件 exe 随包发布；Main 在 fork Core 时以 `--client-app-helper=<path>` 注入路径，Main 自己取图标时复用同一个 exe。三个子命令：`<proxyPort>` 输出 TSV `sourcePort/PID/displayName/imagePath`，`--icon <path>` 输出 base64 PNG，`--resolve <pid>` 为排查用途。
-- **归属规则**：`GetExtendedTcpTable` 拿到源端口对应 PID，再沿父进程链向上最多 4 层，一旦当前进程是“系统已安装应用”就停——打包应用看 AUMID，传统桌面应用看卸载登记表中 `DisplayName` 存在且 `SystemComponent != 1` 的安装目录。不比较发布者（宿主常用别家运行时），不追进 Windows 目录，没有任何硬编码进程名。
+- **原生 helper**：`apps/desktop/src/main/client-app/windows-helper.cs` 是归属与图标的唯一来源，编译为单文件 exe 随包发布；Main 在 fork Core 时以 `--client-app-helper=<path>` 注入路径，Main 自己取图标时复用同一个 exe。四个子命令：`<proxyPort>` 输出 TSV `sourcePort/PID/displayName/identity`，`--icon <path>` 输出 base64 PNG，`--resolve <pid>` 与 `--apps` 为排查用途。
+- **已安装应用索引**：四个来源合起来正好覆盖“设置 → 应用 → 安装的应用”（实测该机 56 项）——MSIX 包登记表的 `PackageRootFolder`、卸载登记表中 `SystemComponent != 1` 条目的 `InstallLocation`/`DisplayIcon`、`App Paths`、开始菜单快捷方式。索引拆成“主程序完整路径”精确表与“安装目录”前缀表。
+- **归属规则**：`GetExtendedTcpTable` 拿到源端口对应 PID，再沿父进程链一路向上，一旦当前进程属于已安装应用就停。**一律按可执行文件路径判定，不能按 AUMID**——MSIX 宿主派生的 `msedgewebview2.exe` 会继承宿主包身份，按 AUMID 判会让上溯停在 WebView2 上。**不设层数上限**，改用父进程创建时间不得晚于子进程来排除 PID 复用造成的假父子与环。不比较发布者（宿主常用别家运行时），系统目录下只有 MSIX 包才算应用，没有任何硬编码进程名。索引覆盖不到的安装方式（MSI 常不登记目录，如 GlobalProtect）由“停在最后一个可信祖先”兜底。
+- **显示名**：主程序登记名 → 目录登记名 → exe 的 `FileDescription` → 文件名。登记名优先是因为这一列的语义是“哪个应用发出的请求”，`FileDescription` 描述的是组件；主程序优先于目录是因为 Office 套件在卸载表里只有一个条目。
+- **代表标识**：归属结果的 `path` 会被换成应用的代表标识（卸载表 `DisplayIcon` 指向的主程序，或包只有一个应用时的 `shell:AppsFolder\<AUMID>`），让名称、图标、`appId` 三者同源，否则 OneDrive 的 `FileCoAuth.exe`、Outlook 的 `olkexthost.exe` 这类无图标资源的后台组件会拿到通用图标并在 UI 里裂成独立条目。代表标识只取自权威来源：App Paths 与快捷方式只代表单个入口，拿它们代表目录会把 OneNote 显示成 Excel。
+- **系统权限进程**：helper 以普通用户权限运行，对 SYSTEM 服务进程 `OpenProcess` 会被拒（实测 89 个 `svchost.exe` 里 80 个打不开）。此时退到 `CreateToolhelp32Snapshot` 的 `ExeFile` 取进程名，路径为空、无图标；Core 仍登记该条目（以显示名代替路径算 `appId`）。
 - **图标**：走 `IShellItemImageFactory`（与资源管理器同源），不用 `SHGetFileInfo` / `app.getFileIcon`；MSIX/UWP 应用的 exe 只是 stub，后者只能拿到通用图标。取得的 HBITMAP 手工按 32bpp ARGB 拷贝以保留 alpha。
 - **不阻塞捕获**：`ClientAppService`（`proxy-core/src/proxy-core/client-app/entry.ts`）持有端口→应用快照，`beginRequest` 只做同步命中；未命中时经 `setImmediate` 排出捕获栈后再拉 helper，结果以 `exchange-updated` 补齐。`execFile` 的 spawn 是同步系统调用，若在 `beginRequest` 内直接调用会把 `exchange-added` 推迟到子进程创建之后。快照 15 秒过期（防端口复用错认），helper 失败后在同一窗口退避，失败只记 `client-app.lookup-failed` 诊断。
-- **传递边界**：Core 只把 `appId`（exe 路径 sha256 前 16 位）与 `appName` 放进 summary；完整身份（含 path）随 `event-batch` 的 `clientApps` 字段按应用一次性交给 Main，Main 读图标后经 `client-app:icons` 主动推给 Renderer，Renderer 无拉取 API。Renderer 重新加载时 Main 在 `did-finish-load` 补发已知集合。
+- **传递边界**：Core 只把 `appId`（应用标识 sha256 前 16 位）与 `appName` 放进 summary；完整身份（含 path）随 `event-batch` 的 `clientApps` 字段按应用一次性交给 Main，Main 读图标后经 `client-app:icons` 主动推给 Renderer，Renderer 无拉取 API。Renderer 重新加载时 Main 在 `did-finish-load` 补发已知集合。Renderer 侧 `clientAppIcons.get(appId)` 的 `string` / `undefined` / `null` 天然对应“已取到 / 加载中 / 取不到”三态，无需额外状态字段。
 - **平台边界**：非 Windows 上 `ClientAppService.supported` 为 false，列表图标列保留占位但不渲染内容；远程客户端（手机经代理）不做反查。
 
 ## 证书与 HTTPS MITM 架构（M5，已落地）
@@ -366,7 +370,7 @@ Main/Core 同包发布，MessagePort 会暂存 listener 注册前到达的消息
 | `StorageStatusResult` / `StorageUsage` | `core-protocol/src/messages.ts`、`desktop/src/shared/desktop-api.ts` | 存储用量（会话/Exchange/Body计数、DB/Blob/总量；无配额） |
 | `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/storage/interfaces/index.ts` | Core 内部存储域类型；不跨进程，不复用 core-protocol |
 | `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |
-| `ClientAppIdentity` | `packages/core-protocol/src/messages.ts` | 客户端应用身份（id/name/path）；随 `event-batch` 只到 Main，path 不进 Renderer |
+| `ClientAppIdentity` | `packages/core-protocol/src/messages.ts` | 客户端应用身份（id/name/path）；随 `event-batch` 只到 Main，path 不进 Renderer，系统权限进程的 path 为空 |
 
 ## 后续扩展规则
 

@@ -1,5 +1,5 @@
 import { Tooltip } from 'antd';
-import { Copy, X } from 'lucide-react';
+import { AppWindow, Copy, X } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -208,11 +208,17 @@ function ClientAppValue({
   name: string;
 }): React.JSX.Element {
   const icon = useCaptureStore((state) =>
-    appId ? state.clientAppIcons.get(appId) ?? null : null,
+    appId ? state.clientAppIcons.get(appId) : undefined,
   );
   return (
     <span className={styles.clientAppValue} data-parity="capture-inspector-client-app">
-      {icon ? <img className={styles.clientAppIcon} src={icon} alt="" /> : null}
+      {appId === undefined ? null : icon ? (
+        <img className={styles.clientAppIcon} src={icon} alt="" />
+      ) : icon === null ? (
+        <AppWindow className={styles.clientAppUnknown} size={16} strokeWidth={1.8} />
+      ) : (
+        <span className={styles.clientAppLoading} />
+      )}
       {name}
     </span>
   );
