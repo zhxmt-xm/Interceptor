@@ -1,6 +1,6 @@
 ## 新的idea
 
-- 我们能不能加上application和图标？![alt text](image-5.png)
+- [x] **已完成**（2026-07-31，commit `cc11b5e`/`27bcd5f`/`5cdfc2a`）我们能不能加上application和图标？![alt text](image-5.png)
 - 我在想sidebar默认收起，然后顶部的filter全部换到左侧一个分栏，有各种filter，可以折叠，分栏可以收起，filter现状还是不够直观，最好和现在的all/h1/h2那样可以直接点，并且h1最好分为http1.1和其他版本。list和detail仍保持现状 ![alt text](image-6.png)
 - list的host column，可以把path和host位置互换下，因为host可以用左侧来filter，所以path更显眼直观一点
 - composer应该做成postman或proxyman这样的UI格式 ![alt text](image-7.png)

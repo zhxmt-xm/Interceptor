@@ -53,6 +53,10 @@ const SPRITE = [
   S('i-terminal', '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'),
   S('i-dot', '<circle cx="12" cy="12" r="5"/>', { fill: 'currentColor', stroke: 'none' }),
   S('i-grip', '<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>', { fill: 'currentColor', stroke: 'none' }),
+  S('i-panel-left', '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>'),
+  S('i-record', '<circle cx="12" cy="12" r="8.5"/>', { fill: 'currentColor', stroke: 'none' }),
+  S('i-record-off', '<circle cx="12" cy="12" r="8"/>', { sw: 2.2 }),
+  S('i-app-window', '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/><path d="M6 6.5h.01"/><path d="M9.5 6.5h.01"/>'),
 ].join('');
 
 document.body.insertAdjacentHTML(

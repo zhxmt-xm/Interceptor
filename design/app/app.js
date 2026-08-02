@@ -1,5 +1,5 @@
 // Interceptor design SPA — state controller.
-// The whole prototype is driven by window.__setState({view,theme,sidebar,overlay,tab,pop,https,mitm,copy,requestMenu,ruleFilter,bodyPreview}).
+// The whole prototype is driven by window.__setState({view,theme,sidebar,filters,overlay,tab,pop,https,mitm,copy,requestMenu,ruleFilter,bodyPreview}).
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
@@ -73,7 +73,48 @@ function syncCaptureListScrollbar() {
   const scroll = app.querySelector('.list-scroll');
   const head = app.querySelector('.lhead');
   if (!scroll || !head) return;
-  head.style.paddingRight = `${18 + scroll.offsetWidth - scroll.clientWidth}px`;
+  head.style.paddingRight = `${14 + scroll.offsetWidth - scroll.clientWidth}px`;
+}
+
+// Facet groups expand where a value is actually applied; with nothing applied only the first group opens.
+function syncFilterGroups() {
+  const open = new Set();
+  if (app.dataset.filterActive) open.add('application').add('protocol');
+  if (app.dataset.ruleFilter || app.dataset.ruleOptions === 'empty') open.add('rule');
+  if (app.dataset.filterGroup) open.add(app.dataset.filterGroup);
+  if (!open.size) open.add('application');
+  app.querySelectorAll('.fgrp').forEach((group) => group.classList.toggle('on', open.has(group.dataset.grp)));
+  syncFilterBadge();
+}
+
+// Scenes drive the same selection classes a click would, so badges and per-group clears stay honest.
+function applyDemoSelection() {
+  const active = Boolean(app.dataset.filterActive);
+  app.querySelectorAll('.fitem[data-demo]').forEach((row) =>
+    row.classList.toggle('on', row.dataset.demo === (active ? 'on' : 'off')),
+  );
+  const rule = app.dataset.ruleFilter;
+  app.querySelectorAll('.fitem[data-rule]').forEach((row) =>
+    row.classList.toggle('on', row.dataset.rule === (rule ? 'stub' : 'all')),
+  );
+}
+
+// A group is "applied" when anything other than its All row is selected; that also drives the toolbar badge.
+function syncFilterBadge() {
+  let applied = false;
+  app.querySelectorAll('.fgrp').forEach((group) => {
+    const rows = [...group.querySelectorAll('.fitem')];
+    const on = rows.slice(1).some((row) => row.classList.contains('on'));
+    group.classList.toggle('applied', on);
+    applied = applied || on;
+  });
+  app.classList.toggle('hasfilter', applied);
+}
+
+// Restore one group (or every group) to its All row.
+function clearFilterGroup(group) {
+  const rows = [...group.querySelectorAll('.fitem')];
+  rows.forEach((row, index) => row.classList.toggle('on', index === 0));
 }
 
 function setState(s = {}) {
@@ -86,12 +127,18 @@ function setState(s = {}) {
   if (s.view) {
     app.setAttribute('data-view', s.view);
     renderSidebar(s.view);
-    app.classList.remove('showpop', 'thopen', 'lgopen', 'nodetail');
-    delete app.dataset.filtersub;
+    app.classList.remove('showpop', 'thopen', 'lgopen');
+    // Detail starts closed; a scene only opens it by naming an inspector tab or row scene.
+    app.classList.toggle('nodetail', !(s.tab || s.scene || s.detail === 'open'));
     delete app.dataset.tip;
     delete app.dataset.ruleSelect;
     delete app.dataset.requestMenu;
-    if (!s.scene) app.dataset.scene = 'http';
+    if (!s.scene) {
+      app.dataset.scene = 'http';
+      app.querySelectorAll('[data-capture-row]').forEach((row) =>
+        row.classList.toggle('sel', row.dataset.captureRow === 'http'),
+      );
+    }
     if (!s.tab) setInspTab('headers');
   }
   if (s.scene) {
@@ -101,9 +148,15 @@ function setState(s = {}) {
     );
   }
   if (s.pop) app.classList.add('showpop');
-  if ('filtersub' in s) {
-    if (s.filtersub) app.dataset.filtersub = s.filtersub;
-    else delete app.dataset.filtersub;
+  if ('detail' in s) app.classList.toggle('nodetail', s.detail !== 'open');
+  if ('filters' in s) app.dataset.filters = s.filters || 'open';
+  if ('filterGroup' in s) {
+    if (s.filterGroup) app.dataset.filterGroup = s.filterGroup;
+    else delete app.dataset.filterGroup;
+  }
+  if ('filterActive' in s) {
+    if (s.filterActive) app.dataset.filterActive = s.filterActive;
+    else delete app.dataset.filterActive;
   }
   if ('tip' in s) {
     if (s.tip) app.dataset.tip = s.tip;
@@ -157,6 +210,10 @@ function setState(s = {}) {
   // Re-render the sidebar whenever anything affecting the footer switchers changes.
   if (!s.view && (s.theme || s.sidebar || s.lang)) {
     renderSidebar(app.getAttribute('data-view'));
+  }
+  if (s.view || 'filterGroup' in s || 'filterActive' in s || 'ruleFilter' in s || 'ruleOptions' in s) {
+    applyDemoSelection();
+    syncFilterGroups();
   }
   positionFootpop();
   positionActionPopover();
@@ -284,7 +341,7 @@ app.addEventListener('click', (e) => {
       : fileTrigger.dataset.fileTrigger;
     return setState({ fileMenu: next });
   }
-  if (e.target.closest('.fbtn') || e.target.closest('#addaction')) {
+  if (e.target.closest('#addaction')) {
     app.classList.toggle('showpop');
     positionActionPopover();
   }
@@ -318,38 +375,58 @@ app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) =>
   s.addEventListener('click', () => setInspTab(s.dataset.tab)),
 );
 
-// Capture filter cascade, pill / clear actions and inspector close (interactive preview).
+// Capture filter panel, search clear and inspector close (interactive preview).
 app.addEventListener('click', (e) => {
-  // Submenu option -> toggle its multi-select checkbox (innermost match first).
-  const opt = e.target.closest('.fisub-item');
-  if (opt) {
-    const on = !opt.classList.contains('on');
-    opt.classList.toggle('on', on);
-    const cb = opt.querySelector('.cb');
-    cb.classList.toggle('on', on);
-    cb.innerHTML = on ? '<svg><use href="#i-check"/></svg>' : '';
+  // Panel toggle in the list toolbar.
+  if (e.target.closest('.cfilters-toggle')) {
+    return setState({ filters: app.dataset.filters === 'closed' ? 'open' : 'closed' });
+  }
+  // Recording toggle.
+  if (e.target.closest('.rec')) {
+    return setState({ recording: app.dataset.recording === 'paused' ? '' : 'paused' });
+  }
+  // Per-group clear (hover action in the group header) restores that group to All.
+  const groupClear = e.target.closest('.fgrp-clear');
+  if (groupClear) {
+    clearFilterGroup(groupClear.closest('.fgrp'));
+    syncFilterBadge();
     return;
   }
-  // Filter field row -> expand / collapse its checkbox submenu.
-  const field = e.target.closest('.ompop .fi[data-field]');
-  if (field) {
-    const key = field.dataset.field;
-    return setState({ filtersub: app.dataset.filtersub === key ? '' : key });
-  }
-  // Filter pill remove.
-  const pillClose = e.target.closest('.omni .pill .x');
-  if (pillClose) {
-    pillClose.closest('.pill').remove();
+  // Group header -> collapse / expand that facet group.
+  const groupHead = e.target.closest('.fgrp-toggle');
+  if (groupHead) {
+    groupHead.closest('.fgrp').classList.toggle('on');
     return;
   }
-  // Clear all filters.
+  // Facet row -> "All" resets the group, any other value toggles (multi-select = OR).
+  const facet = e.target.closest('.fitem');
+  if (facet) {
+    const rows = [...facet.closest('.fgrp-b').querySelectorAll('.fitem')];
+    const all = rows[0];
+    if (facet === all) rows.forEach((row) => row.classList.toggle('on', row === all));
+    else {
+      facet.classList.toggle('on');
+      all.classList.toggle('on', !rows.slice(1).some((row) => row.classList.contains('on')));
+    }
+    syncFilterBadge();
+    return;
+  }
+  // Clear the request search box and every applied facet.
   if (e.target.closest('.cbtn')) {
-    app.querySelectorAll('.omni .pill').forEach((p) => p.remove());
+    app.querySelectorAll('.fgrp').forEach(clearFilterGroup);
+    syncFilterBadge();
     return;
   }
   // Inspector close -> hide the detail pane; the list expands to full width.
   if (e.target.closest('.iclose')) {
     app.classList.add('nodetail');
+    return;
+  }
+  // Clicking a captured request opens the detail pane.
+  const row = e.target.closest('.list-scroll .row');
+  if (row) {
+    app.querySelectorAll('.list-scroll .row').forEach((r) => r.classList.toggle('sel', r === row));
+    app.classList.remove('nodetail');
     return;
   }
   if (e.target.closest('.request-rule-menu .fi')) {

@@ -22,8 +22,8 @@ design/
 规则:
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
-- Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧只承载侧栏折叠按钮和 feature 名称，右侧只保留窗口控制；状态统一放到底部状态栏，业务命令位于各 feature 内容工具栏。
-- 状态统一由 `window.__setState({view,theme,sidebar,overlay,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu})` 驱动（`tab`=Inspector 页签，`pop`=打开筛选/加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，其余字段驱动当前细节与 overlay 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
+- Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧承载侧栏折叠按钮、feature 名称与该 feature 的一等命令（Capture = Recording + Import/Export），右侧只保留窗口控制；状态统一放到底部状态栏。**侧栏默认收起**，Capture 的全部筛选与搜索位于 list 左侧的可收起筛选分栏。
+- 状态统一由 `window.__setState({view,theme,sidebar,filters,filterGroup,filterActive,overlay,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu})` 驱动（`tab`=Inspector 页签，`filters`=筛选分栏展开/收起，`filterGroup`=展开某个默认折叠的 facet 分组，`filterActive`=多条 facet 生效的场景，`pop`=打开 Rules 的加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，其余字段驱动当前细节与 overlay 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
 
@@ -42,8 +42,8 @@ node design/app/shoot-scenes.mjs                   # 更新当前主题 switcher
 
 - 生成/迭代设计稿的完整流程与陷阱见 `ui-design-mockup` skill(`.github/skills/ui-design-mockup/`)。
 - SPA 内含的 feature 视图(均有 light/dark,截图存于 `app/shots/`):
-  - **capture** — 捕获列表 + Inspector + omni 筛选 + 可折叠活动栏 + 拖拽 splitter
-  - **rules** — 统一规则(Matcher + Rewrite / Map Local / Map Remote / Block / Throttle / Breakpoint action)
+  - **capture** — 左侧筛选分栏(搜索 + Protocol/Application/Host/Method/Status/Content type/Rule facet) + 捕获列表 + Inspector + 两道可拖拽 splitter
+  - **rules** — 统一规则(Matcher + Rewrite / Map Local / Map Remote / Block / Breakpoint action)
   - **composer** — 构造 / 重放请求 + 响应面板
   - **breakpoints** — 运行时暂停队列 + 编辑请求 / 响应 + 放行
   - **settings** — Proxy / Certificates / Appearance / Storage / Privacy / Updates
