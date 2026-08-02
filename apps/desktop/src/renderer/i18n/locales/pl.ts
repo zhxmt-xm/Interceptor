@@ -86,6 +86,7 @@ export const plCatalog = {
   'capture.connected': 'Połączono',
   'capture.general': 'Ogólne',
   'capture.requestUrl': 'URL żądania',
+  'capture.clientApplication': 'Aplikacja kliencka',
   'capture.requestMethod': 'Metoda żądania',
   'capture.statusCode': 'Kod stanu',
   'capture.streamId': 'Identyfikator strumienia',

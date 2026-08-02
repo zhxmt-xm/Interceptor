@@ -2,6 +2,7 @@ import {
   CORE_PROTOCOL_VERSION,
   parseMainToCoreMessage,
   type CaptureExchangeEvent,
+  type ClientAppIdentity,
   type CoreCommand,
   type CoreError,
   type CoreRequest,
@@ -357,7 +358,10 @@ export class CoreRpcServer {
    * 向当前订阅连接推送一批捕获事件；无连接、空批或发送失败返回 null。
    * 调用方：CoreApplication 的事件 flush；返回的 batchSequence 供背压窗口与 ack 对账。
    */
-  sendEventBatch(events: readonly CaptureExchangeEvent[]): number | null {
+  sendEventBatch(
+    events: readonly CaptureExchangeEvent[],
+    clientApps: readonly ClientAppIdentity[] = [],
+  ): number | null {
     const connection = this.connection;
     if (!connection || events.length === 0) {
       return null;
@@ -368,6 +372,7 @@ export class CoreRpcServer {
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence,
       events: [...events],
+      ...(clientApps.length > 0 ? { clientApps: [...clientApps] } : {}),
     });
     return delivered ? batchSequence : null;
   }

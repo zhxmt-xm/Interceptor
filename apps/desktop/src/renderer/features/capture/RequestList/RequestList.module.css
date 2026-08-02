@@ -43,7 +43,7 @@
 }
 .head {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 66px 38px 54px 56px 58px;
+  grid-template-columns: 20px 74px minmax(0, 1fr) 56px 34px 46px 50px 54px;
   align-items: center;
   justify-items: start;
   gap: 12px;

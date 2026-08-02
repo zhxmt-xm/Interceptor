@@ -1,0 +1,21 @@
+/* Monaco draws its own padding, wrapping and font; the host only supplies the frame.
+   Full-size viewers absorb the leftover height of the panel but never go below 320px. */
+.host {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Inline message payloads hug their content instead. */
+.compact {
+  flex: 0 0 auto;
+  min-height: 0;
+  border-radius: 7px;
+}

@@ -84,6 +84,7 @@ export const koCatalog = {
   'capture.connected': '연결됨',
   'capture.general': '일반',
   'capture.requestUrl': '요청 URL',
+  'capture.clientApplication': '클라이언트 앱',
   'capture.requestMethod': '요청 메서드',
   'capture.statusCode': '상태 코드',
   'capture.streamId': '스트림 ID',

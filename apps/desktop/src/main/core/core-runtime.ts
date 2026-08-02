@@ -16,8 +16,10 @@ import {
   type MainToCoreMessage,
 } from '@interceptor/core-protocol';
 import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
+import type { ClientAppIdentity } from '@interceptor/core-protocol';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
+import { resolveClientAppHelperPath } from '../client-app/client-app-helper';
 import type {
   CoreProcessHandle,
   CoreProcessLifecycleMessage,
@@ -149,7 +151,12 @@ export class CoreRuntime {
    * 注册实时捕获事件监听器（跨 CoreProcess 重启持续）；由内部 CoreRpcClient 收批 + 自动 ack。
    * 调用方：DesktopApplication.onReady 向 Renderer 广播捕获事件。
    */
-  onCaptureEvents(listener: (events: CaptureExchangeEvent[]) => void): void {
+  onCaptureEvents(
+    listener: (
+      events: CaptureExchangeEvent[],
+      clientApps: ClientAppIdentity[],
+    ) => void,
+  ): void {
     this.coreRpcClient.onCaptureEvents(listener);
   }
 
@@ -266,11 +273,15 @@ export class CoreRuntime {
    * 调用方：startCoreProcess；protected 仅允许测试子类替换真实 Electron 启动。
    */
   protected launchCoreProcess(): CoreProcessHandle {
+    const clientAppHelper = resolveClientAppHelperPath();
     const launchedCoreProcess = utilityProcess.fork(
       this.resolveCoreProcessEntry(),
       [
         `--data-dir=${this.resolveStorageDirectory()}`,
         `--app-version=${app.getVersion()}`,
+        ...(clientAppHelper
+          ? [`--client-app-helper=${clientAppHelper}`]
+          : []),
       ],
       {
         serviceName: 'Interceptor Proxy Core',

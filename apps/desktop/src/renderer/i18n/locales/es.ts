@@ -84,6 +84,7 @@ export const esCatalog = {
   'capture.connected': 'Conectado',
   'capture.general': 'General',
   'capture.requestUrl': 'URL de la solicitud',
+  'capture.clientApplication': 'Aplicación cliente',
   'capture.requestMethod': 'Método de la solicitud',
   'capture.statusCode': 'Código de estado',
   'capture.streamId': 'ID de flujo',

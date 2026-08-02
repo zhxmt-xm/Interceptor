@@ -83,6 +83,7 @@ export const zhTWCatalog = {
   'capture.connected': '已連線',
   'capture.general': '一般',
   'capture.requestUrl': '請求 URL',
+  'capture.clientApplication': '用戶端應用程式',
   'capture.requestMethod': '請求方法',
   'capture.statusCode': '狀態碼',
   'capture.streamId': 'Stream ID',

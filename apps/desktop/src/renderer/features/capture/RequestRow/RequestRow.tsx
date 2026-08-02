@@ -58,6 +58,10 @@ export const RequestRow = memo(function RequestRow({
   const [contextOpen, setContextOpen] = useState(false);
   const kind = statusKind(summary.statusCode);
   const isTlsTunnel = protocolLabel(summary.protocol) === 'tls';
+  // 图标由 Main 异步推送，通常晚于本行渲染；订阅 map 才能在到达时重新取图。
+  const clientAppIcon = useCaptureStore((state) =>
+    summary.appId ? state.clientAppIcons.get(summary.appId) ?? null : null,
+  );
   const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const timeLabels = {
     closed: t('capture.closed'),
@@ -177,6 +181,21 @@ export const RequestRow = memo(function RequestRow({
         style={style}
         data-automation-id={AutomationIdFactory.captureRequestRow(summary.id)}
       >
+        <span
+          className={styles.clientApp}
+          data-parity={
+            clientAppIcon ? 'capture-list-app-cell' : 'capture-list-app-cell-empty'
+          }
+        >
+          {clientAppIcon ? (
+            <img
+              className={styles.clientAppIcon}
+              src={clientAppIcon}
+              alt={summary.appName ?? ''}
+              title={summary.appName ?? ''}
+            />
+          ) : null}
+        </span>
         <MethodBadge method={summary.method} />
         <span className={styles.host}>
           <span className={styles.hostName}>

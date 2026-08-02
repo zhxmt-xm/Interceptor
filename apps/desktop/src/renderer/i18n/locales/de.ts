@@ -83,6 +83,7 @@ export const deCatalog = {
   'capture.connected': 'Verbunden',
   'capture.general': 'Allgemein',
   'capture.requestUrl': 'Anfrage-URL',
+  'capture.clientApplication': 'Client-Anwendung',
   'capture.requestMethod': 'Anfragemethode',
   'capture.statusCode': 'Statuscode',
   'capture.streamId': 'Stream-ID',

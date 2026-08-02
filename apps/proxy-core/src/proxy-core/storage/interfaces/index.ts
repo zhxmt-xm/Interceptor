@@ -71,7 +71,10 @@ export interface ExchangeInput {
   readonly statusText?: string;
   readonly requestMime?: string;
   readonly responseMime?: string;
-  readonly processName?: string;
+  /** 发起该请求的本机应用 id（可执行文件路径派生）。 */
+  readonly appId?: string;
+  /** 发起该请求的本机应用展示名。 */
+  readonly appName?: string;
   readonly startedAt: number;
   readonly requestSentAt?: number;
   readonly responseStartedAt?: number;
@@ -129,7 +132,8 @@ export interface SessionQueryFilter {
   readonly method?: string;
   readonly status?: number;
   readonly mime?: string;
-  readonly process?: string;
+  /** 按发起流量的本机应用展示名筛选。 */
+  readonly appName?: string;
   readonly search?: string;
   readonly protocol?: "h1" | "h2" | "ws";
 }
@@ -223,6 +227,8 @@ export interface ExchangePatch {
   readonly requestSentAt?: number;
   readonly requestBytes?: number;
   readonly requestBodyId?: string;
+  readonly appId?: string;
+  readonly appName?: string;
   readonly statusCode?: number;
   readonly statusText?: string;
   readonly responseMime?: string;

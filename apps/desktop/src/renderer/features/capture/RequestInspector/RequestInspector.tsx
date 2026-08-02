@@ -4,6 +4,7 @@ import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
+  CaptureBodyRef,
   CaptureHeader,
   CaptureHeaderRuleEffect,
 } from '../../../../shared/desktop-api';
@@ -198,20 +199,105 @@ function StatusValue({ kind, children }: { kind: StatusKind; children: ReactNode
   );
 }
 
+/** 发起请求的本机应用：系统图标 + 展示名；图标未到达时只显示名称。 */
+function ClientAppValue({
+  appId,
+  name,
+}: {
+  appId: string | undefined;
+  name: string;
+}): React.JSX.Element {
+  const icon = useCaptureStore((state) =>
+    appId ? state.clientAppIcons.get(appId) ?? null : null,
+  );
+  return (
+    <span className={styles.clientAppValue} data-parity="capture-inspector-client-app">
+      {icon ? <img className={styles.clientAppIcon} src={icon} alt="" /> : null}
+      {name}
+    </span>
+  );
+}
+
 function Section({
   title,
   count,
+  grow = false,
   children,
 }: {
   title: string;
   count?: ReactNode;
+  grow?: boolean;
   children?: ReactNode;
 }): React.JSX.Element {
   return (
-    <div>
+    <div className={cx(grow && styles.sectionGrow)}>
       <SectionHeader count={count}>{title}</SectionHeader>
       {children}
     </div>
+  );
+}
+
+/** Request/Response 共用的 KV 区块；不给空态文案时无数据就隐藏整段。 */
+function KvSection({
+  title,
+  rows,
+  empty,
+  onOpenRule,
+}: {
+  title: string;
+  rows: KvRow[];
+  empty?: string;
+  onOpenRule?: (ruleId: string) => void;
+}): React.JSX.Element | null {
+  if (rows.length === 0 && !empty) {
+    return null;
+  }
+  return (
+    <Section title={title} count={rows.length}>
+      {rows.length ? (
+        <Kv rows={rows} onOpenRule={onOpenRule} />
+      ) : (
+        <div className={styles.empty}>{empty}</div>
+      )}
+    </Section>
+  );
+}
+
+/** Request/Response 共用的正文区块：只换标题、正文引用、MIME 回退与字节数。 */
+function BodySection({
+  title,
+  body,
+  mime,
+  bytes,
+  url,
+  fallbackName,
+  empty,
+}: {
+  title: string;
+  body: CaptureBodyRef | undefined;
+  mime: string | undefined;
+  bytes: number;
+  url: string;
+  fallbackName: 'request-body' | 'response-body';
+  empty: string;
+}): React.JSX.Element {
+  const { i18n } = useTranslation();
+  const mediaType = body?.mediaType ?? mime;
+  return (
+    <Section
+      title={title}
+      grow
+      count={body ? `${typeLabel(mediaType)} · ${sizeLabel(bytes, i18n.language)}` : undefined}
+    >
+      {body ? (
+        <BodyView
+          body={{ ...body, mediaType }}
+          suggestedFileName={suggestedBodyFileName(url, mediaType, fallbackName)}
+        />
+      ) : (
+        <div className={styles.empty}>{empty}</div>
+      )}
+    </Section>
   );
 }
 
@@ -400,6 +486,14 @@ export function RequestInspector({
                       ? [[t('capture.streamId'), String(detail.streamId)] as KvRow]
                       : []),
                     [t('capture.host'), view.host ?? '—'],
+                    ...(view.appName
+                      ? [[
+                          t('capture.clientApplication'),
+                          <ClientAppValue appId={view.appId} name={view.appName} />,
+                          undefined,
+                          view.appName,
+                        ] as KvRow]
+                      : []),
                     [t('capture.duration'), exchangeTime],
                   ]}
                 />
@@ -407,30 +501,28 @@ export function RequestInspector({
                 <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
             </Section>
-            <Section title={t('capture.responseHeaders')} count={visibleResponseHeaders.length}>
-              {visibleResponseHeaders.length ? (
-                <Kv rows={headersToRows(visibleResponseHeaders)} onOpenRule={onOpenRule} />
-              ) : (
-                <div className={styles.empty}>{t('capture.noResponseHeaders')}</div>
-              )}
-            </Section>
-            <Section title={t('capture.requestHeaders')} count={visibleRequestHeaders.length}>
-              {visibleRequestHeaders.length ? (
-                <Kv rows={headersToRows(visibleRequestHeaders)} onOpenRule={onOpenRule} />
-              ) : (
-                <div className={styles.empty}>{t('capture.noRequestHeaders')}</div>
-              )}
-            </Section>
-            {responseTrailers.length ? (
-              <Section title={t('capture.responseTrailers')} count={responseTrailers.length}>
-                <Kv rows={headersToRows(responseTrailers)} onOpenRule={onOpenRule} />
-              </Section>
-            ) : null}
-            {requestTrailers.length ? (
-              <Section title={t('capture.requestTrailers')} count={requestTrailers.length}>
-                <Kv rows={headersToRows(requestTrailers)} onOpenRule={onOpenRule} />
-              </Section>
-            ) : null}
+            <KvSection
+              title={t('capture.responseHeaders')}
+              rows={headersToRows(visibleResponseHeaders)}
+              empty={t('capture.noResponseHeaders')}
+              onOpenRule={onOpenRule}
+            />
+            <KvSection
+              title={t('capture.requestHeaders')}
+              rows={headersToRows(visibleRequestHeaders)}
+              empty={t('capture.noRequestHeaders')}
+              onOpenRule={onOpenRule}
+            />
+            <KvSection
+              title={t('capture.responseTrailers')}
+              rows={headersToRows(responseTrailers)}
+              onOpenRule={onOpenRule}
+            />
+            <KvSection
+              title={t('capture.requestTrailers')}
+              rows={headersToRows(requestTrailers)}
+              onOpenRule={onOpenRule}
+            />
           </div>
         ) : null}
 
@@ -450,66 +542,34 @@ export function RequestInspector({
                 <div className={styles.empty}>{t('capture.selectRequest')}</div>
               )}
             </Section>
-            <Section title={t('capture.queryParameters')} count={queryRows(url).length}>
-              {queryRows(url).length ? (
-                <Kv rows={queryRows(url)} />
-              ) : (
-                <div className={styles.empty}>{t('capture.noQueryParameters')}</div>
-              )}
-            </Section>
-            <Section
+            <KvSection
+              title={t('capture.queryParameters')}
+              rows={queryRows(url)}
+              empty={t('capture.noQueryParameters')}
+            />
+            <BodySection
               title={t('capture.requestPayload')}
-              count={
-                detail?.requestBody
-                  ? `${typeLabel(detail.requestBody.mediaType ?? detail.requestMime)} · ${sizeLabel(view?.requestBytes ?? 0, i18n.language)}`
-                  : undefined
-              }
-            >
-              {detail?.requestBody ? (
-                <BodyView
-                  body={{
-                    ...detail.requestBody,
-                    mediaType: detail.requestBody.mediaType ?? detail.requestMime,
-                  }}
-                  suggestedFileName={suggestedBodyFileName(
-                    url,
-                    detail.requestBody.mediaType ?? detail.requestMime,
-                    'request-body',
-                  )}
-                />
-              ) : (
-                <div className={styles.empty}>{t('capture.noRequestBody')}</div>
-              )}
-            </Section>
+              body={detail?.requestBody}
+              mime={detail?.requestMime}
+              bytes={view?.requestBytes ?? 0}
+              url={url}
+              fallbackName="request-body"
+              empty={t('capture.noRequestBody')}
+            />
           </div>
         ) : null}
 
         {tab === 'response' ? (
           <div className={styles.panel}>
-            <Section
+            <BodySection
               title={t('capture.body')}
-              count={
-                detail?.responseBody
-                  ? `${typeLabel(view?.responseMime)} · ${sizeLabel(view?.responseBytes ?? 0, i18n.language)}`
-                  : undefined
-              }
-            >
-              {detail?.responseBody ? (
-                <BodyView
-                  body={{
-                    ...detail.responseBody,
-                    mediaType: detail.responseBody.mediaType ?? view?.responseMime,
-                  }}
-                  suggestedFileName={suggestedBodyFileName(
-                    url,
-                    detail.responseBody.mediaType ?? view?.responseMime,
-                    'response-body',
-                  )}
-                />
-              ) : (
-                <div className={styles.empty}>{t('capture.noResponseBody')}</div>
-              )}
-            </Section>
+              body={detail?.responseBody}
+              mime={view?.responseMime}
+              bytes={view?.responseBytes ?? 0}
+              url={url}
+              fallbackName="response-body"
+              empty={t('capture.noResponseBody')}
+            />
           </div>
         ) : null}
 
@@ -571,20 +631,18 @@ export function RequestInspector({
 
         {tab === 'cookies' ? (
           <div className={styles.panel}>
-            <Section title={t('capture.requestCookies')} count={requestCookieRows(requestHeaders).length}>
-              {requestCookieRows(requestHeaders).length ? (
-                <Kv rows={requestCookieRows(requestHeaders)} onOpenRule={onOpenRule} />
-              ) : (
-                <div className={styles.empty}>{t('capture.noRequestCookies')}</div>
-              )}
-            </Section>
-            <Section title={t('capture.responseCookies')} count={responseCookieRows(responseHeaders).length}>
-              {responseCookieRows(responseHeaders).length ? (
-                <Kv rows={responseCookieRows(responseHeaders)} onOpenRule={onOpenRule} />
-              ) : (
-                <div className={styles.empty}>{t('capture.noResponseCookies')}</div>
-              )}
-            </Section>
+            <KvSection
+              title={t('capture.requestCookies')}
+              rows={requestCookieRows(requestHeaders)}
+              empty={t('capture.noRequestCookies')}
+              onOpenRule={onOpenRule}
+            />
+            <KvSection
+              title={t('capture.responseCookies')}
+              rows={responseCookieRows(responseHeaders)}
+              empty={t('capture.noResponseCookies')}
+              onOpenRule={onOpenRule}
+            />
           </div>
         ) : null}
 

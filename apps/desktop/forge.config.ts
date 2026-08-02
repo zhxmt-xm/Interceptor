@@ -28,6 +28,10 @@ const systemProxyResources = path.join(
   desktopDirectory,
   'dist/system-proxy',
 );
+const clientAppResources = path.join(
+  desktopDirectory,
+  'dist/client-app',
+);
 const windowsCertificateFile = process.env.WINDOWS_CERTIFICATE_FILE;
 const windowsCertificatePassword = process.env.WINDOWS_CERTIFICATE_PASSWORD;
 const windowsSign: WindowsSignOptions | undefined = windowsCertificateFile
@@ -113,6 +117,7 @@ const config: ForgeConfig = {
       ...(process.platform === 'win32' || process.platform === 'darwin'
         ? [systemProxyResources]
         : []),
+      ...(process.platform === 'win32' ? [clientAppResources] : []),
     ],
     executableName: 'Interceptor',
     icon: packageIcon,

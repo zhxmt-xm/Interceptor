@@ -25,7 +25,7 @@ export interface SessionsQueryCommand {
       method?: string;
       status?: number;
       mime?: string;
-      process?: string;
+      appName?: string;
       search?: string;
       protocol?: 'h1' | 'h2' | 'ws';
     };
@@ -229,7 +229,7 @@ export interface HarExportStartCommand {
             method?: string;
             status?: number;
             mime?: string;
-            process?: string;
+            appName?: string;
             search?: string;
             protocol?: 'h1' | 'h2' | 'ws';
           };
@@ -574,6 +574,16 @@ export interface ConnectionProbeResult {
   };
 }
 
+/**
+ * 发起本机流量的客户端应用身份。
+ * `path` 只在 Core → Main 之间流转供取应用图标，绝不转发给 Renderer。
+ */
+export interface ClientAppIdentity {
+  id: string;
+  name: string;
+  path: string;
+}
+
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
 export type DiagnosticProcess = 'core' | 'main' | 'renderer';
 export type DiagnosticOutcome =
@@ -850,6 +860,10 @@ export interface CaptureExchangeSummary {
   responseBytes: number;
   /** 对该 Exchange 实际执行过至少一个 action 的规则 id，按首次命中顺序去重。 */
   ruleIds?: string[];
+  /** 发起该请求的本机应用 id；远程设备或无法解析时省略。 */
+  appId?: string;
+  /** 发起该请求的本机应用展示名；与 appId 同时存在。 */
+  appName?: string;
 }
 
 export interface CaptureExchangeEvent {
@@ -915,6 +929,12 @@ export interface CoreEventBatch {
   protocolVersion: typeof CORE_PROTOCOL_VERSION;
   batchSequence: number;
   events: CaptureExchangeEvent[];
+  /**
+   * 本批次中首次出现、尚未下发过的客户端应用身份。
+   * Core 是唯一能解析出可执行文件路径的一侧，因此随事件一次性交给 Main 取图标，
+   * 避免 Main 再按 appId 回问一次。
+   */
+  clientApps?: ClientAppIdentity[];
 }
 
 export interface CoreEventAck {

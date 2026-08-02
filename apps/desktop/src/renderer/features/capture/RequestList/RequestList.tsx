@@ -164,6 +164,7 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
         className={styles.head}
         style={{ paddingRight: 18 + scrollbarWidth }}
       >
+        <span data-parity="capture-list-app-header" />
         <span>{t('capture.method')}</span>
         <span>{t('capture.hostPath')}</span>
         <span data-parity="capture-list-status-header">{t('capture.status')}</span>

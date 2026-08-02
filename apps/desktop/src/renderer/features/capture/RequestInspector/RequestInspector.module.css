@@ -125,7 +125,16 @@
 .panel {
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 0;
   gap: 22px;
+}
+/* The body section absorbs the panel's leftover height so the viewer can fill it. */
+.sectionGrow {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 0;
 }
 
 .kv {
@@ -219,6 +228,17 @@ button.ruleEffect:hover {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
+}
+.clientAppValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+}
+.clientAppIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 .statusValue .statusDot {
   display: inline-block;

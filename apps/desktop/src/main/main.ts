@@ -13,15 +13,22 @@ import {
   shell,
 } from 'electron';
 
+import type { ClientAppIdentity } from '@interceptor/core-protocol';
+
 import {
   DESKTOP_IPC_CHANNELS,
   type CaptureExchangeEvent,
+  type ClientAppIcon,
   type CertificateInfo,
   type CoreProcessStatus,
   type UpdateStatus,
 } from '../shared/desktop-api';
 import { CertificateService } from './certificates/certificate-service';
 import { TrustStoreService } from './certificates/trust-store-service';
+import {
+  readClientAppIcon,
+  resolveClientAppHelperPath,
+} from './client-app/client-app-helper';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import type {
@@ -87,6 +94,8 @@ class DesktopApplication {
   private pendingCoreFailureDetail: string | null = null;
   /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
   private systemProxyRecovery: Promise<void> | null = null;
+  /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
+  private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
 
   start(): void {
@@ -173,8 +182,9 @@ class DesktopApplication {
       }
       this.broadcastCoreProcessStatus(status);
     });
-    this.coreRuntime.onCaptureEvents((events) => {
+    this.coreRuntime.onCaptureEvents((events, clientApps) => {
       this.broadcastCaptureEvents(events);
+      this.loadClientAppIcons(clientApps);
     });
     this.coreRuntime.onCoreRpcProtocolIssue((detail) => {
       this.diagnostics.warn('main.core-rpc.message-rejected', {
@@ -250,6 +260,15 @@ class DesktopApplication {
     }
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
+    // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。
+    mainWindow.webContents.on('did-finish-load', () => {
+      this.broadcastClientAppIcons(
+        [...this.clientAppIcons].map(([clientAppId, icon]) => ({
+          clientAppId,
+          icon,
+        })),
+      );
+    });
     mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     mainWindow.webContents.on('will-navigate', (event, url) => {
       if (!this.isTrustedRendererNavigation(url)) {
@@ -1103,6 +1122,35 @@ class DesktopApplication {
     );
   }
 
+  /**
+   * 读取 Core 随事件批交来的新应用图标，取完即推给 Renderer。
+   * 图标按应用而非按请求去重，因此不会随每条 Exchange 重复传输。
+   */
+  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {
+    const helperPath = resolveClientAppHelperPath();
+    if (!helperPath) {
+      return;
+    }
+    for (const clientApp of clientApps) {
+      if (this.clientAppIcons.has(clientApp.id)) {
+        continue;
+      }
+      // 先占位，避免同一应用在读取期间被重复发起。
+      this.clientAppIcons.set(clientApp.id, null);
+      void readClientAppIcon(helperPath, clientApp.path)
+        .catch((error: unknown) => {
+          this.diagnostics.warn('main.client-app.icon-failed', {
+            errorCode: error instanceof Error ? error.name : 'unknown',
+          });
+          return null;
+        })
+        .then((icon) => {
+          this.clientAppIcons.set(clientApp.id, icon);
+          this.broadcastClientAppIcons([{ clientAppId: clientApp.id, icon }]);
+        });
+    }
+  }
+
   private broadcastCoreProcessStatus(status: CoreProcessStatus): void {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
@@ -1119,6 +1167,18 @@ class DesktopApplication {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.captureEvents, events);
+      }
+    }
+  }
+
+  /** 把已取到的本机应用图标广播给所有 Renderer 窗口。 */
+  private broadcastClientAppIcons(icons: ClientAppIcon[]): void {
+    if (icons.length === 0) {
+      return;
+    }
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.clientAppIcons, icons);
       }
     }
   }

@@ -65,6 +65,8 @@ export let diagnosticsDatabasePath = '';
 export let archiveWorkerEntry = '';
 /** 已构建的 Diagnostics Worker bundle 绝对路径。 */
 export let diagnosticsWorkerEntry = '';
+/** 本机客户端应用 helper 路径（--client-app-helper）；平台不支持时为 null。 */
+export let clientAppHelperPath: string | null = null;
 
 /**
  * 解析 Main 经 fork 参数注入的运行期值并解析 worker bundle 路径，赋给上面的模块变量。
@@ -80,6 +82,7 @@ export function initializeRuntime(argv: readonly string[]): void {
     : '';
   archiveWorkerEntry = resolveWorkerEntry('archive');
   diagnosticsWorkerEntry = resolveWorkerEntry('diagnostics');
+  clientAppHelperPath = readArg(argv, '--client-app-helper=') ?? null;
 }
 
 /**

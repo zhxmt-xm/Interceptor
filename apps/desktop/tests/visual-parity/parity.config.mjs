@@ -20,6 +20,10 @@ export const views = [
       'Settings',
       'Theme',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
+      { name: 'Inspector client app', parity: 'capture-inspector-client-app' },
+      { name: 'List app header', parity: 'capture-list-app-header' },
+      { name: 'List app cell', parity: 'capture-list-app-cell' },
+      { name: 'List app cell empty', parity: 'capture-list-app-cell-empty' },
       { name: 'List status header', parity: 'capture-list-status-header' },
       { name: 'List status cell', parity: 'capture-list-status-cell' },
       { name: 'List protocol header', parity: 'capture-list-proto-header' },
@@ -502,9 +506,9 @@ export const views = [
       {
         name: 'Limited body preview',
         designSelector: '.body-preview-limited',
-        appSelector: '[data-parity="capture-body-view"] .cm-editor',
+        appSelector: '[data-parity="capture-body-preview"]',
       },
-      'Showing the first 1 MB of 2.4 MB. The full body remains captured for export.',
+      'Showing the first 5 MB of 12 MB. The full body remains captured for export.',
     ],
   },
   {

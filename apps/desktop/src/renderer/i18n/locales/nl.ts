@@ -83,6 +83,7 @@ export const nlCatalog = {
   'capture.connected': 'Verbonden',
   'capture.general': 'Algemeen',
   'capture.requestUrl': 'Verzoek-URL',
+  'capture.clientApplication': 'Clienttoepassing',
   'capture.requestMethod': 'Verzoekmethode',
   'capture.statusCode': 'Statuscode',
   'capture.streamId': 'Stream-ID',

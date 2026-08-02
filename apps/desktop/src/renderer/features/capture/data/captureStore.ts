@@ -33,6 +33,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   inspectorTab: 'headers',
   inspectorWidth: 500,
   showQueryParams: loadShowQueryParams(),
+  clientAppIcons: new Map(),
 
   select: (id) => set({ selectedId: id }),
 
@@ -153,5 +154,16 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     } else if (mutated) {
       set({ rows });
     }
+  },
+
+  applyClientAppIcons: (icons) => {
+    if (icons.length === 0) {
+      return;
+    }
+    const next = new Map(get().clientAppIcons);
+    for (const { clientAppId, icon } of icons) {
+      next.set(clientAppId, icon);
+    }
+    set({ clientAppIcons: next });
   },
 }));

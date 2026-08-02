@@ -12,6 +12,7 @@ design/
     ├── index.html           # Shell V2 外壳 + 所有 feature 主视图/状态栏 + overlay
     ├── app.css              # 令牌 + 外壳 + 各 feature 样式(按 [data-view]/.v-* 作用域)
     ├── app.js               # 状态控制：侧栏导航/主题/折叠/overlay/页签/弹窗 + window.__setState
+    ├── monaco.js            # 正文查看器底座：给 [data-monaco] 挂载只读 Monaco + 四套主题
     ├── sprite.js            # 注入 SVG 图标 sprite
     ├── shoot.mjs            # Playwright 截图:framed + full(滚动全展开)
     ├── shoot-scenes.mjs     # 当前主题 switcher 的场景截图

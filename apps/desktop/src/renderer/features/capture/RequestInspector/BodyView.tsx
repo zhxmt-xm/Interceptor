@@ -1,48 +1,23 @@
-import { json } from '@codemirror/lang-json';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import type { Extension } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import { tags } from '@lezer/highlight';
-import CodeMirror from '@uiw/react-codemirror';
 import { Copy, Download, FileAudio2, FileVideo2, Info } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import {
-  BODY_PREVIEW_MAX_BYTES,
-  type CaptureBodyRef,
-  type TransferJobSnapshot,
+import type {
+  CaptureBodyRef,
+  TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Button, IconButton, Segmented, useClipboardCopy } from '../../../components';
+import { Button, CodeViewer, IconButton, Segmented, useClipboardCopy } from '../../../components';
 import { readCompleteBody } from '../data/readCompleteBody';
 import { sizeLabel } from '../utils';
+import {
+  type BodyViewMode,
+  bodyPreviewRequest,
+  bodyTextForMode,
+  isMediaMime,
+  toHexDump,
+} from './bodyContent';
 import styles from './BodyView.module.css';
-
-/** JSON 语法高亮：纯文本色（key 紫 / string 绿 / number-bool-null 蓝 / 标点浅灰），
- *  无 token 背景，1:1 对应 design/app/app.css 的 .jsonv jk/js/jn/jp。 */
-const jsonHighlightStyle = HighlightStyle.define([
-  { tag: tags.propertyName, color: 'var(--purple)' },
-  { tag: tags.string, color: 'var(--green)' },
-  { tag: [tags.number, tags.bool, tags.null], color: 'var(--blue)' },
-  {
-    tag: [tags.punctuation, tags.separator, tags.bracket, tags.squareBracket, tags.brace],
-    color: 'var(--text-3)',
-    backgroundColor: 'transparent',
-  },
-]);
-
-/** 编辑器外观（前景/gutter/选区）取代 CodeMirror 内置 light/dark 预设，改走设计 token。 */
-function createEditorTheme(dark: boolean): Extension {
-  return EditorView.theme({
-    '&': { color: 'var(--text)', backgroundColor: 'transparent' },
-    '.cm-content': { caretColor: 'var(--text)' },
-    '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-3)', border: 'none' },
-    '.cm-activeLine': { backgroundColor: 'transparent' },
-    '.cm-activeLineGutter': { backgroundColor: 'transparent' },
-    '.cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'var(--sel) !important' },
-  }, { dark });
-}
 
 interface BodyViewProps {
   body: CaptureBodyRef;
@@ -57,143 +32,7 @@ interface LoadedBody {
   decodeStatus?: string;
 }
 
-export type BodyViewMode = 'auto' | 'text' | 'json' | 'hex';
-
-export interface BodyPreviewRequest {
-  length: number;
-  decode: boolean;
-  limited: boolean;
-}
-
-/** 计算安全的正文预览读取范围；压缩输入不完整时禁止尝试解码。 */
-export function bodyPreviewRequest(body: CaptureBodyRef): BodyPreviewRequest {
-  const length = Math.min(body.encodedSize, BODY_PREVIEW_MAX_BYTES);
-  const encodings = body.contentEncoding
-    ?.split(',')
-    .map((encoding) => encoding.trim().toLowerCase())
-    .filter((encoding) => encoding && encoding !== 'identity') ?? [];
-  return {
-    length,
-    decode: encodings.length > 0,
-    limited: body.encodedSize > length,
-  };
-}
-
-export function isTextMime(mime: string | undefined): boolean {
-  if (!mime) {
-    return false;
-  }
-  const essence = mime.split(';')[0]?.trim().toLowerCase() ?? '';
-  return (
-    essence.startsWith('text/') ||
-    essence === 'application/json' ||
-    essence.endsWith('+json') ||
-    essence === 'application/javascript' ||
-    essence === 'application/x-javascript' ||
-    essence === 'application/ecmascript' ||
-    essence === 'application/xml' ||
-    essence.endsWith('+xml') ||
-    essence === 'application/x-www-form-urlencoded' ||
-    essence === 'application/graphql' ||
-    essence === 'application/yaml' ||
-    essence === 'application/x-yaml' ||
-    essence.endsWith('+yaml') ||
-    essence === 'application/x-ndjson' ||
-    essence === 'application/json-seq' ||
-    essence === 'application/x-json-stream'
-  );
-}
-
-/** 音视频正文不进入 Renderer 预览，只允许 Core 流式保存。 */
-export function isMediaMime(mime: string | undefined): boolean {
-  const essence = mime?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
-  return essence.startsWith('video/') || essence.startsWith('audio/');
-}
-
-export function isJsonMime(mime: string | undefined): boolean {
-  const essence = mime?.split(';')[0]?.trim().toLowerCase() ?? '';
-  return essence === 'application/json'
-    || essence.endsWith('+json')
-    || essence === 'application/x-ndjson'
-    || essence === 'application/json-seq'
-    || essence === 'application/x-json-stream';
-}
-
-/** Unknown MIME falls back to text only for valid UTF-8 with no binary controls. */
-export function detectTextBody(
-  bytes: Uint8Array,
-  mime: string | undefined,
-): { text: string; json: boolean } | null {
-  let decoded: string;
-  try {
-    decoded = new TextDecoder('utf-8', { fatal: !isTextMime(mime) }).decode(bytes);
-  } catch {
-    return null;
-  }
-  if (!isTextMime(mime)) {
-    for (const character of decoded) {
-      const code = character.charCodeAt(0);
-      if (code < 32 && character !== '\n' && character !== '\r' && character !== '\t') {
-        return null;
-      }
-    }
-  }
-  const trimmed = decoded.trim();
-  const json = isJsonMime(mime) || (
-    (trimmed.startsWith('{') || trimmed.startsWith('['))
-    && (() => {
-      try {
-        JSON.parse(trimmed);
-        return true;
-      } catch {
-        return false;
-      }
-    })()
-  );
-  return { text: json ? prettyJson(decoded) : decoded, json };
-}
-
-/** Resolve the selected display mode without hiding malformed text from the user. */
-export function bodyTextForMode(
-  bytes: Uint8Array,
-  mime: string | undefined,
-  mode: BodyViewMode,
-): { text: string; json: boolean } | null {
-  if (mode === 'hex') {
-    return null;
-  }
-  if (mode === 'auto') {
-    return detectTextBody(bytes, mime);
-  }
-  const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-  return mode === 'json'
-    ? { text: prettyJson(decoded), json: true }
-    : { text: decoded, json: false };
-}
-
-export function toHexDump(bytes: Uint8Array, bytesPerLine = 16): string {
-  const lines: string[] = [];
-  const lineWidth = Math.max(4, bytesPerLine);
-  for (let offset = 0; offset < bytes.length; offset += lineWidth) {
-    const slice = bytes.subarray(offset, offset + lineWidth);
-    const hex = Array.from(slice, (b) => b.toString(16).padStart(2, '0')).join(' ');
-    const ascii = Array.from(slice, (b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.')).join('');
-    lines.push(
-      `${offset.toString(16).padStart(8, '0')}  ${hex.padEnd(lineWidth * 3 - 1, ' ')}  ${ascii}`,
-    );
-  }
-  return lines.join('\n');
-}
-
-function prettyJson(text: string): string {
-  try {
-    return JSON.stringify(JSON.parse(text), null, 2);
-  } catch {
-    return text;
-  }
-}
-
-/** 按需加载有限正文预览：文本走 CodeMirror（JSON 高亮），二进制走 hex dump。 */
+/** 按需加载有限正文预览：文本走 Monaco（按 MIME 选语言），二进制走 hex dump。 */
 export function BodyView({
   body,
   compact = false,
@@ -209,9 +48,6 @@ export function BodyView({
   const [saveError, setSaveError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hexBytesPerLine, setHexBytesPerLine] = useState(16);
-  const isDark = document.documentElement.dataset.theme === 'dark'
-    || document.documentElement.dataset.theme === 'ember';
-  const editorTheme = useMemo(() => createEditorTheme(isDark), [isDark]);
   const media = isMediaMime(body.mediaType);
 
   useEffect(() => {
@@ -430,18 +266,11 @@ export function BodyView({
             {t('capture.failedDecodeBody', { encoding: body.contentEncoding })}
           </div>
         ) : null}
-        <CodeMirror
+        <CodeViewer
           value={text.text}
-          editable={false}
-          theme={editorTheme}
-          extensions={text.json
-            ? [json(), syntaxHighlighting(jsonHighlightStyle), EditorView.lineWrapping]
-            : [EditorView.lineWrapping]}
-          basicSetup={{
-            lineNumbers: !compact,
-            foldGutter: false,
-            highlightActiveLine: false,
-          }}
+          language={text.language}
+          compact={compact}
+          parityId="capture-body-preview"
         />
       </div>
     );

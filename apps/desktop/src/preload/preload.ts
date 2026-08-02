@@ -5,6 +5,7 @@ import {
   CoreProcessStatus,
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
+  type ClientAppIcon,
   type UpdateStatus,
 } from '../shared/desktop-api';
 
@@ -104,6 +105,19 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.on(DESKTOP_IPC_CHANNELS.captureEvents, handler);
     return () => {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureEvents, handler);
+    };
+  },
+  onClientAppIcons: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      icons: ClientAppIcon[],
+    ) => {
+      listener(icons);
+    };
+
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.clientAppIcons, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.clientAppIcons, handler);
     };
   },
   getCertificateStatus: () =>

@@ -84,6 +84,7 @@ export const jaCatalog = {
   'capture.connected': '接続済み',
   'capture.general': '一般',
   'capture.requestUrl': 'リクエスト URL',
+  'capture.clientApplication': 'クライアントアプリ',
   'capture.requestMethod': 'リクエストメソッド',
   'capture.statusCode': 'ステータスコード',
   'capture.streamId': 'ストリーム ID',

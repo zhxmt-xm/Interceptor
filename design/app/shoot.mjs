@@ -112,6 +112,7 @@ await mkdir(shotsRoot, { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge' });
 const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1360, height: 920 } });
 await page.goto(fileUrl, { waitUntil: 'networkidle' });
+await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 60_000 });
 await page.addStyleTag({ content: STABILIZE });
 await page.evaluate(() => { const c = document.querySelector('.dock'); if (c) c.style.display = 'none'; });
 await page.waitForTimeout(250);
@@ -134,6 +135,9 @@ async function shoot(list) {
       ...st,
     }), s.state);
     await page.waitForTimeout(140);
+    // Monaco hosts inside a hidden tab measure as zero until the tab is visible.
+    await page.evaluate(() => window.__monacoRelayout());
+    await page.waitForTimeout(60);
     const dest = path.join(shotsRoot, s.theme, s.feature);
     await mkdir(dest, { recursive: true });
     await app.screenshot({ path: path.join(dest, `${s.variant}.png`) });

@@ -86,6 +86,7 @@ export const ukCatalog = {
   'capture.connected': 'Підключено',
   'capture.general': 'Загальні',
   'capture.requestUrl': 'URL запиту',
+  'capture.clientApplication': 'Клієнтський застосунок',
   'capture.requestMethod': 'Метод запиту',
   'capture.statusCode': 'Код статусу',
   'capture.streamId': 'Ідентифікатор потоку',

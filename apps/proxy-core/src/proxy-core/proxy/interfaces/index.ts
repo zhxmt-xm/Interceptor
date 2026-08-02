@@ -131,6 +131,10 @@ export interface TrackedExchange {
   responseEncoding?: string;
   /** 命中的规则 id，按首次出现顺序去重。 */
   readonly ruleIds: Set<string>;
+  /** 发起该请求的本机应用 id；远程客户端或解析失败时为 undefined。 */
+  appId?: string;
+  /** 发起该请求的本机应用展示名。 */
+  appName?: string;
   /** 串行化该 Exchange 的所有存储写入，保证顺序与幂等。 */
   tail: Promise<void>;
 }

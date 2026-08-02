@@ -1,5 +1,6 @@
 import type {
   CaptureExchangeEvent,
+  ClientAppIcon,
   CaptureExchangeSummary,
 } from '../../../shared/desktop-api';
 import {
@@ -97,6 +98,11 @@ export interface CaptureState {
   inspectorWidth: number;
   /** 列表/详情 path 是否展示 query 参数；默认关闭（只显示 path，不含 params）。持久化到 localStorage。 */
   showQueryParams: boolean;
+  /**
+   * 已收到的本机应用图标：应用 id → PNG data URL（不可读为 null）。
+   * Main 取到图标才推送，通常晚于 Exchange 到达，因此必须是响应式状态。
+   */
+  clientAppIcons: Map<string, string | null>;
 
   select(id: string | null): void;
   setSegment(segment: ProtocolSegment): void;
@@ -116,4 +122,5 @@ export interface CaptureState {
   loadFailed(message: string): void;
   replaceAllRows(rows: CaptureExchangeSummary[], syncRevision: number): void;
   applyEvents(events: CaptureExchangeEvent[]): void;
+  applyClientAppIcons(icons: ClientAppIcon[]): void;
 }

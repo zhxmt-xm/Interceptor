@@ -17,6 +17,7 @@ const STABILIZE = '*{transition:none!important;animation:none!important;caret-co
 const browser = await chromium.launch({ channel: 'msedge' });
 const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1360, height: 920 } });
 await page.goto(fileUrl, { waitUntil: 'networkidle' });
+await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 60_000 });
 await page.addStyleTag({ content: STABILIZE });
 await page.evaluate(() => { const c = document.querySelector('.dock'); if (c) c.style.display = 'none'; });
 

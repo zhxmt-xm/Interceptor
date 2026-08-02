@@ -84,6 +84,7 @@ export const itCatalog = {
   'capture.connected': 'Connesso',
   'capture.general': 'Generale',
   'capture.requestUrl': 'URL richiesta',
+  'capture.clientApplication': 'Applicazione client',
   'capture.requestMethod': 'Metodo richiesta',
   'capture.statusCode': 'Codice di stato',
   'capture.streamId': 'ID stream',

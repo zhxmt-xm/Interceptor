@@ -107,6 +107,8 @@ export class TemporaryCaptureStore {
       ...(patch.requestBodyId !== undefined
         ? { requestBodyId: patch.requestBodyId }
         : {}),
+      ...(patch.appId !== undefined ? { appId: patch.appId } : {}),
+      ...(patch.appName !== undefined ? { appName: patch.appName } : {}),
       ...(patch.statusCode !== undefined ? { statusCode: patch.statusCode } : {}),
       ...(patch.statusText !== undefined ? { statusText: patch.statusText } : {}),
       ...(patch.responseMime !== undefined
@@ -513,6 +515,8 @@ export class TemporaryCaptureStore {
           : undefined,
       requestBytes: exchange.requestBytes ?? 0,
       responseBytes: exchange.responseBytes ?? 0,
+      ...(exchange.appId !== undefined ? { appId: exchange.appId } : {}),
+      ...(exchange.appName !== undefined ? { appName: exchange.appName } : {}),
       ...(exchange.ruleIds?.length ? { ruleIds: [...exchange.ruleIds] } : {}),
     };
   }
@@ -588,7 +592,7 @@ export class TemporaryCaptureStore {
     ) {
       return false;
     }
-    if (filter.process && exchange.processName !== filter.process) {
+    if (filter.appName && exchange.appName !== filter.appName) {
       return false;
     }
     if (filter.protocol && !this.matchesProtocol(exchange.protocol, filter.protocol)) {

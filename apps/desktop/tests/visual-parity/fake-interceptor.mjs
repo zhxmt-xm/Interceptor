@@ -1,4 +1,23 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const startedAt = Date.parse('2026-07-16T12:00:00.000Z');
+
+/** 复用设计稿里从系统提取的真实应用图标，保证两侧比较的是同一张位图。 */
+const iconsDirectory = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../../design/app/icons',
+);
+function clientAppIconDataUrl(name) {
+  const bytes = readFileSync(path.join(iconsDirectory, `${name}.png`));
+  return `data:image/png;base64,${bytes.toString('base64')}`;
+}
+const clientApps = {
+  edge: { id: 'app-edge', name: 'Microsoft Edge' },
+  node: { id: 'app-node', name: 'Node.js' },
+  code: { id: 'app-code', name: 'Visual Studio Code' },
+};
 
 const grpcRequestPayload = Array.from(
   new TextEncoder().encode('watch orders for account 42'),
@@ -97,8 +116,28 @@ const sessions = [
   summary({ id: 'http-10', host: 'telemetry.example.com', path: '/v1/events', protocol: 'h2', statusCode: 202, responseMime: 'application/json', responseBytes: 32, durationMs: 91, method: 'POST' }),
 ];
 sessions[0].ruleIds = ['rule-auth'];
+// 与设计稿一一对应；api.internal.local 保持无归属，覆盖进程不可读的降级形态。
+const clientAppBySessionId = {
+  'http-1': clientApps.edge,
+  'tls-tunnel': clientApps.edge,
+  'http-2': clientApps.edge,
+  'http-3': clientApps.edge,
+  'http-4': clientApps.edge,
+  'http-5': clientApps.node,
+  'http-6': clientApps.code,
+  'grpc-fixture': clientApps.node,
+  'ws-fixture': clientApps.edge,
+  'http-7': clientApps.node,
+  'http-9': clientApps.edge,
+  'http-10': clientApps.edge,
+};
 sessions.forEach((session, index) => {
   session.startedAt = startedAt + index * 1_000;
+  const clientApp = clientAppBySessionId[session.id];
+  if (clientApp) {
+    session.appId = clientApp.id;
+    session.appName = clientApp.name;
+  }
 });
 
 const bodyText = {
@@ -369,6 +408,11 @@ export const fakeInterceptorFixture = {
     websocketBreakpointsEnabled: true,
     grpcMessages,
     bodies,
+    clientAppIcons: [
+      { clientAppId: clientApps.edge.id, icon: clientAppIconDataUrl('edge') },
+      { clientAppId: clientApps.node.id, icon: clientAppIconDataUrl('node') },
+      { clientAppId: clientApps.code.id, icon: clientAppIconDataUrl('code') },
+    ],
   },
   rules: {
     revision: 42,
@@ -487,7 +531,7 @@ export function installFakeInterceptor({
     const largeSummary = {
       ...fixture.capture.sessions[0],
       responseMime: 'text/html; charset=utf-8',
-      responseBytes: 2.4 * 1024 * 1024,
+      responseBytes: 12 * 1024 * 1024,
     };
     fixture.capture.sessions[0] = largeSummary;
     fixture.capture.bodies['large-text-response-body'] = Array.from(
@@ -503,7 +547,7 @@ export function installFakeInterceptor({
       responseBody: {
         bodyHash: 'large-text-response-body',
         mediaType: 'text/html; charset=utf-8',
-        encodedSize: 2.4 * 1024 * 1024,
+        encodedSize: 12 * 1024 * 1024,
         truncated: false,
         decodeStatus: 'ok',
       },
@@ -705,6 +749,11 @@ export function installFakeInterceptor({
       return captureStatus;
     },
     onCaptureEvents: () => () => undefined,
+    onClientAppIcons: (listener) => {
+      // 真实环境里图标由 Main 异步推送；parity 场景一次交付全部。
+      queueMicrotask(() => listener(fixture.capture.clientAppIcons));
+      return () => undefined;
+    },
     querySessions: async (request) => ({
       items: !request.filter?.sessionId || request.filter.sessionId === captureStatus.sessionId
         ? fixture.capture.sessions

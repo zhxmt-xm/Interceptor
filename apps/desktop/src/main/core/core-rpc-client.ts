@@ -4,6 +4,7 @@ import {
   CORE_PROTOCOL_VERSION,
   parseCoreToMainMessage,
   type CaptureExchangeEvent,
+  type ClientAppIdentity,
   type CoreCommand,
   type CoreEventBatch,
   type CoreResult,
@@ -68,7 +69,10 @@ export class CoreRpcClient {
   private removeMessageListener: (() => void) | null = null;
   private removeCloseListener: (() => void) | null = null;
   private captureEventListener:
-    | ((events: CaptureExchangeEvent[]) => void)
+    | ((
+        events: CaptureExchangeEvent[],
+        clientApps: ClientAppIdentity[],
+      ) => void)
     | null = null;
   /** 单条 Core 消息无法关联/解析时的诊断监听器；不代表连接失效。 */
   private protocolIssueListener: CoreRpcProtocolIssueListener | null = null;
@@ -106,7 +110,12 @@ export class CoreRpcClient {
    * 注册捕获事件订阅（跨 Core 重启持续）；每收到一批 event-batch 回调一次并自动 ack。
    * 调用方：CoreRuntime 向 Main 转发实时捕获事件。
    */
-  onCaptureEvents(listener: (events: CaptureExchangeEvent[]) => void): void {
+  onCaptureEvents(
+    listener: (
+      events: CaptureExchangeEvent[],
+      clientApps: ClientAppIdentity[],
+    ) => void,
+  ): void {
     this.captureEventListener = listener;
   }
 
@@ -223,7 +232,7 @@ export class CoreRpcClient {
    */
   private handleEventBatch(batch: CoreEventBatch): void {
     try {
-      this.captureEventListener?.(batch.events);
+      this.captureEventListener?.(batch.events, batch.clientApps ?? []);
     } catch (error) {
       this.reportProtocolIssue(
         `Capture event consumer failed: ${error instanceof Error ? error.message : String(error)}`,

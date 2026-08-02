@@ -207,7 +207,7 @@ describe('TemporaryCaptureStore', () => {
         protocol: 'h2',
         statusCode: 201,
         responseMime: 'application/json; charset=utf-8',
-        processName: 'browser.exe',
+        appName: 'browser.exe',
       }),
       fixture.exchange('other'),
     ]);
@@ -221,7 +221,7 @@ describe('TemporaryCaptureStore', () => {
         host: 'search.test',
         status: 201,
         mime: 'application/json',
-        process: 'browser.exe',
+        appName: 'browser.exe',
         protocol: 'h2',
         search: 'orders',
       },

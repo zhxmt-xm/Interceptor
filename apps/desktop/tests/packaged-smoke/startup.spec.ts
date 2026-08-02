@@ -439,6 +439,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'listBreakpoints',
         'minimizeWindow',
         'onCaptureEvents',
+        'onClientAppIcons',
         'onCoreProcessStatusChange',
         'onUpdateStatusChange',
         'openCertificateManager',

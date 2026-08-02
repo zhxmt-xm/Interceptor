@@ -252,6 +252,17 @@ export function useCaptureData(): void {
     });
   }, []);
 
+  // 应用图标由 Main 主动推送（每个应用一次），Renderer 从不主动索取。
+  useEffect(() => {
+    const api = window.interceptor;
+    if (!api?.onClientAppIcons) {
+      return;
+    }
+    return api.onClientAppIcons((icons) => {
+      useCaptureStore.getState().applyClientAppIcons(icons);
+    });
+  }, []);
+
   // 订阅 Core 代际；同一 PID 内 Stop/Start 不清行，重启后新 Core 自动建立空 Capture。
   useEffect(() => {
     let active = true;

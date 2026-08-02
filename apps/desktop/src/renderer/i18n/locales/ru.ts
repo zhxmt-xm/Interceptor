@@ -86,6 +86,7 @@ export const ruCatalog = {
   'capture.connected': 'Подключено',
   'capture.general': 'Общие',
   'capture.requestUrl': 'URL запроса',
+  'capture.clientApplication': 'Клиентское приложение',
   'capture.requestMethod': 'Метод запроса',
   'capture.statusCode': 'Код статуса',
   'capture.streamId': 'ID потока',

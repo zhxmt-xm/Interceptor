@@ -317,6 +317,12 @@ export interface ConnectionProbe {
   certificates: ConnectionCertificate[];
 }
 
+/** 单个本机应用的图标推送；icon 为 PNG data URL，不可读时为 null。 */
+export interface ClientAppIcon {
+  clientAppId: string;
+  icon: string | null;
+}
+
 export type HarExportScope =
   | { kind: 'all' }
   | { kind: 'filter'; filter: SessionQueryRequest['filter'] }
@@ -404,6 +410,7 @@ export const DESKTOP_IPC_CHANNELS = {
   breakpointResolve: 'breakpoint:resolve',
   breakpointConfigure: 'breakpoint:configure',
   connectionProbe: 'connection:probe',
+  clientAppIcons: 'client-app:icons',
   harExportStart: 'har:export-start',
   harImportStart: 'har:import-start',
   archiveExportStart: 'archive:export-start',
@@ -458,6 +465,11 @@ export interface InterceptorDesktopApi {
   onCaptureEvents(
     listener: (events: CaptureExchangeEvent[]) => void,
   ): () => void;
+  /**
+   * 订阅本机应用图标推送。Main 在捕获事件里发现新应用后主动取图标并下发，
+   * 因此 Renderer 从不主动索取；图标按应用去重，不随每条 Exchange 重复传输。
+   */
+  onClientAppIcons(listener: (icons: ClientAppIcon[]) => void): () => void;
   getCertificateStatus(): Promise<CertificateInfo>;
   generateCertificate(): Promise<CertificateInfo>;
   installCertificate(): Promise<CertificateInfo>;

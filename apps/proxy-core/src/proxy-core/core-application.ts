@@ -13,8 +13,10 @@ import {
   EVENT_INFLIGHT_WINDOW_SIZE,
   HEARTBEAT_INTERVAL_MS,
   dataDir,
+  clientAppHelperPath,
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
+import { ClientAppService } from './client-app/entry';
 import { ComposerService } from './composer/entry';
 import { ConnectionService } from './connection/entry';
 import {
@@ -60,6 +62,8 @@ export interface CoreApplicationOptions {
   breakpointQueue?: BreakpointQueue;
   /** 规则引擎；proxy-service beforeRequestHead/beforeResponseHead 调用，rules.replace 后热切换。 */
   ruleEngine?: RuleEngine;
+  /** 本机应用归属解析；缺省时自动创建一个不支持反查的实例。 */
+  clientAppService?: ClientAppService;
   /** HAR 文件任务门面；缺省时随 StorageService 自动创建。 */
   harService?: HarService;
 }
@@ -89,6 +93,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly composer = new ComposerService();
   /** 按需执行只握手 TLS 探测。 */
   private readonly connection = new ConnectionService();
+  /** 把客户端源端口反查成发起流量的本机应用。 */
+  private readonly clientApp: ClientAppService;
   /** 从已捕获 body 分页读取 gRPC envelope。 */
   private readonly grpc: GrpcService | null;
   /** HAR 与原生 archive 共用的异步文件任务管理器。 */
@@ -122,9 +128,17 @@ export class CoreApplication implements CoreRpcHost {
         : undefined;
       const breakpointQueue = new BreakpointQueue();
       const ruleEngine = new RuleEngine(breakpointQueue);
+      const clientAppService = new ClientAppService({
+        helperPath: clientAppHelperPath ?? undefined,
+      });
       const proxyService =
         storageService && captureEventQueue
-          ? new ProxyService(storageService, captureEventQueue, ruleEngine)
+          ? new ProxyService(
+              storageService,
+              captureEventQueue,
+              ruleEngine,
+              clientAppService,
+            )
           : undefined;
       new CoreApplication(parentPort, {
         storageService,
@@ -133,6 +147,7 @@ export class CoreApplication implements CoreRpcHost {
         captureEventQueue,
         breakpointQueue,
         ruleEngine,
+        clientAppService,
       }).start();
     } catch (error) {
       reportFatalStartup(parentPort, error);
@@ -153,6 +168,7 @@ export class CoreApplication implements CoreRpcHost {
     this.captureEventQueue = options.captureEventQueue ?? null;
     this.breakpointQueue = options.breakpointQueue ?? null;
     this.ruleEngine = options.ruleEngine ?? null;
+    this.clientApp = options.clientAppService ?? new ClientAppService();
     this.grpc = this.storageService ? new GrpcService(this.storageService) : null;
     this.har = options.harService ??
       (this.storageService
@@ -166,6 +182,7 @@ export class CoreApplication implements CoreRpcHost {
     );
     this.proxyService?.attachDiagnostics(this.diagnostics);
     this.storageService?.attachDiagnostics(this.diagnostics);
+    this.clientApp.attachDiagnostics(this.diagnostics);
     this.rpcServer = new CoreRpcServer(this);
   }
 
@@ -854,13 +871,16 @@ export class CoreApplication implements CoreRpcHost {
         kind: event.kind,
         summary: event.summary,
       }));
-      const batchSequence = this.rpcServer.sendEventBatch(events);
+      // Core 是唯一能解析出可执行文件路径的一侧，随事件一次性交给 Main 取图标。
+      const clientApps = this.clientApp.pendingAppsForMain();
+      const batchSequence = this.rpcServer.sendEventBatch(events, clientApps);
       if (batchSequence === null) {
         for (const event of events) {
           queue.enqueue(event.kind, event.summary);
         }
         return;
       }
+      this.clientApp.markAppsDelivered(clientApps);
       this.inFlightEventBatches.add(batchSequence);
     }
   }

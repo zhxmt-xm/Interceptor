@@ -68,7 +68,8 @@ export class ArchiveSnapshotStore {
       status_text TEXT,
       request_mime TEXT,
       response_mime TEXT,
-      process_name TEXT,
+      app_id TEXT,
+      app_name TEXT,
       started_at INTEGER NOT NULL,
       request_sent_at INTEGER,
       response_started_at INTEGER,
@@ -129,7 +130,7 @@ export class ArchiveSnapshotStore {
     CREATE INDEX idx_exchange_method ON exchange(method);
     CREATE INDEX idx_exchange_status ON exchange(status_code);
     CREATE INDEX idx_exchange_response_mime ON exchange(response_mime);
-    CREATE INDEX idx_exchange_process ON exchange(process_name);
+    CREATE INDEX idx_exchange_process ON exchange(app_name);
     CREATE INDEX idx_connection_session_seq ON connection(session_id, seq);
     CREATE INDEX idx_headers_exchange ON message_headers(exchange_id, kind, ordinal);
     CREATE INDEX idx_ws_frame_exchange_seq ON websocket_frame(exchange_id, seq);
@@ -256,13 +257,13 @@ export class ArchiveSnapshotStore {
         `INSERT INTO exchange
           (id, session_id, connection_id, seq, stream_id, method, scheme, host,
            port, path, url, protocol, status_code, status_text, request_mime,
-           response_mime, process_name, started_at, request_sent_at,
+           response_mime, app_id, app_name, started_at, request_sent_at,
            response_started_at, completed_at, request_bytes, response_bytes,
            request_body_id, response_body_id, state, error_code, rule_ids)
          VALUES
           (:id, :sessionId, :connectionId, :seq, :streamId, :method, :scheme,
            :host, :port, :path, :url, :protocol, :statusCode, :statusText,
-           :requestMime, :responseMime, :processName, :startedAt, :requestSentAt,
+           :requestMime, :responseMime, :appId, :appName, :startedAt, :requestSentAt,
            :responseStartedAt, :completedAt, :requestBytes, :responseBytes,
            :requestBodyId, :responseBodyId, :state, :errorCode, :ruleIds)`,
       )
@@ -283,7 +284,8 @@ export class ArchiveSnapshotStore {
         statusText: exchange.statusText ?? null,
         requestMime: exchange.requestMime ?? null,
         responseMime: exchange.responseMime ?? null,
-        processName: exchange.processName ?? null,
+        appId: exchange.appId ?? null,
+        appName: exchange.appName ?? null,
         startedAt: exchange.startedAt,
         requestSentAt: exchange.requestSentAt ?? null,
         responseStartedAt: exchange.responseStartedAt ?? null,
@@ -397,7 +399,7 @@ export class ArchiveSnapshotStore {
                 method, scheme, host, port, path, url, protocol,
                 status_code AS statusCode, status_text AS statusText,
                 request_mime AS requestMime, response_mime AS responseMime,
-                process_name AS processName, started_at AS startedAt,
+                app_id AS appId, app_name AS appName, started_at AS startedAt,
                 request_sent_at AS requestSentAt,
                 response_started_at AS responseStartedAt,
                 completed_at AS completedAt, request_bytes AS requestBytes,
@@ -441,7 +443,8 @@ export class ArchiveSnapshotStore {
       statusText: (row.statusText as string | null) ?? undefined,
       requestMime: (row.requestMime as string | null) ?? undefined,
       responseMime: (row.responseMime as string | null) ?? undefined,
-      processName: (row.processName as string | null) ?? undefined,
+      appId: (row.appId as string | null) ?? undefined,
+      appName: (row.appName as string | null) ?? undefined,
       startedAt: row.startedAt as number,
       requestSentAt: (row.requestSentAt as number | null) ?? undefined,
       responseStartedAt: (row.responseStartedAt as number | null) ?? undefined,

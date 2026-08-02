@@ -54,6 +54,7 @@ export const captureEnglishMessages = {
   'capture.connected': 'Connected',
   'capture.general': 'General',
   'capture.requestUrl': 'Request URL',
+  'capture.clientApplication': 'Client Application',
   'capture.requestMethod': 'Request Method',
   'capture.statusCode': 'Status Code',
   'capture.streamId': 'Stream ID',

@@ -8,6 +8,8 @@ import type {
 
 import type { CaptureExchangeSummary } from '@interceptor/core-protocol';
 
+import type { ClientAppService } from '../client-app/entry';
+import * as ClientAppUtils from '../client-app/utils';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type { RuleHeaderEffect, RuleHitRecord } from '../rules/interfaces';
 import type {
@@ -59,6 +61,7 @@ export class ExchangeTracker {
   constructor(
     private readonly storage: CaptureSink,
     private readonly events: CaptureEventSink,
+    private readonly clientApps?: ClientAppService,
   ) {}
 
   /** 注入诊断汇；调用方：ProxyService.attachDiagnostics。 */
@@ -128,6 +131,16 @@ export class ExchangeTracker {
     };
     this.entries.set(request.id, entry);
     this.captured += 1;
+    // 只读当前快照（纯内存），命中即让 exchange-added 一次带全应用归属。
+    const clientAppPort = this.clientAppSourcePort(request);
+    const knownApp =
+      clientAppPort === null
+        ? null
+        : this.clientApps?.cachedAppForPort(clientAppPort) ?? null;
+    if (knownApp) {
+      entry.appId = knownApp.id;
+      entry.appName = knownApp.name;
+    }
 
     const headers = ProxyUtils.toHeaderInputs('request', request.rawHeaders);
     const orphan = this.orphanRuleOutcomes.get(request.id);
@@ -150,6 +163,8 @@ export class ExchangeTracker {
       url: request.url,
       protocol: entry.protocol,
       ...(requestMime !== undefined ? { requestMime } : {}),
+      ...(entry.appId !== undefined ? { appId: entry.appId } : {}),
+      ...(entry.appName !== undefined ? { appName: entry.appName } : {}),
       startedAt,
       requestBytes: 0,
       responseBytes: 0,
@@ -166,6 +181,10 @@ export class ExchangeTracker {
       }
       this.resolveExchangeReady(request.id, entry.exchangeId);
     });
+
+    if (clientAppPort !== null && !knownApp) {
+      this.scheduleClientAppLookup(entry, clientAppPort);
+    }
   }
 
   /** WebSocket Upgrade 请求：复用同一 Exchange 模型，protocol 固定为 ws。 */
@@ -703,6 +722,47 @@ export class ExchangeTracker {
     this.enqueue(entry, 'exchange-updated');
   }
 
+  /**
+   * 可用于反查本机应用的客户端源端口；不适用（远程客户端、平台不支持）时为 null。
+   */
+  private clientAppSourcePort(request: InitiatedRequest): number | null {
+    const sourcePort = request.remotePort;
+    if (
+      this.clientApps?.supported !== true ||
+      sourcePort === undefined ||
+      !ClientAppUtils.isLoopbackAddress(request.remoteIpAddress)
+    ) {
+      return null;
+    }
+    return sourcePort;
+  }
+
+  /**
+   * 快照未命中时补解析应用归属，结果以 exchange-updated 补齐。
+   * 解析要拉起 helper 子进程，而 execFile 的 spawn 是同步系统调用；因此整体推迟到下一个
+   * 事件循环迭代，保证捕获事件推送与转发永远不被它拖慢。
+   */
+  private scheduleClientAppLookup(
+    entry: TrackedExchange,
+    sourcePort: number,
+  ): void {
+    setImmediate(() => {
+      void this.clientApps
+        ?.resolveAppForPort(sourcePort)
+        .then((identity) => {
+          if (!identity || entry.generation !== this.generation) {
+            return;
+          }
+          entry.appId = identity.id;
+          entry.appName = identity.name;
+          this.patch(entry, { appId: identity.id, appName: identity.name });
+        })
+        .catch(() => {
+          // 归属解析是可选增强，未处理的 rejection 会终止 Core 进程并中断抓包。
+        });
+    });
+  }
+
   /** 推送当前聚合摘要。 */
   private enqueue(
     entry: TrackedExchange,
@@ -728,6 +788,8 @@ export class ExchangeTracker {
       startedAt: entry.startedAt,
       requestBytes: entry.requestBytes,
       responseBytes: entry.responseBytes,
+      ...(entry.appId !== undefined ? { appId: entry.appId } : {}),
+      ...(entry.appName !== undefined ? { appName: entry.appName } : {}),
       ...(entry.ruleIds.size > 0 ? { ruleIds: [...entry.ruleIds] } : {}),
     };
   }

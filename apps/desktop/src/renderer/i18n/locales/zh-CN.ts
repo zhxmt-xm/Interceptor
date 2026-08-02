@@ -83,6 +83,7 @@ export const zhCNCatalog = {
   'capture.connected': '已连接',
   'capture.general': '常规',
   'capture.requestUrl': '请求 URL',
+  'capture.clientApplication': '客户端应用',
   'capture.requestMethod': '请求方法',
   'capture.statusCode': '状态码',
   'capture.streamId': '流 ID',

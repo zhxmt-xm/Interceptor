@@ -84,6 +84,7 @@ export const trCatalog = {
   'capture.connected': 'Bağlandı',
   'capture.general': 'Genel',
   'capture.requestUrl': 'İstek URL’si',
+  'capture.clientApplication': 'İstemci uygulaması',
   'capture.requestMethod': 'İstek Metodu',
   'capture.statusCode': 'Durum Kodu',
   'capture.streamId': 'Akış Kimliği',

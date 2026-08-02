@@ -84,6 +84,7 @@ export const ptBRCatalog = {
   'capture.connected': 'Conectado',
   'capture.general': 'Geral',
   'capture.requestUrl': 'URL da requisição',
+  'capture.clientApplication': 'Aplicativo cliente',
   'capture.requestMethod': 'Método da requisição',
   'capture.statusCode': 'Código de status',
   'capture.streamId': 'ID do stream',

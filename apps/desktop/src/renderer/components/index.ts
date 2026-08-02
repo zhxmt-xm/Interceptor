@@ -14,6 +14,7 @@ export { MethodBadge, type MethodBadgeProps, type HttpMethod } from './MethodBad
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader/SectionHeader';
 export { StatusBadge, type StatusBadgeProps } from './StatusBadge/StatusBadge';
 export { Chip, type ChipProps } from './Chip/Chip';
+export { CodeViewer, type CodeViewerProps } from './CodeViewer/CodeViewer';
 export { Timeline, type TimelineEntry, type TimelineProps } from './Timeline/Timeline';
 export { StatItem, type StatItemProps } from './StatItem/StatItem';
 export { Count, type CountProps } from './Count/Count';

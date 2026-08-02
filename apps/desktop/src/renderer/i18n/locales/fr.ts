@@ -84,6 +84,7 @@ export const frCatalog = {
   'capture.connected': 'Connecté',
   'capture.general': 'Général',
   'capture.requestUrl': 'URL de requête',
+  'capture.clientApplication': 'Application cliente',
   'capture.requestMethod': 'Method de requête',
   'capture.statusCode': 'Code de statut',
   'capture.streamId': 'ID du stream',

@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-07-28T08:25:47.521Z
+Generated: 2026-07-30T10:22:28.534Z
 
 ## Overall Summary
 
@@ -8,27 +8,51 @@ Generated: 2026-07-28T08:25:47.521Z
 | --- | ---: |
 | Result | Review required |
 | Views checked | 1 |
-| Average pixel diff | 2.48% |
-| Targets | 4 |
-| Matched | 4 |
+| Average pixel diff | 3.19% |
+| Targets | 28 |
+| Matched | 28 |
 | Missing | 0 |
-| Flagged | 2 |
-| Largest geometry delta | 5.3 px |
-| Worst element | capture-request-json / Request body view |
+| Flagged | 7 |
+| Largest geometry delta | 27.3 px |
+| Worst element | capture / Inspector client app |
 
 ## View Summary
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture-request-json | 2.48% | 4 | 4 | 0 | 2 | 5.3 px |
+| capture | 3.19% | 28 | 28 | 0 | 7 | 27.3 px |
 
 ## Element Geometry
 
 | View | Element | dx | dy | dw | dh | Max delta | Style differences | Status |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| capture-request-json | Capture | 0.0 px | -1.1 px | 0.0 px | 0.0 px | 1.1 px | none | flagged |
-| capture-request-json | Local traffic | 0.0 px | -0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
-| capture-request-json | json · 63 B | 0.0 px | 0.0 px | 0.0 px | -0.7 px | 0.7 px | none | ok |
-| capture-request-json | Request body view | 0.0 px | 0.3 px | 0.0 px | -5.3 px | 5.3 px | none | flagged |
+| capture | Capture | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| capture | Rules & Map | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| capture | Composer | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| capture | Breakpoints | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| capture | Diagnostics | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| capture | Local traffic | 0.0 px | 0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| capture | Settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture | Theme | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture | Inspector client app | 0.0 px | 27.3 px | 0.0 px | 0.0 px | 27.3 px | none | flagged |
+| capture | List app header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture | List app cell | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture | List app cell empty | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture | List status header | 0.0 px | 0.0 px | -0.2 px | -0.1 px | 0.2 px | none | ok |
+| capture | List status cell | 0.0 px | 0.6 px | 0.0 px | -1.3 px | 1.3 px | none | flagged |
+| capture | List protocol header | 0.0 px | 0.0 px | -0.1 px | -0.1 px | 0.1 px | none | ok |
+| capture | List protocol cell | 0.0 px | 0.3 px | 0.0 px | -0.7 px | 0.7 px | none | ok |
+| capture | List type header | 0.0 px | 0.0 px | -0.1 px | -0.1 px | 0.1 px | none | ok |
+| capture | List type cell | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| capture | List size header | 0.0 px | 0.0 px | -0.1 px | -0.1 px | 0.1 px | none | ok |
+| capture | List size cell | 0.0 px | 0.4 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| capture | List time header | 0.0 px | 0.0 px | -0.1 px | -0.1 px | 0.1 px | none | ok |
+| capture | List time cell | 0.0 px | 0.4 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| capture | Rule replaced | 0.0 px | 18.6 px | 0.0 px | 0.0 px | 18.6 px | none | flagged |
+| capture | Rule set | 0.0 px | 18.6 px | 0.0 px | 0.0 px | 18.6 px | none | flagged |
+| capture | Rule appended | 0.0 px | 18.9 px | 0.0 px | 0.0 px | 18.9 px | none | flagged |
+| capture | Rule removed | 0.0 px | 18.9 px | 0.0 px | 0.0 px | 18.9 px | none | flagged |
+| capture | Recording | 0.0 px | -0.2 px | -0.3 px | 0.4 px | 0.4 px | none | ok |
 
 > Geometry deltas are measured after subtracting the detected systematic canvas-border offset. A row is flagged when any absolute geometry delta is at least 1 px or a tracked font style differs.

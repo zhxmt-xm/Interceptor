@@ -13,6 +13,7 @@ import type {
 } from 'mockttp';
 
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
+import type { ClientAppService } from '../client-app/entry';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
   MutableRequestState,
@@ -79,8 +80,9 @@ export class ProxyService {
     private readonly storage: CaptureSink,
     private readonly events: CaptureEventSink,
     private readonly ruleEngine?: RuleEngine,
+    private readonly clientApps?: ClientAppService,
   ) {
-    this.tracker = new ExchangeTracker(storage, events);
+    this.tracker = new ExchangeTracker(storage, events, clientApps);
   }
 
   /**
@@ -215,12 +217,14 @@ export class ProxyService {
     await server.start(port ?? undefined);
     this.webSocketBridge = webSocketBridge;
     this.server = server;
+    this.clientApps?.setProxyPort(server.port);
     return { host: this.host, port: server.port };
   }
 
   private async stopServer(): Promise<void> {
     const server = this.server;
     this.server = null;
+    this.clientApps?.setProxyPort(null);
     this.webSocketBridge?.close();
     this.webSocketBridge = null;
     this.tracker.reset();
