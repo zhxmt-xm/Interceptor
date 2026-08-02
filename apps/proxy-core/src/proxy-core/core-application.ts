@@ -593,6 +593,11 @@ export class CoreApplication implements CoreRpcHost {
           proxy.setRecording(command.payload.recording);
           return { type: 'proxy.status', payload: proxy.status() };
         });
+      case 'proxy.setUpstream':
+        return this.withProxy(async (proxy) => {
+          proxy.setUpstreamProxy(command.payload.upstream);
+          return { type: 'proxy.status', payload: proxy.status() };
+        });
       case 'tls.configure':
         return this.withProxy(async (proxy) => {
           await this.diagnostics.action('tls.configure', () =>

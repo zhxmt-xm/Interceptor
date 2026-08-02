@@ -164,13 +164,57 @@ sequenceDiagram
 
 只允许 loopback listener。
 
-### 3.4 已知兼容风险 [改造中]
+### 3.4 上游代理链式转发 [已实现，仅 Windows]
 
-Windows Enable 当前**清除**原 PAC、Auto Detect、Proxy Server 与 bypass，写入 `127.0.0.1:8888`，而 Proxy Core 只直连源站。
+接管系统代理后所有流量都进 Interceptor，若仍直连源站，必须经公司 PAC、VPN 或认证代理才能出网的环境会在接管期间**完全断网**。因此接管前读到的配置会原样接到上游。
 
-对必须经公司 PAC、VPN proxy、认证 proxy 或本机上游才能联网的环境，启用期间可能**完全断网**。需支持 upstream proxy / PAC chaining，或在 Enable 前检测并阻止覆盖。
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Settings
+    participant Main as DesktopApplication
+    participant Svc as WindowsSystemProxyService
+    participant Core as ProxyService
+    participant Up as 上游代理
+
+    UI->>Main: systemProxy:enable
+    Main->>Svc: enable(host, port)
+    Svc->>Svc: 读 original，toUpstreamProxyConfig(original, self)
+    Svc-->>Main: status
+    Main->>Core: proxy.setUpstream { upstream }
+    Note over Core: 存进 ProxyService，不重启监听器
+
+    Core->>Up: CONNECT origin:port
+    Up-->>Core: 200 Connection Established
+```
+
+转换规则（`system-proxy-upstream.ts`，纯函数 + 14 项单测）：
+
+| 原配置 | 上游 `proxyUrl` |
+| --- | --- |
+| PAC 脚本（`PROXY_TYPE_AUTO_PROXY_URL` + `pacUrl`） | `pac+<pacUrl>`，PAC 求值交给 Mockttp 内置的 `pac-proxy-agent` |
+| 显式代理 `host:port` | `http://host:port` |
+| 分方案列表 `http=a;https=b` | 取 https，缺失回退 http |
+| 仅 `socks=host:port` | `socks5://host:port` |
+| 仅 Auto Detect（WPAD） | 无（没有可传给 proxy-agent 的 URL），按直连处理 |
+
+`bypassList` 转成 curl 风格 `noProxy`；Windows 专有的 `<local>` 展开为 `localhost` / `127.0.0.1` / `::1`。
+
+三个边界条件：
+
+- **绝不把自己当上游**。崩溃残留会让系统代理仍指向 `127.0.0.1:8888`，此时接管前读到的"原有配置"就是我们自己，直接视为无上游，否则形成无限自环。
+- **`proxyConfig` 用回调而非固定值**。Mockttp 每次请求求值，因此切换上游不需要重注册规则或重启监听器。
+- **Core 重启后必须重新下发**。上游保存在 Core 进程内，`onCoreProcessReady` 与 TLS 材料一同重新下发，否则重启即断网。
+
+实测（`proxy-upstream.integration.test.ts`，真实上游代理 + 真实源站）：无上游时直连、配置后经上游 CONNECT 隧道、切换即时生效、`noProxy` 命中时绕过上游。Mockttp 经上游时统一用 CONNECT 隧道，即使目标是明文 HTTP。
+
+### 3.5 已知兼容风险
+
+macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi-Fi / 以太网 / VPN）可能各自配不同代理，需先定义合并语义。
 
 覆盖范围限制：Windows 只接管 WinINet，自带网络栈、WinHTTP、Java、curl、容器、WSL 可能不走 Capture。`<local>` bypass 会让 localhost 绕过。
+
+认证代理（需要 `Proxy-Authorization`）尚未验证：`proxyUrl` 支持 `http://user:pass@host:port` 形式，但 WinINet 不保存凭据，需要用户手工提供。
 
 ## 4. 更新
 

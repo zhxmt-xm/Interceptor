@@ -13,7 +13,10 @@ import {
   shell,
 } from 'electron';
 
-import type { ClientAppIdentity } from '@interceptor/core-protocol';
+import type {
+  ClientAppIdentity,
+  UpstreamProxyConfig,
+} from '@interceptor/core-protocol';
 
 import {
   DESKTOP_IPC_CHANNELS,
@@ -192,8 +195,14 @@ class DesktopApplication {
         attributes: { detail },
       });
     });
-    // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM。
-    this.coreRuntime.onCoreProcessReady(() => this.provisionCoreTls());
+    // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM；
+    // 上游代理同样保存在 Core 进程内，不重新下发会让重启后的企业环境断网。
+    this.coreRuntime.onCoreProcessReady(() => {
+      void this.provisionCoreTls();
+      void this.applyUpstreamProxy(
+        this.systemProxyService?.detectedUpstream() ?? null,
+      );
+    });
     this.coreRuntime.start();
     this.createMainWindow();
     updateService.start();
@@ -494,20 +503,30 @@ class DesktopApplication {
       if (!listening || !host || !port) {
         throw new Error('Start capture before enabling the system proxy.');
       }
-      return this.runMainAction('main.system-proxy.enable', () =>
-        this.requireSystemProxyService().enable(host, port));
+      return this.runMainAction('main.system-proxy.enable', async () => {
+        const service = this.requireSystemProxyService();
+        const status = await service.enable(host, port);
+        // 接管后所有流量都走 Interceptor，若仍直连源站，必须经公司 PAC / VPN /
+        // 认证代理才能出网的环境会在接管期间完全断网，因此把原有配置接到上游。
+        await this.applyUpstreamProxy(service.detectedUpstream());
+        return status;
+      });
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRestore, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.system-proxy.restore', () =>
-        this.requireSystemProxyService().restore());
+      return this.runMainAction('main.system-proxy.restore', async () => {
+        const result = await this.requireSystemProxyService().restore();
+        await this.applyUpstreamProxy(null);
+        return result;
+      });
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRepair, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.runMainAction('main.system-proxy.emergency-repair', async () => {
         const result = await this.requireSystemProxyService().repair();
+        await this.applyUpstreamProxy(null);
         try {
           await this.coreRuntime.request({ type: 'proxy.stop', payload: {} });
         } catch (error) {
@@ -1123,11 +1142,31 @@ class DesktopApplication {
   }
 
   /**
+   * 下发上游代理给 Core；失败不影响系统代理接管本身，只记诊断。
+   * Core 未运行时无需下发：代理没在跑就不会有流量。
+   */
+  private async applyUpstreamProxy(
+    upstream: UpstreamProxyConfig | null,
+  ): Promise<void> {
+    try {
+      await this.coreRuntime.request({
+        type: 'proxy.setUpstream',
+        payload: { upstream },
+      });
+    } catch (error) {
+      this.diagnostics.warn('main.system-proxy.upstream-apply-failed', {
+        outcome: 'failed',
+        errorCode: readErrorName(error),
+        attributes: { message: readErrorMessage(error) },
+      });
+    }
+  }
+
+  /**
    * 读取 Core 随事件批交来的新应用图标，取完即推给 Renderer。
    * 图标按应用而非按请求去重，因此不会随每条 Exchange 重复传输。
    */
-  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {
-    const helperPath = resolveClientAppHelperPath();
+  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {    const helperPath = resolveClientAppHelperPath();
     if (!helperPath) {
       return;
     }

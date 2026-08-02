@@ -1,4 +1,5 @@
 import { SystemProxyError } from './system-proxy-error';
+import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 import type {
   MacosSystemProxySnapshot,
   MacosSystemProxyServiceOptions,
@@ -89,6 +90,14 @@ export class MacosSystemProxyService implements SystemProxyService {
     await this.journal?.markOwned('darwin');
     this.ownershipLost = false;
     return MacosSystemProxyService.toStatus(written, true, false);
+  }
+
+  /**
+   * macOS 尚未接入上游代理检测；快照是按网络服务分开存的，多服务
+   * （Wi-Fi / 以太网 / VPN）可能各自配不同代理，需先定义合并语义。
+   */
+  detectedUpstream(): UpstreamProxyConfig | null {
+    return null;
   }
 
   /** Restore every service only while all current values remain exactly owned. */

@@ -75,13 +75,18 @@
 - [ ] Binary body 不能一律 UTF-8 replacement；提供 text / hex，并保留编码/长度信息。
 - [ ] 验证 Execute edited 后 content-length、content-encoding、transfer-encoding 和 H2 framing 正确。
 
-### 7. 系统代理可能让依赖上游代理的环境断网
+### 7. 系统代理可能让依赖上游代理的环境断网（已解决，仅 Windows）
 
-- [ ] **确认兼容风险**：支持 upstream proxy / PAC chaining，或在 Enable 前检测并阻止覆盖无法链式转发的现有配置。
-- [ ] Windows Enable 当前清除原 PAC、Auto Detect、Proxy Server 和 bypass，并写入 `127.0.0.1:8888`；Proxy Core 只直连源站。
-- [ ] 对必须经公司 PAC、VPN proxy、认证 proxy 或本机 7890 才能联网的环境，启用期间可能完全断网；退出恢复不能弥补运行期间不可用。
-- [ ] 明确 PAC 动态选路、HTTP/HTTPS/SOCKS 上游、认证、NO_PROXY/bypass 和故障回退策略。
-- [ ] 添加现有 static proxy、PAC、Auto Detect、认证上游和离线上游的真实系统测试。
+- [x] **确认兼容风险**：Windows Enable 会清除原 PAC、Auto Detect、Proxy Server 和 bypass 并写入 `127.0.0.1:8888`，而 Proxy Core 只直连源站；必须经公司 PAC、VPN proxy 或认证 proxy 才能联网的环境在启用期间会完全断网。
+- [x] 接管前读到的配置转成 `UpstreamProxyConfig`，经 `proxy.setUpstream` 下发 Core，交给 Mockttp `thenPassThrough({ proxyConfig })` 链式转发。PAC 用 `pac+<url>` 交给内置 `pac-proxy-agent` 求值。
+- [x] `bypassList` 转 curl 风格 `noProxy`，`<local>` 展开为 `localhost`/`127.0.0.1`/`::1`。
+- [x] 不把自己的监听地址当上游（崩溃残留会形成自环）。
+- [x] `proxyConfig` 用回调求值，切换上游不重启监听器；Core 重启后经 `onCoreProcessReady` 重新下发。
+- [x] 集成测试（真实上游代理 + 真实源站）：直连、经上游、切换即时生效、`noProxy` 绕过。
+- [ ] macOS 尚未接入：快照按网络服务分开存，多服务可能各自配不同代理，需先定义合并语义。
+- [ ] 认证代理（`Proxy-Authorization`）尚未验证；WinINet 不保存凭据，需要用户手工提供。
+- [ ] 仅 Auto Detect（WPAD）环境没有可传给 proxy-agent 的 URL，目前按直连处理。
+- [ ] Settings 尚未向用户展示当前上游代理，排查只能看 `proxy.upstream-configured` 诊断。
 
 ---
 

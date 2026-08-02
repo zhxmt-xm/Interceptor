@@ -1,4 +1,6 @@
 import { SystemProxyError } from './system-proxy-error';
+import { toUpstreamProxyConfig } from './system-proxy-upstream';
+import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 import type {
   SystemProxyCommandResult,
   SystemProxyCommandRunner,
@@ -27,6 +29,8 @@ export class WindowsSystemProxyService implements SystemProxyService {
   private ownedSettings: WinInetProxySettings | null = null;
   /** Sticky indication that an external actor changed settings after ownership was acquired. */
   private ownershipLost = false;
+  /** 接管前读到的用户原有上游代理；接管期间流量必须继续经它出网。 */
+  private upstream: UpstreamProxyConfig | null = null;
   /** Runtime platform used to explicitly report unsupported hosts. */
   private readonly platform: NodeJS.Platform;
   /** Native helper executable path resolved by DesktopApplication. */
@@ -80,6 +84,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
 
     const target = WindowsSystemProxyService.ownedProxySettings(current, authority);
     this.originalSettings = current;
+    this.upstream = toUpstreamProxyConfig(current, authority);
     await this.journal?.begin('win32', current, target);
     await this.writeSettings(target);
     const written = await this.readSettings();
@@ -110,6 +115,11 @@ export class WindowsSystemProxyService implements SystemProxyService {
     }
 
     return this.restoreOwned(this.originalSettings, this.ownedSettings);
+  }
+
+  /** 接管前读到的用户原有上游代理；null 表示原本就直连。 */
+  detectedUpstream(): UpstreamProxyConfig | null {
+    return this.upstream;
   }
 
   /** Recover ownership from disk and perform the same guarded restoration decision. */
@@ -178,6 +188,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
     await this.journal?.clear();
     this.originalSettings = null;
     this.ownedSettings = null;
+    this.upstream = null;
     this.ownershipLost = false;
     return { restored: true, status: WindowsSystemProxyService.toStatus(restored, false, false) };
   }

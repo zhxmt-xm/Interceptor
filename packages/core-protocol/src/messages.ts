@@ -315,6 +315,28 @@ export interface ProxySetRecordingCommand {
 }
 
 /**
+ * 上游代理配置：Interceptor 把流量再转发给它，而不是直连源站。
+ * 企业 PAC / VPN / 认证代理环境下必须链式转发，否则接管系统代理期间会完全断网。
+ */
+export interface UpstreamProxyConfig {
+  /** 代理 URL；支持 http://、https://、socks5://、pac+http://（PAC 脚本）。 */
+  readonly proxyUrl: string;
+  /** 不经上游、直连源站的主机列表（curl 风格 no_proxy）。 */
+  readonly noProxy?: readonly string[];
+}
+
+/**
+ * 由 Main 内部下发的上游代理配置（非 Renderer 发起）。
+ * upstream 为 null 表示直连源站。切换即时生效，不重启监听器。
+ */
+export interface ProxySetUpstreamCommand {
+  type: 'proxy.setUpstream';
+  payload: {
+    upstream: UpstreamProxyConfig | null;
+  };
+}
+
+/**
  * 由 Main 内部下发的 TLS 配置（非 Renderer 发起）：下发解密后的 CA 材料
  * 供 Core 做 HTTPS MITM，以及 per-host 不安全例外。ca 为 null 时关闭 MITM。
  * 私钥只在 Main↔Core 内部通道流转，绝不经 Renderer。
@@ -360,6 +382,7 @@ export type CoreCommand =
   | ProxyStopCommand
   | ProxyStatusCommand
   | ProxySetRecordingCommand
+  | ProxySetUpstreamCommand
   | TlsConfigureCommand;
 
 export interface EchoResult {
@@ -779,6 +802,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                             : T extends ProxyStatusCommand
                               ? ProxyStatusResult
                               : T extends ProxySetRecordingCommand
+                                ? ProxyStatusResult
+                              : T extends ProxySetUpstreamCommand
                                 ? ProxyStatusResult
                               : T extends TlsConfigureCommand
                                 ? TlsConfiguredResult

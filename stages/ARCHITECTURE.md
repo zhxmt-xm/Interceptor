@@ -221,6 +221,7 @@ sequenceDiagram
 > 系统代理归 Electron Main 所有，Renderer 只表达 status/enable/restore/repair 意图；Proxy Core 不读写操作系统设置。所有 native helper、平台 service 与 journal 位于 `apps/desktop/src/main/system-proxy/`。
 
 - **Windows**：`windows-helper.cs` 使用当前用户 WinINet per-connection API 读写 flags、Proxy Server、Bypass、PAC URL、Auto Detect，并广播 settings changed/refresh。`WindowsSystemProxyService` 只允许 loopback listener。
+- **上游代理链式转发（已落地，仅 Windows）**：接管前读到的配置经 `system-proxy-upstream.ts` 转成 `UpstreamProxyConfig`（PAC → `pac+<url>`、显式代理 → `http://host:port`、仅 socks → `socks5://`，bypass → curl 风格 `noProxy`），经 `proxy.setUpstream` 下发 Core，再交给 Mockttp 的 `thenPassThrough({ proxyConfig })`。`proxyConfig` 用回调而非固定值，切换上游不重启监听器；PAC 求值由 Mockttp 内置的 `pac-proxy-agent` 完成，不自己解析脚本。上游保存在 Core 进程内，因此 `onCoreProcessReady` 会跟 TLS 材料一同重新下发；接管前读到的地址若就是自己的监听地址（崩溃残留）则视为无上游，避免自环。
 - **macOS**：`macos-helper.swift` 通过 Authorization Services + SystemConfiguration 枚举当前 Network Set 的全部活动 service；完整校验后在单个 preferences session 中 set/commit/apply。`MacosSystemProxyService` 把多 service 字典作为一个 ownership 单元。
 - **Guarded ownership**：enable 前读取 original 并计算 owned；restore/repair 重新读取 current，只有 `current == owned` 才写回 original。外部修改导致 `ownershipLost`，零写入且不会覆盖用户值。
 - **Startup journal**：`SystemProxyJournal` 在 native write 前原子持久化 version/platform/phase/original/owned，临时文件同步后 rename。启动时 `current == owned` 恢复，`current == original` 清 journal，其余保留冲突。Core 从 running 进入 unresponsive/restarting、停止 Capture 和应用退出时复用同一 guarded decision。

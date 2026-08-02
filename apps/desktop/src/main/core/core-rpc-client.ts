@@ -59,6 +59,7 @@ export class CoreRpcClient {
     'proxy.stop': 'proxy.status',
     'proxy.status': 'proxy.status',
     'proxy.setRecording': 'proxy.status',
+    'proxy.setUpstream': 'proxy.status',
     'tls.configure': 'tls.configured',
   };
 

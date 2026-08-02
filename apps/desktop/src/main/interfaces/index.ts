@@ -8,6 +8,7 @@
 import type {
   DiagnosticIngestPayload,
   MainToCoreMessage,
+  UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -218,6 +219,8 @@ export interface SystemProxyService {
   enable(host: string, port: number): Promise<SystemProxyStatus>;
   restore(): Promise<SystemProxyRestoreResult>;
   repair(): Promise<SystemProxyRestoreResult>;
+  /** 接管前读到的用户原有上游代理；null 表示原本就直连。 */
+  detectedUpstream(): UpstreamProxyConfig | null;
 }
 
 /** 系统代理归属日志目标平台。 */

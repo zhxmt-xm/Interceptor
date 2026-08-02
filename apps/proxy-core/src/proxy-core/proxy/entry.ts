@@ -6,11 +6,14 @@ import type {
   CompletedResponse,
   InitiatedRequest,
   InitiatedResponse,
+  ProxySetting,
   TlsPassthroughEvent,
   TrailerData,
   WebSocketClose,
   WebSocketMessage,
 } from 'mockttp';
+
+import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type { ClientAppService } from '../client-app/entry';
@@ -72,6 +75,8 @@ export class ProxyService {
   private recording = true;
   private webSocketBreakpointsOn = false;
   private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
+  /** 上游代理；null 表示直连源站。企业 PAC/VPN 环境下必须链式转发才不断网。 */
+  private upstreamProxy: UpstreamProxyConfig | null = null;
   /** Mockttp TLS 分流器所需的进程内临时身份；所有 host passthrough，证书永不出示。 */
   private tlsPassthroughIdentity: { key: string; cert: string } | null = null;
   private diagnostics: DiagnosticsRecorder | null = null;
@@ -189,6 +194,8 @@ export class ProxyService {
       // 失败形态，Capture 里也才会记成 aborted + 真实 errorCode 而非假响应。
       // 副作用是 Mockttp 走 AbortError 分支，不再向 stdout 打印上游错误堆栈。
       simulateConnectionErrors: true,
+      // 回调而非固定值：上游代理切换时无需重注册规则或重启监听器。
+      proxyConfig: () => this.upstreamProxySetting(),
       ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
       ...(this.ruleEngine
         ? {
@@ -276,6 +283,34 @@ export class ProxyService {
     this.diagnostics?.info(
       enabled ? 'proxy.recording-resumed' : 'proxy.recording-paused',
     );
+  }
+
+  /**
+   * 设置上游代理；null 表示直连源站。
+   * 企业 PAC / VPN / 认证代理环境下必须链式转发，否则接管系统代理期间会完全断网。
+   * 调用方：proxy.setUpstream command handler（Main 在接管系统代理时下发原有配置）。
+   */
+  setUpstreamProxy(upstream: UpstreamProxyConfig | null): void {
+    this.upstreamProxy = upstream;
+    this.diagnostics?.info(
+      upstream ? 'proxy.upstream-configured' : 'proxy.upstream-cleared',
+      upstream
+        ? { attributes: { scheme: upstream.proxyUrl.split(':')[0] ?? 'unknown' } }
+        : undefined,
+    );
+  }
+
+  /** 当前上游代理的 Mockttp 形式；undefined 让 Mockttp 直连源站。 */
+  private upstreamProxySetting(): ProxySetting | undefined {
+    if (!this.upstreamProxy) {
+      return undefined;
+    }
+    return {
+      proxyUrl: this.upstreamProxy.proxyUrl,
+      ...(this.upstreamProxy.noProxy
+        ? { noProxy: [...this.upstreamProxy.noProxy] }
+        : {}),
+    };
   }
 
   /**
