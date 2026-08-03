@@ -4,7 +4,8 @@
 //
 // Any element with [data-monaco] is replaced by a read-only editor:
 //   data-monaco="box"  -> hugs its content, used by inline message payloads
-//   data-monaco="fill" -> absorbs the leftover panel height (CSS floor of 320px)
+//   data-monaco="fill" -> absorbs whatever height the panel leaves it
+//   data-monaco="edit" -> same geometry as fill but writable (Composer request body)
 //   data-lang="json|html|..."
 // The element's text content is the source; leading indentation is stripped.
 
@@ -29,6 +30,7 @@ const THEMES = {
 const PRESETS = {
   box: { fontSize: 12, lineHeight: 20, padding: 13 },
   fill: { fontSize: 12, lineHeight: 21, padding: 16 },
+  edit: { fontSize: 12, lineHeight: 21, padding: 16 },
 };
 
 function defineThemes(monaco) {
@@ -91,7 +93,8 @@ const editors = [];
 
 function mount(monaco, host) {
   const preset = PRESETS[host.dataset.monaco] ?? PRESETS.box;
-  const fill = host.dataset.monaco === 'fill';
+  const fill = host.dataset.monaco !== 'box';
+  const editable = host.dataset.monaco === 'edit';
   const value = dedent(host.textContent);
   host.textContent = '';
 
@@ -100,8 +103,8 @@ function mount(monaco, host) {
     language: host.dataset.lang || 'json',
     theme: `ix-${document.querySelector('.app').getAttribute('data-theme') || 'light'}`,
     // read-only viewer: no caret affordances, no validation squiggles
-    readOnly: true,
-    domReadOnly: true,
+    readOnly: !editable,
+    domReadOnly: !editable,
     renderValidationDecorations: 'off',
     contextmenu: false,
     hover: { enabled: 'off' },

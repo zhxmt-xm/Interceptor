@@ -69,6 +69,24 @@ function setInspTab(tab) {
   app.querySelectorAll('.tp[data-tab]').forEach((p) => p.classList.toggle('on', p.dataset.tab === tab));
 }
 
+// Composer request editor tabs (query / headers / body / auth).
+function setComposerTab(tab) {
+  app.querySelectorAll('[data-tabs="creq"] > span').forEach((s) => s.classList.toggle('on', s.dataset.ctab === tab));
+  app.querySelectorAll('.creq > .cpane').forEach((p) => p.classList.toggle('on', p.dataset.ctab === tab));
+}
+
+// Composer request body type (none / json / text / form).
+function setBodyType(type) {
+  app.dataset.bodyType = type;
+  app.querySelectorAll('.bodytype span').forEach((s) => s.classList.toggle('on', s.dataset.bt === type));
+}
+
+// Composer response tabs (body / headers / cookies / timing).
+function setComposerResponseTab(tab) {
+  app.querySelectorAll('[data-tabs="cresp"] > span').forEach((s) => s.classList.toggle('on', s.dataset.crtab === tab));
+  app.querySelectorAll('.cresp > .cpane').forEach((p) => p.classList.toggle('on', p.dataset.crtab === tab));
+}
+
 function syncCaptureListScrollbar() {
   const scroll = app.querySelector('.list-scroll');
   const head = app.querySelector('.lhead');
@@ -141,6 +159,8 @@ function setState(s = {}) {
       );
     }
     if (!s.tab) setInspTab('headers');
+    if (!s.composerTab) setComposerTab('headers');
+    if (!s.composerResponseTab) setComposerResponseTab('body');
   }
   if (s.scene) {
     app.dataset.scene = s.scene;
@@ -175,6 +195,29 @@ function setState(s = {}) {
     else if (s.pop2 === 'lang') app.classList.add('lgopen');
   }
   if (s.tab) setInspTab(s.tab);
+  if (s.composerTab) setComposerTab(s.composerTab);
+  if (s.composerResponseTab) setComposerResponseTab(s.composerResponseTab);
+  if ('composer' in s) {
+    if (s.composer) app.dataset.composer = s.composer;
+    else delete app.dataset.composer;
+  }
+  if ('collection' in s) app.dataset.collection = s.collection || 'open';
+  if ('collectionMenu' in s) {
+    if (s.collectionMenu) app.dataset.collectionMenu = s.collectionMenu;
+    else {
+      delete app.dataset.collectionMenu;
+      app.querySelectorAll('.cgrp-h.menuopen').forEach((row) => row.classList.remove('menuopen'));
+    }
+  }
+  if ('collectionRename' in s) {
+    if (s.collectionRename) app.dataset.collectionRename = s.collectionRename;
+    else delete app.dataset.collectionRename;
+  }
+  if ('composerHistory' in s) {
+    if (s.composerHistory) app.dataset.composerHistory = s.composerHistory;
+    else delete app.dataset.composerHistory;
+  }
+  if ('bodyType' in s) setBodyType(s.bodyType || 'json');
   if (s.settings) app.dataset.settings = s.settings;
   if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
@@ -229,6 +272,7 @@ function setState(s = {}) {
   }
   if ('search' in s) syncFilterBadge();
   positionFootpop();
+  positionCollectionMenu();
   positionActionPopover();
   positionRuleSelectPopover();
   positionRequestRuleMenu();
@@ -236,6 +280,23 @@ function setState(s = {}) {
   syncControls();
 }
 window.__setState = setState;
+
+// Folder actions menu hangs under the folder row that opened it; scenes fall back to a fixed folder.
+function positionCollectionMenu() {
+  const menu = app.querySelector('.cmenu');
+  if (!menu || app.dataset.collectionMenu !== 'open') return;
+  let anchor = app.querySelector('.cgrp-h.menuopen');
+  if (!anchor) {
+    anchor = app.querySelector('.cgrp[data-grp="checkout"] > .cgrp-h');
+    anchor?.classList.add('menuopen');
+  }
+  const parent = menu.offsetParent;
+  if (!anchor || !parent) return;
+  const row = anchor.getBoundingClientRect();
+  const box = parent.getBoundingClientRect();
+  menu.style.top = `${row.bottom - box.top + 4}px`;
+  menu.style.left = `${row.left - box.left + 12}px`;
+}
 
 function positionRequestRuleMenu(clientX, clientY) {
   const menu = app.querySelector('.request-rule-menu');
@@ -387,6 +448,51 @@ app.addEventListener('click', (e) => {
 app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) =>
   s.addEventListener('click', () => setInspTab(s.dataset.tab)),
 );
+
+// Composer: collection tree, document tabs, request/response tabs and the send phase.
+app.addEventListener('click', (e) => {
+  if (e.target.closest('.ccol-toggle')) {
+    return setState({ collection: app.dataset.collection === 'closed' ? 'open' : 'closed' });
+  }
+  const folderActions = e.target.closest('.cgrp-more');
+  if (folderActions) {
+    const row = folderActions.closest('.cgrp-h');
+    const reopen = !row.classList.contains('menuopen') || app.dataset.collectionMenu !== 'open';
+    app.querySelectorAll('.cgrp-h.menuopen').forEach((r) => r.classList.remove('menuopen'));
+    if (reopen) row.classList.add('menuopen');
+    return setState({ collectionMenu: reopen ? 'open' : '' });
+  }
+  const collapse = e.target.closest('.cgrp-chevbtn');
+  if (collapse) return collapse.closest('.cgrp').classList.toggle('on');
+  const folderName = e.target.closest('.cgrp-namebtn');
+  if (folderName) {
+    const row = folderName.closest('.cgrp-h');
+    app.querySelectorAll('.cgrp-h.on').forEach((other) => other.classList.remove('on'));
+    row.classList.add('on');
+    return;
+  }
+  const saved = e.target.closest('.citem');
+  if (saved) {
+    app.querySelectorAll('.citem').forEach((row) => row.classList.toggle('on', row === saved));
+    return;
+  }
+  const requestTab = e.target.closest('[data-tabs="creq"] > span');
+  if (requestTab) return setComposerTab(requestTab.dataset.ctab);
+  const responseTab = e.target.closest('[data-tabs="cresp"] > span');
+  if (responseTab) return setComposerResponseTab(responseTab.dataset.crtab);
+  const doc = e.target.closest('.cdoc');
+  if (doc) {
+    app.querySelectorAll('.cdoc').forEach((d) => d.classList.toggle('on', d === doc));
+    return;
+  }
+  const bodyType = e.target.closest('.bodytype span');
+  if (bodyType) return setBodyType(bodyType.dataset.bt);
+  if (e.target.closest('.chist-trigger')) {
+    return setState({ composerHistory: app.dataset.composerHistory === 'open' ? '' : 'open' });
+  }
+  if (e.target.closest('.cdoc-add')) return setState({ composer: 'empty' });
+  if (e.target.closest('.csend')) return setState({ composer: '' });
+});
 
 // Capture filter panel, search clear and inspector close (interactive preview).
 app.addEventListener('click', (e) => {

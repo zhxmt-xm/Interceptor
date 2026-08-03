@@ -68,6 +68,25 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
   shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
 }
+// composer request/response tabs and send phases
+for (const theme of ['light', 'dark']) {
+  const base = { view: 'composer', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+  shots.push({ feature: 'composer', theme, variant: 'request-query', state: { ...base, composerTab: 'query' } });
+  shots.push({ feature: 'composer', theme, variant: 'request-body', state: { ...base, composerTab: 'body' } });
+  shots.push({ feature: 'composer', theme, variant: 'request-body-form', state: { ...base, composerTab: 'body', bodyType: 'form' } });
+  shots.push({ feature: 'composer', theme, variant: 'request-body-none', state: { ...base, composerTab: 'body', bodyType: 'none' } });
+  shots.push({ feature: 'composer', theme, variant: 'request-auth', state: { ...base, composerTab: 'auth' } });
+  shots.push({ feature: 'composer', theme, variant: 'response-headers', state: { ...base, composerResponseTab: 'headers' } });
+  shots.push({ feature: 'composer', theme, variant: 'response-cookies', state: { ...base, composerResponseTab: 'cookies' } });
+  shots.push({ feature: 'composer', theme, variant: 'response-timing', state: { ...base, composerResponseTab: 'timing' } });
+  shots.push({ feature: 'composer', theme, variant: 'empty', state: { ...base, composer: 'empty' } });
+  shots.push({ feature: 'composer', theme, variant: 'sending', state: { ...base, composer: 'sending' } });
+  shots.push({ feature: 'composer', theme, variant: 'history', state: { ...base, composerHistory: 'open' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-collapsed', state: { ...base, collection: 'closed' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-folder-menu', state: { ...base, collectionMenu: 'open' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-rename', state: { ...base, collectionRename: 'on' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-folder-actions', state: base, hover: '.cgrp[data-grp="checkout"] > .cgrp-h' });
+}
 // capture filter panel scenes (facets replaced the old add-filter popover)
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'filters-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filters: 'closed' } });
@@ -94,11 +113,11 @@ for (const theme of ['light', 'dark']) {
   }
 }
 
-const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}';
+const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}.monaco-editor .cursors-layer{display:none!important}';
 const FULL_CSS = `
 .app{height:auto!important;min-height:800px!important}
 .mainhost,.mv{overflow:visible!important}
-.listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.cbuild,.cresp,.htab,.jsonv,
+.listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.ccol-scroll,.creq,.cresp,.cpane,.cscroll,.cedit,.jsonv,
 .snav,.scontent,.bqueue,.beditor,.bscroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
 
@@ -146,6 +165,12 @@ async function shoot(list) {
       filterGroup: '',
       filterActive: '',
       recording: '',
+      composer: '',
+      collection: 'open',
+      collectionMenu: '',
+      collectionRename: '',
+      composerHistory: '',
+      bodyType: 'json',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

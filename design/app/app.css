@@ -108,7 +108,8 @@ body {
 .statusbar .sp { margin-left: auto; }
 .statusbar .si { width: 12px; height: 12px; flex: 0 0 auto; color: var(--text-3); }
 /* Capture's bar is one slot per capture-path fact: listener · decryption · upstream hop. */
-.app[data-view="capture"] .sv[data-v="capture"] { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.app[data-view="capture"] .sv[data-v="capture"],
+.app[data-view="composer"] .sv[data-v="composer"] { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 .capture-upstream { justify-self: end; }
 .app:not([data-upstream]) .capture-upstream { display: none; }
 .statusbar .slink { padding: 0; margin-left: 2px; border: 0; background: transparent; color: var(--accent); font: inherit; cursor: pointer; }
@@ -243,6 +244,9 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .split:hover::after { background: var(--accent); }
 .split .grip { width: 4px; height: 40px; flex: 0 0 4px; border-radius: 3px; background: var(--border-2); transition: background .15s ease, height .15s ease; }
 .split:hover .grip { background: var(--accent); height: 52px; }
+.split.h { width: auto; min-width: 0; height: 1px; min-height: 1px; justify-self: stretch; align-self: stretch; cursor: row-resize; }
+.split.h .grip { width: 40px; height: 4px; flex: 0 0 40px; transition: background .15s ease, flex-basis .15s ease; }
+.split.h:hover .grip { width: 52px; height: 4px; flex-basis: 52px; }
 
 /* ---- form controls ---- */
 .inp { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text); font-family: var(--font-mono); font-size: 12px; }
@@ -428,7 +432,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
       0 0 4px color-mix(in srgb, var(--text) 12%, transparent),
       0 0 12px -4px color-mix(in srgb, var(--text) 20%, transparent);
 }
-.app.shell-v2 .tabs { margin-top: 6px; border-bottom: 0; background: transparent; box-shadow: none; }
+.app.shell-v2 .insp .tabs { margin-top: 6px; border-bottom: 0; background: transparent; box-shadow: none; }
 .app.shell-v2 .scroll { padding-top: 22px; background: var(--panel); }
 .app.shell-v2 .scroll .sh { border-bottom: 0; }
 .app.shell-v2 .scroll .sh::after {
@@ -599,28 +603,191 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rule-select-option.on { color: var(--accent); background: var(--accent-soft); }
 
 /* =====================================================================
-   FEATURE: composer — builder · split · response
+   FEATURE: composer — collection · request documents · editor · response
    ===================================================================== */
-.cmain { grid-template-columns: minmax(0,1fr) 1px 540px; }
-.cbuild { display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: var(--bg); }
-.urlrow { display: flex; align-items: center; gap: 9px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
-.urlrow .method { width: 104px; flex: 0 0 auto; }
+.cmain { grid-template-columns: 216px 1px minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+.app[data-collection="closed"] .cmain { grid-template-columns: minmax(0,1fr); }
+.app[data-collection="closed"] .ccol,
+.app[data-collection="closed"] .cmain > .split:not(.h) { display: none; }
+.cwork { display: grid; grid-template-rows: 40px 56px minmax(0,1fr) 1px 368px; min-width: 0; min-height: 0; overflow: hidden; }
+
+/* saved requests: named folders, arbitrarily nested */
+.ccol { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--filter); }
+.ccol-bar { display: flex; align-items: center; gap: 4px; height: 40px; flex: 0 0 40px; padding: 0 8px; }
+.ccol-title { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--text-3); }
+.ccol-scroll { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; padding: 8px; overflow-y: auto; }
+.ccol-scroll::-webkit-scrollbar { width: 8px; }
+.ccol-scroll::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 4px; background: transparent; background-clip: content-box; }
+.ccol-scroll:hover::-webkit-scrollbar-thumb { background: var(--border-2); background-clip: content-box; }
+.cgrp { display: flex; flex-direction: column; gap: 2px; }
+/* chevron collapses, the name selects: one row, two hit areas, like a file tree */
+.cgrp-h { display: flex; align-items: center; height: 28px; flex: 0 0 28px; padding: 0; border-radius: 7px; color: var(--text-2); }
+.cgrp-h:hover { background: var(--hover); color: var(--text); }
+/* the selected folder is the create target: outlined, so it never reads like the filled request row */
+.cgrp-h.on { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent); color: var(--text); font-weight: 600; }
+.cgrp-chevbtn { display: grid; place-items: center; width: 24px; height: 100%; flex: 0 0 24px; padding: 0; border: 0; border-radius: 7px 0 0 7px; background: transparent; color: inherit; cursor: pointer; }
+.cgrp-chevbtn:hover .cgrp-chev { color: var(--text); }
+.cgrp-namebtn { display: flex; align-items: center; flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 0; border: 0; background: transparent; color: inherit; font-family: var(--font-ui); font-size: 12px; font-weight: inherit; text-align: left; cursor: pointer; }
+.cgrp-chev { width: 13px; height: 13px; flex: 0 0 auto; color: var(--text-3); transform: rotate(-90deg); transition: transform .15s ease; }
+.cgrp.on > .cgrp-h .cgrp-chev { transform: rotate(0deg); }
+.cgrp-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cgrp-c { padding: 0 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.cgrp-h.on .cgrp-c { color: var(--text-2); }
+.cgrp-more { display: none; width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); cursor: pointer; flex: 0 0 auto; }
+.cgrp-more svg { width: 13px; height: 13px; }
+.cgrp-more:hover { background: var(--hover); color: var(--text); }
+.cgrp-h:hover .cgrp-c, .cgrp-h.menuopen .cgrp-c { display: none; }
+.cgrp-h:hover .cgrp-more, .cgrp-h.menuopen .cgrp-more { display: grid; }
+.cgrp-h.menuopen { background: var(--hover); color: var(--text); }
+.cgrp-h.menuopen .cgrp-more { background: var(--accent-soft); color: var(--accent); }
+.cgrp-b { display: none; flex-direction: column; gap: 2px; padding-left: 11px; }
+.cgrp.on > .cgrp-b { display: flex; }
+.citem { display: flex; align-items: center; gap: 8px; height: 26px; flex: 0 0 26px; padding: 0 0 0 8px; border-radius: 7px; color: var(--text-2); font-size: 12px; cursor: pointer; }
+.citem:hover { background: var(--hover); color: var(--text); }
+.citem.on { background: var(--accent-soft); color: var(--accent); font-weight: 560; }
+.citem .m { width: 40px; flex: 0 0 auto; padding: 2px 0; font-size: 9px; text-align: center; }
+.citem-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* inline rename: the same row turns into a text field, no modal */
+.crename { display: none; align-items: center; gap: 6px; height: 28px; flex: 0 0 28px; padding: 0 4px 0 5px; border-radius: 7px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--accent); }
+.app[data-collection-rename="on"] .crename { display: flex; }
+.crename .cgrp-chev { transform: rotate(-90deg); }
+.cname { flex: 1; min-width: 0; color: var(--text); font-size: 12px; font-weight: 600; }
+.cname::after { content: ''; display: inline-block; width: 1px; height: 13px; margin-left: 1px; vertical-align: -2px; background: var(--accent); }
+
+/* folder actions menu, anchored to the folder row that opened it */
+.cmenu { position: absolute; top: 0; left: 0; z-index: 40; display: none; width: 190px; padding: 6px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel); box-shadow: 0 18px 44px rgba(0,0,0,.2); }
+.app[data-collection-menu="open"] .cmenu { display: block; }
+.cmenu-i { display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 7px; color: var(--text); font-size: 12px; cursor: pointer; }
+.cmenu-i svg { width: 14px; height: 14px; color: var(--text-3); }
+.cmenu-i:hover { background: var(--hover); }
+.cmenu-i.danger { color: var(--red); }
+.cmenu-i.danger svg { color: var(--red); }
+.cmenu-sep { height: 1px; margin: 5px 6px; background: var(--border); }
+
+/* open request documents; the rule is drawn as an inset shadow so tab text centres on the full 40px */
+.cdocs { display: flex; align-items: stretch; gap: 6px; padding: 0 8px 0 6px; background: var(--filter); box-shadow: inset 0 -1px 0 var(--border); overflow: hidden; }
+.cdoc-list { display: flex; align-items: stretch; gap: 2px; min-width: 0; }
+.ccol-toggle { align-self: center; flex: 0 0 auto; }
+.app:not([data-collection="closed"]) .ccol-toggle { background: var(--accent-soft); color: var(--accent); }
+.cdoc { position: relative; display: flex; align-items: center; gap: 7px; max-width: 200px; padding: 0 6px 0 9px; color: var(--text-3); font-size: 12.5px; font-weight: 500; cursor: pointer; }
+.cdoc:not(.on):hover { background: var(--hover); color: var(--text-2); }
+.cdoc.on { background: var(--bg); color: var(--text); font-weight: 600; }
+.cdoc.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); }
+.cdoc .m { padding: 2px 6px; font-size: 9.5px; }
+.cdoc-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cdoc-x { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; }
+.cdoc-x svg { width: 12px; height: 12px; fill: none; stroke: currentColor; }
+.cdoc.on .cdoc-x, .cdoc:hover .cdoc-x { opacity: 1; }
+.cdoc-x:hover { background: var(--hover); color: var(--text); }
+.cdoc-add { align-self: center; }
+
+/* method · url · send */
+.urlrow { position: relative; display: flex; align-items: center; gap: 9px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.urlrow .method { width: 112px; flex: 0 0 auto; }
+.urlrow .method .m { margin-right: auto; }
 .urlrow .url { flex: 1; min-width: 0; font-family: var(--font-mono); }
 .urlrow .url .sc { color: var(--text-3); }
-.subrow { display: flex; height: var(--content-toolbar-height); align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--filter); }
-.subrow .lbl2 { font-size: 11px; font-weight: 600; color: var(--text-3); }
-.htab { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
-.v-composer .hhead, .v-composer .hrow { display: grid; grid-template-columns: 22px minmax(0,1fr) minmax(0,1.2fr) 30px; gap: 10px; align-items: center; padding: 0 16px; }
-.v-composer .hhead { height: 30px; font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border); }
-.v-composer .hrow { height: 42px; border-bottom: 1px solid var(--border); }
-.v-composer .hrow .k2 { font-family: var(--font-mono); font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.v-composer .hrow .v2 { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.v-composer .hrow.add2 .k2 { color: var(--text-3); }
-.cresp { display: flex; flex-direction: column; min-width: 0; background: var(--panel); }
-.crhead { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); }
-.crhead .metric { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-2); }
-.crhead .metric svg { width: 13px; height: 13px; color: var(--text-3); }
-.jsonv { flex: 1; min-height: 0; padding: 16px 18px; font-family: var(--font-mono); font-size: 12px; line-height: 1.75; overflow-y: auto; }
+.csend { min-width: 92px; justify-content: center; }
+.csend-spinner { display: none; width: 13px; height: 13px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: recspin .75s linear infinite; }
+.app[data-composer="sending"] .csend svg { display: none; }
+.app[data-composer="sending"] .csend-spinner { display: inline-block; }
+
+/* recent sends: replay a previous request without keeping it in the collection */
+.chist { position: absolute; top: 48px; right: 8px; z-index: 40; display: none; flex-direction: column; gap: 1px; width: 380px; padding: 6px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel); box-shadow: 0 18px 44px rgba(0,0,0,.2); }
+.app[data-composer-history="open"] .chist { display: flex; }
+.chist-h { display: flex; align-items: center; justify-content: space-between; height: 28px; padding: 0 4px 0 8px; font-size: 12px; font-weight: 600; color: var(--text-3); }
+.chist-clear { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); cursor: pointer; }
+.chist-clear svg { width: 13px; height: 13px; fill: none; stroke: currentColor; }
+.chist-clear:hover { background: var(--hover); color: var(--red); }
+.chist-i { display: grid; grid-template-columns: 40px minmax(0,1fr) auto auto; gap: 10px; align-items: center; height: 30px; padding: 0 8px; border-radius: 7px; cursor: pointer; }
+.chist-i:hover { background: var(--hover); }
+.chist-u { min-width: 0; overflow: hidden; font-family: var(--font-mono); font-size: 11.5px; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.chist-s { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chist-s.ok { color: var(--green); }
+.chist-s.warn { color: var(--yellow); }
+.chist-s.err { color: var(--red); }
+.chist-t { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+
+/* request / response share one tab bar shape: tabs left, state and tools right */
+.creq, .cresp { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.creq { background: var(--bg); }
+.cresp { background: var(--panel); }
+/* tabs carry no bottom rule: only the active accent underline, like the capture inspector */
+.ctabbar { display: flex; align-items: center; gap: 10px; height: 40px; flex: 0 0 40px; padding: 0 8px 0 5px; }
+.ctabbar .tabs { flex: 0 0 auto; height: 100%; margin: 0; padding: 0; border-bottom: 0; }
+/* the label is flex-centred in the full row; the underline is an absolutely positioned decoration that never shifts it */
+.ctabbar .tabs span { position: relative; display: flex; align-items: center; height: 100%; padding: 0 11px; border-bottom: 0; }
+.ctabbar .tabs span::after { content: ''; position: absolute; left: 0; right: 0; bottom: 2px; height: 2px; border-radius: 1px; background: transparent; }
+.ctabbar .tabs span.on::after { background: var(--accent); }
+/* baseline, not centre: the label is Inter and the count is mono, so centring their boxes misaligns the text */
+.tlabel { display: flex; align-items: baseline; gap: 6px; line-height: 20px; font-style: normal; }
+.tct { font-family: var(--font-mono); font-style: normal; font-size: 10.5px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tabs span.on .tct { color: var(--accent); }
+.tdot { align-self: center; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.crbar { gap: 14px; }
+/* same family + same size + centre alignment, exactly like the capture list status */
+.rstate { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+.chip.proto { padding: 0 8px; font-size: 11.5px; color: var(--text-2); background: var(--panel-2); }
+/* same family + size as the metrics, so centring the boxes also lines up the baselines */
+.crbar .rstat { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--green); white-space: nowrap; }
+.crbar .rstat .d { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: currentColor; }
+.rmetric { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* panes: only the selected request/response tab is mounted */
+.cpane { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.cpane.on { display: flex; }
+.cscroll { padding: 16px 18px; gap: 22px; overflow-y: auto; }
+
+/* key/value editor (query · headers): only the header rule, rows separate by hover like the capture list */
+.kvhead, .kvrow { display: grid; grid-template-columns: 34px minmax(0,0.8fr) minmax(0,1.2fr) 30px; gap: 10px; align-items: center; padding: 0 14px; }
+.kvhead { height: 34px; flex: 0 0 34px; font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-3); border-bottom: 1px solid var(--border); }
+.kvrow { height: 34px; flex: 0 0 34px; }
+.kvhead > :first-child, .kvrow > :first-child { display: grid; place-items: center; }
+.kvrow:hover { background: var(--hover); }
+.kvk, .kvv { font-family: var(--font-mono); font-size: 12px; line-height: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kvk { color: var(--text); }
+.kvv { color: var(--text-2); }
+.kvk.ph, .kvv.ph { color: var(--text-3); }
+.kvx { display: grid; place-items: center; width: 24px; height: 24px; justify-self: end; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; }
+.kvx svg { width: 13px; height: 13px; fill: none; stroke: currentColor; }
+.kvrow:hover .kvx { opacity: 1; }
+.kvx:hover { background: var(--hover); color: var(--red); }
+/* the draft row confirms instead of deletes; it only enables once name and value are filled in */
+.kvok { display: grid; place-items: center; width: 24px; height: 24px; justify-self: end; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--accent); cursor: pointer; }
+.kvok svg { width: 14px; height: 14px; fill: none; stroke: currentColor; }
+.kvok:not(:disabled):hover { background: var(--accent-soft); }
+.kvok:disabled { color: var(--border-2); cursor: not-allowed; }
+
+/* body editor + response body: tools row, then the shared read-only/editable Monaco card */
+.cbar { display: flex; align-items: center; gap: 10px; height: 40px; flex: 0 0 40px; padding: 0 8px 0 14px; }
+.cedit, .jsonv { flex: 1; min-height: 0; margin: 0 14px 14px; border: 1px solid var(--border-2); border-radius: 10px; overflow: hidden; }
+/* Form is a third KV table, None is a plain notice: neither one is an editor */
+.bodyform { display: none; flex-direction: column; }
+.bodynone { display: none; flex: 1; align-items: center; justify-content: center; padding-bottom: 20px; color: var(--text-3); font-size: 12px; }
+.app[data-body-type="form"] .cedit, .app[data-body-type="none"] .cedit,
+.app[data-body-type="none"] .bodymeta,
+.app[data-body-type="none"] .bodytools, .app[data-body-type="form"] .bodytools { display: none; }
+.app[data-body-type="form"] .bodyform { display: flex; }
+.app[data-body-type="none"] .bodynone { display: flex; }
+
+/* auth */
+.authpane { padding: 16px 14px; gap: 12px; }
+.arow { display: grid; grid-template-columns: 84px minmax(0,1fr); gap: 12px; align-items: center; max-width: 620px; }
+.arow .alab { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+
+/* response placeholder: idle before the first send, busy while in flight */
+.cplace { display: none; flex: 1; min-height: 0; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 40px; text-align: center; }
+.cplace b { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.cplace span:not(.cplace-icon) { max-width: 420px; font-size: 12px; line-height: 1.6; color: var(--text-3); }
+.cplace-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--panel-2); color: var(--text-3); }
+.cplace-icon svg { width: 18px; height: 18px; }
+.app[data-composer="empty"] .cresp .ctabbar, .app[data-composer="empty"] .cresp .cpane,
+.app[data-composer="sending"] .cresp .ctabbar, .app[data-composer="sending"] .cresp .cpane { display: none; }
+.app[data-composer="empty"] .cplace, .app[data-composer="sending"] .cplace { display: flex; }
+.cplace-busy, .app[data-composer="sending"] .cplace-idle { display: none; }
+.app[data-composer="sending"] .cplace-busy { display: block; }
+.csv-empty, .csv-busy { display: none; }
+.app[data-composer="empty"] .csv-idle, .app[data-composer="sending"] .csv-idle { display: none; }
+.app[data-composer="empty"] .csv-empty, .app[data-composer="sending"] .csv-busy { display: inline; }
 /* =====================================================================
    FEATURE: settings — section nav · content
    ===================================================================== */
@@ -738,11 +905,10 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .bodyview { display: flex; flex-direction: column; gap: 10px; }
 .bodyview .bodymode { margin-bottom: 0; }
 /* Monaco draws its own padding, wrapping and font; the host only supplies the frame.
-   `fill` viewers absorb the leftover panel height but never go below 320px;
+   `fill` viewers absorb whatever height the panel leaves them;
    `box` viewers hug their content (height set by monaco.js). */
 .bodybox.mono, .jsonv.mono { padding: 0; overflow: hidden; }
-[data-monaco="fill"] { flex: 1 1 auto; min-height: 320px; }
-.jsonv.mono { border-top: 1px solid var(--border); }
+[data-monaco="fill"] { flex: 1 1 0; min-height: 0; }
 .bfoot { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--panel-2); }
 .btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
 .btn.danger:not(:disabled):hover { background: color-mix(in srgb, var(--red) 10%, var(--panel)); }

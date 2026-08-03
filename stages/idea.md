@@ -1,14 +1,19 @@
 ## 新的idea
 
 - [x] **已完成**（2026-07-31，commit `cc11b5e`/`27bcd5f`/`5cdfc2a`）我们能不能加上application和图标？![alt text](image-5.png)
-- 我在想sidebar默认收起，然后顶部的filter全部换到左侧一个分栏，有各种filter，可以折叠，分栏可以收起，filter现状还是不够直观，最好和现在的all/h1/h2那样可以直接点，并且h1最好分为http1.1和其他版本。list和detail仍保持现状 ![alt text](image-6.png)
-- list的host column，可以把path和host位置互换下，因为host可以用左侧来filter，所以path更显眼直观一点
-- composer应该做成postman或proxyman这样的UI格式 ![alt text](image-7.png)
-- request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
-- 进入时做一个酷炫的加载界面等待proxy ready
-- MCP server，先写package，不接入main或core，另外要落地详细架构文档
+- [x] **已完成**（2026-08-02 设计稿 `a8a484a`，2026-08-03 Renderer `3eaa14e`）我在想sidebar默认收起，然后顶部的filter全部换到左侧一个分栏，有各种filter，可以折叠，分栏可以收起，filter现状还是不够直观，最好和现在的all/h1/h2那样可以直接点，并且h1最好分为http1.1和其他版本。list和detail仍保持现状 ![alt text](image-6.png)
+- [x] **已完成**（同 `a8a484a`/`3eaa14e`）list的host column，可以把path和host位置互换下，因为host可以用左侧来filter，所以path更显眼直观一点
+- [ ] **设计稿已定稿，待实现**（2026-08-04）composer应该做成postman或proxyman这样的UI格式 ![alt text](image-7.png)
+  - 设计稿：`design/app/` composer 视图 34 张截图；规范见 `design/design-system.md` 的「Composer 工作区」；架构与新增范围见 `architecture/feature-composer.md` 第 5 节。
+  - 形态：左 `216px` Collection 分栏（可嵌套命名目录、chevron 折叠 / 名称选中、`⋮` 菜单、行内重命名、可收起）+ 工作区（文档标签条 · URL 行 · 请求编辑区 Query/Headers/Body/Auth · splitter · 响应区 Body/Headers/Cookies/Timing）。
+  - **实现范围明显大于原 Composer**：Collection 需要 Core 新增持久化模块 + 4 条协议命令 + Preload 窄 API；编辑即生效（无保存动作）。Body 的 Form 档由 Renderer 编码成字符串，协议不变；`multipart/form-data` 不在本轮。
+- [ ] request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+- [ ] 进入时做一个酷炫的加载界面等待proxy ready
+- [ ] **部分完成**（2026-08-03，commit `b326bc3`）MCP server，先写package，不接入main或core，另外要落地详细架构文档
+  - 已完成：`packages/mcp-server/` 认证 + 11 只读 / 7 写工具 + MCP 协议状态机（45 tests，零运行时依赖）；架构文档 `architecture/feature-mcp.md`。
+  - 未完成：Main 侧 transport（named pipe / unix socket）、runtime 文件、`bridge.mjs`、Preload 窄 API、Settings 面板与审批弹层——即整条"接入 Main/Core"的链路。
 
-- Breakpoint 交互重构（配置在 Rules、调试在 Breakpoints 两处分家，很别扭）。**依赖 filter 重构，等 filter 设计定稿后再落地。**
+- [ ] Breakpoint 交互重构（配置在 Rules、调试在 Breakpoints 两处分家，很别扭）。**依赖的 filter 重构已于 2026-08-03 落地（`3eaa14e`），此项已解锁。**
 
   - 现状问题：
     - 断点规则配置在 Rules 的一种 action；HTTP 总开关在 Breakpoints 页的 `Break on match`；WebSocket 断点开关却在 Capture 的 WS 消息面板 —— 同一能力三个入口、两种范式。

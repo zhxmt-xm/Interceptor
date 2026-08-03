@@ -1,8 +1,9 @@
 # Feature: Composer
 
-> 最后更新：2026-07-26
+> 最后更新：2026-08-04
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/connection/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
+> UI 设计：`design/app/` 的 composer 视图（34 张截图）与 `design/design-system.md` 的「Composer 工作区」一节，**设计已定稿、尚未落地**。
 
 ## 1. 职责与边界
 
@@ -113,7 +114,41 @@ flowchart LR
 
 当前 Composer 与 Capture 之间没有直接联动。若未来支持"从 Capture 复制到 Composer"，必须明确复制的是客户端原始请求还是发往 Origin 的最终请求。
 
-## 5. 验收要点
+## 5. UI 重构与 Collection [设计已定稿，未实现]
+
+设计稿把 Composer 从「左请求 / 右响应」改成 **`Collection 分栏 / splitter / 工作区`**，工作区纵向为 `文档标签条 · URL 行 · 请求编辑区 · splitter · 响应区`。这带来一块**当前完全不存在的能力：请求集合的持久化**。
+
+### 5.1 Collection 需要新增的东西
+
+| 层 | 新增内容 |
+| --- | --- |
+| Core | 新模块 `proxy-core/collection/`，按 `rules.sqlite` 的模式持久化到独立 SQLite；目录可任意嵌套，条目保存 method / url / headers / query / body / auth |
+| Protocol | `collection.list` / `collection.upsert` / `collection.remove` / `collection.move`（拖拽改父目录与排序）；载荷是平台中立的树形 DTO，不复用 React state |
+| Preload | 对应的意图型窄 API，不暴露文件路径 |
+| Renderer | 目录树、行内重命名、选中目录作为新建目标、多请求文档 tab |
+
+**编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。这一条决定了 `collection.upsert` 会被高频调用，Renderer 侧需要节流写入。
+
+### 5.2 Recent sends [设计已定稿，未实现]
+
+URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立的事，不互相写入：列出最近发送的 method / URL / 状态码 / 相对时间，点击恢复为请求。是否持久化待定；只存内存即可满足设计稿表达。
+
+### 5.3 请求 Body 的四档 [设计已定稿，未实现]
+
+| 档位 | 形态 | 协议影响 |
+| --- | --- | --- |
+| None | 占位文案，无编辑器 | `body` 不传 |
+| JSON | 可编辑 Monaco，Format 调 Monaco 自带格式化 | 无 |
+| Text | 同上，语言为 plaintext，Format 禁用 | 无 |
+| Form | 第三张 KV 表 | Renderer 编码成 `a=1&b=2` 字符串，**协议不变** |
+
+**`multipart/form-data` 传文件不在本轮范围**：`ComposerRequestInput.body` 只接受 `string`，要传二进制必须先扩协议。
+
+### 5.4 与现状的差距
+
+现有 Renderer 只有单请求 + `RequestBuilder` / `ResponsePanel` 左右分栏，没有 Collection、没有多 tab、没有 Body 类型、没有响应 Timing 页。Core 侧 `composer.send` 已经采集了完整 timing 与 TLS，但 UI 从未展示——设计稿的 `Timing` 页用的就是这批既有数据，不需要扩协议。
+
+## 6. 验收要点
 
 - [ ] Composer 请求不出现在 Capture 列表。
 - [ ] Composer 请求不受启用的 Rules 影响。

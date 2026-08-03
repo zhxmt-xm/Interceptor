@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date">
+    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -426,40 +426,187 @@
 
         <!-- composer -->
         <div class="mv cmain v-composer" data-v="composer">
-          <div class="cbuild">
-            <div class="urlrow">
-              <div class="sel2 method"><span class="m post">POST</span><span class="cr"><svg><use href="#i-chev"/></svg></span></div>
-              <div class="inp url"><span class="sc">https://</span>api.github.com/user/repos</div>
-              <button class="btn pri"><svg><use href="#i-send"/></svg>Send</button>
+          <!-- saved requests -->
+          <aside class="ccol" data-parity="composer-collection">
+            <div class="ccol-bar">
+              <span class="ccol-title">Collection</span>
+              <div class="icon-actions">
+                <button class="ib sm" aria-label="New folder in Repositories" title="New folder in “Repositories”"><svg><use href="#i-folder-plus"/></svg></button>
+                <button class="ib sm" aria-label="New request in Repositories" title="New request in “Repositories”"><svg><use href="#i-file-plus"/></svg></button>
+                <button class="ib sm" aria-label="Export collection" title="Export collection"><svg><use href="#i-download"/></svg></button>
+              </div>
             </div>
-            <div class="subrow">
-              <span class="lbl2">Protocol</span>
-              <div class="seg protocol-switch"><span class="on">Auto</span><span>HTTP/1.1</span><span>HTTP/2</span></div>
-              <span class="sp" style="flex:1"></span>
-              <span class="cnt">TLS 1.3 · h2</span>
-              <div class="icon-actions"><button class="ib sm" data-parity="composer-history" aria-label="History" title="History"><svg><use href="#i-clock"/></svg></button><button class="ib sm" aria-label="New request" title="New request"><svg><use href="#i-plus"/></svg></button></div>
+            <div class="ccol-scroll">
+              <section class="cgrp on" data-grp="github">
+                <div class="cgrp-h"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">GitHub API</span></button><span class="cgrp-c">5</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="cgrp-b">
+                  <section class="cgrp on" data-grp="github-repos">
+                    <div class="cgrp-h on"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Repositories</span></button><span class="cgrp-c">3</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                    <div class="cgrp-b">
+                      <div class="citem"><span class="m get">GET</span><span class="citem-n">List repos</span></div>
+                      <div class="citem on"><span class="m post">POST</span><span class="citem-n">Create repo</span></div>
+                      <div class="citem"><span class="m put">PATCH</span><span class="citem-n">Update repo</span></div>
+                    </div>
+                  </section>
+                  <div class="crename"><svg class="cgrp-chev"><use href="#i-chev"/></svg><span class="cname">Pull requests</span></div>
+                  <section class="cgrp" data-grp="github-users">
+                    <div class="cgrp-h"><button class="cgrp-chevbtn" aria-label="Expand folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Users</span></button><span class="cgrp-c">2</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                    <div class="cgrp-b">
+                      <div class="citem"><span class="m get">GET</span><span class="citem-n">Get user</span></div>
+                      <div class="citem"><span class="m get">GET</span><span class="citem-n">List followers</span></div>
+                    </div>
+                  </section>
+                </div>
+              </section>
+              <section class="cgrp on" data-grp="checkout">
+                <div class="cgrp-h"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Checkout service</span></button><span class="cgrp-c">3</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="cgrp-b">
+                  <div class="citem"><span class="m post">POST</span><span class="citem-n">Create order</span></div>
+                  <div class="citem"><span class="m get">GET</span><span class="citem-n">Order status</span></div>
+                  <div class="citem"><span class="m del">DEL</span><span class="citem-n">Cancel order</span></div>
+                </div>
+              </section>
+              <section class="cgrp" data-grp="scratch">
+                <div class="cgrp-h"><button class="cgrp-chevbtn" aria-label="Expand folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Scratch</span></button><span class="cgrp-c">2</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="cgrp-b">
+                  <div class="citem"><span class="m post">POST</span><span class="citem-n">GraphQL probe</span></div>
+                  <div class="citem"><span class="m get">GET</span><span class="citem-n">Healthz</span></div>
+                </div>
+              </section>
             </div>
-            <div class="tabs"><span class="on">Headers <span style="color:var(--text-3)">4</span></span><span>Query</span><span>Body</span><span>Auth</span></div>
-            <div class="htab">
-              <div class="hhead"><span></span><span>Name</span><span>Value</span><span></span></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-0">authorization</span><span class="v2">Bearer github_pat_11A…</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-1">content-type</span><span class="v2">application/json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="k2" data-parity="composer-header-name-2">accept</span><span class="v2">application/vnd.github+json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow"><span class="cb"></span><span class="k2">user-agent</span><span class="v2">Interceptor/1.0.0</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              <div class="hrow add2"><span class="cb"></span><span class="k2">Add header…</span><span class="v2"></span><span></span></div>
+            <div class="cmenu">
+              <div class="cmenu-i"><svg><use href="#i-pencil"/></svg>Rename…</div>
+              <div class="cmenu-i"><svg><use href="#i-folder-plus"/></svg>New subfolder…</div>
+              <div class="cmenu-i"><svg><use href="#i-file-plus"/></svg>New request…</div>
+              <div class="cmenu-sep"></div>
+              <div class="cmenu-i danger"><svg><use href="#i-trash"/></svg>Delete folder</div>
+            </div>
+          </aside>
+
+          <div class="split"><div class="grip"></div></div>
+
+          <div class="cwork">
+          <!-- open requests: one document tab per draft -->
+          <div class="cdocs">
+            <button class="ib sm ccol-toggle" aria-label="Toggle collection" title="Collection"><svg><use href="#i-panel-left"/></svg></button>
+            <div class="cdoc-list">
+              <div class="cdoc on" data-parity="composer-doc"><span class="m post">POST</span><span class="cdoc-n">Create repo</span><button class="cdoc-x" aria-label="Close request" title="Close"><svg><use href="#i-x"/></svg></button></div>
+              <div class="cdoc"><span class="m get">GET</span><span class="cdoc-n">List repos</span><button class="cdoc-x" aria-label="Close request" title="Close"><svg><use href="#i-x"/></svg></button></div>
+              <div class="cdoc"><span class="m get">GET</span><span class="cdoc-n">Untitled</span><button class="cdoc-x" aria-label="Close request" title="Close"><svg><use href="#i-x"/></svg></button></div>
+              <button class="ib sm cdoc-add" aria-label="New request" title="New request"><svg><use href="#i-plus"/></svg></button>
             </div>
           </div>
-          <div class="split"><div class="grip"></div></div>
-          <div class="cresp">
-            <div class="crhead">
-              <span class="chip" style="color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)">201</span>
-              <span class="sbadge"><span class="d"></span>Created</span>
-              <span class="sp" style="flex:1"></span>
-              <span class="metric"><svg><use href="#i-clock"/></svg>142 ms</span>
-              <span class="metric">1.2 KB</span>
+
+          <!-- method · url · send -->
+          <div class="urlrow">
+            <div class="sel2 method"><span class="m post">POST</span><span class="cr"><svg><use href="#i-chev"/></svg></span></div>
+            <div class="inp url" data-parity="composer-url"><span class="sc">https://</span>api.github.com/user/repos</div>
+            <button class="btn pri csend" data-parity="composer-send"><span class="csend-spinner"></span><svg><use href="#i-send"/></svg>Send</button>
+            <div class="icon-actions">
+              <button class="ib sm chist-trigger" data-parity="composer-history" aria-label="Recent sends" title="Recent sends"><svg><use href="#i-clock"/></svg></button>
             </div>
-            <div class="tabs"><span class="on">Body</span><span>Headers <span style="color:var(--text-3)">18</span></span><span>Cookies</span><span>Raw</span></div>
-            <div class="jsonv mono" data-monaco="fill" data-lang="json">
+            <div class="chist">
+              <div class="chist-h">Recent sends<button class="chist-clear" aria-label="Clear history" title="Clear history"><svg><use href="#i-trash"/></svg></button></div>
+              <div class="chist-i"><span class="m post">POST</span><span class="chist-u">api.github.com/user/repos</span><span class="chist-s ok">201</span><span class="chist-t">2m ago</span></div>
+              <div class="chist-i"><span class="m get">GET</span><span class="chist-u">api.github.com/users/octocat</span><span class="chist-s ok">200</span><span class="chist-t">14m ago</span></div>
+              <div class="chist-i"><span class="m post">POST</span><span class="chist-u">api.github.com/graphql</span><span class="chist-s warn">422</span><span class="chist-t">31m ago</span></div>
+              <div class="chist-i"><span class="m del">DEL</span><span class="chist-u">checkout.internal/orders/8412</span><span class="chist-s err">500</span><span class="chist-t">1h ago</span></div>
+            </div>
+          </div>
+
+          <!-- request editor -->
+          <div class="creq">
+            <div class="ctabbar" data-parity="composer-request-tabs">
+              <div class="tabs" data-tabs="creq">
+                <span data-ctab="query"><i class="tlabel">Query<b class="tct">2</b></i></span>
+                <span class="on" data-ctab="headers"><i class="tlabel">Headers<b class="tct">4</b></i></span>
+                <span data-ctab="body"><i class="tlabel">Body<b class="tdot"></b></i></span>
+                <span data-ctab="auth"><i class="tlabel">Auth</i></span>
+              </div>
+              <span class="sp" style="flex:1"></span>
+              <div class="seg protocol-switch"><span class="on">Auto</span><span>HTTP/1.1</span><span>HTTP/2</span></div>
+            </div>
+
+            <div class="cpane kvpane" data-ctab="query">
+              <div class="kvhead"><span></span><span>Name</span><span>Value</span><span></span></div>
+              <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk">visibility</span><span class="kvv">all</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk">per_page</span><span class="kvv">100</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow add"><span class="cb"></span><span class="kvk">x-trace-id</span><span class="kvv">9f2c1a84</span><button class="kvok" aria-label="Add parameter" title="Add"><svg><use href="#i-check"/></svg></button></div>
+            </div>
+
+            <div class="cpane kvpane on" data-ctab="headers" data-parity="composer-header-table">
+              <div class="kvhead"><span></span><span>Name</span><span>Value</span><span></span></div>
+              <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk" data-parity="composer-header-name-0">authorization</span><span class="kvv">Bearer github_pat_11A…</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk" data-parity="composer-header-name-1">content-type</span><span class="kvv">application/json</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk" data-parity="composer-header-name-2">accept</span><span class="kvv">application/vnd.github+json</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow"><span class="cb"></span><span class="kvk">user-agent</span><span class="kvv">Interceptor/1.0.0</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+              <div class="kvrow add"><span class="cb"></span><span class="kvk ph">Name</span><span class="kvv ph">Value</span><button class="kvok" aria-label="Add header" title="Enter a name and value first" disabled><svg><use href="#i-check"/></svg></button></div>
+            </div>
+
+            <div class="cpane bodypane" data-ctab="body">
+              <div class="cbar">
+                <div class="seg bodytype"><span data-bt="none">None</span><span class="on" data-bt="json">JSON</span><span data-bt="text">Text</span><span data-bt="form">Form</span></div>
+                <span class="sp" style="flex:1"></span>
+                <span class="cnt bodymeta">168 B · application/json</span>
+                <div class="icon-actions bodytools">
+                  <button class="ib sm" aria-label="Format JSON" title="Format JSON"><svg><use href="#i-code"/></svg></button>
+                  <button class="ib sm" aria-label="Copy" title="Copy"><svg><use href="#i-copy"/></svg></button>
+                </div>
+              </div>
+              <div class="cedit mono" data-monaco="edit" data-lang="json" data-parity="composer-body-editor">
+{
+  "name": "interceptor",
+  "description": "Desktop network debugging proxy",
+  "private": true,
+  "auto_init": true,
+  "gitignore_template": "Node"
+}
+              </div>
+              <div class="bodyform">
+                <div class="kvhead"><span></span><span>Name</span><span>Value</span><span></span></div>
+                <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk">grant_type</span><span class="kvv">client_credentials</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+                <div class="kvrow"><span class="cb on"><svg><use href="#i-check"/></svg></span><span class="kvk">scope</span><span class="kvv">repo read:user</span><button class="kvx" aria-label="Remove"><svg><use href="#i-x"/></svg></button></div>
+                <div class="kvrow add"><span class="cb"></span><span class="kvk ph">Name</span><span class="kvv ph">Value</span><button class="kvok" aria-label="Add field" title="Enter a name and value first" disabled><svg><use href="#i-check"/></svg></button></div>
+              </div>
+              <div class="bodynone">No body is sent with this request.</div>
+            </div>
+
+            <div class="cpane authpane" data-ctab="auth">
+              <div class="arow"><span class="alab">Type</span><div class="sel2 actl">Bearer token<span class="cr"><svg><use href="#i-chev"/></svg></span></div></div>
+              <div class="arow"><span class="alab">Token</span><div class="inp actl">github_pat_11ABCDEFGHIJKLMNOPQRSTU…</div></div>
+            </div>
+          </div>
+
+          <div class="split h"><div class="grip"></div></div>
+
+          <!-- response -->
+          <div class="cresp">
+            <div class="ctabbar crbar" data-parity="composer-response-tabs">
+              <div class="tabs" data-tabs="cresp">
+                <span class="on" data-crtab="body"><i class="tlabel">Body</i></span>
+                <span data-crtab="headers"><i class="tlabel">Headers<b class="tct">18</b></i></span>
+                <span data-crtab="cookies"><i class="tlabel">Cookies<b class="tct">1</b></i></span>
+                <span data-crtab="timing"><i class="tlabel">Timing</i></span>
+              </div>
+              <span class="sp" style="flex:1"></span>
+              <div class="rstate">
+                <span class="rstat" data-parity="composer-status"><span class="d"></span>201 Created</span>
+                <span class="rmetric">142 ms</span>
+                <span class="rmetric">1.2 KB</span>
+                <span class="chip proto">h2</span>
+              </div>
+            </div>
+
+            <div class="cpane bodypane on" data-crtab="body">
+              <div class="cbar">
+                <div class="seg respmode"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div>
+                <span class="sp" style="flex:1"></span>
+                <span class="cnt">application/json · utf-8</span>
+                <div class="icon-actions">
+                  <button class="ib sm" aria-label="Copy response body" title="Copy"><svg><use href="#i-copy"/></svg></button>
+                </div>
+              </div>
+              <div class="jsonv mono" data-monaco="fill" data-lang="json">
 {
   "id": 843102775,
   "name": "interceptor",
@@ -467,9 +614,43 @@
   "private": true,
   "owner": { "login": "acme", "id": 55 },
   "html_url": "https://github.com/acme/interceptor",
-  "default_branch": "main"
+  "default_branch": "main",
+  "visibility": "private",
+  "created_at": "2026-08-03T09:12:44Z"
 }
+              </div>
             </div>
+
+            <div class="cpane cscroll" data-crtab="headers">
+              <div class="sec"><div class="sh">Response Headers <span class="c">18</span></div><div class="kv"><span class="k">status</span><span class="v g">201 Created</span><span class="k">content-type</span><span class="v">application/json; charset=utf-8</span><span class="k">content-length</span><span class="v">1243</span><span class="k">location</span><span class="v">https://api.github.com/repos/acme/interceptor</span><span class="k">x-ratelimit-remaining</span><span class="v">4993</span><span class="k">x-github-request-id</span><span class="v">C4A2:1F0B:9D31A2</span></div></div>
+              <div class="sec"><div class="sh">Request Headers <span class="c">4</span></div><div class="kv"><span class="k">authorization</span><span class="v">Bearer github_pat_11A…</span><span class="k">content-type</span><span class="v">application/json</span><span class="k">accept</span><span class="v">application/vnd.github+json</span><span class="k">host</span><span class="v">api.github.com</span></div></div>
+            </div>
+
+            <div class="cpane cscroll" data-crtab="cookies">
+              <div class="sec"><div class="sh">Response Cookies <span class="c">1</span></div><div class="kv"><span class="k">_gh_sess</span><span class="v">VszN7pQ…9Qb2</span><span class="k">Domain</span><span class="v">.github.com</span><span class="k">Path</span><span class="v">/</span><span class="k">Expires</span><span class="v">Session</span><span class="k">Flags</span><span class="v a">HttpOnly · Secure · SameSite=Lax</span></div></div>
+            </div>
+
+            <div class="cpane cscroll" data-crtab="timing">
+              <div class="sec"><div class="sh">Timing <span class="c">142 ms total</span></div>
+                <div class="tl">
+                  <div class="tlrow"><span class="tlp">DNS</span><span class="tlt">6 ms</span><span class="tlbar"><i style="left:0;width:4.2%"></i></span></div>
+                  <div class="tlrow"><span class="tlp">Connect</span><span class="tlt">21 ms</span><span class="tlbar"><i style="left:4.2%;width:14.8%"></i></span></div>
+                  <div class="tlrow"><span class="tlp">TLS handshake</span><span class="tlt">33 ms</span><span class="tlbar"><i style="left:19%;width:23.2%"></i></span></div>
+                  <div class="tlrow"><span class="tlp">Waiting (TTFB)</span><span class="tlt">71 ms</span><span class="tlbar"><i style="left:42.2%;width:50%"></i></span></div>
+                  <div class="tlrow"><span class="tlp">Response body</span><span class="tlt">11 ms</span><span class="tlbar"><i style="left:92.2%;width:7.8%"></i></span></div>
+                </div>
+                <div class="kv" style="margin-top:12px"><span class="k">Remote address</span><span class="v">140.82.121.6:443</span><span class="k">Protocol</span><span class="v g">TLS 1.3 · h2</span><span class="k">Cipher suite</span><span class="v">TLS_AES_128_GCM_SHA256</span><span class="k">Request bytes</span><span class="v">168 B</span><span class="k">Response bytes</span><span class="v">1.2 KB</span></div>
+              </div>
+            </div>
+
+            <div class="cplace">
+              <span class="cplace-icon"><svg><use href="#i-send"/></svg></span>
+              <b class="cplace-idle">No response yet</b>
+              <b class="cplace-busy">Waiting for response…</b>
+              <span class="cplace-idle">Send the request to inspect its response here. Composer requests are sent directly and never pass through the proxy.</span>
+              <span class="cplace-busy">api.github.com · connected, waiting for response headers.</span>
+            </div>
+          </div>
           </div>
         </div>
 
@@ -638,7 +819,7 @@
       <footer class="statusbar">
         <div class="sv" data-v="capture"><div class="g capture-endpoint"><span class="gd"></span>127.0.0.1:8888<span class="proxy-on-label">System proxy on</span><span class="proxy-off-label">System proxy off</span></div><div class="g capture-decrypt"><span class="capture-decrypting"><svg class="si"><use href="#i-lock"/></svg>HTTPS decrypting · CA trusted</span><span class="capture-passthrough"><svg class="si"><use href="#i-lock-off"/></svg>HTTPS passthrough</span><button class="slink capture-enable-decrypt" data-open-https title="HTTPS traffic is forwarded without decryption. Click to set up the CA and start decrypting.">Click to enable MITM</button></div><div class="g capture-upstream"><svg class="si"><use href="#i-arrow"/></svg>upstream 127.0.0.1:7890</div></div>
         <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">6 of 8 enabled</div><div class="sp g mono">2 force body buffering</div></div>
-        <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g mono">127.0.0.1:8888</div><div class="sp g mono">last send 201 · 142 ms</div></div>
+        <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g">Sent directly — not routed through the proxy</div><div class="sp g"><span class="csv-idle">last send 201 · 142 ms</span><span class="csv-empty">no request sent yet</span><span class="csv-busy">sending…</span></div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>
         <div class="sv" data-v="breakpoints"><div class="g"><span class="rd" style="background:var(--yellow)"></span>2 paused</div><div class="g mono">127.0.0.1:8888</div><div class="g">timeout 60s → continue</div><div class="sp g mono">break on match · on</div></div>
         <div class="sv" data-v="diagnostics"><div class="g"><span class="gd"></span>Diagnostics</div><div class="g mono">2,481 records</div><div class="g">3 dropped under load</div><div class="sp g mono">retention 7d · redacted</div></div>
