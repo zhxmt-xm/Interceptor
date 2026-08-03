@@ -3,25 +3,24 @@ import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, SectionHeader, StatusBadge } from '../../../components';
+import { useCaptureStore } from '../data/captureStore';
 import styles from './TlsTunnelPanel.module.css';
 
 export interface TlsTunnelPanelProps {
   host: string;
-  mitmActive: boolean;
   port: number;
   open: boolean;
-  onSetupHttps: () => void;
 }
 
 /** Limited connection metadata for HTTPS that is forwarded without MITM decryption. */
 export function TlsTunnelPanel({
   host,
-  mitmActive,
   port,
   open,
-  onSetupHttps,
 }: TlsTunnelPanelProps): React.JSX.Element {
   const { t } = useTranslation();
+  const mitmActive = useCaptureStore((state) => state.linkStatus.decrypting);
+  const setHttpsSetupOpen = useCaptureStore((state) => state.setHttpsSetupOpen);
   return (
     <div className={styles.panel}>
       <div className={styles.callout}>
@@ -36,7 +35,7 @@ export function TlsTunnelPanel({
           <Button
             icon={Shield}
             variant="primary"
-            onClick={onSetupHttps}
+            onClick={() => setHttpsSetupOpen(true)}
             automationId={AUTOMATION_IDS.capture.inspector.setupHttps}
           >
             {t('settings.decryptHttps')}

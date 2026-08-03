@@ -1,0 +1,283 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--filter);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 8px 10px;
+  overflow-y: auto;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  background-clip: content-box;
+}
+
+.scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  background-clip: content-box;
+}
+
+.group {
+  margin-bottom: 4px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border-radius: 7px;
+  color: var(--text-2);
+}
+
+.groupHead:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupChevron {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+
+.groupOpen .groupChevron {
+  transform: rotate(0deg);
+}
+
+.groupName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.groupCountApplied {
+  color: var(--accent);
+}
+
+/* 组头 hover 时用清空按钮顶替计数，避免额外占位。 */
+.groupClear {
+  display: none;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.groupClear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.groupHead:hover .groupCountApplied {
+  display: none;
+}
+
+.groupHead:hover .groupClear {
+  display: grid;
+}
+
+.groupBody {
+  padding: 2px 0 6px;
+}
+
+.groupEmpty {
+  margin: 0;
+  padding: 5px 8px 5px 28px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* All 不加前置占位，与下方条目最左元素左边缘对齐。 */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  margin-bottom: 3px;
+  padding: 0 8px 0 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.itemOn {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 560;
+}
+
+.itemName {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemCount {
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.itemOn .itemCount {
+  color: var(--accent);
+}
+
+.itemLock {
+  flex: 0 0 auto;
+  padding: 1px;
+  color: var(--text-3);
+}
+
+.itemAppIcon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.itemAppUnknown {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.itemProtocol {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  flex: 0 0 auto;
+}
+
+.itemOn .itemProtocol {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.itemStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.itemStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ok {
+  color: var(--green);
+}
+
+.info2,
+.statusInfo {
+  color: var(--blue);
+}
+
+.warn {
+  color: var(--yellow);
+}
+
+.err,
+.statusErr {
+  color: var(--red);
+}
+
+.groupMore {
+  display: block;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px 0 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupMore:hover {
+  background: var(--hover);
+  color: var(--accent);
+}

@@ -390,7 +390,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByText('Interceptor', { exact: true })).toBeVisible();
+    // 侧栏默认折叠，品牌名不渲染；改用头部视图名确认 shell 与英文语言包都已生效。
+    await expect(page.getByRole('banner')).toContainText('Capture');
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
     await settleProxyReadiness(page);
@@ -692,7 +693,7 @@ async function settleProxyReadiness(page: Page): Promise<void> {
 
   if (await dialog.isVisible()) {
     await expect(page.getByRole('button', { name: 'Paused' })).toBeVisible();
-    await expect(page.getByText('Not recording', { exact: true })).toBeVisible();
+    await expect(page.getByText('System proxy off', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
   }
 }

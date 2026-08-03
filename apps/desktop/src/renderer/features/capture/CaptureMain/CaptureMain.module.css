@@ -1,15 +1,30 @@
 .workspace {
   display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
 }
 
-.main {
+/* flex 容器让分栏撑满整列高度，否则内部的 scroll 区拿不到确定高度、背景也只覆盖内容。 */
+.filterPanel {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* 工具栏横跨列表与 Inspector，打开详情不会压缩它。 */
+.workarea {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.panes {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 1px 500px;
 }

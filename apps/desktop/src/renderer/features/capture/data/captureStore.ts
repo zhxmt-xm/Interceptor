@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
 import { EMPTY_FILTER } from '../constants';
-import type { CaptureState } from '../interfaces';
+import { CAPTURE_FACET_FIELDS, type CaptureState } from '../interfaces';
 import { buildIndex } from '../utils';
 
 /** path 是否展示 query 参数的持久化键。 */
@@ -22,6 +22,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   indexById: new Map(),
   selectedId: null,
   filter: EMPTY_FILTER,
+  filtersOpen: true,
+  filterPanelWidth: 200,
+  expandedFacets: ['application'],
   clearedBefore: 0,
   capturing: false,
   loading: false,
@@ -29,25 +32,50 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   error: null,
   transferAction: null,
   proxyReadinessIssue: null,
+  linkStatus: { endpoint: null, systemProxyOwned: false, decrypting: false },
+  httpsSetupOpen: false,
   listScrollTop: 0,
   inspectorTab: 'headers',
-  inspectorWidth: 500,
+  inspectorWidth: 448,
   showQueryParams: loadShowQueryParams(),
   clientAppIcons: new Map(),
 
   select: (id) => set({ selectedId: id }),
 
-  setSegment: (segment) =>
-    set((state) => ({ filter: { ...state.filter, segment } })),
-
   setSearch: (search) =>
     set((state) => ({ filter: { ...state.filter, search } })),
 
-  setStructuredFilter: (patch) =>
-    set((state) => ({ filter: { ...state.filter, ...patch } })),
+  toggleFacetValue: (facet, value) => set((state) => {
+    const field = CAPTURE_FACET_FIELDS[facet];
+    const selected = state.filter[field];
+    const next = selected.includes(value)
+      ? selected.filter((entry) => entry !== value)
+      : [...selected, value];
+    return { filter: { ...state.filter, [field]: next } };
+  }),
+
+  clearFacet: (facet) => set((state) => ({
+    filter: { ...state.filter, [CAPTURE_FACET_FIELDS[facet]]: [] },
+  })),
+
+  // 搜索是独立维度：清空筛选只重置 facet，不动搜索框。
+  clearAllFilters: () => set((state) => ({ filter: { ...EMPTY_FILTER, search: state.filter.search } })),
+
+  toggleFacetExpanded: (facet) => set((state) => ({
+    expandedFacets: state.expandedFacets.includes(facet)
+      ? state.expandedFacets.filter((entry) => entry !== facet)
+      : [...state.expandedFacets, facet],
+  })),
+
+  toggleFiltersOpen: () => set((state) => ({ filtersOpen: !state.filtersOpen })),
+
+  setFilterPanelWidth: (filterPanelWidth) => set({ filterPanelWidth }),
 
   filterByRule: (ruleId) => set((state) => ({
     filter: { ...EMPTY_FILTER, ruleIds: [ruleId] },
+    expandedFacets: state.expandedFacets.includes('rule')
+      ? state.expandedFacets
+      : [...state.expandedFacets, 'rule'],
     selectedId: [...state.rows].reverse()
       .find((row) => row.ruleIds?.includes(ruleId))?.id ?? null,
     listScrollTop: 0,
@@ -56,6 +84,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   setCapturing: (capturing) => set({ capturing }),
 
   setTransferAction: (transferAction) => set({ transferAction }),
+
+  setLinkStatus: (linkStatus) => set({ linkStatus }),
+
+  setHttpsSetupOpen: (httpsSetupOpen) => set({ httpsSetupOpen }),
 
   setProxyReadinessIssue: (proxyReadinessIssue) => set({
     proxyReadinessIssue,

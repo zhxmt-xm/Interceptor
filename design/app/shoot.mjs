@@ -79,8 +79,11 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'filters-status', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'status' } });
   shots.push({ feature: 'capture', theme, variant: 'filters-protocol', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'protocol' } });
   shots.push({ feature: 'capture', theme, variant: 'filters-type', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'type' } });
+  shots.push({ feature: 'capture', theme, variant: 'filters-search', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', search: '/v1/user' } });
   shots.push({ feature: 'capture', theme, variant: 'recording-loading', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', recording: 'pending' } });
   shots.push({ feature: 'capture', theme, variant: 'recording-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', recording: 'paused' } });
+  shots.push({ feature: 'capture', theme, variant: 'statusbar-decrypting', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', mitm: 'active' } });
+  shots.push({ feature: 'capture', theme, variant: 'statusbar-direct', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', systemProxy: 'off', upstream: '' } });
 }
 // Default shell: a dedicated global window header with feature tools inside content.
 for (const theme of ['light', 'dark']) {
@@ -132,6 +135,8 @@ async function shoot(list) {
       update: 'up-to-date',
       https: 'fresh',
       mitm: 'inactive',
+      systemProxy: 'on',
+      upstream: 'on',
       copy: 'hidden',
       requestMenu: '',
       ruleFilter: '',

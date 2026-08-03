@@ -1,5 +1,6 @@
 import http from 'node:http';
 import net, { type AddressInfo } from 'node:net';
+import type { Duplex } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ProxyService } from '../entry';
@@ -29,7 +30,8 @@ function startOrigin(handler: http.RequestListener): Promise<StoppableServer> {
  */
 function startUpstreamProxy(): Promise<StoppableServer & { seen: string[] }> {
   const seen: string[] = [];
-  const sockets = new Set<net.Socket>();
+  // CONNECT 事件回调里的 socket 类型是 Duplex，这里只需要能 destroy。
+  const sockets = new Set<Duplex>();
   const server = http.createServer((request, response) => {
     seen.push(`${request.method ?? ''} ${request.url ?? ''}`);
     const target = new URL(request.url ?? '');

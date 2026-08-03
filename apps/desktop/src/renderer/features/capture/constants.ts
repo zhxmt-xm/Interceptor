@@ -1,4 +1,4 @@
-import type { CaptureFilter } from './interfaces';
+import type { CaptureFacetId, CaptureFilter } from './interfaces';
 
 export const INSPECTOR_TABS = [
   { id: 'headers', labelKey: 'capture.headers' },
@@ -27,11 +27,41 @@ export const TLS_TUNNEL_INSPECTOR_TABS = [
   { id: 'tunnel', labelKey: 'capture.tlsTunnel' },
 ] as const;
 
-/** 空过滤条件初值：无分段、无搜索、无结构化条件。 */
+/** 筛选分栏的分组顺序，严格跟随列表表头。 */
+export const CAPTURE_FACET_IDS = [
+  'application',
+  'method',
+  'host',
+  'status',
+  'protocol',
+  'type',
+  'rule',
+] as const satisfies readonly CaptureFacetId[];
+
+/** 无法归属到本机应用的请求在 Application facet 里的值。 */
+export const UNKNOWN_FACET_VALUE = '\u0000unknown';
+/** 上游连接失败、没有状态码的请求在 Status facet 里的值。 */
+export const FAILED_FACET_VALUE = '\u0000failed';
+/** 尚未收到响应的请求在 Status facet 里的值。 */
+export const PENDING_FACET_VALUE = '\u0000pending';
+
+/** Protocol facet 按版本从新到旧排，隧道放最后。 */
+export const PROTOCOL_FACET_ORDER: readonly string[] = [
+  'HTTP/2',
+  'HTTP/1.1',
+  'HTTP/1.0',
+  'WebSocket',
+  'TLS tunnel',
+];
+
+/** 空过滤条件初值：无搜索、所有 facet 均为 All。 */
 export const EMPTY_FILTER: CaptureFilter = {
-  segment: 'all',
   search: '',
-  method: [],
-  status: [],
+  apps: [],
+  methods: [],
+  hosts: [],
+  statuses: [],
+  protocols: [],
+  types: [],
   ruleIds: [],
 };

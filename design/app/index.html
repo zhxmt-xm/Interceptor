@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-https="fresh" data-mitm="inactive" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date">
+    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -53,16 +53,6 @@
         <div class="mv tmain v-capture" data-v="capture">
           <div class="capture-content-v2">
           <aside class="cfilters" data-parity="capture-filter-panel">
-            <div class="cfilters-search">
-              <div class="omni">
-                <span class="omni-search-v2"><svg class="si"><use href="#i-search"/></svg></span>
-                <span class="ph">Filter requests…</span>
-                <span class="sp"></span>
-                <span class="omni-actions">
-                  <button class="cbtn" aria-label="Clear search and filters" title="Clear search and filters"><svg><use href="#i-x"/></svg></button>
-                </span>
-              </div>
-            </div>
             <div class="cfilters-scroll" data-parity="capture-filter-groups">
               <section class="fgrp on" data-grp="application">
                 <div class="fgrp-h"><button class="fgrp-toggle"><svg class="fgrp-chev"><use href="#i-chev"/></svg><span class="fgrp-n">Application</span></button><span class="fgrp-c">4</span><button class="fgrp-clear" aria-label="Clear Application filter" title="Clear"><svg><use href="#i-x"/></svg></button></div>
@@ -101,13 +91,19 @@
                 </div>
               </section>
               <section class="fgrp" data-grp="status">
-                <div class="fgrp-h"><button class="fgrp-toggle"><svg class="fgrp-chev"><use href="#i-chev"/></svg><span class="fgrp-n">Status</span></button><span class="fgrp-c">5</span><button class="fgrp-clear" aria-label="Clear Status filter" title="Clear"><svg><use href="#i-x"/></svg></button></div>
+                <div class="fgrp-h"><button class="fgrp-toggle"><svg class="fgrp-chev"><use href="#i-chev"/></svg><span class="fgrp-n">Status</span></button><span class="fgrp-c">11</span><button class="fgrp-clear" aria-label="Clear Status filter" title="Clear"><svg><use href="#i-x"/></svg></button></div>
                 <div class="fgrp-b">
                   <div class="fitem on"><span class="fitem-n">All</span><span class="fitem-c">241</span></div>
-                  <div class="fitem"><span class="st ok"><span class="d"></span>2xx</span><span class="fitem-c">198</span></div>
-                  <div class="fitem"><span class="st info2"><span class="d"></span>3xx</span><span class="fitem-c">22</span></div>
-                  <div class="fitem"><span class="st warn"><span class="d"></span>4xx</span><span class="fitem-c">14</span></div>
-                  <div class="fitem"><span class="st err"><span class="d"></span>5xx</span><span class="fitem-c">5</span></div>
+                  <div class="fitem"><span class="st info2"><span class="d"></span>101</span><span class="fitem-c">6</span></div>
+                  <div class="fitem"><span class="st ok"><span class="d"></span>200</span><span class="fitem-c">171</span></div>
+                  <div class="fitem"><span class="st ok"><span class="d"></span>202</span><span class="fitem-c">5</span></div>
+                  <div class="fitem"><span class="st ok"><span class="d"></span>204</span><span class="fitem-c">12</span></div>
+                  <div class="fitem"><span class="st ok"><span class="d"></span>206</span><span class="fitem-c">8</span></div>
+                  <div class="fitem"><span class="st info2"><span class="d"></span>304</span><span class="fitem-c">18</span></div>
+                  <div class="fitem"><span class="st warn"><span class="d"></span>401</span><span class="fitem-c">8</span></div>
+                  <div class="fitem"><span class="st warn"><span class="d"></span>404</span><span class="fitem-c">6</span></div>
+                  <div class="fitem"><span class="st err"><span class="d"></span>500</span><span class="fitem-c">3</span></div>
+                  <div class="fitem"><span class="st err"><span class="d"></span>502</span><span class="fitem-c">2</span></div>
                   <div class="fitem"><span class="st err"><span class="d"></span>Failed</span><span class="fitem-c">2</span></div>
                 </div>
               </section>
@@ -149,14 +145,27 @@
             </div>
           </aside>
           <div class="split cfilters-split"><div class="grip"></div></div>
-          <div class="listwrap">
+          <div class="capture-workarea">
             <div class="listbar">
-              <button class="ib sm cfilters-toggle" aria-label="Toggle filters" title="Toggle filters"><svg><use href="#i-panel-left"/></svg><span class="cfilters-badge"></span></button>
-              <button class="rec" data-parity="capture-recording-toggle" aria-label="Pause recording" title="Pause recording"><svg class="rec-on"><use href="#i-record"/></svg><svg class="rec-off"><use href="#i-record-off"/></svg><span class="rec-spinner"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></button>
-              <div class="ib sm" title="Clear"><svg><use href="#i-trash"/></svg></div>
-              <div class="sp"></div>
-              <span class="cnt"><span class="capture-count-normal"><b>18</b> of 241</span><span class="capture-count-filtered"><b>6</b> of 241</span><span class="capture-count-rule"><b>1</b> of 13</span></span>
-              <div class="icon-actions"><div class="ib sm" title="Query parameters"><svg><use href="#i-ampersand"/></svg></div><button class="ib sm file-trigger" data-file-trigger="import" aria-label="Import" title="Import"><svg><use href="#i-upload"/></svg></button><button class="ib sm file-trigger" data-file-trigger="export" aria-label="Export" title="Export"><svg><use href="#i-download"/></svg></button></div>
+              <div class="listbar-start">
+                <button class="ib sm cfilters-toggle" aria-label="Toggle filters" title="Toggle filters"><svg><use href="#i-panel-left"/></svg><span class="cfilters-badge"></span></button>
+                <button class="rec" data-parity="capture-recording-toggle" aria-label="Pause recording" title="Pause recording"><svg class="rec-on"><use href="#i-record"/></svg><svg class="rec-off"><use href="#i-record-off"/></svg><span class="rec-spinner"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></button>
+                <div class="ib sm" title="Clear"><svg><use href="#i-trash"/></svg></div>
+              </div>
+              <div class="listbar-search">
+                <div class="omni">
+                  <span class="omni-search-v2"><svg class="si"><use href="#i-search"/></svg></span>
+                  <span class="ph">Filter requests…</span>
+                  <span class="omni-q" data-parity="capture-filter-search-value">/v1/user</span>
+                  <span class="sp"></span>
+                  <button class="omni-clear" data-parity="capture-filter-search-clear" aria-label="Clear search" title="Clear search"><svg><use href="#i-x"/></svg></button>
+                </div>
+                <button class="ib sm cfilters-clear" data-parity="capture-filter-clear-all" aria-label="Clear all filters" title="Clear all filters"><svg><use href="#i-funnel-x"/></svg></button>
+              </div>
+              <div class="listbar-end">
+                <span class="cnt"><span class="capture-count-normal"><b>18</b> of 241</span><span class="capture-count-filtered"><b>6</b> of 241</span><span class="capture-count-rule"><b>1</b> of 13</span></span>
+                <div class="icon-actions"><div class="ib sm" title="Query parameters"><svg><use href="#i-ampersand"/></svg></div><button class="ib sm file-trigger" data-file-trigger="import" aria-label="Import" title="Import"><svg><use href="#i-upload"/></svg></button><button class="ib sm file-trigger" data-file-trigger="export" aria-label="Export" title="Export"><svg><use href="#i-download"/></svg></button></div>
+              </div>
               <div class="filemenu import-menu">
                 <button class="file-command"><svg><use href="#i-upload"/></svg><span>Import HAR</span><code>.har</code></button>
                 <button class="file-command"><svg><use href="#i-file"/></svg><span>Open Capture</span><code>.iarchive</code></button>
@@ -166,10 +175,12 @@
                 <button class="file-command"><svg><use href="#i-file"/></svg><span>Save Capture</span><code>.iarchive</code></button>
               </div>
             </div>
+            <div class="capture-panes">
+            <div class="listwrap">
             <div class="lhead"><span data-parity="capture-list-app-header"></span><span>Method</span><span>Path · Host</span><span data-parity="capture-list-status-header">Status</span><span data-parity="capture-list-proto-header">Proto</span><span data-parity="capture-list-type-header">Type</span><span data-parity="capture-list-size-header">Size</span><span data-parity="capture-list-time-header">Time</span></div>
             <div class="list-scroll">
             <div class="row sel" data-capture-row="http" data-demo-row data-request-rule-anchor><span class="appc" data-parity="capture-list-app-cell"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p" data-parity="capture-list-path-cell">/user</span><span class="h" data-parity="capture-list-host-cell"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
-            <div class="row" data-capture-row="tunnel"><span class="appc"><span class="ai edge"></span></span><span class="m">CONNECT</span><div class="hc tun"><span class="h"><svg><use href="#i-lock"/></svg>accounts.google.com</span><span class="p">HTTPS content is encrypted</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">tls</span><span class="ty">encrypted</span><span class="size">0 B</span><span class="time">open</span></div>
+            <div class="row" data-capture-row="tunnel"><span class="appc"><span class="ai edge"></span></span><span class="m">CONNECT</span><div class="hc tun"><span class="p">HTTPS content is encrypted</span><span class="h"><svg><use href="#i-lock"/></svg>accounts.google.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">tls</span><span class="ty">encrypted</span><span class="size">0 B</span><span class="time">open</span></div>
             <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/common/oauth2/v2.0/token</span><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
             <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/npm/react@18/umd/react.min.js</span><span class="h"><svg><use href="#i-lock"/></svg>cdn.jsdelivr.net</span></div><span class="st info2"><span class="d"></span>304</span><span class="proto">h2</span><span class="ty">js</span><span class="size">0 B</span><span class="time">18 ms</span></div>
             <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/s/inter/v13/UcC.woff2</span><span class="h"><svg><use href="#i-lock"/></svg>fonts.gstatic.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">font</span><span class="size">42 KB</span><span class="time">33 ms</span></div>
@@ -178,7 +189,7 @@
             <div class="row" data-capture-row="grpc"><span class="appc"><span class="ai node"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/orders.v1.OrderService/Watch</span><span class="h"><svg><use href="#i-lock"/></svg>orders.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">grpc</span><span class="size">4.8 KB</span><span class="time">1.8 s</span></div>
             <div class="row" data-capture-row="websocket"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/socket</span><span class="h">realtime.example.com</span></div><span class="st info2"><span class="d"></span>101</span><span class="proto">ws</span><span class="ty">—</span><span class="size">—</span><span class="time">open</span></div>
             <div class="row"><span class="appc"><span class="ai node"></span></span><span class="m del">DEL</span><div class="hc"><span class="p">/repos/acme/app/hooks/1</span><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok"><span class="d"></span>204</span><span class="proto">h2</span><span class="ty">—</span><span class="size">0 B</span><span class="time">77 ms</span></div>
-            <div class="row"><span class="appc none" data-parity="capture-list-app-cell-empty"></span><span class="m get">GET</span><div class="hc"><span class="p">/v2/report</span><span class="h">api.internal.local</span></div><span class="st err"><span class="d"></span>500</span><span class="proto">h2</span><span class="ty">json</span><span class="size">512 B</span><span class="time">1.2 s</span></div>
+            <div class="row"><span class="appc" data-parity="capture-list-app-cell-unknown"><span class="ai none"><svg><use href="#i-app-window"/></svg></span></span><span class="m get">GET</span><div class="hc"><span class="p">/v2/report</span><span class="h">api.internal.local</span></div><span class="st err"><span class="d"></span>500</span><span class="proto">h2</span><span class="ty">json</span><span class="size">512 B</span><span class="time">1.2 s</span></div>
             <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/app.css</span><span class="h"><svg><use href="#i-lock"/></svg>assets.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">css</span><span class="size">8.2 KB</span><span class="time">64 ms</span></div>
             <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/events</span><span class="h"><svg><use href="#i-lock"/></svg>telemetry.example.com</span></div><span class="st ok"><span class="d"></span>202</span><span class="proto">h2</span><span class="ty">json</span><span class="size">32 B</span><span class="time">91 ms</span></div>
             </div>
@@ -317,6 +328,8 @@
             </div>
           </div>
           </div>
+          </div>
+          </div>
           <div class="request-rule-menu" role="menu" aria-label="Create rule from request">
             <div class="request-rule-title">Create rule for this request</div>
             <div class="po-t">Rewrite</div>
@@ -351,7 +364,7 @@
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="reditor">
-            <div class="edhead"><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><button class="ib sm" data-show-rule-requests aria-label="Show matching requests" title="Show matching requests"><svg><use href="#i-filter"/></svg></button><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
+            <div class="edhead"><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><button class="ib sm" data-show-rule-requests aria-label="Show matching requests" title="Show matching requests"><svg><use href="#i-funnel"/></svg></button><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
             <div class="edscroll">
               <div class="esec">
                 <div class="sh">Match</div>
@@ -623,7 +636,7 @@
 
       <!-- =========================== STATUSBAR =========================== -->
       <footer class="statusbar">
-        <div class="sv" data-v="capture"><div class="g capture-recording-status"><span class="rd"></span><span class="recording-label">Recording</span><span class="paused-label">Not recording</span></div><div class="g"><span class="gd"></span>Proxy Core · Running</div><div class="g mono">127.0.0.1 · loopback only</div><div class="g mono"><span class="capture-count-normal">18 of 241 requests</span><span class="capture-count-filtered">6 of 241 requests</span></div><div class="sp g mono">↑ 12.4 KB/s&nbsp;&nbsp;↓ 380 B/s</div></div>
+        <div class="sv" data-v="capture"><div class="g capture-endpoint"><span class="gd"></span>127.0.0.1:8888<span class="proxy-on-label">System proxy on</span><span class="proxy-off-label">System proxy off</span></div><div class="g capture-decrypt"><span class="capture-decrypting"><svg class="si"><use href="#i-lock"/></svg>HTTPS decrypting · CA trusted</span><span class="capture-passthrough"><svg class="si"><use href="#i-lock-off"/></svg>HTTPS passthrough</span><button class="slink capture-enable-decrypt" data-open-https title="HTTPS traffic is forwarded without decryption. Click to set up the CA and start decrypting.">Click to enable MITM</button></div><div class="g capture-upstream"><svg class="si"><use href="#i-arrow"/></svg>upstream 127.0.0.1:7890</div></div>
         <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">6 of 8 enabled</div><div class="sp g mono">2 force body buffering</div></div>
         <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g mono">127.0.0.1:8888</div><div class="sp g mono">last send 201 · 142 ms</div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>

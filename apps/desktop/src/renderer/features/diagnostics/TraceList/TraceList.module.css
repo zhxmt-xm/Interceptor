@@ -12,8 +12,8 @@
 }
 .toolbar {
   display: flex;
-  height: 40px;
-  flex: 0 0 40px;
+  height: var(--content-toolbar-height);
+  flex: 0 0 var(--content-toolbar-height);
   align-items: center;
   gap: 6px;
   padding: 0 10px 0 18px;

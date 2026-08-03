@@ -81,6 +81,7 @@ export async function toggleCapture(): Promise<void> {
     useCaptureStore.getState().loadFailed(describeError(error));
     setProxyReadinessIssue('listener', error);
   }
+  await refreshLinkStatus();
 }
 
 /** 首次进入 Capture 时启动固定 loopback listener，并尽力接管系统代理。 */
@@ -95,6 +96,7 @@ async function bootstrapCapture(): Promise<void> {
   } else {
     useCaptureStore.getState().setCapturing(false);
   }
+  await refreshLinkStatus();
 }
 
 /** 对齐 Core 进程代际：同代际 Stop/Start 保留行，PID 变化则清空失效详情并重新 bootstrap。 */
@@ -170,6 +172,30 @@ async function checkSystemProxyReadiness(): Promise<boolean> {
   } catch (error) {
     setProxyReadinessIssue('system-proxy', error);
     return false;
+  }
+}
+
+/** 刷新底栏链路状态；监听、系统代理与证书任一变化后调用。 */
+export async function refreshLinkStatus(): Promise<void> {
+  const api = window.interceptor;
+  if (!api?.getCaptureStatus) {
+    return;
+  }
+  try {
+    const [capture, systemProxy, certificate] = await Promise.all([
+      api.getCaptureStatus(),
+      api.getSystemProxyStatus(),
+      api.getCertificateStatus(),
+    ]);
+    useCaptureStore.getState().setLinkStatus({
+      endpoint: capture.listening && capture.host !== null && capture.port !== null
+        ? { host: capture.host, port: capture.port }
+        : null,
+      systemProxyOwned: systemProxy.owned && !systemProxy.ownershipLost,
+      decrypting: certificate.trusted && certificate.mitmEnabled,
+    });
+  } catch {
+    /* 链路状态只是展示；读取失败时保留上一次已知值。 */
   }
 }
 

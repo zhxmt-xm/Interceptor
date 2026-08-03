@@ -61,9 +61,30 @@ describe('i18n catalogs', () => {
   });
 
   it.each([
-    ['ru', ['1 запрос', '2 запроса', '5 запросов']],
-    ['pl', ['1 żądanie', '2 żądania', '5 żądań']],
-    ['uk', ['1 запит', '2 запити', '5 запитів']],
+    [
+      'ru',
+      [
+        'Показать ещё 1 значение',
+        'Показать ещё 2 значения',
+        'Показать ещё 5 значений',
+      ],
+    ],
+    [
+      'pl',
+      [
+        'Pokaż jeszcze 1 wartość',
+        'Pokaż jeszcze 2 wartości',
+        'Pokaż jeszcze 5 wartości',
+      ],
+    ],
+    [
+      'uk',
+      [
+        'Показати ще 1 значення',
+        'Показати ще 2 значення',
+        'Показати ще 5 значень',
+      ],
+    ],
   ] as const)('uses CLDR plural forms for %s', async (language, expected) => {
     const instance = i18next.createInstance();
     await instance.init({
@@ -77,7 +98,6 @@ describe('i18n catalogs', () => {
       interpolation: { escapeValue: false },
     });
 
-    expect([1, 2, 5].map((count) => instance.t('capture.requestCount', { count })))
-      .toEqual(expected);
+    expect([1, 2, 5].map((count) => instance.t('capture.showMore', { count }))).toEqual(expected);
   });
 });

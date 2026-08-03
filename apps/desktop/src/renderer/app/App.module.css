@@ -32,7 +32,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 0 108px 0 18px;
+  padding: 0 108px 0 12px;
   background: var(--chrome);
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;

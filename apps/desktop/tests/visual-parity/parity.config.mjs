@@ -9,7 +9,7 @@ export const views = [
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'expanded' },
     designShot: 'light/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: 'api.github.com/user', index: 0 }],
+    rendererActions: [{ type: 'clickText', text: '/user', index: 0 }],
     targets: [
       'Capture',
       'Rules & Map',
@@ -21,9 +21,17 @@ export const views = [
       'Theme',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector client app', parity: 'capture-inspector-client-app' },
+      { name: 'Filter panel', parity: 'capture-filter-panel' },
+      { name: 'Filter groups', parity: 'capture-filter-groups' },
+      { name: 'Filter item all', parity: 'capture-filter-item-all' },
+      { name: 'Filter item', parity: 'capture-filter-item' },
+      { name: 'Filter search', parity: 'capture-filter-search-value' },
+      { name: 'Filter clear all', parity: 'capture-filter-clear-all' },
       { name: 'List app header', parity: 'capture-list-app-header' },
       { name: 'List app cell', parity: 'capture-list-app-cell' },
-      { name: 'List app cell empty', parity: 'capture-list-app-cell-empty' },
+      { name: 'List app cell unknown', parity: 'capture-list-app-cell-unknown' },
+      { name: 'List path cell', parity: 'capture-list-path-cell' },
+      { name: 'List host cell', parity: 'capture-list-host-cell' },
       { name: 'List status header', parity: 'capture-list-status-header' },
       { name: 'List status cell', parity: 'capture-list-status-cell' },
       { name: 'List protocol header', parity: 'capture-list-proto-header' },
@@ -34,6 +42,8 @@ export const views = [
       { name: 'List size cell', parity: 'capture-list-size-cell' },
       { name: 'List time header', parity: 'capture-list-time-header' },
       { name: 'List time cell', parity: 'capture-list-time-cell' },
+      { name: 'Status endpoint', parity: 'capture-status-endpoint' },
+      { name: 'Status passthrough', parity: 'capture-status-passthrough' },
       'Rule replaced',
       'Rule set',
       'Rule appended',
@@ -53,7 +63,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-websocket.png',
     rendererActions: [
-      { type: 'clickText', text: 'realtime.example.com/socket' },
+      { type: 'clickText', text: '/socket' },
       { type: 'clickText', text: 'Messages' },
       {
         type: 'clickText',
@@ -81,7 +91,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-request.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Request' },
     ],
     targets: [
@@ -102,7 +112,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-timing.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Timing' },
     ],
     targets: ['Waiting (TTFB)', '118 ms', 'Response bodies', '24 ms'],
@@ -118,7 +128,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-cookies.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Cookies' },
     ],
     targets: [
@@ -139,7 +149,7 @@ export const views = [
     },
     designShot: 'light/capture/inspector-grpc.png',
     rendererActions: [
-      { type: 'clickText', text: 'orders.example.com/orders.v1.OrderService/Watch' },
+      { type: 'clickText', text: '/orders.v1.OrderService/Watch' },
       { type: 'clickText', text: 'Messages' },
       { type: 'clickText', text: 'Message 2' },
     ],
@@ -323,7 +333,7 @@ export const views = [
     rendererActions: [
       {
         type: 'clickText',
-        text: 'api.github.com/user',
+        text: '/user',
       },
       {
         type: 'clickRole',
@@ -409,8 +419,9 @@ export const views = [
     },
     designShot: 'light/capture/request-rule-menu.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
-      { type: 'contextMenuText', text: 'api.github.com/user', index: 0 },
+      { type: 'clickText', text: '/user' },
+      // 选中后 Inspector 打开，path 列被压缩到 0 宽而不可点，改用同一行的 method 徽章右键。
+      { type: 'contextMenuText', text: 'GET', index: 0 },
     ],
     targets: [
       {
@@ -445,45 +456,24 @@ export const views = [
     ],
   },
   {
-    id: 'capture-add-rule-filter',
-    theme: 'light',
-    designState: {
-      view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
-      pop: true,
-      filtersub: 'rule',
-    },
-    designShot: 'light/add-filter/rule.png',
-    rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Add filter' },
-      { type: 'clickText', text: 'Rule' },
-    ],
-    targets: [
-      { name: 'Rule filter option', parity: 'capture-rule-option-rule-auth' },
-    ],
-  },
-  {
     id: 'capture-rule-filter-disabled',
     theme: 'light',
     noRuleHits: true,
     designState: {
       view: 'capture',
       theme: 'light',
-      sidebar: 'expanded',
-      pop: true,
+      sidebar: 'collapsed',
+      overlay: '',
+      filterGroup: 'rule',
       ruleOptions: 'empty',
     },
     designShot: 'light/capture/rule-filter-disabled.png',
     rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Add filter' },
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Rule' },
     ],
     targets: [
-      {
-        name: 'Disabled Rule filter',
-        designSelector: '.ompop .fi[data-field="rule"]',
-        appSelector: '[data-automation-id="capture.filter.option.rule"]',
-      },
+      'No rule has matched captured traffic yet.',
     ],
   },
   {
@@ -499,7 +489,7 @@ export const views = [
     },
     designShot: 'light/capture/body-preview-limited.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
     ],
     targets: [
@@ -524,7 +514,7 @@ export const views = [
     },
     designShot: 'light/capture/body-media-save.png',
     rendererActions: [
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
     ],
     targets: [
@@ -829,7 +819,7 @@ export const views = [
     theme: 'dark',
     designState: { view: 'capture', theme: 'dark', sidebar: 'expanded' },
     designShot: 'dark/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: 'api.github.com/user' }],
+    rendererActions: [{ type: 'clickText', text: '/user' }],
     targets: [
       { name: 'Capture header', parity: 'window-header-title' },
       'Recording',
@@ -843,7 +833,7 @@ export const views = [
     designShot: 'light/shell-v2/capture-collapsed.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
-      { type: 'clickText', text: 'api.github.com/user' },
+      { type: 'clickText', text: '/user' },
     ],
     targets: [
       { name: 'Capture header', parity: 'window-header-title' },

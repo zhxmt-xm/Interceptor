@@ -1,6 +1,6 @@
 .row {
   display: grid;
-  grid-template-columns: 20px 74px minmax(0, 1fr) 56px 34px 46px 50px 54px;
+  grid-template-columns: 20px 74px minmax(150px, 1fr) 56px 34px 46px 50px 54px;
   align-items: center;
   justify-items: start;
   gap: 12px;
@@ -16,6 +16,32 @@
   cursor: pointer;
   position: relative;
   width: 100%;
+}
+/* 列宽档位与表头一致；容器查询的参照系是列表容器。 */
+@container (max-width: 600px) {
+  .row {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 30px 40px 44px 48px;
+    gap: 8px;
+    padding: 0 12px;
+  }
+}
+@container (max-width: 470px) {
+  .row {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 44px 48px;
+  }
+  .row > .proto,
+  .row > .type {
+    display: none;
+  }
+}
+@container (max-width: 380px) {
+  .row {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px;
+  }
+  .row > .size,
+  .row > .time {
+    display: none;
+  }
 }
 .row:hover {
   background: var(--hover);
@@ -60,30 +86,37 @@
   border-radius: 4px;
   background: var(--hover);
 }
+/* path 是主行；CONNECT 隧道没有 path，改由说明文字占主行，host 始终在第二行同一基线上。 */
+.path {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tunnel .path {
+  font-family: var(--font-ui);
+  font-weight: 450;
+  color: var(--text-3);
+}
+/* block（不是 flex）才能让长 host 正确出现尾部省略号。 */
 .hostName {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--text-2);
+  display: block;
+  font-size: 11.5px;
+  font-weight: 450;
+  color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .hostName svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
+  margin-right: 6px;
   color: var(--text-3);
-  flex: 0 0 auto;
-}
-.hostPath {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: -1px;
 }
 .status {
   display: flex;

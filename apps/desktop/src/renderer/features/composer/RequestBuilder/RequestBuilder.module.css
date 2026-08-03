@@ -26,7 +26,7 @@
 }
 .subrow {
   display: flex;
-  height: 40px;
+  height: var(--content-toolbar-height);
   align-items: center;
   gap: 10px;
   padding: 0 16px;

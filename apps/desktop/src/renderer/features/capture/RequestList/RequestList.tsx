@@ -1,24 +1,13 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Ampersand, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
-import { Count, cx, IconButton, Segmented } from '../../../components';
-import { useRulesStore } from '../../rules/data/rulesStore';
 import { useCaptureStore } from '../data/captureStore';
-import type { ProtocolSegment } from '../interfaces';
 import { RequestRow } from '../RequestRow/RequestRow';
 import { visibleCaptureRows } from '../utils';
 import styles from './RequestList.module.css';
 
-const SEGMENTS: { id: ProtocolSegment; labelKey?: string; label?: string }[] = [
-  { id: 'all', labelKey: 'capture.all' },
-  { id: 'h1', label: 'H1' },
-  { id: 'h2', label: 'H2' },
-  { id: 'ws', label: 'WS' },
-];
 const ROW_HEIGHT = 52;
 
 export interface RequestListProps {
@@ -34,18 +23,13 @@ function isScrolledToBottom(element: HTMLDivElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= ROW_HEIGHT;
 }
 
-/** Filterable request table (protocol segment, counts and virtualized rows). */
+/** 虚拟化请求表格：表头 + 行；命令与筛选都在列表工具栏与筛选分栏里。 */
 export function RequestList({ onCreateRequestRule }: RequestListProps): React.JSX.Element {
   const { t } = useTranslation();
   const rows = useCaptureStore((state) => state.rows);
   const filter = useCaptureStore((state) => state.filter);
   const selectedId = useCaptureStore((state) => state.selectedId);
-  const setSegment = useCaptureStore((state) => state.setSegment);
   const select = useCaptureStore((state) => state.select);
-  const clearView = useCaptureStore((state) => state.clearView);
-  const showQueryParams = useCaptureStore((state) => state.showQueryParams);
-  const toggleQueryParams = useCaptureStore((state) => state.toggleQueryParams);
-  const [clearing, setClearing] = useState(false);
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
   // 用户是否停靠在底部（最新）；新流量到达时决定是否自动跟随到底部。
@@ -102,71 +86,15 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
     useCaptureStore.getState().setListScrollTop(element.scrollTop);
   };
 
-  const clearRecordedTraffic = (): void => {
-    if (clearing) {
-      return;
-    }
-    const clearedBefore = Date.now();
-    setClearing(true);
-    void window.interceptor.clearStorage()
-      .then(() => {
-        clearView(clearedBefore);
-        // 命中数是从 Capture 记录派生的，清空后必须立即归零，而不是等下一次轮询。
-        useRulesStore.getState().setHits([]);
-      })
-      .catch((error: unknown) => {
-        useCaptureStore.getState().loadFailed(
-          error instanceof Error ? error.message : String(error),
-        );
-      })
-      .finally(() => setClearing(false));
-  };
-
   return (
     <div className={styles.list}>
-      <div className={styles.bar}>
-        <Segmented
-          className={styles.protocol}
-          ariaLabel={t('capture.protocolShort')}
-          options={SEGMENTS.map(({ id, labelKey, label }) => ({
-            value: id,
-            label: labelKey ? t(labelKey) : label ?? id,
-          }))}
-          value={filter.segment}
-          onChange={(value) => setSegment(value as ProtocolSegment)}
-          automationIds={AUTOMATION_IDS.capture.protocol}
-        />
-        <span className={styles.spacer} />
-        <Count className={styles.count}>
-          {t('capture.visibleCount', { visible: visible.length, total: rows.length })}
-        </Count>
-        <div className={styles.actions}>
-          <IconButton
-            icon={Ampersand}
-            label={t('capture.queryParams')}
-            size="sm"
-            className={cx(styles.queryParams, showQueryParams && styles.queryParamsOn)}
-            onClick={toggleQueryParams}
-            automationId={AUTOMATION_IDS.capture.queryParams}
-          />
-          <IconButton
-            icon={Trash2}
-            label={t('capture.clear')}
-            size="sm"
-            disabled={clearing}
-            onClick={clearRecordedTraffic}
-            automationId={AUTOMATION_IDS.capture.clear}
-          />
-        </div>
-      </div>
-
       <div
         className={styles.head}
         style={{ paddingRight: 18 + scrollbarWidth }}
       >
         <span data-parity="capture-list-app-header" />
         <span>{t('capture.method')}</span>
-        <span>{t('capture.hostPath')}</span>
+        <span>{t('capture.pathHost')}</span>
         <span data-parity="capture-list-status-header">{t('capture.status')}</span>
         <span data-parity="capture-list-proto-header">{t('capture.protocolShort')}</span>
         <span data-parity="capture-list-type-header">{t('capture.type')}</span>

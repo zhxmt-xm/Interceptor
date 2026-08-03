@@ -485,10 +485,14 @@ function formatFilter(
   emptyLabel: string,
 ): string {
   const parts = [
-    filter.method.length > 0 ? `method:${filter.method.join(',')}` : '',
-    filter.status.length > 0 ? `status:${filter.status.join(',')}` : '',
     filter.search ? `search:${filter.search}` : '',
-    filter.segment !== 'all' ? `protocol:${filter.segment.toUpperCase()}` : '',
+    filter.apps.length > 0 ? `app:${filter.apps.length}` : '',
+    filter.methods.length > 0 ? `method:${filter.methods.join(',')}` : '',
+    filter.hosts.length > 0 ? `host:${filter.hosts.join(',')}` : '',
+    filter.statuses.length > 0 ? `status:${filter.statuses.join(',')}` : '',
+    filter.protocols.length > 0 ? `protocol:${filter.protocols.join(',')}` : '',
+    filter.types.length > 0 ? `type:${filter.types.join(',')}` : '',
+    filter.ruleIds.length > 0 ? `rule:${filter.ruleIds.length}` : '',
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : emptyLabel;
 }

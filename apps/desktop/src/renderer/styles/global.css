@@ -2,6 +2,12 @@
   --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
+  /* shared control metrics — mirrors design/app/app.css :root */
+  --icon-button-size: 30px;
+  --icon-button-icon-size: 15px;
+  --icon-button-gap: 3px;
+  --content-toolbar-height: 44px;
+
   /* light theme (default) — mirrors design/app/app.css .app[data-theme="light"] */
   --bg: #ffffff;
   --chrome: #fcfcfb;

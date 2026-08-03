@@ -186,35 +186,35 @@ export const RequestRow = memo(function RequestRow({
         <span
           className={styles.clientApp}
           data-parity={
-            clientAppIcon ? 'capture-list-app-cell' : 'capture-list-app-cell-empty'
+            clientAppIcon ? 'capture-list-app-cell' : 'capture-list-app-cell-unknown'
           }
         >
-          {summary.appId === undefined ? null : clientAppIcon ? (
+          {clientAppIcon ? (
             <img
               className={styles.clientAppIcon}
               src={clientAppIcon}
               alt={summary.appName ?? ''}
               title={summary.appName ?? ''}
             />
-          ) : clientAppIcon === null ? (
+          ) : summary.appId !== undefined && clientAppIcon === undefined ? (
+            <span className={styles.clientAppLoading} />
+          ) : (
             <AppWindow
               className={styles.clientAppUnknown}
               size={16}
               strokeWidth={1.8}
               aria-label={summary.appName ?? ''}
             />
-          ) : (
-            <span className={styles.clientAppLoading} />
           )}
         </span>
         <MethodBadge method={summary.method} />
-        <span className={styles.host}>
-          <span className={styles.hostName}>
-            {summary.secure ? <Lock size={12} strokeWidth={2.2} /> : null}
-            {summary.host ?? '—'}
-          </span>
-          <span className={styles.hostPath}>
+        <span className={cx(styles.host, isTlsTunnel && styles.tunnel)}>
+          <span className={styles.path} data-parity="capture-list-path-cell">
             {isTlsTunnel ? t('capture.httpsEncrypted') : displayPath(summary.path, showQueryParams)}
+          </span>
+          <span className={styles.hostName} data-parity="capture-list-host-cell">
+            {summary.secure ? <Lock size={11} strokeWidth={2.2} /> : null}
+            {summary.host ?? '—'}
           </span>
         </span>
         <span

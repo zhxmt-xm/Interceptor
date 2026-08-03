@@ -7,55 +7,51 @@
   background: var(--bg);
   container-type: inline-size;
 }
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 40px;
-  padding: 0 8px 0 18px;
-  background: var(--filter);
-  border-bottom: 0;
-}
-.protocol button {
-  min-width: 30px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-.spacer {
-  margin-left: auto;
-}
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-/** Query 参数 toggle 激活态：与设计稿 .ib.on 一致（accent 柔和底 + accent 前景）。 */
-.queryParamsOn {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.queryParamsOn:not(:disabled):hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
 .head {
   display: grid;
-  grid-template-columns: 20px 74px minmax(0, 1fr) 56px 34px 46px 50px 54px;
+  grid-template-columns: 20px 74px minmax(150px, 1fr) 56px 34px 46px 50px 54px;
   align-items: center;
   justify-items: start;
   gap: 12px;
   padding: 0 18px;
+  flex: 0 0 34px;
   height: 34px;
-  font-size: 10.5px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-3);
-  text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+}
+.head > span {
+  white-space: nowrap;
+}
+/* 变窄时先压缩间距与固定列；只有真的放不下才按 Proto/Type → Size/Time 的顺序让位，
+   这四列在筛选分栏里都可达，而 Path · Host 无处替代。 */
+@container (max-width: 600px) {
+  .head {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 30px 40px 44px 48px;
+    gap: 8px;
+    padding: 0 12px;
+  }
+}
+@container (max-width: 470px) {
+  .head {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 44px 48px;
+  }
+  .head > :nth-child(5),
+  .head > :nth-child(6) {
+    display: none;
+  }
+}
+@container (max-width: 380px) {
+  .head {
+    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px;
+  }
+  .head > :nth-child(7),
+  .head > :nth-child(8) {
+    display: none;
+  }
 }
 .scroll {
   flex: 1;

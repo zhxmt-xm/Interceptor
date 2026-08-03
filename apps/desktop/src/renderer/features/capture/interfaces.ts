@@ -13,9 +13,6 @@ import {
 /** 列表状态点的语义分类，对应 RequestRow.module.css 的 ok/warn/err/info2。 */
 export type StatusKind = 'ok' | 'warn' | 'err' | 'info2';
 
-/** 协议分段（列表顶部 Segmented：All / H1 / H2 / WS）。 */
-export type ProtocolSegment = 'all' | 'h1' | 'h2' | 'ws';
-
 export interface TimeLabels {
   closed: string;
   open: string;
@@ -48,26 +45,56 @@ export interface ProxyReadinessIssue {
   message: string | null;
 }
 
-/** 结构化过滤条件；method/status/ruleIds 由 Add filter 级联多选当前列表出现的值。 */
+/** 筛选分栏的 facet 分组，顺序与列表表头一致。 */
+export type CaptureFacetId =
+  | 'application'
+  | 'method'
+  | 'host'
+  | 'status'
+  | 'protocol'
+  | 'type'
+  | 'rule';
+
+/**
+ * 结构化过滤条件：每个 facet 组内多选按 OR，组间按 AND；search 与所有 facet 之间同样是 AND。
+ * 所有 facet 值统一用 string，状态码用十进制字符串、失败请求用 'failed'。
+ */
 export interface CaptureFilter {
-  segment: ProtocolSegment;
   search: string;
-  method: string[];
-  status: number[];
-  /** 多个规则按 OR 匹配；与 method/status/search 之间仍为 AND。 */
+  apps: string[];
+  methods: string[];
+  hosts: string[];
+  statuses: string[];
+  protocols: string[];
+  types: string[];
   ruleIds: string[];
 }
 
-export type StructuredCaptureFilterField = 'method' | 'status' | 'ruleIds';
+/** facet 分组到 CaptureFilter 字段的映射，UI 与过滤逻辑共用一张表。 */
+export const CAPTURE_FACET_FIELDS = {
+  application: 'apps',
+  method: 'methods',
+  host: 'hosts',
+  status: 'statuses',
+  protocol: 'protocols',
+  type: 'types',
+  rule: 'ruleIds',
+} as const satisfies Record<CaptureFacetId, keyof Omit<CaptureFilter, 'search'>>;
 
-export type StructuredCaptureFilterPatch = Partial<
-  Pick<CaptureFilter, 'method' | 'status' | 'ruleIds'>
->;
-
-/** Add filter 级联的单个可选值及其在当前列表中的出现次数。 */
-export interface FilterValueOption<T extends string | number> {
-  readonly value: T;
+/** facet 的单个可选值及其在当前列表中的出现次数。 */
+export interface FilterValueOption {
+  readonly value: string;
   readonly count: number;
+}
+
+/** 底栏展示的抓包链路状态；只包含别处拿不到的全局事实。 */
+export interface CaptureLinkStatus {
+  /** 本地监听端点；listener 未就绪时为 null。 */
+  endpoint: { host: string; port: number } | null;
+  /** 系统代理是否已由本应用接管。 */
+  systemProxyOwned: boolean;
+  /** CA 已信任且 MITM 已开启，即正在解密 HTTPS。 */
+  decrypting: boolean;
 }
 
 /** 会话列表视图状态：只存 Exchange 摘要，不存 header/body。 */
@@ -78,6 +105,12 @@ export interface CaptureState {
   indexById: Map<string, number>;
   selectedId: string | null;
   filter: CaptureFilter;
+  /** 左侧筛选分栏是否展开；收起后仍由工具栏 badge 提示列表正被过滤。 */
+  filtersOpen: boolean;
+  /** 用户拖拽后的筛选分栏宽度。 */
+  filterPanelWidth: number;
+  /** 用户手动展开的 facet 分组；有值生效的分组无条件展开。 */
+  expandedFacets: CaptureFacetId[];
   /** 最近一次持久化清空的点击时间；更早开始的迟到事件不得重新进入视图。 */
   clearedBefore: number;
   /** 代理是否正在监听捕获（proxy.status.listening）。 */
@@ -90,6 +123,10 @@ export interface CaptureState {
   transferAction: CaptureTransferAction | null;
   /** Listener 或系统代理未就绪时的统一用户引导状态。 */
   proxyReadinessIssue: ProxyReadinessIssue | null;
+  /** 底栏链路状态；由 refreshLinkStatus 在监听、代理或证书变化后刷新。 */
+  linkStatus: CaptureLinkStatus;
+  /** HTTPS 解密引导弹层；底栏、Inspector Tunnel 面板都可触发。 */
+  httpsSetupOpen: boolean;
   /** 切换 feature 前的列表滚动位置；Capture 重新挂载时恢复。 */
   listScrollTop: number;
   /** 用户最后选择的 Inspector tab；仅在新请求类型不支持时 fallback。 */
@@ -105,13 +142,22 @@ export interface CaptureState {
   clientAppIcons: Map<string, string | null>;
 
   select(id: string | null): void;
-  setSegment(segment: ProtocolSegment): void;
   setSearch(search: string): void;
-  setStructuredFilter(patch: StructuredCaptureFilterPatch): void;
+  /** 在 facet 组内切换单个值；组内多选按 OR。 */
+  toggleFacetValue(facet: CaptureFacetId, value: string): void;
+  /** 把某个 facet 组恢复到 All。 */
+  clearFacet(facet: CaptureFacetId): void;
+  /** 清空搜索与全部 facet。 */
+  clearAllFilters(): void;
+  toggleFacetExpanded(facet: CaptureFacetId): void;
+  toggleFiltersOpen(): void;
+  setFilterPanelWidth(width: number): void;
   filterByRule(ruleId: string): void;
   setCapturing(capturing: boolean): void;
   setTransferAction(action: CaptureTransferAction | null): void;
   setProxyReadinessIssue(issue: ProxyReadinessIssue | null): void;
+  setLinkStatus(status: CaptureLinkStatus): void;
+  setHttpsSetupOpen(open: boolean): void;
   setListScrollTop(scrollTop: number): void;
   setInspectorTab(tab: InspectorTab): void;
   setInspectorWidth(width: number): void;

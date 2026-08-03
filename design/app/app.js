@@ -133,6 +133,7 @@ function setState(s = {}) {
     delete app.dataset.tip;
     delete app.dataset.ruleSelect;
     delete app.dataset.requestMenu;
+    delete app.dataset.search;
     if (!s.scene) {
       app.dataset.scene = 'http';
       app.querySelectorAll('[data-capture-row]').forEach((row) =>
@@ -158,6 +159,12 @@ function setState(s = {}) {
     if (s.filterActive) app.dataset.filterActive = s.filterActive;
     else delete app.dataset.filterActive;
   }
+  if ('search' in s) {
+    if (s.search) {
+      app.dataset.search = s.search;
+      app.querySelector('.omni-q').textContent = s.search;
+    } else delete app.dataset.search;
+  }
   if ('tip' in s) {
     if (s.tip) app.dataset.tip = s.tip;
     else delete app.dataset.tip;
@@ -173,6 +180,11 @@ function setState(s = {}) {
   if (s.update) app.dataset.update = s.update;
   if (s.https) app.dataset.https = s.https;
   if (s.mitm) app.dataset.mitm = s.mitm;
+  if ('systemProxy' in s) app.dataset.systemProxy = s.systemProxy || 'on';
+  if ('upstream' in s) {
+    if (s.upstream) app.dataset.upstream = s.upstream;
+    else delete app.dataset.upstream;
+  }
   if (s.copy) app.dataset.copy = s.copy;
   if (s.transfer) app.dataset.transfer = s.transfer;
   if ('recording' in s) {
@@ -215,6 +227,7 @@ function setState(s = {}) {
     applyDemoSelection();
     syncFilterGroups();
   }
+  if ('search' in s) syncFilterBadge();
   positionFootpop();
   positionActionPopover();
   positionRuleSelectPopover();
@@ -411,8 +424,12 @@ app.addEventListener('click', (e) => {
     syncFilterBadge();
     return;
   }
-  // Clear the request search box and every applied facet.
-  if (e.target.closest('.cbtn')) {
+  // The in-box clear only empties the search text.
+  if (e.target.closest('.omni-clear')) {
+    return setState({ search: '' });
+  }
+  // The action next to the box clears every applied facet; the search box is an independent dimension.
+  if (e.target.closest('.cfilters-clear')) {
     app.querySelectorAll('.fgrp').forEach(clearFilterGroup);
     syncFilterBadge();
     return;

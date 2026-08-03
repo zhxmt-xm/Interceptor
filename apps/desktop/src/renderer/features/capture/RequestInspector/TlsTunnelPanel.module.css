@@ -4,14 +4,22 @@
   gap: 20px;
 }
 
+/* 图标+文字占第一行、按钮另起一行：Inspector 宽度有限，并排会把说明挤成每行两三个词。 */
 .callout {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 12px;
   padding: 14px;
   border: 1px solid color-mix(in srgb, var(--yellow) 28%, var(--border));
   border-radius: 10px;
   background: color-mix(in srgb, var(--yellow) 8%, var(--panel));
+}
+
+.callout > button,
+.callout > span:last-child {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .icon {
@@ -33,7 +41,6 @@
 .copy {
   display: flex;
   min-width: 0;
-  flex: 1;
   flex-direction: column;
   gap: 3px;
 }

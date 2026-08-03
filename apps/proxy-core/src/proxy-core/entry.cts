@@ -1,6 +1,7 @@
 import process from 'node:process';
 
 import { initializeRuntime } from './constants';
+import { installDefaultCaCertificates } from './core-ca-certificates';
 import { CoreApplication, type CoreParentPort } from './core-application';
 
 // UtilityProcess 可执行组合根入口：读取 Electron 注入的 parentPort，初始化运行期配置
@@ -16,5 +17,6 @@ if (!parentPort) {
   process.exitCode = 1;
 } else {
   initializeRuntime(process.argv);
+  installDefaultCaCertificates();
   CoreApplication.bootstrap(parentPort);
 }

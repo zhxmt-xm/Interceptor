@@ -81,7 +81,7 @@ function renderView(
             onOpenRule={actions.openRule}
           />
         ),
-        statusbar: <CaptureStatusbar coreStatus={coreStatus} />,
+        statusbar: <CaptureStatusbar />,
       };
     case 'rules':
       return {
@@ -126,7 +126,7 @@ export function App(): React.JSX.Element {
   useRulesData();
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [settingsSection, setSettingsSection] = useState('certificates');
   const [coreStatus, setCoreStatus] = useState<CoreProcessStatus>(() => ({

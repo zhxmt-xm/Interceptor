@@ -25,7 +25,6 @@ import {
   headersWithoutCookies,
   headersWithRuleEffects,
   protocolLabel,
-  protocolSegment,
   responseTimingSegments,
   retainInspectorTab,
   sizeLabel,
@@ -153,7 +152,7 @@ function Kv({
         const inactive = ruleEffect === 'replace' || ruleEffect === 'remove';
         return (
           <div className={styles.kvRow} key={index}>
-            <span className={styles.key}>{key}</span>
+            <span className={styles.key} title={key}>{key}</span>
             <span
               className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
             >
@@ -212,12 +211,12 @@ function ClientAppValue({
   );
   return (
     <span className={styles.clientAppValue} data-parity="capture-inspector-client-app">
-      {appId === undefined ? null : icon ? (
+      {icon ? (
         <img className={styles.clientAppIcon} src={icon} alt="" />
-      ) : icon === null ? (
-        <AppWindow className={styles.clientAppUnknown} size={16} strokeWidth={1.8} />
-      ) : (
+      ) : appId !== undefined && icon === undefined ? (
         <span className={styles.clientAppLoading} />
+      ) : (
+        <AppWindow className={styles.clientAppUnknown} size={16} strokeWidth={1.8} />
       )}
       {name}
     </span>
@@ -308,15 +307,11 @@ function BodySection({
 }
 
 export interface RequestInspectorProps {
-  mitmActive: boolean;
-  onSetupHttps: () => void;
   onOpenRule: (ruleId: string) => void;
 }
 
 /** Right-hand inspector for the selected request. */
 export function RequestInspector({
-  mitmActive,
-  onSetupHttps,
   onOpenRule,
 }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
@@ -351,13 +346,13 @@ export function RequestInspector({
   const responseTrailers = detail?.responseTrailers ?? [];
   const requestTrailers = detail?.requestTrailers ?? [];
   const scheme = detail?.scheme ?? (view?.secure ? 'https' : 'http');
-  const isWebSocket = view ? protocolSegment(view.protocol) === 'ws' : false;
+  const isWebSocket = view ? protocolLabel(view.protocol) === 'ws' : false;
   const isTlsTunnel = view
     ? view.method.toUpperCase() === 'CONNECT' && protocolLabel(view.protocol) === 'tls'
     : false;
   const isGrpc = !isWebSocket && Boolean(
     view &&
-      protocolSegment(view.protocol) === 'h2' &&
+      protocolLabel(view.protocol) === 'h2' &&
       (isGrpcMime(detail?.requestMime) || isGrpcMime(view.responseMime)),
   );
   const inspectorTabs = isTlsTunnel
@@ -471,10 +466,8 @@ export function RequestInspector({
         {tab === 'tunnel' && isTlsTunnel && view ? (
           <TlsTunnelPanel
             host={view.host ?? ''}
-            mitmActive={mitmActive}
             port={tlsPort}
             open={view.state !== 'completed' && view.state !== 'failed'}
-            onSetupHttps={onSetupHttps}
           />
         ) : null}
 

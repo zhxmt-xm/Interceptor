@@ -5,11 +5,15 @@ import type {
   CaptureExchangeSummary,
 } from '../../../../shared/desktop-api';
 import { useCaptureStore } from '../data/captureStore';
+import {
+  EMPTY_FILTER,
+  FAILED_FACET_VALUE,
+  PENDING_FACET_VALUE,
+} from '../constants';
 import type { CaptureFilter } from '../interfaces';
 import {
-  distinctMethodOptions,
-  distinctRuleOptions,
-  distinctStatusOptions,
+  allFacetOptions,
+  hasActiveFilter,
   suggestedBodyFileName,
   visibleCaptureRows,
 } from '../utils';
@@ -143,14 +147,8 @@ describe('captureStore clear timeline', () => {
   });
 });
 
-describe('captureStore structured filters', () => {
-  const baseFilter: CaptureFilter = {
-    segment: 'all',
-    search: '',
-    method: [],
-    status: [],
-    ruleIds: [],
-  };
+describe('captureStore facet filters', () => {
+  const baseFilter: CaptureFilter = EMPTY_FILTER;
 
   beforeEach(() => {
     useCaptureStore.setState({ filter: baseFilter, rows: [], selectedId: null });
@@ -184,20 +182,20 @@ describe('captureStore structured filters', () => {
     summary('pending', { method: 'GET', statusCode: undefined, state: 'pending' }),
   ];
 
-  it('filters by a single selected method (case-insensitive)', () => {
-    expect(visibleCaptureRows(rows, { ...baseFilter, method: ['post'] }).map((row) => row.id))
+  it('filters by a single selected method', () => {
+    expect(visibleCaptureRows(rows, { ...baseFilter, methods: ['POST'] }).map((row) => row.id))
       .toEqual(['b', 'c']);
   });
 
   it('filters by multiple selected status codes', () => {
-    expect(visibleCaptureRows(rows, { ...baseFilter, status: [200, 404] }).map((row) => row.id))
-      .toEqual(['a', 'b', 'c']);
+    expect(visibleCaptureRows(rows, { ...baseFilter, statuses: ['200', '404'] })
+      .map((row) => row.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('matches any selected rule id while composing with other filters', () => {
+  it('matches any selected rule id while composing with other facets', () => {
     expect(visibleCaptureRows(rows, {
       ...baseFilter,
-      method: ['POST'],
+      methods: ['POST'],
       ruleIds: ['rule-a', 'missing'],
     }).map((row) => row.id)).toEqual(['c']);
     expect(visibleCaptureRows(rows, {
@@ -206,32 +204,46 @@ describe('captureStore structured filters', () => {
     }).map((row) => row.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('lists distinct method options from current rows by count then name', () => {
-    expect(distinctMethodOptions(rows)).toEqual([
-      { value: 'GET', count: 2 },
-      { value: 'POST', count: 2 },
+  it('separates protocol versions that share the list Proto label', () => {
+    const versioned = [
+      summary('one-one', { protocol: 'http/1.1' }),
+      summary('one-zero', { protocol: 'http/1.0' }),
+    ];
+    expect(allFacetOptions(versioned).protocol).toEqual([
+      { value: 'HTTP/1.1', count: 1 },
+      { value: 'HTTP/1.0', count: 1 },
     ]);
   });
 
-  it('lists distinct status options ascending and ignores pending rows', () => {
-    expect(distinctStatusOptions(rows)).toEqual([
-      { value: 200, count: 2 },
-      { value: 404, count: 1 },
+  it('lists method options by count then name, and status ascending with a failed bucket', () => {
+    const options = allFacetOptions([
+      ...rows,
+      summary('failed', { statusCode: undefined, state: 'failed' }),
+    ]);
+    expect(options.method).toEqual([
+      { value: 'GET', count: 3 },
+      { value: 'POST', count: 2 },
+    ]);
+    expect(options.status).toEqual([
+      { value: '200', count: 2 },
+      { value: '404', count: 1 },
+      { value: PENDING_FACET_VALUE, count: 1 },
+      { value: FAILED_FACET_VALUE, count: 1 },
     ]);
   });
 
   it('counts each rule once per exchange and sorts by request count', () => {
-    expect(distinctRuleOptions([
+    expect(allFacetOptions([
       ...rows,
       summary('duplicate', { ruleIds: ['rule-a', 'rule-a'] }),
-    ])).toEqual([
+    ]).rule).toEqual([
       { value: 'rule-a', count: 3 },
       { value: 'rule-b', count: 2 },
     ]);
   });
 
   it('returns no Rule options until at least one captured exchange has a rule hit', () => {
-    expect(distinctRuleOptions(rows.filter((row) => !row.ruleIds))).toEqual([]);
+    expect(allFacetOptions(rows.filter((row) => !row.ruleIds)).rule).toEqual([]);
   });
 
   it('derives safe body filename suggestions from URL and media MIME', () => {
@@ -244,18 +256,38 @@ describe('captureStore structured filters', () => {
       .toBe('response-body.mp3');
   });
 
-  it('sets and clears structured filters, and isolates one rule from Rules', () => {
-    useCaptureStore.getState().setStructuredFilter({
-      method: ['POST'],
-      status: [404],
-      ruleIds: ['rule-b'],
-    });
+  it('toggles facet values within a group and clears one group at a time', () => {
+    const store = useCaptureStore.getState();
+    store.toggleFacetValue('method', 'POST');
+    store.toggleFacetValue('method', 'GET');
+    store.toggleFacetValue('status', '404');
     expect(useCaptureStore.getState().filter).toMatchObject({
-      method: ['POST'],
-      status: [404],
-      ruleIds: ['rule-b'],
+      methods: ['POST', 'GET'],
+      statuses: ['404'],
     });
 
+    store.toggleFacetValue('method', 'POST');
+    expect(useCaptureStore.getState().filter.methods).toEqual(['GET']);
+
+    store.clearFacet('method');
+    expect(useCaptureStore.getState().filter).toMatchObject({
+      methods: [],
+      statuses: ['404'],
+    });
+  });
+
+  it('keeps search independent from facets when reporting and clearing', () => {
+    expect(hasActiveFilter(EMPTY_FILTER)).toBe(false);
+    expect(hasActiveFilter({ ...EMPTY_FILTER, search: 'user' })).toBe(false);
+    expect(hasActiveFilter({ ...EMPTY_FILTER, hosts: ['example.test'] })).toBe(true);
+
+    useCaptureStore.getState().setSearch('user');
+    useCaptureStore.getState().toggleFacetValue('type', 'json');
+    useCaptureStore.getState().clearAllFilters();
+    expect(useCaptureStore.getState().filter).toEqual({ ...EMPTY_FILTER, search: 'user' });
+  });
+
+  it('isolates one rule from Rules and expands that group', () => {
     useCaptureStore.setState({ rows });
     useCaptureStore.getState().filterByRule('rule-a');
     expect(useCaptureStore.getState().filter).toEqual({
@@ -263,12 +295,6 @@ describe('captureStore structured filters', () => {
       ruleIds: ['rule-a'],
     });
     expect(useCaptureStore.getState().selectedId).toBe('c');
-
-    useCaptureStore.getState().setStructuredFilter({ method: [], status: [], ruleIds: [] });
-    expect(useCaptureStore.getState().filter).toMatchObject({
-      method: [],
-      status: [],
-      ruleIds: [],
-    });
+    expect(useCaptureStore.getState().expandedFacets).toContain('rule');
   });
 });

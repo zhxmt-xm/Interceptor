@@ -17,12 +17,10 @@ export const englishCatalog = {
 } as const;
 
 export type MessageKey = keyof typeof englishCatalog;
-type MultiPluralBase =
-  | 'capture.requestCount'
-  | 'capture.exportRequestCount'
-  | 'rules.issueCount'
-  | 'rules.conditionCount';
-type MultiPluralKey = `${MultiPluralBase}_${'few' | 'many'}`;
+type MultiPluralBase = 'capture.exportRequestCount' | 'rules.issueCount' | 'rules.conditionCount';
+type MultiPluralKey =
+  | `${MultiPluralBase}_${'few' | 'many'}`
+  | `capture.showMore_${'one' | 'few' | 'many'}`;
 
 export type MessageCatalog = Record<MessageKey, string> &
   Partial<Record<MultiPluralKey, string>>;

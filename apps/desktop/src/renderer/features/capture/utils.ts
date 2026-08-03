@@ -2,14 +2,22 @@ import type {
   CaptureExchangeSummary,
   CaptureHeader,
 } from '../../../shared/desktop-api';
-import type {
-  CaptureFilter,
-  FilterValueOption,
-  InspectorTab,
-  ProtocolSegment,
-  StatusKind,
-  TimeLabels,
-  TimingSegment,
+import {
+  CAPTURE_FACET_IDS,
+  FAILED_FACET_VALUE,
+  PENDING_FACET_VALUE,
+  PROTOCOL_FACET_ORDER,
+  UNKNOWN_FACET_VALUE,
+} from './constants';
+import {
+  CAPTURE_FACET_FIELDS,
+  type CaptureFacetId,
+  type CaptureFilter,
+  type FilterValueOption,
+  type InspectorTab,
+  type StatusKind,
+  type TimeLabels,
+  type TimingSegment,
 } from './interfaces';
 
 /** Cookie headers live exclusively in the Cookies tab, not the generic Headers tab. */
@@ -137,19 +145,25 @@ export function protocolLabel(protocol: string): string {
   return value;
 }
 
-/** 把 protocol 归入 Segmented 分段，用于列表分段过滤与命中判断。 */
-export function protocolSegment(protocol: string): Exclude<ProtocolSegment, 'all'> | 'other' {
-  const label = protocolLabel(protocol);
-  if (label === 'h1') {
-    return 'h1';
+/** 把 protocol 归一为筛选分栏的 Protocol facet 值；与列表 Proto 列不同，这里区分 HTTP/1.1 与 HTTP/1.0。 */
+export function protocolFacetValue(protocol: string): string {
+  const value = protocol.toLowerCase();
+  if (value === 'http/2' || value === 'h2') {
+    return 'HTTP/2';
   }
-  if (label === 'h2') {
-    return 'h2';
+  if (value === 'http/1.1' || value === 'h1') {
+    return 'HTTP/1.1';
   }
-  if (label === 'ws') {
-    return 'ws';
+  if (value === 'http/1.0') {
+    return 'HTTP/1.0';
   }
-  return 'other';
+  if (value.includes('websocket') || value === 'ws') {
+    return 'WebSocket';
+  }
+  if (value === 'connect' || value === 'tls') {
+    return 'TLS tunnel';
+  }
+  return protocol;
 }
 
 /** 由响应 MIME 推导列表 Type 列的短类型标签。 */
@@ -284,7 +298,7 @@ export function timeLabel(
   if (protocolLabel(summary.protocol) === 'tls' && summary.durationMs === undefined) {
     return labels.open;
   }
-  if (protocolSegment(summary.protocol) === 'ws') {
+  if (protocolLabel(summary.protocol) === 'ws') {
     return summary.state === 'completed' || summary.state === 'failed' ? labels.closed : labels.open;
   }
   if (summary.durationMs === undefined) {
@@ -301,27 +315,51 @@ export function displayBytes(summary: CaptureExchangeSummary): number {
   return summary.responseBytes > 0 ? summary.responseBytes : summary.requestBytes;
 }
 
-/** 判断摘要是否命中字段过滤（method/status 精确匹配 + search 子串），供实时事件复用。 */
+/** 单条摘要在某个 facet 上的取值；一条摘要可能命中多个规则，因此返回数组。 */
+export function facetValuesOf(
+  summary: CaptureExchangeSummary,
+  facet: CaptureFacetId,
+): string[] {
+  switch (facet) {
+    case 'application':
+      return [summary.appId ?? UNKNOWN_FACET_VALUE];
+    case 'method':
+      return [summary.method.toUpperCase()];
+    case 'host':
+      return summary.host ? [summary.host] : [];
+    case 'status':
+      return [statusFacetValue(summary)];
+    case 'protocol':
+      return [protocolFacetValue(summary.protocol)];
+    case 'type':
+      return [typeLabel(summary.responseMime)];
+    case 'rule':
+      return [...new Set(summary.ruleIds ?? [])];
+  }
+}
+
+/** 失败请求没有状态码，在 Status facet 里归为单独一项。 */
+function statusFacetValue(summary: CaptureExchangeSummary): string {
+  if (summary.statusCode !== undefined) {
+    return String(summary.statusCode);
+  }
+  return summary.state === 'failed' ? FAILED_FACET_VALUE : PENDING_FACET_VALUE;
+}
+
+/** 判断摘要是否命中当前全部筛选（组内 OR、组间 AND），供实时事件与列表派生共用。 */
 export function matchesCoreFilter(
   summary: CaptureExchangeSummary,
   filter: CaptureFilter,
 ): boolean {
-  if (filter.method.length > 0) {
-    const summaryMethod = summary.method.toUpperCase();
-    if (!filter.method.some((value) => value.toUpperCase() === summaryMethod)) {
+  for (const facet of CAPTURE_FACET_IDS) {
+    const selected = filter[CAPTURE_FACET_FIELDS[facet]];
+    if (selected.length === 0) {
+      continue;
+    }
+    const values = facetValuesOf(summary, facet);
+    if (!values.some((value) => selected.includes(value))) {
       return false;
     }
-  }
-  if (filter.status.length > 0) {
-    if (summary.statusCode === undefined || !filter.status.includes(summary.statusCode)) {
-      return false;
-    }
-  }
-  if (
-    filter.ruleIds.length > 0
-    && !filter.ruleIds.some((ruleId) => summary.ruleIds?.includes(ruleId))
-  ) {
-    return false;
   }
   if (filter.search) {
     const needle = filter.search.toLowerCase();
@@ -333,56 +371,50 @@ export function matchesCoreFilter(
   return true;
 }
 
-/** 当前列表出现过的 distinct method 及计数，按计数降序、同数按字母序，供 Add filter 级联。 */
-export function distinctMethodOptions(
+/** 一次遍历派生全部 facet 的可选值与计数；实时流量下每条摘要只扫一遍。 */
+export function allFacetOptions(
   rows: readonly CaptureExchangeSummary[],
-): FilterValueOption<string>[] {
-  const counts = new Map<string, number>();
+): Record<CaptureFacetId, FilterValueOption[]> {
+  const buckets = Object.fromEntries(
+    CAPTURE_FACET_IDS.map((facet) => [facet, new Map<string, number>()]),
+  ) as Record<CaptureFacetId, Map<string, number>>;
   for (const row of rows) {
-    const method = row.method.toUpperCase();
-    counts.set(method, (counts.get(method) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value));
-}
-
-/** 当前列表出现过的 distinct 状态码及计数，按状态码升序，供 Add filter 级联。 */
-export function distinctStatusOptions(
-  rows: readonly CaptureExchangeSummary[],
-): FilterValueOption<number>[] {
-  const counts = new Map<number, number>();
-  for (const row of rows) {
-    if (row.statusCode !== undefined) {
-      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + 1);
+    for (const facet of CAPTURE_FACET_IDS) {
+      const bucket = buckets[facet];
+      for (const value of facetValuesOf(row, facet)) {
+        bucket.set(value, (bucket.get(value) ?? 0) + 1);
+      }
     }
   }
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((left, right) => left.value - right.value);
+  return Object.fromEntries(
+    CAPTURE_FACET_IDS.map((facet) => [facet, sortFacetOptions(facet, buckets[facet])]),
+  ) as Record<CaptureFacetId, FilterValueOption[]>;
 }
 
-/** 当前列表实际命中过的 distinct rule id 及 Exchange 数量，按计数降序。 */
-export function distinctRuleOptions(
-  rows: readonly CaptureExchangeSummary[],
-): FilterValueOption<string>[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    for (const ruleId of new Set(row.ruleIds ?? [])) {
-      counts.set(ruleId, (counts.get(ruleId) ?? 0) + 1);
-    }
+/** Status 按状态码升序、Protocol 按版本高低排；其余 facet 按计数降序、同数按字母序。 */
+function sortFacetOptions(
+  facet: CaptureFacetId,
+  counts: Map<string, number>,
+): FilterValueOption[] {
+  const entries = [...counts.entries()].map(([value, count]) => ({ value, count }));
+  if (facet === 'status') {
+    return entries.sort((left, right) => statusOrder(left.value) - statusOrder(right.value));
   }
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value));
+  if (facet === 'protocol') {
+    return entries.sort(
+      (left, right) =>
+        PROTOCOL_FACET_ORDER.indexOf(left.value) - PROTOCOL_FACET_ORDER.indexOf(right.value),
+    );
+  }
+  return entries.sort(
+    (left, right) => right.count - left.count || left.value.localeCompare(right.value),
+  );
 }
 
-/** 判断摘要是否命中当前 Segmented 分段（客户端视图过滤）。 */
-export function matchesSegment(
-  summary: CaptureExchangeSummary,
-  segment: ProtocolSegment,
-): boolean {
-  return segment === 'all' || protocolSegment(summary.protocol) === segment;
+/** 数字状态码按码值排，pending/failed 这类哨兵值排在最后。 */
+function statusOrder(value: string): number {
+  const code = Number.parseInt(value, 10);
+  return Number.isNaN(code) ? Number.MAX_SAFE_INTEGER : code;
 }
 
 /** 从全量 summary 镜像派生当前可见列表。 */
@@ -390,9 +422,12 @@ export function visibleCaptureRows(
   rows: readonly CaptureExchangeSummary[],
   filter: CaptureFilter,
 ): CaptureExchangeSummary[] {
-  return rows.filter(
-    (row) => matchesCoreFilter(row, filter) && matchesSegment(row, filter.segment),
-  );
+  return rows.filter((row) => matchesCoreFilter(row, filter));
+}
+
+/** 是否有 facet 生效；驱动工具栏 badge 与清空筛选按钮。搜索是独立维度，不计入。 */
+export function hasActiveFilter(filter: CaptureFilter): boolean {
+  return CAPTURE_FACET_IDS.some((facet) => filter[CAPTURE_FACET_FIELDS[facet]].length > 0);
 }
 
 /** 由 summary 列表构建 id → 下标索引，供实时事件 O(1) 定位。 */
