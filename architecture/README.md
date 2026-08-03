@@ -30,7 +30,7 @@
 | [feature-transfer.md](feature-transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [feature-diagnostics.md](feature-diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [feature-settings.md](feature-settings.md) | 证书/MITM、系统代理、更新、存储状态、语言主题 | `storage/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
-| [feature-mcp.md](feature-mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；主体在 Main `mcp/` | `features/settings/` + App 级审批弹层 |
+| [feature-mcp.md](feature-mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；工具层在 `packages/mcp-server/`，transport 待接入 Main `mcp/` | `features/settings/` + App 级审批弹层 |
 
 ## 进程边界
 

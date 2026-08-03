@@ -182,6 +182,7 @@ Check one workspace:
 npm run typecheck --workspace @interceptor/desktop
 npm run typecheck --workspace @interceptor/proxy-core
 npm run typecheck --workspace @interceptor/core-protocol
+npm run typecheck --workspace @interceptor/mcp-server
 ```
 
 ### Unit Tests
@@ -417,6 +418,7 @@ apps/desktop/src/renderer/styles/     Minimal global reset and design variables
 apps/desktop/src/main/system-proxy/   System proxy services, native helpers, journal, builders, tests
 apps/proxy-core/                      Independent Node.js Proxy Core process
 packages/core-protocol/               Typed Main/Core messages and runtime validation
+packages/mcp-server/                  MCP tool layer for external AI hosts (not yet wired into Main)
 scripts/                              Repeatable repository asset tooling
 ```
 

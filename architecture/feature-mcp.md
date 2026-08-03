@@ -1,10 +1,11 @@
 # Feature: MCP Server
 
-> 最后更新：2026-07-28
+> 最后更新：2026-08-03
+> 已实现：`packages/mcp-server/`（认证 + 工具层 + 协议层，与 transport 无关，已单测）
 > Main 模块（规划）：`apps/desktop/src/main/mcp/`
 > Bridge 产物（规划）：`apps/desktop/assets/mcp-bridge/bridge.mjs` → 打包进 `extraResource`
 > Renderer 模块（规划）：`features/settings/` 的 MCP 面板 + App 级审批弹层
-> 状态：**全文均为目标设计，尚无代码落地。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
+> 状态：**工具层已落地且不依赖 Electron；transport、Bridge、Preload 与 UI 尚未接线。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
 
 ## 1. 职责与边界
 
@@ -69,12 +70,25 @@ flowchart LR
 
 四层自上而下，**两种 transport 只替换最外层**：
 
-| 层 | 职责 | stdio 与 HTTP 是否共用 |
-| --- | --- | --- |
-| Transport | 字节收发、连接管理、会话 | ❌ 各自实现 |
-| Authentication | 识别调用方，产出 `McpClientIdentity` | ✅ 同一 `authenticate()` 契约 |
-| Tool Registry | 工具 schema、参数校验、只读/写分级、审批、脱敏 | ✅ 完全共用 |
-| Core Bridge | 映射到 `core-protocol` command | ✅ 完全共用 |
+| 层 | 职责 | 归属 | stdio 与 HTTP 是否共用 |
+| --- | --- | --- | --- |
+| Transport | 字节收发、连接管理、会话 | Main（未实现） | ❌ 各自实现 |
+| Authentication | 识别调用方，产出 `McpClientIdentity` | `packages/mcp-server/` | ✅ 同一 `authenticate()` 契约 |
+| Tool Registry | 工具 schema、参数校验、只读/写分级、审批、脱敏 | `packages/mcp-server/` | ✅ 完全共用 |
+| Core Bridge | 映射到 `core-protocol` command | Main 实现 `McpHostBridge` | ✅ 完全共用 |
+
+`packages/mcp-server/` 不引用 Electron、不持有 MessagePort、不接触文件系统；它向宿主要求三个能力：
+
+```ts
+interface McpHostBridge {
+  /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
+  invoke<T extends CoreCommand>(command: T, signal: AbortSignal): Promise<CoreResultForCommand<T>>;
+  /** 请求用户确认写工具；宿主负责展示、超时与窗口聚焦。 */
+  requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict>;
+  /** 记录审计事件；实现必须吞掉自身错误。 */
+  record(event: McpAuditEvent): void;
+}
+```
 
 认证层统一收敛到一个签名，后续换成任何机制（含 OAuth 2.1）都不影响上层：
 
@@ -83,10 +97,7 @@ interface McpClientIdentity {
   clientId: string;          // 可信：由 token 决定
   label: string;             // 用户在 Settings 里起的名字
   reportedName?: string;     // 不可信：MCP initialize 的 clientInfo.name
-  scopes: readonly McpScope[];
 }
-
-type McpAuthenticator = (credentials: McpCredentials) => McpClientIdentity | null;
 ```
 
 > `reportedName` 来自 MCP `initialize` 的 `clientInfo`，是调用方**自报**的，可伪造。**只允许用于 UI 展示与审计日志，禁止参与任何授权判断。**
@@ -488,11 +499,13 @@ flowchart TD
 
 ## 9. 与当前实现的差异
 
-**本 feature 当前无任何代码落地。** 落地时需要新增或改动：
+**已落地**：`packages/mcp-server/` 包含第 3 章的认证层、第 4 章的完整工具层（十一个只读 + 七个写工具）与 MCP 协议状态机（`initialize` / `ping` / `tools/list` / `tools/call`，协议修订版 `2025-06-18`，兼容 `2025-03-26` 与 `2024-11-05`）。工具分级通过 `tools/list` 的 `annotations`（`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`）告知 Host。`initialize` 的 `instructions` 向模型声明捕获流量是不可信输入。该 package 零运行时依赖（只用 `node:crypto`），不引用 Electron，因此可脱离整个 app 单测。
+
+**尚未接线**：
 
 | 位置 | 改动 |
 | --- | --- |
-| `apps/desktop/src/main/mcp/` | 新增：transport、authenticator、tool registry、approval gate |
+| `apps/desktop/src/main/mcp/` | 新增：transport（named pipe / unix socket）、runtime 文件读写、`McpHostBridge` 实现（接 `CoreRpcClient`）、审批超时与窗口聚焦 |
 | `apps/desktop/assets/mcp-bridge/` | 新增 `bridge.mjs`，经 `forge.config.ts` 的 `extraResource` 随包发布 |
 | `apps/desktop/src/preload/preload.ts` | 新增 8.1 的窄 API |
 | `apps/desktop/src/shared/desktop-api.ts` | 新增对应类型 |
@@ -500,27 +513,36 @@ flowchart TD
 | `apps/desktop/src/renderer/app/` | 新增审批弹层（App 级，与 UpdateNotification 同层） |
 | `apps/desktop/src/shared/automation-ids.ts` | 新增 MCP 面板与审批弹层的稳定 ID |
 | `design/app/` | 新增 MCP 面板与审批弹层视图，先出设计再实现 |
-| `packages/core-protocol/` | **无需改动** —— MCP 只复用既有 command |
+| `packages/core-protocol/` | **无需改动** —— 已验证：十八个工具全部映射到现有 command |
 
-`packages/core-protocol` 零改动是本设计的重要验证点：**若某个 MCP 工具需要新增 Core command，说明它越过了既有能力边界，应先质疑该工具是否该存在。**
+`packages/core-protocol` 零改动是本设计的重要验证点，现已由实现证实：**若某个 MCP 工具需要新增 Core command，说明它越过了既有能力边界，应先质疑该工具是否该存在。**
 
 ## 10. 验收要点
 
-**阶段一（stdio）**
+**工具层（`packages/mcp-server/`，已由单测覆盖）**
+
+- [x] 任一写工具在未获用户确认时**不产生任何 Core command**。
+- [x] 审批超时按拒绝处理。
+- [x] 审批请求携带**完整参数**而非摘要。
+- [x] `apply_rules` 产出的规则一律为 `enabled:false`。
+- [x] `apply_rules` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
+- [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
+- [x] 音视频正文不进入工具结果。
+- [x] `tls.configure`、`proxy.start` / `proxy.stop`、全部 import/export command 在工具列表中不可见且不可调用。
+- [x] 撤销某个 client 后，其 token 立即无法再建会话。
+- [x] 工具抛错返回结构化失败而非抛出。
+- [x] schema 未声明的参数被拒绝；分页条数与结果字节均有上限。
+- [x] 只改 header 时不伪造 `body` 字段，避免把真实正文抹成空。
+
+**阶段一（stdio，待接线后验证）**
 
 - [ ] MCP 默认关闭；关闭状态下不存在 named pipe / unix socket 与 runtime 文件。
 - [ ] VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
 - [ ] app 重启后 token 已更换，但两个 Host **无需修改任何配置**即可继续工作。
 - [ ] app 未运行或 MCP 未开启时，Bridge 返回可读的结构化错误，Host 不崩溃。
 - [ ] macOS unix socket 权限为 `0600`；Windows named pipe 名称含随机后缀。
-- [ ] 任一写工具在未获用户确认时**不产生任何 Core command**。
-- [ ] 审批超时按拒绝处理，且主窗口隐藏时能自动 show + focus。
-- [ ] `apply_rules` 产出的规则一律为 `enabled:false`。
-- [ ] `apply_rules` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
-- [ ] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 默认已遮罩。
-- [ ] 音视频正文不进入工具结果。
-- [ ] `tls.configure`、`proxy.start` / `proxy.stop`、全部 import/export command 在工具列表中不可见且不可调用。
-- [ ] 撤销某个 client 后，其在途连接立即失效。
+- [ ] 审批弹层在主窗口隐藏时能自动 show + focus。
+- [ ] 撤销某个 client 后，其**在途连接**立即失效。
 - [ ] MCP 认证失败、Host 异常断开、工具抛错均不影响抓包与转发。
 - [ ] 审批裁决与工具调用写入 Diagnostics，含 `clientId` 与不可信的 `reportedName`。
 
