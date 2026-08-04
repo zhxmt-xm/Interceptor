@@ -57,6 +57,7 @@ function proxiedGet(
 /** 一条规则，三个都会执行的 action：命中一次请求仍然只能算一次。 */
 function threeActionRule(): RuleDefinition {
   return {
+    kind: 'rule',
     id: 'rule-multi',
     name: 'Three actions',
     enabled: true,
@@ -94,7 +95,7 @@ describe('Rule hit counts (real proxy)', () => {
     captureService = new CaptureService();
     await captureService.initialize();
     const ruleService = new RuleService(new BreakpointQueue());
-    ruleService.setRuleSet({ revision: 1, rules: [threeActionRule()] });
+    ruleService.setRuleSet({ revision: 1, nodes: [threeActionRule()] });
     proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
     const address = await proxyService.start({ port: 0 });
     origin = await startOrigin();

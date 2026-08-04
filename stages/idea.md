@@ -3,13 +3,21 @@
 - [x] **已完成**（2026-07-31，commit `cc11b5e`/`27bcd5f`/`5cdfc2a`）我们能不能加上application和图标？![alt text](image-5.png)
 - [x] **已完成**（2026-08-02 设计稿 `a8a484a`，2026-08-03 Renderer `3eaa14e`）我在想sidebar默认收起，然后顶部的filter全部换到左侧一个分栏，有各种filter，可以折叠，分栏可以收起，filter现状还是不够直观，最好和现在的all/h1/h2那样可以直接点，并且h1最好分为http1.1和其他版本。list和detail仍保持现状 ![alt text](image-6.png)
 - [x] **已完成**（同 `a8a484a`/`3eaa14e`）list的host column，可以把path和host位置互换下，因为host可以用左侧来filter，所以path更显眼直观一点
-- [ ] **设计稿已定稿，待实现**（2026-08-04）composer应该做成postman或proxyman这样的UI格式 ![alt text](image-7.png)
-  - 设计稿：`design/app/` composer 视图 34 张截图；规范见 `design/design-system.md` 的「Composer 工作区」；架构与新增范围见 `architecture/feature-composer.md` 第 5 节。
-  - 形态：左 `216px` Collection 分栏（可嵌套命名目录、chevron 折叠 / 名称选中、`⋮` 菜单、行内重命名、可收起）+ 工作区（文档标签条 · URL 行 · 请求编辑区 Query/Headers/Body/Auth · splitter · 响应区 Body/Headers/Cookies/Timing）。
-  - **实现范围明显大于原 Composer**：Collection 需要 Core 新增持久化模块 + 4 条协议命令 + Preload 窄 API；编辑即生效（无保存动作）。Body 的 Form 档由 Renderer 编码成字符串，协议不变；`multipart/form-data` 不在本轮。
-- [ ] **设计稿已定稿，待实现**（2026-08-04）request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+- [x] **已完成**（2026-08-04，commit `c934c1c` + Export 按钮收尾）composer应该做成postman或proxyman这样的UI格式 ![alt text](image-7.png)
+  - 实现：`apps/desktop/src/renderer/features/composer/` 下 CollectionPanel / DocumentTabs / RequestUrlBar / RequestPane / ResponsePane / ComposerMain / ComposerTabBar / KeyValueTable / ComposerStatusbar 等组件目录；设计稿 17 个 composer 场景（浅深共 34 张）全部落地，i18n 77 词条 × 15 语言、43 条 automation id 同步。
+  - 与原计划的两处差异：① 协议只落 `collection.get` / `collection.replace` **两条**命令而非 4 条——整棵树读写 + 乐观并发 `revision`，不做树形表与增量命令，`architecture/feature-composer.md` 5.1 节已明确此简化；② 顺带扩了协议的 `ComposerTiming`，Core 新增 `TimingRecorder` 用 socket 事件采集 DNS/TCP/TLS/Request/Waiting/Download 六阶段，支撑 Timing 页签的分阶段条（原范围未列，但设计稿的 Timing 页要求）。
+  - 编辑即生效已核实：无 Save 按钮、无 dirty 标记，600ms 节流整树写回，revision 冲突直接以 Core 版本重载。Body 的 Form 档由 Renderer 编码成 `x-www-form-urlencoded` 字符串，协议不变；`multipart/form-data` 如约不在本轮。
+  - 收尾补做：Collection 工具栏第三个「Export collection」按钮此前遗漏，已补 `collection:export` IPC（Main 系统保存对话框写 JSON，数据本就在 Renderer 手上，不经过 Core）。
+  - **仍欠验收资产**：`apps/desktop/tests/visual-parity/parity.config.mjs` 的 composer 段仍指向旧稿 `light/shell-v2/composer.png` 与旧 DOM 的 parity id，需按 `light/composer/` 新稿重写并重跑；packaged smoke 未实跑（本轮新增 3 条 collection IPC channel）。
+- [x] **已实现**（2026-08-04）request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进 feature 架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
 
-  - 设计稿：`design/app/` capture 视图新增 14 个档位场景 × 浅/深共 28 张（`shots/<theme>/capture/body-*.png`：`json` `tree` `tree-menu` `code` `formatting` `format-off` `limited` `image` `image-large` `hex` `form` `md` `md-split` `media`），由 `__setState({ bodyPreview })` 驱动；Composer 响应档位条与 WebSocket / gRPC 内联工具行同步改为派生档位。规范见 `design/design-system.md` 的「正文预览档位矩阵」。
+  - 实现位置：`components/BodyViewer/`（内核 + BodyToolbar / HexView / FormView / ImageView / JsonTreeView / MarkdownView / UnavailableBody）；Capture 侧外壳 `features/capture/RequestInspector/BodyView.tsx` 只管加载与 Save，Composer 响应体已改用同一内核。
+  - 新依赖：`xml-formatter`（Monaco 无 XML 服务）、`react-markdown` + `remark-gfm`。Monaco 改用 `languages/features/{json,css,html,typescript}` 完整语言服务（带 formatter 与结构化折叠），并关掉全部诊断。
+  - 阈值常量集中在 `packages/core-protocol/src/messages.ts`：`BODY_PREVIEW_MAX_BYTES` 5 MiB、`IMAGE_PREVIEW_MAX_BYTES` 16 MiB、`FORMAT_AUTO_MAX_BYTES` 2 MiB、`FORMAT_MAX_BYTES` 8 MiB。
+  - 还没做：阈值 Settings 化（含给 `BodyReadRangeCommand` 加 `maxOutput`）、`multipart/form-data` 预览、`readRange` 内存分支的 `subarray` 放大 IPC。
+
+  - 设计稿：`design/app/` capture 视图新增 17 个档位场景 × 浅/深共 34 张（`shots/<theme>/capture/body-*.png`），列表新增 png / 12 MB html / markdown / 超大图 / mp4 五条示例流量；点行切内容类型、点 Segmented 切查看档位，设计稿可直接手点验证。Composer 响应档位条与 WebSocket / gRPC 内联工具行同步改为派生档位。规范见 `design/design-system.md` 的「正文预览档位矩阵」。
+  - **内容类型与查看档位必须是两个独立维度**（设计稿里是 `data-body-kind` + `data-body-mode`）。把两者混成一个枚举会直接出 bug：在 JSON 响应上点 Hex 会跳到另一条请求、HTML 点 Raw 会变成 JSON。实现时 Renderer 同样要把「当前 Exchange 的内容类型」与「选中档位」分开存，切档位不得改变 MIME/体积标签。
 
   - 现状问题（`BodyView.tsx` + `bodyContent.ts`）：
 
@@ -46,13 +54,13 @@
     | --- | --- | --- |
     | JSON / `+json` / ndjson | Pretty | Tree · Raw · Hex |
     | HTML / CSS / JS / XML | Code | Raw · Hex |
-    | 纯文本 / YAML / Markdown 源码 | Code | Hex |
     | 图片（非 SVG） | Preview（`<img>`） | Hex |
     | `image/svg+xml` | XML 代码 | Hex（可执行 XML，默认不渲染） |
     | Markdown | Preview（富文本） | Split · Source · Hex |
     | 音视频 | 元信息 + Save | —（零读取，维持现状） |
     | `x-www-form-urlencoded` | 键值表格 | Raw · Hex |
-    | 未知 / 二进制 | 内容探测决定 | Text · Hex |
+    | 二进制（字体 / octet-stream） | Hex | Text · Hex |
+    | 未知 | 内容探测决定 | Text · Hex |
 
     `auto` 档位删掉，但**探测逻辑保留**——它暗中承担着"未知 MIME 是文本还是二进制"的判定，只是从可见档位降级为默认档选择器。候选列表始终追加探测出的那一档，以容忍 MIME 谎报。
 

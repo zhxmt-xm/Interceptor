@@ -20,10 +20,12 @@ import type {
   RuleAction,
   RuleActionType,
   RuleDefinition,
+  RuleFolder,
   RuleHeaderPair,
   RuleHitCount,
   RuleMatcher,
   RuleMatcherType,
+  RuleNode,
   RulePhase,
   RuleSet,
   StringMatchMode,
@@ -59,10 +61,12 @@ export type {
   RuleAction,
   RuleActionType,
   RuleDefinition,
+  RuleFolder,
   RuleHeaderPair,
   RuleHitCount,
   RuleMatcher,
   RuleMatcherType,
+  RuleNode,
   RulePhase,
   RuleSet,
   StringMatchMode,
@@ -502,7 +506,7 @@ export interface InterceptorDesktopApi {
   getRules(): Promise<RuleSet>;
   replaceRules(
     expectedRevision: number,
-    rules: RuleDefinition[],
+    nodes: RuleNode[],
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
   getCollection(): Promise<Collection>;

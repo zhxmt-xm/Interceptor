@@ -1,6 +1,8 @@
 import { AppWindow, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { findLeaf } from '@interceptor/core-protocol';
+
 import { MethodBadge } from '../../../components';
 import { useRulesStore } from '../../rules/data/rulesStore';
 import { UNKNOWN_FACET_VALUE } from '../constants';
@@ -28,7 +30,7 @@ export function FacetValueLabel({
       ? state.rows.find((row) => row.appId === value)?.appName
       : undefined);
   const ruleName = useRulesStore((state) =>
-    facet === 'rule' ? state.rules.find((rule) => rule.id === value)?.name : undefined);
+    facet === 'rule' ? (findLeaf(state.nodes, value)?.name ?? undefined) : undefined);
 
   if (facet === 'application') {
     return (

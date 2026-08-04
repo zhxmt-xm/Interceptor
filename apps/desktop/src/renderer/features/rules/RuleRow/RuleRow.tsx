@@ -1,4 +1,3 @@
-import { GripVertical } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,36 +18,37 @@ const CHIP_CLASS: Record<ChipKind, string | undefined> = {
   brk: styles.brk,
 };
 
-/** 命中数紧凑格式：1200 → 1.2k。 */
 export interface RuleRowProps {
   rule: RuleDefinition;
+  /** 树深度，决定行内缩进；顶层为 0。 */
+  depth: number;
   hits: number;
   selected: boolean;
-  reorderable: boolean;
   dragging: boolean;
-  dropTarget: boolean;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
-  onDragStart: (id: string, event: React.DragEvent<HTMLSpanElement>) => void;
-  onDragOver: (id: string, event: React.DragEvent<HTMLButtonElement>) => void;
-  onDrop: (id: string, event: React.DragEvent<HTMLButtonElement>) => void;
-  onDragEnd: () => void;
+  /** 来自 useTreeDrag：整行即拖拽源。 */
+  dragProps: {
+    draggable: true;
+    onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+    onDragEnd: () => void;
+  };
 }
 
-/** A single rule row: drag handle, toggle, name/match, chips and hit count. memo 化，仅变化的规则行 re-render。 */
+/**
+ * 树里的一条规则：开关、名称与匹配摘要、action chips、命中数。
+ * 整行是拖拽源，缩进放在行内部，这样 hover 与选中背景始终占满整列。
+ * memo 化，仅变化的规则行 re-render。
+ */
 export const RuleRow = memo(function RuleRow({
   rule,
+  depth,
   hits,
   selected,
-  reorderable,
   dragging,
-  dropTarget,
   onSelect,
   onToggle,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
+  dragProps,
 }: RuleRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const chips = deriveChips(rule);
@@ -57,28 +57,17 @@ export const RuleRow = memo(function RuleRow({
   return (
     <button
       type="button"
+      data-tree-row={rule.id}
+      style={{ '--depth': depth } as React.CSSProperties}
       className={cx(
         styles.row,
         selected && styles.selected,
         !rule.enabled && styles.disabled,
         dragging && styles.dragging,
-        dropTarget && styles.dropTarget,
       )}
       onClick={() => onSelect(rule.id)}
-      onDragOver={(event) => onDragOver(rule.id, event)}
-      onDrop={(event) => onDrop(rule.id, event)}
+      {...dragProps}
     >
-      <span
-        className={styles.drag}
-        draggable={reorderable}
-        aria-label={`${t('rules.moveUp')} / ${t('rules.moveDown')}`}
-        title={`${t('rules.moveUp')} / ${t('rules.moveDown')}`}
-        onClick={(event) => event.stopPropagation()}
-        onDragStart={(event) => onDragStart(rule.id, event)}
-        onDragEnd={onDragEnd}
-      >
-        <GripVertical size={15} />
-      </span>
       <span
         className={styles.toggle}
         title={enableBlocked ? t('rules.enableBlocked') : undefined}

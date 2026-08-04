@@ -1,56 +1,36 @@
+/* 一级缩进 = chevron 槽宽 + gap，这样规则的开关正好落在所属目录图标的正下方；
+   缩进放在行内部而非容器上，hover 与选中背景才能占满整列。 */
 .row {
   display: flex;
   align-items: center;
-  gap: 11px;
-  height: 60px;
-  padding: 0 12px;
+  gap: 6px;
+  height: 42px;
+  flex: 0 0 42px;
+  padding: 0 4px 0 calc(4px + var(--depth) * 26px);
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-radius: 7px;
   background: transparent;
   color: inherit;
   font-family: inherit;
   text-align: left;
   width: 100%;
   cursor: pointer;
-  position: relative;
+  user-select: none;
 }
 .row:hover {
   background: var(--hover);
 }
 .selected {
   background: var(--sel);
-}
-.selected::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--sel-line);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .disabled .meta,
 .disabled .chips,
 .disabled .hits {
   opacity: 0.5;
 }
-.drag {
-  color: var(--text-3);
-  display: flex;
-  cursor: grab;
-}
-.drag:active {
-  cursor: grabbing;
-}
-.drag svg {
-  width: 15px;
-  height: 15px;
-}
 .dragging {
-  opacity: 0.55;
-}
-.dropTarget {
-  box-shadow: inset 0 2px var(--accent);
+  opacity: 0.35;
 }
 .toggle {
   display: flex;
@@ -61,11 +41,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  justify-content: center;
+  gap: 1px;
 }
 .name {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -73,7 +54,7 @@
 }
 .match {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -85,9 +66,9 @@
   flex: 0 0 auto;
 }
 .chip {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: 6px;
   white-space: nowrap;
 }
@@ -119,7 +100,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-3);
-  min-width: 34px;
+  min-width: 26px;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

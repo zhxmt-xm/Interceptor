@@ -1,3 +1,4 @@
+import { collectLeaves } from '@interceptor/core-protocol';
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { useRulesStore } from '../data/rulesStore';
@@ -6,13 +7,16 @@ import { enabledCount, isRulesDirty, ruleIssues } from '../utils';
 /** Rules status bar: rule-set state, revision and incomplete-rule summary. */
 export function RulesStatusbar(): React.JSX.Element {
   const { t } = useTranslation();
-  const rules = useRulesStore((state) => state.rules);
+  const nodes = useRulesStore((state) => state.nodes);
   const revision = useRulesStore((state) => state.revision);
-  const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
+  const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
   const conflict = useRulesStore((state) => state.conflict);
   const error = useRulesStore((state) => state.error);
-  const enabled = enabledCount(rules);
-  const issueCount = rules.reduce((total, rule) => total + ruleIssues(rule).length, 0);
+  const enabled = enabledCount(nodes);
+  const issueCount = collectLeaves(nodes).reduce(
+    (total, rule) => total + ruleIssues(rule).length,
+    0,
+  );
   const invalid = issueCount > 0;
 
   const dot = invalid ? 'red' : dirty ? 'yellow' : 'green';
@@ -29,7 +33,7 @@ export function RulesStatusbar(): React.JSX.Element {
       <StatItem dot={dot}>{label}</StatItem>
       <StatItem mono>{t('rules.revision', { revision })}</StatItem>
       <StatItem>
-        {t('rules.enabledSummary', { enabled, total: rules.length })}
+        {t('rules.enabledSummary', { enabled, total: collectLeaves(nodes).length })}
       </StatItem>
       {invalid ? (
         <StatItem mono push>

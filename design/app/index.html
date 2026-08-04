@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date">
+    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-rule-list="flat" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-body-kind="json" data-body-mode="default">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -179,19 +179,24 @@
             <div class="listwrap">
             <div class="lhead"><span data-parity="capture-list-app-header"></span><span>Method</span><span>Path · Host</span><span data-parity="capture-list-status-header">Status</span><span data-parity="capture-list-proto-header">Proto</span><span data-parity="capture-list-type-header">Type</span><span data-parity="capture-list-size-header">Size</span><span data-parity="capture-list-time-header">Time</span></div>
             <div class="list-scroll">
-            <div class="row sel" data-capture-row="http" data-demo-row data-request-rule-anchor><span class="appc" data-parity="capture-list-app-cell"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p" data-parity="capture-list-path-cell">/user</span><span class="h" data-parity="capture-list-host-cell"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
+            <div class="row sel" data-capture-row="http" data-body="json" data-demo-row data-request-rule-anchor><span class="appc" data-parity="capture-list-app-cell"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p" data-parity="capture-list-path-cell">/user</span><span class="h" data-parity="capture-list-host-cell"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
             <div class="row" data-capture-row="tunnel"><span class="appc"><span class="ai edge"></span></span><span class="m">CONNECT</span><div class="hc tun"><span class="p">HTTPS content is encrypted</span><span class="h"><svg><use href="#i-lock"/></svg>accounts.google.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">tls</span><span class="ty">encrypted</span><span class="size">0 B</span><span class="time">open</span></div>
-            <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/common/oauth2/v2.0/token</span><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
-            <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/npm/react@18/umd/react.min.js</span><span class="h"><svg><use href="#i-lock"/></svg>cdn.jsdelivr.net</span></div><span class="st info2"><span class="d"></span>304</span><span class="proto">h2</span><span class="ty">js</span><span class="size">0 B</span><span class="time">18 ms</span></div>
-            <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/s/inter/v13/UcC.woff2</span><span class="h"><svg><use href="#i-lock"/></svg>fonts.gstatic.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">font</span><span class="size">42 KB</span><span class="time">33 ms</span></div>
-            <div class="row"><span class="appc"><span class="ai node"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/charges</span><span class="h"><svg><use href="#i-lock"/></svg>api.stripe.com</span></div><span class="st warn"><span class="d"></span>401</span><span class="proto">h1</span><span class="ty">json</span><span class="size">220 B</span><span class="time">89 ms</span></div>
-            <div class="row"><span class="appc"><span class="ai code"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/v1.0/me/messages</span><span class="h"><svg><use href="#i-lock"/></svg>graph.microsoft.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">18 KB</span><span class="time">320 ms</span></div>
+            <div class="row" data-body="form" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/common/oauth2/v2.0/token</span><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
+            <div class="row" data-body="code" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/npm/react@18/umd/react.min.js</span><span class="h"><svg><use href="#i-lock"/></svg>cdn.jsdelivr.net</span></div><span class="st info2"><span class="d"></span>304</span><span class="proto">h2</span><span class="ty">js</span><span class="size">0 B</span><span class="time">18 ms</span></div>
+            <div class="row" data-body="binary" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/s/inter/v13/UcC.woff2</span><span class="h"><svg><use href="#i-lock"/></svg>fonts.gstatic.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">font</span><span class="size">42 KB</span><span class="time">33 ms</span></div>
+            <div class="row" data-body="json"><span class="appc"><span class="ai node"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/charges</span><span class="h"><svg><use href="#i-lock"/></svg>api.stripe.com</span></div><span class="st warn"><span class="d"></span>401</span><span class="proto">h1</span><span class="ty">json</span><span class="size">220 B</span><span class="time">89 ms</span></div>
+            <div class="row" data-body="json"><span class="appc"><span class="ai code"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/v1.0/me/messages</span><span class="h"><svg><use href="#i-lock"/></svg>graph.microsoft.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">18 KB</span><span class="time">320 ms</span></div>
+            <div class="row" data-body="image"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/assets/hero@2x.png</span><span class="h"><svg><use href="#i-lock"/></svg>cdn.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">png</span><span class="size">184 KB</span><span class="time">54 ms</span></div>
+            <div class="row" data-body="limited"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/</span><span class="h"><svg><use href="#i-lock"/></svg>shop.datang-ev.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">html</span><span class="size">12 MB</span><span class="time">2.4 s</span></div>
+            <div class="row" data-body="md"><span class="appc"><span class="ai node"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/docs/api.md</span><span class="h"><svg><use href="#i-lock"/></svg>raw.githubusercontent.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">md</span><span class="size">3.1 KB</span><span class="time">47 ms</span></div>
+            <div class="row" data-body="image-large"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/exports/panorama-8k.png</span><span class="h"><svg><use href="#i-lock"/></svg>cdn.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">png</span><span class="size">24 MB</span><span class="time">3.6 s</span></div>
+            <div class="row" data-body="media"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/media/launch-trailer.mp4</span><span class="h"><svg><use href="#i-lock"/></svg>video.example.com</span></div><span class="st info2"><span class="d"></span>206</span><span class="proto">h2</span><span class="ty">mp4</span><span class="size">67 MB</span><span class="time">8.1 s</span></div>
             <div class="row" data-capture-row="grpc"><span class="appc"><span class="ai node"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/orders.v1.OrderService/Watch</span><span class="h"><svg><use href="#i-lock"/></svg>orders.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">grpc</span><span class="size">4.8 KB</span><span class="time">1.8 s</span></div>
             <div class="row" data-capture-row="websocket"><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/socket</span><span class="h">realtime.example.com</span></div><span class="st info2"><span class="d"></span>101</span><span class="proto">ws</span><span class="ty">—</span><span class="size">—</span><span class="time">open</span></div>
             <div class="row"><span class="appc"><span class="ai node"></span></span><span class="m del">DEL</span><div class="hc"><span class="p">/repos/acme/app/hooks/1</span><span class="h"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok"><span class="d"></span>204</span><span class="proto">h2</span><span class="ty">—</span><span class="size">0 B</span><span class="time">77 ms</span></div>
-            <div class="row"><span class="appc" data-parity="capture-list-app-cell-unknown"><span class="ai none"><svg><use href="#i-app-window"/></svg></span></span><span class="m get">GET</span><div class="hc"><span class="p">/v2/report</span><span class="h">api.internal.local</span></div><span class="st err"><span class="d"></span>500</span><span class="proto">h2</span><span class="ty">json</span><span class="size">512 B</span><span class="time">1.2 s</span></div>
-            <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/app.css</span><span class="h"><svg><use href="#i-lock"/></svg>assets.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">css</span><span class="size">8.2 KB</span><span class="time">64 ms</span></div>
-            <div class="row" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/events</span><span class="h"><svg><use href="#i-lock"/></svg>telemetry.example.com</span></div><span class="st ok"><span class="d"></span>202</span><span class="proto">h2</span><span class="ty">json</span><span class="size">32 B</span><span class="time">91 ms</span></div>
+            <div class="row" data-body="json"><span class="appc" data-parity="capture-list-app-cell-unknown"><span class="ai none"><svg><use href="#i-app-window"/></svg></span></span><span class="m get">GET</span><div class="hc"><span class="p">/v2/report</span><span class="h">api.internal.local</span></div><span class="st err"><span class="d"></span>500</span><span class="proto">h2</span><span class="ty">json</span><span class="size">512 B</span><span class="time">1.2 s</span></div>
+            <div class="row" data-body="code" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p">/app.css</span><span class="h"><svg><use href="#i-lock"/></svg>assets.example.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">css</span><span class="size">8.2 KB</span><span class="time">64 ms</span></div>
+            <div class="row" data-body="json" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/events</span><span class="h"><svg><use href="#i-lock"/></svg>telemetry.example.com</span></div><span class="st ok"><span class="d"></span>202</span><span class="proto">h2</span><span class="ty">json</span><span class="size">32 B</span><span class="time">91 ms</span></div>
             </div>
           </div>
           <div class="split"><div class="grip"></div></div>
@@ -213,7 +218,7 @@
               <div class="tp" data-tab="request">
                 <div class="sec"><div class="sh">Request line</div><div class="kv"><span class="k">Method</span><span class="v a">GET</span><span class="k">Path</span><span class="v">/user</span><span class="k">Version</span><span class="v">HTTP/2</span><span class="k">Scheme</span><span class="v g">https</span></div></div>
                 <div class="sec"><div class="sh">Query String Parameters <span class="c">0</span></div><div class="emptyv">No query parameters on this request.</div></div>
-                <div class="sec grow"><div class="sh">Request Payload <span class="c">json · 63 B</span></div><div class="bodyview grow" data-parity="capture-body-view"><div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="bodybox mono" data-monaco="fill" data-lang="json">
+                <div class="sec grow"><div class="sh">Request Payload <span class="c">json · 63 B</span></div><div class="bodyview grow" data-parity="capture-body-view"><div class="bodybar"><div class="seg"><span class="on">Pretty</span><span>Raw</span><span>Hex</span></div><span class="sp"></span><span class="cnt">application/json · utf-8</span><div class="icon-actions"><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div><div class="bodybox mono" data-monaco="fill" data-lang="json">
 {
   "name": "interceptor",
   "enabled": true,
@@ -222,8 +227,18 @@
 </div></div></div>
               </div>
               <div class="tp" data-tab="response">
-                <div class="sec grow"><div class="sh">Body <span class="c body-normal-meta">json · 1.2 KB</span><span class="c body-limited-meta">HTML · 12 MB</span><span class="c body-media-meta">MP4 · 67 MB</span></div><div class="bodyview grow" data-parity="capture-body-view">
-                  <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div><div class="body-limit-note"><svg><use href="#i-info"/></svg>Showing the first 5 MB of 12 MB. The full body remains captured for export.</div><div class="bodybox mono body-preview-normal" data-monaco="fill" data-lang="json">
+                <div class="sec grow"><div class="sh">Body <span class="c" data-meta="json">json · 1.2 KB</span><span class="c" data-meta="code">html · 84 KB</span><span class="c" data-meta="limited">html · 12 MB</span><span class="c" data-meta="image">png · 184 KB</span><span class="c" data-meta="image-large">png · 24 MB</span><span class="c" data-meta="binary">woff2 · 42 KB</span><span class="c" data-meta="form">form · 96 B</span><span class="c" data-meta="md">markdown · 3.1 KB</span><span class="c" data-meta="media">mp4 · 67 MB</span></div><div class="bodyview grow" data-parity="capture-body-view">
+                  <div class="bodybar" data-kind="json"><div class="seg"><span data-mode="default">Pretty</span><span data-mode="tree">Tree</span><span data-mode="raw">Raw</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">application/json · utf-8</span><div class="icon-actions"><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="code"><div class="seg"><span data-mode="default">Code</span><span data-mode="raw">Raw</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">text/html · utf-8</span><div class="icon-actions"><button class="ib sm bodyfmt" aria-label="Format body" title="Format"><svg class="fmt-idle"><use href="#i-code"/></svg><svg class="fmt-busy"><use href="#i-refresh"/></svg></button><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="limited"><div class="seg"><span data-mode="default">Code</span><span data-mode="raw">Raw</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">text/html · utf-8</span><div class="icon-actions"><button class="ib sm bodyfmt" aria-label="Format body" title="Format"><svg class="fmt-idle"><use href="#i-code"/></svg><svg class="fmt-busy"><use href="#i-refresh"/></svg></button><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="image"><div class="seg"><span data-mode="default">Preview</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">image/png · 1200 × 630</span><div class="icon-actions"><button class="ib sm" aria-label="Save body" title="Save body"><svg><use href="#i-download"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="image-large"><div class="seg"><span data-mode="default">Preview</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">image/png · 7680 × 4320</span><div class="icon-actions"><button class="ib sm" aria-label="Save body" title="Save body"><svg><use href="#i-download"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="binary"><div class="seg"><span data-mode="raw">Text</span><span data-mode="default">Hex</span></div><span class="sp"></span><span class="cnt">font/woff2</span><div class="icon-actions"><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="form"><div class="seg"><span data-mode="default">Form</span><span data-mode="raw">Raw</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">x-www-form-urlencoded</span><div class="icon-actions"><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodybar" data-kind="md"><div class="seg"><span data-mode="default">Preview</span><span data-mode="split">Split</span><span data-mode="source">Source</span><span data-mode="hex">Hex</span></div><span class="sp"></span><span class="cnt">text/markdown · utf-8</span><div class="icon-actions"><button class="ib sm" aria-label="Copy body" title="Copy"><svg><use href="#i-copy"/></svg></button></div></div>
+                  <div class="bodynote" data-note="limited"><svg><use href="#i-info"/></svg>Showing the first 5 MB of 12 MB. The full body remains captured for export.</div>
+                  <div class="bodynote" data-note="format-off"><svg><use href="#i-alert"/></svg>Body is 12 MB — formatting is disabled above 8 MB. Save the body to format it in an external tool.</div>
+                  <div class="bpane" data-pane="json"><div class="bodybox mono" data-parity="capture-body-preview" data-monaco="fill" data-lang="json">
 {
   "login": "octocat",
   "id": 583231,
@@ -234,7 +249,11 @@
   "public_repos": 8,
   "followers": 9999
 }
-</div><div class="bodybox mono body-preview-limited" data-parity="capture-body-preview" data-monaco="fill" data-lang="html">
+</div></div>
+                  <div class="bpane" data-pane="raw-json"><div class="bodybox mono" data-monaco="fill" data-lang="json">
+{"login":"octocat","id":583231,"type":"User","name":"The Octocat","company":"@github","location":"San Francisco","plan":{"name":"pro","space":976562499,"collaborators":0,"private_repos":9999},"organizations":["github","acme-labs"],"site_admin":false,"bio":null,"public_repos":8,"followers":9999}
+</div></div>
+                  <div class="bpane" data-pane="code"><div class="bodybox mono" data-monaco="fill" data-lang="html">
 &lt;!doctype html&gt;
 &lt;html lang="zh-CN"&gt;
   &lt;head&gt;
@@ -243,8 +262,102 @@
   &lt;/head&gt;
   &lt;body&gt;…&lt;/body&gt;
 &lt;/html&gt;
-</div><div class="body-media" data-parity="capture-media-body"><span class="body-media-icon"><svg><use href="#i-file"/></svg></span><div><b>video/mp4</b><span>67 MB · Preview unavailable</span></div><button class="btn sm"><svg><use href="#i-download"/></svg>Save body</button></div></div>
-                </div>
+</div></div>
+                  <div class="bpane" data-pane="raw-html"><div class="bodybox mono" data-monaco="fill" data-lang="html">
+&lt;!doctype html&gt;&lt;html lang="zh-CN"&gt;&lt;head&gt;&lt;meta charset="utf-8"/&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1"/&gt;&lt;title&gt;大唐 EV&lt;/title&gt;&lt;link rel="stylesheet" href="/assets/app.css"/&gt;&lt;/head&gt;&lt;body&gt;&lt;div id="root"&gt;&lt;/div&gt;&lt;script src="/assets/app.js" defer&gt;&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;
+</div></div>
+                  <div class="bpane" data-pane="tree"><div class="jtree">
+                    <div class="jrow"><span class="jtog on"><svg><use href="#i-chev"/></svg></span><span class="jpunct">{</span><span class="jsum">8 keys</span></div>
+                    <div class="jrow d1"><span class="jkey">login</span><span class="jpunct">:</span><span class="jstr">"octocat"</span></div>
+                    <div class="jrow d1"><span class="jkey">id</span><span class="jpunct">:</span><span class="jnum">583231</span></div>
+                    <div class="jrow d1 sel"><span class="jtog"><svg><use href="#i-chev-right"/></svg></span><span class="jkey">plan</span><span class="jpunct">:</span><span class="jfold">{…}</span><span class="jsum">4 keys</span></div>
+                    <div class="jrow d1"><span class="jtog on"><svg><use href="#i-chev"/></svg></span><span class="jkey">organizations</span><span class="jpunct">:</span><span class="jpunct">[</span><span class="jsum">2 items</span></div>
+                    <div class="jrow d2"><span class="jidx">0</span><span class="jpunct">:</span><span class="jstr">"github"</span></div>
+                    <div class="jrow d2"><span class="jidx">1</span><span class="jpunct">:</span><span class="jstr">"acme-labs"</span></div>
+                    <div class="jrow d1"><span class="jpunct">]</span></div>
+                    <div class="jrow d1"><span class="jkey">site_admin</span><span class="jpunct">:</span><span class="jnum">false</span></div>
+                    <div class="jrow d1"><span class="jkey">bio</span><span class="jpunct">:</span><span class="jnull">null</span></div>
+                    <div class="jrow d1"><span class="jkey">public_repos</span><span class="jpunct">:</span><span class="jnum">8</span></div>
+                    <div class="jrow d1"><span class="jkey">followers</span><span class="jpunct">:</span><span class="jnum">9999</span></div>
+                    <div class="jrow"><span class="jpunct">}</span></div>
+                    <div class="jmenu"><button class="fi"><svg><use href="#i-copy"/></svg>Copy value</button><button class="fi"><svg><use href="#i-copy"/></svg>Copy object</button><button class="fi"><svg><use href="#i-branch"/></svg>Copy path</button></div>
+                  </div></div>
+                  <div class="bpane" data-pane="image"><div class="imgframe"><span class="imgwrap"><img class="imgshot" alt="Response image preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236a5bf0'/%3E%3Cstop offset='1' stop-color='%232fd4b8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='630' fill='%230f1420'/%3E%3Ccircle cx='318' cy='315' r='168' fill='url(%23a)'/%3E%3Crect x='560' y='236' width='432' height='20' rx='10' fill='%23fff' opacity='.86'/%3E%3Crect x='560' y='286' width='324' height='20' rx='10' fill='%23fff' opacity='.44'/%3E%3Crect x='560' y='336' width='372' height='20' rx='10' fill='%23fff' opacity='.28'/%3E%3C/svg%3E"></span></div></div>
+                  <div class="bpane" data-pane="image-large"><div class="body-media" data-parity="capture-media-body"><span class="body-media-icon"><svg><use href="#i-image"/></svg></span><b>image/png</b><span class="bmsize">7680 × 4320 · 24 MB</span><span class="bmwhy">Too large to preview. Save the file to open it in an image viewer.</span><button class="btn sm"><svg><use href="#i-download"/></svg>Save body</button></div></div>
+                  <div class="bpane" data-pane="hex"><div class="hexview mono">00000000  89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52  .PNG........IHDR
+00000010  00 00 04 b0 00 00 02 76 08 06 00 00 00 3f 1c 6b  .......v.....?.k
+00000020  9c 00 00 20 00 49 44 41 54 78 9c ec bd 79 7c 54  ... .IDATx...y|T
+00000030  d5 f9 3f fe 3d f7 ce 4c 66 26 d9 21 24 21 04 c8  ..?.=..Lf&amp;.!$!..
+00000040  1a 76 04 04 41 91 45 5b 6b 5b 6b eb b7 b5 6a 6b  .v..A.E[k[k...jk
+00000050  ab d5 d6 5a b7 5a b5 b5 6a 6b 5b db af b5 d6 da  ...Z.Z..jk[.....
+00000060  6a b5 56 5b b7 aa 55 5b 5b 05 45 44 44 40 45 40  j.V[..U[[.EDD@E@
+00000070  10 76 10 76 04 04 21 84 25 21 6c 21 24 21 24 c9  .v.v..!.%!l!$!$.</div></div>
+                  <div class="bpane" data-pane="binary-text"><div class="bodybox mono" data-monaco="fill" data-lang="plaintext">
+wOF2     ¨    T                     �����Y�` ������8�$� ����������o��Editor cannot decode this body as UTF-8; use Hex instead.
+</div></div>
+                  <div class="bpane" data-pane="raw-form"><div class="bodybox mono" data-monaco="fill" data-lang="plaintext">
+grant_type=client_credentials&amp;scope=repo+read%3Auser&amp;redirect_uri=https%3A%2F%2Facme.dev%2Foauth%2Fcallback&amp;state=c8f2a91b4e
+</div></div>
+                  <div class="bpane" data-pane="form"><div class="formkv">
+                    <div class="fkhead"><span>Field</span><span>Value</span></div>
+                    <div class="fkrow"><span class="fkk">grant_type</span><span class="fkv">client_credentials</span></div>
+                    <div class="fkrow"><span class="fkk">scope</span><span class="fkv">repo read:user</span></div>
+                    <div class="fkrow"><span class="fkk">redirect_uri</span><span class="fkv">https://acme.dev/oauth/callback</span></div>
+                    <div class="fkrow"><span class="fkk">state</span><span class="fkv">c8f2a91b4e</span></div>
+                  </div></div>
+                  <div class="bpane" data-pane="md"><div class="mdview">
+                    <h1>Interceptor API</h1>
+                    <p>Programmatic access to captured traffic. All endpoints return <code>application/json</code> and require a bearer token.</p>
+                    <h2>Authentication</h2>
+                    <p>Send the token in the <code>Authorization</code> header:</p>
+                    <pre>curl https://api.acme.dev/v1/exchanges \
+  -H "Authorization: Bearer $TOKEN"</pre>
+                    <h2>Rate limits</h2>
+                    <table><thead><tr><th>Plan</th><th>Requests / min</th></tr></thead><tbody><tr><td>Free</td><td>60</td></tr><tr><td>Pro</td><td>600</td></tr></tbody></table>
+                    <blockquote>Exceeding the limit returns <code>429</code> with a <code>Retry-After</code> header.</blockquote>
+                  </div></div>
+                  <div class="bpane" data-pane="md-split"><div class="mdsplit">
+                    <div class="mdview">
+                      <h1>Interceptor API</h1>
+                      <p>Programmatic access to captured traffic. All endpoints return <code>application/json</code> and require a bearer token.</p>
+                      <h2>Authentication</h2>
+                      <p>Send the token in the <code>Authorization</code> header:</p>
+                    </div>
+                    <div class="bodybox mono" data-monaco="fill" data-lang="markdown">
+# Interceptor API
+
+Programmatic access to captured traffic. All endpoints
+return `application/json` and require a bearer token.
+
+## Authentication
+
+Send the token in the `Authorization` header:
+</div>
+                  </div></div>
+                  <div class="bpane" data-pane="md-source"><div class="bodybox mono" data-monaco="fill" data-lang="markdown">
+# Interceptor API
+
+Programmatic access to captured traffic. All endpoints
+return `application/json` and require a bearer token.
+
+## Authentication
+
+Send the token in the `Authorization` header:
+
+```
+curl https://api.acme.dev/v1/exchanges \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Rate limits
+
+| Plan | Requests / min |
+| ---- | -------------- |
+| Free | 60             |
+| Pro  | 600            |
+</div></div>
+                  <div class="bpane" data-pane="media"><div class="body-media" data-parity="capture-media-body"><span class="body-media-icon"><svg><use href="#i-video"/></svg></span><b>video/mp4</b><span class="bmsize">67 MB</span><span class="bmwhy">Video and audio are never read into the preview. Save the file to play it in a media player.</span><button class="btn sm"><svg><use href="#i-download"/></svg>Save body</button></div></div>
+                </div></div>
               </div>
               <div class="tp" data-tab="timing">
                 <div class="sec"><div class="sh">Timing <span class="c">142 ms total</span></div>
@@ -292,7 +405,7 @@
                   <div class="wsrow sel"><span class="wsdir in"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"buildId":8431,"state":"running","branch":"main"}</span><span class="wssize">54 B</span><span class="wstime">+1.4 s</span></div>
                   <div class="wspayload">
                     <div class="wsphead"><span>Received text</span><span class="cnt">54 B · message 3</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div>
-                    <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div>
+                    <div class="bodybar"><div class="seg"><span class="on">Pretty</span><span>Raw</span><span>Hex</span></div></div>
                     <div class="bodybox mono" data-monaco="box" data-lang="json">
 {
   "buildId": 8431,
@@ -317,7 +430,7 @@
                   <div class="grpcrow sel"><span class="grpcdir"><svg><use href="#i-download"/></svg></span><span class="grpcindex">Message 2</span><span class="grpcmeta compressed">gzip compressed</span><span class="grpcsize">1.2 KB</span><span class="grpcoffset">@ 0x002f</span></div>
                   <div class="grpcpayload">
                     <div class="grpchead"><span>Response message 2</span><span class="cnt">raw protobuf · 1.2 KB</span><div class="ib sm"><svg><use href="#i-copy"/></svg></div></div>
-                    <div class="bodymode"><div class="seg"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div></div>
+                    <div class="bodybar"><div class="seg"><span>Text</span><span class="on">Hex</span></div></div>
                     <div class="grpchex">00000000&nbsp; 1f 8b 08 00 00 00 00 00 00 03 e3 62 e1 60 4a 2d<br />00000010&nbsp; ca 2f 2d 29 2e 51 48 ce cf 2b 49 cd 2b 01 00 7a<br />00000020&nbsp; 63 98 31 18 00 00 00</div>
                   </div>
                   <div class="grpcrow"><span class="grpcdir"><svg><use href="#i-download"/></svg></span><span class="grpcindex">Message 3</span><span class="grpcmeta">protobuf · raw</span><span class="grpcsize">82 B</span><span class="grpcoffset">@ 0x04f0</span></div>
@@ -352,7 +465,8 @@
         <!-- rules -->
         <div class="mv rmain" data-v="rules">
           <div class="rlist">
-            <div class="rlbar"><label class="rules-search"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search rules…" aria-label="Search rules" /></label><div class="icon-actions"><button class="ib sm" aria-label="New rule" title="New rule"><svg><use href="#i-plus"/></svg></button><button class="ib sm" aria-label="Apply changes" title="Apply changes" disabled><svg><use href="#i-check"/></svg></button><button class="ib sm" aria-label="More rule actions" title="More rule actions"><svg><use href="#i-more"/></svg></button></div></div>
+            <div class="rlbar"><label class="rules-search"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search rules…" aria-label="Search rules" /></label><div class="icon-actions"><button class="ib sm" aria-label="New rule" title="New rule"><svg><use href="#i-plus"/></svg></button><button class="ib sm rlbar-newfolder" aria-label="New folder" title="New folder"><svg><use href="#i-folder-plus"/></svg></button><button class="ib sm" aria-label="Apply changes" title="Apply changes" disabled><svg><use href="#i-check"/></svg></button><button class="ib sm" aria-label="More rule actions" title="More rule actions"><svg><use href="#i-more"/></svg></button></div></div>
+            <div class="rflat">
             <div class="rrow sel"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname" data-parity="rule-name-rule-stub">Stub /v1/user</span><span class="rmatch">api.example.com · /v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">128</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Force CORS + JSON</span><span class="rmatch">*.api.com · response</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">512</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Redirect to staging</span><span class="rmatch">prod.example.com → stg</span></div><div class="rchips"><span class="rchip remote">Map Remote</span></div><span class="rhit">44</span></div>
@@ -361,6 +475,44 @@
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname">Debug checkout</span><span class="rmatch">shop.example.com · /checkout</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">3</span></div>
             <div class="rrow off"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw"></div><div class="rmeta"><span class="rname">Rewrite auth header</span><span class="rmatch">api.github.com · request</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">76</span></div>
             <div class="rrow"><span class="drag"><svg><use href="#i-grip"/></svg></span><div class="sw on"></div><div class="rmeta"><span class="rname" data-parity="rule-name-rule-payment">Mock payment</span><span class="rmatch">api.stripe.com · /v1/charges</span></div><div class="rchips"><span class="rchip block">Synthetic</span></div><span class="rhit">21</span></div>
+            </div>
+            <div class="rtree">
+              <section class="rgrp on" data-rgrp="mock">
+                <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Mock &amp; stub</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="rgrp-b">
+                  <div class="rrule sel" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Stub /v1/user</span><span class="rrule-u">api.example.com/v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">128</span></div>
+                  <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Force CORS + JSON</span><span class="rrule-u">*.api.com</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">512</span></div>
+                  <section class="rgrp on" data-rgrp="payments">
+                    <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Payments</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                    <div class="rgrp-b">
+                      <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Mock payment</span><span class="rrule-u">api.stripe.com/v1/charges</span></div><div class="rchips"><span class="rchip block">Synthetic</span></div><span class="rhit">21</span></div>
+                      <section class="rgrp on" data-rgrp="refunds">
+                        <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Refunds</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                        <div class="rgrp-b">
+                          <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Refund stub</span><span class="rrule-u">api.stripe.com/v1/refunds</span></div><div class="rchips"><span class="rchip map">Map Local</span></div><span class="rhit">6</span></div>
+                          <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Dispute stub</span><span class="rrule-u">api.stripe.com/v1/disputes</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">4</span></div>
+                        </div>
+                      </section>
+                    </div>
+                  </section>
+                </div>
+              </section>
+              <section class="rgrp on" data-rgrp="staging">
+                <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Staging switch</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="rgrp-b">
+                  <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Redirect to staging</span><span class="rrule-u">prod.example.com → stg</span></div><div class="rchips"><span class="rchip remote">Map Remote</span></div><span class="rhit">44</span></div>
+                  <div class="rrule off" draggable="true"><div class="sw sm"></div><div class="rrule-main"><span class="rrule-n">Rewrite auth header</span><span class="rrule-u">api.github.com</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">76</span></div>
+                </div>
+              </section>
+              <section class="rgrp" data-rgrp="noise">
+                <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Expand folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Noise control</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                <div class="rgrp-b">
+                  <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Block trackers</span><span class="rrule-u">*.doubleclick.net</span></div><div class="rchips"><span class="rchip block">Block</span></div><span class="rhit">1.2k</span></div>
+                  <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Delay uploads</span><span class="rrule-u">upload.example.com</span></div><div class="rchips"><span class="rchip flow">Delay</span></div><span class="rhit">8</span></div>
+                </div>
+              </section>
+              <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Debug checkout</span><span class="rrule-u">shop.example.com/checkout</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">3</span></div>
+            </div>
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="reditor">
@@ -599,7 +751,7 @@
 
             <div class="cpane bodypane on" data-crtab="body">
               <div class="cbar">
-                <div class="seg respmode"><span class="on">Auto</span><span>Text</span><span>JSON</span><span>Hex</span></div>
+                <div class="seg respmode"><span class="on">Pretty</span><span>Tree</span><span>Raw</span><span>Hex</span></div>
                 <span class="sp" style="flex:1"></span>
                 <span class="cnt">application/json · utf-8</span>
                 <div class="icon-actions">
@@ -818,7 +970,7 @@
       <!-- =========================== STATUSBAR =========================== -->
       <footer class="statusbar">
         <div class="sv" data-v="capture"><div class="g capture-endpoint"><span class="gd"></span>127.0.0.1:8888<span class="proxy-on-label">System proxy on</span><span class="proxy-off-label">System proxy off</span></div><div class="g capture-decrypt"><span class="capture-decrypting"><svg class="si"><use href="#i-lock"/></svg>HTTPS decrypting · CA trusted</span><span class="capture-passthrough"><svg class="si"><use href="#i-lock-off"/></svg>HTTPS passthrough</span><button class="slink capture-enable-decrypt" data-open-https title="HTTPS traffic is forwarded without decryption. Click to set up the CA and start decrypting.">Click to enable MITM</button></div><div class="g capture-upstream"><svg class="si"><use href="#i-arrow"/></svg>upstream 127.0.0.1:7890</div></div>
-        <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">6 of 8 enabled</div><div class="sp g mono">2 force body buffering</div></div>
+        <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">9 of 10 enabled</div><div class="sp g mono">2 force body buffering</div></div>
         <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g">Sent directly — not routed through the proxy</div><div class="sp g"><span class="csv-idle">last send 201 · 142 ms</span><span class="csv-empty">no request sent yet</span><span class="csv-busy">sending…</span></div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>
         <div class="sv" data-v="breakpoints"><div class="g"><span class="rd" style="background:var(--yellow)"></span>2 paused</div><div class="g mono">127.0.0.1:8888</div><div class="g">timeout 60s → continue</div><div class="sp g mono">break on match · on</div></div>
@@ -1016,6 +1168,7 @@
         <div class="grp"><span class="lbl">Sidebar</span><div class="switch" data-key="sidebar"><button data-set="expanded">Expand</button><button data-set="collapsed">Collapse</button></div></div>
         <div class="grp"><span class="lbl">Overlay</span><div class="switch" data-key="overlay"><button data-set="none">None</button><button data-set="https-setup">HTTPS</button><button data-set="import-export">Export</button></div></div>
         <div class="grp"><span class="lbl">Boot</span><div class="switch" data-key="boot"><button data-set="none">Off</button><button data-set="core">Core</button><button data-set="listener">Listener</button><button data-set="proxy">Proxy</button><button data-set="ready">Ready</button><button data-set="error">Error</button></div></div>
+        <div class="grp"><span class="lbl">Rules list</span><div class="switch" data-key="ruleList"><button data-set="flat">Flat</button><button data-set="tree">Tree</button><button data-set="tree-url">Tree + URL</button></div></div>
       </div>
     </div>
 

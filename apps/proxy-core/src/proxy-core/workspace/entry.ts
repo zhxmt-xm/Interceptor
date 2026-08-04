@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type {
   Collection,
   CollectionNode,
-  RuleDefinition,
+  RuleNode,
   RuleSet,
 } from '@interceptor/core-protocol';
 
@@ -49,21 +49,21 @@ export class WorkspaceService {
     }
   }
 
-  /** 读取规则集；尚未保存时返回 revision 0 空集。 */
+  /** 读取规则树；尚未保存时返回 revision 0 空树。 */
   loadRuleSet(): RuleSet {
     const row = this.read('rule_set');
     return row
-      ? { revision: row.revision, rules: JSON.parse(row.json) as RuleDefinition[] }
-      : { revision: 0, rules: [] };
+      ? { revision: row.revision, nodes: JSON.parse(row.json) as RuleNode[] }
+      : { revision: 0, nodes: [] };
   }
 
-  /** 以乐观 revision 原子替换完整规则集。 */
+  /** 以乐观 revision 原子替换整棵规则树。 */
   saveRuleSet(
     expectedRevision: number,
-    rules: readonly RuleDefinition[],
+    nodes: readonly RuleNode[],
   ): RuleSet {
-    const revision = this.write('rule_set', expectedRevision, JSON.stringify(rules));
-    return { revision, rules: [...rules] };
+    const revision = this.write('rule_set', expectedRevision, JSON.stringify(nodes));
+    return { revision, nodes: [...nodes] };
   }
 
   /** 读取 Composer 集合树；尚未保存时返回 revision 0 空树。 */

@@ -1,5 +1,11 @@
 import type { SelectOption } from '../../components';
 
+/** 目录行高，菜单锚在触发行下方。 */
+export const FOLDER_ROW_HEIGHT = 30;
+
+/** 目录操作菜单宽度，用于右对齐。 */
+export const FOLDER_MENU_WIDTH = 190;
+
 export const MATCHER_TYPE_OPTIONS: SelectOption[] = [
   { value: 'method', label: 'Method' },
   { value: 'host', label: 'Host' },

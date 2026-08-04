@@ -17,6 +17,7 @@ function rule(
   overrides: { priority?: number; enabled?: boolean } = {},
 ) {
   return {
+    kind: 'rule' as const,
     id,
     name: id,
     enabled: overrides.enabled ?? true,
@@ -48,7 +49,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 3,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'host', value: 'api.test', mode: 'exact' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-tag', value: '1' },
         ]),
@@ -73,7 +74,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 4,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-set', value: 'after' },
           { type: 'header', phase: 'request', op: 'append', name: 'x-append', value: 'second' },
@@ -111,7 +112,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('miss', [{ type: 'host', value: 'other.test', mode: 'exact' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x', value: '1' },
         ]),
@@ -129,7 +130,7 @@ describe('RuleService — request evaluation', () => {
     const disabledOnlyRuleService = new RuleService(new BreakpointQueue());
     disabledOnlyRuleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('off', [{ type: 'method', value: 'GET' }], [{ type: 'block', mode: 'reset' }], {
           enabled: false,
         }),
@@ -142,7 +143,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('b', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-order', value: 'low' },
         ], { priority: 200 }),
@@ -162,7 +163,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'synthetic', statusCode: 200, body: 'ok' },
         ]),
@@ -180,7 +181,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [{ type: 'block', mode: 'reset' }]),
       ],
     });
@@ -192,7 +193,7 @@ describe('RuleService — request evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'delay', phase: 'request', ms: 100 },
           { type: 'delay', phase: 'request', ms: 300 },
@@ -214,7 +215,7 @@ describe('RuleService — breakpoints', () => {
     });
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
         ]),
@@ -234,7 +235,7 @@ describe('RuleService — breakpoints', () => {
     });
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
         ]),
@@ -256,7 +257,7 @@ describe('RuleService — breakpoints', () => {
     });
     ruleService.setRuleSet({
       revision: 1,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
         ]),
@@ -276,7 +277,7 @@ describe('RuleService — response evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 2,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'status', min: 200, max: 299 }], [
           { type: 'status', statusCode: 201 },
         ]),
@@ -301,7 +302,7 @@ describe('RuleService — response evaluation', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 5,
-      rules: [
+      nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'response', op: 'set', name: 'x-result', value: 'after' },
         ]),

@@ -149,7 +149,7 @@ describe('McpToolRegistry', () => {
 
   it('forces AI-authored rules to land disabled', async () => {
     const fakeHost = new FakeHost({
-      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, rules: [] } } },
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, nodes: [] } } },
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
@@ -162,13 +162,13 @@ describe('McpToolRegistry', () => {
     expect(outcome.ok).toBe(true);
     const replace = fakeHost.commands.find((command) => command.type === 'rules.replace');
     expect(replace).toBeDefined();
-    expect((replace as { payload: { rules: { enabled: boolean }[] } }).payload.rules[0]?.enabled)
+    expect((replace as { payload: { nodes: { enabled: boolean }[] } }).payload.nodes[0]?.enabled)
       .toBe(false);
   });
 
   it('refuses to overwrite rules edited since the AI last read them', async () => {
     const fakeHost = new FakeHost({
-      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 9, rules: [] } } },
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 9, nodes: [] } } },
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 

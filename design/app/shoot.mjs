@@ -57,8 +57,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', requestMenu: 'open' } });
   shots.push({ feature: 'capture', theme, variant: 'rule-filter', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', ruleFilter: 'rule-stub' } });
     shots.push({ feature: 'capture', theme, variant: 'rule-filter-disabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'rule', ruleOptions: 'empty' } });
-  shots.push({ feature: 'capture', theme, variant: 'body-preview-limited', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'response', bodyPreview: 'limited' } });
-  shots.push({ feature: 'capture', theme, variant: 'body-media-save', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'response', bodyPreview: 'media' } });
+  for (const bodyPreview of ['json', 'tree', 'tree-menu', 'raw', 'hex', 'code', 'formatting', 'limited', 'format-off', 'image', 'image-large', 'binary', 'form', 'md', 'md-split', 'md-source', 'media']) {
+    shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'response', bodyPreview } });
+  }
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'grpc', tab: 'grpc' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'tunnel', tab: 'tunnel' } });
@@ -68,6 +69,14 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
   shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
+}
+// rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
+for (const theme of ['light', 'dark']) {
+  const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+  shots.push({ feature: 'rules', theme, variant: 'tree', state: { ...base, ruleList: 'tree' } });
+  shots.push({ feature: 'rules', theme, variant: 'tree-url', state: { ...base, ruleList: 'tree-url' } });
+  shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base, ruleList: 'tree' }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
+  shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, ruleList: 'tree', sidebar: 'collapsed' } });
 }
 // composer request/response tabs and send phases
 for (const theme of ['light', 'dark']) {

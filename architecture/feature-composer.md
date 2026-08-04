@@ -124,12 +124,14 @@ flowchart LR
 | --- | --- |
 | Core | `workspace/entry.ts` 的 `WorkspaceService.loadCollection` / `saveCollection`，与 RuleSet 完全同构：`collection_tree` 单行表 + 整棵树存一个 JSON + 乐观锁 revision |
 | Protocol | 只有 `collection.get` 与 `collection.replace` 两条命令 |
-| Preload | `getCollection()` / `replaceCollection(expectedRevision, tree)` |
+| Preload | `getCollection()` / `replaceCollection(expectedRevision, tree)` / `exportCollection(nodes, title)` |
 | Renderer | 目录树、行内重命名、选中目录作为新建目标、多请求文档 tab |
 
 **为什么不做树形表和增量命令**：Collection 只有几十到几百条，整棵树序列化成 JSON 的开销可以忽略。做成 `collection_tree` 单行表后，父子关系、排序字段、`upsert`/`remove`/`move` 三条增量命令与它们各自的并发语义全部不需要存在，读写只有"读整棵树"和"写整棵树"两条路径。
 
 **编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。写入由 Renderer 节流，避免每次按键都落库。
+
+**导出**：工具栏的 `Export collection` 走 `collection:export`，由 Main 弹系统保存对话框并把整棵树写成 JSON。集合数据本来就在 Renderer 手上，这条路径不经过 Core。
 
 ### 5.2 Recent sends
 

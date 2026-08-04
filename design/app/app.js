@@ -174,19 +174,13 @@ function setState(s = {}) {
     delete app.dataset.search;
     if (!s.scene) {
       app.dataset.scene = 'http';
-      app.querySelectorAll('[data-capture-row]').forEach((row) =>
-        row.classList.toggle('sel', row.dataset.captureRow === 'http'),
-      );
     }
     if (!s.tab) setInspTab('headers');
     if (!s.composerTab) setComposerTab('headers');
     if (!s.composerResponseTab) setComposerResponseTab('body');
   }
-  if (s.scene) {
-    app.dataset.scene = s.scene;
-    app.querySelectorAll('[data-capture-row]').forEach((row) =>
-      row.classList.toggle('sel', row.dataset.captureRow === s.scene),
-    );
+  if ('scene' in s) {
+    app.dataset.scene = s.scene || 'http';
   }
   if (s.pop) app.classList.add('showpop');
   if ('detail' in s) app.classList.toggle('nodetail', s.detail !== 'open');
@@ -221,6 +215,7 @@ function setState(s = {}) {
     if (s.composer) app.dataset.composer = s.composer;
     else delete app.dataset.composer;
   }
+  if ('ruleList' in s) app.dataset.ruleList = s.ruleList || 'flat';
   if ('collection' in s) app.dataset.collection = s.collection || 'open';
   if ('collectionMenu' in s) {
     if (s.collectionMenu) app.dataset.collectionMenu = s.collectionMenu;
@@ -275,8 +270,15 @@ function setState(s = {}) {
     else delete app.dataset.ruleFilter;
   }
   if ('bodyPreview' in s) {
-    if (s.bodyPreview) app.dataset.bodyPreview = s.bodyPreview;
-    else delete app.dataset.bodyPreview;
+    const scene = BODY_SCENES[s.bodyPreview] ?? BODY_SCENES.json;
+    app.dataset.bodyKind = scene.kind;
+    app.dataset.bodyMode = scene.mode;
+    if (scene.state) app.dataset.bodyState = scene.state;
+    else delete app.dataset.bodyState;
+  }
+  if ('bodyMode' in s) {
+    app.dataset.bodyMode = s.bodyMode;
+    delete app.dataset.bodyState;
   }
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
@@ -301,11 +303,46 @@ function setState(s = {}) {
   positionActionPopover();
   positionRuleSelectPopover();
   positionRequestRuleMenu();
+  syncCaptureRowSelection();
   syncCaptureListScrollbar();
   syncControls();
 }
 window.__setState = setState;
 
+// Body scenes are named shortcuts for a (kind, mode, state) triple: `kind` is the selected
+// request's content type, `mode` is the active Segmented option, `state` layers Format
+// busy/disabled and the tree context menu on top. Clicking never mixes the three.
+const BODY_SCENES = {
+  json: { kind: 'json', mode: 'default' },
+  tree: { kind: 'json', mode: 'tree' },
+  'tree-menu': { kind: 'json', mode: 'tree', state: 'menu' },
+  raw: { kind: 'json', mode: 'raw' },
+  hex: { kind: 'json', mode: 'hex' },
+  code: { kind: 'code', mode: 'default' },
+  formatting: { kind: 'code', mode: 'default', state: 'busy' },
+  limited: { kind: 'limited', mode: 'default' },
+  'format-off': { kind: 'limited', mode: 'default', state: 'format-off' },
+  image: { kind: 'image', mode: 'default' },
+  'image-large': { kind: 'image-large', mode: 'default' },
+  binary: { kind: 'binary', mode: 'default' },
+  form: { kind: 'form', mode: 'default' },
+  md: { kind: 'md', mode: 'default' },
+  'md-split': { kind: 'md', mode: 'split' },
+  'md-source': { kind: 'md', mode: 'source' },
+  media: { kind: 'media', mode: 'default' },
+};
+
+/** Selects the capture row implied by the current scene + body kind. */
+function syncCaptureRowSelection() {
+  const rows = [...app.querySelectorAll('.list-scroll .row')];
+  if (!rows.length) return;
+  const scene = app.dataset.scene || 'http';
+  const kind = app.dataset.bodyKind || 'json';
+  const target = (scene !== 'http' && rows.find((row) => row.dataset.captureRow === scene))
+    || rows.find((row) => row.dataset.body === kind)
+    || rows.find((row) => row.dataset.captureRow === 'http');
+  rows.forEach((row) => row.classList.toggle('sel', row === target));
+}
 // Folder actions menu hangs under the folder row that opened it; scenes fall back to a fixed folder.
 function positionCollectionMenu() {
   const menu = app.querySelector('.cmenu');
@@ -408,6 +445,7 @@ function syncControls() {
     sidebar: app.classList.contains('collapsed') ? 'collapsed' : 'expanded',
     overlay: app.getAttribute('data-overlay') || 'none',
     boot: app.dataset.boot || 'none',
+    ruleList: app.dataset.ruleList || 'flat',
   };
   document.querySelectorAll('.dock .switch').forEach((box) => {
     const key = box.dataset.key;
@@ -474,6 +512,163 @@ app.addEventListener('click', (e) => {
 app.querySelectorAll('[data-tabs="insp"] > span').forEach((s) =>
   s.addEventListener('click', () => setInspTab(s.dataset.tab)),
 );
+
+// Rules tree: chevron collapses the folder, the switch enables, the row selects.
+app.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.rtree .sw');
+  if (toggle) return toggle.classList.toggle('on');
+  const collapse = e.target.closest('.rgrp-chevbtn');
+  if (collapse) return collapse.closest('.rgrp').classList.toggle('on');
+  const rule = e.target.closest('.rrule');
+  if (rule) app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('sel', row === rule));
+});
+
+// Rules reordering, VS Code style: every row is draggable, the browser arbitrates click vs drag.
+// A row's sector (quarters of its height) picks between "insert before/after" and "move into folder".
+const ruleTree = app.querySelector('.rtree');
+const ruleDropLine = document.createElement('div');
+ruleDropLine.className = 'rdrop';
+let ruleDragNode = null; // the .rrule or whole .rgrp being moved
+let ruleDrop = null; // { parent, before } for a reorder, or { folder } for a move-into
+let ruleAutoExpandRow = null;
+let ruleAutoExpandTimer = 0;
+
+// A folder row stands for its whole section, so dragging it takes the subtree along.
+const ruleNodeOf = (row) => (row.classList.contains('rgrp-h') ? row.closest('.rgrp') : row);
+
+ruleTree.addEventListener('dragstart', (e) => {
+  const row = e.target.closest('.rrule, .rgrp-h');
+  if (!row) return;
+  ruleDragNode = ruleNodeOf(row);
+  ruleDragNode.classList.add('dragsource');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+  // Collapsing the dragged folder keeps the list still and makes its own children unreachable as targets.
+  if (ruleDragNode.classList.contains('rgrp')) {
+    ruleDragNode.dataset.reopen = ruleDragNode.classList.contains('on') ? '1' : '';
+    ruleDragNode.classList.remove('on');
+  }
+});
+
+ruleTree.addEventListener('dragover', (e) => {
+  if (!ruleDragNode) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearRuleDropFeedback();
+
+  const hit = ruleRowAt(e.clientY);
+  // Below the last row is the empty tail of the list, which is the root level.
+  if (!hit) return showRootDrop();
+
+  const node = ruleNodeOf(hit.row);
+  if (node === ruleDragNode || node.contains(ruleDragNode)) return;
+
+  const sector = clampSector((e.clientY - hit.rect.top) / hit.rect.height);
+  if (hit.row.classList.contains('rgrp-h') && sector > 0 && sector < 3) {
+    if (!fitsDepth(folderDepth(node))) return;
+    hit.row.classList.add('droptarget');
+    ruleDrop = { folder: node };
+    scheduleRuleAutoExpand(hit.row, node);
+    return;
+  }
+  const parent = node.parentElement;
+  if (!fitsDepth(folderDepth(parent))) return;
+  // "after N" is normalised to "before N+1" so two neighbours share one line and it never flickers.
+  ruleDrop = { parent, before: sector < 2 ? node : node.nextElementSibling };
+  showRuleDropLine(node, sector >= 2, indentOf(hit.row));
+});
+
+// The gaps between rows belong to a row too, so resolve by pointer Y rather than by event target —
+// otherwise hovering a gap hits no row at all.
+function ruleRowAt(clientY) {
+  for (const row of ruleTree.querySelectorAll('.rrule, .rgrp-h')) {
+    if (!row.offsetParent) continue;
+    const rect = row.getBoundingClientRect();
+    if (clientY < rect.bottom) return { row, rect };
+  }
+  return null;
+}
+
+function showRootDrop() {
+  const nodes = [...ruleTree.children].filter((child) => child !== ruleDropLine);
+  const last = nodes[nodes.length - 1];
+  if (!last || last === ruleDragNode || !fitsDepth(0)) return;
+  ruleDrop = { parent: ruleTree, before: null };
+  showRuleDropLine(last, true, indentOf(ruleNodeOf(last) === last ? last : last.querySelector('.rgrp-h')));
+}
+
+const clampSector = (ratio) => Math.min(3, Math.max(0, Math.floor(ratio / 0.25)));
+const indentOf = (row) => parseFloat(getComputedStyle(row).paddingLeft);
+
+// Folders nest at most three deep; below that the rule content gets too narrow to read.
+const MAX_FOLDER_DEPTH = 3;
+const fitsDepth = (parentDepth) => parentDepth + subtreeHeight(ruleDragNode) <= MAX_FOLDER_DEPTH;
+
+function folderDepth(element) {
+  let depth = 0;
+  for (let node = element; node && node !== ruleTree; node = node.parentElement) {
+    if (node.classList.contains('rgrp')) depth += 1;
+  }
+  return depth;
+}
+
+function subtreeHeight(node) {
+  if (!node.classList.contains('rgrp')) return 0;
+  const children = [...node.querySelector('.rgrp-b').children].filter((child) => child.classList.contains('rgrp'));
+  return 1 + children.reduce((deepest, child) => Math.max(deepest, subtreeHeight(child)), 0);
+}
+
+ruleTree.addEventListener('drop', (e) => {
+  if (!ruleDragNode || !ruleDrop) return;
+  e.preventDefault();
+  if (ruleDrop.folder) {
+    ruleDrop.folder.querySelector('.rgrp-b').appendChild(ruleDragNode);
+    ruleDrop.folder.classList.add('on');
+    ruleDragNode.dataset.reopen = '1';
+  } else {
+    ruleDrop.parent.insertBefore(ruleDragNode, ruleDrop.before);
+  }
+  finishRuleDrag();
+});
+
+ruleTree.addEventListener('dragend', finishRuleDrag);
+
+function showRuleDropLine(node, after, indent) {
+  const treeRect = ruleTree.getBoundingClientRect();
+  const rect = node.getBoundingClientRect();
+  // The line starts where the target row's content starts, so its indent reads as the landing depth.
+  ruleDropLine.style.top = `${(after ? rect.bottom : rect.top) - treeRect.top + ruleTree.scrollTop - 1}px`;
+  ruleDropLine.style.left = `${rect.left - treeRect.left + indent}px`;
+  ruleDropLine.style.width = `${rect.width - indent}px`;
+  ruleTree.appendChild(ruleDropLine);
+}
+
+// Hovering a collapsed folder opens it, so a rule can be dropped inside without a separate step.
+function scheduleRuleAutoExpand(row, group) {
+  if (ruleAutoExpandRow === row) return;
+  clearTimeout(ruleAutoExpandTimer);
+  ruleAutoExpandRow = row;
+  if (group.classList.contains('on')) return;
+  ruleAutoExpandTimer = setTimeout(() => group.classList.add('on'), 500);
+}
+
+function clearRuleDropFeedback() {
+  ruleDrop = null;
+  ruleDropLine.remove();
+  ruleTree.querySelectorAll('.droptarget').forEach((row) => row.classList.remove('droptarget'));
+}
+
+function finishRuleDrag() {
+  clearTimeout(ruleAutoExpandTimer);
+  ruleAutoExpandRow = null;
+  if (ruleDragNode) {
+    ruleDragNode.classList.remove('dragsource');
+    if (ruleDragNode.dataset.reopen) ruleDragNode.classList.add('on');
+    delete ruleDragNode.dataset.reopen;
+  }
+  ruleDragNode = null;
+  clearRuleDropFeedback();
+}
 
 // Composer: collection tree, document tabs, request/response tabs and the send phase.
 app.addEventListener('click', (e) => {
@@ -571,12 +766,25 @@ app.addEventListener('click', (e) => {
     app.classList.add('nodetail');
     return;
   }
-  // Clicking a captured request opens the detail pane.
+  // Body format switch: the Segmented only changes the view mode, never the selected request.
+  const bodyMode = e.target.closest('.bodybar .seg span[data-mode]');
+  if (bodyMode) {
+    return setState({ bodyMode: bodyMode.dataset.mode });
+  }
+  // Clicking a captured request opens the detail pane and loads that row's body type.
   const row = e.target.closest('.list-scroll .row');
   if (row) {
-    app.querySelectorAll('.list-scroll .row').forEach((r) => r.classList.toggle('sel', r === row));
     app.classList.remove('nodetail');
-    return;
+    const scene = row.dataset.captureRow === 'http' ? '' : row.dataset.captureRow || '';
+    const body = row.dataset.body || '';
+    return setState({
+      scene,
+      bodyPreview: body || 'json',
+      tab: scene === 'tunnel' ? 'tunnel'
+        : scene === 'websocket' ? 'messages'
+        : scene === 'grpc' ? 'grpc'
+        : body ? 'response' : 'headers',
+    });
   }
   if (e.target.closest('.request-rule-menu .fi')) {
     return setState({ view: 'rules', requestMenu: '' });
@@ -586,13 +794,6 @@ app.addEventListener('click', (e) => {
   }
   if (e.target.closest('[data-rule-link]')) {
     return setState({ view: 'rules' });
-  }
-  // Capture rows switch the inspector scene and reopen the detail pane.
-  const captureRow = e.target.closest('[data-capture-row]');
-  if (captureRow) {
-    app.classList.remove('nodetail');
-    const scene = captureRow.dataset.captureRow;
-    return setState({ scene, tab: scene === 'tunnel' ? 'tunnel' : scene === 'websocket' ? 'messages' : scene === 'grpc' ? 'grpc' : 'headers' });
   }
   if (e.target.closest('[data-open-https]')) return setState({ overlay: 'https-setup' });
   if (e.target.closest('[data-close-overlay]')) return setState({ overlay: '' });

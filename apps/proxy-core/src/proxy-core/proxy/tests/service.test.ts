@@ -579,7 +579,8 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [{
+      nodes: [{
+        kind: 'rule',
         id: 'upload-rule',
         name: 'Upload rule',
         enabled: true,
@@ -627,7 +628,8 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [{
+      nodes: [{
+        kind: 'rule',
         id: 'download-rule',
         name: 'Download rule',
         enabled: true,
@@ -675,7 +677,8 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
       revision: 1,
-      rules: [{
+      nodes: [{
+        kind: 'rule',
         id: 'url-rule',
         name: 'URL rule',
         enabled: true,

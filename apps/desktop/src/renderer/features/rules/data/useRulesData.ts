@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 
+import { collectLeafIds } from '@interceptor/core-protocol';
+
 import type { RuleActionType } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
-import { createRuleFromRequest, nextPriority } from '../utils';
+import { createRuleFromRequest } from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
 let initialLoad: Promise<void> | null = null;
@@ -48,12 +50,7 @@ export async function addRequestRuleDraft(
   if (!store.initialized) {
     return null;
   }
-  const rule = createRuleFromRequest(
-    nextPriority(store.rules),
-    name,
-    url,
-    actionType,
-  );
+  const rule = createRuleFromRequest(name, url, actionType);
   store.addRuleDraft(rule);
   return rule.id;
 }
@@ -62,7 +59,7 @@ export async function addRequestRuleDraft(
 export async function selectRuleDraft(ruleId: string): Promise<boolean> {
   await ensureRulesLoaded();
   const store = useRulesStore.getState();
-  if (!store.rules.some((rule) => rule.id === ruleId)) {
+  if (!collectLeafIds(store.nodes).includes(ruleId)) {
     return false;
   }
   store.select(ruleId);
@@ -100,7 +97,7 @@ export async function applyRules(): Promise<void> {
   }
   store.beginSave();
   try {
-    const result = await api.replaceRules(store.revision, store.rules);
+    const result = await api.replaceRules(store.revision, store.nodes);
     if (result.ok) {
       useRulesStore.getState().saveSucceeded(result.revision);
       void loadRuleHits();

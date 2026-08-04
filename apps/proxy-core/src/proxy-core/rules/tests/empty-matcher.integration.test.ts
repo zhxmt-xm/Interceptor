@@ -60,6 +60,7 @@ function proxiedGet(
 /** 一条已启用规则：给出条件，动作固定为注入一个可观察的请求头。 */
 function injectingRule(matchers: RuleMatcher[]): RuleDefinition {
   return {
+    kind: 'rule',
     id: 'rule-inject',
     name: 'Inject header',
     enabled: true,
@@ -120,7 +121,7 @@ describe('Rule matchers with unfilled values (real proxy)', () => {
       [{ type: 'url', value: '', mode: 'regex' }] satisfies RuleMatcher[],
       [] satisfies RuleMatcher[],
     ]) {
-      ruleService.setRuleSet({ revision: 1, rules: [injectingRule(matchers)] });
+      ruleService.setRuleSet({ revision: 1, nodes: [injectingRule(matchers)] });
       seenHeaders.length = 0;
 
       await expect(
@@ -136,7 +137,7 @@ describe('Rule matchers with unfilled values (real proxy)', () => {
     const { address, ruleService, originPort, seenHeaders } = await startStack();
     ruleService.setRuleSet({
       revision: 1,
-      rules: [injectingRule([{ type: 'host', value: '127.0.0.1', mode: 'contains' }])],
+      nodes: [injectingRule([{ type: 'host', value: '127.0.0.1', mode: 'contains' }])],
     });
 
     await expect(

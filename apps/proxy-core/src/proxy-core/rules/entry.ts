@@ -8,9 +8,10 @@
  * 时的请求上下文（context 不可变），action 累积改写可变 state。
  */
 
-import type {
-  RuleDefinition,
-  RuleSet,
+import {
+  collectLeaves,
+  type RuleDefinition,
+  type RuleSet,
 } from '@interceptor/core-protocol';
 
 import { ActionExecutor } from './internal/action-executor';
@@ -36,7 +37,7 @@ import * as RuleUtils from './utils';
  */
 export class RuleService {
   /** 当前持久化规则集快照。 */
-  private ruleSet: RuleSet = { revision: 0, rules: [] };
+  private ruleSet: RuleSet = { revision: 0, nodes: [] };
   /** 当前启用且已编译的规则，按优先级排序。 */
   private compiled: readonly CompiledRule[] = [];
   /** 全局断点命中开关。 */
@@ -59,14 +60,14 @@ export class RuleService {
   }
 
   /**
-   * 原子替换规则集并重编译匹配器：只保留 enabled 规则，按 priority 升序、同优先级按 id
-   * 稳定排序。调用方：core-application 在 rules.replace 成功后。
+   * 原子替换规则集并重编译匹配器：目录只用于组织，先按深度优先摊平取出全部规则，再只保留
+   * enabled 规则，按 priority 升序、同优先级按 id 稳定排序。调用方：core-application 在
+   * rules.replace 成功后。
    */
   setRuleSet(ruleSet: RuleSet): void {
     this.ruleSet = ruleSet;
-    this.compiled = ruleSet.rules
+    this.compiled = collectLeaves(ruleSet.nodes)
       .filter((rule) => rule.enabled)
-      .slice()
       .sort(RuleUtils.comparePriority)
       .map((rule) => ({
         rule,

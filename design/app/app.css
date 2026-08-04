@@ -258,6 +258,9 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 .sw.on { background: var(--accent); }
 .sw.on::after { left: 16px; }
+.sw.sm { width: 26px; height: 15px; }
+.sw.sm::after { width: 11px; height: 11px; }
+.sw.sm.on::after { left: 13px; }
 .cb { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--border-2); display: grid; place-items: center; color: #fff; flex: 0 0 auto; cursor: pointer; }
 .cb.on { background: var(--accent); border-color: var(--accent); }
 .cb svg { width: 11px; height: 11px; }
@@ -544,7 +547,8 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rules-search svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .rules-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: 12px var(--font-ui); }
 .rules-search input::placeholder { color: var(--text-3); opacity: 1; }
-.rrow { display: flex; align-items: center; gap: 11px; height: 60px; padding: 0 12px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
+.rflat { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.rrow { display: flex; align-items: center; gap: 11px; height: 60px; flex: 0 0 60px; padding: 0 12px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
 .rrow:hover { background: var(--hover); }
 .rrow.sel { background: var(--sel); }
 .rrow.sel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--sel-line); }
@@ -563,6 +567,53 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rchip.flow { color: var(--yellow); background: color-mix(in srgb, var(--yellow) 16%, transparent); }
 .rchip.brk { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
 .rhit { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* --- rules as a folder tree: same 432px column, one line per rule --- */
+.rtree { position: relative; display: none; flex-direction: column; gap: 6px; flex: 1; min-height: 0; padding: 8px; overflow-y: auto; }
+.rtree::-webkit-scrollbar { width: 8px; }
+.rtree::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 4px; background: transparent; background-clip: content-box; }
+.rtree:hover::-webkit-scrollbar-thumb { background: var(--border-2); background-clip: content-box; }
+.app[data-rule-list="flat"] .rtree { display: none; }
+.app:not([data-rule-list="flat"]) .rflat { display: none; }
+.app:not([data-rule-list="flat"]) .rtree { display: flex; }
+.rgrp { display: flex; flex-direction: column; gap: 2px; }
+/* a folder only names and collapses a group — enable, order and hits live on the rules inside */
+.rgrp-h { display: flex; align-items: center; gap: 6px; height: 30px; flex: 0 0 30px; padding: 0 4px; border-radius: 7px; color: var(--text); user-select: none; }
+.rgrp-h:hover { background: var(--hover); }
+.rgrp-chevbtn { display: grid; place-items: center; width: 20px; height: 100%; flex: 0 0 20px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.rgrp-chev { width: 13px; height: 13px; flex: 0 0 auto; color: var(--text-2); transform: rotate(-90deg); transition: transform .15s ease; }
+.rgrp.on > .rgrp-h .rgrp-chev { transform: rotate(0deg); }
+.rgrp-namebtn { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; color: inherit; font-family: var(--font-ui); font-size: 12.5px; font-weight: 640; text-align: left; cursor: pointer; }
+.rgrp-icon { width: 14px; height: 14px; flex: 0 0 auto; color: var(--text-3); }
+.rgrp-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgrp-more { display: none; width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); cursor: pointer; flex: 0 0 auto; }
+.rgrp-more svg { width: 13px; height: 13px; }
+.rgrp-more:hover { background: var(--hover); color: var(--text); }
+.rgrp-h:hover .rgrp-more { display: grid; }
+.rgrp-b { display: none; flex-direction: column; gap: 2px; }
+.rgrp.on > .rgrp-b { display: flex; }
+/* One level of indent equals the chevron slot, so a rule's switch sits under its folder's icon.
+   The indent lives inside the row, so hover and selection always span the full column.
+   Three levels is the cap — deeper than that the rule content gets too narrow to read. */
+.rgrp-b .rrule, .rgrp-b .rgrp-h { padding-left: 30px; }
+.rgrp-b .rgrp-b .rrule, .rgrp-b .rgrp-b .rgrp-h { padding-left: 56px; }
+.rgrp-b .rgrp-b .rgrp-b .rrule, .rgrp-b .rgrp-b .rgrp-b .rgrp-h { padding-left: 82px; }
+.rrule { display: flex; align-items: center; gap: 6px; height: 30px; flex: 0 0 30px; padding: 0 4px; border-radius: 7px; cursor: pointer; user-select: none; }
+.rrule:hover { background: var(--hover); }
+.rrule.sel { background: var(--sel); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+.rrule.off .rrule-main, .rrule.off .rchips, .rrule.off .rhit { opacity: .5; }
+/* drop feedback: an accent rule indented to the target depth, or the folder it lands in */
+.rdrop { position: absolute; z-index: 5; height: 2px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+.rgrp-h.droptarget { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.dragsource { opacity: .35; }
+.rrule-main { display: flex; flex-direction: column; justify-content: center; gap: 1px; flex: 1; min-width: 0; }
+.rrule-n { font-size: 12.5px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the match summary only fits when the row is two lines high */
+.rrule-u { display: none; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app[data-rule-list="tree-url"] .rrule { height: 42px; flex-basis: 42px; }
+.app[data-rule-list="tree-url"] .rrule-u { display: block; }
+.rtree .rchip { font-size: 10px; padding: 2px 6px; }
+.rtree .rhit { min-width: 26px; }
 .reditor { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--panel); }
 .edhead { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); }
 .edname { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text); }
@@ -885,25 +936,146 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .v-breakpoints .hrow .v2 { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); }
 .bodybox { border: 1px solid var(--border-2); border-radius: 10px; padding: 13px 15px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; background: var(--panel-2); }
 .bodybox.empty { color: var(--text-3); }
-.body-preview-limited, .body-limit-note, .body-limited-meta, .body-media, .body-media-meta { display: none; }
-.app[data-body-preview="limited"] .body-preview-normal, .app[data-body-preview="limited"] .body-normal-meta { display: none; }
-.app[data-body-preview="limited"] .body-preview-limited { display: block; }
-.app[data-body-preview="limited"] .body-limit-note { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text-2); font-size: 11.5px; }
-.app[data-body-preview="limited"] .body-limit-note svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
-.app[data-body-preview="limited"] .body-limited-meta { display: inline-flex; }
-.app[data-body-preview="media"] .body-preview-normal, .app[data-body-preview="media"] .body-normal-meta, .app[data-body-preview="media"] .tp[data-tab="response"] .bodymode { display: none; }
-.app[data-body-preview="media"] .body-media { display: flex; }
-.app[data-body-preview="media"] .body-media-meta { display: inline-flex; }
-.body-media { min-height: 72px; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--border-2); border-radius: 9px; background: var(--panel-2); }
-.body-media-icon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
-.body-media-icon svg { width: 17px; height: 17px; }
-.body-media > div { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
-.body-media b { color: var(--text); font: 600 12.5px var(--font-mono); }
-.body-media span { color: var(--text-3); font-size: 11.5px; }
-.body-media .btn { flex: 0 0 auto; }
-.bodymode { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+
+/* Body viewer: content kind (which request is selected) and view mode (which Segmented
+   option is active) are independent. `data-body-kind` picks the toolbar + metadata,
+   `data-body-mode` picks the pane, and `data-body-state` layers Format busy/disabled on top. */
 .bodyview { display: flex; flex-direction: column; gap: 10px; }
-.bodyview .bodymode { margin-bottom: 0; }
+.bodybar { display: flex; align-items: center; height: 40px; flex: 0 0 40px; gap: 10px; }
+.bpane { display: flex; flex: 1 1 0; min-height: 0; flex-direction: column; }
+.bodybar[data-kind], .bpane[data-pane], .bodynote, .sh .c[data-meta] { display: none; }
+.bodybar .sp { flex: 1; }
+.bodybar .cnt { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bodynote { align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text-2); font-size: 11.5px; }
+.bodynote svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
+.bodynote[data-note="format-off"] svg { color: var(--yellow); }
+
+/* toolbar + metadata follow the selected request */
+.app[data-body-kind="json"] .bodybar[data-kind="json"],
+.app[data-body-kind="code"] .bodybar[data-kind="code"],
+.app[data-body-kind="limited"] .bodybar[data-kind="limited"],
+.app[data-body-kind="image"] .bodybar[data-kind="image"],
+.app[data-body-kind="image-large"] .bodybar[data-kind="image-large"],
+.app[data-body-kind="binary"] .bodybar[data-kind="binary"],
+.app[data-body-kind="form"] .bodybar[data-kind="form"],
+.app[data-body-kind="md"] .bodybar[data-kind="md"] { display: flex; }
+.app[data-body-kind="json"] .sh .c[data-meta="json"],
+.app[data-body-kind="code"] .sh .c[data-meta="code"],
+.app[data-body-kind="limited"] .sh .c[data-meta="limited"],
+.app[data-body-kind="image"] .sh .c[data-meta="image"],
+.app[data-body-kind="image-large"] .sh .c[data-meta="image-large"],
+.app[data-body-kind="binary"] .sh .c[data-meta="binary"],
+.app[data-body-kind="form"] .sh .c[data-meta="form"],
+.app[data-body-kind="md"] .sh .c[data-meta="md"],
+.app[data-body-kind="media"] .sh .c[data-meta="media"] { display: inline-flex; }
+
+/* the active Segmented option is derived from the mode, not hard-coded per bar */
+.app[data-body-mode="default"] .bodybar .seg span[data-mode="default"],
+.app[data-body-mode="tree"] .bodybar .seg span[data-mode="tree"],
+.app[data-body-mode="raw"] .bodybar .seg span[data-mode="raw"],
+.app[data-body-mode="hex"] .bodybar .seg span[data-mode="hex"],
+.app[data-body-mode="split"] .bodybar .seg span[data-mode="split"],
+.app[data-body-mode="source"] .bodybar .seg span[data-mode="source"] { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* pane = kind × mode; Hex and media are the two panes shared across kinds */
+.app[data-body-kind="json"][data-body-mode="default"] .bpane[data-pane="json"],
+.app[data-body-kind="json"][data-body-mode="tree"] .bpane[data-pane="tree"],
+.app[data-body-kind="json"][data-body-mode="raw"] .bpane[data-pane="raw-json"],
+.app[data-body-kind="code"][data-body-mode="default"] .bpane[data-pane="code"],
+.app[data-body-kind="code"][data-body-mode="raw"] .bpane[data-pane="raw-html"],
+.app[data-body-kind="limited"][data-body-mode="default"] .bpane[data-pane="code"],
+.app[data-body-kind="limited"][data-body-mode="raw"] .bpane[data-pane="raw-html"],
+.app[data-body-kind="image"][data-body-mode="default"] .bpane[data-pane="image"],
+.app[data-body-kind="image-large"][data-body-mode="default"] .bpane[data-pane="image-large"],
+.app[data-body-kind="binary"][data-body-mode="default"] .bpane[data-pane="hex"],
+.app[data-body-kind="binary"][data-body-mode="raw"] .bpane[data-pane="binary-text"],
+.app[data-body-kind="form"][data-body-mode="default"] .bpane[data-pane="form"],
+.app[data-body-kind="form"][data-body-mode="raw"] .bpane[data-pane="raw-form"],
+.app[data-body-kind="md"][data-body-mode="default"] .bpane[data-pane="md"],
+.app[data-body-kind="md"][data-body-mode="split"] .bpane[data-pane="md-split"],
+.app[data-body-kind="md"][data-body-mode="source"] .bpane[data-pane="md-source"],
+.app[data-body-mode="hex"] .bpane[data-pane="hex"],
+.app[data-body-kind="media"] .bpane[data-pane="media"] { display: flex; }
+.bpane[data-pane="image-large"] .body-media, .bpane[data-pane="media"] .body-media { display: flex; }
+
+.app[data-body-kind="limited"][data-body-mode="default"] .bodynote[data-note="limited"],
+.app[data-body-state="format-off"] .bodynote[data-note="format-off"] { display: flex; }
+
+/* Format button: idle icon, busy spinner, disabled above the format ceiling. */
+.bodyfmt .fmt-busy { display: none; }
+.app[data-body-state="busy"] .bodyfmt { background: var(--accent-soft); color: var(--accent); }
+.app[data-body-state="busy"] .bodyfmt .fmt-idle { display: none; }
+.app[data-body-state="busy"] .bodyfmt .fmt-busy { display: block; }
+.app[data-body-state="format-off"] .bodyfmt { color: var(--text-3); cursor: not-allowed; opacity: .55; }
+
+/* JSON tree: 22px rows, 15px per level, chevron only on expandable nodes. */
+.jtree { position: relative; flex: 1 1 0; min-height: 0; overflow: auto; padding: 8px 6px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); font-family: var(--font-mono); font-size: 12px; }
+.jrow { display: flex; align-items: center; height: 22px; gap: 5px; padding: 0 8px 0 4px; border-radius: 6px; white-space: nowrap; }
+.jrow:hover { background: var(--hover); }
+.jrow.sel { background: var(--accent-soft); }
+.jrow.d1 { padding-left: 19px; }
+.jrow.d2 { padding-left: 34px; }
+.jtog { display: grid; width: 15px; height: 15px; flex: 0 0 auto; place-items: center; margin-left: -15px; border-radius: 4px; color: var(--text-3); cursor: pointer; }
+.jtog svg { width: 12px; height: 12px; }
+.jtog:hover { color: var(--text); background: var(--hover); }
+.jkey { color: var(--purple); }
+.jidx { color: var(--text-3); }
+.jpunct { color: var(--text-3); }
+.jstr { color: var(--green); }
+.jnum { color: var(--blue); }
+.jnull { color: var(--text-3); font-style: italic; }
+.jfold, .jsum { color: var(--text-3); font-size: 11px; }
+.jmenu { position: absolute; top: 78px; left: 148px; z-index: 55; display: none; width: 176px; flex-direction: column; padding: 7px; border: 1px solid var(--border-2); border-radius: 12px; background: var(--panel); box-shadow: 0 18px 44px rgba(0,0,0,.2); }
+.jmenu .fi { display: flex; width: 100%; height: 30px; align-items: center; gap: 9px; padding: 0 9px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 400 12.5px var(--font-ui); text-align: left; cursor: pointer; }
+.jmenu .fi:hover { background: var(--hover); }
+.jmenu .fi svg { width: 14px; height: 14px; color: var(--text-3); }
+.app[data-body-state="menu"] .jmenu { display: flex; }
+
+/* Image preview: the browser decodes and scales; the frame only supplies the checkerboard. */
+.imgframe { display: flex; flex: 1 1 0; min-height: 0; align-items: center; justify-content: center; padding: 14px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); }
+.imgwrap { display: flex; max-width: 100%; max-height: 100%; overflow: hidden; border-radius: 6px; background-image: linear-gradient(45deg, var(--hover) 25%, transparent 25%), linear-gradient(-45deg, var(--hover) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--hover) 75%), linear-gradient(-45deg, transparent 75%, var(--hover) 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+.imgshot { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* Hex dump stays a hand-built monospace grid; it never goes through Monaco. */
+.hexview { flex: 1 1 0; min-height: 0; overflow: auto; padding: 13px 15px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 20px; white-space: pre; }
+
+/* urlencoded bodies render as the same KV grid the Composer form editor uses. */
+.formkv { flex: 1 1 0; min-height: 0; overflow: auto; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); }
+.fkhead, .fkrow { display: grid; grid-template-columns: minmax(0,0.8fr) minmax(0,1.2fr); align-items: center; gap: 12px; padding: 0 14px; }
+.fkhead { height: 34px; border-bottom: 1px solid var(--border); color: var(--text-3); font-size: 12px; font-weight: 600; }
+.fkrow { height: 34px; }
+.fkrow:hover { background: var(--hover); }
+.fkk { color: var(--text-2); font-family: var(--font-mono); font-size: 12px; }
+.fkv { overflow: hidden; color: var(--text); font-family: var(--font-mono); font-size: 12px; text-overflow: ellipsis; }
+
+/* Markdown preview: rendered rich text, no editor chrome. */
+.mdview { flex: 1 1 0; min-height: 0; overflow: auto; padding: 16px 18px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); color: var(--text-2); font-size: 12.5px; line-height: 1.75; }
+.mdview > :first-child { margin-top: 0; }
+.mdview h1 { margin: 20px 0 10px; color: var(--text); font-size: 17px; font-weight: 700; }
+.mdview h2 { margin: 18px 0 8px; color: var(--text); font-size: 14.5px; font-weight: 700; }
+.mdview p { margin: 0 0 10px; }
+.mdview code { padding: 1px 5px; border-radius: 5px; background: var(--hover); color: var(--purple); font-family: var(--font-mono); font-size: 11.5px; }
+.mdview pre { margin: 0 0 12px; overflow-x: auto; padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.65; }
+.mdview blockquote { margin: 0 0 10px; padding-left: 11px; border-left: 2px solid var(--accent); color: var(--text-3); }
+.mdview table { width: 100%; margin: 0 0 12px; border-collapse: collapse; font-size: 12px; }
+.mdview th, .mdview td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+.mdview th { color: var(--text-3); font-weight: 600; }
+.mdview td { color: var(--text); font-family: var(--font-mono); }
+/* Split stacks preview over source: Capture already owns its one splitter, so this is a fixed 1px divider. */
+.mdsplit { display: grid; overflow: hidden; flex: 1 1 0; min-height: 0; grid-template-rows: minmax(0,1fr) 1px minmax(0,1fr); border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); }
+.mdsplit::after { grid-row: 2; background: var(--border-2); content: ""; }
+.mdsplit > .mdview { border: 0; border-radius: 0; }
+.mdsplit > .bodybox { grid-row: 3; border: 0; border-radius: 0; }
+
+/* Oversize / non-previewable bodies reuse the Composer placeholder shape: centred icon,
+   MIME, hard numbers, then one sentence explaining why there is nothing to render. */
+.body-media { flex: 1 1 0; min-height: 0; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 0 40px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); text-align: center; }
+.body-media-icon { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: var(--panel); color: var(--text-2); }
+.body-media-icon svg { width: 18px; height: 18px; }
+.body-media b { margin-top: 3px; color: var(--text); font: 600 13px var(--font-mono); }
+.body-media .bmsize { color: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; }
+.body-media .bmwhy { max-width: 340px; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.body-media .btn { margin-top: 6px; flex: 0 0 auto; }
 /* Monaco draws its own padding, wrapping and font; the host only supplies the frame.
    `fill` viewers absorb whatever height the panel leaves them;
    `box` viewers hug their content (height set by monaco.js). */

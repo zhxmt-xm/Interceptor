@@ -1,0 +1,35 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0 4px 0 calc(4px + var(--depth) * 26px);
+  border-radius: 7px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 20px;
+  color: var(--text-2);
+  transform: rotate(-90deg);
+}
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 640;
+}

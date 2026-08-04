@@ -1,9 +1,10 @@
-import { FilePlus, FolderPlus } from 'lucide-react';
+import { Download, FilePlus, FolderPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { IconButton } from '../../../components/IconButton/IconButton';
 import { useComposerStore } from '../data/composerStore';
+import { exportCollection } from '../data/useCollection';
 
 import styles from './CollectionPanel.module.css';
 import { CollectionTreeNode } from './CollectionTreeNode';
@@ -38,6 +39,16 @@ export function CollectionPanel(): React.JSX.Element {
             size="sm"
             onClick={createRequest}
             automationId={AUTOMATION_IDS.composer.newRequest}
+          />
+          <IconButton
+            icon={Download}
+            label={t('composer.exportCollection')}
+            size="sm"
+            disabled={nodes.length === 0}
+            onClick={() => {
+              void exportCollection(t('composer.exportCollection'));
+            }}
+            automationId={AUTOMATION_IDS.composer.exportCollection}
           />
         </div>
       </div>

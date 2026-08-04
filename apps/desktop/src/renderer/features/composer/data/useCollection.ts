@@ -75,6 +75,15 @@ export function useCollection(): void {
   }, [nodes, loaded]);
 }
 
+/** 把整棵集合导出成 JSON 文件；落盘路径由 Main 的系统对话框选择。 */
+export async function exportCollection(title: string): Promise<void> {
+  const api = window.interceptor;
+  if (!api?.exportCollection) {
+    return;
+  }
+  await api.exportCollection(useComposerStore.getState().nodes, title);
+}
+
 /** 发送一条请求；URL、头部与正文都按当前编辑态组装。 */
 export async function sendRequest(request: CollectionRequest): Promise<void> {
   const api = window.interceptor;

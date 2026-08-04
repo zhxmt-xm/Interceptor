@@ -58,9 +58,23 @@
   width: 214px;
 }
 .rows {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-height: 0;
+  padding: 8px;
   overflow-y: auto;
+}
+/* 插入线绝对定位，既不挤动行、也不改变落点判定；缩进由 useTreeDrag 按目标层级算出。 */
+.dropLine {
+  position: absolute;
+  z-index: 5;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
 }
 .empty {
   padding: 24px 16px;

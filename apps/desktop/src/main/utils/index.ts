@@ -6,7 +6,7 @@ import path from 'node:path';
 import type {
   CollectionNode,
   DiagnosticLogRecord,
-  RuleDefinition,
+  RuleNode,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -106,9 +106,9 @@ export function toSafeBodyFileName(value: string): string {
   return basename || 'response-body.bin';
 }
 
-/** Pass trusted Renderer rules through to the Core rule engine. */
-export function toCoreRuleDefinitions(value: unknown): RuleDefinition[] {
-  return value as RuleDefinition[];
+/** Pass a trusted Renderer rule tree through to the Core rule engine. */
+export function toCoreRuleNodes(value: unknown): RuleNode[] {
+  return value as RuleNode[];
 }
 
 /** Pass a trusted Composer collection tree through to the Core workspace store. */

@@ -4,7 +4,7 @@
  * 纯数据，整棵树作为一个 JSON 持久化并按 revision 版本化——集合规模只有几十到几百条，
  * 因此不需要树形表、排序字段或增量 upsert/move 命令，读写只有"读整棵树"和"写整棵树"。
  */
-
+import type { TreeFolder, TreeNode } from './tree';
 /** 请求编辑器里的一行键值（Query / Headers / Form 三处共用）。 */
 export interface ComposerFieldRow {
   readonly id: string;
@@ -45,14 +45,9 @@ export interface CollectionRequest {
 }
 
 /** 命名目录，可继续嵌套目录或请求。 */
-export interface CollectionFolder {
-  readonly kind: 'folder';
-  readonly id: string;
-  readonly name: string;
-  readonly children: readonly CollectionNode[];
-}
+export type CollectionFolder = TreeFolder<CollectionRequest>;
 
-export type CollectionNode = CollectionFolder | CollectionRequest;
+export type CollectionNode = TreeNode<CollectionRequest>;
 
 /** 版本化集合：revision 单调递增，用于乐观并发与原子替换。 */
 export interface Collection {

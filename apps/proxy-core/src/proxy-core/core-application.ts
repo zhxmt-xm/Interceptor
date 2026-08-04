@@ -5,7 +5,7 @@ import type {
   CoreError,
   CoreResult,
 } from '@interceptor/core-protocol';
-import { BODY_PREVIEW_MAX_BYTES } from '@interceptor/core-protocol';
+import { BODY_PREVIEW_MAX_BYTES, collectLeaves } from '@interceptor/core-protocol';
 
 import {
   EVENT_DRAIN_BATCH,
@@ -458,7 +458,7 @@ export class CoreApplication implements CoreRpcHost {
             const ruleSet = await this.coreDiagnostics.action('rules.replace', () =>
               workspaceService.saveRuleSet(
                 command.payload.expectedRevision,
-                command.payload.rules,
+                command.payload.nodes,
               ),
             );
             this.ruleService?.setRuleSet(ruleSet);
@@ -742,7 +742,7 @@ export class CoreApplication implements CoreRpcHost {
       this.coreDiagnostics.info('rules.loaded', {
         attributes: {
           revision: ruleSet.revision,
-          rules: ruleSet.rules.length,
+          rules: collectLeaves(ruleSet.nodes).length,
         },
       });
     } catch (error: unknown) {

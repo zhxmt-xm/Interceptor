@@ -77,6 +77,7 @@ function proxiedPost(
 
 function breakpointRule(phase: 'request' | 'response'): RuleDefinition {
   return {
+    kind: 'rule',
     id: `rule-breakpoint-${phase}`,
     name: `Pause on ${phase}`,
     enabled: true,
@@ -108,7 +109,7 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
   it('states that the paused request body is not available yet', async () => {
     const ruleService = new RuleService(breakpointQueue);
-    ruleService.setRuleSet({ revision: 1, rules: [breakpointRule('request')] });
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
     proxyService = new ProxyService(new RecordingCaptureService(), new CaptureEventQueue(), ruleService);
     const address = await proxyService.start({ port: 0 });
     origin = await startOrigin();
@@ -141,7 +142,7 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
   it('states that the paused response body is not available yet', async () => {
     const ruleService = new RuleService(breakpointQueue);
-    ruleService.setRuleSet({ revision: 1, rules: [breakpointRule('response')] });
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('response')] });
     proxyService = new ProxyService(new RecordingCaptureService(), new CaptureEventQueue(), ruleService);
     const address = await proxyService.start({ port: 0 });
     origin = await startOrigin();

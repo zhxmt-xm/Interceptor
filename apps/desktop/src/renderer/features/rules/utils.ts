@@ -1,12 +1,27 @@
+import {
+  collectLeaves,
+  findLeaf,
+  isFolder,
+  replaceLeaf,
+} from '@interceptor/core-protocol';
+
 import type {
   RuleAction,
   RuleActionType,
   RuleDefinition,
+  RuleFolder,
   RuleMatcher,
   RuleMatcherType,
+  RuleNode,
 } from '../../../shared/desktop-api';
 import type { SelectOption } from '../../components';
-import type { ChipKind, RuleIssue, RulesState } from './interfaces';
+import { FOLDER_MENU_WIDTH, FOLDER_ROW_HEIGHT } from './constants';
+import type {
+  ChipKind,
+  FolderMenuAnchor,
+  RuleIssue,
+  RulesState,
+} from './interfaces';
 
 /** 把一个 action 映射为规则行 chip（着色 + 标签）。 */
 export function actionChip(type: RuleActionType): { kind: ChipKind; labelKey: string } {
@@ -76,22 +91,28 @@ export function matchSummary(rule: RuleDefinition, emptySummary?: string): strin
   return parts.join(' · ');
 }
 
-/** 生成新规则唯一 id。 */
-function createRuleId(): string {
+/** 生成规则树节点的唯一 id。 */
+function createNodeId(prefix: 'rule' | 'dir'): string {
   const uuid =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return `rule-${uuid}`;
+  return `${prefix}-${uuid}`;
+}
+
+/** 新建一个空目录。 */
+export function createFolder(name: string): RuleFolder {
+  return { kind: 'folder', id: createNodeId('dir'), name, children: [] };
 }
 
 /** 新建一条规则：默认一个 host 条件 + 一个请求 header 动作，字段留空待填，因此默认不启用。 */
-export function createRule(priority: number, name = 'New rule'): RuleDefinition {
+export function createRule(name = 'New rule'): RuleDefinition {
   return {
-    id: createRuleId(),
+    kind: 'rule',
+    id: createNodeId('rule'),
     name,
     enabled: false,
-    priority,
+    priority: 0,
     matchers: [{ type: 'host', value: '', mode: 'contains' }],
     actions: [{ type: 'header', phase: 'request', op: 'set', name: '', value: '' }],
   };
@@ -116,16 +137,16 @@ function toEndpointUrl(url: string): string {
 
 /** 基于 Capture 请求创建一条 action 草稿：action 参数待填，默认不启用、不自动 Apply。 */
 export function createRuleFromRequest(
-  priority: number,
   name: string,
   url: string,
   actionType: RuleActionType,
 ): RuleDefinition {
   return {
-    id: createRuleId(),
+    kind: 'rule',
+    id: createNodeId('rule'),
     name,
     enabled: false,
-    priority,
+    priority: 0,
     matchers: [{ type: 'url', value: toEndpointUrl(url), mode: 'exact' }],
     actions: [createAction(actionType)],
   };
@@ -267,76 +288,80 @@ export function localizeOptions(
   }));
 }
 
-/** 在规则集中替换某规则，返回新数组；未命中原样返回。 */
+/** 在规则树中替换某条规则，返回新树；未命中原样返回。 */
 export function mapRule(
-  rules: RuleDefinition[],
+  nodes: readonly RuleNode[],
   id: string,
   update: (rule: RuleDefinition) => RuleDefinition,
-): RuleDefinition[] {
-  return rules.map((rule) => (rule.id === id ? update(rule) : rule));
+): RuleNode[] {
+  const rule = findLeaf(nodes, id);
+  return rule ? replaceLeaf(nodes, update(rule)) : [...nodes];
 }
 
-/** 深拷贝规则数组（matchers/actions 也复制），用于保存已应用快照。 */
-export function cloneRules(rules: readonly RuleDefinition[]): RuleDefinition[] {
-  return rules.map((rule) => ({
-    ...rule,
-    matchers: [...rule.matchers],
-    actions: [...rule.actions],
-  }));
+/** 深拷贝规则树（matchers/actions 也复制），用于保存已应用快照。 */
+export function cloneNodes(nodes: readonly RuleNode[]): RuleNode[] {
+  return nodes.map((node) =>
+    isFolder(node)
+      ? { ...node, children: cloneNodes(node.children) }
+      : { ...node, matchers: [...node.matchers], actions: [...node.actions] },
+  );
 }
 
 /** 内容级脏检查：草稿与已应用快照深度不等（改回原值即视为未改动）。 */
 export function isRulesDirty(
-  rules: readonly RuleDefinition[],
-  applied: readonly RuleDefinition[],
+  nodes: readonly RuleNode[],
+  applied: readonly RuleNode[],
 ): boolean {
-  return JSON.stringify(rules) !== JSON.stringify(applied);
+  return JSON.stringify(nodes) !== JSON.stringify(applied);
 }
 
-/** 计算新增规则的优先级：取现有最大值 + 10，空集从 100 起。 */
-export function nextPriority(rules: RuleDefinition[]): number {
-  if (rules.length === 0) {
-    return 100;
-  }
-  return Math.max(...rules.map((rule) => rule.priority)) + 10;
-}
-
-/** Reorder the draft and reassign ascending priorities so list order equals execution order. */
-export function reorderRules(
-  rules: RuleDefinition[],
-  sourceIndex: number,
-  targetIndex: number,
-): RuleDefinition[] {
-  const reordered = [...rules];
-  const [moved] = reordered.splice(sourceIndex, 1);
-  if (!moved) {
-    return rules;
-  }
-  reordered.splice(targetIndex, 0, moved);
-
-  const existingPriorities = rules
-    .map((rule) => rule.priority)
-    .sort((left, right) => left - right);
-  const prioritiesAreDistinct = existingPriorities.every(
-    (priority, index) => index === 0 || priority > (existingPriorities[index - 1] ?? priority),
-  );
-
-  return reordered.map((rule, index) => ({
-    ...rule,
-    priority: prioritiesAreDistinct
-      ? (existingPriorities[index] ?? (index + 1) * 10)
-      : (index + 1) * 10,
-  }));
+/**
+ * 按深度优先顺序重排 priority，使 Core 的执行顺序与列表显示顺序一致。
+ * 每次改变树结构（新建、删除、拖拽）之后调用。
+ */
+export function normalizePriorities(nodes: readonly RuleNode[]): RuleNode[] {
+  let order = 0;
+  const walk = (list: readonly RuleNode[]): RuleNode[] =>
+    list.map((node) => {
+      if (isFolder(node)) {
+        return { ...node, children: walk(node.children) };
+      }
+      order += 1;
+      return { ...node, priority: order * 10 };
+    });
+  return walk(nodes);
 }
 
 /** 选中的规则草稿（无选中时为 null）。 */
 export function selectedRule(state: RulesState): RuleDefinition | null {
-  return state.rules.find((rule) => rule.id === state.selectedId) ?? null;
+  return state.selectedId ? findLeaf(state.nodes, state.selectedId) : null;
 }
 
 /** 已启用规则数。 */
-export function enabledCount(rules: readonly RuleDefinition[]): number {
-  return rules.reduce((total, rule) => total + (rule.enabled ? 1 : 0), 0);
+export function enabledCount(nodes: readonly RuleNode[]): number {
+  return collectLeaves(nodes).reduce(
+    (total, rule) => total + (rule.enabled ? 1 : 0),
+    0,
+  );
+}
+
+/** 目录操作菜单锚到触发行下方，坐标相对于规则树滚动区。 */
+export function anchorFolderMenu(
+  trigger: HTMLElement,
+  folderId: string,
+): FolderMenuAnchor | null {
+  const row = trigger.closest('[data-tree-row]');
+  const scroll = trigger.closest('[data-tree-scroll]');
+  if (!row || !scroll) {
+    return null;
+  }
+  const rowBounds = row.getBoundingClientRect();
+  const scrollBounds = scroll.getBoundingClientRect();
+  return {
+    folderId,
+    top: rowBounds.top - scrollBounds.top + FOLDER_ROW_HEIGHT,
+    left: Math.max(8, rowBounds.right - scrollBounds.left - FOLDER_MENU_WIDTH),
+  };
 }
 
 /** 受控数字输入的解析：非法输入回退到给定默认值。 */
@@ -346,8 +371,7 @@ export function toInt(value: string, fallback: number): number {
 }
 
 /** 命中次数超过一千按 k 缩写，避免规则行被数字撑开。 */
-export function formatHits(count: number, locale = 'en'): string {
-  if (count >= 1_000) {
+export function formatHits(count: number, locale = 'en'): string {  if (count >= 1_000) {
     const scaled = count / 1_000;
     return `${new Intl.NumberFormat(locale, {
       maximumFractionDigits: scaled >= 10 ? 0 : 1,

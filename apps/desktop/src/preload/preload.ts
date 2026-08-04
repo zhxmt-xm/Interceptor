@@ -139,8 +139,8 @@ const api: InterceptorDesktopApi = {
   setHttpsDecryption: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetDecryption, enabled),
   getRules: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesGet),
-  replaceRules: (expectedRevision, rules) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, rules),
+  replaceRules: (expectedRevision, nodes) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, nodes),
   getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
   getCollection: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionGet),
   replaceCollection: (expectedRevision, nodes) =>
@@ -149,6 +149,8 @@ const api: InterceptorDesktopApi = {
       expectedRevision,
       nodes,
     ),
+  exportCollection: (nodes, title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionExport, nodes, title),
   sendComposerRequest: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
   listBreakpoints: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointList),

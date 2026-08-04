@@ -48,13 +48,12 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
   const rule = useRulesStore(selectedRule);
-  const rules = useRulesStore((state) => state.rules);
   const revision = useRulesStore((state) => state.revision);
-  const dirty = useRulesStore((state) => isRulesDirty(state.rules, state.applied));
+  const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
   const hits = useRulesStore((state) => state.hits);
-  const renameRule = useRulesStore((state) => state.renameRule);
+  const renameNode = useRulesStore((state) => state.renameNode);
   const toggleRule = useRulesStore((state) => state.toggleRule);
-  const removeRule = useRulesStore((state) => state.removeRule);
+  const removeNode = useRulesStore((state) => state.removeNode);
   const addMatcher = useRulesStore((state) => state.addMatcher);
   const updateMatcher = useRulesStore((state) => state.updateMatcher);
   const removeMatcher = useRulesStore((state) => state.removeMatcher);
@@ -70,7 +69,6 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
     );
   }
 
-  const ruleIndex = rules.findIndex((item) => item.id === rule.id);
   const issues = ruleIssues(rule);
   const matchedRequests = hits[rule.id] ?? 0;
   const enableBlocked = !rule.enabled && !isRuleComplete(rule);
@@ -102,7 +100,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           value={rule.name}
           aria-label={t('rules.ruleName')}
           spellCheck={false}
-          onChange={(event) => renameRule(rule.id, event.target.value)}
+          onChange={(event) => renameNode(rule.id, event.target.value)}
         />
         <StatusBadge>{rule.enabled ? t('rules.enabled') : t('rules.disabled')}</StatusBadge>
         <Switch
@@ -146,7 +144,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           icon={Trash2}
           label={t('rules.deleteRule')}
           size="sm"
-          onClick={() => removeRule(rule.id)}
+          onClick={() => removeNode(rule.id)}
         />
       </div>
 

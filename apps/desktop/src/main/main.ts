@@ -53,7 +53,7 @@ import {
   toByteRange,
   toCollectionNodes,
   toComposerRequest,
-  toCoreRuleDefinitions,
+  toCoreRuleNodes,
   toCoreSessionQuery,
   toGrpcMessageQuery,
   toHarExportRequest,
@@ -1031,15 +1031,15 @@ class DesktopApplication {
     // 冲突/非法/其它失败以结构化结果返回，避免 IPC 抛错丢失错误码。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.rulesReplace,
-      async (event, expectedRevision: unknown, rules: unknown) => {
+      async (event, expectedRevision: unknown, nodes: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        const definitions = toCoreRuleDefinitions(rules);
+        const ruleNodes = toCoreRuleNodes(nodes);
         try {
           const result = await this.coreRuntime.request({
             type: 'rules.replace',
             payload: {
               expectedRevision: expectedRevision as number,
-              rules: definitions,
+              nodes: ruleNodes,
             },
           });
           return { ok: true, revision: result.payload.revision };
@@ -1087,6 +1087,30 @@ class DesktopApplication {
         } catch (error) {
           return DesktopApplication.toReplaceFailure(error);
         }
+      },
+    );
+
+    // 集合导出：数据本来就在 Renderer 手上，Main 只负责选路径并落盘，不经过 Core。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.collectionExport,
+      async (event, nodes: unknown, title: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const collectionNodes = toCollectionNodes(nodes);
+        const selection = await dialog.showSaveDialog({
+          title: title as string,
+          defaultPath: `interceptor-collection-${new Date().toISOString().slice(0, 10)}.json`,
+          filters: [{ name: 'JSON', extensions: ['json'] }],
+          properties: ['createDirectory', 'showOverwriteConfirmation'],
+        });
+        if (selection.canceled || !selection.filePath) {
+          return false;
+        }
+        await writeFile(
+          selection.filePath,
+          JSON.stringify({ nodes: collectionNodes }, null, 2),
+          'utf8',
+        );
+        return true;
       },
     );
 

@@ -6,6 +6,8 @@
  * beforeResponseHead 头部阶段求值；持久化模型绝不包含 JavaScript 代码或 Mockttp 运行时句柄。
  */
 
+import type { TreeFolder, TreeNode } from './tree';
+
 /** 规则作用阶段：请求发往上游前，或响应返回客户端前。 */
 export type RulePhase = 'request' | 'response';
 
@@ -114,19 +116,25 @@ export type RuleActionType = RuleAction['type'];
 
 /** 一条规则：标识 + 匹配条件（AND）+ 动作序列。 */
 export interface RuleDefinition {
+  readonly kind: 'rule';
   readonly id: string;
   readonly name: string;
   readonly enabled: boolean;
-  /** 数值小者优先；同优先级按 id 稳定排序。 */
+  /** 数值小者优先；同优先级按 id 稳定排序。Renderer 在每次结构变更后按树的深度优先顺序重新分配。 */
   readonly priority: number;
   readonly matchers: readonly RuleMatcher[];
   readonly actions: readonly RuleAction[];
 }
 
+/** 命名目录，可继续嵌套目录或规则；只用于组织，不参与匹配与优先级。 */
+export type RuleFolder = TreeFolder<RuleDefinition>;
+
+export type RuleNode = TreeNode<RuleDefinition>;
+
 /** 版本化规则集：revision 单调递增，用于乐观并发与原子替换。 */
 export interface RuleSet {
   readonly revision: number;
-  readonly rules: readonly RuleDefinition[];
+  readonly nodes: readonly RuleNode[];
 }
 
 /** 单条规则命中的请求数（按 Rule × Exchange 去重），供 Rules UI hit counter。 */

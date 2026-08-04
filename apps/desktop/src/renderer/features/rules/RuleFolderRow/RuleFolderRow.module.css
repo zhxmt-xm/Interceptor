@@ -1,0 +1,93 @@
+/* 缩进与规则行同源：一级 = chevron 槽宽 + gap，放在行内部以保证 hover 背景占满整列。 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0 4px 0 calc(4px + var(--depth) * 26px);
+  border-radius: 7px;
+  color: var(--text);
+  user-select: none;
+  cursor: pointer;
+}
+.row:hover {
+  background: var(--hover);
+}
+.dragging {
+  opacity: 0.35;
+}
+.dropTarget {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.chevronButton {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 100%;
+  flex: 0 0 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--text-2);
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+.expanded {
+  transform: rotate(0deg);
+}
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 640;
+}
+.more {
+  display: none;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.more svg {
+  width: 13px;
+  height: 13px;
+}
+.more:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.row:hover .more,
+.menuOpen .more {
+  display: grid;
+}
+.menuOpen {
+  background: var(--hover);
+}
+.menuOpen .more {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

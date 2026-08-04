@@ -1,3 +1,4 @@
+import { collectLeaves } from '@interceptor/core-protocol';
 import type { RuleDefinition, RuleHeaderPair } from '@interceptor/core-protocol';
 
 import { MCP_MAX_PAGE_LIMIT } from '../constants';
@@ -447,7 +448,8 @@ function buildWriteTools(): readonly McpToolDefinition[] {
           payload: {},
         }, context.abortSignal);
         const next = requireObjectArray(args, 'rules');
-        const currentNames = current.payload.ruleSet.rules.map((rule) => rule.name);
+        const currentNames = collectLeaves(current.payload.ruleSet.nodes)
+          .map((rule) => rule.name);
         const nextNames = next.map((rule) => String(rule['name'] ?? '(unnamed)'));
         return [
           `Rule count: ${currentNames.length} → ${nextNames.length}`,
@@ -474,7 +476,8 @@ function buildWriteTools(): readonly McpToolDefinition[] {
           payload: {
             expectedRevision: baseRevision,
             // AI 写入的规则永不直接对真实流量生效，启用只能由用户完成。
-            rules: rules.map((rule) => ({ ...rule, enabled: false }) as unknown as RuleDefinition),
+            nodes: rules.map((rule) =>
+              ({ ...rule, kind: 'rule', enabled: false }) as unknown as RuleDefinition),
           },
         }, context.abortSignal);
         return result.payload;

@@ -497,7 +497,8 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     );
     ruleService.setRuleSet({
       revision: 1,
-      rules: [{
+      nodes: [{
+        kind: 'rule',
         id: 'h2-url-rule',
         name: 'H2 URL rule',
         enabled: true,

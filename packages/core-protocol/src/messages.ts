@@ -1,5 +1,5 @@
 import type { Collection, CollectionNode } from './collection';
-import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './rules';
+import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleNode, RuleSet } from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
@@ -98,7 +98,7 @@ export interface RulesReplaceCommand {
   type: 'rules.replace';
   payload: {
     expectedRevision: number;
-    rules: RuleDefinition[];
+    nodes: RuleNode[];
   };
 }
 
