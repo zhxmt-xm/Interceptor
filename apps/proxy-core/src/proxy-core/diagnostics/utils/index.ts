@@ -14,11 +14,11 @@ import type {
 export function openDiagnosticsDatabase(
   location: string,
 ): OpenDiagnosticsDatabaseResult {
-  const db = new DatabaseSync(location);
+  const databaseSync = new DatabaseSync(location);
   try {
-    db.exec('PRAGMA journal_mode = WAL');
-    db.exec('PRAGMA synchronous = NORMAL');
-    db.exec(`
+    databaseSync.exec('PRAGMA journal_mode = WAL');
+    databaseSync.exec('PRAGMA synchronous = NORMAL');
+    databaseSync.exec(`
       CREATE TABLE IF NOT EXISTS log_record (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ts_ms INTEGER NOT NULL,
@@ -49,9 +49,9 @@ export function openDiagnosticsDatabase(
       CREATE INDEX IF NOT EXISTS idx_log_outcome ON log_record(outcome);
       CREATE INDEX IF NOT EXISTS idx_log_duration ON log_record(duration_ms);
     `);
-    return { db };
+    return { databaseSync: databaseSync };
   } catch (error) {
-    db.close();
+    databaseSync.close();
     throw error;
   }
 }

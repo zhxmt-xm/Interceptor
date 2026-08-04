@@ -16,10 +16,10 @@ describe('SystemProxyJournal', () => {
   });
 
   it('persists preparing snapshots and atomically advances ownership', async () => {
-    const journal = await createJournal(directories);
-    await journal.begin('win32', { flags: 1 }, { flags: 3 });
+    const systemProxyJournal = await createJournal(directories);
+    await systemProxyJournal.begin('win32', { flags: 1 }, { flags: 3 });
 
-    expect(await journal.read()).toMatchObject({
+    expect(await systemProxyJournal.read()).toMatchObject({
       version: 1,
       platform: 'win32',
       phase: 'preparing',
@@ -27,24 +27,24 @@ describe('SystemProxyJournal', () => {
       owned: { flags: 3 },
     });
 
-    await journal.markOwned('win32');
-    expect(await journal.read()).toMatchObject({ phase: 'owned' });
-    await journal.clear();
-    expect(await journal.read()).toBeNull();
+    await systemProxyJournal.markOwned('win32');
+    expect(await systemProxyJournal.read()).toMatchObject({ phase: 'owned' });
+    await systemProxyJournal.clear();
+    expect(await systemProxyJournal.read()).toBeNull();
   });
 
   it('rejects malformed JSON and accepts data beyond the former size limit', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-proxy-'));
     directories.push(directory);
     const journalPath = path.join(directory, 'ownership.json');
-    const journal = new SystemProxyJournal(journalPath);
+    const systemProxyJournal = new SystemProxyJournal(journalPath);
 
     await writeFile(journalPath, '{bad', 'utf8');
-    await expect(journal.read()).rejects.toBeInstanceOf(SystemProxyJournalError);
+    await expect(systemProxyJournal.read()).rejects.toBeInstanceOf(SystemProxyJournalError);
 
     const completeValue = 'x'.repeat(1024 * 1024 + 1);
-    await journal.begin('win32', { completeValue }, { flags: 3 });
-    expect(await journal.read()).toMatchObject({
+    await systemProxyJournal.begin('win32', { completeValue }, { flags: 3 });
+    expect(await systemProxyJournal.read()).toMatchObject({
       original: { completeValue },
     });
   });

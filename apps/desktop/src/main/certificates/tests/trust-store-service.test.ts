@@ -34,76 +34,76 @@ const SHA1 = 'AABBCCDDEEFF00112233445566778899AABBCCDD';
 
 describe('TrustStoreService', () => {
   it('installs into the local machine root store on Windows via elevated certutil', async () => {
-    const elevated = new RecordingElevatedRunner();
-    const service = new TrustStoreService({ platform: 'win32', elevatedRunner: elevated });
-    await service.install('C:/certs/root.pem');
-    expect(elevated.calls[0]).toBe('certutil -addstore -f Root "C:/certs/root.pem"');
+    const recordingElevatedRunner = new RecordingElevatedRunner();
+    const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
+    await trustStoreService.install('C:/certs/root.pem');
+    expect(recordingElevatedRunner.calls[0]).toBe('certutil -addstore -f Root "C:/certs/root.pem"');
   });
 
   it('installs into the system keychain on macOS via elevated security', async () => {
-    const elevated = new RecordingElevatedRunner();
-    const service = new TrustStoreService({
+    const recordingElevatedRunner = new RecordingElevatedRunner();
+    const trustStoreService = new TrustStoreService({
       platform: 'darwin',
-      elevatedRunner: elevated,
+      elevatedRunner: recordingElevatedRunner,
       systemKeychainPath: '/Library/Keychains/System.keychain',
     });
-    await service.install('/certs/root.pem');
-    expect(elevated.calls[0]).toBe(
+    await trustStoreService.install('/certs/root.pem');
+    expect(recordingElevatedRunner.calls[0]).toBe(
       'security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" "/certs/root.pem"',
     );
   });
 
   it('uninstalls by SHA-1 thumbprint on Windows (elevated)', async () => {
-    const elevated = new RecordingElevatedRunner();
-    const service = new TrustStoreService({ platform: 'win32', elevatedRunner: elevated });
-    await service.uninstall(SHA1);
-    expect(elevated.calls[0]).toBe(`certutil -delstore Root ${SHA1}`);
+    const recordingElevatedRunner = new RecordingElevatedRunner();
+    const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
+    await trustStoreService.uninstall(SHA1);
+    expect(recordingElevatedRunner.calls[0]).toBe(`certutil -delstore Root ${SHA1}`);
   });
 
   it('uninstalls by SHA-1 thumbprint on macOS (elevated)', async () => {
-    const elevated = new RecordingElevatedRunner();
-    const service = new TrustStoreService({
+    const recordingElevatedRunner = new RecordingElevatedRunner();
+    const trustStoreService = new TrustStoreService({
       platform: 'darwin',
-      elevatedRunner: elevated,
+      elevatedRunner: recordingElevatedRunner,
       systemKeychainPath: '/kc',
     });
-    await service.uninstall(SHA1);
-    expect(elevated.calls[0]).toBe(`security delete-certificate -Z ${SHA1} "/kc"`);
+    await trustStoreService.uninstall(SHA1);
+    expect(recordingElevatedRunner.calls[0]).toBe(`security delete-certificate -Z ${SHA1} "/kc"`);
   });
 
   it('throws when an elevated command exits non-zero', async () => {
-    const elevated = new RecordingElevatedRunner();
-    elevated.result = { code: 1, stdout: '', stderr: 'denied' };
-    const service = new TrustStoreService({ platform: 'win32', elevatedRunner: elevated });
-    await expect(service.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
+    const recordingElevatedRunner = new RecordingElevatedRunner();
+    recordingElevatedRunner.result = { code: 1, stdout: '', stderr: 'denied' };
+    const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
+    await expect(trustStoreService.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
   });
 
   it('detects Windows trust by exit code (local machine store)', async () => {
-    const runner = new RecordingRunner();
-    const service = new TrustStoreService({ platform: 'win32', runner });
-    runner.result = { code: 0, stdout: '', stderr: '' };
-    expect(await service.isTrusted(SHA1)).toBe(true);
-    expect(runner.calls[0]).toEqual({
+    const recordingRunner = new RecordingRunner();
+    const trustStoreService = new TrustStoreService({ platform: 'win32', runner: recordingRunner });
+    recordingRunner.result = { code: 0, stdout: '', stderr: '' };
+    expect(await trustStoreService.isTrusted(SHA1)).toBe(true);
+    expect(recordingRunner.calls[0]).toEqual({
       command: 'certutil',
       args: ['-verifystore', 'Root', SHA1],
     });
-    runner.result = { code: 1, stdout: '', stderr: '' };
-    expect(await service.isTrusted(SHA1)).toBe(false);
+    recordingRunner.result = { code: 1, stdout: '', stderr: '' };
+    expect(await trustStoreService.isTrusted(SHA1)).toBe(false);
   });
 
   it('detects macOS trust when the thumbprint is listed', async () => {
-    const runner = new RecordingRunner();
-    const service = new TrustStoreService({ platform: 'darwin', runner, systemKeychainPath: '/kc' });
-    runner.result = { code: 0, stdout: `SHA-1 hash: ${SHA1}\n`, stderr: '' };
-    expect(await service.isTrusted(SHA1)).toBe(true);
-    runner.result = { code: 0, stdout: 'SHA-1 hash: 0000\n', stderr: '' };
-    expect(await service.isTrusted(SHA1)).toBe(false);
+    const recordingRunner = new RecordingRunner();
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner, systemKeychainPath: '/kc' });
+    recordingRunner.result = { code: 0, stdout: `SHA-1 hash: ${SHA1}\n`, stderr: '' };
+    expect(await trustStoreService.isTrusted(SHA1)).toBe(true);
+    recordingRunner.result = { code: 0, stdout: 'SHA-1 hash: 0000\n', stderr: '' };
+    expect(await trustStoreService.isTrusted(SHA1)).toBe(false);
   });
 
   it('reports unsupported platforms and refuses to install', async () => {
-    const service = new TrustStoreService({ platform: 'linux' });
-    expect(service.supported()).toBe(false);
-    expect(await service.isTrusted(SHA1)).toBe(false);
-    await expect(service.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
+    const trustStoreService = new TrustStoreService({ platform: 'linux' });
+    expect(trustStoreService.supported()).toBe(false);
+    expect(await trustStoreService.isTrusted(SHA1)).toBe(false);
+    await expect(trustStoreService.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
   });
 });

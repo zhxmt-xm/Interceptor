@@ -13,8 +13,8 @@ import type {
   RuleSet,
 } from '@interceptor/core-protocol';
 
-import { RuleActionExecutor } from './rule-action-executor';
-import { BreakpointQueue } from './rule-breakpoint-queue';
+import { ActionExecutor } from './internal/action-executor';
+import { BreakpointQueue } from './internal/breakpoint-queue';
 import type {
   BreakpointOutcome,
   BreakpointSnapshot,
@@ -24,7 +24,7 @@ import type {
   MutableResponseState,
   RequestEvaluation,
   ResponseEvaluation,
-  RuleEngineOptions,
+  RuleServiceOptions,
   RuleHeaderEffect,
   RuleHitRecord,
 } from './interfaces';
@@ -34,7 +34,7 @@ import * as RuleUtils from './utils';
  * Core 独占的规则引擎实例，由 proxy-service 在 beforeRequestHead/beforeResponseHead 调用，
  * 由 core-application 在 rules.replace 成功后 setRuleSet 热切换。
  */
-export class RuleEngine {
+export class RuleService {
   /** 当前持久化规则集快照。 */
   private ruleSet: RuleSet = { revision: 0, rules: [] };
   /** 当前启用且已编译的规则，按优先级排序。 */
@@ -42,20 +42,20 @@ export class RuleEngine {
   /** 全局断点命中开关。 */
   private breakpointsOn = true;
   /** 共享等待中断点队列。 */
-  private readonly breakpoints: BreakpointQueue;
+  private readonly breakpointQueue: BreakpointQueue;
   /** 规则引擎装配选项。 */
-  private readonly options: RuleEngineOptions;
+  private readonly options: RuleServiceOptions;
   /** 请求与响应 action 执行器。 */
-  private readonly actionExecutor: RuleActionExecutor;
+  private readonly actionExecutor: ActionExecutor;
 
   /** 绑定断点队列并固定通知配置。 */
   constructor(
-    breakpoints: BreakpointQueue,
-    options: RuleEngineOptions = {},
+    breakpointQueue: BreakpointQueue,
+    options: RuleServiceOptions = {},
   ) {
-    this.breakpoints = breakpoints;
+    this.breakpointQueue = breakpointQueue;
     this.options = options;
-    this.actionExecutor = new RuleActionExecutor();
+    this.actionExecutor = new ActionExecutor();
   }
 
   /**
@@ -102,7 +102,7 @@ export class RuleEngine {
     if (!this.breakpointsOn) {
       return { state: 'continued' };
     }
-    const { id, outcome } = this.breakpoints.suspend(
+    const { id, outcome } = this.breakpointQueue.suspend(
       'websocket',
       timeoutMs,
       'continue',
@@ -245,7 +245,7 @@ export class RuleEngine {
     if (!this.breakpointsOn) {
       return { state: 'continued' };
     }
-    const { id, outcome } = this.breakpoints.suspend(
+    const { id, outcome } = this.breakpointQueue.suspend(
       phase,
       action.timeoutMs,
       action.onTimeout,

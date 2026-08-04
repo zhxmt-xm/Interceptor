@@ -21,17 +21,17 @@ export class PendingRpcRequest {
 
   start(
     timeoutMs: number | undefined,
-    signal: AbortSignal | undefined,
+    abortSignal: AbortSignal | undefined,
     cancel: (reason: 'caller' | 'timeout') => void,
   ): void {
     if (timeoutMs !== undefined) {
       this.timer = setTimeout(() => cancel('timeout'), timeoutMs);
     }
-    if (signal) {
+    if (abortSignal) {
       const listener = (): void => cancel('caller');
-      signal.addEventListener('abort', listener, { once: true });
-      this.removeAbortListener = () => signal.removeEventListener('abort', listener);
-      if (signal.aborted) {
+      abortSignal.addEventListener('abort', listener, { once: true });
+      this.removeAbortListener = () => abortSignal.removeEventListener('abort', listener);
+      if (abortSignal.aborted) {
         cancel('caller');
       }
     }

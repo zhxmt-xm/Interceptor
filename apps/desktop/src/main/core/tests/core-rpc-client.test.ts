@@ -61,27 +61,27 @@ afterEach(() => {
 
 describe('CoreRpcClient', () => {
   it('attaches a port without an extra handshake', () => {
-    const client = new CoreRpcClient();
-    const port = new FakeRpcPort();
+    const coreRpcClient = new CoreRpcClient();
+    const fakeRpcPort = new FakeRpcPort();
 
-    client.attach(port);
+    coreRpcClient.attach(fakeRpcPort);
 
-    expect(port.started).toBe(true);
-    expect(port.sent).toHaveLength(0);
+    expect(fakeRpcPort.started).toBe(true);
+    expect(fakeRpcPort.sent).toHaveLength(0);
   });
 
   it('replaces the previous port and rejects its pending request', async () => {
-    const client = new CoreRpcClient();
+    const coreRpcClient = new CoreRpcClient();
     const first = new FakeRpcPort();
     const second = new FakeRpcPort();
-    client.attach(first);
-    const pending = client.request(
+    coreRpcClient.attach(first);
+    const pending = coreRpcClient.request(
       { type: 'echo', payload: { value: 'old' } },
       { requestId: 'request-old', traceId: 'trace-old' },
     );
     const rejection = expect(pending).rejects.toThrow('replaced');
 
-    client.attach(second);
+    coreRpcClient.attach(second);
 
     await rejection;
     expect(first.closed).toBe(true);
@@ -90,18 +90,18 @@ describe('CoreRpcClient', () => {
   });
 
   it('correlates a successful response with its request and trace', async () => {
-    const { client, port } = connectedClient();
-    const response = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const response = coreRpcClient.request(
       { type: 'echo', payload: { value: 'hello' } },
       { requestId: 'request-echo', traceId: 'trace-echo' },
     );
 
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       kind: 'request',
       requestId: 'request-echo',
       traceId: 'trace-echo',
     });
-    port.receive(successResponse('request-echo', 'trace-echo', 'hello'));
+    fakeRpcPort.receive(successResponse('request-echo', 'trace-echo', 'hello'));
 
     await expect(response).resolves.toMatchObject({
       type: 'echo',
@@ -110,8 +110,8 @@ describe('CoreRpcClient', () => {
   });
 
   it('returns structured Core errors', async () => {
-    const { client, port } = connectedClient();
-    const response = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const response = coreRpcClient.request(
       {
         type: 'sessions.query',
         payload: { limit: 10, sort: 'started_desc', filter: {} },
@@ -119,7 +119,7 @@ describe('CoreRpcClient', () => {
       { requestId: 'request-error', traceId: 'trace-error' },
     );
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-error',
@@ -140,8 +140,8 @@ describe('CoreRpcClient', () => {
 
   it('times out, sends cancel, and ignores a late response', async () => {
     vi.useFakeTimers();
-    const { client, port } = connectedClient();
-    const response = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const response = coreRpcClient.request(
       { type: 'echo', payload: { value: 'slow' } },
       {
         requestId: 'request-timeout',
@@ -153,25 +153,25 @@ describe('CoreRpcClient', () => {
 
     await vi.advanceTimersByTimeAsync(100);
     await rejection;
-    expect(port.sent.at(-1)).toEqual({
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
       kind: 'cancel',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-timeout',
       reason: 'timeout',
     });
 
-    port.receive(successResponse('request-timeout', 'trace-timeout', 'late'));
-    expect(port.closed).toBe(false);
+    fakeRpcPort.receive(successResponse('request-timeout', 'trace-timeout', 'late'));
+    expect(fakeRpcPort.closed).toBe(false);
   });
 
   it('sends cancel when AbortSignal aborts a request', async () => {
-    const { client, port } = connectedClient();
-    const controller = new AbortController();
-    const response = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const abortController = new AbortController();
+    const response = coreRpcClient.request(
       { type: 'echo', payload: { value: 'wait' } },
       {
         requestId: 'request-abort',
-        signal: controller.signal,
+        abortSignal: abortController.signal,
         traceId: 'trace-abort',
       },
     );
@@ -179,9 +179,9 @@ describe('CoreRpcClient', () => {
       code: 'cancelled',
     });
 
-    controller.abort();
+    abortController.abort();
     await rejection;
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       kind: 'cancel',
       requestId: 'request-abort',
       reason: 'caller',
@@ -189,33 +189,33 @@ describe('CoreRpcClient', () => {
   });
 
   it('rejects every pending request when the port closes', async () => {
-    const { client, port } = connectedClient();
-    const first = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const first = coreRpcClient.request(
       { type: 'echo', payload: { value: 'one' } },
       { requestId: 'request-1', traceId: 'trace-1' },
     );
-    const second = client.request(
+    const second = coreRpcClient.request(
       { type: 'echo', payload: { value: 'two' } },
       { requestId: 'request-2', traceId: 'trace-2' },
     );
     const firstRejection = expect(first).rejects.toThrow('closed');
     const secondRejection = expect(second).rejects.toThrow('closed');
 
-    port.remoteClose();
+    fakeRpcPort.remoteClose();
 
     await firstRejection;
     await secondRejection;
   });
 
   it('rejects only the request when result type does not match', async () => {
-    const { client, port } = connectedClient();
-    const response = client.request(
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const response = coreRpcClient.request(
       { type: 'echo', payload: { value: 'hello' } },
       { requestId: 'request-mismatch', traceId: 'trace-mismatch' },
     );
     const rejection = expect(response).rejects.toThrow('does not match');
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-mismatch',
@@ -228,15 +228,15 @@ describe('CoreRpcClient', () => {
     });
 
     await rejection;
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
   });
 
   it('drops and acknowledges an invalid event batch without closing the connection', () => {
-    const { client, port } = connectedClient();
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
     const onProtocolIssue = vi.fn();
-    client.onProtocolIssue(onProtocolIssue);
+    coreRpcClient.onProtocolIssue(onProtocolIssue);
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'event-batch',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence: 1,
@@ -244,23 +244,23 @@ describe('CoreRpcClient', () => {
     });
 
     expect(onProtocolIssue).toHaveBeenCalledOnce();
-    expect(port.sent.at(-1)).toEqual({
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
       kind: 'event-ack',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence: 1,
     });
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
   });
 
   it('acknowledges a batch when the event consumer throws', () => {
-    const { client, port } = connectedClient();
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
     const onProtocolIssue = vi.fn();
-    client.onProtocolIssue(onProtocolIssue);
-    client.onCaptureEvents(() => {
+    coreRpcClient.onProtocolIssue(onProtocolIssue);
+    coreRpcClient.onCaptureEvents(() => {
       throw new Error('window was destroyed');
     });
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'event-batch',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence: 2,
@@ -270,38 +270,38 @@ describe('CoreRpcClient', () => {
     expect(onProtocolIssue).toHaveBeenCalledWith(
       'Capture event consumer failed: window was destroyed',
     );
-    expect(port.sent.at(-1)).toEqual({
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
       kind: 'event-ack',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence: 2,
     });
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
   });
 
   it('cleans up when attaching or posting fails', async () => {
-    const client = new CoreRpcClient();
+    const coreRpcClient = new CoreRpcClient();
     const attachFailure = new FakeRpcPort();
     attachFailure.start = () => {
       throw new Error('start failed');
     };
-    expect(() => client.attach(attachFailure)).toThrow('Unable to initialize');
+    expect(() => coreRpcClient.attach(attachFailure)).toThrow('Unable to initialize');
     expect(attachFailure.closed).toBe(true);
 
-    const port = new FakeRpcPort();
-    client.attach(port);
-    port.postError = new Error('post failed');
-    await expect(client.request({
+    const fakeRpcPort = new FakeRpcPort();
+    coreRpcClient.attach(fakeRpcPort);
+    fakeRpcPort.postError = new Error('post failed');
+    await expect(coreRpcClient.request({
       type: 'echo',
       payload: { value: 'hello' },
     })).rejects.toMatchObject({ code: 'disconnected' });
   });
 });
 
-function connectedClient(): { client: CoreRpcClient; port: FakeRpcPort } {
-  const client = new CoreRpcClient();
-  const port = new FakeRpcPort();
-  client.attach(port);
-  return { client, port };
+function connectedClient(): { coreRpcClient: CoreRpcClient; fakeRpcPort: FakeRpcPort } {
+  const coreRpcClient = new CoreRpcClient();
+  const fakeRpcPort = new FakeRpcPort();
+  coreRpcClient.attach(fakeRpcPort);
+  return { coreRpcClient, fakeRpcPort };
 }
 
 function successResponse(

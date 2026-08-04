@@ -18,7 +18,7 @@ import {
 import { CoreDiagnostics } from './core-diagnostics';
 import { ClientAppService } from './client-app/entry';
 import { ComposerService } from './composer/entry';
-import { ConnectionService } from './connection/entry';
+import { TlsProbeService } from './tls-probe/entry';
 import {
   CoreCommandError,
   CoreRpcServer,
@@ -30,14 +30,15 @@ import type { DiagnosticsPage } from './diagnostics/interfaces';
 import { GrpcService } from './grpc/entry';
 import { HarService } from './har/entry';
 import { ArchiveService } from './archive/entry';
-import { TransferJobManager } from './transfer/entry';
+import { TransferService } from './transfer/entry';
 import { ProxyService } from './proxy/entry';
-import { CaptureEventQueue } from './proxy/proxy-capture-event-queue';
+import { CaptureEventQueue } from './proxy/internal/capture-event-queue';
 import { decodeBodyStream } from './proxy/utils';
-import { RuleEngine } from './rules/entry';
-import { BreakpointQueue } from './rules/rule-breakpoint-queue';
-import { StorageService } from './storage/entry';
-import type { CleanupScope } from './storage/interfaces';
+import { RuleService } from './rules/entry';
+import { BreakpointQueue } from './rules/internal/breakpoint-queue';
+import { CaptureService } from './capture/entry';
+import type { CleanupScope } from './capture/interfaces';
+import { WorkspaceService } from './workspace/entry';
 
 export interface ParentMessageEvent {
   data: unknown;
@@ -50,8 +51,10 @@ export interface CoreParentPort {
 }
 
 export interface CoreApplicationOptions {
-  /** Core 拥有的存储门面；缺省时存储相关 command 返回 internal 错误。 */
-  storageService?: StorageService;
+  /** Core 拥有的当前 Recording 抓包数据；缺省时相关 command 返回 internal 错误。 */
+  captureService?: CaptureService;
+  /** 跨 Recording 持久的低频工作区配置；缺省时 rules/collection command 返回 internal 错误。 */
+  workspaceService?: WorkspaceService;
   /** 诊断日志汇；缺省时日志只进内存 Ring Buffer，diagnostics.query 返回空页。 */
   diagnosticsService?: DiagnosticsService;
   /** 显式代理服务；缺省时 proxy.start/stop 返回 internal，proxy.status 返回未监听。 */
@@ -61,10 +64,10 @@ export interface CoreApplicationOptions {
   /** 断点状态机；rule-engine 挂起、breakpoint.resolve handler 解挂，退出时确定性关闭。 */
   breakpointQueue?: BreakpointQueue;
   /** 规则引擎；proxy-service beforeRequestHead/beforeResponseHead 调用，rules.replace 后热切换。 */
-  ruleEngine?: RuleEngine;
+  ruleService?: RuleService;
   /** 本机应用归属解析；缺省时自动创建一个不支持反查的实例。 */
   clientAppService?: ClientAppService;
-  /** HAR 文件任务门面；缺省时随 StorageService 自动创建。 */
+  /** HAR 文件任务门面；缺省时随 CaptureService 自动创建。 */
   harService?: HarService;
 }
 
@@ -77,32 +80,32 @@ export type CoreLifecycleMessage =
 /**
  * Proxy Core UtilityProcess 内唯一的应用根对象。
  *
- * CoreApplication 直接拥有 parentPort 生命周期、CoreRpcServer、
- * CoreDiagnostics，以及 M2/M3 后续加入的 Storage/Proxy Service。Main 侧的
- * CoreRuntime 只管理进程代际和连接，不进入这里承载业务逻辑。
+ * CoreApplication 直接拥有 parentPort 生命周期、CoreRpcServer、CoreDiagnostics，以及各业务
+ * 模块的唯一实例。Main 侧的 CoreRuntime 只管理进程代际和连接，不进入这里承载业务逻辑。
  */
 export class CoreApplication implements CoreRpcHost {
-  readonly diagnostics: CoreDiagnostics;
-  private readonly rpcServer: CoreRpcServer;
-  private readonly storageService: StorageService | null;
+  readonly coreDiagnostics: CoreDiagnostics;
+  private readonly coreRpcServer: CoreRpcServer;
+  private readonly captureService: CaptureService | null;
+  private readonly workspaceService: WorkspaceService | null;
   private readonly diagnosticsService: DiagnosticsService | null;
   private readonly proxyService: ProxyService | null;
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
-  private readonly ruleEngine: RuleEngine | null;
-  private readonly composer = new ComposerService();
+  private readonly ruleService: RuleService | null;
+  private readonly composerService = new ComposerService();
   /** 按需执行只握手 TLS 探测。 */
-  private readonly connection = new ConnectionService();
+  private readonly tlsProbe = new TlsProbeService();
   /** 把客户端源端口反查成发起流量的本机应用。 */
-  private readonly clientApp: ClientAppService;
+  private readonly clientAppService: ClientAppService;
   /** 从已捕获 body 分页读取 gRPC envelope。 */
-  private readonly grpc: GrpcService | null;
+  private readonly grpcService: GrpcService | null;
   /** HAR 与原生 archive 共用的异步文件任务管理器。 */
-  private readonly transferJobs = new TransferJobManager();
-  /** HAR 文件转换与异步任务门面；无 Storage 时不可用。 */
-  private readonly har: HarService | null;
-  /** 原生 archive 文件转换门面；无 Storage 时不可用。 */
-  private readonly archive: ArchiveService | null;
+  private readonly transferService = new TransferService();
+  /** HAR 文件转换与异步任务门面；无抓包数据时不可用。 */
+  private readonly harService: HarService | null;
+  /** 原生 archive 文件转换门面；无抓包数据时不可用。 */
+  private readonly archiveService: ArchiveService | null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private eventFlushTimer: ReturnType<typeof setInterval> | null = null;
   /** 已发送且尚未收到对应 ack 的 event batch sequence。 */
@@ -119,34 +122,36 @@ export class CoreApplication implements CoreRpcHost {
    */
   static bootstrap(parentPort: CoreParentPort): void {
     try {
-      const storageService = dataDir ? new StorageService() : undefined;
+      const captureService = dataDir ? new CaptureService() : undefined;
+      const workspaceService = dataDir ? new WorkspaceService() : undefined;
       const diagnosticsService = dataDir
         ? new DiagnosticsService()
         : undefined;
-      const captureEventQueue = storageService
+      const captureEventQueue = captureService
         ? new CaptureEventQueue()
         : undefined;
       const breakpointQueue = new BreakpointQueue();
-      const ruleEngine = new RuleEngine(breakpointQueue);
+      const ruleService = new RuleService(breakpointQueue);
       const clientAppService = new ClientAppService({
         helperPath: clientAppHelperPath ?? undefined,
       });
       const proxyService =
-        storageService && captureEventQueue
+        captureService && captureEventQueue
           ? new ProxyService(
-              storageService,
+              captureService,
               captureEventQueue,
-              ruleEngine,
+              ruleService,
               clientAppService,
             )
           : undefined;
       new CoreApplication(parentPort, {
-        storageService,
+        captureService,
+        workspaceService,
         diagnosticsService,
         proxyService,
         captureEventQueue,
         breakpointQueue,
-        ruleEngine,
+        ruleService,
         clientAppService,
       }).start();
     } catch (error) {
@@ -162,28 +167,29 @@ export class CoreApplication implements CoreRpcHost {
     private readonly parentPort: CoreParentPort,
     options: CoreApplicationOptions = {},
   ) {
-    this.storageService = options.storageService ?? null;
+    this.captureService = options.captureService ?? null;
+    this.workspaceService = options.workspaceService ?? null;
     this.diagnosticsService = options.diagnosticsService ?? null;
     this.proxyService = options.proxyService ?? null;
     this.captureEventQueue = options.captureEventQueue ?? null;
     this.breakpointQueue = options.breakpointQueue ?? null;
-    this.ruleEngine = options.ruleEngine ?? null;
-    this.clientApp = options.clientAppService ?? new ClientAppService();
-    this.grpc = this.storageService ? new GrpcService(this.storageService) : null;
-    this.har = options.harService ??
-      (this.storageService
-        ? new HarService(this.storageService, this.transferJobs)
+    this.ruleService = options.ruleService ?? null;
+    this.clientAppService = options.clientAppService ?? new ClientAppService();
+    this.grpcService = this.captureService ? new GrpcService(this.captureService) : null;
+    this.harService = options.harService ??
+      (this.captureService
+        ? new HarService(this.captureService, this.transferService)
         : null);
-    this.archive = this.storageService
-      ? new ArchiveService(this.storageService, this.transferJobs)
+    this.archiveService = this.captureService
+      ? new ArchiveService(this.captureService, this.transferService)
       : null;
-    this.diagnostics = new CoreDiagnostics(
+    this.coreDiagnostics = new CoreDiagnostics(
       this.diagnosticsService ?? undefined,
     );
-    this.proxyService?.attachDiagnostics(this.diagnostics);
-    this.storageService?.attachDiagnostics(this.diagnostics);
-    this.clientApp.attachDiagnostics(this.diagnostics);
-    this.rpcServer = new CoreRpcServer(this);
+    this.proxyService?.attachDiagnostics(this.coreDiagnostics);
+    this.captureService?.attachDiagnostics(this.coreDiagnostics);
+    this.clientAppService.attachDiagnostics(this.coreDiagnostics);
+    this.coreRpcServer = new CoreRpcServer(this);
   }
 
   /**
@@ -218,8 +224,9 @@ export class CoreApplication implements CoreRpcHost {
       );
     }
     this.initializeDiagnostics();
-    this.initializeStorage();
-    this.diagnostics.info('core.started');
+    this.initializeCapture();
+    this.initializeWorkspace();
+    this.coreDiagnostics.info('core.started');
   }
 
   /**
@@ -231,9 +238,9 @@ export class CoreApplication implements CoreRpcHost {
       return;
     }
     this.stopping = true;
-    this.diagnostics.info('core.stopping');
+    this.coreDiagnostics.info('core.stopping');
     this.clearHeartbeat();
-    this.rpcServer.close('shutdown');
+    this.coreRpcServer.close('shutdown');
     void this.shutdown();
   }
 
@@ -244,9 +251,9 @@ export class CoreApplication implements CoreRpcHost {
    */
   async executeCommand(
     command: CoreCommand,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<CoreResult> {
-    if (signal.aborted) {
+    if (abortSignal.aborted) {
       throw commandError({
         code: 'cancelled',
         message: 'The command was cancelled.',
@@ -256,7 +263,7 @@ export class CoreApplication implements CoreRpcHost {
 
     switch (command.type) {
       case 'echo':
-        return this.diagnostics.action('echo.copy', () => ({
+        return this.coreDiagnostics.action('echo.copy', () => ({
           type: 'echo',
           payload: {
             value: command.payload.value,
@@ -266,13 +273,13 @@ export class CoreApplication implements CoreRpcHost {
       case 'diagnostics.recent':
         return {
           type: 'diagnostics.records',
-          payload: this.diagnostics.recent(
+          payload: this.coreDiagnostics.recent(
             command.payload.limit,
             command.payload.traceId,
           ),
         };
       case 'diagnostics.ingest':
-        this.diagnostics.ingest(command.payload);
+        this.coreDiagnostics.ingest(command.payload);
         return { type: 'diagnostics.ingested', payload: {} };
       case 'diagnostics.query':
         return {
@@ -292,15 +299,15 @@ export class CoreApplication implements CoreRpcHost {
         return {
           type: 'transfer.job',
           payload: {
-            job: this.transferJobs.start(
+            job: this.transferService.start(
               jobId,
               'diagnostics-export',
               filePath,
-              (signal, onProgress) =>
+              (abortSignal, onProgress) =>
                 service.exportJsonl(
                   filePath,
                   { process, level, outcome },
-                  signal,
+                  abortSignal,
                   onProgress,
                 ),
             ),
@@ -308,35 +315,35 @@ export class CoreApplication implements CoreRpcHost {
         };
       }
       case 'sessions.query':
-        return this.withStorage(async (storage) => {
+        return this.withCapture(async (captureService) => {
           try {
-            const page = await this.diagnostics.action(
-              'storage.query-sessions',
-              () => storage.querySessions(command.payload),
+            const page = await this.coreDiagnostics.action(
+              'capture.query-sessions',
+              () => captureService.querySessions(command.payload),
             );
             return { type: 'sessions.page', payload: page };
           } catch (error) {
-            throw mapStorageError(error);
+            throw mapCaptureError(error);
           }
         });
       case 'sessions.detail':
-        return this.withStorage(async (storage) => {
+        return this.withCapture(async (captureService) => {
           try {
-            const detail = await this.diagnostics.action(
-              'storage.exchange-detail',
-              () => storage.getExchangeDetail(command.payload.exchangeId),
+            const detail = await this.coreDiagnostics.action(
+              'capture.exchange-detail',
+              () => captureService.getExchangeDetail(command.payload.exchangeId),
             );
             return { type: 'sessions.detail', payload: { detail } };
           } catch (error) {
-            throw mapStorageError(error);
+            throw mapCaptureError(error);
           }
         });
       case 'websocket.frames':
-        return this.withStorage(async (storage) => {
+        return this.withCapture(async (captureService) => {
           try {
-            const page = await this.diagnostics.action(
-              'storage.query-websocket-frames',
-              () => storage.queryWebSocketFrames(command.payload),
+            const page = await this.coreDiagnostics.action(
+              'capture.query-websocket-frames',
+              () => captureService.queryWebSocketFrames(command.payload),
             );
             return {
               type: 'websocket.frames',
@@ -347,39 +354,39 @@ export class CoreApplication implements CoreRpcHost {
               },
             };
           } catch (error) {
-            throw mapStorageError(error);
+            throw mapCaptureError(error);
           }
         });
       case 'websocket.breakpoint.configure':
-        return this.withProxy(async (proxy) => {
-          proxy.setWebSocketBreakpointsEnabled(command.payload.enabled);
+        return this.withProxy(async (proxyService) => {
+          proxyService.setWebSocketBreakpointsEnabled(command.payload.enabled);
           return {
             type: 'websocket.breakpoint.config',
-            payload: { enabled: proxy.webSocketBreakpointsEnabled },
+            payload: { enabled: proxyService.webSocketBreakpointsEnabled },
           };
         });
       case 'grpc.messages':
-        return this.withStorage(async (storage) => {
+        return this.withCapture(async (captureService) => {
           try {
-            const page = await this.diagnostics.action(
-              'storage.query-grpc-messages',
-              () => this.grpc?.query(command.payload) ??
-                Promise.reject(new Error('gRPC storage is not available.')),
+            const page = await this.coreDiagnostics.action(
+              'capture.query-grpc-messages',
+              () => this.grpcService?.query(command.payload) ??
+                Promise.reject(new Error('gRPC capture data is not available.')),
             );
             return { type: 'grpc.messages', payload: page };
           } catch (error) {
-            throw mapStorageError(error);
+            throw mapCaptureError(error);
           }
         });
       case 'body.read-range':
-        return this.withStorage(async (storage) => {
+        return this.withCapture(async (captureService) => {
           try {
             // 延迟解码：Core 从 Body Store 读取完整压缩流，只返回有限明文前缀。
             if (command.payload.decode) {
-              const decoded = await this.diagnostics.action(
-                'storage.body-decode-preview',
+              const decoded = await this.coreDiagnostics.action(
+                'capture.body-decode-preview',
                 () => decodeBodyStream(
-                  () => storage.openBlobStream(command.payload.bodyId),
+                  () => captureService.openBlobStream(command.payload.bodyId),
                   command.payload.encoding,
                   BODY_PREVIEW_MAX_BYTES,
                 ),
@@ -395,8 +402,8 @@ export class CoreApplication implements CoreRpcHost {
                 },
               };
             }
-            const data = await this.diagnostics.action('storage.body-range', () =>
-              storage.readBodyRange(
+            const data = await this.coreDiagnostics.action('capture.body-range', () =>
+              captureService.readBodyRange(
                 command.payload.bodyId,
                 command.payload.offset,
                 command.payload.length,
@@ -412,66 +419,93 @@ export class CoreApplication implements CoreRpcHost {
               },
             };
           } catch (error) {
-            throw mapStorageError(error);
+            throw mapCaptureError(error);
           }
         });
       case 'rules.get':
-        return this.withStorage(async (storage) => {
-          const ruleSet = await this.diagnostics.action('rules.get', () =>
-            storage.loadRuleSet(),
+        return this.withWorkspace(async (workspaceService) => {
+          const ruleSet = await this.coreDiagnostics.action('rules.get', () =>
+            workspaceService.loadRuleSet(),
           );
           return { type: 'rules.ruleset', payload: { ruleSet } };
         });
       case 'rules.hits':
-        return this.withStorage(async (storage) => {
-          const counts = await this.diagnostics.action('rules.hits', () =>
-            storage.countRuleHits(),
+        return this.withCapture(async (captureService) => {
+          const counts = await this.coreDiagnostics.action('rules.hits', () =>
+            captureService.countRuleHits(),
           );
           return { type: 'rules.hits', payload: { counts } };
         });
       case 'composer.send': {
-        const payload = await this.diagnostics.action('composer.send', () =>
-          this.composer.send(command.payload),
+        const payload = await this.coreDiagnostics.action('composer.send', () =>
+          this.composerService.send(command.payload),
         );
         return { type: 'composer.response', payload };
       }
-      case 'connection.probe': {
-        const payload = await this.diagnostics.action('connection.probe', () =>
-          this.connection.probe(
+      case 'tls.probe': {
+        const payload = await this.coreDiagnostics.action('tls.probe', () =>
+          this.tlsProbe.probe(
             command.payload.host,
             command.payload.port,
             command.payload.timeoutMs,
           ),
         );
-        return { type: 'connection.probed', payload };
+        return { type: 'tls.probed', payload };
       }
       case 'rules.replace':
-        return this.withStorage(async (storage) => {
+        return this.withWorkspace(async (workspaceService) => {
           try {
-            const ruleSet = await this.diagnostics.action('rules.replace', () =>
-              storage.saveRuleSet(
+            const ruleSet = await this.coreDiagnostics.action('rules.replace', () =>
+              workspaceService.saveRuleSet(
                 command.payload.expectedRevision,
                 command.payload.rules,
               ),
             );
-            this.ruleEngine?.setRuleSet(ruleSet);
+            this.ruleService?.setRuleSet(ruleSet);
             return {
               type: 'rules.revision',
               payload: { revision: ruleSet.revision },
             };
           } catch (error) {
-            throw mapRuleError(error);
+            throw mapRevisionConflict(error, 'rule set');
           }
         });
-      case 'storage.status':
-        return this.withStorage(async (storage) => ({
-          type: 'storage.status',
-          payload: await this.diagnostics.action('storage.status', () =>
-            storage.status(),
+      case 'collection.get':
+        return this.withWorkspace(async (workspaceService) => {
+          const collection = await this.coreDiagnostics.action(
+            'collection.get',
+            () => workspaceService.loadCollection(),
+          );
+          return { type: 'collection.collection', payload: { collection } };
+        });
+      case 'collection.replace':
+        return this.withWorkspace(async (workspaceService) => {
+          try {
+            const collection = await this.coreDiagnostics.action(
+              'collection.replace',
+              () =>
+                workspaceService.saveCollection(
+                  command.payload.expectedRevision,
+                  command.payload.nodes,
+                ),
+            );
+            return {
+              type: 'collection.revision',
+              payload: { revision: collection.revision },
+            };
+          } catch (error) {
+            throw mapRevisionConflict(error, 'collection');
+          }
+        });
+      case 'capture.status':
+        return this.withCapture(async (captureService) => ({
+          type: 'capture.status',
+          payload: await this.coreDiagnostics.action('capture.status', () =>
+            captureService.status(),
           ),
         }));
-      case 'storage.cleanup':
-        return this.withStorage(async (storage) => {
+      case 'capture.cleanup':
+        return this.withCapture(async (captureService) => {
           const requestedScope = toCleanupScope(command.payload);
           const activeSessionId = requestedScope.kind === 'all'
             ? this.proxyService?.prepareCaptureReset() ?? null
@@ -483,17 +517,17 @@ export class CoreApplication implements CoreRpcHost {
             ? { kind: 'all-except-session', sessionId: activeSessionId }
             : requestedScope;
           return {
-            type: 'storage.status',
-            payload: await this.diagnostics.action('storage.cleanup', () =>
-              storage.cleanup(cleanupScope),
+            type: 'capture.status',
+            payload: await this.coreDiagnostics.action('capture.cleanup', () =>
+              captureService.cleanup(cleanupScope),
             ),
           };
         });
       case 'har.export.start':
-        return this.withHar((har) => ({
+        return this.withHar((harService) => ({
           type: 'transfer.job',
           payload: {
-            job: har.startExport(
+            job: harService.startExport(
               command.payload.jobId,
               command.payload.filePath,
               {
@@ -504,47 +538,47 @@ export class CoreApplication implements CoreRpcHost {
           },
         }));
       case 'har.import.start':
-        return this.withHar((har) => ({
+        return this.withHar((harService) => ({
           type: 'transfer.job',
           payload: {
-            job: har.startImport(
+            job: harService.startImport(
               command.payload.jobId,
               command.payload.filePath,
             ),
           },
         }));
       case 'archive.export.start':
-        return this.withArchive((archive) => ({
+        return this.withArchive((archiveService) => ({
           type: 'transfer.job',
           payload: {
-            job: archive.startExport(
+            job: archiveService.startExport(
               command.payload.jobId,
               command.payload.filePath,
             ),
           },
         }));
       case 'archive.import.start':
-        return this.withArchive((archive) => ({
+        return this.withArchive((archiveService) => ({
           type: 'transfer.job',
           payload: {
-            job: archive.startImport(
+            job: archiveService.startImport(
               command.payload.jobId,
               command.payload.filePath,
             ),
           },
         }));
       case 'body.export.start':
-        return this.withStorage(async (storage) => ({
+        return this.withCapture(async (captureService) => ({
           type: 'transfer.job',
           payload: {
-            job: this.transferJobs.start(
+            job: this.transferService.start(
               command.payload.jobId,
               'body-export',
               command.payload.filePath,
-              (signal, onProgress) => storage.exportBodyToFile(
+              (abortSignal, onProgress) => captureService.exportBodyToFile(
                 command.payload.bodyId,
                 command.payload.filePath,
-                signal,
+                abortSignal,
                 onProgress,
               ),
             ),
@@ -553,26 +587,26 @@ export class CoreApplication implements CoreRpcHost {
       case 'transfer.job.get':
         return {
           type: 'transfer.job',
-          payload: { job: this.transferJobs.get(command.payload.jobId) },
+          payload: { job: this.transferService.get(command.payload.jobId) },
         };
       case 'transfer.job.cancel':
         return {
           type: 'transfer.job',
-          payload: { job: this.transferJobs.cancel(command.payload.jobId) },
+          payload: { job: this.transferService.cancel(command.payload.jobId) },
         };
       case 'proxy.start':
-        return this.withProxy(async (proxy) => {
-          await this.storageService?.initialize();
-          await this.diagnostics.action('proxy.start', () =>
-            proxy.start({ port: command.payload.port }),
+        return this.withProxy(async (proxyService) => {
+          await this.captureService?.initialize();
+          await this.coreDiagnostics.action('proxy.start', () =>
+            proxyService.start({ port: command.payload.port }),
           );
-          return { type: 'proxy.status', payload: proxy.status() };
+          return { type: 'proxy.status', payload: proxyService.status() };
         });
       case 'proxy.stop':
-        return this.withProxy(async (proxy) => {
-          await this.diagnostics.action('proxy.stop', () => proxy.stop());
-          await this.storageService?.collectUnreferencedBodies();
-          return { type: 'proxy.status', payload: proxy.status() };
+        return this.withProxy(async (proxyService) => {
+          await this.coreDiagnostics.action('proxy.stop', () => proxyService.stop());
+          await this.captureService?.collectUnreferencedBodies();
+          return { type: 'proxy.status', payload: proxyService.status() };
         });
       case 'proxy.status':
         return {
@@ -589,18 +623,18 @@ export class CoreApplication implements CoreRpcHost {
               },
         };
       case 'proxy.setRecording':
-        return this.withProxy(async (proxy) => {
-          proxy.setRecording(command.payload.recording);
-          return { type: 'proxy.status', payload: proxy.status() };
+        return this.withProxy(async (proxyService) => {
+          proxyService.setRecording(command.payload.recording);
+          return { type: 'proxy.status', payload: proxyService.status() };
         });
       case 'proxy.setUpstream':
-        return this.withProxy(async (proxy) => {
-          proxy.setUpstreamProxy(command.payload.upstream);
-          return { type: 'proxy.status', payload: proxy.status() };
+        return this.withProxy(async (proxyService) => {
+          proxyService.setUpstreamProxy(command.payload.upstream);
+          return { type: 'proxy.status', payload: proxyService.status() };
         });
       case 'tls.configure':
         return this.withProxy(async (proxy) => {
-          await this.diagnostics.action('tls.configure', () =>
+          await this.coreDiagnostics.action('tls.configure', () =>
             proxy.configureTls(command.payload),
           );
           return {
@@ -609,8 +643,8 @@ export class CoreApplication implements CoreRpcHost {
           };
         });
       case 'breakpoint.resolve':
-        return this.withBreakpoints((queue) => {
-          const state = queue.resolve(
+        return this.withBreakpoints((breakpointQueue) => {
+          const state = breakpointQueue.resolve(
             command.payload.breakpointId,
             command.payload.action,
             command.payload.edit,
@@ -651,16 +685,16 @@ export class CoreApplication implements CoreRpcHost {
           type: 'breakpoint.pending',
           payload: {
             breakpoints,
-            enabled: this.ruleEngine?.breakpointsEnabled ?? true,
+            enabled: this.ruleService?.breakpointsEnabled ?? true,
           },
         };
       }
       case 'breakpoint.configure':
-        this.ruleEngine?.setBreakpointsEnabled(command.payload.enabled);
+        this.ruleService?.setBreakpointsEnabled(command.payload.enabled);
         return {
           type: 'breakpoint.config',
           payload: {
-            enabled: this.ruleEngine?.breakpointsEnabled ?? command.payload.enabled,
+            enabled: this.ruleService?.breakpointsEnabled ?? command.payload.enabled,
           },
         };
       default:
@@ -676,32 +710,46 @@ export class CoreApplication implements CoreRpcHost {
    * 触发存储门面异步初始化并把失败降级为诊断日志，不影响 Event Loop 存活。
    * 调用方：start；存储不可用只使相关 command 失败，不使 CoreProcess 退出。
    */
-  private initializeStorage(): void {
-    if (!this.storageService) {
+  private initializeCapture(): void {
+    if (!this.captureService) {
       return;
     }
-    const storage = this.storageService;
-    void storage
+    void this.captureService
       .initialize()
-      .then(async () => {
-        this.diagnostics.info('storage.ready');
-        // 存储就绪后把持久化规则集热加载进引擎，使重启后规则立即生效。
-        if (this.ruleEngine) {
-          const ruleSet = await storage.loadRuleSet();
-          this.ruleEngine.setRuleSet(ruleSet);
-          this.diagnostics.info('rules.loaded', {
-            attributes: {
-              revision: ruleSet.revision,
-              rules: ruleSet.rules.length,
-            },
-          });
-        }
+      .then(() => {
+        this.coreDiagnostics.info('capture.ready');
       })
       .catch((error: unknown) => {
-        this.diagnostics.error('storage.init.failed', {
+        this.coreDiagnostics.error('capture.init.failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
       });
+  }
+
+  /**
+   * 打开工作区配置库并把持久规则集热加载进引擎，使重启后规则立即生效。
+   * 调用方：start；失败只使 rules/collection command 失败，不使 CoreProcess 退出。
+   */
+  private initializeWorkspace(): void {
+    if (!this.workspaceService) {
+      return;
+    }
+    try {
+      this.workspaceService.initialize();
+      this.coreDiagnostics.info('workspace.ready');
+      const ruleSet = this.workspaceService.loadRuleSet();
+      this.ruleService?.setRuleSet(ruleSet);
+      this.coreDiagnostics.info('rules.loaded', {
+        attributes: {
+          revision: ruleSet.revision,
+          rules: ruleSet.rules.length,
+        },
+      });
+    } catch (error: unknown) {
+      this.coreDiagnostics.error('workspace.init.failed', {
+        errorCode: error instanceof Error ? error.name : 'unknown',
+      });
+    }
   }
 
   /**
@@ -715,10 +763,10 @@ export class CoreApplication implements CoreRpcHost {
     void this.diagnosticsService
       .start()
       .then(() => {
-        this.diagnostics.info('diagnostics.ready');
+        this.coreDiagnostics.info('diagnostics.ready');
       })
       .catch((error: unknown) => {
-        this.diagnostics.error('diagnostics.init.failed', {
+        this.coreDiagnostics.error('diagnostics.init.failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
       });
@@ -746,45 +794,61 @@ export class CoreApplication implements CoreRpcHost {
   }
 
   /**
-   * 确保存储就绪后执行操作；存储缺失时抛出 internal 错误。
-   * 调用方：sessions.query / storage.status / storage.cleanup handler。
+   * 确保抓包数据就绪后执行操作；无抓包数据时抛出 internal 错误。
+   * 调用方：sessions.query / capture.status / capture.cleanup handler。
    */
-  private async withStorage<T>(
-    operation: (storage: StorageService) => Promise<T>,
+  private async withCapture<T>(
+    operation: (captureService: CaptureService) => Promise<T>,
   ): Promise<T> {
-    if (!this.storageService) {
+    if (!this.captureService) {
       throw commandError({
         code: 'internal',
-        message: 'Storage is not available.',
+        message: 'Capture data is not available.',
         retryable: false,
       });
     }
-    await this.storageService.initialize();
-    return operation(this.storageService);
+    await this.captureService.initialize();
+    return operation(this.captureService);
   }
 
-  /** 在 HAR 服务可用时执行文件任务操作；无 Storage 模式返回 internal。 */
-  private withHar<T>(operation: (har: HarService) => T): T {
-    if (!this.har) {
+  /**
+   * 在工作区配置库可用时执行操作；缺失时抛出 internal 错误。
+   * 调用方：rules.get/replace、collection.get/replace handler。
+   */
+  private withWorkspace<T>(operation: (workspaceService: WorkspaceService) => T): T {
+    if (!this.workspaceService) {
+      throw commandError({
+        code: 'internal',
+        message: 'Workspace configuration is not available.',
+        retryable: false,
+      });
+    }
+    this.workspaceService.initialize();
+    return operation(this.workspaceService);
+  }
+
+  /** 在 HAR 服务可用时执行文件任务操作；无抓包数据时返回 internal。 */
+  private withHar<T>(operation: (harService: HarService) => T): T {
+    if (!this.harService) {
       throw commandError({
         code: 'internal',
         message: 'HAR transfer is not available.',
         retryable: false,
       });
     }
-    return operation(this.har);
+    return operation(this.harService);
   }
 
-  /** 在原生 archive 服务可用时执行文件任务操作；无 Storage 模式返回 internal。 */
-  private withArchive<T>(operation: (archive: ArchiveService) => T): T {
-    if (!this.archive) {
+  /** 在原生 archive 服务可用时执行文件任务操作；无抓包数据时返回 internal。 */
+  private withArchive<T>(operation: (archiveService: ArchiveService) => T): T {
+    if (!this.archiveService) {
       throw commandError({
         code: 'internal',
         message: 'Archive transfer is not available.',
         retryable: false,
       });
     }
-    return operation(this.archive);
+    return operation(this.archiveService);
   }
 
   /**
@@ -792,7 +856,7 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：proxy.start / proxy.stop handler。
    */
   private async withProxy<T>(
-    operation: (proxy: ProxyService) => Promise<T>,
+    operation: (proxyService: ProxyService) => Promise<T>,
   ): Promise<T> {
     if (!this.proxyService) {
       throw commandError({
@@ -808,7 +872,7 @@ export class CoreApplication implements CoreRpcHost {
    * 在断点队列可用时执行操作；缺失时抛出 internal 错误。
    * 调用方：breakpoint.resolve handler。
    */
-  private withBreakpoints<T>(operation: (queue: BreakpointQueue) => T): T {
+  private withBreakpoints<T>(operation: (breakpointQueue: BreakpointQueue) => T): T {
     if (!this.breakpointQueue) {
       throw commandError({
         code: 'internal',
@@ -826,7 +890,7 @@ export class CoreApplication implements CoreRpcHost {
   private handleParentMessage(event: ParentMessageEvent): void {
     const rpcPort = readRpcPort(event);
     if (rpcPort) {
-      this.rpcServer.attach(rpcPort);
+      this.coreRpcServer.attach(rpcPort);
       return;
     }
     if (isRecord(event.data) && event.data.type === 'shutdown') {
@@ -835,7 +899,7 @@ export class CoreApplication implements CoreRpcHost {
   }
 
   /**
-   * 发布一次只代表 Event Loop 可调度的 heartbeat，不表达 Storage/Proxy 业务健康。
+   * 发布一次只代表 Event Loop 可调度的 heartbeat，不表达 Capture/Proxy 业务健康。
    * 调用方：start 的首次发送和 HEARTBEAT_INTERVAL_MS 定时器。
    */
   private sendHeartbeat(): void {
@@ -864,7 +928,7 @@ export class CoreApplication implements CoreRpcHost {
    */
   private flushCaptureEvents(): void {
     const queue = this.captureEventQueue;
-    if (!queue || !this.rpcServer.hasActiveConnection) {
+    if (!queue || !this.coreRpcServer.hasActiveConnection) {
       return;
     }
     while (this.inFlightEventBatches.size < EVENT_INFLIGHT_WINDOW_SIZE) {
@@ -877,15 +941,15 @@ export class CoreApplication implements CoreRpcHost {
         summary: event.summary,
       }));
       // Core 是唯一能解析出可执行文件路径的一侧，随事件一次性交给 Main 取图标。
-      const clientApps = this.clientApp.pendingAppsForMain();
-      const batchSequence = this.rpcServer.sendEventBatch(events, clientApps);
+      const clientApps = this.clientAppService.pendingAppsForMain();
+      const batchSequence = this.coreRpcServer.sendEventBatch(events, clientApps);
       if (batchSequence === null) {
         for (const event of events) {
           queue.enqueue(event.kind, event.summary);
         }
         return;
       }
-      this.clientApp.markAppsDelivered(clientApps);
+      this.clientAppService.markAppsDelivered(clientApps);
       this.inFlightEventBatches.add(batchSequence);
     }
   }
@@ -919,14 +983,15 @@ export class CoreApplication implements CoreRpcHost {
     }
   }
 
-  /** 等待传输、代理、临时 Storage 与 Diagnostics 退出后再确认 stopped。 */
+  /** 等待传输、代理、临时 Capture 与 Diagnostics 退出后再确认 stopped。 */
   private async shutdown(): Promise<void> {
-    this.transferJobs.cancelAll();
+    this.transferService.cancelAll();
     await this.proxyService?.stop().catch(() => undefined);
     await Promise.allSettled([
-      this.storageService?.dispose(),
+      this.captureService?.dispose(),
       this.diagnosticsService?.close(),
     ]);
+    this.workspaceService?.dispose();
     this.parentPort.postMessage({
       type: 'stopped',
       pid: process.pid,
@@ -980,7 +1045,7 @@ function reportFatalStartup(parentPort: CoreParentPort, error: unknown): void {
 }
 
 /**
- * 把 storage.cleanup 命令载荷映射为存储层的内部 CleanupScope。
+ * 把 capture.cleanup 命令载荷映射为存储层的内部 CleanupScope。
  */
 function toCleanupScope(payload: {
   scope: 'all' | 'session';
@@ -995,7 +1060,7 @@ function toCleanupScope(payload: {
  * 把存储层异常映射为结构化 CoreError：无效游标属于协议输入错误，其余归为 internal。
  * 通过 name 判定，使内部错误映射不依赖具体实现类原型。
  */
-function mapStorageError(error: unknown): CoreCommandError {
+function mapCaptureError(error: unknown): CoreCommandError {
   if (error instanceof CoreCommandError) {
     return error;
   }
@@ -1009,33 +1074,32 @@ function mapStorageError(error: unknown): CoreCommandError {
   }
   return new CoreCommandError({
     code: 'internal',
-    message: 'The storage command failed.',
+    message: 'The capture command failed.',
     retryable: false,
   });
 }
 
 /**
- * 把规则持久化异常映射为结构化 CoreError：revision 冲突为 conflict（可重取后重试），
+ * 把工作区配置写入异常映射为结构化 CoreError：revision 冲突为 conflict（可重取后重试），
  * 其余归为 internal。通过 name 判定，使持久层实现可替换而不改变错误契约。
  */
-function mapRuleError(error: unknown): CoreCommandError {
+function mapRevisionConflict(
+  error: unknown,
+  subject: string,
+): CoreCommandError {
   if (error instanceof CoreCommandError) {
     return error;
   }
-  const name = error instanceof Error ? error.name : '';
-  if (name === 'RuleRevisionConflictError') {
+  if (error instanceof Error && error.name === 'RevisionConflictError') {
     return new CoreCommandError({
       code: 'conflict',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'The rule set revision is out of date.',
+      message: error.message,
       retryable: true,
     });
   }
   return new CoreCommandError({
     code: 'internal',
-    message: 'Failed to persist the rule set.',
+    message: `Failed to persist the ${subject}.`,
     retryable: false,
   });
 }

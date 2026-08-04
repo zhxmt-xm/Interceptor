@@ -174,7 +174,7 @@ export interface BreakpointHitInfo {
   readonly phase: BreakpointPhase;
 }
 
-export interface RuleEngineOptions {
+export interface RuleServiceOptions {
   readonly onBreakpointHit?: (info: BreakpointHitInfo) => void;
 }
 

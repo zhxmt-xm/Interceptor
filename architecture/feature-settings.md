@@ -2,7 +2,7 @@
 
 > 最后更新：2026-07-26
 > Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
-> Core 模块：`apps/proxy-core/src/proxy-core/storage/entry.ts`
+> Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
 
 ## 1. 职责与边界
@@ -255,11 +255,11 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    UI["Settings Storage 面板"] -->|"storage.status"| App["CoreApplication"]
-    App --> Storage["StorageService.status()"]
-    Storage --> Capture["TemporaryCaptureStore 统计"]
-    Storage --> Body["TemporaryBodyStore.usageBytes"]
-    UI -->|"storage.cleanup"| App
+    UI["Settings Storage 面板"] -->|"capture.status"| App["CoreApplication"]
+    App --> Storage["CaptureService.status()"]
+    Storage --> Capture["ExchangeStore 统计"]
+    Storage --> Body["BodyStore.usageBytes"]
+    UI -->|"capture.cleanup"| App
 ```
 
 报表字段：`sessionCount`、`exchangeCount`、`bodyCount`、`databaseBytes`（Capture 无 SQLite 恒为 0）、`blobBytes`、`totalBytes`。

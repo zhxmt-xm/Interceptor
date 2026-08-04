@@ -11,7 +11,7 @@ export interface McpServerOptions {
   /** 展示给 Host 的版本号，通常是 app 版本。 */
   version: string;
   /** 自定义脱敏策略；缺省用默认遮罩列表。 */
-  redactor?: McpRedactor;
+  mcpRedactor?: McpRedactor;
 }
 
 /**
@@ -23,14 +23,14 @@ export class McpServer {
   /** per-client token 认证。 */
   readonly #authenticator = new McpTokenAuthenticator();
   /** 工具注册表，两种 transport 共用。 */
-  readonly #tools: McpToolRegistry;
+  readonly mcpToolRegistry: McpToolRegistry;
   /** 会话版本号。 */
   readonly #version: string;
 
   constructor(options: McpServerOptions) {
     this.#version = options.version;
-    this.#tools = new McpToolRegistry(options.host, {
-      ...(options.redactor === undefined ? {} : { redactor: options.redactor }),
+    this.mcpToolRegistry = new McpToolRegistry(options.host, {
+      ...(options.mcpRedactor === undefined ? {} : { mcpRedactor: options.mcpRedactor }),
     });
   }
 
@@ -48,7 +48,7 @@ export class McpServer {
     if (identity === null) {
       return null;
     }
-    return new McpProtocolHandler(this.#tools, { version: this.#version, identity });
+    return new McpProtocolHandler(this.mcpToolRegistry, { version: this.#version, identity });
   }
 
   /** 关闭时撤销全部接入，使在途连接的后续调用立即失效。 */

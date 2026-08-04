@@ -135,6 +135,26 @@ function clearFilterGroup(group) {
   rows.forEach((row, index) => row.classList.toggle('on', index === 0));
 }
 
+// Boot screen: three prerequisites before traffic can reach us, shown as progress dots.
+// Maps to CoreProcessStatus.state / CaptureStatus.listening / SystemProxyStatus.owned.
+// MITM is deliberately absent — it is set up later from Capture.
+const BOOT_PHASES = {
+  core: { core: 'active', listener: 'pending', proxy: 'pending' },
+  listener: { core: 'done', listener: 'active', proxy: 'pending' },
+  proxy: { core: 'done', listener: 'done', proxy: 'active' },
+  ready: { core: 'done', listener: 'done', proxy: 'done' },
+  error: { core: 'failed', listener: 'pending', proxy: 'pending' },
+};
+
+function syncBoot() {
+  const boot = app.querySelector('.boot');
+  const dots = BOOT_PHASES[app.dataset.boot];
+  if (!boot || !dots) return;
+  boot.querySelectorAll('.boot-dot').forEach((dot) => {
+    dot.dataset.state = dots[dot.dataset.step];
+  });
+}
+
 function setState(s = {}) {
   if (s.theme) app.setAttribute('data-theme', s.theme);
   if (s.sidebar) {
@@ -262,6 +282,11 @@ function setState(s = {}) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
   }
+  if ('boot' in s) {
+    if (s.boot) app.dataset.boot = s.boot;
+    else delete app.dataset.boot;
+    syncBoot();
+  }
   // Re-render the sidebar whenever anything affecting the footer switchers changes.
   if (!s.view && (s.theme || s.sidebar || s.lang)) {
     renderSidebar(app.getAttribute('data-view'));
@@ -382,6 +407,7 @@ function syncControls() {
     theme: app.getAttribute('data-theme'),
     sidebar: app.classList.contains('collapsed') ? 'collapsed' : 'expanded',
     overlay: app.getAttribute('data-overlay') || 'none',
+    boot: app.dataset.boot || 'none',
   };
   document.querySelectorAll('.dock .switch').forEach((box) => {
     const key = box.dataset.key;

@@ -5,14 +5,14 @@ import type {
   ArchiveWorkerRequest,
   ArchiveWorkerResponse,
 } from '../interfaces';
-import { ArchiveSnapshotStore } from './worker-snapshot-store';
+import { SnapshotStore } from './snapshot-store';
 
 /** 一次性 Archive SQLite Worker；任务完成后关闭，不参与活动 Capture 数据面。 */
 class ArchiveWorkerApplication {
   /** 与 Core 主线程通信的端口。 */
-  private readonly port: MessagePort;
+  private readonly messagePort: MessagePort;
   /** 当前单次导入或导出的 SQLite Store。 */
-  private readonly store: ArchiveSnapshotStore;
+  private readonly snapshotStore: SnapshotStore;
   /** 当前 Worker 模式。 */
   private readonly mode: ArchiveWorkerData['mode'];
 
@@ -21,16 +21,16 @@ class ArchiveWorkerApplication {
     if (!parentPort) {
       throw new Error('archive worker must run as a worker thread');
     }
-    this.port = parentPort;
+    this.messagePort = parentPort;
     const data = workerData as ArchiveWorkerData;
     this.mode = data.mode;
-    this.store = new ArchiveSnapshotStore(data.snapshotPath, data.mode);
+    this.snapshotStore = new SnapshotStore(data.snapshotPath, data.mode);
   }
 
   /** 发布 ready 并串行处理有界批次请求。 */
   start(): void {
-    this.port.postMessage({ type: 'ready' } satisfies ArchiveWorkerResponse);
-    this.port.on('message', (request: ArchiveWorkerRequest) => {
+    this.messagePort.postMessage({ type: 'ready' } satisfies ArchiveWorkerResponse);
+    this.messagePort.on('message', (request: ArchiveWorkerRequest) => {
       this.handle(request);
     });
   }
@@ -41,23 +41,23 @@ class ArchiveWorkerApplication {
       let result: unknown;
       if (request.kind === 'append-batch') {
         this.assertMode('export');
-        this.store.appendBatch(request.batch);
+        this.snapshotStore.appendBatch(request.batch);
       } else if (request.kind === 'read-batch') {
         this.assertMode('import');
-        result = this.store.readBatch(request.cursor, request.limit);
+        result = this.snapshotStore.readBatch(request.cursor, request.limit);
       } else {
-        this.store.close();
+        this.snapshotStore.close();
       }
-      this.port.postMessage({
+      this.messagePort.postMessage({
         type: 'result',
         ok: true,
         result,
       } satisfies ArchiveWorkerResponse);
       if (request.kind === 'finish') {
-        this.port.close();
+        this.messagePort.close();
       }
     } catch (error) {
-      this.port.postMessage({
+      this.messagePort.postMessage({
         type: 'result',
         ok: false,
         error: {

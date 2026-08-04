@@ -232,14 +232,14 @@ class PackagedWorkflowSmoke {
       expect(diagnostics.records.length).toBeGreaterThan(0);
     } finally {
       const beforeStop = await page.evaluate(() =>
-        window.interceptor.getStorageStatus());
+        window.interceptor.getCaptureUsage());
       // 暂停记录：监听器与系统代理保持运行、流量继续转发，已录数据保留到手动 Clear。
       const paused = await page.evaluate(() => window.interceptor.stopCapture())
         .catch(() => null);
       if (paused) {
         expect(paused).toMatchObject({ listening: true, recording: false });
       }
-      await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
+      await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureUsage()), {
         message: 'Pausing Capture changed retained recording data',
         timeout: 10_000,
       }).toMatchObject({
@@ -248,8 +248,8 @@ class PackagedWorkflowSmoke {
         bodyCount: beforeStop.bodyCount,
         blobBytes: beforeStop.blobBytes,
       });
-      await page.evaluate(() => window.interceptor.clearStorage());
-      await expect.poll(() => page.evaluate(() => window.interceptor.getStorageStatus()), {
+      await page.evaluate(() => window.interceptor.clearCapture());
+      await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureUsage()), {
         message: 'Manual Clear did not delete temporary recording data',
         timeout: 10_000,
       }).toMatchObject({
@@ -416,7 +416,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       apiKeys: [
         'cancelTransferJob',
         'checkForUpdates',
-        'clearStorage',
+        'clearCapture',
         'closeApplication',
         'deleteCertificate',
         'downloadUpdate',
@@ -432,7 +432,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getRecentDiagnostics',
         'getRuleHits',
         'getRules',
-        'getStorageStatus',
+        'getCaptureUsage',
         'getSystemProxyStatus',
         'getTransferJob',
         'getUpdateStatus',
@@ -445,7 +445,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onUpdateStatusChange',
         'openCertificateManager',
         'openDownloadedUpdate',
-        'probeConnection',
+        'probeTls',
         'queryDiagnostics',
         'queryGrpcMessages',
         'querySessions',
@@ -590,7 +590,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     // 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → Core 内临时 Capture/Body Store。
     const storageStatus = await page.evaluate(
-      () => window.interceptor.getStorageStatus(),
+      () => window.interceptor.getCaptureUsage(),
     );
     expect(storageStatus).not.toHaveProperty('quotaBytes');
     expect(storageStatus.databaseBytes).toBe(0);
@@ -612,7 +612,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       { message: 'Recording did not restart before Clear', timeout: 10_000 },
     ).toBe(true);
     const clearedStorage = await page.evaluate(() =>
-      window.interceptor.clearStorage(),
+      window.interceptor.clearCapture(),
     );
     expect(clearedStorage.sessionCount).toBe(1);
     expect(clearedStorage.exchangeCount).toBe(0);

@@ -22,11 +22,10 @@ import type {
   MutableRequestState,
   MutableResponseState,
 } from '../rules/interfaces';
-import type { RuleEngine } from '../rules/entry';
-import type { BodyRefInput, ExchangeInput } from '../storage/interfaces';
+import type { RuleService } from '../rules/entry';
+import type { CaptureService } from '../capture/entry';
+import type { BodyRefInput, ExchangeInput } from '../capture/interfaces';
 import type {
-  CaptureEventSink,
-  CaptureSink,
   PendingTunnelCapture,
   ProxyAddress,
   ProxyRequestResult,
@@ -38,8 +37,9 @@ import type {
   RuleResponseInput,
   WebSocketBridgeMessage,
 } from './interfaces';
-import { ExchangeTracker } from './proxy-exchange-tracker';
-import { WebSocketBridge } from './proxy-websocket-bridge';
+import type { CaptureEventQueue } from './internal/capture-event-queue';
+import { ExchangeTracker } from './internal/exchange-tracker';
+import { WebSocketBridge } from './internal/websocket-bridge';
 import * as ProxyUtils from './utils';
 
 /**
@@ -54,7 +54,7 @@ import * as ProxyUtils from './utils';
  */
 export class ProxyService {
   /** 按 Mockttp request id 聚合的 Exchange 生命周期。 */
-  private readonly tracker: ExchangeTracker;
+  private readonly exchangeTracker: ExchangeTracker;
   /** WebSocket stream id 到有序 frame 写入链。 */
   private readonly webSocketTails = new Map<string, Promise<void>>();
   /** 原始 CONNECT tunnel id → 持久化结果；closed 事件等待 opened 落库后更新。 */
@@ -82,12 +82,12 @@ export class ProxyService {
   private diagnostics: DiagnosticsRecorder | null = null;
 
   constructor(
-    private readonly storage: CaptureSink,
-    private readonly events: CaptureEventSink,
-    private readonly ruleEngine?: RuleEngine,
-    private readonly clientApps?: ClientAppService,
+    private readonly captureService: CaptureService,
+    private readonly captureEventQueue: CaptureEventQueue,
+    private readonly ruleService?: RuleService,
+    private readonly clientAppService?: ClientAppService,
   ) {
-    this.tracker = new ExchangeTracker(storage, events, clientApps);
+    this.exchangeTracker = new ExchangeTracker(captureService, captureEventQueue, clientAppService);
   }
 
   /**
@@ -96,7 +96,7 @@ export class ProxyService {
    */
   attachDiagnostics(sink: DiagnosticsRecorder): void {
     this.diagnostics = sink;
-    this.tracker.attachDiagnostics(sink);
+    this.exchangeTracker.attachDiagnostics(sink);
   }
 
   /**
@@ -106,7 +106,7 @@ export class ProxyService {
   async start(options: ProxyStartOptions = {}): Promise<ProxyAddress> {
     // 启动/恢复均意味着恢复记录；暂停后再次 Start 等价于 Resume。
     this.recording = true;
-    this.tracker.setRecording(true);
+    this.exchangeTracker.setRecording(true);
     if (this.server && this.address) {
       // 已在监听：显式请求不同端口时在同一会话上迁移监听端口，否则直接复用。
       if (options.port !== undefined && options.port !== this.address.port) {
@@ -117,7 +117,7 @@ export class ProxyService {
     }
 
     const sessionId = `session-${ProxyUtils.cryptoRandomId()}`;
-    await this.storage.ensureSession({
+    await this.captureService.ensureSession({
       id: sessionId,
       name: 'Local capture',
       startedAt: Date.now(),
@@ -125,7 +125,7 @@ export class ProxyService {
       appVersion,
     });
     this.sessionId = sessionId;
-    this.tracker.setSession(sessionId);
+    this.exchangeTracker.setSession(sessionId);
     this.host = options.host ?? DEFAULT_PROXY_HOST;
     this.address = await this.startServer(options.port);
     this.diagnostics?.info('proxy.listening', {
@@ -197,7 +197,7 @@ export class ProxyService {
       // 回调而非固定值：上游代理切换时无需重注册规则或重启监听器。
       proxyConfig: () => this.upstreamProxySetting(),
       ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-      ...(this.ruleEngine
+      ...(this.ruleService
         ? {
             beforeRequestHead: (req) => this.applyRulesToRequest(req),
             beforeResponseHead: (res, req) => this.applyRulesToResponse(res, req),
@@ -214,7 +214,7 @@ export class ProxyService {
         });
       },
       onUpgradeFailed: (streamId, error) => {
-        this.tracker.failWebSocketUpgrade(
+        this.exchangeTracker.failWebSocketUpgrade(
           streamId,
           ProxyUtils.readErrorCode(error),
         );
@@ -224,17 +224,17 @@ export class ProxyService {
     await server.start(port ?? undefined);
     this.webSocketBridge = webSocketBridge;
     this.server = server;
-    this.clientApps?.setProxyPort(server.port);
+    this.clientAppService?.setProxyPort(server.port);
     return { host: this.host, port: server.port };
   }
 
   private async stopServer(): Promise<void> {
     const server = this.server;
     this.server = null;
-    this.clientApps?.setProxyPort(null);
+    this.clientAppService?.setProxyPort(null);
     this.webSocketBridge?.close();
     this.webSocketBridge = null;
-    this.tracker.reset();
+    this.exchangeTracker.reset();
     this.webSocketTails.clear();
     this.pendingTunnels.clear();
     if (server) {
@@ -251,12 +251,12 @@ export class ProxyService {
       return;
     }
     await this.stopServer();
-    await this.tracker.settle();
+    await this.exchangeTracker.settle();
     await Promise.allSettled(Array.from(this.captureOperations));
     this.pendingTunnels.clear();
     this.address = null;
     this.sessionId = null;
-    this.tracker.setSession(null);
+    this.exchangeTracker.setSession(null);
     this.diagnostics?.info('proxy.stopped');
   }
 
@@ -279,7 +279,7 @@ export class ProxyService {
    */
   setRecording(enabled: boolean): void {
     this.recording = enabled;
-    this.tracker.setRecording(enabled);
+    this.exchangeTracker.setRecording(enabled);
     this.diagnostics?.info(
       enabled ? 'proxy.recording-resumed' : 'proxy.recording-paused',
     );
@@ -315,10 +315,10 @@ export class ProxyService {
 
   /**
    * 推进 capture generation 并丢弃全部在途状态，返回仍在录制的活动 Session。
-   * 调用方：CoreApplication 在 storage.cleanup(all) 入队前建立清空切面。
+   * 调用方：CoreApplication 在 capture.cleanup(all) 入队前建立清空切面。
    */
   prepareCaptureReset(): string | null {
-    this.tracker.reset();
+    this.exchangeTracker.reset();
     this.webSocketTails.clear();
     this.pendingTunnels.clear();
     this.capturedExchanges = 0;
@@ -367,36 +367,36 @@ export class ProxyService {
     // 这两个 listener 后会调用 waitForCompletedRequest 与 body.asBuffer()，
     // 无条件把完整正文缓冲进内存。
     void server.on('request-initiated', (request: InitiatedRequest) => {
-      this.tracker.beginRequest(request);
-      this.capturedExchanges = this.tracker.totalCaptured;
+      this.exchangeTracker.beginRequest(request);
+      this.capturedExchanges = this.exchangeTracker.totalCaptured;
     });
     void server.on('request-body-data', (data: BodyData) => {
-      this.tracker.appendRequestBody(data);
+      this.exchangeTracker.appendRequestBody(data);
     });
     void server.on('request-trailers', (trailers: TrailerData) => {
-      this.tracker.recordRequestTrailers(trailers.id, trailers.rawTrailers);
+      this.exchangeTracker.recordRequestTrailers(trailers.id, trailers.rawTrailers);
     });
     void server.on('response-initiated', (response: InitiatedResponse) => {
-      this.tracker.beginResponse(response);
+      this.exchangeTracker.beginResponse(response);
     });
     void server.on('response-information', (response: InitiatedResponse) => {
-      this.tracker.recordInformationalResponse(response);
+      this.exchangeTracker.recordInformationalResponse(response);
     });
     void server.on('response-body-data', (data: BodyData) => {
-      this.tracker.appendResponseBody(data);
+      this.exchangeTracker.appendResponseBody(data);
     });
     void server.on('response-trailers', (trailers: TrailerData) => {
-      this.tracker.recordResponseTrailers(trailers.id, trailers.rawTrailers);
+      this.exchangeTracker.recordResponseTrailers(trailers.id, trailers.rawTrailers);
     });
     void server.on('abort', (request: AbortedRequest) => {
-      this.tracker.abortExchange(request);
+      this.exchangeTracker.abortExchange(request);
     });
     void server.on('websocket-request', (request: CompletedRequest) => {
-      this.tracker.beginWebSocketRequest(request);
-      this.capturedExchanges = this.tracker.totalCaptured;
+      this.exchangeTracker.beginWebSocketRequest(request);
+      this.capturedExchanges = this.exchangeTracker.totalCaptured;
     });
     void server.on('websocket-accepted', (response: CompletedResponse) => {
-      this.tracker.acceptWebSocket(response.id, response.statusCode);
+      this.exchangeTracker.acceptWebSocket(response.id, response.statusCode);
     });
     void server.on('websocket-message-received', (message: WebSocketMessage) => {
       this.enqueueWebSocketMessage(message);
@@ -408,7 +408,7 @@ export class ProxyService {
       const tail = this.webSocketTails.get(close.streamId) ?? Promise.resolve();
       void tail
         .then(() => {
-          this.tracker.closeWebSocket(close.streamId);
+          this.exchangeTracker.closeWebSocket(close.streamId);
         })
         .catch((error: unknown) => {
           this.diagnostics?.error('websocket.close-persist-failed', {
@@ -469,11 +469,11 @@ export class ProxyService {
       state: 'request-complete',
       headers: [],
     };
-    const exchangeId = await this.tracker.trackTunnel(exchange);
+    const exchangeId = await this.exchangeTracker.trackTunnel(exchange);
     if (!exchangeId) {
       return null;
     }
-    this.capturedExchanges = this.tracker.totalCaptured;
+    this.capturedExchanges = this.exchangeTracker.totalCaptured;
     return {
       exchangeId,
       startedAt,
@@ -491,7 +491,7 @@ export class ProxyService {
     if (!pending) {
       return;
     }
-    await this.tracker.completeTunnel(
+    await this.exchangeTracker.completeTunnel(
       pending.exchangeId,
       pending.startedAt,
       pending.host,
@@ -515,7 +515,7 @@ export class ProxyService {
     const tail = this.webSocketTails.get(message.streamId) ?? Promise.resolve();
     const next = tail
       .then(async () => {
-        const exchangeId = await this.tracker.whenExchangeReady(
+        const exchangeId = await this.exchangeTracker.whenExchangeReady(
           message.streamId,
         );
         if (!exchangeId) {
@@ -527,7 +527,7 @@ export class ProxyService {
             ? 'application/octet-stream'
             : 'text/plain; charset=utf-8',
         );
-        await this.storage.appendWebSocketFrames(exchangeId, [
+        await this.captureService.appendWebSocketFrames(exchangeId, [
           {
             direction:
               message.direction === 'received'
@@ -553,7 +553,7 @@ export class ProxyService {
   }
 
   private async interceptWebSocketMessage(message: WebSocketBridgeMessage) {
-    if (!this.webSocketBreakpointsOn || !this.ruleEngine) {
+    if (!this.webSocketBreakpointsOn || !this.ruleService) {
       return {
         action: 'forward' as const,
         content: message.content,
@@ -564,7 +564,7 @@ export class ProxyService {
     const body = message.isBinary
       ? ProxyUtils.toHexString(message.content)
       : message.content.toString('utf8');
-    const outcome = await this.ruleEngine.pauseWebSocketMessage({
+    const outcome = await this.ruleService.pauseWebSocketMessage({
       ruleName: 'WebSocket message',
       url: message.url,
       direction: message.direction,
@@ -598,7 +598,7 @@ export class ProxyService {
   }
 
   /**
-   * 把一段完整正文写入 TemporaryBodyStore 并生成 hash metadata。
+   * 把一段完整正文写入 BodyStore 并生成 hash metadata。
    * 仅用于 WebSocket 单条消息 payload —— HTTP 正文走 ExchangeTracker 的增量写入器。
    */
   private async persistBody(
@@ -610,7 +610,7 @@ export class ProxyService {
     }
     const id = `body-${ProxyUtils.cryptoRandomId()}`;
     try {
-      const { hash, size } = await this.storage.writeBody(
+      const { hash, size } = await this.captureService.writeBody(
         ProxyUtils.singleChunk(buffer),
       );
       return {
@@ -637,7 +637,7 @@ export class ProxyService {
   private async applyRulesToRequest(
     request: RuleRequestInput,
   ): Promise<ProxyRequestResult | undefined> {
-    if (!this.ruleEngine || !this.ruleEngine.hasRules) {
+    if (!this.ruleService || !this.ruleService.hasRules) {
       return undefined;
     }
     const state: MutableRequestState = {
@@ -646,11 +646,11 @@ export class ProxyService {
       headers: ProxyUtils.cloneHeaders(request.headers),
     };
     try {
-      const evaluation = await this.ruleEngine.evaluateRequest(
+      const evaluation = await this.ruleService.evaluateRequest(
         ProxyUtils.buildRequestContext(request),
         state,
       );
-      this.tracker.recordRuleOutcome(
+      this.exchangeTracker.recordRuleOutcome(
         request.id,
         evaluation.hits,
         evaluation.headerEffects,
@@ -686,7 +686,7 @@ export class ProxyService {
     response: RuleResponseInput,
     request: RuleRequestInput,
   ): Promise<ProxyResponseResult | undefined> {
-    if (!this.ruleEngine || !this.ruleEngine.hasRules) {
+    if (!this.ruleService || !this.ruleService.hasRules) {
       return undefined;
     }
     const state: MutableResponseState = {
@@ -694,11 +694,11 @@ export class ProxyService {
       headers: ProxyUtils.cloneHeaders(response.headers),
     };
     try {
-      const evaluation = await this.ruleEngine.evaluateResponse(
+      const evaluation = await this.ruleService.evaluateResponse(
         ProxyUtils.buildResponseContext(request, response),
         state,
       );
-      this.tracker.recordRuleOutcome(
+      this.exchangeTracker.recordRuleOutcome(
         request.id,
         evaluation.hits,
         evaluation.headerEffects,

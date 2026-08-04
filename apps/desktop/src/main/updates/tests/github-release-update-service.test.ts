@@ -23,20 +23,20 @@ describe('GitHubReleaseUpdateService', () => {
       body: '<b>Capture fixes</b>\n\nDownload is user controlled.',
     });
     const states: string[] = [];
-    fixture.service.onStatusChange((status) => states.push(status.state));
+    fixture.gitHubReleaseUpdateService.onStatusChange((status) => states.push(status.state));
 
-    expect(await fixture.service.check()).toMatchObject({
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       state: 'available',
       latestVersion: '0.1.1',
       releaseNotes: 'Capture fixes\n\nDownload is user controlled.',
       totalBytes: fixture.installer.length,
     });
-    expect(await fixture.service.download()).toMatchObject({
+    expect(await fixture.gitHubReleaseUpdateService.download()).toMatchObject({
       state: 'downloaded',
       progress: 1,
       downloadedBytes: fixture.installer.length,
     });
-    await fixture.service.openDownloaded();
+    await fixture.gitHubReleaseUpdateService.openDownloaded();
 
     const installerPath = path.join(
       fixture.root,
@@ -55,8 +55,8 @@ describe('GitHubReleaseUpdateService', () => {
       assetName: 'Interceptor-0.1.1-arm64.dmg',
     });
 
-    expect(await fixture.service.check()).toMatchObject({ state: 'available' });
-    expect(await fixture.service.download()).toMatchObject({ state: 'downloaded' });
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'available' });
+    expect(await fixture.gitHubReleaseUpdateService.download()).toMatchObject({ state: 'downloaded' });
     expect(await readFile(path.join(
       fixture.root,
       'updates/downloads/Interceptor-0.1.1-arm64.dmg',
@@ -69,19 +69,19 @@ describe('GitHubReleaseUpdateService', () => {
       body: null,
     });
 
-    expect(await fixture.service.check()).toMatchObject({
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       state: 'up-to-date',
       latestVersion: '0.1.0',
       releaseNotes: null,
     });
-    await expect(fixture.service.download()).rejects.toThrow('No GitHub');
-    await expect(fixture.service.openDownloaded()).rejects.toThrow('No downloaded');
+    await expect(fixture.gitHubReleaseUpdateService.download()).rejects.toThrow('No GitHub');
+    await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
   });
 
   it('treats a repository without releases as current', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, { status: 404 });
 
-    expect(await fixture.service.check()).toMatchObject({
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       state: 'up-to-date',
       latestVersion: null,
       message: 'No public stable release has been published yet.',
@@ -94,7 +94,7 @@ describe('GitHubReleaseUpdateService', () => {
     await mkdir(path.dirname(stalePath), { recursive: true });
     await writeFile(stalePath, 'stale');
 
-    await fixture.service.check();
+    await fixture.gitHubReleaseUpdateService.check();
 
     await expect(access(stalePath)).rejects.toMatchObject({ code: 'ENOENT' });
   });
@@ -103,12 +103,12 @@ describe('GitHubReleaseUpdateService', () => {
     const invalidTag = await GitHubReleaseFixture.create(roots, {
       tagName: '../latest',
     });
-    expect(await invalidTag.service.check()).toMatchObject({ state: 'failed' });
+    expect(await invalidTag.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
 
     const foreignAsset = await GitHubReleaseFixture.create(roots, {
       assetUrl: 'https://example.com/Interceptor.msi',
     });
-    expect(await foreignAsset.service.check()).toMatchObject({ state: 'failed' });
+    expect(await foreignAsset.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
     expect(foreignAsset.openPath).not.toHaveBeenCalled();
   });
 
@@ -117,36 +117,36 @@ describe('GitHubReleaseUpdateService', () => {
       assetName: 'Interceptor-arm64.msi',
     });
 
-    expect(await fixture.service.check()).toMatchObject({ state: 'failed' });
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
   });
 
   it('rejects an installer without a GitHub SHA-256 digest', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, { digest: null });
 
-    expect(await fixture.service.check()).toMatchObject({ state: 'failed' });
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
   });
 
   it('rejects truncated or hash-mismatched installer downloads', async () => {
     const truncated = await GitHubReleaseFixture.create(roots, {
       downloadBody: Buffer.from('short'),
     });
-    await truncated.service.check();
-    expect(await truncated.service.download()).toMatchObject({ state: 'failed' });
+    await truncated.gitHubReleaseUpdateService.check();
+    expect(await truncated.gitHubReleaseUpdateService.download()).toMatchObject({ state: 'failed' });
 
     const mismatched = await GitHubReleaseFixture.create(roots, {
       digest: `sha256:${'0'.repeat(64)}`,
     });
-    await mismatched.service.check();
-    expect(await mismatched.service.download()).toMatchObject({ state: 'failed' });
+    await mismatched.gitHubReleaseUpdateService.check();
+    expect(await mismatched.gitHubReleaseUpdateService.download()).toMatchObject({ state: 'failed' });
     expect(mismatched.openPath).not.toHaveBeenCalled();
   });
 
   it('reports download-directory failures without remaining busy', async () => {
     const fixture = await GitHubReleaseFixture.create(roots);
-    await fixture.service.check();
+    await fixture.gitHubReleaseUpdateService.check();
     await writeFile(path.join(fixture.root, 'updates'), 'blocks-directory');
 
-    expect(await fixture.service.download()).toMatchObject({
+    expect(await fixture.gitHubReleaseUpdateService.download()).toMatchObject({
       state: 'failed',
       progress: null,
       downloadedBytes: null,
@@ -156,8 +156,8 @@ describe('GitHubReleaseUpdateService', () => {
   it('does not access GitHub outside packaged Windows and macOS builds', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, { packaged: false });
 
-    fixture.service.start();
-    expect(await fixture.service.check()).toMatchObject({
+    fixture.gitHubReleaseUpdateService.start();
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       supported: false,
       state: 'unsupported',
     });
@@ -168,11 +168,11 @@ describe('GitHubReleaseUpdateService', () => {
     vi.useFakeTimers({ toFake: ['setInterval'] });
     const fixture = await GitHubReleaseFixture.create(roots, { tagName: 'v0.1.0' });
 
-    fixture.service.start();
+    fixture.gitHubReleaseUpdateService.start();
     await vi.waitFor(() => expect(fixture.metadataRequests()).toBe(1));
     await vi.advanceTimersByTimeAsync(60 * 60_000);
     await vi.waitFor(() => expect(fixture.metadataRequests()).toBe(2));
-    fixture.service.stop();
+    fixture.gitHubReleaseUpdateService.stop();
   });
 });
 
@@ -200,7 +200,7 @@ class GitHubReleaseFixture {
   /** Fake operating-system installer opener. */
   readonly openPath = vi.fn(async () => '');
   /** Service under test. */
-  readonly service: GitHubReleaseUpdateService;
+  readonly gitHubReleaseUpdateService: GitHubReleaseUpdateService;
   /** Captured request URLs. */
   private readonly requests: string[] = [];
 
@@ -244,7 +244,7 @@ class GitHubReleaseFixture {
         headers: { 'content-length': String(downloadBody.length) },
       });
     });
-    this.service = new GitHubReleaseUpdateService({
+    this.gitHubReleaseUpdateService = new GitHubReleaseUpdateService({
       platform: options.platform ?? 'win32',
       architecture: options.architecture ?? 'x64',
       packaged: options.packaged ?? true,

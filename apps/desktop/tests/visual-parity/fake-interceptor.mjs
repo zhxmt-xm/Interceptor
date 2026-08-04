@@ -720,8 +720,8 @@ export function installFakeInterceptor({
       };
     },
     onCoreProcessStatusChange: () => () => undefined,
-    getStorageStatus: async () => storage,
-    clearStorage: async () => {
+    getCaptureUsage: async () => storage,
+    clearCapture: async () => {
       storage = {
         ...storage,
         sessionCount: 0,
@@ -876,7 +876,7 @@ export function installFakeInterceptor({
       breakpointsEnabled = enabled;
       return enabled;
     },
-    probeConnection: async () => ({
+    probeTls: async () => ({
       ok: true,
       protocol: 'TLS 1.3',
       cipher: 'TLS_AES_128_GCM_SHA256',

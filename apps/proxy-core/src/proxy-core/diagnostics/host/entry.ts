@@ -22,14 +22,14 @@ import type {
  * 网络路径；查询路径按 requestId 关联。Worker 崩溃时拒绝挂起查询并丢弃缓冲写入，
  * 记录聚合丢弃计数，绝不递归回灌同一 sink。Worker bundle 与数据库路径从中央运行期变量读取。
  */
-export class DiagnosticsWorkerHost {
+export class WorkerHost {
 
   /** Worker 就绪前的完整写入批次。 */
   private readonly pendingWrites: DiagnosticLogRecord[][] = [];
   /** 按 requestId 关联的在途查询。 */
   private readonly pendingQueries = new Map<number, PendingDiagnosticsQuery>();
   /** 当前 Diagnostics Worker 通道。 */
-  private channel: Worker | null = null;
+  private worker: Worker | null = null;
   /** Worker 是否已发布 ready。 */
   private ready = false;
   /** Worker 是否已进入不可恢复失败态。 */
@@ -52,14 +52,14 @@ export class DiagnosticsWorkerHost {
       return this.startPromise;
     }
     this.startPromise = new Promise<void>((resolve, reject) => {
-      const channel = new Worker(diagnosticsWorkerEntry, {
+      const worker = new Worker(diagnosticsWorkerEntry, {
         workerData: {
           databaseLocation: diagnosticsDatabasePath,
         } satisfies DiagnosticsWorkerData,
       });
-      this.channel = channel;
+      this.worker = worker;
 
-      channel.on('message', (message: DiagnosticsWorkerResponse) => {
+      worker.on('message', (message: DiagnosticsWorkerResponse) => {
         if (message.type === 'ready') {
           this.ready = true;
           this.flushPendingWrites();
@@ -75,13 +75,13 @@ export class DiagnosticsWorkerHost {
           this.settleQuery(message);
         }
       });
-      channel.on('error', (error) => {
+      worker.on('error', (error) => {
         this.markFailed(error);
         if (!this.ready) {
           reject(error);
         }
       });
-      channel.on('exit', (code) => {
+      worker.on('exit', (code) => {
         if (!this.closed) {
           this.markFailed(new Error(`diagnostics worker exited with code ${code}`));
         }
@@ -101,8 +101,8 @@ export class DiagnosticsWorkerHost {
       }
       return;
     }
-    if (this.ready && this.channel) {
-      this.channel.postMessage({
+    if (this.ready && this.worker) {
+      this.worker.postMessage({
         type: 'write',
         records: [...records],
       } satisfies DiagnosticsWorkerRequest);
@@ -119,7 +119,7 @@ export class DiagnosticsWorkerHost {
     if (this.closed || this.failed) {
       return Promise.reject(new Error('diagnostics worker is unavailable'));
     }
-    const channel = this.channel;
+    const channel = this.worker;
     if (!channel) {
       return Promise.reject(new Error('diagnostics worker is not started'));
     }
@@ -146,7 +146,7 @@ export class DiagnosticsWorkerHost {
       return;
     }
     this.closed = true;
-    const channel = this.channel;
+    const channel = this.worker;
     if (channel && this.ready) {
       try {
         channel.postMessage({
@@ -163,18 +163,18 @@ export class DiagnosticsWorkerHost {
 
   /** Worker ready 后先上报丢弃计数，再按原顺序回放缓冲写入。 */
   private flushPendingWrites(): void {
-    if (!this.channel) {
+    if (!this.worker) {
       return;
     }
     if (this.droppedBeforeReady > 0) {
-      this.channel.postMessage({
+      this.worker.postMessage({
         type: 'dropped',
         count: this.droppedBeforeReady,
       } satisfies DiagnosticsWorkerRequest);
       this.droppedBeforeReady = 0;
     }
     for (const records of this.pendingWrites.splice(0)) {
-      this.channel.postMessage({
+      this.worker.postMessage({
         type: 'write',
         records,
       } satisfies DiagnosticsWorkerRequest);

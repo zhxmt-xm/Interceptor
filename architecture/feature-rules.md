@@ -16,7 +16,7 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 
 **关键边界：**
 
-- `RuleEngine` 只计算决策，返回 `RequestEvaluation` / `ResponseEvaluation`，**不发起任何网络操作**（唯一的本地 I/O 是 `map-local` 读取磁盘文件）。
+- `RuleService` 只计算决策，返回 `RequestEvaluation` / `ResponseEvaluation`，**不发起任何网络操作**（唯一的本地 I/O 是 `map-local` 读取磁盘文件）。
 - `ProxyService` 是唯一执行者，把决策转换为 Mockttp 的转发行为，包括 `delay` 的实际 await。
 - Rules 的执行**不受 Recording 开关影响**。暂停记录时规则依然作用于真实流量，只是不产生 Capture 记录。
 - 限速（throttle）已从协议、引擎与 UI 整体移除：规则全在头部阶段执行，真限速必须介入正文流；浏览器 DevTools 已自带该能力。
@@ -95,14 +95,14 @@ interface RuleDefinition {
 | 基础 matcher | 有 | 有 |
 | 多条规则累积执行 | **首个匹配胜出** | **按 priority 执行全部匹配** |
 | 响应侧 matcher | 只能进 callback 后判断 | 原生模型 |
-| 持久化与 revision | 无 | `rules.sqlite` 单行 JSON |
+| 持久化与 revision | 无 | `workspace.sqlite` 单行 JSON |
 | UI 草稿与语义诊断 | 无 | 有 |
 | Rule hit 与历史证据 | 极有限 | 产品核心能力 |
 | 断点与用户编辑 | 无 | 有状态机 |
 | Archive 保真 | 无 | 有 |
 
 **分层结论**：产品 `RuleDefinition` 是控制面、持久化与 UI 的唯一来源；全部 matcher 判定与 action 执行都在
-`RuleEngine` 内完成，Mockttp **只提供头部阶段的两个钩子与转发能力**，不承担任何规则语义。
+`RuleService` 内完成，Mockttp **只提供头部阶段的两个钩子与转发能力**，不承担任何规则语义。
 产品规则**不会**被编译成 Mockttp Rule 或 `transformRequest` / `transformResponse` 下推。
 
 ## 4. 执行路径
@@ -218,7 +218,7 @@ sequenceDiagram
     autonumber
     participant Mockttp
     participant Proxy as ProxyService
-    participant Engine as RuleEngine
+    participant Engine as RuleService
     participant Exec as RuleActionExecutor
     participant BP as BreakpointQueue
     participant Capture as Capture 记录
@@ -266,7 +266,7 @@ sequenceDiagram
     participant Origin
     participant Mockttp
     participant Proxy as ProxyService
-    participant Engine as RuleEngine
+    participant Engine as RuleService
     participant Client
 
     Origin-->>Mockttp: 原始响应头
@@ -296,7 +296,7 @@ flowchart LR
     C --> D["回客户端的最终响应<br/>response-initiated"]
 ```
 
-因为改写完全由 `RuleEngine` 自己执行，每一步的新旧值都在引擎内可见，**不需要反推**。
+因为改写完全由 `RuleService` 自己执行，每一步的新旧值都在引擎内可见，**不需要反推**。
 
 **尚未覆盖 [改造中]**：“发往 Origin 的最终请求头”与“Origin 原始响应头”两组真实 wire headers
 未入库。Mockttp 会通过 `rule-event` 发出 `passthrough-request-head` / `passthrough-response-head`，
@@ -304,7 +304,7 @@ flowchart LR
 
 ### 7.2 Header effect
 
-`RuleEngine` 在每个真实生效的 header action 后产出（`rules/interfaces/index.ts`）：
+`RuleService` 在每个真实生效的 header action 后产出（`rules/interfaces/index.ts`）：
 
 ```ts
 interface RuleHeaderEffect {
@@ -349,7 +349,7 @@ interface RuleHitRecord {
 ```
 
 **计数语义 [已实现]**：命中数按 `Rule × Exchange` 去重，语义是“这条规则拦到了多少个请求”，
-而不是“执行了多少个 action”。`TemporaryCaptureStore.appendRuleHits` 用
+而不是“执行了多少个 action”。`ExchangeStore.appendRuleHits` 用
 `ruleHitsByExchange: Map<exchangeId, Set<ruleId>>` 去重，`countRuleHits` 按 ruleId 聚合。
 回归测试：`rules/tests/rule-hit-count.integration.test.ts`（一条规则 3 个 action × 2 个请求 = count 2）。
 
@@ -362,8 +362,8 @@ action 次数）与 `blocked`（短路或阻断次数）需要扩展协议与 St
 sequenceDiagram
     participant UI as Renderer
     participant App as CoreApplication
-    participant Store as RuleStore
-    participant Engine as RuleEngine
+    participant Store as WorkspaceService
+    participant Engine as RuleService
 
     UI->>App: rules.replace(expectedRevision, rules)
     Note over App: Core 不做规则语义校验（见 §9.2）
@@ -390,7 +390,7 @@ sequenceDiagram
 
 ### 9.1 存储
 
-`RuleStore` 使用 `rules.sqlite` 单行表：`revision` + `rules_json`。乐观并发通过 `expectedRevision` 比对实现。
+`WorkspaceService` 使用 `workspace.sqlite` 的 `rule_set` 单行表：`revision` + `json`。乐观并发通过 `expectedRevision` 比对实现。
 
 Capture 数据完全不使用 SQLite，两者强隔离。
 
@@ -402,7 +402,7 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 | --- | --- | --- |
 | 未填写的条件恒不匹配 | `rules/utils/index.ts` 的 `compileStringMatch` / `compileRuleMatchers` | 空值条件与空条件集编译为恒 false，而不是 `includes('')` / 空 regex 的恒 true |
 | 不完整的规则不能启用 | Renderer `rulesStore.toggleRule` + `RuleRow` 开关 | 字段未填完时开关置灰并拒绝启用；已启用的规则任何时候都可关掉 |
-| 引擎只执行已启用规则 | `RuleEngine.setRuleSet` | `filter(rule => rule.enabled)` 后才编译 |
+| 引擎只执行已启用规则 | `RuleService.setRuleSet` | `filter(rule => rule.enabled)` 后才编译 |
 
 未填写项的提示由 Renderer 本地纯函数 `ruleIssues(rule)` 即时派生（不入状态、不往返 Core），驱动 RuleEditor 的问题列表、Statusbar 计数和启用开关的可用性。新建规则与 Capture 右键草稿都默认 `enabled: false`。
 

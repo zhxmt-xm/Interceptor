@@ -872,6 +872,29 @@
         <div class="dlg https-setup">
           <div class="dlghead"><span class="di"><svg><use href="#i-shield"/></svg></span><b>Decrypt HTTPS (MITM)</b><button class="ib sm" data-close-overlay><svg><use href="#i-x"/></svg></button></div>
           <div class="https-body">
+            <!-- The chain is what this dialog is actually about: traffic already reaches us
+                 (left wire live), the lock says whether we can read it. -->
+            <div class="chain">
+              <span class="chain-icon chain-client"><svg><use href="#i-app-window"/></svg></span>
+              <div class="chain-wire chain-inbound">
+                <i class="chain-seg"><b class="chain-flow"></b></i>
+                <span class="chain-badge chain-route"><svg><use href="#i-arrow"/></svg></span>
+                <i class="chain-seg"></i>
+              </div>
+              <span class="chain-icon chain-self"><svg><use href="#i-zap"/></svg></span>
+              <div class="chain-wire chain-outbound">
+                <i class="chain-seg"><b class="chain-flow"></b></i>
+                <span class="chain-badge chain-lock">
+                  <svg class="chain-lock-secure"><use href="#i-lock"/></svg>
+                  <svg class="chain-lock-plain"><use href="#i-lock-off"/></svg>
+                </span>
+                <i class="chain-seg"></i>
+              </div>
+              <span class="chain-icon chain-origin"><svg><use href="#i-globe"/></svg></span>
+              <span class="chain-name chain-name-client">Client apps</span>
+              <span class="chain-name chain-name-self">Interceptor</span>
+              <span class="chain-name chain-name-origin">Internet</span>
+            </div>
             <p>Set up a local root certificate only when you need to inspect HTTPS request and response content.</p>
             <div class="https-steps">
               <div class="https-row https-fresh-only"><span class="https-num">1</span><div class="https-copy"><b>Root Certificate Authority</b><span>No CA generated yet</span></div><button class="btn pri">Generate</button></div>
@@ -896,6 +919,54 @@
             <div class="privacy-note"><svg><use href="#i-shield"/></svg><span>Interceptor only takes ownership after the current configuration is saved for guarded restoration.</span></div>
           </div>
           <div class="dlgfoot"><button class="btn" data-close-overlay>Cancel</button><button class="btn">Proxy &amp; Listener</button><button class="btn pri">Enable</button></div>
+        </div>
+      </div>
+
+      <!-- ====================== BOOT — startup loading ======================
+           Covers the whole shell until traffic can actually reach us. Three steps, all of
+           them prerequisites: CoreProcessStatus.state · CaptureStatus.listening ·
+           SystemProxyStatus.owned. MITM is not part of startup. -->
+      <div class="boot">
+        <div class="boot-chrome">
+          <div class="window-controls">
+            <button class="ib sm window-control" aria-label="Minimize" title="Minimize"><svg><use href="#i-minus"/></svg></button>
+            <button class="ib sm window-control" aria-label="Maximize or restore" title="Maximize or restore"><svg><use href="#i-maximize"/></svg></button>
+            <button class="ib sm window-close" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+
+        <div class="boot-stage">
+          <div class="boot-splash">
+            <div class="boot-ring-wrap">
+              <span class="boot-ring-track"></span>
+              <span class="boot-ring"></span>
+              <span class="boot-logo"><svg><use href="#i-zap"/></svg></span>
+            </div>
+            <div class="boot-splash-copy">
+              <b class="boot-wordmark">Interceptor</b>
+              <span class="boot-phase" data-when="core">Starting Proxy Core</span>
+              <span class="boot-phase" data-when="listener">Binding 127.0.0.1:8888</span>
+              <span class="boot-phase" data-when="proxy">Enabling the Windows system proxy</span>
+              <span class="boot-phase" data-when="ready">Ready — opening Capture</span>
+              <span class="boot-phase" data-when="error">Proxy Core exited with code 1 after 0.8 s</span>
+            </div>
+
+            <div class="boot-dots">
+              <span class="boot-dot" data-step="core"></span>
+              <span class="boot-dot" data-step="listener"></span>
+              <span class="boot-dot" data-step="proxy"></span>
+            </div>
+
+            <div class="boot-gate">
+              <p class="boot-note" data-when="core listener proxy ready"><svg><use href="#i-shield"/></svg>Interceptor takes over the Windows system proxy and restores your current settings when it exits.</p>
+              <p class="boot-note" data-when="error"><svg><use href="#i-shield"/></svg>Your system proxy settings were not changed.</p>
+              <div class="boot-actions" data-when="error">
+                <button class="btn"><svg><use href="#i-terminal"/></svg>Open diagnostics</button>
+                <button class="btn"><svg><use href="#i-arrow"/></svg>Enter anyway</button>
+                <button class="btn pri"><svg><use href="#i-refresh"/></svg>Retry</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -944,6 +1015,7 @@
         <div class="grp"><span class="lbl">Theme</span><div class="switch" data-key="theme"><button data-set="light">Light</button><button data-set="warm">Warm</button><button data-set="dark">Dark</button><button data-set="ember">Ember</button></div></div>
         <div class="grp"><span class="lbl">Sidebar</span><div class="switch" data-key="sidebar"><button data-set="expanded">Expand</button><button data-set="collapsed">Collapse</button></div></div>
         <div class="grp"><span class="lbl">Overlay</span><div class="switch" data-key="overlay"><button data-set="none">None</button><button data-set="https-setup">HTTPS</button><button data-set="import-export">Export</button></div></div>
+        <div class="grp"><span class="lbl">Boot</span><div class="switch" data-key="boot"><button data-set="none">Off</button><button data-set="core">Core</button><button data-set="listener">Listener</button><button data-set="proxy">Proxy</button><button data-set="ready">Ready</button><button data-set="error">Error</button></div></div>
       </div>
     </div>
 

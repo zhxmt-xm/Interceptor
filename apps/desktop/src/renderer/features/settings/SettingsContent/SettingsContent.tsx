@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import type {
   CertificateInfo,
   InterceptorDesktopApi,
-  StorageUsage,
+  CaptureUsage,
 } from '../../../../shared/desktop-api';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { SECTIONS } from '../constants';
@@ -275,10 +275,10 @@ function CertificatesPanel(): React.JSX.Element {
 
 type StorageState = 'loading' | 'ready' | 'error';
 
-/** The Storage settings section, backed by the Core storage.status command. */
+/** The Storage settings section, backed by the Core capture.status command. */
 function StoragePanel(): React.JSX.Element {
   const { i18n, t } = useTranslation();
-  const [usage, setUsage] = useState<StorageUsage | null>(null);
+  const [usage, setUsage] = useState<CaptureUsage | null>(null);
   const [state, setState] = useState<StorageState>('loading');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -291,7 +291,7 @@ function StoragePanel(): React.JSX.Element {
     }
     setState('loading');
     void api
-      .getStorageStatus()
+      .getCaptureUsage()
       .then((next) => {
         setUsage(next);
         setState('ready');
@@ -310,7 +310,7 @@ function StoragePanel(): React.JSX.Element {
     }
     setBusy(true);
     void api
-      .clearStorage()
+      .clearCapture()
       .then((next) => {
         setUsage(next);
         setState('ready');

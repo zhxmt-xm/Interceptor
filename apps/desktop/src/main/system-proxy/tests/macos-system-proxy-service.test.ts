@@ -104,14 +104,14 @@ class FakeMacosHelperRunner implements SystemProxyCommandRunner {
 
 describe('MacosSystemProxyService', () => {
   it('snapshots and configures every active network service', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const service = new MacosSystemProxyService({
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const macosSystemProxyService = new MacosSystemProxyService({
       platform: 'darwin',
       helperPath: 'macos-proxy-helper',
-      runner,
+      runner: fakeMacosHelperRunner,
     });
 
-    const status = await service.enable('127.0.0.1', 8888);
+    const status = await macosSystemProxyService.enable('127.0.0.1', 8888);
 
     expect(status).toMatchObject({
       supported: true,
@@ -121,8 +121,8 @@ describe('MacosSystemProxyService', () => {
       proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
       pacUrl: null,
     });
-    expect(runner.snapshot.services).toHaveLength(2);
-    for (const networkService of runner.snapshot.services) {
+    expect(fakeMacosHelperRunner.snapshot.services).toHaveLength(2);
+    for (const networkService of fakeMacosHelperRunner.snapshot.services) {
       expect(networkService.settings).toMatchObject({
         HTTPEnable: 1,
         HTTPProxy: '127.0.0.1',
@@ -138,35 +138,35 @@ describe('MacosSystemProxyService', () => {
   });
 
   it('restores the exact multi-service snapshot while settings remain owned', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const original = structuredClone(runner.snapshot);
-    const service = new MacosSystemProxyService({
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const original = structuredClone(fakeMacosHelperRunner.snapshot);
+    const macosSystemProxyService = new MacosSystemProxyService({
       platform: 'darwin',
       helperPath: 'macos-proxy-helper',
-      runner,
+      runner: fakeMacosHelperRunner,
     });
-    await service.enable('::1', 7777);
+    await macosSystemProxyService.enable('::1', 7777);
 
-    const result = await service.restore();
+    const result = await macosSystemProxyService.restore();
 
     expect(result.restored).toBe(true);
-    expect(runner.snapshot).toEqual(original);
+    expect(fakeMacosHelperRunner.snapshot).toEqual(original);
     expect(result.status).toMatchObject({ owned: false, ownershipLost: false });
   });
 
   it('does not restore any service after one service is externally modified', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const service = new MacosSystemProxyService({
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const macosSystemProxyService = new MacosSystemProxyService({
       platform: 'darwin',
       helperPath: 'macos-proxy-helper',
-      runner,
+      runner: fakeMacosHelperRunner,
     });
-    await service.enable('127.0.0.1', 8888);
-    const [first, second] = runner.snapshot.services;
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+    const [first, second] = fakeMacosHelperRunner.snapshot.services;
     if (!first || !second) {
       throw new Error('Expected two fake network services.');
     }
-    runner.snapshot = {
+    fakeMacosHelperRunner.snapshot = {
       services: [
         {
           ...first,
@@ -175,32 +175,32 @@ describe('MacosSystemProxyService', () => {
         second,
       ],
     };
-    const callCount = runner.calls.length;
+    const callCount = fakeMacosHelperRunner.calls.length;
 
-    const result = await service.restore();
+    const result = await macosSystemProxyService.restore();
 
     expect(result).toMatchObject({
       restored: false,
       reason: 'externally-modified',
       status: { owned: false, ownershipLost: true },
     });
-    expect(runner.calls.slice(callCount).map((call) => call.args[0]))
+    expect(fakeMacosHelperRunner.calls.slice(callCount).map((call) => call.args[0]))
       .toEqual(['get']);
   });
 
   it('rejects duplicate services, missing services and non-loopback listeners', async () => {
     const runner = new FakeMacosHelperRunner();
-    const service = new MacosSystemProxyService({
+    const macosSystemProxyService = new MacosSystemProxyService({
       platform: 'darwin',
       helperPath: 'macos-proxy-helper',
       runner,
     });
-    await expect(service.enable('0.0.0.0', 8888)).rejects.toBeInstanceOf(
+    await expect(macosSystemProxyService.enable('0.0.0.0', 8888)).rejects.toBeInstanceOf(
       SystemProxyError,
     );
 
     runner.snapshot = { services: [] };
-    await expect(service.enable('127.0.0.1', 8888)).rejects.toThrow(
+    await expect(macosSystemProxyService.enable('127.0.0.1', 8888)).rejects.toThrow(
       'no active network services',
     );
 
@@ -218,55 +218,55 @@ describe('MacosSystemProxyService', () => {
   });
 
   it('reports unsupported platforms without invoking the helper', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const service = new MacosSystemProxyService({
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const macosSystemProxyService = new MacosSystemProxyService({
       platform: 'win32',
       helperPath: 'macos-proxy-helper',
-      runner,
+      runner: fakeMacosHelperRunner,
     });
 
-    expect(service.supported()).toBe(false);
-    expect(await service.status()).toMatchObject({ supported: false });
-    expect(await service.restore()).toMatchObject({ reason: 'not-owned' });
-    expect(runner.calls).toEqual([]);
+    expect(macosSystemProxyService.supported()).toBe(false);
+    expect(await macosSystemProxyService.status()).toMatchObject({ supported: false });
+    expect(await macosSystemProxyService.restore()).toMatchObject({ reason: 'not-owned' });
+    expect(fakeMacosHelperRunner.calls).toEqual([]);
   });
 
   it('restores every service from a journal after the owner crashes', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const original = structuredClone(runner.snapshot);
-    const journal = new FakeJournal();
-    await createService(runner, journal).enable('127.0.0.1', 8888);
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const original = structuredClone(fakeMacosHelperRunner.snapshot);
+    const fakeJournal = new FakeJournal();
+    await createService(fakeMacosHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
 
-    const result = await createService(runner, journal).repair();
+    const result = await createService(fakeMacosHelperRunner, fakeJournal).repair();
 
     expect(result.restored).toBe(true);
-    expect(runner.snapshot).toEqual(original);
-    expect(journal.record).toBeNull();
+    expect(fakeMacosHelperRunner.snapshot).toEqual(original);
+    expect(fakeJournal.record).toBeNull();
   });
 
   it('does not use a crash journal after one service is externally changed', async () => {
-    const runner = new FakeMacosHelperRunner();
-    const journal = new FakeJournal();
-    await createService(runner, journal).enable('127.0.0.1', 8888);
-    const [first, second] = runner.snapshot.services;
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const fakeJournal = new FakeJournal();
+    await createService(fakeMacosHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
+    const [first, second] = fakeMacosHelperRunner.snapshot.services;
     if (!first || !second) {
       throw new Error('Expected two fake network services.');
     }
-    runner.snapshot = {
+    fakeMacosHelperRunner.snapshot = {
       services: [{ ...first, settings: { ...first.settings, HTTPSPort: 9999 } }, second],
     };
-    const callCount = runner.calls.length;
+    const callCount = fakeMacosHelperRunner.calls.length;
 
-    const result = await createService(runner, journal).repair();
+    const result = await createService(fakeMacosHelperRunner, fakeJournal).repair();
 
     expect(result).toMatchObject({
       restored: false,
       reason: 'externally-modified',
       status: { ownershipLost: true },
     });
-    expect(runner.calls.slice(callCount).map((call) => call.args[0]))
+    expect(fakeMacosHelperRunner.calls.slice(callCount).map((call) => call.args[0]))
       .toEqual(['get']);
-    expect(journal.record).not.toBeNull();
+    expect(fakeJournal.record).not.toBeNull();
   });
 });
 

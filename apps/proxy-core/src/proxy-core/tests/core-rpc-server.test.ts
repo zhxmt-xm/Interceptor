@@ -47,14 +47,14 @@ class FakeRpcPort extends EventEmitter implements RpcMessagePort {
 describe('CoreRpcServer', () => {
   it('accepts a request without an extra handshake', async () => {
     const server = createServer(echoCommandHandler());
-    const port = new FakeRpcPort();
-    server.attach(port);
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
 
-    port.receive(request('request-1', 'trace-1', 'hello'));
+    fakeRpcPort.receive(request('request-1', 'trace-1', 'hello'));
     await settle();
 
-    expect(port.started).toBe(true);
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.started).toBe(true);
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       kind: 'response',
       requestId: 'request-1',
       ok: true,
@@ -65,11 +65,11 @@ describe('CoreRpcServer', () => {
   it('isolates invalid messages without closing the connection', async () => {
     const fatal = vi.fn();
     const server = createServer(echoCommandHandler(), fatal);
-    const port = new FakeRpcPort();
-    server.attach(port);
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
 
-    port.receive({ kind: 'unknown' });
-    port.receive({
+    fakeRpcPort.receive({ kind: 'unknown' });
+    fakeRpcPort.receive({
       kind: 'request',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-invalid',
@@ -78,18 +78,18 @@ describe('CoreRpcServer', () => {
     });
     await settle();
 
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       kind: 'response',
       requestId: 'request-invalid',
       ok: false,
       error: { code: 'invalid-message' },
     });
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
     expect(fatal).not.toHaveBeenCalled();
 
-    port.receive(request('request-after-invalid', 'trace-after-invalid', 'ok'));
+    fakeRpcPort.receive(request('request-after-invalid', 'trace-after-invalid', 'ok'));
     await settle();
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       requestId: 'request-after-invalid',
       ok: true,
     });
@@ -190,9 +190,9 @@ describe('CoreRpcServer', () => {
   it('keeps the connection after one event batch send failure', () => {
     const fatal = vi.fn();
     const server = createServer(echoCommandHandler(), fatal);
-    const port = new FakeRpcPort();
-    server.attach(port);
-    port.postError = new Error('message rejected');
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
+    fakeRpcPort.postError = new Error('message rejected');
 
     expect(server.sendEventBatch([{
       kind: 'exchange-added',
@@ -207,10 +207,10 @@ describe('CoreRpcServer', () => {
         responseBytes: 0,
       },
     }])).toBeNull();
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
     expect(fatal).not.toHaveBeenCalled();
 
-    port.postError = null;
+    fakeRpcPort.postError = null;
     expect(server.sendEventBatch([{
       kind: 'exchange-added',
       summary: {
@@ -228,16 +228,16 @@ describe('CoreRpcServer', () => {
 
   it('forwards the exact event batch acknowledgement sequence', () => {
     const handleEventAck = vi.fn();
-    const server = new CoreRpcServer({
-      diagnostics: createDiagnostics(),
+    const coreRpcServer = new CoreRpcServer({
+      coreDiagnostics: createDiagnostics(),
       executeCommand: echoCommandHandler(),
       handleRpcFatalError: vi.fn(),
       handleEventAck,
     });
-    const port = new FakeRpcPort();
-    server.attach(port);
+    const fakeRpcPort = new FakeRpcPort();
+    coreRpcServer.attach(fakeRpcPort);
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'event-ack',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence: 42,
@@ -245,57 +245,57 @@ describe('CoreRpcServer', () => {
 
     expect(handleEventAck).toHaveBeenCalledOnce();
     expect(handleEventAck).toHaveBeenCalledWith(42);
-    expect(port.closed).toBe(false);
+    expect(fakeRpcPort.closed).toBe(false);
   });
 
   it('records a concise command.completed trace', async () => {
-    const diagnostics = createDiagnostics();
-    const server = new CoreRpcServer({
-      diagnostics,
+    const coreDiagnostics = createDiagnostics();
+    const coreRpcServer = new CoreRpcServer({
+      coreDiagnostics,
       executeCommand: echoCommandHandler(),
       handleRpcFatalError: () => undefined,
       handleEventAck: () => undefined,
     });
-    const port = new FakeRpcPort();
-    server.attach(port);
+    const fakeRpcPort = new FakeRpcPort();
+    coreRpcServer.attach(fakeRpcPort);
 
-    port.receive(request('request-trace', 'trace-complete', 'hello'));
+    fakeRpcPort.receive(request('request-trace', 'trace-complete', 'hello'));
     await settle();
 
-    expect(diagnostics.recent(20, 'trace-complete').records.map(
+    expect(coreDiagnostics.recent(20, 'trace-complete').records.map(
       ({ phase }) => phase,
     )).toEqual(['command.completed']);
   });
 
   it('rejects duplicate request IDs and cancels active requests', async () => {
     const executeCommand = vi.fn<CoreCommandHandler>();
-    executeCommand.mockImplementation((_command, signal) => new Promise(
+    executeCommand.mockImplementation((_command, abortSignal) => new Promise(
       (_resolve, reject) => {
-        signal.addEventListener('abort', () => reject(new Error('aborted')), {
+        abortSignal.addEventListener('abort', () => reject(new Error('aborted')), {
           once: true,
         });
       },
     ));
     const server = createServer(executeCommand);
-    const port = new FakeRpcPort();
-    server.attach(port);
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
     const first = request('request-active', 'trace-first', 'first');
-    port.receive(first);
-    port.receive({ ...first, traceId: 'trace-duplicate' });
+    fakeRpcPort.receive(first);
+    fakeRpcPort.receive({ ...first, traceId: 'trace-duplicate' });
     await settle();
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       ok: false,
       error: { code: 'conflict' },
     });
 
-    port.receive({
+    fakeRpcPort.receive({
       kind: 'cancel',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: 'request-active',
       reason: 'caller',
     });
     await settle();
-    expect(port.sent.at(-1)).toMatchObject({
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
       requestId: 'request-active',
       ok: false,
       error: { code: 'cancelled' },
@@ -308,7 +308,7 @@ function createServer(
   onFatalError = vi.fn(),
 ): CoreRpcServer {
   return new CoreRpcServer({
-    diagnostics: createDiagnostics(),
+    coreDiagnostics: createDiagnostics(),
     executeCommand,
     handleRpcFatalError: onFatalError,
     handleEventAck: () => undefined,

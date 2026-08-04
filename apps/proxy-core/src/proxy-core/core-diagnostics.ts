@@ -26,7 +26,7 @@ export interface DiagnosticFields {
 }
 
 /**
- * 结构化诊断记录器：Core 各组件（RpcServer/Application/Proxy/Storage）用它记录
+ * 结构化诊断记录器：Core 各组件（RpcServer/Application/Proxy/Capture）用它记录
  * initialize、action、生命周期与 error 关键节点。CoreDiagnostics 是唯一实现。
  */
 export interface DiagnosticsRecorder {
@@ -36,7 +36,7 @@ export interface DiagnosticsRecorder {
 }
 
 /**
- * 诊断输出汇：CoreDiagnostics 把成批脱敏日志投递给它。由 DiagnosticsWorkerHost 实现
+ * 诊断输出汇：CoreDiagnostics 把成批脱敏日志投递给它。由 WorkerHost 实现
  * （持久化），或默认写 stdout JSON Lines。注入对象而非闭包，避免在装配处构造闭包函数。
  */
 export interface DiagnosticsSink {
@@ -66,7 +66,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
    * 调用方：CoreApplication 注入 Diagnostics Worker host 作为 sink；无 sink 时默认写 stdout JSON Lines。
    */
   constructor(
-    private readonly sinkTarget: DiagnosticsSink = defaultDiagnosticsSink,
+    private readonly diagnosticsSink: DiagnosticsSink = defaultDiagnosticsSink,
   ) {}
 
   /**
@@ -84,7 +84,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
 
   /**
    * 记录业务 action 的 started/completed/failed 与耗时，同时保持 operation 语义不变。
-   * 调用方：CoreApplication command handler 及后续 Storage/Proxy Service 操作。
+   * 调用方：CoreApplication command handler 及各业务模块的 Service 操作。
    */
   async action<T>(name: string, operation: () => Promise<T> | T): Promise<T> {
     const startedAt = Date.now();
@@ -117,7 +117,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
     this.record('info', phase, fields);
   }
 
-  /** 记录可恢复异常；调用方：协议边界和未来 Storage/Proxy Service。 */
+  /** 记录可恢复异常；调用方：协议边界和各业务模块的 Service。 */
   warn(phase: string, fields: DiagnosticFields = {}): void {
     this.record('warn', phase, fields);
   }
@@ -220,7 +220,7 @@ export class CoreDiagnostics implements DiagnosticsRecorder {
     }
 
     try {
-      const output = this.sinkTarget.sink(batch);
+      const output = this.diagnosticsSink.sink(batch);
       if (isPromiseLike(output)) {
         void output.catch((error: unknown) => {
           this.fallbackSafely(

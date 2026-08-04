@@ -1,7 +1,7 @@
 # Feature: Transfer
 
 > 最后更新：2026-07-26
-> Core 模块：`apps/proxy-core/src/proxy-core/transfer/`、`har/`、`archive/`、`storage/entry.ts`
+> Core 模块：`apps/proxy-core/src/proxy-core/transfer/`、`har/`、`archive/`、`capture/entry.ts`
 > Renderer 入口：Capture 工作栏的 Import / Export 菜单
 
 ## 1. 职责与边界
@@ -26,7 +26,7 @@ Transfer 统一承载所有**异步文件任务**：HAR 交换、Native Archive 
 | Archive 导入 | `archive.import.start` | 恢复存档 |
 | Body 导出 | `body.export.start` | 保存单个正文（大媒体主路径） |
 
-统一由 `TransferJobManager` 管理，共享 `transfer.job.get` / `transfer.job.cancel`。
+统一由 `TransferService` 管理，共享 `transfer.job.get` / `transfer.job.cancel`。
 
 ## 3. 调用流程
 
@@ -38,8 +38,8 @@ sequenceDiagram
     participant UI as Renderer
     participant Main
     participant App as CoreApplication
-    participant Jobs as TransferJobManager
-    participant Svc as HarService / ArchiveService / StorageService
+    participant Jobs as TransferService
+    participant Svc as HarService / ArchiveService / CaptureService
     participant FS as 文件系统
 
     UI->>Main: 触发导出意图
@@ -76,7 +76,7 @@ sequenceDiagram
 sequenceDiagram
     participant UI as Renderer
     participant App as CoreApplication
-    participant Jobs as TransferJobManager
+    participant Jobs as TransferService
     participant Svc as 任务实现
 
     UI->>App: transfer.job.cancel(jobId)
@@ -98,8 +98,8 @@ sequenceDiagram
     participant UI as BodyView
     participant Main
     participant App as CoreApplication
-    participant Storage as StorageService
-    participant Body as TemporaryBodyStore
+    participant Storage as CaptureService
+    participant Body as BodyStore
     participant FS as 文件系统
 
     Note over UI: video/* 或 audio/*<br/>Renderer 零读取

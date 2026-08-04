@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, SectionHeader } from '../../../components';
-import type { ConnectionProbe } from '../../../../shared/desktop-api';
+import type { TlsProbe } from '../../../../shared/desktop-api';
 import styles from './TlsPanel.module.css';
 
 export interface TlsPanelProps {
@@ -26,19 +26,19 @@ export function TlsPanel({
   protocol,
 }: TlsPanelProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
-  const [probe, setProbe] = useState<ConnectionProbe | null>(null);
+  const [probe, setProbe] = useState<TlsProbe | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const runProbe = async (): Promise<void> => {
     const api = window.interceptor;
-    if (!api?.probeConnection || !host) {
+    if (!api?.probeTls || !host) {
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const result = await api.probeConnection(host, port);
+      const result = await api.probeTls(host, port);
       setProbe(result);
       if (!result.ok) {
         setError(result.error ?? t('capture.tlsProbeFailed'));

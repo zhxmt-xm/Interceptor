@@ -46,7 +46,7 @@ apps/desktop/test-results/
 - Proxy Core UtilityProcess 是否从 packaged resources 启动并持续 heartbeat？
 - Main 与 Core 的专用 MessagePort RPC 是否工作？
 - Core 被强制终止后是否能以新 PID 自动重启？
-- Core 临时 Capture/Body、持久 RuleStore、Diagnostics Worker 与按需 Archive Worker 是否可用？
+- Core 临时 Capture/Body、持久 WorkspaceService（`workspace.sqlite`）、Diagnostics Worker 与按需 Archive Worker 是否可用？
 - `e2e-workflow-tests` 登记的全部用户 workflow 是否在最终 package 上得到相同结果？
 - 正常关闭、窗口关闭、Core 重启和失败清理是否符合生命周期约定？
 - 应用退出后 Main/Core/Renderer/Worker 是否全部退出，listener 和临时 profile 是否释放？
@@ -144,7 +144,7 @@ sequenceDiagram
     T->>C: kill current PID
     M->>C: restart new generation
     T->>R: verify new PID + RPC recovery
-    T->>R: getStorageStatus()/clearStorage()
+    T->>R: getCaptureUsage()/clearCapture()
     C->>S: real worker_threads + node:sqlite
     S-->>C: storage result
     T->>E: close app
@@ -204,17 +204,17 @@ sequenceDiagram
 
 Smoke 使用 packaged Core 中的真实：
 
-- `StorageService`；
-- Core 内 `TemporaryCaptureStore`；
-- 内存 + spill `TemporaryBodyStore`；
-- Core 直接管理的 `rules.sqlite`；
+- `CaptureService`；
+- Core 内 `ExchangeStore`；
+- 内存 + spill `BodyStore`；
+- Core 直接管理的 `workspace.sqlite`；
 - 按需 Archive Worker 与持续 Diagnostics Worker。
 
 测试确认：
 
-- `getStorageStatus()` 返回完整临时存储用量且无 quota，Capture database bytes 为 0；
+- `getCaptureUsage()` 返回完整临时存储用量且无 quota，Capture database bytes 为 0；
 - Stop 暂停记录（监听器保持运行、listening 仍为 true、recording 置 false）但保持 session/exchange/body count；
-- `clearStorage()` 后 session/exchange/body/spill 为 0。
+- `clearCapture()` 后 session/exchange/body/spill 为 0。
 
 ### 退出清理
 

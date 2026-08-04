@@ -54,13 +54,6 @@ export interface GrpcMessagePage {
   readonly malformedOffset?: number;
 }
 
-export interface GrpcStorageReader {
-  /** 读取 Exchange header 和 body 引用。 */
-  getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
-  /** 读取正文指定范围。 */
-  readBodyRange(hash: string, offset: number, length: number): Promise<Buffer>;
-}
-
 export interface GrpcMessageSource {
   /** content-type 是否为原生 gRPC。 */
   readonly recognized: boolean;

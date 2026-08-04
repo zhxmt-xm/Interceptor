@@ -40,6 +40,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'import-export', theme, variant: 'open-capture', state: { view: 'capture', theme: TOKEN[theme], overlay: 'import-export', transfer: 'archive-import' } });
   shots.push({ feature: 'https-setup', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel' } });
   shots.push({ feature: 'https-setup', theme, variant: 'ready', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel', https: 'ready' } });
+  shots.push({ feature: 'https-setup', theme, variant: 'decrypting', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel', https: 'ready', mitm: 'active' } });
   shots.push({ feature: 'proxy-not-ready', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'proxy-not-ready' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
@@ -112,6 +113,12 @@ for (const theme of ['light', 'dark']) {
     shots.push({ feature: 'shell-v2', theme, variant: feature, state: { view: feature, theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   }
 }
+// Startup loading screen: one shot per step of the boot sequence.
+for (const theme of ['light', 'dark']) {
+  for (const boot of ['core', 'listener', 'proxy', 'ready', 'error']) {
+    shots.push({ feature: 'boot', theme, variant: boot, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', boot } });
+  }
+}
 
 const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}.monaco-editor .cursors-layer{display:none!important}';
 const FULL_CSS = `
@@ -171,6 +178,7 @@ async function shoot(list) {
       collectionRename: '',
       composerHistory: '',
       bodyType: 'json',
+      boot: '',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

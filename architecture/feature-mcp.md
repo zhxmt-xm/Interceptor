@@ -127,7 +127,7 @@ interface McpClientIdentity {
 | `get_rule_hits` | `rules.hits` | |
 | `list_breakpoints` | `breakpoint.list` | |
 | `get_proxy_status` | `proxy.status` | `listening` / `recording` |
-| `get_storage_status` | `storage.status` | |
+| `get_storage_status` | `capture.status` | |
 | `query_diagnostics` | `diagnostics.query` | |
 
 **写工具 [阶段一]**
@@ -139,8 +139,8 @@ interface McpClientIdentity {
 | `send_request` | `composer.send` | **产生真实外发流量** |
 | `configure_breakpoint` | `breakpoint.configure` / `websocket.breakpoint.configure` | 会挂起真实请求 |
 | `resolve_breakpoint` | `breakpoint.resolve` | 可篡改真实请求/响应 |
-| `clear_capture` | `storage.cleanup` | **不可逆删除** |
-| `probe_connection` | `connection.probe` | 产生真实外发连接 |
+| `clear_capture` | `capture.cleanup` | **不可逆删除** |
+| `probe_connection` | `tls.probe` | 产生真实外发连接 |
 
 **明确不暴露**
 

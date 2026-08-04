@@ -4,7 +4,7 @@ import * as http2 from 'node:http2';
 import * as https from 'node:https';
 import type { TLSSocket } from 'node:tls';
 
-import { ComposerResponseBody } from './composer-response-body';
+import { ResponseBody } from './internal/response-body';
 import type {
   ComposerHeaderPair,
   ComposerRequestInput,
@@ -79,8 +79,8 @@ export class ComposerService {
           rejectUnauthorized: false,
         },
         (response) => {
-          const body = new ComposerResponseBody();
-          response.on('data', (chunk: Buffer) => body.push(chunk));
+          const responseBody = new ResponseBody();
+          response.on('data', (chunk: Buffer) => responseBody.push(chunk));
           response.on('end', () => {
             const socket = response.socket as TLSSocket;
             resolve({
@@ -89,8 +89,8 @@ export class ComposerService {
               statusText: response.statusMessage ?? '',
               httpVersion: `HTTP/${response.httpVersion}`,
               headers: ComposerUtils.rawHeaderPairs(response.rawHeaders),
-              body: body.bytes,
-              totalBytes: body.totalBytes,
+              body: responseBody.bytes,
+              totalBytes: responseBody.totalBytes,
               durationMs: Date.now() - start,
               tls: isHttps ? ComposerUtils.readTls(socket) : null,
               remoteAddress: response.socket?.remoteAddress ?? null,
@@ -150,7 +150,7 @@ export class ComposerService {
         ...ComposerUtils.buildOutgoingHeaders(request.headers),
       };
       const stream = client.request(requestHeaders);
-      const body = new ComposerResponseBody();
+      const responseBody = new ResponseBody();
       let status = 0;
       let headerPairs: ComposerHeaderPair[] = [];
 
@@ -158,7 +158,7 @@ export class ComposerService {
         status = Number(headers[':status']) || 0;
         headerPairs = ComposerUtils.h2HeaderPairs(headers);
       });
-      stream.on('data', (chunk: Buffer) => body.push(chunk));
+      stream.on('data', (chunk: Buffer) => responseBody.push(chunk));
       stream.on('end', () => {
         const socket = client.socket as TLSSocket;
         finish({
@@ -167,8 +167,8 @@ export class ComposerService {
           statusText: '',
           httpVersion: 'h2',
           headers: headerPairs,
-          body: body.bytes,
-          totalBytes: body.totalBytes,
+          body: responseBody.bytes,
+          totalBytes: responseBody.totalBytes,
           durationMs: Date.now() - start,
           tls: ComposerUtils.readTls(socket),
           remoteAddress: client.socket?.remoteAddress ?? null,

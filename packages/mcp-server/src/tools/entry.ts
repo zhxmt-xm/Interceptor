@@ -33,13 +33,13 @@ export class McpToolRegistry {
   constructor(
     host: McpHostBridge,
     options: {
-      redactor?: McpRedactor;
+      mcpRedactor?: McpRedactor;
       createApprovalId?: () => string;
     } = {},
   ) {
     this.#host = host;
     this.#createApprovalId = options.createApprovalId ?? (() => globalThis.crypto.randomUUID());
-    const catalog = buildToolCatalog(options.redactor ?? new McpRedactor());
+    const catalog = buildToolCatalog(options.mcpRedactor ?? new McpRedactor());
     this.#tools = new Map(catalog.map((tool) => [tool.name, tool]));
   }
 
@@ -73,7 +73,7 @@ export class McpToolRegistry {
     name: string,
     args: Readonly<Record<string, unknown>>,
     identity: McpClientIdentity,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<McpToolCallOutcome> {
     const tool = this.#tools.get(name);
     if (tool === undefined) {
@@ -85,7 +85,7 @@ export class McpToolRegistry {
 
     this.#activeCalls += 1;
     try {
-      const context = { host: this.#host, identity, signal };
+      const context = { host: this.#host, identity, abortSignal };
       if (tool.level === 'write') {
         const verdict = await this.#requestApproval(tool, args, context, identity);
         if (verdict !== 'approved') {
@@ -117,7 +117,7 @@ export class McpToolRegistry {
   async #requestApproval(
     tool: McpToolDefinition,
     args: Readonly<Record<string, unknown>>,
-    context: { host: McpHostBridge; identity: McpClientIdentity; signal: AbortSignal },
+    context: { host: McpHostBridge; identity: McpClientIdentity; abortSignal: AbortSignal },
     identity: McpClientIdentity,
   ): Promise<'approved' | 'rejected' | 'timeout'> {
     let diff: readonly string[] | undefined;

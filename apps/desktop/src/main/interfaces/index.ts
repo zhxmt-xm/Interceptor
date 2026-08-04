@@ -65,7 +65,7 @@ export interface CoreRpcPort {
 /** 单次 Core 请求的可选项：requestId / AbortSignal / 超时 / traceId。 */
 export interface CoreRequestOptions {
   requestId?: string;
-  signal?: AbortSignal;
+  abortSignal?: AbortSignal;
   timeoutMs?: number;
   traceId?: string;
 }

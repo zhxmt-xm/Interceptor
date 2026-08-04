@@ -6,8 +6,10 @@ import type {
   CaptureExchangeSummary,
   CaptureHeader,
   CaptureHeaderRuleEffect,
+  Collection,
+  CollectionNode,
   ComposerTlsInfo,
-  ConnectionCertificate,
+  TlsCertificate,
   DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
@@ -40,7 +42,7 @@ export type {
   CaptureHeader,
   CaptureHeaderRuleEffect,
   ComposerTlsInfo,
-  ConnectionCertificate,
+  TlsCertificate,
   DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
@@ -161,7 +163,7 @@ export interface RendererDiagnosticReport {
   message: string;
 }
 
-export interface StorageUsage {
+export interface CaptureUsage {
   sessionCount: number;
   exchangeCount: number;
   bodyCount: number;
@@ -274,6 +276,11 @@ export type RuleReplaceResult =
   | { ok: true; revision: number }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
+/** Composer 集合替换结果：语义与 RuleReplaceResult 一致。 */
+export type CollectionReplaceResult =
+  | { ok: true; revision: number }
+  | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
+
 /** Composer 手工请求：method/url/头/正文 + 协议偏好。 */
 export interface ComposerRequest {
   method: string;
@@ -306,7 +313,7 @@ export interface BreakpointsSnapshot {
 }
 
 /** TLS 探测结果 DTO：协议/套件/ALPN/授权/证书链；失败 ok=false + error。 */
-export interface ConnectionProbe {
+export interface TlsProbe {
   ok: boolean;
   error?: string;
   protocol: string;
@@ -314,7 +321,7 @@ export interface ConnectionProbe {
   alpn: string;
   authorized: boolean;
   authorizationError?: string;
-  certificates: ConnectionCertificate[];
+  certificates: TlsCertificate[];
 }
 
 /** 单个本机应用的图标推送；icon 为 PNG data URL，不可读时为 null。 */
@@ -378,8 +385,8 @@ export const DESKTOP_IPC_CHANNELS = {
   updateDownload: 'update:download',
   updateOpenDownloaded: 'update:open-downloaded',
   updateStatus: 'update:status',
-  storageGetStatus: 'storage:get-status',
-  storageClear: 'storage:clear',
+  captureGetUsage: 'capture:get-usage',
+  captureClear: 'capture:clear',
   captureStart: 'capture:start',
   captureStop: 'capture:stop',
   captureGetStatus: 'capture:get-status',
@@ -405,11 +412,13 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesGet: 'rules:get',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
+  collectionGet: 'collection:get',
+  collectionReplace: 'collection:replace',
   composerSend: 'composer:send',
   breakpointList: 'breakpoint:list',
   breakpointResolve: 'breakpoint:resolve',
   breakpointConfigure: 'breakpoint:configure',
-  connectionProbe: 'connection:probe',
+  tlsProbe: 'tls:probe',
   clientAppIcons: 'client-app:icons',
   harExportStart: 'har:export-start',
   harImportStart: 'har:import-start',
@@ -442,8 +451,8 @@ export interface InterceptorDesktopApi {
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
   ): () => void;
-  getStorageStatus(): Promise<StorageUsage>;
-  clearStorage(): Promise<StorageUsage>;
+  getCaptureUsage(): Promise<CaptureUsage>;
+  clearCapture(): Promise<CaptureUsage>;
   startCapture(port?: number): Promise<CaptureStatus>;
   stopCapture(): Promise<CaptureStatus>;
   getCaptureStatus(): Promise<CaptureStatus>;
@@ -487,6 +496,11 @@ export interface InterceptorDesktopApi {
     rules: RuleDefinition[],
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
+  getCollection(): Promise<Collection>;
+  replaceCollection(
+    expectedRevision: number,
+    nodes: CollectionNode[],
+  ): Promise<CollectionReplaceResult>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
   listBreakpoints(): Promise<BreakpointsSnapshot>;
   resolveBreakpoint(
@@ -495,7 +509,7 @@ export interface InterceptorDesktopApi {
     edit?: BreakpointEdit,
   ): Promise<{ state: string }>;
   setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
-  probeConnection(host: string, port: number): Promise<ConnectionProbe>;
+  probeTls(host: string, port: number): Promise<TlsProbe>;
   startHarExport(
     request: HarExportRequest,
     title: string,

@@ -20,9 +20,9 @@ export const EVENT_INFLIGHT_WINDOW_SIZE = 8;
 /** 单次从捕获事件队列取走的最大事件数。 */
 export const EVENT_DRAIN_BATCH = 200;
 
-// ===== 存储（临时 Capture/Body + 持久 Rule） =====
-/** 持久 RuleSet 数据库文件名（dataDir 下）。 */
-export const RULES_DB_FILE = 'rules.sqlite';
+// ===== 存储（临时 Capture/Body + 持久工作区配置） =====
+/** 持久工作区配置数据库文件名（dataDir 下）。 */
+export const WORKSPACE_DB_FILE = 'workspace.sqlite';
 /** 当前 Core 代际的临时 Body spill 目录名。 */
 export const CAPTURE_TEMP_DIR = 'capture-temp';
 /** Body 保留在内存中的最大字节数；超过后异步 spill。 */
@@ -55,8 +55,8 @@ export const DEFAULT_PROXY_HOST = '127.0.0.1';
 export let dataDir: string | null = null;
 /** 应用版本（--app-version），用于捕获会话元数据。 */
 export let appVersion = '0.0.0';
-/** rules.sqlite 绝对路径；持久保存跨 Recording 的 RuleSet。 */
-export let rulesDatabasePath = '';
+/** workspace.sqlite 绝对路径；持久保存跨 Recording 的低频配置。 */
+export let workspaceDatabasePath = '';
 /** 当前 Core 代际的临时 Body spill 目录绝对路径。 */
 export let captureTempDirectory = '';
 /** diagnostics.sqlite 绝对路径。 */
@@ -75,7 +75,7 @@ export let clientAppHelperPath: string | null = null;
 export function initializeRuntime(argv: readonly string[]): void {
   dataDir = readArg(argv, '--data-dir=') ?? null;
   appVersion = readArg(argv, '--app-version=') ?? '0.0.0';
-  rulesDatabasePath = dataDir ? path.join(dataDir, RULES_DB_FILE) : '';
+  workspaceDatabasePath = dataDir ? path.join(dataDir, WORKSPACE_DB_FILE) : '';
   captureTempDirectory = dataDir ? path.join(dataDir, CAPTURE_TEMP_DIR) : '';
   diagnosticsDatabasePath = dataDir
     ? path.join(dataDir, DIAGNOSTICS_DB_FILE)

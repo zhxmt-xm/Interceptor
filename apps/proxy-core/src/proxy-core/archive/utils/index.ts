@@ -6,8 +6,8 @@ import {
   MANIFEST_ENTRY_NAME,
   SHA256_PATTERN,
   SNAPSHOT_ENTRY_NAME,
-} from '../archive-constants';
-import { ArchiveInvalidError } from '../archive-invalid-error';
+} from '../internal/constants';
+import { InvalidArchiveError } from '../internal/errors';
 import type { ArchiveManifest, ArchiveManifestFile } from '../interfaces';
 
 // ===== CRC-32（IEEE 802.3，ZIP 使用）=====
@@ -64,17 +64,17 @@ export function crc32(data: Uint8Array): number {
  */
 export function assertSafeEntryName(name: string): string {
   if (!name) {
-    throw new ArchiveInvalidError('Archive entry name must not be empty.');
+    throw new InvalidArchiveError('Archive entry name must not be empty.');
   }
   if (name.includes('\\') || name.includes('\0')) {
-    throw new ArchiveInvalidError('Archive entry name has illegal characters.');
+    throw new InvalidArchiveError('Archive entry name has illegal characters.');
   }
   if (name.startsWith('/') || /^[a-zA-Z]:/.test(name)) {
-    throw new ArchiveInvalidError('Archive entry name must be relative.');
+    throw new InvalidArchiveError('Archive entry name must be relative.');
   }
   for (const segment of name.split('/')) {
     if (segment === '' || segment === '.' || segment === '..') {
-      throw new ArchiveInvalidError('Archive entry name traverses directories.');
+      throw new InvalidArchiveError('Archive entry name traverses directories.');
     }
   }
   return name;
@@ -119,11 +119,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** 严格解析并校验一条 manifest 文件记录。 */
 function parseManifestFile(value: unknown): ArchiveManifestFile {
   if (!isRecord(value)) {
-    throw new ArchiveInvalidError('Archive manifest file entry is malformed.');
+    throw new InvalidArchiveError('Archive manifest file entry is malformed.');
   }
   const { path: entryPath, size, sha256 } = value;
   if (typeof entryPath !== 'string' || !isAllowedEntryName(entryPath)) {
-    throw new ArchiveInvalidError('Archive manifest lists an unexpected path.');
+    throw new InvalidArchiveError('Archive manifest lists an unexpected path.');
   }
   assertSafeEntryName(entryPath);
   if (
@@ -131,10 +131,10 @@ function parseManifestFile(value: unknown): ArchiveManifestFile {
     !Number.isInteger(size) ||
     size < 0
   ) {
-    throw new ArchiveInvalidError('Archive manifest declares an invalid size.');
+    throw new InvalidArchiveError('Archive manifest declares an invalid size.');
   }
   if (typeof sha256 !== 'string' || !SHA256_PATTERN.test(sha256)) {
-    throw new ArchiveInvalidError('Archive manifest declares an invalid hash.');
+    throw new InvalidArchiveError('Archive manifest declares an invalid hash.');
   }
   return { path: entryPath, size, sha256 };
 }
@@ -147,27 +147,27 @@ export function parseManifest(bytes: Buffer): ArchiveManifest {
   try {
     raw = JSON.parse(bytes.toString('utf8'));
   } catch {
-    throw new ArchiveInvalidError('Archive manifest is not valid JSON.');
+    throw new InvalidArchiveError('Archive manifest is not valid JSON.');
   }
   if (!isRecord(raw)) {
-    throw new ArchiveInvalidError('Archive manifest must be an object.');
+    throw new InvalidArchiveError('Archive manifest must be an object.');
   }
   const allowedKeys = new Set(['format', 'appVersion', 'createdAt', 'files']);
   if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
-    throw new ArchiveInvalidError('Archive manifest contains unexpected fields.');
+    throw new InvalidArchiveError('Archive manifest contains unexpected fields.');
   }
   const { format, appVersion, createdAt, files } = raw;
   if (format !== ARCHIVE_FORMAT) {
-    throw new ArchiveInvalidError('Unknown archive format.');
+    throw new InvalidArchiveError('Unknown archive format.');
   }
   if (typeof appVersion !== 'string') {
-    throw new ArchiveInvalidError('Archive manifest app version is invalid.');
+    throw new InvalidArchiveError('Archive manifest app version is invalid.');
   }
   if (typeof createdAt !== 'string') {
-    throw new ArchiveInvalidError('Archive manifest timestamp is invalid.');
+    throw new InvalidArchiveError('Archive manifest timestamp is invalid.');
   }
   if (!Array.isArray(files)) {
-    throw new ArchiveInvalidError('Archive manifest file list is invalid.');
+    throw new InvalidArchiveError('Archive manifest file list is invalid.');
   }
   return {
     format,
@@ -180,10 +180,10 @@ export function parseManifest(bytes: Buffer): ArchiveManifest {
 // ===== 通用 =====
 
 /** 在任务已取消时抛出稳定 AbortError。 */
-export function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) {
-    throw signal.reason instanceof Error
-      ? signal.reason
+export function throwIfAborted(abortSignal: AbortSignal): void {
+  if (abortSignal.aborted) {
+    throw abortSignal.reason instanceof Error
+      ? abortSignal.reason
       : new DOMException('The archive transfer was cancelled.', 'AbortError');
   }
 }
@@ -201,7 +201,7 @@ export function assertTransferPath(filePath: string, extension: string): void {
     !path.isAbsolute(filePath) ||
     path.extname(filePath).toLowerCase() !== extension
   ) {
-    throw new ArchiveInvalidError(
+    throw new InvalidArchiveError(
       `Transfer path must be an absolute ${extension} file.`,
     );
   }

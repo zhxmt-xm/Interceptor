@@ -11,8 +11,8 @@ import type {
   RuleHeaderEffect,
   SyntheticResponseInit,
 } from '../../rules/interfaces';
-import type { HeaderInput, HeaderKind } from '../../storage/interfaces';
-import { SUPPORTED_ENCODINGS } from '../proxy-constants';
+import type { HeaderInput, HeaderKind } from '../../capture/interfaces';
+import { SUPPORTED_ENCODINGS } from '../internal/constants';
 import type {
   DecodeResult,
   ProxyResponseMessageResult,
@@ -295,7 +295,7 @@ async function inflateMaybeRaw(
   }
 }
 
-/** 将单段正文包装为 TemporaryBodyStore 接受的异步序列。 */
+/** 将单段正文包装为 BodyStore 接受的异步序列。 */
 export async function* singleChunk(
   buffer: Uint8Array,
 ): AsyncIterable<Uint8Array> {

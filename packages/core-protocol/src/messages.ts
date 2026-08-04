@@ -1,3 +1,4 @@
+import type { Collection, CollectionNode } from './collection';
 import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleSet } from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
@@ -102,6 +103,21 @@ export interface RulesHitsCommand {
   payload: Record<string, never>;
 }
 
+/** 读取整棵 Composer 集合树。 */
+export interface CollectionGetCommand {
+  type: 'collection.get';
+  payload: Record<string, never>;
+}
+
+/** 原子替换整棵集合树；revision 不匹配则拒绝。 */
+export interface CollectionReplaceCommand {
+  type: 'collection.replace';
+  payload: {
+    expectedRevision: number;
+    nodes: CollectionNode[];
+  };
+}
+
 /**
  * Composer 手工构造的出站请求：由 Core 用 Node http/https/http2 执行并回传响应。
  * protocol 为传输偏好（auto/HTTP1.1 走 http/https、h2 走 http2）。
@@ -154,8 +170,8 @@ export interface BreakpointConfigureCommand {
 }
 
 /** 对 host:port 发起 TLS 探测，读取当前协议/套件/ALPN/证书链。 */
-export interface ConnectionProbeCommand {
-  type: 'connection.probe';
+export interface TlsProbeCommand {
+  type: 'tls.probe';
   payload: {
     host: string;
     port: number;
@@ -202,13 +218,13 @@ export interface DiagnosticsExportStartCommand {
   };
 }
 
-export interface StorageStatusCommand {
-  type: 'storage.status';
+export interface CaptureStatusCommand {
+  type: 'capture.status';
   payload: Record<string, never>;
 }
 
-export interface StorageCleanupCommand {
-  type: 'storage.cleanup';
+export interface CaptureCleanupCommand {
+  type: 'capture.cleanup';
   payload: {
     scope: 'all' | 'session';
     sessionId?: string;
@@ -360,17 +376,19 @@ export type CoreCommand =
   | RulesReplaceCommand
   | RulesGetCommand
   | RulesHitsCommand
+  | CollectionGetCommand
+  | CollectionReplaceCommand
   | ComposerSendCommand
   | BreakpointResolveCommand
   | BreakpointListCommand
   | BreakpointConfigureCommand
-  | ConnectionProbeCommand
+  | TlsProbeCommand
   | DiagnosticsRecentCommand
   | DiagnosticsIngestCommand
   | DiagnosticsQueryCommand
   | DiagnosticsExportStartCommand
-  | StorageStatusCommand
-  | StorageCleanupCommand
+  | CaptureStatusCommand
+  | CaptureCleanupCommand
   | HarExportStartCommand
   | HarImportStartCommand
   | ArchiveExportStartCommand
@@ -496,8 +514,23 @@ export interface RulesHitsResult {
   };
 }
 
-/** Composer 连接的 TLS/ALPN/证书摘要（只包含展示用公开元数据）。 */
-export interface ComposerTlsInfo {
+/** 整棵 Composer 集合树。 */
+export interface CollectionResult {
+  type: 'collection.collection';
+  payload: {
+    collection: Collection;
+  };
+}
+
+/** 集合替换成功后的新 revision。 */
+export interface CollectionRevisionResult {
+  type: 'collection.revision';
+  payload: {
+    revision: number;
+  };
+}
+
+/** Composer 连接的 TLS/ALPN/证书摘要（只包含展示用公开元数据）。 */export interface ComposerTlsInfo {
   protocol: string;
   cipher: string;
   alpn: string;
@@ -573,7 +606,7 @@ export interface BreakpointConfigResult {
 }
 
 /** 一张证书的展示摘要（主体/签发者/有效期/序列号/指纹）。 */
-export interface ConnectionCertificate {
+export interface TlsCertificate {
   subject: string;
   issuer: string;
   validFrom: string;
@@ -583,8 +616,8 @@ export interface ConnectionCertificate {
 }
 
 /** TLS 探测结果：成功带协议/套件/ALPN/授权状态/证书链；失败 ok=false + error。 */
-export interface ConnectionProbeResult {
-  type: 'connection.probed';
+export interface TlsProbeResult {
+  type: 'tls.probed';
   payload: {
     ok: boolean;
     error?: string;
@@ -593,7 +626,7 @@ export interface ConnectionProbeResult {
     alpn: string;
     authorized: boolean;
     authorizationError?: string;
-    certificates: ConnectionCertificate[];
+    certificates: TlsCertificate[];
   };
 }
 
@@ -668,8 +701,8 @@ export interface DiagnosticsPageResult {
   };
 }
 
-export interface StorageStatusResult {
-  type: 'storage.status';
+export interface CaptureStatusResult {
+  type: 'capture.status';
   payload: {
     sessionCount: number;
     exchangeCount: number;
@@ -742,15 +775,17 @@ export type CoreResult =
   | RuleRevisionResult
   | RulesRuleSetResult
   | RulesHitsResult
+  | CollectionResult
+  | CollectionRevisionResult
   | ComposerResponseResult
   | BreakpointResolutionResult
   | BreakpointPendingResult
   | BreakpointConfigResult
-  | ConnectionProbeResult
+  | TlsProbeResult
   | DiagnosticsRecordsResult
   | DiagnosticsIngestedResult
   | DiagnosticsPageResult
-  | StorageStatusResult
+  | CaptureStatusResult
   | TransferJobResult
   | ProxyStatusResult
   | TlsConfiguredResult;
@@ -765,6 +800,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
             : T extends GrpcMessagesCommand ? GrpcMessagesResult
               : T extends BodyReadRangeCommand ? BodyRangeResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
+            : T extends CollectionGetCommand ? CollectionResult
+            : T extends CollectionReplaceCommand ? CollectionRevisionResult
               : T extends BreakpointResolveCommand
                 ? BreakpointResolutionResult                : T extends BreakpointListCommand
                   ? BreakpointPendingResult
@@ -777,10 +814,10 @@ export type CoreResultForCommand<T extends CoreCommand> =
                     ? DiagnosticsPageResult
                     : T extends DiagnosticsExportStartCommand
                       ? TransferJobResult
-                    : T extends StorageStatusCommand
-                      ? StorageStatusResult
-                      : T extends StorageCleanupCommand
-                        ? StorageStatusResult
+                    : T extends CaptureStatusCommand
+                      ? CaptureStatusResult
+                      : T extends CaptureCleanupCommand
+                        ? CaptureStatusResult
                         : T extends HarExportStartCommand
                           ? TransferJobResult
                           : T extends HarImportStartCommand
@@ -813,8 +850,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                     ? RulesHitsResult
                                     : T extends ComposerSendCommand
                                       ? ComposerResponseResult
-                                      : T extends ConnectionProbeCommand
-                                        ? ConnectionProbeResult
+                                      : T extends TlsProbeCommand
+                                        ? TlsProbeResult
                                         : never;
 
 export interface CoreError {

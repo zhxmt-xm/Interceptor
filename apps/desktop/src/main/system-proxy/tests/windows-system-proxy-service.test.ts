@@ -82,10 +82,10 @@ class FakeHelperRunner implements SystemProxyCommandRunner {
 
 describe('WindowsSystemProxyService', () => {
   it('snapshots all values, writes loopback HTTP/HTTPS proxy, and reports ownership', async () => {
-    const runner = new FakeHelperRunner();
-    const service = createService(runner);
+    const fakeHelperRunner = new FakeHelperRunner();
+    const windowsSystemProxyService = createService(fakeHelperRunner);
 
-    const status = await service.enable('127.0.0.1', 8888);
+    const status = await windowsSystemProxyService.enable('127.0.0.1', 8888);
 
     expect(status).toMatchObject({
       supported: true,
@@ -96,7 +96,7 @@ describe('WindowsSystemProxyService', () => {
       bypassList: '<local>',
       pacUrl: null,
     });
-    expect(runner.calls[1]?.args).toEqual([
+    expect(fakeHelperRunner.calls[1]?.args).toEqual([
       'set',
       '3',
       encode('http=127.0.0.1:8888;https=127.0.0.1:8888'),
@@ -106,57 +106,57 @@ describe('WindowsSystemProxyService', () => {
   });
 
   it('restores the exact snapshot when current settings remain owned', async () => {
-    const runner = new FakeHelperRunner();
-    const original = { ...runner.settings };
-    const service = createService(runner);
-    await service.enable('127.0.0.1', 8888);
+    const fakeHelperRunner = new FakeHelperRunner();
+    const original = { ...fakeHelperRunner.settings };
+    const windowsSystemProxyService = createService(fakeHelperRunner);
+    await windowsSystemProxyService.enable('127.0.0.1', 8888);
 
-    const result = await service.restore();
+    const result = await windowsSystemProxyService.restore();
 
     expect(result.restored).toBe(true);
-    expect(runner.settings).toEqual(original);
+    expect(fakeHelperRunner.settings).toEqual(original);
     expect(result.status).toMatchObject({ owned: false, ownershipLost: false });
   });
 
   it('does not write when an external actor changes any owned value', async () => {
-    const runner = new FakeHelperRunner();
-    const service = createService(runner);
-    await service.enable('127.0.0.1', 8888);
-    runner.settings = settings({
+    const fakeHelperRunner = new FakeHelperRunner();
+    const windowsSystemProxyService = createService(fakeHelperRunner);
+    await windowsSystemProxyService.enable('127.0.0.1', 8888);
+    fakeHelperRunner.settings = settings({
       flags: 3,
       proxyEnabled: true,
       proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
       bypassList: '<local>',
     });
-    const callsBeforeRestore = runner.calls.length;
+    const callsBeforeRestore = fakeHelperRunner.calls.length;
 
-    const result = await service.restore();
+    const result = await windowsSystemProxyService.restore();
 
     expect(result).toMatchObject({
       restored: false,
       reason: 'externally-modified',
       status: { owned: false, ownershipLost: true },
     });
-    expect(runner.calls.slice(callsBeforeRestore).map((call) => call.args[0]))
+    expect(fakeHelperRunner.calls.slice(callsBeforeRestore).map((call) => call.args[0]))
       .toEqual(['get']);
-    expect(runner.settings.proxyServer).toContain(':9999');
+    expect(fakeHelperRunner.settings.proxyServer).toContain(':9999');
   });
 
   it('rejects a second enable after ownership is externally modified', async () => {
-    const runner = new FakeHelperRunner();
-    const service = createService(runner);
-    await service.enable('127.0.0.1', 8888);
-    runner.settings = settings({ flags: 1 });
+    const fakeHelperRunner = new FakeHelperRunner();
+    const windowsSystemProxyService = createService(fakeHelperRunner);
+    await windowsSystemProxyService.enable('127.0.0.1', 8888);
+    fakeHelperRunner.settings = settings({ flags: 1 });
 
-    await expect(service.enable('127.0.0.1', 8888)).rejects.toThrow(
+    await expect(windowsSystemProxyService.enable('127.0.0.1', 8888)).rejects.toThrow(
       'ownership was lost',
     );
   });
 
   it('rejects non-loopback listeners and invalid helper output', async () => {
-    const runner = new FakeHelperRunner();
-    const service = createService(runner);
-    await expect(service.enable('0.0.0.0', 8888)).rejects.toBeInstanceOf(
+    const fakeHelperRunner = new FakeHelperRunner();
+    const windowsSystemProxyService = createService(fakeHelperRunner);
+    await expect(windowsSystemProxyService.enable('0.0.0.0', 8888)).rejects.toBeInstanceOf(
       SystemProxyError,
     );
 
@@ -169,54 +169,54 @@ describe('WindowsSystemProxyService', () => {
   });
 
   it('reports unsupported platforms without invoking the helper', async () => {
-    const runner = new FakeHelperRunner();
-    const service = new WindowsSystemProxyService({
+    const fakeHelperRunner = new FakeHelperRunner();
+    const windowsSystemProxyService = new WindowsSystemProxyService({
       platform: 'darwin',
       helperPath: 'helper.exe',
-      runner,
+      runner: fakeHelperRunner,
     });
 
-    expect(service.supported()).toBe(false);
-    expect(await service.status()).toMatchObject({ supported: false });
-    expect(await service.restore()).toMatchObject({ reason: 'not-owned' });
-    expect(runner.calls).toEqual([]);
+    expect(windowsSystemProxyService.supported()).toBe(false);
+    expect(await windowsSystemProxyService.status()).toMatchObject({ supported: false });
+    expect(await windowsSystemProxyService.restore()).toMatchObject({ reason: 'not-owned' });
+    expect(fakeHelperRunner.calls).toEqual([]);
   });
 
   it('restores from a journal after the owning process crashes', async () => {
-    const runner = new FakeHelperRunner();
-    const original = { ...runner.settings };
-    const journal = new FakeJournal();
-    await createService(runner, journal).enable('127.0.0.1', 8888);
+    const fakeHelperRunner = new FakeHelperRunner();
+    const original = { ...fakeHelperRunner.settings };
+    const fakeJournal = new FakeJournal();
+    await createService(fakeHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
 
-    const result = await createService(runner, journal).repair();
+    const result = await createService(fakeHelperRunner, fakeJournal).repair();
 
     expect(result.restored).toBe(true);
-    expect(runner.settings).toEqual(original);
-    expect(journal.record).toBeNull();
+    expect(fakeHelperRunner.settings).toEqual(original);
+    expect(fakeJournal.record).toBeNull();
   });
 
   it('does not use a crash journal after an external proxy change', async () => {
-    const runner = new FakeHelperRunner();
-    const journal = new FakeJournal();
-    await createService(runner, journal).enable('127.0.0.1', 8888);
-    runner.settings = settings({
+    const fakeHelperRunner = new FakeHelperRunner();
+    const fakeJournal = new FakeJournal();
+    await createService(fakeHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
+    fakeHelperRunner.settings = settings({
       flags: 3,
       proxyEnabled: true,
       proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
       bypassList: '<local>',
     });
-    const callsBeforeRepair = runner.calls.length;
+    const callsBeforeRepair = fakeHelperRunner.calls.length;
 
-    const result = await createService(runner, journal).repair();
+    const result = await createService(fakeHelperRunner, fakeJournal).repair();
 
     expect(result).toMatchObject({
       restored: false,
       reason: 'externally-modified',
       status: { ownershipLost: true },
     });
-    expect(runner.calls.slice(callsBeforeRepair).map((call) => call.args[0]))
+    expect(fakeHelperRunner.calls.slice(callsBeforeRepair).map((call) => call.args[0]))
       .toEqual(['get']);
-    expect(journal.record).not.toBeNull();
+    expect(fakeJournal.record).not.toBeNull();
   });
 });
 

@@ -17,7 +17,7 @@ import type {
   HarExportRequest,
   RendererDiagnosticReport,
   SessionQueryRequest,
-  StorageUsage,
+  CaptureUsage,
   WebSocketFrameQuery,
 } from '../../shared/desktop-api';
 import type { SystemProxyCommandRunner } from '../interfaces';
@@ -53,7 +53,7 @@ export function toRendererDiagnosticRecord(
 }
 
 /** Map Core storage status to the Renderer-owned DTO. */
-export function toRendererStorageUsage(payload: StorageUsage): StorageUsage {
+export function toRendererCaptureUsage(payload: CaptureUsage): CaptureUsage {
   return { ...payload };
 }
 

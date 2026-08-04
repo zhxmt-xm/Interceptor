@@ -21,15 +21,15 @@ import {
  * 全部 MCP 工具的定义。每个工具都只是既有 Core command 的第二个调用入口，
  * 不允许在此新增绕过 Renderer 能力边界的行为。
  */
-export function buildToolCatalog(redactor: McpRedactor): readonly McpToolDefinition[] {
+export function buildToolCatalog(mcpRedactor: McpRedactor): readonly McpToolDefinition[] {
   return [
-    ...buildReadTools(redactor),
+    ...buildReadTools(mcpRedactor),
     ...buildWriteTools(),
   ];
 }
 
 /** 只读工具：不改变代理行为、不产生外发流量、不删除数据，自动执行。 */
-function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
+function buildReadTools(mcpRedactor: McpRedactor): readonly McpToolDefinition[] {
   return [
     {
       name: 'list_exchanges',
@@ -90,11 +90,11 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
               protocol: optionalEnum(args, 'protocol', ['h1', 'h2', 'ws'] as const),
             },
           },
-        }, context.signal);
+        }, context.abortSignal);
         return {
           items: result.payload.items.map((item) => ({
             ...item,
-            path: redactor.redactPath(item.path),
+            path: mcpRedactor.redactPath(item.path),
           })),
           nextCursor: result.payload.nextCursor,
           hasMore: result.payload.hasMore,
@@ -123,7 +123,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'sessions.detail',
           payload: { exchangeId: requireString(args, 'exchangeId') },
-        }, context.signal);
+        }, context.abortSignal);
         const detail = result.payload.detail;
         if (detail === null) {
           return { detail: null };
@@ -131,10 +131,10 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         return {
           detail: {
             ...detail,
-            url: redactor.redactUrl(detail.url),
-            summary: { ...detail.summary, path: redactor.redactPath(detail.summary.path) },
-            requestHeaders: redactor.redactHeaders(detail.requestHeaders),
-            responseHeaders: redactor.redactHeaders(detail.responseHeaders),
+            url: mcpRedactor.redactUrl(detail.url),
+            summary: { ...detail.summary, path: mcpRedactor.redactPath(detail.summary.path) },
+            requestHeaders: mcpRedactor.redactHeaders(detail.requestHeaders),
+            responseHeaders: mcpRedactor.redactHeaders(detail.responseHeaders),
           },
         };
       },
@@ -162,7 +162,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
       async execute(args, context) {
         rejectUnknownKeys(args, ['bodyId', 'offset', 'length', 'mimeType']);
         const mimeType = optionalString(args, 'mimeType');
-        if (redactor.isOpaqueBody(mimeType)) {
+        if (mcpRedactor.isOpaqueBody(mimeType)) {
           return { opaque: true, mimeType, reason: 'media bodies are not exposed over MCP' };
         }
         const result = await context.host.invoke({
@@ -173,13 +173,13 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
             length: clampPreviewLength(optionalInteger(args, 'length')),
             decode: true,
           },
-        }, context.signal);
+        }, context.abortSignal);
         return {
           bodyId: result.payload.bodyId,
           offset: result.payload.offset,
           end: result.payload.end,
           decodeStatus: result.payload.decodeStatus,
-          ...redactor.previewBody(result.payload.data, mimeType),
+          ...mcpRedactor.previewBody(result.payload.data, mimeType),
         };
       },
     },
@@ -224,7 +224,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
               ['client-to-server', 'server-to-client'] as const,
             ),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -261,7 +261,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
             cursor: optionalString(args, 'cursor'),
             limit: readPageLimit(args),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -280,7 +280,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'rules.get',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -297,7 +297,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'rules.hits',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -314,7 +314,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'breakpoint.list',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -331,7 +331,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'proxy.status',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -346,9 +346,9 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
       async execute(args, context) {
         rejectUnknownKeys(args, []);
         const result = await context.host.invoke({
-          type: 'storage.status',
+          type: 'capture.status',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -405,7 +405,7 @@ function buildReadTools(redactor: McpRedactor): readonly McpToolDefinition[] {
             minDurationMs: optionalInteger(args, 'minDurationMs'),
             maxDurationMs: optionalInteger(args, 'maxDurationMs'),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -445,7 +445,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
         const current = await context.host.invoke({
           type: 'rules.get',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         const next = requireObjectArray(args, 'rules');
         const currentNames = current.payload.ruleSet.rules.map((rule) => rule.name);
         const nextNames = next.map((rule) => String(rule['name'] ?? '(unnamed)'));
@@ -462,7 +462,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
         const current = await context.host.invoke({
           type: 'rules.get',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         if (current.payload.ruleSet.revision !== baseRevision) {
           throw new McpArgumentError(
             `rule set moved from revision ${baseRevision} to `
@@ -476,7 +476,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
             // AI 写入的规则永不直接对真实流量生效，启用只能由用户完成。
             rules: rules.map((rule) => ({ ...rule, enabled: false }) as unknown as RuleDefinition),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -500,7 +500,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
         const result = await context.host.invoke({
           type: 'proxy.setRecording',
           payload: { recording: requireBoolean(args, 'recording') },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -552,7 +552,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
             protocol: optionalEnum(args, 'protocol', ['auto', 'http/1.1', 'h2'] as const) ?? 'auto',
             timeoutMs: optionalInteger(args, 'timeoutMs'),
           },
-        }, context.signal);
+        }, context.abortSignal);
         const payload = result.payload;
         return {
           ok: payload.ok,
@@ -598,13 +598,13 @@ function buildWriteTools(): readonly McpToolDefinition[] {
           const result = await context.host.invoke({
             type: 'websocket.breakpoint.configure',
             payload: { enabled },
-          }, context.signal);
+          }, context.abortSignal);
           return result.payload;
         }
         const result = await context.host.invoke({
           type: 'breakpoint.configure',
           payload: { enabled },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -646,7 +646,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
             action: requireEnum(args, 'action', ['continue', 'drop'] as const),
             ...(edit === null ? {} : { edit }),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -667,9 +667,9 @@ function buildWriteTools(): readonly McpToolDefinition[] {
       },
       async describeChange(args, context) {
         const status = await context.host.invoke({
-          type: 'storage.status',
+          type: 'capture.status',
           payload: {},
-        }, context.signal);
+        }, context.abortSignal);
         return [
           `Scope: ${optionalString(args, 'scope') ?? 'all'}`,
           `This permanently deletes ${status.payload.exchangeCount} exchange(s) `
@@ -684,9 +684,9 @@ function buildWriteTools(): readonly McpToolDefinition[] {
           throw new McpArgumentError('"sessionId" is required when scope is "session"');
         }
         const result = await context.host.invoke({
-          type: 'storage.cleanup',
+          type: 'capture.cleanup',
           payload: { scope, sessionId },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },
@@ -714,13 +714,13 @@ function buildWriteTools(): readonly McpToolDefinition[] {
       async execute(args, context) {
         rejectUnknownKeys(args, ['host', 'port', 'timeoutMs']);
         const result = await context.host.invoke({
-          type: 'connection.probe',
+          type: 'tls.probe',
           payload: {
             host: requireString(args, 'host'),
             port: requireInteger(args, 'port'),
             timeoutMs: optionalInteger(args, 'timeoutMs'),
           },
-        }, context.signal);
+        }, context.abortSignal);
         return result.payload;
       },
     },

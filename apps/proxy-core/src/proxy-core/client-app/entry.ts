@@ -6,7 +6,7 @@
  */
 
 import type { DiagnosticsRecorder } from '../core-diagnostics';
-import { CLIENT_APP_SNAPSHOT_TTL_MS } from './client-app-constants';
+import { CLIENT_APP_SNAPSHOT_TTL_MS } from './internal/constants';
 import type {
   ClientAppIdentity,
   ClientAppLookupRunner,

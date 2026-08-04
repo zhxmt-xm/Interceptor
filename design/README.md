@@ -23,7 +23,7 @@ design/
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
 - Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧承载侧栏折叠按钮、feature 名称与该 feature 的一等命令（Capture = Recording + Import/Export），右侧只保留窗口控制；状态统一放到底部状态栏。**侧栏默认收起**，Capture 的全部筛选与搜索位于 list 左侧的可收起筛选分栏。
-- 状态统一由 `window.__setState({view,theme,sidebar,filters,filterGroup,filterActive,overlay,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu,composer,composerTab,composerResponseTab,collection,collectionMenu,collectionRename})` 驱动（`tab`=Inspector 页签，`filters`=筛选分栏展开/收起，`filterGroup`=展开某个默认折叠的 facet 分组，`filterActive`=多条 facet 生效的场景，`pop`=打开 Rules 的加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，`composer`=Composer 发送阶段（空/empty/sending），`composerTab`/`composerResponseTab`=Composer 请求/响应页签，`collection`=Collection 分栏展开/收起，`collectionMenu`=新建菜单，`collectionRename`=目录行内命名，其余字段驱动当前细节与 overlay 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
+- 状态统一由 `window.__setState({view,theme,sidebar,filters,filterGroup,filterActive,overlay,boot,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu,composer,composerTab,composerResponseTab,collection,collectionMenu,collectionRename})` 驱动（`tab`=Inspector 页签，`filters`=筛选分栏展开/收起，`filterGroup`=展开某个默认折叠的 facet 分组，`filterActive`=多条 facet 生效的场景，`boot`=启动就绪界面的阶段（`core`/`listener`/`proxy`/`https`/`ready`/`decrypting`/`error`，空值关闭），`pop`=打开 Rules 的加动作弹窗，`lang`=当前语言，`pop2`=打开底部主题/语言 flyout，`composer`=Composer 发送阶段（空/empty/sending），`composerTab`/`composerResponseTab`=Composer 请求/响应页签，`collection`=Collection 分栏展开/收起，`collectionMenu`=新建菜单，`collectionRename`=目录行内命名，其余字段驱动当前细节与 overlay 状态）：人点击侧栏 / 右下角可收起的控件面板切换，截图脚本用同一接口参数化驱动。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
 
@@ -49,6 +49,7 @@ node design/app/shoot-scenes.mjs                   # 更新当前主题 switcher
   - **settings** — Proxy / Certificates / Appearance / Storage / Privacy / Updates
   - **diagnostics** — 命令诊断表格 + action 时间线
   - **shell-v2** — 默认 46px Window Header、全高侧栏、内容工具栏与六个 workspace 的明暗主题基线
+  - **boot**（全屏）— 冷启动就绪界面：Client → Interceptor → Internet 链路图 + Proxy Core / Local listener / System proxy / HTTPS decryption 四行就绪清单，七个阶段各一张图
   - **https-setup**(overlay)— 用户从 TLS tunnel Detail 主动开启的 CA 生成 → 系统信任 → HTTPS 解密流程
   - **import-export**(overlay)— HAR / 无损原生归档导出对话框
 

@@ -14,17 +14,17 @@ afterEach(() => {
 describe('CoreDiagnostics', () => {
   it('rebuilds and redacts externally ingested renderer records', async () => {
     const batches: unknown[][] = [];
-    const diagnostics = new CoreDiagnostics({
+    const coreDiagnostics = new CoreDiagnostics({
       sink: (records) => {
         batches.push([...records]);
       },
     });
 
-    diagnostics.runWithCommand(
+    coreDiagnostics.runWithCommand(
       'request-ingest',
       'trace-ingest',
       'diagnostics.ingest',
-      () => diagnostics.ingest({
+      () => coreDiagnostics.ingest({
         process: 'renderer',
         level: 'error',
         phase: 'renderer.unhandled-error',
@@ -57,21 +57,21 @@ describe('CoreDiagnostics', () => {
 
   it('propagates command context through asynchronous actions', async () => {
     const batches: unknown[][] = [];
-    const diagnostics = new CoreDiagnostics({
+    const coreDiagnostics = new CoreDiagnostics({
       sink: (records) => {
         batches.push([...records]);
       },
     });
 
-    await diagnostics.runWithCommand(
+    await coreDiagnostics.runWithCommand(
       'request-1',
       'trace-1',
       'echo',
-      () => diagnostics.action('echo.copy', async () => 'done'),
+      () => coreDiagnostics.action('echo.copy', async () => 'done'),
     );
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    const recent = diagnostics.recent(10, 'trace-1');
+    const recent = coreDiagnostics.recent(10, 'trace-1');
     expect(recent.records).toMatchObject([
       {
         requestId: 'request-1',
@@ -86,14 +86,14 @@ describe('CoreDiagnostics', () => {
   });
 
   it('keeps every record and pending output item', async () => {
-    const diagnostics = new CoreDiagnostics({ sink: () => undefined });
+    const coreDiagnostics = new CoreDiagnostics({ sink: () => undefined });
 
     for (let index = 0; index < 6; index += 1) {
-      diagnostics.debug('test.record', { attributes: { index } });
+      coreDiagnostics.debug('test.record', { attributes: { index } });
     }
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    const recent = diagnostics.recent(10);
+    const recent = coreDiagnostics.recent(10);
     expect(recent.records).toHaveLength(6);
     expect(recent.droppedCount).toBe(0);
   });
@@ -102,13 +102,13 @@ describe('CoreDiagnostics', () => {
     const stderr = vi
       .spyOn(process.stderr, 'write')
       .mockReturnValue(true);
-    const diagnostics = new CoreDiagnostics({
+    const coreDiagnostics = new CoreDiagnostics({
       sink: () => {
         throw new Error('disk unavailable');
       },
     });
 
-    expect(() => diagnostics.error('command.failed')).not.toThrow();
+    expect(() => coreDiagnostics.error('command.failed')).not.toThrow();
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(stderr).toHaveBeenCalledWith(
@@ -120,13 +120,13 @@ describe('CoreDiagnostics', () => {
     const stderr = vi
       .spyOn(process.stderr, 'write')
       .mockReturnValue(true);
-    const diagnostics = new CoreDiagnostics({
+    const coreDiagnostics = new CoreDiagnostics({
       sink: async () => {
         throw new Error('async disk unavailable');
       },
     });
 
-    diagnostics.error('command.failed');
+    coreDiagnostics.error('command.failed');
     await new Promise<void>((resolve) => setImmediate(resolve));
     await Promise.resolve();
 
@@ -136,10 +136,10 @@ describe('CoreDiagnostics', () => {
   });
 
   it('redacts sensitive attributes and remains protocol-valid', () => {
-    const diagnostics = new CoreDiagnostics({ sink: () => undefined });
+    const coreDiagnostics = new CoreDiagnostics({ sink: () => undefined });
 
-    diagnostics.runWithCommand('request-1', 'trace-1', 'echo', () => {
-      diagnostics.info('command completed', {
+    coreDiagnostics.runWithCommand('request-1', 'trace-1', 'echo', () => {
+      coreDiagnostics.info('command completed', {
         action: 'unsafe action',
         attributes: {
           authorization: 'Bearer secret',
@@ -149,7 +149,7 @@ describe('CoreDiagnostics', () => {
       });
     });
 
-    const recent = diagnostics.recent(10, 'trace-1');
+    const recent = coreDiagnostics.recent(10, 'trace-1');
     expect(recent.records[0]).toMatchObject({
       phase: 'command completed',
       action: 'unsafe action',

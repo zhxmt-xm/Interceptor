@@ -46,7 +46,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
   /** Hourly release check timer. */
   private checkTimer: ReturnType<typeof setInterval> | null = null;
   /** Active download cancellation owned by application shutdown. */
-  private downloadAbort: AbortController | null = null;
+  private downloadAbortController: AbortController | null = null;
 
   /** Bind the checker to immutable package metadata and trusted Main callbacks. */
   constructor(options: GitHubReleaseUpdateServiceOptions) {
@@ -152,8 +152,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
       clearInterval(this.checkTimer);
       this.checkTimer = null;
     }
-    this.downloadAbort?.abort();
-    this.downloadAbort = null;
+    this.downloadAbortController?.abort();
+    this.downloadAbortController = null;
     this.listeners.clear();
   }
 
@@ -255,7 +255,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       `.${asset.name}.${randomUUID()}.part`,
     );
     const finalPath = path.join(this.downloadDirectory, asset.name);
-    this.downloadAbort = new AbortController();
+    this.downloadAbortController = new AbortController();
     try {
       await rm(this.downloadDirectory, { recursive: true, force: true });
       await mkdir(this.downloadDirectory, { recursive: true });
@@ -266,7 +266,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
         cache: 'no-store',
         credentials: 'omit',
         referrerPolicy: 'no-referrer',
-        signal: this.downloadAbort.signal,
+        signal: this.downloadAbortController.signal,
       });
       if (!response.ok || !response.body) {
         throw new Error(`GitHub asset returned HTTP ${response.status}.`);
@@ -343,7 +343,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       });
       return this.status();
     } finally {
-      this.downloadAbort = null;
+      this.downloadAbortController = null;
     }
   }
 

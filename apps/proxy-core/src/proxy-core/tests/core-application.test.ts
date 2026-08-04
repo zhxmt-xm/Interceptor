@@ -16,11 +16,11 @@ import {
   CoreCommandError,
   type RpcMessagePort,
 } from '../core-rpc-server';
-import type { StorageService } from '../storage/entry';
-import type { CleanupScope } from '../storage/interfaces';
+import type { CaptureService } from '../capture/entry';
+import type { CleanupScope } from '../capture/interfaces';
 import type { HarService } from '../har/entry';
 import type { ProxyService } from '../proxy/entry';
-import type { CaptureEventQueue } from '../proxy/proxy-capture-event-queue';
+import type { CaptureEventQueue } from '../proxy/internal/capture-event-queue';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -68,20 +68,20 @@ describe('CoreApplication', () => {
   });
 
   it('owns lifecycle, heartbeat, RPC attachment, and graceful shutdown', async () => {
-    const parentPort = new FakeParentPort();
-    const rpcPort = new FakeRpcPort();
+    const fakeParentPort = new FakeParentPort();
+    const fakeRpcPort = new FakeRpcPort();
     const exitProcess = vi.spyOn(process, 'exit').mockImplementation(
       (() => undefined) as never,
     );
-    const application = new CoreApplication(parentPort);
+    const coreApplication = new CoreApplication(fakeParentPort);
 
-    application.start();
-    parentPort.receive({ type: 'rpc-port' }, [rpcPort]);
-    parentPort.receive({ type: 'shutdown' });
-    await settleShutdown(parentPort);
+    coreApplication.start();
+    fakeParentPort.receive({ type: 'rpc-port' }, [fakeRpcPort]);
+    fakeParentPort.receive({ type: 'shutdown' });
+    await settleShutdown(fakeParentPort);
     await settle();
 
-    expect(parentPort.sent).toEqual([
+    expect(fakeParentPort.sent).toEqual([
       {
         type: 'ready',
         pid: process.pid,
@@ -98,7 +98,7 @@ describe('CoreApplication', () => {
         timestamp: expect.any(String),
       },
     ]);
-    for (const message of parentPort.sent) {
+    for (const message of fakeParentPort.sent) {
       if (message.type === 'fatal') {
         continue;
       }
@@ -106,15 +106,15 @@ describe('CoreApplication', () => {
         message.type === 'ready' ? message.startedAt : message.timestamp,
       );
     }
-    expect(rpcPort.started).toBe(true);
-    expect(rpcPort.closed).toBe(true);
+    expect(fakeRpcPort.started).toBe(true);
+    expect(fakeRpcPort.closed).toBe(true);
     expect(exitProcess).toHaveBeenCalledWith(0);
   });
 
   it('executes echo and records its business action', async () => {
-    const application = new CoreApplication(new FakeParentPort());
+    const coreApplication = new CoreApplication(new FakeParentPort());
 
-    const result = await application.executeCommand(
+    const result = await coreApplication.executeCommand(
       { type: 'echo', payload: { value: 'hello' } },
       new AbortController().signal,
     );
@@ -133,13 +133,13 @@ describe('CoreApplication', () => {
   });
 
   it('returns recent diagnostics through its command API', async () => {
-    const application = new CoreApplication(new FakeParentPort());
-    await application.executeCommand(
+    const coreApplication = new CoreApplication(new FakeParentPort());
+    await coreApplication.executeCommand(
       { type: 'echo', payload: { value: 'hello' } },
       new AbortController().signal,
     );
 
-    const result = await application.executeCommand({
+    const result = await coreApplication.executeCommand({
       type: 'diagnostics.recent',
       payload: { limit: 10 },
     }, new AbortController().signal);
@@ -154,13 +154,13 @@ describe('CoreApplication', () => {
   });
 
   it('rejects aborted commands and unavailable subsystems with structured errors', async () => {
-    const application = new CoreApplication(new FakeParentPort());
-    const controller = new AbortController();
-    controller.abort();
+    const coreApplication = new CoreApplication(new FakeParentPort());
+    const abortController = new AbortController();
+    abortController.abort();
 
-    await expect(application.executeCommand(
+    await expect(coreApplication.executeCommand(
       { type: 'echo', payload: { value: 'cancelled' } },
-      controller.signal,
+      abortController.signal,
     )).rejects.toMatchObject({
       detail: {
         code: 'cancelled',
@@ -169,7 +169,7 @@ describe('CoreApplication', () => {
       },
     } satisfies Partial<CoreCommandError>);
 
-    await expect(application.executeCommand({
+    await expect(coreApplication.executeCommand({
       type: 'breakpoint.resolve',
       payload: { breakpointId: 'bp-1', action: 'continue' },
     }, new AbortController().signal)).rejects.toMatchObject({
@@ -178,10 +178,10 @@ describe('CoreApplication', () => {
   });
 
   it('returns an internal error for storage commands when storage is unavailable', async () => {
-    const application = new CoreApplication(new FakeParentPort());
+    const coreApplication = new CoreApplication(new FakeParentPort());
     await expect(
-      application.executeCommand(
-        { type: 'storage.status', payload: {} },
+      coreApplication.executeCommand(
+        { type: 'capture.status', payload: {} },
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ detail: { code: 'internal' } });
@@ -209,12 +209,12 @@ describe('CoreApplication', () => {
         return { ...snapshot, kind: 'har-import' as const };
       },
     } as unknown as HarService;
-    const application = new CoreApplication(new FakeParentPort(), {
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
       harService: har,
     });
-    const signal = new AbortController().signal;
+    const abortSignal = new AbortController().signal;
 
-    await expect(application.executeCommand({
+    await expect(coreApplication.executeCommand({
       type: 'har.export.start',
       payload: {
         jobId: 'har-job-1',
@@ -222,37 +222,37 @@ describe('CoreApplication', () => {
         scope: { kind: 'all' },
         redaction: { authorization: true, cookies: true, bodies: false },
       },
-    }, signal)).resolves.toMatchObject({
+    }, abortSignal)).resolves.toMatchObject({
       type: 'transfer.job',
       payload: { job: { kind: 'har-export', state: 'running' } },
     });
-    await expect(application.executeCommand({
+    await expect(coreApplication.executeCommand({
       type: 'har.import.start',
       payload: {
         jobId: 'har-job-2',
         filePath: 'C:\\Imports\\capture.har',
       },
-    }, signal)).resolves.toMatchObject({
+    }, abortSignal)).resolves.toMatchObject({
       payload: { job: { kind: 'har-import' } },
     });
-    // get/cancel now target the shared TransferJobManager; the injected fake HAR
+    // get/cancel now target the shared TransferService; the injected fake HAR
     // facade does not register jobs there, so unknown IDs resolve to null.
-    await expect(application.executeCommand({
+    await expect(coreApplication.executeCommand({
       type: 'transfer.job.get',
       payload: { jobId: 'har-job-1' },
-    }, signal)).resolves.toMatchObject({
+    }, abortSignal)).resolves.toMatchObject({
       payload: { job: null },
     });
-    await expect(application.executeCommand({
+    await expect(coreApplication.executeCommand({
       type: 'transfer.job.cancel',
       payload: { jobId: 'har-job-1' },
-    }, signal)).resolves.toMatchObject({
+    }, abortSignal)).resolves.toMatchObject({
       payload: { job: null },
     });
     expect(calls).toEqual(['start-export', 'start-import']);
   });
 
-  it('routes storage commands to the injected StorageService', async () => {
+  it('routes storage commands to the injected CaptureService', async () => {
     const calls: string[] = [];
     const cleanupScopes: CleanupScope[] = [];
     let eventQueueResets = 0;
@@ -351,7 +351,7 @@ describe('CoreApplication', () => {
       exportBodyToFile: (
         _bodyId: string,
         _filePath: string,
-        _signal: AbortSignal,
+        _abortSignal: AbortSignal,
         onProgress: (progress: { processed: number; total: number }) => void,
       ) => {
         calls.push('body-export');
@@ -360,7 +360,7 @@ describe('CoreApplication', () => {
       },
       dispose: () => Promise.resolve(),
       attachDiagnostics: () => undefined,
-    } as unknown as StorageService;
+    } as unknown as CaptureService;
     const proxy = {
       attachDiagnostics: () => undefined,
       prepareCaptureReset: () => 'active-session',
@@ -370,20 +370,20 @@ describe('CoreApplication', () => {
         eventQueueResets += 1;
       },
     } as unknown as CaptureEventQueue;
-    const application = new CoreApplication(new FakeParentPort(), {
-      storageService: storage,
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
+      captureService: storage,
       proxyService: proxy,
       captureEventQueue,
     });
-    const signal = new AbortController().signal;
+    const abortSignal = new AbortController().signal;
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         {
           type: 'sessions.query',
           payload: { limit: 10, sort: 'started_desc', filter: {} },
         },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'sessions.page',
@@ -394,12 +394,12 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         {
           type: 'grpc.messages',
           payload: { exchangeId: 'e1', side: 'response', limit: 10 },
         },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'grpc.messages',
@@ -412,9 +412,9 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         { type: 'sessions.detail', payload: { exchangeId: 'e1' } },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'sessions.detail',
@@ -422,12 +422,12 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         {
           type: 'websocket.frames',
           payload: { exchangeId: 'e1', limit: 100 },
         },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'websocket.frames',
@@ -439,9 +439,9 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         { type: 'body.read-range', payload: { bodyId: 'a'.repeat(64), offset: 0, length: 1024 } },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'body.range',
@@ -449,7 +449,7 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
+      coreApplication.executeCommand(
         {
           type: 'body.export.start',
           payload: {
@@ -458,7 +458,7 @@ describe('CoreApplication', () => {
             bodyId: 'a'.repeat(64),
           },
         },
-        signal,
+        abortSignal,
       ),
     ).resolves.toMatchObject({
       type: 'transfer.job',
@@ -466,11 +466,11 @@ describe('CoreApplication', () => {
     });
 
     await expect(
-      application.executeCommand(
-        { type: 'storage.cleanup', payload: { scope: 'all' } },
-        signal,
+      coreApplication.executeCommand(
+        { type: 'capture.cleanup', payload: { scope: 'all' } },
+        abortSignal,
       ),
-    ).resolves.toMatchObject({ type: 'storage.status' });
+    ).resolves.toMatchObject({ type: 'capture.status' });
 
     expect(calls).toEqual([
       'query',
@@ -495,13 +495,13 @@ describe('CoreApplication', () => {
       openBlobStream: () => Readable.from([gzipped]),
       dispose: () => Promise.resolve(),
       attachDiagnostics: () => undefined,
-    } as unknown as StorageService;
-    const application = new CoreApplication(new FakeParentPort(), {
-      storageService: storage,
+    } as unknown as CaptureService;
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
+      captureService: storage,
     });
-    const signal = new AbortController().signal;
+    const abortSignal = new AbortController().signal;
 
-    const result = await application.executeCommand(
+    const result = await coreApplication.executeCommand(
       {
         type: 'body.read-range',
         payload: {
@@ -512,7 +512,7 @@ describe('CoreApplication', () => {
           encoding: 'gzip',
         },
       },
-      signal,
+      abortSignal,
     );
 
     expect(result.type).toBe('body.range');
@@ -534,9 +534,9 @@ async function settle(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-async function settleShutdown(parentPort: FakeParentPort): Promise<void> {
+async function settleShutdown(fakeParentPort: FakeParentPort): Promise<void> {
   for (let turn = 0; turn < 10; turn += 1) {
-    if (parentPort.sent.some((message) => message.type === 'stopped')) {
+    if (fakeParentPort.sent.some((message) => message.type === 'stopped')) {
       return;
     }
     await settle();

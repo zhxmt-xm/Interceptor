@@ -56,7 +56,7 @@ export interface McpAuditEvent {
  */
 export interface McpHostBridge {
   /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
-  invoke<T extends CoreCommand>(command: T, signal: AbortSignal): Promise<CoreResultForCommand<T>>;
+  invoke<T extends CoreCommand>(command: T, abortSignal: AbortSignal): Promise<CoreResultForCommand<T>>;
   /** 请求用户确认写工具。宿主负责展示、超时与窗口聚焦。 */
   requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict>;
   /** 记录审计事件。实现必须吞掉自身错误。 */
@@ -97,7 +97,7 @@ export interface McpToolContext {
   /** 发起调用的身份。 */
   identity: McpClientIdentity;
   /** 调用取消信号。 */
-  signal: AbortSignal;
+  abortSignal: AbortSignal;
 }
 
 /** 一个 MCP 工具的完整定义。 */

@@ -2,10 +2,10 @@ import { once } from 'node:events';
 import { Worker } from 'node:worker_threads';
 
 import { archiveWorkerEntry } from '../../constants';
-import type { CaptureSnapshotBatch } from '../../storage/interfaces';
+import type { CaptureSnapshotBatch } from '../../capture/interfaces';
 import {
   ARCHIVE_WORKER_BATCH_SIZE,
-} from '../archive-constants';
+} from '../internal/constants';
 import type {
   ArchiveSnapshotPage,
   ArchiveWorkerData,
@@ -14,7 +14,7 @@ import type {
 } from '../interfaces';
 
 /** Core 侧的一次性 Archive Worker Host；每次导入/导出独占一个线程。 */
-export class ArchiveWorkerHost {
+export class WorkerHost {
   /** 当前一次性 Worker。 */
   private worker: Worker | null = null;
   /** Worker ready Promise。 */
@@ -56,12 +56,12 @@ export class ArchiveWorkerHost {
   /** 按批次写出一个 Capture 时间切面，每批等待 Worker ACK。 */
   async writeSnapshot(
     batches: AsyncIterable<CaptureSnapshotBatch>,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<void> {
     try {
       await this.start();
       for await (const batch of batches) {
-        this.throwIfAborted(signal);
+        this.throwIfAborted(abortSignal);
         await this.request<void>({ kind: 'append-batch', batch });
       }
       await this.finish();
@@ -73,14 +73,14 @@ export class ArchiveWorkerHost {
 
   /** 逐批读取完整 archive Exchange；调用方处理完当前批次后才请求下一批。 */
   async *readSnapshotBatches(
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): AsyncIterable<ArchiveSnapshotPage> {
     await this.start();
     let cursor: string | undefined;
     let completed = false;
     try {
       do {
-        this.throwIfAborted(signal);
+        this.throwIfAborted(abortSignal);
         const page = await this.request<ArchiveSnapshotPage>({
           kind: 'read-batch',
           cursor,
@@ -157,10 +157,10 @@ export class ArchiveWorkerHost {
   }
 
   /** 在取消后终止当前任务。 */
-  private throwIfAborted(signal: AbortSignal): void {
-    if (signal.aborted) {
-      throw signal.reason instanceof Error
-        ? signal.reason
+  private throwIfAborted(abortSignal: AbortSignal): void {
+    if (abortSignal.aborted) {
+      throw abortSignal.reason instanceof Error
+        ? abortSignal.reason
         : new DOMException('Archive transfer cancelled.', 'AbortError');
     }
   }

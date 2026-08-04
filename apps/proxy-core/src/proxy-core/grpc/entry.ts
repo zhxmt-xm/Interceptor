@@ -1,24 +1,24 @@
+import type { CaptureService } from '../capture/entry';
 import type {
   GrpcMessagePage,
   GrpcMessageQuery,
   GrpcMessageSummary,
-  GrpcStorageReader,
 } from './interfaces';
 import * as GrpcUtils from './utils';
 
 /** 从既有 HTTP body Blob 跳读原生 gRPC envelope，不读取 payload 字节。 */
 export class GrpcService {
-  /** 提供 Exchange detail 与 Blob range 的 StorageReader。 */
-  private readonly storage: GrpcStorageReader;
+  /** 提供 Exchange detail 与 Blob range 的抓包数据。 */
+  private readonly captureService: CaptureService;
 
-  /** 绑定只读存储门面。 */
-  constructor(storage: GrpcStorageReader) {
-    this.storage = storage;
+  /** 绑定当前 Recording 的抓包数据。 */
+  constructor(captureService: CaptureService) {
+    this.captureService = captureService;
   }
 
   /** 按 body side 和不透明游标分页扫描 gRPC envelope header。 */
   async query(query: GrpcMessageQuery): Promise<GrpcMessagePage> {
-    const detail = await this.storage.getExchangeDetail(query.exchangeId);
+    const detail = await this.captureService.getExchangeDetail(query.exchangeId);
     const source = GrpcUtils.selectSource(detail, query.side);
     if (!source.recognized || !source.body?.bodyHash) {
       return {
@@ -39,7 +39,7 @@ export class GrpcService {
     const items: GrpcMessageSummary[] = [];
     let malformedOffset: number | undefined;
     while (items.length < query.limit && offset < bodySize) {
-      const headerBytes = await this.storage.readBodyRange(
+      const headerBytes = await this.captureService.readBodyRange(
         source.body.bodyHash,
         offset,
         Math.min(5, bodySize - offset),

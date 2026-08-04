@@ -324,22 +324,22 @@ export class CoreRuntime {
 
   // 将 Electron MessagePortMain 适配为不泄漏 Electron 类型的 CoreRpcPort。
   // 调用方：launchCoreProcess 创建 MessageChannel 后连接 CoreRuntime 内部 CoreRpcClient。
-  private createCoreRpcPort(port: MessagePortMain): CoreRpcPort {
+  private createCoreRpcPort(messagePortMain: MessagePortMain): CoreRpcPort {
     return {
       onMessage(listener) {
         const handler = (event: Electron.MessageEvent) => listener(event.data);
-        port.on('message', handler);
-        return () => port.off('message', handler);
+        messagePortMain.on('message', handler);
+        return () => messagePortMain.off('message', handler);
       },
       onClose(listener) {
-        port.on('close', listener);
-        return () => port.off('close', listener);
+        messagePortMain.on('close', listener);
+        return () => messagePortMain.off('close', listener);
       },
       postMessage(message: MainToCoreMessage) {
-        port.postMessage(message);
+        messagePortMain.postMessage(message);
       },
-      start: () => port.start(),
-      close: () => port.close(),
+      start: () => messagePortMain.start(),
+      close: () => messagePortMain.close(),
     };
   }
 

@@ -13,29 +13,29 @@ import type {
   DiagnosticsWorkerResponse,
 } from '../interfaces';
 import * as DiagnosticsUtils from '../utils';
-import { DiagnosticsStore } from './worker-store';
+import { RecordStore } from './record-store';
 
 /** Diagnostics Worker 入口：独占 diagnostics.sqlite 并隔离全部日志故障。 */
 class DiagnosticsWorkerApplication {
   /** 与 Core 主线程通信的 Worker MessagePort。 */
-  private readonly port: MessagePort;
-  /** 独占 SQLite 连接的同步 DiagnosticsStore。 */
-  private readonly store: DiagnosticsStore;
+  private readonly messagePort: MessagePort;
+  /** 独占 SQLite 连接的同步 RecordStore。 */
+  private readonly recordStore: RecordStore;
 
   /** 校验 Worker 环境、打开数据库并建立 Store。 */
   constructor() {
     if (!parentPort) {
       throw new Error('diagnostics worker must run as a worker thread');
     }
-    this.port = parentPort;
+    this.messagePort = parentPort;
     const data = workerData as DiagnosticsWorkerData;
     try {
-      const { db } = DiagnosticsUtils.openDiagnosticsDatabase(
+      const { databaseSync: db } = DiagnosticsUtils.openDiagnosticsDatabase(
         data.databaseLocation,
       );
-      this.store = new DiagnosticsStore(db);
+      this.recordStore = new RecordStore(db);
     } catch (error) {
-      this.port.postMessage({
+      this.messagePort.postMessage({
         type: 'fatal',
         message: error instanceof Error ? error.message : 'unknown open error',
       } satisfies DiagnosticsWorkerResponse);
@@ -45,8 +45,8 @@ class DiagnosticsWorkerApplication {
 
   /** 发布 ready 并开始处理非阻塞写入、查询和关闭请求。 */
   start(): void {
-    this.port.postMessage({ type: 'ready' } satisfies DiagnosticsWorkerResponse);
-    this.port.on('message', (request: DiagnosticsWorkerRequest) => {
+    this.messagePort.postMessage({ type: 'ready' } satisfies DiagnosticsWorkerResponse);
+    this.messagePort.on('message', (request: DiagnosticsWorkerRequest) => {
       this.handle(request);
     });
   }
@@ -58,18 +58,18 @@ class DiagnosticsWorkerApplication {
         this.persist(request.records);
         return;
       case 'dropped':
-        this.safe(() => this.store.incrementDropped(request.count));
+        this.safe(() => this.recordStore.incrementDropped(request.count));
         return;
       case 'query':
         this.runQuery(request.requestId, request.query);
         return;
       case 'close':
-        this.safe(() => this.store.close());
-        this.port.postMessage({
+        this.safe(() => this.recordStore.close());
+        this.messagePort.postMessage({
           type: 'closed',
           requestId: request.requestId,
         } satisfies DiagnosticsWorkerResponse);
-        this.port.close();
+        this.messagePort.close();
         return;
       default: {
         const exhaustive: never = request;
@@ -81,24 +81,24 @@ class DiagnosticsWorkerApplication {
   /** 批量持久化日志；失败只增加丢弃计数。 */
   private persist(records: readonly DiagnosticLogRecord[]): void {
     try {
-      this.store.insertBatch(records);
+      this.recordStore.insertBatch(records);
     } catch {
-      this.safe(() => this.store.incrementDropped(records.length));
+      this.safe(() => this.recordStore.incrementDropped(records.length));
     }
   }
 
   /** 执行分页查询并返回结构化成功或错误响应。 */
   private runQuery(requestId: number, query: DiagnosticsQuery): void {
     try {
-      const result = this.store.query(query);
-      this.port.postMessage({
+      const result = this.recordStore.query(query);
+      this.messagePort.postMessage({
         type: 'query-result',
         requestId,
         ok: true,
         result,
       } satisfies DiagnosticsWorkerResponse);
     } catch (error) {
-      this.port.postMessage({
+      this.messagePort.postMessage({
         type: 'query-result',
         requestId,
         ok: false,

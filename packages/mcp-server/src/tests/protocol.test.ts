@@ -23,9 +23,9 @@ const HOST: McpHostBridge = {
 };
 
 function createSession(): NonNullable<ReturnType<McpServer['createSession']>> {
-  const server = new McpServer({ host: HOST, version: '0.1.0' });
-  const registration = server.authenticator.register('VS Code');
-  const session = server.createSession(registration.token, 'VS Code');
+  const mcpServer = new McpServer({ host: HOST, version: '0.1.0' });
+  const registration = mcpServer.authenticator.register('VS Code');
+  const session = mcpServer.createSession(registration.token, 'VS Code');
   if (session === null) {
     throw new Error('expected an authenticated session');
   }
@@ -40,19 +40,19 @@ function request(id: number, method: string, params?: unknown): string {
 
 describe('McpServer session', () => {
   it('refuses to create a session for an invalid token', () => {
-    const server = new McpServer({ host: HOST, version: '0.1.0' });
-    server.authenticator.register('VS Code');
+    const mcpServer = new McpServer({ host: HOST, version: '0.1.0' });
+    mcpServer.authenticator.register('VS Code');
 
-    expect(server.createSession('forged')).toBeNull();
+    expect(mcpServer.createSession('forged')).toBeNull();
   });
 
   it('invalidates existing tokens on shutdown', () => {
-    const server = new McpServer({ host: HOST, version: '0.1.0' });
-    const registration = server.authenticator.register('VS Code');
+    const mcpServer = new McpServer({ host: HOST, version: '0.1.0' });
+    const registration = mcpServer.authenticator.register('VS Code');
 
-    server.shutdown();
+    mcpServer.shutdown();
 
-    expect(server.createSession(registration.token)).toBeNull();
+    expect(mcpServer.createSession(registration.token)).toBeNull();
   });
 });
 

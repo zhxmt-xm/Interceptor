@@ -22,7 +22,7 @@ export interface TransferResult extends TransferProgress {
 export type TransferProgressListener = (progress: TransferProgress) => void;
 
 export type TransferOperation = (
-  signal: AbortSignal,
+  abortSignal: AbortSignal,
   onProgress: TransferProgressListener,
 ) => Promise<TransferResult>;
 
@@ -36,7 +36,7 @@ export interface MutableTransferJob {
   /** 任务启动时间。 */
   readonly startedAt: string;
   /** 只属于该任务的取消控制器。 */
-  readonly controller: AbortController;
+  readonly abortController: AbortController;
   /** 当前任务状态。 */
   state: TransferJobSnapshot['state'];
   /** 已处理条目数量。 */

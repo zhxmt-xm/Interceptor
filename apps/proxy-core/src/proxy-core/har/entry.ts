@@ -10,36 +10,36 @@ import type {
 
 import { appVersion } from '../constants';
 import { decodeBody } from '../proxy/utils';
-import type { ExchangeInput } from '../storage/interfaces';
+import type { CaptureService } from '../capture/entry';
+import type { ExchangeInput } from '../capture/interfaces';
 import {
   HAR_BODY_READ_CHUNK_BYTES,
   HAR_EXPORT_PAGE_SIZE,
   HAR_IMPORT_BATCH_SIZE,
-} from './har-constants';
-import { HarDocumentParser } from './har-document';
+} from './internal/constants';
+import { DocumentParser } from './internal/document';
 import type {
   HarExportOptions,
   HarExportScope,
   HarProgressListener,
   HarRedactionOptions,
-  HarStorage,
   HarTransferResult,
   ParsedHarEntry,
 } from './interfaces';
-import { InvalidHarError } from './har-invalid-error';
-import { TransferJobManager } from '../transfer/entry';
+import { InvalidHarError } from './internal/errors';
+import { TransferService } from '../transfer/entry';
 import * as HarUtils from './utils';
 
 export class HarService {
-  /** HAR 转换所需的 Storage 门面。 */
-  private readonly storage: HarStorage;
+  /** HAR 转换所需的当前 Recording 抓包数据。 */
+  private readonly captureService: CaptureService;
   /** 与原生 archive 共用的异步文件任务管理器。 */
-  private readonly jobs: TransferJobManager;
+  private readonly transferService: TransferService;
 
-  /** 绑定 Core 内存储门面与共享任务管理器；文件系统与正文始终留在 Core。 */
-  constructor(storage: HarStorage, jobs: TransferJobManager) {
-    this.storage = storage;
-    this.jobs = jobs;
+  /** 绑定抓包数据与共享任务管理器；文件系统与正文始终留在 Core。 */
+  constructor(captureService: CaptureService, transferService: TransferService) {
+    this.captureService = captureService;
+    this.transferService = transferService;
   }
 
   /** 启动 HAR 导出任务并立即返回 running 快照。 */
@@ -48,25 +48,25 @@ export class HarService {
     filePath: string,
     options: HarExportOptions,
   ): TransferJobSnapshot {
-    return this.jobs.start(jobId, 'har-export', filePath, (signal, onProgress) =>
-      this.exportToFile(filePath, options, signal, onProgress));
+    return this.transferService.start(jobId, 'har-export', filePath, (abortSignal, onProgress) =>
+      this.exportToFile(filePath, options, abortSignal, onProgress));
   }
 
   /** 启动 HAR 导入任务并立即返回 running 快照。 */
   startImport(jobId: string, filePath: string): TransferJobSnapshot {
-    return this.jobs.start(jobId, 'har-import', filePath, (signal, onProgress) =>
-      this.importFromFile(filePath, signal, onProgress));
+    return this.transferService.start(jobId, 'har-import', filePath, (abortSignal, onProgress) =>
+      this.importFromFile(filePath, abortSignal, onProgress));
   }
 
   /** 将指定 Capture 范围原子导出为标准 HAR 1.2 文件。 */
   async exportToFile(
     filePath: string,
     options: HarExportOptions,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
     onProgress?: HarProgressListener,
   ): Promise<HarTransferResult> {
     HarUtils.assertTransferPath(filePath, '.har');
-    const exchangeIds = await this.listExchangeIds(options.scope, signal);
+    const exchangeIds = await this.listExchangeIds(options.scope, abortSignal);
     const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
     const output = await open(temporaryPath, 'wx');
     let processed = 0;
@@ -77,12 +77,12 @@ export class HarService {
           `${JSON.stringify(appVersion)}},"entries":[`,
       );
       for (const exchangeId of exchangeIds) {
-        HarUtils.throwIfAborted(signal);
-        const detail = await this.storage.getExchangeDetail(exchangeId);
+        HarUtils.throwIfAborted(abortSignal);
+        const detail = await this.captureService.getExchangeDetail(exchangeId);
         if (!detail) {
           continue;
         }
-        const entry = await this.toHarEntry(detail, options.redaction, signal);
+        const entry = await this.toHarEntry(detail, options.redaction, abortSignal);
         await output.write(`${processed > 0 ? ',' : ''}${JSON.stringify(entry)}`);
         processed += 1;
         onProgress?.({ processed, total: exchangeIds.length });
@@ -110,7 +110,7 @@ export class HarService {
   /** 校验并导入 HAR 1.2 文件；失败或取消时回滚新建 Session。 */
   async importFromFile(
     filePath: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
     onProgress?: HarProgressListener,
   ): Promise<HarTransferResult> {
     HarUtils.assertTransferPath(filePath, '.har');
@@ -118,12 +118,12 @@ export class HarService {
     if (!fileStats.isFile()) {
       throw new InvalidHarError('HAR source must be a regular file.');
     }
-    HarUtils.throwIfAborted(signal);
-    const source = await readFile(filePath, { signal });
-    const document = HarDocumentParser.parse(source);
+    HarUtils.throwIfAborted(abortSignal);
+    const source = await readFile(filePath, { signal: abortSignal });
+    const document = DocumentParser.parse(source);
     const sessionId = `har-${randomUUID()}`;
     const startedAt = document.entries[0]?.startedAt ?? Date.now();
-    await this.storage.ensureSession({
+    await this.captureService.ensureSession({
       id: sessionId,
       name: `Imported HAR - ${path.basename(filePath)}`,
       startedAt,
@@ -134,21 +134,21 @@ export class HarService {
     let processed = 0;
     try {
       for (let offset = 0; offset < document.entries.length; offset += HAR_IMPORT_BATCH_SIZE) {
-        HarUtils.throwIfAborted(signal);
+        HarUtils.throwIfAborted(abortSignal);
         const batchEntries = document.entries.slice(
           offset,
           offset + HAR_IMPORT_BATCH_SIZE,
         );
         const exchanges: ExchangeInput[] = [];
         for (const entry of batchEntries) {
-          exchanges.push(await this.toExchange(entry, sessionId, signal));
+          exchanges.push(await this.toExchange(entry, sessionId, abortSignal));
         }
-        await this.storage.appendExchanges(exchanges);
+        await this.captureService.appendExchanges(exchanges);
         processed += exchanges.length;
         onProgress?.({ processed, total: document.entries.length });
       }
     } catch (error) {
-      await this.storage.cleanup({ kind: 'session', sessionId });
+      await this.captureService.cleanup({ kind: 'session', sessionId });
       throw error;
     }
 
@@ -164,7 +164,7 @@ export class HarService {
   /** 根据导出范围枚举 Exchange ID。 */
   private async listExchangeIds(
     scope: HarExportScope,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<string[]> {
     if (scope.kind === 'selected') {
       return [...new Set(scope.exchangeIds)];
@@ -173,8 +173,8 @@ export class HarService {
     const exchangeIds: string[] = [];
     let cursor: string | undefined;
     do {
-      HarUtils.throwIfAborted(signal);
-      const page = await this.storage.querySessions({
+      HarUtils.throwIfAborted(abortSignal);
+      const page = await this.captureService.querySessions({
         cursor,
         limit: HAR_EXPORT_PAGE_SIZE,
         sort: 'started_asc',
@@ -196,7 +196,7 @@ export class HarService {
   private async toHarEntry(
     detail: CaptureExchangeDetail,
     redaction: HarRedactionOptions,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<Record<string, unknown>> {
     const requestHeaders = HarUtils.redactHeaders(
       detail.requestHeaders,
@@ -210,10 +210,10 @@ export class HarService {
     );
     const requestBody = redaction.bodies
       ? undefined
-      : await this.readBody(detail.requestBody, signal);
+      : await this.readBody(detail.requestBody, abortSignal);
     const encodedResponseBody = redaction.bodies
       ? undefined
-      : await this.readBody(detail.responseBody, signal);
+      : await this.readBody(detail.responseBody, abortSignal);
     let responseBody = encodedResponseBody;
     let responseCompression: number | undefined;
     if (encodedResponseBody && detail.responseBody?.contentEncoding) {
@@ -302,19 +302,19 @@ export class HarService {
   private async toExchange(
     entry: ParsedHarEntry,
     sessionId: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<ExchangeInput> {
-    HarUtils.throwIfAborted(signal);
+    HarUtils.throwIfAborted(abortSignal);
     const parsedUrl = new URL(entry.url);
     const requestBody = await this.persistBody(
       entry.requestBody,
       entry.requestMime,
-      signal,
+      abortSignal,
     );
     const responseBody = await this.persistBody(
       entry.responseBody,
       entry.responseMime,
-      signal,
+      abortSignal,
     );
     const id = `har-exchange-${randomUUID()}`;
     return {
@@ -351,17 +351,17 @@ export class HarService {
     };
   }
 
-  /** 把导入正文写入 TemporaryBodyStore 并生成 hash metadata。 */
+  /** 把导入正文写入 BodyStore 并生成 hash metadata。 */
   private async persistBody(
     body: Buffer | undefined,
     mediaType: string | undefined,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ) {
     if (!body) {
       return undefined;
     }
-    HarUtils.throwIfAborted(signal);
-    const stored = await this.storage.writeBody(
+    HarUtils.throwIfAborted(abortSignal);
+    const stored = await this.captureService.writeBody(
       HarUtils.singleChunk(body),
     );
     return {
@@ -375,10 +375,10 @@ export class HarService {
     };
   }
 
-  /** 按有限 chunk 从 TemporaryBodyStore 读取完整单条 HAR 正文。 */
+  /** 按有限 chunk 从 BodyStore 读取完整单条 HAR 正文。 */
   private async readBody(
     body: CaptureBodyRef | undefined,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<Buffer | undefined> {
     if (!body?.bodyHash) {
       return undefined;
@@ -386,12 +386,12 @@ export class HarService {
     const chunks: Buffer[] = [];
     let offset = 0;
     while (offset < body.encodedSize) {
-      HarUtils.throwIfAborted(signal);
+      HarUtils.throwIfAborted(abortSignal);
       const length = Math.min(
         HAR_BODY_READ_CHUNK_BYTES,
         body.encodedSize - offset,
       );
-      const chunk = await this.storage.readBodyRange(body.bodyHash, offset, length);
+      const chunk = await this.captureService.readBodyRange(body.bodyHash, offset, length);
       if (chunk.byteLength === 0) {
         break;
       }

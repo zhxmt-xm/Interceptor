@@ -1,7 +1,7 @@
 # Feature: Capture
 
 > 最后更新：2026-07-31
-> Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/storage/`、`apps/proxy-core/src/proxy-core/client-app/`
+> Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/capture/`、`apps/proxy-core/src/proxy-core/client-app/`
 > Renderer 模块：`apps/desktop/src/renderer/features/capture/`
 
 ## 1. 职责与边界
@@ -26,8 +26,8 @@ Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/p
 | Client | 外部 | 浏览器或应用，经系统代理指向 `127.0.0.1:8888` |
 | Mockttp | Core 内库 | 接入连接、TLS/H2 协商、上游转发、生命周期事件 |
 | `ProxyService` | `proxy/entry.ts` | 拥有 Mockttp server，订阅事件，协调规则与存储 |
-| `RuleEngine` | `rules/entry.ts` | 计算规则决策（详见 feature-rules） |
-| `StorageService` | `storage/entry.ts` | Exchange 记录、正文内容寻址存储 |
+| `RuleService` | `rules/entry.ts` | 计算规则决策（详见 feature-rules） |
+| `CaptureService` | `capture/entry.ts` | Exchange 记录、正文内容寻址存储 |
 | `ClientAppService` | `client-app/entry.ts` | 把客户端源端口反查成发起流量的本机应用（见 8） |
 | `CaptureEventQueue` | `proxy/proxy-capture-event-queue.ts` | 按 Exchange 合并的非阻塞事件队列 |
 | `CoreApplication` | `core-application.ts` | 定时 drain 队列，按背压窗口推送 |
@@ -128,7 +128,7 @@ patch 经 `patch-package` + 根 `postinstall` 自动重放，升级 Mockttp 时�
 `transformResponse` 执行，我们看不到执行过程**，只能靠对比前后快照反推。
 
 阶段二引入 `beforeRequestHead` / `beforeResponseHead` 后这个前提不成立了：规则改写回到
-`RuleEngine` 自己手中，所以**不再需要 `rule-event`**，当前代码也没有订阅它。
+`RuleService` 自己手中，所以**不再需要 `rule-event`**，当前代码也没有订阅它。
 
 仍然只有 `rule-event` 能提供、但当前不需要的两项：
 
@@ -146,11 +146,11 @@ emitEventCallback: (emitter.listenerCount('rule-event') !== 0) ? ... : undefined
 | Evidence | 来源 |
 | --- | --- |
 | 客户端原始请求头 | `request-initiated` |
-| 发往 Origin 的最终请求头 | `beforeRequestHead` 返回值（由 RuleEngine 构造） |
+| 发往 Origin 的最终请求头 | `beforeRequestHead` 返回值（由 RuleService 构造） |
 | Origin 原始响应头 | `beforeResponseHead` 参数 |
 | 回客户端的最终响应头 | `response-initiated` |
 
-四者均不缓冲正文。Rule 效果 marker（生效值、被替代旧值、被删除值）由 `RuleEngine` 在
+四者均不缓冲正文。Rule 效果 marker（生效值、被替代旧值、被删除值）由 `RuleService` 在
 执行每个 header action 时直接记录 `previousValues` 产出，不需要从前后快照反推。
 
 ### 3.5 顺序不保证
@@ -235,8 +235,8 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Rules as RuleEngine
-    participant Storage as StorageService
+    participant Rules as RuleService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant App as CoreApplication
     participant Main
@@ -333,7 +333,7 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Storage as StorageService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant Origin
 
@@ -350,7 +350,7 @@ sequenceDiagram
 
 `pendingTunnels` 保存 `Promise<PendingTunnelCapture | null>`，确保 closed 事件等待 opened 落库后才更新。隧道内不读取任何 header 或 body。
 
-**Rule 对未解密隧道完全不生效**，因此上图没有 RuleEngine 参与。原因在 TLS 层就已决定：
+**Rule 对未解密隧道完全不生效**，因此上图没有 RuleService 参与。原因在 TLS 层就已决定：
 
 未配置 CA 时 `startServer()` 用 `getLocal({ https: { ...tlsPassthroughIdentity, tlsInterceptOnly: [] } })`。
 Mockttp 的 `shouldPassThrough()` 在 `interceptOnlyPatterns` 非 undefined 时返回
@@ -374,8 +374,8 @@ sequenceDiagram
     participant Mockttp
     participant Bridge as WebSocketBridge
     participant Proxy as ProxyService
-    participant Rules as RuleEngine
-    participant Storage as StorageService
+    participant Rules as RuleService
+    participant Storage as CaptureService
     participant Origin
 
     Client->>Mockttp: TCP/TLS + HTTP/1.1 Upgrade
@@ -455,7 +455,7 @@ Mockttp 在 Upgrade 阶段给 socket 装 `_write` / `_writev` 钩子，因此 Br
   | 对象 | 是否经过 Rule |
   | --- | --- |
   | Upgrade 请求（header 改写、block、map local/remote 等） | **否**。Bridge 经 `addWebSocketRule` 注册独立的 WebSocket 规则链（`WildcardMatcher` + 自定义 step），不走 `forAnyRequest().thenPassThrough()`，因此 `beforeRequestHead` / `beforeResponseHead` 不会触发 |
-  | 消息 | **仅全局断点**。`interceptWebSocketMessage` 只检查 `webSocketBreakpointsOn` 并调 `ruleEngine.pauseWebSocketMessage`，`ruleName` 硬编码为 `WebSocket message`，**不做 matcher 匹配，也不执行任何 rule action** |
+  | 消息 | **仅全局断点**。`interceptWebSocketMessage` 只检查 `webSocketBreakpointsOn` 并调 `ruleService.pauseWebSocketMessage`，`ruleName` 硬编码为 `WebSocket message`，**不做 matcher 匹配，也不执行任何 rule action** |
 
   即消息断点是一个 `websocket.breakpoint.configure` 控制的全局开关，命中后挂起等待 continue / edit / drop，与 Rules 工作区里配置的规则无关。
 - **上游先于下游**：`handle()` 先 `new WebSocket(url)` 并 `waitForOpen(upstream)`，成功后才 `handleUpgrade` 回客户端 101。上游握手失败时 upstream 被 terminate 并抛出，客户端拿不到 101，因此不存在「已升级但无上游」的中间态。子协议以上游 `sec-websocket-protocol` 回填，`sec-websocket-extensions` 被删除（bridge 关闭 permessage-deflate，两侧均传明文帧）。
@@ -470,7 +470,7 @@ Mockttp 在 Upgrade 阶段给 socket 装 `_write` / `_writev` 钩子，因此 Br
 
   原因是 client→server 转发调 `upstream.send()`，而 upstream 由 Bridge 自行 `new WebSocket()` 创建、未被 Mockttp 包装，不产生事件。因此「断点改写是否体现在 Capture 记录里」两个方向相反。
 - 消息按 `streamId` 串行 `writeTail` Promise 链，保证顺序且等待 101 Exchange 先落库。
-- payload 复用 `TemporaryBodyStore`，按 hash 去重。
+- payload 复用 `BodyStore`，按 hash 去重。
 - 仅支持 HTTP/1.1 Upgrade，H2 Extended CONNECT 未实现。
 
 
@@ -498,8 +498,8 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Rules as RuleEngine
-    participant Storage as StorageService
+    participant Rules as RuleService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -603,8 +603,8 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Rules as RuleEngine
-    participant Storage as StorageService
+    participant Rules as RuleService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -651,8 +651,8 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Rules as RuleEngine
-    participant Storage as StorageService
+    participant Rules as RuleService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -693,7 +693,7 @@ sequenceDiagram
     participant Mockttp
     participant Bridge as WebSocketBridge
     participant Proxy as ProxyService
-    participant Storage as StorageService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -745,7 +745,7 @@ sequenceDiagram
     participant Mockttp
     participant Bridge as WebSocketBridge
     participant Proxy as ProxyService
-    participant Storage as StorageService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -790,7 +790,7 @@ sequenceDiagram
     participant Mockttp
     participant Bridge as WebSocketBridge
     participant Proxy as ProxyService
-    participant Storage as StorageService
+    participant Storage as CaptureService
     participant Queue as CaptureEventQueue
     participant UI as Renderer
     participant Origin
@@ -910,7 +910,7 @@ flowchart LR
 `finalize()` 里的 `const memory = this.spillPath ? null : Buffer.concat(...)` 也体现了这一点：
 一旦 spill 过，内存侧就是 `null`。
 
-**内容寻址的必然约束**：`TemporaryBodyStore` 按内容 hash 去重，因此 **hash 只有写完才能确定**。传输过程中 Exchange 只能记录 observed bytes，`requestBodyId` / `responseBodyId` 必须在 `isEnded` 后绑定。
+**内容寻址的必然约束**：`BodyStore` 按内容 hash 去重，因此 **hash 只有写完才能确定**。传输过程中 Exchange 只能记录 observed bytes，`requestBodyId` / `responseBodyId` 必须在 `isEnded` 后绑定。
 
 UI 表现为：大小实时增长，但预览与保存要等传输完成。
 
@@ -1016,7 +1016,7 @@ WebSocket 不走这条路径：bridge 两端都关掉 `permessage-deflate` 并�
 | --- | --- | --- |
 | Start | `proxy.start` | 启动 listener（若未启动），`recording = true` |
 | Stop | `proxy.setRecording{false}` | **只暂停记录**。listener 与系统代理保持运行，流量继续转发 |
-| Clear | `storage.cleanup{all}` | 推进 generation，Exchange 与正文归零；仍在监听时保留当前 Session 壳（见 7.2） |
+| Clear | `capture.cleanup{all}` | 推进 generation，Exchange 与正文归零；仍在监听时保留当前 Session 壳（见 7.2） |
 
 Stop 不停止转发，也不恢复系统代理。系统代理只在应用退出、Core 故障恢复、用户显式 Restore 或紧急修复时恢复。
 
@@ -1030,11 +1030,11 @@ sequenceDiagram
     participant Proxy as ProxyService
     participant Tracker as ExchangeTracker
     participant Queue as CaptureEventQueue
-    participant Storage as StorageService
+    participant Storage as CaptureService
 
     Note over Tracker: request-initiated 时固定<br/>entry.generation = 当前值
 
-    UI->>App: storage.cleanup 且 scope 为 all
+    UI->>App: capture.cleanup 且 scope 为 all
     App->>Proxy: prepareCaptureReset()
     Proxy->>Tracker: reset()
     Note over Tracker: generation += 1<br/>abort 全部在途 body writer<br/>清空 entries 与孤儿表<br/>未决 exchangeReady 一律 resolve(null)
@@ -1051,7 +1051,7 @@ sequenceDiagram
         App->>Storage: cleanup(all)
     end
     Storage-->>App: StorageStatusReport
-    App-->>UI: storage.status
+    App-->>UI: capture.status
 
     Note over Tracker: 旧 generation 的迟到事件
     Tracker->>Tracker: generation 不匹配则丢弃
@@ -1059,7 +1059,7 @@ sequenceDiagram
 
 **Clear 由 CoreApplication 编排，不是 ProxyService 自己完成。** 三步顺序不可换：先
 `prepareCaptureReset()` 建立切面（推进 generation，让在途事件立即失效），再 `captureEventQueue.reset()`
-丢弃已入队但未推送的事件，最后才真正 `storage.cleanup`。否则会出现「库已清空但队列里还有旧行」被推给
+丢弃已入队但未推送的事件，最后才真正 `capture.cleanup`。否则会出现「库已清空但队列里还有旧行」被推给
 Renderer 的窗口。
 
 **活动 Session 会被保留。** `prepareCaptureReset()` 在代理仍在监听时返回当前 `sessionId`，
@@ -1237,10 +1237,10 @@ TTL 防的是端口复用错认：连接关闭后源端口会被系统重新分�
 
 ### 9.1 Core 内部接口
 
-`CaptureSink`（`proxy/interfaces/index.ts`）[已实现]：
+`CaptureService`（`capture/entry.ts`）向 Proxy 暴露的写入面 [已实现]：
 
 ```ts
-interface CaptureSink {
+class CaptureService {
   ensureSession(session: CaptureSessionInput): Promise<void>;
   appendExchanges(exchanges: ExchangeInput[]): Promise<{ id: string; seq: number }[]>;
   updateExchange(patch: ExchangePatch): Promise<void>;
@@ -1250,6 +1250,9 @@ interface CaptureSink {
   appendWebSocketFrames(exchangeId: string, frames: readonly WebSocketFrameInput[]): Promise<void>;
 }
 ```
+
+`ProxyService` 与 `ExchangeTracker` 直接持有这个具体类，不再经由窄化接口；测试替身
+`extends CaptureService` 并只 `override` 被断言的方法。
 
 `ExchangePatch` 除 `id` 外全部可选，未提供的字段保持原值，覆盖：
 
@@ -1290,7 +1293,7 @@ interface CaptureEventSink {
 | `websocket.breakpoint.configure` | 全局 WebSocket 消息断点开关 |
 | `grpc.messages` | gRPC envelope 分页 |
 | `proxy.start` / `proxy.status` / `proxy.setRecording` | 生命周期；Renderer 的 Stop 映射为 `setRecording{false}` |
-| `storage.cleanup` | Clear |
+| `capture.cleanup` | Clear |
 
 `proxy.stop` 不对 Renderer 开放常规入口，仅在 Main 的紧急修复路径中调用。
 
@@ -1349,7 +1352,7 @@ flowchart LR
 | --- | --- | --- |
 | 请求规则预筛选 | `.matching(callback)` 等完整 body | `beforeRequestHead` 头部阶段判定 |
 | 响应规则执行 | 一律 `beforeResponse` 全量缓冲 | `beforeResponseHead` 流式 |
-| Rule evidence | 需要从前后快照反推 | `RuleEngine` 执行时直接记录 `previousValues` |
+| Rule evidence | 需要从前后快照反推 | `RuleService` 执行时直接记录 `previousValues` |
 | 客户端应用 | `processName` 字段保留但从未写入 | Windows 上反查真实发起应用，列表与 Inspector 展示名称与系统图标（见 8） |
 
 仍待完成：

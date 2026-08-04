@@ -70,7 +70,7 @@ export function CaptureListbar(): React.JSX.Element {
     }
     const clearedBefore = Date.now();
     setClearing(true);
-    void window.interceptor.clearStorage()
+    void window.interceptor.clearCapture()
       .then(() => {
         clearView(clearedBefore);
         // 命中数是从 Capture 记录派生的，清空后必须立即归零，而不是等下一次轮询。

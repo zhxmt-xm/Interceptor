@@ -7,7 +7,7 @@ import {
   CLIENT_APP_ID_LENGTH,
   CLIENT_APP_LOOKUP_MAX_OUTPUT_BYTES,
   CLIENT_APP_LOOKUP_TIMEOUT_MS,
-} from '../client-app-constants';
+} from '../internal/constants';
 import type { ClientAppIdentity, ClientAppLookupRunner } from '../interfaces';
 
 const execFileAsync = promisify(execFile);

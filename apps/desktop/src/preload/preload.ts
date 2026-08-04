@@ -66,9 +66,9 @@ const api: InterceptorDesktopApi = {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
     };
   },
-  getStorageStatus: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.storageGetStatus),
-  clearStorage: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.storageClear),
+  getCaptureUsage: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureGetUsage),
+  clearCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureClear),
   startCapture: (port) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStart, port),
   stopCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStop),
@@ -142,6 +142,13 @@ const api: InterceptorDesktopApi = {
   replaceRules: (expectedRevision, rules) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, rules),
   getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
+  getCollection: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionGet),
+  replaceCollection: (expectedRevision, nodes) =>
+    ipcRenderer.invoke(
+      DESKTOP_IPC_CHANNELS.collectionReplace,
+      expectedRevision,
+      nodes,
+    ),
   sendComposerRequest: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
   listBreakpoints: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointList),
@@ -149,8 +156,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointResolve, breakpointId, action, edit),
   setBreakpointsEnabled: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
-  probeConnection: (host, port) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.connectionProbe, host, port),
+  probeTls: (host, port) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.tlsProbe, host, port),
   startHarExport: (request, title) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.harExportStart, request, title),
   startHarImport: (title) =>

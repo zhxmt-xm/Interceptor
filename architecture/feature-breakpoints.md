@@ -13,7 +13,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 | Breakpoints 负责 | 挂起状态机、超时策略、快照构造、用户编辑应用 |
 | Breakpoints 不负责 | 匹配判定（属于 Rules）、记录（属于 Capture） |
 
-断点由 `breakpoint` 类型的 Rule Action 触发，因此它是 Rules 的子系统，共享 `RuleEngine` 的执行上下文。
+断点由 `breakpoint` 类型的 Rule Action 触发，因此它是 Rules 的子系统，共享 `RuleService` 的执行上下文。
 
 **正文可见性边界（已实现）**：HTTP 断点在**头部阶段**（`beforeRequestHead` / `beforeResponseHead`）挂起，此时正文尚未到达，所以快照的 `bodyAvailable` 为 `false` 且不带 `body`。UI 因此把正文区域展示为“Replace body / 原文尚未到达”，留空即原样转发。WebSocket 消息断点持有完整 payload，`bodyAvailable` 为 `true`。**不为断点引入正文缓冲**，也不制造第二份无界内存。
 
@@ -21,7 +21,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 
 | 参与者 | 职责 |
 | --- | --- |
-| `RuleEngine` | 遇到 `breakpoint` action 时调用 `awaitBreakpoint` |
+| `RuleService` | 遇到 `breakpoint` action 时调用 `awaitBreakpoint` |
 | `BreakpointQueue` | 持有等待中的断点，提供 suspend/resolve/list/closeAll |
 | `WebSocketBridge` | WebSocket 消息转发前调用 `pauseWebSocketMessage` |
 | `CoreApplication` | 路由 `breakpoint.*` 命令 |
@@ -55,7 +55,7 @@ sequenceDiagram
     participant Client
     participant Mockttp
     participant Proxy as ProxyService
-    participant Engine as RuleEngine
+    participant Engine as RuleService
     participant Queue as BreakpointQueue
     participant App as CoreApplication
     participant UI as Renderer
@@ -112,7 +112,7 @@ sequenceDiagram
     participant Client
     participant Bridge as WebSocketBridge
     participant Proxy as ProxyService
-    participant Engine as RuleEngine
+    participant Engine as RuleService
     participant Queue as BreakpointQueue
     participant Origin
 

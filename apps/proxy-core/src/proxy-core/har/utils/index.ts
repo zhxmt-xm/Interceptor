@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { CaptureHeader } from '@interceptor/core-protocol';
 
 import type { HarRedactionOptions } from '../interfaces';
-import { InvalidHarError } from '../har-invalid-error';
+import { InvalidHarError } from '../internal/errors';
 
 /** 移除 HTTP/2 pseudo-header，并按选项遮罩认证与 Cookie 值。 */
 export function redactHeaders(
@@ -183,7 +183,7 @@ function isTextualBody(body: Buffer, mimeType: string): boolean {
   );
 }
 
-/** 将一个 Buffer 包装成 TemporaryBodyStore 接受的单块异步序列。 */
+/** 将一个 Buffer 包装成 BodyStore 接受的单块异步序列。 */
 export async function* singleChunk(
   body: Buffer,
 ): AsyncGenerator<Uint8Array> {
@@ -191,10 +191,10 @@ export async function* singleChunk(
 }
 
 /** 在任务已取消时抛出稳定 AbortError。 */
-export function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) {
-    throw signal.reason instanceof Error
-      ? signal.reason
+export function throwIfAborted(abortSignal: AbortSignal): void {
+  if (abortSignal.aborted) {
+    throw abortSignal.reason instanceof Error
+      ? abortSignal.reason
       : new DOMException('The HAR transfer was cancelled.', 'AbortError');
   }
 }

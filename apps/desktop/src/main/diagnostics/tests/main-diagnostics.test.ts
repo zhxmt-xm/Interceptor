@@ -24,20 +24,20 @@ afterEach(() => {
 
 describe('MainDiagnostics', () => {
   it('forwards fixed Main and Renderer sources asynchronously', async () => {
-    const transport = new FakeTransport();
-    const diagnostics = new MainDiagnostics(transport);
+    const fakeTransport = new FakeTransport();
+    const mainDiagnostics = new MainDiagnostics(fakeTransport);
 
-    diagnostics.warn('main.core-runtime.status', {
+    mainDiagnostics.warn('main.core-runtime.status', {
       attributes: { state: 'restarting' },
     });
-    diagnostics.rendererError('renderer.uncaught-error', {
+    mainDiagnostics.rendererError('renderer.uncaught-error', {
       errorCode: 'TypeError',
       attributes: { message: 'render failed' },
     });
-    expect(transport.records).toEqual([]);
+    expect(fakeTransport.records).toEqual([]);
     await settle();
 
-    expect(transport.records).toEqual([
+    expect(fakeTransport.records).toEqual([
       {
         process: 'main',
         level: 'warn',
@@ -55,17 +55,17 @@ describe('MainDiagnostics', () => {
   });
 
   it('retains transport failures and sends every record after recovery', async () => {
-    const transport = new FakeTransport();
-    transport.failure = new Error('disconnected');
-    const diagnostics = new MainDiagnostics(transport);
+    const fakeTransport = new FakeTransport();
+    fakeTransport.failure = new Error('disconnected');
+    const mainDiagnostics = new MainDiagnostics(fakeTransport);
 
-    expect(() => diagnostics.error('main.ipc.failed')).not.toThrow();
+    expect(() => mainDiagnostics.error('main.ipc.failed')).not.toThrow();
     await settle();
-    expect(transport.records).toEqual([]);
-    diagnostics.info('main.core-runtime.status');
+    expect(fakeTransport.records).toEqual([]);
+    mainDiagnostics.info('main.core-runtime.status');
     await settle();
 
-    expect(transport.records.map(({ phase }) => phase)).toEqual([
+    expect(fakeTransport.records.map(({ phase }) => phase)).toEqual([
       'main.ipc.failed',
       'main.core-runtime.status',
     ]);

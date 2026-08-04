@@ -106,7 +106,7 @@ describe('core protocol validation', () => {
         payload: { enabled: false },
       },
       {
-        type: 'connection.probe',
+        type: 'tls.probe',
         payload: { host: 'example.com', port: 443 },
       },
       {
@@ -561,7 +561,7 @@ describe('core protocol validation', () => {
     }).ok).toBe(true);
   });
 
-  it('passes connection probe payloads without deep validation', () => {
+  it('passes TLS probe payloads without deep validation', () => {
     expect(parseCoreToMainMessage({
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
@@ -569,7 +569,7 @@ describe('core protocol validation', () => {
       traceId: 'trace-probe',
       ok: true,
       result: {
-        type: 'connection.probed',
+        type: 'tls.probed',
         payload: {
           ok: true,
           protocol: 'TLSv1.3',
@@ -597,7 +597,7 @@ describe('core protocol validation', () => {
       traceId: 'trace-probe-bad',
       ok: true,
       result: {
-        type: 'connection.probed',
+        type: 'tls.probed',
         payload: {
           ok: true,
           protocol: 'x'.repeat(65),

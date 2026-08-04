@@ -86,7 +86,7 @@ interface DiagnosticsRecorder {
 | `CoreRpcServer` | `rpc.connected`、`rpc.connection-failed`、每命令一条 `command.completed` |
 | `CoreApplication` | `core.started`、`core.stopping`、`storage.ready`、`diagnostics.ready` |
 | `ProxyService` | `proxy.listening`、`proxy.stopped`、`tls.reconfigured`、`tls.client-error`、`capture.persist-failed`、`exchange.aborted`、`exchange.server-error` |
-| `StorageService` | `storage.ready`、`storage.error` |
+| `CaptureService` | `storage.ready`、`storage.error` |
 
 命令级精简为单条 `command.completed`。`diagnostics.recent` 与 `diagnostics.query` 本身静默，避免轮询自污染。
 
@@ -151,7 +151,7 @@ sequenceDiagram
     participant UI as Renderer
     participant Main
     participant App as CoreApplication
-    participant Jobs as TransferJobManager
+    participant Jobs as TransferService
     participant FS as 文件系统
 
     UI->>Main: 导出诊断

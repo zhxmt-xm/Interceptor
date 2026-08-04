@@ -10,7 +10,7 @@ import type {
   SessionQuery,
   SessionQueryFilter,
   SessionQueryPage,
-} from '../../storage/interfaces';
+} from '../../capture/interfaces';
 
 export interface ParsedHarEntry {
   /** 请求开始的 Unix 毫秒时间。 */
@@ -69,23 +69,6 @@ export interface HarAppendedExchange {
   readonly id: string;
   /** Storage 分配的单调序列号。 */
   readonly seq: number;
-}
-
-export interface HarStorage {
-  /** 按 keyset 页枚举待导出的 Exchange 摘要。 */
-  querySessions(query: SessionQuery): Promise<SessionQueryPage>;
-  /** 读取单条 Exchange 的完整 header 与 body 引用。 */
-  getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
-  /** 从内容寻址 Blob 读取有限字节范围。 */
-  readBodyRange(hash: string, offset: number, length: number): Promise<Buffer>;
-  /** 把导入正文写入内容寻址 TemporaryBodyStore。 */
-  writeBody(source: AsyncIterable<Uint8Array>): Promise<HarBlobWriteResult>;
-  /** 建立一次 HAR 导入对应的 Capture Session。 */
-  ensureSession(session: CaptureSessionInput): Promise<void>;
-  /** 分批持久化从 HAR 映射出的 Exchange。 */
-  appendExchanges(exchanges: ExchangeInput[]): Promise<HarAppendedExchange[]>;
-  /** 在导入失败或取消时回滚新建 Session。 */
-  cleanup(scope: CleanupScope): Promise<unknown>;
 }
 
 export interface HarAllScope {

@@ -10,12 +10,13 @@ import type {
 } from '@interceptor/core-protocol';
 
 import { appVersion } from '../constants';
+import type { CaptureService } from '../capture/entry';
 import type {
   BodyRefInput,
   ExchangeInput,
   WebSocketFrameInput,
-} from '../storage/interfaces';
-import { TransferJobManager } from '../transfer/entry';
+} from '../capture/interfaces';
+import { TransferService } from '../transfer/entry';
 import {
   ARCHIVE_EXTENSION,
   ARCHIVE_IMPORT_BATCH_SIZE,
@@ -23,50 +24,49 @@ import {
   BLOB_ENTRY_PREFIX,
   MANIFEST_ENTRY_NAME,
   SNAPSHOT_ENTRY_NAME,
-} from './archive-constants';
-import { ArchiveInvalidError } from './archive-invalid-error';
-import { ArchiveWorkerHost } from './host/entry';
-import { ArchiveZipReader } from './archive-zip-reader';
-import { ArchiveZipWriter } from './archive-zip-writer';
+} from './internal/constants';
+import { InvalidArchiveError } from './internal/errors';
+import { WorkerHost } from './host/entry';
+import { ZipReader } from './internal/zip-reader';
+import { ZipWriter } from './internal/zip-writer';
 import type {
   ArchiveManifest,
   ArchiveManifestFile,
   ArchiveProgressListener,
-  ArchiveStorage,
   ArchiveTransferResult,
   ValidatedZipEntry,
 } from './interfaces';
 import * as ArchiveUtils from './utils';
 
 export class ArchiveService {
-  /** archive 转换所需的 Storage 门面。 */
-  private readonly storage: ArchiveStorage;
+  /** archive 转换所需的当前 Recording 抓包数据。 */
+  private readonly captureService: CaptureService;
   /** 与 HAR 共用的异步文件任务管理器。 */
-  private readonly jobs: TransferJobManager;
+  private readonly transferService: TransferService;
 
-  /** 绑定 Core 内存储门面与共享任务管理器；文件系统与正文始终留在 Core。 */
-  constructor(storage: ArchiveStorage, jobs: TransferJobManager) {
-    this.storage = storage;
-    this.jobs = jobs;
+  /** 绑定抓包数据与共享任务管理器；文件系统与正文始终留在 Core。 */
+  constructor(captureService: CaptureService, transferService: TransferService) {
+    this.captureService = captureService;
+    this.transferService = transferService;
   }
 
   /** 启动原生 archive 导出任务并立即返回 running 快照。 */
   startExport(jobId: string, filePath: string): TransferJobSnapshot {
-    return this.jobs.start(
+    return this.transferService.start(
       jobId,
       'archive-export',
       filePath,
-      (signal, onProgress) => this.exportToFile(filePath, signal, onProgress),
+      (abortSignal, onProgress) => this.exportToFile(filePath, abortSignal, onProgress),
     );
   }
 
   /** 启动原生 archive 导入任务并立即返回 running 快照。 */
   startImport(jobId: string, filePath: string): TransferJobSnapshot {
-    return this.jobs.start(
+    return this.transferService.start(
       jobId,
       'archive-import',
       filePath,
-      (signal, onProgress) => this.importFromFile(filePath, signal, onProgress),
+      (abortSignal, onProgress) => this.importFromFile(filePath, abortSignal, onProgress),
     );
   }
 
@@ -76,14 +76,14 @@ export class ArchiveService {
    */
   async exportToFile(
     filePath: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
     onProgress?: ArchiveProgressListener,
   ): Promise<ArchiveTransferResult> {
     ArchiveUtils.assertTransferPath(filePath, ARCHIVE_EXTENSION);
     const token = randomUUID();
     const snapshotPath = `${filePath}.${token}.snapshot`;
     const zipPath = `${filePath}.${token}.tmp`;
-    const snapshot = this.storage.createArchiveSnapshot(
+    const snapshot = this.captureService.createArchiveSnapshot(
       ARCHIVE_WORKER_BATCH_SIZE,
     );
     const total = snapshot.bodyHashes.length + 1;
@@ -91,28 +91,28 @@ export class ArchiveService {
     let handle: FileHandle | undefined;
 
     try {
-      ArchiveUtils.throwIfAborted(signal);
-      const worker = new ArchiveWorkerHost('export', snapshotPath);
-      await worker.writeSnapshot(
+      ArchiveUtils.throwIfAborted(abortSignal);
+      const workerHost = new WorkerHost('export', snapshotPath);
+      await workerHost.writeSnapshot(
         snapshot.batches,
-        signal,
+        abortSignal,
       );
       handle = await open(zipPath, 'wx+');
-      const writer = new ArchiveZipWriter(handle);
+      const zipWriter = new ZipWriter(handle);
       const files: ArchiveManifestFile[] = [];
 
       files.push(
-        await this.addFileEntry(writer, SNAPSHOT_ENTRY_NAME, () =>
+        await this.addFileEntry(zipWriter, SNAPSHOT_ENTRY_NAME, () =>
           createReadStream(snapshotPath)),
       );
       processed += 1;
       onProgress?.({ processed, total });
 
       for (const hash of snapshot.bodyHashes) {
-        ArchiveUtils.throwIfAborted(signal);
+        ArchiveUtils.throwIfAborted(abortSignal);
         files.push(
-          await this.addFileEntry(writer, `${BLOB_ENTRY_PREFIX}${hash}`, () =>
-            this.storage.openBlobStream(hash)),
+          await this.addFileEntry(zipWriter, `${BLOB_ENTRY_PREFIX}${hash}`, () =>
+            this.captureService.openBlobStream(hash)),
         );
         processed += 1;
         onProgress?.({ processed, total });
@@ -122,11 +122,11 @@ export class ArchiveService {
         appVersion,
         files,
       );
-      await writer.addStream(
+      await zipWriter.addStream(
         MANIFEST_ENTRY_NAME,
         ArchiveUtils.singleChunk(Buffer.from(JSON.stringify(manifest), 'utf8')),
       );
-      await writer.finalize();
+      await zipWriter.finalize();
       await handle.close();
       handle = undefined;
       // 直接 rename 覆盖，不留旧文件已删、新文件未就位的窗口。
@@ -149,13 +149,13 @@ export class ArchiveService {
    */
   async importFromFile(
     filePath: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
     onProgress?: ArchiveProgressListener,
   ): Promise<ArchiveTransferResult> {
     ArchiveUtils.assertTransferPath(filePath, ARCHIVE_EXTENSION);
     const stats = await stat(filePath);
     if (!stats.isFile()) {
-      throw new ArchiveInvalidError('Archive source must be a regular file.');
+      throw new InvalidArchiveError('Archive source must be a regular file.');
     }
     const extractDir = await mkdtemp(path.join(tmpdir(), 'interceptor-archive-'));
     const readHandle = await open(filePath, 'r');
@@ -163,17 +163,17 @@ export class ArchiveService {
     let sessionCreated = false;
 
     try {
-      const reader = new ArchiveZipReader(readHandle, stats.size);
-      await reader.open();
-      const entries = reader.validate();
-      const manifest = await this.extractManifest(reader, entries, extractDir);
+      const zipReader = new ZipReader(readHandle, stats.size);
+      await zipReader.open();
+      const entries = zipReader.validate();
+      const manifest = await this.extractManifest(zipReader, entries, extractDir);
       this.assertManifestConsistency(manifest, entries);
-      await this.extractAndVerify(reader, entries, manifest, extractDir, signal);
+      await this.extractAndVerify(zipReader, entries, manifest, extractDir, abortSignal);
 
       const snapshotPath = path.join(extractDir, SNAPSHOT_ENTRY_NAME);
-      await this.importBlobs(manifest, extractDir, signal);
+      await this.importBlobs(manifest, extractDir, abortSignal);
 
-      await this.storage.ensureSession({
+      await this.captureService.ensureSession({
         id: sessionId,
         name: `Imported archive - ${path.basename(filePath)}`,
         startedAt: Date.now(),
@@ -184,12 +184,12 @@ export class ArchiveService {
       const result = await this.importSnapshot(
         snapshotPath,
         sessionId,
-        signal,
+        abortSignal,
         onProgress,
       );
       return { processed: result.processed, total: result.total, warnings: [] };
     } catch (error) {
-      await this.storage
+      await this.captureService
         .cleanup({ kind: 'session', sessionId })
         .catch(() => undefined);
       throw error;
@@ -201,7 +201,7 @@ export class ArchiveService {
 
   /** 流式写入一个 ZIP 条目并同时算出 manifest 需要的 size/sha256。 */
   private async addFileEntry(
-    writer: ArchiveZipWriter,
+    zipWriter: ZipWriter,
     name: string,
     openSource: () => AsyncIterable<Uint8Array>,
   ): Promise<ArchiveManifestFile> {
@@ -215,13 +215,13 @@ export class ArchiveService {
         yield buffer;
       }
     })();
-    await writer.addStream(name, source);
+    await zipWriter.addStream(name, source);
     return { path: name, size, sha256: hash.digest('hex') };
   }
 
   /** 提取并解析 manifest；拒绝缺失、未知格式或不支持版本。 */
   private async extractManifest(
-    reader: ArchiveZipReader,
+    zipReader: ZipReader,
     entries: readonly ValidatedZipEntry[],
     extractDir: string,
   ): Promise<ArchiveManifest> {
@@ -229,13 +229,13 @@ export class ArchiveService {
       (entry) => entry.safeName === MANIFEST_ENTRY_NAME,
     );
     if (!manifestEntry) {
-      throw new ArchiveInvalidError('Archive is missing its manifest.');
+      throw new InvalidArchiveError('Archive is missing its manifest.');
     }
     const manifestPath = path.join(extractDir, MANIFEST_ENTRY_NAME);
-    await reader.extractEntry(manifestEntry, manifestPath);
+    await zipReader.extractEntry(manifestEntry, manifestPath);
     const manifest = ArchiveUtils.parseManifest(await readFile(manifestPath));
     if (!manifest.files.some((file) => file.path === SNAPSHOT_ENTRY_NAME)) {
-      throw new ArchiveInvalidError('Archive manifest omits the database snapshot.');
+      throw new InvalidArchiveError('Archive manifest omits the database snapshot.');
     }
     return manifest;
   }
@@ -251,43 +251,43 @@ export class ArchiveService {
       manifestNames.add(file.path);
       const entry = zipByName.get(file.path);
       if (!entry) {
-        throw new ArchiveInvalidError('Archive manifest references a missing entry.');
+        throw new InvalidArchiveError('Archive manifest references a missing entry.');
       }
       if (entry.uncompressedSize !== file.size) {
-        throw new ArchiveInvalidError('Archive manifest size does not match its entry.');
+        throw new InvalidArchiveError('Archive manifest size does not match its entry.');
       }
     }
     for (const entry of entries) {
       if (entry.safeName !== MANIFEST_ENTRY_NAME && !manifestNames.has(entry.safeName)) {
-        throw new ArchiveInvalidError('Archive contains an entry absent from the manifest.');
+        throw new InvalidArchiveError('Archive contains an entry absent from the manifest.');
       }
     }
   }
 
   /** 提取快照与全部 Blob 并逐文件校验 sha256/size 与 manifest 一致。 */
   private async extractAndVerify(
-    reader: ArchiveZipReader,
+    zipReader: ZipReader,
     entries: readonly ValidatedZipEntry[],
     manifest: ArchiveManifest,
     extractDir: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<void> {
     const zipByName = new Map(entries.map((entry) => [entry.safeName, entry]));
     await mkdir(path.join(extractDir, 'blobs'), { recursive: true });
     for (const file of manifest.files) {
-      ArchiveUtils.throwIfAborted(signal);
+      ArchiveUtils.throwIfAborted(abortSignal);
       if (file.path === MANIFEST_ENTRY_NAME) {
         continue;
       }
       const entry = zipByName.get(file.path);
       if (!entry) {
-        throw new ArchiveInvalidError('Archive manifest references a missing entry.');
+        throw new InvalidArchiveError('Archive manifest references a missing entry.');
       }
       const destination = path.join(extractDir, file.path);
-      await reader.extractEntry(entry, destination);
+      await zipReader.extractEntry(entry, destination);
       const digest = await this.hashFile(destination);
       if (digest.size !== file.size || digest.hash !== file.sha256) {
-        throw new ArchiveInvalidError('Archive file failed manifest verification.');
+        throw new InvalidArchiveError('Archive file failed manifest verification.');
       }
     }
   }
@@ -296,19 +296,19 @@ export class ArchiveService {
   private async importBlobs(
     manifest: ArchiveManifest,
     extractDir: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<void> {
     for (const file of manifest.files) {
       if (!file.path.startsWith(BLOB_ENTRY_PREFIX)) {
         continue;
       }
-      ArchiveUtils.throwIfAborted(signal);
+      ArchiveUtils.throwIfAborted(abortSignal);
       const expectedHash = file.path.slice(BLOB_ENTRY_PREFIX.length);
-      const stored = await this.storage.writeBody(
+      const stored = await this.captureService.writeBody(
         createReadStream(path.join(extractDir, file.path)),
       );
       if (stored.hash !== expectedHash) {
-        throw new ArchiveInvalidError('Archive blob content does not match its hash.');
+        throw new InvalidArchiveError('Archive blob content does not match its hash.');
       }
     }
   }
@@ -317,15 +317,15 @@ export class ArchiveService {
   private async importSnapshot(
     snapshotPath: string,
     sessionId: string,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
     onProgress?: ArchiveProgressListener,
   ): Promise<{ processed: number; total: number }> {
-    const worker = new ArchiveWorkerHost('import', snapshotPath);
+    const workerHost = new WorkerHost('import', snapshotPath);
     let processed = 0;
     let total = 0;
     try {
-      for await (const page of worker.readSnapshotBatches(signal)) {
-        ArchiveUtils.throwIfAborted(signal);
+      for await (const page of workerHost.readSnapshotBatches(abortSignal)) {
+        ArchiveUtils.throwIfAborted(abortSignal);
         const exchanges: ExchangeInput[] = [];
         const framesByExchange = new Map<string, readonly WebSocketFrameInput[]>();
         total = page.total;
@@ -334,11 +334,11 @@ export class ArchiveService {
           exchanges.push(this.remapSnapshotExchange(snapshot.exchange, newId, sessionId));
           framesByExchange.set(newId, snapshot.frames);
         }
-        await this.storage.appendExchanges(exchanges);
+        await this.captureService.appendExchanges(exchanges);
         for (const exchange of exchanges) {
           const frames = framesByExchange.get(exchange.id) ?? [];
           if (frames.length > 0) {
-            await this.storage.appendWebSocketFrames(
+            await this.captureService.appendWebSocketFrames(
               exchange.id,
               frames.map((frame) => this.remapFrame(frame)),
             );
@@ -349,7 +349,7 @@ export class ArchiveService {
       }
       return { processed, total };
     } catch (error) {
-      await worker.close();
+      await workerHost.close();
       throw error;
     }
   }

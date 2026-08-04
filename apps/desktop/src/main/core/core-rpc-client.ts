@@ -32,8 +32,10 @@ export class CoreRpcClient {
     'breakpoint.resolve': 'breakpoint.resolution',
     'breakpoint.list': 'breakpoint.pending',
     'breakpoint.configure': 'breakpoint.config',
+    'collection.get': 'collection.collection',
+    'collection.replace': 'collection.revision',
     'composer.send': 'composer.response',
-    'connection.probe': 'connection.probed',
+    'tls.probe': 'tls.probed',
     'grpc.messages': 'grpc.messages',
     'har.export.start': 'transfer.job',
     'har.import.start': 'transfer.job',
@@ -51,8 +53,8 @@ export class CoreRpcClient {
     'sessions.detail': 'sessions.detail',
     'websocket.frames': 'websocket.frames',
     'websocket.breakpoint.configure': 'websocket.breakpoint.config',
-    'storage.status': 'storage.status',
-    'storage.cleanup': 'storage.status',
+    'capture.status': 'capture.status',
+    'capture.cleanup': 'capture.status',
     'transfer.job.cancel': 'transfer.job',
     'transfer.job.get': 'transfer.job',
     'proxy.start': 'proxy.status',
@@ -136,7 +138,7 @@ export class CoreRpcClient {
         'Core RPC connection is unavailable.',
       ));
     }
-    if (options.signal?.aborted) {
+    if (options.abortSignal?.aborted) {
       return Promise.reject(CoreRpcError.of(
         'cancelled',
         'The Core request was cancelled.',
@@ -154,11 +156,11 @@ export class CoreRpcClient {
 
     // PendingRpcRequest 自己拥有 Promise、timer 和 AbortSignal listener；
     // CoreRpcClient 只负责 requestId correlation 与底层消息收发。
-    const pending = new PendingRpcRequest(command.type, traceId);
-    this.pending.set(requestId, pending);
-    pending.start(
+    const pendingRpcRequest = new PendingRpcRequest(command.type, traceId);
+    this.pending.set(requestId, pendingRpcRequest);
+    pendingRpcRequest.start(
       options.timeoutMs ?? this.requestTimeoutMs,
-      options.signal,
+      options.abortSignal,
       (reason) => this.cancel(requestId, reason),
     );
 
@@ -177,7 +179,7 @@ export class CoreRpcClient {
       );
     }
 
-    return pending.promise as Promise<CoreResultForCommand<T>>;
+    return pendingRpcRequest.promise as Promise<CoreResultForCommand<T>>;
   }
 
   close(): void {

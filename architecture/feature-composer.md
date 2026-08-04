@@ -1,7 +1,7 @@
 # Feature: Composer
 
 > 最后更新：2026-08-04
-> Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/connection/`
+> Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
 > UI 设计：`design/app/` 的 composer 视图（34 张截图）与 `design/design-system.md` 的「Composer 工作区」一节，**设计已定稿、尚未落地**。
 
@@ -68,10 +68,10 @@ sequenceDiagram
     autonumber
     participant UI as Renderer
     participant App as CoreApplication
-    participant Svc as ConnectionService
+    participant Svc as TlsProbeService
     participant Origin
 
-    UI->>App: connection.probe(host, port)
+    UI->>App: tls.probe(host, port)
     App->>Svc: probe(...)
     Svc->>Origin: tls.connect 只握手
     Origin-->>Svc: 证书链与协商结果
@@ -100,7 +100,7 @@ interface ComposerRequestInput {
 | 命令 | 用途 |
 | --- | --- |
 | `composer.send` | 发送构造的请求 |
-| `connection.probe` | TLS 握手探测 |
+| `tls.probe` | TLS 握手探测 |
 
 ## 4. 与其他 feature 的关系
 
@@ -109,7 +109,7 @@ flowchart LR
     A["Capture 请求行"] -->|"未来：复制到 Composer"| B["Composer 草稿"]
     B --> C["composer.send"]
     C --> D["独立结果面板"]
-    E["Settings 证书面板"] -->|"诊断入口"| F["connection.probe"]
+    E["Settings 证书面板"] -->|"诊断入口"| F["tls.probe"]
 ```
 
 当前 Composer 与 Capture 之间没有直接联动。若未来支持"从 Capture 复制到 Composer"，必须明确复制的是客户端原始请求还是发往 Origin 的最终请求。
@@ -122,12 +122,14 @@ flowchart LR
 
 | 层 | 新增内容 |
 | --- | --- |
-| Core | 新模块 `proxy-core/collection/`，按 `rules.sqlite` 的模式持久化到独立 SQLite；目录可任意嵌套，条目保存 method / url / headers / query / body / auth |
-| Protocol | `collection.list` / `collection.upsert` / `collection.remove` / `collection.move`（拖拽改父目录与排序）；载荷是平台中立的树形 DTO，不复用 React state |
-| Preload | 对应的意图型窄 API，不暴露文件路径 |
+| Core | `workspace/entry.ts` 的 `WorkspaceService.loadCollection` / `saveCollection`，与 RuleSet 完全同构：`collection_tree` 单行表 + 整棵树存一个 JSON + 乐观锁 revision |
+| Protocol | 只有 `collection.get` 与 `collection.replace` 两条命令 |
+| Preload | `getCollection()` / `replaceCollection(expectedRevision, tree)` |
 | Renderer | 目录树、行内重命名、选中目录作为新建目标、多请求文档 tab |
 
-**编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。这一条决定了 `collection.upsert` 会被高频调用，Renderer 侧需要节流写入。
+**为什么不做树形表和增量命令**：Collection 只有几十到几百条，整棵树序列化成 JSON 的开销可以忽略。做成 `collection_tree` 单行表后，父子关系、排序字段、`upsert`/`remove`/`move` 三条增量命令与它们各自的并发语义全部不需要存在，读写只有"读整棵树"和"写整棵树"两条路径。
+
+**编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。写入由 Renderer 节流，避免每次按键都落库。
 
 ### 5.2 Recent sends [设计已定稿，未实现]
 
@@ -154,4 +156,4 @@ URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立�
 - [ ] Composer 请求不受启用的 Rules 影响。
 - [ ] 未设 timeout 的长请求不被强制中断。
 - [ ] TLS 证书链完整且已去重。
-- [ ] `connection.probe` 不产生任何 HTTP 流量。
+- [ ] `tls.probe` 不产生任何 HTTP 流量。

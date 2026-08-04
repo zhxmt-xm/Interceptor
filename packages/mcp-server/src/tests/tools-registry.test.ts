@@ -58,17 +58,17 @@ class FakeHost implements McpHostBridge {
 }
 
 function call(
-  registry: McpToolRegistry,
+  mcpToolRegistry: McpToolRegistry,
   name: string,
   args: Record<string, unknown> = {},
 ): ReturnType<McpToolRegistry['call']> {
-  return registry.call(name, args, IDENTITY, new AbortController().signal);
+  return mcpToolRegistry.call(name, args, IDENTITY, new AbortController().signal);
 }
 
 describe('McpToolRegistry', () => {
   it('exposes read tools as non-destructive and write tools as requiring approval', () => {
-    const registry = new McpToolRegistry(new FakeHost());
-    const tools = registry.listTools();
+    const mcpToolRegistry = new McpToolRegistry(new FakeHost());
+    const tools = mcpToolRegistry.listTools();
     const byName = new Map(tools.map((tool) => [tool.name, tool]));
 
     expect(byName.get('list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });
@@ -80,8 +80,8 @@ describe('McpToolRegistry', () => {
   });
 
   it('never registers commands that touch trust roots, system proxy or the file system', () => {
-    const registry = new McpToolRegistry(new FakeHost());
-    const names = registry.listTools().map((tool) => tool.name);
+    const mcpToolRegistry = new McpToolRegistry(new FakeHost());
+    const names = mcpToolRegistry.listTools().map((tool) => tool.name);
 
     for (const forbidden of [
       'configure_tls', 'start_proxy', 'stop_proxy',
@@ -92,157 +92,157 @@ describe('McpToolRegistry', () => {
   });
 
   it('runs read tools without asking for approval', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'proxy.status': { type: 'proxy.status', payload: { listening: true, recording: true } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
 
     expect(outcome.ok).toBe(true);
-    expect(host.approvals).toHaveLength(0);
-    expect(host.commands.map((command) => command.type)).toEqual(['proxy.status']);
+    expect(fakeHost.approvals).toHaveLength(0);
+    expect(fakeHost.commands.map((command) => command.type)).toEqual(['proxy.status']);
   });
 
   it('produces no Core command when the user rejects a write tool', async () => {
-    const host = new FakeHost(
-      { 'storage.status': { type: 'storage.status', payload: { exchangeCount: 3, bodyCount: 2 } } },
+    const fakeHost = new FakeHost(
+      { 'capture.status': { type: 'capture.status', payload: { exchangeCount: 3, bodyCount: 2 } } },
       'rejected',
     );
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'clear_capture', { scope: 'all' });
+    const outcome = await call(mcpToolRegistry, 'clear_capture', { scope: 'all' });
 
     expect(outcome.ok).toBe(false);
-    expect(host.approvals).toHaveLength(1);
-    // 只允许出现 describeChange 为审批 UI 读取的状态，绝不能出现 storage.cleanup。
-    expect(host.commands.map((command) => command.type)).not.toContain('storage.cleanup');
+    expect(fakeHost.approvals).toHaveLength(1);
+    // 只允许出现 describeChange 为审批 UI 读取的状态，绝不能出现 capture.cleanup。
+    expect(fakeHost.commands.map((command) => command.type)).not.toContain('capture.cleanup');
   });
 
   it('treats an approval timeout as a rejection', async () => {
-    const host = new FakeHost(
-      { 'storage.status': { type: 'storage.status', payload: { exchangeCount: 0, bodyCount: 0 } } },
+    const fakeHost = new FakeHost(
+      { 'capture.status': { type: 'capture.status', payload: { exchangeCount: 0, bodyCount: 0 } } },
       'timeout',
     );
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'clear_capture', {});
+    const outcome = await call(mcpToolRegistry, 'clear_capture', {});
 
     expect(outcome.ok).toBe(false);
-    expect(host.commands.map((command) => command.type)).not.toContain('storage.cleanup');
-    expect(host.audit).toContainEqual(
+    expect(fakeHost.commands.map((command) => command.type)).not.toContain('capture.cleanup');
+    expect(fakeHost.audit).toContainEqual(
       expect.objectContaining({ kind: 'approval', verdict: 'timeout' }),
     );
   });
 
   it('passes the full arguments to the approval prompt, not a summary', async () => {
-    const host = new FakeHost({
-      'connection.probe': { type: 'connection.probed', payload: { ok: true } },
+    const fakeHost = new FakeHost({
+      'tls.probe': { type: 'tls.probed', payload: { ok: true } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(registry, 'probe_connection', { host: 'evil.com', port: 443 });
+    await call(mcpToolRegistry, 'probe_connection', { host: 'evil.com', port: 443 });
 
-    expect(host.approvals[0]?.arguments).toEqual({ host: 'evil.com', port: 443 });
-    expect(host.approvals[0]?.diff?.[0]).toContain('evil.com');
+    expect(fakeHost.approvals[0]?.arguments).toEqual({ host: 'evil.com', port: 443 });
+    expect(fakeHost.approvals[0]?.diff?.[0]).toContain('evil.com');
   });
 
   it('forces AI-authored rules to land disabled', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, rules: [] } } },
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'apply_rules', {
+    const outcome = await call(mcpToolRegistry, 'apply_rules', {
       baseRevision: 7,
       rules: [{ id: 'r1', name: 'redirect', enabled: true }],
     });
 
     expect(outcome.ok).toBe(true);
-    const replace = host.commands.find((command) => command.type === 'rules.replace');
+    const replace = fakeHost.commands.find((command) => command.type === 'rules.replace');
     expect(replace).toBeDefined();
     expect((replace as { payload: { rules: { enabled: boolean }[] } }).payload.rules[0]?.enabled)
       .toBe(false);
   });
 
   it('refuses to overwrite rules edited since the AI last read them', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 9, rules: [] } } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'apply_rules', { baseRevision: 7, rules: [] });
+    const outcome = await call(mcpToolRegistry, 'apply_rules', { baseRevision: 7, rules: [] });
 
     expect(outcome.ok).toBe(false);
-    expect(host.commands.map((command) => command.type)).not.toContain('rules.replace');
+    expect(fakeHost.commands.map((command) => command.type)).not.toContain('rules.replace');
   });
 
   it('rejects arguments the schema does not declare', async () => {
-    const registry = new McpToolRegistry(new FakeHost());
+    const mcpToolRegistry = new McpToolRegistry(new FakeHost());
 
-    const outcome = await call(registry, 'get_proxy_status', { extra: 1 });
+    const outcome = await call(mcpToolRegistry, 'get_proxy_status', { extra: 1 });
 
     expect(outcome.ok).toBe(false);
     expect(outcome.payload).toMatchObject({ error: expect.stringContaining('unknown argument') });
   });
 
   it('rejects unknown tool names', async () => {
-    const registry = new McpToolRegistry(new FakeHost());
+    const mcpToolRegistry = new McpToolRegistry(new FakeHost());
 
-    const outcome = await call(registry, 'delete_everything');
+    const outcome = await call(mcpToolRegistry, 'delete_everything');
 
     expect(outcome.ok).toBe(false);
   });
 
   it('clamps page limits so one call cannot drain the whole capture', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'sessions.query': { type: 'sessions.page', payload: { items: [], hasMore: false } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(registry, 'list_exchanges', { limit: 100_000 });
+    await call(mcpToolRegistry, 'list_exchanges', { limit: 100_000 });
 
-    const query = host.commands[0] as { payload: { limit: number } };
+    const query = fakeHost.commands[0] as { payload: { limit: number } };
     expect(query.payload.limit).toBe(200);
   });
 
   it('never reads media bodies', async () => {
-    const host = new FakeHost();
-    const registry = new McpToolRegistry(host);
+    const fakeHost = new FakeHost();
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'get_exchange_body', {
+    const outcome = await call(mcpToolRegistry, 'get_exchange_body', {
       bodyId: 'b1',
       mimeType: 'video/mp4',
     });
 
     expect(outcome.ok).toBe(true);
     expect(outcome.payload).toMatchObject({ opaque: true });
-    expect(host.commands).toHaveLength(0);
+    expect(fakeHost.commands).toHaveLength(0);
   });
 
   it('does not fabricate a body edit when the model only changes a header', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'breakpoint.resolve': {
         type: 'breakpoint.resolution',
         payload: { breakpointId: 'bp1', state: 'continued' },
       },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(registry, 'resolve_breakpoint', { breakpointId: 'bp1', action: 'continue' });
+    await call(mcpToolRegistry, 'resolve_breakpoint', { breakpointId: 'bp1', action: 'continue' });
 
-    const resolve = host.commands.find((command) => command.type === 'breakpoint.resolve');
+    const resolve = fakeHost.commands.find((command) => command.type === 'breakpoint.resolve');
     expect(resolve).toBeDefined();
     expect(resolve).not.toHaveProperty('payload.edit');
   });
 
   it('reports tool failures without throwing', async () => {
-    const host = new FakeHost();
-    vi.spyOn(host, 'invoke').mockRejectedValue(new Error('core disconnected'));
-    const registry = new McpToolRegistry(host);
+    const fakeHost = new FakeHost();
+    vi.spyOn(fakeHost, 'invoke').mockRejectedValue(new Error('core disconnected'));
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
 
     expect(outcome).toEqual({ ok: false, payload: { error: 'core disconnected' } });
   });
@@ -252,15 +252,15 @@ describe('McpToolRegistry', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const host = new FakeHost();
-    vi.spyOn(host, 'invoke').mockImplementation(async () => {
+    const fakeHost = new FakeHost();
+    vi.spyOn(fakeHost, 'invoke').mockImplementation(async () => {
       await gate;
       return { type: 'proxy.status', payload: {} } as never;
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const inflight = Array.from({ length: 4 }, () => call(registry, 'get_proxy_status'));
-    const overflow = await call(registry, 'get_proxy_status');
+    const inflight = Array.from({ length: 4 }, () => call(mcpToolRegistry, 'get_proxy_status'));
+    const overflow = await call(mcpToolRegistry, 'get_proxy_status');
 
     expect(overflow.ok).toBe(false);
     expect(overflow.payload).toMatchObject({
@@ -271,12 +271,12 @@ describe('McpToolRegistry', () => {
   });
 
   it('replaces oversized results with guidance rather than flooding the model context', async () => {
-    const host = new FakeHost({
+    const fakeHost = new FakeHost({
       'proxy.status': { type: 'proxy.status', payload: { blob: 'x'.repeat(600_000) } },
     });
-    const registry = new McpToolRegistry(host);
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(registry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
 
     expect(outcome.ok).toBe(true);
     expect(outcome.payload).toMatchObject({ truncated: true });

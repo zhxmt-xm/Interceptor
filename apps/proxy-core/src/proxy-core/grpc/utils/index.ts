@@ -3,7 +3,7 @@ import type {
   CaptureHeader,
 } from '@interceptor/core-protocol';
 
-import { InvalidGrpcCursorError } from '../grpc-invalid-cursor-error';
+import { InvalidGrpcCursorError } from '../internal/errors';
 import type {
   GrpcCursor,
   GrpcEnvelopeHeaderResult,

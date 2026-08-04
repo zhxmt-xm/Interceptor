@@ -10,7 +10,17 @@
 - 避免过度设计：只做被直接要求或明确必要的改动或非常相关的改动，如果有更好的建议可以询问用户。
 - 不要为不可能发生的场景添加错误处理；只在系统边界做校验。
 - 不要为一次性操作创建辅助函数或抽象。
-- 改动尽量彻底，不要为了兼容旧代码增加更多的垃圾代码，代码可以彻底优化、简化，提高可读性
+- **改动必须彻底**：重构或替换一个模块时，旧实现要**整体删除**，不保留兼容层、过渡分支、`legacy*`/`old*` 命名或"以后可能还要用"的死代码。一个能力只留一条代码路径。
+- **优先简化而不是叠加**：能删掉的抽象就删掉，能拉平的层级就拉平，能少一个状态就少一个状态。新增代码前先问「有没有办法让现有流程更短」。
+- **可读性优先于聪明**：命名直白、控制流线性、避免为省几行而牺牲可理解性。宁可多一个语义清晰的名字，不要一个塞满逻辑的表达式。
+
+## 命名（全仓适用：Main / Preload / Renderer / Proxy Core / packages）
+
+- **指向类实例的名字与类名同步**：变量、字段、构造函数/方法参数、对象属性一律用类名的 camelCase 全名，**不用简称**——`new CaptureService()` → `captureService`，`connection: RpcConnection` → `rpcConnection`，`controller: AbortController` → `abortController`，`db: DatabaseSync` → `databaseSync`。`Core` 前缀不作特例（`new CoreApplication()` → `coreApplication`）。这条约束的目的就是让读者从名字直接跳到类定义。
+- **测试同样适用**：fixture、测试替身与局部变量都跟其类型同步（`new RecordingCaptureService()` → `recordingCaptureService`、`new FakeRpcPort()` → `fakeRpcPort`、`new BodyWriterFixture()` → `bodyWriterFixture`）。
+- **名字承载类型名没有的信息时保留语义名**：当名字回答的是「哪一个 / 什么角色」而不是「什么类型」，不要机械替换——`mainWindow: BrowserWindow`、`coreProcess: UtilityProcess`、`insertStatement: StatementSync`、`downloadAbortController`。同作用域多个同类实例必须靠名字区分（`first`/`second`、`exportHost`/`importHost`、`requestWriter`/`responseWriter`）。
+- **通用容器与数据字段按语义命名**：`Map`/`Set`/`Promise`/`RegExp`/`TypedArray` 的名字表达内容（`zipByName`、`ruleIds`、`referenced`）；DTO 与协议字段是数据契约，不套用实例命名（`entries: ZipCentralEntry[]`、`query: URLSearchParams`、`options: XxxOptions`）。
+- **执行改名的工具约束**：跨文件改名一律用编辑器语言服务的 rename（会同步 import、解构别名与 `{ signal }` 简写）；单文件正则的词边界必须排除 `-` `/` `.`，且字符串/注释里出现同词时禁止整词替换，改用精确模式逐条替换后 grep 复核；任何脚本化文本替换必须显式 UTF-8 写入（PowerShell `Set-Content` 默认 ANSI，会不可逆破坏中文注释）并在之后校验。
 
 ## Frontend Styling
 
@@ -41,10 +51,15 @@
 
 ## Proxy Core Module Structure
 
-- Organize each domain under `apps/proxy-core/src/proxy-core/<module>/` around a real `entry.ts` facade. The module's owning Service/Engine class lives directly in `entry.ts`; do not keep a separate `*-service.ts` and use `entry.ts` as a barrel re-export.
-- Except for `entry.ts`, prefix module-owned implementation files with the module name (for example `har-document.ts` and `grpc-invalid-cursor-error.ts`). Apply the same prefix to tests. Module constants use `<module>-constants.ts`. In `host/` and `worker/` subdirectories, the owning entry is also named `entry.ts`; their remaining implementation files keep the `host-*` and `worker-*` prefixes.
-- Put all module-local explicit `interface` and `type` declarations in `interfaces/index.ts`. Put all stateless utility functions in `utils/index.ts`; implementation class files must not accumulate free helper functions.
+- Organize each domain under `apps/proxy-core/src/proxy-core/<module>/` around a real `entry.ts` facade. The module's owning Service class lives directly in `entry.ts`; do not keep a separate `*-service.ts` and use `entry.ts` as a barrel re-export.
+- **A module directory contains only `entry.ts`, `README.md` and subdirectories** — never loose implementation files next to `entry.ts`. Every implementation class the module owns goes in `internal/`; explicit `interface`/`type` declarations in `interfaces/index.ts`; stateless functions in `utils/index.ts`; tests in `tests/`; worker-thread pieces in `host/` and `worker/` (each with its own `entry.ts`).
+- **Inside those subdirectories, do NOT prefix filenames or class names with the module name** — the path already says it. `capture/internal/exchange-store.ts` exports `ExchangeStore`, not `capture/capture-exchange-store.ts` exporting `CaptureExchangeStore`. Keep a qualifier only when stripping the prefix would leave a bare generic word (`Store`, `Host`, `Manager`): `diagnostics/worker/record-store.ts` → `RecordStore`.
+- **All Error subclasses of a module go in a single `internal/errors.ts`** — never one file per error class and never inline in an implementation file. Error class names stay self-describing across modules (`InvalidHarError`, `RevisionConflictError`) because `error.name` is matched at the CoreApplication boundary. A module with no errors has no errors file.
+- Module constants go in `internal/constants.ts`; cross-module constants in `proxy-core/constants.ts`.
 - Keep at most one class per TypeScript file. Add a concise responsibility comment to every class property and method, including private members and test helper classes.
+- **Depend on the concrete class, not a structural interface that mirrors it.** Every module owns a single long-lived instance, so a collaborator's type must be that owning class (`CaptureService`, `CaptureEventQueue`, `WorkspaceService`) — narrowing interfaces like `CaptureSink` or `GrpcStorageReader` break go-to-definition and hide who actually runs. Test doubles `extends` the real class and `override` only what the test asserts. Keep `interface` for plain data shapes and for the rare capability with genuinely multiple production implementations.
+- **A module name must state what the module actually owns, and its `entry.ts` exports exactly one `<ModuleName>Service`.** `capture/` → `CaptureService` holds the volatile in-memory Exchange/Body of the current recording; `workspace/` → `WorkspaceService` is the app-wide store for low-frequency global and per-feature config (settings, Composer collections) in `workspace.sqlite`; `tls-probe/` → `TlsProbeService` only performs a handshake probe. Prefer a longer precise name over a short generic one (`storage`, `connection`, `manager`), and keep instance/field/parameter names in sync with the class name all the way down the injection chain.
+- **Every module directory has a `README.md`** stating what it owns, its main class, how the pieces fit, and which modules it depends on. Update it in the same change that alters the module's responsibility.
 - A host/worker entry rename must update the Proxy Core build script, runtime resolver, tests, and documented bundle paths together, then run a real worker build/test.
 
 ## Validation

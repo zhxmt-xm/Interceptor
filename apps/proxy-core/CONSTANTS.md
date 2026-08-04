@@ -15,7 +15,7 @@
 | `EVENT_FLUSH_INTERVAL_MS` | `50` | 捕获事件批量 flush 间隔 |
 | `EVENT_INFLIGHT_WINDOW_SIZE` | `8` | 同时在途、等待ack的批次数；队列总量不限 |
 | `EVENT_DRAIN_BATCH` | `200` | 单次从捕获事件队列取走的最大事件数 |
-| `RULES_DB_FILE` | `'rules.sqlite'` | 低频持久 RuleSet 库名 |
+| `WORKSPACE_DB_FILE` | `'workspace.sqlite'` | 低频持久工作区配置库名（RuleSet、Composer 集合） |
 | `CAPTURE_TEMP_DIR` | `'capture-temp'` | 当前 Core 代际的临时 Body spill 目录 |
 | `BODY_MEMORY_THRESHOLD_BYTES` | `1 * 1024 * 1024` | Body 从内存切换到 spill 的阈值 |
 | `DIAGNOSTICS_DB_FILE` | `'diagnostics.sqlite'` | 诊断数据库文件名（dataDir 下） |
@@ -38,7 +38,7 @@
 | --- | --- | --- |
 | `dataDir` | `--data-dir=` | 存储根目录；null 时无存储模式 |
 | `appVersion` | `--app-version=` | 捕获会话元数据；ProxyService 读取 |
-| `rulesDatabasePath` | `dataDir + RULES_DB_FILE` | Core 直接打开的低频持久 rules.sqlite |
+| `workspaceDatabasePath` | `dataDir + WORKSPACE_DB_FILE` | Core 直接打开的低频持久 workspace.sqlite |
 | `captureTempDirectory` | `dataDir + CAPTURE_TEMP_DIR` | 当前 Core 临时 Body spill 目录 |
 | `diagnosticsDatabasePath` | `dataDir + DIAGNOSTICS_DB_FILE` | Diagnostics Worker 打开的 diagnostics.sqlite |
 | `archiveWorkerEntry` | `__dirname`/`cwd` 解析 | 按需启动的 `archive/worker/entry.cjs` |
@@ -46,17 +46,40 @@
 
 ## 命名约定
 
-1. **实例名与类名一致**：通过 `new X()` 创建的实例/字段名用 `X` 的 camelCase 全名以提升可读性
-   （如 `new StorageService()` → `storageService`、`new CaptureEventQueue()` → `captureEventQueue`）。
-2. **`Core` 前缀类去前缀**：类名以 `Core` 开头时，实例/字段名去掉 `Core`
-   （如 `new CoreDiagnostics()` → `diagnostics`、`new CoreRpcServer()` → `rpcServer`）。
-3. **语义明确的简单名可保留**：像 `host` 这类在其作用域内含义明确、简单直接的名字可以保留。
-4. **接口命名一致、优先删除单实现接口**：接口命名与其角色/实现保持一致；只有单一实现的接口优先删除,
-  直接使用具体类（如删除 `DiagnosticsLog` 接口，直接用 `DiagnosticsWorkerHost`）。
-5. **组合根集中、装配处避免闭包**：`CoreApplication.bootstrap` 是唯一组合根（按运行期变量装配
+1. **名字与类型名一致**：指向某个类实例的变量、字段、构造函数/方法参数、对象属性，
+   一律用该类名的 camelCase 全名（`new CaptureService()` → `captureService`、
+   `connection: RpcConnection` → `rpcConnection`、`controller: AbortController` → `abortController`、
+   `db: DatabaseSync` → `databaseSync`）。**类型名的简称不可接受**：`jobs: TransferService` 必须写
+   `transferService`，`store: ExchangeStore` 必须写 `exchangeStore`。`Core` 前缀不作特例
+   （`new CoreApplication()` → `coreApplication`、`CoreDiagnostics` → `coreDiagnostics`）。
+2. **测试同样适用**：fixture、测试替身、局部变量都与其类型同步
+   （`new BodyWriterFixture()` → `bodyWriterFixture`、`new RecordingCaptureService()` →
+   `recordingCaptureService`、`new FakeRpcPort()` → `fakeRpcPort`）。
+3. **名字承载类型名没有的信息时保留**：当名字回答的是"哪一个/什么角色"而不是"什么类型"，
+   保留语义名（`mainWindow: BrowserWindow`、`coreProcess: UtilityProcess`、
+   `insertStatement: StatementSync`、`downloadAbortController`）。同作用域多个同类实例必须靠
+   名字区分（`first`/`second`、`exportHost`/`importHost`、`requestWriter`/`responseWriter`）。
+4. **通用容器与数据字段按语义命名**：`Map`/`Set`/`Promise`/`RegExp`/`TypedArray` 等容器名表达
+   内容（`zipByName`、`ruleIds`、`referenced`）；DTO 与协议字段是数据契约，不套用实例命名
+   （`entries: ZipCentralEntry[]`、`query: URLSearchParams`、`options: XxxOptions`）。
+5. **模块 entry 主类统一 `Service` 后缀**：每个模块目录的 `entry.ts` 只导出一个 `<模块名>Service`
+   （`capture/` → `CaptureService`、`workspace/` → `WorkspaceService`、`tls-probe/` → `TlsProbeService`）。
+6. **依赖具体类，不写镜像它的结构接口**：每个模块只有一个长期实例，协作者的类型就写那个类
+   （`CaptureService`、`CaptureEventQueue`）。窄化接口会破坏 go-to-definition、掩盖实际运行的实现；
+   测试替身改用 `extends` 真实类 + `override` 被断言的方法。`interface` 只用于纯数据形状。
+7. **组合根集中、装配处避免闭包**：`CoreApplication.bootstrap` 是唯一组合根（按运行期变量装配
    服务并启动）；装配子对象时注入协作者/宿主（application）而非闭包回调——CoreRpcServer 注入
-   实现 `CoreRpcHost` 的 CoreApplication，CoreDiagnostics 注入 `DiagnosticsSink`（Diagnostics
-   Worker host），ProxyService 注入 `CaptureEventSink`（捕获事件队列）。
+   实现 `CoreRpcHost` 的 CoreApplication，ProxyService 注入 `CaptureService` 与 `CaptureEventQueue`。
+
+### 执行改名的工具约束
+
+- **跨文件改名一律用编辑器的语言服务重命名**，它会同步 import、解构别名和 `{ signal }` 简写。
+- 单文件内可用正则，但词边界必须排除 `-` `/` `.`（否则会改坏 `breakpoint-queue` 这类 import 路径
+  与 `x.signal` 属性访问），且**字符串/注释里出现同词时禁止整词替换**，改用精确模式
+  （`const x = new T(`、`x.`）逐条替换后 grep 复核。
+- 任何脚本化文本替换必须显式 UTF-8 写入（PowerShell `Set-Content` 默认 ANSI，会不可逆破坏
+  中文注释），改完后重新以严格 UTF-8 解码全部文件校验。
+
 
 ## 单元测试约定：不向构造函数注入测试参数
 
@@ -73,6 +96,6 @@
 - **回退/副作用** → 如诊断 sink 失败回退写 stderr，测试 `vi.spyOn(process.stderr, 'write')` 断言，
   而非注入 `fallback`。
 
-真实的生产装配参数不属于“测试注入”，保留：`CaptureSink` / `CaptureEventSink`（ProxyService）、
+真实的生产装配参数不属于“测试注入”，保留：`CaptureService` / `CaptureEventQueue`（ProxyService）、
 `DiagnosticsSink`（CoreDiagnostics）、`CoreRpcHost`（CoreRpcServer）、`CoreApplicationOptions`
 （bootstrap 装配、测试注入替身），以及 `initializeRuntime` 设定的运行期变量。

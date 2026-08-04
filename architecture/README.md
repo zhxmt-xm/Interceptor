@@ -54,10 +54,10 @@ flowchart LR
         APP["CoreApplication"]
         RPCS["CoreRpcServer"]
         PROXY["ProxyService"]
-        RULES["RuleEngine"]
-        STORAGE["StorageService"]
+        RULES["RuleService"]
+        STORAGE["CaptureService"]
         DIAG["CoreDiagnostics"]
-        TRANSFER["TransferJobManager"]
+        TRANSFER["TransferService"]
     end
 
     UI --> STORE
@@ -128,7 +128,7 @@ sequenceDiagram
 | --- | --- |
 | 列表分页 | 有限 metadata + opaque keyset cursor |
 | 正文读取 | `body.read-range` 按 hash + offset + length |
-| 文件导入导出 | `TransferJobManager` 异步任务 + 轮询快照 |
+| 文件导入导出 | `TransferService` 异步任务 + 轮询快照 |
 
 单条消息不传输完整正文或完整列表。
 

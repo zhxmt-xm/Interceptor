@@ -1105,3 +1105,95 @@ button.ib { padding: 0; border: 0; background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* =====================================================================
+   BOOT — startup loading screen
+   Covers the whole shell (sidebar included) until traffic can reach us:
+   Proxy Core → local listener → system proxy. MITM is not part of startup.
+   Only the window controls stay reachable, so a stuck startup is still closable.
+   ===================================================================== */
+.boot { display: none; position: absolute; inset: 0; z-index: 200; grid-template-rows: 46px minmax(0,1fr); background: var(--bg); overflow: hidden; }
+.app[data-boot] .boot { display: grid; }
+/* the real app is not mounted yet during boot, so the shell must not show through */
+.app[data-boot] .topbar, .app[data-boot] .side, .app[data-boot] .mainhost, .app[data-boot] .statusbar { visibility: hidden; }
+/* accent glow + faint grid: depth without competing with the content */
+.boot::before { content: ""; position: absolute; inset: 0; background: radial-gradient(720px 420px at 50% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 68%); pointer-events: none; }
+.boot::after { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle, color-mix(in srgb, var(--text) 12%, transparent) 1px, transparent 1px); background-size: 24px 24px; mask-image: radial-gradient(560px 340px at 50% 34%, #000, transparent 72%); opacity: .5; pointer-events: none; }
+.boot > * { position: relative; z-index: 1; }
+
+.boot-chrome { position: relative; display: flex; align-items: center; justify-content: flex-end; }
+.boot-stage { display: grid; place-items: center; }
+.boot-splash { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+
+/* ---- big app icon inside a sweeping gradient arc ---- */
+.boot-ring-wrap { display: grid; place-items: center; }
+.boot-ring-wrap > * { grid-area: 1 / 1; }
+.boot-ring-track { width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--border-2); }
+.boot-ring { width: 148px; height: 148px; border-radius: 50%; background: conic-gradient(from 200deg, transparent 0deg, color-mix(in srgb, var(--accent) 25%, transparent) 30deg, var(--accent) 120deg, var(--purple) 200deg, transparent 210deg); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 45%, transparent)); animation: recspin 1.15s linear infinite; }
+/* nothing is running while we wait for the user or after a failure, so the arc stops sweeping */
+.app[data-boot="ready"] .boot-ring { background: conic-gradient(var(--accent), var(--purple), var(--accent)); animation: none; }
+.app[data-boot="error"] .boot-ring { background: var(--red); filter: none; animation: none; }
+.boot-logo { width: 96px; height: 96px; border-radius: 26px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, var(--accent), var(--purple)); box-shadow: 0 20px 54px -18px color-mix(in srgb, var(--accent) 80%, transparent); }
+.boot-logo svg { width: 46px; height: 46px; }
+.app[data-boot="error"] .boot-logo { background: var(--panel-2); border: 1px solid var(--border); color: var(--text-3); box-shadow: none; }
+.boot-splash-copy { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.boot-wordmark { font-size: 20px; font-weight: 640; letter-spacing: -.01em; }
+.boot-phase { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-2); }
+.app[data-boot="error"] .boot-phase { color: var(--red); }
+@media (prefers-reduced-motion: reduce) { .boot-ring { animation: none; } }
+
+/* ---- three prerequisites, shown as progress dots rather than a fake percentage ---- */
+.boot-dots { display: flex; align-items: center; gap: 7px; }
+.boot-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--border-2); }
+.boot-dot[data-state="done"] { background: var(--accent); }
+.boot-dot[data-state="active"] { width: 22px; background: var(--accent); }
+.boot-dot[data-state="failed"] { background: var(--red); }
+
+/* ---- standing disclosure about the system proxy, plus the failure exit ---- */
+.boot-gate { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.boot-note { display: flex; align-items: flex-start; gap: 8px; max-width: 400px; font-size: 12.5px; line-height: 1.5; color: var(--text-2); text-align: left; }
+.boot-note svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
+.boot-actions { display: flex; gap: 8px; }
+
+/* phase-scoped copy */
+.app[data-boot="core"] .boot [data-when]:not([data-when~="core"]),
+.app[data-boot="listener"] .boot [data-when]:not([data-when~="listener"]),
+.app[data-boot="proxy"] .boot [data-when]:not([data-when~="proxy"]),
+.app[data-boot="ready"] .boot [data-when]:not([data-when~="ready"]),
+.app[data-boot="error"] .boot [data-when]:not([data-when~="error"]) { display: none; }
+
+/* =====================================================================
+   CHAIN — client → interceptor → internet, inside the MITM dialog
+   The left wire is "traffic reaches us" (always true here), the lock is
+   "can we read it" — which is exactly what this dialog turns on.
+   ===================================================================== */
+.chain { display: grid; grid-template-columns: 44px 92px 44px 92px 44px; grid-template-rows: 46px auto; align-items: center; justify-items: center; row-gap: 9px; }
+.chain-icon { display: grid; place-items: center; border-radius: 11px; grid-row: 1; }
+.chain-client, .chain-origin { width: 36px; height: 36px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text-2); }
+.chain-client svg, .chain-origin svg { width: 16px; height: 16px; }
+.chain-client { grid-column: 1; }
+.chain-origin { grid-column: 5; }
+.chain-self { position: relative; grid-column: 3; width: 44px; height: 44px; border-radius: 13px; color: #fff; background: linear-gradient(140deg, var(--accent), var(--purple)); box-shadow: 0 8px 20px -7px color-mix(in srgb, var(--accent) 75%, transparent); }
+.chain-self svg { width: 22px; height: 22px; }
+.chain-self::after { content: ""; position: absolute; inset: -8px; border-radius: 19px; border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); animation: chainpulse 2.6s ease-out infinite; }
+@keyframes chainpulse { 0% { inset: -3px; opacity: .9; } 100% { inset: -14px; opacity: 0; } }
+.chain-name { grid-row: 2; font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+.chain-name-client { grid-column: 1; }
+.chain-name-self { grid-column: 3; color: var(--text-2); }
+.chain-name-origin { grid-column: 5; }
+
+.chain-wire { grid-row: 1; width: 100%; display: flex; align-items: center; gap: 6px; }
+.chain-inbound { grid-column: 2; }
+.chain-outbound { grid-column: 4; }
+.chain-seg { flex: 1; position: relative; height: 2px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, transparent), var(--accent)); }
+/* left at 62% so still shots keep the packet visible */
+.chain-flow { position: absolute; top: 50%; left: 62%; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent); animation: chainflow 1.5s linear infinite; }
+@keyframes chainflow { from { left: 0%; } to { left: 100%; } }
+.chain-badge { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--border-2); color: var(--text-3); }
+.chain-badge svg { width: 13px; height: 13px; }
+.chain-route { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.chain-lock { color: var(--yellow); border-color: color-mix(in srgb, var(--yellow) 40%, transparent); }
+.chain-lock-secure { display: none; }
+.app[data-mitm="active"] .chain-lock { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+.app[data-mitm="active"] .chain-lock-secure { display: block; }
+.app[data-mitm="active"] .chain-lock-plain { display: none; }

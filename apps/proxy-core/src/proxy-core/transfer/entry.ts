@@ -14,7 +14,7 @@ import type {
  * 泄漏绝对路径或 AbortController。HarService 与 ArchiveService 注入同一个实例，
  * 因此整个 Core 只存在一套任务基础设施，`transfer.job.get/cancel` 直接查询它。
  */
-export class TransferJobManager {
+export class TransferService {
   /** 保存当前 Core 代际创建的全部任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
 
@@ -30,13 +30,13 @@ export class TransferJobManager {
   ): TransferJobSnapshot {
     const job = this.create(jobId, kind, filePath);
     void this.run(job, operation);
-    return TransferJobManager.toSnapshot(job);
+    return TransferService.toSnapshot(job);
   }
 
   /** 返回指定任务的不可变公开快照；未知 ID 返回 null。 */
   get(jobId: string): TransferJobSnapshot | null {
     const job = this.jobs.get(jobId);
-    return job ? TransferJobManager.toSnapshot(job) : null;
+    return job ? TransferService.toSnapshot(job) : null;
   }
 
   /** 取消运行中任务并立即更新公开状态；终态任务保持幂等。 */
@@ -49,9 +49,9 @@ export class TransferJobManager {
       job.state = 'cancelled';
       job.completedAt = new Date().toISOString();
       job.message = 'Transfer cancelled.';
-      job.controller.abort(new DOMException('Transfer cancelled.', 'AbortError'));
+      job.abortController.abort(new DOMException('Transfer cancelled.', 'AbortError'));
     }
-    return TransferJobManager.toSnapshot(job);
+    return TransferService.toSnapshot(job);
   }
 
   /** 取消所有运行中任务；CoreApplication 关闭时用于终止文件 I/O。 */
@@ -79,7 +79,7 @@ export class TransferJobManager {
       total: 0,
       startedAt: new Date().toISOString(),
       warnings: [],
-      controller: new AbortController(),
+      abortController: new AbortController(),
     };
     this.jobs.set(jobId, job);
     return job;
@@ -91,7 +91,7 @@ export class TransferJobManager {
     operation: TransferOperation,
   ): Promise<void> {
     try {
-      const result = await operation(job.controller.signal, (progress) => {
+      const result = await operation(job.abortController.signal, (progress) => {
         if (job.state === 'running') {
           job.processed = progress.processed;
           job.total = progress.total;
@@ -106,12 +106,12 @@ export class TransferJobManager {
       job.warnings = [...result.warnings];
       job.completedAt = new Date().toISOString();
     } catch (error) {
-      if (job.state === 'cancelled' || job.controller.signal.aborted) {
+      if (job.state === 'cancelled' || job.abortController.signal.aborted) {
         job.state = 'cancelled';
         job.message = 'Transfer cancelled.';
       } else {
         job.state = 'failed';
-        job.message = TransferJobManager.publicErrorMessage(error);
+        job.message = TransferService.publicErrorMessage(error);
       }
       job.completedAt ??= new Date().toISOString();
     }
@@ -137,7 +137,7 @@ export class TransferJobManager {
   private static publicErrorMessage(error: unknown): string {
     if (
       error instanceof Error &&
-      (error.name === 'InvalidHarError' || error.name === 'ArchiveInvalidError')
+      (error.name === 'InvalidHarError' || error.name === 'InvalidArchiveError')
     ) {
       return error.message;
     }

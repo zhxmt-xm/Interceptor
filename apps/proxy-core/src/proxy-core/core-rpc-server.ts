@@ -24,7 +24,7 @@ const SILENT_COMMANDS: ReadonlySet<CoreCommand['type']> = new Set([
 
 export type CoreCommandHandler = (
   command: CoreCommand,
-  signal: AbortSignal,
+  abortSignal: AbortSignal,
 ) => Promise<CoreResult>;
 
 /**
@@ -58,15 +58,15 @@ export interface RpcMessagePort {
  * executeCommand/fatal/ack 闭包函数。
  */
 export interface CoreRpcHost {
-  readonly diagnostics: CoreDiagnostics;
-  executeCommand(command: CoreCommand, signal: AbortSignal): Promise<CoreResult>;
+  readonly coreDiagnostics: CoreDiagnostics;
+  executeCommand(command: CoreCommand, abortSignal: AbortSignal): Promise<CoreResult>;
   handleRpcFatalError(reason: string): void;
   handleEventAck(batchSequence: number): void;
 }
 
 interface ActiveRequest {
-  connection: RpcConnection;
-  controller: AbortController;
+  rpcConnection: RpcConnection;
+  abortController: AbortController;
 }
 
 /**
@@ -79,8 +79,8 @@ interface ActiveRequest {
  */
 export class CoreRpcServer {
   private readonly activeRequests = new Map<string, ActiveRequest>();
-  private readonly diagnostics: CoreDiagnostics;
-  private connection: RpcConnection | null = null;
+  private readonly coreDiagnostics: CoreDiagnostics;
+  private rpcConnection: RpcConnection | null = null;
   private eventBatchSequence = 0;
 
   /**
@@ -88,7 +88,7 @@ export class CoreRpcServer {
    * 调用方：CoreApplication 构造时创建一个 Server。
    */
   constructor(private readonly host: CoreRpcHost) {
-    this.diagnostics = host.diagnostics;
+    this.coreDiagnostics = host.coreDiagnostics;
   }
 
   /**
@@ -96,18 +96,18 @@ export class CoreRpcServer {
    * 调用方：CoreApplication 收到 Main 转交的 rpc-port；测试也用于验证 replacement。
    * 新连接会先正常关闭旧连接并取消旧请求，但 replacement 本身不触发 fatal。
    */
-  attach(port: RpcMessagePort): void {
+  attach(rpcMessagePort: RpcMessagePort): void {
     this.close('replaced');
 
-    let connection: RpcConnection;
-    connection = new RpcConnection(
-      port,
-      (message) => this.handleMessage(connection, message),
-      () => this.fail(connection, 'remote-close'),
+    let rpcConnection: RpcConnection;
+    rpcConnection = new RpcConnection(
+      rpcMessagePort,
+      (message) => this.handleMessage(rpcConnection, message),
+      () => this.fail(rpcConnection, 'remote-close'),
     );
-    this.connection = connection;
-    connection.start();
-    this.diagnostics.info('rpc.connected');
+    this.rpcConnection = rpcConnection;
+    rpcConnection.start();
+    this.coreDiagnostics.info('rpc.connected');
   }
 
   /**
@@ -116,18 +116,18 @@ export class CoreRpcServer {
    * 已经从旧连接捕获的异步任务稍后结束时也无法向新连接发送 response。
    */
   close(reason = 'closed'): void {
-    const connection = this.connection;
-    this.connection = null;
+    const rpcConnection = this.rpcConnection;
+    this.rpcConnection = null;
 
     // 替换/关闭连接时取消该连接上的所有请求。旧异步任务即使稍后结束，
     // 也无法向新连接发送响应。
     for (const [requestId, request] of this.activeRequests) {
-      if (request.connection === connection) {
-        request.controller.abort(reason);
+      if (request.rpcConnection === rpcConnection) {
+        request.abortController.abort(reason);
         this.activeRequests.delete(requestId);
       }
     }
-    connection?.close();
+    rpcConnection?.close();
   }
 
   /**
@@ -135,24 +135,24 @@ export class CoreRpcServer {
   * 调用方：RpcConnection message listener；旧连接延迟到达的 callback 会被忽略。
   * 非法信封只丢弃或对可关联 request 返回错误，不关闭连接。
    */
-  private handleMessage(connection: RpcConnection, rawMessage: unknown): void {
-    if (this.connection !== connection) {
+  private handleMessage(rpcConnection: RpcConnection, rawMessage: unknown): void {
+    if (this.rpcConnection !== rpcConnection) {
       return;
     }
 
     const parsed = parseMainToCoreMessage(rawMessage);
     if (!parsed.ok) {
-      this.diagnostics.warn('rpc.invalid-message', {
+      this.coreDiagnostics.warn('rpc.invalid-message', {
         outcome: 'failed',
         errorCode: 'invalid-message',
       });
-      this.respondToInvalidRequest(connection, rawMessage, parsed.error);
+      this.respondToInvalidRequest(rpcConnection, rawMessage, parsed.error);
       return;
     }
 
     if (parsed.value.kind === 'cancel') {
       this.cancelRequest(
-        connection,
+        rpcConnection,
         parsed.value.requestId,
         parsed.value.reason,
       );
@@ -164,7 +164,7 @@ export class CoreRpcServer {
       return;
     }
 
-    void this.executeRequest(connection, parsed.value);
+    void this.executeRequest(rpcConnection, parsed.value);
   }
 
   /**
@@ -172,7 +172,7 @@ export class CoreRpcServer {
    * send 失败仍属于真实传输故障，并由 send 进入 fatal recovery。
    */
   private respondToInvalidRequest(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     rawMessage: unknown,
     detail: string,
   ): void {
@@ -185,7 +185,7 @@ export class CoreRpcServer {
     ) {
       return;
     }
-    this.send(connection, {
+    this.send(rpcConnection, {
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: rawMessage.requestId,
@@ -205,24 +205,24 @@ export class CoreRpcServer {
    * finally 只清理由本次调用登记的实例，避免误删 replacement connection 的同 ID 请求。
    */
   private async executeRequest(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     request: CoreRequest,
   ): Promise<void> {
     if (this.activeRequests.has(request.requestId)) {
-      await this.respondToDuplicate(connection, request);
+      await this.respondToDuplicate(rpcConnection, request);
       return;
     }
 
     const activeRequest: ActiveRequest = {
-      connection,
-      controller: new AbortController(),
+      rpcConnection,
+      abortController: new AbortController(),
     };
     this.activeRequests.set(request.requestId, activeRequest);
     const startedAt = Date.now();
     const silent = SILENT_COMMANDS.has(request.command.type);
 
     // 每个 command 自动记录相同的生命周期；Application 只补充业务 action。
-    await this.diagnostics.runWithCommand(
+    await this.coreDiagnostics.runWithCommand(
       request.requestId,
       request.traceId,
       request.command.type,
@@ -230,27 +230,27 @@ export class CoreRpcServer {
         try {
           const result = await this.host.executeCommand(
             request.command,
-            activeRequest.controller.signal,
+            activeRequest.abortController.signal,
           );
-          if (activeRequest.controller.signal.aborted) {
+          if (activeRequest.abortController.signal.aborted) {
             throw cancelledError();
           }
-          if (!this.sendSuccess(connection, request, result)) {
+          if (!this.sendSuccess(rpcConnection, request, result)) {
             throw disconnectedError();
           }
 
           if (!silent) {
-            this.diagnostics.info('command.completed', {
+            this.coreDiagnostics.info('command.completed', {
               durationMs: Date.now() - startedAt,
               outcome: 'success',
               attributes: { resultType: result.type },
             });
           }
         } catch (error) {
-          const detail = readCoreError(error, activeRequest.controller.signal);
-          const delivered = this.sendError(connection, request, detail);
+          const detail = readCoreError(error, activeRequest.abortController.signal);
+          const delivered = this.sendError(rpcConnection, request, detail);
           if (!silent) {
-            this.diagnostics.error('command.completed', {
+            this.coreDiagnostics.error('command.completed', {
               durationMs: Date.now() - startedAt,
               outcome: toOutcome(delivered ? detail.code : 'disconnected'),
               errorCode: delivered ? detail.code : 'disconnected',
@@ -270,13 +270,13 @@ export class CoreRpcServer {
    * 调用方：handleMessage 处理合法 cancel；未知、已完成或旧连接 requestId 保持忽略。
    */
   private cancelRequest(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     requestId: string,
     reason: string | undefined,
   ): void {
     const request = this.activeRequests.get(requestId);
-    if (request?.connection === connection) {
-      request.controller.abort(reason ?? 'caller');
+    if (request?.rpcConnection === rpcConnection) {
+      request.abortController.abort(reason ?? 'caller');
     }
   }
 
@@ -285,7 +285,7 @@ export class CoreRpcServer {
    * 调用方：executeRequest 发现 activeRequests 已包含同 ID 时。
    */
   private async respondToDuplicate(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     request: CoreRequest,
   ): Promise<void> {
     const detail: CoreError = {
@@ -294,13 +294,13 @@ export class CoreRpcServer {
       retryable: false,
     };
 
-    await this.diagnostics.runWithCommand(
+    await this.coreDiagnostics.runWithCommand(
       request.requestId,
       request.traceId,
       request.command.type,
       async () => {
-        const delivered = this.sendError(connection, request, detail);
-        this.diagnostics.error('command.completed', {
+        const delivered = this.sendError(rpcConnection, request, detail);
+        this.coreDiagnostics.error('command.completed', {
           durationMs: 0,
           outcome: 'failed',
           errorCode: delivered ? detail.code : 'disconnected',
@@ -314,11 +314,11 @@ export class CoreRpcServer {
    * 调用方：executeRequest 在 handler 成功且未被取消后。
    */
   private sendSuccess(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     request: CoreRequest,
     result: CoreResult,
   ): boolean {
-    return this.send(connection, {
+    return this.send(rpcConnection, {
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: request.requestId,
@@ -333,11 +333,11 @@ export class CoreRpcServer {
    * 调用方：executeRequest 的失败路径和 respondToDuplicate。
    */
   private sendError(
-    connection: RpcConnection,
+    rpcConnection: RpcConnection,
     request: CoreRequest,
     error: CoreError,
   ): boolean {
-    return this.send(connection, {
+    return this.send(rpcConnection, {
       kind: 'response',
       protocolVersion: CORE_PROTOCOL_VERSION,
       requestId: request.requestId,
@@ -351,7 +351,7 @@ export class CoreRpcServer {
    * 当前是否存在可用订阅连接。调用方：CoreApplication 在 drain 前判断，避免取走无法发送的事件。
    */
   get hasActiveConnection(): boolean {
-    return this.connection !== null;
+    return this.rpcConnection !== null;
   }
 
   /**
@@ -362,12 +362,12 @@ export class CoreRpcServer {
     events: readonly CaptureExchangeEvent[],
     clientApps: readonly ClientAppIdentity[] = [],
   ): number | null {
-    const connection = this.connection;
-    if (!connection || events.length === 0) {
+    const rpcConnection = this.rpcConnection;
+    if (!rpcConnection || events.length === 0) {
       return null;
     }
     const batchSequence = ++this.eventBatchSequence;
-    const delivered = this.send(connection, {
+    const delivered = this.send(rpcConnection, {
       kind: 'event-batch',
       protocolVersion: CORE_PROTOCOL_VERSION,
       batchSequence,
@@ -381,13 +381,13 @@ export class CoreRpcServer {
   * 将 response 限定到创建它的连接代际；单次发送异常只返回 false。
    * 调用方：sendSuccess 和 sendError；返回值表示消息是否确实交给当前 port。
    */
-  private send(connection: RpcConnection, message: CoreToMainMessage): boolean {
-    if (this.connection !== connection) {
+  private send(rpcConnection: RpcConnection, message: CoreToMainMessage): boolean {
+    if (this.rpcConnection !== rpcConnection) {
       return false;
     }
-    const delivered = connection.send(message);
+    const delivered = rpcConnection.send(message);
     if (!delivered) {
-      this.diagnostics.warn('rpc.message-send-failed', {
+      this.coreDiagnostics.warn('rpc.message-send-failed', {
         errorCode: 'send-failed',
       });
     }
@@ -398,11 +398,11 @@ export class CoreRpcServer {
    * 对当前连接执行一次故障清理并通知应用退出；旧连接故障 callback 保持忽略。
   * 调用方：remote close。单消息 send failure 不进入此路径。
    */
-  private fail(connection: RpcConnection, reason: string): void {
-    if (this.connection !== connection) {
+  private fail(rpcConnection: RpcConnection, reason: string): void {
+    if (this.rpcConnection !== rpcConnection) {
       return;
     }
-    this.diagnostics.warn('rpc.connection-failed', { errorCode: reason });
+    this.coreDiagnostics.warn('rpc.connection-failed', { errorCode: reason });
     this.close(reason);
     try {
       this.host.handleRpcFatalError(reason);
@@ -441,7 +441,7 @@ class RpcConnection {
    * 调用方：CoreRpcServer.attach，随后显式调用 start 完成连接发布。
    */
   constructor(
-    private readonly port: RpcMessagePort,
+    private readonly rpcMessagePort: RpcMessagePort,
     private readonly onMessage: (message: unknown) => void,
     private readonly onClose: () => void,
   ) {}
@@ -451,9 +451,9 @@ class RpcConnection {
    * 调用方：CoreRpcServer.attach；每个 RpcConnection 只调用一次。
    */
   start(): void {
-    this.port.on('message', this.messageListener);
-    this.port.on('close', this.closeListener);
-    this.port.start();
+    this.rpcMessagePort.on('message', this.messageListener);
+    this.rpcMessagePort.on('close', this.closeListener);
+    this.rpcMessagePort.start();
   }
 
   /**
@@ -465,7 +465,7 @@ class RpcConnection {
       return false;
     }
     try {
-      this.port.postMessage(message);
+      this.rpcMessagePort.postMessage(message);
       return true;
     } catch {
       return false;
@@ -481,10 +481,10 @@ class RpcConnection {
       return;
     }
     this.closed = true;
-    this.port.off('message', this.messageListener);
-    this.port.off('close', this.closeListener);
+    this.rpcMessagePort.off('message', this.messageListener);
+    this.rpcMessagePort.off('close', this.closeListener);
     try {
-      this.port.close();
+      this.rpcMessagePort.close();
     } catch {
       // listener 已清理，剩余请求由 Server 负责取消。
     }
@@ -507,8 +507,8 @@ function disconnectedError(): CoreCommandError {
   });
 }
 
-function readCoreError(error: unknown, signal: AbortSignal): CoreError {
-  if (signal.aborted) {
+function readCoreError(error: unknown, abortSignal: AbortSignal): CoreError {
+  if (abortSignal.aborted) {
     return cancelledError().detail;
   }
   if (error instanceof CoreCommandError) {

@@ -33,7 +33,7 @@ export interface McpProtocolOptions {
  */
 export class McpProtocolHandler {
   /** 工具层。 */
-  readonly #tools: McpToolRegistry;
+  readonly mcpToolRegistry: McpToolRegistry;
   /** 会话配置。 */
   readonly #options: McpProtocolOptions;
   /** 是否已完成 initialize。 */
@@ -41,8 +41,8 @@ export class McpProtocolHandler {
   /** 与客户端协商出的协议版本。 */
   #negotiatedVersion = MCP_PROTOCOL_VERSION;
 
-  constructor(tools: McpToolRegistry, options: McpProtocolOptions) {
-    this.#tools = tools;
+  constructor(mcpToolRegistry: McpToolRegistry, options: McpProtocolOptions) {
+    this.mcpToolRegistry = mcpToolRegistry;
     this.#options = options;
   }
 
@@ -54,7 +54,7 @@ export class McpProtocolHandler {
   /**
    * 处理一条消息文本。返回 null 表示这是通知，无需回复。
    */
-  async handleMessage(line: string, signal: AbortSignal): Promise<McpJsonRpcResponse | null> {
+  async handleMessage(line: string, abortSignal: AbortSignal): Promise<McpJsonRpcResponse | null> {
     const parsed = parseJsonRpcMessage(line);
     if (parsed.kind === 'invalid') {
       return parsed.response;
@@ -65,13 +65,13 @@ export class McpProtocolHandler {
       }
       return null;
     }
-    return this.#handleRequest(parsed.request, signal);
+    return this.#handleRequest(parsed.request, abortSignal);
   }
 
   /** 分发一个需要回复的请求。 */
   async #handleRequest(
     request: McpJsonRpcRequest,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<McpJsonRpcResponse> {
     const params = readParamsObject(request.params);
     if (params === null) {
@@ -89,13 +89,13 @@ export class McpProtocolHandler {
         if (!this.#initialized) {
           return errorResponse(request.id, JSON_RPC_INVALID_PARAMS, 'session is not initialized');
         }
-        return successResponse(request.id, { tools: this.#tools.listTools() });
+        return successResponse(request.id, { tools: this.mcpToolRegistry.listTools() });
 
       case 'tools/call':
         if (!this.#initialized) {
           return errorResponse(request.id, JSON_RPC_INVALID_PARAMS, 'session is not initialized');
         }
-        return this.#callTool(request.id, params, signal);
+        return this.#callTool(request.id, params, abortSignal);
 
       default:
         return errorResponse(
@@ -135,7 +135,7 @@ export class McpProtocolHandler {
   async #callTool(
     id: string | number,
     params: Record<string, unknown>,
-    signal: AbortSignal,
+    abortSignal: AbortSignal,
   ): Promise<McpJsonRpcResponse> {
     const name = params['name'];
     if (typeof name !== 'string') {
@@ -148,11 +148,11 @@ export class McpProtocolHandler {
     ) {
       return errorResponse(id, JSON_RPC_INVALID_PARAMS, '"arguments" must be an object');
     }
-    const outcome = await this.#tools.call(
+    const outcome = await this.mcpToolRegistry.call(
       name,
       (rawArguments ?? {}) as Record<string, unknown>,
       this.#options.identity,
-      signal,
+      abortSignal,
     );
     return successResponse(id, {
       content: [{ type: 'text', text: JSON.stringify(outcome.payload, null, 2) }],

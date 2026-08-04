@@ -113,5 +113,5 @@ export interface DiagnosticsWorkerData {
 
 export interface OpenDiagnosticsDatabaseResult {
   /** Worker 独占 SQLite 连接。 */
-  readonly db: DatabaseSync;
+  readonly databaseSync: DatabaseSync;
 }

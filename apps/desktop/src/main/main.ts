@@ -62,7 +62,7 @@ import {
   toRendererDiagnosticReport,
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
-  toRendererStorageUsage,
+  toRendererCaptureUsage,
   toSafeBodyFileName,
   toWebSocketFrameQuery,
 } from './utils';
@@ -564,23 +564,23 @@ class DesktopApplication {
     });
 
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.storageGetStatus, async (event) => {
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.captureGetUsage, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const result = await this.coreRuntime.request({
-        type: 'storage.status',
+        type: 'capture.status',
         payload: {},
       });
-      return toRendererStorageUsage(result.payload);
+      return toRendererCaptureUsage(result.payload);
     });
 
     // 清空全部捕获数据属于破坏性操作，由 Renderer 侧显式确认后调用。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.storageClear, async (event) => {
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.captureClear, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const result = await this.coreRuntime.request({
-        type: 'storage.cleanup',
+        type: 'capture.cleanup',
         payload: { scope: 'all' },
       });
-      return toRendererStorageUsage(result.payload);
+      return toRendererCaptureUsage(result.payload);
     });
 
     // 启动代理捕获：可选端口，未指定由 Core 选默认监听端口。
@@ -1129,11 +1129,11 @@ class DesktopApplication {
 
     // TLS 探测：对 host:port 建立 TLS 握手读取协议/套件/ALPN/证书链。
     ipcMain.handle(
-      DESKTOP_IPC_CHANNELS.connectionProbe,
+      DESKTOP_IPC_CHANNELS.tlsProbe,
       async (event, host: unknown, port: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const result = await this.coreRuntime.request({
-          type: 'connection.probe',
+          type: 'tls.probe',
           payload: { host: host as string, port: port as number },
         });
         return result.payload;
@@ -1447,18 +1447,18 @@ class DesktopApplication {
 
   /** Create the native system-proxy owner for the current desktop platform. */
   private createSystemProxyService(): SystemProxyService {
-    const journal = new SystemProxyJournal(
+    const systemProxyJournal = new SystemProxyJournal(
       path.join(app.getPath('userData'), 'system-proxy/ownership.json'),
     );
     if (process.platform === 'darwin') {
       return new MacosSystemProxyService({
         helperPath: this.getMacosProxyHelperPath(),
-        journal,
+        journal: systemProxyJournal,
       });
     }
     return new WindowsSystemProxyService({
       helperPath: this.getWinInetProxyHelperPath(),
-      journal,
+      journal: systemProxyJournal,
     });
   }
 

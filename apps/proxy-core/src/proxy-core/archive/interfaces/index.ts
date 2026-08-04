@@ -1,42 +1,4 @@
-import type {
-  CaptureArchiveSnapshot,
-  CaptureSnapshotBatch,
-  CaptureSnapshotExchange,
-  CaptureSessionInput,
-  CleanupScope,
-  ExchangeInput,
-  WebSocketFrameInput,
-} from '../../storage/interfaces';
-
-/**
- * ArchiveService 所需的 Storage 门面。
- *
- * 导出只依赖一致快照 + 引用 Blob 枚举/流读；导入复用现有内容寻址写入与隔离 Session
- * 清理路径。ArchiveService 不直接触碰活动 SQLite 连接或 Blob 磁盘布局。
- */
-export interface ArchiveStorage {
-  /** 捕获用户点击时的 Exchange/Body 时间切面。 */
-  createArchiveSnapshot(batchSize: number): CaptureArchiveSnapshot;
-  /** 打开一个临时正文异步字节流；可来自内存或 spill 文件。 */
-  openBlobStream(hash: string): AsyncIterable<Uint8Array>;
-  /** 把导入正文写入内容寻址 TemporaryBodyStore。 */
-  writeBody(
-    source: AsyncIterable<Uint8Array>,
-  ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
-  /** 建立一次 archive 导入对应的隔离 Capture Session。 */
-  ensureSession(session: CaptureSessionInput): Promise<void>;
-  /** 分批持久化从快照读出的 Exchange。 */
-  appendExchanges(
-    exchanges: ExchangeInput[],
-  ): Promise<{ id: string; seq: number }[]>;
-  /** 追加 WebSocket 有序应用消息。 */
-  appendWebSocketFrames(
-    exchangeId: string,
-    frames: readonly WebSocketFrameInput[],
-  ): Promise<void>;
-  /** 在导入失败或取消时回滚新建 Session。 */
-  cleanup(scope: CleanupScope): Promise<unknown>;
-}
+import type { CaptureSnapshotBatch, CaptureSnapshotExchange } from '../../capture/interfaces';
 
 /** 一次性 Archive Worker 的启动参数。 */
 export interface ArchiveWorkerData {

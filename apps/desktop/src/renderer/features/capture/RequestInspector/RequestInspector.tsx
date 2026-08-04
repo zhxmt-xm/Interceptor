@@ -71,8 +71,8 @@ function queryRows(url: string): KvRow[] {
   if (!search) {
     return [];
   }
-  const params = new URLSearchParams(search);
-  return Array.from(params.entries(), ([key, value]) => [key, value] as KvRow);
+  const urlSearchParams = new URLSearchParams(search);
+  return Array.from(urlSearchParams.entries(), ([key, value]) => [key, value] as KvRow);
 }
 
 /** 从捕获 URL 推断端口，缺失时按 scheme 回退（https→443、http→80）。 */

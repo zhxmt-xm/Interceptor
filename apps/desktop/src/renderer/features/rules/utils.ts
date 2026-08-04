@@ -101,7 +101,7 @@ export function createRule(priority: number, name = 'New rule'): RuleDefinition 
  * 去掉 URL 的 query 与 fragment，只保留 scheme + host + path。
  *
  * 右键建规则的意图是“针对这个接口”，而不是“针对这次请求”：query 里常带
- * access_token / signature / 缓存戳，写进 `rules.sqlite` 既是秘密明文落盘，
+ * access_token / signature / 缓存戳，写进 `workspace.sqlite` 既是秘密明文落盘，
  * 也会让 exact 规则在下一次请求（换了 token）后永远不再命中。
  */
 function toEndpointUrl(url: string): string {

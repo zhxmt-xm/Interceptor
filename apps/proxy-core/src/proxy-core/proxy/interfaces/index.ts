@@ -7,14 +7,14 @@ import type {
 } from '@interceptor/core-protocol';
 
 import type { RuleHitRecord } from '../../rules/interfaces';
+import type { BodyWriter } from '../../capture/internal/body-writer';
 import type {
-  BodyWriter,
   CaptureSessionInput,
   ExchangeInput,
   ExchangePatch,
   HeaderInput,
   WebSocketFrameInput,
-} from '../../storage/interfaces';
+} from '../../capture/interfaces';
 
 export interface CaptureEvent {
   readonly sequence: number;
@@ -191,33 +191,6 @@ export interface PendingTunnelCapture {
   readonly port: number;
   readonly secure: boolean;
   readonly protocol: string;
-}
-
-export interface CaptureSink {
-  ensureSession(session: CaptureSessionInput): Promise<void>;
-  appendExchanges(
-    exchanges: ExchangeInput[],
-  ): Promise<{ id: string; seq: number }[]>;
-  updateExchange(patch: ExchangePatch): Promise<void>;
-  writeBody(
-    source: AsyncIterable<Uint8Array>,
-  ): Promise<{ hash: string; size: number; deduplicated: boolean }>;
-  createBodyWriter(): BodyWriter;
-  appendRuleHits(
-    exchangeId: string,
-    hits: readonly RuleHitRecord[],
-  ): Promise<void>;
-  appendWebSocketFrames(
-    exchangeId: string,
-    frames: readonly WebSocketFrameInput[],
-  ): Promise<void>;
-}
-
-export interface CaptureEventSink {
-  enqueue(
-    kind: CaptureExchangeEventKind,
-    summary: CaptureExchangeSummary,
-  ): void;
 }
 
 export interface ProxyStartOptions {
