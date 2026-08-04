@@ -1167,7 +1167,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
    The left wire is "traffic reaches us" (always true here), the lock is
    "can we read it" — which is exactly what this dialog turns on.
    ===================================================================== */
-.chain { display: grid; grid-template-columns: 44px 92px 44px 92px 44px; grid-template-rows: 46px auto; align-items: center; justify-items: center; row-gap: 9px; }
+.chain { display: grid; grid-template-columns: 44px 92px 44px 92px 44px; grid-template-rows: 46px auto; justify-content: center; align-items: center; justify-items: center; row-gap: 9px; padding-top: 4px; }
 .chain-icon { display: grid; place-items: center; border-radius: 11px; grid-row: 1; }
 .chain-client, .chain-origin { width: 36px; height: 36px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text-2); }
 .chain-client svg, .chain-origin svg { width: 16px; height: 16px; }
@@ -1189,8 +1189,8 @@ button.ib { padding: 0; border: 0; background: transparent; }
 /* left at 62% so still shots keep the packet visible */
 .chain-flow { position: absolute; top: 50%; left: 62%; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent); animation: chainflow 1.5s linear infinite; }
 @keyframes chainflow { from { left: 0%; } to { left: 100%; } }
-.chain-badge { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--border-2); color: var(--text-3); }
-.chain-badge svg { width: 13px; height: 13px; }
+.chain-badge { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--border-2); color: var(--text-3); }
+.chain-badge svg { width: 14px; height: 14px; }
 .chain-route { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .chain-lock { color: var(--yellow); border-color: color-mix(in srgb, var(--yellow) 40%, transparent); }
 .chain-lock-secure { display: none; }

@@ -1,6 +1,6 @@
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
-import { useDiagnostics } from '../data/DiagnosticsProvider';
+import { useDiagnostics } from '../data/diagnosticsContext';
 
 /** Diagnostics status bar: record count, drop count and retention policy. */
 export function DiagnosticsStatusbar(): React.JSX.Element {

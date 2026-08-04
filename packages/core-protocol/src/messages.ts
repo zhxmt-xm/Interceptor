@@ -540,6 +540,20 @@ export interface CollectionRevisionResult {
   validTo: string;
 }
 
+/**
+ * Composer 一次发送的分阶段耗时（毫秒）。
+ * 阶段从 socket 事件推导，未发生的阶段为 0（明文请求没有 tls，复用连接没有 dns/tcp）。
+ */
+export interface ComposerTiming {
+  dnsMs: number;
+  tcpMs: number;
+  tlsMs: number;
+  requestMs: number;
+  waitingMs: number;
+  downloadMs: number;
+  totalMs: number;
+}
+
 /** Composer 响应：成功时带状态/头/完整正文/时序/TLS；失败时 ok=false + error。 */
 export interface ComposerResponseResult {
   type: 'composer.response';
@@ -553,6 +567,7 @@ export interface ComposerResponseResult {
     body: Uint8Array;
     totalBytes: number;
     durationMs: number;
+    timing: ComposerTiming;
     tls: ComposerTlsInfo | null;
     remoteAddress: string | null;
   };

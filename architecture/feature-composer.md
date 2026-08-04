@@ -114,7 +114,7 @@ flowchart LR
 
 当前 Composer 与 Capture 之间没有直接联动。若未来支持"从 Capture 复制到 Composer"，必须明确复制的是客户端原始请求还是发往 Origin 的最终请求。
 
-## 5. UI 重构与 Collection [设计已定稿，未实现]
+## 5. UI 与 Collection
 
 设计稿把 Composer 从「左请求 / 右响应」改成 **`Collection 分栏 / splitter / 工作区`**，工作区纵向为 `文档标签条 · URL 行 · 请求编辑区 · splitter · 响应区`。这带来一块**当前完全不存在的能力：请求集合的持久化**。
 
@@ -131,11 +131,11 @@ flowchart LR
 
 **编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。写入由 Renderer 节流，避免每次按键都落库。
 
-### 5.2 Recent sends [设计已定稿，未实现]
+### 5.2 Recent sends
 
 URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立的事，不互相写入：列出最近发送的 method / URL / 状态码 / 相对时间，点击恢复为请求。是否持久化待定；只存内存即可满足设计稿表达。
 
-### 5.3 请求 Body 的四档 [设计已定稿，未实现]
+### 5.3 请求 Body 的四档
 
 | 档位 | 形态 | 协议影响 |
 | --- | --- | --- |
@@ -146,9 +146,11 @@ URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立�
 
 **`multipart/form-data` 传文件不在本轮范围**：`ComposerRequestInput.body` 只接受 `string`，要传二进制必须先扩协议。
 
-### 5.4 与现状的差距
+### 5.4 Renderer 组成
 
-现有 Renderer 只有单请求 + `RequestBuilder` / `ResponsePanel` 左右分栏，没有 Collection、没有多 tab、没有 Body 类型、没有响应 Timing 页。Core 侧 `composer.send` 已经采集了完整 timing 与 TLS，但 UI 从未展示——设计稿的 `Timing` 页用的就是这批既有数据，不需要扩协议。
+`features/composer/` 下每个组件一个文件、各配同名 CSS Module：`ComposerMain`（两处 splitter 与响应式 clamp）、`CollectionPanel` + `CollectionTreeNode` / `RenameRow` / `FolderMenu`、`DocumentTabs`、`RequestUrlBar` + `RecentSends`、`ComposerTabBar`（请求区与响应区共用）、`KeyValueTable`（Query / Headers / Form 三处共用）、`RequestPane` + `BodyPane` / `AuthPane`、`ResponsePane` + `ResponseBodyPane` / `ResponseHeadersPane` / `ResponseCookiesPane` / `ResponseTimingPane` / `ResponseSection` / `ResponsePlaceholder`。
+
+**设计稿的 216px / 368px 只是初始值**：Collection 宽度与响应区高度都可拖拽，上限由对侧最小尺寸推导（`总宽 − MIN_WORK_WIDTH − 轨道宽`），`ResizeObserver` 在窗口缩放时重新 clamp；行高、控件尺寸、弹层宽度这类结构尺寸沿用设计稿固定值。
 
 ## 6. 验收要点
 

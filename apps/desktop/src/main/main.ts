@@ -51,6 +51,7 @@ import {
   toBodyExportRequest,
   toBreakpointEdit,
   toByteRange,
+  toCollectionNodes,
   toComposerRequest,
   toCoreRuleDefinitions,
   toCoreSessionQuery,
@@ -1043,18 +1044,7 @@ class DesktopApplication {
           });
           return { ok: true, revision: result.payload.revision };
         } catch (error) {
-          const code =
-            typeof error === 'object' && error !== null && 'code' in error
-              ? (error as { code: unknown }).code
-              : undefined;
-          const message = error instanceof Error ? error.message : String(error);
-          if (code === 'conflict') {
-            return { ok: false, reason: 'conflict', message };
-          }
-          if (code === 'invalid-message') {
-            return { ok: false, reason: 'invalid', message };
-          }
-          return { ok: false, reason: 'error', message };
+          return DesktopApplication.toReplaceFailure(error);
         }
       },
     );
@@ -1068,6 +1058,37 @@ class DesktopApplication {
       });
       return result.payload.counts;
     });
+
+    // Composer 集合只读查询：整棵树 + 当前 revision，供 Composer workspace 加载。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.collectionGet, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const result = await this.coreRuntime.request({
+        type: 'collection.get',
+        payload: {},
+      });
+      return result.payload.collection;
+    });
+
+    // 乐观并发替换整棵集合树；语义与 rulesReplace 一致（编辑即生效，由 Renderer 节流）。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.collectionReplace,
+      async (event, expectedRevision: unknown, nodes: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const collectionNodes = toCollectionNodes(nodes);
+        try {
+          const result = await this.coreRuntime.request({
+            type: 'collection.replace',
+            payload: {
+              expectedRevision: expectedRevision as number,
+              nodes: collectionNodes,
+            },
+          });
+          return { ok: true, revision: result.payload.revision };
+        } catch (error) {
+          return DesktopApplication.toReplaceFailure(error);
+        }
+      },
+    );
 
     // Composer 手工请求：原样转交 Core 用 http/https/http2 执行并回传响应。
     ipcMain.handle(
@@ -1423,6 +1444,26 @@ class DesktopApplication {
     if (!senderUrl || !this.isTrustedRendererNavigation(senderUrl)) {
       throw new Error('Rejected IPC request from an untrusted sender');
     }
+  }
+
+  /** 把乐观并发替换的失败映射为结构化结果，避免 IPC 抛错丢掉 Core 的错误码。 */
+  private static toReplaceFailure(error: unknown): {
+    ok: false;
+    reason: 'conflict' | 'invalid' | 'error';
+    message: string;
+  } {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? (error as { code: unknown }).code
+        : undefined;
+    const message = error instanceof Error ? error.message : String(error);
+    if (code === 'conflict') {
+      return { ok: false, reason: 'conflict', message };
+    }
+    if (code === 'invalid-message') {
+      return { ok: false, reason: 'invalid', message };
+    }
+    return { ok: false, reason: 'error', message };
   }
 
   private isTrustedRendererNavigation(url: string): boolean {

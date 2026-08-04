@@ -91,7 +91,6 @@
 .summaryCard:hover .urlCopy {
   opacity: 1;
 }
-
 .tabs {
   display: flex;
   gap: 2px;
@@ -113,7 +112,6 @@
   border-bottom-color: var(--accent);
   font-weight: 600;
 }
-
 .scroll {
   flex: 1;
   min-height: 0;
@@ -130,199 +128,11 @@
   min-height: 0;
   gap: 22px;
 }
-/* The body section absorbs the panel's leftover height so the viewer can fill it. */
-.sectionGrow {
-  display: flex;
-  flex-direction: column;
-  flex: 1 0 auto;
-  min-height: 0;
-}
-
-.kv {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  font-size: 12px;
-}
-.kvRow {
-  display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
-  column-gap: 16px;
-  align-items: start;
-}
-/* header 名往往是不含连字符的长标识符，硬折行会碎成多行；截断后由 title 补全。 */
-.kv .key {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 18px;
-  color: var(--text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.kv .value {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 18px;
-  color: var(--text);
-  word-break: break-all;
-}
-.ruleInactive {
-  color: var(--text-3);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-.ruleEffect {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  margin-left: 4px;
-  padding: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--green) 10%, transparent);
-  color: var(--green);
-  font-family: var(--font-ui);
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: normal;
-  vertical-align: top;
-  white-space: nowrap;
-}
-button.ruleEffect {
-  cursor: pointer;
-}
-button.ruleEffect:hover {
-  filter: brightness(0.96);
-}
-.ruleEffect[data-effect='append'] {
-  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
-  background: color-mix(in srgb, var(--blue) 10%, transparent);
-  color: var(--blue);
-}
-.ruleEffect[data-effect='replace'] {
-  border-color: color-mix(in srgb, var(--yellow) 28%, transparent);
-  background: color-mix(in srgb, var(--yellow) 11%, transparent);
-  color: var(--yellow);
-}
-.ruleEffect[data-effect='remove'] {
-  border-color: color-mix(in srgb, var(--red) 24%, transparent);
-  background: color-mix(in srgb, var(--red) 10%, transparent);
-  color: var(--red);
-}
-.copyBtn.copyBtn {
-  display: inline-grid;
-  place-items: center;
-  vertical-align: top;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-.copyBtn.copyBtn svg {
-  width: 14px;
-  height: 14px;
-}
-.kvRow:hover .copyBtn {
-  opacity: 1;
-}
-.statusValue {
-  display: inline;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-}
-.clientAppValue {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  vertical-align: middle;
-}
-.clientAppIcon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-}
-.clientAppUnknown {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  color: var(--text-3);
-}
-.clientAppLoading {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  border-radius: 4px;
-  background: var(--hover);
-}
-.statusValue .statusDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 7px;
-  border-radius: 50%;
-  vertical-align: 0.08em;
-}
-.statusValue.ok {
-  color: var(--green);
-}
-.statusValue.ok .statusDot {
-  background: var(--green);
-}
-.statusValue.warn {
-  color: var(--yellow);
-}
-.statusValue.warn .statusDot {
-  background: var(--yellow);
-}
-.statusValue.err {
-  color: var(--red);
-}
-.statusValue.err .statusDot {
-  background: var(--red);
-}
-.statusValue.info2 {
-  color: var(--blue);
-}
-.statusValue.info2 .statusDot {
-  background: var(--blue);
-}
-.kv .value.accent {
-  color: var(--accent);
-}
-.kv .value.good {
-  color: var(--green);
-}
 .empty {
   font-size: 12.5px;
   color: var(--text-3);
   padding: 6px 2px;
 }
-
-.body {
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
-  padding: 13px 15px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.7;
-  background: var(--panel-2);
-}
-.jsonKey {
-  color: var(--purple);
-}
-.jsonString {
-  color: var(--green);
-}
-.jsonNumber {
-  color: var(--blue);
-}
-.jsonPunct {
-  color: var(--text-3);
-}
-
 .timeline {
   display: flex;
   flex-direction: column;
@@ -358,48 +168,4 @@ button.ruleEffect:hover {
   bottom: 0;
   border-radius: 3px;
   background: var(--accent);
-}
-
-.certs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cert {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 13px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-.cert > svg {
-  width: 16px;
-  height: 16px;
-  color: var(--green);
-  flex: 0 0 auto;
-}
-.certInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.certInfo b {
-  font-size: 12.5px;
-  font-weight: 550;
-}
-.certInfo span {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-3);
-}
-.certChain {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex: 0 0 auto;
 }

@@ -1,67 +1,61 @@
+import type {
+  CollectionNode,
+  CollectionRequest,
+  ComposerAuth,
+  ComposerBodyType,
+  ComposerFieldRow,
+  ComposerProtocol,
+  ComposerTiming,
+} from '@interceptor/core-protocol';
+
 import type { ComposerResponse } from '../../../shared/desktop-api';
 
-export type ComposerProtocol = 'auto' | 'http/1.1' | 'h2';
-export type RequestTab = 'headers' | 'query' | 'body' | 'auth';
-export type ResponseTab = 'body' | 'headers' | 'cookies' | 'raw';
-export type AuthType = 'none' | 'bearer' | 'basic';
+/** 认证方式；authorization 只在发送时合成。 */
+export type ComposerAuthType = ComposerAuth['type'];
 
-/** 可编辑的 header 行：启用开关 + 名/值（发送时只取启用项）。 */
-export interface HeaderRow {
-  id: string;
-  name: string;
-  value: string;
-  on: boolean;
-}
+/** 请求编辑区的四个页签。 */
+export type RequestTab = 'query' | 'headers' | 'body' | 'auth';
 
-export interface ComposerAuth {
-  type: AuthType;
-  token: string;
-  username: string;
-  password: string;
-}
+/** 响应区的四个页签。 */
+export type ResponseTab = 'body' | 'headers' | 'cookies' | 'timing';
 
-/** 一条发送历史（轻量摘要，不含完整响应正文）。 */
+/** 响应正文的呈现模式；auto 按 content-type 推断语言。 */
+export type ResponseBodyMode = 'auto' | 'text' | 'json' | 'hex';
+
+/** 一次已完成发送的重放记录；只存在内存，与 Collection 互不写入。 */
 export interface HistoryEntry {
-  id: string;
-  method: string;
-  url: string;
-  at: number;
-  status: number;
-  ok: boolean;
-  durationMs: number;
+  readonly id: string;
+  readonly method: string;
+  readonly url: string;
+  readonly at: number;
+  readonly status: number;
+  readonly ok: boolean;
+  readonly durationMs: number;
 }
 
-export interface ComposerState {
-  method: string;
-  url: string;
-  protocol: ComposerProtocol;
-  headers: HeaderRow[];
-  body: string;
-  auth: ComposerAuth;
-  requestTab: RequestTab;
-  responseTab: ResponseTab;
-  response: ComposerResponse | null;
-  sending: boolean;
-  sendError: string | null;
-  history: HistoryEntry[];
-
-  setMethod(method: string): void;
-  setUrl(url: string): void;
-  setProtocol(protocol: ComposerProtocol): void;
-  setBody(body: string): void;
-  setAuth(patch: Partial<ComposerAuth>): void;
-  setRequestTab(tab: RequestTab): void;
-  setResponseTab(tab: ResponseTab): void;
-
-  addHeader(): void;
-  updateHeader(id: string, patch: Partial<Omit<HeaderRow, 'id'>>): void;
-  removeHeader(id: string): void;
-
-  setQueryParams(params: Array<{ name: string; value: string }>): void;
-
-  beginSend(): void;
-  sendSucceeded(response: ComposerResponse): void;
-  sendFailed(message: string): void;
-  resetForNew(): void;
-  loadFromHistory(entry: HistoryEntry): void;
+/** 一个打开的请求文档的运行态：响应与发送状态按文档隔离，切 tab 不丢。 */
+export interface DocumentRuntime {
+  readonly response: ComposerResponse | null;
+  readonly sending: boolean;
+  readonly sendError: string | null;
+  readonly requestTab: RequestTab;
+  readonly responseTab: ResponseTab;
+  readonly responseBodyMode: ResponseBodyMode;
 }
+
+/** 目录操作菜单的锚点：菜单绝对定位在 Collection 分栏内。 */
+export interface FolderMenuAnchor {
+  readonly folderId: string;
+  readonly top: number;
+  readonly left: number;
+}
+
+export type {
+  CollectionNode,
+  CollectionRequest,
+  ComposerAuth,
+  ComposerBodyType,
+  ComposerFieldRow,
+  ComposerProtocol,
+  ComposerTiming,
+};

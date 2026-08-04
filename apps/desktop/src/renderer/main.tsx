@@ -7,6 +7,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
+import { reportRendererDiagnostic } from './app/reportRendererDiagnostic';
 import './i18n/i18n';
 
 const rootElement = document.getElementById('root');
@@ -27,22 +28,3 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 );
-
-function reportRendererDiagnostic(
-  kind: 'uncaught-error' | 'unhandled-rejection',
-  reason: unknown,
-): void {
-  const error = reason instanceof Error ? reason : new Error(String(reason));
-  void window.interceptor
-    .reportRendererDiagnostic({
-      kind,
-      name: normalizeErrorName(error.name),
-      message: error.message,
-    })
-    .catch(() => undefined);
-}
-
-function normalizeErrorName(name: string): string {
-  const normalized = name.replace(/[^A-Za-z0-9._:-]/g, '_');
-  return normalized || 'Error';
-}

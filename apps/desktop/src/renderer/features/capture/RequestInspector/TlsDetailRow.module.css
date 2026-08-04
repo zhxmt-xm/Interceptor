@@ -1,0 +1,22 @@
+.row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.label {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.value {
+  font-size: 11.5px;
+  color: var(--text);
+  word-break: break-word;
+}
+.valueMono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+  word-break: break-all;
+}

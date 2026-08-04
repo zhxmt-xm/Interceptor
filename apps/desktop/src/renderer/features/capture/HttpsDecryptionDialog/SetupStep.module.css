@@ -1,0 +1,64 @@
+.step {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.step:last-child {
+  border-bottom: 0;
+}
+.step.pending {
+  background: color-mix(in srgb, var(--panel-2) 38%, var(--panel));
+}
+.number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 650;
+}
+.number svg {
+  width: 13px;
+  height: 13px;
+}
+.number.done {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+.pending .number {
+  border-color: var(--border-2);
+  color: var(--text-3);
+}
+.copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.copy b {
+  font-size: 12.5px;
+  font-weight: 580;
+  line-height: 1.23;
+}
+.copy > span {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.23;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.step > :last-child {
+  line-height: 1.23;
+}

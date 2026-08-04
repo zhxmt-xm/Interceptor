@@ -1,0 +1,41 @@
+.itemAppIcon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.itemAppUnknown {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+.itemName {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itemLock {
+  flex: 0 0 auto;
+  padding: 1px;
+  color: var(--text-3);
+}
+.itemProtocol {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  flex: 0 0 auto;
+}
+.itemOn .itemProtocol {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}

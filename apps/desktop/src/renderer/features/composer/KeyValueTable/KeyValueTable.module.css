@@ -1,0 +1,123 @@
+.table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.head,
+.row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 0.8fr) minmax(0, 1.2fr) 30px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+}
+
+.head {
+  height: 34px;
+  flex: 0 0 34px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.row {
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.head > :first-child,
+.row > :first-child {
+  display: grid;
+  place-items: center;
+}
+
+.row:hover {
+  background: var(--hover);
+}
+
+.field {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 34px;
+  text-overflow: ellipsis;
+}
+
+.name {
+  color: var(--text);
+}
+
+.value {
+  color: var(--text-2);
+}
+
+.field::placeholder {
+  color: var(--text-3);
+}
+
+.remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+.row:hover .remove {
+  opacity: 1;
+}
+
+.remove:hover {
+  background: var(--hover);
+  color: var(--red);
+}
+
+.confirm {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.confirm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.confirm:not(:disabled):hover {
+  background: var(--accent-soft);
+}
+
+.confirm:disabled {
+  color: var(--border-2);
+  cursor: not-allowed;
+}

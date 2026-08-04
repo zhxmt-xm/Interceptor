@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DESKTOP_UI_LANGUAGES } from '../../../shared/desktop-api';
 import { englishCatalog } from '../english-catalog';
-import { LANGUAGE_IDS, resolveLanguageId } from '../languages';
+import { LANGUAGE_IDS, matchSystemLanguage, resolveLanguageId } from '../languages';
 import { resources } from '../resources';
 
 const VARIABLE_PATTERN = /\{\{[^{}]+\}\}/g;
@@ -58,6 +58,21 @@ describe('i18n catalogs', () => {
     expect(resolveLanguageId('zh')).toBe('zh-CN');
     expect(resolveLanguageId('pt_BR')).toBe('pt-BR');
     expect(resolveLanguageId('xx-YY')).toBe('en');
+  });
+
+  it('matches the OS languages on first run', () => {
+    expect(matchSystemLanguage(['zh-CN'])).toBe('zh-CN');
+    expect(matchSystemLanguage(['zh-Hans-CN'])).toBe('zh-CN');
+    expect(matchSystemLanguage(['zh'])).toBe('zh-CN');
+    expect(matchSystemLanguage(['zh-Hant-TW'])).toBe('zh-TW');
+    expect(matchSystemLanguage(['zh-HK'])).toBe('zh-TW');
+    expect(matchSystemLanguage(['de-AT'])).toBe('de');
+    expect(matchSystemLanguage(['pt-PT'])).toBe('pt-BR');
+    expect(matchSystemLanguage(['en-GB'])).toBe('en');
+    // The first supported entry wins, not the first entry overall.
+    expect(matchSystemLanguage(['sv-SE', 'ja-JP'])).toBe('ja');
+    expect(matchSystemLanguage([])).toBe('en');
+    expect(matchSystemLanguage(['xx-YY'])).toBe('en');
   });
 
   it.each([

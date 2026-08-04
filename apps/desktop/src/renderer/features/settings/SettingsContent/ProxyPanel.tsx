@@ -9,8 +9,12 @@ import type {
 } from '../../../../shared/desktop-api';
 import { Button, cx, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../../capture/data/captureStore';
-import styles from './SettingsContent.module.css';
-import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
+import { describeError, proxyTitleStatus } from '../utils';
+
+import { ProxyOwnershipBadge } from './ProxyOwnershipBadge';
+import styles from './ProxyPanel.module.css';
+import { SettingsGroup as Group } from './SettingsGroup';
+import { SettingsRow as Row } from './SettingsRow';
 
 type ProxyPanelState = 'loading' | 'ready' | 'error';
 
@@ -250,39 +254,4 @@ export function ProxyPanel(): React.JSX.Element {
       ) : null}
     </>
   );
-}
-
-/** Ownership-specific status badge for normal, conflict and unsupported states. */
-function ProxyOwnershipBadge({ status }: { status: SystemProxyStatus }): React.JSX.Element {
-  const { t } = useTranslation();
-  const value = proxyTitleStatus(status);
-  return <StatusBadge tone={value.tone}>{
-    status.owned ? t('settings.ownedByInterceptor') : t(value.labelKey)
-  }</StatusBadge>;
-}
-
-/** Map public ownership facts to one stable semantic label and color. */
-function proxyTitleStatus(status: SystemProxyStatus): {
-  labelKey: string;
-  tone: 'green' | 'yellow' | 'red' | 'info';
-} {
-  if (!status.supported) {
-    return { labelKey: 'settings.unavailable', tone: 'yellow' };
-  }
-  if (status.ownershipLost) {
-    return { labelKey: 'settings.ownershipLost', tone: 'red' };
-  }
-  if (status.owned) {
-    return { labelKey: 'settings.owned', tone: 'green' };
-  }
-  if (status.enabled) {
-    return { labelKey: 'settings.external', tone: 'yellow' };
-  }
-  return { labelKey: 'settings.direct', tone: 'info' };
-}
-
-/** Convert unknown IPC failures to bounded operation feedback. */
-function describeError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message;
 }

@@ -6,6 +6,8 @@ import { cx, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import type { ChipKind } from '../interfaces';
 import { deriveChips, isRuleComplete, matchSummary } from '../utils';
+import { formatHits } from '../utils';
+
 import styles from './RuleRow.module.css';
 
 const CHIP_CLASS: Record<ChipKind, string | undefined> = {
@@ -18,14 +20,6 @@ const CHIP_CLASS: Record<ChipKind, string | undefined> = {
 };
 
 /** 命中数紧凑格式：1200 → 1.2k。 */
-function formatHits(count: number, locale = 'en'): string {
-  if (count >= 1_000) {
-    const scaled = count / 1_000;
-    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: scaled >= 10 ? 0 : 1 }).format(scaled)}k`;
-  }
-  return new Intl.NumberFormat(locale).format(count);
-}
-
 export interface RuleRowProps {
   rule: RuleDefinition;
   hits: number;

@@ -40,22 +40,9 @@ import {
 } from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import styles from './App.module.css';
+import { FEATURE_VIEWS, type FeatureActions } from './featureViews';
+import { readInitialTheme } from './utils';
 import { Sidebar, type ViewId } from './Sidebar';
-
-interface FeatureViews {
-  main: React.ReactNode;
-  statusbar: React.ReactNode;
-}
-
-interface FeatureActions {
-  createRequestRule(
-    summary: CaptureExchangeSummary,
-    actionType: RuleActionType,
-    name: string,
-  ): void;
-  openRule(ruleId: string): void;
-  showRuleRequests(ruleId: string): void;
-}
 
 const VIEW_LABEL_KEYS: Record<ViewId, string> = {
   capture: 'sidebar.capture',
@@ -65,51 +52,6 @@ const VIEW_LABEL_KEYS: Record<ViewId, string> = {
   diagnostics: 'diagnostics.title',
   settings: 'settings.title',
 };
-
-function renderView(
-  view: ViewId,
-  settingsSection: string,
-  coreStatus: CoreProcessStatus,
-  actions: FeatureActions,
-): FeatureViews {
-  switch (view) {
-    case 'capture':
-      return {
-        main: (
-          <CaptureMain
-            onCreateRequestRule={actions.createRequestRule}
-            onOpenRule={actions.openRule}
-          />
-        ),
-        statusbar: <CaptureStatusbar />,
-      };
-    case 'rules':
-      return {
-        main: <RulesMain onShowRuleRequests={actions.showRuleRequests} />,
-        statusbar: <RulesStatusbar />,
-      };
-    case 'composer':
-      return {
-        main: <ComposerMain />,
-        statusbar: <ComposerStatusbar />,
-      };
-    case 'settings':
-      return {
-        main: <SettingsMain section={settingsSection} />,
-        statusbar: <SettingsStatusbar />,
-      };
-    case 'breakpoints':
-      return {
-        main: <BreakpointsMain />,
-        statusbar: <BreakpointsStatusbar />,
-      };
-    case 'diagnostics':
-      return {
-        main: <DiagnosticsMain />,
-        statusbar: <DiagnosticsStatusbar />,
-      };
-  }
-}
 
 const initialCoreStatus: CoreProcessStatus = {
   state: 'starting',
@@ -224,7 +166,7 @@ export function App(): React.JSX.Element {
       setView('capture');
     },
   };
-  const feature = renderView(view, settingsSection, coreStatus, actions);
+  const feature = FEATURE_VIEWS[view](settingsSection, actions);
 
   const content = (
     <div
@@ -323,12 +265,4 @@ export function App(): React.JSX.Element {
       </AntApp>
     </ConfigProvider>
   );
-}
-
-function readInitialTheme(): ThemeMode {
-  const stored = window.localStorage.getItem('interceptor.theme');
-  if (stored === 'light' || stored === 'dark' || stored === 'warm' || stored === 'ember') {
-    return stored;
-  }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }

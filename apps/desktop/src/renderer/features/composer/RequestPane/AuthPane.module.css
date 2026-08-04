@@ -1,0 +1,28 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+  padding: 16px 14px;
+  overflow-y: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  max-width: 620px;
+}
+
+.label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.hint {
+  font-size: 11.5px;
+  color: var(--text-3);
+}

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Count, cx, FilterChip, IconButton } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { aggregateTraces } from '../utils';
-import { useDiagnostics } from '../data/DiagnosticsProvider';
+import { useDiagnostics } from '../data/diagnosticsContext';
 import styles from './TraceList.module.css';
 
 /** Left diagnostics pane: the scrollable trace/command table. */

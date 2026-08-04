@@ -1,0 +1,25 @@
+.payload {
+  padding: 11px 12px 15px;
+  border-top: 1px solid var(--border);
+  background: var(--filter);
+}
+.payloadHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.payloadHead b {
+  font-weight: 600;
+}
+.payloadHead > :nth-child(2) {
+  margin-left: auto;
+}
+.empty,
+.loadingMore {
+  padding: 12px;
+  color: var(--text-3);
+  font-size: 12px;
+}

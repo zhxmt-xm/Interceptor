@@ -2,10 +2,12 @@ import { Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, cx, StatusBadge } from '../../../components';
-import { UpdateFormat } from '../utils';
 import { UpdateActions, useUpdateStore } from '../data/updateStore';
-import styles from './SettingsContent.module.css';
-import { SettingsGroup as Group, SettingsRow as Row } from './SettingsPrimitives';
+import { UpdateFormat } from '../utils';
+
+import { SettingsGroup as Group } from './SettingsGroup';
+import { SettingsRow as Row } from './SettingsRow';
+import styles from './UpdatesPanel.module.css';
 
 /** GitHub Release status, user-triggered installer download and changelog. */
 export function UpdatesPanel(): React.JSX.Element {

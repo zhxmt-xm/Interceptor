@@ -1,0 +1,9 @@
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.23;
+  cursor: pointer;
+}

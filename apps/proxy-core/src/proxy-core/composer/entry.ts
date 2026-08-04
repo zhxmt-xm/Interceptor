@@ -5,6 +5,7 @@ import * as https from 'node:https';
 import type { TLSSocket } from 'node:tls';
 
 import { ResponseBody } from './internal/response-body';
+import { TimingRecorder } from './internal/timing-recorder';
 import type {
   ComposerHeaderPair,
   ComposerRequestInput,
@@ -56,6 +57,7 @@ export class ComposerService {
       body: new Uint8Array(0),
       totalBytes: 0,
       durationMs,
+      timing: TimingRecorder.empty(durationMs),
       tls: null,
       remoteAddress: null,
     };
@@ -71,6 +73,7 @@ export class ComposerService {
       const isHttps = url.protocol === 'https:';
       const transport = isHttps ? https : http;
       const start = Date.now();
+      const timingRecorder = new TimingRecorder();
       const clientRequest = transport.request(
         url,
         {
@@ -79,6 +82,7 @@ export class ComposerService {
           rejectUnauthorized: false,
         },
         (response) => {
+          timingRecorder.markResponseStarted();
           const responseBody = new ResponseBody();
           response.on('data', (chunk: Buffer) => responseBody.push(chunk));
           response.on('end', () => {
@@ -92,6 +96,7 @@ export class ComposerService {
               body: responseBody.bytes,
               totalBytes: responseBody.totalBytes,
               durationMs: Date.now() - start,
+              timing: timingRecorder.finish(),
               tls: isHttps ? ComposerUtils.readTls(socket) : null,
               remoteAddress: response.socket?.remoteAddress ?? null,
             });
@@ -99,6 +104,7 @@ export class ComposerService {
           response.on('error', reject);
         },
       );
+      clientRequest.on('socket', (socket) => timingRecorder.observeSocket(socket));
       clientRequest.on('error', reject);
       if (timeoutMs !== undefined) {
         clientRequest.setTimeout(timeoutMs, () => {
@@ -108,7 +114,7 @@ export class ComposerService {
       if (request.body) {
         clientRequest.write(Buffer.from(request.body, 'utf8'));
       }
-      clientRequest.end();
+      clientRequest.end(() => timingRecorder.markRequestSent());
     });
   }
 
@@ -120,10 +126,12 @@ export class ComposerService {
   ): Promise<ComposerResponseOutput> {
     return new Promise((resolve, reject) => {
       const start = Date.now();
+      const timingRecorder = new TimingRecorder();
       const client = http2.connect(url.origin, {
         rejectUnauthorized: false,
         ALPNProtocols: ['h2'],
       });
+      client.on('socket', (socket) => timingRecorder.observeSocket(socket));
       let settled = false;
       const finish = (
         outcome: ComposerResponseOutput | null,
@@ -155,6 +163,7 @@ export class ComposerService {
       let headerPairs: ComposerHeaderPair[] = [];
 
       stream.on('response', (headers) => {
+        timingRecorder.markResponseStarted();
         status = Number(headers[':status']) || 0;
         headerPairs = ComposerUtils.h2HeaderPairs(headers);
       });
@@ -170,6 +179,7 @@ export class ComposerService {
           body: responseBody.bytes,
           totalBytes: responseBody.totalBytes,
           durationMs: Date.now() - start,
+          timing: timingRecorder.finish(),
           tls: ComposerUtils.readTls(socket),
           remoteAddress: client.socket?.remoteAddress ?? null,
         });
@@ -183,7 +193,7 @@ export class ComposerService {
       if (request.body) {
         stream.write(Buffer.from(request.body, 'utf8'));
       }
-      stream.end();
+      stream.end(() => timingRecorder.markRequestSent());
     });
   }
 }

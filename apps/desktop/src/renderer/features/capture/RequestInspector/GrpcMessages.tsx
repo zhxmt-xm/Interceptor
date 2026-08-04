@@ -11,8 +11,8 @@ import type {
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented } from '../../../components';
-import { sizeLabel } from '../utils';
-import { BodyView } from './BodyView';
+import { readHeader, sizeLabel } from '../utils';
+import { GrpcMessagePayload } from './GrpcMessagePayload';
 import { useGrpcMessages } from './useGrpcMessages';
 import styles from './GrpcMessages.module.css';
 import { readCompleteBody } from '../data/readCompleteBody';
@@ -137,7 +137,7 @@ export function GrpcMessages({
                       onSelect={handleSelectMessage}
                     />
                     {message.index === selectedIndex && page?.bodyHash ? (
-                      <MessagePayload
+                      <GrpcMessagePayload
                         message={message}
                         side={side}
                         bodyHash={page.bodyHash}
@@ -227,78 +227,3 @@ const MessageRow = memo(function MessageRow({
   );
 });
 
-function MessagePayload({
-  message,
-  side,
-  bodyHash,
-  contentType,
-  exchangeId,
-}: {
-  message: GrpcMessageSummary;
-  side: GrpcMessageSide;
-  bodyHash: string;
-  contentType: string | undefined;
-  exchangeId: string;
-}): React.JSX.Element {
-  const { i18n, t } = useTranslation();
-  const json = contentType?.split(';', 1)[0]?.trim().toLowerCase().endsWith('+json');
-  return (
-    <div className={styles.payload}>
-      <div className={styles.payloadHead}>
-        <b>
-          {t(side === 'request' ? 'capture.requestMessage' : 'capture.responseMessage', { index: message.index + 1 })}
-        </b>
-        <Count>
-          {json ? t('capture.rawJson') : t('capture.rawProtobufLabel')} · {sizeLabel(message.payloadLength, i18n.language)}
-        </Count>
-        <IconButton
-          icon={Copy}
-          label={t('capture.copyPayload')}
-          size="sm"
-          onClick={() => copyPayload(bodyHash, message, json)}
-          automationId={AutomationIdFactory.grpcPayloadCopy(
-            exchangeId,
-            side,
-            message.index,
-          )}
-        />
-      </div>
-      <BodyView
-        body={{
-          bodyHash,
-          mediaType: json ? 'application/json' : 'application/octet-stream',
-          encodedSize: message.payloadLength,
-          truncated: message.truncated,
-          decodeStatus: 'ok',
-        }}
-        compact
-        offset={message.payloadOffset}
-      />
-    </div>
-  );
-}
-
-function copyPayload(
-  bodyHash: string,
-  message: GrpcMessageSummary,
-  asText: boolean | undefined,
-): void {
-  void readCompleteBody(
-    bodyHash,
-    message.payloadOffset,
-    Math.min(message.payloadLength, BODY_PREVIEW_MAX_BYTES),
-  )
-    .then((chunk) => {
-      const value = asText
-        ? new TextDecoder().decode(chunk.bytes)
-        : Array.from(chunk.bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
-      return navigator.clipboard.writeText(value);
-    });
-}
-
-function readHeader(
-  headers: CaptureExchangeDetail['responseHeaders'],
-  name: string,
-): string | undefined {
-  return headers.find((header) => header.name.toLowerCase() === name)?.value;
-}

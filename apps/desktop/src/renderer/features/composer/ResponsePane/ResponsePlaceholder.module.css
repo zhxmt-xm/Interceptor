@@ -1,0 +1,43 @@
+.placeholder {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 40px;
+  text-align: center;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  color: var(--text-3);
+}
+
+.icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.detail {
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+.detail.error {
+  color: var(--red);
+}

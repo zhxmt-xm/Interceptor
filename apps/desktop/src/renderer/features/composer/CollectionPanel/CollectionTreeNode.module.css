@@ -1,0 +1,181 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 7px;
+  color: var(--text-2);
+}
+
+.groupHead:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* 选中的目录是新建请求/子目录的落点。 */
+.groupHead.target {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.groupHead.menuOpen {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.chevronButton {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 100%;
+  flex: 0 0 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px 0 0 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+
+.chevron.expanded {
+  transform: rotate(0deg);
+}
+
+.nameButton {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.groupHead.target .groupCount {
+  color: var(--text-2);
+}
+
+/* 计数与更多按钮共用同一格位置，hover 时互换。 */
+.groupHead:hover .groupCount,
+.groupHead.menuOpen .groupCount {
+  display: none;
+}
+
+.more {
+  display: none;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.more svg {
+  width: 13px;
+  height: 13px;
+}
+
+.groupHead:hover .more,
+.groupHead.menuOpen .more {
+  display: grid;
+}
+
+.groupHead.menuOpen .more {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 11px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  flex: 0 0 26px;
+  padding: 0 0 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 560;
+}
+
+.itemMethod {
+  width: 40px;
+  flex: 0 0 auto;
+  padding: 2px 0;
+  font-size: 9px;
+  text-align: center;
+}
+
+.itemName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,4 +1,3 @@
-/* 两侧 1fr 等分把搜索块钉在工具栏几何中心，Recording 文案长度变化不影响它。 */
 .listbar {
   position: relative;
   display: grid;
@@ -10,7 +9,6 @@
   background: var(--filter);
   border-bottom: 1px solid var(--border);
 }
-
 .start,
 .end {
   display: flex;
@@ -18,18 +16,15 @@
   gap: 6px;
   min-width: 0;
 }
-
 .end {
   justify-self: end;
 }
-
 .search {
   display: flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
 }
-
 .omni {
   display: flex;
   align-items: center;
@@ -44,12 +39,10 @@
   border-radius: 10px;
   background: var(--panel);
 }
-
 .omniIcon {
   flex: 0 0 auto;
   color: var(--text-3);
 }
-
 .omniInput {
   flex: 1;
   min-width: 0;
@@ -60,11 +53,9 @@
   font-size: 12px;
   outline: none;
 }
-
 .omniInput::placeholder {
   color: var(--text-3);
 }
-
 .omniClear {
   display: grid;
   place-items: center;
@@ -78,28 +69,22 @@
   color: var(--text-3);
   cursor: pointer;
 }
-
 .omniClear:hover {
   background: var(--hover);
   color: var(--text);
 }
-
 .filtersToggle {
   position: relative;
   display: inline-flex;
   margin-left: -2px;
 }
-
 .toggleOn {
   background: var(--accent-soft);
   color: var(--accent);
 }
-
 .toggleOff {
   color: var(--text-3);
 }
-
-/* 分栏收起后仍需提示列表正被过滤。 */
 .filtersBadge {
   position: absolute;
   top: 2px;
@@ -111,7 +96,6 @@
   box-shadow: 0 0 0 2px var(--filter);
   pointer-events: none;
 }
-
 .recording {
   display: flex;
   align-items: center;
@@ -129,42 +113,29 @@
   cursor: pointer;
   flex: 0 0 auto;
 }
-
 .recording:hover {
   background: color-mix(in srgb, var(--red) 18%, transparent);
 }
-
 .recordingDot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
   background: currentColor;
 }
-
 .paused {
   background: var(--panel-2);
   color: var(--text-2);
 }
-
 .paused:hover {
   background: color-mix(in srgb, var(--panel-2) 92%, var(--text));
 }
-
 .paused .recordingDot {
   background: transparent;
   border: 2.2px solid currentColor;
 }
-
 .recordingSpinner {
   animation: listbar-spin 0.75s linear infinite;
 }
-
-@keyframes listbar-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .count {
   margin-right: 4px;
   font-family: var(--font-mono);
@@ -173,57 +144,16 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-
 .iconActions {
   display: flex;
   align-items: center;
   gap: var(--icon-button-gap);
   flex: 0 0 auto;
 }
-
 .fileAnchor {
   display: inline-flex;
 }
-
 .fileMenu {
   min-width: 210px;
   padding: 5px;
-}
-
-.fileCommand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 32px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-2);
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.fileCommand:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.fileCommand svg {
-  flex: 0 0 auto;
-  color: var(--text-3);
-}
-
-.fileCommand span {
-  flex: 1;
-  min-width: 0;
-}
-
-.fileCommand code {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-3);
 }

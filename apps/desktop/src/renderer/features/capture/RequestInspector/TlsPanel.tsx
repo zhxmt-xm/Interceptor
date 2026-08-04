@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 
 import { Button, SectionHeader } from '../../../components';
 import type { TlsProbe } from '../../../../shared/desktop-api';
+import { formatCertificateDate } from '../utils';
+
+import { TlsDetailRow as Row } from './TlsDetailRow';
 import styles from './TlsPanel.module.css';
 
 export interface TlsPanelProps {
@@ -119,29 +122,3 @@ export function TlsPanel({
   );
 }
 
-function formatCertificateDate(value: string | undefined, locale: string): string {
-  if (!value) {
-    return '—';
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-}
-
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}): React.JSX.Element {
-  return (
-    <div className={styles.row}>
-      <span className={styles.label}>{label}</span>
-      <span className={mono ? styles.valueMono : styles.value}>{value}</span>
-    </div>
-  );
-}

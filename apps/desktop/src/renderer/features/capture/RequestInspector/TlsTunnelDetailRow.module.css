@@ -1,0 +1,14 @@
+.row {
+  display: contents;
+}
+.row > span {
+  color: var(--text-2);
+}
+.row code {
+  color: var(--text);
+  font-family: inherit;
+  word-break: break-all;
+}
+.row code.accent {
+  color: var(--green);
+}

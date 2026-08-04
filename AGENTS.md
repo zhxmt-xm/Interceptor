@@ -48,6 +48,11 @@
   - `theme/` for Ant Design theme configuration.
   - `styles/` for the minimal global stylesheet.
 - Keep Electron/Node access out of Renderer components. Renderer communicates only through the typed `window.interceptor` Preload API.
+- **一个 `.tsx` 只导出一个主组件。** 子组件即使只被一个父组件用，也拆成同目录下的独立文件（`ResponsePane/ResponseTimingPane.tsx`），不要把三五个组件塞进一个文件。组件文件里只放 JSX 与它自己的 hooks。
+- **纯函数一律放 feature 的 `utils.ts`**（`formatBytes`、`relativeTime`、`maxResponseHeight`），不留在组件文件底部。跨 feature 复用的才上升到 `components/share/`。
+- **CSS 与 `.tsx` 一一对应**：每个组件文件配一份同名 `*.module.css`，同目录下的多个组件**不共用**一份 CSS。要么全 feature 共用一份、要么每个组件独立一份，不要两种混着来；本仓选每个组件独立。少量重复的 `.pane`/`.bar` 好过一个谁都在改的大文件。
+- **区分「画布尺寸」与「结构尺寸」**：设计稿里受容器影响的区域尺寸（分栏宽度、面板高度）只能当作**初始值**，配 splitter 拖拽 + 窗口缩放时 clamp；行高、控件尺寸、弹层宽度这类结构性尺寸沿用设计稿固定值。**拖拽上限由对侧的最小尺寸推导**（`总宽 - 对侧最小宽 - 轨道宽`），不要拍一个人为的 max 常量。
+
 
 ## Proxy Core Module Structure
 

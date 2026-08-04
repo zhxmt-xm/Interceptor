@@ -1,4 +1,7 @@
-import type { UpdateStatus } from '../../../shared/desktop-api';
+import type {
+  SystemProxyStatus,
+  UpdateStatus,
+} from '../../../shared/desktop-api';
 import { DEFAULTS, ENGLISH_UPDATE_LABELS, STORAGE_KEY } from './constants';
 import type { PrivacyPreferences } from './interfaces';
 
@@ -27,6 +30,56 @@ export function persistPreferences(preferences: PrivacyPreferences): void {
   } catch {
     // localStorage 不可用时忽略。
   }
+}
+
+/** 字节数按本地化的 B / KB / MB / GB / TB 折算。 */
+export function formatBytes(bytes: number, locale: string): string {
+  if (bytes < 1024) {
+    return `${new Intl.NumberFormat(locale).format(bytes)} B`;
+  }
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${new Intl.NumberFormat(locale, {
+    maximumFractionDigits: value < 10 ? 1 : 0,
+  }).format(value)} ${units[unitIndex]}`;
+}
+
+/** ISO 时间戳按语言格式化为短日期；无法解析时原样返回。 */
+export function formatDate(value: string, locale: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(parsed);
+}
+
+/** 把系统代理归属事实映射为一个稳定的语义标签与色调。 */
+export function proxyTitleStatus(status: SystemProxyStatus): {
+  labelKey: string;
+  tone: 'green' | 'yellow' | 'red' | 'info';
+} {
+  if (!status.supported) {
+    return { labelKey: 'settings.unavailable', tone: 'yellow' };
+  }
+  if (status.ownershipLost) {
+    return { labelKey: 'settings.ownershipLost', tone: 'red' };
+  }
+  if (status.owned) {
+    return { labelKey: 'settings.owned', tone: 'green' };
+  }
+  if (status.enabled) {
+    return { labelKey: 'settings.external', tone: 'yellow' };
+  }
+  return { labelKey: 'settings.direct', tone: 'info' };
+}
+
+/** 把未知的 IPC 失败收敛成可展示的一行反馈。 */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** 更新状态标签的默认（英文）翻译回退。 */

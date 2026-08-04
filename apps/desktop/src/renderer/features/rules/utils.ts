@@ -338,3 +338,20 @@ export function selectedRule(state: RulesState): RuleDefinition | null {
 export function enabledCount(rules: readonly RuleDefinition[]): number {
   return rules.reduce((total, rule) => total + (rule.enabled ? 1 : 0), 0);
 }
+
+/** 受控数字输入的解析：非法输入回退到给定默认值。 */
+export function toInt(value: string, fallback: number): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** 命中次数超过一千按 k 缩写，避免规则行被数字撑开。 */
+export function formatHits(count: number, locale = 'en'): string {
+  if (count >= 1_000) {
+    const scaled = count / 1_000;
+    return `${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: scaled >= 10 ? 0 : 1,
+    }).format(scaled)}k`;
+  }
+  return new Intl.NumberFormat(locale).format(count);
+}

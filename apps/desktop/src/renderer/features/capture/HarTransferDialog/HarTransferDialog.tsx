@@ -21,12 +21,16 @@ import { usePrivacyStore } from '../../settings/data/privacyStore';
 import { useCaptureStore } from '../data/captureStore';
 import { refetchSessions } from '../data/useCaptureData';
 import { visibleCaptureRows } from '../utils';
+import { buildScope, describeError, formatFilter } from '../utils';
+
+import { CheckOption } from './CheckOption';
 import styles from './HarTransferDialog.module.css';
+import { JobProgress } from './JobProgress';
+import { ScopeOption } from './ScopeOption';
 
 const JOB_POLL_MS = 350;
 
 type ExportScopeKind = HarExportRequest['scope']['kind'];
-
 export interface HarTransferDialogProps {
   /** Close when the pointer goes down on the backdrop. Default true. */
   dismissOnOutsideClick?: boolean;
@@ -346,166 +350,3 @@ export function HarTransferDialog({
     </Modal>
   );
 }
-
-interface ScopeOptionProps {
-  label: string;
-  detail?: string;
-  count: number | string;
-  active: boolean;
-  disabled?: boolean;
-  automationId: AutomationId;
-  onClick(): void;
-}
-
-function ScopeOption({
-  label,
-  detail,
-  count,
-  active,
-  disabled = false,
-  automationId,
-  onClick,
-}: ScopeOptionProps): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      className={cx(styles.scope, active && styles.scopeActive)}
-      disabled={disabled}
-      onClick={onClick}
-      data-automation-id={automationId}
-    >
-      <span className={styles.radio} />
-      <span className={styles.scopeCopy}>
-        <strong>{label}</strong>
-        {detail ? <small>{detail}</small> : null}
-      </span>
-      <span className={styles.count}>{count}</span>
-    </button>
-  );
-}
-
-interface CheckOptionProps {
-  checked: boolean;
-  label: string;
-  automationId: AutomationId;
-  onChange(checked: boolean): void;
-}
-
-function CheckOption({
-  checked,
-  label,
-  automationId,
-  onChange,
-}: CheckOptionProps): React.JSX.Element {
-  return (
-    <label className={styles.check}>
-      <Checkbox checked={checked} onChange={onChange} automationId={automationId} />
-      {label}
-    </label>
-  );
-}
-
-function JobProgress({
-  job,
-  error,
-}: {
-  job: TransferJobSnapshot;
-  error: string | null;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const percent = job.total > 0
-    ? Math.min(100, Math.round((job.processed / job.total) * 100))
-    : job.state === 'completed'
-      ? 100
-      : 0;
-  const StatusIcon = job.state === 'completed' ? CheckCircle2 : XCircle;
-  return (
-    <div className={styles.job} aria-live="polite">
-      <div className={styles.jobHeading}>
-        {job.state === 'running' ? (
-          <span className={styles.spinner} />
-        ) : (
-          <StatusIcon
-            size={22}
-            strokeWidth={1.9}
-            className={job.state === 'completed' ? styles.success : styles.failed}
-          />
-        )}
-        <div>
-          <strong>{t(TRANSFER_HEADING_KEYS[job.kind])}</strong>
-          <span>{job.fileName}</span>
-        </div>
-      </div>
-      <div className={styles.progressTrack}>
-        <span style={{ width: `${percent}%` }} />
-      </div>
-      <div className={styles.progressMeta}>
-        <span>
-          {t(
-            job.kind === 'archive-export'
-              ? 'capture.processedFiles'
-              : 'capture.processedRequests',
-            { processed: job.processed, total: job.total },
-          )}
-        </span>
-        <span>{percent}%</span>
-      </div>
-      {job.message ? <div className={styles.error}>{job.message}</div> : null}
-      {error ? <div className={styles.error}>{error}</div> : null}
-      {job.warnings.map((warning) => (
-        <div className={styles.warning} key={warning}>
-          <AlertTriangle size={15} strokeWidth={1.9} />
-          <span>{warning}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function buildScope(
-  kind: ExportScopeKind,
-  selectedId: string | null,
-  filter: ReturnType<typeof useCaptureStore.getState>['filter'],
-  rows: readonly CaptureExchangeSummary[],
-): HarExportRequest['scope'] {
-  if (kind === 'selected' && selectedId) {
-    return { kind: 'selected', exchangeIds: [selectedId] };
-  }
-  if (kind === 'filter') {
-    return {
-      kind: 'selected',
-      exchangeIds: visibleCaptureRows(rows, filter).map((row) => row.id),
-    };
-  }
-  return { kind: 'all' };
-}
-
-function formatFilter(
-  filter: ReturnType<typeof useCaptureStore.getState>['filter'],
-  emptyLabel: string,
-): string {
-  const parts = [
-    filter.search ? `search:${filter.search}` : '',
-    filter.apps.length > 0 ? `app:${filter.apps.length}` : '',
-    filter.methods.length > 0 ? `method:${filter.methods.join(',')}` : '',
-    filter.hosts.length > 0 ? `host:${filter.hosts.join(',')}` : '',
-    filter.statuses.length > 0 ? `status:${filter.statuses.join(',')}` : '',
-    filter.protocols.length > 0 ? `protocol:${filter.protocols.join(',')}` : '',
-    filter.types.length > 0 ? `type:${filter.types.join(',')}` : '',
-    filter.ruleIds.length > 0 ? `rule:${filter.ruleIds.length}` : '',
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(' ') : emptyLabel;
-}
-
-function describeError(reason: unknown): string {
-  return reason instanceof Error ? reason.message : String(reason);
-}
-
-const TRANSFER_HEADING_KEYS: Record<TransferJobSnapshot['kind'], string> = {
-  'har-import': 'capture.importingHar',
-  'har-export': 'capture.exportingHar',
-  'archive-import': 'capture.importingArchive',
-  'archive-export': 'capture.exportingArchive',
-  'diagnostics-export': 'capture.exportingDiagnostics',
-  'body-export': 'capture.savingBody',
-};

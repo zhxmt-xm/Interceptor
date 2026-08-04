@@ -65,3 +65,30 @@ export const EMPTY_FILTER: CaptureFilter = {
   types: [],
   ruleIds: [],
 };
+
+/** 每组 facet 默认最多显示的条目数，其余折叠到 Show more 之后。 */
+export const FACET_COLLAPSED_LIMIT = 8;
+
+/** facet 计数的重算间隔；实时流量下每条事件都重排会让整个分栏持续抖动。 */
+export const FACET_REFRESH_MS = 600;
+
+/** facet 分组标题的词条 key。 */
+export const FACET_LABEL_KEYS = {
+  application: 'capture.application',
+  method: 'capture.method',
+  host: 'capture.host',
+  status: 'capture.status',
+  protocol: 'capture.protocol',
+  type: 'capture.contentType',
+  rule: 'capture.rule',
+} as const;
+
+/** 文件任务标题的词条 key。 */
+export const TRANSFER_HEADING_KEYS = {
+  'har-import': 'capture.importingHar',
+  'har-export': 'capture.exportingHar',
+  'archive-import': 'capture.importingArchive',
+  'archive-export': 'capture.exportingArchive',
+  'diagnostics-export': 'capture.exportingDiagnostics',
+  'body-export': 'capture.savingBody',
+} as const;

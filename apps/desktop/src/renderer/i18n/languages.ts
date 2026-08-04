@@ -57,6 +57,30 @@ export function resolveLanguageId(value: string | null | undefined): LanguageId 
   return LANGUAGES.find(({ id }) => id.toLowerCase() === normalized)?.id ?? 'en';
 }
 
+// First run only: pick the closest shipped catalog for the OS UI languages, most preferred first.
+export function matchSystemLanguage(locales: readonly string[]): LanguageId {
+  for (const locale of locales) {
+    const normalized = locale.replace('_', '-').toLowerCase();
+    const exact = LANGUAGES.find(({ id }) => id.toLowerCase() === normalized);
+    if (exact) {
+      return exact.id;
+    }
+    const base = normalized.split('-')[0];
+    if (base === 'zh') {
+      // Script subtag decides simplified vs traditional; region is the fallback signal.
+      return /hant|-tw|-hk|-mo/.test(normalized) ? 'zh-TW' : 'zh-CN';
+    }
+    if (base === 'pt') {
+      return 'pt-BR';
+    }
+    const byBase = LANGUAGES.find(({ id }) => id.toLowerCase() === base);
+    if (byBase) {
+      return byBase.id;
+    }
+  }
+  return 'en';
+}
+
 export function getLanguageDefinition(language: LanguageId): LanguageDefinition {
   return LANGUAGES.find(({ id }) => id === language) ?? ENGLISH;
 }

@@ -20,6 +20,7 @@ export interface ButtonProps {
   tooltip?: string;
   /** Tooltip shown while blocked to explain why. */
   disabledTooltip?: string;
+  className?: string;
   onClick?: () => void;
   automationId?: AutomationId;
 }
@@ -36,6 +37,7 @@ export function Button({
   loading = false,
   tooltip,
   disabledTooltip,
+  className,
   onClick,
   automationId,
 }: ButtonProps): React.JSX.Element {
@@ -50,6 +52,7 @@ export function Button({
         size === 'sm' && styles.small,
         variant === 'primary' && styles.primary,
         variant === 'danger' && styles.danger,
+        className,
       )}
       onClick={onClick}
       data-automation-id={automationId}

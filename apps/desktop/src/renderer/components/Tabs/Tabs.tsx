@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { AutomationId } from '../../../shared/automation-ids';
 import { Flyout } from '../Flyout/Flyout';
 import { cx } from '../share/cx';
+import { TabLabel } from './TabLabel';
 import styles from './Tabs.module.css';
 
 export interface TabItem {
@@ -134,19 +135,5 @@ export function Tabs({ items, active, onSelect, automationIds }: TabsProps): Rea
         </Flyout>
       ) : null}
     </div>
-  );
-}
-
-function TabLabel({ item }: { item: TabItem }): React.JSX.Element {
-  return (
-    <>
-      {item.label}
-      {item.count !== undefined ? (
-        <>
-          {' '}
-          <span className={styles.count}>{item.count}</span>
-        </>
-      ) : null}
-    </>
   );
 }

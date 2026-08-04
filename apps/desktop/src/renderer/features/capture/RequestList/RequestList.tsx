@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
 import { useCaptureStore } from '../data/captureStore';
 import { RequestRow } from '../RequestRow/RequestRow';
-import { visibleCaptureRows } from '../utils';
+import { isScrolledToBottom, visibleCaptureRows } from '../utils';
 import styles from './RequestList.module.css';
 
 const ROW_HEIGHT = 52;
@@ -16,11 +16,6 @@ export interface RequestListProps {
     actionType: RuleActionType,
     name: string,
   ) => void;
-}
-
-/** 判断滚动容器是否已停靠在底部（容差一行高）。 */
-function isScrolledToBottom(element: HTMLDivElement): boolean {
-  return element.scrollHeight - element.scrollTop - element.clientHeight <= ROW_HEIGHT;
 }
 
 /** 虚拟化请求表格：表头 + 行；命令与筛选都在列表工具栏与筛选分栏里。 */
@@ -64,7 +59,7 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
     const element = parentRef.current;
     if (element) {
       element.scrollTop = initialScrollTopRef.current;
-      stickToBottomRef.current = isScrolledToBottom(element);
+      stickToBottomRef.current = isScrolledToBottom(element, ROW_HEIGHT);
     }
   }, []);
 
@@ -82,7 +77,7 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
     if (!element) {
       return;
     }
-    stickToBottomRef.current = isScrolledToBottom(element);
+    stickToBottomRef.current = isScrolledToBottom(element, ROW_HEIGHT);
     useCaptureStore.getState().setListScrollTop(element.scrollTop);
   };
 

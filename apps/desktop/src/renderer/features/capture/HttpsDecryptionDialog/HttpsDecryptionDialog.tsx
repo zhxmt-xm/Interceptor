@@ -6,7 +6,10 @@ import { useTranslation } from 'react-i18next';
 import type { CertificateInfo } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, cx, IconButton, StatusBadge } from '../../../components';
+import { describeError } from '../utils';
+
 import styles from './HttpsDecryptionDialog.module.css';
+import { SetupStep } from './SetupStep';
 
 export interface HttpsDecryptionDialogProps {
   open: boolean;
@@ -193,41 +196,4 @@ export function HttpsDecryptionDialog({
         </footer>
     </Modal>
   );
-}
-
-interface SetupStepProps {
-  number: number;
-  done: boolean;
-  pending?: boolean;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
-
-/** One stateful row in the HTTPS setup checklist. */
-function SetupStep({
-  number,
-  done,
-  pending = false,
-  title,
-  description,
-  children,
-}: SetupStepProps): React.JSX.Element {
-  return (
-    <div className={cx(styles.step, pending && styles.pending)}>
-      <span className={cx(styles.number, done && styles.done)}>
-        {done ? <Check aria-hidden="true" /> : number}
-      </span>
-      <span className={styles.copy}>
-        <b>{title}</b>
-        <span>{description}</span>
-      </span>
-      {children}
-    </div>
-  );
-}
-
-/** Convert unknown IPC failures into complete dialog text. */
-function describeError(reason: unknown): string {
-  return reason instanceof Error ? reason.message : String(reason);
 }

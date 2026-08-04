@@ -3,7 +3,11 @@
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 
-import type { DiagnosticLogRecord, RuleDefinition } from '@interceptor/core-protocol';
+import type {
+  CollectionNode,
+  DiagnosticLogRecord,
+  RuleDefinition,
+} from '@interceptor/core-protocol';
 
 import type {
   BreakpointEdit,
@@ -105,6 +109,11 @@ export function toSafeBodyFileName(value: string): string {
 /** Pass trusted Renderer rules through to the Core rule engine. */
 export function toCoreRuleDefinitions(value: unknown): RuleDefinition[] {
   return value as RuleDefinition[];
+}
+
+/** Pass a trusted Composer collection tree through to the Core workspace store. */
+export function toCollectionNodes(value: unknown): CollectionNode[] {
+  return value as CollectionNode[];
 }
 
 /** Pass a trusted Composer request through unchanged. */

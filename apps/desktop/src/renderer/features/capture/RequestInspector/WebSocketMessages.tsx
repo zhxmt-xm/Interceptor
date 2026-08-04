@@ -10,8 +10,9 @@ import type {
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx, IconButton, Segmented, Switch } from '../../../components';
-import { sizeLabel } from '../utils';
-import { BodyView } from './BodyView';
+import { filterDirection, frameRelativeTime, sizeLabel } from '../utils';
+import { FramePayload } from './FramePayload';
+import { FramePreview } from './FramePreview';
 import { useWebSocketFrames } from './useWebSocketFrames';
 import styles from './WebSocketMessages.module.css';
 import { readCompleteBody } from '../data/readCompleteBody';
@@ -138,7 +139,7 @@ export function WebSocketMessages({
                       onSelect={handleSelectFrame}
                     />
                     {frame.seq === selectedSequence ? (
-                      <Payload frame={frame} exchangeId={exchangeId} />
+                      <FramePayload frame={frame} exchangeId={exchangeId} />
                     ) : null}
                   </div>
                 );
@@ -188,120 +189,8 @@ const FrameRow = memo(function FrameRow({
       <span className={styles.kind}>{frame.opcode === 1 ? t('capture.text') : t('capture.binary')}</span>
       <FramePreview frame={frame} />
       <span className={styles.size}>{sizeLabel(frame.payloadSize, i18n.language)}</span>
-      <span className={styles.time}>{relativeTime(startedAt, frame.timestamp, i18n.language)}</span>
+      <span className={styles.time}>{frameRelativeTime(startedAt, frame.timestamp, i18n.language)}</span>
     </button>
   );
 });
 
-function filterDirection(
-  filter: DirectionFilter,
-): WebSocketFrameDirection | undefined {
-  if (filter === 'sent') {
-    return 'client-to-server';
-  }
-  if (filter === 'received') {
-    return 'server-to-client';
-  }
-  return undefined;
-}
-
-function FramePreview({ frame }: { frame: WebSocketFrameSummary }): React.JSX.Element {
-  const { t } = useTranslation();
-  const [preview, setPreview] = useState(
-    frame.opcode === 1
-      ? t('capture.textMessage', { sequence: frame.seq })
-      : t('capture.binaryMessage', { sequence: frame.seq }),
-  );
-
-  useEffect(() => {
-    const hash = frame.payload?.bodyHash;
-    if (!hash) {
-      return;
-    }
-    const apply = (bytes: Uint8Array): void => {
-      setPreview(
-        frame.opcode === 1
-          ? new TextDecoder().decode(bytes).replace(/\s+/g, ' ')
-          : Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' '),
-      );
-    };
-    const api = window.interceptor;
-    if (!api?.readBody) {
-      return;
-    }
-    let active = true;
-    void readCompleteBody(
-      hash,
-      0,
-      Math.min(frame.payload?.encodedSize ?? 0, BODY_PREVIEW_MAX_BYTES),
-    )
-      .then((chunk) => {
-        if (active) {
-          apply(chunk.bytes);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [frame.opcode, frame.payload?.bodyHash, frame.payload?.encodedSize, frame.seq]);
-
-  return <span className={styles.preview}>{preview}</span>;
-}
-
-function relativeTime(startedAt: number, timestamp: number, locale: string): string {
-  const elapsed = Math.max(0, timestamp - startedAt);
-  return elapsed < 1_000
-    ? `+${new Intl.NumberFormat(locale).format(elapsed)} ms`
-    : `+${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(elapsed / 1_000)} s`;
-}
-
-function copyPayload(frame: WebSocketFrameSummary): void {
-  if (!frame.payload?.bodyHash) {
-    return;
-  }
-  void readCompleteBody(
-    frame.payload.bodyHash,
-    0,
-    Math.min(frame.payload.encodedSize, BODY_PREVIEW_MAX_BYTES),
-  )
-    .then((chunk) => {
-      const text = frame.opcode === 1
-        ? new TextDecoder().decode(chunk.bytes)
-        : Array.from(chunk.bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
-      return navigator.clipboard.writeText(text);
-    });
-}
-
-function Payload({
-  frame,
-  exchangeId,
-}: {
-  frame: WebSocketFrameSummary;
-  exchangeId: string;
-}): React.JSX.Element {
-  const { i18n, t } = useTranslation();
-  return (
-    <div className={styles.payload}>
-      <div className={styles.payloadHead}>
-        <b>
-          {frame.direction === 'client-to-server' ? t('capture.sent') : t('capture.received')}{' '}
-          {frame.opcode === 1 ? t('capture.text').toLocaleLowerCase(i18n.language) : t('capture.binary').toLocaleLowerCase(i18n.language)}
-        </b>
-        <Count>{sizeLabel(frame.payloadSize, i18n.language)} · {t('capture.messageNumber', { sequence: frame.seq })}</Count>
-        <IconButton
-          icon={Copy}
-          label={t('capture.copyPayload')}
-          size="sm"
-          onClick={() => copyPayload(frame)}
-          automationId={AutomationIdFactory.websocketPayloadCopy(exchangeId, frame.seq)}
-        />
-      </div>
-      {frame.payload ? (
-        <BodyView body={frame.payload} compact />
-      ) : (
-        <div className={styles.empty}>{t('capture.payloadNotRetained')}</div>
-      )}
-    </div>
-  );
-}

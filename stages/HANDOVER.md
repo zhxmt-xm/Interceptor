@@ -186,6 +186,18 @@
 
 ## 最近验收与下一动作
 
+2026-08-04 Composer 落地 + Renderer 规范化提交前验证：三 workspace typecheck 通过；Desktop 155 / Proxy Core 241 / Protocol 15 / MCP 45，共 **456 项 unit tests** 通过；`npm run build:core` 通过。本轮三件事：
+
+**（一）Composer 全链路落地**。协议新增 `ComposerTiming`（分阶段耗时），Core 侧 `composer/internal/timing-recorder.ts` 按 socket 的 `lookup`/`connect`/`secureConnect` 事件与请求写完、首字节、结束五个时刻折算 DNS/TCP/TLS/Request/Waiting/Download，H1 与 H2 两条路径都接入——设计稿的 Timing 页要的就是这批数据，此前协议里只有 `durationMs`。Main 补齐 `collectionGet`/`collectionReplace` 两个 IPC handler，并把 rules/collection 共用的乐观并发失败映射抽成 `DesktopApplication.toReplaceFailure`。Renderer 按 `design/app` 的 34 张 composer 截图重写为 13 个组件：`ComposerMain`（两处 splitter）、`CollectionPanel`（树 / 行内重命名 / 目录菜单）、`DocumentTabs`、`RequestUrlBar` + `RecentSends`、`ComposerTabBar`、`KeyValueTable`、`RequestPane` + `BodyPane` + `AuthPane`、`ResponsePane` + 四个响应页 + 占位。i18n 15 种语言各 75 条 composer 词条，删掉重写后不再使用的旧词条。共享原语扩展：`Splitter` 支持水平方向、`Select` 透传 Ant 的 `labelRender`/`optionRender`、`Button` 支持 `className`、新增可编辑的 `CodeEditor`。
+
+**响应式**按设计稿画布与结构尺寸区分处理：Collection 宽度（216px）与响应区高度（368px）只是初始值，两处 splitter 可拖拽，**上限由对侧最小尺寸推导**（`总宽 − MIN_WORK_WIDTH − 轨道宽`），`ResizeObserver` 在窗口缩放时重新 clamp；行高、控件尺寸、弹层宽度沿用设计稿固定值。
+
+**（二）Renderer 规范化**。AGENTS.md 新增四条 Renderer 结构规范（一个 tsx 一个组件、纯函数进 utils.ts、CSS 与 tsx 一一对应、画布尺寸 vs 结构尺寸），并按规范清理全部存量：`SettingsContent` 拆出 4 个面板 + `SettingsGroup`/`SettingsRow`/`ProxyOwnershipBadge`；`RequestInspector` 拆出 `Kv`/`StatusValue`/`ClientAppValue`/`Section`/`KvSection`/`BodySection`；另有 `TlsDetailRow`/`TlsTunnelDetailRow`/`FramePreview`/`FramePayload`/`GrpcMessagePayload`/`FacetGroup`/`FacetValueLabel`/`StatusFacetValue`/`FileCommand`/`SetupStep`/`ScopeOption`/`CheckOption`/`JobProgress`/`ModeToggles`/`MatcherControls`/`ActionBody`/`TabLabel`/`LockOffIcon`/`NoOpenRequest`/`ResponsePlaceholder` 等 30+ 个组件独立成文件，各配同名 CSS Module（唯一一份被 4 个 tsx 共用的 `SettingsContent.module.css` 已拆散）。约 25 个纯函数归入各 feature 的 `utils.ts`，其中 `describeError` 与 `copyPayload` 各有两份重复实现，合并后去重；恒等函数 `shortenId` 直接删除。**审计脚本复检：121 个 tsx / 110 个 CSS，0 处违规。**
+
+顺带修了两处**历史遗留的 GBK 乱码注释**（`InputBox.tsx`、`MethodBadge.tsx`，来自更早的提交），并加了一个全仓编码检查：496 个文件 0 损坏。
+
+**（三）待办**。visual parity 与 packaged smoke 都还欠着：parity 基线本来就是 `Review required`（53 views / 375 targets / 32 missing / 310 flagged），Composer 的 target 尚未加入 `parity.config.mjs`；packaged smoke 的 Preload API 键断言已同步（顺带修好上一轮 `getStorageStatus` → `getCaptureUsage` 改名后错位的排序），但未实跑。
+
 2026-08-04 Proxy Core 模块结构重构 + Composer 数据链路（Core 侧）提交前验证：三 workspace typecheck 通过；Desktop 154 / Proxy Core 241 / Protocol 15 / MCP 45，共 **455 项 unit tests** 通过；`npm run build:core` 通过（两个 worker bundle 重建，`ship-core-deps` 1207 files / 9.96 MiB）。本轮两件事：
 
 **（一）Proxy Core 模块结构重构**。`storage/` → `capture/`（`CaptureService`，只管当前 Recording 的易失 Exchange/Body），`connection/` → `tls-probe/`（`TlsProbeService`），新增 `workspace/`（`WorkspaceService`，App 全局公用 Store，持久 `workspace.sqlite` 的 `rule_set` 与 `collection_tree`），`RuleEngine` → `RuleService`、`TransferJobManager` → `TransferService`。每个模块目录现在只有 `entry.ts` + `README.md` + 子目录，实现类进 `internal/` 且不再带模块名前缀（`capture/internal/exchange-store.ts` → `ExchangeStore`）。**删除了六个镜像具体类的结构接口**（`CaptureSink`、`CaptureEventSink`、`GrpcStorageReader`、`HarStorage`、`ArchiveStorage`、`BodyWriter`），协作者直接依赖具体类，测试替身改为 `extends` 真实类并 `override` 被断言的方法——此前这些接口让 go-to-definition 跳到接口声明而非实际实现。12 个模块 README 已补齐，规则写进 AGENTS.md 与 `apps/proxy-core/CONSTANTS.md`。
@@ -216,15 +228,13 @@
 
 2026-07-22 本次提交前验证：三 workspace typecheck通过；Desktop 115 / Proxy Core 180 / Protocol 19，共314项unit tests通过；`e2e:prepare-local`成功构建Core、Windows helper和未打包production Main/Preload/Renderer bundles。Visual parity保持既有基线：45 views / 330 targets / 0 missing / 平均像素差1.83% / 94 flagged。Windows x64 package通过；package audit 1,292文件 / 377,412,874 bytes全通过；真实 packaged smoke 1/1通过；`npm audit --omit=dev`为0 vulnerabilities。因为`workflows/`为空，本次没有运行或宣称任何local feature workflow通过。
 
-下一动作：继续把 Composer 落到 React，**Core 与 Protocol 已就绪，从 Main IPC 接起**。
+下一动作：Composer 的 Core / Main / Renderer / i18n 已全部落地，剩下的是**验收资产**。
 
-1. **Main IPC handler**（`apps/desktop/src/main/main.ts`）：补 `DESKTOP_IPC_CHANNELS.collectionGet` / `collectionReplace` 两个 `ipcMain.handle`，照 `rulesGet`/`rulesReplace` 的写法（`assertTrustedSender` + 结构化失败结果映射 + `toCollectionNodes()` 输入校验）。这两个 handler 缺失是当前链路唯一的断点。
-2. **Renderer 重写**（`apps/desktop/src/renderer/features/composer/`）：删掉 `RequestBuilder.tsx` / `ResponsePanel.tsx` / 旧 `composerStore.ts`，按设计稿建 `ComposerMain`（布局 + splitter）、`CollectionPanel`、`RequestPane`、`ResponsePane`、`KeyValueTable`、`data/composerStore.ts`。设计稿是 `design/app` 的 34 张 composer 截图，一对一还原。
-3. **i18n / automation-ids**：15 种语言 catalog 补 key；`apps/desktop/src/shared/automation-ids.ts` 的 composer 段按新结构重写。
-4. **visual parity**：`tests/visual-parity/parity.config.mjs` 补 composer target 并重跑。注意 **parity 基线本来就欠着**：当前 `parity-report.md` 是 `Review required`（53 views / 375 targets / 32 missing / 310 flagged），Capture 筛选分栏落地后没重建过，Composer 落地时应一并清账。
-5. **packaged smoke**：本轮加了 IPC channel，Composer 完成后补跑一次。
+1. **visual parity**：`apps/desktop/tests/visual-parity/parity.config.mjs` 补 composer 的 target（对应 `design/app` 的 34 张 composer 截图）并重跑。注意 **parity 基线本来就欠着**：当前 `parity-report.md` 是 `Review required`（53 views / 375 targets / 32 missing / 310 flagged），Capture 筛选分栏落地后没重建过，这轮 Composer + Renderer 拆分之后应一并清账。
+2. **packaged smoke**：本轮新增了 `collection:get` / `collection:replace` 两个 IPC channel，Preload API 键断言已同步但未实跑，需要 `npm run package` 后跑一次 `test:smoke`。
+3. **dev 真机复验 Composer**：Collection 的建/改/删、编辑即生效的节流写回、Send 后的四个响应页（尤其 Timing 的分阶段条），以及两处 splitter 拖拽 + 窗口缩放 clamp。
 
-范围与边界见 [../architecture/feature-composer.md](../architecture/feature-composer.md) 第 5 节；注意「编辑即生效」意味着 `collection.replace` 会被高频调用，**Renderer 侧必须节流**（整棵树一次写入，不做增量命令是有意的设计选择）。之后再按 idea 推进 Breakpoint 交互重构（依赖的 filter 重构已完成，已解锁）。local E2E 方面仍是：从 `application.startup.ready` 开始重新实现第一条 local workflow，只通过公共 automation ID 操作真实App UI；成功保存独立trace/evidence并验证destroy后，才把该单条Inventory状态改为implemented。随后逐条扩展60条规格；packaged目标复用同一业务contract，不能复制第二套workflow。不要加入`.vite/`、package、Playwright report或`test-results/`；继续保留`apps/desktop/tests/visual-parity/parity-report.md`作为验收资产。
+范围与边界见 [../architecture/feature-composer.md](../architecture/feature-composer.md) 第 5 节；「编辑即生效」意味着 `collection.replace` 会被高频调用，Renderer 侧已用 600ms 节流（整棵树一次写入，不做增量命令是有意的设计选择），冲突时以 Core 版本为准重载——集合没有草稿概念，这点与规则集不同。之后再按 idea 推进 Breakpoint 交互重构（依赖的 filter 重构已完成，已解锁）。local E2E 方面仍是：从 `application.startup.ready` 开始重新实现第一条 local workflow，只通过公共 automation ID 操作真实App UI；成功保存独立trace/evidence并验证destroy后，才把该单条Inventory状态改为implemented。随后逐条扩展60条规格；packaged目标复用同一业务contract，不能复制第二套workflow。不要加入`.vite/`、package、Playwright report或`test-results/`；继续保留`apps/desktop/tests/visual-parity/parity-report.md`作为验收资产。
 
 提交后，首个真实 tag release 仍需仓库 Secrets 中的 Windows 签名证书、Apple Developer ID 与公证凭据；无凭据时不要放宽 tag 发布门禁。
 

@@ -7,7 +7,117 @@
   - 设计稿：`design/app/` composer 视图 34 张截图；规范见 `design/design-system.md` 的「Composer 工作区」；架构与新增范围见 `architecture/feature-composer.md` 第 5 节。
   - 形态：左 `216px` Collection 分栏（可嵌套命名目录、chevron 折叠 / 名称选中、`⋮` 菜单、行内重命名、可收起）+ 工作区（文档标签条 · URL 行 · 请求编辑区 Query/Headers/Body/Auth · splitter · 响应区 Body/Headers/Cookies/Timing）。
   - **实现范围明显大于原 Composer**：Collection 需要 Core 新增持久化模块 + 4 条协议命令 + Preload 窄 API；编辑即生效（无保存动作）。Body 的 Form 档由 Renderer 编码成字符串，协议不变；`multipart/form-data` 不在本轮。
-- [ ] request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+- [ ] **方案已定稿，待实现**（2026-08-04 讨论）request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+
+  - 现状问题（`BodyView.tsx` + `bodyContent.ts`）：
+
+    | 问题 | 事实 |
+    | --- | --- |
+    | 档位与类型无关 | `auto/text/JSON/Hex` 写死，MIME 不参与 |
+    | `auto` 偏向 JSON | 无条件先试 `formatJsonBody`，能 parse 就当 JSON —— 这就是"固定 json"的来源 |
+    | 高亮粗糙、无结构化折叠 | `bodyLanguage()` 已按 MIME 选语言，但 `monacoSetup.ts` 除 JSON 外只引了 `languages/definitions/`（纯 tokenizer），**连 Monaco 自带的 CSS/HTML formatter 都没启用** |
+    | 没有 formatter | 只有 JSON 美化，HTML/CSS/JS/XML 零处理，min.js 一行到底 |
+    | **图片走 hex** | `isMediaMime` 只拦 `video/*`/`audio/*`，`image/png` 文本探测失败后落 hex dump |
+    | **hex 是当前最重的渲染路径** | 5 MiB → 约 35 万行 → 约 25 MB 字符串塞进单个 `<pre>`，无 memo 无虚拟化，拖动 Inspector 分栏会因 `ResizeObserver` 重算整份 dump |
+    | 无 JSON tree、无右键 | Monaco `contextmenu: false` |
+    | Composer 另一套 | `ResponsePanel.tsx` 用 `<pre>` + 手写 `prettyBody`，不复用 CodeViewer |
+    | `subarray` 放大 IPC | 见末尾「顺带要修的既有缺陷」 |
+
+  - 核心认知：**"卡死"只发生在 Renderer 主线程**，Main 与 Core 全程只搬字节；全链路传的是 `Uint8Array`，**没有任何 base64/dataURL 转换**（DevTools 反而因 CDP 返回 base64 而多一层）。
+
+    | 活 | 在哪 | 卡 UI |
+    | --- | --- | --- |
+    | Core 读字节、gzip 解压（`decodeBodyStream` 的 zlib 跑在 libuv 线程池） | Core 进程 | 否 |
+    | IPC 搬运（两次 memcpy） | Main 进程主线程 | 否 |
+    | **hex 拼字符串 + `<pre>` 排版** | **Renderer 主线程** | **是，秒级** |
+    | **JS formatter 的 parse** | **Renderer 主线程** | **是，十秒级** |
+    | `<img>` 图片解码 | Renderer 图片解码线程 | 否 |
+    | Monaco language service | Monaco 自带 worker | 否 |
+
+    推论：图片能"免费"离开主线程——Chromium 自带图片解码线程、延迟解码、按绘制尺寸光栅化、可丢弃缓存；**JS 解析没有这种免费午餐**，必须靠 worker。
+
+  - 方案形态：拆 **viewer 内核**（吃 `(bytes, mediaType, truncated)`，不认识 hash/IPC）+ **BodyView 外壳**（管按需加载、decode 状态、截断提示、Save body）。Capture/WS/gRPC 用外壳，**Composer 同期收编直接用内核**（否则内核签名要返工）。
+
+    档位矩阵（「默认档」= Segmented 初始选中项）：
+
+    | 类型 | 默认档 | 候选 |
+    | --- | --- | --- |
+    | JSON / `+json` / ndjson | Pretty | Tree · Raw · Hex |
+    | HTML / CSS / JS / XML | Code | Raw · Hex |
+    | 纯文本 / YAML / Markdown 源码 | Code | Hex |
+    | 图片（非 SVG） | Preview（`<img>`） | Hex |
+    | `image/svg+xml` | XML 代码 | Hex（可执行 XML，默认不渲染） |
+    | Markdown | Preview（富文本） | Split · Source · Hex |
+    | 音视频 | 元信息 + Save | —（零读取，维持现状） |
+    | `x-www-form-urlencoded` | 键值表格 | Raw · Hex |
+    | 未知 / 二进制 | 内容探测决定 | Text · Hex |
+
+    `auto` 档位删掉，但**探测逻辑保留**——它暗中承担着"未知 MIME 是文本还是二进制"的判定，只是从可见档位降级为默认档选择器。候选列表始终追加探测出的那一档，以容忍 MIME 谎报。
+
+  - 图片档：
+
+    | 条件 | 行为 |
+    | --- | --- |
+    | `encodedSize > IMAGE_PREVIEW_MAX_BYTES` | 元信息 + Save body，**连 IPC 都不发** |
+    | `decodeStatus === 'limited'` | 元信息 + Save body（字节已到手但不完整） |
+    | 否则 | `Blob` → `<img src=blob:>`；`onload` 读 `naturalWidth/Height` 显示尺寸；`onerror` 统一兜住 bomb/损坏/不支持格式；cleanup 里 `revokeObjectURL` |
+
+    - 用 blob URL 不用 data URL：我们拿到的本来就是 `Uint8Array`，data URL 要多一次 base64（+33% 字节 + 一份字符串）；DevTools 用 data URL 只因 CDP 返回 base64。
+    - 字节上限的作用不是防崩溃，是**防半张图**（截断字节喂给 `<img>` 比不显示更糟）+ 省 IPC。
+    - gzip 图片无需额外代码（Core 已解好），但 `encodedSize` 是压缩后大小会低估，靠 `decodeStatus === 'limited'` 兜底。
+
+  - Formatter 走 **Monaco 路线，Prettier 整个砍掉**：`languages/features/` 只有 `json/css/html/typescript` 四个 full service（带 formatter + 结构化折叠 + 自带 worker），正好覆盖 idea 点名的 HTML/JSON/JS/CSS；`typescript` 那 11.78 MB 对桌面应用可接受。三个实现要点：
+    1. `monacoSetup.ts` 的 `WORKERS` 映射必须补 css/html/typescript，否则 label 静默落到 EditorWorker。
+    2. `readOnly: true` 会禁用 `formatDocument` action → **在文本进 viewer 之前格式化**（临时 model + worker proxy），不要为此改 readOnly。
+    3. 关掉诊断（`noSemanticValidation`/`validate:false`），否则白烧 worker CPU。
+
+  - 选型：
+
+    | 需求 | 方案 |
+    | --- | --- |
+    | 高亮 + 结构化折叠 + JSON/HTML/JS/CSS formatter | **Monaco `languages/features/` 四件套**，零新依赖、worker 现成 |
+    | JSON 美化 | 继续用 `JSON.parse/stringify`（V8 原生，比走 Monaco worker 快） |
+    | **JSON Tree 档** | **自建** + 已有的 `@tanstack/react-virtual`。Monaco 是编辑器，**折叠 ≠ 树**，它没有 tree view 这种 UI 形态；自建才能 1:1 套设计 token 并挂右键菜单 |
+    | XML formatter | `xml-formatter`（~15 KB 零依赖，纯文本进纯文本出，着色仍走 Monaco tokenizer，不涉及设计还原） |
+    | Markdown 富文本预览 | `react-markdown`（元素级组件映射 → 设计可 1:1；默认不渲染裸 HTML，天然防 XSS） |
+    | 图片 | 零依赖 |
+    | YAML / Markdown **formatter** | 不做。formatter 是重排 md/yaml **源文本**（对齐表格列、统一列表标记），与「渲染成富文本」是两回事；这两种格式不会被压缩，拿到就可读，只读 viewer 里整理源码没有价值 |
+
+  - 阈值：
+
+    | 阈值 | 值 | 说明 |
+    | --- | --- | --- |
+    | `BODY_PREVIEW_MAX_BYTES` | 5 MiB | 现有常量，**不动**——文本/WS/gRPC/Core decode 输出四处共用 |
+    | `IMAGE_PREVIEW_MAX_BYTES` | **16 MiB** | 新增独立常量 |
+    | formatter 自动 | **≤ 2 MiB** | |
+    | formatter 按钮 | **2 – 8 MiB** | 带 loading，结果可丢弃 |
+    | formatter 禁用 | **> 8 MiB** | 提示 Save body |
+
+    阈值作用是**防用户干等**，不是防卡——Monaco 在 worker 里跑，但 TS parser 处理超大 min.js 仍是几十秒。已知边界：Core decode 分支硬编码 `BODY_PREVIEW_MAX_BYTES`，所以**被 gzip 的图片有效上限仍是 5 MiB**（图片几乎不被 gzip，可接受）。
+
+  - 已否决的方案（避免重复讨论）：
+
+    | 砍掉 | 理由 |
+    | --- | --- |
+    | Worker/Canvas 生成缩略图 | `<img>` + CSS 缩放视觉等价（Skia 本就按绘制尺寸光栅化），手工缩略反而丢 GIF/APNG 动画，且缩略前必须先完整解码，躲不掉内存峰值 |
+    | Core 引 sharp 生成缩略图 | 原生依赖 + 打包复杂度，只有将来做"流量列表行内缩略图"才值得 |
+    | 像素护栏 / 解 PNG-JPEG 文件头拿 W×H | 超大图的表现是解码失败破图而非进程崩溃；`onload` 的 `naturalWidth` 就能拿尺寸，`onerror` 一个分支兜住所有异常 |
+    | Prettier | Monaco 四件套已覆盖且 worker 现成；桌面应用不在乎 TS service 的 11.78 MB |
+    | 放宽 CSP | `react-markdown` 默认不渲染裸 HTML 所以不需要；唯一会诱使放开的 `img-src https:` 恰恰不该开（等于追踪像素 + 暴露"你在看这条流量"），远程图片应走"显示占位 + 手动加载" |
+    | `multipart/form-data` 预览 | 独立一档，本轮不做（形态是 part 列表 + 对选中 part 递归套用同一个内核） |
+
+  - 分期：
+    1. 内核剥离 + 档位由 MIME 派生 + Composer 收编 + hex 虚拟化 + 阈值收敛到单一读取点。
+    2. 图片档（16 MiB + `<img>` + revoke + SVG 例外）。
+    3. Formatter（Monaco 四件套 + `xml-formatter` + 2/8 MiB 三档 + 可丢弃结果）。
+    4. JSON tree + 右键复制 value/object/path。
+    5. Markdown 预览——**卡在设计稿上**，需先按 `ui-design-mockup` 在 `design/app/` 画出富文本排版与 Split 布局；用 `react-markdown` 做元素级组件映射，上下分栏（Inspector 横向不够宽），不做滚动同步。
+    6. 阈值 Settings 化：给 `BodyReadRangeCommand` 加 `maxOutput` 让 Core 不再 import"预览上限"这种 UI 概念，并合并 `feature-capture.md` 6.3 第 4 项那条既有待办（含 BodyView 问号按钮）。
+
+  - 顺带要修的既有缺陷：`toHexDump` 无 memo 且 resize 会重算；图片不该走 1 MiB 分块读（必须完整才能解码）；`body-store.ts` 的 `readRange` 内存分支返回 `subarray` **视图**，V8 序列化 TypedArray 会连整块底层 ArrayBuffer 一起写，从 3 MiB 内存 body 读 64 KB 实际传 3 MiB——改造后分块读取变多会放大此问题。
+
+  - 文档落点（本轮先不落）：`architecture/feature-capture.md` 第 10 节「预览上限」扩成「正文预览渲染矩阵」；`architecture/feature-composer.md` 标注复用 viewer 内核。
+
 - [ ] 进入时做一个酷炫的加载界面等待proxy ready
 - [ ] **部分完成**（2026-08-03，commit `b326bc3`）MCP server，先写package，不接入main或core，另外要落地详细架构文档
   - 已完成：`packages/mcp-server/` 认证 + 11 只读 / 7 写工具 + MCP 协议状态机（45 tests，零运行时依赖）；架构文档 `architecture/feature-mcp.md`。

@@ -8,6 +8,7 @@ import type {
   CaptureHeaderRuleEffect,
   Collection,
   CollectionNode,
+  ComposerTiming,
   ComposerTlsInfo,
   TlsCertificate,
   DiagnosticProcess,
@@ -41,6 +42,7 @@ export type {
   CaptureExchangeSummary,
   CaptureHeader,
   CaptureHeaderRuleEffect,
+  ComposerTiming,
   ComposerTlsInfo,
   TlsCertificate,
   DiagnosticProcess,
@@ -302,6 +304,7 @@ export interface ComposerResponse {
   body: Uint8Array;
   totalBytes: number;
   durationMs: number;
+  timing: ComposerTiming;
   tls: ComposerTlsInfo | null;
   remoteAddress: string | null;
 }

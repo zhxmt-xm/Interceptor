@@ -69,3 +69,6 @@ export interface RulesState {
   saveSucceeded(revision: number): void;
   saveFailed(message: string, conflict: boolean): void;
 }
+
+/** 匹配方式（与 StringMatchMode / KeyMatchMode 共用值域）。 */
+export type MatchToggleMode = 'contains' | 'exact' | 'regex';

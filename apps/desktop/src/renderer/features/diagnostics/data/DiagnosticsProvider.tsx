@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -25,7 +23,7 @@ import type {
 } from '../interfaces';
 import { diagnosticRecordKey } from '../utils';
 
-const DiagnosticsContext = createContext<DiagnosticsContextValue | null>(null);
+import { DiagnosticsContext } from './diagnosticsContext';
 
 /**
  * Fetches recent Core diagnostics on an interval and shares them plus the
@@ -262,12 +260,4 @@ export function DiagnosticsProvider({
       {children}
     </DiagnosticsContext.Provider>
   );
-}
-
-export function useDiagnostics(): DiagnosticsContextValue {
-  const value = useContext(DiagnosticsContext);
-  if (!value) {
-    throw new Error('useDiagnostics must be used within a DiagnosticsProvider');
-  }
-  return value;
 }

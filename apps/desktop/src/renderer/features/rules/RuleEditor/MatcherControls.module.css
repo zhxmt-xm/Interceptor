@@ -1,0 +1,21 @@
+.phase {
+  width: 104px;
+  flex: 0 0 auto;
+}
+.value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.key {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.num {
+  width: 84px;
+  flex: 0 0 auto;
+}
+.sep {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-size: 11px;
+}

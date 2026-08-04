@@ -9,7 +9,7 @@ export interface InputBoxProps {
   /** 尾部内嵌插槽（渲染在输入框右侧，如匹配开关）。 */
   trailing?: ReactNode;
   className?: string;
-  /** 鍙楁帶鍊硷紱涓?onValueChange 涓€鍚屾彁渚涙椂娓叉煋涓哄彲缂栬緫杈撳叆妗嗐€?*/
+  /** 受控值；与 onValueChange 一同提供时渲染为可编辑输入框。 */
   value?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
@@ -19,8 +19,8 @@ export interface InputBoxProps {
 }
 
 /**
- * 绛夊鍊兼锛氶粯璁ゅ彧璇诲睍绀?children锛涙彁渚?onValueChange 鏃舵覆鏌撲负鍙楁帶 input
- *锛堜繚鎸佸悓涓€瑙嗚锛夈€俢hildren 鍙綔涓哄墠缃浘鏍囦笌杈撳叆妗嗗叡瀛樸€?
+ * 等宽值框：默认只读展示 children；提供 onValueChange 时渲染为受控 input
+ *（保持同一视觉）。children 可作为前置图标与输入框共存。
  */
 export function InputBox({
   children,

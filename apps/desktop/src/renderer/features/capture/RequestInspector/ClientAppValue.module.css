@@ -1,0 +1,24 @@
+.clientAppValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+}
+.clientAppIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.clientAppLoading {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: var(--hover);
+}
+.clientAppUnknown {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}

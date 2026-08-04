@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, SectionHeader, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
+import { TlsTunnelDetailRow as Row } from './TlsTunnelDetailRow';
 import styles from './TlsTunnelPanel.module.css';
 
 export interface TlsTunnelPanelProps {
@@ -69,19 +70,3 @@ export function TlsTunnelPanel({
 }
 
 /** One technical key/value row in the encrypted tunnel summary. */
-function Row({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}): React.JSX.Element {
-  return (
-    <div className={styles.row}>
-      <span>{label}</span>
-      <code className={accent ? styles.accent : undefined}>{value}</code>
-    </div>
-  );
-}

@@ -18,58 +18,6 @@
   width: 128px;
   flex: 0 0 auto;
 }
-.modeToggles {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
-}
-.toggle {
-  display: grid;
-  place-items: center;
-  min-width: 21px;
-  height: 21px;
-  padding: 0 2px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-3);
-  cursor: pointer;
-  font: 600 13px/1 var(--font-ui);
-}
-.toggle u {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.toggle:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.toggleOn {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.phase {
-  width: 104px;
-  flex: 0 0 auto;
-}
-.value {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.key {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.num {
-  width: 84px;
-  flex: 0 0 auto;
-}
-.sep {
-  flex: 0 0 auto;
-  color: var(--text-3);
-  font-size: 11px;
-}
 .remove {
   flex: 0 0 auto;
   margin-left: auto;

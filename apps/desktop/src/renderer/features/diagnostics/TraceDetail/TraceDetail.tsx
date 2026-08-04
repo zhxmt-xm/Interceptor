@@ -1,7 +1,7 @@
 import { SectionHeader, Timeline } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { buildTimeline, selectTraceRecords } from '../utils';
-import { useDiagnostics } from '../data/DiagnosticsProvider';
+import { useDiagnostics } from '../data/diagnosticsContext';
 import styles from './TraceDetail.module.css';
 
 /** Right diagnostics pane: identifiers and the action timeline. */
@@ -45,10 +45,10 @@ export function TraceDetail(): React.JSX.Element {
         <div className={styles.ids}>
           <span className={styles.idpill}>{first.process}</span>
           {first.traceId ? (
-            <span className={styles.idpill}>trace {shortenId(first.traceId)}</span>
+            <span className={styles.idpill}>trace {first.traceId}</span>
           ) : null}
           {first.requestId ? (
-            <span className={styles.idpill}>req {shortenId(first.requestId)}</span>
+            <span className={styles.idpill}>req {first.requestId}</span>
           ) : null}
           <span className={styles.idpill}>
             {outcomeLabel}
@@ -65,8 +65,4 @@ export function TraceDetail(): React.JSX.Element {
       </div>
     </div>
   );
-}
-
-function shortenId(id: string): string {
-  return id;
 }

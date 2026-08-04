@@ -23,6 +23,7 @@ import { toggleCapture } from '../data/useCaptureData';
 import type { CaptureTransferAction } from '../interfaces';
 import { hasActiveFilter, visibleCaptureRows } from '../utils';
 import styles from './CaptureListbar.module.css';
+import { FileCommand } from './FileCommand';
 
 /** Capture 列表工具栏：横跨列表与 Inspector，承载录制、搜索、筛选开关与文件命令。 */
 export function CaptureListbar(): React.JSX.Element {
@@ -251,36 +252,5 @@ export function CaptureListbar(): React.JSX.Element {
         </div>
       </div>
     </div>
-  );
-}
-
-interface FileCommandProps {
-  icon: typeof Archive;
-  label: string;
-  extension: string;
-  automationId: AutomationId;
-  onClick(): void;
-}
-
-/** Import 或 Export 弹层里的单条文件命令。 */
-function FileCommand({
-  icon: Icon,
-  label,
-  extension,
-  automationId,
-  onClick,
-}: FileCommandProps): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className={styles.fileCommand}
-      onClick={onClick}
-      data-automation-id={automationId}
-    >
-      <Icon size={16} strokeWidth={1.9} />
-      <span>{label}</span>
-      <code>{extension}</code>
-    </button>
   );
 }

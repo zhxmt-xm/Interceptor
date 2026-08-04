@@ -26,3 +26,25 @@
   background: var(--accent);
   height: 52px;
 }
+
+.splitter.horizontal {
+  width: auto;
+  min-width: 0;
+  height: 1px;
+  min-height: 1px;
+  justify-self: stretch;
+  align-self: stretch;
+  cursor: row-resize;
+}
+
+.splitter.horizontal .grip {
+  width: 40px;
+  height: 4px;
+  flex: 0 0 4px;
+  transition: background 0.15s ease, width 0.15s ease;
+}
+
+.splitter.horizontal:hover .grip {
+  width: 52px;
+  height: 4px;
+}

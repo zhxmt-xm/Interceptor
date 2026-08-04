@@ -1,7 +1,11 @@
+import type { ReactNode } from 'react';
+
 import type {
   CaptureExchangeEvent,
+  CaptureHeaderRuleEffect,
   ClientAppIcon,
   CaptureExchangeSummary,
+  HarExportRequest,
 } from '../../../shared/desktop-api';
 import {
   GRPC_INSPECTOR_TABS,
@@ -12,6 +16,22 @@ import {
 
 /** 列表状态点的语义分类，对应 RequestRow.module.css 的 ok/warn/err/info2。 */
 export type StatusKind = 'ok' | 'warn' | 'err' | 'info2';
+
+/** Inspector 里一行键值；后四项只在头部与 Cookie 行上出现。 */
+export type KvRow = [
+  key: string,
+  value: ReactNode,
+  accent?: 'a' | 'g',
+  copyText?: string,
+  ruleEffect?: CaptureHeaderRuleEffect,
+  ruleId?: string,
+];
+
+/** WebSocket 帧列表的方向筛选。 */
+export type DirectionFilter = 'all' | 'sent' | 'received';
+
+/** 导出范围：全部 / 当前筛选 / 当前选中。 */
+export type ExportScopeKind = HarExportRequest['scope']['kind'];
 
 export interface TimeLabels {
   closed: string;

@@ -20,6 +20,23 @@ export interface ComposerRequestInput {
   readonly timeoutMs?: number;
 }
 
+export interface ComposerTiming {
+  /** DNS 解析耗时。 */
+  readonly dnsMs: number;
+  /** TCP 建连耗时。 */
+  readonly tcpMs: number;
+  /** TLS 握手耗时；明文请求为 0。 */
+  readonly tlsMs: number;
+  /** 请求头与正文写出耗时。 */
+  readonly requestMs: number;
+  /** 等待首个响应字节的耗时。 */
+  readonly waitingMs: number;
+  /** 响应正文下载耗时。 */
+  readonly downloadMs: number;
+  /** 从发起到结束的总耗时。 */
+  readonly totalMs: number;
+}
+
 export interface ComposerTlsInfo {
   /** TLS 协议版本。 */
   readonly protocol: string;
@@ -56,6 +73,8 @@ export interface ComposerResponseOutput {
   readonly totalBytes: number;
   /** 完整请求耗时毫秒数。 */
   readonly durationMs: number;
+  /** 分阶段耗时；未发生的阶段为 0。 */
+  readonly timing: ComposerTiming;
   /** HTTPS 请求的 TLS 摘要。 */
   readonly tls: ComposerTlsInfo | null;
   /** 对端网络地址。 */

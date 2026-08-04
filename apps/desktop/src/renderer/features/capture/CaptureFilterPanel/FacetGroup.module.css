@@ -1,0 +1,158 @@
+.group {
+  margin-bottom: 4px;
+}
+.groupOpen .groupChevron {
+  transform: rotate(0deg);
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border-radius: 7px;
+  color: var(--text-2);
+}
+.groupHead:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.groupHead:hover .groupCountApplied {
+  display: none;
+}
+.groupHead:hover .groupClear {
+  display: grid;
+}
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.groupChevron {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+.groupName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.groupCount {
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.groupCountApplied {
+  color: var(--accent);
+}
+.groupClear {
+  display: none;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.groupClear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.groupBody {
+  padding: 2px 0 6px;
+}
+.groupEmpty {
+  margin: 0;
+  padding: 5px 8px 5px 28px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  margin-bottom: 3px;
+  padding: 0 8px 0 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.itemOn {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 560;
+}
+.itemOn .itemCount {
+  color: var(--accent);
+}
+.itemOn .itemProtocol {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+.itemName {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itemCount {
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.groupMore {
+  display: block;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px 0 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.groupMore:hover {
+  background: var(--hover);
+  color: var(--accent);
+}

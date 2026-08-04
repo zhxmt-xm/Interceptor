@@ -1,6 +1,9 @@
 import type {
+  CaptureExchangeDetail,
   CaptureExchangeSummary,
   CaptureHeader,
+  HarExportRequest,
+  WebSocketFrameDirection,
 } from '../../../shared/desktop-api';
 import {
   CAPTURE_FACET_IDS,
@@ -13,8 +16,11 @@ import {
   CAPTURE_FACET_FIELDS,
   type CaptureFacetId,
   type CaptureFilter,
+  type DirectionFilter,
+  type ExportScopeKind,
   type FilterValueOption,
   type InspectorTab,
+  type KvRow,
   type StatusKind,
   type TimeLabels,
   type TimingSegment,
@@ -454,4 +460,203 @@ export function retainInspectorTab(
   fallback: InspectorTab,
 ): InspectorTab {
   return available.some((item) => item.id === current) ? current : fallback;
+}
+
+export function headersToRows(headers: CaptureHeader[]): KvRow[] {
+  // HTTP/2 伪首部（:method/:status 等）高亮区分于普通头。
+  return headers.map((header) => [
+    header.name,
+    header.value,
+    header.isPseudo ? 'a' : undefined,
+    undefined,
+    header.ruleEffect,
+    header.ruleId,
+  ]);
+}
+
+/** 从绝对/相对 URL 提取查询参数为 KV 行。 */
+export function queryRows(url: string): KvRow[] {
+  const search = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
+  if (!search) {
+    return [];
+  }
+  const urlSearchParams = new URLSearchParams(search);
+  return Array.from(urlSearchParams.entries(), ([key, value]) => [key, value] as KvRow);
+}
+
+/** 从捕获 URL 推断端口，缺失时按 scheme 回退（https→443、http→80）。 */
+export function inferPort(url: string | undefined, scheme: string): number {
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.port) {
+        return Number(parsed.port);
+      }
+    } catch {
+      /* URL 不可解析时按 scheme 回退。 */
+    }
+  }
+  return scheme === 'https' || scheme === 'wss' ? 443 : 80;
+}
+
+/** 解析请求 Cookie 头（name=value; …）为 KV 行。 */
+export function requestCookieRows(headers: CaptureHeader[]): KvRow[] {
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'cookie')
+    .flatMap((header) =>
+      header.value
+        .split(';')
+        .map((pair) => pair.trim())
+        .filter(Boolean)
+        .map((pair) => {
+          const separator = pair.indexOf('=');
+          return [
+            separator === -1 ? pair : pair.slice(0, separator),
+            separator === -1 ? '' : pair.slice(separator + 1),
+            undefined,
+            undefined,
+            header.ruleEffect,
+            header.ruleId,
+          ] as KvRow;
+        }),
+    );
+}
+
+/** 收集响应 Set-Cookie 头（每条一行）为 KV 行。 */
+export function responseCookieRows(headers: CaptureHeader[]): KvRow[] {
+  return headers
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => {
+      const separator = header.value.indexOf('=');
+      return [
+        separator === -1 ? header.value : header.value.slice(0, separator),
+        header.value,
+        undefined,
+        undefined,
+        header.ruleEffect,
+        header.ruleId,
+      ] as KvRow;
+    });
+}
+
+export function isGrpcMime(value: string | undefined): boolean {
+  const essence = value?.split(';', 1)[0]?.trim().toLowerCase();
+  return essence === 'application/grpc'
+    || essence?.startsWith('application/grpc+') === true;
+}
+export function formatTimestamp(timestamp: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(timestamp));
+}
+
+/** 把未知失败收敛成可展示的一行文本。 */
+export function describeError(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
+/** 从响应头里取一个值（名称需已小写）。 */
+export function readHeader(
+  headers: CaptureExchangeDetail['responseHeaders'],
+  name: string,
+): string | undefined {
+  return headers.find((header) => header.name.toLowerCase() === name)?.value;
+}
+
+/** 证书有效期按语言格式化；无法解析时原样返回。 */
+export function formatCertificateDate(
+  value: string | undefined,
+  locale: string,
+): string {
+  if (!value) {
+    return '—';
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(date);
+}
+
+/** WebSocket 方向筛选映射到协议方向；all 不带方向条件。 */
+export function filterDirection(
+  filter: DirectionFilter,
+): WebSocketFrameDirection | undefined {
+  if (filter === 'sent') {
+    return 'client-to-server';
+  }
+  if (filter === 'received') {
+    return 'server-to-client';
+  }
+  return undefined;
+}
+
+/** 帧时间相对会话起点显示，毫秒以内保留整数、超过则按秒。 */
+export function frameRelativeTime(
+  startedAt: number,
+  timestamp: number,
+  locale: string,
+): string {
+  const elapsed = Math.max(0, timestamp - startedAt);
+  return elapsed < 1_000
+    ? `+${new Intl.NumberFormat(locale).format(elapsed)} ms`
+    : `+${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(elapsed / 1_000)} s`;
+}
+
+/** 二进制载荷复制为十六进制、文本载荷复制为原文。 */
+export function payloadClipboardText(bytes: Uint8Array, asText: boolean): string {
+  return asText
+    ? new TextDecoder().decode(bytes)
+    : Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
+}
+
+/** 导出范围折算成协议 scope；filter 范围展开为当前可见行的 ID 集合。 */
+export function buildScope(
+  kind: ExportScopeKind,
+  selectedId: string | null,
+  filter: CaptureFilter,
+  rows: readonly CaptureExchangeSummary[],
+): HarExportRequest['scope'] {
+  if (kind === 'selected' && selectedId) {
+    return { kind: 'selected', exchangeIds: [selectedId] };
+  }
+  if (kind === 'filter') {
+    return {
+      kind: 'selected',
+      exchangeIds: visibleCaptureRows(rows, filter).map((row) => row.id),
+    };
+  }
+  return { kind: 'all' };
+}
+
+/** 当前筛选条件的一行摘要；无条件时用调用方给的空态文案。 */
+export function formatFilter(
+  filter: CaptureFilter,
+  emptyLabel: string,
+): string {  const parts = [
+    filter.search ? `search:${filter.search}` : '',
+    filter.apps.length > 0 ? `app:${filter.apps.length}` : '',
+    filter.methods.length > 0 ? `method:${filter.methods.join(',')}` : '',
+    filter.hosts.length > 0 ? `host:${filter.hosts.join(',')}` : '',
+    filter.statuses.length > 0 ? `status:${filter.statuses.join(',')}` : '',
+    filter.protocols.length > 0 ? `protocol:${filter.protocols.join(',')}` : '',
+    filter.types.length > 0 ? `type:${filter.types.join(',')}` : '',
+    filter.ruleIds.length > 0 ? `rule:${filter.ruleIds.length}` : '',
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : emptyLabel;
+}
+
+/** 列表是否停靠在底部；差距在一行以内就算贴底，新流量到达时继续自动跟随。 */
+export function isScrolledToBottom(
+  element: HTMLDivElement,
+  rowHeight: number,
+): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= rowHeight;
 }
