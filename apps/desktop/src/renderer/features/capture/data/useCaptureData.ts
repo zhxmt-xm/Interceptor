@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 
 import type {
+  CaptureStatus,
   CoreProcessStatus,
   SessionQueryRequest,
 } from '../../../../shared/desktop-api';
+import { useBootStore } from '../../../app/bootStore';
 import { useCaptureStore } from './captureStore';
 
 const PAGE_SIZE = 500;
@@ -67,7 +69,7 @@ export async function toggleCapture(): Promise<void> {
 
     const status = await api.startCapture(DEFAULT_CAPTURE_PORT);
     if (status.listening) {
-      const ready = await checkSystemProxyReadiness();
+      const ready = await ensureSystemProxyOwned();
       useCaptureStore.getState().setCapturing(ready && status.recording);
       await refetchSessions();
     } else {
@@ -84,19 +86,54 @@ export async function toggleCapture(): Promise<void> {
   await refreshLinkStatus();
 }
 
-/** 首次进入 Capture 时启动固定 loopback listener，并尽力接管系统代理。 */
+/** 冷启动编排：等 Core → 启动 loopback listener → 接管系统代理，逐步推进 boot 界面。 */
 async function bootstrapCapture(): Promise<void> {
-  const status = await waitForCaptureListener();
-  if (status.listening) {
-    const ready = await checkSystemProxyReadiness();
-    useCaptureStore.getState().setCapturing(ready && status.recording);
-    if (useCaptureStore.getState().rows.length === 0) {
-      await refetchSessions();
-    }
-  } else {
+  const boot = useBootStore.getState();
+  boot.advance('core');
+  await waitForCoreRunning();
+
+  boot.advance('listener');
+  const status = await ensureCaptureListener();
+  if (!status.listening) {
     useCaptureStore.getState().setCapturing(false);
+    await refreshLinkStatus();
+    boot.fail('Local proxy listener did not start.');
+    return;
+  }
+
+  boot.advance('proxy');
+  const owned = await ensureSystemProxyOwned();
+  useCaptureStore.getState().setCapturing(owned && status.recording);
+  if (useCaptureStore.getState().rows.length === 0) {
+    await refetchSessions();
   }
   await refreshLinkStatus();
+
+  const issue = useCaptureStore.getState().proxyReadinessIssue;
+  if (issue) {
+    boot.fail(issue.message ?? 'The system proxy could not be enabled.');
+    return;
+  }
+  boot.finish();
+}
+
+/** 失败后由 boot 界面显式重跑整条启动链路。 */
+export function retryCaptureBootstrap(): void {
+  captureCoreGeneration = null;
+  captureBootstrapPromise = null;
+  useBootStore.getState().restart();
+  useCaptureStore.getState().setProxyReadinessIssue(null);
+  void window.interceptor
+    .getCoreProcessStatus()
+    .then(applyCoreStatus)
+    .catch(() => {
+      // Core 还没起来时留在第一步，等下一次状态推送。
+    });
+}
+
+/** 用户在启动失败后选择直接进入：已经读过失败原因，不再弹同一件事。 */
+export function dismissProxyReadinessIssue(): void {
+  useCaptureStore.getState().setProxyReadinessIssue(null);
 }
 
 /** 对齐 Core 进程代际：同代际 Stop/Start 保留行，PID 变化则清空失效详情并重新 bootstrap。 */
@@ -117,6 +154,7 @@ function applyCoreStatus(status: CoreProcessStatus): void {
       ) {
         useCaptureStore.getState().loadFailed(describeError(error));
         setProxyReadinessIssue('listener', error);
+        useBootStore.getState().fail(describeError(error));
         captureBootstrapPromise = null;
       }
     });
@@ -133,17 +171,14 @@ function applyCoreStatus(status: CoreProcessStatus): void {
   }
 }
 
-/** 等待可用 Core 代际并启动 listener；启动期间的断连只在此有界重试。 */
-async function waitForCaptureListener(): Promise<Awaited<ReturnType<typeof window.interceptor.getCaptureStatus>>> {
+/** 等待一个可用的 Core 代际；启动期间的断连只在此有界重试。 */
+async function waitForCoreRunning(): Promise<void> {
   const api = window.interceptor;
   while (true) {
     try {
       const core = await api.getCoreProcessStatus();
       if (core.state === 'running') {
-        const current = await api.getCaptureStatus();
-        return current.listening
-          ? current
-          : await api.startCapture(DEFAULT_CAPTURE_PORT);
+        return;
       }
     } catch {
       // Core generation transitions are transient; keep waiting for a running generation.
@@ -154,8 +189,15 @@ async function waitForCaptureListener(): Promise<Awaited<ReturnType<typeof windo
   }
 }
 
-/** 检查系统代理 readiness；未持有时只提示，不静默修改操作系统设置。 */
-async function checkSystemProxyReadiness(): Promise<boolean> {
+/** 确保固定 loopback listener 正在监听。 */
+async function ensureCaptureListener(): Promise<CaptureStatus> {
+  const api = window.interceptor;
+  const current = await api.getCaptureStatus();
+  return current.listening ? current : api.startCapture(DEFAULT_CAPTURE_PORT);
+}
+
+/** 接管系统代理；已持有则直接复用，接管失败才留下 readiness issue。 */
+async function ensureSystemProxyOwned(): Promise<boolean> {
   const api = window.interceptor;
   try {
     const status = await api.getSystemProxyStatus();
@@ -163,9 +205,14 @@ async function checkSystemProxyReadiness(): Promise<boolean> {
       useCaptureStore.getState().setProxyReadinessIssue(null);
       return true;
     }
+    const enabled = await api.enableSystemProxy();
+    if (enabled.owned && !enabled.ownershipLost) {
+      useCaptureStore.getState().setProxyReadinessIssue(null);
+      return true;
+    }
     useCaptureStore.getState().setProxyReadinessIssue({
       kind: 'system-proxy',
-      ownershipLost: status.ownershipLost,
+      ownershipLost: enabled.ownershipLost,
       message: null,
     });
     return false;

@@ -1,5 +1,5 @@
 import { App as AntApp, ConfigProvider, Tooltip } from 'antd';
-import { Maximize2, Menu, Minus, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -39,7 +39,10 @@ import {
   UpdateNotification,
 } from '../features/settings';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
+import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
+import { BootScreen } from './BootScreen/BootScreen';
+import { useBootStore } from './bootStore';
 import { FEATURE_VIEWS, type FeatureActions } from './featureViews';
 import { readInitialTheme } from './utils';
 import { Sidebar, type ViewId } from './Sidebar';
@@ -77,6 +80,8 @@ export function App(): React.JSX.Element {
   }));
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
+  // The boot screen owns startup feedback, so the readiness dialog stays out of its way.
+  const booting = useBootStore((state) => !state.dismissed);
 
   const toggleCollapse = (): void => setCollapsed((value) => !value);
 
@@ -199,43 +204,7 @@ export function App(): React.JSX.Element {
         <span className={styles.featureName} data-parity="window-header-title">
           {t(VIEW_LABEL_KEYS[view])}
         </span>
-        <div className={styles.windowControls}>
-          <Tooltip title={t('app.minimizeWindow')} mouseEnterDelay={0.4}>
-            <button
-              type="button"
-              className={styles.windowControl}
-              aria-label={t('app.minimizeWindow')}
-              onClick={() => void window.interceptor.minimizeWindow()}
-              data-automation-id={AUTOMATION_IDS.shell.window.minimize}
-            >
-              <Minus size={15} strokeWidth={1.9} />
-            </button>
-          </Tooltip>
-          <Tooltip title={t('app.toggleMaximizeWindow')} mouseEnterDelay={0.4}>
-            <button
-              type="button"
-              className={styles.windowControl}
-              aria-label={t('app.toggleMaximizeWindow')}
-              onClick={() => void window.interceptor.toggleMaximizeWindow()}
-              data-automation-id={AUTOMATION_IDS.shell.window.maximizeRestore}
-            >
-              <Maximize2 size={14} strokeWidth={1.9} />
-            </button>
-          </Tooltip>
-          <Tooltip title={t('capture.close')} mouseEnterDelay={0.4}>
-            <button
-              type="button"
-              className={styles.windowClose}
-              aria-label={t('capture.close')}
-              onClick={() => {
-                void window.interceptor.closeApplication().catch(() => window.close());
-              }}
-              data-automation-id={AUTOMATION_IDS.shell.window.close}
-            >
-              <X size={15} strokeWidth={1.9} />
-            </button>
-          </Tooltip>
-        </div>
+        <WindowControls />
       </header>
       <div className={styles.notification}>
         <UpdateNotification />
@@ -256,12 +225,15 @@ export function App(): React.JSX.Element {
         {view === 'diagnostics' ? (
           <DiagnosticsProvider>{content}</DiagnosticsProvider>
         ) : content}
-        <ProxyReadinessDialog
-          onOpenSettings={() => {
-            setSettingsSection('proxy');
-            setView('settings');
-          }}
-        />
+        {booting ? null : (
+          <ProxyReadinessDialog
+            onOpenSettings={() => {
+              setSettingsSection('proxy');
+              setView('settings');
+            }}
+          />
+        )}
+        <BootScreen onOpenDiagnostics={() => setView('diagnostics')} />
       </AntApp>
     </ConfigProvider>
   );

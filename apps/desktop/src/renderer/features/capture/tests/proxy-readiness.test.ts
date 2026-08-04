@@ -51,7 +51,29 @@ describe('capture proxy readiness', () => {
     });
   });
 
-  it('prompts when a manual Start has no owned system proxy', async () => {
+  it('takes over the system proxy on a manual Start', async () => {
+    useCaptureStore.setState({ capturing: false });
+    const enableSystemProxy = vi.fn().mockResolvedValue(proxyStatus(true));
+    installApi({
+      startCapture: vi.fn().mockResolvedValue({
+        listening: true,
+        recording: true,
+        host: '127.0.0.1',
+        port: 8888,
+        sessionId: 'session-1',
+        capturedExchanges: 0,
+      }),
+      enableSystemProxy,
+    });
+
+    await toggleCapture();
+
+    expect(enableSystemProxy).toHaveBeenCalledOnce();
+    expect(useCaptureStore.getState().capturing).toBe(true);
+    expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();
+  });
+
+  it('prompts when the system proxy takeover does not stick', async () => {
     useCaptureStore.setState({ capturing: false });
     installApi({
       startCapture: vi.fn().mockResolvedValue({
@@ -62,6 +84,10 @@ describe('capture proxy readiness', () => {
         sessionId: 'session-1',
         capturedExchanges: 0,
       }),
+      enableSystemProxy: vi.fn().mockResolvedValue({
+        ...proxyStatus(false),
+        ownershipLost: true,
+      }),
     });
 
     await toggleCapture();
@@ -69,7 +95,7 @@ describe('capture proxy readiness', () => {
     expect(useCaptureStore.getState().capturing).toBe(false);
     expect(useCaptureStore.getState().proxyReadinessIssue).toMatchObject({
       kind: 'system-proxy',
-      ownershipLost: false,
+      ownershipLost: true,
     });
   });
 });

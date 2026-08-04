@@ -26,4 +26,15 @@ export const commonEnglishMessages = {
   'coreState.restarting': 'Restarting',
   'coreState.stopping': 'Stopping',
   'coreState.stopped': 'Stopped',
+  'boot.startingCore': 'Starting Proxy Core',
+  'boot.bindingListener': 'Binding the local listener',
+  'boot.enablingSystemProxy': 'Enabling the system proxy',
+  'boot.ready': 'Ready — opening Capture',
+  'boot.failed': 'Interceptor could not start',
+  'boot.systemProxyDisclosure':
+    'Interceptor takes over the system proxy and restores your current settings when it exits.',
+  'boot.settingsUnchanged': 'Your system proxy settings were not changed.',
+  'boot.retry': 'Retry',
+  'boot.enterAnyway': 'Enter anyway',
+  'boot.openDiagnostics': 'Open diagnostics',
 } as const;

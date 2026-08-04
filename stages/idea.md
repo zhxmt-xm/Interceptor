@@ -7,7 +7,9 @@
   - 设计稿：`design/app/` composer 视图 34 张截图；规范见 `design/design-system.md` 的「Composer 工作区」；架构与新增范围见 `architecture/feature-composer.md` 第 5 节。
   - 形态：左 `216px` Collection 分栏（可嵌套命名目录、chevron 折叠 / 名称选中、`⋮` 菜单、行内重命名、可收起）+ 工作区（文档标签条 · URL 行 · 请求编辑区 Query/Headers/Body/Auth · splitter · 响应区 Body/Headers/Cookies/Timing）。
   - **实现范围明显大于原 Composer**：Collection 需要 Core 新增持久化模块 + 4 条协议命令 + Preload 窄 API；编辑即生效（无保存动作）。Body 的 Form 档由 Renderer 编码成字符串，协议不变；`multipart/form-data` 不在本轮。
-- [ ] **方案已定稿，待实现**（2026-08-04 讨论）request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+- [ ] **设计稿已定稿，待实现**（2026-08-04）request和response的body preview应该针对不同的type，提供不同的格式切换以及代码高亮，而不是固定的json，auto感觉也不需要，默认用默认的适配的格式比如HTML、json、javascript等，然后预留text和hex就行了，json应该还可以支持tree view，可以右键复制object或value。js和css等文件应该有formatter代码高亮，png图片等应该有预览等等，针对每个格式应该有对应的preview，这个也要详细的记录进feature架构里。现在的组件如果不支持有什么比较权威的好的三方库可以支持display？
+
+  - 设计稿：`design/app/` capture 视图新增 14 个档位场景 × 浅/深共 28 张（`shots/<theme>/capture/body-*.png`：`json` `tree` `tree-menu` `code` `formatting` `format-off` `limited` `image` `image-large` `hex` `form` `md` `md-split` `media`），由 `__setState({ bodyPreview })` 驱动；Composer 响应档位条与 WebSocket / gRPC 内联工具行同步改为派生档位。规范见 `design/design-system.md` 的「正文预览档位矩阵」。
 
   - 现状问题（`BodyView.tsx` + `bodyContent.ts`）：
 
@@ -118,7 +120,12 @@
 
   - 文档落点（本轮先不落）：`architecture/feature-capture.md` 第 10 节「预览上限」扩成「正文预览渲染矩阵」；`architecture/feature-composer.md` 标注复用 viewer 内核。
 
-- [ ] 进入时做一个酷炫的加载界面等待proxy ready
+- [x] **已完成**（2026-08-04）进入时做一个酷炫的加载界面等待 proxy ready
+  - 实现：`apps/desktop/src/renderer/app/BootScreen/` + `app/bootStore.ts`；设计稿为 `design/app/` 的 boot 视图（5 个阶段 × 明暗）。
+  - 形态：全屏遮盖 shell，大 app icon + `conic-gradient` 渐变环绕圆弧 + mono 状态行 + 三个进度点；只保留窗口控制，卡住时仍可关窗。
+  - 三步均为必备且**全自动**：`CoreProcessStatus.state` → `CaptureStatus.listening` → `SystemProxyStatus.owned`。系统代理改为直接接管（不再弹授权弹层），底部常驻告知文案；MITM 不属于启动流程。
+  - 失败态给 `Open diagnostics` / `Enter anyway` / `Retry` 三个出口；只遮盖冷启动，运行期 Core 重启仍走 `ProxyReadinessDialog`。
+  - 顺带：首次启动改为跟随系统语言（`matchSystemLanguage`），而不是硬编码英语。
 - [ ] **部分完成**（2026-08-03，commit `b326bc3`）MCP server，先写package，不接入main或core，另外要落地详细架构文档
   - 已完成：`packages/mcp-server/` 认证 + 11 只读 / 7 写工具 + MCP 协议状态机（45 tests，零运行时依赖）；架构文档 `architecture/feature-mcp.md`。
   - 未完成：Main 侧 transport（named pipe / unix socket）、runtime 文件、`bridge.mjs`、Preload 窄 API、Settings 面板与审批弹层——即整条"接入 Main/Core"的链路。

@@ -32,7 +32,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 0 108px 0 12px;
+  padding: 0 8px 0 12px;
   background: var(--chrome);
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
@@ -42,14 +42,13 @@
   -webkit-app-region: no-drag;
 }
 
-.sidebarToggle,
-.windowControl,
-.windowClose {
+.sidebarToggle {
   width: 30px;
   height: 30px;
   display: grid;
   place-items: center;
   padding: 0;
+  margin-right: 2px;
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -58,33 +57,14 @@
   -webkit-app-region: no-drag;
 }
 
-.sidebarToggle {
-  margin-right: 2px;
-}
-
-.sidebarToggle:hover,
-.windowControl:hover {
+.sidebarToggle:hover {
   color: var(--text);
   background: var(--hover);
 }
 
-.windowControls {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  transform: translateY(-50%);
-  -webkit-app-region: no-drag;
-}
-
-.windowClose:hover {
-  color: var(--red);
-  background: color-mix(in srgb, var(--red) 10%, transparent);
-}
-
 .featureName {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   font-size: 13.5px;
   font-weight: 620;

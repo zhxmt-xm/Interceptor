@@ -46,6 +46,12 @@ export const AUTOMATION_IDS = {
       tr: 'shell.language.tr',
       uk: 'shell.language.uk',
     },
+    boot: {
+      screen: 'shell.boot.screen',
+      retry: 'shell.boot.retry',
+      enterAnyway: 'shell.boot.enter-anyway',
+      openDiagnostics: 'shell.boot.open-diagnostics',
+    },
   },
   capture: {
     recordingToggle: 'capture.recording.toggle',

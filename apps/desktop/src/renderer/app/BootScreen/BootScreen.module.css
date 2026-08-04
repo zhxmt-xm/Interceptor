@@ -1,0 +1,214 @@
+/* Mirrors design/app/app.css `.boot`; covers the whole shell during cold start. */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-rows: 46px minmax(0, 1fr);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Accent glow plus a faint grid: depth without competing with the content. */
+.boot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    720px 420px at 50% 20%,
+    color-mix(in srgb, var(--accent) 14%, transparent),
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.boot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--text) 12%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  mask-image: radial-gradient(560px 340px at 50% 34%, #000, transparent 72%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.chrome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+  -webkit-app-region: drag;
+}
+
+.stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+/* ---- big app icon inside a sweeping gradient arc ---- */
+.ringWrap {
+  display: grid;
+  place-items: center;
+}
+
+.ringWrap > * {
+  grid-area: 1 / 1;
+}
+
+.ringTrack {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  border: 2px solid var(--border-2);
+}
+
+.ring {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--accent) 25%, transparent) 30deg,
+    var(--accent) 120deg,
+    var(--purple) 200deg,
+    transparent 210deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 45%, transparent));
+  animation: sweep 1.15s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Nothing is running once startup settles, so the arc stops sweeping. */
+.boot[data-phase="ready"] .ring {
+  background: conic-gradient(var(--accent), var(--purple), var(--accent));
+  animation: none;
+}
+
+.boot[data-phase="error"] .ring {
+  background: var(--red);
+  filter: none;
+  animation: none;
+}
+
+.logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(140deg, var(--accent), var(--purple));
+  box-shadow: 0 20px 54px -18px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.boot[data-phase="error"] .logo {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  box-shadow: none;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.wordmark {
+  font-size: 20px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+}
+
+.phase {
+  max-width: 420px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.boot[data-phase="error"] .phase {
+  color: var(--red);
+}
+
+/* ---- three prerequisites as progress dots rather than a fake percentage ---- */
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border-2);
+}
+
+.dot[data-state="done"] {
+  background: var(--accent);
+}
+
+.dot[data-state="active"] {
+  width: 22px;
+  background: var(--accent);
+}
+
+.dot[data-state="failed"] {
+  background: var(--red);
+}
+
+/* ---- standing disclosure about the system proxy, plus the failure exit ---- */
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.note {
+  max-width: 400px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+  }
+}
