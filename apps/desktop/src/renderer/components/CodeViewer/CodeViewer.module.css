@@ -1,10 +1,11 @@
 /* Monaco draws its own padding, wrapping and font; the host only supplies the frame.
-   Full-size viewers absorb the leftover height of the panel but never go below 320px. */
+   Full-size viewers absorb the leftover height of the panel, so a short panel shrinks the
+   editor instead of overflowing it. */
 .host {
   width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
-  min-height: 320px;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--border-2);
   border-radius: 10px;

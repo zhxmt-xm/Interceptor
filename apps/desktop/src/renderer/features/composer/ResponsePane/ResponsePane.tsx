@@ -88,11 +88,7 @@ export function ResponsePane({ request }: ResponsePaneProps): React.JSX.Element 
       />
 
       {runtime.responseTab === 'body' ? (
-        <ResponseBodyPane
-          requestId={request.id}
-          response={response}
-          mode={runtime.responseBodyMode}
-        />
+        <ResponseBodyPane response={response} />
       ) : null}
       {runtime.responseTab === 'headers' ? (
         <ResponseHeadersPane request={request} response={response} />

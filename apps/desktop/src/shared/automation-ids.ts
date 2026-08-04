@@ -106,9 +106,9 @@ export const AUTOMATION_IDS = {
         tunnel: 'capture.inspector.tab.tunnel',
       },
       bodyMode: {
-        auto: 'capture.inspector.body-mode.auto',
-        text: 'capture.inspector.body-mode.text',
-        json: 'capture.inspector.body-mode.json',
+        default: 'capture.inspector.body-mode.default',
+        tree: 'capture.inspector.body-mode.tree',
+        raw: 'capture.inspector.body-mode.raw',
         hex: 'capture.inspector.body-mode.hex',
       },
       setupHttps: 'capture.inspector.setup-https',
@@ -183,6 +183,7 @@ export const AUTOMATION_IDS = {
     collectionSplitter: 'composer.collection-splitter',
     newFolder: 'composer.collection.new-folder',
     newRequest: 'composer.collection.new-request',
+    exportCollection: 'composer.collection.export',
     toggleCollection: 'composer.collection.toggle',
     protocol: {
       auto: 'composer.protocol.auto',

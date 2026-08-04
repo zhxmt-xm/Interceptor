@@ -1,9 +1,14 @@
 import type {
+  CaptureBodyRef,
   CaptureExchangeDetail,
   CaptureExchangeSummary,
   CaptureHeader,
   HarExportRequest,
   WebSocketFrameDirection,
+} from '../../../shared/desktop-api';
+import {
+  BODY_PREVIEW_MAX_BYTES,
+  IMAGE_PREVIEW_MAX_BYTES,
 } from '../../../shared/desktop-api';
 import {
   CAPTURE_FACET_IDS,
@@ -27,8 +32,7 @@ import {
 } from './interfaces';
 
 /** Cookie headers live exclusively in the Cookies tab, not the generic Headers tab. */
-export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[] {
-  return headers.filter((header) => {
+export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[] {  return headers.filter((header) => {
     const name = header.name.toLowerCase();
     return name !== 'cookie' && name !== 'set-cookie';
   });
@@ -246,20 +250,28 @@ export function suggestedBodyFileName(
   return `${fallback}.${extension}`;
 }
 
-/** 人类可读的字节数；进行中或无正文显示破折号。 */
-export function sizeLabel(bytes: number, locale = 'en'): string {
-  const format = (value: number, maximumFractionDigits: number): string =>
-    new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value);
-  if (bytes <= 0) {
-    return '0 B';
-  }
-  if (bytes < 1024) {
-    return `${format(bytes, 0)} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${format(bytes / 1024, bytes < 10 * 1024 ? 1 : 0)} KB`;
-  }
-  return `${format(bytes / (1024 * 1024), bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+export interface BodyPreviewRequest {
+  length: number;
+  decode: boolean;
+  /** 读满上限，预览内容不完整。 */
+  limited: boolean;
+  /** 图片按自己的上限判定；超过就不读字节，半张图比不显示更糟。 */
+  oversizeImage: boolean;
+}
+
+/** 计算安全的正文预览读取范围；压缩输入不完整时禁止尝试解码。 */
+export function bodyPreviewRequest(body: CaptureBodyRef): BodyPreviewRequest {
+  const length = Math.min(body.encodedSize, BODY_PREVIEW_MAX_BYTES);
+  const encodings = body.contentEncoding
+    ?.split(',')
+    .map((encoding) => encoding.trim().toLowerCase())
+    .filter((encoding) => encoding && encoding !== 'identity') ?? [];
+  return {
+    length,
+    decode: encodings.length > 0,
+    limited: body.encodedSize > length,
+    oversizeImage: body.encodedSize > IMAGE_PREVIEW_MAX_BYTES,
+  };
 }
 
 /** Build honest response timing segments from persisted timestamps only. */

@@ -1,0 +1,29 @@
+/* One frame around both halves so the divider stays a single hairline instead of two
+   adjacent borders. */
+.host {
+  display: grid;
+  overflow: hidden;
+  flex: 1 1 0;
+  min-height: 0;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+  grid-template-rows: minmax(0, 1fr) 1px minmax(0, 1fr);
+}
+
+.host::after {
+  background: var(--border-2);
+  content: "";
+  grid-row: 2;
+}
+
+.host > :first-child {
+  border: 0;
+  border-radius: 0;
+}
+
+.host > :last-child {
+  border: 0;
+  border-radius: 0;
+  grid-row: 3;
+}

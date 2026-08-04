@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import xmlFormat from 'xml-formatter';
 
 import { cx } from '../share/cx';
 import { monaco, VIEWER_OPTIONS } from './monacoSetup';
@@ -13,16 +14,44 @@ export interface CodeViewerProps {
   parityId?: string;
 }
 
+export interface CodeViewerHandle {
+  /** Pretty-prints the current document in place. */
+  format(): Promise<void>;
+}
+
 /** Read-only Monaco viewer for captured bodies and messages. */
-export function CodeViewer({
+export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function CodeViewer({
   value,
   language,
   compact = false,
   parityId,
-}: CodeViewerProps): React.JSX.Element {
+}, ref): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const initial = useRef({ value, language });
+
+  useImperativeHandle(ref, () => ({
+    async format(): Promise<void> {
+      const editor = editorRef.current;
+      const model = editor?.getModel();
+      if (!editor || !model) {
+        return;
+      }
+      // Monaco has no XML language service, so that one format runs here instead.
+      if (model.getLanguageId() === 'xml') {
+        model.setValue(xmlFormat(model.getValue(), { indentation: '  ', lineSeparator: '\n' }));
+        return;
+      }
+      // formatDocument refuses to run on a read-only editor; domReadOnly still blocks
+      // typing during the短暂 window, so the viewer never becomes editable.
+      editor.updateOptions({ readOnly: false });
+      try {
+        await editor.getAction('editor.action.formatDocument')?.run();
+      } finally {
+        editor.updateOptions({ readOnly: true });
+      }
+    },
+  }), []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -33,13 +62,13 @@ export function CodeViewer({
       ...VIEWER_OPTIONS,
       value: initial.current.value,
       language: initial.current.language,
-      lineHeight: compact ? 17 : VIEWER_OPTIONS.lineHeight,
-      fontSize: compact ? 10.5 : VIEWER_OPTIONS.fontSize,
-      padding: compact ? { top: 10, bottom: 10 } : VIEWER_OPTIONS.padding,
+      lineHeight: compact ? 20 : VIEWER_OPTIONS.lineHeight,
+      fontSize: VIEWER_OPTIONS.fontSize,
+      padding: compact ? { top: 13, bottom: 13 } : VIEWER_OPTIONS.padding,
     });
     editorRef.current = editor;
-    // Compact viewers hug their content; full-size ones are sized by CSS (flex fill
-    // with a 320px floor) and followed by automaticLayout.
+    // Compact viewers hug their content; full-size ones absorb whatever height the panel
+    // leaves them and follow with automaticLayout.
     const hugContent = (): void => {
       host.style.height = `${editor.getContentHeight()}px`;
       editor.layout();
@@ -74,4 +103,4 @@ export function CodeViewer({
       data-parity={parityId}
     />
   );
-}
+});

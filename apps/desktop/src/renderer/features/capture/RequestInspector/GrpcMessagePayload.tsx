@@ -7,9 +7,9 @@ import {
   type GrpcMessageSide,
   type GrpcMessageSummary,
 } from '../../../../shared/desktop-api';
-import { Count, IconButton } from '../../../components';
+import { Count, IconButton, sizeLabel } from '../../../components';
 import { readCompleteBody } from '../data/readCompleteBody';
-import { payloadClipboardText, sizeLabel } from '../utils';
+import { payloadClipboardText } from '../utils';
 
 import { BodyView } from './BodyView';
 import styles from './GrpcMessagePayload.module.css';

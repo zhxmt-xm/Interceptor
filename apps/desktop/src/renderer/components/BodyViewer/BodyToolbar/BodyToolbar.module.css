@@ -1,0 +1,31 @@
+.host {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex: 0 0 40px;
+  gap: 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* The MIME line loses characters before it ever wraps: a second line would shift the
+   viewer below it every time the panel narrows. */
+.meta {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--icon-button-gap);
+}

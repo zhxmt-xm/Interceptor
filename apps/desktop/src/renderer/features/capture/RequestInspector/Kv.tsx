@@ -48,7 +48,7 @@ export function Kv({
                 <IconButton
                   className={styles.copyBtn}
                   icon={Copy}
-                  label={t('capture.copy')}
+                  label={t('common.copy')}
                   size="sm"
                   onClick={() => copy(copyValue)}
                 />

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
-import { cx, IconButton, MethodBadge, StatusBadge, useClipboardCopy } from '../../../components';
+import { cx, IconButton, MethodBadge, sizeLabel, StatusBadge, useClipboardCopy } from '../../../components';
 import {
   GRPC_INSPECTOR_TABS,
   INSPECTOR_TABS,
@@ -28,7 +28,6 @@ import {
   responseCookieRows,
   responseTimingSegments,
   retainInspectorTab,
-  sizeLabel,
   statusKind,
   statusLabel,
   statusTone,

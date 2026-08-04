@@ -1,0 +1,204 @@
+import { Image as ImageIcon, Info } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { FORMAT_AUTO_MAX_BYTES, FORMAT_MAX_BYTES } from '../../../shared/desktop-api';
+import { CodeViewer, type CodeViewerHandle } from '../CodeViewer/CodeViewer';
+import { sizeLabel } from '../share/sizeLabel';
+import { useClipboardCopy } from '../share/useClipboardCopy';
+import { BodyToolbar, type FormatState } from './BodyToolbar/BodyToolbar';
+import {
+  type BodyKind,
+  type BodyMode,
+  bodyFormat,
+  formatMediaType,
+} from './bodyFormats';
+import { decodeUtf8, formatJsonBody, parseFormBody, toHexDump } from './bodyText';
+import { FormView } from './FormView/FormView';
+import { HexView } from './HexView/HexView';
+import { ImageView } from './ImageView/ImageView';
+import { JsonTreeView } from './JsonTreeView/JsonTreeView';
+import { parseJsonTree } from './JsonTreeView/jsonTree';
+import { MarkdownSplit } from './MarkdownView/MarkdownSplit';
+import { MarkdownView } from './MarkdownView/MarkdownView';
+import { UnavailableBody } from './UnavailableBody/UnavailableBody';
+import styles from './BodyViewer.module.css';
+
+export interface BodyViewerProps {
+  bytes: Uint8Array;
+  mediaType: string | undefined;
+  /** 关于这份正文的提示行：预览截断、解码失败等，按传入顺序显示在正文上方。 */
+  notes?: string[];
+  /** 音视频与图片降级的唯一出口；缺省时不显示 Save 动作。 */
+  onSave?: () => void;
+  saving?: boolean;
+  /** 内联消息面板用的紧凑排版。 */
+  compact?: boolean;
+  parityId?: string;
+  /** 内容面板自己的 parity 锚点，对应设计稿的 `.bpane`。 */
+  paneParityId?: string;
+  modeAutomationIds?: Record<string, string>;
+}
+
+/**
+ * 正文查看器内核：只认字节与 MIME，不认 hash、IPC 与加载状态。
+ * `kind` 由内容决定并锁定标签，`mode` 只切换渲染方式，两者互不影响。
+ */
+export function BodyViewer({
+  bytes,
+  mediaType,
+  notes,
+  onSave,
+  saving = false,
+  compact = false,
+  parityId,
+  paneParityId,
+  modeAutomationIds,
+}: BodyViewerProps): React.JSX.Element {
+  const { i18n, t } = useTranslation();
+  const copy = useClipboardCopy();
+  const viewerRef = useRef<CodeViewerHandle>(null);
+  const format = useMemo(() => bodyFormat(mediaType, bytes), [mediaType, bytes]);
+  const [selected, setSelected] = useState<{ kind: BodyKind; mode: BodyMode } | null>(null);
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [formatting, setFormatting] = useState(false);
+
+  const text = useMemo(
+    () => (format.kind === 'image' || format.kind === 'media' ? '' : decodeUtf8(bytes)),
+    [bytes, format.kind],
+  );
+  const pretty = useMemo(
+    () => (format.kind === 'json' ? formatJsonBody(text) ?? text : text),
+    [format.kind, text],
+  );
+  const fields = useMemo(
+    () => (format.kind === 'form' ? parseFormBody(text) : []),
+    [format.kind, text],
+  );
+  // A truncated or streamed JSON body has no single tree to show, so the档位 disappears
+  // instead of failing after the user picks it.
+  const tree = useMemo(
+    () => (format.kind === 'json' ? parseJsonTree(text) : undefined),
+    [format.kind, text],
+  );
+  const available = useMemo(
+    () => (tree === undefined
+      ? { ...format, modes: format.modes.filter((option) => option !== 'tree') }
+      : format),
+    [format, tree],
+  );
+  const mode = selected?.kind === available.kind && available.modes.includes(selected.mode)
+    ? selected.mode
+    : available.defaultMode;
+
+  const meta = imageSize
+    ? `${formatMediaType(mediaType)} · ${imageSize.width} × ${imageSize.height}`
+    : formatMediaType(mediaType);
+
+  // Only minified code benefits: JSON already renders pretty-printed and the other kinds
+  // have no formatter at all.
+  const formattable = available.kind === 'code' && mode === 'default';
+  const oversizeToFormat = bytes.byteLength > FORMAT_MAX_BYTES;
+  const formatState: FormatState = !formattable
+    ? 'hidden'
+    : oversizeToFormat ? 'blocked' : formatting ? 'busy' : 'idle';
+
+  const runFormat = async (): Promise<void> => {
+    setFormatting(true);
+    try {
+      await viewerRef.current?.format();
+    } finally {
+      setFormatting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formattable && bytes.byteLength <= FORMAT_AUTO_MAX_BYTES) {
+      void runFormat();
+    }
+    // Re-formats when the body or the selected view changes, not on every render.
+  }, [bytes, formattable]);
+
+  const bodyNotes = oversizeToFormat && formattable
+    ? [...(notes ?? []), t('body.formatBlocked')]
+    : notes;
+
+  const copyBody = (): void => {
+    copy(mode === 'hex' ? toHexDump(bytes) : mode === 'default' ? pretty : text);
+  };
+
+  return (
+    <div className={styles.host} data-parity={parityId}>
+      <BodyToolbar
+        format={available}
+        mode={mode}
+        onModeChange={(next) => setSelected({ kind: available.kind, mode: next })}
+        meta={meta}
+        formatState={formatState}
+        onFormat={() => void runFormat()}
+        onCopy={format.kind === 'image' ? undefined : copyBody}
+        onSave={format.kind === 'image' ? onSave : undefined}
+        modeAutomationIds={modeAutomationIds}
+      />
+      {bodyNotes?.map((note) => (
+        <div key={note} className={styles.note}>
+          <Info aria-hidden="true" />
+          {note}
+        </div>
+      ))}
+      {renderPane()}
+    </div>
+  );
+
+  function renderPane(): React.JSX.Element {
+    if (mode === 'hex') {
+      return <HexView bytes={bytes} parityId={paneParityId} />;
+    }
+    if (mode === 'tree') {
+      return <JsonTreeView root={tree} parityId={paneParityId} />;
+    }
+    if (format.kind === 'markdown' && mode === 'default') {
+      return <MarkdownView source={text} parityId={paneParityId} />;
+    }
+    if (format.kind === 'markdown' && mode === 'split') {
+      return <MarkdownSplit source={text} parityId={paneParityId} />;
+    }
+    if (format.kind === 'image') {
+      if (imageFailed) {
+        return (
+          <UnavailableBody
+            icon={ImageIcon}
+            mediaType={formatMediaType(mediaType)}
+            measures={sizeLabel(bytes.byteLength, i18n.language)}
+            reason={t('body.imageUndecodable')}
+            saving={saving}
+            onSave={onSave ?? (() => {})}
+            parityId={paneParityId}
+          />
+        );
+      }
+      return (
+        <ImageView
+          bytes={bytes}
+          mediaType={mediaType}
+          onLoad={setImageSize}
+          onError={() => setImageFailed(true)}
+          parityId={paneParityId}
+        />
+      );
+    }
+    if (format.kind === 'form' && mode === 'default') {
+      return <FormView fields={fields} parityId={paneParityId} />;
+    }
+    return (
+      <CodeViewer
+        ref={viewerRef}
+        value={mode === 'default' ? pretty : text}
+        language={mode === 'raw' && format.kind === 'form' ? 'plaintext' : format.language}
+        compact={compact}
+        parityId={paneParityId}
+      />
+    );
+  }
+}

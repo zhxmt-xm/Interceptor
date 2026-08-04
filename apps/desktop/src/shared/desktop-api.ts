@@ -32,7 +32,12 @@ import type {
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
 
-export { BODY_PREVIEW_MAX_BYTES } from '@interceptor/core-protocol';
+export {
+  BODY_PREVIEW_MAX_BYTES,
+  FORMAT_AUTO_MAX_BYTES,
+  FORMAT_MAX_BYTES,
+  IMAGE_PREVIEW_MAX_BYTES,
+} from '@interceptor/core-protocol';
 
 export type {
   BreakpointEdit,
@@ -417,6 +422,7 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesHits: 'rules:hits',
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
+  collectionExport: 'collection:export',
   composerSend: 'composer:send',
   breakpointList: 'breakpoint:list',
   breakpointResolve: 'breakpoint:resolve',
@@ -504,6 +510,8 @@ export interface InterceptorDesktopApi {
     expectedRevision: number,
     nodes: CollectionNode[],
   ): Promise<CollectionReplaceResult>;
+  /** 把整棵集合写成 JSON 文件；路径由 Main 的系统对话框选择，取消时返回 false。 */
+  exportCollection(nodes: CollectionNode[], title: string): Promise<boolean>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
   listBreakpoints(): Promise<BreakpointsSnapshot>;
   resolveBreakpoint(

@@ -487,7 +487,7 @@ export const views = [
       tab: 'response',
       bodyPreview: 'limited',
     },
-    designShot: 'light/capture/body-preview-limited.png',
+    designShot: 'light/capture/body-limited.png',
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
@@ -495,7 +495,7 @@ export const views = [
     targets: [
       {
         name: 'Limited body preview',
-        designSelector: '.body-preview-limited',
+        designSelector: '.bpane[data-pane="code"]',
         appSelector: '[data-parity="capture-body-preview"]',
       },
       'Showing the first 5 MB of 12 MB. The full body remains captured for export.',
@@ -512,7 +512,7 @@ export const views = [
       tab: 'response',
       bodyPreview: 'media',
     },
-    designShot: 'light/capture/body-media-save.png',
+    designShot: 'light/capture/body-media.png',
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },

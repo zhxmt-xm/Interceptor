@@ -72,7 +72,7 @@ Main/Core 通信严格区分四类状态，单条业务数据或请求失败不�
 | 通道错误 | MessagePort 真实 `remote-close`，或 `postMessage` 发送失败 | Core 以 code 1 退出；Main 从进程退出路径恢复 | 是 |
 | 进程错误 | Core 启动失败、异常退出、启动期无 ready | Main 按 startup deadline 与指数退避恢复；fatal 组合根启动失败停止重试并提示 | 是（fatal 启动失败除外） |
 
-`CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，不做运行时长度、数量、枚举或内容校验。捕获的 URL、path、headers、MIME、status text 与 Body 在 Core 存储/导出边界不截断。Live Capture Body 小于 3 MiB 驻内存，超过后 spill 到 Core 临时目录（首次跨阀时已缓存内容全量迁移进文件）；没有单正文或总量配额，磁盘 I/O 失败只跳过该正文捕获，不影响流量转发、RPC 或进程状态。Renderer Inspector 是独立展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `5 MiB`（`BODY_PREVIEW_MAX_BYTES`），文本/Hex viewport 最大 `320px`，压缩解码输出同样限制为 `5 MiB`；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
+`CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，不做运行时长度、数量、枚举或内容校验。捕获的 URL、path、headers、MIME、status text 与 Body 在 Core 存储/导出边界不截断。Live Capture Body 小于 3 MiB 驻内存，超过后 spill 到 Core 临时目录（首次跨阀时已缓存内容全量迁移进文件）；没有单正文或总量配额，磁盘 I/O 失败只跳过该正文捕获，不影响流量转发、RPC 或进程状态。Renderer Inspector 是独立展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `5 MiB`（`BODY_PREVIEW_MAX_BYTES`），压缩解码输出同样限制为 `5 MiB`；图片有独立的 `IMAGE_PREVIEW_MAX_BYTES`（16 MiB），超过或解码输出被截断时**不读字节**，因为半张图比不显示更糟；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
 
 Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保持同一 Core PID 为 running 并记录 detail，不 kill/restart；显式应用退出时的 shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
 
@@ -144,7 +144,7 @@ Main 没有 `app.relaunch()` 或自重启路径。TLS ready 初始化失败保�
 
 - **视图状态**：Zustand 持有当前 Core 的全部 `CaptureExchangeSummary` + id索引、filter、selection、scrollTop、Inspector tab/width；header/body 不进入 Renderer 全局状态。
 - **数据管线**：`useCaptureData` 常驻 App，跨 feature 持续接收事件；bootstrap/重连以500条分页批次同步当前 Core 全量 summary，过滤完全在 Renderer 派生。Stop/Start 保留行，Core generation 变化或 Clear 才清空。
-- **渲染**：`RequestList` 用固定 52px TanStack Virtual 行。完整 header/body/WS/gRPC payload 留在 Core；Renderer 的文本/结构化 `BodyView`、WebSocket 行预览和 WS/gRPC Copy 只读取前 `5 MiB`，CodeMirror/Hex 在最大 `320px` viewport 内滚动。BodyView 继续提供 Auto/Text/JSON/Hex、UTF-8 探测、JSON pretty print 与响应式 hex；超限时明确显示预览大小与完整大小。`video/*`/`audio/*` 不预览字节，通过 `body.export.start` 在 Core 流式保存完整编码正文。
+- **渲染**：`RequestList` 用固定 52px TanStack Virtual 行。完整 header/body/WS/gRPC payload 留在 Core；Renderer 的文本/结构化正文只读取前 `5 MiB`，正文查看器统一由共享内核 `components/BodyViewer/` 渲染（Capture / Composer / WS / gRPC 同一实现）。**内容类型与查看档位是两个独立维度**：类型由 MIME + 内容探测决定并锁定 MIME/体积标签，档位只决定渲染方式——JSON `Pretty/Tree/Raw/Hex`、代码 `Code/Raw/Hex`、图片 `Preview/Hex`、Markdown `Preview/Split/Source/Hex`、urlencoded `Form/Raw/Hex`、二进制 `Text/Hex`、音视频无档位。Hex 逐行虚拟化，JSON Tree 虚拟化且可右键复制 value/object/path，代码档的 Format 由 Monaco 语言服务（XML 由 `xml-formatter`）提供并受 `FORMAT_AUTO_MAX_BYTES`/`FORMAT_MAX_BYTES` 约束；超限时明确显示预览大小与完整大小。`video/*`/`audio/*` 与超限图片不预览字节，通过 `body.export.start` 在 Core 流式保存完整编码正文。
 - **窄 API**：`shared/desktop-api.ts` 暴露 Capture/body 读取与 HAR transfer 意图；Main 做边界校验后转交 CoreRuntime。文件路径只由 Main 系统对话框产生，Renderer 不获得 path/readFile/writeFile。
 
 ## 客户端应用归属架构（2026-07-31，已落地，仅 Windows）

@@ -10,8 +10,8 @@ import type {
 } from '../../../../shared/desktop-api';
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
-import { Count, cx, IconButton, Segmented } from '../../../components';
-import { readHeader, sizeLabel } from '../utils';
+import { Count, cx, IconButton, Segmented, sizeLabel } from '../../../components';
+import { readHeader } from '../utils';
 import { GrpcMessagePayload } from './GrpcMessagePayload';
 import { useGrpcMessages } from './useGrpcMessages';
 import styles from './GrpcMessages.module.css';

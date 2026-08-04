@@ -20,13 +20,12 @@ import type {
   RuleActionType,
 } from '../../../../shared/desktop-api';
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
-import { cx, MethodBadge } from '../../../components';
+import { cx, MethodBadge, sizeLabel } from '../../../components';
 import { useCaptureStore } from '../data/captureStore';
 import {
   displayBytes,
   displayPath,
   protocolLabel,
-  sizeLabel,
   statusKind,
   statusLabel,
   timeLabel,

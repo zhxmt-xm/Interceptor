@@ -1,4 +1,5 @@
 ﻿export { cx } from './share/cx';
+export { sizeLabel } from './share/sizeLabel';
 export { useClipboardCopy } from './share/useClipboardCopy';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
@@ -16,6 +17,23 @@ export { SectionHeader, type SectionHeaderProps } from './SectionHeader/SectionH
 export { StatusBadge, type StatusBadgeProps } from './StatusBadge/StatusBadge';
 export { Chip, type ChipProps } from './Chip/Chip';
 export { CodeViewer, type CodeViewerProps } from './CodeViewer/CodeViewer';
+export { BodyViewer, type BodyViewerProps } from './BodyViewer/BodyViewer';
+export { UnavailableBody } from './BodyViewer/UnavailableBody/UnavailableBody';
+export {
+  type BodyKind,
+  type BodyLanguage,
+  type BodyMode,
+  bodyFormat,
+  bodyLanguage,
+  formatMediaType,
+  isImageMime,
+  isJsonMime,
+  isMediaMime,
+  isSvgMime,
+  isTextMime,
+  looksLikeText,
+} from './BodyViewer/bodyFormats';
+export { formatJsonBody, parseFormBody, toHexDump } from './BodyViewer/bodyText';
 export { Timeline, type TimelineEntry, type TimelineProps } from './Timeline/Timeline';
 export { StatItem, type StatItemProps } from './StatItem/StatItem';
 export { Count, type CountProps } from './Count/Count';

@@ -7,6 +7,16 @@ export const CORE_PROTOCOL_VERSION = 1 as const;
  *  超出部分只影响预览，用户仍可经 Save body 导出完整内容。 */
 export const BODY_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
 
+/** 图片必须完整才能解码，半截字节渲染出来是坏图，所以它有独立于文本的上限。
+ *  超过时不读字节，直接给元信息 + Save body。 */
+export const IMAGE_PREVIEW_MAX_BYTES = 16 * 1024 * 1024;
+
+/** 打开即格式化的上限；再大就只给按钮，避免用户为一次未必需要的解析干等。 */
+export const FORMAT_AUTO_MAX_BYTES = 2 * 1024 * 1024;
+
+/** 超过这个体积不提供格式化：解析时间与内存都不可接受。 */
+export const FORMAT_MAX_BYTES = 8 * 1024 * 1024;
+
 export interface EchoCommand {
   type: 'echo';
   payload: {

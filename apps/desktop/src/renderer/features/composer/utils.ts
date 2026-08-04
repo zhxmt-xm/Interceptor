@@ -20,7 +20,6 @@ import type {
   ComposerFieldRow,
   ComposerTiming,
   FolderMenuAnchor,
-  ResponseBodyMode,
 } from './interfaces';
 
 let sequence = 0;
@@ -255,30 +254,6 @@ export function readHeader(
   )?.value;
 }
 
-/** 响应正文的 Monaco 语言：auto 按 content-type 推断。 */
-export function responseLanguage(
-  response: ComposerResponse,
-  mode: ResponseBodyMode,
-): string {
-  if (mode === 'json') {
-    return 'json';
-  }
-  if (mode === 'text' || mode === 'hex') {
-    return 'plaintext';
-  }
-  const contentType = readHeader(response, 'content-type') ?? '';
-  if (/json/i.test(contentType)) {
-    return 'json';
-  }
-  if (/html/i.test(contentType)) {
-    return 'html';
-  }
-  if (/xml/i.test(contentType)) {
-    return 'xml';
-  }
-  return 'plaintext';
-}
-
 /** JSON 正文缩进展示；解析失败时原样返回。 */
 export function formatJson(text: string): string {
   const trimmed = text.trim();
@@ -290,38 +265,6 @@ export function formatJson(text: string): string {
   } catch {
     return text;
   }
-}
-
-/** 十六进制视图：每行 16 字节，左侧偏移右侧可打印字符。 */
-export function formatHex(bytes: Uint8Array): string {
-  const lines: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += 16) {
-    const chunk = bytes.subarray(offset, offset + 16);
-    const hex = [...chunk]
-      .map((byte) => byte.toString(16).padStart(2, '0'))
-      .join(' ')
-      .padEnd(47, ' ');
-    const ascii = [...chunk]
-      .map((byte) => (byte >= 0x20 && byte < 0x7f ? String.fromCharCode(byte) : '.'))
-      .join('');
-    lines.push(`${offset.toString(16).padStart(8, '0')}  ${hex}  ${ascii}`);
-  }
-  return lines.join('\n');
-}
-
-/** 按模式渲染响应正文；正文以字节传回，文本档统一按 UTF-8 解码。 */
-export function renderResponseBody(
-  response: ComposerResponse,
-  mode: ResponseBodyMode,
-): string {
-  if (mode === 'hex') {
-    return formatHex(response.body);
-  }
-  const text = new TextDecoder().decode(response.body);
-  if (mode === 'text') {
-    return text;
-  }
-  return responseLanguage(response, mode) === 'json' ? formatJson(text) : text;
 }
 
 /** 从响应头解析 Set-Cookie 行。 */

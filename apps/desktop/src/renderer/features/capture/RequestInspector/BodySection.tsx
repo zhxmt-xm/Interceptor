@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
-import { sizeLabel, suggestedBodyFileName, typeLabel } from '../utils';
+import { sizeLabel } from '../../../components';
+import { suggestedBodyFileName, typeLabel } from '../utils';
 
 import styles from './BodySection.module.css';
 import { BodyView } from './BodyView';

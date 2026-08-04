@@ -1,16 +1,23 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
-// Only the languages bodyContent can select are registered; the package root would
-// pull in all ~90 Monaco languages. JSON uses the full service so folding ranges are
-// structural, the rest only need their tokenizer.
-import 'monaco-editor/languages/features/json/register';
-import 'monaco-editor/languages/definitions/css/register';
-import 'monaco-editor/languages/definitions/html/register';
-import 'monaco-editor/languages/definitions/javascript/register';
+// Only the languages the body viewer can select are registered; the package root would
+// pull in all ~90 Monaco languages. JSON/CSS/HTML/TypeScript use the full language
+// services because those ship the formatters and structural folding; the rest only
+// have a tokenizer, so they get syntax colour and nothing else.
+import { jsonDefaults } from 'monaco-editor/languages/features/json/register';
+import { cssDefaults } from 'monaco-editor/languages/features/css/register';
+import { htmlDefaults } from 'monaco-editor/languages/features/html/register';
+import {
+  javascriptDefaults,
+  typescriptDefaults,
+} from 'monaco-editor/languages/features/typescript/register';
 import 'monaco-editor/languages/definitions/markdown/register';
 import 'monaco-editor/languages/definitions/xml/register';
 import 'monaco-editor/languages/definitions/yaml/register';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import JsonWorker from 'monaco-editor/languages/features/json/json.worker?worker';
+import CssWorker from 'monaco-editor/languages/features/css/css.worker?worker';
+import HtmlWorker from 'monaco-editor/languages/features/html/html.worker?worker';
+import TsWorker from 'monaco-editor/languages/features/typescript/ts.worker?worker';
 
 /** Token hexes duplicated from styles/global.css: Monaco themes are declared in JS
  *  and cannot read CSS custom properties, so the two must be kept in sync by hand. */
@@ -23,13 +30,36 @@ const THEMES = {
 
 export type MonacoThemeMode = keyof typeof THEMES;
 
-// JSON folding ranges are computed in a worker; it is bundled locally so the strict
-// CSP never needs network or CDN access.
-const WORKERS: Record<string, new () => Worker> = { json: JsonWorker };
+// Each language service runs in its own worker; missing an entry here silently falls
+// back to the generic editor worker and the service stops working.
+const WORKERS: Record<string, new () => Worker> = {
+  json: JsonWorker,
+  css: CssWorker,
+  scss: CssWorker,
+  less: CssWorker,
+  html: HtmlWorker,
+  handlebars: HtmlWorker,
+  razor: HtmlWorker,
+  typescript: TsWorker,
+  javascript: TsWorker,
+};
 
 (globalThis as { MonacoEnvironment?: monaco.Environment }).MonacoEnvironment = {
   getWorker: (_workerId: string, label: string) => new (WORKERS[label] ?? EditorWorker)(),
 };
+
+// These are read-only views of someone else's traffic: validation would only burn
+// worker CPU to draw squiggles the design system already hides.
+const NO_DIAGNOSTICS = {
+  noSemanticValidation: true,
+  noSyntaxValidation: true,
+  noSuggestionDiagnostics: true,
+} as const;
+javascriptDefaults.setDiagnosticsOptions(NO_DIAGNOSTICS);
+typescriptDefaults.setDiagnosticsOptions(NO_DIAGNOSTICS);
+jsonDefaults.setDiagnosticsOptions({ validate: false, schemaValidation: 'ignore' });
+cssDefaults.setOptions({ validate: false });
+htmlDefaults.setOptions({});
 
 for (const [name, token] of Object.entries(THEMES)) {
   const punct = `#${token.punct}`;
@@ -114,8 +144,8 @@ export const VIEWER_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions 
   // Monaco measures the font itself, so the --font-mono stack is spelled out here.
   fontFamily: '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
   fontSize: 12,
-  lineHeight: 20,
-  padding: { top: 13, bottom: 13 },
+  lineHeight: 21,
+  padding: { top: 16, bottom: 16 },
   wordWrap: 'on',
   scrollBeyondLastLine: false,
   automaticLayout: true,

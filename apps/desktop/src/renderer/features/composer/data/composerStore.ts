@@ -9,7 +9,6 @@ import type {
   FolderMenuAnchor,
   HistoryEntry,
   RequestTab,
-  ResponseBodyMode,
   ResponseTab,
 } from '../interfaces';
 import {
@@ -30,7 +29,6 @@ const INITIAL_RUNTIME: DocumentRuntime = {
   sendError: null,
   requestTab: 'headers',
   responseTab: 'body',
-  responseBodyMode: 'auto',
 };
 
 interface ComposerStore {
@@ -90,7 +88,6 @@ interface ComposerStore {
   setActiveRequest(requestId: string): void;
   setRequestTab(requestId: string, tab: RequestTab): void;
   setResponseTab(requestId: string, tab: ResponseTab): void;
-  setResponseBodyMode(requestId: string, mode: ResponseBodyMode): void;
 
   beginSend(requestId: string): void;
   sendSucceeded(
@@ -241,11 +238,6 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   setResponseTab: (requestId, responseTab) =>
     set((state) => ({
       runtimes: patchRuntime(state.runtimes, requestId, { responseTab }),
-    })),
-
-  setResponseBodyMode: (requestId, responseBodyMode) =>
-    set((state) => ({
-      runtimes: patchRuntime(state.runtimes, requestId, { responseBodyMode }),
     })),
 
   beginSend: (requestId) =>

@@ -9,8 +9,8 @@ import type {
 } from '../../../../shared/desktop-api';
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
-import { Count, cx, IconButton, Segmented, Switch } from '../../../components';
-import { filterDirection, frameRelativeTime, sizeLabel } from '../utils';
+import { Count, cx, IconButton, Segmented, sizeLabel, Switch } from '../../../components';
+import { filterDirection, frameRelativeTime } from '../utils';
 import { FramePayload } from './FramePayload';
 import { FramePreview } from './FramePreview';
 import { useWebSocketFrames } from './useWebSocketFrames';

@@ -1,0 +1,118 @@
+/* Rendered rich text, not an editor: no gutter, no mono body font. */
+.host {
+  overflow: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.host > :first-child {
+  margin-top: 0;
+}
+
+.host h1 {
+  margin: 20px 0 10px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.host h2 {
+  margin: 18px 0 8px;
+  color: var(--text);
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.host h3,
+.host h4,
+.host h5,
+.host h6 {
+  margin: 16px 0 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.host p,
+.host ul,
+.host ol {
+  margin: 0 0 10px;
+}
+
+.host ul,
+.host ol {
+  padding-left: 20px;
+}
+
+.host a {
+  color: var(--accent);
+}
+
+.host code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--hover);
+  color: var(--purple);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.host pre {
+  overflow-x: auto;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.host pre code {
+  padding: 0;
+  background: transparent;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+.host blockquote {
+  margin: 0 0 10px;
+  padding-left: 11px;
+  border-left: 2px solid var(--accent);
+  color: var(--text-3);
+}
+
+.host table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.host th,
+.host td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.host th {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.host td {
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.host hr {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}

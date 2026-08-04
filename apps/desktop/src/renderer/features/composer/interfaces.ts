@@ -19,9 +19,6 @@ export type RequestTab = 'query' | 'headers' | 'body' | 'auth';
 /** 响应区的四个页签。 */
 export type ResponseTab = 'body' | 'headers' | 'cookies' | 'timing';
 
-/** 响应正文的呈现模式；auto 按 content-type 推断语言。 */
-export type ResponseBodyMode = 'auto' | 'text' | 'json' | 'hex';
-
 /** 一次已完成发送的重放记录；只存在内存，与 Collection 互不写入。 */
 export interface HistoryEntry {
   readonly id: string;
@@ -40,7 +37,6 @@ export interface DocumentRuntime {
   readonly sendError: string | null;
   readonly requestTab: RequestTab;
   readonly responseTab: ResponseTab;
-  readonly responseBodyMode: ResponseBodyMode;
 }
 
 /** 目录操作菜单的锚点：菜单绝对定位在 Collection 分栏内。 */

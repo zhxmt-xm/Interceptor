@@ -1,0 +1,51 @@
+/* Same grid metrics as the Capture list header: 34px rows, one rule under the head only. */
+.host {
+  display: flex;
+  overflow: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.head,
+.row {
+  display: grid;
+  align-items: center;
+  height: 34px;
+  flex: 0 0 34px;
+  gap: 12px;
+  padding: 0 14px;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+}
+
+.head {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.row:hover {
+  background: var(--hover);
+}
+
+.name {
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
