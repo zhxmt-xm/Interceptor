@@ -142,7 +142,11 @@ const designPage = await browser.newPage({
   },
   colorScheme: 'light',
 });
-await designPage.goto(designIndexUrl, { waitUntil: 'networkidle' });
+// Monaco loads from a CDN and spins its workers up through blob URLs, so `networkidle`
+// never settles once the design page carries more than a couple of editors; wait for the
+// same readiness flag shoot.mjs uses instead.
+await designPage.goto(designIndexUrl, { waitUntil: 'load', timeout: 120_000 });
+await designPage.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
 await designPage.addStyleTag({
   content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}',
 });
