@@ -142,6 +142,7 @@ export const AUTOMATION_IDS = {
     search: 'rules.search',
     create: 'rules.create',
     createFolder: 'rules.create-folder',
+    exportRules: 'rules.export',
     apply: 'rules.apply',
     reload: 'rules.reload',
     more: 'rules.more',
@@ -186,6 +187,7 @@ export const AUTOMATION_IDS = {
     newFolder: 'composer.collection.new-folder',
     newRequest: 'composer.collection.new-request',
     exportCollection: 'composer.collection.export',
+    collectionSearch: 'composer.collection.search',
     toggleCollection: 'composer.collection.toggle',
     protocol: {
       auto: 'composer.protocol.auto',

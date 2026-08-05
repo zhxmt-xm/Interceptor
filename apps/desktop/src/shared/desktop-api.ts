@@ -432,6 +432,7 @@ export const DESKTOP_IPC_CHANNELS = {
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
   collectionExport: 'collection:export',
+  rulesExport: 'rules:export',
   composerSend: 'composer:send',
   breakpointList: 'breakpoint:list',
   breakpointResolve: 'breakpoint:resolve',
@@ -525,6 +526,8 @@ export interface InterceptorDesktopApi {
   ): Promise<CollectionReplaceResult>;
   /** 把整棵集合写成 JSON 文件；路径由 Main 的系统对话框选择，取消时返回 false。 */
   exportCollection(nodes: CollectionNode[], title: string): Promise<boolean>;
+  /** 把整棵规则树导出成 JSON；落盘路径由 Main 的系统对话框选择。 */
+  exportRules(nodes: RuleNode[], title: string): Promise<boolean>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
   listBreakpoints(): Promise<BreakpointsSnapshot>;
   resolveBreakpoint(

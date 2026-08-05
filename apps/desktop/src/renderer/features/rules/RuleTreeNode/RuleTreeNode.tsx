@@ -1,5 +1,6 @@
 import { isFolder, type RuleNode } from '@interceptor/core-protocol';
 
+import type { TreeSearchResult } from '../../../components';
 import type { TreeDragApi } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
 import { RuleFolderRow } from '../RuleFolderRow/RuleFolderRow';
@@ -12,6 +13,7 @@ export interface RuleTreeNodeProps {
   node: RuleNode;
   depth: number;
   drag: TreeDragApi;
+  search: TreeSearchResult;
 }
 
 /** 规则树的一个节点：目录渲染成可折叠分组，规则渲染成单行。 */
@@ -19,13 +21,21 @@ export function RuleTreeNode({
   node,
   depth,
   drag,
-}: RuleTreeNodeProps): React.JSX.Element {
-  const expanded = useRulesStore((state) => state.expandedFolders.includes(node.id));
+  search,
+}: RuleTreeNodeProps): React.JSX.Element | null {
+  const storedExpanded = useRulesStore((state) => state.expandedFolders.includes(node.id));
   const renaming = useRulesStore((state) => state.renamingNodeId === node.id);
   const selectedId = useRulesStore((state) => state.selectedId);
   const hits = useRulesStore((state) => state.hits);
   const select = useRulesStore((state) => state.select);
   const toggleRule = useRulesStore((state) => state.toggleRule);
+
+  if (search.visible !== null && !search.visible.has(node.id)) {
+    return null;
+  }
+  // 搜索期间强制展开，否则命中的行藏在折叠目录里等于没搜到
+  const expanded = search.visible !== null || storedExpanded;
+  const keyword = search.matched.has(node.id) ? search.keyword : '';
 
   if (renaming) {
     return <RuleRenameRow nodeId={node.id} name={node.name} depth={depth} />;
@@ -39,6 +49,7 @@ export function RuleTreeNode({
         hits={hits[node.id] ?? 0}
         selected={node.id === selectedId}
         dragging={drag.draggingId === node.id}
+        keyword={keyword}
         onSelect={select}
         onToggle={toggleRule}
         dragProps={drag.rowProps(node.id)}
@@ -54,12 +65,19 @@ export function RuleTreeNode({
         expanded={expanded}
         dragging={drag.draggingId === node.id}
         dropTarget={drag.intoFolderId === node.id}
+        keyword={keyword}
         dragProps={drag.rowProps(node.id)}
       />
       {expanded ? (
         <div className={styles.children}>
           {node.children.map((child) => (
-            <RuleTreeNode key={child.id} node={child} depth={depth + 1} drag={drag} />
+            <RuleTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              drag={drag}
+              search={search}
+            />
           ))}
         </div>
       ) : null}

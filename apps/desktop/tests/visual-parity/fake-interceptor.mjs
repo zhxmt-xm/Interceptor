@@ -1000,6 +1000,7 @@ export function installFakeInterceptor({
       return { ok: true, revision: collectionRevision };
     },
     exportCollection: async () => true,
+    exportRules: async () => true,
     sendComposerRequest: async () => ({
       ...fixture.composerResponse,
       body: new Uint8Array(fixture.composerResponse.body),

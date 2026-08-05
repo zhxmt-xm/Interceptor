@@ -1,6 +1,8 @@
 ﻿export { cx } from './share/cx';
 export { sizeLabel } from './share/sizeLabel';
 export { useClipboardCopy } from './share/useClipboardCopy';
+export { searchTree, type TreeSearchResult } from './share/treeSearch';
+export { HighlightedName, type HighlightedNameProps } from './HighlightedName/HighlightedName';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
 export { Switch, type SwitchProps } from './Switch/Switch';

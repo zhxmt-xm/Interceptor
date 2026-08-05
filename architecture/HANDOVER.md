@@ -12,26 +12,45 @@
 
 ## 当前里程碑
 
-**上游代理链路修复与自愈**已完成，详细设计与实现见：
+**Capture / Composer / Rules 交互改进**进行中。需求清单在 [backlog/idea.md](backlog/idea.md) 的「Bugs或改进」一节，共 14 条。
 
-- [features/settings.md](features/settings.md) § 3.4 上游代理链式转发
-- [features/capture.md](features/capture.md) § 8.4 不阻塞捕获管线
-- [platform/processes.md](platform/processes.md) 进程与通信
+### 设计稿：已定稿
 
-起因是接管系统代理后整机断网。三个彼此独立的缺陷叠加，任一个单独存在都足以让流量绕过公司上游：
+`design/app/` 已按需求改完并重出 218 张 shots。本轮改动：
 
-1. `<local>` 展开出裸 `::1`，`matchesNoProxy` 把空 host 当作匹配一切 → **所有**请求判定为 bypass，上游被整体跳过。
-2. Mockttp `passthroughSocket` 把 `net.connect` 写死 → MITM 关闭时全部 HTTPS 直连。
-3. 接管时写回的 bypass 只有 `<local>`，它不匹配 IP 字面量 → 本机与内网流量被推进代理。
+- Rules 规则行高修回 42px（`9a52780` 删除 RULES LIST 切换器时漏掉了 `tree-url` 的行高，掉回基础值 30px）。
+- Rules 顶栏删 Apply 与 More（保存改由 editor 承担），补导出按钮；左树背景改为 `--filter`，与 Composer 一致。
+- Inspector 分组可折叠：chevron 靠右，竖线与标题位置不动。顺带修掉 `.app.shell-v2 .scroll .sh::after` 写死 `left: 10px` 导致分隔线一直比竖线偏右的老问题。
+- 正文全屏：13 处工具栏加 ⛶（Capture 请求/响应各档位、WS、gRPC、Composer 请求与响应），1060×660 dialog；MIME 去掉 charset 腾位置。
+- Composer 树对齐 Rules：侧栏 216→320、行高 30、字号 12.5、间距 4、缩进移到行内、计数列对齐 `.rhit`。
+- Composer 顶栏换成搜索框 + 新建/新建目录/导出，与 Rules 同一组图标。
+- 两棵树补右键菜单（目录 4 项、叶子 2–3 项），菜单挂在 `.app` 下避免被侧栏裁剪。
+- 拖拽逻辑参数化为 `installTreeDrag`，两棵树共用；顺带修了「不能拖到上级目录」——原判定 `node.contains(dragNode)` 把祖先目录整个禁掉了，应为 `dragNode.contains(node)`。
+- 两棵树接上搜索过滤与命中高亮，规则见 [platform/renderer.md](platform/renderer.md) § 6.2。
 
-本轮完成：
+### 产品代码：进行中
 
-- `patches/mockttp+4.5.0.patch` 纯增量补 `passthroughProxyConfig`，为未解密直通建立 CONNECT 隧道；`--reverse` 后文件哈希与原始一致。
-- `websocket-bridge.ts` 注入 `HttpsProxyAgent`，补上第三条出网路径；`https-proxy-agent` 收敛为单一 7.0.6（root 的 5.0.1 无 `connect()`，必须在 proxy-core 显式声明）。
-- `UpstreamProbe` 每 1s 探测上游，不可达自动降级直连、恢复后自动升级，只在状态翻转时下发与广播。
-- Capture 状态栏新增 `upstream host:port` / `direct`，降级转黄并给提示；15 种语言补齐。
-- `appPending` 让 Application 分栏在归属反查期间不再闪 Unknown。
-- 设计稿同步：`design/app/` 新增 upstream 状态（on/down/none），删除已废弃的 RULES LIST 切换器，重出 218 张图。
+已完成：
+
+- `Kv.module.css`：rule effect tag 只有 button 形态才给 `cursor: pointer`。
+- `core-protocol/tree.ts`：新增 `parentFolderId`。
+- `components/share/treeSearch.ts` + `components/HighlightedName/`：两棵树共用的搜索与命中高亮，规则见 [platform/renderer.md](platform/renderer.md) § 6.2。
+- `composerStore`：目录与请求选中互斥；新建落点改为「选目录进目录、选请求跟它平级、都没选放根」；新增 `clearSelection`。
+- Composer：顶栏换成搜索框 + 新建/新建目录/导出（图标与 Rules 同一组）；点空白取消选择；目录名与请求名双击原地改名；树接上搜索过滤与高亮；侧栏 216→320，行高 30、字号 12.5、间距 4、缩进移到行内、计数列对齐 `.rhit`。
+- Rules：顶栏删 Apply 与 More、补导出；**保存入口移到 editor 头部的 Save 按钮**（顶栏删了 Apply 之后必须有替代入口，否则规则改完无法应用）；搜索由「跨目录拍平 + 匹配 matcher/action JSON」改为「保留树结构 + 只匹配名称」，与 Composer 一致。
+- 规则导出链路：`rules:export` 通道 + Main `showSaveDialog` 落盘 + Preload `exportRules`，形态与集合导出一致，不经 Core。
+- i18n 15 语言补齐 `rules.exportRules` / `rules.searchEmpty` / `rules.save` / `composer.searchRequests` / `composer.searchEmpty`。
+
+未开始（按优先级）：
+
+1. 两棵树的右键菜单，**用 Ant Design `Dropdown`**（`trigger={['contextMenu']}`，挂 body 上不会被面板裁剪，参考 `RequestRow`）；目录 more 按钮与右键共用同一个菜单。设计稿已画好三个菜单的内容。
+2. Rules 创建子规则/子目录跟随选中项（Composer 侧已完成，Rules 的根级按钮仍固定建到根）。
+3. Inspector 分组折叠；正文全屏 dialog（设计稿 13 处按钮 + 1060×660 弹层）。
+4. `Format 按钮点了没反应` 待诊断——Monaco 的 HTML/CSS 服务与 MIME 判断都是好的，2 MiB 内还会自动格式化，怀疑是「已经格式化过所以看不出变化」，需要在真实 app 里实测。
+
+### 上一轮已完成
+
+上游代理链路修复与自愈，详见 [features/settings.md](features/settings.md) § 3.4。三个叠加根因：`<local>` 展开出裸 `::1` 让 `matchesNoProxy` 匹配一切、Mockttp `passthroughSocket` 写死 `net.connect`、写回的 bypass 缺 IP 字面量。
 
 ## Git 与工作树
 
@@ -53,19 +72,21 @@ git -c core.whitespace=cr-at-eol diff --check
 
 - 四 workspace typecheck：通过。
 - Tests：Desktop 188、Proxy Core 248、Protocol 15、MCP 45，共 496 项通过。
-- Proxy Core 全套使用 `--no-file-parallelism`，避免大压缩流、真实文件 I/O 与随机端口并行产生 5 秒假超时；跟 desktop 并行跑时 `h2.integration.test.ts` 会假失败。
-- 真实链路手工验证：dev 实例接管后经上游 7890 访问外网返回 200，netstat 确认 Core→7890 有连接；关掉上游进程后 1s 内降级直连，重启后自动恢复。
-- `npm run build:core`：通过，`https-proxy-agent` v7 已内联进 `entry.cjs`。
+- Proxy Core 全套使用 `--no-file-parallelism`。`upstream-probe.test.ts` 用真实 timer（1s 间隔 + 500ms 超时），跟别的套件抢 CPU 时会假失败，单独跑稳定 5/5。
+- Windows x64 package：通过。
+- Artifact audit：1,293 files / 391,243,058 bytes，通过。
+- 真实 packaged smoke：1/1 通过。修了一处上一轮遗留——`onSystemProxyStatusChange` 没加进 smoke 的 Preload API 期望列表。
 - `npm audit --omit=dev`：0 vulnerabilities。
-- **本轮未跑**：Visual parity、Windows package、artifact audit、packaged smoke。本轮改了 Main / Preload / IPC 契约，按下节要求必须先补齐再进新功能。
-- 上一轮基线（仍适用，未重跑）：Visual parity 53 views / 375 targets / 346 matched / 29 missing / 226 flagged / 平均像素差 2.67%；Artifact audit 1,293 files / 391,180,632 bytes；packaged smoke 1/1。
+- `git -c core.whitespace=cr-at-eol diff --check`：干净。
+- **本轮未跑**：Visual parity。Composer 与 Rules 的 DOM/尺寸都变了，parity 基线需要连同右键菜单一起重出。
 
 ## 剩余工作
 
 ### 下一动作
 
-1. **先补打包链验证**。本轮改了 Main（`main.ts`、`system-proxy/`）、Preload 与 `system-proxy:status-changed` IPC 契约，按本文末尾「涉及打包边界」命令跑 package / artifact audit / smoke。
-2. 然后按 idea 进入 **Breakpoint 交互重构**：
+1. 接着做产品代码剩余的 4 项（见上「产品代码」小节），右键菜单优先。
+2. 全部做完后重出 Visual parity 基线，两棵树的 DOM 与尺寸都变了。
+3. 之后按 idea 进入 **Breakpoint 交互重构**：
    1. 读 [features/breakpoints.md](features/breakpoints.md)。
    2. 读 `.github/skills/ui-design-mockup/SKILL.md`。
    3. 先在 `design/app/` 定稿交互并出图，再修改 React；不要直接从产品代码开始。

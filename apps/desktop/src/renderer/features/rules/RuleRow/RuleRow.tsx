@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
-import { cx, Switch } from '../../../components';
+import { cx, HighlightedName, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import type { ChipKind } from '../interfaces';
 import { deriveChips, isRuleComplete, matchSummary } from '../utils';
@@ -26,6 +26,8 @@ export interface RuleRowProps {
   hits: number;
   selected: boolean;
   dragging: boolean;
+  /** 搜索关键词；空串表示不高亮。 */
+  keyword: string;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   /** 来自 useTreeDrag：整行即拖拽源。 */
@@ -47,6 +49,7 @@ export const RuleRow = memo(function RuleRow({
   hits,
   selected,
   dragging,
+  keyword,
   onSelect,
   onToggle,
   dragProps,
@@ -85,7 +88,11 @@ export const RuleRow = memo(function RuleRow({
         />
       </span>
       <div className={styles.meta}>
-        <span className={styles.name} data-parity={`rule-name-${rule.id}`}>{rule.name}</span>
+        <HighlightedName
+          name={rule.name}
+          keyword={keyword}
+          className={styles.name}
+        />
         <span className={styles.match}>
           {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
         </span>

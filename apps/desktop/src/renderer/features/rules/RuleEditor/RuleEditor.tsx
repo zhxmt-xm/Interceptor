@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
+  Button,
   cx,
   Flyout,
   IconButton,
@@ -30,6 +31,7 @@ import {
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
+import { applyRules } from '../data/useRulesData';
 import { isRuleComplete, isRulesDirty, ruleIssues, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
@@ -50,6 +52,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const rule = useRulesStore(selectedRule);
   const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
+  const saving = useRulesStore((state) => state.saving);
   const hits = useRulesStore((state) => state.hits);
   const renameNode = useRulesStore((state) => state.renameNode);
   const toggleRule = useRulesStore((state) => state.toggleRule);
@@ -146,6 +149,15 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           size="sm"
           onClick={() => removeNode(rule.id)}
         />
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!dirty || saving}
+          onClick={() => void applyRules()}
+          automationId={AUTOMATION_IDS.rules.apply}
+        >
+          {saving ? t('rules.applying') : t('rules.save')}
+        </Button>
       </div>
 
       <div className={styles.scroll}>

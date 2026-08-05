@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { countLeaves } from '@interceptor/core-protocol';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
+import type { TreeSearchResult } from '../../../components';
+import { HighlightedName } from '../../../components';
 import { MethodBadge } from '../../../components/MethodBadge/MethodBadge';
 import { cx } from '../../../components/share/cx';
 import type { TreeDragApi } from '../../../components/share/useTreeDrag';
@@ -16,14 +18,19 @@ import { RenameRow } from './RenameRow';
 
 export interface CollectionTreeNodeProps {
   node: CollectionNode;
+  /** 树深度，决定行内缩进；顶层为 0。 */
+  depth: number;
   drag: TreeDragApi;
+  search: TreeSearchResult;
 }
 
 /** 集合树的一个节点：目录渲染成可折叠分组，请求渲染成单行。 */
 export function CollectionTreeNode({
   node,
+  depth,
   drag,
-}: CollectionTreeNodeProps): React.JSX.Element {
+  search,
+}: CollectionTreeNodeProps): React.JSX.Element | null {
   const { t } = useTranslation();
   const expandedFolders = useComposerStore((state) => state.expandedFolders);
   const targetFolderId = useComposerStore((state) => state.targetFolderId);
@@ -33,7 +40,13 @@ export function CollectionTreeNode({
   const toggleFolder = useComposerStore((state) => state.toggleFolder);
   const setTargetFolder = useComposerStore((state) => state.setTargetFolder);
   const setFolderMenu = useComposerStore((state) => state.setFolderMenu);
+  const setRenamingNode = useComposerStore((state) => state.setRenamingNode);
   const openRequest = useComposerStore((state) => state.openRequest);
+
+  if (search.visible !== null && !search.visible.has(node.id)) {
+    return null;
+  }
+  const keyword = search.matched.has(node.id) ? search.keyword : '';
 
   if (renamingNodeId === node.id) {
     return <RenameRow nodeId={node.id} name={node.name} />;
@@ -45,26 +58,33 @@ export function CollectionTreeNode({
         type="button"
         data-tree-row={node.id}
         data-automation-id={AutomationIdFactory.composerCollectionRequest(node.id)}
+        style={{ '--depth': depth } as React.CSSProperties}
         className={cx(
           styles.item,
           activeRequestId === node.id && styles.active,
           drag.draggingId === node.id && styles.dragging,
         )}
         onClick={() => openRequest(node.id)}
+        onDoubleClick={() => setRenamingNode(node.id)}
         {...drag.rowProps(node.id)}
       >
         <MethodBadge method={node.method} className={styles.itemMethod} />
-        <span className={styles.itemName}>{node.name}</span>
+        <HighlightedName
+          name={node.name}
+          keyword={keyword}
+          className={styles.itemName}
+        />
       </button>
     );
   }
 
-  const expanded = expandedFolders.includes(node.id);
+  const expanded = search.visible !== null || expandedFolders.includes(node.id);
   return (
     <section className={styles.group}>
       <div
         data-tree-row={node.id}
         data-automation-id={AutomationIdFactory.composerCollectionFolder(node.id)}
+        style={{ '--depth': depth } as React.CSSProperties}
         className={cx(
           styles.groupHead,
           targetFolderId === node.id && styles.target,
@@ -93,8 +113,13 @@ export function CollectionTreeNode({
           className={styles.nameButton}
           data-automation-id={AutomationIdFactory.composerCollectionFolderTarget(node.id)}
           onClick={() => setTargetFolder(node.id)}
+          onDoubleClick={() => setRenamingNode(node.id)}
         >
-          <span className={styles.groupName}>{node.name}</span>
+          <HighlightedName
+            name={node.name}
+            keyword={keyword}
+            className={styles.groupName}
+          />
         </button>
         <span className={styles.groupCount}>{countLeaves(node.children)}</span>
         <button
@@ -117,7 +142,13 @@ export function CollectionTreeNode({
       {expanded ? (
         <div className={styles.groupBody}>
           {node.children.map((child) => (
-            <CollectionTreeNode key={child.id} node={child} drag={drag} />
+            <CollectionTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              drag={drag}
+              search={search}
+            />
           ))}
         </div>
       ) : null}

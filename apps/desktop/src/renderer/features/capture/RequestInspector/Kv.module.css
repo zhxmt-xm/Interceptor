@@ -57,6 +57,10 @@
   vertical-align: top;
   white-space: nowrap;
 }
+/* 只有能跳到规则的那种才是按钮，纯展示的 span 不该有手型 */
+button.ruleEffect {
+  cursor: pointer;
+}
 .ruleEffect[data-effect='append'] {
   border-color: color-mix(in srgb, var(--blue) 24%, transparent);
   background: color-mix(in srgb, var(--blue) 10%, transparent);

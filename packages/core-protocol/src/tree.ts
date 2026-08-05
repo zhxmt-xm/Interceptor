@@ -217,8 +217,27 @@ export function folderDepth<TLeaf extends TreeLeaf>(
   return 0;
 }
 
-/** 一个节点自身的目录高度：叶子为 0，只含叶子的目录为 1，每多一层子目录 +1。 */
-export function subtreeHeight<TLeaf extends TreeLeaf>(
+/** 节点所在目录的 id；顶层节点或找不到时都返回 null——两种情况的落点都是根。 */
+export function parentFolderId<TLeaf extends TreeLeaf>(
+  nodes: readonly TreeNode<TLeaf>[],
+  nodeId: string,
+): string | null {
+  for (const node of nodes) {
+    if (!isFolder(node)) {
+      continue;
+    }
+    if (node.children.some((child) => child.id === nodeId)) {
+      return node.id;
+    }
+    const found = parentFolderId(node.children, nodeId);
+    if (found !== null) {
+      return found;
+    }
+  }
+  return null;
+}
+
+/** 一个节点自身的目录高度：叶子为 0，只含叶子的目录为 1，每多一层子目录 +1。 */export function subtreeHeight<TLeaf extends TreeLeaf>(
   node: TreeNode<TLeaf>,
 ): number {
   if (!isFolder(node)) {

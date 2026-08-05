@@ -2,7 +2,7 @@ import { ChevronDown, Folder, MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
-import { cx } from '../../../components';
+import { cx, HighlightedName } from '../../../components';
 import type { RuleFolder } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
 import { anchorFolderMenu } from '../utils';
@@ -17,6 +17,8 @@ export interface RuleFolderRowProps {
   dragging: boolean;
   /** 拖拽落点为「移入本目录」时整行高亮。 */
   dropTarget: boolean;
+  /** 搜索关键词；空串表示不高亮。 */
+  keyword: string;
   /** 来自 useTreeDrag：整行即拖拽源。 */
   dragProps: {
     draggable: boolean;
@@ -35,6 +37,7 @@ export function RuleFolderRow({
   expanded,
   dragging,
   dropTarget,
+  keyword,
   dragProps,
 }: RuleFolderRowProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -69,7 +72,7 @@ export function RuleFolderRow({
         />
       </button>
       <Folder className={styles.icon} strokeWidth={1.9} />
-      <span className={styles.name}>{folder.name}</span>
+      <HighlightedName name={folder.name} keyword={keyword} className={styles.name} />
       <button
         type="button"
         className={styles.more}

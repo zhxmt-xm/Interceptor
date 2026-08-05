@@ -1,14 +1,15 @@
 .group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .groupHead {
   display: flex;
   align-items: center;
-  height: 28px;
-  flex: 0 0 28px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding-left: calc(var(--depth) * 26px);
   border-radius: 7px;
   color: var(--text-2);
 }
@@ -78,7 +79,7 @@
   background: transparent;
   color: inherit;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: inherit;
   text-align: left;
   cursor: pointer;
@@ -92,11 +93,13 @@
 }
 
 .groupCount {
-  padding: 0 8px;
+  min-width: 26px;
+  padding: 0 4px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   color: var(--text-3);
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
@@ -139,20 +142,20 @@
   color: var(--accent);
 }
 
+/* 缩进放在行内而不是容器上，hover 与选中背景才能铺满整列 */
 .groupBody {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-left: 11px;
+  gap: 4px;
 }
 
 .item {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 26px;
-  flex: 0 0 26px;
-  padding: 0 0 0 8px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0 8px 0 calc(8px + var(--depth) * 26px);
   border: 0;
   border-radius: 7px;
   background: transparent;

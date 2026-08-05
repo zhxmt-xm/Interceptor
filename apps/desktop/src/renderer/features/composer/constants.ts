@@ -4,7 +4,7 @@
  */
 
 /** Collection 分栏初始宽度（设计稿 216px）与拖拽下限。 */
-export const COLLECTION_WIDTH = 216;
+export const COLLECTION_WIDTH = 320;
 export const MIN_COLLECTION_WIDTH = 160;
 
 /** 窗口再窄也要给工作区留出的宽度；Collection 的拖拽上限由它推导。 */

@@ -5,6 +5,8 @@ export const composerBreakpointsEnglishMessages = {
   'composer.newSubfolder': 'New subfolder…',
   'composer.newRequest': 'New request',
   'composer.exportCollection': 'Export collection',
+  'composer.searchRequests': 'Search requests',
+  'composer.searchEmpty': 'No requests match',
   'composer.untitledFolder': 'New folder',
   'composer.renameFolder': 'Rename…',
   'composer.deleteFolder': 'Delete folder',

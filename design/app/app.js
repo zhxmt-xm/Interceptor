@@ -216,13 +216,6 @@ function setState(s = {}) {
     else delete app.dataset.composer;
   }
   if ('collection' in s) app.dataset.collection = s.collection || 'open';
-  if ('collectionMenu' in s) {
-    if (s.collectionMenu) app.dataset.collectionMenu = s.collectionMenu;
-    else {
-      delete app.dataset.collectionMenu;
-      app.querySelectorAll('.cgrp-h.menuopen').forEach((row) => row.classList.remove('menuopen'));
-    }
-  }
   if ('collectionRename' in s) {
     if (s.collectionRename) app.dataset.collectionRename = s.collectionRename;
     else delete app.dataset.collectionRename;
@@ -279,6 +272,12 @@ function setState(s = {}) {
     app.dataset.bodyMode = s.bodyMode;
     delete app.dataset.bodyState;
   }
+  if ('ctxmenu' in s) {
+    // 截图场景只给 ctx，落点缺省锚到该树的第一个目录行
+    if (s.ctxmenu) anchorMenuForScene(s.ctxmenu);
+    if (s.ctxmenu) app.setAttribute('data-ctxmenu', s.ctxmenu);
+    else app.removeAttribute('data-ctxmenu');
+  }
   if ('overlay' in s) {
     if (s.overlay) app.setAttribute('data-overlay', s.overlay);
     else app.removeAttribute('data-overlay');
@@ -298,7 +297,6 @@ function setState(s = {}) {
   }
   if ('search' in s) syncFilterBadge();
   positionFootpop();
-  positionCollectionMenu();
   positionActionPopover();
   positionRuleSelectPopover();
   positionRequestRuleMenu();
@@ -341,22 +339,6 @@ function syncCaptureRowSelection() {
     || rows.find((row) => row.dataset.body === kind)
     || rows.find((row) => row.dataset.captureRow === 'http');
   rows.forEach((row) => row.classList.toggle('sel', row === target));
-}
-// Folder actions menu hangs under the folder row that opened it; scenes fall back to a fixed folder.
-function positionCollectionMenu() {
-  const menu = app.querySelector('.cmenu');
-  if (!menu || app.dataset.collectionMenu !== 'open') return;
-  let anchor = app.querySelector('.cgrp-h.menuopen');
-  if (!anchor) {
-    anchor = app.querySelector('.cgrp[data-grp="checkout"] > .cgrp-h');
-    anchor?.classList.add('menuopen');
-  }
-  const parent = menu.offsetParent;
-  if (!anchor || !parent) return;
-  const row = anchor.getBoundingClientRect();
-  const box = parent.getBoundingClientRect();
-  menu.style.top = `${row.bottom - box.top + 4}px`;
-  menu.style.left = `${row.left - box.left + 12}px`;
 }
 
 function positionRequestRuleMenu(clientX, clientY) {
@@ -493,10 +475,33 @@ window.addEventListener('resize', positionRuleSelectPopover);
 window.addEventListener('resize', positionRequestRuleMenu);
 
 app.addEventListener('contextmenu', (e) => {
-  if (!e.target.closest('[data-request-rule-anchor]')) return;
-  e.preventDefault();
-  setState({ requestMenu: 'open' });
-  positionRequestRuleMenu(e.clientX, e.clientY);
+  const targets = [
+    { selector: '.citem', ctx: 'composer-item' },
+    { selector: '.cgrp-h', ctx: 'composer-folder' },
+    { selector: '.rrule', ctx: 'rules-rule' },
+    { selector: '.rgrp-h', ctx: 'rules-folder' },
+  ];
+  for (const target of targets) {
+    const row = e.target.closest(target.selector);
+    if (!row) continue;
+    e.preventDefault();
+    openTreeMenu(target.ctx, { x: e.clientX, y: e.clientY });
+    return;
+  }
+  setState({ ctxmenu: '' });
+});
+
+// 目录行尾的 more 按钮开同一个菜单。
+app.addEventListener('click', (e) => {
+  const more = e.target.closest('.cgrp-more, .rgrp-more');
+  if (!more) return;
+  e.stopPropagation();
+  const isComposer = more.classList.contains('cgrp-more');
+  const row = more.closest(isComposer ? '.cgrp-h' : '.rgrp-h');
+  const rect = more.getBoundingClientRect();
+  app.querySelectorAll('.menuopen').forEach((r) => r.classList.remove('menuopen'));
+  row.classList.add('menuopen');
+  openTreeMenu(isComposer ? 'composer-folder' : 'rules-folder', { x: rect.left, y: rect.bottom + 4 });
 });
 
 // Settings section and guarded repair confirmation states.
@@ -522,165 +527,176 @@ app.addEventListener('click', (e) => {
   if (rule) app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('sel', row === rule));
 });
 
-// Rules reordering, VS Code style: every row is draggable, the browser arbitrates click vs drag.
-// A row's sector (quarters of its height) picks between "insert before/after" and "move into folder".
-const ruleTree = app.querySelector('.rtree');
-const ruleDropLine = document.createElement('div');
-ruleDropLine.className = 'rdrop';
-let ruleDragNode = null; // the .rrule or whole .rgrp being moved
-let ruleDrop = null; // { parent, before } for a reorder, or { folder } for a move-into
-let ruleAutoExpandRow = null;
-let ruleAutoExpandTimer = 0;
+// 树拖拽，VS Code 式：整行可拖，点击还是拖拽交给浏览器判定。
+// 行被切成四段，上下两段是「插到前/后」，中间两段是「移进目录」。
+// Rules 与 Composer 共用这一套，差别只有 class 名。
+function installTreeDrag({ tree, rowSelector, folderRowClass, groupClass, groupBodyClass }) {
+  if (!tree) return;
+  const dropLine = document.createElement('div');
+  dropLine.className = 'rdrop';
+  let dragNode = null; // 正在移动的叶子行，或整个目录
+  let drop = null; // { parent, before } 表示重排，{ folder } 表示移进目录
+  let autoExpandRow = null;
+  let autoExpandTimer = 0;
 
-// A folder row stands for its whole section, so dragging it takes the subtree along.
-const ruleNodeOf = (row) => (row.classList.contains('rgrp-h') ? row.closest('.rgrp') : row);
+  // 目录行代表整个 section，拖它就要把子树一起带走。
+  const nodeOf = (row) => (row.classList.contains(folderRowClass) ? row.closest(`.${groupClass}`) : row);
+  const clampSector = (ratio) => Math.min(3, Math.max(0, Math.floor(ratio / 0.25)));
+  const indentOf = (row) => parseFloat(getComputedStyle(row).paddingLeft);
 
-ruleTree.addEventListener('dragstart', (e) => {
-  const row = e.target.closest('.rrule, .rgrp-h');
-  if (!row) return;
-  ruleDragNode = ruleNodeOf(row);
-  ruleDragNode.classList.add('dragsource');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', '');
-  // Collapsing the dragged folder keeps the list still and makes its own children unreachable as targets.
-  if (ruleDragNode.classList.contains('rgrp')) {
-    ruleDragNode.dataset.reopen = ruleDragNode.classList.contains('on') ? '1' : '';
-    ruleDragNode.classList.remove('on');
+  // 目录最多三层，再深规则内容就窄得没法读了。
+  const MAX_FOLDER_DEPTH = 3;
+  const fitsDepth = (parentDepth) => parentDepth + subtreeHeight(dragNode) <= MAX_FOLDER_DEPTH;
+
+  function folderDepth(element) {
+    let depth = 0;
+    for (let node = element; node && node !== tree; node = node.parentElement) {
+      if (node.classList.contains(groupClass)) depth += 1;
+    }
+    return depth;
   }
+
+  function subtreeHeight(node) {
+    if (!node || !node.classList.contains(groupClass)) return 0;
+    const children = [...node.querySelector(`.${groupBodyClass}`).children].filter((child) => child.classList.contains(groupClass));
+    return 1 + children.reduce((deepest, child) => Math.max(deepest, subtreeHeight(child)), 0);
+  }
+
+  // 行与行之间的空隙也归某一行，所以按指针 Y 找目标而不是按事件源——否则悬在空隙上谁都命中不了。
+  function rowAt(clientY) {
+    for (const row of tree.querySelectorAll(rowSelector)) {
+      if (!row.offsetParent) continue;
+      const rect = row.getBoundingClientRect();
+      if (clientY < rect.bottom) return { row, rect };
+    }
+    return null;
+  }
+
+  function showDropLine(node, after, indent) {
+    const treeRect = tree.getBoundingClientRect();
+    const rect = node.getBoundingClientRect();
+    // 线从目标行的内容起点画起，缩进本身就表达了落点深度。
+    dropLine.style.top = `${(after ? rect.bottom : rect.top) - treeRect.top + tree.scrollTop - 1}px`;
+    dropLine.style.left = `${rect.left - treeRect.left + indent}px`;
+    dropLine.style.width = `${rect.width - indent}px`;
+    tree.appendChild(dropLine);
+  }
+
+  function showRootDrop() {
+    const nodes = [...tree.children].filter((child) => child !== dropLine && child.matches(`.${groupClass}, ${rowSelector}`));
+    const last = nodes[nodes.length - 1];
+    if (!last || last === dragNode || !fitsDepth(0)) return;
+    drop = { parent: tree, before: null };
+    const anchorRow = last.classList.contains(groupClass) ? last.querySelector(`.${folderRowClass}`) : last;
+    showDropLine(last, true, indentOf(anchorRow));
+  }
+
+  // 悬停折叠目录会把它展开，这样不用先点开再拖进去。
+  function scheduleAutoExpand(row, group) {
+    if (autoExpandRow === row) return;
+    clearTimeout(autoExpandTimer);
+    autoExpandRow = row;
+    if (group.classList.contains('on')) return;
+    autoExpandTimer = setTimeout(() => group.classList.add('on'), 500);
+  }
+
+  function clearDropFeedback() {
+    drop = null;
+    dropLine.remove();
+    tree.querySelectorAll('.droptarget').forEach((row) => row.classList.remove('droptarget'));
+  }
+
+  function finishDrag() {
+    clearTimeout(autoExpandTimer);
+    autoExpandRow = null;
+    if (dragNode) {
+      dragNode.classList.remove('dragsource');
+      if (dragNode.dataset.reopen) dragNode.classList.add('on');
+      delete dragNode.dataset.reopen;
+    }
+    dragNode = null;
+    clearDropFeedback();
+  }
+
+  tree.addEventListener('dragstart', (e) => {
+    const row = e.target.closest(rowSelector);
+    if (!row) return;
+    dragNode = nodeOf(row);
+    dragNode.classList.add('dragsource');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    // 拖动中折叠自己，列表不跳动，自己的子节点也就不会成为落点。
+    if (dragNode.classList.contains(groupClass)) {
+      dragNode.dataset.reopen = dragNode.classList.contains('on') ? '1' : '';
+      dragNode.classList.remove('on');
+    }
+  });
+
+  tree.addEventListener('dragover', (e) => {
+    if (!dragNode) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clearDropFeedback();
+
+    const hit = rowAt(e.clientY);
+    // 最后一行之下是列表的空尾巴，那就是根层级。
+    if (!hit) return showRootDrop();
+
+    const node = nodeOf(hit.row);
+    // 只禁止拖进自己的子树；拖到祖先目录是合法的「移到上级」。
+    if (node === dragNode || dragNode.contains(node)) return;
+
+    const sector = clampSector((e.clientY - hit.rect.top) / hit.rect.height);
+    if (hit.row.classList.contains(folderRowClass) && sector > 0 && sector < 3) {
+      if (!fitsDepth(folderDepth(node))) return;
+      hit.row.classList.add('droptarget');
+      drop = { folder: node };
+      scheduleAutoExpand(hit.row, node);
+      return;
+    }
+    const parent = node.parentElement;
+    if (!fitsDepth(folderDepth(parent))) return;
+    // 「插到 N 之后」统一规约成「插到 N+1 之前」，相邻两行才共用一条线、不会闪。
+    drop = { parent, before: sector < 2 ? node : node.nextElementSibling };
+    showDropLine(node, sector >= 2, indentOf(hit.row));
+  });
+
+  tree.addEventListener('drop', (e) => {
+    if (!dragNode || !drop) return;
+    e.preventDefault();
+    if (drop.folder) {
+      drop.folder.querySelector(`.${groupBodyClass}`).appendChild(dragNode);
+      drop.folder.classList.add('on');
+      dragNode.dataset.reopen = '1';
+    } else {
+      drop.parent.insertBefore(dragNode, drop.before);
+    }
+    finishDrag();
+  });
+
+  tree.addEventListener('dragend', finishDrag);
+}
+
+installTreeDrag({
+  tree: app.querySelector('.rtree'),
+  rowSelector: '.rrule, .rgrp-h',
+  folderRowClass: 'rgrp-h',
+  groupClass: 'rgrp',
+  groupBodyClass: 'rgrp-b',
 });
 
-ruleTree.addEventListener('dragover', (e) => {
-  if (!ruleDragNode) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  clearRuleDropFeedback();
-
-  const hit = ruleRowAt(e.clientY);
-  // Below the last row is the empty tail of the list, which is the root level.
-  if (!hit) return showRootDrop();
-
-  const node = ruleNodeOf(hit.row);
-  if (node === ruleDragNode || node.contains(ruleDragNode)) return;
-
-  const sector = clampSector((e.clientY - hit.rect.top) / hit.rect.height);
-  if (hit.row.classList.contains('rgrp-h') && sector > 0 && sector < 3) {
-    if (!fitsDepth(folderDepth(node))) return;
-    hit.row.classList.add('droptarget');
-    ruleDrop = { folder: node };
-    scheduleRuleAutoExpand(hit.row, node);
-    return;
-  }
-  const parent = node.parentElement;
-  if (!fitsDepth(folderDepth(parent))) return;
-  // "after N" is normalised to "before N+1" so two neighbours share one line and it never flickers.
-  ruleDrop = { parent, before: sector < 2 ? node : node.nextElementSibling };
-  showRuleDropLine(node, sector >= 2, indentOf(hit.row));
+installTreeDrag({
+  tree: app.querySelector('.ccol-scroll'),
+  rowSelector: '.citem, .cgrp-h',
+  folderRowClass: 'cgrp-h',
+  groupClass: 'cgrp',
+  groupBodyClass: 'cgrp-b',
 });
-
-// The gaps between rows belong to a row too, so resolve by pointer Y rather than by event target —
-// otherwise hovering a gap hits no row at all.
-function ruleRowAt(clientY) {
-  for (const row of ruleTree.querySelectorAll('.rrule, .rgrp-h')) {
-    if (!row.offsetParent) continue;
-    const rect = row.getBoundingClientRect();
-    if (clientY < rect.bottom) return { row, rect };
-  }
-  return null;
-}
-
-function showRootDrop() {
-  const nodes = [...ruleTree.children].filter((child) => child !== ruleDropLine);
-  const last = nodes[nodes.length - 1];
-  if (!last || last === ruleDragNode || !fitsDepth(0)) return;
-  ruleDrop = { parent: ruleTree, before: null };
-  showRuleDropLine(last, true, indentOf(ruleNodeOf(last) === last ? last : last.querySelector('.rgrp-h')));
-}
-
-const clampSector = (ratio) => Math.min(3, Math.max(0, Math.floor(ratio / 0.25)));
-const indentOf = (row) => parseFloat(getComputedStyle(row).paddingLeft);
-
-// Folders nest at most three deep; below that the rule content gets too narrow to read.
-const MAX_FOLDER_DEPTH = 3;
-const fitsDepth = (parentDepth) => parentDepth + subtreeHeight(ruleDragNode) <= MAX_FOLDER_DEPTH;
-
-function folderDepth(element) {
-  let depth = 0;
-  for (let node = element; node && node !== ruleTree; node = node.parentElement) {
-    if (node.classList.contains('rgrp')) depth += 1;
-  }
-  return depth;
-}
-
-function subtreeHeight(node) {
-  if (!node.classList.contains('rgrp')) return 0;
-  const children = [...node.querySelector('.rgrp-b').children].filter((child) => child.classList.contains('rgrp'));
-  return 1 + children.reduce((deepest, child) => Math.max(deepest, subtreeHeight(child)), 0);
-}
-
-ruleTree.addEventListener('drop', (e) => {
-  if (!ruleDragNode || !ruleDrop) return;
-  e.preventDefault();
-  if (ruleDrop.folder) {
-    ruleDrop.folder.querySelector('.rgrp-b').appendChild(ruleDragNode);
-    ruleDrop.folder.classList.add('on');
-    ruleDragNode.dataset.reopen = '1';
-  } else {
-    ruleDrop.parent.insertBefore(ruleDragNode, ruleDrop.before);
-  }
-  finishRuleDrag();
-});
-
-ruleTree.addEventListener('dragend', finishRuleDrag);
-
-function showRuleDropLine(node, after, indent) {
-  const treeRect = ruleTree.getBoundingClientRect();
-  const rect = node.getBoundingClientRect();
-  // The line starts where the target row's content starts, so its indent reads as the landing depth.
-  ruleDropLine.style.top = `${(after ? rect.bottom : rect.top) - treeRect.top + ruleTree.scrollTop - 1}px`;
-  ruleDropLine.style.left = `${rect.left - treeRect.left + indent}px`;
-  ruleDropLine.style.width = `${rect.width - indent}px`;
-  ruleTree.appendChild(ruleDropLine);
-}
-
-// Hovering a collapsed folder opens it, so a rule can be dropped inside without a separate step.
-function scheduleRuleAutoExpand(row, group) {
-  if (ruleAutoExpandRow === row) return;
-  clearTimeout(ruleAutoExpandTimer);
-  ruleAutoExpandRow = row;
-  if (group.classList.contains('on')) return;
-  ruleAutoExpandTimer = setTimeout(() => group.classList.add('on'), 500);
-}
-
-function clearRuleDropFeedback() {
-  ruleDrop = null;
-  ruleDropLine.remove();
-  ruleTree.querySelectorAll('.droptarget').forEach((row) => row.classList.remove('droptarget'));
-}
-
-function finishRuleDrag() {
-  clearTimeout(ruleAutoExpandTimer);
-  ruleAutoExpandRow = null;
-  if (ruleDragNode) {
-    ruleDragNode.classList.remove('dragsource');
-    if (ruleDragNode.dataset.reopen) ruleDragNode.classList.add('on');
-    delete ruleDragNode.dataset.reopen;
-  }
-  ruleDragNode = null;
-  clearRuleDropFeedback();
-}
 
 // Composer: collection tree, document tabs, request/response tabs and the send phase.
 app.addEventListener('click', (e) => {
   if (e.target.closest('.ccol-toggle')) {
     return setState({ collection: app.dataset.collection === 'closed' ? 'open' : 'closed' });
-  }
-  const folderActions = e.target.closest('.cgrp-more');
-  if (folderActions) {
-    const row = folderActions.closest('.cgrp-h');
-    const reopen = !row.classList.contains('menuopen') || app.dataset.collectionMenu !== 'open';
-    app.querySelectorAll('.cgrp-h.menuopen').forEach((r) => r.classList.remove('menuopen'));
-    if (reopen) row.classList.add('menuopen');
-    return setState({ collectionMenu: reopen ? 'open' : '' });
   }
   const collapse = e.target.closest('.cgrp-chevbtn');
   if (collapse) return collapse.closest('.cgrp').classList.toggle('on');
@@ -795,7 +811,145 @@ app.addEventListener('click', (e) => {
     return setState({ view: 'rules' });
   }
   if (e.target.closest('[data-open-https]')) return setState({ overlay: 'https-setup' });
+  if (e.target.closest('[data-body-full]')) return setState({ overlay: 'body-full' });
   if (e.target.closest('[data-close-overlay]')) return setState({ overlay: '' });
+  // Inspector 分组折叠：整个标题行都是命中区，chevron 只是提示。
+  const sectionHead = e.target.closest('.sec > .sh');
+  if (sectionHead) return sectionHead.parentElement.classList.toggle('collapsed');
+});
+
+
+// 树搜索：命中叶子就留下它和它的祖先目录，命中目录名则整棵子树保留。
+// 搜索期间目录强制展开，退出搜索恢复原来的展开状态。
+function installTreeSearch({ input, tree, groupClass, rowSelector, nameSelector }) {
+  if (!input || !tree) return;
+  const empty = tree.querySelector('.searchempty');
+
+  // 高亮会改写名字节点，所以原文只在第一次读到时留一份底稿
+  const nameOf = (node) => node.querySelector(nameSelector);
+  const rawText = (element) => {
+    if (element.dataset.raw === undefined) element.dataset.raw = element.textContent;
+    return element.dataset.raw;
+  };
+  const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  function paint(node, keyword) {
+    const element = nameOf(node);
+    if (!element) return false;
+    const text = rawText(element);
+    const index = keyword ? text.toLowerCase().indexOf(keyword) : -1;
+    if (index === -1) {
+      if (element.innerHTML !== text) element.textContent = text;
+      return false;
+    }
+    const before = escapeHtml(text.slice(0, index));
+    const hit = escapeHtml(text.slice(index, index + keyword.length));
+    const after = escapeHtml(text.slice(index + keyword.length));
+    element.innerHTML = `${before}<mark class="searchhit">${hit}</mark>${after}`;
+    return true;
+  }
+
+  input.addEventListener('input', () => {
+    const keyword = input.value.trim().toLowerCase();
+    const groups = [...tree.querySelectorAll(`.${groupClass}`)];
+    const rows = [...tree.querySelectorAll(rowSelector)];
+    const heads = groups.map((group) => group.querySelector(`.${groupClass}-h`) ?? group.firstElementChild);
+
+    if (!keyword) {
+      [...groups, ...rows].forEach((node) => node.classList.remove('searchhidden'));
+      [...rows, ...heads].forEach((node) => paint(node, ''));
+      groups.forEach((group) => {
+        if (group.dataset.wasopen === undefined) return;
+        group.classList.toggle('on', group.dataset.wasopen === '1');
+        delete group.dataset.wasopen;
+      });
+      empty?.classList.remove('on');
+      return;
+    }
+
+    groups.forEach((group) => {
+      if (group.dataset.wasopen === undefined) group.dataset.wasopen = group.classList.contains('on') ? '1' : '';
+    });
+
+    let hits = 0;
+
+    rows.forEach((row) => {
+      const hit = paint(row, keyword);
+      if (hit) hits += 1;
+      row.classList.toggle('searchhidden', !hit);
+    });
+
+    // 目录：自己命中、或子孙里还有可见行，就留下
+    [...groups].reverse().forEach((group, index) => {
+      const head = heads[groups.length - 1 - index];
+      const selfHit = paint(head, keyword);
+      const childVisible = [...group.querySelectorAll(`${rowSelector}, .${groupClass}`)].some((node) => !node.classList.contains('searchhidden'));
+      if (selfHit) {
+        group.querySelectorAll(rowSelector).forEach((row) => row.classList.remove('searchhidden'));
+        hits += 1;
+      }
+      group.classList.toggle('searchhidden', !selfHit && !childVisible);
+      group.classList.add('on');
+    });
+
+    empty?.classList.toggle('on', hits === 0);
+  });
+}
+
+installTreeSearch({
+  input: app.querySelector('.rlbar .tree-search input'),
+  tree: app.querySelector('.rtree'),
+  groupClass: 'rgrp',
+  rowSelector: '.rrule',
+  nameSelector: '.rrule-n, .rgrp-n',
+});
+
+installTreeSearch({
+  input: app.querySelector('.ccol-bar .tree-search input'),
+  tree: app.querySelector('.ccol-scroll'),
+  groupClass: 'cgrp',
+  rowSelector: '.citem',
+  nameSelector: '.citem-n, .cgrp-n',
+});
+// 目录菜单与右键菜单是同一个弹层：more 按钮落在按钮下方，右键落在指针处。
+// 场景驱动没有指针位置，把菜单锚到对应树的第一个目录行下方。
+function anchorMenuForScene(ctx) {
+  const rows = {
+    'composer-item': '.ccol-scroll .citem',
+    'composer-folder': '.ccol-scroll .cgrp-h',
+    'rules-rule': '.rtree .rrule',
+    'rules-folder': '.rtree .rgrp-h',
+  };
+  const menu = app.querySelector(`.ctxmenu[data-ctx="${ctx}"]`);
+  const row = app.querySelector(rows[ctx] ?? "");
+  if (!menu || !row || menu.style.left) return;
+  const bounds = app.getBoundingClientRect();
+  const rect = row.getBoundingClientRect();
+  menu.style.left = `${rect.right - bounds.left - 150}px`;
+  menu.style.top = `${rect.bottom - bounds.top + 4}px`;
+}
+
+// 刚打开的那一瞬不算「点了外面」：同一次事件里后执行的关闭监听器会把它立即关掉。
+let treeMenuJustOpened = false;
+
+function openTreeMenu(ctx, anchor) {
+  const menu = app.querySelector(`.ctxmenu[data-ctx="${ctx}"]`);
+  // 先落到左上角再显示，量到真实尺寸后才能把落点收进窗口
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  treeMenuJustOpened = true;
+  setTimeout(() => { treeMenuJustOpened = false; }, 0);
+  setState({ ctxmenu: ctx });
+  const bounds = app.getBoundingClientRect();
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(6, Math.min(anchor.x - bounds.left, bounds.width - rect.width - 6))}px`;
+  menu.style.top = `${Math.max(6, Math.min(anchor.y - bounds.top, bounds.height - rect.height - 6))}px`;
+}
+
+app.addEventListener('click', () => {
+  if (!app.dataset.ctxmenu || treeMenuJustOpened) return;
+  app.querySelectorAll('.menuopen').forEach((r) => r.classList.remove('menuopen'));
+  setState({ ctxmenu: '' });
 });
 
 // Footer theme and language popovers.

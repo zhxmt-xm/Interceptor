@@ -91,7 +91,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'composer', theme, variant: 'sending', state: { ...base, composer: 'sending' } });
   shots.push({ feature: 'composer', theme, variant: 'history', state: { ...base, composerHistory: 'open' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-collapsed', state: { ...base, collection: 'closed' } });
-  shots.push({ feature: 'composer', theme, variant: 'collection-folder-menu', state: { ...base, collectionMenu: 'open' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-folder-menu', state: { ...base, ctxmenu: 'composer-folder' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-rename', state: { ...base, collectionRename: 'on' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-folder-actions', state: base, hover: '.cgrp[data-grp="checkout"] > .cgrp-h' });
 }
@@ -181,9 +181,7 @@ async function shoot(list) {
       filterActive: '',
       recording: '',
       composer: '',
-      collection: 'open',
-      collectionMenu: '',
-      collectionRename: '',
+      collection: 'open',      collectionRename: '',
       composerHistory: '',
       bodyType: 'json',
       boot: '',

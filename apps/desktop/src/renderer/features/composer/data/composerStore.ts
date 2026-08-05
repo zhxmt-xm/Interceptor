@@ -7,6 +7,7 @@ import {
   fitsDepth,
   folderDepth,
   insertNode,
+  parentFolderId,
   removeNode as removeTreeNode,
   renameNode as renameTreeNode,
   replaceLeaf,
@@ -90,6 +91,7 @@ interface ComposerStore {
   /** 幂等展开目录，供拖拽悬停自动展开。 */
   expandFolder(folderId: string): void;
   setTargetFolder(folderId: string | null): void;
+  clearSelection(): void;
   setCollectionOpen(open: boolean): void;
   setRenamingNode(nodeId: string | null): void;
   setFolderMenu(anchor: FolderMenuAnchor | null): void;
@@ -110,6 +112,16 @@ interface ComposerStore {
   ): void;
   sendFailed(requestId: string, message: string): void;
   clearHistory(): void;
+}
+
+/** 新建落点：选中目录就放进去，选中请求就跟它平级，都没选就放根。 */
+function createParentId(state: ComposerStore): string | null {
+  if (state.targetFolderId !== null) {
+    return state.targetFolderId;
+  }
+  return state.activeRequestId === null
+    ? null
+    : parentFolderId(state.nodes, state.activeRequestId);
 }
 
 export const useComposerStore = create<ComposerStore>((set) => ({
@@ -157,9 +169,10 @@ export const useComposerStore = create<ComposerStore>((set) => ({
     set((state) => {
       const request = newRequest();
       return {
-        nodes: appendNode(state.nodes, state.targetFolderId, request),
+        nodes: appendNode(state.nodes, createParentId(state), request),
         openRequestIds: [...state.openRequestIds, request.id],
         activeRequestId: request.id,
+        targetFolderId: null,
         runtimes: { ...state.runtimes, [request.id]: INITIAL_RUNTIME },
       };
     }),
@@ -167,11 +180,12 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   createFolder: (name) =>
     set((state) => {
       const folder = newFolder(name);
-      if (!fitsDepth(folderDepth(state.nodes, state.targetFolderId), folder)) {
+      const parentId = createParentId(state);
+      if (!fitsDepth(folderDepth(state.nodes, parentId), folder)) {
         return state;
       }
       return {
-        nodes: appendNode(state.nodes, state.targetFolderId, folder),
+        nodes: appendNode(state.nodes, parentId, folder),
         expandedFolders: [...state.expandedFolders, folder.id],
         renamingNodeId: folder.id,
         folderMenu: null,
@@ -229,7 +243,9 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         : [...state.expandedFolders, folderId],
     })),
 
-  setTargetFolder: (targetFolderId) => set({ targetFolderId }),
+  // 目录与请求只能选中一个，否则新建落点会变得不可预测
+  setTargetFolder: (targetFolderId) => set({ targetFolderId, activeRequestId: null }),
+  clearSelection: () => set({ targetFolderId: null }),
   setCollectionOpen: (collectionOpen) => set({ collectionOpen }),
   setRenamingNode: (renamingNodeId) => set({ renamingNodeId, folderMenu: null }),
   setFolderMenu: (folderMenu) => set({ folderMenu }),
@@ -241,6 +257,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         ? state.openRequestIds
         : [...state.openRequestIds, requestId],
       activeRequestId: requestId,
+      targetFolderId: null,
       runtimes: state.runtimes[requestId]
         ? state.runtimes
         : { ...state.runtimes, [requestId]: INITIAL_RUNTIME },

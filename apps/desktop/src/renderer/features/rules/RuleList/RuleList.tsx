@@ -1,53 +1,36 @@
-import { Check, FolderPlus, MoreHorizontal, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Download, FolderPlus, Plus, RotateCcw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { collectLeaves, type RuleNode } from '@interceptor/core-protocol';
+import type { RuleNode } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Flyout, IconButton, MenuItem } from '../../../components';
+import { IconButton, searchTree } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
-import { applyRules, loadRules } from '../data/useRulesData';
+import { exportRules, loadRules } from '../data/useRulesData';
 import { RuleFolderMenu } from '../RuleFolderMenu/RuleFolderMenu';
 import { RuleTreeNode } from '../RuleTreeNode/RuleTreeNode';
-import { isRulesDirty } from '../utils';
 import styles from './RuleList.module.css';
 
 /** 规则树：目录只做组织，规则按树的深度优先顺序执行。 */
 export function RuleList(): React.JSX.Element {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [moreOpen, setMoreOpen] = useState(false);
   const nodes = useRulesStore((state) => state.nodes);
-  const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
-  const saving = useRulesStore((state) => state.saving);
   const conflict = useRulesStore((state) => state.conflict);
-  const selectedId = useRulesStore((state) => state.selectedId);
   const addRule = useRulesStore((state) => state.addRule);
   const addFolder = useRulesStore((state) => state.addFolder);
-  const removeNode = useRulesStore((state) => state.removeNode);
   const moveNode = useRulesStore((state) => state.moveNode);
   const expandFolder = useRulesStore((state) => state.expandFolder);
   const setFolderMenu = useRulesStore((state) => state.setFolderMenu);
 
-  const normalizedQuery = query.trim().toLowerCase();
-  // 搜索是跨目录的：命中结果拍平成一层，因此搜索期间没有目录、也不排序。
-  const matches = useMemo(
-    () =>
-      normalizedQuery
-        ? collectLeaves(nodes).filter((rule) =>
-            rule.name.toLowerCase().includes(normalizedQuery)
-            || JSON.stringify(rule.matchers).toLowerCase().includes(normalizedQuery)
-            || JSON.stringify(rule.actions).toLowerCase().includes(normalizedQuery))
-        : null,
-    [nodes, normalizedQuery],
-  );
-  const visible: readonly RuleNode[] = matches ?? nodes;
+  const search = useMemo(() => searchTree(nodes, query), [nodes, query]);
+  const visible: readonly RuleNode[] = nodes;
 
   const drag = useTreeDrag({
     nodes,
-    disabled: matches !== null,
+    disabled: search.visible !== null,
     onMove: moveNode,
     onAutoExpand: expandFolder,
   });
@@ -81,13 +64,14 @@ export function RuleList(): React.JSX.Element {
             automationId={AUTOMATION_IDS.rules.createFolder}
           />
           <IconButton
-            icon={Check}
-            label={saving ? t('rules.applying') : t('rules.applyChanges')}
+            icon={Download}
+            label={t('rules.exportRules')}
             size="sm"
-            strokeWidth={2.4}
-            disabled={!dirty || saving}
-            onClick={() => void applyRules()}
-            automationId={AUTOMATION_IDS.rules.apply}
+            disabled={nodes.length === 0}
+            onClick={() => {
+              void exportRules(t('rules.exportRules'));
+            }}
+            automationId={AUTOMATION_IDS.rules.exportRules}
           />
           {conflict ? (
             // 冲突时本地草稿被保留；Reload 是用户显式放弃草稿、取回最新规则集的唯一入口。
@@ -100,38 +84,6 @@ export function RuleList(): React.JSX.Element {
               automationId={AUTOMATION_IDS.rules.reload}
             />
           ) : null}
-          <Flyout
-            open={moreOpen}
-            onOpenChange={setMoreOpen}
-            placement="bottomRight"
-            className={styles.moreMenu}
-            content={
-              <>
-                <MenuItem
-                  icon={Trash2}
-                  name={t('rules.deleteRule')}
-                  hint=""
-                  automationId={AUTOMATION_IDS.rules.delete}
-                  onClick={() => {
-                    if (selectedId) {
-                      removeNode(selectedId);
-                    }
-                    setMoreOpen(false);
-                  }}
-                />
-              </>
-            }
-          >
-            <span className={styles.menuAnchor}>
-              <IconButton
-                icon={MoreHorizontal}
-                label={t('rules.more')}
-                size="sm"
-                disabled={!selectedId}
-                automationId={AUTOMATION_IDS.rules.more}
-              />
-            </span>
-          </Flyout>
         </div>
       </div>
 
@@ -143,11 +95,13 @@ export function RuleList(): React.JSX.Element {
         onClick={() => setFolderMenu(null)}
         {...drag.containerProps}
       >
-        {visible.length === 0 ? (
+        {search.empty ? (
+          <div className={styles.empty}>{t('rules.searchEmpty')}</div>
+        ) : visible.length === 0 ? (
           <div className={styles.empty}>{t('rules.empty')}</div>
         ) : (
           visible.map((node) => (
-            <RuleTreeNode key={node.id} node={node} depth={0} drag={drag} />
+            <RuleTreeNode key={node.id} node={node} depth={0} drag={drag} search={search} />
           ))
         )}
         {drag.dropLine ? (

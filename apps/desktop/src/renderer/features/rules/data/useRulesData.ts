@@ -111,6 +111,15 @@ export async function applyRules(): Promise<void> {
   }
 }
 
+/** 把整棵规则树导出成 JSON 文件；落盘路径由 Main 的系统对话框选择。 */
+export async function exportRules(title: string): Promise<void> {
+  const api = window.interceptor;
+  if (!api?.exportRules) {
+    return;
+  }
+  await api.exportRules(useRulesStore.getState().nodes, title);
+}
+
 /**
  * Rules workspace 数据管线：挂载时加载规则集与命中计数，并周期刷新命中计数。
  * 规则完整性在本地纯函数即时派生，不往返 Core。挂载一次。

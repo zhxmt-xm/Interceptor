@@ -61,6 +61,11 @@
 - rule collection不能创建sub folder和sub rule，这个应该和composer保持一致
 - rule collection也没有右键菜单，菜单内容应该跟composer类似
 - rule collection右上角的几个按钮没必要存在，可以在rule detail这边加一个save button用来保存 ![alt text](image-5.png)
-- rule detail的提示可以放底栏 ![alt text](image.png)
-- rule collection的数字右边距太少了，跟composer不一样 ![alt text](image.png)
-- capture detail的body viewer感觉最好是默认撑满，最小高度还是需要设一个，比如320？你觉得多少比较合适？另外最好加一个全屏观看按钮，点击之后会弹出一个dialog，里面可以查看和copybody，点击其他地方会关闭 ![alt text](image-8.png)
+- rule detail的提示可以放底栏 ![alt text](image-9.png)
+- rule collection的数字右边距太少了，跟composer不一样 ![alt text](image-10.png)
+- capture detail的body viewer感觉最好是默认撑满，最小高度还是需要设一个，比如320？你觉得多少比较合适？另外最好加一个全屏观看按钮，点击之后会弹出一个dialog，里面可以查看和copybody，点击其他地方会关闭 ![alt text](image.png)
+
+- 不止是application会闪，其他的capture filter也会闪
+- 有的桌面端应用捕捉不到request？比如douyuclient，好像很多request被归类到edge里去了 ![alt text](image-6.png)
+- 我打开https://www.bilibili.com，他的登录失效了，关掉之后又有效了，不知道为什么
+- rule和composer要支持导入导出

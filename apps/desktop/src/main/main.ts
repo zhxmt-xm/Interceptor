@@ -1145,6 +1145,30 @@ class DesktopApplication {
       },
     );
 
+    // 规则导出：与集合导出同一形态，Main 只负责选路径并落盘，不经过 Core。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.rulesExport,
+      async (event, nodes: unknown, title: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const ruleNodes = toCoreRuleNodes(nodes);
+        const selection = await dialog.showSaveDialog({
+          title: title as string,
+          defaultPath: `interceptor-rules-${new Date().toISOString().slice(0, 10)}.json`,
+          filters: [{ name: 'JSON', extensions: ['json'] }],
+          properties: ['createDirectory', 'showOverwriteConfirmation'],
+        });
+        if (selection.canceled || !selection.filePath) {
+          return false;
+        }
+        await writeFile(
+          selection.filePath,
+          JSON.stringify({ nodes: ruleNodes }, null, 2),
+          'utf8',
+        );
+        return true;
+      },
+    );
+
     // Composer 手工请求：原样转交 Core 用 http/https/http2 执行并回传响应。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.composerSend,
