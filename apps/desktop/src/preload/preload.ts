@@ -6,6 +6,7 @@ import {
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
   type ClientAppIcon,
+  type SystemProxyStatus,
   type UpdateStatus,
 } from '../shared/desktop-api';
 
@@ -64,6 +65,19 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.on(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
     return () => {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.coreProcessStatus, handler);
+    };
+  },
+  onSystemProxyStatusChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      status: SystemProxyStatus,
+    ) => {
+      listener(status);
+    };
+
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.systemProxyStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.systemProxyStatus, handler);
     };
   },
   getCaptureUsage: () =>

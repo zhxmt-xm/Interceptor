@@ -240,6 +240,8 @@ export async function refreshLinkStatus(): Promise<void> {
         : null,
       systemProxyOwned: systemProxy.owned && !systemProxy.ownershipLost,
       decrypting: certificate.trusted && certificate.mitmEnabled,
+      upstream: systemProxy.upstreamProxy,
+      upstreamReachable: systemProxy.upstreamReachable,
     });
   } catch {
     /* 链路状态只是展示；读取失败时保留上一次已知值。 */
@@ -354,6 +356,23 @@ export function useCaptureData(): void {
       active = false;
       unsubscribe();
     };
+  }, []);
+
+  // 上游降级/恢复不由 Renderer 发起，只能等 Main 推送。
+  useEffect(() => {
+    const api = window.interceptor;
+    if (!api?.onSystemProxyStatusChange) {
+      return;
+    }
+    return api.onSystemProxyStatusChange((status) => {
+      const current = useCaptureStore.getState().linkStatus;
+      useCaptureStore.getState().setLinkStatus({
+        ...current,
+        systemProxyOwned: status.owned && !status.ownershipLost,
+        upstream: status.upstreamProxy,
+        upstreamReachable: status.upstreamReachable,
+      });
+    });
   }, []);
 
 }

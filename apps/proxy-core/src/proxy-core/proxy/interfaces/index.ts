@@ -55,11 +55,23 @@ export type WebSocketBridgeDecision =
     }
   | { readonly action: 'drop' };
 
+/** Mockttp `ProxySetting` 中 Bridge 用得到的那部分。 */
+export interface UpstreamProxySetting {
+  readonly proxyUrl: string;
+  readonly noProxy?: readonly string[];
+}
+
 export interface WebSocketBridgeOptions {
   readonly intercept: (
     message: WebSocketBridgeMessage,
   ) => Promise<WebSocketBridgeDecision>;
   readonly ignoreCertificateErrors: (hostname: string) => boolean;
+  /**
+   * 当前上游代理；undefined 表示直连。
+   * Bridge 不走 `forAnyRequest().thenPassThrough()`，拿不到规则上的 `proxyConfig`，
+   * 不单独注入就会让所有 WebSocket 绕过上游直连源站。
+   */
+  readonly upstreamProxy?: () => UpstreamProxySetting | undefined;
   readonly onError?: (error: Error) => void;
   /**
    * 上游 Upgrade 失败时回调（streamId 即 request.id）。
@@ -135,6 +147,8 @@ export interface TrackedExchange {
   appId?: string;
   /** 发起该请求的本机应用展示名。 */
   appName?: string;
+  /** 应用归属正在异步反查；解析结束（无论成败）后置为 false。 */
+  appPending?: boolean;
   /** 串行化该 Exchange 的所有存储写入，保证顺序与幂等。 */
   tail: Promise<void>;
 }

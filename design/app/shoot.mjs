@@ -22,14 +22,14 @@ const onlyFeature = process.argv
 const shots = [];
 for (const feature of FEATURES) {
   for (const theme of ['light', 'dark']) {
-    const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates', repair: 'idle' } : {}), ...(feature === 'rules' ? { ruleList: 'tree-url' } : {}) };
+    const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates', repair: 'idle' } : {}) };
     shots.push({ feature, theme, variant: 'framed', state: base });
     shots.push({ feature, theme, variant: 'full', full: true, state: base });
   }
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
-  shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', ruleList: 'tree-url' } });
+  shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', fileMenu: 'import' } });
@@ -67,16 +67,14 @@ for (const theme of ['light', 'dark']) {
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
-  shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleList: 'tree-url', pop: true } });
-  shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleList: 'tree-url', ruleSelect: 'open' } });
+  shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
+  shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
 }
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {
   const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
-  shots.push({ feature: 'rules', theme, variant: 'tree', state: { ...base, ruleList: 'tree' } });
-  shots.push({ feature: 'rules', theme, variant: 'tree-url', state: { ...base, ruleList: 'tree-url' } });
-  shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base, ruleList: 'tree' }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
-  shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, ruleList: 'tree', sidebar: 'collapsed' } });
+  shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
+  shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, sidebar: 'collapsed' } });
 }
 // composer request/response tabs and send phases
 for (const theme of ['light', 'dark']) {
@@ -113,6 +111,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'recording-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', recording: 'paused' } });
   shots.push({ feature: 'capture', theme, variant: 'statusbar-decrypting', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', mitm: 'active' } });
   shots.push({ feature: 'capture', theme, variant: 'statusbar-direct', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', systemProxy: 'off', upstream: '' } });
+  shots.push({ feature: 'capture', theme, variant: 'statusbar-upstream-down', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', upstream: 'down' } });
 }
 // Default shell: a dedicated global window header with feature tools inside content.
 for (const theme of ['light', 'dark']) {

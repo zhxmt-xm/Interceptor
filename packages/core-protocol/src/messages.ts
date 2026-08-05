@@ -951,6 +951,12 @@ export interface CaptureExchangeSummary {
   appId?: string;
   /** 发起该请求的本机应用展示名；与 appId 同时存在。 */
   appName?: string;
+  /**
+   * 应用归属还在异步解析中。
+   * 端口快照未命中时要拉起 helper 反查，期间无 appId 不代表“识别不出”；
+   * 不区分两者会让 Application 筛选器先冒出 Unknown 再消失。
+   */
+  appPending?: boolean;
 }
 
 export interface CaptureExchangeEvent {

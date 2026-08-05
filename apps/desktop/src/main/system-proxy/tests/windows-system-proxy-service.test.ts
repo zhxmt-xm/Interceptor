@@ -93,16 +93,32 @@ describe('WindowsSystemProxyService', () => {
       owned: true,
       autoDetect: false,
       proxyServer: 'http=127.0.0.1:8888;https=127.0.0.1:8888',
-      bypassList: '<local>',
+      bypassList: 'localhost;127.*;[::1];<local>',
       pacUrl: null,
     });
     expect(fakeHelperRunner.calls[1]?.args).toEqual([
       'set',
       '3',
       encode('http=127.0.0.1:8888;https=127.0.0.1:8888'),
-      encode('<local>'),
+      encode('localhost;127.*;[::1];<local>'),
       '-',
     ]);
+  });
+
+  // 丢掉用户原有的 bypass 会把内网与回环流量也推给代理，在开发机上等同于断网。
+  it('keeps the existing bypass entries when taking over', async () => {
+    const fakeHelperRunner = new FakeHelperRunner();
+    fakeHelperRunner.settings = settings({
+      flags: 3,
+      proxyEnabled: true,
+      proxyServer: '127.0.0.1:7890',
+      bypassList: 'localhost;127.*;10.*;192.168.*;<local>',
+    });
+    const windowsSystemProxyService = createService(fakeHelperRunner);
+
+    const status = await windowsSystemProxyService.enable('127.0.0.1', 8888);
+
+    expect(status.bypassList).toBe('localhost;127.*;10.*;192.168.*;<local>;[::1]');
   });
 
   it('restores the exact snapshot when current settings remain owned', async () => {
@@ -126,7 +142,7 @@ describe('WindowsSystemProxyService', () => {
       flags: 3,
       proxyEnabled: true,
       proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
-      bypassList: '<local>',
+      bypassList: 'localhost;127.*;[::1];<local>',
     });
     const callsBeforeRestore = fakeHelperRunner.calls.length;
 
@@ -203,7 +219,7 @@ describe('WindowsSystemProxyService', () => {
       flags: 3,
       proxyEnabled: true,
       proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
-      bypassList: '<local>',
+      bypassList: 'localhost;127.*;[::1];<local>',
     });
     const callsBeforeRepair = fakeHelperRunner.calls.length;
 

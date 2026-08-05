@@ -115,6 +115,10 @@ export interface CaptureLinkStatus {
   systemProxyOwned: boolean;
   /** CA 已信任且 MITM 已开启，即正在解密 HTTPS。 */
   decrypting: boolean;
+  /** 抓包流量再转发给的上游代理 host:port；null 表示直连源站。 */
+  upstream: string | null;
+  /** 上游是否可达；false 表示已临时降级为直连。 */
+  upstreamReachable: boolean;
 }
 
 /** 会话列表视图状态：只存 Exchange 摘要，不存 header/body。 */

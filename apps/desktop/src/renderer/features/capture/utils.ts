@@ -340,7 +340,8 @@ export function facetValuesOf(
 ): string[] {
   switch (facet) {
     case 'application':
-      return [summary.appId ?? UNKNOWN_FACET_VALUE];
+      // 归属还在异步反查中：先不计入，否则 Unknown 会冒出来再消失。
+      return summary.appPending ? [] : [summary.appId ?? UNKNOWN_FACET_VALUE];
     case 'method':
       return [summary.method.toUpperCase()];
     case 'host':

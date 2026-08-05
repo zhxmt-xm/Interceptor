@@ -24,6 +24,7 @@ import {
   type ClientAppIcon,
   type CertificateInfo,
   type CoreProcessStatus,
+  type SystemProxyStatus as DesktopSystemProxyStatus,
   type UpdateStatus,
 } from '../shared/desktop-api';
 import { CertificateService } from './certificates/certificate-service';
@@ -32,16 +33,23 @@ import {
   readClientAppIcon,
   resolveClientAppHelperPath,
 } from './client-app/client-app-helper';
+import {
+  UPSTREAM_PROBE_INTERVAL_MS,
+  UPSTREAM_PROBE_TIMEOUT_MS,
+} from './constants';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import type {
   SystemProxyService,
+  SystemProxyStatus,
   UpdateService,
 } from './interfaces';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
 import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
+import { toUpstreamAuthority } from './system-proxy/system-proxy-upstream';
+import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
@@ -85,6 +93,18 @@ class DesktopApplication {
   /** Secure packaged Renderer protocol, installed only outside development. */
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
   private systemProxyService: SystemProxyService | null = null;
+  /** 接管时检测到的上游代理；降级期间保留，供探活恢复后升级回去。 */
+  private detectedUpstreamProxy: UpstreamProxyConfig | null = null;
+  /** Core 当前实际使用的上游代理；null 表示直连。 */
+  private activeUpstreamProxy: UpstreamProxyConfig | null = null;
+  /** 上游探活；不可达时降级直连并告警，恢复后自动升级。 */
+  private readonly upstreamProbe = new UpstreamProbe(
+    UPSTREAM_PROBE_INTERVAL_MS,
+    UPSTREAM_PROBE_TIMEOUT_MS,
+    (reachable) => {
+      void this.onUpstreamReachabilityChange(reachable);
+    },
+  );
   /** Public GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
   private readonly trustStore = new TrustStoreService();
@@ -491,7 +511,9 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.requireSystemProxyService().status();
+      return this.requireSystemProxyService()
+        .status()
+        .then((status) => this.withUpstreamProxy(status));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
@@ -509,8 +531,13 @@ class DesktopApplication {
         const status = await service.enable(host, port);
         // 接管后所有流量都走 Interceptor，若仍直连源站，必须经公司 PAC / VPN /
         // 认证代理才能出网的环境会在接管期间完全断网，因此把原有配置接到上游。
-        await this.applyUpstreamProxy(service.detectedUpstream());
-        return status;
+        const detected = service.detectedUpstream();
+        this.detectedUpstreamProxy = detected;
+        await this.applyUpstreamProxy(detected);
+        if (detected) {
+          this.upstreamProbe.start(detected.proxyUrl);
+        }
+        return this.withUpstreamProxy(status);
       });
     });
 
@@ -518,8 +545,10 @@ class DesktopApplication {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.runMainAction('main.system-proxy.restore', async () => {
         const result = await this.requireSystemProxyService().restore();
+        this.upstreamProbe.stop();
+        this.detectedUpstreamProxy = null;
         await this.applyUpstreamProxy(null);
-        return result;
+        return { ...result, status: this.withUpstreamProxy(result.status) };
       });
     });
 
@@ -527,6 +556,8 @@ class DesktopApplication {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.runMainAction('main.system-proxy.emergency-repair', async () => {
         const result = await this.requireSystemProxyService().repair();
+        this.upstreamProbe.stop();
+        this.detectedUpstreamProxy = null;
         await this.applyUpstreamProxy(null);
         try {
           await this.coreRuntime.request({ type: 'proxy.stop', payload: {} });
@@ -537,7 +568,7 @@ class DesktopApplication {
             attributes: { message: readErrorMessage(error) },
           });
         }
-        return result;
+        return { ...result, status: this.withUpstreamProxy(result.status) };
       });
     });
 
@@ -1198,12 +1229,56 @@ class DesktopApplication {
         type: 'proxy.setUpstream',
         payload: { upstream },
       });
+      this.activeUpstreamProxy = upstream;
     } catch (error) {
       this.diagnostics.warn('main.system-proxy.upstream-apply-failed', {
         outcome: 'failed',
         errorCode: readErrorName(error),
         attributes: { message: readErrorMessage(error) },
       });
+    }
+  }
+
+  /**
+   * 给系统代理快照补上 Core 实际在用的上游，供底栏展示。
+   * 只给 host:port：上游 URL 可能带认证信息，不能原样进 Renderer。
+   */
+  private withUpstreamProxy(status: SystemProxyStatus): DesktopSystemProxyStatus {
+    return {
+      ...status,
+      upstreamProxy: toUpstreamAuthority(this.detectedUpstreamProxy),
+      upstreamReachable: this.activeUpstreamProxy !== null,
+    };
+  }
+
+  /**
+   * 上游可达性跃迁：不可达就降级直连，恢复就升级回代理链。
+   * 接管期间用户失去了对出口的控制，上游（如本地 Clash）退出后如果不降级，
+   * 所有外网流量会一直卡在死端口且无法自愈。降级是临时的，恢复后会自动接回上游。
+   */
+  private async onUpstreamReachabilityChange(reachable: boolean): Promise<void> {
+    const detected = this.detectedUpstreamProxy;
+    if (!detected) {
+      return;
+    }
+    this.diagnostics.warn('main.system-proxy.upstream-reachability', {
+      attributes: { reachable },
+    });
+    await this.applyUpstreamProxy(reachable ? detected : null);
+    await this.broadcastSystemProxyStatus();
+  }
+
+  /** 把含上游健康状态的系统代理快照广播给所有 Renderer。 */
+  private async broadcastSystemProxyStatus(): Promise<void> {
+    const service = this.systemProxyService;
+    if (!service) {
+      return;
+    }
+    const status = this.withUpstreamProxy(await service.status());
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.systemProxyStatus, status);
+      }
     }
   }
 

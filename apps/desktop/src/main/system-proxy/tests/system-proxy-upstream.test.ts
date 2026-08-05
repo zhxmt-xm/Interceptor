@@ -117,8 +117,22 @@ describe('toUpstreamProxyConfig', () => {
     );
     expect(result).toEqual({
       proxyUrl: 'http://corp:8080',
-      noProxy: ['internal.com', '10.0.0.1', 'localhost', '127.0.0.1', '::1'],
+      noProxy: ['internal.com', '10.0.0.1', 'localhost', '127.0.0.1'],
     });
+  });
+
+  // Mockttp 按 `:` 切端口，裸 IPv6 会退化成空主机名并匹配所有请求，让上游代理被静默跳过。
+  it('drops bare IPv6 bypass entries that would match every host', () => {
+    const result = toUpstreamProxyConfig(
+      settings({
+        flags: 3,
+        proxyEnabled: true,
+        proxyServer: 'corp:8080',
+        bypassList: '::1;[::1];sso.corp.com',
+      }),
+      SELF,
+    );
+    expect(result).toEqual({ proxyUrl: 'http://corp:8080', noProxy: ['sso.corp.com'] });
   });
 
   it('omits no_proxy when the bypass list is empty', () => {

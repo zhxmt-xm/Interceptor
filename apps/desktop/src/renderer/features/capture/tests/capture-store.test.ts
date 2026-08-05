@@ -246,6 +246,13 @@ describe('captureStore facet filters', () => {
     expect(allFacetOptions(rows.filter((row) => !row.ruleIds)).rule).toEqual([]);
   });
 
+  it('omits exchanges whose application is still being resolved instead of counting them as Unknown', () => {
+    const resolving = summary('resolving', { appPending: true });
+    expect(allFacetOptions([resolving]).application).toEqual([]);
+    expect(allFacetOptions([summary('resolved', { appId: 'chrome', appName: 'Chrome' })]).application)
+      .toEqual([{ value: 'chrome', count: 1 }]);
+  });
+
   it('derives safe body filename suggestions from URL and media MIME', () => {
     expect(suggestedBodyFileName(
       'https://www.byd.com/material/video/video-1.mp4?range=1',

@@ -1,8 +1,8 @@
 diff --git a/node_modules/mockttp/dist/mockttp.d.ts b/node_modules/mockttp/dist/mockttp.d.ts
-index 3dd0793..31b4347 100644
+index 3dd0793..dbe99bb 100644
 --- a/node_modules/mockttp/dist/mockttp.d.ts
 +++ b/node_modules/mockttp/dist/mockttp.d.ts
-@@ -2,7 +2,7 @@ import * as cors from 'cors';
+@@ -2,9 +2,10 @@ import * as cors from 'cors';
  import type { CAOptions } from './util/certificates';
  import { RequestRuleBuilder } from "./rules/requests/request-rule-builder";
  import { WebSocketRuleBuilder } from "./rules/websockets/websocket-rule-builder";
@@ -10,8 +10,11 @@ index 3dd0793..31b4347 100644
 +import { ProxyEnvConfig, MockedEndpoint, CompletedRequest, CompletedResponse, TlsPassthroughEvent, TlsHandshakeFailure, InitiatedRequest, ClientError, WebSocketMessage, WebSocketClose, AbortedRequest, RuleEvent, RawPassthroughEvent, RawPassthroughDataEvent, InitiatedResponse, InformationalResponse, BodyData, TrailerData } from "./types";
  import type { RequestRuleData } from "./rules/requests/request-rule";
  import type { WebSocketRuleData } from "./rules/websockets/websocket-rule";
++import type { ProxySettingSource } from "./rules/proxy-config";
  import type { SocksServerOptions } from "./server/socks-server";
-@@ -332,6 +332,13 @@ export interface Mockttp {
+ export type PortRange = {
+     startPort: number;
+@@ -332,6 +333,13 @@ export interface Mockttp {
       * @category Events
       */
      on(event: 'request-body-data', callback: (req: BodyData) => void): Promise<void>;
@@ -25,7 +28,7 @@ index 3dd0793..31b4347 100644
      /**
       * Subscribe to hear about request details once the request is fully received.
       *
-@@ -359,6 +366,13 @@ export interface Mockttp {
+@@ -359,6 +367,13 @@ export interface Mockttp {
       * @category Events
       */
      on(event: 'response-initiated', callback: (req: InitiatedResponse) => void): Promise<void>;
@@ -39,7 +42,26 @@ index 3dd0793..31b4347 100644
      /**
       * Subscribe to hear about HTTP 1xx informational responses (e.g. 102 Processing,
       * 103 Early Hints) sent before the final response.
-@@ -883,7 +897,7 @@ export interface MockttpOptions {
+@@ -849,6 +864,18 @@ export interface MockttpOptions {
+      * response like any other client HTTP error.
+      */
+     passthrough?: Array<'unknown-protocol'>;
++    /**
++     * The upstream proxy to tunnel passed-through connections through, if any.
++     *
++     * Passed-through connections (TLS passthrough & raw passthrough) are not
++     * intercepted, so they are not matched by rules and never see a rule's own
++     * `proxyConfig`. Without this option they always connect directly to the
++     * target, which breaks any network where a proxy is required to reach it.
++     *
++     * This accepts the same values as a rule's `proxyConfig`, including a
++     * callback, so the upstream proxy can change without restarting the server.
++     */
++    passthroughProxyConfig?: ProxySettingSource;
+     /**
+      * By default, requests that match no rules will receive an explanation of the
+      * request & existing rules, followed by some suggested example Mockttp code
+@@ -883,7 +910,7 @@ export interface MockttpOptions {
       */
      maxBodySize?: number;
  }
@@ -301,10 +323,97 @@ index 8ba0d3d..b0b7a50 100644
                      const { replaceStatus, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformResponse;
                      if (replaceStatus) {
 diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
-index db33b85..24548cf 100644
+index db33b85..80c60dc 100644
 --- a/node_modules/mockttp/dist/server/mockttp-server.js
 +++ b/node_modules/mockttp/dist/server/mockttp-server.js
-@@ -256,6 +256,14 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -27,6 +27,70 @@ const buffer_utils_1 = require("../util/buffer-utils");
+ const header_utils_1 = require("../util/header-utils");
+ const abort_error_1 = require("../util/abort-error");
+ const websocket_rule_1 = require("../rules/websockets/websocket-rule");
++const proxy_config_1 = require("../rules/proxy-config");
++const https_proxy_agent_1 = require("https-proxy-agent");
++const pac_proxy_agent_1 = require("pac-proxy-agent");
++const socks_proxy_agent_1 = require("socks-proxy-agent");
++const buildHttpsProxyAgent = (href, opts) => new https_proxy_agent_1.HttpsProxyAgent(href, opts);
++const buildSocksProxyAgent = (href, opts) => new socks_proxy_agent_1.SocksProxyAgent(href, opts);
++const PassthroughProxyAgentFactoryMap = {
++    'http:': buildHttpsProxyAgent, // HTTPS here really means 'CONNECT-tunnelled' - it can do either
++    'https:': buildHttpsProxyAgent,
++    'pac+http:': (...args) => new pac_proxy_agent_1.PacProxyAgent(...args),
++    'pac+https:': (...args) => new pac_proxy_agent_1.PacProxyAgent(...args),
++    'socks:': buildSocksProxyAgent,
++    'socks4:': buildSocksProxyAgent,
++    'socks4a:': buildSocksProxyAgent,
++    'socks5:': buildSocksProxyAgent,
++    'socks5h:': buildSocksProxyAgent
++};
++/**
++ * The minimum of a ClientRequest that the proxy agents actually touch when opening a tunnel.
++ * PacProxyAgent reads `path` and the upgrade header, and reporting 'websocket' is what makes
++ * it pick a CONNECT-tunnelling agent for a plaintext endpoint instead of a plain HTTP proxy
++ * agent - which is exactly the semantics a passthrough tunnel needs. The others only use it
++ * as an event emitter.
++ */
++function buildTunnelRequestStub() {
++    return Object.assign(new events_1.EventEmitter(), {
++        path: '/',
++        getHeader: (name) => name.toLowerCase() === 'upgrade' ? 'websocket' : undefined
++    });
++}
++// An upstream proxy that accepts the TCP connection but never answers CONNECT would otherwise
++// hang the paused client socket forever, so tunnel setup is bounded.
++const UPSTREAM_TUNNEL_TIMEOUT_MS = 30000;
++/**
++ * Open a raw tunnel to hostname:port via an upstream proxy, for traffic we're passing through
++ * without interception. The agents here all speak CONNECT (or SOCKS), and secureEndpoint: false
++ * keeps the tunnel raw, so the client and the real server still do TLS end-to-end themselves.
++ */
++async function connectViaUpstreamProxy(proxyUrl, hostname, port) {
++    const { href, protocol } = new URL(proxyUrl);
++    const buildProxyAgent = PassthroughProxyAgentFactoryMap[protocol];
++    if (!buildProxyAgent) {
++        throw new Error(`Unsupported upstream proxy protocol for passthrough: ${protocol}`);
++    }
++    const agent = buildProxyAgent(href, { keepAlive: false });
++    let timer;
++    const upstreamSocket = await Promise.race([
++        agent.connect(buildTunnelRequestStub(), {
++            host: hostname,
++            port,
++            secureEndpoint: false
++        }),
++        new Promise((_, reject) => {
++            timer = setTimeout(() => reject(new util_1.CustomError(`Upstream proxy tunnel to ${hostname}:${port} timed out`, { code: 'E_UPSTREAM_PROXY_TIMEOUT' })), UPSTREAM_TUNNEL_TIMEOUT_MS);
++            timer.unref();
++        })
++    ]).finally(() => clearTimeout(timer));
++    // A rejected CONNECT yields a non-writable placeholder socket rather than throwing.
++    if (!upstreamSocket.writable) {
++        upstreamSocket.destroy();
++        throw new Error(`Upstream proxy refused the tunnel to ${hostname}:${port}`);
++    }
++    return upstreamSocket;
++}
+ const serverPortCheckMutex = new async_mutex_1.Mutex();
+ /**
+  * A in-process Mockttp implementation. This starts servers on the local machine in the
+@@ -41,6 +105,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+     isHttp2Enabled;
+     socksOptions;
+     passthroughUnknownProtocols;
++    passthroughProxyConfig;
+     maxBodySize;
+     keyLogFilePath;
+     keyLogStream;
+@@ -55,6 +120,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+         this.isHttp2Enabled = options.http2 ?? 'fallback';
+         this.socksOptions = options.socks ?? false;
+         this.passthroughUnknownProtocols = options.passthrough?.includes('unknown-protocol') ?? false;
++        this.passthroughProxyConfig = options.passthroughProxyConfig;
+         this.maxBodySize = options.maxBodySize ?? Infinity;
+         this.keyLogFilePath = options.https?.keyLogFile;
+         this.eventEmitter = new events_1.EventEmitter();
+@@ -256,6 +322,14 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
              emitter.emit('request-initiated', initiatedReq);
          });
      }
@@ -319,7 +428,7 @@ index db33b85..24548cf 100644
      announceCompletedRequestAsync(emitter, request) {
          if (emitter.listenerCount('request') === 0)
              return;
-@@ -483,6 +491,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -483,6 +557,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
                  serverPort: this.port,
                  onBodyData: emitter.listenerCount('request-body-data') > 0
                      ? this.announceBodyDataAsync.bind(this, emitter, 'request')
@@ -329,7 +438,7 @@ index db33b85..24548cf 100644
                      : undefined
              });
          }
-@@ -531,6 +542,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -531,6 +608,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
              onBodyData: emitter.listenerCount('response-body-data') > 0
                  ? this.announceBodyDataAsync.bind(this, emitter, 'response')
                  : undefined,
@@ -339,6 +448,92 @@ index db33b85..24548cf 100644
              onInformationalResponse: (status, flatHeaders) => this.announceResponseInformationAsync(emitter, response, status, flatHeaders)
          });
          // If the request had Expect: 100-continue, we trigger the auto response now.
+@@ -937,6 +1017,7 @@ ${await this.suggestRule(request)}`;
+             // Awkward edge case. If we are passing through raw data, but we've already unwrapped TLS beforehand,
+             // we need to recreate the TLS for the passthrough. This is more art than science but we can
+             // get pretty close to simulating the original incoming configuration:
++            // Note that this branch always connects directly, even with passthroughProxyConfig set.
+             upstreamSocket = tls.connect({
+                 host: hostname,
+                 port: targetPort,
+@@ -952,11 +1033,77 @@ ${await this.suggestRule(request)}`;
+             // For raw traffic we pass through raw - not surprising. For TLS traffic this might be surprising,
+             // but it's because a TLS tunnel is when we _don't_ terminate TLS ourselves, so we can't get inside
+             // the tunnel at all here.
++            if (this.passthroughProxyConfig) {
++                // Resolving the proxy setting is async, so this branch finishes the setup itself.
++                this.tunnelPassthroughViaProxy(type, socket, hostname, port, eventData);
++                return;
++            }
+             upstreamSocket = net.connect({ host: hostname, port: targetPort });
+         }
+         else {
+             throw new util_1.UnreachableCheck(type);
+         }
++        this.wirePassthroughSockets(type, socket, upstreamSocket, eventData, hostname, port);
++    }
++    /**
++     * Passthrough setup for when an upstream proxy may apply. Kept separate from passthroughSocket
++     * so that servers without passthroughProxyConfig keep their original fully synchronous path.
++     * Nothing reads from the client socket until it's piped, so data buffered before/during the
++     * await (notably the client hello that was unshifted back) is preserved.
++     */
++    async tunnelPassthroughViaProxy(type, socket, hostname, port, eventData) {
++        const targetPort = port ?? 443;
++        // readTlsClientHello resumes the socket if it was already flowing, and nothing reads it
++        // again until it's piped below, so pause explicitly to stop data being dropped meanwhile.
++        socket.pause();
++        let upstreamSocket;
++        try {
++            const proxySetting = await (0, proxy_config_1.getProxySetting)(this.passthroughProxyConfig, { hostname });
++            upstreamSocket = proxySetting?.proxyUrl &&
++                !(0, proxy_config_1.matchesNoProxy)(hostname, targetPort, proxySetting.noProxy)
++                ? await connectViaUpstreamProxy(proxySetting.proxyUrl, hostname, targetPort)
++                : net.connect({ host: hostname, port: targetPort });
++        }
++        catch (e) {
++            if (this.debug)
++                console.warn(`Upstream proxy ${type} passthrough error to ${hostname}:${targetPort}:`, e);
++            eventData.tags.push(`${type}-passthrough-error:${e.code || 'E_UPSTREAM_PROXY_FAILED'}`);
++            (0, socket_util_1.resetOrDestroy)(socket);
++            this.announcePassthroughClosed(type, eventData);
++            return;
++        }
++        if (socket.closed || socket.destroyed) {
++            upstreamSocket.destroy();
++            this.announcePassthroughClosed(type, eventData);
++            return;
++        }
++        // A tunnel from a proxy agent arrives already connected, so the 'connect' hook that
++        // normally registers it for loop detection would never fire.
++        if (!upstreamSocket.connecting) {
++            this.outgoingPassthroughSockets.add(upstreamSocket);
++        }
++        this.wirePassthroughSockets(type, socket, upstreamSocket, eventData, hostname, port);
++    }
++    /**
++     * Announce the close of a passthrough connection that never got wired up, so that a
++     * '*-passthrough-opened' event is always eventually followed by its matching close.
++     */
++    announcePassthroughClosed(type, eventData) {
++        const emitter = this.eventEmitter;
++        setImmediate(() => {
++            emitter.emit(`${type}-passthrough-closed`, {
++                ...eventData,
++                timingEvents: {
++                    ...eventData.timingEvents,
++                    disconnectTimestamp: now()
++                }
++            });
++        });
++    }
++    /** Connects a client socket to its resolved upstream socket, and reports on the pair. */
++    wirePassthroughSockets(type, socket, upstreamSocket, eventData, hostname, port) {
++        const emitter = this.eventEmitter;
++        const targetPort = port ?? 443;
+         upstreamSocket.setNoDelay(true);
+         socket.pipe(upstreamSocket);
+         upstreamSocket.pipe(socket);
 diff --git a/node_modules/mockttp/dist/types.d.ts b/node_modules/mockttp/dist/types.d.ts
 index 2664cf5..f2d0933 100644
 --- a/node_modules/mockttp/dist/types.d.ts

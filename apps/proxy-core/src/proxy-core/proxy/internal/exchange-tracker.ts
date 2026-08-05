@@ -137,6 +137,10 @@ export class ExchangeTracker {
     if (knownApp) {
       entry.appId = knownApp.id;
       entry.appName = knownApp.name;
+    } else if (clientAppPort !== null) {
+      // 未命中快照时要拉起 helper 反查；标记待定，否则 Renderer 会把“还没解析完”
+      // 当成“识别不出”，在 Application 筛选器里先冒出 Unknown 再消失。
+      entry.appPending = true;
     }
 
     const headers = ProxyUtils.toHeaderInputs('request', request.rawHeaders);
@@ -747,7 +751,13 @@ export class ExchangeTracker {
       void this.clientAppService
         ?.resolveAppForPort(sourcePort)
         .then((identity) => {
-          if (!identity || entry.generation !== this.generation) {
+          if (entry.generation !== this.generation) {
+            return;
+          }
+          entry.appPending = false;
+          if (!identity) {
+            // 确实识别不出来也要再推一次，否则 Renderer 会一直把它当作解析中。
+            this.enqueue(entry, 'exchange-updated');
             return;
           }
           entry.appId = identity.id;
@@ -756,6 +766,8 @@ export class ExchangeTracker {
         })
         .catch(() => {
           // 归属解析是可选增强，未处理的 rejection 会终止 Core 进程并中断抓包。
+          entry.appPending = false;
+          this.enqueue(entry, 'exchange-updated');
         });
     });
   }
@@ -787,6 +799,7 @@ export class ExchangeTracker {
       responseBytes: entry.responseBytes,
       ...(entry.appId !== undefined ? { appId: entry.appId } : {}),
       ...(entry.appName !== undefined ? { appName: entry.appName } : {}),
+      ...(entry.appPending === true ? { appPending: true } : {}),
       ...(entry.ruleIds.size > 0 ? { ruleIds: [...entry.ruleIds] } : {}),
     };
   }

@@ -152,6 +152,10 @@ export interface SystemProxyStatus {
   bypassList: string | null;
   pacUrl: string | null;
   autoDetect: boolean;
+  /** Core 实际在用的上游代理 host:port；null 表示直连源站。已去掉认证信息。 */
+  upstreamProxy: string | null;
+  /** 上游是否可达；false 表示已临时降级为直连，探活恢复后会自动升级。 */
+  upstreamReachable: boolean;
 }
 
 export interface SystemProxyRestoreResult {
@@ -392,6 +396,7 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyEnable: 'system-proxy:enable',
   systemProxyRestore: 'system-proxy:restore',
   systemProxyRepair: 'system-proxy:repair',
+  systemProxyStatus: 'system-proxy:status-changed',
   updateGetStatus: 'update:get-status',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
@@ -463,6 +468,10 @@ export interface InterceptorDesktopApi {
   onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void;
   onCoreProcessStatusChange(
     listener: (status: CoreProcessStatus) => void,
+  ): () => void;
+  /** 上游可达性跃迁等不由 Renderer 发起的系统代理变化。 */
+  onSystemProxyStatusChange(
+    listener: (status: SystemProxyStatus) => void,
   ): () => void;
   getCaptureUsage(): Promise<CaptureUsage>;
   clearCapture(): Promise<CaptureUsage>;

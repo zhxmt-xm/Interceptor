@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@interceptor/core-protocol": "0.0.0",
+    "https-proxy-agent": "7.0.6",
     "mockttp": "4.5.0",
     "ws": "8.21.0"
   },

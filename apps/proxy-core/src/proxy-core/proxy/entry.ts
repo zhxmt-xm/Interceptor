@@ -167,6 +167,7 @@ export class ProxyService {
           cert: this.tlsConfig.ca.cert,
         },
         http2: true,
+        passthroughProxyConfig: () => this.upstreamProxySetting(),
       });
     } else {
       this.tlsPassthroughIdentity ??= await generateCACertificate();
@@ -175,6 +176,8 @@ export class ProxyService {
           ...this.tlsPassthroughIdentity,
           tlsInterceptOnly: [],
         },
+        // MITM 关闭时全部 HTTPS 走 passthrough 隧道，该路径不经规则，必须单独链上游。
+        passthroughProxyConfig: () => this.upstreamProxySetting(),
       });
     }
     this.registerCaptureListeners(server);
@@ -208,6 +211,8 @@ export class ProxyService {
       intercept: (message) => this.interceptWebSocketMessage(message),
       ignoreCertificateErrors: (hostname) =>
         this.tlsConfig.insecureHosts.includes(hostname),
+      // Bridge 自己建上游连接，不经规则链，因此必须单独把上游接进去。
+      upstreamProxy: () => this.upstreamProxySetting(),
       onError: (error) => {
         this.diagnostics?.error('websocket.bridge-failed', {
           errorCode: error.name,

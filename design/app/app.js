@@ -215,7 +215,6 @@ function setState(s = {}) {
     if (s.composer) app.dataset.composer = s.composer;
     else delete app.dataset.composer;
   }
-  if ('ruleList' in s) app.dataset.ruleList = s.ruleList || 'flat';
   if ('collection' in s) app.dataset.collection = s.collection || 'open';
   if ('collectionMenu' in s) {
     if (s.collectionMenu) app.dataset.collectionMenu = s.collectionMenu;
@@ -445,7 +444,7 @@ function syncControls() {
     sidebar: app.classList.contains('collapsed') ? 'collapsed' : 'expanded',
     overlay: app.getAttribute('data-overlay') || 'none',
     boot: app.dataset.boot || 'none',
-    ruleList: app.dataset.ruleList || 'flat',
+    upstream: app.dataset.upstream || 'none',
   };
   document.querySelectorAll('.dock .switch').forEach((box) => {
     const key = box.dataset.key;

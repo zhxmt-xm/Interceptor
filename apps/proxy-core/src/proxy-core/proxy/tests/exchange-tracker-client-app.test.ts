@@ -93,7 +93,10 @@ describe('ExchangeTracker client application attribution', () => {
     await nextTick();
     await nextTick();
 
-    expect(recordingCaptureEventQueue.events).toHaveLength(1);
+    // 解析失败也要再推一次，否则 Renderer 会一直把它当成解析中，Application 筛选器里始终缺这一条。
+    expect(recordingCaptureEventQueue.events).toHaveLength(2);
+    expect(recordingCaptureEventQueue.events[0]?.summary.appPending).toBe(true);
+    expect(recordingCaptureEventQueue.events[1]?.summary.appPending).toBeUndefined();
     expect(recordingCaptureService.exchanges[0]?.appId).toBeUndefined();
     expect(recordingCaptureService.exchanges[0]?.url).toBe('http://example.test/items');
   });

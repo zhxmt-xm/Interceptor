@@ -1,6 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import {
   matchers,
   webSocketSteps,
@@ -8,6 +9,9 @@ import {
   type OngoingRequest,
   type WebSocketRuleData,
 } from 'mockttp';
+// mockttp 在 exports 里开放了 ./dist/*；用它自己的实现才能保证 noProxy 语义与
+// passthrough 隧道、thenPassThrough 规则三者完全一致。
+import { matchesNoProxy } from 'mockttp/dist/rules/proxy-config';
 import WebSocket, { WebSocketServer, type RawData } from 'ws';
 
 import type {
@@ -64,6 +68,34 @@ export class WebSocketBridge {
     this.pairs.clear();
   }
 
+  /**
+   * 目标适用上游代理时给出 ws 的 agent 选项，否则返回空对象表示直连。
+   * 只处理 CONNECT 隧道类上游（http/https）：socks 与 PAC 保持直连，
+   * 与上游探活对 PAC 的处理保持一致。
+   */
+  private upstreamAgentFor(url: URL): { agent?: HttpsProxyAgent<string> } {
+    const upstream = this.options.upstreamProxy?.();
+    if (!upstream) {
+      return {};
+    }
+    const port = url.port.length > 0
+      ? Number(url.port)
+      : url.protocol === 'wss:' ? 443 : 80;
+    if (matchesNoProxy(url.hostname, port, upstream.noProxy ? [...upstream.noProxy] : undefined)) {
+      return {};
+    }
+    let protocol: string;
+    try {
+      protocol = new URL(upstream.proxyUrl).protocol;
+    } catch {
+      return {};
+    }
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      return {};
+    }
+    return { agent: new HttpsProxyAgent(upstream.proxyUrl) };
+  }
+
   private async handle(
     request: OngoingRequest & IncomingMessage,
     socket: Socket,
@@ -79,6 +111,7 @@ export class WebSocketBridge {
       autoPong: false,
       skipUTF8Validation: true,
       rejectUnauthorized: !this.options.ignoreCertificateErrors(url.hostname),
+      ...this.upstreamAgentFor(url),
     };
     const upstream = protocols.length > 0
       ? new WebSocket(url, protocols, options)

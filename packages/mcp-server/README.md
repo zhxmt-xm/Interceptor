@@ -4,7 +4,7 @@
 
 **当前状态：本 package 已实现并单测通过，但尚未接入 Main / Core。** 它不含 transport，也不引用 Electron；接线方式见下方「宿主需要提供什么」。
 
-完整目标架构、安全模型与验收要点见 [`architecture/feature-mcp.md`](../../architecture/feature-mcp.md)。
+完整目标架构、安全模型与验收要点见 [`architecture/features/mcp.md`](../../architecture/features/mcp.md)。
 
 ## 定位
 

@@ -111,7 +111,13 @@ body {
 .app[data-view="capture"] .sv[data-v="capture"],
 .app[data-view="composer"] .sv[data-v="composer"] { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 .capture-upstream { justify-self: end; }
-.app:not([data-upstream]) .capture-upstream { display: none; }
+/* 状态栏只陈述当前出口形态：有可达上游就报地址，否则报 direct。
+   上游不可达时已自动降级且流量仍通，所以只用颜色区分，不额外堆告警文案。 */
+.upstream-ok-label { display: none; }
+.app[data-upstream="on"] .upstream-ok-label { display: inline; }
+.app[data-upstream="on"] .upstream-direct-label { display: none; }
+.app[data-upstream="down"] .capture-upstream { color: var(--yellow); }
+.app[data-upstream="down"] .capture-upstream .si { color: var(--yellow); }
 .statusbar .slink { padding: 0; margin-left: 2px; border: 0; background: transparent; color: var(--accent); font: inherit; cursor: pointer; }
 .statusbar .slink:hover { text-decoration: underline; }
 .capture-decrypting, .capture-passthrough { display: none; align-items: center; gap: 6px; }
@@ -547,7 +553,6 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rules-search svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .rules-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: 12px var(--font-ui); }
 .rules-search input::placeholder { color: var(--text-3); opacity: 1; }
-.rflat { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .rrow { display: flex; align-items: center; gap: 11px; height: 60px; flex: 0 0 60px; padding: 0 12px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
 .rrow:hover { background: var(--hover); }
 .rrow.sel { background: var(--sel); }
@@ -569,13 +574,10 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rhit { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* --- rules as a folder tree: same 432px column, one line per rule --- */
-.rtree { position: relative; display: none; flex-direction: column; gap: 6px; flex: 1; min-height: 0; padding: 8px; overflow-y: auto; }
+.rtree { position: relative; display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; padding: 8px; overflow-y: auto; }
 .rtree::-webkit-scrollbar { width: 8px; }
 .rtree::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 4px; background: transparent; background-clip: content-box; }
 .rtree:hover::-webkit-scrollbar-thumb { background: var(--border-2); background-clip: content-box; }
-.app[data-rule-list="flat"] .rtree { display: none; }
-.app:not([data-rule-list="flat"]) .rflat { display: none; }
-.app:not([data-rule-list="flat"]) .rtree { display: flex; }
 .rgrp { display: flex; flex-direction: column; gap: 2px; }
 /* a folder only names and collapses a group — enable, order and hits live on the rules inside */
 .rgrp-h { display: flex; align-items: center; gap: 6px; height: 30px; flex: 0 0 30px; padding: 0 4px; border-radius: 7px; color: var(--text); user-select: none; }
@@ -609,9 +611,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .rrule-main { display: flex; flex-direction: column; justify-content: center; gap: 1px; flex: 1; min-width: 0; }
 .rrule-n { font-size: 12.5px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the match summary only fits when the row is two lines high */
-.rrule-u { display: none; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.app[data-rule-list="tree-url"] .rrule { height: 42px; flex-basis: 42px; }
-.app[data-rule-list="tree-url"] .rrule-u { display: block; }
+.rrule-u { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rtree .rchip { font-size: 10px; padding: 2px 6px; }
 .rtree .rhit { min-width: 26px; }
 .reditor { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--panel); }

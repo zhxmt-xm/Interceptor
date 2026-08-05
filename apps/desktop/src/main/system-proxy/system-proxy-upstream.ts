@@ -100,7 +100,12 @@ function toNoProxyList(bypassList: string | null): string[] {
       continue;
     }
     if (item.toLowerCase() === '<local>') {
-      entries.push('localhost', '127.0.0.1', '::1');
+      entries.push('localhost', '127.0.0.1');
+      continue;
+    }
+    // Mockttp 按 `:` 切端口，裸 IPv6（`::1`、`[::1]`）会退化成空主机名并匹配所有请求，
+    // 让整个上游代理被静默跳过，因此这类条目一律丢弃。
+    if (item.split(':')[0]?.replace(/^\[/, '').length === 0) {
       continue;
     }
     entries.push(item.replace(/^\*?\./, ''));
@@ -110,4 +115,22 @@ function toNoProxyList(bypassList: string | null): string[] {
 
 function withNoProxy(proxyUrl: string, noProxy: string[]): UpstreamProxyConfig {
   return noProxy.length > 0 ? { proxyUrl, noProxy } : { proxyUrl };
+}
+
+/**
+ * 上游代理的展示形式：只保留 host:port。
+ * 上游 URL 可能带 user:pass 认证信息，不能原样交给 Renderer 展示。
+ */
+export function toUpstreamAuthority(
+  upstream: UpstreamProxyConfig | null,
+): string | null {
+  if (!upstream) {
+    return null;
+  }
+  try {
+    const url = new URL(upstream.proxyUrl);
+    return url.port.length > 0 ? `${url.hostname}:${url.port}` : url.hostname;
+  } catch {
+    return null;
+  }
 }
