@@ -15,10 +15,8 @@ import type {
   RuleNode,
 } from '../../../shared/desktop-api';
 import type { SelectOption } from '../../components';
-import { FOLDER_MENU_WIDTH, FOLDER_ROW_HEIGHT } from './constants';
 import type {
   ChipKind,
-  FolderMenuAnchor,
   RuleIssue,
   RulesState,
 } from './interfaces';
@@ -343,25 +341,6 @@ export function enabledCount(nodes: readonly RuleNode[]): number {
     (total, rule) => total + (rule.enabled ? 1 : 0),
     0,
   );
-}
-
-/** 目录操作菜单锚到触发行下方，坐标相对于规则树滚动区。 */
-export function anchorFolderMenu(
-  trigger: HTMLElement,
-  folderId: string,
-): FolderMenuAnchor | null {
-  const row = trigger.closest('[data-tree-row]');
-  const scroll = trigger.closest('[data-tree-scroll]');
-  if (!row || !scroll) {
-    return null;
-  }
-  const rowBounds = row.getBoundingClientRect();
-  const scrollBounds = scroll.getBoundingClientRect();
-  return {
-    folderId,
-    top: rowBounds.top - scrollBounds.top + FOLDER_ROW_HEIGHT,
-    left: Math.max(8, rowBounds.right - scrollBounds.left - FOLDER_MENU_WIDTH),
-  };
 }
 
 /** 受控数字输入的解析：非法输入回退到给定默认值。 */

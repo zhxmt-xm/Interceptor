@@ -21,6 +21,8 @@ import styles from './BodyView.module.css';
 
 interface BodyViewProps {
   body: CaptureBodyRef;
+  /** 全屏弹窗标题；内联消息体不给，也就没有全屏入口。 */
+  fullscreenTitle?: string;
   compact?: boolean;
   offset?: number;
   suggestedFileName?: string;
@@ -37,6 +39,7 @@ interface LoadedBody {
  */
 export function BodyView({
   body,
+  fullscreenTitle,
   compact = false,
   offset = 0,
   suggestedFileName = 'response-body.bin',
@@ -192,6 +195,7 @@ export function BodyView({
     <BodyViewer
       bytes={loaded.bytes}
       mediaType={body.mediaType}
+      fullscreenTitle={fullscreenTitle}
       notes={bodyNotes()}
       onSave={saveBody}
       saving={saveJob?.state === 'running'}

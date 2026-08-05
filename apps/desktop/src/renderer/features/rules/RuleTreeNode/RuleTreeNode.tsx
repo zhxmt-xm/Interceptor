@@ -14,6 +14,7 @@ export interface RuleTreeNodeProps {
   depth: number;
   drag: TreeDragApi;
   search: TreeSearchResult;
+  onShowRuleRequests: (ruleId: string) => void;
 }
 
 /** 规则树的一个节点：目录渲染成可折叠分组，规则渲染成单行。 */
@@ -22,6 +23,7 @@ export function RuleTreeNode({
   depth,
   drag,
   search,
+  onShowRuleRequests,
 }: RuleTreeNodeProps): React.JSX.Element | null {
   const storedExpanded = useRulesStore((state) => state.expandedFolders.includes(node.id));
   const renaming = useRulesStore((state) => state.renamingNodeId === node.id);
@@ -52,6 +54,7 @@ export function RuleTreeNode({
         keyword={keyword}
         onSelect={select}
         onToggle={toggleRule}
+        onShowRuleRequests={onShowRuleRequests}
         dragProps={drag.rowProps(node.id)}
       />
     );
@@ -77,6 +80,7 @@ export function RuleTreeNode({
               depth={depth + 1}
               drag={drag}
               search={search}
+              onShowRuleRequests={onShowRuleRequests}
             />
           ))}
         </div>

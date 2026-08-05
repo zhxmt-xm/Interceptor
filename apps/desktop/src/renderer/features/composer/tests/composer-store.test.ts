@@ -40,7 +40,6 @@ function seed(nodes: CollectionNode[], targetFolderId: string | null = null): vo
     expandedFolders: [],
     targetFolderId,
     renamingNodeId: null,
-    folderMenu: null,
     openRequestIds: [],
     activeRequestId: null,
     runtimes: {},

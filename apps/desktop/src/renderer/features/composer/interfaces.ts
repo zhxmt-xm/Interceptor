@@ -39,13 +39,6 @@ export interface DocumentRuntime {
   readonly responseTab: ResponseTab;
 }
 
-/** 目录操作菜单的锚点：菜单绝对定位在 Collection 分栏内。 */
-export interface FolderMenuAnchor {
-  readonly folderId: string;
-  readonly top: number;
-  readonly left: number;
-}
-
 export type {
   CollectionNode,
   CollectionRequest,

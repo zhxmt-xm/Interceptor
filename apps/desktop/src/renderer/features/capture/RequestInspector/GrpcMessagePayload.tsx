@@ -85,6 +85,7 @@ export function GrpcMessagePayload({
           decodeStatus: 'ok',
         }}
         compact
+        fullscreenTitle={t('capture.payload')}
         offset={message.payloadOffset}
       />
     </div>

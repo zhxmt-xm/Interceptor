@@ -44,6 +44,8 @@ export const commonEnglishMessages = {
   'body.mediaNotRead': "Video and audio are never read into the preview. Save the file to play it in a media player.",
   'body.save': 'Save body',
   'body.format': "Format",
+  'body.fullscreen': 'Fullscreen',
+  'body.exitFullscreen': 'Exit fullscreen',
   'body.formatBlocked': "Body is over 8 MB — formatting is disabled. Save it to format in an external tool.",
   'body.copyValue': "Copy value",
   'body.copyObject': "Copy object",

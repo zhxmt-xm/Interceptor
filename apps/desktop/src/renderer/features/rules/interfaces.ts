@@ -11,13 +11,6 @@ import type {
   RuleSet,
 } from '../../../shared/desktop-api';
 
-/** 目录操作菜单的锚点：菜单挂在触发它的目录行上。 */
-export interface FolderMenuAnchor {
-  folderId: string;
-  top: number;
-  left: number;
-}
-
 /** Rule row chip kind；复用 RuleRow.module.css 的着色类。 */
 export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'flow' | 'brk';
 
@@ -49,8 +42,6 @@ export interface RulesState {
   expandedFolders: string[];
   /** 正在行内重命名的节点。 */
   renamingNodeId: string | null;
-  /** 打开中的目录操作菜单及其锚点。 */
-  folderMenu: FolderMenuAnchor | null;
   /** ruleId → 累计命中次数。 */
   hits: Record<string, number>;
   /** 最近一次成功应用或加载的规则快照，用于内容级脏检查（改回原值即视为未改动）。 */
@@ -68,7 +59,6 @@ export interface RulesState {
   /** 幂等展开目录，供拖拽悬停自动展开。 */
   expandFolder(id: string): void;
   beginRename(id: string | null): void;
-  setFolderMenu(menu: FolderMenuAnchor | null): void;
 
   addRule(name?: string, parentId?: string | null): void;
   addRuleDraft(rule: RuleDefinition): void;

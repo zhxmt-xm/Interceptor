@@ -1,7 +1,9 @@
-import { Braces, Copy } from 'lucide-react';
+import { Braces, Copy, Maximize2 } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import { BodyFullscreen } from '../../../components/BodyFullscreen/BodyFullscreen';
 import { CodeEditor } from '../../../components/CodeEditor/CodeEditor';
 import { IconButton } from '../../../components/IconButton/IconButton';
 import { Segmented } from '../../../components/Segmented/Segmented';
@@ -21,12 +23,17 @@ export interface BodyPaneProps {
 export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
   const { t } = useTranslation();
   const copy = useClipboardCopy();
+  const [fullscreen, setFullscreen] = useState(false);
   const updateRequest = useComposerStore((state) => state.updateRequest);
   const body = buildRequestBody(request) ?? '';
   const isEditor = request.bodyType === 'json' || request.bodyType === 'text';
+  const meta = t('composer.bodyMeta', {
+    size: new TextEncoder().encode(body).byteLength,
+    type: bodyContentType(request.bodyType),
+  });
 
-  return (
-    <div className={styles.pane}>
+  const content = (
+    <>
       <div className={styles.bar}>
         <Segmented
           options={[
@@ -45,12 +52,7 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
         <span className={styles.spacer} />
         {request.bodyType === 'none' ? null : (
           <>
-            <span className={styles.meta}>
-              {t('composer.bodyMeta', {
-                size: new TextEncoder().encode(body).byteLength,
-                type: bodyContentType(request.bodyType),
-              })}
-            </span>
+            <span className={styles.meta}>{meta}</span>
             <div className={styles.tools}>
               {request.bodyType === 'json' ? (
                 <IconButton
@@ -71,6 +73,14 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
                 size="sm"
                 onClick={() => copy(body)}
               />
+              {fullscreen ? null : (
+                <IconButton
+                  icon={Maximize2}
+                  label={t('body.fullscreen')}
+                  size="sm"
+                  onClick={() => setFullscreen(true)}
+                />
+              )}
             </div>
           </>
         )}
@@ -99,6 +109,23 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
       {request.bodyType === 'none' ? (
         <div className={styles.empty}>{t('composer.noBody')}</div>
       ) : null}
+    </>
+  );
+
+  return (
+    <div className={styles.pane}>
+      {fullscreen ? (
+        <BodyFullscreen
+          title={t('composer.requestBody')}
+          meta={meta}
+          onCopy={() => copy(body)}
+          onClose={() => setFullscreen(false)}
+        >
+          {content}
+        </BodyFullscreen>
+      ) : (
+        content
+      )}
     </div>
   );
 }

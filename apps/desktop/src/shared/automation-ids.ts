@@ -350,9 +350,9 @@ export class AutomationIdFactory {
     return `rules.folder-menu.${folderId}`;
   }
 
-  /** Identify one action in a Rule folder menu. */
-  static ruleFolderAction(folderId: string, action: string): string {
-    return `rules.folder-action.${folderId}.${action}`;
+  /** Identify one action in a Rule tree row's context menu. */
+  static ruleNodeAction(nodeId: string, action: string): string {
+    return `rules.node-action.${nodeId}.${action}`;
   }
 
   /** Identify the inline rename field owned by one Rule folder. */
@@ -395,9 +395,9 @@ export class AutomationIdFactory {
     return `composer.collection.folder-menu.${folderId}`;
   }
 
-  /** Identify one action in a Collection folder menu. */
-  static composerCollectionFolderAction(folderId: string, action: string): string {
-    return `composer.collection.folder-action.${folderId}.${action}`;
+  /** Identify one action in a Collection tree row's context menu. */
+  static composerCollectionNodeAction(nodeId: string, action: string): string {
+    return `composer.collection.node-action.${nodeId}.${action}`;
   }
 
   /** Identify the inline rename field owned by a Collection folder. */

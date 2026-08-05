@@ -12,15 +12,13 @@ import { exportCollection } from '../data/useCollection';
 
 import styles from './CollectionPanel.module.css';
 import { CollectionTreeNode } from './CollectionTreeNode';
-import { FolderMenu } from './FolderMenu';
 
-/** 左侧集合分栏：搜索、目录树与目录操作菜单。 */
+/** 左侧集合分栏：搜索、目录树与新建入口。 */
 export function CollectionPanel(): React.JSX.Element {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const nodes = useComposerStore((state) => state.nodes);
   const targetFolderId = useComposerStore((state) => state.targetFolderId);
-  const folderMenu = useComposerStore((state) => state.folderMenu);
   const createRequest = useComposerStore((state) => state.createRequest);
   const createFolder = useComposerStore((state) => state.createFolder);
   const moveNode = useComposerStore((state) => state.moveNode);
@@ -103,15 +101,6 @@ export function CollectionPanel(): React.JSX.Element {
           <div className={styles.dropLine} style={drag.dropLine} />
         ) : null}
       </div>
-
-      {folderMenu ? (
-        <div
-          className={styles.menu}
-          style={{ top: folderMenu.top, left: folderMenu.left }}
-        >
-          <FolderMenu folderId={folderMenu.folderId} />
-        </div>
-      ) : null}
     </aside>
   );
 }

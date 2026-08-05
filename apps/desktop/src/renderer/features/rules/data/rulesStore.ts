@@ -7,6 +7,7 @@ import {
   fitsDepth,
   folderDepth,
   insertNode,
+  parentFolderId,
   removeNode as removeTreeNode,
   renameNode as renameTreeNode,
 } from '@interceptor/core-protocol';
@@ -30,14 +31,26 @@ function expandTo(expanded: string[], folderId: string | null): string[] {
     : expanded;
 }
 
-export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
+/** 新建落点：选中目录就放进去，选中规则就跟它平级，都没选就放根。 */
+function createParentId(state: RulesState): string | null {
+  if (state.selectedId === null) {
+    return null;
+  }
+  const selected = findNode(state.nodes, state.selectedId);
+  if (selected && selected.kind === 'folder') {
+    return selected.id;
+  }
+  return parentFolderId(state.nodes, state.selectedId);
+}
+
+export const useRulesStore = create<RulesState>((set) => ({
+  revision: 0,
   initialized: false,
   nodes: [],
   applied: [],
   selectedId: null,
   expandedFolders: [],
   renamingNodeId: null,
-  folderMenu: null,
   hits: {},
   loading: false,
   saving: false,
@@ -59,7 +72,6 @@ export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
         applied: cloneNodes(ruleSet.nodes),
         selectedId,
         renamingNodeId: null,
-        folderMenu: null,
         loading: false,
         saving: false,
         conflict: false,
@@ -92,18 +104,16 @@ export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
         : [...state.expandedFolders, id],
     })),
 
-  beginRename: (id) => set({ renamingNodeId: id, folderMenu: null }),
+  beginRename: (id) => set({ renamingNodeId: id }),
 
-  setFolderMenu: (menu) => set({ folderMenu: menu }),
-
-  addRule: (name, parentId = null) =>
+  addRule: (name, parentId) =>
     set((state) => {
       const rule = createRule(name);
+      const target = parentId === undefined ? createParentId(state) : parentId;
       return {
-        nodes: normalizePriorities(appendNode(state.nodes, parentId, rule)),
+        nodes: normalizePriorities(appendNode(state.nodes, target, rule)),
         selectedId: rule.id,
-        expandedFolders: expandTo(state.expandedFolders, parentId),
-        folderMenu: null,
+        expandedFolders: expandTo(state.expandedFolders, target),
       };
     }),
 
@@ -113,14 +123,17 @@ export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
       selectedId: rule.id,
     })),
 
-  addFolder: (name, parentId = null) =>
+  addFolder: (name, parentId) =>
     set((state) => {
       const folder = createFolder(name);
+      const target = parentId === undefined ? createParentId(state) : parentId;
+      if (!fitsDepth(folderDepth(state.nodes, target), folder)) {
+        return state;
+      }
       return {
-        nodes: appendNode(state.nodes, parentId, folder),
-        expandedFolders: [...expandTo(state.expandedFolders, parentId), folder.id],
+        nodes: appendNode(state.nodes, target, folder),
+        expandedFolders: [...expandTo(state.expandedFolders, target), folder.id],
         renamingNodeId: folder.id,
-        folderMenu: null,
       };
     }),
 
@@ -134,7 +147,6 @@ export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
           state.selectedId && ruleIds.includes(state.selectedId)
             ? state.selectedId
             : (ruleIds[0] ?? null),
-        folderMenu: null,
       };
     }),
 

@@ -1,12 +1,13 @@
 import { ChevronDown, Folder, MoreVertical } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, HighlightedName } from '../../../components';
 import type { RuleFolder } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
-import { anchorFolderMenu } from '../utils';
 
+import { RuleFolderMenu } from './RuleFolderMenu';
 import styles from './RuleFolderRow.module.css';
 
 export interface RuleFolderRowProps {
@@ -41,51 +42,47 @@ export function RuleFolderRow({
   dragProps,
 }: RuleFolderRowProps): React.JSX.Element {
   const { t } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const toggleFolder = useRulesStore((state) => state.toggleFolder);
-  const folderMenu = useRulesStore((state) => state.folderMenu);
-  const setFolderMenu = useRulesStore((state) => state.setFolderMenu);
-  const menuOpen = folderMenu?.folderId === folder.id;
 
   return (
-    <div
-      data-tree-row={folder.id}
-      data-automation-id={AutomationIdFactory.ruleFolderRow(folder.id)}
-      style={{ '--depth': depth } as React.CSSProperties}
-      className={cx(
-        styles.row,
-        dragging && styles.dragging,
-        dropTarget && styles.dropTarget,
-        menuOpen && styles.menuOpen,
-      )}
-      {...dragProps}
-    >
-      <button
-        type="button"
-        className={styles.chevronButton}
-        aria-label={expanded ? t('rules.collapseFolder') : t('rules.expandFolder')}
-        onClick={() => toggleFolder(folder.id)}
-        data-automation-id={AutomationIdFactory.ruleFolderToggle(folder.id)}
+    <RuleFolderMenu folder={folder} open={menuOpen} onOpenChange={setMenuOpen}>
+      <div
+        data-tree-row={folder.id}
+        data-automation-id={AutomationIdFactory.ruleFolderRow(folder.id)}
+        style={{ '--depth': depth } as React.CSSProperties}
+        className={cx(
+          styles.row,
+          dragging && styles.dragging,
+          dropTarget && styles.dropTarget,
+          menuOpen && styles.menuOpen,
+        )}
+        {...dragProps}
       >
-        <ChevronDown
-          className={cx(styles.chevron, expanded && styles.expanded)}
-          strokeWidth={1.9}
-        />
-      </button>
-      <Folder className={styles.icon} strokeWidth={1.9} />
-      <HighlightedName name={folder.name} keyword={keyword} className={styles.name} />
-      <button
-        type="button"
-        className={styles.more}
-        aria-label={t('rules.folderActions')}
-        data-automation-id={AutomationIdFactory.ruleFolderMenu(folder.id)}
-        onClick={(event) =>
-          setFolderMenu(
-            menuOpen ? null : anchorFolderMenu(event.currentTarget, folder.id),
-          )
-        }
-      >
-        <MoreVertical strokeWidth={1.9} />
-      </button>
-    </div>
+        <button
+          type="button"
+          className={styles.chevronButton}
+          aria-label={expanded ? t('rules.collapseFolder') : t('rules.expandFolder')}
+          onClick={() => toggleFolder(folder.id)}
+          data-automation-id={AutomationIdFactory.ruleFolderToggle(folder.id)}
+        >
+          <ChevronDown
+            className={cx(styles.chevron, expanded && styles.expanded)}
+            strokeWidth={1.9}
+          />
+        </button>
+        <Folder className={styles.icon} strokeWidth={1.9} />
+        <HighlightedName name={folder.name} keyword={keyword} className={styles.name} />
+        <button
+          type="button"
+          className={styles.more}
+          aria-label={t('rules.folderActions')}
+          data-automation-id={AutomationIdFactory.ruleFolderMenu(folder.id)}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          <MoreVertical strokeWidth={1.9} />
+        </button>
+      </div>
+    </RuleFolderMenu>
   );
 }

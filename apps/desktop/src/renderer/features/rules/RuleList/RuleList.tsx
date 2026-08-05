@@ -9,12 +9,15 @@ import { IconButton, searchTree } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
 import { exportRules, loadRules } from '../data/useRulesData';
-import { RuleFolderMenu } from '../RuleFolderMenu/RuleFolderMenu';
 import { RuleTreeNode } from '../RuleTreeNode/RuleTreeNode';
 import styles from './RuleList.module.css';
 
+export interface RuleListProps {
+  onShowRuleRequests: (ruleId: string) => void;
+}
+
 /** 规则树：目录只做组织，规则按树的深度优先顺序执行。 */
-export function RuleList(): React.JSX.Element {
+export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Element {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const nodes = useRulesStore((state) => state.nodes);
@@ -23,7 +26,6 @@ export function RuleList(): React.JSX.Element {
   const addFolder = useRulesStore((state) => state.addFolder);
   const moveNode = useRulesStore((state) => state.moveNode);
   const expandFolder = useRulesStore((state) => state.expandFolder);
-  const setFolderMenu = useRulesStore((state) => state.setFolderMenu);
 
   const search = useMemo(() => searchTree(nodes, query), [nodes, query]);
   const visible: readonly RuleNode[] = nodes;
@@ -92,7 +94,6 @@ export function RuleList(): React.JSX.Element {
         data-tree-scroll
         data-automation-id={AUTOMATION_IDS.rules.list}
         className={styles.rows}
-        onClick={() => setFolderMenu(null)}
         {...drag.containerProps}
       >
         {search.empty ? (
@@ -101,13 +102,19 @@ export function RuleList(): React.JSX.Element {
           <div className={styles.empty}>{t('rules.empty')}</div>
         ) : (
           visible.map((node) => (
-            <RuleTreeNode key={node.id} node={node} depth={0} drag={drag} search={search} />
+            <RuleTreeNode
+              key={node.id}
+              node={node}
+              depth={0}
+              drag={drag}
+              search={search}
+              onShowRuleRequests={onShowRuleRequests}
+            />
           ))
         )}
         {drag.dropLine ? (
           <div className={styles.dropLine} style={drag.dropLine} />
         ) : null}
-        <RuleFolderMenu />
       </div>
     </div>
   );

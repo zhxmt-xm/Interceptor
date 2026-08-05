@@ -45,7 +45,6 @@ function seed(nodes: RuleNode[], selectedId: string | null = null): void {
     selectedId,
     expandedFolders: [],
     renamingNodeId: null,
-    folderMenu: null,
     hits: {},
     loading: false,
     saving: false,

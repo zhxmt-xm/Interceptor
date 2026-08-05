@@ -1,4 +1,4 @@
-import { Braces, Copy, Download } from 'lucide-react';
+import { Braces, Copy, Download, Maximize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { IconButton } from '../../IconButton/IconButton';
@@ -18,6 +18,8 @@ interface BodyToolbarProps {
   onFormat?: () => void;
   onCopy?: () => void;
   onSave?: () => void;
+  /** 只在内联视图下给出；全屏弹窗里已经是最大化状态。 */
+  onFullscreen?: () => void;
   modeAutomationIds?: Record<string, string>;
 }
 
@@ -31,6 +33,7 @@ export function BodyToolbar({
   onFormat,
   onCopy,
   onSave,
+  onFullscreen,
   modeAutomationIds,
 }: BodyToolbarProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -61,6 +64,14 @@ export function BodyToolbar({
         ) : null}
         {onCopy ? (
           <IconButton icon={Copy} label={t('common.copy')} size="sm" onClick={onCopy} />
+        ) : null}
+        {onFullscreen ? (
+          <IconButton
+            icon={Maximize2}
+            label={t('body.fullscreen')}
+            size="sm"
+            onClick={onFullscreen}
+          />
         ) : null}
       </div>
     </div>

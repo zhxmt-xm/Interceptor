@@ -20,7 +20,6 @@ import type {
   CollectionNode,
   CollectionRequest,
   DocumentRuntime,
-  FolderMenuAnchor,
   HistoryEntry,
   RequestTab,
   ResponseTab,
@@ -55,8 +54,6 @@ interface ComposerStore {
   collectionOpen: boolean;
   /** 正在重命名的节点 ID。 */
   renamingNodeId: string | null;
-  /** 打开的目录操作菜单。 */
-  folderMenu: FolderMenuAnchor | null;
   /** Recent sends 弹层是否打开。 */
   historyOpen: boolean;
 
@@ -94,7 +91,6 @@ interface ComposerStore {
   clearSelection(): void;
   setCollectionOpen(open: boolean): void;
   setRenamingNode(nodeId: string | null): void;
-  setFolderMenu(anchor: FolderMenuAnchor | null): void;
   setHistoryOpen(open: boolean): void;
 
   openRequest(requestId: string): void;
@@ -132,7 +128,6 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   targetFolderId: null,
   collectionOpen: true,
   renamingNodeId: null,
-  folderMenu: null,
   historyOpen: false,
 
   openRequestIds: [],
@@ -188,7 +183,6 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         nodes: appendNode(state.nodes, parentId, folder),
         expandedFolders: [...state.expandedFolders, folder.id],
         renamingNodeId: folder.id,
-        folderMenu: null,
       };
     }),
 
@@ -212,7 +206,6 @@ export const useComposerStore = create<ComposerStore>((set) => ({
             : openRequestIds[0] ?? null,
         targetFolderId:
           state.targetFolderId === nodeId ? null : state.targetFolderId,
-        folderMenu: null,
       };
     }),
 
@@ -247,8 +240,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   setTargetFolder: (targetFolderId) => set({ targetFolderId, activeRequestId: null }),
   clearSelection: () => set({ targetFolderId: null }),
   setCollectionOpen: (collectionOpen) => set({ collectionOpen }),
-  setRenamingNode: (renamingNodeId) => set({ renamingNodeId, folderMenu: null }),
-  setFolderMenu: (folderMenu) => set({ folderMenu }),
+  setRenamingNode: (renamingNodeId) => set({ renamingNodeId }),
   setHistoryOpen: (historyOpen) => set({ historyOpen }),
 
   openRequest: (requestId) =>

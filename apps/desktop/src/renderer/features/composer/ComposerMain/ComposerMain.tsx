@@ -38,7 +38,6 @@ export function ComposerMain(): React.JSX.Element {
   const collectionOpen = useComposerStore((state) => state.collectionOpen);
   const activeRequestId = useComposerStore((state) => state.activeRequestId);
   const nodes = useComposerStore((state) => state.nodes);
-  const setFolderMenu = useComposerStore((state) => state.setFolderMenu);
   const setHistoryOpen = useComposerStore((state) => state.setHistoryOpen);
 
   const mainRef = useRef<HTMLDivElement>(null);
@@ -114,10 +113,9 @@ export function ComposerMain(): React.JSX.Element {
           ? `${collectionWidth}px ${SPLITTER_TRACK}px minmax(0, 1fr)`
           : 'minmax(0, 1fr)',
       }}
-      // 目录菜单与历史弹层没有遮罩层，点空白处即关闭。
+      // 历史弹层没有遮罩层，点空白处即关闭。
       onPointerDown={(event) => {
         if (event.target instanceof Element && !event.target.closest('button')) {
-          setFolderMenu(null);
           setHistoryOpen(false);
         }
       }}

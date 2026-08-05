@@ -145,6 +145,7 @@ export const rulesEnglishMessages = {
   'rules.collapseFolder': 'Collapse folder',
   'rules.expandFolder': 'Expand folder',
   'rules.renameFolder': 'Rename…',
+  'rules.renameRule': 'Rename…',
   'rules.newSubfolder': 'New subfolder…',
   'rules.deleteFolder': 'Delete folder',
 } as const;

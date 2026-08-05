@@ -149,6 +149,7 @@ export const captureEnglishMessages = {
   'capture.textMessage': 'Text message {{sequence}}',
   'capture.binaryMessage': 'Binary message {{sequence}}',
   'capture.copyPayload': 'Copy payload',
+  'capture.payload': 'Payload',
   'capture.copyUrl': 'Copy URL',
   'capture.copied': 'Copied',
   'capture.messageNumber': 'message {{sequence}}',

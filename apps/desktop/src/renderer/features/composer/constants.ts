@@ -46,9 +46,3 @@ export const METHOD_OPTIONS = METHODS.map((method) => ({
   value: method,
   label: method,
 }));
-
-/** 目录操作菜单宽度，菜单定位时用它对齐右边。 */
-export const FOLDER_MENU_WIDTH = 190;
-
-/** 目录行高；菜单锚在行下方。 */
-export const FOLDER_ROW_HEIGHT = 30;

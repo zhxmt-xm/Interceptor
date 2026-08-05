@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
@@ -9,6 +9,7 @@ import { deriveChips, isRuleComplete, matchSummary } from '../utils';
 import { formatHits } from '../utils';
 
 import styles from './RuleRow.module.css';
+import { RuleRowMenu } from './RuleRowMenu';
 
 const CHIP_CLASS: Record<ChipKind, string | undefined> = {
   map: styles.map,
@@ -30,6 +31,7 @@ export interface RuleRowProps {
   keyword: string;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
+  onShowRuleRequests: (ruleId: string) => void;
   /** 来自 useTreeDrag：整行即拖拽源。 */
   dragProps: {
     draggable: boolean;
@@ -52,59 +54,69 @@ export const RuleRow = memo(function RuleRow({
   keyword,
   onSelect,
   onToggle,
+  onShowRuleRequests,
   dragProps,
 }: RuleRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const chips = deriveChips(rule);
   // 字段还没填完的规则不允许启用；已启用的任何时候都可以关掉。
   const enableBlocked = !rule.enabled && !isRuleComplete(rule);
   return (
-    <button
-      type="button"
-      data-tree-row={rule.id}
-      data-automation-id={AutomationIdFactory.ruleRow(rule.id)}
-      style={{ '--depth': depth } as React.CSSProperties}
-      className={cx(
-        styles.row,
-        selected && styles.selected,
-        !rule.enabled && styles.disabled,
-        dragging && styles.dragging,
-      )}
-      onClick={() => onSelect(rule.id)}
-      {...dragProps}
+    <RuleRowMenu
+      rule={rule}
+      hits={hits}
+      onShowRuleRequests={onShowRuleRequests}
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
     >
-      <span
-        className={styles.toggle}
-        title={enableBlocked ? t('rules.enableBlocked') : undefined}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle(rule.id);
-        }}
+      <button
+        type="button"
+        data-tree-row={rule.id}
+        data-automation-id={AutomationIdFactory.ruleRow(rule.id)}
+        style={{ '--depth': depth } as React.CSSProperties}
+        className={cx(
+          styles.row,
+          selected && styles.selected,
+          !rule.enabled && styles.disabled,
+          dragging && styles.dragging,
+        )}
+        onClick={() => onSelect(rule.id)}
+        {...dragProps}
       >
-        <Switch
-          checked={rule.enabled}
-          disabled={enableBlocked}
-          automationId={AutomationIdFactory.ruleToggle(rule.id)}
-        />
-      </span>
-      <div className={styles.meta}>
-        <HighlightedName
-          name={rule.name}
-          keyword={keyword}
-          className={styles.name}
-        />
-        <span className={styles.match}>
-          {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
+        <span
+          className={styles.toggle}
+          title={enableBlocked ? t('rules.enableBlocked') : undefined}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(rule.id);
+          }}
+        >
+          <Switch
+            checked={rule.enabled}
+            disabled={enableBlocked}
+            automationId={AutomationIdFactory.ruleToggle(rule.id)}
+          />
         </span>
-      </div>
-      <div className={styles.chips}>
-        {chips.map(([kind, labelKey], index) => (
-          <span key={index} className={cx(styles.chip, CHIP_CLASS[kind])}>
-            {t(labelKey)}
+        <div className={styles.meta}>
+          <HighlightedName
+            name={rule.name}
+            keyword={keyword}
+            className={styles.name}
+          />
+          <span className={styles.match}>
+            {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
           </span>
-        ))}
-      </div>
-      <span className={styles.hits}>{formatHits(hits, i18n.language)}</span>
-    </button>
+        </div>
+        <div className={styles.chips}>
+          {chips.map(([kind, labelKey], index) => (
+            <span key={index} className={cx(styles.chip, CHIP_CLASS[kind])}>
+              {t(labelKey)}
+            </span>
+          ))}
+        </div>
+        <span className={styles.hits}>{formatHits(hits, i18n.language)}</span>
+      </button>
+    </RuleRowMenu>
   );
 });

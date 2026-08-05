@@ -3,6 +3,11 @@ export { sizeLabel } from './share/sizeLabel';
 export { useClipboardCopy } from './share/useClipboardCopy';
 export { searchTree, type TreeSearchResult } from './share/treeSearch';
 export { HighlightedName, type HighlightedNameProps } from './HighlightedName/HighlightedName';
+export {
+  TreeContextMenu,
+  type TreeContextMenuProps,
+  type TreeMenuItem,
+} from './TreeContextMenu/TreeContextMenu';
 export { IconButton, type IconButtonProps } from './IconButton/IconButton';
 export { Button, type ButtonProps } from './Button/Button';
 export { Switch, type SwitchProps } from './Switch/Switch';
@@ -20,6 +25,7 @@ export { StatusBadge, type StatusBadgeProps } from './StatusBadge/StatusBadge';
 export { Chip, type ChipProps } from './Chip/Chip';
 export { CodeViewer, type CodeViewerProps } from './CodeViewer/CodeViewer';
 export { BodyViewer, type BodyViewerProps } from './BodyViewer/BodyViewer';
+export { BodyFullscreen, type BodyFullscreenProps } from './BodyFullscreen/BodyFullscreen';
 export { UnavailableBody } from './BodyViewer/UnavailableBody/UnavailableBody';
 export {
   type BodyKind,

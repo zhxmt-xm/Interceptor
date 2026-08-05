@@ -28,9 +28,9 @@
 - 拖拽逻辑参数化为 `installTreeDrag`，两棵树共用；顺带修了「不能拖到上级目录」——原判定 `node.contains(dragNode)` 把祖先目录整个禁掉了，应为 `dragNode.contains(node)`。
 - 两棵树接上搜索过滤与命中高亮，规则见 [platform/renderer.md](platform/renderer.md) § 6.2。
 
-### 产品代码：进行中
+### 产品代码：14 条需求已全部落地
 
-已完成：
+上一轮已完成：
 
 - `Kv.module.css`：rule effect tag 只有 button 形态才给 `cursor: pointer`。
 - `core-protocol/tree.ts`：新增 `parentFolderId`。
@@ -39,14 +39,20 @@
 - Composer：顶栏换成搜索框 + 新建/新建目录/导出（图标与 Rules 同一组）；点空白取消选择；目录名与请求名双击原地改名；树接上搜索过滤与高亮；侧栏 216→320，行高 30、字号 12.5、间距 4、缩进移到行内、计数列对齐 `.rhit`。
 - Rules：顶栏删 Apply 与 More、补导出；**保存入口移到 editor 头部的 Save 按钮**（顶栏删了 Apply 之后必须有替代入口，否则规则改完无法应用）；搜索由「跨目录拍平 + 匹配 matcher/action JSON」改为「保留树结构 + 只匹配名称」，与 Composer 一致。
 - 规则导出链路：`rules:export` 通道 + Main `showSaveDialog` 落盘 + Preload `exportRules`，形态与集合导出一致，不经 Core。
-- i18n 15 语言补齐 `rules.exportRules` / `rules.searchEmpty` / `rules.save` / `composer.searchRequests` / `composer.searchEmpty`。
 
-未开始（按优先级）：
+本轮完成：
 
-1. 两棵树的右键菜单，**用 Ant Design `Dropdown`**（`trigger={['contextMenu']}`，挂 body 上不会被面板裁剪，参考 `RequestRow`）；目录 more 按钮与右键共用同一个菜单。设计稿已画好三个菜单的内容。
-2. Rules 创建子规则/子目录跟随选中项（Composer 侧已完成，Rules 的根级按钮仍固定建到根）。
-3. Inspector 分组折叠；正文全屏 dialog（设计稿 13 处按钮 + 1060×660 弹层）。
-4. `Format 按钮点了没反应` 待诊断——Monaco 的 HTML/CSS 服务与 MIME 判断都是好的，2 MiB 内还会自动格式化，怀疑是「已经格式化过所以看不出变化」，需要在真实 app 里实测。
+- `rulesStore`：`addRule` / `addFolder` 的 `parentId` 缺省时按选中项推导落点（选目录进目录、选规则跟它平级、都没选放根），与 Composer 同一套语义；`addFolder` 补上深度上限判断。
+- **两棵树的右键菜单**：新增共享 `components/TreeContextMenu`（Ant Design `Dropdown` + `trigger={['contextMenu']}`），行内菜单组件分别是 `CollectionRowMenu`、`RuleRowMenu`、`RuleFolderMenu`。旧的绝对定位实现（`composer/CollectionPanel/FolderMenu`、`rules/RuleFolderMenu/`、`folderMenu` store 状态、`anchorFolderMenu` 与 `FOLDER_MENU_WIDTH` / `FOLDER_ROW_HEIGHT` 常量）**整体删除**。细节见 [platform/renderer.md](platform/renderer.md) § 6.3。
+- **Inspector 分组折叠**：`SectionHeader` 支持可选 `onClick`（有则整行渲染成 button），`Section` 自己持折叠态并画右对齐 chevron。
+- **正文全屏**：新增共享 `components/BodyFullscreen`（1060×660 Modal），`BodyViewer` 与 Composer `BodyPane` 各自把同一份 content 按 `fullscreen` 放进弹层。入口出现在 Capture 请求/响应正文、WebSocket 帧、gRPC 消息、Composer 请求/响应正文。细节见 [platform/renderer.md](platform/renderer.md) § 6.4。
+- Capture 正文区补 `min-height: 320px`，面板压缩时 Monaco 不会缩成一条缝。
+- **`Format 按钮点了没反应` 定位并修复**：`monaco-editor/editor/editor.api` 只有 API 表面，不含 editor contributions，所以 `editor.action.formatDocument` 从来没被注册过，`getAction(...)?.run()` 一直静默 no-op。JSON 看起来正常是因为 `formatJsonBody` 在 JS 侧先 pretty-print 过，HTML/CSS 则完全没格式化。修法是在 `monacoSetup.ts` 里补 `import 'monaco-editor/editor/contrib/format/browser/formatActions'`，已用 renderer 构建产物确认 `editor.action.formatDocument` 进包。
+- i18n 15 语言补齐 `rules.exportRules` / `rules.searchEmpty` / `rules.save` / `rules.renameRule` / `composer.searchRequests` / `composer.searchEmpty` / `composer.renameRequest` / `composer.deleteRequest` / `composer.requestBody` / `composer.responseBody` / `capture.payload` / `body.fullscreen` / `body.exitFullscreen`。
+
+仍未做（需要先出设计稿并确认）：
+
+- `rule detail 的提示可以放底栏`：设计稿里 `.vnote` 仍是滚动区最后一张卡片，没有底栏形态，产品代码保持现状。
 
 ### 上一轮已完成
 
@@ -78,14 +84,14 @@ git -c core.whitespace=cr-at-eol diff --check
 - 真实 packaged smoke：1/1 通过。修了一处上一轮遗留——`onSystemProxyStatusChange` 没加进 smoke 的 Preload API 期望列表。
 - `npm audit --omit=dev`：0 vulnerabilities。
 - `git -c core.whitespace=cr-at-eol diff --check`：干净。
-- **本轮未跑**：Visual parity。Composer 与 Rules 的 DOM/尺寸都变了，parity 基线需要连同右键菜单一起重出。
+- **本轮未跑**：Visual parity。Composer 与 Rules 的 DOM/尺寸、Inspector 分组与正文工具条都变了，parity 基线需要整体重出。
 
 ## 剩余工作
 
 ### 下一动作
 
-1. 接着做产品代码剩余的 4 项（见上「产品代码」小节），右键菜单优先。
-2. 全部做完后重出 Visual parity 基线，两棵树的 DOM 与尺寸都变了。
+1. 重出 Visual parity 基线：两棵树、Inspector 分组头、正文工具条（多了 ⛶）与正文最小高度都变了。
+2. 与用户确认 `rule detail 提示放底栏` 要不要做；要做就先改 `design/app/`。
 3. 之后按 idea 进入 **Breakpoint 交互重构**：
    1. 读 [features/breakpoints.md](features/breakpoints.md)。
    2. 读 `.github/skills/ui-design-mockup/SKILL.md`。

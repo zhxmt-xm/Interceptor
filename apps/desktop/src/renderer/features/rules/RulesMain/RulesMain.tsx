@@ -37,7 +37,7 @@ export function RulesMain({ onShowRuleRequests }: RulesMainProps): React.JSX.Ele
       ref={mainRef}
       style={{ gridTemplateColumns: `${listWidth}px 1px minmax(0, 1fr)` }}
     >
-      <RuleList />
+      <RuleList onShowRuleRequests={onShowRuleRequests} />
       <Splitter onPointerDown={startListDrag} />
       <RuleEditor onShowRuleRequests={onShowRuleRequests} />
     </div>

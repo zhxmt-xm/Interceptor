@@ -32,3 +32,17 @@
   padding: 1px 6px;
   border-radius: 5px;
 }
+.button {
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+.button:hover {
+  color: var(--text);
+}

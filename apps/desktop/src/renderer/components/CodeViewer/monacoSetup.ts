@@ -1,4 +1,8 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
+// `editor.api` ships the API surface but none of the editor contributions, so
+// `editor.action.formatDocument` would not exist and every Format click would be a
+// silent no-op. Pull in just that one contribution instead of all of `editor.main`.
+import 'monaco-editor/editor/contrib/format/browser/formatActions';
 // Only the languages the body viewer can select are registered; the package root would
 // pull in all ~90 Monaco languages. JSON/CSS/HTML/TypeScript use the full language
 // services because those ship the formatters and structural folding; the rest only

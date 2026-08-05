@@ -39,6 +39,7 @@ export function BodySection({
       {body ? (
         <BodyView
           body={{ ...body, mediaType }}
+          fullscreenTitle={title}
           suggestedFileName={suggestedBodyFileName(url, mediaType, fallbackName)}
         />
       ) : (

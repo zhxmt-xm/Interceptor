@@ -19,6 +19,7 @@ export function ResponseBodyPane({ response }: ResponseBodyPaneProps): React.JSX
       <BodyViewer
         bytes={response.body}
         mediaType={readHeader(response, 'content-type') ?? t('composer.unknownType')}
+        fullscreenTitle={t('composer.responseBody')}
         modeAutomationIds={{ default: AUTOMATION_IDS.composer.responseBodyMode }}
       />
     </div>

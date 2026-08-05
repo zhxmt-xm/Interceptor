@@ -4,8 +4,6 @@ import type { ComposerResponse } from '../../../shared/desktop-api';
 
 import {
   DOCUMENT_TABS_HEIGHT,
-  FOLDER_MENU_WIDTH,
-  FOLDER_ROW_HEIGHT,
   MIN_COLLECTION_WIDTH,
   MIN_REQUEST_HEIGHT,
   MIN_RESPONSE_HEIGHT,
@@ -19,7 +17,6 @@ import type {
   ComposerBodyType,
   ComposerFieldRow,
   ComposerTiming,
-  FolderMenuAnchor,
 } from './interfaces';
 
 let sequence = 0;
@@ -253,25 +250,6 @@ export function maxCollectionWidth(totalWidth: number): number {
     MIN_COLLECTION_WIDTH,
     totalWidth - MIN_WORK_WIDTH - SPLITTER_TRACK,
   );
-}
-
-/** 目录操作菜单锚到触发行下方，坐标相对于 Collection 分栏。 */
-export function anchorFolderMenu(
-  trigger: HTMLElement,
-  folderId: string,
-): FolderMenuAnchor | null {
-  const row = trigger.closest('section');
-  const panel = trigger.closest('aside');
-  if (!row || !panel) {
-    return null;
-  }
-  const rowBounds = row.getBoundingClientRect();
-  const panelBounds = panel.getBoundingClientRect();
-  return {
-    folderId,
-    top: rowBounds.top - panelBounds.top + FOLDER_ROW_HEIGHT,
-    left: Math.max(8, rowBounds.right - panelBounds.left - FOLDER_MENU_WIDTH),
-  };
 }
 
 /** 响应区最多能占到「工作区总高减去标签条、URL 行与请求区最小高度」。 */

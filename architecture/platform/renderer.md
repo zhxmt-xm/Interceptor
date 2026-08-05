@@ -61,11 +61,19 @@ Rules 的规则树与 Composer 的 Collection 是同一套交互，数据结构�
 
 ### 6.3 右键菜单
 
-- 目录行尾的 more 按钮与右键**打开同一个菜单**，不做成两套。
-- 菜单必须渲染到面板之外的层（产品代码用 Ant Design `Dropdown`，它挂在 body 上），否则会被侧栏的 `overflow` 裁掉。
-- 落点跟指针走，并收敛在窗口内。
-- 目录菜单：Rename / New subfolder / New leaf / Delete；叶子菜单：Rename / Delete（Rules 的规则多一项 Show matching requests）。
+- 目录行尾的 more 按钮与右键**打开同一个菜单**，不做成两套：菜单组件受控 `open`，more 按钮翻转它，右键由 `Dropdown` 自己接管。
+- 菜单必须渲染到面板之外的层，否则会被侧栏的 `overflow` 裁掉。共享封装是 `components/TreeContextMenu`（Ant Design `Dropdown` + `trigger={['contextMenu']}` + `popupRender`），落点跟指针走并由 Ant Design 收敛在窗口内。
+- `Dropdown` 的 children 必须是**真实 DOM 元素**，注入的 `onContextMenu` 与 ref 才收得到；所以菜单包在行组件内部（`RuleRow` / `RuleFolderRow` / `CollectionTreeNode`），而不是由树节点在外面包一层自定义组件。
+- 每一行自己持有 `menuOpen`，整棵树不会因为一个弹层重渲染。
+- 目录菜单：Rename / New subfolder / New leaf / Delete；叶子菜单：Rename / Delete（Rules 的规则多一项 Show matching requests，命中数为 0 时禁用）。
 - 重命名一律**原地改成输入框**，不弹对话框。
+
+### 6.4 正文全屏
+
+- `components/BodyFullscreen` 是共享的 1060×660 弹层（Ant Design `Modal`，`closable={false}` + 自绘 head，点遮罩关闭），头部是标题 + MIME/尺寸 chip + Copy + Close。
+- 全屏与内联**共用同一份内容**：`BodyViewer` / Composer `BodyPane` 各自算出一份 `content`，按 `fullscreen` 决定放进弹层还是留在原位，不复制第二份 Monaco。
+- 全屏态下工具条隐藏 Copy 与 Fullscreen（头部已提供），只留 Format。
+- 只有传了 `fullscreenTitle` 的调用点才有全屏入口：Capture 请求/响应正文、WebSocket 帧、gRPC 消息、Composer 请求/响应正文。
 
 ## 7. Automation 契约
 
