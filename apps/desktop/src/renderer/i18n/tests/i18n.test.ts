@@ -7,16 +7,24 @@ import { LANGUAGE_IDS, matchSystemLanguage, resolveLanguageId } from '../languag
 import { resources } from '../resources';
 
 const VARIABLE_PATTERN = /\{\{[^{}]+\}\}/g;
+const REQUIRED_MESSAGE_KEYS = ['composer.title', 'composer.auto'] as const;
 const REPRESENTATIVE_TRANSLATION_KEYS = [
   'common.language',
   'sidebar.capture',
   'capture.emptyRequests',
   'rules.newRule',
+  'rules.newFolder',
   'firstRun.welcomeDescription',
   'settings.title',
 ] as const;
 
 describe('i18n catalogs', () => {
+  it('includes every explicitly required Renderer message in the English catalog', () => {
+    for (const key of REQUIRED_MESSAGE_KEYS) {
+      expect(englishCatalog, key).toHaveProperty(key);
+    }
+  });
+
   it('keeps Renderer and Main language contracts aligned', () => {
     expect(LANGUAGE_IDS).toEqual(DESKTOP_UI_LANGUAGES);
   });

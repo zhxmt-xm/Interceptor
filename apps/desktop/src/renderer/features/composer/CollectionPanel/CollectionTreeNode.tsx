@@ -1,22 +1,28 @@
 import { ChevronDown, MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { countLeaves } from '@interceptor/core-protocol';
+
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { MethodBadge } from '../../../components/MethodBadge/MethodBadge';
 import { cx } from '../../../components/share/cx';
+import type { TreeDragApi } from '../../../components/share/useTreeDrag';
 import { useComposerStore } from '../data/composerStore';
 import type { CollectionNode } from '../interfaces';
-import { anchorFolderMenu, countRequests } from '../utils';
+import { anchorFolderMenu } from '../utils';
 
 import styles from './CollectionTreeNode.module.css';
 import { RenameRow } from './RenameRow';
 
 export interface CollectionTreeNodeProps {
   node: CollectionNode;
+  drag: TreeDragApi;
 }
 
 /** 集合树的一个节点：目录渲染成可折叠分组，请求渲染成单行。 */
 export function CollectionTreeNode({
   node,
+  drag,
 }: CollectionTreeNodeProps): React.JSX.Element {
   const { t } = useTranslation();
   const expandedFolders = useComposerStore((state) => state.expandedFolders);
@@ -37,8 +43,15 @@ export function CollectionTreeNode({
     return (
       <button
         type="button"
-        className={cx(styles.item, activeRequestId === node.id && styles.active)}
+        data-tree-row={node.id}
+        data-automation-id={AutomationIdFactory.composerCollectionRequest(node.id)}
+        className={cx(
+          styles.item,
+          activeRequestId === node.id && styles.active,
+          drag.draggingId === node.id && styles.dragging,
+        )}
         onClick={() => openRequest(node.id)}
+        {...drag.rowProps(node.id)}
       >
         <MethodBadge method={node.method} className={styles.itemMethod} />
         <span className={styles.itemName}>{node.name}</span>
@@ -50,11 +63,16 @@ export function CollectionTreeNode({
   return (
     <section className={styles.group}>
       <div
+        data-tree-row={node.id}
+        data-automation-id={AutomationIdFactory.composerCollectionFolder(node.id)}
         className={cx(
           styles.groupHead,
           targetFolderId === node.id && styles.target,
           folderMenu?.folderId === node.id && styles.menuOpen,
+          drag.draggingId === node.id && styles.dragging,
+          drag.intoFolderId === node.id && styles.dropTarget,
         )}
+        {...drag.rowProps(node.id)}
       >
         <button
           type="button"
@@ -62,6 +80,7 @@ export function CollectionTreeNode({
           aria-label={
             expanded ? t('composer.collapseFolder') : t('composer.expandFolder')
           }
+          data-automation-id={AutomationIdFactory.composerCollectionFolderToggle(node.id)}
           onClick={() => toggleFolder(node.id)}
         >
           <ChevronDown
@@ -72,15 +91,17 @@ export function CollectionTreeNode({
         <button
           type="button"
           className={styles.nameButton}
+          data-automation-id={AutomationIdFactory.composerCollectionFolderTarget(node.id)}
           onClick={() => setTargetFolder(node.id)}
         >
           <span className={styles.groupName}>{node.name}</span>
         </button>
-        <span className={styles.groupCount}>{countRequests(node.children)}</span>
+        <span className={styles.groupCount}>{countLeaves(node.children)}</span>
         <button
           type="button"
           className={styles.more}
           aria-label={t('composer.folderActions')}
+          data-automation-id={AutomationIdFactory.composerCollectionFolderMenu(node.id)}
           onClick={(event) =>
             setFolderMenu(
               folderMenu?.folderId === node.id
@@ -96,7 +117,7 @@ export function CollectionTreeNode({
       {expanded ? (
         <div className={styles.groupBody}>
           {node.children.map((child) => (
-            <CollectionTreeNode key={child.id} node={child} />
+            <CollectionTreeNode key={child.id} node={child} drag={drag} />
           ))}
         </div>
       ) : null}

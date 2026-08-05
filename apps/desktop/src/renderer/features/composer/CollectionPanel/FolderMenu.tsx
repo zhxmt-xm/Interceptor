@@ -1,6 +1,9 @@
 import { FilePlus, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { folderDepth, MAX_FOLDER_DEPTH } from '@interceptor/core-protocol';
+
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx } from '../../../components/share/cx';
 import { useComposerStore } from '../data/composerStore';
 
@@ -13,18 +16,21 @@ export interface FolderMenuProps {
 /** 目录行的操作菜单；条目只有图标与文字，不带 MenuItem 的 hint 列。 */
 export function FolderMenu({ folderId }: FolderMenuProps): React.JSX.Element {
   const { t } = useTranslation();
+  const nodes = useComposerStore((state) => state.nodes);
   const setRenamingNode = useComposerStore((state) => state.setRenamingNode);
   const setTargetFolder = useComposerStore((state) => state.setTargetFolder);
   const setFolderMenu = useComposerStore((state) => state.setFolderMenu);
   const createFolder = useComposerStore((state) => state.createFolder);
   const createRequest = useComposerStore((state) => state.createRequest);
   const deleteNode = useComposerStore((state) => state.deleteNode);
+  const canNest = folderDepth(nodes, folderId) < MAX_FOLDER_DEPTH;
 
   return (
     <>
       <button
         type="button"
         className={styles.item}
+        data-automation-id={AutomationIdFactory.composerCollectionFolderAction(folderId, 'rename')}
         onClick={() => setRenamingNode(folderId)}
       >
         <Pencil strokeWidth={1.9} />
@@ -33,6 +39,8 @@ export function FolderMenu({ folderId }: FolderMenuProps): React.JSX.Element {
       <button
         type="button"
         className={styles.item}
+        disabled={!canNest}
+        data-automation-id={AutomationIdFactory.composerCollectionFolderAction(folderId, 'new-folder')}
         onClick={() => {
           setTargetFolder(folderId);
           createFolder(t('composer.untitledFolder'));
@@ -44,6 +52,7 @@ export function FolderMenu({ folderId }: FolderMenuProps): React.JSX.Element {
       <button
         type="button"
         className={styles.item}
+        data-automation-id={AutomationIdFactory.composerCollectionFolderAction(folderId, 'new-request')}
         onClick={() => {
           setTargetFolder(folderId);
           createRequest();
@@ -57,6 +66,7 @@ export function FolderMenu({ folderId }: FolderMenuProps): React.JSX.Element {
       <button
         type="button"
         className={cx(styles.item, styles.danger)}
+        data-automation-id={AutomationIdFactory.composerCollectionFolderAction(folderId, 'delete')}
         onClick={() => deleteNode(folderId)}
       >
         <Trash2 strokeWidth={1.9} />

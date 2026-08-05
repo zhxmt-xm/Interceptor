@@ -1,6 +1,7 @@
 import { ChevronDown, Folder, MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx } from '../../../components';
 import type { RuleFolder } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
@@ -18,7 +19,7 @@ export interface RuleFolderRowProps {
   dropTarget: boolean;
   /** 来自 useTreeDrag：整行即拖拽源。 */
   dragProps: {
-    draggable: true;
+    draggable: boolean;
     onDragStart: (event: React.DragEvent<HTMLElement>) => void;
     onDragEnd: () => void;
   };
@@ -45,6 +46,7 @@ export function RuleFolderRow({
   return (
     <div
       data-tree-row={folder.id}
+      data-automation-id={AutomationIdFactory.ruleFolderRow(folder.id)}
       style={{ '--depth': depth } as React.CSSProperties}
       className={cx(
         styles.row,
@@ -59,6 +61,7 @@ export function RuleFolderRow({
         className={styles.chevronButton}
         aria-label={expanded ? t('rules.collapseFolder') : t('rules.expandFolder')}
         onClick={() => toggleFolder(folder.id)}
+        data-automation-id={AutomationIdFactory.ruleFolderToggle(folder.id)}
       >
         <ChevronDown
           className={cx(styles.chevron, expanded && styles.expanded)}
@@ -71,6 +74,7 @@ export function RuleFolderRow({
         type="button"
         className={styles.more}
         aria-label={t('rules.folderActions')}
+        data-automation-id={AutomationIdFactory.ruleFolderMenu(folder.id)}
         onClick={(event) =>
           setFolderMenu(
             menuOpen ? null : anchorFolderMenu(event.currentTarget, folder.id),

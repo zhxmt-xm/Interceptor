@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { useComposerStore } from '../data/composerStore';
 
 import styles from './RenameRow.module.css';
@@ -33,6 +34,7 @@ export function RenameRow({ nodeId, name }: RenameRowProps): React.JSX.Element {
         className={styles.field}
         defaultValue={name}
         aria-label={t('composer.renameFolder')}
+        data-automation-id={AutomationIdFactory.composerCollectionFolderRename(nodeId)}
         spellCheck={false}
         autoFocus
         onFocus={(event) => event.currentTarget.select()}

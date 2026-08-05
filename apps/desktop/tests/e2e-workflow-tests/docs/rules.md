@@ -104,10 +104,10 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 进入Rules，检查revision=0、rules=[]、dirty=false；通过UI创建至少三条rule，点击Apply持久化。
-3. 点击中间动态 `rules.row.<ruleId>`，打开 `rules.more`，点击 `rules.move-up`，记录顺序和priority。
-4. 再打开More点击 `rules.move-down`，确认恢复。
-5. 拖动动态 `rules.grip.<ruleId>` 到另一 `rules.row.<ruleId>`，确认目标前后顺序符合drop语义。
-6. 在 `rules.search` 输入过滤条件，确认grip reorder不可用；清空搜索。
+3. 通过 `rules.create-folder` 建两级目录，把三条规则分别放在根和目录中。
+4. 直接拖动动态 `rules.row.<ruleId>` 到另一规则行的上/下四分之一区域，确认前后插入语义与 DFS 顺序。
+5. 拖动动态 `rules.folder-row.<folderId>` 到另一目录中，确认整个子树一起移动；尝试落入自身子树或形成第 4 级目录，确认没有落点且树不变。
+6. 在第三级目录打开 `rules.folder-menu.<folderId>`，确认 New subfolder disabled；在 `rules.search` 输入过滤条件，确认拍平结果行 `draggable=false`，清空搜索后恢复。
 7. 点击 `rules.apply`；离开并返回Rules，确认Core重新加载后的列表顺序和priority与UI一致。
 8. 保存evidence并Close。
 9. 验证销毁。
@@ -115,7 +115,7 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 ### 预期效果
 
-More和drag两种排序路径产生相同连续priority；搜索态防止不完整列表拖拽；Apply并重新加载后Core持久顺序与UI一致。运行时命中顺序由`rules.runtime-hit`验证。
+整行拖拽按树的 DFS 顺序生成连续 priority；目录子树、成环与 3 级上限语义稳定；搜索态防止不完整列表拖拽；Apply并重新加载后Core持久顺序与UI一致。运行时命中顺序由`rules.runtime-hit`验证。
 
 <a id="rules-validate-apply"></a>
 ## `rules.validate-apply`

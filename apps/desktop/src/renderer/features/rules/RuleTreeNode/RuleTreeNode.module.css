@@ -1,4 +1,4 @@
-/* 子树只做纵向排布；缩进由每行自己的 padding 表达，行才能始终占满整列。 */
+.group,
 .children {
   display: flex;
   flex-direction: column;

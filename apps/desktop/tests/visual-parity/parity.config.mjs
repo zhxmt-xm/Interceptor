@@ -3,6 +3,21 @@ export const viewport = { width: 1280, height: 800 };
 export const designIndex = 'design/app/index.html';
 export const designShotsDir = 'design/app/shots';
 
+const EXPAND_RULE_TREE_ACTIONS = [
+  { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+  { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+  { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+  { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+];
+
+const OPEN_RUNTIME_PROXY_READINESS_ACTIONS = [
+  { type: 'clickText', text: 'Proxy & Listener' },
+  { type: 'clickRole', role: 'button', name: 'Restore' },
+  { type: 'clickRole', role: 'button', name: 'Capture' },
+  { type: 'clickRole', role: 'button', name: 'Recording' },
+  { type: 'clickRole', role: 'button', name: 'Paused' },
+];
+
 export const views = [
   {
     id: 'capture',
@@ -446,6 +461,7 @@ export const views = [
     },
     designShot: 'light/capture/rule-filter.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Expand folder', index: 1 },
       { type: 'clickText', text: 'Rewrite auth header' },
       { type: 'clickRole', role: 'button', name: 'Show matching requests' },
     ],
@@ -525,7 +541,8 @@ export const views = [
   {
     id: 'proxy-not-ready',
     theme: 'light',
-    proxyReady: false,
+    proxyEnableFails: true,
+    rendererNav: 'Settings',
     designState: {
       view: 'capture',
       theme: 'light',
@@ -533,6 +550,7 @@ export const views = [
       overlay: 'proxy-not-ready',
     },
     designShot: 'light/proxy-not-ready/dialog.png',
+    rendererActions: OPEN_RUNTIME_PROXY_READINESS_ACTIONS,
     targets: [
       'Proxy not ready',
       'System Proxy off',
@@ -544,7 +562,8 @@ export const views = [
   {
     id: 'proxy-not-ready-settings',
     theme: 'light',
-    proxyReady: false,
+    proxyEnableFails: true,
+    rendererNav: 'Settings',
     designState: {
       view: 'settings',
       theme: 'light',
@@ -554,6 +573,7 @@ export const views = [
     },
     designShot: 'light/settings/proxy.png',
     rendererActions: [
+      ...OPEN_RUNTIME_PROXY_READINESS_ACTIONS,
       { type: 'clickRole', role: 'button', name: 'Proxy & Listener' },
     ],
     targets: [
@@ -564,16 +584,60 @@ export const views = [
     id: 'rules',
     theme: 'light',
     rendererNav: 'Rules & Map',
-    designState: { view: 'rules', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/shell-v2/rules.png',
+    designState: {
+      view: 'rules',
+      theme: 'light',
+      sidebar: 'expanded',
+      ruleList: 'tree-url',
+    },
+    designShot: 'light/rules/tree-url.png',
+    rendererActions: EXPAND_RULE_TREE_ACTIONS,
     targets: [
-      'Rules',
-      { name: 'Stub /v1/user', parity: 'rule-name-rule-stub' },
-      'Force CORS + JSON',
-      'Redirect to staging',
-      'Block trackers',
-      { name: 'Mock payment', parity: 'rule-name-rule-payment' },
-      'Match',
+      {
+        name: 'Mock folder row',
+        designSelector: '.rtree [data-rgrp="mock"] > .rgrp-h',
+        appSelector: '[data-automation-id="rules.folder-row.rule-folder-mock"]',
+      },
+      {
+        name: 'Stub rule row',
+        designSelector: '.rtree [data-rgrp="mock"] > .rgrp-b > .rrule:first-child',
+        appSelector: '[data-automation-id="rules.row.rule-stub"]',
+      },
+      {
+        name: 'Force CORS rule row',
+        designSelector: '.rtree [data-rgrp="mock"] > .rgrp-b > .rrule:nth-child(2)',
+        appSelector: '[data-automation-id="rules.row.rule-cors"]',
+      },
+      {
+        name: 'Payments folder row',
+        designSelector: '.rtree [data-rgrp="payments"] > .rgrp-h',
+        appSelector: '[data-automation-id="rules.folder-row.rule-folder-payments"]',
+      },
+      {
+        name: 'Refunds folder row',
+        designSelector: '.rtree [data-rgrp="refunds"] > .rgrp-h',
+        appSelector: '[data-automation-id="rules.folder-row.rule-folder-refunds"]',
+      },
+      {
+        name: 'Redirect rule row',
+        designSelector: '.rtree [data-rgrp="staging"] > .rgrp-b > .rrule:first-child',
+        appSelector: '[data-automation-id="rules.row.rule-staging"]',
+      },
+      {
+        name: 'Mock payment rule row',
+        designSelector: '.rtree [data-rgrp="payments"] > .rgrp-b > .rrule:first-child',
+        appSelector: '[data-automation-id="rules.row.rule-payment"]',
+      },
+      {
+        name: 'Noise folder row',
+        designSelector: '.rtree [data-rgrp="noise"] > .rgrp-h',
+        appSelector: '[data-automation-id="rules.folder-row.rule-folder-noise"]',
+      },
+      {
+        name: 'Debug checkout rule row',
+        designSelector: '.rtree > .rrule:last-child',
+        appSelector: '[data-automation-id="rules.row.rule-checkout"]',
+      },
       'Add condition',
       'Add action',
     ],
@@ -586,10 +650,12 @@ export const views = [
       view: 'rules',
       theme: 'light',
       sidebar: 'expanded',
+      ruleList: 'tree-url',
       pop: true,
     },
     designShot: 'light/rules/add-action.png',
     rendererActions: [
+      ...EXPAND_RULE_TREE_ACTIONS,
       { type: 'clickRole', role: 'button', name: 'Add action' },
     ],
     targets: [
@@ -608,10 +674,12 @@ export const views = [
       view: 'rules',
       theme: 'light',
       sidebar: 'expanded',
+      ruleList: 'tree-url',
       ruleSelect: 'open',
     },
     designShot: 'light/rules/select-dropdown.png',
     rendererActions: [
+      ...EXPAND_RULE_TREE_ACTIONS,
       { type: 'clickRole', role: 'combobox', name: 'Condition field' },
     ],
     targets: [
@@ -627,34 +695,57 @@ export const views = [
     theme: 'light',
     rendererNav: 'Composer',
     designState: { view: 'composer', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/shell-v2/composer.png',
+    designShot: 'light/composer/framed.png',
     rendererActions: [
-      { type: 'selectLabel', label: 'Method', value: 'POST' },
-      {
-        type: 'fillLabel',
-        label: 'Request URL',
-        value: 'https://api.github.com/user/repos',
-      },
-      { type: 'clickText', text: 'Add header…' },
-      { type: 'clickText', text: 'Add header…' },
-      { type: 'fillLabel', label: 'Header name', index: 0, value: 'authorization' },
-      { type: 'fillLabel', label: 'Header value', index: 0, value: 'Bearer github_pat_11A…' },
-      { type: 'fillLabel', label: 'Header name', index: 1, value: 'content-type' },
-      { type: 'fillLabel', label: 'Header value', index: 1, value: 'application/json' },
-      { type: 'fillLabel', label: 'Header name', index: 2, value: 'accept' },
-      { type: 'fillLabel', label: 'Header value', index: 2, value: 'application/vnd.github+json' },
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
+      { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+      { type: 'clickText', text: 'Create repo' },
+      { type: 'clickText', text: 'Repositories' },
       { type: 'clickRole', role: 'button', name: 'Send' },
     ],
     targets: [
-      { name: 'History', parity: 'composer-history' },
-      'Send',
-      'Protocol',
-      'TLS 1.3 · h2',
-      { name: 'authorization', parity: 'composer-header-name-0' },
-      { name: 'content-type', parity: 'composer-header-name-1' },
-      { name: 'accept', parity: 'composer-header-name-2' },
-      'Created',
-      'Add header…',
+      {
+        name: 'Collection panel',
+        designSelector: '.ccol',
+        appSelector: '[data-automation-id="composer.collection"]',
+      },
+      {
+        name: 'GitHub folder row',
+        designSelector: '.ccol [data-grp="github"] > .cgrp-h',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-github"]',
+      },
+      {
+        name: 'Repositories folder row',
+        designSelector: '.ccol [data-grp="github-repos"] > .cgrp-h',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-repositories"]',
+      },
+      {
+        name: 'Create repo row',
+        designSelector: '.ccol [data-grp="github-repos"] .citem.on',
+        appSelector: '[data-automation-id="composer.collection.request.collection-create-repo"]',
+      },
+      {
+        name: 'Request URL',
+        designSelector: '[data-parity="composer-url"]',
+        appSelector: 'div:has(> input[data-automation-id="composer.url"])',
+      },
+      {
+        name: 'Send',
+        designSelector: '[data-parity="composer-send"]',
+        appSelector: '[data-automation-id="composer.send"]',
+      },
+      {
+        name: 'Headers tab',
+        designSelector: '[data-ctab="headers"]',
+        appSelector: '[data-automation-id="composer.tab.headers"]',
+      },
+      {
+        name: 'Response body tab',
+        designSelector: '[data-crtab="body"]',
+        appSelector: '[data-automation-id="composer.response-tab.body"]',
+      },
+      '201 Created',
     ],
   },
   {
@@ -842,7 +933,7 @@ export const views = [
     ],
   },
   ...[
-    ['rules', 'Rules & Map', 'Rules', ['Rule set applied', { name: 'Stub rule', parity: 'rule-name-rule-stub' }]],
+    ['rules', 'Rules & Map', 'Rules', ['Rule set applied', 'Stub /v1/user']],
     ['composer', 'Composer', 'Composer', ['Protocol', 'Send']],
     ['settings', 'Settings', 'Settings', ['Root Certificate Authority']],
     ['breakpoints', 'Breakpoints', 'Breakpoints', ['Break on match', 'Continue all']],
@@ -856,13 +947,68 @@ export const views = [
       theme: 'dark',
       sidebar: 'expanded',
       ...(feature === 'settings' ? { settings: 'certificates' } : {}),
+      ...(feature === 'rules' ? { ruleList: 'tree-url' } : {}),
     },
-    designShot: `dark/shell-v2/${feature}.png`,
-    targets: [
-      { name: `${title} header`, parity: 'window-header-title' },
-      'Capture',
-      'Local traffic',
-      ...featureTargets,
-    ],
+    designShot: feature === 'rules'
+      ? 'dark/rules/tree-url.png'
+      : feature === 'composer'
+        ? 'dark/composer/framed.png'
+        : `dark/shell-v2/${feature}.png`,
+    rendererActions: feature === 'rules'
+      ? EXPAND_RULE_TREE_ACTIONS
+      : feature === 'composer'
+        ? [
+            { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+            { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
+            { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+            { type: 'clickText', text: 'Create repo' },
+            { type: 'clickText', text: 'Repositories' },
+            { type: 'clickRole', role: 'button', name: 'Send' },
+          ]
+        : undefined,
+    targets: feature === 'rules'
+      ? [
+          {
+            name: 'Mock folder row',
+            designSelector: '.rtree [data-rgrp="mock"] > .rgrp-h',
+            appSelector: '[data-automation-id="rules.folder-row.rule-folder-mock"]',
+          },
+          {
+            name: 'Stub rule row',
+            designSelector: '.rtree [data-rgrp="mock"] > .rgrp-b > .rrule:first-child',
+            appSelector: '[data-automation-id="rules.row.rule-stub"]',
+          },
+          'Rule set applied',
+        ]
+      : feature === 'composer'
+        ? [
+            {
+              name: 'Collection panel',
+              designSelector: '.ccol',
+              appSelector: '[data-automation-id="composer.collection"]',
+            },
+            {
+              name: 'Create repo row',
+              designSelector: '.ccol [data-grp="github-repos"] .citem.on',
+              appSelector: '[data-automation-id="composer.collection.request.collection-create-repo"]',
+            },
+            {
+              name: 'Send',
+              designSelector: '[data-parity="composer-send"]',
+              appSelector: '[data-automation-id="composer.send"]',
+            },
+            {
+              name: 'Response body tab',
+              designSelector: '[data-crtab="body"]',
+              appSelector: '[data-automation-id="composer.response-tab.body"]',
+            },
+            '201 Created',
+          ]
+      : [
+          { name: `${title} header`, parity: 'window-header-title' },
+          'Capture',
+          'Local traffic',
+          ...featureTargets,
+        ],
   })),
 ];

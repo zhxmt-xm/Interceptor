@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
 import type { ChipKind } from '../interfaces';
@@ -29,7 +30,7 @@ export interface RuleRowProps {
   onToggle: (id: string) => void;
   /** 来自 useTreeDrag：整行即拖拽源。 */
   dragProps: {
-    draggable: true;
+    draggable: boolean;
     onDragStart: (event: React.DragEvent<HTMLElement>) => void;
     onDragEnd: () => void;
   };
@@ -58,6 +59,7 @@ export const RuleRow = memo(function RuleRow({
     <button
       type="button"
       data-tree-row={rule.id}
+      data-automation-id={AutomationIdFactory.ruleRow(rule.id)}
       style={{ '--depth': depth } as React.CSSProperties}
       className={cx(
         styles.row,
@@ -76,7 +78,11 @@ export const RuleRow = memo(function RuleRow({
           onToggle(rule.id);
         }}
       >
-        <Switch checked={rule.enabled} disabled={enableBlocked} />
+        <Switch
+          checked={rule.enabled}
+          disabled={enableBlocked}
+          automationId={AutomationIdFactory.ruleToggle(rule.id)}
+        />
       </span>
       <div className={styles.meta}>
         <span className={styles.name} data-parity={`rule-name-${rule.id}`}>{rule.name}</span>

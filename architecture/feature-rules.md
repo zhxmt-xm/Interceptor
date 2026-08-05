@@ -1,8 +1,8 @@
 # Feature: Rules
 
-> 最后更新：2026-07-28
+> 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/`
-> 协议模型：`packages/core-protocol/src/rules.ts`
+> 协议模型：`packages/core-protocol/src/rules.ts`、`packages/core-protocol/src/tree.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/rules/`
 
 ## 1. 职责与边界
@@ -28,10 +28,11 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 ```ts
 interface RuleSet {
   revision: number;
-  rules: readonly RuleDefinition[];
+    nodes: readonly RuleNode[];
 }
 
 interface RuleDefinition {
+    kind: 'rule';
   id: string;
   name: string;
   enabled: boolean;
@@ -39,7 +40,22 @@ interface RuleDefinition {
   matchers: readonly RuleMatcher[];   // AND 关系
   actions: readonly RuleAction[];     // 按声明顺序执行
 }
+
+interface RuleFolder {
+    kind: 'folder';
+    id: string;
+    name: string;
+    children: readonly RuleNode[];
+}
 ```
+
+目录只组织规则，不参与匹配。Rules 与 Composer Collection 共用 `tree.ts` 的
+`TreeNode`、`findNode`、`appendNode`、`removeNode`、`insertNode`、`collectLeaves`、
+`folderDepth` 与 `fitsDepth`，目录最多嵌套 3 级。
+
+规则执行顺序是 `nodes` 的深度优先叶子顺序。Renderer 每次新增、删除或移动节点后用
+`normalizePriorities` 把叶子 priority 重排为 `(index + 1) * 10`；Core 仍以 priority 排序编译，
+因此 priority 是可持久化的顺序镜像，树的可见顺序与实际执行顺序始终一致。
 
 ### 2.1 Matcher（8 种）
 
@@ -93,7 +109,7 @@ interface RuleDefinition {
 | 能力 | Mockttp Rule | 产品 Rule |
 | --- | --- | --- |
 | 基础 matcher | 有 | 有 |
-| 多条规则累积执行 | **首个匹配胜出** | **按 priority 执行全部匹配** |
+| 多条规则累积执行 | **首个匹配胜出** | **目录树 DFS 映射 priority，按 priority 执行全部匹配** |
 | 响应侧 matcher | 只能进 callback 后判断 | 原生模型 |
 | 持久化与 revision | 无 | `workspace.sqlite` 单行 JSON |
 | UI 草稿与语义诊断 | 无 | 有 |
@@ -365,9 +381,9 @@ sequenceDiagram
     participant Store as WorkspaceService
     participant Engine as RuleService
 
-    UI->>App: rules.replace(expectedRevision, rules)
+    UI->>App: rules.replace(expectedRevision, nodes)
     Note over App: Core 不做规则语义校验（见 §9.2）
-    App->>Store: saveRuleSet(expectedRevision, rules)
+    App->>Store: saveRuleSet(expectedRevision, nodes)
     alt revision 冲突
         Store-->>App: RuleRevisionConflictError
         App-->>UI: conflict + 当前 revision
@@ -413,14 +429,19 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 
 ```mermaid
 flowchart LR
-    A["rulesStore<br/>revision + 草稿 + hits"] --> B["RuleList"]
+    A["rulesStore<br/>revision + nodes 草稿 + hits"] --> B["RuleList · RuleTreeNode"]
     A --> C["RuleEditor"]
     C --> D["MatcherRow · 8 种"]
     C --> E["ActionEditor · 10 种"]
     A -->|"本地纯函数"| F["ruleIssues（未填写项）"]
     A -->|"Apply"| G["rules.replace"]
     A -->|"4s 轮询"| H["rules.hits"]
+    B --> I["useTreeDrag<br/>整行拖拽 · 3 级上限"]
 ```
+
+RuleList 递归渲染目录与规则。目录行只有折叠、名称和操作菜单；规则行保留开关、匹配摘要、
+action chips 与命中数。整行是拖拽源，目录中间区域表示移入、上下四分之一表示前后插入，
+收起目录悬停 500ms 自动展开；搜索结果拍平成一层并禁用拖拽，避免用不完整列表重排整棵树。
 
 **与 Capture 的双向联动：**
 
@@ -470,7 +491,8 @@ flowchart LR
 - [ ] SSE 与无限响应在命中 header 规则时仍有首字节。
 - [ ] 未填写条件与空条件集恒不匹配；不完整的规则无法在 UI 启用。
 - [ ] 8 种 matcher × 10 种 action 的合法组合矩阵有测试覆盖。
-- [ ] priority 顺序、短路行为、多规则改同一 header 的最终值可审计。
+- [x] 目录树 DFS 顺序会规范化为连续 priority；移动与 3 级上限有 store 测试。
+- [ ] priority 短路行为、多规则改同一 header 的最终值可审计。
 - [ ] 一条规则多个 action 命中同一请求时，hit 只计 1。
 - [ ] 同一请求的 request 与 response 阶段使用同一 revision。
 - [ ] 双实例并发 Apply 产生 conflict 且本地草稿不丢。

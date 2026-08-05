@@ -107,6 +107,15 @@ describe('rulesStore ordering', () => {
     ]);
   });
 
+  it('auto-expands a folder without collapsing one that is already open', () => {
+    seed([folder('group', [rule('inside', 100)])]);
+
+    useRulesStore.getState().expandFolder('group');
+    useRulesStore.getState().expandFolder('group');
+
+    expect(useRulesStore.getState().expandedFolders).toEqual(['group']);
+  });
+
   it('preserves the persisted tree order while loading editable drafts', () => {
     useRulesStore.getState().loadRuleSet({
       revision: 2,

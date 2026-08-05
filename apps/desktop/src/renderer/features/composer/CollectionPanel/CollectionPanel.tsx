@@ -1,8 +1,11 @@
 import { Download, FilePlus, FolderPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { folderDepth, MAX_FOLDER_DEPTH } from '@interceptor/core-protocol';
+
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { IconButton } from '../../../components/IconButton/IconButton';
+import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useComposerStore } from '../data/composerStore';
 import { exportCollection } from '../data/useCollection';
 
@@ -14,9 +17,14 @@ import { FolderMenu } from './FolderMenu';
 export function CollectionPanel(): React.JSX.Element {
   const { t } = useTranslation();
   const nodes = useComposerStore((state) => state.nodes);
+  const targetFolderId = useComposerStore((state) => state.targetFolderId);
   const folderMenu = useComposerStore((state) => state.folderMenu);
   const createRequest = useComposerStore((state) => state.createRequest);
   const createFolder = useComposerStore((state) => state.createFolder);
+  const moveNode = useComposerStore((state) => state.moveNode);
+  const expandFolder = useComposerStore((state) => state.expandFolder);
+  const drag = useTreeDrag({ nodes, onMove: moveNode, onAutoExpand: expandFolder });
+  const canCreateFolder = folderDepth(nodes, targetFolderId) < MAX_FOLDER_DEPTH;
 
   return (
     <aside
@@ -30,6 +38,7 @@ export function CollectionPanel(): React.JSX.Element {
             icon={FolderPlus}
             label={t('composer.newFolder')}
             size="sm"
+            disabled={!canCreateFolder}
             onClick={() => createFolder(t('composer.untitledFolder'))}
             automationId={AUTOMATION_IDS.composer.newFolder}
           />
@@ -53,10 +62,18 @@ export function CollectionPanel(): React.JSX.Element {
         </div>
       </div>
 
-      <div className={styles.scroll}>
+      <div
+        ref={drag.containerRef}
+        className={styles.scroll}
+        data-automation-id={AUTOMATION_IDS.composer.collectionTree}
+        {...drag.containerProps}
+      >
         {nodes.map((node) => (
-          <CollectionTreeNode key={node.id} node={node} />
+          <CollectionTreeNode key={node.id} node={node} drag={drag} />
         ))}
+        {drag.dropLine ? (
+          <div className={styles.dropLine} style={drag.dropLine} />
+        ) : null}
       </div>
 
       {folderMenu ? (

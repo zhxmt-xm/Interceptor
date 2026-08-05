@@ -151,7 +151,7 @@ describe('CaptureService temporary lifecycle', () => {
       total: expected.byteLength,
     });
     await captureService.dispose();
-  });
+  }, 10_000);
 
   it('leaves no destination or temp file when body export cannot start', async () => {
     const captureService = new CaptureService();

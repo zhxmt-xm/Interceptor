@@ -1,11 +1,12 @@
 import { PanelLeft, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { findLeaf } from '@interceptor/core-protocol';
+
 import { IconButton } from '../../../components/IconButton/IconButton';
 import { MethodBadge } from '../../../components/MethodBadge/MethodBadge';
 import { cx } from '../../../components/share/cx';
 import { useComposerStore } from '../data/composerStore';
-import { findRequest } from '../utils';
 
 import styles from './DocumentTabs.module.css';
 
@@ -32,7 +33,7 @@ export function DocumentTabs(): React.JSX.Element {
       />
       <div className={styles.list}>
         {openRequestIds.map((requestId) => {
-          const request = findRequest(nodes, requestId);
+          const request = findLeaf(nodes, requestId);
           if (!request) {
             return null;
           }

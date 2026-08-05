@@ -47,7 +47,7 @@ export function RuleTreeNode({
   }
 
   return (
-    <>
+    <section className={styles.group}>
       <RuleFolderRow
         folder={node}
         depth={depth}
@@ -63,6 +63,6 @@ export function RuleTreeNode({
           ))}
         </div>
       ) : null}
-    </>
+    </section>
   );
 }

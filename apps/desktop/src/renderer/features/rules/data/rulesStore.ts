@@ -85,6 +85,13 @@ export const useRulesStore = create<RulesState>((set) => ({  revision: 0,
         : [...state.expandedFolders, id],
     })),
 
+  expandFolder: (id) =>
+    set((state) => ({
+      expandedFolders: state.expandedFolders.includes(id)
+        ? state.expandedFolders
+        : [...state.expandedFolders, id],
+    })),
+
   beginRename: (id) => set({ renamingNodeId: id, folderMenu: null }),
 
   setFolderMenu: (menu) => set({ folderMenu: menu }),

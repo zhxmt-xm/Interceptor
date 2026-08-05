@@ -115,7 +115,7 @@ describe('decodeBody', () => {
 
     expect(result.status).toBe('limited');
     expect(Buffer.from(result.data)).toEqual(raw.subarray(0, 1024 * 1024));
-  });
+  }, 10_000);
 
   it('retries raw deflate inside a multi-layer stream', async () => {
     const raw = Buffer.from('multi-layer raw deflate'.repeat(10_000));

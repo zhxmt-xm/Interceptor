@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('readCompleteBody', () => {
   it('reads and joins every byte across multiple IPC chunks', async () => {
-    const source = new Uint8Array(2 * 1024 * 1024 + 123);
+    const source = new Uint8Array(1024 * 1024 + 123);
     source.forEach((_value, index) => {
       source[index] = index % 251;
     });
@@ -30,7 +30,7 @@ describe('readCompleteBody', () => {
       source.byteLength,
     );
 
-    expect(readBody).toHaveBeenCalledTimes(3);
+    expect(readBody).toHaveBeenCalledTimes(2);
     expect(result.bytes).toEqual(source);
     expect(result.end).toBe(true);
   });

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { findLeaf } from '@interceptor/core-protocol';
+
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Splitter } from '../../../components/Splitter/Splitter';
 import { CollectionPanel } from '../CollectionPanel/CollectionPanel';
@@ -18,7 +20,7 @@ import { DocumentTabs } from '../DocumentTabs/DocumentTabs';
 import { RequestPane } from '../RequestPane/RequestPane';
 import { RequestUrlBar } from '../RequestUrlBar/RequestUrlBar';
 import { ResponsePane } from '../ResponsePane/ResponsePane';
-import { findRequest, maxCollectionWidth, maxResponseHeight } from '../utils';
+import { maxCollectionWidth, maxResponseHeight } from '../utils';
 
 import styles from './ComposerMain.module.css';
 import { NoOpenRequest } from './NoOpenRequest';
@@ -44,7 +46,7 @@ export function ComposerMain(): React.JSX.Element {
   const [collectionWidth, setCollectionWidth] = useState(COLLECTION_WIDTH);
   const [responseHeight, setResponseHeight] = useState(RESPONSE_HEIGHT);
 
-  const request = activeRequestId ? findRequest(nodes, activeRequestId) : null;
+  const request = activeRequestId ? findLeaf(nodes, activeRequestId) : null;
 
   useEffect(() => {
     const main = mainRef.current;

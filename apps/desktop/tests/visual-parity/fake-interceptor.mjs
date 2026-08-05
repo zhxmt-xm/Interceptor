@@ -335,15 +335,135 @@ stubRule.actions = [
   { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' },
 ];
 
+const corsRule = rule('rule-cors', 'Force CORS + JSON', '*.api.com', '/', { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' });
+const paymentRule = rule('rule-payment', 'Mock payment', 'api.stripe.com', '/v1/charges', { type: 'synthetic', statusCode: 200, headers: [{ name: 'content-type', value: 'application/json' }], body: '{"ok":true}' });
+const refundRule = rule('rule-refund', 'Refund stub', 'api.stripe.com', '/v1/refunds', { type: 'map-local', path: 'mocks/refund.json' });
+const disputeRule = rule('rule-dispute', 'Dispute stub', 'api.stripe.com', '/v1/disputes', { type: 'header', phase: 'response', op: 'set', name: 'x-dispute-fixture', value: 'true' });
+const stagingRule = rule('rule-staging', 'Redirect to staging', 'prod.example.com', '/', { type: 'map-remote', scheme: 'https', host: 'stg.example.com' });
+const authRule = { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false };
+const trackersRule = rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' });
+const uploadRule = rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 });
+const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' });
 const rules = [
   stubRule,
-  rule('rule-cors', 'Force CORS + JSON', '*.api.com', '/', { type: 'header', phase: 'response', op: 'set', name: 'access-control-allow-origin', value: '*' }),
-  rule('rule-staging', 'Redirect to staging', 'prod.example.com', '/', { type: 'map-remote', scheme: 'https', host: 'stg.example.com' }),
-  rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' }),
-  rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 }),
-  rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' }),
-  { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false },
-  rule('rule-payment', 'Mock payment', 'api.stripe.com', '/v1/charges', { type: 'synthetic', statusCode: 200, headers: [{ name: 'content-type', value: 'application/json' }], body: '{"ok":true}' }),
+  corsRule,
+  paymentRule,
+  refundRule,
+  disputeRule,
+  stagingRule,
+  authRule,
+  trackersRule,
+  uploadRule,
+  checkoutRule,
+];
+rules.forEach((ruleDefinition, index) => {
+  ruleDefinition.priority = (index + 1) * 10;
+});
+const ruleNodes = [
+  {
+    kind: 'folder',
+    id: 'rule-folder-mock',
+    name: 'Mock & stub',
+    children: [
+      stubRule,
+      corsRule,
+      {
+        kind: 'folder',
+        id: 'rule-folder-payments',
+        name: 'Payments',
+        children: [
+          paymentRule,
+          {
+            kind: 'folder',
+            id: 'rule-folder-refunds',
+            name: 'Refunds',
+            children: [refundRule, disputeRule],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    kind: 'folder',
+    id: 'rule-folder-staging',
+    name: 'Staging switch',
+    children: [stagingRule, authRule],
+  },
+  {
+    kind: 'folder',
+    id: 'rule-folder-noise',
+    name: 'Noise control',
+    children: [trackersRule, uploadRule],
+  },
+  checkoutRule,
+];
+
+const createRepoRequest = collectionRequest(
+  'collection-create-repo',
+  'Create repo',
+  'POST',
+  'https://api.github.com/user/repos',
+  {
+    query: [
+      { id: 'query-visibility', name: 'visibility', value: 'all', enabled: true },
+      { id: 'query-per-page', name: 'per_page', value: '100', enabled: true },
+    ],
+    headers: [
+      { id: 'header-auth', name: 'authorization', value: 'Bearer github_pat_11A…', enabled: true },
+      { id: 'header-content-type', name: 'content-type', value: 'application/json', enabled: true },
+      { id: 'header-accept', name: 'accept', value: 'application/vnd.github+json', enabled: true },
+      { id: 'header-user-agent', name: 'user-agent', value: 'Interceptor/1.0.0', enabled: false },
+    ],
+    bodyType: 'json',
+    bodyText: '{"name":"interceptor","description":"Desktop network debugging proxy","private":true}',
+  },
+);
+const collectionNodes = [
+  {
+    kind: 'folder',
+    id: 'collection-github',
+    name: 'GitHub API',
+    children: [
+      {
+        kind: 'folder',
+        id: 'collection-repositories',
+        name: 'Repositories',
+        children: [
+          collectionRequest('collection-list-repos', 'List repos', 'GET', 'https://api.github.com/user/repos'),
+          createRepoRequest,
+          collectionRequest('collection-update-repo', 'Update repo', 'PATCH', 'https://api.github.com/repos/acme/interceptor'),
+        ],
+      },
+      {
+        kind: 'folder',
+        id: 'collection-users',
+        name: 'Users',
+        children: [
+          collectionRequest('collection-get-user', 'Get user', 'GET', 'https://api.github.com/users/octocat'),
+          collectionRequest('collection-followers', 'List followers', 'GET', 'https://api.github.com/users/octocat/followers'),
+        ],
+      },
+    ],
+  },
+  {
+    kind: 'folder',
+    id: 'collection-checkout',
+    name: 'Checkout service',
+    children: [
+      collectionRequest('collection-create-order', 'Create order', 'POST', 'https://checkout.internal/orders'),
+      collectionRequest('collection-order-status', 'Order status', 'GET', 'https://checkout.internal/orders/8412'),
+      collectionRequest('collection-cancel-order', 'Cancel order', 'DELETE', 'https://checkout.internal/orders/8412'),
+    ],
+  },
+  {
+    kind: 'folder',
+    id: 'collection-scratch',
+    name: 'Scratch',
+    children: [
+      collectionRequest('collection-graphql', 'GraphQL probe', 'POST', 'https://api.github.com/graphql'),
+      collectionRequest('collection-healthz', 'Healthz', 'GET', 'http://127.0.0.1/healthz'),
+    ],
+  },
 ];
 
 const diagnostics = [
@@ -416,11 +536,15 @@ export const fakeInterceptorFixture = {
   },
   rules: {
     revision: 42,
-    rules,
-    hits: [128, 512, 44, 1_200, 8, 3, 76, 21].map((count, index) => ({
+    nodes: ruleNodes,
+    hits: [128, 512, 21, 6, 4, 44, 76, 1_200, 8, 3].map((count, index) => ({
       ruleId: rules[index].id,
       count,
     })),
+  },
+  collection: {
+    revision: 7,
+    nodes: collectionNodes,
   },
   breakpoints: {
     enabled: true,
@@ -495,6 +619,7 @@ export function installFakeInterceptor({
   mitmActive = true,
   updateState = 'unsupported',
   proxyReady = true,
+  proxyEnableFails = false,
 }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
@@ -582,7 +707,9 @@ export function installFakeInterceptor({
     : { ...fixture.certificate, mitmEnabled: mitmActive };
   let websocketBreakpointsEnabled = fixture.capture.websocketBreakpointsEnabled;
   let ruleRevision = fixture.rules.revision;
-  let currentRules = fixture.rules.rules;
+  let currentRuleNodes = fixture.rules.nodes;
+  let collectionRevision = fixture.collection.revision;
+  let currentCollectionNodes = fixture.collection.nodes;
   let breakpointItems = fixture.breakpoints.items;
   let breakpointsEnabled = fixture.breakpoints.enabled;
   let insecureHosts = fixture.insecureHosts;
@@ -677,6 +804,9 @@ export function installFakeInterceptor({
     toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
     enableSystemProxy: async () => {
+      if (proxyEnableFails) {
+        return systemProxyStatus;
+      }
       systemProxyStatus = {
         ...systemProxyStatus,
         enabled: true,
@@ -853,13 +983,23 @@ export function installFakeInterceptor({
       certificate = { ...certificate, mitmEnabled: enabled };
       return certificate;
     },
-    getRules: async () => ({ revision: ruleRevision, rules: currentRules }),
-    replaceRules: async (_expectedRevision, rules) => {
+    getRules: async () => ({ revision: ruleRevision, nodes: currentRuleNodes }),
+    replaceRules: async (_expectedRevision, nodes) => {
       ruleRevision += 1;
-      currentRules = rules;
+      currentRuleNodes = nodes;
       return { ok: true, revision: ruleRevision };
     },
     getRuleHits: async () => fixture.rules.hits,
+    getCollection: async () => ({
+      revision: collectionRevision,
+      nodes: currentCollectionNodes,
+    }),
+    replaceCollection: async (_expectedRevision, nodes) => {
+      collectionRevision += 1;
+      currentCollectionNodes = nodes;
+      return { ok: true, revision: collectionRevision };
+    },
+    exportCollection: async () => true,
     sendComposerRequest: async () => ({
       ...fixture.composerResponse,
       body: new Uint8Array(fixture.composerResponse.body),
@@ -972,6 +1112,7 @@ export function installFakeInterceptor({
 
 function rule(id, name, host, path, action) {
   return {
+    kind: 'rule',
     id,
     name,
     enabled: true,
@@ -1004,5 +1145,23 @@ function diagnostic(
     phase: 'command.completed',
     durationMs,
     outcome,
+  };
+}
+
+function collectionRequest(id, name, method, url, overrides = {}) {
+  return {
+    kind: 'request',
+    id,
+    name,
+    method,
+    url,
+    protocol: 'auto',
+    query: [],
+    headers: [],
+    bodyType: 'none',
+    bodyText: '',
+    bodyForm: [],
+    auth: { type: 'none', token: '', username: '', password: '' },
+    ...overrides,
   };
 }

@@ -2,6 +2,7 @@ import { ChevronDown, Folder } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
 
 import styles from './RuleRenameRow.module.css';
@@ -33,6 +34,7 @@ export function RuleRenameRow({
         autoFocus
         className={styles.input}
         aria-label={t('rules.renameFolder')}
+        data-automation-id={AutomationIdFactory.ruleFolderRename(nodeId)}
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onBlur={commit}

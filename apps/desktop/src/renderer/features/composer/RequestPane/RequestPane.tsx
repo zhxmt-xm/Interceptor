@@ -36,13 +36,13 @@ export function RequestPane({ request }: RequestPaneProps): React.JSX.Element {
           {
             id: 'query',
             label: t('composer.query'),
-            count: request.query.filter((row) => row.enabled).length,
+            count: request.query.length,
             automationId: AUTOMATION_IDS.composer.tab.query,
           },
           {
             id: 'headers',
             label: t('composer.headers'),
-            count: request.headers.filter((row) => row.enabled).length,
+            count: request.headers.length,
             automationId: AUTOMATION_IDS.composer.tab.headers,
           },
           {

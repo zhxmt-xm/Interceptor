@@ -11,6 +11,7 @@
 .tabs {
   display: flex;
   align-items: stretch;
+  gap: 2px;
   flex: 0 1 auto;
   min-width: 0;
   height: 100%;
@@ -43,7 +44,7 @@
 }
 
 .tab.active {
-  color: var(--text);
+  color: var(--accent);
   font-weight: 600;
 }
 

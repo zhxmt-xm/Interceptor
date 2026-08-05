@@ -190,6 +190,7 @@ for (const view of views) {
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     proxyReady: view.proxyReady !== false,
+    proxyEnableFails: view.proxyEnableFails === true,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);

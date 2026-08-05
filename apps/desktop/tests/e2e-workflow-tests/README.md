@@ -97,6 +97,9 @@ capture.request-row.<exchangeId>
 capture.websocket.frame.<exchangeId>.<seq>
 capture.grpc.message.<exchangeId>.<side>.<index>
 rules.row.<ruleId>
+rules.folder-row.<folderId>
+composer.collection.request.<requestId>
+composer.collection.folder.<folderId>
 breakpoints.row.<breakpointId>
 diagnostics.row.<traceKey>
 ```

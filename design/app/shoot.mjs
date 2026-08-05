@@ -22,14 +22,14 @@ const onlyFeature = process.argv
 const shots = [];
 for (const feature of FEATURES) {
   for (const theme of ['light', 'dark']) {
-    const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates', repair: 'idle' } : {}) };
+    const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates', repair: 'idle' } : {}), ...(feature === 'rules' ? { ruleList: 'tree-url' } : {}) };
     shots.push({ feature, theme, variant: 'framed', state: base });
     shots.push({ feature, theme, variant: 'full', full: true, state: base });
   }
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
-  shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
+  shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', ruleList: 'tree-url' } });
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', fileMenu: 'import' } });
@@ -67,8 +67,8 @@ for (const theme of ['light', 'dark']) {
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
-  shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
-  shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
+  shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleList: 'tree-url', pop: true } });
+  shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleList: 'tree-url', ruleSelect: 'open' } });
 }
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {

@@ -30,6 +30,7 @@
 }
 
 .scroll {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -37,6 +38,15 @@
   min-height: 0;
   padding: 8px;
   overflow-y: auto;
+}
+
+.dropLine {
+  position: absolute;
+  z-index: 5;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
 }
 
 .scroll::-webkit-scrollbar {

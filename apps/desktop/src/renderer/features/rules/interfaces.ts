@@ -65,6 +65,8 @@ export interface RulesState {
   setHits(counts: RuleHitCount[]): void;
   select(id: string | null): void;
   toggleFolder(id: string): void;
+  /** 幂等展开目录，供拖拽悬停自动展开。 */
+  expandFolder(id: string): void;
   beginRename(id: string | null): void;
   setFolderMenu(menu: FolderMenuAnchor | null): void;
 

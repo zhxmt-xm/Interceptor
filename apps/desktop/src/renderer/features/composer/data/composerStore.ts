@@ -1,5 +1,18 @@
 import { create } from 'zustand';
 
+import {
+  appendNode,
+  collectLeafIds,
+  findNode,
+  fitsDepth,
+  folderDepth,
+  insertNode,
+  removeNode as removeTreeNode,
+  renameNode as renameTreeNode,
+  replaceLeaf,
+  type TreeInsertPosition,
+} from '@interceptor/core-protocol';
+
 import type { ComposerResponse } from '../../../../shared/desktop-api';
 import { HISTORY_LIMIT } from '../constants';
 import type {
@@ -12,14 +25,9 @@ import type {
   ResponseTab,
 } from '../interfaces';
 import {
-  appendNode,
-  collectRequestIds,
   newFolder,
   newRequest,
   nextId,
-  removeNode,
-  renameNode,
-  replaceRequest,
 } from '../utils';
 
 /** 文档新打开时的运行态：无响应，请求页签停在 Headers。 */
@@ -75,8 +83,12 @@ interface ComposerStore {
   renameNode(nodeId: string, name: string): void;
   /** 删除任意节点（目录连同子树），并关闭受影响的文档。 */
   deleteNode(nodeId: string): void;
+  /** 移动任意节点；目录连同子树一起移动。 */
+  moveNode(nodeId: string, position: TreeInsertPosition): void;
 
   toggleFolder(folderId: string): void;
+  /** 幂等展开目录，供拖拽悬停自动展开。 */
+  expandFolder(folderId: string): void;
   setTargetFolder(folderId: string | null): void;
   setCollectionOpen(open: boolean): void;
   setRenamingNode(nodeId: string | null): void;
@@ -118,7 +130,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
 
   loadCollection: (nodes, revision) =>
     set((state) => {
-      const alive = new Set(collectRequestIds(nodes));
+      const alive = new Set(collectLeafIds(nodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
       return {
         nodes,
@@ -139,7 +151,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   markSaved: (revision) => set({ revision }),
 
   updateRequest: (request) =>
-    set((state) => ({ nodes: replaceRequest(state.nodes, request) })),
+    set((state) => ({ nodes: replaceLeaf(state.nodes, request) })),
 
   createRequest: () =>
     set((state) => {
@@ -155,6 +167,9 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   createFolder: (name) =>
     set((state) => {
       const folder = newFolder(name);
+      if (!fitsDepth(folderDepth(state.nodes, state.targetFolderId), folder)) {
+        return state;
+      }
       return {
         nodes: appendNode(state.nodes, state.targetFolderId, folder),
         expandedFolders: [...state.expandedFolders, folder.id],
@@ -165,14 +180,14 @@ export const useComposerStore = create<ComposerStore>((set) => ({
 
   renameNode: (nodeId, name) =>
     set((state) => ({
-      nodes: renameNode(state.nodes, nodeId, name),
+      nodes: renameTreeNode(state.nodes, nodeId, name),
       renamingNodeId: null,
     })),
 
   deleteNode: (nodeId) =>
     set((state) => {
-      const nodes = removeNode(state.nodes, nodeId);
-      const alive = new Set(collectRequestIds(nodes));
+      const nodes = removeTreeNode(state.nodes, nodeId);
+      const alive = new Set(collectLeafIds(nodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
       return {
         nodes,
@@ -187,10 +202,30 @@ export const useComposerStore = create<ComposerStore>((set) => ({
       };
     }),
 
+  moveNode: (nodeId, position) =>
+    set((state) => {
+      const moved = findNode(state.nodes, nodeId);
+      if (!moved) {
+        return state;
+      }
+      const detached = removeTreeNode(state.nodes, nodeId);
+      if (!fitsDepth(folderDepth(detached, position.parentId), moved)) {
+        return state;
+      }
+      return { nodes: insertNode(detached, moved, position) };
+    }),
+
   toggleFolder: (folderId) =>
     set((state) => ({
       expandedFolders: state.expandedFolders.includes(folderId)
         ? state.expandedFolders.filter((id) => id !== folderId)
+        : [...state.expandedFolders, folderId],
+    })),
+
+  expandFolder: (folderId) =>
+    set((state) => ({
+      expandedFolders: state.expandedFolders.includes(folderId)
+        ? state.expandedFolders
         : [...state.expandedFolders, folderId],
     })),
 

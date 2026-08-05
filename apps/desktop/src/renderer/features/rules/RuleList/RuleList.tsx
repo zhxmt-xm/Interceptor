@@ -2,8 +2,9 @@ import { Check, FolderPlus, MoreHorizontal, Plus, RotateCcw, Search, Trash2 } fr
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { collectLeaves, isFolder, type RuleNode } from '@interceptor/core-protocol';
+import { collectLeaves, type RuleNode } from '@interceptor/core-protocol';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Flyout, IconButton, MenuItem } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
@@ -26,9 +27,8 @@ export function RuleList(): React.JSX.Element {
   const addRule = useRulesStore((state) => state.addRule);
   const addFolder = useRulesStore((state) => state.addFolder);
   const removeNode = useRulesStore((state) => state.removeNode);
-  const beginRename = useRulesStore((state) => state.beginRename);
   const moveNode = useRulesStore((state) => state.moveNode);
-  const toggleFolder = useRulesStore((state) => state.toggleFolder);
+  const expandFolder = useRulesStore((state) => state.expandFolder);
   const setFolderMenu = useRulesStore((state) => state.setFolderMenu);
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -45,7 +45,12 @@ export function RuleList(): React.JSX.Element {
   );
   const visible: readonly RuleNode[] = matches ?? nodes;
 
-  const drag = useTreeDrag({ nodes, onMove: moveNode, onAutoExpand: toggleFolder });
+  const drag = useTreeDrag({
+    nodes,
+    disabled: matches !== null,
+    onMove: moveNode,
+    onAutoExpand: expandFolder,
+  });
 
   return (
     <div className={styles.list}>
@@ -57,6 +62,7 @@ export function RuleList(): React.JSX.Element {
             aria-label={t('rules.searchRules')}
             placeholder={t('rules.searchRules')}
             onChange={(event) => setQuery(event.target.value)}
+            data-automation-id={AUTOMATION_IDS.rules.search}
           />
         </label>
         <div className={styles.actions}>
@@ -65,12 +71,14 @@ export function RuleList(): React.JSX.Element {
             label={t('rules.newRule')}
             size="sm"
             onClick={() => addRule(t('rules.newRuleName'))}
+            automationId={AUTOMATION_IDS.rules.create}
           />
           <IconButton
             icon={FolderPlus}
             label={t('rules.newFolder')}
             size="sm"
             onClick={() => addFolder(t('rules.newFolderName'))}
+            automationId={AUTOMATION_IDS.rules.createFolder}
           />
           <IconButton
             icon={Check}
@@ -79,6 +87,7 @@ export function RuleList(): React.JSX.Element {
             strokeWidth={2.4}
             disabled={!dirty || saving}
             onClick={() => void applyRules()}
+            automationId={AUTOMATION_IDS.rules.apply}
           />
           {conflict ? (
             // 冲突时本地草稿被保留；Reload 是用户显式放弃草稿、取回最新规则集的唯一入口。
@@ -88,6 +97,7 @@ export function RuleList(): React.JSX.Element {
               size="sm"
               strokeWidth={2.4}
               onClick={() => void loadRules()}
+              automationId={AUTOMATION_IDS.rules.reload}
             />
           ) : null}
           <Flyout
@@ -101,6 +111,7 @@ export function RuleList(): React.JSX.Element {
                   icon={Trash2}
                   name={t('rules.deleteRule')}
                   hint=""
+                  automationId={AUTOMATION_IDS.rules.delete}
                   onClick={() => {
                     if (selectedId) {
                       removeNode(selectedId);
@@ -117,6 +128,7 @@ export function RuleList(): React.JSX.Element {
                 label={t('rules.more')}
                 size="sm"
                 disabled={!selectedId}
+                automationId={AUTOMATION_IDS.rules.more}
               />
             </span>
           </Flyout>
@@ -126,6 +138,7 @@ export function RuleList(): React.JSX.Element {
       <div
         ref={drag.containerRef}
         data-tree-scroll
+        data-automation-id={AUTOMATION_IDS.rules.list}
         className={styles.rows}
         onClick={() => setFolderMenu(null)}
         {...drag.containerProps}

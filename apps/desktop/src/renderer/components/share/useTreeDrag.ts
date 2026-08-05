@@ -31,6 +31,8 @@ export interface TreeDropLine {
 
 export interface UseTreeDragOptions<TLeaf extends TreeLeaf> {
   nodes: readonly TreeNode<TLeaf>[];
+  /** 搜索等不完整视图中禁用拖拽，避免按局部列表重排完整树。 */
+  disabled?: boolean;
   /** 落点确定后执行移动；实现方负责越界时保持原样。 */
   onMove: (nodeId: string, position: TreeInsertPosition) => void;
   /** 悬停展开收起的目录，让规则能一步拖进去。 */
@@ -47,7 +49,7 @@ export interface TreeDragApi {
   };
   /** 挂在每一行上；行还需带 `data-tree-row={id}` 供落点命中。 */
   rowProps: (nodeId: string) => {
-    draggable: true;
+    draggable: boolean;
     onDragStart: (event: React.DragEvent<HTMLElement>) => void;
     onDragEnd: () => void;
   };
@@ -60,6 +62,7 @@ export interface TreeDragApi {
 
 export function useTreeDrag<TLeaf extends TreeLeaf>({
   nodes,
+  disabled = false,
   onMove,
   onAutoExpand,
 }: UseTreeDragOptions<TLeaf>): TreeDragApi {
@@ -104,6 +107,9 @@ export function useTreeDrag<TLeaf extends TreeLeaf>({
 
   const onDragOver = useCallback(
     (event: React.DragEvent<HTMLElement>): void => {
+      if (disabled) {
+        return;
+      }
       const container = containerRef.current;
       const dragged = draggingId ? findNode(nodes, draggingId) : null;
       if (!container || !dragged) {
@@ -157,7 +163,7 @@ export function useTreeDrag<TLeaf extends TreeLeaf>({
       };
       setDropLine(lineFor(container, hit.row, after));
     },
-    [cancelAutoExpand, clearFeedback, draggingId, nodes, scheduleAutoExpand],
+    [cancelAutoExpand, clearFeedback, disabled, draggingId, nodes, scheduleAutoExpand],
   );
 
   const finishDrag = useCallback((): void => {
@@ -190,15 +196,19 @@ export function useTreeDrag<TLeaf extends TreeLeaf>({
 
   const rowProps = useCallback(
     (nodeId: string) => ({
-      draggable: true as const,
+      draggable: !disabled,
       onDragStart: (event: React.DragEvent<HTMLElement>): void => {
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', nodeId);
         setDraggingId(nodeId);
       },
       onDragEnd: finishDrag,
     }),
-    [finishDrag],
+    [disabled, finishDrag],
   );
 
   return {

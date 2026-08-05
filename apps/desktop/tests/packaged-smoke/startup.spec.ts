@@ -18,6 +18,8 @@ import {
   type TestInfo,
 } from '@playwright/test';
 
+import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
+
 class ReleaseScreenshotMatrix {
   /** All implemented workspaces addressed through the production sidebar. */
   private static readonly views = [
@@ -349,6 +351,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
   );
   const processOutput = captureProcessOutput(appProcess);
   let browser: Browser | null = null;
+  let page: Page | null = null;
   let corePid: number | null = null;
 
   try {
@@ -375,11 +378,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect
       .poll(() => context?.pages().length ?? 0, { timeout: 10_000 })
       .toBeGreaterThan(0);
-    const page = context?.pages()[0];
+    page = context?.pages()[0] ?? null;
     expect(page, 'Packaged app did not create a renderer page').toBeDefined();
     if (!page) {
       throw new Error('Packaged app did not create a renderer page');
     }
+    const rendererPage = page;
 
     await page.waitForLoadState('domcontentloaded');
 
@@ -505,21 +509,14 @@ test('packaged app starts with an isolated renderer and running core', async ({
     );
     expect(systemProxy).toMatchObject({
       supported: true,
-      owned: false,
+      owned: true,
       ownershipLost: false,
-    });
-    const repair = await page.evaluate(() =>
-      window.interceptor.repairSystemProxy(),
-    );
-    expect(repair).toMatchObject({
-      restored: false,
-      status: { supported: true, owned: false },
     });
 
     await expect
       .poll(
         async () => {
-          const status = await page.evaluate(() =>
+          const status = await rendererPage.evaluate(() =>
             window.interceptor.getCoreProcessStatus(),
           );
           corePid = status.pid;
@@ -546,7 +543,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect
       .poll(
         async () => {
-          const trace = await page.evaluate((traceId) =>
+          const trace = await rendererPage.evaluate((traceId) =>
             window.interceptor.getCoreTrace(traceId), echoResult.traceId);
           return trace.records.map(({ phase }) => phase);
         },
@@ -566,7 +563,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect
       .poll(
         async () => {
-          const status = await page.evaluate(() =>
+          const status = await rendererPage.evaluate(() =>
             window.interceptor.getCoreProcessStatus(),
           );
           if (
@@ -598,10 +595,19 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(storageStatus).not.toHaveProperty('quotaBytes');
     expect(storageStatus.databaseBytes).toBe(0);
 
+    // 保持 listener + Recording，但先恢复系统路由，避免宿主后台请求在 Clear 返回前
+    // 立刻重新填入 Capture；后续 workflow 仍显式通过 8888 发送流量。
+    const restoredBeforeClear = await page.evaluate(() =>
+      window.interceptor.restoreSystemProxy(),
+    );
+    expect(restoredBeforeClear).toMatchObject({
+      status: { supported: true, owned: false, ownershipLost: false },
+    });
+
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
     const clearRecordingPort = await reservePort();
     await expect.poll(
-      () => page.evaluate(async (port) => {
+      () => rendererPage.evaluate(async (port) => {
         const current = await window.interceptor.getCaptureStatus();
         if (current.listening) {
           return true;
@@ -629,6 +635,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     await ReleaseScreenshotMatrix.capture(page, testInfo);
 
+    const restoredProxy = await page.evaluate(() =>
+      window.interceptor.restoreSystemProxy(),
+    );
+    expect(restoredProxy).toMatchObject({
+      status: { supported: true, owned: false, ownershipLost: false },
+    });
     await page.evaluate(() => window.interceptor.closeApplication());
     await expect
       .poll(() => appProcess.exitCode, {
@@ -637,6 +649,17 @@ test('packaged app starts with an isolated renderer and running core', async ({
       })
       .not.toBeNull();
   } finally {
+    let proxyCleanupError: unknown = null;
+    if (appProcess.exitCode === null && page) {
+      try {
+        await restoreProxyBeforeShutdown(page);
+      } catch (error) {
+        proxyCleanupError = error;
+      }
+      await page.evaluate(() =>
+        window.interceptor.closeApplication()).catch(() => undefined);
+      await waitForExit(appProcess).catch(() => undefined);
+    }
     await browser?.close().catch(() => undefined);
     if (appProcess.exitCode === null) {
       appProcess.kill();
@@ -648,6 +671,9 @@ test('packaged app starts with an isolated renderer and running core', async ({
       maxRetries: 10,
       retryDelay: 100,
     });
+    if (proxyCleanupError) {
+      throw proxyCleanupError;
+    }
   }
 
   if (corePid !== null) {
@@ -675,30 +701,65 @@ async function drainReadinessBeforeCapture(page: Page): Promise<void> {
   }
 }
 
-/** Wait for automatic bootstrap to become Recording or present its recovery dialog. */
+/** Wait for cold-start BootScreen or the later runtime readiness dialog to settle. */
 async function settleProxyReadiness(page: Page): Promise<void> {
-  // The recovery dialog is an Ant Modal whose role="dialog" element carries no accessible
-  // name, so match it by its heading text instead of an accessible-name role query.
+  const bootScreen = page.locator(
+    `[data-automation-id="${AUTOMATION_IDS.shell.boot.screen}"]`,
+  );
   const dialog = page.getByRole('dialog').filter({ hasText: 'Proxy not ready' });
   const recording = page.getByRole('button', { name: 'Recording' });
+  let lastPhase = 'screen-missing';
   await expect.poll(async () => {
+    if (await bootScreen.isVisible()) {
+      lastPhase = await bootScreen.getAttribute('data-phase') ?? 'unknown';
+      return lastPhase === 'error'
+        ? 'boot-error'
+        : `pending:${lastPhase}`;
+    }
     if (await dialog.isVisible()) {
       return 'prompt';
     }
     if (await recording.isVisible()) {
       return 'recording';
     }
-    return 'pending';
+    return `pending:${lastPhase}`;
   }, {
     message: 'Proxy readiness did not settle',
-    timeout: 20_000,
-  }).not.toBe('pending');
+    // CoreRuntime itself allows 30 seconds for a cold process to become ready.
+    timeout: 35_000,
+  }).not.toMatch(/^pending:/);
 
-  if (await dialog.isVisible()) {
+  if (await bootScreen.isVisible()) {
+    await bootScreen.locator(
+      `[data-automation-id="${AUTOMATION_IDS.shell.boot.enterAnyway}"]`,
+    ).click();
+    await expect(page.getByRole('button', { name: 'Paused' })).toBeVisible();
+    await expect(page.getByText('System proxy off', { exact: true })).toBeVisible();
+  } else if (await dialog.isVisible()) {
     await expect(page.getByRole('button', { name: 'Paused' })).toBeVisible();
     await expect(page.getByText('System proxy off', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
   }
+}
+
+/** Confirm guarded system-proxy restore before any forced process fallback. */
+async function restoreProxyBeforeShutdown(page: Page): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  let lastStatus = 'unavailable';
+  while (Date.now() < deadline) {
+    try {
+      const restore = await page.evaluate(() =>
+        window.interceptor.restoreSystemProxy());
+      lastStatus = JSON.stringify(restore.status);
+      if (!restore.status.owned) {
+        return;
+      }
+    } catch (error) {
+      lastStatus = error instanceof Error ? error.message : String(error);
+    }
+    await page.waitForTimeout(250);
+  }
+  throw new Error(`System proxy remained owned during smoke cleanup: ${lastStatus}`);
 }
 
 function resolvePackagedExecutable(): string {

@@ -116,9 +116,9 @@ flowchart LR
 
 ## 5. UI 与 Collection
 
-设计稿把 Composer 从「左请求 / 右响应」改成 **`Collection 分栏 / splitter / 工作区`**，工作区纵向为 `文档标签条 · URL 行 · 请求编辑区 · splitter · 响应区`。这带来一块**当前完全不存在的能力：请求集合的持久化**。
+Composer 已按设计稿落地为 **`Collection 分栏 / splitter / 工作区`**，工作区纵向为 `文档标签条 · URL 行 · 请求编辑区 · splitter · 响应区`；请求集合跨启动持久化。
 
-### 5.1 Collection 需要新增的东西
+### 5.1 Collection 已实现链路
 
 | 层 | 新增内容 |
 | --- | --- |
@@ -130,6 +130,12 @@ flowchart LR
 **为什么不做树形表和增量命令**：Collection 只有几十到几百条，整棵树序列化成 JSON 的开销可以忽略。做成 `collection_tree` 单行表后，父子关系、排序字段、`upsert`/`remove`/`move` 三条增量命令与它们各自的并发语义全部不需要存在，读写只有"读整棵树"和"写整棵树"两条路径。
 
 **编辑即生效**：文档 tab 就是 Collection 里的条目，改动直接写回，没有保存动作、没有未保存标记、没有 Save 按钮；Send 用的就是当前状态。`+` 新建时直接在选中目录下创建一条 `Untitled`。写入由 Renderer 节流，避免每次按键都落库。
+
+**共享目录树与拖拽**：Collection 与 Rules 直接复用 `packages/core-protocol/src/tree.ts` 和
+`components/share/useTreeDrag.ts`。请求与目录整行可拖，目录悬停自动展开，移动是
+`removeNode + insertNode`；目录最多 3 级，拖拽不给超深落点，第三级目录的 New subfolder
+和工具栏 New folder 同时禁用，store 也拒绝越界写入。Collection 不保留自己的
+`findRequest` / `replaceRequest` / `removeNode` 等重复实现。
 
 **导出**：工具栏的 `Export collection` 走 `collection:export`，由 Main 弹系统保存对话框并把整棵树写成 JSON。集合数据本来就在 Renderer 手上，这条路径不经过 Core。
 
@@ -161,3 +167,4 @@ URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立�
 - [ ] 未设 timeout 的长请求不被强制中断。
 - [ ] TLS 证书链完整且已去重。
 - [ ] `tls.probe` 不产生任何 HTTP 流量。
+- [x] Collection 整行拖拽保留完整子树，且移动/新建均不能超过 3 级目录。

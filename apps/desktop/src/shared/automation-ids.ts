@@ -138,12 +138,13 @@ export const AUTOMATION_IDS = {
     },
   },
   rules: {
+    list: 'rules.list',
     search: 'rules.search',
     create: 'rules.create',
+    createFolder: 'rules.create-folder',
     apply: 'rules.apply',
+    reload: 'rules.reload',
     more: 'rules.more',
-    moveUp: 'rules.move-up',
-    moveDown: 'rules.move-down',
     delete: 'rules.delete',
     addCondition: 'rules.add-condition',
     addAction: 'rules.add-action',
@@ -180,6 +181,7 @@ export const AUTOMATION_IDS = {
     history: 'composer.history',
     createNew: 'composer.new',
     collection: 'composer.collection',
+    collectionTree: 'composer.collection.tree',
     collectionSplitter: 'composer.collection-splitter',
     newFolder: 'composer.collection.new-folder',
     newRequest: 'composer.collection.new-request',
@@ -282,6 +284,9 @@ export const AUTOMATION_ID_PREFIXES = {
   websocketFrame: 'capture.websocket.frame.',
   grpcMessage: 'capture.grpc.message.',
   ruleRow: 'rules.row.',
+  ruleFolderRow: 'rules.folder-row.',
+  composerCollectionRequest: 'composer.collection.request.',
+  composerCollectionFolder: 'composer.collection.folder.',
   breakpointRow: 'breakpoints.row.',
   diagnosticRow: 'diagnostics.row.',
 } as const;
@@ -328,9 +333,29 @@ export class AutomationIdFactory {
     return `rules.toggle.${ruleId}`;
   }
 
-  /** Identify the drag grip owned by one rule. */
-  static ruleGrip(ruleId: string): string {
-    return `rules.grip.${ruleId}`;
+  /** Identify one Rule folder row by its stable folder ID. */
+  static ruleFolderRow(folderId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.ruleFolderRow}${folderId}`;
+  }
+
+  /** Identify the expand/collapse control owned by one Rule folder. */
+  static ruleFolderToggle(folderId: string): string {
+    return `rules.folder-toggle.${folderId}`;
+  }
+
+  /** Identify the action-menu trigger owned by one Rule folder. */
+  static ruleFolderMenu(folderId: string): string {
+    return `rules.folder-menu.${folderId}`;
+  }
+
+  /** Identify one action in a Rule folder menu. */
+  static ruleFolderAction(folderId: string, action: string): string {
+    return `rules.folder-action.${folderId}.${action}`;
+  }
+
+  /** Identify the inline rename field owned by one Rule folder. */
+  static ruleFolderRename(folderId: string): string {
+    return `rules.folder-rename.${folderId}`;
   }
 
   /** Identify one matcher editor control by rule, index and field. */
@@ -341,6 +366,41 @@ export class AutomationIdFactory {
   /** Identify one action editor control by rule, index and field. */
   static ruleActionField(ruleId: string, index: number, field: string): string {
     return `rules.action.${ruleId}.${index}.${field}`;
+  }
+
+  /** Identify one saved Composer request row. */
+  static composerCollectionRequest(requestId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.composerCollectionRequest}${requestId}`;
+  }
+
+  /** Identify one Composer Collection folder row. */
+  static composerCollectionFolder(folderId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.composerCollectionFolder}${folderId}`;
+  }
+
+  /** Identify the expand/collapse control owned by a Collection folder. */
+  static composerCollectionFolderToggle(folderId: string): string {
+    return `composer.collection.folder-toggle.${folderId}`;
+  }
+
+  /** Identify the create-target control owned by a Collection folder. */
+  static composerCollectionFolderTarget(folderId: string): string {
+    return `composer.collection.folder-target.${folderId}`;
+  }
+
+  /** Identify the action-menu trigger owned by a Collection folder. */
+  static composerCollectionFolderMenu(folderId: string): string {
+    return `composer.collection.folder-menu.${folderId}`;
+  }
+
+  /** Identify one action in a Collection folder menu. */
+  static composerCollectionFolderAction(folderId: string, action: string): string {
+    return `composer.collection.folder-action.${folderId}.${action}`;
+  }
+
+  /** Identify the inline rename field owned by a Collection folder. */
+  static composerCollectionFolderRename(folderId: string): string {
+    return `composer.collection.folder-rename.${folderId}`;
   }
 
   /** Identify one Composer history row by its local history ID. */

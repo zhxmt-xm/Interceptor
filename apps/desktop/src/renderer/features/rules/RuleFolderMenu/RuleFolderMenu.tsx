@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { fitsDepth, folderDepth } from '@interceptor/core-protocol';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { MenuItem } from '../../../components';
 import { createFolder } from '../utils';
 import { useRulesStore } from '../data/rulesStore';
@@ -27,11 +28,17 @@ export function RuleFolderMenu(): React.JSX.Element | null {
   const canNest = fitsDepth(folderDepth(nodes, folderId), createFolder(''));
 
   return (
-    <div className={styles.menu} style={{ top, left }} role="menu">
+    <div
+      className={styles.menu}
+      style={{ top, left }}
+      role="menu"
+      data-automation-id={AutomationIdFactory.ruleFolderMenu(folderId)}
+    >
       <MenuItem
         icon={Pencil}
         name={t('rules.renameFolder')}
         hint=""
+        automationId={AutomationIdFactory.ruleFolderAction(folderId, 'rename')}
         onClick={() => beginRename(folderId)}
       />
       <MenuItem
@@ -39,12 +46,14 @@ export function RuleFolderMenu(): React.JSX.Element | null {
         name={t('rules.newSubfolder')}
         hint=""
         disabled={!canNest}
+        automationId={AutomationIdFactory.ruleFolderAction(folderId, 'new-folder')}
         onClick={() => addFolder(t('rules.newFolderName'), folderId)}
       />
       <MenuItem
         icon={FilePlus}
         name={t('rules.newRule')}
         hint=""
+        automationId={AutomationIdFactory.ruleFolderAction(folderId, 'new-rule')}
         onClick={() => addRule(t('rules.newRuleName'), folderId)}
       />
       <div className={styles.separator} />
@@ -52,6 +61,7 @@ export function RuleFolderMenu(): React.JSX.Element | null {
         icon={Trash2}
         name={t('rules.deleteFolder')}
         hint=""
+        automationId={AutomationIdFactory.ruleFolderAction(folderId, 'delete')}
         onClick={() => removeNode(folderId)}
       />
     </div>

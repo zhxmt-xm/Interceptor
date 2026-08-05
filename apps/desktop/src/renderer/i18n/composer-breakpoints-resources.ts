@@ -1,4 +1,5 @@
 export const composerBreakpointsEnglishMessages = {
+  'composer.title': 'Composer',
   'composer.collection': 'Collection',
   'composer.newFolder': 'New folder',
   'composer.newSubfolder': 'New subfolder…',
@@ -24,6 +25,7 @@ export const composerBreakpointsEnglishMessages = {
   'composer.sending': 'Sending…',
   'composer.send': 'Send',
   'composer.protocol': 'Protocol',
+  'composer.auto': 'Auto',
   'composer.form': 'Form',
   'composer.headers': 'Headers',
   'composer.query': 'Query',

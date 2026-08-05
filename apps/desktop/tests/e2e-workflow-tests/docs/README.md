@@ -60,6 +60,9 @@
 - WebSocket Frame：`capture.websocket.frame.<exchangeId>.<seq>`；
 - gRPC Message：`capture.grpc.message.<exchangeId>.<side>.<index>`；
 - Rule：`rules.row.<ruleId>`；
+- Rule Folder：`rules.folder-row.<folderId>`；
+- Composer Request：`composer.collection.request.<requestId>`；
+- Composer Folder：`composer.collection.folder.<folderId>`；
 - Breakpoint：`breakpoints.row.<breakpointId>`；
 - Diagnostics：`diagnostics.row.<traceKey>`。
 
