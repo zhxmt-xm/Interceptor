@@ -102,6 +102,8 @@ interface RuleFolder {
 因此它可以流式执行，**不需要缓冲**。同理 `header append` 在 `beforeRequestHead` / `beforeResponseHead`
 里已经拿到了完整头部，也不需要缓冲正文。
 
+**`map-local` 必须防路径穿越**。路径先规范化，再校验它落在允许根之内；否则一条带 `../` 的规则就能把任意本地文件当响应发回。
+
 ## 3. 与 Mockttp Rule 的关系
 
 两者表面相似，但语义不同，**不能直接用 Mockttp Rule 替代产品 Rule 模型**。
@@ -136,6 +138,16 @@ Mockttp 提供四种介入形态，代价差异极大。
 既不使用 `.matching(callback)`（CallbackMatcher 会 `waitForCompletedRequest`），也不使用
 `beforeRequest` / `beforeResponse`（分别等待完整请求与响应正文），**也不使用路径 B**。
 所有规则在头部阶段执行，正文始终流式。下面 §4.1 / §4.2 是选型背景，不描述当前代码路径。
+
+路径 C 不是 Mockttp 原生能力，由 `patches/mockttp+4.5.0.patch` 提供。该 patch 当前给 `PassThroughStep` 增加三组能力：
+
+| 能力 | 用途 |
+| --- | --- |
+| `beforeRequestHead` / `beforeResponseHead` | 头部到达时**同步**执行且从不缓冲正文；可改写 method/url/status/headers、短路、close/reset，以及不等原文的整体 body 替换（上游流被 `resume()` 倒掉） |
+| `request-trailers` / `response-trailers` | Mockttp 只在 completed 事件里给 trailer，而 gRPC 的 `grpc-status` 正是 response trailer（见 feature-capture §3.2.1） |
+| `passthroughProxyConfig` | 未解密直通也能走上游 CONNECT 隧道（见 feature-settings §3.4） |
+
+升级 Mockttp 必须人工 review 这份 patch 并重跑真实 Core / package 测试。
 
 ### 4.1 为什么路径 D 昂贵
 

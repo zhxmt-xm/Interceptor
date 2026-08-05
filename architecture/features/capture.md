@@ -1,8 +1,8 @@
 # Feature: Capture
 
-> 最后更新：2026-07-31
+> 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/capture/`、`apps/proxy-core/src/proxy-core/client-app/`
-> Renderer 模块：`apps/desktop/src/renderer/features/capture/`
+> Renderer 模块：`apps/desktop/src/renderer/features/capture/`；正文查看器内核 `apps/desktop/src/renderer/components/BodyViewer/`
 
 ## 1. 职责与边界
 
@@ -17,7 +17,7 @@ Capture 负责**观察并记录**经过代理的全部流量事实，不参与�
 
 > 收到 request headers 的瞬间就创建 Exchange、写入存储、推送 Renderer。此后的 request body、Rule 效果、response headers、response body、trailer、abort 全部是对**同一个 Exchange** 的增量更新。
 
-Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/proxy-exchange-tracker.ts` 的 `ExchangeTracker`。
+Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/internal/exchange-tracker.ts` 的 `ExchangeTracker`。
 
 ## 2. 参与者
 
@@ -29,13 +29,15 @@ Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/p
 | `RuleService` | `rules/entry.ts` | 计算规则决策（详见 feature-rules） |
 | `CaptureService` | `capture/entry.ts` | Exchange 记录、正文内容寻址存储 |
 | `ClientAppService` | `client-app/entry.ts` | 把客户端源端口反查成发起流量的本机应用（见 8） |
-| `CaptureEventQueue` | `proxy/proxy-capture-event-queue.ts` | 按 Exchange 合并的非阻塞事件队列 |
+| `CaptureEventQueue` | `proxy/internal/capture-event-queue.ts` | 按 Exchange 合并的非阻塞事件队列 |
 | `CoreApplication` | `core-application.ts` | 定时 drain 队列，按背压窗口推送 |
 | Main | Desktop | 转发 event batch，不持有正文 |
 | Renderer | Desktop | 应用事件到 Zustand，按需拉详情 |
 | Origin | 外部 | 真实源站 |
 
 **ProxyService 是每个请求的唯一协调者**，因为只有它同时处在事件订阅和规则执行两条路径上。
+
+`ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理，**只绑 loopback**，由 `proxy.start` / `proxy.stop` / `proxy.status` 三个命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。未配置解密时 CONNECT 走字节直通（见 5.2）。Core 运行时依赖（Mockttp 的 WASM / 原生插件、`ws`）不内联进 bundle，随包策略见 [../platform/release.md](../platform/release.md)。
 
 ## 3. Mockttp 事件语义
 
@@ -181,6 +183,14 @@ bodyStream.on('data', (d) => {
 ```
 
 Mockttp **不等待**我们处理完成，因此背压责任在 Capture 侧。
+
+### 3.7 HTTP/2 与 ALPN [已实现]
+
+有 CA（MITM）时使用 Mockttp `http2:true`，双协议浏览器与 H2-only / gRPC 客户端均可协商 H2；**上游按源站 ALPN 独立协商 h2/h1**，下游用什么协议不决定上游用什么。
+
+Mockttp 4.5 的 `beforeRequest` / `beforeResponse` 会分别等待完整请求与 `streamToBuffer` 完整响应，因此 Proxy 改用 patch 提供的 `beforeRequestHead` / `beforeResponseHead`——**全部规则在头部阶段执行，正文任何情况下都不缓冲**。这样 67 MB Range 视频被取消时不会全量缓冲，也不会污染复用的 H2 session，同时保留浏览器的 H2 pseudo-header 与 trailer。
+
+覆盖证据：真实站点 MITM 下两个页面各首载 + 连续两次刷新，以及双协议 / H2-only / gRPC 集成测试。stream 级健壮性（streamId、GOAWAY、RST、settings、背压）Mockttp 未暴露，见 [../backlog/research.md](../backlog/research.md)。
 
 ## 4. Exchange 状态机
 
@@ -973,6 +983,9 @@ Promise 链上排队，真正落盘在后台进行。`pendingBytes` 就是「已
    - 暴露为「正文内存阈值」与「单条正文最大积压」两项设置，改动后对**新建**的 writer 生效，
      不影响在途正文，避免中途改变阈值导致已收集内容语义不一致。
    - 需要 Renderer → Main → Core 的窄意图传递（形如现有 `tls.configure`），并在 Core 侧做范围校验。
+   - **一并处理 10.2 的预览侧阈值**（`BODY_PREVIEW_MAX_BYTES` / `IMAGE_PREVIEW_MAX_BYTES` /
+     `FORMAT_AUTO_MAX_BYTES` / `FORMAT_MAX_BYTES`）：给 `BodyReadRangeCommand` 加 `maxOutput`，
+     由调用方传上限，Core 不再 import「预览上限」这种纯 UI 概念。
    - **入口引导**：在 Inspector 的 BodyView（预览区）加一个问号按钮，用 Tooltip 说明当前的预览上限
      与正文保留阈值，并引导用户到 Settings 修改。做法可参照 Rules 编辑器顶部已有的
      `HelpCircle` + antd `Tooltip`（多行文本）模式。预览被截断或正文因降级丢弃时尤其需要它，
@@ -1087,7 +1100,7 @@ Capture 在创建 Exchange 时同时记录**发起这条请求的本机应用**�
 
 全部经 `client-app-helper`（Windows C# 单文件，`apps/desktop/src/main/client-app/`）完成，Main 在 fork Core 时以 `--client-app-helper` 注入路径。其他平台 `ClientAppService.supported` 为 false，列表不显示图标。只有 loopback 客户端才反查；远程设备（手机经代理）不存在本地进程。
 
-helper 另提供 `--resolve <pid>` 诊断子命令，用于排查归属结果。
+helper 四个子命令：`<proxyPort>` 输出 TSV `sourcePort/PID/displayName/identity`（捕获路径用），`--icon <path>` 输出 base64 PNG，`--resolve <pid>` 与 `--apps` 是排查用途。Main 自己取图标时复用同一个 exe。
 
 一条请求从到达到图标上屏的完整链路：
 
@@ -1192,6 +1205,8 @@ WebView2 宿主、微信小程序容器这类进程自己不是用户心目中�
 
 实测 51 个进程的命中分布：主程序登记名 7、目录登记名 23、`FileDescription` 21。已知唯一偏差：`node.exe` 展示为 `NVM for Windows 1.2.2`。
 
+**代表标识决定 `appId` 与图标。** 归属结果的 `path` 会被换成应用的代表标识——卸载表 `DisplayIcon` 指向的主程序，或包只有一个应用时的 `shell:AppsFolder\<AUMID>`——让名称、图标、`appId` 三者同源。否则 OneDrive 的 `FileCoAuth.exe`、Outlook 的 `olkexthost.exe` 这类没有图标资源的后台组件会拿到通用图标，并在 UI 里裂成独立条目。代表标识只取自权威来源：App Paths 与快捷方式只代表单个入口，拿它们代表整个目录会把 OneNote 显示成 Excel。
+
 **系统权限进程的兜底**。helper 以普通用户权限运行，对 SYSTEM 下的服务进程 `OpenProcess` 会被拒绝（实测 89 个 `svchost.exe` 里 80 个打不开），而 NCSI 探测、Windows Update 这类流量正是它们发的。句柄打不开时退到 `CreateToolhelp32Snapshot` 的 `ExeFile`（只有文件名，不需句柄）：能给出 `svchost` 这个名字，但没有路径就取不到图标。Core 仍然登记这类条目（以显示名代替路径算 `appId`），不再丢弃。
 
 ### 8.4 不阻塞捕获管线 [已实现]
@@ -1202,6 +1217,8 @@ WebView2 宿主、微信小程序容器这类进程自己不是用户心目中�
 - 未命中 → `setImmediate` 排出当前栈后再解析，结果以 `exchange-updated` 补齐
 
 这保证 helper 慢、挂起或失败都不会延后 `exchange-added` 与转发。解析失败只记 `client-app.lookup-failed` 诊断；孤儿 Promise 带 `catch`，Node 默认 `unhandled-rejections=throw` 会终止 Core 进程并中断抓包。
+
+**异步窗口要显式表达，否则 Application 分栏会闪。** 反查在飞行中时 `appId` 为空，若直接按「无归属」处理，分栏里会先冒出一个 Unknown 再消失。因此排队反查的 entry 带 `appPending: true`（只在为真时进摘要），Renderer 的 `facetValuesOf` 对这些行返回空数组、不计入任何取值。**成功、查不到、helper 异常三种终态都必须清除该位**：查不到与异常没有字段变化，仍要补推一次 `exchange-updated`，否则该行会永久停在解析中、从此不出现在分栏里。
 
 ### 8.5 快照与缓存
 
@@ -1271,7 +1288,7 @@ interface CaptureEventSink {
 }
 ```
 
-`CaptureExchangeSummary` 需支持 pending 表达：`statusCode` 与 `durationMs` 可缺省，Renderer 据此渲染进行中状态。`appId` / `appName` 同样可缺省（非 Windows、远程客户端、反查失败）。
+`CaptureExchangeSummary` 需支持 pending 表达：`statusCode` 与 `durationMs` 可缺省，Renderer 据此渲染进行中状态。`appId` / `appName` 同样可缺省（非 Windows、远程客户端、反查失败）；反查排队期间额外带 `appPending: true`（见 8.4）。
 
 事件批次 `CoreEventBatch` 除 `events` 外带可选 `clientApps: ClientAppIdentity[]`，只携带本批新出现的应用身份（见 8.5）。
 
@@ -1297,6 +1314,12 @@ interface CaptureEventSink {
 
 `proxy.stop` 不对 Renderer 开放常规入口，仅在 Main 的紧急修复路径中调用。
 
+**按需解码**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块。带 `decode` 的请求由 `proxy/utils/index.ts` 的 `decodeBody` 按 gzip / deflate / brotli **多层且容错**地延迟解压，并回传 `decodeStatus`——正文本身始终按线上编码保存（见 6.4）。
+
+**gRPC framing 不读整段正文**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5 字节 envelope——每条只从 Blob 读 5B header，再按 payload length 跳到下一个 offset。payload 继续走既有的 range 读取，不需要新的存储结构。
+
+WebSocket 与 gRPC 的意图 API 把 payload 原样转交，Core protocol 只校验 RPC 信封 / version / 关联字段，不对 payload 做运行时语义校验。
+
 ## 10. Renderer 数据层
 
 ```mermaid
@@ -1314,21 +1337,112 @@ flowchart LR
 - Zustand 只保存全部 `CaptureExchangeSummary` 与视图状态（filter、selection、scrollTop、tab、宽度）。
 - 完整 headers、body、WebSocket/gRPC payload **不进入全局状态**，按需拉取。
 - `useCaptureData` 常驻 App，跨 feature 持续接收事件。
+- bootstrap 与重连以 **500 条分页批次**同步当前 Core 的全量 summary。
+- Stop/Start **保留已有行**；只有 Core generation 变化或 Clear 才清空。
 - 列表用固定 52px 行的 TanStack Virtual 虚拟化。
 - 过滤完全在 Renderer 派生。
 
-**预览上限：**
+### 10.1 结构化筛选分栏 [已实现]
 
-| 内容 | 上限 |
-| --- | --- |
-| 文本 / HTML / JSON | `BODY_PREVIEW_MAX_BYTES` = 5 MiB |
-| WebSocket / gRPC payload | 5 MiB |
-| CodeMirror / Hex viewport | 320px |
-| `video/*` / `audio/*` | 零读取，仅经 Save Dialog 导出 |
+筛选是列表左侧可收起的 `CaptureFilterPanel`（宽度可拖，160–360px，存于 `captureStore.filterPanelWidth`），
+不再是列表上方的下拉。`CaptureListbar` 只保留分栏开关、Recording、Clear、搜索与 Import/Export。
+
+七个 facet 分组，**顺序严格跟随列表表头**：
+
+| facet | `CaptureFilter` 字段 | 取值来源 | 排序 |
+| --- | --- | --- | --- |
+| `application` | `apps` | `summary.appId`，无归属归入哨兵值；`appPending` 期间不计入（见 8.4） | 计数降序 |
+| `method` | `methods` | `summary.method` 大写 | 计数降序 |
+| `host` | `hosts` | `summary.host` | 计数降序 |
+| `status` | `statuses` | 状态码十进制串；无码时按 `failed` / `pending` 哨兵值 | 码值升序，哨兵置尾 |
+| `protocol` | `protocols` | `protocolFacetValue()` | 固定版本序 |
+| `type` | `types` | `typeLabel(responseMime)` | 计数降序 |
+| `rule` | `ruleIds` | `summary.ruleIds`，一条可命中多个 | 计数降序 |
+
+- **组内 OR、组间 AND，搜索与所有 facet 之间也是 AND**。`matchesCoreFilter` 同时供列表派生与实时事件使用，
+  保证新到流量与已有行走同一判定。
+- **Protocol facet 比列表 Proto 列更细**：列表列把 `HTTP/1.x` 收敛为 `h1`，facet 则区分 `HTTP/1.1` 与 `HTTP/1.0`，
+  另有 `HTTP/2`、`HTTP/3`、`WebSocket`、`TLS tunnel`。
+- 值与计数由 `allFacetOptions` **一次遍历**派生全部 facet；实时流量下每条摘要只扫一遍，
+  并经 `useThrottledRows(FACET_REFRESH_MS)` 节流，避免高频事件把整块面板重算。
+- 哨兵值用 `\u0000` 前缀（`UNKNOWN_FACET_VALUE` / `FAILED_FACET_VALUE` / `PENDING_FACET_VALUE`），
+  与真实 host、状态码字符串不可能碰撞。
+- 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge。
+
+**列顺序：Path 在前、Host 在后。** 列表主列渲染为 `path · host` 而非 `host · path`——host 在筛选分栏里
+一点即达，path 才是同一 host 下区分请求的信息。窄宽度下依次隐藏 Time、Size、Type、Proto 四列
+（这些维度筛选分栏里都有），Path · Host 主列永不隐藏。
+
+### 10.2 正文预览渲染矩阵 [已实现]
+
+正文查看器是共享内核 `components/BodyViewer/`，Capture / Composer / WebSocket / gRPC 用同一实现。
+
+**外壳与内核分离**：内核只吃 `(bytes, mediaType, truncated)`，不认识 hash、IPC 与 Save；
+`RequestInspector/BodyView.tsx` 是 Capture 侧外壳，负责按需拉字节、跟踪解码与截断状态、驱动 Save body。
+Composer 的 `ResponseBodyPane` 直接用内核。
+
+**内容类型（`kind`）与查看档位（`mode`）是两个独立维度。** `kind` 由 MIME + 内容探测决定并锁定工具行的
+MIME/体积标签，`mode` 只决定渲染方式。合成单一枚举会直接出 bug（在 JSON 上点 Hex 跳到另一条请求、
+HTML 点 Raw 变成 JSON）。原先的 `auto` 档已删除，但探测逻辑保留——它降级为「未知 MIME 是文本还是二进制」
+的默认档选择器，并把探测结果追加进候选档位以容忍 MIME 谎报。
+
+| `kind` | 默认档 | 候选档 |
+| --- | --- | --- |
+| `json`（含 `+json`、ndjson） | Pretty | Tree · Raw · Hex |
+| `code`（HTML / CSS / JS / XML / SVG） | Code | Raw · Hex |
+| `image`（非 SVG） | Preview | Hex |
+| `markdown` | Preview | Split · Source · Hex |
+| `form`（`x-www-form-urlencoded`） | Form | Raw · Hex |
+| `text` | Text | Hex |
+| `binary` | Hex | Text · Hex |
+| `media`（`video/*`、`audio/*`） | 元信息 + Save body | 无档位，零读取 |
+
+档位名是技术术语（Pretty / Raw / Hex…），与 JSON、Hex 同类，**不进 i18n catalog**。
+
+**各档实现要点：**
+
+- **Hex**：逐行虚拟化。它是最重的渲染路径（5 MiB ≈ 35 万行），不虚拟化会在拖动 Inspector 分栏时因
+  `ResizeObserver` 重算整份 dump。
+- **JSON Tree**：自建 + `@tanstack/react-virtual`，可右键复制 value / object / path。Monaco 是编辑器，
+  **折叠 ≠ 树**，没有 tree view 这种 UI 形态，自建才能套设计 token 并挂右键菜单。
+- **Code 的 Format**：走 Monaco `languages/features/{json,css,html,typescript}` 完整语言服务
+  （自带 formatter、结构化折叠与 worker），XML 由 `xml-formatter` 补。JSON 美化仍用 `JSON.parse/stringify`
+  （V8 原生，快于绕一趟 worker）。`readOnly: true` 会禁用 `formatDocument`，因此**在文本进 viewer 之前**
+  用临时 model + worker proxy 格式化；诊断全部关闭，避免白烧 worker CPU。
+- **Image**：`Blob` → `<img src=blob:>`，`onload` 读 `naturalWidth/Height` 显示尺寸，`onerror` 统一兜住
+  破图/不支持格式，cleanup 里 `revokeObjectURL`。用 blob URL 而非 data URL——字节本来就是 `Uint8Array`，
+  data URL 要多一次 base64（+33% 字节 + 一份字符串）。SVG 是可执行 XML，按 `code` 展示，默认不渲染。
+- **Markdown**：`react-markdown` + `remark-gfm` 做元素级组件映射，默认不渲染裸 HTML（天然防 XSS，
+  也因此不需要放宽 CSP）。Split 为上下分栏（Inspector 横向不够宽），不做滚动同步。
+
+**阈值**（全部定义在 `packages/core-protocol/src/messages.ts`）：
+
+| 常量 | 值 | 作用 |
+| --- | --- | --- |
+| `BODY_PREVIEW_MAX_BYTES` | 5 MiB | 文本 / WebSocket / gRPC payload / Core decode 输出四处共用的单次读取上限 |
+| `IMAGE_PREVIEW_MAX_BYTES` | 16 MiB | 超过则连 IPC 都不发，直接给元信息 + Save body |
+| `FORMAT_AUTO_MAX_BYTES` | 2 MiB | 及以下自动格式化 |
+| `FORMAT_MAX_BYTES` | 8 MiB | 2–8 MiB 需手动点 Format（带 loading，结果可丢弃）；超过则禁用并提示 Save body |
+
+阈值作用是**防用户干等**，不是防卡：Monaco 在 worker 里跑不阻塞主线程，但 TS parser 处理超大 min.js
+仍是几十秒。图片上限的作用也不是防崩溃，而是**防半张图**（截断字节喂给 `<img>` 比不显示更糟）并省下 IPC。
+已知边界：Core 的 decode 分支硬编码 `BODY_PREVIEW_MAX_BYTES`，所以**被 gzip 的图片有效上限仍是 5 MiB**
+（图片几乎不被 gzip，可接受）；未完整拿到字节时 `decodeStatus === 'limited'` 兜底为元信息 + Save body。
+
+**卡顿只可能发生在 Renderer 主线程**，Main 与 Core 全程只搬字节，全链路传 `Uint8Array`，
+没有任何 base64/dataURL 转换：
+
+| 工作 | 执行位置 | 卡 UI |
+| --- | --- | --- |
+| Core 读字节、gzip 解压（zlib 在 libuv 线程池） | Core 进程 | 否 |
+| IPC 搬运（两次 memcpy） | Main 进程 | 否 |
+| Hex 拼字符串与排版 | **Renderer 主线程** | **是（故虚拟化）** |
+| JS formatter 的 parse | Monaco worker | 否（故不需 Prettier） |
+| 图片解码 | Chromium 图片解码线程 | 否 |
 
 **预览截断不等于数据丢失。** 上限只作用于 Inspector 单次拉取的字节数，Core 侧始终保留完整正文。
-超出时 UI 显示截断提示，用户可经 **Save body**（`exportBodyToFile`）把完整内容流式写到自选文件，
-该路径不受预览上限限制。
+超出时 UI 明确显示预览大小与完整大小，用户可经 **Save body**（`body.export.start`）把完整编码正文
+流式写到自选文件，该路径不受预览上限限制。
 
 ## 11. 与当前实现的差异
 
@@ -1359,7 +1473,9 @@ flowchart LR
 
 | 项 | 当前 | 目标 |
 | --- | --- | --- |
-| 正文阈值可配置 | `BODY_MEMORY_THRESHOLD_BYTES`（3 MiB）与 `BODY_WRITER_PENDING_LIMIT_BYTES`（128 MiB）为编译期常量 | 两者均可在 Settings 动态设置并持久化，对新建 writer 生效；BodyView 加问号按钮说明限制并引导跳转（详见 6.3 第 4 项） |
+| 正文阈值可配置 | `BODY_MEMORY_THRESHOLD_BYTES`（3 MiB）与 `BODY_WRITER_PENDING_LIMIT_BYTES`（128 MiB）为编译期常量，10.2 的四个预览阈值同为常量且由 Core import | 全部可在 Settings 动态设置并持久化，对新建 writer 生效；`BodyReadRangeCommand` 加 `maxOutput` 让 Core 不再 import 预览上限；BodyView 加问号按钮说明限制并引导跳转（详见 6.3 第 4 项） |
+| `multipart/form-data` 预览 | 落到 `binary`，只能看 Hex | 独立一档：part 列表 + 对选中 part 递归套用同一个 BodyViewer 内核 |
+| `readRange` 内存分支放大 IPC | `body-store.ts` 内存分支返回 `subarray` **视图**，V8 序列化 TypedArray 会连整块底层 ArrayBuffer 一起写——从 3 MiB 内存 body 读 64 KB 实际传 3 MiB | 返回真实拷贝；分块读取变多会放大此问题 |
 | Breakpoint 正文 | 快照不带正文 | 带入 Capture 已接收的增量片段 |
 | Clear 与文件任务 | 无 lease 保护 | snapshot / lease 语义 |
 | 进行中状态展示 | Renderer 仅按状态码占位 | 明示 pending / streaming 与已接收字节 |

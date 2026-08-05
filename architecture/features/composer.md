@@ -1,9 +1,9 @@
 # Feature: Composer
 
-> 最后更新：2026-08-04
+> 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
-> UI 设计：`design/app/` 的 composer 视图（34 张截图）与 `design/design-system.md` 的「Composer 工作区」一节，**设计已定稿、尚未落地**。
+> UI 设计：`design/app/` 的 composer 视图（17 个场景 × 浅深共 34 张）与 `design/design-system.md` 的「Composer 工作区」一节，**已落地**。
 
 ## 1. 职责与边界
 
@@ -55,9 +55,12 @@ sequenceDiagram
 | 类别 | 字段 |
 | --- | --- |
 | 响应 | statusCode、statusText、headers、body |
-| 时序 | DNS、连接、TLS 握手、首字节、完成 |
+| 时序 | `ComposerTiming` 六阶段：dnsMs、tcpMs、tlsMs、requestMs、waitingMs、downloadMs |
 | TLS | protocol、cipher、ALPN、authorized、完整去重证书链 |
 | 网络 | remoteAddress、remotePort |
+
+分阶段时序由 `TimingRecorder` 从 socket 事件推导，支撑 Timing 页签的分阶段条。
+**未发生的阶段为 0**：明文请求没有 `tlsMs`，复用连接没有 `dnsMs` / `tcpMs`。
 
 Renderer 历史记录不淘汰。
 
@@ -154,7 +157,18 @@ URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立�
 
 **`multipart/form-data` 传文件不在本轮范围**：`ComposerRequestInput.body` 只接受 `string`，要传二进制必须先扩协议。
 
-### 5.4 Renderer 组成
+### 5.4 响应 Body 复用 Capture 的查看器内核
+
+`ResponsePane/ResponseBodyPane` 直接渲染共享内核 `components/BodyViewer/`，与 Capture Inspector 是**同一实现**：
+档位由响应 MIME 派生（JSON `Pretty/Tree/Raw/Hex`、代码 `Code/Raw/Hex`、图片 `Preview/Hex` …），
+Format、JSON Tree 右键复制、Hex 虚拟化与四个阈值常量全部一致。完整矩阵见
+[capture.md 10.2](capture.md)，此处不重复。
+
+Composer 与 Capture 的差别只在**外壳**：Capture 侧的 `BodyView` 要按需拉字节、跟踪解码与截断状态、驱动
+Save body；Composer 的响应正文随 `composer.send` 一次性返回，外壳只把字节交给内核。因此内核签名是
+`(bytes, mediaType, truncated)`，不认识 hash 与 IPC——Composer 在同期收编就是为了避免内核签名事后返工。
+
+### 5.5 Renderer 组成
 
 `features/composer/` 下每个组件一个文件、各配同名 CSS Module：`ComposerMain`（两处 splitter 与响应式 clamp）、`CollectionPanel` + `CollectionTreeNode` / `RenameRow` / `FolderMenu`、`DocumentTabs`、`RequestUrlBar` + `RecentSends`、`ComposerTabBar`（请求区与响应区共用）、`KeyValueTable`（Query / Headers / Form 三处共用）、`RequestPane` + `BodyPane` / `AuthPane`、`ResponsePane` + `ResponseBodyPane` / `ResponseHeadersPane` / `ResponseCookiesPane` / `ResponseTimingPane` / `ResponseSection` / `ResponsePlaceholder`。
 

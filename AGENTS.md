@@ -86,10 +86,10 @@ The repo targets Windows/macOS desktops but is developed here on a Linux dev con
 
 ## Progress And Documentation
 
-- Every new session or agent MUST begin by reading `stages/HANDOVER.md`, then `stages/ARCHITECTURE.md`, before planning or editing code.
-- Historical Stage records, the former progress index, and the complete product plan live under `stages/archived/`. Read them only when historical or product-design context is needed; do not resume routine progress tracking there.
-- Keep `stages/HANDOVER.md` detailed enough for a context-free new session or agent: current stage, completed work, code locations, working tree, remaining work, risks, validation, and exact next action. The handover must instruct readers to read `stages/ARCHITECTURE.md`.
-- Keep `stages/ARCHITECTURE.md` limited to code and boundaries that are currently implemented. Planned architecture remains in the product plan and stage files until validated in code.
-- Update `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` commands at milestone boundaries, or when the user explicitly asks.
+- Every new session or agent MUST begin by reading `architecture/HANDOVER.md`, then `architecture/platform/processes.md`, before planning or editing code.
+- `architecture/` is the single documentation root, indexed by `architecture/README.md`: `HANDOVER.md` (current state), `platform/` (cross-feature architecture that is already implemented), `features/` (per-feature design), `backlog/` (`TODO.md`, `idea.md`, and `research.md` for known gaps and unpromised long-term candidates).
+- Keep `architecture/HANDOVER.md` detailed enough for a context-free new session or agent: current stage, completed work, code locations, working tree, remaining work, risks, validation, and exact next action.
+- Keep `architecture/platform/*.md` limited to code and boundaries that are currently implemented. Unvalidated plans belong in `architecture/backlog/research.md` or in the feature doc's 与当前实现的差异 section.
+- Update `architecture/HANDOVER.md`, the affected `architecture/*.md`, and `README.md` commands at milestone boundaries, or when the user explicitly asks.
 - If a stage boundary is unclear, ask before synchronizing those documents.
-- Before committing code, first review the staged diff and update `stages/HANDOVER.md`, `stages/ARCHITECTURE.md`, and `README.md` as applicable so they reflect the change; commit only after the docs are in sync.
+- Before committing code, first review the staged diff and update `architecture/HANDOVER.md`, the affected `architecture/*.md`, and `README.md` as applicable so they reflect the change; commit only after the docs are in sync.

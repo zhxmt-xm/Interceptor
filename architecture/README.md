@@ -1,36 +1,52 @@
 # Interceptor 架构设计索引
 
-> 最后更新：2026-07-26
-> 范围：按产品 feature 记录目标架构设计、进程边界、service 调用流程与 Client/Origin 交互步骤。
+> 最后更新：2026-08-05
+> 范围：本目录是架构文档的唯一入口——feature 设计、跨 feature 平台架构、当前交接状态与待办全部在此。
 
-## 本目录与 `stages/` 的分工
+## 文档分工
 
 | 文档 | 内容 | 时态 |
 | --- | --- | --- |
-| `architecture/feature-*.md` | 单个 feature 的完整架构设计、调用流程、数据契约 | 目标设计（含状态标记） |
-| `stages/ARCHITECTURE.md` | 当前已落地并验证的进程边界与代码所有权总览 | 现状 |
-| `stages/HANDOVER.md` | 工作树状态、剩余工作、精确恢复步骤 | 现状 |
-| `stages/TODO.md` | 已确认的 BUG、实现限制与验收矩阵 | 待办 |
+| [HANDOVER.md](HANDOVER.md) | 当前里程碑、工作树状态、验证记录、精确的下一动作 | 现状 |
+| `platform/` | 跨 feature 的进程、Renderer 外壳、存储、打包与测试架构 | 现状 |
+| `features/` | 单个 feature 的完整架构设计、调用流程、数据契约 | 目标设计（含状态标记） |
+| [backlog/TODO.md](backlog/TODO.md) | 已确认的 BUG、实现限制与验收矩阵 | 待办 |
+| [backlog/idea.md](backlog/idea.md) | 尚未成形的想法池（截图与它平级） | 待办 |
+| [backlog/research.md](backlog/research.md) | 已知缺口、长期候选与技术研究备忘 | 未承诺 |
 
-本目录描述**架构应该是什么样**。每个章节用状态标记区分：
+**新会话的阅读顺序**：[HANDOVER.md](HANDOVER.md) → [platform/processes.md](platform/processes.md) → 要改的那个 `features/*.md`。
+
+feature 文档描述**架构应该是什么样**，每个章节用状态标记区分：
 
 - **[已实现]**：代码已落地并有测试覆盖。
 - **[改造中]**：目标设计已确定，当前代码尚未完全达成，差异在文末「与当前实现的差异」列出。
 - **[待定]**：需要产品决策后才能实现。
 - **[阶段一] / [阶段二]**：尚未落地的 feature 内部的实现顺序，阶段一先做、阶段二按需追加。
 
+`platform/` 下的文档只描述**已经实现并验证**的代码，不含规划。
+
+## 平台索引
+
+| 文档 | 覆盖范围 |
+| --- | --- |
+| [platform/processes.md](platform/processes.md) | 进程拓扑、parentPort 与 MessagePort 两条通道、故障分类与重启、Workflow 详细表、关键数据结构 |
+| [platform/renderer.md](platform/renderer.md) | App shell、冷启动、窗口 chrome、共享组件库、automation 契约、主题与 15 语言 |
+| [platform/storage.md](platform/storage.md) | Core 组合根与模块组织约定、三份存储的所有权、Recording 生命周期、正文边界 |
+| [platform/release.md](platform/release.md) | Core 运行时依赖随包、Main external 与懒加载、安装器、Fuses、产物安全、发布 CI |
+| [platform/testing.md](platform/testing.md) | 三层测试职责、Local E2E driver、执行约束与常用命令 |
+
 ## Feature 索引
 
 | 文档 | 覆盖范围 | Core 模块 | Renderer 模块 |
 | --- | --- | --- | --- |
-| [feature-capture.md](feature-capture.md) | 流量捕获、Exchange 生命周期、正文存储、事件推送、客户端应用归属 | `proxy/`、`storage/`、`client-app/` | `features/capture/` |
-| [feature-rules.md](feature-rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
-| [feature-breakpoints.md](feature-breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/rule-breakpoint-queue.ts` | `features/breakpoints/` |
-| [feature-composer.md](feature-composer.md) | 手工构造请求、连接探测 | `composer/`、`connection/` | `features/composer/` |
-| [feature-transfer.md](feature-transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
-| [feature-diagnostics.md](feature-diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
-| [feature-settings.md](feature-settings.md) | 证书/MITM、系统代理、更新、存储状态、语言主题 | `storage/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
-| [feature-mcp.md](feature-mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；工具层在 `packages/mcp-server/`，transport 待接入 Main `mcp/` | `features/settings/` + App 级审批弹层 |
+| [features/capture.md](features/capture.md) | 流量捕获、Exchange 生命周期、正文存储与预览渲染矩阵、事件推送、客户端应用归属、筛选分栏 | `proxy/`、`capture/`、`client-app/` | `features/capture/`、`components/BodyViewer/` |
+| [features/rules.md](features/rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
+| [features/breakpoints.md](features/breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/internal/breakpoint-queue.ts` | `features/breakpoints/` |
+| [features/composer.md](features/composer.md) | 手工构造请求、连接探测 | `composer/`、`tls-probe/` | `features/composer/` |
+| [features/transfer.md](features/transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
+| [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
+| [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
+| [features/mcp.md](features/mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；工具层在 `packages/mcp-server/`，transport 待接入 Main `mcp/` | `features/settings/` + App 级审批弹层 |
 
 ## 进程边界
 

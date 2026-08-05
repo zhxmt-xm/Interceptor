@@ -4,15 +4,15 @@ Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charl
 
 ## Status
 
-M0–M13 are complete; production signing/notarization and real macOS release evidence remain external release checks. The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, hardened installers, and user-triggered GitHub Release downloads.
+M0–M13 are complete; production signing/notarization and real macOS release evidence remain external release checks. The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, upstream proxy chaining with health-probed automatic fallback, hardened installers, and user-triggered GitHub Release downloads.
 
 The next release action is a real signed tag build with repository-external Windows and Apple credentials, followed by native macOS download/open validation.
 
 Documentation is split to keep routine context small:
 
-- [stages/HANDOVER.md](stages/HANDOVER.md) is the required first read and contains the current continuation state, code locations, remaining work, and next action.
-- [stages/ARCHITECTURE.md](stages/ARCHITECTURE.md) is the second required read and describes only the architecture already implemented in code.
-- [stages/archived/](stages/archived/) contains the completed Stage records, former progress index, and complete product plan for historical reference.
+- [architecture/HANDOVER.md](architecture/HANDOVER.md) is the required first read and contains the current continuation state, code locations, remaining work, and next action.
+- [architecture/README.md](architecture/README.md) indexes everything else: `platform-*.md` describe cross-feature architecture that is already implemented, `feature-*.md` describe per-feature design.
+- [architecture/backlog/research.md](architecture/backlog/research.md) lists known gaps and unpromised long-term candidates.
 
 ## Prerequisites
 
