@@ -3,6 +3,20 @@
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
+let breakpointBodyTimer = 0;
+
+function setBreakpointBodyState(state) {
+  window.clearTimeout(breakpointBodyTimer);
+  app.dataset.breakpointBody = state || 'loading';
+  if (app.dataset.breakpointBody === 'loading') app.dataset.breakpointFile = 'none';
+  if (app.dataset.breakpointBody === 'invalid') app.dataset.breakpointFile = 'invalid';
+  if (app.dataset.breakpointBody !== 'loading') return;
+  breakpointBodyTimer = window.setTimeout(() => {
+    if (app.dataset.breakpointBody !== 'loading') return;
+    app.dataset.breakpointBody = 'ready';
+    syncControls();
+  }, 3000);
+}
 
 // Unified sidebar. Active item follows data-view. HTTPS setup/import-export are overlays,
 // so they are NOT nav items — they are triggered from the floating controls / __setState.
@@ -10,7 +24,6 @@ const NAV = [
   { id: 'capture', icon: 'i-activity', label: 'Capture' },
   { id: 'rules', icon: 'i-branch', label: 'Rules &amp; Map' },
   { id: 'composer', icon: 'i-send', label: 'Composer' },
-  { id: 'breakpoints', icon: 'i-pause', label: 'Breakpoints' },
   { id: 'diagnostics', icon: 'i-terminal', label: 'Diagnostics' },
 ];
 
@@ -272,6 +285,47 @@ function setState(s = {}) {
     app.dataset.bodyMode = s.bodyMode;
     delete app.dataset.bodyState;
   }
+  if ('breakpoints' in s) {
+    if (s.breakpoints) app.dataset.breakpoints = s.breakpoints;
+    else delete app.dataset.breakpoints;
+  }
+  if ('breakpointState' in s) {
+    if (s.breakpointState) {
+      app.dataset.breakpointState = s.breakpointState;
+      app.classList.toggle('nodetail', s.breakpointState === 'full');
+    } else {
+      delete app.dataset.breakpointState;
+    }
+  }
+  if ('breakpointFile' in s) {
+    app.dataset.breakpointFile = s.breakpointFile || 'none';
+  }
+  if ('breakpointBody' in s) {
+    setBreakpointBodyState(s.breakpointBody);
+  }
+  if ('breakpointPanel' in s) {
+    if (s.breakpointPanel) app.dataset.breakpointPanel = s.breakpointPanel;
+    else delete app.dataset.breakpointPanel;
+  }
+  if ('breakpointNotice' in s) {
+    if (s.breakpointNotice) app.dataset.breakpointNotice = s.breakpointNotice;
+    else delete app.dataset.breakpointNotice;
+  }
+  if ('breakpointUi' in s) {
+    if (s.breakpointUi === 'panel') {
+      app.dataset.breakpointPanel = 'open';
+      delete app.dataset.breakpointNotice;
+    } else if (s.breakpointUi === 'armed') {
+      app.dataset.breakpointNotice = 'armed';
+      delete app.dataset.breakpointPanel;
+    } else {
+      delete app.dataset.breakpointPanel;
+      delete app.dataset.breakpointNotice;
+    }
+  }
+  if ('ruleTypography' in s) {
+    app.dataset.ruleTypography = s.ruleTypography || 'composer';
+  }
   if ('ctxmenu' in s) {
     // 截图场景只给 ctx，落点缺省锚到该树的第一个目录行
     if (s.ctxmenu) anchorMenuForScene(s.ctxmenu);
@@ -300,6 +354,7 @@ function setState(s = {}) {
   positionActionPopover();
   positionRuleSelectPopover();
   positionRequestRuleMenu();
+  positionBreakpointPanel();
   syncCaptureRowSelection();
   syncCaptureListScrollbar();
   syncControls();
@@ -335,7 +390,11 @@ function syncCaptureRowSelection() {
   if (!rows.length) return;
   const scene = app.dataset.scene || 'http';
   const kind = app.dataset.bodyKind || 'json';
-  const target = (scene !== 'http' && rows.find((row) => row.dataset.captureRow === scene))
+  const breakpointState = app.dataset.breakpointState;
+  const target = (breakpointState && rows.find((row) => row.dataset.captureRow === (
+    breakpointState === 'response' ? 'breakpoint-response' : 'breakpoint-request'
+  )))
+    || (scene !== 'http' && rows.find((row) => row.dataset.captureRow === scene))
     || rows.find((row) => row.dataset.body === kind)
     || rows.find((row) => row.dataset.captureRow === 'http');
   rows.forEach((row) => row.classList.toggle('sel', row === target));
@@ -344,7 +403,7 @@ function syncCaptureRowSelection() {
 function positionRequestRuleMenu(clientX, clientY) {
   const menu = app.querySelector('.request-rule-menu');
   const anchor = app.querySelector('[data-request-rule-anchor]');
-  if (!menu || !anchor || app.dataset.requestMenu !== 'open') return;
+  if (!menu || !anchor || !['open', 'breakpoint'].includes(app.dataset.requestMenu)) return;
   const appRect = app.getBoundingClientRect();
   const targetRect = (anchor.querySelector('.hc') || anchor).getBoundingClientRect();
   const parentRect = menu.offsetParent.getBoundingClientRect();
@@ -354,6 +413,33 @@ function positionRequestRuleMenu(clientX, clientY) {
   const clampedTop = Math.min(Math.max(desiredTop, appRect.top + 8), appRect.bottom - menu.offsetHeight - 8);
   menu.style.left = `${clampedLeft - parentRect.left}px`;
   menu.style.top = `${clampedTop - parentRect.top}px`;
+  const submenu = app.querySelector('.breakpoint-submenu');
+  const trigger = menu.querySelector('[data-breakpoint-trigger]');
+  if (!submenu || !trigger || app.dataset.requestMenu !== 'breakpoint') return;
+  const triggerRect = trigger.getBoundingClientRect();
+  const submenuParentRect = submenu.offsetParent.getBoundingClientRect();
+  const fitsRight = triggerRect.right + 4 + submenu.offsetWidth <= appRect.right - 8;
+  const submenuLeft = fitsRight
+    ? triggerRect.right + 4
+    : triggerRect.left - submenu.offsetWidth - 4;
+  const submenuTop = Math.min(
+    triggerRect.top,
+    appRect.bottom - submenu.offsetHeight - 38,
+  );
+  submenu.style.left = `${submenuLeft - submenuParentRect.left}px`;
+  submenu.style.top = `${Math.max(appRect.top + 8, submenuTop) - submenuParentRect.top}px`;
+}
+
+function positionBreakpointPanel() {
+  const panel = app.querySelector('.break-manager');
+  const trigger = app.querySelector('.breakctl');
+  if (!panel || !trigger || app.dataset.breakpointPanel !== 'open') return;
+  const parentRect = panel.offsetParent.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const appRect = app.getBoundingClientRect();
+  const left = Math.min(triggerRect.left, appRect.right - panel.offsetWidth - 8);
+  panel.style.left = `${left - parentRect.left}px`;
+  panel.style.top = `${triggerRect.bottom - parentRect.top + 6}px`;
 }
 
 function positionActionPopover() {
@@ -427,6 +513,13 @@ function syncControls() {
     overlay: app.getAttribute('data-overlay') || 'none',
     boot: app.dataset.boot || 'none',
     upstream: app.dataset.upstream || 'none',
+    breakpoints: app.dataset.breakpoints || 'on',
+    breakpointState: app.dataset.breakpointState || 'none',
+    breakpointBody: app.dataset.breakpointBody || 'loading',
+    breakpointUi: app.dataset.breakpointNotice === 'armed'
+      ? 'armed'
+      : app.dataset.breakpointPanel === 'open' ? 'panel' : 'none',
+    ruleTypography: app.dataset.ruleTypography || 'composer',
   };
   document.querySelectorAll('.dock .switch').forEach((box) => {
     const key = box.dataset.key;
@@ -473,8 +566,20 @@ app.addEventListener('click', (e) => {
 window.addEventListener('resize', positionActionPopover);
 window.addEventListener('resize', positionRuleSelectPopover);
 window.addEventListener('resize', positionRequestRuleMenu);
+window.addEventListener('resize', positionBreakpointPanel);
 
 app.addEventListener('contextmenu', (e) => {
+  const captureRow = e.target.closest('.list-scroll .row');
+  if (captureRow) {
+    e.preventDefault();
+    app.querySelectorAll('[data-request-rule-anchor]').forEach((row) => {
+      row.removeAttribute('data-request-rule-anchor');
+    });
+    captureRow.setAttribute('data-request-rule-anchor', '');
+    setState({ requestMenu: 'open' });
+    positionRequestRuleMenu(e.clientX, e.clientY);
+    return;
+  }
   const targets = [
     { selector: '.citem', ctx: 'composer-item' },
     { selector: '.cgrp-h', ctx: 'composer-folder' },
@@ -523,8 +628,21 @@ app.addEventListener('click', (e) => {
   if (toggle) return toggle.classList.toggle('on');
   const collapse = e.target.closest('.rgrp-chevbtn');
   if (collapse) return collapse.closest('.rgrp').classList.toggle('on');
+  const folderName = e.target.closest('.rgrp-namebtn');
+  if (folderName) {
+    const row = folderName.closest('.rgrp-h');
+    app.querySelectorAll('.rgrp-h').forEach((other) => other.classList.toggle('sel', other === row));
+    app.querySelectorAll('.rrule').forEach((rule) => rule.classList.remove('sel'));
+    return;
+  }
   const rule = e.target.closest('.rrule');
-  if (rule) app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('sel', row === rule));
+  if (rule) {
+    app.querySelectorAll('.rgrp-h').forEach((row) => row.classList.remove('sel'));
+    app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('sel', row === rule));
+    app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('open', row === rule));
+    app.querySelector('.edname').textContent = rule.querySelector('.rrule-n').textContent;
+    delete app.dataset.managerRule;
+  }
 });
 
 // 树拖拽，VS Code 式：整行可拖，点击还是拖拽交给浏览器判定。
@@ -704,12 +822,15 @@ app.addEventListener('click', (e) => {
   if (folderName) {
     const row = folderName.closest('.cgrp-h');
     app.querySelectorAll('.cgrp-h.on').forEach((other) => other.classList.remove('on'));
+    app.querySelectorAll('.citem.on').forEach((item) => item.classList.remove('on'));
     row.classList.add('on');
     return;
   }
   const saved = e.target.closest('.citem');
   if (saved) {
+    app.querySelectorAll('.cgrp-h.on').forEach((row) => row.classList.remove('on'));
     app.querySelectorAll('.citem').forEach((row) => row.classList.toggle('on', row === saved));
+    app.querySelectorAll('.citem').forEach((row) => row.classList.toggle('open', row === saved));
     return;
   }
   const requestTab = e.target.closest('[data-tabs="creq"] > span');
@@ -739,6 +860,80 @@ app.addEventListener('click', (e) => {
   // Recording toggle.
   if (e.target.closest('.rec')) {
     return setState({ recording: app.dataset.recording === 'paused' ? '' : 'paused' });
+  }
+  if (e.target.closest('.breakctl')) {
+    return setState({
+      breakpointPanel: app.dataset.breakpointPanel === 'open' ? '' : 'open',
+      breakpointNotice: '',
+    });
+  }
+  if (e.target.closest('.break-manager-close')) {
+    return setState({ breakpointPanel: '' });
+  }
+  if (e.target.closest('.break-global-toggle')) {
+    const enabled = app.dataset.breakpoints === 'off';
+    e.target.closest('.break-global-toggle').setAttribute('aria-checked', String(enabled));
+    return setState({ breakpoints: enabled ? 'on' : 'off' });
+  }
+  if (e.target.closest('.break-rule-toggle')) {
+    const toggle = e.target.closest('.break-rule-toggle');
+    const enabled = toggle.classList.toggle('on');
+    toggle.setAttribute('aria-checked', String(enabled));
+    toggle.closest('.break-manager-rule').classList.toggle('off', !enabled);
+    app.querySelector('.break-enabled-count').textContent = String(
+      app.querySelectorAll('.break-rule-toggle.on').length,
+    );
+    return;
+  }
+  if (e.target.closest('.break-armed-open')) {
+    return setState({ breakpointNotice: '', breakpointPanel: 'open' });
+  }
+  if (e.target.closest('.break-armed-undo, .break-armed-close')) {
+    return setState({ breakpointNotice: '' });
+  }
+  if (e.target.closest('.break-manager [data-breakpoint-custom]')) {
+    return setState({ view: 'rules', breakpointPanel: '' });
+  }
+  const managerRuleLink = e.target.closest('.break-rule-open');
+  if (managerRuleLink) {
+    const ruleId = managerRuleLink.closest('.break-manager-rule').dataset.managerRule;
+    const target = app.querySelector(`.rrule[data-rule-id="${ruleId}"]`);
+    app.querySelectorAll('.rgrp-h').forEach((row) => row.classList.remove('sel'));
+    app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('sel', row === target));
+    app.querySelectorAll('.rrule').forEach((row) => row.classList.toggle('open', row === target));
+    if (target) app.querySelector('.edname').textContent = target.querySelector('.rrule-n').textContent;
+    app.dataset.managerRule = ruleId;
+    return setState({ view: 'rules', breakpointPanel: '' });
+  }
+  const replaceMode = e.target.closest('[data-replace-mode]');
+  if (replaceMode) {
+    const state = replaceMode.dataset.replaceMode;
+    const file = app.dataset.breakpointFile || 'none';
+    return setState({
+      breakpointBody: state === 'off'
+        ? 'ready'
+        : state === 'text' ? 'replace' : file === 'invalid' ? 'invalid' : 'file',
+      breakpointFile: file,
+    });
+  }
+  if (e.target.closest('.break-file-upload-empty')) {
+    return setState({ breakpointBody: 'file', breakpointFile: 'valid' });
+  }
+  if (e.target.closest('.break-file-remove')) {
+    return setState({ breakpointBody: 'file', breakpointFile: 'none' });
+  }
+  const breakpointSectionHead = e.target.closest('.break-section-head');
+  if (
+    breakpointSectionHead
+    && !e.target.closest('.break-replace-mode, .break-source-tag')
+  ) {
+    const section = breakpointSectionHead.closest('.break-section');
+    const collapsed = section.classList.toggle('collapsed');
+    const toggle = breakpointSectionHead.matches('button')
+      ? breakpointSectionHead
+      : breakpointSectionHead.querySelector('.break-section-collapse');
+    toggle?.setAttribute('aria-expanded', String(!collapsed));
+    return;
   }
   // Per-group clear (hover action in the group header) restores that group to All.
   const groupClear = e.target.closest('.fgrp-clear');
@@ -790,6 +985,9 @@ app.addEventListener('click', (e) => {
   const row = e.target.closest('.list-scroll .row');
   if (row) {
     app.classList.remove('nodetail');
+    if (row.dataset.breakpointPhase) {
+      return setState({ breakpointState: row.dataset.breakpointPhase });
+    }
     const scene = row.dataset.captureRow === 'http' ? '' : row.dataset.captureRow || '';
     const body = row.dataset.body || '';
     return setState({
@@ -800,6 +998,18 @@ app.addEventListener('click', (e) => {
         : scene === 'grpc' ? 'grpc'
         : body ? 'response' : 'headers',
     });
+  }
+  if (e.target.closest('[data-breakpoint-trigger]')) {
+    return setState({ requestMenu: 'breakpoint' });
+  }
+  const breakpointChoice = e.target.closest('.breakpoint-submenu .fi');
+  if (breakpointChoice) {
+    return breakpointChoice.hasAttribute('data-breakpoint-custom')
+      ? setState({ view: 'rules', requestMenu: '' })
+      : setState({ requestMenu: '', breakpoints: 'on', breakpointNotice: 'armed' });
+  }
+  if (e.target.closest('.break-foot .btn')) {
+    return setState({ breakpointState: '' });
   }
   if (e.target.closest('.request-rule-menu .fi')) {
     return setState({ view: 'rules', requestMenu: '' });
@@ -981,5 +1191,6 @@ app.addEventListener('click', (e) => {
 
 // Initial paint.
 app.dataset.lang = app.dataset.lang || 'en';
+setBreakpointBodyState(app.dataset.breakpointBody);
 renderSidebar(app.getAttribute('data-view') || 'capture');
 syncControls();

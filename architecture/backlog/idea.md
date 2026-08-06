@@ -4,7 +4,7 @@
   - 已完成：`packages/mcp-server/` 认证 + 11 只读 / 7 写工具 + MCP 协议状态机（45 tests，零运行时依赖）；架构文档 `architecture/feature-mcp.md`。
   - 未完成：Main 侧 transport（named pipe / unix socket）、runtime 文件、`bridge.mjs`、Preload 窄 API、Settings 面板与审批弹层——即整条"接入 Main/Core"的链路。
 
-- [ ] Breakpoint 交互重构（配置在 Rules、调试在 Breakpoints 两处分家，很别扭）。**依赖的 filter 重构已于 2026-08-03 落地（`3eaa14e`），此项已解锁。**
+- [ ] Breakpoint 交互重构（配置在 Rules、调试在 Breakpoints 两处分家，很别扭）。**设计稿已于 2026-08-06 选定方案 A 并进入细化；产品尚未实现。** 依赖的 filter 重构已于 2026-08-03 落地（`3eaa14e`）。
 
   - 现状问题：
     - 断点规则配置在 Rules 的一种 action；HTTP 总开关在 Breakpoints 页的 `Break on match`；WebSocket 断点开关却在 Capture 的 WS 消息面板 —— 同一能力三个入口、两种范式。
@@ -19,16 +19,19 @@
     - Charles / Proxyman：断点是**独立于 Rewrite 的一类工具**，有自己的规则列表，命中弹独立窗口；流量右键可快捷加断点。
     - 共识：① 断点是独立工具而非混在 rewrite action 里；② 无论配置在哪，"有流量被挂住"必须在主流量视图立刻可见，没有工具让用户去另一个页面查岗；③ 总开关是工具栏级一等公民且唯一；④ 从流量右键一键加断点且**立即生效**。
 
-  - UI 方案（引擎层保持 breakpoint 作为 RuleAction 不变，只改呈现层）：
-    - **方案 A（推荐）断点是流量的一个状态，不是一个页面**：删侧栏 Breakpoints 导航；挂起的 exchange 在 Capture 列表原地显示 `Paused`（琥珀色 + 倒计时）；选中该行时 Inspector 切换为断点编辑模式（复用 `BreakpointEditor`，底部 Continue / Drop）；总开关升到 Capture Workbar 与 Record 同级并带 pending 计数，WS 开关合并进来。代价：Inspector 双模式复杂度上升，多断点的"队列感"要靠列表过滤补。
-    - 方案 B（保守）：保留 Breakpoints 页，只补 App 级轮询 + 侧栏 badge + 通知跳转 + Workbar 开关。改动小但两处分家的困惑只被缓解。
-    - 方案 C（Burp 模式）：Capture 工作区内 `Traffic | Paused (2)` 双 tab，共用工作区与选中态，Inspector 不用改双模式。
+  - **已选 UI 方案：断点是 Capture 流量状态，不是一个页面**（引擎层仍保持 breakpoint 为 RuleAction）：
+    - 目标设计删除独立 Breakpoints navigation；挂起 exchange 在 Capture 列表原行显示黄色 pause icon，Request/Response 同色且不显示倒计时。
+    - 选中 paused 行后 Inspector 切为 Request/Response 编辑器，底部固定 Drop / Continue / Forward edited；Headers、Original body、Replacement body 复用普通 Detail 的可折叠 SectionHeader。
+    - Capture Workbar 的 Breakpoint icon 是唯一入口并带 pending badge；点击打开 manager，总开关、Advanced rules、规则 enable switch 与 View rule 都在其中。
+    - Request/Response body 对称拆成只读 Original 与 Off/Text/File Replacement；Text/File 空态明确 fallback 到 original，文件格式问题只警告不阻断。
+    - 从历史 request 快捷创建只影响未来流量，必须即时通知“当前 request 未暂停”；真正命中仍在 Capture 原行处理。
 
   - 快速创建断点的匹配粒度（**不为 filter 弹新界面**）：
     - 现状 matcher 是 `{ type:'url', mode:'exact', value: scheme+host+path }`（`toEndpointUrl` 剥掉 query，避免 token 明文落 `rules.sqlite` 且换 token 后失配 —— 这个决定要保留）。盲区：REST 路径参数 `/users/123` → `/users/456` 不命中；同 host 其他接口不命中；不区分 method 可能过宽。
     - 主流工具都在**创建那一刻让用户选粒度**（Charles path 支持 `*`，Proxyman 预填可编辑，Fiddler `bpu` 子串，Burp regex）。
     - 建议右键级联子菜单，一次点击直接生效：`This endpoint` / `This path prefix (…/*)` / `This host (host/*)` / `Custom…`（通往已有的 Rules 编辑器做多条件 AND、method 限定、超时策略、Request+Response 成对）。分层是"子菜单快捷 → Rules 编辑器精细"，不引入第三个界面。
     - 断点规则应**创建即 enabled 即 Apply**：rewrite 规则默认不启用是因为字段没填完，而断点 matcher 是从真实请求填出来的，不存在未填完。
+    - **尚未统一**：当前 mockup 的快速菜单标题仍写 `Break request + response once`，但 manager 已按评审删除 `Once` / `Always` / `Request + response` 展示。实现前必须决定是否真的支持 Break once 与双 phase 快捷创建，不能让不可编辑标签重新出现。
     - **待 filter 重构后再评估**：`Break on current filter` —— "在看哪些流量"和"想断哪些流量"在语义上是同一个表达式（Burp intercept rules、mitmproxy `i <filter>` 本质如此），复用 Omnibox 最省 UI。风险是切换 filter 会静默改变断点范围，造成"只想换视角却改了断点"的意外。filter 新设计定稿后一并决策。
 
   - pause 对后续请求的影响（固有代价，非 bug，但必须让用户看得见）：
@@ -37,16 +40,18 @@
 
   - 多断点处理（现在只有列表 + Continue all）：
     - **并发上限（必须）**：pending 超阈值（如 10）时新命中自动放行，状态栏提示 `Breakpoint queue full — N requests auto-continued`。否则一个命中埋点/轮询接口的断点就能把浏览器打死。
-    - **Break once（最实用）**：命中一次后自动禁用该断点规则，专治高频接口，建议作为右键 Break 的默认。
+    - **Break once（待决策）**：是否命中一次后自动禁用尚未定；只有在 Rules 有明确设置与 manager 可解释时才落地。
     - 逐个放行节奏：Continue 后自动选中队列下一条（类似调试器连按 F5）。
     - 批量分层：`Continue all` / `Drop all` 之外加 `Continue all from this rule`。
-    - 超时可见：倒计时已有 `formatCountdown`，但超时自动 continue 后要在状态栏/Diagnostics 留痕，不能静默。
+    - 超时不显示倒计时：Core 继续强制 timeout；自动 continue/drop 后必须在状态栏/Diagnostics 留痕，不能静默。
     - Request + Response 成对断（Charles/Proxyman 默认行为）：模型是两条独立 action（`phase: request` / `response`），UI 要能表达"这个 exchange 断两次"且第二次能关联回同一行 —— 又指回 `exchangeId`。
 
-  - 可先行、不受 filter 重构影响、不改导航结构的三件事（做完不返工）：
+  - 产品实现前置三件事（不受 UI 细节影响，做完不返工）：
     1. 断点感知全局化：轮询/推送提到 App 级 + pending 计数 + 状态栏提示。
     2. 并发上限保护 + 超时留痕。
     3. `PendingBreakpoint` 增加 `exchangeId`，为后续任何方案铺路。
+
+  - 设计基础设施决定：本方案确认后先把 `design/app` 整体迁移到 Vite + React + CSS Modules，再开始产品实现。设计 SPA 复用 `lucide-react`、Ant Design、Monaco、tokens 与稳定 primitives；网络/Core/IPC 用 fixture adapter，不复制业务后端。旧静态 SPA 整体删除，不保留双路径。
 
 
 ## Bugs或改进

@@ -11,7 +11,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const fileUrl = pathToFileURL(path.join(dir, 'index.html')).href;
 const shotsRoot = path.join(dir, 'shots');
 
-const FEATURES = ['capture', 'rules', 'composer', 'settings', 'breakpoints', 'diagnostics'];
+const FEATURES = ['capture', 'rules', 'composer', 'settings', 'diagnostics'];
 const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
 const onlyFeature = process.argv
   .find((argument) => argument.startsWith('--feature='))
@@ -51,19 +51,38 @@ for (const theme of ['light', 'dark']) {
 // capture inspector tabs (Headers is the framed default)
 for (const theme of ['light', 'dark']) {
   for (const tab of ['request', 'response', 'timing', 'cookies', 'tls']) {
-    shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab } });
+    shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab } });
   }
-  shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', copy: 'error' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers', copy: 'error' } });
   shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', requestMenu: 'open' } });
   shots.push({ feature: 'capture', theme, variant: 'rule-filter', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', ruleFilter: 'rule-stub' } });
     shots.push({ feature: 'capture', theme, variant: 'rule-filter-disabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'rule', ruleOptions: 'empty' } });
   for (const bodyPreview of ['json', 'tree', 'tree-menu', 'raw', 'hex', 'code', 'formatting', 'limited', 'format-off', 'image', 'image-large', 'binary', 'form', 'md', 'md-split', 'md-source', 'media']) {
-    shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'response', bodyPreview } });
+    shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'response', bodyPreview } });
   }
-  shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'websocket', tab: 'messages' } });
-  shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'grpc', tab: 'grpc' } });
-  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'tunnel', tab: 'tunnel' } });
-  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel-mitm-active', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', scene: 'tunnel', tab: 'tunnel', mitm: 'active' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'grpc', tab: 'grpc' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel' } });
+  shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel-mitm-active', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel', mitm: 'active' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoints-off', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', breakpoints: 'off' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-loading', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'loading' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-loaded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'ready' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'replace' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-file-empty', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'file', breakpointFile: 'none' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-file', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'file', breakpointFile: 'valid' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-invalid', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'invalid' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-loaded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'ready' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'replace' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file-empty', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'none' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'valid' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-invalid', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'invalid' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointState: 'full' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-create-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', requestMenu: 'breakpoint' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-manager', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointPanel: 'open' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-armed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointNotice: 'armed' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
@@ -75,6 +94,7 @@ for (const theme of ['light', 'dark']) {
   const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
   shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
   shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, sidebar: 'collapsed' } });
+  shots.push({ feature: 'rules', theme, variant: 'font-current', state: { ...base, ruleTypography: 'current' } });
 }
 // composer request/response tabs and send phases
 for (const theme of ['light', 'dark']) {
@@ -117,7 +137,7 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
-  for (const feature of ['rules', 'composer', 'settings', 'breakpoints', 'diagnostics']) {
+  for (const feature of ['rules', 'composer', 'settings', 'diagnostics']) {
     shots.push({ feature: 'shell-v2', theme, variant: feature, state: { view: feature, theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   }
 }
@@ -133,7 +153,7 @@ const FULL_CSS = `
 .app{height:auto!important;min-height:800px!important}
 .mainhost,.mv{overflow:visible!important}
 .listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.ccol-scroll,.creq,.cresp,.cpane,.cscroll,.cedit,.jsonv,
-.snav,.scontent,.bqueue,.beditor,.bscroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
+.snav,.scontent,.break-inspector,.break-scroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
 
 const selectedShots = onlyFeature
@@ -180,11 +200,20 @@ async function shoot(list) {
       filterGroup: '',
       filterActive: '',
       recording: '',
+      breakpoints: 'on',
+      breakpointState: '',
+      breakpointBody: 'loading',
+      breakpointFile: 'none',
+      breakpointPanel: '',
+      breakpointNotice: '',
+      ruleTypography: 'composer',
       composer: '',
-      collection: 'open',      collectionRename: '',
+      collection: 'open',
+      collectionRename: '',
       composerHistory: '',
       bodyType: 'json',
       boot: '',
+      detail: '',
       ...st,
     }), s.state);
     await page.waitForTimeout(140);

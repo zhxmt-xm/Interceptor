@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed nodetail" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-body-kind="json" data-body-mode="default">
+    <div class="app shell-v2 collapsed" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-body-kind="json" data-body-mode="default" data-breakpoints="on" data-breakpoint-state="request" data-breakpoint-body="loading" data-breakpoint-file="none" data-rule-typography="composer">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -30,10 +30,6 @@
           <div class="header-context-v2" data-v="settings">
             <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
             <span class="header-view-title-v2" data-parity="window-header-title">Settings</span>
-          </div>
-          <div class="header-context-v2" data-v="breakpoints">
-            <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
-            <span class="header-view-title-v2" data-parity="window-header-title">Breakpoints</span>
           </div>
           <div class="header-context-v2" data-v="diagnostics">
             <button class="ib sm header-sidebar-toggle-v2" aria-label="Toggle sidebar" title="Toggle sidebar"><svg><use href="#i-menu"/></svg></button>
@@ -150,6 +146,7 @@
               <div class="listbar-start">
                 <button class="ib sm cfilters-toggle" aria-label="Toggle filters" title="Toggle filters"><svg><use href="#i-panel-left"/></svg><span class="cfilters-badge"></span></button>
                 <button class="rec" data-parity="capture-recording-toggle" aria-label="Pause recording" title="Pause recording"><svg class="rec-on"><use href="#i-record"/></svg><svg class="rec-off"><use href="#i-record-off"/></svg><span class="rec-spinner"></span><span class="recording-label">Recording</span><span class="paused-label">Paused</span></button>
+                <button class="breakctl" aria-label="Toggle breakpoints" title="Breakpoints on · 2 requests paused"><svg><use href="#i-pause"/></svg><span class="breakctl-count">2</span></button>
                 <div class="ib sm" title="Clear"><svg><use href="#i-trash"/></svg></div>
               </div>
               <div class="listbar-search">
@@ -174,11 +171,19 @@
                 <button class="file-command"><svg><use href="#i-download"/></svg><span>Export HAR</span><code>.har</code></button>
                 <button class="file-command"><svg><use href="#i-file"/></svg><span>Save Capture</span><code>.iarchive</code></button>
               </div>
+              <div class="break-manager" role="dialog" aria-label="Breakpoint manager">
+                <header class="break-manager-head"><div class="break-manager-title"><b>Breakpoints</b><span><b class="break-enabled-count">2</b> enabled · 0 paused</span></div><div class="break-manager-mode"><span>Break on match</span><span class="sw sm break-global-toggle" role="switch" aria-checked="true" aria-label="Break on match"></span></div><button class="btn sm break-manager-advanced" data-breakpoint-custom><svg><use href="#i-sliders"/></svg>Advanced rules</button><button class="ib sm break-manager-close" aria-label="Close breakpoint manager"><svg><use href="#i-x"/></svg></button></header>
+                <div class="break-manager-label">Breakpoint rules</div>
+                <div class="break-manager-rule" data-manager-rule="checkout"><span class="break-rule-icon"><svg><use href="#i-crosshair"/></svg></span><div class="break-rule-copy"><b>Checkout endpoint</b><code>POST shop.example.com/checkout</code></div><button class="break-rule-open">View rule<svg><use href="#i-arrow"/></svg></button><span class="sw sm on break-rule-toggle" role="switch" aria-checked="true" aria-label="Enable Checkout endpoint breakpoint"></span></div>
+                <div class="break-manager-rule" data-manager-rule="token"><span class="break-rule-icon"><svg><use href="#i-branch"/></svg></span><div class="break-rule-copy"><b>Token API</b><code>api.example.com/v1/*</code></div><button class="break-rule-open">View rule<svg><use href="#i-arrow"/></svg></button><span class="sw sm on break-rule-toggle" role="switch" aria-checked="true" aria-label="Enable Token API breakpoint"></span></div>
+              </div>
             </div>
             <div class="capture-panes">
             <div class="listwrap">
             <div class="lhead"><span data-parity="capture-list-app-header"></span><span>Method</span><span>Path · Host</span><span data-parity="capture-list-status-header">Status</span><span data-parity="capture-list-proto-header">Proto</span><span data-parity="capture-list-type-header">Type</span><span data-parity="capture-list-size-header">Size</span><span data-parity="capture-list-time-header">Time</span></div>
             <div class="list-scroll">
+            <div class="row breakpoint-row breakpoint-request" data-capture-row="breakpoint-request" data-breakpoint-phase="request" data-body="json"><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/checkout</span><span class="h"><svg><use href="#i-lock"/></svg>shop.example.com</span></div><span class="break-status" role="img" aria-label="Request paused" title="Request paused"><svg><use href="#i-pause"/></svg></span><span class="proto">h2</span><span class="ty">json</span><span class="size muted">waiting</span><span class="time muted">—</span></div>
+            <div class="row breakpoint-row breakpoint-response" data-capture-row="breakpoint-response" data-breakpoint-phase="response" data-body="json"><span class="appc"><span class="ai code"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/v1/token</span><span class="h"><svg><use href="#i-lock"/></svg>api.example.com</span></div><span class="break-status" role="img" aria-label="Response paused" title="Response paused"><svg><use href="#i-pause"/></svg></span><span class="proto">h2</span><span class="ty">json</span><span class="size">842 B</span><span class="time muted">—</span></div>
             <div class="row sel" data-capture-row="http" data-body="json" data-demo-row data-request-rule-anchor><span class="appc" data-parity="capture-list-app-cell"><span class="ai edge"></span></span><span class="m get">GET</span><div class="hc"><span class="p" data-parity="capture-list-path-cell">/user</span><span class="h" data-parity="capture-list-host-cell"><svg><use href="#i-lock"/></svg>api.github.com</span></div><span class="st ok" data-parity="capture-list-status-cell"><span class="d"></span>200</span><span class="proto" data-parity="capture-list-proto-cell">h2</span><span class="ty" data-parity="capture-list-type-cell">json</span><span class="size" data-parity="capture-list-size-cell">1.2 KB</span><span class="time" data-parity="capture-list-time-cell">142 ms</span></div>
             <div class="row" data-capture-row="tunnel"><span class="appc"><span class="ai edge"></span></span><span class="m">CONNECT</span><div class="hc tun"><span class="p">HTTPS content is encrypted</span><span class="h"><svg><use href="#i-lock"/></svg>accounts.google.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">tls</span><span class="ty">encrypted</span><span class="size">0 B</span><span class="time">open</span></div>
             <div class="row" data-body="form" data-demo-row><span class="appc"><span class="ai edge"></span></span><span class="m post">POST</span><div class="hc"><span class="p">/common/oauth2/v2.0/token</span><span class="h"><svg><use href="#i-lock"/></svg>login.microsoftonline.com</span></div><span class="st ok"><span class="d"></span>200</span><span class="proto">h2</span><span class="ty">json</span><span class="size">3.4 KB</span><span class="time">210 ms</span></div>
@@ -201,6 +206,106 @@
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="insp">
+            <section class="break-inspector">
+              <header class="break-head">
+                <span class="chip">POST</span>
+                <span class="break-url break-request-only">shop.example.com/checkout</span>
+                <span class="break-url break-response-only">api.example.com/v1/token</span>
+                <button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button>
+              </header>
+              <div class="break-context">
+                <span class="break-phase break-request-only"><svg><use href="#i-arrow"/></svg>Request paused</span>
+                <span class="break-phase break-response-only"><svg><use href="#i-arrow"/></svg>Response paused</span>
+                <span class="break-rule break-request-only">Checkout API · break once</span>
+                <span class="break-rule break-response-only">Inspect token · request passed</span>
+              </div>
+              <div class="break-scroll">
+                <section class="break-section break-request-only">
+                  <button class="sh break-section-head" aria-expanded="true"><span>Request headers</span><span class="c break-section-meta">3</span><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button>
+                  <div class="break-section-body"><div class="break-header-row"><input value="content-type" aria-label="Header name" /><input value="application/json" aria-label="Header value" /><button class="ib sm" aria-label="Remove header"><svg><use href="#i-x"/></svg></button></div><div class="break-header-row"><input value="authorization" aria-label="Header name" /><input value="Bearer eyJhbGci…" aria-label="Header value" /><button class="ib sm" aria-label="Remove header"><svg><use href="#i-x"/></svg></button></div><div class="break-header-row"><input value="x-cart-id" aria-label="Header name" /><input value="c_9f83a1" aria-label="Header value" /><button class="ib sm" aria-label="Remove header"><svg><use href="#i-x"/></svg></button></div><button class="break-add"><svg><use href="#i-plus"/></svg>Add header</button></div>
+                </section>
+                <section class="break-section break-request-only">
+                  <button class="sh break-section-head" aria-expanded="true"><span>Original body</span><span class="c break-section-meta break-original-loading-meta">receiving</span><span class="c break-section-meta break-original-ready-meta">63 B · json</span><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button>
+                  <div class="break-section-body">
+                  <div class="break-original-loading">
+                    <span class="break-body-spinner"></span>
+                    <div><b>Receiving request body…</b><span>18 B received · waiting for the client</span></div>
+                  </div>
+                  <div class="break-original-ready">
+                    <div class="break-original-toolbar"><span>Read-only preview</span><button class="ib sm" aria-label="Copy original body" title="Copy"><svg><use href="#i-copy"/></svg></button></div>
+                    <pre class="break-original-code">{
+  "cartId": "c_9f83a1",
+  "coupon": "WELCOME20"
+}</pre>
+                  </div>
+                  </div>
+                </section>
+                <section class="break-section break-request-only">
+                  <div class="sh break-section-head break-replacement-head"><div class="break-section-title"><span>Replacement body</span><span class="break-source-tag break-source-original-off" title="Off is selected. The original body will be forwarded."><span>Using original</span></span><span class="break-source-tag break-source-original-empty" title="Text replacement cannot be empty. Enter body content or the original body will be forwarded."><svg><use href="#i-circle-alert"/></svg><span>Using original</span></span><span class="break-source-tag break-source-original-file" title="Select a non-empty file or the original body will be forwarded."><svg><use href="#i-circle-alert"/></svg><span>Using original</span></span><span class="break-source-tag break-source-text" title="The text replacement will be forwarded."><span>Using text</span></span><span class="break-source-tag break-source-file" title="The uploaded file will be forwarded as raw bytes."><span>Using file</span></span></div><div class="seg break-replace-mode"><span data-replace-mode="off">Off</span><span data-replace-mode="text">Text</span><span data-replace-mode="file">File</span></div><button class="break-section-collapse" aria-label="Collapse Replacement body" aria-expanded="true"><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button></div>
+                  <div class="break-section-body">
+                  <div class="break-replace-off"><svg><use href="#i-check"/></svg><span>The original body will be forwarded unchanged.</span></div>
+                  <textarea class="break-body break-replace-editor" aria-label="Replacement body" placeholder="Enter a replacement body…"></textarea>
+                  <div class="break-file-empty"><button class="btn sm break-file-upload-empty"><svg><use href="#i-upload"/></svg>Upload file</button></div>
+                  <div class="break-replace-file">
+                    <div class="break-file-head"><span class="break-file-icon"><svg><use href="#i-file"/></svg></span><div class="break-file-meta"><b class="break-file-valid-only">checkout.json</b><b class="break-file-invalid-only">checkout-body.txt</b><span class="break-file-valid-only">1.2 KB · application/json</span><span class="break-file-invalid-only">38 B · text/plain</span></div><button class="ib sm break-file-remove" aria-label="Remove replacement file" title="Remove"><svg><use href="#i-x"/></svg></button></div>
+                    <pre class="break-file-preview break-file-valid-only">{
+  "cartId": "c_9f83a1",
+  "coupon": "WELCOME20"
+}</pre>
+                    <pre class="break-file-preview break-file-invalid-only">{ "cartId": "c_9f83a1", }</pre>
+                  </div>
+                  <div class="break-format-warning"><svg><use href="#i-alert"/></svg><span><b>Body is not valid JSON for the current application/json header.</b> It will still be sent as raw bytes.</span></div>
+                  </div>
+                </section>
+                <section class="break-section break-response-only">
+                  <button class="sh break-section-head" aria-expanded="true"><span>Response status</span><span class="c break-section-meta">editable</span><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button>
+                  <div class="break-section-body"><div class="break-status-edit"><label>Status</label><input value="200" aria-label="Response status" /><span>OK</span></div></div>
+                </section>
+                <section class="break-section break-response-only">
+                  <button class="sh break-section-head" aria-expanded="true"><span>Response headers</span><span class="c break-section-meta">2</span><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button>
+                  <div class="break-section-body"><div class="break-header-row"><input value="content-type" aria-label="Header name" /><input value="application/json" aria-label="Header value" /><button class="ib sm" aria-label="Remove header"><svg><use href="#i-x"/></svg></button></div><div class="break-header-row"><input value="cache-control" aria-label="Header name" /><input value="no-store" aria-label="Header value" /><button class="ib sm" aria-label="Remove header"><svg><use href="#i-x"/></svg></button></div><button class="break-add"><svg><use href="#i-plus"/></svg>Add header</button></div>
+                </section>
+                <section class="break-section break-response-only">
+                  <button class="sh break-section-head" aria-expanded="true"><span>Original body</span><span class="c break-section-meta break-original-loading-meta">receiving</span><span class="c break-section-meta break-original-ready-meta">842 B · json</span><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button>
+                  <div class="break-section-body">
+                  <div class="break-original-loading">
+                    <span class="break-body-spinner"></span>
+                    <div><b>Receiving response body…</b><span>416 B received · waiting for the origin</span></div>
+                  </div>
+                  <div class="break-original-ready">
+                    <div class="break-original-toolbar"><span>Read-only preview</span><button class="ib sm" aria-label="Copy original body" title="Copy"><svg><use href="#i-copy"/></svg></button></div>
+                    <pre class="break-original-code">{
+  "access_token": "eyJhbGci…",
+  "expires_in": 3600
+}</pre>
+                  </div>
+                  </div>
+                </section>
+                <section class="break-section break-response-only">
+                  <div class="sh break-section-head break-replacement-head"><div class="break-section-title"><span>Replacement body</span><span class="break-source-tag break-source-original-off" title="Off is selected. The original body will be forwarded."><span>Using original</span></span><span class="break-source-tag break-source-original-empty" title="Text replacement cannot be empty. Enter body content or the original body will be forwarded."><svg><use href="#i-circle-alert"/></svg><span>Using original</span></span><span class="break-source-tag break-source-original-file" title="Select a non-empty file or the original body will be forwarded."><svg><use href="#i-circle-alert"/></svg><span>Using original</span></span><span class="break-source-tag break-source-text" title="The text replacement will be forwarded."><span>Using text</span></span><span class="break-source-tag break-source-file" title="The uploaded file will be forwarded as raw bytes."><span>Using file</span></span></div><div class="seg break-replace-mode"><span data-replace-mode="off">Off</span><span data-replace-mode="text">Text</span><span data-replace-mode="file">File</span></div><button class="break-section-collapse" aria-label="Collapse Replacement body" aria-expanded="true"><svg class="sh-chev break-section-chevron"><use href="#i-chev"/></svg></button></div>
+                  <div class="break-section-body">
+                  <div class="break-replace-off"><svg><use href="#i-check"/></svg><span>The original body will be forwarded unchanged.</span></div>
+                  <textarea class="break-body break-replace-editor" aria-label="Replacement response body" placeholder="Enter a replacement body…"></textarea>
+                  <div class="break-file-empty"><button class="btn sm break-file-upload-empty"><svg><use href="#i-upload"/></svg>Upload file</button></div>
+                  <div class="break-replace-file">
+                    <div class="break-file-head"><span class="break-file-icon"><svg><use href="#i-file"/></svg></span><div class="break-file-meta"><b class="break-file-valid-only">token-response.json</b><b class="break-file-invalid-only">token-response.txt</b><span class="break-file-valid-only">842 B · application/json</span><span class="break-file-invalid-only">38 B · text/plain</span></div><button class="ib sm break-file-remove" aria-label="Remove replacement file" title="Remove"><svg><use href="#i-x"/></svg></button></div>
+                    <pre class="break-file-preview break-file-valid-only">{
+  "access_token": "test-token",
+  "expires_in": 120
+}</pre>
+                    <pre class="break-file-preview break-file-invalid-only">{ "access_token": "test-token", }</pre>
+                  </div>
+                  <div class="break-format-warning"><svg><use href="#i-alert"/></svg><span><b>Body is not valid JSON for the current application/json header.</b> It will still be sent as raw bytes.</span></div>
+                  </div>
+                </section>
+              </div>
+              <footer class="break-foot">
+                <button class="btn danger"><svg><use href="#i-slash"/></svg>Drop</button>
+                <span class="sp"></span>
+                <button class="btn">Continue</button>
+                <button class="btn pri"><svg><use href="#i-play"/></svg>Forward edited</button>
+              </footer>
+            </section>
             <div class="itop http-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurlwrap"><span class="iurl" data-parity="capture-inspector-host">api.github.com/user</span><span class="ib sm iurlcopy"><svg><use href="#i-copy"/></svg></span></span><span class="sbadge" data-parity="capture-inspector-status"><span class="d"></span>200</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
             <div class="itop tunnel-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">CONNECT</span><span class="iurlwrap"><span class="iurl" data-parity="capture-inspector-host">accounts.google.com:443</span><span class="ib sm iurlcopy"><svg><use href="#i-copy"/></svg></span></span><span class="sbadge" data-parity="capture-inspector-status"><span class="d"></span>200</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
             <div class="itop ws-only"><div class="itop-card"><span class="chip" data-parity="capture-inspector-method">GET</span><span class="iurlwrap"><span class="iurl" data-parity="capture-inspector-host">realtime.example.com/socket</span><span class="ib sm iurlcopy"><svg><use href="#i-copy"/></svg></span></span><span class="sbadge ws" data-parity="capture-inspector-status"><span class="d"></span>101</span></div><button class="iclose" aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
@@ -396,8 +501,7 @@ curl https://api.acme.dev/v1/exchanges \
                 <div class="wsbar">
                   <div class="seg"><span class="on">All</span><span>Sent</span><span>Received</span></div>
                   <span class="sp"></span>
-                  <span class="cnt">Pause on message</span>
-                  <div class="sw on"></div>
+                  <span class="ws-break-state"><svg><use href="#i-pause"/></svg>Global breakpoints on</span>
                 </div>
                 <div class="wsrows">
                   <div class="wsrow"><span class="wsdir out"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Text</span><span class="wspreview">{"type":"subscribe","channel":"builds"}</span><span class="wssize">39 B</span><span class="wstime">+0 ms</span></div>
@@ -416,7 +520,7 @@ curl https://api.acme.dev/v1/exchanges \
                   </div>
                   <div class="wsrow"><span class="wsdir out"><svg><use href="#i-arrow"/></svg></span><span class="wstype">Binary</span><span class="wspreview muted">89 50 4e 47 0d 0a 1a 0a …</span><span class="wssize">2.8 KB</span><span class="wstime">+2.1 s</span></div>
                 </div>
-                <div class="wsnote"><svg><use href="#i-pause"/></svg>Next matching message pauses in Breakpoints before forwarding.</div>
+                <div class="wsnote"><svg><use href="#i-pause"/></svg>Matching messages pause here before forwarding.</div>
               </div>
               <div class="tp grpcmsg" data-tab="grpc">
                 <div class="grpcbar">
@@ -458,8 +562,17 @@ curl https://api.acme.dev/v1/exchanges \
             <button class="fi"><svg><use href="#i-clock"/></svg><span class="n">Delay</span><span class="ex">latency</span></button>
             <div class="po-t">Control</div>
             <button class="fi"><svg><use href="#i-slash"/></svg><span class="n">Block</span><span class="ex">reset / close</span></button>
-            <button class="fi" data-parity="request-rule-breakpoint"><svg><use href="#i-pause"/></svg><span class="n">Breakpoint</span><span class="ex">pause &amp; edit</span></button>
+            <button class="fi request-breakpoint-trigger" data-breakpoint-trigger data-parity="request-rule-breakpoint"><svg><use href="#i-pause"/></svg><span class="n">Breakpoint</span><span class="ex">pause next match</span><svg class="menu-next"><use href="#i-chev-right"/></svg></button>
           </div>
+          <div class="breakpoint-submenu" role="menu" aria-label="Create breakpoint from request">
+            <div class="request-rule-title">Break request + response once</div>
+            <button class="fi"><svg><use href="#i-crosshair"/></svg><span class="n">This endpoint</span><span class="ex">/checkout</span></button>
+            <button class="fi"><svg><use href="#i-branch"/></svg><span class="n">This path prefix</span><span class="ex">/checkout/*</span></button>
+            <button class="fi"><svg><use href="#i-globe"/></svg><span class="n">This host</span><span class="ex">shop.example.com/*</span></button>
+            <div class="menu-rule"></div>
+            <button class="fi" data-breakpoint-custom><svg><use href="#i-settings"/></svg><span class="n">Custom breakpoint…</span><span class="ex">method, timeout, phases</span></button>
+          </div>
+          <div class="break-armed-notice" role="status"><span class="break-armed-icon"><svg><use href="#i-pause"/></svg></span><div><b>Breakpoint enabled for future traffic</b><span>This completed request was not paused · POST /checkout</span></div><button class="btn sm break-armed-undo">Undo</button><button class="ib sm break-armed-open" aria-label="View active breakpoints" title="View breakpoints"><svg><use href="#i-pause"/></svg></button><button class="ib sm break-armed-close" aria-label="Dismiss"><svg><use href="#i-x"/></svg></button></div>
         </div>
 
         <!-- rules -->
@@ -470,7 +583,7 @@ curl https://api.acme.dev/v1/exchanges \
               <section class="rgrp on" data-rgrp="mock">
                 <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Mock &amp; stub</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
                 <div class="rgrp-b">
-                  <div class="rrule sel" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Stub /v1/user</span><span class="rrule-u">api.example.com/v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">128</span></div>
+                  <div class="rrule sel open" draggable="true" title="Open in editor"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Stub /v1/user</span><span class="rrule-u">api.example.com/v1/user</span></div><div class="rchips"><span class="rchip map">Map Local</span><span class="rchip rewrite">Rewrite</span></div><span class="rhit">128</span></div>
                   <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Force CORS + JSON</span><span class="rrule-u">*.api.com</span></div><div class="rchips"><span class="rchip rewrite">Rewrite</span></div><span class="rhit">512</span></div>
                   <section class="rgrp on" data-rgrp="payments">
                     <div class="rgrp-h" draggable="true"><button class="rgrp-chevbtn" aria-label="Collapse folder"><svg class="rgrp-chev"><use href="#i-chev"/></svg></button><button class="rgrp-namebtn"><svg class="rgrp-icon"><use href="#i-folder"/></svg><span class="rgrp-n">Payments</span></button><button class="rgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
@@ -501,12 +614,13 @@ curl https://api.acme.dev/v1/exchanges \
                   <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Delay uploads</span><span class="rrule-u">upload.example.com</span></div><div class="rchips"><span class="rchip flow">Delay</span></div><span class="rhit">8</span></div>
                 </div>
               </section>
-              <div class="rrule" draggable="true"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Debug checkout</span><span class="rrule-u">shop.example.com/checkout</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">3</span></div>
+              <div class="rrule" draggable="true" data-rule-id="checkout"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Checkout endpoint</span><span class="rrule-u">POST shop.example.com/checkout</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">3</span></div>
+              <div class="rrule" draggable="true" data-rule-id="token"><div class="sw sm on"></div><div class="rrule-main"><span class="rrule-n">Token API</span><span class="rrule-u">api.example.com/v1/*</span></div><div class="rchips"><span class="rchip brk">Breakpoint</span></div><span class="rhit">0</span></div>
             </div>
           </div>
           <div class="split"><div class="grip"></div></div>
           <div class="reditor">
-            <div class="edhead"><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><button class="ib sm" data-show-rule-requests aria-label="Show matching requests" title="Show matching requests"><svg><use href="#i-funnel"/></svg></button><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
+            <div class="edhead"><svg class="ed-open-rule-icon"><use href="#i-pencil"/></svg><span class="edname">Stub /v1/user</span><span class="sbadge"><span class="d"></span>Enabled</span><div class="sw on"></div><button class="ib sm" data-show-rule-requests aria-label="Show matching requests" title="Show matching requests"><svg><use href="#i-funnel"/></svg></button><div class="ib sm"><svg><use href="#i-more"/></svg></div></div>
             <div class="edscroll">
               <div class="esec">
                 <div class="sh">Match</div>
@@ -583,10 +697,10 @@ curl https://api.acme.dev/v1/exchanges \
                 <div class="cgrp-h" draggable="true"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">GitHub API</span></button><span class="cgrp-c">5</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
                 <div class="cgrp-b">
                   <section class="cgrp on" data-grp="github-repos">
-                    <div class="cgrp-h on" draggable="true"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Repositories</span></button><span class="cgrp-c">3</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
+                    <div class="cgrp-h" draggable="true"><button class="cgrp-chevbtn" aria-label="Collapse folder"><svg class="cgrp-chev"><use href="#i-chev"/></svg></button><button class="cgrp-namebtn"><span class="cgrp-n">Repositories</span></button><span class="cgrp-c">3</span><button class="cgrp-more" aria-label="Folder actions" title="Rename, add subfolder, delete"><svg><use href="#i-more"/></svg></button></div>
                     <div class="cgrp-b">
                       <div class="citem" draggable="true"><span class="m get">GET</span><span class="citem-n">List repos</span></div>
-                      <div class="citem on" draggable="true"><span class="m post">POST</span><span class="citem-n">Create repo</span></div>
+                      <div class="citem on open" draggable="true"><span class="m post">POST</span><span class="citem-n">Create repo</span></div>
                       <div class="citem" draggable="true"><span class="m put">PATCH</span><span class="citem-n">Update repo</span></div>
                     </div>
                   </section>
@@ -869,51 +983,6 @@ curl https://api.acme.dev/v1/exchanges \
           </div>
         </div>
 
-        <!-- breakpoints -->
-        <div class="mv bmain v-breakpoints" data-v="breakpoints">
-          <div class="bqueue">
-            <div class="bqbar"><span class="cnt"><b>2</b> paused</span><span class="break-match-label">Break on match</span><div class="sw on"></div><button class="btn" style="height:28px;padding:0 10px;font-size:11.5px">Continue all</button></div>
-            <div class="bqrow sel">
-              <span class="pdir req"><svg><use href="#i-arrow"/></svg></span>
-              <div class="bqmeta"><div class="r1"><span class="m post">POST</span><span class="rn">Debug checkout</span></div><div class="r2">shop.example.com/checkout</div></div>
-              <span class="cd"><svg><use href="#i-clock"/></svg>0:24</span>
-            </div>
-            <div class="bqrow">
-              <span class="pdir resp"><svg><use href="#i-arrow"/></svg></span>
-              <div class="bqmeta"><div class="r1"><span class="st ok"><span class="d"></span>200</span><span class="rn">Inspect token</span></div><div class="r2">api.example.com/v1/token</div></div>
-              <span class="cd" style="color:var(--text-3)"><svg><use href="#i-clock"/></svg>0:58</span>
-            </div>
-          </div>
-          <div class="split"><div class="grip"></div></div>
-          <div class="beditor">
-            <div class="bhead">
-              <span class="chip">POST</span>
-              <span class="iurl">shop.example.com/checkout</span>
-              <span class="phase req">Request paused</span>
-              <span class="cd"><svg><use href="#i-clock"/></svg>0:24</span>
-            </div>
-            <div class="bscroll">
-              <div class="sec">
-                <div class="sh">Headers <span class="c">editable</span></div>
-                <div class="hhead"><span>Name</span><span>Value</span><span></span></div>
-                <div class="hrow"><span class="k2">content-type</span><span class="v2">application/json</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-                <div class="hrow"><span class="k2">authorization</span><span class="v2">Bearer eyJhbGci…</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-                <div class="hrow"><span class="k2">x-cart-id</span><span class="v2">c_9f83a1</span><div class="ib sm"><svg><use href="#i-x"/></svg></div></div>
-              </div>
-              <div class="sec">
-                <div class="sh">Replace body <span class="c">original not received yet</span></div>
-                <div class="bodybox empty">Leave empty to forward the original body unchanged</div>
-              </div>
-            </div>
-            <div class="bfoot">
-              <button class="btn danger"><svg><use href="#i-slash"/></svg>Drop</button>
-              <span class="sp" style="flex:1"></span>
-              <button class="btn">Continue unmodified</button>
-              <button class="btn pri"><svg><use href="#i-play"/></svg>Execute edited</button>
-            </div>
-          </div>
-        </div>
-
         <!-- diagnostics -->
         <div class="mv dmain" data-v="diagnostics">
           <div class="dlist">
@@ -952,11 +1021,10 @@ curl https://api.acme.dev/v1/exchanges \
 
       <!-- =========================== STATUSBAR =========================== -->
       <footer class="statusbar">
-        <div class="sv" data-v="capture"><div class="g capture-endpoint"><span class="gd"></span>127.0.0.1:8888<span class="proxy-on-label">System proxy on</span><span class="proxy-off-label">System proxy off</span></div><div class="g capture-decrypt"><span class="capture-decrypting"><svg class="si"><use href="#i-lock"/></svg>HTTPS decrypting · CA trusted</span><span class="capture-passthrough"><svg class="si"><use href="#i-lock-off"/></svg>HTTPS passthrough</span><button class="slink capture-enable-decrypt" data-open-https title="HTTPS traffic is forwarded without decryption. Click to set up the CA and start decrypting.">Click to enable MITM</button></div><div class="g capture-upstream"><svg class="si"><use href="#i-arrow"/></svg><span class="upstream-ok-label">upstream 127.0.0.1:7890</span><span class="upstream-direct-label">direct</span></div></div>
+        <div class="sv" data-v="capture"><div class="capture-status-default"><div class="g capture-endpoint"><span class="gd"></span>127.0.0.1:8888<span class="proxy-on-label">System proxy on</span><span class="proxy-off-label">System proxy off</span></div><div class="g capture-decrypt"><span class="capture-decrypting"><svg class="si"><use href="#i-lock"/></svg>HTTPS decrypting · CA trusted</span><span class="capture-passthrough"><svg class="si"><use href="#i-lock-off"/></svg>HTTPS passthrough</span><button class="slink capture-enable-decrypt" data-open-https title="HTTPS traffic is forwarded without decryption. Click to set up the CA and start decrypting.">Click to enable MITM</button></div><div class="g capture-upstream"><svg class="si"><use href="#i-arrow"/></svg><span class="upstream-ok-label">upstream 127.0.0.1:7890</span><span class="upstream-direct-label">direct</span></div></div><div class="capture-breakpoint-status"><span class="break-status-dot"></span><span class="break-status-count"><b>2</b> requests paused</span><span class="break-status-rule">Checkout API</span><span class="break-queue-full">Queue full · 3 requests auto-continued</span></div></div>
         <div class="sv" data-v="rules"><div class="g"><span class="gd"></span>Rule set applied</div><div class="g mono">rev 42</div><div class="g">9 of 10 enabled</div><div class="sp g mono">2 force body buffering</div></div>
         <div class="sv" data-v="composer"><div class="g"><span class="gd"></span>Ready</div><div class="g">Sent directly — not routed through the proxy</div><div class="sp g"><span class="csv-idle">last send 201 · 142 ms</span><span class="csv-empty">no request sent yet</span><span class="csv-busy">sending…</span></div></div>
         <div class="sv" data-v="settings"><div class="g"><span class="gd"></span>Core Running</div><div class="g mono">127.0.0.1:8888</div><div class="g"><span class="gd"></span>System Proxy</div><div class="sp g mono">CA trusted · MITM on</div></div>
-        <div class="sv" data-v="breakpoints"><div class="g"><span class="rd" style="background:var(--yellow)"></span>2 paused</div><div class="g mono">127.0.0.1:8888</div><div class="g">timeout 60s → continue</div><div class="sp g mono">break on match · on</div></div>
         <div class="sv" data-v="diagnostics"><div class="g"><span class="gd"></span>Diagnostics</div><div class="g mono">2,481 records</div><div class="g">3 dropped under load</div><div class="sp g mono">retention 7d · redacted</div></div>
       </footer>
 
@@ -1214,7 +1282,12 @@ curl https://api.acme.dev/v1/exchanges \
     <div class="dock" data-open="false">
       <button class="dock-toggle" aria-label="Toggle design controls"><svg><use href="#i-settings"/></svg></button>
       <div class="dock-panel">
-        <div class="grp"><span class="lbl">Feature</span><div class="switch" data-key="view"><button data-set="capture">Capture</button><button data-set="rules">Rules</button><button data-set="composer">Composer</button><button data-set="breakpoints">Breaks</button><button data-set="diagnostics">Diag</button><button data-set="settings">Settings</button></div></div>
+        <div class="grp"><span class="lbl">Feature</span><div class="switch" data-key="view"><button data-set="capture">Capture</button><button data-set="rules">Rules</button><button data-set="composer">Composer</button><button data-set="diagnostics">Diag</button><button data-set="settings">Settings</button></div></div>
+        <div class="grp"><span class="lbl">Rule font</span><div class="switch" data-key="ruleTypography"><button data-set="current">Current</button><button data-set="composer">Composer</button></div></div>
+        <div class="grp"><span class="lbl">Breakpoint</span><div class="switch" data-key="breakpointState"><button data-set="none">None</button><button data-set="request">Request</button><button data-set="response">Response</button><button data-set="queue">Queue</button><button data-set="full">Full</button></div></div>
+        <div class="grp"><span class="lbl">Request body</span><div class="switch" data-key="breakpointBody"><button data-set="loading">Loading</button><button data-set="ready">Loaded</button><button data-set="replace">Replace</button><button data-set="file">File</button><button data-set="invalid">Invalid</button></div></div>
+        <div class="grp"><span class="lbl">Break UI</span><div class="switch" data-key="breakpointUi"><button data-set="none">None</button><button data-set="panel">Rules</button><button data-set="armed">Notice</button></div></div>
+        <div class="grp"><span class="lbl">Break mode</span><div class="switch" data-key="breakpoints"><button data-set="on">On</button><button data-set="off">Off</button></div></div>
         <div class="grp"><span class="lbl">Theme</span><div class="switch" data-key="theme"><button data-set="light">Light</button><button data-set="warm">Warm</button><button data-set="dark">Dark</button><button data-set="ember">Ember</button></div></div>
         <div class="grp"><span class="lbl">Sidebar</span><div class="switch" data-key="sidebar"><button data-set="expanded">Expand</button><button data-set="collapsed">Collapse</button></div></div>
         <div class="grp"><span class="lbl">Overlay</span><div class="switch" data-key="overlay"><button data-set="none">None</button><button data-set="https-setup">HTTPS</button><button data-set="import-export">Export</button></div></div>

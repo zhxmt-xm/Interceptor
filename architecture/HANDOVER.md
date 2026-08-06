@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-08-05
+> 最后更新：2026-08-06
 > 只记录接手当前工作的必要信息；已实现架构与历史细节不在这里重复。
 
 ## 接手顺序
@@ -12,9 +12,35 @@
 
 ## 当前里程碑
 
-**Capture / Composer / Rules 交互改进**进行中。需求清单在 [backlog/idea.md](backlog/idea.md) 的「Bugs或改进」一节，共 14 条。
+**Breakpoint 交互重构处于设计稿阶段，尚未修改产品代码。** 目标是删掉独立 Breakpoints workspace，把断点作为 Capture 流量状态原地呈现；需求与背景见 [backlog/idea.md](backlog/idea.md)。
 
-### 设计稿：已定稿
+### Breakpoint 目标设计：进行中
+
+当前只修改 `design/app/`；`apps/`、`packages/` 产品代码保持 `77066d7` 不变。已确认的设计如下：
+
+- **导航与感知**：设计稿删除独立 Breakpoints 侧栏入口。Capture workbar 在 Recording 旁放唯一 Breakpoint 图标；pending 数用 badge，点击打开 520px manager。挂起 exchange 在 Capture 列表原地显示黄色 pause icon；Request/Response 不再用不同颜色，也不显示倒计时。
+- **Breakpoint manager**：Header 同行放 `Break on match` 总开关、`SlidersVertical + Advanced rules` 和关闭按钮；规则行只保留名称、matcher 摘要、`View rule` 与 enable switch。已删除不可操作的 `Armed` / `Once` / `Always` / `Request + response` 展示。`View rule` 精确跳到 Rules 对应 rule；switch 会更新 enabled 数。
+- **从历史流量创建**：Capture 行右键 `Breakpoint` 子菜单提供 `This endpoint` / `This path prefix` / `This host` / `Custom…`。从已完成 request 创建时当前 exchange 不会 retroactively pause；显示一次 `Breakpoint enabled for future traffic` 通知，含 Undo 和打开 manager 的入口。
+- **暂停编辑器**：选择 paused 行后，右侧 Inspector 切到 Request/Response 编辑模式，底部固定 `Drop` / `Continue` / `Forward edited`。所有分区直接复用 `.sh` / `.c` / `.sh-chev` SectionHeader primitive，与 TLS tunnel 的字号、字重、字距、accent 竖线和底部渐变一致，并可独立折叠。
+- **Body**：Request/Response 对称拆成只读 `Original body` 与可选 `Replacement body`。设计稿的 Original loading 3 秒后自动完成只为演示；产品必须由 body 到达事件驱动。Replacement 始终显示 `Off | Text | File`：Off 显示 original-forwarded info；Text/File 有效时 tag 为 `Using text/file`；Text 空或 File 未选时显示 Lucide `CircleAlert + Using original` 及 tooltip。File 空态复用 Body Viewer 的居中占位形态，上传后显示文件名、大小与有限预览；删除后仍停在 File 空态。`Content-Type` 只由可编辑 headers 决定，文件格式不匹配只警告、不阻断 raw bytes；`Content-Length` 由实现自动重算。
+- **超时与队列**：Core 仍必须保留安全超时，但 UI 不显示倒计时；自动 continue/drop 只在 Statusbar/Diagnostics 留痕。设计包含 queue-full 状态，超上限的新命中自动 continue。
+- **WebSocket**：独立 `Pause on message` 开关从目标设计中移除，Inspector 只陈述全局 Breakpoints 状态；真正命中的消息仍在原地编辑。
+
+### Rules / Composer 树设计
+
+- Rules 默认采用 Composer collection 的 typography：目录与 item 使用 UI font，字重更轻；设计控制器保留 `Current | Composer` 对比 option，默认 `Composer`。
+- 两棵树都区分两个状态：**selection** 使用现有填充/描边 accent 样式；右侧当前打开的 rule/request 在未被选中时使用更淡的 accent 背景 + 虚线边框，不再显示 Check。
+- Rules 与 Composer 都允许目录和 item/rule 互斥单选。点击目录名只改变 selection，不折叠且不改变右侧内容；只有 chevron 展开/折叠。点击 item/rule 后 selection 与右侧当前项重新重合。
+- Rules 右侧始终显示 rule editor；选中目录不会清空、切换或替换右侧当前 rule。Composer 同理，选中目录不改变当前 request workspace。
+
+### 设计基础设施决定
+
+- 当前 `design/app` 仍是静态 `index.html + app.js + app.css`，全局 CSS 和手写状态已多次造成中间态暴露与样式串扰。
+- Breakpoint 方案确认后，**先把整个设计 SPA 一次性迁移到 Vite + React + CSS Modules**，复用 `lucide-react`、Ant Design、Monaco、tokens 和稳定 UI primitives；旧静态实现整体删除，不保留双路径。
+- 设计稿应完整实现 UI 状态与交互；网络、Core、IPC、持久化只通过 fixture/adapter 模拟，不复制业务后端，也不直接依赖产品 feature/store。
+- 截图只在用户明确要求或一个设计里程碑结束时生成，不再每次小改都重出。
+
+### 上一里程碑设计稿：已定稿
 
 `design/app/` 已按需求改完并重出 218 张 shots。本轮改动：
 
@@ -28,7 +54,7 @@
 - 拖拽逻辑参数化为 `installTreeDrag`，两棵树共用；顺带修了「不能拖到上级目录」——原判定 `node.contains(dragNode)` 把祖先目录整个禁掉了，应为 `dragNode.contains(node)`。
 - 两棵树接上搜索过滤与命中高亮，规则见 [platform/renderer.md](platform/renderer.md) § 6.2。
 
-### 产品代码：14 条需求已全部落地
+### 上一里程碑产品代码：14 条需求已全部落地
 
 上一轮已完成：
 
@@ -61,8 +87,10 @@
 ## Git 与工作树
 
 - 分支：`main`。
-- 本轮起点：`origin/main` 的 `1c18647`。
-- 本文件所在提交应包含上述收尾改动并已推送；接手时以以下命令确认实际状态：
+- 本轮提交只包含 `design/app/{index.html,app.css,app.js,sprite.js,shoot.mjs}`、设计 shots 以及同步文档；产品代码基线仍为 `77066d7 feat(renderer): 两棵树右键菜单 、Inspector 折叠与正文全屏，并修好 Format`。
+- Windows App / Dev Box 的 WVD gateway bypass 修复已单独存为 `stash@{0}: wip: Windows App WVD gateway bypass`，不要与 Breakpoint 设计混合。
+- `design/app/shots/` 当前共有 267 个文件。Capture、Rules、Composer 均已按最终状态顺序重出；资产复核为 0 个删除、40 个新增文件。
+- 接手时用以下命令确认实际状态：
 
 ```powershell
 git status --short --branch
@@ -75,6 +103,19 @@ git -c core.whitespace=cr-at-eol diff --check
 - `apps/desktop/tests/visual-parity/parity-report.md` 与 `design/app/shots/` 是保留的验收资产。
 
 ## 最近验证
+
+本轮设计稿验证：
+
+- `node --check design/app/app.js`、`node --check design/app/shoot.mjs`、`node --check design/app/sprite.js`：通过。
+- 编辑器诊断：`index.html` / `app.css` / `app.js` / `shoot.mjs` 无错误。
+- 浏览器 DOM 验证：Breakpoint Request/Response 状态、Original loading→loaded、Off/Text/File、上传/删除、manager switches、future-traffic notice、SectionHeader 折叠均通过。
+- SectionHeader computed style 与 TLS tunnel 对比：字体、字重、字距、颜色、2px accent 竖线与 1px 渐变完全一致。
+- Rules/Composer 树 DOM 验证：目录/item 互斥、目录点击不折叠、chevron 才折叠、右侧内容不随目录改变、当前项淡背景+虚线、选中项保持现有样式，均通过；行内 Check 数为 0。
+- 最终截图重出：Capture 40 张、Rules 16 张、Composer 34 张，均通过；`design/app/shots/` 共 267 个 PNG。
+- `git -c core.whitespace=cr-at-eol diff --check`：通过。
+- **未运行产品 typecheck/tests/package/smoke**：本轮没有产品代码改动。
+
+上一里程碑验证：
 
 - 四 workspace typecheck：通过。
 - Tests：Desktop 188、Proxy Core 248、Protocol 15、MCP 45，共 496 项通过。
@@ -90,12 +131,11 @@ git -c core.whitespace=cr-at-eol diff --check
 
 ### 下一动作
 
-1. 重出 Visual parity 基线：两棵树、Inspector 分组头、正文工具条（多了 ⛶）与正文最小高度都变了。
-2. 与用户确认 `rule detail 提示放底栏` 要不要做；要做就先改 `design/app/`。
-3. 之后按 idea 进入 **Breakpoint 交互重构**：
-   1. 读 [features/breakpoints.md](features/breakpoints.md)。
-   2. 读 `.github/skills/ui-design-mockup/SKILL.md`。
-   3. 先在 `design/app/` 定稿交互并出图，再修改 React；不要直接从产品代码开始。
+1. 继续由用户评审当前 Breakpoint 与 Rules/Composer tree 设计；**不要生成截图，除非用户明确要求**。
+2. 解决尚未完全定稿的一处语义：右键 submenu 仍写 `Break request + response once`，但 manager 已删除 Once/Always；实现前必须统一。
+3. 用户确认设计后，先迁移 `design/app` 到 Vite + React + CSS Modules，并删除旧静态实现。
+4. 在新设计 SPA 中复现并验证全部现有设计场景，再开始产品实现；产品第一步是全局断点感知、`exchangeId` 关联与 queue cap，不直接从 JSX 外观开工。
+5. 产品实现完成后再更新 `platform/renderer.md`、重出 visual parity 基线并跑完整 Desktop/Core 验证。
 
 ### 独立队列
 
@@ -106,6 +146,10 @@ git -c core.whitespace=cr-at-eol diff --check
 - 首个真实 tag release 仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 
 ## 风险与边界
+
+- **设计不是实现**：当前产品仍有独立 Breakpoints workspace、1s 页面级轮询、独立 WS 开关和无 Capture 行关联；不要把 design SPA 状态描述成已上线能力。
+- Original body loading、paused exchange 原地编辑、文件 replacement 都需要新的 Core/Preload 契约；Renderer 不能直接读本机文件或 Core 内部 writer。
+- 静态 design SPA 在迁移前仍存在全局 CSS/手写 DOM 串扰风险；小改后优先做定向 DOM/geometry 检查，不要通过反复全量截图掩盖状态错误。
 
 - 系统代理由 Main 所有。开发实例与 smoke 都使用 8888，不能并行运行。
 - 若进程被强杀并遗留 `127.0.0.1:8888`，先恢复 WinINet，再继续测试。**残留还会让上游静默丢失**：接管前读到的“原有配置”就是自己，`isSelf` 会把它当作无上游，于是真正的公司代理地址就此丢失。
