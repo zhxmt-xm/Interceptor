@@ -215,7 +215,7 @@ diagnostics.row.<traceKey>
 | `settings.certificates.external-actions` | Reveal/View/Open manager | native-ui | planned |
 | `settings.storage.refresh-clear` | Usage、确认和Clear | os-side-effect | planned |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
-| `settings.updates.check` | Local unsupported和packaged真实检查 | shared | planned |
+| `settings.updates.check` | Local unsupported；packaged GitHub Device Flow、启动刷新与私有Release检查 | native-ui | planned |
 | `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui | planned |
 | `settings.update-notification` | Header通知与Settings状态同步 | shared | planned |
 

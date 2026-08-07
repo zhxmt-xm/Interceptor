@@ -90,6 +90,98 @@ describe('CoreRuntime', () => {
     expect(coreProcess.killed).toBe(false);
   });
 
+  it('gracefully restarts CoreProcess without dropping long-lived listeners', async () => {
+    vi.useFakeTimers();
+    const coreProcesses = [
+      new FakeCoreProcessHandle(4120),
+      new FakeCoreProcessHandle(4121),
+    ];
+    const launchCoreProcess = vi.fn(() => {
+      const coreProcess = coreProcesses[launchCoreProcess.mock.calls.length - 1];
+      if (!coreProcess) {
+        throw new Error('No fake CoreProcess available');
+      }
+      return coreProcess;
+    });
+    const coreRuntime = new TestCoreRuntime(launchCoreProcess);
+    const statuses: string[] = [];
+    const ready = vi.fn();
+    coreRuntime.onCoreProcessStatusChange((status) => statuses.push(status.state));
+    coreRuntime.onCoreProcessReady(ready);
+
+    coreRuntime.start();
+    coreProcesses[0]?.emit('message', {
+      type: 'ready',
+      pid: 4120,
+      startedAt: '2026-08-07T00:00:00.000Z',
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    const restartPromise = coreRuntime.restart();
+    expect(coreProcesses[0]?.messages.at(-1)).toEqual({ type: 'shutdown' });
+    coreProcesses[0]?.emit('exit', 0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(launchCoreProcess).toHaveBeenCalledTimes(2);
+
+    coreProcesses[1]?.emit('message', {
+      type: 'ready',
+      pid: 4121,
+      startedAt: '2026-08-07T00:00:01.000Z',
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(restartPromise).resolves.toBeUndefined();
+    expect(coreRuntime.getCoreProcessStatus()).toMatchObject({
+      state: 'running',
+      pid: 4121,
+    });
+    expect(ready).toHaveBeenCalledTimes(2);
+    expect(statuses).toContain('stopped');
+    expect(coreProcesses[0]?.killed).toBe(false);
+  });
+
+  it('rejects an explicit restart when the new CoreProcess initialization fails', async () => {
+    vi.useFakeTimers();
+    const coreProcesses = [
+      new FakeCoreProcessHandle(4130),
+      new FakeCoreProcessHandle(4131),
+    ];
+    const launchCoreProcess = vi.fn(() => {
+      const coreProcess = coreProcesses[launchCoreProcess.mock.calls.length - 1];
+      if (!coreProcess) throw new Error('No fake CoreProcess available');
+      return coreProcess;
+    });
+    const coreRuntime = new TestCoreRuntime(launchCoreProcess);
+    let generation = 0;
+    coreRuntime.onCoreProcessReady(async () => {
+      generation += 1;
+      if (generation === 2) throw new Error('TLS configuration failed');
+    });
+
+    coreRuntime.start();
+    coreProcesses[0]?.emit('message', {
+      type: 'ready',
+      pid: 4130,
+      startedAt: '2026-08-07T00:00:00.000Z',
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    const restartPromise = coreRuntime.restart();
+    const restartExpectation = expect(restartPromise).rejects.toThrow(
+      'Core initialization failed: TLS configuration failed',
+    );
+    coreProcesses[0]?.emit('exit', 0);
+    await vi.advanceTimersByTimeAsync(0);
+    coreProcesses[1]?.emit('message', {
+      type: 'ready',
+      pid: 4131,
+      startedAt: '2026-08-07T00:00:01.000Z',
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    await restartExpectation;
+  });
+
   it('waits for ready initialization before publishing running', async () => {
     vi.useFakeTimers();
     const coreProcess = new FakeCoreProcessHandle(4110);

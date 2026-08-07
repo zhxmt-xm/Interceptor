@@ -217,7 +217,7 @@ export class CoreApplication implements CoreRpcHost {
       () => this.sendHeartbeat(),
       HEARTBEAT_INTERVAL_MS,
     );
-    if (this.captureEventQueue) {
+    if (this.captureEventQueue || this.proxyService) {
       this.eventFlushTimer = setInterval(
         () => this.flushCaptureEvents(),
         EVENT_FLUSH_INTERVAL_MS,
@@ -495,6 +495,35 @@ export class CoreApplication implements CoreRpcHost {
             };
           } catch (error) {
             throw mapRevisionConflict(error, 'collection');
+          }
+        });
+      case 'tls-passthrough.get':
+        return this.withWorkspace(async (workspaceService) => {
+          const settings = await this.coreDiagnostics.action(
+            'tls-passthrough.get',
+            () => workspaceService.loadTlsPassthroughSettings(),
+          );
+          return {
+            type: 'tls-passthrough.settings',
+            payload: { settings },
+          };
+        });
+      case 'tls-passthrough.replace':
+        return this.withWorkspace(async (workspaceService) => {
+          try {
+            const settings = await this.coreDiagnostics.action(
+              'tls-passthrough.replace',
+              () => workspaceService.saveTlsPassthroughSettings(
+                command.payload.expectedRevision,
+                command.payload.hosts,
+              ),
+            );
+            return {
+              type: 'tls-passthrough.revision',
+              payload: { revision: settings.revision },
+            };
+          } catch (error) {
+            throw mapRevisionConflict(error, 'TLS passthrough settings');
           }
         });
       case 'capture.status':
@@ -928,12 +957,15 @@ export class CoreApplication implements CoreRpcHost {
    */
   private flushCaptureEvents(): void {
     const queue = this.captureEventQueue;
-    if (!queue || !this.coreRpcServer.hasActiveConnection) {
+    const proxyService = this.proxyService;
+    if ((!queue && !proxyService) || !this.coreRpcServer.hasActiveConnection) {
       return;
     }
     while (this.inFlightEventBatches.size < EVENT_INFLIGHT_WINDOW_SIZE) {
-      const batch = queue.drain(EVENT_DRAIN_BATCH);
-      if (batch.length === 0) {
+      const batch = queue?.drain(EVENT_DRAIN_BATCH) ?? [];
+      const tlsCompatibilityEvents =
+        proxyService?.drainTlsCompatibilityEvents(EVENT_DRAIN_BATCH) ?? [];
+      if (batch.length === 0 && tlsCompatibilityEvents.length === 0) {
         return;
       }
       const events = batch.map((event) => ({
@@ -941,12 +973,19 @@ export class CoreApplication implements CoreRpcHost {
         summary: event.summary,
       }));
       // Core 是唯一能解析出可执行文件路径的一侧，随事件一次性交给 Main 取图标。
-      const clientApps = this.clientAppService.pendingAppsForMain();
-      const batchSequence = this.coreRpcServer.sendEventBatch(events, clientApps);
+      const clientApps = events.length > 0
+        ? this.clientAppService.pendingAppsForMain()
+        : [];
+      const batchSequence = this.coreRpcServer.sendEventBatch(
+        events,
+        clientApps,
+        tlsCompatibilityEvents,
+      );
       if (batchSequence === null) {
         for (const event of events) {
-          queue.enqueue(event.kind, event.summary);
+          queue?.enqueue(event.kind, event.summary);
         }
+        proxyService?.restoreTlsCompatibilityEvents(tlsCompatibilityEvents);
         return;
       }
       this.clientAppService.markAppsDelivered(clientApps);

@@ -32,13 +32,16 @@ function startOrigin(
 function passthroughHttpsGet(
   proxyPort: number,
   originPort: number,
+  servername = 'localhost',
+  connectHostname = '127.0.0.1',
+  rejectUnauthorized = false,
 ): Promise<number | undefined> {
   return new Promise((resolve, reject) => {
     const request = http.request({
       host: '127.0.0.1',
       port: proxyPort,
       method: 'CONNECT',
-      path: `127.0.0.1:${originPort}`,
+      path: `${connectHostname}:${originPort}`,
     });
     request.on('connect', (response, socket, head) => {
       if (response.statusCode !== 200) {
@@ -49,10 +52,10 @@ function passthroughHttpsGet(
         socket.unshift(head);
       }
       const tlsSocket = tls.connect(
-        { socket, servername: 'localhost', rejectUnauthorized: false },
+        { socket, servername, rejectUnauthorized },
         () => {
           tlsSocket.write(
-            `GET /secure HTTP/1.1\r\nHost: 127.0.0.1:${originPort}\r\n` +
+            `GET /secure HTTP/1.1\r\nHost: ${connectHostname}:${originPort}\r\n` +
               'Connection: close\r\n\r\n',
           );
         },
@@ -213,6 +216,17 @@ async function waitForExchange(recordingCaptureService: RecordingCaptureService)
   while (recordingCaptureService.exchanges.length === 0 && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 20));
   }
+}
+
+async function waitForTlsCompatibilityEvents(
+  proxyService: ProxyService,
+): Promise<ReturnType<ProxyService['drainTlsCompatibilityEvents']>> {
+  const events: ReturnType<ProxyService['drainTlsCompatibilityEvents']> = [];
+  await expect.poll(() => {
+    events.push(...proxyService.drainTlsCompatibilityEvents(10));
+    return events.length;
+  }).toBeGreaterThan(0);
+  return events;
 }
 
 async function waitForWebSocketFrames(
@@ -903,6 +917,107 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(recordingCaptureService.exchangeUpdates[0]).toMatchObject({
         id: recordingCaptureService.exchanges[0]?.id,
         state: 'completed',
+      });
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
+
+  it('passes through only configured TLS hosts while continuing to intercept others', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    try {
+      await proxyService.configureTls({
+        ca,
+        insecureHosts: ['localhost', '127.0.0.1'],
+        passthroughHosts: ['localhost'],
+      });
+
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
+      ).resolves.toBe(200);
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'mitm.localhost'),
+      ).resolves.toBe(200);
+
+      await expect.poll(() => recordingCaptureService.exchanges.length).toBe(2);
+      expect(recordingCaptureService.exchanges[0]).toMatchObject({
+        method: 'CONNECT',
+        protocol: 'tls',
+        responseMime: 'application/x-encrypted-tunnel',
+      });
+      expect(recordingCaptureService.exchanges[1]).toMatchObject({
+        method: 'GET',
+        path: '/secure',
+        protocol: 'http/1.1',
+        statusCode: 200,
+      });
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
+
+  it('reports one compatibility event per TLS generation and host', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    const config = {
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
+    };
+    try {
+      await proxyService.configureTls(config);
+      await expect(
+        passthroughHttpsGet(
+          address.port,
+          origin.port,
+          'localhost',
+          'localhost',
+          true,
+        ),
+      ).rejects.toBeDefined();
+      await expect(
+        passthroughHttpsGet(
+          address.port,
+          origin.port,
+          'localhost',
+          'localhost',
+          true,
+        ),
+      ).rejects.toBeDefined();
+
+      const firstGenerationEvents = await waitForTlsCompatibilityEvents(proxyService);
+      expect(firstGenerationEvents).toHaveLength(1);
+      expect(firstGenerationEvents[0]).toMatchObject({
+        generation: 1,
+        host: 'localhost',
+      });
+      expect(['cert-rejected', 'reset', 'closed']).toContain(
+        firstGenerationEvents[0]?.reason,
+      );
+
+      await proxyService.configureTls(config);
+      await expect(
+        passthroughHttpsGet(
+          address.port,
+          origin.port,
+          'localhost',
+          'localhost',
+          true,
+        ),
+      ).rejects.toBeDefined();
+
+      const secondGenerationEvents = await waitForTlsCompatibilityEvents(proxyService);
+      expect(secondGenerationEvents).toHaveLength(1);
+      expect(secondGenerationEvents[0]).toMatchObject({
+        generation: 2,
+        host: 'localhost',
       });
     } finally {
       await origin.stop();

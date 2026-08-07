@@ -20,7 +20,9 @@
 2. `internal/constants.ts` 的 `WORKSPACE_DOCUMENTS` 加同一个表名
 3. `entry.ts` 加一对 3 行的 `loadXxx` / `saveXxx`
 
-当前文档表：`rule_set`、`collection_tree`。
+当前文档表：`rule_set`、`collection_tree`、`tls_passthrough_hosts`。TLS passthrough
+文档未保存时使用空名单，不自动绕过任何 host；保存时把 DNS 名规范化为小写 ASCII、去重并拒绝
+scheme、port、path 或非法 wildcard，避免坏配置进入 Mockttp listener。
 
 ## 并发
 

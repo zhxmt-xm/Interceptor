@@ -33,8 +33,11 @@ import {
   useRulesData,
 } from '../features/rules';
 import {
+  GitHubAuthActions,
   SettingsMain,
   SettingsStatusbar,
+  TlsCompatibilityDialog,
+  TlsCompatibilityActions,
   UpdateActions,
   UpdateNotification,
 } from '../features/settings';
@@ -106,6 +109,8 @@ export function App(): React.JSX.Element {
   }, [t]);
 
   useEffect(() => UpdateActions.subscribe(), []);
+  useEffect(() => GitHubAuthActions.subscribe(), []);
+  useEffect(() => TlsCompatibilityActions.subscribe(), []);
 
   useEffect(() => {
     let active = true;
@@ -156,6 +161,7 @@ export function App(): React.JSX.Element {
           ?? `${summary.secure ? 'https' : 'http'}://${summary.host ?? ''}${fallbackPath}`;
         if (await addRequestRuleDraft(name, url, actionType)) {
           setView('rules');
+    useEffect(() => GitHubAuthActions.subscribe(), []);
         }
       })();
     },
@@ -233,6 +239,12 @@ export function App(): React.JSX.Element {
             }}
           />
         )}
+        <TlsCompatibilityDialog
+          onOpenSettings={() => {
+            setSettingsSection('tls-passthrough');
+            setView('settings');
+          }}
+        />
         <BootScreen onOpenDiagnostics={() => setView('diagnostics')} />
       </AntApp>
     </ConfigProvider>

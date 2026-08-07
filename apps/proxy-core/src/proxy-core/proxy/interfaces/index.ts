@@ -230,6 +230,7 @@ export interface ProxyRuntimeStatus {
 export interface ProxyTlsConfig {
   readonly ca: { readonly key: string; readonly cert: string } | null;
   readonly insecureHosts: readonly string[];
+  readonly passthroughHosts: readonly string[];
 }
 
 export interface ProxyTarget {

@@ -107,6 +107,26 @@ export interface SecureStore {
   decryptString(data: Buffer): string;
 }
 
+/** Main-only GitHub user authorization encrypted at rest. */
+export interface GitHubAuthCredentials {
+  readonly accessToken: string;
+  readonly accessTokenExpiresAt: string | null;
+  readonly refreshToken: string | null;
+  readonly refreshTokenExpiresAt: string | null;
+  readonly login: string;
+}
+
+/** GitHubAuthService construction boundary. */
+export interface GitHubAuthServiceOptions {
+  readonly clientId: string;
+  readonly dataDirectory: string;
+  readonly secureStore: SecureStore;
+  readonly openExternal: (url: string) => Promise<void>;
+  readonly fetcher?: typeof fetch;
+  readonly now?: () => Date;
+  readonly wait?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+}
+
 /** CertificateService 构造可选项。 */
 export interface CertificateServiceOptions {
   /** 证书目录（`<userData>/certificates`）；cert/加密 key/meta 都在其下。 */
@@ -299,6 +319,7 @@ export interface UpdateService {
   check(): Promise<UpdateStatus> | UpdateStatus;
   download(): Promise<UpdateStatus>;
   openDownloaded(): Promise<void>;
+  authorizationChanged(authenticated: boolean): void;
   onStatusChange(listener: (status: UpdateStatus) => void): () => void;
   stop(): void;
 }
@@ -323,6 +344,7 @@ export interface GitHubReleaseUpdateServiceOptions {
   readonly currentVersion: string;
   readonly dataDirectory: string;
   readonly diagnostics: GitHubReleaseUpdateDiagnostics;
+  readonly getAccessToken: () => Promise<string | null>;
   readonly fetcher?: typeof fetch;
   readonly openPath: (filePath: string) => Promise<string>;
   readonly now?: () => Date;
@@ -330,6 +352,7 @@ export interface GitHubReleaseUpdateServiceOptions {
 
 /** 校验后的 GitHub Release 安装器资产。 */
 export interface GitHubReleaseAsset {
+  readonly id: number;
   readonly name: string;
   readonly url: string;
   readonly size: number;

@@ -524,7 +524,11 @@ describe(
       const ca = await generateCACertificate();
       const originCertificate = await generateCACertificate();
       proxyService = new ProxyService(captureService, new CaptureEventQueue());
-      await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+      await proxyService.configureTls({
+        ca,
+        insecureHosts: ['localhost', '127.0.0.1'],
+        passthroughHosts: [],
+      });
       const address = await proxyService.start();
       const responsePlain = randomBytes(192 * 1024);
       const responseWire = zlib.gzipSync(responsePlain);
@@ -684,7 +688,11 @@ describe(
       const originCertificate = await generateCACertificate();
       proxyService = new ProxyService(captureService, new CaptureEventQueue());
       // 先配置 CA 再启动，start 直接以 HTTPS MITM 模式监听；源站自签名靠 insecureHosts 例外。
-      await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+      await proxyService.configureTls({
+        ca,
+        insecureHosts: ['localhost', '127.0.0.1'],
+        passthroughHosts: [],
+      });
       const address = await proxyService.start();
       const origin = await startHttpsOrigin(
         originCertificate.cert,

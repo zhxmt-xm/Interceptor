@@ -213,24 +213,24 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 ## `settings.updates.check`
 
 **状态**：planned
-**策略**：shared（local断言unsupported；packaged断言真实远端检查）
+**策略**：native-ui（local断言unsupported；packaged通过真实 GitHub Device Flow 检查私有 Release）
 
 ### Steps
 
 1. 创建profile/evidence，启动local或packaged App的trace/driver，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 点击 `shell.workspace.settings`→`settings.section.updates`。
 3. 在local未打包目标确认真实unsupported/development状态，不伪造available。
-4. 若Check按钮可用，点击 `settings.updates.check`；在packaged目标发起真实GitHub stable release检查。
-5. 等待Checking终态为Up-to-date、Available或Failed。
-6. 检查current/latest version、release source、policy、lastCheckedAt和纯文本release notes。
-7. 确认远端body没有HTML执行或资源加载。
-8. 保存evidence并Close。
-9. 验证销毁。
-10. 删除profile。
+4. packaged fresh profile 确认Sign in required；点击 `settings.updates.github-sign-in`，读取但不记录 `settings.updates.device-code`，确认系统浏览器打开GitHub Device Flow。
+5. 用户在GitHub完成授权；等待Connected，确认Renderer/DOM/trace中没有access/refresh token或绝对凭据路径。
+6. 点击 `settings.updates.check`，发起固定私有GitHub stable release检查；等待Checking终态为Up-to-date、Available或Failed。
+7. 检查current/latest version、private release source、policy、lastCheckedAt和纯文本release notes。
+8. 重启同一profile，确认启动时refresh成功且无需再次Device Flow；在可控短过期fixture中确认access到期前只刷新一次并按新过期时间重排，Close后不再请求；点击 `settings.updates.github-sign-out` 后确认密文删除并回到Sign in required。
+9. 确认远端body没有HTML执行或资源加载；保存evidence并Close。
+10. 验证销毁并删除profile。
 
 ### 预期效果
 
-Local诚实显示unsupported；packaged只检查固定公开GitHub stable release；状态机和纯文本changelog准确，无远程代码执行。
+Local诚实显示unsupported；packaged只用当前GitHub身份读取固定私有仓库。token与过期时间只在Main密文中，启动时刷新，并在access到期前5分钟用单timer刷新；非退出刷新失败即清空登录，Close取消timer；状态机和纯文本changelog准确，无远程代码执行。
 
 <a id="settings-updates-download-open"></a>
 ## `settings.updates.download-open`
@@ -241,7 +241,7 @@ Local诚实显示unsupported；packaged只检查固定公开GitHub stable releas
 ### Steps
 
 1. 创建profile/evidence，启动packaged App的trace/CDP driver，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且更新直连不要求接管系统代理。
-2. 进入Updates，点击 `settings.updates.check`，等待真实Available和目标asset metadata。
+2. 进入Updates并完成或恢复GitHub授权；点击 `settings.updates.check`，等待真实Available和目标Asset API metadata。
 3. 点击 `settings.updates.download`。
 4. 观察state=downloading、bytes与progress单调增长，UI不允许重复下载。
 5. 等待size和SHA-256校验、fsync和原子rename完成，状态为Downloaded；确认无`.part`残留。
@@ -253,7 +253,7 @@ Local诚实显示unsupported；packaged只检查固定公开GitHub stable releas
 
 ### 预期效果
 
-下载只由用户点击触发；URL/size/hash/架构安全边界生效；失败清理临时文件；Open不能提交任意path。
+下载只由用户点击触发；固定Asset API/size/hash/架构安全边界生效；Bearer不进入Renderer或安装文件；失败清理临时文件；Open不能提交任意path。
 
 <a id="settings-update-notification"></a>
 ## `settings.update-notification`

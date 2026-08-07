@@ -11,6 +11,7 @@ import type {
   ComposerTiming,
   ComposerTlsInfo,
   TlsCertificate,
+  TlsCompatibilityEvent,
   DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
@@ -29,6 +30,7 @@ import type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  TlsPassthroughSettings,
   TransferJobSnapshot,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
@@ -52,6 +54,7 @@ export type {
   ComposerTiming,
   ComposerTlsInfo,
   TlsCertificate,
+  TlsCompatibilityEvent,
   DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
@@ -70,6 +73,7 @@ export type {
   RulePhase,
   RuleSet,
   StringMatchMode,
+  TlsPassthroughSettings,
   TransferJobSnapshot,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
@@ -162,6 +166,22 @@ export interface SystemProxyRestoreResult {
   restored: boolean;
   reason?: 'not-owned' | 'externally-modified';
   status: SystemProxyStatus;
+}
+
+/** Renderer-visible AppContainer identity; local paths and capability SIDs stay in Main. */
+export interface AppContainerAccessInfo {
+  appContainerSid: string;
+  packageFamilyName: string | null;
+  displayName: string | null;
+  description: string | null;
+  packageFullName: string | null;
+  exempt: boolean;
+}
+
+/** Current Windows AppContainer candidates and loopback access state. */
+export interface AppContainerAccessSnapshot {
+  supported: boolean;
+  containers: AppContainerAccessInfo[];
 }
 
 /** 诊断 JSONL 导出的可选筛选（按 level / outcome）。 */
@@ -296,6 +316,16 @@ export type CollectionReplaceResult =
   | { ok: true; revision: number }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
+/** TLS passthrough replacement returns Core-normalized patterns on success. */
+export type TlsPassthroughReplaceResult =
+  | { ok: true; settings: TlsPassthroughSettingsStatus }
+  | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
+
+/** Persisted passthrough settings plus whether they differ from this process's active list. */
+export interface TlsPassthroughSettingsStatus extends TlsPassthroughSettings {
+  restartRequired: boolean;
+}
+
 /** Composer 手工请求：method/url/头/正文 + 协议偏好。 */
 export interface ComposerRequest {
   method: string;
@@ -384,6 +414,7 @@ export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   appQuit: 'app:quit',
+  appRestart: 'app:restart',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
   coreGetProcessStatus: 'core:get-process-status',
@@ -397,6 +428,13 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyRestore: 'system-proxy:restore',
   systemProxyRepair: 'system-proxy:repair',
   systemProxyStatus: 'system-proxy:status-changed',
+  appContainerList: 'app-container:list',
+  appContainerSetExemption: 'app-container:set-exemption',
+  githubAuthGetStatus: 'github-auth:get-status',
+  githubAuthSignIn: 'github-auth:sign-in',
+  githubAuthOpenAuthorization: 'github-auth:open-authorization',
+  githubAuthSignOut: 'github-auth:sign-out',
+  githubAuthStatus: 'github-auth:status',
   updateGetStatus: 'update:get-status',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
@@ -426,6 +464,9 @@ export const DESKTOP_IPC_CHANNELS = {
   httpsGetInsecureHosts: 'https:get-insecure-hosts',
   httpsSetInsecureHosts: 'https:set-insecure-hosts',
   httpsSetDecryption: 'https:set-decryption',
+  tlsPassthroughGet: 'tls-passthrough:get',
+  tlsPassthroughReplace: 'tls-passthrough:replace',
+  tlsCompatibility: 'tls:compatibility',
   rulesGet: 'rules:get',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
@@ -451,6 +492,7 @@ export const DESKTOP_IPC_CHANNELS = {
 export interface InterceptorDesktopApi {
   echoCore(value: string): Promise<CoreEchoResult>;
   closeApplication(): Promise<void>;
+  restartApplication(): Promise<void>;
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<boolean>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
@@ -462,6 +504,16 @@ export interface InterceptorDesktopApi {
   enableSystemProxy(): Promise<SystemProxyStatus>;
   restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
   repairSystemProxy(): Promise<SystemProxyRestoreResult>;
+  listAppContainers(): Promise<AppContainerAccessSnapshot>;
+  setAppContainerLoopbackExemption(
+    appContainerSid: string,
+    enabled: boolean,
+  ): Promise<AppContainerAccessSnapshot>;
+  getGitHubAuthStatus(): Promise<GitHubAuthStatus>;
+  signInWithGitHub(): Promise<GitHubAuthStatus>;
+  openGitHubAuthorization(): Promise<void>;
+  signOutFromGitHub(): Promise<GitHubAuthStatus>;
+  onGitHubAuthStatusChange(listener: (status: GitHubAuthStatus) => void): () => void;
   getUpdateStatus(): Promise<UpdateStatus>;
   checkForUpdates(): Promise<UpdateStatus>;
   downloadUpdate(): Promise<UpdateStatus>;
@@ -513,6 +565,14 @@ export interface InterceptorDesktopApi {
   getInsecureHosts(): Promise<string[]>;
   setInsecureHosts(hosts: string[]): Promise<string[]>;
   setHttpsDecryption(enabled: boolean): Promise<CertificateInfo>;
+  getTlsPassthroughSettings(): Promise<TlsPassthroughSettingsStatus>;
+  replaceTlsPassthroughSettings(
+    expectedRevision: number,
+    hosts: string[],
+  ): Promise<TlsPassthroughReplaceResult>;
+  onTlsCompatibilityChange(
+    listener: (event: TlsCompatibilityEvent) => void,
+  ): () => void;
   getRules(): Promise<RuleSet>;
   replaceRules(
     expectedRevision: number,
@@ -552,8 +612,25 @@ export interface InterceptorDesktopApi {
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
 }
 
+export type GitHubAuthState =
+  | 'signed-out'
+  | 'authorizing'
+  | 'signed-in'
+  | 'failed';
+
+/** Renderer-visible GitHub authorization state; credentials never cross Preload. */
+export interface GitHubAuthStatus {
+  state: GitHubAuthState;
+  login: string | null;
+  userCode: string | null;
+  verificationUri: string | null;
+  expiresAt: string | null;
+  message: string | null;
+}
+
 export type UpdateState =
   | 'unsupported'
+  | 'authentication-required'
   | 'idle'
   | 'checking'
   | 'available'

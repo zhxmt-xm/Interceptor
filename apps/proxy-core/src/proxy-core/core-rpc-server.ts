@@ -8,6 +8,7 @@ import {
   type CoreRequest,
   type CoreResult,
   type CoreToMainMessage,
+  type TlsCompatibilityEvent,
 } from '@interceptor/core-protocol';
 
 import { CoreDiagnostics } from './core-diagnostics';
@@ -361,9 +362,13 @@ export class CoreRpcServer {
   sendEventBatch(
     events: readonly CaptureExchangeEvent[],
     clientApps: readonly ClientAppIdentity[] = [],
+    tlsCompatibilityEvents: readonly TlsCompatibilityEvent[] = [],
   ): number | null {
     const rpcConnection = this.rpcConnection;
-    if (!rpcConnection || events.length === 0) {
+    if (
+      !rpcConnection ||
+      (events.length === 0 && tlsCompatibilityEvents.length === 0)
+    ) {
       return null;
     }
     const batchSequence = ++this.eventBatchSequence;
@@ -373,6 +378,9 @@ export class CoreRpcServer {
       batchSequence,
       events: [...events],
       ...(clientApps.length > 0 ? { clientApps: [...clientApps] } : {}),
+      ...(tlsCompatibilityEvents.length > 0
+        ? { tlsCompatibilityEvents: [...tlsCompatibilityEvents] }
+        : {}),
     });
     return delivered ? batchSequence : null;
   }

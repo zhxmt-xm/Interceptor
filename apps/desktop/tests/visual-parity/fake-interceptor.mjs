@@ -566,6 +566,56 @@ export const fakeInterceptorFixture = {
     path: 'C:\\Users\\parity\\Interceptor Root CA.pem',
   },
   insecureHosts: ['api.internal.local'],
+  appContainers: {
+    supported: true,
+    containers: [
+      {
+        appContainerSid: 'S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272',
+        packageFamilyName: 'Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy',
+        displayName: 'Microsoft AAD Broker Plugin',
+        description: 'Windows sign-in broker',
+        packageFullName: 'Microsoft.AAD.BrokerPlugin_1000.19580.1000.3_neutral__cw5n1h2txyewy',
+        exempt: false,
+      },
+      {
+        appContainerSid: 'S-1-15-2-3168592183-2270013506-0000000000',
+        packageFamilyName: 'Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy',
+        displayName: 'Cloud Experience Host',
+        description: null,
+        packageFullName: 'Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy',
+        exempt: false,
+      },
+      {
+        appContainerSid: 'S-1-15-2-2061759951-0000000000',
+        packageFamilyName: 'MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy',
+        displayName: 'Windows Web Experience Pack',
+        description: null,
+        packageFullName: 'MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy',
+        exempt: false,
+      },
+      {
+        appContainerSid: 'S-1-15-2-3641434315-0000000000',
+        packageFamilyName: 'Microsoft.SecHealthUI_8wekyb3d8bbwe',
+        displayName: 'Windows Security',
+        description: null,
+        packageFullName: 'Microsoft.SecHealthUI_8wekyb3d8bbwe',
+        exempt: false,
+      },
+    ],
+  },
+  tlsPassthroughSettings: {
+    revision: 1,
+    hosts: ['*.wvd.microsoft.com'],
+    restartRequired: false,
+  },
+  githubAuth: {
+    state: 'signed-out',
+    login: null,
+    userCode: null,
+    verificationUri: null,
+    expiresAt: null,
+    message: null,
+  },
   storage: {
     sessionCount: 3,
     exchangeCount: 241,
@@ -618,8 +668,12 @@ export function installFakeInterceptor({
   noRuleHits = false,
   mitmActive = true,
   updateState = 'unsupported',
+  githubAuthState = 'signed-in',
   proxyReady = true,
   proxyEnableFails = false,
+  tlsCompatibilityEvents = [],
+  tlsPassthroughHosts = null,
+  tlsRestartRequired = false,
 }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
@@ -713,6 +767,64 @@ export function installFakeInterceptor({
   let breakpointItems = fixture.breakpoints.items;
   let breakpointsEnabled = fixture.breakpoints.enabled;
   let insecureHosts = fixture.insecureHosts;
+  let appContainerSnapshot = {
+    ...fixture.appContainers,
+    containers: fixture.appContainers.containers.map((appContainer) => ({
+      ...appContainer,
+    })),
+  };
+  let tlsPassthroughSettings = {
+    ...fixture.tlsPassthroughSettings,
+    hosts: [...(tlsPassthroughHosts ?? fixture.tlsPassthroughSettings.hosts)],
+  };
+  const tlsCompatibilityListeners = new Set();
+  window.__emitTlsCompatibility = (events) => {
+    events.forEach((event) => {
+      tlsCompatibilityListeners.forEach((listener) => listener(event));
+    });
+  };
+  const activeTlsPassthroughHosts = tlsRestartRequired
+    ? []
+    : [...tlsPassthroughSettings.hosts];
+  const tlsPassthroughStatus = () => {
+    const normalize = (hosts) => [...new Set(
+      hosts.map((host) => host.trim().toLowerCase()),
+    )].sort();
+    const active = normalize(activeTlsPassthroughHosts);
+    const saved = normalize(tlsPassthroughSettings.hosts);
+    return {
+      ...tlsPassthroughSettings,
+      restartRequired: active.length !== saved.length
+        || active.some((host, index) => host !== saved[index]),
+    };
+  };
+  let githubAuthStatus = githubAuthState === 'signed-in'
+    ? {
+        ...fixture.githubAuth,
+        state: 'signed-in',
+        login: 'zhxmt-xm',
+        message: 'GitHub authorization is stored securely on this device.',
+      }
+    : githubAuthState === 'authorizing'
+      ? {
+          ...fixture.githubAuth,
+          state: 'authorizing',
+          userCode: 'F7D2-9A4C',
+          verificationUri: 'https://github.com/login/device',
+          expiresAt: '2026-08-07T00:15:00.000Z',
+          message: 'Enter the one-time code in GitHub to authorize this device.',
+        }
+      : githubAuthState === 'failed'
+        ? {
+            ...fixture.githubAuth,
+            state: 'failed',
+            message: 'The GitHub authorization code expired. Try again.',
+          }
+        : { ...fixture.githubAuth };
+  const githubAuthListeners = new Set();
+  const publishGitHubAuthStatus = () => {
+    for (const listener of githubAuthListeners) listener({ ...githubAuthStatus });
+  };
   let storage = fixture.storage;
   let transferJob = null;
   let updateStatus = updateState === 'unsupported'
@@ -727,6 +839,15 @@ export function installFakeInterceptor({
         releaseNotes: null,
         message: 'Release checks run only in packaged Windows and macOS builds.',
       }
+    : updateState === 'authentication-required'
+      ? {
+          ...fixture.update,
+          state: 'authentication-required',
+          latestVersion: null,
+          totalBytes: null,
+          releaseNotes: null,
+          message: 'Sign in with GitHub to access private releases.',
+        }
     : updateState === 'checking'
       ? {
           ...fixture.update,
@@ -734,7 +855,7 @@ export function installFakeInterceptor({
           latestVersion: null,
           totalBytes: null,
           releaseNotes: null,
-          message: 'Checking public GitHub Releases…',
+          message: 'Checking private GitHub Releases…',
         }
       : updateState === 'up-to-date'
         ? {
@@ -800,6 +921,7 @@ export function installFakeInterceptor({
     openDownloadedUpdate: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
     closeApplication: async () => undefined,
+    restartApplication: async () => undefined,
     minimizeWindow: async () => undefined,
     toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
@@ -827,6 +949,56 @@ export function installFakeInterceptor({
       }),
     }),
     repairSystemProxy: async () => window.interceptor.restoreSystemProxy(),
+    listAppContainers: async () => appContainerSnapshot,
+    setAppContainerLoopbackExemption: async (appContainerSid, enabled) => {
+      appContainerSnapshot = {
+        ...appContainerSnapshot,
+        containers: appContainerSnapshot.containers.map((appContainer) =>
+          appContainer.appContainerSid === appContainerSid
+            ? { ...appContainer, exempt: enabled }
+            : appContainer),
+      };
+      return appContainerSnapshot;
+    },
+    getTlsPassthroughSettings: async () => tlsPassthroughStatus(),
+    replaceTlsPassthroughSettings: async (expectedRevision, hosts) => {
+      if (expectedRevision !== tlsPassthroughSettings.revision) {
+        return { ok: false, reason: 'conflict', message: 'Revision conflict' };
+      }
+      tlsPassthroughSettings = {
+        revision: expectedRevision + 1,
+        hosts: [...new Set(hosts.map((host) => host.trim().toLowerCase()))],
+      };
+      return { ok: true, settings: tlsPassthroughStatus() };
+    },
+    onTlsCompatibilityChange: (listener) => {
+      tlsCompatibilityListeners.add(listener);
+      tlsCompatibilityEvents.forEach((event) => queueMicrotask(() => listener(event)));
+      return () => tlsCompatibilityListeners.delete(listener);
+    },
+    getGitHubAuthStatus: async () => githubAuthStatus,
+    signInWithGitHub: async () => {
+      githubAuthStatus = {
+        ...fixture.githubAuth,
+        state: 'authorizing',
+        userCode: 'F7D2-9A4C',
+        verificationUri: 'https://github.com/login/device',
+        expiresAt: '2026-08-07T00:15:00.000Z',
+        message: 'Enter the one-time code in GitHub to authorize this device.',
+      };
+      publishGitHubAuthStatus();
+      return githubAuthStatus;
+    },
+    openGitHubAuthorization: async () => undefined,
+    signOutFromGitHub: async () => {
+      githubAuthStatus = { ...fixture.githubAuth };
+      publishGitHubAuthStatus();
+      return githubAuthStatus;
+    },
+    onGitHubAuthStatusChange: (listener) => {
+      githubAuthListeners.add(listener);
+      return () => githubAuthListeners.delete(listener);
+    },
     queryDiagnostics: async (request = {}) => {
       const filtered = fixture.diagnostics.records.filter((record) =>
         (!request.process || record.process === request.process) &&

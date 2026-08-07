@@ -1,9 +1,20 @@
-import { Database, Download, Lock, Palette, Shield, Wifi } from 'lucide-react';
+import {
+  AppWindow,
+  Database,
+  Download,
+  Lock,
+  LockOpen,
+  Palette,
+  Shield,
+  Wifi,
+} from 'lucide-react';
 
 import type { PrivacyPreferences, SettingsSection } from './interfaces';
 
 export const SECTIONS: SettingsSection[] = [
   { id: 'proxy', labelKey: 'settings.nav.proxy', Icon: Wifi },
+  { id: 'app-containers', labelKey: 'settings.nav.appContainers', Icon: AppWindow },
+  { id: 'tls-passthrough', labelKey: 'settings.nav.tlsPassthrough', Icon: LockOpen },
   { id: 'certificates', labelKey: 'settings.nav.certificates', Icon: Shield },
   { id: 'appearance', labelKey: 'settings.nav.appearance', Icon: Palette },
   { id: 'storage', labelKey: 'settings.nav.storage', Icon: Database },
@@ -23,6 +34,7 @@ export const DEFAULTS: PrivacyPreferences = {
 
 export const ENGLISH_UPDATE_LABELS: Record<string, string> = {
   'settings.update.unavailable': 'Unavailable',
+  'settings.update.authenticationRequired': 'Sign in required',
   'settings.update.ready': 'Ready',
   'settings.update.checking': 'Checking',
   'settings.update.available': 'Available',

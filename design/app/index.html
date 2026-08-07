@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-body-kind="json" data-body-mode="default" data-breakpoints="on" data-breakpoint-state="request" data-breakpoint-body="loading" data-breakpoint-file="none" data-rule-typography="composer">
+    <div class="app shell-v2 collapsed" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-github-auth="signed-in" data-app-containers="ready" data-tls-passthrough="ready" data-body-kind="json" data-body-mode="default" data-breakpoints="on" data-breakpoint-state="request" data-breakpoint-body="loading" data-breakpoint-file="none" data-rule-typography="composer">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -907,6 +907,8 @@ curl https://api.acme.dev/v1/exchanges \
         <div class="mv smain" data-v="settings">
           <div class="snav">
             <div class="sni" data-settings-nav="proxy"><svg><use href="#i-wifi"/></svg>Proxy &amp; Listener</div>
+            <div class="sni" data-settings-nav="app-containers"><svg><use href="#i-app-window"/></svg>AppContainer access</div>
+            <div class="sni" data-settings-nav="tls-passthrough"><svg><use href="#i-lock-off"/></svg>TLS passthrough</div>
             <div class="sni" data-settings-nav="certificates"><svg><use href="#i-shield"/></svg>Certificates</div>
             <div class="sni" data-settings-nav="appearance"><svg><use href="#i-palette"/></svg>Appearance</div>
             <div class="sni" data-settings-nav="storage"><svg><use href="#i-database"/></svg>Storage</div>
@@ -935,6 +937,68 @@ curl https://api.acme.dev/v1/exchanges \
                 <div class="srow"><div class="scap"><b>Emergency repair</b><span>Stops capture and restores only settings still owned by Interceptor</span></div><div class="sctl repair-idle"><button class="btn danger"><svg><use href="#i-refresh"/></svg>Emergency repair…</button></div><div class="sctl repair-confirm"><span class="confirmtext">Restore owned settings?</span><button class="btn">Cancel</button><button class="btn danger"><svg><use href="#i-refresh"/></svg>Confirm repair</button></div></div>
               </div>
             </div>
+            <div class="spanel" data-settings-panel="app-containers">
+              <h2>AppContainer access <span class="sbadge info"><span class="d"></span>Windows</span></h2>
+              <div class="desc2">Choose which Windows app containers may connect to local proxy listeners.</div>
+              <div class="settings-warning">
+                <svg><use href="#i-shield"/></svg>
+                <div><b>Administrator approval is required for every change.</b><span>An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits.</span></div>
+              </div>
+              <div class="settings-toolbar">
+                <label class="settings-search"><svg><use href="#i-search"/></svg><input type="search" data-app-container-search placeholder="Search name, package, or SID" /></label>
+                <span class="settings-count"><b data-app-container-enabled-count>0</b> enabled · 4 containers</span>
+                <button class="ib sm appcontainer-refresh" data-app-container-refresh aria-label="Refresh AppContainers" title="Refresh AppContainers"><svg class="refresh-idle"><use href="#i-refresh"/></svg><span class="spin refresh-busy"></span></button>
+              </div>
+              <div class="sgroup appcontainer-list">
+                <div class="gh settings-group-head"><span>Windows app containers</span><span>SID is the stable identity</span></div>
+                <div class="srow appcontainer-row" data-app-container-row data-search="microsoft aad broker plugin windows sso microsoft.aad.brokerplugin_cw5n1h2txyewy s-1-15-2-1910091885">
+                  <span class="appcontainer-icon recommended"><svg><use href="#i-app-window"/></svg></span>
+                  <div class="scap"><span class="appcontainer-name"><b>Microsoft AAD Broker Plugin</b><span class="sbadge recommended">Windows SSO · Recommended</span></span><span class="appcontainer-package">Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy</span><code>S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272</code></div>
+                  <div class="sctl"><span class="appcontainer-state">Off</span><button class="sw" role="switch" aria-checked="false" data-app-container-toggle data-container-name="Microsoft AAD Broker Plugin"></button></div>
+                </div>
+                <div class="srow appcontainer-row" data-app-container-row data-search="cloud experience host microsoft.windows.cloudexperiencehost_cw5n1h2txyewy s-1-15-2-...">
+                  <span class="appcontainer-icon"><svg><use href="#i-app-window"/></svg></span>
+                  <div class="scap"><span class="appcontainer-name"><b>Cloud Experience Host</b></span><span class="appcontainer-package">Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy</span><code>S-1-15-2-3168592183-2270013506-...</code></div>
+                  <div class="sctl"><span class="appcontainer-state">Off</span><button class="sw" role="switch" aria-checked="false" data-app-container-toggle data-container-name="Cloud Experience Host"></button></div>
+                </div>
+                <div class="srow appcontainer-row" data-app-container-row data-search="windows web experience pack microsoftwindows.client.webexperience_cw5n1h2txyewy s-1-15-2-...">
+                  <span class="appcontainer-icon"><svg><use href="#i-app-window"/></svg></span>
+                  <div class="scap"><span class="appcontainer-name"><b>Windows Web Experience Pack</b></span><span class="appcontainer-package">MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy</span><code>S-1-15-2-2061759951-...</code></div>
+                  <div class="sctl"><span class="appcontainer-state">Off</span><button class="sw" role="switch" aria-checked="false" data-app-container-toggle data-container-name="Windows Web Experience Pack"></button></div>
+                </div>
+                <div class="srow appcontainer-row" data-app-container-row data-search="windows security microsoft.sechealthui_8wekyb3d8bbwe s-1-15-2-...">
+                  <span class="appcontainer-icon"><svg><use href="#i-shield"/></svg></span>
+                  <div class="scap"><span class="appcontainer-name"><b>Windows Security</b></span><span class="appcontainer-package">Microsoft.SecHealthUI_8wekyb3d8bbwe</span><code>S-1-15-2-3641434315-...</code></div>
+                  <div class="sctl"><span class="appcontainer-state">Off</span><button class="sw" role="switch" aria-checked="false" data-app-container-toggle data-container-name="Windows Security"></button></div>
+                </div>
+                <div class="settings-empty appcontainer-empty"><svg><use href="#i-search"/></svg><b>No matching app containers</b><span>Try a display name, package family name, or SID.</span></div>
+              </div>
+              <div class="privacy-note"><svg><use href="#i-refresh"/></svg><span>Newly installed or first-run app containers appear after Refresh. Interceptor never enables every container automatically.</span></div>
+            </div>
+            <div class="spanel" data-settings-panel="tls-passthrough">
+              <h2>TLS passthrough <span class="sbadge tunnel"><span class="d"></span><span data-tls-pattern-count>1 pattern</span></span></h2>
+              <div class="desc2">Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata.</div>
+              <div class="settings-warning tls-restart-required">
+                <svg><use href="#i-refresh"/></svg>
+                <div><b>Restart required</b><span>Saved passthrough changes take effect after Interceptor restarts. Current proxy traffic continues using the active list; restart, then retry affected clients.</span></div>
+                <button class="btn pri" data-tls-restart><svg><use href="#i-refresh"/></svg><span>Restart Interceptor</span></button>
+              </div>
+              <div class="tls-add-row">
+                <label class="tls-host-input"><span>Hostname or wildcard</span><input data-tls-host-input spellcheck="false" placeholder="*.example.com" /></label>
+                <button class="btn pri" data-tls-host-add><svg><use href="#i-plus"/></svg>Add</button>
+              </div>
+              <div class="tls-validation"><svg><use href="#i-circle-alert"/></svg>Enter a hostname or wildcard such as <code>*.example.com</code>.</div>
+              <div class="sgroup tls-host-list">
+                <div class="gh settings-group-head"><span>Passthrough host patterns</span><span>Matched before HTTPS interception</span></div>
+                <div class="srow tls-host-row" data-tls-host-pattern="*.wvd.microsoft.com">
+                  <span class="tls-host-icon"><svg><use href="#i-lock-off"/></svg></span>
+                  <div class="scap"><span class="tls-host-name"><code>*.wvd.microsoft.com</code><span class="sbadge recommended">Windows 365 · Recommended</span></span><span>End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted.</span></div>
+                  <div class="sctl"><button class="ib sm" data-tls-host-remove aria-label="Remove host pattern" title="Remove host pattern"><svg><use href="#i-trash"/></svg></button></div>
+                </div>
+                <div class="settings-empty tls-host-empty"><svg><use href="#i-lock-off"/></svg><b>No passthrough patterns</b><span>HTTPS interception will be attempted for every host.</span></div>
+              </div>
+              <div class="privacy-note"><svg><use href="#i-globe"/></svg><span>Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible.</span></div>
+            </div>
             <div class="spanel" data-settings-panel="certificates">
             <h2>Certificates <span class="sbadge mitm"><span class="d"></span>MITM active</span></h2>
             <div class="desc2">Root CA used to decrypt HTTPS. Trust is only ever installed with your explicit consent.</div>
@@ -957,23 +1021,31 @@ curl https://api.acme.dev/v1/exchanges \
             </div>
             </div>
             <div class="spanel" data-settings-panel="updates">
-              <h2>Updates <span class="sbadge update-state update-checking"><span class="d"></span>Checking</span><span class="sbadge update-state update-available"><span class="d"></span>Available</span><span class="sbadge update-state update-downloading"><span class="d"></span>Downloading</span><span class="sbadge update-state update-downloaded"><span class="d"></span>Downloaded</span><span class="sbadge update-state update-current"><span class="d"></span>Up to date</span><span class="sbadge update-state update-failed" style="color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)"><span class="d" style="background:var(--red)"></span>Failed</span><span class="sbadge update-state update-unsupported" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Unavailable</span></h2>
-              <div class="desc2">Checks and downloads signed installers from public GitHub Releases. Downloads start only when you choose.</div>
+              <h2>Updates <span class="sbadge update-state update-auth-required" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Sign in required</span><span class="sbadge update-state update-checking"><span class="d"></span>Checking</span><span class="sbadge update-state update-available"><span class="d"></span>Available</span><span class="sbadge update-state update-downloading"><span class="d"></span>Downloading</span><span class="sbadge update-state update-downloaded"><span class="d"></span>Downloaded</span><span class="sbadge update-state update-current"><span class="d"></span>Up to date</span><span class="sbadge update-state update-failed" style="color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)"><span class="d" style="background:var(--red)"></span>Failed</span><span class="sbadge update-state update-unsupported" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Unavailable</span></h2>
+              <div class="desc2">Uses your GitHub identity to check and download signed installers from the private release channel. Downloads start only when you choose.</div>
+              <div class="sgroup">
+                <div class="gh">GitHub access</div>
+                <div class="srow github-auth-row github-auth-signed-out"><div class="scap"><b>GitHub account</b><span>Sign in in your browser to access private releases</span></div><div class="sctl"><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Signed out</span><button class="btn pri" data-github-auth-action="sign-in"><svg><use href="#i-github"/></svg>Sign in with GitHub</button></div></div>
+                <div class="srow github-auth-row github-auth-authorizing"><div class="scap"><b>Authorize this device</b><span>Enter this one-time code at github.com/login/device · expires in 15 minutes</span></div><div class="sctl"><button class="github-device-code" aria-label="Copy device code"><svg><use href="#i-copy"/></svg>F7D2-9A4C</button><button class="btn pri" data-github-auth-action="open"><svg><use href="#i-external"/></svg>Open GitHub</button></div></div>
+                <div class="srow github-auth-row github-auth-signed-in"><div class="scap"><b>GitHub account</b><span>Authorization is encrypted for this operating-system user</span></div><div class="sctl"><span class="github-login"><svg><use href="#i-github"/></svg>@zhxmt-xm</span><span class="sbadge" style="color:var(--green);background:color-mix(in srgb,var(--green) 13%,transparent)"><span class="d" style="background:var(--green)"></span>Connected</span><button class="btn" data-github-auth-action="sign-out">Sign out</button></div></div>
+                <div class="srow github-auth-row github-auth-failed"><div class="scap"><b>GitHub authorization failed</b><span>The code expired or authorization was declined. No credentials were saved.</span></div><div class="sctl"><span class="sbadge" style="color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)"><span class="d" style="background:var(--red)"></span>Not connected</span><button class="btn" data-github-auth-action="retry"><svg><use href="#i-refresh"/></svg>Try again</button></div></div>
+                <div class="srow"><div class="scap"><b>Repository access</b><span>Granted by the Interceptor GitHub App installation</span></div><div class="sctl"><span class="mono2">zhxmt-xm/Interceptor</span><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Private</span><span class="sbadge">Contents · read-only</span></div></div>
+              </div>
               <div class="sgroup">
                 <div class="gh">Version</div>
                 <div class="srow"><div class="scap"><b>Current application</b><span>Installed whole-app version</span></div><div class="sctl"><span class="mono2">0.1.0</span><span class="sbadge"><span class="d"></span>Stable</span></div></div>
-                <div class="srow"><div class="scap"><b>Latest GitHub release</b><span>Newest public stable release</span></div><div class="sctl"><span class="mono2 update-version update-version-checking">Checking…</span><span class="mono2 update-version update-version-new">0.1.1</span><span class="mono2 update-version update-version-current">0.1.0</span><span class="mono2 update-version update-version-unknown">Unknown</span><span class="sbadge update-whole-tag" style="color:var(--blue);background:color-mix(in srgb,var(--blue) 13%,transparent)"><span class="d" style="background:var(--blue)"></span>Whole app</span><span class="sbadge update-current-tag"><span class="d"></span>Current</span></div></div>
+                <div class="srow"><div class="scap"><b>Latest GitHub release</b><span>Newest private stable release available to this account</span></div><div class="sctl"><span class="mono2 update-version update-version-checking">Checking…</span><span class="mono2 update-version update-version-new">0.1.1</span><span class="mono2 update-version update-version-current">0.1.0</span><span class="mono2 update-version update-version-unknown">Unknown</span><span class="sbadge update-whole-tag" style="color:var(--blue);background:color-mix(in srgb,var(--blue) 13%,transparent)"><span class="d" style="background:var(--blue)"></span>Whole app</span><span class="sbadge update-current-tag"><span class="d"></span>Current</span></div></div>
               </div>
               <div class="sgroup">
                 <div class="gh">Delivery</div>
-                <div class="srow"><div class="scap"><b>Release source</b><span>GitHub-hosted metadata and artifacts</span></div><div class="sctl"><span class="mono2">zhxmt-xm/Interceptor</span><span class="sbadge"><span class="d"></span>Public</span></div></div>
+                <div class="srow"><div class="scap"><b>Release source</b><span>GitHub-hosted metadata and artifacts</span></div><div class="sctl"><span class="mono2">zhxmt-xm/Interceptor</span><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Private</span></div></div>
                 <div class="srow"><div class="scap"><b>Check policy</b><span>Checks on launch and every hour</span></div><div class="sctl"><span class="mono2">stable</span><span class="sbadge"><span class="d"></span>Notify</span></div></div>
                 <div class="srow"><div class="scap"><b>Download policy</b><span>Starts only when you click Download update</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Manual</span></div></div>
                 <div class="srow update-check-row"><div class="scap"><b>Check</b><span>Reading the latest stable release metadata</span></div><div class="sctl progressctl"><div class="progress"><i></i></div><span class="mono2">GitHub</span></div></div>
                 <div class="srow update-progress-row"><div class="scap"><b>Download</b><span>Signed installer from GitHub Releases</span></div><div class="sctl progressctl"><div class="progress"><i></i></div><span class="mono2">42% · 59.0 MB / 140.5 MB</span></div></div>
                 <div class="srow update-failed-row"><div class="scap"><b>Last update action</b><span>GitHub Releases could not be reached. The installed app was not changed.</span></div><div class="sctl"><span class="sbadge" style="color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)"><span class="d" style="background:var(--red)"></span>Retry available</span></div></div>
                 <div class="srow update-unsupported-row"><div class="scap"><b>Release checks unavailable</b><span>Release checks run only in packaged Windows and macOS builds.</span></div><div class="sctl"><span class="sbadge" style="color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"><span class="d" style="background:var(--yellow)"></span>Development</span></div></div>
-                <div class="srow update-action-row"><div class="scap"><b>Update action</b><span>Public stable channel · no account or update server required</span></div><div class="sctl"><button class="btn update-check"><svg><use href="#i-refresh"/></svg>Check now</button><button class="btn pri update-download"><svg><use href="#i-download"/></svg>Download update</button><button class="btn pri update-open"><svg><use href="#i-external"/></svg>Open installer</button></div></div>
+                <div class="srow update-action-row"><div class="scap"><b>Update action</b><span>Private stable channel · authorized with your GitHub account</span></div><div class="sctl"><button class="btn update-check"><svg><use href="#i-refresh"/></svg>Check now</button><button class="btn pri update-download"><svg><use href="#i-download"/></svg>Download update</button><button class="btn pri update-open"><svg><use href="#i-external"/></svg>Open installer</button></div></div>
               </div>
               <div class="sgroup update-release-notes">
                 <div class="gh">Release notes</div>
@@ -1122,6 +1194,35 @@ curl https://api.acme.dev/v1/exchanges \
             <div class="privacy-note"><svg><use href="#i-shield"/></svg><span>Interceptor only takes ownership after the current configuration is saved for guarded restoration.</span></div>
           </div>
           <div class="dlgfoot"><button class="btn" data-close-overlay>Cancel</button><button class="btn">Proxy &amp; Listener</button><button class="btn pri">Enable</button></div>
+        </div>
+      </div>
+
+      <div class="ov" data-ov="app-container-confirm">
+        <div class="dlg settings-confirm-dialog">
+          <div class="dlghead"><span class="di warning"><svg><use href="#i-shield"/></svg></span><b data-app-container-confirm-title>Allow loopback access?</b><button class="ib sm" data-close-overlay aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+          <div class="settings-confirm-body">
+            <p><b data-app-container-confirm-name>Microsoft AAD Broker Plugin</b> <span data-app-container-confirm-action>will be allowed to connect to local services on this PC.</span></p>
+            <div class="settings-identity"><span>AppContainer SID</span><code data-app-container-confirm-sid>S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272</code></div>
+            <div class="wnote"><svg><use href="#i-alert"/></svg><span>This permission covers every loopback port, not only Interceptor. It persists after Interceptor exits and remains until you turn this switch off.</span></div>
+            <div class="privacy-note"><svg><use href="#i-shield"/></svg><span>Windows will show an administrator approval prompt before the setting changes.</span></div>
+          </div>
+          <div class="dlgfoot"><button class="btn" data-close-overlay>Cancel</button><button class="btn pri" data-app-container-confirm><svg><use href="#i-shield"/></svg><span data-app-container-confirm-button>Continue to Windows approval</span></button></div>
+        </div>
+      </div>
+
+      <div class="ov" data-ov="tls-compatibility">
+        <div class="dlg settings-confirm-dialog tls-compatibility-dialog">
+          <div class="dlghead"><span class="di warning"><svg><use href="#i-lock-off"/></svg></span><b>TLS interception may be incompatible</b><button class="ib sm" data-tls-compatibility-dismiss aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+          <div class="settings-confirm-body">
+            <p>The following hosts failed during intercepted TLS handshakes. Review them before adding TLS passthrough.</p>
+            <div class="tls-compatibility-list">
+              <div class="tls-compatibility-row" data-tls-compatibility-host="rdweb.wvd.microsoft.com" data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>rdweb.wvd.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div></div>
+              <div class="tls-compatibility-row" data-tls-compatibility-host="windows365.microsoft.com" data-parity="tls-compatibility-host-windows365.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>windows365.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div></div>
+              <div class="tls-compatibility-row" data-tls-compatibility-host="afdfp-rdgateway-r0.wvd.microsoft.com" data-parity="tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>afdfp-rdgateway-r0.wvd.microsoft.com</code><span>Client rejected the Interceptor certificate</span></div></div>
+            </div>
+            <div class="privacy-note"><svg><use href="#i-refresh"/></svg><span>Saving does not interrupt current proxy traffic. TLS passthrough settings will open so you can restart Interceptor and apply the change.</span></div>
+          </div>
+          <div class="dlgfoot"><button class="btn" data-tls-compatibility-dismiss>Not now</button><button class="btn pri" data-tls-compatibility-add-dialog><svg><use href="#i-lock-off"/></svg>Add all hosts</button></div>
         </div>
       </div>
 

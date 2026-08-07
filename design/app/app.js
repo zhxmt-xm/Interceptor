@@ -1,9 +1,11 @@
 // Interceptor design SPA — state controller.
-// The whole prototype is driven by window.__setState({view,theme,sidebar,filters,overlay,tab,pop,https,mitm,copy,requestMenu,ruleFilter,bodyPreview}).
+// The whole prototype is driven by window.__setState({view,theme,sidebar,filters,overlay,tab,pop,https,mitm,copy,requestMenu,ruleFilter,bodyPreview,settings,githubAuth,appContainers,tlsPassthrough,tlsCompatibility}).
 // - Humans click the sidebar / floating controls; state + DOM update live.
 // - The screenshot pipeline (shoot.mjs) calls __setState then captures .app.
 const app = document.querySelector('.app');
 let breakpointBodyTimer = 0;
+let appContainerRefreshTimer = 0;
+let pendingAppContainerToggle = null;
 
 function setBreakpointBodyState(state) {
   window.clearTimeout(breakpointBodyTimer);
@@ -241,6 +243,45 @@ function setState(s = {}) {
   if (s.settings) app.dataset.settings = s.settings;
   if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
+  if ('githubAuth' in s) app.dataset.githubAuth = s.githubAuth || 'signed-out';
+  if ('appContainers' in s) app.dataset.appContainers = s.appContainers || 'ready';
+  if ('tlsPassthrough' in s) {
+    const state = s.tlsPassthrough || 'ready';
+    app.dataset.tlsPassthrough = state;
+    const rows = app.querySelectorAll('[data-tls-host-pattern]').length;
+    const count = app.querySelector('[data-tls-pattern-count]');
+    const visibleRows = state === 'empty' ? 0 : rows;
+    if (count) count.textContent = `${visibleRows} ${visibleRows === 1 ? 'pattern' : 'patterns'}`;
+  }
+  if (Array.isArray(s.tlsPatterns)) {
+    const desiredPatterns = s.tlsPatterns.map((host) => host.trim().toLowerCase());
+    app.querySelectorAll('[data-tls-host-pattern]').forEach((row) => {
+      if (!desiredPatterns.includes(row.dataset.tlsHostPattern.toLowerCase())) {
+        row.remove();
+      }
+    });
+    desiredPatterns.forEach(addTlsPattern);
+    syncTlsPatternCount();
+  }
+  if ('tlsRestart' in s) {
+    if (s.tlsRestart) app.dataset.tlsRestart = s.tlsRestart;
+    else delete app.dataset.tlsRestart;
+  }
+  if ('tlsHostInput' in s) app.querySelector('[data-tls-host-input]').value = s.tlsHostInput || '';
+  if ('tlsCompatibility' in s) {
+    if (s.tlsCompatibility) {
+      app.dataset.tlsCompatibility = s.tlsCompatibility;
+      app.dataset.overlay = 'tls-compatibility';
+    } else {
+      delete app.dataset.tlsCompatibility;
+    }
+  }
+  if (Array.isArray(s.tlsCompatibilityHosts)) {
+    const hosts = s.tlsCompatibilityHosts.map((host) => host.trim().toLowerCase());
+    app.querySelectorAll('[data-tls-compatibility-host]').forEach((row) => {
+      row.style.display = hosts.includes(row.dataset.tlsCompatibilityHost) ? '' : 'none';
+    });
+  }
   if (s.https) app.dataset.https = s.https;
   if (s.mitm) app.dataset.mitm = s.mitm;
   if ('systemProxy' in s) app.dataset.systemProxy = s.systemProxy || 'on';
@@ -609,12 +650,156 @@ app.addEventListener('click', (e) => {
   openTreeMenu(isComposer ? 'composer-folder' : 'rules-folder', { x: rect.left, y: rect.bottom + 4 });
 });
 
-// Settings section and guarded repair confirmation states.
+function syncAppContainerCount() {
+  const enabled = app.querySelectorAll('[data-app-container-toggle].on').length;
+  const count = app.querySelector('[data-app-container-enabled-count]');
+  if (count) count.textContent = String(enabled);
+}
+
+function filterAppContainers() {
+  const input = app.querySelector('[data-app-container-search]');
+  const list = app.querySelector('.appcontainer-list');
+  if (!input || !list) return;
+  const query = input.value.trim().toLowerCase();
+  let visible = 0;
+  list.querySelectorAll('[data-app-container-row]').forEach((row) => {
+    const matches = !query || row.dataset.search.includes(query);
+    row.style.display = matches ? '' : 'none';
+    if (matches) visible += 1;
+  });
+  list.classList.toggle('search-empty', visible === 0);
+}
+
+function validTlsHostPattern(host) {
+  return /^(?:\*\.)?(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(host);
+}
+
+function currentTlsPatterns() {
+  return [...app.querySelectorAll('[data-tls-host-pattern]')]
+    .map((row) => row.dataset.tlsHostPattern.trim().toLowerCase())
+    .sort();
+}
+
+const activeTlsPatterns = currentTlsPatterns();
+
+function syncTlsRestartRequired() {
+  const current = currentTlsPatterns();
+  const changed = current.length !== activeTlsPatterns.length ||
+    current.some((host, index) => host !== activeTlsPatterns[index]);
+  setState({ tlsRestart: changed ? 'required' : '' });
+}
+
+function syncTlsPatternCount() {
+  const rows = app.querySelectorAll('[data-tls-host-pattern]');
+  const count = app.querySelector('[data-tls-pattern-count]');
+  if (count) count.textContent = `${rows.length} ${rows.length === 1 ? 'pattern' : 'patterns'}`;
+  app.dataset.tlsPassthrough = rows.length ? 'ready' : 'empty';
+}
+
+function addTlsPattern(host) {
+  const list = app.querySelector('.tls-host-list');
+  const empty = list?.querySelector('.tls-host-empty');
+  if (!list || !empty) return;
+  const exists = [...list.querySelectorAll('[data-tls-host-pattern]')]
+    .some((row) => row.dataset.tlsHostPattern.toLowerCase() === host.toLowerCase());
+  if (exists) return;
+  const row = document.createElement('div');
+  row.className = 'srow tls-host-row';
+  row.dataset.tlsHostPattern = host;
+  row.dataset.parity = `tls-host-${host}`;
+  row.innerHTML = '<span class="tls-host-icon"><svg><use href="#i-lock-off"/></svg></span><div class="scap"><span class="tls-host-name"><code></code></span><span>End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted.</span></div><div class="sctl"><button class="ib sm" data-tls-host-remove aria-label="Remove host pattern" title="Remove host pattern"><svg><use href="#i-trash"/></svg></button></div>';
+  row.querySelector('code').textContent = host;
+  list.insertBefore(row, empty);
+  syncTlsPatternCount();
+}
+
+app.querySelector('[data-app-container-search]')?.addEventListener('input', filterAppContainers);
+
+// Settings section, guarded repair, AppContainer permissions, and TLS passthrough states.
 app.addEventListener('click', (e) => {
   const settingsNav = e.target.closest('[data-settings-nav]');
   if (settingsNav) return setState({ settings: settingsNav.dataset.settingsNav, repair: 'idle' });
+  const githubAuthAction = e.target.closest('[data-github-auth-action]')?.dataset.githubAuthAction;
+  if (githubAuthAction === 'sign-in' || githubAuthAction === 'retry') {
+    return setState({ githubAuth: 'authorizing', update: 'authentication-required' });
+  }
+  if (githubAuthAction === 'open') {
+    return setState({ githubAuth: 'signed-in', update: 'up-to-date' });
+  }
+  if (githubAuthAction === 'sign-out') {
+    return setState({ githubAuth: 'signed-out', update: 'authentication-required' });
+  }
   if (e.target.closest('.repair-idle .danger')) return setState({ repair: 'confirm' });
   if (e.target.closest('.repair-confirm .btn:not(.danger)')) return setState({ repair: 'idle' });
+  if (e.target.closest('[data-app-container-refresh]')) {
+    window.clearTimeout(appContainerRefreshTimer);
+    setState({ appContainers: 'refreshing' });
+    appContainerRefreshTimer = window.setTimeout(() => setState({ appContainers: 'ready' }), 900);
+    return;
+  }
+  const appContainerToggle = e.target.closest('[data-app-container-toggle]');
+  if (appContainerToggle) {
+    pendingAppContainerToggle = appContainerToggle;
+    const row = appContainerToggle.closest('[data-app-container-row]');
+    const enabling = !appContainerToggle.classList.contains('on');
+    app.querySelector('[data-app-container-confirm-title]').textContent = enabling ? 'Allow loopback access?' : 'Remove loopback access?';
+    app.querySelector('[data-app-container-confirm-name]').textContent = appContainerToggle.dataset.containerName;
+    app.querySelector('[data-app-container-confirm-action]').textContent = enabling
+      ? 'will be allowed to connect to local services on this PC.'
+      : 'will no longer be allowed to connect to local services on this PC.';
+    app.querySelector('[data-app-container-confirm-sid]').textContent = row.querySelector('code').textContent;
+    app.querySelector('[data-app-container-confirm-button]').textContent = enabling
+      ? 'Continue to Windows approval'
+      : 'Remove with Windows approval';
+    return setState({ overlay: 'app-container-confirm' });
+  }
+  if (e.target.closest('[data-app-container-confirm]') && pendingAppContainerToggle) {
+    const enabled = !pendingAppContainerToggle.classList.contains('on');
+    pendingAppContainerToggle.classList.toggle('on', enabled);
+    pendingAppContainerToggle.setAttribute('aria-checked', String(enabled));
+    pendingAppContainerToggle.closest('.sctl').querySelector('.appcontainer-state').textContent = enabled ? 'Enabled' : 'Off';
+    pendingAppContainerToggle = null;
+    syncAppContainerCount();
+    return setState({ overlay: '' });
+  }
+  if (e.target.closest('[data-tls-host-add]')) {
+    const input = app.querySelector('[data-tls-host-input]');
+    const host = input.value.trim().toLowerCase();
+    if (!validTlsHostPattern(host)) return setState({ tlsPassthrough: 'invalid' });
+    setState({ tlsPassthrough: 'ready' });
+    addTlsPattern(host);
+    input.value = '';
+    syncTlsRestartRequired();
+    return;
+  }
+  const tlsRemove = e.target.closest('[data-tls-host-remove]');
+  if (tlsRemove) {
+    tlsRemove.closest('[data-tls-host-pattern]').remove();
+    syncTlsPatternCount();
+    syncTlsRestartRequired();
+    return;
+  }
+  const tlsRestart = e.target.closest('[data-tls-restart]');
+  if (tlsRestart) {
+    tlsRestart.disabled = true;
+    tlsRestart.querySelector('span').textContent = 'Restarting…';
+  }
+  if (e.target.closest('[data-tls-compatibility-dismiss]')) {
+    delete app.dataset.tlsCompatibility;
+    return setState({ overlay: '' });
+  }
+  if (e.target.closest('[data-tls-compatibility-add-dialog]')) {
+    app.querySelectorAll('[data-tls-compatibility-host]').forEach((row) => {
+      if (row.style.display !== 'none') addTlsPattern(row.dataset.tlsCompatibilityHost);
+    });
+    delete app.dataset.tlsCompatibility;
+    syncTlsRestartRequired();
+    return setState({
+      view: 'settings',
+      settings: 'tls-passthrough',
+      overlay: '',
+    });
+  }
 });
 
 // Inspector tab clicks.

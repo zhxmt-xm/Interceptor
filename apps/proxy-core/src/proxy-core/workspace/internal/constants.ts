@@ -4,4 +4,5 @@ import type { WorkspaceDocument } from '../interfaces';
 export const WORKSPACE_DOCUMENTS: readonly WorkspaceDocument[] = [
   'rule_set',
   'collection_tree',
+  'tls_passthrough_hosts',
 ];

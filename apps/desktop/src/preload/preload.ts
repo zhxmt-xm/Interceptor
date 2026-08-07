@@ -3,16 +3,19 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   DESKTOP_IPC_CHANNELS,
   CoreProcessStatus,
+  type GitHubAuthStatus,
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
   type ClientAppIcon,
   type SystemProxyStatus,
+  type TlsCompatibilityEvent,
   type UpdateStatus,
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
   echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   closeApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appQuit),
+  restartApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appRestart),
   minimizeWindow: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowMinimize),
   toggleMaximizeWindow: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowToggleMaximize),
@@ -34,6 +37,34 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRestore),
   repairSystemProxy: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRepair),
+  listAppContainers: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerList),
+  setAppContainerLoopbackExemption: (appContainerSid, enabled) =>
+    ipcRenderer.invoke(
+      DESKTOP_IPC_CHANNELS.appContainerSetExemption,
+      appContainerSid,
+      enabled,
+    ),
+  getGitHubAuthStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthGetStatus),
+  signInWithGitHub: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthSignIn),
+  openGitHubAuthorization: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthOpenAuthorization),
+  signOutFromGitHub: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthSignOut),
+  onGitHubAuthStatusChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      status: GitHubAuthStatus,
+    ) => {
+      listener(status);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.githubAuthStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.githubAuthStatus, handler);
+    };
+  },
   getUpdateStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateGetStatus),
   checkForUpdates: () =>
@@ -152,6 +183,26 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts, hosts),
   setHttpsDecryption: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.httpsSetDecryption, enabled),
+  getTlsPassthroughSettings: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.tlsPassthroughGet),
+  replaceTlsPassthroughSettings: (expectedRevision, hosts) =>
+    ipcRenderer.invoke(
+      DESKTOP_IPC_CHANNELS.tlsPassthroughReplace,
+      expectedRevision,
+      hosts,
+    ),
+  onTlsCompatibilityChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      tlsCompatibilityEvent: TlsCompatibilityEvent,
+    ) => {
+      listener(tlsCompatibilityEvent);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.tlsCompatibility, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.tlsCompatibility, handler);
+    };
+  },
   getRules: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesGet),
   replaceRules: (expectedRevision, nodes) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, nodes),

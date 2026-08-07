@@ -28,6 +28,10 @@ const systemProxyResources = path.join(
   desktopDirectory,
   'dist/system-proxy',
 );
+const appContainerResources = path.join(
+  desktopDirectory,
+  'dist/app-container',
+);
 const clientAppResources = path.join(
   desktopDirectory,
   'dist/client-app',
@@ -117,7 +121,9 @@ const config: ForgeConfig = {
       ...(process.platform === 'win32' || process.platform === 'darwin'
         ? [systemProxyResources]
         : []),
-      ...(process.platform === 'win32' ? [clientAppResources] : []),
+      ...(process.platform === 'win32'
+        ? [appContainerResources, clientAppResources]
+        : []),
     ],
     executableName: 'Interceptor',
     icon: packageIcon,

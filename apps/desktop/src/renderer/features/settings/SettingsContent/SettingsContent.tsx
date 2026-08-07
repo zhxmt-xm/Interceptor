@@ -2,12 +2,14 @@ import { useTranslation } from 'react-i18next';
 
 import { SECTIONS } from '../constants';
 
+import { AppContainerPanel } from './AppContainerPanel';
 import { CertificatesPanel } from './CertificatesPanel';
 import { PlaceholderPanel } from './PlaceholderPanel';
 import { PrivacyPanel } from './PrivacyPanel';
 import { ProxyPanel } from './ProxyPanel';
 import styles from './SettingsContent.module.css';
 import { StoragePanel } from './StoragePanel';
+import { TlsPassthroughPanel } from './TlsPassthroughPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 
 export interface SettingsContentProps {
@@ -17,6 +19,8 @@ export interface SettingsContentProps {
 /** 有专属面板的分区；其余分区落到占位面板。 */
 const PANELS: Record<string, () => React.JSX.Element> = {
   proxy: ProxyPanel,
+  'app-containers': AppContainerPanel,
+  'tls-passthrough': TlsPassthroughPanel,
   certificates: CertificatesPanel,
   storage: StoragePanel,
   privacy: PrivacyPanel,

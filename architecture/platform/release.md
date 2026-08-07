@@ -1,6 +1,6 @@
 # 平台架构：依赖随包、打包与产物安全
 
-> 最后更新：2026-08-05
+> 最后更新：2026-08-07
 > 范围：Proxy Core 运行时依赖的随包策略、Electron 打包、安全 Fuses、签名与发布 CI。
 
 ## 1. Proxy Core 运行时依赖随包
@@ -40,3 +40,5 @@ Core 是被 `utilityProcess.fork` 的独立进程，它的依赖不能靠 Render
 ## 5. 发布 CI
 
 GitHub Actions Windows/macOS 原生 job，所有 actions 固定 commit SHA；签名材料只从 Secrets 进入临时文件/keychain。tag 构建验收后发布 MSI/DMG/ZIP 到同一 GitHub Release 并用 `--generate-notes` 生成 changelog；测试诊断使用独立 artifact，**绝不混入 Release assets**。
+
+当前仓库为 private，客户端临时通过仅安装到 `zhxmt-xm/Interceptor` 的 private GitHub App（`Contents: read-only`）访问 Release。Device Flow Client ID 可随包，client secret/private key/PAT 不得进入源码或产物。仓库转 public 后删除客户端 GitHub 登录层，Release CI 与产物格式不变，updater 恢复匿名读取固定公开仓库。

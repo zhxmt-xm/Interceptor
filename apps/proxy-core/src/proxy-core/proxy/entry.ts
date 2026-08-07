@@ -7,13 +7,18 @@ import type {
   InitiatedRequest,
   InitiatedResponse,
   ProxySetting,
+  TlsHandshakeFailure,
   TlsPassthroughEvent,
   TrailerData,
   WebSocketClose,
   WebSocketMessage,
 } from 'mockttp';
 
-import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
+import type {
+  TlsCompatibilityEvent,
+  TlsCompatibilityReason,
+  UpstreamProxyConfig,
+} from '@interceptor/core-protocol';
 
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type { ClientAppService } from '../client-app/entry';
@@ -39,6 +44,7 @@ import type {
 } from './interfaces';
 import type { CaptureEventQueue } from './internal/capture-event-queue';
 import { ExchangeTracker } from './internal/exchange-tracker';
+import { TlsCompatibilityEventQueue } from './internal/tls-compatibility-event-queue';
 import { WebSocketBridge } from './internal/websocket-bridge';
 import * as ProxyUtils from './utils';
 
@@ -74,7 +80,17 @@ export class ProxyService {
   /** 是否正在记录；暂停时监听器继续转发但不再持久化/推送新 Exchange。 */
   private recording = true;
   private webSocketBreakpointsOn = false;
-  private tlsConfig: ProxyTlsConfig = { ca: null, insecureHosts: [] };
+  private tlsConfig: ProxyTlsConfig = {
+    ca: null,
+    insecureHosts: [],
+    passthroughHosts: [],
+  };
+  /** Listener configuration generation used to deduplicate compatibility signals. */
+  private tlsGeneration = 0;
+  /** Hosts already reported in the current TLS generation. */
+  private readonly reportedTlsCompatibilityKeys = new Set<string>();
+  /** Pending global Settings events, independent from Capture exchanges. */
+  private readonly tlsCompatibilityEventQueue = new TlsCompatibilityEventQueue();
   /** 上游代理；null 表示直连源站。企业 PAC/VPN 环境下必须链式转发才不断网。 */
   private upstreamProxy: UpstreamProxyConfig | null = null;
   /** Mockttp TLS 分流器所需的进程内临时身份；所有 host passthrough，证书永不出示。 */
@@ -139,9 +155,13 @@ export class ProxyService {
    * 调用方：tls.configure command handler（Main 内部下发，非 Renderer）。
    */
   async configureTls(config: ProxyTlsConfig): Promise<void> {
+    this.tlsGeneration += 1;
+    this.reportedTlsCompatibilityKeys.clear();
+    this.tlsCompatibilityEventQueue.reset();
     this.tlsConfig = {
       ca: config.ca,
       insecureHosts: [...config.insecureHosts],
+      passthroughHosts: [...config.passthroughHosts],
     };
     if (this.server) {
       const port = this.address?.port;
@@ -152,8 +172,21 @@ export class ProxyService {
       attributes: {
         mitm: config.ca !== null,
         insecureHosts: config.insecureHosts.length,
+        passthroughHosts: config.passthroughHosts.length,
       },
     });
+  }
+
+  /** Drain global TLS compatibility signals for the Core event-batch channel. */
+  drainTlsCompatibilityEvents(maxBatch: number): TlsCompatibilityEvent[] {
+    return this.tlsCompatibilityEventQueue.drain(maxBatch);
+  }
+
+  /** Restore a batch when the Core event channel could not send it. */
+  restoreTlsCompatibilityEvents(
+    events: readonly TlsCompatibilityEvent[],
+  ): void {
+    this.tlsCompatibilityEventQueue.restore(events);
   }
 
   /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM 与 HTTP/2。 */
@@ -165,6 +198,9 @@ export class ProxyService {
         https: {
           key: this.tlsConfig.ca.key,
           cert: this.tlsConfig.ca.cert,
+          tlsPassthrough: this.tlsConfig.passthroughHosts.map((hostname) => ({
+            hostname,
+          })),
         },
         http2: true,
         passthroughProxyConfig: () => this.upstreamProxySetting(),
@@ -438,12 +474,44 @@ export class ProxyService {
           host: error.tlsMetadata?.sniHostname ?? 'unknown',
         },
       });
+      this.enqueueTlsCompatibilityEvent(error);
     });
     void server.on('client-error', (error) => {
       this.diagnostics?.warn('client.error', {
         errorCode: error.errorCode ?? 'unknown',
       });
     });
+  }
+
+  /** Emit one actionable TLS compatibility signal per generation and host. */
+  private enqueueTlsCompatibilityEvent(error: TlsHandshakeFailure): void {
+    if (!this.tlsConfig.ca || !ProxyService.isCompatibilityReason(error.failureCause)) {
+      return;
+    }
+    const host = (
+      error.tlsMetadata?.sniHostname ?? error.destination?.hostname ?? ''
+    ).trim().toLowerCase();
+    if (!host) {
+      return;
+    }
+    const key = `${this.tlsGeneration}:${host}`;
+    if (this.reportedTlsCompatibilityKeys.has(key)) {
+      return;
+    }
+    this.reportedTlsCompatibilityKeys.add(key);
+    this.tlsCompatibilityEventQueue.enqueue({
+      generation: this.tlsGeneration,
+      host,
+      reason: error.failureCause,
+      timestamp: Date.now(),
+    });
+  }
+
+  /** Narrow Mockttp failures to reasons that can guide a passthrough decision. */
+  private static isCompatibilityReason(
+    reason: TlsHandshakeFailure['failureCause'],
+  ): reason is TlsCompatibilityReason {
+    return reason === 'cert-rejected' || reason === 'reset' || reason === 'closed';
   }
 
   /** 持久化一个未解密 CONNECT 隧道的有限目标元数据并推送 open 摘要。 */

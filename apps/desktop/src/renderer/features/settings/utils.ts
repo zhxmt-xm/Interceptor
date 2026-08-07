@@ -82,6 +82,34 @@ export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Cheap UI check; Core performs canonical DNS/IP validation before persistence. */
+export function isTlsPassthroughHostDraft(value: string): boolean {
+  const host = value.trim();
+  return host.length > 0 &&
+    !host.includes('://') &&
+    !host.includes('/') &&
+    !/\s/.test(host);
+}
+
+/** Match one observed hostname against persisted exact or leading-wildcard patterns. */
+export function isTlsPassthroughHostCovered(
+  host: string,
+  patterns: readonly string[],
+): boolean {
+  const normalizedHost = host.trim().toLowerCase();
+  return patterns.some((pattern) => {
+    const normalizedPattern = pattern.trim().toLowerCase();
+    if (normalizedPattern === normalizedHost) {
+      return true;
+    }
+    if (!normalizedPattern.startsWith('*.')) {
+      return false;
+    }
+    const suffix = normalizedPattern.slice(1);
+    return normalizedHost.length > suffix.length && normalizedHost.endsWith(suffix);
+  });
+}
+
 /** 更新状态标签的默认（英文）翻译回退。 */
 function defaultTranslate(key: string): string {
   return ENGLISH_UPDATE_LABELS[key] ?? key;
@@ -96,6 +124,7 @@ export class UpdateFormat {
   ): string {
     switch (status.state) {
       case 'unsupported': return translate('settings.update.unavailable');
+      case 'authentication-required': return translate('settings.update.authenticationRequired');
       case 'idle': return translate('settings.update.ready');
       case 'checking': return translate('settings.update.checking');
       case 'available': return translate('settings.update.available');
@@ -114,6 +143,9 @@ export class UpdateFormat {
       return 'red';
     }
     if (status.state === 'unsupported') {
+      return 'yellow';
+    }
+    if (status.state === 'authentication-required') {
       return 'yellow';
     }
     if (

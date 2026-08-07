@@ -226,6 +226,29 @@ describe('CoreRpcServer', () => {
     }])).not.toBeNull();
   });
 
+  it('sends and acknowledges a TLS-only event batch', () => {
+    const server = createServer(echoCommandHandler(), vi.fn());
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
+
+    expect(server.sendEventBatch([], [], [{
+      generation: 2,
+      host: 'login.example',
+      reason: 'cert-rejected',
+      timestamp: 1_000,
+    }])).toBe(1);
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
+      kind: 'event-batch',
+      batchSequence: 1,
+      events: [],
+      tlsCompatibilityEvents: [{
+        generation: 2,
+        host: 'login.example',
+        reason: 'cert-rejected',
+      }],
+    });
+  });
+
   it('forwards the exact event batch acknowledgement sequence', () => {
     const handleEventAck = vi.fn();
     const coreRpcServer = new CoreRpcServer({

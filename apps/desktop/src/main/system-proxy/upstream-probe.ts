@@ -78,6 +78,9 @@ export class UpstreamProbe {
     this.probing = true;
     try {
       const reachable = await UpstreamProbe.canConnect(target, this.timeoutMs);
+      if (this.target !== target) {
+        return;
+      }
       if (reachable !== this.reachable) {
         this.reachable = reachable;
         this.onChange(reachable);

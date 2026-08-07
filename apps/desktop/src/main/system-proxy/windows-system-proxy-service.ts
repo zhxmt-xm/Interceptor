@@ -256,20 +256,26 @@ export class WindowsSystemProxyService implements SystemProxyService {
       proxyEnabled: true,
       autoDetect: false,
       proxyServer: `http=${authority};https=${authority}`,
-      bypassList: WindowsSystemProxyService.withLocalBypass(current.bypassList),
+      bypassList: WindowsSystemProxyService.withRequiredBypass(current.bypassList),
       pacUrl: null,
     };
   }
 
-  /** Preserve existing bypass entries and ensure loopback/simple hosts stay direct. */
-  private static withLocalBypass(value: string | null): string {
+  /** Preserve user entries and keep traffic that is incompatible with interception direct. */
+  private static withRequiredBypass(value: string | null): string {
     const entries = (value ?? '')
       .split(';')
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0);
     // `<local>` only covers dotless hostnames, so loopback literals need their own entry.
     // IPv6 must be bracketed here - WinINet reads a bare `::1` as host:port and rejects the write.
-    return [...new Set([...entries, 'localhost', '127.*', '[::1]', '<local>'])].join(';');
+    return [...new Set([
+      ...entries,
+      'localhost',
+      '127.*',
+      '[::1]',
+      '<local>',
+    ])].join(';');
   }
 
   /** Validate a loopback host/port and format the WinINet authority. */

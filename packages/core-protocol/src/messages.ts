@@ -128,6 +128,27 @@ export interface CollectionReplaceCommand {
   };
 }
 
+/** Persisted TLS passthrough host patterns used before HTTPS interception. */
+export interface TlsPassthroughSettings {
+  revision: number;
+  hosts: string[];
+}
+
+/** Read the complete persisted TLS passthrough host-pattern document. */
+export interface TlsPassthroughGetCommand {
+  type: 'tls-passthrough.get';
+  payload: Record<string, never>;
+}
+
+/** Atomically replace TLS passthrough host patterns at one expected revision. */
+export interface TlsPassthroughReplaceCommand {
+  type: 'tls-passthrough.replace';
+  payload: {
+    expectedRevision: number;
+    hosts: string[];
+  };
+}
+
 /**
  * Composer 手工构造的出站请求：由 Core 用 Node http/https/http2 执行并回传响应。
  * protocol 为传输偏好（auto/HTTP1.1 走 http/https、h2 走 http2）。
@@ -372,6 +393,7 @@ export interface TlsConfigureCommand {
   payload: {
     ca: { key: string; cert: string } | null;
     insecureHosts: string[];
+    passthroughHosts: string[];
   };
 }
 
@@ -388,6 +410,8 @@ export type CoreCommand =
   | RulesHitsCommand
   | CollectionGetCommand
   | CollectionReplaceCommand
+  | TlsPassthroughGetCommand
+  | TlsPassthroughReplaceCommand
   | ComposerSendCommand
   | BreakpointResolveCommand
   | BreakpointListCommand
@@ -535,6 +559,22 @@ export interface CollectionResult {
 /** 集合替换成功后的新 revision。 */
 export interface CollectionRevisionResult {
   type: 'collection.revision';
+  payload: {
+    revision: number;
+  };
+}
+
+/** Complete persisted TLS passthrough settings document. */
+export interface TlsPassthroughSettingsResult {
+  type: 'tls-passthrough.settings';
+  payload: {
+    settings: TlsPassthroughSettings;
+  };
+}
+
+/** TLS passthrough replacement result. */
+export interface TlsPassthroughRevisionResult {
+  type: 'tls-passthrough.revision';
   payload: {
     revision: number;
   };
@@ -802,6 +842,8 @@ export type CoreResult =
   | RulesHitsResult
   | CollectionResult
   | CollectionRevisionResult
+  | TlsPassthroughSettingsResult
+  | TlsPassthroughRevisionResult
   | ComposerResponseResult
   | BreakpointResolutionResult
   | BreakpointPendingResult
@@ -827,6 +869,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
             : T extends RulesReplaceCommand ? RuleRevisionResult
             : T extends CollectionGetCommand ? CollectionResult
             : T extends CollectionReplaceCommand ? CollectionRevisionResult
+            : T extends TlsPassthroughGetCommand ? TlsPassthroughSettingsResult
+            : T extends TlsPassthroughReplaceCommand ? TlsPassthroughRevisionResult
               : T extends BreakpointResolveCommand
                 ? BreakpointResolutionResult                : T extends BreakpointListCommand
                   ? BreakpointPendingResult
@@ -964,6 +1008,19 @@ export interface CaptureExchangeEvent {
   summary: CaptureExchangeSummary;
 }
 
+export type TlsCompatibilityReason =
+  | 'cert-rejected'
+  | 'reset'
+  | 'closed';
+
+/** One deduplicated signal that a host may not accept HTTPS interception. */
+export interface TlsCompatibilityEvent {
+  generation: number;
+  host: string;
+  reason: TlsCompatibilityReason;
+  timestamp: number;
+}
+
 /** 单个 HTTP 头部（名/值）；detail 请求/响应头按 ordinal 顺序返回。 */
 export type CaptureHeaderRuleEffect = 'set' | 'append' | 'replace' | 'remove';
 
@@ -1022,6 +1079,8 @@ export interface CoreEventBatch {
   protocolVersion: typeof CORE_PROTOCOL_VERSION;
   batchSequence: number;
   events: CaptureExchangeEvent[];
+  /** TLS compatibility signals are global settings events, not Capture exchanges. */
+  tlsCompatibilityEvents?: TlsCompatibilityEvent[];
   /**
    * 本批次中首次出现、尚未下发过的客户端应用身份。
    * Core 是唯一能解析出可执行文件路径的一侧，因此随事件一次性交给 Main 取图标，

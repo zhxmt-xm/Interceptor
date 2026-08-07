@@ -1,7 +1,10 @@
-import { Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { GithubOutlined } from '@ant-design/icons';
+import { Copy, Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, cx, StatusBadge } from '../../../components';
+import { GitHubAuthActions, useGitHubAuthStore } from '../data/githubAuthStore';
 import { UpdateActions, useUpdateStore } from '../data/updateStore';
 import { UpdateFormat } from '../utils';
 
@@ -15,8 +18,11 @@ export function UpdatesPanel(): React.JSX.Element {
   const status = useUpdateStore((state) => state.status);
   const busy = useUpdateStore((state) => state.busy);
   const error = useUpdateStore((state) => state.error);
+  const authStatus = useGitHubAuthStore((state) => state.status);
+  const authBusy = useGitHubAuthStore((state) => state.busy);
+  const authError = useGitHubAuthStore((state) => state.error);
 
-  if (!status) {
+  if (!status || !authStatus) {
     return (
       <>
         <h2 className={styles.title}>{t('settings.updates')}</h2>
@@ -41,6 +47,83 @@ export function UpdatesPanel(): React.JSX.Element {
         {t('settings.updateDescription')}
       </div>
 
+      <Group title={t('settings.githubAccess')}>
+        {authStatus.state === 'signed-out' ? (
+          <Row label={t('settings.githubAccount')} hint={t('settings.githubSignInHint')}>
+            <StatusBadge tone="yellow">{t('settings.signedOut')}</StatusBadge>
+            <Button
+              variant="primary"
+              loading={authBusy}
+              onClick={() => void GitHubAuthActions.signIn()}
+              automationId={AUTOMATION_IDS.settings.updates.githubSignIn}
+            >
+              <GithubOutlined aria-hidden="true" />
+              {t('settings.signInWithGitHub')}
+            </Button>
+          </Row>
+        ) : null}
+        {authStatus.state === 'authorizing' ? (
+          <Row label={t('settings.authorizeDevice')} hint={t('settings.authorizeDeviceHint')}>
+            <button
+              type="button"
+              className={styles.deviceCode}
+              aria-label={t('settings.copyDeviceCode')}
+              data-automation-id={AUTOMATION_IDS.settings.updates.deviceCode}
+              onClick={() => void navigator.clipboard.writeText(authStatus.userCode ?? '')}
+            >
+              <Copy aria-hidden="true" />
+              {authStatus.userCode}
+            </button>
+            <Button
+              icon={ExternalLink}
+              variant="primary"
+              loading={authBusy}
+              onClick={() => void GitHubAuthActions.openAuthorizationPage()}
+              automationId={AUTOMATION_IDS.settings.updates.openGitHub}
+            >
+              {t('settings.openGitHub')}
+            </Button>
+          </Row>
+        ) : null}
+        {authStatus.state === 'signed-in' ? (
+          <Row label={t('settings.githubAccount')} hint={t('settings.githubStoredHint')}>
+            <span className={styles.githubLogin}>
+              <GithubOutlined aria-hidden="true" />
+              @{authStatus.login}
+            </span>
+            <StatusBadge>{t('settings.connected')}</StatusBadge>
+            <Button
+              loading={authBusy}
+              onClick={() => void GitHubAuthActions.signOut()}
+              automationId={AUTOMATION_IDS.settings.updates.githubSignOut}
+            >
+              {t('settings.signOut')}
+            </Button>
+          </Row>
+        ) : null}
+        {authStatus.state === 'failed' ? (
+          <Row
+            label={t('settings.githubAuthorizationFailed')}
+            hint={authStatus.message ?? t('settings.githubAuthorizationFailedHint')}
+          >
+            <StatusBadge tone="red">{t('settings.notConnected')}</StatusBadge>
+            <Button
+              icon={RefreshCw}
+              loading={authBusy}
+              onClick={() => void GitHubAuthActions.signIn()}
+              automationId={AUTOMATION_IDS.settings.updates.githubRetry}
+            >
+              {t('settings.tryAgain')}
+            </Button>
+          </Row>
+        ) : null}
+        <Row label={t('settings.repositoryAccess')} hint={t('settings.repositoryAccessHint')}>
+          <span className={styles.mono}>zhxmt-xm/Interceptor</span>
+          <StatusBadge tone="yellow">{t('settings.private')}</StatusBadge>
+          <StatusBadge dot={false}>{t('settings.contentsReadOnly')}</StatusBadge>
+        </Row>
+      </Group>
+
       <Group title={t('settings.version')}>
         <Row label={t('settings.currentApplication')} hint={t('settings.installedVersionHint')}>
           <span className={styles.mono}>{status.currentVersion}</span>
@@ -56,7 +139,7 @@ export function UpdatesPanel(): React.JSX.Element {
       <Group title={t('settings.delivery')}>
         <Row label={t('settings.releaseSource')} hint={t('settings.releaseSourceHint')}>
           <span className={styles.mono}>zhxmt-xm/Interceptor</span>
-          <StatusBadge>{t('settings.public')}</StatusBadge>
+          <StatusBadge tone="yellow">{t('settings.private')}</StatusBadge>
         </Row>
         <Row label={t('settings.checkPolicy')} hint={t('settings.checkPolicyHint')}>
           <span className={styles.mono}>stable</span>
@@ -98,7 +181,9 @@ export function UpdatesPanel(): React.JSX.Element {
             <StatusBadge tone="yellow">{t('settings.development')}</StatusBadge>
           </Row>
         ) : null}
-        {status.state !== 'checking' && status.state !== 'downloading' && status.supported ? (
+        {authStatus.state === 'signed-in' &&
+        status.state !== 'authentication-required' &&
+        status.state !== 'checking' && status.state !== 'downloading' && status.supported ? (
           <Row
             label={t('settings.updateAction')}
             hint={t('settings.stableChannelHint')}
@@ -108,6 +193,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 icon={RefreshCw}
                 disabled={busy}
                 onClick={() => void UpdateActions.check()}
+                automationId={AUTOMATION_IDS.settings.updates.check}
               >
                 {t('settings.checkNow')}
               </Button>
@@ -118,6 +204,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 variant="primary"
                 disabled={busy}
                 onClick={() => void UpdateActions.download()}
+                automationId={AUTOMATION_IDS.settings.updates.download}
               >
                 {t('settings.downloadUpdate')}
               </Button>
@@ -128,6 +215,7 @@ export function UpdatesPanel(): React.JSX.Element {
                 variant="primary"
                 disabled={busy}
                 onClick={() => void UpdateActions.openDownloaded()}
+                automationId={AUTOMATION_IDS.settings.updates.openInstaller}
               >
                 {t('settings.openInstaller')}
               </Button>
@@ -148,9 +236,9 @@ export function UpdatesPanel(): React.JSX.Element {
         </Group>
       ) : null}
 
-      {error ? (
+      {error || authError ? (
         <div className={cx(styles.operationResult, styles.operationError)} role="alert">
-          {error}
+          {error ?? authError}
         </div>
       ) : null}
     </>

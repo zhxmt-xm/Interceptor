@@ -44,9 +44,23 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'proxy-not-ready', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'proxy-not-ready' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'idle' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy-repair', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy', repair: 'confirm' } });
-  for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
-    shots.push({ feature: 'settings', theme, variant: `updates-${update}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update } });
+  shots.push({ feature: 'settings', theme, variant: 'app-containers', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'ready' } });
+  shots.push({ feature: 'settings', theme, variant: 'app-containers-refreshing', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'refreshing' } });
+  shots.push({ feature: 'settings', theme, variant: 'app-container-confirm', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'app-container-confirm', settings: 'app-containers', appContainers: 'ready' } });
+  shots.push({ feature: 'settings', theme, variant: 'tls-passthrough', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsCompatibility: '' } });
+  shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-restart-required', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsCompatibility: '', tlsRestart: 'required' } });
+  shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-invalid', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'invalid', tlsCompatibility: '', tlsHostInput: 'not a host' } });
+  shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-empty', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'empty', tlsCompatibility: '' } });
+  for (const githubAuth of ['signed-out', 'authorizing', 'failed']) {
+    shots.push({ feature: 'settings', theme, variant: `updates-auth-${githubAuth}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update: 'authentication-required', githubAuth } });
   }
+  for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
+    shots.push({ feature: 'settings', theme, variant: `updates-${update}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update, githubAuth: 'signed-in' } });
+  }
+}
+for (const theme of ['light', 'dark']) {
+  shots.push({ feature: 'tls-compatibility', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: 'tls-compatibility', tlsCompatibility: 'closed', tlsCompatibilityHosts: ['rdweb.wvd.microsoft.com', 'windows365.microsoft.com', 'afdfp-rdgateway-r0.wvd.microsoft.com'] } });
+  shots.push({ feature: 'tls-compatibility', theme, variant: 'after-add', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsRestart: 'required', tlsPatterns: ['rdweb.wvd.microsoft.com', 'windows365.microsoft.com', 'afdfp-rdgateway-r0.wvd.microsoft.com'], tlsCompatibility: '' } });
 }
 // capture inspector tabs (Headers is the framed default)
 for (const theme of ['light', 'dark']) {
@@ -187,6 +201,11 @@ async function shoot(list) {
       settings: 'certificates',
       repair: 'idle',
       update: 'up-to-date',
+      githubAuth: 'signed-in',
+      appContainers: 'ready',
+      tlsPassthrough: 'ready',
+      tlsCompatibility: '',
+      tlsHostInput: '',
       https: 'fresh',
       mitm: 'inactive',
       systemProxy: 'on',

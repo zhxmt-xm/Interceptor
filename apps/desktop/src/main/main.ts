@@ -15,18 +15,24 @@ import {
 
 import type {
   ClientAppIdentity,
+  TlsCompatibilityEvent,
+  TlsPassthroughSettings,
   UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
 
 import {
   DESKTOP_IPC_CHANNELS,
+  type AppContainerAccessSnapshot,
   type CaptureExchangeEvent,
   type ClientAppIcon,
   type CertificateInfo,
   type CoreProcessStatus,
+  type GitHubAuthStatus,
   type SystemProxyStatus as DesktopSystemProxyStatus,
   type UpdateStatus,
 } from '../shared/desktop-api';
+import { AppContainerService } from './app-container/app-container-service';
+import type { AppContainerSnapshot } from './app-container/interfaces';
 import { CertificateService } from './certificates/certificate-service';
 import { TrustStoreService } from './certificates/trust-store-service';
 import {
@@ -51,10 +57,12 @@ import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import { toUpstreamAuthority } from './system-proxy/system-proxy-upstream';
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
+import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
   readErrorMessage,
   readErrorName,
+  selectTlsPassthroughHostsForProvision,
   toBodyDecodeOptions,
   toBodyExportRequest,
   toBreakpointEdit,
@@ -73,6 +81,7 @@ import {
   toRendererDiagnosticRecord,
   toRendererCaptureUsage,
   toSafeBodyFileName,
+  toTlsPassthroughSettingsStatus,
   toWebSocketFrameQuery,
 } from './utils';
 
@@ -93,6 +102,8 @@ class DesktopApplication {
   /** Secure packaged Renderer protocol, installed only outside development. */
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
   private systemProxyService: SystemProxyService | null = null;
+  /** Windows sandbox permission owner; independent from WinINet proxy ownership. */
+  private appContainerService: AppContainerService | null = null;
   /** 接管时检测到的上游代理；降级期间保留，供探活恢复后升级回去。 */
   private detectedUpstreamProxy: UpstreamProxyConfig | null = null;
   /** Core 当前实际使用的上游代理；null 表示直连。 */
@@ -105,11 +116,19 @@ class DesktopApplication {
       void this.onUpstreamReachabilityChange(reachable);
     },
   );
-  /** Public GitHub release checker; downloads always remain user-controlled. */
+  /** GitHub user authorization owner; credentials remain encrypted inside Main. */
+  private gitHubAuthService: GitHubAuthService | null = null;
+  /** Private GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
   private readonly trustStore = new TrustStoreService();
   /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
   private insecureHosts: string[] = [];
+  /** Latest Workspace-backed TLS passthrough document. */
+  private tlsPassthroughSettings: TlsPassthroughSettings | null = null;
+  /** Passthrough patterns actually provisioned in this Main process. */
+  private activeTlsPassthroughHosts: readonly string[] | null = null;
+  /** Next Core generation must load the latest persisted passthrough document. */
+  private applyPersistedTlsPassthroughOnNextProvision = false;
   /** HTTPS 解密（MITM）用户意图开关；与“CA 是否信任”解耦——信任是系统层
    * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
   private mitmEnabled = false;
@@ -121,6 +140,8 @@ class DesktopApplication {
   /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
   private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
+  private shutdownComplete = false;
+  private relaunchAfterShutdown = false;
 
   start(): void {
     process.on('uncaughtExceptionMonitor', (error, origin) => {
@@ -146,10 +167,36 @@ class DesktopApplication {
       secureStore: safeStorage,
     });
     this.systemProxyService = this.createSystemProxyService();
+    this.appContainerService = new AppContainerService({
+      helperPath: this.getAppContainerHelperPath(),
+    });
+    this.gitHubAuthService = new GitHubAuthService({
+      clientId: GitHubAuthService.clientId,
+      dataDirectory: path.join(app.getPath('userData'), 'updates'),
+      secureStore: safeStorage,
+      openExternal: async (url) => {
+        await shell.openExternal(url);
+      },
+    });
+    await this.gitHubAuthService.start();
     this.createUpdateService();
     const updateService = this.requireUpdateService();
     updateService.onStatusChange((status) => {
       this.broadcastUpdateStatus(status);
+    });
+    let updateAuthenticated = this.gitHubAuthService.status().state === 'signed-in';
+    updateService.authorizationChanged(updateAuthenticated);
+    this.gitHubAuthService.onStatusChange((status) => {
+      this.broadcastGitHubAuthStatus(status);
+      const authenticated = status.state === 'signed-in';
+      if (authenticated === updateAuthenticated) {
+        return;
+      }
+      updateAuthenticated = authenticated;
+      updateService.authorizationChanged(authenticated);
+      if (authenticated) {
+        void this.checkForUpdatesAfterAuthorization(updateService);
+      }
     });
     if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       this.packagedRendererProtocol = new PackagedRendererProtocol(
@@ -210,6 +257,11 @@ class DesktopApplication {
       this.broadcastCaptureEvents(events);
       this.loadClientAppIcons(clientApps);
     });
+    this.coreRuntime.onTlsCompatibilityEvents((events) => {
+      for (const event of events) {
+        this.broadcastTlsCompatibility(event);
+      }
+    });
     this.coreRuntime.onCoreRpcProtocolIssue((detail) => {
       this.diagnostics.warn('main.core-rpc.message-rejected', {
         errorCode: 'invalid-message',
@@ -218,11 +270,13 @@ class DesktopApplication {
     });
     // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM；
     // 上游代理同样保存在 Core 进程内，不重新下发会让重启后的企业环境断网。
-    this.coreRuntime.onCoreProcessReady(() => {
-      void this.provisionCoreTls();
-      void this.applyUpstreamProxy(
-        this.systemProxyService?.detectedUpstream() ?? null,
-      );
+    this.coreRuntime.onCoreProcessReady(async () => {
+      await Promise.all([
+        this.provisionCoreTls(true),
+        this.applyUpstreamProxy(
+          this.systemProxyService?.detectedUpstream() ?? null,
+        ),
+      ]);
     });
     this.coreRuntime.start();
     this.createMainWindow();
@@ -242,21 +296,32 @@ class DesktopApplication {
   }
 
   private onBeforeQuit(event: Electron.Event): void {
+    if (this.shutdownComplete) {
+      return;
+    }
+
+    event.preventDefault();
     if (this.quitting) {
       return;
     }
 
     // 先恢复仍由本产品持有的系统代理，再让 CoreProcess 完成清理。
-    event.preventDefault();
     this.quitting = true;
     this.updateService?.stop();
+    this.gitHubAuthService?.stop();
     void this.restoreSystemProxyBeforeShutdown()
       .then(() => this.coreRuntime.stop())
       .then(() => {
+        this.shutdownComplete = true;
+        if (this.relaunchAfterShutdown) {
+          app.relaunch();
+        }
         app.quit();
       })
       .catch((error: unknown) => {
         this.quitting = false;
+        this.shutdownComplete = false;
+        this.relaunchAfterShutdown = false;
         dialog.showErrorBox(
           'Unable to restore system proxy',
           `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
@@ -370,6 +435,19 @@ class DesktopApplication {
     // 自绘窗口栏的窗口控制：退出走 guarded shutdown，最小化/最大化只作用于发起窗口。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appQuit, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      this.relaunchAfterShutdown = false;
+      setImmediate(() => app.quit());
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appRestart, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+        // Forge owns the Vite server. app.relaunch() would exit Forge, close Vite,
+        // and leave the relaunched Renderer loading a dead localhost URL.
+        this.applyPersistedTlsPassthroughOnNextProvision = true;
+        await this.coreRuntime.restart();
+        return;
+      }
+      this.relaunchAfterShutdown = true;
       setImmediate(() => app.quit());
     });
     ipcMain.handle(DESKTOP_IPC_CHANNELS.windowMinimize, (event) => {
@@ -570,6 +648,50 @@ class DesktopApplication {
         }
         return { ...result, status: this.withUpstreamProxy(result.status) };
       });
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerList, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const snapshot = await this.requireAppContainerService().list();
+      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.appContainerSetExemption,
+      async (event, appContainerSid: unknown, enabled: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof appContainerSid !== 'string' || typeof enabled !== 'boolean') {
+          throw new Error('AppContainer exemption request is invalid.');
+        }
+        return this.runMainAction('main.app-container.set-exemption', async () => {
+          const snapshot = await this.requireAppContainerService()
+            .setLoopbackExemption(appContainerSid, enabled);
+          return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+        });
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireGitHubAuthService().status();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthSignIn, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.github-auth.sign-in', () =>
+        this.requireGitHubAuthService().signIn());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthOpenAuthorization, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      await this.runMainAction('main.github-auth.open-authorization', () =>
+        this.requireGitHubAuthService().openAuthorizationPage());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthSignOut, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.github-auth.sign-out', () =>
+        this.requireGitHubAuthService().signOut());
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.updateGetStatus, (event) => {
@@ -1048,6 +1170,42 @@ class DesktopApplication {
       },
     );
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.tlsPassthroughGet, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return toTlsPassthroughSettingsStatus(
+        await this.loadTlsPassthroughSettings(),
+        this.activeTlsPassthroughHosts,
+      );
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.tlsPassthroughReplace,
+      async (event, expectedRevision: unknown, hosts: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        try {
+          // Mockttp compiles this list at listener startup. Persist now, but keep
+          // the active process snapshot unchanged until a guarded app restart.
+          await this.coreRuntime.request({
+            type: 'tls-passthrough.replace',
+            payload: {
+              expectedRevision: expectedRevision as number,
+              hosts: hosts as string[],
+            },
+          });
+          const settings = await this.loadTlsPassthroughSettings();
+          return {
+            ok: true,
+            settings: toTlsPassthroughSettingsStatus(
+              settings,
+              this.activeTlsPassthroughHosts,
+            ),
+          };
+        } catch (error) {
+          return DesktopApplication.toReplaceFailure(error);
+        }
+      },
+    );
+
     // 规则集只读查询：返回当前 revision + 全部规则，供 Rules workspace 编辑器加载。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.rulesGet, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -1371,6 +1529,15 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast one credential-free GitHub authorization snapshot. */
+  private broadcastGitHubAuthStatus(status: GitHubAuthStatus): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.githubAuthStatus, status);
+      }
+    }
+  }
+
   /** Broadcast one bounded update-state snapshot to every trusted Renderer. */
   private broadcastUpdateStatus(status: UpdateStatus): void {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -1380,9 +1547,18 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast one deduplicated TLS compatibility signal to every Renderer. */
+  private broadcastTlsCompatibility(event: TlsCompatibilityEvent): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.tlsCompatibility, event);
+      }
+    }
+  }
+
   // 解密当前 CA 材料并经内部 tls.configure 命令下发 Core（私钥不经 Renderer）。
   // 仅当 CA 已安装信任时才下发 material 启用 MITM；否则下发 null，CONNECT 直通不解密。
-  private async provisionCoreTls(): Promise<void> {
+  private async provisionCoreTls(throwOnError = false): Promise<void> {
     if (!this.certificateService) {
       return;
     }
@@ -1392,10 +1568,23 @@ class DesktopApplication {
         trusted && this.mitmEnabled
           ? await this.certificateService.getMaterial()
           : null;
+      const tlsPassthroughSettings = this.tlsPassthroughSettings
+        ?? await this.loadTlsPassthroughSettings();
+      const passthroughHosts = selectTlsPassthroughHostsForProvision(
+        this.activeTlsPassthroughHosts,
+        tlsPassthroughSettings.hosts,
+        this.applyPersistedTlsPassthroughOnNextProvision,
+      );
       await this.coreRuntime.request({
         type: 'tls.configure',
-        payload: { ca: material, insecureHosts: this.insecureHosts },
+        payload: {
+          ca: material,
+          insecureHosts: this.insecureHosts,
+          passthroughHosts,
+        },
       });
+      this.activeTlsPassthroughHosts = [...passthroughHosts];
+      this.applyPersistedTlsPassthroughOnNextProvision = false;
     } catch (error) {
       this.diagnostics.warn('main.tls.provision-failed', {
         errorCode: readErrorName(error),
@@ -1403,7 +1592,20 @@ class DesktopApplication {
         attributes: { message: readErrorMessage(error) },
       });
       // Core 尚未就绪、无代理或无存储时不阻断启动。
+      if (throwOnError) {
+        throw error;
+      }
     }
+  }
+
+  /** Read and cache the Core-owned persistent TLS passthrough document. */
+  private async loadTlsPassthroughSettings(): Promise<TlsPassthroughSettings> {
+    const result = await this.coreRuntime.request({
+      type: 'tls-passthrough.get',
+      payload: {},
+    });
+    this.tlsPassthroughSettings = result.payload.settings;
+    return this.tlsPassthroughSettings;
   }
 
   private async runMainAction<T>(
@@ -1443,6 +1645,39 @@ class DesktopApplication {
     return this.systemProxyService;
   }
 
+  /** Return the initialized Windows AppContainer permission owner. */
+  private requireAppContainerService(): AppContainerService {
+    if (!this.appContainerService) {
+      throw new Error('AppContainerService is not initialized');
+    }
+    return this.appContainerService;
+  }
+
+  /** Remove native-only paths and capability details before crossing into Renderer. */
+  private static toAppContainerAccessSnapshot(
+    snapshot: AppContainerSnapshot,
+  ): AppContainerAccessSnapshot {
+    return {
+      supported: snapshot.supported,
+      containers: snapshot.containers.map((appContainer) => ({
+        appContainerSid: appContainer.appContainerSid,
+        packageFamilyName: appContainer.packageFamilyName,
+        displayName: appContainer.displayName,
+        description: appContainer.description,
+        packageFullName: appContainer.packageFullName,
+        exempt: appContainer.exempt,
+      })),
+    };
+  }
+
+  /** Return the initialized GitHub authorization owner. */
+  private requireGitHubAuthService(): GitHubAuthService {
+    if (!this.gitHubAuthService) {
+      throw new Error('GitHubAuthService is not initialized');
+    }
+    return this.gitHubAuthService;
+  }
+
   /** Return the initialized GitHub release notification owner. */
   private requireUpdateService(): UpdateService {
     if (!this.updateService) {
@@ -1458,8 +1693,22 @@ class DesktopApplication {
       currentVersion: app.getVersion(),
       dataDirectory: app.getPath('userData'),
       diagnostics: this.diagnostics,
+      getAccessToken: () => this.requireGitHubAuthService().getAccessToken(),
       openPath: (filePath) => shell.openPath(filePath),
     });
+  }
+
+  /** Check after sign-in, retrying once if an aborted older operation was still settling. */
+  private async checkForUpdatesAfterAuthorization(
+    updateService: UpdateService,
+  ): Promise<void> {
+    await Promise.resolve(updateService.check());
+    if (
+      this.gitHubAuthService?.status().state === 'signed-in' &&
+      updateService.status().state === 'idle'
+    ) {
+      await Promise.resolve(updateService.check());
+    }
   }
 
   private async restoreSystemProxyBeforeShutdown(): Promise<void> {
@@ -1635,6 +1884,19 @@ class DesktopApplication {
       : path.resolve(
           app.getAppPath(),
           'dist/system-proxy/wininet-proxy-helper.exe',
+        );
+  }
+
+  /** Resolve the Windows Network Isolation helper in development and packages. */
+  private getAppContainerHelperPath(): string {
+    return app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          'app-container/app-container-helper.exe',
+        )
+      : path.resolve(
+          app.getAppPath(),
+          'dist/app-container/app-container-helper.exe',
         );
   }
 

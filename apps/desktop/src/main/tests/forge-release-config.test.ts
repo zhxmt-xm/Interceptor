@@ -40,6 +40,21 @@ describe('Forge release configuration', () => {
     expect(findMaker('@electron-forge/maker-wix').config?.windowsSign)
       .toBeUndefined();
   });
+
+  it('ships the AppContainer helper only in Windows package resources', () => {
+    const resources = forgeConfig.packagerConfig?.extraResource;
+    const paths = Array.isArray(resources) ? resources : [resources];
+
+    if (process.platform === 'win32') {
+      expect(paths).toEqual(expect.arrayContaining([
+        expect.stringMatching(/[\\/]dist[\\/]app-container$/),
+      ]));
+    } else {
+      expect(paths).not.toEqual(expect.arrayContaining([
+        expect.stringMatching(/[\\/]dist[\\/]app-container$/),
+      ]));
+    }
+  });
 });
 
 /** Find one declared maker and expose its serializable release configuration. */

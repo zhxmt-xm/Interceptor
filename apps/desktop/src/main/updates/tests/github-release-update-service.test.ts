@@ -46,6 +46,11 @@ describe('GitHubReleaseUpdateService', () => {
     expect(fixture.openPath).toHaveBeenCalledWith(installerPath);
     expect(states).toContain('downloading');
     expect(states.at(-1)).toBe('downloaded');
+    expect(fixture.requestFor('/releases/latest')?.headers.get('authorization'))
+      .toBe('Bearer ghu_test_token');
+    const assetRequest = fixture.requestFor('/releases/assets/42');
+    expect(assetRequest?.headers.get('authorization')).toBe('Bearer ghu_test_token');
+    expect(assetRequest?.headers.get('accept')).toBe('application/octet-stream');
   });
 
   it('selects and downloads the matching macOS DMG', async () => {
@@ -78,13 +83,40 @@ describe('GitHubReleaseUpdateService', () => {
     await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
   });
 
-  it('treats a repository without releases as current', async () => {
+  it('reports missing or unauthorized private repositories', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, { status: 404 });
 
     expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
-      state: 'up-to-date',
+      state: 'failed',
       latestVersion: null,
-      message: 'No public stable release has been published yet.',
+      message: 'The private release repository was not found or is not authorized.',
+    });
+  });
+
+  it('requires GitHub authorization before reading private releases', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, { accessToken: null });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'authentication-required',
+      latestVersion: null,
+    });
+    expect(fixture.fetcher).not.toHaveBeenCalled();
+  });
+
+  it('ignores a release response started under an older authorization', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    const releaseMetadata = fixture.pauseMetadata();
+
+    const check = fixture.gitHubReleaseUpdateService.check();
+    await vi.waitFor(() => expect(fixture.metadataRequests()).toBe(1));
+    fixture.gitHubReleaseUpdateService.authorizationChanged(false);
+    fixture.gitHubReleaseUpdateService.authorizationChanged(true);
+    releaseMetadata();
+
+    expect(await check).toMatchObject({ state: 'idle', latestVersion: null });
+    expect(fixture.gitHubReleaseUpdateService.status()).toMatchObject({
+      state: 'idle',
+      latestVersion: null,
     });
   });
 
@@ -187,6 +219,7 @@ interface GitHubReleaseFixtureOptions {
   readonly downloadBody?: Buffer;
   readonly platform?: NodeJS.Platform;
   readonly architecture?: NodeJS.Architecture;
+  readonly accessToken?: string | null;
 }
 
 /** Isolated fake GitHub API and installer source for update service tests. */
@@ -201,8 +234,10 @@ class GitHubReleaseFixture {
   readonly openPath = vi.fn(async () => '');
   /** Service under test. */
   readonly gitHubReleaseUpdateService: GitHubReleaseUpdateService;
-  /** Captured request URLs. */
-  private readonly requests: string[] = [];
+  /** Captured requests and security-relevant headers. */
+  private readonly requests: Array<{ url: string; headers: Headers }> = [];
+  /** Optional gate for an in-flight metadata response. */
+  private metadataGate: Promise<void> | null = null;
 
   /** Bind one complete test fixture. */
   private constructor(
@@ -213,7 +248,7 @@ class GitHubReleaseFixture {
     const tagName = options.tagName ?? 'v0.1.1';
     const assetName = options.assetName ?? 'Interceptor.msi';
     const assetUrl = options.assetUrl ??
-      `https://github.com/zhxmt-xm/Interceptor/releases/download/${tagName}/${assetName}`;
+      'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/assets/42';
     const digest = options.digest === undefined
       ? `sha256:${createHash('sha256').update(this.installer).digest('hex')}`
       : options.digest;
@@ -225,18 +260,22 @@ class GitHubReleaseFixture {
           prerelease: false,
           body: options.body ?? '',
           assets: [{
+            id: 42,
             name: assetName,
-            browser_download_url: assetUrl,
+            url: assetUrl,
             state: 'uploaded',
             size: this.installer.length,
             digest,
           }],
         });
     const downloadBody = options.downloadBody ?? this.installer;
-    this.fetcher = vi.fn(async (input: string | URL | Request) => {
+    this.fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
-      this.requests.push(url);
+      this.requests.push({ url, headers: new Headers(init?.headers) });
       if (url.includes('/releases/latest')) {
+        if (this.metadataGate) {
+          await this.metadataGate;
+        }
         return metadata.clone();
       }
       return new Response(new Uint8Array(downloadBody), {
@@ -251,6 +290,9 @@ class GitHubReleaseFixture {
       currentVersion: '0.1.0',
       dataDirectory: root,
       diagnostics: { info: vi.fn(), error: vi.fn() },
+      getAccessToken: async () => options.accessToken === undefined
+        ? 'ghu_test_token'
+        : options.accessToken,
       fetcher: this.fetcher as unknown as typeof fetch,
       openPath: this.openPath,
       now: () => new Date('2026-07-18T00:00:00.000Z'),
@@ -269,6 +311,23 @@ class GitHubReleaseFixture {
 
   /** Count only GitHub latest-release metadata requests. */
   metadataRequests(): number {
-    return this.requests.filter((url) => url.includes('/releases/latest')).length;
+    return this.requests.filter((request) => request.url.includes('/releases/latest')).length;
+  }
+
+  /** Return one captured request matching a fixed URL fragment. */
+  requestFor(fragment: string): { url: string; headers: Headers } | undefined {
+    return this.requests.find((request) => request.url.includes(fragment));
+  }
+
+  /** Pause the next metadata response until the returned function is called. */
+  pauseMetadata(): () => void {
+    let release = (): void => undefined;
+    this.metadataGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return () => {
+      this.metadataGate = null;
+      release();
+    };
   }
 }

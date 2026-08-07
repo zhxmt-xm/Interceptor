@@ -9,6 +9,7 @@ import {
   type CoreEventBatch,
   type CoreResult,
   type CoreResultForCommand,
+  type TlsCompatibilityEvent,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -34,6 +35,8 @@ export class CoreRpcClient {
     'breakpoint.configure': 'breakpoint.config',
     'collection.get': 'collection.collection',
     'collection.replace': 'collection.revision',
+    'tls-passthrough.get': 'tls-passthrough.settings',
+    'tls-passthrough.replace': 'tls-passthrough.revision',
     'composer.send': 'composer.response',
     'tls.probe': 'tls.probed',
     'grpc.messages': 'grpc.messages',
@@ -77,6 +80,10 @@ export class CoreRpcClient {
         clientApps: ClientAppIdentity[],
       ) => void)
     | null = null;
+    /** Global TLS compatibility listener, independent from Capture exchange state. */
+    private tlsCompatibilityEventListener:
+      | ((events: TlsCompatibilityEvent[]) => void)
+      | null = null;
   /** 单条 Core 消息无法关联/解析时的诊断监听器；不代表连接失效。 */
   private protocolIssueListener: CoreRpcProtocolIssueListener | null = null;
 
@@ -120,6 +127,13 @@ export class CoreRpcClient {
     ) => void,
   ): void {
     this.captureEventListener = listener;
+  }
+
+  /** Register the cross-Core-generation TLS compatibility event consumer. */
+  onTlsCompatibilityEvents(
+    listener: (events: TlsCompatibilityEvent[]) => void,
+  ): void {
+    this.tlsCompatibilityEventListener = listener;
   }
 
   /** 注册单消息协议问题监听器；问题只影响该消息或对应 request。 */
@@ -239,6 +253,15 @@ export class CoreRpcClient {
     } catch (error) {
       this.reportProtocolIssue(
         `Capture event consumer failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    try {
+      this.tlsCompatibilityEventListener?.(
+        batch.tlsCompatibilityEvents ?? [],
+      );
+    } catch (error) {
+      this.reportProtocolIssue(
+        `TLS compatibility event consumer failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     try {

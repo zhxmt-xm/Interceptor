@@ -1,5 +1,9 @@
 import type { LanguageId } from './languages';
 import { englishCatalog, type MessageCatalog } from './english-catalog';
+import {
+  githubAuthMessages,
+  type GitHubAuthMessageCatalog,
+} from './github-auth-resources';
 import { deCatalog } from './locales/de';
 import { esCatalog } from './locales/es';
 import { frCatalog } from './locales/fr';
@@ -18,19 +22,22 @@ import { zhTWCatalog } from './locales/zh-TW';
 export { englishCatalog, type MessageCatalog, type MessageKey } from './english-catalog';
 
 export const resources = {
-  en: { translation: englishCatalog },
-  'zh-CN': { translation: zhCNCatalog },
-  'zh-TW': { translation: zhTWCatalog },
-  ja: { translation: jaCatalog },
-  ko: { translation: koCatalog },
-  de: { translation: deCatalog },
-  fr: { translation: frCatalog },
-  es: { translation: esCatalog },
-  it: { translation: itCatalog },
-  'pt-BR': { translation: ptBRCatalog },
-  ru: { translation: ruCatalog },
-  nl: { translation: nlCatalog },
-  pl: { translation: plCatalog },
-  tr: { translation: trCatalog },
-  uk: { translation: ukCatalog },
-} satisfies Record<LanguageId, { translation: MessageCatalog }>;
+  en: { translation: { ...englishCatalog, ...githubAuthMessages.en } },
+  'zh-CN': { translation: { ...zhCNCatalog, ...githubAuthMessages['zh-CN'] } },
+  'zh-TW': { translation: { ...zhTWCatalog, ...githubAuthMessages['zh-TW'] } },
+  ja: { translation: { ...jaCatalog, ...githubAuthMessages.ja } },
+  ko: { translation: { ...koCatalog, ...githubAuthMessages.ko } },
+  de: { translation: { ...deCatalog, ...githubAuthMessages.de } },
+  fr: { translation: { ...frCatalog, ...githubAuthMessages.fr } },
+  es: { translation: { ...esCatalog, ...githubAuthMessages.es } },
+  it: { translation: { ...itCatalog, ...githubAuthMessages.it } },
+  'pt-BR': { translation: { ...ptBRCatalog, ...githubAuthMessages['pt-BR'] } },
+  ru: { translation: { ...ruCatalog, ...githubAuthMessages.ru } },
+  nl: { translation: { ...nlCatalog, ...githubAuthMessages.nl } },
+  pl: { translation: { ...plCatalog, ...githubAuthMessages.pl } },
+  tr: { translation: { ...trCatalog, ...githubAuthMessages.tr } },
+  uk: { translation: { ...ukCatalog, ...githubAuthMessages.uk } },
+} satisfies Record<
+  LanguageId,
+  { translation: MessageCatalog & GitHubAuthMessageCatalog }
+>;

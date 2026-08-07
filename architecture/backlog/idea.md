@@ -74,3 +74,9 @@
 - 有的桌面端应用捕捉不到request？比如douyuclient，好像很多request被归类到edge里去了 ![alt text](image-6.png)
 - 我打开https://www.bilibili.com，他的登录失效了，关掉之后又有效了，不知道为什么
 - rule和composer要支持导入导出
+- 有时会出现两个相同的application ![alt text](image-7.png)
+- 切换feature时setting时应该保留，下次访问时仍然是上次访问的状态
+- appcontainer界面应该优先展示enabled的appcontainer
+- appcontainer加一个enable button来enable all appcontainer
+- clear瞬间filter会卡一下id，list也会卡一下 ![alt text](image-11.png)
+- proxy 和mitm都没有持久化，每次启动好像都是默认态

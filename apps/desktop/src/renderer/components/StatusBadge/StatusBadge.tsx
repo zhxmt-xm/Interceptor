@@ -6,6 +6,7 @@ import styles from './StatusBadge.module.css';
 export interface StatusBadgeProps {
   children: ReactNode;
   tone?: 'green' | 'yellow' | 'red' | 'info';
+  dot?: boolean;
   className?: string;
   parityId?: string;
 }
@@ -14,6 +15,7 @@ export interface StatusBadgeProps {
 export function StatusBadge({
   children,
   tone = 'green',
+  dot = true,
   className,
   parityId,
 }: StatusBadgeProps): React.JSX.Element {
@@ -28,7 +30,7 @@ export function StatusBadge({
       )}
       data-parity={parityId}
     >
-      <span className={styles.dot} />
+      {dot ? <span className={styles.dot} /> : null}
       {children}
     </span>
   );

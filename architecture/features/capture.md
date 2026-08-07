@@ -1,6 +1,6 @@
 # Feature: Capture
 
-> 最后更新：2026-08-05
+> 最后更新：2026-08-07
 > Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/capture/`、`apps/proxy-core/src/proxy-core/client-app/`
 > Renderer 模块：`apps/desktop/src/renderer/features/capture/`；正文查看器内核 `apps/desktop/src/renderer/components/BodyViewer/`
 
@@ -1176,6 +1176,20 @@ WebView2 宿主、微信小程序容器这类进程自己不是用户心目中�
 | 开始菜单快捷方式 | `.lnk` 目标所在目录 + 快捷方式名 | MSI 安装（OneDrive、Logitech G HUB 等） |
 
 `SystemComponent = 1` 是 Windows 标记运行时组件的官方标志（WebView2 Runtime 即属此列），因此它不会成为归属终点。
+
+**MSIX 来源迁移候选 [研究完成，未实现]。** 当前 `CollectPackagedApps()` 直接读取 AppModel
+Package Repository 注册表；可改用官方 `PackageManager.FindPackagesForUser("")`，获得当前用户注册包
+的 identity、安装路径、版本与状态，并正确覆盖非默认 PackageVolume。收益是摆脱内部注册表结构、
+强类型语义更稳定；代价是不会返回只为其他用户注册或仅 staged/provisioned 的包。
+
+对“当前用户发起的网络连接”，当前用户范围通常正是正确语义；但 SYSTEM/其他用户真正运行的
+packaged process 仍需单独处理。全用户 `FindPackages()` 要管理员权限，不应放入抓包热路径。因此实施前
+必须比较当前 registry 索引、`FindPackagesForUser` 与实际运行 PID 三组结果，不做盲目一换一。详见
+[研究备忘](../backlog/research.md) § 3.3。
+
+AppContainer exemption UI 不使用这张索引；它由 `NetworkIsolationEnumAppContainers` 直接提供候选
+AppContainer、SID、package、display name 与 binaries。把 exemption 枚举与 Capture 运行时归属分成
+两个模块，避免为了授权一个 SID 引入整套启发式应用识别。
 
 五个边界条件：
 

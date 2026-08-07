@@ -278,6 +278,37 @@ describe('CoreRpcClient', () => {
     expect(fakeRpcPort.closed).toBe(false);
   });
 
+  it('delivers a TLS-only event batch and acknowledges it', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const listener = vi.fn();
+    coreRpcClient.onTlsCompatibilityEvents(listener);
+
+    fakeRpcPort.receive({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 3,
+      events: [],
+      tlsCompatibilityEvents: [{
+        generation: 4,
+        host: 'login.example',
+        reason: 'reset',
+        timestamp: 1_000,
+      }],
+    });
+
+    expect(listener).toHaveBeenCalledWith([{
+      generation: 4,
+      host: 'login.example',
+      reason: 'reset',
+      timestamp: 1_000,
+    }]);
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
+      kind: 'event-ack',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 3,
+    });
+  });
+
   it('cleans up when attaching or posting fails', async () => {
     const coreRpcClient = new CoreRpcClient();
     const attachFailure = new FakeRpcPort();

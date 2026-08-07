@@ -268,6 +268,31 @@ describe('ProxyService upstream proxy chaining without MITM', () => {
     expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
   });
 
+  it('keeps configured passthrough hosts on upstream CONNECT while MITM is enabled', async () => {
+    const ca = await generateCACertificate();
+    await proxyService.configureTls({
+      ca,
+      insecureHosts: ['localhost'],
+      passthroughHosts: ['localhost'],
+    });
+    proxyService.setUpstreamProxy({
+      proxyUrl: `http://127.0.0.1:${upstream.port}`,
+    });
+
+    const raw = await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/selective');
+
+    expect(raw).toContain('tls-origin-body');
+    expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+    await vi.waitFor(() => {
+      expect(recordingCaptureService.exchanges).toHaveLength(1);
+    });
+    expect(recordingCaptureService.exchanges[0]).toMatchObject({
+      method: 'CONNECT',
+      protocol: 'tls',
+      responseMime: 'application/x-encrypted-tunnel',
+    });
+  });
+
   it('goes direct for passthrough HTTPS when no upstream is configured', async () => {
     const raw = await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/direct');
     expect(raw).toContain('tls-origin-body');

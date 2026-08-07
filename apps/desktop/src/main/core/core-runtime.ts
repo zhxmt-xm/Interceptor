@@ -14,6 +14,7 @@ import {
   type CoreResultForCommand,
   type DiagnosticIngestPayload,
   type MainToCoreMessage,
+  type TlsCompatibilityEvent,
 } from '@interceptor/core-protocol';
 import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
 import type { ClientAppIdentity } from '@interceptor/core-protocol';
@@ -80,6 +81,7 @@ export class CoreRuntime {
     | ReturnType<typeof setTimeout>
     | null = null;
   private pendingCoreRuntimeStopResolver: (() => void) | null = null;
+  private coreRuntimeRestartPromise: Promise<void> | null = null;
   private coreProcessShouldRun = false;
   /** 当前 CoreProcess 代际是否已收到 ready；只有 ready 才结束启动期限。 */
   private coreProcessReceivedReady = false;
@@ -160,6 +162,13 @@ export class CoreRuntime {
     this.coreRpcClient.onCaptureEvents(listener);
   }
 
+  /** Register global TLS compatibility signals delivered through event-batch. */
+  onTlsCompatibilityEvents(
+    listener: (events: TlsCompatibilityEvent[]) => void,
+  ): void {
+    this.coreRpcClient.onTlsCompatibilityEvents(listener);
+  }
+
   /**
    * 注册 CoreProcess 就绪监听器（每代 CoreProcess 收到 ready 时触发一次），
    * 用于在新 Core 启动后下发 TLS 配置等初始化。调用方：DesktopApplication。
@@ -194,43 +203,82 @@ export class CoreRuntime {
    * 调用方：DesktopApplication.onBeforeQuit；完成后 Main 才继续退出应用。
    */
   async stop(): Promise<void> {
-    this.coreProcessShouldRun = false;
-    this.clearCoreProcessRestartDelay();
-    this.clearCoreProcessHeartbeatTimeout();
-
     try {
-      const coreProcess = this.coreProcess;
-      if (!coreProcess) {
-        this.coreRpcClient.close();
-        this.updateCoreProcessStatus('stopped', { pid: null, detail: null });
-        return;
-      }
-
-      this.updateCoreProcessStatus('stopping', {
-        pid: coreProcess.pid ?? this.coreProcessStatus.pid,
-        detail: 'Waiting for CoreProcess to stop',
-      });
-
-      await new Promise<void>((resolve) => {
-        this.pendingCoreRuntimeStopResolver = resolve;
-
-        try {
-          coreProcess.postMessage({ type: 'shutdown' });
-        } catch {
-          this.forceStopCoreProcess(coreProcess);
-          return;
-        }
-
-        this.coreProcessShutdownTimeoutTimer = setTimeout(
-          () => this.forceStopCoreProcess(coreProcess),
-          this.coreProcessShutdownTimeoutMs,
-        );
-      });
+      await this.stopCurrentCoreProcess();
     } finally {
       this.coreProcessStatusListeners.clear();
       this.coreProcessReadyListeners.clear();
       this.coreRpcProtocolIssueListeners.clear();
     }
+  }
+
+  /**
+   * Gracefully replace the current CoreProcess while preserving Main listeners.
+   * Used by Forge development because app.relaunch would orphan the Vite server.
+   */
+  restart(): Promise<void> {
+    if (this.coreRuntimeRestartPromise) {
+      return this.coreRuntimeRestartPromise;
+    }
+    this.coreRuntimeRestartPromise = this.restartCoreProcess()
+      .finally(() => {
+        this.coreRuntimeRestartPromise = null;
+      });
+    return this.coreRuntimeRestartPromise;
+  }
+
+  /** Stop the current generation without disposing long-lived Main listeners. */
+  private async stopCurrentCoreProcess(): Promise<void> {
+    this.coreProcessShouldRun = false;
+    this.clearCoreProcessRestartDelay();
+    this.clearCoreProcessHeartbeatTimeout();
+
+    const coreProcess = this.coreProcess;
+    if (!coreProcess) {
+      this.coreRpcClient.close();
+      this.updateCoreProcessStatus('stopped', { pid: null, detail: null });
+      return;
+    }
+
+    this.updateCoreProcessStatus('stopping', {
+      pid: coreProcess.pid ?? this.coreProcessStatus.pid,
+      detail: 'Waiting for CoreProcess to stop',
+    });
+
+    await new Promise<void>((resolve) => {
+      this.pendingCoreRuntimeStopResolver = resolve;
+
+      try {
+        coreProcess.postMessage({ type: 'shutdown' });
+      } catch {
+        this.forceStopCoreProcess(coreProcess);
+        return;
+      }
+
+      this.coreProcessShutdownTimeoutTimer = setTimeout(
+        () => this.forceStopCoreProcess(coreProcess),
+        this.coreProcessShutdownTimeoutMs,
+      );
+    });
+  }
+
+  /** Start a fresh generation and resolve after all ready initializers publish running. */
+  private async restartCoreProcess(): Promise<void> {
+    await this.stopCurrentCoreProcess();
+    const running = new Promise<void>((resolve, reject) => {
+      const removeListener = this.onCoreProcessStatusChange((status) => {
+        if (status.state === 'running') {
+          removeListener();
+          if (status.detail?.startsWith('Core initialization failed:')) {
+            reject(new Error(status.detail));
+          } else {
+            resolve();
+          }
+        }
+      });
+    });
+    this.start();
+    await running;
   }
 
   /**

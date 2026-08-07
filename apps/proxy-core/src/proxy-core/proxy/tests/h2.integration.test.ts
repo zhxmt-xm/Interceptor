@@ -374,7 +374,11 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    await proxyService.configureTls({
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
+    });
     const address = await proxyService.start();
     origin = await startH2Origin(originCertificate.cert, originCertificate.key);
 
@@ -394,6 +398,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     await proxyService.configureTls({
       ca,
       insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
     });
     const address = await proxyService.start();
     origin = await startH2Origin(
@@ -435,7 +440,11 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    await proxyService.configureTls({
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
+    });
     const address = await proxyService.start();
     // 随机二进制经 gzip：任何转码、截断或字符集损坏都会让逐字节比较失败。
     const responsePlain = randomBytes(192 * 1024);
@@ -521,6 +530,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     await proxyService.configureTls({
       ca,
       insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
     });
     const address = await proxyService.start();
 
@@ -548,7 +558,11 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    await proxyService.configureTls({
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
+    });
     const address = await proxyService.start();
     origin = await startH1Origin(
       originCertificate.cert,
@@ -573,7 +587,11 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({ ca, insecureHosts: ['localhost', '127.0.0.1'] });
+    await proxyService.configureTls({
+      ca,
+      insecureHosts: ['localhost', '127.0.0.1'],
+      passthroughHosts: [],
+    });
     const address = await proxyService.start();
     const requestBody = grpcEnvelope(Buffer.from('request-message'));
     const responseBody = Buffer.concat([

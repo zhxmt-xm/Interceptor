@@ -18,6 +18,27 @@ const OPEN_RUNTIME_PROXY_READINESS_ACTIONS = [
   { type: 'clickRole', role: 'button', name: 'Paused' },
 ];
 
+const TLS_COMPATIBILITY_EVENTS = [
+  {
+    generation: 3,
+    host: 'rdweb.wvd.microsoft.com',
+    reason: 'closed',
+    timestamp: 1_000,
+  },
+  {
+    generation: 3,
+    host: 'windows365.microsoft.com',
+    reason: 'closed',
+    timestamp: 2_000,
+  },
+  {
+    generation: 3,
+    host: 'afdfp-rdgateway-r0.wvd.microsoft.com',
+    reason: 'cert-rejected',
+    timestamp: 3_000,
+  },
+];
+
 export const views = [
   {
     id: 'capture',
@@ -842,11 +863,183 @@ export const views = [
       'Confirm repair',
     ],
   },
+  ...['light', 'dark'].map((theme) => ({
+    id: `settings-app-containers${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    rendererNav: 'Settings',
+    designState: {
+      view: 'settings',
+      theme,
+      sidebar: 'expanded',
+      settings: 'app-containers',
+      appContainers: 'ready',
+    },
+    designShot: `${theme}/settings/app-containers.png`,
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: 'AppContainer access' },
+    ],
+    targets: [
+      'Choose which Windows app containers may connect to local proxy listeners.',
+      'Administrator approval is required for every change.',
+      'An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits.',
+      {
+        name: 'AppContainer search',
+        designSelector: '[data-app-container-search]',
+        appSelector: 'input[aria-label="Search Windows app containers"]',
+      },
+      '0 enabled · 4 containers',
+      'Windows app containers',
+      'SID is the stable identity',
+      'Microsoft AAD Broker Plugin',
+      'Windows SSO · Recommended',
+      'Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy',
+      'S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272',
+      {
+        name: 'AppContainer switch',
+        designSelector: '[data-app-container-toggle]',
+        appSelector: '[role="switch"]',
+      },
+      'Newly installed or first-run app containers appear after Refresh. Interceptor never enables every container automatically.',
+    ],
+  })),
+  {
+    id: 'tls-compatibility-dialog-add',
+    theme: 'light',
+    tlsPassthroughHosts: [],
+    rendererNav: 'Settings',
+    designState: {
+      view: 'settings',
+      theme: 'light',
+      sidebar: 'collapsed',
+      overlay: '',
+      settings: 'tls-passthrough',
+      tlsPassthrough: 'ready',
+      tlsRestart: 'required',
+      tlsPatterns: TLS_COMPATIBILITY_EVENTS.map((event) => event.host),
+      tlsCompatibility: '',
+    },
+    designShot: 'light/tls-compatibility/after-add.png',
+    rendererActions: [
+      { type: 'clickText', text: 'TLS passthrough' },
+      { type: 'emitTlsCompatibility', events: TLS_COMPATIBILITY_EVENTS },
+      { type: 'clickRole', role: 'button', name: 'Add all hosts' },
+    ],
+    targets: [
+      'Restart required',
+      {
+        name: 'Restart Interceptor',
+        designSelector: 'button[data-tls-restart]',
+        appSelector: 'button:has-text("Restart Interceptor")',
+      },
+      'Passthrough host patterns',
+      {
+        name: 'TLS host rows',
+        designSelector: '[data-tls-host-pattern]',
+        appSelector: '[data-parity^="tls-host-"]',
+      },
+    ],
+  },
+  ...['light', 'dark'].map((theme) => ({
+    id: `settings-tls-passthrough${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    rendererNav: 'Settings',
+    designState: {
+      view: 'settings',
+      theme,
+      sidebar: 'expanded',
+      settings: 'tls-passthrough',
+      tlsPassthrough: 'ready',
+      tlsCompatibility: '',
+    },
+    designShot: `${theme}/settings/tls-passthrough.png`,
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: 'TLS passthrough' },
+    ],
+    targets: [
+      'Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata.',
+      'Hostname or wildcard',
+      'Add',
+      'Passthrough host patterns',
+      'Matched before HTTPS interception',
+      '*.wvd.microsoft.com',
+      'Windows 365 · Recommended',
+      'End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted.',
+      'Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible.',
+    ],
+  })),
+  ...['light', 'dark'].map((theme) => ({
+    id: `settings-tls-passthrough-restart-required${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    tlsRestartRequired: true,
+    rendererNav: 'Settings',
+    designState: {
+      view: 'settings',
+      theme,
+      sidebar: 'expanded',
+      settings: 'tls-passthrough',
+      tlsPassthrough: 'ready',
+      tlsCompatibility: '',
+      tlsRestart: 'required',
+    },
+    designShot: `${theme}/settings/tls-passthrough-restart-required.png`,
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: 'TLS passthrough' },
+    ],
+    targets: [
+      'Restart required',
+      'Saved passthrough changes take effect after Interceptor restarts. Current proxy traffic continues using the active list; restart, then retry affected clients.',
+      {
+        name: 'Restart Interceptor',
+        designSelector: 'button[data-tls-restart]',
+        appSelector: 'button:has-text("Restart Interceptor")',
+      },
+      'Hostname or wildcard',
+      'Passthrough host patterns',
+      '*.wvd.microsoft.com',
+    ],
+  })),
+  ...['light', 'dark'].map((theme) => ({
+    id: `tls-compatibility-dialog${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    tlsCompatibilityEvents: TLS_COMPATIBILITY_EVENTS,
+    designState: {
+      view: 'capture',
+      theme,
+      sidebar: 'collapsed',
+      overlay: 'tls-compatibility',
+      tlsCompatibility: 'closed',
+      tlsCompatibilityHosts: TLS_COMPATIBILITY_EVENTS.map((event) => event.host),
+    },
+    designShot: `${theme}/tls-compatibility/dialog.png`,
+    targets: [
+      'TLS interception may be incompatible',
+      'The following hosts failed during intercepted TLS handshakes. Review them before adding TLS passthrough.',
+      {
+        name: 'rdweb.wvd.microsoft.com',
+        parity: 'tls-compatibility-host-rdweb.wvd.microsoft.com',
+      },
+      {
+        name: 'windows365.microsoft.com',
+        parity: 'tls-compatibility-host-windows365.microsoft.com',
+      },
+      {
+        name: 'afdfp-rdgateway-r0.wvd.microsoft.com',
+        parity: 'tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com',
+      },
+      'Saving does not interrupt current proxy traffic. TLS passthrough settings will open so you can restart Interceptor and apply the change.',
+      'Not now',
+      'Add all hosts',
+    ],
+  })),
   ...['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported'].flatMap((updateState) =>
     ['light', 'dark'].map((theme) => ({
       id: `settings-updates-${updateState}${theme === 'dark' ? '-dark' : ''}`,
       theme,
       updateState,
+      githubAuthState: 'signed-in',
       rendererNav: 'Settings',
       designState: {
         view: 'settings',
@@ -854,11 +1047,19 @@ export const views = [
         sidebar: 'expanded',
         settings: 'updates',
         update: updateState,
+        githubAuth: 'signed-in',
       },
       designShot: `${theme}/settings/updates-${updateState}.png`,
-      rendererActions: [{ type: 'clickText', text: 'Updates' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickText', text: 'Updates' },
+      ],
       targets: [
-        'Checks and downloads signed installers from public GitHub Releases. Downloads start only when you choose.',
+        'Uses your GitHub identity to check and download signed installers from the private release channel. Downloads start only when you choose.',
+        'GitHub access',
+        '@zhxmt-xm',
+        'Connected',
+        'Contents · read-only',
         'Current application',
         '0.1.0',
         'Latest GitHub release',
@@ -872,6 +1073,42 @@ export const views = [
         ...(updateState === 'up-to-date' ? ['Up to date', 'Current', 'Update action'] : []),
         ...(updateState === 'failed' ? ['Failed', 'Last update action', 'Retry available'] : []),
         ...(updateState === 'unsupported' ? ['Unavailable', 'Release checks unavailable', 'Development'] : []),
+      ],
+    }))),
+  ...['signed-out', 'authorizing', 'failed'].flatMap((githubAuthState) =>
+    ['light', 'dark'].map((theme) => ({
+      id: `settings-updates-auth-${githubAuthState}${theme === 'dark' ? '-dark' : ''}`,
+      theme,
+      updateState: 'authentication-required',
+      githubAuthState,
+      rendererNav: 'Settings',
+      designState: {
+        view: 'settings',
+        theme,
+        sidebar: 'expanded',
+        settings: 'updates',
+        update: 'authentication-required',
+        githubAuth: githubAuthState,
+      },
+      designShot: `${theme}/settings/updates-auth-${githubAuthState}.png`,
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickText', text: 'Updates' },
+      ],
+      targets: [
+        'Sign in required',
+        'GitHub access',
+        'Repository access',
+        'Contents · read-only',
+        ...(githubAuthState === 'signed-out'
+          ? ['Signed out', 'Sign in with GitHub']
+          : []),
+        ...(githubAuthState === 'authorizing'
+          ? ['Authorize this device', 'F7D2-9A4C', 'Open GitHub']
+          : []),
+        ...(githubAuthState === 'failed'
+          ? ['GitHub authorization failed', 'Not connected', 'Try again']
+          : []),
       ],
     }))),
   {

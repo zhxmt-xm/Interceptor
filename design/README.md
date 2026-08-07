@@ -6,7 +6,7 @@
 
 ## 目录约定
 
-```
+```text
 design/
 ├── design-system.md         # 权威视觉规范(颜色/排版/尺寸/组件/交互)
 ├── README.md                # 本文件
@@ -25,7 +25,7 @@ design/
 
 - **所有 feature UI 都合并在 `design/app/` 这一个 SPA 里**,不再每个 feature 一个目录。加/改 feature 就改 `index.html` + `app.css`(必要时 `app.js` 的 `NAV`)。
 - Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧承载侧栏折叠按钮、feature 名称与该 feature 的一等命令（Capture = Recording + Breakpoints + Import/Export），右侧只保留窗口控制；状态统一放到底部状态栏。**侧栏默认收起**，Capture 的全部筛选与搜索位于 list 左侧的可收起筛选分栏。
-- 状态统一由 `window.__setState(...)` 驱动。除既有 `view/theme/sidebar/filters/overlay/tab/composer/...` 外，Breakpoint 设计使用 `breakpoints`、`breakpointState`、`breakpointBody`、`breakpointFile`、`breakpointPanel`、`breakpointNotice`；Rules 字体对比使用 `ruleTypography`。人点击 UI 与截图脚本必须驱动同一套状态，不允许只为截图加一条假路径。
+- 状态统一由 `window.__setState(...)` 驱动。除既有 `view/theme/sidebar/filters/overlay/tab/composer/...` 外，Breakpoint 设计使用 `breakpoints`、`breakpointState`、`breakpointBody`、`breakpointFile`、`breakpointPanel`、`breakpointNotice`；Rules 字体对比使用 `ruleTypography`；Windows App 兼容场景使用 `appContainers`、`tlsPassthrough`、`tlsCompatibility`、`tlsCompatibilityHosts`、`tlsPatterns` 与 `tlsRestart`，其中 TLS compatibility 是任意工作区可见的多 host 全局 dialog。人点击 UI 与截图脚本必须驱动同一套状态，不允许只为截图加一条假路径。
 - 所有视觉取值以 [design-system.md](./design-system.md) 为准;设计稿与代码都引用同一套 token。字体走 Google Fonts CDN,渲染时等 `networkidle`。
 - 设计稿要完整实现用户可见的状态与交互（展开、选择、菜单、loading、empty、warning、disabled、成功/失败）；网络、Core、IPC、持久化用 fixture/adapter 模拟，不复制业务后端。
 - 这些是**设计资产**,非产品运行代码;落地到 `apps/desktop` 后可保留供回归比对。
@@ -56,7 +56,7 @@ node design/app/shoot-scenes.mjs                   # 更新当前主题 switcher
   - **capture** — 左侧筛选分栏 + 捕获列表 + Inspector + 两道 splitter；Breakpoint 已作为流量状态并入此视图（workbar manager、paused rows、Request/Response editor、future-traffic notice）
   - **rules** — 统一规则(Matcher + Rewrite / Map Local / Map Remote / Block / Breakpoint action)
   - **composer** — 可嵌套命名目录的 Collection 分栏 + 多请求文档标签 + URL/Send 行 + 请求编辑区（Query/Headers/Body/Auth）+ 响应区（Body/Headers/Cookies/Timing）
-  - **settings** — Proxy / Certificates / Appearance / Storage / Privacy / Updates
+  - **settings** — Proxy / AppContainer access / TLS passthrough / Certificates / Appearance / Storage / Privacy / Updates
   - **diagnostics** — 命令诊断表格 + action 时间线
   - **shell-v2** — 默认 46px Window Header、全高侧栏、内容工具栏与五个 workspace 的明暗主题基线
   - **boot**（全屏）— 冷启动加载界面：渐变环绕的大 app icon + 三步进度点（Proxy Core / Local listener / System proxy，全自动），五个阶段各一张图

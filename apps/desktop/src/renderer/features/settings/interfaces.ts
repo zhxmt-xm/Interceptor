@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-import type { UpdateStatus } from '../../../shared/desktop-api';
+import type { GitHubAuthStatus, UpdateStatus } from '../../../shared/desktop-api';
 
 export interface SettingsSection {
   id: string;
@@ -39,5 +39,14 @@ export interface UpdateViewState {
   applyStatus(status: UpdateStatus): void;
   setBusy(busy: boolean): void;
   dismiss(): void;
+  setError(error: string | null): void;
+}
+
+export interface GitHubAuthViewState {
+  status: GitHubAuthStatus | null;
+  busy: boolean;
+  error: string | null;
+  applyStatus(status: GitHubAuthStatus): void;
+  setBusy(busy: boolean): void;
   setError(error: string | null): void;
 }

@@ -118,7 +118,9 @@ describe('WindowsSystemProxyService', () => {
 
     const status = await windowsSystemProxyService.enable('127.0.0.1', 8888);
 
-    expect(status.bypassList).toBe('localhost;127.*;10.*;192.168.*;<local>;[::1]');
+    expect(status.bypassList).toBe(
+      'localhost;127.*;10.*;192.168.*;<local>;[::1]',
+    );
   });
 
   it('restores the exact snapshot when current settings remain owned', async () => {

@@ -1,10 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
+import { isIP } from 'node:net';
+import { domainToASCII } from 'node:url';
 
 import type {
   Collection,
   CollectionNode,
   RuleNode,
   RuleSet,
+  TlsPassthroughSettings,
 } from '@interceptor/core-protocol';
 
 import { workspaceDatabasePath } from '../constants';
@@ -25,6 +28,8 @@ import { RevisionConflictError } from './internal/errors';
  * 在 `read`/`write` 与 `utils/index.ts`，因此新增一种配置不需要碰骨架。
  */
 export class WorkspaceService {
+  /** No host bypasses HTTPS interception until the user explicitly adds it. */
+  private static readonly DEFAULT_TLS_PASSTHROUGH_HOSTS: readonly string[] = [];
   /** workspace.sqlite 同步连接；只在 initialize 后存在。 */
   private databaseSync: DatabaseSync | null = null;
 
@@ -87,6 +92,36 @@ export class WorkspaceService {
     return { revision, nodes: [...nodes] };
   }
 
+  /** Read persistent TLS passthrough patterns or an empty default. */
+  loadTlsPassthroughSettings(): TlsPassthroughSettings {
+    const row = this.read('tls_passthrough_hosts');
+    return row
+      ? {
+          revision: row.revision,
+          hosts: WorkspaceService.normalizeTlsPassthroughHosts(
+            JSON.parse(row.json) as unknown,
+          ),
+        }
+      : {
+          revision: 0,
+          hosts: [...WorkspaceService.DEFAULT_TLS_PASSTHROUGH_HOSTS],
+        };
+  }
+
+  /** Atomically replace and normalize persistent TLS passthrough patterns. */
+  saveTlsPassthroughSettings(
+    expectedRevision: number,
+    hosts: readonly string[],
+  ): TlsPassthroughSettings {
+    const normalizedHosts = WorkspaceService.normalizeTlsPassthroughHosts(hosts);
+    const revision = this.write(
+      'tls_passthrough_hosts',
+      expectedRevision,
+      JSON.stringify(normalizedHosts),
+    );
+    return { revision, hosts: normalizedHosts };
+  }
+
   /** 关闭 workspace.sqlite；配置已持久化，不随 Capture 清理。 */
   dispose(): void {
     this.databaseSync?.close();
@@ -143,5 +178,44 @@ export class WorkspaceService {
       throw new Error('WorkspaceService.initialize() must be called before use.');
     }
     return this.databaseSync;
+  }
+
+  /** Validate host-only patterns and canonicalize DNS names to lowercase ASCII. */
+  private static normalizeTlsPassthroughHosts(value: unknown): string[] {
+    if (!Array.isArray(value) || value.some((host) => typeof host !== 'string')) {
+      throw new Error('TLS passthrough hosts must be a string array.');
+    }
+    const hosts = value as string[];
+    const normalizedHosts: string[] = [];
+    const seenHosts = new Set<string>();
+    for (const host of hosts) {
+      const trimmedHost = host.trim().toLowerCase();
+      const wildcard = trimmedHost.startsWith('*.');
+      const hostname = wildcard ? trimmedHost.slice(2) : trimmedHost;
+      let normalizedHostname: string;
+      if (!wildcard && isIP(hostname) !== 0) {
+        normalizedHostname = hostname;
+      } else {
+        normalizedHostname = domainToASCII(hostname);
+        if (
+          normalizedHostname.length === 0 ||
+          normalizedHostname.length > 253 ||
+          normalizedHostname.split('.').some((label) =>
+            label.length === 0 ||
+            label.length > 63 ||
+            !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))
+        ) {
+          throw new Error(`Invalid TLS passthrough host pattern: ${host}`);
+        }
+      }
+      const normalizedHost = wildcard
+        ? `*.${normalizedHostname}`
+        : normalizedHostname;
+      if (!seenHosts.has(normalizedHost)) {
+        seenHosts.add(normalizedHost);
+        normalizedHosts.push(normalizedHost);
+      }
+    }
+    return normalizedHosts;
   }
 }

@@ -35,6 +35,9 @@ class PackageArtifactAuditor {
       access(path.join(resourcesPath, 'proxy-core/archive/worker/entry.cjs')),
       access(path.join(resourcesPath, 'proxy-core/diagnostics/worker/entry.cjs')),
       access(path.join(resourcesPath, `system-proxy/${this.systemProxyHelperName()}`)),
+      ...(process.platform === 'win32'
+        ? [access(path.join(resourcesPath, 'app-container/app-container-helper.exe'))]
+        : []),
     ]);
 
     await this.auditAsar(asarPath);

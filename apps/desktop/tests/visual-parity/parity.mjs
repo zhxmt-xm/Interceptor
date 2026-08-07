@@ -99,6 +99,11 @@ async function applyRendererActions(page, actions = []) {
       case 'fillLabel':
         await page.getByLabel(action.label, { exact: true }).nth(index).fill(action.value);
         break;
+      case 'emitTlsCompatibility':
+        await page.evaluate((events) => {
+          window.__emitTlsCompatibility?.(events);
+        }, action.events);
+        break;
       case 'selectLabel':
         {
           const control = page.getByLabel(action.label, { exact: true }).nth(index);
@@ -189,8 +194,12 @@ for (const view of views) {
     noRuleHits: view.noRuleHits === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
+    githubAuthState: view.githubAuthState ?? 'signed-in',
     proxyReady: view.proxyReady !== false,
     proxyEnableFails: view.proxyEnableFails === true,
+    tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
+    tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
+    tlsRestartRequired: view.tlsRestartRequired === true,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);
