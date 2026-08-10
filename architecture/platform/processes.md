@@ -97,13 +97,11 @@ Main/Core 通信严格区分四类状态，**单条业务数据或请求失败�
 
 `CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，**不做运行时长度、数量、枚举或内容校验**。捕获的 URL、path、headers、MIME、status text 与 Body 在 Core 存储/导出边界不截断。
 
-持久化 TLS passthrough 名单与当前运行名单不同时，Renderer 可请求 `app:restart`。packaged Main 先
-经过 guarded shutdown，恢复系统代理并停止 Core；仅清理成功后才调用 `app.relaunch()`，清理失败会
-取消 relaunch 并保持当前应用运行。Forge 开发态不能 relaunch Electron：Forge 父进程会随旧 Electron
-退出并关闭 Vite，导致新 Renderer 加载失效的 localhost URL。开发态因此保留 Main/Renderer/Vite，调用
-`CoreRuntime.restart()` 优雅替换 CoreProcess；长期状态/ready listener 保留，新代完成 TLS 与上游初始化
-后才发布 running，Capture bootstrap 随后重建 listener。TLS ready 初始化失败保持同一 Core PID 为
-running 并记录 detail，不 kill/restart；shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
+TLS passthrough 名单保存即对新连接生效：`patches/mockttp+4.5.0.patch` 让 `tlsPassthrough` 接受 getter，
+Listener 每连接重新求值那份数组，因此不需要重建 listener，也不再提供“重启应用”入口。已失败的 TLS
+连接无法原地倒带，仍需客户端重试。唯一会换 listener 的场景是开始解密且 listener 上仍挂旧证书；
+此时在途 Exchange 按 `ERR_LISTENER_REBUILD` 干净终结，代际与计数不重置。TLS ready 初始化失败保持同一
+Core PID 为 running 并记录 detail，不 kill/restart；shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
 
 ## 4. Workflow 详细表
 
@@ -127,11 +125,11 @@ running 并记录 detail，不 kill/restart；shutdown timeout 强杀属于 oper
 | 16 | explicit timeout/cancel | Caller → Main → Core | `cancel` + AbortController | `PendingRpcRequest`、`CoreRpcServer` | 只有调用方显式 timeout/abort 才取消；无默认业务 timeout | Cancel 发送失败时本地 Promise 仍清理 |
 | 17 | CoreProcess heartbeat 观测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat；首个 ready 前 30 秒启动期限 | `core-application.ts`、`core-runtime.ts` | ready 后只更新 lastHeartbeatAt | 运行期暂停 heartbeat 不改变状态或重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
-| 19 | graceful shutdown / user restart | Renderer/Electron → DesktopApplication → CoreRuntime/CoreApplication | `app:quit` / `app:restart`、`before-quit`、`shutdown`、`stopped` | `desktop-api.ts`、`preload.ts`、`main.ts`、`core-runtime.ts`、`core-application.ts` | packaged 恢复系统代理并停止 Core 后 relaunch；Forge 开发态保留 Vite/窗口并优雅替换 Core 代际 | 清理期间重复 quit 仍被拦截；packaged 恢复失败取消 relaunch；开发态等待新 Core 初始化完成；Core 停止超过 1.5 秒则 force kill |
+| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → CoreRuntime/CoreApplication | `app:quit`、`before-quit`、`shutdown`、`stopped` | `desktop-api.ts`、`preload.ts`、`main.ts`、`core-runtime.ts`、`core-application.ts` | 先恢复系统代理再停 Core，最后退出；产品不再提供“重启应用”入口（TLS 名单已热生效） | 清理期间重复 quit 仍被拦截；恢复失败则保持应用运行并报错；Core 停止超过 1.5 秒则 force kill |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
 | 21 | GitHub Device Flow 与 token 刷新 | Renderer → Preload → Main → GitHub OAuth | get/signIn/open/signOut + auth status；启动 refresh；access 到期前 5 分钟 refresh | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-auth-service.ts`、Settings Updates | token/过期时间经 safeStorage 加密；每次成功轮换整组 token 并重排单 timer；Renderer 只见公开账号和设备码状态 | refresh token 缺失、过期或非退出刷新失败即删本地登录；退出取消 timer；无 client secret/private key |
 | 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |
-| 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；Add all hosts 一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
+| 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
 
 ## 5. 关键数据结构
 

@@ -283,13 +283,9 @@ TLS Settings。Store 同时推进 settings change sequence，使已经挂载的 
 三者的完整证据、技术方案、文件级改动和收益/代价见
 [backlog/research.md](../backlog/research.md) § 3.3。`design/app` 已提供两组独立 Settings 页面、
 AppContainer 搜索/刷新/单项开关与 UAC 确认、TLS host pattern 管理、全局兼容性 dialog、invalid / empty 状态，
-产品代码与 light / dark visual parity 场景均已实现。修改名单只持久化，不热重建共享 listener；
-Main 按规范化集合比较持久化名单与本进程实际运行名单，仅在存在有效差异时显示重启操作。用户触发
-`Restart Interceptor` 后，packaged 复用 guarded shutdown，先恢复系统代理并停止 Core，再由新进程
-加载名单；Forge 开发态不能 `app.relaunch()`（旧 Electron 退出会让 Forge 关闭 Vite），因此保留
-Main/Renderer/Vite，只优雅替换 CoreProcess 代际并等待 TLS/上游初始化，现有 Capture bootstrap 随后
-重建 8888 listener。两条路径都不会在原 listener 上热改名单。
-增加后删除、删除后加回、顺序或大小写变化都不要求重启。真实 Windows App 登录与 RDP 行为仍需
+产品代码与 light / dark visual parity 场景均已实现。Mockttp patch 让 `tlsPassthrough` 接受 getter，
+名单每连接求值，因此**保存即对新连接生效**，既不重建共享 listener也不需要重启；在途连接不受
+影响。增加后删除、删除后加回、顺序或大小写变化同样不需要任何额外动作。真实 Windows App 登录与 RDP 行为仍需
 人工验收。
 
 现场复核（2026-08-07）：Workspace revision 8 已持久化 4 个 host，Core `tls.reconfigured` 在重启后

@@ -134,9 +134,9 @@ sequenceDiagram
 				else cert-rejected / reset / closed
 						Core-->>UI: 去重后的全局兼容性事件
 						UI-->>User: 任意工作区显示多 host 列表 dialog
-						User->>UI: Add all hosts
-						UI->>Core: 一次 revision replace 批量保存列表
-						UI-->>User: 导航到 TLS Settings 并提示重启后生效
+					User->>UI: 勾选精确 host 或更宽的 wildcard
+					UI->>Core: 一次 revision replace 批量保存选中 pattern
+					UI-->>User: 导航到 TLS Settings，下次连接即生效
 						Note over Client,Core: 已失败连接不可恢复；下次连接生效
 				end
 		end
@@ -180,17 +180,15 @@ https: {
 ```
 
 名单由用户在 Settings 维护，产品默认列表为空。兼容性事件由 App 壳按 host 去重累积，在任意工作区
-显示一个全局列表 dialog；用户选择 Add all hosts 后一次批量持久化并导航到 TLS Settings。已挂载面板
-通过 settings change sequence 立即重读。WVD badge 仅推荐
+显示一个全局列表 dialog；每个 host 提供精确值与逐级父域 wildcard 供用户勾选，选中项一次批量持久化
+并导航到 TLS Settings。已挂载面板通过 settings change sequence 立即重读。WVD badge 仅推荐
 `*.wvd.microsoft.com`，不会自动加入或预置。
 不能把 Microsoft 登录全域名放进 system proxy bypass，因为共享域名会让 Edge、Office、Teams 等
 所有应用的同域流量也完全绕过 Capture。
 
-Mockttp 在 listener 启动时编译 `tlsPassthrough` pattern，公开 API 不支持动态替换。修改名单只持久化，
-不在运行中重建共享 listener；Main 严格比较持久化名单与本进程实际运行名单，有有效差异时提示用户
-重启 Interceptor。packaged 重启走既有 guarded shutdown；Forge 开发态保留 Vite/Renderer，只优雅
-替换 CoreProcess 代际，避免 `app.relaunch()` 关闭开发服务器造成白屏，也避免为低频设置新增高风险
-listener 热切换状态机。失败的 TLS 连接无法原地倒带，重启后仍需客户端重试。passthrough tunnel 继续使用仓库现有
+Mockttp 在 listener 启动时编译 `tlsPassthrough` pattern，公开 API 不支持动态替换。**当时**的方案是只持久化、
+提示用户重启 Interceptor；现已改为 patch `tlsPassthrough` 接受 getter，名单每连接求值，保存即生效，
+整条重启链路已删除。失败的 TLS 连接无法原地倒带，仍需客户端重试。passthrough tunnel 继续使用仓库现有
 `passthroughProxyConfig` patch：无上游时直连，有上游时仍经上游 CONNECT，不需要针对 Clash 写分支。
 
 Core 已能收到 `tls-client-error` 的 `destination` / SNI host 与
@@ -203,8 +201,8 @@ Core 已能收到 `tls-client-error` 的 `destination` / SNI host 与
 
 #### 持久化与契约
 
-TLS passthrough 是低频全局设置，现由 `WorkspaceService` 持久化，不像 `insecureHosts` 一样只存在
-Main 内存。实现包含以下 typed RPC / Desktop API：
+TLS passthrough 是低频全局设置，由 `WorkspaceService` 持久化。（`insecureHosts` 当时只在 Main
+内存，现已一并落到 `tls_insecure_hosts`。）实现包含以下 typed RPC / Desktop API：
 
 - Core protocol：`tls-passthrough.get` / `tls-passthrough.replace` 以 revision 乐观锁承载名单读写；
 	`tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption` 只管 CA 材料与 MITM 开关。
