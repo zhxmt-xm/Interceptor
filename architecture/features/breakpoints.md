@@ -1,10 +1,12 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-06
+> 最后更新：2026-08-10
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
-> Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`
+> Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
+>       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
 
-> 当前状态：本文件第 1–6 节描述已实现产品；第 7 节描述已在 `design/app/` 确认、但尚未落地到产品的目标设计。两者不得混写。
+> 当前状态：断点已从独立 workspace 合并进 Capture（提交 `941e40a`）。
+> 第 1–6 节描述已实现产品；第 7 节只保留**仍未落地**的目标设计。两者不得混写。
 
 ## 1. 职责与边界
 
@@ -151,6 +153,8 @@ WebSocket 断点开关独立于 HTTP 断点，通过 `websocket.breakpoint.confi
 ```ts
 interface BreakpointSnapshot {
   ruleName: string;
+  /** 挂起流量所属的 Capture Exchange；未 Recording 时缺省。 */
+  exchangeId?: string;
   method?: string;
   url?: string;
   statusCode?: number;
@@ -170,32 +174,26 @@ interface BreakpointOutcome {
 }
 ```
 
+`exchangeId` 由 `ExchangeTracker.exchangeIdFor` 提供：规则钩子可能先于 `request-initiated` 到达，
+因此**首次询问就预留** ID 给 `beginRequest` 复用，保证挂起的断点与随后出现的 Capture 行是同一个。
+
 命令：
 
 | 命令 | 用途 |
 | --- | --- |
-| `breakpoint.list` | 返回等待中快照与全局开关状态 |
+| `breakpoint.list` | 返回等待中快照、全局开关与 `autoContinued` 累计溢出数 |
 | `breakpoint.resolve` | continue / drop，可携带编辑 |
 | `breakpoint.configure` | 设置 HTTP 断点全局开关 |
-| `websocket.breakpoint.configure` | 设置 WebSocket 断点开关 |
+| `websocket.breakpoint.configure` | 设置 WebSocket 断点开关（待收敛到全局状态） |
 
-## 7. 目标设计（已确认，产品未实现）
+队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
+浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
+溢出计数经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 侧记 `breakpoint.queue-full`。
 
-### 7.1 Breakpoint 是 Capture 流量状态
+## 7. 目标设计：仍未落地的部分
 
-- 删除目标设计中的独立 Breakpoints navigation/workspace；引擎层仍保留 `breakpoint` RuleAction 与 `BreakpointQueue`。
-- Capture workbar 在 Recording 旁放唯一 Breakpoint 图标；pending 数用 badge，点击打开 manager。
-- paused exchange 在 Capture 列表原地显示黄色 pause icon；Request/Response 使用同一颜色且不显示倒计时。
-- 选择 paused 行后，Capture Inspector 切换为 Request/Response 编辑器；底部固定 `Drop` / `Continue` / `Forward edited`。
-- Breakpoint Inspector 的 Headers、Response status、Original body、Replacement body 都复用共享 SectionHeader（与 TLS tunnel 完全相同）并可独立折叠。
-- WebSocket 不再有独立的 `Pause on message` 总开关，只展示全局 Breakpoints 状态。
-
-### 7.2 Breakpoint manager 与规则入口
-
-- manager 宽 520px；Header 同行放 `Break on match` 总开关、`SlidersVertical + Advanced rules` 和关闭按钮。
-- 每条规则只展示名称、matcher 摘要、`View rule` 和 enable switch；`View rule` 精确跳到 Rules 对应 rule。
-- 不展示没有直接编辑入口的 `Armed` / `Once` / `Always` / `Request + response` 标签。
-- 从已完成 request 创建 breakpoint 时，当前 exchange 不会 retroactively pause；一次性通知明确写 `Breakpoint enabled for future traffic`，并提供 Undo / View manager。
+结构层（合并进 Capture、manager、原地暂停行与编辑器、四档快速创建）已实现，不再重复。
+以下为尚未实现项。
 - Capture 行右键的快速粒度为 `This endpoint` / `This path prefix` / `This host` / `Custom…`；`Custom…` 进入 Rules 编辑器。
 
 ### 7.3 Original 与 Replacement body

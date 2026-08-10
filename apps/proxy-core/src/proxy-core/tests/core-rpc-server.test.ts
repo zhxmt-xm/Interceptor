@@ -249,6 +249,27 @@ describe('CoreRpcServer', () => {
     });
   });
 
+  it('sends a breakpoint-only batch so the Renderer stops polling for it', () => {
+    const server = createServer(echoCommandHandler(), vi.fn());
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
+
+    expect(server.sendEventBatch([], [], [], true)).toBe(1);
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({
+      kind: 'event-batch',
+      events: [],
+      breakpointsChanged: true,
+    });
+  });
+
+  it('skips an empty batch that carries no breakpoint change either', () => {
+    const server = createServer(echoCommandHandler(), vi.fn());
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
+
+    expect(server.sendEventBatch([], [], [], false)).toBeNull();
+    expect(fakeRpcPort.sent).toEqual([]);
+  });
   it('forwards the exact event batch acknowledgement sequence', () => {
     const handleEventAck = vi.fn();
     const coreRpcServer = new CoreRpcServer({

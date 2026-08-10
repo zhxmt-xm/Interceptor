@@ -512,7 +512,7 @@ flowchart TD
 | `apps/desktop/src/renderer/features/settings/` | 新增 MCP 面板 |
 | `apps/desktop/src/renderer/app/` | 新增审批弹层（App 级，与 UpdateNotification 同层） |
 | `apps/desktop/src/shared/automation-ids.ts` | 新增 MCP 面板与审批弹层的稳定 ID |
-| `design/app/` | 新增 MCP 面板与审批弹层视图，先出设计再实现 |
+| `design-vite/` | 新增 MCP 面板与审批弹层视图，先出设计再实现 |
 | `packages/core-protocol/` | **无需改动** —— 已验证：十八个工具全部映射到现有 command |
 
 `packages/core-protocol` 零改动是本设计的重要验证点，现已由实现证实：**若某个 MCP 工具需要新增 Core command，说明它越过了既有能力边界，应先质疑该工具是否该存在。**

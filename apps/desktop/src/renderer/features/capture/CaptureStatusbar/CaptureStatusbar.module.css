@@ -30,6 +30,14 @@
   white-space: nowrap;
 }
 
+.pausedRule {
+  overflow: hidden;
+  max-width: 200px;
+  color: var(--text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dot {
   width: 7px;
   height: 7px;

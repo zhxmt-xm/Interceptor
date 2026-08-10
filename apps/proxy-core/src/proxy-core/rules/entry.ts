@@ -165,7 +165,7 @@ export class RuleService {
           );
           hits.push(this.toHit(compiled.rule, 'request', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
-            RuleUtils.applyRequestEdit(state, resolved.edit);
+            await RuleUtils.applyRequestEdit(state, resolved.edit);
           }
           if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
             return { kind: 'block', mode: 'close', hits, headerEffects };
@@ -231,7 +231,7 @@ export class RuleService {
           );
           hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
-            RuleUtils.applyResponseEdit(state, resolved.edit);
+            await RuleUtils.applyResponseEdit(state, resolved.edit);
           }
           if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
             return { kind: 'block', mode: 'close', hits, headerEffects };
@@ -282,6 +282,15 @@ export class RuleService {
       this.reportQueueFull(phase);
       return { state: 'continued' };
     }
+    // 请求停在这里是用户最需要解释的现象，挂起与解除都要留痕。
+    this.diagnostics?.info('breakpoint.suspended', {
+      attributes: {
+        phase,
+        rule: snapshot.ruleName,
+        exchangeId: snapshot.exchangeId ?? 'unavailable',
+        pending: this.breakpointQueue.size,
+      },
+    });
     this.options.onBreakpointHit?.({
       id: suspension.id,
       phase,
@@ -289,7 +298,11 @@ export class RuleService {
         ? { exchangeId: snapshot.exchangeId }
         : {}),
     });
-    return suspension.outcome;
+    const outcome = await suspension.outcome;
+    this.diagnostics?.info('breakpoint.released', {
+      attributes: { phase, rule: snapshot.ruleName, state: outcome.state },
+    });
+    return outcome;
   }
 
   /** 队列已满导致自动放行时留痕，使用户能解释为什么这次没有停下来。 */

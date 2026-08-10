@@ -515,6 +515,44 @@ export const zhCNCatalog = {
   'breakpoints.responseStatus': '响应状态',
   'breakpoints.requestHeaders': '请求头',
   'breakpoints.responseHeaders': '响应头',
+  'breakpoints.originalBody': '原始正文',
+
+  'breakpoints.receiving': '接收中',
+
+  'breakpoints.receivingRequestBody': '正在接收请求正文…',
+
+  'breakpoints.receivingResponseBody': '正在接收响应正文…',
+
+  'breakpoints.bytesReceivedSoFar': '已接收 {{bytes}}',
+
+  'breakpoints.noBody': '无正文',
+
+
+  'breakpoints.noRequestBodyHint': '此请求没有正文。',
+
+
+  'breakpoints.noResponseBodyHint': '此响应没有正文。',
+
+
+  'breakpoints.replacementFile': '文件',
+
+
+  'breakpoints.chooseFile': '选择文件…',
+
+
+  'breakpoints.removeFile': '移除文件',
+
+
+  'breakpoints.collapseSection': '折叠区块',
+
+
+
+  'breakpoints.expandSection': '展开区块',
+
+
+
+  'breakpoints.filePreviewUnavailable': '文件过大或非文本，将按原样从磁盘发送。',
+
   'breakpoints.replacementBody': '替换正文',
   'breakpoints.replacementOff': '关闭',
   'breakpoints.replacementText': '文本',
@@ -537,7 +575,7 @@ export const zhCNCatalog = {
   'breakpoints.addHeader': '添加标头',
   'breakpoints.payload': '载荷',
   'breakpoints.drop': '丢弃',
-  'breakpoints.continueUnmodified': '不作修改并继续',
+  'breakpoints.continueUnmodified': '继续',
   'diagnostics.title': '诊断',
   'diagnostics.process': '进程',
   'diagnostics.level': '级别',

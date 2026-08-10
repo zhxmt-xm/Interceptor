@@ -5,7 +5,7 @@ description: "Verify and debug that an implemented React UI matches its design m
 
 # UI Parity Check（设计稿一比一还原验证）
 
-用一个**配置驱动的 harness**把 React 实现和 `design/app/` 设计稿放进同一状态,**逐元素量化对比**几何(位置/尺寸)与字体样式,精确定位"哪里差了几像素",不靠肉眼猜。
+用一个**配置驱动的 harness**把 React 实现和 `design-vite/` 设计稿放进同一状态,**逐元素量化对比**几何(位置/尺寸)与字体样式,精确定位"哪里差了几像素",不靠肉眼猜。
 
 ## 何时使用
 
@@ -15,7 +15,7 @@ description: "Verify and debug that an implemented React UI matches its design m
 
 ## 方法论(两条,缺一不可)
 
-1. **自实现为主,Ant 只用于交互难点。** 设计稿 `app.css` 95% 是纯 CSS——把每个值 1:1 搬进 colocated `*.module.css`,用语义组件承载。Ant Design 只用于 Splitter 拖拽 / Popover / Dropdown / Tooltip,且经 ConfigProvider tokens/props 控制,**绝不 hack `.ant-*`**。要精确的地方都是自己的 CSS,才不会被 Ant 卡住。
+1. **自实现为主,Ant 只用于交互难点。** 设计稿的 CSS Modules 95% 是纯 CSS——把每个值 1:1 搬进 colocated `*.module.css`,用语义组件承载。Ant Design 只用于 Splitter 拖拽 / Popover / Dropdown / Tooltip,且经 ConfigProvider tokens/props 控制,**绝不 hack `.ant-*`**。要精确的地方都是自己的 CSS,才不会被 Ant 卡住。
 2. **对比闭环(本 harness)。** 实现 → 跑 harness → 看逐元素差值 → 改 CSS → 重跑,直到差值收敛。
 
 ## Harness
@@ -27,17 +27,17 @@ description: "Verify and debug that an implemented React UI matches its design m
   node apps/desktop/tests/visual-parity/parity.mjs --view=capture
   ```
 - 它做三件事:
-  1. **像素 diff**:renderer 截图 vs `design/app/shots/<...>`,输出 `<view>-<theme>-diff.png`(紫色高亮)。
+  1. **像素 diff**:renderer 截图 vs `design-vite/shots/<...>`,输出 `<view>-<theme>-diff.png`(紫色高亮)。
   2. **逐元素几何**:对每个配置的元素取 `getBoundingClientRect`(相对 shell 根),自动求所有元素偏移的中位数作为**系统偏移**(设计稿 1px 卡片边框)并扣除,只报告真实的 `dx/dy/dw/dh`(`|Δ|≥1px` 标 `!`)。
   3. **字体样式**:对比 `fontSize/fontWeight/color`(不比 `lineHeight` 字符串——用盒高 `dh` 判行高,避免 `normal` vs `px` 假阳性)。
 - 运行结束会在终端打印并写入 `visual-parity/parity-report.md`：Overall Summary（总体结论/平均像素 diff/缺失与 flagged/最差元素）、View Summary 和 Element Geometry 明细表；`renderer-shots/` 只保存 PNG。
-- 依赖:`pixelmatch` + `pngjs`(devDeps)、`playwright-core`(系统 Edge `channel:'msedge'`)、`vite`(programmatic `createServer` 起 renderer)。
+- 依赖:`pixelmatch` + `pngjs`(devDeps)、`playwright-core`(系统 Edge `channel:'msedge'`)、`vite`(programmatic `createServer` 起 renderer)。设计稿侧由 `design-vite/tools/design-preview.mjs` 先 build 再起 preview server，所以首次运行会多一道构建耗时。
 
 ## 前提条件(接入一个项目时需满足)
 
 - **Renderer 走真实 Preload 契约**:harness 在 `page.goto()` 前用 `addInitScript` 注入完整 fake `window.interceptor`；业务组件照常调用窄 API，不包含 parity fixture、`import.meta.env.DEV` 数据分支或测试 setter。
 - **状态通过真实 UI 建立**:主题在导航前写 localStorage，view/选中行/tab/表单通过 Playwright 点击、选择和输入完成；不要暴露 `window.__setView/__setTheme` 之类业务侧测试后门。
-- **设计稿是可编程 SPA**:`design/app/` 暴露 `window.__setState({view,theme,sidebar,…})`。
+- **设计稿是可编程 SPA**:`design-vite/` 暴露 `window.__setState({view,theme,sidebar,…})`，harness 通过 `design-preview.mjs` 起它的 preview server。
 - **元素靠唯一可见文本配对**(`getByText(exact)`),两边无需共享 class。文本不唯一/无文本时,给两边加相同 `data-parity="key"` 再按属性配对。
 
 ## 加一个新 view(零改 harness)
@@ -69,4 +69,4 @@ description: "Verify and debug that an implemented React UI matches its design m
 ## 参考
 
 - 设计稿工作流(产出基准):`ui-design-mockup` skill。
-- 权威 token:`design/design-system.md`。
+- 权威 token:`design-vite/design-system.md`。

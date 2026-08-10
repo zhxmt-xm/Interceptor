@@ -528,7 +528,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .break-section > .break-section-head { width: 100%; font-family: var(--font-ui); text-align: left; }
 button.break-section-head { border: 0; background: transparent; cursor: pointer; }
 .break-section > .break-section-head:hover .sh-chev { color: var(--accent); }
-.break-section-meta { margin-left: auto; letter-spacing: 0; text-transform: none; }
+.break-section-meta { letter-spacing: 0; text-transform: none; }
 .break-section-body { display: flex; flex-direction: column; gap: 8px; }
 .break-section.collapsed > .break-section-head { margin-bottom: 0; }
 .break-section.collapsed > .break-section-head .sh-chev { transform: rotate(-90deg); color: var(--accent); }
@@ -571,14 +571,15 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .break-original-loading > div { display: flex; flex-direction: column; gap: 3px; }
 .break-original-loading b { color: var(--text); font-size: 11.5px; font-weight: 600; }
 .break-original-loading span { color: var(--text-3); font-family: var(--font-mono); font-size: 9.5px; }
-.break-original-ready { display: none; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); }
+.break-original-ready { display: none; flex-direction: column; gap: 10px; }
 .app[data-breakpoint-body="ready"] .break-original-ready,
 .app[data-breakpoint-body="replace"] .break-original-ready,
 .app[data-breakpoint-body="file"] .break-original-ready,
-.app[data-breakpoint-body="invalid"] .break-original-ready { display: block; }
-.break-original-toolbar { display: flex; height: 30px; align-items: center; padding: 0 5px 0 10px; border-bottom: 1px solid var(--border); color: var(--text-3); font-size: 10px; }
-.break-original-toolbar .ib { margin-left: auto; }
-.break-original-code { min-height: 76px; padding: 10px 12px; overflow: auto; color: var(--text); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.55; white-space: pre-wrap; }
+.app[data-breakpoint-body="invalid"] .break-original-ready { display: flex; }
+.break-original-toolbar { display: flex; height: 40px; flex: 0 0 40px; align-items: center; gap: 10px; color: var(--text-3); font-size: 10px; }
+.break-original-toolbar .sp { flex: 1; }
+/* 下内边距 = Monaco 的 13px 内边距 + 8px 水平滚动条槽。 */
+.break-original-code { min-height: 76px; padding: 13px 12px 21px; overflow: auto; border: 1px solid var(--border-2); border-radius: 7px; background: var(--panel-2); color: var(--text); font-family: var(--font-mono); font-size: 12px; line-height: 20px; white-space: pre-wrap; }
 .break-replace-mode { height: 28px; gap: 2px; padding: 0; border: 0; background: transparent; }
 .break-replace-mode span { height: 22px; padding: 0 8px; border-radius: 7px; font-size: 10.5px; line-height: 1; }
 .app[data-breakpoint-body="loading"] .break-replace-mode [data-replace-mode="off"],

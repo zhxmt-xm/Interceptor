@@ -175,6 +175,11 @@ export interface BreakpointEdit {
   statusCode?: number;
   headers?: RuleHeaderPair[];
   body?: string;
+  /**
+   * 用本地文件整体替换正文；与 `body` 互斥，优先级更高。
+   * 大文件与二进制不经 IPC 搬运，由 Core 直接读，和 Map Local 同一条路。
+   */
+  bodyFilePath?: string;
 }
 
 export interface BreakpointResolveCommand {
@@ -691,8 +696,6 @@ export interface PendingBreakpoint {
    */
   exchangeId?: string;
   createdAt: number;
-  /** 超时时间戳；0 表示无超时。 */
-  deadline: number;
   ruleName: string;
   method?: string;
   url?: string;
@@ -1177,6 +1180,11 @@ export interface CoreEventBatch {
   events: CaptureExchangeEvent[];
   /** TLS compatibility signals are global settings events, not Capture exchanges. */
   tlsCompatibilityEvents?: TlsCompatibilityEvent[];
+  /**
+   * 挂起中的断点发生了变化。
+   * 只传信号不传快照：断点少、且 Renderer 本来就要拉完整列表才能重建编辑草稿。
+   */
+  breakpointsChanged?: boolean;
   /**
    * 本批次中首次出现、尚未下发过的客户端应用身份。
    * Core 是唯一能解析出可执行文件路径的一侧，因此随事件一次性交给 Main 取图标，

@@ -7,7 +7,7 @@ const startedAt = Date.parse('2026-07-16T12:00:00.000Z');
 /** 复用设计稿里从系统提取的真实应用图标，保证两侧比较的是同一张位图。 */
 const iconsDirectory = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../design/app/icons',
+  '../../../../design-vite/icons',
 );
 function clientAppIconDataUrl(name) {
   const bytes = readFileSync(path.join(iconsDirectory, `${name}.png`));
@@ -115,7 +115,8 @@ const sessions = [
   summary({ id: 'http-9', host: 'assets.example.com', path: '/app.css', protocol: 'h2', statusCode: 200, responseMime: 'text/css', responseBytes: 8_240, durationMs: 64 }),
   summary({ id: 'http-10', host: 'telemetry.example.com', path: '/v1/events', protocol: 'h2', statusCode: 202, responseMime: 'application/json', responseBytes: 32, durationMs: 91, method: 'POST' }),
 ];
-sessions[0].ruleIds = ['rule-auth'];
+const githubSession = sessions.find((session) => session.id === 'http-1');
+githubSession.ruleIds = ['rule-auth'];
 // 与设计稿一一对应；api.internal.local 保持无归属，覆盖进程不可读的降级形态。
 const clientAppBySessionId = {
   'http-1': clientApps.edge,
@@ -142,6 +143,7 @@ sessions.forEach((session, index) => {
 
 const bodyText = {
   'http-request-body': '{"name":"interceptor","enabled":true,"limits":{"requests":250}}',
+  'bp-checkout-body': '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
   'ws-body-1': '{"type":"subscribe","channel":"builds"}',
   'ws-body-2': '{"type":"subscribed","channel":"builds"}',
   'ws-body-3': '{"buildId":8431,"state":"running","branch":"main"}',
@@ -159,7 +161,37 @@ const bodies = {
 };
 
 // http-1 携带请求正文，摘要的 requestBytes 必须等于线上正文大小。
-sessions[0].requestBytes = bodyText['http-request-body'].length;
+githubSession.requestBytes = bodyText['http-request-body'].length;
+
+// 断点挂起的流量只在断点场景注入，否则会多出两行污染其它 Capture 场景。
+const pausedSessions = [
+  {
+    id: 'bp-exchange-checkout',
+    method: 'POST',
+    secure: true,
+    host: 'shop.example.com',
+    path: '/checkout',
+    protocol: 'h2',
+    responseMime: 'application/json',
+    state: 'started',
+    startedAt,
+    requestBytes: bodyText['bp-checkout-body'].length,
+    responseBytes: 0,
+  },
+  {
+    id: 'bp-exchange-token',
+    method: 'POST',
+    secure: true,
+    host: 'api.example.com',
+    path: '/v1/token',
+    protocol: 'h2',
+    responseMime: 'application/json',
+    state: 'request-complete',
+    startedAt,
+    requestBytes: 0,
+    responseBytes: 842,
+  },
+];
 
 const frame = (seq, direction, opcode, elapsed, bodyHash, payloadSize, mediaType) => ({
   seq,
@@ -184,12 +216,12 @@ const websocketFrames = [
 ];
 
 const httpDetail = {
-  summary: sessions[0],
+  summary: githubSession,
   url: 'https://api.github.com/user',
   scheme: 'https',
   port: 443,
-  responseStartedAt: sessions[0].startedAt + 118,
-  completedAt: sessions[0].startedAt + 142,
+  responseStartedAt: githubSession.startedAt + 118,
+  completedAt: githubSession.startedAt + 142,
   statusText: 'OK',
   requestMime: 'application/json',
   requestHeaders: [
@@ -236,6 +268,30 @@ const websocketDetail = {
   responseHeaders: [],
   requestTrailers: [],
   responseTrailers: [],
+};
+
+// 请求阶段挂起，且正文已经收完可读。
+const pausedCheckoutDetail = {
+  summary: pausedSessions.find((session) => session.id === 'bp-exchange-checkout'),
+  url: 'https://shop.example.com/checkout',
+  scheme: 'https',
+  port: 443,
+  requestMime: 'application/json',
+  requestHeaders: [
+    { name: 'content-type', value: 'application/json' },
+    { name: 'authorization', value: 'Bearer eyJhbGci\u2026' },
+    { name: 'x-cart-id', value: 'c_9f83a1' },
+  ],
+  responseHeaders: [],
+  requestTrailers: [],
+  responseTrailers: [],
+  requestBody: {
+    bodyHash: 'bp-checkout-body',
+    mediaType: 'application/json',
+    encodedSize: bodyText['bp-checkout-body'].length,
+    truncated: false,
+    decodeStatus: 'ok',
+  },
 };
 
 const tunnelDetail = {
@@ -476,25 +532,29 @@ const diagnostics = [
 const pendingBreakpoints = [
   {
     id: 'bp-checkout',
+    exchangeId: 'bp-exchange-checkout',
     phase: 'request',
     createdAt: startedAt,
-    deadline: startedAt + 30_000,
-    ruleName: 'Debug checkout',
+    ruleName: 'Checkout API',
     method: 'POST',
     url: 'shop.example.com/checkout',
-    headers: [{ name: 'content-type', value: 'application/json' }],
+    headers: [
+      { name: 'content-type', value: 'application/json' },
+      { name: 'authorization', value: 'Bearer eyJhbGci\u2026' },
+      { name: 'x-cart-id', value: 'c_9f83a1' },
+    ],
     bodyAvailable: false,
   },
   {
     id: 'bp-token',
+    exchangeId: 'bp-exchange-token',
     phase: 'response',
     createdAt: startedAt + 1_000,
-    deadline: startedAt + 31_000,
-    ruleName: 'Inspect token',
+    ruleName: 'Token API',
     statusCode: 200,
-    url: 'login.microsoftonline.com/token',
+    url: 'api.example.com/v1/token',
     headers: [{ name: 'content-type', value: 'application/json' }],
-    body: '{"access_token":"redacted"}',
+    bodyAvailable: true,
   },
 ];
 
@@ -518,11 +578,14 @@ export const fakeInterceptorFixture = {
       capturedExchanges: sessions.length,
     },
     sessions,
+    // 只在 pausedBreakpoints 场景合并进 sessions。
+    pausedSessions,
     details: {
       'http-1': httpDetail,
       'tls-tunnel': tunnelDetail,
       'ws-fixture': websocketDetail,
       'grpc-fixture': grpcDetail,
+      'bp-exchange-checkout': pausedCheckoutDetail,
     },
     websocketFrames,
     websocketBreakpointsEnabled: true,
@@ -548,7 +611,9 @@ export const fakeInterceptorFixture = {
   },
   breakpoints: {
     enabled: true,
-    items: pendingBreakpoints,
+    items: [],
+    // 只在 pausedBreakpoints 场景生效。
+    pendingItems: pendingBreakpoints,
   },
   diagnostics: {
     records: diagnostics,
@@ -665,6 +730,7 @@ export function installFakeInterceptor({
   largeBody = false,
   largeTextBody = false,
   noRuleHits = false,
+  pausedBreakpoints = false,
   mitmActive = true,
   updateState = 'unsupported',
   githubAuthState = 'signed-in',
@@ -675,6 +741,13 @@ export function installFakeInterceptor({
 }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
+  if (pausedBreakpoints) {
+    fixture.capture.sessions = [
+      ...fixture.capture.pausedSessions,
+      ...fixture.capture.sessions,
+    ];
+    fixture.breakpoints.items = fixture.breakpoints.pendingItems;
+  }
   if (noRuleHits) {
     fixture.capture.sessions = fixture.capture.sessions.map((summary) => {
       const { ruleIds: _ruleIds, ...withoutRuleIds } = summary;
@@ -683,11 +756,13 @@ export function installFakeInterceptor({
   }
   if (largeBody) {
     const largeSummary = {
-      ...fixture.capture.sessions[0],
+      ...fixture.capture.sessions.find((session) => session.id === 'http-1'),
       responseMime: 'video/mp4',
       responseBytes: 67 * 1024 * 1024,
     };
-    fixture.capture.sessions[0] = largeSummary;
+    fixture.capture.sessions = fixture.capture.sessions.map((session) =>
+      session.id === 'http-1' ? largeSummary : session,
+    );
     fixture.capture.bodies['large-response-body'] = Array.from(
       { length: 64 * 1024 },
       (_value, index) => index % 251,
@@ -706,11 +781,13 @@ export function installFakeInterceptor({
   }
   if (largeTextBody) {
     const largeSummary = {
-      ...fixture.capture.sessions[0],
+      ...fixture.capture.sessions.find((session) => session.id === 'http-1'),
       responseMime: 'text/html; charset=utf-8',
       responseBytes: 12 * 1024 * 1024,
     };
-    fixture.capture.sessions[0] = largeSummary;
+    fixture.capture.sessions = fixture.capture.sessions.map((session) =>
+      session.id === 'http-1' ? largeSummary : session,
+    );
     fixture.capture.bodies['large-text-response-body'] = Array.from(
       new TextEncoder().encode(
         `<!doctype html><html lang="zh-CN"><head><title>大唐 EV</title></head><body>\n${
@@ -1003,6 +1080,7 @@ export function installFakeInterceptor({
       };
     },
     onCoreProcessStatusChange: () => () => undefined,
+    onBreakpointsChange: () => () => undefined,
     getCaptureUsage: async () => storage,
     clearCapture: async () => {
       storage = {

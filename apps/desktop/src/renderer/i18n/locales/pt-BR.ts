@@ -518,6 +518,44 @@ export const ptBRCatalog = {
   'breakpoints.responseStatus': 'Status da resposta',
   'breakpoints.requestHeaders': 'Cabeçalhos da requisição',
   'breakpoints.responseHeaders': 'Cabeçalhos da resposta',
+  'breakpoints.originalBody': 'Corpo original',
+
+  'breakpoints.receiving': 'recebendo',
+
+  'breakpoints.receivingRequestBody': 'Recebendo o corpo da solicitação…',
+
+  'breakpoints.receivingResponseBody': 'Recebendo o corpo da resposta…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} recebidos até agora',
+
+  'breakpoints.noBody': 'sem corpo',
+
+
+  'breakpoints.noRequestBodyHint': 'Esta solicitação não tem corpo.',
+
+
+  'breakpoints.noResponseBodyHint': 'Esta resposta não tem corpo.',
+
+
+  'breakpoints.replacementFile': 'Arquivo',
+
+
+  'breakpoints.chooseFile': 'Escolher arquivo…',
+
+
+  'breakpoints.removeFile': 'Remover arquivo',
+
+
+  'breakpoints.collapseSection': 'Recolher seção',
+
+
+
+  'breakpoints.expandSection': 'Expandir seção',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Grande demais ou não é texto — enviado do disco como está.',
+
   'breakpoints.replacementBody': 'Corpo de substituição',
   'breakpoints.replacementOff': 'Desligado',
   'breakpoints.replacementText': 'Texto',
@@ -540,7 +578,7 @@ export const ptBRCatalog = {
   'breakpoints.addHeader': 'Adicionar cabeçalho',
   'breakpoints.payload': 'Payload',
   'breakpoints.drop': 'Descartar',
-  'breakpoints.continueUnmodified': 'Continuar sem alterações',
+  'breakpoints.continueUnmodified': 'Continuar',
 
   'diagnostics.title': 'Diagnósticos',
   'diagnostics.process': 'Processo',

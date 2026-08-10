@@ -44,6 +44,11 @@ export interface RulesState {
   /** 可编辑的规则树草稿（本地副本）。 */
   nodes: RuleNode[];
   selectedId: string | null;
+  /**
+   * 右侧编辑器正在打开的规则。与 `selectedId` 正交：选中目录只改树上的选择，
+   * 右侧保持当前规则，否则点一下目录就丢掉正在编辑的内容。
+   */
+  openRuleId: string | null;
   /** 展开的目录 ID；纯视图状态，不进 wire。 */
   expandedFolders: string[];
   /** 正在行内重命名的节点。 */

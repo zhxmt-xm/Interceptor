@@ -77,6 +77,26 @@ export function toInsecureHosts(value: unknown): string[] {
   return value as string[];
 }
 
+/** 断点替换正文按扩展名猜 media type；猜不出按纯文本处理。 */
+const BREAKPOINT_BODY_MEDIA_TYPES: Record<string, string> = {
+  '.json': 'application/json',
+  '.xml': 'application/xml',
+  '.html': 'text/html',
+  '.htm': 'text/html',
+  '.css': 'text/css',
+  '.js': 'text/javascript',
+  '.csv': 'text/csv',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.yaml': 'application/yaml',
+  '.yml': 'application/yaml',
+};
+
+export function breakpointBodyMediaType(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+  return BREAKPOINT_BODY_MEDIA_TYPES[extension] ?? 'text/plain';
+}
+
 /** Preserve trusted body range values without imposing an IPC allocation limit. */
 export function toByteRange(
   offset: unknown,

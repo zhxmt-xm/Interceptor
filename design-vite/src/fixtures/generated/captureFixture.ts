@@ -8721,36 +8721,136 @@ export const captureFixture: FixtureNode = {
                                           "children": [
                                             {
                                               "type": "element",
-                                              "tag": "span",
-                                              "attributes": {},
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "seg"
+                                              },
                                               "children": [
                                                 {
-                                                  "type": "text",
-                                                  "value": "Read-only preview"
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "on"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Pretty"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Tree"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Raw"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Hex"
+                                                    }
+                                                  ]
                                                 }
                                               ]
                                             },
                                             {
                                               "type": "element",
-                                              "tag": "button",
+                                              "tag": "span",
                                               "attributes": {
-                                                "class": "ib sm",
-                                                "aria-label": "Copy original body",
-                                                "title": "Copy"
+                                                "class": "sp"
+                                              },
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "element",
+                                              "tag": "span",
+                                              "attributes": {
+                                                "class": "cnt"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "value": "application/json"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "element",
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "icon-actions"
                                               },
                                               "children": [
                                                 {
                                                   "type": "element",
-                                                  "tag": "svg",
-                                                  "attributes": {},
+                                                  "tag": "button",
+                                                  "attributes": {
+                                                    "class": "ib sm",
+                                                    "aria-label": "Copy original body",
+                                                    "title": "Copy"
+                                                  },
                                                   "children": [
                                                     {
                                                       "type": "element",
-                                                      "tag": "use",
-                                                      "attributes": {
-                                                        "href": "#i-copy"
-                                                      },
-                                                      "children": []
+                                                      "tag": "svg",
+                                                      "attributes": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "element",
+                                                          "tag": "use",
+                                                          "attributes": {
+                                                            "href": "#i-copy"
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "button",
+                                                  "attributes": {
+                                                    "class": "ib sm",
+                                                    "aria-label": "Open fullscreen",
+                                                    "title": "Fullscreen"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "element",
+                                                      "tag": "svg",
+                                                      "attributes": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "element",
+                                                          "tag": "use",
+                                                          "attributes": {
+                                                            "href": "#i-maximize"
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
                                                     }
                                                   ]
                                                 }
@@ -9909,36 +10009,136 @@ export const captureFixture: FixtureNode = {
                                           "children": [
                                             {
                                               "type": "element",
-                                              "tag": "span",
-                                              "attributes": {},
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "seg"
+                                              },
                                               "children": [
                                                 {
-                                                  "type": "text",
-                                                  "value": "Read-only preview"
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "on"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Pretty"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Tree"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Raw"
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "text",
+                                                      "value": "Hex"
+                                                    }
+                                                  ]
                                                 }
                                               ]
                                             },
                                             {
                                               "type": "element",
-                                              "tag": "button",
+                                              "tag": "span",
                                               "attributes": {
-                                                "class": "ib sm",
-                                                "aria-label": "Copy original body",
-                                                "title": "Copy"
+                                                "class": "sp"
+                                              },
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "element",
+                                              "tag": "span",
+                                              "attributes": {
+                                                "class": "cnt"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "value": "application/json"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "element",
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "icon-actions"
                                               },
                                               "children": [
                                                 {
                                                   "type": "element",
-                                                  "tag": "svg",
-                                                  "attributes": {},
+                                                  "tag": "button",
+                                                  "attributes": {
+                                                    "class": "ib sm",
+                                                    "aria-label": "Copy original body",
+                                                    "title": "Copy"
+                                                  },
                                                   "children": [
                                                     {
                                                       "type": "element",
-                                                      "tag": "use",
-                                                      "attributes": {
-                                                        "href": "#i-copy"
-                                                      },
-                                                      "children": []
+                                                      "tag": "svg",
+                                                      "attributes": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "element",
+                                                          "tag": "use",
+                                                          "attributes": {
+                                                            "href": "#i-copy"
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "button",
+                                                  "attributes": {
+                                                    "class": "ib sm",
+                                                    "aria-label": "Open fullscreen",
+                                                    "title": "Fullscreen"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "element",
+                                                      "tag": "svg",
+                                                      "attributes": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "element",
+                                                          "tag": "use",
+                                                          "attributes": {
+                                                            "href": "#i-maximize"
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
                                                     }
                                                   ]
                                                 }

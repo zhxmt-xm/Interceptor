@@ -1,6 +1,6 @@
 # Desktop Visual Parity
 
-本目录包含 Interceptor Desktop Renderer 的设计一致性验证工具。它把真实 React Renderer 与 `design/app/` 设计 SPA 驱动到同一状态，生成截图、像素差异图和逐元素几何报告，用于定位布局、尺寸、字体和颜色偏差。
+本目录包含 Interceptor Desktop Renderer 的设计一致性验证工具。它把真实 React Renderer 与 `design-vite/` 设计 SPA 驱动到同一状态，生成截图、像素差异图和逐元素几何报告，用于定位布局、尺寸、字体和颜色偏差。
 
 Parity 只负责视觉一致性，不替代行为、协议或运行时测试。
 
@@ -32,7 +32,7 @@ Parity 只负责视觉一致性，不替代行为、协议或运行时测试。
 
 | 阶段 | Skill | 产物 |
 | --- | --- | --- |
-| 设计/改稿 | `ui-design-mockup` | `design/app/` 与设计 PNG |
+| 设计/改稿 | `ui-design-mockup` | `design-vite/` 与设计 PNG |
 | React 实现后的视觉验收 | `ui-parity-check` | Renderer PNG、diff PNG、`parity-report.md` |
 
 不要用 parity harness 代替设计过程，也不要用设计 SPA 截图代替真实 Renderer 验收。
@@ -52,10 +52,10 @@ apps/desktop/tests/visual-parity/
 设计基准位于：
 
 ```text
-design/app/
-├─ index.html
-├─ app.css
-├─ app.js
+design-vite/
+├─ src/                       # Vite + React + CSS Modules 设计稿
+├─ tools/design-preview.mjs   # build + preview，harness 直接调用
+├─ icons/                     # fake Preload 复用的真实应用图标
 └─ shots/<theme>/<feature>/*.png
 ```
 
@@ -76,7 +76,7 @@ sequenceDiagram
     participant P as Playwright Page
     participant F as fake-interceptor.mjs
     participant R as React Renderer
-    participant D as design/app
+    participant D as design-vite
 
     H->>P: addInitScript(fake interceptor + fixture)
     H->>P: goto(Vite Renderer)
@@ -106,9 +106,9 @@ flowchart LR
     end
 
     subgraph DESIGN["Design Side"]
-      DESIGN_SPA["design/app SPA<br/>window.__setState"]
+      DESIGN_SPA["design-vite SPA<br/>window.__setState"]
       DESIGN_DOM["Design DOM<br/>bounding/style"]
-      DESIGN_PNG["design/app/shots<br/>基线 PNG"]
+      DESIGN_PNG["design-vite/shots<br/>基线 PNG"]
     end
 
     subgraph RENDERER["Implementation Side"]
@@ -148,7 +148,7 @@ Harness 同时运行两条独立但互补的比较管线。它不会把 HTML ele
 ```text
 Renderer 实际截图
         vs
-design/app/shots/<theme>/<feature>/<variant>.png
+design-vite/shots/<theme>/<feature>/<variant>.png
 ```
 
 Harness 使用 `pixelmatch` 逐像素比较：
@@ -245,7 +245,7 @@ sequenceDiagram
     participant O as Report / PNG Output
 
     H->>V: createServer + listen(5199)
-    H->>D: goto design/app/index.html
+    H->>D: startDesignPreview + goto
     loop 每个 parity view
       H->>D: window.__setState(designState)
       H->>P: browser.newPage()
@@ -275,7 +275,7 @@ sequenceDiagram
 
 ### Design SPA
 
-`design/app/` 是视觉单一事实来源，用于设计和截图基线。它不是产品实现，也不访问 Core。
+`design-vite/` 是视觉单一事实来源，用于设计和截图基线。它不是产品实现，也不访问 Core。
 
 ### Visual Parity
 
@@ -324,7 +324,7 @@ node apps/desktop/tests/visual-parity/parity.mjs --view=capture-websocket
 
 1. 以 programmatic Vite server 启动 Desktop Renderer。
 2. 启动系统 Edge。
-3. 打开 `design/app/index.html`。
+3. 用 `design-vite/tools/design-preview.mjs` 构建并启动设计稿 preview server，然后打开它。
 4. 对每个 parity case 创建独立 Renderer page，避免视图状态互相污染。
 5. 在页面导航前注入 fake `window.interceptor` 与主题 localStorage。
 6. 通过 Sidebar、列表行、按钮、Select 和 Input 等真实 UI 操作建立场景。
@@ -384,7 +384,7 @@ Renderer 主题。Harness 在页面初始化前写入 `interceptor.theme` localS
 
 ### `designShot`
 
-相对于 `design/app/shots/` 的基准 PNG。存在时启用 pixel diff；省略时仍会做逐元素几何比较。
+相对于 `design-vite/shots/` 的基准 PNG。存在时启用 pixel diff；省略时仍会做逐元素几何比较。
 
 ### `rendererNav`
 
@@ -561,7 +561,7 @@ Flag 条件：
 
 ## 添加一个场景
 
-1. 先在 `design/app/` 完成并截图设计状态。
+1. 先在 `design-vite/` 完成并截图设计状态。
 2. 在 `fake-interceptor.mjs` 加入真实 API 所需夹具。
 3. 在 `parity.config.mjs` 添加 view case。
 4. 用 `rendererNav` 和 `rendererActions` 通过正常 UI 建立状态。
@@ -639,13 +639,13 @@ Linux 字体渲染、字重、subpixel 和 SwiftShader 与 Windows/macOS 不同�
 - 不在产品代码中加入 parity 专用 DEV 分支或 setter。
 - Renderer 场景通过正常 UI 交互建立。
 - 数据通过 `window.interceptor` 意图 API 注入。
-- 设计视觉仍以 `design/app/` 和 `design/design-system.md` 为准。
+- 设计视觉仍以 `design-vite/` 和 `design-vite/design-system.md` 为准。
 - Parity 报告是诊断输出，不自动掩盖已知差异，也不以 pixel diff 单值替代人工判断。
 
 ## 参考
 
 - Parity Skill：`.github/skills/ui-parity-check/SKILL.md`
 - Design Skill：`.github/skills/ui-design-mockup/SKILL.md`
-- 设计系统：`design/design-system.md`
-- 设计 SPA：`design/app/`
+- 设计系统：`design-vite/design-system.md`
+- 设计 SPA：`design-vite/`
 - Renderer API：`apps/desktop/src/shared/desktop-api.ts`

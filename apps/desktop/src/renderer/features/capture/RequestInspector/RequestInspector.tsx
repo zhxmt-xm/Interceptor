@@ -153,6 +153,7 @@ export function RequestInspector({
     return (
       <BreakpointInspector
         breakpoint={pausedBreakpoint}
+        detail={detail ?? null}
         onClose={() => select(null)}
       />
     );

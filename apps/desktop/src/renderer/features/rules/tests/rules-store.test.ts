@@ -43,6 +43,7 @@ function seed(nodes: RuleNode[], selectedId: string | null = null): void {
     nodes,
     applied: structuredClone(nodes),
     selectedId,
+    openRuleId: selectedId,
     expandedFolders: [],
     renamingNodeId: null,
     hits: {},
@@ -194,6 +195,26 @@ describe('rulesStore ordering', () => {
     ]);
     expect(JSON.stringify(draft)).not.toContain('super-secret');
     expect(JSON.stringify(draft)).not.toContain('abcdef');
+  });
+});
+
+describe('rulesStore selection', () => {
+  it('keeps the open rule when a folder becomes the selection', () => {
+    seed([folder('g', [rule('a', 1)]), rule('b', 2)], 'b');
+
+    useRulesStore.getState().select('g');
+
+    expect(useRulesStore.getState().selectedId).toBe('g');
+    expect(useRulesStore.getState().openRuleId).toBe('b');
+  });
+
+  it('opens the rule that becomes the selection', () => {
+    seed([folder('g', [rule('a', 1)]), rule('b', 2)], 'b');
+
+    useRulesStore.getState().select('a');
+
+    expect(useRulesStore.getState().selectedId).toBe('a');
+    expect(useRulesStore.getState().openRuleId).toBe('a');
   });
 });
 

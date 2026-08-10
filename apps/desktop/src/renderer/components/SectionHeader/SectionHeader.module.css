@@ -32,6 +32,21 @@
   padding: 1px 6px;
   border-radius: 5px;
 }
+.chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform 0.15s ease;
+}
+.collapsedChevron {
+  transform: rotate(-90deg);
+  color: var(--accent);
+}
+.button:hover .chevron {
+  color: var(--accent);
+}
 .button {
   width: 100%;
   border-top: 0;

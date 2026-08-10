@@ -3,7 +3,7 @@
 > 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
-> UI 设计：`design/app/` 的 composer 视图（17 个场景 × 浅深共 34 张）与 `design/design-system.md` 的「Composer 工作区」一节，**已落地**。
+> UI 设计：`design-vite/` 的 composer 视图（17 个场景 × 浅深共 34 张）与 `design-vite/design-system.md` 的「Composer 工作区」一节，**已落地**。
 
 ## 1. 职责与边界
 

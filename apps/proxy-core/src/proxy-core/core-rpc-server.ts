@@ -363,11 +363,14 @@ export class CoreRpcServer {
     events: readonly CaptureExchangeEvent[],
     clientApps: readonly ClientAppIdentity[] = [],
     tlsCompatibilityEvents: readonly TlsCompatibilityEvent[] = [],
+    breakpointsChanged = false,
   ): number | null {
     const rpcConnection = this.rpcConnection;
     if (
       !rpcConnection ||
-      (events.length === 0 && tlsCompatibilityEvents.length === 0)
+      (events.length === 0
+        && tlsCompatibilityEvents.length === 0
+        && !breakpointsChanged)
     ) {
       return null;
     }
@@ -381,6 +384,7 @@ export class CoreRpcServer {
       ...(tlsCompatibilityEvents.length > 0
         ? { tlsCompatibilityEvents: [...tlsCompatibilityEvents] }
         : {}),
+      ...(breakpointsChanged ? { breakpointsChanged: true } : {}),
     });
     return delivered ? batchSequence : null;
   }

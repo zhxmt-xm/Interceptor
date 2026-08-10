@@ -518,6 +518,44 @@ export const esCatalog = {
   'breakpoints.responseStatus': 'Estado de la respuesta',
   'breakpoints.requestHeaders': 'Encabezados de solicitud',
   'breakpoints.responseHeaders': 'Encabezados de respuesta',
+  'breakpoints.originalBody': 'Cuerpo original',
+
+  'breakpoints.receiving': 'recibiendo',
+
+  'breakpoints.receivingRequestBody': 'Recibiendo el cuerpo de la solicitud…',
+
+  'breakpoints.receivingResponseBody': 'Recibiendo el cuerpo de la respuesta…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} recibidos hasta ahora',
+
+  'breakpoints.noBody': 'sin cuerpo',
+
+
+  'breakpoints.noRequestBodyHint': 'Esta solicitud no tiene cuerpo.',
+
+
+  'breakpoints.noResponseBodyHint': 'Esta respuesta no tiene cuerpo.',
+
+
+  'breakpoints.replacementFile': 'Archivo',
+
+
+  'breakpoints.chooseFile': 'Elegir archivo…',
+
+
+  'breakpoints.removeFile': 'Quitar archivo',
+
+
+  'breakpoints.collapseSection': 'Contraer sección',
+
+
+
+  'breakpoints.expandSection': 'Expandir sección',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Demasiado grande o no es texto: se envía desde el disco tal cual.',
+
   'breakpoints.replacementBody': 'Cuerpo de reemplazo',
   'breakpoints.replacementOff': 'Desactivado',
   'breakpoints.replacementText': 'Texto',
@@ -540,7 +578,7 @@ export const esCatalog = {
   'breakpoints.addHeader': 'Añadir cabecera',
   'breakpoints.payload': 'Carga útil',
   'breakpoints.drop': 'Descartar',
-  'breakpoints.continueUnmodified': 'Continuar sin cambios',
+  'breakpoints.continueUnmodified': 'Continuar',
 
   'diagnostics.title': 'Diagnóstico',
   'diagnostics.process': 'Proceso',

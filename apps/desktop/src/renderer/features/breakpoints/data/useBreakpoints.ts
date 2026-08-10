@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
 import { useBreakpointsStore } from './breakpointsStore';
-import { POLL_INTERVAL_MS } from '../constants';
 import { buildEdit } from '../utils';
 
 /** 拉取当前等待断点快照并写入视图状态；轮询与操作后调用。 */
@@ -73,17 +72,30 @@ export async function setBreakOnMatch(enabled: boolean): Promise<void> {
 }
 
 /**
- * 断点感知数据管线：挂载后每秒轮询等待断点快照。
+ * 断点感知数据管线：Core 每次挂起/解除都推一个信号，收到就重取快照。
  *
- * 必须由 App 壳挂载一次：断点挂起的是真实流量，如果只在 Breakpoints 页面轮询，
+ * 必须由 App 壳挂载一次：断点挂起的是真实流量，如果只在某个页面订阅，
  * 用户在其他工作区时浏览器会莫名卡死再自己恢复，全程零提示。
+ *
+ * Core 一离开 running 就清空：那一代的队列已随进程一起消失，listener 也没了，
+ * 再显示 paused 就是骗人——不能等新 Core 起来才纠正。
  */
 export function useBreakpoints(): void {
   useEffect(() => {
     void refreshBreakpoints();
-    const handle = setInterval(() => {
+    const stopBreakpointSignals = window.interceptor.onBreakpointsChange(() => {
       void refreshBreakpoints();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(handle);
+    });
+    const stopCoreStatus = window.interceptor.onCoreProcessStatusChange((status) => {
+      if (status.state === 'running') {
+        void refreshBreakpoints();
+      } else {
+        useBreakpointsStore.getState().clear();
+      }
+    });
+    return () => {
+      stopBreakpointSignals();
+      stopCoreStatus();
+    };
   }, []);
 }

@@ -1039,7 +1039,12 @@ export class CoreApplication implements CoreRpcHost {
       const batch = queue?.drain(EVENT_DRAIN_BATCH) ?? [];
       const tlsCompatibilityEvents =
         proxyService?.drainTlsCompatibilityEvents(EVENT_DRAIN_BATCH) ?? [];
-      if (batch.length === 0 && tlsCompatibilityEvents.length === 0) {
+      const breakpointsChanged = this.breakpointQueue?.drainChangeNotice() ?? false;
+      if (
+        batch.length === 0
+        && tlsCompatibilityEvents.length === 0
+        && !breakpointsChanged
+      ) {
         return;
       }
       const events = batch.map((event) => ({
@@ -1054,12 +1059,16 @@ export class CoreApplication implements CoreRpcHost {
         events,
         clientApps,
         tlsCompatibilityEvents,
+        breakpointsChanged,
       );
       if (batchSequence === null) {
         for (const event of events) {
           queue?.enqueue(event.kind, event.summary);
         }
         proxyService?.restoreTlsCompatibilityEvents(tlsCompatibilityEvents);
+        if (breakpointsChanged) {
+          this.breakpointQueue?.restoreChangeNotice();
+        }
         return;
       }
       this.clientAppService.markAppsDelivered(clientApps);

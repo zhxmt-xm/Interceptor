@@ -62,7 +62,8 @@ export function CollectionTreeNode({
           style={{ '--depth': depth } as React.CSSProperties}
           className={cx(
             styles.item,
-            activeRequestId === node.id && styles.active,
+            activeRequestId === node.id &&
+              (targetFolderId === null ? styles.active : styles.open),
             drag.draggingId === node.id && styles.dragging,
           )}
           onClick={() => openRequest(node.id)}

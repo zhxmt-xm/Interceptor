@@ -3,13 +3,14 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import pixelmatch from 'pixelmatch';
 import { chromium } from 'playwright-core';
 import { PNG } from 'pngjs';
 import { createServer } from 'vite';
 
+import { startDesignPreview } from '../../../../design-vite/tools/design-preview.mjs';
 import * as config from './parity.config.mjs';
 import {
   fakeInterceptorFixture,
@@ -20,9 +21,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(here, '../..');
 const repoRoot = path.resolve(here, '../../../..');
 const outDir = path.join(here, 'renderer-shots');
-const designIndexUrl = pathToFileURL(
-  path.join(repoRoot, config.designIndex),
-).href;
+const designRoot = path.join(repoRoot, 'design-vite');
 
 const onlyView = process.argv
   .find((arg) => arg.startsWith('--view='))
@@ -140,6 +139,7 @@ const url = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5199/';
 console.log('renderer:', url, '\n');
 
 const browser = await chromium.launch({ channel: 'msedge' });
+const designPreview = await startDesignPreview(designRoot);
 const designPage = await browser.newPage({
   viewport: {
     width: config.viewport.width + 120,
@@ -147,10 +147,10 @@ const designPage = await browser.newPage({
   },
   colorScheme: 'light',
 });
-// Monaco loads from a CDN and spins its workers up through blob URLs, so `networkidle`
-// never settles once the design page carries more than a couple of editors; wait for the
-// same readiness flag shoot.mjs uses instead.
-await designPage.goto(designIndexUrl, { waitUntil: 'load', timeout: 120_000 });
+// Monaco spins its workers up through blob URLs, so `networkidle` never settles once the
+// design page carries more than a couple of editors; wait for the same readiness flag
+// shoot.mjs uses instead.
+await designPage.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
 await designPage.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
 await designPage.addStyleTag({
   content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}',
@@ -191,6 +191,7 @@ for (const view of views) {
     largeBody: view.largeBody === true,
     largeTextBody: view.largeTextBody === true,
     noRuleHits: view.noRuleHits === true,
+    pausedBreakpoints: view.pausedBreakpoints === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     githubAuthState: view.githubAuthState ?? 'signed-in',
@@ -445,6 +446,7 @@ console.log(
 await designPage.close();
 await browser.close();
 await server.close();
+await designPreview.close();
 
 function buildMarkdownReport(summaries, diffs) {
   const pixelDiffs = summaries

@@ -1,5 +1,8 @@
+import { promises as fs } from 'node:fs';
 import http from 'node:http';
 import { type AddressInfo } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RuleDefinition } from '@interceptor/core-protocol';
@@ -178,5 +181,67 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
     breakpointQueue.resolve(paused.id, 'continue');
     await expect(inFlight).resolves.toBe(200);
+  });
+
+  it('replaces the uploaded body with a local file the user picked', async () => {
+    // 文件只传路径：大文件与二进制都不经 IPC，Core 按路径直读。
+    const fixtureDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'interceptor-breakpoint-file-'),
+    );
+    const fixturePath = path.join(fixtureDirectory, 'replacement.json');
+    await fs.writeFile(fixturePath, '{"replaced":true}', 'utf8');
+
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
+    const address = await proxyService.start({ port: 0 });
+    origin = await startOrigin();
+
+    try {
+      const inFlight = proxiedPost(
+        address,
+        `http://127.0.0.1:${origin.port}/upload`,
+        UPLOAD_BODY,
+      );
+
+      await expect.poll(() => breakpointQueue.list().length).toBe(1);
+      const paused = breakpointQueue.list()[0]!;
+      breakpointQueue.resolve(paused.id, 'continue', {
+        headers: paused.snapshot.headers,
+        bodyFilePath: fixturePath,
+      });
+
+      await expect(inFlight).resolves.toBe(200);
+      expect(origin.received).toEqual(['{"replaced":true}']);
+    } finally {
+      await fs.rm(fixtureDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it('forwards the original body when the picked file disappeared', async () => {
+    // 放行那一刻文件没了，转发原文比把正文换成空安全。
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
+    const address = await proxyService.start({ port: 0 });
+    origin = await startOrigin();
+
+    const inFlight = proxiedPost(
+      address,
+      `http://127.0.0.1:${origin.port}/upload`,
+      UPLOAD_BODY,
+    );
+
+    await expect.poll(() => breakpointQueue.list().length).toBe(1);
+    const paused = breakpointQueue.list()[0]!;
+    breakpointQueue.resolve(paused.id, 'continue', {
+      headers: paused.snapshot.headers,
+      bodyFilePath: path.join(os.tmpdir(), 'interceptor-missing-fixture.json'),
+    });
+
+    await expect(inFlight).resolves.toBe(200);
+    expect(origin.received).toEqual([UPLOAD_BODY]);
   });
 });

@@ -527,6 +527,44 @@ export const ukCatalog = {
   'breakpoints.responseStatus': 'Статус відповіді',
   'breakpoints.requestHeaders': 'Заголовки запиту',
   'breakpoints.responseHeaders': 'Заголовки відповіді',
+  'breakpoints.originalBody': 'Початкове тіло',
+
+  'breakpoints.receiving': 'отримання',
+
+  'breakpoints.receivingRequestBody': 'Отримання тіла запиту…',
+
+  'breakpoints.receivingResponseBody': 'Отримання тіла відповіді…',
+
+  'breakpoints.bytesReceivedSoFar': 'Отримано {{bytes}}',
+
+  'breakpoints.noBody': 'немає тіла',
+
+
+  'breakpoints.noRequestBodyHint': 'Цей запит не має тіла.',
+
+
+  'breakpoints.noResponseBodyHint': 'Ця відповідь не має тіла.',
+
+
+  'breakpoints.replacementFile': 'Файл',
+
+
+  'breakpoints.chooseFile': 'Вибрати файл…',
+
+
+  'breakpoints.removeFile': 'Прибрати файл',
+
+
+  'breakpoints.collapseSection': 'Згорнути розділ',
+
+
+
+  'breakpoints.expandSection': 'Розгорнути розділ',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Завеликий або не текст — надсилається з диска як є.',
+
   'breakpoints.replacementBody': 'Замінне тіло',
   'breakpoints.replacementOff': 'Вимк.',
   'breakpoints.replacementText': 'Текст',
@@ -549,7 +587,7 @@ export const ukCatalog = {
   'breakpoints.addHeader': 'Додати заголовок',
   'breakpoints.payload': 'Корисне навантаження',
   'breakpoints.drop': 'Відкинути',
-  'breakpoints.continueUnmodified': 'Продовжити без змін',
+  'breakpoints.continueUnmodified': 'Продовжити',
 
   'diagnostics.title': 'Діагностика',
   'diagnostics.process': 'Процес',

@@ -518,6 +518,44 @@ export const jaCatalog = {
   'breakpoints.responseStatus': 'レスポンス ステータス',
   'breakpoints.requestHeaders': 'リクエスト ヘッダー',
   'breakpoints.responseHeaders': 'レスポンス ヘッダー',
+  'breakpoints.originalBody': '元のボディ',
+
+  'breakpoints.receiving': '受信中',
+
+  'breakpoints.receivingRequestBody': 'リクエストボディを受信しています…',
+
+  'breakpoints.receivingResponseBody': 'レスポンスボディを受信しています…',
+
+  'breakpoints.bytesReceivedSoFar': 'これまでに {{bytes}} 受信',
+
+  'breakpoints.noBody': 'ボディなし',
+
+
+  'breakpoints.noRequestBodyHint': 'このリクエストにはボディがありません。',
+
+
+  'breakpoints.noResponseBodyHint': 'このレスポンスにはボディがありません。',
+
+
+  'breakpoints.replacementFile': 'ファイル',
+
+
+  'breakpoints.chooseFile': 'ファイルを選択…',
+
+
+  'breakpoints.removeFile': 'ファイルを削除',
+
+
+  'breakpoints.collapseSection': 'セクションを折りたたむ',
+
+
+
+  'breakpoints.expandSection': 'セクションを展開',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'サイズが大きい、またはテキストではないため、ディスクからそのまま送信します。',
+
   'breakpoints.replacementBody': '置換ボディ',
   'breakpoints.replacementOff': 'オフ',
   'breakpoints.replacementText': 'テキスト',
@@ -540,7 +578,7 @@ export const jaCatalog = {
   'breakpoints.addHeader': 'ヘッダーを追加',
   'breakpoints.payload': 'ペイロード',
   'breakpoints.drop': '破棄',
-  'breakpoints.continueUnmodified': '変更せず続行',
+  'breakpoints.continueUnmodified': '続行',
 
   'diagnostics.title': '診断',
   'diagnostics.process': 'プロセス',

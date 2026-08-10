@@ -518,6 +518,44 @@ export const frCatalog = {
   'breakpoints.responseStatus': 'Statut de la réponse',
   'breakpoints.requestHeaders': 'En-têtes de requête',
   'breakpoints.responseHeaders': 'En-têtes de réponse',
+  'breakpoints.originalBody': 'Corps d’origine',
+
+  'breakpoints.receiving': 'réception',
+
+  'breakpoints.receivingRequestBody': 'Réception du corps de la requête…',
+
+  'breakpoints.receivingResponseBody': 'Réception du corps de la réponse…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} reçus jusqu’ici',
+
+  'breakpoints.noBody': 'aucun corps',
+
+
+  'breakpoints.noRequestBodyHint': 'Cette requête n’a pas de corps.',
+
+
+  'breakpoints.noResponseBodyHint': 'Cette réponse n’a pas de corps.',
+
+
+  'breakpoints.replacementFile': 'Fichier',
+
+
+  'breakpoints.chooseFile': 'Choisir un fichier…',
+
+
+  'breakpoints.removeFile': 'Retirer le fichier',
+
+
+  'breakpoints.collapseSection': 'Réduire la section',
+
+
+
+  'breakpoints.expandSection': 'Développer la section',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Trop volumineux ou non textuel — transmis tel quel depuis le disque.',
+
   'breakpoints.replacementBody': 'Corps de remplacement',
   'breakpoints.replacementOff': 'Désactivé',
   'breakpoints.replacementText': 'Texte',
@@ -540,7 +578,7 @@ export const frCatalog = {
   'breakpoints.addHeader': 'Ajouter un header',
   'breakpoints.payload': 'Payload',
   'breakpoints.drop': 'Abandonner',
-  'breakpoints.continueUnmodified': 'Continuer sans modification',
+  'breakpoints.continueUnmodified': 'Continuer',
 
   'diagnostics.title': 'Diagnostic',
   'diagnostics.process': 'Processus',

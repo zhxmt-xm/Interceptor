@@ -32,6 +32,8 @@ export class BreakpointQueue {
   private sequence = 0;
   /** 队列已满而未挂起、直接放行的命中累计数。 */
   private autoContinuedCount = 0;
+  /** 欠 Renderer 的一次集合变更通知；挂起、解除与溢出放行都会置上。 */
+  private pendingChangeNotice = false;
 
   /**
    * 挂起一个断点，返回稳定 id 与解除结果 Promise；timeoutMs>0 时到期自动 timed_out。
@@ -50,6 +52,7 @@ export class BreakpointQueue {
   ): BreakpointSuspension | null {
     if (this.pending.size >= BREAKPOINT_QUEUE_LIMIT) {
       this.autoContinuedCount += 1;
+      this.pendingChangeNotice = true;
       return null;
     }
     this.sequence += 1;
@@ -75,6 +78,7 @@ export class BreakpointQueue {
       }, timeoutMs);
     }
     this.pending.set(id, entry);
+    this.pendingChangeNotice = true;
     return { id, outcome };
   }
 
@@ -138,6 +142,18 @@ export class BreakpointQueue {
     return this.autoContinuedCount;
   }
 
+  /** 取走待发的变更通知；事件泵据此决定这一批要不要带信号。 */
+  drainChangeNotice(): boolean {
+    const pending = this.pendingChangeNotice;
+    this.pendingChangeNotice = false;
+    return pending;
+  }
+
+  /** 通知没送出去时放回，下一轮重发。 */
+  restoreChangeNotice(): void {
+    this.pendingChangeNotice = true;
+  }
+
   /** 统一清理 timer、移除记录并完成等待 Promise。 */
   private finish(id: string, outcome: BreakpointOutcome): void {
     const entry = this.pending.get(id);
@@ -145,6 +161,7 @@ export class BreakpointQueue {
       return;
     }
     this.pending.delete(id);
+    this.pendingChangeNotice = true;
     if (entry.timer !== null) {
       clearTimeout(entry.timer);
     }

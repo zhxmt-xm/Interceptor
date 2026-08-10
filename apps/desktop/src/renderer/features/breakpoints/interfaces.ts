@@ -11,7 +11,16 @@ export interface EditHeaderRow {
 }
 
 /** 正文替换模式；off 表示原文原样转发。 */
-export type BreakpointReplacement = 'off' | 'text';
+export type BreakpointReplacement = 'off' | 'text' | 'file';
+
+/** 选中的替换文件；没有 text 说明太大或非文本，只展示元数据。 */
+export interface BreakpointFileDraft {
+  path: string;
+  name: string;
+  size: number;
+  mediaType: string;
+  text?: string;
+}
 
 /** 选中断点的可编辑草稿：请求用 method/url、响应用 statusCode，headers/body 两阶段通用。 */
 export interface BreakpointDraft {
@@ -28,6 +37,8 @@ export interface BreakpointDraft {
   bodyAvailable: boolean;
   replacement: BreakpointReplacement;
   body: string;
+  /** 选了 File 档时的文件；还没选时为 null。 */
+  file: BreakpointFileDraft | null;
 }
 
 export interface BreakpointsState {
@@ -40,12 +51,16 @@ export interface BreakpointsState {
   resolving: boolean;
 
   applySnapshot(snapshot: BreakpointsSnapshot): void;
+  /** Core 换代后丢掉旧代的挂起快照。 */
+  clear(): void;
   select(id: string): void;
   setMethod(method: string): void;
   setUrl(url: string): void;
   setStatusCode(statusCode: number): void;
   setReplacement(replacement: BreakpointReplacement): void;
   setBody(body: string): void;
+  /** 写入用户选中的替换文件；null 表示移除当前文件。 */
+  setFile(file: BreakpointFileDraft | null): void;
   addHeader(): void;
   updateHeader(id: string, patch: Partial<Omit<EditHeaderRow, 'id'>>): void;
   removeHeader(id: string): void;

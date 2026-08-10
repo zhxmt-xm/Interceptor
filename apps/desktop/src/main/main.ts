@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomUUID, X509Certificate } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -30,6 +30,7 @@ import {
   type GitHubAuthStatus,
   type SystemProxyStatus as DesktopSystemProxyStatus,
   type UpdateStatus,
+  type BreakpointBodyFile,
 } from '../shared/desktop-api';
 import { AppContainerService } from './app-container/app-container-service';
 import type { AppContainerSnapshot } from './app-container/interfaces';
@@ -40,6 +41,7 @@ import {
   resolveClientAppHelperPath,
 } from './client-app/client-app-helper';
 import {
+  BREAKPOINT_BODY_FILE_PREVIEW_BYTES,
   UPSTREAM_PROBE_INTERVAL_MS,
   UPSTREAM_PROBE_TIMEOUT_MS,
 } from './constants';
@@ -64,6 +66,7 @@ import {
   readErrorName,
   toBodyDecodeOptions,
   toBodyExportRequest,
+  breakpointBodyMediaType,
   toBreakpointEdit,
   toByteRange,
   toCollectionNodes,
@@ -254,6 +257,9 @@ class DesktopApplication {
       for (const event of events) {
         this.broadcastTlsCompatibility(event);
       }
+    });
+    this.coreRuntime.onBreakpointsChanged(() => {
+      this.broadcastBreakpointsChanged();
     });
     this.coreRuntime.onCoreRpcProtocolIssue((detail) => {
       this.diagnostics.warn('main.core-rpc.message-rejected', {
@@ -1312,6 +1318,28 @@ class DesktopApplication {
       };
     });
 
+    // 选一个文件作为断点替换正文。路径交给 Renderer 只为放行时回传 Core（同 Map Local）；
+    // 只有小到能编辑的文本才顺便读出来做预览，大文件与二进制不经 IPC 搬运。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.breakpointPickBodyFile, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const selection = await dialog.showOpenDialog({ properties: ['openFile'] });
+      const [filePath] = selection.filePaths;
+      if (selection.canceled || !filePath) {
+        return null;
+      }
+      const mediaType = breakpointBodyMediaType(filePath);
+      const file: BreakpointBodyFile = {
+        path: filePath,
+        name: path.basename(filePath),
+        size: (await stat(filePath)).size,
+        mediaType,
+      };
+      if (file.size > BREAKPOINT_BODY_FILE_PREVIEW_BYTES || !mediaType.startsWith('text/')) {
+        return file;
+      }
+      return { ...file, text: await readFile(filePath, 'utf8') };
+    });
+
     // 放行断点：continue（可带 edit）/ drop；payload 原样转交 Core。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.breakpointResolve,
@@ -1510,6 +1538,15 @@ class DesktopApplication {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.tlsCompatibility, event);
+      }
+    }
+  }
+
+  /** 告知所有 Renderer 挂起中的断点变了；快照由 Renderer 自己重取。 */
+  private broadcastBreakpointsChanged(): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.breakpointsChanged);
       }
     }
   }

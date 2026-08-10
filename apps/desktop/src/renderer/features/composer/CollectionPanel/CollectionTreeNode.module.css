@@ -177,6 +177,21 @@
   font-weight: 560;
 }
 
+/* 右侧正在编辑本请求，但树上的选择已移到目录上。 */
+.item.open {
+  position: relative;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.item.open::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
 .itemMethod {
   width: 40px;
   flex: 0 0 auto;

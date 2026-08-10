@@ -397,9 +397,9 @@ export function normalizePriorities(nodes: readonly RuleNode[]): RuleNode[] {
   return walk(nodes);
 }
 
-/** 选中的规则草稿（无选中时为 null）。 */
+/** 右侧编辑器当前打开的规则草稿（未打开时为 null）。 */
 export function selectedRule(state: RulesState): RuleDefinition | null {
-  return state.selectedId ? findLeaf(state.nodes, state.selectedId) : null;
+  return state.openRuleId ? findLeaf(state.nodes, state.openRuleId) : null;
 }
 
 /** 已启用规则数。 */

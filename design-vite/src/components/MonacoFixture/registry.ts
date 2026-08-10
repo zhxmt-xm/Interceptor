@@ -1,5 +1,7 @@
 import type { editor } from 'monaco-editor/editor/editor.api';
 
+import { monaco } from './monacoSetup';
+
 const editors = new Set<editor.IStandaloneCodeEditor>();
 
 function updateReadyState(): void {
@@ -17,5 +19,8 @@ export function registerMonacoFixture(editorInstance: editor.IStandaloneCodeEdit
 
 window.__monacoReady = false;
 window.__monacoRelayout = () => {
+  // The webfont can land after the editors are created; without remeasuring, wordWrap keeps
+  // wrapping against the fallback metrics and every line below drifts a little further off.
+  monaco.editor.remeasureFonts();
   for (const editorInstance of editors) editorInstance.layout();
 };

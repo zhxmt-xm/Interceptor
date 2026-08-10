@@ -28,6 +28,7 @@ export function RuleTreeNode({
   const storedExpanded = useRulesStore((state) => state.expandedFolders.includes(node.id));
   const renaming = useRulesStore((state) => state.renamingNodeId === node.id);
   const selectedId = useRulesStore((state) => state.selectedId);
+  const openRuleId = useRulesStore((state) => state.openRuleId);
   const hits = useRulesStore((state) => state.hits);
   const select = useRulesStore((state) => state.select);
   const toggleRule = useRulesStore((state) => state.toggleRule);
@@ -50,6 +51,7 @@ export function RuleTreeNode({
         depth={depth}
         hits={hits[node.id] ?? 0}
         selected={node.id === selectedId}
+        open={node.id === openRuleId}
         dragging={drag.draggingId === node.id}
         keyword={keyword}
         onSelect={select}
@@ -66,6 +68,7 @@ export function RuleTreeNode({
         folder={node}
         depth={depth}
         expanded={expanded}
+        selected={node.id === selectedId}
         dragging={drag.draggingId === node.id}
         dropTarget={drag.intoFolderId === node.id}
         keyword={keyword}

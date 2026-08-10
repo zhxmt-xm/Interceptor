@@ -26,6 +26,8 @@ export interface RuleRowProps {
   depth: number;
   hits: number;
   selected: boolean;
+  /** 右侧编辑器正在打开本规则；树上选中则在别处时用虚线标出。 */
+  open: boolean;
   dragging: boolean;
   /** 搜索关键词；空串表示不高亮。 */
   keyword: string;
@@ -50,6 +52,7 @@ export const RuleRow = memo(function RuleRow({
   depth,
   hits,
   selected,
+  open,
   dragging,
   keyword,
   onSelect,
@@ -78,6 +81,7 @@ export const RuleRow = memo(function RuleRow({
         className={cx(
           styles.row,
           selected && styles.selected,
+          open && !selected && styles.open,
           !rule.enabled && styles.disabled,
           dragging && styles.dragging,
         )}

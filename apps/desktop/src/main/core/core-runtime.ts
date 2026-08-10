@@ -168,6 +168,11 @@ export class CoreRuntime {
     this.coreRpcClient.onTlsCompatibilityEvents(listener);
   }
 
+  /** 注册断点集合变更信号；同样随 event-batch 到达。 */
+  onBreakpointsChanged(listener: () => void): void {
+    this.coreRpcClient.onBreakpointsChanged(listener);
+  }
+
   /**
    * 注册 CoreProcess 就绪监听器（每代 CoreProcess 收到 ready 时触发一次），
    * 用于在新 Core 启动后下发 TLS 配置等初始化。调用方：DesktopApplication。

@@ -1,7 +1,6 @@
 // Each case declares design state, real Renderer navigation/actions, and comparison targets.
 export const viewport = { width: 1280, height: 800 };
-export const designIndex = 'design/app/index.html';
-export const designShotsDir = 'design/app/shots';
+export const designShotsDir = 'design-vite/shots';
 
 const EXPAND_RULE_TREE_ACTIONS = [
   { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
@@ -1048,18 +1047,30 @@ export const views = [
   {
     id: 'breakpoints',
     theme: 'light',
-    rendererNav: 'Breakpoints',
-    designState: { view: 'breakpoints', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/shell-v2/breakpoints.png',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'open',
+      breakpoints: 'on',
+      breakpointState: 'request',
+      // 设计稿的 loading 态有 3 秒定时器会自动跳到 ready，只有 ready 能稳定地量。
+      breakpointBody: 'ready',
+    },
+    designShot: 'light/capture/breakpoint-request-body-loaded.png',
+    pausedBreakpoints: true,
+    rendererActions: [{ type: 'clickText', text: '/checkout' }],
     targets: [
-      'Debug checkout',
-      'Inspect token',
-      'Continue all',
       'Request paused',
+      'Request headers',
+      'Original body',
+      // 规则名在状态栏也出现，按文本配对会抓错元素，改用面板内唯一的文案。
+      'The original body will be forwarded unchanged.',
+      'Add header',
       'Drop',
-      'Continue unmodified',
-      'Execute edited',
-      'shop.example.com/checkout',
+      'Continue',
+      'Forward edited',
     ],
   },
   {

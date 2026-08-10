@@ -527,6 +527,44 @@ export const plCatalog = {
   'breakpoints.responseStatus': 'Status odpowiedzi',
   'breakpoints.requestHeaders': 'Nagłówki żądania',
   'breakpoints.responseHeaders': 'Nagłówki odpowiedzi',
+  'breakpoints.originalBody': 'Oryginalna treść',
+
+  'breakpoints.receiving': 'odbieranie',
+
+  'breakpoints.receivingRequestBody': 'Odbieranie treści żądania…',
+
+  'breakpoints.receivingResponseBody': 'Odbieranie treści odpowiedzi…',
+
+  'breakpoints.bytesReceivedSoFar': 'Odebrano dotychczas {{bytes}}',
+
+  'breakpoints.noBody': 'brak treści',
+
+
+  'breakpoints.noRequestBodyHint': 'To żądanie nie ma treści.',
+
+
+  'breakpoints.noResponseBodyHint': 'Ta odpowiedź nie ma treści.',
+
+
+  'breakpoints.replacementFile': 'Plik',
+
+
+  'breakpoints.chooseFile': 'Wybierz plik…',
+
+
+  'breakpoints.removeFile': 'Usuń plik',
+
+
+  'breakpoints.collapseSection': 'Zwiń sekcję',
+
+
+
+  'breakpoints.expandSection': 'Rozwiń sekcję',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Za duży lub nietekstowy — wysyłany z dysku bez zmian.',
+
   'breakpoints.replacementBody': 'Treść zastępcza',
   'breakpoints.replacementOff': 'Wyłączone',
   'breakpoints.replacementText': 'Tekst',
@@ -549,7 +587,7 @@ export const plCatalog = {
   'breakpoints.addHeader': 'Dodaj nagłówek',
   'breakpoints.payload': 'Ładunek',
   'breakpoints.drop': 'Odrzuć',
-  'breakpoints.continueUnmodified': 'Kontynuuj bez zmian',
+  'breakpoints.continueUnmodified': 'Kontynuuj',
 
   'diagnostics.title': 'Diagnostyka',
   'diagnostics.process': 'Proces',

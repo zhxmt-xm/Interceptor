@@ -229,6 +229,7 @@ async function shoot(list) {
       collectionRename: '',
       composerHistory: '',
       bodyType: 'json',
+      ctxmenu: '',
       boot: '',
       detail: '',
       ...st,

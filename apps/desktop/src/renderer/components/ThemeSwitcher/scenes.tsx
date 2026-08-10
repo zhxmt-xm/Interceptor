@@ -3,7 +3,7 @@ import type { ThemeMode } from '../../theme/theme';
 /**
  * Time-of-day Chinese-landscape scenes revealed on hover in the theme popover.
  * Sun/moon trace a day arc: dawn low-left → noon high-centre → dusk low-right →
- * night moon high-centre. Mirrors the four `.art` SVGs in design/app/index.html.
+ * night moon high-centre. Mirrors the four `.art` SVGs in design-vite.
  */
 export function ThemeScene({ theme }: { theme: ThemeMode }): React.JSX.Element | null {
   switch (theme) {

@@ -309,6 +309,40 @@ describe('CoreRpcClient', () => {
     });
   });
 
+  it('delivers a breakpoint-only signal so the Renderer refetches immediately', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const captureListener = vi.fn();
+    const breakpointListener = vi.fn();
+    coreRpcClient.onCaptureEvents(captureListener);
+    coreRpcClient.onBreakpointsChanged(breakpointListener);
+
+    fakeRpcPort.receive({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 7,
+      events: [],
+      breakpointsChanged: true,
+    });
+
+    expect(breakpointListener).toHaveBeenCalledOnce();
+    expect(captureListener).toHaveBeenCalledWith([], []);
+  });
+
+  it('stays quiet about breakpoints when the batch carries no signal', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const breakpointListener = vi.fn();
+    coreRpcClient.onBreakpointsChanged(breakpointListener);
+
+    fakeRpcPort.receive({
+      kind: 'event-batch',
+      protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 8,
+      events: [],
+    });
+
+    expect(breakpointListener).not.toHaveBeenCalled();
+  });
+
   it('cleans up when attaching or posting fails', async () => {
     const coreRpcClient = new CoreRpcClient();
     const attachFailure = new FakeRpcPort();

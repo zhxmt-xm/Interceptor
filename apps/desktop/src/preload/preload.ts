@@ -200,6 +200,13 @@ const api: InterceptorDesktopApi = {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.tlsCompatibility, handler);
     };
   },
+  onBreakpointsChange: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.breakpointsChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.breakpointsChanged, handler);
+    };
+  },
   getRules: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesGet),
   replaceRules: (expectedRevision, nodes) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, nodes),
@@ -218,6 +225,8 @@ const api: InterceptorDesktopApi = {
   sendComposerRequest: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
   listBreakpoints: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointList),
+  pickBreakpointBodyFile: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointPickBodyFile),
   resolveBreakpoint: (breakpointId, action, edit) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointResolve, breakpointId, action, edit),
   setBreakpointsEnabled: (enabled) =>

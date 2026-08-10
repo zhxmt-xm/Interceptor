@@ -8,9 +8,11 @@
 
 .head {
   display: flex;
+  height: 50px;
+  flex: 0 0 50px;
   align-items: center;
-  gap: 10px;
-  padding: 13px 18px;
+  gap: 9px;
+  padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -33,17 +35,20 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
+  color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .context {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--yellow) 6%, transparent);
 }
@@ -54,15 +59,16 @@
   align-items: center;
   gap: 5px;
   color: var(--yellow);
-  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .rule {
   min-width: 0;
   overflow: hidden;
   color: var(--text-3);
-  font-family: var(--font-mono);
   font-size: 10.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -73,9 +79,9 @@
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   overflow-y: auto;
-  padding: 18px;
+  padding: 14px;
 }
 
 .statusRow {
@@ -99,58 +105,178 @@
 
 .headerRow {
   display: grid;
-  height: 40px;
   align-items: center;
-  gap: 10px;
-  padding: 0 2px;
-  border-bottom: 1px solid var(--border);
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 30px;
+  gap: 6px;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 28px;
 }
 
 .cellInput {
   width: 100%;
+  height: 30px;
   min-width: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-2);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
-  outline: none;
+  font-size: 10.5px;
+  outline: 0;
+}
+
+.cellInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .addHeader {
   display: inline-flex;
-  height: 28px;
+  height: 26px;
   align-self: flex-start;
   align-items: center;
   gap: 5px;
-  margin-top: 10px;
-  padding: 0 10px;
-  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 7px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
   background: transparent;
-  color: var(--accent);
+  color: var(--text-3);
   font-family: var(--font-ui);
-  font-size: 11.5px;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 400;
   cursor: pointer;
 }
 
-.replacementHead {
-  display: flex;
-  height: 30px;
-  align-items: center;
-  gap: 9px;
-  border-bottom: 1px solid var(--border);
+.addHeader:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
-.replacementTitle {
-  color: var(--text-2);
-  font-size: 10.5px;
+.addHeader svg {
+  width: 12px;
+  height: 12px;
+}
+
+.originalMeta {
+  margin-left: auto;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.originalMetaPending {
+  color: var(--yellow);
+  font-family: var(--font-ui);
   font-weight: 650;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+}
+
+.originalEmpty {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 12px;
+  margin-top: 8px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.originalLoading {
+  display: flex;
+  min-height: 92px;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.originalLoading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.originalLoading b {
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.originalLoading span {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+
+.spinner {
+  flex: 0 0 auto;
+  color: var(--accent);
+  animation: breakpoint-spin 1s linear infinite;
+}
+
+@keyframes breakpoint-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.originalReady {
+  overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.sectionCollapse {
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.sectionCollapse svg {
+  transition: transform 0.15s ease;
+}
+
+.sectionCollapsed svg {
+  transform: rotate(-90deg);
+  color: var(--accent);
+}
+
+/* 只补 Segmented 需要的行高；边框、内边距和字体都走 SectionHeader，
+   否则这一条下划线的落点会和其它区块差半个像素。 */
+.replacementHead {
+  min-height: 30px;
+  border-bottom: 0;
+}
+
+/* 滚动区里的分组线是向右淡出的，不是纯色边框。 */
+.replacementHead::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 12%, transparent),
+    color-mix(in srgb, var(--text) 5%, transparent) 72%,
+    transparent
+  );
+  content: '';
+}
+
+.replacementMode {
+  margin-left: auto;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .sourceTag {
@@ -158,13 +284,14 @@
   height: 19px;
   align-items: center;
   gap: 4px;
-  margin-right: auto;
   padding: 0 7px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--green) 14%, transparent);
   color: var(--green);
   font-size: 10.5px;
   font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .sourceTagWarn {
@@ -172,12 +299,81 @@
   color: var(--yellow);
 }
 
-.replacementOff {
+.fileArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fileCard {
   display: flex;
   align-items: center;
-  padding: 14px 2px 0;
-  color: var(--text-3);
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--accent);
+}
+
+.fileMeta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileMeta b {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono);
   font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta > span {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.filePreview {
+  max-height: 180px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.replacementOff {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+.replacementOff > svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--green);
 }
 
 .bodyEdit {
@@ -198,11 +394,23 @@
 
 .foot {
   display: flex;
+  flex: 0 0 58px;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 7px;
+  padding: 0 12px;
   border-top: 1px solid var(--border);
-  background: var(--panel-2);
+  background: var(--filter);
+}
+
+/* 底栏按钮比通用 Button 矮一号，设计稿就是这条窄工具栏。 */
+.foot .footButton {
+  height: 30px;
+  padding: 0 9px;
+  font-size: 11px;
+}
+
+.foot .footPrimary {
+  padding: 0 10px;
 }
 
 .spacer {

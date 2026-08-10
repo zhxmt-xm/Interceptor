@@ -518,6 +518,44 @@ export const trCatalog = {
   'breakpoints.responseStatus': 'Yanıt durumu',
   'breakpoints.requestHeaders': 'İstek başlıkları',
   'breakpoints.responseHeaders': 'Yanıt başlıkları',
+  'breakpoints.originalBody': 'Özgün gövde',
+
+  'breakpoints.receiving': 'alınıyor',
+
+  'breakpoints.receivingRequestBody': 'İstek gövdesi alınıyor…',
+
+  'breakpoints.receivingResponseBody': 'Yanıt gövdesi alınıyor…',
+
+  'breakpoints.bytesReceivedSoFar': 'Şu ana kadar {{bytes}} alındı',
+
+  'breakpoints.noBody': 'gövde yok',
+
+
+  'breakpoints.noRequestBodyHint': 'Bu isteğin gövdesi yok.',
+
+
+  'breakpoints.noResponseBodyHint': 'Bu yanıtın gövdesi yok.',
+
+
+  'breakpoints.replacementFile': 'Dosya',
+
+
+  'breakpoints.chooseFile': 'Dosya seç…',
+
+
+  'breakpoints.removeFile': 'Dosyayı kaldır',
+
+
+  'breakpoints.collapseSection': 'Bölümü daralt',
+
+
+
+  'breakpoints.expandSection': 'Bölümü genişlet',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Çok büyük veya metin değil — diskten olduğu gibi gönderilir.',
+
   'breakpoints.replacementBody': 'Değiştirme gövdesi',
   'breakpoints.replacementOff': 'Kapalı',
   'breakpoints.replacementText': 'Metin',
@@ -540,7 +578,7 @@ export const trCatalog = {
   'breakpoints.addHeader': 'Üst bilgi ekle',
   'breakpoints.payload': 'Yük',
   'breakpoints.drop': 'Bırak',
-  'breakpoints.continueUnmodified': 'Değiştirmeden sürdür',
+  'breakpoints.continueUnmodified': 'Sürdür',
 
   'diagnostics.title': 'Tanılama',
   'diagnostics.process': 'İşlem',

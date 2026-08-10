@@ -7,6 +7,9 @@
  * header 名/MIME 大小写不敏感，path/url/header 值/query 大小写敏感。
  */
 
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+
 import type {
   BreakpointEdit,
   KeyMatchMode,
@@ -291,10 +294,10 @@ export function isDropped(
 }
 
 /** 将断点编辑应用到请求可变状态。 */
-export function applyRequestEdit(
+export async function applyRequestEdit(
   state: MutableRequestState,
   edit: BreakpointEdit,
-): void {
+): Promise<void> {
   if (edit.method !== undefined) {
     state.method = edit.method;
   }
@@ -304,24 +307,45 @@ export function applyRequestEdit(
   if (edit.headers !== undefined) {
     state.headers = pairsToBag(edit.headers);
   }
-  if (edit.body !== undefined) {
+  const fileBody = await readEditBodyFile(edit);
+  if (fileBody !== undefined) {
+    state.body = fileBody;
+  } else if (edit.body !== undefined) {
     state.body = edit.body;
   }
 }
 
 /** 将断点编辑应用到响应可变状态。 */
-export function applyResponseEdit(
+export async function applyResponseEdit(
   state: MutableResponseState,
   edit: BreakpointEdit,
-): void {
+): Promise<void> {
   if (edit.statusCode !== undefined) {
     state.statusCode = edit.statusCode;
   }
   if (edit.headers !== undefined) {
     state.headers = pairsToBag(edit.headers);
   }
-  if (edit.body !== undefined) {
+  const fileBody = await readEditBodyFile(edit);
+  if (fileBody !== undefined) {
+    state.body = fileBody;
+  } else if (edit.body !== undefined) {
     state.body = edit.body;
+  }
+}
+
+/**
+ * 读取用作替换正文的本地文件。
+ * 读不到就当没选过文件：放行时才发现文件没了，原文转发比把正文换成空安全。
+ */
+async function readEditBodyFile(edit: BreakpointEdit): Promise<Uint8Array | undefined> {
+  if (edit.bodyFilePath === undefined) {
+    return undefined;
+  }
+  try {
+    return new Uint8Array(await fs.readFile(path.resolve(edit.bodyFilePath)));
+  } catch {
+    return undefined;
   }
 }
 

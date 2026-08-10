@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "shoot": "node shoot.mjs",
-    "compare": "node tools/compare-shots.mjs",
-    "compare:interactions": "node tools/interaction-parity.mjs"
+    "compare": "node tools/compare-shots.mjs"
   },
   "dependencies": {
     "antd": "6.5.0",

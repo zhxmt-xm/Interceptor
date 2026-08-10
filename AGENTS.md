@@ -61,11 +61,11 @@
 ## Frontend Styling
 
 - **Design authority**
-	- `design/` mockups and tokens are the **single source of truth**.
-	- `design/design-system.md` is the authoritative token/component spec.
-	- Use `.github/skills/ui-design-mockup/` for every UI creation, change, or review; keep `design/app/` and its `shots/` in sync.
+	- `design-vite/` mockups and tokens are the **single source of truth**.
+	- `design-vite/design-system.md` is the authoritative token/component spec.
+	- Use `.github/skills/ui-design-mockup/` for every UI creation, change, or review; keep `design-vite/` and its `shots/` in sync.
 - **Existing designs**
-	- Reproduce every existing `design/app/` view one-to-one in layout, spacing, color, typography, radii, and interaction states.
+	- Reproduce every existing `design-vite/` view one-to-one in layout, spacing, color, typography, radii, and interaction states.
 	- The mockup outranks tool convenience; approximations are not acceptable.
 - **New designs**
 	- First verify whether Ant Design v6 can provide the interaction and exact styling.
@@ -74,7 +74,7 @@
 	- Otherwise, self-build with colocated CSS Modules and design tokens; never hack `.ant-*` private DOM or accept visual compromise.
 	- Use Ant Design for hard-to-rebuild interactions (`Splitter`, `Popover`/`Dropdown`, `Tooltip`, `Tabs`, `Segmented`) only when exact matching remains possible.
 - **Tokens and CSS**
-	- Use shared ConfigProvider and `:root[data-theme]` tokens for colors, spacing, and radii; match `design/design-system.md` exactly and do not hardcode drifting values.
+	- Use shared ConfigProvider and `:root[data-theme]` tokens for colors, spacing, and radii; match `design-vite/design-system.md` exactly and do not hardcode drifting values.
 	- Vite-native CSS Modules plus design tokens are the default. Add Tailwind, Less, Sass, or another design system only with explicit user approval of a demonstrated need.
 	- Limit global CSS to reset, root design variables, typography, and accessibility media queries.
 	- Keep feature/component styles in colocated `*.module.css` files with semantic class names such as `.recording`, `.matchRow`, and `.methodChip`.

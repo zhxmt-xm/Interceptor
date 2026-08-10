@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   appendNode,
   collectLeafIds,
+  findLeaf,
   findNode,
   fitsDepth,
   folderDepth,
@@ -31,6 +32,11 @@ function expandTo(expanded: string[], folderId: string | null): string[] {
     : expanded;
 }
 
+/** 树变动后把 ID 落回仍存在的规则；原目标没了就退到第一条。 */
+function fallbackRuleId(ruleIds: string[], id: string | null): string | null {
+  return id && ruleIds.includes(id) ? id : (ruleIds[0] ?? null);
+}
+
 /** 新建落点：选中目录就放进去，选中规则就跟它平级，都没选就放根。 */
 function createParentId(state: RulesState): string | null {
   if (state.selectedId === null) {
@@ -49,6 +55,7 @@ export const useRulesStore = create<RulesState>((set) => ({
   nodes: [],
   applied: [],
   selectedId: null,
+  openRuleId: null,
   expandedFolders: [],
   renamingNodeId: null,
   hits: {},
@@ -61,16 +68,14 @@ export const useRulesStore = create<RulesState>((set) => ({
     set((state) => {
       const nodes = cloneNodes(ruleSet.nodes);
       const ruleIds = collectLeafIds(nodes);
-      const selectedId =
-        state.selectedId && ruleIds.includes(state.selectedId)
-          ? state.selectedId
-          : (ruleIds[0] ?? null);
+      const selectedId = fallbackRuleId(ruleIds, state.selectedId);
       return {
         revision: ruleSet.revision,
         initialized: true,
         nodes,
         applied: cloneNodes(ruleSet.nodes),
         selectedId,
+        openRuleId: fallbackRuleId(ruleIds, state.openRuleId),
         renamingNodeId: null,
         loading: false,
         saving: false,
@@ -88,7 +93,13 @@ export const useRulesStore = create<RulesState>((set) => ({
       return { hits };
     }),
 
-  select: (id) => set({ selectedId: id }),
+  select: (id) =>
+    set((state) => ({
+      selectedId: id,
+      // 只有选中规则才换右侧；选目录保持当前编辑器。
+      openRuleId:
+        id !== null && findLeaf(state.nodes, id) ? id : state.openRuleId,
+    })),
 
   toggleFolder: (id) =>
     set((state) => ({
@@ -113,6 +124,7 @@ export const useRulesStore = create<RulesState>((set) => ({
       return {
         nodes: normalizePriorities(appendNode(state.nodes, target, rule)),
         selectedId: rule.id,
+        openRuleId: rule.id,
         expandedFolders: expandTo(state.expandedFolders, target),
       };
     }),
@@ -121,6 +133,7 @@ export const useRulesStore = create<RulesState>((set) => ({
     set((state) => ({
       nodes: normalizePriorities(appendNode(state.nodes, null, rule)),
       selectedId: rule.id,
+      openRuleId: rule.id,
     })),
 
   addFolder: (name, parentId) =>
@@ -143,10 +156,8 @@ export const useRulesStore = create<RulesState>((set) => ({
       const ruleIds = collectLeafIds(nodes);
       return {
         nodes,
-        selectedId:
-          state.selectedId && ruleIds.includes(state.selectedId)
-            ? state.selectedId
-            : (ruleIds[0] ?? null),
+        selectedId: fallbackRuleId(ruleIds, state.selectedId),
+        openRuleId: fallbackRuleId(ruleIds, state.openRuleId),
       };
     }),
 

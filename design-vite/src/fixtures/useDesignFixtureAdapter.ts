@@ -64,6 +64,8 @@ function syncTlsRows(root: HTMLElement, patterns: readonly string[]): void {
     row.dataset.parity = `tls-host-${host}`;
     const code = row.querySelector('code');
     if (code) code.textContent = host;
+    // 模板行是内置推荐项，带 "Windows 365 · Recommended" 徽标；用户添加的 pattern 没有来源标注。
+    row.querySelector('.sbadge')?.remove();
     list.insertBefore(row, empty);
   });
 }

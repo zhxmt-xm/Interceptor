@@ -515,6 +515,44 @@ export const nlCatalog = {
   'breakpoints.responseStatus': 'Antwoordstatus',
   'breakpoints.requestHeaders': 'Verzoekheaders',
   'breakpoints.responseHeaders': 'Antwoordheaders',
+  'breakpoints.originalBody': 'Oorspronkelijke body',
+
+  'breakpoints.receiving': 'ontvangen',
+
+  'breakpoints.receivingRequestBody': 'Aanvraagbody wordt ontvangen…',
+
+  'breakpoints.receivingResponseBody': 'Antwoordbody wordt ontvangen…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} tot nu toe ontvangen',
+
+  'breakpoints.noBody': 'geen body',
+
+
+  'breakpoints.noRequestBodyHint': 'Deze aanvraag heeft geen body.',
+
+
+  'breakpoints.noResponseBodyHint': 'Dit antwoord heeft geen body.',
+
+
+  'breakpoints.replacementFile': 'Bestand',
+
+
+  'breakpoints.chooseFile': 'Bestand kiezen…',
+
+
+  'breakpoints.removeFile': 'Bestand verwijderen',
+
+
+  'breakpoints.collapseSection': 'Sectie samenvouwen',
+
+
+
+  'breakpoints.expandSection': 'Sectie uitvouwen',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Te groot of geen tekst — wordt ongewijzigd vanaf schijf verzonden.',
+
   'breakpoints.replacementBody': 'Vervangende inhoud',
   'breakpoints.replacementOff': 'Uit',
   'breakpoints.replacementText': 'Tekst',
@@ -537,7 +575,7 @@ export const nlCatalog = {
   'breakpoints.addHeader': 'Header toevoegen',
   'breakpoints.payload': 'Payload',
   'breakpoints.drop': 'Verwijderen',
-  'breakpoints.continueUnmodified': 'Ongewijzigd hervatten',
+  'breakpoints.continueUnmodified': 'Hervatten',
   'diagnostics.title': 'Diagnostiek',
   'diagnostics.process': 'Proces',
   'diagnostics.level': 'Niveau',

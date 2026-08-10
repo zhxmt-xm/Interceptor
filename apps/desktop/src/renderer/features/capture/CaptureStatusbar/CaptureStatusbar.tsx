@@ -20,6 +20,8 @@ export function CaptureStatusbar(): React.JSX.Element {
   const setHttpsSetupOpen = useCaptureStore((state) => state.setHttpsSetupOpen);
   const pausedCount = useBreakpointsStore((state) => state.breakpoints.length);
   const autoContinued = useBreakpointsStore((state) => state.autoContinued);
+  // 多条挂起时只报最早那条的规则，避免状态栏变成规则列表。
+  const pausedRuleName = useBreakpointsStore((state) => state.breakpoints[0]?.ruleName ?? '');
 
   return (
     <div className={styles.bar}>
@@ -61,6 +63,7 @@ export function CaptureStatusbar(): React.JSX.Element {
           <span className={styles.paused} data-parity="capture-status-breakpoints">
             <Pause size={12} strokeWidth={2.2} />
             {t('breakpoints.pausedCount', { count: pausedCount })}
+            {pausedRuleName ? <span className={styles.pausedRule}>{pausedRuleName}</span> : null}
             {autoContinued > 0
               ? ` · ${t('breakpoints.autoContinued', { count: autoContinued })}`
               : ''}

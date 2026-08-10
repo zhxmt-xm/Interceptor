@@ -518,6 +518,44 @@ export const koCatalog = {
   'breakpoints.responseStatus': '응답 상태',
   'breakpoints.requestHeaders': '요청 헤더',
   'breakpoints.responseHeaders': '응답 헤더',
+  'breakpoints.originalBody': '원본 본문',
+
+  'breakpoints.receiving': '수신 중',
+
+  'breakpoints.receivingRequestBody': '요청 본문을 수신하는 중…',
+
+  'breakpoints.receivingResponseBody': '응답 본문을 수신하는 중…',
+
+  'breakpoints.bytesReceivedSoFar': '지금까지 {{bytes}} 수신',
+
+  'breakpoints.noBody': '본문 없음',
+
+
+  'breakpoints.noRequestBodyHint': '이 요청에는 본문이 없습니다.',
+
+
+  'breakpoints.noResponseBodyHint': '이 응답에는 본문이 없습니다.',
+
+
+  'breakpoints.replacementFile': '파일',
+
+
+  'breakpoints.chooseFile': '파일 선택…',
+
+
+  'breakpoints.removeFile': '파일 제거',
+
+
+  'breakpoints.collapseSection': '섹션 접기',
+
+
+
+  'breakpoints.expandSection': '섹션 펼치기',
+
+
+
+  'breakpoints.filePreviewUnavailable': '너무 크거나 텍스트가 아니어서 디스크에서 그대로 전달합니다.',
+
   'breakpoints.replacementBody': '대체 본문',
   'breakpoints.replacementOff': '끄기',
   'breakpoints.replacementText': '텍스트',
@@ -540,7 +578,7 @@ export const koCatalog = {
   'breakpoints.addHeader': '헤더 추가',
   'breakpoints.payload': '페이로드',
   'breakpoints.drop': '폐기',
-  'breakpoints.continueUnmodified': '수정 없이 계속',
+  'breakpoints.continueUnmodified': '계속',
 
   'diagnostics.title': '진단',
   'diagnostics.process': '프로세스',

@@ -15,6 +15,8 @@ export interface RuleFolderRowProps {
   /** 树深度，决定行内缩进；顶层为 0。 */
   depth: number;
   expanded: boolean;
+  /** 树上当前选中的是本目录。 */
+  selected: boolean;
   dragging: boolean;
   /** 拖拽落点为「移入本目录」时整行高亮。 */
   dropTarget: boolean;
@@ -36,6 +38,7 @@ export function RuleFolderRow({
   folder,
   depth,
   expanded,
+  selected,
   dragging,
   dropTarget,
   keyword,
@@ -44,6 +47,7 @@ export function RuleFolderRow({
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleFolder = useRulesStore((state) => state.toggleFolder);
+  const select = useRulesStore((state) => state.select);
 
   return (
     <RuleFolderMenu folder={folder} open={menuOpen} onOpenChange={setMenuOpen}>
@@ -53,6 +57,7 @@ export function RuleFolderRow({
         style={{ '--depth': depth } as React.CSSProperties}
         className={cx(
           styles.row,
+          selected && styles.selected,
           dragging && styles.dragging,
           dropTarget && styles.dropTarget,
           menuOpen && styles.menuOpen,
@@ -71,8 +76,14 @@ export function RuleFolderRow({
             strokeWidth={1.9}
           />
         </button>
-        <Folder className={styles.icon} strokeWidth={1.9} />
-        <HighlightedName name={folder.name} keyword={keyword} className={styles.name} />
+        <button
+          type="button"
+          className={styles.nameButton}
+          onClick={() => select(folder.id)}
+        >
+          <Folder className={styles.icon} strokeWidth={1.9} />
+          <HighlightedName name={folder.name} keyword={keyword} className={styles.name} />
+        </button>
         <button
           type="button"
           className={styles.more}

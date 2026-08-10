@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PendingBreakpoint } from '../../../../shared/desktop-api';
-import { buildEdit, draftFromBreakpoint } from '../utils';
+import { buildEdit, draftFromBreakpoint, expectsBody } from '../utils';
 
 function pending(overrides: Partial<PendingBreakpoint> = {}): PendingBreakpoint {
   return {
     id: 'bp-1',
     phase: 'request',
     createdAt: 0,
-    deadline: 0,
     ruleName: 'Pause on request',
     method: 'POST',
     url: 'https://api.test/upload',
@@ -58,5 +57,56 @@ describe('breakpoint edits', () => {
     };
 
     expect(buildEdit(draft)).toEqual({ body: '' });
+  });
+
+  it('sends the file path so Core reads it directly', () => {
+    const draft = {
+      ...draftFromBreakpoint(pending()),
+      replacement: 'file' as const,
+      file: {
+        path: 'C:/fixtures/checkout.json',
+        name: 'checkout.json',
+        size: 12,
+        mediaType: 'application/json',
+        text: '{"ok":true}',
+      },
+    };
+
+    expect(buildEdit(draft)).toMatchObject({ bodyFilePath: 'C:/fixtures/checkout.json' });
+    expect(buildEdit(draft)).not.toHaveProperty('body');
+  });
+
+  it('still replaces from a file that was too large to preview', () => {
+    // 无法预览不等于不能用；Core 按路径直读，大文件与二进制同样生效。
+    const draft = {
+      ...draftFromBreakpoint(pending()),
+      replacement: 'file' as const,
+      file: {
+        path: 'C:/fixtures/payload.bin',
+        name: 'payload.bin',
+        size: 8_000_000,
+        mediaType: 'text/plain',
+      },
+    };
+
+    expect(buildEdit(draft)).toMatchObject({ bodyFilePath: 'C:/fixtures/payload.bin' });
+  });
+});
+
+describe('expectsBody', () => {
+  it('says a GET without content-length carries no body', () => {
+    // 否则 GET 会永远停在「接收中」，因为 Capture 永远给不出 body 引用。
+    expect(expectsBody([{ id: 'h1', name: 'accept', value: '*/*' }])).toBe(false);
+  });
+
+  it('treats an explicit zero content-length as no body', () => {
+    expect(expectsBody([{ id: 'h1', name: 'Content-Length', value: '0' }])).toBe(false);
+  });
+
+  it('expects a body for a positive content-length or chunked transfer', () => {
+    expect(expectsBody([{ id: 'h1', name: 'content-length', value: '32' }])).toBe(true);
+    expect(
+      expectsBody([{ id: 'h1', name: 'Transfer-Encoding', value: 'chunked' }]),
+    ).toBe(true);
   });
 });

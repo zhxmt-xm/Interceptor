@@ -47,6 +47,9 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
         : state;
     }),
 
+  clear: () =>
+    set({ breakpoints: [], selectedId: null, draft: null, resolving: false }),
+
   setMethod: (method) =>
     set((state) => (state.draft ? { draft: { ...state.draft, method } } : state)),
   setUrl: (url) =>
@@ -55,6 +58,8 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
     set((state) => (state.draft ? { draft: { ...state.draft, statusCode } } : state)),
   setReplacement: (replacement) =>
     set((state) => (state.draft ? { draft: { ...state.draft, replacement } } : state)),
+  setFile: (file) =>
+    set((state) => (state.draft ? { draft: { ...state.draft, file } } : state)),
   setBody: (body) =>
     set((state) => (state.draft ? { draft: { ...state.draft, body } } : state)),
 

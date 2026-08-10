@@ -63,14 +63,14 @@
 
 - [x] **确认 BUG**：真实代理 + 真实源站实测，规则设 8 KiB/s、下载 128 KiB，**17 ms** 完成（真限速需 ≥16 s），而 UI 仍显示命中。
 - [x] 选择移除而不是实现：限速必须介入正文流，而规则全部在头部阶段执行，需扩 `patches/mockttp+4.5.0.patch`（约 60 行，含 override 分支流式化与 resolve 时序改造）；浏览器 DevTools 本身就支持限速，不值得为此增加 patch 复杂度与升级风险。
-- [x] 已从协议、RuleEngine、action executor、Renderer（菜单/编辑器/chip/右键菜单）、automation ID、15 种语言文案与 `design/app` 设计稿中删除。
+- [x] 已从协议、RuleEngine、action executor、Renderer（菜单/编辑器/chip/右键菜单）、automation ID、15 种语言文案与设计稿中删除。
 - [ ] 若以后重新引入，必须同时覆盖：body 被规则替换时也要限速（否则静默失效）、resolve 等 `clientRes` finish、gRPC trailer 时序、客户端取消与 Stop/Clear 中断。
 
 ### 6. Breakpoint 没有原始 HTTP body（已处理）
 
 - [x] **确认 BUG**：真实代理集成测试证实断点快照的 body 恒为 `undefined`，而 UI 却显示一个标着“body · editable”的空输入框。
 - [x] **发现更严重的数据破坏**：`buildEdit` 无条件发送 `body: ''`，因此在断点面板只改一个 header 就点 Continue，会把真实上传/响应正文整体替换成空。
-- [x] 快照新增 `bodyAvailable`：HTTP 头部阶段断点为 false，WebSocket 消息断点为 true。Renderer 在不可见且用户未输入时不再发送 `body`，UI 改为“Replace body / 原文尚未到达 / 留空则原样转发”；`design/app` 同步。
+- [x] 快照新增 `bodyAvailable`：HTTP 头部阶段断点为 false，WebSocket 消息断点为 true。Renderer 在不可见且用户未输入时不再发送 `body`，UI 改为“Replace body / 原文尚未到达 / 留空则原样转发”；设计稿同步。
 - [ ] 若要展示“已接收片段”，从 `ExchangeTracker` 增量 writer 读取，不为断点再制造第二份无界内存。
 - [ ] Binary body 不能一律 UTF-8 replacement；提供 text / hex，并保留编码/长度信息。
 - [ ] 验证 Execute edited 后 content-length、content-encoding、transfer-encoding 和 H2 framing 正确。

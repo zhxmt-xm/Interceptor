@@ -7,12 +7,25 @@
   flex: 0 0 30px;
   padding: 0 4px 0 calc(4px + var(--depth) * 26px);
   border-radius: 7px;
-  color: var(--text);
+  color: var(--text-2);
   user-select: none;
   cursor: pointer;
 }
 .row:hover {
   background: var(--hover);
+  color: var(--text);
+}
+.selected {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--accent);
+}
+.selected .nameButton {
+  font-weight: 600;
+}
+.selected .icon,
+.selected .chevron {
+  color: var(--accent);
 }
 .dragging {
   opacity: 0.35;
@@ -50,14 +63,28 @@
   flex: 0 0 auto;
   color: var(--text-3);
 }
-.name {
+.nameButton {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+.name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
-  font-weight: 640;
 }
 .more {
   display: none;

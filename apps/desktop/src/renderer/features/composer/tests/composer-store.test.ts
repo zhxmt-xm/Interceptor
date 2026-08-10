@@ -115,3 +115,15 @@ describe('composerStore collection tree', () => {
     expect(useComposerStore.getState().expandedFolders).toEqual(['group']);
   });
 });
+
+describe('composerStore selection', () => {
+  it('keeps the open request when a folder becomes the new-item target', () => {
+    seed([folder('group'), request('draft')]);
+    useComposerStore.getState().openRequest('draft');
+
+    useComposerStore.getState().setTargetFolder('group');
+
+    expect(useComposerStore.getState().targetFolderId).toBe('group');
+    expect(useComposerStore.getState().activeRequestId).toBe('draft');
+  });
+});

@@ -236,8 +236,8 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         : [...state.expandedFolders, folderId],
     })),
 
-  // 目录与请求只能选中一个，否则新建落点会变得不可预测
-  setTargetFolder: (targetFolderId) => set({ targetFolderId, activeRequestId: null }),
+  // 只换树上的选择落点；右侧保持当前请求，否则点一下目录就丢掉正在编辑的内容。
+  setTargetFolder: (targetFolderId) => set({ targetFolderId }),
   clearSelection: () => set({ targetFolderId: null }),
   setCollectionOpen: (collectionOpen) => set({ collectionOpen }),
   setRenamingNode: (renamingNodeId) => set({ renamingNodeId }),

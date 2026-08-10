@@ -347,7 +347,8 @@ export const RequestRow = memo(function RequestRow({
           className={cx(styles.time, pausedPhase && styles.muted)}
           data-parity="capture-list-time-cell"
         >
-          {timeLabel(summary, i18n.language, timeLabels)}
+          {/* 挂起期间耗时只反映用户看了多久，不是真实网络耗时。 */}
+          {pausedPhase ? '—' : timeLabel(summary, i18n.language, timeLabels)}
         </span>
       </button>
     </Dropdown>

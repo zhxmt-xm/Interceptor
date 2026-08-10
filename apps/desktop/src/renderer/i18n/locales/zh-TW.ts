@@ -515,6 +515,44 @@ export const zhTWCatalog = {
   'breakpoints.responseStatus': '回應狀態',
   'breakpoints.requestHeaders': '請求標頭',
   'breakpoints.responseHeaders': '回應標頭',
+  'breakpoints.originalBody': '原始內容',
+
+  'breakpoints.receiving': '接收中',
+
+  'breakpoints.receivingRequestBody': '正在接收請求內容…',
+
+  'breakpoints.receivingResponseBody': '正在接收回應內容…',
+
+  'breakpoints.bytesReceivedSoFar': '已接收 {{bytes}}',
+
+  'breakpoints.noBody': '無內容',
+
+
+  'breakpoints.noRequestBodyHint': '此請求沒有內容。',
+
+
+  'breakpoints.noResponseBodyHint': '此回應沒有內容。',
+
+
+  'breakpoints.replacementFile': '檔案',
+
+
+  'breakpoints.chooseFile': '選擇檔案…',
+
+
+  'breakpoints.removeFile': '移除檔案',
+
+
+  'breakpoints.collapseSection': '摺疊區塊',
+
+
+
+  'breakpoints.expandSection': '展開區塊',
+
+
+
+  'breakpoints.filePreviewUnavailable': '檔案過大或非文字，將原樣從磁碟送出。',
+
   'breakpoints.replacementBody': '替換內文',
   'breakpoints.replacementOff': '關閉',
   'breakpoints.replacementText': '文字',
@@ -537,7 +575,7 @@ export const zhTWCatalog = {
   'breakpoints.addHeader': '新增標頭',
   'breakpoints.payload': '承載資料',
   'breakpoints.drop': '丟棄',
-  'breakpoints.continueUnmodified': '不修改並繼續',
+  'breakpoints.continueUnmodified': '繼續',
   'diagnostics.title': '診斷',
   'diagnostics.process': '處理程序',
   'diagnostics.level': '層級',

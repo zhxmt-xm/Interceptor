@@ -281,7 +281,7 @@ dialog。dialog 为每个 host 列出多层级候选（精确 host + 逐级父�
 TLS Settings。Store 同时推进 settings change sequence，使已经挂载的 TLS 面板立即重读，旧请求晚返回
 也不能覆盖新名单。默认列表为空，WVD badge 只是建议，不会自动保存。
 三者的完整证据、技术方案、文件级改动和收益/代价见
-[backlog/research.md](../backlog/research.md) § 3.3。`design/app` 已提供两组独立 Settings 页面、
+[backlog/research.md](../backlog/research.md) § 3.3。`design-vite` 已提供两组独立 Settings 页面、
 AppContainer 搜索/刷新/单项开关与 UAC 确认、TLS host pattern 管理、全局兼容性 dialog、invalid / empty 状态，
 产品代码与 light / dark visual parity 场景均已实现。Mockttp patch 让 `tlsPassthrough` 接受 getter，
 名单每连接求值，因此**保存即对新连接生效**，既不重建共享 listener也不需要重启；在途连接不受

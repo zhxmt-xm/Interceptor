@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { cx, SectionHeader } from '../../../components';
@@ -25,17 +24,13 @@ export function Section({
     <div className={cx(grow && !collapsed && styles.sectionGrow)}>
       <SectionHeader
         count={count}
+        collapsed={collapsed}
         className={cx(styles.head, collapsed && styles.collapsedHead)}
         onClick={() => setCollapsed(!collapsed)}
       >
-        {title}
-        <ChevronDown
-          className={cx(styles.chevron, collapsed && styles.collapsedChevron)}
-          strokeWidth={1.9}
-          aria-hidden="true"
-        />
+        <span>{title}</span>
       </SectionHeader>
-      {collapsed ? null : children}
+      {collapsed ? null : <div className={styles.body}>{children}</div>}
     </div>
   );
 }

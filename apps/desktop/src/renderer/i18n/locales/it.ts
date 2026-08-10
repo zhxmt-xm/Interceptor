@@ -518,6 +518,44 @@ export const itCatalog = {
   'breakpoints.responseStatus': 'Stato della risposta',
   'breakpoints.requestHeaders': 'Intestazioni della richiesta',
   'breakpoints.responseHeaders': 'Intestazioni della risposta',
+  'breakpoints.originalBody': 'Corpo originale',
+
+  'breakpoints.receiving': 'in ricezione',
+
+  'breakpoints.receivingRequestBody': 'Ricezione del corpo della richiesta…',
+
+  'breakpoints.receivingResponseBody': 'Ricezione del corpo della risposta…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} ricevuti finora',
+
+  'breakpoints.noBody': 'nessun corpo',
+
+
+  'breakpoints.noRequestBodyHint': 'Questa richiesta non ha corpo.',
+
+
+  'breakpoints.noResponseBodyHint': 'Questa risposta non ha corpo.',
+
+
+  'breakpoints.replacementFile': 'File',
+
+
+  'breakpoints.chooseFile': 'Scegli file…',
+
+
+  'breakpoints.removeFile': 'Rimuovi file',
+
+
+  'breakpoints.collapseSection': 'Comprimi sezione',
+
+
+
+  'breakpoints.expandSection': 'Espandi sezione',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Troppo grande o non testuale: inviato dal disco così com’è.',
+
   'breakpoints.replacementBody': 'Corpo sostitutivo',
   'breakpoints.replacementOff': 'Off',
   'breakpoints.replacementText': 'Testo',
@@ -540,7 +578,7 @@ export const itCatalog = {
   'breakpoints.addHeader': 'Aggiungi intestazione',
   'breakpoints.payload': 'Payload',
   'breakpoints.drop': 'Scarta',
-  'breakpoints.continueUnmodified': 'Continua senza modifiche',
+  'breakpoints.continueUnmodified': 'Continua',
 
   'diagnostics.title': 'Diagnostica',
   'diagnostics.process': 'Processo',

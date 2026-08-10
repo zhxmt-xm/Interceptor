@@ -355,6 +355,21 @@ export interface BreakpointsSnapshot {
   autoContinued: number;
 }
 
+/**
+ * 用户选来替换正文的文件。
+ *
+ * 路径交给 Renderer 只是为了放行时回传给 Core（同 Map Local），Renderer 自己不读写文件。
+ * 只有小到能放进编辑器的文本才带 `text`；其余情况只给元数据，和 Inspector 里超限正文一致。
+ */
+export interface BreakpointBodyFile {
+  path: string;
+  name: string;
+  size: number;
+  mediaType: string;
+  /** 可预览可编辑的文本；过大或非文本时缺省。 */
+  text?: string;
+}
+
 /** TLS 探测结果 DTO：协议/套件/ALPN/授权/证书链；失败 ok=false + error。 */
 export interface TlsProbe {
   ok: boolean;
@@ -471,6 +486,8 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesExport: 'rules:export',
   composerSend: 'composer:send',
   breakpointList: 'breakpoint:list',
+  breakpointsChanged: 'breakpoint:changed',
+  breakpointPickBodyFile: 'breakpoint:pick-body-file',
   breakpointResolve: 'breakpoint:resolve',
   breakpointConfigure: 'breakpoint:configure',
   tlsProbe: 'tls:probe',
@@ -583,6 +600,10 @@ export interface InterceptorDesktopApi {
   exportRules(nodes: RuleNode[], title: string): Promise<boolean>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
   listBreakpoints(): Promise<BreakpointsSnapshot>;
+  /** 挂起中的断点变化时回调；返回取消订阅函数。 */
+  onBreakpointsChange(listener: () => void): () => void;
+  /** 选一个文件作为断点替换正文；取消返回 null，Renderer 不接触真实路径。 */
+  pickBreakpointBodyFile(): Promise<BreakpointBodyFile | null>;
   resolveBreakpoint(
     breakpointId: string,
     action: 'continue' | 'drop',

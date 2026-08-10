@@ -515,6 +515,44 @@ export const deCatalog = {
   'breakpoints.responseStatus': 'Antwortstatus',
   'breakpoints.requestHeaders': 'Anfrage-Header',
   'breakpoints.responseHeaders': 'Antwort-Header',
+  'breakpoints.originalBody': 'Ursprünglicher Text',
+
+  'breakpoints.receiving': 'wird empfangen',
+
+  'breakpoints.receivingRequestBody': 'Anfragetext wird empfangen…',
+
+  'breakpoints.receivingResponseBody': 'Antworttext wird empfangen…',
+
+  'breakpoints.bytesReceivedSoFar': '{{bytes}} bisher empfangen',
+
+  'breakpoints.noBody': 'kein Text',
+
+
+  'breakpoints.noRequestBodyHint': 'Diese Anfrage hat keinen Text.',
+
+
+  'breakpoints.noResponseBodyHint': 'Diese Antwort hat keinen Text.',
+
+
+  'breakpoints.replacementFile': 'Datei',
+
+
+  'breakpoints.chooseFile': 'Datei wählen…',
+
+
+  'breakpoints.removeFile': 'Datei entfernen',
+
+
+  'breakpoints.collapseSection': 'Abschnitt einklappen',
+
+
+
+  'breakpoints.expandSection': 'Abschnitt ausklappen',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Zu groß oder kein Text – wird unverändert von der Festplatte gesendet.',
+
   'breakpoints.replacementBody': 'Ersatzinhalt',
   'breakpoints.replacementOff': 'Aus',
   'breakpoints.replacementText': 'Text',
@@ -537,7 +575,7 @@ export const deCatalog = {
   'breakpoints.addHeader': 'Header hinzufügen',
   'breakpoints.payload': 'Payload',
   'breakpoints.drop': 'Verwerfen',
-  'breakpoints.continueUnmodified': 'Unverändert fortsetzen',
+  'breakpoints.continueUnmodified': 'Fortsetzen',
   'diagnostics.title': 'Diagnose',
   'diagnostics.process': 'Prozess',
   'diagnostics.level': 'Stufe',

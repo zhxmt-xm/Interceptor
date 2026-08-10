@@ -2,16 +2,16 @@
 
 > 最后更新：2026-08-10
 > 仓库直接提交到 `main`，没有额外 PR 边界。
-> 本文件只设两个一级章节；已实现内容同步到对应架构文档后从本文件删除，未实现项留在“本轮待完成”。未经代码核对不得删除或标记完成。
+> 本文件只设两个一级章节；已实现内容同步到对应架构文档后从本文件删除，未实现项留在“待完成”。未经代码核对不得删除或标记完成。
 
-## 上轮已完成
+## 已完成
 
 经当前产品代码逐条复核，上游代理、Rules / Composer / Inspector、AppContainer exemption manager
 与 per-host TLS passthrough 均已实现。TLS passthrough 默认列表为空，WVD 仅作为 Settings 推荐项。
 Mockttp patch 让 `tlsPassthrough` 接受 getter，名单每连接求值，**保存即对新连接生效**，
 `Restart Interceptor` 提示条与整条 restart 链路（IPC、`app.relaunch`、`CoreRuntime.restart`）已删除。
 Windows system proxy 不再注入 `*.wvd.microsoft.com` bypass。Breakpoint 目标尚未落地，已移入
-“本轮待完成”并逐条标明状态。
+“待完成”并逐条标明状态。
 
 TLS 命令按用户交互拆成正交四条：`tls.useCertificate` 只记录当前 CA 材料，
 `tls.startDecryption` / `tls.stopDecryption` 只切解密，`tls.replaceInsecureHosts` 只换源站例外名单。
@@ -38,9 +38,19 @@ Settings Updates 已增加 private GitHub App Device Flow 临时鉴权。Client 
 成功后重排唯一 timer。缺失、过期或非退出刷新失败即清空登录；退出取消 timer，等待下次启动。
 仓库转 public 后整块删除 auth service / IPC / store / UI，updater 恢复匿名访问。
 
-## 本轮待完成
+设计稿已统一到 `design-vite/`（Vite + React + CSS Modules），静态 `design/` 整个删除，
+`design-system.md` 与 `README.md` 随之移入。删除前完成 1:1 验收：交互 71/71 match，像素平均
+0.0239%、最大 0.051%，`0 missing / 0 resized / 0 not drawn`，仅图标描边有差——旧 sprite 是手写的
+旧版 lucide 几何加 `stroke-width: 1.9`，新稿用 lucide-react 默认 `2`，按用户决定不再收敛，
+产品一律用 lucide icon。`compare-shots.mjs` 转为需显式基线的回归工具；`generate-fixtures.mjs`
+与 `interaction-parity.mjs` 的输入是旧稿，已一并删除，`src/fixtures/generated/*` 现在是定稿的静态
+DOM 快照。`apps/desktop/tests/visual-parity/` 改为经 `design-vite/tools/design-preview.mjs`
+build + preview 设计稿，基线 PNG 与应用图标都取自 `design-vite/`，已用 `--view=capture` 验证跑通。
+命令与陷阱清单见 [../design-vite/README.md](../design-vite/README.md) 与 `ui-design-mockup` skill。
 
-### Windows App：本轮已完成的研究与现场验证
+## 待完成
+
+### Windows App：已验证的现场事实
 
 - 保留冷启动自动接管系统代理的方向，没有改为手动 Enable。
 - 本机 WVD gateway 为 `afdfp-rdgateway-r0.wvd.microsoft.com:443`。
@@ -61,12 +71,10 @@ Settings Updates 已增加 private GitHub App Device Flow 临时鉴权。Client 
 - 分支：`main`。
 - 未提交产品改动包含 AppContainer manager、TLS passthrough 持久化/路由/兼容性事件、Settings UI，
    删除临时 WVD system bypass，以及 private GitHub Release 登录/更新链路；不要恢复该 bypass。
-- 未提交文档改动：本 HANDOVER、Windows App 研究、Settings / Capture 同步；`backlog/idea.md` 与 `backlog/image-7.png` 是现有用户改动，不要删除。
-- 未提交设计改动：Settings 独立 AppContainer access 与 TLS passthrough 页面、交互状态和 light / dark
-   截图；对应产品 API 与 UI 已实现。
-- `design/app` 与 `design-vite` 并存于迁移中期：`design-vite/index.html` 已只是 Vite 入口，
-   `generate-fixtures.mjs` 因此不再可用，`src/fixtures/generated/*` 只能按节点结构手工等价编辑，
-   且它的快照本来就落后于 `design/app`（例如兼容性弹窗仍带 `data-tls-compatibility-count` 前缀）。
+- 未提交文档改动：本 HANDOVER、Windows App 研究、Settings / Capture 同步；`backlog/idea.md` 与
+   `backlog/image-*.png` 是现有用户改动，不要删除。
+- 未提交设计改动：删除整个 `design/`，新增 `design-vite/`，以及 AGENTS.md、两个 skill 与
+   visual-parity 对新路径的同步。
 - `stash@{0}: wip: Windows App WVD gateway bypass` 与工作树包含重复临时补丁，不要再次 apply。
 - AAD Broker loopback exemption 当前已从本机移除；若继续真实 Windows App 登录测试，需要用户重新显式开启。
 - 接手时先读本文件，再读 [platform/processes.md](platform/processes.md)；改具体模块前读对应 feature 文档；[README.md](README.md) 是文档索引。
@@ -79,7 +87,7 @@ git -c core.whitespace=cr-at-eol diff --check
 ```
 
 - 仓库为 CRLF 工作区，必须使用 `-c core.whitespace=cr-at-eol` 检查；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。
-- `design/app/shots/` 与 `apps/desktop/tests/visual-parity/parity-report.md` 是验收资产，不得清理。
+- `design-vite/shots/` 与 `apps/desktop/tests/visual-parity/parity-report.md` 是验收资产，不得清理。
 
 ### Private GitHub Release 更新：实现与验证
 
@@ -92,7 +100,7 @@ git -c core.whitespace=cr-at-eol diff --check
 - packaged smoke 未运行：当前开发实例 PID 18720 的 Core UtilityProcess PID 34928 正监听 8888，不能在不打断用户会话的前提下并行接管系统代理。
 - TLS passthrough 与 GitHub 更新切片已合并通过完整门禁：Desktop 224、Proxy Core 261、Core Protocol 15、MCP 45，共 545 项；全部 workspace typecheck、Core 构建、Windows package 与 artifact audit 成功。Proxy Core 全并行本地网络集成测试偶发瞬时 `ECONNRESET`；最新失败的 H2 文件串行 6/6、Core 全量串行 261/261 均通过。多 host TLS compatibility dialog 明暗场景和已挂载 Settings 批量保存/即时刷新场景均为 0 flagged。
 
-### 本轮主任务：Windows App 真实验收
+### 主任务：Windows App 真实验收
 
 完整证据、方案、文件级改动、收益与代价见 [backlog/research.md](backlog/research.md#33-windows-appcontainerwam-与-tls-passthrough)。实现与自动化数据面验证已完成，剩余工作是：
 
@@ -103,32 +111,36 @@ git -c core.whitespace=cr-at-eol diff --check
    - direct 与上游 CONNECT 两条 tunnel 路径。
    - 真实 packaged smoke，确认已有与新建 Dev Box 会话行为。
 
-### Breakpoint 产品实现：未实现
+### Breakpoint 产品实现：阶段 2a 已完成，正文能力未做
 
-以下状态按当前产品代码逐条核对；完整目标与当前差异见 [features/breakpoints.md](features/breakpoints.md)：
+以下状态按当前产品代码逐条核对；完整目标与当前差异见 [features/breakpoints.md](features/breakpoints.md)。
+提交：`941e40a`（断点合并进 Capture + design-vite 交互 harness）。
 
-- **导航与感知：未实现。** 产品仍保留独立 Breakpoints 侧栏入口与 workspace，并在页面挂载后 1s 轮询；Capture workbar 没有 pending badge 或 520px manager，挂起 exchange 也没有在列表原地显示 pause icon；Request / Response 仍区分颜色并显示倒计时。
-- **Breakpoint manager：未实现。** 当前独立页面只有 `Break on match` 等旧控制；没有 Capture 内 manager、`Advanced rules`、关闭按钮、`View rule`、规则 enable switch 与 enabled 数联动。
-- **从历史流量创建：未实现。** Capture 行当前只能从 request 创建通用 rule action；没有 This endpoint / This path prefix / This host / Custom 四档，也没有 future-traffic 通知、Undo 与 manager 入口。
-- **暂停编辑器：未实现。** Drop / Continue / Execute edited 仍位于独立 Breakpoints workspace；Capture Inspector 不会随 paused 行原地切换 Request / Response 编辑模式，也没有目标中的分区折叠布局。
-- **Body：未实现。** 当前断点只提供 `bodyAvailable` 与单一文本编辑；没有 Original / Replacement 双区、Off / Text / File、文件选择与有限预览、空替换回退告警，以及目标要求的 Content-Length / content-encoding 处理。
-- **超时与队列：未实现。** Core 已有 timeout 与 `onTimeout`，但 UI 仍显示倒计时；pending queue 没有上限、queue-full 自动 continue 或 Statusbar / Diagnostics 溢出留痕。
-- **WebSocket：未实现。** 消息命中后的暂停与编辑仍可用，但独立 `Pause on message` 开关和 `websocket.breakpoint.configure` 控制面仍存在，尚未收敛到全局 Breakpoints 状态。
-- **Rules typography：未实现。** 产品 Rules 仍使用现有规则名 500、目录名 640 字重，没有采用目标中的 Composer collection 字体层级与较轻字重。
-- **双状态语义：未实现。** Rules 仍只有跟随右侧 editor 的 `selectedId`；Composer 选择目录会清空 `activeRequestId`；两棵树都没有当前打开项未选中时的淡 accent 背景与虚线边框。
-- **树交互：未实现。** Composer 已做到目录名选择、chevron 折叠，但选择目录会清空当前 request；Rules 目录行仍不能进入 selection，因此尚未实现两棵树统一的目录与 item / rule 互斥单选。
-- **右侧内容保持：未实现。** Composer 选中目录会清空右侧 request workspace；Rules 没有独立目录 selection，尚不能在选中目录时保持当前 rule editor。
+已完成：
+
+- **感知与关联。** `useBreakpoints` 订阅 Main 推送的 `breakpointsChange` 信号刷新，不再轮询；Core 重启时清空本地记录并在 `running` 后重新拉取。任意工作区都能感知；Sidebar 的 Capture 项带 pending badge。`BreakpointSnapshot` / `PendingBreakpoint` 带 `exchangeId`：`ExchangeTracker.exchangeIdFor` 在首次询问时**预留** ID 供 `beginRequest` 复用——规则钩子先于 `request-initiated` 到达，不预留就拿不到行号（已由真实代理集成测试锁定）。未 Recording 时返回 undefined，因为那次请求不会有 Capture 行。
+- **队列上限。** `BREAKPOINT_QUEUE_LIMIT = 10`；`BreakpointQueue.suspend` 满时返回 `null`，调用方必须原样放行。`autoContinued` 计数经 `breakpoint.pending` 上报，Capture 状态栏展示，Core 侧 `breakpoint.queue-full` 留痕。
+- **合并进 Capture。** 独立 Breakpoints 导航、workspace、Editor、PausedQueue、Statusbar 全部删除。workbar 有 Breakpoint 入口 + pending badge + 520px manager（`Break on match`、`Advanced rules`、`View rule`、规则 enable switch）；paused 行原地显示黄色 pause icon，request 阶段 size 显示 `waiting`；Inspector 随 paused 行切换为 `BreakpointInspector`。
+- **从历史流量创建。** 右键 Breakpoint 子菜单四档：This endpoint / This path prefix / This host / Custom…。`addBreakpointRule` **创建即启用即 Apply**——断点 matcher 全部来自真实请求，不存在“字段没填完”。
+- **Break once 语义已统一（方案 B）。** 不实现 once：那是一个既看不到也改不回来的隐藏状态。快速创建生成 request + response 两条 action 持续生效，停用入口就是 manager 里的开关。
+- **正文替换语义。** `BreakpointDraft.replacement` 为 `off | text | file`。只有选了 Text 才可能带 `body`；看不见原文时空输入意味着“没填”而非“改成空”，看得见原文（WebSocket）时清空才是真实意图。File 档只经 IPC 传路径，由 Core 直接读盘，与 Map Local 同一条路，因此不受正文大小与二进制限制。
+- **Original body 三态。** 该侧是否有正文按两个信号判断：`detail.summary` 已收到字节即为确证，没有字节时才用 HTTP 语义（`content-length` / `transfer-encoding: chunked`）预判。无正文显示空态，有正文但 Capture 还没收完显示接收中与已收字节，收完后按 detail 正文渲染。不能只用「Capture 是否给出 body 引用」判断，否则 GET 会永远停在接收中。
+- **区块结构。** headers 与 original 复用 `Section`；replacement 因标题行内含 Segmented 不能整行做按钮，改为复用 `SectionHeader` 的非按钮形态并自带 chevron。`SectionHeader` 现在拥有折叠指示器，顺序统一为标题 → 计数 → chevron；计数紧跟标题，只有 chevron 靠右。滚动区内的分组线是向右淡出的渐变线，不是纯色边框。
+- **Rules / Composer 双状态。** 「树上选中」与「右侧打开」拆成正交状态：Rules 为 `selectedId` / `openRuleId`，Composer 为 `targetFolderId` / `activeRequestId`。选中目录只改新建落点，右侧编辑器保持不变；此时被打开但未选中的行用淡 accent 底加虚线框标出。目录行的名字成为可点按钮，因此目录也能进入 selection。
+- **Rules typography。** 规则树字体层级对齐 Composer collection：规则名与目录名 400 字重、`--text-2`、UI 字体；选中态目录 600、规则 560，均转 accent。
+
+- **visual parity 断点场景。** `breakpoints` 场景已重建到 capture view 的 `breakpoint-request-body-loaded`（正文已就绪的稳定态），收敛到 2 flagged、最大 1.1px，字体差异全部归零。两个必须记住的约束：设计稿 `breakpointBody` 默认 `'loading'` 且 3 秒后自动跳到 `'ready'`（`useDesignFixtureAdapter.ts`），harness 驱动期间必然已跳走，场景只能锚定 `'ready'`，`breakpoint-request-paused.png` 是 3 秒内抢拍的不能做几何基线；设计稿只有断点态的列表才含 `/checkout` 与 `/v1/token`，所以 fake 的这两条交换与 `pendingBreakpoints` 放在 `pausedSessions` / `pendingItems`，由 `pausedBreakpoints: true` 注入。
+- **ORIGINAL BODY 按完整查看器定稿。** 设计稿原本画的精简只读预览已改成产品的 `BodyViewer` 形态（`Pretty / Tree / Raw / Hex` + mime + 复制 / 全屏），数值均取自产品代码：容器 `gap: 10px`、工具栏 40px、Monaco compact 的 `lineHeight: 20` 与 13px 上下内边距，以及 `horizontalScrollbarSize: 8` 的水平滚动条槽。
+
+未做：
+
+- **armed notice。** `Breakpoint enabled for future traffic` + Undo + View manager 尚未实现；Renderer 全局搜不到任何 armed 相关代码。
+- **WebSocket 开关收敛。** `websocket.breakpoint.configure` 独立控制面仍在（Main IPC、Preload `setWebSocketBreakpointsEnabled`、`useWebSocketFrames` 与 Proxy 的 `enableWebSocketBreakpoints` / `disableWebSocketBreakpoints` 均健在），未并入全局 Breakpoints 状态。需要先定「谁决定某条 ws 消息该不该停」：给 breakpoint action 加 websocket phase，还是让升级请求命中的规则管住整条连接。
+- **Content-Length / content-encoding / H2 framing** 在 Execute edited 后的正确性未验证。
+- **设计稿其余 17 个断点变体**（queue、queue-full、armed、manager、create-menu、file / invalid / replace 各档）未收录进 parity。
 
 实现顺序与边界：
 
-- 先统一右键 submenu 的 `Break request + response once` 与目标 manager 已删除 Once / Always 的语义。
-- 当前 `design/app` 仍是静态 `index.html + app.js + app.css`；全局 CSS 与手写状态存在中间态和样式串扰风险。
-- 产品实现前，按既定决定将整个 design SPA 一次性迁移到 Vite + React + CSS Modules，复用 `lucide-react`、Ant Design、Monaco、tokens 与稳定 primitives；旧静态实现整体删除，不保留双路径。
-- 设计 SPA 只通过 fixture / adapter 模拟网络、Core、IPC 与持久化，不复制业务后端，也不直接依赖产品 feature/store。
-- 截图只在用户明确要求或设计里程碑结束时生成，不在每个小改后全量重出。
-- 在新设计 SPA 中复现并验证全部既有场景后，再开始产品实现。
-- 产品第一步是全局断点感知、`exchangeId` 关联与 queue cap，不从 JSX 外观直接开工。
-- Original body loading、paused exchange 原地编辑、文件 replacement 需要新的 Core / Preload 契约；Renderer 不得直接读本机文件或 Core 内部 writer。
 - 产品完成后更新 `platform/renderer.md`，重出 visual parity 基线并运行完整 Desktop / Core 验证。
 - `rule detail` 提示移到底栏尚无确认设计；当前 `.vnote` 仍在滚动区末尾，产品保持现状。
 
@@ -144,7 +156,7 @@ git -c core.whitespace=cr-at-eol diff --check
 - 首个真实 tag release 仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - SSE、长上传/下载、gRPC streaming、Pause/Resume、Clear 与文件任务等长期测试债务继续以 [backlog/TODO.md](backlog/TODO.md) 为准；只有代码和验收均完成后才可勾掉。
 
-### 风险与边界：本轮必须遵守
+### 风险与边界：必须遵守
 
 - 系统代理由 Main 所有；开发实例与 smoke 都使用 8888，不能并行运行。
 - 若进程强杀后遗留 `127.0.0.1:8888`，先恢复 WinINet。残留还会让接管前读取到“自己”，`isSelf` 会视为无上游并静默丢失真实公司代理。
@@ -155,7 +167,7 @@ git -c core.whitespace=cr-at-eol diff --check
 - `UtilityProcess.parentPort` 只承载 lifecycle 与 MessagePort transfer；业务 RPC 只走专用 MessagePort。
 - 静态 design SPA 迁移前仍有全局 CSS / 手写 DOM 串扰风险；小改优先做定向 DOM / geometry 检查，不用反复全量截图掩盖状态错误。
 
-### 本轮完成门禁
+### 完成门禁
 
 ```powershell
 npm run typecheck
@@ -180,5 +192,5 @@ git -c core.whitespace=cr-at-eol diff --check
 ### 交接维护规则
 
 - 已实现内容同步到对应 `platform/*.md` 或 `features/*.md` 后从本文件删除，不保留历史完成清单。
-- 未实现或未验证的内容必须留在“本轮待完成”；只存在于 `design/app` 的目标一律按产品未实现记录，并链接到唯一详细文档。
+- 未实现或未验证的内容必须留在“待完成”；只存在于 `design-vite` 的目标一律按产品未实现记录，并链接到唯一详细文档。
 - 长期候选放在 [backlog/research.md](backlog/research.md)，确认 BUG 与验收欠账放在 [backlog/TODO.md](backlog/TODO.md)；未经代码和验收确认不得移除。

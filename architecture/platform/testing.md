@@ -10,7 +10,7 @@
 | 单元 / 集成 | 各 workspace 的 `tests/` | Vitest（`environment: node`） | 纯逻辑、真实 worker_threads、真实 `node:sqlite`、真实 HTTP/2 |
 | Local E2E workflow | `apps/desktop/tests/e2e-workflow-tests/` | Playwright `_electron.launch()` | 从真实 App UI 出发的端到端 workflow |
 | Packaged smoke | `apps/desktop/tests/packaged-smoke/` | 最终 package + CDP | 打包产物的综合验证 |
-| 设计一致性 | `apps/desktop/tests/visual-parity/` | 测试目录内 fake Preload | Renderer 与 `design/app/` 的几何/像素一致性 |
+| 设计一致性 | `apps/desktop/tests/visual-parity/` | 测试目录内 fake Preload | Renderer 与 `design-vite/` 的几何/像素一致性 |
 
 **三套测试职责独立，不能互相冒充覆盖。**
 

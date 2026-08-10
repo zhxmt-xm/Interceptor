@@ -51,7 +51,7 @@
     2. 并发上限保护 + 超时留痕。
     3. `PendingBreakpoint` 增加 `exchangeId`，为后续任何方案铺路。
 
-  - 设计基础设施决定：本方案确认后先把 `design/app` 整体迁移到 Vite + React + CSS Modules，再开始产品实现。设计 SPA 复用 `lucide-react`、Ant Design、Monaco、tokens 与稳定 primitives；网络/Core/IPC 用 fixture adapter，不复制业务后端。旧静态 SPA 整体删除，不保留双路径。
+  - 设计基础设施决定：本方案确认后先把设计稿整体迁移到 Vite + React + CSS Modules，再开始产品实现。设计 SPA 复用 `lucide-react`、Ant Design、Monaco、tokens 与稳定 primitives；网络/Core/IPC 用 fixture adapter，不复制业务后端。旧静态 SPA 整体删除，不保留双路径。（已完成：新稿在 `design-vite/`，旧 `design/` 已删除。）
 
 
 ## Bugs或改进
@@ -72,7 +72,7 @@
 
 - 不止是application会闪，其他的capture filter也会闪
 - 有的桌面端应用捕捉不到request？比如douyuclient，好像很多request被归类到edge里去了 ![alt text](image-6.png)
-- 我打开https://www.bilibili.com，他的登录失效了，关掉之后又有效了，不知道为什么
+- 我打开https://www.bilibili.com，他的登录失效了，反复登录也是失效的，关掉之后就有效了，不知道为什么
 - rule和composer要支持导入导出
 - 有时会出现两个相同的application ![alt text](image-7.png)
 - 切换feature时setting时应该保留，下次访问时仍然是上次访问的状态
@@ -80,3 +80,5 @@
 - appcontainer加一个enable button来enable all appcontainer
 - clear瞬间filter会卡一下id，list也会卡一下 ![alt text](image-11.png)
 - proxy 和mitm都没有持久化，每次启动好像都是默认态
+- 右键菜单添加breakpoint二级菜单出现时一级菜单消失了 ![alt text](image-12.png)
+- breakpoint最好支持无timeout和有timeout

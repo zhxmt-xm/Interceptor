@@ -10,7 +10,7 @@ interface Palette {
   info: string;
 }
 
-/** Seed colors per theme, mirroring design/app/app.css. Ant derives hover/active
+/** Seed colors per theme, mirroring design-vite tokens. Ant derives hover/active
  *  states from these; self-implemented CSS Modules read the same values via
  *  the :root[data-theme] variables in global.css. */
 const PALETTE: Record<ThemeMode, Palette> = {

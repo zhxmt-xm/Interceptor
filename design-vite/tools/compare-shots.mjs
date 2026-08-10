@@ -10,18 +10,12 @@ const currentRoot = path.resolve(
   'shots',
 );
 const positional = process.argv.slice(2).filter((argument) => !argument.startsWith('--'));
-// 基线是仍在服役的静态设计稿；新 SPA 必须逐像素对上它才算合格。
-const baselineRoot = path.resolve(
-  positional[0]
-    ?? path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      '..',
-      '..',
-      'design',
-      'app',
-      'shots',
-    ),
-);
+// 回归用：改动前先把 shots 另存一份，改完重出再拿它当基线对比。
+if (!positional[0]) {
+  console.error('Usage: node design-vite/tools/compare-shots.mjs <baselineShotsDir> [feature]');
+  process.exit(2);
+}
+const baselineRoot = path.resolve(positional[0]);
 // 百分比会骗人（侧栏图标全丢只算 1%），所以默认就把差异图写出来供目测。
 const diffRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

@@ -527,6 +527,44 @@ export const ruCatalog = {
   'breakpoints.responseStatus': 'Статус ответа',
   'breakpoints.requestHeaders': 'Заголовки запроса',
   'breakpoints.responseHeaders': 'Заголовки ответа',
+  'breakpoints.originalBody': 'Исходное тело',
+
+  'breakpoints.receiving': 'приём',
+
+  'breakpoints.receivingRequestBody': 'Приём тела запроса…',
+
+  'breakpoints.receivingResponseBody': 'Приём тела ответа…',
+
+  'breakpoints.bytesReceivedSoFar': 'Получено {{bytes}}',
+
+  'breakpoints.noBody': 'нет тела',
+
+
+  'breakpoints.noRequestBodyHint': 'У этого запроса нет тела.',
+
+
+  'breakpoints.noResponseBodyHint': 'У этого ответа нет тела.',
+
+
+  'breakpoints.replacementFile': 'Файл',
+
+
+  'breakpoints.chooseFile': 'Выбрать файл…',
+
+
+  'breakpoints.removeFile': 'Убрать файл',
+
+
+  'breakpoints.collapseSection': 'Свернуть раздел',
+
+
+
+  'breakpoints.expandSection': 'Развернуть раздел',
+
+
+
+  'breakpoints.filePreviewUnavailable': 'Слишком большой или не текст — отправляется с диска как есть.',
+
   'breakpoints.replacementBody': 'Заменяющее тело',
   'breakpoints.replacementOff': 'Выкл.',
   'breakpoints.replacementText': 'Текст',
@@ -549,7 +587,7 @@ export const ruCatalog = {
   'breakpoints.addHeader': 'Добавить заголовок',
   'breakpoints.payload': 'Данные',
   'breakpoints.drop': 'Отбросить',
-  'breakpoints.continueUnmodified': 'Продолжить без изменений',
+  'breakpoints.continueUnmodified': 'Продолжить',
 
   'diagnostics.title': 'Диагностика',
   'diagnostics.process': 'Процесс',
