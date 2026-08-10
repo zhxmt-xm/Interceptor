@@ -94,14 +94,21 @@ sequenceDiagram
 
     UI->>Main: setHttpsDecryption(true)
     Main->>Main: 检查 isTrusted 且 mitmEnabled
-    Main->>Runtime: tls.configure（内部命令）
-    Runtime->>Proxy: configureTls(ca, insecureHosts)
-    Note over Proxy: 原端口重建 server<br/>getLocal({ https, http2: true })
+    Main->>Runtime: tls.useCertificate（下发 CA 材料）
+    Runtime->>Proxy: useCertificate(ca)
+    Main->>Runtime: tls.startDecryption
+    Runtime->>Proxy: startHttpsDecryption()
+    Note over Proxy: listener 仍挂旧证书才原端口重建<br/>getLocal({ https, http2: true })
 ```
 
-**信任与 MITM 解耦**：只有 CA 已安装信任**且** `mitmEnabled` 开启时才下发 CA material。否则下发 `null`，CONNECT 走字节直通。
+**证书与解密开关正交**：`tls.useCertificate` 只记录当前可用的 CA 材料，`tls.startDecryption` /
+`tls.stopDecryption` 只切换是否 MITM。停止解密时全部 host 退回隧道、证书永不出示，因此
+卸载信任或删除 CA 都不必立刻换 listener。Main 侧只有 CA 已安装信任**且** `mitmEnabled` 开启时
+才发 `tls.startDecryption`，否则发 `tls.stopDecryption`。
 
-Main 每次进程启动都从 `mitmEnabled = false` 开始。
+Main 启动时先从 Core 读回 `tls.getDecryptionPreference`，再按「CA 已信任 且 用户开启」决定是否真的
+解密。持久化的是**用户意图**，不是运行态：`tls.saveDecryptionPreference` 只在用户拨开关时写，
+CA 不可用而发出的 `tls.stopDecryption` 不会擦掉它。
 
 **信任库是 local-machine 而非 current-user**，因此本机全部用户与进程（含浏览器）统一信任。`TrustStoreService` 用 `@vscode/sudo-prompt` 提权执行安装/卸载，检测则不需提权：
 
@@ -135,9 +142,9 @@ stateDiagram-v2
     end note
 ```
 
-**判定规则**：enable 前读取 original 并计算 owned；restore/repair 时重新读取 current，只有 `current == owned` 才写回 original。
+**判定规则**：enable 前读取 original 并计算 owned；restore 时重新读取 current，只有 `current == owned` 才写回 original。
 
-**窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`、`repairSystemProxy`。Emergency repair 先恢复仍 owned 的设置，再尽力停止 listener；Main 日志不包含 snapshot。
+**窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`。`restore` 先用内存快照，进程重启后回退到 journal；强杀残留由启动与 Core 失败两条自动路径恢复，Main 日志不包含 snapshot。
 
 ### 3.2 Startup journal
 
@@ -267,7 +274,10 @@ Windows App 实测存在两个独立边界：
 产品流程是：Settings 通过官方 Network Isolation API 枚举 AppContainer 与 SID，让用户显式开启
 loopback exemption；Core 通过 Mockttp `tlsPassthrough` 管理持久化 host patterns；TLS 错误按 TLS
 generation + host 去重并广播。App 壳按规范化 host 累积事件，无论当前工作区都显示一个可滚动列表
-dialog；`Add all hosts` 以一次 revision replace 批量保存未被现有 wildcard 覆盖的 host，并导航到
+dialog。dialog 为每个 host 列出多层级候选（精确 host + 逐级父域 wildcard，最宽只到二级域，
+不提供 `*.com` 这种一次放掉整个后缀的选项），精确 host 默认勾选、wildcard 默认不选；
+哪一级安全取决于站点，产品不替用户判断，只把候选摆出来。主按钮以一次 revision replace 批量
+保存未被现有 wildcard 覆盖的 pattern，并导航到
 TLS Settings。Store 同时推进 settings change sequence，使已经挂载的 TLS 面板立即重读，旧请求晚返回
 也不能覆盖新名单。默认列表为空，WVD badge 只是建议，不会自动保存。
 三者的完整证据、技术方案、文件级改动和收益/代价见

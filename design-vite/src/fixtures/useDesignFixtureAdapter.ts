@@ -28,6 +28,26 @@ function validTlsHostPattern(host: string): boolean {
   return /^(?:\*\.)?(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(host);
 }
 
+/** 弹窗里当前勾选的 pattern；隐藏的 host 行不算。 */
+function selectedTlsPatterns(root: HTMLElement): string[] {
+  const rows = Array.from(root.querySelectorAll<HTMLElement>('[data-tls-compatibility-host]'))
+    .filter((row) => row.style.display !== 'none');
+  return [...new Set(rows.flatMap((row) =>
+    Array.from(row.querySelectorAll<HTMLElement>('.tls-pattern-choice'))
+      .filter((choice) => choice.querySelector('.cb')?.classList.contains('on'))
+      .map((choice) => choice.querySelector('code')?.textContent?.trim() ?? '')
+      .filter(Boolean)))];
+}
+
+function syncSelectedTlsPatternCount(root: HTMLElement): void {
+  const action = root.querySelector<HTMLButtonElement>('[data-tls-compatibility-add-dialog]');
+  const label = action?.querySelector('span');
+  if (!action || !label) return;
+  const count = selectedTlsPatterns(root).length;
+  label.textContent = `Add ${count} patterns`;
+  action.disabled = count === 0;
+}
+
 function syncTlsRows(root: HTMLElement, patterns: readonly string[]): void {
   const list = root.querySelector<HTMLElement>('.tls-host-list');
   const empty = list?.querySelector<HTMLElement>('.tls-host-empty');
@@ -299,10 +319,17 @@ export function useDesignFixtureAdapter(
       const tlsRemove = closest(event.target, '[data-tls-host-remove]')?.closest<HTMLElement>('[data-tls-host-pattern]');
       if (tlsRemove) return updateTlsPatterns(currentTlsPatterns(root).filter((host) => host !== tlsRemove.dataset.tlsHostPattern?.toLowerCase()));
       if (closest(event.target, '[data-tls-compatibility-dismiss]')) return patch({ tlsCompatibility: '', overlay: '' });
+      const tlsPatternChoice = closest(event.target, '.tls-pattern-choice');
+      if (tlsPatternChoice) {
+        tlsPatternChoice.querySelector('.cb')?.classList.toggle('on');
+        syncSelectedTlsPatternCount(root);
+        return;
+      }
       if (closest(event.target, '[data-tls-compatibility-add-dialog]')) {
-        const hosts = Array.from(root.querySelectorAll<HTMLElement>('[data-tls-compatibility-host]'))
-          .filter((row) => row.style.display !== 'none').map((row) => row.dataset.tlsCompatibilityHost ?? '');
-        const patterns = [...new Set([...currentTlsPatterns(root), ...hosts])];
+        const patterns = [...new Set([
+          ...currentTlsPatterns(root),
+          ...selectedTlsPatterns(root),
+        ])];
         updateTlsPatterns(patterns);
         return patch({ view: 'settings', settings: 'tls-passthrough', overlay: '', tlsCompatibility: '' });
       }

@@ -1,25 +1,36 @@
 # Interceptor Handover
 
-> 最后更新：2026-08-07
+> 最后更新：2026-08-10
 > 仓库直接提交到 `main`，没有额外 PR 边界。
 > 本文件只设两个一级章节；已实现内容同步到对应架构文档后从本文件删除，未实现项留在“本轮待完成”。未经代码核对不得删除或标记完成。
 
 ## 上轮已完成
 
 经当前产品代码逐条复核，上游代理、Rules / Composer / Inspector、AppContainer exemption manager
-与 per-host TLS passthrough 均已实现。TLS passthrough 默认列表为空，WVD 仅作为 Settings 推荐项；
-保存名单不会热重建全局 listener；仅当规范化后的持久化名单与本进程运行名单存在有效差异时显示
-`Restart Interceptor`，并经 guarded shutdown 重启后生效。Windows system proxy 不再注入
-`*.wvd.microsoft.com` bypass。Breakpoint 目标尚未落地，已移入
+与 per-host TLS passthrough 均已实现。TLS passthrough 默认列表为空，WVD 仅作为 Settings 推荐项。
+Mockttp patch 让 `tlsPassthrough` 接受 getter，名单每连接求值，**保存即对新连接生效**，
+`Restart Interceptor` 提示条与整条 restart 链路（IPC、`app.relaunch`、`CoreRuntime.restart`）已删除。
+Windows system proxy 不再注入 `*.wvd.microsoft.com` bypass。Breakpoint 目标尚未落地，已移入
 “本轮待完成”并逐条标明状态。
-packaged 使用完整 guarded relaunch；Forge 开发态若直接 `app.relaunch()` 会让 Forge 关闭 Vite 并产生
-白屏，现改为保留 Main/Renderer/Vite、优雅替换 CoreProcess 代际，等待 TLS/上游初始化后由 Capture
-bootstrap 重建 listener。当前已白屏的旧开发实例因 Vite 已退出，需手动重新启动一次。
-TLS compatibility event 由 App 壳订阅，按规范化 host 累积为全局列表 dialog；Add all hosts 一次批量
-持久化并导航到 TLS Settings，已挂载页面通过 change sequence 立即刷新。Settings 页面自身不显示兼容
+
+TLS 命令按用户交互拆成正交四条：`tls.useCertificate` 只记录当前 CA 材料，
+`tls.startDecryption` / `tls.stopDecryption` 只切解密，`tls.replaceInsecureHosts` 只换源站例外名单。
+换 listener 的唯一触发点是「开始解密且 listener 上仍挂着旧证书」；卸载信任或删除 CA 后紧跟
+stopDecryption，全量 passthrough 下证书永不出示，因此不需要立刻重建。
+
+Settings 配置全部落到 Core `workspace.sqlite`：TLS passthrough 名单、源站证书 per-host 例外
+（`tls_insecure_hosts`）、HTTPS 解密意图（`tls_decryption_preference`）。后两者只有一个编辑入口，
+走不比对 revision 的 `overwrite`。Main 启动时先读回解密意图，再按「CA 已信任 且 用户开启」决定是否
+真的解密——持久化的是用户意图，不是运行态。
+
+TLS compatibility event 由 App 壳订阅，按规范化 host 累积为全局列表 dialog。dialog 为每个 host 列出
+多层级候选（精确 host + 逐级父域 wildcard，最宽只到二级域），精确 host 默认勾选、wildcard 默认不选，
+由用户自己决定放行范围；已挂载页面通过 change sequence 立即刷新。Settings 页面自身不显示兼容
 建议条；wildcard 已覆盖项不重复写，旧批次保存完成不会 dismiss 同期到达的新 host 事件。
-现场 Workspace revision 8 与 Core Diagnostics 均确认 4 个 host 已保存并应用；重启后
-`www.wvd.microsoft.com` 不再报 TLS error，后续 gateway 报错尚无证据来自这 4 项未生效。
+
+源站证书验证失败（TLS②）现在有就地出口：Capture Inspector 的 Connection / TLS 面板在 detail
+`errorCode` 属于证书校验类时显示 callout 与 `Trust this host`，一键写入 per-host 例外。协议协商类
+失败（`EPROTO` 等）不显示，因为加例外也不解决。
 
 Settings Updates 已增加 private GitHub App Device Flow 临时鉴权。Client ID 为公开配置，App 只需
 `Contents: read-only` 并安装到当前仓库；token 与 OAuth 过期时间经 `safeStorage` 加密。每次 App
@@ -47,12 +58,15 @@ Settings Updates 已增加 private GitHub App Device Flow 临时鉴权。Client 
 
 ### 当前工作树与接手顺序
 
-- 分支：`main`；HEAD 为 `ea90961`。
+- 分支：`main`。
 - 未提交产品改动包含 AppContainer manager、TLS passthrough 持久化/路由/兼容性事件、Settings UI，
    删除临时 WVD system bypass，以及 private GitHub Release 登录/更新链路；不要恢复该 bypass。
 - 未提交文档改动：本 HANDOVER、Windows App 研究、Settings / Capture 同步；`backlog/idea.md` 与 `backlog/image-7.png` 是现有用户改动，不要删除。
 - 未提交设计改动：Settings 独立 AppContainer access 与 TLS passthrough 页面、交互状态和 light / dark
    截图；对应产品 API 与 UI 已实现。
+- `design/app` 与 `design-vite` 并存于迁移中期：`design-vite/index.html` 已只是 Vite 入口，
+   `generate-fixtures.mjs` 因此不再可用，`src/fixtures/generated/*` 只能按节点结构手工等价编辑，
+   且它的快照本来就落后于 `design/app`（例如兼容性弹窗仍带 `data-tls-compatibility-count` 前缀）。
 - `stash@{0}: wip: Windows App WVD gateway bypass` 与工作树包含重复临时补丁，不要再次 apply。
 - AAD Broker loopback exemption 当前已从本机移除；若继续真实 Windows App 登录测试，需要用户重新显式开启。
 - 接手时先读本文件，再读 [platform/processes.md](platform/processes.md)；改具体模块前读对应 feature 文档；[README.md](README.md) 是文档索引。

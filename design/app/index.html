@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="app shell-v2 collapsed" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-repair="idle" data-update="up-to-date" data-github-auth="signed-in" data-app-containers="ready" data-tls-passthrough="ready" data-body-kind="json" data-body-mode="default" data-breakpoints="on" data-breakpoint-state="request" data-breakpoint-body="loading" data-breakpoint-file="none" data-rule-typography="composer">
+    <div class="app shell-v2 collapsed" data-theme="light" data-view="capture" data-filters="open" data-collection="open" data-https="fresh" data-mitm="inactive" data-system-proxy="on" data-upstream="on" data-copy="hidden" data-settings="certificates" data-update="up-to-date" data-github-auth="signed-in" data-app-containers="ready" data-tls-passthrough="ready" data-body-kind="json" data-body-mode="default" data-breakpoints="on" data-breakpoint-state="request" data-breakpoint-body="loading" data-breakpoint-file="none" data-rule-typography="composer">
       <aside class="side"></aside>
 
       <!-- ============================ TOPBAR ============================ -->
@@ -478,6 +478,11 @@ curl https://api.acme.dev/v1/exchanges \
                 <div class="sec"><div class="sh">Response Cookies <span class="c">1</span><svg class="sh-chev"><use href="#i-chev"/></svg></div><div class="kv"><span class="k">_gh_sess</span><span class="v">VszN7pQ…9Qb2</span><span class="k">Domain</span><span class="v">.github.com</span><span class="k">Path</span><span class="v">/</span><span class="k">Expires</span><span class="v">Session</span><span class="k">Flags</span><span class="v a">HttpOnly · Secure · SameSite=Lax</span></div></div>
               </div>
               <div class="tp" data-tab="tls">
+                <div class="origin-cert-callout">
+                  <span class="origin-cert-icon"><svg><use href="#i-shield-off"/></svg></span>
+                  <span class="origin-cert-copy"><b>Origin certificate could not be verified</b><span>Interceptor rejected the certificate api.github.com presented (UNABLE_TO_VERIFY_LEAF_SIGNATURE). Requests to this host keep failing until you trust it.</span></span>
+                  <button class="btn pri" data-trust-origin><span>Trust this host</span></button>
+                </div>
                 <div class="sec"><div class="sh">Secure connection<svg class="sh-chev"><use href="#i-chev"/></svg></div><div class="kv"><span class="k">Protocol</span><span class="v g">TLS 1.3</span><span class="k">Cipher suite</span><span class="v">TLS_AES_128_GCM_SHA256</span><span class="k">Key exchange</span><span class="v">X25519</span><span class="k">ALPN</span><span class="v">h2</span><span class="k">SNI</span><span class="v">api.github.com</span></div></div>
                 <div class="sec"><div class="sh">Certificate chain <span class="c">3</span><svg class="sh-chev"><use href="#i-chev"/></svg></div>
                   <div class="certs">
@@ -934,7 +939,6 @@ curl https://api.acme.dev/v1/exchanges \
               <div class="sgroup">
                 <div class="gh">Recovery</div>
                 <div class="srow"><div class="scap"><b>Ownership journal</b><span>Original values are stored before any system change</span></div><div class="sctl"><span class="sbadge"><span class="d"></span>Protected</span></div></div>
-                <div class="srow"><div class="scap"><b>Emergency repair</b><span>Stops capture and restores only settings still owned by Interceptor</span></div><div class="sctl repair-idle"><button class="btn danger"><svg><use href="#i-refresh"/></svg>Emergency repair…</button></div><div class="sctl repair-confirm"><span class="confirmtext">Restore owned settings?</span><button class="btn">Cancel</button><button class="btn danger"><svg><use href="#i-refresh"/></svg>Confirm repair</button></div></div>
               </div>
             </div>
             <div class="spanel" data-settings-panel="app-containers">
@@ -978,11 +982,6 @@ curl https://api.acme.dev/v1/exchanges \
             <div class="spanel" data-settings-panel="tls-passthrough">
               <h2>TLS passthrough <span class="sbadge tunnel"><span class="d"></span><span data-tls-pattern-count>1 pattern</span></span></h2>
               <div class="desc2">Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata.</div>
-              <div class="settings-warning tls-restart-required">
-                <svg><use href="#i-refresh"/></svg>
-                <div><b>Restart required</b><span>Saved passthrough changes take effect after Interceptor restarts. Current proxy traffic continues using the active list; restart, then retry affected clients.</span></div>
-                <button class="btn pri" data-tls-restart><svg><use href="#i-refresh"/></svg><span>Restart Interceptor</span></button>
-              </div>
               <div class="tls-add-row">
                 <label class="tls-host-input"><span>Hostname or wildcard</span><input data-tls-host-input spellcheck="false" placeholder="*.example.com" /></label>
                 <button class="btn pri" data-tls-host-add><svg><use href="#i-plus"/></svg>Add</button>
@@ -1214,15 +1213,15 @@ curl https://api.acme.dev/v1/exchanges \
         <div class="dlg settings-confirm-dialog tls-compatibility-dialog">
           <div class="dlghead"><span class="di warning"><svg><use href="#i-lock-off"/></svg></span><b>TLS interception may be incompatible</b><button class="ib sm" data-tls-compatibility-dismiss aria-label="Close" title="Close"><svg><use href="#i-x"/></svg></button></div>
           <div class="settings-confirm-body">
-            <p>The following hosts failed during intercepted TLS handshakes. Review them before adding TLS passthrough.</p>
+            <p>The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception.</p>
             <div class="tls-compatibility-list">
-              <div class="tls-compatibility-row" data-tls-compatibility-host="rdweb.wvd.microsoft.com" data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>rdweb.wvd.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div></div>
-              <div class="tls-compatibility-row" data-tls-compatibility-host="windows365.microsoft.com" data-parity="tls-compatibility-host-windows365.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>windows365.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div></div>
-              <div class="tls-compatibility-row" data-tls-compatibility-host="afdfp-rdgateway-r0.wvd.microsoft.com" data-parity="tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div><code>afdfp-rdgateway-r0.wvd.microsoft.com</code><span>Client rejected the Interceptor certificate</span></div></div>
+              <div class="tls-compatibility-row" data-tls-compatibility-host="rdweb.wvd.microsoft.com" data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div class="tls-compatibility-copy"><code>rdweb.wvd.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div><div class="tls-pattern-choices"><label class="tls-pattern-choice"><span class="cb on"><svg><use href="#i-check"/></svg></span><code>rdweb.wvd.microsoft.com</code></label><label class="tls-pattern-choice"><span class="cb"></span><code>*.wvd.microsoft.com</code></label><label class="tls-pattern-choice"><span class="cb"></span><code>*.microsoft.com</code></label></div></div>
+              <div class="tls-compatibility-row" data-tls-compatibility-host="windows365.microsoft.com" data-parity="tls-compatibility-host-windows365.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div class="tls-compatibility-copy"><code>windows365.microsoft.com</code><span>Connection closed during intercepted TLS handshake</span></div><div class="tls-pattern-choices"><label class="tls-pattern-choice"><span class="cb on"><svg><use href="#i-check"/></svg></span><code>windows365.microsoft.com</code></label><label class="tls-pattern-choice"><span class="cb"></span><code>*.microsoft.com</code></label></div></div>
+              <div class="tls-compatibility-row" data-tls-compatibility-host="afdfp-rdgateway-r0.wvd.microsoft.com" data-parity="tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com"><span class="tls-compatibility-host-icon"><svg><use href="#i-lock-off"/></svg></span><div class="tls-compatibility-copy"><code>afdfp-rdgateway-r0.wvd.microsoft.com</code><span>Client rejected the Interceptor certificate</span></div><div class="tls-pattern-choices"><label class="tls-pattern-choice"><span class="cb on"><svg><use href="#i-check"/></svg></span><code>afdfp-rdgateway-r0.wvd.microsoft.com</code></label><label class="tls-pattern-choice"><span class="cb"></span><code>*.wvd.microsoft.com</code></label><label class="tls-pattern-choice"><span class="cb"></span><code>*.microsoft.com</code></label></div></div>
             </div>
-            <div class="privacy-note"><svg><use href="#i-refresh"/></svg><span>Saving does not interrupt current proxy traffic. TLS passthrough settings will open so you can restart Interceptor and apply the change.</span></div>
+            <div class="privacy-note"><svg><use href="#i-refresh"/></svg><span>Saved patterns apply to new connections immediately and do not interrupt current proxy traffic. TLS passthrough settings will open so you can review the list.</span></div>
           </div>
-          <div class="dlgfoot"><button class="btn" data-tls-compatibility-dismiss>Not now</button><button class="btn pri" data-tls-compatibility-add-dialog><svg><use href="#i-lock-off"/></svg>Add all hosts</button></div>
+          <div class="dlgfoot"><button class="btn" data-tls-compatibility-dismiss>Not now</button><button class="btn pri" data-tls-compatibility-add-dialog><svg><use href="#i-lock-off"/></svg>Add 3 patterns</button></div>
         </div>
       </div>
 

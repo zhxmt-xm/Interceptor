@@ -606,7 +606,6 @@ export const fakeInterceptorFixture = {
   tlsPassthroughSettings: {
     revision: 1,
     hosts: ['*.wvd.microsoft.com'],
-    restartRequired: false,
   },
   githubAuth: {
     state: 'signed-out',
@@ -673,7 +672,6 @@ export function installFakeInterceptor({
   proxyEnableFails = false,
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
-  tlsRestartRequired = false,
 }) {
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
@@ -782,21 +780,6 @@ export function installFakeInterceptor({
     events.forEach((event) => {
       tlsCompatibilityListeners.forEach((listener) => listener(event));
     });
-  };
-  const activeTlsPassthroughHosts = tlsRestartRequired
-    ? []
-    : [...tlsPassthroughSettings.hosts];
-  const tlsPassthroughStatus = () => {
-    const normalize = (hosts) => [...new Set(
-      hosts.map((host) => host.trim().toLowerCase()),
-    )].sort();
-    const active = normalize(activeTlsPassthroughHosts);
-    const saved = normalize(tlsPassthroughSettings.hosts);
-    return {
-      ...tlsPassthroughSettings,
-      restartRequired: active.length !== saved.length
-        || active.some((host, index) => host !== saved[index]),
-    };
   };
   let githubAuthStatus = githubAuthState === 'signed-in'
     ? {
@@ -921,7 +904,6 @@ export function installFakeInterceptor({
     openDownloadedUpdate: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
     closeApplication: async () => undefined,
-    restartApplication: async () => undefined,
     minimizeWindow: async () => undefined,
     toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
@@ -948,7 +930,6 @@ export function installFakeInterceptor({
         bypassList: null,
       }),
     }),
-    repairSystemProxy: async () => window.interceptor.restoreSystemProxy(),
     listAppContainers: async () => appContainerSnapshot,
     setAppContainerLoopbackExemption: async (appContainerSid, enabled) => {
       appContainerSnapshot = {
@@ -960,7 +941,7 @@ export function installFakeInterceptor({
       };
       return appContainerSnapshot;
     },
-    getTlsPassthroughSettings: async () => tlsPassthroughStatus(),
+    getTlsPassthroughSettings: async () => tlsPassthroughSettings,
     replaceTlsPassthroughSettings: async (expectedRevision, hosts) => {
       if (expectedRevision !== tlsPassthroughSettings.revision) {
         return { ok: false, reason: 'conflict', message: 'Revision conflict' };
@@ -969,7 +950,7 @@ export function installFakeInterceptor({
         revision: expectedRevision + 1,
         hosts: [...new Set(hosts.map((host) => host.trim().toLowerCase()))],
       };
-      return { ok: true, settings: tlsPassthroughStatus() };
+      return { ok: true, settings: tlsPassthroughSettings };
     },
     onTlsCompatibilityChange: (listener) => {
       tlsCompatibilityListeners.add(listener);

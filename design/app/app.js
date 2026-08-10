@@ -241,7 +241,6 @@ function setState(s = {}) {
   }
   if ('bodyType' in s) setBodyType(s.bodyType || 'json');
   if (s.settings) app.dataset.settings = s.settings;
-  if (s.repair) app.dataset.repair = s.repair;
   if (s.update) app.dataset.update = s.update;
   if ('githubAuth' in s) app.dataset.githubAuth = s.githubAuth || 'signed-out';
   if ('appContainers' in s) app.dataset.appContainers = s.appContainers || 'ready';
@@ -263,10 +262,6 @@ function setState(s = {}) {
     desiredPatterns.forEach(addTlsPattern);
     syncTlsPatternCount();
   }
-  if ('tlsRestart' in s) {
-    if (s.tlsRestart) app.dataset.tlsRestart = s.tlsRestart;
-    else delete app.dataset.tlsRestart;
-  }
   if ('tlsHostInput' in s) app.querySelector('[data-tls-host-input]').value = s.tlsHostInput || '';
   if ('tlsCompatibility' in s) {
     if (s.tlsCompatibility) {
@@ -281,6 +276,7 @@ function setState(s = {}) {
     app.querySelectorAll('[data-tls-compatibility-host]').forEach((row) => {
       row.style.display = hosts.includes(row.dataset.tlsCompatibilityHost) ? '' : 'none';
     });
+    syncTlsSelectedPatternCount();
   }
   if (s.https) app.dataset.https = s.https;
   if (s.mitm) app.dataset.mitm = s.mitm;
@@ -674,19 +670,23 @@ function validTlsHostPattern(host) {
   return /^(?:\*\.)?(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(host);
 }
 
-function currentTlsPatterns() {
-  return [...app.querySelectorAll('[data-tls-host-pattern]')]
-    .map((row) => row.dataset.tlsHostPattern.trim().toLowerCase())
-    .sort();
+/** 弹窗里当前勾选的 pattern；隐藏的 host 行不算。 */
+function selectedTlsPatterns() {
+  const rows = [...app.querySelectorAll('[data-tls-compatibility-host]')]
+    .filter((row) => row.style.display !== 'none');
+  const patterns = rows.flatMap((row) =>
+    [...row.querySelectorAll('.tls-pattern-choice')]
+      .filter((choice) => choice.querySelector('.cb').classList.contains('on'))
+      .map((choice) => choice.querySelector('code').textContent.trim()));
+  return [...new Set(patterns)];
 }
 
-const activeTlsPatterns = currentTlsPatterns();
-
-function syncTlsRestartRequired() {
-  const current = currentTlsPatterns();
-  const changed = current.length !== activeTlsPatterns.length ||
-    current.some((host, index) => host !== activeTlsPatterns[index]);
-  setState({ tlsRestart: changed ? 'required' : '' });
+function syncTlsSelectedPatternCount() {
+  const action = app.querySelector('[data-tls-compatibility-add-dialog]');
+  if (!action) return;
+  const count = selectedTlsPatterns().length;
+  action.lastChild.textContent = `Add ${count} patterns`;
+  action.disabled = count === 0;
 }
 
 function syncTlsPatternCount() {
@@ -715,10 +715,10 @@ function addTlsPattern(host) {
 
 app.querySelector('[data-app-container-search]')?.addEventListener('input', filterAppContainers);
 
-// Settings section, guarded repair, AppContainer permissions, and TLS passthrough states.
+// Settings section, AppContainer permissions, and TLS passthrough states.
 app.addEventListener('click', (e) => {
   const settingsNav = e.target.closest('[data-settings-nav]');
-  if (settingsNav) return setState({ settings: settingsNav.dataset.settingsNav, repair: 'idle' });
+  if (settingsNav) return setState({ settings: settingsNav.dataset.settingsNav });
   const githubAuthAction = e.target.closest('[data-github-auth-action]')?.dataset.githubAuthAction;
   if (githubAuthAction === 'sign-in' || githubAuthAction === 'retry') {
     return setState({ githubAuth: 'authorizing', update: 'authentication-required' });
@@ -729,8 +729,6 @@ app.addEventListener('click', (e) => {
   if (githubAuthAction === 'sign-out') {
     return setState({ githubAuth: 'signed-out', update: 'authentication-required' });
   }
-  if (e.target.closest('.repair-idle .danger')) return setState({ repair: 'confirm' });
-  if (e.target.closest('.repair-confirm .btn:not(.danger)')) return setState({ repair: 'idle' });
   if (e.target.closest('[data-app-container-refresh]')) {
     window.clearTimeout(appContainerRefreshTimer);
     setState({ appContainers: 'refreshing' });
@@ -769,31 +767,27 @@ app.addEventListener('click', (e) => {
     setState({ tlsPassthrough: 'ready' });
     addTlsPattern(host);
     input.value = '';
-    syncTlsRestartRequired();
     return;
   }
   const tlsRemove = e.target.closest('[data-tls-host-remove]');
   if (tlsRemove) {
     tlsRemove.closest('[data-tls-host-pattern]').remove();
     syncTlsPatternCount();
-    syncTlsRestartRequired();
     return;
-  }
-  const tlsRestart = e.target.closest('[data-tls-restart]');
-  if (tlsRestart) {
-    tlsRestart.disabled = true;
-    tlsRestart.querySelector('span').textContent = 'Restarting…';
   }
   if (e.target.closest('[data-tls-compatibility-dismiss]')) {
     delete app.dataset.tlsCompatibility;
     return setState({ overlay: '' });
   }
+  const tlsPatternChoice = e.target.closest('.tls-pattern-choice');
+  if (tlsPatternChoice) {
+    tlsPatternChoice.querySelector('.cb').classList.toggle('on');
+    syncTlsSelectedPatternCount();
+    return;
+  }
   if (e.target.closest('[data-tls-compatibility-add-dialog]')) {
-    app.querySelectorAll('[data-tls-compatibility-host]').forEach((row) => {
-      if (row.style.display !== 'none') addTlsPattern(row.dataset.tlsCompatibilityHost);
-    });
+    selectedTlsPatterns().forEach(addTlsPattern);
     delete app.dataset.tlsCompatibility;
-    syncTlsRestartRequired();
     return setState({
       view: 'settings',
       settings: 'tls-passthrough',

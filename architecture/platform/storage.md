@@ -43,7 +43,7 @@
 | Diagnostics Worker（`diagnostics/worker/entry.ts`） | `diagnostics.sqlite` | 跨 Recording 持久，独立线程独占 |
 
 - **CaptureService**：只管当前 Recording 的易失数据，组合 `ExchangeStore` 与 `BodyStore`。Exchange 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于 3 MiB 驻内存，较大正文 spill 到 `capture-temp/`。不使用 SQLite，也没有常驻 Worker。
-- **WorkspaceService**：跨 Recording 持久的低频配置，单个同步 `DatabaseSync` 连接。当前两张文档表：`rule_set`（RuleSet）与 `collection_tree`（Composer 集合），都是单行 JSON + 乐观 revision。高频 diagnostics 有独立 Worker 与独立库，不并入。
+- **WorkspaceService**：跨 Recording 持久的低频配置，单个同步 `DatabaseSync` 连接。当前五张文档表：`rule_set`（RuleSet）、`collection_tree`（Composer 集合）、`tls_passthrough_hosts`（不解密名单）、`tls_insecure_hosts`（源站证书 per-host 例外）与 `tls_decryption_preference`（用户是否想解密 HTTPS），都是单行 JSON + revision。前三张走乐观锁；后两张只有一个编辑入口，走不比对 revision 的 `overwrite`。高频 diagnostics 有独立 Worker 与独立库，不并入。
 - **Diagnostics Worker**：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。**写入失败只计数，绝不阻塞或回滚捕获**，也不递归回灌同一 sink。
 - **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按 100 条批次把内存 Capture materialize/读取当前固定的 `capture.sqlite`；完整 schema 直接属于 Worker Store，**无版本数组、迁移文件或旧格式分支**；完成、取消或失败即退出。
 

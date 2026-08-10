@@ -2730,7 +2730,7 @@ export const overlayFixtures: readonly FixtureNode[] = [
                   },
                   {
                     "type": "text",
-                    "value": " failed during intercepted TLS handshakes. Review them before adding TLS passthrough."
+                    "value": " failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception."
                   }
                 ]
               },
@@ -2784,7 +2784,9 @@ export const overlayFixtures: readonly FixtureNode[] = [
                       {
                         "type": "element",
                         "tag": "div",
-                        "attributes": {},
+                        "attributes": {
+                          "class": "tls-compatibility-copy"
+                        },
                         "children": [
                           {
                             "type": "element",
@@ -2805,6 +2807,115 @@ export const overlayFixtures: readonly FixtureNode[] = [
                               {
                                 "type": "text",
                                 "value": "Connection closed during intercepted TLS handshake"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "tag": "div",
+                        "attributes": {
+                          "class": "tls-pattern-choices"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb on"
+                                },
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "tag": "svg",
+                                    "attributes": {},
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "tag": "use",
+                                        "attributes": {
+                                          "href": "#i-check"
+                                        },
+                                        "children": []
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "rdweb.wvd.microsoft.com"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb"
+                                },
+                                "children": []
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "*.wvd.microsoft.com"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb"
+                                },
+                                "children": []
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "*.microsoft.com"
+                                  }
+                                ]
                               }
                             ]
                           }
@@ -2851,7 +2962,9 @@ export const overlayFixtures: readonly FixtureNode[] = [
                       {
                         "type": "element",
                         "tag": "div",
-                        "attributes": {},
+                        "attributes": {
+                          "class": "tls-compatibility-copy"
+                        },
                         "children": [
                           {
                             "type": "element",
@@ -2872,6 +2985,87 @@ export const overlayFixtures: readonly FixtureNode[] = [
                               {
                                 "type": "text",
                                 "value": "Connection closed during intercepted TLS handshake"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "tag": "div",
+                        "attributes": {
+                          "class": "tls-pattern-choices"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb on"
+                                },
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "tag": "svg",
+                                    "attributes": {},
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "tag": "use",
+                                        "attributes": {
+                                          "href": "#i-check"
+                                        },
+                                        "children": []
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "windows365.microsoft.com"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb"
+                                },
+                                "children": []
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "*.microsoft.com"
+                                  }
+                                ]
                               }
                             ]
                           }
@@ -2918,7 +3112,9 @@ export const overlayFixtures: readonly FixtureNode[] = [
                       {
                         "type": "element",
                         "tag": "div",
-                        "attributes": {},
+                        "attributes": {
+                          "class": "tls-compatibility-copy"
+                        },
                         "children": [
                           {
                             "type": "element",
@@ -2939,6 +3135,115 @@ export const overlayFixtures: readonly FixtureNode[] = [
                               {
                                 "type": "text",
                                 "value": "Client rejected the Interceptor certificate"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "tag": "div",
+                        "attributes": {
+                          "class": "tls-pattern-choices"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb on"
+                                },
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "tag": "svg",
+                                    "attributes": {},
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "tag": "use",
+                                        "attributes": {
+                                          "href": "#i-check"
+                                        },
+                                        "children": []
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "afdfp-rdgateway-r0.wvd.microsoft.com"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb"
+                                },
+                                "children": []
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "*.wvd.microsoft.com"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "element",
+                            "tag": "label",
+                            "attributes": {
+                              "class": "tls-pattern-choice"
+                            },
+                            "children": [
+                              {
+                                "type": "element",
+                                "tag": "span",
+                                "attributes": {
+                                  "class": "cb"
+                                },
+                                "children": []
+                              },
+                              {
+                                "type": "element",
+                                "tag": "code",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "*.microsoft.com"
+                                  }
+                                ]
                               }
                             ]
                           }
@@ -2985,7 +3290,7 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     "children": [
                       {
                         "type": "text",
-                        "value": "Saving does not interrupt current proxy traffic. TLS passthrough settings will open so you can restart Interceptor and apply the change."
+                        "value": "Saved patterns apply to new connections immediately and do not interrupt current proxy traffic. TLS passthrough settings will open so you can review the list."
                       }
                     ]
                   }
@@ -3054,7 +3359,7 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     "children": [
                       {
                         "type": "text",
-                        "value": "Add 3 hosts"
+                        "value": "Add 3 patterns"
                       }
                     ]
                   }

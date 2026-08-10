@@ -1,5 +1,5 @@
 diff --git a/node_modules/mockttp/dist/mockttp.d.ts b/node_modules/mockttp/dist/mockttp.d.ts
-index 3dd0793..dbe99bb 100644
+index 3dd0793..979caba 100644
 --- a/node_modules/mockttp/dist/mockttp.d.ts
 +++ b/node_modules/mockttp/dist/mockttp.d.ts
 @@ -2,9 +2,10 @@ import * as cors from 'cors';
@@ -42,7 +42,24 @@ index 3dd0793..dbe99bb 100644
      /**
       * Subscribe to hear about HTTP 1xx informational responses (e.g. 102 Processing,
       * 103 Early Hints) sent before the final response.
-@@ -849,6 +864,18 @@ export interface MockttpOptions {
+@@ -736,10 +751,15 @@ export type MockttpHttpsOptions = CAOptions & {
+      *
+      * In future more options may be supported
+      * here for additional configuration of this behaviour.
++     *
++     * A getter may be provided instead of a fixed array, in which case it is evaluated for every
++     * TLS connection so the list can change on a running server without restarting it.
+      */
+     tlsPassthrough?: Array<{
+         hostname: string;
+-    }>;
++    }> | (() => Array<{
++        hostname: string;
++    }>);
+     /**
+      * A limited list of the only hostnames whose TLS should be intercepted.
+      *
+@@ -849,6 +869,18 @@ export interface MockttpOptions {
       * response like any other client HTTP error.
       */
      passthrough?: Array<'unknown-protocol'>;
@@ -61,7 +78,7 @@ index 3dd0793..dbe99bb 100644
      /**
       * By default, requests that match no rules will receive an explanation of the
       * request & existing rules, followed by some suggested example Mockttp code
-@@ -883,7 +910,7 @@ export interface MockttpOptions {
+@@ -883,7 +915,7 @@ export interface MockttpOptions {
       */
      maxBodySize?: number;
  }
@@ -322,6 +339,45 @@ index 8ba0d3d..b0b7a50 100644
                  if (this.transformResponse) {
                      const { replaceStatus, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformResponse;
                      if (replaceStatus) {
+diff --git a/node_modules/mockttp/dist/server/http-combo-server.js b/node_modules/mockttp/dist/server/http-combo-server.js
+index 5f1598e..2332512 100644
+--- a/node_modules/mockttp/dist/server/http-combo-server.js
++++ b/node_modules/mockttp/dist/server/http-combo-server.js
+@@ -399,7 +399,18 @@ function analyzeAndMaybePassThroughTls(server, passthroughList, interceptOnlyLis
+     if (passthroughList && interceptOnlyList) {
+         throw new Error('Cannot use both tlsPassthrough and tlsInterceptOnly options at the same time.');
+     }
+-    const passThroughPatterns = passthroughList?.map(({ hostname }) => new urlpattern_polyfill_1.URLPattern(`https://${hostname}`)) ?? [];
++    // A tlsPassthrough getter lets callers swap the host list on a running server. Patterns are
++    // recompiled only when the returned array identity changes, so per-connection cost stays flat.
++    let compiledPassthroughList;
++    let passThroughPatterns = [];
++    const resolvePassThroughPatterns = () => {
++        const list = typeof passthroughList === 'function' ? passthroughList() : passthroughList;
++        if (list !== compiledPassthroughList) {
++            compiledPassthroughList = list;
++            passThroughPatterns = list?.map(({ hostname }) => new urlpattern_polyfill_1.URLPattern(`https://${hostname}`)) ?? [];
++        }
++        return passThroughPatterns;
++    };
+     const interceptOnlyPatterns = interceptOnlyList?.map(({ hostname }) => new urlpattern_polyfill_1.URLPattern(`https://${hostname}`));
+     const tlsConnectionListener = server.listeners('connection')[0];
+     server.removeListener('connection', tlsConnectionListener);
+@@ -422,11 +433,12 @@ function analyzeAndMaybePassThroughTls(server, passthroughList, interceptOnlyLis
+             // Keep the raw parsed hello too, so it can be mirrored into the upstream TLS
+             // connection later (fingerprint impersonation):
+             socket[socket_extensions_1.TlsClientHello] = helloData;
+-            if ((0, server_utils_1.shouldPassThrough)(upstreamDestination?.hostname, passThroughPatterns, interceptOnlyPatterns)) {
++            const activePassThroughPatterns = resolvePassThroughPatterns();
++            if ((0, server_utils_1.shouldPassThrough)(upstreamDestination?.hostname, activePassThroughPatterns, interceptOnlyPatterns)) {
+                 passthroughListener(socket, upstreamDestination.hostname, upstreamDestination.port);
+                 return; // Do not continue with TLS
+             }
+-            else if ((0, server_utils_1.shouldPassThrough)(sniHostname, passThroughPatterns, interceptOnlyPatterns)) {
++            else if ((0, server_utils_1.shouldPassThrough)(sniHostname, activePassThroughPatterns, interceptOnlyPatterns)) {
+                 passthroughListener(socket, sniHostname); // Can't guess the port - not included in SNI
+                 return; // Do not continue with TLS
+             }
 diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
 index db33b85..80c60dc 100644
 --- a/node_modules/mockttp/dist/server/mockttp-server.js

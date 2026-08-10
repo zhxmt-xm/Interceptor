@@ -797,7 +797,6 @@ export const views = [
       theme: 'light',
       sidebar: 'expanded',
       settings: 'proxy',
-      repair: 'idle',
     },
     designShot: 'light/settings/proxy.png',
     rendererActions: [{ type: 'clickText', text: 'Proxy & Listener' }],
@@ -815,7 +814,6 @@ export const views = [
       'PAC / Auto detect',
       'Recovery',
       'Protected',
-      'Emergency repair…',
     ],
   },
   {
@@ -827,7 +825,6 @@ export const views = [
       theme: 'dark',
       sidebar: 'expanded',
       settings: 'proxy',
-      repair: 'idle',
     },
     designShot: 'dark/settings/proxy.png',
     rendererActions: [{ type: 'clickText', text: 'Proxy & Listener' }],
@@ -837,30 +834,6 @@ export const views = [
       'Listening',
       'Owned by Interceptor',
       'Protected',
-      'Emergency repair…',
-    ],
-  },
-  {
-    id: 'settings-proxy-repair',
-    theme: 'light',
-    rendererNav: 'Settings',
-    designState: {
-      view: 'settings',
-      theme: 'light',
-      sidebar: 'expanded',
-      settings: 'proxy',
-      repair: 'confirm',
-    },
-    designShot: 'light/settings/proxy-repair.png',
-    rendererActions: [
-      { type: 'clickText', text: 'Proxy & Listener' },
-      { type: 'clickText', text: 'Emergency repair…' },
-    ],
-    targets: [
-      'Emergency repair',
-      'Restore owned settings?',
-      'Cancel',
-      'Confirm repair',
     ],
   },
   ...['light', 'dark'].map((theme) => ({
@@ -915,7 +888,6 @@ export const views = [
       overlay: '',
       settings: 'tls-passthrough',
       tlsPassthrough: 'ready',
-      tlsRestart: 'required',
       tlsPatterns: TLS_COMPATIBILITY_EVENTS.map((event) => event.host),
       tlsCompatibility: '',
     },
@@ -923,15 +895,9 @@ export const views = [
     rendererActions: [
       { type: 'clickText', text: 'TLS passthrough' },
       { type: 'emitTlsCompatibility', events: TLS_COMPATIBILITY_EVENTS },
-      { type: 'clickRole', role: 'button', name: 'Add all hosts' },
+      { type: 'clickRole', role: 'button', name: 'Add 3 patterns' },
     ],
     targets: [
-      'Restart required',
-      {
-        name: 'Restart Interceptor',
-        designSelector: 'button[data-tls-restart]',
-        appSelector: 'button:has-text("Restart Interceptor")',
-      },
       'Passthrough host patterns',
       {
         name: 'TLS host rows',
@@ -970,38 +936,6 @@ export const views = [
     ],
   })),
   ...['light', 'dark'].map((theme) => ({
-    id: `settings-tls-passthrough-restart-required${theme === 'dark' ? '-dark' : ''}`,
-    theme,
-    tlsRestartRequired: true,
-    rendererNav: 'Settings',
-    designState: {
-      view: 'settings',
-      theme,
-      sidebar: 'expanded',
-      settings: 'tls-passthrough',
-      tlsPassthrough: 'ready',
-      tlsCompatibility: '',
-      tlsRestart: 'required',
-    },
-    designShot: `${theme}/settings/tls-passthrough-restart-required.png`,
-    rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
-      { type: 'clickText', text: 'TLS passthrough' },
-    ],
-    targets: [
-      'Restart required',
-      'Saved passthrough changes take effect after Interceptor restarts. Current proxy traffic continues using the active list; restart, then retry affected clients.',
-      {
-        name: 'Restart Interceptor',
-        designSelector: 'button[data-tls-restart]',
-        appSelector: 'button:has-text("Restart Interceptor")',
-      },
-      'Hostname or wildcard',
-      'Passthrough host patterns',
-      '*.wvd.microsoft.com',
-    ],
-  })),
-  ...['light', 'dark'].map((theme) => ({
     id: `tls-compatibility-dialog${theme === 'dark' ? '-dark' : ''}`,
     theme,
     tlsCompatibilityEvents: TLS_COMPATIBILITY_EVENTS,
@@ -1016,7 +950,7 @@ export const views = [
     designShot: `${theme}/tls-compatibility/dialog.png`,
     targets: [
       'TLS interception may be incompatible',
-      'The following hosts failed during intercepted TLS handshakes. Review them before adding TLS passthrough.',
+      'The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception.',
       {
         name: 'rdweb.wvd.microsoft.com',
         parity: 'tls-compatibility-host-rdweb.wvd.microsoft.com',
@@ -1029,9 +963,9 @@ export const views = [
         name: 'afdfp-rdgateway-r0.wvd.microsoft.com',
         parity: 'tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com',
       },
-      'Saving does not interrupt current proxy traffic. TLS passthrough settings will open so you can restart Interceptor and apply the change.',
+      'Saved patterns apply to new connections immediately and do not interrupt current proxy traffic. TLS passthrough settings will open so you can review the list.',
       'Not now',
-      'Add all hosts',
+      'Add 3 patterns',
     ],
   })),
   ...['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported'].flatMap((updateState) =>

@@ -20,6 +20,9 @@ import {
 
 import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
 
+/** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
+const DEFAULT_CAPTURE_PORT = 8888;
+
 class ReleaseScreenshotMatrix {
   /** All implemented workspaces addressed through the production sidebar. */
   private static readonly views = [
@@ -161,10 +164,15 @@ class PackagedWorkflowSmoke {
       message: 'Default Capture listener did not start',
       timeout: 15_000,
     }).toMatchObject({ listening: true, host: '127.0.0.1' });
+    // 产品不支持迁移监听端口，smoke 直接复用已在运行的默认端口。
+    const listener = await page.evaluate(() => window.interceptor.getCaptureStatus());
+    const proxyPort = listener.port;
+    if (proxyPort === null) {
+      throw new Error('Capture listener port is unavailable.');
+    }
     await page.evaluate(() => window.interceptor.stopCapture());
 
     const origin = await this.startOrigin();
-    const proxyPort = await reservePort();
     try {
       const capture = await page.evaluate((port) =>
         window.interceptor.startCapture(port), proxyPort);
@@ -465,13 +473,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'querySessions',
         'queryWebSocketFrames',
         'readBody',
-        'repairSystemProxy',
         'replaceCollection',
         'replaceRules',
         'replaceTlsPassthroughSettings',
         'reportRendererDiagnostic',
         'resolveBreakpoint',
-        'restartApplication',
         'restoreSystemProxy',
         'revealCertificate',
         'sendComposerRequest',
@@ -635,7 +641,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
 
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
-    const clearRecordingPort = await reservePort();
     await expect.poll(
       () => rendererPage.evaluate(async (port) => {
         const current = await window.interceptor.getCaptureStatus();
@@ -647,7 +652,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         } catch {
           return false;
         }
-      }, clearRecordingPort),
+      }, DEFAULT_CAPTURE_PORT),
       { message: 'Recording did not restart before Clear', timeout: 10_000 },
     ).toBe(true);
     const clearedStorage = await page.evaluate(() =>

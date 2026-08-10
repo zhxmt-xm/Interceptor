@@ -681,6 +681,12 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .sbadge.tunnel .d { background: var(--yellow); }
 .tunnel-detail { gap: 20px; }
 /* 图标+文字占第一行、按钮另起一行：Inspector 宽度有限，并排会把说明挤成每行两三个词。 */
+.origin-cert-callout { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--red) 8%, var(--panel)); }
+.origin-cert-icon { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+.origin-cert-icon svg { width: 15px; height: 15px; }
+.origin-cert-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.origin-cert-copy b { color: var(--text); font-size: 12px; font-weight: 600; }
+.origin-cert-copy > span { color: var(--text-2); font-size: 11.5px; line-height: 1.45; }
 .tunnel-callout { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--yellow) 28%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--yellow) 8%, var(--panel)); }
 .tunnel-callout > .btn, .tunnel-callout > .sbadge { grid-column: 2; justify-self: start; }
 .tunnel-icon { width: 32px; height: 32px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; color: var(--yellow); background: color-mix(in srgb, var(--yellow) 14%, transparent); }
@@ -1159,14 +1165,17 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .app[data-tls-passthrough="empty"] .tls-host-row { display: none; }
 .app[data-tls-passthrough="empty"] .tls-host-empty { display: flex; }
 .settings-confirm-dialog { width: 540px; }
-.tls-compatibility-list { max-height: 224px; overflow-y: auto; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-2); }
-.tls-compatibility-row { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 11px; min-height: 58px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.tls-compatibility-list { max-height: 264px; overflow-y: auto; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-2); }
+.tls-compatibility-row { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: start; gap: 8px 11px; padding: 12px; border-bottom: 1px solid var(--border); }
 .tls-compatibility-row:last-child { border-bottom: 0; }
 .tls-compatibility-host-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; color: var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); }
 .tls-compatibility-host-icon svg { width: 15px; height: 15px; }
-.tls-compatibility-row > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tls-compatibility-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .tls-compatibility-row code { overflow: hidden; color: var(--text); font-family: var(--font-mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
 .tls-compatibility-row span { color: var(--text-3); font-size: 11px; line-height: 1.4; }
+.tls-pattern-choices { grid-column: 2; display: flex; flex-direction: column; gap: 6px; }
+.tls-pattern-choice { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
+.tls-pattern-choice code { color: var(--text-2); }
 .settings-confirm-body { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
 .settings-confirm-body > p { margin: 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
 .settings-confirm-body > p b, .settings-confirm-body > p code { color: var(--text); }

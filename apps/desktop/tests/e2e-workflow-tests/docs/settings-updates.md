@@ -48,29 +48,6 @@
 
 Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Restore仅在current==owned时恢复original，不覆盖外部修改。
 
-<a id="settings-proxy-repair"></a>
-## `settings.proxy.repair`
-
-**状态**：planned
-**策略**：os-side-effect；headed
-
-### Steps
-
-1. 创建fresh profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.open-proxy-settings`，检查Proxy未owned、listener=Listening和journal初态。
-2. 点击 `settings.proxy.enable`并完成App发起的原生授权；等待Owned和Recording。
-3. 点击 `settings.proxy.repair`，确认只出现二次确认、未立即写系统设置。
-4. 点击 `settings.proxy.repair-cancel`，确认Owned/listener不变。
-5. 再次点击Repair，点击 `settings.proxy.repair-confirm`。
-6. 等待结果状态；检查仍owned的配置恢复、listener停止、Capture UI同步Paused。
-7. 检查 `system-proxy.journal` 从owned记录进入已清理终态；若检测外部修改，确认显示ownership conflict且零覆盖。
-8. 保存evidence并Close。
-9. 验证进程/端口销毁和系统代理已恢复。
-10. 删除profile。
-
-### 预期效果
-
-Repair必须二次确认；Cancel零副作用；Confirm执行guarded restore并停止listener；ownership lost不会覆盖用户修改。
-
 <a id="settings-certificates-generate-delete"></a>
 ## `settings.certificates.generate-delete`
 

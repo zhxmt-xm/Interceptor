@@ -259,7 +259,7 @@
 
 ### 29. 异常退出和 ownership lost
 
-- [ ] 强杀 / OS crash 会让系统代理暂时停在 8888，直到 startup journal recovery、Emergency repair 或人工恢复；提供独立 repair 工具/启动项或更明显的系统级故障提示。
+- [ ] 强杀 / OS crash 会让系统代理暂时停在 8888，直到 startup journal recovery 或人工恢复；提供独立 repair 工具/启动项或更明显的系统级故障提示。
 - [ ] 外部程序修改代理后会 ownership lost，Interceptor 按设计不覆盖；但用户可能同时失去原配置恢复能力，需要展示原/owned/current 三方差异和手工恢复指导。
 - [ ] Close、Core fatal、Main crash、更新安装、系统关机各自覆盖真实恢复测试。
 

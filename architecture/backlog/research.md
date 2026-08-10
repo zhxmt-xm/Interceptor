@@ -206,8 +206,8 @@ Core 已能收到 `tls-client-error` 的 `destination` / SNI host 与
 TLS passthrough 是低频全局设置，现由 `WorkspaceService` 持久化，不像 `insecureHosts` 一样只存在
 Main 内存。实现包含以下 typed RPC / Desktop API：
 
-- Core protocol：`tls.configure` payload 增加 `passthroughHosts`；新增全局设置 get/replace 命令，
-	或由已有 Workspace 配置能力承载。
+- Core protocol：`tls-passthrough.get` / `tls-passthrough.replace` 以 revision 乐观锁承载名单读写；
+	`tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption` 只管 CA 材料与 MITM 开关。
 - Main：启动/Core 重启时读取持久配置并随 CA 一起下发；处理 TLS compatibility event。
 - Preload：暴露 get/set passthrough hosts 与 AppContainer list/toggle 的窄 API。
 - Renderer：按 `ui-design-mockup` 流程实现 Settings 的 TLS passthrough 与 AppContainer access；

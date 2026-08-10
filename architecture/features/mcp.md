@@ -146,7 +146,7 @@ interface McpClientIdentity {
 
 | Core command | 拒绝理由 |
 | --- | --- |
-| `tls.configure` | 触及 CA 与 MITM 信任根 |
+| `tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption` | 触及 CA 与 MITM 信任根 |
 | `proxy.start` / `proxy.stop` | 牵涉系统代理接管与恢复，属 Main 的 OS 级职责 |
 | `har.import.start` / `archive.import.start` | 需要从任意路径读文件 |
 | `har.export.start` / `archive.export.start` / `body.export.start` / `diagnostics.export.start` | 需要写任意路径，且真实路径只应在 Main↔Core 之间流转 |
@@ -528,7 +528,7 @@ flowchart TD
 - [x] `apply_rules` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
 - [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
 - [x] 音视频正文不进入工具结果。
-- [x] `tls.configure`、`proxy.start` / `proxy.stop`、全部 import/export command 在工具列表中不可见且不可调用。
+- [x] 全部 `tls.*` 写入命令、`proxy.start` / `proxy.stop`、全部 import/export command 在工具列表中不可见且不可调用。
 - [x] 撤销某个 client 后，其 token 立即无法再建会话。
 - [x] 工具抛错返回结构化失败而非抛出。
 - [x] schema 未声明的参数被拒绝；分页条数与结果字节均有上限。

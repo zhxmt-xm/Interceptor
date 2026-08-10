@@ -208,7 +208,6 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `settings.navigation` | 六个Settings section | shared | planned |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
-| `settings.proxy.repair` | Emergency repair确认与恢复 | os-side-effect | planned |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |

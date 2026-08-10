@@ -24,7 +24,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 
 1. **在 `index.html` 里加/改 feature**:应用只有一套共享 Window Header；每个 feature 由 `<div class="mv <feature>main v-X" data-v="X">` 主区域与 `<div class="sv" data-v="X">` 状态栏组成，业务工具栏放在 feature 主区域顶部。侧栏是共享的，`app.js` 里的 `NAV` 决定条目。用真实感示例数据(真实 host/状态码/大小/耗时),不要 Lorem。overlay(向导/对话框)放 `<div class="ov" data-ov="X">`。
 2. **样式加到 `app.css`**:令牌/外壳/通用原子是全局的;feature 专属布局类若可能与别的 feature 撞名(如 `hhead/hrow/iurl`),用 `.v-<feature>` 或专属容器类作用域隔离。
-3. **状态全部经 `window.__setState({view,theme,sidebar,overlay,tab,pop,lang,pop2,https,scene,settings,repair,update,transfer,fileMenu})`**：`view` 切 feature、`theme` 主题、`sidebar` 展开/折叠、`overlay` 打开 HTTPS/导入导出/代理就绪弹层、`tab` 切 Inspector、`pop` 打开筛选/动作菜单，其余字段驱动当前细节场景。人点击侧栏 / 右下角可收起的控件面板切换；截图脚本用 `page.evaluate((s)=>window.__setState(s), state)` 驱动同一套状态。
+3. **状态全部经 `window.__setState({view,theme,sidebar,overlay,tab,pop,lang,pop2,https,scene,settings,update,transfer,fileMenu})`**：`view` 切 feature、`theme` 主题、`sidebar` 展开/折叠、`overlay` 打开 HTTPS/导入导出/代理就绪弹层、`tab` 切 Inspector、`pop` 打开筛选/动作菜单，其余字段驱动当前细节场景。人点击侧栏 / 右下角可收起的控件面板切换；截图脚本用 `page.evaluate((s)=>window.__setState(s), state)` 驱动同一套状态。
 4. **生成**:`node design/app/shoot.mjs`。两趟——framed(1280×800 应用态)+ full(注入 CSS 展开所有滚动区,把隐藏内容也截全)。截图覆盖每个 feature × 浅/深 + 关键折叠 + 当前 overlay。主题/语言 switcher 场景另由 `node design/app/shoot-scenes.mjs` 生成。
 5. **评审**:用 `view_image` 逐张查看,按用户反馈改 `index.html`/`app.css` 后重跑,直到定稿。
 

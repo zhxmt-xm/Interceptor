@@ -982,7 +982,7 @@ Promise 链上排队，真正落盘在后台进行。`pendingBytes` 就是「已
    极端场景（超大响应必须完整保留、或低内存机器需要收紧）应由用户自行权衡：
    - 暴露为「正文内存阈值」与「单条正文最大积压」两项设置，改动后对**新建**的 writer 生效，
      不影响在途正文，避免中途改变阈值导致已收集内容语义不一致。
-   - 需要 Renderer → Main → Core 的窄意图传递（形如现有 `tls.configure`），并在 Core 侧做范围校验。
+   - 需要 Renderer → Main → Core 的窄意图传递（形如现有 `tls.useCertificate`），并在 Core 侧做范围校验。
    - **一并处理 10.2 的预览侧阈值**（`BODY_PREVIEW_MAX_BYTES` / `IMAGE_PREVIEW_MAX_BYTES` /
      `FORMAT_AUTO_MAX_BYTES` / `FORMAT_MAX_BYTES`）：给 `BodyReadRangeCommand` 加 `maxOutput`，
      由调用方传上限，Core 不再 import「预览上限」这种纯 UI 概念。
@@ -1387,7 +1387,21 @@ flowchart LR
 一点即达，path 才是同一 host 下区分请求的信息。窄宽度下依次隐藏 Time、Size、Type、Proto 四列
 （这些维度筛选分栏里都有），Path · Host 主列永不隐藏。
 
-### 10.2 正文预览渲染矩阵 [已实现]
+### 10.2 源站证书失败的就地出口 [已实现]
+
+TLS 有两类失败，能做的事完全不同：
+
+- **TLS①（客户端不认我们的 CA）**：整个 app 不可用，由 App 壳的全局 compatibility dialog 处理，
+   出口是加 TLS passthrough。
+- **TLS②（源站证书本身不可信）**：只影响单个 host，失败的 exchange 本来就躺在 Capture 列表里，
+   因此不再加第二个全局弹窗，改为在 Inspector 的 Connection / TLS 面板里就地给出口。
+
+判据是 detail 的 `errorCode` 落在证书校验错误集合内（`UNABLE_TO_VERIFY_LEAF_SIGNATURE`、
+`SELF_SIGNED_CERT_IN_CHAIN`、`CERT_HAS_EXPIRED`、`ERR_TLS_CERT_ALTNAME_INVALID` 等）。协议协商类失败
+（`EPROTO`、`ECONNREFUSED`）不显示，因为加 per-host 例外并不能解决。点 `Trust this host` 写入
+`tls.replaceInsecureHosts`，Core 在同一条命令里完成持久化与生效。
+
+### 10.3 正文预览渲染矩阵 [已实现]
 
 正文查看器是共享内核 `components/BodyViewer/`，Capture / Composer / WebSocket / gRPC 用同一实现。
 

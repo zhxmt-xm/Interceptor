@@ -170,7 +170,6 @@ for (const view of views) {
   await designPage.evaluate((state) => window.__setState?.({
     fileMenu: '',
     settings: 'certificates',
-    repair: 'idle',
     update: 'up-to-date',
     requestMenu: '',
     ruleFilter: '',
@@ -199,7 +198,6 @@ for (const view of views) {
     proxyEnableFails: view.proxyEnableFails === true,
     tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
-    tlsRestartRequired: view.tlsRestartRequired === true,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.evaluate(() => document.fonts?.ready);

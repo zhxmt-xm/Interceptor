@@ -78,6 +78,6 @@ node design/app/shoot-scenes.mjs                   # 更新当前主题 switcher
 | Rules、Composer、Capture 内 Breakpoints、Connection/TLS | M8 |
 | Capture WebSocket / gRPC Inspector 增量 | M9 |
 | Import-export、Settings / Privacy、Diagnostics | M10 |
-| Capture 默认系统代理、HTTPS setup、Settings / Proxy、Emergency Repair | M11/T11.3–T11.5 |
+| Capture 默认系统代理、HTTPS setup、Settings / Proxy | M11/T11.3–T11.5 |
 | 全部已实现视图的 packaged 视觉回归 | M12 |
 | Settings / Updates、更新通知与进度 | M13/T13.4 |
