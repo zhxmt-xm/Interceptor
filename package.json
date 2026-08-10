@@ -10,7 +10,8 @@
   },
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "design-vite"
   ],
   "scripts": {
     "postinstall": "patch-package",

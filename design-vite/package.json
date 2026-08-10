@@ -1,0 +1,31 @@
+{
+  "name": "@interceptor/design-vite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "shoot": "node shoot.mjs",
+    "compare": "node tools/compare-shots.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/jetbrains-mono": "5.2.8",
+    "antd": "6.5.0",
+    "lucide-react": "1.23.0",
+    "monaco-editor": "0.56.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "pixelmatch": "7.2.0",
+    "pngjs": "7.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.1.4"
+  }
+}
