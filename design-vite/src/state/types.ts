@@ -74,7 +74,6 @@ export interface DesignState {
   readonly composerHistory: 'open' | '';
   readonly bodyType: BodyType;
   readonly settings: string;
-  readonly repair: string;
   readonly update: string;
   readonly githubAuth: string;
   readonly appContainers: string;

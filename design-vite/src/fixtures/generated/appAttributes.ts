@@ -10,7 +10,6 @@ export const appAttributes: Readonly<Record<string, string>> = {
   "data-upstream": "on",
   "data-copy": "hidden",
   "data-settings": "certificates",
-  "data-repair": "idle",
   "data-update": "up-to-date",
   "data-github-auth": "signed-in",
   "data-app-containers": "ready",

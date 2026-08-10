@@ -1,4 +1,5 @@
 import {
+  Activity,
   Ampersand,
   AppWindow,
   ArrowRight,
@@ -63,6 +64,7 @@ import {
 } from 'lucide-react';
 
 const ICON_BY_ID: Readonly<Record<string, LucideIcon>> = {
+  'i-activity': Activity,
   'i-alert': TriangleAlert,
   'i-ampersand': Ampersand,
   'i-app-window': AppWindow,

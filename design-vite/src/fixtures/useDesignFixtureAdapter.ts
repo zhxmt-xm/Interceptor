@@ -245,13 +245,11 @@ export function useDesignFixtureAdapter(
       const inspectorTab = closest(event.target, '[data-tabs="insp"] > span')?.dataset.tab as DesignState['tab'] | undefined;
       if (inspectorTab) return patch({ tab: inspectorTab, detail: 'open' });
       const settingsNav = closest(event.target, '[data-settings-nav]')?.dataset.settingsNav;
-      if (settingsNav) return patch({ settings: settingsNav, repair: 'idle' });
+      if (settingsNav) return patch({ settings: settingsNav });
       const authAction = closest(event.target, '[data-github-auth-action]')?.dataset.githubAuthAction;
       if (authAction === 'sign-in' || authAction === 'retry') return patch({ githubAuth: 'authorizing', update: 'authentication-required' });
       if (authAction === 'open') return patch({ githubAuth: 'signed-in', update: 'up-to-date' });
       if (authAction === 'sign-out') return patch({ githubAuth: 'signed-out', update: 'authentication-required' });
-      if (closest(event.target, '.repair-idle .danger')) return patch({ repair: 'confirm' });
-      if (closest(event.target, '.repair-confirm .btn:not(.danger)')) return patch({ repair: 'idle' });
       if (closest(event.target, '[data-app-container-refresh]')) {
         patch({ appContainers: 'refreshing' });
         window.setTimeout(() => patch({ appContainers: 'ready' }), 900);

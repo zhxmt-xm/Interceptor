@@ -38,7 +38,7 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   view: 'capture', theme: 'light', sidebar: 'collapsed', lang: 'en', overlay: '', tab: 'headers', detail: 'open',
   filters: 'open', filterGroup: '', filterActive: '', search: '', tip: '', pop: false, pop2: '',
   composerTab: 'headers', composerResponseTab: 'body', composer: '', collection: 'open', collectionRename: '',
-  composerHistory: '', bodyType: 'json', settings: 'certificates', repair: 'idle', update: 'up-to-date',
+  composerHistory: '', bodyType: 'json', settings: 'certificates', update: 'up-to-date',
   githubAuth: 'signed-in', appContainers: 'ready', tlsPassthrough: 'ready', tlsPatterns: null, tlsRestart: '',
   tlsHostInput: '', tlsCompatibility: '', tlsCompatibilityHosts: null, https: 'fresh', mitm: 'inactive',
   systemProxy: 'on', upstream: 'on', copy: 'hidden', transfer: '', recording: '', fileMenu: '', ruleSelect: '',
@@ -66,6 +66,10 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
       composerResponseTab: patch.composerResponseTab ?? 'body',
       detail: patch.tab || patch.scene || patch.detail === 'open' ? 'open' : 'closed',
     };
+  }
+  // 显式给了 detail 就以它为准，覆盖上面按 tab/scene 的推导。
+  if (patch.detail !== undefined) {
+    next = { ...next, detail: patch.detail === 'open' ? 'open' : 'closed' };
   }
   if (patch.bodyPreview !== undefined) {
     const bodyPreview = BODY_SCENES[patch.bodyPreview] ? patch.bodyPreview : 'json';
@@ -109,7 +113,7 @@ export function designRootAttributes(state: DesignState): Record<string, string 
     'data-filter-active': optional(state.filterActive), 'data-search': optional(state.search), 'data-tip': optional(state.tip),
     'data-composer': optional(state.composer), 'data-collection': state.collection,
     'data-collection-rename': optional(state.collectionRename), 'data-composer-history': optional(state.composerHistory),
-    'data-body-type': state.bodyType, 'data-settings': state.settings, 'data-repair': state.repair, 'data-update': state.update,
+    'data-body-type': state.bodyType, 'data-settings': state.settings, 'data-update': state.update,
     'data-github-auth': state.githubAuth, 'data-app-containers': state.appContainers, 'data-tls-passthrough': state.tlsPassthrough,
     'data-tls-restart': optional(state.tlsRestart), 'data-tls-compatibility': optional(state.tlsCompatibility),
     'data-https': state.https, 'data-mitm': state.mitm, 'data-system-proxy': state.systemProxy,

@@ -1,3 +1,4 @@
+import { FixtureIcon } from '../fixtures/FixtureIcon';
 import { fixtureClassNames } from '../fixtures/FixtureRenderer';
 import type { DesignTheme, DesignView } from '../state/types';
 import { useDesignState } from '../state/useDesignState';
@@ -18,8 +19,9 @@ const LANGUAGE_CODE: Readonly<Record<string, string>> = {
   'pt-BR': 'PT', ru: 'RU', nl: 'NL', pl: 'PL', tr: 'TR', uk: 'UA',
 };
 
+// 尺寸由 .side 的 CSS 控制；描边 1.9 对齐旧 sprite 的默认值。
 function Icon({ name }: { readonly name: string }): React.JSX.Element {
-  return <svg><use href={`#${name}`} /></svg>;
+  return <FixtureIcon iconId={name} svgProps={{ strokeWidth: 1.9 }} />;
 }
 
 export function Sidebar(): React.JSX.Element {
