@@ -11312,91 +11312,6 @@ export const captureFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "element",
-                              "tag": "div",
-                              "attributes": {
-                                "class": "origin-cert-callout"
-                              },
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-icon"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "svg",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "element",
-                                          "tag": "use",
-                                          "attributes": {
-                                            "href": "#i-shield-off"
-                                          },
-                                          "children": []
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-copy"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "b",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Origin certificate could not be verified"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Interceptor rejected the certificate api.github.com presented (UNABLE_TO_VERIFY_LEAF_SIGNATURE). Requests to this host keep failing until you trust it."
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "button",
-                                  "attributes": {
-                                    "class": "btn pri",
-                                    "data-trust-origin": ""
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Trust this host"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
                               "type": "text",
                               "value": "TLS"
                             }
@@ -11492,91 +11407,6 @@ export const captureFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "element",
-                              "tag": "div",
-                              "attributes": {
-                                "class": "origin-cert-callout"
-                              },
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-icon"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "svg",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "element",
-                                          "tag": "use",
-                                          "attributes": {
-                                            "href": "#i-shield-off"
-                                          },
-                                          "children": []
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-copy"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "b",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Origin certificate could not be verified"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Interceptor rejected the certificate api.github.com presented (UNABLE_TO_VERIFY_LEAF_SIGNATURE). Requests to this host keep failing until you trust it."
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "button",
-                                  "attributes": {
-                                    "class": "btn pri",
-                                    "data-trust-origin": ""
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Trust this host"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
                               "type": "text",
                               "value": "TLS"
                             }
@@ -11643,91 +11473,6 @@ export const captureFixture: FixtureNode = {
                             "data-tab": "tls"
                           },
                           "children": [
-                            {
-                              "type": "element",
-                              "tag": "div",
-                              "attributes": {
-                                "class": "origin-cert-callout"
-                              },
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-icon"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "svg",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "element",
-                                          "tag": "use",
-                                          "attributes": {
-                                            "href": "#i-shield-off"
-                                          },
-                                          "children": []
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "span",
-                                  "attributes": {
-                                    "class": "origin-cert-copy"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "b",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Origin certificate could not be verified"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Interceptor rejected the certificate api.github.com presented (UNABLE_TO_VERIFY_LEAF_SIGNATURE). Requests to this host keep failing until you trust it."
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "button",
-                                  "attributes": {
-                                    "class": "btn pri",
-                                    "data-trust-origin": ""
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "span",
-                                      "attributes": {},
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "value": "Trust this host"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
                             {
                               "type": "text",
                               "value": "TLS"
@@ -17308,12 +17053,20 @@ export const captureFixture: FixtureNode = {
                           },
                           "children": [
                             {
+                              "type": "text",
+                              "value": "\n                "
+                            },
+                            {
                               "type": "element",
                               "tag": "div",
                               "attributes": {
                                 "class": "origin-cert-callout"
                               },
                               "children": [
+                                {
+                                  "type": "text",
+                                  "value": "\n                  "
+                                },
                                 {
                                   "type": "element",
                                   "tag": "span",
@@ -17337,6 +17090,10 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     }
                                   ]
+                                },
+                                {
+                                  "type": "text",
+                                  "value": "\n                  "
                                 },
                                 {
                                   "type": "element",
@@ -17370,6 +17127,10 @@ export const captureFixture: FixtureNode = {
                                   ]
                                 },
                                 {
+                                  "type": "text",
+                                  "value": "\n                  "
+                                },
+                                {
                                   "type": "element",
                                   "tag": "button",
                                   "attributes": {
@@ -17389,6 +17150,10 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     }
                                   ]
+                                },
+                                {
+                                  "type": "text",
+                                  "value": "\n                "
                                 }
                               ]
                             },

@@ -2716,21 +2716,8 @@ export const overlayFixtures: readonly FixtureNode[] = [
                 "attributes": {},
                 "children": [
                   {
-                    "type": "element",
-                    "tag": "span",
-                    "attributes": {
-                      "data-tls-compatibility-count": ""
-                    },
-                    "children": [
-                      {
-                        "type": "text",
-                        "value": "3 hosts"
-                      }
-                    ]
-                  },
-                  {
                     "type": "text",
-                    "value": " failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception."
+                    "value": "The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception."
                   }
                 ]
               },
@@ -2754,7 +2741,8 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     "tag": "div",
                     "attributes": {
                       "class": "tls-compatibility-row",
-                      "data-tls-compatibility-host": "rdweb.wvd.microsoft.com"
+                      "data-tls-compatibility-host": "rdweb.wvd.microsoft.com",
+                      "data-parity": "tls-compatibility-host-rdweb.wvd.microsoft.com"
                     },
                     "children": [
                       {
@@ -2932,7 +2920,8 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     "tag": "div",
                     "attributes": {
                       "class": "tls-compatibility-row",
-                      "data-tls-compatibility-host": "windows365.microsoft.com"
+                      "data-tls-compatibility-host": "windows365.microsoft.com",
+                      "data-parity": "tls-compatibility-host-windows365.microsoft.com"
                     },
                     "children": [
                       {
@@ -3082,7 +3071,8 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     "tag": "div",
                     "attributes": {
                       "class": "tls-compatibility-row",
-                      "data-tls-compatibility-host": "afdfp-rdgateway-r0.wvd.microsoft.com"
+                      "data-tls-compatibility-host": "afdfp-rdgateway-r0.wvd.microsoft.com",
+                      "data-parity": "tls-compatibility-host-afdfp-rdgateway-r0.wvd.microsoft.com"
                     },
                     "children": [
                       {
@@ -3351,17 +3341,8 @@ export const overlayFixtures: readonly FixtureNode[] = [
                     ]
                   },
                   {
-                    "type": "element",
-                    "tag": "span",
-                    "attributes": {
-                      "data-tls-compatibility-add-label": ""
-                    },
-                    "children": [
-                      {
-                        "type": "text",
-                        "value": "Add 3 patterns"
-                      }
-                    ]
+                    "type": "text",
+                    "value": "Add 3 patterns"
                   }
                 ]
               }

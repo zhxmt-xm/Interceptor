@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const appDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureDirectory = path.join(appDirectory, 'src', 'fixtures', 'generated');
-const source = await readFile(path.join(appDirectory, 'index.html'), 'utf8');
+// The DOM lives in the static design SPA; this app's own index.html is just the React mount.
+const legacyDocument = path.resolve(appDirectory, '..', 'design', 'app', 'index.html');
+const source = await readFile(legacyDocument, 'utf8');
 const documentSource = source
   .replace(/<script[\s\S]*?<\/script>/gi, '')
   .replace(/<link[^>]*>/gi, '');
