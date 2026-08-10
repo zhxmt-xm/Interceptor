@@ -384,17 +384,61 @@ export interface ProxySetUpstreamCommand {
 }
 
 /**
- * 由 Main 内部下发的 TLS 配置（非 Renderer 发起）：下发解密后的 CA 材料
- * 供 Core 做 HTTPS MITM，以及 per-host 不安全例外。ca 为 null 时关闭 MITM。
+ * 换用一份新的 CA 材料（Root CA 生成 / 安装信任 / 删除后由 Main 下发）。
+ * null 表示当前没有可用且受信任的 CA，Core 退回进程内临时身份。
  * 私钥只在 Main↔Core 内部通道流转，绝不经 Renderer。
  */
-export interface TlsConfigureCommand {
-  type: 'tls.configure';
+export interface TlsUseCertificateCommand {
+  type: 'tls.useCertificate';
   payload: {
     ca: { key: string; cert: string } | null;
-    insecureHosts: string[];
-    passthroughHosts: string[];
   };
+}
+
+/** 开始解密 HTTPS（对应 Settings 里 Decrypt HTTPS 开关拨到开）。 */
+export interface TlsStartDecryptionCommand {
+  type: 'tls.startDecryption';
+  payload: Record<string, never>;
+}
+
+/** 停止解密 HTTPS（对应 Settings 里 Decrypt HTTPS 开关拨到关）。 */
+export interface TlsStopDecryptionCommand {
+  type: 'tls.stopDecryption';
+  payload: Record<string, never>;
+}
+
+/**
+ * 全量替换源站证书的不安全例外名单（对应 Certificates 里的 Per-host overrides）。
+ * 名单内的 host 在 Interceptor→源站 方向跳过证书校验。名单同时持久化，重启后自动恢复。
+ */
+export interface TlsReplaceInsecureHostsCommand {
+  type: 'tls.replaceInsecureHosts';
+  payload: {
+    hosts: string[];
+  };
+}
+
+/** 读取持久化的源站证书例外名单。 */
+export interface TlsGetInsecureHostsCommand {
+  type: 'tls.getInsecureHosts';
+  payload: Record<string, never>;
+}
+
+/**
+ * 记住用户是否想解密 HTTPS。与 tls.startDecryption / tls.stopDecryption 正交：
+ * 这条只写用户意图，实际是否解密还取决于 CA 是否已被系统信任。
+ */
+export interface TlsSaveDecryptionPreferenceCommand {
+  type: 'tls.saveDecryptionPreference';
+  payload: {
+    enabled: boolean;
+  };
+}
+
+/** 读取用户上次留下的 HTTPS 解密意图。 */
+export interface TlsGetDecryptionPreferenceCommand {
+  type: 'tls.getDecryptionPreference';
+  payload: Record<string, never>;
 }
 
 export type CoreCommand =
@@ -435,7 +479,13 @@ export type CoreCommand =
   | ProxyStatusCommand
   | ProxySetRecordingCommand
   | ProxySetUpstreamCommand
-  | TlsConfigureCommand;
+  | TlsUseCertificateCommand
+  | TlsStartDecryptionCommand
+  | TlsStopDecryptionCommand
+  | TlsReplaceInsecureHostsCommand
+  | TlsGetInsecureHostsCommand
+  | TlsSaveDecryptionPreferenceCommand
+  | TlsGetDecryptionPreferenceCommand;
 
 export interface EchoResult {
   type: 'echo';
@@ -635,6 +685,11 @@ export interface BreakpointResolutionResult {
 export interface PendingBreakpoint {
   id: string;
   phase: 'request' | 'response' | 'websocket';
+  /**
+   * 挂起流量所属的 Capture Exchange，使暂停状态能在流量列表原行展示，
+   * 也使同一 exchange 的 request / response 两阶段可关联。未记录时缺省。
+   */
+  exchangeId?: string;
   createdAt: number;
   /** 超时时间戳；0 表示无超时。 */
   deadline: number;
@@ -660,6 +715,11 @@ export interface BreakpointPendingResult {
   payload: {
     breakpoints: PendingBreakpoint[];
     enabled: boolean;
+    /**
+     * 队列已满而未挂起、直接放行的命中累计数。
+     * 挂起的是真实流量，因此溢出必须可见，不能静默。
+     */
+    autoContinued: number;
   };
 }
 
@@ -822,10 +882,28 @@ export interface ProxyStatusResult {
   };
 }
 
-export interface TlsConfiguredResult {
-  type: 'tls.configured';
+/** 当前 TLS 运行态：是否持有可用 CA，以及是否正在解密。 */
+export interface TlsStateResult {
+  type: 'tls.state';
   payload: {
-    mitmEnabled: boolean;
+    certificateReady: boolean;
+    decrypting: boolean;
+  };
+}
+
+/** 持久化的源站证书例外名单。 */
+export interface TlsInsecureHostsResult {
+  type: 'tls.insecureHosts';
+  payload: {
+    hosts: string[];
+  };
+}
+
+/** 用户留下的 HTTPS 解密意图。 */
+export interface TlsDecryptionPreferenceResult {
+  type: 'tls.decryptionPreference';
+  payload: {
+    enabled: boolean;
   };
 }
 
@@ -855,7 +933,9 @@ export type CoreResult =
   | CaptureStatusResult
   | TransferJobResult
   | ProxyStatusResult
-  | TlsConfiguredResult;
+  | TlsStateResult
+  | TlsInsecureHostsResult
+  | TlsDecryptionPreferenceResult;
 
 export type CoreResultForCommand<T extends CoreCommand> =
   T extends EchoCommand ? EchoResult
@@ -911,8 +991,20 @@ export type CoreResultForCommand<T extends CoreCommand> =
                                 ? ProxyStatusResult
                               : T extends ProxySetUpstreamCommand
                                 ? ProxyStatusResult
-                              : T extends TlsConfigureCommand
-                                ? TlsConfiguredResult
+                              : T extends TlsUseCertificateCommand
+                                ? TlsStateResult
+                                : T extends TlsStartDecryptionCommand
+                                  ? TlsStateResult
+                                  : T extends TlsStopDecryptionCommand
+                                    ? TlsStateResult
+                                    : T extends TlsReplaceInsecureHostsCommand
+                                      ? TlsInsecureHostsResult
+                                      : T extends TlsGetInsecureHostsCommand
+                                        ? TlsInsecureHostsResult
+                                        : T extends TlsSaveDecryptionPreferenceCommand
+                                          ? TlsDecryptionPreferenceResult
+                                          : T extends TlsGetDecryptionPreferenceCommand
+                                            ? TlsDecryptionPreferenceResult
                                 : T extends RulesGetCommand
                                   ? RulesRuleSetResult
                                   : T extends RulesHitsCommand
@@ -1008,10 +1100,14 @@ export interface CaptureExchangeEvent {
   summary: CaptureExchangeSummary;
 }
 
+/** Mockttp 的 TLS 握手失败原因全集；任何一种都可能指向需要 passthrough 的客户端。 */
 export type TlsCompatibilityReason =
   | 'cert-rejected'
   | 'reset'
-  | 'closed';
+  | 'closed'
+  | 'no-shared-cipher'
+  | 'handshake-timeout'
+  | 'unknown';
 
 /** One deduplicated signal that a host may not accept HTTPS interception. */
 export interface TlsCompatibilityEvent {

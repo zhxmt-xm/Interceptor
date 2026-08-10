@@ -19,6 +19,7 @@ import type {
   PendingBreakpointEntry,
   PendingBreakpointInfo,
 } from '../interfaces';
+import { BREAKPOINT_QUEUE_LIMIT } from './constants';
 
 /**
  * 等待中断点的注册表。单实例由 CoreApplication 持有，rule-engine 与 breakpoint.resolve
@@ -29,9 +30,12 @@ export class BreakpointQueue {
   private readonly pending = new Map<string, PendingBreakpointEntry>();
   /** 同一进程内用于生成稳定 ID 后缀的递增序号。 */
   private sequence = 0;
+  /** 队列已满而未挂起、直接放行的命中累计数。 */
+  private autoContinuedCount = 0;
 
   /**
    * 挂起一个断点，返回稳定 id 与解除结果 Promise；timeoutMs>0 时到期自动 timed_out。
+   * 队列已满时返回 null 并累加自动放行数，调用方必须原样放行，不得继续挂起真实流量。
    * 调用方：rule-engine 在 beforeRequestHead/beforeResponseHead 命中 breakpoint action 时。
    */
   suspend(
@@ -43,7 +47,11 @@ export class BreakpointQueue {
       headers: [],
       bodyAvailable: false,
     },
-  ): BreakpointSuspension {
+  ): BreakpointSuspension | null {
+    if (this.pending.size >= BREAKPOINT_QUEUE_LIMIT) {
+      this.autoContinuedCount += 1;
+      return null;
+    }
     this.sequence += 1;
     const id = `bp-${Date.now().toString(36)}-${this.sequence}`;
     let settle!: (outcome: BreakpointOutcome) => void;
@@ -123,6 +131,11 @@ export class BreakpointQueue {
   /** 等待中断点数量。 */
   get size(): number {
     return this.pending.size;
+  }
+
+  /** 队列已满而被自动放行的命中累计数；供 UI 与诊断说明为什么没有停下来。 */
+  get autoContinued(): number {
+    return this.autoContinuedCount;
   }
 
   /** 统一清理 timer、移除记录并完成等待 Promise。 */

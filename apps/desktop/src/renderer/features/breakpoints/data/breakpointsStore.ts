@@ -6,6 +6,7 @@ import { draftFromBreakpoint, rowId } from '../utils';
 export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
   breakpoints: [],
   enabled: true,
+  autoContinued: 0,
   selectedId: null,
   draft: null,
   resolving: false,
@@ -29,7 +30,13 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
         selectedId = null;
         draft = null;
       }
-      return { breakpoints: list, enabled: snapshot.enabled, selectedId, draft };
+      return {
+        breakpoints: list,
+        enabled: snapshot.enabled,
+        autoContinued: snapshot.autoContinued,
+        selectedId,
+        draft,
+      };
     }),
 
   select: (id) =>
@@ -46,6 +53,8 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
     set((state) => (state.draft ? { draft: { ...state.draft, url } } : state)),
   setStatusCode: (statusCode) =>
     set((state) => (state.draft ? { draft: { ...state.draft, statusCode } } : state)),
+  setReplacement: (replacement) =>
+    set((state) => (state.draft ? { draft: { ...state.draft, replacement } } : state)),
   setBody: (body) =>
     set((state) => (state.draft ? { draft: { ...state.draft, body } } : state)),
 

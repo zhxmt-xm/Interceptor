@@ -81,7 +81,6 @@ export class CoreRuntime {
     | ReturnType<typeof setTimeout>
     | null = null;
   private pendingCoreRuntimeStopResolver: (() => void) | null = null;
-  private coreRuntimeRestartPromise: Promise<void> | null = null;
   private coreProcessShouldRun = false;
   /** 当前 CoreProcess 代际是否已收到 ready；只有 ready 才结束启动期限。 */
   private coreProcessReceivedReady = false;
@@ -212,21 +211,6 @@ export class CoreRuntime {
     }
   }
 
-  /**
-   * Gracefully replace the current CoreProcess while preserving Main listeners.
-   * Used by Forge development because app.relaunch would orphan the Vite server.
-   */
-  restart(): Promise<void> {
-    if (this.coreRuntimeRestartPromise) {
-      return this.coreRuntimeRestartPromise;
-    }
-    this.coreRuntimeRestartPromise = this.restartCoreProcess()
-      .finally(() => {
-        this.coreRuntimeRestartPromise = null;
-      });
-    return this.coreRuntimeRestartPromise;
-  }
-
   /** Stop the current generation without disposing long-lived Main listeners. */
   private async stopCurrentCoreProcess(): Promise<void> {
     this.coreProcessShouldRun = false;
@@ -260,25 +244,6 @@ export class CoreRuntime {
         this.coreProcessShutdownTimeoutMs,
       );
     });
-  }
-
-  /** Start a fresh generation and resolve after all ready initializers publish running. */
-  private async restartCoreProcess(): Promise<void> {
-    await this.stopCurrentCoreProcess();
-    const running = new Promise<void>((resolve, reject) => {
-      const removeListener = this.onCoreProcessStatusChange((status) => {
-        if (status.state === 'running') {
-          removeListener();
-          if (status.detail?.startsWith('Core initialization failed:')) {
-            reject(new Error(status.detail));
-          } else {
-            resolve();
-          }
-        }
-      });
-    });
-    this.start();
-    await running;
   }
 
   /**

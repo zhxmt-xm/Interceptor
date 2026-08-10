@@ -318,13 +318,8 @@ export type CollectionReplaceResult =
 
 /** TLS passthrough replacement returns Core-normalized patterns on success. */
 export type TlsPassthroughReplaceResult =
-  | { ok: true; settings: TlsPassthroughSettingsStatus }
+  | { ok: true; settings: TlsPassthroughSettings }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
-
-/** Persisted passthrough settings plus whether they differ from this process's active list. */
-export interface TlsPassthroughSettingsStatus extends TlsPassthroughSettings {
-  restartRequired: boolean;
-}
 
 /** Composer 手工请求：method/url/头/正文 + 协议偏好。 */
 export interface ComposerRequest {
@@ -356,6 +351,8 @@ export interface ComposerResponse {
 export interface BreakpointsSnapshot {
   breakpoints: PendingBreakpoint[];
   enabled: boolean;
+  /** 队列已满而被自动放行的命中累计数；溢出必须可见，不能静默。 */
+  autoContinued: number;
 }
 
 /** TLS 探测结果 DTO：协议/套件/ALPN/授权/证书链；失败 ok=false + error。 */
@@ -414,7 +411,6 @@ export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 export const DESKTOP_IPC_CHANNELS = {
   coreEcho: 'core:echo',
   appQuit: 'app:quit',
-  appRestart: 'app:restart',
   windowMinimize: 'window:minimize',
   windowToggleMaximize: 'window:toggle-maximize',
   coreGetProcessStatus: 'core:get-process-status',
@@ -426,7 +422,6 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyGetStatus: 'system-proxy:get-status',
   systemProxyEnable: 'system-proxy:enable',
   systemProxyRestore: 'system-proxy:restore',
-  systemProxyRepair: 'system-proxy:repair',
   systemProxyStatus: 'system-proxy:status-changed',
   appContainerList: 'app-container:list',
   appContainerSetExemption: 'app-container:set-exemption',
@@ -492,7 +487,6 @@ export const DESKTOP_IPC_CHANNELS = {
 export interface InterceptorDesktopApi {
   echoCore(value: string): Promise<CoreEchoResult>;
   closeApplication(): Promise<void>;
-  restartApplication(): Promise<void>;
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<boolean>;
   getCoreProcessStatus(): Promise<CoreProcessStatus>;
@@ -503,7 +497,6 @@ export interface InterceptorDesktopApi {
   getSystemProxyStatus(): Promise<SystemProxyStatus>;
   enableSystemProxy(): Promise<SystemProxyStatus>;
   restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
-  repairSystemProxy(): Promise<SystemProxyRestoreResult>;
   listAppContainers(): Promise<AppContainerAccessSnapshot>;
   setAppContainerLoopbackExemption(
     appContainerSid: string,
@@ -565,7 +558,7 @@ export interface InterceptorDesktopApi {
   getInsecureHosts(): Promise<string[]>;
   setInsecureHosts(hosts: string[]): Promise<string[]>;
   setHttpsDecryption(enabled: boolean): Promise<CertificateInfo>;
-  getTlsPassthroughSettings(): Promise<TlsPassthroughSettingsStatus>;
+  getTlsPassthroughSettings(): Promise<TlsPassthroughSettings>;
   replaceTlsPassthroughSettings(
     expectedRevision: number,
     hosts: string[],

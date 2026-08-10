@@ -15,7 +15,6 @@ import {
 const api: InterceptorDesktopApi = {
   echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   closeApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appQuit),
-  restartApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appRestart),
   minimizeWindow: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowMinimize),
   toggleMaximizeWindow: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowToggleMaximize),
@@ -35,8 +34,6 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyEnable),
   restoreSystemProxy: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRestore),
-  repairSystemProxy: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyRepair),
   listAppContainers: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerList),
   setAppContainerLoopbackExemption: (appContainerSid, enabled) =>

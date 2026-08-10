@@ -373,9 +373,11 @@ export function bodyToString(
 export function buildRequestSnapshot(
   ruleName: string,
   state: MutableRequestState,
+  exchangeId?: string,
 ): BreakpointSnapshot {
   return {
     ruleName,
+    ...(exchangeId !== undefined ? { exchangeId } : {}),
     method: state.method,
     url: state.url,
     headers: bagToPairs(state.headers),
@@ -388,9 +390,11 @@ export function buildRequestSnapshot(
 export function buildResponseSnapshot(
   ruleName: string,
   state: MutableResponseState,
+  exchangeId?: string,
 ): BreakpointSnapshot {
   return {
     ruleName,
+    ...(exchangeId !== undefined ? { exchangeId } : {}),
     statusCode: state.statusCode,
     headers: bagToPairs(state.headers),
     bodyAvailable: state.body !== undefined,

@@ -557,6 +557,31 @@ export function isGrpcMime(value: string | undefined): boolean {
   return essence === 'application/grpc'
     || essence?.startsWith('application/grpc+') === true;
 }
+
+/**
+ * OpenSSL / Node 在**源站**证书校验失败时给出的错误码。
+ * 只列 per-host 例外能解决的：链不可信、自签、过期、名称不匹配。
+ * 协议协商类失败（EPROTO、ERR_SSL_*）加例外也没用，不在此列。
+ */
+const ORIGIN_CERTIFICATE_ERROR_CODES = new Set([
+  'CERT_HAS_EXPIRED',
+  'CERT_NOT_YET_VALID',
+  'CERT_REVOKED',
+  'CERT_UNTRUSTED',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'HOSTNAME_MISMATCH',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+]);
+
+/** Whether this exchange failed because Interceptor could not verify the origin certificate. */
+export function isOriginCertificateError(errorCode: string | undefined): boolean {
+  return errorCode !== undefined && ORIGIN_CERTIFICATE_ERROR_CODES.has(errorCode);
+}
+
 export function formatTimestamp(timestamp: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',

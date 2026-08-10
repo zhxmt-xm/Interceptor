@@ -29,6 +29,8 @@ const diffRoot = path.resolve(
   'shots-diff',
 );
 const feature = positional[1];
+// scenes 是主题/悬停展示图，由 shoot-scenes.mjs 单独产出，不属于 feature UI 的 1:1 范围。
+const EXEMPT_TOP_LEVEL = new Set(['scenes']);
 
 async function collect(directory, prefix = '') {
   const files = [];
@@ -40,7 +42,13 @@ async function collect(directory, prefix = '') {
   return files;
 }
 
-const allPaths = await collect(currentRoot);
+const inScope = (imagePath) => !EXEMPT_TOP_LEVEL.has(imagePath.split(path.sep)[0]);
+
+const allPaths = (await collect(currentRoot)).filter(inScope);
+const baselinePaths = (await collect(baselineRoot)).filter(inScope);
+// 只遍历新稿会漏掉「基线有、新稿没画」的场景，那是最危险的一类缺失。
+const currentSet = new Set(allPaths);
+const notDrawn = baselinePaths.filter((imagePath) => !currentSet.has(imagePath));
 const imagePaths = feature
   ? allPaths.filter((imagePath) => imagePath.split(path.sep)[1] === feature)
   : allPaths;
@@ -92,15 +100,18 @@ const sorted = comparable.toSorted((left, right) => right.differencePercent - le
 const mean = comparable.reduce((sum, result) => sum + result.differencePercent, 0) / comparable.length;
 const identical = comparable.filter((result) => result.differencePercent === 0);
 
-console.log(`Compared: ${comparable.length}; missing: ${missing.length}; resized: ${resized.length}`);
+console.log(`Compared: ${comparable.length}; missing: ${missing.length}; resized: ${resized.length}; not drawn: ${notDrawn.length}`);
 console.log(`Identical: ${identical.length}/${comparable.length}; differing: ${comparable.length - identical.length}`);
 console.log(`Mean difference: ${mean.toFixed(6)}%`);
 for (const result of sorted.filter((entry) => entry.differencePercent > 0)) {
   console.log(`${result.differencePercent.toFixed(6)}%  ${result.imagePath}`);
 }
+if (notDrawn.length) {
+  console.log(`Not drawn by the new SPA:\n${notDrawn.map((entry) => `  ${entry}`).join('\n')}`);
+}
 if (missing.length || resized.length) {
   console.log(JSON.stringify({ missing, resized }, null, 2));
 }
-if (missing.length || resized.length || identical.length !== comparable.length) {
+if (missing.length || resized.length || notDrawn.length || identical.length !== comparable.length) {
   process.exitCode = 1;
 }

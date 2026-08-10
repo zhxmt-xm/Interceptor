@@ -1,5 +1,3 @@
-import '@fontsource-variable/inter';
-import '@fontsource-variable/jetbrains-mono';
 import { createRoot } from 'react-dom/client';
 
 import { DesignApp } from './DesignApp/DesignApp';

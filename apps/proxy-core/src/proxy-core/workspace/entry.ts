@@ -122,6 +122,40 @@ export class WorkspaceService {
     return { revision, hosts: normalizedHosts };
   }
 
+  /** Read persistent per-host origin certificate exceptions or an empty default. */
+  loadInsecureHosts(): string[] {
+    const row = this.read('tls_insecure_hosts');
+    return row ? (JSON.parse(row.json) as string[]) : [];
+  }
+
+  /** Replace the persistent per-host origin certificate exceptions. */
+  saveInsecureHosts(hosts: readonly string[]): string[] {
+    const normalizedHosts = [...new Set(
+      hosts.map((host) => host.trim().toLowerCase()).filter((host) => host.length > 0),
+    )];
+    this.overwrite('tls_insecure_hosts', JSON.stringify(normalizedHosts));
+    return normalizedHosts;
+  }
+
+  /**
+   * Read whether the user last left HTTPS decryption on; a fresh profile starts off.
+   * 只是用户意图；是否真的解密还取决于 CA 是否已被系统信任。
+   */
+  loadDecryptionPreference(): boolean {
+    const row = this.read('tls_decryption_preference');
+    return row ? (JSON.parse(row.json) as { enabled: boolean }).enabled : false;
+  }
+
+  /** 记住用户打开了 HTTPS 解密。 */
+  enableDecryptionPreference(): void {
+    this.overwrite('tls_decryption_preference', JSON.stringify({ enabled: true }));
+  }
+
+  /** 记住用户关闭了 HTTPS 解密。 */
+  disableDecryptionPreference(): void {
+    this.overwrite('tls_decryption_preference', JSON.stringify({ enabled: false }));
+  }
+
   /** 关闭 workspace.sqlite；配置已持久化，不随 Capture 清理。 */
   dispose(): void {
     this.databaseSync?.close();
@@ -151,6 +185,19 @@ export class WorkspaceService {
         .prepare(upsertDocument(document))
         .run({ revision: nextRevision, json, updatedAt: Date.now() });
       return nextRevision;
+    });
+  }
+
+  /**
+   * 覆盖写一份文档，不做 revision 比对。
+   * 用于只有一个编辑入口的 Settings 开关和名单：最后一次保存即最终值，冲突重试没有意义。
+   */
+  private overwrite(document: WorkspaceDocument, json: string): void {
+    this.inTransaction(() => {
+      const nextRevision = (this.read(document)?.revision ?? 0) + 1;
+      this.requireDatabase()
+        .prepare(upsertDocument(document))
+        .run({ revision: nextRevision, json, updatedAt: Date.now() });
     });
   }
 

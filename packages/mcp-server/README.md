@@ -62,7 +62,7 @@ for await (const line of readLines(socket)) {
 
 **写（W，必须经用户逐次确认）**：`apply_rules`、`set_recording`、`send_request`、`configure_breakpoint`、`resolve_breakpoint`、`clear_capture`、`probe_connection`
 
-**永不注册**：`tls.configure`（触及 CA 与 MITM 信任根）、`proxy.start` / `proxy.stop`（牵涉系统代理接管，属 Main 的 OS 级职责）、全部 import/export command（需要读写任意路径）、`diagnostics.ingest`（内部日志通道）、Main 侧证书/系统代理/更新 API。
+**永不注册**：`tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption`（触及 CA 与 MITM 信任根）、`proxy.start` / `proxy.stop`（牵涉系统代理接管，属 Main 的 OS 级职责）、全部 import/export command（需要读写任意路径）、`diagnostics.ingest`（内部日志通道）、Main 侧证书/系统代理/更新 API。
 
 ## 安全约束
 

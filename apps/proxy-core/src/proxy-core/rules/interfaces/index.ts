@@ -81,6 +81,8 @@ export type BreakpointTimeoutPolicy = 'continue' | 'drop';
 
 export interface BreakpointSnapshot {
   readonly ruleName: string;
+  /** 挂起流量所属的 Capture Exchange；未记录（未 Recording 等）时缺省。 */
+  readonly exchangeId?: string;
   readonly method?: string;
   readonly url?: string;
   readonly statusCode?: number;
@@ -172,6 +174,7 @@ export type ResponseEvaluation =
 export interface BreakpointHitInfo {
   readonly id: string;
   readonly phase: BreakpointPhase;
+  readonly exchangeId?: string;
 }
 
 export interface RuleServiceOptions {

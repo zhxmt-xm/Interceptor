@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "shoot": "node shoot.mjs",
-    "compare": "node tools/compare-shots.mjs"
+    "compare": "node tools/compare-shots.mjs",
+    "compare:interactions": "node tools/interaction-parity.mjs"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "5.2.8",
-    "@fontsource-variable/jetbrains-mono": "5.2.8",
     "antd": "6.5.0",
     "lucide-react": "1.23.0",
     "monaco-editor": "0.56.0",

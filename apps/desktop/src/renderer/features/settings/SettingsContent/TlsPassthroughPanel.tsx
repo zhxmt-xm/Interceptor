@@ -2,7 +2,6 @@ import {
   Globe2,
   LockOpen,
   Plus,
-  RefreshCw,
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
@@ -10,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
-  TlsPassthroughSettingsStatus,
+  TlsPassthroughSettings,
 } from '../../../../shared/desktop-api';
 import {
   Button,
@@ -28,12 +27,11 @@ type PanelState = 'loading' | 'ready' | 'error';
 /** Persistent per-host TLS passthrough settings. */
 export function TlsPassthroughPanel(): React.JSX.Element {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<TlsPassthroughSettingsStatus | null>(null);
+  const [settings, setSettings] = useState<TlsPassthroughSettings | null>(null);
   const [state, setState] = useState<PanelState>('loading');
   const [draftHost, setDraftHost] = useState('');
   const [invalidDraft, setInvalidDraft] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadGeneration = useRef(0);
   const settingsChangeSequence = useTlsCompatibilityStore(
@@ -60,7 +58,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
 
   const replace = (
     hosts: string[],
-    onSuccess?: (nextSettings: TlsPassthroughSettingsStatus) => void,
+    onSuccess?: (nextSettings: TlsPassthroughSettings) => void,
   ): void => {
     if (!settings || busy) {
       return;
@@ -94,21 +92,6 @@ export function TlsPassthroughPanel(): React.JSX.Element {
     replace([...settings.hosts, host], () => setDraftHost(''));
   };
 
-  const restartApplication = (): void => {
-    if (busy || restarting) return;
-    setRestarting(true);
-    setError(null);
-    void window.interceptor.restartApplication()
-      .then(() => {
-        setRestarting(false);
-        load();
-      })
-      .catch((reason: unknown) => {
-        setRestarting(false);
-        setError(describeError(reason));
-      });
-  };
-
   if (state === 'loading') {
     return (
       <>
@@ -140,26 +123,6 @@ export function TlsPassthroughPanel(): React.JSX.Element {
       </h2>
       <div className={styles.desc}>{t('settings.tlsPassthrough.description')}</div>
 
-      {settings?.restartRequired ? (
-        <div className={styles.warning}>
-          <RefreshCw aria-hidden="true" />
-          <div>
-            <b>{t('settings.tlsPassthrough.restartTitle')}</b>
-            <span>{t('settings.tlsPassthrough.restartDescription')}</span>
-          </div>
-          <Button
-            className={styles.restartButton}
-            icon={RefreshCw}
-            variant="primary"
-            loading={restarting}
-            disabled={busy}
-            onClick={restartApplication}
-          >
-            {t('settings.tlsPassthrough.restartAction')}
-          </Button>
-        </div>
-      ) : null}
-
       <div className={styles.addRow}>
         <label className={styles.inputLabel}>
           <span>{t('settings.tlsPassthrough.hostLabel')}</span>
@@ -177,7 +140,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
         <Button
           icon={Plus}
           variant="primary"
-          disabled={busy || restarting}
+          disabled={busy}
           onClick={addDraft}
         >
           {t('settings.tlsPassthrough.addHost')}
@@ -217,7 +180,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
               icon={Trash2}
               label={t('settings.tlsPassthrough.removeHost', { host })}
               size="sm"
-              disabled={busy || restarting}
+              disabled={busy}
               onClick={() => replace(settings.hosts.filter((item) => item !== host))}
             />
           </div>

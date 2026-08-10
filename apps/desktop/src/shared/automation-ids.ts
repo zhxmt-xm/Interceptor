@@ -70,6 +70,7 @@ export const AUTOMATION_IDS = {
       rule: 'capture.filter.option.rule',
     },
     queryParams: 'capture.query-params',
+    breakpointManager: 'capture.breakpoint-manager',
     enableMitm: 'capture.enable-mitm',
     clear: 'capture.clear',
     importMenu: 'capture.import-menu',
@@ -219,8 +220,6 @@ export const AUTOMATION_IDS = {
   },
   breakpoints: {
     toggle: 'breakpoints.toggle',
-    continueAll: 'breakpoints.continue-all',
-    splitter: 'breakpoints.splitter',
     addHeader: 'breakpoints.header.add',
     body: 'breakpoints.body',
     drop: 'breakpoints.drop',
@@ -247,9 +246,6 @@ export const AUTOMATION_IDS = {
     proxy: {
       enable: 'settings.proxy.enable',
       restore: 'settings.proxy.restore',
-      repair: 'settings.proxy.repair',
-      repairCancel: 'settings.proxy.repair-cancel',
-      repairConfirm: 'settings.proxy.repair-confirm',
     },
     certificates: {
       generate: 'settings.certificates.generate',

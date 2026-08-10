@@ -10,6 +10,9 @@ export interface EditHeaderRow {
   value: string;
 }
 
+/** 正文替换模式；off 表示原文原样转发。 */
+export type BreakpointReplacement = 'off' | 'text';
+
 /** 选中断点的可编辑草稿：请求用 method/url、响应用 statusCode，headers/body 两阶段通用。 */
 export interface BreakpointDraft {
   breakpointId: string;
@@ -23,12 +26,15 @@ export interface BreakpointDraft {
   headers: EditHeaderRow[];
   /** 挂起时是否能看到原始正文；HTTP 头部阶段断点为 false。 */
   bodyAvailable: boolean;
+  replacement: BreakpointReplacement;
   body: string;
 }
 
 export interface BreakpointsState {
   breakpoints: PendingBreakpoint[];
   enabled: boolean;
+  /** 队列已满而被自动放行的命中累计数。 */
+  autoContinued: number;
   selectedId: string | null;
   draft: BreakpointDraft | null;
   resolving: boolean;
@@ -38,6 +44,7 @@ export interface BreakpointsState {
   setMethod(method: string): void;
   setUrl(url: string): void;
   setStatusCode(statusCode: number): void;
+  setReplacement(replacement: BreakpointReplacement): void;
   setBody(body: string): void;
   addHeader(): void;
   updateHeader(id: string, patch: Partial<Omit<EditHeaderRow, 'id'>>): void;

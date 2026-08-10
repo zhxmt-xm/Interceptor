@@ -1,14 +1,15 @@
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock, Pause } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { cx } from '../../../components';
+import { useBreakpointsStore } from '../../breakpoints';
 import { useCaptureStore } from '../data/captureStore';
 import styles from './CaptureStatusbar.module.css';
 import { LockOffIcon } from './LockOffIcon';
 
 /**
- * Capture 状态栏只承载抓包链路：监听端点、系统代理接管、HTTPS 解密与上游转发。
+ * Capture 状态栏只承载抓包链路：监听端点、系统代理接管、HTTPS 解密、挂起与上游转发。
  * 录制状态、Core 状态与计数分别归属工具栏和侧栏，不在这里重复。
  */
 export function CaptureStatusbar(): React.JSX.Element {
@@ -17,6 +18,8 @@ export function CaptureStatusbar(): React.JSX.Element {
     (state) => state.linkStatus,
   );
   const setHttpsSetupOpen = useCaptureStore((state) => state.setHttpsSetupOpen);
+  const pausedCount = useBreakpointsStore((state) => state.breakpoints.length);
+  const autoContinued = useBreakpointsStore((state) => state.autoContinued);
 
   return (
     <div className={styles.bar}>
@@ -54,6 +57,15 @@ export function CaptureStatusbar(): React.JSX.Element {
       </span>
 
       <span className={cx(styles.slot, styles.slotEnd)}>
+        {pausedCount > 0 || autoContinued > 0 ? (
+          <span className={styles.paused} data-parity="capture-status-breakpoints">
+            <Pause size={12} strokeWidth={2.2} />
+            {t('breakpoints.pausedCount', { count: pausedCount })}
+            {autoContinued > 0
+              ? ` · ${t('breakpoints.autoContinued', { count: autoContinued })}`
+              : ''}
+          </span>
+        ) : null}
         <span
           className={cx(styles.upstream, upstreamReachable ? undefined : styles.upstreamDown)}
           data-parity="capture-status-upstream"

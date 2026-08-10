@@ -136,6 +136,46 @@
 .recordingSpinner {
   animation: listbar-spin 0.75s linear infinite;
 }
+.breakpoints {
+  position: relative;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--yellow) 30%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--yellow) 9%, transparent);
+  color: var(--yellow);
+  cursor: pointer;
+}
+.breakpoints:hover {
+  background: color-mix(in srgb, var(--yellow) 15%, transparent);
+}
+.breakpointsOff {
+  border-color: var(--border);
+  background: var(--panel-2);
+  color: var(--text-3);
+}
+.breakpointsCount {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  min-width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--filter);
+  border-radius: 9px;
+  background: var(--yellow);
+  color: var(--chrome);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+}
 .count {
   margin-right: 4px;
   font-family: var(--font-mono);

@@ -7,6 +7,7 @@ import type {
 } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Splitter } from '../../../components';
+import type { BreakpointScope } from '../../rules/interfaces';
 import { CaptureFilterPanel } from '../CaptureFilterPanel/CaptureFilterPanel';
 import { CaptureListbar } from '../CaptureListbar/CaptureListbar';
 import { HarTransferDialog } from '../HarTransferDialog/HarTransferDialog';
@@ -30,13 +31,21 @@ export interface CaptureMainProps {
     actionType: RuleActionType,
     name: string,
   ) => void;
+  onCreateBreakpoint: (
+    summary: CaptureExchangeSummary,
+    scope: BreakpointScope | 'custom',
+    name: string,
+  ) => void;
   onOpenRule: (ruleId: string) => void;
+  onOpenRules: () => void;
 }
 
 /** Capture workspace body: request list, draggable splitter and inspector. */
 export function CaptureMain({
   onCreateRequestRule,
+  onCreateBreakpoint,
   onOpenRule,
+  onOpenRules,
 }: CaptureMainProps): React.JSX.Element {
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
@@ -137,7 +146,7 @@ export function CaptureMain({
           </>
         ) : null}
         <div className={styles.workarea}>
-          <CaptureListbar />
+          <CaptureListbar onOpenRule={onOpenRule} onOpenRules={onOpenRules} />
           <div
             className={styles.panes}
             ref={mainRef}
@@ -145,7 +154,10 @@ export function CaptureMain({
               ? `minmax(0, 1fr) ${SPLITTER_TRACK_WIDTH}px ${inspectorWidth}px`
               : 'minmax(0, 1fr)' }}
           >
-            <RequestList onCreateRequestRule={onCreateRequestRule} />
+            <RequestList
+              onCreateRequestRule={onCreateRequestRule}
+              onCreateBreakpoint={onCreateBreakpoint}
+            />
             {selectedId ? (
               <>
                 <Splitter

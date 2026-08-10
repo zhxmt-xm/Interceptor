@@ -58,6 +58,18 @@
   width: 2px;
   background: var(--sel-line);
 }
+.paused {
+  background: color-mix(in srgb, var(--yellow) 5%, var(--bg));
+}
+.paused:hover {
+  background: color-mix(in srgb, var(--yellow) 9%, var(--bg));
+}
+.paused.selected {
+  background: color-mix(in srgb, var(--yellow) 12%, var(--panel));
+}
+.paused.selected::before {
+  background: var(--yellow);
+}
 .host {
   min-width: 0;
   justify-self: stretch;
@@ -179,6 +191,19 @@
   font-size: 11.5px;
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+.pausedStatus {
+  display: flex;
+  align-items: center;
+  color: var(--yellow);
+}
+.muted {
+  color: var(--text-3);
+}
+.contextNext {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  color: var(--text-3);
 }
 .contextItem {
   display: flex;

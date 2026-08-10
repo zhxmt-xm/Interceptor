@@ -54,17 +54,18 @@ export const useTlsCompatibilityStore = create<TlsCompatibilityState>((set) => (
 
 /** App-scope subscription that survives Settings navigation changes. */
 export class TlsCompatibilityActions {
-  /** Persist all displayed hosts once without dismissing newer concurrent events. */
-  static async addHosts(
+  /** Persist the patterns the user picked, without dismissing newer concurrent events. */
+  static async addPatterns(
+    patterns: readonly string[],
     events: readonly TlsCompatibilityEvent[],
   ): Promise<TlsPassthroughReplaceResult> {
     const settings = await window.interceptor.getTlsPassthroughSettings();
-    const hostsToAdd = [...new Set(
-      events
-        .map((event) => event.host.trim().toLowerCase())
-        .filter((host) => !isTlsPassthroughHostCovered(host, settings.hosts)),
+    const patternsToAdd = [...new Set(
+      patterns
+        .map((pattern) => pattern.trim().toLowerCase())
+        .filter((pattern) => !isTlsPassthroughHostCovered(pattern, settings.hosts)),
     )];
-    if (hostsToAdd.length === 0) {
+    if (patternsToAdd.length === 0) {
       const store = useTlsCompatibilityStore.getState();
       store.dismiss(events);
       store.settingsChanged();
@@ -72,7 +73,7 @@ export class TlsCompatibilityActions {
     }
     const result = await window.interceptor.replaceTlsPassthroughSettings(
       settings.revision,
-      [...settings.hosts, ...hostsToAdd],
+      [...settings.hosts, ...patternsToAdd],
     );
     if (result.ok) {
       const store = useTlsCompatibilityStore.getState();

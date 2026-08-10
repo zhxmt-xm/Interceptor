@@ -4,6 +4,52 @@
   gap: 20px;
   padding: 16px 18px;
 }
+.certificateCallout {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--red) 8%, var(--panel));
+}
+.calloutIcon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+.calloutIcon svg {
+  width: 15px;
+  height: 15px;
+}
+.calloutCopy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.calloutCopy b {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.calloutCopy > span {
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.calloutDone {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--green);
+}
 .rows {
   display: flex;
   flex-direction: column;

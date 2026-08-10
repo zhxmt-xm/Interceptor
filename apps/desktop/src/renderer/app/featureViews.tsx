@@ -2,11 +2,11 @@ import type {
   CaptureExchangeSummary,
   RuleActionType,
 } from '../../shared/desktop-api';
-import { BreakpointsMain, BreakpointsStatusbar } from '../features/breakpoints';
 import { CaptureMain, CaptureStatusbar } from '../features/capture';
 import { ComposerMain, ComposerStatusbar } from '../features/composer';
 import { DiagnosticsMain, DiagnosticsStatusbar } from '../features/diagnostics';
 import { RulesMain, RulesStatusbar } from '../features/rules';
+import type { BreakpointScope } from '../features/rules/interfaces';
 import { SettingsMain, SettingsStatusbar } from '../features/settings';
 
 import type { ViewId } from './Sidebar';
@@ -23,7 +23,13 @@ export interface FeatureActions {
     actionType: RuleActionType,
     name: string,
   ): void;
+  createBreakpoint(
+    summary: CaptureExchangeSummary,
+    scope: BreakpointScope | 'custom',
+    name: string,
+  ): void;
   openRule(ruleId: string): void;
+  openRules(): void;
   showRuleRequests(ruleId: string): void;
 }
 
@@ -36,7 +42,9 @@ export const FEATURE_VIEWS: Record<
     main: (
       <CaptureMain
         onCreateRequestRule={actions.createRequestRule}
+        onCreateBreakpoint={actions.createBreakpoint}
         onOpenRule={actions.openRule}
+        onOpenRules={actions.openRules}
       />
     ),
     statusbar: <CaptureStatusbar />,
@@ -52,10 +60,6 @@ export const FEATURE_VIEWS: Record<
   settings: (settingsSection) => ({
     main: <SettingsMain section={settingsSection} />,
     statusbar: <SettingsStatusbar />,
-  }),
-  breakpoints: () => ({
-    main: <BreakpointsMain />,
-    statusbar: <BreakpointsStatusbar />,
   }),
   diagnostics: () => ({
     main: <DiagnosticsMain />,

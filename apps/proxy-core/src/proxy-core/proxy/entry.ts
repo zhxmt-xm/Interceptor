@@ -16,7 +16,6 @@ import type {
 
 import type {
   TlsCompatibilityEvent,
-  TlsCompatibilityReason,
   UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
 
@@ -82,6 +81,7 @@ export class ProxyService {
   private webSocketBreakpointsOn = false;
   private tlsConfig: ProxyTlsConfig = {
     ca: null,
+    mitm: false,
     insecureHosts: [],
     passthroughHosts: [],
   };
@@ -95,6 +95,12 @@ export class ProxyService {
   private upstreamProxy: UpstreamProxyConfig | null = null;
   /** Mockttp TLS 分流器所需的进程内临时身份；所有 host passthrough，证书永不出示。 */
   private tlsPassthroughIdentity: { key: string; cert: string } | null = null;
+  /** 当前 listener 构造时实际用的证书；与 tlsConfig.ca 不一致说明重建才能生效。 */
+  private listenerCertificate: { key: string; cert: string } | null = null;
+  /** 交给 Mockttp getter 的稳定数组；引用只在 configureTls 变化，避免每连接重编译 URLPattern。 */
+  private passthroughRules: { hostname: string }[] = [{ hostname: '*' }];
+  /** 原端口替换 listener 的窗口；期间 server 为 null 但对外仍是 listening。 */
+  private rebuilding = false;
   private diagnostics: DiagnosticsRecorder | null = null;
 
   constructor(
@@ -116,19 +122,13 @@ export class ProxyService {
   }
 
   /**
-   * 启动 Mockttp 代理并登记捕获会话；重复调用先返回既有地址。
+   * 首次启动时登记会话并开始监听；已在监听时只恢复记录。
    * 调用方：proxy.start command handler（用户显式开始捕获）。
    */
   async start(options: ProxyStartOptions = {}): Promise<ProxyAddress> {
-    // 启动/恢复均意味着恢复记录；暂停后再次 Start 等价于 Resume。
-    this.recording = true;
-    this.exchangeTracker.setRecording(true);
-    if (this.server && this.address) {
-      // 已在监听：显式请求不同端口时在同一会话上迁移监听端口，否则直接复用。
-      if (options.port !== undefined && options.port !== this.address.port) {
-        await this.stopServer();
-        this.address = await this.startServer(options.port);
-      }
+    // 启动与恢复共用入口：暂停后再次 Start 等价于 Resume。
+    this.resumeRecording();
+    if (this.address) {
       return this.address;
     }
 
@@ -151,78 +151,173 @@ export class ProxyService {
   }
 
   /**
-   * 更新 HTTPS MITM 配置（CA 材料 + 不安全例外）；代理正在监听时原端口重建。
-   * 调用方：tls.configure command handler（Main 内部下发，非 Renderer）。
+   * 停止 Mockttp 代理并清空运行态；重复调用保持幂等。
+   * 调用方：proxy.stop command handler 与 CoreApplication 关闭路径。
    */
-  async configureTls(config: ProxyTlsConfig): Promise<void> {
+  async stop(): Promise<void> {
+    if (!this.server) {
+      return;
+    }
+    await this.closeListener('reset');
+    await this.exchangeTracker.settle();
+    await Promise.allSettled(Array.from(this.captureOperations));
+    this.pendingTunnels.clear();
+    this.address = null;
+    this.sessionId = null;
+    this.exchangeTracker.setSession(null);
+    this.diagnostics?.info('proxy.stopped');
+  }
+
+  /** 返回当前代理运行态快照。调用方：proxy.status command handler。 */
+  status(): ProxyRuntimeStatus {
+    const listening = this.server !== null || this.rebuilding;
+    return {
+      listening,
+      recording: this.recording && listening,
+      host: this.address?.host ?? null,
+      port: this.address?.port ?? null,
+      sessionId: this.sessionId,
+      capturedExchanges: this.capturedExchanges,
+    };
+  }
+
+  /**
+   * 记录当前可用的 CA 材料。不解密时 listener 所有连接都进隧道、证书永不出示，
+   * 因此这里只更新状态；换 listener 统一由 startHttpsDecryption 在真要用时完成。
+   * 调用方：tls.useCertificate command handler（Root CA 生成 / 安装信任 / 卸载 / 删除）。
+   */
+  useCertificate(ca: ProxyTlsConfig['ca']): void {
+    if (ca?.cert === this.tlsConfig.ca?.cert) {
+      return;
+    }
+    this.generateTls({ ...this.tlsConfig, ca });
+    this.diagnostics?.info('tls.certificate-changed', {
+      attributes: { present: ca !== null },
+    });
+  }
+
+  /**
+   * 开始解密 HTTPS：只放行用户名单内的 host 进隧道，其余全部 MITM。
+   * 名单经 getter 每连接求值；只有 listener 还挂着旧证书时才需要重建。
+   * 调用方：tls.startDecryption command handler（Settings 的 Decrypt HTTPS 开关）。
+   */
+  async startHttpsDecryption(): Promise<void> {
+    this.generateTls({ ...this.tlsConfig, mitm: true });
+    if (this.server && this.listenerCertificate?.cert !== this.tlsConfig.ca?.cert) {
+      await this.rebuildServer();
+    }
+    this.diagnostics?.info('tls.decryption-started');
+  }
+
+  /**
+   * 停止解密 HTTPS：全部 host 退回隧道，证书不再出示。
+   * 新代际让停止期间报过的 host 在重新开始后可以再次上报。
+   * 调用方：tls.stopDecryption command handler（Settings 的 Decrypt HTTPS 开关）。
+   */
+  stopHttpsDecryption(): void {
+    this.generateTls({ ...this.tlsConfig, mitm: false });
+    this.diagnostics?.info('tls.decryption-stopped');
+  }
+
+  /**
+   * 全量替换源站证书的不安全例外名单。ignoreHostHttpsErrors 是注册规则时的快照，
+   * 因此重注册转发规则即可生效，不必换 listener。
+   * 调用方：tls.replaceInsecureHosts command handler（Certificates 的 Per-host overrides）。
+   */
+  async replaceInsecureHosts(hosts: readonly string[]): Promise<void> {
+    if (ProxyUtils.sameHosts(this.tlsConfig.insecureHosts, hosts)) {
+      return;
+    }
+    this.generateTls({ ...this.tlsConfig, insecureHosts: [...hosts] });
+    if (this.server) {
+      await this.registerForwardingRule(this.server);
+    }
+    this.diagnostics?.info('tls.insecure-hosts-replaced', {
+      attributes: { hosts: hosts.length },
+    });
+  }
+
+  /**
+   * 全量替换 TLS passthrough 名单。名单经 getter 每连接求值，对新连接立即生效。
+   * 调用方：tls-passthrough.replace command handler（TLS passthrough 页的增删）。
+   */
+  replacePassthroughHosts(hosts: readonly string[]): void {
+    this.generateTls({ ...this.tlsConfig, passthroughHosts: [...hosts] });
+    this.diagnostics?.info('tls.passthrough-hosts-replaced', {
+      attributes: { hosts: hosts.length },
+    });
+  }
+
+  /**
+   * 换上新配置并开启新代际，旧代际累积的兼容性上报随之作废。
+   * 同时刷新 `passthroughRules` —— 它就是 Mockttp `tlsPassthrough` getter 每连接读的那份，
+   * 因此只改名单的命令做完这一步就已经生效，不必碰 listener。
+   */
+  private generateTls(config: ProxyTlsConfig): void {
     this.tlsGeneration += 1;
     this.reportedTlsCompatibilityKeys.clear();
     this.tlsCompatibilityEventQueue.reset();
     this.tlsConfig = {
       ca: config.ca,
+      mitm: config.mitm,
       insecureHosts: [...config.insecureHosts],
       passthroughHosts: [...config.passthroughHosts],
     };
-    if (this.server) {
-      const port = this.address?.port;
-      await this.stopServer();
-      this.address = await this.startServer(port);
-    }
-    this.diagnostics?.info('tls.reconfigured', {
-      attributes: {
-        mitm: config.ca !== null,
-        insecureHosts: config.insecureHosts.length,
-        passthroughHosts: config.passthroughHosts.length,
-      },
-    });
+    this.passthroughRules = ProxyService.toPassthroughRules(config);
   }
 
-  /** Drain global TLS compatibility signals for the Core event-batch channel. */
-  drainTlsCompatibilityEvents(maxBatch: number): TlsCompatibilityEvent[] {
-    return this.tlsCompatibilityEventQueue.drain(maxBatch);
+  /** 当前 TLS 运行态；每条 tls.* 命令都回报它。 */
+  tlsState(): { certificateReady: boolean; decrypting: boolean } {
+    return {
+      certificateReady: this.tlsConfig.ca !== null,
+      decrypting: this.tlsConfig.mitm,
+    };
   }
 
-  /** Restore a batch when the Core event channel could not send it. */
-  restoreTlsCompatibilityEvents(
-    events: readonly TlsCompatibilityEvent[],
-  ): void {
-    this.tlsCompatibilityEventQueue.restore(events);
+  /** `*` 匹配全部 hostname（含 IP 与 localhost），因此 MITM 关闭等价于全量 passthrough。 */
+  private static toPassthroughRules(
+    config: ProxyTlsConfig,
+  ): { hostname: string }[] {
+    return config.mitm
+      ? config.passthroughHosts.map((hostname) => ({ hostname }))
+      : [{ hostname: '*' }];
   }
 
-  /** 按当前 TLS 配置创建并启动一个 Mockttp server；有 CA 时开启 HTTPS MITM 与 HTTP/2。 */
+  /** 按当前 TLS 配置创建并启动一个 Mockttp server；passthrough 名单由 getter 每连接求值。 */
   private async startServer(port?: number): Promise<ProxyAddress> {
-    // H2-capable clients negotiate HTTP/2; H1-only clients fall back through ALPN.
-    let server: Mockttp;
-    if (this.tlsConfig.ca) {
-      server = getLocal({
-        https: {
-          key: this.tlsConfig.ca.key,
-          cert: this.tlsConfig.ca.cert,
-          tlsPassthrough: this.tlsConfig.passthroughHosts.map((hostname) => ({
-            hostname,
-          })),
-        },
-        http2: true,
-        passthroughProxyConfig: () => this.upstreamProxySetting(),
-      });
-    } else {
-      this.tlsPassthroughIdentity ??= await generateCACertificate();
-      server = getLocal({
-        https: {
-          ...this.tlsPassthroughIdentity,
-          tlsInterceptOnly: [],
-        },
-        // MITM 关闭时全部 HTTPS 走 passthrough 隧道，该路径不经规则，必须单独链上游。
-        passthroughProxyConfig: () => this.upstreamProxySetting(),
-      });
-    }
+    // 无 CA 时用进程内临时身份；此时名单为 `*`，所有 host 直接进隧道，证书永不出示。
+    const identity = this.tlsConfig.ca
+      ?? (this.tlsPassthroughIdentity ??= await generateCACertificate());
+    const server = getLocal({
+      https: {
+        key: identity.key,
+        cert: identity.cert,
+        tlsPassthrough: () => this.passthroughRules,
+      },
+      // 支持 H2 的客户端协商 HTTP/2，仅支持 H1 的客户端经 ALPN 回退。
+      http2: true,
+      passthroughProxyConfig: () => this.upstreamProxySetting(),
+    });
     this.registerCaptureListeners(server);
-    // 默认验证源站证书（不关闭）；仅对显式不安全例外 host 忽略源站证书错误。
-    //
-    // 单一 passthrough 规则 + headers 阶段钩子：不使用 `.matching(callback)`，因为
-    // Mockttp 的 CallbackMatcher 会先 waitForCompletedRequest 读完整个上传正文；也不
-    // 使用 beforeRequest/beforeResponse，因为它们分别会等待完整请求与响应正文。
-    // beforeRequestHead / beforeResponseHead 在头部阶段执行全部规则，正文始终流式。
+    await this.registerForwardingRule(server);
+    const webSocketBridge = this.createWebSocketBridge();
+    await webSocketBridge.register(server);
+    await server.start(port ?? undefined);
+    this.webSocketBridge = webSocketBridge;
+    this.server = server;
+    this.listenerCertificate = identity;
+    this.clientAppService?.setProxyPort(server.port);
+    return { host: this.host, port: server.port };
+  }
+
+  /**
+   * 注册唯一的转发规则，全部判定都在头部阶段完成。
+   * 不用 `.matching(callback)`：Mockttp 的 CallbackMatcher 会先 waitForCompletedRequest
+   * 读完整个上传正文；也不用 beforeRequest/beforeResponse，它们分别等待完整请求与响应正文。
+   * 只有 beforeRequestHead / beforeResponseHead 能让正文全程保持流式。
+   */
+  private async registerForwardingRule(server: Mockttp): Promise<void> {
+    // 默认验证源站证书；仅对显式不安全例外 host 忽略。
     const ignoreHostHttpsErrors =
       this.tlsConfig.insecureHosts.length > 0
         ? [...this.tlsConfig.insecureHosts]
@@ -243,11 +338,14 @@ export class ProxyService {
           }
         : {}),
     });
-    const webSocketBridge = new WebSocketBridge({
+  }
+
+  /** WebSocket 桥自建上游连接、不经规则链，因此上游与证书例外都要单独接进去。 */
+  private createWebSocketBridge(): WebSocketBridge {
+    return new WebSocketBridge({
       intercept: (message) => this.interceptWebSocketMessage(message),
       ignoreCertificateErrors: (hostname) =>
         this.tlsConfig.insecureHosts.includes(hostname),
-      // Bridge 自己建上游连接，不经规则链，因此必须单独把上游接进去。
       upstreamProxy: () => this.upstreamProxySetting(),
       onError: (error) => {
         this.diagnostics?.error('websocket.bridge-failed', {
@@ -261,21 +359,25 @@ export class ProxyService {
         );
       },
     });
-    await webSocketBridge.register(server);
-    await server.start(port ?? undefined);
-    this.webSocketBridge = webSocketBridge;
-    this.server = server;
-    this.clientAppService?.setProxyPort(server.port);
-    return { host: this.host, port: server.port };
   }
 
-  private async stopServer(): Promise<void> {
+  /**
+   * 关闭当前 listener。capture 记账的处置由调用方决定：
+   * 重建只终结在途 Exchange（保留代际与计数），停止则整体重置。
+   */
+  private async closeListener(
+    capture: 'abort-in-flight' | 'reset',
+  ): Promise<void> {
     const server = this.server;
     this.server = null;
     this.clientAppService?.setProxyPort(null);
     this.webSocketBridge?.close();
     this.webSocketBridge = null;
-    this.exchangeTracker.reset();
+    if (capture === 'reset') {
+      this.exchangeTracker.reset();
+    } else {
+      this.exchangeTracker.abortInFlight('ERR_LISTENER_REBUILD');
+    }
     this.webSocketTails.clear();
     this.pendingTunnels.clear();
     if (server) {
@@ -283,47 +385,37 @@ export class ProxyService {
     }
   }
 
-  /**
-   * 停止 Mockttp 代理并清空运行态；重复调用保持幂等。
-   * 调用方：proxy.stop command handler 与 CoreApplication 关闭路径。
-   */
-  async stop(): Promise<void> {
-    if (!this.server) {
-      return;
+  /** 原端口替换 listener；重建窗口内对外仍报 listening，避免状态栏闪断。 */
+  private async rebuildServer(): Promise<void> {
+    const port = this.address?.port;
+    this.rebuilding = true;
+    try {
+      await this.closeListener('abort-in-flight');
+      this.address = await this.startServer(port);
+    } finally {
+      this.rebuilding = false;
     }
-    await this.stopServer();
-    await this.exchangeTracker.settle();
-    await Promise.allSettled(Array.from(this.captureOperations));
-    this.pendingTunnels.clear();
-    this.address = null;
-    this.sessionId = null;
-    this.exchangeTracker.setSession(null);
-    this.diagnostics?.info('proxy.stopped');
-  }
-
-  /** 返回当前代理运行态快照。调用方：proxy.status command handler。 */
-  status(): ProxyRuntimeStatus {
-    return {
-      listening: this.server !== null,
-      recording: this.recording && this.server !== null,
-      host: this.address?.host ?? null,
-      port: this.address?.port ?? null,
-      sessionId: this.sessionId,
-      capturedExchanges: this.capturedExchanges,
-    };
   }
 
   /**
-   * 暂停/恢复捕获记录。暂停时 Mockttp 监听器与系统代理保持不变，流量继续
-   * 转发，仅不再为新连接创建 Exchange 记录；已在途的 Exchange 自然完成落库。
-   * 调用方：proxy.setRecording command handler（用户 Stop/Start Recording）。
+   * 恢复捕获记录：新连接重新创建 Exchange。
+   * 调用方：proxy.setRecording command handler 与 start()——暂停后再次 Start 等价于 Resume。
    */
-  setRecording(enabled: boolean): void {
-    this.recording = enabled;
-    this.exchangeTracker.setRecording(enabled);
-    this.diagnostics?.info(
-      enabled ? 'proxy.recording-resumed' : 'proxy.recording-paused',
-    );
+  resumeRecording(): void {
+    this.recording = true;
+    this.exchangeTracker.setRecording(true);
+    this.diagnostics?.info('proxy.recording-resumed');
+  }
+
+  /**
+   * 暂停捕获记录。Mockttp 监听器与系统代理保持不变，流量继续转发，
+   * 仅不再为新连接创建 Exchange；已在途的 Exchange 自然完成落库。
+   * 调用方：proxy.setRecording command handler。
+   */
+  pauseRecording(): void {
+    this.recording = false;
+    this.exchangeTracker.setRecording(false);
+    this.diagnostics?.info('proxy.recording-paused');
   }
 
   /**
@@ -366,12 +458,19 @@ export class ProxyService {
     return this.server ? this.sessionId : null;
   }
 
+  /** 全局 WebSocket 消息断点开关；关闭时 bridge 直接转发不挂起。 */
   get webSocketBreakpointsEnabled(): boolean {
     return this.webSocketBreakpointsOn;
   }
 
-  setWebSocketBreakpointsEnabled(enabled: boolean): void {
-    this.webSocketBreakpointsOn = enabled;
+  /** 调用方：websocket.breakpoint.configure command handler。 */
+  enableWebSocketBreakpoints(): void {
+    this.webSocketBreakpointsOn = true;
+  }
+
+  /** 调用方：websocket.breakpoint.configure command handler。 */
+  disableWebSocketBreakpoints(): void {
+    this.webSocketBreakpointsOn = false;
   }
 
   private registerCaptureListeners(server: Mockttp): void {
@@ -483,9 +582,22 @@ export class ProxyService {
     });
   }
 
-  /** Emit one actionable TLS compatibility signal per generation and host. */
+  /** 排空全局 TLS 兼容性信号，交给 Core 的事件批通道。 */
+  drainTlsCompatibilityEvents(maxBatch: number): TlsCompatibilityEvent[] {
+    return this.tlsCompatibilityEventQueue.drain(maxBatch);
+  }
+
+  /** 事件通道发送失败时把整批放回队列。 */
+  restoreTlsCompatibilityEvents(
+    events: readonly TlsCompatibilityEvent[],
+  ): void {
+    this.tlsCompatibilityEventQueue.restore(events);
+  }
+
+  /** 每个代际每个 host 只上报一条可操作的 TLS 兼容性信号。 */
   private enqueueTlsCompatibilityEvent(error: TlsHandshakeFailure): void {
-    if (!this.tlsConfig.ca || !ProxyService.isCompatibilityReason(error.failureCause)) {
+    // 任何握手失败原因都可能是客户端拒绝解密；能归属到 host 就值得建议 passthrough。
+    if (!this.tlsConfig.ca) {
       return;
     }
     const host = (
@@ -505,13 +617,6 @@ export class ProxyService {
       reason: error.failureCause,
       timestamp: Date.now(),
     });
-  }
-
-  /** Narrow Mockttp failures to reasons that can guide a passthrough decision. */
-  private static isCompatibilityReason(
-    reason: TlsHandshakeFailure['failureCause'],
-  ): reason is TlsCompatibilityReason {
-    return reason === 'cert-rejected' || reason === 'reset' || reason === 'closed';
   }
 
   /** 持久化一个未解密 CONNECT 隧道的有限目标元数据并推送 open 摘要。 */
@@ -637,8 +742,10 @@ export class ProxyService {
     const body = message.isBinary
       ? ProxyUtils.toHexString(message.content)
       : message.content.toString('utf8');
+    const exchangeId = this.exchangeTracker.exchangeIdFor(message.streamId);
     const outcome = await this.ruleService.pauseWebSocketMessage({
       ruleName: 'WebSocket message',
+      ...(exchangeId !== undefined ? { exchangeId } : {}),
       url: message.url,
       direction: message.direction,
       opcode: message.isBinary ? 2 : 1,
@@ -722,6 +829,7 @@ export class ProxyService {
       const evaluation = await this.ruleService.evaluateRequest(
         ProxyUtils.buildRequestContext(request),
         state,
+        this.exchangeTracker.exchangeIdFor(request.id),
       );
       this.exchangeTracker.recordRuleOutcome(
         request.id,
@@ -770,6 +878,7 @@ export class ProxyService {
       const evaluation = await this.ruleService.evaluateResponse(
         ProxyUtils.buildResponseContext(request, response),
         state,
+        this.exchangeTracker.exchangeIdFor(request.id),
       );
       this.exchangeTracker.recordRuleOutcome(
         request.id,

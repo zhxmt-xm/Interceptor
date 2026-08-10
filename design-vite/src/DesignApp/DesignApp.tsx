@@ -34,7 +34,6 @@ function DesignAppContent(): React.JSX.Element {
         {...designRootAttributes(state)}
         ref={rootRef}
         className={fixtureClassNames(designRootClassName(state, rootClasses))}
-        data-ui="app"
       >
         <Sidebar />
         <FixtureRenderer node={topbarFixture} />

@@ -1,5 +1,6 @@
 import type {
   SystemProxyStatus,
+  TlsCompatibilityEvent,
   UpdateStatus,
 } from '../../../shared/desktop-api';
 import { DEFAULTS, ENGLISH_UPDATE_LABELS, STORAGE_KEY } from './constants';
@@ -91,6 +92,22 @@ export function isTlsPassthroughHostDraft(value: string): boolean {
     !/\s/.test(host);
 }
 
+const TLS_COMPATIBILITY_REASON_KEYS: Record<TlsCompatibilityEvent['reason'], string> = {
+  'cert-rejected': 'settings.tlsPassthrough.compatibilityCertRejectedReason',
+  closed: 'settings.tlsPassthrough.compatibilityClosedReason',
+  reset: 'settings.tlsPassthrough.compatibilityResetReason',
+  'no-shared-cipher': 'settings.tlsPassthrough.compatibilityNoSharedCipherReason',
+  'handshake-timeout': 'settings.tlsPassthrough.compatibilityHandshakeTimeoutReason',
+  unknown: 'settings.tlsPassthrough.compatibilityUnknownReason',
+};
+
+/** Describe one TLS handshake failure cause in the compatibility dialog. */
+export function tlsCompatibilityReasonKey(
+  reason: TlsCompatibilityEvent['reason'],
+): string {
+  return TLS_COMPATIBILITY_REASON_KEYS[reason];
+}
+
 /** Match one observed hostname against persisted exact or leading-wildcard patterns. */
 export function isTlsPassthroughHostCovered(
   host: string,
@@ -108,6 +125,21 @@ export function isTlsPassthroughHostCovered(
     const suffix = normalizedPattern.slice(1);
     return normalizedHost.length > suffix.length && normalizedHost.endsWith(suffix);
   });
+}
+
+/**
+ * Derive every passthrough pattern a user could reasonably pick for one observed host:
+ * the exact host first, then one wildcard per parent domain.
+ * 最宽只到二级域（`*.microsoft.com`）；再宽就是 `*.com` 这种放掉整个顶级域的选项，不提供。
+ * 哪一级安全取决于站点，产品不替用户判断，只把候选摆出来由用户勾选。
+ */
+export function tlsPassthroughPatternChoices(host: string): string[] {
+  const labels = host.trim().toLowerCase().split('.');
+  const choices = [labels.join('.')];
+  for (let index = 1; index <= labels.length - 2; index += 1) {
+    choices.push(`*.${labels.slice(index).join('.')}`);
+  }
+  return choices;
 }
 
 /** 更新状态标签的默认（英文）翻译回退。 */

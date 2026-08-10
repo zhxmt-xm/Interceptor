@@ -33,10 +33,21 @@ describe('breakpoint edits', () => {
     });
   });
 
-  it('sends a replacement body once the user types one', () => {
-    const draft = { ...draftFromBreakpoint(pending()), body: 'replaced' };
+  it('sends a replacement body once the user switches to text and types one', () => {
+    const draft = {
+      ...draftFromBreakpoint(pending()),
+      replacement: 'text' as const,
+      body: 'replaced',
+    };
 
     expect(buildEdit(draft)).toMatchObject({ body: 'replaced' });
+  });
+
+  it('leaves the real body alone while the text replacement is still empty', () => {
+    // 设计稿的空 Text 态就是 Using original；切了模式但没写内容不能抹掉原文。
+    const draft = { ...draftFromBreakpoint(pending()), replacement: 'text' as const };
+
+    expect(buildEdit(draft)).not.toHaveProperty('body');
   });
 
   it('keeps an intentionally emptied body when the original was visible', () => {

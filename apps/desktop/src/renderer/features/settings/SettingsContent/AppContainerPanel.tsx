@@ -7,7 +7,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react';
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -97,7 +97,12 @@ export function AppContainerPanel(): React.JSX.Element {
       .finally(() => setChanging(false));
   };
 
-  const containers = snapshot?.containers ?? [];
+  // Main 已按名称排序，这里只把已启用项稳定地提到前面。
+  const containers = useMemo(
+    () => [...(snapshot?.containers ?? [])]
+      .sort((left, right) => Number(right.exempt) - Number(left.exempt)),
+    [snapshot],
+  );
   const filteredContainers = deferredSearch
     ? containers.filter((appContainer) => [
         appContainer.displayName,

@@ -1,4 +1,4 @@
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,6 @@ export function ProxyPanel(): React.JSX.Element {
   const [capture, setCapture] = useState<CaptureStatus | null>(null);
   const [state, setState] = useState<ProxyPanelState>('loading');
   const [busy, setBusy] = useState(false);
-  const [confirmingRepair, setConfirmingRepair] = useState(false);
   const [result, setResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   /** Refresh both Main-owned system settings and Core-owned listener state. */
@@ -92,27 +91,6 @@ export function ProxyPanel(): React.JSX.Element {
     setResult(null);
     void window.interceptor.restoreSystemProxy()
       .then(applyRestoreResult)
-      .catch((error: unknown) => {
-        setResult({ tone: 'error', message: describeError(error) });
-      })
-      .finally(() => setBusy(false));
-  }, [applyRestoreResult, busy]);
-
-  /** Execute confirmed emergency repair and synchronize the stopped capture state. */
-  const repair = useCallback((): void => {
-    if (busy) {
-      return;
-    }
-    setBusy(true);
-    setConfirmingRepair(false);
-    setResult(null);
-    void window.interceptor.repairSystemProxy()
-      .then(async (restore) => {
-        applyRestoreResult(restore);
-        const nextCapture = await window.interceptor.getCaptureStatus();
-        setCapture(nextCapture);
-        useCaptureStore.getState().setCapturing(nextCapture.recording);
-      })
       .catch((error: unknown) => {
         setResult({ tone: 'error', message: describeError(error) });
       })
@@ -216,31 +194,6 @@ export function ProxyPanel(): React.JSX.Element {
           <StatusBadge tone={status.supported ? 'green' : 'yellow'}>
             {status.supported ? t('settings.protected') : t('settings.unavailable')}
           </StatusBadge>
-        </Row>
-        <Row
-          label={t('settings.emergencyRepair')}
-          hint={t('settings.emergencyRepairHint')}
-        >
-          {confirmingRepair ? (
-            <>
-              <span className={styles.confirmText}>{t('settings.restoreOwned')}</span>
-              <Button disabled={busy} onClick={() => setConfirmingRepair(false)}>
-                {t('settings.cancel')}
-              </Button>
-              <Button icon={RefreshCw} variant="danger" disabled={busy} onClick={repair}>
-                {t('settings.confirmRepair')}
-              </Button>
-            </>
-          ) : (
-            <Button
-              icon={RefreshCw}
-              variant="danger"
-              disabled={busy || !status.supported}
-              onClick={() => setConfirmingRepair(true)}
-            >
-              {t('settings.emergencyRepairAction')}
-            </Button>
-          )}
         </Row>
       </Group>
 

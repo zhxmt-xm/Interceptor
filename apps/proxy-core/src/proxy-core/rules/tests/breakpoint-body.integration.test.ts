@@ -110,7 +110,8 @@ describe('Breakpoint snapshots (real proxy)', () => {
   it('states that the paused request body is not available yet', async () => {
     const ruleService = new RuleService(breakpointQueue);
     ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
-    proxyService = new ProxyService(new RecordingCaptureService(), new CaptureEventQueue(), ruleService);
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
     const address = await proxyService.start({ port: 0 });
     origin = await startOrigin();
 
@@ -131,6 +132,11 @@ describe('Breakpoint snapshots (real proxy)', () => {
     // 头部阶段挂起时正文还没到，必须如实标注，而不是给一个看起来是空正文的编辑框。
     expect(paused.snapshot.bodyAvailable).toBe(false);
     expect(paused.snapshot.body).toBeUndefined();
+    // 挂起状态要显示在 Capture 的那一行上，所以快照必须带上真实 Exchange ID。
+    expect(paused.snapshot.exchangeId).toBeDefined();
+    await expect
+      .poll(() => captureService.exchanges.map((exchange) => exchange.id))
+      .toContain(paused.snapshot.exchangeId);
 
     // 只改 header 就放行（Renderer 在正文不可见时不带 body），原始上传正文必须完整到达源站。
     breakpointQueue.resolve(paused.id, 'continue', {
@@ -143,7 +149,8 @@ describe('Breakpoint snapshots (real proxy)', () => {
   it('states that the paused response body is not available yet', async () => {
     const ruleService = new RuleService(breakpointQueue);
     ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('response')] });
-    proxyService = new ProxyService(new RecordingCaptureService(), new CaptureEventQueue(), ruleService);
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
     const address = await proxyService.start({ port: 0 });
     origin = await startOrigin();
 
@@ -163,6 +170,11 @@ describe('Breakpoint snapshots (real proxy)', () => {
     expect(paused.snapshot.statusCode).toBe(200);
     expect(paused.snapshot.bodyAvailable).toBe(false);
     expect(paused.snapshot.body).toBeUndefined();
+    // request 与 response 两次挂起必须指向同一行，Inspector 才能原地切换编辑模式。
+    expect(paused.snapshot.exchangeId).toBeDefined();
+    await expect
+      .poll(() => captureService.exchanges.map((exchange) => exchange.id))
+      .toContain(paused.snapshot.exchangeId);
 
     breakpointQueue.resolve(paused.id, 'continue');
     await expect(inFlight).resolves.toBe(200);

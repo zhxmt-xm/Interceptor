@@ -123,23 +123,6 @@ export class MacosSystemProxyService implements SystemProxyService {
     return this.restoreOwned(this.originalSnapshot, this.ownedSnapshot);
   }
 
-  /** Recover ownership from disk and perform the same guarded restoration decision. */
-  async repair(): Promise<SystemProxyRestoreResult> {
-    if (!this.supported()) {
-      return {
-        restored: false,
-        reason: 'not-owned',
-        status: MacosSystemProxyService.unsupportedStatus(),
-      };
-    }
-    if (this.originalSnapshot && this.ownedSnapshot) {
-      return this.restoreOwned(this.originalSnapshot, this.ownedSnapshot);
-    }
-    if (this.journal) {
-      return this.repairFromJournal();
-    }
-    return { restored: false, reason: 'not-owned', status: await this.status() };
-  }
 
   /** Parse one macOS journal and restore only from its exact multi-service owned value. */
   private async repairFromJournal(): Promise<SystemProxyRestoreResult> {

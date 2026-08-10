@@ -237,7 +237,7 @@ describe('MacosSystemProxyService', () => {
     const fakeJournal = new FakeJournal();
     await createService(fakeMacosHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
 
-    const result = await createService(fakeMacosHelperRunner, fakeJournal).repair();
+    const result = await createService(fakeMacosHelperRunner, fakeJournal).restore();
 
     expect(result.restored).toBe(true);
     expect(fakeMacosHelperRunner.snapshot).toEqual(original);
@@ -257,7 +257,7 @@ describe('MacosSystemProxyService', () => {
     };
     const callCount = fakeMacosHelperRunner.calls.length;
 
-    const result = await createService(fakeMacosHelperRunner, fakeJournal).repair();
+    const result = await createService(fakeMacosHelperRunner, fakeJournal).restore();
 
     expect(result).toMatchObject({
       restored: false,

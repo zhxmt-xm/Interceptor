@@ -122,19 +122,6 @@ export class WindowsSystemProxyService implements SystemProxyService {
     return this.upstream;
   }
 
-  /** Recover ownership from disk and perform the same guarded restoration decision. */
-  async repair(): Promise<SystemProxyRestoreResult> {
-    if (!this.supported()) {
-      return { restored: false, reason: 'not-owned', status: WindowsSystemProxyService.unsupportedStatus() };
-    }
-    if (this.originalSettings && this.ownedSettings) {
-      return this.restoreOwned(this.originalSettings, this.ownedSettings);
-    }
-    if (this.journal) {
-      return this.repairFromJournal();
-    }
-    return { restored: false, reason: 'not-owned', status: await this.status() };
-  }
 
   /** Parse one Windows journal and restore only from its exact owned value. */
   private async repairFromJournal(): Promise<SystemProxyRestoreResult> {

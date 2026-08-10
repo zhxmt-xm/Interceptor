@@ -1142,11 +1142,6 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .settings-empty b { color: var(--text-2); font-size: 12.5px; font-weight: 600; }
 .settings-empty span { font-size: 11.5px; }
 .appcontainer-list.search-empty .appcontainer-empty { display: flex; }
-.tls-restart-required { display: none; align-items: center; border-color: color-mix(in srgb, var(--yellow) 34%, var(--border)); }
-.app[data-tls-restart="required"] .tls-restart-required { display: flex; }
-.tls-restart-required > div { flex: 1; }
-.tls-restart-required > .btn { width: 170px; flex: 0 0 auto; justify-content: center; }
-.tls-restart-required > .btn span { color: inherit; }
 .tls-add-row { display: flex; align-items: flex-end; gap: 9px; margin-bottom: 7px; }
 .tls-host-input { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .tls-host-input > span { color: var(--text-2); font-size: 11px; font-weight: 600; }

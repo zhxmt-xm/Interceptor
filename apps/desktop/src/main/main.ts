@@ -62,7 +62,6 @@ import { GitHubReleaseUpdateService } from './updates/github-release-update-serv
 import {
   readErrorMessage,
   readErrorName,
-  selectTlsPassthroughHostsForProvision,
   toBodyDecodeOptions,
   toBodyExportRequest,
   toBreakpointEdit,
@@ -81,7 +80,6 @@ import {
   toRendererDiagnosticRecord,
   toRendererCaptureUsage,
   toSafeBodyFileName,
-  toTlsPassthroughSettingsStatus,
   toWebSocketFrameQuery,
 } from './utils';
 
@@ -121,16 +119,12 @@ class DesktopApplication {
   /** Private GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
   private readonly trustStore = new TrustStoreService();
-  /** per-host 源站证书不安全例外；下发 Core 供 MITM passThrough 忽略源站证书错误。 */
-  private insecureHosts: string[] = [];
   /** Latest Workspace-backed TLS passthrough document. */
   private tlsPassthroughSettings: TlsPassthroughSettings | null = null;
-  /** Passthrough patterns actually provisioned in this Main process. */
-  private activeTlsPassthroughHosts: readonly string[] | null = null;
-  /** Next Core generation must load the latest persisted passthrough document. */
-  private applyPersistedTlsPassthroughOnNextProvision = false;
-  /** HTTPS 解密（MITM）用户意图开关；与“CA 是否信任”解耦——信任是系统层
-   * 安装，此开关只控制运行时是否对 HTTPS 做 MITM。仅当 CA 已信任且此开关开启才下发 CA 材料。 */
+  /**
+   * HTTPS 解密（MITM）用户意图开关，启动时从 Core 持久化配置恢复。
+   * 与“CA 是否信任”解耦：信任是系统层安装，此开关只表达用户想不想解密。
+   */
   private mitmEnabled = false;
   private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
   /** Core 不可用期间暂存的首个失败原因；新 Core running 后补记到持久 Diagnostics。 */
@@ -141,7 +135,6 @@ class DesktopApplication {
   private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
   private shutdownComplete = false;
-  private relaunchAfterShutdown = false;
 
   start(): void {
     process.on('uncaughtExceptionMonitor', (error, origin) => {
@@ -204,7 +197,7 @@ class DesktopApplication {
       );
       this.packagedRendererProtocol.install();
     }
-    await this.repairSystemProxyOnStartup();
+    await this.restoreSystemProxyOnStartup();
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
       const previousState = this.lastCoreProcessState;
@@ -268,11 +261,12 @@ class DesktopApplication {
         attributes: { detail },
       });
     });
-    // 新 CoreProcess 就绪后下发 CA 材料（若已生成），启用 HTTPS MITM；
+    // 新 CoreProcess 就绪后恢复上次的解密意图并下发 CA 材料（若已生成）；
     // 上游代理同样保存在 Core 进程内，不重新下发会让重启后的企业环境断网。
     this.coreRuntime.onCoreProcessReady(async () => {
+      await this.restoreDecryptionPreference();
       await Promise.all([
-        this.provisionCoreTls(true),
+        this.syncCoreCertificate(true),
         this.applyUpstreamProxy(
           this.systemProxyService?.detectedUpstream() ?? null,
         ),
@@ -313,15 +307,11 @@ class DesktopApplication {
       .then(() => this.coreRuntime.stop())
       .then(() => {
         this.shutdownComplete = true;
-        if (this.relaunchAfterShutdown) {
-          app.relaunch();
-        }
         app.quit();
       })
       .catch((error: unknown) => {
         this.quitting = false;
         this.shutdownComplete = false;
-        this.relaunchAfterShutdown = false;
         dialog.showErrorBox(
           'Unable to restore system proxy',
           `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
@@ -435,19 +425,6 @@ class DesktopApplication {
     // 自绘窗口栏的窗口控制：退出走 guarded shutdown，最小化/最大化只作用于发起窗口。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appQuit, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      this.relaunchAfterShutdown = false;
-      setImmediate(() => app.quit());
-    });
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.appRestart, async (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        // Forge owns the Vite server. app.relaunch() would exit Forge, close Vite,
-        // and leave the relaunched Renderer loading a dead localhost URL.
-        this.applyPersistedTlsPassthroughOnNextProvision = true;
-        await this.coreRuntime.restart();
-        return;
-      }
-      this.relaunchAfterShutdown = true;
       setImmediate(() => app.quit());
     });
     ipcMain.handle(DESKTOP_IPC_CHANNELS.windowMinimize, (event) => {
@@ -626,26 +603,6 @@ class DesktopApplication {
         this.upstreamProbe.stop();
         this.detectedUpstreamProxy = null;
         await this.applyUpstreamProxy(null);
-        return { ...result, status: this.withUpstreamProxy(result.status) };
-      });
-    });
-
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRepair, (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.system-proxy.emergency-repair', async () => {
-        const result = await this.requireSystemProxyService().repair();
-        this.upstreamProbe.stop();
-        this.detectedUpstreamProxy = null;
-        await this.applyUpstreamProxy(null);
-        try {
-          await this.coreRuntime.request({ type: 'proxy.stop', payload: {} });
-        } catch (error) {
-          this.diagnostics.warn('main.system-proxy.repair-core-stop-failed', {
-            outcome: 'failed',
-            errorCode: readErrorName(error),
-            attributes: { message: readErrorMessage(error) },
-          });
-        }
         return { ...result, status: this.withUpstreamProxy(result.status) };
       });
     });
@@ -1057,7 +1014,7 @@ class DesktopApplication {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.runMainAction('main.certificate.generate', async () => {
         await this.requireCertificateService().regenerate();
-        await this.provisionCoreTls();
+        await this.syncCoreCertificate();
         return this.buildCertificateInfo();
       });
     });
@@ -1073,7 +1030,7 @@ class DesktopApplication {
       }
       return this.runMainAction('main.trust-store.install', async () => {
         await this.trustStore.install(service.getCertificatePath());
-        await this.provisionCoreTls();
+        await this.syncCoreCertificate();
         return this.buildCertificateInfo();
       });
     });
@@ -1086,7 +1043,7 @@ class DesktopApplication {
         if (thumbprints) {
           await this.trustStore.uninstall(thumbprints.sha1);
         }
-        await this.provisionCoreTls();
+        await this.syncCoreCertificate();
         return this.buildCertificateInfo();
       });
     });
@@ -1100,7 +1057,7 @@ class DesktopApplication {
         await this.trustStore.uninstall(thumbprints.sha1);
       }
       await service.delete();
-      await this.provisionCoreTls();
+      await this.syncCoreCertificate();
       return this.buildCertificateInfo();
     });
 
@@ -1141,41 +1098,48 @@ class DesktopApplication {
       execFile('open', ['-a', 'Keychain Access']);
     });
 
-    // 源站证书不安全例外（per-host）只读查询。
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.httpsGetInsecureHosts, (event) => {
+    // 读取持久化的 per-host 不安全例外名单。
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.httpsGetInsecureHosts, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return [...this.insecureHosts];
+      const result = await this.coreRuntime.request({
+        type: 'tls.getInsecureHosts',
+        payload: {},
+      });
+      return result.payload.hosts;
     });
 
-    // 更新 per-host 不安全例外并重下发给 Core；Main 不修改 Renderer 提交的数据。
+    // 更新 per-host 不安全例外；Core 在同一条命令里完成持久化与生效。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts,
       async (event, hosts: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        this.insecureHosts = toInsecureHosts(hosts);
-        await this.provisionCoreTls();
-        return [...this.insecureHosts];
+        const result = await this.coreRuntime.request({
+          type: 'tls.replaceInsecureHosts',
+          payload: { hosts: toInsecureHosts(hosts) },
+        });
+        return result.payload.hosts;
       },
     );
 
-    // 独立的 HTTPS 解密（MITM）开关：不改信任库，只控制是否对 HTTPS 做 MITM。
-    // 前提是 CA 已安装信任；未信任时即使开启也不会下发 CA 材料（provisionCoreTls 把关）。
+    // 独立的 HTTPS 解密（MITM）开关：不改信任库，也不重下发 CA 材料与名单，
+    // 只记下用户意图并切 Core 的解密状态。CA 未信任时即使开启也不解密。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.httpsSetDecryption,
       async (event, enabled: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         this.mitmEnabled = enabled as boolean;
-        await this.provisionCoreTls();
+        await this.coreRuntime.request({
+          type: 'tls.saveDecryptionPreference',
+          payload: { enabled: this.mitmEnabled },
+        });
+        await this.syncCoreDecryption();
         return this.buildCertificateInfo();
       },
     );
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.tlsPassthroughGet, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return toTlsPassthroughSettingsStatus(
-        await this.loadTlsPassthroughSettings(),
-        this.activeTlsPassthroughHosts,
-      );
+      return this.loadTlsPassthroughSettings();
     });
 
     ipcMain.handle(
@@ -1183,8 +1147,7 @@ class DesktopApplication {
       async (event, expectedRevision: unknown, hosts: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         try {
-          // Mockttp compiles this list at listener startup. Persist now, but keep
-          // the active process snapshot unchanged until a guarded app restart.
+          // Core 在同一条命令里完成持久化与生效，Main 不再重下发。
           await this.coreRuntime.request({
             type: 'tls-passthrough.replace',
             payload: {
@@ -1193,13 +1156,7 @@ class DesktopApplication {
             },
           });
           const settings = await this.loadTlsPassthroughSettings();
-          return {
-            ok: true,
-            settings: toTlsPassthroughSettingsStatus(
-              settings,
-              this.activeTlsPassthroughHosts,
-            ),
-          };
+          return { ok: true, settings };
         } catch (error) {
           return DesktopApplication.toReplaceFailure(error);
         }
@@ -1341,7 +1298,7 @@ class DesktopApplication {
       },
     );
 
-    // 当前等待中断点快照 + break-on-match 开关；Breakpoints 工作区轮询。
+    // 当前等待中断点快照 + break-on-match 开关；App 壳轮询。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.breakpointList, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const result = await this.coreRuntime.request({
@@ -1351,6 +1308,7 @@ class DesktopApplication {
       return {
         breakpoints: result.payload.breakpoints,
         enabled: result.payload.enabled,
+        autoContinued: result.payload.autoContinued,
       };
     });
 
@@ -1556,37 +1514,25 @@ class DesktopApplication {
     }
   }
 
-  // 解密当前 CA 材料并经内部 tls.configure 命令下发 Core（私钥不经 Renderer）。
-  // 仅当 CA 已安装信任时才下发 material 启用 MITM；否则下发 null，CONNECT 直通不解密。
-  private async provisionCoreTls(throwOnError = false): Promise<void> {
+  /**
+   * 把当前证书状态与解密意图同步给 Core（私钥不经 Renderer）。
+   * 调用方：Core 就绪，以及 Root CA 的生成 / 安装信任 / 卸载 / 删除。
+   */
+  private async syncCoreCertificate(throwOnError = false): Promise<void> {
     if (!this.certificateService) {
       return;
     }
     try {
       const trusted = await this.isCaTrusted();
-      const material =
-        trusted && this.mitmEnabled
-          ? await this.certificateService.getMaterial()
-          : null;
-      const tlsPassthroughSettings = this.tlsPassthroughSettings
-        ?? await this.loadTlsPassthroughSettings();
-      const passthroughHosts = selectTlsPassthroughHostsForProvision(
-        this.activeTlsPassthroughHosts,
-        tlsPassthroughSettings.hosts,
-        this.applyPersistedTlsPassthroughOnNextProvision,
-      );
       await this.coreRuntime.request({
-        type: 'tls.configure',
+        type: 'tls.useCertificate',
         payload: {
-          ca: material,
-          insecureHosts: this.insecureHosts,
-          passthroughHosts,
+          ca: trusted ? await this.certificateService.getMaterial() : null,
         },
       });
-      this.activeTlsPassthroughHosts = [...passthroughHosts];
-      this.applyPersistedTlsPassthroughOnNextProvision = false;
+      await this.syncCoreDecryption();
     } catch (error) {
-      this.diagnostics.warn('main.tls.provision-failed', {
+      this.diagnostics.warn('main.tls.certificate-sync-failed', {
         errorCode: readErrorName(error),
         outcome: 'failed',
         attributes: { message: readErrorMessage(error) },
@@ -1596,6 +1542,27 @@ class DesktopApplication {
         throw error;
       }
     }
+  }
+
+  /** 从 Core 持久化配置恢复上次的解密意图；实际是否解密仍由 syncCoreDecryption 定。 */
+  private async restoreDecryptionPreference(): Promise<void> {
+    const result = await this.coreRuntime.request({
+      type: 'tls.getDecryptionPreference',
+      payload: {},
+    });
+    this.mitmEnabled = result.payload.enabled;
+  }
+
+  /** 只切 Core 的解密开关；CA 未信任时即使用户开启也不解密。 */  private async syncCoreDecryption(): Promise<void> {
+    if (!this.certificateService) {
+      return;
+    }
+    const decrypting = (await this.isCaTrusted()) && this.mitmEnabled;
+    await this.coreRuntime.request(
+      decrypting
+        ? { type: 'tls.startDecryption', payload: {} }
+        : { type: 'tls.stopDecryption', payload: {} },
+    );
   }
 
   /** Read and cache the Core-owned persistent TLS passthrough document. */
@@ -1732,23 +1699,23 @@ class DesktopApplication {
     }
   }
 
-  /** Repair a stale journal before Core or Renderer starts, without blocking app access on failure. */
-  private async repairSystemProxyOnStartup(): Promise<void> {
+  /** Restore a stale journal before Core or Renderer starts, without blocking app access on failure. */
+  private async restoreSystemProxyOnStartup(): Promise<void> {
     if (!this.systemProxyService?.supported()) {
       return;
     }
     try {
-      const result = await this.systemProxyService.repair();
-      this.recordSystemProxyRecovery('main.system-proxy.startup-repair', result);
+      const result = await this.systemProxyService.restore();
+      this.recordSystemProxyRecovery('main.system-proxy.startup-restore', result);
     } catch (error) {
-      this.diagnostics.error('main.system-proxy.startup-repair-failed', {
+      this.diagnostics.error('main.system-proxy.startup-restore-failed', {
         outcome: 'failed',
         errorCode: readErrorName(error),
         attributes: { message: readErrorMessage(error) },
       });
       dialog.showErrorBox(
         'System proxy recovery required',
-        `${readErrorMessage(error)}\n\nUse Settings > Proxy > Emergency repair after Interceptor opens.`,
+        `${readErrorMessage(error)}\n\nCheck the Windows or macOS proxy settings before capturing again.`,
       );
     }
   }
@@ -1758,8 +1725,12 @@ class DesktopApplication {
     if (this.systemProxyRecovery || !this.systemProxyService?.supported()) {
       return;
     }
-    this.systemProxyRecovery = this.systemProxyService.repair()
-      .then((result) => this.recordSystemProxyRecovery(phase, result))
+    this.systemProxyRecovery = this.systemProxyService.restore()
+      .then(async (result) => {
+        this.recordSystemProxyRecovery(phase, result);
+        // 代理已经交回用户，不广播会让 Renderer 继续显示“已接管”。
+        await this.broadcastSystemProxyStatus();
+      })
       .catch((error: unknown) => {
         this.diagnostics.error(`${phase}.failed`, {
           outcome: 'failed',
@@ -1768,7 +1739,7 @@ class DesktopApplication {
         });
         dialog.showErrorBox(
           'Unable to restore system proxy',
-          `${readErrorMessage(error)}\n\nUse Settings > Proxy > Emergency repair.`,
+          `${readErrorMessage(error)}\n\nCheck the Windows or macOS proxy settings before capturing again.`,
         );
       })
       .finally(() => {
@@ -1779,7 +1750,7 @@ class DesktopApplication {
   /** Record a guarded recovery outcome without exposing proxy snapshots. */
   private recordSystemProxyRecovery(
     phase: string,
-    result: Awaited<ReturnType<SystemProxyService['repair']>>,
+    result: Awaited<ReturnType<SystemProxyService['restore']>>,
   ): void {
     if (result.reason === 'externally-modified') {
       this.diagnostics.warn(`${phase}.ownership-lost`, { outcome: 'failed' });

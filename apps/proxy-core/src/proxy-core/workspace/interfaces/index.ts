@@ -5,7 +5,9 @@
 export type WorkspaceDocument =
   | 'rule_set'
   | 'collection_tree'
-  | 'tls_passthrough_hosts';
+  | 'tls_passthrough_hosts'
+  | 'tls_insecure_hosts'
+  | 'tls_decryption_preference';
 
 /** 单行文档表读出的 revision 与 JSON 载荷。 */
 export interface WorkspaceDocumentRow {

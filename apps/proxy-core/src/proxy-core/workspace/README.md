@@ -20,13 +20,17 @@
 2. `internal/constants.ts` 的 `WORKSPACE_DOCUMENTS` 加同一个表名
 3. `entry.ts` 加一对 3 行的 `loadXxx` / `saveXxx`
 
-当前文档表：`rule_set`、`collection_tree`、`tls_passthrough_hosts`。TLS passthrough
-文档未保存时使用空名单，不自动绕过任何 host；保存时把 DNS 名规范化为小写 ASCII、去重并拒绝
-scheme、port、path 或非法 wildcard，避免坏配置进入 Mockttp listener。
+当前文档表：`rule_set`、`collection_tree`、`tls_passthrough_hosts`、`tls_insecure_hosts`、
+`tls_decryption_preference`。TLS passthrough 文档未保存时使用空名单，不自动绕过任何 host；保存时把
+DNS 名规范化为小写 ASCII、去重并拒绝 scheme、port、path 或非法 wildcard，避免坏配置进入 Mockttp
+listener。`tls_insecure_hosts` 是源站证书的 per-host 例外，`tls_decryption_preference` 只记用户
+是否想解密 HTTPS——实际是否解密还取决于 CA 是否已被系统信任，那个判断留在 Main。
 
 ## 并发
 
 写入走 `BEGIN IMMEDIATE` 事务，先比对 `expectedRevision` 再自增。不匹配抛 `RevisionConflictError`（`internal/errors.ts`），CoreApplication 映射为 `conflict` 错误码让 Renderer 重取后重试。
+
+只有一个编辑入口的 Settings 开关和名单走 `overwrite`，不比对 revision：这类配置最后一次保存即最终值，让用户为并不存在的冲突重试没有意义。
 
 ## 依赖
 

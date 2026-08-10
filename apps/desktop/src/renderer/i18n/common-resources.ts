@@ -4,6 +4,7 @@ export const commonEnglishMessages = {
   'app.minimizeWindow': 'Minimize',
   'app.toggleMaximizeWindow': 'Maximize or restore',
   'common.language': 'Language',
+  'common.close': 'Close',
   'common.theme': 'Theme',
   'theme.warm': 'Warm',
   'theme.light': 'Light',

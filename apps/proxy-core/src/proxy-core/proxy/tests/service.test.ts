@@ -12,6 +12,7 @@ import { BreakpointQueue } from '../../rules/internal/breakpoint-queue';
 import { ProxyService } from '../entry';
 import { CaptureEventQueue } from '../internal/capture-event-queue';
 import { RecordingCaptureService } from './test-capture-service';
+import { decryptWithCertificate } from './test-tls-setup';
 
 function startOrigin(
   handler: http.RequestListener,
@@ -818,7 +819,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(recordingCaptureService.exchanges).toHaveLength(1);
 
       // 暂停记录：监听器仍在，流量继续转发但新连接不再落库。
-      proxyService.setRecording(false);
+      proxyService.pauseRecording();
       expect(proxyService.status()).toMatchObject({ listening: true, recording: false });
       await expect(
         proxiedGet(address, `http://127.0.0.1:${origin.port}/while-paused`),
@@ -826,7 +827,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       expect(recordingCaptureService.exchanges).toHaveLength(1);
 
       // 恢复记录：新请求重新被捕获，暂停期间的请求不出现在记录中。
-      proxyService.setRecording(true);
+      proxyService.resumeRecording();
       expect(proxyService.status()).toMatchObject({ listening: true, recording: true });
       await expect(
         proxiedGet(address, `http://127.0.0.1:${origin.port}/after-resume`),
@@ -930,11 +931,12 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     await origin.forGet('/secure').thenReply(200, 'secure');
     await origin.start();
     try {
-      await proxyService.configureTls({
+      await decryptWithCertificate(
+        proxyService,
         ca,
-        insecureHosts: ['localhost', '127.0.0.1'],
-        passthroughHosts: ['localhost'],
-      });
+        ['localhost', '127.0.0.1'],
+        ['localhost'],
+      );
 
       await expect(
         passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
@@ -960,19 +962,91 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   }, 20_000);
 
+  it('applies passthrough list changes to new connections without rebuilding the listener', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    const insecureHosts = ['localhost', '127.0.0.1'];
+    try {
+      await decryptWithCertificate(proxyService, ca, insecureHosts);
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
+      ).resolves.toBe(200);
+      await expect.poll(() => recordingCaptureService.exchanges.length).toBe(1);
+      expect(recordingCaptureService.exchanges[0]).toMatchObject({
+        method: 'GET',
+        path: '/secure',
+      });
+      const before = proxyService.status();
+
+      proxyService.replacePassthroughHosts(['localhost']);
+
+      // 重建会清空代际计数并换掉会话；两者不变即证明 listener 是原地生效的。
+      const after = proxyService.status();
+      expect(after.port).toBe(before.port);
+      expect(after.sessionId).toBe(before.sessionId);
+      expect(after.capturedExchanges).toBe(before.capturedExchanges);
+
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
+      ).resolves.toBe(200);
+      await expect.poll(() => recordingCaptureService.exchanges.length).toBe(2);
+      expect(recordingCaptureService.exchanges[1]).toMatchObject({
+        method: 'CONNECT',
+        protocol: 'tls',
+        responseMime: 'application/x-encrypted-tunnel',
+      });
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
+
+  it('stops intercepting once MITM is turned off, without rebuilding the listener', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    const insecureHosts = ['localhost', '127.0.0.1'];
+    try {
+      await decryptWithCertificate(proxyService, ca, insecureHosts);
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
+      ).resolves.toBe(200);
+      await expect.poll(() => recordingCaptureService.exchanges.length).toBe(1);
+      const before = proxyService.status();
+
+      // 停止解密等价于全量 passthrough，身份材料不变，因此不必重建。
+      proxyService.stopHttpsDecryption();
+
+      const after = proxyService.status();
+      expect(after.port).toBe(before.port);
+      expect(after.sessionId).toBe(before.sessionId);
+      expect(after.capturedExchanges).toBe(before.capturedExchanges);
+
+      await expect(
+        passthroughHttpsGet(address.port, origin.port, 'localhost', 'localhost'),
+      ).resolves.toBe(200);
+      await expect.poll(() => recordingCaptureService.exchanges.length).toBe(2);
+      expect(recordingCaptureService.exchanges[1]).toMatchObject({
+        method: 'CONNECT',
+        protocol: 'tls',
+      });
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
+
   it('reports one compatibility event per TLS generation and host', async () => {
     const ca = await generateCACertificate();
     const originCertificate = await generateCACertificate();
     const origin = getLocal({ https: originCertificate });
     await origin.forGet('/secure').thenReply(200, 'secure');
     await origin.start();
-    const config = {
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    };
     try {
-      await proxyService.configureTls(config);
+      await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
       await expect(
         passthroughHttpsGet(
           address.port,
@@ -994,15 +1068,15 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
 
       const firstGenerationEvents = await waitForTlsCompatibilityEvents(proxyService);
       expect(firstGenerationEvents).toHaveLength(1);
-      expect(firstGenerationEvents[0]).toMatchObject({
-        generation: 1,
-        host: 'localhost',
-      });
+      expect(firstGenerationEvents[0]?.host).toBe('localhost');
+      const firstGeneration = firstGenerationEvents[0]?.generation ?? 0;
+      expect(firstGeneration).toBeGreaterThan(0);
       expect(['cert-rejected', 'reset', 'closed']).toContain(
         firstGenerationEvents[0]?.reason,
       );
 
-      await proxyService.configureTls(config);
+      // 任一 TLS 变更都开启新代际，同一 host 因此可以再次上报。
+      await proxyService.startHttpsDecryption();
       await expect(
         passthroughHttpsGet(
           address.port,
@@ -1015,10 +1089,8 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
 
       const secondGenerationEvents = await waitForTlsCompatibilityEvents(proxyService);
       expect(secondGenerationEvents).toHaveLength(1);
-      expect(secondGenerationEvents[0]).toMatchObject({
-        generation: 2,
-        host: 'localhost',
-      });
+      expect(secondGenerationEvents[0]?.host).toBe('localhost');
+      expect(secondGenerationEvents[0]?.generation).toBeGreaterThan(firstGeneration);
     } finally {
       await origin.stop();
     }
@@ -1322,7 +1394,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       new CaptureEventQueue(),
       new RuleService(breakpointQueue),
     );
-    proxyService.setWebSocketBreakpointsEnabled(true);
+    proxyService.enableWebSocketBreakpoints();
     address = await proxyService.start();
 
     const origin = getLocal();
@@ -1370,7 +1442,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const breakpointQueue = new BreakpointQueue();
     const ruleService = new RuleService(breakpointQueue);
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue(), ruleService);
-    proxyService.setWebSocketBreakpointsEnabled(true);
+    proxyService.enableWebSocketBreakpoints();
     address = await proxyService.start();
 
     const origin = getLocal();

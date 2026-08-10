@@ -69,3 +69,70 @@ describe('WorkspaceService TLS passthrough settings', () => {
     });
   });
 });
+
+describe('WorkspaceService TLS settings that survive a restart', () => {
+  let dataDirectory: string;
+  let workspaceService: WorkspaceService;
+
+  beforeEach(async () => {
+    dataDirectory = await mkdtemp(path.join(tmpdir(), 'interceptor-workspace-'));
+    initializeRuntime([`--data-dir=${dataDirectory}`]);
+    workspaceService = new WorkspaceService();
+    workspaceService.initialize();
+  });
+
+  afterEach(async () => {
+    workspaceService.dispose();
+    await rm(dataDirectory, { recursive: true, force: true });
+  });
+
+  /** 关掉连接再开一个，等价于 Core 重启后从磁盘读。 */
+  const reopen = (): void => {
+    workspaceService.dispose();
+    workspaceService = new WorkspaceService();
+    workspaceService.initialize();
+  };
+
+  it('starts with no insecure host exceptions', () => {
+    expect(workspaceService.loadInsecureHosts()).toEqual([]);
+  });
+
+  it('normalizes, deduplicates, and reloads insecure hosts', () => {
+    expect(workspaceService.saveInsecureHosts([
+      ' EXAMPLE.com ',
+      'example.com',
+      '',
+      'origin.internal',
+    ])).toEqual(['example.com', 'origin.internal']);
+
+    reopen();
+
+    expect(workspaceService.loadInsecureHosts()).toEqual([
+      'example.com',
+      'origin.internal',
+    ]);
+  });
+
+  it('overwrites insecure hosts without a revision conflict', () => {
+    workspaceService.saveInsecureHosts(['first.example']);
+    expect(workspaceService.saveInsecureHosts(['second.example']))
+      .toEqual(['second.example']);
+  });
+
+  it('starts with HTTPS decryption off on a fresh profile', () => {
+    expect(workspaceService.loadDecryptionPreference()).toBe(false);
+  });
+
+  it('remembers that the user turned HTTPS decryption on', () => {
+    workspaceService.enableDecryptionPreference();
+    reopen();
+    expect(workspaceService.loadDecryptionPreference()).toBe(true);
+  });
+
+  it('remembers that the user turned HTTPS decryption back off', () => {
+    workspaceService.enableDecryptionPreference();
+    workspaceService.disableDecryptionPreference();
+    reopen();
+    expect(workspaceService.loadDecryptionPreference()).toBe(false);
+  });
+});

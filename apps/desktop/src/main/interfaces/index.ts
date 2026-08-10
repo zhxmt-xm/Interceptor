@@ -238,7 +238,7 @@ export interface SystemProxyService {
   status(): Promise<SystemProxyStatus>;
   enable(host: string, port: number): Promise<SystemProxyStatus>;
   restore(): Promise<SystemProxyRestoreResult>;
-  repair(): Promise<SystemProxyRestoreResult>;
+
   /** 接管前读到的用户原有上游代理；null 表示原本就直连。 */
   detectedUpstream(): UpstreamProxyConfig | null;
 }

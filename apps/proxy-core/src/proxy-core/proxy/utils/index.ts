@@ -486,6 +486,17 @@ export function cryptoRandomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/** 判断两组 host 是否等价；顺序与重复不影响结果。 */
+export function sameHosts(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  const leftHosts = [...new Set(left)].sort();
+  const rightHosts = [...new Set(right)].sort();
+  return leftHosts.length === rightHosts.length
+    && leftHosts.every((host, index) => host === rightHosts[index]);
+}
+
 /** 将 http/https URL 转换为 ws/wss URL。 */
 export function toWebSocketUrl(rawUrl: string): URL {
   const url = new URL(rawUrl);

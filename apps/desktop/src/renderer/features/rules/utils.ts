@@ -15,7 +15,9 @@ import type {
   RuleNode,
 } from '../../../shared/desktop-api';
 import type { SelectOption } from '../../components';
+import { BREAKPOINT_TIMEOUT_MS } from './constants';
 import type {
+  BreakpointScope,
   ChipKind,
   RuleIssue,
   RulesState,
@@ -150,8 +152,68 @@ export function createRuleFromRequest(
   };
 }
 
-/** 按类型创建默认 matcher（供“Add condition”）。 */
-export function createMatcher(type: RuleMatcherType): RuleMatcher {
+/**
+ * 从 Capture 请求创建断点规则：同一 exchange 的 request 与 response 各断一次，创建即启用。
+ *
+ * 不做“命中一次后自动失效”：那会是一个既看不到也改不回来的隐藏状态，
+ * 停用入口就是 manager 里的开关。
+ */
+export function createBreakpointRule(
+  name: string,
+  url: string,
+  scope: BreakpointScope,
+): RuleDefinition {
+  return {
+    kind: 'rule',
+    id: createNodeId('rule'),
+    name,
+    enabled: true,
+    priority: 0,
+    matchers: [breakpointMatcher(url, scope)],
+    actions: [
+      {
+        type: 'breakpoint',
+        phase: 'request',
+        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        onTimeout: 'continue',
+      },
+      {
+        type: 'breakpoint',
+        phase: 'response',
+        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        onTimeout: 'continue',
+      },
+    ],
+  };
+}
+
+/**
+ * 把请求 URL 折算成选定粒度的 matcher。
+ *
+ * path prefix 用 `contains`：完整 URL 必然以 `scheme://host` 开头，因此对完整 URL 做
+ * contains 与 prefix 等价，不必为此给协议新增一种匹配模式。
+ */
+function breakpointMatcher(url: string, scope: BreakpointScope): RuleMatcher {
+  if (scope === 'host') {
+    return { type: 'host', value: hostOf(url), mode: 'exact' };
+  }
+  return {
+    type: 'url',
+    value: toEndpointUrl(url),
+    mode: scope === 'endpoint' ? 'exact' : 'contains',
+  };
+}
+
+/** 取 URL 的 host（含端口）；无法解析时退回原串。 */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** 按类型创建默认 matcher（供“Add condition”）。 */export function createMatcher(type: RuleMatcherType): RuleMatcher {
   switch (type) {
     case 'method':
       return { type: 'method', value: 'GET' };
@@ -196,7 +258,12 @@ export function createAction(type: RuleActionType): RuleAction {
     case 'delay':
       return { type: 'delay', phase: 'response', ms: 1_000 };
     case 'breakpoint':
-      return { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' };
+      return {
+        type: 'breakpoint',
+        phase: 'request',
+        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        onTimeout: 'continue',
+      };
     default:
       return { type: 'header', phase: 'request', op: 'set', name: '', value: '' };
   }

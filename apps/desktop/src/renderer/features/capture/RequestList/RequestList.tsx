@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
+import type { BreakpointScope } from '../../rules/interfaces';
 import { useCaptureStore } from '../data/captureStore';
 import { RequestRow } from '../RequestRow/RequestRow';
 import { isScrolledToBottom, visibleCaptureRows } from '../utils';
@@ -16,10 +17,18 @@ export interface RequestListProps {
     actionType: RuleActionType,
     name: string,
   ) => void;
+  onCreateBreakpoint: (
+    summary: CaptureExchangeSummary,
+    scope: BreakpointScope | 'custom',
+    name: string,
+  ) => void;
 }
 
 /** 虚拟化请求表格：表头 + 行；命令与筛选都在列表工具栏与筛选分栏里。 */
-export function RequestList({ onCreateRequestRule }: RequestListProps): React.JSX.Element {
+export function RequestList({
+  onCreateRequestRule,
+  onCreateBreakpoint,
+}: RequestListProps): React.JSX.Element {
   const { t } = useTranslation();
   const rows = useCaptureStore((state) => state.rows);
   const filter = useCaptureStore((state) => state.filter);
@@ -118,6 +127,7 @@ export function RequestList({ onCreateRequestRule }: RequestListProps): React.JS
                   offsetTop={virtualRow.start}
                   onSelect={(id) => select(id === selectedId ? null : id)}
                   onCreateRule={onCreateRequestRule}
+                  onCreateBreakpoint={onCreateBreakpoint}
                 />
               );
             })}

@@ -4,7 +4,8 @@ import { collectLeafIds } from '@interceptor/core-protocol';
 
 import type { RuleActionType } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
-import { createRuleFromRequest } from '../utils';
+import type { BreakpointScope } from '../interfaces';
+import { createBreakpointRule, createRuleFromRequest } from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
 let initialLoad: Promise<void> | null = null;
@@ -64,6 +65,41 @@ export async function selectRuleDraft(ruleId: string): Promise<boolean> {
   }
   store.select(ruleId);
   return true;
+}
+
+/**
+ * 从 Capture 请求直接创建断点规则：**创建即启用即 Apply**。
+ *
+ * 改写规则默认不启用是因为字段还没填完，而断点 matcher 全部来自真实请求，
+ * 不存在未填完；把“临时拦一下”做成先存草稿再手动 Apply 的配置流程是错的。
+ * 当前这条已完成的请求不会被追溢暂停，只影响未来流量。
+ */
+export async function addBreakpointRule(
+  name: string,
+  url: string,
+  scope: BreakpointScope,
+): Promise<string | null> {
+  await ensureRulesLoaded();
+  const store = useRulesStore.getState();
+  if (!store.initialized) {
+    return null;
+  }
+  const rule = createBreakpointRule(name, url, scope);
+  store.addRuleDraft(rule);
+  await applyRules();
+  return rule.id;
+}
+
+/** 撤销刚创建的断点规则；删除后立即 Apply，不留下未生效的草稿。 */
+export async function removeBreakpointRule(ruleId: string): Promise<void> {
+  useRulesStore.getState().removeNode(ruleId);
+  await applyRules();
+}
+
+/** 切换一条断点规则的启用状态并立即 Apply；manager 里的开关必须即时影响真实流量。 */
+export async function toggleBreakpointRule(ruleId: string): Promise<void> {
+  useRulesStore.getState().toggleRule(ruleId);
+  await applyRules();
 }
 
 /** 拉取规则命中计数；失败静默（命中计数为增强信息，不阻塞编辑）。 */

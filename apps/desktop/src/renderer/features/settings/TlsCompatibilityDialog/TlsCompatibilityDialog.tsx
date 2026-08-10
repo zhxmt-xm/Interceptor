@@ -1,14 +1,18 @@
 import { Modal } from 'antd';
 import { LockOpen, RefreshCw, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, IconButton } from '../../../components';
+import { Button, Checkbox, IconButton } from '../../../components';
 import {
   TlsCompatibilityActions,
   useTlsCompatibilityStore,
 } from '../data/tlsCompatibilityStore';
-import { describeError } from '../utils';
+import {
+  describeError,
+  tlsCompatibilityReasonKey,
+  tlsPassthroughPatternChoices,
+} from '../utils';
 
 import styles from './TlsCompatibilityDialog.module.css';
 
@@ -25,30 +29,57 @@ export function TlsCompatibilityDialog({
   const dismissCompatibility = useTlsCompatibilityStore((state) => state.dismiss);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPatterns, setSelectedPatterns] = useState<ReadonlySet<string>>(new Set());
+  // 只有首次见到的 host 才写入默认勾选，否则新事件到达会把用户取消过的项重新勾上。
+  const defaultedHosts = useRef(new Set<string>());
 
   useEffect(() => {
     setError(null);
+    const newlySeenHosts = compatibilityEvents
+      .map((event) => event.host.trim().toLowerCase())
+      .filter((host) => !defaultedHosts.current.has(host));
+    if (newlySeenHosts.length === 0) {
+      return;
+    }
+    newlySeenHosts.forEach((host) => defaultedHosts.current.add(host));
+    setSelectedPatterns((current) => new Set([...current, ...newlySeenHosts]));
   }, [compatibilityEvents]);
 
-  const dismiss = (): void => {
-    if (!busy && compatibilityEvents.length > 0) {
-      dismissCompatibility(compatibilityEvents);
-    }
+  const togglePattern = (pattern: string): void => {
+    setSelectedPatterns((current) => {
+      const next = new Set(current);
+      if (!next.delete(pattern)) {
+        next.add(pattern);
+      }
+      return next;
+    });
   };
 
-  const addHost = (): void => {
-    if (compatibilityEvents.length === 0 || busy) {
+  const dismiss = (): void => {
+    if (busy || compatibilityEvents.length === 0) {
+      return;
+    }
+    dismissCompatibility(compatibilityEvents);
+    defaultedHosts.current.clear();
+    setSelectedPatterns(new Set());
+  };
+
+  const addSelectedPatterns = (): void => {
+    if (selectedPatterns.size === 0 || busy) {
       return;
     }
     setBusy(true);
     setError(null);
     const events = [...compatibilityEvents];
-    void TlsCompatibilityActions.addHosts(events)
+    const patterns = [...selectedPatterns];
+    void TlsCompatibilityActions.addPatterns(patterns, events)
       .then((result) => {
         if (!result.ok) {
           setError(result.message);
           return;
         }
+        defaultedHosts.current.clear();
+        setSelectedPatterns(new Set());
         onOpenSettings();
       })
       .catch((reason: unknown) => setError(describeError(reason)))
@@ -97,13 +128,20 @@ export function TlsCompatibilityDialog({
               data-parity={`tls-compatibility-host-${event.host}`}
             >
               <span className={styles.hostIcon}><LockOpen aria-hidden="true" /></span>
-              <div>
+              <div className={styles.hostCopy}>
                 <code>{event.host}</code>
-                <span>{t(
-                  event.reason === 'cert-rejected'
-                    ? 'settings.tlsPassthrough.compatibilityCertRejectedReason'
-                    : 'settings.tlsPassthrough.compatibilityClosedReason',
-                )}</span>
+                <span>{t(tlsCompatibilityReasonKey(event.reason))}</span>
+              </div>
+              <div className={styles.patternChoices}>
+                {tlsPassthroughPatternChoices(event.host).map((pattern) => (
+                  <label className={styles.patternChoice} key={pattern}>
+                    <Checkbox
+                      checked={selectedPatterns.has(pattern)}
+                      onChange={busy ? undefined : () => togglePattern(pattern)}
+                    />
+                    <code>{pattern}</code>
+                  </label>
+                ))}
               </div>
             </div>
           ))}
@@ -122,9 +160,12 @@ export function TlsCompatibilityDialog({
           icon={LockOpen}
           variant="primary"
           loading={busy}
-          onClick={addHost}
+          disabled={selectedPatterns.size === 0}
+          onClick={addSelectedPatterns}
         >
-          {t('settings.tlsPassthrough.addSuggestedHosts')}
+          {t('settings.tlsPassthrough.addSelectedPatterns', {
+            count: selectedPatterns.size,
+          })}
         </Button>
       </footer>
     </Modal>

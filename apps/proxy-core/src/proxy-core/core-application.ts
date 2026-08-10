@@ -188,6 +188,7 @@ export class CoreApplication implements CoreRpcHost {
     );
     this.proxyService?.attachDiagnostics(this.coreDiagnostics);
     this.captureService?.attachDiagnostics(this.coreDiagnostics);
+    this.ruleService?.attachDiagnostics(this.coreDiagnostics);
     this.clientAppService.attachDiagnostics(this.coreDiagnostics);
     this.coreRpcServer = new CoreRpcServer(this);
   }
@@ -359,7 +360,11 @@ export class CoreApplication implements CoreRpcHost {
         });
       case 'websocket.breakpoint.configure':
         return this.withProxy(async (proxyService) => {
-          proxyService.setWebSocketBreakpointsEnabled(command.payload.enabled);
+          if (command.payload.enabled) {
+            proxyService.enableWebSocketBreakpoints();
+          } else {
+            proxyService.disableWebSocketBreakpoints();
+          }
           return {
             type: 'websocket.breakpoint.config',
             payload: { enabled: proxyService.webSocketBreakpointsEnabled },
@@ -518,6 +523,8 @@ export class CoreApplication implements CoreRpcHost {
                 command.payload.hosts,
               ),
             );
+            // 持久化与生效同属这一次用户操作，不让 Main 再绕一圈下发。
+            this.proxyService?.replacePassthroughHosts(settings.hosts);
             return {
               type: 'tls-passthrough.revision',
               payload: { revision: settings.revision },
@@ -653,7 +660,11 @@ export class CoreApplication implements CoreRpcHost {
         };
       case 'proxy.setRecording':
         return this.withProxy(async (proxyService) => {
-          proxyService.setRecording(command.payload.recording);
+          if (command.payload.recording) {
+            proxyService.resumeRecording();
+          } else {
+            proxyService.pauseRecording();
+          }
           return { type: 'proxy.status', payload: proxyService.status() };
         });
       case 'proxy.setUpstream':
@@ -661,16 +672,58 @@ export class CoreApplication implements CoreRpcHost {
           proxyService.setUpstreamProxy(command.payload.upstream);
           return { type: 'proxy.status', payload: proxyService.status() };
         });
-      case 'tls.configure':
+      case 'tls.useCertificate':
         return this.withProxy(async (proxy) => {
-          await this.coreDiagnostics.action('tls.configure', () =>
-            proxy.configureTls(command.payload),
+          proxy.useCertificate(command.payload.ca);
+          return { type: 'tls.state', payload: proxy.tlsState() };
+        });
+      case 'tls.startDecryption':
+        return this.withProxy(async (proxy) => {
+          await this.coreDiagnostics.action('tls.startDecryption', () =>
+            proxy.startHttpsDecryption(),
           );
+          return { type: 'tls.state', payload: proxy.tlsState() };
+        });
+      case 'tls.stopDecryption':
+        return this.withProxy(async (proxy) => {
+          proxy.stopHttpsDecryption();
+          return { type: 'tls.state', payload: proxy.tlsState() };
+        });
+      case 'tls.replaceInsecureHosts':
+        return this.withWorkspace(async (workspaceService) => {
+          const hosts = await this.coreDiagnostics.action(
+            'tls.replaceInsecureHosts',
+            async () => {
+              // 持久化与生效同属这一次用户操作，不让 Main 再绕一圈下发。
+              const saved = workspaceService.saveInsecureHosts(command.payload.hosts);
+              await this.proxyService?.replaceInsecureHosts(saved);
+              return saved;
+            },
+          );
+          return { type: 'tls.insecureHosts', payload: { hosts } };
+        });
+      case 'tls.getInsecureHosts':
+        return this.withWorkspace(async (workspaceService) => ({
+          type: 'tls.insecureHosts',
+          payload: { hosts: workspaceService.loadInsecureHosts() },
+        }));
+      case 'tls.saveDecryptionPreference':
+        return this.withWorkspace(async (workspaceService) => {
+          if (command.payload.enabled) {
+            workspaceService.enableDecryptionPreference();
+          } else {
+            workspaceService.disableDecryptionPreference();
+          }
           return {
-            type: 'tls.configured',
-            payload: { mitmEnabled: command.payload.ca !== null },
+            type: 'tls.decryptionPreference',
+            payload: { enabled: command.payload.enabled },
           };
         });
+      case 'tls.getDecryptionPreference':
+        return this.withWorkspace(async (workspaceService) => ({
+          type: 'tls.decryptionPreference',
+          payload: { enabled: workspaceService.loadDecryptionPreference() },
+        }));
       case 'breakpoint.resolve':
         return this.withBreakpoints((breakpointQueue) => {
           const state = breakpointQueue.resolve(
@@ -696,6 +749,9 @@ export class CoreApplication implements CoreRpcHost {
           ? this.breakpointQueue.list().map((entry) => ({
               id: entry.id,
               phase: entry.phase,
+              ...(entry.snapshot.exchangeId !== undefined
+                ? { exchangeId: entry.snapshot.exchangeId }
+                : {}),
               createdAt: entry.createdAt,
               deadline: entry.deadline,
               ruleName: entry.snapshot.ruleName,
@@ -715,11 +771,16 @@ export class CoreApplication implements CoreRpcHost {
           payload: {
             breakpoints,
             enabled: this.ruleService?.breakpointsEnabled ?? true,
+            autoContinued: this.breakpointQueue?.autoContinued ?? 0,
           },
         };
       }
       case 'breakpoint.configure':
-        this.ruleService?.setBreakpointsEnabled(command.payload.enabled);
+        if (command.payload.enabled) {
+          this.ruleService?.enableBreakpoints();
+        } else {
+          this.ruleService?.disableBreakpoints();
+        }
         return {
           type: 'breakpoint.config',
           payload: {
@@ -756,7 +817,7 @@ export class CoreApplication implements CoreRpcHost {
   }
 
   /**
-   * 打开工作区配置库并把持久规则集热加载进引擎，使重启后规则立即生效。
+   * 打开工作区配置库并把持久规则集与 TLS passthrough 名单热加载进来，使重启后立即生效。
    * 调用方：start；失败只使 rules/collection command 失败，不使 CoreProcess 退出。
    */
   private initializeWorkspace(): void {
@@ -773,6 +834,19 @@ export class CoreApplication implements CoreRpcHost {
           revision: ruleSet.revision,
           rules: collectLeaves(ruleSet.nodes).length,
         },
+      });
+      const tlsPassthrough = this.workspaceService.loadTlsPassthroughSettings();
+      this.proxyService?.replacePassthroughHosts(tlsPassthrough.hosts);
+      this.coreDiagnostics.info('tls-passthrough.loaded', {
+        attributes: {
+          revision: tlsPassthrough.revision,
+          hosts: tlsPassthrough.hosts.length,
+        },
+      });
+      const insecureHosts = this.workspaceService.loadInsecureHosts();
+      void this.proxyService?.replaceInsecureHosts(insecureHosts);
+      this.coreDiagnostics.info('tls-insecure-hosts.loaded', {
+        attributes: { hosts: insecureHosts.length },
       });
     } catch (error: unknown) {
       this.coreDiagnostics.error('workspace.init.failed', {

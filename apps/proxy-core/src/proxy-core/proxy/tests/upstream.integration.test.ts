@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProxyService } from '../entry';
 import { CaptureEventQueue } from '../internal/capture-event-queue';
 import { RecordingCaptureService } from './test-capture-service';
+import { decryptWithCertificate } from './test-tls-setup';
 
 interface StoppableServer {
   readonly port: number;
@@ -270,11 +271,7 @@ describe('ProxyService upstream proxy chaining without MITM', () => {
 
   it('keeps configured passthrough hosts on upstream CONNECT while MITM is enabled', async () => {
     const ca = await generateCACertificate();
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost'],
-      passthroughHosts: ['localhost'],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost'], ['localhost']);
     proxyService.setUpstreamProxy({
       proxyUrl: `http://127.0.0.1:${upstream.port}`,
     });

@@ -14,6 +14,12 @@ import type {
 /** Rule row chip kind；复用 RuleRow.module.css 的着色类。 */
 export type ChipKind = 'map' | 'remote' | 'rewrite' | 'block' | 'flow' | 'brk';
 
+/**
+ * 从 Capture 行快速创建断点时的匹配粒度。
+ * 更细的条件（method 限定、多条件 AND、超时策略）走 Rules 编辑器，不在这里展开。
+ */
+export type BreakpointScope = 'endpoint' | 'path-prefix' | 'host';
+
 /** 一条规则里还没填完的地方；纯 Renderer 本地概念，不进 wire。 */
 export interface RuleIssue {
   /** 描述缺什么的 i18n key。 */

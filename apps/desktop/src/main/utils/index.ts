@@ -23,7 +23,6 @@ import type {
   RendererDiagnosticReport,
   SessionQueryRequest,
   CaptureUsage,
-  TlsPassthroughSettingsStatus,
   WebSocketFrameQuery,
 } from '../../shared/desktop-api';
 import type { SystemProxyCommandRunner } from '../interfaces';
@@ -76,42 +75,6 @@ export function toCoreSessionQuery(value: unknown): SessionQueryRequest {
 /** Preserve trusted per-host exceptions exactly as supplied by the Renderer. */
 export function toInsecureHosts(value: unknown): string[] {
   return value as string[];
-}
-
-/** Compare TLS passthrough patterns by their normalized set semantics. */
-export function areTlsPassthroughHostsEquivalent(
-  left: readonly string[],
-  right: readonly string[],
-): boolean {
-  const normalize = (hosts: readonly string[]): string[] =>
-    [...new Set(hosts.map((host) => host.trim().toLowerCase()))].sort();
-  const normalizedLeft = normalize(left);
-  const normalizedRight = normalize(right);
-  return normalizedLeft.length === normalizedRight.length
-    && normalizedLeft.every((host, index) => host === normalizedRight[index]);
-}
-
-/** Add the process-relative restart state to one persisted passthrough document. */
-export function toTlsPassthroughSettingsStatus(
-  settings: TlsPassthroughSettings,
-  activeHosts: readonly string[] | null,
-): TlsPassthroughSettingsStatus {
-  return {
-    ...settings,
-    restartRequired: activeHosts !== null
-      && !areTlsPassthroughHostsEquivalent(activeHosts, settings.hosts),
-  };
-}
-
-/** Select the active snapshot, or persisted hosts when an explicit restart applies changes. */
-export function selectTlsPassthroughHostsForProvision(
-  activeHosts: readonly string[] | null,
-  persistedHosts: readonly string[],
-  applyPersistedHosts: boolean,
-): string[] {
-  return [
-    ...(applyPersistedHosts ? persistedHosts : activeHosts ?? persistedHosts),
-  ];
 }
 
 /** Preserve trusted body range values without imposing an IPC allocation limit. */

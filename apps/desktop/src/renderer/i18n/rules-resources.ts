@@ -63,6 +63,7 @@ export const rulesEnglishMessages = {
   'rules.delay': 'Delay',
   'rules.latency': 'latency',
   'rules.breakpoint': 'Breakpoint',
+  'rules.noConditions': 'No conditions',
   'rules.pauseEdit': 'pause & edit',
   'rules.rewrite': 'Rewrite',
   'rules.header': 'header',

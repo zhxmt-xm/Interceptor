@@ -1,2 +1,2 @@
-export { BreakpointsMain } from './BreakpointsMain/BreakpointsMain';
-export { BreakpointsStatusbar } from './BreakpointsStatusbar/BreakpointsStatusbar';
+export { useBreakpoints } from './data/useBreakpoints';
+export { useBreakpointsStore } from './data/breakpointsStore';

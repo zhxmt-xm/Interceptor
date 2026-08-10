@@ -119,6 +119,18 @@ function positionPopovers(root: HTMLElement): void {
   }
 }
 
+/** 一个分组选了 All 以外的项就算已应用；工具栏 badge 与整体 hasFilter 都由此派生。 */
+function syncFilterBadge(root: HTMLElement): boolean {
+  let applied = false;
+  root.querySelectorAll<HTMLElement>('.fgrp').forEach((group) => {
+    const rows = Array.from(group.querySelectorAll<HTMLElement>('.fitem'));
+    const active = rows.slice(1).some((row) => row.classList.contains('on'));
+    group.classList.toggle('applied', active);
+    applied ||= active;
+  });
+  return applied;
+}
+
 function syncFixture(root: HTMLElement, state: DesignState): void {
   setTab(root, '[data-tabs="insp"] > span', '.tp[data-tab]', 'tab', state.tab);
   setTab(root, '[data-tabs="creq"] > span', '.creq > .cpane', 'ctab', state.composerTab);
@@ -128,8 +140,6 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
   if (search) search.textContent = state.search;
   const hostInput = root.querySelector<HTMLInputElement>('[data-tls-host-input]');
   if (hostInput && hostInput.value !== state.tlsHostInput) hostInput.value = state.tlsHostInput;
-  root.querySelectorAll<HTMLElement>('.fitem[data-demo]').forEach((row) => row.classList.toggle('on', row.dataset.demo === (state.filterActive ? 'on' : 'off')));
-  root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === (state.ruleFilter ? 'stub' : 'all')));
   const openGroups = new Set<string>();
   if (state.filterActive) { openGroups.add('application'); openGroups.add('protocol'); }
   if (state.ruleFilter || state.ruleOptions === 'empty') openGroups.add('rule');
@@ -205,26 +215,26 @@ export function useDesignFixtureAdapter(
     return () => window.clearTimeout(timer);
   }, [rootRef, state, updateState]);
 
+  // 只在场景字段变化时重置 facet 选中态；跟着整个 state 重置会把用户的点击立刻抹掉。
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('.fitem[data-demo]').forEach((row) => row.classList.toggle('on', row.dataset.demo === (state.filterActive ? 'on' : 'off')));
+    root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === (state.ruleFilter ? 'stub' : 'all')));
+    updateState({ hasFilter: syncFilterBadge(root) });
+  }, [rootRef, state.filterActive, state.ruleFilter, updateState]);
+
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
     const dock = document.querySelector<HTMLElement>('.dock');
     let pendingAppContainerToggle: HTMLElement | null = null;
-    const initialTlsPatterns = currentTlsPatterns(root);
     const updateTlsPatterns = (patterns: readonly string[]): void => {
       const normalized = [...patterns].map((host) => host.trim().toLowerCase()).sort();
-      const changed = normalized.length !== initialTlsPatterns.length || normalized.some((host, index) => host !== initialTlsPatterns[index]);
-      updateState({ tlsPatterns: normalized, tlsPassthrough: normalized.length ? 'ready' : 'empty', tlsRestart: changed ? 'required' : '' });
+      updateState({ tlsPatterns: normalized, tlsPassthrough: normalized.length ? 'ready' : 'empty' });
     };
     const syncFilter = (): void => {
-      let applied = false;
-      root.querySelectorAll<HTMLElement>('.fgrp').forEach((group) => {
-        const rows = Array.from(group.querySelectorAll<HTMLElement>('.fitem'));
-        const active = rows.slice(1).some((row) => row.classList.contains('on'));
-        group.classList.toggle('applied', active);
-        applied ||= active;
-      });
-      updateState({ hasFilter: applied });
+      updateState({ hasFilter: syncFilterBadge(root) });
     };
     const clearFilterGroup = (group: HTMLElement): void => {
       group.querySelectorAll('.fitem').forEach((row, index) => row.classList.toggle('on', index === 0));
@@ -289,12 +299,6 @@ export function useDesignFixtureAdapter(
       const tlsRemove = closest(event.target, '[data-tls-host-remove]')?.closest<HTMLElement>('[data-tls-host-pattern]');
       if (tlsRemove) return updateTlsPatterns(currentTlsPatterns(root).filter((host) => host !== tlsRemove.dataset.tlsHostPattern?.toLowerCase()));
       if (closest(event.target, '[data-tls-compatibility-dismiss]')) return patch({ tlsCompatibility: '', overlay: '' });
-      const tlsRestart = closest(event.target, '[data-tls-restart]');
-      if (tlsRestart instanceof HTMLButtonElement) {
-        tlsRestart.disabled = true;
-        const label = tlsRestart.querySelector('span'); if (label) label.textContent = 'Restarting…';
-        return;
-      }
       if (closest(event.target, '[data-tls-compatibility-add-dialog]')) {
         const hosts = Array.from(root.querySelectorAll<HTMLElement>('[data-tls-compatibility-host]'))
           .filter((row) => row.style.display !== 'none').map((row) => row.dataset.tlsCompatibilityHost ?? '');

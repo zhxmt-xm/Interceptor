@@ -79,7 +79,6 @@ export interface DesignState {
   readonly appContainers: string;
   readonly tlsPassthrough: string;
   readonly tlsPatterns: readonly string[] | null;
-  readonly tlsRestart: string;
   readonly tlsHostInput: string;
   readonly tlsCompatibility: string;
   readonly tlsCompatibilityHosts: readonly string[] | null;

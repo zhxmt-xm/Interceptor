@@ -7,6 +7,7 @@ import {
   FunnelX,
   Loader2,
   PanelLeft,
+  Pause,
   Search,
   Trash2,
   Upload,
@@ -17,7 +18,9 @@ import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, Flyout, IconButton } from '../../../components';
+import { useBreakpointsStore } from '../../breakpoints';
 import { useRulesStore } from '../../rules/data/rulesStore';
+import { BreakpointManager } from '../BreakpointManager/BreakpointManager';
 import { useCaptureStore } from '../data/captureStore';
 import { toggleCapture } from '../data/useCaptureData';
 import type { CaptureTransferAction } from '../interfaces';
@@ -25,8 +28,18 @@ import { hasActiveFilter, visibleCaptureRows } from '../utils';
 import styles from './CaptureListbar.module.css';
 import { FileCommand } from './FileCommand';
 
-/** Capture 列表工具栏：横跨列表与 Inspector，承载录制、搜索、筛选开关与文件命令。 */
-export function CaptureListbar(): React.JSX.Element {
+export interface CaptureListbarProps {
+  /** 打开 Rules 工作区并选中一条规则。 */
+  onOpenRule: (ruleId: string) => void;
+  /** 打开 Rules 工作区做精细编辑。 */
+  onOpenRules: () => void;
+}
+
+/** Capture 列表工具栏：横跨列表与 Inspector，承载录制、断点、搜索、筛选开关与文件命令。 */
+export function CaptureListbar({
+  onOpenRule,
+  onOpenRules,
+}: CaptureListbarProps): React.JSX.Element {
   const { t } = useTranslation();
   const rows = useCaptureStore((state) => state.rows);
   const filter = useCaptureStore((state) => state.filter);
@@ -43,6 +56,9 @@ export function CaptureListbar(): React.JSX.Element {
   const [fileMenu, setFileMenu] = useState<'import' | 'export' | null>(null);
   const [recordingPending, setRecordingPending] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const breakpointsEnabled = useBreakpointsStore((state) => state.enabled);
+  const pausedCount = useBreakpointsStore((state) => state.breakpoints.length);
 
   const visibleCount = useMemo(() => visibleCaptureRows(rows, filter).length, [rows, filter]);
   const filtered = hasActiveFilter(filter);
@@ -120,6 +136,46 @@ export function CaptureListbar(): React.JSX.Element {
             <span>{capturing ? t('capture.recording') : t('capture.paused')}</span>
           </button>
         </Tooltip>
+        <Flyout
+          open={managerOpen}
+          onOpenChange={setManagerOpen}
+          placement="bottomLeft"
+          content={
+            <BreakpointManager
+              onOpenRule={(ruleId) => {
+                setManagerOpen(false);
+                onOpenRule(ruleId);
+              }}
+              onOpenAdvanced={() => {
+                setManagerOpen(false);
+                onOpenRules();
+              }}
+              onClose={() => setManagerOpen(false)}
+            />
+          }
+        >
+          <Tooltip
+            title={
+              breakpointsEnabled
+                ? t('breakpoints.pausedCount', { count: pausedCount })
+                : t('breakpoints.matchState', { state: t('breakpoints.off') })
+            }
+            mouseEnterDelay={0.4}
+          >
+            <button
+              type="button"
+              className={cx(styles.breakpoints, !breakpointsEnabled && styles.breakpointsOff)}
+              aria-label={t('breakpoints.managerTitle')}
+              aria-expanded={managerOpen}
+              data-automation-id={AUTOMATION_IDS.capture.breakpointManager}
+            >
+              <Pause size={14} strokeWidth={2} />
+              {pausedCount > 0 ? (
+                <span className={styles.breakpointsCount}>{pausedCount}</span>
+              ) : null}
+            </button>
+          </Tooltip>
+        </Flyout>
         <IconButton
           icon={Trash2}
           size="sm"

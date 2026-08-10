@@ -3,7 +3,6 @@ import {
   GitBranch,
   Globe,
   type LucideIcon,
-  Pause,
   Send,
   Settings,
   Terminal,
@@ -21,7 +20,6 @@ export type ViewId =
   | 'capture'
   | 'rules'
   | 'composer'
-  | 'breakpoints'
   | 'diagnostics'
   | 'settings';
 
@@ -29,7 +27,6 @@ const NAV = [
   { id: 'capture', labelKey: 'sidebar.capture', Icon: Activity },
   { id: 'rules', labelKey: 'sidebar.rulesMap', Icon: GitBranch },
   { id: 'composer', labelKey: 'sidebar.composer', Icon: Send },
-  { id: 'breakpoints', labelKey: 'sidebar.breakpoints', Icon: Pause },
   { id: 'diagnostics', labelKey: 'sidebar.diagnostics', Icon: Terminal },
 ] satisfies Array<{ id: ViewId; labelKey: string; Icon: LucideIcon }>;
 
@@ -51,6 +48,11 @@ interface SidebarProps {
   lang: LangId;
   onLangChange: (lang: LangId) => void;
   coreStatus: CoreProcessStatus;
+  /**
+   * 当前被挂起的真实流量数。
+   * 断点入口在 Capture 内，但挂起的是真流量，在其他工作区也必须看得到。
+   */
+  pausedBreakpoints: number;
   sessionEndpoint?: string;
 }
 
@@ -63,6 +65,7 @@ export function Sidebar({
   lang,
   onLangChange,
   coreStatus,
+  pausedBreakpoints,
   sessionEndpoint = '127.0.0.1:8888',
 }: SidebarProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -94,6 +97,7 @@ export function Sidebar({
           label={t(labelKey)}
           active={activeView === id}
           collapsed={collapsed}
+          badge={id === 'capture' ? pausedBreakpoints : undefined}
           onClick={() => onSelect(id)}
           automationId={AUTOMATION_IDS.shell.workspace[id]}
         />

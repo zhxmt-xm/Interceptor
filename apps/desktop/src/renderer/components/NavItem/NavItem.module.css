@@ -61,6 +61,22 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent);
   flex: 0 0 auto;
 }
+.badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--yellow);
+  color: var(--sidebar);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
 .avatar {
   width: 24px;
   height: 24px;
@@ -98,5 +114,12 @@
   margin: 0;
   width: 8px;
   height: 8px;
+  box-shadow: 0 0 0 2px var(--sidebar);
+}
+.collapsed .badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  margin: 0;
   box-shadow: 0 0 0 2px var(--sidebar);
 }

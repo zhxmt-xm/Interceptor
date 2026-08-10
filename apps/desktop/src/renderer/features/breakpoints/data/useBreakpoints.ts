@@ -72,7 +72,12 @@ export async function setBreakOnMatch(enabled: boolean): Promise<void> {
   await refreshBreakpoints();
 }
 
-/** Breakpoints 工作区数据管线：挂载后每秒轮询等待断点快照。挂载一次。 */
+/**
+ * 断点感知数据管线：挂载后每秒轮询等待断点快照。
+ *
+ * 必须由 App 壳挂载一次：断点挂起的是真实流量，如果只在 Breakpoints 页面轮询，
+ * 用户在其他工作区时浏览器会莫名卡死再自己恢复，全程零提示。
+ */
 export function useBreakpoints(): void {
   useEffect(() => {
     void refreshBreakpoints();

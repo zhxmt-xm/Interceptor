@@ -16,8 +16,10 @@ import {
 
 import { ActionExecutor } from './internal/action-executor';
 import { BreakpointQueue } from './internal/breakpoint-queue';
+import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
   BreakpointOutcome,
+  BreakpointPhase,
   BreakpointSnapshot,
   CompiledRule,
   MatchContext,
@@ -48,6 +50,8 @@ export class RuleService {
   private readonly options: RuleServiceOptions;
   /** 请求与响应 action 执行器。 */
   private readonly actionExecutor: ActionExecutor;
+  /** 断点队列溢出等数据面事件的诊断汇。 */
+  private diagnostics: DiagnosticsRecorder | null = null;
 
   /** 绑定断点队列并固定通知配置。 */
   constructor(
@@ -57,6 +61,11 @@ export class RuleService {
     this.breakpointQueue = breakpointQueue;
     this.options = options;
     this.actionExecutor = new ActionExecutor();
+  }
+
+  /** 注入诊断汇；调用方：CoreApplication 在 diagnostics 装配后调用一次。 */
+  attachDiagnostics(sink: DiagnosticsRecorder): void {
+    this.diagnostics = sink;
   }
 
   /**
@@ -90,9 +99,14 @@ export class RuleService {
     return this.breakpointsOn;
   }
 
-  /** 设置全局断点命中开关。 */
-  setBreakpointsEnabled(enabled: boolean): void {
-    this.breakpointsOn = enabled;
+  /** 开启全局断点命中。调用方：breakpoint.configure command handler。 */
+  enableBreakpoints(): void {
+    this.breakpointsOn = true;
+  }
+
+  /** 关闭全局断点命中，命中 breakpoint action 直接放行。调用方同上。 */
+  disableBreakpoints(): void {
+    this.breakpointsOn = false;
   }
 
   /** 显式 WebSocket 消息断点；由 Proxy bridge 在转发消息前调用。 */
@@ -103,14 +117,24 @@ export class RuleService {
     if (!this.breakpointsOn) {
       return { state: 'continued' };
     }
-    const { id, outcome } = this.breakpointQueue.suspend(
+    const suspension = this.breakpointQueue.suspend(
       'websocket',
       timeoutMs,
       'continue',
       snapshot,
     );
-    this.options.onBreakpointHit?.({ id, phase: 'websocket' });
-    return outcome;
+    if (!suspension) {
+      this.reportQueueFull('websocket');
+      return { state: 'continued' };
+    }
+    this.options.onBreakpointHit?.({
+      id: suspension.id,
+      phase: 'websocket',
+      ...(snapshot.exchangeId !== undefined
+        ? { exchangeId: snapshot.exchangeId }
+        : {}),
+    });
+    return suspension.outcome;
   }
 
   /**
@@ -119,6 +143,7 @@ export class RuleService {
   async evaluateRequest(
     context: MatchContext,
     state: MutableRequestState,
+    exchangeId?: string,
   ): Promise<RequestEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
@@ -136,7 +161,7 @@ export class RuleService {
           const resolved = await this.awaitBreakpoint(
             'request',
             action,
-            RuleUtils.buildRequestSnapshot(compiled.rule.name, state),
+            RuleUtils.buildRequestSnapshot(compiled.rule.name, state, exchangeId),
           );
           hits.push(this.toHit(compiled.rule, 'request', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
@@ -184,6 +209,7 @@ export class RuleService {
   async evaluateResponse(
     context: MatchContext,
     state: MutableResponseState,
+    exchangeId?: string,
   ): Promise<ResponseEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
@@ -201,7 +227,7 @@ export class RuleService {
           const resolved = await this.awaitBreakpoint(
             'response',
             action,
-            RuleUtils.buildResponseSnapshot(compiled.rule.name, state),
+            RuleUtils.buildResponseSnapshot(compiled.rule.name, state, exchangeId),
           );
           hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));
           if (resolved.state === 'edited' && resolved.edit) {
@@ -237,7 +263,7 @@ export class RuleService {
     return { kind: 'continue', hits, headerEffects, delayMs };
   }
 
-  /** 挂起规则断点并发布命中通知；关闭开关时直接继续。 */
+  /** 挂起规则断点并发布命中通知；关闭开关或队列已满时直接继续。 */
   private async awaitBreakpoint(
     phase: 'request' | 'response',
     action: { timeoutMs: number; onTimeout: 'continue' | 'drop' },
@@ -246,14 +272,35 @@ export class RuleService {
     if (!this.breakpointsOn) {
       return { state: 'continued' };
     }
-    const { id, outcome } = this.breakpointQueue.suspend(
+    const suspension = this.breakpointQueue.suspend(
       phase,
       action.timeoutMs,
       action.onTimeout,
       snapshot,
     );
-    this.options.onBreakpointHit?.({ id, phase });
-    return outcome;
+    if (!suspension) {
+      this.reportQueueFull(phase);
+      return { state: 'continued' };
+    }
+    this.options.onBreakpointHit?.({
+      id: suspension.id,
+      phase,
+      ...(snapshot.exchangeId !== undefined
+        ? { exchangeId: snapshot.exchangeId }
+        : {}),
+    });
+    return suspension.outcome;
+  }
+
+  /** 队列已满导致自动放行时留痕，使用户能解释为什么这次没有停下来。 */
+  private reportQueueFull(phase: BreakpointPhase): void {
+    this.diagnostics?.warn('breakpoint.queue-full', {
+      attributes: {
+        phase,
+        pending: this.breakpointQueue.size,
+        autoContinued: this.breakpointQueue.autoContinued,
+      },
+    });
   }
 
   /** 构造不含敏感值的规则命中审计记录。 */

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  areTlsPassthroughHostsEquivalent,
-  selectTlsPassthroughHostsForProvision,
   toBodyDecodeOptions,
   toBodyExportRequest,
   toByteRange,
@@ -15,7 +13,6 @@ import {
   toRendererDiagnosticReport,
   toRendererDiagnosticRecord,
   toSafeBodyFileName,
-  toTlsPassthroughSettingsStatus,
   toWebSocketFrameQuery,
 } from '..';
 
@@ -109,62 +106,6 @@ describe('renderer utils', () => {
   it('does not trim, deduplicate, or limit insecure hosts', () => {
     const hosts = [' example.com ', 'example.com', 'example.com'];
     expect(toInsecureHosts(hosts)).toBe(hosts);
-  });
-
-  it('compares TLS passthrough hosts by normalized set semantics', () => {
-    const activeHosts = ['*.example.com'];
-    const afterAdd = [...activeHosts, 'api.example.com'];
-    const afterUndo = afterAdd.filter((host) => host !== 'api.example.com');
-    expect(areTlsPassthroughHostsEquivalent(activeHosts, afterAdd)).toBe(false);
-    expect(areTlsPassthroughHostsEquivalent(activeHosts, afterUndo)).toBe(true);
-    expect(areTlsPassthroughHostsEquivalent(
-      ['*.example.com', 'api.example.com'],
-      [' API.EXAMPLE.COM ', '*.example.com', '*.example.com'],
-    )).toBe(true);
-    expect(areTlsPassthroughHostsEquivalent(
-      ['*.example.com'],
-      ['*.example.com', 'api.example.com'],
-    )).toBe(false);
-    expect(areTlsPassthroughHostsEquivalent(
-      ['*.example.com', 'api.example.com'],
-      ['*.example.com'],
-    )).toBe(false);
-  });
-
-  it('requires restart only when a provisioned list differs from persistence', () => {
-    const settings = { revision: 3, hosts: ['*.example.com'] };
-    expect(toTlsPassthroughSettingsStatus(settings, null)).toEqual({
-      ...settings,
-      restartRequired: false,
-    });
-    expect(toTlsPassthroughSettingsStatus(settings, ['*.example.com'])).toEqual({
-      ...settings,
-      restartRequired: false,
-    });
-    expect(toTlsPassthroughSettingsStatus(settings, [])).toEqual({
-      ...settings,
-      restartRequired: true,
-    });
-  });
-
-  it('applies persisted TLS hosts only for an explicit restart', () => {
-    const activeHosts = ['old.example.com'];
-    const persistedHosts = ['new.example.com'];
-    expect(selectTlsPassthroughHostsForProvision(
-      activeHosts,
-      persistedHosts,
-      false,
-    )).toEqual(activeHosts);
-    expect(selectTlsPassthroughHostsForProvision(
-      activeHosts,
-      persistedHosts,
-      true,
-    )).toEqual(persistedHosts);
-    expect(selectTlsPassthroughHostsForProvision(
-      null,
-      persistedHosts,
-      false,
-    )).toEqual(persistedHosts);
   });
 
   it('passes Diagnostics and Renderer report payloads through', () => {

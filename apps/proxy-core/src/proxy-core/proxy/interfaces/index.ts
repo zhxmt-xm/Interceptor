@@ -207,6 +207,7 @@ export interface PendingTunnelCapture {
   readonly protocol: string;
 }
 
+/** 仅首次启动时生效；代理已在监听后不支持迁移地址。 */
 export interface ProxyStartOptions {
   readonly host?: string;
   readonly port?: number;
@@ -228,7 +229,10 @@ export interface ProxyRuntimeStatus {
 }
 
 export interface ProxyTlsConfig {
+  /** 当前可用的 CA 材料；未生成或未信任时为 null。 */
   readonly ca: { readonly key: string; readonly cert: string } | null;
+  /** 是否对 HTTPS 解密；关闭时全部 host 走隧道。 */
+  readonly mitm: boolean;
   readonly insecureHosts: readonly string[];
   readonly passthroughHosts: readonly string[];
 }

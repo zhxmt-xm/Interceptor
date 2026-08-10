@@ -1,11 +1,5 @@
 .title { display: flex; align-items: center; gap: 9px; margin: 0 0 3px; font-size: 16px; font-weight: 640; letter-spacing: 0; }
 .desc { margin-bottom: 20px; color: var(--text-3); font-size: 12.5px; }
-.warning { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--yellow) 34%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--yellow) 9%, var(--panel)); }
-.warning > svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; color: var(--yellow); }
-.warning > div { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.warning b { color: var(--text); font-size: 12px; font-weight: 600; }
-.warning span { color: var(--text-2); font-size: 11.5px; line-height: 1.45; }
-.restartButton { width: 170px; flex: 0 0 auto; justify-content: center; white-space: nowrap; }
 .hostIcon { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; color: var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); }
 .hostIcon svg { width: 15px; height: 15px; }
 .addRow { display: flex; align-items: flex-end; gap: 9px; margin-bottom: 7px; }

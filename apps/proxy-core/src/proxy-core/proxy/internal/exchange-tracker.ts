@@ -38,6 +38,8 @@ export class ExchangeTracker {
   private readonly entries = new Map<string, TrackedExchange>();
   /** Exchange 尚未建立时暂存的规则结果。 */
   private readonly orphanRuleOutcomes = new Map<string, OrphanRuleOutcome>();
+  /** 规则钩子先于 request-initiated 询问时预留的 Exchange ID，beginRequest 复用后移除。 */
+  private readonly reservedExchangeIds = new Map<string, string>();
   /** WebSocket frame 写入前等待 Exchange 落库的解析器。 */
   private readonly exchangeReady = new Map<
     string,
@@ -87,10 +89,36 @@ export class ExchangeTracker {
   }
 
   /**
+   * 同步取当前请求所属 Exchange 的 ID。
+   *
+   * 规则钩子可能先于 `request-initiated` 到达，此时 Exchange 还没建立，所以首次询问就
+   * 预留一个 ID 给 `beginRequest` 复用，保证挂起的断点与随后出现的 Capture 行是同一个。
+   * 未在记录时返回 undefined —— 这次请求根本不会有 Capture 行可指。
+   */
+  exchangeIdFor(requestId: string): string | undefined {
+    if (!this.recording || !this.sessionId) {
+      return undefined;
+    }
+    const entry = this.entries.get(requestId);
+    if (entry) {
+      return entry.exchangeId;
+    }
+    const reserved = this.reservedExchangeIds.get(requestId);
+    if (reserved) {
+      return reserved;
+    }
+    const exchangeId = `ex-${ProxyUtils.cryptoRandomId()}`;
+    this.reservedExchangeIds.set(requestId, exchangeId);
+    return exchangeId;
+  }
+
+  /**
    * 请求头到达：立即创建 Exchange、落库并推送，使请求在 UI 中即时可见。
    * 这是唯一的 Exchange 创建入口。
    */
   beginRequest(request: InitiatedRequest): void {
+    const reservedExchangeId = this.reservedExchangeIds.get(request.id);
+    this.reservedExchangeIds.delete(request.id);
     if (!this.recording || !this.sessionId || this.entries.has(request.id)) {
       return;
     }
@@ -103,7 +131,7 @@ export class ExchangeTracker {
       'content-encoding',
     );
     const entry: TrackedExchange = {
-      exchangeId: `ex-${ProxyUtils.cryptoRandomId()}`,
+      exchangeId: reservedExchangeId ?? `ex-${ProxyUtils.cryptoRandomId()}`,
       generation: this.generation,
       startedAt,
       secure: target.scheme === 'https' || target.scheme === 'wss',
@@ -519,6 +547,24 @@ export class ExchangeTracker {
     }
     this.entries.clear();
     this.orphanRuleOutcomes.clear();
+    this.reservedExchangeIds.clear();
+    for (const waiter of this.exchangeReady.values()) {
+      waiter.resolve(null);
+    }
+    this.exchangeReady.clear();
+  }
+
+  /**
+   * 终结全部在途 Exchange 并保留已收到的正文；调用方：原端口重建监听器。
+   * 与 reset 不同，代际、已捕获记录与计数都保持不变。
+   */
+  abortInFlight(errorCode: string): void {
+    const completedAt = Date.now();
+    for (const [requestId, entry] of [...this.entries]) {
+      entry.requestPhase = 'aborted';
+      entry.responsePhase = 'aborted';
+      this.finishExchange(requestId, entry, 'aborted', completedAt, { errorCode });
+    }
     for (const waiter of this.exchangeReady.values()) {
       waiter.resolve(null);
     }

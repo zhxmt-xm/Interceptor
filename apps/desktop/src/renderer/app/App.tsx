@@ -11,7 +11,7 @@ import type {
 import { AUTOMATION_IDS } from '../../shared/automation-ids';
 import type { LanguageId } from '../i18n/languages';
 import { getLanguageDefinition, resolveLanguageId } from '../i18n/languages';
-import { BreakpointsMain, BreakpointsStatusbar } from '../features/breakpoints';
+import { useBreakpoints, useBreakpointsStore } from '../features/breakpoints';
 import {
   CaptureMain,
   ProxyReadinessDialog,
@@ -26,6 +26,7 @@ import {
   DiagnosticsStatusbar,
 } from '../features/diagnostics';
 import {
+  addBreakpointRule,
   addRequestRuleDraft,
   RulesMain,
   RulesStatusbar,
@@ -54,7 +55,6 @@ const VIEW_LABEL_KEYS: Record<ViewId, string> = {
   capture: 'sidebar.capture',
   rules: 'rules.title',
   composer: 'composer.title',
-  breakpoints: 'breakpoints.title',
   diagnostics: 'diagnostics.title',
   settings: 'settings.title',
 };
@@ -69,9 +69,20 @@ const initialCoreStatus: CoreProcessStatus = {
   detail: '',
 };
 
+/** 取该 exchange 的完整 URL；详情拿不到时用摘要拼一个可用的。 */
+async function resolveExchangeUrl(summary: CaptureExchangeSummary): Promise<string> {
+  const detail = await window.interceptor.getExchangeDetail(summary.id).catch(() => null);
+  const fallbackPath = summary.path?.startsWith('/')
+    ? summary.path
+    : `/${summary.path ?? ''}`;
+  return detail?.url
+    ?? `${summary.secure ? 'https' : 'http'}://${summary.host ?? ''}${fallbackPath}`;
+}
+
 export function App(): React.JSX.Element {
   useCaptureData();
   useRulesData();
+  useBreakpoints();
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(true);
@@ -83,6 +94,7 @@ export function App(): React.JSX.Element {
   }));
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
+  const pausedBreakpoints = useBreakpointsStore((state) => state.breakpoints.length);
   // The boot screen owns startup feedback, so the readiness dialog stays out of its way.
   const booting = useBootStore((state) => !state.dismissed);
 
@@ -153,16 +165,22 @@ export function App(): React.JSX.Element {
   const actions: FeatureActions = {
     createRequestRule: (summary, actionType, name) => {
       void (async () => {
-        const detail = await window.interceptor.getExchangeDetail(summary.id).catch(() => null);
-        const fallbackPath = summary.path?.startsWith('/')
-          ? summary.path
-          : `/${summary.path ?? ''}`;
-        const url = detail?.url
-          ?? `${summary.secure ? 'https' : 'http'}://${summary.host ?? ''}${fallbackPath}`;
-        if (await addRequestRuleDraft(name, url, actionType)) {
+        if (await addRequestRuleDraft(name, await resolveExchangeUrl(summary), actionType)) {
           setView('rules');
-    useEffect(() => GitHubAuthActions.subscribe(), []);
         }
+      })();
+    },
+    createBreakpoint: (summary, scope, name) => {
+      void (async () => {
+        const url = await resolveExchangeUrl(summary);
+        // Custom 要的是 method 限定、多条件与超时策略，那只有完整编辑器能表达。
+        if (scope === 'custom') {
+          if (await addRequestRuleDraft(name, url, 'breakpoint')) {
+            setView('rules');
+          }
+          return;
+        }
+        await addBreakpointRule(name, url, scope);
       })();
     },
     openRule: (ruleId) => {
@@ -172,6 +190,7 @@ export function App(): React.JSX.Element {
         }
       });
     },
+    openRules: () => setView('rules'),
     showRuleRequests: (ruleId) => {
       useCaptureStore.getState().filterByRule(ruleId);
       setView('capture');
@@ -194,6 +213,7 @@ export function App(): React.JSX.Element {
         lang={language}
         onLangChange={changeLanguage}
         coreStatus={coreStatus}
+        pausedBreakpoints={pausedBreakpoints}
       />
       <header className={styles.header}>
         <Tooltip title={t('capture.toggleSidebar')} mouseEnterDelay={0.4}>

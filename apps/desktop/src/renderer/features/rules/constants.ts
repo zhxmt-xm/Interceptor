@@ -47,3 +47,9 @@ export const TIMEOUT_POLICY_OPTIONS: SelectOption[] = [
   { value: 'continue', label: 'continue' },
   { value: 'drop', label: 'drop' },
 ];
+
+/**
+ * 新建断点 action 的默认超时。
+ * 断点挂起的是真实流量，Core 始终强制超时兑现，不存在无限期挂起。
+ */
+export const BREAKPOINT_TIMEOUT_MS = 30_000;

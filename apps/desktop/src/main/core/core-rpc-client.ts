@@ -65,7 +65,13 @@ export class CoreRpcClient {
     'proxy.status': 'proxy.status',
     'proxy.setRecording': 'proxy.status',
     'proxy.setUpstream': 'proxy.status',
-    'tls.configure': 'tls.configured',
+    'tls.useCertificate': 'tls.state',
+    'tls.startDecryption': 'tls.state',
+    'tls.stopDecryption': 'tls.state',
+    'tls.replaceInsecureHosts': 'tls.insecureHosts',
+    'tls.getInsecureHosts': 'tls.insecureHosts',
+    'tls.saveDecryptionPreference': 'tls.decryptionPreference',
+    'tls.getDecryptionPreference': 'tls.decryptionPreference',
   };
 
   private readonly createId: () => string;

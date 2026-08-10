@@ -3,18 +3,67 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   InterceptorDesktopApi,
   TlsCompatibilityEvent,
-  TlsPassthroughSettingsStatus,
+  TlsPassthroughSettings,
 } from '../../../../shared/desktop-api';
+import { settingsEnglishMessages } from '../../../i18n/settings-resources';
 import {
   TlsCompatibilityActions,
   useTlsCompatibilityStore,
 } from '../data/tlsCompatibilityStore';
+import { tlsCompatibilityReasonKey, tlsPassthroughPatternChoices } from '../utils';
 
-const activeSettings: TlsPassthroughSettingsStatus = {
+const activeSettings: TlsPassthroughSettings = {
   revision: 4,
   hosts: [],
-  restartRequired: false,
 };
+
+/** Mockttp 的 failureCause 全集；Core 现在原样上报，UI 必须每种都有文案。 */
+const allReasons: TlsCompatibilityEvent['reason'][] = [
+  'cert-rejected',
+  'closed',
+  'reset',
+  'no-shared-cipher',
+  'handshake-timeout',
+  'unknown',
+];
+
+describe('tlsCompatibilityReasonKey', () => {
+  it.each(allReasons)('describes the %s handshake failure', (reason) => {
+    const key = tlsCompatibilityReasonKey(reason);
+    expect(settingsEnglishMessages).toHaveProperty(key);
+  });
+
+  it('gives every reason its own description', () => {
+    const keys = allReasons.map(tlsCompatibilityReasonKey);
+    expect(new Set(keys).size).toBe(allReasons.length);
+  });
+});
+
+describe('tlsPassthroughPatternChoices', () => {
+  it('offers the exact host first, then one wildcard per parent domain', () => {
+    expect(tlsPassthroughPatternChoices('afdfp-rdgateway-r0.wvd.microsoft.com')).toEqual([
+      'afdfp-rdgateway-r0.wvd.microsoft.com',
+      '*.wvd.microsoft.com',
+      '*.microsoft.com',
+    ]);
+  });
+
+  it('never offers a top-level wildcard that would release an entire suffix', () => {
+    expect(tlsPassthroughPatternChoices('windows365.microsoft.com')).toEqual([
+      'windows365.microsoft.com',
+      '*.microsoft.com',
+    ]);
+    expect(tlsPassthroughPatternChoices('example.com')).toEqual(['example.com']);
+  });
+
+  it('normalizes case and surrounding whitespace', () => {
+    expect(tlsPassthroughPatternChoices('  RDWeb.WVD.Microsoft.com ')).toEqual([
+      'rdweb.wvd.microsoft.com',
+      '*.wvd.microsoft.com',
+      '*.microsoft.com',
+    ]);
+  });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -42,10 +91,9 @@ describe('TlsCompatibilityActions', () => {
       event('windows365.microsoft.com', 2_000),
       event('afdfp-rdgateway-r0.wvd.microsoft.com', 3_000, 'cert-rejected'),
     ];
-    const savedSettings: TlsPassthroughSettingsStatus = {
+    const savedSettings: TlsPassthroughSettings = {
       revision: 5,
       hosts: events.map((item) => item.host),
-      restartRequired: true,
     };
     const interceptor = {
       getTlsPassthroughSettings: vi.fn(async () => activeSettings),
@@ -57,7 +105,9 @@ describe('TlsCompatibilityActions', () => {
     vi.stubGlobal('window', { interceptor });
     events.forEach((item) => useTlsCompatibilityStore.getState().apply(item));
 
-    await expect(TlsCompatibilityActions.addHosts(events)).resolves.toEqual({
+    await expect(
+      TlsCompatibilityActions.addPatterns(events.map((item) => item.host), events),
+    ).resolves.toEqual({
       ok: true,
       settings: savedSettings,
     });
@@ -92,7 +142,6 @@ describe('TlsCompatibilityActions', () => {
     const settings = {
       ...activeSettings,
       hosts: ['*.wvd.microsoft.com'],
-      restartRequired: true,
     };
     const interceptor = {
       getTlsPassthroughSettings: vi.fn(async () => settings),
@@ -101,13 +150,15 @@ describe('TlsCompatibilityActions', () => {
         settings: {
           revision: 5,
           hosts: ['*.wvd.microsoft.com', uncovered.host],
-          restartRequired: true,
         },
       })),
     } as unknown as InterceptorDesktopApi;
     vi.stubGlobal('window', { interceptor });
 
-    await TlsCompatibilityActions.addHosts([covered, uncovered]);
+    await TlsCompatibilityActions.addPatterns(
+      [covered.host, uncovered.host],
+      [covered, uncovered],
+    );
 
     expect(interceptor.replaceTlsPassthroughSettings).toHaveBeenCalledWith(
       4,
@@ -130,14 +181,13 @@ describe('TlsCompatibilityActions', () => {
         settings: {
           revision: 5,
           hosts: [displayed.host],
-          restartRequired: true,
         },
       })),
     } as unknown as InterceptorDesktopApi;
     vi.stubGlobal('window', { interceptor });
     useTlsCompatibilityStore.getState().apply(displayed);
 
-    await TlsCompatibilityActions.addHosts([displayed]);
+    await TlsCompatibilityActions.addPatterns([displayed.host], [displayed]);
 
     expect(useTlsCompatibilityStore.getState().events).toEqual([
       newerSameHost,

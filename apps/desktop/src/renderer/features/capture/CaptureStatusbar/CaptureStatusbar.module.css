@@ -22,6 +22,14 @@
   justify-self: end;
 }
 
+.paused {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--yellow);
+  white-space: nowrap;
+}
+
 .dot {
   width: 7px;
   height: 7px;

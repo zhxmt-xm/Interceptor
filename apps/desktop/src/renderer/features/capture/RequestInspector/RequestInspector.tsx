@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, IconButton, MethodBadge, sizeLabel, StatusBadge, useClipboardCopy } from '../../../components';
+import { useBreakpointsStore } from '../../breakpoints';
+import { BreakpointInspector } from '../BreakpointInspector/BreakpointInspector';
 import {
   GRPC_INSPECTOR_TABS,
   INSPECTOR_TABS,
@@ -73,6 +75,11 @@ export function RequestInspector({
     return index === undefined ? undefined : state.rows[index];
   });
   const { detail } = useExchangeDetail(selectedId);
+  // 被挂起的 exchange 就地编辑，不跳到另一个页面。
+  const pausedBreakpoint = useBreakpointsStore(
+    (state) =>
+      state.breakpoints.find((breakpoint) => breakpoint.exchangeId === selectedId) ?? null,
+  );
 
   const view = detail?.summary ?? summary;
 
@@ -141,6 +148,15 @@ export function RequestInspector({
       setTab(nextTab);
     }
   }, [inspectorTabs, isGrpc, isTlsTunnel, isWebSocket, tab]);
+
+  if (pausedBreakpoint) {
+    return (
+      <BreakpointInspector
+        breakpoint={pausedBreakpoint}
+        onClose={() => select(null)}
+      />
+    );
+  }
 
   return (
     <div className={styles.inspector}>
@@ -398,6 +414,7 @@ export function RequestInspector({
               secure={view.secure}
               scheme={scheme}
               protocol={view.protocol}
+              errorCode={detail?.errorCode}
             />
           ) : (
             <div className={styles.panel}>

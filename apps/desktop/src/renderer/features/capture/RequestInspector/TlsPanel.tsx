@@ -1,10 +1,10 @@
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Check, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, SectionHeader } from '../../../components';
 import type { TlsProbe } from '../../../../shared/desktop-api';
-import { formatCertificateDate } from '../utils';
+import { formatCertificateDate, isOriginCertificateError } from '../utils';
 
 import { TlsDetailRow as Row } from './TlsDetailRow';
 import styles from './TlsPanel.module.css';
@@ -15,6 +15,7 @@ export interface TlsPanelProps {
   secure: boolean;
   scheme: string;
   protocol: string;
+  errorCode: string | undefined;
 }
 
 /**
@@ -27,11 +28,28 @@ export function TlsPanel({
   secure,
   scheme,
   protocol,
+  errorCode,
 }: TlsPanelProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const [probe, setProbe] = useState<TlsProbe | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [trusting, setTrusting] = useState(false);
+  const [trusted, setTrusted] = useState(false);
+
+  const trustOrigin = async (): Promise<void> => {
+    setTrusting(true);
+    setError(null);
+    try {
+      const current = await window.interceptor.getInsecureHosts();
+      await window.interceptor.setInsecureHosts([...current, host]);
+      setTrusted(true);
+    } catch (trustError) {
+      setError(trustError instanceof Error ? trustError.message : String(trustError));
+    } finally {
+      setTrusting(false);
+    }
+  };
 
   const runProbe = async (): Promise<void> => {
     const api = window.interceptor;
@@ -55,6 +73,35 @@ export function TlsPanel({
 
   return (
     <div className={styles.panel}>
+      {isOriginCertificateError(errorCode) ? (
+        <div className={styles.certificateCallout}>
+          <span className={styles.calloutIcon}><ShieldOff aria-hidden="true" /></span>
+          <span className={styles.calloutCopy}>
+            <b>{t('capture.originCertificateRejected')}</b>
+            <span>
+              {trusted
+                ? t('capture.originCertificateTrusted')
+                : t('capture.originCertificateRejectedDescription', {
+                    host,
+                    code: errorCode,
+                  })}
+            </span>
+          </span>
+          {trusted ? (
+            <Check className={styles.calloutDone} aria-hidden="true" />
+          ) : (
+            <Button
+              variant="primary"
+              loading={trusting}
+              disabled={!host}
+              onClick={() => void trustOrigin()}
+            >
+              {t('capture.trustOriginCertificate')}
+            </Button>
+          )}
+        </div>
+      ) : null}
+
       <div>
         <SectionHeader>{t('capture.connection')}</SectionHeader>
         <div className={styles.rows}>

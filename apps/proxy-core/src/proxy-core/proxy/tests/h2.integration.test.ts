@@ -13,6 +13,7 @@ import { BreakpointQueue } from '../../rules/internal/breakpoint-queue';
 import { ProxyService } from '../entry';
 import { CaptureEventQueue } from '../internal/capture-event-queue';
 import { RecordingCaptureService } from './test-capture-service';
+import { decryptWithCertificate } from './test-tls-setup';
 
 /**
  * M6 T6.1/T6.2 端到端集成：真实 HTTP/2 客户端经代理 MITM 隧道，用 ALPN h2 连到真实
@@ -374,11 +375,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
     origin = await startH2Origin(originCertificate.cert, originCertificate.key);
 
@@ -395,11 +392,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
     origin = await startH2Origin(
       originCertificate.cert,
@@ -440,11 +433,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
     // 随机二进制经 gzip：任何转码、截断或字符集损坏都会让逐字节比较失败。
     const responsePlain = randomBytes(192 * 1024);
@@ -527,11 +516,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       }],
     });
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue(), ruleService);
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
 
     const response = await h2ViaProxy(
@@ -558,11 +543,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
     origin = await startH1Origin(
       originCertificate.cert,
@@ -587,11 +568,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const originCertificate = await generateCACertificate();
     const recordingCaptureService = new RecordingCaptureService();
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
-    await proxyService.configureTls({
-      ca,
-      insecureHosts: ['localhost', '127.0.0.1'],
-      passthroughHosts: [],
-    });
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
     const address = await proxyService.start();
     const requestBody = grpcEnvelope(Buffer.from('request-message'));
     const responseBody = Buffer.concat([

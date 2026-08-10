@@ -206,7 +206,7 @@ describe('WindowsSystemProxyService', () => {
     const fakeJournal = new FakeJournal();
     await createService(fakeHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
 
-    const result = await createService(fakeHelperRunner, fakeJournal).repair();
+    const result = await createService(fakeHelperRunner, fakeJournal).restore();
 
     expect(result.restored).toBe(true);
     expect(fakeHelperRunner.settings).toEqual(original);
@@ -223,16 +223,16 @@ describe('WindowsSystemProxyService', () => {
       proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
       bypassList: 'localhost;127.*;[::1];<local>',
     });
-    const callsBeforeRepair = fakeHelperRunner.calls.length;
+    const callsBeforeRestore = fakeHelperRunner.calls.length;
 
-    const result = await createService(fakeHelperRunner, fakeJournal).repair();
+    const result = await createService(fakeHelperRunner, fakeJournal).restore();
 
     expect(result).toMatchObject({
       restored: false,
       reason: 'externally-modified',
       status: { ownershipLost: true },
     });
-    expect(fakeHelperRunner.calls.slice(callsBeforeRepair).map((call) => call.args[0]))
+    expect(fakeHelperRunner.calls.slice(callsBeforeRestore).map((call) => call.args[0]))
       .toEqual(['get']);
     expect(fakeJournal.record).not.toBeNull();
   });
