@@ -109,14 +109,25 @@ export class RuleService {
     this.breakpointsOn = false;
   }
 
-  /** 显式 WebSocket 消息断点；由 Proxy bridge 在转发消息前调用。 */
+  /** 客户端已中止 HTTP 请求时，释放该请求仍在等待的断点。 */
+  abortRequestBreakpoints(requestId: string): number {
+    const abortedCount = this.breakpointQueue.abortRequest(requestId);
+    if (abortedCount > 0) {
+      this.diagnostics?.info('breakpoint.request-aborted', {
+        attributes: { requestId, abortedCount },
+      });
+    }
+    return abortedCount;
+  }
+
+  /**
+   * 显式 WebSocket 帧断点；由 Proxy bridge 在转发前调用。
+   * 开关归 ProxyService 的 WebSocket 断点配置，与 HTTP 的 break-on-match 正交。
+   */
   async pauseWebSocketMessage(
     snapshot: BreakpointSnapshot,
     timeoutMs = 0,
   ): Promise<BreakpointOutcome> {
-    if (!this.breakpointsOn) {
-      return { state: 'continued' };
-    }
     const suspension = this.breakpointQueue.suspend(
       'websocket',
       timeoutMs,
@@ -143,6 +154,7 @@ export class RuleService {
   async evaluateRequest(
     context: MatchContext,
     state: MutableRequestState,
+    requestId?: string,
     exchangeId?: string,
   ): Promise<RequestEvaluation> {
     const hits: RuleHitRecord[] = [];
@@ -162,8 +174,12 @@ export class RuleService {
             'request',
             action,
             RuleUtils.buildRequestSnapshot(compiled.rule.name, state, exchangeId),
+            requestId,
           );
           hits.push(this.toHit(compiled.rule, 'request', 'breakpoint', resolved.state));
+          if (resolved.state === 'aborted') {
+            return { kind: 'aborted', hits, headerEffects };
+          }
           if (resolved.state === 'edited' && resolved.edit) {
             await RuleUtils.applyRequestEdit(state, resolved.edit);
           }
@@ -209,6 +225,7 @@ export class RuleService {
   async evaluateResponse(
     context: MatchContext,
     state: MutableResponseState,
+    requestId?: string,
     exchangeId?: string,
   ): Promise<ResponseEvaluation> {
     const hits: RuleHitRecord[] = [];
@@ -228,8 +245,12 @@ export class RuleService {
             'response',
             action,
             RuleUtils.buildResponseSnapshot(compiled.rule.name, state, exchangeId),
+            requestId,
           );
           hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));
+          if (resolved.state === 'aborted') {
+            return { kind: 'aborted', hits, headerEffects };
+          }
           if (resolved.state === 'edited' && resolved.edit) {
             await RuleUtils.applyResponseEdit(state, resolved.edit);
           }
@@ -268,6 +289,7 @@ export class RuleService {
     phase: 'request' | 'response',
     action: { timeoutMs: number; onTimeout: 'continue' | 'drop' },
     snapshot: BreakpointSnapshot,
+    requestId?: string,
   ): Promise<BreakpointOutcome> {
     if (!this.breakpointsOn) {
       return { state: 'continued' };
@@ -277,6 +299,7 @@ export class RuleService {
       action.timeoutMs,
       action.onTimeout,
       snapshot,
+      requestId,
     );
     if (!suspension) {
       this.reportQueueFull(phase);

@@ -35,6 +35,15 @@ import { BodyView } from '../RequestInspector/BodyView';
 import { Section } from '../RequestInspector/Section';
 import styles from './BreakpointInspector.module.css';
 
+type ControlFrame = 'ping' | 'pong' | 'close';
+
+/** 控制帧名是协议术语，各语言一致，不进 i18n 目录。 */
+const CONTROL_FRAME_LABEL: Readonly<Record<ControlFrame, string>> = {
+  ping: 'Ping',
+  pong: 'Pong',
+  close: 'Close',
+};
+
 interface BreakpointInspectorProps {
   breakpoint: PendingBreakpoint;
   /** 挂起 exchange 的详情；正文还在流入时为空。 */
@@ -58,6 +67,7 @@ export function BreakpointInspector({
   const resolving = useBreakpointsStore((state) => state.resolving);
   const select = useBreakpointsStore((state) => state.select);
   const setStatusCode = useBreakpointsStore((state) => state.setStatusCode);
+  const setCloseCode = useBreakpointsStore((state) => state.setCloseCode);
   const setReplacement = useBreakpointsStore((state) => state.setReplacement);
   const setFile = useBreakpointsStore((state) => state.setFile);
   // 标题行里有 Segmented，整行点击会和它打架，所以只用 chevron 做命中区。
@@ -87,6 +97,11 @@ export function BreakpointInspector({
 
   const isResponse = draft.phase === 'response';
   const isWebSocket = draft.phase === 'websocket';
+  const isControlFrame = isWebSocket && draft.frame !== undefined && draft.frame !== 'message';
+  const isCloseFrame = draft.frame === 'close';
+  const frameLabel = isControlFrame
+    ? CONTROL_FRAME_LABEL[draft.frame as ControlFrame].toLowerCase()
+    : t('breakpoints.frameMessage');
   const usingReplacement = replacesBody(draft);
   // 挂起期间 Capture 仍在收正文，body 引用出现即代表这一侧已经收完可读。
   const originalBody = (isResponse ? detail?.responseBody : detail?.requestBody) ?? null;
@@ -101,7 +116,9 @@ export function BreakpointInspector({
       <header className={styles.head}>
         {isWebSocket ? (
           <span className={styles.chip}>
-            {draft.opcode === 2 ? t('capture.binary') : t('capture.text')}
+            {isControlFrame
+              ? CONTROL_FRAME_LABEL[draft.frame as ControlFrame]
+              : draft.opcode === 2 ? t('capture.binary') : t('capture.text')}
           </span>
         ) : (
           <MethodBadge method={draft.method} />
@@ -115,8 +132,8 @@ export function BreakpointInspector({
           <ArrowRight size={12} strokeWidth={2} />
           {isWebSocket
             ? draft.direction === 'client-to-server'
-              ? t('breakpoints.sentMessagePaused')
-              : t('breakpoints.receivedMessagePaused')
+              ? t('breakpoints.sentFramePaused', { frame: frameLabel })
+              : t('breakpoints.receivedFramePaused', { frame: frameLabel })
             : isResponse
               ? t('breakpoints.responsePaused')
               : t('breakpoints.requestPaused')}
@@ -125,6 +142,22 @@ export function BreakpointInspector({
       </div>
 
       <div className={styles.scroll}>
+        {isCloseFrame ? (
+          <section>
+            <SectionHeader>{t('breakpoints.closeCode')}</SectionHeader>
+            <div className={styles.statusRow}>
+              <input
+                className={styles.statusInput}
+                aria-label={t('breakpoints.closeCode')}
+                inputMode="numeric"
+                value={draft.closeCode}
+                onChange={(event) =>
+                  setCloseCode(Number.parseInt(event.target.value, 10) || 0)}
+              />
+            </div>
+          </section>
+        ) : null}
+
         {isResponse ? (
           <section>
             <SectionHeader>{t('breakpoints.responseStatus')}</SectionHeader>

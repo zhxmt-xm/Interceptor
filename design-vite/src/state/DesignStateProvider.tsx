@@ -15,5 +15,9 @@ export function DesignStateProvider({ children }: PropsWithChildren): React.JSX.
     };
   }, [updateState]);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.theme;
+  }, [state.theme]);
+
   return <DesignStateContext value={{ state, updateState }}>{children}</DesignStateContext>;
 }

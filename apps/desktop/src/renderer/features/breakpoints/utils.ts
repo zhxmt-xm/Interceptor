@@ -21,6 +21,7 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
     url: breakpoint.url ?? '',
     statusCode: breakpoint.statusCode ?? 200,
     direction: breakpoint.direction,
+    frame: breakpoint.frame,
     opcode: breakpoint.opcode,
     bodyFormat: breakpoint.bodyFormat,
     headers: breakpoint.headers.map((header) => ({
@@ -32,6 +33,7 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
     // 看得到原文（WebSocket 消息）时直接进可编辑态；看不到时默认不碰正文。
     replacement: breakpoint.bodyAvailable ? 'text' : 'off',
     body: breakpoint.body ?? '',
+    closeCode: breakpoint.closeCode ?? 1000,
     file: null,
   };
 }
@@ -90,7 +92,9 @@ export function buildEdit(draft: BreakpointDraft): BreakpointEdit {
     return { method: draft.method, url: draft.url, headers, ...body };
   }
   if (draft.phase === 'websocket') {
-    return { ...body };
+    return draft.frame === 'close'
+      ? { closeCode: draft.closeCode, ...body }
+      : { ...body };
   }
   return { statusCode: draft.statusCode, headers, ...body };
 }

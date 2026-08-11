@@ -1,0 +1,210 @@
+.payloadEditor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  container-type: inline-size;
+}
+
+.payloadEditorOriginalReady {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.payloadEditorLoading {
+  display: flex;
+  min-height: 92px;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.payloadEditorLoading > span,
+.payloadEditorFileMeta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.payloadEditorLoading b,
+.payloadEditorFileMeta b {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.payloadEditorLoading small,
+.payloadEditorFileMeta small {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+
+.payloadEditorToolbar {
+  display: flex;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.payloadEditorSpacer {
+  flex: 1;
+}
+
+.payloadEditorFormat {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payloadEditorIconActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+}
+
+.payloadEditorOriginalCode {
+  min-height: 76px;
+  padding: 13px 12px 21px;
+  overflow: auto;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: pre-wrap;
+}
+
+.payloadEditorReplacementMode {
+  justify-self: end;
+}
+
+.payloadEditorReplacementInput {
+  width: 100%;
+  min-height: 82px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.payloadEditorUsingOriginal {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+.payloadEditorUsingOriginal > svg {
+  color: var(--green);
+}
+
+.payloadEditorChooseFile {
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.payloadEditorFileUploadButton {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.payloadEditorFileUploadButton:hover {
+  background: color-mix(in srgb, var(--panel) 94%, var(--text));
+}
+
+.payloadEditorFileUploadButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.payloadEditorFileCard {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.payloadEditorFileHeader {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 5px 6px 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.payloadEditorFileIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-2);
+}
+
+.payloadEditorFileIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.payloadEditorFileMeta {
+  flex: 1;
+}
+
+.payloadEditorFileMeta b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payloadEditorFilePreview {
+  max-height: 104px;
+  padding: 10px 12px;
+  overflow: auto;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

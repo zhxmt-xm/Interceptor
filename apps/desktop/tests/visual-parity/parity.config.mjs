@@ -450,9 +450,12 @@ export const views = [
       view: 'capture',
       theme: 'light',
       sidebar: 'expanded',
-      requestMenu: 'open',
+      requestMenu: '',
     },
     designShot: 'light/capture/request-rule-menu.png',
+    designActions: [
+      { type: 'contextMenuSelector', selector: '.list-scroll .row', index: 0 },
+    ],
     rendererActions: [
       { type: 'clickText', text: '/user' },
       // 选中后 Inspector 打开，path 列被压缩到 0 宽而不可点，改用同一行的 method 徽章右键。
@@ -461,13 +464,78 @@ export const views = [
     targets: [
       {
         name: 'Request rule menu',
-        designSelector: '.request-rule-menu',
+        designSelector: '.ant-dropdown:visible',
         appSelector: '.ant-dropdown:visible',
       },
       'Create rule for this request',
       { name: 'Rewrite header row', parity: 'request-rule-header' },
       { name: 'Breakpoint row', parity: 'request-rule-breakpoint' },
     ],
+  },
+  {
+    id: 'capture-breakpoint-create-menu',
+    theme: 'light',
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'collapsed',
+      requestMenu: '',
+      breakpointState: '',
+    },
+    designShot: 'light/capture/breakpoint-create-menu.png',
+    designActions: [
+      { type: 'contextMenuSelector', selector: '.list-scroll .row', index: 0 },
+      { type: 'mouseOverSelector', selector: '.ant-dropdown-menu-submenu-title' },
+    ],
+    rendererActions: [
+      { type: 'contextMenuText', text: 'POST', index: 0 },
+      {
+        type: 'assertSelectorVisible',
+        selector: '[data-automation-id="capture.create-rule.http-2.header"]',
+      },
+      {
+        type: 'assertSelectorVisible',
+        selector: '[data-automation-id="capture.create-rule.http-2.breakpoint"]',
+      },
+      { type: 'hoverText', text: 'Breakpoint' },
+      { type: 'emitCaptureEvents', count: 40 },
+      {
+        type: 'assertInsideViewport',
+        selector: '.ant-dropdown:visible, .ant-dropdown-menu-submenu-popup:visible',
+      },
+    ],
+    targets: [
+      {
+        name: 'Request rule menu',
+        designSelector: '.ant-dropdown:visible',
+        appSelector: '.ant-dropdown:visible',
+      },
+      {
+        name: 'Breakpoint submenu',
+        designSelector: '.ant-dropdown-menu-submenu-popup:visible',
+        appSelector: '.ant-dropdown-menu-submenu-popup:visible',
+      },
+      'Create rule for this request',
+      'Create breakpoint from request',
+      'This endpoint',
+      'This path prefix',
+      'This host',
+      'Custom breakpoint…',
+    ],
+  },
+  {
+    id: 'capture-request-menu-dismiss',
+    theme: 'light',
+    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed' },
+    designShot: 'light/capture/framed.png',
+    rendererActions: [
+      { type: 'contextMenuText', text: 'POST', index: 0 },
+      { type: 'hoverText', text: 'Breakpoint' },
+      { type: 'clickText', text: 'Application' },
+      { type: 'assertTextHidden', text: 'Create rule for this request' },
+      { type: 'assertTextHidden', text: 'Create breakpoint from request' },
+    ],
+    targets: ['Application'],
   },
   {
     id: 'capture-rule-filter',
@@ -1073,6 +1141,65 @@ export const views = [
       'Forward edited',
     ],
   },
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'light'
+      ? 'breakpoint-created-message'
+      : 'breakpoint-created-message-dark',
+    theme,
+    designState: {
+      view: 'capture',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'closed',
+      breakpointMessage: 'created',
+    },
+    designShot: `${theme}/capture/breakpoint-created-message.png`,
+    designActions: [
+      { type: 'hoverText', text: 'Breakpoint created' },
+    ],
+    rendererActions: [
+      { type: 'contextMenuText', text: 'GET', index: 0 },
+      { type: 'hoverSelector', selector: '.ant-dropdown-menu-submenu-title' },
+      { type: 'clickText', text: 'This endpoint' },
+      { type: 'hoverText', text: 'Breakpoint created' },
+    ],
+    targets: [
+      {
+        name: 'Breakpoint created message',
+        designSelector: '.ant-message-notice',
+        appSelector: '.ant-message-notice',
+      },
+      'Breakpoint created',
+      {
+        name: 'Undo button',
+        designSelector: '.ant-message-notice .ant-btn-primary',
+        appSelector: '.ant-message-notice .ant-btn-primary',
+      },
+      {
+        name: 'Close button',
+        designSelector: '.ant-message-notice .ant-btn-text',
+        appSelector: '.ant-message-notice .ant-btn-text',
+      },
+    ],
+  })),
+  {
+    id: 'breakpoint-created-message-undo',
+    theme: 'light',
+    designState: { view: 'rules', theme: 'light', sidebar: 'expanded' },
+    designShot: 'light/rules/framed.png',
+    rendererActions: [
+      { type: 'contextMenuText', text: 'GET', index: 0 },
+      { type: 'hoverSelector', selector: '.ant-dropdown-menu-submenu-title' },
+      { type: 'clickText', text: 'This endpoint' },
+      { type: 'clickRole', role: 'button', name: 'Undo' },
+      { type: 'assertTextHidden', text: 'Breakpoint created' },
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Rules & Map' },
+      { type: 'assertTextHidden', text: 'Breakpoint · api.github.com/user' },
+    ],
+    targets: ['Rule set applied'],
+  },
   {
     id: 'diagnostics',
     theme: 'light',
@@ -1118,7 +1245,6 @@ export const views = [
     ['rules', 'Rules & Map', 'Rules', ['Rule set applied', 'Stub /v1/user']],
     ['composer', 'Composer', 'Composer', ['Protocol', 'Send']],
     ['settings', 'Settings', 'Settings', ['Root Certificate Authority']],
-    ['breakpoints', 'Breakpoints', 'Breakpoints', ['Break on match', 'Continue all']],
     ['diagnostics', 'Diagnostics', 'Diagnostics', ['Process', 'Level', 'Outcome']],
   ].map(([feature, rendererNav, title, featureTargets]) => ({
     id: `shell-v2-${feature}-dark`,

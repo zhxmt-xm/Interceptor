@@ -118,27 +118,6 @@ function positionPopovers(root: HTMLElement): void {
     panel.style.left = `${Math.min(triggerRect.left, appRect.right - panel.offsetWidth - 8) - parentRect.left}px`;
     panel.style.top = `${triggerRect.bottom - parentRect.top + 6}px`;
   }
-  const requestMenu = root.querySelector<HTMLElement>('.request-rule-menu');
-  const requestAnchor = root.querySelector<HTMLElement>('[data-request-rule-anchor]') ?? root.querySelector<HTMLElement>('.list-scroll .row');
-  if (requestMenu && requestAnchor && ['open', 'breakpoint'].includes(root.dataset.requestMenu ?? '') && requestMenu.offsetParent) {
-    const targetRect = (requestAnchor.querySelector<HTMLElement>('.hc') ?? requestAnchor).getBoundingClientRect();
-    const parentRect = requestMenu.offsetParent.getBoundingClientRect();
-    const left = Math.min(Math.max(targetRect.left + targetRect.width / 2, appRect.left + 8), appRect.right - requestMenu.offsetWidth - 8);
-    const top = Math.min(Math.max(targetRect.top + targetRect.height / 2, appRect.top + 8), appRect.bottom - requestMenu.offsetHeight - 8);
-    requestMenu.style.left = `${left - parentRect.left}px`;
-    requestMenu.style.top = `${top - parentRect.top}px`;
-    const submenu = root.querySelector<HTMLElement>('.breakpoint-submenu');
-    const submenuTrigger = requestMenu.querySelector<HTMLElement>('[data-breakpoint-trigger]');
-    if (submenu && submenuTrigger && root.dataset.requestMenu === 'breakpoint' && submenu.offsetParent) {
-      const triggerRect = submenuTrigger.getBoundingClientRect();
-      const submenuParentRect = submenu.offsetParent.getBoundingClientRect();
-      const fitsRight = triggerRect.right + 4 + submenu.offsetWidth <= appRect.right - 8;
-      const submenuLeft = fitsRight ? triggerRect.right + 4 : triggerRect.left - submenu.offsetWidth - 4;
-      const submenuTop = Math.max(appRect.top + 8, Math.min(triggerRect.top, appRect.bottom - submenu.offsetHeight - 38));
-      submenu.style.left = `${submenuLeft - submenuParentRect.left}px`;
-      submenu.style.top = `${submenuTop - submenuParentRect.top}px`;
-    }
-  }
 }
 
 /** 一个分组选了 All 以外的项就算已应用；工具栏 badge 与整体 hasFilter 都由此派生。 */
@@ -153,11 +132,45 @@ function syncFilterBadge(root: HTMLElement): boolean {
   return applied;
 }
 
+function syncWebSocketPausedRow(root: HTMLElement, state: DesignState): void {
+  const row = root.querySelector<HTMLElement>('.wsrows > .wsrow.sel');
+  const direction = row?.querySelector<HTMLElement>('.wsdir');
+  const kind = row?.querySelector<HTMLElement>('.wstype');
+  const preview = row?.querySelector<HTMLElement>('.wspreview');
+  const size = row?.querySelector<HTMLElement>('.wssize');
+  const time = row?.querySelector<HTMLElement>('.wstime');
+  if (!row || !direction || !kind || !preview || !size || !time) return;
+  if (state.breakpointState !== 'websocket') {
+    direction.classList.add('in');
+    direction.classList.remove('out');
+    kind.textContent = 'Text';
+    preview.textContent = '{"buildId":8431,"state":"running","branch":"main"}';
+    size.textContent = '54 B';
+    time.textContent = '+1.4 s';
+    return;
+  }
+  const frame = {
+    text: { kind: 'Text', preview: '{"type":"presence","status":"online","userId":"u_1842"}', size: '60 B' },
+    binary: { kind: 'Binary', preview: '7b 22 74 79 70 65 22 3a 22 70 72 65 73 65 6e 63 65 …', size: '47 B' },
+    ping: { kind: 'PING', preview: '68 62', size: '2 B' },
+    pong: { kind: 'PONG', preview: '68 62', size: '2 B' },
+    close: { kind: 'CLOSE', preview: '1000 · Normal Closure', size: '16 B' },
+  }[state.websocketMessagePayload];
+  const sent = state.websocketMessageDirection === 'sent';
+  direction.classList.toggle('out', sent);
+  direction.classList.toggle('in', !sent);
+  kind.textContent = frame.kind;
+  preview.textContent = frame.preview;
+  size.textContent = frame.size;
+  time.textContent = 'paused';
+}
+
 function syncFixture(root: HTMLElement, state: DesignState): void {
   setTab(root, '[data-tabs="insp"] > span', '.tp[data-tab]', 'tab', state.tab);
   setTab(root, '[data-tabs="creq"] > span', '.creq > .cpane', 'ctab', state.composerTab);
   setTab(root, '[data-tabs="cresp"] > span', '.cresp > .cpane', 'crtab', state.composerResponseTab);
   root.querySelectorAll<HTMLElement>('.bodytype span').forEach((tab) => tab.classList.toggle('on', tab.dataset.bt === state.bodyType));
+  syncWebSocketPausedRow(root, state);
   const search = root.querySelector<HTMLElement>('.omni-q');
   if (search) search.textContent = state.search;
   const hostInput = root.querySelector<HTMLInputElement>('[data-tls-host-input]');
@@ -186,7 +199,12 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
     if (label) label.textContent = `Add ${count} ${count === 1 ? 'host' : 'hosts'}`;
   }
   const rows = Array.from(root.querySelectorAll<HTMLElement>('.list-scroll .row'));
-  const target = (state.breakpointState && rows.find((row) => row.dataset.captureRow === (state.breakpointState === 'response' ? 'breakpoint-response' : 'breakpoint-request')))
+  const breakpointRow = state.breakpointState === 'websocket' || state.breakpointState.startsWith('websocket-upgrade-')
+    ? 'websocket'
+    : state.breakpointState === 'response'
+      ? 'breakpoint-response'
+      : 'breakpoint-request';
+  const target = (state.breakpointState && rows.find((row) => row.dataset.captureRow === breakpointRow))
     || (state.scene !== 'http' && rows.find((row) => row.dataset.captureRow === state.scene))
     || rows.find((row) => row.dataset.body === state.bodyKind)
     || rows.find((row) => row.dataset.captureRow === 'http');
@@ -194,7 +212,7 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
   const dockState: Readonly<Record<string, string>> = {
     view: state.view, theme: state.theme, sidebar: state.sidebar, overlay: state.overlay || 'none', boot: state.boot || 'none',
     upstream: state.upstream || 'none', breakpoints: state.breakpoints, breakpointState: state.breakpointState || 'none',
-    breakpointBody: state.breakpointBody, breakpointUi: state.breakpointNotice === 'armed' ? 'armed' : state.breakpointPanel === 'open' ? 'panel' : 'none',
+    breakpointBody: state.breakpointBody, breakpointUi: state.breakpointMessage === 'created' ? 'message' : state.breakpointPanel === 'open' ? 'panel' : 'none',
     ruleTypography: state.ruleTypography,
   };
   document.querySelectorAll<HTMLElement>('.dock .switch').forEach((control) => {
@@ -367,7 +385,7 @@ export function useDesignFixtureAdapter(
       if (closest(event.target, '.csend')) return patch({ composer: '' });
       if (closest(event.target, '.cfilters-toggle')) return patch({ filters: root.dataset.filters === 'closed' ? 'open' : 'closed' });
       if (closest(event.target, '.rec')) return patch({ recording: root.dataset.recording === 'paused' ? '' : 'paused' });
-      if (closest(event.target, '.breakctl')) return patch({ breakpointPanel: root.dataset.breakpointPanel === 'open' ? '' : 'open', breakpointNotice: '' });
+      if (closest(event.target, '.breakctl')) return patch({ breakpointPanel: root.dataset.breakpointPanel === 'open' ? '' : 'open', breakpointMessage: '' });
       if (closest(event.target, '.break-manager-close')) return patch({ breakpointPanel: '' });
       if (closest(event.target, '.break-global-toggle')) return patch({ breakpoints: root.dataset.breakpoints === 'off' ? 'on' : 'off' });
       const breakRuleToggle = closest(event.target, '.break-rule-toggle');
@@ -378,8 +396,6 @@ export function useDesignFixtureAdapter(
         const count = root.querySelector<HTMLElement>('.break-enabled-count'); if (count) count.textContent = String(root.querySelectorAll('.break-rule-toggle.on').length);
         return;
       }
-      if (closest(event.target, '.break-armed-open')) return patch({ breakpointNotice: '', breakpointPanel: 'open' });
-      if (closest(event.target, '.break-armed-undo, .break-armed-close')) return patch({ breakpointNotice: '' });
       if (closest(event.target, '.break-manager [data-breakpoint-custom]')) return patch({ view: 'rules', breakpointPanel: '' });
       const managerRuleLink = closest(event.target, '.break-rule-open');
       if (managerRuleLink) {
@@ -424,11 +440,7 @@ export function useDesignFixtureAdapter(
         const tab = scene === 'tunnel' ? 'tunnel' : scene === 'websocket' ? 'messages' : scene === 'grpc' ? 'grpc' : captureRow.dataset.body ? 'response' : 'headers';
         return patch({ scene, bodyPreview, tab, detail: 'open' });
       }
-      if (closest(event.target, '[data-breakpoint-trigger]')) return patch({ requestMenu: 'breakpoint' });
-      const breakpointChoice = closest(event.target, '.breakpoint-submenu .fi');
-      if (breakpointChoice) return patch(breakpointChoice.hasAttribute('data-breakpoint-custom') ? { view: 'rules', requestMenu: '' } : { requestMenu: '', breakpoints: 'on', breakpointNotice: 'armed' });
       if (closest(event.target, '.break-foot .btn')) return patch({ breakpointState: '' });
-      if (closest(event.target, '.request-rule-menu .fi')) return patch({ view: 'rules', requestMenu: '' });
       if (closest(event.target, '[data-show-rule-requests]')) return patch({ view: 'capture', ruleFilter: 'rule-stub' });
       if (closest(event.target, '[data-rule-link]')) return patch({ view: 'rules' });
       if (closest(event.target, '[data-open-https]')) return patch({ overlay: 'https-setup' });
@@ -462,15 +474,14 @@ export function useDesignFixtureAdapter(
       updateState({ ctxmenu: contextMenu }); window.requestAnimationFrame(() => anchorTreeMenu(root, contextMenu, x, y));
     };
     const onContextMenu = (event: MouseEvent): void => {
-      const captureRow = closest(event.target, '.list-scroll .row');
-      if (captureRow) {
-        event.preventDefault(); root.querySelectorAll('[data-request-rule-anchor]').forEach((row) => row.removeAttribute('data-request-rule-anchor'));
-        captureRow.setAttribute('data-request-rule-anchor', ''); updateState({ requestMenu: 'open' }); return;
-      }
       const targets: readonly [string, TreeContextMenu][] = [['.citem', 'composer-item'], ['.cgrp-h', 'composer-folder'], ['.rrule', 'rules-rule'], ['.rgrp-h', 'rules-folder']];
       for (const [selector, contextMenu] of targets) if (closest(event.target, selector)) { event.preventDefault(); openTreeMenu(contextMenu, event.clientX, event.clientY); return; }
-      updateState({ ctxmenu: '' });
+      updateState({ ctxmenu: '', requestMenu: '' });
     };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') updateState({ ctxmenu: '', requestMenu: '' });
+    };
+    const onBlur = (): void => updateState({ ctxmenu: '', requestMenu: '' });
     const closeTreeMenu = (): void => { if (root.dataset.ctxmenu && !treeMenuJustOpened) updateState({ ctxmenu: '' }); };
     const onInput = (event: Event): void => {
       const input = event.target;
@@ -502,11 +513,17 @@ export function useDesignFixtureAdapter(
     root.addEventListener('contextmenu', onContextMenu);
     root.addEventListener('input', onInput);
     dock?.addEventListener('click', onDockClick);
-    window.addEventListener('resize', () => positionPopovers(root));
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('blur', onBlur);
+    const onResize = (): void => positionPopovers(root);
+    window.addEventListener('resize', onResize);
     return () => {
       root.removeEventListener('click', onClick); root.removeEventListener('click', closeTreeMenu);
-      root.removeEventListener('contextmenu', onContextMenu); root.removeEventListener('input', onInput);
+      root.removeEventListener('contextmenu', onContextMenu);
+      root.removeEventListener('input', onInput);
       dock?.removeEventListener('click', onDockClick); resizeObserver.disconnect(); cleanups.forEach((cleanup) => cleanup());
+      window.removeEventListener('keydown', onKeyDown); window.removeEventListener('blur', onBlur);
+      window.removeEventListener('resize', onResize);
     };
   }, [rootRef, updateState]);
 }

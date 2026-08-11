@@ -1,0 +1,57 @@
+.segmentedControl {
+  display: inline-flex;
+  width: max-content;
+  height: 28px;
+  align-self: center;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+}
+
+.segmentedControlItem {
+  position: relative;
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 520;
+  letter-spacing: 0;
+  line-height: 22px;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.segmentedControlItem:not([data-selected]):hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.segmentedControlItem[data-selected] {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.segmentedControl[data-tone="warning"] .segmentedControlItem {
+  padding: 0 8px;
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.segmentedControl[data-tone="warning"] .segmentedControlItem[data-selected] {
+  background: color-mix(in srgb, var(--yellow) 16%, var(--panel));
+  color: var(--yellow);
+  font-weight: 650;
+}

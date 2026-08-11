@@ -149,6 +149,42 @@ describe('Breakpoint snapshots (real proxy)', () => {
     expect(origin.received).toEqual([UPLOAD_BODY]);
   });
 
+  it('releases the paused request when the client aborts', async () => {
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
+    const address = await proxyService.start({ port: 0 });
+    origin = await startOrigin();
+
+    let clientRequest!: http.ClientRequest;
+    const clientClosed = new Promise<void>((resolve) => {
+      clientRequest = http.request({
+        host: address.host,
+        port: address.port,
+        method: 'POST',
+        path: `http://127.0.0.1:${origin!.port}/upload`,
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'content-length': Buffer.byteLength(UPLOAD_BODY),
+        },
+      });
+      clientRequest.on('error', () => resolve());
+      clientRequest.on('close', () => resolve());
+      clientRequest.end(UPLOAD_BODY);
+    });
+
+    await expect.poll(() => breakpointQueue.size).toBe(1);
+    clientRequest.destroy();
+    await clientClosed;
+
+    await expect.poll(() => breakpointQueue.size).toBe(0);
+    await expect
+      .poll(() => captureService.exchanges[0]?.state)
+      .toBe('aborted');
+    expect(origin.received).toEqual([]);
+  });
+
   it('states that the paused response body is not available yet', async () => {
     const ruleService = new RuleService(breakpointQueue);
     ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('response')] });

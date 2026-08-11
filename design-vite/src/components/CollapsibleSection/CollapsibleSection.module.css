@@ -1,0 +1,144 @@
+.collapsibleSection {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.collapsibleSectionHeader {
+  position: relative;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+}
+
+.collapsibleSectionHeader::before {
+  position: absolute;
+  top: 1px;
+  bottom: 9px;
+  left: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+.collapsibleSectionHeader::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 12%, transparent),
+    color-mix(in srgb, var(--text) 5%, transparent) 72%,
+    transparent
+  );
+  content: "";
+}
+
+.collapsibleSectionHeader:hover {
+  color: var(--text);
+}
+
+.collapsibleSectionHeader:hover .collapsibleSectionChevron {
+  color: var(--accent);
+}
+
+.collapsibleSectionHeaderTitle {
+  min-width: 0;
+}
+
+.collapsibleSectionLabel {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsibleSectionLabel > span:first-child {
+  white-space: nowrap;
+}
+
+.collapsibleSectionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 5px;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.collapsibleSectionBadge[data-tone="neutral"] {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+.collapsibleSectionBadge[data-tone="success"],
+.collapsibleSectionBadge[data-tone="warning"] {
+  height: 22px;
+  padding: 0 6px;
+  font-weight: 650;
+  line-height: 10px;
+}
+
+.collapsibleSectionBadge[data-tone="success"] > span,
+.collapsibleSectionBadge[data-tone="warning"] > span {
+  display: inline-flex;
+  height: 10px;
+  align-items: center;
+  line-height: 10px;
+}
+
+.collapsibleSectionBadge[data-tone="success"] {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+}
+
+.collapsibleSectionBadge[data-tone="warning"] {
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  color: var(--yellow);
+}
+
+.collapsibleSectionBadge svg {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+}
+
+.collapsibleSectionExtra {
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.collapsibleSectionBody {
+  min-width: 0;
+}
+
+.collapsibleSectionChevron {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+}
+
+.collapsibleSectionChevronIcon {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.15s ease;
+}
+
+.collapsibleSectionChevronIcon:not([data-open]) {
+  transform: rotate(-90deg);
+  color: var(--accent);
+}

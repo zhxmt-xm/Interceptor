@@ -74,11 +74,14 @@ export interface WebSocketFramesCommand {
   };
 }
 
-export interface WebSocketBreakpointConfigureCommand {
-  type: 'websocket.breakpoint.configure';
-  payload: {
-    enabled: boolean;
-  };
+export interface WebSocketBreakpointEnableCommand {
+  type: 'websocket.breakpoint.enable';
+  payload: WebSocketBreakpointSettings;
+}
+
+export interface WebSocketBreakpointDisableCommand {
+  type: 'websocket.breakpoint.disable';
+  payload: Record<string, never>;
 }
 
 export type GrpcMessageSide = 'request' | 'response';
@@ -180,6 +183,8 @@ export interface BreakpointEdit {
    * 大文件与二进制不经 IPC 搬运，由 Core 直接读，和 Map Local 同一条路。
    */
   bodyFilePath?: string;
+  /** 仅 WebSocket close 帧：转发时改写的 close code。 */
+  closeCode?: number;
 }
 
 export interface BreakpointResolveCommand {
@@ -451,7 +456,8 @@ export type CoreCommand =
   | SessionsQueryCommand
   | SessionsDetailCommand
   | WebSocketFramesCommand
-  | WebSocketBreakpointConfigureCommand
+  | WebSocketBreakpointEnableCommand
+  | WebSocketBreakpointDisableCommand
   | GrpcMessagesCommand
   | BodyReadRangeCommand
   | RulesReplaceCommand
@@ -518,6 +524,21 @@ export interface SessionsDetailResult {
 
 export type WebSocketFrameDirection = 'client-to-server' | 'server-to-client';
 
+/** 断点作用的方向；both 表示两个方向都拦。 */
+export type WebSocketBreakpointDirection = WebSocketFrameDirection | 'both';
+
+/** 断点作用的帧类别；message 覆盖 text 与 binary 应用消息。 */
+export type WebSocketBreakpointFrame = 'message' | 'ping' | 'pong' | 'close';
+
+export interface WebSocketBreakpointSettings {
+  /** 断点只作用于这条连接的 Capture Exchange。 */
+  exchangeId: string;
+  direction: WebSocketBreakpointDirection;
+  frames: readonly WebSocketBreakpointFrame[];
+  /** Core 允许挂起的上限；0 表示不设超时。 */
+  timeoutMs: number;
+}
+
 /** 一条有序 WebSocket 应用消息摘要；payload 字节仍经 body.read-range 按需读取。 */
 export interface WebSocketFrameSummary {
   seq: number;
@@ -534,14 +555,16 @@ export interface WebSocketFramesResult {
     items: WebSocketFrameSummary[];
     nextCursor?: string;
     hasMore: boolean;
-    breakpointsEnabled: boolean;
+    /** 当前连接的 WebSocket 断点配置；null 表示未启用。 */
+    breakpoint: WebSocketBreakpointSettings | null;
   };
 }
 
-export interface WebSocketBreakpointConfigResult {
-  type: 'websocket.breakpoint.config';
+export interface WebSocketBreakpointStateResult {
+  type: 'websocket.breakpoint.state';
   payload: {
     enabled: boolean;
+    settings: WebSocketBreakpointSettings | null;
   };
 }
 
@@ -701,6 +724,8 @@ export interface PendingBreakpoint {
   url?: string;
   statusCode?: number;
   direction?: WebSocketFrameDirection;
+  /** WebSocket 帧类别；message 之外的都是控制帧。 */
+  frame?: WebSocketBreakpointFrame;
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: RuleHeaderPair[];
@@ -711,6 +736,8 @@ export interface PendingBreakpoint {
    */
   bodyAvailable: boolean;
   body?: string;
+  /** 仅 WebSocket close 帧：对端给出的 close code。 */
+  closeCode?: number;
 }
 
 export interface BreakpointPendingResult {
@@ -915,7 +942,7 @@ export type CoreResult =
   | SessionsPageResult
   | SessionsDetailResult
   | WebSocketFramesResult
-  | WebSocketBreakpointConfigResult
+  | WebSocketBreakpointStateResult
   | GrpcMessagesResult
   | BodyRangeResult
   | RuleRevisionResult
@@ -945,8 +972,10 @@ export type CoreResultForCommand<T extends CoreCommand> =
     : T extends SessionsQueryCommand ? SessionsPageResult
       : T extends SessionsDetailCommand ? SessionsDetailResult
         : T extends WebSocketFramesCommand ? WebSocketFramesResult
-          : T extends WebSocketBreakpointConfigureCommand
-            ? WebSocketBreakpointConfigResult
+          : T extends WebSocketBreakpointEnableCommand
+            ? WebSocketBreakpointStateResult
+          : T extends WebSocketBreakpointDisableCommand
+            ? WebSocketBreakpointStateResult
             : T extends GrpcMessagesCommand ? GrpcMessagesResult
               : T extends BodyReadRangeCommand ? BodyRangeResult
             : T extends RulesReplaceCommand ? RuleRevisionResult

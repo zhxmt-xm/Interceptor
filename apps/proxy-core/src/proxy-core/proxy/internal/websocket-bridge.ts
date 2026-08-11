@@ -167,31 +167,40 @@ export class WebSocketBridge {
     this.pairs.add(pair);
     let clientTail = Promise.resolve();
     let serverTail = Promise.resolve();
+    // 控制帧与应用消息共用方向内的串行链，避免断点 await 打乱到达顺序。
+    const queueClient = (run: () => Promise<void>): void => {
+      clientTail = clientTail.then(run).catch((error: unknown) => this.failPair(pair, error));
+    };
+    const queueServer = (run: () => Promise<void>): void => {
+      serverTail = serverTail.then(run).catch((error: unknown) => this.failPair(pair, error));
+    };
 
     downstream.on('message', (data, isBinary) => {
-      clientTail = clientTail.then(() =>
-        this.forward(request, upstream, 'client-to-server', data, isBinary),
-      ).catch((error: unknown) => this.failPair(pair, error));
+      queueClient(() => this.forwardMessage(request, upstream, 'client-to-server', data, isBinary));
     });
     upstream.on('message', (data, isBinary) => {
-      serverTail = serverTail.then(() =>
-        this.forward(request, downstream, 'server-to-client', data, isBinary),
-      ).catch((error: unknown) => this.failPair(pair, error));
+      queueServer(() => this.forwardMessage(request, downstream, 'server-to-client', data, isBinary));
     });
 
-    downstream.on('ping', (data) =>
-      ProxyUtils.sendControl(upstream, 'ping', data));
-    upstream.on('ping', (data) =>
-      ProxyUtils.sendControl(downstream, 'ping', data));
-    downstream.on('pong', (data) =>
-      ProxyUtils.sendControl(upstream, 'pong', data));
-    upstream.on('pong', (data) =>
-      ProxyUtils.sendControl(downstream, 'pong', data));
+    downstream.on('ping', (data) => {
+      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'ping', data));
+    });
+    upstream.on('ping', (data) => {
+      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'ping', data));
+    });
+    downstream.on('pong', (data) => {
+      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'pong', data));
+    });
+    upstream.on('pong', (data) => {
+      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'pong', data));
+    });
 
-    downstream.on('close', (code, reason) =>
-      ProxyUtils.closePeer(upstream, code, reason));
-    upstream.on('close', (code, reason) =>
-      ProxyUtils.closePeer(downstream, code, reason));
+    downstream.on('close', (code, reason) => {
+      queueClient(() => this.forwardClose(request, upstream, 'client-to-server', code, reason));
+    });
+    upstream.on('close', (code, reason) => {
+      queueServer(() => this.forwardClose(request, downstream, 'server-to-client', code, reason));
+    });
     downstream.on('error', (error) => this.failPair(pair, error));
     upstream.on('error', (error) => this.failPair(pair, error));
     const cleanup = (): void => {
@@ -203,7 +212,7 @@ export class WebSocketBridge {
     upstream.on('close', cleanup);
   }
 
-  private async forward(
+  private async forwardMessage(
     request: OngoingRequest,
     target: WebSocket,
     direction: WebSocketMessageDirection,
@@ -214,6 +223,7 @@ export class WebSocketBridge {
       streamId: request.id,
       url: request.url,
       direction,
+      frame: 'message',
       content: ProxyUtils.toBuffer(data),
       isBinary,
     });
@@ -221,6 +231,49 @@ export class WebSocketBridge {
       return;
     }
     await ProxyUtils.sendMessage(target, decision.content, decision.isBinary);
+  }
+
+  private async forwardControl(
+    request: OngoingRequest,
+    target: WebSocket,
+    direction: WebSocketMessageDirection,
+    frame: 'ping' | 'pong',
+    data: Buffer,
+  ): Promise<void> {
+    const decision = await this.options.intercept({
+      streamId: request.id,
+      url: request.url,
+      direction,
+      frame,
+      content: ProxyUtils.toBuffer(data),
+      isBinary: true,
+    });
+    if (decision.action === 'drop') {
+      return;
+    }
+    ProxyUtils.sendControl(target, frame, Buffer.from(decision.content));
+  }
+
+  private async forwardClose(
+    request: OngoingRequest,
+    target: WebSocket,
+    direction: WebSocketMessageDirection,
+    code: number,
+    reason: Buffer,
+  ): Promise<void> {
+    const decision = await this.options.intercept({
+      streamId: request.id,
+      url: request.url,
+      direction,
+      frame: 'close',
+      content: ProxyUtils.toBuffer(reason),
+      isBinary: false,
+      closeCode: code,
+    });
+    if (decision.action === 'drop') {
+      return;
+    }
+    ProxyUtils.closePeer(target, decision.closeCode ?? code, Buffer.from(decision.content));
   }
 
   /** 归一化连接错误、终止双方并移除活动 pair。 */

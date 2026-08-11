@@ -8,7 +8,14 @@ import type {
   RuleNode,
 } from '../../../../shared/desktop-api';
 import { useRulesStore } from '../data/rulesStore';
-import { addRequestRuleDraft, applyRules, loadRules, selectRuleDraft } from '../data/useRulesData';
+import {
+  addBreakpointRule,
+  addRequestRuleDraft,
+  applyRules,
+  loadRules,
+  removeBreakpointRule,
+  selectRuleDraft,
+} from '../data/useRulesData';
 import { createRuleFromRequest, isRulesDirty } from '../utils';
 
 function rule(id: string, priority: number): RuleDefinition {
@@ -308,5 +315,62 @@ describe('rulesStore apply conflict', () => {
 
     expect(order().map(({ id }) => id)).toEqual(['remote']);
     expect(useRulesStore.getState()).toMatchObject({ revision: 9, conflict: false });
+  });
+});
+
+describe('breakpoint quick create', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  beforeEach(() => {
+    seed([]);
+  });
+
+  it('returns the created rule only after Core applies it and supports Undo', async () => {
+    const replaceRules = vi.fn(async () => ({ ok: true as const, revision: 2 }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    const ruleId = await addBreakpointRule(
+      'Pause checkout',
+      'https://shop.example.com/checkout',
+      'endpoint',
+    );
+
+    expect(ruleId).not.toBeNull();
+    expect(collectLeaves(useRulesStore.getState().applied)).toHaveLength(1);
+
+    replaceRules.mockResolvedValueOnce({ ok: true as const, revision: 3 });
+    await expect(removeBreakpointRule(ruleId!)).resolves.toBe(true);
+    expect(collectLeaves(useRulesStore.getState().applied)).toHaveLength(0);
+  });
+
+  it('does not report a created breakpoint when Core rejects Apply', async () => {
+    const replaceRules = vi.fn(async () => ({
+      ok: false as const,
+      reason: 'conflict' as const,
+      message: 'The rule set changed elsewhere.',
+    }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    await expect(addBreakpointRule(
+      'Pause checkout',
+      'https://shop.example.com/checkout',
+      'endpoint',
+    )).resolves.toBeNull();
+    expect(useRulesStore.getState()).toMatchObject({ conflict: true, saving: false });
+  });
+
+  it('keeps the Undo action retryable when Core rejects the deletion', async () => {
+    seed([rule('breakpoint-rule', 100)], 'breakpoint-rule');
+    const replaceRules = vi.fn(async () => ({
+      ok: false as const,
+      reason: 'conflict' as const,
+      message: 'The rule set changed elsewhere.',
+    }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    await expect(removeBreakpointRule('breakpoint-rule')).resolves.toBe(false);
+    expect(useRulesStore.getState()).toMatchObject({ conflict: true, saving: false });
   });
 });

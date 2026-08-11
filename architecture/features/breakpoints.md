@@ -1,6 +1,6 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-10
+> 最后更新：2026-08-11
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
@@ -27,9 +27,9 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 | --- | --- |
 | `RuleService` | 遇到 `breakpoint` action 时调用 `awaitBreakpoint` |
 | `BreakpointQueue` | 持有等待中的断点，提供 suspend/resolve/list/closeAll |
-| `WebSocketBridge` | WebSocket 消息转发前调用 `pauseWebSocketMessage` |
+| `WebSocketBridge` | WebSocket 帧转发前调用 `pauseWebSocketMessage`，覆盖 message / ping / pong / close |
 | `CoreApplication` | 路由 `breakpoint.*` 命令 |
-| Renderer `useBreakpoints` | 1s 轮询列表，提交解决方案 |
+| Renderer `useBreakpoints` | 订阅 `breakpoint.pending` 变更信号，刷新列表并提交解决方案 |
 
 ## 3. 状态机
 
@@ -40,14 +40,16 @@ stateDiagram-v2
     waiting --> edited: resolve(continue + edit)
     waiting --> dropped: resolve(drop)
     waiting --> timed_out: deadline 到期
+    waiting --> aborted: 客户端断开
     timed_out --> continued: onTimeout = continue
     timed_out --> dropped: onTimeout = drop
     continued --> [*]
     edited --> [*]
     dropped --> [*]
+    aborted --> [*]
 ```
 
-**强制超时**：每个断点携带 `timeoutMs` 与 `onTimeout` 策略，绝不允许无限期挂起真实流量。RPC 连接断开时 `closeAll()` 释放全部等待。
+**强制超时**：每个断点携带 `timeoutMs` 与 `onTimeout` 策略，绝不允许无限期挂起真实流量。它是 Core 允许等待的上限，不会覆盖客户端自己的超时；客户端更早断开时，Proxy 按 Mockttp request ID 立即把对应 suspension 结束为 `aborted`，不会把 stale breakpoint 留到 deadline。RPC 连接断开时 `closeAll()` 释放全部等待。
 
 ## 4. 调用流程
 
@@ -78,12 +80,11 @@ sequenceDiagram
         Queue-->>Engine: { id, outcome: Promise }
         Note over Queue: 记录 deadline
 
-        loop 1s 轮询
-            UI->>App: breakpoint.list
-            App->>Queue: list()
-            Queue-->>App: PendingBreakpointInfo[]
-            App-->>UI: 快照 + enabled
-        end
+        Queue-->>UI: breakpoint.pending 变更信号
+        UI->>App: breakpoint.list
+        App->>Queue: list()
+        Queue-->>App: PendingBreakpointInfo[]
+        App-->>UI: 快照 + enabled
 
         UI->>App: breakpoint.resolve(id, action, edit?)
         App->>Queue: resolve(id, outcome)
@@ -108,7 +109,7 @@ sequenceDiagram
 - 快照来自 `buildResponseSnapshot(ruleName, state)`，当前 `bodyAvailable=false`。
 - `dropped` 返回 `block close`，客户端收到连接关闭。
 
-### 4.3 WebSocket 消息断点
+### 4.3 WebSocket 帧断点
 
 ```mermaid
 sequenceDiagram
@@ -120,33 +121,38 @@ sequenceDiagram
     participant Queue as BreakpointQueue
     participant Origin
 
-    Client->>Bridge: 应用消息
+    Client->>Bridge: 应用消息 / ping / pong / close
     Bridge->>Proxy: interceptWebSocketMessage
-    alt 开关关闭
+    alt 未启用或不在配置内
         Proxy-->>Bridge: forward 原样
-    else 开关开启
-        Proxy->>Engine: pauseWebSocketMessage(snapshot)
-        Engine->>Queue: suspend('websocket', 0, 'continue', snapshot)
+    else 方向与帧类别都命中
+        Proxy->>Engine: pauseWebSocketMessage(snapshot, timeoutMs)
+        Engine->>Queue: suspend('websocket', timeoutMs, 'continue', snapshot)
         Queue-->>Engine: outcome
         alt dropped
             Proxy-->>Bridge: drop
         else edited
-            Note over Proxy: binary 用 hex 解析<br/>text 用 utf8
+            Note over Proxy: binary 用 hex 解析<br/>text 用 utf8<br/>close 另带 closeCode
             Proxy-->>Bridge: forward 编辑后内容
         else continued
             Proxy-->>Bridge: forward 原内容
         end
     end
-    Bridge->>Origin: 转发或丢弃
+    Bridge->>Origin: 转发、丢弃或关闭
 ```
 
-WebSocket 断点开关独立于 HTTP 断点，通过 `websocket.breakpoint.configure` 控制。
+WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match 正交：`pauseWebSocketMessage`
+不再检查 `breakpointsEnabled`，开关完全归 `ProxyService.webSocketBreakpointSettings`。
+配置里的 `exchangeId` 把断点锁在发起它的那条连接上，UI 说的 “Pause messages on this connection”
+就是字面意思；其他连接的帧不受影响，`websocket.frames` 也只在 exchangeId 匹配时才报告该配置。
+启用必须给出完整配置（`exchangeId` / `direction` / `frames` / `timeoutMs`），因此不存在“开了但不知道拦什么”的中间态。
+ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
 
-## 5. 当前实现为什么用轮询
+## 5. 当前感知方式
 
-请求在 Core 侧 `await` 挂起，Renderer 只需感知"有断点在等"。1s 轮询延迟可接受，且避免为断点单独建立推送通道与 ack 机制。
-
-`breakpointsStore` 在轮询期间**不覆盖用户正在编辑的草稿**，只更新列表与倒计时。目标设计不再展示倒计时，且需要把感知提升到 App 级；这属于第 7 节的产品改造，不代表当前轮询已经删除。
+请求在 Core 侧 `await` 挂起；队列集合变化复用既有 event-batch 发出 `breakpoint.pending` 信号，App 级
+`useBreakpoints` 收到后调用 `breakpoint.list` 刷新。它不传大快照、不建第二条推送通道，也不依赖
+Capture 页面是否挂载。Core 重启时先清空本地 pending，恢复 running 后重新拉取。
 
 ## 6. 数据契约
 
@@ -158,17 +164,29 @@ interface BreakpointSnapshot {
   method?: string;
   url?: string;
   statusCode?: number;
-  direction?: 'sent' | 'received';   // WebSocket
-  opcode?: 1 | 2;                    // WebSocket
+  direction?: 'client-to-server' | 'server-to-client';   // WebSocket
+  frame?: 'message' | 'ping' | 'pong' | 'close';         // WebSocket
+  opcode?: 1 | 2;                                        // 仅 message 帧
   bodyFormat: 'text' | 'hex';
   headers: readonly RuleHeaderPair[];
   /** 挂起时是否能看到原始正文；HTTP 头部阶段断点为 false。 */
   bodyAvailable: boolean;
   body?: string;
+  /** 仅 close 帧：对端给出的 close code。 */
+  closeCode?: number;
+}
+
+interface WebSocketBreakpointSettings {
+  /** 断点只作用于这条连接的 Capture Exchange。 */
+  exchangeId: string;
+  direction: 'both' | 'client-to-server' | 'server-to-client';
+  frames: readonly ('message' | 'ping' | 'pong' | 'close')[];
+  /** Core 允许挂起的上限；0 表示不设超时。 */
+  timeoutMs: number;
 }
 
 interface BreakpointOutcome {
-  state: 'continued' | 'edited' | 'dropped' | 'timed_out';
+    state: 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
   edit?: BreakpointEdit;
   timeoutPolicy?: 'continue' | 'drop';
 }
@@ -184,7 +202,8 @@ interface BreakpointOutcome {
 | `breakpoint.list` | 返回等待中快照、全局开关与 `autoContinued` 累计溢出数 |
 | `breakpoint.resolve` | continue / drop，可携带编辑 |
 | `breakpoint.configure` | 设置 HTTP 断点全局开关 |
-| `websocket.breakpoint.configure` | 设置 WebSocket 断点开关（待收敛到全局状态） |
+| `websocket.breakpoint.enable` | 用完整配置启用 WebSocket 帧断点 |
+| `websocket.breakpoint.disable` | 停用 WebSocket 帧断点 |
 
 队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
 浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
@@ -194,7 +213,6 @@ interface BreakpointOutcome {
 
 结构层（合并进 Capture、manager、原地暂停行与编辑器、四档快速创建）已实现，不再重复。
 以下为尚未实现项。
-- Capture 行右键的快速粒度为 `This endpoint` / `This path prefix` / `This host` / `Custom…`；`Custom…` 进入 Rules 编辑器。
 
 ### 7.3 Original 与 Replacement body
 
@@ -218,25 +236,24 @@ interface BreakpointOutcome {
 
 | 项 | 当前产品 | 目标 |
 | --- | --- | --- |
-| 导航 | 独立 Breakpoints workspace | 合并到 Capture，删除独立入口 |
-| 感知 | `useBreakpoints` 只在页面挂载时 1s 轮询 | App 级感知 + workbar badge + paused row |
-| 关联 | `PendingBreakpoint` 无 `exchangeId` | 与 Capture exchange、request/response phase 精确关联 |
-| HTTP body | 头部阶段 `bodyAvailable=false` | Original body 事件驱动加载 + 独立 Replacement |
-| 文件 replacement | 无 | Main 文件选择 + 窄 Preload API + 有限预览；Renderer 不拿绝对路径 |
-| 超时 | 页面显示倒计时 | Core 保留 timeout，UI 不显示倒计时，只记录结果 |
-| 队列 | 无上限 | 有上限，溢出自动 continue 并留痕 |
-| WS 开关 | 独立 `websocket.breakpoint.configure` UI | 单一全局 Breakpoints 控制面 |
+| WS 消息开关 | 独立全局 `websocket.breakpoint.configure` | 当前连接临时 Direction + optional Timeout；Upgrade 另走 HTTP breakpoint |
+| Execute edited framing | Content-Length / encoding / H2 尚未完整验证 | wire framing 与编辑后正文一致 |
+
+> **WebSocket 设计待定（2026-08-11）**：最新评审方向不再把消息断点做成持久化 Rule，也不提供 Scope。
+> Upgrade GET / 101 与消息转发是两条正交流程：前者目标是普通 HTTP Rule/Breakpoint；后者是当前已建立
+> 连接的临时 Direction + optional Timeout 开关。101 response 的编辑权限尚未确认，因此本节仍按未实现处理。
 
 ## 8. 验收要点
 
 - [x] 快照如实告知正文是否可见，不把空输入框冒充原文；只改 header 放行不会抹掉真实正文。
-- [ ] 独立 Breakpoints 导航删除；在任意 workspace 命中时用户立即可感知。
-- [ ] paused exchange 在 Capture 原行编辑，Continue 后选择节奏明确。
-- [ ] manager 可查看/启停规则并精确跳到 Rules；历史 request 快捷创建明确只影响未来流量。
-- [ ] Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
+- [x] 独立 Breakpoints 导航删除；在任意 workspace 命中时用户立即可感知。
+- [x] paused exchange 在 Capture 原行编辑，Continue 后选择节奏明确。
+- [x] manager 可查看/启停规则并精确跳到 Rules；历史 request 快捷创建后给出可撤销反馈。
+- [x] Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
 - [ ] 大正文断点有明确的预览上限与提示，不 OOM。
 - [ ] Binary 消息可用 hex 编辑并正确还原。
 - [ ] 超时按 `onTimeout` 策略正确 continue 或 drop。
-- [ ] pending queue 超限自动 continue 并记录数量。
-- [ ] RPC 断开时全部等待被释放，不泄漏挂起请求。
+- [x] 客户端在 deadline 前 abort 时立即释放对应断点，不影响其他等待请求。
+- [x] pending queue 超限自动 continue 并记录数量。
+- [x] RPC 断开时全部等待被释放，不泄漏挂起请求。
 - [ ] Execute edited 后 content-length 与 encoding 一致。

@@ -44,10 +44,25 @@ export type BodyPreview =
 export type BodyKind = 'json' | 'code' | 'limited' | 'image' | 'image-large' | 'binary' | 'form' | 'md' | 'media';
 export type BodyMode = 'default' | 'tree' | 'raw' | 'hex' | 'split' | 'source';
 export type BodyState = 'menu' | 'busy' | 'format-off' | '';
-export type BreakpointState = 'request' | 'response' | 'queue' | 'full' | '';
+export type BreakpointState =
+  | 'request'
+  | 'response'
+  | 'websocket'
+  | 'websocket-upgrade-request'
+  | 'websocket-upgrade-response'
+  | 'queue'
+  | 'full'
+  | '';
 export type BreakpointBodyState = 'loading' | 'ready' | 'replace' | 'file' | 'invalid';
 export type BreakpointFileState = 'none' | 'valid' | 'invalid';
-export type BreakpointUiState = 'panel' | 'armed' | '';
+export type BreakpointUiState = 'panel' | 'message' | '';
+export type WebSocketBreakpointState = 'disabled' | 'setup' | 'enabled';
+export type WebSocketBreakpointDirection = 'both' | 'sent' | 'received';
+export type WebSocketBreakpointTimeout = 'none' | '10' | '30' | '60';
+export type WebSocketBreakpointFrame = 'message' | 'ping' | 'pong' | 'close';
+export type WebSocketMessageDirection = 'sent' | 'received';
+export type WebSocketMessagePayload = 'text' | 'binary' | 'ping' | 'pong' | 'close';
+export type WebSocketUpgradeResponse = 'accepted' | 'mock-error';
 export type TreeContextMenu = 'composer-item' | 'composer-folder' | 'rules-rule' | 'rules-folder' | '';
 export type BootPhase = 'core' | 'listener' | 'proxy' | 'ready' | 'error' | '';
 
@@ -104,8 +119,15 @@ export interface DesignState {
   readonly breakpointBody: BreakpointBodyState;
   readonly breakpointFile: BreakpointFileState;
   readonly breakpointPanel: 'open' | '';
-  readonly breakpointNotice: 'armed' | '';
+  readonly breakpointMessage: 'created' | '';
   readonly breakpointUi: BreakpointUiState;
+  readonly websocketBreakpoint: WebSocketBreakpointState;
+  readonly websocketBreakpointDirection: WebSocketBreakpointDirection;
+  readonly websocketBreakpointTimeout: WebSocketBreakpointTimeout;
+  readonly websocketBreakpointFrames: readonly WebSocketBreakpointFrame[];
+  readonly websocketMessageDirection: WebSocketMessageDirection;
+  readonly websocketMessagePayload: WebSocketMessagePayload;
+  readonly websocketUpgradeResponse: WebSocketUpgradeResponse;
   readonly ruleTypography: 'composer' | 'current';
   readonly ctxmenu: TreeContextMenu;
   readonly boot: BootPhase;

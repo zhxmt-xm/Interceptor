@@ -1,6 +1,6 @@
 import { App as AntApp, ConfigProvider, Tooltip } from 'antd';
 import { Menu } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -45,6 +45,7 @@ import {
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
+import { BreakpointCreatedMessage } from './BreakpointCreatedMessage/BreakpointCreatedMessage';
 import { BootScreen } from './BootScreen/BootScreen';
 import { useBootStore } from './bootStore';
 import { FEATURE_VIEWS, type FeatureActions } from './featureViews';
@@ -88,6 +89,7 @@ export function App(): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [settingsSection, setSettingsSection] = useState('certificates');
+  const [createdBreakpointRuleId, setCreatedBreakpointRuleId] = useState<string | null>(null);
   const [coreStatus, setCoreStatus] = useState<CoreProcessStatus>(() => ({
     ...initialCoreStatus,
     detail: t('app.connectingToCore'),
@@ -99,6 +101,12 @@ export function App(): React.JSX.Element {
   const booting = useBootStore((state) => !state.dismissed);
 
   const toggleCollapse = (): void => setCollapsed((value) => !value);
+  const dismissBreakpointCreatedMessage = useCallback(
+    (ruleId: string) => setCreatedBreakpointRuleId(
+      (currentRuleId) => currentRuleId === ruleId ? null : currentRuleId,
+    ),
+    [],
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
@@ -180,7 +188,10 @@ export function App(): React.JSX.Element {
           }
           return;
         }
-        await addBreakpointRule(name, url, scope);
+        const ruleId = await addBreakpointRule(name, url, scope);
+        if (ruleId !== null) {
+          setCreatedBreakpointRuleId(ruleId);
+        }
       })();
     },
     openRule: (ruleId) => {
@@ -264,6 +275,10 @@ export function App(): React.JSX.Element {
             setSettingsSection('tls-passthrough');
             setView('settings');
           }}
+        />
+        <BreakpointCreatedMessage
+          ruleId={createdBreakpointRuleId}
+          onDismiss={dismissBreakpointCreatedMessage}
         />
         <BootScreen onOpenDiagnostics={() => setView('diagnostics')} />
       </AntApp>

@@ -475,12 +475,12 @@ export const dockFixture: FixtureNode = {
                   "type": "element",
                   "tag": "button",
                   "attributes": {
-                    "data-set": "armed"
+                        "data-set": "message"
                   },
                   "children": [
                     {
                       "type": "text",
-                      "value": "Notice"
+                          "value": "Message"
                     }
                   ]
                 }

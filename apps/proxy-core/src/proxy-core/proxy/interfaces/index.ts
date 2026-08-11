@@ -4,6 +4,7 @@ import type WebSocket from 'ws';
 import type {
   CaptureExchangeEventKind,
   CaptureExchangeSummary,
+  WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
 
 import type { RuleHitRecord } from '../../rules/interfaces';
@@ -43,8 +44,11 @@ export interface WebSocketBridgeMessage {
   readonly streamId: string;
   readonly url: string;
   readonly direction: WebSocketMessageDirection;
+  readonly frame: WebSocketBreakpointFrame;
   readonly content: Buffer;
   readonly isBinary: boolean;
+  /** 仅 close 帧：对端给出的 close code。 */
+  readonly closeCode?: number;
 }
 
 export type WebSocketBridgeDecision =
@@ -52,6 +56,8 @@ export type WebSocketBridgeDecision =
       readonly action: 'forward';
       readonly content: Uint8Array;
       readonly isBinary: boolean;
+      /** 仅 close 帧：转发时实际使用的 close code。 */
+      readonly closeCode?: number;
     }
   | { readonly action: 'drop' };
 

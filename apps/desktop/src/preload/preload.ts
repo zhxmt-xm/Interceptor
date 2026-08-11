@@ -122,8 +122,10 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.sessionsDetail, exchangeId),
   queryWebSocketFrames: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.websocketFrames, request),
-  setWebSocketBreakpointsEnabled: (enabled) =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.websocketBreakpointConfigure, enabled),
+  enableWebSocketBreakpoints: (settings) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.websocketBreakpointEnable, settings),
+  disableWebSocketBreakpoints: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.websocketBreakpointDisable),
   queryGrpcMessages: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.grpcMessages, request),
   readBody: (bodyId, offset, length, options) =>

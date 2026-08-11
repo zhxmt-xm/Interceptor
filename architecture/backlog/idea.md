@@ -82,3 +82,7 @@
 - proxy 和mitm都没有持久化，每次启动好像都是默认态
 - 右键菜单添加breakpoint二级菜单出现时一级菜单消失了 ![alt text](image-12.png)
 - breakpoint最好支持无timeout和有timeout
+- 对于tls passthrough的policy影响的reqeust，可以在tunnel的信息框里加一个按钮点击去查看对应的passthrough item，并给那个item一个临时的高亮然后消失 ![alt text](image-13.png)
+- breakpoint修改的header、body似乎现在不会显示rule effect，并且rule对body的修改现在也不会显示rule effect，这些我觉得都可以加上 ![alt text](image-14.png)
+- breakpoint看到的request应该是在其他rule处理之后的，response也是其他rule处理之后的，并在pause界面标记rule effect
+- 右键菜单里breakpoint的item样式跟其他不一样 ![alt text](image-15.png)

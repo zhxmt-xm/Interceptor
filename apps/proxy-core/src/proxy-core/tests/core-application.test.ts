@@ -434,7 +434,7 @@ describe('CoreApplication', () => {
       payload: {
         items: [{ seq: 1, opcode: 1 }],
         hasMore: false,
-        breakpointsEnabled: false,
+        breakpoint: null,
       },
     });
 

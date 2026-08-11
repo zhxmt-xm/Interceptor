@@ -32,6 +32,9 @@ import type {
   StringMatchMode,
   TlsPassthroughSettings,
   TransferJobSnapshot,
+  WebSocketBreakpointDirection,
+  WebSocketBreakpointFrame,
+  WebSocketBreakpointSettings,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
@@ -75,6 +78,9 @@ export type {
   StringMatchMode,
   TlsPassthroughSettings,
   TransferJobSnapshot,
+  WebSocketBreakpointDirection,
+  WebSocketBreakpointFrame,
+  WebSocketBreakpointSettings,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 };
@@ -253,7 +259,8 @@ export interface WebSocketFramePage {
   items: WebSocketFrameSummary[];
   nextCursor?: string;
   hasMore: boolean;
-  breakpointsEnabled: boolean;
+  /** 当前连接的 WebSocket 断点配置；null 表示未启用。 */
+  breakpoint: WebSocketBreakpointSettings | null;
 }
 
 export interface GrpcMessageQuery {
@@ -459,7 +466,8 @@ export const DESKTOP_IPC_CHANNELS = {
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
   websocketFrames: 'websocket:frames',
-  websocketBreakpointConfigure: 'websocket:breakpoint-configure',
+  websocketBreakpointEnable: 'websocket:breakpoint-enable',
+  websocketBreakpointDisable: 'websocket:breakpoint-disable',
   grpcMessages: 'grpc:messages',
   bodyReadRange: 'body:read-range',
   bodyExportStart: 'body:export-start',
@@ -544,7 +552,10 @@ export interface InterceptorDesktopApi {
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;
-  setWebSocketBreakpointsEnabled(enabled: boolean): Promise<boolean>;
+  enableWebSocketBreakpoints(
+    settings: WebSocketBreakpointSettings,
+  ): Promise<WebSocketBreakpointSettings | null>;
+  disableWebSocketBreakpoints(): Promise<WebSocketBreakpointSettings | null>;
   queryGrpcMessages(request: GrpcMessageQuery): Promise<GrpcMessagePage>;
   readBody(
     bodyId: string,

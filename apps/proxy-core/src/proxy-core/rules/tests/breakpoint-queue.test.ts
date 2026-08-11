@@ -63,6 +63,31 @@ describe('BreakpointQueue', () => {
     expect(breakpointQueue.size).toBe(0);
   });
 
+  it('aborts only breakpoints attached to the disconnected request', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const aborted = breakpointQueue.suspend(
+      'request',
+      30_000,
+      'continue',
+      undefined,
+      'request-a',
+    )!;
+    const untouched = breakpointQueue.suspend(
+      'response',
+      30_000,
+      'continue',
+      undefined,
+      'request-b',
+    )!;
+
+    expect(breakpointQueue.abortRequest('request-a')).toBe(1);
+    await expect(aborted.outcome).resolves.toEqual({ state: 'aborted' });
+    expect(breakpointQueue.list().map((entry) => entry.id)).toEqual([untouched.id]);
+
+    breakpointQueue.resolve(untouched.id, 'continue');
+    await expect(untouched.outcome).resolves.toEqual({ state: 'continued' });
+  });
+
   it('returns null for an unknown or already-resolved breakpoint', () => {
     const breakpointQueue = new BreakpointQueue();
     const { id } = breakpointQueue.suspend('request', 30_000, 'continue')!;

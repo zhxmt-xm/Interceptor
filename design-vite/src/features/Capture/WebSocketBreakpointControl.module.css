@@ -1,0 +1,75 @@
+.webSocketBreakpointPopover {
+  width: 370px;
+}
+
+.breakpointSetup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.breakpointTitle {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.connectionAddress {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.settingRow {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.frameSettingRow {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.frameSettingRow > span {
+  padding-top: 5px;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.frameOptions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.settingRow > label,
+.settingRow > span {
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.setupActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.actionSpacer {
+  flex: 1;
+}
+
+.frameOption {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 11.5px;
+}

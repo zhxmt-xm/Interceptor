@@ -5,6 +5,8 @@ import zlib from 'node:zlib';
 import type { CompletedRequest } from 'mockttp';
 import WebSocket, { type RawData } from 'ws';
 
+import type { WebSocketBreakpointSettings } from '@interceptor/core-protocol';
+
 import type {
   HeaderBag,
   MatchContext,
@@ -12,6 +14,7 @@ import type {
   SyntheticResponseInit,
 } from '../../rules/interfaces';
 import type { HeaderInput, HeaderKind } from '../../capture/interfaces';
+import type { WebSocketBridgeMessage } from '../interfaces';
 import { SUPPORTED_ENCODINGS } from '../internal/constants';
 import type {
   DecodeResult,
@@ -628,4 +631,15 @@ export function closePeer(
   } else {
     socket.close();
   }
+}
+
+/** 判断一帧是否落在当前 WebSocket 断点配置的方向与帧类别内。 */
+export function matchesWebSocketBreakpoint(
+  settings: WebSocketBreakpointSettings,
+  message: WebSocketBridgeMessage,
+): boolean {
+  if (settings.direction !== 'both' && settings.direction !== message.direction) {
+    return false;
+  }
+  return settings.frames.includes(message.frame);
 }

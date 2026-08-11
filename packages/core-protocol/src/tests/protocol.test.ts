@@ -33,8 +33,17 @@ describe('core protocol validation', () => {
         },
       },
       {
-        type: 'websocket.breakpoint.configure',
-        payload: { enabled: true },
+        type: 'websocket.breakpoint.enable',
+        payload: {
+          exchangeId: 'exchange-ws',
+          direction: 'both',
+          frames: ['message'],
+          timeoutMs: 30_000,
+        },
+      },
+      {
+        type: 'websocket.breakpoint.disable',
+        payload: {},
       },
       {
         type: 'grpc.messages',

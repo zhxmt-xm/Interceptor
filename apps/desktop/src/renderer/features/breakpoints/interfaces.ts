@@ -1,6 +1,7 @@
 import type {
   BreakpointsSnapshot,
   PendingBreakpoint,
+  WebSocketBreakpointFrame,
 } from '../../../shared/desktop-api';
 
 /** 编辑草稿中的 header 行（带本地 id 便于增删）。 */
@@ -30,6 +31,8 @@ export interface BreakpointDraft {
   url: string;
   statusCode: number;
   direction?: 'client-to-server' | 'server-to-client';
+  /** WebSocket 帧类别；message 之外都是控制帧。 */
+  frame?: WebSocketBreakpointFrame;
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: EditHeaderRow[];
@@ -37,6 +40,8 @@ export interface BreakpointDraft {
   bodyAvailable: boolean;
   replacement: BreakpointReplacement;
   body: string;
+  /** 仅 close 帧：转发时使用的 close code。 */
+  closeCode: number;
   /** 选了 File 档时的文件；还没选时为 null。 */
   file: BreakpointFileDraft | null;
 }
@@ -57,6 +62,8 @@ export interface BreakpointsState {
   setMethod(method: string): void;
   setUrl(url: string): void;
   setStatusCode(statusCode: number): void;
+  /** 仅 WebSocket close 帧：改写转发时使用的 close code。 */
+  setCloseCode(closeCode: number): void;
   setReplacement(replacement: BreakpointReplacement): void;
   setBody(body: string): void;
   /** 写入用户选中的替换文件；null 表示移除当前文件。 */

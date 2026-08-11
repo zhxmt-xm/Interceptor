@@ -1,0 +1,15 @@
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  box-shadow: none;
+}
+
+.iconButtonIcon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.iconButtonIcon svg {
+  width: 15px;
+  height: 15px;
+}

@@ -112,6 +112,24 @@ export function readPageLimit(args: Readonly<Record<string, unknown>>): number {
   return Math.min(value, MCP_MAX_PAGE_LIMIT);
 }
 
+/** 读取取值受限的非空字符串数组。 */
+export function requireStringArray<T extends string>(
+  args: Readonly<Record<string, unknown>>,
+  key: string,
+  allowed: readonly T[],
+): T[] {
+  const value = args[key];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new McpArgumentError(`"${key}" must be a non-empty array`);
+  }
+  return value.map((item, index) => {
+    if (typeof item !== 'string' || !allowed.includes(item as T)) {
+      throw new McpArgumentError(`"${key}[${index}]" must be one of: ${allowed.join(', ')}`);
+    }
+    return item as T;
+  });
+}
+
 /** 读取对象数组，逐项要求是普通对象。 */
 export function requireObjectArray(
   args: Readonly<Record<string, unknown>>,

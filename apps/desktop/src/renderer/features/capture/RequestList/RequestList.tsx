@@ -4,6 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
 import type { BreakpointScope } from '../../rules/interfaces';
+import {
+  RequestContextMenu,
+  type RequestContextMenuTarget,
+} from '../RequestContextMenu/RequestContextMenu';
 import { useCaptureStore } from '../data/captureStore';
 import { RequestRow } from '../RequestRow/RequestRow';
 import { isScrolledToBottom, visibleCaptureRows } from '../utils';
@@ -35,6 +39,7 @@ export function RequestList({
   const selectedId = useCaptureStore((state) => state.selectedId);
   const select = useCaptureStore((state) => state.select);
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  const [contextMenuTarget, setContextMenuTarget] = useState<RequestContextMenuTarget | null>(null);
   const initialScrollTopRef = useRef(useCaptureStore.getState().listScrollTop);
   // 用户是否停靠在底部（最新）；新流量到达时决定是否自动跟随到底部。
   const stickToBottomRef = useRef(true);
@@ -91,7 +96,13 @@ export function RequestList({
   };
 
   return (
-    <div className={styles.list}>
+    <RequestContextMenu
+      target={contextMenuTarget}
+      onClose={() => setContextMenuTarget(null)}
+      onCreateRule={onCreateRequestRule}
+      onCreateBreakpoint={onCreateBreakpoint}
+    >
+      <div className={styles.list}>
       <div
         className={styles.head}
         style={{ paddingRight: 18 + scrollbarWidth }}
@@ -126,15 +137,17 @@ export function RequestList({
                   selected={row.id === selectedId}
                   offsetTop={virtualRow.start}
                   onSelect={(id) => select(id === selectedId ? null : id)}
-                  onCreateRule={onCreateRequestRule}
-                  onCreateBreakpoint={onCreateBreakpoint}
+                  onOpenContextMenu={(summary) => {
+                    setContextMenuTarget({ summary });
+                  }}
                 />
               );
             })}
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </RequestContextMenu>
   );
 }
 

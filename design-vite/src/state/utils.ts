@@ -44,8 +44,10 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   systemProxy: 'on', upstream: 'on', copy: 'hidden', transfer: '', recording: '', fileMenu: '', ruleSelect: '',
   requestMenu: '', ruleFilter: '', ruleOptions: '', scene: 'http', bodyPreview: 'json', bodyKind: 'json',
   bodyMode: 'default', bodyState: '', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'loading',
-  breakpointFile: 'none', breakpointPanel: '', breakpointNotice: '', breakpointUi: '', ruleTypography: 'composer',
-  ctxmenu: '', boot: '', hasFilter: false,
+  breakpointFile: 'none', breakpointPanel: '', breakpointMessage: '', breakpointUi: '', ruleTypography: 'composer',
+  websocketBreakpoint: 'disabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none',
+  websocketBreakpointFrames: ['message'], websocketMessageDirection: 'sent', websocketMessagePayload: 'text',
+  websocketUpgradeResponse: 'accepted', ctxmenu: '', boot: '', hasFilter: false,
 };
 
 export function reduceDesignState(state: DesignState, patch: DesignStatePatch): DesignState {
@@ -86,7 +88,7 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
     next = {
       ...next,
       breakpointPanel: patch.breakpointUi === 'panel' ? 'open' : '',
-      breakpointNotice: patch.breakpointUi === 'armed' ? 'armed' : '',
+      breakpointMessage: patch.breakpointUi === 'message' ? 'created' : '',
     };
   }
   if (patch.tlsCompatibility) next = { ...next, overlay: 'tls-compatibility' };
@@ -124,7 +126,14 @@ export function designRootAttributes(state: DesignState): Record<string, string 
     'data-body-kind': state.bodyKind, 'data-body-mode': state.bodyMode, 'data-body-state': optional(state.bodyState),
     'data-breakpoints': state.breakpoints, 'data-breakpoint-state': optional(state.breakpointState),
     'data-breakpoint-body': state.breakpointBody, 'data-breakpoint-file': state.breakpointFile,
-    'data-breakpoint-panel': optional(state.breakpointPanel), 'data-breakpoint-notice': optional(state.breakpointNotice),
+    'data-breakpoint-panel': optional(state.breakpointPanel),
+    'data-websocket-breakpoint': state.websocketBreakpoint,
+    'data-websocket-breakpoint-direction': state.websocketBreakpointDirection,
+    'data-websocket-breakpoint-timeout': state.websocketBreakpointTimeout,
+    'data-websocket-breakpoint-frames': state.websocketBreakpointFrames.join(','),
+    'data-websocket-message-direction': state.websocketMessageDirection,
+    'data-websocket-message-payload': state.websocketMessagePayload,
+    'data-websocket-upgrade-response': state.websocketUpgradeResponse,
     'data-rule-typography': state.ruleTypography, 'data-ctxmenu': optional(state.ctxmenu), 'data-boot': optional(state.boot),
   };
 }

@@ -83,5 +83,5 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
     applyMonacoFixtureTheme(state.theme);
   }, [state.theme]);
 
-  return <div {...attributes} ref={hostRef} data-fixture-node="" />;
+  return <div {...attributes} ref={hostRef} data-fixture-node="" data-monaco={preset} />;
 }

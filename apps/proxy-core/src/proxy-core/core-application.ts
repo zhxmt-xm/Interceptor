@@ -346,28 +346,37 @@ export class CoreApplication implements CoreRpcHost {
               'capture.query-websocket-frames',
               () => captureService.queryWebSocketFrames(command.payload),
             );
+            const breakpoint = this.proxyService?.webSocketBreakpointSettings ?? null;
             return {
               type: 'websocket.frames',
               payload: {
                 ...page,
-                breakpointsEnabled:
-                  this.proxyService?.webSocketBreakpointsEnabled ?? false,
+                breakpoint: breakpoint?.exchangeId === command.payload.exchangeId
+                  ? breakpoint
+                  : null,
               },
             };
           } catch (error) {
             throw mapCaptureError(error);
           }
         });
-      case 'websocket.breakpoint.configure':
+      case 'websocket.breakpoint.enable':
         return this.withProxy(async (proxyService) => {
-          if (command.payload.enabled) {
-            proxyService.enableWebSocketBreakpoints();
-          } else {
-            proxyService.disableWebSocketBreakpoints();
-          }
+          proxyService.enableWebSocketBreakpoints(command.payload);
           return {
-            type: 'websocket.breakpoint.config',
-            payload: { enabled: proxyService.webSocketBreakpointsEnabled },
+            type: 'websocket.breakpoint.state',
+            payload: {
+              enabled: true,
+              settings: proxyService.webSocketBreakpointSettings,
+            },
+          };
+        });
+      case 'websocket.breakpoint.disable':
+        return this.withProxy(async (proxyService) => {
+          proxyService.disableWebSocketBreakpoints();
+          return {
+            type: 'websocket.breakpoint.state',
+            payload: { enabled: false, settings: null },
           };
         });
       case 'grpc.messages':
@@ -759,11 +768,13 @@ export class CoreApplication implements CoreRpcHost {
               url: entry.snapshot.url,
               statusCode: entry.snapshot.statusCode,
               direction: entry.snapshot.direction,
+              frame: entry.snapshot.frame,
               opcode: entry.snapshot.opcode,
               bodyFormat: entry.snapshot.bodyFormat,
               headers: entry.snapshot.headers,
               bodyAvailable: entry.snapshot.bodyAvailable,
               body: entry.snapshot.body,
+              closeCode: entry.snapshot.closeCode,
             }))
           : [];
         return {

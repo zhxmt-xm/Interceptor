@@ -739,6 +739,7 @@ export function installFakeInterceptor({
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
 }) {
+  let captureEventsListener = null;
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
   if (pausedBreakpoints) {
@@ -953,6 +954,7 @@ export function installFakeInterceptor({
                 : fixture.update.message,
             };
 
+  window.__emitCaptureEvents = (events) => captureEventsListener?.(events);
   window.interceptor = {
     echoCore: async (value) => ({
       value,
@@ -1109,7 +1111,12 @@ export function installFakeInterceptor({
       captureStatus = { ...captureStatus, recording: false };
       return captureStatus;
     },
-    onCaptureEvents: () => () => undefined,
+    onCaptureEvents: (listener) => {
+      captureEventsListener = listener;
+      return () => {
+        if (captureEventsListener === listener) captureEventsListener = null;
+      };
+    },
     onClientAppIcons: (listener) => {
       // 真实环境里图标由 Main 异步推送；parity 场景一次交付全部。
       queueMicrotask(() => listener(fixture.capture.clientAppIcons));

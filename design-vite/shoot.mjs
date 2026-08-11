@@ -16,6 +16,9 @@ const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme tok
 const onlyFeature = process.argv
   .find((argument) => argument.startsWith('--feature='))
   ?.split('=')[1];
+const onlyVariant = process.argv
+  .find((argument) => argument.startsWith('--variant='))
+  ?.split('=')[1];
 
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
@@ -66,13 +69,24 @@ for (const theme of ['light', 'dark']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab } });
   }
   shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers', copy: 'error' } });
-  shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', requestMenu: 'open' } });
+  shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', interaction: 'request-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', requestMenu: '' } });
   shots.push({ feature: 'capture', theme, variant: 'rule-filter', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', ruleFilter: 'rule-stub' } });
     shots.push({ feature: 'capture', theme, variant: 'rule-filter-disabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', filterGroup: 'rule', ruleOptions: 'empty' } });
   for (const bodyPreview of ['json', 'tree', 'tree-menu', 'raw', 'hex', 'code', 'formatting', 'limited', 'format-off', 'image', 'image-large', 'binary', 'form', 'md', 'md-split', 'md-source', 'media']) {
     shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'response', bodyPreview } });
   }
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-sent', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-received-binary', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketMessageDirection: 'received', websocketMessagePayload: 'binary' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-ping', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'sent', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message', 'ping'], websocketMessageDirection: 'sent', websocketMessagePayload: 'ping' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-close', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-close-edit', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-request-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-request', websocketUpgradeResponse: 'accepted' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-response-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-response', websocketUpgradeResponse: 'accepted' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-response-mock-error', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-response', websocketUpgradeResponse: 'mock-error' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'grpc', tab: 'grpc' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel-mitm-active', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel', mitm: 'active' } });
@@ -92,9 +106,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-invalid', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'invalid' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointState: 'full' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-create-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', requestMenu: 'breakpoint' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-create-menu', interaction: 'breakpoint-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', requestMenu: '' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-manager', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointPanel: 'open' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-armed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointNotice: 'armed' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-created-message', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointMessage: 'created' } });
 }
 // rules add-action popover
 for (const theme of ['light', 'dark']) {
@@ -160,7 +174,7 @@ for (const theme of ['light', 'dark']) {
   }
 }
 
-const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}.monaco-editor .cursors-layer{display:none!important}';
+const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
 const FULL_CSS = `
 .app{height:auto!important;min-height:800px!important}
 .mainhost,.mv{overflow:visible!important}
@@ -168,18 +182,21 @@ const FULL_CSS = `
 .snav,.scontent,.break-inspector,.break-scroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
 
-const selectedShots = onlyFeature
-  ? shots.filter((shot) => shot.feature === onlyFeature)
-  : shots;
+const selectedShots = shots.filter((shot) =>
+  (!onlyFeature || shot.feature === onlyFeature) &&
+  (!onlyVariant || shot.variant === onlyVariant),
+);
 
 // Only clean feature directories owned by this run; preserve scene scripts.
 const selectedDirectories = new Set(
   selectedShots.map((shot) => path.join(shotsRoot, shot.theme, shot.feature)),
 );
-await Promise.all(
-  [...selectedDirectories].map((directory) =>
-    rm(directory, { recursive: true, force: true })),
-);
+if (!onlyVariant) {
+  await Promise.all(
+    [...selectedDirectories].map((directory) =>
+      rm(directory, { recursive: true, force: true })),
+  );
+}
 await mkdir(shotsRoot, { recursive: true });
 
 const designPreview = await startDesignPreview(dir);
@@ -195,6 +212,12 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
+    await page.evaluate((interaction) => {
+      document.body.classList.toggle(
+        'menu-interaction-shot',
+        interaction === 'breakpoint-menu' || interaction === 'websocket-breakpoint-setup',
+      );
+    }, s.interaction);
     await page.evaluate((st) => window.__setState({
       fileMenu: '',
       settings: 'certificates',
@@ -222,7 +245,13 @@ async function shoot(list) {
       breakpointBody: 'loading',
       breakpointFile: 'none',
       breakpointPanel: '',
-      breakpointNotice: '',
+      breakpointMessage: '',
+      websocketBreakpoint: 'disabled',
+      websocketBreakpointDirection: 'both',
+      websocketBreakpointTimeout: 'none',
+      websocketBreakpointFrames: ['message'],
+      websocketMessageDirection: 'sent',
+      websocketMessagePayload: 'text',
       ruleTypography: 'composer',
       composer: '',
       collection: 'open',
@@ -235,14 +264,34 @@ async function shoot(list) {
       ...st,
     }), s.state);
     await page.waitForTimeout(140);
+    if (s.interaction === 'request-menu' || s.interaction === 'breakpoint-menu') {
+      await page.locator('.list-scroll .row').filter({ visible: true }).first().click({ button: 'right' });
+    }
+    if (s.interaction === 'breakpoint-menu') {
+      await page.evaluate(() => {
+        document.querySelector('.ant-dropdown-menu-submenu-title')
+          ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      });
+      await page.waitForTimeout(300);
+    }
+    if (s.interaction === 'websocket-breakpoint-setup') {
+      await page.waitForTimeout(300);
+    }
     // Monaco hosts inside a hidden tab measure as zero until the tab is visible.
     await page.evaluate(() => window.__monacoRelayout());
     await page.waitForTimeout(60);
     if (s.hover) await page.hover(s.hover);
-    else await page.mouse.move(0, 0);
+    else if (!s.interaction) await page.mouse.move(0, 0);
     const dest = path.join(shotsRoot, s.theme, s.feature);
     await mkdir(dest, { recursive: true });
-    await app.screenshot({ path: path.join(dest, `${s.variant}.png`) });
+    const outputPath = path.join(dest, `${s.variant}.png`);
+    if (s.interaction === 'request-menu' || s.interaction === 'breakpoint-menu') {
+      const clip = await app.boundingBox();
+      if (!clip) throw new Error('Design app is not visible');
+      await page.screenshot({ path: outputPath, clip });
+    } else {
+      await app.screenshot({ path: outputPath });
+    }
     console.log('  ✓', `${s.theme}/${s.feature}/${s.variant}`);
   }
 }

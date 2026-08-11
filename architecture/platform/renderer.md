@@ -1,6 +1,6 @@
 # 平台架构：Renderer Shell
 
-> 最后更新：2026-08-05
+> 最后更新：2026-08-11
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
 > 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
 
@@ -24,7 +24,7 @@ Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header �
 
 ## 4. Feature workspaces
 
-`features/{capture,rules,composer,breakpoints,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
 
 ## 5. 共享组件库
 
@@ -67,6 +67,12 @@ Rules 的规则树与 Composer 的 Collection 是同一套交互，数据结构�
 - 每一行自己持有 `menuOpen`，整棵树不会因为一个弹层重渲染。
 - 目录菜单：Rename / New subfolder / New leaf / Delete；叶子菜单：Rename / Delete（Rules 的规则多一项 Show matching requests，命中数为 0 时禁用）。
 - 重命名一律**原地改成输入框**，不弹对话框。
+
+Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 RequestRow：右键行只更新目标 summary，
+新请求推动列表滚动或回收触发行时 popup 不丢失。一级与 Breakpoint 二级均由 Ant `Dropdown/Menu`
+渲染，二级使用 `items[].children` 的原生 hover 行为；`placement="right" + autoAdjustOverflow` 让高菜单
+沿垂直副轴贴回窗口并在左右不足时翻转。outside click、Escape、焦点与 submenu 延迟均由 Ant 管理，
+不得再用自绘 popup 或受控 `open` 覆盖其关闭状态。
 
 ### 6.4 正文全屏
 

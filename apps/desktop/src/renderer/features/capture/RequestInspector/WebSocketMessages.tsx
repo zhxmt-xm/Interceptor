@@ -9,8 +9,9 @@ import type {
 } from '../../../../shared/desktop-api';
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
-import { Count, cx, IconButton, Segmented, sizeLabel, Switch } from '../../../components';
+import { cx, Segmented, sizeLabel } from '../../../components';
 import { filterDirection, frameRelativeTime } from '../utils';
+import { WebSocketBreakpointControl } from '../WebSocketBreakpointControl/WebSocketBreakpointControl';
 import { FramePayload } from './FramePayload';
 import { FramePreview } from './FramePreview';
 import { useWebSocketFrames } from './useWebSocketFrames';
@@ -23,11 +24,14 @@ type DirectionFilter = 'all' | 'sent' | 'received';
 interface WebSocketMessagesProps {
   exchangeId: string;
   startedAt: number;
+  /** Connection address shown in the breakpoint setup panel. */
+  connection: string;
 }
 
 export function WebSocketMessages({
   exchangeId,
   startedAt,
+  connection,
 }: WebSocketMessagesProps): React.JSX.Element {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<DirectionFilter>('all');
@@ -38,10 +42,11 @@ export function WebSocketMessages({
     loading,
     loadingMore,
     hasMore,
-    breakpointsEnabled,
+    breakpoint,
     error,
     loadMore,
-    setBreakpointsEnabled,
+    enableBreakpoints,
+    disableBreakpoints,
   } =
     useWebSocketFrames(exchangeId, direction);
   const selected = frames.find((frame) => frame.seq === selectedSequence) ?? null;
@@ -93,11 +98,12 @@ export function WebSocketMessages({
           }}
         />
         <span className={styles.spacer} />
-        <Count>{t('capture.pauseOnMessage')}</Count>
-        <Switch
-          checked={breakpointsEnabled}
-          onChange={setBreakpointsEnabled}
-          automationId={AUTOMATION_IDS.capture.websocket.pauseOnMessage}
+        <WebSocketBreakpointControl
+          exchangeId={exchangeId}
+          connection={connection}
+          breakpoint={breakpoint}
+          onEnable={enableBreakpoints}
+          onDisable={disableBreakpoints}
         />
       </div>
 
@@ -153,7 +159,7 @@ export function WebSocketMessages({
 
       <div className={styles.note}>
         <Pause size={13} strokeWidth={1.9} />
-        {breakpointsEnabled
+        {breakpoint
           ? t('capture.nextMessagePauses')
           : t('capture.enableMessageBreakpoints')}
       </div>

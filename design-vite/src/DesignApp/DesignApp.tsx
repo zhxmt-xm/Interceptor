@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { App as AntApp, ConfigProvider } from 'antd';
+import { useMemo, useRef } from 'react';
 
 import { Composer } from '../features/Composer/Composer';
 import { Capture } from '../features/Capture/Capture';
@@ -19,40 +20,48 @@ import { updateNoticeFixture } from '../fixtures/generated/updateNoticeFixture';
 import { DesignStateProvider } from '../state/DesignStateProvider';
 import { designRootAttributes, designRootClassName } from '../state/utils';
 import { useDesignState } from '../state/useDesignState';
+import { createDesignTheme } from '../theme/theme';
 import { Sidebar } from './Sidebar';
 
 function DesignAppContent(): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null);
   const { state, updateState } = useDesignState();
   useDesignFixtureAdapter(rootRef, state, updateState);
+  const messageConfig = useMemo(() => ({
+    getContainer: () => rootRef.current ?? document.body,
+    top: 10,
+    styles: { list: { position: 'absolute' as const } },
+  }), []);
 
   const { class: rootClasses = '', ...attributes } = appAttributes;
   return (
-    <>
-      <div
-        {...attributes}
-        {...designRootAttributes(state)}
-        ref={rootRef}
-        className={fixtureClassNames(designRootClassName(state, rootClasses))}
-      >
-        <Sidebar />
-        <FixtureRenderer node={topbarFixture} />
-        <div className={fixtureClassNames('mainhost')}>
-          <Capture />
-          <Rules />
-          <Composer />
-          <Settings />
-          <Diagnostics />
+    <ConfigProvider componentSize="small" theme={createDesignTheme(state.theme)}>
+      <AntApp component={false} message={messageConfig}>
+        <div
+          {...attributes}
+          {...designRootAttributes(state)}
+          ref={rootRef}
+          className={fixtureClassNames(designRootClassName(state, rootClasses))}
+        >
+          <Sidebar />
+          <FixtureRenderer node={topbarFixture} />
+          <div className={fixtureClassNames('mainhost')}>
+            <Capture />
+            <Rules />
+            <Composer />
+            <Settings />
+            <Diagnostics />
+          </div>
+          <FixtureRenderer node={statusbarFixture} />
+          {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
+          {contextMenuFixtures.map((fixture, index) => <FixtureRenderer key={`context-${index}`} node={fixture} />)}
+          <FixtureRenderer node={bootFixture} />
+          <FixtureRenderer node={updateNoticeFixture} />
+          {footerPopoverFixtures.map((fixture, index) => <FixtureRenderer key={`footer-${index}`} node={fixture} />)}
         </div>
-        <FixtureRenderer node={statusbarFixture} />
-        {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
-        {contextMenuFixtures.map((fixture, index) => <FixtureRenderer key={`context-${index}`} node={fixture} />)}
-        <FixtureRenderer node={bootFixture} />
-        <FixtureRenderer node={updateNoticeFixture} />
-        {footerPopoverFixtures.map((fixture, index) => <FixtureRenderer key={`footer-${index}`} node={fixture} />)}
-      </div>
-      <FixtureRenderer node={dockFixture} />
-    </>
+        <FixtureRenderer node={dockFixture} />
+      </AntApp>
+    </ConfigProvider>
   );
 }
 

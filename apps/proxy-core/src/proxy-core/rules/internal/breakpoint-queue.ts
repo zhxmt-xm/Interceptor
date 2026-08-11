@@ -12,6 +12,7 @@ import type {
   BreakpointOutcome,
   BreakpointPhase,
   BreakpointResolutionAction,
+  BreakpointResolutionState,
   BreakpointSnapshot,
   BreakpointState,
   BreakpointSuspension,
@@ -49,6 +50,7 @@ export class BreakpointQueue {
       headers: [],
       bodyAvailable: false,
     },
+    requestId?: string,
   ): BreakpointSuspension | null {
     if (this.pending.size >= BREAKPOINT_QUEUE_LIMIT) {
       this.autoContinuedCount += 1;
@@ -68,6 +70,7 @@ export class BreakpointQueue {
       createdAt,
       deadline: timeoutMs > 0 ? createdAt + timeoutMs : 0,
       snapshot,
+      ...(requestId !== undefined ? { requestId } : {}),
       timeoutPolicy,
       settle,
       timer: null,
@@ -91,21 +94,36 @@ export class BreakpointQueue {
     id: string,
     action: BreakpointResolutionAction,
     edit?: BreakpointEdit,
-  ): BreakpointState | null {
+  ): BreakpointResolutionState | null {
     const entry = this.pending.get(id);
     if (!entry) {
       return null;
     }
+    let state: BreakpointResolutionState;
     let outcome: BreakpointOutcome;
     if (action === 'continue') {
-      outcome = edit ? { state: 'edited', edit } : { state: 'continued' };
+      state = edit ? 'edited' : 'continued';
+      outcome = edit ? { state, edit } : { state };
     } else if (action === 'drop') {
-      outcome = { state: 'dropped' };
+      state = 'dropped';
+      outcome = { state };
     } else {
-      outcome = { state: 'timed_out', timeoutPolicy: entry.timeoutPolicy };
+      state = 'timed_out';
+      outcome = { state, timeoutPolicy: entry.timeoutPolicy };
     }
     this.finish(id, outcome);
-    return outcome.state;
+    return state;
+  }
+
+  /** 客户端中止 HTTP 请求时，只释放绑定同一 Mockttp request ID 的断点。 */
+  abortRequest(requestId: string): number {
+    const entries = [...this.pending.values()].filter(
+      (entry) => entry.requestId === requestId,
+    );
+    for (const entry of entries) {
+      this.finish(entry.id, { state: 'aborted' });
+    }
+    return entries.length;
   }
 
   /**

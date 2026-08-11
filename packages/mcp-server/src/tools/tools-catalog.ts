@@ -1,5 +1,10 @@
 import { collectLeaves } from '@interceptor/core-protocol';
-import type { RuleDefinition, RuleHeaderPair } from '@interceptor/core-protocol';
+import type {
+  RuleDefinition,
+  RuleHeaderPair,
+  WebSocketBreakpointDirection,
+  WebSocketBreakpointFrame,
+} from '@interceptor/core-protocol';
 
 import { MCP_MAX_PAGE_LIMIT } from '../constants';
 import type { McpRedactor } from '../redaction/entry';
@@ -16,7 +21,21 @@ import {
   requireInteger,
   requireObjectArray,
   requireString,
+  requireStringArray,
 } from './tools-arguments';
+
+const WEBSOCKET_BREAKPOINT_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
+  'both',
+  'client-to-server',
+  'server-to-client',
+];
+
+const WEBSOCKET_BREAKPOINT_FRAMES: readonly WebSocketBreakpointFrame[] = [
+  'message',
+  'ping',
+  'pong',
+  'close',
+];
 
 /**
  * 全部 MCP 工具的定义。每个工具都只是既有 Core command 的第二个调用入口，
@@ -574,9 +593,9 @@ function buildWriteTools(): readonly McpToolDefinition[] {
 
     {
       name: 'configure_breakpoint',
-      title: 'Configure breakpoints',
+      title: 'Configure HTTP breakpoints',
       description:
-        'Enable or disable HTTP and WebSocket breakpoints. '
+        'Enable or disable the global HTTP break-on-match switch. '
         + 'Enabling suspends real requests until they are resolved.',
       level: 'write',
       destructive: false,
@@ -586,27 +605,86 @@ function buildWriteTools(): readonly McpToolDefinition[] {
         required: ['enabled'],
         properties: {
           enabled: { type: 'boolean', description: 'True to suspend matching traffic.' },
-          channel: {
+        },
+      },
+      async execute(args, context) {
+        rejectUnknownKeys(args, ['enabled']);
+        const result = await context.host.invoke({
+          type: 'breakpoint.configure',
+          payload: { enabled: requireBoolean(args, 'enabled') },
+        }, context.abortSignal);
+        return result.payload;
+      },
+    },
+
+    {
+      name: 'enable_websocket_breakpoint',
+      title: 'Enable WebSocket breakpoints',
+      description:
+        'Suspend WebSocket frames on the proxy before they are forwarded. '
+        + 'Direction, frame kinds and the maximum wait are all set here.',
+      level: 'write',
+      destructive: false,
+      inputSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['exchangeId', 'frames'],
+        properties: {
+          exchangeId: {
             type: 'string',
-            description: 'Which breakpoint channel to configure.',
-            enum: ['http', 'websocket'],
+            description: 'The WebSocket exchange whose frames should be suspended.',
+          },
+          direction: {
+            type: 'string',
+            description: 'Which travel direction to suspend. Defaults to both.',
+            enum: ['both', 'client-to-server', 'server-to-client'],
+          },
+          frames: {
+            type: 'array',
+            description: 'Frame kinds to suspend.',
+            items: {
+              type: 'string',
+              description: 'One frame kind.',
+              enum: ['message', 'ping', 'pong', 'close'],
+            },
+          },
+          timeoutMs: {
+            type: 'integer',
+            description: 'Maximum time Core waits before auto-continuing. 0 means no timeout.',
           },
         },
       },
       async execute(args, context) {
-        rejectUnknownKeys(args, ['enabled', 'channel']);
-        const enabled = requireBoolean(args, 'enabled');
-        const channel = optionalEnum(args, 'channel', ['http', 'websocket'] as const) ?? 'http';
-        if (channel === 'websocket') {
-          const result = await context.host.invoke({
-            type: 'websocket.breakpoint.configure',
-            payload: { enabled },
-          }, context.abortSignal);
-          return result.payload;
-        }
+        rejectUnknownKeys(args, ['exchangeId', 'direction', 'frames', 'timeoutMs']);
         const result = await context.host.invoke({
-          type: 'breakpoint.configure',
-          payload: { enabled },
+          type: 'websocket.breakpoint.enable',
+          payload: {
+            exchangeId: requireString(args, 'exchangeId'),
+            direction: optionalEnum(args, 'direction', WEBSOCKET_BREAKPOINT_DIRECTIONS) ?? 'both',
+            frames: requireStringArray(args, 'frames', WEBSOCKET_BREAKPOINT_FRAMES),
+            timeoutMs: optionalInteger(args, 'timeoutMs') ?? 0,
+          },
+        }, context.abortSignal);
+        return result.payload;
+      },
+    },
+
+    {
+      name: 'disable_websocket_breakpoint',
+      title: 'Disable WebSocket breakpoints',
+      description: 'Stop suspending WebSocket frames; in-flight frames keep flowing.',
+      level: 'write',
+      destructive: false,
+      inputSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      async execute(args, context) {
+        rejectUnknownKeys(args, []);
+        const result = await context.host.invoke({
+          type: 'websocket.breakpoint.disable',
+          payload: {},
         }, context.abortSignal);
         return result.payload;
       },

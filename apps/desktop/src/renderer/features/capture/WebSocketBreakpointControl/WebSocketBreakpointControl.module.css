@@ -1,0 +1,13 @@
+.control {
+  flex: 0 0 auto;
+}
+
+.armed,
+.armed:hover {
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  color: var(--yellow);
+}
+
+.setupPanel {
+  width: 370px;
+}

@@ -334,7 +334,11 @@ export function RequestInspector({
         ) : null}
 
         {tab === 'messages' && isWebSocket && view ? (
-          <WebSocketMessages exchangeId={view.id} startedAt={view.startedAt} />
+          <WebSocketMessages
+            exchangeId={view.id}
+            startedAt={view.startedAt}
+            connection={`${view.host}${view.path}`}
+          />
         ) : null}
 
         {tab === 'grpc' && isGrpc && detail ? (

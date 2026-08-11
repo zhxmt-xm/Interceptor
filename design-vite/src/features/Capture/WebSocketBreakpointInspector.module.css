@@ -1,0 +1,23 @@
+.websocketBreakpointInspector {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.websocketPayloadEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px;
+}
+
+.websocketCloseCode {
+  width: 120px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}

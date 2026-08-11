@@ -14,6 +14,19 @@ import { CaptureEventQueue } from '../internal/capture-event-queue';
 import { RecordingCaptureService } from './test-capture-service';
 import { decryptWithCertificate } from './test-tls-setup';
 
+/** 只拦应用消息、不设超时的 WebSocket 断点配置。 */
+function messageBreakpoint(exchangeId: string) {
+  return { exchangeId, direction: 'both', frames: ['message'], timeoutMs: 0 } as const;
+}
+
+/** 等待 101 Exchange 落库并返回它的 id；断点作用域靠它锁定连接。 */
+async function webSocketExchangeId(
+  captureService: RecordingCaptureService,
+): Promise<string> {
+  await expect.poll(() => captureService.exchanges.length).toBeGreaterThan(0);
+  return captureService.exchanges[captureService.exchanges.length - 1]!.id;
+}
+
 function startOrigin(
   handler: http.RequestListener,
 ): Promise<{ port: number; close: () => Promise<void> }> {
@@ -284,7 +297,7 @@ function openProxiedWebSocket(
 
 function sendWebSocketFrame(
   socket: net.Socket,
-  opcode: 1 | 2 | 8,
+  opcode: 1 | 2 | 8 | 9 | 10,
   payload: Uint8Array,
 ): void {
   if (payload.byteLength > 0xffff) {
@@ -1394,7 +1407,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       new CaptureEventQueue(),
       new RuleService(breakpointQueue),
     );
-    proxyService.enableWebSocketBreakpoints();
     address = await proxyService.start();
 
     const origin = getLocal();
@@ -1409,6 +1421,9 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       socket = await openProxiedWebSocket(
         address,
         `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints(
+        messageBreakpoint(await webSocketExchangeId(recordingCaptureService)),
       );
       const echoed = readWebSocketFrames(socket, 1);
       sendWebSocketFrame(socket, 2, binary);
@@ -1442,7 +1457,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const breakpointQueue = new BreakpointQueue();
     const ruleService = new RuleService(breakpointQueue);
     proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue(), ruleService);
-    proxyService.enableWebSocketBreakpoints();
     address = await proxyService.start();
 
     const origin = getLocal();
@@ -1453,6 +1467,9 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       socket = await openProxiedWebSocket(
         address,
         `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints(
+        messageBreakpoint(await webSocketExchangeId(recordingCaptureService)),
       );
       sendWebSocketFrame(socket, 1, Buffer.from('before'));
       await expect.poll(() => breakpointQueue.size).toBe(1);
@@ -1482,6 +1499,105 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       const second = breakpointQueue.list()[0];
       breakpointQueue.resolve(second!.id, 'drop');
       await expect(waitForSocketData(socket)).resolves.toBeNull();
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('only pauses the configured direction', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints({
+        exchangeId: await webSocketExchangeId(recordingCaptureService),
+        direction: 'client-to-server',
+        frames: ['message'],
+        timeoutMs: 0,
+      });
+      const echoed = readWebSocketFrames(socket, 1);
+      sendWebSocketFrame(socket, 1, Buffer.from('outbound'));
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const outbound = breakpointQueue.list()[0];
+      expect(outbound?.snapshot.direction).toBe('client-to-server');
+      breakpointQueue.resolve(outbound!.id, 'continue');
+
+      // 回程方向不在配置内，必须直通而不再挂起。
+      await expect(echoed).resolves.toEqual([
+        { opcode: 1, payload: Buffer.from('outbound') },
+      ]);
+      expect(breakpointQueue.size).toBe(0);
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('pauses ping frames only when the ping frame kind is configured', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints({
+        exchangeId: await webSocketExchangeId(recordingCaptureService),
+        direction: 'both',
+        frames: ['ping'],
+        timeoutMs: 0,
+      });
+      const echoed = readWebSocketFrames(socket, 1);
+      // 应用消息不在配置内，直接放行。
+      sendWebSocketFrame(socket, 1, Buffer.from('passthrough'));
+      await expect(echoed).resolves.toEqual([
+        { opcode: 1, payload: Buffer.from('passthrough') },
+      ]);
+      expect(breakpointQueue.size).toBe(0);
+
+      sendWebSocketFrame(socket, 9, Buffer.from('hb'));
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const ping = breakpointQueue.list()[0];
+      expect(ping?.snapshot).toMatchObject({
+        frame: 'ping',
+        direction: 'client-to-server',
+        ruleName: 'WebSocket ping',
+      });
+      breakpointQueue.resolve(ping!.id, 'continue');
+      await expect.poll(() => breakpointQueue.size).toBe(0);
     } finally {
       if (socket) {
         sendWebSocketFrame(socket, 8, new Uint8Array());

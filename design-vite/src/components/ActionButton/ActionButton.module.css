@@ -1,0 +1,49 @@
+.actionButton {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--panel) 94%, var(--text));
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.actionButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.actionButtonDanger {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--border));
+  color: var(--red);
+}
+
+.actionButtonDanger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 10%, var(--panel));
+}
+
+.actionButtonPrimary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.actionButtonPrimary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}

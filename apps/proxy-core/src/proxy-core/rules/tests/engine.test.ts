@@ -204,7 +204,6 @@ describe('RuleService — request evaluation', () => {
     expect(result).toMatchObject({ kind: 'continue', delayMs: 300 });
   });
 });
-
 describe('RuleService — breakpoints', () => {
   it('continues after a request breakpoint resolves', async () => {
     const breakpointQueue = new BreakpointQueue();
@@ -269,6 +268,37 @@ describe('RuleService — breakpoints', () => {
     expect(state.method).toBe('POST');
     expect(state.headers['x-edit']).toBe('y');
     expect(result.hits[0]).toMatchObject({ action: 'breakpoint', summary: 'edited' });
+  });
+
+  it('stops evaluating breakpoint actions after the client aborts', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    let ruleService!: RuleService;
+    ruleService = new RuleService(breakpointQueue, {
+      onBreakpointHit: () => {
+        ruleService.abortRequestBreakpoints('request-1');
+      },
+    });
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [
+        rule('r1', [{ type: 'method', value: 'GET' }], [
+          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+        ]),
+      ],
+    });
+
+    const result = await ruleService.evaluateRequest(
+      requestContext(),
+      requestState(),
+      'request-1',
+      'exchange-1',
+    );
+
+    expect(result.kind).toBe('aborted');
+    expect(result.hits).toHaveLength(1);
+    expect(result.hits[0]).toMatchObject({ action: 'breakpoint', summary: 'aborted' });
+    expect(breakpointQueue.size).toBe(0);
   });
 });
 

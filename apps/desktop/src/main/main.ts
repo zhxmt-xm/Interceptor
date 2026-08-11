@@ -83,6 +83,7 @@ import {
   toRendererDiagnosticRecord,
   toRendererCaptureUsage,
   toSafeBodyFileName,
+  toWebSocketBreakpointSettings,
   toWebSocketFrameQuery,
 } from './utils';
 
@@ -779,14 +780,26 @@ class DesktopApplication {
     );
 
     ipcMain.handle(
-      DESKTOP_IPC_CHANNELS.websocketBreakpointConfigure,
-      async (event, enabled: unknown) => {
+      DESKTOP_IPC_CHANNELS.websocketBreakpointEnable,
+      async (event, settings: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const result = await this.coreRuntime.request({
-          type: 'websocket.breakpoint.configure',
-          payload: { enabled: enabled as boolean },
+          type: 'websocket.breakpoint.enable',
+          payload: toWebSocketBreakpointSettings(settings),
         });
-        return result.payload.enabled;
+        return result.payload.settings;
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.websocketBreakpointDisable,
+      async (event) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({
+          type: 'websocket.breakpoint.disable',
+          payload: {},
+        });
+        return result.payload.settings;
       },
     );
 

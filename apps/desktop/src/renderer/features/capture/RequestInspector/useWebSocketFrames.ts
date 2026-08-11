@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type {
+  WebSocketBreakpointSettings,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '../../../../shared/desktop-api';
@@ -13,10 +14,12 @@ interface WebSocketFramesState {
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
-  breakpointsEnabled: boolean;
+  /** 当前连接的断点配置；null 表示未启用。 */
+  breakpoint: WebSocketBreakpointSettings | null;
   error: string | null;
   loadMore(): void;
-  setBreakpointsEnabled(enabled: boolean): void;
+  enableBreakpoints(settings: WebSocketBreakpointSettings): void;
+  disableBreakpoints(): void;
 }
 
 /** 有限 keyset 分页 + 尾游标轮询；payload 字节不进入此状态。 */
@@ -29,7 +32,7 @@ export function useWebSocketFrames(
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [breakpointsEnabled, setBreakpointsEnabledState] = useState(false);
+  const [breakpoint, setBreakpoint] = useState<WebSocketBreakpointSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cursorRef = useRef<string | undefined>(undefined);
   const hasMoreRef = useRef(false);
@@ -63,7 +66,7 @@ export function useWebSocketFrames(
         cursorRef.current = page.nextCursor;
         setHasMore(page.hasMore);
         hasMoreRef.current = page.hasMore;
-        setBreakpointsEnabledState(page.breakpointsEnabled);
+        setBreakpoint(page.breakpoint);
         setLoading(false);
         busyRef.current = false;
       })
@@ -103,7 +106,7 @@ export function useWebSocketFrames(
         cursorRef.current = page.nextCursor;
         setHasMore(page.hasMore);
         hasMoreRef.current = page.hasMore;
-        setBreakpointsEnabledState(page.breakpointsEnabled);
+        setBreakpoint(page.breakpoint);
         setLoadingMore(false);
         busyRef.current = false;
       })
@@ -142,7 +145,7 @@ export function useWebSocketFrames(
           cursorRef.current = page.nextCursor;
           setHasMore(page.hasMore);
           hasMoreRef.current = page.hasMore;
-          setBreakpointsEnabledState(page.breakpointsEnabled);
+          setBreakpoint(page.breakpoint);
           busyRef.current = false;
         })
         .catch(() => {
@@ -157,15 +160,20 @@ export function useWebSocketFrames(
     };
   }, [direction, exchangeId]);
 
-  const setBreakpointsEnabled = (enabled: boolean): void => {
+  const enableBreakpoints = (settings: WebSocketBreakpointSettings): void => {
     const api = window.interceptor;
-    if (!api?.setWebSocketBreakpointsEnabled) {
+    if (!api?.enableWebSocketBreakpoints) {
       return;
     }
-    void api.setWebSocketBreakpointsEnabled(enabled).then(
-      (actual) => setBreakpointsEnabledState(actual),
-      () => undefined,
-    );
+    void api.enableWebSocketBreakpoints(settings).then(setBreakpoint, () => undefined);
+  };
+
+  const disableBreakpoints = (): void => {
+    const api = window.interceptor;
+    if (!api?.disableWebSocketBreakpoints) {
+      return;
+    }
+    void api.disableWebSocketBreakpoints().then(setBreakpoint, () => undefined);
   };
 
   return {
@@ -173,10 +181,11 @@ export function useWebSocketFrames(
     loading,
     loadingMore,
     hasMore,
-    breakpointsEnabled,
+    breakpoint,
     error,
     loadMore,
-    setBreakpointsEnabled,
+    enableBreakpoints,
+    disableBreakpoints,
   };
 }
 

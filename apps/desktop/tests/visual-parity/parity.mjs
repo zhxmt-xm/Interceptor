@@ -20,12 +20,17 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(here, '../..');
 const repoRoot = path.resolve(here, '../../../..');
-const outDir = path.join(here, 'renderer-shots');
 const designRoot = path.join(repoRoot, 'design-vite');
 
 const onlyView = process.argv
   .find((arg) => arg.startsWith('--view='))
   ?.split('=')[1];
+const outDir = path.resolve(process.argv
+  .find((arg) => arg.startsWith('--out-dir='))
+  ?.split('=')[1] ?? path.join(here, 'renderer-shots'));
+const reportPath = path.resolve(process.argv
+  .find((arg) => arg.startsWith('--report='))
+  ?.split('=')[1] ?? path.join(here, 'parity-report.md'));
 const viewportArg = process.argv
   .find((arg) => arg.startsWith('--viewport='))
   ?.split('=')[1];
@@ -92,6 +97,43 @@ async function applyRendererActions(page, actions = []) {
       case 'contextMenuText':
         await page.getByText(action.text, { exact: true }).nth(index).click({ button: 'right' });
         break;
+      case 'hoverText':
+        await page.getByText(action.text, { exact: true }).filter({ visible: true }).nth(index).hover();
+        break;
+      case 'hoverSelector':
+        await page.locator(action.selector).filter({ visible: true }).nth(index).hover();
+        break;
+      case 'mouseOverSelector':
+        await page.locator(action.selector).nth(index).dispatchEvent('mouseover');
+        break;
+      case 'contextMenuSelector':
+        await page.locator(action.selector).filter({ visible: true }).nth(index).click({ button: 'right' });
+        break;
+      case 'assertTextHidden':
+        await page.getByText(action.text, { exact: true }).first().waitFor({
+          state: 'hidden',
+          timeout: 2_000,
+        });
+        break;
+      case 'assertInsideViewport':
+        await page.locator(action.selector).filter({ visible: true }).evaluateAll((elements) => {
+          if (elements.length === 0) throw new Error('Expected a visible popup');
+          for (const element of elements) {
+            const rect = element.getBoundingClientRect();
+            if (
+              rect.top < 0 ||
+              rect.left < 0 ||
+              rect.right > window.innerWidth ||
+              rect.bottom > window.innerHeight
+            ) {
+              throw new Error(`Popup exceeds viewport: ${JSON.stringify(rect.toJSON())}`);
+            }
+          }
+        });
+        break;
+      case 'assertSelectorVisible':
+        await page.locator(action.selector).waitFor({ state: 'visible' });
+        break;
       case 'clickRole':
         await page.getByRole(action.role, { name: action.name, exact: true }).nth(index).click();
         break;
@@ -102,6 +144,29 @@ async function applyRendererActions(page, actions = []) {
         await page.evaluate((events) => {
           window.__emitTlsCompatibility?.(events);
         }, action.events);
+        break;
+      case 'emitCaptureEvents':
+        await page.evaluate((count) => {
+          const startedAt = Date.now();
+          window.__emitCaptureEvents?.(Array.from({ length: count }, (_value, index) => ({
+            kind: 'exchange-added',
+            summary: {
+              id: `menu-persistence-${index}`,
+              method: 'GET',
+              secure: true,
+              host: 'events.example.com',
+              path: `/stream/${index}`,
+              protocol: 'h2',
+              statusCode: 200,
+              responseMime: 'application/json',
+              state: 'completed',
+              startedAt: startedAt + index,
+              durationMs: 10,
+              requestBytes: 0,
+              responseBytes: 32,
+            },
+          })));
+        }, action.count);
         break;
       case 'selectLabel':
         {
@@ -153,7 +218,7 @@ const designPage = await browser.newPage({
 await designPage.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
 await designPage.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
 await designPage.addStyleTag({
-  content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}',
+  content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}',
 });
 
 let totalFlags = 0;
@@ -167,6 +232,9 @@ for (const view of views) {
   let viewMissing = 0;
   let viewMaxGeometryDelta = 0;
 
+  await designPage.evaluate((menuInteraction) => {
+    document.body.classList.toggle('menu-interaction-shot', menuInteraction);
+  }, view.id === 'capture-breakpoint-create-menu');
   await designPage.evaluate((state) => window.__setState?.({
     fileMenu: '',
     settings: 'certificates',
@@ -177,6 +245,7 @@ for (const view of views) {
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
+  await applyRendererActions(designPage, view.designActions);
   await designPage.waitForTimeout(400);
 
   const appPage = await browser.newPage({
@@ -430,7 +499,6 @@ for (const view of views) {
 }
 
 const report = buildMarkdownReport(viewSummaries, elementDiffs);
-const reportPath = path.join(here, 'parity-report.md');
 await writeFile(reportPath, report, 'utf8');
 
 console.log('== Parity summary ==');

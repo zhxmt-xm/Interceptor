@@ -3,6 +3,7 @@ import type {
   CaptureHeaderRuleEffect,
   RuleDefinition,
   RuleHeaderPair,
+  WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
 
 /** HTTP header 多值集合，形态兼容 Mockttp headers。 */
@@ -76,7 +77,8 @@ export type ActionOutcome =
 
 export type BreakpointPhase = 'request' | 'response' | 'websocket';
 export type BreakpointResolutionAction = 'continue' | 'drop' | 'timeout';
-export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out';
+export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
+export type BreakpointResolutionState = Exclude<BreakpointState, 'aborted'>;
 export type BreakpointTimeoutPolicy = 'continue' | 'drop';
 
 export interface BreakpointSnapshot {
@@ -87,12 +89,15 @@ export interface BreakpointSnapshot {
   readonly url?: string;
   readonly statusCode?: number;
   readonly direction?: 'client-to-server' | 'server-to-client';
+  readonly frame?: WebSocketBreakpointFrame;
   readonly opcode?: 1 | 2;
   readonly bodyFormat?: 'text' | 'hex';
   readonly headers: RuleHeaderPair[];
   /** 此刻是否能看到原始正文；HTTP 头部阶段断点为 false。 */
   readonly bodyAvailable: boolean;
   readonly body?: string;
+  /** 仅 WebSocket close 帧：对端给出的 close code。 */
+  readonly closeCode?: number;
 }
 
 export interface BreakpointOutcome {
@@ -110,6 +115,8 @@ export interface PendingBreakpointInfo {
 }
 
 export interface PendingBreakpointEntry extends PendingBreakpointInfo {
+  /** HTTP suspension 所属的 Mockttp request ID；WebSocket 消息断点缺省。 */
+  readonly requestId?: string;
   readonly timeoutPolicy: BreakpointTimeoutPolicy;
   readonly settle: (outcome: BreakpointOutcome) => void;
   timer: ReturnType<typeof setTimeout> | null;
@@ -145,6 +152,11 @@ export type RequestEvaluation =
       readonly delayMs: number;
     }
   | {
+      readonly kind: 'aborted';
+      readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
+    }
+  | {
       readonly kind: 'respond';
       readonly response: SyntheticResponseInit;
       readonly hits: readonly RuleHitRecord[];
@@ -163,6 +175,11 @@ export type ResponseEvaluation =
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
       readonly delayMs: number;
+    }
+  | {
+      readonly kind: 'aborted';
+      readonly hits: readonly RuleHitRecord[];
+      readonly headerEffects: readonly RuleHeaderEffect[];
     }
   | {
       readonly kind: 'block';

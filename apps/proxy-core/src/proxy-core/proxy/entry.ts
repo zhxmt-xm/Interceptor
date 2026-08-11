@@ -17,6 +17,7 @@ import type {
 import type {
   TlsCompatibilityEvent,
   UpstreamProxyConfig,
+  WebSocketBreakpointSettings,
 } from '@interceptor/core-protocol';
 
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
@@ -42,6 +43,7 @@ import type {
   WebSocketBridgeMessage,
 } from './interfaces';
 import type { CaptureEventQueue } from './internal/capture-event-queue';
+import { WEBSOCKET_BREAKPOINT_RULE_NAME } from './internal/constants';
 import { ExchangeTracker } from './internal/exchange-tracker';
 import { TlsCompatibilityEventQueue } from './internal/tls-compatibility-event-queue';
 import { WebSocketBridge } from './internal/websocket-bridge';
@@ -78,7 +80,8 @@ export class ProxyService {
   private capturedExchanges = 0;
   /** 是否正在记录；暂停时监听器继续转发但不再持久化/推送新 Exchange。 */
   private recording = true;
-  private webSocketBreakpointsOn = false;
+  /** 当前 WebSocket 断点配置；null 表示未启用。 */
+  private webSocketBreakpoint: WebSocketBreakpointSettings | null = null;
   private tlsConfig: ProxyTlsConfig = {
     ca: null,
     mitm: false,
@@ -458,19 +461,19 @@ export class ProxyService {
     return this.server ? this.sessionId : null;
   }
 
-  /** 全局 WebSocket 消息断点开关；关闭时 bridge 直接转发不挂起。 */
-  get webSocketBreakpointsEnabled(): boolean {
-    return this.webSocketBreakpointsOn;
+  /** 当前 WebSocket 断点配置；未启用时 bridge 直接转发不挂起。 */
+  get webSocketBreakpointSettings(): WebSocketBreakpointSettings | null {
+    return this.webSocketBreakpoint;
   }
 
-  /** 调用方：websocket.breakpoint.configure command handler。 */
-  enableWebSocketBreakpoints(): void {
-    this.webSocketBreakpointsOn = true;
+  /** 调用方：websocket.breakpoint.enable command handler。 */
+  enableWebSocketBreakpoints(settings: WebSocketBreakpointSettings): void {
+    this.webSocketBreakpoint = settings;
   }
 
-  /** 调用方：websocket.breakpoint.configure command handler。 */
+  /** 调用方：websocket.breakpoint.disable command handler。 */
   disableWebSocketBreakpoints(): void {
-    this.webSocketBreakpointsOn = false;
+    this.webSocketBreakpoint = null;
   }
 
   private registerCaptureListeners(server: Mockttp): void {
@@ -529,6 +532,7 @@ export class ProxyService {
       this.exchangeTracker.recordResponseTrailers(trailers.id, trailers.rawTrailers);
     });
     void server.on('abort', (request: AbortedRequest) => {
+      this.ruleService?.abortRequestBreakpoints(request.id);
       this.exchangeTracker.abortExchange(request);
     });
     void server.on('websocket-request', (request: CompletedRequest) => {
@@ -731,30 +735,40 @@ export class ProxyService {
   }
 
   private async interceptWebSocketMessage(message: WebSocketBridgeMessage) {
-    if (!this.webSocketBreakpointsOn || !this.ruleService) {
-      return {
-        action: 'forward' as const,
-        content: message.content,
-        isBinary: message.isBinary,
-      };
+    const forwardUnchanged = {
+      action: 'forward' as const,
+      content: message.content,
+      isBinary: message.isBinary,
+      ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
+    };
+    const settings = this.webSocketBreakpoint;
+    const exchangeId = this.exchangeTracker.exchangeIdFor(message.streamId);
+    if (
+      !settings
+      || !this.ruleService
+      || settings.exchangeId !== exchangeId
+      || !ProxyUtils.matchesWebSocketBreakpoint(settings, message)
+    ) {
+      return forwardUnchanged;
     }
     const bodyFormat = message.isBinary ? 'hex' : 'text';
     const body = message.isBinary
       ? ProxyUtils.toHexString(message.content)
       : message.content.toString('utf8');
-    const exchangeId = this.exchangeTracker.exchangeIdFor(message.streamId);
     const outcome = await this.ruleService.pauseWebSocketMessage({
-      ruleName: 'WebSocket message',
+      ruleName: WEBSOCKET_BREAKPOINT_RULE_NAME[message.frame],
       ...(exchangeId !== undefined ? { exchangeId } : {}),
       url: message.url,
       direction: message.direction,
-      opcode: message.isBinary ? 2 : 1,
+      frame: message.frame,
+      ...(message.frame === 'message' ? { opcode: message.isBinary ? 2 : 1 } as const : {}),
       bodyFormat,
       headers: [],
       // 消息断点持有完整 payload，与头部阶段的 HTTP 断点不同。
       bodyAvailable: true,
       body,
-    });
+      ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
+    }, settings.timeoutMs);
     if (
       outcome.state === 'dropped' ||
       (outcome.state === 'timed_out' && outcome.timeoutPolicy === 'drop')
@@ -768,13 +782,12 @@ export class ProxyService {
           ? ProxyUtils.parseHexString(outcome.edit.body)
           : Buffer.from(outcome.edit.body, 'utf8'),
         isBinary: message.isBinary,
+        ...(outcome.edit.closeCode !== undefined
+          ? { closeCode: outcome.edit.closeCode }
+          : message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
       };
     }
-    return {
-      action: 'forward' as const,
-      content: message.content,
-      isBinary: message.isBinary,
-    };
+    return forwardUnchanged;
   }
 
   /**
@@ -829,6 +842,7 @@ export class ProxyService {
       const evaluation = await this.ruleService.evaluateRequest(
         ProxyUtils.buildRequestContext(request),
         state,
+        request.id,
         this.exchangeTracker.exchangeIdFor(request.id),
       );
       this.exchangeTracker.recordRuleOutcome(
@@ -836,6 +850,9 @@ export class ProxyService {
         evaluation.hits,
         evaluation.headerEffects,
       );
+      if (evaluation.kind === 'aborted') {
+        return undefined;
+      }
       if (evaluation.kind === 'respond') {
         return { response: ProxyUtils.toCallbackResponse(evaluation.response) };
       }
@@ -878,6 +895,7 @@ export class ProxyService {
       const evaluation = await this.ruleService.evaluateResponse(
         ProxyUtils.buildResponseContext(request, response),
         state,
+        request.id,
         this.exchangeTracker.exchangeIdFor(request.id),
       );
       this.exchangeTracker.recordRuleOutcome(
@@ -885,6 +903,9 @@ export class ProxyService {
         evaluation.hits,
         evaluation.headerEffects,
       );
+      if (evaluation.kind === 'aborted') {
+        return undefined;
+      }
       if (evaluation.kind === 'block') {
         return evaluation.mode;
       }

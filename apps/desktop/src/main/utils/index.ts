@@ -23,6 +23,7 @@ import type {
   RendererDiagnosticReport,
   SessionQueryRequest,
   CaptureUsage,
+  WebSocketBreakpointSettings,
   WebSocketFrameQuery,
 } from '../../shared/desktop-api';
 import type { SystemProxyCommandRunner } from '../interfaces';
@@ -150,6 +151,13 @@ export function toBreakpointEdit(value: unknown): BreakpointEdit | undefined {
 /** Pass a trusted WebSocket frame query through unchanged. */
 export function toWebSocketFrameQuery(value: unknown): WebSocketFrameQuery {
   return value as WebSocketFrameQuery;
+}
+
+/** Pass trusted WebSocket breakpoint settings through unchanged. */
+export function toWebSocketBreakpointSettings(
+  value: unknown,
+): WebSocketBreakpointSettings {
+  return value as WebSocketBreakpointSettings;
 }
 
 /** Pass a trusted gRPC message query through unchanged. */
