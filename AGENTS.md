@@ -170,18 +170,23 @@
 	- Every new session or agent MUST read `architecture/HANDOVER.md`, then `architecture/platform/processes.md`, before planning or editing code.
 - **Documentation ownership**
 	- `architecture/` is the single documentation root; `architecture/README.md` is its index.
-	- `HANDOVER.md`: current state and session continuity.
+	- `HANDOVER.md`: tracked commit, one flat task list for completed and incomplete work, plus separate operational reference sections.
 	- `platform/`: implemented cross-feature architecture.
 	- `features/`: per-feature design.
 	- `backlog/`: `TODO.md`, `idea.md`, and `research.md` for known gaps and unpromised long-term candidates.
 - **Handover quality**
-	- Keep `architecture/HANDOVER.md` sufficient for a context-free new session or agent.
-	- Include the current stage, completed work, code locations, working tree, remaining work, risks, validation, and exact next action.
+	- Start `architecture/HANDOVER.md` with the tracked commit hash.
+	- Keep all completed and incomplete work in exactly one flat task list, using status labels such as completed, pending implementation, pending validation, pending acceptance, or blocked.
+	- Keep non-task material such as operational constraints, validation commands, and maintenance rules in separate sections; do not represent them as unchecked tasks.
+	- Flattening is structural only: preserve the complete existing information. Never shorten, merge away, or omit facts merely to make Handover smaller.
+	- A task item may contain multi-line details, evidence, commands, risks, links, and maintenance notes when needed for completeness.
+	- Do not add separate sections for completed work, pending work, working tree, handoff order, exact next action, or main task.
+	- Links to owning `platform/*.md`, `features/*.md`, or `backlog/*.md` supplement rather than replace required context.
 - **Current-state boundaries**
 	- Keep `architecture/platform/*.md` limited to implemented code and boundaries.
 	- Put unvalidated plans in `architecture/backlog/research.md` or the feature document's 与当前实现的差异 section.
 - **Synchronization**
-	- At milestone boundaries, or when the user explicitly asks, update `architecture/HANDOVER.md`, affected `architecture/*.md`, and commands in `README.md`.
+	- At milestone boundaries, or when the user explicitly asks, update the tracked commit and task statuses in `architecture/HANDOVER.md`, affected `architecture/*.md`, and commands in `README.md`.
 	- If the stage boundary is unclear, ask before synchronizing these documents.
 - **Before committing**
 	- Review the staged diff first.
