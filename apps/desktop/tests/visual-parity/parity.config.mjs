@@ -1268,6 +1268,56 @@ export const views = [
       'Forward edited',
     ],
   },
+  {
+    id: 'breakpoints-off',
+    theme: 'light',
+    breakpointsEnabled: false,
+    breakpointManagerRules: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'closed',
+      breakpoints: 'off',
+    },
+    designShot: 'light/capture/breakpoints-off.png',
+    targets: [
+      {
+        name: 'Breakpoint toolbar button',
+        designSelector: '.breakctl',
+        appSelector: '[data-automation-id="capture.breakpoint-manager"]',
+      },
+    ],
+  },
+  {
+    id: 'breakpoint-manager',
+    theme: 'light',
+    breakpointManagerRules: true,
+    designState: {
+      view: 'capture',
+      theme: 'light',
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'closed',
+      breakpoints: 'on',
+      breakpointPanel: 'open',
+    },
+    designShot: 'light/capture/breakpoint-manager.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Breakpoint manager' },
+    ],
+    targets: [
+      'Breakpoints',
+      '2 enabled · 0 paused',
+      'Break on match',
+      'Advanced rules',
+      'Breakpoint rules',
+      'Checkout endpoint',
+      'Token API',
+      'View rule',
+    ],
+  },
   ...['light', 'dark'].map((theme) => ({
     id: theme === 'light'
       ? 'breakpoint-created-message'

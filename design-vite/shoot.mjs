@@ -212,7 +212,15 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
-    await page.keyboard.press('Escape');
+    for (let depth = 0; depth < 2; depth += 1) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(120);
+    }
+    const windowTitle = page.locator('[data-parity="window-header-title"]:visible').first();
+    if (await windowTitle.count()) {
+      await windowTitle.click();
+      await page.waitForTimeout(120);
+    }
     await page.evaluate((interaction) => {
       document.body.classList.toggle(
         'menu-interaction-shot',
@@ -277,6 +285,13 @@ async function shoot(list) {
     }
     if (s.interaction === 'websocket-breakpoint-setup') {
       await page.waitForTimeout(300);
+    }
+    if (
+      s.interaction !== 'request-menu'
+      && s.interaction !== 'breakpoint-menu'
+      && await page.locator('.ant-dropdown:visible').count() > 0
+    ) {
+      throw new Error(`Unexpected open Dropdown before ${s.theme}/${s.feature}/${s.variant}`);
     }
     // Monaco hosts inside a hidden tab measure as zero until the tab is visible.
     await page.evaluate(() => window.__monacoRelayout());

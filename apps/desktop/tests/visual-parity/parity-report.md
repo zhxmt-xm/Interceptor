@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-08-12T06:50:41.053Z
+Generated: 2026-08-12T08:34:58.982Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 75 |
-| Average pixel diff | 2.64% |
-| Targets | 602 |
-| Matched | 566 |
+| Views checked | 77 |
+| Average pixel diff | 2.62% |
+| Targets | 611 |
+| Matched | 575 |
 | Missing | 36 |
-| Flagged | 145 |
+| Flagged | 149 |
 | Largest geometry delta | 1156.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -21,17 +21,17 @@ Generated: 2026-08-12T06:50:41.053Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 3.56% | 38 | 22 | 16 | 22 | 1001.7 px |
-| capture-websocket | 3.67% | 7 | 1 | 6 | 1 | 1001.7 px |
-| capture-websocket-breakpoint-setup | 3.54% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled | 3.41% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket | 3.35% | 7 | 1 | 6 | 1 | 1001.7 px |
+| capture-websocket-breakpoint-setup | 4.49% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled | 3.10% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-websocket-breakpoint-setup-dark | 3.56% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled-dark | 3.50% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-setup-dark | 3.66% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.20% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused-dark | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
 | capture-request-json | 3.35% | 4 | 3 | 1 | 2 | 1001.7 px |
 | capture-timing | 3.07% | 4 | 4 | 0 | 0 | 0.9 px |
 | capture-cookies | 3.02% | 3 | 3 | 0 | 0 | 0.7 px |
-| capture-grpc | 3.37% | 8 | 8 | 0 | 6 | 28.0 px |
+| capture-grpc | 3.43% | 8 | 8 | 0 | 6 | 28.0 px |
 | capture-tunnel | 3.29% | 8 | 8 | 0 | 5 | 170.0 px |
 | capture-tunnel-dark | 3.34% | 6 | 6 | 0 | 3 | 170.0 px |
 | capture-tunnel-mitm-active | 3.29% | 6 | 6 | 0 | 3 | 170.0 px |
@@ -42,12 +42,12 @@ Generated: 2026-08-12T06:50:41.053Z
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
 | capture-export-menu | 2.94% | 2 | 2 | 0 | 2 | 8.0 px |
 | capture-request-rule-menu | 3.15% | 4 | 4 | 0 | 0 | 0.8 px |
-| capture-breakpoint-create-menu | 3.24% | 8 | 8 | 0 | 1 | 1.0 px |
+| capture-breakpoint-create-menu | 2.84% | 8 | 8 | 0 | 1 | 1.0 px |
 | capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
-| capture-rule-filter | 1.72% | 3 | 0 | 3 | 0 | 0.0 px |
-| capture-rule-filter-disabled | 3.21% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 4.12% | 2 | 2 | 0 | 1 | 0.3 px |
-| capture-body-media-save | 3.45% | 2 | 2 | 0 | 1 | 5.3 px |
+| capture-rule-filter | 1.45% | 3 | 0 | 3 | 0 | 0.0 px |
+| capture-rule-filter-disabled | 2.96% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-body-preview-limited | 3.93% | 2 | 2 | 0 | 1 | 0.3 px |
+| capture-body-media-save | 3.23% | 2 | 2 | 0 | 1 | 5.3 px |
 | proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | n/a | 11 | 11 | 0 | 1 | 48.0 px |
@@ -84,9 +84,11 @@ Generated: 2026-08-12T06:50:41.053Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints | 3.46% | 8 | 8 | 0 | 7 | 6.1 px |
-| breakpoint-created-message | 3.21% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-dark | 3.06% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoints | 3.46% | 8 | 8 | 0 | 2 | 1.1 px |
+| breakpoints-off | 2.63% | 1 | 1 | 0 | 1 | 0.0 px |
+| breakpoint-manager | 3.02% | 8 | 8 | 0 | 8 | 37.2 px |
+| breakpoint-created-message | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 2.77% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.73% | 1 | 1 | 0 | 0 | 0.1 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
 | shell-v2-capture-dark | 3.58% | 3 | 2 | 1 | 1 | 999.1 px |
@@ -656,14 +658,23 @@ Generated: 2026-08-12T06:50:41.053Z
 | settings-updates-auth-failed-dark | GitHub authorization failed | 0.0 px | 0.0 px | 0.3 px | 0.0 px | 0.3 px | none | ok |
 | settings-updates-auth-failed-dark | Not connected | 0.3 px | -0.1 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
 | settings-updates-auth-failed-dark | Try again | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| breakpoints | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoints | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
-| breakpoints | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
-| breakpoints | The original body will be forwarded unchanged. | 0.0 px | 6.1 px | 0.0 px | -4.0 px | 6.1 px | none | flagged |
-| breakpoints | Add header | 0.0 px | 2.8 px | 0.0 px | 0.0 px | 2.8 px | none | flagged |
-| breakpoints | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| breakpoints | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoints | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoints | Request paused | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| breakpoints | Request headers | 0.0 px | -0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| breakpoints | Original body | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
+| breakpoints | The original body will be forwarded unchanged. | 0.0 px | 0.6 px | 0.0 px | -0.1 px | 0.6 px | none | ok |
+| breakpoints | Add header | 0.0 px | -0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoints | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| breakpoints | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
+| breakpoints | Forward edited | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| breakpoints-off | Breakpoint toolbar button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | fontSize 13.3333px->13px | flagged |
+| breakpoint-manager | Breakpoints | 0.0 px | -4.6 px | 0.0 px | 5.2 px | 5.2 px | none | flagged |
+| breakpoint-manager | 2 enabled · 0 paused | 0.0 px | 0.6 px | 0.0 px | 2.3 px | 2.3 px | none | flagged |
+| breakpoint-manager | Break on match | 0.8 px | -2.8 px | 0.0 px | 4.0 px | 4.0 px | none | flagged |
+| breakpoint-manager | Advanced rules | 8.8 px | -0.8 px | -6.8 px | 0.0 px | 8.8 px | fontSize 11.5px->11px; fontWeight 550->600; color rgb(26, 27, 30)->rgb(91, 94, 101) | flagged |
+| breakpoint-manager | Breakpoint rules | 0.0 px | -0.6 px | 2.0 px | 4.3 px | 4.3 px | none | flagged |
+| breakpoint-manager | Checkout endpoint | -37.0 px | 0.0 px | 37.2 px | 5.4 px | 37.2 px | fontSize 11.5px->12px; fontWeight 620->600 | flagged |
+| breakpoint-manager | Token API | -37.0 px | 0.5 px | 37.2 px | 5.4 px | 37.2 px | fontSize 11.5px->12px; fontWeight 620->600 | flagged |
+| breakpoint-manager | View rule | 0.2 px | 7.9 px | -6.2 px | -8.2 px | 8.2 px | fontSize 10px->11px; fontWeight 400->600; color rgb(139, 142, 150)->rgb(106, 91, 240) | flagged |
 | breakpoint-created-message | Breakpoint created message | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-created-message | Breakpoint created | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-created-message | Undo button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |

@@ -262,6 +262,8 @@ for (const view of views) {
     noRuleHits: view.noRuleHits === true,
     pausedBreakpoints: view.pausedBreakpoints === true,
     pausedWebSocketBreakpoint: view.pausedWebSocketBreakpoint === true,
+    breakpointsEnabled: view.breakpointsEnabled !== false,
+    breakpointManagerRules: view.breakpointManagerRules === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     githubAuthState: view.githubAuthState ?? 'signed-in',

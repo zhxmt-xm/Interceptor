@@ -1,3 +1,5 @@
+import type { RuleDefinition } from '@interceptor/core-protocol';
+
 import type {
   CaptureBodyRef,
   CaptureExchangeDetail,
@@ -30,6 +32,26 @@ import {
   type TimeLabels,
   type TimingSegment,
 } from './interfaces';
+
+/** Breakpoint manager 的紧凑匹配摘要：method 在前，host/path 连写，prefix 明示 `*`。 */
+export function breakpointManagerSummary(rule: RuleDefinition): string {
+  const method = rule.matchers.find((matcher) => matcher.type === 'method');
+  const host = rule.matchers.find((matcher) => matcher.type === 'host');
+  const path = rule.matchers.find((
+    (matcher) => matcher.type === 'path'
+  ));
+  const url = rule.matchers.find((matcher) => matcher.type === 'url');
+  const methodLabel = method?.type === 'method' ? method.value.toUpperCase() : '';
+  const urlLabel = url?.type === 'url'
+    ? url.value
+    : `${host?.type === 'host' ? host.value : ''}${
+        path?.type === 'path'
+          ? `${path.value}${path.mode === 'contains' ? '*' : ''}`
+          : ''
+      }`;
+  return [methodLabel, urlLabel].filter(Boolean).join(' ')
+    || `${rule.matchers.length} condition${rule.matchers.length === 1 ? '' : 's'}`;
+}
 
 /** Cookie headers live exclusively in the Cookies tab, not the generic Headers tab. */
 export function headersWithoutCookies(headers: CaptureHeader[]): CaptureHeader[] {  return headers.filter((header) => {

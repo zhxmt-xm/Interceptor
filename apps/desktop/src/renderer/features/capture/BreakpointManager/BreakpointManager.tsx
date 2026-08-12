@@ -8,7 +8,7 @@ import { useBreakpointsStore } from '../../breakpoints';
 import { setBreakOnMatch } from '../../breakpoints/data/useBreakpoints';
 import { useRulesStore } from '../../rules/data/rulesStore';
 import { toggleBreakpointRule } from '../../rules/data/useRulesData';
-import { matchSummary } from '../../rules/utils';
+import { breakpointManagerSummary } from '../utils';
 import styles from './BreakpointManager.module.css';
 
 interface BreakpointManagerProps {
@@ -75,7 +75,7 @@ export function BreakpointManager({
           >
             <div className={styles.ruleCopy}>
               <b>{rule.name}</b>
-              <code>{matchSummary(rule, t('rules.noConditions'))}</code>
+              <code>{breakpointManagerSummary(rule)}</code>
             </div>
             <button
               type="button"

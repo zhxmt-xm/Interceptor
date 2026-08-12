@@ -400,6 +400,22 @@ const authRule = { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com',
 const trackersRule = rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' });
 const uploadRule = rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 });
 const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' });
+const managerCheckoutRule = {
+  ...checkoutRule,
+  name: 'Checkout endpoint',
+  matchers: [
+    { type: 'host', value: 'shop.example.com', mode: 'exact' },
+    { type: 'path', value: '/checkout', mode: 'exact' },
+    { type: 'method', value: 'POST' },
+  ],
+};
+const managerTokenRule = {
+  ...rule('rule-token-breakpoint', 'Token API', 'api.example.com', '/v1/', { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' }),
+  matchers: [
+    { type: 'host', value: 'api.example.com', mode: 'exact' },
+    { type: 'path', value: '/v1/', mode: 'contains' },
+  ],
+};
 const rules = [
   stubRule,
   corsRule,
@@ -616,6 +632,7 @@ export const fakeInterceptorFixture = {
   rules: {
     revision: 42,
     nodes: ruleNodes,
+    breakpointManagerNodes: [managerCheckoutRule, managerTokenRule],
     hits: [128, 512, 21, 6, 4, 44, 76, 1_200, 8, 3].map((count, index) => ({
       ruleId: rules[index].id,
       count,
@@ -749,6 +766,8 @@ export function installFakeInterceptor({
   noRuleHits = false,
   pausedBreakpoints = false,
   pausedWebSocketBreakpoint = false,
+  breakpointsEnabled = true,
+  breakpointManagerRules = false,
   mitmActive = true,
   updateState = 'unsupported',
   githubAuthState = 'signed-in',
@@ -864,11 +883,13 @@ export function installFakeInterceptor({
     : { ...fixture.certificate, mitmEnabled: mitmActive };
   let websocketBreakpoint = fixture.capture.websocketBreakpoint;
   let ruleRevision = fixture.rules.revision;
-  let currentRuleNodes = fixture.rules.nodes;
+  let currentRuleNodes = breakpointManagerRules
+    ? fixture.rules.breakpointManagerNodes
+    : fixture.rules.nodes;
   let collectionRevision = fixture.collection.revision;
   let currentCollectionNodes = fixture.collection.nodes;
   let breakpointItems = fixture.breakpoints.items;
-  let breakpointsEnabled = fixture.breakpoints.enabled;
+  let breakpointsEnabledState = breakpointsEnabled;
   let insecureHosts = fixture.insecureHosts;
   let appContainerSnapshot = {
     ...fixture.appContainers,
@@ -1277,14 +1298,15 @@ export function installFakeInterceptor({
     }),
     listBreakpoints: async () => ({
       breakpoints: breakpointItems,
-      enabled: breakpointsEnabled,
+      enabled: breakpointsEnabledState,
+      autoContinued: 0,
     }),
     resolveBreakpoint: async (breakpointId, action, edit) => {
       breakpointItems = breakpointItems.filter((item) => item.id !== breakpointId);
       return { state: action === 'drop' ? 'dropped' : edit ? 'edited' : 'continued' };
     },
     setBreakpointsEnabled: async (enabled) => {
-      breakpointsEnabled = enabled;
+      breakpointsEnabledState = enabled;
       return enabled;
     },
     probeTls: async () => ({

@@ -116,8 +116,10 @@ export function RequestContextMenu({ children }: RequestContextMenuProps): React
 
   return (
     <Dropdown
+      key={state.requestMenu || 'closed'}
       autoAdjustOverflow
       destroyOnHidden
+      open={state.requestMenu === 'open'}
       placement="right"
       trigger={['contextMenu']}
       onOpenChange={(open) => {
