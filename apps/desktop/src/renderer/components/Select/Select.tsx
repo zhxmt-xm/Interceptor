@@ -13,6 +13,8 @@ export interface SelectOption {
 
 export interface SelectProps {
   className?: string;
+  /** Extra class for Ant's public selected-content semantic slot. */
+  contentClassName?: string;
   value: string;
   options: SelectOption[];
   onValueChange: (value: string) => void;
@@ -25,6 +27,7 @@ export interface SelectProps {
 /** Controlled dropdown selector backed by Ant Design. */
 export function Select({
   className,
+  contentClassName,
   value,
   options,
   onValueChange,
@@ -36,7 +39,7 @@ export function Select({
     <AntSelect
       className={cx(styles.antSelect, className)}
       classNames={{
-        content: styles.content,
+        content: cx(styles.content, contentClassName),
         suffix: styles.suffix,
         popup: {
           root: styles.popup,

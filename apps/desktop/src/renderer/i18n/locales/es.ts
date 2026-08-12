@@ -208,6 +208,9 @@ export const esCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Ambas',
   'capture.wsBreakpointDirectionSent': 'Enviados',
   'capture.wsBreakpointDirectionReceived': 'Recibidos',
+  'capture.wsBreakpointDirectionBothSummary': 'Ambas direcciones',
+  'capture.wsBreakpointDirectionSentSummary': 'Solo enviados',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Solo recibidos',
   'capture.wsBreakpointFrames': 'Tramas',
   'capture.wsBreakpointFrameMessage': 'Mensajes',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const esCatalog = {
   'breakpoints.requestHeaders': 'Encabezados de solicitud',
   'breakpoints.responseHeaders': 'Encabezados de respuesta',
   'breakpoints.originalBody': 'Cuerpo original',
+  'breakpoints.originalMessage': 'Mensaje original',
 
   'breakpoints.receiving': 'recibiendo',
 
@@ -577,6 +581,7 @@ export const esCatalog = {
   'breakpoints.filePreviewUnavailable': 'Demasiado grande o no es texto: se envía desde el disco tal cual.',
 
   'breakpoints.replacementBody': 'Cuerpo de reemplazo',
+  'breakpoints.replacementMessage': 'Mensaje de reemplazo',
   'breakpoints.replacementOff': 'Desactivado',
   'breakpoints.replacementText': 'Texto',
   'breakpoints.usingOriginal': 'Usando el original',
@@ -585,6 +590,7 @@ export const esCatalog = {
   'breakpoints.usingTextHint': 'Se reenviará el texto de reemplazo.',
   'breakpoints.emptyTextHint': 'El texto de reemplazo no puede estar vacío. Escribe contenido o se reenviará el cuerpo original.',
   'breakpoints.originalForwarded': 'El cuerpo original se reenviará sin cambios.',
+  'breakpoints.originalMessageForwarded': 'El mensaje original se reenviará sin cambios.',
   'breakpoints.forwardEdited': 'Reenviar editado',
   'breakpoints.matchState': 'interrumpir al coincidir · {{state}}',
   'breakpoints.off': 'desactivado',

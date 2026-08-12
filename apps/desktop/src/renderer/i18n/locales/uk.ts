@@ -211,6 +211,9 @@ export const ukCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Обидва',
   'capture.wsBreakpointDirectionSent': 'Надіслані',
   'capture.wsBreakpointDirectionReceived': 'Отримані',
+  'capture.wsBreakpointDirectionBothSummary': 'Обидва напрямки',
+  'capture.wsBreakpointDirectionSentSummary': 'Лише надіслані',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Лише отримані',
   'capture.wsBreakpointFrames': 'Кадри',
   'capture.wsBreakpointFrameMessage': 'Повідомлення',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -548,6 +551,7 @@ export const ukCatalog = {
   'breakpoints.requestHeaders': 'Заголовки запиту',
   'breakpoints.responseHeaders': 'Заголовки відповіді',
   'breakpoints.originalBody': 'Початкове тіло',
+  'breakpoints.originalMessage': 'Початкове повідомлення',
 
   'breakpoints.receiving': 'отримання',
 
@@ -586,6 +590,7 @@ export const ukCatalog = {
   'breakpoints.filePreviewUnavailable': 'Завеликий або не текст — надсилається з диска як є.',
 
   'breakpoints.replacementBody': 'Замінне тіло',
+  'breakpoints.replacementMessage': 'Замінне повідомлення',
   'breakpoints.replacementOff': 'Вимк.',
   'breakpoints.replacementText': 'Текст',
   'breakpoints.usingOriginal': 'Використовується оригінал',
@@ -594,6 +599,7 @@ export const ukCatalog = {
   'breakpoints.usingTextHint': 'Буде передано замінний текст.',
   'breakpoints.emptyTextHint': 'Замінний текст не може бути порожнім. Введіть вміст, інакше буде передано вихідне тіло.',
   'breakpoints.originalForwarded': 'Вихідне тіло буде передано без змін.',
+  'breakpoints.originalMessageForwarded': 'Вихідне повідомлення буде передано без змін.',
   'breakpoints.forwardEdited': 'Передати змінене',
   'breakpoints.matchState': 'зупинка за збігом · {{state}}',
   'breakpoints.off': 'вимкнено',

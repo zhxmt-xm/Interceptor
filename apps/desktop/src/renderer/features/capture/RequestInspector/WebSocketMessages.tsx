@@ -4,12 +4,15 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
+  PendingBreakpoint,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '../../../../shared/desktop-api';
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, Segmented, sizeLabel } from '../../../components';
+import { breakpointBodyBytes } from '../../breakpoints/utils';
+import { WebSocketBreakpointInspector } from '../BreakpointInspector/WebSocketBreakpointInspector';
 import { filterDirection, frameRelativeTime } from '../utils';
 import { WebSocketBreakpointControl } from '../WebSocketBreakpointControl/WebSocketBreakpointControl';
 import { FramePayload } from './FramePayload';
@@ -26,14 +29,17 @@ interface WebSocketMessagesProps {
   startedAt: number;
   /** Connection address shown in the breakpoint setup panel. */
   connection: string;
+  /** Frame currently held by Core before forwarding. */
+  pausedBreakpoint: PendingBreakpoint | null;
 }
 
 export function WebSocketMessages({
   exchangeId,
   startedAt,
   connection,
+  pausedBreakpoint,
 }: WebSocketMessagesProps): React.JSX.Element {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [filter, setFilter] = useState<DirectionFilter>('all');
   const [selectedSequence, setSelectedSequence] = useState<number | null>(null);
   const direction = filterDirection(filter);
@@ -50,6 +56,9 @@ export function WebSocketMessages({
   } =
     useWebSocketFrames(exchangeId, direction);
   const selected = frames.find((frame) => frame.seq === selectedSequence) ?? null;
+  const pausedBodyBytes = pausedBreakpoint
+    ? breakpointBodyBytes(pausedBreakpoint.body ?? '', pausedBreakpoint.bodyFormat)
+    : null;
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: frames.length,
@@ -60,7 +69,7 @@ export function WebSocketMessages({
 
   useEffect(() => {
     setSelectedSequence(null);
-  }, [exchangeId, filter]);
+  }, [exchangeId, filter, pausedBreakpoint]);
 
   useEffect(() => {
     virtualizer.measure();
@@ -113,7 +122,7 @@ export function WebSocketMessages({
           {!loading && error ? (
             <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
           ) : null}
-          {!loading && !error && frames.length === 0 ? (
+          {!loading && !error && frames.length === 0 && !pausedBreakpoint ? (
             <div className={styles.empty}>{t('capture.noWebSocketMessages')}</div>
           ) : null}
           {frames.length > 0 ? (
@@ -152,17 +161,47 @@ export function WebSocketMessages({
               })}
             </div>
           ) : null}
+          {pausedBreakpoint ? (
+            <button type="button" className={cx(styles.frame, styles.pausedFrame)}>
+              <span className={cx(
+                styles.direction,
+                pausedBreakpoint.direction === 'client-to-server'
+                  ? styles.outgoing
+                  : styles.incoming,
+              )}>
+                <ArrowRight size={12} strokeWidth={1.9} />
+              </span>
+              <span className={styles.kind}>
+                {pausedBreakpoint.opcode === 2
+                  ? t('capture.binary')
+                  : t('breakpoints.replacementText')}
+              </span>
+              <span className={styles.preview}>
+                {(pausedBreakpoint.body ?? '').replace(/\s+/g, ' ')}
+              </span>
+              <span className={styles.size}>
+                {sizeLabel(pausedBodyBytes?.byteLength ?? 0, i18n.language)}
+              </span>
+              <span className={styles.time}>{t('capture.paused').toLocaleLowerCase(i18n.language)}</span>
+            </button>
+          ) : null}
           {loadingMore ? <div className={styles.loadingMore}>{t('capture.loadingMore')}</div> : null}
         </div>
 
       </div>
 
-      <div className={styles.note}>
+      {pausedBreakpoint ? (
+        <div className={styles.breakpointEditor}>
+          <WebSocketBreakpointInspector breakpoint={pausedBreakpoint} settings={breakpoint} />
+        </div>
+      ) : null}
+
+      {!pausedBreakpoint ? <div className={styles.note}>
         <Pause size={13} strokeWidth={1.9} />
         {breakpoint
           ? t('capture.nextMessagePauses')
           : t('capture.enableMessageBreakpoints')}
-      </div>
+      </div> : null}
     </div>
   );
 }
@@ -192,7 +231,9 @@ const FrameRow = memo(function FrameRow({
       <span className={cx(styles.direction, outgoing ? styles.outgoing : styles.incoming)}>
         <ArrowRight size={12} strokeWidth={1.9} />
       </span>
-      <span className={styles.kind}>{frame.opcode === 1 ? t('capture.text') : t('capture.binary')}</span>
+      <span className={styles.kind}>
+        {frame.opcode === 1 ? t('breakpoints.replacementText') : t('capture.binary')}
+      </span>
       <FramePreview frame={frame} />
       <span className={styles.size}>{sizeLabel(frame.payloadSize, i18n.language)}</span>
       <span className={styles.time}>{frameRelativeTime(startedAt, frame.timestamp, i18n.language)}</span>

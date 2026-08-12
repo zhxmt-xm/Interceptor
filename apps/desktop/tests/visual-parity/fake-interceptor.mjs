@@ -558,6 +558,22 @@ const pendingBreakpoints = [
   },
 ];
 
+const pendingWebSocketBreakpoint = {
+  id: 'bp-websocket-message',
+  exchangeId: 'ws-fixture',
+  phase: 'websocket',
+  createdAt: startedAt + 1_400,
+  ruleName: 'WebSocket message',
+  url: 'realtime.example.com/socket',
+  direction: 'client-to-server',
+  frame: 'message',
+  opcode: 1,
+  bodyFormat: 'text',
+  headers: [],
+  bodyAvailable: true,
+  body: '{"type":"presence","status":"online","userId":"u_1842"}     ',
+};
+
 export const fakeInterceptorFixture = {
   capture: {
     coreStatus: {
@@ -588,7 +604,7 @@ export const fakeInterceptorFixture = {
       'bp-exchange-checkout': pausedCheckoutDetail,
     },
     websocketFrames,
-    websocketBreakpointsEnabled: true,
+    websocketBreakpoint: null,
     grpcMessages,
     bodies,
     clientAppIcons: [
@@ -614,6 +630,7 @@ export const fakeInterceptorFixture = {
     items: [],
     // 只在 pausedBreakpoints 场景生效。
     pendingItems: pendingBreakpoints,
+    pendingWebSocketItem: pendingWebSocketBreakpoint,
   },
   diagnostics: {
     records: diagnostics,
@@ -731,6 +748,7 @@ export function installFakeInterceptor({
   largeTextBody = false,
   noRuleHits = false,
   pausedBreakpoints = false,
+  pausedWebSocketBreakpoint = false,
   mitmActive = true,
   updateState = 'unsupported',
   githubAuthState = 'signed-in',
@@ -748,6 +766,15 @@ export function installFakeInterceptor({
       ...fixture.capture.sessions,
     ];
     fixture.breakpoints.items = fixture.breakpoints.pendingItems;
+  }
+  if (pausedWebSocketBreakpoint) {
+    fixture.breakpoints.items = [fixture.breakpoints.pendingWebSocketItem];
+    fixture.capture.websocketBreakpoint = {
+      exchangeId: 'ws-fixture',
+      direction: 'both',
+      frames: ['message'],
+      timeoutMs: 0,
+    };
   }
   if (noRuleHits) {
     fixture.capture.sessions = fixture.capture.sessions.map((summary) => {
@@ -835,7 +862,7 @@ export function installFakeInterceptor({
         path: null,
       }
     : { ...fixture.certificate, mitmEnabled: mitmActive };
-  let websocketBreakpointsEnabled = fixture.capture.websocketBreakpointsEnabled;
+  let websocketBreakpoint = fixture.capture.websocketBreakpoint;
   let ruleRevision = fixture.rules.revision;
   let currentRuleNodes = fixture.rules.nodes;
   let collectionRevision = fixture.collection.revision;
@@ -1135,6 +1162,7 @@ export function installFakeInterceptor({
       const eligible = fixture.capture.websocketFrames.filter(
         (item) =>
           item.seq > cursor &&
+          (!pausedWebSocketBreakpoint || item.timestamp < fixture.breakpoints.pendingWebSocketItem.createdAt) &&
           (!request.direction || item.direction === request.direction),
       );
       const items = eligible.slice(0, request.limit);
@@ -1142,12 +1170,16 @@ export function installFakeInterceptor({
         items,
         nextCursor: String(items.at(-1)?.seq ?? cursor),
         hasMore: eligible.length > items.length,
-        breakpointsEnabled: websocketBreakpointsEnabled,
+        breakpoint: websocketBreakpoint,
       };
     },
-    setWebSocketBreakpointsEnabled: async (enabled) => {
-      websocketBreakpointsEnabled = enabled;
-      return enabled;
+    enableWebSocketBreakpoints: async (settings) => {
+      websocketBreakpoint = settings;
+      return settings;
+    },
+    disableWebSocketBreakpoints: async () => {
+      websocketBreakpoint = null;
+      return null;
     },
     queryGrpcMessages: async (request) => {
       const all = fixture.capture.grpcMessages[request.side];

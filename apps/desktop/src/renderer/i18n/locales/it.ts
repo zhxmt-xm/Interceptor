@@ -208,6 +208,9 @@ export const itCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Entrambe',
   'capture.wsBreakpointDirectionSent': 'Inviati',
   'capture.wsBreakpointDirectionReceived': 'Ricevuti',
+  'capture.wsBreakpointDirectionBothSummary': 'Entrambe le direzioni',
+  'capture.wsBreakpointDirectionSentSummary': 'Solo inviati',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Solo ricevuti',
   'capture.wsBreakpointFrames': 'Frame',
   'capture.wsBreakpointFrameMessage': 'Messaggi',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const itCatalog = {
   'breakpoints.requestHeaders': 'Intestazioni della richiesta',
   'breakpoints.responseHeaders': 'Intestazioni della risposta',
   'breakpoints.originalBody': 'Corpo originale',
+  'breakpoints.originalMessage': 'Messaggio originale',
 
   'breakpoints.receiving': 'in ricezione',
 
@@ -577,6 +581,7 @@ export const itCatalog = {
   'breakpoints.filePreviewUnavailable': 'Troppo grande o non testuale: inviato dal disco così com’è.',
 
   'breakpoints.replacementBody': 'Corpo sostitutivo',
+  'breakpoints.replacementMessage': 'Messaggio sostitutivo',
   'breakpoints.replacementOff': 'Off',
   'breakpoints.replacementText': 'Testo',
   'breakpoints.usingOriginal': 'Uso dell’originale',
@@ -585,6 +590,7 @@ export const itCatalog = {
   'breakpoints.usingTextHint': 'Verrà inoltrato il testo sostitutivo.',
   'breakpoints.emptyTextHint': 'Il testo sostitutivo non può essere vuoto. Inserisci del contenuto, altrimenti verrà inoltrato il corpo originale.',
   'breakpoints.originalForwarded': 'Il corpo originale verrà inoltrato invariato.',
+  'breakpoints.originalMessageForwarded': 'Il messaggio originale verrà inoltrato invariato.',
   'breakpoints.forwardEdited': 'Inoltra modificato',
   'breakpoints.matchState': 'interruzione alla corrispondenza · {{state}}',
   'breakpoints.off': 'disattiva',

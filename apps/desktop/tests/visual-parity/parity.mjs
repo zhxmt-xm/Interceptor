@@ -261,6 +261,7 @@ for (const view of views) {
     largeTextBody: view.largeTextBody === true,
     noRuleHits: view.noRuleHits === true,
     pausedBreakpoints: view.pausedBreakpoints === true,
+    pausedWebSocketBreakpoint: view.pausedWebSocketBreakpoint === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
     githubAuthState: view.githubAuthState ?? 'signed-in',
@@ -270,6 +271,8 @@ for (const view of views) {
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
+  await appPage.locator('[data-collapsed]').first().waitFor({ state: 'visible' });
+  await appPage.waitForLoadState('networkidle');
   await appPage.evaluate(() => document.fonts?.ready);
 
   if (view.rendererNav) {

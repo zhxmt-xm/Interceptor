@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> 最后更新：2026-08-11
+> 最后更新：2026-08-12
 > 仓库直接提交到 `main`，没有额外 PR 边界。
 > 本文件只设两个一级章节；已实现内容同步到对应架构文档后从本文件删除，未实现项留在“待完成”。未经代码核对不得删除或标记完成。
 
@@ -56,12 +56,8 @@ AppContainer、TLS 或打包边界时，仍须按本文完成门禁重新执行 
 
 ### 当前工作树与接手顺序
 
-- 分支：`main`，HEAD `e5ca501`；工作树 250 个改动文件，全部未提交。
-- 当前未提交主线切片包含：Breakpoint 客户端 abort 清理、Inspector 滚动、创建 Message、Capture
-  请求 Ant 多级菜单、15 语言、聚焦/完整 parity harness 与 design-vite 定稿资产，以及本次架构同步。
-- **最近一段（2026-08-11 晚）新增两块，见下方「已完成」：** design-vite 区块头统一到
-  `CollapsibleSection` + `ActionButton`，以及 **WebSocket 帧断点的完整产品实现**（协议 / Core /
-  Main / Preload / Renderer / MCP 全链路）。
+- 分支：`main`，HEAD `32867ff`；当前未提交切片是 WebSocket 帧断点 parity / 内嵌 Messages editor、
+  design-vite 截图状态清理、15 语言消息文案、DOMPurify 3.4.13 安全补丁与本次架构同步。
 - `backlog/idea.md`、`backlog/image-13.png`、`backlog/image-14.png` 与当前
   `apps/desktop/tests/visual-parity/parity-report.md` 包含现有用户改动，不要删除、覆盖或纳入无关提交。
 - `stash@{0}: wip: Windows App WVD gateway bypass` 是已被当前实现取代的临时补丁，不要再次 apply。
@@ -77,15 +73,11 @@ git -c core.whitespace=cr-at-eol diff --check
 - 仓库为 CRLF 工作区，必须使用 `-c core.whitespace=cr-at-eol` 检查；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。
 - `design-vite/shots/` 与 `apps/desktop/tests/visual-parity/parity-report.md` 是验收资产，不得清理。
 
-### 精确下一动作（2026-08-11 收尾时的状态）
+### 精确下一动作
 
-1. **重跑 `npm run package`。** 代码侧已就绪：Vite 的 main / preload / renderer 三个 target 都构建成功，
-   失败发生在其后的 Forge「Preparing native dependencies」下载环节，连续两次分别是
-   `read ECONNRESET` 与 `connect ETIMEDOUT 20.205.243.166:443`（GitHub 资源），是网络问题不是代码问题。
-   网络恢复后重跑一次即可，随后按门禁补 artifact audit。
-2. **给 WebSocket 帧断点补 visual parity 基线**：setup / enabled / paused 三类场景尚未收录。
-3. 之后再回到「长期债务」列表。
-
+进入 Breakpoint wire correctness：先为 HTTP `Execute edited` 建立真实 H1 / H2 集成测试，逐项锁定
+`Content-Length`、`content-encoding` 与 transfer-encoding；测试证明确有问题后再改转发实现，不能先靠
+Renderer 重写 header 猜测修复。随后补 WebSocket binary hex 编辑后的字节还原回归。
 
 ### Private GitHub Release 更新：实现与验证
 
@@ -100,8 +92,7 @@ git -c core.whitespace=cr-at-eol diff --check
 
 ### 主任务：Breakpoint 产品实现
 
-**精确下一动作：为 WebSocket 帧断点补 visual parity 基线。** 产品实现已完成（含控制帧与配置化开关），
-剩下的是把 setup / enabled / paused 几个场景收录进 parity，并按 design-vite 新基线重跑对比。
+WebSocket 帧断点产品与 visual parity 已收口；当前主任务只剩 wire correctness 与容量边界。
 
 阶段 2a 与断点正文交互已完成，剩余收口项如下：
 
@@ -131,19 +122,24 @@ git -c core.whitespace=cr-at-eol diff --check
 - **design-vite 断点侧区块头统一到 `CollapsibleSection`。** HTTP breakpoint、WebSocket upgrade breakpoint、WebSocket 消息详情共用同一个组件，几何与旧 `.sh` 逐项对齐：`min-height 24 / padding 0 0 8px 10px / margin-bottom 12 / gap 8`、左侧 accent 竖条 `::before`、向右淡出的渐变分组线 `::after`、计数 badge 走 `.c` 的 `padding 1px 6px` 且 `letter-spacing: 0; text-transform: none`，chevron 13px 靠右。踩过两个坑：`CollapsibleSection` 初版漏了 `::after` 渐变线并把计数 badge 拉成 22px 定高，视觉与旧稿不一致；`HttpBreakpointDesign` 的 legacy 隐藏逻辑按 `[aria-label="Header name"]` 选中了 React 自己 portal 出来的容器，把新内容一起 `display: none`，因此 portal 根必须带 `data-breakpoint-component`。
 - **断点按钮收敛为 `ActionButton`。** Drop / Continue / Forward edited 与 WebSocket breakpoint setup 弹框的 Cancel / Enable breakpoint 共用同一个 icon + 文字按钮，`ActionFooter` 只负责 58px 底栏布局。
 - **WebSocket 帧断点已落地到产品。** 开关从布尔改成真实配置：`websocket.breakpoint.enable`（`exchangeId` / `direction` / `frames` / `timeoutMs`）与 `websocket.breakpoint.disable` 两条语义单一的命令取代了 `websocket.breakpoint.configure { enabled }`，`websocket.frames` 结果也改返回 `breakpoint: WebSocketBreakpointSettings | null`。**作用域锁在发起它的那条连接**：`exchangeId` 不匹配的帧直接放行，`websocket.frames` 也只在匹配时报告该配置，UI 上“Pause messages on this connection”就是字面意思。`WebSocketBridge` 的 ping / pong / close 不再直通，与应用消息共用方向内串行链后才转发；close 帧另带可编辑的 `closeCode`。`pauseWebSocketMessage` 不再检查 HTTP 的 `breakpointsEnabled`，两个开关正交。Renderer 侧 WS 面板的 Switch 换成 pause 按钮 + setup 面板（Direction / Frames / Timeout），启用必经配置、停用一键；BreakpointInspector 对控制帧显示帧类别 chip 与 close code 编辑。MCP 同步拆为 `enable_websocket_breakpoint` / `disable_websocket_breakpoint`，`configure_breakpoint` 只管 HTTP。
-- **本切片验证。** 全 workspace typecheck 通过；Proxy Core 串行 279 passed / 6 skipped（含新增的方向过滤与 ping 帧断点集成测试），Desktop 246/246，Core Protocol 15/15，MCP 45/45，共 585 项；Core 构建与 design-vite build 通过，capture 设计截图 160 张已重出。`npm run package` **未通过，原因是网络**（详见上方「精确下一动作」）。
+- **WebSocket parity 与内嵌 editor。** setup / enabled / paused 已按 light / dark 六个 view 收录；pending
+  自动切到 Messages，历史帧保留，paused snapshot 作为 waiting row，Original 复用 `BodyViewer`，Replacement
+  默认 Off。六个 view 均 `0 missing`，最大几何差 2px；完整套件已稳定跑完 75 views。
+- **本切片验证。** 全 workspace typecheck 通过；Proxy Core 串行 279/279、Desktop 248/248、Core Protocol
+  15/15、MCP 45/45，共 587 项。design-vite build 与 Capture 160 张截图通过；完整 parity 为
+  `75 views / 602 targets / 566 matched / 36 missing / 145 flagged / 平均 2.64%`，新增六个 WS view 全部
+  0 missing。Windows x64 package 与 artifact audit 通过：1,294 files / 391,548,917 bytes。
+  DOMPurify 从受 GHSA-55q2-fjhq-7xh7 影响的 3.4.12 提升到 3.4.13，`npm audit --omit=dev` 为 0。
 
 未做：
 
 - **design-vite detail inspector 仍未组件化。** `captureFixture` / `composerFixture` 里的 13 + 4 个 `.sec > .sh` 仍是 legacy HTML，靠 `useDesignFixtureAdapter` 命令式切 `collapsed`，没有走 `CollapsibleSection`。断点侧已全部收敛，剩下的是把这些区块（General、Request/Response Headers、Composer 各段）迁到同一个组件，迁完后删掉 `DesignApp.module.css` 里的 `.sh` / `.sec` / `.esec` 规则与 adapter 第 449 行的折叠分支。
 
-- **WebSocket 设计草案（仅 design-vite）。** 用户已否定持久化 Rule 的 Scope/Advanced rules 流程；当前稿为当前连接临时开关：实心 `Enable breakpoint`，Popover 只含 Both/Sent/Received 与 No timeout/10s/30s/1min，启用后变为黄色填充 `Disable breakpoint`。消息暂停复用 Capture 行 waiting + WebSocket payload Inspector。light/dark 的 setup/enabled/paused-text/paused-binary/replacement 共 10 张截图已生成，交互链 Enable→配置→Disable→paused→Close 已验证。**产品实现已完成，见上方已完成项；未做的只剩 parity 基线。**
 - **Content-Length / content-encoding / H2 framing** 在 Execute edited 后的正确性未验证。
 - **设计稿其余 17 个断点变体**（queue、queue-full、created-message、manager、create-menu、file / invalid / replace 各档）未收录进 parity。
 
 实现顺序与边界：
 
-- 产品完成后更新 `platform/renderer.md`，重出 visual parity 基线并运行完整 Desktop / Core 验证。
 - `rule detail` 提示移到底栏尚无确认设计；当前 `.vnote` 仍在滚动区末尾，产品保持现状。
 
 ### 长期债务：继续保留，未完成
@@ -154,7 +150,8 @@ git -c core.whitespace=cr-at-eol diff --check
 - visual parity 尚未收录/验收新的 `statusbar-upstream-down` 状态栏场景。
 - Composer / Rules DOM、Inspector 分组与正文工具条变化后，visual parity 基线尚未整体重出。
 - Local E2E 仍是 0 条 implemented workflow；第一条必须从 `application.startup.ready` 开始，只通过公共 automation ID 操作真实 UI，保存 trace/evidence，并验证 destroy 后才能更新 Inventory。
-- Visual parity 当前仍有 70 missing / 105 flagged，主要是 Capture、Settings、Updates 的既有场景债务；详见隔离完整 parity 报告与 `apps/desktop/tests/visual-parity/parity-report.md`。
+- Visual parity 当前仍有 36 missing / 145 flagged，主要是 Capture、Settings 与旧 Shell 场景债务；详见
+  `apps/desktop/tests/visual-parity/parity-report.md`。
 - 首个真实 tag release 仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - SSE、长上传/下载、gRPC streaming、Pause/Resume、Clear 与文件任务等长期测试债务继续以 [backlog/TODO.md](backlog/TODO.md) 为准；只有代码和验收均完成后才可勾掉。
 

@@ -207,6 +207,9 @@ export const deCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Beide',
   'capture.wsBreakpointDirectionSent': 'Gesendet',
   'capture.wsBreakpointDirectionReceived': 'Empfangen',
+  'capture.wsBreakpointDirectionBothSummary': 'Beide Richtungen',
+  'capture.wsBreakpointDirectionSentSummary': 'Nur gesendet',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Nur empfangen',
   'capture.wsBreakpointFrames': 'Frames',
   'capture.wsBreakpointFrameMessage': 'Nachrichten',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -536,6 +539,7 @@ export const deCatalog = {
   'breakpoints.requestHeaders': 'Anfrage-Header',
   'breakpoints.responseHeaders': 'Antwort-Header',
   'breakpoints.originalBody': 'Ursprünglicher Text',
+  'breakpoints.originalMessage': 'Ursprüngliche Nachricht',
 
   'breakpoints.receiving': 'wird empfangen',
 
@@ -574,6 +578,7 @@ export const deCatalog = {
   'breakpoints.filePreviewUnavailable': 'Zu groß oder kein Text – wird unverändert von der Festplatte gesendet.',
 
   'breakpoints.replacementBody': 'Ersatzinhalt',
+  'breakpoints.replacementMessage': 'Ersatznachricht',
   'breakpoints.replacementOff': 'Aus',
   'breakpoints.replacementText': 'Text',
   'breakpoints.usingOriginal': 'Original wird verwendet',
@@ -582,6 +587,7 @@ export const deCatalog = {
   'breakpoints.usingTextHint': 'Der Ersatztext wird weitergeleitet.',
   'breakpoints.emptyTextHint': 'Der Ersatztext darf nicht leer sein. Gib Inhalt ein, sonst wird der ursprüngliche Inhalt weitergeleitet.',
   'breakpoints.originalForwarded': 'Der ursprüngliche Inhalt wird unverändert weitergeleitet.',
+  'breakpoints.originalMessageForwarded': 'Die ursprüngliche Nachricht wird unverändert weitergeleitet.',
   'breakpoints.forwardEdited': 'Bearbeitet weiterleiten',
   'breakpoints.matchState': 'Bei Treffer anhalten · {{state}}',
   'breakpoints.off': 'aus',

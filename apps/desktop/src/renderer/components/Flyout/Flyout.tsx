@@ -15,6 +15,8 @@ export interface FlyoutProps {
   placement?: PopoverProps['placement'];
   /** Extra class merged onto the panel body slot 鈥?typically width / max-height. */
   className?: string;
+  /** Container padding; menus use 7px, form popovers may request a roomier value. */
+  padding?: number;
   /** The trigger element the panel is anchored to. */
   children: ReactNode;
 }
@@ -31,6 +33,7 @@ export function Flyout({
   content,
   placement = 'bottomRight',
   className,
+  padding = 7,
   children,
 }: FlyoutProps): React.JSX.Element {
   return (
@@ -45,7 +48,7 @@ export function Flyout({
       classNames={{ container: cx(styles.panel, className) }}
       styles={{
         container: {
-          padding: 7,
+          padding,
           background: 'var(--panel)',
           border: '1px solid var(--border-2)',
           borderRadius: 12,

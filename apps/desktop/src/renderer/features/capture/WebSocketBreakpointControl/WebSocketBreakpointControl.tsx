@@ -52,6 +52,7 @@ export function WebSocketBreakpointControl({
       open={setupOpen}
       onOpenChange={setSetupOpen}
       className={styles.setupPanel}
+      padding={11}
       content={(
         <WebSocketBreakpointSetup
           exchangeId={exchangeId}
@@ -64,13 +65,16 @@ export function WebSocketBreakpointControl({
         />
       )}
     >
-      <IconButton
-        icon={Pause}
-        size="sm"
-        label={t('capture.wsBreakpointEnable')}
-        className={styles.control}
-        automationId={AUTOMATION_IDS.capture.websocket.breakpointToggle}
-      />
+      <span>
+        <IconButton
+          icon={Pause}
+          size="sm"
+          label={t('capture.wsBreakpointEnable')}
+          tooltip={null}
+          className={styles.control}
+          automationId={AUTOMATION_IDS.capture.websocket.breakpointToggle}
+        />
+      </span>
     </Flyout>
   );
 }

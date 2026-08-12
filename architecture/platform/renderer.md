@@ -1,9 +1,9 @@
 # 平台架构：Renderer Shell
 
-> 最后更新：2026-08-11
+> 最后更新：2026-08-12
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
 > 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
-
+>
 > Renderer 只通过 `window.interceptor` 意图 API 访问 Main，不触达 Electron / Node / MessagePort。
 
 ## 1. App shell
@@ -25,6 +25,12 @@ Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header �
 ## 4. Feature workspaces
 
 `features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+
+WebSocket 帧断点保留在连接自己的 Messages tab：setup 只配置当前 `exchangeId` 的方向、帧类别与超时；
+命中后 Inspector 自动切到 Messages，已转发历史帧继续显示，Core snapshot 作为黄色 paused row 追加在列表末尾。
+row 下方内嵌专用编辑器，Original message 复用完整 `BodyViewer`，Replacement message 默认 Off，只有用户
+显式切到 Text 才发送编辑；binary snapshot 用 hex 展示，ping / pong / close 与 message 共用同一条解决流程。
+HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享数据 store 与 resolve 命令，不互相伪装。
 
 ## 5. 共享组件库
 

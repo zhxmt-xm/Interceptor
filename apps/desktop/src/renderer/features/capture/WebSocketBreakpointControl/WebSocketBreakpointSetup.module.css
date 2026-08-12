@@ -61,3 +61,20 @@
 .spacer {
   flex: 1;
 }
+
+.timeoutSelect {
+  height: 26px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.timeoutSelectContent {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.actionButton {
+  height: 30px;
+  padding: 0 9px;
+  font-size: 11px;
+}

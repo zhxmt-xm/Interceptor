@@ -208,6 +208,9 @@ export const frCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Les deux',
   'capture.wsBreakpointDirectionSent': 'Envoyés',
   'capture.wsBreakpointDirectionReceived': 'Reçus',
+  'capture.wsBreakpointDirectionBothSummary': 'Les deux sens',
+  'capture.wsBreakpointDirectionSentSummary': 'Envoi uniquement',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Réception uniquement',
   'capture.wsBreakpointFrames': 'Trames',
   'capture.wsBreakpointFrameMessage': 'Messages',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const frCatalog = {
   'breakpoints.requestHeaders': 'En-têtes de requête',
   'breakpoints.responseHeaders': 'En-têtes de réponse',
   'breakpoints.originalBody': 'Corps d’origine',
+  'breakpoints.originalMessage': 'Message d’origine',
 
   'breakpoints.receiving': 'réception',
 
@@ -577,6 +581,7 @@ export const frCatalog = {
   'breakpoints.filePreviewUnavailable': 'Trop volumineux ou non textuel — transmis tel quel depuis le disque.',
 
   'breakpoints.replacementBody': 'Corps de remplacement',
+  'breakpoints.replacementMessage': 'Message de remplacement',
   'breakpoints.replacementOff': 'Désactivé',
   'breakpoints.replacementText': 'Texte',
   'breakpoints.usingOriginal': 'Original utilisé',
@@ -585,6 +590,7 @@ export const frCatalog = {
   'breakpoints.usingTextHint': 'Le texte de remplacement sera transmis.',
   'breakpoints.emptyTextHint': 'Le texte de remplacement ne peut pas être vide. Saisis un contenu, sinon le corps d’origine sera transmis.',
   'breakpoints.originalForwarded': 'Le corps d’origine sera transmis tel quel.',
+  'breakpoints.originalMessageForwarded': 'Le message d’origine sera transmis tel quel.',
   'breakpoints.forwardEdited': 'Transmettre la version modifiée',
   'breakpoints.matchState': 'pause si correspondance · {{state}}',
   'breakpoints.off': 'désactivée',

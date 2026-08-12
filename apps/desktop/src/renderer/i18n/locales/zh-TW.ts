@@ -207,6 +207,9 @@ export const zhTWCatalog = {
   'capture.wsBreakpointDirectionBoth': '雙向',
   'capture.wsBreakpointDirectionSent': '傳送',
   'capture.wsBreakpointDirectionReceived': '接收',
+  'capture.wsBreakpointDirectionBothSummary': '雙向',
+  'capture.wsBreakpointDirectionSentSummary': '僅傳送',
+  'capture.wsBreakpointDirectionReceivedSummary': '僅接收',
   'capture.wsBreakpointFrames': '訊框類型',
   'capture.wsBreakpointFrameMessage': '訊息',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -536,6 +539,7 @@ export const zhTWCatalog = {
   'breakpoints.requestHeaders': '請求標頭',
   'breakpoints.responseHeaders': '回應標頭',
   'breakpoints.originalBody': '原始內容',
+  'breakpoints.originalMessage': '原始訊息',
 
   'breakpoints.receiving': '接收中',
 
@@ -574,6 +578,7 @@ export const zhTWCatalog = {
   'breakpoints.filePreviewUnavailable': '檔案過大或非文字，將原樣從磁碟送出。',
 
   'breakpoints.replacementBody': '替換內文',
+  'breakpoints.replacementMessage': '替換訊息',
   'breakpoints.replacementOff': '關閉',
   'breakpoints.replacementText': '文字',
   'breakpoints.usingOriginal': '使用原文',
@@ -582,6 +587,7 @@ export const zhTWCatalog = {
   'breakpoints.usingTextHint': '將轉送替換文字。',
   'breakpoints.emptyTextHint': '替換文字不能為空；未填內容則原樣轉送原文。',
   'breakpoints.originalForwarded': '原文將原樣轉送。',
+  'breakpoints.originalMessageForwarded': '原始訊息將原樣轉送。',
   'breakpoints.forwardEdited': '轉送已編輯內容',
   'breakpoints.matchState': '符合時中斷 · {{state}}',
   'breakpoints.off': '關閉',

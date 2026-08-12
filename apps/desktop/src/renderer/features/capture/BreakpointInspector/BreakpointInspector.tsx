@@ -118,7 +118,7 @@ export function BreakpointInspector({
           <span className={styles.chip}>
             {isControlFrame
               ? CONTROL_FRAME_LABEL[draft.frame as ControlFrame]
-              : draft.opcode === 2 ? t('capture.binary') : t('capture.text')}
+              : draft.opcode === 2 ? t('capture.binary') : t('breakpoints.replacementText')}
           </span>
         ) : (
           <MethodBadge method={draft.method} />

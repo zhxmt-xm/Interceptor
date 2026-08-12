@@ -30,7 +30,7 @@
   },
   "overrides": {
     "monaco-editor": {
-      "dompurify": "3.4.12"
+      "dompurify": "3.4.13"
     },
     "socks": {
       "ip-address": "10.3.1"

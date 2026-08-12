@@ -212,6 +212,7 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
+    await page.keyboard.press('Escape');
     await page.evaluate((interaction) => {
       document.body.classList.toggle(
         'menu-interaction-shot',

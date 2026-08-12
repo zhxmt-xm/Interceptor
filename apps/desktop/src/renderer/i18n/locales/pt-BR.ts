@@ -208,6 +208,9 @@ export const ptBRCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Ambas',
   'capture.wsBreakpointDirectionSent': 'Enviadas',
   'capture.wsBreakpointDirectionReceived': 'Recebidas',
+  'capture.wsBreakpointDirectionBothSummary': 'Ambas as direções',
+  'capture.wsBreakpointDirectionSentSummary': 'Apenas enviadas',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Apenas recebidas',
   'capture.wsBreakpointFrames': 'Quadros',
   'capture.wsBreakpointFrameMessage': 'Mensagens',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const ptBRCatalog = {
   'breakpoints.requestHeaders': 'Cabeçalhos da requisição',
   'breakpoints.responseHeaders': 'Cabeçalhos da resposta',
   'breakpoints.originalBody': 'Corpo original',
+  'breakpoints.originalMessage': 'Mensagem original',
 
   'breakpoints.receiving': 'recebendo',
 
@@ -577,6 +581,7 @@ export const ptBRCatalog = {
   'breakpoints.filePreviewUnavailable': 'Grande demais ou não é texto — enviado do disco como está.',
 
   'breakpoints.replacementBody': 'Corpo de substituição',
+  'breakpoints.replacementMessage': 'Mensagem de substituição',
   'breakpoints.replacementOff': 'Desligado',
   'breakpoints.replacementText': 'Texto',
   'breakpoints.usingOriginal': 'Usando o original',
@@ -585,6 +590,7 @@ export const ptBRCatalog = {
   'breakpoints.usingTextHint': 'O texto de substituição será encaminhado.',
   'breakpoints.emptyTextHint': 'O texto de substituição não pode ficar vazio. Digite o conteúdo ou o corpo original será encaminhado.',
   'breakpoints.originalForwarded': 'O corpo original será encaminhado sem alterações.',
+  'breakpoints.originalMessageForwarded': 'A mensagem original será encaminhada sem alterações.',
   'breakpoints.forwardEdited': 'Encaminhar editado',
   'breakpoints.matchState': 'pausar ao corresponder · {{state}}',
   'breakpoints.off': 'desativado',

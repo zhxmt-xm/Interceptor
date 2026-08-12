@@ -207,6 +207,9 @@ export const zhCNCatalog = {
   'capture.wsBreakpointDirectionBoth': '双向',
   'capture.wsBreakpointDirectionSent': '发送',
   'capture.wsBreakpointDirectionReceived': '接收',
+  'capture.wsBreakpointDirectionBothSummary': '双向',
+  'capture.wsBreakpointDirectionSentSummary': '仅发送',
+  'capture.wsBreakpointDirectionReceivedSummary': '仅接收',
   'capture.wsBreakpointFrames': '帧类型',
   'capture.wsBreakpointFrameMessage': '消息',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -536,6 +539,7 @@ export const zhCNCatalog = {
   'breakpoints.requestHeaders': '请求头',
   'breakpoints.responseHeaders': '响应头',
   'breakpoints.originalBody': '原始正文',
+  'breakpoints.originalMessage': '原始消息',
 
   'breakpoints.receiving': '接收中',
 
@@ -574,6 +578,7 @@ export const zhCNCatalog = {
   'breakpoints.filePreviewUnavailable': '文件过大或非文本，将按原样从磁盘发送。',
 
   'breakpoints.replacementBody': '替换正文',
+  'breakpoints.replacementMessage': '替换消息',
   'breakpoints.replacementOff': '关闭',
   'breakpoints.replacementText': '文本',
   'breakpoints.usingOriginal': '使用原文',
@@ -582,6 +587,7 @@ export const zhCNCatalog = {
   'breakpoints.usingTextHint': '将转发替换文本。',
   'breakpoints.emptyTextHint': '替换文本不能为空；不填内容则原样转发原文。',
   'breakpoints.originalForwarded': '原文将原样转发。',
+  'breakpoints.originalMessageForwarded': '原始消息将原样转发。',
   'breakpoints.forwardEdited': '转发已编辑内容',
   'breakpoints.matchState': '匹配时中断 · {{state}}',
   'breakpoints.off': '关闭',

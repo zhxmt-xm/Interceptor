@@ -67,12 +67,12 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
   };
 
   const setup = (
-    <div className={styles.breakpointSetup}>
+    <div className={styles.breakpointSetup} data-parity="websocket-breakpoint-setup">
       <div>
         <div className={styles.breakpointTitle}>Pause messages on this connection</div>
         <div className={styles.connectionAddress}>realtime.example.com/socket</div>
       </div>
-      <div className={styles.settingRow}>
+      <div className={styles.settingRow} data-parity="websocket-breakpoint-direction-row">
         <span>Direction</span>
         <SegmentedControl
           ariaLabel="Direction"
@@ -83,7 +83,7 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
           })}
         />
       </div>
-      <div className={styles.frameSettingRow}>
+      <div className={styles.frameSettingRow} data-parity="websocket-breakpoint-frames-row">
         <span>Frames</span>
         <div aria-label="Frames" className={styles.frameOptions} role="group">
           {FRAME_OPTIONS.map((frame) => {
@@ -103,7 +103,7 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
           })}
         </div>
       </div>
-      <div className={styles.settingRow}>
+      <div className={styles.settingRow} data-parity="websocket-breakpoint-timeout-row">
         <label htmlFor="websocket-breakpoint-timeout">Timeout</label>
         <Select
           id="websocket-breakpoint-timeout"
@@ -114,7 +114,7 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
           })}
         />
       </div>
-      <div className={styles.setupActions}>
+      <div className={styles.setupActions} data-parity="websocket-breakpoint-actions-row">
         <span className={styles.actionSpacer} />
         <ActionButton
           icon={<X aria-hidden="true" />}

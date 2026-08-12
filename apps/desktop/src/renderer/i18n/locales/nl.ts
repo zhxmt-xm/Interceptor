@@ -207,6 +207,9 @@ export const nlCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Beide',
   'capture.wsBreakpointDirectionSent': 'Verzonden',
   'capture.wsBreakpointDirectionReceived': 'Ontvangen',
+  'capture.wsBreakpointDirectionBothSummary': 'Beide richtingen',
+  'capture.wsBreakpointDirectionSentSummary': 'Alleen verzonden',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Alleen ontvangen',
   'capture.wsBreakpointFrames': 'Frames',
   'capture.wsBreakpointFrameMessage': 'Berichten',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -536,6 +539,7 @@ export const nlCatalog = {
   'breakpoints.requestHeaders': 'Verzoekheaders',
   'breakpoints.responseHeaders': 'Antwoordheaders',
   'breakpoints.originalBody': 'Oorspronkelijke body',
+  'breakpoints.originalMessage': 'Oorspronkelijk bericht',
 
   'breakpoints.receiving': 'ontvangen',
 
@@ -574,6 +578,7 @@ export const nlCatalog = {
   'breakpoints.filePreviewUnavailable': 'Te groot of geen tekst — wordt ongewijzigd vanaf schijf verzonden.',
 
   'breakpoints.replacementBody': 'Vervangende inhoud',
+  'breakpoints.replacementMessage': 'Vervangend bericht',
   'breakpoints.replacementOff': 'Uit',
   'breakpoints.replacementText': 'Tekst',
   'breakpoints.usingOriginal': 'Origineel in gebruik',
@@ -582,6 +587,7 @@ export const nlCatalog = {
   'breakpoints.usingTextHint': 'De vervangende tekst wordt doorgestuurd.',
   'breakpoints.emptyTextHint': 'De vervangende tekst mag niet leeg zijn. Voer inhoud in, anders wordt de originele inhoud doorgestuurd.',
   'breakpoints.originalForwarded': 'De originele inhoud wordt ongewijzigd doorgestuurd.',
+  'breakpoints.originalMessageForwarded': 'Het oorspronkelijke bericht wordt ongewijzigd doorgestuurd.',
   'breakpoints.forwardEdited': 'Bewerkt doorsturen',
   'breakpoints.matchState': 'onderbreken bij overeenkomst · {{state}}',
   'breakpoints.off': 'uit',

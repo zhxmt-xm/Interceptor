@@ -115,6 +115,133 @@ export const views = [
       'Binary',
     ],
   },
+  ...['light', 'dark'].flatMap((theme) => {
+    const rendererOpenMessages = [
+      { type: 'clickText', text: '/socket' },
+      { type: 'clickText', text: 'Messages' },
+    ];
+    const designState = {
+      view: 'capture',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'open',
+      scene: 'websocket',
+      tab: 'messages',
+    };
+    const suffix = theme === 'dark' ? '-dark' : '';
+    return [
+      {
+        id: `capture-websocket-breakpoint-setup${suffix}`,
+        theme,
+        designState: {
+          ...designState,
+          breakpointState: '',
+          websocketBreakpoint: 'setup',
+          websocketBreakpointDirection: 'both',
+          websocketBreakpointTimeout: 'none',
+          websocketBreakpointFrames: ['message'],
+        },
+        designShot: `${theme}/capture/websocket-breakpoint-setup.png`,
+        rendererActions: [
+          ...rendererOpenMessages,
+          { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
+        ],
+        targets: [
+          {
+            name: 'WebSocket breakpoint popover',
+            designSelector: '.ant-popover:visible .ant-popover-container',
+            appSelector: '.ant-popover:visible .ant-popover-container',
+          },
+          {
+            name: 'WebSocket breakpoint setup',
+            parity: 'websocket-breakpoint-setup',
+          },
+          { name: 'Direction row', parity: 'websocket-breakpoint-direction-row' },
+          { name: 'Frames row', parity: 'websocket-breakpoint-frames-row' },
+          { name: 'Timeout row', parity: 'websocket-breakpoint-timeout-row' },
+          { name: 'Actions row', parity: 'websocket-breakpoint-actions-row' },
+          {
+            name: 'Timeout select',
+            designSelector: '[data-parity="websocket-breakpoint-timeout-row"] .ant-select',
+            appSelector: '[data-parity="websocket-breakpoint-timeout-row"] .ant-select',
+          },
+          'Pause messages on this connection',
+          'Direction',
+          'Frames',
+          'Timeout',
+          'No timeout',
+          'Cancel',
+          'Enable breakpoint',
+        ],
+      },
+      {
+        id: `capture-websocket-breakpoint-enabled${suffix}`,
+        theme,
+        designState: {
+          ...designState,
+          breakpointState: '',
+          websocketBreakpoint: 'enabled',
+          websocketBreakpointDirection: 'both',
+          websocketBreakpointTimeout: 'none',
+          websocketBreakpointFrames: ['message'],
+        },
+        designShot: `${theme}/capture/websocket-breakpoint-enabled.png`,
+        rendererActions: [
+          ...rendererOpenMessages,
+          { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
+          { type: 'clickRole', role: 'button', name: 'Enable breakpoint' },
+        ],
+        targets: [
+          'Messages',
+          'All',
+          'Sent',
+          'Received',
+          {
+            name: 'Armed WebSocket breakpoint',
+            designSelector: 'button[aria-label="Disable message breakpoint"]',
+            appSelector: 'button[aria-label="Disable message breakpoint"]',
+          },
+        ],
+      },
+      {
+        id: `capture-websocket-breakpoint-paused${suffix}`,
+        theme,
+        designState: {
+          ...designState,
+          breakpointState: 'websocket',
+          breakpointBody: 'ready',
+          websocketBreakpoint: 'enabled',
+          websocketBreakpointDirection: 'both',
+          websocketBreakpointTimeout: 'none',
+          websocketBreakpointFrames: ['message'],
+          websocketMessageDirection: 'sent',
+          websocketMessagePayload: 'text',
+        },
+        designShot: `${theme}/capture/websocket-breakpoint-paused-sent.png`,
+        pausedWebSocketBreakpoint: true,
+        rendererActions: [{ type: 'clickText', text: '/socket' }],
+        targets: [
+          'Messages',
+          'All',
+          {
+            name: 'Armed WebSocket breakpoint',
+            designSelector: 'button[aria-label="Disable message breakpoint"]',
+            appSelector: 'button[aria-label="Disable message breakpoint"]',
+          },
+          'Sent message paused',
+          'Both directions · No timeout',
+          'Original message',
+          'Replacement message',
+          'Using original',
+          'The original message will be forwarded unchanged.',
+          'Drop',
+          'Continue',
+          'Forward edited',
+        ],
+      },
+    ];
+  }),
   {
     id: 'capture-request-json',
     theme: 'light',

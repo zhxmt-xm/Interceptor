@@ -208,6 +208,9 @@ export const koCatalog = {
   'capture.wsBreakpointDirectionBoth': '양방향',
   'capture.wsBreakpointDirectionSent': '보냄',
   'capture.wsBreakpointDirectionReceived': '받음',
+  'capture.wsBreakpointDirectionBothSummary': '양방향',
+  'capture.wsBreakpointDirectionSentSummary': '보낸 메시지만',
+  'capture.wsBreakpointDirectionReceivedSummary': '받은 메시지만',
   'capture.wsBreakpointFrames': '프레임',
   'capture.wsBreakpointFrameMessage': '메시지',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const koCatalog = {
   'breakpoints.requestHeaders': '요청 헤더',
   'breakpoints.responseHeaders': '응답 헤더',
   'breakpoints.originalBody': '원본 본문',
+  'breakpoints.originalMessage': '원본 메시지',
 
   'breakpoints.receiving': '수신 중',
 
@@ -577,6 +581,7 @@ export const koCatalog = {
   'breakpoints.filePreviewUnavailable': '너무 크거나 텍스트가 아니어서 디스크에서 그대로 전달합니다.',
 
   'breakpoints.replacementBody': '대체 본문',
+  'breakpoints.replacementMessage': '대체 메시지',
   'breakpoints.replacementOff': '끄기',
   'breakpoints.replacementText': '텍스트',
   'breakpoints.usingOriginal': '원본 사용',
@@ -585,6 +590,7 @@ export const koCatalog = {
   'breakpoints.usingTextHint': '대체 텍스트가 전달됩니다.',
   'breakpoints.emptyTextHint': '대체 텍스트는 비워 둘 수 없습니다. 내용을 입력하지 않으면 원본 본문이 전달됩니다.',
   'breakpoints.originalForwarded': '원본 본문이 그대로 전달됩니다.',
+  'breakpoints.originalMessageForwarded': '원본 메시지가 그대로 전달됩니다.',
   'breakpoints.forwardEdited': '수정본 전달',
   'breakpoints.matchState': '일치 시 중단 · {{state}}',
   'breakpoints.off': '꺼짐',

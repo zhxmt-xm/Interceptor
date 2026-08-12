@@ -1,3 +1,4 @@
+import { Pause, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -47,13 +48,13 @@ export function WebSocketBreakpointSetup({
   };
 
   return (
-    <div className={styles.setup}>
+    <div className={styles.setup} data-parity="websocket-breakpoint-setup">
       <div>
         <div className={styles.title}>{t('capture.wsBreakpointTitle')}</div>
         <div className={styles.connection}>{connection}</div>
       </div>
 
-      <div className={styles.settingRow}>
+      <div className={styles.settingRow} data-parity="websocket-breakpoint-direction-row">
         <span>{t('capture.wsBreakpointDirection')}</span>
         <Segmented
           ariaLabel={t('capture.wsBreakpointDirection')}
@@ -67,7 +68,7 @@ export function WebSocketBreakpointSetup({
         />
       </div>
 
-      <div className={styles.frameRow}>
+      <div className={styles.frameRow} data-parity="websocket-breakpoint-frames-row">
         <span>{t('capture.wsBreakpointFrames')}</span>
         <div className={styles.frameOptions} role="group" aria-label={t('capture.wsBreakpointFrames')}>
           {FRAME_ORDER.map((frame) => (
@@ -81,9 +82,11 @@ export function WebSocketBreakpointSetup({
         </div>
       </div>
 
-      <div className={styles.settingRow}>
+      <div className={styles.settingRow} data-parity="websocket-breakpoint-timeout-row">
         <span>{t('capture.wsBreakpointTimeout')}</span>
         <Select
+          className={styles.timeoutSelect}
+          contentClassName={styles.timeoutSelectContent}
           ariaLabel={t('capture.wsBreakpointTimeout')}
           options={[
             { value: '0', label: t('capture.wsBreakpointTimeoutNone') },
@@ -97,15 +100,19 @@ export function WebSocketBreakpointSetup({
         />
       </div>
 
-      <div className={styles.actions}>
+      <div className={styles.actions} data-parity="websocket-breakpoint-actions-row">
         <span className={styles.spacer} />
         <Button
+          icon={X}
+          className={styles.actionButton}
           onClick={onCancel}
           automationId={AUTOMATION_IDS.capture.websocket.breakpointCancel}
         >
           {t('capture.wsBreakpointCancel')}
         </Button>
         <Button
+          icon={Pause}
+          className={styles.actionButton}
           variant="primary"
           disabled={frames.length === 0}
           onClick={() => onEnable({ exchangeId, direction, frames, timeoutMs })}

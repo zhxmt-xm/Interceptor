@@ -211,6 +211,9 @@ export const ruCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Оба',
   'capture.wsBreakpointDirectionSent': 'Отправленные',
   'capture.wsBreakpointDirectionReceived': 'Полученные',
+  'capture.wsBreakpointDirectionBothSummary': 'Оба направления',
+  'capture.wsBreakpointDirectionSentSummary': 'Только отправленные',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Только полученные',
   'capture.wsBreakpointFrames': 'Кадры',
   'capture.wsBreakpointFrameMessage': 'Сообщения',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -548,6 +551,7 @@ export const ruCatalog = {
   'breakpoints.requestHeaders': 'Заголовки запроса',
   'breakpoints.responseHeaders': 'Заголовки ответа',
   'breakpoints.originalBody': 'Исходное тело',
+  'breakpoints.originalMessage': 'Исходное сообщение',
 
   'breakpoints.receiving': 'приём',
 
@@ -586,6 +590,7 @@ export const ruCatalog = {
   'breakpoints.filePreviewUnavailable': 'Слишком большой или не текст — отправляется с диска как есть.',
 
   'breakpoints.replacementBody': 'Заменяющее тело',
+  'breakpoints.replacementMessage': 'Заменяющее сообщение',
   'breakpoints.replacementOff': 'Выкл.',
   'breakpoints.replacementText': 'Текст',
   'breakpoints.usingOriginal': 'Используется оригинал',
@@ -594,6 +599,7 @@ export const ruCatalog = {
   'breakpoints.usingTextHint': 'Будет передан заменяющий текст.',
   'breakpoints.emptyTextHint': 'Заменяющий текст не может быть пустым. Введите содержимое, иначе будет передано исходное тело.',
   'breakpoints.originalForwarded': 'Исходное тело будет передано без изменений.',
+  'breakpoints.originalMessageForwarded': 'Исходное сообщение будет передано без изменений.',
   'breakpoints.forwardEdited': 'Передать изменённое',
   'breakpoints.matchState': 'остановка при совпадении · {{state}}',
   'breakpoints.off': 'выкл.',

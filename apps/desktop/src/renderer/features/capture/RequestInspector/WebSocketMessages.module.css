@@ -57,6 +57,10 @@
   background: var(--sel);
   box-shadow: inset 2px 0 var(--sel-line);
 }
+.frame.pausedFrame {
+  background: color-mix(in srgb, var(--yellow) 8%, var(--panel));
+  box-shadow: inset 2px 0 var(--yellow);
+}
 .direction {
   display: grid;
   width: 22px;
@@ -78,6 +82,11 @@
 .kind {
   color: var(--text-2);
 }
+.preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .size,
 .time {
   color: var(--text-3);
@@ -97,4 +106,8 @@
 }
 .loadingMore {
   text-align: center;
+}
+.breakpointEditor {
+  display: flex;
+  min-height: 0;
 }

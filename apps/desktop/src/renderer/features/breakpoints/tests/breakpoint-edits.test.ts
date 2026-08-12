@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PendingBreakpoint } from '../../../../shared/desktop-api';
-import { buildEdit, draftFromBreakpoint, expectsBody } from '../utils';
+import {
+  breakpointBodyBytes,
+  breakpointBodyMediaType,
+  buildEdit,
+  draftFromBreakpoint,
+  expectsBody,
+} from '../utils';
 
 function pending(overrides: Partial<PendingBreakpoint> = {}): PendingBreakpoint {
   return {
@@ -53,10 +59,28 @@ describe('breakpoint edits', () => {
     // WebSocket 消息断点持有完整 payload，清空就是用户的真实意图。
     const draft = {
       ...draftFromBreakpoint(pending({ phase: 'websocket', bodyAvailable: true, body: 'hello' })),
+      replacement: 'text' as const,
       body: '',
     };
 
     expect(buildEdit(draft)).toEqual({ body: '' });
+  });
+
+  it('starts a visible WebSocket payload in Off mode', () => {
+    const draft = draftFromBreakpoint(
+      pending({ phase: 'websocket', bodyAvailable: true, body: 'hello' }),
+    );
+
+    expect(draft.replacement).toBe('off');
+    expect(buildEdit(draft)).toEqual({});
+  });
+
+  it('converts text and hex snapshots for the shared body viewer', () => {
+    expect([...breakpointBodyBytes('Hi', 'text')]).toEqual([72, 105]);
+    expect([...breakpointBodyBytes('48 69', 'hex')]).toEqual([72, 105]);
+    expect(breakpointBodyMediaType('{"ok":true}', 'text')).toBe('application/json');
+    expect(breakpointBodyMediaType('hello', 'text')).toBe('text/plain; charset=utf-8');
+    expect(breakpointBodyMediaType('48 69', 'hex')).toBe('application/octet-stream');
   });
 
   it('sends the file path so Core reads it directly', () => {

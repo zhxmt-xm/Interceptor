@@ -30,12 +30,36 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
       value: header.value,
     })),
     bodyAvailable: breakpoint.bodyAvailable,
-    // 看得到原文（WebSocket 消息）时直接进可编辑态；看不到时默认不碰正文。
-    replacement: breakpoint.bodyAvailable ? 'text' : 'off',
+    replacement: 'off',
     body: breakpoint.body ?? '',
     closeCode: breakpoint.closeCode ?? 1000,
     file: null,
   };
+}
+
+/** 将 WebSocket breakpoint snapshot 的 text/hex 正文交给共享 BodyViewer。 */
+export function breakpointBodyBytes(body: string, format: 'text' | 'hex' | undefined): Uint8Array {
+  if (format !== 'hex') {
+    return new TextEncoder().encode(body);
+  }
+  const bytePairs = body.match(/[0-9a-f]{2}/gi) ?? [];
+  return Uint8Array.from(bytePairs.map((pair) => Number.parseInt(pair, 16)));
+}
+
+/** 从 snapshot 格式与内容确定只读原文的展示 MIME。 */
+export function breakpointBodyMediaType(
+  body: string,
+  format: 'text' | 'hex' | undefined,
+): string {
+  if (format === 'hex') {
+    return 'application/octet-stream';
+  }
+  try {
+    JSON.parse(body);
+    return 'application/json';
+  } catch {
+    return 'text/plain; charset=utf-8';
+  }
 }
 
 /** 当前草稿是否真的会替换正文；UI 的 Using original / Using text 标签与此同源。 */

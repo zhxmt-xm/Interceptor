@@ -208,6 +208,9 @@ export const trCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Her ikisi',
   'capture.wsBreakpointDirectionSent': 'Gönderilen',
   'capture.wsBreakpointDirectionReceived': 'Alınan',
+  'capture.wsBreakpointDirectionBothSummary': 'Her iki yön',
+  'capture.wsBreakpointDirectionSentSummary': 'Yalnızca gönderilenler',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Yalnızca alınanlar',
   'capture.wsBreakpointFrames': 'Çerçeveler',
   'capture.wsBreakpointFrameMessage': 'Mesajlar',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const trCatalog = {
   'breakpoints.requestHeaders': 'İstek başlıkları',
   'breakpoints.responseHeaders': 'Yanıt başlıkları',
   'breakpoints.originalBody': 'Özgün gövde',
+  'breakpoints.originalMessage': 'Özgün mesaj',
 
   'breakpoints.receiving': 'alınıyor',
 
@@ -577,6 +581,7 @@ export const trCatalog = {
   'breakpoints.filePreviewUnavailable': 'Çok büyük veya metin değil — diskten olduğu gibi gönderilir.',
 
   'breakpoints.replacementBody': 'Değiştirme gövdesi',
+  'breakpoints.replacementMessage': 'Değiştirme mesajı',
   'breakpoints.replacementOff': 'Kapalı',
   'breakpoints.replacementText': 'Metin',
   'breakpoints.usingOriginal': 'Özgün içerik kullanılıyor',
@@ -585,6 +590,7 @@ export const trCatalog = {
   'breakpoints.usingTextHint': 'Değiştirme metni iletilecek.',
   'breakpoints.emptyTextHint': 'Değiştirme metni boş olamaz. İçerik girin, aksi hâlde özgün gövde iletilir.',
   'breakpoints.originalForwarded': 'Özgün gövde değiştirilmeden iletilecek.',
+  'breakpoints.originalMessageForwarded': 'Özgün mesaj değiştirilmeden iletilecek.',
   'breakpoints.forwardEdited': 'Düzenleneni ilet',
   'breakpoints.matchState': 'eşleşmede duraklat · {{state}}',
   'breakpoints.off': 'kapalı',

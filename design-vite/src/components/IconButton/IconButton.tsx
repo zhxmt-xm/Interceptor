@@ -18,7 +18,7 @@ const COLOR_BY_TONE = {
   default: 'default',
   accent: 'primary',
   danger: 'danger',
-  warning: 'gold',
+  warning: 'default',
 } as const;
 
 export function IconButton({
@@ -46,13 +46,19 @@ export function IconButton({
             flex: '0 0 30px',
             padding: 0,
             borderRadius: 9,
+            ...(tone === 'warning'
+              ? {
+                  background: 'color-mix(in srgb, var(--yellow) 14%, transparent)',
+                  color: 'var(--yellow)',
+                }
+              : {}),
           },
           icon: {
             width: 15,
             height: 15,
           },
         }}
-        variant={tone === 'warning' ? 'filled' : 'text'}
+        variant="text"
         onClick={onClick}
       />
     </Tooltip>

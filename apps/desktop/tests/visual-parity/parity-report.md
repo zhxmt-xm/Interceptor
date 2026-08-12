@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-08-11T06:05:59.312Z
+Generated: 2026-08-12T06:50:41.053Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 64 |
-| Average pixel diff | 2.49% |
-| Targets | 522 |
-| Matched | 448 |
-| Missing | 74 |
-| Flagged | 101 |
+| Views checked | 75 |
+| Average pixel diff | 2.64% |
+| Targets | 602 |
+| Matched | 566 |
+| Missing | 36 |
+| Flagged | 145 |
 | Largest geometry delta | 1156.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -21,25 +21,33 @@ Generated: 2026-08-11T06:05:59.312Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 3.56% | 38 | 22 | 16 | 22 | 1001.7 px |
-| capture-websocket | 3.50% | 7 | 1 | 6 | 1 | 1001.7 px |
-| capture-request-json | 3.04% | 4 | 1 | 3 | 1 | 1001.7 px |
-| capture-timing | 2.76% | 4 | 0 | 4 | 0 | 0.0 px |
-| capture-cookies | 2.71% | 3 | 0 | 3 | 0 | 0.0 px |
-| capture-grpc | 3.43% | 8 | 0 | 8 | 0 | 0.0 px |
-| capture-tunnel | 3.29% | 8 | 1 | 7 | 1 | 104.0 px |
-| capture-tunnel-dark | 3.34% | 6 | 1 | 5 | 1 | 104.0 px |
-| capture-tunnel-mitm-active | 3.29% | 6 | 1 | 5 | 1 | 104.0 px |
+| capture-websocket | 3.67% | 7 | 1 | 6 | 1 | 1001.7 px |
+| capture-websocket-breakpoint-setup | 3.54% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled | 3.41% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-websocket-breakpoint-setup-dark | 3.56% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.50% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused-dark | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-request-json | 3.35% | 4 | 3 | 1 | 2 | 1001.7 px |
+| capture-timing | 3.07% | 4 | 4 | 0 | 0 | 0.9 px |
+| capture-cookies | 3.02% | 3 | 3 | 0 | 0 | 0.7 px |
+| capture-grpc | 3.37% | 8 | 8 | 0 | 6 | 28.0 px |
+| capture-tunnel | 3.29% | 8 | 8 | 0 | 5 | 170.0 px |
+| capture-tunnel-dark | 3.34% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture-tunnel-mitm-active | 3.29% | 6 | 6 | 0 | 3 | 170.0 px |
 | https-setup | 6.62% | 9 | 9 | 0 | 1 | 487.7 px |
 | https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 487.7 px |
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
-| import-export | 2.96% | 7 | 7 | 0 | 2 | 24.5 px |
+| import-export | 2.97% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
 | capture-export-menu | 2.94% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 3.75% | 4 | 4 | 0 | 0 | 0.6 px |
-| capture-rule-filter | 1.45% | 3 | 0 | 3 | 0 | 0.0 px |
-| capture-rule-filter-disabled | 2.96% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 3.60% | 2 | 0 | 2 | 0 | 0.0 px |
-| capture-body-media-save | 2.90% | 2 | 0 | 2 | 0 | 0.0 px |
+| capture-request-rule-menu | 3.15% | 4 | 4 | 0 | 0 | 0.8 px |
+| capture-breakpoint-create-menu | 3.24% | 8 | 8 | 0 | 1 | 1.0 px |
+| capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
+| capture-rule-filter | 1.72% | 3 | 0 | 3 | 0 | 0.0 px |
+| capture-rule-filter-disabled | 3.21% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-body-preview-limited | 4.12% | 2 | 2 | 0 | 1 | 0.3 px |
+| capture-body-media-save | 3.45% | 2 | 2 | 0 | 1 | 5.3 px |
 | proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | n/a | 11 | 11 | 0 | 1 | 48.0 px |
@@ -76,9 +84,12 @@ Generated: 2026-08-11T06:05:59.312Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints | 3.19% | 8 | 8 | 0 | 2 | 1.1 px |
+| breakpoints | 3.46% | 8 | 8 | 0 | 7 | 6.1 px |
+| breakpoint-created-message | 3.21% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 3.06% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-undo | 2.73% | 1 | 1 | 0 | 0 | 0.1 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
-| shell-v2-capture-dark | 3.56% | 3 | 2 | 1 | 1 | 999.1 px |
+| shell-v2-capture-dark | 3.58% | 3 | 2 | 1 | 1 | 999.1 px |
 | shell-v2-capture-collapsed | 3.44% | 3 | 2 | 1 | 1 | 839.1 px |
 | shell-v2-rules-dark | n/a | 3 | 3 | 0 | 0 | 0.1 px |
 | shell-v2-composer-dark | 2.14% | 5 | 5 | 0 | 1 | 0.9 px |
@@ -106,20 +117,20 @@ Generated: 2026-08-11T06:05:59.312Z
 | capture | Filter search | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Filter clear all | 90.0 px | -0.1 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
 | capture | List app header | 8.0 px | 0.4 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
-| capture | List app cell | 8.0 px | -103.6 px | 0.0 px | 0.0 px | 103.6 px | none | flagged |
-| capture | List app cell unknown | 8.0 px | -363.6 px | 0.0 px | 0.0 px | 363.6 px | none | flagged |
-| capture | List path cell | 0.0 px | -102.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
-| capture | List host cell | 0.0 px | -104.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
+| capture | List app cell | 8.0 px | -112.6 px | 0.0 px | 0.0 px | 112.6 px | none | flagged |
+| capture | List app cell unknown | 8.0 px | -372.6 px | 0.0 px | 0.0 px | 372.6 px | none | flagged |
+| capture | List path cell | 0.0 px | -111.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
+| capture | List host cell | 0.0 px | -113.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
 | capture | List status header | -249.0 px | 0.5 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
-| capture | List status cell | -243.0 px | -103.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
+| capture | List status cell | -243.0 px | -112.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
 | capture | List protocol header | -255.0 px | 0.5 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
-| capture | List protocol cell | -249.0 px | -103.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
+| capture | List protocol cell | -249.0 px | -112.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
 | capture | List type header | -267.0 px | 0.5 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
-| capture | List type cell | -261.0 px | -103.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
+| capture | List type cell | -261.0 px | -112.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
 | capture | List size header | -273.0 px | 0.5 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
-| capture | List size cell | -267.0 px | -103.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
+| capture | List size cell | -267.0 px | -112.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
 | capture | List time header | -279.0 px | 0.5 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
-| capture | List time cell | -273.0 px | -103.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
+| capture | List time cell | -273.0 px | -112.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
 | capture | Status endpoint | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Status passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule replaced | n/a | n/a | n/a | n/a | n/a | none | design missing |
@@ -134,45 +145,107 @@ Generated: 2026-08-11T06:05:59.312Z
 | capture-websocket | Pause on message | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-websocket | Received text | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-websocket | Binary | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-request-json | Capture | 0.0 px | 0.0 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
+| capture-websocket-breakpoint-setup | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup | Direction row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup | Frames row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup | Actions row | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup | Timeout select | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup | Pause messages on this connection | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup | Direction | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup | Frames | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup | Timeout | 0.0 px | 0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| capture-websocket-breakpoint-setup | No timeout | 0.0 px | 0.3 px | -2.0 px | 0.0 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-setup | Cancel | 0.8 px | 0.5 px | -0.2 px | 0.0 px | 0.8 px | none | ok |
+| capture-websocket-breakpoint-setup | Enable breakpoint | 0.6 px | 0.5 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| capture-websocket-breakpoint-enabled | Messages | 0.0 px | 0.6 px | 0.0 px | 0.4 px | 0.6 px | none | ok |
+| capture-websocket-breakpoint-enabled | All | 0.0 px | 1.0 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-enabled | Sent | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| capture-websocket-breakpoint-enabled | Received | -0.3 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-enabled | Armed WebSocket breakpoint | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-paused | Messages | 1.0 px | 0.2 px | 0.0 px | 0.4 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | All | 1.0 px | 0.7 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Armed WebSocket breakpoint | 1.0 px | -0.4 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Sent message paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-websocket-breakpoint-paused | Both directions · No timeout | 0.0 px | -0.3 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Original message | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
+| capture-websocket-breakpoint-paused | Replacement message | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
+| capture-websocket-breakpoint-paused | Using original | 0.0 px | -1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | The original message will be forwarded unchanged. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-paused | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| capture-websocket-breakpoint-paused | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
+| capture-websocket-breakpoint-paused | Forward edited | 0.4 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-websocket-breakpoint-setup-dark | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Direction row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Frames row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Actions row | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Timeout select | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Pause messages on this connection | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Direction | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Frames | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Timeout | 0.0 px | 0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | No timeout | 0.0 px | 0.3 px | -2.0 px | 0.0 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-setup-dark | Cancel | 0.8 px | 0.5 px | -0.2 px | 0.0 px | 0.8 px | none | ok |
+| capture-websocket-breakpoint-setup-dark | Enable breakpoint | 0.6 px | 0.5 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| capture-websocket-breakpoint-enabled-dark | Messages | 0.0 px | 0.6 px | 0.0 px | 0.4 px | 0.6 px | none | ok |
+| capture-websocket-breakpoint-enabled-dark | All | 0.0 px | 1.0 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-enabled-dark | Sent | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| capture-websocket-breakpoint-enabled-dark | Received | -0.3 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-enabled-dark | Armed WebSocket breakpoint | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Messages | 1.0 px | 0.2 px | 0.0 px | 0.4 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | All | 1.0 px | 0.7 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Armed WebSocket breakpoint | 1.0 px | -0.4 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Sent message paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Both directions · No timeout | 0.0 px | -0.3 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Original message | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Replacement message | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Using original | 0.0 px | -1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | The original message will be forwarded unchanged. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Forward edited | 0.4 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-request-json | Capture | 63.0 px | -89.1 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture-request-json | Local traffic | n/a | n/a | n/a | n/a | n/a | none | app missing |
-| capture-request-json | json · 63 B | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-request-json | Request body view | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-timing | Waiting (TTFB) | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-timing | 118 ms | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-timing | Response bodies | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-timing | 24 ms | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-cookies | _device_id | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-cookies | logged_in | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-cookies | _gh_sess | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Inspector status | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Messages | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Response | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Message 2 | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | gzip compressed | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | Response message 2 | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-grpc | No descriptor loaded. Payload is shown as raw binary. | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | Inspector method | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | Inspector status | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | TLS tunnel | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | HTTPS content is encrypted | 0.0 px | 0.0 px | 104.0 px | 0.4 px | 104.0 px | none | flagged |
-| capture-tunnel | Decrypt HTTPS (MITM) | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | TLS passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel | No local CA was generated or trusted. Only connection metadata is stored. | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-dark | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-dark | Inspector status | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-dark | TLS tunnel | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-dark | HTTPS content is encrypted | 0.0 px | 0.0 px | 104.0 px | 0.4 px | 104.0 px | none | flagged |
-| capture-tunnel-dark | Decrypt HTTPS (MITM) | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-dark | TLS passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-mitm-active | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-mitm-active | Inspector status | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-mitm-active | TLS tunnel | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-mitm-active | HTTPS content is encrypted | 0.0 px | 0.0 px | 104.0 px | 0.4 px | 104.0 px | none | flagged |
-| capture-tunnel-mitm-active | MITM active | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-tunnel-mitm-active | MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic. | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| capture-request-json | json · 63 B | 0.0 px | 0.7 px | 0.0 px | -0.7 px | 0.7 px | none | ok |
+| capture-request-json | Request body view | 0.0 px | 0.0 px | 0.0 px | 20.7 px | 20.7 px | none | flagged |
+| capture-timing | Waiting (TTFB) | 0.0 px | 0.2 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| capture-timing | 118 ms | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| capture-timing | Response bodies | 0.0 px | -0.7 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| capture-timing | 24 ms | 0.0 px | -0.9 px | 0.0 px | -0.5 px | 0.9 px | none | ok |
+| capture-cookies | _device_id | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-cookies | logged_in | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-cookies | _gh_sess | 0.0 px | -0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| capture-grpc | Inspector host | 0.0 px | 0.4 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-grpc | Inspector status | 0.0 px | -0.5 px | 0.0 px | 0.1 px | 0.5 px | none | ok |
+| capture-grpc | Messages | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-grpc | Response | -0.5 px | -1.0 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-grpc | Message 2 | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | gzip compressed | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | Response message 2 | -10.0 px | 5.7 px | -28.0 px | -0.5 px | 28.0 px | fontSize 11.5px->11px; fontWeight 700->600 | flagged |
+| capture-grpc | No descriptor loaded. Payload is shown as raw binary. | 0.0 px | -10.5 px | 0.0 px | -0.5 px | 10.5 px | none | flagged |
+| capture-tunnel | Inspector method | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-tunnel | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-tunnel | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-tunnel | TLS tunnel | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-tunnel | HTTPS content is encrypted | -170.0 px | -30.3 px | 104.0 px | 0.4 px | 170.0 px | none | flagged |
+| capture-tunnel | Decrypt HTTPS (MITM) | 0.0 px | 0.8 px | -0.5 px | 0.0 px | 0.8 px | none | ok |
+| capture-tunnel | TLS passthrough | 0.0 px | -7.0 px | 0.0 px | -3.9 px | 7.0 px | none | flagged |
+| capture-tunnel | No local CA was generated or trusted. Only connection metadata is stored. | 0.0 px | -18.5 px | 0.0 px | 0.0 px | 18.5 px | none | flagged |
+| capture-tunnel-dark | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-tunnel-dark | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-tunnel-dark | TLS tunnel | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-tunnel-dark | HTTPS content is encrypted | -170.0 px | -30.3 px | 104.0 px | 0.4 px | 170.0 px | none | flagged |
+| capture-tunnel-dark | Decrypt HTTPS (MITM) | 0.0 px | 0.8 px | -0.5 px | 0.0 px | 0.8 px | none | ok |
+| capture-tunnel-dark | TLS passthrough | 0.0 px | -7.0 px | 0.0 px | -3.9 px | 7.0 px | none | flagged |
+| capture-tunnel-mitm-active | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-tunnel-mitm-active | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-tunnel-mitm-active | TLS tunnel | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-tunnel-mitm-active | HTTPS content is encrypted | -170.0 px | -30.3 px | 104.0 px | 0.4 px | 170.0 px | none | flagged |
+| capture-tunnel-mitm-active | MITM active | 0.0 px | 0.8 px | 0.0 px | 0.1 px | 0.8 px | none | ok |
+| capture-tunnel-mitm-active | MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic. | 0.0 px | -18.4 px | 0.0 px | 0.0 px | 18.4 px | none | flagged |
 | https-setup | Decrypt HTTPS (MITM) | 487.7 px | 188.2 px | -245.7 px | 16.0 px | 487.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
 | https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
 | https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
@@ -210,18 +283,27 @@ Generated: 2026-08-11T06:05:59.312Z
 | import-export-dark | Strip request/response bodies | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-export-menu | Export HAR | 0.0 px | 0.0 px | -0.4 px | 4.2 px | 4.2 px | fontWeight 520->400; color rgb(26, 27, 30)->rgb(91, 94, 101) | flagged |
 | capture-export-menu | Save Capture | 0.0 px | -8.0 px | -3.4 px | 4.2 px | 8.0 px | fontWeight 520->400; color rgb(26, 27, 30)->rgb(91, 94, 101) | flagged |
-| capture-request-rule-menu | Request rule menu | 0.0 px | 0.0 px | 0.0 px | -0.6 px | 0.6 px | none | ok |
-| capture-request-rule-menu | Create rule for this request | 0.0 px | 0.0 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
-| capture-request-rule-menu | Rewrite header row | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
-| capture-request-rule-menu | Breakpoint row | 0.0 px | -0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
+| capture-request-rule-menu | Request rule menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-request-rule-menu | Create rule for this request | 0.0 px | 0.0 px | -0.8 px | 0.0 px | 0.8 px | none | ok |
+| capture-request-rule-menu | Rewrite header row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-request-rule-menu | Breakpoint row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | Request rule menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | Breakpoint submenu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | Create rule for this request | 0.0 px | 0.0 px | -0.8 px | 0.0 px | 0.8 px | none | ok |
+| capture-breakpoint-create-menu | Create breakpoint from request | 0.0 px | 0.0 px | -1.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-breakpoint-create-menu | This endpoint | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | This path prefix | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | This host | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-breakpoint-create-menu | Custom breakpoint… | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-request-menu-dismiss | Application | 0.0 px | 0.0 px | 0.0 px | -0.3 px | 0.3 px | color rgb(91, 94, 101)->rgb(26, 27, 30) | flagged |
 | capture-rule-filter | Rule filter pill | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-rule-filter | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-rule-filter | Rule appended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-rule-filter-disabled | No rule has matched captured traffic yet. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-preview-limited | Limited body preview | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-body-preview-limited | Showing the first 5 MB of 12 MB. The full body remains captured for export. | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-body-media-save | Media body | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-body-media-save | Save body | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| capture-body-preview-limited | Limited body preview | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | fontSize 13px->12px | flagged |
+| capture-body-preview-limited | Showing the first 5 MB of 12 MB. The full body remains captured for export. | 0.0 px | -0.3 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| capture-body-media-save | Media body | -0.1 px | 0.0 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| capture-body-media-save | Save body | 0.0 px | -5.3 px | -0.3 px | 0.0 px | 5.3 px | none | flagged |
 | proxy-not-ready | Proxy not ready | -0.3 px | 0.0 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
 | proxy-not-ready | System Proxy off | -0.3 px | 0.0 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
 | proxy-not-ready | Cancel | 0.8 px | 0.0 px | -0.3 px | 0.0 px | 0.8 px | none | ok |
@@ -574,14 +656,23 @@ Generated: 2026-08-11T06:05:59.312Z
 | settings-updates-auth-failed-dark | GitHub authorization failed | 0.0 px | 0.0 px | 0.3 px | 0.0 px | 0.3 px | none | ok |
 | settings-updates-auth-failed-dark | Not connected | 0.3 px | -0.1 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
 | settings-updates-auth-failed-dark | Try again | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| breakpoints | Request paused | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoints | Request headers | 0.0 px | -0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| breakpoints | Original body | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
-| breakpoints | The original body will be forwarded unchanged. | 0.0 px | 0.6 px | 0.0 px | -0.1 px | 0.6 px | none | ok |
-| breakpoints | Add header | 0.0 px | -0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
-| breakpoints | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| breakpoints | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
-| breakpoints | Forward edited | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| breakpoints | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| breakpoints | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoints | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
+| breakpoints | The original body will be forwarded unchanged. | 0.0 px | 6.1 px | 0.0 px | -4.0 px | 6.1 px | none | flagged |
+| breakpoints | Add header | 0.0 px | 2.8 px | 0.0 px | 0.0 px | 2.8 px | none | flagged |
+| breakpoints | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| breakpoints | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
+| breakpoints | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoint-created-message | Breakpoint created message | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message | Breakpoint created | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message | Undo button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message | Close button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message-dark | Breakpoint created message | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message-dark | Breakpoint created | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message-dark | Undo button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message-dark | Close button | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-created-message-undo | Rule set applied | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | diagnostics | core · core:echo | -160.0 px | 0.4 px | 160.0 px | -0.9 px | 160.0 px | none | flagged |
 | diagnostics | main · rules:apply | -160.0 px | 0.4 px | 160.0 px | -0.9 px | 160.0 px | none | flagged |
 | diagnostics | Process | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |

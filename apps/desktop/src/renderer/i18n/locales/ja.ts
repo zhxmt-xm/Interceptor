@@ -208,6 +208,9 @@ export const jaCatalog = {
   'capture.wsBreakpointDirectionBoth': '双方向',
   'capture.wsBreakpointDirectionSent': '送信',
   'capture.wsBreakpointDirectionReceived': '受信',
+  'capture.wsBreakpointDirectionBothSummary': '双方向',
+  'capture.wsBreakpointDirectionSentSummary': '送信のみ',
+  'capture.wsBreakpointDirectionReceivedSummary': '受信のみ',
   'capture.wsBreakpointFrames': 'フレーム',
   'capture.wsBreakpointFrameMessage': 'メッセージ',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -539,6 +542,7 @@ export const jaCatalog = {
   'breakpoints.requestHeaders': 'リクエスト ヘッダー',
   'breakpoints.responseHeaders': 'レスポンス ヘッダー',
   'breakpoints.originalBody': '元のボディ',
+  'breakpoints.originalMessage': '元のメッセージ',
 
   'breakpoints.receiving': '受信中',
 
@@ -577,6 +581,7 @@ export const jaCatalog = {
   'breakpoints.filePreviewUnavailable': 'サイズが大きい、またはテキストではないため、ディスクからそのまま送信します。',
 
   'breakpoints.replacementBody': '置換ボディ',
+  'breakpoints.replacementMessage': '置換メッセージ',
   'breakpoints.replacementOff': 'オフ',
   'breakpoints.replacementText': 'テキスト',
   'breakpoints.usingOriginal': '元の内容を使用',
@@ -585,6 +590,7 @@ export const jaCatalog = {
   'breakpoints.usingTextHint': '置換テキストが転送されます。',
   'breakpoints.emptyTextHint': '置換テキストは空にできません。内容を入力しないと元のボディが転送されます。',
   'breakpoints.originalForwarded': '元のボディがそのまま転送されます。',
+  'breakpoints.originalMessageForwarded': '元のメッセージがそのまま転送されます。',
   'breakpoints.forwardEdited': '編集内容を転送',
   'breakpoints.matchState': '一致時に停止 · {{state}}',
   'breakpoints.off': 'オフ',

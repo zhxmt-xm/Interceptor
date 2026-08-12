@@ -1,12 +1,12 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-11
+> 最后更新：2026-08-12
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
-
+>
 > 当前状态：断点已从独立 workspace 合并进 Capture（提交 `941e40a`）。
-> 第 1–6 节描述已实现产品；第 7 节只保留**仍未落地**的目标设计。两者不得混写。
+> 第 1–6 节描述已实现产品；第 7 节只保留仍未验证的差异。两者不得混写。
 
 ## 1. 职责与边界
 
@@ -148,6 +148,11 @@ WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match
 启用必须给出完整配置（`exchangeId` / `direction` / `frames` / `timeoutMs`），因此不存在“开了但不知道拦什么”的中间态。
 ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
 
+Renderer 不把 WebSocket pause 替换成另一套全屏 Inspector。pending 到达后自动切到该连接的 Messages tab，
+保留已转发帧并追加一条 paused row；下方内嵌 Original / Replacement message 编辑器。Original 直接消费
+snapshot 的 text / hex 字节并复用 `BodyViewer`，Replacement 默认 Off，设置摘要来自同一连接的
+`WebSocketBreakpointSettings`，不会把 Core 的帧类别 `ruleName` 冒充成方向或超时。
+
 ## 5. 当前感知方式
 
 请求在 Core 侧 `await` 挂起；队列集合变化复用既有 event-batch 发出 `breakpoint.pending` 信号，App 级
@@ -209,39 +214,17 @@ interface BreakpointOutcome {
 浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
 溢出计数经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 侧记 `breakpoint.queue-full`。
 
-## 7. 目标设计：仍未落地的部分
+## 7. 与当前实现的差异
 
-结构层（合并进 Capture、manager、原地暂停行与编辑器、四档快速创建）已实现，不再重复。
-以下为尚未实现项。
+结构、感知、关联、队列保护、HTTP Original / Replacement body 与当前连接临时 WebSocket 断点均已实现。
+剩余差异只保留真实未验证项：
 
-### 7.3 Original 与 Replacement body
-
-- Request/Response 对称拆成只读 `Original body` 与可选 `Replacement body`。
-- Original body 有 loading/loaded 状态；设计稿用 3 秒自动完成只为演示，产品必须由 Core body 事件驱动。
-- Replacement 始终显示 `Off | Text | File`：
-    - Off：绿色 `Using original` tag + 完整 original-forwarded info。
-    - Text 空：Lucide `CircleAlert + Using original`，tooltip 说明不能为空；有内容时 `Using text`。
-    - File 未选：Lucide `CircleAlert + Using original`，正文区域显示居中 Upload；上传后 `Using file`，显示文件名、大小与有限预览；删除后仍停在 File 空态。
-- `Content-Type` 只通过 Headers 编辑；上传文件不得静默修改。格式不匹配只警告，仍允许发送 raw bytes。
-- 实现必须自动重算 `Content-Length`，并正确处理 `content-encoding` 与 H2 framing。
-
-### 7.4 感知、关联与保护
-
-- pending 感知必须提升到 App 级，不能依赖独立页面挂载后的 1s 轮询。
-- `PendingBreakpoint` 必须增加 `exchangeId`，使 paused 状态与 Capture 行、Request/Response 两阶段关联。
-- pending queue 必须有上限；超限的新命中自动 continue，并在 Statusbar/Diagnostics 记录数量。
-- Core 继续保留 timeout + `onTimeout` 安全策略，但 UI 不展示倒计时；超时结果只在 Statusbar/Diagnostics 留痕。
-
-### 7.5 与当前实现的差异
-
-| 项 | 当前产品 | 目标 |
-| --- | --- | --- |
-| WS 消息开关 | 独立全局 `websocket.breakpoint.configure` | 当前连接临时 Direction + optional Timeout；Upgrade 另走 HTTP breakpoint |
-| Execute edited framing | Content-Length / encoding / H2 尚未完整验证 | wire framing 与编辑后正文一致 |
-
-> **WebSocket 设计待定（2026-08-11）**：最新评审方向不再把消息断点做成持久化 Rule，也不提供 Scope。
-> Upgrade GET / 101 与消息转发是两条正交流程：前者目标是普通 HTTP Rule/Breakpoint；后者是当前已建立
-> 连接的临时 Direction + optional Timeout 开关。101 response 的编辑权限尚未确认，因此本节仍按未实现处理。
+- HTTP `Execute edited` 后的 `Content-Length`、`content-encoding`、transfer-encoding 与 H2 framing
+    尚未建立 wire-level 回归；产品不能仅凭 UI 状态宣称正确。
+- WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
+- Binary 未编辑保真已有真实代理回归；hex **编辑后**的字节还原尚未单独锁定。
+- `BreakpointQueue` 已验证 timeout 会携带 `onTimeout` policy，但真实 proxy continue / drop 的 wire 结果
+    尚未分别建立超时集成测试。
 
 ## 8. 验收要点
 

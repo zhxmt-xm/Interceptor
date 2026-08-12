@@ -143,13 +143,15 @@ export function RequestInspector({
         : isGrpc
           ? 'grpc'
           : 'headers';
-    const nextTab = retainInspectorTab(tab, inspectorTabs, fallback);
+    const nextTab = pausedBreakpoint?.phase === 'websocket'
+      ? 'messages'
+      : retainInspectorTab(tab, inspectorTabs, fallback);
     if (nextTab !== tab) {
       setTab(nextTab);
     }
-  }, [inspectorTabs, isGrpc, isTlsTunnel, isWebSocket, tab]);
+  }, [inspectorTabs, isGrpc, isTlsTunnel, isWebSocket, pausedBreakpoint?.phase, setTab, tab]);
 
-  if (pausedBreakpoint) {
+  if (pausedBreakpoint && pausedBreakpoint.phase !== 'websocket') {
     return (
       <BreakpointInspector
         breakpoint={pausedBreakpoint}
@@ -338,6 +340,7 @@ export function RequestInspector({
             exchangeId={view.id}
             startedAt={view.startedAt}
             connection={`${view.host}${view.path}`}
+            pausedBreakpoint={pausedBreakpoint}
           />
         ) : null}
 

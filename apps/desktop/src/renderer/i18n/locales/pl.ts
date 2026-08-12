@@ -211,6 +211,9 @@ export const plCatalog = {
   'capture.wsBreakpointDirectionBoth': 'Oba',
   'capture.wsBreakpointDirectionSent': 'Wysłane',
   'capture.wsBreakpointDirectionReceived': 'Odebrane',
+  'capture.wsBreakpointDirectionBothSummary': 'Oba kierunki',
+  'capture.wsBreakpointDirectionSentSummary': 'Tylko wysyłane',
+  'capture.wsBreakpointDirectionReceivedSummary': 'Tylko odbierane',
   'capture.wsBreakpointFrames': 'Ramki',
   'capture.wsBreakpointFrameMessage': 'Wiadomości',
   'capture.wsBreakpointFramePing': 'Ping',
@@ -548,6 +551,7 @@ export const plCatalog = {
   'breakpoints.requestHeaders': 'Nagłówki żądania',
   'breakpoints.responseHeaders': 'Nagłówki odpowiedzi',
   'breakpoints.originalBody': 'Oryginalna treść',
+  'breakpoints.originalMessage': 'Oryginalna wiadomość',
 
   'breakpoints.receiving': 'odbieranie',
 
@@ -586,6 +590,7 @@ export const plCatalog = {
   'breakpoints.filePreviewUnavailable': 'Za duży lub nietekstowy — wysyłany z dysku bez zmian.',
 
   'breakpoints.replacementBody': 'Treść zastępcza',
+  'breakpoints.replacementMessage': 'Wiadomość zastępcza',
   'breakpoints.replacementOff': 'Wyłączone',
   'breakpoints.replacementText': 'Tekst',
   'breakpoints.usingOriginal': 'Używana jest oryginalna treść',
@@ -594,6 +599,7 @@ export const plCatalog = {
   'breakpoints.usingTextHint': 'Zostanie przekazany tekst zastępczy.',
   'breakpoints.emptyTextHint': 'Tekst zastępczy nie może być pusty. Wpisz treść, inaczej zostanie przekazana oryginalna treść.',
   'breakpoints.originalForwarded': 'Oryginalna treść zostanie przekazana bez zmian.',
+  'breakpoints.originalMessageForwarded': 'Oryginalna wiadomość zostanie przekazana bez zmian.',
   'breakpoints.forwardEdited': 'Przekaż zmienione',
   'breakpoints.matchState': 'wstrzymanie po dopasowaniu · {{state}}',
   'breakpoints.off': 'wyłączone',
