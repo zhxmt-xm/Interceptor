@@ -303,6 +303,40 @@ describe('RuleService — breakpoints', () => {
 });
 
 describe('RuleService — response evaluation', () => {
+  it('keeps the request identity in a response breakpoint snapshot', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [
+        rule('response-breakpoint', [{ type: 'method', value: 'GET' }], [
+          { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' },
+        ]),
+      ],
+    });
+    const context: MatchContext = {
+      ...requestContext(),
+      response: { statusCode: 200, headers: {} },
+    };
+    const evaluation = ruleService.evaluateResponse(
+      context,
+      { statusCode: 200, headers: {} },
+      'request-1',
+      'exchange-1',
+    );
+
+    await expect.poll(() => breakpointQueue.size).toBe(1);
+    const [pending] = breakpointQueue.list();
+    expect(pending?.snapshot).toMatchObject({
+      exchangeId: 'exchange-1',
+      method: 'GET',
+      url: 'https://api.test/users',
+      statusCode: 200,
+    });
+    breakpointQueue.resolve(pending!.id, 'continue');
+    await expect(evaluation).resolves.toMatchObject({ kind: 'continue' });
+  });
+
   it('applies response-side status override', async () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({

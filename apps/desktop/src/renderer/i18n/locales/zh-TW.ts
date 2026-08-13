@@ -583,6 +583,7 @@ export const zhTWCatalog = {
   'breakpoints.replacementText': '文字',
   'breakpoints.usingOriginal': '使用原文',
   'breakpoints.usingText': '使用文字',
+  'breakpoints.usingFile': '使用檔案',
   'breakpoints.usingOriginalHint': '目前選擇「關閉」，將原樣轉送原文。',
   'breakpoints.usingTextHint': '將轉送替換文字。',
   'breakpoints.emptyTextHint': '替換文字不能為空；未填內容則原樣轉送原文。',

@@ -583,6 +583,7 @@ export const deCatalog = {
   'breakpoints.replacementText': 'Text',
   'breakpoints.usingOriginal': 'Original wird verwendet',
   'breakpoints.usingText': 'Text wird verwendet',
+  'breakpoints.usingFile': 'Datei wird verwendet',
   'breakpoints.usingOriginalHint': 'Aus ist gewählt. Der ursprüngliche Inhalt wird weitergeleitet.',
   'breakpoints.usingTextHint': 'Der Ersatztext wird weitergeleitet.',
   'breakpoints.emptyTextHint': 'Der Ersatztext darf nicht leer sein. Gib Inhalt ein, sonst wird der ursprüngliche Inhalt weitergeleitet.',

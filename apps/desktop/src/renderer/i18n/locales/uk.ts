@@ -595,6 +595,7 @@ export const ukCatalog = {
   'breakpoints.replacementText': 'Текст',
   'breakpoints.usingOriginal': 'Використовується оригінал',
   'breakpoints.usingText': 'Використовується текст',
+  'breakpoints.usingFile': 'Використовується файл',
   'breakpoints.usingOriginalHint': 'Вибрано «Вимк.». Буде передано вихідне тіло.',
   'breakpoints.usingTextHint': 'Буде передано замінний текст.',
   'breakpoints.emptyTextHint': 'Замінний текст не може бути порожнім. Введіть вміст, інакше буде передано вихідне тіло.',

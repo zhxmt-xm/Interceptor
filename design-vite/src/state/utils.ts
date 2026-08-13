@@ -83,7 +83,6 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
     next = { ...next, detail: patch.breakpointState === 'full' ? 'closed' : 'open' };
   }
   if (patch.breakpointBody === 'loading') next = { ...next, breakpointFile: 'none' };
-  if (patch.breakpointBody === 'invalid') next = { ...next, breakpointFile: 'invalid' };
   if (patch.breakpointUi !== undefined) {
     next = {
       ...next,

@@ -586,6 +586,7 @@ export const frCatalog = {
   'breakpoints.replacementText': 'Texte',
   'breakpoints.usingOriginal': 'Original utilisé',
   'breakpoints.usingText': 'Texte utilisé',
+  'breakpoints.usingFile': 'Fichier utilisé',
   'breakpoints.usingOriginalHint': 'Désactivé est sélectionné. Le corps d’origine sera transmis.',
   'breakpoints.usingTextHint': 'Le texte de remplacement sera transmis.',
   'breakpoints.emptyTextHint': 'Le texte de remplacement ne peut pas être vide. Saisis un contenu, sinon le corps d’origine sera transmis.',

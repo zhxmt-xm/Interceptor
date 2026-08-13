@@ -150,7 +150,7 @@ export function PayloadEditor({
             <div className={styles.payloadEditorChooseFile}>
               <button className={styles.payloadEditorFileUploadButton} type="button" onClick={onChooseFile}>
                 <Upload aria-hidden="true" />
-                Upload file
+                Choose file…
               </button>
             </div>
           )

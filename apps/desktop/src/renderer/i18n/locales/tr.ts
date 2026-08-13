@@ -586,6 +586,7 @@ export const trCatalog = {
   'breakpoints.replacementText': 'Metin',
   'breakpoints.usingOriginal': 'Özgün içerik kullanılıyor',
   'breakpoints.usingText': 'Metin kullanılıyor',
+  'breakpoints.usingFile': 'Dosya kullanılıyor',
   'breakpoints.usingOriginalHint': 'Kapalı seçili. Özgün gövde iletilecek.',
   'breakpoints.usingTextHint': 'Değiştirme metni iletilecek.',
   'breakpoints.emptyTextHint': 'Değiştirme metni boş olamaz. İçerik girin, aksi hâlde özgün gövde iletilir.',

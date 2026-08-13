@@ -106,7 +106,7 @@ sequenceDiagram
 流程相同，区别在于：
 
 - 触发点是 `beforeResponseHead`，只持有 statusCode 与 response headers，正文尚不可见。
-- 快照来自 `buildResponseSnapshot(ruleName, state)`，当前 `bodyAvailable=false`。
+- 快照来自 `buildResponseSnapshot(ruleName, context.request, state)`，除 status / response headers 外保留同一请求的 method / URL，当前 `bodyAvailable=false`。
 - `dropped` 返回 `block close`，客户端收到连接关闭。
 
 ### 4.3 WebSocket 帧断点
@@ -166,6 +166,7 @@ interface BreakpointSnapshot {
   ruleName: string;
   /** 挂起流量所属的 Capture Exchange；未 Recording 时缺省。 */
   exchangeId?: string;
+    /** HTTP request / response 快照都保留所属请求身份。 */
   method?: string;
   url?: string;
   statusCode?: number;

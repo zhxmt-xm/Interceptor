@@ -1,5 +1,5 @@
 import { collectLeaves } from '@interceptor/core-protocol';
-import { ArrowRight, SlidersVertical, X } from 'lucide-react';
+import { ArrowRight, Crosshair, GitBranch, SlidersVertical, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
@@ -54,11 +54,12 @@ export function BreakpointManager({
             checked={enabled}
             label={t('breakpoints.breakOnMatch')}
             onChange={(next) => void setBreakOnMatch(next)}
+            className={styles.compactSwitch}
             automationId={AUTOMATION_IDS.breakpoints.toggle}
           />
         </div>
         <button type="button" className={styles.advanced} onClick={onOpenAdvanced}>
-          <SlidersVertical size={13} strokeWidth={1.9} />
+          <SlidersVertical size={15} strokeWidth={1.9} />
           {t('breakpoints.advancedRules')}
         </button>
         <IconButton icon={X} size="sm" label={t('common.close')} onClick={onClose} />
@@ -68,30 +69,42 @@ export function BreakpointManager({
       {breakpointRules.length === 0 ? (
         <div className={styles.empty}>{t('breakpoints.noRules')}</div>
       ) : (
-        breakpointRules.map((rule) => (
-          <div
-            key={rule.id}
-            className={cx(styles.rule, !rule.enabled && styles.ruleOff)}
-          >
-            <div className={styles.ruleCopy}>
-              <b>{rule.name}</b>
-              <code>{breakpointManagerSummary(rule)}</code>
-            </div>
-            <button
-              type="button"
-              className={styles.ruleOpen}
-              onClick={() => onOpenRule(rule.id)}
+        breakpointRules.map((rule) => {
+          const pausesRequests = rule.actions.some(
+            (action) => action.type === 'breakpoint' && action.phase === 'request',
+          );
+
+          return (
+            <div
+              key={rule.id}
+              className={cx(styles.rule, !rule.enabled && styles.ruleOff)}
             >
-              {t('breakpoints.viewRule')}
-              <ArrowRight size={12} strokeWidth={2} />
-            </button>
-            <Switch
-              checked={rule.enabled}
-              label={t('breakpoints.enableRule', { name: rule.name })}
-              onChange={() => void toggleBreakpointRule(rule.id)}
-            />
-          </div>
-        ))
+              <span className={styles.ruleIcon}>
+                {pausesRequests
+                  ? <Crosshair size={13} strokeWidth={1.9} />
+                  : <GitBranch size={13} strokeWidth={1.9} />}
+              </span>
+              <div className={styles.ruleCopy}>
+                <b>{rule.name}</b>
+                <code>{breakpointManagerSummary(rule)}</code>
+              </div>
+              <button
+                type="button"
+                className={styles.ruleOpen}
+                onClick={() => onOpenRule(rule.id)}
+              >
+                {t('breakpoints.viewRule')}
+                <ArrowRight size={11} strokeWidth={2} />
+              </button>
+              <Switch
+                checked={rule.enabled}
+                label={t('breakpoints.enableRule', { name: rule.name })}
+                onChange={() => void toggleBreakpointRule(rule.id)}
+                className={styles.compactSwitch}
+              />
+            </div>
+          );
+        })
       )}
     </div>
   );

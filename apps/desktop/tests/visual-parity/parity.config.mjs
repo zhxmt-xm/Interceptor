@@ -38,7 +38,7 @@ const TLS_COMPATIBILITY_EVENTS = [
   },
 ];
 
-export const views = [
+const INITIAL_VIEWS = [
   {
     id: 'capture',
     theme: 'light',
@@ -86,6 +86,177 @@ export const views = [
       'Recording',
     ],
   },
+];
+
+const BREAKPOINT_FILE_BY_PHASE = {
+  request: {
+    path: 'C:\\parity\\checkout-body.txt',
+    name: 'checkout-body.txt',
+    size: 38,
+    mediaType: 'text/plain',
+    text: '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
+  },
+  response: {
+    path: 'C:\\parity\\token-response.json',
+    name: 'token-response.json',
+    size: 2_458,
+    mediaType: 'application/json',
+    text: '{\n  "access_token": "eyJhbGci...",\n  "expires_in": 3600\n}',
+  },
+};
+
+const HTTP_BREAKPOINT_VARIANTS = [
+  { variant: 'request-paused', phase: 'request', body: 'loading' },
+  { variant: 'request-body-loading', phase: 'request', body: 'loading' },
+  { variant: 'request-body-loaded', phase: 'request', body: 'ready' },
+  { variant: 'request-body-replace', phase: 'request', body: 'replace' },
+  { variant: 'request-body-file-empty', phase: 'request', body: 'file-empty' },
+  { variant: 'request-body-file', phase: 'request', body: 'file' },
+  { variant: 'response-paused', phase: 'response', body: 'loading' },
+  { variant: 'response-body-loaded', phase: 'response', body: 'ready' },
+  { variant: 'response-body-replace', phase: 'response', body: 'replace' },
+  { variant: 'response-body-file-empty', phase: 'response', body: 'file-empty' },
+  { variant: 'response-body-file', phase: 'response', body: 'file' },
+];
+
+function httpBreakpointView(theme, { variant, phase, body }) {
+  const darkSuffix = theme === 'dark' ? '-dark' : '';
+  const isResponse = phase === 'response';
+  const designBody = body === 'file-empty' || body === 'file' ? 'file' : body;
+  const rendererActions = [
+    { type: 'clickText', text: isResponse ? '/v1/token' : '/checkout' },
+  ];
+  if (body === 'replace') {
+    rendererActions.push({ type: 'clickRole', role: 'radio', name: 'Text' });
+  }
+  if (body === 'file-empty' || body === 'file') {
+    rendererActions.push({ type: 'clickRole', role: 'radio', name: 'File' });
+  }
+  if (body === 'file') {
+    rendererActions.push({ type: 'clickRole', role: 'button', name: 'Choose file…' });
+  }
+
+  const targets = [
+    isResponse ? 'Response paused' : 'Request paused',
+    ...(isResponse ? [{
+      name: 'Response status input',
+      designSelector: 'input[aria-label="Response status"]',
+      appSelector: 'input[aria-label="Response status"]',
+    }] : []),
+    isResponse ? 'Response headers' : 'Request headers',
+    'Original body',
+    'Replacement body',
+    body === 'file' ? 'Using file' : 'Using original',
+    ...(body === 'loading'
+      ? [isResponse ? 'Receiving response body…' : 'Receiving request body…']
+      : []),
+    ...(body === 'replace'
+      ? [{
+          name: 'Replacement body editor',
+          designSelector: 'textarea[aria-label="Replacement body"]',
+          appSelector: 'textarea[aria-label="Replacement body"]',
+        }]
+      : []),
+    ...(body === 'file-empty' ? ['Choose file…'] : []),
+    ...(body === 'file' ? [BREAKPOINT_FILE_BY_PHASE[phase].name] : []),
+    'Drop',
+    'Continue',
+    'Forward edited',
+  ];
+
+  return {
+    id: variant === 'request-body-loaded' && theme === 'light'
+      ? 'breakpoints'
+      : `breakpoint-${variant}${darkSuffix}`,
+    theme,
+    designState: {
+      view: 'capture',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'open',
+      breakpoints: 'on',
+      breakpointState: phase,
+      breakpointBody: designBody,
+      breakpointFile: body === 'file' ? 'valid' : 'none',
+    },
+    designShot: `${theme}/capture/breakpoint-${variant}.png`,
+    pausedBreakpoints: true,
+    breakpointBodyState: `${phase}-${body === 'loading' ? 'loading' : 'ready'}`,
+    breakpointFile: body === 'file' ? BREAKPOINT_FILE_BY_PHASE[phase] : null,
+    rendererActions,
+    targets,
+  };
+}
+
+const HTTP_BREAKPOINT_VIEWS = ['light', 'dark'].flatMap((theme) =>
+  HTTP_BREAKPOINT_VARIANTS.map((variant) => httpBreakpointView(theme, variant)));
+
+const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
+  const darkSuffix = theme === 'dark' ? '-dark' : '';
+  const baseDesignState = {
+    view: 'capture',
+    theme,
+    sidebar: 'collapsed',
+    overlay: '',
+    breakpoints: 'on',
+  };
+  return [
+    {
+      id: `breakpoint-queue${darkSuffix}`,
+      theme,
+      designState: {
+        ...baseDesignState,
+        detail: 'open',
+        breakpointState: 'queue',
+        breakpointBody: 'loading',
+      },
+      designShot: `${theme}/capture/breakpoint-queue.png`,
+      pausedBreakpoints: true,
+      breakpointBodyState: 'request-loading',
+      rendererActions: [{ type: 'clickText', text: '/checkout' }],
+      targets: [
+        'Request paused',
+        'Request headers',
+        'Receiving request body…',
+        {
+          name: 'Paused queue status',
+          designSelector: '.break-status-count',
+          appSelector: '[data-parity="capture-status-breakpoints"]',
+        },
+      ],
+    },
+    {
+      id: `breakpoint-queue-full${darkSuffix}`,
+      theme,
+      designState: {
+        ...baseDesignState,
+        detail: 'closed',
+        breakpointState: 'full',
+      },
+      designShot: `${theme}/capture/breakpoint-queue-full.png`,
+      pausedBreakpoints: true,
+      breakpointAutoContinued: 3,
+      targets: [
+        {
+          name: 'Paused queue status',
+          designSelector: '.break-status-count',
+          appSelector: '[data-parity="capture-status-breakpoints"]',
+        },
+        {
+          name: 'Queue full status',
+          designSelector: '.break-queue-full',
+          appSelector: '[data-parity="capture-status-queue-full"]',
+        },
+      ],
+    },
+  ];
+});
+
+export const views = [
+  ...INITIAL_VIEWS,
+  ...HTTP_BREAKPOINT_VIEWS,
+  ...BREAKPOINT_QUEUE_VIEWS,
   {
     id: 'capture-websocket',
     theme: 'light',
@@ -121,11 +292,7 @@ export const views = [
     designState: { view: 'capture', theme, sidebar: 'collapsed', upstream: 'down' },
     designShot: `${theme}/capture/statusbar-upstream-down.png`,
     upstreamDown: true,
-    targets: [{
-      name: 'Status upstream',
-      designSelector: '.capture-upstream',
-      appSelector: '[data-parity="capture-status-upstream"]',
-    }],
+    targets: [{ name: 'Status upstream', parity: 'capture-status-upstream' }],
   })),
   ...['light', 'dark'].flatMap((theme) => {
     const rendererOpenMessages = [
@@ -1251,35 +1418,6 @@ export const views = [
           : []),
       ],
     }))),
-  {
-    id: 'breakpoints',
-    theme: 'light',
-    designState: {
-      view: 'capture',
-      theme: 'light',
-      sidebar: 'collapsed',
-      overlay: '',
-      detail: 'open',
-      breakpoints: 'on',
-      breakpointState: 'request',
-      // 设计稿的 loading 态有 3 秒定时器会自动跳到 ready，只有 ready 能稳定地量。
-      breakpointBody: 'ready',
-    },
-    designShot: 'light/capture/breakpoint-request-body-loaded.png',
-    pausedBreakpoints: true,
-    rendererActions: [{ type: 'clickText', text: '/checkout' }],
-    targets: [
-      'Request paused',
-      'Request headers',
-      'Original body',
-      // 规则名在状态栏也出现，按文本配对会抓错元素，改用面板内唯一的文案。
-      'The original body will be forwarded unchanged.',
-      'Add header',
-      'Drop',
-      'Continue',
-      'Forward edited',
-    ],
-  },
   {
     id: 'breakpoints-off',
     theme: 'light',

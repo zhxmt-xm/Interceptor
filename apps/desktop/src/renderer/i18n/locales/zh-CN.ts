@@ -583,6 +583,7 @@ export const zhCNCatalog = {
   'breakpoints.replacementText': '文本',
   'breakpoints.usingOriginal': '使用原文',
   'breakpoints.usingText': '使用文本',
+  'breakpoints.usingFile': '使用文件',
   'breakpoints.usingOriginalHint': '当前选择“关闭”，将原样转发原文。',
   'breakpoints.usingTextHint': '将转发替换文本。',
   'breakpoints.emptyTextHint': '替换文本不能为空；不填内容则原样转发原文。',

@@ -244,7 +244,12 @@ export class RuleService {
           const resolved = await this.awaitBreakpoint(
             'response',
             action,
-            RuleUtils.buildResponseSnapshot(compiled.rule.name, state, exchangeId),
+            RuleUtils.buildResponseSnapshot(
+              compiled.rule.name,
+              context.request,
+              state,
+              exchangeId,
+            ),
             requestId,
           );
           hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));

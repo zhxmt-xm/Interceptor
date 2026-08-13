@@ -250,9 +250,6 @@ export function useDesignFixtureAdapter(
     if (!root) return;
     syncFixture(root, state);
     if (state.ctxmenu) anchorTreeMenu(root, state.ctxmenu);
-    if (state.breakpointBody !== 'loading') return;
-    const timer = window.setTimeout(() => updateState({ breakpointBody: 'ready' }), 3000);
-    return () => window.clearTimeout(timer);
   }, [rootRef, state, updateState]);
 
   // 只在场景字段变化时重置 facet 选中态；跟着整个 state 重置会把用户的点击立刻抹掉。
@@ -407,7 +404,7 @@ export function useDesignFixtureAdapter(
         return patch({ view: 'rules', breakpointPanel: '' });
       }
       const replaceMode = closest(event.target, '[data-replace-mode]')?.dataset.replaceMode;
-      if (replaceMode) return patch({ breakpointBody: replaceMode === 'off' ? 'ready' : replaceMode === 'text' ? 'replace' : state.breakpointFile === 'invalid' ? 'invalid' : 'file' });
+      if (replaceMode) return patch({ breakpointBody: replaceMode === 'off' ? 'ready' : replaceMode === 'text' ? 'replace' : 'file' });
       if (closest(event.target, '.break-file-upload-empty')) return patch({ breakpointBody: 'file', breakpointFile: 'valid' });
       if (closest(event.target, '.break-file-remove')) return patch({ breakpointBody: 'file', breakpointFile: 'none' });
       const breakSection = closest(event.target, '.break-section-head');

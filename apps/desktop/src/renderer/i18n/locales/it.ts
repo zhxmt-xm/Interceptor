@@ -586,6 +586,7 @@ export const itCatalog = {
   'breakpoints.replacementText': 'Testo',
   'breakpoints.usingOriginal': 'Uso dell’originale',
   'breakpoints.usingText': 'Uso del testo',
+  'breakpoints.usingFile': 'Uso del file',
   'breakpoints.usingOriginalHint': 'È selezionato Off. Verrà inoltrato il corpo originale.',
   'breakpoints.usingTextHint': 'Verrà inoltrato il testo sostitutivo.',
   'breakpoints.emptyTextHint': 'Il testo sostitutivo non può essere vuoto. Inserisci del contenuto, altrimenti verrà inoltrato il corpo originale.',

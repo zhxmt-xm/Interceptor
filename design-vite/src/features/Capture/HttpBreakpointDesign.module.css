@@ -4,3 +4,35 @@
   flex-direction: column;
   gap: 16px;
 }
+
+.responseStatus {
+  display: grid;
+  grid-template-columns: auto 72px minmax(0, 1fr);
+  height: 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.responseStatus label {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.responseStatus input {
+  width: 72px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.responseStatus span {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}

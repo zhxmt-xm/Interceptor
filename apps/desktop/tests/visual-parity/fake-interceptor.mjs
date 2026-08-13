@@ -144,6 +144,7 @@ sessions.forEach((session, index) => {
 const bodyText = {
   'http-request-body': '{"name":"interceptor","enabled":true,"limits":{"requests":250}}',
   'bp-checkout-body': '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
+  'bp-token-body': '{\n  "access_token": "eyJhbGci...",\n  "expires_in": 3600\n}',
   'ws-body-1': '{"type":"subscribe","channel":"builds"}',
   'ws-body-2': '{"type":"subscribed","channel":"builds"}',
   'ws-body-3': '{"buildId":8431,"state":"running","branch":"main"}',
@@ -288,7 +289,31 @@ const pausedCheckoutDetail = {
   requestBody: {
     bodyHash: 'bp-checkout-body',
     mediaType: 'application/json',
-    encodedSize: bodyText['bp-checkout-body'].length,
+    encodedSize: 63,
+    truncated: false,
+    decodeStatus: 'ok',
+  },
+};
+
+// 响应阶段挂起，正文已经收完可读；场景参数可移除 body ref 形成 receiving 状态。
+const pausedTokenDetail = {
+  summary: pausedSessions.find((session) => session.id === 'bp-exchange-token'),
+  url: 'https://api.example.com/v1/token',
+  scheme: 'https',
+  port: 443,
+  statusText: 'OK',
+  responseMime: 'application/json',
+  requestHeaders: [],
+  responseHeaders: [
+    { name: 'content-type', value: 'application/json' },
+    { name: 'cache-control', value: 'no-store' },
+  ],
+  requestTrailers: [],
+  responseTrailers: [],
+  responseBody: {
+    bodyHash: 'bp-token-body',
+    mediaType: 'application/json',
+    encodedSize: 842,
     truncated: false,
     decodeStatus: 'ok',
   },
@@ -567,9 +592,13 @@ const pendingBreakpoints = [
     phase: 'response',
     createdAt: startedAt + 1_000,
     ruleName: 'Token API',
+    method: 'POST',
     statusCode: 200,
     url: 'api.example.com/v1/token',
-    headers: [{ name: 'content-type', value: 'application/json' }],
+    headers: [
+      { name: 'content-type', value: 'application/json' },
+      { name: 'cache-control', value: 'no-store' },
+    ],
     bodyAvailable: true,
   },
 ];
@@ -618,6 +647,7 @@ export const fakeInterceptorFixture = {
       'ws-fixture': websocketDetail,
       'grpc-fixture': grpcDetail,
       'bp-exchange-checkout': pausedCheckoutDetail,
+      'bp-exchange-token': pausedTokenDetail,
     },
     websocketFrames,
     websocketBreakpoint: null,
@@ -766,6 +796,9 @@ export function installFakeInterceptor({
   noRuleHits = false,
   pausedBreakpoints = false,
   pausedWebSocketBreakpoint = false,
+  breakpointBodyState = 'request-ready',
+  breakpointAutoContinued = 0,
+  breakpointFile = null,
   breakpointsEnabled = true,
   breakpointManagerRules = false,
   mitmActive = true,
@@ -786,6 +819,20 @@ export function installFakeInterceptor({
       ...fixture.capture.sessions,
     ];
     fixture.breakpoints.items = fixture.breakpoints.pendingItems;
+    if (breakpointBodyState === 'request-loading') {
+      delete fixture.capture.details['bp-exchange-checkout'].requestBody;
+      fixture.capture.details['bp-exchange-checkout'].summary = {
+        ...fixture.capture.details['bp-exchange-checkout'].summary,
+        requestBytes: 18,
+      };
+    }
+    if (breakpointBodyState === 'response-loading') {
+      delete fixture.capture.details['bp-exchange-token'].responseBody;
+      fixture.capture.details['bp-exchange-token'].summary = {
+        ...fixture.capture.details['bp-exchange-token'].summary,
+        responseBytes: 416,
+      };
+    }
   }
   if (pausedWebSocketBreakpoint) {
     fixture.breakpoints.items = [fixture.breakpoints.pendingWebSocketItem];
@@ -1302,8 +1349,9 @@ export function installFakeInterceptor({
     listBreakpoints: async () => ({
       breakpoints: breakpointItems,
       enabled: breakpointsEnabledState,
-      autoContinued: 0,
+      autoContinued: breakpointAutoContinued,
     }),
+    pickBreakpointBodyFile: async () => breakpointFile,
     resolveBreakpoint: async (breakpointId, action, edit) => {
       breakpointItems = breakpointItems.filter((item) => item.id !== breakpointId);
       return { state: action === 'drop' ? 'dropped' : edit ? 'edited' : 'continued' };

@@ -586,6 +586,7 @@ export const ptBRCatalog = {
   'breakpoints.replacementText': 'Texto',
   'breakpoints.usingOriginal': 'Usando o original',
   'breakpoints.usingText': 'Usando o texto',
+  'breakpoints.usingFile': 'Usando o arquivo',
   'breakpoints.usingOriginalHint': 'Desligado está selecionado. O corpo original será encaminhado.',
   'breakpoints.usingTextHint': 'O texto de substituição será encaminhado.',
   'breakpoints.emptyTextHint': 'O texto de substituição não pode ficar vazio. Digite o conteúdo ou o corpo original será encaminhado.',

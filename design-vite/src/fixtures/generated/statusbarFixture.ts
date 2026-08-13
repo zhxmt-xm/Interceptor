@@ -161,8 +161,7 @@ export const statusbarFixture: FixtureNode = {
               "type": "element",
               "tag": "div",
               "attributes": {
-                "class": "g capture-upstream",
-                "data-parity": "capture-status-upstream"
+                "class": "g capture-upstream"
               },
               "children": [
                 {
@@ -199,7 +198,8 @@ export const statusbarFixture: FixtureNode = {
                   "type": "element",
                   "tag": "span",
                   "attributes": {
-                    "class": "upstream-direct-label"
+                    "class": "upstream-direct-label",
+                    "data-parity": "capture-status-upstream"
                   },
                   "children": [
                     {

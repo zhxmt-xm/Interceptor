@@ -586,6 +586,7 @@ export const esCatalog = {
   'breakpoints.replacementText': 'Texto',
   'breakpoints.usingOriginal': 'Usando el original',
   'breakpoints.usingText': 'Usando el texto',
+  'breakpoints.usingFile': 'Usando el archivo',
   'breakpoints.usingOriginalHint': 'Está desactivado. Se reenviará el cuerpo original.',
   'breakpoints.usingTextHint': 'Se reenviará el texto de reemplazo.',
   'breakpoints.emptyTextHint': 'El texto de reemplazo no puede estar vacío. Escribe contenido o se reenviará el cuerpo original.',

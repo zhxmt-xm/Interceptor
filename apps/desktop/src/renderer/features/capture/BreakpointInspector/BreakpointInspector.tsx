@@ -5,12 +5,12 @@ import {
   CircleAlert,
   FileText,
   FolderOpen,
-  LoaderCircle,
   Play,
   Plus,
   Slash,
   X,
 } from 'lucide-react';
+import { Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -162,7 +162,9 @@ export function BreakpointInspector({
           <section>
             <SectionHeader>{t('breakpoints.responseStatus')}</SectionHeader>
             <div className={styles.statusRow}>
+              <label htmlFor="breakpoint-response-status">{t('capture.status')}</label>
               <input
+                id="breakpoint-response-status"
                 className={styles.statusInput}
                 aria-label={t('breakpoints.responseStatus')}
                 inputMode="numeric"
@@ -170,6 +172,7 @@ export function BreakpointInspector({
                 onChange={(event) =>
                   setStatusCode(Number.parseInt(event.target.value, 10) || 0)}
               />
+              <span>{detail?.statusText ?? ''}</span>
             </div>
           </section>
         ) : null}
@@ -242,7 +245,7 @@ export function BreakpointInspector({
               </div>
             ) : originalBody === null ? (
               <div className={styles.originalLoading}>
-                <LoaderCircle className={styles.spinner} size={16} strokeWidth={2} />
+                <Spin size="small" />
                 <div>
                   <b>
                     {isResponse
@@ -266,12 +269,17 @@ export function BreakpointInspector({
 
         <section>
           <SectionHeader className={styles.replacementHead}>
-            {isWebSocket ? t('breakpoints.payload') : t('breakpoints.replacementBody')}
+            <span>{isWebSocket ? t('breakpoints.payload') : t('breakpoints.replacementBody')}</span>
             <span
-              className={cx(styles.sourceTag, !usingReplacement && styles.sourceTagWarn)}
+              className={cx(
+                styles.sourceTag,
+                draft.replacement !== 'off' && !usingReplacement && styles.sourceTagWarn,
+              )}
               title={
                 usingReplacement
-                  ? t('breakpoints.usingTextHint')
+                  ? draft.replacement === 'file'
+                    ? `${t('breakpoints.usingFile')}: ${draft.file?.name ?? ''}`
+                    : t('breakpoints.usingTextHint')
                   : draft.replacement === 'text'
                     ? t('breakpoints.emptyTextHint')
                     : t('breakpoints.usingOriginalHint')
@@ -280,7 +288,13 @@ export function BreakpointInspector({
               {draft.replacement === 'text' && !usingReplacement ? (
                 <CircleAlert size={12} strokeWidth={2} />
               ) : null}
-              {usingReplacement ? t('breakpoints.usingText') : t('breakpoints.usingOriginal')}
+              <span>
+                {usingReplacement
+                  ? draft.replacement === 'file'
+                    ? t('breakpoints.usingFile')
+                    : t('breakpoints.usingText')
+                  : t('breakpoints.usingOriginal')}
+              </span>
             </span>
             <Segmented
               className={styles.replacementMode}
@@ -320,9 +334,11 @@ export function BreakpointInspector({
                   {t('breakpoints.chooseFile')}
                 </Button>
               ) : (
-                <>
-                  <div className={styles.fileCard}>
-                    <FileText size={15} strokeWidth={2} />
+                <div className={styles.fileCard}>
+                  <div className={styles.fileHeader}>
+                    <span className={styles.fileIcon}>
+                      <FileText size={15} strokeWidth={2} />
+                    </span>
                     <span className={styles.fileMeta}>
                       <b>{draft.file.name}</b>
                       <span>
@@ -337,13 +353,13 @@ export function BreakpointInspector({
                     />
                   </div>
                   {draft.file.text === undefined ? (
-                    <div className={styles.originalEmpty}>
+                    <div className={styles.fileUnavailable}>
                       {t('breakpoints.filePreviewUnavailable')}
                     </div>
                   ) : (
                     <pre className={styles.filePreview}>{draft.file.text}</pre>
                   )}
-                </>
+                </div>
               )}
             </div>
           ) : (

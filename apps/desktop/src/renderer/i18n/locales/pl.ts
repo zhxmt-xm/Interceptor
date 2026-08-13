@@ -595,6 +595,7 @@ export const plCatalog = {
   'breakpoints.replacementText': 'Tekst',
   'breakpoints.usingOriginal': 'Używana jest oryginalna treść',
   'breakpoints.usingText': 'Używany jest tekst',
+  'breakpoints.usingFile': 'Używany jest plik',
   'breakpoints.usingOriginalHint': 'Wybrano Wyłączone. Zostanie przekazana oryginalna treść.',
   'breakpoints.usingTextHint': 'Zostanie przekazany tekst zastępczy.',
   'breakpoints.emptyTextHint': 'Tekst zastępczy nie może być pusty. Wpisz treść, inaczej zostanie przekazana oryginalna treść.',

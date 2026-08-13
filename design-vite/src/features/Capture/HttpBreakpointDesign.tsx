@@ -2,6 +2,7 @@ import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { ActionFooter } from '../../components/ActionFooter/ActionFooter';
+import { CollapsibleSection } from '../../components/CollapsibleSection/CollapsibleSection';
 import { HeaderFieldsEditor, type HeaderField } from '../../components/HeaderFieldsEditor/HeaderFieldsEditor';
 import { PauseBanner } from '../../components/PauseBanner/PauseBanner';
 import {
@@ -38,18 +39,19 @@ function legacyEditableSections(contentHost: HTMLElement): HTMLElement[] {
   return Array.from(contentHost.children)
     .filter((child): child is HTMLElement => child instanceof HTMLElement)
     .filter((section) => section.querySelector(
-      '[aria-label="Header name"], [aria-label="Copy original body"], [aria-label="Replacement body"], [aria-label="Replacement response body"]',
+      '[aria-label="Response status"], [aria-label="Header name"], [aria-label="Copy original body"], [aria-label="Replacement body"], [aria-label="Replacement response body"]',
     ));
 }
 
 export function HttpBreakpointDesign(): React.JSX.Element | null {
   const { state, updateState } = useDesignState();
   const [hosts, setHosts] = useState<BreakpointHosts | null>(null);
+  const [statusOpen, setStatusOpen] = useState(true);
   const response = state.breakpointState === 'response';
   const visible = state.breakpointState === 'request' || response;
   const replacementMode: ReplacementMode = state.breakpointBody === 'replace'
     ? 'text'
-    : state.breakpointBody === 'file' || state.breakpointBody === 'invalid'
+    : state.breakpointBody === 'file'
       ? 'file'
       : 'off';
 
@@ -95,7 +97,7 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
         <PauseBanner
           phase={response ? 'Response paused' : 'Request paused'}
           received={response}
-          rule="Checkout API · break once"
+          rule={response ? 'Token API' : 'Checkout API'}
         />,
         hosts.context,
       )}
@@ -105,22 +107,39 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
           data-breakpoint-component="content"
           key={response ? 'response' : 'request'}
         >
+          {response ? (
+            <CollapsibleSection
+              open={statusOpen}
+              title="Response status"
+              onOpenChange={setStatusOpen}
+            >
+              <div className={styles.responseStatus}>
+                <label htmlFor="design-breakpoint-response-status">Status</label>
+                <input
+                  id="design-breakpoint-response-status"
+                  aria-label="Response status"
+                  defaultValue="200"
+                />
+                <span>OK</span>
+              </div>
+            </CollapsibleSection>
+          ) : null}
           <HeaderFieldsEditor
             initialFields={response ? RESPONSE_HEADERS : REQUEST_HEADERS}
             title={response ? 'Response headers' : 'Request headers'}
           />
           <PayloadEditor
             file={{
-              name: response ? 'token-response.json' : 'checkout.json',
-              meta: response ? '2.4 KB · application/json' : '1.2 KB · application/json',
+              name: response ? 'token-response.json' : 'checkout-body.txt',
+              meta: response ? '2.4 KB · application/json' : '38 B · text/plain',
               preview: response
                 ? '{\n  "access_token": "eyJhbGci…",\n  "expires_in": 3600\n}'
                 : '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
-              ready: state.breakpointFile === 'valid' || state.breakpointBody === 'invalid',
+              ready: state.breakpointFile === 'valid',
             }}
             loading={state.breakpointBody === 'loading' ? {
               title: response ? 'Receiving response body…' : 'Receiving request body…',
-              detail: response ? '416 B received · waiting for the origin' : '18 B received · waiting for the client',
+              detail: response ? '416 B received so far' : '18 B received so far',
             } : undefined}
             originalFormat="application/json"
             originalMeta={response ? '842 B · json' : '63 B · json'}

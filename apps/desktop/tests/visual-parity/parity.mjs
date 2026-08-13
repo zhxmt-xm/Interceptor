@@ -242,7 +242,13 @@ for (const view of views) {
     requestMenu: '',
     ruleFilter: '',
     bodyPreview: '',
+    breakpoints: 'on',
     breakpointState: '',
+    breakpointBody: 'loading',
+    breakpointFile: 'none',
+    breakpointPanel: '',
+    breakpointMessage: '',
+    websocketBreakpoint: 'disabled',
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
@@ -263,6 +269,9 @@ for (const view of views) {
     noRuleHits: view.noRuleHits === true,
     pausedBreakpoints: view.pausedBreakpoints === true,
     pausedWebSocketBreakpoint: view.pausedWebSocketBreakpoint === true,
+    breakpointBodyState: view.breakpointBodyState ?? 'request-ready',
+    breakpointAutoContinued: view.breakpointAutoContinued ?? 0,
+    breakpointFile: view.breakpointFile ?? null,
     breakpointsEnabled: view.breakpointsEnabled !== false,
     breakpointManagerRules: view.breakpointManagerRules === true,
     mitmActive: view.mitmActive !== false,

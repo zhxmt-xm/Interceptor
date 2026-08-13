@@ -1,4 +1,4 @@
-import { ArrowRight, Lock, Pause } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
@@ -22,6 +22,25 @@ export function CaptureStatusbar(): React.JSX.Element {
   const autoContinued = useBreakpointsStore((state) => state.autoContinued);
   // 多条挂起时只报最早那条的规则，避免状态栏变成规则列表。
   const pausedRuleName = useBreakpointsStore((state) => state.breakpoints[0]?.ruleName ?? '');
+
+  if (pausedCount > 0 || autoContinued > 0) {
+    return (
+      <div className={styles.bar}>
+        <span className={styles.breakpointBar}>
+          <span className={styles.breakpointDot} />
+          <span className={styles.paused} data-parity="capture-status-breakpoints">
+            {t('breakpoints.pausedCount', { count: pausedCount })}
+          </span>
+          {pausedRuleName ? <span className={styles.pausedRule}>{pausedRuleName}</span> : null}
+          {autoContinued > 0 ? (
+            <span className={styles.queueFull} data-parity="capture-status-queue-full">
+              {t('breakpoints.autoContinued', { count: autoContinued })}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.bar}>
@@ -59,19 +78,8 @@ export function CaptureStatusbar(): React.JSX.Element {
       </span>
 
       <span className={cx(styles.slot, styles.slotEnd)}>
-        {pausedCount > 0 || autoContinued > 0 ? (
-          <span className={styles.paused} data-parity="capture-status-breakpoints">
-            <Pause size={12} strokeWidth={2.2} />
-            {t('breakpoints.pausedCount', { count: pausedCount })}
-            {pausedRuleName ? <span className={styles.pausedRule}>{pausedRuleName}</span> : null}
-            {autoContinued > 0
-              ? ` · ${t('breakpoints.autoContinued', { count: autoContinued })}`
-              : ''}
-          </span>
-        ) : null}
         <span
           className={cx(styles.upstream, upstreamReachable ? undefined : styles.upstreamDown)}
-          data-parity="capture-status-upstream"
           title={
             upstreamReachable
               ? undefined
@@ -79,9 +87,11 @@ export function CaptureStatusbar(): React.JSX.Element {
           }
         >
           <ArrowRight className={styles.upstreamIcon} size={12} strokeWidth={2} />
-          {upstream && upstreamReachable
-            ? `${t('capture.upstream')} ${upstream}`
-            : t('capture.directConnection')}
+          <span data-parity="capture-status-upstream">
+            {upstream && upstreamReachable
+              ? `${t('capture.upstream')} ${upstream}`
+              : t('capture.directConnection')}
+          </span>
         </span>
       </span>
     </div>

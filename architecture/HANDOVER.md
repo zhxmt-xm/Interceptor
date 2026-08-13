@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `27436e3`
+> Tracked commit: `f6b1ac7`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-12
 
@@ -41,17 +41,19 @@
 - [x] **已完成 · WebSocket 帧断点**：使用 `websocket.breakpoint.enable`（`exchangeId` / `direction` / `frames` / `timeoutMs`）和 `websocket.breakpoint.disable` 两条语义单一命令，替代旧布尔 configure；`websocket.frames` 返回 `breakpoint: WebSocketBreakpointSettings | null`。作用域锁在当前连接，其他 exchange 原样放行；ping / pong / close 与 message 共用方向内串行链，close 另带可编辑 `closeCode`。WebSocket 开关与 HTTP `breakpointsEnabled` 正交；Renderer setup 配置 Direction / Frames / Timeout，启用必经配置、停用一键。MCP 使用 `enable_websocket_breakpoint` / `disable_websocket_breakpoint`，`configure_breakpoint` 只管 HTTP。
 - [x] **已完成 · WebSocket Messages 内嵌 editor 与 parity**：pending 自动切到 Messages，保留历史帧并追加 waiting row；Original 复用 `BodyViewer`，Replacement 默认 Off。setup / enabled / paused 的 light / dark 六个 view 均 `0 missing`，最大几何差 2px，完整套件已稳定跑完 75 views。
 - [x] **已完成 · 最新完整门禁**：全 workspace typecheck；Proxy Core 串行 279/279、Desktop 248/248、Protocol 15/15、MCP 45/45，共 587 项。design-vite build 与 Capture 160 张截图通过；完整 parity 已扩展为 77 views，新增六个 WebSocket view、`breakpoints-off` 与 manager 全部 0 missing。Windows x64 package 与 artifact audit 通过：1,294 files / 391,548,917 bytes。DOMPurify 从受 GHSA-55q2-fjhq-7xh7 影响的 3.4.12 提升到 3.4.13，`npm audit --omit=dev` 为 0。
+- [x] **已完成 · Response breakpoint 请求身份**：响应阶段快照现在从同一 `MatchContext.request` 保留 `method` / `url`，不再让 Renderer 把真实 POST 响应默认显示成 GET；`RuleService` 聚焦回归锁定 request / response 仍关联同一 exchange。
+- [x] **已完成 · Breakpoint parity 场景接入**：request paused / loading / loaded / text / file-empty / file、response 对称状态以及 queue / queue-full 均已接入 light / dark，共把完整套件扩展到 104 views。不存在于产品契约的 `invalid` 文件状态已从 design state、adapter、截图清单与旧基线删除；manager 最大几何差从 37.2px 收敛到 3.5px，queue-full 明暗均为 `0 missing / 0 flagged / 0.5px`。
 - [ ] **待实现 · design-vite detail inspector 组件化**：`captureFixture` / `composerFixture` 中 13 + 4 个 `.sec > .sh` 仍是 legacy HTML，靠 `useDesignFixtureAdapter` 命令式切 `collapsed`，尚未使用 `CollapsibleSection`。迁移 General、Request / Response Headers、Composer 各段后，删除 `DesignApp.module.css` 的 `.sh` / `.sec` / `.esec` 规则与 adapter 对应折叠分支。
-- [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。
+- [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。
 - [ ] **待验证 · HTTP Breakpoint timeout policy wire**：HTTP 规则正式提供 `onTimeout: continue | drop`，`BreakpointQueue` 已锁定 policy 传播，但两种策略的真实代理 wire 结果尚未分别验证。不要借 WebSocket 固定 continue 路径伪造这项覆盖。
-- [ ] **验收进行中 · 其余 Breakpoint parity**：已验证 `created-message`（light / dark / undo）与 `create-menu`。本轮已修复 design-vite 两级 Dropdown 状态泄漏，Capture 160 张全序列出图及“非菜单场景无残留 Dropdown”断言通过；`breakpoints-off` 为 `1/1 matched / 0 missing / geometry 0`，仅 13.3333px → 13px 字体差；manager 已用两条真实 RuleDefinition 接入，为 `8/8 matched / 0 missing`，仍有 8 flagged、最大 37.2px，待继续收敛。完整 parity 更新为 `77 views / 611 targets / 575 matched / 36 missing / 149 flagged / 平均 2.62%`。尚未接入 request paused / body loading / replace / file-empty / file / invalid、response paused / body loaded / replace / file-empty / file / invalid、queue 与 queue-full。
+- [ ] **验收进行中 · Breakpoint parity 几何收敛**：场景已全部接入，剩余是视觉差异而非 missing 场景。request / response 常规 loading / loaded / text / file 状态无 missing，最大多为 1.6–4px；response text 明暗各有 1 个 target missing。file-empty 的按钮目标仍有 302.1px 层级差，queue 有 71.7px 状态栏目标差，待改成同层语义节点。完整报告为 `104 views / 821 targets / 787 matched / 34 missing / 301 flagged / 平均 2.69%`；最终 upstream 文本 selector 修正后聚焦复跑为 `1/1 matched / 0 flagged / 0.5px`。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待验证 · 上游认证代理**：公司 SSO / `Proxy-Authorization` 尚未验证；WinINet 不保存凭据，需要设计用户手工提供方式。
 - [ ] **待实现 · macOS 上游检测**：多 network service 可能各有代理，合并语义尚未确定。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [x] **已完成 · statusbar upstream down**：light / dark 已收录到 visual parity，均为 `1/1 matched / 0 missing / 0 flagged`，最大几何差 0.5px。fake Preload 补齐 `upstreamProxy` / `upstreamReachable` 契约；harness 每个 view 前显式重置 `breakpointState`，普通 Capture 场景不再误继承断点状态栏。
-- [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 79 views / 613 targets / 581 matched / 32 missing / 148 flagged，主要属于 Capture、Settings 与旧 Shell 场景，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
+- [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 104 views / 821 targets / 787 matched / 34 missing / 301 flagged，新增 flags 主要来自刚接入但尚未收敛的 Breakpoint 场景，原有债务仍集中在 Capture、Settings 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
 - [ ] **待实现 · Local E2E 第一条 workflow**：当前 implemented workflow 为 0。第一条必须从 `application.startup.ready` 开始，只通过公共 automation ID 操作真实 UI，保存 trace / evidence，并验证 destroy 后才能更新 Inventory 状态。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [x] **已完成 · packaged smoke**：2026-08-13 对当前 `apps/desktop/out/Interceptor-win32-x64` 真实运行 `test:smoke`，`1/1` 通过（43.3 秒）。测试安全 allowlist 已同步 WebSocket breakpoint 的 enable / disable Preload 命令，截图矩阵删除已下线的独立 Breakpoints 导航；综合测试总预算调整为 180 秒，关键步骤仍保留各自 5–15 秒超时。运行前后均确认无残留 Interceptor 进程或 8888 listener。

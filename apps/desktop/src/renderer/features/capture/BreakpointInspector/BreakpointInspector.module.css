@@ -86,22 +86,35 @@
 }
 
 .statusRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 72px minmax(0, 1fr);
   height: 40px;
   align-items: center;
-  padding: 0 2px;
+  gap: 8px;
 }
 
 .statusInput {
-  width: 88px;
-  padding: 6px 10px;
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
+  width: 72px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
   background: var(--panel-2);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   outline: none;
+}
+
+.statusRow label {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.statusRow > span {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .headerRow {
@@ -162,12 +175,12 @@
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .originalMetaPending {
-  color: var(--yellow);
-  font-family: var(--font-ui);
-  font-weight: 650;
+  color: var(--text-3);
 }
 
 .originalEmpty {
@@ -201,32 +214,17 @@
 
 .originalLoading b {
   color: var(--text);
-  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   font-weight: 600;
+  line-height: 16px;
 }
 
 .originalLoading span {
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 9.5px;
-}
-
-.spinner {
-  flex: 0 0 auto;
-  color: var(--accent);
-  animation: breakpoint-spin 1s linear infinite;
-}
-
-@keyframes breakpoint-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
+  line-height: 15px;
 }
 
 .originalReady {
@@ -279,25 +277,43 @@
   letter-spacing: 0;
   text-transform: none;
 }
+.replacementMode [role='radio'] {
+  padding: 0 8px;
+  font-size: 10.5px;
+  line-height: 1;
+}
+.replacementMode [role='radio'][aria-checked='true'] {
+  background: color-mix(in srgb, var(--yellow) 16%, var(--panel));
+  color: var(--yellow);
+  font-weight: 650;
+}
 
 .sourceTag {
   display: inline-flex;
-  height: 19px;
+  height: 22px;
   align-items: center;
   gap: 4px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--green) 14%, transparent);
+  padding: 0 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
   color: var(--green);
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 650;
   letter-spacing: 0;
+  line-height: 10px;
   text-transform: none;
 }
 
 .sourceTagWarn {
   background: color-mix(in srgb, var(--yellow) 14%, transparent);
   color: var(--yellow);
+}
+
+.sourceTag > span {
+  display: inline-flex;
+  height: 10px;
+  align-items: center;
+  line-height: 10px;
 }
 
 .fileArea {
@@ -308,14 +324,30 @@
 }
 
 .fileCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel-2);
-  color: var(--accent);
+}
+
+.fileHeader {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 5px 6px 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fileIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-2);
 }
 
 .fileMeta {
@@ -323,15 +355,16 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .fileMeta b {
   overflow: hidden;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 600;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -339,23 +372,28 @@
 .fileMeta > span {
   color: var(--text-3);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.5px;
+  line-height: 15px;
 }
 
 .filePreview {
-  max-height: 180px;
+  max-height: 104px;
   margin: 0;
   padding: 10px 12px;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-2);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  line-height: 1.55;
+  font-size: 10px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.fileUnavailable {
+  padding: 10px 12px;
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .replacementOff {
@@ -379,16 +417,15 @@
 
 .bodyEdit {
   width: 100%;
-  min-height: 140px;
-  margin-top: 12px;
-  padding: 13px 15px;
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
+  min-height: 94px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: var(--panel-2);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 11px;
+  line-height: 1.5;
   outline: none;
   resize: vertical;
 }

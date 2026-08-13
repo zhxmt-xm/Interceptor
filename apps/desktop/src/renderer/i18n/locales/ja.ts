@@ -586,6 +586,7 @@ export const jaCatalog = {
   'breakpoints.replacementText': 'テキスト',
   'breakpoints.usingOriginal': '元の内容を使用',
   'breakpoints.usingText': 'テキストを使用',
+  'breakpoints.usingFile': 'ファイルを使用',
   'breakpoints.usingOriginalHint': 'オフが選択されています。元のボディが転送されます。',
   'breakpoints.usingTextHint': '置換テキストが転送されます。',
   'breakpoints.emptyTextHint': '置換テキストは空にできません。内容を入力しないと元のボディが転送されます。',

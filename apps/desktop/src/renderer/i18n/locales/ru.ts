@@ -595,6 +595,7 @@ export const ruCatalog = {
   'breakpoints.replacementText': 'Текст',
   'breakpoints.usingOriginal': 'Используется оригинал',
   'breakpoints.usingText': 'Используется текст',
+  'breakpoints.usingFile': 'Используется файл',
   'breakpoints.usingOriginalHint': 'Выбрано «Выкл.». Будет передано исходное тело.',
   'breakpoints.usingTextHint': 'Будет передан заменяющий текст.',
   'breakpoints.emptyTextHint': 'Заменяющий текст не может быть пустым. Введите содержимое, иначе будет передано исходное тело.',

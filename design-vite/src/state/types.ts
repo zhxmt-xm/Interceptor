@@ -53,8 +53,8 @@ export type BreakpointState =
   | 'queue'
   | 'full'
   | '';
-export type BreakpointBodyState = 'loading' | 'ready' | 'replace' | 'file' | 'invalid';
-export type BreakpointFileState = 'none' | 'valid' | 'invalid';
+export type BreakpointBodyState = 'loading' | 'ready' | 'replace' | 'file';
+export type BreakpointFileState = 'none' | 'valid';
 export type BreakpointUiState = 'panel' | 'message' | '';
 export type WebSocketBreakpointState = 'disabled' | 'setup' | 'enabled';
 export type WebSocketBreakpointDirection = 'both' | 'sent' | 'received';

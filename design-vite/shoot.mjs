@@ -97,13 +97,11 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'replace' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-file-empty', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'file', breakpointFile: 'none' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-file', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'file', breakpointFile: 'valid' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-invalid', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'invalid' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-loaded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'ready' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'replace' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file-empty', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'none' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'valid' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-invalid', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'invalid' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointState: 'full' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-create-menu', interaction: 'breakpoint-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', requestMenu: '' } });
@@ -212,6 +210,16 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
+    await page.evaluate(() => window.__setState({
+      overlay: '',
+      fileMenu: '',
+      requestMenu: '',
+      breakpointPanel: '',
+      breakpointMessage: '',
+      pop: false,
+      pop2: '',
+      ctxmenu: '',
+    }));
     for (let depth = 0; depth < 2; depth += 1) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(120);
@@ -228,6 +236,7 @@ async function shoot(list) {
       );
     }, s.interaction);
     await page.evaluate((st) => window.__setState({
+      overlay: '',
       fileMenu: '',
       settings: 'certificates',
       update: 'up-to-date',
@@ -241,9 +250,10 @@ async function shoot(list) {
       systemProxy: 'on',
       upstream: 'on',
       copy: 'hidden',
+      transfer: '',
       requestMenu: '',
       ruleFilter: '',
-        ruleOptions: '',
+      ruleOptions: '',
       bodyPreview: '',
       filters: 'open',
       filterGroup: '',

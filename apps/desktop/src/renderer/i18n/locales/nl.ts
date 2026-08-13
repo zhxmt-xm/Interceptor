@@ -583,6 +583,7 @@ export const nlCatalog = {
   'breakpoints.replacementText': 'Tekst',
   'breakpoints.usingOriginal': 'Origineel in gebruik',
   'breakpoints.usingText': 'Tekst in gebruik',
+  'breakpoints.usingFile': 'Bestand in gebruik',
   'breakpoints.usingOriginalHint': 'Uit is geselecteerd. De originele inhoud wordt doorgestuurd.',
   'breakpoints.usingTextHint': 'De vervangende tekst wordt doorgestuurd.',
   'breakpoints.emptyTextHint': 'De vervangende tekst mag niet leeg zijn. Voer inhoud in, anders wordt de originele inhoud doorgestuurd.',

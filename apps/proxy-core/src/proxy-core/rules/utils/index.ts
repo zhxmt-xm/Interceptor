@@ -28,6 +28,7 @@ import type {
   HeaderBag,
   MutableRequestState,
   MutableResponseState,
+  RequestMatchInput,
   RuleHeaderEffect,
 } from '../interfaces';
 
@@ -413,12 +414,15 @@ export function buildRequestSnapshot(
 /** 构造响应阶段断点快照；头部阶段挂起，正文还没到达。 */
 export function buildResponseSnapshot(
   ruleName: string,
+  request: RequestMatchInput,
   state: MutableResponseState,
   exchangeId?: string,
 ): BreakpointSnapshot {
   return {
     ruleName,
     ...(exchangeId !== undefined ? { exchangeId } : {}),
+    method: request.method,
+    url: request.url,
     statusCode: state.statusCode,
     headers: bagToPairs(state.headers),
     bodyAvailable: state.body !== undefined,

@@ -586,6 +586,7 @@ export const koCatalog = {
   'breakpoints.replacementText': '텍스트',
   'breakpoints.usingOriginal': '원본 사용',
   'breakpoints.usingText': '텍스트 사용',
+  'breakpoints.usingFile': '파일 사용',
   'breakpoints.usingOriginalHint': '끄기가 선택되었습니다. 원본 본문이 전달됩니다.',
   'breakpoints.usingTextHint': '대체 텍스트가 전달됩니다.',
   'breakpoints.emptyTextHint': '대체 텍스트는 비워 둘 수 없습니다. 내용을 입력하지 않으면 원본 본문이 전달됩니다.',
