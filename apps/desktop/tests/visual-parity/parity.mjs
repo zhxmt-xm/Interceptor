@@ -242,6 +242,7 @@ for (const view of views) {
     requestMenu: '',
     ruleFilter: '',
     bodyPreview: '',
+    breakpointState: '',
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
@@ -269,6 +270,7 @@ for (const view of views) {
     githubAuthState: view.githubAuthState ?? 'signed-in',
     proxyReady: view.proxyReady !== false,
     proxyEnableFails: view.proxyEnableFails === true,
+    upstreamDown: view.upstreamDown === true,
     tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
   });

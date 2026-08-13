@@ -1452,6 +1452,106 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it('restores edited websocket hex as exact binary frame bytes', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    const original = Buffer.from([0x00, 0x7f, 0x80, 0xff]);
+    const edited = Buffer.from([0xde, 0xad, 0x00, 0xff, 0x42]);
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints(
+        messageBreakpoint(await webSocketExchangeId(recordingCaptureService)),
+      );
+      const echoed = readWebSocketFrames(socket, 1);
+      sendWebSocketFrame(socket, 2, original);
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const outbound = breakpointQueue.list()[0];
+      expect(outbound?.snapshot).toMatchObject({
+        direction: 'client-to-server',
+        opcode: 2,
+        bodyFormat: 'hex',
+        body: '00 7f 80 ff',
+      });
+      breakpointQueue.resolve(outbound!.id, 'continue', {
+        body: 'DE AD 00 ff 42',
+      });
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const inbound = breakpointQueue.list()[0];
+      expect(inbound?.snapshot).toMatchObject({
+        direction: 'server-to-client',
+        opcode: 2,
+        bodyFormat: 'hex',
+        body: 'de ad 00 ff 42',
+      });
+      breakpointQueue.resolve(inbound!.id, 'continue');
+
+      await expect(echoed).resolves.toEqual([{ opcode: 2, payload: edited }]);
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
+  it('forwards the original websocket frame after the configured timeout', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    const payload = Buffer.from('forward-after-timeout');
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints({
+        exchangeId: await webSocketExchangeId(recordingCaptureService),
+        direction: 'client-to-server',
+        frames: ['message'],
+        timeoutMs: 1_000,
+      });
+      const echoed = readWebSocketFrames(socket, 1);
+      sendWebSocketFrame(socket, 1, payload);
+
+      await expect.poll(() => breakpointQueue.size, { timeout: 500 }).toBe(1);
+      await expect(echoed).resolves.toEqual([{ opcode: 1, payload }]);
+      expect(breakpointQueue.size).toBe(0);
+    } finally {
+      if (socket) {
+        sendWebSocketFrame(socket, 8, new Uint8Array());
+        socket.destroy();
+      }
+      await origin.stop();
+    }
+  });
+
   it('pauses websocket messages before forwarding and supports edit/drop', async () => {
     await proxyService.stop();
     const breakpointQueue = new BreakpointQueue();

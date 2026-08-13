@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-08-12T08:34:58.982Z
+Generated: 2026-08-13T08:51:50.209Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 77 |
-| Average pixel diff | 2.62% |
-| Targets | 611 |
-| Matched | 575 |
-| Missing | 36 |
-| Flagged | 149 |
+| Views checked | 79 |
+| Average pixel diff | 2.63% |
+| Targets | 613 |
+| Matched | 581 |
+| Missing | 32 |
+| Flagged | 148 |
 | Largest geometry delta | 1156.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -20,34 +20,36 @@ Generated: 2026-08-12T08:34:58.982Z
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture | 3.56% | 38 | 22 | 16 | 22 | 1001.7 px |
-| capture-websocket | 3.35% | 7 | 1 | 6 | 1 | 1001.7 px |
-| capture-websocket-breakpoint-setup | 4.49% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled | 3.10% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-websocket-breakpoint-setup-dark | 3.66% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled-dark | 3.20% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused-dark | 3.66% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-request-json | 3.35% | 4 | 3 | 1 | 2 | 1001.7 px |
-| capture-timing | 3.07% | 4 | 4 | 0 | 0 | 0.9 px |
-| capture-cookies | 3.02% | 3 | 3 | 0 | 0 | 0.7 px |
-| capture-grpc | 3.43% | 8 | 8 | 0 | 6 | 28.0 px |
-| capture-tunnel | 3.29% | 8 | 8 | 0 | 5 | 170.0 px |
-| capture-tunnel-dark | 3.34% | 6 | 6 | 0 | 3 | 170.0 px |
-| capture-tunnel-mitm-active | 3.29% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture | 3.57% | 38 | 22 | 16 | 22 | 1001.7 px |
+| capture-websocket | 3.36% | 7 | 5 | 2 | 3 | 1001.7 px |
+| statusbar-upstream-down | 2.64% | 1 | 1 | 0 | 0 | 0.5 px |
+| statusbar-upstream-down-dark | 2.64% | 1 | 1 | 0 | 0 | 0.5 px |
+| capture-websocket-breakpoint-setup | 4.50% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled | 3.11% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused | 3.67% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-websocket-breakpoint-setup-dark | 3.67% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.21% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused-dark | 3.68% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-request-json | 3.36% | 4 | 3 | 1 | 2 | 1001.7 px |
+| capture-timing | 3.08% | 4 | 4 | 0 | 0 | 0.9 px |
+| capture-cookies | 3.03% | 3 | 3 | 0 | 0 | 0.7 px |
+| capture-grpc | 3.44% | 8 | 8 | 0 | 3 | 1.6 px |
+| capture-tunnel | 3.30% | 8 | 8 | 0 | 5 | 170.0 px |
+| capture-tunnel-dark | 3.35% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture-tunnel-mitm-active | 3.30% | 6 | 6 | 0 | 3 | 170.0 px |
 | https-setup | 6.62% | 9 | 9 | 0 | 1 | 487.7 px |
 | https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 487.7 px |
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
 | import-export | 2.97% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.94% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 3.15% | 4 | 4 | 0 | 0 | 0.8 px |
-| capture-breakpoint-create-menu | 2.84% | 8 | 8 | 0 | 1 | 1.0 px |
-| capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
-| capture-rule-filter | 1.45% | 3 | 0 | 3 | 0 | 0.0 px |
-| capture-rule-filter-disabled | 2.96% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 3.93% | 2 | 2 | 0 | 1 | 0.3 px |
-| capture-body-media-save | 3.23% | 2 | 2 | 0 | 1 | 5.3 px |
+| capture-export-menu | 2.92% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-request-rule-menu | 3.17% | 4 | 4 | 0 | 0 | 0.8 px |
+| capture-breakpoint-create-menu | 2.85% | 8 | 8 | 0 | 1 | 1.0 px |
+| capture-request-menu-dismiss | 2.66% | 1 | 1 | 0 | 1 | 0.3 px |
+| capture-rule-filter | 1.46% | 3 | 0 | 3 | 0 | 0.0 px |
+| capture-rule-filter-disabled | 2.97% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-body-preview-limited | 3.94% | 2 | 2 | 0 | 1 | 0.3 px |
+| capture-body-media-save | 3.24% | 2 | 2 | 0 | 1 | 5.3 px |
 | proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | n/a | 11 | 11 | 0 | 1 | 48.0 px |
@@ -84,15 +86,15 @@ Generated: 2026-08-12T08:34:58.982Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints | 3.46% | 8 | 8 | 0 | 2 | 1.1 px |
-| breakpoints-off | 2.63% | 1 | 1 | 0 | 1 | 0.0 px |
-| breakpoint-manager | 3.02% | 8 | 8 | 0 | 8 | 37.2 px |
-| breakpoint-created-message | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-dark | 2.77% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoints | 3.47% | 8 | 8 | 0 | 2 | 1.1 px |
+| breakpoints-off | 2.65% | 1 | 1 | 0 | 1 | 0.0 px |
+| breakpoint-manager | 3.03% | 8 | 8 | 0 | 8 | 37.2 px |
+| breakpoint-created-message | 2.82% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 2.78% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.73% | 1 | 1 | 0 | 0 | 0.1 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
-| shell-v2-capture-dark | 3.58% | 3 | 2 | 1 | 1 | 999.1 px |
-| shell-v2-capture-collapsed | 3.44% | 3 | 2 | 1 | 1 | 839.1 px |
+| shell-v2-capture-dark | 3.59% | 3 | 2 | 1 | 1 | 999.1 px |
+| shell-v2-capture-collapsed | 3.46% | 3 | 2 | 1 | 1 | 839.1 px |
 | shell-v2-rules-dark | n/a | 3 | 3 | 0 | 0 | 0.1 px |
 | shell-v2-composer-dark | 2.14% | 5 | 5 | 0 | 1 | 0.9 px |
 | shell-v2-settings-dark | 2.18% | 4 | 2 | 2 | 2 | 997.2 px |
@@ -119,20 +121,20 @@ Generated: 2026-08-12T08:34:58.982Z
 | capture | Filter search | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Filter clear all | 90.0 px | -0.1 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
 | capture | List app header | 8.0 px | 0.4 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
-| capture | List app cell | 8.0 px | -112.6 px | 0.0 px | 0.0 px | 112.6 px | none | flagged |
-| capture | List app cell unknown | 8.0 px | -372.6 px | 0.0 px | 0.0 px | 372.6 px | none | flagged |
-| capture | List path cell | 0.0 px | -111.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
-| capture | List host cell | 0.0 px | -113.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
+| capture | List app cell | 8.0 px | -8.6 px | 0.0 px | 0.0 px | 8.6 px | none | flagged |
+| capture | List app cell unknown | 8.0 px | -268.6 px | 0.0 px | 0.0 px | 268.6 px | none | flagged |
+| capture | List path cell | 0.0 px | -7.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
+| capture | List host cell | 0.0 px | -9.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
 | capture | List status header | -249.0 px | 0.5 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
-| capture | List status cell | -243.0 px | -112.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
+| capture | List status cell | -243.0 px | -8.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
 | capture | List protocol header | -255.0 px | 0.5 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
-| capture | List protocol cell | -249.0 px | -112.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
+| capture | List protocol cell | -249.0 px | -8.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
 | capture | List type header | -267.0 px | 0.5 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
-| capture | List type cell | -261.0 px | -112.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
+| capture | List type cell | -261.0 px | -8.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
 | capture | List size header | -273.0 px | 0.5 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
-| capture | List size cell | -267.0 px | -112.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
+| capture | List size cell | -267.0 px | -8.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
 | capture | List time header | -279.0 px | 0.5 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
-| capture | List time cell | -273.0 px | -112.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
+| capture | List time cell | -273.0 px | -8.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
 | capture | Status endpoint | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Status passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule replaced | n/a | n/a | n/a | n/a | n/a | none | design missing |
@@ -140,13 +142,15 @@ Generated: 2026-08-12T08:34:58.982Z
 | capture | Rule appended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule removed | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Recording | 10.0 px | 0.0 px | -0.3 px | -0.3 px | 10.0 px | none | flagged |
-| capture-websocket | Capture | 0.0 px | 0.0 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
-| capture-websocket | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-websocket | Inspector status | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-websocket | Messages | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| capture-websocket | Capture | 63.0 px | -89.7 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
+| capture-websocket | Inspector host | 0.0 px | 0.9 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-websocket | Inspector status | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-websocket | Messages | 0.0 px | 0.1 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | capture-websocket | Pause on message | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-websocket | Received text | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture-websocket | Binary | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| capture-websocket | Received text | n/a | n/a | n/a | n/a | n/a | none | app missing |
+| capture-websocket | Binary | 0.0 px | -32.5 px | 0.0 px | -1.1 px | 32.5 px | none | flagged |
+| statusbar-upstream-down | Status upstream | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| statusbar-upstream-down-dark | Status upstream | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-setup | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-setup | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | 0.5 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-setup | Direction row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -220,14 +224,14 @@ Generated: 2026-08-12T08:34:58.982Z
 | capture-cookies | _device_id | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-cookies | logged_in | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-cookies | _gh_sess | 0.0 px | -0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
-| capture-grpc | Inspector host | 0.0 px | 0.4 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
-| capture-grpc | Inspector status | 0.0 px | -0.5 px | 0.0 px | 0.1 px | 0.5 px | none | ok |
-| capture-grpc | Messages | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| capture-grpc | Response | -0.5 px | -1.0 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
-| capture-grpc | Message 2 | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| capture-grpc | gzip compressed | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| capture-grpc | Response message 2 | -10.0 px | 5.7 px | -28.0 px | -0.5 px | 28.0 px | fontSize 11.5px->11px; fontWeight 700->600 | flagged |
-| capture-grpc | No descriptor loaded. Payload is shown as raw binary. | 0.0 px | -10.5 px | 0.0 px | -0.5 px | 10.5 px | none | flagged |
+| capture-grpc | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
+| capture-grpc | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-grpc | Messages | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| capture-grpc | Response | -0.5 px | -0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
+| capture-grpc | Message 2 | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | gzip compressed | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| capture-grpc | Response message 2 | 0.0 px | -0.4 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| capture-grpc | No descriptor loaded. Payload is shown as raw binary. | 0.0 px | -0.7 px | 0.0 px | -0.5 px | 0.7 px | none | ok |
 | capture-tunnel | Inspector method | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
 | capture-tunnel | Inspector host | 0.0 px | 0.8 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
 | capture-tunnel | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |

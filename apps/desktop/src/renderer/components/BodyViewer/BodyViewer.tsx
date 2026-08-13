@@ -179,7 +179,7 @@ export function BodyViewer({
 
   function renderPane(): React.JSX.Element {
     if (mode === 'hex') {
-      return <HexView bytes={bytes} parityId={paneParityId} />;
+      return <HexView bytes={bytes} compact={compact} parityId={paneParityId} />;
     }
     if (mode === 'tree') {
       return <JsonTreeView root={tree} parityId={paneParityId} />;

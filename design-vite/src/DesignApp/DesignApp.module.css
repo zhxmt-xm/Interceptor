@@ -739,7 +739,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .grpcmeta { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grpcmeta.compressed { color: var(--yellow); }
 .grpcsize, .grpcoffset { color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
-.grpcpayload { padding: 12px; border-bottom: 1px solid var(--border); background: var(--filter); }
+.grpcpayload { padding: 11px 12px 15px; border-top: 1px solid var(--border); background: var(--filter); }
 .grpchead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 11px; font-weight: 600; color: var(--text-2); }
 .grpchead .cnt { margin-left: auto; }
 .grpchex { padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.65; white-space: nowrap; overflow: hidden; }

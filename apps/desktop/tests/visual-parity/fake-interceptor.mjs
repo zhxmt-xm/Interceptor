@@ -773,6 +773,7 @@ export function installFakeInterceptor({
   githubAuthState = 'signed-in',
   proxyReady = true,
   proxyEnableFails = false,
+  upstreamDown = false,
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
 }) {
@@ -867,6 +868,8 @@ export function installFakeInterceptor({
     bypassList: proxyReady ? '<local>' : null,
     pacUrl: null,
     autoDetect: false,
+    upstreamProxy: '127.0.0.1:7890',
+    upstreamReachable: !upstreamDown,
   };
   let certificate = freshProfile
     ? {

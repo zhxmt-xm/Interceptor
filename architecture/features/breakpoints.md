@@ -222,9 +222,9 @@ interface BreakpointOutcome {
 - HTTP `Execute edited` 后的 `Content-Length`、`content-encoding`、transfer-encoding 与 H2 framing
     尚未建立 wire-level 回归；产品不能仅凭 UI 状态宣称正确。
 - WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
-- Binary 未编辑保真已有真实代理回归；hex **编辑后**的字节还原尚未单独锁定。
-- `BreakpointQueue` 已验证 timeout 会携带 `onTimeout` policy，但真实 proxy continue / drop 的 wire 结果
-    尚未分别建立超时集成测试。
+- Binary 未编辑保真与 hex **编辑后**的字节还原均已有真实 socket 回归。
+- WebSocket deadline 固定 continue，已有真实 wire 回归；HTTP 的 `onTimeout: continue | drop` 虽已由
+    `BreakpointQueue` 锁定 policy 传播，但两种策略的真实 proxy wire 结果尚未分别建立集成测试。
 
 ## 8. 验收要点
 
@@ -234,8 +234,9 @@ interface BreakpointOutcome {
 - [x] manager 可查看/启停规则并精确跳到 Rules；历史 request 快捷创建后给出可撤销反馈。
 - [x] Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
 - [ ] 大正文断点有明确的预览上限与提示，不 OOM。
-- [ ] Binary 消息可用 hex 编辑并正确还原。
-- [ ] 超时按 `onTimeout` 策略正确 continue 或 drop。
+- [x] Binary 消息可用 hex 编辑并正确还原。
+- [x] WebSocket deadline 到期后按固定 continue 策略原样转发。
+- [ ] HTTP 超时按 `onTimeout` 策略正确 continue 或 drop。
 - [x] 客户端在 deadline 前 abort 时立即释放对应断点，不影响其他等待请求。
 - [x] pending queue 超限自动 continue 并记录数量。
 - [x] RPC 断开时全部等待被释放，不泄漏挂起请求。

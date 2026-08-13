@@ -1,14 +1,13 @@
-import { Copy, Maximize } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { CollapsibleSection } from '../../components/CollapsibleSection/CollapsibleSection';
+import { BodyViewerDesign } from '../../components/BodyViewerDesign/BodyViewerDesign';
 import { IconButton } from '../../components/IconButton/IconButton';
-import { SegmentedControl } from '../../components/SegmentedControl/SegmentedControl';
 import { useDesignState } from '../../state/useDesignState';
 import styles from './GrpcMessagePayload.module.css';
 
-const VIEW_OPTIONS = ['Text', 'Hex'].map((option) => ({ value: option, label: option }));
+const VIEW_OPTIONS = ['Text', 'Hex'];
 
 // hex dump 用 U+00A0 隔开 offset 与字节，避免折行时贴在一起
 const HEX_DUMP = [
@@ -20,7 +19,6 @@ const HEX_DUMP = [
 export function GrpcMessagePayload(): React.JSX.Element | null {
   const { updateState } = useDesignState();
   const [host, setHost] = useState<Element | null>(null);
-  const [open, setOpen] = useState(true);
   const [view, setView] = useState('Hex');
 
   useLayoutEffect(() => {
@@ -29,29 +27,24 @@ export function GrpcMessagePayload(): React.JSX.Element | null {
 
   if (!host) return null;
   return createPortal(
-    <CollapsibleSection
-      badge={{ label: 'raw protobuf · 1.2 KB', tone: 'neutral' }}
-      open={open}
-      title="Response message 2"
-      onOpenChange={setOpen}
-    >
-      <div className={styles.grpcMessagePayloadToolbar}>
-        <SegmentedControl
-          ariaLabel="Response message view"
-          value={view}
-          options={VIEW_OPTIONS}
-          onChange={setView}
-        />
-        <span className={styles.grpcMessagePayloadSpacer} />
-        <IconButton
-          label="Open fullscreen"
-          icon={<Maximize aria-hidden="true" />}
-          onClick={() => updateState({ overlay: 'body-full' })}
-        />
+    <div className={styles.grpcMessagePayload}>
+      <div className={styles.grpcMessagePayloadHead}>
+        <b>Response message 2</b>
+        <span>raw protobuf · 1.2 KB</span>
         <IconButton label="Copy message" icon={<Copy aria-hidden="true" />} />
       </div>
-      <pre className={styles.grpcMessagePayloadHex}>{HEX_DUMP}</pre>
-    </CollapsibleSection>,
+      <BodyViewerDesign
+        ariaLabel="Response message view"
+        value={view}
+        modes={VIEW_OPTIONS}
+        meta="application/octet-stream"
+        source={HEX_DUMP}
+        hex={HEX_DUMP}
+        language="plaintext"
+        onModeChange={setView}
+        onFullscreen={() => updateState({ overlay: 'body-full' })}
+      />
+    </div>,
     host,
   );
 }

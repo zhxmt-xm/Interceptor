@@ -13,6 +13,12 @@
   line-height: 20px;
 }
 
+/* Compact payloads hug one complete line: 20px content + 26px padding + 2px border. */
+.compact {
+  height: 48px;
+  flex: 0 0 48px;
+}
+
 .probe {
   position: absolute;
   width: 1ch;

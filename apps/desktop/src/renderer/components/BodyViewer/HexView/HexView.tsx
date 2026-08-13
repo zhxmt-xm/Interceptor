@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef, useState } from 'react';
 
+import { cx } from '../../share/cx';
 import { hexLine, hexLineCount } from '../bodyText';
 import styles from './HexView.module.css';
 
@@ -11,11 +12,12 @@ const COLUMNS_PER_BYTE = 4;
 
 interface HexViewProps {
   bytes: Uint8Array;
+  compact?: boolean;
   parityId?: string;
 }
 
 /** 逐行虚拟化的 hex dump：整份 dump 从不进入 DOM，字节数按容器宽度重排。 */
-export function HexView({ bytes, parityId }: HexViewProps): React.JSX.Element {
+export function HexView({ bytes, compact = false, parityId }: HexViewProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   const [bytesPerLine, setBytesPerLine] = useState(16);
@@ -49,7 +51,7 @@ export function HexView({ bytes, parityId }: HexViewProps): React.JSX.Element {
   });
 
   return (
-    <div ref={hostRef} className={styles.host} data-parity={parityId}>
+    <div ref={hostRef} className={cx(styles.host, compact && styles.compact)} data-parity={parityId}>
       <span ref={probeRef} className={styles.probe} aria-hidden="true" />
       <div className={styles.rows} style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualizer.getVirtualItems().map((row) => (

@@ -115,6 +115,18 @@ export const views = [
       'Binary',
     ],
   },
+  ...['light', 'dark'].map((theme) => ({
+    id: `statusbar-upstream-down${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    designState: { view: 'capture', theme, sidebar: 'collapsed', upstream: 'down' },
+    designShot: `${theme}/capture/statusbar-upstream-down.png`,
+    upstreamDown: true,
+    targets: [{
+      name: 'Status upstream',
+      designSelector: '.capture-upstream',
+      appSelector: '[data-parity="capture-status-upstream"]',
+    }],
+  })),
   ...['light', 'dark'].flatMap((theme) => {
     const rendererOpenMessages = [
       { type: 'clickText', text: '/socket' },

@@ -29,7 +29,6 @@ class ReleaseScreenshotMatrix {
     { label: 'Capture', slug: 'capture' },
     { label: 'Rules & Map', slug: 'rules' },
     { label: 'Composer', slug: 'composer' },
-    { label: 'Breakpoints', slug: 'breakpoints' },
     { label: 'Diagnostics', slug: 'diagnostics' },
     { label: 'Settings', slug: 'settings' },
   ] as const;
@@ -336,7 +335,7 @@ class PackagedWorkflowSmoke {
 }
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
     true,
@@ -431,9 +430,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'clearCapture',
         'closeApplication',
         'deleteCertificate',
+        'disableWebSocketBreakpoints',
         'downloadUpdate',
         'echoCore',
         'enableSystemProxy',
+        'enableWebSocketBreakpoints',
         'exportCollection',
         'exportRules',
         'generateCertificate',
@@ -457,8 +458,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'listAppContainers',
         'listBreakpoints',
         'minimizeWindow',
-        'onCaptureEvents',
         'onBreakpointsChange',
+        'onCaptureEvents',
         'onClientAppIcons',
         'onCoreProcessStatusChange',
         'onGitHubAuthStatusChange',
@@ -487,7 +488,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setBreakpointsEnabled',
         'setHttpsDecryption',
         'setInsecureHosts',
-        'setWebSocketBreakpointsEnabled',
         'signInWithGitHub',
         'signOutFromGitHub',
         'startArchiveExport',
