@@ -711,6 +711,12 @@ export interface BreakpointResolutionResult {
   };
 }
 
+/** 断点编辑器中的最终 header；当前值由 Rule 产生时携带可展示 marker。 */
+export interface BreakpointHeader extends RuleHeaderPair {
+  ruleEffect?: Extract<CaptureHeaderRuleEffect, 'set' | 'append'>;
+  ruleId?: string;
+}
+
 /** 一个等待中的断点：标识/阶段/时序 + 请求或响应快照（flatten）。 */
 export interface PendingBreakpoint {
   id: string;
@@ -730,7 +736,7 @@ export interface PendingBreakpoint {
   frame?: WebSocketBreakpointFrame;
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
-  headers: RuleHeaderPair[];
+  headers: BreakpointHeader[];
   /**
    * 此刻是否能看到原始正文。HTTP 规则断点在头部阶段挂起，此时正文还没到达，
    * 因此为 false；WebSocket 消息断点拿得到完整 payload，为 true。

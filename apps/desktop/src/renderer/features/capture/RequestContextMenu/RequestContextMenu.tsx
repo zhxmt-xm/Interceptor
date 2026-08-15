@@ -171,31 +171,35 @@ export function RequestContextMenu({
       label: <span className={styles.groupLabel}>{t('rules.groupControl')}</span>,
       children: [
         ruleItem({ type: 'block', icon: Ban, hint: t('rules.resetClose') }),
-      ],
-    },
-    {
-      key: 'breakpoint',
-      icon: <Pause size={16} strokeWidth={1.9} />,
-      label: label(
-        t('rules.breakpoint'),
-        t('breakpoints.pauseNextMatch'),
-        'request-rule-breakpoint',
-        summary
-          ? AutomationIdFactory.captureCreateRule(summary.id, 'breakpoint')
-          : undefined,
-      ),
-      popupClassName: styles.breakpointPopup,
-      children: [
         {
-          key: 'breakpoint-title',
-          disabled: true,
-          label: <span className={styles.title}>{t('breakpoints.createFromRequest')}</span>,
+          key: 'breakpoint',
+          label: (
+            <span className={styles.submenuLabel}>
+              <Pause size={16} strokeWidth={1.9} />
+              {label(
+                t('rules.breakpoint'),
+                t('breakpoints.pauseNextMatch'),
+                'request-rule-breakpoint',
+                summary
+                  ? AutomationIdFactory.captureCreateRule(summary.id, 'breakpoint')
+                  : undefined,
+              )}
+            </span>
+          ),
+          popupClassName: styles.breakpointPopup,
+          children: [
+            {
+              key: 'breakpoint-title',
+              disabled: true,
+              label: <span className={styles.title}>{t('breakpoints.createFromRequest')}</span>,
+            },
+            ...breakpointScopes.map(({ scope, icon: Icon, name, hint }) => ({
+              key: `breakpoint:${scope}`,
+              icon: <Icon size={16} strokeWidth={1.9} />,
+              label: label(name, hint),
+            })),
+          ],
         },
-        ...breakpointScopes.map(({ scope, icon: Icon, name, hint }) => ({
-          key: `breakpoint:${scope}`,
-          icon: <Icon size={16} strokeWidth={1.9} />,
-          label: label(name, hint),
-        })),
       ],
     },
   ];

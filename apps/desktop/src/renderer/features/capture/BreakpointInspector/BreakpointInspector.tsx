@@ -200,6 +200,16 @@ export function BreakpointInspector({
                   spellCheck={false}
                   onChange={(event) => updateHeader(header.id, { value: event.target.value })}
                 />
+                <span className={styles.headerEffectSlot}>
+                  {header.ruleEffect ? (
+                    <span
+                      className={styles.headerEffect}
+                      data-effect={header.ruleEffect}
+                    >
+                      {t(`capture.ruleEffect.${header.ruleEffect}`)}
+                    </span>
+                  ) : null}
+                </span>
                 <IconButton
                   icon={X}
                   label={t('breakpoints.removeHeader')}

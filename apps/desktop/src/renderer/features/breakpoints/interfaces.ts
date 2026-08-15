@@ -9,6 +9,8 @@ export interface EditHeaderRow {
   id: string;
   name: string;
   value: string;
+  ruleEffect?: 'set' | 'append';
+  ruleId?: string;
 }
 
 /** 正文替换模式；off 表示原文原样转发。 */

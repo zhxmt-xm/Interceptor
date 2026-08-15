@@ -104,8 +104,8 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 
 1. 创建空profile/evidence，启动trace/Electron并等待App root、Core和listener。
 2. 检查Shell相关默认态：Capture active、Sidebar expanded、Header/Main/Statusbar一致；点击readiness Cancel。
-3. 依次点击 `shell.workspace.rules`、`shell.workspace.composer`、`shell.workspace.breakpoints`。
-4. 继续点击 `shell.workspace.diagnostics`、`shell.workspace.settings`，每次确认Header/Main/Statusbar属于同一view。
+3. 依次点击 `shell.workspace.rules`、`shell.workspace.composer`、`shell.workspace.diagnostics`。
+4. 继续点击 `shell.workspace.settings`，每次确认Header/Main/Statusbar属于同一view；Breakpoint 只从Capture workbar进入，不是workspace。
 5. 在Settings访问两个section后点击 `shell.workspace.capture` 返回。
 6. 确认active navigation和Capture初始空列表/Inspector状态未被导航改变。
 7. 检查各workspace无错误overlay或页面级溢出。
@@ -115,7 +115,7 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 
 ### 预期效果
 
-六个workspace通过正式导航切换；Shell三层上下文一致；导航不会修改无关业务状态。
+五个workspace通过正式导航切换；Shell三层上下文一致；导航不会修改无关业务状态。
 
 <a id="shell-sidebar-collapse"></a>
 ## `shell.sidebar.collapse`

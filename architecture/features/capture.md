@@ -407,11 +407,11 @@ sequenceDiagram
     Proxy->>Storage: updateExchange 状态 request-complete
 
     loop 客户端 → 源站
-        Client->>Bridge: 应用消息（同一 socket，Bridge 是 WS 端点）
+        Client->>Bridge: message / ping / pong / close（同一 socket，Bridge 是 WS 端点）
         Bridge->>Proxy: interceptWebSocketMessage
-        alt 消息断点开关关闭
+        alt 当前连接未启用，或 direction / frame 不匹配
             Proxy-->>Bridge: forward（原样）
-        else 消息断点开关开启
+        else 当前连接配置命中
             Proxy->>Rules: pauseWebSocketMessage
             Note over Rules: 挂起等待用户裁决<br/>continue / edit / drop
             Rules-->>Proxy: outcome
@@ -424,16 +424,16 @@ sequenceDiagram
     end
 
     loop 源站 → 客户端
-        Origin->>Bridge: 应用消息
+        Origin->>Bridge: message / ping / pong / close
         Bridge->>Proxy: interceptWebSocketMessage
-        Note over Proxy: 同上，断点开启时挂起
+        Note over Proxy: 同上，当前连接配置命中时挂起
         Bridge->>Client: 转发或丢弃
         Mockttp-->>Proxy: websocket-message-sent
         Note over Mockttp: 由包装后的 downstream.send 观测
         Proxy->>Storage: appendWebSocketFrames
     end
 
-    Note over Bridge: ping / pong 走 ws.ping 与 ws.pong，<br/>不经断点，Mockttp 也不观测
+    Note over Bridge: ping / pong / close 与 message 共用方向内串行链；<br/>Mockttp 的 message 事件仍只观测应用消息
 
     Client->>Bridge: Close
     Bridge->>Origin: Close 透传
@@ -465,12 +465,12 @@ Mockttp 在 Upgrade 阶段给 socket 装 `_write` / `_writev` 钩子，因此 Br
   | 对象 | 是否经过 Rule |
   | --- | --- |
   | Upgrade 请求（header 改写、block、map local/remote 等） | **否**。Bridge 经 `addWebSocketRule` 注册独立的 WebSocket 规则链（`WildcardMatcher` + 自定义 step），不走 `forAnyRequest().thenPassThrough()`，因此 `beforeRequestHead` / `beforeResponseHead` 不会触发 |
-  | 消息 | **仅全局断点**。`interceptWebSocketMessage` 只检查 `webSocketBreakpointsOn` 并调 `ruleService.pauseWebSocketMessage`，`ruleName` 硬编码为 `WebSocket message`，**不做 matcher 匹配，也不执行任何 rule action** |
+    | 帧 | **仅当前连接临时断点**。`interceptWebSocketMessage` 按 `exchangeId` / `direction` / `frames` 检查 `WebSocketBreakpointSettings` 后调用 `ruleService.pauseWebSocketMessage`；message / ping / pong / close 各有明确 `ruleName`，**不做 matcher 匹配，也不执行 Rules action** |
 
-  即消息断点是一个 `websocket.breakpoint.configure` 控制的全局开关，命中后挂起等待 continue / edit / drop，与 Rules 工作区里配置的规则无关。
+    即 WebSocket 帧断点由 `websocket.breakpoint.enable` / `websocket.breakpoint.disable` 控制，只作用于配置中的当前 exchange；命中后挂起等待 continue / edit / drop，与 Rules 工作区里的 HTTP breakpoint action 正交。
 - **上游先于下游**：`handle()` 先 `new WebSocket(url)` 并 `waitForOpen(upstream)`，成功后才 `handleUpgrade` 回客户端 101。上游握手失败时 upstream 被 terminate 并抛出，客户端拿不到 101，因此不存在「已升级但无上游」的中间态。子协议以上游 `sec-websocket-protocol` 回填，`sec-websocket-extensions` 被删除（bridge 关闭 permessage-deflate，两侧均传明文帧）。
-- **双向都过断点**：`downstream.on('message')` 与 `upstream.on('message')` 都走 `forward()` → `intercept()`，因此 server-to-client 方向同样可挂起、改写、丢弃。两个方向各自维护 `clientTail` / `serverTail` Promise 链，互不阻塞但各自保序。
-- **观测依赖 Bridge 走 `send()`**：Mockttp 的 `message-sent` 来自被包装的 `downstream.send()`。`sendControl` 用的是 `ws.ping` / `ws.pong`，因此 ping / pong 与 close 在两侧原样透传，既不进入断点也不落库。
+- **配置方向才过断点**：client-to-server 与 server-to-client 都接入 `intercept()`，是否挂起由当前连接配置的 `direction` 决定。两个方向各自维护 `clientTail` / `serverTail` Promise 链，互不阻塞但各自保序；message / ping / pong / close 共用该方向的同一条链。
+- **观测依赖 Bridge 走 `send()`**：Mockttp 的 `message-sent` 来自被包装的 `downstream.send()`。控制帧走 `ws.ping` / `ws.pong` / `close`，会经过 Bridge 断点，但不产生 Mockttp message 事件，因此当前不作为普通 message frame 落库；close 仍由 `websocket-close` 更新连接终态。
 - **两个方向的记录语义不对称**：Mockttp 与 Bridge 各自在**同一个** `downstream` 对象上挂 `on('message')`，一帧到达同步触发两者（`socket.emit('ws-upgrade')` 是同步的，Mockttp 先注册也先执行）。但转发目标不同导致：
 
   | 方向 | 观测点 | 记录到的内容 |
@@ -1321,7 +1321,8 @@ interface CaptureEventSink {
 | `body.read-range` | 按 hash + offset + length 读取正文片段 |
 | `body.export.start` | Save body：把完整正文流式写到用户选定文件，不受预览上限限制 |
 | `websocket.frames` | WebSocket 帧分页 |
-| `websocket.breakpoint.configure` | 全局 WebSocket 消息断点开关 |
+| `websocket.breakpoint.enable` | 为当前 exchange 启用 direction / frames / timeout 配置 |
+| `websocket.breakpoint.disable` | 停用当前 WebSocket 帧断点 |
 | `grpc.messages` | gRPC envelope 分页 |
 | `proxy.start` / `proxy.status` / `proxy.setRecording` | 生命周期；Renderer 的 Stop 映射为 `setRecording{false}` |
 | `capture.cleanup` | Clear |
@@ -1365,20 +1366,24 @@ flowchart LR
 
 | facet | `CaptureFilter` 字段 | 取值来源 | 排序 |
 | --- | --- | --- | --- |
-| `application` | `apps` | `summary.appId`，无归属归入哨兵值；`appPending` 期间不计入（见 8.4） | 计数降序 |
-| `method` | `methods` | `summary.method` 大写 | 计数降序 |
-| `host` | `hosts` | `summary.host` | 计数降序 |
+| `application` | `apps` | `summary.appId`，无归属归入哨兵值；`appPending` 期间不计入（见 8.4） | 首次出现顺序 |
+| `method` | `methods` | `summary.method` 大写 | 首次出现顺序 |
+| `host` | `hosts` | `summary.host` | 首次出现顺序 |
 | `status` | `statuses` | 状态码十进制串；无码时按 `failed` / `pending` 哨兵值 | 码值升序，哨兵置尾 |
 | `protocol` | `protocols` | `protocolFacetValue()` | 固定版本序 |
-| `type` | `types` | `typeLabel(responseMime)` | 计数降序 |
-| `rule` | `ruleIds` | `summary.ruleIds`，一条可命中多个 | 计数降序 |
+| `type` | `types` | `typeLabel(responseMime)` | 首次出现顺序 |
+| `rule` | `ruleIds` | `summary.ruleIds`，一条可命中多个 | 首次出现顺序 |
 
 - **组内 OR、组间 AND，搜索与所有 facet 之间也是 AND**。`matchesCoreFilter` 同时供列表派生与实时事件使用，
   保证新到流量与已有行走同一判定。
 - **Protocol facet 比列表 Proto 列更细**：列表列把 `HTTP/1.x` 收敛为 `h1`，facet 则区分 `HTTP/1.1` 与 `HTTP/1.0`，
   另有 `HTTP/2`、`HTTP/3`、`WebSocket`、`TLS tunnel`。
 - 值与计数由 `allFacetOptions` **一次遍历**派生全部 facet；实时流量下每条摘要只扫一遍，
-  并经 `useThrottledRows(FACET_REFRESH_MS)` 节流，避免高频事件把整块面板重算。
+    并经 `useThrottledRows(FACET_REFRESH_MS)` 节流。Application / Method / Host / Type / Rule 保持
+    当前 Capture 中的首次出现顺序，计数变化只更新数字，不再按 count 动态换位；Status / Protocol
+    继续使用各自的固定语义顺序。
+- Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
+    已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
 - 哨兵值用 `\u0000` 前缀（`UNKNOWN_FACET_VALUE` / `FAILED_FACET_VALUE` / `PENDING_FACET_VALUE`），
   与真实 host、状态码字符串不可能碰撞。
 - 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge。

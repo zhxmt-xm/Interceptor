@@ -40,23 +40,6 @@ export async function resolveSelected(
   }
 }
 
-/** 放行全部等待断点（continue，不编辑）。 */
-export async function continueAllBreakpoints(): Promise<void> {
-  const api = window.interceptor;
-  if (!api?.resolveBreakpoint) {
-    return;
-  }
-  const { breakpoints } = useBreakpointsStore.getState();
-  for (const breakpoint of breakpoints) {
-    try {
-      await api.resolveBreakpoint(breakpoint.id, 'continue');
-    } catch {
-      /* 逐个放行，个别失败不阻断其余。 */
-    }
-  }
-  await refreshBreakpoints();
-}
-
 /** 切换全局 break-on-match 开关。 */
 export async function setBreakOnMatch(enabled: boolean): Promise<void> {
   const api = window.interceptor;

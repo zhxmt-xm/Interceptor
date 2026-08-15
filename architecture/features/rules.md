@@ -229,8 +229,10 @@ flowchart TD
 
 ### 5.2 多规则按序执行，不折叠
 
-`evaluateRequest` / `evaluateResponse` 直接 `for` 遍历 `compiled`（已按 priority 升序、同级按 id 稳定排序），
-命中则按 action 声明顺序改写同一份 `MutableRequestState` / `MutableResponseState`：
+`evaluateRequest` / `evaluateResponse` 遍历 `compiled`（已按 priority 升序、同级按 id 稳定排序），
+命中则按 action 声明顺序改写同一份 `MutableRequestState` / `MutableResponseState`。Breakpoint 是最终
+调试门：第一阶段只收集它并执行全部普通 action；若未被 `respond` / `block` 短路，第二阶段再按原 encounter
+顺序逐个挂起。暂停快照因此包含所有 Rule 的最终改写，Breakpoint 编辑也不会再被后续 Rule 覆盖：
 
 | 语义 | 实现 |
 | --- | --- |
@@ -238,6 +240,11 @@ flowchart TD
 | 短路 | `respond` / `block` 立即 return，后续规则不再执行 |
 | `delay` | `Math.max` 累积，最后由 `ProxyService` 一次 await |
 | 证据 | 每次生效的 header action 追加 `RuleHeaderEffect`，带具体 `ruleId` |
+| `breakpoint` | 普通 action 全部完成后按原 encounter 顺序挂起；短路流量不挂起 |
+
+请求评估第一阶段可能包含异步普通 action。客户端若在 suspension 创建前 abort，RuleService 会记录该
+request ID 的活动评估已中止，第二阶段直接返回 `aborted`，不得在请求消失后再创建一个等待到 timeout 的
+pending breakpoint；评估 `finally` 清理这份瞬时状态。
 
 ## 6. 调用流程
 
@@ -256,14 +263,12 @@ sequenceDiagram
     Mockttp->>Proxy: 请求头
     Proxy->>Engine: evaluateRequest(context, mutableState)
 
-    loop 按 priority 遍历 compiled
+    loop 第一阶段：按 priority 遍历 compiled
         Engine->>Engine: matcher(context)
         alt 命中
             loop 按声明顺序遍历 actions
                 alt breakpoint
-                    Engine->>BP: suspend(phase, timeout, onTimeout, snapshot)
-                    BP-->>Engine: BreakpointOutcome
-                    Note over Engine: edited 应用编辑<br/>dropped 返回 block
+                    Engine->>Engine: 按 encounter 顺序暂存
                 else 普通 action
                     Engine->>Exec: applyRequest(state, action)
                     Exec-->>Engine: ActionOutcome
@@ -271,6 +276,12 @@ sequenceDiagram
                 end
             end
         end
+    end
+
+    loop 第二阶段：逐个执行暂存 breakpoint
+        Engine->>BP: suspend(phase, timeout, onTimeout, final-state snapshot)
+        BP-->>Engine: BreakpointOutcome
+        Note over Engine: edited 应用编辑<br/>dropped 返回 block
     end
 
     Engine-->>Proxy: RequestEvaluation
@@ -353,6 +364,15 @@ interface RuleHeaderEffect {
 | `set` | 每个旧值一条 `effect:'replace'`，再加一条 `effect:'set'` 新值 |
 | `append` | 一条 `effect:'append'` 新值 |
 | `remove` | 每个被删旧值一条 `effect:'remove'` |
+
+Breakpoint `Execute edited` 复用同一证据模型，但来源是 `BreakpointEdit.editedHeaderNames`：对每个显式
+编辑字段比较断点前后的值，旧值记录 `replace` / `remove`，最终值记录 `set`，`ruleId` 使用承载该
+breakpoint action 的规则 id。提交时携带的完整 headers 不代表全部字段都被编辑，body-only 不产出
+header effect。重复同名 header 以保序最长公共子序列保留未变实例，只标真实删除/新增值。
+
+暂停快照的当前 header marker 按 effect 时序重放：后续 `set` 淘汰该字段较早的 set/append marker，
+remove/replace 淘汰被覆盖实例；原始同值后又 append 同值时从最终列表末端匹配，确保 marker 落在新增
+实例而非原始实例上。因此 `ruleId` 始终指向仍对最终值负责的最后写入规则。
 
 Renderer marker 语义（`RequestInspector.module.css`）：
 

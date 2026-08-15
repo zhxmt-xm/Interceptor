@@ -27,12 +27,12 @@ const HTTP_REPLACEMENT_OPTIONS = [
 const REQUEST_HEADERS: readonly HeaderField[] = [
   { id: 'content-type', name: 'content-type', value: 'application/json' },
   { id: 'authorization', name: 'authorization', value: 'Bearer eyJhbGci…' },
-  { id: 'x-cart-id', name: 'x-cart-id', value: 'c_9f83a1' },
+  { id: 'x-cart-id', name: 'x-cart-id', value: 'c_9f83a1', ruleEffect: 'set' },
 ];
 
 const RESPONSE_HEADERS: readonly HeaderField[] = [
   { id: 'content-type', name: 'content-type', value: 'application/json' },
-  { id: 'cache-control', name: 'cache-control', value: 'no-store' },
+  { id: 'cache-control', name: 'cache-control', value: 'no-store', ruleEffect: 'append' },
 ];
 
 function legacyEditableSections(contentHost: HTMLElement): HTMLElement[] {

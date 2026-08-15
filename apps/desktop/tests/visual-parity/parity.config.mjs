@@ -159,6 +159,7 @@ function httpBreakpointView(theme, { variant, phase, body }) {
       : []),
     ...(body === 'file-empty' ? ['Choose file…'] : []),
     ...(body === 'file' ? [BREAKPOINT_FILE_BY_PHASE[phase].name] : []),
+    isResponse ? 'Rule appended' : 'Rule set',
     'Drop',
     'Continue',
     'Forward edited',

@@ -121,7 +121,7 @@
   display: grid;
   align-items: center;
   gap: 6px;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 28px;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) auto 28px;
 }
 
 .cellInput {
@@ -141,6 +141,33 @@
 .cellInput:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.headerEffectSlot {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.headerEffect {
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.headerEffect[data-effect='append'] {
+  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
 }
 
 .addHeader {

@@ -5,6 +5,18 @@
   gap: 12px;
 }
 
+.submenuLabel {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.submenuLabel > svg {
+  flex: 0 0 auto;
+}
+
 .itemName {
   min-width: 0;
   overflow: hidden;

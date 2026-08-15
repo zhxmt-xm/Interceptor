@@ -14,7 +14,12 @@ function snapshot(): BreakpointsSnapshot {
         method: 'POST',
         url: 'https://api.test/upload',
         headers: [
-          { name: 'Content-Length', value: '12' },
+          {
+            name: 'Content-Length',
+            value: '12',
+            ruleEffect: 'set',
+            ruleId: 'rewrite-content-length',
+          },
           { name: 'X-Original', value: 'yes' },
         ],
         bodyAvailable: false,
@@ -26,6 +31,21 @@ function snapshot(): BreakpointsSnapshot {
 }
 
 describe('breakpoints store', () => {
+  it('preserves Rule markers without treating them as breakpoint edits', () => {
+    const store = useBreakpointsStore.getState();
+    store.clear();
+    store.applySnapshot(snapshot());
+
+    const draft = useBreakpointsStore.getState().draft!;
+    expect(draft.headers[0]).toMatchObject({
+      name: 'Content-Length',
+      value: '12',
+      ruleEffect: 'set',
+      ruleId: 'rewrite-content-length',
+    });
+    expect(draft.editedHeaderNames).toEqual([]);
+  });
+
   it('drops the previous generation snapshot when Core goes away', () => {
     // Core 一走，那一代的队列和 listener 都没了；继续显示 paused 是骗人。
     const store = useBreakpointsStore.getState();

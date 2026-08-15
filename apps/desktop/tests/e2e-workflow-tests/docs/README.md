@@ -63,7 +63,6 @@
 - Rule Folder：`rules.folder-row.<folderId>`；
 - Composer Request：`composer.collection.request.<requestId>`；
 - Composer Folder：`composer.collection.folder.<folderId>`；
-- Breakpoint：`breakpoints.row.<breakpointId>`；
 - Diagnostics：`diagnostics.row.<traceKey>`。
 
 ## 零 Mock

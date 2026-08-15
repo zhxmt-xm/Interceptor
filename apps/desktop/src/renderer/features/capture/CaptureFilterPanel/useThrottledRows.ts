@@ -10,6 +10,11 @@ export function useThrottledRows(intervalMs: number): CaptureExchangeSummary[] {
   const lastAppliedRef = useRef(0);
 
   useEffect(() => {
+    if (rows.length === 0) {
+      lastAppliedRef.current = Date.now();
+      setSnapshot(rows);
+      return;
+    }
     const elapsed = Date.now() - lastAppliedRef.current;
     if (elapsed >= intervalMs) {
       lastAppliedRef.current = Date.now();

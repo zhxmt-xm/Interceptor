@@ -96,20 +96,24 @@ export function RequestContextMenu({ children }: RequestContextMenuProps): React
       label: <span className={styles.groupLabel}>Control</span>,
       children: [
         item({ key: 'block', name: 'Block', hint: 'reset / close', icon: Ban }),
-      ],
-    },
-    {
-      key: 'breakpoint',
-      icon: <Pause size={16} strokeWidth={1.9} />,
-      label: label('Breakpoint', 'pause next match', 'request-rule-breakpoint'),
-      popupClassName: styles.breakpointPopup,
-      children: [
         {
-          key: 'breakpoint-title',
-          disabled: true,
-          label: <span className={styles.title}>Create breakpoint from request</span>,
+          key: 'breakpoint',
+          label: (
+            <span className={styles.submenuLabel}>
+              <Pause size={16} strokeWidth={1.9} />
+              {label('Breakpoint', 'pause next match', 'request-rule-breakpoint')}
+            </span>
+          ),
+          popupClassName: styles.breakpointPopup,
+          children: [
+            {
+              key: 'breakpoint-title',
+              disabled: true,
+              label: <span className={styles.title}>Create breakpoint from request</span>,
+            },
+            ...BREAKPOINT_SCOPES.map(item),
+          ],
         },
-        ...BREAKPOINT_SCOPES.map(item),
       ],
     },
   ];

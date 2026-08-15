@@ -215,7 +215,7 @@ describe('captureStore facet filters', () => {
     ]);
   });
 
-  it('lists method options by count then name, and status ascending with a failed bucket', () => {
+  it('lists methods in first-seen order and status ascending with a failed bucket', () => {
     const options = allFacetOptions([
       ...rows,
       summary('failed', { statusCode: undefined, state: 'failed' }),
@@ -232,7 +232,45 @@ describe('captureStore facet filters', () => {
     ]);
   });
 
-  it('counts each rule once per exchange and sorts by request count', () => {
+  it('keeps every dynamic facet in first-seen order when later values have higher counts', () => {
+    const options = allFacetOptions([
+      summary('first', {
+        appId: 'first-app',
+        appName: 'First app',
+        method: 'GET',
+        host: 'first.test',
+        responseMime: 'text/plain',
+        ruleIds: ['first-rule'],
+      }),
+      summary('second', {
+        appId: 'second-app',
+        appName: 'Second app',
+        method: 'POST',
+        host: 'second.test',
+        responseMime: 'application/json',
+        ruleIds: ['second-rule'],
+      }),
+      summary('third', {
+        appId: 'second-app',
+        appName: 'Second app',
+        method: 'POST',
+        host: 'second.test',
+        responseMime: 'application/json',
+        ruleIds: ['second-rule'],
+      }),
+    ]);
+
+    expect(options.application.map(({ value }) => value)).toEqual(['first-app', 'second-app']);
+    expect(options.method).toEqual([
+      { value: 'GET', count: 1 },
+      { value: 'POST', count: 2 },
+    ]);
+    expect(options.host.map(({ value }) => value)).toEqual(['first.test', 'second.test']);
+    expect(options.type.map(({ value }) => value)).toEqual(['plain', 'json']);
+    expect(options.rule.map(({ value }) => value)).toEqual(['first-rule', 'second-rule']);
+  });
+
+  it('counts each rule once per exchange while preserving first-seen order', () => {
     expect(allFacetOptions([
       ...rows,
       summary('duplicate', { ruleIds: ['rule-a', 'rule-a'] }),

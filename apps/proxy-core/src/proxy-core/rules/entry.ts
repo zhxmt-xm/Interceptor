@@ -10,6 +10,7 @@
 
 import {
   collectLeaves,
+  type RuleAction,
   type RuleDefinition,
   type RuleSet,
 } from '@interceptor/core-protocol';
@@ -50,6 +51,10 @@ export class RuleService {
   private readonly options: RuleServiceOptions;
   /** 请求与响应 action 执行器。 */
   private readonly actionExecutor: ActionExecutor;
+  /** 正在异步执行普通 action、尚未完成 request 评估的 Mockttp request ID。 */
+  private readonly evaluatingRequestIds = new Set<string>();
+  /** 评估期间已收到客户端 abort、后续不得再创建 suspension 的 request ID。 */
+  private readonly abortedRequestIds = new Set<string>();
   /** 断点队列溢出等数据面事件的诊断汇。 */
   private diagnostics: DiagnosticsRecorder | null = null;
 
@@ -111,8 +116,12 @@ export class RuleService {
 
   /** 客户端已中止 HTTP 请求时，释放该请求仍在等待的断点。 */
   abortRequestBreakpoints(requestId: string): number {
+    const evaluationAborted = this.evaluatingRequestIds.has(requestId);
+    if (evaluationAborted) {
+      this.abortedRequestIds.add(requestId);
+    }
     const abortedCount = this.breakpointQueue.abortRequest(requestId);
-    if (abortedCount > 0) {
+    if (evaluationAborted || abortedCount > 0) {
       this.diagnostics?.info('breakpoint.request-aborted', {
         attributes: { requestId, abortedCount },
       });
@@ -157,8 +166,32 @@ export class RuleService {
     requestId?: string,
     exchangeId?: string,
   ): Promise<RequestEvaluation> {
+    if (requestId !== undefined) {
+      this.evaluatingRequestIds.add(requestId);
+    }
+    try {
+      return await this.evaluateRequestState(context, state, requestId, exchangeId);
+    } finally {
+      if (requestId !== undefined) {
+        this.evaluatingRequestIds.delete(requestId);
+        this.abortedRequestIds.delete(requestId);
+      }
+    }
+  }
+
+  /** 执行请求普通 action 与延后的 breakpoint；外层负责 request abort 生命周期。 */
+  private async evaluateRequestState(
+    context: MatchContext,
+    state: MutableRequestState,
+    requestId?: string,
+    exchangeId?: string,
+  ): Promise<RequestEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
+    const deferredBreakpoints: Array<{
+      rule: RuleDefinition;
+      action: Extract<RuleAction, { type: 'breakpoint' }>;
+    }> = [];
     let delayMs = 0;
 
     for (const compiled of this.compiled) {
@@ -167,24 +200,8 @@ export class RuleService {
       }
       for (const action of compiled.rule.actions) {
         if (action.type === 'breakpoint') {
-          if (action.phase !== 'request') {
-            continue;
-          }
-          const resolved = await this.awaitBreakpoint(
-            'request',
-            action,
-            RuleUtils.buildRequestSnapshot(compiled.rule.name, state, exchangeId),
-            requestId,
-          );
-          hits.push(this.toHit(compiled.rule, 'request', 'breakpoint', resolved.state));
-          if (resolved.state === 'aborted') {
-            return { kind: 'aborted', hits, headerEffects };
-          }
-          if (resolved.state === 'edited' && resolved.edit) {
-            await RuleUtils.applyRequestEdit(state, resolved.edit);
-          }
-          if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-            return { kind: 'block', mode: 'close', hits, headerEffects };
+          if (action.phase === 'request') {
+            deferredBreakpoints.push({ rule: compiled.rule, action });
           }
           continue;
         }
@@ -216,6 +233,30 @@ export class RuleService {
         }
       }
     }
+    for (const { rule, action } of deferredBreakpoints) {
+      const resolved = await this.awaitBreakpoint(
+        'request',
+        action,
+        RuleUtils.buildRequestSnapshot(rule.name, state, headerEffects, exchangeId),
+        requestId,
+      );
+      hits.push(this.toHit(rule, 'request', 'breakpoint', resolved.state));
+      if (resolved.state === 'aborted') {
+        return { kind: 'aborted', hits, headerEffects };
+      }
+      if (resolved.state === 'edited' && resolved.edit) {
+        headerEffects.push(...RuleUtils.buildBreakpointHeaderEffects(
+          rule.id,
+          'request',
+          state.headers,
+          resolved.edit,
+        ));
+        await RuleUtils.applyRequestEdit(state, resolved.edit);
+      }
+      if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
+        return { kind: 'block', mode: 'close', hits, headerEffects };
+      }
+    }
     return { kind: 'continue', hits, headerEffects, delayMs };
   }
 
@@ -230,6 +271,10 @@ export class RuleService {
   ): Promise<ResponseEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
+    const deferredBreakpoints: Array<{
+      rule: RuleDefinition;
+      action: Extract<RuleAction, { type: 'breakpoint' }>;
+    }> = [];
     let delayMs = 0;
 
     for (const compiled of this.compiled) {
@@ -238,29 +283,8 @@ export class RuleService {
       }
       for (const action of compiled.rule.actions) {
         if (action.type === 'breakpoint') {
-          if (action.phase !== 'response') {
-            continue;
-          }
-          const resolved = await this.awaitBreakpoint(
-            'response',
-            action,
-            RuleUtils.buildResponseSnapshot(
-              compiled.rule.name,
-              context.request,
-              state,
-              exchangeId,
-            ),
-            requestId,
-          );
-          hits.push(this.toHit(compiled.rule, 'response', 'breakpoint', resolved.state));
-          if (resolved.state === 'aborted') {
-            return { kind: 'aborted', hits, headerEffects };
-          }
-          if (resolved.state === 'edited' && resolved.edit) {
-            await RuleUtils.applyResponseEdit(state, resolved.edit);
-          }
-          if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-            return { kind: 'block', mode: 'close', hits, headerEffects };
+          if (action.phase === 'response') {
+            deferredBreakpoints.push({ rule: compiled.rule, action });
           }
           continue;
         }
@@ -286,6 +310,36 @@ export class RuleService {
         }
       }
     }
+    for (const { rule, action } of deferredBreakpoints) {
+      const resolved = await this.awaitBreakpoint(
+        'response',
+        action,
+        RuleUtils.buildResponseSnapshot(
+          rule.name,
+          context.request,
+          state,
+          headerEffects,
+          exchangeId,
+        ),
+        requestId,
+      );
+      hits.push(this.toHit(rule, 'response', 'breakpoint', resolved.state));
+      if (resolved.state === 'aborted') {
+        return { kind: 'aborted', hits, headerEffects };
+      }
+      if (resolved.state === 'edited' && resolved.edit) {
+        headerEffects.push(...RuleUtils.buildBreakpointHeaderEffects(
+          rule.id,
+          'response',
+          state.headers,
+          resolved.edit,
+        ));
+        await RuleUtils.applyResponseEdit(state, resolved.edit);
+      }
+      if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
+        return { kind: 'block', mode: 'close', hits, headerEffects };
+      }
+    }
     return { kind: 'continue', hits, headerEffects, delayMs };
   }
 
@@ -296,6 +350,9 @@ export class RuleService {
     snapshot: BreakpointSnapshot,
     requestId?: string,
   ): Promise<BreakpointOutcome> {
+    if (requestId !== undefined && this.abortedRequestIds.has(requestId)) {
+      return { state: 'aborted' };
+    }
     if (!this.breakpointsOn) {
       return { state: 'continued' };
     }

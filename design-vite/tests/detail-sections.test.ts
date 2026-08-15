@@ -44,3 +44,25 @@ test('Composer header sections expose independent collapse controls', async ({ p
   await expect(responseHeaders).toHaveAttribute('aria-expanded', 'false');
   await expect(requestHeaders).toHaveAttribute('aria-expanded', 'true');
 });
+
+test('Breakpoint submenu trigger aligns with the other Control menu items', async ({ page }) => {
+  await setDesignState(page, {
+    view: 'capture',
+    breakpointState: '',
+    requestMenu: 'open',
+  });
+
+  const rootMenu = page.locator('.ant-dropdown:visible').first();
+  const block = rootMenu.locator('.ant-dropdown-menu-item .itemName').filter({ hasText: 'Block' });
+  const breakpoint = rootMenu
+    .locator('.ant-dropdown-menu-submenu-title .itemName')
+    .filter({ hasText: 'Breakpoint' });
+
+  await expect.poll(async () => {
+    const blockBox = await block.boundingBox();
+    const breakpointBox = await breakpoint.boundingBox();
+    return blockBox && breakpointBox
+      ? Math.abs(blockBox.x - breakpointBox.x)
+      : Number.POSITIVE_INFINITY;
+  }).toBeLessThan(1);
+});

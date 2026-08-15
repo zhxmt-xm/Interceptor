@@ -432,7 +432,7 @@ export function allFacetOptions(
   ) as Record<CaptureFacetId, FilterValueOption[]>;
 }
 
-/** Status 按状态码升序、Protocol 按版本高低排；其余 facet 按计数降序、同数按字母序。 */
+/** Status 按状态码升序、Protocol 按版本高低排；其余 facet 保持首次出现顺序。 */
 function sortFacetOptions(
   facet: CaptureFacetId,
   counts: Map<string, number>,
@@ -447,9 +447,7 @@ function sortFacetOptions(
         PROTOCOL_FACET_ORDER.indexOf(left.value) - PROTOCOL_FACET_ORDER.indexOf(right.value),
     );
   }
-  return entries.sort(
-    (left, right) => right.count - left.count || left.value.localeCompare(right.value),
-  );
+  return entries;
 }
 
 /** 数字状态码按码值排，pending/failed 这类哨兵值排在最后。 */

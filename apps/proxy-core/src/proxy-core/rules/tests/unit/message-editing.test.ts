@@ -4,7 +4,11 @@ import type { BreakpointEdit } from '@interceptor/core-protocol';
 
 import type { MutableRequestState, MutableResponseState } from '../../interfaces';
 import { ActionExecutor } from '../../internal/action-executor';
-import { applyRequestEdit, applyResponseEdit } from '../../utils';
+import {
+  applyRequestEdit,
+  applyResponseEdit,
+  buildBreakpointHeaderEffects,
+} from '../../utils';
 
 describe('HTTP message editing', () => {
   it('updates every requested header without changing the body', async () => {
@@ -75,6 +79,51 @@ describe('HTTP message editing', () => {
       'x-rule-edited',
       'content-length',
       'content-encoding',
+    ]);
+  });
+
+  it('diffs duplicate and reordered breakpoint header values without over-reporting', () => {
+    expect(buildBreakpointHeaderEffects(
+      'r1',
+      'request',
+      { 'x-duplicate': ['same', 'same'] },
+      {
+        headers: [{ name: 'x-duplicate', value: 'same' }],
+        editedHeaderNames: ['x-duplicate'],
+      },
+    )).toEqual([
+      { ruleId: 'r1', phase: 'request', effect: 'remove', name: 'x-duplicate', value: 'same' },
+    ]);
+
+    expect(buildBreakpointHeaderEffects(
+      'r1',
+      'request',
+      { 'x-duplicate': 'same' },
+      {
+        headers: [
+          { name: 'x-duplicate', value: 'same' },
+          { name: 'x-duplicate', value: 'same' },
+        ],
+        editedHeaderNames: ['x-duplicate'],
+      },
+    )).toEqual([
+      { ruleId: 'r1', phase: 'request', effect: 'set', name: 'x-duplicate', value: 'same' },
+    ]);
+
+    expect(buildBreakpointHeaderEffects(
+      'r1',
+      'request',
+      { 'x-order': ['a', 'b'] },
+      {
+        headers: [
+          { name: 'x-order', value: 'b' },
+          { name: 'x-order', value: 'a' },
+        ],
+        editedHeaderNames: ['x-order'],
+      },
+    )).toEqual([
+      { ruleId: 'r1', phase: 'request', effect: 'replace', name: 'x-order', value: 'a' },
+      { ruleId: 'r1', phase: 'request', effect: 'set', name: 'x-order', value: 'a' },
     ]);
   });
 

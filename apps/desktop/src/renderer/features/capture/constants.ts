@@ -69,7 +69,7 @@ export const EMPTY_FILTER: CaptureFilter = {
 /** 每组 facet 默认最多显示的条目数，其余折叠到 Show more 之后。 */
 export const FACET_COLLAPSED_LIMIT = 8;
 
-/** facet 计数的重算间隔；实时流量下每条事件都重排会让整个分栏持续抖动。 */
+/** facet 计数的重算间隔；实时流量下每条事件都重算会让整个分栏持续刷新。 */
 export const FACET_REFRESH_MS = 600;
 
 /** facet 分组标题的词条 key。 */

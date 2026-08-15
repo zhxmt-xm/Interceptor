@@ -582,7 +582,12 @@ const pendingBreakpoints = [
     headers: [
       { name: 'content-type', value: 'application/json' },
       { name: 'authorization', value: 'Bearer eyJhbGci\u2026' },
-      { name: 'x-cart-id', value: 'c_9f83a1' },
+      {
+        name: 'x-cart-id',
+        value: 'c_9f83a1',
+        ruleEffect: 'set',
+        ruleId: 'checkout-rewrite',
+      },
     ],
     bodyAvailable: false,
   },
@@ -597,7 +602,12 @@ const pendingBreakpoints = [
     url: 'api.example.com/v1/token',
     headers: [
       { name: 'content-type', value: 'application/json' },
-      { name: 'cache-control', value: 'no-store' },
+      {
+        name: 'cache-control',
+        value: 'no-store',
+        ruleEffect: 'append',
+        ruleId: 'token-cache-policy',
+      },
     ],
     bodyAvailable: true,
   },

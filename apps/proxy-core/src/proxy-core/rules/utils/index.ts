@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import type {
   BreakpointEdit,
+  BreakpointHeader,
   KeyMatchMode,
   RuleDefinition,
   RuleHeaderPair,
@@ -158,6 +159,92 @@ export function buildHeaderEffects(
       throw new Error(`Unknown header operation: ${String(exhaustive)}`);
     }
   }
+}
+
+/** 将断点显式编辑的 header 差异展开为 Inspector effect，忽略完整列表里的未编辑字段。 */
+export function buildBreakpointHeaderEffects(
+  ruleId: string,
+  phase: 'request' | 'response',
+  previousHeaders: HeaderBag,
+  edit: BreakpointEdit,
+): RuleHeaderEffect[] {
+  if (edit.headers === undefined || edit.editedHeaderNames === undefined) {
+    return [];
+  }
+  const finalHeaders = pairsToBag(edit.headers);
+  const seenNames = new Set<string>();
+  const effects: RuleHeaderEffect[] = [];
+  for (const editedName of edit.editedHeaderNames) {
+    const name = editedName.trim().toLowerCase();
+    if (name === '' || seenNames.has(name)) {
+      continue;
+    }
+    seenNames.add(name);
+    const previousValues = headerValues(previousHeaders, name);
+    const finalValues = headerValues(finalHeaders, name);
+    const changedValues = diffHeaderValues(previousValues, finalValues);
+    if (changedValues.removed.length === 0 && changedValues.added.length === 0) {
+      continue;
+    }
+    effects.push(...changedValues.removed.map((value) => ({
+      ruleId,
+      phase,
+      effect: changedValues.added.length > 0 ? 'replace' as const : 'remove' as const,
+      name,
+      value,
+    })));
+    effects.push(...changedValues.added.map((value) => ({
+      ruleId,
+      phase,
+      effect: 'set' as const,
+      name,
+      value,
+    })));
+  }
+  return effects;
+}
+
+/** 以最长公共子序列保留未变的重复 header，只返回真实删除与新增值。 */
+function diffHeaderValues(
+  previousValues: readonly string[],
+  finalValues: readonly string[],
+): { removed: string[]; added: string[] } {
+  const lengths = Array.from(
+    { length: previousValues.length + 1 },
+    () => Array<number>(finalValues.length + 1).fill(0),
+  );
+  for (let previousIndex = previousValues.length - 1; previousIndex >= 0; previousIndex -= 1) {
+    for (let finalIndex = finalValues.length - 1; finalIndex >= 0; finalIndex -= 1) {
+      lengths[previousIndex]![finalIndex] = previousValues[previousIndex] === finalValues[finalIndex]
+        ? 1 + lengths[previousIndex + 1]![finalIndex + 1]!
+        : Math.max(
+            lengths[previousIndex + 1]![finalIndex]!,
+            lengths[previousIndex]![finalIndex + 1]!,
+          );
+    }
+  }
+  const retainedPrevious = new Set<number>();
+  const retainedFinal = new Set<number>();
+  let previousIndex = 0;
+  let finalIndex = 0;
+  while (previousIndex < previousValues.length && finalIndex < finalValues.length) {
+    if (previousValues[previousIndex] === finalValues[finalIndex]) {
+      retainedPrevious.add(previousIndex);
+      retainedFinal.add(finalIndex);
+      previousIndex += 1;
+      finalIndex += 1;
+    } else if (
+      lengths[previousIndex + 1]![finalIndex]! >= lengths[previousIndex]![finalIndex + 1]!
+    ) {
+      previousIndex += 1;
+    } else {
+      finalIndex += 1;
+    }
+  }
+  return {
+    removed: previousValues.filter((_value, index) => !retainedPrevious.has(index)),
+    added: finalValues.filter((_value, index) => !retainedFinal.has(index)),
+  };
 }
 
 function compileStringMatch(
@@ -398,6 +485,66 @@ export function bagToPairs(bag: HeaderBag): RuleHeaderPair[] {
   return pairs;
 }
 
+/** 把最终仍存在的 set/append effect 绑定到对应断点 header 行。 */
+function breakpointHeaders(
+  bag: HeaderBag,
+  phase: 'request' | 'response',
+  headerEffects: readonly RuleHeaderEffect[],
+): BreakpointHeader[] {
+  const markersByName = new Map<string, Array<{
+    ruleId: string;
+    effect: 'set' | 'append';
+    value: string;
+  }>>();
+  for (const effect of headerEffects) {
+    if (effect.phase !== phase) {
+      continue;
+    }
+    const name = effect.name.toLowerCase();
+    if (effect.effect === 'set') {
+      markersByName.set(name, [{ ruleId: effect.ruleId, effect: 'set', value: effect.value }]);
+    } else if (effect.effect === 'append') {
+      const markers = markersByName.get(name) ?? [];
+      markers.push({ ruleId: effect.ruleId, effect: 'append', value: effect.value });
+      markersByName.set(name, markers);
+    } else {
+      const markers = markersByName.get(name);
+      if (!markers) {
+        continue;
+      }
+      for (let index = markers.length - 1; index >= 0; index -= 1) {
+        if (markers[index]!.value === effect.value) {
+          markers.splice(index, 1);
+          break;
+        }
+      }
+    }
+  }
+
+  const headers: BreakpointHeader[] = bagToPairs(bag);
+  for (let headerIndex = headers.length - 1; headerIndex >= 0; headerIndex -= 1) {
+    const header = headers[headerIndex]!;
+    const markers = markersByName.get(header.name.toLowerCase());
+    if (!markers) {
+      continue;
+    }
+    for (let markerIndex = markers.length - 1; markerIndex >= 0; markerIndex -= 1) {
+      const marker = markers[markerIndex]!;
+      if (marker.value !== header.value) {
+        continue;
+      }
+      headers[headerIndex] = {
+        ...header,
+        ruleEffect: marker.effect,
+        ruleId: marker.ruleId,
+      };
+      markers.splice(markerIndex, 1);
+      break;
+    }
+  }
+  return headers;
+}
+
 /** 将完整正文转为 UTF-8 断点快照。 */
 export function bodyToString(
   body: string | Uint8Array | undefined,
@@ -415,6 +562,7 @@ export function bodyToString(
 export function buildRequestSnapshot(
   ruleName: string,
   state: MutableRequestState,
+  headerEffects: readonly RuleHeaderEffect[],
   exchangeId?: string,
 ): BreakpointSnapshot {
   return {
@@ -422,7 +570,7 @@ export function buildRequestSnapshot(
     ...(exchangeId !== undefined ? { exchangeId } : {}),
     method: state.method,
     url: state.url,
-    headers: bagToPairs(state.headers),
+    headers: breakpointHeaders(state.headers, 'request', headerEffects),
     bodyAvailable: state.body !== undefined,
     body: bodyToString(state.body),
   };
@@ -433,6 +581,7 @@ export function buildResponseSnapshot(
   ruleName: string,
   request: RequestMatchInput,
   state: MutableResponseState,
+  headerEffects: readonly RuleHeaderEffect[],
   exchangeId?: string,
 ): BreakpointSnapshot {
   return {
@@ -441,7 +590,7 @@ export function buildResponseSnapshot(
     method: request.method,
     url: request.url,
     statusCode: state.statusCode,
-    headers: bagToPairs(state.headers),
+    headers: breakpointHeaders(state.headers, 'response', headerEffects),
     bodyAvailable: state.body !== undefined,
     body: bodyToString(state.body),
   };

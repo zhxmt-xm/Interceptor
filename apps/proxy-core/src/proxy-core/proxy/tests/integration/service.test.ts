@@ -774,6 +774,63 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it('records an edited breakpoint header as a Capture rule effect', async () => {
+    const origin = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain' });
+      response.end('ok');
+    });
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [{
+        kind: 'rule',
+        id: 'request-breakpoint',
+        name: 'Request breakpoint',
+        enabled: true,
+        priority: 100,
+        matchers: [{ type: 'path', value: '/breakpoint-effect', mode: 'exact' }],
+        actions: [{
+          type: 'breakpoint',
+          phase: 'request',
+          timeoutMs: 30_000,
+          onTimeout: 'continue',
+        }],
+      }],
+    });
+    proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue(), ruleService);
+    address = await proxyService.start();
+    try {
+      const inFlight = proxiedGet(
+        address,
+        `http://127.0.0.1:${origin.port}/breakpoint-effect`,
+      );
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const [paused] = breakpointQueue.list();
+      breakpointQueue.resolve(paused!.id, 'continue', {
+        headers: [
+          ...paused!.snapshot.headers,
+          { name: 'x-breakpoint-edit', value: 'added' },
+        ],
+        editedHeaderNames: ['x-breakpoint-edit'],
+      });
+
+      await expect(inFlight).resolves.toMatchObject({ status: 200 });
+      await waitForExchange(recordingCaptureService);
+      expect(recordingCaptureService.exchanges[0]?.headers).toEqual(expect.arrayContaining([{
+        kind: 'request',
+        name: 'x-breakpoint-edit',
+        value: 'added',
+        ruleEffect: 'set',
+        ruleId: 'request-breakpoint',
+      }]));
+    } finally {
+      breakpointQueue.closeAll();
+      await origin.close();
+    }
+  });
+
   it('stops the Mockttp listener, preserves records, and appends after restart', async () => {
     const origin = await startOrigin((_request, response) => {
       response.writeHead(200, { 'content-type': 'text/plain' });

@@ -10,6 +10,7 @@ export interface HeaderField {
   readonly id: string;
   readonly name: string;
   readonly value: string;
+  readonly ruleEffect?: 'set' | 'append';
 }
 
 interface HeaderFieldsEditorProps {
@@ -50,6 +51,16 @@ export function HeaderFieldsEditor({
               value={field.value}
               onChange={(event) => updateField(field.id, 'value', event.target.value)}
             />
+            <span className={styles.headerFieldsEditorEffectSlot}>
+              {field.ruleEffect ? (
+                <span
+                  className={styles.headerFieldsEditorEffect}
+                  data-effect={field.ruleEffect}
+                >
+                  Rule {field.ruleEffect === 'append' ? 'appended' : 'set'}
+                </span>
+              ) : null}
+            </span>
             <IconButton
               label="Remove header"
               icon={<X aria-hidden="true" />}

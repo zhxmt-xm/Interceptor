@@ -347,7 +347,8 @@ Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tab
 2. 点击readiness Enable并完成授权，等待Recording；制造含request/response body的HTTP和含text/binary frames的WS。
 3. 确认列表、Inspector、Storage counters均非零。
 4. 点击 `capture.clear`。
-5. 等待按钮从disabled恢复，确认列表空、Inspector取消选择。
+5. 等待按钮从disabled恢复，确认列表、Inspector selection 与 facet 分栏同帧清空；所有 group count 为0，
+	不得在列表已显示 `0 of 0` 时短暂残留旧 application id、选项或计数。
 6. 进入Settings Storage，点击Refresh。
 7. 确认Exchange/Body/WS相关数据归零，Session count保留1，RuleSet/Diagnostics未删。
 8. 在Proxy点击Restore，确认非owned；保存evidence并点击Close。
@@ -356,7 +357,8 @@ Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tab
 
 ### 预期效果
 
-Clear是唯一删除Capture入口；它删除Exchange、Body和spill，重置Renderer timeline但保留活动Session壳，不影响Rules/Diagnostics。
+Clear是唯一删除Capture入口；它删除Exchange、Body和spill，原子重置Renderer timeline与 facet snapshot，
+但保留活动Session壳，不影响Rules/Diagnostics。
 
 <a id="capture-transfer-har-roundtrip"></a>
 ## `capture.transfer.har-roundtrip`

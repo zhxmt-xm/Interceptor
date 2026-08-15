@@ -12,7 +12,6 @@ export const AUTOMATION_IDS = {
       capture: 'shell.workspace.capture',
       rules: 'shell.workspace.rules',
       composer: 'shell.workspace.composer',
-      breakpoints: 'shell.workspace.breakpoints',
       diagnostics: 'shell.workspace.diagnostics',
       settings: 'shell.workspace.settings',
     },
@@ -310,7 +309,6 @@ export const AUTOMATION_ID_PREFIXES = {
   ruleFolderRow: 'rules.folder-row.',
   composerCollectionRequest: 'composer.collection.request.',
   composerCollectionFolder: 'composer.collection.folder.',
-  breakpointRow: 'breakpoints.row.',
   diagnosticRow: 'diagnostics.row.',
 } as const;
 
@@ -439,11 +437,6 @@ export class AutomationIdFactory {
   /** Identify one Composer query control by row index and field. */
   static composerQueryField(index: number, field: string): string {
     return `composer.query.${index}.${field}`;
-  }
-
-  /** Identify one pending breakpoint row by its stable breakpoint ID. */
-  static breakpointRow(breakpointId: string): string {
-    return `${AUTOMATION_ID_PREFIXES.breakpointRow}${breakpointId}`;
   }
 
   /** Identify one editable breakpoint header control by row and field. */

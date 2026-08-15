@@ -100,7 +100,6 @@ rules.row.<ruleId>
 rules.folder-row.<folderId>
 composer.collection.request.<requestId>
 composer.collection.folder.<folderId>
-breakpoints.row.<breakpointId>
 diagnostics.row.<traceKey>
 ```
 
@@ -120,7 +119,7 @@ diagnostics.row.<traceKey>
 | `application.lifecycle.core-restart` | Core 被结束后自动重启并恢复 UI/RPC | shared | planned |
 | `application.lifecycle.graceful-close` | 产品 Close 完整销毁 Main/Core/Renderer/Worker/listener | shared | planned |
 | `application.lifecycle.profile-isolation` | 两个 profile 的持久/临时状态严格隔离 | shared | planned |
-| `shell.navigation.workspaces` | 六个 workspace 的 Header/Main/Statusbar 同步切换 | shared | planned |
+| `shell.navigation.workspaces` | 五个 workspace 的 Header/Main/Statusbar 同步切换 | shared | planned |
 | `shell.sidebar.collapse` | 折叠态导航可用并可恢复展开 | shared | planned |
 | `shell.appearance.theme` | 四主题切换与跨重启持久化 | shared | planned |
 | `shell.appearance.language` | 15语言切换、布局与持久化 | shared | planned |
@@ -185,8 +184,7 @@ diagnostics.row.<traceKey>
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | shared | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
-| `breakpoints.continue-all` | 批量释放等待项 | shared | planned |
-| `breakpoints.resize` | Queue/Editor splitter | shared | planned |
+| `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)
 

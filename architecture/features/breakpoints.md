@@ -101,6 +101,17 @@ sequenceDiagram
     Proxy->>Origin: 转发或阻断
 ```
 
+RuleService 先按 priority / action 声明顺序完成全部非-breakpoint action，再以最终 mutable state 构造
+暂停快照；`respond` / `block` 已短路的流量不会进入断点。多个 breakpoint 按其原 encounter 顺序执行。
+因此用户看到的是准备转发的最终 request / response，Forward edited 后也没有后续 Rule 再覆盖草稿。
+最终仍存在且由普通 Rule `set` / `append` 的 header 行随 snapshot 携带 `ruleEffect` / `ruleId`，暂停编辑器
+使用与普通 Inspector 相同的 marker 语义；replace / remove 的旧值不放回可编辑表单，避免放行时复活。
+
+`Execute edited` 只为 `BreakpointEdit.editedHeaderNames` 中用户显式改过的字段生成
+`RuleHeaderEffect`，并绑定当前 breakpoint rule 的 `ruleId`；完整最终 headers 只是转发结果，不能据此把
+未触碰字段误报为 effect。replace / add / remove 沿用 Rules 的 Header effect 语义，body-only 编辑不生成
+header marker；重复同名值只标实际变化的实例。
+
 ### 4.2 响应断点
 
 流程相同，区别在于：
@@ -210,6 +221,10 @@ interface BreakpointOutcome {
 | `breakpoint.configure` | 设置 HTTP 断点全局开关 |
 | `websocket.breakpoint.enable` | 用完整配置启用 WebSocket 帧断点 |
 | `websocket.breakpoint.disable` | 停用 WebSocket 帧断点 |
+
+历史 request 右键菜单中，Breakpoint submenu 与 Block 同属于 Control group，并使用同一 icon / label
+起点；submenu 箭头与 hover 展开仍由 Ant Menu 原生管理。不能把 Breakpoint 作为 group 外的顶层 item，
+否则 Ant 的 group child 与 submenu title 两套 DOM 会产生不同水平缩进。
 
 队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
 浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。

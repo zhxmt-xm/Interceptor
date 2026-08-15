@@ -1,8 +1,8 @@
 import type {
   BreakpointEdit,
+  BreakpointHeader,
   CaptureHeaderRuleEffect,
   RuleDefinition,
-  RuleHeaderPair,
   WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
 
@@ -96,7 +96,7 @@ export interface BreakpointSnapshot {
   readonly frame?: WebSocketBreakpointFrame;
   readonly opcode?: 1 | 2;
   readonly bodyFormat?: 'text' | 'hex';
-  readonly headers: RuleHeaderPair[];
+  readonly headers: BreakpointHeader[];
   /** 此刻是否能看到原始正文；HTTP 头部阶段断点为 false。 */
   readonly bodyAvailable: boolean;
   readonly body?: string;

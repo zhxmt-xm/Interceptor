@@ -28,6 +28,8 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
       id: rowId(),
       name: header.name,
       value: header.value,
+      ...(header.ruleEffect !== undefined ? { ruleEffect: header.ruleEffect } : {}),
+      ...(header.ruleId !== undefined ? { ruleId: header.ruleId } : {}),
     })),
     editedHeaderNames: [],
     bodyAvailable: breakpoint.bodyAvailable,

@@ -137,7 +137,9 @@ interface McpClientIdentity {
 | `apply_rules` | `rules.get` + `rules.replace` | 改变全部后续流量的处理方式 |
 | `set_recording` | `proxy.setRecording` | 低 |
 | `send_request` | `composer.send` | **产生真实外发流量** |
-| `configure_breakpoint` | `breakpoint.configure` / `websocket.breakpoint.configure` | 会挂起真实请求 |
+| `configure_breakpoint` | `breakpoint.configure` | 开关 HTTP Rule breakpoint，会挂起真实请求 |
+| `enable_websocket_breakpoint` | `websocket.breakpoint.enable` | 为当前 exchange 启用帧断点 |
+| `disable_websocket_breakpoint` | `websocket.breakpoint.disable` | 停用当前 WebSocket 帧断点 |
 | `resolve_breakpoint` | `breakpoint.resolve` | 可篡改真实请求/响应 |
 | `clear_capture` | `capture.cleanup` | **不可逆删除** |
 | `probe_connection` | `tls.probe` | 产生真实外发连接 |
