@@ -1511,6 +1511,64 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it('forwards an edited websocket close code without replacing the body', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const upstreamServer = new WebSocketServer({ noServer: true });
+    let upstreamCloseCode: number | undefined;
+    upstreamServer.on('connection', (upstream) => {
+      upstream.on('close', (closeCode) => {
+        upstreamCloseCode = closeCode;
+      });
+    });
+    const originHttp = http.createServer();
+    originHttp.on('upgrade', (request, originSocket, head) => {
+      upstreamServer.handleUpgrade(request, originSocket, head, (upstream) => {
+        upstreamServer.emit('connection', upstream, request);
+      });
+    });
+    await new Promise<void>((resolve) => {
+      originHttp.listen(0, '127.0.0.1', resolve);
+    });
+    const originPort = (originHttp.address() as AddressInfo).port;
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${originPort}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints({
+        exchangeId: await webSocketExchangeId(recordingCaptureService),
+        direction: 'client-to-server',
+        frames: ['close'],
+        timeoutMs: 0,
+      });
+      sendWebSocketFrame(socket, 8, Buffer.from([0x03, 0xe8]));
+
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const outbound = breakpointQueue.list()[0];
+      expect(outbound?.snapshot).toMatchObject({
+        direction: 'client-to-server',
+        frame: 'close',
+        closeCode: 1000,
+      });
+      breakpointQueue.resolve(outbound!.id, 'continue', { closeCode: 1001 });
+
+      await expect.poll(() => upstreamCloseCode).toBe(1001);
+    } finally {
+      socket?.destroy();
+      await new Promise<void>((resolve) => upstreamServer.close(() => resolve()));
+      await new Promise<void>((resolve) => originHttp.close(() => resolve()));
+    }
+  });
+
   it('forwards the original websocket frame after the configured timeout', async () => {
     await proxyService.stop();
     const breakpointQueue = new BreakpointQueue();

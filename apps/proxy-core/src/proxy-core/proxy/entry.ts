@@ -775,12 +775,18 @@ export class ProxyService {
     ) {
       return { action: 'drop' as const };
     }
-    if (outcome.state === 'edited' && outcome.edit?.body !== undefined) {
+    if (
+      outcome.state === 'edited' &&
+      outcome.edit !== undefined &&
+      (outcome.edit.body !== undefined || outcome.edit.closeCode !== undefined)
+    ) {
       return {
         action: 'forward' as const,
-        content: message.isBinary
-          ? ProxyUtils.parseHexString(outcome.edit.body)
-          : Buffer.from(outcome.edit.body, 'utf8'),
+        content: outcome.edit.body === undefined
+          ? message.content
+          : message.isBinary
+            ? ProxyUtils.parseHexString(outcome.edit.body)
+            : Buffer.from(outcome.edit.body, 'utf8'),
         isBinary: message.isBinary,
         ...(outcome.edit.closeCode !== undefined
           ? { closeCode: outcome.edit.closeCode }

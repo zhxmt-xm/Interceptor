@@ -308,6 +308,7 @@ export async function applyRequestEdit(
   if (edit.headers !== undefined) {
     state.headers = pairsToBag(edit.headers);
   }
+  mergeEditedHeaderNames(state, edit.editedHeaderNames);
   const fileBody = await readEditBodyFile(edit);
   if (fileBody !== undefined) {
     state.body = fileBody;
@@ -327,11 +328,27 @@ export async function applyResponseEdit(
   if (edit.headers !== undefined) {
     state.headers = pairsToBag(edit.headers);
   }
+  mergeEditedHeaderNames(state, edit.editedHeaderNames);
   const fileBody = await readEditBodyFile(edit);
   if (fileBody !== undefined) {
     state.body = fileBody;
   } else if (edit.body !== undefined) {
     state.body = edit.body;
+  }
+}
+
+/** 合并用户显式编辑过的 header 名，供后续 framing 决策保留编辑意图。 */
+function mergeEditedHeaderNames(
+  state: MutableRequestState | MutableResponseState,
+  headerNames: string[] | undefined,
+): void {
+  for (const headerName of headerNames ?? []) {
+    const normalizedName = headerName.trim().toLowerCase();
+    if (normalizedName === '') {
+      continue;
+    }
+    state.editedHeaderNames ??= new Set<string>();
+    state.editedHeaderNames.add(normalizedName);
   }
 }
 

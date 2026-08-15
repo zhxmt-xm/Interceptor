@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { BreakpointEdit } from '@interceptor/core-protocol';
 
-import type { MutableRequestState } from '../../interfaces';
+import type { MutableRequestState, MutableResponseState } from '../../interfaces';
 import { ActionExecutor } from '../../internal/action-executor';
-import { applyRequestEdit } from '../../utils';
+import { applyRequestEdit, applyResponseEdit } from '../../utils';
 
 describe('HTTP message editing', () => {
   it('updates every requested header without changing the body', async () => {
@@ -53,6 +53,25 @@ describe('HTTP message editing', () => {
     await applyRequestEdit(state, edit);
 
     expect([...state.editedHeaderNames]).toEqual([
+      'x-rule-edited',
+      'content-length',
+      'content-encoding',
+    ]);
+  });
+
+  it('merges response header names explicitly edited at a breakpoint', async () => {
+    const state: MutableResponseState = {
+      statusCode: 200,
+      headers: { 'content-length': '12' },
+      editedHeaderNames: new Set<string>(['x-rule-edited']),
+    };
+
+    await applyResponseEdit(state, {
+      headers: [{ name: 'Content-Length', value: '999' }],
+      editedHeaderNames: ['Content-Length', 'CONTENT-ENCODING'],
+    });
+
+    expect([...state.editedHeaderNames!]).toEqual([
       'x-rule-edited',
       'content-length',
       'content-encoding',
