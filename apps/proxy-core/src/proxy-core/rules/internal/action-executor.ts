@@ -27,9 +27,11 @@ export class ActionExecutor {
   ): Promise<ActionOutcome> {
     switch (action.type) {
       case 'header':
-        return action.phase === 'request'
-          ? this.headerOutcome(state.headers, action.op, action.name, action.value)
-          : ActionExecutor.NONE;
+        if (action.phase !== 'request') {
+          return ActionExecutor.NONE;
+        }
+        this.rememberEditedHeaderName(state, action.name);
+        return this.headerOutcome(state.headers, action.op, action.name, action.value);
       case 'query':
         return this.queryOutcome(state, action.op, action.name, action.value);
       case 'body':
@@ -79,9 +81,11 @@ export class ActionExecutor {
   ): ActionOutcome {
     switch (action.type) {
       case 'header':
-        return action.phase === 'response'
-          ? this.headerOutcome(state.headers, action.op, action.name, action.value)
-          : ActionExecutor.NONE;
+        if (action.phase !== 'response') {
+          return ActionExecutor.NONE;
+        }
+        this.rememberEditedHeaderName(state, action.name);
+        return this.headerOutcome(state.headers, action.op, action.name, action.value);
       case 'body':
         if (action.phase !== 'response') {
           return ActionExecutor.NONE;
@@ -140,6 +144,19 @@ export class ActionExecutor {
         throw new Error(`Unknown header operation: ${String(exhaustive)}`);
       }
     }
+  }
+
+  /** Remember one explicit rule header intent even when the operation is a no-op. */
+  private rememberEditedHeaderName(
+    state: MutableRequestState | MutableResponseState,
+    headerName: string,
+  ): void {
+    const normalizedName = headerName.trim().toLowerCase();
+    if (normalizedName === '') {
+      return;
+    }
+    state.editedHeaderNames ??= new Set<string>();
+    state.editedHeaderNames.add(normalizedName);
   }
 
   /** 应用 URL query set/remove 并回写完整 URL。 */

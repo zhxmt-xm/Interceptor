@@ -4,6 +4,7 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShieldCheck,
   TriangleAlert,
   X,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ import type {
   AppContainerAccessInfo,
   AppContainerAccessSnapshot,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import {
   Button,
   IconButton,
@@ -40,6 +42,7 @@ export function AppContainerPanel(): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
@@ -97,6 +100,21 @@ export function AppContainerPanel(): React.JSX.Element {
       .finally(() => setChanging(false));
   };
 
+  const enableAll = (): void => {
+    if (changing) {
+      return;
+    }
+    setChanging(true);
+    setError(null);
+    void window.interceptor.enableAllAppContainers()
+      .then((nextSnapshot) => {
+        setSnapshot(nextSnapshot);
+        setBulkConfirmOpen(false);
+      })
+      .catch((reason: unknown) => setError(describeError(reason)))
+      .finally(() => setChanging(false));
+  };
+
   // Main 已按名称排序，这里只把已启用项稳定地提到前面。
   const containers = useMemo(
     () => [...(snapshot?.containers ?? [])]
@@ -112,6 +130,7 @@ export function AppContainerPanel(): React.JSX.Element {
       ].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
     : containers;
   const enabledCount = containers.filter((appContainer) => appContainer.exempt).length;
+  const disabledCount = containers.length - enabledCount;
 
   if (state === 'loading') {
     return (
@@ -166,6 +185,15 @@ export function AppContainerPanel(): React.JSX.Element {
                 total: containers.length,
               })}
             </span>
+            <Button
+              icon={ShieldCheck}
+              size="sm"
+              disabled={disabledCount === 0 || refreshing || changing}
+              onClick={() => setBulkConfirmOpen(true)}
+              automationId={AUTOMATION_IDS.settings.appContainers.enableAll}
+            >
+              {t('settings.appContainers.enableAll')}
+            </Button>
             <IconButton
               icon={RefreshCw}
               label={t('settings.appContainers.refresh')}
@@ -240,6 +268,68 @@ export function AppContainerPanel(): React.JSX.Element {
       )}
 
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
+
+      <Modal
+        open={bulkConfirmOpen}
+        centered
+        width={540}
+        closable={false}
+        footer={null}
+        title={null}
+        mask={{ closable: !changing }}
+        keyboard={!changing}
+        destroyOnHidden
+        onCancel={() => {
+          if (!changing) {
+            setBulkConfirmOpen(false);
+          }
+        }}
+        classNames={{ container: styles.dialog, body: styles.dialogBody }}
+        styles={{
+          container: { padding: 0, border: '1px solid var(--border-2)' },
+          body: { padding: 0, lineHeight: 1.23 },
+        }}
+        aria-labelledby="app-container-enable-all-title"
+      >
+        <header className={styles.dialogHeader}>
+          <span className={styles.dialogIcon}><ShieldCheck aria-hidden="true" /></span>
+          <h2 id="app-container-enable-all-title">
+            {t('settings.appContainers.enableAllTitle')}
+          </h2>
+          <IconButton
+            icon={X}
+            label={t('settings.cancel')}
+            size="sm"
+            disabled={changing}
+            onClick={() => setBulkConfirmOpen(false)}
+          />
+        </header>
+        <div className={styles.dialogContent}>
+          <p>{t('settings.appContainers.enableAllDescription', { count: disabledCount })}</p>
+          <div className={styles.bulkSummary}>
+            <span>{t('settings.appContainers.enableAll')}</span>
+            <strong>{t('settings.appContainers.enableAllSummary', { count: disabledCount })}</strong>
+          </div>
+          <div className={styles.dialogWarning}>
+            <TriangleAlert aria-hidden="true" />
+            <span>{t('settings.appContainers.enableAllWarning')}</span>
+          </div>
+        </div>
+        <footer className={styles.dialogFooter}>
+          <Button disabled={changing} onClick={() => setBulkConfirmOpen(false)}>
+            {t('settings.cancel')}
+          </Button>
+          <Button
+            icon={ShieldCheck}
+            variant="primary"
+            loading={changing}
+            onClick={enableAll}
+            automationId={AUTOMATION_IDS.settings.appContainers.enableAllConfirm}
+          >
+            {t('settings.appContainers.continueApproval')}
+          </Button>
+        </footer>
+      </Modal>
 
       <Modal
         open={pendingChange !== null}

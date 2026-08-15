@@ -207,7 +207,7 @@ export function App(): React.JSX.Element {
       setView('capture');
     },
   };
-  const feature = FEATURE_VIEWS[view](settingsSection, actions);
+  const feature = FEATURE_VIEWS[view](settingsSection, setSettingsSection, actions);
 
   const content = (
     <div

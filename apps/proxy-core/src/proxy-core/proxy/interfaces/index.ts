@@ -168,6 +168,7 @@ export interface OrphanRuleOutcome {
 export interface ProxyResponseMessageResult {
   statusCode?: number;
   headers?: Record<string, string | string[]>;
+  editedHeaderNames?: string[];
   body?: string | Uint8Array;
 }
 
@@ -180,6 +181,7 @@ export interface ProxyRequestResult {
   method?: string;
   url?: string;
   headers?: Record<string, string | string[]>;
+  editedHeaderNames?: string[];
   body?: string | Uint8Array;
   response?: ProxyResponseResult;
 }

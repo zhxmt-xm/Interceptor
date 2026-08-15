@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import type { RuleAction, RuleActionType } from '../../../../shared/desktop-api';
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { ActionCard, type ActionTone } from '../ActionCard/ActionCard';
 
 import { ActionBody } from './ActionBody';
@@ -39,6 +40,8 @@ const ACTION_META: Record<RuleActionType, ActionMeta> = {
 };
 
 export interface ActionEditorProps {
+  ruleId: string;
+  index: number;
   action: RuleAction;
   onChange: (action: RuleAction) => void;
   onRemove: () => void;
@@ -46,6 +49,8 @@ export interface ActionEditorProps {
 
 /** 单个 action 卡片：按类型渲染完整编辑表单；名/值/正文自由输入，操作/相位为枚举。 */
 export function ActionEditor({
+  ruleId,
+  index,
   action,
   onChange,
   onRemove,
@@ -57,7 +62,14 @@ export function ActionEditor({
     return <span />;
   }
   return (
-    <ActionCard icon={meta.icon} tone={meta.tone} title={t(meta.titleKey)} sub={t(meta.subKey)} onRemove={onRemove}>
+    <ActionCard
+      icon={meta.icon}
+      tone={meta.tone}
+      title={t(meta.titleKey)}
+      sub={t(meta.subKey)}
+      removeAutomationId={AutomationIdFactory.ruleActionField(ruleId, index, 'remove')}
+      onRemove={onRemove}
+    >
       <ActionBody action={action} onChange={onChange} translate={translate} />
     </ActionCard>
   );

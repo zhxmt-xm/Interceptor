@@ -129,10 +129,10 @@ export class LocalElectronApplicationDriver {
     await this.page.waitForLoadState('domcontentloaded');
     await expect(getByAutomationId(this.page, AUTOMATION_IDS.app.root)).toBeVisible();
 
-    const coreStatus = this.page.locator('[title^="Proxy Core · Running · PID "]');
+    const coreStatus = this.page.locator('[title*=" · PID "]');
     await expect(coreStatus).toHaveAttribute(
       'title',
-      /Proxy Core · Running · PID \d+/,
+      / · PID \d+$/,
       { timeout: 20_000 },
     );
     const coreTitle = await coreStatus.getAttribute('title');

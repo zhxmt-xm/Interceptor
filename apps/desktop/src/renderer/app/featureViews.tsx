@@ -36,9 +36,13 @@ export interface FeatureActions {
 /** 视图注册表：每个工作区提供主区与状态栏两块内容。 */
 export const FEATURE_VIEWS: Record<
   ViewId,
-  (settingsSection: string, actions: FeatureActions) => FeatureViews
+  (
+    settingsSection: string,
+    onSettingsSectionChange: (section: string) => void,
+    actions: FeatureActions,
+  ) => FeatureViews
 > = {
-  capture: (_settingsSection, actions) => ({
+  capture: (_settingsSection, _onSettingsSectionChange, actions) => ({
     main: (
       <CaptureMain
         onCreateRequestRule={actions.createRequestRule}
@@ -49,7 +53,7 @@ export const FEATURE_VIEWS: Record<
     ),
     statusbar: <CaptureStatusbar />,
   }),
-  rules: (_settingsSection, actions) => ({
+  rules: (_settingsSection, _onSettingsSectionChange, actions) => ({
     main: <RulesMain onShowRuleRequests={actions.showRuleRequests} />,
     statusbar: <RulesStatusbar />,
   }),
@@ -57,8 +61,13 @@ export const FEATURE_VIEWS: Record<
     main: <ComposerMain />,
     statusbar: <ComposerStatusbar />,
   }),
-  settings: (settingsSection) => ({
-    main: <SettingsMain section={settingsSection} />,
+  settings: (settingsSection, onSettingsSectionChange) => ({
+    main: (
+      <SettingsMain
+        section={settingsSection}
+        onSectionChange={onSettingsSectionChange}
+      />
+    ),
     statusbar: <SettingsStatusbar />,
   }),
   diagnostics: () => ({

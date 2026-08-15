@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import xmlFormat from 'xml-formatter';
 
 import { cx } from '../share/cx';
+import { formatCodeDocument } from './formatCodeDocument';
 import { monaco, VIEWER_OPTIONS } from './monacoSetup';
 import styles from './CodeViewer.module.css';
 
@@ -37,19 +37,13 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
       if (!editor || !model) {
         return;
       }
-      // Monaco has no XML language service, so that one format runs here instead.
-      if (model.getLanguageId() === 'xml') {
-        model.setValue(xmlFormat(model.getValue(), { indentation: '  ', lineSeparator: '\n' }));
-        return;
-      }
-      // formatDocument refuses to run on a read-only editor; domReadOnly still blocks
-      // typing during the短暂 window, so the viewer never becomes editable.
-      editor.updateOptions({ readOnly: false });
-      try {
-        await editor.getAction('editor.action.formatDocument')?.run();
-      } finally {
-        editor.updateOptions({ readOnly: true });
-      }
+      await formatCodeDocument({
+        language: model.getLanguageId(),
+        value: model.getValue(),
+        replace: (nextValue) => model.setValue(nextValue),
+        run: async () => editor.getAction('editor.action.formatDocument')?.run(),
+        setReadOnly: (readOnly) => editor.updateOptions({ readOnly }),
+      });
     },
   }), []);
 

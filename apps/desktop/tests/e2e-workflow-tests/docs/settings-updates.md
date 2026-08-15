@@ -16,14 +16,35 @@
 4. 点击 `settings.section.certificates`，等待CA/trust/insecure hosts状态。
 5. 点击 `settings.section.appearance`，检查明确的未实现占位。
 6. 点击 `settings.section.storage`、`settings.section.privacy`、`settings.section.updates`，逐项等待真实状态。
-7. 返回Certificates，确认section导航和scroll/layout稳定。
+7. 选择 AppContainer access，切换到 Capture，再返回 Settings，确认仍打开 AppContainer access；随后通过明确导航返回 Certificates，确认 section 和 scroll/layout 稳定。
 8. 保存evidence并Close。
 9. 验证进程/8888销毁。
 10. 删除profile。
 
 ### 预期效果
 
-六个section通过Settings rail真实导航；Proxy/Certificates/Storage/Updates使用真实后端；Appearance不伪造未实现功能；Header/Main/statusbar一致。
+六个section通过Settings rail真实导航；跨 feature 返回时保留最后访问 section；Proxy/Certificates/Storage/Updates使用真实后端；Appearance不伪造未实现功能；Header/Main/statusbar一致。
+
+<a id="settings-app-containers-enable-all"></a>
+## `settings.app-containers-enable-all`
+
+**状态**：planned
+**策略**：os-side-effect；headed；Windows
+
+### Steps
+
+1. 创建独立 profile/evidence，启动 Electron，等待 App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认 System Proxy 未修改。
+2. 进入 Settings → App Containers，等待真实枚举，确认 enabled 项置顶并记录 enabled/total。
+3. 点击 `settings.app-containers.enable-all`，确认 dialog 显示将新增 exemption 的准确数量、系统范围与一次 UAC 说明。
+4. 点击 Cancel，确认未调用 helper，列表和计数不变。
+5. 再次打开并确认，App 只发起一次原生 UAC；用户完成授权。
+6. 等待 helper 一次 read-modify-write 与读回校验完成，确认全部当前 AppContainer 为 enabled、计数为 total/total、按钮 disabled。
+7. 确认 helper 保留枚举外已有 exemption SID，且失败时 UI 保留原 snapshot 并显示错误。
+8. 保存 trace/evidence，关闭 App；验证 Main/Core/8888 完整销毁并删除 profile。
+
+### 预期效果
+
+一次用户交互对应一条 Main 命令和一次 UAC；所有当前 AppContainer 原子加入 exemption，不发生 Renderer 循环、重复提权或部分成功。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`

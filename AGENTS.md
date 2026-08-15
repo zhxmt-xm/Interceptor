@@ -8,8 +8,11 @@
 - Keep components modular and concerns clearly separated.
 - Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
 - Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
+- **第三方 patch 必须先获批准**：任何新增、修改或扩展 `patches/` 下的第三方补丁，以及任何直接修改 `node_modules` 三方行为的操作，都必须先向用户说明必要性、替代方案和影响范围，并取得用户明确同意；未获批准时只能调研和写验证测试，不得编辑第三方代码或补丁。
 - Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
 - 不要为不可能发生的场景添加错误处理；只在系统边界做校验。
+- **所有业务代码改动都走完整 TDD**：修改业务代码前必须先判断 test impact，确认预期行为/契约是否变化、现有测试是否已经完整表达该行为。若需要新增或修改测试，先完成最小 unit / integration test 并确认因预期缺口失败（Red），再写业务代码；若是行为不变的内部重构且现有测试已经充分覆盖，不机械改测试，先运行最聚焦的现有测试确认基线 Green，再写业务代码。完成后必须复跑同一组测试确认 Green；禁止先写实现、再补测试为既有结果背书。
+- **Flow 变更阶段门禁**：任何业务代码改动只要影响用户 flow，首先在 owning `architecture/features/*.md` 与 `apps/desktop/tests/e2e-workflow-tests/docs/*.md` 落地契约、完整 flow、预期效果和证据要求；随后分别判断 unit / integration 与 E2E 的 test impact。需要改测试时，按 unit / integration Red → E2E Red 的顺序完成；现有测试已充分覆盖时，按同一顺序确认基线 Green。只有这些前置测试事实建立后才允许修改业务代码。实现后按 unit / integration Green → E2E Green 的顺序验证；只有 E2E 销毁与证据验证也完成后，才能更新 Inventory、Handover 与完成状态。
 - **可读性优先于聪明**：命名直白、控制流线性、避免为省几行而牺牲可理解性。宁可多一个语义清晰的名字，不要一个塞满逻辑的表达式。
 - **命名用具体动词，不用泛化动词**：`apply` / `handle` / `process` / `manage` 这类词不说明做了什么。方法名要让调用点自解释；布尔参数尤其可疑，`setX(true)` 读者必须回看签名，拆成两个动词方法（`startX()` / `stopX()`）通常更好。
 - **相关方法相邻**：同一职责的方法排在一起；成对操作（start/stop、open/close、drain/restore）紧挨着；公开入口紧跟它自己的私有辅助。读者不应为了拼出一条完整流程在文件里来回跳。
@@ -57,6 +60,12 @@
 	- 单文件正则的词边界须排除 `-`、`/`、`.`。
 	- 字符串或注释含同名文本时，逐处精确替换并用 grep 复核。
 	- 脚本化替换必须显式以 UTF-8 写入并校验；禁止使用会默认写入 ANSI 的 PowerShell `Set-Content`。
+- **测试目录与文件命名**
+	- 每个 owning 模块的 Vitest 测试统一放在 `tests/unit/` 或 `tests/integration/`；`tests/` 根目录不放可执行测试或测试 helper。
+	- `unit/` 只放不跨真实进程、网络、文件系统、数据库或 worker 边界的测试；跨任一真实边界的测试放 `integration/`。
+	- fixture、fake 与 helper 跟随使用它的测试层放置，不新增 `tests/shared/`；确有跨层复用时，优先拆成各层语义明确的 helper。
+	- 测试文件按行为命名为 `*.test.ts`，不再用 `.unit.test.ts` 或 `.integration.test.ts` 重复目录已经表达的层级。
+	- `e2e-workflow-tests/`、`packaged-smoke/`、`installer/`、`visual-parity/` 是独立测试套件，不归入 unit/integration 目录。
 
 ## Frontend Styling
 

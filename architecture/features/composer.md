@@ -1,5 +1,7 @@
 # Feature: Composer
 
+> Composer 发送时的 HTTP header/body KEEP/UPDATE、编码与 framing 契约统一见 [http-message-editing.md](http-message-editing.md)。
+
 > 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`

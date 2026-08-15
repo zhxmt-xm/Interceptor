@@ -1,7 +1,5 @@
 import {
-  AlertTriangle,
   Ban,
-  Check,
   Clock,
   Code,
   FileText,
@@ -12,6 +10,7 @@ import {
   Pause,
   Plus,
   Reply,
+  RotateCcw,
   Trash2,
 } from 'lucide-react';
 import { Tooltip } from 'antd';
@@ -20,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 
 import {
   Button,
-  cx,
   Flyout,
   IconButton,
   MenuItem,
@@ -29,10 +27,10 @@ import {
   Switch,
 } from '../../../components';
 import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop-api';
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
-import { applyRules } from '../data/useRulesData';
-import { isRuleComplete, isRulesDirty, ruleIssues, selectedRule } from '../utils';
+import { applyRules, loadRules } from '../data/useRulesData';
+import { isRuleComplete, isRulesDirty, selectedRule } from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -50,9 +48,9 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
   const rule = useRulesStore(selectedRule);
-  const revision = useRulesStore((state) => state.revision);
   const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
   const saving = useRulesStore((state) => state.saving);
+  const conflict = useRulesStore((state) => state.conflict);
   const hits = useRulesStore((state) => state.hits);
   const renameNode = useRulesStore((state) => state.renameNode);
   const toggleRule = useRulesStore((state) => state.toggleRule);
@@ -72,7 +70,6 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
     );
   }
 
-  const issues = ruleIssues(rule);
   const matchedRequests = hits[rule.id] ?? 0;
   const enableBlocked = !rule.enabled && !isRuleComplete(rule);
 
@@ -102,6 +99,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           className={styles.nameInput}
           value={rule.name}
           aria-label={t('rules.ruleName')}
+          data-automation-id={AUTOMATION_IDS.rules.editorName}
           spellCheck={false}
           onChange={(event) => renameNode(rule.id, event.target.value)}
         />
@@ -109,6 +107,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
         <Switch
           checked={rule.enabled}
           disabled={enableBlocked}
+          automationId={AUTOMATION_IDS.rules.editorEnabled}
           onChange={() => toggleRule(rule.id)}
         />
         <IconButton
@@ -149,6 +148,16 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           size="sm"
           onClick={() => removeNode(rule.id)}
         />
+        {conflict ? (
+          <IconButton
+            icon={RotateCcw}
+            label={t('rules.reloadFromCore')}
+            size="sm"
+            strokeWidth={2.4}
+            onClick={() => void loadRules()}
+            automationId={AUTOMATION_IDS.rules.reload}
+          />
+        ) : null}
         <Button
           variant="primary"
           size="sm"
@@ -167,6 +176,8 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
             {rule.matchers.map((matcher, index) => (
               <MatcherRow
                 key={index}
+                ruleId={rule.id}
+                index={index}
                 matcher={matcher}
                 first={index === 0}
                 onChange={(next) => updateMatcher(rule.id, index, next)}
@@ -186,20 +197,21 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
             className={styles.conditionMenu}
             content={
               <>
-                <MenuItem icon={Code} name={t('rules.matcher.method')} hint="GET" onClick={() => addConditionAndClose('method')} />
-                <MenuItem icon={Globe} name={t('rules.matcher.host')} hint="*.example.com" onClick={() => addConditionAndClose('host')} />
-                <MenuItem icon={MapPin} name={t('rules.matcher.path')} hint="/v1/users" onClick={() => addConditionAndClose('path')} />
-                <MenuItem icon={Globe} name={t('rules.matcher.url')} hint="https://…" onClick={() => addConditionAndClose('url')} />
-                <MenuItem icon={Code} name={t('rules.matcher.query')} hint="key=value" onClick={() => addConditionAndClose('query')} />
-                <MenuItem icon={FileText} name={t('rules.matcher.header')} hint="name: value" onClick={() => addConditionAndClose('header')} />
-                <MenuItem icon={Reply} name={t('rules.matcher.status')} hint="200–299" onClick={() => addConditionAndClose('status')} />
-                <MenuItem icon={FileText} name={t('rules.matcher.mime')} hint="application/json" onClick={() => addConditionAndClose('mime')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.method} icon={Code} name={t('rules.matcher.method')} hint="GET" onClick={() => addConditionAndClose('method')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.host} icon={Globe} name={t('rules.matcher.host')} hint="*.example.com" onClick={() => addConditionAndClose('host')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.path} icon={MapPin} name={t('rules.matcher.path')} hint="/v1/users" onClick={() => addConditionAndClose('path')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.url} icon={Globe} name={t('rules.matcher.url')} hint="https://…" onClick={() => addConditionAndClose('url')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.query} icon={Code} name={t('rules.matcher.query')} hint="key=value" onClick={() => addConditionAndClose('query')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.header} icon={FileText} name={t('rules.matcher.header')} hint="name: value" onClick={() => addConditionAndClose('header')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.status} icon={Reply} name={t('rules.matcher.status')} hint="200–299" onClick={() => addConditionAndClose('status')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.conditionOption.mime} icon={FileText} name={t('rules.matcher.mime')} hint="application/json" onClick={() => addConditionAndClose('mime')} />
               </>
             }
           >
             <button
               type="button"
               className={styles.addButton}
+              data-automation-id={AUTOMATION_IDS.rules.addCondition}
             >
               <Plus size={13} strokeWidth={2} />
               {t('rules.addCondition')}
@@ -213,6 +225,8 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
             {rule.actions.map((action, index) => (
               <ActionEditor
                 key={index}
+                ruleId={rule.id}
+                index={index}
                 action={action}
                 onChange={(next) => updateAction(rule.id, index, next)}
                 onRemove={() => removeAction(rule.id, index)}
@@ -232,25 +246,26 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
             content={
               <>
                 <div className={styles.popoverGroup}>{t('rules.groupRewrite')}</div>
-                <MenuItem icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
-                <MenuItem icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />
-                <MenuItem icon={FileText} name={t('rules.rewriteBody')} hint={t('rules.rewriteBodyHint')} onClick={() => addAndClose('body')} />
-                <MenuItem icon={Code} name={t('rules.setStatus')} hint={t('rules.override')} onClick={() => addAndClose('status')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.header} icon={Code} name={t('rules.rewriteHeader')} hint={t('rules.rewriteHeaderHint')} onClick={() => addAndClose('header')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.query} icon={Code} name={t('rules.rewriteQuery')} hint={t('rules.rewriteQueryHint')} onClick={() => addAndClose('query')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.body} icon={FileText} name={t('rules.rewriteBody')} hint={t('rules.rewriteBodyHint')} onClick={() => addAndClose('body')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.status} icon={Code} name={t('rules.setStatus')} hint={t('rules.override')} onClick={() => addAndClose('status')} />
                 <div className={styles.popoverGroup}>{t('rules.groupMap')}</div>
-                <MenuItem icon={MapPin} name={t('rules.mapLocal')} {...originItem('map-local', t('rules.serveFile'))} onClick={() => addAndClose('map-local')} />
-                <MenuItem icon={Globe} name={t('rules.mapRemote')} {...originItem('map-remote', t('rules.reroute'))} onClick={() => addAndClose('map-remote')} />
-                <MenuItem icon={Reply} name={t('rules.synthetic')} {...originItem('synthetic', t('rules.returnResponse'))} onClick={() => addAndClose('synthetic')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.mapLocal} icon={MapPin} name={t('rules.mapLocal')} {...originItem('map-local', t('rules.serveFile'))} onClick={() => addAndClose('map-local')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.mapRemote} icon={Globe} name={t('rules.mapRemote')} {...originItem('map-remote', t('rules.reroute'))} onClick={() => addAndClose('map-remote')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.synthetic} icon={Reply} name={t('rules.synthetic')} {...originItem('synthetic', t('rules.returnResponse'))} onClick={() => addAndClose('synthetic')} />
                 <div className={styles.popoverGroup}>{t('rules.groupTraffic')}</div>
-                <MenuItem icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.delay} icon={Clock} name={t('rules.delay')} hint={t('rules.latency')} onClick={() => addAndClose('delay')} />
                 <div className={styles.popoverGroup}>{t('rules.groupControl')}</div>
-                <MenuItem icon={Ban} name={t('rules.block')} {...originItem('block', t('rules.resetClose'))} onClick={() => addAndClose('block')} />
-                <MenuItem icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.block} icon={Ban} name={t('rules.block')} {...originItem('block', t('rules.resetClose'))} onClick={() => addAndClose('block')} />
+                <MenuItem automationId={AUTOMATION_IDS.rules.actionOption.breakpoint} icon={Pause} name={t('rules.breakpoint')} hint={t('rules.pauseEdit')} onClick={() => addAndClose('breakpoint')} />
               </>
             }
           >
             <button
               type="button"
               className={styles.addButton}
+              data-automation-id={AUTOMATION_IDS.rules.addAction}
             >
               <Plus size={13} strokeWidth={2} />
               {t('rules.addAction')}
@@ -258,23 +273,6 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           </Flyout>
         </div>
 
-        {issues.length === 0 ? (
-          <div className={styles.validation}>
-            <Check size={15} strokeWidth={2} />
-            {dirty
-              ? t('rules.compilesUnsaved')
-              : t('rules.compilesApplied', { revision })}
-          </div>
-        ) : (
-          <div className={cx(styles.validation, styles.invalid)}>
-            <AlertTriangle size={15} strokeWidth={2} />
-            <div className={styles.diagList}>
-              {issues.map((issue, index) => (
-                <span key={index}>{t(issue.messageKey, { index: issue.index })}</span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

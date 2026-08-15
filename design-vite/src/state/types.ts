@@ -8,6 +8,7 @@ export type FixtureOverlay =
   | 'proxy-not-ready'
   | 'body-full'
   | 'app-container-confirm'
+  | 'app-container-enable-all'
   | 'tls-compatibility'
   | '';
 export type InspectorTab =
@@ -63,7 +64,7 @@ export type WebSocketBreakpointFrame = 'message' | 'ping' | 'pong' | 'close';
 export type WebSocketMessageDirection = 'sent' | 'received';
 export type WebSocketMessagePayload = 'text' | 'binary' | 'ping' | 'pong' | 'close';
 export type WebSocketUpgradeResponse = 'accepted' | 'mock-error';
-export type TreeContextMenu = 'composer-item' | 'composer-folder' | 'rules-rule' | 'rules-folder' | '';
+export type TreeContextMenu = 'composer-item' | 'composer-folder' | 'rules-root' | 'rules-rule' | 'rules-folder' | '';
 export type BootPhase = 'core' | 'listener' | 'proxy' | 'ready' | 'error' | '';
 
 export interface DesignState {

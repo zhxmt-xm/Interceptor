@@ -18,7 +18,7 @@ import type {
   CaptureExchangeDetail,
   PendingBreakpoint,
 } from '../../../../shared/desktop-api';
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import {
   Button,
   cx,
@@ -187,6 +187,7 @@ export function BreakpointInspector({
                 <input
                   className={styles.cellInput}
                   aria-label={t('breakpoints.headerName')}
+                  data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'name')}
                   value={header.name}
                   spellCheck={false}
                   onChange={(event) => updateHeader(header.id, { name: event.target.value })}
@@ -194,6 +195,7 @@ export function BreakpointInspector({
                 <input
                   className={styles.cellInput}
                   aria-label={t('breakpoints.headerValue')}
+                  data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'value')}
                   value={header.value}
                   spellCheck={false}
                   onChange={(event) => updateHeader(header.id, { value: event.target.value })}
@@ -304,6 +306,7 @@ export function BreakpointInspector({
                 { value: 'text', label: t('breakpoints.replacementText') },
                 { value: 'file', label: t('breakpoints.replacementFile') },
               ]}
+              automationIds={AUTOMATION_IDS.breakpoints.replacement}
               onChange={(value) =>
                 setReplacement(value === 'text' || value === 'file' ? value : 'off')}
             />

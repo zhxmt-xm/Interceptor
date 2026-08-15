@@ -791,6 +791,7 @@ export function installFakeInterceptor({
   fixture,
   theme,
   freshProfile = false,
+  htmlBody = false,
   largeBody = false,
   largeTextBody = false,
   noRuleHits = false,
@@ -811,6 +812,7 @@ export function installFakeInterceptor({
   tlsPassthroughHosts = null,
 }) {
   let captureEventsListener = null;
+  window.__appContainerEnableAllCalls = 0;
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
   if (pausedBreakpoints) {
@@ -848,6 +850,38 @@ export function installFakeInterceptor({
       const { ruleIds: _ruleIds, ...withoutRuleIds } = summary;
       return withoutRuleIds;
     });
+  }
+  if (htmlBody) {
+    const htmlResponse = new TextEncoder().encode(
+      '<!doctype html><html><head><title>Interceptor</title></head><body><main>Captured response</main></body></html>',
+    );
+    const responseBytes = 84 * 1024;
+    const htmlSummary = {
+      ...fixture.capture.sessions.find((session) => session.id === 'http-1'),
+      responseMime: 'text/html; charset=utf-8',
+      responseBytes,
+    };
+    fixture.capture.sessions = fixture.capture.sessions.map((session) =>
+      session.id === 'http-1' ? htmlSummary : session,
+    );
+    fixture.capture.bodies['html-response-body'] = Array.from(htmlResponse);
+    fixture.capture.details['http-1'] = {
+      ...fixture.capture.details['http-1'],
+      summary: htmlSummary,
+      responseMime: 'text/html; charset=utf-8',
+      responseHeaders: fixture.capture.details['http-1'].responseHeaders.map((header) =>
+        header.name === 'content-type'
+          ? { ...header, value: 'text/html; charset=utf-8' }
+          : header,
+      ),
+      responseBody: {
+        bodyHash: 'html-response-body',
+        mediaType: 'text/html; charset=utf-8',
+        encodedSize: responseBytes,
+        truncated: false,
+        decodeStatus: 'ok',
+      },
+    };
   }
   if (largeBody) {
     const largeSummary = {
@@ -1115,6 +1149,17 @@ export function installFakeInterceptor({
           appContainer.appContainerSid === appContainerSid
             ? { ...appContainer, exempt: enabled }
             : appContainer),
+      };
+      return appContainerSnapshot;
+    },
+    enableAllAppContainers: async () => {
+      window.__appContainerEnableAllCalls += 1;
+      appContainerSnapshot = {
+        ...appContainerSnapshot,
+        containers: appContainerSnapshot.containers.map((appContainer) => ({
+          ...appContainer,
+          exempt: true,
+        })),
       };
       return appContainerSnapshot;
     },

@@ -837,6 +837,7 @@ export class ProxyService {
       method: request.method,
       url: request.url,
       headers: ProxyUtils.cloneHeaders(request.headers),
+      editedHeaderNames: new Set<string>(),
     };
     try {
       const evaluation = await this.ruleService.evaluateRequest(
@@ -866,6 +867,7 @@ export class ProxyService {
         method: state.method,
         url: state.url,
         headers: ProxyUtils.toMockttpHeaders(state.headers),
+        editedHeaderNames: [...(state.editedHeaderNames ?? [])],
         ...(state.body !== undefined ? { body: state.body } : {}),
       };
     } catch (error) {
@@ -890,6 +892,7 @@ export class ProxyService {
     const state: MutableResponseState = {
       statusCode: response.statusCode,
       headers: ProxyUtils.cloneHeaders(response.headers),
+      editedHeaderNames: new Set<string>(),
     };
     try {
       const evaluation = await this.ruleService.evaluateResponse(
@@ -915,6 +918,7 @@ export class ProxyService {
       return {
         statusCode: state.statusCode,
         headers: ProxyUtils.toMockttpHeaders(state.headers),
+        editedHeaderNames: [...(state.editedHeaderNames ?? [])],
         ...(state.body !== undefined ? { body: state.body } : {}),
       };
     } catch (error) {

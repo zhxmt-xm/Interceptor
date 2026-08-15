@@ -1,6 +1,6 @@
-import { FixtureRenderer } from '../../fixtures/FixtureRenderer';
+import { DetailFixtureRenderer } from '../../fixtures/DetailFixtureRenderer';
 import { composerFixture } from '../../fixtures/generated/composerFixture';
 
 export function Composer(): React.JSX.Element {
-  return <FixtureRenderer node={composerFixture} /> as React.JSX.Element;
+  return <DetailFixtureRenderer node={composerFixture} />;
 }

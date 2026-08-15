@@ -224,7 +224,7 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
 function anchorTreeMenu(root: HTMLElement, contextMenu: TreeContextMenu, x?: number, y?: number): void {
   const rowSelectors: Readonly<Record<Exclude<TreeContextMenu, ''>, string>> = {
     'composer-item': '.ccol-scroll .citem', 'composer-folder': '.ccol-scroll .cgrp-h',
-    'rules-rule': '.rtree .rrule', 'rules-folder': '.rtree .rgrp-h',
+    'rules-root': '.rtree', 'rules-rule': '.rtree .rrule', 'rules-folder': '.rtree .rgrp-h',
   };
   const menu = root.querySelector<HTMLElement>(`.ctxmenu[data-ctx="${contextMenu}"]`);
   const row = contextMenu ? root.querySelector<HTMLElement>(rowSelectors[contextMenu]) : null;
@@ -443,8 +443,6 @@ export function useDesignFixtureAdapter(
       if (closest(event.target, '[data-open-https]')) return patch({ overlay: 'https-setup' });
       if (closest(event.target, '[data-body-full]')) return patch({ overlay: 'body-full' });
       if (closest(event.target, '[data-close-overlay]')) return patch({ overlay: '' });
-      const sectionHead = closest(event.target, '.sec > .sh');
-      if (sectionHead) { sectionHead.parentElement?.classList.toggle('collapsed'); return; }
       const matcherToggle = closest(event.target, '.mtg');
       if (matcherToggle) {
         if (matcherToggle.dataset.mtg === 'case') matcherToggle.classList.toggle('on');
@@ -473,6 +471,7 @@ export function useDesignFixtureAdapter(
     const onContextMenu = (event: MouseEvent): void => {
       const targets: readonly [string, TreeContextMenu][] = [['.citem', 'composer-item'], ['.cgrp-h', 'composer-folder'], ['.rrule', 'rules-rule'], ['.rgrp-h', 'rules-folder']];
       for (const [selector, contextMenu] of targets) if (closest(event.target, selector)) { event.preventDefault(); openTreeMenu(contextMenu, event.clientX, event.clientY); return; }
+      if (event.target === root.querySelector('.rtree')) { event.preventDefault(); openTreeMenu('rules-root', event.clientX, event.clientY); return; }
       updateState({ ctxmenu: '', requestMenu: '' });
     };
     const onKeyDown = (event: KeyboardEvent): void => {

@@ -49,6 +49,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'settings', theme, variant: 'app-containers', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'ready' } });
   shots.push({ feature: 'settings', theme, variant: 'app-containers-refreshing', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'refreshing' } });
   shots.push({ feature: 'settings', theme, variant: 'app-container-confirm', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'app-container-confirm', settings: 'app-containers', appContainers: 'ready' } });
+  shots.push({ feature: 'settings', theme, variant: 'app-container-enable-all', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'app-container-enable-all', settings: 'app-containers', appContainers: 'ready' } });
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsCompatibility: '' } });
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-invalid', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'invalid', tlsCompatibility: '', tlsHostInput: 'not a host' } });
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-empty', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'empty', tlsCompatibility: '' } });
@@ -75,6 +76,7 @@ for (const theme of ['light', 'dark']) {
   for (const bodyPreview of ['json', 'tree', 'tree-menu', 'raw', 'hex', 'code', 'formatting', 'limited', 'format-off', 'image', 'image-large', 'binary', 'form', 'md', 'md-split', 'md-source', 'media']) {
     shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'response', bodyPreview } });
   }
+  shots.push({ feature: 'capture', theme, variant: 'body-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'body-full', detail: 'open', tab: 'response', bodyPreview: 'code' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
@@ -116,6 +118,7 @@ for (const theme of ['light', 'dark']) {
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {
   const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+  shots.push({ feature: 'rules', theme, variant: 'tree-root-menu', state: { ...base, ctxmenu: 'rules-root' } });
   shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
   shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, sidebar: 'collapsed' } });
   shots.push({ feature: 'rules', theme, variant: 'font-current', state: { ...base, ruleTypography: 'current' } });

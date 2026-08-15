@@ -5,7 +5,9 @@ import { Composer } from '../features/Composer/Composer';
 import { Capture } from '../features/Capture/Capture';
 import { Diagnostics } from '../features/Diagnostics/Diagnostics';
 import { Rules } from '../features/Rules/Rules';
+import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { Settings } from '../features/Settings/Settings';
+import { AppContainerEnableAllDialog } from '../features/Settings/AppContainerEnableAllDialog';
 import { FixtureRenderer, fixtureClassNames } from '../fixtures/FixtureRenderer';
 import { useDesignFixtureAdapter } from '../fixtures/useDesignFixtureAdapter';
 import { appAttributes } from '../fixtures/generated/appAttributes';
@@ -54,7 +56,9 @@ function DesignAppContent(): React.JSX.Element {
           </div>
           <FixtureRenderer node={statusbarFixture} />
           {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
+          <AppContainerEnableAllDialog />
           {contextMenuFixtures.map((fixture, index) => <FixtureRenderer key={`context-${index}`} node={fixture} />)}
+          <RulesRootContextMenu />
           <FixtureRenderer node={bootFixture} />
           <FixtureRenderer node={updateNoticeFixture} />
           {footerPopoverFixtures.map((fixture, index) => <FixtureRenderer key={`footer-${index}`} node={fixture} />)}

@@ -177,6 +177,8 @@ export interface BreakpointEdit {
   url?: string;
   statusCode?: number;
   headers?: RuleHeaderPair[];
+  /** 用户显式设置或删除过的 header 名，trim 后小写并按首次编辑顺序去重。 */
+  editedHeaderNames?: string[];
   body?: string;
   /**
    * 用本地文件整体替换正文；与 `body` 互斥，优先级更高。

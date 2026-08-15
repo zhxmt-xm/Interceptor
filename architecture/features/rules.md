@@ -1,5 +1,7 @@
 # Feature: Rules
 
+> HTTP header/body action 的 KEEP/UPDATE、编码与 framing 契约统一见 [http-message-editing.md](http-message-editing.md)，本文件只描述规则编译与执行。
+
 > 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/`
 > 协议模型：`packages/core-protocol/src/rules.ts`、`packages/core-protocol/src/tree.ts`
@@ -379,7 +381,7 @@ interface RuleHitRecord {
 **计数语义 [已实现]**：命中数按 `Rule × Exchange` 去重，语义是“这条规则拦到了多少个请求”，
 而不是“执行了多少个 action”。`ExchangeStore.appendRuleHits` 用
 `ruleHitsByExchange: Map<exchangeId, Set<ruleId>>` 去重，`countRuleHits` 按 ruleId 聚合。
-回归测试：`rules/tests/rule-hit-count.integration.test.ts`（一条规则 3 个 action × 2 个请求 = count 2）。
+回归测试：`rules/tests/integration/hit-count.test.ts`（一条规则 3 个 action × 2 个请求 = count 2）。
 
 **尚未实现 [改造中]**：`RuleHitCount` 只有单一 `count`。分开展示 `executed actions`（实际执行的
 action 次数）与 `blocked`（短路或阻断次数）需要扩展协议与 Store。
@@ -454,6 +456,11 @@ flowchart LR
 RuleList 递归渲染目录与规则。目录行只有折叠、名称和操作菜单；规则行保留开关、匹配摘要、
 action chips 与命中数。整行是拖拽源，目录中间区域表示移入、上下四分之一表示前后插入，
 收起目录悬停 500ms 自动展开；搜索结果拍平成一层并禁用拖拽，避免用不完整列表重排整棵树。
+
+Rule Collection 顶栏只保留搜索。根级 New rule / New folder / Import / Export 从树空白处右键菜单进入；
+目录与规则各自的右键菜单只承载该节点语义。RuleSet 的 Save 固定在选中 rule 的 detail header，
+不在 Collection 顶栏重复提供。选中 rule 的 compile / validation 提示显示在 Rules statusbar，滚动区
+只保留可编辑的 Match 与 Actions 内容。
 
 **与 Capture 的双向联动：**
 

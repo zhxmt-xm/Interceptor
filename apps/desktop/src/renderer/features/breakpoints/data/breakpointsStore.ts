@@ -3,6 +3,21 @@ import { create } from 'zustand';
 import type { BreakpointsState } from '../interfaces';
 import { draftFromBreakpoint, rowId } from '../utils';
 
+/** Append non-empty normalized header names while preserving first-edit order. */
+function rememberEditedHeaderNames(
+  editedHeaderNames: readonly string[],
+  ...headerNames: readonly string[]
+): string[] {
+  const remembered = [...editedHeaderNames];
+  for (const headerName of headerNames) {
+    const normalizedName = headerName.trim().toLowerCase();
+    if (normalizedName !== '' && !remembered.includes(normalizedName)) {
+      remembered.push(normalizedName);
+    }
+  }
+  return remembered;
+}
+
 export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
   breakpoints: [],
   enabled: true,
@@ -77,27 +92,46 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
         : state),
 
   updateHeader: (id, patch) =>
-    set((state) =>
-      state.draft
-        ? {
-            draft: {
-              ...state.draft,
-              headers: state.draft.headers.map((header) =>
-                header.id === id ? { ...header, ...patch } : header),
-            },
-          }
-        : state),
+    set((state) => {
+      if (!state.draft) {
+        return state;
+      }
+      const currentHeader = state.draft.headers.find((header) => header.id === id);
+      if (!currentHeader) {
+        return state;
+      }
+      const nextHeader = { ...currentHeader, ...patch };
+      return {
+        draft: {
+          ...state.draft,
+          headers: state.draft.headers.map((header) =>
+            header.id === id ? nextHeader : header),
+          editedHeaderNames: rememberEditedHeaderNames(
+            state.draft.editedHeaderNames,
+            currentHeader.name,
+            nextHeader.name,
+          ),
+        },
+      };
+    }),
 
   removeHeader: (id) =>
-    set((state) =>
-      state.draft
-        ? {
-            draft: {
-              ...state.draft,
-              headers: state.draft.headers.filter((header) => header.id !== id),
-            },
-          }
-        : state),
+    set((state) => {
+      if (!state.draft) {
+        return state;
+      }
+      const removedHeader = state.draft.headers.find((header) => header.id === id);
+      return {
+        draft: {
+          ...state.draft,
+          headers: state.draft.headers.filter((header) => header.id !== id),
+          editedHeaderNames: rememberEditedHeaderNames(
+            state.draft.editedHeaderNames,
+            removedHeader?.name ?? '',
+          ),
+        },
+      };
+    }),
 
   setResolving: (resolving) => set({ resolving }),
 }));

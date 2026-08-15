@@ -57,6 +57,7 @@ export function CollectionTreeNode({
       <CollectionRowMenu node={node} open={menuOpen} onOpenChange={setMenuOpen}>
         <button
           type="button"
+          aria-pressed={activeRequestId === node.id && targetFolderId === null}
           data-tree-row={node.id}
           data-automation-id={AutomationIdFactory.composerCollectionRequest(node.id)}
           style={{ '--depth': depth } as React.CSSProperties}
@@ -114,6 +115,7 @@ export function CollectionTreeNode({
           </button>
           <button
             type="button"
+            aria-pressed={targetFolderId === node.id}
             className={styles.nameButton}
             data-automation-id={AutomationIdFactory.composerCollectionFolderTarget(node.id)}
             onClick={() => setTargetFolder(node.id)}

@@ -36,12 +36,16 @@ export interface MutableRequestState {
   method: string;
   url: string;
   headers: HeaderBag;
+  /** Header names explicitly set or removed by product rules or breakpoint editing. */
+  editedHeaderNames?: Set<string>;
   body?: string | Uint8Array;
 }
 
 export interface MutableResponseState {
   statusCode: number;
   headers: HeaderBag;
+  /** Header names explicitly set or removed by product rules or breakpoint editing. */
+  editedHeaderNames?: Set<string>;
   body?: string | Uint8Array;
 }
 

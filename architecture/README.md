@@ -43,6 +43,7 @@ feature 文档描述**架构应该是什么样**，每个章节用状态标记�
 | [features/rules.md](features/rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
 | [features/breakpoints.md](features/breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/internal/breakpoint-queue.ts` | `features/breakpoints/` |
 | [features/composer.md](features/composer.md) | 手工构造请求、连接探测 | `composer/`、`tls-probe/` | `features/composer/` |
+| [features/http-message-editing.md](features/http-message-editing.md) | Breakpoint、Rules、Composer 共用的 HTTP header/body 编辑契约 | `rules/`、`proxy/`、`composer/` | `features/breakpoints/`、`features/rules/`、`features/composer/` |
 | [features/transfer.md](features/transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |

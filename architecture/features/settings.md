@@ -19,6 +19,10 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 
 **核心边界：所有 OS 级操作只在 Main。** Core 不读写系统设置，Renderer 只表达意图。
 
+Settings rail 的最后访问 section 由 App shell 持有。切换到 Capture / Rules / Composer / Diagnostics
+不会重置该值，返回 Settings 时仍打开离开前的 section；TLS compatibility、Proxy readiness 等明确的
+跨 feature 跳转可以覆盖它，直接打开对应目标 section。面板内未提交的瞬态 dialog 不跨 feature 保留。
+
 ## 2. 证书与 HTTPS MITM
 
 ### 2.1 三对密钥
@@ -257,7 +261,7 @@ Mockttp 的 `passthroughSocket` 把 `net.connect(port, host)` 写死，`proxyCon
 
 Clash 等本机代理应在 Interceptor 接管前启动并启用系统代理，Interceptor 才能把它的 loopback 地址读作上游。若 Clash 在 Interceptor 已 owned 后启动并主动改写 WinINet，guarded ownership 会按外部修改处理并进入 ownership lost；两边不会反复抢写系统设置。
 
-实测（`upstream.integration.test.ts` / `websocket-upstream.integration.test.ts`，真实上游代理 + 真实源站）：无上游时直连、配置后经上游 CONNECT 隧道、切换即时生效、`noProxy` 命中时绕过上游、MITM 关闭时直通流量仍走上游隧道、上游不可达时仍正常关闭隧道记录、WebSocket 经上游握手。Mockttp 经上游时统一用 CONNECT 隧道，即使目标是明文 HTTP。
+实测（`proxy/tests/integration/upstream.test.ts` / `proxy/tests/integration/websocket-upstream.test.ts`，真实上游代理 + 真实源站）：无上游时直连、配置后经上游 CONNECT 隧道、切换即时生效、`noProxy` 命中时绕过上游、MITM 关闭时直通流量仍走上游隧道、上游不可达时仍正常关闭隧道记录、WebSocket 经上游握手。Mockttp 经上游时统一用 CONNECT 隧道，即使目标是明文 HTTP。
 
 ### 3.5 Windows AppContainer 与 TLS passthrough [已实现，待真实 Windows App 验收]
 
@@ -287,6 +291,11 @@ AppContainer 搜索/刷新/单项开关与 UAC 确认、TLS host pattern 管理�
 名单每连接求值，因此**保存即对新连接生效**，既不重建共享 listener也不需要重启；在途连接不受
 影响。增加后删除、删除后加回、顺序或大小写变化同样不需要任何额外动作。真实 Windows App 登录与 RDP 行为仍需
 人工验收。
+
+AppContainer 面板同时提供单项开关与 `Enable all`。`Enable all` 先显示包含未启用数量和系统范围的
+确认 dialog，用户确认后只发送一条 `enableAllAppContainers()` Preload 意图；Main 只启动一次提权 helper。
+helper 枚举当前全部 AppContainer SID，将它们与已有 exemption（包括当前枚举之外的 SID）并集后一次写回并
+读回校验。Renderer 不循环调用单项命令，避免多次 UAC 和中途只成功一部分的状态。
 
 现场复核（2026-08-07）：Workspace revision 8 已持久化 4 个 host，Core `tls.reconfigured` 在重启后
 记录 `passthroughHosts: 4`，证明保存与应用均成功。重启后不再出现 `www.wvd.microsoft.com` TLS 错误；

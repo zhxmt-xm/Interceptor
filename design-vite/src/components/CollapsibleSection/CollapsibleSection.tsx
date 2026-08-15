@@ -12,7 +12,9 @@ interface CollapsibleSectionBadge {
 interface CollapsibleSectionProps {
   readonly badge?: CollapsibleSectionBadge;
   readonly children: ReactNode;
+  readonly className?: string;
   readonly extra?: ReactNode;
+  readonly labelExtra?: ReactNode;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
   readonly title: string;
@@ -21,7 +23,9 @@ interface CollapsibleSectionProps {
 export function CollapsibleSection({
   badge,
   children,
+  className,
   extra,
+  labelExtra,
   onOpenChange,
   open,
   title,
@@ -30,7 +34,7 @@ export function CollapsibleSection({
     <Collapse
       activeKey={open ? ['content'] : []}
       bordered={false}
-      className={styles.collapsibleSection}
+      className={[styles.collapsibleSection, className].filter(Boolean).join(' ')}
       expandIcon={({ isActive }) => (
         <ChevronDown
           aria-hidden="true"
@@ -51,6 +55,7 @@ export function CollapsibleSection({
                 <span>{badge.label}</span>
               </span>
             ) : null}
+            {labelExtra}
           </span>
         ),
         extra: extra ? (

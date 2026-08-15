@@ -230,6 +230,11 @@ export const AUTOMATION_IDS = {
   breakpoints: {
     toggle: 'breakpoints.toggle',
     addHeader: 'breakpoints.header.add',
+    replacement: {
+      off: 'breakpoints.replacement.off',
+      text: 'breakpoints.replacement.text',
+      file: 'breakpoints.replacement.file',
+    },
     body: 'breakpoints.body',
     drop: 'breakpoints.drop',
     continueUnmodified: 'breakpoints.continue-unmodified',
@@ -246,11 +251,17 @@ export const AUTOMATION_IDS = {
   settings: {
     section: {
       proxy: 'settings.section.proxy',
+      appContainers: 'settings.section.app-containers',
+      tlsPassthrough: 'settings.section.tls-passthrough',
       certificates: 'settings.section.certificates',
       appearance: 'settings.section.appearance',
       storage: 'settings.section.storage',
       privacy: 'settings.section.privacy',
       updates: 'settings.section.updates',
+    },
+    appContainers: {
+      enableAll: 'settings.app-containers.enable-all',
+      enableAllConfirm: 'settings.app-containers.enable-all-confirm',
     },
     proxy: {
       enable: 'settings.proxy.enable',

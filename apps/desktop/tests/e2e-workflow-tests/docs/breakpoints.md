@@ -79,20 +79,41 @@ Continue unmodified只释放等待，不改字节；queue/Core/client/Capture终
 
 ### Steps
 
-1. 创建profile/evidence和记录请求内容的HTTP/WS origin；启动trace/Electron，等待App/Core/8888/readiness；检查Breakpoints空态。
-2. 点击readiness Enable并完成授权，等待Recording；通过Rules UI创建Breakpoint action并Apply。
-3. 发送匹配HTTP请求，进入Breakpoints并选择动态row。
-4. 通过动态 `breakpoints.header.<breakpointId>.name/value` 修改header，通过 `breakpoints.body` 修改JSON；点击 `breakpoints.execute-edited`。
-5. 验证origin收到编辑后的header/body，客户端完成，Capture保存实际转发结果。
-6. 再创建WS message breakpoint，发送text，选择row并编辑payload，点击Execute edited。
-7. 验证WS origin和echo收到编辑后的payload，原始snapshot仍可由trace识别。
-8. 进入Proxy点击Restore，确认非owned；保存evidence并Close。
-9. 验证销毁和系统代理恢复。
-10. 关闭origins并删除profile。
+1. 创建profile/evidence和能记录 raw request headers/body 的HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查Breakpoints空态。
+2. 确认冷启动自动进入Recording；若当前尚未Recording，才点击recording toggle并通过readiness Enable完成接管。随后通过Rules UI创建request Breakpoint action，启用规则后Apply。
+3. **Header-only**：客户端发送带固定body、`Content-Type`、`Content-Length`和普通header的请求；选择动态row，保持Replacement=Off，通过动态 `breakpoints.header.<headerId>.name/value` 修改普通header与`Content-Type`，点击 `breakpoints.execute-edited`。
+4. 验证origin收到用户最终headers，body bytes与客户端发送值完全一致；客户端完成，Capture记录实际转发结果。
+5. **Body-only**：客户端再次发送匹配请求；不编辑任何header，选择Text replacement并通过 `breakpoints.body` 输入新正文，点击Execute edited。
+6. 验证origin收到新正文；原本存在且未编辑的`Content-Length`按最终content bytes更新，原本缺失的字段不新增，其余headers保持。
+7. **Header+Body**：客户端第三次发送匹配请求；选择Text replacement，同时把`Content-Encoding`改成`gzip`且不编辑原`Content-Length`，点击Execute edited。
+8. 验证origin收到`Content-Encoding: gzip`、可gunzip为用户新正文，继承的`Content-Length`更新为gzip后字节长度；Capture反映实际转发headers/body。
+9. 为每一段保存origin observation、客户端结果、最终Capture状态与截图/trace；进入Proxy点击Restore，确认non-owned并Close。
+10. 验证Main/Core退出、8888释放、系统代理恢复；关闭origin并删除profile。
 
 ### 预期效果
 
-Edited continue只改变用户编辑字段；HTTP与WS数据面收到新内容；Core state=edited；Capture反映实际转发字节。
+Header-only不改变body；body-only按继承headers构造新body；header+body按用户最终headers构造新body。三段都经过真实UI/Main/Core/Mockttp/origin，Core state=edited，Capture反映实际转发结果。
+
+### Automation Contract
+
+该 workflow 只允许使用下列公共 automation ID，不以翻译文案、`aria-label`、CSS class 或 `window.interceptor` 代替：
+
+| 交互 | Automation ID |
+| --- | --- |
+| 开始 Recording / readiness | `capture.recording.toggle`、`capture.readiness.enable` |
+| 进入 Rules / 新建规则 | `shell.workspace.rules`、`rules.create` |
+| 规则名 | `rules.editor.name` |
+| Host matcher 值 | `rules.matcher.<ruleId>.0.value` |
+| 删除默认 action | `rules.action.<ruleId>.0.remove` |
+| 添加 Breakpoint action | `rules.add-action`、`rules.action.breakpoint` |
+| Apply / enable | `rules.apply`、`rules.toggle.<ruleId>` |
+| 返回 Capture / 选择 pending exchange | `shell.workspace.capture`、`capture.request-row.<exchangeId>` |
+| 编辑 header | `breakpoints.header.<headerId>.name`、`breakpoints.header.<headerId>.value` |
+| Replacement 模式 | `breakpoints.replacement.off`、`breakpoints.replacement.text`、`breakpoints.replacement.file` |
+| 编辑/提交正文 | `breakpoints.body`、`breakpoints.execute-edited` |
+| 恢复系统代理 | `settings.proxy.restore` |
+
+动态 ID 中的 `ruleId`、`exchangeId` 和 `headerId` 只能从对应动态行/控件已经公开的 automation ID 中提取。
 
 <a id="breakpoints-drop"></a>
 ## `breakpoints.drop`

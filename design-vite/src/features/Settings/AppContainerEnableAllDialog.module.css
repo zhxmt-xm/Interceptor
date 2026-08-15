@@ -1,0 +1,128 @@
+.overlay {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
+}
+
+.dialog {
+  width: 540px;
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header h2 {
+  position: relative;
+  top: -2px;
+  flex: 1;
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 640;
+}
+
+.icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  color: var(--yellow);
+}
+
+.icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.content p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.content b {
+  color: var(--text);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.summary strong {
+  position: relative;
+  top: -3px;
+  left: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.23;
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--yellow) 8%, transparent);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.warning svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--yellow);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.footer > button:first-child {
+  position: relative;
+  left: -2px;
+}
+
+.footer > button:last-child {
+  width: 235px;
+}

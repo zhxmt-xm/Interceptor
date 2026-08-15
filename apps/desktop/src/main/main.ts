@@ -635,6 +635,15 @@ class DesktopApplication {
       },
     );
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerEnableAll, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.app-container.enable-all', async () => {
+        const snapshot = await this.requireAppContainerService()
+          .enableAllLoopbackExemptions();
+        return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+      });
+    });
+
     ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.requireGitHubAuthService().status();

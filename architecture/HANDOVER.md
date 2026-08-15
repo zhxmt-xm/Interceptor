@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `f6b1ac7`
+> Tracked commit: `01cf77f`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-08-12
+> 最后更新：2026-08-15
 
 ## Task List
 
@@ -43,7 +43,7 @@
 - [x] **已完成 · 最新完整门禁**：全 workspace typecheck；Proxy Core 串行 279/279、Desktop 248/248、Protocol 15/15、MCP 45/45，共 587 项。design-vite build 与 Capture 160 张截图通过；完整 parity 已扩展为 77 views，新增六个 WebSocket view、`breakpoints-off` 与 manager 全部 0 missing。Windows x64 package 与 artifact audit 通过：1,294 files / 391,548,917 bytes。DOMPurify 从受 GHSA-55q2-fjhq-7xh7 影响的 3.4.12 提升到 3.4.13，`npm audit --omit=dev` 为 0。
 - [x] **已完成 · Response breakpoint 请求身份**：响应阶段快照现在从同一 `MatchContext.request` 保留 `method` / `url`，不再让 Renderer 把真实 POST 响应默认显示成 GET；`RuleService` 聚焦回归锁定 request / response 仍关联同一 exchange。
 - [x] **已完成 · Breakpoint parity 场景接入**：request paused / loading / loaded / text / file-empty / file、response 对称状态以及 queue / queue-full 均已接入 light / dark，共把完整套件扩展到 104 views。不存在于产品契约的 `invalid` 文件状态已从 design state、adapter、截图清单与旧基线删除；manager 最大几何差从 37.2px 收敛到 3.5px，queue-full 明暗均为 `0 missing / 0 flagged / 0.5px`。
-- [ ] **待实现 · design-vite detail inspector 组件化**：`captureFixture` / `composerFixture` 中 13 + 4 个 `.sec > .sh` 仍是 legacy HTML，靠 `useDesignFixtureAdapter` 命令式切 `collapsed`，尚未使用 `CollapsibleSection`。迁移 General、Request / Response Headers、Composer 各段后，删除 `DesignApp.module.css` 的 `.sh` / `.sec` / `.esec` 规则与 adapter 对应折叠分支。
+- [x] **已完成 · design-vite detail inspector 组件化**：`captureFixture` / `composerFixture` 中 13 + 4 个 legacy section 已迁移到 `CollapsibleSection`；旧 `.sh` / `.sec` / `.esec` 样式和 adapter 命令式折叠分支已删除，折叠交互由组件测试覆盖。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。
 - [ ] **待验证 · HTTP Breakpoint timeout policy wire**：HTTP 规则正式提供 `onTimeout: continue | drop`，`BreakpointQueue` 已锁定 policy 传播，但两种策略的真实代理 wire 结果尚未分别验证。不要借 WebSocket 固定 continue 路径伪造这项覆盖。
@@ -53,8 +53,11 @@
 - [ ] **待实现 · macOS 上游检测**：多 network service 可能各有代理，合并语义尚未确定。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [x] **已完成 · statusbar upstream down**：light / dark 已收录到 visual parity，均为 `1/1 matched / 0 missing / 0 flagged`，最大几何差 0.5px。fake Preload 补齐 `upstreamProxy` / `upstreamReachable` 契约；harness 每个 view 前显式重置 `breakpointState`，普通 Capture 场景不再误继承断点状态栏。
+- [ ] **待验收 · AppContainer Enable all**：Main / Preload / Renderer、原生 helper、确认流程、15 种语言、fake / smoke 与 design-vite 状态已连通；提交后需复核一次提权、SID 并集、写后校验与 packaged smoke 证据。
+- [ ] **待验收 · Rules / Composer 目录交互**：Rules 根空白菜单、命令归位、三级目录与 validation footer，以及 Composer 空白取消选择、原地重命名、唯一选择和三级限制已实现；提交后需复核 selection 与右键菜单状态转换。
+- [ ] **待验收 · BodyViewer 格式化与全屏**：Monaco formatter、XML formatter、全屏入口、测试与设计状态已接入；提交后需复核格式化失败回退、编辑状态与全屏生命周期。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 104 views / 821 targets / 787 matched / 34 missing / 301 flagged，新增 flags 主要来自刚接入但尚未收敛的 Breakpoint 场景，原有债务仍集中在 Capture、Settings 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
-- [ ] **待实现 · Local E2E 第一条 workflow**：当前 implemented workflow 为 0。第一条必须从 `application.startup.ready` 开始，只通过公共 automation ID 操作真实 UI，保存 trace / evidence，并验证 destroy 后才能更新 Inventory 状态。
+- [ ] **待验收 · Local E2E 第一条 workflow**：`breakpoints.execute-edited` 已覆盖 header-only、body-only 与 header + body，并从 `application.startup.ready` 通过公共 automation ID 操作真实 UI；提交后需复核 trace / evidence、destroy 证据与 Inventory 状态。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [x] **已完成 · packaged smoke**：2026-08-13 对当前 `apps/desktop/out/Interceptor-win32-x64` 真实运行 `test:smoke`，`1/1` 通过（43.3 秒）。测试安全 allowlist 已同步 WebSocket breakpoint 的 enable / disable Preload 命令，截图矩阵删除已下线的独立 Breakpoints 导航；综合测试总预算调整为 180 秒，关键步骤仍保留各自 5–15 秒超时。运行前后均确认无残留 Interceptor 进程或 8888 listener。
 - [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。

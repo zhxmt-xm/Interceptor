@@ -36,6 +36,8 @@ export interface BreakpointDraft {
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: EditHeaderRow[];
+  /** 用户显式设置或删除过的 header 名，按首次编辑顺序保留。 */
+  editedHeaderNames: string[];
   /** 挂起时是否能看到原始正文；HTTP 头部阶段断点为 false。 */
   bodyAvailable: boolean;
   replacement: BreakpointReplacement;

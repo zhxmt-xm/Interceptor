@@ -132,33 +132,6 @@
   display: inline-flex;
   flex: 0 0 auto;
 }
-.validation {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 11px 13px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--green) 10%, transparent);
-  color: var(--green);
-  font-size: 12px;
-  font-weight: 500;
-}
-.validation svg {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-}
-.validation.invalid {
-  background: color-mix(in srgb, var(--red) 10%, transparent);
-  color: var(--red);
-  align-items: flex-start;
-}
-.diagList {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
 .popover {
   width: 250px;
   max-height: calc(100vh - 16px);

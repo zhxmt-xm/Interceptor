@@ -93,7 +93,7 @@ Do not delete `node_modules` for this check; `.vite` is generated cache and is a
 The Main process must allow reloads within the exact Vite origin while denying all external navigation. If the page only appears after pressing reload, verify the trusted Renderer URL policy before changing Vite dependency settings:
 
 ```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/security/tests/trusted-renderer-url.test.ts
+npm run test --workspace @interceptor/desktop -- --run src/main/security/tests/unit/trusted-renderer-url.test.ts
 ```
 
 ### Debug Renderer
@@ -161,13 +161,13 @@ Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to t
 Run the CoreRuntime lifecycle tests while editing CoreProcess management:
 
 ```powershell
-npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/core-runtime.test.ts
+npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/unit/core-runtime.test.ts
 ```
 
 Run that test once:
 
 ```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/core-runtime.test.ts
+npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/unit/core-runtime.test.ts
 ```
 
 ### Type Checking

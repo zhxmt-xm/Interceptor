@@ -29,6 +29,7 @@ export function draftFromBreakpoint(breakpoint: PendingBreakpoint): BreakpointDr
       name: header.name,
       value: header.value,
     })),
+    editedHeaderNames: [],
     bodyAvailable: breakpoint.bodyAvailable,
     replacement: 'off',
     body: breakpoint.body ?? '',
@@ -112,13 +113,16 @@ export function buildEdit(draft: BreakpointDraft): BreakpointEdit {
     : draft.replacement === 'file'
       ? { bodyFilePath: draft.file!.path }
       : { body: draft.body };
+  const headerIntent = draft.editedHeaderNames.length === 0
+    ? {}
+    : { editedHeaderNames: [...draft.editedHeaderNames] };
   if (draft.phase === 'request') {
-    return { method: draft.method, url: draft.url, headers, ...body };
+    return { method: draft.method, url: draft.url, headers, ...headerIntent, ...body };
   }
   if (draft.phase === 'websocket') {
     return draft.frame === 'close'
       ? { closeCode: draft.closeCode, ...body }
       : { ...body };
   }
-  return { statusCode: draft.statusCode, headers, ...body };
+  return { statusCode: draft.statusCode, headers, ...headerIntent, ...body };
 }

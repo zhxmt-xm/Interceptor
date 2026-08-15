@@ -433,6 +433,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'disableWebSocketBreakpoints',
         'downloadUpdate',
         'echoCore',
+        'enableAllAppContainers',
         'enableSystemProxy',
         'enableWebSocketBreakpoints',
         'exportCollection',

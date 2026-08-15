@@ -1,4 +1,4 @@
-import { FixtureRenderer } from '../../fixtures/FixtureRenderer';
+import { DetailFixtureRenderer } from '../../fixtures/DetailFixtureRenderer';
 import { captureFixture } from '../../fixtures/generated/captureFixture';
 import { BreakpointCreatedMessage } from './BreakpointCreatedMessage';
 import { GrpcMessagePayload } from './GrpcMessagePayload';
@@ -11,7 +11,7 @@ export function Capture(): React.JSX.Element {
   return (
     <>
       <RequestContextMenu>
-        <FixtureRenderer node={captureFixture} />
+        <DetailFixtureRenderer node={captureFixture} />
       </RequestContextMenu>
       <BreakpointCreatedMessage />
       <HttpBreakpointDesign />

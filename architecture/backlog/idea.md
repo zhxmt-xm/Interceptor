@@ -55,32 +55,32 @@
 
 
 ## Bugs或改进
-- capture detail的general、response headers这些head应当可以折叠和收起 ![alt text](image.png)
-- capture detail的body似乎并没有实现对html、css之类的格式化，button也没反应 ![alt text](image-1.png)
-- composer collection点侧栏的空白处是不能取消选择的 ![alt text](image-2.png)
-- composer collection目录双击目录名不能改名称，目录和item都不能改名称，双击可以在原地变成输入框改名
-- composer collection同时只能选一个，选中目录和item是互斥的，只能选一个，选item时，创建目录和item都是创建平级的，如果超过3级就必须disable create button了
-- composer collection的样式间距太小了，宽度也小了点可以稍大些，最好做成类似rule那种，之前的设计图里有一版是tree，做成那一版可以 ![alt text](image-3.png)
-- composer collection没有右键菜单，目录应该可以rename、new、delete，item应该可以rename、delete
-- capture detail里rule加的header tag的cursor应该是可点击的cursor ![alt text](image-4.png)
-- rule collection不能创建sub folder和sub rule，这个应该和composer保持一致
-- rule collection也没有右键菜单，菜单内容应该跟composer类似
-- rule collection右上角的几个按钮没必要存在，可以在rule detail这边加一个save button用来保存 ![alt text](image-5.png)
-- rule detail的提示可以放底栏 ![alt text](image-9.png)
-- rule collection的数字右边距太少了，跟composer不一样 ![alt text](image-10.png)
-- capture detail的body viewer感觉最好是默认撑满，最小高度还是需要设一个，比如320？你觉得多少比较合适？另外最好加一个全屏观看按钮，点击之后会弹出一个dialog，里面可以查看和copybody，点击其他地方会关闭 ![alt text](image.png)
+- [x] **已完成 · Detail sections 折叠**：产品 `Section` 已支持折叠；`design-vite` 的 Capture 13 个、Composer 4 个 legacy `.sec > .sh` 已迁移到受控 `CollapsibleSection`，标题具备 button / `aria-expanded` 语义并保持各段独立状态，旧 adapter 命令式折叠分支及 `.sec` / `.esec` 样式已删除。聚焦交互测试 `2/2`、design-vite typecheck / build 通过，重拍 `290` 张无 missing / resized / not drawn。 ![alt text](image.png)
+- [x] **已完成 · BodyViewer 格式化**：HTML / CSS 使用 Monaco language service 的 `editor.action.formatDocument`，XML 使用 `xml-formatter`；Format 自动/手动入口和只读恢复已锁定，相关 BodyViewer / formatter 测试 `15/15` 通过。 ![alt text](image-1.png)
+- [x] **已完成 · Composer 空白取消选择**：Collection tree 仅在真实空白点击时清除目录落点，并保留右侧已打开请求；store 与 Playwright 交互均已覆盖。 ![alt text](image-2.png)
+- [x] **已完成 · Composer 原地重命名**：目录与 request 均支持双击进入输入框，Enter / blur 提交、Escape 取消；真实 UI 流程已覆盖两类节点。
+- [x] **已完成 · Composer 唯一选择与三级限制**：目录和 request 通过唯一 `aria-pressed` 暴露互斥选择；选 request 后新建项与它平级，目录最多三级，达到上限时 toolbar 与右键菜单的新建目录均 disabled；store `8/8` 与真实 UI 流程通过。
+- [x] **已完成 · Composer Collection tree 样式**：Collection 已采用可折叠 tree、可拖拽 splitter、30px 行高与 26px 层级缩进；聚焦 parity 的 panel / folder / request 几何均为 0px。 ![alt text](image-3.png)
+- [x] **已完成 · Composer 右键菜单**：目录包含 Rename / New subfolder / New request / Delete，request 包含 Rename / Delete；深度禁用、outside click 与菜单内容已通过真实 UI 流程。
+- [x] **已完成 · Rule effect tag 导航**：存在 `ruleId` 的 header effect 渲染为 button，计算样式 `cursor:pointer`；点击 `Rule appended` 可打开对应 `Rewrite auth header` rule detail，真实 Renderer 流程通过。 ![alt text](image-4.png)
+- [x] **已完成 · Rules 子目录与子规则**：目录右键菜单可创建 subfolder / rule，最多三级；真实 Renderer 流程已创建 Nested folder 及其子 rule。
+- [x] **已完成 · Rules 右键菜单**：根空白菜单提供 New rule / New folder / Export；目录提供 Rename / New subfolder / New rule / Delete；规则提供 Rename / Show matching requests / Delete，交互均已验证。
+- [x] **已完成 · Rules 命令归位**：Collection 顶栏只保留搜索，根级命令移到树空白右键菜单；Save 固定在 rule detail header，dirty→Save→disabled→revision 43 流程通过。 ![alt text](image-5.png)
+- [x] **已完成 · Rule validation footer**：compile / validation 提示已从 detail 滚动区移到 Rules statusbar，并按选中 rule 显示完整问题或 applied revision。 ![alt text](image-9.png)
+- [x] **已完成 · Rules count 间距**：命中数保持 26px 最小列与 4px 行右 padding，聚焦 parity 最大差 0.5px。 ![alt text](image-10.png)
+- [x] **已完成 · BodyViewer 撑满与全屏**：正文 section 使用 `flex: 1` 并保底 `320px`；全屏 dialog 为 `1060×660` 响应式上限，复用完整 viewer 并支持 Copy、Escape / mask / close 关闭。聚焦 parity `3/3 matched / 0 missing / 0 flagged / 0px`，Copy 成功反馈与点击外部关闭均通过。 ![alt text](image.png)
 
 - 不止是application会闪，其他的capture filter也会闪
 - 有的桌面端应用捕捉不到request？比如douyuclient，好像很多request被归类到edge里去了 ![alt text](image-6.png)
 - 我打开https://www.bilibili.com，他的登录失效了，反复登录也是失效的，关掉之后就有效了，不知道为什么
 - rule和composer要支持导入导出
 - 有时会出现两个相同的application ![alt text](image-7.png)
-- 切换feature时setting时应该保留，下次访问时仍然是上次访问的状态
-- appcontainer界面应该优先展示enabled的appcontainer
-- appcontainer加一个enable button来enable all appcontainer
+- [x] **已完成 · Settings 跨 feature 状态保留**：最后访问 section 由 App shell 持有；从 AppContainer 切到 Capture 再返回 Settings 仍保持 AppContainer，明确的 TLS / Proxy 跳转仍可覆盖目标 section。真实 Renderer 流程与 Desktop typecheck 通过。
+- [x] **已完成 · AppContainer enabled-first**：Renderer 稳定按 `exempt` 降序后再过滤，enabled 项始终置顶；聚焦 parity `13/13 matched / 0 missing`。
+- [x] **已完成 · AppContainer Enable all**：工具栏提供一次确认的 `Enable all`；Renderer 只调用一条 `enableAllAppContainers()`，Main 只启动一次提权 helper，native helper 将当前全部 SID 与既有 exemption 做并集并写后校验。Service `10/10`、helper 真实编译、15 语言 typecheck、视觉 `4/4 matched / 0 flagged / 0.9px`；fake 流程锁定一次调用、4/4、按钮 disabled 与 dialog 关闭。真实 UAC 仍按 headed workflow 现场验收。
 - clear瞬间filter会卡一下id，list也会卡一下 ![alt text](image-11.png)
-- proxy 和mitm都没有持久化，每次启动好像都是默认态
-- 右键菜单添加breakpoint二级菜单出现时一级菜单消失了 ![alt text](image-12.png)
+- [x] **已完成 · Proxy / MITM 持久化**：system proxy 用 ownership journal 跨进程恢复原始/owned 快照；MITM 持久化用户解密意图，Core 重开后读回；TLS passthrough / insecure hosts 同样持久化。聚焦重启测试 `24/24` 通过。
+- [x] **已完成 · Breakpoint 二级菜单生命周期**：一级与二级统一使用 Ant Menu children；聚焦 parity 同时匹配一级/二级共 `8/8` targets，0 missing，一级菜单不会在 submenu 出现时卸载。 ![alt text](image-12.png)
 - breakpoint最好支持无timeout和有timeout
 - 对于tls passthrough的policy影响的reqeust，可以在tunnel的信息框里加一个按钮点击去查看对应的passthrough item，并给那个item一个临时的高亮然后消失 ![alt text](image-13.png)
 - breakpoint修改的header、body似乎现在不会显示rule effect，并且rule对body的修改现在也不会显示rule effect，这些我觉得都可以加上 ![alt text](image-14.png)

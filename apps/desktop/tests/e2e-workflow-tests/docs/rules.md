@@ -35,7 +35,7 @@ Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选�
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 点击 `shell.workspace.rules`，检查revision=0、rules=[]、dirty=false、selection=null并记录row count。
-3. 点击 `rules.create`，确认新rule自动选中、dirty=true、Apply可用。
+3. 在 Rules tree 空白处打开根级右键菜单，点击 `rules.create`，确认新rule自动选中、dirty=true、detail Save 可用。
 4. 在 `rules.editor.name` 输入唯一名称；切换 `rules.editor.enabled` off/on，确认列表同步。
 5. 点击 `rules.more`→`rules.delete`，确认只删除新rule。
 6. 验证未点击Apply前，离开再返回Rules时草稿状态符合当前Renderer约定，Core revision未增加。
@@ -104,11 +104,11 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 进入Rules，检查revision=0、rules=[]、dirty=false；通过UI创建至少三条rule，点击Apply持久化。
-3. 通过 `rules.create-folder` 建两级目录，把三条规则分别放在根和目录中。
+3. 通过 Rules tree 空白处根级右键菜单的 `rules.create-folder` 建两级目录，把三条规则分别放在根和目录中。
 4. 直接拖动动态 `rules.row.<ruleId>` 到另一规则行的上/下四分之一区域，确认前后插入语义与 DFS 顺序。
 5. 拖动动态 `rules.folder-row.<folderId>` 到另一目录中，确认整个子树一起移动；尝试落入自身子树或形成第 4 级目录，确认没有落点且树不变。
 6. 在第三级目录打开 `rules.folder-menu.<folderId>`，确认 New subfolder disabled；在 `rules.search` 输入过滤条件，确认拍平结果行 `draggable=false`，清空搜索后恢复。
-7. 点击 `rules.apply`；离开并返回Rules，确认Core重新加载后的列表顺序和priority与UI一致。
+7. 点击 detail header 的 `rules.apply`；离开并返回Rules，确认Core重新加载后的列表顺序和priority与UI一致。
 8. 保存evidence并Close。
 9. 验证销毁。
 10. 删除profile。
@@ -127,9 +127,9 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
 2. 进入Rules，检查revision=0、rules=[]、dirty=false并记录revision；创建rule并通过UI添加合法matcher/action。
-3. 观察validation变为可应用状态，确认 `rules.apply` enabled。
-4. 点击 `rules.apply`；保存过程中确认按钮disabled/显示Applying。
-5. 等待成功，确认revision+1、dirty=false、statusbar Rule set applied。
+3. 观察 validation 文案出现在 Rules statusbar，确认 detail header 的 `rules.apply` enabled。
+4. 点击 detail header 的 `rules.apply`；保存过程中确认按钮disabled/显示Applying。
+5. 等待成功，确认revision+1、dirty=false、statusbar同时显示 Rule set applied 与当前 rule compile 状态。
 6. 关闭App并验证销毁，但保留该profile。
 7. 用同一profile启动第二份Electron/trace，进入Rules确认rule和revision持久存在。
 8. 保存evidence并点击Close。

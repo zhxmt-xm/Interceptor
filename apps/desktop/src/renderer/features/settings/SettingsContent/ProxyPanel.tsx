@@ -7,6 +7,7 @@ import type {
   SystemProxyRestoreResult,
   SystemProxyStatus,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, cx, StatusBadge } from '../../../components';
 import { useCaptureStore } from '../../capture/data/captureStore';
 import { describeError, proxyTitleStatus } from '../utils';
@@ -153,12 +154,19 @@ export function ProxyPanel(): React.JSX.Element {
         >
           <ProxyOwnershipBadge status={status} />
           {status.owned ? (
-            <Button disabled={busy} onClick={restore}>{t('settings.restore')}</Button>
+            <Button
+              disabled={busy}
+              onClick={restore}
+              automationId={AUTOMATION_IDS.settings.proxy.restore}
+            >
+              {t('settings.restore')}
+            </Button>
           ) : (
             <Button
               variant="primary"
               disabled={busy || !status.supported || !capture.listening}
               onClick={() => runAction(() => window.interceptor.enableSystemProxy())}
+              automationId={AUTOMATION_IDS.settings.proxy.enable}
             >
               {t('settings.enable')}
             </Button>

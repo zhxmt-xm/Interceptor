@@ -183,7 +183,7 @@ diagnostics.row.<traceKey>
 | `breakpoints.toggle` | Break on match与Core同步 | shared | planned |
 | `breakpoints.queue-select` | 真实pending队列和snapshot | shared | planned |
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
-| `breakpoints.execute-edited` | 编辑Header/Body/WS payload后继续 | shared | planned |
+| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | shared | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.continue-all` | 批量释放等待项 | shared | planned |
 | `breakpoints.resize` | Queue/Editor splitter | shared | planned |

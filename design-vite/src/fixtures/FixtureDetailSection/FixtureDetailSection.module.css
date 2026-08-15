@@ -1,0 +1,44 @@
+.fixtureDetailSectionMeta {
+  display: contents;
+}
+
+.fixtureDetailSectionMeta :global(.c) {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.fixtureDetailSectionGrow,
+.fixtureDetailSectionGrow :global(.ant-collapse-item),
+.fixtureDetailSectionGrow :global(.ant-collapse-content),
+.fixtureDetailSectionGrow :global(.ant-collapse-content-box) {
+  display: flex;
+  min-height: 0;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+:global(.bodybar[data-kind]) ~ .fixtureDetailSectionMeta,
+:global(.bpane[data-pane]) ~ .fixtureDetailSectionMeta,
+:global(.bodynote) ~ .fixtureDetailSectionMeta,
+.fixtureDetailSectionMeta :global(.c[data-meta]) {
+  display: none;
+}
+
+:global(.app[data-body-kind="json"]) .fixtureDetailSectionMeta :global(.c[data-meta="json"]),
+:global(.app[data-body-kind="code"]) .fixtureDetailSectionMeta :global(.c[data-meta="code"]),
+:global(.app[data-body-kind="limited"]) .fixtureDetailSectionMeta :global(.c[data-meta="limited"]),
+:global(.app[data-body-kind="image"]) .fixtureDetailSectionMeta :global(.c[data-meta="image"]),
+:global(.app[data-body-kind="image-large"]) .fixtureDetailSectionMeta :global(.c[data-meta="image-large"]),
+:global(.app[data-body-kind="binary"]) .fixtureDetailSectionMeta :global(.c[data-meta="binary"]),
+:global(.app[data-body-kind="form"]) .fixtureDetailSectionMeta :global(.c[data-meta="form"]),
+:global(.app[data-body-kind="md"]) .fixtureDetailSectionMeta :global(.c[data-meta="md"]),
+:global(.app[data-body-kind="media"]) .fixtureDetailSectionMeta :global(.c[data-meta="media"]) {
+  display: inline-flex;
+}

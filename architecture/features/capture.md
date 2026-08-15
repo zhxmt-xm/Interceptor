@@ -592,7 +592,7 @@ sequenceDiagram
 2. 跳过 `BodyWriter.abort()` 会把 spill 临时文件留到 Core 代际结束（`tracker.reset()` 只遍历 `entries`，此时已删除，也兜不住）。
 
 现已改为与 `finishExchange` 一致地收尾两个 writer。回归用例：
-`proxy-service.test.ts` 的 *keeps the uploaded request body when the origin responds early*。
+`proxy/tests/integration/service.test.ts` 的 *keeps the uploaded request body when the origin responds early*。
 
 ### 5.5 中断（abort）
 

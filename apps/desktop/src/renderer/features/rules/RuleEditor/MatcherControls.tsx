@@ -1,4 +1,5 @@
 import { InputBox, Select } from '../../../components';
+import type { AutomationId } from '../../../../shared/automation-ids';
 import type {
   RuleMatcher,
   RuleMatcherType,
@@ -14,6 +15,7 @@ export interface MatcherControlsProps {
   matcher: RuleMatcher;
   onChange: (matcher: RuleMatcher) => void;
   translate: (key: string) => string;
+  automationIdForField: (field: string) => AutomationId;
 }
 
 /** 按匹配类型渲染对应的受控控件；值与名自由输入，模式走枚举开关。 */
@@ -21,6 +23,7 @@ export function MatcherControls({
   matcher,
   onChange,
   translate,
+  automationIdForField,
 }: MatcherControlsProps): React.JSX.Element {
   switch (matcher.type) {
     case 'method':
@@ -31,6 +34,7 @@ export function MatcherControls({
           value={matcher.value}
           placeholder="GET"
           onValueChange={(value) => onChange({ type: 'method', value })}
+          automationId={automationIdForField('value')}
         />
       );
     case 'host':
@@ -50,6 +54,7 @@ export function MatcherControls({
           value={current.value}
           placeholder={placeholder}
           onValueChange={(value) => onChange({ ...current, value })}
+          automationId={automationIdForField('value')}
           trailing={
             <ModeToggles
               mode={current.mode}

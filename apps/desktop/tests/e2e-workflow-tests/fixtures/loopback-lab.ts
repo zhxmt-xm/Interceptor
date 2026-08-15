@@ -1,4 +1,17 @@
-import { createServer, request, type Server as HttpServer } from 'node:http';
+import {
+  createServer,
+  request,
+  type IncomingHttpHeaders,
+  type OutgoingHttpHeaders,
+  type Server as HttpServer,
+} from 'node:http';
+
+export interface LoopbackRequestObservation {
+  readonly method: string;
+  readonly path: string;
+  readonly headers: IncomingHttpHeaders;
+  readonly body: Buffer;
+}
 
 /** Deterministic loopback origin and explicit-proxy client shared by workflow tests. */
 export class LoopbackLab {
@@ -8,6 +21,9 @@ export class LoopbackLab {
   /** Random loopback port selected by the operating system. */
   readonly port: number;
 
+  /** Requests that reached the origin, in completion order. */
+  private readonly requestObservations: LoopbackRequestObservation[] = [];
+
   /** Create one running lab after its random port is known. */
   private constructor(server: HttpServer, port: number) {
     this.server = server;
@@ -16,10 +32,18 @@ export class LoopbackLab {
 
   /** Start a random-port origin with stable JSON, headers and cookies. */
   static async start(): Promise<LoopbackLab> {
+    let loopbackLab: LoopbackLab;
     const server = createServer((incoming, response) => {
       const chunks: Buffer[] = [];
       incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
       incoming.on('end', () => {
+        const body = Buffer.concat(chunks);
+        loopbackLab.requestObservations.push({
+          method: incoming.method ?? 'GET',
+          path: incoming.url ?? '/',
+          headers: { ...incoming.headers },
+          body,
+        });
         response.writeHead(200, {
           'content-type': 'application/json; charset=utf-8',
           'set-cookie': [
@@ -33,7 +57,7 @@ export class LoopbackLab {
           workflow: 'capture',
           method: incoming.method ?? 'GET',
           path: incoming.url ?? '/',
-          requestBody: Buffer.concat(chunks).toString('utf8'),
+          requestBody: body.toString('utf8'),
           ok: true,
         }));
       });
@@ -49,7 +73,8 @@ export class LoopbackLab {
         resolve(address.port);
       });
     });
-    return new LoopbackLab(server, port);
+    loopbackLab = new LoopbackLab(server, port);
+    return loopbackLab;
   }
 
   /** Absolute URL used by Composer or explicit-proxy requests. */
@@ -61,10 +86,14 @@ export class LoopbackLab {
   async requestThroughProxy(
     proxyPort: number,
     requestPath: string,
-    options: { method?: string; body?: string } = {},
+    options: {
+      method?: string;
+      body?: string | Uint8Array;
+      headers?: OutgoingHttpHeaders;
+    } = {},
   ): Promise<{ statusCode: number | undefined; body: string }> {
     const method = options.method ?? 'GET';
-    const body = options.body ?? '';
+    const body = Buffer.from(options.body ?? '');
     return new Promise((resolve, reject) => {
       const outgoing = request({
         host: '127.0.0.1',
@@ -74,10 +103,11 @@ export class LoopbackLab {
         headers: {
           host: `127.0.0.1:${this.port}`,
           connection: 'close',
-          ...(body ? {
+          ...(body.byteLength > 0 && options.headers === undefined ? {
             'content-type': 'application/json',
             'content-length': String(Buffer.byteLength(body)),
           } : {}),
+          ...options.headers,
         },
       }, (response) => {
         const chunks: Buffer[] = [];
@@ -89,11 +119,26 @@ export class LoopbackLab {
         }));
       });
       outgoing.once('error', reject);
-      if (body) {
+      if (body.byteLength > 0) {
         outgoing.write(body);
       }
       outgoing.end();
     });
+  }
+
+  /** Return the first completed origin observation for one exact request path. */
+  observation(requestPath: string): LoopbackRequestObservation | undefined {
+    return this.requestObservations.find((entry) => entry.path === requestPath);
+  }
+
+  /** Return serializable origin evidence without exposing mutable internal buffers. */
+  evidence(): object[] {
+    return this.requestObservations.map((entry) => ({
+      method: entry.method,
+      path: entry.path,
+      headers: entry.headers,
+      bodyBase64: entry.body.toString('base64'),
+    }));
   }
 
   /** Close the origin after every in-flight response has completed. */

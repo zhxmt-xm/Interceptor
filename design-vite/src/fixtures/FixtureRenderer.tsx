@@ -3,10 +3,16 @@ import { createElement, type CSSProperties, type ReactNode } from 'react';
 import { MonacoFixture, type MonacoFixturePreset } from '../components/MonacoFixture/MonacoFixture';
 import styles from '../DesignApp/DesignApp.module.css';
 import { FixtureIcon } from './FixtureIcon';
-import type { FixtureNode } from './FixtureNode';
+import type { FixtureElementNode, FixtureNode } from './FixtureNode';
+
+export type FixtureElementRenderer = (
+  node: FixtureElementNode,
+  children: readonly ReactNode[],
+) => ReactNode | undefined;
 
 interface FixtureRendererProps {
   readonly node: FixtureNode;
+  readonly renderElement?: FixtureElementRenderer;
 }
 
 const PROPERTY_BY_ATTRIBUTE: Readonly<Record<string, string>> = {
@@ -118,7 +124,7 @@ function fixtureIconId(node: FixtureNode): string | undefined {
   return href?.startsWith('#i-') ? href.slice(1) : undefined;
 }
 
-export function FixtureRenderer({ node }: FixtureRendererProps): ReactNode {
+export function FixtureRenderer({ node, renderElement }: FixtureRendererProps): ReactNode {
   if (node.type === 'text') {
     return node.value;
   }
@@ -143,8 +149,12 @@ export function FixtureRenderer({ node }: FixtureRendererProps): ReactNode {
   const children = node.tag === 'textarea' || VOID_ELEMENTS.has(node.tag)
     ? undefined
     : node.children.map((child, index) => (
-        <FixtureRenderer key={index} node={child} />
+        <FixtureRenderer key={index} node={child} renderElement={renderElement} />
       ));
+  const renderedElement = children ? renderElement?.(node, children) : undefined;
+  if (renderedElement !== undefined) {
+    return renderedElement;
+  }
   return createElement(
     node.tag,
     { ...properties, 'data-fixture-node': '' },
