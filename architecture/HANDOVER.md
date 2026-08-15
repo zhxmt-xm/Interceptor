@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `01cf77f`
+> Tracked commit: `c14cd67`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-15
 
@@ -44,10 +44,14 @@
 - [x] **已完成 · Response breakpoint 请求身份**：响应阶段快照现在从同一 `MatchContext.request` 保留 `method` / `url`，不再让 Renderer 把真实 POST 响应默认显示成 GET；`RuleService` 聚焦回归锁定 request / response 仍关联同一 exchange。
 - [x] **已完成 · Breakpoint parity 场景接入**：request paused / loading / loaded / text / file-empty / file、response 对称状态以及 queue / queue-full 均已接入 light / dark，共把完整套件扩展到 104 views。不存在于产品契约的 `invalid` 文件状态已从 design state、adapter、截图清单与旧基线删除；manager 最大几何差从 37.2px 收敛到 3.5px，queue-full 明暗均为 `0 missing / 0 flagged / 0.5px`。
 - [x] **已完成 · design-vite detail inspector 组件化**：`captureFixture` / `composerFixture` 中 13 + 4 个 legacy section 已迁移到 `CollapsibleSection`；旧 `.sh` / `.sec` / `.esec` 样式和 adapter 命令式折叠分支已删除，折叠交互由组件测试覆盖。
+- [x] **已完成 · Capture facet 稳定更新**：Application / Method / Host / Type / Rule 保持当前 Capture 中首次出现顺序，计数变化不再按 count 重排 DOM；Clear 的空 rows 绕过600ms throttle，让列表、selection 与 facet snapshot 同步归零。两项均先以 Red 测试复现，Capture 聚焦 `21/21`、Desktop `262/262` 与 workspace typecheck 通过；Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
+- [x] **已完成 · Breakpoint 最终 Rule state 与 Header effect**：RuleService 改为两阶段执行，先完成全部普通 action，再按 encounter 顺序挂起 breakpoint；request / response snapshot 因此是最终 state，短路或已 abort 流量不挂起。断点显式 header 编辑按重复值的保序最小差异产出 Capture effect；暂停 header 行通过 `BreakpointHeader.ruleEffect/ruleId` 显示最终活跃的普通 Rule set / append marker。Protocol `15/15`、Desktop `262/262`、MCP `45/45`、Proxy Core（排除既知 framing 专项）串行 `293/293`、design-vite interaction `3/3` 通过。
+- [x] **已完成 · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 同属 Control group，自有 flex label 统一 icon / text / hint 起点，Ant 继续负责箭头、hover、贴边与 dismissal。Playwright 几何 Red 为文本左缘差 `7.4375px`，修复后 Green；根菜单 parity `4/4 matched / 0 missing / 0 flagged / geometry 0`，二级菜单 `8/8 matched / 0 missing`、仅 popup 标题保留既有1px宽差。
+- [ ] **待设计/实现 · Body Rule effect**：普通 Rule body action 与 Breakpoint body replacement 目前只有 rule hit，没有独立 body effect 协议、Capture 存储字段或 Inspector marker；需先确定原始/最终、text/file 与 request/response 的证据模型并完成 design-vite 设计，不能伪装成 Header effect。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。
 - [ ] **待验证 · HTTP Breakpoint timeout policy wire**：HTTP 规则正式提供 `onTimeout: continue | drop`，`BreakpointQueue` 已锁定 policy 传播，但两种策略的真实代理 wire 结果尚未分别验证。不要借 WebSocket 固定 continue 路径伪造这项覆盖。
-- [ ] **验收进行中 · Breakpoint parity 几何收敛**：场景已全部接入，剩余是视觉差异而非 missing 场景。request / response 常规 loading / loaded / text / file 状态无 missing，最大多为 1.6–4px；response text 明暗各有 1 个 target missing。file-empty 的按钮目标仍有 302.1px 层级差，queue 有 71.7px 状态栏目标差，待改成同层语义节点。完整报告为 `104 views / 821 targets / 787 matched / 34 missing / 301 flagged / 平均 2.69%`；最终 upstream 文本 selector 修正后聚焦复跑为 `1/1 matched / 0 flagged / 0.5px`。
+- [ ] **验收进行中 · Breakpoint parity 几何收敛**：场景已全部接入，剩余是视觉差异而非 missing 场景。request / response 常规 loading / loaded / text / file 状态无 missing，最大多为 1.6–4px；response text 明暗各有 1 个 target missing。file-empty 的按钮目标仍有 302.1px 层级差，queue 有 71.7px 状态栏目标差，待改成同层语义节点。新增 Rule marker 与菜单目标后完整报告为 `104 views / 843 targets / 809 matched / 34 missing / 302 flagged / 平均 2.71%`；新增22个 target 全部 matched，missing 未增加。最终 upstream 文本 selector 修正后聚焦复跑为 `1/1 matched / 0 flagged / 0.5px`。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待验证 · 上游认证代理**：公司 SSO / `Proxy-Authorization` 尚未验证；WinINet 不保存凭据，需要设计用户手工提供方式。
 - [ ] **待实现 · macOS 上游检测**：多 network service 可能各有代理，合并语义尚未确定。
@@ -56,7 +60,7 @@
 - [ ] **待验收 · AppContainer Enable all**：Main / Preload / Renderer、原生 helper、确认流程、15 种语言、fake / smoke 与 design-vite 状态已连通；提交后需复核一次提权、SID 并集、写后校验与 packaged smoke 证据。
 - [ ] **待验收 · Rules / Composer 目录交互**：Rules 根空白菜单、命令归位、三级目录与 validation footer，以及 Composer 空白取消选择、原地重命名、唯一选择和三级限制已实现；提交后需复核 selection 与右键菜单状态转换。
 - [ ] **待验收 · BodyViewer 格式化与全屏**：Monaco formatter、XML formatter、全屏入口、测试与设计状态已接入；提交后需复核格式化失败回退、编辑状态与全屏生命周期。
-- [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 104 views / 821 targets / 787 matched / 34 missing / 301 flagged，新增 flags 主要来自刚接入但尚未收敛的 Breakpoint 场景，原有债务仍集中在 Capture、Settings 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
+- [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 104 views / 843 targets / 809 matched / 34 missing / 302 flagged，新增 Rule marker / menu targets 全部 matched，原有债务仍集中在 Capture、Settings、Breakpoint file-empty / queue 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
 - [ ] **待验收 · Local E2E 第一条 workflow**：`breakpoints.execute-edited` 已覆盖 header-only、body-only 与 header + body，并从 `application.startup.ready` 通过公共 automation ID 操作真实 UI；提交后需复核 trace / evidence、destroy 证据与 Inventory 状态。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [x] **已完成 · packaged smoke**：2026-08-13 对当前 `apps/desktop/out/Interceptor-win32-x64` 真实运行 `test:smoke`，`1/1` 通过（43.3 秒）。测试安全 allowlist 已同步 WebSocket breakpoint 的 enable / disable Preload 命令，截图矩阵删除已下线的独立 Breakpoints 导航；综合测试总预算调整为 180 秒，关键步骤仍保留各自 5–15 秒超时。运行前后均确认无残留 Interceptor 进程或 8888 listener。
