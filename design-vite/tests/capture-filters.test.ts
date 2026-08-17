@@ -18,3 +18,22 @@ test('loading facet options are permanent and last in every applicable group', a
     expect(text.startsWith('Pending'), `${facet} must end with Pending`).toBe(true);
   }
 });
+
+test('selecting a facet option keeps its manually expanded group open', async ({ page }) => {
+  await setCaptureState(page);
+
+  const methodGroup = page.locator('[data-grp="method"]');
+  await methodGroup.locator('.fgrp-toggle').click();
+  await expect(methodGroup).toHaveClass(/\bon\b/);
+
+  const postOption = methodGroup.locator('.fitem').filter({ hasText: 'POST' });
+  await postOption.click();
+
+  await expect(methodGroup).toHaveClass(/\bon\b/);
+  await expect(postOption).toHaveClass(/\bon\b/);
+
+  await postOption.click();
+
+  await expect(methodGroup).toHaveClass(/\bon\b/);
+  await expect(postOption).not.toHaveClass(/\bon\b/);
+});

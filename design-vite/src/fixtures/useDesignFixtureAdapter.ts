@@ -132,6 +132,21 @@ function syncFilterBadge(root: HTMLElement): boolean {
   return applied;
 }
 
+/** 受控场景字段变化时重置 facet 展开态，普通交互状态更新不得覆盖用户展开结果。 */
+function syncFilterGroupExpansion(root: HTMLElement, state: DesignState): void {
+  const openGroups = new Set<string>();
+  if (state.filterActive) {
+    openGroups.add('application');
+    openGroups.add('protocol');
+  }
+  if (state.ruleFilter || state.ruleOptions === 'empty') openGroups.add('rule');
+  if (state.filterGroup) openGroups.add(state.filterGroup);
+  if (!openGroups.size) openGroups.add('application');
+  root.querySelectorAll<HTMLElement>('.fgrp').forEach((group) => {
+    group.classList.toggle('on', openGroups.has(group.dataset.grp ?? ''));
+  });
+}
+
 function syncWebSocketPausedRow(root: HTMLElement, state: DesignState): void {
   const row = root.querySelector<HTMLElement>('.wsrows > .wsrow.sel');
   const direction = row?.querySelector<HTMLElement>('.wsdir');
@@ -175,12 +190,6 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
   if (search) search.textContent = state.search;
   const hostInput = root.querySelector<HTMLInputElement>('[data-tls-host-input]');
   if (hostInput && hostInput.value !== state.tlsHostInput) hostInput.value = state.tlsHostInput;
-  const openGroups = new Set<string>();
-  if (state.filterActive) { openGroups.add('application'); openGroups.add('protocol'); }
-  if (state.ruleFilter || state.ruleOptions === 'empty') openGroups.add('rule');
-  if (state.filterGroup) openGroups.add(state.filterGroup);
-  if (!openGroups.size) openGroups.add('application');
-  root.querySelectorAll<HTMLElement>('.fgrp').forEach((group) => group.classList.toggle('on', openGroups.has(group.dataset.grp ?? '')));
   if (state.boot) {
     const phases = BOOT_PHASES[state.boot];
     root.querySelectorAll<HTMLElement>('.boot-dot').forEach((dot) => { dot.dataset.state = phases[dot.dataset.step ?? '']; });
@@ -260,6 +269,19 @@ export function useDesignFixtureAdapter(
     root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === (state.ruleFilter ? 'stub' : 'all')));
     updateState({ hasFilter: syncFilterBadge(root) });
   }, [rootRef, state.filterActive, state.ruleFilter, updateState]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    syncFilterGroupExpansion(root, state);
+  }, [
+    rootRef,
+    state.filterActive,
+    state.filterGroup,
+    state.ruleFilter,
+    state.ruleOptions,
+    state.view,
+  ]);
 
   useEffect(() => {
     const root = rootRef.current;

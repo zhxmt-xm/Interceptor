@@ -151,7 +151,12 @@ describe('captureStore facet filters', () => {
   const baseFilter: CaptureFilter = EMPTY_FILTER;
 
   beforeEach(() => {
-    useCaptureStore.setState({ filter: baseFilter, rows: [], selectedId: null });
+    useCaptureStore.setState({
+      filter: baseFilter,
+      rows: [],
+      selectedId: null,
+      expandedFacets: ['application'],
+    });
   });
 
   function summary(
@@ -362,6 +367,17 @@ describe('captureStore facet filters', () => {
       methods: [],
       statuses: ['404'],
     });
+  });
+
+  it('keeps facet expansion independent from option selection', () => {
+    const store = useCaptureStore.getState();
+    store.toggleFacetExpanded('method');
+
+    store.toggleFacetValue('method', 'POST');
+    expect(useCaptureStore.getState().expandedFacets).toEqual(['application', 'method']);
+
+    useCaptureStore.getState().toggleFacetValue('method', 'POST');
+    expect(useCaptureStore.getState().expandedFacets).toEqual(['application', 'method']);
   });
 
   it('keeps search independent from facets when reporting and clearing', () => {

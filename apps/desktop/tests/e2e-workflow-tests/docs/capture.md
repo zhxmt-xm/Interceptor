@@ -157,6 +157,38 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 
 五类结构化条件正确规范化并以AND组合；非法值不污染filter；pill移除精确；列表和计数始终一致。
 
+<a id="capture-filter-group-selection"></a>
+## `capture.filter-group-selection`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建fresh profile并启动仓库本地production bundle；开启BrowserContext trace，等待真实Electron Renderer、Core PID和`127.0.0.1:8888` listener ready。Fresh profile出现Proxy readiness时只点击Cancel，不修改系统代理。
+2. 通过`capture.filter.toggle.status`展开Status组，确认`aria-expanded=true`且永久Pending option可见。
+3. 点击`capture.filter.option.status.<pending>`选择该option；确认筛选生效后toggle仍为`aria-expanded=true`、option仍可见。
+4. 再次点击同一option取消选择；确认组继续展开。对Content type组重复相同选择/取消流程，证明非Application分组不依赖默认展开状态。
+5. 附加每次点击后的`aria-expanded`证据、最终截图、trace、Main/Renderer日志和metadata；正常Close。
+6. 验证Main/Core PID退出、8888可重新bind、profile删除且系统代理从未被修改。
+
+### 预期效果
+
+option选择与分组展开是正交状态；选择或取消option只更新筛选条件，只有标题或chevron可以折叠分组。该workflow用于证明真实产品Renderer没有设计fixture的状态重置缺陷。
+
+### TDD证据要求
+
+- 产品实现修改前运行本workflow为Green，因此没有修改Renderer业务代码。
+- `design-vite`交互测试在fixture修复前因非Application分组被重置而Red，修复后Green。
+- selector、构建、fixture或销毁失败不算产品行为证据。
+
+### 验收证据
+
+- 设计 fixture 修复前，`capture-filters.test.ts` 精确失败于 Method 组点击 POST 后 class 从`fgrp on`变为`fgrp applied`；修复后`2/2` Green。
+- Desktop Capture store聚焦测试`21/21` Green；新增断言证明选择和取消option都不改变`expandedFacets`。
+- 真实 Electron `capture.filter-group-selection` `1/1` Green；Status与Content type两组在选择/取消Pending option后均保持`aria-expanded=true`。
+- metadata记录Main PID`29504`、Core PID`29972`、listener`8888`与`gracefulDestroyVerified: true`；trace、最终截图、Main/Renderer日志均已生成，结束后`8888`空闲，系统代理保持原有配置。
+
 <a id="capture-filter-protocol"></a>
 ## `capture.filter.protocol`
 

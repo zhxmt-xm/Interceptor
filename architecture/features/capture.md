@@ -1,6 +1,6 @@
 # Feature: Capture
 
-> 最后更新：2026-08-07
+> 最后更新：2026-08-17
 > Core 模块：`apps/proxy-core/src/proxy-core/proxy/`、`apps/proxy-core/src/proxy-core/capture/`、`apps/proxy-core/src/proxy-core/client-app/`
 > Renderer 模块：`apps/desktop/src/renderer/features/capture/`；正文查看器内核 `apps/desktop/src/renderer/components/BodyViewer/`
 
@@ -1380,6 +1380,9 @@ flowchart LR
 
 - **组内 OR、组间 AND，搜索与所有 facet 之间也是 AND**。`matchesCoreFilter` 同时供列表派生与实时事件使用，
   保证新到流量与已有行走同一判定。
+- **分组展开状态与筛选值正交**。选择或取消 option 只更新对应 `CaptureFilter` 字段，保持该组和其他组
+  当前的展开状态；只有分组标题或 chevron 可以调用 `toggleFacetExpanded`。设计稿 fixture 必须遵守同一
+  交互契约，不能在筛选状态同步时重置用户手动展开的分组。
 - **Protocol facet 比列表 Proto 列更细**：列表列把 `HTTP/1.x` 收敛为 `h1`，facet 则区分 `HTTP/1.1` 与 `HTTP/1.0`，
   另有 `HTTP/2`、`HTTP/3`、`WebSocket`、`TLS tunnel`。
 - 值与计数由 `allFacetOptions` **一次遍历**派生全部 facet；实时流量下每条摘要只扫一遍，

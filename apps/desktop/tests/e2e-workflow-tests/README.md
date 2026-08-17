@@ -77,6 +77,7 @@ apps/desktop/tests/e2e-workflow-tests/
 │  ├─ capture/
 │  │  ├─ detail-body-fill.workflow.ts
 │  │  ├─ facets-clear-menu.workflow.ts
+│  │  ├─ filter-group-selection.workflow.ts
 │  │  └─ section-collapse.workflow.ts
 │  ├─ composer/
 │  │  ├─ body-formatting.workflow.ts
@@ -150,6 +151,7 @@ diagnostics.row.<traceKey>
 | `capture.inspector.section-collapse` | Inspector详情区独立折叠并暴露正确ARIA关系 | privileged UI | passed |
 | `capture.filter.keyword` | Keyword筛选和恢复 | shared | planned |
 | `capture.filter.structured` | Method/Status/Host/Type/Duration组合筛选 | shared | planned |
+| `capture.filter-group-selection` | Option选择保持facet分组展开 | shared | passed |
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | planned |

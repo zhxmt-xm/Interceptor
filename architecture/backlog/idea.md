@@ -146,12 +146,12 @@
   <td><ul><li>Renderer 发一条语义命令，Main 启动一次 helper，native 层做 SID 并集和写后校验。</li></ul></td>
 </tr>
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Capture filter option collapses group</td>
-  <td><ul><li>选择 filter option 时保持分组展开，仅标题或 chevron 可折叠。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
-  <td><ul><li>未知；优先检查事件传播与受控展开状态。</li></ul></td>
-  <td><ul><li>Option 只更新筛选条件，折叠命令只由标题或 chevron 发出。</li></ul></td>
+  <td><ul><li>选择 filter option 时保持分组展开，仅标题或 chevron 可折叠。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Capture Store 21/21</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron 1/1，销毁通过</li><li><strong>Design/Parity:</strong> ✅ Interaction Red→Green 2/2；Capture 截图复跑 158/158 identical</li></ul></td>
+  <td><ul><li><code>syncFixture</code> 在任意 design state 变化后重算 facet 展开态；option 点击更新 <code>hasFilter</code> 时会把用户手动展开的非 Application 分组重置。</li><li>真实 Renderer 的 Zustand 筛选值与 <code>expandedFacets</code> 已正交，不存在同一缺陷。</li></ul></td>
+  <td><ul><li>把 design fixture 展开同步移入只依赖 owning scene 字段的 effect；普通 option 状态更新不再覆盖用户展开结果。</li><li>新增 design 交互 Red→Green、Capture Store 契约测试和真实 Electron workflow。</li></ul></td>
 </tr>
 
 <tr>
