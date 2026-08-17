@@ -227,9 +227,39 @@ describe('captureStore facet filters', () => {
     expect(options.status).toEqual([
       { value: '200', count: 2 },
       { value: '404', count: 1 },
-      { value: PENDING_FACET_VALUE, count: 1 },
       { value: FAILED_FACET_VALUE, count: 1 },
+      { value: PENDING_FACET_VALUE, count: 1 },
     ]);
+  });
+
+  it('always exposes filterable loading buckets at the end of their facets', () => {
+    const emptyOptions = allFacetOptions([]);
+    expect(emptyOptions.application).toEqual([
+      { value: PENDING_FACET_VALUE, count: 0 },
+    ]);
+    expect(emptyOptions.status).toEqual([
+      { value: PENDING_FACET_VALUE, count: 0 },
+    ]);
+    expect(emptyOptions.type).toEqual([
+      { value: PENDING_FACET_VALUE, count: 0 },
+    ]);
+
+    const loading = summary('loading', {
+      appPending: true,
+      statusCode: undefined,
+      state: 'pending',
+      responseMime: undefined,
+    });
+    const options = allFacetOptions([loading]);
+    expect(options.application.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(options.status.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(options.type.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(visibleCaptureRows([loading], {
+      ...baseFilter,
+      apps: [PENDING_FACET_VALUE],
+      statuses: [PENDING_FACET_VALUE],
+      types: [PENDING_FACET_VALUE],
+    })).toEqual([loading]);
   });
 
   it('keeps every dynamic facet in first-seen order when later values have higher counts', () => {
@@ -260,13 +290,21 @@ describe('captureStore facet filters', () => {
       }),
     ]);
 
-    expect(options.application.map(({ value }) => value)).toEqual(['first-app', 'second-app']);
+    expect(options.application.map(({ value }) => value)).toEqual([
+      'first-app',
+      'second-app',
+      PENDING_FACET_VALUE,
+    ]);
     expect(options.method).toEqual([
       { value: 'GET', count: 1 },
       { value: 'POST', count: 2 },
     ]);
     expect(options.host.map(({ value }) => value)).toEqual(['first.test', 'second.test']);
-    expect(options.type.map(({ value }) => value)).toEqual(['plain', 'json']);
+    expect(options.type.map(({ value }) => value)).toEqual([
+      'plain',
+      'json',
+      PENDING_FACET_VALUE,
+    ]);
     expect(options.rule.map(({ value }) => value)).toEqual(['first-rule', 'second-rule']);
   });
 
@@ -284,11 +322,16 @@ describe('captureStore facet filters', () => {
     expect(allFacetOptions(rows.filter((row) => !row.ruleIds)).rule).toEqual([]);
   });
 
-  it('omits exchanges whose application is still being resolved instead of counting them as Unknown', () => {
+  it('counts application resolution in Pending instead of Unknown', () => {
     const resolving = summary('resolving', { appPending: true });
-    expect(allFacetOptions([resolving]).application).toEqual([]);
+    expect(allFacetOptions([resolving]).application).toEqual([
+      { value: PENDING_FACET_VALUE, count: 1 },
+    ]);
     expect(allFacetOptions([summary('resolved', { appId: 'chrome', appName: 'Chrome' })]).application)
-      .toEqual([{ value: 'chrome', count: 1 }]);
+      .toEqual([
+        { value: 'chrome', count: 1 },
+        { value: PENDING_FACET_VALUE, count: 0 },
+      ]);
   });
 
   it('derives safe body filename suggestions from URL and media MIME', () => {

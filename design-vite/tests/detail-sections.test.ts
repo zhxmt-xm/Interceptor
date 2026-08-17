@@ -66,3 +66,77 @@ test('Breakpoint submenu trigger aligns with the other Control menu items', asyn
       : Number.POSITIVE_INFINITY;
   }).toBeLessThan(1);
 });
+
+test('Capture response BodyViewer fills the remaining Inspector height', async ({ page }) => {
+  await setDesignState(page, {
+    view: 'capture',
+    detail: 'open',
+    scene: 'http',
+    tab: 'response',
+    bodyPreview: 'json',
+    breakpointState: '',
+  });
+
+  const scroll = page.locator('.insp .scroll');
+  const bodyViewer = page.locator('.insp .bodyview.grow:visible');
+  const bodyPane = bodyViewer.locator('.bpane[data-pane="json"]');
+  await expect(bodyViewer).toBeVisible();
+  await expect(bodyPane).toHaveCSS('display', 'flex');
+
+  const [scrollBox, bodyViewerBox, bodyPaneBox] = await Promise.all([
+    scroll.boundingBox(),
+    bodyViewer.boundingBox(),
+    bodyPane.boundingBox(),
+  ]);
+  expect(scrollBox).not.toBeNull();
+  expect(bodyViewerBox).not.toBeNull();
+  expect(bodyPaneBox).not.toBeNull();
+  expect(bodyPaneBox!.height).toBeGreaterThanOrEqual(320);
+  expect(
+    scrollBox!.y + scrollBox!.height - (bodyViewerBox!.y + bodyViewerBox!.height),
+  ).toBeGreaterThanOrEqual(16);
+  expect(
+    scrollBox!.y + scrollBox!.height - (bodyViewerBox!.y + bodyViewerBox!.height),
+  ).toBeLessThanOrEqual(20);
+  expect(Math.abs(
+    bodyViewerBox!.y + bodyViewerBox!.height - (bodyPaneBox!.y + bodyPaneBox!.height),
+  )).toBeLessThan(1);
+});
+
+test('Capture BodyViewer chains wheel scrolling to the Inspector at its boundary', async ({ page }) => {
+  await setDesignState(page, {
+    view: 'capture',
+    detail: 'open',
+    scene: 'http',
+    tab: 'request',
+    bodyPreview: 'json',
+    breakpointState: '',
+  });
+
+  const scroll = page.locator('.insp .scroll');
+  const bodyPane = page.locator(
+    '.insp .tp[data-tab="request"] .bodyview.grow [data-monaco="fill"]',
+  );
+  await expect(bodyPane).toBeVisible();
+  const outerMaxScroll = await scroll.evaluate(
+    (element) => element.scrollHeight - element.clientHeight,
+  );
+  expect(outerMaxScroll).toBeGreaterThan(20);
+  await scroll.evaluate((element, maximum) => {
+    const remaining = Math.min(80, maximum / 2);
+    element.scrollTop = maximum - remaining;
+  }, outerMaxScroll);
+  const paneBox = await bodyPane.boundingBox();
+  expect(paneBox).not.toBeNull();
+  await page.mouse.move(
+    paneBox!.x + paneBox!.width / 2,
+    Math.max(paneBox!.y + 12, 120),
+  );
+
+  await page.mouse.wheel(0, 5_000);
+  const beforeOuterScroll = await scroll.evaluate((element) => element.scrollTop);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(
+    () => scroll.evaluate((element) => element.scrollTop),
+  ).toBeGreaterThan(beforeOuterScroll);
+});

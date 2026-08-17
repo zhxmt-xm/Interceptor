@@ -24,6 +24,12 @@ export class LoopbackLab {
   /** Requests that reached the origin, in completion order. */
   private readonly requestObservations: LoopbackRequestObservation[] = [];
 
+  /** Test-owned response gates keyed by exact request path. */
+  private readonly responseGates = new Map<string, {
+    promise: Promise<void>;
+    release: () => void;
+  }>();
+
   /** Create one running lab after its random port is known. */
   private constructor(server: HttpServer, port: number) {
     this.server = server;
@@ -44,22 +50,30 @@ export class LoopbackLab {
           headers: { ...incoming.headers },
           body,
         });
-        response.writeHead(200, {
-          'content-type': 'application/json; charset=utf-8',
-          'set-cookie': [
-            'interceptor_e2e=active; Path=/; HttpOnly',
-            'workflow=capture; Path=/',
-          ],
-          'x-interceptor-e2e': 'loopback-lab',
-          connection: 'close',
-        });
-        response.end(JSON.stringify({
-          workflow: 'capture',
-          method: incoming.method ?? 'GET',
-          path: incoming.url ?? '/',
-          requestBody: body.toString('utf8'),
-          ok: true,
-        }));
+        const finishResponse = (): void => {
+          response.writeHead(200, {
+            'content-type': 'application/json; charset=utf-8',
+            'set-cookie': [
+              'interceptor_e2e=active; Path=/; HttpOnly',
+              'workflow=capture; Path=/',
+            ],
+            'x-interceptor-e2e': 'loopback-lab',
+            connection: 'close',
+          });
+          response.end(JSON.stringify({
+            workflow: 'capture',
+            method: incoming.method ?? 'GET',
+            path: incoming.url ?? '/',
+            requestBody: body.toString('utf8'),
+            ok: true,
+          }));
+        };
+        const gate = loopbackLab.responseGates.get(incoming.url ?? '/');
+        if (gate) {
+          void gate.promise.then(finishResponse);
+        } else {
+          finishResponse();
+        }
       });
     });
     const port = await new Promise<number>((resolve, reject) => {
@@ -75,6 +89,20 @@ export class LoopbackLab {
     });
     loopbackLab = new LoopbackLab(server, port);
     return loopbackLab;
+  }
+
+  /** Hold one exact origin response until the returned release function is called. */
+  holdResponse(requestPath: string): () => void {
+    let releasePromise!: () => void;
+    const promise = new Promise<void>((resolve) => {
+      releasePromise = resolve;
+    });
+    const release = (): void => {
+      this.responseGates.delete(requestPath);
+      releasePromise();
+    };
+    this.responseGates.set(requestPath, { promise, release });
+    return release;
   }
 
   /** Absolute URL used by Composer or explicit-proxy requests. */
@@ -143,6 +171,10 @@ export class LoopbackLab {
 
   /** Close the origin after every in-flight response has completed. */
   async close(): Promise<void> {
+    for (const gate of this.responseGates.values()) {
+      gate.release();
+    }
+    this.responseGates.clear();
     await new Promise<void>((resolve, reject) => {
       this.server.close((error) => error ? reject(error) : resolve());
     });

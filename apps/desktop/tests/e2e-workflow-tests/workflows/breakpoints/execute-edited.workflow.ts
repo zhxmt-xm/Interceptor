@@ -6,14 +6,14 @@ import {
   AUTOMATION_ID_PREFIXES,
   AUTOMATION_IDS,
   AutomationIdFactory,
-} from '../../../src/shared/automation-ids';
+} from '../../../../src/shared/automation-ids';
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../fixtures/automation';
-import { startRecording } from '../fixtures/capture-workflow';
-import { expect, test } from '../fixtures/local-electron-driver';
-import type { LoopbackLab, LoopbackRequestObservation } from '../fixtures/loopback-lab';
+} from '../../fixtures/automation';
+import { startRecording } from '../../fixtures/capture-workflow';
+import { expect, test } from '../../fixtures/local-electron-driver';
+import type { LoopbackLab, LoopbackRequestObservation } from '../../fixtures/loopback-lab';
 
 const BREAKPOINT_REPLACEMENT_TEXT = 'breakpoints.replacement.text';
 

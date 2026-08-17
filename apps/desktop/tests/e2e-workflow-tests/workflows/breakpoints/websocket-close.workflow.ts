@@ -1,13 +1,13 @@
 import {
   AUTOMATION_ID_PREFIXES,
   AUTOMATION_IDS,
-} from '../../../src/shared/automation-ids';
+} from '../../../../src/shared/automation-ids';
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../fixtures/automation';
-import { startRecording } from '../fixtures/capture-workflow';
-import { expect, test } from '../fixtures/local-electron-driver';
+} from '../../fixtures/automation';
+import { startRecording } from '../../fixtures/capture-workflow';
+import { expect, test } from '../../fixtures/local-electron-driver';
 
 test('breakpoints.websocket-close forwards a close-code-only edit end to end', async ({
   desktopApp,

@@ -1,10 +1,10 @@
-import { AUTOMATION_IDS } from '../../../src/shared/automation-ids';
-import { getByAutomationId } from '../fixtures/automation';
+import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { getByAutomationId } from '../../fixtures/automation';
 import {
   CaptureWorkflowFixture,
   startRecording,
-} from '../fixtures/capture-workflow';
-import { expect, test } from '../fixtures/local-electron-driver';
+} from '../../fixtures/capture-workflow';
+import { expect, test } from '../../fixtures/local-electron-driver';
 
 test('capture.detail-body-fill uses the available Inspector height end to end', async ({
   desktopApp,
