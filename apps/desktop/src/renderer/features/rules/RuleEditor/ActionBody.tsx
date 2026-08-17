@@ -6,6 +6,7 @@ import type {
   RuleHeaderPair,
   RulePhase,
 } from '../../../../shared/desktop-api';
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { IconButton, InputBox, Select, Switch } from '../../../components';
 import {
   BLOCK_MODE_OPTIONS,
@@ -21,6 +22,8 @@ import { localizeOptions, toInt } from '../utils';
 import styles from './ActionBody.module.css';
 
 export interface ActionBodyProps {
+  ruleId: string;
+  index: number;
   action: RuleAction;
   onChange: (action: RuleAction) => void;
   translate: (key: string) => string;
@@ -28,6 +31,8 @@ export interface ActionBodyProps {
 
 /** 按动作类型渲染对应的受控表单主体。 */
 export function ActionBody({
+  ruleId,
+  index,
   action,
   onChange,
   translate,
@@ -40,6 +45,7 @@ export function ActionBody({
           <Select
             className={styles.phase}
             ariaLabel={translate('rules.phase')}
+            automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'phase')}
             value={current.phase}
             options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
@@ -47,6 +53,7 @@ export function ActionBody({
           <Select
             className={styles.op}
             ariaLabel={translate('rules.operation')}
+            automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'operation')}
             value={current.op}
             options={localizeOptions(HEADER_OP_OPTIONS, 'rules.operation', translate)}
             onValueChange={(op) => onChange({ ...current, op: op as HeaderOperation })}
@@ -54,6 +61,7 @@ export function ActionBody({
           <InputBox
             className={styles.grow}
             ariaLabel={translate('rules.headerName')}
+            automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'name')}
             value={current.name}
             placeholder="header-name"
             onValueChange={(name) => onChange({ ...current, name })}
@@ -62,6 +70,7 @@ export function ActionBody({
             <InputBox
               className={styles.grow}
               ariaLabel={translate('rules.headerValue')}
+              automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'value')}
               value={current.value ?? ''}
               placeholder="value"
               onValueChange={(value) => onChange({ ...current, value })}

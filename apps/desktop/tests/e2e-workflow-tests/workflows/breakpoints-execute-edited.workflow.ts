@@ -11,6 +11,7 @@ import {
   getByAutomationId,
   getByAutomationIdPrefix,
 } from '../fixtures/automation';
+import { startRecording } from '../fixtures/capture-workflow';
 import { expect, test } from '../fixtures/local-electron-driver';
 import type { LoopbackLab, LoopbackRequestObservation } from '../fixtures/loopback-lab';
 
@@ -25,19 +26,8 @@ async function dynamicId(locator: Locator, prefix: string): Promise<string> {
   return automationId.slice(prefix.length);
 }
 
-/** Start real Recording through the same readiness interaction available to users. */
-async function startRecording(page: Page): Promise<void> {
-  const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
-  if (await recording.getAttribute('aria-pressed') === 'true') {
-    return;
-  }
-  await recording.click();
-  await getByAutomationId(page, AUTOMATION_IDS.capture.readiness.enable).click();
-  await expect(recording).toHaveAttribute('aria-pressed', 'true');
-}
-
 /** Create, enable and apply one request breakpoint rule entirely through public controls. */
-async function createRequestBreakpointRule(page: Page): Promise<void> {
+async function createRequestBreakpointRule(page: Page): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
 
@@ -61,6 +51,37 @@ async function createRequestBreakpointRule(page: Page): Promise<void> {
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
 
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  return ruleId;
+}
+
+/** Create a later request-header rewrite through the same Rules editor users operate. */
+async function createRequestHeaderRewriteRule(page: Page): Promise<string> {
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
+
+  const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
+  await expect(ruleRow).toBeVisible();
+  const ruleId = await dynamicId(ruleRow, AUTOMATION_ID_PREFIXES.ruleRow);
+
+  await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill('E2E later rewrite');
+  await getByAutomationId(
+    page,
+    AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value'),
+  ).fill('127.0.0.1');
+  await getByAutomationId(
+    page,
+    AutomationIdFactory.ruleActionField(ruleId, 0, 'name'),
+  ).fill('x-e2e-before-breakpoint');
+  await getByAutomationId(
+    page,
+    AutomationIdFactory.ruleActionField(ruleId, 0, 'value'),
+  ).fill('rule-value');
+  await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  return ruleId;
 }
 
 /** Select the paused Capture row for one test-owned request path. */
@@ -79,7 +100,19 @@ async function selectPausedRequest(page: Page, requestPath: string): Promise<voi
 async function breakpointHeader(
   page: Page,
   headerName: string,
-): Promise<{ name: Locator; value: Locator }> {
+): Promise<{ name: Locator; value: Locator; effect: Locator }> {
+  const header = await findBreakpointHeader(page, headerName);
+  if (!header) {
+    throw new Error(`Breakpoint header not found: ${headerName}`);
+  }
+  return header;
+}
+
+/** Find an optional breakpoint header without converting absence into a selector failure. */
+async function findBreakpointHeader(
+  page: Page,
+  headerName: string,
+): Promise<{ name: Locator; value: Locator; effect: Locator } | null> {
   const names = page.locator(
     '[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]',
   );
@@ -96,9 +129,10 @@ async function breakpointHeader(
     return {
       name,
       value: getByAutomationId(page, nameAutomationId.replace(/\.name$/, '.value')),
+      effect: getByAutomationId(page, nameAutomationId.replace(/\.name$/, '.effect')),
     };
   }
-  throw new Error(`Breakpoint header not found: ${headerName}`);
+  return null;
 }
 
 /** Add one header through the breakpoint editor's public controls. */
@@ -156,8 +190,9 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   });
 
   const page = desktopApp.page;
-  await startRecording(page);
-  await createRequestBreakpointRule(page);
+  await startRecording(desktopApp);
+  const breakpointRuleId = await createRequestBreakpointRule(page);
+  await createRequestHeaderRewriteRule(page);
 
   const headerOnlyPath = '/e2e/header-only';
   const headerOnlyBody = Buffer.from('{"stage":"header-only"}');
@@ -175,6 +210,15 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
     },
   );
   await selectPausedRequest(page, headerOnlyPath);
+  const laterRewrite = await findBreakpointHeader(page, 'x-e2e-before-breakpoint');
+  expect.soft(
+    laterRewrite,
+    'Paused snapshot must include headers written by later regular Rules.',
+  ).not.toBeNull();
+  if (laterRewrite) {
+    await expect.soft(laterRewrite.value).toHaveValue('rule-value');
+    await expect.soft(laterRewrite.effect).toHaveText('Rule set');
+  }
   const contentType = await breakpointHeader(page, 'content-type');
   await contentType.value.fill('application/x-header-only');
   const stageHeader = await breakpointHeader(page, 'x-edit-stage');
@@ -185,6 +229,15 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   expect(headerOnlyObservation.body).toEqual(headerOnlyBody);
   expect(headerOnlyObservation.headers['content-type']).toBe('application/x-header-only');
   expect(headerOnlyObservation.headers['x-edit-stage']).toBe('edited');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+  await expect.soft(getByAutomationId(
+    page,
+    AutomationIdFactory.captureRuleEffect(
+      breakpointRuleId,
+      'set',
+      'x-edit-stage',
+    ),
+  )).toBeVisible();
 
   const bodyOnlyPath = '/e2e/body-only';
   const bodyOnlyOriginal = Buffer.from('{"stage":"body-original"}');

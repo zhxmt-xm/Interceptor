@@ -17,6 +17,7 @@ import {
 import { AUTOMATION_IDS } from '../../../src/shared/automation-ids';
 import { getByAutomationId } from './automation';
 import { LoopbackLab } from './loopback-lab';
+import { WebSocketLab } from './websocket-lab';
 
 const DEFAULT_CAPTURE_PORT = 8888;
 
@@ -25,6 +26,8 @@ interface LocalWorkflowFixtures {
   desktopApp: LocalElectronApplicationDriver;
   /** Random-port HTTP origin and explicit-proxy client owned by this test. */
   loopbackLab: LoopbackLab;
+  /** Random-port WebSocket origin and explicit-proxy clients owned by this test. */
+  webSocketLab: WebSocketLab;
 }
 
 interface DesktopWindowState {
@@ -177,6 +180,21 @@ export class LocalElectronApplicationDriver {
       mainWindow?.focus();
     });
     await this.page.bringToFront();
+  }
+
+  /** Restore an owned system proxy through the same Settings action available to users. */
+  async restoreSystemProxyIfOwned(): Promise<void> {
+    if (this.applicationClosed || this.page.isClosed()) {
+      return;
+    }
+    await getByAutomationId(this.page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(this.page, AUTOMATION_IDS.settings.section.proxy).click();
+    const restore = getByAutomationId(this.page, AUTOMATION_IDS.settings.proxy.restore);
+    if (!await restore.isVisible().catch(() => false)) {
+      return;
+    }
+    await restore.click();
+    await expect(restore).toBeHidden({ timeout: 20_000 });
   }
 
   /** Click the product Close control and wait for Electron's terminal close event. */
@@ -436,18 +454,22 @@ export class LocalElectronApplicationDriver {
 export const test = base.extend<LocalWorkflowFixtures>({
   desktopApp: async ({}, use, testInfo) => {
     const driver = await LocalElectronApplicationDriver.launch(testInfo);
+    let workflowError: unknown;
     let cleanupError: unknown;
     try {
       await driver.waitUntilReady();
       await use(driver);
       await driver.captureFinalScreenshot(testInfo);
-      await driver.stopTrace(testInfo);
-      await driver.closeGracefully();
     } catch (error) {
-      cleanupError = error;
-      await driver.stopTrace(testInfo).catch(() => undefined);
-      throw error;
+      workflowError = error;
     } finally {
+      try {
+        await driver.restoreSystemProxyIfOwned();
+        await driver.stopTrace(testInfo);
+        await driver.closeGracefully();
+      } catch (error) {
+        cleanupError = error;
+      }
       await driver.writeEvidence(testInfo).catch(() => undefined);
       await driver.forceCleanup();
       await driver.removeUserData();
@@ -458,6 +480,12 @@ export const test = base.extend<LocalWorkflowFixtures>({
         });
       }
     }
+    if (workflowError) {
+      throw workflowError;
+    }
+    if (cleanupError) {
+      throw cleanupError;
+    }
   },
   loopbackLab: async ({}, use) => {
     const loopbackLab = await LoopbackLab.start();
@@ -465,6 +493,14 @@ export const test = base.extend<LocalWorkflowFixtures>({
       await use(loopbackLab);
     } finally {
       await loopbackLab.close();
+    }
+  },
+  webSocketLab: async ({}, use) => {
+    const webSocketLab = await WebSocketLab.start();
+    try {
+      await use(webSocketLab);
+    } finally {
+      await webSocketLab.close();
     }
   },
 });

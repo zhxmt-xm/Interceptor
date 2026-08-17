@@ -1,7 +1,7 @@
 import { ChevronDown, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { Count, cx } from '../../../components';
 import { FACET_COLLAPSED_LIMIT, FACET_LABEL_KEYS } from '../constants';
 import { useCaptureStore } from '../data/captureStore';
@@ -42,18 +42,25 @@ export function FacetGroup({
   const hidden = options.length - visible.length;
 
   return (
-    <section className={cx(styles.group, open && styles.groupOpen)}>
+    <section
+      className={cx(styles.group, open && styles.groupOpen)}
+      data-automation-id={AutomationIdFactory.captureFacetGroup(facet)}
+    >
       <div className={styles.groupHead}>
         <button
           type="button"
           className={styles.groupToggle}
+          data-automation-id={AutomationIdFactory.captureFacetToggle(facet)}
           onClick={() => toggleExpanded(facet)}
           aria-expanded={open}
         >
           <ChevronDown className={styles.groupChevron} size={13} strokeWidth={1.9} />
           <span className={styles.groupName}>{t(FACET_LABEL_KEYS[facet])}</span>
         </button>
-        <span className={cx(styles.groupCount, applied && styles.groupCountApplied)}>
+        <span
+          className={cx(styles.groupCount, applied && styles.groupCountApplied)}
+          data-automation-id={AutomationIdFactory.captureFacetGroupCount(facet)}
+        >
           {options.length}
         </span>
         {applied ? (
@@ -89,11 +96,19 @@ export function FacetGroup({
                   type="button"
                   className={cx(styles.item, selected.includes(option.value) && styles.itemOn)}
                   onClick={() => toggleValue(facet, option.value)}
-                  data-automation-id={AUTOMATION_IDS.capture.filterOption[facet]}
+                  data-automation-id={AutomationIdFactory.captureFacetOption(facet, option.value)}
                   data-parity="capture-filter-item"
                 >
                   <FacetValueLabel facet={facet} value={option.value} />
-                  <span className={styles.itemCount}>{option.count}</span>
+                  <span
+                    className={styles.itemCount}
+                    data-automation-id={AutomationIdFactory.captureFacetOptionCount(
+                      facet,
+                      option.value,
+                    )}
+                  >
+                    {option.count}
+                  </span>
                 </button>
               ))}
               {hidden > 0 ? (

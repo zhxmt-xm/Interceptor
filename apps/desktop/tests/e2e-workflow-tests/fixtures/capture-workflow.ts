@@ -1,7 +1,10 @@
 import { expect, type Locator } from '@playwright/test';
 
-import { AUTOMATION_ID_PREFIXES } from '../../../src/shared/automation-ids';
-import { getByAutomationIdPrefix } from './automation';
+import {
+  AUTOMATION_ID_PREFIXES,
+  AUTOMATION_IDS,
+} from '../../../src/shared/automation-ids';
+import { getByAutomationId, getByAutomationIdPrefix } from './automation';
 import type { LocalElectronApplicationDriver } from './local-electron-driver';
 import type { LoopbackLab } from './loopback-lab';
 
@@ -17,6 +20,25 @@ interface CapturedExchange {
     statusCode: number | undefined;
     body: string;
   };
+}
+
+/** Start real Recording through the same readiness interaction available to users. */
+export async function startRecording(
+  desktopApp: LocalElectronApplicationDriver,
+): Promise<void> {
+  const recording = getByAutomationId(
+    desktopApp.page,
+    AUTOMATION_IDS.capture.recordingToggle,
+  );
+  if (await recording.getAttribute('aria-pressed') === 'true') {
+    return;
+  }
+  await recording.click();
+  await getByAutomationId(
+    desktopApp.page,
+    AUTOMATION_IDS.capture.readiness.enable,
+  ).click();
+  await expect(recording).toHaveAttribute('aria-pressed', 'true');
 }
 
 /** Creates deterministic real Capture exchanges through only public application boundaries. */

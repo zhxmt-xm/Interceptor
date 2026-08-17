@@ -1,6 +1,7 @@
 import { Copy, Link2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, IconButton, useClipboardCopy } from '../../../components';
 import type { KvRow } from '../interfaces';
 
@@ -35,6 +36,11 @@ export function Kv({
                   type="button"
                   className={styles.ruleEffect}
                   data-effect={ruleEffect}
+                  data-automation-id={AutomationIdFactory.captureRuleEffect(
+                    ruleId,
+                    ruleEffect,
+                    key,
+                  )}
                   onClick={() => onOpenRule(ruleId)}
                 >
                   {t(`capture.ruleEffect.${ruleEffect}`)}

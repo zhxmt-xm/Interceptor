@@ -116,6 +116,7 @@ export function WebSocketBreakpointInspector({
             <input
               className={styles.closeCode}
               aria-label={t('breakpoints.closeCode')}
+              data-automation-id={AUTOMATION_IDS.breakpoints.closeCode}
               inputMode="numeric"
               value={draft.closeCode}
               onChange={(event) => setCloseCode(Number.parseInt(event.target.value, 10) || 0)}

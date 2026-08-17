@@ -70,7 +70,13 @@ export function ActionEditor({
       removeAutomationId={AutomationIdFactory.ruleActionField(ruleId, index, 'remove')}
       onRemove={onRemove}
     >
-      <ActionBody action={action} onChange={onChange} translate={translate} />
+      <ActionBody
+        ruleId={ruleId}
+        index={index}
+        action={action}
+        onChange={onChange}
+        translate={translate}
+      />
     </ActionCard>
   );
 }

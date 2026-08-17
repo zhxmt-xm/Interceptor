@@ -138,6 +138,12 @@ export const AUTOMATION_IDS = {
       breakpointToggle: 'capture.websocket.breakpoint.toggle',
       breakpointDirection: 'capture.websocket.breakpoint.direction',
       breakpointTimeout: 'capture.websocket.breakpoint.timeout',
+      breakpointFrame: {
+        message: 'capture.websocket.breakpoint.frame.message',
+        ping: 'capture.websocket.breakpoint.frame.ping',
+        pong: 'capture.websocket.breakpoint.frame.pong',
+        close: 'capture.websocket.breakpoint.frame.close',
+      },
       breakpointCancel: 'capture.websocket.breakpoint.cancel',
       breakpointEnable: 'capture.websocket.breakpoint.enable',
     },
@@ -229,6 +235,7 @@ export const AUTOMATION_IDS = {
   breakpoints: {
     toggle: 'breakpoints.toggle',
     addHeader: 'breakpoints.header.add',
+    closeCode: 'breakpoints.close-code',
     replacement: {
       off: 'breakpoints.replacement.off',
       text: 'breakpoints.replacement.text',
@@ -322,6 +329,36 @@ export class AutomationIdFactory {
   /** Identify one request-derived Rule action in the row context menu. */
   static captureCreateRule(exchangeId: string, actionType: string): string {
     return `capture.create-rule.${exchangeId}.${actionType}`;
+  }
+
+  /** Identify one Capture facet group by its semantic field. */
+  static captureFacetGroup(facet: string): string {
+    return `capture.filter.group.${facet}`;
+  }
+
+  /** Identify the expand/collapse control owned by one Capture facet group. */
+  static captureFacetToggle(facet: string): string {
+    return `capture.filter.toggle.${facet}`;
+  }
+
+  /** Identify the option-count summary owned by one Capture facet group. */
+  static captureFacetGroupCount(facet: string): string {
+    return `capture.filter.group-count.${facet}`;
+  }
+
+  /** Identify one value option within a Capture facet group. */
+  static captureFacetOption(facet: string, value: string): string {
+    return `capture.filter.option.${facet}.${encodeURIComponent(value)}`;
+  }
+
+  /** Identify the request count rendered for one Capture facet option. */
+  static captureFacetOptionCount(facet: string, value: string): string {
+    return `capture.filter.option-count.${facet}.${encodeURIComponent(value)}`;
+  }
+
+  /** Identify one persisted Rule effect shown in the Capture Inspector. */
+  static captureRuleEffect(ruleId: string, effect: string, headerName: string): string {
+    return `capture.rule-effect.${ruleId}.${effect}.${encodeURIComponent(headerName.toLowerCase())}`;
   }
 
   /** Identify one captured WebSocket frame by exchange and sequence. */

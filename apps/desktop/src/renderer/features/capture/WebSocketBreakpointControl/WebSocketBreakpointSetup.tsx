@@ -75,6 +75,7 @@ export function WebSocketBreakpointSetup({
             <FrameToggle
               key={frame}
               label={frameLabels[frame]}
+              automationId={AUTOMATION_IDS.capture.websocket.breakpointFrame[frame]}
               selected={frames.includes(frame)}
               onToggle={() => toggleFrame(frame)}
             />

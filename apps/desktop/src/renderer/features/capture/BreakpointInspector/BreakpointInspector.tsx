@@ -149,6 +149,7 @@ export function BreakpointInspector({
               <input
                 className={styles.statusInput}
                 aria-label={t('breakpoints.closeCode')}
+                data-automation-id={AUTOMATION_IDS.breakpoints.closeCode}
                 inputMode="numeric"
                 value={draft.closeCode}
                 onChange={(event) =>
@@ -205,6 +206,10 @@ export function BreakpointInspector({
                     <span
                       className={styles.headerEffect}
                       data-effect={header.ruleEffect}
+                      data-automation-id={AutomationIdFactory.breakpointHeaderField(
+                        header.id,
+                        'effect',
+                      )}
                     >
                       {t(`capture.ruleEffect.${header.ruleEffect}`)}
                     </span>
