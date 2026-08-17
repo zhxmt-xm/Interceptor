@@ -25,6 +25,32 @@
 
 Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选择、revision、hits和Editor数据一致；App可完整销毁。
 
+<a id="rules-root-toolbar"></a>
+## `rules.root-toolbar`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile/evidence，启动trace与新Electron，等待`app.root`、真实Core PID和`127.0.0.1:8888`可连接。
+2. Driver 等待冷启动系统代理接管收敛：正常自动接管时直接进入Recording；只有接管失败或ownership lost出现readiness时才dismiss，测试不重复查找或点击该dialog。
+3. 点击`shell.workspace.rules`，确认初始tree为空，并检查`rules.toolbar.create`、`rules.toolbar.create-folder`和`rules.toolbar.export`三个命令可见；空tree时Export必须disabled。
+4. 点击`rules.toolbar.create`，等待动态`rules.row.<ruleId>`出现并被选中，确认dirty状态和detail editor可见；此时Export必须enabled。
+5. 点击`rules.toolbar.create-folder`，等待动态`rules.folder-row.<folderId>`出现，确认rule与folder都保留且新folder进入原地命名状态。
+6. 全程只使用公共`data-automation-id`、`aria-pressed`、`disabled`和DOM状态，不读取当前语言文案或翻译后的`aria-label`。
+7. 保存trace、截图、Main/Renderer日志与metadata；点击`shell.window.close`，验证Main/Core/Worker退出、8888释放、系统代理无副作用并删除profile。
+
+### 预期效果
+
+Rules根级高频命令始终在Collection toolbar可见；新建落点与现有selection语义一致，根右键菜单仍是辅助入口；空tree不能导出，出现节点后Export恢复可用。
+
+### TDD证据要求
+
+- 修复前提交运行同一workflow，必须失败在首个`rules.toolbar.*`控件不存在；selector、fixture、语言、构建或环境失败不算Red。
+- 当前提交运行同一workflow，三个toolbar命令及创建状态全部Green，并完成trace/evidence与销毁验证。
+- 2026-08-17：实现前Red精确失败于`rules.toolbar.create`不可见；实现后`1/1` Green，rule editor、folder inline rename、Export disabled/enabled状态均通过，`gracefulDestroyVerified=true`且8888释放。
+
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`
 

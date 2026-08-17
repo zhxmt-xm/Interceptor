@@ -45,6 +45,12 @@
   color: var(--text-3);
   opacity: 1;
 }
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
 .rows {
   position: relative;
   display: flex;

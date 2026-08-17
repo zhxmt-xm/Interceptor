@@ -1,13 +1,14 @@
-import { Search } from 'lucide-react';
+import { Download, FolderPlus, Plus, RotateCcw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { RuleNode } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { searchTree } from '../../../components';
+import { IconButton, searchTree } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
+import { exportRules, loadRules } from '../data/useRulesData';
 import { RuleTreeNode } from '../RuleTreeNode/RuleTreeNode';
 import { RuleRootMenu } from './RuleRootMenu';
 import styles from './RuleList.module.css';
@@ -22,6 +23,9 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
   const [query, setQuery] = useState('');
   const [rootMenuOpen, setRootMenuOpen] = useState(false);
   const nodes = useRulesStore((state) => state.nodes);
+  const conflict = useRulesStore((state) => state.conflict);
+  const addRule = useRulesStore((state) => state.addRule);
+  const addFolder = useRulesStore((state) => state.addFolder);
   const moveNode = useRulesStore((state) => state.moveNode);
   const expandFolder = useRulesStore((state) => state.expandFolder);
 
@@ -48,6 +52,44 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
             data-automation-id={AUTOMATION_IDS.rules.search}
           />
         </label>
+        <div className={styles.actions}>
+          <IconButton
+            icon={Plus}
+            label={t('rules.newRule')}
+            size="sm"
+            onClick={() => addRule(t('rules.newRuleName'))}
+            automationId={AUTOMATION_IDS.rules.toolbar.create}
+          />
+          <IconButton
+            icon={FolderPlus}
+            label={t('rules.newFolder')}
+            size="sm"
+            onClick={() => addFolder(t('rules.newFolderName'))}
+            automationId={AUTOMATION_IDS.rules.toolbar.createFolder}
+          />
+          <IconButton
+            icon={Download}
+            label={t('rules.exportRules')}
+            size="sm"
+            disabled={nodes.length === 0}
+            onClick={() => {
+              void exportRules(t('rules.exportRules'));
+            }}
+            automationId={AUTOMATION_IDS.rules.toolbar.exportRules}
+          />
+          {conflict ? (
+            <IconButton
+              icon={RotateCcw}
+              label={t('rules.reloadFromCore')}
+              size="sm"
+              strokeWidth={2.4}
+              onClick={() => {
+                void loadRules();
+              }}
+              automationId={AUTOMATION_IDS.rules.reload}
+            />
+          ) : null}
+        </div>
       </div>
 
       <div

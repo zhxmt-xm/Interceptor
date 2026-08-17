@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `800bbca`
+> Tracked commit: `9d094c0`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-17
 
@@ -32,6 +32,7 @@
 - [x] **已完成 · Original body 三态**：`detail.summary` 已收到字节是有正文的确证；没有字节时才按 `content-length` / `transfer-encoding: chunked` 预判。无正文显示空态，正文尚未收完显示接收中与已收字节，完成后按 detail 正文渲染；不能只用 Capture 是否已有 body ref 判断，否则 GET 会永久停在接收中。
 - [x] **已完成 · Breakpoint 区块结构**：headers 与 original 复用 `Section`；replacement 因标题行包含 Segmented，使用非按钮 `SectionHeader` 并自带 chevron。顺序统一为标题 → 计数 → chevron，计数紧跟标题，只有 chevron 靠右；滚动区分组线是向右淡出的渐变线。
 - [x] **已完成 · Rules / Composer 双状态与 typography**：Rules 拆成 `selectedId` / `openRuleId`，Composer 拆成 `targetFolderId` / `activeRequestId`。选中目录只改变新建落点，右侧编辑器保持；打开但未选中的行用淡 accent 底和虚线框标记，目录名可点击进入 selection。规则名与目录名使用 400、`--text-2`、UI 字体；选中目录 600、规则 560，并转 accent。
+- [x] **已完成 · Rules 根级 toolbar 恢复**：Collection 顶栏恢复 New rule / New folder / Export 三个图标按钮及冲突态 Reload，根右键菜单保留为辅助入口。`rules.root-toolbar`实现前精确Red于按钮缺失，实现后`1/1` Green并验证销毁；Desktop `263/263`、design build与Rules parity `11/11 matched / 0 missing / 0 flagged`通过。
 - [x] **已完成 · HTTP Breakpoint parity 基线**：`breakpoints` 场景锚定 `breakpoint-request-body-loaded`。设计稿 `breakpointBody` 默认 `loading` 并在 3 秒后自动转 `ready`，harness 必须锚定稳定 `ready`；`breakpoint-request-paused.png` 是 3 秒内抢拍图，不能作几何基线。设计稿只有断点态列表含 `/checkout` 与 `/v1/token`，fake 将交换与 `pendingBreakpoints` 放在 `pausedSessions` / `pendingItems`，由 `pausedBreakpoints: true` 注入。
 - [x] **已完成 · HTTP Breakpoint 阶段验收**：Breakpoint abort 聚焦测试 29/29、Proxy Core 串行 277/277、Desktop 246/246，全部 workspace typecheck 与 design-vite build 通过。Message light / dark 为 `4/4 matched / 0 missing / 0 flagged / geometry 0`，Undo 为 `0 missing / 0 flagged`；一级菜单 `4/4 matched / 0 missing / 0 flagged`，二级菜单 `8/8 matched / 0 missing`，仅标题 1px 字宽差。1280×800 与 1024×600 的 popup viewport、注入 40 条新请求后的稳定性及 outside click 均通过。该阶段完整 parity 为 69 views / 70 missing / 105 flagged，旧独立 Breakpoints 导航场景已删除。
 - [x] **已完成 · Original body 完整查看器**：设计稿的精简只读预览已替换为产品 `BodyViewer` 形态（`Pretty / Tree / Raw / Hex`、MIME、复制、全屏）。数值取自产品：容器 `gap: 10px`、工具栏 40px、Monaco compact `lineHeight: 20`、上下 padding 13px、`horizontalScrollbarSize: 8`。

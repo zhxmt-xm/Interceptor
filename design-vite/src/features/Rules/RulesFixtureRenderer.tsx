@@ -15,21 +15,11 @@ function hasClass(node: FixtureElementNode, className: string): boolean {
   return node.attributes.class?.split(/\s+/).includes(className) ?? false;
 }
 
-function hasAttribute(node: FixtureNode, name: string, value: string): boolean {
-  return node.type === 'element' && (
-    node.attributes[name] === value
-    || node.children.some((child) => hasAttribute(child, name, value))
-  );
-}
-
 const renderRulesElement: FixtureElementRenderer = (node, children) => {
   if (node.attributes['data-rule-id'] === 'token') {
     return null;
   }
   if (hasClass(node, 'vnote')) {
-    return null;
-  }
-  if (hasClass(node, 'icon-actions') && hasAttribute(node, 'aria-label', 'New rule')) {
     return null;
   }
   if (hasClass(node, 'edhead')) {

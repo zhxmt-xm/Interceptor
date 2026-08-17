@@ -65,7 +65,7 @@
 - [x] **已完成 · Rule effect tag 导航**：存在 `ruleId` 的 header effect 渲染为 button，计算样式 `cursor:pointer`；点击 `Rule appended` 可打开对应 `Rewrite auth header` rule detail，真实 Renderer 流程通过。 ![alt text](image-4.png)
 - [x] **已完成 · Rules 子目录与子规则**：目录右键菜单可创建 subfolder / rule，最多三级；真实 Renderer 流程已创建 Nested folder 及其子 rule。
 - [x] **已完成 · Rules 右键菜单**：根空白菜单提供 New rule / New folder / Export；目录提供 Rename / New subfolder / New rule / Delete；规则提供 Rename / Show matching requests / Delete，交互均已验证。
-- [x] **已完成 · Rules 命令归位**：Collection 顶栏只保留搜索，根级命令移到树空白右键菜单；Save 固定在 rule detail header，dirty→Save→disabled→revision 43 流程通过。 ![alt text](image-5.png)
+- [x] **已完成 · Rules 根级 toolbar 恢复**：`f8f2f53` 将高频根命令全部移入树空白右键菜单，导致可见入口消失；现已恢复 New rule / New folder / Export 三个图标按钮与冲突态 Reload，直接复用现有 store/data 命令，根菜单继续作为辅助入口，Save 仍固定在 detail header。语言无关真实 Electron workflow 先精确 Red 于`rules.toolbar.create`缺失，后`1/1` Green且销毁完成；Desktop `263/263`、design typecheck/build及Rules parity `11 matched / 0 missing / 0 flagged`通过。 ![alt text](image-5.png)
 - [x] **已完成 · Rule validation footer**：compile / validation 提示已从 detail 滚动区移到 Rules statusbar，并按选中 rule 显示完整问题或 applied revision。 ![alt text](image-9.png)
 - [x] **已完成 · Rules count 间距**：命中数保持 26px 最小列与 4px 行右 padding，聚焦 parity 最大差 0.5px。 ![alt text](image-10.png)
 - [ ] **回归待验证/修复 · Detail BodyViewer 撑满**：用户现场观察到Detail的正文pane没有吃满Inspector剩余高度。旧“已完成”证据只有fake-Preload parity，不能替代真实Electron E2E；已新增`capture.detail-body-fill`测量真实response BodyViewer/pane几何，取得Red并定位Root cause后再改CSS。全屏能力保持现状，不与本回归混为一项。 ![alt text](image.png)

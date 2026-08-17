@@ -161,6 +161,7 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `rules.load-search-select` | 加载、搜索、选择和命中数 | shared | planned |
+| `rules.root-toolbar` | 根级新建规则、新建目录与导出入口 | shared | passed |
 | `rules.create-edit-delete` | 新建、重命名、启停、删除 | shared | planned |
 | `rules.matcher-variants` | 八种matcher及校验 | shared | planned |
 | `rules.action-variants` | 11种action及安全校验 | shared | planned |

@@ -16,6 +16,7 @@
 - **真实 E2E 定义（不得替代）**：本仓所称 E2E 仅指 `apps/desktop/tests/e2e-workflow-tests/workflows/*.workflow.ts` 启动真实 Electron，并经过真实 Renderer → Preload → Main → Core UtilityProcess → listener / storage / origin 的 workflow。`design-vite` Playwright、visual parity（fake Preload）、Renderer component/store test、Proxy Core integration、packaged smoke 都不是该产品 flow 的 E2E，不能作为 E2E Red/Green 或销毁证据的替代品。
 - **E2E TDD 完成判据**：影响用户 flow 时，必须存在可执行 `.workflow.ts`，并在业务实现前于目标测试中观察到由预期行为缺口导致的失败（Red），不是 selector、fixture、UAC、构建或环境失败；实现后同一 workflow 必须 Green，并验证 trace/evidence、Main/Core/Worker 销毁、8888 释放及系统副作用恢复。若是补历史缺口，必须在临时 detached worktree 对修复前提交运行同一测试取得 retrospective Red，再在当前提交取得 Green；禁止用故障注入冒充历史 Red。
 - **E2E 与语言无关**：真实 Electron workflow 保持应用当前语言，不为测试自动切换语言。业务交互和断言只使用公共 `data-automation-id`、协议值、DOM 状态属性或测试自产数据；禁止用英文/中文显示文案、翻译后的 `aria-label` 或 CSS class 定位交互或判断 Green。翻译文本本身只允许在独立 i18n workflow 中验证。
+- **E2E workflow 双语注释**：可执行 `.workflow.ts` 必须在 setup / arrange、用户操作、业务断言、evidence / teardown 等逻辑分块前写简短的中英文成对注释，说明该分块验证什么、为何存在，方便不同语言的 reader 理解。注释用于解释步骤意图，不逐行复述代码；中英文必须表达同一语义。
 - **状态与文档约束**：只有 unit/integration Green 而缺真实 E2E Red/Green 时，只能标记“代码完成 · 待 E2E”，不得勾选“已完成”、更新 Inventory 为 passed，或在 Handover 宣称 flow 验收完成。若 E2E 暂因 UAC/凭据/平台条件阻塞，记录为 blocked，并写明需要的人工步骤与恢复命令。
 - **可读性优先于聪明**：命名直白、控制流线性、避免为省几行而牺牲可理解性。宁可多一个语义清晰的名字，不要一个塞满逻辑的表达式。
 - **命名用具体动词，不用泛化动词**：`apply` / `handle` / `process` / `manage` 这类词不说明做了什么。方法名要让调用点自解释；布尔参数尤其可疑，`setX(true)` 读者必须回看签名，拆成两个动词方法（`startX()` / `stopX()`）通常更好。

@@ -477,8 +477,9 @@ RuleList 递归渲染目录与规则。目录行只有折叠、名称和操作�
 action chips 与命中数。整行是拖拽源，目录中间区域表示移入、上下四分之一表示前后插入，
 收起目录悬停 500ms 自动展开；搜索结果拍平成一层并禁用拖拽，避免用不完整列表重排整棵树。
 
-Rule Collection 顶栏只保留搜索。根级 New rule / New folder / Import / Export 从树空白处右键菜单进入；
-目录与规则各自的右键菜单只承载该节点语义。RuleSet 的 Save 固定在选中 rule 的 detail header，
+Rule Collection 顶栏提供搜索以及 New rule / New folder / Export 三个图标命令；根级右键菜单保留
+New rule / New folder / Import / Export 作为辅助入口。新建命令沿用当前 selection 计算落点，空树时
+Export 禁用。目录与规则各自的右键菜单只承载该节点语义。RuleSet 的 Save 固定在选中 rule 的 detail header，
 不在 Collection 顶栏重复提供。选中 rule 的 compile / validation 提示显示在 Rules statusbar，滚动区
 只保留可编辑的 Match 与 Actions 内容。
 
