@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `c14cd67`
+> Tracked commit: `800bbca`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-08-15
+> 最后更新：2026-08-17
 
 ## Task List
 
@@ -19,7 +19,7 @@
 - [x] **已完成 · 设计源迁移**：设计稿统一到 `design-vite/`（Vite + React + CSS Modules），旧静态 `design/` 删除，`design-system.md` 与 `README.md` 已迁入。迁移前交互 71/71 match，像素平均 0.0239%、最大 0.051%，`0 missing / 0 resized / 0 not drawn`；仅旧手写 sprite 的 1.9 描边与 lucide-react 默认 2 有差，按决定不再收敛，产品统一使用 Lucide。
 - [x] **已完成 · 设计验收工具迁移**：`compare-shots.mjs` 改为必须显式提供基线；依赖旧稿的 `generate-fixtures.mjs` 与 `interaction-parity.mjs` 已删除，`src/fixtures/generated/*` 是定稿静态 DOM 快照。Visual parity 通过 `design-vite/tools/design-preview.mjs` build + preview 设计稿，基线 PNG 与应用图标来自 `design-vite/`；命令与陷阱见 [../design-vite/README.md](../design-vite/README.md) 和 `ui-design-mockup` skill。
 - [x] **已完成 · Windows App 现场验收**：2026-08-11 现场使用暂未发现问题，当前方案按现状收口。此前未单独留存自动化证据的细分矩阵不再阻塞主线；以后触及 Main / Preload / IPC、系统代理、AppContainer、TLS 或打包边界仍须重跑 packaged smoke。
-- [x] **已完成 · Breakpoint 感知与关联**：`useBreakpoints` 订阅 Main 的 `breakpointsChange` 信号，不再轮询；Core 重启时清空本地记录，恢复 `running` 后重新拉取。任意 workspace 都能感知，Sidebar Capture 项显示 pending badge。`BreakpointSnapshot` / `PendingBreakpoint` 带 `exchangeId`，`ExchangeTracker.exchangeIdFor` 在规则钩子早于 `request-initiated` 时预留 ID 给 `beginRequest` 复用；未 Recording 的请求不产生 Capture 行，因此不提供 ID。
+- [x] **已完成 · Breakpoint 感知与关联**：`useBreakpoints` 订阅 Main 的 `breakpointsChange` 信号，不再轮询；Core 重启时清空本地记录，恢复 `running` 后重新拉取。任意 workspace 都能感知，pending count 只显示在 Capture workbar；所有 feature 的 Sidebar 导航只表达位置与选中态，不显示业务 badge。`BreakpointSnapshot` / `PendingBreakpoint` 带 `exchangeId`，`ExchangeTracker.exchangeIdFor` 在规则钩子早于 `request-initiated` 时预留 ID 给 `beginRequest` 复用；未 Recording 的请求不产生 Capture 行，因此不提供 ID。
 - [x] **已完成 · Breakpoint 队列保护**：`BREAKPOINT_QUEUE_LIMIT = 10`；队列满时 `BreakpointQueue.suspend` 返回 `null`，调用方原样放行。`autoContinued` 经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 记录 `breakpoint.queue-full`。
 - [x] **已完成 · 客户端 abort 清理**：`timeoutMs` 只是 Core 最大等待时间。客户端先断开时，Proxy 按 Mockttp request ID 只释放该请求的 HTTP suspension，RuleService 以 `aborted` 短路后续 action；真实代理回归锁定 pending 立即清零且 Capture Exchange 进入 `aborted`。
 - [x] **已完成 · Breakpoint Inspector 滚动**：根 flex item 与普通 Inspector 一样设置 `min-height: 0`，长 headers / body 由内部 `.scroll` 接管，不再把 Inspector 撑出分栏。

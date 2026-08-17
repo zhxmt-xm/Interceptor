@@ -96,7 +96,6 @@ export function App(): React.JSX.Element {
   }));
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
-  const pausedBreakpoints = useBreakpointsStore((state) => state.breakpoints.length);
   // The boot screen owns startup feedback, so the readiness dialog stays out of its way.
   const booting = useBootStore((state) => !state.dismissed);
 
@@ -224,7 +223,6 @@ export function App(): React.JSX.Element {
         lang={language}
         onLangChange={changeLanguage}
         coreStatus={coreStatus}
-        pausedBreakpoints={pausedBreakpoints}
       />
       <header className={styles.header}>
         <Tooltip title={t('capture.toggleSidebar')} mouseEnterDelay={0.4}>

@@ -14,8 +14,6 @@ export interface NavItemProps {
   sub?: string;
   /** Show the trailing live dot. */
   live?: boolean;
-  /** Trailing count pill; omitted when 0 so idle rows stay quiet. */
-  badge?: number;
   /** Render an avatar circle instead of an icon. */
   avatar?: boolean;
   /** Native tooltip / accessible title (e.g. live Proxy Core status). */
@@ -35,7 +33,6 @@ export function NavItem({
   onClick,
   sub,
   live,
-  badge,
   avatar,
   title,
   automationId,
@@ -56,7 +53,6 @@ export function NavItem({
       ) : (
         <span className={styles.text}>{label}</span>
       )}
-      {badge ? <span className={styles.badge}>{badge}</span> : null}
       {live ? <span className={styles.live} /> : null}
     </>
   );
