@@ -182,21 +182,6 @@ export class LocalElectronApplicationDriver {
     await this.page.bringToFront();
   }
 
-  /** Restore an owned system proxy through the same Settings action available to users. */
-  async restoreSystemProxyIfOwned(): Promise<void> {
-    if (this.applicationClosed || this.page.isClosed()) {
-      return;
-    }
-    await getByAutomationId(this.page, AUTOMATION_IDS.shell.workspace.settings).click();
-    await getByAutomationId(this.page, AUTOMATION_IDS.settings.section.proxy).click();
-    const restore = getByAutomationId(this.page, AUTOMATION_IDS.settings.proxy.restore);
-    if (!await restore.isVisible().catch(() => false)) {
-      return;
-    }
-    await restore.click();
-    await expect(restore).toBeHidden({ timeout: 20_000 });
-  }
-
   /** Click the product Close control and wait for Electron's terminal close event. */
   async closeFromWindowButton(): Promise<void> {
     if (this.applicationClosed || this.page.isClosed()) {
@@ -464,7 +449,6 @@ export const test = base.extend<LocalWorkflowFixtures>({
       workflowError = error;
     } finally {
       try {
-        await driver.restoreSystemProxyIfOwned();
         await driver.stopTrace(testInfo);
         await driver.closeGracefully();
       } catch (error) {

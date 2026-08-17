@@ -45,7 +45,7 @@
 
 ### Readiness 决策
 
-- 任何需要产生 Capture Exchange、Rule runtime hit 或 Breakpoint queue 的 workflow：必须从 App UI 点击 `capture.readiness.enable`，等待 Recording，并在结束前通过 `settings.proxy.restore` 恢复；专门验证Settings Proxy入口的workflow改用同等真实的 `settings.proxy.enable`；
+- 任何需要产生 Capture Exchange、Rule runtime hit 或 Breakpoint queue 的 workflow：必须从 App UI 点击 `capture.readiness.enable`并等待 Recording；普通workflow结束时直接Close，由Main退出流程恢复系统代理，只有专门验证Settings Proxy Restore交互的workflow才点击`settings.proxy.restore`；专门验证Settings Proxy入口的workflow改用同等真实的`settings.proxy.enable`；
 - Composer 由 Core 直接出站，Rules 纯编辑、Diagnostics 纯查询、Shell 与无网络 Settings 不需要系统代理路由：验证 readiness 默认态后可点击 `capture.readiness.cancel`，并确认系统设置未修改；
 - Import-only workflow 可 Cancel readiness；Export/Storage/Privacy workflow 若先制造真实 Capture，则必须 Enable；
 - 不允许 Cancel readiness 后依赖 Core 内部仍 recording 的隐藏状态制造 Capture，这会与 UI 的 Paused/Not recording 语义冲突。
