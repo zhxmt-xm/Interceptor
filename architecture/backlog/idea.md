@@ -81,6 +81,7 @@
 - [x] **已完成 · Settings 跨 feature 状态保留**：最后访问 section 由 App shell 持有；从 AppContainer 切到 Capture 再返回 Settings 仍保持 AppContainer，明确的 TLS / Proxy 跳转仍可覆盖目标 section。真实 Renderer 流程与 Desktop typecheck 通过。
 - [x] **已完成 · AppContainer enabled-first**：Renderer 稳定按 `exempt` 降序后再过滤，enabled 项始终置顶；聚焦 parity `13/13 matched / 0 missing`。
 - [x] **已完成 · AppContainer Enable all**：工具栏提供一次确认的 `Enable all`；Renderer 只调用一条 `enableAllAppContainers()`，Main 只启动一次提权 helper，native helper 将当前全部 SID 与既有 exemption 做并集并写后校验。Service `10/10`、helper 真实编译、15 语言 typecheck、视觉 `4/4 matched / 0 flagged / 0.9px`；fake 流程锁定一次调用、4/4、按钮 disabled 与 dialog 关闭。真实 UAC 仍按 headed workflow 现场验收。
+- [ ] **待验证/修复 · Capture filter 选项点击误收起分组**：除 Application 外，点击其他 filter 的 option 会同时收起所属分组。选择或取消选择 option 只应更新筛选条件并保持当前展开状态；只有分组标题或 chevron 可以切换折叠。需先用交互测试与真实 Electron workflow 复现，再定位事件传播或受控展开状态的 Root cause。
 - [ ] **代码完成 · 待真实 E2E · Clear 后 filter 与列表同步归零**：Core clear 成功后，列表、selection 与 facet snapshot 同一次状态推进清空，不再出现列表已是 `0 of 0`、左侧仍短暂显示旧 application id 和计数的 split state。 ![alt text](image-11.png)
   - **Root cause**：`useThrottledRows` 对所有 rows 变化一律应用 600ms throttle；`clearView` 已同步清空 store rows，但 filter panel 继续渲染上一次非空 snapshot，直到 timer 到期。
   - **解决方案**：把空 rows 定义为同步边界，立即更新时间戳并 `setSnapshot([])`；仅非空实时更新继续使用原节流窗口。
