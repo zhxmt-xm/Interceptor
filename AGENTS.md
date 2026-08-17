@@ -203,6 +203,12 @@
 - **Current-state boundaries**
 	- Keep `architecture/platform/*.md` limited to implemented code and boundaries.
 	- Put unvalidated plans in `architecture/backlog/research.md` or the feature document's 与当前实现的差异 section.
+- **TODO table status model**
+	- `architecture/backlog/idea.md` 的 `Status` 只允许三种互斥状态与固定图标：`✅ 已完成`、`🔄 进行中`、`⏳ 未开始`；禁止再使用 checkbox、部分完成、代码完成、待验证、待设计等第二套顶层状态。
+	- `Description` 必须先描述目标，再以 `Steps:` 列出该 work item 相关阶段及当前状态。基础词汇包括：`待设计`、`设计完成`、`代码待完成`、`代码已完成`、`待自动验证`、`自动验证完成`、`待 Developer 人工验证`、`待 UAC 验证`、`已完成`；这不是封闭枚举，真实 flow 需要时可增加 `待协议设计`、`待安全审查`、`blocked by <reason>` 等具体、可验证的阶段。同一语义必须全表使用同一词汇，不得为了套用基础词汇而歪曲真实状态；不适用阶段不列出。
+	- `TDD` 只记录总体测试完成度及 `Code / Unit / Integration / E2E / Design/Parity` 矩阵，不在 `Status` 重复测试细节。`✅` 表示已完成，`🔄` 表示部分完成或待后续验证，`❌` 表示未完成，`➖` 表示当前 work item 不适用。
+	- 顶层 `✅ 已完成` 仅在 Description 的必要阶段与 TDD 的必要测试均完成时使用；仍缺真实 E2E、人工验收或 UAC 的条目必须为 `🔄 进行中`。尚未开始设计、实现和验证的条目使用 `⏳ 未开始`。
+	- TODO 使用带 `colgroup` 的 HTML table 固定列宽和最小总宽，窄预览允许横向滚动；`Description / TDD / Root cause / Solution` 单元格使用真正的 `<ul><li>`，不使用 `• + <br>` 模拟列表。图片只放在 `Description` 并限制宽度，避免撑坏列布局。
 - **Synchronization**
 	- At milestone boundaries, or when the user explicitly asks, update the tracked commit and task statuses in `architecture/HANDOVER.md`, affected `architecture/*.md`, and commands in `README.md`.
 	- If the stage boundary is unclear, ask before synchronizing these documents.
