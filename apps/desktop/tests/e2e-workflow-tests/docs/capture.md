@@ -212,6 +212,33 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 
 协议段基于规范化protocol筛选；All/H1/H2/WS互不混淆；TLS tunnel保持独立。
 
+<a id="capture-facet-stable-ordering"></a>
+## `capture.facet-stable-ordering`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 为该test创建独立`userData`目录和loopback origin，启动BrowserContext trace与仓库本地production bundle；等待`app.root`、真实Main/Core PID和`127.0.0.1:8888` listener。
+2. 点击`capture.recording.toggle`；在Proxy readiness中点击`capture.readiness.enable`，等待Recording的`aria-pressed=true`。
+3. 显式proxy客户端先发送`GET /e2e/facet-order/get-first`，再发送`POST /e2e/facet-order/post-first`；两次都必须从真实origin取得200，并等待两条公开`capture.request-row.<exchangeId>`进入Renderer。
+4. 点击`capture.filter.toggle.method`展开Method；按原始DOM顺序读取组内`capture.filter.option.method.*`，必须是GET、POST。
+5. 显式proxy客户端再发送`POST /e2e/facet-order/post-second`；等待POST count变成2后，不使用排序后的测试侧副本，再次读取原始DOM顺序，仍必须是GET、POST。
+6. 点击`capture.recording.toggle`停止Recording并确认`aria-pressed=false`。
+7. 附加`facet-stable-order.json`、最终截图、trace、Main/Renderer日志和metadata。
+8. 通过`shell.window.close`正常关闭应用，由Main退出流程恢复仍由Interceptor持有的系统代理。
+9. 验证Main、Renderer、Core与Worker退出、8888可重新bind，然后删除profile和loopback fixture。
+
+### 预期效果
+
+动态facet按当前Capture中的首次出现顺序挂载。后出现值的count反超时只更新数字，不移动既有option DOM。
+
+### TDD证据要求
+
+- 修复前`89d8dda`运行同一workflow：初始顺序为GET、POST；第二个POST到达后顺序变成POST、GET，并精确失败于稳定排序断言。
+- 当前提交运行同一workflow：两次顺序均为GET、POST，且trace、metadata、Main/Core/Worker销毁、8888释放和系统代理恢复证据完整。selector、fixture、构建或环境失败不算Red。
+
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`
 

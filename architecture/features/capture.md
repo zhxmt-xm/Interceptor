@@ -1389,6 +1389,9 @@ flowchart LR
     并经 `useThrottledRows(FACET_REFRESH_MS)` 节流。Application / Method / Host / Type / Rule 保持
     当前 Capture 中的首次出现顺序，计数变化只更新数字，不再按 count 动态换位；Status / Protocol
     继续使用各自的固定语义顺序。
+- 真实 Electron `capture.facet-stable-ordering` 必须先捕获 GET、再捕获 POST，随后让 POST count
+    反超 GET；Method option 的 DOM 顺序在两次读取中都必须保持 GET、POST。该 workflow 只验收
+    稳定排序，不能由同时覆盖 Pending、Clear 或右键菜单的组合测试代替。
 - Application / Status / Content type 的 Pending option在count=0时也始终渲染并可选择；新进入加载态的request会自动命中已选bucket。请求完成后count回0但option不增删，避免facet高度与DOM抖动。Method / Host / Protocol在request headers阶段已确定，不提供虚假的loading项；Rule当前没有独立“计算中”字段，也不编码无法区分的状态。
 - Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
     已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
