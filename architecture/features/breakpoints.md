@@ -168,7 +168,8 @@ snapshot 的 text / hex 字节并复用 `BodyViewer`，Replacement 默认 Off，
 
 请求在 Core 侧 `await` 挂起；队列集合变化复用既有 event-batch 发出 `breakpoint.pending` 信号，App 级
 `useBreakpoints` 收到后调用 `breakpoint.list` 刷新。它不传大快照、不建第二条推送通道，也不依赖
-Capture 页面是否挂载。Core 重启时先清空本地 pending，恢复 running 后重新拉取。
+Capture 页面是否挂载。Core 重启时先清空本地 pending，恢复 running 后重新拉取。Pending count只显示在
+Capture workbar的Breakpoint入口；所有feature的Sidebar导航均不显示业务badge。
 
 ## 6. 数据契约
 

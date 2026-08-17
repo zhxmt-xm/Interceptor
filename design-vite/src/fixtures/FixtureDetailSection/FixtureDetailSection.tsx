@@ -21,6 +21,7 @@ export function FixtureDetailSection({
   return (
     <CollapsibleSection
       className={grow ? styles.fixtureDetailSectionGrow : undefined}
+      grow={grow}
       labelExtra={labelExtra}
       open={open}
       title={title}

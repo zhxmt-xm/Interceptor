@@ -5,7 +5,7 @@ import { findLeaf } from '@interceptor/core-protocol';
 
 import { MethodBadge } from '../../../components';
 import { useRulesStore } from '../../rules/data/rulesStore';
-import { UNKNOWN_FACET_VALUE } from '../constants';
+import { PENDING_FACET_VALUE, UNKNOWN_FACET_VALUE } from '../constants';
 import { useCaptureStore } from '../data/captureStore';
 import type { CaptureFacetId } from '../interfaces';
 
@@ -41,7 +41,11 @@ export function FacetValueLabel({
           <AppWindow className={styles.itemAppUnknown} size={13} strokeWidth={1.8} />
         )}
         <span className={styles.itemName}>
-          {value === UNKNOWN_FACET_VALUE ? t('capture.unknownApplication') : appName ?? value}
+          {value === PENDING_FACET_VALUE
+            ? t('capture.statusPending')
+            : value === UNKNOWN_FACET_VALUE
+              ? t('capture.unknownApplication')
+              : appName ?? value}
         </span>
       </>
     );
@@ -65,6 +69,9 @@ export function FacetValueLabel({
   }
   if (facet === 'rule') {
     return <span className={styles.itemName}>{ruleName ?? value}</span>;
+  }
+  if (value === PENDING_FACET_VALUE) {
+    return <span className={styles.itemName}>{t('capture.statusPending')}</span>;
   }
   return <span className={styles.itemName}>{value}</span>;
 }

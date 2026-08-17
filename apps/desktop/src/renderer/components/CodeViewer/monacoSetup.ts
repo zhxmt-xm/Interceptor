@@ -139,7 +139,12 @@ export const VIEWER_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions 
   overviewRulerLanes: 0,
   overviewRulerBorder: false,
   hideCursorInOverviewRuler: true,
-  scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8, useShadows: false },
+  scrollbar: {
+    verticalScrollbarSize: 8,
+    horizontalScrollbarSize: 8,
+    useShadows: false,
+    alwaysConsumeMouseWheel: false,
+  },
   guides: { indentation: false, highlightActiveIndentation: false },
   occurrencesHighlight: 'off',
   selectionHighlight: false,

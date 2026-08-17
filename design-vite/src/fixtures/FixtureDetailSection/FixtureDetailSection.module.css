@@ -14,12 +14,9 @@
   text-transform: none;
 }
 
-.fixtureDetailSectionGrow,
-.fixtureDetailSectionGrow :global(.ant-collapse-item),
-.fixtureDetailSectionGrow :global(.ant-collapse-content),
-.fixtureDetailSectionGrow :global(.ant-collapse-content-box) {
+.fixtureDetailSectionGrow {
   display: flex;
-  min-height: 0;
+  min-height: 320px;
   flex: 1 0 auto;
   flex-direction: column;
 }

@@ -1333,6 +1333,8 @@ interface CaptureEventSink {
 
 **gRPC framing 不读整段正文**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5 字节 envelope——每条只从 Blob 读 5B header，再按 payload length 跳到下一个 offset。payload 继续走既有的 range 读取，不需要新的存储结构。
 
+**BodyViewer嵌套滚动契约**：正文pane内容溢出时由pane自身滚动；到达顶部/底部后继续同方向wheel必须交给Inspector外层scroll，不能由Monaco永久消费。产品`CodeViewer`与design-vite `MonacoFixture`都必须显式使用`alwaysConsumeMouseWheel:false`。外框可用`overflow:hidden`裁切圆角，但不得关闭Monaco内部scrollbar或阻断边界后的scroll chaining。
+
 WebSocket 与 gRPC 的意图 API 把 payload 原样转交，Core protocol 只校验 RPC 信封 / version / 关联字段，不对 payload 做运行时语义校验。
 
 ## 10. Renderer 数据层
@@ -1366,12 +1368,12 @@ flowchart LR
 
 | facet | `CaptureFilter` 字段 | 取值来源 | 排序 |
 | --- | --- | --- | --- |
-| `application` | `apps` | `summary.appId`，无归属归入哨兵值；`appPending` 期间不计入（见 8.4） | 首次出现顺序 |
+| `application` | `apps` | `summary.appId`，无归属归入哨兵值；`appPending` 进入永久显示的 Pending bucket（见 8.4） | 首次出现顺序，Pending固定置尾 |
 | `method` | `methods` | `summary.method` 大写 | 首次出现顺序 |
 | `host` | `hosts` | `summary.host` | 首次出现顺序 |
-| `status` | `statuses` | 状态码十进制串；无码时按 `failed` / `pending` 哨兵值 | 码值升序，哨兵置尾 |
+| `status` | `statuses` | 状态码十进制串；无码时按 `failed` / `pending` 哨兵值 | 码值升序，Failed后接永久Pending |
 | `protocol` | `protocols` | `protocolFacetValue()` | 固定版本序 |
-| `type` | `types` | `typeLabel(responseMime)` | 首次出现顺序 |
+| `type` | `types` | response headers未到时进入永久Pending；headers到达后由`typeLabel(responseMime)`决定 | 首次出现顺序，Pending固定置尾 |
 | `rule` | `ruleIds` | `summary.ruleIds`，一条可命中多个 | 首次出现顺序 |
 
 - **组内 OR、组间 AND，搜索与所有 facet 之间也是 AND**。`matchesCoreFilter` 同时供列表派生与实时事件使用，
@@ -1382,6 +1384,7 @@ flowchart LR
     并经 `useThrottledRows(FACET_REFRESH_MS)` 节流。Application / Method / Host / Type / Rule 保持
     当前 Capture 中的首次出现顺序，计数变化只更新数字，不再按 count 动态换位；Status / Protocol
     继续使用各自的固定语义顺序。
+- Application / Status / Content type 的 Pending option在count=0时也始终渲染并可选择；新进入加载态的request会自动命中已选bucket。请求完成后count回0但option不增删，避免facet高度与DOM抖动。Method / Host / Protocol在request headers阶段已确定，不提供虚假的loading项；Rule当前没有独立“计算中”字段，也不编码无法区分的状态。
 - Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
     已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
 - 哨兵值用 `\u0000` 前缀（`UNKNOWN_FACET_VALUE` / `FAILED_FACET_VALUE` / `PENDING_FACET_VALUE`），

@@ -21,12 +21,13 @@ export class ProxiedWebSocketClient {
     targetUrl: string,
   ): Promise<ProxiedWebSocketClient> {
     const target = new URL(targetUrl);
+    const proxyTarget = `http://${target.host}${target.pathname}${target.search}`;
     const socket = net.connect(proxyPort, '127.0.0.1');
     const client = new ProxiedWebSocketClient(socket);
     await once(socket, 'connect');
     const responseHead = client.readHttpResponseHead();
     socket.write(
-      `GET ${targetUrl} HTTP/1.1\r\n` +
+      `GET ${proxyTarget} HTTP/1.1\r\n` +
         `Host: ${target.host}\r\n` +
         'Connection: Upgrade\r\n' +
         'Upgrade: websocket\r\n' +

@@ -13,6 +13,7 @@ interface CollapsibleSectionProps {
   readonly badge?: CollapsibleSectionBadge;
   readonly children: ReactNode;
   readonly className?: string;
+  readonly grow?: boolean;
   readonly extra?: ReactNode;
   readonly labelExtra?: ReactNode;
   readonly onOpenChange: (open: boolean) => void;
@@ -24,6 +25,7 @@ export function CollapsibleSection({
   badge,
   children,
   className,
+  grow = false,
   extra,
   labelExtra,
   onOpenChange,
@@ -46,6 +48,12 @@ export function CollapsibleSection({
       ghost
       items={[{
         key: 'content',
+        style: grow ? {
+          display: 'grid',
+          gridTemplateRows: 'auto minmax(0, 1fr)',
+          flex: '1 1 0',
+          minHeight: 0,
+        } : undefined,
         label: (
           <span className={styles.collapsibleSectionLabel}>
             <span>{title}</span>
@@ -94,6 +102,8 @@ export function CollapsibleSection({
         body: {
           display: 'flex',
           flexDirection: 'column',
+          height: grow ? '100%' : undefined,
+          minHeight: grow ? 0 : undefined,
           gap: 8,
           padding: 0,
         },

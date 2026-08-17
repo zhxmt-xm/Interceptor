@@ -58,17 +58,32 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   await expect(applicationPending).toBeVisible();
   await expect(statusPending).toBeVisible();
   await expect(typePending).toBeVisible();
+  const expectPendingLast = async (): Promise<void> => {
+    for (const facet of ['application', 'status', 'type'] as const) {
+      const group = getByAutomationId(
+        page,
+        AutomationIdFactory.captureFacetGroup(facet),
+      );
+      await expect(group.locator(
+        `[data-automation-id^="capture.filter.option.${facet}."]`,
+      ).last()).toHaveAttribute(
+        'data-automation-id',
+        AutomationIdFactory.captureFacetOption(facet, PENDING_FACET_VALUE),
+      );
+    }
+  };
+  await expectPendingLast();
 
-  await loopbackLab.requestThroughProxy(
+  await expect(loopbackLab.requestThroughProxy(
     desktopApp.capturePort(),
     '/e2e/facets/get-first',
-    { method: 'E2E-FIRST' },
-  );
-  await loopbackLab.requestThroughProxy(
+    { method: 'GET' },
+  )).resolves.toMatchObject({ statusCode: 200 });
+  await expect(loopbackLab.requestThroughProxy(
     desktopApp.capturePort(),
     '/e2e/facets/post-first',
-    { method: 'E2E-LATER' },
-  );
+    { method: 'POST' },
+  )).resolves.toMatchObject({ statusCode: 200 });
 
   const getRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: '/e2e/facets/get-first' })
@@ -95,7 +110,10 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
       : Number.POSITIVE_INFINITY;
   }).toBeLessThan(1);
   await breakpoint.hover();
-  await expect(page.getByText('This endpoint', { exact: true })).toBeVisible();
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureCreateBreakpoint(capturedExchangeId, 'endpoint'),
+  )).toBeVisible();
   await page.keyboard.press('Escape');
 
   await openFacet('method');
@@ -105,34 +123,47 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   );
   const getOption = getByAutomationId(
     page,
-    AutomationIdFactory.captureFacetOption('method', 'E2E-FIRST'),
+    AutomationIdFactory.captureFacetOption('method', 'GET'),
   );
   const postOption = getByAutomationId(
     page,
-    AutomationIdFactory.captureFacetOption('method', 'E2E-LATER'),
+    AutomationIdFactory.captureFacetOption('method', 'POST'),
   );
   await expect(getOption).toBeVisible();
   await expect(postOption).toBeVisible();
 
-  const optionIds = async (): Promise<string[]> => methodGroup
-    .locator('[data-automation-id^="capture.filter.option.method."]')
-    .evaluateAll((options) => options.map(
-      (option) => option.getAttribute('data-automation-id') ?? '',
-    ));
   const expectedOrder = [
-    AutomationIdFactory.captureFacetOption('method', 'E2E-FIRST'),
-    AutomationIdFactory.captureFacetOption('method', 'E2E-LATER'),
+    AutomationIdFactory.captureFacetOption('method', 'GET'),
+    AutomationIdFactory.captureFacetOption('method', 'POST'),
   ];
+  const optionIds = async (): Promise<string[]> => (
+    await methodGroup
+      .locator('[data-automation-id^="capture.filter.option.method."]')
+      .evaluateAll((options) => options.map(
+        (option) => option.getAttribute('data-automation-id') ?? '',
+      ))
+  ).filter((automationId) => expectedOrder.includes(automationId));
   expect(await optionIds()).toEqual(expectedOrder);
 
-  await loopbackLab.requestThroughProxy(
+  const postRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+    .filter({ hasText: '/e2e/facets/post-first' })
+    .last();
+  await expect(postRow).toBeVisible();
+  await applicationPending.click();
+  await expect(getRow).toBeHidden();
+  await expect(postRow).toBeHidden();
+  await applicationPending.click();
+  await expect(getRow).toBeVisible();
+  await expect(postRow).toBeVisible();
+
+  await expect(loopbackLab.requestThroughProxy(
     desktopApp.capturePort(),
     '/e2e/facets/post-second',
-    { method: 'E2E-LATER' },
-  );
+    { method: 'POST' },
+  )).resolves.toMatchObject({ statusCode: 200 });
   await expect(getByAutomationId(
     page,
-    AutomationIdFactory.captureFacetOptionCount('method', 'E2E-LATER'),
+    AutomationIdFactory.captureFacetOptionCount('method', 'POST'),
   )).toHaveText('2');
   expect.soft(
     await optionIds(),
@@ -161,12 +192,17 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   await statusPending.click();
   await expect(pendingRow).toBeVisible();
   await expect(getRow).toBeHidden();
+  await statusPending.click();
+  await typePending.click();
+  await expect(pendingRow).toBeVisible();
+  await expect(getRow).toBeHidden();
 
   releasePending();
   await expect(pendingRequest).resolves.toMatchObject({ statusCode: 200 });
   await expect(statusPending).toBeVisible();
   await expect(typePending).toBeVisible();
-  await statusPending.click();
+  await expect(pendingRow).toBeHidden();
+  await typePending.click();
 
   const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
   await recording.click();
@@ -190,6 +226,7 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   await expect(applicationPending).toBeVisible();
   await expect(statusPending).toBeVisible();
   await expect(typePending).toBeVisible();
+  await expectPendingLast();
   for (const facet of ['application', 'status', 'type'] as const) {
     await expect(getByAutomationId(
       page,

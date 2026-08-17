@@ -29,6 +29,7 @@ async function dynamicId(locator: Locator, prefix: string): Promise<string> {
 /** Create, enable and apply one request breakpoint rule entirely through public controls. */
 async function createRequestBreakpointRule(page: Page): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
   await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
 
   const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
@@ -57,6 +58,7 @@ async function createRequestBreakpointRule(page: Page): Promise<string> {
 /** Create a later request-header rewrite through the same Rules editor users operate. */
 async function createRequestHeaderRewriteRule(page: Page): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
   await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
 
   const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
@@ -86,6 +88,10 @@ async function createRequestHeaderRewriteRule(page: Page): Promise<string> {
 
 /** Select the paused Capture row for one test-owned request path. */
 async function selectPausedRequest(page: Page, requestPath: string): Promise<void> {
+  await getByAutomationId(
+    page,
+    AUTOMATION_IDS.capture.keywordFilter,
+  ).fill(requestPath);
   const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: requestPath })
     .last();
@@ -217,7 +223,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   ).not.toBeNull();
   if (laterRewrite) {
     await expect.soft(laterRewrite.value).toHaveValue('rule-value');
-    await expect.soft(laterRewrite.effect).toHaveText('Rule set');
+    await expect.soft(laterRewrite.effect).toHaveAttribute('data-effect', 'set');
   }
   const contentType = await breakpointHeader(page, 'content-type');
   await contentType.value.fill('application/x-header-only');

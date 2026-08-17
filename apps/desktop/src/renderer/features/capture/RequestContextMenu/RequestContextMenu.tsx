@@ -196,7 +196,14 @@ export function RequestContextMenu({
             ...breakpointScopes.map(({ scope, icon: Icon, name, hint }) => ({
               key: `breakpoint:${scope}`,
               icon: <Icon size={16} strokeWidth={1.9} />,
-              label: label(name, hint),
+              label: label(
+                name,
+                hint,
+                undefined,
+                summary
+                  ? AutomationIdFactory.captureCreateBreakpoint(summary.id, scope)
+                  : undefined,
+              ),
             })),
           ],
         },

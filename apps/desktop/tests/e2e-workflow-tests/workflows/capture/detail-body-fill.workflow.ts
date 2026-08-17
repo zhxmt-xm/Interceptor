@@ -72,17 +72,59 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   ).click();
   await expect(bodyPane).toBeVisible();
   await bodyPane.scrollIntoViewIfNeeded();
-  await scroll.evaluate((element) => {
-    element.scrollTop = Math.max(0, element.scrollHeight - element.clientHeight - 80);
-  });
+  const outerMaxScroll = await scroll.evaluate(
+    (element) => element.scrollHeight - element.clientHeight,
+  );
+  expect(outerMaxScroll).toBeGreaterThan(1);
+  await scroll.evaluate((element, maximum) => {
+    element.scrollTop = maximum - Math.min(80, maximum / 2);
+  }, outerMaxScroll);
   const paneBox = await bodyPane.boundingBox();
   expect(paneBox).not.toBeNull();
   await page.mouse.move(
     paneBox!.x + paneBox!.width / 2,
     Math.max(paneBox!.y + 12, 120),
   );
-  await page.mouse.wheel(0, 5_000);
+  const verticalScrollbar = bodyPane.locator('.scrollbar.vertical').first();
+  const verticalSlider = verticalScrollbar.locator('.slider');
+  await expect(verticalSlider).toBeVisible();
+  const initialSliderBox = await verticalSlider.boundingBox();
+  expect(initialSliderBox).not.toBeNull();
+  await page.mouse.wheel(0, 600);
+  await expect.poll(async () => (await verticalSlider.boundingBox())?.y ?? 0)
+    .toBeGreaterThan(initialSliderBox!.y);
+
+  const [scrollbarBox, sliderBox] = await Promise.all([
+    verticalScrollbar.boundingBox(),
+    verticalSlider.boundingBox(),
+  ]);
+  expect(scrollbarBox).not.toBeNull();
+  expect(sliderBox).not.toBeNull();
+  await page.mouse.move(
+    sliderBox!.x + sliderBox!.width / 2,
+    sliderBox!.y + sliderBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    sliderBox!.x + sliderBox!.width / 2,
+    scrollbarBox!.y + scrollbarBox!.height - sliderBox!.height / 2,
+  );
+  await page.mouse.up();
+  await expect.poll(async () => {
+    const [track, slider] = await Promise.all([
+      verticalScrollbar.boundingBox(),
+      verticalSlider.boundingBox(),
+    ]);
+    return track && slider
+      ? Math.abs(track.y + track.height - (slider.y + slider.height))
+      : Number.POSITIVE_INFINITY;
+  }).toBeLessThanOrEqual(1);
+
   const beforeOuterScroll = await scroll.evaluate((element) => element.scrollTop);
+  await page.mouse.move(
+    paneBox!.x + paneBox!.width / 2,
+    Math.max(paneBox!.y + 12, 120),
+  );
   await page.mouse.wheel(0, 300);
   await expect.poll(
     () => scroll.evaluate((element) => element.scrollTop),

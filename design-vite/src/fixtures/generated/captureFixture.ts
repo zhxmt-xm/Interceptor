@@ -114,7 +114,7 @@ export const captureFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "4"
+                              "value": "5"
                             }
                           ]
                         },
@@ -399,6 +399,69 @@ export const captureFixture: FixtureNode = {
                                 {
                                   "type": "text",
                                   "value": "6"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "value": "\n                  "
+                        },
+                        {
+                          "type": "element",
+                          "tag": "div",
+                          "attributes": {
+                            "class": "fitem"
+                          },
+                          "children": [
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "ai none"
+                              },
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "tag": "svg",
+                                  "attributes": {},
+                                  "children": [
+                                    {
+                                      "type": "element",
+                                      "tag": "use",
+                                      "attributes": {
+                                        "href": "#i-app-window"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "fitem-n"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "Pending"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "fitem-c"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "0"
                                 }
                               ]
                             }
@@ -1477,7 +1540,7 @@ export const captureFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "11"
+                              "value": "12"
                             }
                           ]
                         },
@@ -2078,6 +2141,53 @@ export const captureFixture: FixtureNode = {
                         },
                         {
                           "type": "text",
+                          "value": "\n                  "
+                        },
+                        {
+                          "type": "element",
+                          "tag": "div",
+                          "attributes": {
+                            "class": "fitem"
+                          },
+                          "children": [
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "st info"
+                              },
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "tag": "span",
+                                  "attributes": {
+                                    "class": "d"
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "type": "text",
+                                  "value": "Pending"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "fitem-c"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
                           "value": "\n                "
                         }
                       ]
@@ -2521,7 +2631,7 @@ export const captureFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "8"
+                              "value": "9"
                             }
                           ]
                         },
@@ -2910,6 +3020,45 @@ export const captureFixture: FixtureNode = {
                                 {
                                   "type": "text",
                                   "value": "24"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "value": "\n                  "
+                        },
+                        {
+                          "type": "element",
+                          "tag": "div",
+                          "attributes": {
+                            "class": "fitem"
+                          },
+                          "children": [
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "fitem-n"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "Pending"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "fitem-c"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "1"
                                 }
                               ]
                             }

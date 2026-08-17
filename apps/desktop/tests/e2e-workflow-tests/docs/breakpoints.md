@@ -6,7 +6,7 @@
 ## `breakpoints.toggle`
 
 **状态**：planned
-**策略**：shared
+**策略**：privileged UI
 
 ### Steps
 
@@ -80,7 +80,7 @@ Continue unmodified只释放等待，不改字节；pending badge、Core、clien
 ### Steps
 
 1. 创建profile/evidence和能记录 raw request headers/body 的HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查Capture无paused行。
-2. 确认冷启动自动进入Recording；若当前尚未Recording，才点击recording toggle并通过readiness Enable完成接管。随后通过Rules UI创建request Breakpoint action，启用规则后Apply。
+2. 确认冷启动自动进入Recording；若当前尚未Recording，才点击recording toggle并通过readiness Enable完成接管。随后通过Rules UI先创建request Breakpoint rule，再创建priority更晚的request header rewrite，分别启用并Apply。
 3. **Header-only**：客户端发送带固定body、`Content-Type`、`Content-Length`和普通header；同一请求还命中一个
 	priority 晚于 breakpoint rule 的 header rewrite。选择动态row，先确认暂停快照已包含该 rewrite 的最终值和
 	`Rule set` / `Rule appended` marker，
@@ -102,6 +102,11 @@ Breakpoint 快照先包含所有普通 Rule 的最终改写，用户草稿不会
 body-only按继承headers构造新body；header+body按用户最终headers构造新body。三段都经过真实UI/Main/Core/
 Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
+### TDD证据要求
+
+- 修复前提交运行同一workflow：暂停快照缺少priority更晚的rewrite header/marker；Forward edited后Capture缺少绑定breakpoint rule的effect。
+- 当前提交运行同一workflow：最终state、暂停marker、origin wire与Capture effect全部Green，并具备代理恢复、进程销毁和8888释放证据。selector、UAC、构建或fixture失败不算Red。
+
 ### Automation Contract
 
 该 workflow 只允许使用下列公共 automation ID，不以翻译文案、`aria-label`、CSS class 或 `window.interceptor` 代替：
@@ -112,12 +117,14 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 | 进入 Rules / 新建规则 | `shell.workspace.rules`、`rules.create` |
 | 规则名 | `rules.editor.name` |
 | Host matcher 值 | `rules.matcher.<ruleId>.0.value` |
+| Header action name/value | `rules.action.<ruleId>.0.name`、`rules.action.<ruleId>.0.value` |
 | 删除默认 action | `rules.action.<ruleId>.0.remove` |
 | 添加 Breakpoint action | `rules.add-action`、`rules.action.breakpoint` |
 | Apply / enable | `rules.apply`、`rules.toggle.<ruleId>` |
 | 返回 Capture / 选择 pending exchange | `shell.workspace.capture`、`capture.request-row.<exchangeId>` |
 | 打开 manager / 切换总开关 | `capture.breakpoint-manager`、`breakpoints.toggle` |
 | 编辑 header | `breakpoints.header.<headerId>.name`、`breakpoints.header.<headerId>.value` |
+| 暂停/落库 effect | `breakpoints.header.<headerId>.effect`、`capture.rule-effect.<ruleId>.<effect>.<headerName>` |
 | Replacement 模式 | `breakpoints.replacement.off`、`breakpoints.replacement.text`、`breakpoints.replacement.file` |
 | 编辑/提交正文 | `breakpoints.body`、`breakpoints.execute-edited` |
 | 恢复系统代理 | `settings.proxy.restore` |
@@ -146,6 +153,32 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 ### 预期效果
 
 Drop真实中止目标数据面；请求不继续转发；pending badge、client和Capture均反映dropped/closed事实。
+
+<a id="breakpoints-websocket-close"></a>
+## `breakpoints.websocket-close`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
+2. Fresh profile首次出现Proxy readiness时点击`capture.readiness.cancel`；点击`capture.recording.toggle`，在再次出现的readiness点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
+3. 测试lab在random loopback port启动真实`WebSocketServer`。Raw客户端连接8888，发送absolute-form `GET ws://127.0.0.1:<originPort>/e2e/websocket-close`、Upgrade headers与固定Sec-WebSocket-Key；必须收到真实`HTTP/1.1 101`才算连接建立。
+4. 等待包含`/e2e/websocket-close`的动态`capture.request-row.<exchangeId>`并点击；点击`capture.inspector.tab.messages`。点击`capture.websocket.breakpoint.toggle`打开当前连接的setup。
+5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions与`capture.websocket.breakpoint.timeout=0`，点击`capture.websocket.breakpoint.enable`。
+6. Raw客户端构造FIN+opcode8、mask bit、随机4字节mask和network-order code=1000的masked close frame并写入8888连接。等待`breakpoints.close-code`可见且value=1000，证明真实close帧已在Capture原行暂停。
+7. 只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001。
+8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁raw client与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
+
+### 预期效果
+
+closeCode与body是正交编辑；没有body replacement时仍必须转发用户编辑后的close code，同时保留原始reason bytes。
+
+### TDD证据要求
+
+- 修复前提交运行同一workflow：origin收到1000而非1001。
+- 当前提交运行同一workflow：origin收到1001，且完整销毁/恢复证据Green。fixture或selector失败不算Red。
 
 <a id="breakpoints-resize"></a>
 ## `breakpoints.resize`

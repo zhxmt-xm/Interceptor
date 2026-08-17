@@ -157,6 +157,7 @@ export const AUTOMATION_IDS = {
   },
   rules: {
     list: 'rules.list',
+    rootMenuSurface: 'rules.root-menu-surface',
     search: 'rules.search',
     create: 'rules.create',
     createFolder: 'rules.create-folder',
@@ -332,6 +333,11 @@ export class AutomationIdFactory {
   /** Identify one request-derived Rule action in the row context menu. */
   static captureCreateRule(exchangeId: string, actionType: string): string {
     return `capture.create-rule.${exchangeId}.${actionType}`;
+  }
+
+  /** Identify one request-derived Breakpoint scope in the row context submenu. */
+  static captureCreateBreakpoint(exchangeId: string, scope: string): string {
+    return `capture.create-breakpoint.${exchangeId}.${scope}`;
   }
 
   /** Identify one Capture facet group by its semantic field. */

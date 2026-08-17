@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与 60 条 workflow 规格已建立；`workflows/` 已重置为空，Inventory 全部等待重新实现，不能视为已有自动化证据。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与60条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -38,9 +38,9 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 4. 等待 App root、Core Running、真实 PID 和 8888 listener；
 5. 从初始 UI 开始执行该 workflow 的连续操作；
 6. 保存 `trace.zip`、`final.png`、Main/Renderer 日志和 `metadata.json`；
-7. 点击 `shell.window.close`；
-8. 验证 Main、Renderer、Core、Worker 全退，8888 释放；
-9. 恢复该 workflow 产生的系统代理、CA/Trust、MITM 等副作用；
+7. 通过真实Settings/UI恢复该workflow产生的系统代理、CA/Trust、MITM等副作用；
+8. 点击 `shell.window.close`；
+9. 验证 Main、Renderer、Core、Worker 全退，8888 释放；
 10. 删除 profile 和 fixture。
 
 只有同一 workflow 内必须比较连续状态时才复用同一 App，例如 `capture.protocols.with-mitm` 的 Fresh→Generated→Trusted→MITM enabled。
@@ -74,6 +74,12 @@ apps/desktop/tests/e2e-workflow-tests/
 │  └─ settings-updates.md
 ├─ fixtures/
 ├─ workflows/
+│  ├─ capture/
+│  │  ├─ detail-body-fill.workflow.ts
+│  │  └─ facets-clear-menu.workflow.ts
+│  └─ breakpoints/
+│     ├─ execute-edited.workflow.ts
+│     └─ websocket-close.workflow.ts
 ├─ playwright.config.ts
 └─ prepare-local.mjs
 ```
@@ -88,7 +94,7 @@ apps/desktop/tests/e2e-workflow-tests/
 - Core-owned 动态行从 `AutomationIdFactory` 或公共 prefix生成；
 - Playwright 通过 `getByAutomationId()` / `getByAutomationIdPrefix()` 定位；
 - Automation ID 必须落在实际接收 click/fill/press/drag 的 DOM 元素上；
-- 文本、role 和 CSS class 只用于非交互断言。
+- Workflow保持应用当前语言，不自动切换；业务交互和断言不得依赖任一语言的显示文本、翻译后`aria-label`或CSS class，只使用automation ID、协议值、DOM状态属性与测试自产数据。翻译文本只在独立i18n workflow验证。
 
 动态行格式：
 
@@ -137,6 +143,8 @@ diagnostics.row.<traceKey>
 | `capture.filter.keyword` | Keyword筛选和恢复 | shared | planned |
 | `capture.filter.structured` | Method/Status/Host/Type/Duration组合筛选 | shared | planned |
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
+| `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
+| `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | planned |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
@@ -182,9 +190,10 @@ diagnostics.row.<traceKey>
 | `breakpoints.toggle` | Break on match与Core同步 | shared | planned |
 | `breakpoints.queue-select` | 真实pending队列和snapshot | shared | planned |
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
-| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | shared | planned |
+| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
+| `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)
 

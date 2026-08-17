@@ -45,7 +45,12 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
       overviewRulerLanes: 0,
       overviewRulerBorder: false,
       hideCursorInOverviewRuler: true,
-      scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8, useShadows: false },
+      scrollbar: {
+        verticalScrollbarSize: 8,
+        horizontalScrollbarSize: 8,
+        useShadows: false,
+        alwaysConsumeMouseWheel: false,
+      },
       guides: { indentation: false, highlightActiveIndentation: false },
       occurrencesHighlight: 'off',
       selectionHighlight: false,

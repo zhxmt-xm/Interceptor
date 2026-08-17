@@ -362,8 +362,9 @@ export function facetValuesOf(
 ): string[] {
   switch (facet) {
     case 'application':
-      // 归属还在异步反查中：先不计入，否则 Unknown 会冒出来再消失。
-      return summary.appPending ? [] : [summary.appId ?? UNKNOWN_FACET_VALUE];
+      return summary.appPending
+        ? [PENDING_FACET_VALUE]
+        : [summary.appId ?? UNKNOWN_FACET_VALUE];
     case 'method':
       return [summary.method.toUpperCase()];
     case 'host':
@@ -373,7 +374,10 @@ export function facetValuesOf(
     case 'protocol':
       return [protocolFacetValue(summary.protocol)];
     case 'type':
-      return [typeLabel(summary.responseMime)];
+      return summary.responseMime === undefined
+        && (summary.state === 'pending' || summary.state === 'request-complete')
+        ? [PENDING_FACET_VALUE]
+        : [typeLabel(summary.responseMime)];
     case 'rule':
       return [...new Set(summary.ruleIds ?? [])];
   }
@@ -419,6 +423,9 @@ export function allFacetOptions(
   const buckets = Object.fromEntries(
     CAPTURE_FACET_IDS.map((facet) => [facet, new Map<string, number>()]),
   ) as Record<CaptureFacetId, Map<string, number>>;
+  buckets.application.set(PENDING_FACET_VALUE, 0);
+  buckets.status.set(PENDING_FACET_VALUE, 0);
+  buckets.type.set(PENDING_FACET_VALUE, 0);
   for (const row of rows) {
     for (const facet of CAPTURE_FACET_IDS) {
       const bucket = buckets[facet];
@@ -447,11 +454,20 @@ function sortFacetOptions(
         PROTOCOL_FACET_ORDER.indexOf(left.value) - PROTOCOL_FACET_ORDER.indexOf(right.value),
     );
   }
-  return entries;
+  const pending = entries.find((entry) => entry.value === PENDING_FACET_VALUE);
+  return pending
+    ? [...entries.filter((entry) => entry !== pending), pending]
+    : entries;
 }
 
 /** 数字状态码按码值排，pending/failed 这类哨兵值排在最后。 */
 function statusOrder(value: string): number {
+  if (value === PENDING_FACET_VALUE) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  if (value === FAILED_FACET_VALUE) {
+    return Number.MAX_SAFE_INTEGER - 1;
+  }
   const code = Number.parseInt(value, 10);
   return Number.isNaN(code) ? Number.MAX_SAFE_INTEGER : code;
 }

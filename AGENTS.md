@@ -13,6 +13,10 @@
 - 不要为不可能发生的场景添加错误处理；只在系统边界做校验。
 - **所有业务代码改动都走完整 TDD**：修改业务代码前必须先判断 test impact，确认预期行为/契约是否变化、现有测试是否已经完整表达该行为。若需要新增或修改测试，先完成最小 unit / integration test 并确认因预期缺口失败（Red），再写业务代码；若是行为不变的内部重构且现有测试已经充分覆盖，不机械改测试，先运行最聚焦的现有测试确认基线 Green，再写业务代码。完成后必须复跑同一组测试确认 Green；禁止先写实现、再补测试为既有结果背书。
 - **Flow 变更阶段门禁**：任何业务代码改动只要影响用户 flow，首先在 owning `architecture/features/*.md` 与 `apps/desktop/tests/e2e-workflow-tests/docs/*.md` 落地契约、完整 flow、预期效果和证据要求；随后分别判断 unit / integration 与 E2E 的 test impact。需要改测试时，按 unit / integration Red → E2E Red 的顺序完成；现有测试已充分覆盖时，按同一顺序确认基线 Green。只有这些前置测试事实建立后才允许修改业务代码。实现后按 unit / integration Green → E2E Green 的顺序验证；只有 E2E 销毁与证据验证也完成后，才能更新 Inventory、Handover 与完成状态。
+- **真实 E2E 定义（不得替代）**：本仓所称 E2E 仅指 `apps/desktop/tests/e2e-workflow-tests/workflows/*.workflow.ts` 启动真实 Electron，并经过真实 Renderer → Preload → Main → Core UtilityProcess → listener / storage / origin 的 workflow。`design-vite` Playwright、visual parity（fake Preload）、Renderer component/store test、Proxy Core integration、packaged smoke 都不是该产品 flow 的 E2E，不能作为 E2E Red/Green 或销毁证据的替代品。
+- **E2E TDD 完成判据**：影响用户 flow 时，必须存在可执行 `.workflow.ts`，并在业务实现前于目标测试中观察到由预期行为缺口导致的失败（Red），不是 selector、fixture、UAC、构建或环境失败；实现后同一 workflow 必须 Green，并验证 trace/evidence、Main/Core/Worker 销毁、8888 释放及系统副作用恢复。若是补历史缺口，必须在临时 detached worktree 对修复前提交运行同一测试取得 retrospective Red，再在当前提交取得 Green；禁止用故障注入冒充历史 Red。
+- **E2E 与语言无关**：真实 Electron workflow 保持应用当前语言，不为测试自动切换语言。业务交互和断言只使用公共 `data-automation-id`、协议值、DOM 状态属性或测试自产数据；禁止用英文/中文显示文案、翻译后的 `aria-label` 或 CSS class 定位交互或判断 Green。翻译文本本身只允许在独立 i18n workflow 中验证。
+- **状态与文档约束**：只有 unit/integration Green 而缺真实 E2E Red/Green 时，只能标记“代码完成 · 待 E2E”，不得勾选“已完成”、更新 Inventory 为 passed，或在 Handover 宣称 flow 验收完成。若 E2E 暂因 UAC/凭据/平台条件阻塞，记录为 blocked，并写明需要的人工步骤与恢复命令。
 - **可读性优先于聪明**：命名直白、控制流线性、避免为省几行而牺牲可理解性。宁可多一个语义清晰的名字，不要一个塞满逻辑的表达式。
 - **命名用具体动词，不用泛化动词**：`apply` / `handle` / `process` / `manage` 这类词不说明做了什么。方法名要让调用点自解释；布尔参数尤其可疑，`setX(true)` 读者必须回看签名，拆成两个动词方法（`startX()` / `stopX()`）通常更好。
 - **相关方法相邻**：同一职责的方法排在一起；成对操作（start/stop、open/close、drain/restore）紧挨着；公开入口紧跟它自己的私有辅助。读者不应为了拼出一条完整流程在文件里来回跳。
@@ -66,8 +70,12 @@
 	- fixture、fake 与 helper 跟随使用它的测试层放置，不新增 `tests/shared/`；确有跨层复用时，优先拆成各层语义明确的 helper。
 	- 测试文件按行为命名为 `*.test.ts`，不再用 `.unit.test.ts` 或 `.integration.test.ts` 重复目录已经表达的层级。
 	- `e2e-workflow-tests/`、`packaged-smoke/`、`installer/`、`visual-parity/` 是独立测试套件，不归入 unit/integration 目录。
+	- `apps/desktop/tests/e2e-workflow-tests/workflows/` 下的可执行workflow必须按owning feature分目录，如`workflows/capture/*.workflow.ts`、`workflows/breakpoints/*.workflow.ts`；根目录不放可执行spec，不得把不同feature平铺混在一起。目录已表达feature，文件名只写行为（`capture/detail-body-fill.workflow.ts`），不再重复成`capture/capture-detail-body-fill.workflow.ts`。跨feature流程归主要用户入口的owning feature，公共driver/lab只放`fixtures/`。
 
 ## Frontend Styling
+
+- **滚动不得被无故禁用**：除非用户明确要求，BodyViewer、编辑器、列表、树、菜单和详情面板等内容面必须在内容溢出时支持滚轮、触控板与键盘滚动；不得用 `overflow: hidden`、隐藏scrollbar或组件配置关闭其应有滚动。仅外壳裁切、图标、圆角clip和单行ellipsis可使用hidden，且不能吞掉内容面的滚动事件。
+- **嵌套滚动必须链式交接**：内层滚动到顶部/底部后，继续同方向滚动必须交给外层容器，不得永久消费wheel。Monaco等第三方编辑器必须显式关闭边界wheel吞噬（例如 `alwaysConsumeMouseWheel: false`），并用真实wheel交互测试验证内层滚动与边界后的外层滚动两段行为。
 
 - **Design authority**
 	- `design-vite/` mockups and tokens are the **single source of truth**.

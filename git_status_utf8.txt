@@ -1,0 +1,413 @@
+﻿ M AGENTS.md
+ M README.md
+ M apps/desktop/src/main/app-container/app-container-service.ts
+RM apps/desktop/src/main/app-container/tests/app-container-service.test.ts -> apps/desktop/src/main/app-container/tests/unit/app-container-service.test.ts
+ M apps/desktop/src/main/app-container/windows-helper.cs
+RM apps/desktop/src/main/certificates/tests/certificate-service.test.ts -> apps/desktop/src/main/certificates/tests/integration/certificate-service.test.ts
+RM apps/desktop/src/main/certificates/tests/trust-store-service.test.ts -> apps/desktop/src/main/certificates/tests/unit/trust-store-service.test.ts
+RM apps/desktop/src/main/core/tests/core-rpc-client.test.ts -> apps/desktop/src/main/core/tests/unit/core-rpc-client.test.ts
+RM apps/desktop/src/main/core/tests/core-runtime.test.ts -> apps/desktop/src/main/core/tests/unit/core-runtime.test.ts
+RM apps/desktop/src/main/diagnostics/tests/main-diagnostics.test.ts -> apps/desktop/src/main/diagnostics/tests/unit/main-diagnostics.test.ts
+ M apps/desktop/src/main/main.ts
+RM apps/desktop/src/main/security/tests/trusted-renderer-url.test.ts -> apps/desktop/src/main/security/tests/unit/trusted-renderer-url.test.ts
+RM apps/desktop/src/main/system-proxy/tests/system-proxy-journal.test.ts -> apps/desktop/src/main/system-proxy/tests/integration/system-proxy-journal.test.ts
+RM apps/desktop/src/main/system-proxy/tests/upstream-probe.test.ts -> apps/desktop/src/main/system-proxy/tests/integration/upstream-probe.test.ts
+RM apps/desktop/src/main/system-proxy/tests/macos-system-proxy-service.test.ts -> apps/desktop/src/main/system-proxy/tests/unit/macos-system-proxy-service.test.ts
+RM apps/desktop/src/main/system-proxy/tests/system-proxy-upstream.test.ts -> apps/desktop/src/main/system-proxy/tests/unit/system-proxy-upstream.test.ts
+RM apps/desktop/src/main/system-proxy/tests/windows-system-proxy-service.test.ts -> apps/desktop/src/main/system-proxy/tests/unit/windows-system-proxy-service.test.ts
+RM apps/desktop/src/main/tests/forge-release-config.test.ts -> apps/desktop/src/main/tests/unit/forge-release-config.test.ts
+RM apps/desktop/src/main/updates/tests/github-auth-service.test.ts -> apps/desktop/src/main/updates/tests/integration/github-auth-service.test.ts
+RM apps/desktop/src/main/updates/tests/github-release-update-service.test.ts -> apps/desktop/src/main/updates/tests/integration/github-release-update-service.test.ts
+RM apps/desktop/src/main/utils/tests/renderer-utils.test.ts -> apps/desktop/src/main/utils/tests/unit/renderer-utils.test.ts
+ M apps/desktop/src/preload/preload.ts
+ M apps/desktop/src/renderer/app/App.tsx
+ M apps/desktop/src/renderer/app/featureViews.tsx
+RM apps/desktop/src/renderer/app/tests/bootStore.test.ts -> apps/desktop/src/renderer/app/tests/unit/bootStore.test.ts
+ M apps/desktop/src/renderer/components/CodeViewer/CodeViewer.tsx
+RM apps/desktop/src/renderer/components/tests/body-viewer.test.ts -> apps/desktop/src/renderer/components/tests/unit/body-viewer.test.ts
+RM apps/desktop/src/renderer/components/tests/json-tree.test.ts -> apps/desktop/src/renderer/components/tests/unit/json-tree.test.ts
+ M apps/desktop/src/renderer/features/breakpoints/data/breakpointsStore.ts
+ M apps/desktop/src/renderer/features/breakpoints/interfaces.ts
+RM apps/desktop/src/renderer/features/breakpoints/tests/breakpoint-edits.test.ts -> apps/desktop/src/renderer/features/breakpoints/tests/unit/breakpoint-edits.test.ts
+RM apps/desktop/src/renderer/features/breakpoints/tests/breakpoints-store.test.ts -> apps/desktop/src/renderer/features/breakpoints/tests/unit/breakpoints-store.test.ts
+ M apps/desktop/src/renderer/features/breakpoints/utils.ts
+ M apps/desktop/src/renderer/features/capture/BreakpointInspector/BreakpointInspector.tsx
+RM apps/desktop/src/renderer/features/capture/tests/body-preview-request.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/body-preview-request.test.ts
+RM apps/desktop/src/renderer/features/capture/tests/capture-store.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/capture-store.test.ts
+RM apps/desktop/src/renderer/features/capture/tests/inspector-tab.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/inspector-tab.test.ts
+RM apps/desktop/src/renderer/features/capture/tests/proxy-readiness.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/proxy-readiness.test.ts
+RM apps/desktop/src/renderer/features/capture/tests/read-complete-body.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/read-complete-body.test.ts
+RM apps/desktop/src/renderer/features/capture/tests/row-format.test.ts -> apps/desktop/src/renderer/features/capture/tests/unit/row-format.test.ts
+ M apps/desktop/src/renderer/features/composer/CollectionPanel/CollectionTreeNode.tsx
+RM apps/desktop/src/renderer/features/composer/tests/composer-store.test.ts -> apps/desktop/src/renderer/features/composer/tests/unit/composer-store.test.ts
+ M apps/desktop/src/renderer/features/rules/ActionCard/ActionCard.tsx
+ M apps/desktop/src/renderer/features/rules/RuleEditor/ActionEditor.tsx
+ M apps/desktop/src/renderer/features/rules/RuleEditor/MatcherControls.tsx
+ M apps/desktop/src/renderer/features/rules/RuleEditor/MatcherRow.tsx
+ M apps/desktop/src/renderer/features/rules/RuleEditor/RuleEditor.module.css
+ M apps/desktop/src/renderer/features/rules/RuleEditor/RuleEditor.tsx
+ M apps/desktop/src/renderer/features/rules/RuleList/RuleList.module.css
+ M apps/desktop/src/renderer/features/rules/RuleList/RuleList.tsx
+ M apps/desktop/src/renderer/features/rules/RulesStatusbar/RulesStatusbar.tsx
+RM apps/desktop/src/renderer/features/rules/tests/rules-store.test.ts -> apps/desktop/src/renderer/features/rules/tests/unit/rules-store.test.ts
+ M apps/desktop/src/renderer/features/settings/SettingsContent/AppContainerPanel.module.css
+ M apps/desktop/src/renderer/features/settings/SettingsContent/AppContainerPanel.tsx
+ M apps/desktop/src/renderer/features/settings/SettingsContent/ProxyPanel.tsx
+ M apps/desktop/src/renderer/features/settings/SettingsMain/SettingsMain.tsx
+ M apps/desktop/src/renderer/features/settings/SettingsNav/SettingsNav.tsx
+RM apps/desktop/src/renderer/features/settings/tests/githubAuthStore.test.ts -> apps/desktop/src/renderer/features/settings/tests/unit/githubAuthStore.test.ts
+RM apps/desktop/src/renderer/features/settings/tests/privacyStore.test.ts -> apps/desktop/src/renderer/features/settings/tests/unit/privacyStore.test.ts
+RM apps/desktop/src/renderer/features/settings/tests/tlsCompatibilityStore.test.ts -> apps/desktop/src/renderer/features/settings/tests/unit/tlsCompatibilityStore.test.ts
+ M apps/desktop/src/renderer/i18n/locales/de.ts
+ M apps/desktop/src/renderer/i18n/locales/es.ts
+ M apps/desktop/src/renderer/i18n/locales/fr.ts
+ M apps/desktop/src/renderer/i18n/locales/it.ts
+ M apps/desktop/src/renderer/i18n/locales/ja.ts
+ M apps/desktop/src/renderer/i18n/locales/ko.ts
+ M apps/desktop/src/renderer/i18n/locales/nl.ts
+ M apps/desktop/src/renderer/i18n/locales/pl.ts
+ M apps/desktop/src/renderer/i18n/locales/pt-BR.ts
+ M apps/desktop/src/renderer/i18n/locales/ru.ts
+ M apps/desktop/src/renderer/i18n/locales/tr.ts
+ M apps/desktop/src/renderer/i18n/locales/uk.ts
+ M apps/desktop/src/renderer/i18n/locales/zh-CN.ts
+ M apps/desktop/src/renderer/i18n/locales/zh-TW.ts
+ M apps/desktop/src/renderer/i18n/settings-resources.ts
+RM apps/desktop/src/renderer/i18n/tests/github-auth-resources.test.ts -> apps/desktop/src/renderer/i18n/tests/unit/github-auth-resources.test.ts
+RM apps/desktop/src/renderer/i18n/tests/i18n.test.ts -> apps/desktop/src/renderer/i18n/tests/unit/i18n.test.ts
+ M apps/desktop/src/shared/automation-ids.ts
+ M apps/desktop/src/shared/desktop-api.ts
+ M apps/desktop/tests/e2e-workflow-tests/README.md
+ M apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md
+ M apps/desktop/tests/e2e-workflow-tests/docs/rules.md
+ M apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md
+ M apps/desktop/tests/e2e-workflow-tests/fixtures/local-electron-driver.ts
+ M apps/desktop/tests/e2e-workflow-tests/fixtures/loopback-lab.ts
+ M apps/desktop/tests/packaged-smoke/startup.spec.ts
+ M apps/desktop/tests/visual-parity/fake-interceptor.mjs
+ M apps/desktop/tests/visual-parity/parity-report.md
+ M apps/desktop/tests/visual-parity/renderer-shots/breakpoints-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/breakpoints-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-cookies-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-cookies-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-grpc-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-grpc-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-request-json-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-request-json-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-timing-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-timing-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-tunnel-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-tunnel-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-websocket-light-diff.png
+ M apps/desktop/tests/visual-parity/renderer-shots/capture-websocket-light.png
+ M apps/desktop/tests/visual-parity/renderer-shots/rules-light.png
+RM apps/proxy-core/src/proxy-core/archive/tests/service.test.ts -> apps/proxy-core/src/proxy-core/archive/tests/integration/service.test.ts
+RM apps/proxy-core/src/proxy-core/archive/tests/worker.test.ts -> apps/proxy-core/src/proxy-core/archive/tests/integration/worker.test.ts
+RM apps/proxy-core/src/proxy-core/archive/tests/zip.test.ts -> apps/proxy-core/src/proxy-core/archive/tests/integration/zip.test.ts
+RM apps/proxy-core/src/proxy-core/capture/tests/body-store.test.ts -> apps/proxy-core/src/proxy-core/capture/tests/integration/body-store.test.ts
+RM apps/proxy-core/src/proxy-core/capture/tests/body-writer.test.ts -> apps/proxy-core/src/proxy-core/capture/tests/integration/body-writer.test.ts
+RM apps/proxy-core/src/proxy-core/capture/tests/exchange-store.test.ts -> apps/proxy-core/src/proxy-core/capture/tests/integration/exchange-store.test.ts
+RM apps/proxy-core/src/proxy-core/capture/tests/export-atomicity.test.ts -> apps/proxy-core/src/proxy-core/capture/tests/integration/export-atomicity.test.ts
+RM apps/proxy-core/src/proxy-core/capture/tests/service.test.ts -> apps/proxy-core/src/proxy-core/capture/tests/integration/service.test.ts
+RM apps/proxy-core/src/proxy-core/client-app/tests/service.test.ts -> apps/proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts
+RM apps/proxy-core/src/proxy-core/diagnostics/tests/export.test.ts -> apps/proxy-core/src/proxy-core/diagnostics/tests/integration/export.test.ts
+RM apps/proxy-core/src/proxy-core/diagnostics/tests/host-worker.test.ts -> apps/proxy-core/src/proxy-core/diagnostics/tests/integration/host-worker.test.ts
+RM apps/proxy-core/src/proxy-core/diagnostics/tests/worker-store.test.ts -> apps/proxy-core/src/proxy-core/diagnostics/tests/integration/worker-store.test.ts
+RM apps/proxy-core/src/proxy-core/grpc/tests/framing.test.ts -> apps/proxy-core/src/proxy-core/grpc/tests/unit/framing.test.ts
+RM apps/proxy-core/src/proxy-core/grpc/tests/service.test.ts -> apps/proxy-core/src/proxy-core/grpc/tests/unit/service.test.ts
+RM apps/proxy-core/src/proxy-core/har/tests/service.test.ts -> apps/proxy-core/src/proxy-core/har/tests/integration/service.test.ts
+RM apps/proxy-core/src/proxy-core/har/tests/document.test.ts -> apps/proxy-core/src/proxy-core/har/tests/unit/document.test.ts
+RM apps/proxy-core/src/proxy-core/har/tests/utils.test.ts -> apps/proxy-core/src/proxy-core/har/tests/unit/utils.test.ts
+ M apps/proxy-core/src/proxy-core/proxy/entry.ts
+ M apps/proxy-core/src/proxy-core/proxy/interfaces/index.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/capture.integration.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/capture.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/h2.integration.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/h2.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/service.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/service.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/test-capture-service.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/test-capture-service.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/test-tls-setup.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/test-tls-setup.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/upstream.integration.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/upstream.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/websocket-upstream.integration.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/integration/websocket-upstream.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/capture-event-queue.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/unit/capture-event-queue.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/content-decoder.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/unit/content-decoder.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/exchange-tracker-client-app.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/unit/exchange-tracker-client-app.test.ts
+RM apps/proxy-core/src/proxy-core/proxy/tests/tls-compatibility-event-queue.test.ts -> apps/proxy-core/src/proxy-core/proxy/tests/unit/tls-compatibility-event-queue.test.ts
+ M apps/proxy-core/src/proxy-core/rules/interfaces/index.ts
+ M apps/proxy-core/src/proxy-core/rules/internal/action-executor.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/action-executor.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/integration/action-executor.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/breakpoint-body.integration.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/integration/breakpoint-body.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/empty-matcher.integration.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/integration/empty-matcher.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/hit-count.integration.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/integration/hit-count.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/breakpoint-queue.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/unit/breakpoint-queue.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/engine.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/unit/engine.test.ts
+RM apps/proxy-core/src/proxy-core/rules/tests/matcher-compiler.test.ts -> apps/proxy-core/src/proxy-core/rules/tests/unit/matcher-compiler.test.ts
+RM apps/proxy-core/src/proxy-core/tests/tls-passthrough-settings.test.ts -> apps/proxy-core/src/proxy-core/tests/integration/tls-passthrough-settings.test.ts
+RM apps/proxy-core/src/proxy-core/tests/core-application.test.ts -> apps/proxy-core/src/proxy-core/tests/unit/core-application.test.ts
+RM apps/proxy-core/src/proxy-core/tests/core-diagnostics.test.ts -> apps/proxy-core/src/proxy-core/tests/unit/core-diagnostics.test.ts
+RM apps/proxy-core/src/proxy-core/tests/core-rpc-server.test.ts -> apps/proxy-core/src/proxy-core/tests/unit/core-rpc-server.test.ts
+RM apps/proxy-core/src/proxy-core/transfer/tests/job-manager.test.ts -> apps/proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts
+RM apps/proxy-core/src/proxy-core/workspace/tests/workspace-service.test.ts -> apps/proxy-core/src/proxy-core/workspace/tests/integration/workspace-service.test.ts
+ M architecture/README.md
+ M architecture/backlog/idea.md
+ M architecture/features/capture.md
+ M architecture/features/composer.md
+ M architecture/features/rules.md
+ M architecture/features/settings.md
+ M architecture/platform/testing.md
+ M design-vite/package.json
+ M design-vite/shoot.mjs
+ M design-vite/shots/dark/boot/listener.png
+ M design-vite/shots/dark/capture/body-binary.png
+ M design-vite/shots/dark/capture/body-code.png
+ M design-vite/shots/dark/capture/body-form.png
+ M design-vite/shots/dark/capture/body-format-off.png
+ M design-vite/shots/dark/capture/body-formatting.png
+ M design-vite/shots/dark/capture/body-hex.png
+ M design-vite/shots/dark/capture/body-image-large.png
+ M design-vite/shots/dark/capture/body-image.png
+ M design-vite/shots/dark/capture/body-json.png
+ M design-vite/shots/dark/capture/body-limited.png
+ M design-vite/shots/dark/capture/body-md-source.png
+ M design-vite/shots/dark/capture/body-md-split.png
+ M design-vite/shots/dark/capture/body-md.png
+ M design-vite/shots/dark/capture/body-media.png
+ M design-vite/shots/dark/capture/body-raw.png
+ M design-vite/shots/dark/capture/body-tree-menu.png
+ M design-vite/shots/dark/capture/body-tree.png
+ M design-vite/shots/dark/capture/breakpoint-create-menu.png
+ M design-vite/shots/dark/capture/breakpoint-created-message.png
+ M design-vite/shots/dark/capture/breakpoint-manager.png
+ M design-vite/shots/dark/capture/breakpoint-queue-full.png
+ M design-vite/shots/dark/capture/breakpoint-queue.png
+ M design-vite/shots/dark/capture/breakpoint-request-body-file-empty.png
+ M design-vite/shots/dark/capture/breakpoint-request-body-file.png
+ M design-vite/shots/dark/capture/breakpoint-request-body-loaded.png
+ M design-vite/shots/dark/capture/breakpoint-request-body-loading.png
+ M design-vite/shots/dark/capture/breakpoint-request-body-replace.png
+ M design-vite/shots/dark/capture/breakpoint-request-paused.png
+ M design-vite/shots/dark/capture/breakpoint-response-body-file-empty.png
+ M design-vite/shots/dark/capture/breakpoint-response-body-file.png
+ M design-vite/shots/dark/capture/breakpoint-response-body-loaded.png
+ M design-vite/shots/dark/capture/breakpoint-response-body-replace.png
+ M design-vite/shots/dark/capture/breakpoint-response-paused.png
+ M design-vite/shots/dark/capture/breakpoints-off.png
+ M design-vite/shots/dark/capture/filters-active.png
+ M design-vite/shots/dark/capture/filters-collapsed-active.png
+ M design-vite/shots/dark/capture/filters-collapsed.png
+ M design-vite/shots/dark/capture/filters-group-clear.png
+ M design-vite/shots/dark/capture/filters-method.png
+ M design-vite/shots/dark/capture/filters-status.png
+ M design-vite/shots/dark/capture/filters-type.png
+ M design-vite/shots/dark/capture/inspector-cookies.png
+ M design-vite/shots/dark/capture/inspector-copy-actions.png
+ M design-vite/shots/dark/capture/inspector-grpc.png
+ M design-vite/shots/dark/capture/inspector-request.png
+ M design-vite/shots/dark/capture/inspector-response.png
+ M design-vite/shots/dark/capture/inspector-timing.png
+ M design-vite/shots/dark/capture/inspector-tls.png
+ M design-vite/shots/dark/capture/inspector-tunnel-mitm-active.png
+ M design-vite/shots/dark/capture/inspector-tunnel.png
+ M design-vite/shots/dark/capture/recording-loading.png
+ M design-vite/shots/dark/capture/request-rule-menu.png
+ M design-vite/shots/dark/capture/rule-filter-disabled.png
+ M design-vite/shots/dark/capture/rule-filter.png
+ M design-vite/shots/dark/capture/statusbar-decrypting.png
+ M design-vite/shots/dark/capture/statusbar-upstream-down.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-close-edit.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-enabled.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-paused-close.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-paused-ping.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-paused-received-binary.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-paused-sent.png
+ M design-vite/shots/dark/capture/websocket-breakpoint-replace.png
+ M design-vite/shots/dark/capture/websocket-upgrade-request-paused.png
+ M design-vite/shots/dark/capture/websocket-upgrade-response-mock-error.png
+ M design-vite/shots/dark/capture/websocket-upgrade-response-paused.png
+ M design-vite/shots/dark/composer/collection-collapsed.png
+ M design-vite/shots/dark/composer/collection-folder-menu.png
+ M design-vite/shots/dark/composer/collection-rename.png
+ M design-vite/shots/dark/composer/empty.png
+ M design-vite/shots/dark/composer/history.png
+ M design-vite/shots/dark/composer/request-auth.png
+ M design-vite/shots/dark/composer/request-body-form.png
+ M design-vite/shots/dark/composer/request-body.png
+ M design-vite/shots/dark/composer/request-query.png
+ M design-vite/shots/dark/composer/response-cookies.png
+ M design-vite/shots/dark/composer/response-headers.png
+ M design-vite/shots/dark/composer/response-timing.png
+ M design-vite/shots/dark/https-setup/decrypting.png
+ M design-vite/shots/dark/https-setup/dialog.png
+ M design-vite/shots/dark/https-setup/ready.png
+ M design-vite/shots/dark/rules/add-action.png
+ M design-vite/shots/dark/rules/collapsed.png
+ M design-vite/shots/dark/rules/font-current.png
+ M design-vite/shots/dark/rules/framed.png
+ M design-vite/shots/dark/rules/full.png
+ M design-vite/shots/dark/rules/select-dropdown.png
+ M design-vite/shots/dark/rules/tree-collapsed.png
+ M design-vite/shots/dark/rules/tree-folder-actions.png
+ M design-vite/shots/dark/settings/app-containers.png
+ M design-vite/shots/dark/settings/full.png
+ M design-vite/shots/dark/settings/proxy.png
+ M design-vite/shots/dark/settings/tls-passthrough-invalid.png
+ M design-vite/shots/dark/settings/updates-auth-authorizing.png
+ M design-vite/shots/dark/settings/updates-auth-failed.png
+ M design-vite/shots/dark/settings/updates-auth-signed-out.png
+ M design-vite/shots/dark/shell-v2/capture-collapsed.png
+ M design-vite/shots/dark/shell-v2/capture.png
+ M design-vite/shots/dark/shell-v2/composer.png
+ M design-vite/shots/dark/shell-v2/diagnostics.png
+ M design-vite/shots/dark/shell-v2/rules.png
+ M design-vite/shots/dark/tls-compatibility/after-add.png
+ M design-vite/shots/dark/tls-compatibility/dialog.png
+ M design-vite/shots/light/boot/error.png
+ M design-vite/shots/light/boot/proxy.png
+ M design-vite/shots/light/capture/body-binary.png
+ M design-vite/shots/light/capture/body-code.png
+ M design-vite/shots/light/capture/body-form.png
+ M design-vite/shots/light/capture/body-format-off.png
+ M design-vite/shots/light/capture/body-formatting.png
+ M design-vite/shots/light/capture/body-hex.png
+ M design-vite/shots/light/capture/body-image-large.png
+ M design-vite/shots/light/capture/body-image.png
+ M design-vite/shots/light/capture/body-json.png
+ M design-vite/shots/light/capture/body-limited.png
+ M design-vite/shots/light/capture/body-md-source.png
+ M design-vite/shots/light/capture/body-md-split.png
+ M design-vite/shots/light/capture/body-md.png
+ M design-vite/shots/light/capture/body-media.png
+ M design-vite/shots/light/capture/body-raw.png
+ M design-vite/shots/light/capture/body-tree-menu.png
+ M design-vite/shots/light/capture/body-tree.png
+ M design-vite/shots/light/capture/breakpoint-create-menu.png
+ M design-vite/shots/light/capture/breakpoint-queue-full.png
+ M design-vite/shots/light/capture/breakpoint-request-body-file-empty.png
+ M design-vite/shots/light/capture/breakpoint-request-body-file.png
+ M design-vite/shots/light/capture/breakpoint-request-body-loaded.png
+ M design-vite/shots/light/capture/breakpoint-request-body-loading.png
+ M design-vite/shots/light/capture/breakpoint-request-body-replace.png
+ M design-vite/shots/light/capture/breakpoint-request-paused.png
+ M design-vite/shots/light/capture/breakpoint-response-body-file-empty.png
+ M design-vite/shots/light/capture/breakpoint-response-body-file.png
+ M design-vite/shots/light/capture/breakpoint-response-body-loaded.png
+ M design-vite/shots/light/capture/breakpoint-response-body-replace.png
+ M design-vite/shots/light/capture/breakpoint-response-paused.png
+ M design-vite/shots/light/capture/breakpoints-off.png
+ M design-vite/shots/light/capture/filters-active.png
+ M design-vite/shots/light/capture/filters-collapsed-active.png
+ M design-vite/shots/light/capture/filters-collapsed.png
+ M design-vite/shots/light/capture/filters-group-clear.png
+ M design-vite/shots/light/capture/filters-host.png
+ M design-vite/shots/light/capture/filters-method.png
+ M design-vite/shots/light/capture/filters-protocol.png
+ M design-vite/shots/light/capture/filters-search.png
+ M design-vite/shots/light/capture/filters-status.png
+ M design-vite/shots/light/capture/filters-type.png
+ M design-vite/shots/light/capture/inspector-cookies.png
+ M design-vite/shots/light/capture/inspector-copy-actions.png
+ M design-vite/shots/light/capture/inspector-grpc.png
+ M design-vite/shots/light/capture/inspector-request.png
+ M design-vite/shots/light/capture/inspector-response.png
+ M design-vite/shots/light/capture/inspector-timing.png
+ M design-vite/shots/light/capture/inspector-tls.png
+ M design-vite/shots/light/capture/inspector-tunnel-mitm-active.png
+ M design-vite/shots/light/capture/inspector-tunnel.png
+ M design-vite/shots/light/capture/inspector-websocket.png
+ M design-vite/shots/light/capture/recording-loading.png
+ M design-vite/shots/light/capture/recording-paused.png
+ M design-vite/shots/light/capture/request-rule-menu.png
+ M design-vite/shots/light/capture/rule-filter-disabled.png
+ M design-vite/shots/light/capture/rule-filter.png
+ M design-vite/shots/light/capture/statusbar-decrypting.png
+ M design-vite/shots/light/capture/statusbar-direct.png
+ M design-vite/shots/light/capture/statusbar-upstream-down.png
+ M design-vite/shots/light/capture/websocket-breakpoint-close-edit.png
+ M design-vite/shots/light/capture/websocket-breakpoint-enabled.png
+ M design-vite/shots/light/capture/websocket-breakpoint-paused-close.png
+ M design-vite/shots/light/capture/websocket-breakpoint-paused-ping.png
+ M design-vite/shots/light/capture/websocket-breakpoint-paused-received-binary.png
+ M design-vite/shots/light/capture/websocket-breakpoint-paused-sent.png
+ M design-vite/shots/light/capture/websocket-breakpoint-replace.png
+ M design-vite/shots/light/capture/websocket-breakpoint-setup.png
+ M design-vite/shots/light/capture/websocket-upgrade-request-paused.png
+ M design-vite/shots/light/capture/websocket-upgrade-response-mock-error.png
+ M design-vite/shots/light/capture/websocket-upgrade-response-paused.png
+ M design-vite/shots/light/composer/collection-collapsed.png
+ M design-vite/shots/light/composer/collection-folder-menu.png
+ M design-vite/shots/light/composer/collection-rename.png
+ M design-vite/shots/light/composer/empty.png
+ M design-vite/shots/light/composer/full.png
+ M design-vite/shots/light/composer/history.png
+ M design-vite/shots/light/composer/request-body-form.png
+ M design-vite/shots/light/composer/request-body-none.png
+ M design-vite/shots/light/composer/request-body.png
+ M design-vite/shots/light/composer/request-query.png
+ M design-vite/shots/light/composer/response-cookies.png
+ M design-vite/shots/light/composer/response-headers.png
+ M design-vite/shots/light/composer/response-timing.png
+ M design-vite/shots/light/https-setup/decrypting.png
+ M design-vite/shots/light/https-setup/dialog.png
+ M design-vite/shots/light/https-setup/ready.png
+ M design-vite/shots/light/rules/add-action.png
+ M design-vite/shots/light/rules/collapsed.png
+ M design-vite/shots/light/rules/font-current.png
+ M design-vite/shots/light/rules/framed.png
+ M design-vite/shots/light/rules/full.png
+ M design-vite/shots/light/rules/select-dropdown.png
+ M design-vite/shots/light/rules/tree-collapsed.png
+ M design-vite/shots/light/rules/tree-folder-actions.png
+ M design-vite/shots/light/settings/full.png
+ M design-vite/shots/light/settings/updates-auth-failed.png
+ M design-vite/shots/light/settings/updates-auth-signed-out.png
+ M design-vite/shots/light/shell-v2/capture-collapsed.png
+ M design-vite/shots/light/shell-v2/capture.png
+ M design-vite/shots/light/shell-v2/composer.png
+ M design-vite/shots/light/shell-v2/diagnostics.png
+ M design-vite/shots/light/shell-v2/rules.png
+ M design-vite/shots/light/tls-compatibility/after-add.png
+ M design-vite/shots/light/tls-compatibility/dialog.png
+ M design-vite/src/DesignApp/DesignApp.module.css
+ M design-vite/src/DesignApp/DesignApp.tsx
+ M design-vite/src/components/CollapsibleSection/CollapsibleSection.tsx
+ M design-vite/src/features/Capture/Capture.tsx
+ M design-vite/src/features/Composer/Composer.tsx
+ M design-vite/src/features/Rules/Rules.tsx
+ M design-vite/src/features/Settings/Settings.tsx
+ M design-vite/src/fixtures/FixtureRenderer.tsx
+ M design-vite/src/fixtures/useDesignFixtureAdapter.ts
+ M design-vite/src/state/types.ts
+ M packages/core-protocol/src/messages.ts
+RM packages/core-protocol/src/tests/protocol.test.ts -> packages/core-protocol/src/tests/unit/protocol.test.ts
+RM packages/mcp-server/src/tests/auth.test.ts -> packages/mcp-server/src/tests/unit/auth.test.ts
+RM packages/mcp-server/src/tests/protocol.test.ts -> packages/mcp-server/src/tests/unit/protocol.test.ts
+RM packages/mcp-server/src/tests/redaction.test.ts -> packages/mcp-server/src/tests/unit/redaction.test.ts
+RM packages/mcp-server/src/tests/tools-registry.test.ts -> packages/mcp-server/src/tests/unit/tools-registry.test.ts
+?? analyze.js
+?? analyze.ps1
+?? apps/desktop/src/renderer/components/CodeViewer/formatCodeDocument.ts
+?? apps/desktop/src/renderer/components/tests/unit/code-viewer-format.test.ts
+?? apps/desktop/src/renderer/features/rules/RuleList/RuleRootMenu.tsx
+?? apps/desktop/tests/e2e-workflow-tests/workflows/
+?? apps/proxy-core/src/proxy-core/rules/tests/unit/message-editing.test.ts
+?? architecture/features/http-message-editing.md
+?? design-vite/playwright.config.ts
+?? design-vite/shots/dark/capture/body-full.png
+?? design-vite/shots/dark/rules/tree-root-menu.png
+?? design-vite/shots/dark/settings/app-container-enable-all.png
+?? design-vite/shots/light/capture/body-full.png
+?? design-vite/shots/light/rules/tree-root-menu.png
+?? design-vite/shots/light/settings/app-container-enable-all.png
+?? design-vite/src/features/Rules/RulesFixtureRenderer.tsx
+?? design-vite/src/features/Rules/RulesRootContextMenu.tsx
+?? design-vite/src/features/Settings/AppContainerEnableAllDialog.module.css
+?? design-vite/src/features/Settings/AppContainerEnableAllDialog.tsx
+?? design-vite/src/features/Settings/SettingsFixtureRenderer.tsx
+?? design-vite/src/fixtures/DetailFixtureRenderer.tsx
+?? design-vite/src/fixtures/FixtureDetailSection/
+?? design-vite/tests/
+?? git_numstat_cached.txt
+?? git_numstat_unstaged.txt
+?? git_status.txt
+?? git_status_utf8.txt
+?? result.json

@@ -157,6 +157,58 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 
 协议段基于规范化protocol筛选；All/H1/H2/WS互不混淆；TLS tunnel保持独立。
 
+<a id="capture-facets-clear-menu"></a>
+## `capture.facets-clear-menu`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
+2. Fresh profile首次出现Proxy readiness时点击`capture.readiness.cancel`，确认测试arrange未写系统代理。随后点击`capture.recording.toggle`，在再次出现的readiness点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
+3. 展开Application、Status与Content type，先确认三组Pending option即使count=0也存在。启动random-port HTTP origin；显式proxy客户端先向8888发送`GET /e2e/facets/get-first`，再发送`POST /e2e/facets/post-first`；两次都必须从真实origin取得200，并等待对应`capture.request-row.<exchangeId>`出现在Renderer。
+4. 点击`capture.filter.toggle.method`展开Method组；等待`capture.filter.option.method.GET`与`.POST`可见。按DOM顺序读取组内所有`capture.filter.option.method.*`，必须是GET、POST。
+5. 在GET Capture行触发原生`contextmenu`。从该行公开exchange ID构造`capture.create-rule.<exchangeId>.block`与`.breakpoint`；等待两者可见，轮询动画结束后的bounding boxes并要求文本左缘差<1px。Hover Breakpoint automation ID，确认二级菜单的只读文本`This endpoint`可见，再按Escape关闭。
+6. 显式proxy客户端发送`POST /e2e/facets/post-second`并取得origin 200；等待`capture.filter.option-count.method.POST`文本变成2，然后再次原始读取DOM顺序，仍必须是GET、POST。
+7. 让origin gate暂不返回`GET /e2e/facets/pending`。等待该Capture行出现，并确认Status Pending与Content type Pending count均为1；点击Status Pending后只保留该进行中行。释放origin response并取得200，等待Pending count回0，但三个Pending option必须继续存在；取消Status筛选。
+8. 计数刚刷新后立即点击`capture.clear`；等待所有`capture.request-row.*`数量变为0。随后不使用Playwright auto-retry，直接读取`capture.filter.group-count.method`原始文本并要求为0，同时直接读取GET/POST option数量并要求均为0；三个永久Pending option仍存在且count=0。
+9. 附加`capture-facet-state.json`、最终截图、trace、Main/Renderer日志和metadata。fixture进入Settings→Proxy；若`settings.proxy.restore`存在则点击并等待消失，然后正常Close，验证Main/Core PID退出、8888可重新bind并删除profile。
+
+### 预期效果
+
+实时count只更新数字，不移动既有facet DOM；三个Pending bucket永久存在并可筛选真正进行中的request；Breakpoint submenu trigger与同组Block对齐且可展开；Clear完成时列表与facet snapshot同帧归零，不存在最多600ms的split state。
+
+### TDD证据要求
+
+- 修复前提交运行同一workflow：POST反超时顺序变为POST、GET；Breakpoint与Block左缘差大于1px；Clear后rows已为0但facet仍保留旧count/options。
+- 当前提交运行同一workflow：三段全部Green，且销毁/系统代理恢复证据完整。selector、UAC、构建或fixture失败不算Red。
+
+<a id="capture-detail-body-fill"></a>
+## `capture.detail-body-fill`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
+2. 若fresh profile显示Proxy readiness，先点Cancel确认没有隐式OS写入；点击`capture.recording.toggle`，在再次出现的readiness中点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
+3. 启动random-port HTTP origin；测试客户端以absolute-form URL向8888发送`GET /e2e/detail-body-fill`。Origin返回真实JSON response body、`application/json`和固定E2E headers/cookies。
+4. 等待动态`capture.request-row.<exchangeId>`出现并点击；点击`capture.inspector.tab.response`，等待按需`body.read-range`完成，确认`capture.inspector.body-view`与`capture.inspector.body-pane`都可见。
+5. 同一帧读取`capture.inspector.scroll`、BodyViewer root和CodeViewer pane的`getBoundingClientRect`：pane height必须≥320px；scroll bottom减BodyViewer bottom必须为18px设计padding（容差16–20px）；BodyViewer bottom与pane bottom差绝对值<1px。
+6. 点击`capture.inspector.tab.request`加载测试发送的200行JSON request body。让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；第一次wheel 5000把Monaco滚到底，记录外层scrollTop；第二次同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。
+7. 附加`body-viewer-geometry.json`（含两段scrollTop）、最终截图、trace、Main/Renderer日志和metadata。fixture进入Settings→Proxy；若`settings.proxy.restore`存在则点击并等待消失，然后正常Close，验证Main/Core PID退出、8888可重新bind并删除profile。
+
+### 预期效果
+
+Response tab只有一个Body section时，toolbar保持40px，正文pane吃满Inspector scroll扣除22px top/18px bottom padding和section header后的全部剩余高度；不能只让外层Section变高而让CodeViewer pane塌成一条线。Request tab的pane独立滚动到边界后，继续wheel必须自然驱动Inspector外层滚动。
+
+### TDD证据要求
+
+- 当前未修代码先运行同一workflow：几何契约可Green，但scroll chaining必须因外层scrollTop不增长取得Red；若两者都Green，则现场问题尚未被复现，禁止盲改实现。
+- 定位并修复后复跑同一workflow取得Green，同时保留代理恢复、进程销毁与8888释放证据。
+
 <a id="capture-list-virtual-scroll"></a>
 ## `capture.list.virtual-scroll`
 

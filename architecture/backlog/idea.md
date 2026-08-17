@@ -68,9 +68,9 @@
 - [x] **已完成 · Rules 命令归位**：Collection 顶栏只保留搜索，根级命令移到树空白右键菜单；Save 固定在 rule detail header，dirty→Save→disabled→revision 43 流程通过。 ![alt text](image-5.png)
 - [x] **已完成 · Rule validation footer**：compile / validation 提示已从 detail 滚动区移到 Rules statusbar，并按选中 rule 显示完整问题或 applied revision。 ![alt text](image-9.png)
 - [x] **已完成 · Rules count 间距**：命中数保持 26px 最小列与 4px 行右 padding，聚焦 parity 最大差 0.5px。 ![alt text](image-10.png)
-- [x] **已完成 · BodyViewer 撑满与全屏**：正文 section 使用 `flex: 1` 并保底 `320px`；全屏 dialog 为 `1060×660` 响应式上限，复用完整 viewer 并支持 Copy、Escape / mask / close 关闭。聚焦 parity `3/3 matched / 0 missing / 0 flagged / 0px`，Copy 成功反馈与点击外部关闭均通过。 ![alt text](image.png)
+- [ ] **回归待验证/修复 · Detail BodyViewer 撑满**：用户现场观察到Detail的正文pane没有吃满Inspector剩余高度。旧“已完成”证据只有fake-Preload parity，不能替代真实Electron E2E；已新增`capture.detail-body-fill`测量真实response BodyViewer/pane几何，取得Red并定位Root cause后再改CSS。全屏能力保持现状，不与本回归混为一项。 ![alt text](image.png)
 
-- [x] **已完成 · Capture filter 实时更新不再换位闪动**：Application、Method、Host、Type、Rule 的值保持当前 Capture 中首次出现顺序，计数仍实时更新；Status 与 Protocol 保持固定语义顺序。
+- [ ] **代码完成 · 待真实 E2E · Capture filter 实时更新不再换位闪动**：Application、Method、Host、Type、Rule 的值保持当前 Capture 中首次出现顺序，计数仍实时更新；Status 与 Protocol 保持固定语义顺序。
   - **Root cause**：`allFacetOptions` 每次从实时 rows 重算后，都按当前 count 降序排列普通 facet；后出现的值一旦计数反超，React 会移动已有 option DOM，600ms 节流只能降低频率，不能阻止整栏反复换位。
   - **解决方案**：保留单次遍历时 `Map` 的首次插入顺序，移除普通 facet 的 count 排序；只让计数文本变化，不移动既有选项。
   - **TDD 证据**：回归测试先复现 `GET, POST` 被翻成 `POST, GET`（Expected / Received 精确失败），实现后扩展覆盖五类动态 facet，Capture store 聚焦测试 `19/19` 通过。
@@ -81,7 +81,7 @@
 - [x] **已完成 · Settings 跨 feature 状态保留**：最后访问 section 由 App shell 持有；从 AppContainer 切到 Capture 再返回 Settings 仍保持 AppContainer，明确的 TLS / Proxy 跳转仍可覆盖目标 section。真实 Renderer 流程与 Desktop typecheck 通过。
 - [x] **已完成 · AppContainer enabled-first**：Renderer 稳定按 `exempt` 降序后再过滤，enabled 项始终置顶；聚焦 parity `13/13 matched / 0 missing`。
 - [x] **已完成 · AppContainer Enable all**：工具栏提供一次确认的 `Enable all`；Renderer 只调用一条 `enableAllAppContainers()`，Main 只启动一次提权 helper，native helper 将当前全部 SID 与既有 exemption 做并集并写后校验。Service `10/10`、helper 真实编译、15 语言 typecheck、视觉 `4/4 matched / 0 flagged / 0.9px`；fake 流程锁定一次调用、4/4、按钮 disabled 与 dialog 关闭。真实 UAC 仍按 headed workflow 现场验收。
-- [x] **已完成 · Clear 后 filter 与列表同步归零**：Core clear 成功后，列表、selection 与 facet snapshot 同一次状态推进清空，不再出现列表已是 `0 of 0`、左侧仍短暂显示旧 application id 和计数的 split state。 ![alt text](image-11.png)
+- [ ] **代码完成 · 待真实 E2E · Clear 后 filter 与列表同步归零**：Core clear 成功后，列表、selection 与 facet snapshot 同一次状态推进清空，不再出现列表已是 `0 of 0`、左侧仍短暂显示旧 application id 和计数的 split state。 ![alt text](image-11.png)
   - **Root cause**：`useThrottledRows` 对所有 rows 变化一律应用 600ms throttle；`clearView` 已同步清空 store rows，但 filter panel 继续渲染上一次非空 snapshot，直到 timer 到期。
   - **解决方案**：把空 rows 定义为同步边界，立即更新时间戳并 `setSnapshot([])`；仅非空实时更新继续使用原节流窗口。
   - **TDD 证据**：mock hook 测试先复现 `setSnapshot` 调用数为0、只注册 timer 的失败；修复后 Clear 立即清空与非空仍节流两条测试通过，Capture 聚焦 `21/21`、Desktop 全量 `261/261`、typecheck 通过。
@@ -89,16 +89,16 @@
 - [x] **已完成 · Breakpoint 二级菜单生命周期**：一级与二级统一使用 Ant Menu children；聚焦 parity 同时匹配一级/二级共 `8/8` targets，0 missing，一级菜单不会在 submenu 出现时卸载。 ![alt text](image-12.png)
 - breakpoint最好支持无timeout和有timeout
 - 对于tls passthrough的policy影响的reqeust，可以在tunnel的信息框里加一个按钮点击去查看对应的passthrough item，并给那个item一个临时的高亮然后消失 ![alt text](image-13.png)
-- [x] **已完成 · Breakpoint header 编辑显示 Rule effect**：request / response 的显式 header replace、add、remove 会写入 Capture，并在 Inspector 显示绑定 breakpoint rule 的 marker；body-only 不制造假 header effect。 ![alt text](image-14.png)
+- [ ] **代码完成 · 待真实 E2E · Breakpoint header 编辑显示 Rule effect**：request / response 的显式 header replace、add、remove 会写入 Capture，并在 Inspector 显示绑定 breakpoint rule 的 marker；body-only 不制造假 header effect。 ![alt text](image-14.png)
   - **Root cause**：`RuleService` 在 breakpoint resolve 后直接调用 `applyRequestEdit` / `applyResponseEdit`，没有像普通 header action 一样向 `evaluation.headerEffects` 追加证据，因此 Capture 只知道规则命中，不知道具体 header 差异。
   - **解决方案**：在 mutate state 前按 `BreakpointEdit.editedHeaderNames` 比较断点前后值，生成 replace / set / remove `RuleHeaderEffect` 并沿既有 `recordRuleOutcome` 入库；完整 headers 中未编辑或值未变化的字段被忽略。
   - **TDD 证据**：request / response 测试先精确失败为 Expected effects、Received `[]`；实现后单元覆盖 replace/add/remove/unchanged/body-only与重复同名值，真实代理验证 Capture 收到 `ruleEffect` 与 `ruleId`。最终 Proxy Core（排除既知 framing 专项）串行 `293/293`、typecheck 通过。
 - [ ] **待设计/实现 · Body Rule effect**：Breakpoint body replacement 与普通 Rule body action 目前只有 rule hit，没有独立 body effect 协议、Capture 存储字段或 Inspector marker；需要先定义 body 证据（原始/最终、text/file、request/response）和设计稿，再按协议→Core→Renderer→E2E 落地，不能伪装成 Header effect。
-- [x] **已完成 · Breakpoint 暂停最终 Rule state 并显示 effect**：request / response 都先完成全部普通 Rule action，再进入 breakpoint；暂停编辑器显示最终 header，并在当前仍存在的 set / append 行展示与普通 Inspector 同语义的 Rule marker。
+- [ ] **代码完成 · 待真实 E2E · Breakpoint 暂停最终 Rule state 并显示 effect**：request / response 都先完成全部普通 Rule action，再进入 breakpoint；暂停编辑器显示最终 header，并在当前仍存在的 set / append 行展示与普通 Inspector 同语义的 Rule marker。
   - **Root cause**：`RuleService` 在 priority 循环里遇到 breakpoint 就立即 `await`，所以 priority 更晚或同规则后续的 action 尚未执行，snapshot 不是最终 state；同时 `PendingBreakpoint.headers` 只有 name/value，Renderer draft 会丢失已有 `RuleHeaderEffect` 来源。
   - **解决方案**：评估改成两阶段，第一阶段按原顺序执行全部非-breakpoint action并收集 breakpoint，未被 respond/block 短路时第二阶段按 encounter 顺序挂起；协议新增 `BreakpointHeader.ruleEffect/ruleId`，Core 把最终仍存在的 set/append effect 一次性匹配到 header 行，Renderer 按 design-vite 定稿显示 badge。replace/remove 旧值不放回可编辑表单，避免 Forward edited 时复活。
   - **TDD 证据**：request / response 顺序测试先复现 snapshot headers Received `[]`；marker 测试再复现只有 `{name,value}`，审查回归补充 abort-before-suspend、最终写入者与重复实例归属。实现后 workspace typecheck、Protocol `15/15`、Desktop `262/262`、Proxy Core（排除既知 framing 专项）串行 `293/293`、design-vite interaction `3/3` 通过。Marker parity 0 missing，宽高/字体均0差，request/response `dy` 分别2.8px/0.8px（request 为既有 section 累积偏差）。
-- [x] **已完成 · 右键菜单 Breakpoint item 与 Control 行统一**：Breakpoint 与 Block 处于同一 Control group，icon、文字与 hint 起点一致，仍保留 Ant 原生 submenu hover、箭头、贴边翻转与 dismissal。 ![alt text](image-15.png)
+- [ ] **代码完成 · 待真实 E2E · 右键菜单 Breakpoint item 与 Control 行统一**：Breakpoint 与 Block 处于同一 Control group，icon、文字与 hint 起点一致，仍保留 Ant 原生 submenu hover、箭头、贴边翻转与 dismissal。 ![alt text](image-15.png)
   - **Root cause**：Block 是 Ant `group.children` 内的普通 item，Breakpoint 却是 group 外的顶层 submenu；两种 DOM 层级的行起点不同，submenu 的 icon slot 又少一层 `title-content` wrapper，最终文本左缘相差 `7.4375px`。
   - **解决方案**：把 Breakpoint submenu 放回 Control group，并在自有语义 label 内用 flex + gap 组合 Pause icon 与 name/hint；不 hack `.ant-*` 私有 DOM，箭头仍由 Ant 管理。design-vite 与产品同步。
   - **TDD 证据**：Playwright 几何测试先精确失败为 `7.4375px`，组合结构后转 Green；产品根菜单 parity `4/4 matched / 0 missing / 0 flagged / geometry 0`，二级菜单 `8/8 matched / 0 missing`，仅 popup 整体保留既有 `dw -1px`。

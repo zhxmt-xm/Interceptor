@@ -8,7 +8,7 @@
 
 ## 1. App shell
 
-`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` 的 Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。`app/Sidebar.tsx` 负责导航与底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。
+`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` 的 Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。`app/Sidebar.tsx` 负责导航与底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。Sidebar 的 feature 导航只表达位置与当前选中态，不显示任何业务 badge；待处理数量和告警必须留在对应 feature 的 workbar、内容区或 statusbar。
 
 ## 2. 冷启动加载界面
 

@@ -76,7 +76,7 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
         <RuleRootMenu open={rootMenuOpen} onOpenChange={setRootMenuOpen}>
           <div
             className={styles.rootMenuSurface}
-            data-automation-id="rules.root-menu-surface"
+            data-automation-id={AUTOMATION_IDS.rules.rootMenuSurface}
           />
         </RuleRootMenu>
         {drag.dropLine ? (

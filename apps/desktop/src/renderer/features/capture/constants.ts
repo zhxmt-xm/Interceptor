@@ -42,7 +42,7 @@ export const CAPTURE_FACET_IDS = [
 export const UNKNOWN_FACET_VALUE = '\u0000unknown';
 /** 上游连接失败、没有状态码的请求在 Status facet 里的值。 */
 export const FAILED_FACET_VALUE = '\u0000failed';
-/** 尚未收到响应的请求在 Status facet 里的值。 */
+/** Application/Status/Type 尚未完成解析时共用的稳定 Pending bucket 值。 */
 export const PENDING_FACET_VALUE = '\u0000pending';
 
 /** Protocol facet 按版本从新到旧排，隧道放最后。 */
