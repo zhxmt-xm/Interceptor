@@ -98,6 +98,9 @@ export const AUTOMATION_IDS = {
     },
     inspector: {
       splitter: 'capture.inspector.splitter',
+      scroll: 'capture.inspector.scroll',
+      bodyView: 'capture.inspector.body-view',
+      bodyPane: 'capture.inspector.body-pane',
       close: 'capture.inspector.close',
       tab: {
         headers: 'capture.inspector.tab.headers',

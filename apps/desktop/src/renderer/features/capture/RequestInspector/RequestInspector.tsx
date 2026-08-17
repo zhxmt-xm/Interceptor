@@ -225,7 +225,10 @@ export function RequestInspector({
         ))}
       </div>
 
-      <div className={styles.scroll}>
+      <div
+        className={styles.scroll}
+        data-automation-id={AUTOMATION_IDS.capture.inspector.scroll}
+      >
         {tab === 'tunnel' && isTlsTunnel && view ? (
           <TlsTunnelPanel
             host={view.host ?? ''}

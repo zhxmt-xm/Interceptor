@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FORMAT_AUTO_MAX_BYTES, FORMAT_MAX_BYTES } from '../../../shared/desktop-api';
+import type { AutomationId } from '../../../shared/automation-ids';
 import { BodyFullscreen } from '../BodyFullscreen/BodyFullscreen';
 import { CodeViewer, type CodeViewerHandle } from '../CodeViewer/CodeViewer';
 import { sizeLabel } from '../share/sizeLabel';
@@ -37,6 +38,8 @@ export interface BodyViewerProps {
   saving?: boolean;
   /** 内联消息面板用的紧凑排版。 */
   compact?: boolean;
+  automationId?: AutomationId;
+  paneAutomationId?: AutomationId;
   parityId?: string;
   /** 内容面板自己的 parity 锚点，对应设计稿的 `.bpane`。 */
   paneParityId?: string;
@@ -55,6 +58,8 @@ export function BodyViewer({
   onSave,
   saving = false,
   compact = false,
+  automationId,
+  paneAutomationId,
   parityId,
   paneParityId,
   modeAutomationIds,
@@ -161,7 +166,11 @@ export function BodyViewer({
   );
 
   return (
-    <div className={styles.host} data-parity={parityId}>
+    <div
+      className={styles.host}
+      data-automation-id={automationId}
+      data-parity={parityId}
+    >
       {fullscreen && fullscreenTitle ? (
         <BodyFullscreen
           title={fullscreenTitle}
@@ -223,6 +232,7 @@ export function BodyViewer({
         value={mode === 'default' ? pretty : text}
         language={mode === 'raw' && format.kind === 'form' ? 'plaintext' : format.language}
         compact={compact}
+        automationId={paneAutomationId}
         parityId={paneParityId}
       />
     );

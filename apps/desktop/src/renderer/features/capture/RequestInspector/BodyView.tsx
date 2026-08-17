@@ -200,6 +200,8 @@ export function BodyView({
       onSave={saveBody}
       saving={saveJob?.state === 'running'}
       compact={compact}
+      automationId={AUTOMATION_IDS.capture.inspector.bodyView}
+      paneAutomationId={AUTOMATION_IDS.capture.inspector.bodyPane}
       parityId="capture-body-view"
       paneParityId="capture-body-preview"
       modeAutomationIds={AUTOMATION_IDS.capture.inspector.bodyMode}

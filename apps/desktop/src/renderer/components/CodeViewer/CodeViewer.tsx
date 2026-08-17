@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
+import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import { formatCodeDocument } from './formatCodeDocument';
 import { monaco, VIEWER_OPTIONS } from './monacoSetup';
@@ -11,6 +12,7 @@ export interface CodeViewerProps {
   language: string;
   /** Inline variant used by the WebSocket and gRPC message panels. */
   compact?: boolean;
+  automationId?: AutomationId;
   parityId?: string;
 }
 
@@ -24,6 +26,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
   value,
   language,
   compact = false,
+  automationId,
   parityId,
 }, ref): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -94,6 +97,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
     <div
       ref={hostRef}
       className={cx(styles.host, compact && styles.compact)}
+      data-automation-id={automationId}
       data-parity={parityId}
     />
   );
