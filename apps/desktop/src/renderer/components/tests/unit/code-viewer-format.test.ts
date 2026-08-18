@@ -7,20 +7,18 @@ function formatter(language: string, value: string) {
     language,
     value,
     replace: vi.fn(),
-    run: vi.fn(async () => {}),
-    setReadOnly: vi.fn(),
+    run: vi.fn(async () => 'formatted'),
   };
 }
 
 describe('code viewer formatting', () => {
-  it.each(['html', 'css'])('runs the Monaco formatter for %s and restores read-only mode', async (language) => {
+  it.each(['html', 'css', 'javascript'])('uses the Monaco worker result for %s', async (language) => {
     const document = formatter(language, 'minified');
 
     await formatCodeDocument(document);
 
     expect(document.run).toHaveBeenCalledOnce();
-    expect(document.replace).not.toHaveBeenCalled();
-    expect(document.setReadOnly.mock.calls).toEqual([[false], [true]]);
+    expect(document.replace).toHaveBeenCalledWith('formatted');
   });
 
   it('formats XML without invoking a missing Monaco language formatter', async () => {
@@ -32,14 +30,21 @@ describe('code viewer formatting', () => {
       '<root>\n  <child>\n    value\n  </child>\n</root>',
     );
     expect(document.run).not.toHaveBeenCalled();
-    expect(document.setReadOnly).not.toHaveBeenCalled();
   });
 
-  it('restores read-only mode when the Monaco formatter fails', async () => {
+  it('restores the original value when the Monaco formatter fails', async () => {
     const document = formatter('html', '<main></main>');
     document.run.mockRejectedValueOnce(new Error('formatter failed'));
 
-    await expect(formatCodeDocument(document)).rejects.toThrow('formatter failed');
-    expect(document.setReadOnly.mock.calls).toEqual([[false], [true]]);
+    await expect(formatCodeDocument(document)).resolves.toBeUndefined();
+    expect(document.replace).toHaveBeenCalledWith('<main></main>');
+  });
+
+  it('keeps malformed XML unchanged instead of leaking the parser failure', async () => {
+    const document = formatter('xml', '<root><');
+
+    await expect(formatCodeDocument(document)).resolves.toBeUndefined();
+    expect(document.replace).toHaveBeenCalledWith('<root><');
+    expect(document.run).not.toHaveBeenCalled();
   });
 });

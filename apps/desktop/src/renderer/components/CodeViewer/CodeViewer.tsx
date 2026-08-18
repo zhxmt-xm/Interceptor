@@ -3,7 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import { formatCodeDocument } from './formatCodeDocument';
-import { monaco, VIEWER_OPTIONS } from './monacoSetup';
+import { formatMonacoModel, monaco, VIEWER_OPTIONS } from './monacoSetup';
 import styles from './CodeViewer.module.css';
 
 export interface CodeViewerProps {
@@ -18,7 +18,26 @@ export interface CodeViewerProps {
 
 export interface CodeViewerHandle {
   /** Pretty-prints the current document in place. */
-  format(): Promise<void>;
+  format(): Promise<string | undefined>;
+  /** Return the text currently displayed by Monaco. */
+  value(): string | undefined;
+}
+
+const FORMAT_PROVIDER_TIMEOUT_MS = 5_000;
+
+async function waitForEditor(
+  getEditor: () => monaco.editor.IStandaloneCodeEditor | null,
+): Promise<monaco.editor.IStandaloneCodeEditor> {
+  const deadline = performance.now() + FORMAT_PROVIDER_TIMEOUT_MS;
+  let editor = getEditor();
+  while (!editor) {
+    if (performance.now() >= deadline) {
+      throw new Error('Code viewer did not become ready.');
+    }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    editor = getEditor();
+  }
+  return editor;
 }
 
 /** Read-only Monaco viewer for captured bodies and messages. */
@@ -34,19 +53,35 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
   const initial = useRef({ value, language });
 
   useImperativeHandle(ref, () => ({
-    async format(): Promise<void> {
-      const editor = editorRef.current;
-      const model = editor?.getModel();
-      if (!editor || !model) {
+    async format(): Promise<string | undefined> {
+      const editor = await waitForEditor(() => editorRef.current);
+      const model = editor.getModel();
+      if (!model) {
         return;
       }
+      const version = model.getVersionId();
+      let appliedValue: string | undefined;
       await formatCodeDocument({
         language: model.getLanguageId(),
         value: model.getValue(),
-        replace: (nextValue) => model.setValue(nextValue),
-        run: async () => editor.getAction('editor.action.formatDocument')?.run(),
-        setReadOnly: (readOnly) => editor.updateOptions({ readOnly }),
+        replace: (nextValue) => {
+          if (!model.isDisposed() && model.getVersionId() === version) {
+            model.setValue(nextValue);
+            appliedValue = nextValue;
+          }
+        },
+        run: async () => {
+          const formatted = await formatMonacoModel(model);
+          if (model.isDisposed() || model.getVersionId() !== version) {
+            throw new Error('Code viewer changed while formatting.');
+          }
+          return formatted;
+        },
       });
+      return appliedValue;
+    },
+    value(): string | undefined {
+      return editorRef.current?.getValue();
     },
   }), []);
 

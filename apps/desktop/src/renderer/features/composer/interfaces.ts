@@ -33,6 +33,8 @@ export interface HistoryEntry {
 /** 一个打开的请求文档的运行态：响应与发送状态按文档隔离，切 tab 不丢。 */
 export interface DocumentRuntime {
   readonly response: ComposerResponse | null;
+  /** 当前response的格式化视图；null表示尚未格式化，原始body始终保留在response。 */
+  readonly formattedResponseBody: string | null;
   readonly sending: boolean;
   readonly sendError: string | null;
   readonly requestTab: RequestTab;

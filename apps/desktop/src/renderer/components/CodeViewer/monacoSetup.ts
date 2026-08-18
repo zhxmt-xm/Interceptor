@@ -1,8 +1,4 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
-// `editor.api` ships the API surface but none of the editor contributions, so
-// `editor.action.formatDocument` would not exist and every Format click would be a
-// silent no-op. Pull in just that one contribution instead of all of `editor.main`.
-import 'monaco-editor/editor/contrib/format/browser/formatActions';
 // Only the languages the body viewer can select are registered; the package root would
 // pull in all ~90 Monaco languages. JSON/CSS/HTML/TypeScript use the full language
 // services because those ship the formatters and structural folding; the rest only
@@ -10,10 +6,21 @@ import 'monaco-editor/editor/contrib/format/browser/formatActions';
 import { jsonDefaults } from 'monaco-editor/languages/features/json/register';
 import { cssDefaults } from 'monaco-editor/languages/features/css/register';
 import { htmlDefaults } from 'monaco-editor/languages/features/html/register';
+import 'monaco-editor/languages/definitions/css/register';
+import 'monaco-editor/languages/definitions/html/register';
 import {
   javascriptDefaults,
   typescriptDefaults,
 } from 'monaco-editor/languages/features/typescript/register';
+import 'monaco-editor/languages/definitions/javascript/register';
+// Monaco publishes these worker managers as package exports but omits declarations.
+// Their structural contracts below mirror the pinned 0.56 worker APIs used by its providers.
+// @ts-expect-error Missing declaration in monaco-editor 0.56.
+import { WorkerManager as CssWorkerManager } from 'monaco-editor/languages/features/css/workerManager';
+// @ts-expect-error Missing declaration in monaco-editor 0.56.
+import { WorkerManager as HtmlWorkerManager } from 'monaco-editor/languages/features/html/workerManager';
+// @ts-expect-error Missing declaration in monaco-editor 0.56.
+import { WorkerManager as TypeScriptWorkerManager } from 'monaco-editor/languages/features/typescript/workerManager';
 import 'monaco-editor/languages/definitions/markdown/register';
 import 'monaco-editor/languages/definitions/xml/register';
 import 'monaco-editor/languages/definitions/yaml/register';
@@ -33,6 +40,56 @@ const THEMES = {
 } as const;
 
 export type MonacoThemeMode = keyof typeof THEMES;
+
+interface LanguageTextEdit {
+  readonly range: {
+    readonly start: { readonly line: number; readonly character: number };
+    readonly end: { readonly line: number; readonly character: number };
+  };
+  readonly newText: string;
+}
+
+interface LanguageFormattingWorker {
+  format(
+    uri: string,
+    range: null,
+    options: { readonly tabSize: number; readonly insertSpaces: boolean },
+  ): Promise<readonly LanguageTextEdit[]>;
+}
+
+interface LanguageWorkerManager {
+  getLanguageServiceWorker(...resources: monaco.Uri[]): Promise<LanguageFormattingWorker>;
+}
+
+interface JavaScriptFormattingWorker {
+  getFormattingEditsForDocument(
+    uri: string,
+    options: Record<string, string | number | boolean>,
+  ): Promise<readonly {
+    readonly span: { readonly start: number; readonly length: number };
+    readonly newText: string;
+  }[]>;
+}
+
+interface JavaScriptWorkerManager {
+  getLanguageServiceWorker(...resources: monaco.Uri[]): Promise<JavaScriptFormattingWorker>;
+}
+
+type LanguageWorkerManagerConstructor = new (defaults: unknown) => LanguageWorkerManager;
+type JavaScriptWorkerManagerConstructor = new (
+  modeId: string,
+  defaults: unknown,
+) => JavaScriptWorkerManager;
+
+const htmlWorkerManager = new (
+  HtmlWorkerManager as LanguageWorkerManagerConstructor
+)(htmlDefaults);
+const cssWorkerManager = new (
+  CssWorkerManager as LanguageWorkerManagerConstructor
+)(cssDefaults);
+const javascriptWorkerManager = new (
+  TypeScriptWorkerManager as JavaScriptWorkerManagerConstructor
+)('javascript', javascriptDefaults);
 
 // Each language service runs in its own worker; missing an entry here silently falls
 // back to the generic editor worker and the service stops working.
@@ -122,6 +179,85 @@ new MutationObserver(syncTheme).observe(document.documentElement, {
 
 /** Re-exported so every viewer goes through this single, trimmed Monaco entry point. */
 export { monaco };
+
+interface OffsetEdit {
+  readonly start: number;
+  readonly end: number;
+  readonly text: string;
+}
+
+function replaceOffsetEdits(value: string, edits: readonly OffsetEdit[]): string {
+  return [...edits]
+    .sort((left, right) => right.start - left.start)
+    .reduce(
+      (result, edit) => `${result.slice(0, edit.start)}${edit.text}${result.slice(edit.end)}`,
+      value,
+    );
+}
+
+async function formatWithLanguageWorker(
+  model: monaco.editor.ITextModel,
+  manager: LanguageWorkerManager,
+): Promise<string> {
+  const worker = await manager.getLanguageServiceWorker(model.uri);
+  const options = model.getOptions();
+  const edits = await worker.format(model.uri.toString(), null, {
+    tabSize: options.tabSize,
+    insertSpaces: options.insertSpaces,
+  });
+  return replaceOffsetEdits(model.getValue(), edits.map((edit) => ({
+    start: model.getOffsetAt({
+      lineNumber: edit.range.start.line + 1,
+      column: edit.range.start.character + 1,
+    }),
+    end: model.getOffsetAt({
+      lineNumber: edit.range.end.line + 1,
+      column: edit.range.end.character + 1,
+    }),
+    text: edit.newText,
+  })));
+}
+
+async function formatJavaScript(model: monaco.editor.ITextModel): Promise<string> {
+  const worker = await javascriptWorkerManager.getLanguageServiceWorker(model.uri);
+  const options = model.getOptions();
+  const edits = await worker.getFormattingEditsForDocument(model.uri.toString(), {
+    ConvertTabsToSpaces: options.insertSpaces,
+    TabSize: options.tabSize,
+    IndentSize: options.tabSize,
+    IndentStyle: 2,
+    NewLineCharacter: '\n',
+    InsertSpaceAfterCommaDelimiter: true,
+    InsertSpaceAfterSemicolonInForStatements: true,
+    InsertSpaceBeforeAndAfterBinaryOperators: true,
+    InsertSpaceAfterKeywordsInControlFlowStatements: true,
+    InsertSpaceAfterFunctionKeywordForAnonymousFunctions: true,
+    InsertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
+    InsertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
+    InsertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
+    PlaceOpenBraceOnNewLineForControlBlocks: false,
+    PlaceOpenBraceOnNewLineForFunctions: false,
+  });
+  return replaceOffsetEdits(model.getValue(), edits.map((edit) => ({
+    start: edit.span.start,
+    end: edit.span.start + edit.span.length,
+    text: edit.newText,
+  })));
+}
+
+/** Format one code model through its language worker without making the editor writable. */
+export function formatMonacoModel(model: monaco.editor.ITextModel): Promise<string> {
+  switch (model.getLanguageId()) {
+    case 'html':
+      return formatWithLanguageWorker(model, htmlWorkerManager);
+    case 'css':
+      return formatWithLanguageWorker(model, cssWorkerManager);
+    case 'javascript':
+      return formatJavaScript(model);
+    default:
+      return Promise.reject(new Error(`No formatter for ${model.getLanguageId()}.`));
+  }
+}
 
 /** Read-only viewer chrome: everything the design system does not draw is turned off. */
 export const VIEWER_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions = {

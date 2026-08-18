@@ -159,6 +159,13 @@ export class LocalElectronApplicationDriver {
     return this.listenerPort;
   }
 
+  /** Return uncaught Renderer errors collected from the real page. */
+  rendererPageErrors(): readonly string[] {
+    return this.rendererOutput
+      .split('\n')
+      .filter((line) => line.startsWith('[renderer:pageerror]'));
+  }
+
   /** Read the primary BrowserWindow state from Electron Main for UI assertions. */
   async windowState(): Promise<DesktopWindowState> {
     return this.application.evaluate(({ BrowserWindow }) => {

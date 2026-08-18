@@ -1443,10 +1443,10 @@ HTML 点 Raw 变成 JSON）。原先的 `auto` 档已删除，但探测逻辑保
   `ResizeObserver` 重算整份 dump。
 - **JSON Tree**：自建 + `@tanstack/react-virtual`，可右键复制 value / object / path。Monaco 是编辑器，
   **折叠 ≠ 树**，没有 tree view 这种 UI 形态，自建才能套设计 token 并挂右键菜单。
-- **Code 的 Format**：走 Monaco `languages/features/{json,css,html,typescript}` 完整语言服务
-  （自带 formatter、结构化折叠与 worker），XML 由 `xml-formatter` 补。JSON 美化仍用 `JSON.parse/stringify`
-  （V8 原生，快于绕一趟 worker）。`readOnly: true` 会禁用 `formatDocument`，因此**在文本进 viewer 之前**
-  用临时 model + worker proxy 格式化；诊断全部关闭，避免白烧 worker CPU。
+- **Code 的 Format**：HTML/CSS直接调用Monaco language WorkerManager，JavaScript使用公开worker getter，
+    XML由`xml-formatter`补。worker返回的edits先在只读model外按offset倒序合并，再一次替换model；不加载
+    `formatActions` contribution，也不临时解除read-only。JSON美化仍用`JSON.parse/stringify`（V8原生，
+    快于绕一趟worker）。任一formatter失败都恢复调用前原文；诊断全部关闭，避免白烧worker CPU。
 - **Image**：`Blob` → `<img src=blob:>`，`onload` 读 `naturalWidth/Height` 显示尺寸，`onerror` 统一兜住
   破图/不支持格式，cleanup 里 `revokeObjectURL`。用 blob URL 而非 data URL——字节本来就是 `Uint8Array`，
   data URL 要多一次 base64（+33% 字节 + 一份字符串）。SVG 是可执行 XML，按 `code` 展示，默认不渲染。

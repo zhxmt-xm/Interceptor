@@ -33,6 +33,7 @@ import {
 /** 文档新打开时的运行态：无响应，请求页签停在 Headers。 */
 const INITIAL_RUNTIME: DocumentRuntime = {
   response: null,
+  formattedResponseBody: null,
   sending: false,
   sendError: null,
   requestTab: 'headers',
@@ -106,6 +107,12 @@ interface ComposerStore {
     url: string,
     response: ComposerResponse,
   ): void;
+  /** 写回发起格式化的request；仅当该request已换response或已释放时丢弃。 */
+  cacheFormattedResponseBody(
+    requestId: string,
+    response: ComposerResponse,
+    body: string,
+  ): void;
   sendFailed(requestId: string, message: string): void;
   clearHistory(): void;
 }
@@ -139,10 +146,14 @@ export const useComposerStore = create<ComposerStore>((set) => ({
     set((state) => {
       const alive = new Set(collectLeafIds(nodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
+      const runtimes = Object.fromEntries(
+        Object.entries(state.runtimes).filter(([requestId]) => alive.has(requestId)),
+      );
       return {
         nodes,
         revision,
         loaded: true,
+        runtimes,
         // 首次载入展开全部顶层目录，让集合内容直接可见。
         expandedFolders: state.loaded
           ? state.expandedFolders
@@ -197,9 +208,13 @@ export const useComposerStore = create<ComposerStore>((set) => ({
       const nodes = removeTreeNode(state.nodes, nodeId);
       const alive = new Set(collectLeafIds(nodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
+      const runtimes = Object.fromEntries(
+        Object.entries(state.runtimes).filter(([requestId]) => alive.has(requestId)),
+      );
       return {
         nodes,
         openRequestIds,
+        runtimes,
         activeRequestId:
           state.activeRequestId && alive.has(state.activeRequestId)
             ? state.activeRequestId
@@ -299,6 +314,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         sending: false,
         sendError: response.ok ? null : response.error ?? 'Request failed.',
         response,
+        formattedResponseBody: null,
         responseTab: 'body',
       }),
       history: [
@@ -314,6 +330,19 @@ export const useComposerStore = create<ComposerStore>((set) => ({
         ...state.history,
       ].slice(0, HISTORY_LIMIT),
     })),
+
+  cacheFormattedResponseBody: (requestId, response, formattedResponseBody) =>
+    set((state) => {
+      const runtime = readRuntime(state.runtimes, requestId);
+      if (runtime.response !== response) {
+        return state;
+      }
+      return {
+        runtimes: patchRuntime(state.runtimes, requestId, {
+          formattedResponseBody,
+        }),
+      };
+    }),
 
   sendFailed: (requestId, sendError) =>
     set((state) => ({

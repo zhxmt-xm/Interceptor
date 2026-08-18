@@ -260,6 +260,12 @@ export const AUTOMATION_IDS = {
       timing: 'composer.response-tab.timing',
     },
     responseBodyMode: 'composer.response-body-mode',
+    responseBody: 'composer.response-body',
+    responseBodyPane: 'composer.response-body.pane',
+    responseBodyAction: {
+      format: 'composer.response-body.format',
+      copy: 'composer.response-body.copy',
+    },
   },
   breakpoints: {
     toggle: 'breakpoints.toggle',

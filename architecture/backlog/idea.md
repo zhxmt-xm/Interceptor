@@ -31,12 +31,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>BodyViewer formatting</td>
-  <td><ul><li>按正文语言提供自动与手动格式化，并保留失败回退。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-1.png" alt="BodyViewer formatting" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ 15/15</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 最终验收未完成</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>缺少统一的按语言 formatter 路由与失败恢复路径。</li></ul></td>
-  <td><ul><li>HTML/CSS 使用 Monaco formatter，XML 使用 <code>xml-formatter</code>，失败时保留原文。</li></ul></td>
+  <td><ul><li>按正文语言提供自动与手动格式化，并保留失败回退。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-1.png" alt="BodyViewer formatting" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ BodyViewer/formatter 17/17；Store cache 9/9</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 1/1，含销毁证据</li><li><strong>Design/Parity:</strong> ➖ N/A，未改变布局</li></ul></td>
+  <td><ul><li>trimmed Monaco 只注册feature listener却缺HTML/CSS language definition，自动Format静默no-op；补editor action contribution又因缺少内部services产生page error；formatter异常继续向Renderer抛出，Copy也读取原始React文本而非当前model。</li></ul></td>
+  <td><ul><li>HTML/CSS/JavaScript直接调用Monaco language worker，XML使用<code>xml-formatter</code>；edits在只读model外合并后一次替换，失败恢复原文，Copy读取当前model；Composer按request/current response缓存格式化视图且不改原始body。</li></ul></td>
 </tr>
 
 <tr>

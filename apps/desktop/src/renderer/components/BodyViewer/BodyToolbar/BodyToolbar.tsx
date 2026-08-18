@@ -1,12 +1,20 @@
 import { Braces, Copy, Download, Maximize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import type { AutomationId } from '../../../../shared/automation-ids';
 import { IconButton } from '../../IconButton/IconButton';
 import { Segmented } from '../../Segmented/Segmented';
 import { type BodyFormat, type BodyMode, modeLabel } from '../bodyFormats';
 import styles from './BodyToolbar.module.css';
 
 export type FormatState = 'hidden' | 'idle' | 'busy' | 'blocked';
+
+export interface BodyActionAutomationIds {
+  format?: AutomationId;
+  save?: AutomationId;
+  copy?: AutomationId;
+  fullscreen?: AutomationId;
+}
 
 interface BodyToolbarProps {
   format: BodyFormat;
@@ -20,6 +28,7 @@ interface BodyToolbarProps {
   onSave?: () => void;
   /** 只在内联视图下给出；全屏弹窗里已经是最大化状态。 */
   onFullscreen?: () => void;
+  actionAutomationIds?: BodyActionAutomationIds;
   modeAutomationIds?: Record<string, string>;
 }
 
@@ -34,6 +43,7 @@ export function BodyToolbar({
   onCopy,
   onSave,
   onFullscreen,
+  actionAutomationIds,
   modeAutomationIds,
 }: BodyToolbarProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -57,13 +67,26 @@ export function BodyToolbar({
             disabled={formatState === 'blocked'}
             disabledTooltip={t('body.formatBlocked')}
             onClick={onFormat}
+            automationId={actionAutomationIds?.format}
           />
         )}
         {onSave ? (
-          <IconButton icon={Download} label={t('body.save')} size="sm" onClick={onSave} />
+          <IconButton
+            icon={Download}
+            label={t('body.save')}
+            size="sm"
+            onClick={onSave}
+            automationId={actionAutomationIds?.save}
+          />
         ) : null}
         {onCopy ? (
-          <IconButton icon={Copy} label={t('common.copy')} size="sm" onClick={onCopy} />
+          <IconButton
+            icon={Copy}
+            label={t('common.copy')}
+            size="sm"
+            onClick={onCopy}
+            automationId={actionAutomationIds?.copy}
+          />
         ) : null}
         {onFullscreen ? (
           <IconButton
@@ -71,6 +94,7 @@ export function BodyToolbar({
             label={t('body.fullscreen')}
             size="sm"
             onClick={onFullscreen}
+            automationId={actionAutomationIds?.fullscreen}
           />
         ) : null}
       </div>

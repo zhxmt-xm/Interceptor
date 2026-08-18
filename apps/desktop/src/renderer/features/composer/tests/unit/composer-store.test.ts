@@ -9,7 +9,32 @@ import {
   type CollectionRequest,
 } from '@interceptor/core-protocol';
 
+import type { ComposerResponse } from '../../../../../shared/desktop-api';
 import { useComposerStore } from '../../data/composerStore';
+
+function response(body: string): ComposerResponse {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    httpVersion: 'h1',
+    headers: [{ name: 'content-type', value: 'text/html' }],
+    body: new TextEncoder().encode(body),
+    totalBytes: body.length,
+    durationMs: 1,
+    timing: {
+      dnsMs: 0,
+      tcpMs: 0,
+      tlsMs: 0,
+      requestMs: 0,
+      waitingMs: 0,
+      downloadMs: 0,
+      totalMs: 1,
+    },
+    tls: null,
+    remoteAddress: null,
+  };
+}
 
 function request(id: string): CollectionRequest {
   return {
@@ -162,5 +187,66 @@ describe('composerStore selection', () => {
       expect.objectContaining({ kind: 'request' }),
       expect.objectContaining({ kind: 'folder', name: 'Sibling folder' }),
     ]);
+  });
+});
+
+describe('composerStore response formatting cache', () => {
+  beforeEach(() => seed([request('draft')]));
+
+  it('keeps a formatted view only for the response that produced it', () => {
+    const firstResponse = response('<main></main>');
+    useComposerStore.getState().sendSucceeded(
+      'draft',
+      'GET',
+      'https://example.test',
+      firstResponse,
+    );
+
+    useComposerStore.getState().cacheFormattedResponseBody(
+      'draft',
+      firstResponse,
+      '<main>\n</main>',
+    );
+    expect(useComposerStore.getState().runtimes.draft).toMatchObject({
+      formattedResponseBody: '<main>\n</main>',
+    });
+
+    const secondResponse = response('<aside></aside>');
+    useComposerStore.getState().sendSucceeded(
+      'draft',
+      'GET',
+      'https://example.test',
+      secondResponse,
+    );
+    expect(useComposerStore.getState().runtimes.draft).toMatchObject({
+      formattedResponseBody: null,
+    });
+
+    useComposerStore.getState().cacheFormattedResponseBody(
+      'draft',
+      firstResponse,
+      '<stale></stale>',
+    );
+    expect(useComposerStore.getState().runtimes.draft).toMatchObject({
+      formattedResponseBody: null,
+    });
+
+    useComposerStore.getState().closeRequest('draft');
+    expect(useComposerStore.getState().runtimes.draft).toBeUndefined();
+
+    const thirdResponse = response('<footer></footer>');
+    useComposerStore.getState().sendSucceeded(
+      'draft',
+      'GET',
+      'https://example.test',
+      thirdResponse,
+    );
+    useComposerStore.getState().cacheFormattedResponseBody(
+      'draft',
+      thirdResponse,
+      '<footer>\n</footer>',
+    );
+    useComposerStore.getState().deleteNode('draft');
+    expect(useComposerStore.getState().runtimes.draft).toBeUndefined();
   });
 });

@@ -170,6 +170,15 @@ Composer 与 Capture 的差别只在**外壳**：Capture 侧的 `BodyView` 要�
 Save body；Composer 的响应正文随 `composer.send` 一次性返回，外壳只把字节交给内核。因此内核签名是
 `(bytes, mediaType, truncated)`，不认识 hash 与 IPC——Composer 在同期收编就是为了避免内核签名事后返工。
 
+**格式化契约**：code/default 模式按正文语言路由。`FORMAT_AUTO_MAX_BYTES`及以下自动格式化，
+更大但不超过`FORMAT_MAX_BYTES`时只响应用户点击Format；HTML/CSS/JavaScript走Monaco language worker，
+XML走`xml-formatter`。任一formatter失败都必须恢复调用前原文、保持read-only、结束busy状态且不产生
+未处理Renderer error。Raw/Hex等非default模式不显示Format；Copy复制当前model中用户实际看到的内容。
+原始`response.body`始终保持Core返回的字节；格式化文本只是`DocumentRuntime`按request/response隔离的
+内存view cache。切换文档后再返回应恢复该response的格式化视图；新response替换、关闭文档或删除request
+时释放cache。worker结果无论当前正在显示哪个文档，都写回发起它的request runtime；只有该request已经
+换成另一个response，或request runtime已被关闭/删除时，才丢弃无可恢复入口的旧结果。
+
 ### 5.5 Renderer 组成
 
 `features/composer/` 下每个组件一个文件、各配同名 CSS Module：`ComposerMain`（两处 splitter 与响应式 clamp）、`CollectionPanel` + `CollectionTreeNode` / `RenameRow` / `CollectionRowMenu`、`DocumentTabs`、`RequestUrlBar` + `RecentSends`、`ComposerTabBar`（请求区与响应区共用）、`KeyValueTable`（Query / Headers / Form 三处共用）、`RequestPane` + `BodyPane` / `AuthPane`、`ResponsePane` + `ResponseBodyPane` / `ResponseHeadersPane` / `ResponseCookiesPane` / `ResponseTimingPane` / `ResponseSection` / `ResponsePlaceholder`。

@@ -75,6 +75,38 @@ Composer通过真实Core直接出站；sending和终态准确；四个response�
 
 Response Headers、Request Headers、Cookies、Timing与Connection沿用同一可折叠section语义；折叠不销毁正文内部状态，也不依赖当前语言文本定位。
 
+<a id="composer-response-body-formatting"></a>
+## `composer.response.body-formatting`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile、trace和HTTP loopback origin；启动本地production Electron并等待App/Core/8888，fresh-profile readiness只执行Cancel，不修改系统代理。
+2. 通过Composer UI发送小于2 MiB的单行HTML响应；等待自动Format结束，点击公共Copy动作并从系统剪贴板确认正文已分行且内容保持。
+3. 新建请求并发送小JavaScript响应；确认自动Format补齐空格且Copy读取当前model。
+4. 新建请求并发送2–8 MiB的单行CSS响应；Format前Copy确认原文无换行，点击公共Format动作，等待busy结束后再次Copy并确认已分行。
+5. 新建请求并发送无法解析的XML；记录Renderer page errors，点击Format后确认原文逐字节不变、按钮恢复可用且未新增未处理page error。
+6. 不再点击Format，切回此前CSS request；Copy必须仍返回该response的4行格式化视图，证明格式化副本按文档隔离且未改写原始body。
+7. 附加四段正文摘要、CSS恢复摘要与Renderer错误增量；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
+
+### TDD证据要求
+
+- Unit Red必须证明formatter异常当前会向调用方抛出，而不是恢复原文。
+- Electron Red必须来自真实正文格式化缺口或未处理Renderer error；selector、fixture、构建或listener失败不算Red。
+- Green需同时覆盖HTML/JavaScript自动格式化、CSS手动格式化、跨文档恢复、XML失败回退以及完整销毁证据。
+
+### TDD证据
+
+- Unit Red：Monaco formatter与malformed XML分别向调用方抛出，聚焦测试`2 failed / 3 passed`；实现后formatter聚焦`6/6`、BodyViewer/formatter合计`17/17`。
+- Electron Red：真实小HTML响应在15秒后仍为单行；补language后流程继续暴露trimmed editor contribution每次创建CodeViewer产生5个`UNKNOWN service` page errors。
+- Electron Green：HTML从1行自动格式化为5行；JavaScript补齐函数、赋值与对象空格；2,097,169 B CSS点击Format后从1行变4行，切到其他request再返回仍为同一4行视图；7字节malformed XML逐字节保留；Renderer pageerror增量为0，workflow`1/1`且销毁证据完整。
+
+### 预期效果
+
+code正文按语言使用既有formatter；自动与手动路径共享同一结果语义；失败不改正文、不解锁编辑器、不留下busy或未处理Renderer错误。
+
 <a id="composer-send-failure"></a>
 ## `composer.send-failure`
 

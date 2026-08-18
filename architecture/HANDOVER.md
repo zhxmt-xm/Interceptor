@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `16e3269`
+> Tracked commit: `19344d3`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-18
 
@@ -46,6 +46,7 @@
 - [x] **已完成 · Breakpoint parity 场景接入**：request paused / loading / loaded / text / file-empty / file、response 对称状态以及 queue / queue-full 均已接入 light / dark，共把完整套件扩展到 104 views。不存在于产品契约的 `invalid` 文件状态已从 design state、adapter、截图清单与旧基线删除；manager 最大几何差从 37.2px 收敛到 3.5px，queue-full 明暗均为 `0 missing / 0 flagged / 0.5px`。
 - [x] **已完成 · design-vite detail inspector 组件化**：`captureFixture` / `composerFixture` 中 13 + 4 个 legacy section 已迁移到 `CollapsibleSection`；旧 `.sh` / `.sec` / `.esec` 样式和 adapter 命令式折叠分支已删除，折叠交互由组件测试覆盖。
 - [x] **已完成 · Detail sections 产品折叠闭环**：Capture `Section`补齐`aria-expanded` / `aria-controls`并在折叠时保留正文挂载；Composer `ResponseSection`迁移到同一标题、chevron与独立状态模型，Headers KV布局同步design-vite。真实Electron在实现前分别Red于缺失ARIA，实现后`capture.inspector.section-collapse`与`composer.response.section-collapse`为`2/2` Green且销毁证据完整；design interaction `2/2`、Desktop `263/263`、聚焦parity `2/2 matched / 0 missing / 0 flagged / 最大0.7px`通过。
+- [x] **已完成 · BodyViewer formatter真实链路**：trimmed Monaco的HTML/CSS/JavaScript language未注册导致Format静默no-op，`formatActions` contribution又与精简service图不兼容；现改为HTML/CSS/JavaScript language worker直出edits，XML走`xml-formatter`，失败恢复原文且Copy读取当前model。Composer以request/current response拥有内存view cache，切换文档仍恢复各自结果而不改原始body；新response、关闭或删除释放cache。Unit先Red后BodyViewer/formatter `17/17`、Store cache `9/9` Green；真实Electron最终锁定HTML自动`1→5`行、JavaScript空格格式化、2,097,169 B CSS手动`1→4`行且跨文档恢复、malformed XML 7字节原样、0 pageerror及完整销毁，Desktop全量`266/266`通过。
 - [ ] **代码完成 · 待真实 E2E · Capture facet 稳定更新**：Application / Method / Host / Type / Rule 保持当前 Capture 中首次出现顺序，计数变化不再按 count 重排 DOM；Clear 的空 rows 绕过600ms throttle，让列表、selection 与 facet snapshot 同步归零。unit/desktop Green 已有；缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 最终 Rule state 与 Header effect**：RuleService 已改为两阶段执行，断点编辑 effect 与暂停 marker 已贯通；Protocol、Desktop、MCP、Proxy Core与design interaction均Green。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 已同属Control group，unit/design/parity证据已有。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
@@ -62,7 +63,7 @@
 - [x] **已完成 · statusbar upstream down**：light / dark 已收录到 visual parity，均为 `1/1 matched / 0 missing / 0 flagged`，最大几何差 0.5px。fake Preload 补齐 `upstreamProxy` / `upstreamReachable` 契约；harness 每个 view 前显式重置 `breakpointState`，普通 Capture 场景不再误继承断点状态栏。
 - [ ] **待验收 · AppContainer Enable all**：Main / Preload / Renderer、原生 helper、确认流程、15 种语言、fake / smoke 与 design-vite 状态已连通；提交后需复核一次提权、SID 并集、写后校验与 packaged smoke 证据。
 - [ ] **待验收 · Rules / Composer 目录交互**：Rules 根空白菜单、命令归位、三级目录与 validation footer，以及 Composer 空白取消选择、原地重命名、唯一选择和三级限制已实现；提交后需复核 selection 与右键菜单状态转换。
-- [ ] **待验收 · BodyViewer 格式化与全屏**：Monaco formatter、XML formatter、全屏入口、测试与设计状态已接入；提交后需复核格式化失败回退、编辑状态与全屏生命周期。
+- [ ] **待验收 · BodyViewer 全屏**：格式化已独立闭环；全屏入口、设计状态与基础代码已接入，仍需真实Electron验证打开/关闭、Copy与内容状态生命周期。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 105 views / 845 targets / 811 matched / 34 missing / 301 flagged / 平均 2.81%，新增 Composer response headers section 为 2/2 matched、0 missing、0 flagged，原有债务仍集中在 Capture、Settings、Breakpoint file-empty / queue 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。
 - [ ] **待验收 · Local E2E 第一条 workflow**：`breakpoints.execute-edited` 已覆盖 header-only、body-only 与 header + body，并从 `application.startup.ready` 通过公共 automation ID 操作真实 UI；提交后需复核 trace / evidence、destroy 证据与 Inventory 状态。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。

@@ -13,6 +13,12 @@ export interface LoopbackRequestObservation {
   readonly body: Buffer;
 }
 
+export interface LoopbackResponseDefinition {
+  readonly statusCode?: number;
+  readonly headers?: OutgoingHttpHeaders;
+  readonly body: string | Uint8Array;
+}
+
 /** Deterministic loopback origin and explicit-proxy client shared by workflow tests. */
 export class LoopbackLab {
   /** Loopback HTTP server that returns bounded synthetic responses. */
@@ -29,6 +35,9 @@ export class LoopbackLab {
     promise: Promise<void>;
     release: () => void;
   }>();
+
+  /** Test-owned responses keyed by exact request path. */
+  private readonly responses = new Map<string, LoopbackResponseDefinition>();
 
   /** Create one running lab after its random port is known. */
   private constructor(server: HttpServer, port: number) {
@@ -51,22 +60,27 @@ export class LoopbackLab {
           body,
         });
         const finishResponse = (): void => {
-          response.writeHead(200, {
+          const configured = loopbackLab.responses.get(incoming.url ?? '/');
+          const responseBody = configured
+            ? Buffer.from(configured.body)
+            : Buffer.from(JSON.stringify({
+                workflow: 'capture',
+                method: incoming.method ?? 'GET',
+                path: incoming.url ?? '/',
+                requestBody: body.toString('utf8'),
+                ok: true,
+              }));
+          response.writeHead(configured?.statusCode ?? 200, {
             'content-type': 'application/json; charset=utf-8',
             'set-cookie': [
               'interceptor_e2e=active; Path=/; HttpOnly',
               'workflow=capture; Path=/',
             ],
             'x-interceptor-e2e': 'loopback-lab',
+            ...configured?.headers,
             connection: 'close',
           });
-          response.end(JSON.stringify({
-            workflow: 'capture',
-            method: incoming.method ?? 'GET',
-            path: incoming.url ?? '/',
-            requestBody: body.toString('utf8'),
-            ok: true,
-          }));
+          response.end(responseBody);
         };
         const gate = loopbackLab.responseGates.get(incoming.url ?? '/');
         if (gate) {
@@ -108,6 +122,11 @@ export class LoopbackLab {
   /** Absolute URL used by Composer or explicit-proxy requests. */
   url(requestPath = '/'): string {
     return `http://127.0.0.1:${this.port}${requestPath}`;
+  }
+
+  /** Configure the exact response returned for one request path. */
+  respondWith(requestPath: string, response: LoopbackResponseDefinition): void {
+    this.responses.set(requestPath, response);
   }
 
   /** Send one absolute-form HTTP request through the Interceptor proxy listener. */
