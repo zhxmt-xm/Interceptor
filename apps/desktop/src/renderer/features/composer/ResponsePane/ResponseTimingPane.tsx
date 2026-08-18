@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { ComposerResponse } from '../../../../shared/desktop-api';
 import { timingPhases } from '../utils';
 
@@ -35,6 +36,7 @@ export function ResponseTimingPane({
     <div className={styles.scroll}>
       <ResponseSection
         title={t('composer.timing')}
+        automationId={AUTOMATION_IDS.composer.responseSection.timing}
         count={t('composer.durationMs', { value: response.timing.totalMs })}
       >
         <div className={styles.timeline}>
@@ -58,7 +60,11 @@ export function ResponseTimingPane({
       </ResponseSection>
 
       {connection.length > 0 ? (
-        <ResponseSection title={t('composer.connection')} rows={connection} />
+        <ResponseSection
+          title={t('composer.connection')}
+          automationId={AUTOMATION_IDS.composer.responseSection.connection}
+          rows={connection}
+        />
       ) : null}
     </div>
   );

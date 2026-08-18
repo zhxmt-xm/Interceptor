@@ -52,6 +52,29 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 
 Composer通过真实Core直接出站；sending和终态准确；四个response视图共享同一真实响应；无需Enable system proxy，也不会产生Capture副作用。
 
+<a id="composer-response-section-collapse"></a>
+## `composer.response.section-collapse`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile、trace和HTTP loopback origin；启动本地production Electron并等待App/Core/8888，fresh-profile readiness只执行Cancel，不修改系统代理。
+2. 进入Composer，通过`composer.collection.new-request`创建请求，在`composer.url`填写`/e2e/composer/response-section-collapse`并点击`composer.send`；确认真实origin收到GET。
+3. 打开`composer.response-tab.headers`，用`composer.response-section.response-headers`与`.request-headers`定位两段；确认初始`aria-expanded=true`，`aria-controls`分别指向`hidden=false`的唯一正文。
+4. 依次折叠两段，再重新展开Response Headers；确认同一`aria-controls`正文恢复，每次只切换目标正文的`hidden`与对应按钮的`aria-expanded`，另一段状态保持不变。
+5. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
+
+### TDD证据
+
+- Red：静态标题可定位，但没有`aria-expanded`，点击也不具备折叠契约。
+- Green：独立折叠与ARIA关系全部通过，workflow `1/1`并保留销毁证据。
+
+### 预期效果
+
+Response Headers、Request Headers、Cookies、Timing与Connection沿用同一可折叠section语义；折叠不销毁正文内部状态，也不依赖当前语言文本定位。
+
 <a id="composer-send-failure"></a>
 ## `composer.send-failure`
 

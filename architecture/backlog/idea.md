@@ -22,12 +22,12 @@
 <tbody>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Detail sections collapse</td>
-  <td><ul><li>Capture 与 Composer 的详情区支持独立折叠和正确 ARIA 语义。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image.png" alt="Detail sections" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ 交互 2/2</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未记录真实 Electron Red/Green</li><li><strong>Design/Parity:</strong> ✅ Build 与 290 张截图通过</li></ul></td>
-  <td><ul><li>Design fixture 使用 legacy section 与命令式 adapter，状态和语义不受 React 控制。</li></ul></td>
-  <td><ul><li>迁移到受控 <code>CollapsibleSection</code>，删除 legacy adapter 与样式。</li></ul></td>
+  <td><ul><li>Capture 与 Composer 的详情区支持独立折叠和正确 ARIA 语义。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image.png" alt="Detail sections" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Design interaction 2/2</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 2/2，含销毁证据</li><li><strong>Design/Parity:</strong> ✅ 2/2 matched，0 missing，0 flagged，最大 0.7px</li></ul></td>
+  <td><ul><li>Design fixture 已组件化，但产品 Capture 标题缺少 <code>aria-expanded</code>/<code>aria-controls</code>，Composer 响应详情仍是不可折叠静态标题。</li></ul></td>
+  <td><ul><li>共享 <code>SectionHeader</code> 暴露 ARIA 关系，feature owner 传入语义 automation ID；正文保持挂载并用 <code>hidden</code> 切换，Composer <code>ResponseSection</code> 对齐 design-vite 样式。</li></ul></td>
 </tr>
 
 <tr>

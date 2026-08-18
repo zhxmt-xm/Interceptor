@@ -1,11 +1,13 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
+import type { AutomationId } from '../../../../shared/automation-ids';
 import { cx, SectionHeader } from '../../../components';
 
 import styles from './Section.module.css';
 
 export interface SectionProps {
   title: string;
+  automationId?: AutomationId;
   count?: ReactNode;
   /** 让区块吃掉剩余高度，正文区用。 */
   grow?: boolean;
@@ -15,22 +17,26 @@ export interface SectionProps {
 /** Inspector 的一个分组：整条标题行都是折叠命中区，chevron 只是提示。 */
 export function Section({
   title,
+  automationId,
   count,
   grow = false,
   children,
 }: SectionProps): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
+  const contentId = useId();
   return (
     <div className={cx(grow && !collapsed && styles.sectionGrow)}>
       <SectionHeader
+        automationId={automationId}
         count={count}
         collapsed={collapsed}
         className={cx(styles.head, collapsed && styles.collapsedHead)}
+        controlsId={contentId}
         onClick={() => setCollapsed(!collapsed)}
       >
         <span>{title}</span>
       </SectionHeader>
-      {collapsed ? null : <div className={styles.body}>{children}</div>}
+      <div id={contentId} className={styles.body} hidden={collapsed}>{children}</div>
     </div>
   );
 }

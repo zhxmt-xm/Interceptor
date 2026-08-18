@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与60条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与64条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -76,7 +76,12 @@ apps/desktop/tests/e2e-workflow-tests/
 ├─ workflows/
 │  ├─ capture/
 │  │  ├─ detail-body-fill.workflow.ts
-│  │  └─ facets-clear-menu.workflow.ts
+│  │  ├─ facets-clear-menu.workflow.ts
+│  │  └─ section-collapse.workflow.ts
+│  ├─ composer/
+│  │  └─ response-section-collapse.workflow.ts
+│  ├─ rules/
+│  │  └─ root-toolbar.workflow.ts
 │  └─ breakpoints/
 │     ├─ execute-edited.workflow.ts
 │     └─ websocket-close.workflow.ts
@@ -140,6 +145,7 @@ diagnostics.row.<traceKey>
 | `capture.recording.pause-resume` | 暂停只停止记录，恢复后继续追加 | os-side-effect | planned |
 | `capture.proxy-readiness.resolve` | Cancel、Proxy settings、Enable 的授权语义 | os-side-effect | planned |
 | `capture.traffic.capture-select` | 真实请求进入列表并按需加载Inspector | shared | planned |
+| `capture.inspector.section-collapse` | Inspector详情区独立折叠并暴露正确ARIA关系 | privileged UI | passed |
 | `capture.filter.keyword` | Keyword筛选和恢复 | shared | planned |
 | `capture.filter.structured` | Method/Status/Host/Type/Duration组合筛选 | shared | planned |
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
@@ -178,6 +184,7 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `composer.request-edit` | 编辑完整request模型 | shared | planned |
 | `composer.send-success` | 真实发送与四种response视图 | shared | planned |
+| `composer.response.section-collapse` | 响应详情区独立折叠并暴露正确ARIA关系 | shared | passed |
 | `composer.send-failure` | URL/网络失败和重试 | shared | planned |
 | `composer.history-new` | History加载和New重置 | shared | planned |
 | `composer.resize` | Request/Response splitter | shared | planned |

@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-08-15T08:53:27.415Z
+Generated: 2026-08-18T05:50:20.801Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 104 |
-| Average pixel diff | 2.71% |
-| Targets | 843 |
-| Matched | 809 |
+| Views checked | 105 |
+| Average pixel diff | 2.81% |
+| Targets | 845 |
+| Matched | 811 |
 | Missing | 34 |
-| Flagged | 302 |
+| Flagged | 301 |
 | Largest geometry delta | 1156.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -20,68 +20,69 @@ Generated: 2026-08-15T08:53:27.415Z
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture | 3.57% | 38 | 22 | 16 | 22 | 1001.7 px |
-| breakpoint-request-paused | 2.92% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading | 2.92% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoints | 3.13% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace | 3.07% | 10 | 10 | 0 | 7 | 3.3 px |
-| breakpoint-request-body-file-empty | 3.09% | 10 | 10 | 0 | 9 | 302.1 px |
-| breakpoint-request-body-file | 3.11% | 10 | 10 | 0 | 6 | 3.3 px |
-| breakpoint-response-paused | 3.05% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded | 3.24% | 10 | 10 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace | 3.24% | 11 | 10 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty | 3.24% | 11 | 11 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file | 3.23% | 11 | 11 | 0 | 7 | 2.0 px |
-| breakpoint-request-paused-dark | 2.90% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading-dark | 2.90% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loaded-dark | 3.12% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace-dark | 3.06% | 10 | 10 | 0 | 7 | 3.3 px |
-| breakpoint-request-body-file-empty-dark | 3.08% | 10 | 10 | 0 | 9 | 302.1 px |
-| breakpoint-request-body-file-dark | 3.09% | 10 | 10 | 0 | 6 | 3.3 px |
-| breakpoint-response-paused-dark | 3.04% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded-dark | 3.24% | 10 | 10 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace-dark | 3.24% | 11 | 10 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty-dark | 3.24% | 11 | 11 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file-dark | 3.23% | 11 | 11 | 0 | 7 | 2.0 px |
-| breakpoint-queue | 2.92% | 4 | 4 | 0 | 2 | 71.7 px |
-| breakpoint-queue-full | 2.80% | 2 | 2 | 0 | 0 | 0.5 px |
-| breakpoint-queue-dark | 2.90% | 4 | 4 | 0 | 2 | 71.7 px |
-| breakpoint-queue-full-dark | 2.91% | 2 | 2 | 0 | 0 | 0.5 px |
-| capture-websocket | 3.35% | 7 | 5 | 2 | 3 | 1001.7 px |
-| statusbar-upstream-down | 2.62% | 1 | 1 | 0 | 0 | 0.5 px |
-| statusbar-upstream-down-dark | 2.63% | 1 | 1 | 0 | 0 | 0.5 px |
-| capture-websocket-breakpoint-setup | 4.49% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled | 3.09% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused | 3.61% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-websocket-breakpoint-setup-dark | 3.66% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-enabled-dark | 3.20% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused-dark | 3.62% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-request-json | 3.03% | 4 | 3 | 1 | 3 | 1001.7 px |
-| capture-timing | 2.80% | 4 | 4 | 0 | 4 | 4.4 px |
-| capture-cookies | 2.71% | 3 | 3 | 0 | 0 | 0.7 px |
-| capture-grpc | 3.44% | 8 | 8 | 0 | 3 | 1.6 px |
-| capture-tunnel | 3.29% | 8 | 8 | 0 | 5 | 170.0 px |
-| capture-tunnel-dark | 3.34% | 6 | 6 | 0 | 3 | 170.0 px |
-| capture-tunnel-mitm-active | 3.29% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture | 3.58% | 38 | 22 | 16 | 22 | 1001.7 px |
+| breakpoint-request-paused | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoints | 3.41% | 9 | 9 | 0 | 8 | 3.0 px |
+| breakpoint-request-body-replace | 3.36% | 10 | 10 | 0 | 7 | 3.3 px |
+| breakpoint-request-body-file-empty | 3.37% | 10 | 10 | 0 | 9 | 302.1 px |
+| breakpoint-request-body-file | 3.39% | 10 | 10 | 0 | 6 | 3.3 px |
+| breakpoint-response-paused | 3.45% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded | 3.63% | 10 | 10 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace | 3.63% | 11 | 10 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty | 3.63% | 11 | 11 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file | 3.63% | 11 | 11 | 0 | 7 | 2.0 px |
+| breakpoint-request-paused-dark | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading-dark | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loaded-dark | 3.41% | 9 | 9 | 0 | 8 | 3.0 px |
+| breakpoint-request-body-replace-dark | 3.35% | 10 | 10 | 0 | 7 | 3.3 px |
+| breakpoint-request-body-file-empty-dark | 3.37% | 10 | 10 | 0 | 9 | 302.1 px |
+| breakpoint-request-body-file-dark | 3.38% | 10 | 10 | 0 | 6 | 3.3 px |
+| breakpoint-response-paused-dark | 3.50% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded-dark | 3.69% | 10 | 10 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace-dark | 3.69% | 11 | 10 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty-dark | 3.70% | 11 | 11 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file-dark | 3.69% | 11 | 11 | 0 | 7 | 2.0 px |
+| breakpoint-queue | 3.20% | 4 | 4 | 0 | 2 | 71.7 px |
+| breakpoint-queue-full | 2.82% | 2 | 2 | 0 | 0 | 0.5 px |
+| breakpoint-queue-dark | 3.20% | 4 | 4 | 0 | 2 | 71.7 px |
+| breakpoint-queue-full-dark | 2.93% | 2 | 2 | 0 | 0 | 0.5 px |
+| capture-websocket | 3.38% | 7 | 5 | 2 | 3 | 1001.7 px |
+| statusbar-upstream-down | 2.65% | 1 | 1 | 0 | 0 | 0.5 px |
+| statusbar-upstream-down-dark | 2.67% | 1 | 1 | 0 | 0 | 0.5 px |
+| capture-websocket-breakpoint-setup | 4.52% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled | 3.12% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused | 3.63% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-websocket-breakpoint-setup-dark | 3.70% | 14 | 14 | 0 | 1 | 2.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.23% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused-dark | 3.64% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-request-json | 3.37% | 4 | 3 | 1 | 2 | 1001.7 px |
+| capture-timing | 3.14% | 4 | 4 | 0 | 4 | 4.4 px |
+| capture-cookies | 3.04% | 3 | 3 | 0 | 0 | 0.7 px |
+| capture-grpc | 3.47% | 8 | 8 | 0 | 3 | 1.6 px |
+| capture-tunnel | 3.32% | 8 | 8 | 0 | 5 | 170.0 px |
+| capture-tunnel-dark | 3.38% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture-tunnel-mitm-active | 3.32% | 6 | 6 | 0 | 3 | 170.0 px |
 | https-setup | 6.62% | 9 | 9 | 0 | 1 | 487.7 px |
 | https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 487.7 px |
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
-| import-export | 2.96% | 7 | 7 | 0 | 2 | 24.5 px |
+| import-export | 2.97% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.91% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 2.95% | 4 | 4 | 0 | 0 | 0.8 px |
-| capture-breakpoint-create-menu | 2.80% | 8 | 8 | 0 | 1 | 1.0 px |
+| capture-export-menu | 2.95% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-request-rule-menu | 3.16% | 4 | 4 | 0 | 0 | 0.8 px |
+| capture-breakpoint-create-menu | 2.83% | 8 | 8 | 0 | 1 | 1.0 px |
 | capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
-| capture-rule-filter | 1.45% | 3 | 0 | 3 | 0 | 0.0 px |
-| capture-rule-filter-disabled | 2.97% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 3.49% | 2 | 2 | 0 | 2 | 398.0 px |
-| capture-body-media-save | 2.90% | 2 | 2 | 0 | 1 | 504.3 px |
+| capture-rule-filter | 1.47% | 3 | 0 | 3 | 0 | 0.0 px |
+| capture-rule-filter-disabled | 2.98% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-body-preview-limited | 3.85% | 2 | 2 | 0 | 2 | 9.2 px |
+| capture-body-media-save | 3.25% | 2 | 2 | 0 | 1 | 7.1 px |
 | proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules | n/a | 11 | 11 | 0 | 0 | 0.7 px |
-| rules-add-action | 4.69% | 1 | 1 | 0 | 0 | 0.6 px |
-| rules-select-dropdown | 3.49% | 1 | 1 | 0 | 0 | 0.0 px |
+| rules-add-action | 4.70% | 1 | 1 | 0 | 0 | 0.6 px |
+| rules-select-dropdown | 3.50% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 2.13% | 9 | 9 | 0 | 2 | 0.9 px |
+| composer-response-headers | 2.11% | 2 | 2 | 0 | 0 | 0.7 px |
 | settings | 2.17% | 10 | 10 | 0 | 5 | 161.0 px |
 | settings-proxy | 1.81% | 13 | 13 | 0 | 12 | 1156.8 px |
 | settings-proxy-dark | 1.82% | 5 | 5 | 0 | 2 | 160.8 px |
@@ -112,16 +113,16 @@ Generated: 2026-08-15T08:53:27.415Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints-off | 2.63% | 1 | 1 | 0 | 1 | 0.0 px |
-| breakpoint-manager | 3.01% | 8 | 8 | 0 | 7 | 3.5 px |
-| breakpoint-created-message | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-dark | 2.77% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-undo | 2.61% | 1 | 1 | 0 | 0 | 0.1 px |
+| breakpoints-off | 2.66% | 1 | 1 | 0 | 1 | 0.0 px |
+| breakpoint-manager | 3.09% | 8 | 8 | 0 | 7 | 3.5 px |
+| breakpoint-created-message | 2.83% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-undo | 2.62% | 1 | 1 | 0 | 0 | 0.1 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
-| shell-v2-capture-dark | 3.57% | 3 | 2 | 1 | 1 | 999.1 px |
-| shell-v2-capture-collapsed | 3.45% | 3 | 2 | 1 | 1 | 839.1 px |
+| shell-v2-capture-dark | 3.60% | 3 | 2 | 1 | 1 | 999.1 px |
+| shell-v2-capture-collapsed | 3.47% | 3 | 2 | 1 | 1 | 839.1 px |
 | shell-v2-rules-dark | n/a | 3 | 3 | 0 | 0 | 0.1 px |
-| shell-v2-composer-dark | 2.14% | 5 | 5 | 0 | 1 | 0.9 px |
+| shell-v2-composer-dark | 2.15% | 5 | 5 | 0 | 1 | 0.9 px |
 | shell-v2-settings-dark | 2.18% | 4 | 2 | 2 | 2 | 997.2 px |
 | shell-v2-diagnostics-dark | 1.76% | 6 | 4 | 2 | 1 | 973.9 px |
 
@@ -129,7 +130,7 @@ Generated: 2026-08-15T08:53:27.415Z
 
 | View | Element | dx | dy | dw | dh | Max delta | Style differences | Status |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| capture | Capture | 233.0 px | -89.9 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
+| capture | Capture | 233.0 px | -89.4 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture | Rules & Map | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Composer | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Breakpoints | n/a | n/a | n/a | n/a | n/a | none | design missing |
@@ -139,34 +140,34 @@ Generated: 2026-08-15T08:53:27.415Z
 | capture | Theme | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Inspector client app | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Filter panel | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter groups | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter item all | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter item | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter panel | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter groups | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter item all | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter item | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
 | capture | Filter search | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Filter clear all | 90.0 px | -0.6 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
-| capture | List app header | 8.0 px | -0.1 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
-| capture | List app cell | 8.0 px | -0.1 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
-| capture | List app cell unknown | 8.0 px | -260.1 px | 0.0 px | 0.0 px | 260.1 px | none | flagged |
-| capture | List path cell | 0.0 px | 0.6 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
-| capture | List host cell | 0.0 px | -1.0 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
-| capture | List status header | -249.0 px | 0.0 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
-| capture | List status cell | -243.0 px | 0.5 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
-| capture | List protocol header | -255.0 px | 0.0 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
-| capture | List protocol cell | -249.0 px | 0.2 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
-| capture | List type header | -267.0 px | 0.0 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
-| capture | List type cell | -261.0 px | 0.1 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
-| capture | List size header | -273.0 px | 0.0 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
-| capture | List size cell | -267.0 px | 0.3 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
-| capture | List time header | -279.0 px | 0.0 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
-| capture | List time cell | -273.0 px | 0.3 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
+| capture | Filter clear all | 90.0 px | -0.1 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
+| capture | List app header | 8.0 px | 0.4 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
+| capture | List app cell | 8.0 px | -8.6 px | 0.0 px | 0.0 px | 8.6 px | none | flagged |
+| capture | List app cell unknown | 8.0 px | -268.6 px | 0.0 px | 0.0 px | 268.6 px | none | flagged |
+| capture | List path cell | 0.0 px | -7.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
+| capture | List host cell | 0.0 px | -9.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
+| capture | List status header | -249.0 px | 0.5 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
+| capture | List status cell | -243.0 px | -8.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
+| capture | List protocol header | -255.0 px | 0.5 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
+| capture | List protocol cell | -249.0 px | -8.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
+| capture | List type header | -267.0 px | 0.5 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
+| capture | List type cell | -261.0 px | -8.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
+| capture | List size header | -273.0 px | 0.5 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
+| capture | List size cell | -267.0 px | -8.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
+| capture | List time header | -279.0 px | 0.5 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
+| capture | List time cell | -273.0 px | -8.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
 | capture | Status endpoint | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Status passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule replaced | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule set | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule appended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule removed | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Recording | 10.0 px | -0.5 px | -0.3 px | -0.3 px | 10.0 px | none | flagged |
+| capture | Recording | 10.0 px | 0.0 px | -0.3 px | -0.3 px | 10.0 px | none | flagged |
 | breakpoint-request-paused | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
 | breakpoint-request-paused | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-paused | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
@@ -479,7 +480,7 @@ Generated: 2026-08-15T08:53:27.415Z
 | capture-request-json | Capture | 63.0 px | -84.0 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture-request-json | Local traffic | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture-request-json | json · 63 B | 0.0 px | 0.7 px | 6.3 px | -0.7 px | 6.3 px | none | flagged |
-| capture-request-json | Request body view | 0.0 px | 0.0 px | 0.0 px | 231.7 px | 231.7 px | none | flagged |
+| capture-request-json | Request body view | 0.0 px | 0.0 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
 | capture-timing | Waiting (TTFB) | 0.0 px | 0.1 px | 0.0 px | -4.4 px | 4.4 px | none | flagged |
 | capture-timing | 118 ms | 0.0 px | 0.0 px | 0.0 px | -4.3 px | 4.3 px | none | flagged |
 | capture-timing | Response bodies | 0.0 px | -4.3 px | 0.0 px | -4.4 px | 4.4 px | none | flagged |
@@ -569,10 +570,10 @@ Generated: 2026-08-15T08:53:27.415Z
 | capture-rule-filter | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-rule-filter | Rule appended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-rule-filter-disabled | No rule has matched captured traffic yet. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-preview-limited | Limited body preview | 0.0 px | -8.8 px | 0.0 px | 398.0 px | 398.0 px | fontSize 13px->12px | flagged |
+| capture-body-preview-limited | Limited body preview | 0.0 px | -8.8 px | 0.0 px | 9.2 px | 9.2 px | fontSize 13px->12px | flagged |
 | capture-body-preview-limited | Showing the first 5 MB of 12 MB. The full body remains captured for export. | 0.0 px | 0.0 px | 0.0 px | -8.8 px | 8.8 px | none | flagged |
-| capture-body-media-save | Media body | -0.1 px | -244.9 px | 0.0 px | 504.3 px | 504.3 px | none | flagged |
-| capture-body-media-save | Save body | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| capture-body-media-save | Media body | -0.1 px | 0.0 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| capture-body-media-save | Save body | 0.0 px | -7.1 px | -0.3 px | 0.0 px | 7.1 px | none | flagged |
 | proxy-not-ready | Proxy not ready | -0.3 px | 0.0 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
 | proxy-not-ready | System Proxy off | -0.3 px | 0.0 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
 | proxy-not-ready | Cancel | 0.8 px | 0.0 px | -0.3 px | 0.0 px | 0.8 px | none | ok |
@@ -601,6 +602,8 @@ Generated: 2026-08-15T08:53:27.415Z
 | composer | Headers tab | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | composer | Response body tab | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | composer | 201 Created | 0.7 px | 0.4 px | 0.0 px | -0.9 px | 0.9 px | none | ok |
+| composer-response-headers | Response headers section | 0.0 px | 0.0 px | 0.0 px | -0.7 px | 0.7 px | none | ok |
+| composer-response-headers | Request headers section | 0.0 px | -0.7 px | 0.0 px | -0.7 px | 0.7 px | none | ok |
 | settings | Root Certificate Authority | -160.0 px | 0.1 px | 160.0 px | -0.1 px | 160.0 px | none | flagged |
 | settings | Trust status | -160.0 px | 0.0 px | 160.0 px | -0.1 px | 160.0 px | none | flagged |
 | settings | HTTPS interception | -160.0 px | -0.1 px | 160.0 px | -0.1 px | 160.0 px | none | flagged |

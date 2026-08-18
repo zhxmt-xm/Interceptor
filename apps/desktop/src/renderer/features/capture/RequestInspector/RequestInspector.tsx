@@ -239,7 +239,10 @@ export function RequestInspector({
 
         {tab === 'headers' ? (
           <div className={styles.panel}>
-            <Section title={t('capture.general')}>
+            <Section
+              title={t('capture.general')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.general}
+            >
               {view ? (
                 <Kv
                   rows={[
@@ -268,23 +271,27 @@ export function RequestInspector({
             </Section>
             <KvSection
               title={t('capture.responseHeaders')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.responseHeaders}
               rows={headersToRows(visibleResponseHeaders)}
               empty={t('capture.noResponseHeaders')}
               onOpenRule={onOpenRule}
             />
             <KvSection
               title={t('capture.requestHeaders')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.requestHeaders}
               rows={headersToRows(visibleRequestHeaders)}
               empty={t('capture.noRequestHeaders')}
               onOpenRule={onOpenRule}
             />
             <KvSection
               title={t('capture.responseTrailers')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.responseTrailers}
               rows={headersToRows(responseTrailers)}
               onOpenRule={onOpenRule}
             />
             <KvSection
               title={t('capture.requestTrailers')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.requestTrailers}
               rows={headersToRows(requestTrailers)}
               onOpenRule={onOpenRule}
             />
@@ -293,7 +300,10 @@ export function RequestInspector({
 
         {tab === 'request' ? (
           <div className={styles.panel}>
-            <Section title={t('capture.requestLine')}>
+            <Section
+              title={t('capture.requestLine')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.requestLine}
+            >
               {view ? (
                 <Kv
                   rows={[
@@ -309,11 +319,13 @@ export function RequestInspector({
             </Section>
             <KvSection
               title={t('capture.queryParameters')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.queryParameters}
               rows={queryRows(url)}
               empty={t('capture.noQueryParameters')}
             />
             <BodySection
               title={t('capture.requestPayload')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.requestBody}
               body={detail?.requestBody}
               mime={detail?.requestMime}
               bytes={view?.requestBytes ?? 0}
@@ -328,6 +340,7 @@ export function RequestInspector({
           <div className={styles.panel}>
             <BodySection
               title={t('capture.body')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.responseBody}
               body={detail?.responseBody}
               mime={view?.responseMime}
               bytes={view?.responseBytes ?? 0}
@@ -353,7 +366,11 @@ export function RequestInspector({
 
         {tab === 'timing' ? (
           <div className={styles.panel}>
-            <Section title={t('capture.timing')} count={view ? exchangeTime : undefined}>
+            <Section
+              title={t('capture.timing')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.timing}
+              count={view ? exchangeTime : undefined}
+            >
               {timingSegments.length > 0 ? (
                 <div className={styles.timeline}>
                   {timingSegments.map((segment) => (
@@ -403,12 +420,14 @@ export function RequestInspector({
           <div className={styles.panel}>
             <KvSection
               title={t('capture.requestCookies')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.requestCookies}
               rows={requestCookieRows(requestHeaders)}
               empty={t('capture.noRequestCookies')}
               onOpenRule={onOpenRule}
             />
             <KvSection
               title={t('capture.responseCookies')}
+              automationId={AUTOMATION_IDS.capture.inspector.section.responseCookies}
               rows={responseCookieRows(responseHeaders)}
               empty={t('capture.noResponseCookies')}
               onOpenRule={onOpenRule}

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { ComposerResponse } from '../../../../shared/desktop-api';
 import { responseCookies } from '../utils';
 
@@ -21,6 +22,7 @@ export function ResponseCookiesPane({
     <div className={styles.scroll}>
       <ResponseSection
         title={t('composer.responseCookies')}
+        automationId={AUTOMATION_IDS.composer.responseSection.responseCookies}
         count={cookies.length}
         rows={cookies}
         emptyText={t('composer.noSetCookie')}

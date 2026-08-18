@@ -88,6 +88,29 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 
 真实HTTP请求经listener、Mockttp、Core Capture、事件推送进入虚拟列表；点击row后按需取得真实detail；所有metadata与客户端发送/接收结果一致。
 
+<a id="capture-inspector-section-collapse"></a>
+## `capture.inspector.section-collapse`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与HTTP loopback origin；启动本地production Electron，等待App/Core/8888并收敛fresh-profile readiness。
+2. 通过`capture.recording.toggle`与`capture.readiness.enable`开始真实Recording；客户端显式经8888发送`GET /e2e/capture/section-collapse`，等待动态row并点击进入Inspector。
+3. 用`capture.inspector.section.general`与`capture.inspector.section.response-headers`定位两个真实标题按钮；确认初始`aria-expanded=true`，各自`aria-controls`指向仍挂载且`hidden=false`的唯一正文。
+4. 折叠General，确认其正文`hidden=true`，Response Headers保持展开；再折叠Response Headers并重新展开General，确认同一`aria-controls`正文恢复且两段状态互不覆盖。
+5. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放、系统代理恢复和profile删除。
+
+### TDD证据
+
+- Red：两个真实按钮均可定位，但Capture标题没有`aria-expanded`与`aria-controls`。
+- Green：独立折叠、ARIA关系与正文`hidden`状态全部通过，workflow `1/1`并保留销毁证据。
+
+### 预期效果
+
+标题按钮与正文有稳定无障碍关系；折叠一段不改变同pane其他段；正文折叠时不卸载，内部查看状态不会因收起而丢失。
+
 <a id="capture-filter-keyword"></a>
 ## `capture.filter.keyword`
 

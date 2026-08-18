@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { ComposerResponse } from '../../../../shared/desktop-api';
 import type { CollectionRequest } from '../interfaces';
 
@@ -23,11 +24,13 @@ export function ResponseHeadersPane({
     <div className={styles.scroll}>
       <ResponseSection
         title={t('composer.responseHeaders')}
+        automationId={AUTOMATION_IDS.composer.responseSection.responseHeaders}
         count={response.headers.length}
         rows={response.headers}
       />
       <ResponseSection
         title={t('composer.requestHeaders')}
+        automationId={AUTOMATION_IDS.composer.responseSection.requestHeaders}
         count={sentHeaders.length}
         rows={sentHeaders}
       />

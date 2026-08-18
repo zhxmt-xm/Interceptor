@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import type { AutomationId } from '../../../../shared/automation-ids';
 import type { CaptureBodyRef } from '../../../../shared/desktop-api';
 import { sizeLabel } from '../../../components';
 import { suggestedBodyFileName, typeLabel } from '../utils';
@@ -10,6 +11,7 @@ import { Section } from './Section';
 
 export interface BodySectionProps {
   title: string;
+  automationId?: AutomationId;
   body: CaptureBodyRef | undefined;
   mime: string | undefined;
   bytes: number;
@@ -21,6 +23,7 @@ export interface BodySectionProps {
 /** Request/Response 共用的正文区块：只换标题、正文引用、MIME 回退与字节数。 */
 export function BodySection({
   title,
+  automationId,
   body,
   mime,
   bytes,
@@ -33,6 +36,7 @@ export function BodySection({
   return (
     <Section
       title={title}
+      automationId={automationId}
       grow
       count={body ? `${typeLabel(mediaType)} · ${sizeLabel(bytes, i18n.language)}` : undefined}
     >

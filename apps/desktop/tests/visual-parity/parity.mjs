@@ -94,6 +94,9 @@ async function applyRendererActions(page, actions = []) {
       case 'clickText':
         await page.getByText(action.text, { exact: true }).nth(index).click();
         break;
+      case 'clickSelector':
+        await page.locator(action.selector).filter({ visible: true }).nth(index).click();
+        break;
       case 'contextMenuText':
         await page.getByText(action.text, { exact: true }).nth(index).click({ button: 'right' });
         break;

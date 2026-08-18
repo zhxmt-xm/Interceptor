@@ -1144,6 +1144,42 @@ export const views = [
     ],
   },
   {
+    id: 'composer-response-headers',
+    theme: 'light',
+    rendererNav: 'Composer',
+    designState: {
+      view: 'composer',
+      theme: 'light',
+      sidebar: 'expanded',
+      composerResponseTab: 'headers',
+    },
+    designShot: 'light/composer/response-headers.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
+      { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+      { type: 'clickText', text: 'Create repo' },
+      { type: 'clickText', text: 'Repositories' },
+      { type: 'clickRole', role: 'button', name: 'Send' },
+      {
+        type: 'clickSelector',
+        selector: '[data-automation-id="composer.response-tab.headers"]',
+      },
+    ],
+    targets: [
+      {
+        name: 'Response headers section',
+        designSelector: '[role="button"]:has-text("Response Headers")',
+        appSelector: '[data-automation-id="composer.response-section.response-headers"]',
+      },
+      {
+        name: 'Request headers section',
+        designSelector: '[role="button"]:has-text("Request Headers")',
+        appSelector: '[data-automation-id="composer.response-section.request-headers"]',
+      },
+    ],
+  },
+  {
     id: 'settings',
     theme: 'light',
     rendererNav: 'Settings',
