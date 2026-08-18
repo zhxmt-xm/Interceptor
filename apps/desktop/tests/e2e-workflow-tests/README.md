@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与65条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与66条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -80,6 +80,7 @@ apps/desktop/tests/e2e-workflow-tests/
 │  │  └─ section-collapse.workflow.ts
 │  ├─ composer/
 │  │  ├─ body-formatting.workflow.ts
+│  │  ├─ collection-tree-interactions.workflow.ts
 │  │  └─ response-section-collapse.workflow.ts
 │  ├─ rules/
 │  │  └─ root-toolbar.workflow.ts
@@ -184,6 +185,7 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `composer.request-edit` | 编辑完整request模型 | shared | planned |
+| `composer.collection.tree-interactions` | 三级目录、菜单、选择、重命名与splitter | shared | passed |
 | `composer.send-success` | 真实发送与四种response视图 | shared | planned |
 | `composer.response.section-collapse` | 响应详情区独立折叠并暴露正确ARIA关系 | shared | passed |
 | `composer.response.body-formatting` | code正文自动/手动格式化与失败回退 | shared | passed |

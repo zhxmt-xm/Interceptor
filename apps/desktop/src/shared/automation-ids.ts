@@ -352,6 +352,7 @@ export const AUTOMATION_ID_PREFIXES = {
   ruleFolderRename: 'rules.folder-rename.',
   composerCollectionRequest: 'composer.collection.request.',
   composerCollectionFolder: 'composer.collection.folder.',
+  composerCollectionFolderRename: 'composer.collection.folder-rename.',
   diagnosticRow: 'diagnostics.row.',
 } as const;
 
@@ -499,7 +500,7 @@ export class AutomationIdFactory {
 
   /** Identify the inline rename field owned by a Collection folder. */
   static composerCollectionFolderRename(folderId: string): string {
-    return `composer.collection.folder-rename.${folderId}`;
+    return `${AUTOMATION_ID_PREFIXES.composerCollectionFolderRename}${folderId}`;
   }
 
   /** Identify one Composer history row by its local history ID. */

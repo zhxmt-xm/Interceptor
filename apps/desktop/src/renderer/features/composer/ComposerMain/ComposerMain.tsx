@@ -15,7 +15,6 @@ import {
   URL_BAR_HEIGHT,
 } from '../constants';
 import { useComposerStore } from '../data/composerStore';
-import { useCollection } from '../data/useCollection';
 import { DocumentTabs } from '../DocumentTabs/DocumentTabs';
 import { RequestPane } from '../RequestPane/RequestPane';
 import { RequestUrlBar } from '../RequestUrlBar/RequestUrlBar';
@@ -33,8 +32,6 @@ import { NoOpenRequest } from './NoOpenRequest';
  * 窗口缩放时同样重新 clamp。
  */
 export function ComposerMain(): React.JSX.Element {
-  useCollection();
-
   const collectionOpen = useComposerStore((state) => state.collectionOpen);
   const activeRequestId = useComposerStore((state) => state.activeRequestId);
   const nodes = useComposerStore((state) => state.nodes);

@@ -23,9 +23,9 @@
 
 ## 3. 当前实现状态
 
-65 条验收规格与 Inventory 位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有 8 条可执行真实 Electron workflow，其中 `rules.root-toolbar`、`capture.inspector.section-collapse`、`composer.response.section-collapse` 与 `composer.response.body-formatting` 已取得行为 Red/Green、trace/evidence 与完整销毁证据并在 Inventory 标为 passed；其余条目仍按各自 Inventory 状态管理（`rules.apply-conflict` 保留真实双实例前置 blocker）。只有同一 workflow 的 Red/Green 与销毁证据闭环后，才可更新为 passed 并把同一 contract 接入 packaged driver。
+66 条验收规格与 Inventory 位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有 9 条可执行真实 Electron workflow，其中 `rules.root-toolbar`、`capture.inspector.section-collapse`、`composer.response.section-collapse`、`composer.response.body-formatting`与`composer.collection.tree-interactions`已取得行为Red/Green、trace/evidence与完整销毁证据并在Inventory标为passed；其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
 
-`packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用这 65 条 workflow contract。
+`packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用这 66 条 workflow contract。
 
 ## 4. 执行约束
 

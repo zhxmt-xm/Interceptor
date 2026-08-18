@@ -40,12 +40,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Composer Collection tree interactions</td>
-  <td><ul><li>完成选择、重命名、三级目录、splitter 与节点菜单的统一交互。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-2.png" alt="Composer selection" width="220"> <img src="image-3.png" alt="Composer tree" width="220"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Store 8/8</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 最终验收未完成</li><li><strong>Design/Parity:</strong> ✅ 聚焦 parity 通过</li></ul></td>
-  <td><ul><li>创建落点、选中项和已打开 request 曾混用同一状态，约束分散。</li></ul></td>
-  <td><ul><li>拆分 <code>targetFolderId</code> / <code>activeRequestId</code>，集中深度约束并共享 store 命令。</li></ul></td>
+  <td><ul><li>完成选择、重命名、三级目录、splitter 与节点菜单的统一交互。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-2.png" alt="Composer selection" width="220"> <img src="image-3.png" alt="Composer tree" width="220"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Collection Store 8/8</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实Electron Red→Green 1/1，含Core回载与销毁</li><li><strong>Design/Parity:</strong> ✅ 聚焦 parity 通过</li></ul></td>
+  <td><ul><li>创建落点、选中项和已打开request曾混用同一状态；Collection同步hook又挂在会卸载的ComposerMain，快速切换workspace会取消600ms保存并被Core旧快照清空。</li></ul></td>
+  <td><ul><li>拆分<code>targetFolderId</code>/<code>activeRequestId</code>，集中三级约束和菜单命令；将<code>useCollection</code>提升到常驻App shell。</li></ul></td>
 </tr>
 
 <tr>

@@ -28,6 +28,38 @@ Composer 由 Core 直接出站，不依赖系统代理路由。因此这些 work
 
 Composer的method、URL、protocol、headers、query、body和auth均从默认态通过真实UI编辑；URL/query双向同步；tabs不丢草稿；整个流程不修改系统代理或其他feature状态。
 
+<a id="composer-collection-tree-interactions"></a>
+## `composer.collection.tree-interactions`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile、trace与evidence；启动本地production Electron并等待App/Core/8888，fresh-profile readiness只执行Cancel，不修改系统代理。
+2. 进入Composer，从Collection toolbar新建根目录并在行内input命名；通过目录More菜单连续新建第二、第三层目录，每层记录公共动态ID与行几何。
+3. 打开第三层目录菜单，确认New subfolder为disabled；从同一菜单新建request，填入测试自产URL。
+4. 对request行发起真实contextmenu，选择Rename并在同一行内input提交；立即切到Rules再返回Composer，越过600ms保存窗口后确认rename与URL仍由Core恢复，且request ID不变。
+5. 点击根目录作为新建落点，确认目录`aria-pressed=true`但URL editor仍保留当前request；点击`composer.collection.tree`空白，确认只清目录选择且URL仍不变。
+6. 拖动`composer.collection-splitter`，确认Collection宽度线性变化且当前request/目录树保持可用。
+7. 附加目录ID、缩进、菜单disabled、remount persistence、selection、URL与splitter几何；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
+
+### TDD证据要求
+
+- 当前提交先运行同一workflow；若全部Green，则必须在最接近该交互修复前的历史提交取得retrospective Red，不能把现状Green冒充TDD。
+- 有效Red必须来自selection、rename、三级约束、menu或splitter业务缺口；selector、构建、listener或fixture失败不算Red。
+- Green必须覆盖同一组UI操作、evidence与完整销毁。
+
+### TDD证据
+
+- Red：rename提交后立即切到Rules再返回Composer，越过两倍600ms保存窗口后Core回载得到`count=0 / name=null / url=null`，证明feature卸载取消了节流保存并让旧快照清空整棵树。
+- Green：将`useCollection`同步owner提升到常驻App；同一workflow `1/1`，remount恢复同一request ID、rename与URL；三级目录x坐标`92 / 118 / 144`，第三级New subfolder disabled，目录选择/空白取消不关闭文档，splitter `320→399.5px`。
+- 销毁：Main/Core退出、8888释放，`gracefulDestroyVerified=true`。
+
+### 预期效果
+
+目录落点与打开文档正交；行内重命名不替换节点身份；三级限制在菜单和store一致；splitter只改变布局，不改变业务状态。
+
 <a id="composer-send-success"></a>
 ## `composer.send-success`
 

@@ -19,7 +19,11 @@ import {
   useCaptureData,
 } from '../features/capture';
 import { useCaptureStore } from '../features/capture/data/captureStore';
-import { ComposerMain, ComposerStatusbar } from '../features/composer';
+import {
+  ComposerMain,
+  ComposerStatusbar,
+  useCollection,
+} from '../features/composer';
 import {
   DiagnosticsMain,
   DiagnosticsProvider,
@@ -84,6 +88,7 @@ export function App(): React.JSX.Element {
   useCaptureData();
   useRulesData();
   useBreakpoints();
+  useCollection();
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(true);

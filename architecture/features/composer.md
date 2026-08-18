@@ -142,6 +142,13 @@ Composer 已按设计稿落地为 **`Collection 分栏 / splitter / 工作区`**
 和工具栏 New folder 同时禁用，store 也拒绝越界写入。Collection 不保留自己的
 `findRequest` / `replaceRequest` / `removeNode` 等重复实现。
 
+**选择与菜单契约**：`targetFolderId`只表达新建落点，`activeRequestId`只表达右侧正在编辑的请求。
+点击目录或Collection空白不得关闭当前文档；点击请求会清除目录落点并保持唯一active document。
+目录More与行右键复用同一菜单命令，rename进入同一行内input；第三层目录的New subfolder在UI禁用，
+store继续作为深度约束的最终边界。Collection同步owner常驻App shell，不随Composer workspace卸载，
+因此600ms节流timer能继续把最新树写入Core；重新进入Composer不得被旧Core快照覆盖。Collection
+splitter只改变左栏宽度，不改变树选择或打开文档。
+
 **导出**：工具栏的 `Export collection` 走 `collection:export`，由 Main 弹系统保存对话框并把整棵树写成 JSON。集合数据本来就在 Renderer 手上，这条路径不经过 Core。
 
 ### 5.2 Recent sends
