@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `ac9af68`
+> Tracked commit: `3c4f080`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-18
 
@@ -62,7 +62,7 @@
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [x] **已完成 · statusbar upstream down**：light / dark 已收录到 visual parity，均为 `1/1 matched / 0 missing / 0 flagged`，最大几何差 0.5px。fake Preload 补齐 `upstreamProxy` / `upstreamReachable` 契约；harness 每个 view 前显式重置 `breakpointState`，普通 Capture 场景不再误继承断点状态栏。
 - [ ] **待验收 · AppContainer Enable all**：Main / Preload / Renderer、原生 helper、确认流程、15 种语言、fake / smoke 与 design-vite 状态已连通；提交后需复核一次提权、SID 并集、写后校验与 packaged smoke 证据。
-- [ ] **待验收 · Rules 目录交互**：Rules 根空白菜单、命令归位、三级目录与validation footer已实现；提交后需复核selection与右键菜单状态转换。
+- [x] **已完成 · Rules hierarchy / menus / status / effect导航**：真实Electron先Red于status=invalid且2个issue时Apply仍enabled；`isRuleSetComplete`同时守住UI与`applyRules`后同一workflow `1/1` Green。覆盖三级目录、第三层菜单禁用、rule右键rename、folder selection保留editor、invalid→dirty→applied、revision=1、Renderer reload从Core恢复、真实origin header effect、hit count=1、Rules→Capture Rule facet导航与完整销毁；Rules Store `19/19`、Desktop `267/267`、Rules parity `11/11 / 0 missing / 0 flagged / 最大0.7px`通过。
 - [x] **已完成 · Composer Collection交互与快速remount持久化**：真实Electron先Red于rename后立即切出/返回时Core旧快照把request清空（`count=0 / name=null / url=null`）；`useCollection`提升到常驻App后同一workflow `1/1` Green，覆盖三级目录、第三层菜单禁用、request右键rename、目录落点/空白取消与打开文档正交、splitter `320→399.5px`、Core回载及完整销毁。
 - [ ] **待验收 · BodyViewer 全屏**：格式化已独立闭环；全屏入口、设计状态与基础代码已接入，仍需真实Electron验证打开/关闭、Copy与内容状态生命周期。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector 分组与正文工具条变化后尚未整体收敛；最新完整报告为 105 views / 845 targets / 811 matched / 34 missing / 301 flagged / 平均 2.81%，新增 Composer response headers section 为 2/2 matched、0 missing、0 flagged，原有债务仍集中在 Capture、Settings、Breakpoint file-empty / queue 与旧 Shell，详见 `apps/desktop/tests/visual-parity/parity-report.md`。

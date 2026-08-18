@@ -5,10 +5,19 @@ import { collectLeafIds } from '@interceptor/core-protocol';
 import type { RuleActionType } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
 import type { BreakpointScope } from '../interfaces';
-import { createBreakpointRule, createRuleFromRequest } from '../utils';
+import {
+  createBreakpointRule,
+  createRuleFromRequest,
+  isRuleSetComplete,
+} from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
 let initialLoad: Promise<void> | null = null;
+
+function canApplyRuleSet(): boolean {
+  const store = useRulesStore.getState();
+  return !store.saving && isRuleSetComplete(store.nodes);
+}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -81,7 +90,7 @@ export async function addBreakpointRule(
 ): Promise<string | null> {
   await ensureRulesLoaded();
   const store = useRulesStore.getState();
-  if (!store.initialized) {
+  if (!store.initialized || !canApplyRuleSet()) {
     return null;
   }
   const rule = createBreakpointRule(name, url, scope);
@@ -91,12 +100,18 @@ export async function addBreakpointRule(
 
 /** 撤销刚创建的断点规则；删除后立即 Apply，不留下未生效的草稿。 */
 export async function removeBreakpointRule(ruleId: string): Promise<boolean> {
+  if (!canApplyRuleSet()) {
+    return false;
+  }
   useRulesStore.getState().removeNode(ruleId);
   return applyRules();
 }
 
 /** 切换一条断点规则的启用状态并立即 Apply；manager 里的开关必须即时影响真实流量。 */
 export async function toggleBreakpointRule(ruleId: string): Promise<void> {
+  if (!canApplyRuleSet()) {
+    return;
+  }
   useRulesStore.getState().toggleRule(ruleId);
   await applyRules();
 }
@@ -127,7 +142,7 @@ export async function applyRules(): Promise<boolean> {
     return false;
   }
   const store = useRulesStore.getState();
-  if (store.saving) {
+  if (!canApplyRuleSet()) {
     return false;
   }
   store.beginSave();

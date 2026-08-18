@@ -15,6 +15,7 @@ import {
   loadRules,
   removeBreakpointRule,
   selectRuleDraft,
+  toggleBreakpointRule,
 } from '../../data/useRulesData';
 import { createRuleFromRequest, isRulesDirty } from '../../utils';
 
@@ -32,6 +33,18 @@ function rule(id: string, priority: number): RuleDefinition {
 
 function folder(id: string, children: RuleNode[] = []): RuleFolder {
   return { kind: 'folder', id, name: id, children };
+}
+
+function incompleteRule(id: string): RuleDefinition {
+  return {
+    kind: 'rule',
+    id,
+    name: id,
+    enabled: false,
+    priority: 100,
+    matchers: [{ type: 'host', value: '', mode: 'contains' }],
+    actions: [{ type: 'header', phase: 'request', op: 'set', name: '', value: '' }],
+  };
 }
 
 /** 树里全部规则的深度优先顺序与它们的 priority。 */
@@ -276,6 +289,18 @@ describe('rulesStore apply conflict', () => {
     vi.unstubAllGlobals();
   });
 
+  it('does not send an incomplete rule set to Core', async () => {
+    seed([]);
+    useRulesStore.getState().addRule('Incomplete rule');
+    const replaceRules = vi.fn(async () => ({ ok: true as const, revision: 2 }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    await expect(applyRules()).resolves.toBe(false);
+
+    expect(replaceRules).not.toHaveBeenCalled();
+    expect(useRulesStore.getState().saving).toBe(false);
+  });
+
 
   it('keeps the local draft and the conflict flag when Core rejects the revision', async () => {
     seed([rule('local-draft', 100)], 'local-draft');
@@ -325,6 +350,43 @@ describe('breakpoint quick create', () => {
 
   beforeEach(() => {
     seed([]);
+  });
+
+  it('does not create a breakpoint while another draft is incomplete', async () => {
+    const replaceRules = vi.fn(async () => ({ ok: true as const, revision: 2 }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    seed([incompleteRule('incomplete')], 'incomplete');
+    const before = structuredClone(useRulesStore.getState().nodes);
+    await expect(addBreakpointRule(
+      'Pause checkout',
+      'https://shop.example.com/checkout',
+      'endpoint',
+    )).resolves.toBeNull();
+    expect(useRulesStore.getState().nodes).toEqual(before);
+    expect(replaceRules).not.toHaveBeenCalled();
+  });
+
+  it('does not remove a breakpoint while another draft is incomplete', async () => {
+    const replaceRules = vi.fn(async () => ({ ok: true as const, revision: 2 }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    seed([rule('breakpoint-rule', 100), incompleteRule('incomplete')], 'breakpoint-rule');
+    const before = structuredClone(useRulesStore.getState().nodes);
+    await expect(removeBreakpointRule('breakpoint-rule')).resolves.toBe(false);
+    expect(useRulesStore.getState().nodes).toEqual(before);
+    expect(replaceRules).not.toHaveBeenCalled();
+  });
+
+  it('does not toggle a breakpoint while another draft is incomplete', async () => {
+    const replaceRules = vi.fn(async () => ({ ok: true as const, revision: 2 }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    seed([rule('breakpoint-rule', 100), incompleteRule('incomplete')], 'breakpoint-rule');
+    await toggleBreakpointRule('breakpoint-rule');
+    expect(collectLeaves(useRulesStore.getState().nodes)
+      .find(({ id }) => id === 'breakpoint-rule')?.enabled).toBe(true);
+    expect(replaceRules).not.toHaveBeenCalled();
   });
 
   it('returns the created rule only after Core applies it and supports Undo', async () => {

@@ -67,6 +67,7 @@ export function RuleFolderRow({
         <button
           type="button"
           className={styles.chevronButton}
+          aria-expanded={expanded}
           aria-label={expanded ? t('rules.collapseFolder') : t('rules.expandFolder')}
           onClick={() => toggleFolder(folder.id)}
           data-automation-id={AutomationIdFactory.ruleFolderToggle(folder.id)}
@@ -79,6 +80,8 @@ export function RuleFolderRow({
         <button
           type="button"
           className={styles.nameButton}
+          aria-pressed={selected}
+          data-automation-id={AutomationIdFactory.ruleFolderTarget(folder.id)}
           onClick={() => select(folder.id)}
         >
           <Folder className={styles.icon} strokeWidth={1.9} />

@@ -75,6 +75,8 @@ export const RuleRow = memo(function RuleRow({
     >
       <button
         type="button"
+        aria-pressed={selected}
+        data-open={open || undefined}
         data-tree-row={rule.id}
         data-automation-id={AutomationIdFactory.ruleRow(rule.id)}
         style={{ '--depth': depth } as React.CSSProperties}
@@ -119,7 +121,13 @@ export const RuleRow = memo(function RuleRow({
             </span>
           ))}
         </div>
-        <span className={styles.hits}>{formatHits(hits, i18n.language)}</span>
+        <span
+          className={styles.hits}
+          data-count={hits}
+          data-automation-id={AutomationIdFactory.ruleHitCount(rule.id)}
+        >
+          {formatHits(hits, i18n.language)}
+        </span>
       </button>
     </RuleRowMenu>
   );

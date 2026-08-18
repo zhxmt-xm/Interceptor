@@ -49,12 +49,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Rules hierarchy, menus and status</td>
-  <td><ul><li>统一 Rules 层级、菜单、effect 导航、validation 与命中数布局。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-4.png" alt="Rule effect" width="210"> <img src="image-9.png" alt="Validation" width="210"> <img src="image-10.png" alt="Count" width="210"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Store 覆盖通过</li><li><strong>Integration:</strong> ❌ Persistence 验收未完成</li><li><strong>E2E:</strong> ❌ 最终验收未完成</li><li><strong>Design/Parity:</strong> ✅ 聚焦 parity 通过</li></ul></td>
-  <td><ul><li>树组织状态与右侧打开项耦合，根命令、validation 和节点命令边界不清。</li></ul></td>
-  <td><ul><li>拆分 <code>selectedId</code> / <code>openRuleId</code>，节点菜单按 owner 分层，validation 移入 statusbar。</li></ul></td>
+  <td><ul><li>统一 Rules 层级、菜单、effect 导航、validation 与命中数布局。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-4.png" alt="Rule effect" width="210"> <img src="image-9.png" alt="Validation" width="210"> <img src="image-10.png" alt="Count" width="210"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Rules Store 19/19；Desktop 267/267</li><li><strong>Integration:</strong> ✅ Apply后Renderer reload从Core恢复revision/tree/rule</li><li><strong>E2E:</strong> ✅ 真实Electron Red→Green 1/1，含hit/navigation与销毁</li><li><strong>Design/Parity:</strong> ✅ 11/11 matched，0 missing，0 flagged，最大0.7px</li></ul></td>
+  <td><ul><li>树组织状态与右侧打开项曾耦合，根/节点命令边界不清；validation虽标invalid，但Apply仍可把未填写RuleSet写入Core。</li></ul></td>
+  <td><ul><li>拆分<code>selectedId</code>/<code>openRuleId</code>，节点菜单按owner分层，validation移入statusbar；共享<code>isRuleSetComplete</code>同时守住Apply按钮和命令入口。</li></ul></td>
 </tr>
 
 <tr>

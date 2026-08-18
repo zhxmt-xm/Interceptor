@@ -30,7 +30,12 @@ import type { RuleActionType, RuleMatcherType } from '../../../../shared/desktop
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { useRulesStore } from '../data/rulesStore';
 import { applyRules, loadRules } from '../data/useRulesData';
-import { isRuleComplete, isRulesDirty, selectedRule } from '../utils';
+import {
+  isRuleComplete,
+  isRuleSetComplete,
+  isRulesDirty,
+  selectedRule,
+} from '../utils';
 import { ActionEditor } from './ActionEditor';
 import { MatcherRow } from './MatcherRow';
 import styles from './RuleEditor.module.css';
@@ -48,6 +53,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
   const rule = useRulesStore(selectedRule);
+  const complete = useRulesStore((state) => isRuleSetComplete(state.nodes));
   const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
   const saving = useRulesStore((state) => state.saving);
   const conflict = useRulesStore((state) => state.conflict);
@@ -161,7 +167,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
         <Button
           variant="primary"
           size="sm"
-          disabled={!dirty || saving}
+          disabled={!dirty || saving || !complete}
           onClick={() => void applyRules()}
           automationId={AUTOMATION_IDS.rules.apply}
         >

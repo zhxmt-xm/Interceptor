@@ -94,6 +94,7 @@ export function FacetGroup({
                 <button
                   key={option.value}
                   type="button"
+                  aria-pressed={selected.includes(option.value)}
                   className={cx(styles.item, selected.includes(option.value) && styles.itemOn)}
                   onClick={() => toggleValue(facet, option.value)}
                   data-automation-id={AutomationIdFactory.captureFacetOption(facet, option.value)}

@@ -5,7 +5,7 @@
 <a id="rules-load-search-select"></a>
 ## `rules.load-search-select`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -50,6 +50,41 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 - 修复前提交运行同一workflow，必须失败在首个`rules.toolbar.*`控件不存在；selector、fixture、语言、构建或环境失败不算Red。
 - 当前提交运行同一workflow，三个toolbar命令及创建状态全部Green，并完成trace/evidence与销毁验证。
 - 2026-08-17：实现前Red精确失败于`rules.toolbar.create`不可见；实现后`1/1` Green，rule editor、folder inline rename、Export disabled/enabled状态均通过，`gracefulDestroyVerified=true`且8888释放。
+
+<a id="rules-hierarchy-menus-status"></a>
+## `rules.hierarchy-menus-status`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace、evidence与HTTP loopback origin；启动本地production Electron，等待App/Core/8888并通过真实UI开始Recording。
+2. 进入Rules，在根空白处打开公共右键菜单创建一级目录；通过目录More菜单连续创建二、三级目录并逐层行内rename，确认第三层New subfolder disabled。
+3. 在第三层目录菜单新建rule；确认rule row已选中且editor打开。右键rule并行内rename，动态rule ID保持不变。
+4. 新rule缺condition/action时，公共status状态为invalid、validation issue count非零、Apply disabled；`rules.replace`不得发生。
+5. 填写默认host matcher与request header action的name/value，打开rule enable switch；确认status转dirty、validation清空、Apply enabled。
+6. 选择一级目录，确认目录`aria-pressed=true`但`rules.editor.name`仍保留打开rule；重新选择rule后点击Apply，等待status=applied且revision增加。
+7. Reload Renderer并重新进入Rules，确认Core恢复同一目录树、rule ID/name/enabled、revision与applied状态。
+8. 测试客户端显式经8888发送匹配GET；等待动态hit count变1。rule右键Show matching requests从disabled变enabled，点击后导航Capture；展开Rule facet并确认目标rule option `aria-pressed=true`。
+9. 附加目录/rule ID、status状态、revision、hit count与导航证据；正常Close，由Main恢复系统代理，并验证Main/Core/Renderer退出、8888释放和profile删除。
+
+### TDD证据要求
+
+- Unit Red：含未填写项的RuleSet调用`applyRules()`时，当前实现仍调用`replaceRules`；修复后命令不发出。
+- Electron Red：新建不完整rule时status=invalid，但Apply仍enabled；selector、构建、listener、UAC或fixture失败不算Red。
+- Green必须覆盖同一三级树/menu/selection/status/Apply/reload/hit/navigation flow及完整销毁。
+
+### TDD证据
+
+- Unit Red：不完整RuleSet调用`applyRules()`返回true并实际调用`replaceRules`；修复后Rules Store `19/19` Green，命令未发出且saving保持false。
+- Electron Red：status已是`invalid`且issue count=2，但Apply仍enabled。
+- Electron Green：三级目录x坐标`98 / 124 / 150`，第三级New subfolder disabled；invalid→dirty→applied状态一致，Apply后revision=1，Renderer reload从Core恢复相同rule ID/name/enabled；真实GET让origin收到`x-rules-e2e: active`并令hit count=1，Show matching requests导航到Capture且目标Rule facet为pressed。
+- 销毁：Main/Core退出、8888释放、系统代理由Main恢复，`gracefulDestroyVerified=true`。
+
+### 预期效果
+
+树组织、editor打开项、节点命令、validation、持久化、命中数与Capture导航共享同一rule身份；invalid草稿不能进入Core。
 
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`

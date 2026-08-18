@@ -1,4 +1,5 @@
 import { collectLeaves } from '@interceptor/core-protocol';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { StatItem } from '../../../components';
 import { useTranslation } from 'react-i18next';
 import { useRulesStore } from '../data/rulesStore';
@@ -36,19 +37,52 @@ export function RulesStatusbar(): React.JSX.Element {
       : dirty
         ? t('rules.unsavedChanges')
         : t('rules.ruleSetApplied');
+  const state = conflict ? 'conflict' : invalid ? 'invalid' : dirty ? 'dirty' : 'applied';
 
   return (
     <>
-      <StatItem dot={dot}>{label}</StatItem>
-      <StatItem mono>{t('rules.revision', { revision })}</StatItem>
+      <StatItem dot={dot}>
+        <span
+          data-state={state}
+          data-automation-id={AUTOMATION_IDS.rules.status.state}
+        >
+          {label}
+        </span>
+      </StatItem>
+      <StatItem mono>
+        <span
+          data-revision={revision}
+          data-automation-id={AUTOMATION_IDS.rules.status.revision}
+        >
+          {t('rules.revision', { revision })}
+        </span>
+      </StatItem>
       <StatItem>
-        {t('rules.enabledSummary', { enabled, total: collectLeaves(nodes).length })}
+        <span
+          data-enabled={enabled}
+          data-total={collectLeaves(nodes).length}
+          data-automation-id={AUTOMATION_IDS.rules.status.enabled}
+        >
+          {t('rules.enabledSummary', { enabled, total: collectLeaves(nodes).length })}
+        </span>
       </StatItem>
       {validation ? (
-        <StatItem mono push>{validation}</StatItem>
+        <StatItem mono push>
+          <span
+            data-issue-count={selectedIssues.length}
+            data-automation-id={AUTOMATION_IDS.rules.status.validation}
+          >
+            {validation}
+          </span>
+        </StatItem>
       ) : invalid ? (
         <StatItem mono push>
-          {t('rules.issueCount', { count: issueCount })}
+          <span
+            data-issue-count={issueCount}
+            data-automation-id={AUTOMATION_IDS.rules.status.validation}
+          >
+            {t('rules.issueCount', { count: issueCount })}
+          </span>
         </StatItem>
       ) : error ? (
         <StatItem mono push>

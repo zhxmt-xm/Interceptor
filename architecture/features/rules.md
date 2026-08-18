@@ -452,6 +452,7 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 | --- | --- | --- |
 | 未填写的条件恒不匹配 | `rules/utils/index.ts` 的 `compileStringMatch` / `compileRuleMatchers` | 空值条件与空条件集编译为恒 false，而不是 `includes('')` / 空 regex 的恒 true |
 | 不完整的规则不能启用 | Renderer `rulesStore.toggleRule` + `RuleRow` 开关 | 字段未填完时开关置灰并拒绝启用；已启用的规则任何时候都可关掉 |
+| 含未填写项的RuleSet不能Apply | Renderer `RuleEditor` + `applyRules` | Statusbar显示validation errors，Apply禁用，命令入口也不调用`rules.replace` |
 | 引擎只执行已启用规则 | `RuleService.setRuleSet` | `filter(rule => rule.enabled)` 后才编译 |
 
 未填写项的提示由 Renderer 本地纯函数 `ruleIssues(rule)` 即时派生（不入状态、不往返 Core），驱动 RuleEditor 的问题列表、Statusbar 计数和启用开关的可用性。新建规则与 Capture 右键草稿都默认 `enabled: false`。
@@ -482,6 +483,11 @@ New rule / New folder / Import / Export 作为辅助入口。新建命令沿用�
 Export 禁用。目录与规则各自的右键菜单只承载该节点语义。RuleSet 的 Save 固定在选中 rule 的 detail header，
 不在 Collection 顶栏重复提供。选中 rule 的 compile / validation 提示显示在 Rules statusbar，滚动区
 只保留可编辑的 Match 与 Actions 内容。
+
+`selectedId`只表达树上的落点，`openRuleId`只表达右侧editor；选择目录不得关闭已打开rule。目录和rule
+的More/右键菜单共享同一节点命令，第三层目录禁用New subfolder。Statusbar以公共DOM状态暴露
+invalid/dirty/applied、revision、enabled/total和selected validation；rule row命中数与show-requests菜单
+使用同一Core hit count。Apply成功后Renderer reload必须从Core恢复相同树、revision和rule身份。
 
 **与 Capture 的双向联动：**
 

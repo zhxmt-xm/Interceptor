@@ -63,6 +63,7 @@ export function NavItem({
       className={className}
       onClick={onClick}
       aria-label={collapsed ? label : undefined}
+      aria-current={active ? 'page' : undefined}
       title={title ?? (collapsed ? label : undefined)}
       data-automation-id={automationId}
     >

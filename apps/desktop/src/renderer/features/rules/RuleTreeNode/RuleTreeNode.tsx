@@ -41,7 +41,14 @@ export function RuleTreeNode({
   const keyword = search.matched.has(node.id) ? search.keyword : '';
 
   if (renaming) {
-    return <RuleRenameRow nodeId={node.id} name={node.name} depth={depth} />;
+    return (
+      <RuleRenameRow
+        nodeId={node.id}
+        name={node.name}
+        kind={node.kind}
+        depth={depth}
+      />
+    );
   }
 
   if (!isFolder(node)) {

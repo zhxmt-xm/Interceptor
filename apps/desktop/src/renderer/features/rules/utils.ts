@@ -341,6 +341,11 @@ export function isRuleComplete(rule: RuleDefinition): boolean {
   return ruleIssues(rule).length === 0;
 }
 
+/** RuleSet只有全部叶子规则都填完整时才允许写入Core。 */
+export function isRuleSetComplete(nodes: readonly RuleNode[]): boolean {
+  return collectLeaves(nodes).every(isRuleComplete);
+}
+
 /** Translate option labels without changing the stable values stored in rule models. */
 export function localizeOptions(
   options: SelectOption[],

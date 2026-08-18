@@ -190,6 +190,12 @@ export const AUTOMATION_IDS = {
     editorName: 'rules.editor.name',
     editorEnabled: 'rules.editor.enabled',
     showMatchingRequests: 'rules.show-matching-requests',
+    status: {
+      state: 'rules.status.state',
+      revision: 'rules.status.revision',
+      enabled: 'rules.status.enabled',
+      validation: 'rules.status.validation',
+    },
     conditionOption: {
       method: 'rules.condition.method',
       host: 'rules.condition.host',
@@ -349,6 +355,7 @@ export const AUTOMATION_ID_PREFIXES = {
   grpcMessage: 'capture.grpc.message.',
   ruleRow: 'rules.row.',
   ruleFolderRow: 'rules.folder-row.',
+  ruleRename: 'rules.rename.',
   ruleFolderRename: 'rules.folder-rename.',
   composerCollectionRequest: 'composer.collection.request.',
   composerCollectionFolder: 'composer.collection.folder.',
@@ -443,6 +450,11 @@ export class AutomationIdFactory {
     return `rules.folder-toggle.${folderId}`;
   }
 
+  /** Identify the selection target owned by one Rule folder. */
+  static ruleFolderTarget(folderId: string): string {
+    return `rules.folder-target.${folderId}`;
+  }
+
   /** Identify the action-menu trigger owned by one Rule folder. */
   static ruleFolderMenu(folderId: string): string {
     return `rules.folder-menu.${folderId}`;
@@ -453,9 +465,19 @@ export class AutomationIdFactory {
     return `rules.node-action.${nodeId}.${action}`;
   }
 
+  /** Identify the runtime hit count rendered for one Rule. */
+  static ruleHitCount(ruleId: string): string {
+    return `rules.hit-count.${ruleId}`;
+  }
+
   /** Identify the inline rename field owned by one Rule folder. */
   static ruleFolderRename(folderId: string): string {
     return `rules.folder-rename.${folderId}`;
+  }
+
+  /** Identify the inline rename field owned by one Rule. */
+  static ruleRename(ruleId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.ruleRename}${ruleId}`;
   }
 
   /** Identify one matcher editor control by rule, index and field. */
