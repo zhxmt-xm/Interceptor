@@ -215,7 +215,7 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-facet-stable-ordering"></a>
 ## `capture.facet-stable-ordering`
 
-**状态**：planned
+**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -238,6 +238,11 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 
 - 修复前`89d8dda`运行同一workflow：初始顺序为GET、POST；第二个POST到达后顺序变成POST、GET，并精确失败于稳定排序断言。
 - 当前提交运行同一workflow：两次顺序均为GET、POST，且trace、metadata、Main/Core/Worker销毁、8888释放和系统代理恢复证据完整。selector、fixture、构建或环境失败不算Red。
+
+### 验收证据
+
+- `89d8dda`仅回植后续公开automation ID测试探针后，真实Electron精确Red：第二个POST到达后Method DOM顺序为POST、GET。
+- 当前提交同一workflow `1/1` Green；Main PID `11064`、Core PID `25972`均退出，`gracefulDestroyVerified: true`，listener `8888`释放且系统代理恢复。
 
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`

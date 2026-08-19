@@ -75,10 +75,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Capture facet stable ordering</td>
-  <td><ul><li>动态 facet 保持当前 Capture 中首次出现顺序，只实时更新计数。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Capture 19/19</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ Red/Green 未完成</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
+  <td><ul><li>动态 facet 保持当前 Capture 中首次出现顺序，只实时更新计数。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Capture 21/21</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ <code>89d8dda</code> retrospective Red → current Green 1/1，含销毁与8888释放</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
   <td><ul><li><code>allFacetOptions</code> 按实时 count 重排普通 facet，计数反超会移动已有 option。</li></ul></td>
   <td><ul><li>保留 <code>Map</code> 首次插入顺序，只更新 count 文本。</li></ul></td>
 </tr>
