@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `3c4f080`
+> Tracked commit: `9e226b2`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-18
 
@@ -51,7 +51,7 @@
 - [ ] **代码完成 · 待真实 E2E · Capture facet 稳定更新**：Application / Method / Host / Type / Rule 保持当前 Capture 中首次出现顺序，计数变化不再按 count 重排 DOM；Clear 的空 rows 绕过600ms throttle，让列表、selection 与 facet snapshot 同步归零。unit/desktop Green 已有；缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 最终 Rule state 与 Header effect**：RuleService 已改为两阶段执行，断点编辑 effect 与暂停 marker 已贯通；Protocol、Desktop、MCP、Proxy Core与design interaction均Green。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 已同属Control group，unit/design/parity证据已有。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
-- [ ] **回归待验证/修复 · Detail BodyViewer撑满**：旧完成结论仅有fake-Preload parity；用户现场报告正文pane未吃满Inspector。`capture.detail-body-fill`真实Electron workflow已建立，要求response pane高度至少320px、BodyViewer底边保留18px scroll padding并与pane底边重合；取得现状Red后才能改实现。
+- [x] **已完成 · Detail BodyViewer撑满与嵌套滚动**：`BodySection`经grow Section占满Inspector剩余高度，Monaco显式`alwaysConsumeMouseWheel: false`让边界wheel交给外层。现行workflow字节级移植到修复前`039dd42`后，几何断言先Green，外层`scrollTop`保持`8.666666984558105`取得精确Red；当前同一真实Electron workflow `1/1` Green，Main PID `31796`、Core PID `3600`均退出，`gracefulDestroyVerified: true`且8888释放、系统代理恢复。
 - [ ] **待设计/实现 · Body Rule effect**：普通 Rule body action 与 Breakpoint body replacement 目前只有 rule hit，没有独立 body effect 协议、Capture 存储字段或 Inspector marker；需先确定原始/最终、text/file 与 request/response 的证据模型并完成 design-vite 设计，不能伪装成 Header effect。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。

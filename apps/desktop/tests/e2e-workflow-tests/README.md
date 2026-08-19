@@ -156,7 +156,7 @@ diagnostics.row.<traceKey>
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
 | `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI | planned |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
-| `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | planned |
+| `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |

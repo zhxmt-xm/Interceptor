@@ -15,6 +15,8 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
     description: 'capture.detail-body-fill',
   });
 
+  // Arrange real captured traffic with enough request body lines to scroll.
+  // 准备真实抓包流量，并提供足够多的请求正文行以产生滚动。
   await startRecording(desktopApp);
   const requestBody = JSON.stringify({
     entries: Array.from({ length: 200 }, (_value, index) => ({
@@ -28,6 +30,8 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
     body: requestBody,
   });
 
+  // Open the response body through the same Inspector interaction users perform.
+  // 通过用户使用的同一 Inspector 交互打开响应正文。
   const { page } = desktopApp;
   await getByAutomationId(
     page,
@@ -40,6 +44,8 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   await expect(bodyView).toBeVisible();
   await expect(bodyPane).toBeVisible();
 
+  // Prove the response pane consumes the available Inspector height end to end.
+  // 验证响应正文 pane 从头到尾占满 Inspector 的可用高度。
   const geometry = async () => {
     const [scrollBox, bodyViewBox, bodyPaneBox] = await Promise.all([
       scroll.boundingBox(),
@@ -66,6 +72,8 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   expect(finalGeometry!.bottomInset).toBeLessThanOrEqual(20);
   expect(Math.abs(finalGeometry!.paneBottomDelta)).toBeLessThan(1);
 
+  // Scroll Monaco to its lower boundary, then prove the next wheel reaches Inspector.
+  // 将 Monaco 滚到下边界，再验证下一次滚轮会交接给 Inspector。
   await getByAutomationId(
     page,
     AUTOMATION_IDS.capture.inspector.tab.request,
@@ -131,7 +139,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   ).toBeGreaterThan(beforeOuterScroll);
   const afterOuterScroll = await scroll.evaluate((element) => element.scrollTop);
 
-  await testInfo.attach('body-viewer-geometry', {
+  // Retain geometry and both outer scroll positions as workflow evidence.
+  // 保留几何数据和两次外层滚动位置作为 workflow 证据。
+  await testInfo.attach('body-viewer-geometry.json', {
     body: Buffer.from(JSON.stringify({
       ...finalGeometry,
       scrollChaining: {

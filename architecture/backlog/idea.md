@@ -66,12 +66,12 @@
   <td><ul><li>在 <code>RuleList</code> 恢复共享 <code>IconButton</code> 并复用既有 store/data 命令。</li></ul></td>
 </tr>
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Detail BodyViewer fill and nested scrolling</td>
-  <td><ul><li>让正文 pane 占满 Inspector 剩余高度，并在内层滚动到边界后交接给外层。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ❌ 修复未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> 🔄 Workflow 已建立，Red/Green 未闭环</li><li><strong>Design/Parity:</strong> ❌ Fake parity 不能验收</li></ul></td>
-  <td><ul><li>待真实 Electron Red 定位；旧 fake-Preload parity 不能证明高度链和 wheel 交接。</li></ul></td>
-  <td><ul><li>按 Red 结果修改 owning flex/overflow 或 Monaco wheel 配置，并复跑同一 workflow。</li></ul></td>
+  <td><ul><li>让正文 pane 占满 Inspector 剩余高度，并在内层滚动到边界后交接给外层。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ <code>Section grow</code>高度链与<code>alwaysConsumeMouseWheel: false</code></li><li><strong>Unit:</strong> ➖ 真实布局与wheel交接只由E2E验收</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ <code>039dd42</code> retrospective Red → current Green 1/1，含销毁与8888释放</li><li><strong>Design/Parity:</strong> ➖ Fake parity不作为该flow验收</li></ul></td>
+  <td><ul><li>正文高度链已满足契约；实际缺陷是Monaco默认在滚动边界继续消费wheel，导致Inspector外层<code>scrollTop</code>不增长。</li></ul></td>
+  <td><ul><li><code>BodySection</code>通过grow Section占满剩余高度；<code>CodeViewer</code>关闭边界wheel吞噬。真实Electron先将Monaco滚动条拖到底，再验证下一次wheel交给Inspector。</li></ul></td>
 </tr>
 
 <tr>

@@ -269,7 +269,7 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-detail-body-fill"></a>
 ## `capture.detail-body-fill`
 
-**状态**：planned
+**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -279,7 +279,7 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 3. 启动random-port HTTP origin；测试客户端以absolute-form URL向8888发送`GET /e2e/detail-body-fill`。Origin返回真实JSON response body、`application/json`和固定E2E headers/cookies。
 4. 等待动态`capture.request-row.<exchangeId>`出现并点击；点击`capture.inspector.tab.response`，等待按需`body.read-range`完成，确认`capture.inspector.body-view`与`capture.inspector.body-pane`都可见。
 5. 同一帧读取`capture.inspector.scroll`、BodyViewer root和CodeViewer pane的`getBoundingClientRect`：pane height必须≥320px；scroll bottom减BodyViewer bottom必须为18px设计padding（容差16–20px）；BodyViewer bottom与pane bottom差绝对值<1px。
-6. 点击`capture.inspector.tab.request`加载测试发送的200行JSON request body。让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；第一次wheel 5000把Monaco滚到底，记录外层scrollTop；第二次同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。
+6. 点击`capture.inspector.tab.request`加载测试发送的200行JSON request body。让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；先用wheel确认Monaco内部滚动，再把Monaco垂直滑块拖到底并记录外层scrollTop；继续同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。
 7. 附加`body-viewer-geometry.json`（含两段scrollTop）、最终截图、trace、Main/Renderer日志和metadata。fixture进入Settings→Proxy；若`settings.proxy.restore`存在则点击并等待消失，然后正常Close，验证Main/Core PID退出、8888可重新bind并删除profile。
 
 ### 预期效果
@@ -288,8 +288,8 @@ Response tab只有一个Body section时，toolbar保持40px，正文pane吃满In
 
 ### TDD证据要求
 
-- 当前未修代码先运行同一workflow：几何契约可Green，但scroll chaining必须因外层scrollTop不增长取得Red；若两者都Green，则现场问题尚未被复现，禁止盲改实现。
-- 定位并修复后复跑同一workflow取得Green，同时保留代理恢复、进程销毁与8888释放证据。
+- 修复前`039dd42`运行字节级相同workflow：几何契约先Green；Monaco到底后的wheel未传给Inspector，外层`scrollTop` expected `> 8.666666984558105`、received `8.666666984558105`，取得业务Red。Main PID `36488`、Core PID `34584`完成销毁，8888释放。
+- 当前提交运行同一workflow为`1/1` Green；Main PID `31796`、Core PID `3600`完成销毁，`gracefulDestroyVerified: true`，8888释放且系统代理恢复。
 
 <a id="capture-list-virtual-scroll"></a>
 ## `capture.list.virtual-scroll`
