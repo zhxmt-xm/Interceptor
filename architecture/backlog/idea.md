@@ -85,15 +85,6 @@
 
 <tr>
   <td><strong>⏳ 未开始</strong></td>
-  <td>Desktop application attribution</td>
-  <td><ul><li>修复 Douyu 等桌面应用的 request 被错误归类到 Edge。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li><li><img src="image-6.png" alt="Application attribution" width="240"></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>未知；没有进程与 socket 证据时不能猜测。</li></ul></td>
-  <td><ul><li>记录 request socket、PID、可执行路径与 client identity 匹配链，再定位 owner。</li></ul></td>
-</tr>
-
-<tr>
-  <td><strong>⏳ 未开始</strong></td>
   <td>Bilibili login regression</td>
   <td><ul><li>解决开启 Interceptor 后 Bilibili 登录反复失效的问题。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
   <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
@@ -269,6 +260,15 @@
   <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> 🔄 Package 完成，Desktop 未开发</li><li><strong>Unit:</strong> ✅ Package 45/45</li><li><strong>Integration:</strong> ❌ Desktop 链路未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
   <td><ul><li><code>b326bc3</code> 只交付独立 package，未接入 Desktop/Main/Core。</li></ul></td>
   <td><ul><li>按 <a href="../features/mcp.md">MCP feature</a> 完成 transport、runtime、Preload、Settings 与 approval 全链路。</li></ul></td>
+</tr>
+
+<tr>
+  <td><strong>⏳ 未开始</strong></td>
+  <td>Desktop application attribution</td>
+  <td><ul><li>修复 Douyu 等桌面应用的 request 被错误归类到 Edge。</li><li><strong>Steps:</strong><ul><li>等待用户确认问题截图与可复现操作</li><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li><li><img src="image-6.png" alt="Application attribution" width="240"></li></ul></td>
+  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
+  <td><ul><li>未知；没有截图对应请求的进程与 socket 证据时不能猜测。</li></ul></td>
+  <td><ul><li>用户确认截图与复现操作后，记录 request socket、PID、可执行路径与 client identity 匹配链，再定位 owner。</li></ul></td>
 </tr>
 
 </tbody>
