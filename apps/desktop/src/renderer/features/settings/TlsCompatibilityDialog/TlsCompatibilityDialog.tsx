@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Checkbox, IconButton } from '../../../components';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import {
   TlsCompatibilityActions,
   useTlsCompatibilityStore,
@@ -153,7 +154,11 @@ export function TlsCompatibilityDialog({
         {error ? <div className={styles.error} role="alert">{error}</div> : null}
       </div>
       <footer className={styles.footer}>
-        <Button disabled={busy} onClick={dismiss}>
+        <Button
+          disabled={busy}
+          onClick={dismiss}
+          automationId={AUTOMATION_IDS.settings.tlsCompatibility.dismiss}
+        >
           {t('settings.tlsPassthrough.compatibilityDismiss')}
         </Button>
         <Button

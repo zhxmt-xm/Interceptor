@@ -6,6 +6,7 @@ import type {
   CertificateInfo,
   InterceptorDesktopApi,
 } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { formatDate } from '../utils';
 
@@ -145,6 +146,7 @@ export function CertificatesPanel(): React.JSX.Element {
             <Button
               icon={Trash2}
               variant="danger"
+              automationId={AUTOMATION_IDS.settings.certificates.delete}
               disabled={busy}
               onClick={() => applyInfo((api) => api.deleteCertificate())}
             >
@@ -162,6 +164,7 @@ export function CertificatesPanel(): React.JSX.Element {
           ) : null}
           <Button
             icon={RefreshCw}
+            automationId={AUTOMATION_IDS.settings.certificates.generate}
             disabled={busy || info.trusted}
             onClick={() => applyInfo((api) => api.generateCertificate())}
           >
@@ -185,6 +188,7 @@ export function CertificatesPanel(): React.JSX.Element {
               <Button
                 icon={Trash2}
                 variant="danger"
+                automationId={AUTOMATION_IDS.settings.certificates.uninstall}
                 disabled={busy}
                 onClick={() => applyInfo((api) => api.uninstallCertificate())}
               >
@@ -199,6 +203,7 @@ export function CertificatesPanel(): React.JSX.Element {
               <Button
                 icon={Shield}
                 variant="primary"
+                automationId={AUTOMATION_IDS.settings.certificates.install}
                 disabled={busy || !info.supported || !info.present}
                 onClick={() => applyInfo((api) => api.installCertificate())}
               >
@@ -216,6 +221,7 @@ export function CertificatesPanel(): React.JSX.Element {
         >
           <Switch
             checked={info.mitmEnabled && info.trusted}
+            automationId={AUTOMATION_IDS.settings.certificates.mitmToggle}
             onChange={
               info.trusted && !busy
                 ? (checked) => applyInfo((api) => api.setHttpsDecryption(checked))

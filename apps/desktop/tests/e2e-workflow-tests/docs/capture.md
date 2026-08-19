@@ -544,3 +544,39 @@ HAR输入由同一workflow的真实Capture生成；标准HAR可解析，Clear后
 ### 预期效果
 
 Archive输入由同一workflow的真实Capture生成；保存文件结构自洽，Clear后通过UI打开可全保真恢复Interceptor专有数据；损坏或恶意ZIP被拒绝并回滚；所有系统副作用在结束前恢复。
+
+<a id="capture-bilibili-login-regression"></a>
+## `capture.bilibili-login-regression`
+
+**状态**：passed
+**策略**：external-profile + os-side-effect
+
+### 前置条件
+
+真实 Edge Default profile 已登录 Bilibili，当前可见标签页为完整 `https://www.bilibili.com/` 页面。测试不写 profile、不注入 Cookie、不调用 typed Preload API 改产品状态，也不代替用户完成登录。
+
+### Steps
+
+1. 启动真实 Electron；在系统代理仍未被 Interceptor 接管时，从当前 Bilibili 页头读取右上角身份入口的 UI Automation 控件类型、层级、可见性与几何关系，确认已登录并保存测试自产基线。判据不使用显示文案、翻译后的 accessibility name、CSS class 或站点私有 API。
+2. 从真实 Settings UI 依次点击 Generate、Install 与 MITM switch；等待 CA trusted / MITM active。进入 Capture，通过真实 Recording/readiness UI 接管系统代理。
+3. 用 CONNECT + TLS handshake 探测 `www.bilibili.com` leaf，要求由步骤2本次 UI 生成的 root CA 签发；通过 `edge://restart` 让 Edge 重载系统信任，返回原 Bilibili 标签页。
+4. 只使用 Edge 公开地址栏 AutomationId `view_1021` 的 ValuePattern 确认当前标签仍是 `https://www.bilibili.com/`；通过刷新按钮 AutomationId `view_1003` 的 InvokePattern执行一次完整页面刷新。
+5. 等待本轮 `www.bilibili.com/` 主文档以非 `tls` exchange完成，要求 H2 / 200、存在 `DedeUserID` / `SESSDATA` / `bili_jct` 且无Rule header effect；随后等待页头runtime ID变化并确认身份入口恢复到步骤1的语言无关UIA结构。
+6. 重复步骤4–5共三轮。每轮只附加 URL、host/protocol汇总、主文档status、Cookie名称、身份入口结构与页头截图；任何一轮出现匿名入口即失败。
+7. 从 UI 关闭 MITM、Uninstall/Delete CA；正常 Close Electron，由产品销毁 Main/Core/Worker、释放8888并恢复原系统代理。测试不通过数据库、profile seed或测试专用命令修复现场。
+
+### 预期效果
+
+Interceptor MITM 对已登录 HTTPS 页面透明：完整页面连续三次真实刷新后，Bilibili 右上角仍保持步骤1采集的身份入口；Cookie不会因 H1/H2 header 归一化、规则钩子或 Capture而丢失或改变语义。
+
+### TDD证据要求
+
+- 现有行为在正式workflow建立后即为Green，因此没有伪造Red，也没有修改Proxy Core转发行为；新增代码仅为真实UI flow所需的公开automation ID测试探针。
+- Green必须运行同一workflow三轮全部通过，并保留trace、每轮Capture/UIA evidence、Main/Core/Worker销毁、8888释放、系统代理恢复和CA清理证据。
+- 固定登录API路径、显示文案、单独HTTP请求、Cookie/profile注入、数据库修改或MITM关闭均不能作为Red/Green替代。
+
+### 验收证据
+
+- 真实Edge Default profile连续运行六次独立workflow，共18次完整页面原生刷新；每轮主文档均为H2 / 200，身份Cookie存在，三个页头截图均保留头像入口。
+- 最终语言无关版本只用`view_1021` / `view_1003`定位Edge，不依赖应用当前语言、窗口标题、站点文案或CSS class。
+- 最终metadata记录Main PID `12472`、Core PID `28068`、listener `8888`与`gracefulDestroyVerified: true`；结束后8888空闲、产品进程为0、系统代理恢复为原配置，本轮测试CA指纹已从信任库移除。

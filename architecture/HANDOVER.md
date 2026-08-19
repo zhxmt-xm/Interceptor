@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `0b00496`
+> Tracked commit: `ab38eb8`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-08-18
+> 最后更新：2026-08-19
 
 ## Task List
 
@@ -53,6 +53,7 @@
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 最终 Rule state 与 Header effect**：RuleService 已改为两阶段执行，断点编辑 effect 与暂停 marker 已贯通；Protocol、Desktop、MCP、Proxy Core与design interaction均Green。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 已同属Control group，unit/design/parity证据已有。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [x] **已完成 · Detail BodyViewer撑满与嵌套滚动**：`BodySection`经grow Section占满Inspector剩余高度，Monaco显式`alwaysConsumeMouseWheel: false`让边界wheel交给外层。现行workflow字节级移植到修复前`039dd42`后，几何断言先Green，外层`scrollTop`保持`8.666666984558105`取得精确Red；当前同一真实Electron workflow `1/1` Green，Main PID `31796`、Core PID `3600`均退出，`gracefulDestroyVerified: true`且8888释放、系统代理恢复。
+- [x] **已完成 · Bilibili登录态真实回归**：现有Proxy Core业务行为无需修改；Settings证书操作补公开automation ID，并新增真实Edge Default profile workflow。所有Generate / Install / MITM / Recording / cleanup均走产品UI，Edge只用`view_1021` / `view_1003`定位并原生刷新。六次独立workflow共18次完整页面刷新全部保持头像；每轮`www.bilibili.com/`主文档均为H2 / 200并携带`DedeUserID`、`SESSDATA`、`bili_jct`，leaf由本轮UI生成CA签发，无Rule header effect。最终Main PID `12472`、Core PID `28068`完成销毁，`gracefulDestroyVerified: true`，8888、系统代理与本轮CA均恢复。
 - [ ] **待设计/实现 · Body Rule effect**：普通 Rule body action 与 Breakpoint body replacement 目前只有 rule hit，没有独立 body effect 协议、Capture 存储字段或 Inspector marker；需先确定原始/最终、text/file 与 request/response 的证据模型并完成 design-vite 设计，不能伪装成 Header effect。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。

@@ -84,12 +84,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Bilibili login regression</td>
-  <td><ul><li>解决开启 Interceptor 后 Bilibili 登录反复失效的问题。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>未知；TLS、cookie、重定向与 wire framing 均无现有证据。</li></ul></td>
-  <td><ul><li>采集开启与关闭代理的失败链路对照，再按证据定位。</li></ul></td>
+  <td><ul><li>确认开启Interceptor MITM后，真实Bilibili完整页面连续刷新仍保持登录。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 仅新增Settings公开automation ID与真实workflow；转发业务代码无需修改</li><li><strong>Unit:</strong> ➖ 站点登录态由真实外部profile E2E验收</li><li><strong>Integration:</strong> ✅ 既有HTTPS MITM聚焦2/2</li><li><strong>E2E:</strong> ✅ 6次独立workflow / 18次完整刷新，含Capture、页头、销毁与副作用恢复证据</li><li><strong>Design/Parity:</strong> ➖ N/A，未改变UI</li></ul></td>
+  <td><ul><li>当前实现未复现通用Cookie转发缺陷；主文档每轮均为H2 / 200并携带<code>DedeUserID</code>、<code>SESSDATA</code>与<code>bili_jct</code>。早期匿名观测发生在测试尚未等待Edge信任重载与页头稳定时，不能作为产品Red。</li></ul></td>
+  <td><ul><li>保留真实Edge Default profile回归：所有产品状态经UI，原生刷新按钮连续三轮，语言无关UIA头像结构、MITM leaf与主文档身份Cookie共同判定；不注入Cookie、不改profile、不依赖私有登录API。</li></ul></td>
 </tr>
 
 <tr>

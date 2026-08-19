@@ -895,6 +895,34 @@ Capture 只订阅事件。Capture 自己持有的可释放资源仅有 `BodyWrit
 `TlsHandshakeFailure`，只覆盖握手失败）。因此隧道记录无法区分正常关闭与连接重置，永远不会出现 `aborted`。
 
 
+### 5.6 已登录 HTTPS 页面透明刷新
+
+HTTPS MITM 只改变传输链路，不得改变客户端与 Origin 之间的身份语义。客户端发送的
+身份 Cookie 必须完整到达 Origin，Origin 返回的 `Set-Cookie` 必须到达客户端。Capture
+只能观察这条链路，不能改变登录语义。
+
+Bilibili 登录回归以真实 Edge 当前 profile 和完整页面为验收对象，不注入 Cookie、不修改
+浏览器 profile，也不调用站点内部 API 代替页面：
+
+1. 接管系统代理前，从当前已登录页面读取右上角身份入口的 UI Automation 控件结构作为
+    测试自产基线；判据只使用控件类型、层级、可见性与几何关系，不依赖中英文文案、CSS
+    class 或站点私有接口路径。
+2. 通过 Interceptor UI 完成 Generate、Install、开启 MITM 与 Recording；leaf 必须由本次
+    UI 生成的 root CA 签发。
+3. 通过 Edge 公开的刷新按钮 AutomationId 连续刷新三次。每轮先证明本轮出现新的 Bilibili
+    主文档解密 Exchange，再要求身份入口恢复到基线结构；旧 DOM、CONNECT tunnel 和单独
+    API 请求都不能替代完整页面刷新。
+4. 每轮只保存 host / protocol 汇总、主文档 status、Cookie 名称及页头截图；失败后正常关闭
+    Interceptor，由产品退出路径恢复系统代理、8888、CA 与 MITM 副作用。
+
+该 flow 的用户可见契约是三轮刷新后仍保持登录。具体登录接口属于站点实现细节，只用于
+失败取证，不作为 Green 条件。
+
+2026-08-19 使用真实 Edge Default profile 连续运行六次独立 workflow，共完成 18 次原生
+刷新：每轮 `www.bilibili.com/` 主文档均以 H2 / 200 经 8888 解密，均携带 `DedeUserID`、
+`SESSDATA` 与 `bili_jct`，且右上角身份入口保持。当前实现未复现通用 Cookie 转发缺陷，
+因此没有修改 Proxy Core 转发行为；该 workflow 作为外部站点回归保护保留。
+
 ## 6. 正文存储
 
 ### 6.1 增量写入 [已实现]

@@ -296,6 +296,9 @@ export const AUTOMATION_IDS = {
     splitter: 'diagnostics.splitter',
   },
   settings: {
+    tlsCompatibility: {
+      dismiss: 'settings.tls-compatibility.dismiss',
+    },
     section: {
       proxy: 'settings.section.proxy',
       appContainers: 'settings.section.app-containers',
