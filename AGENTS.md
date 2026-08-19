@@ -2,6 +2,7 @@
 
 ## 实现原则
 
+- **禁止 Agent 擅自停下**：只要用户任务尚未完整实现并验证，且仍有可执行步骤、后台命令、待确认结果或可自行排除的阻塞，就不得发送完成答复、放弃任务、把续作留给用户或等待用户再次催促。命令转入后台或按工具协议等待系统通知时，不得把等待表述为任务结束；通知到达后必须主动读取结果并继续执行。只有任务已完整完成、用户明确要求暂停/停止，或已穷尽所有可行路径且确实需要用户提供无法自行取得的信息、凭据或人工操作时才允许停下；此时必须明确说明阻塞事实与唯一所需动作。
 - Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
 - Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
 - Grow the system in layers. Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
