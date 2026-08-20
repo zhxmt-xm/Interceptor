@@ -247,7 +247,7 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-clear-facets"></a>
 ## `capture.clear-facets`
 
-**状态**：planned
+**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -272,6 +272,35 @@ Clear是空rows的同步边界：列表、selection与facet snapshot在同一次
 - Retrospective Red：最终workflow源码在`89d8dda`仅回植后续公开facet automation ID、`startRecording` UI helper与旧driver Close定位后，原始DOM为`rows=0 / inspector=0 / methodGroupCount=1 / getOptions=1`。
 - Green：当前同一workflow`1/1`通过，Clear后的同一原始DOM采样为`0/0/0/0`；owning hook/store unit `23/23`通过。
 - 销毁：Main PID `20116`、Core PID `35120`均退出，`gracefulDestroyVerified=true`，8888释放且系统代理恢复原值。
+
+<a id="capture-breakpoint-menu-hierarchy"></a>
+## `capture.breakpoint-menu-hierarchy`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与loopback origin，启动真实Electron并通过真实UI开始Recording。
+2. 经8888发送一条测试自产GET，等待动态Capture行出现，并从公开`capture.request-row.<exchangeId>`提取exchangeId。
+3. 在该行触发真实contextmenu，等待`capture.create-rule.<exchangeId>.block`与`.breakpoint`可见；读取两个语义label的bounding box，要求文字左缘差小于1px。
+4. Hover Breakpoint，确认`capture.create-breakpoint.<exchangeId>.endpoint`可见；按Escape关闭菜单。
+5. 保存Block/Breakpoint几何、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
+
+### 预期效果
+
+Breakpoint submenu与Block同属Control group，icon、语义label与hint使用同一行布局；Breakpoint不因额外submenu DOM包装而右移，二级菜单仍可通过hover展开。
+
+### TDD证据要求
+
+- 最终workflow源码必须在`89d8dda`取得retrospective Red，且失败来自Block/Breakpoint语义label左缘差大于1px；selector、构建、listener、授权或fixture失败不算Red。
+- 当前提交运行同一workflow必须Green，并完成二级菜单、trace/evidence、Main/Core销毁、8888释放与系统代理恢复。
+
+### TDD证据
+
+- Retrospective Red：最终workflow源码在`89d8dda`仅回植`startRecording`与旧driver Close定位后，Block/Breakpoint语义label左缘差为`7.43621826171875px`。
+- Green：当前同一workflow`1/1`通过，两个label左缘均为`815.9757690429688px`、差值0；hover后公开endpoint submenu项可见。
+- 销毁：Red/Green Main/Core PID分别为`21056/39980`与`21380/20632`，两边`gracefulDestroyVerified=true`，8888释放且系统代理恢复原值。
 
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`

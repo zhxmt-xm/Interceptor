@@ -77,6 +77,7 @@ apps/desktop/tests/e2e-workflow-tests/
 ├─ fixtures/
 ├─ workflows/
 │  ├─ capture/
+│  │  ├─ breakpoint-menu-hierarchy.workflow.ts
 │  │  ├─ clear-facets.workflow.ts
 │  │  ├─ detail-body-fill.workflow.ts
 │  │  ├─ facet-stable-ordering.workflow.ts
@@ -161,6 +162,7 @@ diagnostics.row.<traceKey>
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
 | `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI | passed |
 | `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI | passed |
+| `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |

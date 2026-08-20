@@ -218,10 +218,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint context-menu hierarchy</td>
-  <td><ul><li>让 Breakpoint 与 Block 同属 Control group，并对齐 icon、文字与 hint。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-15.png" alt="Context menu" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ➖ N/A</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ Red/Green 未完成</li><li><strong>Design/Parity:</strong> ✅ 根 4/4、二级 8/8</li></ul></td>
+  <td><ul><li>让 Breakpoint 与 Block 同属 Control group，并对齐 icon、文字与 hint。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-15.png" alt="Context menu" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ➖ N/A</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 89d8dda几何Red、当前1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ 根4/4、二级8/8</li></ul></td>
   <td><ul><li>两种菜单项 DOM 层级不同，文本左缘相差 <code>7.4375px</code>。</li></ul></td>
   <td><ul><li>将 Breakpoint submenu 放回 Control group，以自有语义 label 组合内容。</li></ul></td>
 </tr>

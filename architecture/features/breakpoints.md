@@ -229,6 +229,8 @@ interface BreakpointOutcome {
 起点；submenu 箭头与 hover 展开仍由 Ant Menu 原生管理。不能把 Breakpoint 作为 group 外的顶层 item，
 否则 Ant 的 group child 与 submenu title 两套 DOM 会产生不同水平缩进。
 
+2026-08-20 TDD证据：专用`capture.breakpoint-menu-hierarchy`最终源码在`89d8dda`仅回植真实Recording与driver helper后，Block/Breakpoint语义label左缘差`7.43621826171875px`取得精确Red；当前同一workflow差值为0并成功hover打开endpoint二级项。Red/Green Main/Core PID分别为`21056/39980`与`21380/20632`，两边`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只验收DOM层级与对齐，不代替独立submenu lifecycle验收。
+
 队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
 浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
 溢出计数经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 侧记 `breakpoint.queue-full`。
