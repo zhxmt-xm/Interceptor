@@ -1,0 +1,207 @@
+.importOverlay {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
+}
+
+.importDialog {
+  width: 540px;
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.importHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.importHeader h2 {
+  position: relative;
+  top: -2px;
+  flex: 1;
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 640;
+}
+
+.importIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.importIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.importContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.importContent p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.importContent b {
+  color: var(--text);
+}
+
+.importFile {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.importFileName {
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importSummary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.importStat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.importStat strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.importStat[data-emphasis='enabled'] strong {
+  color: var(--yellow);
+}
+
+.importStat[data-emphasis='skipped'] strong {
+  color: var(--red);
+}
+
+.importSkipped {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--red) 25%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--red) 6%, transparent);
+}
+
+.importSkippedHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--red) 18%, var(--border));
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.importSkippedHead svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--red);
+}
+
+.importSkippedList {
+  max-height: 132px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.importSkippedList li {
+  display: grid;
+  padding: 6px 12px;
+  gap: 2px;
+}
+
+.importSkippedPath {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importSkippedReason {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 13.5px;
+}
+
+.importWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--yellow) 8%, transparent);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.importWarning svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--yellow);
+}
+
+.importFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.importFooter > button:last-child {
+  width: 172px;
+}

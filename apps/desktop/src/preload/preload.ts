@@ -226,6 +226,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionExport, nodes, title),
   exportRules: (nodes, title) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesExport, nodes, title),
+  readImportFile: (title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.importFileRead, title),
   sendComposerRequest: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.composerSend, request),
   listBreakpoints: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointList),

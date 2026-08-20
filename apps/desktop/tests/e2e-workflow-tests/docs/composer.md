@@ -207,3 +207,32 @@ History只保存真实Composer发送；加载恢复完整请求；New重置编�
 ### 预期效果
 
 Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度可用；resize只影响布局，不影响业务状态或系统代理。
+
+<a id="composer-collection-import"></a>
+## `composer.collection.import`
+
+**状态**：planned
+**策略**：native-ui
+
+### Steps
+
+1. 创建独立profile/evidence，启动trace与新Electron，等待`app.root`、真实Core PID与`127.0.0.1:8888`；点击`capture.readiness.cancel`并确认系统代理未被修改。
+2. 进入Composer，确认Collection为空。通过UI新建两条request并分别填写method、URL与至少一行query/header；再新建一层目录并把第二条拖入。等待600ms节流写入完成。
+3. 点击`composer.collection.export`，确认`composer.export.busy`遮罩出现且不可关闭；在真实Save Dialog中用键鼠输入本workflow临时目录下的`.json`路径并确认，等待遮罩消失。测试侧只读解析该文件，断言顶层为`{ nodes }`、目录层级与UI一致、请求字段完整，并记录文件内全部节点与字段行`id`。该文件是本workflow用产品UI真实产生的唯一导入输入。
+4. 点击`composer.collection.import`打开真实Open Dialog，确认`composer.import.busy`遮罩存在且底层按钮、Escape、Tab均不可操作；用键鼠选择同一文件并确认。等待`composer.import.dialog`出现，断言其报告的request数与folder数与文件一致。
+5. 点击`composer.import.cancel`，直接读取DOM确认`composer.collection.request.*`与`composer.collection.folder.*`数量、顺序与当前打开文档全部未变。
+6. 再次导入并点击`composer.import.confirm-apply`；确认写入期间Dialog不可关闭。等待Dialog关闭和revision递增，断言：request总数翻倍；新增节点与字段行`id`均与文件内`id`没有交集；目录层级与文件一致；新增内容整体排在原有节点之后；当前打开的文档与`targetFolderId`不被导入改变。
+7. 打开一条新导入的request，确认method、URL、query/header行与步骤2构造的内容逐字段一致，导入保留的是请求内容而非仅节点名。
+8. 切出Composer再切回，确认Core回载后的树与新增节点身份一致。
+9. 全程只使用公共`data-automation-id`、DOM状态属性与测试自产数据判定，不依赖任一语言的显示文案。
+10. 保存trace、截图、导入前后的树快照JSON、日志与metadata；点击`shell.window.close`，验证Main/Core/Worker退出、8888释放并删除profile与临时文件。
+
+### 预期效果
+
+Collection导入与Rules同构：纯新增、节点与字段行`id`全部重新生成、保持文件内层级并追加到根末尾，不覆盖或合并任何本地节点。请求内容逐字段还原，其中`ComposerFieldRow.enabled`作为请求内容原样保留。确认Dialog在写入之前报告计数，取消后集合零变化，确认后经`collection.replace`原子持久化；导入不改变当前打开文档与新建落点。文件读写与确认写入期间均有不可关闭遮罩。因为请求只在用户点Send时执行，导入不产生任何自动网络行为。
+
+### TDD证据要求
+
+- 实现前提交运行同一workflow，必须精确失败于`composer.collection.import`入口不存在。
+- 当前提交全部Green，涵盖取消零变化、id不复用、层级保持、字段还原、打开文档不受影响与Core回载，并完成trace/evidence与销毁验证。
+- 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。

@@ -259,3 +259,116 @@ export function fitsDepth<TLeaf extends TreeLeaf>(
 ): boolean {
   return parentDepth + subtreeHeight(node) <= MAX_FOLDER_DEPTH;
 }
+
+/** 被跳过的导入节点：`path` 是用户在文件里能对应上的位置，`reason` 交给 Renderer 翻译。 */
+export interface TreeImportSkip {
+  readonly path: string;
+  readonly reason: string;
+}
+
+/** 领域层对单个叶子的校验结果；失败原因由各 feature 自己定义。 */
+export type TreeLeafParseResult<TLeaf extends TreeLeaf> =
+  | { readonly ok: true; readonly leaf: TLeaf }
+  | { readonly ok: false; readonly reason: string };
+
+/** 导入分析结果。文件级失败只有 `ok: false`，因为此时一个节点都定位不到。 */
+export type TreeImportResult<TLeaf extends TreeLeaf> =
+  | {
+      readonly ok: true;
+      readonly nodes: readonly TreeNode<TLeaf>[];
+      readonly folderCount: number;
+      readonly leafCount: number;
+      readonly enabledCount: number;
+      readonly skipped: readonly TreeImportSkip[];
+    }
+  | { readonly ok: false; readonly reason: string };
+
+/** 名称缺失时退化为位置标签，否则用户无法把失败项对应回文件。 */
+function importLabel(name: unknown, index: number): string {
+  return typeof name === 'string' && name.length > 0 ? name : `#${index + 1}`;
+}
+
+function joinImportPath(parentPath: string, label: string): string {
+  return parentPath ? `${parentPath} / ${label}` : label;
+}
+
+/**
+ * 解析导入文件里的目录树：结构遍历在此统一处理，字段校验交给 `parseLeaf`。
+ *
+ * 非法节点逐项跳过并记录位置与原因，合法兄弟节点照常导入；目录自身非法或深度超限时
+ * 连同子树一起跳过，不把子节点静默提升一层。所有 `id` 重新生成，同一文件可重复导入。
+ */
+export function parseImportedTree<TLeaf extends TreeLeaf>(
+  value: unknown,
+  parseLeaf: (raw: Record<string, unknown>) => TreeLeafParseResult<TLeaf>,
+  createId: () => string,
+): TreeImportResult<TLeaf> {
+  if (typeof value !== 'object' || value === null) {
+    return { ok: false, reason: 'not-an-object' };
+  }
+  const rawNodes = (value as { nodes?: unknown }).nodes;
+  if (!Array.isArray(rawNodes)) {
+    return { ok: false, reason: 'missing-nodes' };
+  }
+
+  const skipped: TreeImportSkip[] = [];
+  let folderCount = 0;
+  let leafCount = 0;
+  let enabledCount = 0;
+
+  const walk = (
+    entries: readonly unknown[],
+    depth: number,
+    parentPath: string,
+  ): TreeNode<TLeaf>[] => {
+    const accepted: TreeNode<TLeaf>[] = [];
+    entries.forEach((entry, index) => {
+      if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+        skipped.push({ path: joinImportPath(parentPath, `#${index + 1}`), reason: 'not-an-object' });
+        return;
+      }
+      const raw = entry as Record<string, unknown>;
+      const label = importLabel(raw.name, index);
+      const path = joinImportPath(parentPath, label);
+
+      if (typeof raw.kind !== 'string') {
+        skipped.push({ path, reason: 'unknown-kind' });
+        return;
+      }
+      if (typeof raw.name !== 'string' || raw.name.length === 0) {
+        skipped.push({ path, reason: 'missing-name' });
+        return;
+      }
+      if (depth >= MAX_FOLDER_DEPTH && raw.kind === 'folder') {
+        skipped.push({ path, reason: 'exceeds-depth' });
+        return;
+      }
+
+      if (raw.kind === 'folder') {
+        if (!Array.isArray(raw.children)) {
+          skipped.push({ path, reason: 'invalid-children' });
+          return;
+        }
+        const children = walk(raw.children, depth + 1, path);
+        folderCount += 1;
+        accepted.push({ kind: 'folder', id: createId(), name: raw.name, children });
+        return;
+      }
+
+      const parsed = parseLeaf(raw);
+      if (!parsed.ok) {
+        skipped.push({ path, reason: parsed.reason });
+        return;
+      }
+      leafCount += 1;
+      if ((parsed.leaf as { enabled?: unknown }).enabled === true) {
+        enabledCount += 1;
+      }
+      accepted.push({ ...parsed.leaf, id: createId() });
+    });
+    return accepted;
+  };
+
+  const nodes = walk(rawNodes, 0, '');
+  return { ok: true, nodes, folderCount, leafCount, enabledCount, skipped };
+}

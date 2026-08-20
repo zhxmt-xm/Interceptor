@@ -14,6 +14,9 @@ export const DIAGNOSTIC_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
  */
 export const BREAKPOINT_BODY_FILE_PREVIEW_BYTES = 1024 * 1024;
 
+/** 导入文件读取上限：规则树与集合都是几十到几百条，超过它的输入必定不是本产品导出的。 */
+export const IMPORT_FILE_MAX_BYTES = 8 * 1024 * 1024;
+
 /** 上游探活周期；回环 TCP 单次约 0.1ms，每秒一次开销可忽略。 */
 export const UPSTREAM_PROBE_INTERVAL_MS = 1000;
 

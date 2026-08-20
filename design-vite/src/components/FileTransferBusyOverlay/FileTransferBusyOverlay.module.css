@@ -1,0 +1,51 @@
+.fileBusyOverlay {
+  position: absolute;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
+  cursor: wait;
+}
+
+.fileBusyPanel {
+  display: flex;
+  width: 360px;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.fileBusyPanel > svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  animation: fileBusySpin 0.8s linear infinite;
+  color: var(--accent);
+}
+
+.fileBusyPanel > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fileBusyPanel strong {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 620;
+}
+
+.fileBusyPanel span {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+@keyframes fileBusySpin {
+  to { transform: rotate(360deg); }
+}

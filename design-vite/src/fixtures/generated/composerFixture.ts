@@ -154,6 +154,37 @@ export const composerFixture: FixtureNode = {
                   "tag": "button",
                   "attributes": {
                     "class": "ib sm",
+                    "data-collection-import": "",
+                    "aria-label": "Import collection",
+                    "title": "Import collection"
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "svg",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "use",
+                          "attributes": {
+                            "href": "#i-upload"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "value": "\n            "
+                },
+                {
+                  "type": "element",
+                  "tag": "button",
+                  "attributes": {
+                    "class": "ib sm",
                     "aria-label": "Export collection",
                     "title": "Export collection"
                   },

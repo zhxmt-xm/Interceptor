@@ -119,6 +119,9 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
   shots.push({ feature: 'rules', theme, variant: 'tree-root-menu', state: { ...base, ctxmenu: 'rules-root' } });
+  shots.push({ feature: 'rules', theme, variant: 'import-confirm', state: { ...base, overlay: 'rules-import' } });
+  shots.push({ feature: 'rules', theme, variant: 'import-loading', state: { ...base, overlay: 'rules-import-loading' } });
+  shots.push({ feature: 'rules', theme, variant: 'export-loading', state: { ...base, overlay: 'rules-export-loading' } });
   shots.push({ feature: 'rules', theme, variant: 'tree-folder-actions', state: { ...base }, hover: '.rgrp[data-rgrp="staging"] > .rgrp-h' });
   shots.push({ feature: 'rules', theme, variant: 'tree-collapsed', state: { ...base, sidebar: 'collapsed' } });
   shots.push({ feature: 'rules', theme, variant: 'font-current', state: { ...base, ruleTypography: 'current' } });
@@ -126,6 +129,9 @@ for (const theme of ['light', 'dark']) {
 // composer request/response tabs and send phases
 for (const theme of ['light', 'dark']) {
   const base = { view: 'composer', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+  shots.push({ feature: 'composer', theme, variant: 'import-confirm', state: { ...base, overlay: 'composer-import' } });
+  shots.push({ feature: 'composer', theme, variant: 'import-loading', state: { ...base, overlay: 'composer-import-loading' } });
+  shots.push({ feature: 'composer', theme, variant: 'export-loading', state: { ...base, overlay: 'composer-export-loading' } });
   shots.push({ feature: 'composer', theme, variant: 'request-query', state: { ...base, composerTab: 'query' } });
   shots.push({ feature: 'composer', theme, variant: 'request-body', state: { ...base, composerTab: 'body' } });
   shots.push({ feature: 'composer', theme, variant: 'request-body-form', state: { ...base, composerTab: 'body', bodyType: 'form' } });

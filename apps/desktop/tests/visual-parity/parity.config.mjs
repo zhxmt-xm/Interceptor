@@ -38,6 +38,65 @@ const TLS_COMPATIBILITY_EVENTS = [
   },
 ];
 
+const RULES_IMPORT_TARGETS = [
+  {
+    name: 'Import header',
+    designSelector: '.importHeader',
+    appSelector: '[data-automation-id="rules.import.dialog"] > header',
+  },
+  {
+    name: 'Import file name',
+    designSelector: '.importFileName',
+    appSelector: '[data-automation-id="rules.import.file-name"]',
+  },
+  ...[
+    ['Rules count', 1, 'rules.import.rule-count'],
+    ['Folders count', 2, 'rules.import.folder-count'],
+    ['Enabled count', 3, 'rules.import.enabled-count'],
+    ['Skipped count', 4, 'rules.import.skipped-count'],
+  ].map(([name, index, automationId]) => ({
+    name,
+    designSelector: `.importStat:nth-child(${index}) strong`,
+    appSelector: `[data-automation-id="${automationId}"]`,
+  })),
+  {
+    name: 'Skipped list',
+    designSelector: '.importSkippedList',
+    appSelector: '[data-automation-id="rules.import.skipped-list"]',
+  },
+  'Cancel',
+  'Import 6 rules',
+];
+
+const COMPOSER_IMPORT_TARGETS = [
+  {
+    name: 'Import header',
+    designSelector: '.collectionImportHeader',
+    appSelector: '[data-automation-id="composer.import.dialog"] > header',
+  },
+  {
+    name: 'Import file name',
+    designSelector: '.collectionImportFileName',
+    appSelector: '[data-automation-id="composer.import.file-name"]',
+  },
+  ...[
+    ['Requests count', 1, 'composer.import.request-count'],
+    ['Folders count', 2, 'composer.import.folder-count'],
+    ['Skipped count', 3, 'composer.import.skipped-count'],
+  ].map(([name, index, automationId]) => ({
+    name,
+    designSelector: `.collectionImportStat:nth-child(${index}) strong`,
+    appSelector: `[data-automation-id="${automationId}"]`,
+  })),
+  {
+    name: 'Skipped list',
+    designSelector: '.collectionImportSkippedList',
+    appSelector: '[data-automation-id="composer.import.skipped-list"]',
+  },
+  'Cancel',
+  'Import 9 requests',
+];
+
 const INITIAL_VIEWS = [
   {
     id: 'capture',
@@ -1037,6 +1096,45 @@ export const views = [
       'Add action',
     ],
   },
+  ...['light', 'dark'].flatMap((theme) => [
+    {
+      id: `rules-import-confirm-${theme}`,
+      theme,
+      rendererNav: 'Rules & Map',
+      designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-import' },
+      designShot: `${theme}/rules/import-confirm.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import rules' }],
+      targets: RULES_IMPORT_TARGETS,
+    },
+    {
+      id: `rules-import-loading-${theme}`,
+      theme,
+      rendererNav: 'Rules & Map',
+      fileOperationDelayMs: 5_000,
+      designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-import-loading' },
+      designShot: `${theme}/rules/import-loading.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import rules' }],
+      targets: [{
+        name: 'File busy panel',
+        designSelector: '.fileBusyPanel',
+        appSelector: '[data-automation-id="rules.import.busy"] > div',
+      }],
+    },
+    {
+      id: `rules-export-loading-${theme}`,
+      theme,
+      rendererNav: 'Rules & Map',
+      fileOperationDelayMs: 5_000,
+      designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-export-loading' },
+      designShot: `${theme}/rules/export-loading.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Export rules' }],
+      targets: [{
+        name: 'File busy panel',
+        designSelector: '.fileBusyPanel',
+        appSelector: '[data-automation-id="rules.export.busy"] > div',
+      }],
+    },
+  ]),
   {
     id: 'rules-add-action',
     theme: 'light',
@@ -1143,6 +1241,45 @@ export const views = [
       '201 Created',
     ],
   },
+  ...['light', 'dark'].flatMap((theme) => [
+    {
+      id: `composer-import-confirm-${theme}`,
+      theme,
+      rendererNav: 'Composer',
+      designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-import' },
+      designShot: `${theme}/composer/import-confirm.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import collection' }],
+      targets: COMPOSER_IMPORT_TARGETS,
+    },
+    {
+      id: `composer-import-loading-${theme}`,
+      theme,
+      rendererNav: 'Composer',
+      fileOperationDelayMs: 5_000,
+      designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-import-loading' },
+      designShot: `${theme}/composer/import-loading.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import collection' }],
+      targets: [{
+        name: 'File busy panel',
+        designSelector: '.fileBusyPanel',
+        appSelector: '[data-automation-id="composer.import.busy"] > div',
+      }],
+    },
+    {
+      id: `composer-export-loading-${theme}`,
+      theme,
+      rendererNav: 'Composer',
+      fileOperationDelayMs: 5_000,
+      designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-export-loading' },
+      designShot: `${theme}/composer/export-loading.png`,
+      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Export collection' }],
+      targets: [{
+        name: 'File busy panel',
+        designSelector: '.fileBusyPanel',
+        appSelector: '[data-automation-id="composer.export.busy"] > div',
+      }],
+    },
+  ]),
   {
     id: 'composer-response-headers',
     theme: 'light',

@@ -15,6 +15,7 @@
 - **所有业务代码改动都走完整 TDD**：修改业务代码前必须先判断 test impact，确认预期行为/契约是否变化、现有测试是否已经完整表达该行为。若需要新增或修改测试，先完成最小 unit / integration test 并确认因预期缺口失败（Red），再写业务代码；若是行为不变的内部重构且现有测试已经充分覆盖，不机械改测试，先运行最聚焦的现有测试确认基线 Green，再写业务代码。完成后必须复跑同一组测试确认 Green；禁止先写实现、再补测试为既有结果背书。
 - **Flow 变更阶段门禁**：任何业务代码改动只要影响用户 flow，首先在 owning `architecture/features/*.md` 与 `apps/desktop/tests/e2e-workflow-tests/docs/*.md` 落地契约、完整 flow、预期效果和证据要求；随后分别判断 unit / integration 与 E2E 的 test impact。需要改测试时，按 unit / integration Red → E2E Red 的顺序完成；现有测试已充分覆盖时，按同一顺序确认基线 Green。只有这些前置测试事实建立后才允许修改业务代码。实现后按 unit / integration Green → E2E Green 的顺序验证；只有 E2E 销毁与证据验证也完成后，才能更新 Inventory、Handover 与完成状态。
 - **真实 E2E 定义（不得替代）**：本仓所称 E2E 仅指 `apps/desktop/tests/e2e-workflow-tests/workflows/*.workflow.ts` 启动真实 Electron，并经过真实 Renderer → Preload → Main → Core UtilityProcess → listener / storage / origin 的 workflow。`design-vite` Playwright、visual parity（fake Preload）、Renderer component/store test、Proxy Core integration、packaged smoke 都不是该产品 flow 的 E2E，不能作为 E2E Red/Green 或销毁证据的替代品。
+- **E2E 零 seed 与真实交互**：workflow 的每一步都必须是真实用户操作。产品内弹窗用真实点击，Open/Save Dialog、UAC 等原生 UI 用真实键鼠操作驱动，不得改写其返回值。业务输入不得由测试直接构造：导入类流程的输入文件必须由同一 workflow 先经产品 UI 真实产生（先 Export 再 Import）。产品路径无法产生的输入，例如结构非法的文件、越界层级或损坏字节，不属于 E2E 范畴，下沉到 owning 模块的 unit 测试；不得为制造这类场景在测试里写文件、注入状态或调用产品后门。
 - **E2E TDD 完成判据**：影响用户 flow 时，必须存在可执行 `.workflow.ts`，并在业务实现前于目标测试中观察到由预期行为缺口导致的失败（Red），不是 selector、fixture、UAC、构建或环境失败；实现后同一 workflow 必须 Green，并验证 trace/evidence、Main/Core/Worker 销毁、8888 释放及系统副作用恢复。若是补历史缺口，必须在临时 detached worktree 对修复前提交运行同一测试取得 retrospective Red，再在当前提交取得 Green；禁止用故障注入冒充历史 Red。
 - **E2E 与语言无关**：真实 Electron workflow 保持应用当前语言，不为测试自动切换语言。业务交互和断言只使用公共 `data-automation-id`、协议值、DOM 状态属性或测试自产数据；禁止用英文/中文显示文案、翻译后的 `aria-label` 或 CSS class 定位交互或判断 Green。翻译文本本身只允许在独立 i18n workflow 中验证。
 - **E2E workflow 双语注释**：可执行 `.workflow.ts` 必须在 setup / arrange、用户操作、业务断言、evidence / teardown 等逻辑分块前写简短的中英文成对注释，说明该分块验证什么、为何存在，方便不同语言的 reader 理解。注释用于解释步骤意图，不逐行复述代码；中英文必须表达同一语义。
@@ -46,8 +47,15 @@
 
 ## 语言
 
-- 始终使用**中文**进行交流、说明和分析（含思路讲解、方案权衡、代码评审与结论）。
-- 代码、标识符、命令、文件路径、API 名称等保持原文，不做翻译。
+- **除代码本身外，一切产出默认使用中文**，不因工具字段名、模板或上游提示是英文就切换语言。覆盖范围包括但不限于：
+	- 对话正文、结论、澄清问题与选项；
+	- 思路讲解、推理与思考过程、方案权衡、取舍理由；
+	- 回合标题、阶段性进度摘要与总结；
+	- 计划、待办列表与任务状态说明；
+	- 工具调用中的说明性参数，例如 `explanation`、`goal`、`description`、子代理 prompt 与测试注解描述；
+	- 代码评审意见、错误诊断、验证结论与证据说明。
+- 保持原文、不做翻译的只有：代码、标识符、命令、文件路径、API 名称、automation ID、协议值、配置键、以及被引用的第三方日志与报错原文。
+- 中英文混排时只保留必要的技术原词，其余表述必须是完整中文句子；不得用中英夹杂的短语代替中文说明。
 
 ## 命名（全仓适用：Main / Preload / Renderer / Proxy Core / packages）
 

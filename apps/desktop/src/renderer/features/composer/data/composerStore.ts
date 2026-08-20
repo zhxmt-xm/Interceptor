@@ -43,6 +43,8 @@ const INITIAL_RUNTIME: DocumentRuntime = {
 interface ComposerStore {
   /** 持久化的集合树；编辑即写回，由 useCollection 节流保存。 */
   nodes: CollectionNode[];
+  /** 最近一次从 Core 载入或成功写入的同一份快照，用引用比较判断是否需要保存。 */
+  savedNodes: CollectionNode[];
   /** 集合的乐观并发版本；replace 成功后由 Core 回传更新。 */
   revision: number;
   /** 集合是否已从 Core 载入，未载入时不触发保存。 */
@@ -71,6 +73,8 @@ interface ComposerStore {
   loadCollection(nodes: CollectionNode[], revision: number): void;
   /** 记录一次成功保存后的新版本。 */
   markSaved(revision: number): void;
+  /** 导入写入 Core 成功后，原子更新集合与 revision。 */
+  importSucceeded(nodes: readonly CollectionNode[], revision: number): void;
 
   /** 就地更新一条请求。 */
   updateRequest(request: CollectionRequest): void;
@@ -129,6 +133,7 @@ function createParentId(state: ComposerStore): string | null {
 
 export const useComposerStore = create<ComposerStore>((set) => ({
   nodes: [],
+  savedNodes: [],
   revision: 0,
   loaded: false,
   expandedFolders: [],
@@ -144,20 +149,22 @@ export const useComposerStore = create<ComposerStore>((set) => ({
 
   loadCollection: (nodes, revision) =>
     set((state) => {
-      const alive = new Set(collectLeafIds(nodes));
+      const nextNodes = [...nodes];
+      const alive = new Set(collectLeafIds(nextNodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
       const runtimes = Object.fromEntries(
         Object.entries(state.runtimes).filter(([requestId]) => alive.has(requestId)),
       );
       return {
-        nodes,
+        nodes: nextNodes,
+        savedNodes: nextNodes,
         revision,
         loaded: true,
         runtimes,
         // 首次载入展开全部顶层目录，让集合内容直接可见。
         expandedFolders: state.loaded
           ? state.expandedFolders
-          : nodes.filter((node) => node.kind === 'folder').map((node) => node.id),
+          : nextNodes.filter((node) => node.kind === 'folder').map((node) => node.id),
         openRequestIds,
         activeRequestId:
           state.activeRequestId && alive.has(state.activeRequestId)
@@ -166,7 +173,15 @@ export const useComposerStore = create<ComposerStore>((set) => ({
       };
     }),
 
-  markSaved: (revision) => set({ revision }),
+  markSaved: (revision) => set((state) => ({
+    revision,
+    savedNodes: state.nodes,
+  })),
+
+  importSucceeded: (nodes, revision) => {
+    const nextNodes = [...nodes];
+    set({ nodes: nextNodes, savedNodes: nextNodes, revision });
+  },
 
   updateRequest: (request) =>
     set((state) => ({ nodes: replaceLeaf(state.nodes, request) })),

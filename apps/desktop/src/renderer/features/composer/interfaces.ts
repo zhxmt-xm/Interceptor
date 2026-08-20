@@ -6,6 +6,7 @@ import type {
   ComposerFieldRow,
   ComposerProtocol,
   ComposerTiming,
+  TreeImportSkip,
 } from '@interceptor/core-protocol';
 
 import type { ComposerResponse } from '../../../shared/desktop-api';
@@ -18,6 +19,18 @@ export type RequestTab = 'query' | 'headers' | 'body' | 'auth';
 
 /** 响应区的四个页签。 */
 export type ResponseTab = 'body' | 'headers' | 'cookies' | 'timing';
+
+/** 导入确认所需的完整预览；节点级失败逐项放在 `skipped`。 */
+export type CollectionImportPreview =
+  | {
+      ok: true;
+      fileName: string;
+      nodes: readonly CollectionNode[];
+      folderCount: number;
+      leafCount: number;
+      skipped: readonly TreeImportSkip[];
+    }
+  | { ok: false; reason: string };
 
 /** 一次已完成发送的重放记录；只存在内存，与 Collection 互不写入。 */
 export interface HistoryEntry {

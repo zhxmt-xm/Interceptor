@@ -1,4 +1,4 @@
-import type { TreeInsertPosition } from '@interceptor/core-protocol';
+import type { TreeImportSkip, TreeInsertPosition } from '@interceptor/core-protocol';
 
 import type {
   RuleAction,
@@ -27,6 +27,23 @@ export interface RuleIssue {
   /** 条件/动作序号（从 1 起），供文案插值。 */
   index?: number;
 }
+
+/**
+ * 导入预览：确认 Dialog 展示的全部依据，写入树之前产生。
+ *
+ * 失败只有文件级一种，此时一个节点都定位不到；节点级失败在 `skipped` 里逐项列出。
+ */
+export type RuleImportPreview =
+  | {
+      ok: true;
+      fileName: string;
+      nodes: readonly RuleNode[];
+      folderCount: number;
+      leafCount: number;
+      enabledCount: number;
+      skipped: readonly TreeImportSkip[];
+    }
+  | { ok: false; reason: string };
 
 /**
  * Rules workspace 视图状态：只持有可编辑的规则树草稿（revision + nodes）、命中计数与
@@ -73,6 +90,8 @@ export interface RulesState {
 
   addRule(name?: string, parentId?: string | null): void;
   addRuleDraft(rule: RuleDefinition): void;
+  /** 导入写入 Core 成功后，原子更新草稿、已应用快照与 revision。 */
+  importSucceeded(nodes: readonly RuleNode[], revision: number): void;
   addFolder(name: string, parentId?: string | null): void;
   /** 删除任意节点；目录连同其子树一起删除。 */
   removeNode(id: string): void;

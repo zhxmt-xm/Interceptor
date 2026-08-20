@@ -460,6 +460,94 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 **尚未覆盖**：非空但无法编译的 regex（`safeRegExp` 退化为恒不匹配，但 UI 无提示）、不可解析的 JSON body、
 不存在的 Map Local 文件仍会静默失效，见 §11 待做。
 
+### 9.3 导入与导出 [代码完成 · 待 E2E]
+
+**文件格式**：`{ "nodes": RuleNode[] }`，UTF-8 JSON，两空格缩进。没有版本字段——文件内容就是 `RuleNode` 树本身，与 Core 存的结构同构。
+
+**导出**（已实现）：`rules:export` 由 Main 弹 `showSaveDialog` 并写盘。规则数据本来就在 Renderer 手上，这条路径不经过 Core。
+
+**导入语义：纯新增，不做冲突检测。**
+
+导入把文件里的规则**整体追加**到当前树末尾，不比较、不覆盖、不合并。合并是用户用既有树操作（拖拽、重命名、删除）完成的事，产品不为导入再造一套冲突消解 UI。
+
+| 项目 | 契约 |
+| --- | --- |
+| 节点 `id` | **全部重新生成**。文件里的 id 只是导出机器的本地身份，导入后不再有意义；复用它会让两台机器的树产生同 id 不同内容的节点 |
+| `enabled` | **沿用文件内的值**。规则的启用状态是内容的一部分，导入不篡改 |
+| `priority` | **重排到本地现有规则之后**。沿用文件内 priority 会与本地规则交错，执行顺序不可预期 |
+| 层级 | **保持文件内结构**，整体追加到根末尾。不套 `Imported` 目录——`MAX_FOLDER_DEPTH = 3`，套一层会让 3 层的文件溢出上限 |
+| 失败 | **部分导入**：合法节点照常导入，非法节点逐项跳过并报告原因与位置 |
+
+**为什么不按 id 或 name 检测冲突**：`renameNode` / `addRule` 都不做唯一性校验，产品允许同目录同名规则，name 不是唯一键；而 id 是本机生成的，跨机器分享时永不碰撞。两种键都无法支撑一个有意义的冲突列表。
+
+#### 失败分层
+
+导入文件是不可信外部输入。失败按**能否定位到具体节点**分成两层，这不是产品取舍而是物理限制——解析不出节点时无处可指。
+
+**文件级失败：整体失败，不进入确认 Dialog**
+
+| 情景 | 判定 |
+| --- | --- |
+| 选中的不是 `.json` 文件 | Main 校验扩展名 |
+| 文件超过 `IMPORT_FILE_MAX_BYTES` | Main 读取前检查大小 |
+| 文件不存在、无读取权限、被占用 | 读取抛错 |
+| 内容不是合法 UTF-8 或 JSON 解析失败 | `JSON.parse` 抛错 |
+| 顶层不是对象，或 `nodes` 不是数组 | 结构检查 |
+
+这些情况一个节点都解析不出来，没有"部分"可言。直接给失败提示，树不发生任何变化。
+
+**只接受 JSON**：配置本身就是 JSON，导入导出都固定这一种格式。系统对话框的扩展名过滤只影响默认显示，用户仍可手选任意文件，因此 Main 用 `isJsonImportPath` 做硬性校验；它取最后一段扩展名，因此 `payload.json.exe` 这类双扩展名文件同样被拒绝。
+
+**节点级失败：跳过该节点，其余继续导入**
+
+| 情景 | 处理 |
+| --- | --- |
+| 节点不是对象，或缺少 `kind` / `name` / `id` | 跳过该节点 |
+| `kind` 既不是 `folder` 也不是已知叶子类型 | 跳过该节点 |
+| `folder` 的 `children` 不是数组 | 跳过该目录及其子树 |
+| rule 的 `matchers` / `actions` 不是数组 | 跳过该规则 |
+| matcher / action 的 `type` 不在已知集合内 | 跳过该规则 |
+| matcher / action 字段类型不符（如 Map Local 的路径不是字符串） | 跳过该规则 |
+| 节点所在深度超过 `MAX_FOLDER_DEPTH` | 跳过该节点及其子树 |
+
+**子树语义**：目录本身合法、只有某个子节点非法时，目录照常导入，只跳过那个子节点。目录本身非法时整个子树一起跳过——否则子节点会被静默提升一层，无声改变用户的结构。深度超限同理选择跳过而非提升。
+
+**定位方式**：每个失败项报告**路径 + 名称 + 原因**，例如 `Ads / Block trackers · 未知的 action 类型`。路径由祖先目录名拼成，用户在文件里能直接对应。`name` 本身缺失或非字符串时退化为该层的序号（`第 3 项`），因为此时没有任何可读身份。
+
+**确认 Dialog 必须在写入之前。** 因为 `enabled` 沿用文件值，文件里已启用的规则一旦写入就立即参与匹配；导入后才提示等于用户没有选择余地。Dialog 给出即将导入的规则数、目录数、**其中已启用的条数**，以及**被跳过的项数与逐项原因**，并说明已启用规则会立即参与匹配、可能与现有规则重复命中（[执行路径](#5-评估流水线) 遍历全部启用规则，不是命中即止）。用户取消则树不发生任何变化；全部节点都失败时 Import 按钮禁用，只展示失败列表。
+
+#### 导入流程
+
+```mermaid
+flowchart TD
+    A["Renderer：点击 Import"] --> B["Main：showOpenDialog + 读文件"]
+    B -->|"取消"| Z["流程结束，树不变"]
+    B -->|"读取失败"| E["失败提示，不进入 Dialog"]
+    B -->|"{ fileName, content }"| C["Renderer：JSON.parse + 逐节点校验"]
+    C -->|"文件级失败"| E
+    C -->|"分析结果"| D["Renderer：确认 Dialog<br/>计数 · 跳过项 · enabled 警告"]
+    D -->|"取消"| Z
+    D -->|"确认"| F["Renderer：重新生成 id · 重排 priority · 追加到末尾"]
+    F --> G["已有的 rules.replace 持久化"]
+```
+
+| 步骤 | 归属 | 说明 |
+| --- | --- | --- |
+| 选文件与读盘 | Main | 只做 IO。Main 对 RuleSet 一贯是纯转发（`toCoreRuleNodes` 不校验），不应在此获得 matcher/action 的 schema 知识 |
+| 解析与校验 | Renderer | Rules 的完整性判断已经由 Renderer 的 `ruleIssues` 拥有，解析放在这里才不会把同一套 schema 知识劈成两份 |
+| 装配 | Renderer | 只有 Renderer 知道本地树的 `priority` 上界与节点身份 |
+| 持久化 | 既有 `rules.replace` | **不新增 add 命令**。RuleSet 的写入语义就是整棵树替换 + 乐观并发，增量命令会造出第二套写入与并发处理 |
+
+**Main 只新增一条纯 IO 命令**，不含任何业务语义，因此 Rules 与 Composer 共用同一条：
+
+```text
+readImportFile(title) → { fileName, content } | null
+```
+
+`null` 表示用户在系统对话框取消。命令**不接受路径参数**，路径只能由用户在原生对话框选择，因此不构成被禁止的任意文件路径 API；Main 侧需要文件大小上限，避免选中超大文件阻塞读取。
+
+**忙碌边界**：点击 Import / Export 后立即显示不可关闭遮罩，原生 Open / Save Dialog 存续期间及后续读写/解析期间保持。遮罩没有关闭入口并阻断鼠标、右键、Escape、Tab 与快捷键穿透；文件分析完成后才切换到确认 Dialog。确认写入期间 Dialog 自身禁用关闭、Cancel 与遮罩点击，直到 `rules.replace` 成功或失败。用户在原生文件 Dialog 中取消仍是合法出口，此时不读写数据。
+
 ## 10. Renderer 交互
 
 ```mermaid
@@ -479,7 +567,8 @@ action chips 与命中数。整行是拖拽源，目录中间区域表示移入�
 收起目录悬停 500ms 自动展开；搜索结果拍平成一层并禁用拖拽，避免用不完整列表重排整棵树。
 
 Rule Collection 顶栏提供搜索以及 New rule / New folder / Export 三个图标命令；根级右键菜单保留
-New rule / New folder / Import / Export 作为辅助入口。新建命令沿用当前 selection 计算落点，空树时
+New rule / New folder / Import / Export 作为辅助入口。Import 与 Export 对称出现在工具栏与根菜单。
+新建命令沿用当前 selection 计算落点，空树时
 Export 禁用。目录与规则各自的右键菜单只承载该节点语义。RuleSet 的 Save 固定在选中 rule 的 detail header，
 不在 Collection 顶栏重复提供。选中 rule 的 compile / validation 提示显示在 Rules statusbar，滚动区
 只保留可编辑的 Match 与 Actions 内容。

@@ -136,6 +136,16 @@ export const useRulesStore = create<RulesState>((set) => ({
       openRuleId: rule.id,
     })),
 
+  importSucceeded: (nodes, revision) =>
+    set({
+      nodes: cloneNodes(nodes),
+      applied: cloneNodes(nodes),
+      revision,
+      saving: false,
+      conflict: false,
+      error: null,
+    }),
+
   addFolder: (name, parentId) =>
     set((state) => {
       const folder = createFolder(name);

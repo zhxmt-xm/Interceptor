@@ -23,10 +23,12 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - 禁止通过 `ElectronApplication.evaluate()` 改写 dialog、TrustStore、系统代理或更新状态；
 - 禁止 DEV/E2E-only Renderer setter、隐藏 IPC、任意文件路径 API 或测试专用产品参数；
 - CA、Trust、MITM、系统代理、HAR/Archive/Diagnostics transfer 都必须由真实 App UI 发起；
-- UAC、macOS Authorization、Open/Save Dialog 等 App 外原生 UI由本机用户完成，测试不得传递或记录密码；
-- 测试侧只允许创建真实 loopback origin/client、输入文件、证据采集与进程清理。
+- UAC、macOS Authorization、Open/Save Dialog 等 App 外原生 UI 由真实键鼠操作完成，测试不得改写其返回值，也不得传递或记录密码；
+- **禁止 seed**：业务输入不得由测试直接构造。导入类 workflow 的输入文件必须由同一 workflow 先通过产品 UI 真实产生（例如先 Export 再 Import），不得由测试写一份文件冒充用户数据；
+- 产品路径无法产生的输入（结构非法的文件、越界层级、损坏字节）不属于 E2E 范畴，下沉到 owning 模块的 unit 测试；
+- 测试侧只允许创建真实 loopback origin/client、证据采集与进程清理。
 
-无法在零 Mock 条件下完成的 workflow 保持 `planned/blocked`，不得用低保真替代测试冒充通过。
+无法在零 Mock、零 seed 条件下完成的 workflow 保持 `planned/blocked`，不得用低保真替代测试冒充通过。
 
 ## 每条 Workflow 独立生命周期
 

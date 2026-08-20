@@ -128,6 +128,15 @@ export function toSafeBodyFileName(value: string): string {
   return basename || 'response-body.bin';
 }
 
+/**
+ * 导入只接受 JSON 文件。
+ *
+ * 系统对话框的扩展名过滤只影响默认显示，用户仍可手选任意文件，因此这里做硬性校验。
+ */
+export function isJsonImportPath(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === '.json';
+}
+
 /** Pass a trusted Renderer rule tree through to the Core rule engine. */
 export function toCoreRuleNodes(value: unknown): RuleNode[] {
   return value as RuleNode[];

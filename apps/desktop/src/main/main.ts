@@ -42,6 +42,7 @@ import {
 } from './client-app/client-app-helper';
 import {
   BREAKPOINT_BODY_FILE_PREVIEW_BYTES,
+  IMPORT_FILE_MAX_BYTES,
   UPSTREAM_PROBE_INTERVAL_MS,
   UPSTREAM_PROBE_TIMEOUT_MS,
 } from './constants';
@@ -64,6 +65,7 @@ import { GitHubReleaseUpdateService } from './updates/github-release-update-serv
 import {
   readErrorMessage,
   readErrorName,
+  isJsonImportPath,
   toBodyDecodeOptions,
   toBodyExportRequest,
   breakpointBodyMediaType,
@@ -1309,6 +1311,40 @@ class DesktopApplication {
           'utf8',
         );
         return true;
+      },
+    );
+
+    // 导入文件读取：Main 只做 IO，解析与校验归拥有该领域的 Renderer feature。
+    // 不接受路径参数，路径只能由用户在原生对话框选择。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.importFileRead,
+      async (event, title: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const selection = await dialog.showOpenDialog({
+          title: title as string,
+          filters: [{ name: 'JSON', extensions: ['json'] }],
+          properties: ['openFile'],
+        });
+        const filePath = selection.filePaths[0];
+        if (selection.canceled || !filePath) {
+          return null;
+        }
+        if (!isJsonImportPath(filePath)) {
+          return { ok: false, reason: 'not-json' };
+        }
+        try {
+          const stats = await stat(filePath);
+          if (stats.size > IMPORT_FILE_MAX_BYTES) {
+            return { ok: false, reason: 'too-large' };
+          }
+          return {
+            ok: true,
+            fileName: path.basename(filePath),
+            content: await readFile(filePath, 'utf8'),
+          };
+        } catch {
+          return { ok: false, reason: 'unreadable' };
+        }
       },
     );
 

@@ -1,12 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { COLLECTION_SAVE_DELAY_MS } from '../constants';
-import type { CollectionRequest } from '../interfaces';
+import type {
+  CollectionImportPreview,
+  CollectionNode,
+  CollectionRequest,
+} from '../interfaces';
 import {
   buildRequestBody,
   buildRequestHeaders,
   buildRequestUrl,
   defaultContentType,
+  parseImportedCollection,
 } from '../utils';
 
 import { useComposerStore } from './composerStore';
@@ -20,8 +25,8 @@ import { useComposerStore } from './composerStore';
  */
 export function useCollection(): void {
   const nodes = useComposerStore((state) => state.nodes);
+  const savedNodes = useComposerStore((state) => state.savedNodes);
   const loaded = useComposerStore((state) => state.loaded);
-  const savedNodes = useRef(nodes);
 
   useEffect(() => {
     const api = window.interceptor;
@@ -35,7 +40,6 @@ export function useCollection(): void {
         if (!active) {
           return;
         }
-        savedNodes.current = [...collection.nodes];
         useComposerStore
           .getState()
           .loadCollection([...collection.nodes], collection.revision);
@@ -48,7 +52,7 @@ export function useCollection(): void {
 
   useEffect(() => {
     const api = window.interceptor;
-    if (!loaded || !api?.replaceCollection || nodes === savedNodes.current) {
+    if (!loaded || !api?.replaceCollection || nodes === savedNodes) {
       return;
     }
     const timer = window.setTimeout(() => {
@@ -57,13 +61,11 @@ export function useCollection(): void {
         .replaceCollection(useComposerStore.getState().revision, pending)
         .then((result) => {
           if (result.ok) {
-            savedNodes.current = pending;
             useComposerStore.getState().markSaved(result.revision);
             return;
           }
           // 集合没有草稿概念：冲突时直接以 Core 的版本为准重新载入。
           return api.getCollection().then((collection) => {
-            savedNodes.current = [...collection.nodes];
             useComposerStore
               .getState()
               .loadCollection([...collection.nodes], collection.revision);
@@ -72,16 +74,73 @@ export function useCollection(): void {
         .catch(() => undefined);
     }, COLLECTION_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [nodes, loaded]);
+  }, [nodes, savedNodes, loaded]);
 }
 
 /** 把整棵集合导出成 JSON 文件；落盘路径由 Main 的系统对话框选择。 */
-export async function exportCollection(title: string): Promise<void> {
+export async function exportCollection(title: string): Promise<boolean> {
   const api = window.interceptor;
   if (!api?.exportCollection) {
-    return;
+    return false;
   }
-  await api.exportCollection(useComposerStore.getState().nodes, title);
+  return api.exportCollection(useComposerStore.getState().nodes, title);
+}
+
+/** 选择并分析一个集合 JSON；写入只在用户确认后发生。 */
+export async function analyzeCollectionImport(
+  title: string,
+): Promise<CollectionImportPreview | null> {
+  const api = window.interceptor;
+  if (!api?.readImportFile) {
+    return null;
+  }
+  const file = await api.readImportFile(title);
+  if (!file) {
+    return null;
+  }
+  if (!file.ok) {
+    return { ok: false, reason: file.reason };
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(file.content);
+  } catch {
+    return { ok: false, reason: 'invalid-json' };
+  }
+  const parsed = parseImportedCollection(payload);
+  if (!parsed.ok) {
+    return { ok: false, reason: parsed.reason };
+  }
+  return {
+    ok: true,
+    fileName: file.fileName,
+    nodes: parsed.nodes,
+    folderCount: parsed.folderCount,
+    leafCount: parsed.leafCount,
+    skipped: parsed.skipped,
+  };
+}
+
+/** 追加并持久化已清洗的集合节点；失败时不改本地集合。 */
+export async function importCollection(
+  nodes: readonly CollectionNode[],
+): Promise<boolean> {
+  const api = window.interceptor;
+  if (!api?.replaceCollection || nodes.length === 0) {
+    return false;
+  }
+  const store = useComposerStore.getState();
+  const combined = [...store.nodes, ...nodes];
+  try {
+    const result = await api.replaceCollection(store.revision, combined);
+    if (!result.ok) {
+      return false;
+    }
+    useComposerStore.getState().importSucceeded(combined, result.revision);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** 发送一条请求；URL、头部与正文都按当前编辑态组装。 */

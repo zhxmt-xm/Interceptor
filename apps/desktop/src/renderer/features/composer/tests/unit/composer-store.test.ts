@@ -139,6 +139,51 @@ describe('composerStore collection tree', () => {
 
     expect(useComposerStore.getState().expandedFolders).toEqual(['group']);
   });
+
+  it('appends imported nodes after the existing collection', () => {
+    seed([request('local')]);
+
+    useComposerStore.getState().importSucceeded([
+      request('local'),
+      request('imported'),
+    ], 2);
+
+    expect(useComposerStore.getState().nodes.map((node) => node.id)).toEqual([
+      'local',
+      'imported',
+    ]);
+    expect(useComposerStore.getState().revision).toBe(2);
+  });
+
+  it('keeps the imported folder structure intact', () => {
+    seed([]);
+
+    useComposerStore.getState().importSucceeded([
+      folder('group', [request('inside')]),
+    ], 2);
+
+    const group = findNode(useComposerStore.getState().nodes, 'group');
+    expect(group && isFolder(group) ? collectLeafIds(group.children) : []).toEqual([
+      'inside',
+    ]);
+  });
+
+  it('does not change the active document or new-item target', () => {
+    seed([folder('target'), request('local')], 'target');
+    useComposerStore.getState().openRequest('local');
+    useComposerStore.getState().setTargetFolder('target');
+
+    useComposerStore.getState().importSucceeded([
+      folder('target'),
+      request('local'),
+      request('imported'),
+    ], 2);
+
+    const state = useComposerStore.getState();
+    expect(state.activeRequestId).toBe('local');
+    expect(state.openRequestIds).toEqual(['local']);
+    expect(state.targetFolderId).toBe('target');
+  });
 });
 
 describe('composerStore selection', () => {

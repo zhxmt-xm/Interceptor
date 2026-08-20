@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isJsonImportPath,
   toBodyDecodeOptions,
   toBodyExportRequest,
   toByteRange,
@@ -89,6 +90,14 @@ describe('renderer utils', () => {
     expect(toBodyExportRequest(bodyRequest)).toBe(bodyRequest);
     expect(toSafeBodyFileName(bodyRequest.suggestedName)).toBe('video_.mp4');
     expect(toSafeBodyFileName('..')).toBe('response-body.bin');
+  });
+
+  it('accepts only JSON files for import regardless of the dialog filter', () => {
+    expect(isJsonImportPath('C:\\rules\\interceptor-rules.json')).toBe(true);
+    expect(isJsonImportPath('/home/user/rules.JSON')).toBe(true);
+    expect(isJsonImportPath('C:\\rules\\payload.json.exe')).toBe(false);
+    expect(isJsonImportPath('C:\\rules\\rules.txt')).toBe(false);
+    expect(isJsonImportPath('C:\\rules\\noextension')).toBe(false);
   });
 
   it('does not constrain body range or decode values', () => {

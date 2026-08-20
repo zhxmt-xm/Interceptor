@@ -827,6 +827,7 @@ export function installFakeInterceptor({
   upstreamDown = false,
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
+  fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
   window.__appContainerEnableAllCalls = 0;
@@ -989,6 +990,77 @@ export function installFakeInterceptor({
     : fixture.rules.nodes;
   let collectionRevision = fixture.collection.revision;
   let currentCollectionNodes = fixture.collection.nodes;
+  const importedRule = (id, name, enabled) => ({
+    kind: 'rule',
+    id,
+    name,
+    enabled,
+    priority: 0,
+    matchers: [{ type: 'host', value: 'api.example', mode: 'contains' }],
+    actions: [{ type: 'block', mode: 'reset' }],
+  });
+  const rulesImportFile = {
+    ok: true,
+    fileName: 'interceptor-rules-2026-08-20.json',
+    content: JSON.stringify({
+      nodes: [
+        {
+          kind: 'folder', id: 'import-ads', name: 'Ads', children: [
+            importedRule('import-rule-1', 'Block banners', true),
+            importedRule('import-rule-2', 'Strip tracking', true),
+            importedRule('import-rule-3', 'Mute analytics', true),
+            { ...importedRule('invalid-rule-1', 'Block trackers', false), actions: [{ type: 'redirect-all' }] },
+            { ...importedRule('invalid-rule-2', 'Rewrite UA', false), matchers: 'all' },
+          ],
+        },
+        {
+          kind: 'folder', id: 'import-staging', name: 'Staging', children: [
+            importedRule('import-rule-4', 'Mock catalog', false),
+            importedRule('import-rule-5', 'Delay checkout', false),
+            importedRule('import-rule-6', 'Force status', false),
+            {
+              ...importedRule('invalid-rule-3', 'Mock login', false),
+              actions: [{ type: 'header', phase: 'request', op: 'set', name: '', value: '' }],
+            },
+          ],
+        },
+      ],
+    }),
+  };
+  const importedRequest = (id, name) => ({
+    kind: 'request',
+    id,
+    name,
+    method: 'GET',
+    url: 'https://api.example/resource',
+    protocol: 'auto',
+    query: [],
+    headers: [],
+    bodyType: 'none',
+    bodyText: '',
+    bodyForm: [],
+    auth: { type: 'none', token: '', username: '', password: '' },
+  });
+  const collectionImportFile = {
+    ok: true,
+    fileName: 'interceptor-collection-2026-08-20.json',
+    content: JSON.stringify({
+      nodes: ['Checkout', 'Accounts', 'Catalog'].map((name, folderIndex) => ({
+        kind: 'folder',
+        id: `import-folder-${folderIndex}`,
+        name,
+        children: [0, 1, 2].map((index) =>
+          importedRequest(`import-request-${folderIndex}-${index}`, `${name} request ${index + 1}`)),
+      })).map((folder, index) => index === 0 ? {
+        ...folder,
+        children: [
+          ...folder.children,
+          { ...importedRequest('invalid-request-1', 'Create order'), url: 42 },
+          { ...importedRequest('invalid-request-2', 'Legacy ping'), bodyType: 'xml' },
+        ],
+      } : folder),
+    }),
+  };
   let breakpointItems = fixture.breakpoints.items;
   let breakpointsEnabledState = breakpointsEnabled;
   let insecureHosts = fixture.insecureHosts;
@@ -1402,8 +1474,24 @@ export function installFakeInterceptor({
       currentCollectionNodes = nodes;
       return { ok: true, revision: collectionRevision };
     },
-    exportCollection: async () => true,
-    exportRules: async () => true,
+    exportCollection: async () => {
+      if (fileOperationDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, fileOperationDelayMs));
+      }
+      return true;
+    },
+    exportRules: async () => {
+      if (fileOperationDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, fileOperationDelayMs));
+      }
+      return true;
+    },
+    readImportFile: async (title) => {
+      if (fileOperationDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, fileOperationDelayMs));
+      }
+      return title.toLowerCase().includes('rules') ? rulesImportFile : collectionImportFile;
+    },
     sendComposerRequest: async () => ({
       ...fixture.composerResponse,
       body: new Uint8Array(fixture.composerResponse.body),

@@ -246,3 +246,34 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 ### 预期效果
 
 Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹配、hit count、Capture结果和禁用行为一致。
+
+<a id="rules-import-tree"></a>
+## `rules.import-tree`
+
+**状态**：planned
+**策略**：native-ui
+
+### Steps
+
+1. 创建独立profile/evidence，启动trace与新Electron，等待`app.root`、真实Core PID与`127.0.0.1:8888`可连接；Driver按既有约定收敛冷启动系统代理接管。
+2. 进入Rules，确认初始tree为空。通过`rules.toolbar.create`创建两条rule：第一条通过UI填完matcher与action并用`rules.toggle.<ruleId>`启用，第二条保持未启用；再通过`rules.toolbar.create-folder`建一层目录并把第二条拖入。点击`rules.apply`持久化，记录revision与两个ruleId。
+3. 点击`rules.toolbar.export`，先确认`rules.export.busy`遮罩出现且底层按钮、Escape、Tab均不可操作；在真实Save Dialog中用键鼠输入本workflow临时目录下的`.json`路径并确认，等待遮罩消失。测试侧只读解析该文件，断言顶层为`{ nodes }`、目录层级与UI一致、两条rule的`enabled`分别为true/false，并记录文件内的全部`id`。该文件是本workflow用产品UI真实产生的唯一导入输入，测试不另行构造任何文件。
+4. 通过`rules.toolbar.import`打开真实Open Dialog，确认`rules.import.busy`遮罩存在且不可关闭；用键鼠选择同一文件并确认。等待`rules.import.dialog`出现，断言其报告的rule数、folder数与**已启用条数**与文件内容一致。
+5. 点击`rules.import.cancel`，直接读取DOM确认`rules.row.*`与`rules.folder-row.*`数量、顺序、revision与dirty状态全部未变——取消不得写入任何节点。
+6. 再次执行导入并点击`rules.import.confirm-apply`；确认写入期间Dialog的关闭、Cancel、遮罩点击与Escape均被禁用。等待Dialog关闭、新节点出现且revision递增，断言：树中rule总数翻倍；新增节点的`id`与步骤3记录的文件内`id`**没有交集**；新增两条rule的`enabled`与文件一致；新增目录层级与文件一致；新增内容整体排在原有节点之后。
+7. 离开Rules再返回，确认Core重新加载后的树、revision与新增节点身份一致，导入确认本身已经原子持久化，不需要第二次点击Apply。
+8. 再次通过同一入口导入同一文件并确认，验证重复导入稳定累加且不产生同id节点，不出现任何覆盖或合并。
+9. 全程只使用公共`data-automation-id`、DOM状态属性与测试自产数据判定，不依赖任一语言的显示文案。
+10. 保存trace、截图、导入前后的树快照JSON、Main/Renderer日志与metadata；点击`shell.window.close`，验证Main/Core/Worker退出、8888释放、系统代理无副作用并删除profile与临时文件。
+
+### 预期效果
+
+导入是纯新增：文件内容整体追加到现有树末尾，既不覆盖也不合并本地任何节点。节点`id`全部重新生成，因此同一文件可重复导入而不产生同id不同内容的节点；`enabled`沿用文件值；层级与文件一致。确认Dialog在写入之前给出准确计数，取消后树零变化，确认后经既有`rules.replace`原子持久化。文件读写与确认写入期间均有不可关闭遮罩，不能误操作底层UI。
+
+结构非法的文件、节点字段错误与越界层级由共享tree parser及Renderer owning parser的unit测试覆盖：产品UI无法导出这类文件，在E2E里制造它们只能靠测试写文件，属于禁止的seed行为。
+
+### TDD证据要求
+
+- 实现前提交运行同一workflow，必须精确失败于`rules.toolbar.import`入口不存在；selector笔误、fixture、语言、构建或环境失败不算Red。
+- 当前提交运行同一workflow全部Green，涵盖取消零变化、id不复用、enabled沿用、层级保持、追加位置、重复导入累加与Core持久化，并完成trace/evidence与销毁验证。
+- 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。

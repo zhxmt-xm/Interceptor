@@ -93,12 +93,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>🔄 进行中</strong></td>
   <td>Rules and Composer import/export</td>
-  <td><ul><li>为两类树数据提供文件导入导出、冲突处理与结果反馈。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li><li>待 Developer 人工验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
-  <td><ul><li>N/A；新产品能力。</li></ul></td>
-  <td><ul><li>复用 Transfer/Main dialog 边界并定义版本化 schema，Renderer 不直接访问文件系统。</li></ul></td>
+  <td><ul><li>为两类树数据提供 JSON 文件导入导出与结果反馈；导入按纯新增处理。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li><li>待 Developer 人工验证</li></ul></li></ul></td>
+  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ Rules / Composer 导入导出、逐项校验、部分导入、不可关闭 busy 遮罩与15种语言完成</li><li><strong>Unit:</strong> ✅ Core tree parser、Rules/Composer parser/store 与 JSON-only 边界 Red→Green</li><li><strong>Integration:</strong> 🔄 typecheck通过，完整 parity/Electron链路待验</li><li><strong>E2E:</strong> ❌ workflow契约完成，可执行Red/Green待完成</li><li><strong>Design/Parity:</strong> 🔄 12个明暗设计状态完成；busy聚焦0 flagged，确认Dialog仍有最多1.9px待收敛</li></ul></td>
+  <td><ul><li>导出链路已存在（<code>rules:export</code> / <code>collection:export</code>），导入从未实现；<code>features/rules.md</code> 曾误记根右键菜单已有 Import 入口。</li><li>冲突检测无可用唯一键：<code>id</code> 是本机生成的，跨机器永不碰撞；产品又允许同目录同名节点，<code>name</code> 也不唯一。</li></ul></td>
+  <td><ul><li>导入按纯新增处理：节点与字段行<code>id</code>全部重新生成、<code>enabled</code>沿用文件值、<code>priority</code>重排到本地规则之后、保持文件内层级并追加到根末尾；合并交给既有树操作。</li><li>Main只通过原生Dialog读写JSON；Renderer拥有领域解析，文件级失败整体拒绝，节点级失败逐项跳过并报告路径与原因。</li><li>确认 Dialog 在写入前给出有效/启用/跳过计数；确认后复用整树<code>replace</code>原子持久化。Import/Export从点击到IO完成均有不可关闭遮罩，阻断鼠标与键盘穿透。</li></ul></td>
 </tr>
 
 <tr>

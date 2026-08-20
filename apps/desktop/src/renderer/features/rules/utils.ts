@@ -2,7 +2,10 @@ import {
   collectLeaves,
   findLeaf,
   isFolder,
+  parseImportedTree,
   replaceLeaf,
+  type TreeImportResult,
+  type TreeLeafParseResult,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -412,6 +415,176 @@ export function enabledCount(nodes: readonly RuleNode[]): number {
   return collectLeaves(nodes).reduce(
     (total, rule) => total + (rule.enabled ? 1 : 0),
     0,
+  );
+}
+
+const IMPORT_MATCHER_TYPES = new Set<RuleMatcherType>([
+  'method', 'host', 'path', 'url', 'query', 'header', 'status', 'mime',
+]);
+
+const IMPORT_ACTION_TYPES = new Set<RuleActionType>([
+  'header', 'query', 'body', 'synthetic', 'map-local', 'map-remote',
+  'block', 'status', 'delay', 'breakpoint',
+]);
+
+const IMPORT_PHASES = new Set(['request', 'response']);
+const IMPORT_MATCH_MODES = new Set(['contains', 'exact', 'regex']);
+
+function isImportRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string';
+}
+
+function isOptionalBoolean(value: unknown): boolean {
+  return value === undefined || typeof value === 'boolean';
+}
+
+function isOptionalNumber(value: unknown): boolean {
+  return value === undefined || typeof value === 'number' && Number.isFinite(value);
+}
+
+function hasImportMatcherFields(value: unknown): value is RuleMatcher {
+  if (!isImportRecord(value)) {
+    return false;
+  }
+  switch (value.type) {
+    case 'method':
+      return typeof value.value === 'string';
+    case 'host':
+    case 'path':
+    case 'url':
+      return typeof value.value === 'string'
+        && IMPORT_MATCH_MODES.has(value.mode as string)
+        && isOptionalBoolean(value.caseSensitive);
+    case 'query':
+      return typeof value.key === 'string'
+        && IMPORT_MATCH_MODES.has(value.mode as string)
+        && isOptionalString(value.value)
+        && isOptionalBoolean(value.caseSensitive);
+    case 'header':
+      return IMPORT_PHASES.has(value.phase as string)
+        && typeof value.name === 'string'
+        && IMPORT_MATCH_MODES.has(value.mode as string)
+        && isOptionalString(value.value)
+        && isOptionalBoolean(value.caseSensitive);
+    case 'status':
+      return typeof value.min === 'number' && Number.isFinite(value.min)
+        && typeof value.max === 'number' && Number.isFinite(value.max);
+    case 'mime':
+      return IMPORT_PHASES.has(value.phase as string)
+        && typeof value.value === 'string';
+    default:
+      return false;
+  }
+}
+
+function hasImportHeaderPairs(value: unknown): boolean {
+  return Array.isArray(value) && value.every((pair) =>
+    isImportRecord(pair)
+      && typeof pair.name === 'string'
+      && typeof pair.value === 'string');
+}
+
+function hasImportActionFields(value: unknown): value is RuleAction {
+  if (!isImportRecord(value)) {
+    return false;
+  }
+  switch (value.type) {
+    case 'header':
+      return IMPORT_PHASES.has(value.phase as string)
+        && new Set(['set', 'append', 'remove']).has(value.op as string)
+        && typeof value.name === 'string'
+        && isOptionalString(value.value);
+    case 'query':
+      return new Set(['set', 'remove']).has(value.op as string)
+        && typeof value.name === 'string'
+        && isOptionalString(value.value);
+    case 'body':
+      return IMPORT_PHASES.has(value.phase as string)
+        && new Set(['text', 'json']).has(value.format as string)
+        && typeof value.content === 'string';
+    case 'synthetic':
+      return typeof value.statusCode === 'number' && Number.isFinite(value.statusCode)
+        && (value.headers === undefined || hasImportHeaderPairs(value.headers))
+        && isOptionalString(value.body);
+    case 'map-local':
+      return typeof value.path === 'string';
+    case 'map-remote':
+      return (value.scheme === undefined || new Set(['http', 'https']).has(value.scheme as string))
+        && isOptionalString(value.host)
+        && isOptionalNumber(value.port)
+        && isOptionalString(value.path);
+    case 'block':
+      return new Set(['reset', 'close']).has(value.mode as string);
+    case 'status':
+      return typeof value.statusCode === 'number' && Number.isFinite(value.statusCode);
+    case 'delay':
+      return IMPORT_PHASES.has(value.phase as string)
+        && typeof value.ms === 'number' && Number.isFinite(value.ms);
+    case 'breakpoint':
+      return IMPORT_PHASES.has(value.phase as string)
+        && typeof value.timeoutMs === 'number' && Number.isFinite(value.timeoutMs)
+        && new Set(['continue', 'drop']).has(value.onTimeout as string);
+    default:
+      return false;
+  }
+}
+
+/** 校验导入文件里的一条规则；结构遍历由 `parseImportedTree` 负责，这里只判断领域字段。 */
+function parseImportedRule(
+  raw: Record<string, unknown>,
+): TreeLeafParseResult<RuleDefinition> {
+  if (raw.kind !== 'rule') {
+    return { ok: false, reason: 'unknown-kind' };
+  }
+  if (typeof raw.enabled !== 'boolean') {
+    return { ok: false, reason: 'invalid-enabled' };
+  }
+  if (!Array.isArray(raw.matchers)) {
+    return { ok: false, reason: 'invalid-matchers' };
+  }
+  if (!Array.isArray(raw.actions)) {
+    return { ok: false, reason: 'invalid-actions' };
+  }
+  if (raw.matchers.some((matcher) =>
+    !isImportRecord(matcher) || !IMPORT_MATCHER_TYPES.has(matcher.type as RuleMatcherType))) {
+    return { ok: false, reason: 'unknown-matcher-type' };
+  }
+  if (!raw.matchers.every(hasImportMatcherFields)) {
+    return { ok: false, reason: 'invalid-matcher-fields' };
+  }
+  if (raw.actions.some((action) =>
+    !isImportRecord(action) || !IMPORT_ACTION_TYPES.has(action.type as RuleActionType))) {
+    return { ok: false, reason: 'unknown-action-type' };
+  }
+  if (!raw.actions.every(hasImportActionFields)) {
+    return { ok: false, reason: 'invalid-action-fields' };
+  }
+  const rule: RuleDefinition = {
+    kind: 'rule',
+    id: String(raw.id ?? ''),
+    name: raw.name as string,
+    enabled: raw.enabled,
+    priority: typeof raw.priority === 'number' ? raw.priority : 0,
+    matchers: raw.matchers,
+    actions: raw.actions,
+  };
+  return isRuleComplete(rule)
+    ? { ok: true, leaf: rule }
+    : { ok: false, reason: 'incomplete-rule' };
+}
+
+/** 解析导入文件里的规则树；priority 在追加进当前树后由 `normalizePriorities` 统一重排。 */
+export function parseImportedRules(
+  value: unknown,
+): TreeImportResult<RuleDefinition> {
+  return parseImportedTree<RuleDefinition>(
+    value,
+    parseImportedRule,
+    () => createNodeId('rule'),
   );
 }
 

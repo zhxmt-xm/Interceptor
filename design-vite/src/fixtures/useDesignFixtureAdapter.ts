@@ -374,6 +374,8 @@ export function useDesignFixtureAdapter(
       }
       const ruleToggle = closest(event.target, '.rtree .sw');
       if (ruleToggle) { ruleToggle.classList.toggle('on'); return; }
+      if (closest(event.target, '[data-rules-import]')) return patch({ overlay: 'rules-import', ctxmenu: '' });
+      if (closest(event.target, '[data-collection-import]')) return patch({ overlay: 'composer-import' });
       const rulesChevron = closest(event.target, '.rgrp-chevbtn');
       if (rulesChevron) { rulesChevron.closest('.rgrp')?.classList.toggle('on'); return; }
       const rulesFolder = closest(event.target, '.rgrp-namebtn')?.closest('.rgrp-h');

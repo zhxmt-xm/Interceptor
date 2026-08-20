@@ -10,6 +10,12 @@ export type FixtureOverlay =
   | 'app-container-confirm'
   | 'app-container-enable-all'
   | 'tls-compatibility'
+  | 'rules-import'
+  | 'composer-import'
+  | 'rules-import-loading'
+  | 'rules-export-loading'
+  | 'composer-import-loading'
+  | 'composer-export-loading'
   | '';
 export type InspectorTab =
   | 'headers'

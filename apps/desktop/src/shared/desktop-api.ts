@@ -323,6 +323,16 @@ export type CollectionReplaceResult =
   | { ok: true; revision: number }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
+/**
+ * 导入文件读取结果：Main 只做 IO，解析与校验归拥有该领域的 Renderer feature。
+ *
+ * 失败是文件级的（读不到、超出大小上限、不是合法文本），此时一个节点都定位不到，
+ * 因此只带原因不带内容。
+ */
+export type ImportFileResult =
+  | { ok: true; fileName: string; content: string }
+  | { ok: false; reason: 'not-json' | 'too-large' | 'unreadable' };
+
 /** TLS passthrough replacement returns Core-normalized patterns on success. */
 export type TlsPassthroughReplaceResult =
   | { ok: true; settings: TlsPassthroughSettings }
@@ -492,6 +502,7 @@ export const DESKTOP_IPC_CHANNELS = {
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
   collectionExport: 'collection:export',
+  importFileRead: 'import-file:read',
   rulesExport: 'rules:export',
   composerSend: 'composer:send',
   breakpointList: 'breakpoint:list',
@@ -611,6 +622,13 @@ export interface InterceptorDesktopApi {
   exportCollection(nodes: CollectionNode[], title: string): Promise<boolean>;
   /** 把整棵规则树导出成 JSON；落盘路径由 Main 的系统对话框选择。 */
   exportRules(nodes: RuleNode[], title: string): Promise<boolean>;
+  /**
+   * 选一个 JSON 文件并读回内容，供 Rules 与 Composer 导入共用。
+   *
+   * 不接受路径参数，路径只能由用户在原生对话框选择；取消返回 null，
+   * 读取失败以结构化结果返回而不抛 IPC 错误。
+   */
+  readImportFile(title: string): Promise<ImportFileResult | null>;
   sendComposerRequest(request: ComposerRequest): Promise<ComposerResponse>;
   listBreakpoints(): Promise<BreakpointsSnapshot>;
   /** 挂起中的断点变化时回调；返回取消订阅函数。 */

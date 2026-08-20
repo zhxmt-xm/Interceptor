@@ -129,6 +129,33 @@ export const rulesFixture: FixtureNode = {
                   "tag": "button",
                   "attributes": {
                     "class": "ib sm",
+                    "data-rules-import": "",
+                    "aria-label": "Import rules",
+                    "title": "Import rules"
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "svg",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "use",
+                          "attributes": {
+                            "href": "#i-upload"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "button",
+                  "attributes": {
+                    "class": "ib sm",
                     "aria-label": "Export rules",
                     "title": "Export rules"
                   },

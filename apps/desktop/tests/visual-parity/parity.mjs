@@ -285,6 +285,7 @@ for (const view of views) {
     upstreamDown: view.upstreamDown === true,
     tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
+    fileOperationDelayMs: view.fileOperationDelayMs ?? 0,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.locator('[data-collapsed]').first().waitFor({ state: 'visible' });

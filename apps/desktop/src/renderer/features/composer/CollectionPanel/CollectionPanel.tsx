@@ -1,14 +1,25 @@
-import { Download, FolderPlus, Plus, Search } from 'lucide-react';
+import { App } from 'antd';
+import { Download, FolderPlus, Plus, Search, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { folderDepth, MAX_FOLDER_DEPTH } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { IconButton, searchTree } from '../../../components';
+import {
+  FileTransferBusyOverlay,
+  IconButton,
+  ImportConfirmDialog,
+  searchTree,
+} from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useComposerStore } from '../data/composerStore';
-import { exportCollection } from '../data/useCollection';
+import {
+  analyzeCollectionImport,
+  exportCollection,
+  importCollection,
+} from '../data/useCollection';
+import type { CollectionImportPreview } from '../interfaces';
 
 import styles from './CollectionPanel.module.css';
 import { CollectionTreeNode } from './CollectionTreeNode';
@@ -16,7 +27,11 @@ import { CollectionTreeNode } from './CollectionTreeNode';
 /** 左侧集合分栏：搜索、目录树与新建入口。 */
 export function CollectionPanel(): React.JSX.Element {
   const { t } = useTranslation();
+  const { message } = App.useApp();
   const [query, setQuery] = useState('');
+  const [importPreview, setImportPreview] = useState<CollectionImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [fileOperation, setFileOperation] = useState<'import' | 'export' | null>(null);
   const nodes = useComposerStore((state) => state.nodes);
   const targetFolderId = useComposerStore((state) => state.targetFolderId);
   const createRequest = useComposerStore((state) => state.createRequest);
@@ -32,6 +47,38 @@ export function CollectionPanel(): React.JSX.Element {
     onAutoExpand: expandFolder,
   });
   const canCreateFolder = folderDepth(nodes, targetFolderId) < MAX_FOLDER_DEPTH;
+
+  const startImport = async (): Promise<void> => {
+    setFileOperation('import');
+    let preview: CollectionImportPreview | null;
+    try {
+      preview = await analyzeCollectionImport(t('composer.importCollection'));
+    } catch {
+      void message.error(t('composer.import.readFailed'));
+      return;
+    } finally {
+      setFileOperation(null);
+    }
+    if (!preview) {
+      return;
+    }
+    if (!preview.ok) {
+      void message.error(t(`import.reason.${preview.reason}`));
+      return;
+    }
+    setImportPreview(preview);
+  };
+
+  const startExport = async (): Promise<void> => {
+    setFileOperation('export');
+    try {
+      await exportCollection(t('composer.exportCollection'));
+    } catch {
+      void message.error(t('composer.exportFailed'));
+    } finally {
+      setFileOperation(null);
+    }
+  };
 
   return (
     <aside
@@ -66,12 +113,24 @@ export function CollectionPanel(): React.JSX.Element {
             automationId={AUTOMATION_IDS.composer.newFolder}
           />
           <IconButton
+            icon={Upload}
+            label={t('composer.importCollection')}
+            size="sm"
+            loading={fileOperation === 'import'}
+            disabled={fileOperation !== null}
+            onClick={() => {
+              void startImport();
+            }}
+            automationId={AUTOMATION_IDS.composer.importCollection}
+          />
+          <IconButton
             icon={Download}
             label={t('composer.exportCollection')}
             size="sm"
-            disabled={nodes.length === 0}
+            loading={fileOperation === 'export'}
+            disabled={nodes.length === 0 || fileOperation !== null}
             onClick={() => {
-              void exportCollection(t('composer.exportCollection'));
+              void startExport();
             }}
             automationId={AUTOMATION_IDS.composer.exportCollection}
           />
@@ -101,6 +160,77 @@ export function CollectionPanel(): React.JSX.Element {
           <div className={styles.dropLine} style={drag.dropLine} />
         ) : null}
       </div>
+
+      {importPreview?.ok ? (
+        <ImportConfirmDialog
+          open
+          title={t('composer.import.title')}
+          summary={t('composer.import.summary', {
+            requests: importPreview.leafCount,
+            folders: importPreview.folderCount,
+          })}
+          fileName={importPreview.fileName}
+          stats={[
+            {
+              label: t('composer.import.requests'),
+              value: importPreview.leafCount,
+              automationId: AUTOMATION_IDS.composer.import.requestCount,
+            },
+            {
+              label: t('composer.import.folders'),
+              value: importPreview.folderCount,
+              automationId: AUTOMATION_IDS.composer.import.folderCount,
+            },
+            {
+              label: t('composer.import.skipped'),
+              value: importPreview.skipped.length,
+              emphasis: 'skipped',
+              automationId: AUTOMATION_IDS.composer.import.skippedCount,
+            },
+          ]}
+          skipped={importPreview.skipped}
+          skippedTitle={t('composer.import.skippedTitle', {
+            count: importPreview.skipped.length,
+          })}
+          skippedMore={(count) => t('import.skippedMore', { count })}
+          describeReason={(reason) => t(`import.reason.${reason}`)}
+          cancelLabel={t('composer.import.cancel')}
+          confirmLabel={t('composer.import.confirm', { count: importPreview.leafCount })}
+          confirmWidth={196}
+          confirmDisabled={importPreview.leafCount === 0 && importPreview.folderCount === 0}
+          busy={importing}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={() => {
+            setImporting(true);
+            void importCollection(importPreview.nodes).then((imported) => {
+              if (imported) {
+                setImportPreview(null);
+              } else {
+                void message.error(t('composer.import.failed'));
+              }
+            }).finally(() => setImporting(false));
+          }}
+          automationIds={{
+            dialog: AUTOMATION_IDS.composer.import.dialog,
+            fileName: AUTOMATION_IDS.composer.import.fileName,
+            skippedList: AUTOMATION_IDS.composer.import.skippedList,
+            cancel: AUTOMATION_IDS.composer.import.cancel,
+            confirm: AUTOMATION_IDS.composer.import.confirm,
+          }}
+        />
+      ) : null}
+      <FileTransferBusyOverlay
+        open={fileOperation !== null}
+        title={fileOperation === 'import'
+          ? t('composer.import.reading')
+          : t('composer.export.writing')}
+        detail={fileOperation === 'import'
+          ? t('composer.import.readingDetail')
+          : t('composer.export.writingDetail')}
+        automationId={fileOperation === 'import'
+          ? AUTOMATION_IDS.composer.import.busy
+          : AUTOMATION_IDS.composer.exportBusy}
+      />
     </aside>
   );
 }

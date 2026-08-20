@@ -2,13 +2,15 @@ import { useEffect } from 'react';
 
 import { collectLeafIds } from '@interceptor/core-protocol';
 
-import type { RuleActionType } from '../../../../shared/desktop-api';
+import type { RuleActionType, RuleNode } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
-import type { BreakpointScope } from '../interfaces';
+import type { BreakpointScope, RuleImportPreview } from '../interfaces';
 import {
   createBreakpointRule,
   createRuleFromRequest,
   isRuleSetComplete,
+  normalizePriorities,
+  parseImportedRules,
 } from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
@@ -164,12 +166,79 @@ export async function applyRules(): Promise<boolean> {
 }
 
 /** 把整棵规则树导出成 JSON 文件；落盘路径由 Main 的系统对话框选择。 */
-export async function exportRules(title: string): Promise<void> {
+export async function exportRules(title: string): Promise<boolean> {
   const api = window.interceptor;
   if (!api?.exportRules) {
-    return;
+    return false;
   }
-  await api.exportRules(useRulesStore.getState().nodes, title);
+  return api.exportRules(useRulesStore.getState().nodes, title);
+}
+
+/**
+ * 选一个 JSON 文件并解析成导入预览；写入发生在用户确认之后。
+ *
+ * 文件只读一次：分析结果里已经带着清洗后的节点，避免用户确认前后读到不同内容。
+ */
+export async function analyzeRuleImport(
+  title: string,
+): Promise<RuleImportPreview | null> {
+  const api = window.interceptor;
+  if (!api?.readImportFile) {
+    return null;
+  }
+  const file = await api.readImportFile(title);
+  if (!file) {
+    return null;
+  }
+  if (!file.ok) {
+    return { ok: false, reason: file.reason };
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(file.content);
+  } catch {
+    return { ok: false, reason: 'invalid-json' };
+  }
+  const parsed = parseImportedRules(payload);
+  if (!parsed.ok) {
+    return { ok: false, reason: parsed.reason };
+  }
+  return {
+    ok: true,
+    fileName: file.fileName,
+    nodes: parsed.nodes,
+    folderCount: parsed.folderCount,
+    leafCount: parsed.leafCount,
+    enabledCount: parsed.enabledCount,
+    skipped: parsed.skipped,
+  };
+}
+
+/** 追加并持久化已清洗的规则；失败时不改本地树，避免重复确认产生重复节点。 */
+export async function importRules(nodes: readonly RuleNode[]): Promise<boolean> {
+  const api = window.interceptor;
+  if (!api?.replaceRules || nodes.length === 0) {
+    return false;
+  }
+  const store = useRulesStore.getState();
+  const combined = normalizePriorities([...store.nodes, ...nodes]);
+  if (!isRuleSetComplete(combined)) {
+    return false;
+  }
+  store.beginSave();
+  try {
+    const result = await api.replaceRules(store.revision, combined);
+    if (result.ok) {
+      useRulesStore.getState().importSucceeded(combined, result.revision);
+      void loadRuleHits();
+      return true;
+    }
+    useRulesStore.getState().saveFailed(result.message, result.reason === 'conflict');
+    return false;
+  } catch (error) {
+    useRulesStore.getState().saveFailed(describeError(error), false);
+    return false;
+  }
 }
 
 /**

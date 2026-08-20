@@ -1,10 +1,13 @@
 import { App as AntApp, ConfigProvider } from 'antd';
 import { useMemo, useRef } from 'react';
 
+import { FileTransferBusyOverlay } from '../components/FileTransferBusyOverlay/FileTransferBusyOverlay';
 import { Composer } from '../features/Composer/Composer';
+import { ComposerImportDialog } from '../features/Composer/ComposerImportDialog';
 import { Capture } from '../features/Capture/Capture';
 import { Diagnostics } from '../features/Diagnostics/Diagnostics';
 import { Rules } from '../features/Rules/Rules';
+import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { Settings } from '../features/Settings/Settings';
 import { AppContainerEnableAllDialog } from '../features/Settings/AppContainerEnableAllDialog';
@@ -57,6 +60,9 @@ function DesignAppContent(): React.JSX.Element {
           <FixtureRenderer node={statusbarFixture} />
           {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
           <AppContainerEnableAllDialog />
+          <RulesImportDialog />
+          <ComposerImportDialog />
+          <FileTransferBusyOverlay />
           {contextMenuFixtures.map((fixture, index) => <FixtureRenderer key={`context-${index}`} node={fixture} />)}
           <RulesRootContextMenu />
           <FixtureRenderer node={bootFixture} />

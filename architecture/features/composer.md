@@ -151,6 +151,16 @@ splitter只改变左栏宽度，不改变树选择或打开文档。
 
 **导出**：工具栏的 `Export collection` 走 `collection:export`，由 Main 弹系统保存对话框并把整棵树写成 JSON。集合数据本来就在 Renderer 手上，这条路径不经过 Core。
 
+**导入 [代码完成 · 待 E2E]**：与 [Rules 导入](rules.md#93-导入与导出-代码完成--待-e2e) 同一套语义与同一条流程——纯新增、节点与字段行 `id` 全部重新生成、保持文件内层级并整体追加到根末尾、失败按文件级与节点级分层处理（文件级整体失败，节点级逐项跳过并报告路径与原因）、节点深度不得超过 `MAX_FOLDER_DEPTH`。
+
+分层同样是 Main 只做 IO、Renderer 做解析与装配：两个 feature 共用 Main 的 `readImportFile(title)`，各自在 Renderer 解析自己的领域结构，确认后复用**已有的** `collection.replace` 整棵树写回，不新增增量 add 命令。
+
+节点级失败情景对应到集合领域：节点不是对象或缺 `kind`/`name`/`id`、`kind` 未知、`folder` 的 `children` 不是数组、请求的 `method`/`url` 不是字符串、`query`/`headers`/`bodyForm` 不是数组、`bodyType` 或 `protocol` 不在已知取值内、`auth.type` 未知、深度超限。
+
+两处差异来自领域本身：`CollectionRequest` 没有 `enabled` 字段，请求只在用户点 Send 时执行，导入不会自动产生任何网络行为，因此确认 Dialog 只报告将导入的请求数、目录数与被跳过项，不需要 Rules 那条「已启用规则立即参与匹配」的警告；集合也没有 `priority`，追加顺序就是最终顺序。请求内部的 `ComposerFieldRow.enabled` 是请求内容的一部分，原样保留。
+
+Import / Export 使用与 Rules 相同的不可关闭文件操作遮罩；确认后直接复用 `collection.replace` 原子持久化，成功后同时推进 `nodes`、`savedNodes` 与 revision，不再等待600ms节流，也不会被 `useCollection` 重复保存。
+
 ### 5.2 Recent sends
 
 URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立的事，不互相写入：列出最近发送的 method / URL / 状态码 / 相对时间，点击恢复为请求。是否持久化待定；只存内存即可满足设计稿表达。

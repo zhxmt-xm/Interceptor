@@ -1,4 +1,9 @@
-import type { RuleHeaderPair } from '@interceptor/core-protocol';
+import {
+  parseImportedTree,
+  type RuleHeaderPair,
+  type TreeImportResult,
+  type TreeLeafParseResult,
+} from '@interceptor/core-protocol';
 
 import type { ComposerResponse } from '../../../shared/desktop-api';
 
@@ -16,6 +21,7 @@ import type {
   CollectionRequest,
   ComposerBodyType,
   ComposerFieldRow,
+  ComposerProtocol,
   ComposerTiming,
 } from './interfaces';
 
@@ -53,6 +59,108 @@ export function newRequest(): CollectionRequest {
 /** 新建一个空目录。 */
 export function newFolder(name: string): CollectionNode {
   return { kind: 'folder', id: nextId('dir'), name, children: [] };
+}
+
+const IMPORT_BODY_TYPES = new Set<ComposerBodyType>(['none', 'json', 'text', 'form']);
+const IMPORT_PROTOCOLS = new Set<ComposerProtocol>(['auto', 'http/1.1', 'h2']);
+const IMPORT_AUTH_TYPES = new Set(['none', 'bearer', 'basic']);
+
+function isImportRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseImportedFieldRows(value: unknown): ComposerFieldRow[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const rows: ComposerFieldRow[] = [];
+  for (const row of value) {
+    if (!isImportRecord(row)
+      || typeof row.name !== 'string'
+      || typeof row.value !== 'string'
+      || typeof row.enabled !== 'boolean') {
+      return null;
+    }
+    rows.push({
+      id: nextId('field'),
+      name: row.name,
+      value: row.value,
+      enabled: row.enabled,
+    });
+  }
+  return rows;
+}
+
+/** 校验导入文件里的一条请求；结构遍历由 `parseImportedTree` 负责，这里只判断领域字段。 */
+function parseImportedRequest(
+  raw: Record<string, unknown>,
+): TreeLeafParseResult<CollectionRequest> {
+  if (raw.kind !== 'request') {
+    return { ok: false, reason: 'unknown-kind' };
+  }
+  if (typeof raw.method !== 'string') {
+    return { ok: false, reason: 'invalid-method' };
+  }
+  if (typeof raw.url !== 'string') {
+    return { ok: false, reason: 'invalid-url' };
+  }
+  if (!IMPORT_BODY_TYPES.has(raw.bodyType as ComposerBodyType)) {
+    return { ok: false, reason: 'unknown-body-type' };
+  }
+  if (!IMPORT_PROTOCOLS.has(raw.protocol as ComposerProtocol)) {
+    return { ok: false, reason: 'unknown-protocol' };
+  }
+  const query = parseImportedFieldRows(raw.query);
+  const headers = parseImportedFieldRows(raw.headers);
+  const bodyForm = parseImportedFieldRows(raw.bodyForm);
+  if (!query || !headers || !bodyForm) {
+    return { ok: false, reason: 'invalid-field-rows' };
+  }
+  if (typeof raw.bodyText !== 'string') {
+    return { ok: false, reason: 'invalid-body-text' };
+  }
+  if (!isImportRecord(raw.auth) || !IMPORT_AUTH_TYPES.has(raw.auth.type as string)) {
+    return { ok: false, reason: 'unknown-auth-type' };
+  }
+  if (typeof raw.auth.token !== 'string'
+    || typeof raw.auth.username !== 'string'
+    || typeof raw.auth.password !== 'string') {
+    return { ok: false, reason: 'invalid-auth' };
+  }
+  const auth = {
+    type: raw.auth.type as CollectionRequest['auth']['type'],
+    token: raw.auth.token,
+    username: raw.auth.username,
+    password: raw.auth.password,
+  };
+  return {
+    ok: true,
+    leaf: {
+      kind: 'request',
+      id: String(raw.id ?? ''),
+      name: raw.name as string,
+      method: raw.method,
+      url: raw.url,
+      protocol: raw.protocol as ComposerProtocol,
+      query,
+      headers,
+      bodyType: raw.bodyType as ComposerBodyType,
+      bodyText: raw.bodyText,
+      bodyForm,
+      auth,
+    },
+  };
+}
+
+/** 解析导入文件里的集合树；节点整体追加到当前集合末尾。 */
+export function parseImportedCollection(
+  value: unknown,
+): TreeImportResult<CollectionRequest> {
+  return parseImportedTree<CollectionRequest>(
+    value,
+    parseImportedRequest,
+    () => nextId('req'),
+  );
 }
 
 /** 把 query 行拼回 URL；只有启用且有名字的行参与。 */
