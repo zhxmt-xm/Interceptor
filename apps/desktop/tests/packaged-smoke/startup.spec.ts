@@ -477,6 +477,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'querySessions',
         'queryWebSocketFrames',
         'readBody',
+        'readImportFile',
         'replaceCollection',
         'replaceRules',
         'replaceTlsPassthroughSettings',

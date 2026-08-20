@@ -89,7 +89,7 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -277,3 +277,9 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 - 实现前提交运行同一workflow，必须精确失败于`rules.toolbar.import`入口不存在；selector笔误、fixture、语言、构建或环境失败不算Red。
 - 当前提交运行同一workflow全部Green，涵盖取消零变化、id不复用、enabled沿用、层级保持、追加位置、重复导入累加与Core持久化，并完成trace/evidence与销毁验证。
 - 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。
+
+### TDD证据
+
+- Retrospective Red：最终workflow源码在`884dcc4`精确失败于`rules.toolbar.import`不存在；同环境`rules.root-toolbar`为Green，排除构建、listener与fixture失败。
+- Green：当前`1/1`通过。真实Save Dialog生成`rules-roundtrip.json`，三次真实Open Dialog覆盖取消、确认和重复确认；两条rule与一层目录依次扩展为4/2、6/3个节点，新增id不复用，enabled保持true/false，revision为`1→2→3`。
+- 销毁：Main PID `34724`、Core PID `20512`均退出，`gracefulDestroyVerified=true`，8888释放，系统代理恢复原值。

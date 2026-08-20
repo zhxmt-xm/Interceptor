@@ -102,6 +102,7 @@ export function CollectionTreeNode({
           <button
             type="button"
             className={styles.chevronButton}
+            aria-expanded={expanded}
             aria-label={
               expanded ? t('composer.collapseFolder') : t('composer.expandFolder')
             }

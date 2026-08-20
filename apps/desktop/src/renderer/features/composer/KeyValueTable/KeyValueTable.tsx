@@ -2,6 +2,7 @@ import { Check, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { AutomationId } from '../../../../shared/automation-ids';
 import { Checkbox } from '../../../components/Checkbox/Checkbox';
 import { cx } from '../../../components/share/cx';
 import type { ComposerFieldRow } from '../interfaces';
@@ -14,6 +15,11 @@ export interface KeyValueTableProps {
   onChange: (rows: ComposerFieldRow[]) => void;
   nameLabel: string;
   valueLabel: string;
+  draftAutomationIds?: {
+    name: AutomationId;
+    value: AutomationId;
+    confirm: AutomationId;
+  };
 }
 
 /** Query / Headers / Form 三处共用的键值编辑表；末行是待确认的草稿行。 */
@@ -22,6 +28,7 @@ export function KeyValueTable({
   onChange,
   nameLabel,
   valueLabel,
+  draftAutomationIds,
 }: KeyValueTableProps): React.JSX.Element {
   const { t } = useTranslation();
   const [draft, setDraft] = useState({ name: '', value: '' });
@@ -86,6 +93,7 @@ export function KeyValueTable({
           value={draft.name}
           placeholder={nameLabel}
           aria-label={nameLabel}
+          data-automation-id={draftAutomationIds?.name}
           spellCheck={false}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           onKeyDown={(event) => event.key === 'Enter' && confirmDraft()}
@@ -95,6 +103,7 @@ export function KeyValueTable({
           value={draft.value}
           placeholder={valueLabel}
           aria-label={valueLabel}
+          data-automation-id={draftAutomationIds?.value}
           spellCheck={false}
           onChange={(event) => setDraft({ ...draft, value: event.target.value })}
           onKeyDown={(event) => event.key === 'Enter' && confirmDraft()}
@@ -104,6 +113,7 @@ export function KeyValueTable({
           className={styles.confirm}
           aria-label={t('composer.addRow')}
           disabled={!canConfirm}
+          data-automation-id={draftAutomationIds?.confirm}
           onClick={confirmDraft}
         >
           <Check strokeWidth={2.2} />

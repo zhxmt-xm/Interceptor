@@ -7,7 +7,7 @@ Composer 由 Core 直接出站，不依赖系统代理路由。因此这些 work
 <a id="composer-request-edit"></a>
 ## `composer.request-edit`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -236,3 +236,9 @@ Collection导入与Rules同构：纯新增、节点与字段行`id`全部重新�
 - 实现前提交运行同一workflow，必须精确失败于`composer.collection.import`入口不存在。
 - 当前提交全部Green，涵盖取消零变化、id不复用、层级保持、字段还原、打开文档不受影响与Core回载，并完成trace/evidence与销毁验证。
 - 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。
+
+### TDD证据
+
+- Retrospective Red：最终workflow源码在`884dcc4`精确失败于`composer.collection.import`不存在，非selector、构建、listener或fixture失败。
+- Green：当前`1/1`通过。真实Save Dialog导出两条带query/header的request与一层目录，真实Open Dialog覆盖取消和确认；新增节点与全部字段行id不复用，method/url/query/header、层级、当前打开文档与目录落点保持，remount后由Core恢复。
+- 销毁：Main PID `38140`、Core PID `23300`均退出，`gracefulDestroyVerified=true`，8888释放，系统代理恢复原值。

@@ -86,6 +86,10 @@ export function RequestPane({ request }: RequestPaneProps): React.JSX.Element {
           onChange={(query) => updateRequest({ ...request, query })}
           nameLabel={t('composer.name')}
           valueLabel={t('composer.value')}
+          draftAutomationIds={{
+            ...AUTOMATION_IDS.composer.queryDraft,
+            confirm: AUTOMATION_IDS.composer.addQuery,
+          }}
         />
       ) : null}
 
@@ -95,6 +99,10 @@ export function RequestPane({ request }: RequestPaneProps): React.JSX.Element {
           onChange={(headers) => updateRequest({ ...request, headers })}
           nameLabel={t('composer.name')}
           valueLabel={t('composer.value')}
+          draftAutomationIds={{
+            ...AUTOMATION_IDS.composer.headerDraft,
+            confirm: AUTOMATION_IDS.composer.addHeader,
+          }}
         />
       ) : null}
 

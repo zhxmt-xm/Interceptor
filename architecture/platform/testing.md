@@ -19,11 +19,11 @@
 - **Local production driver**：`e2e-workflow-tests/` 使用 Playwright `_electron.launch()` 启动测试拥有的 Electron，**不附着人工 Forge 进程**。`prepare-local.mjs` 复用 Forge Vite entry/config 生成 `.vite/build` 与 `.vite/renderer/main_window` 的 production bundle，不执行 Electron Packager；Core、协议包和 native system-proxy helper 仍走真实构建。
 - **统一安全 Renderer origin**：Main 只要没有 `MAIN_WINDOW_VITE_DEV_SERVER_URL` 就安装 `PackagedRendererProtocol`，因此 local production bundle 与最终 package 都从 `interceptor://app/index.html` 加载；开发 HMR 仍使用精确 Vite origin。该条件不依赖 `app.isPackaged`，但可信导航与 CSP 边界不放宽。
 - **生命周期与证据**：`fixtures/local-electron-driver.ts` 为每个测试创建独立临时 `userData`，启动 BrowserContext trace，等待真实 Renderer/Core/8888 listener，并在 workflow 后保存 `trace.zip`、`final.png`、Main/Renderer 日志和 PID/端口 metadata；产品 Close 后验证 Main/Core 退出与 8888 可重新 bind，强制关闭只作 finally 兜底。
-- **零 Mock 输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有 loopback origin/client、输入文件、证据和清理。`fixtures/loopback-lab.ts` 提供随机 origin port，但被测 Proxy listener 保持产品默认 `127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
+- **零 Mock / 零 seed输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有loopback origin/client、证据与清理。导入文件必须由同一workflow先经产品Export真实产生，测试只能只读核验并重新选择，不得自行构造业务输入。`fixtures/windows-file-dialog.ts`用Windows UI Automation定位真实Open/Save Dialog，再用真实鼠标键盘选择路径，不改写dialog返回值；`fixtures/loopback-lab.ts`提供随机origin port，但被测Proxy listener保持产品默认`127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
 
 ## 3. 当前实现状态
 
-67 条验收规格与 Inventory 位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有 10 条可执行真实 Electron workflow，其中 `rules.root-toolbar`、`rules.hierarchy-menus-status`、`capture.inspector.section-collapse`、`composer.response.section-collapse`、`composer.response.body-formatting`与`composer.collection.tree-interactions`已取得行为Red/Green、trace/evidence与完整销毁证据并在Inventory标为passed；其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
+67 条验收规格与 Inventory 位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有15条可执行真实Electron workflow；`rules.import-tree`与`composer.collection.import`已通过同一workflow的retrospective Red、当前Green、真实原生文件对话框、trace/evidence与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
 
 `packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用这 67 条 workflow contract。
 

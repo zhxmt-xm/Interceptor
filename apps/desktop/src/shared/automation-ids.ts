@@ -274,6 +274,14 @@ export const AUTOMATION_IDS = {
     bodyType: 'composer.body-type',
     addHeader: 'composer.header.add',
     addQuery: 'composer.query.add',
+    headerDraft: {
+      name: 'composer.header.draft.name',
+      value: 'composer.header.draft.value',
+    },
+    queryDraft: {
+      name: 'composer.query.draft.name',
+      value: 'composer.query.draft.value',
+    },
     body: 'composer.body',
     authType: 'composer.auth.type',
     bearerToken: 'composer.auth.bearer-token',

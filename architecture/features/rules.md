@@ -460,7 +460,7 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 **尚未覆盖**：非空但无法编译的 regex（`safeRegExp` 退化为恒不匹配，但 UI 无提示）、不可解析的 JSON body、
 不存在的 Map Local 文件仍会静默失效，见 §11 待做。
 
-### 9.3 导入与导出 [代码完成 · 待 E2E]
+### 9.3 导入与导出 [已完成]
 
 **文件格式**：`{ "nodes": RuleNode[] }`，UTF-8 JSON，两空格缩进。没有版本字段——文件内容就是 `RuleNode` 树本身，与 Core 存的结构同构。
 
@@ -547,6 +547,8 @@ readImportFile(title) → { fileName, content } | null
 `null` 表示用户在系统对话框取消。命令**不接受路径参数**，路径只能由用户在原生对话框选择，因此不构成被禁止的任意文件路径 API；Main 侧需要文件大小上限，避免选中超大文件阻塞读取。
 
 **忙碌边界**：点击 Import / Export 后立即显示不可关闭遮罩，原生 Open / Save Dialog 存续期间及后续读写/解析期间保持。遮罩没有关闭入口并阻断鼠标、右键、Escape、Tab 与快捷键穿透；文件分析完成后才切换到确认 Dialog。确认写入期间 Dialog 自身禁用关闭、Cancel 与遮罩点击，直到 `rules.replace` 成功或失败。用户在原生文件 Dialog 中取消仍是合法出口，此时不读写数据。
+
+**TDD / E2E证据（2026-08-20）**：最终`rules.import-tree`源码移植到实现前`884dcc4`后，真实Electron精确Red于`rules.toolbar.import`不存在，既有`rules.root-toolbar`同环境Green。当前workflow通过真实Rules UI创建两条规则与目录，经真实Save Dialog导出同一文件，再用三次真实Open Dialog验证取消零变化、首次追加、重复追加、id全量重生成、enabled/层级/顺序保留与revision `1→2→3`；metadata记录Main PID `34724`、Core PID `20512`、`gracefulDestroyVerified: true`与8888释放。12个Rules/Composer import/export明暗parity场景全部`0 missing / 0 flagged`。
 
 ## 10. Renderer 交互
 

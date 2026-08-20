@@ -84,9 +84,11 @@ apps/desktop/tests/e2e-workflow-tests/
 │  │  └─ section-collapse.workflow.ts
 │  ├─ composer/
 │  │  ├─ body-formatting.workflow.ts
+│  │  ├─ collection-import.workflow.ts
 │  │  ├─ collection-tree-interactions.workflow.ts
 │  │  └─ response-section-collapse.workflow.ts
 │  ├─ rules/
+│  │  ├─ import-tree.workflow.ts
 │  │  └─ root-toolbar.workflow.ts
 │  └─ breakpoints/
 │     ├─ execute-edited.workflow.ts
@@ -184,6 +186,7 @@ diagnostics.row.<traceKey>
 | `rules.validate-apply` | Validate、Apply、revision和持久化 | shared | planned |
 | `rules.apply-conflict` | 乐观并发冲突恢复 | shared | planned/blocked |
 | `rules.runtime-hit` | 规则真实作用于Proxy数据面 | shared | planned |
+| `rules.import-tree` | 真实Save→Open、取消、纯追加、身份重生成与持久化 | native-ui | passed |
 
 详细步骤：[docs/rules.md](docs/rules.md)
 
@@ -199,6 +202,7 @@ diagnostics.row.<traceKey>
 | `composer.send-failure` | URL/网络失败和重试 | shared | planned |
 | `composer.history-new` | History加载和New重置 | shared | planned |
 | `composer.resize` | Request/Response splitter | shared | planned |
+| `composer.collection.import` | 真实Save→Open、取消、字段身份重生成与Core回载 | native-ui | passed |
 
 详细步骤：[docs/composer.md](docs/composer.md)
 
