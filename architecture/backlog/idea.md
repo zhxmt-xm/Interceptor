@@ -200,12 +200,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>🔄 进行中</strong></td>
   <td>Body Rule effect evidence</td>
-  <td><ul><li>为普通 Rule body action 与 Breakpoint replacement 建立独立正文证据和 marker。</li><li><strong>Steps:</strong><ul><li>待协议设计</li><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
+  <td><ul><li>为普通 Rule body action 与 Breakpoint replacement 建立独立正文证据和 marker。</li><li><strong>Steps:</strong><ul><li>协议设计完成</li><li>设计完成</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
+  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 待Red</li><li><strong>Integration:</strong> ❌ 待Red</li><li><strong>E2E:</strong> ❌ 契约完成，待可执行Red</li><li><strong>Design/Parity:</strong> 🔄 Body effect专属交互2/2、明暗Text/File基线8张完成，产品parity待实现</li></ul></td>
   <td><ul><li>当前只有 rule hit，没有原始/最终、text/file、request/response 的 body effect 契约。</li></ul></td>
-  <td><ul><li>先定义证据模型和 design-vite，再按协议→Core→Renderer→E2E 实现。</li></ul></td>
+  <td><ul><li>证据模型和 design-vite 已定稿；后续按Unit/Integration Red → E2E Red → Protocol/Core/Renderer → Green实现。</li></ul></td>
 </tr>
 
 <tr>

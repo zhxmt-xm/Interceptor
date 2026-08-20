@@ -76,6 +76,25 @@ for (const theme of ['light', 'dark']) {
   for (const bodyPreview of ['json', 'tree', 'tree-menu', 'raw', 'hex', 'code', 'formatting', 'limited', 'format-off', 'image', 'image-large', 'binary', 'form', 'md', 'md-split', 'md-source', 'media']) {
     shots.push({ feature: 'capture', theme, variant: `body-${bodyPreview}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'response', bodyPreview } });
   }
+  for (const bodyRuleEffect of ['request-text', 'request-file', 'response-text', 'response-file']) {
+    shots.push({
+      feature: 'capture',
+      theme,
+      variant: `body-effect-${bodyRuleEffect}`,
+      state: {
+        view: 'capture',
+        theme: TOKEN[theme],
+        sidebar: 'collapsed',
+        overlay: '',
+        detail: 'open',
+        scene: 'http',
+        tab: bodyRuleEffect.startsWith('request-') ? 'request' : 'response',
+        bodyPreview: 'json',
+        bodyRuleEffect,
+        breakpointState: '',
+      },
+    });
+  }
   shots.push({ feature: 'capture', theme, variant: 'body-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'body-full', detail: 'open', tab: 'response', bodyPreview: 'code' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
@@ -264,6 +283,7 @@ async function shoot(list) {
       ruleFilter: '',
       ruleOptions: '',
       bodyPreview: '',
+      bodyRuleEffect: '',
       filters: 'open',
       filterGroup: '',
       filterActive: '',

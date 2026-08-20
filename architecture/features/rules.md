@@ -386,7 +386,30 @@ Renderer marker 语义（`RequestInspector.module.css`）：
 `headersWithRuleEffects` 合并 wire header 与 effect 行：request wire 是规则前原值，response wire 是规则后终值，
 精确重复的行从 wire 集合移除。
 
-### 7.3 Rule hit
+### 7.3 Body effect [待实现]
+
+正文是单一最终值，不像header可保留多个并列实例，因此一次request/response只保留**最终写入者**：后执行的普通body action覆盖前者，Breakpoint Text/File replacement再覆盖此前普通Rule effect；Breakpoint未替换正文时保留此前普通Rule effect。
+
+公开协议使用独立字段，不把正文证据塞进`CaptureBodyRef`：
+
+```ts
+type CaptureBodyRuleEffectSource = 'text' | 'file';
+type CaptureBodyOriginalState = 'available' | 'empty' | 'unavailable';
+
+interface CaptureBodyRuleEffect {
+    ruleId: string;
+    effect: 'replace';
+    source: CaptureBodyRuleEffectSource;
+    originalState: CaptureBodyOriginalState;
+    originalBody?: CaptureBodyRef;
+}
+```
+
+`CaptureExchangeDetail.requestBody/responseBody`在存在effect时一律表示**Final**。Request的入站`request-body-data`是客户端原始stream，因此原文非空时放入`requestBodyEffect.originalBody`，空正文记`originalState:'empty'`；最终replacement另写BodyStore并作为`requestBody`。Response的`response-body-data`来自写给客户端的最终stream，原始origin body在headers-stage replacement下不会进入Capture且不能为取证而缓冲，固定记`originalState:'unavailable'`，`responseBody`继续表示Final。
+
+普通Rule的Text/JSON action都映射为`source:'text'`；Breakpoint `body`映射Text，`bodyFilePath`映射File，绝不把绝对路径写入effect。空Final正文保留`encodedSize:0`且无`bodyHash`，仍是有效替换证据。标准HAR只导出Final且不带effect/original历史；Native Archive必须保真保存effect、Request Original与Final引用。
+
+### 7.4 Rule hit
 
 ```ts
 interface RuleHitRecord {

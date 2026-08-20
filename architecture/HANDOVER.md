@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `e8abfcb`
+> Tracked commit: `18097e5`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-20
 
@@ -55,7 +55,7 @@
 - [x] **已完成 · Detail BodyViewer撑满与嵌套滚动**：`BodySection`经grow Section占满Inspector剩余高度，Monaco显式`alwaysConsumeMouseWheel: false`让边界wheel交给外层。现行workflow字节级移植到修复前`039dd42`后，几何断言先Green，外层`scrollTop`保持`8.666666984558105`取得精确Red；当前同一真实Electron workflow `1/1` Green，Main PID `31796`、Core PID `3600`均退出，`gracefulDestroyVerified: true`且8888释放、系统代理恢复。
 - [x] **已完成 · Bilibili登录态真实回归**：现有Proxy Core业务行为无需修改；Settings证书操作补公开automation ID，并新增真实Edge Default profile workflow。所有Generate / Install / MITM / Recording / cleanup均走产品UI，Edge只用`view_1021` / `view_1003`定位并原生刷新。六次独立workflow共18次完整页面刷新全部保持头像；每轮`www.bilibili.com/`主文档均为H2 / 200并携带`DedeUserID`、`SESSDATA`、`bili_jct`，leaf由本轮UI生成CA签发，无Rule header effect。最终Main PID `12472`、Core PID `28068`完成销毁，`gracefulDestroyVerified: true`，8888、系统代理与本轮CA均恢复。
 - [x] **已完成 · Rules 与 Composer JSON 导入导出**：导入为纯新增，节点与Composer字段行id全量重生成，Rule enabled沿用文件值且priority追加重排；Main只经原生Dialog读取最多8MiB的`.json`，Renderer逐项校验并按路径报告跳过原因，确认后复用整树replace原子持久化。最终workflow只用真实UI创建数据，先经真实Save Dialog导出，再经真实Open Dialog导入，不seed文件、不mock dialog。最终测试源码在`884dcc4`分别精确Red于`rules.toolbar.import`与`composer.collection.import`不存在；当前Rules与Composer各`1/1` Green，metadata分别记录Main/Core PID `34724/20512`与`38140/23300`、`gracefulDestroyVerified: true`及8888释放、系统代理恢复。共享parser与两侧parser/store聚焦`51/51`、Desktop`298/298`、Protocol`24/24`、MCP`45/45`、全workspace typecheck通过；12个明暗import/export parity场景全部`0 missing / 0 flagged`，最大几何差0.5px。Windows x64 package、artifact audit（1,294 files / 391,703,630 bytes）、production audit 0漏洞与packaged smoke `1/1`通过。Proxy Core全量串行另有已登记的HTTP framing两项失败（其余`298/298`），不属于本work item。
-- [ ] **待设计/实现 · Body Rule effect**：普通 Rule body action 与 Breakpoint body replacement 目前只有 rule hit，没有独立 body effect 协议、Capture 存储字段或 Inspector marker；需先确定原始/最终、text/file 与 request/response 的证据模型并完成 design-vite 设计，不能伪装成 Header effect。
+- [ ] **设计完成 · Body Rule effect 产品待实现**：`CaptureBodyRuleEffect`已定稿为最终写入者、`text/file`来源与Request Original三态模型；Response Original明确unavailable，不缓冲origin response或伪造空正文。design-vite已完成Request/Response × Text/File × light/dark 8张基线，Body effect专属交互`2/2`通过；Inspector使用独立Body version证据栏，标题只保留marker与来源，窄面板无横向裁切。产品Protocol/Core/Capture/Native Archive/Renderer尚未改动，Unit/Integration/E2E Red均未开始；后续必须从Red继续，不能把设计checkpoint视为代码完成。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [x] **已完成 · WebSocket binary 与 timeout continue**：真实 socket 回归锁定 binary hex 编辑后按精确字节还原，出站与回显帧 opcode / payload 一致；配置 deadline 到期后 pending 自动清零并原样继续转发。WebSocket 产品契约固定 timeout continue，不提供 timeout-drop；drop 只来自用户显式操作。ProxyService 聚焦测试 `29/29` 通过。
 - [ ] **待验证 · HTTP Breakpoint timeout policy wire**：HTTP 规则正式提供 `onTimeout: continue | drop`，`BreakpointQueue` 已锁定 policy 传播，但两种策略的真实代理 wire 结果尚未分别验证。不要借 WebSocket 固定 continue 路径伪造这项覆盖。

@@ -1432,6 +1432,12 @@ flowchart LR
   与真实 host、状态码字符串不可能碰撞。
 - 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge。
 
+#### 10.1.1 Body effect evidence [待实现]
+
+存在`requestBodyEffect/responseBodyEffect`时，Inspector Body section标题行依次显示标题、可点击`Rule replaced` marker、`Text/File`来源与chevron；marker点击沿用Header effect的Rules导航，MIME/大小只在BodyViewer工具栏显示。展开区顶部使用独立`Body version · Original / Final`证据栏并默认Final：Request Original为客户端入站正文，Response Original因header-stage流式替换不可观测而disabled，正文区显示明确不可用提示，不伪造diff。
+
+主`requestBody/responseBody`始终指向Final；effect内的`originalBody`只在`originalState:'available'`时存在，`empty`与`unavailable`必须区分。BodyViewer读取、Copy、Save、Fullscreen都只作用于当前Original/Final选择，MIME/大小标签同步所选ref。Header effect marker与Body effect marker都只表达真实证据，不从rule hit反推。
+
 **列顺序：Path 在前、Host 在后。** 列表主列渲染为 `path · host` 而非 `host · path`——host 在筛选分栏里
 一点即达，path 才是同一 host 下区分请求的信息。窄宽度下依次隐藏 Time、Size、Type、Proto 四列
 （这些维度筛选分栏里都有），Path · Host 主列永不隐藏。

@@ -1,0 +1,95 @@
+.bodyRuleEffectDesign {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.bodyRuleEffectDesign > :global(.ant-collapse) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bodyRuleEffectDesign > :global(.ant-collapse) > :global(.ant-collapse-item) {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.bodyRuleEffectEvidence {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bodyRuleEffectMarker,
+.bodyRuleEffectSource {
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 16px;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.bodyRuleEffectMarker {
+  padding: 0 6px;
+  border-color: color-mix(in srgb, var(--yellow) 28%, transparent);
+  background: color-mix(in srgb, var(--yellow) 11%, var(--panel));
+  color: var(--yellow);
+  cursor: pointer;
+}
+
+.bodyRuleEffectSource {
+  padding: 0 5px;
+  background: var(--panel-2);
+  color: var(--text-2);
+}
+
+.bodyRuleEffectUnavailable {
+  display: flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 11.5px;
+  letter-spacing: 0;
+}
+
+.bodyRuleEffectUnavailable svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--yellow);
+}
+
+.bodyRuleEffectVersionBar {
+  display: flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

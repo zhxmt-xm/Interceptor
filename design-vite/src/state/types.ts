@@ -51,6 +51,12 @@ export type BodyPreview =
 export type BodyKind = 'json' | 'code' | 'limited' | 'image' | 'image-large' | 'binary' | 'form' | 'md' | 'media';
 export type BodyMode = 'default' | 'tree' | 'raw' | 'hex' | 'split' | 'source';
 export type BodyState = 'menu' | 'busy' | 'format-off' | '';
+export type BodyRuleEffectState =
+  | 'request-text'
+  | 'request-file'
+  | 'response-text'
+  | 'response-file'
+  | '';
 export type BreakpointState =
   | 'request'
   | 'response'
@@ -121,6 +127,7 @@ export interface DesignState {
   readonly bodyKind: BodyKind;
   readonly bodyMode: BodyMode;
   readonly bodyState: BodyState;
+  readonly bodyRuleEffect: BodyRuleEffectState;
   readonly breakpoints: 'on' | 'off';
   readonly breakpointState: BreakpointState;
   readonly breakpointBody: BreakpointBodyState;

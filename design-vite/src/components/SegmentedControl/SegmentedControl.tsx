@@ -1,6 +1,7 @@
 import styles from './SegmentedControl.module.css';
 
 interface SegmentedControlOption<Value extends string> {
+  readonly disabled?: boolean;
   readonly label: string;
   readonly value: Value;
 }
@@ -32,12 +33,16 @@ export function SegmentedControl<Value extends string>({
         return (
           <button
             aria-checked={selected}
+            aria-disabled={option.disabled || undefined}
             className={styles.segmentedControlItem}
             data-selected={selected || undefined}
+            disabled={option.disabled}
             key={option.value}
             role="radio"
             type="button"
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (!option.disabled) onChange(option.value);
+            }}
           >
             {option.label}
           </button>

@@ -247,6 +247,32 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹配、hit count、Capture结果和禁用行为一致。
 
+<a id="rules-body-effect-evidence"></a>
+## `rules.body-effect-evidence`
+
+**状态**：planned
+**策略**：native-ui + privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与可记录request/response body的loopback origin，启动真实Electron并通过UI开始Recording。
+2. 通过Rules UI创建request Text body rule并Apply；发送带非空原文的匹配POST，在Capture Request Body确认默认Final、marker绑定该rule、source=Text，切Original读回客户端原文，再切Final读回规则正文。
+3. 创建response Text body rule并Apply；发送匹配请求，在Response Body确认Final为规则正文、marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
+4. 创建request Breakpoint rule；通过真实UI触发暂停、选择Text replacement并Forward edited，确认Request Body effect最终写入者改为breakpoint rule，Original/Final分别可读。
+5. 经产品UI把一段已捕获正文Save到workflow临时目录，再创建response Breakpoint并通过真实Open Dialog选择该测试自产文件；Forward edited后确认source=File、绝对路径未进入Renderer/evidence、Final字节与文件一致、Original unavailable。
+6. 同一阶段额外发送未替换body与只编辑header的请求，确认不出现body marker；重复body writer只显示最终写入者。
+7. Native Archive round-trip保真与标准HAR只含Final、不含body effect历史的边界下沉到transfer unit/integration，本workflow不直接构造导入文件。
+8. 保存Original/Final hash/size、ruleId/source/availability、trace、日志与metadata；正常Close并验证Main/Core/Worker退出、8888释放、系统代理恢复并删除临时文件/profile。
+
+### 预期效果
+
+Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original与Final，Response明确Original unavailable；Text/File、request/response、最终写入者与Rules导航一致，不泄漏本地文件路径。
+
+### TDD证据要求
+
+- 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
+- unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
+
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 

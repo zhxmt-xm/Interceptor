@@ -140,3 +140,51 @@ test('Capture BodyViewer chains wheel scrolling to the Inspector at its boundary
     () => scroll.evaluate((element) => element.scrollTop),
   ).toBeGreaterThan(beforeOuterScroll);
 });
+
+test('Capture request body effect switches between Original and Final evidence', async ({ page }) => {
+  await setDesignState(page, {
+    view: 'capture',
+    detail: 'open',
+    scene: 'http',
+    tab: 'request',
+    breakpointState: '',
+    bodyRuleEffect: 'request-text',
+  });
+
+  await expect(page.locator('.app')).toHaveAttribute(
+    'data-body-rule-effect',
+    'request-text',
+  );
+  const marker = page.getByRole('button', { name: 'Rule replaced', exact: true });
+  const original = page.getByRole('radio', { name: 'Original' });
+  const final = page.getByRole('radio', { name: 'Final' });
+  await expect(marker).toBeVisible();
+  await expect(final).toHaveAttribute('aria-checked', 'true');
+  await original.click();
+  await expect(original).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText('"original"')).toBeVisible();
+});
+
+test('Capture response body effect exposes Final and disables unavailable Original', async ({ page }) => {
+  await setDesignState(page, {
+    view: 'capture',
+    detail: 'open',
+    scene: 'http',
+    tab: 'response',
+    breakpointState: '',
+    bodyRuleEffect: 'response-file',
+  });
+
+  await expect(page.getByRole('button', {
+    name: 'Rule replaced',
+    exact: true,
+  })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Original' })).toBeDisabled();
+  await expect(page.getByRole('radio', { name: 'Final' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expect(page.getByText(
+    'Original response body is unavailable for a headers-stage replacement.',
+  )).toBeVisible();
+});

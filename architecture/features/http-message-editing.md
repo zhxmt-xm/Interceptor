@@ -146,6 +146,10 @@ Transfer-Encoding: chunked
 
 ## 7. 测试门禁
 
+### Body effect evidence
+
+Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入者、Text/File来源与Original可用性，Final正文仍必须经过本文件的Content-Encoding/framing规则。Request可展示Original与Final；Response Original不可用，不能通过缓冲整个origin response或伪造空正文补齐。effect Green不代表wire framing矩阵Green，反之亦然。
+
 ### Core wire tests
 
 请求与响应、H1 与 H2 分别覆盖：
