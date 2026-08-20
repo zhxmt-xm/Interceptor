@@ -146,10 +146,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Capture clear synchronizes facets</td>
-  <td><ul><li>Clear 后列表、selection 与 facet snapshot 同一次推进到空状态。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-11.png" alt="Capture clear" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Capture 21/21</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ Red/Green 未完成</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
+  <td><ul><li>Clear 后列表、selection 与 facet snapshot 同一次推进到空状态。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-11.png" alt="Capture clear" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ owning hook/store 23/23</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 89d8dda retrospective Red、当前1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ➖ N/A，未改变UI</li></ul></td>
   <td><ul><li><code>useThrottledRows</code> 对空 rows 仍节流，filter 暂时渲染旧 snapshot。</li></ul></td>
   <td><ul><li>空 rows 作为同步边界立即清空 snapshot，只节流非空实时更新。</li></ul></td>
 </tr>

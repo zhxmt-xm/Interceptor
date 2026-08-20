@@ -68,7 +68,7 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 <a id="capture-traffic-capture-select"></a>
 ## `capture.traffic.capture-select`
 
-**状态**：planned
+**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -243,6 +243,35 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 
 - `89d8dda`仅回植后续公开automation ID测试探针后，真实Electron精确Red：第二个POST到达后Method DOM顺序为POST、GET。
 - 当前提交同一workflow `1/1` Green；Main PID `11064`、Core PID `25972`均退出，`gracefulDestroyVerified: true`，listener `8888`释放且系统代理恢复。
+
+<a id="capture-clear-facets"></a>
+## `capture.clear-facets`
+
+**状态**：planned
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与loopback origin，启动真实Electron并等待App、Core与8888；通过真实UI开始Recording。
+2. 展开Method facet，经8888发送一条测试自产GET并等待Capture行与GET option/count=1可见；点击该行建立selection。
+3. 在facet快照刚完成更新后立即点击`capture.clear`，等待Capture行数量变为0。
+4. 不使用Playwright auto-retry，直接在同一断言点读取Method group count、GET option数量与当前选中行数量；必须同时为`0 / 0 / 0`。
+5. 保存Clear前后原始DOM快照、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
+
+### 预期效果
+
+Clear是空rows的同步边界：列表、selection与facet snapshot在同一次可见状态推进中归零，不允许facet继续显示旧count/options最多600ms。
+
+### TDD证据要求
+
+- 最终workflow源码必须在`89d8dda`取得retrospective Red，且失败值为rows=0时Method count/GET option仍非0；selector、构建、listener、授权或fixture失败不算Red。
+- 当前提交运行同一workflow必须Green，并完成trace/evidence、Main/Core销毁、8888释放与系统代理恢复。
+
+### TDD证据
+
+- Retrospective Red：最终workflow源码在`89d8dda`仅回植后续公开facet automation ID、`startRecording` UI helper与旧driver Close定位后，原始DOM为`rows=0 / inspector=0 / methodGroupCount=1 / getOptions=1`。
+- Green：当前同一workflow`1/1`通过，Clear后的同一原始DOM采样为`0/0/0/0`；owning hook/store unit `23/23`通过。
+- 销毁：Main PID `20116`、Core PID `35120`均退出，`gracefulDestroyVerified=true`，8888释放且系统代理恢复原值。
 
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`

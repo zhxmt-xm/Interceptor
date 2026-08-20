@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `cbe2d32`
+> Tracked commit: `ac0aa73`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-20
 
@@ -49,7 +49,7 @@
 - [x] **已完成 · BodyViewer formatter真实链路**：trimmed Monaco的HTML/CSS/JavaScript language未注册导致Format静默no-op，`formatActions` contribution又与精简service图不兼容；现改为HTML/CSS/JavaScript language worker直出edits，XML走`xml-formatter`，失败恢复原文且Copy读取当前model。Composer以request/current response拥有内存view cache，切换文档仍恢复各自结果而不改原始body；新response、关闭或删除释放cache。Unit先Red后BodyViewer/formatter `17/17`、Store cache `9/9` Green；真实Electron最终锁定HTML自动`1→5`行、JavaScript空格格式化、2,097,169 B CSS手动`1→4`行且跨文档恢复、malformed XML 7字节原样、0 pageerror及完整销毁，Desktop全量`266/266`通过。
 - [x] **已完成 · Capture filter option 保持分组展开**：真实 Renderer 的筛选值与 `expandedFacets` 原本已正交；缺陷来自 design fixture 的 `syncFixture` 在任意 state 更新后重置展开态。展开同步现只依赖 owning scene 字段，option 选择/取消不再收起非 Application 分组。design interaction 精确 Red→Green 后为 2/2，Capture Store 21/21，真实 Electron `capture.filter-group-selection` 1/1 Green；metadata 记录 Main PID `29504`、Core PID `29972`、`gracefulDestroyVerified: true` 与 8888 释放，系统代理保持原有 `127.0.0.1:7890`；Capture 截图同环境复跑 158/158 identical。
 - [x] **已完成 · Capture facet 稳定排序**：Application / Method / Host / Type / Rule 保持当前 Capture 中首次出现顺序，计数变化只更新数字。真实Electron在`89d8dda`仅回植公开automation ID探针后精确Red于POST反超后DOM变为POST、GET；当前同一`capture.facet-stable-ordering`为`1/1` Green，Capture unit `21/21`通过。Green metadata记录Main PID `11064`、Core PID `25972`、listener `8888`与`gracefulDestroyVerified: true`，系统代理已恢复。
-- [ ] **代码完成 · 待真实 E2E · Capture Clear 同步 facet**：空 rows 绕过600ms throttle，让列表、selection 与 facet snapshot 同步归零。unit Green已有；缺同一真实Electron workflow的retrospective Red、current Green与销毁证据，补齐前不得标记完成。Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
+- [x] **已完成 · Capture Clear 同步 facet**：空rows绕过600ms throttle，让列表、selection与facet snapshot同步归零。专用`capture.clear-facets`最终源码在`89d8dda`仅回植公开facet automation探针和driver helper后精确Red：`rows=0 / inspector=0`但`methodGroupCount=1 / GET option=1`；当前同一workflow`1/1` Green，原始DOM为`0/0/0/0`。owning unit `23/23`通过；Green metadata记录Main PID `20116`、Core PID `35120`、`gracefulDestroyVerified: true`，8888释放且系统代理恢复。Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 最终 Rule state 与 Header effect**：RuleService 已改为两阶段执行，断点编辑 effect 与暂停 marker 已贯通；Protocol、Desktop、MCP、Proxy Core与design interaction均Green。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 已同属Control group，unit/design/parity证据已有。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [x] **已完成 · Detail BodyViewer撑满与嵌套滚动**：`BodySection`经grow Section占满Inspector剩余高度，Monaco显式`alwaysConsumeMouseWheel: false`让边界wheel交给外层。现行workflow字节级移植到修复前`039dd42`后，几何断言先Green，外层`scrollTop`保持`8.666666984558105`取得精确Red；当前同一真实Electron workflow `1/1` Green，Main PID `31796`、Core PID `3600`均退出，`gracefulDestroyVerified: true`且8888释放、系统代理恢复。
