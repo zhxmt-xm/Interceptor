@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `ac0aa73`
+> Tracked commit: `b6d3e39`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-20
 
@@ -50,7 +50,7 @@
 - [x] **已完成 · Capture filter option 保持分组展开**：真实 Renderer 的筛选值与 `expandedFacets` 原本已正交；缺陷来自 design fixture 的 `syncFixture` 在任意 state 更新后重置展开态。展开同步现只依赖 owning scene 字段，option 选择/取消不再收起非 Application 分组。design interaction 精确 Red→Green 后为 2/2，Capture Store 21/21，真实 Electron `capture.filter-group-selection` 1/1 Green；metadata 记录 Main PID `29504`、Core PID `29972`、`gracefulDestroyVerified: true` 与 8888 释放，系统代理保持原有 `127.0.0.1:7890`；Capture 截图同环境复跑 158/158 identical。
 - [x] **已完成 · Capture facet 稳定排序**：Application / Method / Host / Type / Rule 保持当前 Capture 中首次出现顺序，计数变化只更新数字。真实Electron在`89d8dda`仅回植公开automation ID探针后精确Red于POST反超后DOM变为POST、GET；当前同一`capture.facet-stable-ordering`为`1/1` Green，Capture unit `21/21`通过。Green metadata记录Main PID `11064`、Core PID `25972`、listener `8888`与`gracefulDestroyVerified: true`，系统代理已恢复。
 - [x] **已完成 · Capture Clear 同步 facet**：空rows绕过600ms throttle，让列表、selection与facet snapshot同步归零。专用`capture.clear-facets`最终源码在`89d8dda`仅回植公开facet automation探针和driver helper后精确Red：`rows=0 / inspector=0`但`methodGroupCount=1 / GET option=1`；当前同一workflow`1/1` Green，原始DOM为`0/0/0/0`。owning unit `23/23`通过；Green metadata记录Main PID `20116`、Core PID `35120`、`gracefulDestroyVerified: true`，8888释放且系统代理恢复。Root cause / 方案见 [backlog/idea.md](backlog/idea.md)。
-- [ ] **代码完成 · 待真实 E2E · Breakpoint 最终 Rule state 与 Header effect**：RuleService 已改为两阶段执行，断点编辑 effect 与暂停 marker 已贯通；Protocol、Desktop、MCP、Proxy Core与design interaction均Green。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
+- [x] **已完成 · Breakpoint 最终 Rule state 与 Header effect**：RuleService两阶段执行普通action后再暂停，暂停快照携带最终header与普通Rule marker；Execute edited只为用户显式修改字段生成绑定breakpoint ruleId的effect。最终`breakpoints.execute-edited`源码在`89d8dda`仅回植后续公开automation ID和driver helper后精确Red：priority更晚的`x-e2e-before-breakpoint`缺失，Capture也找不到`set x-edit-stage` marker；当前同一workflow`1/1` Green，origin三段header/body事实同时通过。Owning RuleService/message-editing unit `28/28` Green；Red/Green metadata分别记录Main/Core PID `31404/3812`与`46424/29380`、`gracefulDestroyVerified: true`，8888释放且系统代理恢复。`breakpoints.execute-edited`整体Inventory仍因独立HTTP framing矩阵保持planned，不借本项提前验收。
 - [ ] **代码完成 · 待真实 E2E · Breakpoint 右键菜单层级**：Breakpoint submenu 与 Block 已同属Control group，unit/design/parity证据已有。缺真实 Electron retrospective Red / current Green 与销毁证据，补齐前不得标记完成。
 - [x] **已完成 · Detail BodyViewer撑满与嵌套滚动**：`BodySection`经grow Section占满Inspector剩余高度，Monaco显式`alwaysConsumeMouseWheel: false`让边界wheel交给外层。现行workflow字节级移植到修复前`039dd42`后，几何断言先Green，外层`scrollTop`保持`8.666666984558105`取得精确Red；当前同一真实Electron workflow `1/1` Green，Main PID `31796`、Core PID `3600`均退出，`gracefulDestroyVerified: true`且8888释放、系统代理恢复。
 - [x] **已完成 · Bilibili登录态真实回归**：现有Proxy Core业务行为无需修改；Settings证书操作补公开automation ID，并新增真实Edge Default profile workflow。所有Generate / Install / MITM / Recording / cleanup均走产品UI，Edge只用`view_1021` / `view_1003`定位并原生刷新。六次独立workflow共18次完整页面刷新全部保持头像；每轮`www.bilibili.com/`主文档均为H2 / 200并携带`DedeUserID`、`SESSDATA`、`bili_jct`，leaf由本轮UI生成CA签发，无Rule header effect。最终Main PID `12472`、Core PID `28068`完成销毁，`gracefulDestroyVerified: true`，8888、系统代理与本轮CA均恢复。

@@ -165,4 +165,4 @@ Transfer-Encoding: chunked
 - `BreakpointEdit.editedHeaderNames` 已从 Renderer 草稿经协议传到 Rules / Proxy state；规则 header action 也记录同一来源事实。
 - Mockttp headers-stage body override 会自动写 `Content-Length`，尚未按本契约区分继承、缺失与用户显式编辑。真实 H1 回归已经锁定当前结果：request replacement 把继承的 `Transfer-Encoding: chunked` 改成 `Content-Length`；response replacement 生成 `Content-Length` 与 `Transfer-Encoding` 共存，Node 客户端以 `Content-Length can't be present with Transfer-Encoding` 拒绝。
 - H1/H2 request/response 的 `Content-Type` / `Content-Encoding` / `Content-Length` / `Transfer-Encoding` 矩阵尚未完整建立。
-- Local E2E `breakpoints.execute-edited` 已通过 header-only、body-only、header+body 三段真实 origin 断言并验证销毁；Inventory 在 Core wire 矩阵 Green 前仍保持 `planned`。
+- Local E2E `breakpoints.execute-edited` 已通过 header-only、body-only、header+body 三段真实 origin 断言并验证销毁；其中final Rule state与header effect已取得`89d8dda` retrospective Red和当前Green。Inventory 在 Core wire 矩阵 Green 前仍保持 `planned`。

@@ -107,6 +107,13 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 - 修复前提交运行同一workflow：暂停快照缺少priority更晚的rewrite header/marker；Forward edited后Capture缺少绑定breakpoint rule的effect。
 - 当前提交运行同一workflow：最终state、暂停marker、origin wire与Capture effect全部Green，并具备代理恢复、进程销毁和8888释放证据。selector、UAC、构建或fixture失败不算Red。
 
+### TDD证据（final state / header effect）
+
+- Retrospective Red：最终workflow源码在`89d8dda`仅回植后续公开automation ID、Rules字段探针与driver helper后，暂停快照中`x-e2e-before-breakpoint`为`null`；Forward edited后`capture.rule-effect.<breakpointRuleId>.set.x-edit-stage`不存在。
+- Green：当前同一workflow`1/1`通过，暂停快照包含`rule-value`与`data-effect=set`，Capture显示绑定breakpoint ruleId的`set x-edit-stage` marker，三段真实origin断言同时通过；owning unit `28/28` Green。
+- 销毁：Red/Green Main/Core PID分别为`31404/3812`与`46424/29380`，两边`gracefulDestroyVerified=true`，8888释放且系统代理恢复。
+- 本节只验收final Rule state与header effect；本workflow整体仍因HTTP framing矩阵未Green保持`planned`。
+
 ### Automation Contract
 
 该 workflow 只允许使用下列公共 automation ID，不以翻译文案、`aria-label`、CSS class 或 `window.interceptor` 代替：

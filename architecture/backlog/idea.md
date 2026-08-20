@@ -191,10 +191,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint header edit Rule effect</td>
-  <td><ul><li>将显式 header replace/add/remove 写入 Capture 并显示绑定 rule marker。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-14.png" alt="Header effect" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Red→Green</li><li><strong>Integration:</strong> ✅ 真实 Proxy 验证通过</li><li><strong>E2E:</strong> ❌ Red/Green 未完成</li><li><strong>Design/Parity:</strong> ✅ Marker parity 通过</li></ul></td>
+  <td><ul><li>将显式 header replace/add/remove 写入 Capture 并显示绑定 rule marker。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-14.png" alt="Header effect" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ RuleService/message-editing 28/28</li><li><strong>Integration:</strong> ✅ 真实 Proxy 验证通过</li><li><strong>E2E:</strong> ✅ 89d8dda retrospective Red、当前1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ Marker parity 通过</li></ul></td>
   <td><ul><li>Breakpoint resolve 直接 mutate state，没有向 <code>evaluation.headerEffects</code> 追加证据。</li></ul></td>
   <td><ul><li>按 <code>editedHeaderNames</code> 比较前后值，生成 <code>RuleHeaderEffect</code> 并入库。</li></ul></td>
 </tr>
@@ -209,10 +209,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint final Rule state and marker</td>
-  <td><ul><li>全部普通 actions 执行后再暂停，editor 显示最终 header 与最终写入者 marker。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Red→Green</li><li><strong>Integration:</strong> ✅ Proxy Core 通过</li><li><strong>E2E:</strong> ❌ Red/Green 未完成</li><li><strong>Design/Parity:</strong> ✅ Interaction 3/3</li></ul></td>
+  <td><ul><li>全部普通 actions 执行后再暂停，editor 显示最终 header 与最终写入者 marker。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ RuleService/message-editing 28/28</li><li><strong>Integration:</strong> ✅ Proxy Core通过</li><li><strong>E2E:</strong> ✅ 89d8dda retrospective Red、当前1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ Interaction 3/3</li></ul></td>
   <td><ul><li>旧 priority loop 遇到 breakpoint 立即 await，且 pending headers 丢失 effect 来源。</li></ul></td>
   <td><ul><li>两阶段执行非-breakpoint action 与 suspension，并在协议中携带 <code>ruleEffect/ruleId</code>。</li></ul></td>
 </tr>
