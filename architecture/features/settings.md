@@ -310,6 +310,15 @@ macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi
 
 认证代理（需要 `Proxy-Authorization`）尚未验证：`proxyUrl` 支持 `http://user:pass@host:port` 形式，但 WinINet 不保存凭据，需要用户手工提供。
 
+### 3.7 Proxy 与 MITM 跨进程恢复契约
+
+系统代理 ownership 与 TLS 用户配置使用两种不同的恢复语义：
+
+- 系统代理 journal 只保证异常退出后安全交还系统设置。下次 Main 启动必须在创建 Renderer 和 Core 前比较 `current` 与 `owned`；相等时精确恢复 `original` 并清除 journal，不把旧 ownership 延续到新进程。
+- TLS passthrough、源站证书例外与 HTTPS 解密开关是跨会话用户配置。新 Core 从 `workspace.sqlite` 读回配置；Main 在 Core ready 后读回解密意图，并按「CA 仍受信任且用户开启」重新下发 CA 与解密状态。
+
+真实 Electron 验收使用同一 profile 的两次 App 生命周期。第一次由正常 bootstrap 接管系统代理，再只能通过 Settings UI 生成并安装 CA、开启 MITM、添加 TLS passthrough 与源站例外，随后由测试环境异常终止 Main。第二次启动必须在创建 Renderer/Core 前消费旧 journal、恢复原系统代理；随后正常 bootstrap 会再次接管并写入新 journal，因此最终 UI 仍是 Recording/owned。测试以“新旧 journal 的 `createdAt` 不同且 `original` 完全相同”证明中间恢复确实发生，并验证CA文件SHA-1不变、仍在有效期内且受系统信任，以及Settings中的MITM意图和两份host配置恢复。流程结束前必须通过 UI 删除测试配置、关闭 MITM、卸载并删除 CA，再验证两代 Main/Core 全退、8888 释放且系统代理等于第一份 journal 的 `original`。测试只在内存比较 OS 与 journal 快照，不把原始 proxy server、bypass 或 PAC 写入 trace、日志或附件，也不打开会渲染这些字段的 Proxy 面板。实际MITM数据面归`capture.protocols.with-mitm`验收，不由本workflow代替。
+
 ## 4. 更新
 
 ```mermaid

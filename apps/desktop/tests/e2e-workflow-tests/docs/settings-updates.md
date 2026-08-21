@@ -69,6 +69,35 @@
 
 Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Restore仅在current==owned时恢复original，不覆盖外部修改。
 
+<a id="settings-proxy-mitm-persistence"></a>
+## `settings.proxy-mitm.persistence`
+
+**状态**：passed
+**策略**：os-side-effect；headed；Windows
+
+### Steps
+
+1. 创建 fresh profile 和第一份 evidence；启动第一代 Electron，等待 App/Core/8888/bootstrap 完成，确认 Recording、WinINet 等于第一份 ownership journal 的 `owned`，且 `original != owned`。快照只在内存比较，不进入 evidence。
+2. 只通过 Settings UI 依次 Generate、Install CA 并完成真实 UAC；开启 MITM，在 Certificates 添加 `localhost` 例外，在 TLS passthrough 添加 `127.0.0.2`。
+3. 确认 journal 为 `phase=owned`；不打开会渲染原 proxy server、bypass 与 PAC 的 Proxy 面板。
+4. 由测试环境异常终止第一代 Main，不点击产品 Close/Restore；确认第一代 Main/Core 退出、8888 释放，journal 与 owned WinINet 仍保留。
+5. 使用同一 profile 启动第二代 Electron。Main 必须在创建 Renderer/Core 前消费旧 journal 并精确恢复 `original`；随后正常 bootstrap 再次接管并创建新 journal。新旧 journal 的 `createdAt` 必须不同，`original` 必须完全相同，最终 UI 为 Recording。
+6. 确认证书文件仍为第一代生成的同一 SHA-1、当前处于有效期内，并由只读 `certutil -verifystore` 确认仍受 LocalMachine Root 信任。
+7. 进入 Certificates，确认 MITM switch 仍开启且 `localhost` 例外仍存在；进入 TLS passthrough，确认 `127.0.0.2` pattern 仍存在。断言只使用公共 automation ID、DOM 状态和只读 OS 比较。
+8. 通过 Settings UI 删除 `127.0.0.2` passthrough 与 `localhost` 例外，关闭 MITM，Uninstall 并 Delete CA；确认测试 CA 不再受信任且 profile 无 CA。
+9. 保存两代 trace、final screenshot、Main/Renderer 日志和脱敏 persistence evidence；点击第二代 `shell.window.close`。
+10. 验证第二代 Main/Core、8888 完整销毁，WinINet 仍精确等于步骤1快照，journal 不存在并删除 profile。
+
+### 预期效果
+
+异常退出只留下可验证的 ownership journal；下次 Main 先安全交还原系统代理，再由新一代 bootstrap 正常接管，不把旧 owned 值误当作新的 original。CA身份、有效期、系统信任、MITM用户意图、TLS passthrough与源站例外均跨进程保持；本workflow不替代`capture.protocols.with-mitm`的数据面验收。
+
+### 证据
+
+- retrospective Red：修复前`c978915`第二代`settings.certificates.mitm-toggle`为`false`，而证书身份/有效期/信任、journal original与最终清理均已通过。
+- 当前Green：`1/1`通过；第一代Main/Core PID `44740/25312`为`abruptDestroyVerified=true`，第二代`24740/33656`为`gracefulDestroyVerified=true`。
+- Green脱敏证据中证书同一性、有效期、系统信任、MITM意图、insecure host、passthrough host、original恢复、journal清理与测试CA删除全部为`true`；结束后8888、Interceptor进程与本轮CA均为0，原系统代理与网络恢复。
+
 <a id="settings-certificates-generate-delete"></a>
 ## `settings.certificates.generate-delete`
 

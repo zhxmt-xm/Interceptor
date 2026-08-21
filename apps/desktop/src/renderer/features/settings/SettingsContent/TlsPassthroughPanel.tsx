@@ -12,6 +12,10 @@ import type {
   TlsPassthroughSettings,
 } from '../../../../shared/desktop-api';
 import {
+  AUTOMATION_IDS,
+  AutomationIdFactory,
+} from '../../../../shared/automation-ids';
+import {
   Button,
   IconButton,
   InputBox,
@@ -135,11 +139,13 @@ export function TlsPassthroughPanel(): React.JSX.Element {
             }}
             placeholder="*.example.com"
             ariaLabel={t('settings.tlsPassthrough.hostLabel')}
+            automationId={AUTOMATION_IDS.settings.tlsPassthrough.hostInput}
           />
         </label>
         <Button
           icon={Plus}
           variant="primary"
+          automationId={AUTOMATION_IDS.settings.tlsPassthrough.addHost}
           disabled={busy}
           onClick={addDraft}
         >
@@ -163,6 +169,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
             className={styles.row}
             key={host}
             data-parity={`tls-host-${host}`}
+            data-automation-id={AutomationIdFactory.tlsPassthroughHost(host)}
           >
             <span className={styles.hostIcon}><LockOpen aria-hidden="true" /></span>
             <div className={styles.hostCopy}>
@@ -180,6 +187,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
               icon={Trash2}
               label={t('settings.tlsPassthrough.removeHost', { host })}
               size="sm"
+              automationId={AutomationIdFactory.tlsPassthroughRemoveHost(host)}
               disabled={busy}
               onClick={() => replace(settings.hosts.filter((item) => item !== host))}
             />

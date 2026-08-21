@@ -155,10 +155,10 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Proxy and MITM persistence</td>
-  <td><ul><li>跨进程恢复系统代理 ownership、MITM 意图与 TLS 配置。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ 重启测试 24/24</li><li><strong>Integration:</strong> ❌ 未单列</li><li><strong>E2E:</strong> ❌ 未记录真实 Electron Red/Green</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
+  <td><ul><li>跨进程恢复系统代理 ownership、MITM 意图与 TLS 配置。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ 既有重启测试24/24；本轮聚焦回归41/41</li><li><strong>Integration:</strong> ✅ journal、workspace.sqlite与真实Core聚焦通过</li><li><strong>E2E:</strong> ✅ c978915 retrospective Red、当前1/1 Green、两代销毁与系统副作用恢复</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
   <td><ul><li>瞬时运行态曾代替用户意图与系统代理原始快照，重启后无法可靠恢复。</li></ul></td>
   <td><ul><li>持久化正交用户意图，以 ownership journal 保存 original/owned 快照。</li></ul></td>
 </tr>

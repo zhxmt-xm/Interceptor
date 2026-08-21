@@ -353,6 +353,10 @@ export const AUTOMATION_IDS = {
       enable: 'settings.proxy.enable',
       restore: 'settings.proxy.restore',
     },
+    tlsPassthrough: {
+      hostInput: 'settings.tls-passthrough.host-input',
+      addHost: 'settings.tls-passthrough.add-host',
+    },
     certificates: {
       generate: 'settings.certificates.generate',
       delete: 'settings.certificates.delete',
@@ -447,6 +451,21 @@ export class AutomationIdFactory {
   /** Identify one persisted Rule effect shown in the Capture Inspector. */
   static captureRuleEffect(ruleId: string, effect: string, headerName: string): string {
     return `capture.rule-effect.${ruleId}.${effect}.${encodeURIComponent(headerName.toLowerCase())}`;
+  }
+
+  /** Identify one persisted TLS passthrough row by its normalized host pattern. */
+  static tlsPassthroughHost(host: string): string {
+    return `settings.tls-passthrough.host.${encodeURIComponent(host)}`;
+  }
+
+  /** Identify the remove action owned by one TLS passthrough host pattern. */
+  static tlsPassthroughRemoveHost(host: string): string {
+    return `settings.tls-passthrough.remove-host.${encodeURIComponent(host)}`;
+  }
+
+  /** Identify one persisted insecure-origin host exception. */
+  static insecureHost(host: string): string {
+    return `settings.certificates.insecure-host.${encodeURIComponent(host)}`;
   }
 
   /** Identify one captured WebSocket frame by exchange and sequence. */

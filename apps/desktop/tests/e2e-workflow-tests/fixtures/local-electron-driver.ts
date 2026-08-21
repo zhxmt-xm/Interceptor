@@ -1,8 +1,10 @@
 import { once } from 'node:events';
+import { execFile } from 'node:child_process';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import {
   _electron as electron,
@@ -20,6 +22,8 @@ import { LoopbackLab } from './loopback-lab';
 import { WebSocketLab } from './websocket-lab';
 
 const DEFAULT_CAPTURE_PORT = 8888;
+const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
+const execFileAsync = promisify(execFile);
 
 interface LocalWorkflowFixtures {
   /** Test-owned unpackaged Electron application and its real Renderer page. */
@@ -36,6 +40,13 @@ interface DesktopWindowState {
   visible: boolean;
 }
 
+interface LocalElectronLaunchOptions {
+  /** Existing profile reused by a later application generation. */
+  userDataDirectory?: string;
+  /** Prefix that keeps evidence from multiple generations distinct. */
+  evidencePrefix?: string;
+}
+
 /** Owns one isolated unpackaged Electron run, its evidence and deterministic cleanup. */
 export class LocalElectronApplicationDriver {
   /** Electron application controlled through Playwright's native Electron protocol. */
@@ -49,6 +60,9 @@ export class LocalElectronApplicationDriver {
 
   /** Temporary Electron userData directory unique to this test. */
   readonly userDataDirectory: string;
+
+  /** Desktop application directory whose production bundle is under test. */
+  readonly desktopDirectory: string;
 
   /** Main-process PID captured before Electron can close. */
   private readonly mainPid: number | null;
@@ -74,16 +88,32 @@ export class LocalElectronApplicationDriver {
   /** Whether Main/Core/listener cleanup assertions all completed successfully. */
   private gracefulDestroyVerified = false;
 
+  /** Whether an intentional abrupt exit released the known process resources. */
+  private abruptDestroyVerified = false;
+
+  /** Whether a failed workflow must retain its profile for privileged recovery. */
+  private preserveUserDataAfterFailure = false;
+
+  /** Distinguishes product Close from an intentional crash boundary. */
+  private shutdownKind: 'running' | 'graceful' | 'abrupt' = 'running';
+
+  /** Optional filename and attachment prefix for a later application generation. */
+  private readonly evidencePrefix: string;
+
   /** Create one driver after Electron, its first window and evidence capture are ready. */
   private constructor(
     application: ElectronApplication,
     page: Page,
+    desktopDirectory: string,
     userDataDirectory: string,
+    evidencePrefix: string,
   ) {
     this.application = application;
     this.context = application.context();
     this.page = page;
+    this.desktopDirectory = desktopDirectory;
     this.userDataDirectory = userDataDirectory;
+    this.evidencePrefix = evidencePrefix;
     this.mainPid = application.process().pid ?? null;
     application.once('close', () => {
       this.applicationClosed = true;
@@ -93,9 +123,16 @@ export class LocalElectronApplicationDriver {
   }
 
   /** Launch a fresh unpackaged production bundle and wait for its primary window. */
-  static async launch(testInfo: TestInfo): Promise<LocalElectronApplicationDriver> {
-    const desktopDirectory = path.resolve(__dirname, '../../..');
-    const userDataDirectory = await LocalElectronApplicationDriver.createUserDataDirectory();
+  static async launch(
+    testInfo: TestInfo,
+    options: LocalElectronLaunchOptions = {},
+  ): Promise<LocalElectronApplicationDriver> {
+    const desktopDirectory = process.env[E2E_DESKTOP_DIRECTORY_ENV]
+      ? path.resolve(process.env[E2E_DESKTOP_DIRECTORY_ENV])
+      : path.resolve(__dirname, '../../..');
+    const ownsUserDataDirectory = options.userDataDirectory === undefined;
+    const userDataDirectory = options.userDataDirectory
+      ?? await LocalElectronApplicationDriver.createUserDataDirectory();
     let application: ElectronApplication | null = null;
 
     try {
@@ -112,17 +149,23 @@ export class LocalElectronApplicationDriver {
         screenshots: true,
         snapshots: true,
         sources: true,
-        title: testInfo.title,
+        title: options.evidencePrefix
+          ? `${testInfo.title} · ${options.evidencePrefix}`
+          : testInfo.title,
       });
       const page = await application.firstWindow({ timeout: 20_000 });
       return new LocalElectronApplicationDriver(
         application,
         page,
+        desktopDirectory,
         userDataDirectory,
+        options.evidencePrefix ?? '',
       );
     } catch (error) {
       await application?.close().catch(() => undefined);
-      await rm(userDataDirectory, { recursive: true, force: true });
+      if (ownsUserDataDirectory) {
+        await rm(userDataDirectory, { recursive: true, force: true });
+      }
       throw error;
     }
   }
@@ -157,6 +200,21 @@ export class LocalElectronApplicationDriver {
       throw new Error('Capture listener port is unavailable before application readiness.');
     }
     return this.listenerPort;
+  }
+
+  /** Keep this profile only when the workflow fails, so privileged cleanup remains possible. */
+  preserveUserDataOnFailure(): void {
+    this.preserveUserDataAfterFailure = true;
+  }
+
+  /** Report whether a failed workflow requested profile retention. */
+  shouldPreserveUserDataOnFailure(): boolean {
+    return this.preserveUserDataAfterFailure;
+  }
+
+  /** Allow normal profile deletion after a privileged cleanup completed successfully. */
+  releasePreservedUserData(): void {
+    this.preserveUserDataAfterFailure = false;
   }
 
   /** Return uncaught Renderer errors collected from the real page. */
@@ -197,10 +255,36 @@ export class LocalElectronApplicationDriver {
     const closePromise = this.application.waitForEvent('close', {
       timeout: 15_000,
     });
+    this.shutdownKind = 'graceful';
     await this.page
       .locator(`[data-automation-id="${AUTOMATION_IDS.shell.window.close}"]`)
+      .last()
       .click();
     await closePromise;
+  }
+
+  /** Stop evidence, terminate the owned process tree without product shutdown and prove release. */
+  async crashAbruptly(testInfo: TestInfo): Promise<void> {
+    if (this.applicationClosed) {
+      return;
+    }
+    await this.stopTrace(testInfo);
+    this.shutdownKind = 'abrupt';
+    if (this.mainPid === null) {
+      throw new Error('Electron Main PID is unavailable for abrupt termination.');
+    }
+    if (process.platform === 'win32') {
+      await execFileAsync(
+        'taskkill.exe',
+        ['/PID', String(this.mainPid), '/T', '/F'],
+        { windowsHide: true },
+      ).catch(() => undefined);
+    } else if (!this.application.process().kill('SIGKILL')) {
+      throw new Error('Electron Main rejected the intentional abrupt termination.');
+    }
+    await this.verifyProcessesAndListenerReleased();
+    this.applicationClosed = true;
+    this.abruptDestroyVerified = true;
   }
 
   /** Capture the final visible Renderer state before trace and process teardown. */
@@ -208,12 +292,12 @@ export class LocalElectronApplicationDriver {
     if (this.page.isClosed()) {
       return;
     }
-    const screenshotPath = testInfo.outputPath('final.png');
+    const screenshotPath = testInfo.outputPath(this.evidenceName('final.png'));
     await this.page.screenshot({
       path: screenshotPath,
       animations: 'disabled',
     });
-    await testInfo.attach('final-state', {
+    await testInfo.attach(this.evidenceName('final-state'), {
       path: screenshotPath,
       contentType: 'image/png',
     });
@@ -225,9 +309,9 @@ export class LocalElectronApplicationDriver {
       return;
     }
     this.traceActive = false;
-    const tracePath = testInfo.outputPath('trace.zip');
+    const tracePath = testInfo.outputPath(this.evidenceName('trace.zip'));
     await this.context.tracing.stop({ path: tracePath });
-    await testInfo.attach('playwright-trace', {
+    await testInfo.attach(this.evidenceName('playwright-trace'), {
       path: tracePath,
       contentType: 'application/zip',
     });
@@ -239,35 +323,17 @@ export class LocalElectronApplicationDriver {
       await this.closeFromWindowButton();
     }
 
-    if (this.mainPid !== null) {
-      const mainPid = this.mainPid;
-      await expect.poll(
-        () => LocalElectronApplicationDriver.isProcessAlive(mainPid),
-        { message: `Electron Main PID ${mainPid} did not exit`, timeout: 10_000 },
-      ).toBe(false);
+    await this.verifyProcessesAndListenerReleased();
+    if (this.shutdownKind === 'graceful') {
+      this.gracefulDestroyVerified = true;
     }
-    if (this.corePid !== null) {
-      const corePid = this.corePid;
-      await expect.poll(
-        () => LocalElectronApplicationDriver.isProcessAlive(corePid),
-        { message: `Proxy Core PID ${corePid} did not exit`, timeout: 10_000 },
-      ).toBe(false);
-    }
-    if (this.listenerPort !== null) {
-      const listenerPort = this.listenerPort;
-      await expect.poll(
-        () => LocalElectronApplicationDriver.canBindPort(listenerPort),
-        { message: `Capture port ${listenerPort} was not released`, timeout: 10_000 },
-      ).toBe(true);
-    }
-    this.gracefulDestroyVerified = true;
   }
 
   /** Persist process logs and metadata after the workflow and destroy assertions finish. */
   async writeEvidence(testInfo: TestInfo): Promise<void> {
-    const mainLogPath = testInfo.outputPath('main-process.log');
-    const rendererLogPath = testInfo.outputPath('renderer-console.log');
-    const metadataPath = testInfo.outputPath('metadata.json');
+    const mainLogPath = testInfo.outputPath(this.evidenceName('main-process.log'));
+    const rendererLogPath = testInfo.outputPath(this.evidenceName('renderer-console.log'));
+    const metadataPath = testInfo.outputPath(this.evidenceName('metadata.json'));
     await Promise.all([
       writeFile(mainLogPath, this.mainOutput, 'utf8'),
       writeFile(rendererLogPath, this.rendererOutput, 'utf8'),
@@ -284,6 +350,8 @@ export class LocalElectronApplicationDriver {
           corePid: this.corePid,
           listenerPort: this.listenerPort,
           gracefulDestroyVerified: this.gracefulDestroyVerified,
+          abruptDestroyVerified: this.abruptDestroyVerified,
+          generation: this.evidencePrefix || 'initial',
           playwrightVersion: require('@playwright/test/package.json').version,
           electronVersion: require('electron/package.json').version,
         }, null, 2),
@@ -291,15 +359,15 @@ export class LocalElectronApplicationDriver {
       ),
     ]);
     await Promise.all([
-      testInfo.attach('main-process-log', {
+      testInfo.attach(this.evidenceName('main-process-log'), {
         path: mainLogPath,
         contentType: 'text/plain',
       }),
-      testInfo.attach('renderer-console-log', {
+      testInfo.attach(this.evidenceName('renderer-console-log'), {
         path: rendererLogPath,
         contentType: 'text/plain',
       }),
-      testInfo.attach('workflow-metadata', {
+      testInfo.attach(this.evidenceName('workflow-metadata'), {
         path: metadataPath,
         contentType: 'application/json',
       }),
@@ -308,7 +376,9 @@ export class LocalElectronApplicationDriver {
 
   /** Force only this test's known Electron/Core processes to stop after cleanup failure. */
   async forceCleanup(): Promise<void> {
-    await this.application.close().catch(() => undefined);
+    if (!this.applicationClosed) {
+      await this.application.close().catch(() => undefined);
+    }
     if (this.corePid !== null && LocalElectronApplicationDriver.isProcessAlive(this.corePid)) {
       process.kill(this.corePid);
     }
@@ -353,6 +423,36 @@ export class LocalElectronApplicationDriver {
     });
   }
 
+  /** Prefix one evidence filename or attachment without changing initial-run names. */
+  private evidenceName(name: string): string {
+    return this.evidencePrefix ? `${this.evidencePrefix}-${name}` : name;
+  }
+
+  /** Prove the known Main/Core processes exited and the listener can be rebound. */
+  private async verifyProcessesAndListenerReleased(): Promise<void> {
+    if (this.mainPid !== null) {
+      const mainPid = this.mainPid;
+      await expect.poll(
+        () => LocalElectronApplicationDriver.isProcessAlive(mainPid),
+        { message: `Electron Main PID ${mainPid} did not exit`, timeout: 10_000 },
+      ).toBe(false);
+    }
+    if (this.corePid !== null) {
+      const corePid = this.corePid;
+      await expect.poll(
+        () => LocalElectronApplicationDriver.isProcessAlive(corePid),
+        { message: `Proxy Core PID ${corePid} did not exit`, timeout: 10_000 },
+      ).toBe(false);
+    }
+    if (this.listenerPort !== null) {
+      const listenerPort = this.listenerPort;
+      await expect.poll(
+        () => LocalElectronApplicationDriver.canBindPort(listenerPort),
+        { message: `Capture port ${listenerPort} was not released`, timeout: 10_000 },
+      ).toBe(true);
+    }
+  }
+
   /** Dismiss the expected fresh-profile proxy readiness modal without changing OS settings. */
   private async dismissProxyReadiness(): Promise<void> {
     const cancel = getByAutomationId(
@@ -394,7 +494,8 @@ export class LocalElectronApplicationDriver {
   private static createLaunchEnvironment(): Record<string, string> {
     return Object.fromEntries(
       Object.entries(process.env).filter(
-        (entry): entry is [string, string] => entry[1] !== undefined,
+        (entry): entry is [string, string] =>
+          entry[0] !== E2E_DESKTOP_DIRECTORY_ENV && entry[1] !== undefined,
       ),
     );
   }
@@ -463,7 +564,16 @@ export const test = base.extend<LocalWorkflowFixtures>({
       }
       await driver.writeEvidence(testInfo).catch(() => undefined);
       await driver.forceCleanup();
-      await driver.removeUserData();
+      const preserveUserData = cleanupError !== undefined
+        || (workflowError !== undefined && driver.shouldPreserveUserDataOnFailure());
+      if (!preserveUserData) {
+        await driver.removeUserData();
+      } else {
+        testInfo.annotations.push({
+          type: 'preserved-user-data',
+          description: driver.userDataDirectory,
+        });
+      }
       if (cleanupError) {
         testInfo.annotations.push({
           type: 'cleanup-failure-context',

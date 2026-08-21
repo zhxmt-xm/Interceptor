@@ -6,7 +6,10 @@ import type {
   CertificateInfo,
   InterceptorDesktopApi,
 } from '../../../../shared/desktop-api';
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import {
+  AUTOMATION_IDS,
+  AutomationIdFactory,
+} from '../../../../shared/automation-ids';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { formatDate } from '../utils';
 
@@ -237,6 +240,7 @@ export function CertificatesPanel(): React.JSX.Element {
             className={styles.hostInput}
             value={draftHost}
             placeholder={t('settings.addHostPlaceholder')}
+            data-automation-id={AUTOMATION_IDS.settings.certificates.insecureHostInput}
             onChange={(event) => setDraftHost(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -244,7 +248,12 @@ export function CertificatesPanel(): React.JSX.Element {
               }
             }}
           />
-          <Button icon={Plus} disabled={busy} onClick={addHost}>
+          <Button
+            icon={Plus}
+            automationId={AUTOMATION_IDS.settings.certificates.insecureHostAdd}
+            disabled={busy}
+            onClick={addHost}
+          >
             {t('settings.addHost')}
           </Button>
         </Row>
@@ -255,12 +264,17 @@ export function CertificatesPanel(): React.JSX.Element {
           >
             <span className={styles.hostList}>
               {hosts.map((host) => (
-                <span key={host} className={styles.hostChip}>
+                <span
+                  key={host}
+                  className={styles.hostChip}
+                  data-automation-id={AutomationIdFactory.insecureHost(host)}
+                >
                   {host}
                   <IconButton
                     icon={X}
                     label={t('settings.removeHost', { host })}
                     size="sm"
+                    automationId={AutomationIdFactory.insecureHostRemove(host)}
                     onClick={() =>
                       applyHosts((api) =>
                         api.setInsecureHosts(hosts.filter((h) => h !== host)),
