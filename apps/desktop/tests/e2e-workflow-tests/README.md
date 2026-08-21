@@ -164,6 +164,7 @@ diagnostics.row.<traceKey>
 | `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI | passed |
 | `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI | passed |
 | `capture.breakpoint-submenu-lifecycle` | 根菜单与Breakpoint二级菜单的hover、翻转和dismiss lifecycle | privileged UI | passed |
+| `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |

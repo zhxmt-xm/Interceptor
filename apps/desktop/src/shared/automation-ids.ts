@@ -138,6 +138,7 @@ export const AUTOMATION_IDS = {
         hex: 'capture.inspector.body-mode.hex',
       },
       setupHttps: 'capture.inspector.setup-https',
+      viewTlsPassthroughPattern: 'capture.tls-tunnel.view-passthrough-pattern',
     },
     readiness: {
       close: 'capture.readiness.close',

@@ -8,6 +8,7 @@ import { DiagnosticsMain, DiagnosticsStatusbar } from '../features/diagnostics';
 import { RulesMain, RulesStatusbar } from '../features/rules';
 import type { BreakpointScope } from '../features/rules/interfaces';
 import { SettingsMain, SettingsStatusbar } from '../features/settings';
+import type { TlsPassthroughNavigationTarget } from '../features/settings/interfaces';
 
 import type { ViewId } from './Sidebar';
 
@@ -31,6 +32,7 @@ export interface FeatureActions {
   openRule(ruleId: string): void;
   openRules(): void;
   showRuleRequests(ruleId: string): void;
+  viewTlsPassthroughPattern(host: string): void;
 }
 
 /** 视图注册表：每个工作区提供主区与状态栏两块内容。 */
@@ -40,6 +42,7 @@ export const FEATURE_VIEWS: Record<
     settingsSection: string,
     onSettingsSectionChange: (section: string) => void,
     actions: FeatureActions,
+    tlsPassthroughTarget: TlsPassthroughNavigationTarget | null,
   ) => FeatureViews
 > = {
   capture: (_settingsSection, _onSettingsSectionChange, actions) => ({
@@ -49,6 +52,7 @@ export const FEATURE_VIEWS: Record<
         onCreateBreakpoint={actions.createBreakpoint}
         onOpenRule={actions.openRule}
         onOpenRules={actions.openRules}
+        onViewTlsPassthroughPattern={actions.viewTlsPassthroughPattern}
       />
     ),
     statusbar: <CaptureStatusbar />,
@@ -61,11 +65,12 @@ export const FEATURE_VIEWS: Record<
     main: <ComposerMain />,
     statusbar: <ComposerStatusbar />,
   }),
-  settings: (settingsSection, onSettingsSectionChange) => ({
+  settings: (settingsSection, onSettingsSectionChange, _actions, tlsPassthroughTarget) => ({
     main: (
       <SettingsMain
         section={settingsSection}
         onSectionChange={onSettingsSectionChange}
+        tlsPassthroughTarget={tlsPassthroughTarget}
       />
     ),
     statusbar: <SettingsStatusbar />,

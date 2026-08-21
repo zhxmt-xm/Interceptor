@@ -1,4 +1,4 @@
-import { Check, LockKeyhole, Shield } from 'lucide-react';
+import { Check, ListFilter, LockKeyhole, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
@@ -11,6 +11,7 @@ export interface TlsTunnelPanelProps {
   host: string;
   port: number;
   open: boolean;
+  onViewTlsPassthroughPattern(host: string): void;
 }
 
 /** Limited connection metadata for HTTPS that is forwarded without MITM decryption. */
@@ -18,6 +19,7 @@ export function TlsTunnelPanel({
   host,
   port,
   open,
+  onViewTlsPassthroughPattern,
 }: TlsTunnelPanelProps): React.JSX.Element {
   const { t } = useTranslation();
   const mitmActive = useCaptureStore((state) => state.linkStatus.decrypting);
@@ -29,6 +31,18 @@ export function TlsTunnelPanel({
         <span className={styles.copy}>
           <b>{t('capture.httpsEncrypted')}</b>
           <span>{t('capture.httpsPassthroughDescription')}</span>
+          {mitmActive ? (
+            <button
+              className={styles.viewPassthrough}
+              data-automation-id={AUTOMATION_IDS.capture.inspector.viewTlsPassthroughPattern}
+              data-parity="tls-tunnel-view-passthrough"
+              type="button"
+              onClick={() => onViewTlsPassthroughPattern(host)}
+            >
+              <ListFilter aria-hidden="true" />
+              {t('capture.viewTlsPassthroughPattern')}
+            </button>
+          ) : null}
         </span>
         {mitmActive ? (
           <StatusBadge>{t('settings.mitmActive')}</StatusBadge>

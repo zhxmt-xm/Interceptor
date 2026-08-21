@@ -54,11 +54,13 @@ const INSPECTOR_TAB_AUTOMATION_IDS: Record<InspectorTab, AutomationId> =
 
 export interface RequestInspectorProps {
   onOpenRule: (ruleId: string) => void;
+  onViewTlsPassthroughPattern(host: string): void;
 }
 
 /** Right-hand inspector for the selected request. */
 export function RequestInspector({
   onOpenRule,
+  onViewTlsPassthroughPattern,
 }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
@@ -234,6 +236,7 @@ export function RequestInspector({
             host={view.host ?? ''}
             port={tlsPort}
             open={view.state !== 'completed' && view.state !== 'failed'}
+            onViewTlsPassthroughPattern={onViewTlsPassthroughPattern}
           />
         ) : null}
 

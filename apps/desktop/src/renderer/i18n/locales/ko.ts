@@ -215,6 +215,7 @@ export const koCatalog = {
   'capture.certificateChain': '인증서 체인',
   'capture.httpsEncrypted': 'HTTPS 콘텐츠가 암호화되어 있습니다',
   'capture.httpsPassthroughDescription': 'Interceptor는 이 연결을 복호화하지 않고 전달했습니다. 요청 경로, 헤더 및 본문은 비공개로 유지됩니다.',
+  'capture.viewTlsPassthroughPattern': '패스스루 패턴 보기',
   'capture.tlsTunnel': 'TLS 터널',
   'capture.connectionMetadataOnly': '로컬 CA가 생성되거나 신뢰되지 않았습니다. 연결 메타데이터만 저장됩니다.',
   'capture.mitmActiveForNewConnections': '새 연결에는 MITM이 활성화되어 있습니다. 이 클라이언트를 다시 연결하여 HTTPS 트래픽을 검사하세요.',

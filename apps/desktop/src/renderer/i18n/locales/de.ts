@@ -214,6 +214,7 @@ export const deCatalog = {
   'capture.certificateChain': 'Zertifikatskette',
   'capture.httpsEncrypted': 'HTTPS-Inhalt ist verschlüsselt',
   'capture.httpsPassthroughDescription': 'Interceptor hat diese Verbindung weitergeleitet, ohne sie zu entschlüsseln. Anfragepfade, Header und Inhalte bleiben privat.',
+  'capture.viewTlsPassthroughPattern': 'Passthrough-Muster anzeigen',
   'capture.tlsTunnel': 'TLS-Tunnel',
   'capture.connectionMetadataOnly': 'Es wurde keine lokale CA erzeugt oder als vertrauenswürdig eingestuft. Es werden nur Verbindungsmetadaten gespeichert.',
   'capture.mitmActiveForNewConnections': 'MITM ist für neue Verbindungen aktiv. Verbinden Sie diesen Client erneut, um seinen HTTPS-Datenverkehr zu untersuchen.',

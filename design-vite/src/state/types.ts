@@ -108,6 +108,10 @@ export interface DesignState {
   readonly tlsPassthrough: string;
   readonly tlsPatterns: readonly string[] | null;
   readonly tlsHostInput: string;
+  readonly tlsPassthroughTargetHost: string;
+  readonly tlsPassthroughTargetPattern: string;
+  readonly tlsPassthroughTargetSequence: number;
+  readonly tlsPassthroughTargetExpires: boolean;
   readonly tlsCompatibility: string;
   readonly tlsCompatibilityHosts: readonly string[] | null;
   readonly https: string;

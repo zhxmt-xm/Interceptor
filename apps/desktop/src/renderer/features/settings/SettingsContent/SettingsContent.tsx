@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { SECTIONS } from '../constants';
+import type { TlsPassthroughNavigationTarget } from '../interfaces';
 
 import { AppContainerPanel } from './AppContainerPanel';
 import { CertificatesPanel } from './CertificatesPanel';
@@ -14,13 +15,13 @@ import { UpdatesPanel } from './UpdatesPanel';
 
 export interface SettingsContentProps {
   active: string;
+  tlsPassthroughTarget: TlsPassthroughNavigationTarget | null;
 }
 
 /** 有专属面板的分区；其余分区落到占位面板。 */
 const PANELS: Record<string, () => React.JSX.Element> = {
   proxy: ProxyPanel,
   'app-containers': AppContainerPanel,
-  'tls-passthrough': TlsPassthroughPanel,
   certificates: CertificatesPanel,
   storage: StoragePanel,
   privacy: PrivacyPanel,
@@ -30,6 +31,7 @@ const PANELS: Record<string, () => React.JSX.Element> = {
 /** Right settings pane: renders the panel for the active section. */
 export function SettingsContent({
   active,
+  tlsPassthroughTarget,
 }: SettingsContentProps): React.JSX.Element {
   const { t } = useTranslation();
   const Panel = PANELS[active];
@@ -37,7 +39,9 @@ export function SettingsContent({
 
   return (
     <div className={styles.content}>
-      {Panel ? (
+      {active === 'tls-passthrough' ? (
+        <TlsPassthroughPanel navigationTarget={tlsPassthroughTarget} />
+      ) : Panel ? (
         <Panel />
       ) : (
         <PlaceholderPanel label={t(labelKey ?? 'settings.title')} />

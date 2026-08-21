@@ -46,6 +46,8 @@ import {
   UpdateActions,
   UpdateNotification,
 } from '../features/settings';
+import type { TlsPassthroughNavigationTarget } from '../features/settings/interfaces';
+import { tlsPassthroughCoveringPattern } from '../features/settings/utils';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
@@ -94,6 +96,8 @@ export function App(): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [settingsSection, setSettingsSection] = useState('certificates');
+  const [tlsPassthroughTarget, setTlsPassthroughTarget] =
+    useState<TlsPassthroughNavigationTarget | null>(null);
   const [createdBreakpointRuleId, setCreatedBreakpointRuleId] = useState<string | null>(null);
   const [coreStatus, setCoreStatus] = useState<CoreProcessStatus>(() => ({
     ...initialCoreStatus,
@@ -135,6 +139,12 @@ export function App(): React.JSX.Element {
   useEffect(() => UpdateActions.subscribe(), []);
   useEffect(() => GitHubAuthActions.subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
+
+  useEffect(() => {
+    if (!tlsPassthroughTarget) return undefined;
+    const timer = window.setTimeout(() => setTlsPassthroughTarget(null), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [tlsPassthroughTarget]);
 
   useEffect(() => {
     let active = true;
@@ -210,8 +220,29 @@ export function App(): React.JSX.Element {
       useCaptureStore.getState().filterByRule(ruleId);
       setView('capture');
     },
+    viewTlsPassthroughPattern: (host) => {
+      void window.interceptor.getTlsPassthroughSettings()
+        .then((settings) => {
+          const pattern = tlsPassthroughCoveringPattern(host, settings.hosts);
+          setTlsPassthroughTarget((current) => pattern ? {
+            host,
+            pattern,
+            sequence: (current?.sequence ?? 0) + 1,
+          } : null);
+        })
+        .catch(() => setTlsPassthroughTarget(null))
+        .finally(() => {
+          setSettingsSection('tls-passthrough');
+          setView('settings');
+        });
+    },
   };
-  const feature = FEATURE_VIEWS[view](settingsSection, setSettingsSection, actions);
+  const feature = FEATURE_VIEWS[view](
+    settingsSection,
+    setSettingsSection,
+    actions,
+    tlsPassthroughTarget,
+  );
 
   const content = (
     <div
@@ -275,6 +306,7 @@ export function App(): React.JSX.Element {
         )}
         <TlsCompatibilityDialog
           onOpenSettings={() => {
+            setTlsPassthroughTarget(null);
             setSettingsSection('tls-passthrough');
             setView('settings');
           }}

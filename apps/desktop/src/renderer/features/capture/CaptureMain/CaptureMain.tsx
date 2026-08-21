@@ -38,6 +38,7 @@ export interface CaptureMainProps {
   ) => void;
   onOpenRule: (ruleId: string) => void;
   onOpenRules: () => void;
+  onViewTlsPassthroughPattern(host: string): void;
 }
 
 /** Capture workspace body: request list, draggable splitter and inspector. */
@@ -46,6 +47,7 @@ export function CaptureMain({
   onCreateBreakpoint,
   onOpenRule,
   onOpenRules,
+  onViewTlsPassthroughPattern,
 }: CaptureMainProps): React.JSX.Element {
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
@@ -164,7 +166,10 @@ export function CaptureMain({
                   onPointerDown={startInspectorDrag}
                   automationId={AUTOMATION_IDS.capture.inspector.splitter}
                 />
-                <RequestInspector onOpenRule={onOpenRule} />
+                <RequestInspector
+                  onOpenRule={onOpenRule}
+                  onViewTlsPassthroughPattern={onViewTlsPassthroughPattern}
+                />
               </>
             ) : null}
           </div>

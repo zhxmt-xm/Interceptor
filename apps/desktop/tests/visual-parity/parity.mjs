@@ -299,6 +299,7 @@ for (const view of views) {
     upstreamDown: view.upstreamDown === true,
     tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
+    tlsTunnelHost: view.tlsTunnelHost ?? null,
     fileOperationDelayMs: view.fileOperationDelayMs ?? 0,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });

@@ -113,6 +113,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'inspector-grpc', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'grpc', tab: 'grpc' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-tunnel-mitm-active', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'tunnel', tab: 'tunnel', mitm: 'active' } });
+  shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-target', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsPassthroughTargetHost: 'afdfp-rdgateway-r0.wvd.microsoft.com', tlsPassthroughTargetPattern: '*.wvd.microsoft.com', tlsPassthroughTargetSequence: 1, tlsPassthroughTargetExpires: false } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoints-off', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', breakpoints: 'off' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-request-body-loading', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'loading' } });
@@ -276,6 +277,10 @@ async function shoot(list) {
       githubAuth: 'signed-in',
       appContainers: 'ready',
       tlsPassthrough: 'ready',
+      tlsPassthroughTargetHost: '',
+      tlsPassthroughTargetPattern: '',
+      tlsPassthroughTargetSequence: 0,
+      tlsPassthroughTargetExpires: false,
       tlsCompatibility: '',
       tlsHostInput: '',
       https: 'fresh',

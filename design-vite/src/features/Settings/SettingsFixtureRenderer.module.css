@@ -1,0 +1,8 @@
+.tlsPassthroughHighlighted {
+  position: relative;
+  z-index: 1;
+  background: var(--accent-soft);
+  box-shadow:
+    inset 3px 0 var(--accent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}

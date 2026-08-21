@@ -218,6 +218,7 @@ export const ruCatalog = {
   'capture.certificateChain': 'Цепочка сертификатов',
   'capture.httpsEncrypted': 'Содержимое HTTPS зашифровано',
   'capture.httpsPassthroughDescription': 'Interceptor перенаправил это соединение без расшифровки. Пути, заголовки и тела запросов остаются конфиденциальными.',
+  'capture.viewTlsPassthroughPattern': 'Показать шаблон сквозного TLS',
   'capture.tlsTunnel': 'TLS-туннель',
   'capture.connectionMetadataOnly': 'Локальный центр сертификации не создан и не добавлен в доверенные. Сохраняются только метаданные соединения.',
   'capture.mitmActiveForNewConnections': 'MITM активен для новых подключений. Переподключите этот клиент, чтобы проверить его HTTPS-трафик.',

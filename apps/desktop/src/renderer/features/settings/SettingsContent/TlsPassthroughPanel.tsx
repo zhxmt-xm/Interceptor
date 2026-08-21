@@ -17,19 +17,25 @@ import {
 } from '../../../../shared/automation-ids';
 import {
   Button,
+  cx,
   IconButton,
   InputBox,
   StatusBadge,
 } from '../../../components';
 import { useTlsCompatibilityStore } from '../data/tlsCompatibilityStore';
 import { describeError, isTlsPassthroughHostDraft } from '../utils';
+import type { TlsPassthroughNavigationTarget } from '../interfaces';
 
 import styles from './TlsPassthroughPanel.module.css';
 
 type PanelState = 'loading' | 'ready' | 'error';
 
 /** Persistent per-host TLS passthrough settings. */
-export function TlsPassthroughPanel(): React.JSX.Element {
+export function TlsPassthroughPanel({
+  navigationTarget,
+}: {
+  readonly navigationTarget: TlsPassthroughNavigationTarget | null;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<TlsPassthroughSettings | null>(null);
   const [state, setState] = useState<PanelState>('loading');
@@ -38,6 +44,7 @@ export function TlsPassthroughPanel(): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadGeneration = useRef(0);
+  const targetRow = useRef<HTMLDivElement | null>(null);
   const settingsChangeSequence = useTlsCompatibilityStore(
     (value) => value.settingsChangeSequence,
   );
@@ -59,6 +66,16 @@ export function TlsPassthroughPanel(): React.JSX.Element {
   };
 
   useEffect(load, [settingsChangeSequence]);
+
+  useEffect(() => {
+    if (!navigationTarget || !settings?.hosts.includes(navigationTarget.pattern)) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      targetRow.current?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [navigationTarget?.sequence, settings]);
 
   const replace = (
     hosts: string[],
@@ -164,11 +181,15 @@ export function TlsPassthroughPanel(): React.JSX.Element {
           <span>{t('settings.tlsPassthrough.groupTitle')}</span>
           <span>{t('settings.tlsPassthrough.matchedBefore')}</span>
         </div>
-        {settings?.hosts.map((host) => (
+        {settings?.hosts.map((host) => {
+          const highlighted = host === navigationTarget?.pattern;
+          return (
           <div
-            className={styles.row}
+            className={cx(styles.row, highlighted && styles.highlighted)}
             key={host}
-            data-parity={`tls-host-${host}`}
+            ref={highlighted ? targetRow : undefined}
+            data-highlighted={String(highlighted)}
+            data-parity={highlighted ? 'tls-passthrough-target-row' : `tls-host-${host}`}
             data-automation-id={AutomationIdFactory.tlsPassthroughHost(host)}
           >
             <span className={styles.hostIcon}><LockOpen aria-hidden="true" /></span>
@@ -192,7 +213,8 @@ export function TlsPassthroughPanel(): React.JSX.Element {
               onClick={() => replace(settings.hosts.filter((item) => item !== host))}
             />
           </div>
-        ))}
+          );
+        })}
         {patternCount === 0 ? (
           <div className={styles.empty}>
             <LockOpen aria-hidden="true" />

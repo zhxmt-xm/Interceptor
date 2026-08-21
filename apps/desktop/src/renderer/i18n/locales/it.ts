@@ -215,6 +215,7 @@ export const itCatalog = {
   'capture.certificateChain': 'Catena di certificati',
   'capture.httpsEncrypted': 'Il contenuto HTTPS è crittografato',
   'capture.httpsPassthroughDescription': 'Interceptor ha inoltrato questa connessione senza decrittografarla. Percorsi, intestazioni e corpi delle richieste restano privati.',
+  'capture.viewTlsPassthroughPattern': 'Visualizza pattern passthrough',
   'capture.tlsTunnel': 'Tunnel TLS',
   'capture.connectionMetadataOnly': 'Non è stata generata o considerata attendibile alcuna CA locale. Vengono memorizzati solo i metadati della connessione.',
   'capture.mitmActiveForNewConnections': 'MITM è attivo per le nuove connessioni. Riconnetti questo client per ispezionarne il traffico HTTPS.',

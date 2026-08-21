@@ -10,7 +10,11 @@ import {
   TlsCompatibilityActions,
   useTlsCompatibilityStore,
 } from '../../data/tlsCompatibilityStore';
-import { tlsCompatibilityReasonKey, tlsPassthroughPatternChoices } from '../../utils';
+import {
+  tlsCompatibilityReasonKey,
+  tlsPassthroughCoveringPattern,
+  tlsPassthroughPatternChoices,
+} from '../../utils';
 
 const activeSettings: TlsPassthroughSettings = {
   revision: 4,
@@ -193,5 +197,28 @@ describe('TlsCompatibilityActions', () => {
       newerSameHost,
       anotherHost,
     ]);
+  });
+});
+
+describe('tlsPassthroughCoveringPattern', () => {
+  it('prefers an exact pattern regardless of case or list order', () => {
+    expect(tlsPassthroughCoveringPattern(
+      'API.Example.com',
+      ['*.example.com', 'api.example.com'],
+    )).toBe('api.example.com');
+  });
+
+  it('uses the most specific matching wildcard regardless of list order', () => {
+    expect(tlsPassthroughCoveringPattern(
+      'afdfp-rdgateway-r0.wvd.microsoft.com',
+      ['*.microsoft.com', '*.wvd.microsoft.com'],
+    )).toBe('*.wvd.microsoft.com');
+  });
+
+  it('returns null when no persisted pattern covers the host', () => {
+    expect(tlsPassthroughCoveringPattern(
+      'api.example.com',
+      ['*.microsoft.com', '127.0.0.1'],
+    )).toBeNull();
   });
 });

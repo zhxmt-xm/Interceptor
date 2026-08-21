@@ -214,6 +214,7 @@ export const zhCNCatalog = {
   'capture.certificateChain': '证书链',
   'capture.httpsEncrypted': 'HTTPS 内容已加密',
   'capture.httpsPassthroughDescription': 'Interceptor 已在不解密的情况下转发此连接。请求路径、标头和正文保持私密。',
+  'capture.viewTlsPassthroughPattern': '查看直通模式',
   'capture.tlsTunnel': 'TLS 隧道',
   'capture.connectionMetadataOnly': '未生成或信任本地 CA。仅存储连接元数据。',
   'capture.mitmActiveForNewConnections': 'MITM 已对新连接启用。请重新连接此客户端以检查其 HTTPS 流量。',

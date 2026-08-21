@@ -214,6 +214,7 @@ export const nlCatalog = {
   'capture.certificateChain': 'Certificaatketen',
   'capture.httpsEncrypted': 'HTTPS-inhoud is versleuteld',
   'capture.httpsPassthroughDescription': 'Interceptor heeft deze verbinding doorgestuurd zonder deze te ontsleutelen. Aanvraagpaden, headers en inhoud blijven privé.',
+  'capture.viewTlsPassthroughPattern': 'Passthroughpatroon bekijken',
   'capture.tlsTunnel': 'TLS-tunnel',
   'capture.connectionMetadataOnly': 'Er is geen lokale CA gegenereerd of vertrouwd. Alleen verbindingsmetadata wordt opgeslagen.',
   'capture.mitmActiveForNewConnections': 'MITM is actief voor nieuwe verbindingen. Verbind deze client opnieuw om het HTTPS-verkeer te inspecteren.',

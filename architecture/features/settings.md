@@ -1,6 +1,6 @@
 # Feature: Settings
 
-> 最后更新：2026-08-07
+> 最后更新：2026-08-21
 > Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
 > Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
@@ -22,6 +22,12 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 Settings rail 的最后访问 section 由 App shell 持有。切换到 Capture / Rules / Composer / Diagnostics
 不会重置该值，返回 Settings 时仍打开离开前的 section；TLS compatibility、Proxy readiness 等明确的
 跨 feature 跳转可以覆盖它，直接打开对应目标 section。面板内未提交的瞬态 dialog 不跨 feature 保留。
+
+Capture 的 TLS tunnel Inspector 允许从已确认的`TLS passthrough`连接跳到当前配置项。跳转前读取
+TLS passthrough settings，并从当前host的所有覆盖项中选择最具体pattern：exact优先，其次选择suffix
+最长的leading wildcard；没有覆盖项时不伪造目标。App一次性切到Settings / TLS passthrough并携带该
+pattern，列表加载后将目标滚入可见区域，以accent背景和边框高亮3秒；重复跳转重新计时。高亮只是
+Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core持有。
 
 ## 2. 证书与 HTTPS MITM
 

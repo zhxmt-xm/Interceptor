@@ -333,6 +333,38 @@ Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替�
 - Green：当前同一workflow`1/1`通过；Breakpoint trigger矩形`x=1030 / width=210`，endpoint可见内容矩形`x=628.126 / width=331.607`，证明右边界向左翻转；根/二级共存、hover close/reopen、Escape和outside click均通过。
 - 销毁：Green Main/Core PID `46880/33620`，`gracefulDestroyVerified=true`，Red/Green均释放8888、恢复系统代理并删除profile。
 
+<a id="capture-navigate-tls-passthrough"></a>
+## `capture.navigate-tls-passthrough`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与loopback TLS tunnel lab；启动真实Electron并通过真实UI开始Recording。
+2. 通过产品UI生成并安装测试CA、开启MITM，再在Settings / TLS passthrough添加`127.0.0.1`，返回Capture。
+3. 经8888向测试自产随机端口建立真实CONNECT + TLS ClientHello，完成加密echo，等待动态Capture行并打开TLS tunnel Inspector。
+4. 点击公开`capture.tls-tunnel.view-passthrough-pattern`；确认App切到Settings，激活TLS passthrough section。
+5. 确认产品从当前持久化settings解析出精确覆盖项`127.0.0.1`，对应公开host row滚入可见区域并带`data-highlighted=true`。
+6. 等待3秒后确认同一row仍存在但`data-highlighted=false`；再次从Capture执行跳转时高亮重新出现，证明timer被重新计时。
+7. 通过Settings UI删除测试pattern、关闭MITM、卸载并删除测试CA，保存trace、最终截图与Main/Renderer日志；正常Close。
+8. 验证Main/Core退出、8888释放、系统代理恢复、profile删除。
+
+### 预期效果
+
+Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settings列表自动滚动并提供短暂、可重复的定位反馈。导航不新增pattern、不持久化高亮，也不把wildcard覆盖误显示为精确host配置。E2E用无外部DNS依赖的精确IP验证真实flow；unit另锁定exact优先与多层wildcard选择最长suffix。
+
+### TDD证据要求
+
+- 实现前同一workflow必须Red于导航入口缺失或目标row没有公开高亮状态；selector、构建、UAC或fixture失败不算Red。
+- 当前提交必须Green，并保留目标pattern、滚动可见、3秒消退、重复计时、配置清理、Main/Core销毁、8888释放与系统代理恢复证据。
+
+### TDD证据
+
+- Red：真实CA/MITM、持久化pattern与TLS CONNECT均完成后，等待公开`capture.tls-tunnel.view-passthrough-pattern`15秒仍不存在；该轮cleanup与`gracefulDestroyVerified=true`完成。
+- Green：当前同一workflow`1/1`通过；目标row位于Renderer viewport内，`data-highlighted`从true在3秒后转false，返回Capture重复导航后再次为true。
+- 销毁：Green Main/Core PID为`31036/13248`，`gracefulDestroyVerified=true`；测试pattern、MITM意图与测试CA均由App UI清除，8888释放且系统代理恢复`127.0.0.1:7890`。
+
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`
 

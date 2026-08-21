@@ -215,6 +215,7 @@ export const ptBRCatalog = {
   'capture.certificateChain': 'Cadeia de certificados',
   'capture.httpsEncrypted': 'O conteúdo HTTPS está criptografado',
   'capture.httpsPassthroughDescription': 'O Interceptor encaminhou esta conexão sem descriptografá-la. Caminhos, cabeçalhos e corpos das solicitações permanecem privados.',
+  'capture.viewTlsPassthroughPattern': 'Ver padrão de passagem',
   'capture.tlsTunnel': 'Túnel TLS',
   'capture.connectionMetadataOnly': 'Nenhuma CA local foi gerada ou considerada confiável. Somente metadados da conexão são armazenados.',
   'capture.mitmActiveForNewConnections': 'O MITM está ativo para novas conexões. Reconecte este cliente para inspecionar o tráfego HTTPS.',

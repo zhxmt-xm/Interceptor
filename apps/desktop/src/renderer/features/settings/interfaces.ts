@@ -8,6 +8,12 @@ export interface SettingsSection {
   Icon: LucideIcon;
 }
 
+export interface TlsPassthroughNavigationTarget {
+  readonly host: string;
+  readonly pattern: string;
+  readonly sequence: number;
+}
+
 /**
  * 全局隐私偏好（持久化到 localStorage）。
  *

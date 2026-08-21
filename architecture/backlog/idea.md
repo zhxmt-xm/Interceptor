@@ -182,12 +182,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Navigate to TLS passthrough item</td>
-  <td><ul><li>从 Tunnel 信息跳转到对应 passthrough item，并短暂高亮。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li><li><img src="image-13.png" alt="TLS passthrough" width="240"></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
+  <td><ul><li>从 Tunnel 信息跳转到对应 passthrough item，并短暂高亮。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-13.png" alt="TLS passthrough" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Settings utility 17/17</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 有效Red于公开导航入口缺失、当前1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ 新增4个明暗入口/目标view均0 missing / 0 flagged，最大0.1px</li></ul></td>
   <td><ul><li>Request 证据与 Settings 配置项之间没有可导航关联。</li></ul></td>
-  <td><ul><li>传递规范化 policy key，显式导航目标 item，高亮仅为短生命周期 UI 状态。</li></ul></td>
+  <td><ul><li>App按当前host读取最新settings，exact优先并选择最长wildcard suffix；以瞬态pattern/sequence导航目标row、滚入视口并高亮3秒，重复导航重新计时。</li></ul></td>
 </tr>
 
 <tr>

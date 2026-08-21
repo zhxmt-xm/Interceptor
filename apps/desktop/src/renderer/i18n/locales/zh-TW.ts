@@ -214,6 +214,7 @@ export const zhTWCatalog = {
   'capture.certificateChain': '憑證鏈',
   'capture.httpsEncrypted': 'HTTPS 內容已加密',
   'capture.httpsPassthroughDescription': 'Interceptor 已在不解密的情況下轉送此連線。請求路徑、標頭和本文保持私密。',
+  'capture.viewTlsPassthroughPattern': '檢視直通模式',
   'capture.tlsTunnel': 'TLS 通道',
   'capture.connectionMetadataOnly': '未產生或信任本機 CA。只會儲存連線中繼資料。',
   'capture.mitmActiveForNewConnections': 'MITM 已對新連線啟用。請重新連線此用戶端以檢查其 HTTPS 流量。',

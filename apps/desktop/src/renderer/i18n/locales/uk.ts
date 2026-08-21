@@ -218,6 +218,7 @@ export const ukCatalog = {
   'capture.certificateChain': 'Ланцюжок сертифікатів',
   'capture.httpsEncrypted': 'Вміст HTTPS зашифровано',
   'capture.httpsPassthroughDescription': 'Interceptor переслав це з’єднання без розшифрування. Шляхи, заголовки й тіла запитів залишаються приватними.',
+  'capture.viewTlsPassthroughPattern': 'Показати шаблон наскрізного TLS',
   'capture.tlsTunnel': 'TLS-тунель',
   'capture.connectionMetadataOnly': 'Локальний центр сертифікації не створено й не додано до довірених. Зберігаються лише метадані з’єднання.',
   'capture.mitmActiveForNewConnections': 'MITM активний для нових з’єднань. Перепідключіть цей клієнт, щоб перевірити його HTTPS-трафік.',

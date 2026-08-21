@@ -215,6 +215,7 @@ export const frCatalog = {
   'capture.certificateChain': 'Chaîne de certificats',
   'capture.httpsEncrypted': 'Le contenu HTTPS est chiffré',
   'capture.httpsPassthroughDescription': 'Interceptor a transféré cette connexion sans la déchiffrer. Les chemins, en-têtes et corps des requêtes restent privés.',
+  'capture.viewTlsPassthroughPattern': 'Voir le motif de passthrough',
   'capture.tlsTunnel': 'Tunnel TLS',
   'capture.connectionMetadataOnly': 'Aucune autorité de certification locale n’a été générée ou approuvée. Seules les métadonnées de connexion sont stockées.',
   'capture.mitmActiveForNewConnections': 'Le MITM est actif pour les nouvelles connexions. Reconnectez ce client pour inspecter son trafic HTTPS.',

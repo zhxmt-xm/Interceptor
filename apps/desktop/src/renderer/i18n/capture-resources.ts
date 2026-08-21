@@ -128,6 +128,7 @@ export const captureEnglishMessages = {
   'capture.certificateChain': 'Certificate chain',
   'capture.httpsEncrypted': 'HTTPS content is encrypted',
   'capture.httpsPassthroughDescription': 'Interceptor forwarded this connection without decrypting it. Request paths, headers, and bodies remain private.',
+  'capture.viewTlsPassthroughPattern': 'View passthrough pattern',
   'capture.tlsTunnel': 'TLS tunnel',
   'capture.connectionMetadataOnly': 'No local CA was generated or trusted. Only connection metadata is stored.',
   'capture.mitmActiveForNewConnections': 'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',

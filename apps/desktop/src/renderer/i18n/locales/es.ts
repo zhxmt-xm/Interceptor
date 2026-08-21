@@ -215,6 +215,7 @@ export const esCatalog = {
   'capture.certificateChain': 'Cadena de certificados',
   'capture.httpsEncrypted': 'El contenido HTTPS está cifrado',
   'capture.httpsPassthroughDescription': 'Interceptor reenvió esta conexión sin descifrarla. Las rutas, los encabezados y los cuerpos de las solicitudes siguen siendo privados.',
+  'capture.viewTlsPassthroughPattern': 'Ver patrón de paso directo',
   'capture.tlsTunnel': 'Túnel TLS',
   'capture.connectionMetadataOnly': 'No se generó ni se marcó como confiable ninguna CA local. Solo se almacenan metadatos de conexión.',
   'capture.mitmActiveForNewConnections': 'MITM está activo para las conexiones nuevas. Vuelve a conectar este cliente para inspeccionar su tráfico HTTPS.',

@@ -1,16 +1,16 @@
 # Visual Parity Report
 
-Generated: 2026-08-21T09:55:48.587Z
+Generated: 2026-08-21T10:56:23.665Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 125 |
-| Average pixel diff | 2.53% |
-| Targets | 953 |
-| Matched | 919 |
+| Views checked | 129 |
+| Average pixel diff | 2.52% |
+| Targets | 959 |
+| Matched | 925 |
 | Missing | 34 |
 | Flagged | 304 |
 | Largest geometry delta | 1156.8 px |
@@ -64,9 +64,13 @@ Generated: 2026-08-21T09:55:48.587Z
 | capture-timing | 2.83% | 4 | 4 | 0 | 4 | 4.4 px |
 | capture-cookies | 2.74% | 3 | 3 | 0 | 0 | 0.7 px |
 | capture-grpc | 3.47% | 8 | 8 | 0 | 3 | 1.6 px |
-| capture-tunnel | 3.32% | 8 | 8 | 0 | 5 | 170.0 px |
-| capture-tunnel-dark | 3.38% | 6 | 6 | 0 | 3 | 170.0 px |
-| capture-tunnel-mitm-active | 3.32% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture-tunnel | 3.31% | 8 | 8 | 0 | 5 | 170.0 px |
+| capture-tunnel-dark | 3.37% | 6 | 6 | 0 | 3 | 170.0 px |
+| capture-tunnel-mitm-active | 3.36% | 7 | 7 | 0 | 3 | 170.0 px |
+| capture-tunnel-mitm-active-dark | 3.41% | 2 | 2 | 0 | 0 | 0.1 px |
+| capture-tunnel-mitm-navigation | 3.36% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-tls-passthrough-target | 1.55% | 1 | 1 | 0 | 0 | 0.0 px |
+| capture-tls-passthrough-target-dark | 1.54% | 1 | 1 | 0 | 0 | 0.0 px |
 | https-setup | 6.62% | 9 | 9 | 0 | 1 | 487.7 px |
 | https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 487.7 px |
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
@@ -564,8 +568,14 @@ Generated: 2026-08-21T09:55:48.587Z
 | capture-tunnel-mitm-active | Inspector status | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | capture-tunnel-mitm-active | TLS tunnel | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | capture-tunnel-mitm-active | HTTPS content is encrypted | -170.0 px | -30.3 px | 104.0 px | 0.4 px | 170.0 px | none | flagged |
+| capture-tunnel-mitm-active | View passthrough pattern | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
 | capture-tunnel-mitm-active | MITM active | 0.0 px | 0.8 px | 0.0 px | 0.1 px | 0.8 px | none | ok |
 | capture-tunnel-mitm-active | MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic. | 0.0 px | -18.4 px | 0.0 px | 0.0 px | 18.4 px | none | flagged |
+| capture-tunnel-mitm-active-dark | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-tunnel-mitm-active-dark | MITM active | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-tunnel-mitm-navigation | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-tls-passthrough-target | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-tls-passthrough-target-dark | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | https-setup | Decrypt HTTPS (MITM) | 487.7 px | 188.2 px | -245.7 px | 16.0 px | 487.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
 | https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
 | https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |

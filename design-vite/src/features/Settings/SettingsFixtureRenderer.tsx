@@ -8,6 +8,7 @@ import {
 } from '../../fixtures/FixtureRenderer';
 import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode';
 import { useDesignState } from '../../state/useDesignState';
+import styles from './SettingsFixtureRenderer.module.css';
 
 interface SettingsFixtureRendererProps {
   readonly node: FixtureNode;
@@ -25,8 +26,25 @@ function hasAttribute(node: FixtureNode, name: string): boolean {
 }
 
 export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps): ReactNode {
-  const { updateState } = useDesignState();
+  const { state, updateState } = useDesignState();
   const renderSettingsElement: FixtureElementRenderer = (element, children) => {
+    if (
+      element.attributes['data-tls-host-pattern']
+      && element.attributes['data-tls-host-pattern'] === state.tlsPassthroughTargetPattern
+    ) {
+      return (
+        <div
+          className={[element.attributes.class, styles.tlsPassthroughHighlighted]
+            .filter(Boolean)
+            .join(' ')}
+          data-highlighted="true"
+          data-parity="tls-passthrough-target-row"
+          data-tls-host-pattern={element.attributes['data-tls-host-pattern']}
+        >
+          {children}
+        </div>
+      );
+    }
     if (hasClass(element, 'settings-toolbar') && hasAttribute(element, 'data-app-container-search')) {
       return (
         <div className={fixtureClassNames('settings-toolbar')} data-fixture-node="">

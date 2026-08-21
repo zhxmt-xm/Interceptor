@@ -113,8 +113,16 @@ export function isTlsPassthroughHostCovered(
   host: string,
   patterns: readonly string[],
 ): boolean {
+  return tlsPassthroughCoveringPattern(host, patterns) !== null;
+}
+
+/** Return the most specific persisted pattern covering one host: exact, then longest wildcard. */
+export function tlsPassthroughCoveringPattern(
+  host: string,
+  patterns: readonly string[],
+): string | null {
   const normalizedHost = host.trim().toLowerCase();
-  return patterns.some((pattern) => {
+  const matches = patterns.filter((pattern) => {
     const normalizedPattern = pattern.trim().toLowerCase();
     if (normalizedPattern === normalizedHost) {
       return true;
@@ -125,6 +133,12 @@ export function isTlsPassthroughHostCovered(
     const suffix = normalizedPattern.slice(1);
     return normalizedHost.length > suffix.length && normalizedHost.endsWith(suffix);
   });
+  return matches.sort((left, right) => {
+    const leftExact = left.trim().toLowerCase() === normalizedHost;
+    const rightExact = right.trim().toLowerCase() === normalizedHost;
+    if (leftExact !== rightExact) return leftExact ? -1 : 1;
+    return right.trim().length - left.trim().length;
+  })[0] ?? null;
 }
 
 /**

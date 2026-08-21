@@ -827,12 +827,25 @@ export function installFakeInterceptor({
   upstreamDown = false,
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
+  tlsTunnelHost = null,
   fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
   window.__appContainerEnableAllCalls = 0;
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
+  if (tlsTunnelHost) {
+    fixture.capture.sessions = fixture.capture.sessions.map((session) =>
+      session.id === 'tls-tunnel' ? { ...session, host: tlsTunnelHost } : session);
+    fixture.capture.details['tls-tunnel'] = {
+      ...fixture.capture.details['tls-tunnel'],
+      summary: {
+        ...fixture.capture.details['tls-tunnel'].summary,
+        host: tlsTunnelHost,
+      },
+      url: `https://${tlsTunnelHost}:443`,
+    };
+  }
   if (pausedBreakpoints) {
     fixture.capture.sessions = [
       ...fixture.capture.pausedSessions,

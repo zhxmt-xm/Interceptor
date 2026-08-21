@@ -215,6 +215,7 @@ export const jaCatalog = {
   'capture.certificateChain': '証明書チェーン',
   'capture.httpsEncrypted': 'HTTPS コンテンツは暗号化されています',
   'capture.httpsPassthroughDescription': 'Interceptor はこの接続を復号せずに転送しました。リクエストのパス、ヘッダー、本文は非公開のままです。',
+  'capture.viewTlsPassthroughPattern': 'パススルーパターンを表示',
   'capture.tlsTunnel': 'TLS トンネル',
   'capture.connectionMetadataOnly': 'ローカル CA は生成も信頼もされていません。接続メタデータのみが保存されます。',
   'capture.mitmActiveForNewConnections': 'MITM は新しい接続に対して有効です。このクライアントを再接続すると、HTTPS トラフィックを検査できます。',

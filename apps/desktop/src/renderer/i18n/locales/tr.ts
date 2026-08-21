@@ -215,6 +215,7 @@ export const trCatalog = {
   'capture.certificateChain': 'Sertifika zinciri',
   'capture.httpsEncrypted': 'HTTPS içeriği şifreli',
   'capture.httpsPassthroughDescription': 'Interceptor bu bağlantıyı şifresini çözmeden iletti. İstek yolları, üst bilgiler ve gövdeler gizli kalır.',
+  'capture.viewTlsPassthroughPattern': 'TLS geçiş desenini görüntüle',
   'capture.tlsTunnel': 'TLS tüneli',
   'capture.connectionMetadataOnly': 'Yerel CA oluşturulmadı veya güvenilir olarak işaretlenmedi. Yalnızca bağlantı meta verileri saklanır.',
   'capture.mitmActiveForNewConnections': 'MITM yeni bağlantılar için etkin. HTTPS trafiğini incelemek için bu istemciyi yeniden bağlayın.',

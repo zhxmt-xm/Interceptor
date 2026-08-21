@@ -218,6 +218,7 @@ export const plCatalog = {
   'capture.certificateChain': 'Łańcuch certyfikatów',
   'capture.httpsEncrypted': 'Treść HTTPS jest zaszyfrowana',
   'capture.httpsPassthroughDescription': 'Interceptor przekazał to połączenie bez odszyfrowywania. Ścieżki, nagłówki i treści żądań pozostają prywatne.',
+  'capture.viewTlsPassthroughPattern': 'Pokaż wzorzec przepuszczania',
   'capture.tlsTunnel': 'Tunel TLS',
   'capture.connectionMetadataOnly': 'Nie wygenerowano ani nie oznaczono jako zaufanego lokalnego urzędu certyfikacji. Zapisywane są tylko metadane połączenia.',
   'capture.mitmActiveForNewConnections': 'MITM jest aktywny dla nowych połączeń. Połącz ponownie tego klienta, aby sprawdzić jego ruch HTTPS.',

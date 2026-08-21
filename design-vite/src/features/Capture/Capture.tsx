@@ -7,6 +7,7 @@ import { HttpBreakpointDesign } from './HttpBreakpointDesign';
 import { RequestContextMenu } from './RequestContextMenu';
 import { WebSocketBreakpointDesign } from './WebSocketBreakpointDesign';
 import { WebSocketMessagePayload } from './WebSocketMessagePayload';
+import { TlsPassthroughNavigationDesign } from './TlsPassthroughNavigationDesign';
 
 export function Capture(): React.JSX.Element {
   return (
@@ -20,6 +21,7 @@ export function Capture(): React.JSX.Element {
       <WebSocketMessagePayload />
       <GrpcMessagePayload />
       <WebSocketBreakpointDesign />
+      <TlsPassthroughNavigationDesign />
     </>
   ) as React.JSX.Element;
 }
