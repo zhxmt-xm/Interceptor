@@ -164,11 +164,11 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint submenu lifecycle</td>
-  <td><ul><li>Submenu 展开时保持一级菜单挂载，并统一 hover、翻转与 dismissal。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li><li><img src="image-12.png" alt="Breakpoint submenu" width="240"></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ❌ 未单列</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未记录真实 Electron Red/Green</li><li><strong>Design/Parity:</strong> ✅ 8/8 matched</li></ul></td>
-  <td><ul><li>一级与二级菜单曾由不同弹层管理，submenu 打开会卸载父菜单。</li></ul></td>
+  <td><ul><li>Submenu 展开时保持一级菜单挂载，并统一 hover、翻转与 dismissal。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-12.png" alt="Breakpoint submenu" width="240"></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 既有Ant Menu树无需业务修改，仅补automation探针</li><li><strong>Unit:</strong> ➖ N/A，portal lifecycle由真实Electron验收</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ e5ca501 retrospective Red、当前1/1 Green与销毁证据</li><li><strong>Design/Parity:</strong> ✅ 8/8 matched</li></ul></td>
+  <td><ul><li>旧<code>menuPage: root | breakpoint</code>用Breakpoint页替换根菜单，hover不能展开且父子无法共存。</li></ul></td>
   <td><ul><li>统一使用 Ant Menu <code>items[].children</code> 管理完整菜单树。</li></ul></td>
 </tr>
 

@@ -302,6 +302,37 @@ Breakpoint submenu与Block同属Control group，icon、语义label与hint使用�
 - Green：当前同一workflow`1/1`通过，两个label左缘均为`815.9757690429688px`、差值0；hover后公开endpoint submenu项可见。
 - 销毁：Red/Green Main/Core PID分别为`21056/39980`与`21380/20632`，两边`gracefulDestroyVerified=true`，8888释放且系统代理恢复原值。
 
+<a id="capture-breakpoint-submenu-lifecycle"></a>
+## `capture.breakpoint-submenu-lifecycle`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、trace与loopback origin，启动真实Electron并通过真实UI开始Recording。
+2. 经8888发送一条测试自产GET，等待动态Capture行出现，并从公开`capture.request-row.<exchangeId>`提取exchangeId。
+3. 在行右边界触发contextmenu；确认公开根菜单标记和Breakpoint trigger可见。
+4. Hover Breakpoint；确认公开submenu标记与endpoint item可见，同时根菜单标记仍挂载。右边空间不足时，submenu标题横坐标必须小于根菜单标题，且两者均位于viewport内。
+5. Hover根菜单Block项；等待submenu关闭，同时根菜单保持。再次hover Breakpoint并进入endpoint item，根菜单仍保持。
+6. 按Escape；根菜单与submenu同时消失。重新打开并展开submenu，点击App statusbar空白处；两层再次同时消失。
+7. 保存共存、翻转、hover close/reopen与两种dismiss证据；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
+
+### 预期效果
+
+Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替换根菜单；指针可在父子菜单间移动；右边界自动向左翻转；Escape与outside click都销毁整棵菜单。
+
+### TDD证据要求
+
+- 最终workflow源码必须在`32867ff^`仅回植公开automation探针与必要driver helper后取得retrospective Red；旧`menuPage`实现因只支持点击换页，hover后endpoint不可见且无法保持根/二级共存。
+- 当前提交运行同一workflow必须Green，并验证翻转、hover close/reopen、Escape、outside click、trace/evidence、Main/Core销毁、8888释放与系统代理恢复。
+
+### TDD证据
+
+- Retrospective Red：最终workflow源码在`e5ca501`仅回植根菜单、Breakpoint页与scope按钮automation探针后，hover Breakpoint等待`capture.context-menu.breakpoint-submenu`15秒仍不存在；Main/Core PID `21308/28948`，`gracefulDestroyVerified=true`。
+- Green：当前同一workflow`1/1`通过；Breakpoint trigger矩形`x=1030 / width=210`，endpoint可见内容矩形`x=628.126 / width=331.607`，证明右边界向左翻转；根/二级共存、hover close/reopen、Escape和outside click均通过。
+- 销毁：Green Main/Core PID `46880/33620`，`gracefulDestroyVerified=true`，Red/Green均释放8888、恢复系统代理并删除profile。
+
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`
 

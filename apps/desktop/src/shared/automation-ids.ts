@@ -54,6 +54,10 @@ export const AUTOMATION_IDS = {
   },
   capture: {
     recordingToggle: 'capture.recording.toggle',
+    contextMenu: {
+      root: 'capture.context-menu.root',
+      breakpointSubmenu: 'capture.context-menu.breakpoint-submenu',
+    },
     keywordFilter: 'capture.filter.keyword',
     clearSearch: 'capture.filter.clear-search',
     filtersToggle: 'capture.filters.toggle',

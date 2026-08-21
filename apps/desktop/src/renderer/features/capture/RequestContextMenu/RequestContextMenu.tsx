@@ -20,7 +20,10 @@ import type {
   CaptureExchangeSummary,
   RuleActionType,
 } from '../../../../shared/desktop-api';
-import { AutomationIdFactory } from '../../../../shared/automation-ids';
+import {
+  AUTOMATION_IDS,
+  AutomationIdFactory,
+} from '../../../../shared/automation-ids';
 import type { BreakpointScope } from '../../rules/interfaces';
 import { displayPath } from '../utils';
 import styles from './RequestContextMenu.module.css';
@@ -157,7 +160,14 @@ export function RequestContextMenu({
     {
       key: 'title',
       disabled: true,
-      label: <span className={styles.title}>{t('capture.createRuleFromRequest')}</span>,
+      label: (
+        <span
+          className={styles.title}
+          data-automation-id={AUTOMATION_IDS.capture.contextMenu.root}
+        >
+          {t('capture.createRuleFromRequest')}
+        </span>
+      ),
     },
     ...contextGroups.map((group) => ({
       key: `group-${group.label}`,
@@ -191,7 +201,14 @@ export function RequestContextMenu({
             {
               key: 'breakpoint-title',
               disabled: true,
-              label: <span className={styles.title}>{t('breakpoints.createFromRequest')}</span>,
+              label: (
+                <span
+                  className={styles.title}
+                  data-automation-id={AUTOMATION_IDS.capture.contextMenu.breakpointSubmenu}
+                >
+                  {t('breakpoints.createFromRequest')}
+                </span>
+              ),
             },
             ...breakpointScopes.map(({ scope, icon: Icon, name, hint }) => ({
               key: `breakpoint:${scope}`,

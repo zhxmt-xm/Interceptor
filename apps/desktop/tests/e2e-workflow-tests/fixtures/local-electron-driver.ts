@@ -256,6 +256,7 @@ export class LocalElectronApplicationDriver {
       timeout: 15_000,
     });
     this.shutdownKind = 'graceful';
+    await this.page.keyboard.press('Escape').catch(() => undefined);
     await this.page
       .locator(`[data-automation-id="${AUTOMATION_IDS.shell.window.close}"]`)
       .last()

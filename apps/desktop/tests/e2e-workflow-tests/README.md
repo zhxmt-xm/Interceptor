@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与68条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与69条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -163,6 +163,7 @@ diagnostics.row.<traceKey>
 | `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI | passed |
 | `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI | passed |
 | `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI | passed |
+| `capture.breakpoint-submenu-lifecycle` | 根菜单与Breakpoint二级菜单的hover、翻转和dismiss lifecycle | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |

@@ -233,6 +233,10 @@ interface BreakpointOutcome {
 
 2026-08-20 TDD证据：专用`capture.breakpoint-menu-hierarchy`最终源码在`89d8dda`仅回植真实Recording与driver helper后，Block/Breakpoint语义label左缘差`7.43621826171875px`取得精确Red；当前同一workflow差值为0并成功hover打开endpoint二级项。Red/Green Main/Core PID分别为`21056/39980`与`21380/20632`，两边`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只验收DOM层级与对齐，不代替独立submenu lifecycle验收。
 
+独立submenu lifecycle契约验证同一Ant Menu树的运行期行为：根菜单与二级菜单必须同时挂载；hover离开二级后只关闭二级；右边界空间不足时二级向左翻转；Escape与outside click销毁整棵菜单。历史边界为`32867ff^`的`menuPage: 'root' | 'breakpoint'`换页实现，hover不能打开Breakpoint页，点击后根菜单会被第二页替换；`32867ff`迁移到Ant `items[].children`后才具备父子菜单共存语义。
+
+2026-08-21 TDD证据：最终`capture.breakpoint-submenu-lifecycle`在`e5ca501`仅回植automation探针后精确Red于hover不产生submenu；当前`1/1` Green。右边界trigger与endpoint横坐标分别为`1030`与`628.126`，二级菜单向左翻转；父子共存、hover close/reopen、Escape与outside click均通过。Red/Green Main/Core PID为`21308/28948`与`46880/33620`，两边`gracefulDestroyVerified=true`且8888、系统代理与profile均恢复。
+
 队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
 浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
 溢出计数经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 侧记 `breakpoint.queue-full`。

@@ -62,12 +62,20 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
   );
   await expect(block).toBeVisible();
   await expect(breakpoint).toBeVisible();
-  const blockBox = await block.boundingBox();
-  const breakpointBox = await breakpoint.boundingBox();
+  let blockBox = await block.boundingBox();
+  let breakpointBox = await breakpoint.boundingBox();
+  await expect.poll(async () => {
+    blockBox = await block.boundingBox();
+    breakpointBox = await breakpoint.boundingBox();
+    return blockBox && breakpointBox
+      ? Math.abs(blockBox.x - breakpointBox.x)
+      : Number.POSITIVE_INFINITY;
+  }, {
+    message: 'Block and Breakpoint labels did not settle on the same left edge.',
+  }).toBeLessThan(1);
   expect(blockBox).not.toBeNull();
   expect(breakpointBox).not.toBeNull();
   const labelLeftDelta = Math.abs(blockBox!.x - breakpointBox!.x);
-  expect(labelLeftDelta).toBeLessThan(1);
 
   // 同组重排不能破坏Ant原生hover submenu；endpoint项仍由公开动态ID定位。
   // Regrouping must preserve Ant's native hover submenu and its public endpoint identity.
