@@ -15,6 +15,9 @@ export interface InputBoxProps {
   placeholder?: string;
   type?: 'text' | 'number';
   ariaLabel?: string;
+  ariaInvalid?: boolean;
+  step?: number;
+  parity?: string;
   automationId?: AutomationId;
 }
 
@@ -31,11 +34,14 @@ export function InputBox({
   placeholder,
   type = 'text',
   ariaLabel,
+  ariaInvalid,
+  step,
+  parity,
   automationId,
 }: InputBoxProps): React.JSX.Element {
   if (onValueChange) {
     return (
-      <div className={cx(styles.input, className)}>
+      <div className={cx(styles.input, className)} data-parity={parity}>
         {children}
         <input
           className={styles.field}
@@ -43,7 +49,9 @@ export function InputBox({
           value={value ?? ''}
           placeholder={placeholder}
           aria-label={ariaLabel}
+          aria-invalid={ariaInvalid}
           data-automation-id={automationId}
+          step={step}
           spellCheck={false}
           autoComplete="off"
           onChange={(event) => onValueChange(event.target.value)}
@@ -52,6 +60,14 @@ export function InputBox({
       </div>
     );
   }
-  return <div className={cx(styles.input, className)} data-automation-id={automationId}>{children}</div>;
+  return (
+    <div
+      className={cx(styles.input, className)}
+      data-automation-id={automationId}
+      data-parity={parity}
+    >
+      {children}
+    </div>
+  );
 }
 

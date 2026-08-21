@@ -1,5 +1,6 @@
 import { collectLeaves } from '@interceptor/core-protocol';
 import type {
+  BreakpointTimeout,
   RuleDefinition,
   RuleHeaderPair,
   WebSocketBreakpointDirection,
@@ -36,6 +37,24 @@ const WEBSOCKET_BREAKPOINT_FRAMES: readonly WebSocketBreakpointFrame[] = [
   'pong',
   'close',
 ];
+
+/** Parse the MCP-facing mode fields into the shared Core timeout contract. */
+function readWebSocketBreakpointTimeout(
+  args: Readonly<Record<string, unknown>>,
+): BreakpointTimeout {
+  const mode = requireEnum(args, 'timeoutMode', ['infinite', 'finite'] as const);
+  if (mode === 'infinite') {
+    if (args.timeoutMs !== undefined) {
+      throw new McpArgumentError('"timeoutMs" is only valid when "timeoutMode" is finite');
+    }
+    return { mode: 'infinite' };
+  }
+  const timeoutMs = requireInteger(args, 'timeoutMs');
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new McpArgumentError('"timeoutMs" must be a positive integer');
+  }
+  return { mode: 'finite', timeoutMs };
+}
 
 /**
  * 全部 MCP 工具的定义。每个工具都只是既有 Core command 的第二个调用入口，
@@ -628,7 +647,7 @@ function buildWriteTools(): readonly McpToolDefinition[] {
       inputSchema: {
         type: 'object',
         additionalProperties: false,
-        required: ['exchangeId', 'frames'],
+        required: ['exchangeId', 'frames', 'timeoutMode'],
         properties: {
           exchangeId: {
             type: 'string',
@@ -648,21 +667,33 @@ function buildWriteTools(): readonly McpToolDefinition[] {
               enum: ['message', 'ping', 'pong', 'close'],
             },
           },
+          timeoutMode: {
+            type: 'string',
+            description: 'Whether Core waits indefinitely or uses a finite deadline.',
+            enum: ['infinite', 'finite'],
+          },
           timeoutMs: {
             type: 'integer',
-            description: 'Maximum time Core waits before auto-continuing. 0 means no timeout.',
+            description: 'Positive finite deadline in milliseconds. Required only in finite mode.',
+            minimum: 1,
           },
         },
       },
       async execute(args, context) {
-        rejectUnknownKeys(args, ['exchangeId', 'direction', 'frames', 'timeoutMs']);
+        rejectUnknownKeys(args, [
+          'exchangeId',
+          'direction',
+          'frames',
+          'timeoutMode',
+          'timeoutMs',
+        ]);
         const result = await context.host.invoke({
           type: 'websocket.breakpoint.enable',
           payload: {
             exchangeId: requireString(args, 'exchangeId'),
             direction: optionalEnum(args, 'direction', WEBSOCKET_BREAKPOINT_DIRECTIONS) ?? 'both',
             frames: requireStringArray(args, 'frames', WEBSOCKET_BREAKPOINT_FRAMES),
-            timeoutMs: optionalInteger(args, 'timeoutMs') ?? 0,
+            timeout: readWebSocketBreakpointTimeout(args),
           },
         }, context.abortSignal);
         return result.payload;

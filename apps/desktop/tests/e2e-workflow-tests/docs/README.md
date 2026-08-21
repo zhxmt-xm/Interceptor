@@ -8,11 +8,11 @@
 | Capture 与协议 | [capture.md](capture.md) | 15 |
 | Rules | [rules.md](rules.md) | 8 |
 | Composer | [composer.md](composer.md) | 5 |
-| Breakpoints | [breakpoints.md](breakpoints.md) | 7 |
+| Breakpoints | [breakpoints.md](breakpoints.md) | 9 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 13 |
 
-总计：62 条 workflow。
+总计：64 条 workflow。
 
 ## 文档约定
 

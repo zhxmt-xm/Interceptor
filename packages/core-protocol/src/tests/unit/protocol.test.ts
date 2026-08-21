@@ -38,7 +38,7 @@ describe('core protocol validation', () => {
           exchangeId: 'exchange-ws',
           direction: 'both',
           frames: ['message'],
-          timeoutMs: 30_000,
+          timeout: { mode: 'finite', timeoutMs: 30_000 },
         },
       },
       {

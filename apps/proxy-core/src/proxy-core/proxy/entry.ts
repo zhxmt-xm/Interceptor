@@ -768,7 +768,7 @@ export class ProxyService {
       bodyAvailable: true,
       body,
       ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
-    }, settings.timeoutMs);
+    }, settings.timeout);
     if (
       outcome.state === 'dropped' ||
       (outcome.state === 'timed_out' && outcome.timeoutPolicy === 'drop')

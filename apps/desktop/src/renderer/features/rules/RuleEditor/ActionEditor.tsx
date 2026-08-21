@@ -44,6 +44,7 @@ export interface ActionEditorProps {
   index: number;
   action: RuleAction;
   onChange: (action: RuleAction) => void;
+  onValidityChange: (valid: boolean) => void;
   onRemove: () => void;
 }
 
@@ -53,6 +54,7 @@ export function ActionEditor({
   index,
   action,
   onChange,
+  onValidityChange,
   onRemove,
 }: ActionEditorProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -66,7 +68,8 @@ export function ActionEditor({
       icon={meta.icon}
       tone={meta.tone}
       title={t(meta.titleKey)}
-      sub={t(meta.subKey)}
+      sub={action.type === 'breakpoint' ? action.phase : t(meta.subKey)}
+      parity={action.type === 'breakpoint' ? 'rule-breakpoint-timeout-action' : undefined}
       removeAutomationId={AutomationIdFactory.ruleActionField(ruleId, index, 'remove')}
       onRemove={onRemove}
     >
@@ -75,6 +78,7 @@ export function ActionEditor({
         index={index}
         action={action}
         onChange={onChange}
+        onValidityChange={onValidityChange}
         translate={translate}
       />
     </ActionCard>

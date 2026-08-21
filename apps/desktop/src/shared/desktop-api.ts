@@ -1,5 +1,6 @@
 import type {
   BreakpointEdit,
+  BreakpointTimeout,
   CaptureBodyRef,
   CaptureExchangeDetail,
   CaptureExchangeEvent,
@@ -20,6 +21,7 @@ import type {
   PendingBreakpoint,
   RuleAction,
   RuleActionType,
+  RuleBreakpointAction,
   RuleDefinition,
   RuleFolder,
   RuleHeaderPair,
@@ -48,6 +50,7 @@ export {
 
 export type {
   BreakpointEdit,
+  BreakpointTimeout,
   CaptureBodyRef,
   CaptureExchangeDetail,
   CaptureExchangeEvent,
@@ -66,6 +69,7 @@ export type {
   PendingBreakpoint,
   RuleAction,
   RuleActionType,
+  RuleBreakpointAction,
   RuleDefinition,
   RuleFolder,
   RuleHeaderPair,

@@ -104,6 +104,56 @@ describe('parseImportedRules', () => {
     ]);
   });
 
+  it('imports explicit infinite and finite breakpoint timeouts', () => {
+    const result = parseImportedRules(payload(
+      rule({
+        name: 'Infinite',
+        actions: [{
+          type: 'breakpoint',
+          phase: 'request',
+          timeout: { mode: 'infinite' },
+        }],
+      }),
+      rule({
+        name: 'Finite',
+        actions: [{
+          type: 'breakpoint',
+          phase: 'response',
+          timeout: { mode: 'finite', timeoutMs: 7_000 },
+          onTimeout: 'drop',
+        }],
+      }),
+    ));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.leafCount).toBe(2);
+    expect(result.skipped).toEqual([]);
+  });
+
+  it.each([
+    { timeoutMs: 30_000, onTimeout: 'continue' },
+    { timeout: { mode: 'finite', timeoutMs: 0 }, onTimeout: 'continue' },
+    { timeout: { mode: 'finite', timeoutMs: -1 }, onTimeout: 'continue' },
+    { timeout: { mode: 'finite', timeoutMs: 1.5 }, onTimeout: 'continue' },
+    { timeout: { mode: 'finite', timeoutMs: 1_000 } },
+    { timeout: { mode: 'infinite' }, onTimeout: 'continue' },
+  ])('rejects malformed breakpoint timeout %#', (breakpointFields) => {
+    const result = parseImportedRules(payload(rule({
+      actions: [{
+        type: 'breakpoint',
+        phase: 'request',
+        ...breakpointFields,
+      }],
+    })));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.skipped).toEqual([
+      { path: 'Block ads', reason: 'invalid-action-fields' },
+    ]);
+  });
+
   it('rejects an enabled flag that is not a boolean', () => {
     const result = parseImportedRules(payload(rule({ enabled: 'yes' })));
 

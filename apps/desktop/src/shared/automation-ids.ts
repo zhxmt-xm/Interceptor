@@ -159,6 +159,15 @@ export const AUTOMATION_IDS = {
       breakpointToggle: 'capture.websocket.breakpoint.toggle',
       breakpointDirection: 'capture.websocket.breakpoint.direction',
       breakpointTimeout: 'capture.websocket.breakpoint.timeout',
+      breakpointCustomTimeout: 'capture.websocket.breakpoint.custom-timeout',
+      breakpointTimeoutError: 'capture.websocket.breakpoint.timeout-error',
+      breakpointTimeoutOption: {
+        none: 'capture.websocket.breakpoint.timeout-option.none',
+        ten: 'capture.websocket.breakpoint.timeout-option.10',
+        thirty: 'capture.websocket.breakpoint.timeout-option.30',
+        sixty: 'capture.websocket.breakpoint.timeout-option.60',
+        custom: 'capture.websocket.breakpoint.timeout-option.custom',
+      },
       breakpointFrame: {
         message: 'capture.websocket.breakpoint.frame.message',
         ping: 'capture.websocket.breakpoint.frame.ping',

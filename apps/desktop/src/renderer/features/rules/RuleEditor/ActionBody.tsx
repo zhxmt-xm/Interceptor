@@ -15,9 +15,9 @@ import {
   PHASE_OPTIONS,
   QUERY_OP_OPTIONS,
   SCHEME_OPTIONS,
-  TIMEOUT_POLICY_OPTIONS,
 } from '../constants';
 import { localizeOptions, toInt } from '../utils';
+import { BreakpointActionBody } from './BreakpointActionBody';
 
 import styles from './ActionBody.module.css';
 
@@ -26,6 +26,7 @@ export interface ActionBodyProps {
   index: number;
   action: RuleAction;
   onChange: (action: RuleAction) => void;
+  onValidityChange: (valid: boolean) => void;
   translate: (key: string) => string;
 }
 
@@ -35,6 +36,7 @@ export function ActionBody({
   index,
   action,
   onChange,
+  onValidityChange,
   translate,
 }: ActionBodyProps): React.JSX.Element {
   switch (action.type) {
@@ -340,34 +342,15 @@ export function ActionBody({
       );
     }
     case 'breakpoint': {
-      const current = action;
       return (
-        <div className={styles.row}>
-          <Select
-            className={styles.phase}
-            ariaLabel={translate('rules.phase')}
-            value={current.phase}
-            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
-            onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
-          />
-          <span className={styles.label}>{translate('rules.timeoutMs')}</span>
-          <InputBox
-            className={styles.num}
-            ariaLabel={translate('rules.timeoutMilliseconds')}
-            type="number"
-            value={String(current.timeoutMs)}
-            onValueChange={(value) =>
-              onChange({ ...current, timeoutMs: toInt(value, current.timeoutMs) })
-            }
-          />
-          <Select
-            className={styles.mode}
-            ariaLabel={translate('rules.onTimeout')}
-            value={current.onTimeout}
-            options={localizeOptions(TIMEOUT_POLICY_OPTIONS, 'rules.timeout', translate)}
-            onValueChange={(value) => onChange({ ...current, onTimeout: value as 'continue' | 'drop' })}
-          />
-        </div>
+        <BreakpointActionBody
+          action={action}
+          index={index}
+          ruleId={ruleId}
+          translate={translate}
+          onChange={onChange}
+          onValidityChange={onValidityChange}
+        />
       );
     }
     default:

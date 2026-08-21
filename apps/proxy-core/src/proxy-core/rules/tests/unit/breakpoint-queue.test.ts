@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BREAKPOINT_QUEUE_LIMIT } from '../../internal/constants';
 import { BreakpointQueue } from '../../internal/breakpoint-queue';
 
+const FINITE_TIMEOUT = { mode: 'finite', timeoutMs: 30_000 } as const;
+const INFINITE_TIMEOUT = { mode: 'infinite' } as const;
+
 describe('BreakpointQueue', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -14,7 +17,7 @@ describe('BreakpointQueue', () => {
 
   it('resolves a suspended breakpoint as continued', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const { id, outcome } = breakpointQueue.suspend('request', 30_000, 'continue')!;
+    const { id, outcome } = breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')!;
     expect(breakpointQueue.size).toBe(1);
     expect(breakpointQueue.resolve(id, 'continue')).toBe('continued');
     await expect(outcome).resolves.toEqual({ state: 'continued' });
@@ -23,7 +26,7 @@ describe('BreakpointQueue', () => {
 
   it('resolves with an edit as edited', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const { id, outcome } = breakpointQueue.suspend('request', 30_000, 'continue')!;
+    const { id, outcome } = breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')!;
     const edit = { headers: [{ name: 'x', value: '1' }] };
     expect(breakpointQueue.resolve(id, 'continue', edit)).toBe('edited');
     await expect(outcome).resolves.toEqual({ state: 'edited', edit });
@@ -31,14 +34,18 @@ describe('BreakpointQueue', () => {
 
   it('resolves as dropped', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const { id, outcome } = breakpointQueue.suspend('response', 30_000, 'drop')!;
+    const { id, outcome } = breakpointQueue.suspend('response', FINITE_TIMEOUT, 'drop')!;
     expect(breakpointQueue.resolve(id, 'drop')).toBe('dropped');
     await expect(outcome).resolves.toEqual({ state: 'dropped' });
   });
 
   it('auto-resolves as timed_out after the timeout, carrying the policy', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const { outcome } = breakpointQueue.suspend('request', 1_000, 'drop')!;
+    const { outcome } = breakpointQueue.suspend(
+      'request',
+      { mode: 'finite', timeoutMs: 1_000 },
+      'drop',
+    )!;
     vi.advanceTimersByTime(1_000);
     await expect(outcome).resolves.toEqual({
       state: 'timed_out',
@@ -47,10 +54,26 @@ describe('BreakpointQueue', () => {
     expect(breakpointQueue.size).toBe(0);
   });
 
+  it('keeps an infinite breakpoint pending until it is resolved', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const { id, outcome } = breakpointQueue.suspend(
+      'request',
+      INFINITE_TIMEOUT,
+      'continue',
+    )!;
+
+    vi.advanceTimersByTime(24 * 60 * 60 * 1_000);
+    expect(breakpointQueue.size).toBe(1);
+    expect(breakpointQueue.list()[0]?.deadline).toBe(0);
+
+    breakpointQueue.resolve(id, 'continue');
+    await expect(outcome).resolves.toEqual({ state: 'continued' });
+  });
+
   it('closeAll resolves every pending breakpoint as timed_out', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const a = breakpointQueue.suspend('request', 30_000, 'continue')!;
-    const b = breakpointQueue.suspend('response', 30_000, 'drop')!;
+    const a = breakpointQueue.suspend('request', INFINITE_TIMEOUT, 'continue')!;
+    const b = breakpointQueue.suspend('response', FINITE_TIMEOUT, 'drop')!;
     breakpointQueue.closeAll();
     await expect(a.outcome).resolves.toEqual({
       state: 'timed_out',
@@ -67,14 +90,14 @@ describe('BreakpointQueue', () => {
     const breakpointQueue = new BreakpointQueue();
     const aborted = breakpointQueue.suspend(
       'request',
-      30_000,
+      FINITE_TIMEOUT,
       'continue',
       undefined,
       'request-a',
     )!;
     const untouched = breakpointQueue.suspend(
       'response',
-      30_000,
+      FINITE_TIMEOUT,
       'continue',
       undefined,
       'request-b',
@@ -90,7 +113,7 @@ describe('BreakpointQueue', () => {
 
   it('returns null for an unknown or already-resolved breakpoint', () => {
     const breakpointQueue = new BreakpointQueue();
-    const { id } = breakpointQueue.suspend('request', 30_000, 'continue')!;
+    const { id } = breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')!;
     expect(breakpointQueue.resolve('missing', 'continue')).toBeNull();
     expect(breakpointQueue.resolve(id, 'continue')).toBe('continued');
     expect(breakpointQueue.resolve(id, 'continue')).toBeNull();
@@ -99,23 +122,23 @@ describe('BreakpointQueue', () => {
   it('refuses to suspend past the queue limit and counts the auto-continued hits', () => {
     const breakpointQueue = new BreakpointQueue();
     for (let index = 0; index < BREAKPOINT_QUEUE_LIMIT; index += 1) {
-      expect(breakpointQueue.suspend('request', 30_000, 'continue')).not.toBeNull();
+      expect(breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')).not.toBeNull();
     }
-    expect(breakpointQueue.suspend('request', 30_000, 'continue')).toBeNull();
-    expect(breakpointQueue.suspend('response', 30_000, 'continue')).toBeNull();
+    expect(breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')).toBeNull();
+    expect(breakpointQueue.suspend('response', FINITE_TIMEOUT, 'continue')).toBeNull();
     expect(breakpointQueue.size).toBe(BREAKPOINT_QUEUE_LIMIT);
     expect(breakpointQueue.autoContinued).toBe(2);
 
     const [first] = breakpointQueue.list();
     breakpointQueue.resolve(first!.id, 'continue');
-    expect(breakpointQueue.suspend('request', 30_000, 'continue')).not.toBeNull();
+    expect(breakpointQueue.suspend('request', FINITE_TIMEOUT, 'continue')).not.toBeNull();
     expect(breakpointQueue.autoContinued).toBe(2);
   });
 
   it('lists pending breakpoints in insertion order', () => {
     const breakpointQueue = new BreakpointQueue();
-    breakpointQueue.suspend('request', 30_000, 'continue');
-    breakpointQueue.suspend('response', 30_000, 'drop');
+    breakpointQueue.suspend('request', INFINITE_TIMEOUT, 'continue');
+    breakpointQueue.suspend('response', FINITE_TIMEOUT, 'drop');
     expect(breakpointQueue.list().map((entry) => entry.phase)).toEqual([
       'request',
       'response',
@@ -124,7 +147,7 @@ describe('BreakpointQueue', () => {
 
   it('preserves websocket message metadata and editable body snapshots', () => {
     const breakpointQueue = new BreakpointQueue();
-    breakpointQueue.suspend('websocket', 30_000, 'continue', {
+    breakpointQueue.suspend('websocket', FINITE_TIMEOUT, 'continue', {
       ruleName: 'WebSocket message',
       url: 'ws://example.test/socket',
       direction: 'client-to-server',
@@ -147,7 +170,11 @@ describe('BreakpointQueue', () => {
 
   it('does not fire the timeout after a manual resolve', async () => {
     const breakpointQueue = new BreakpointQueue();
-    const { id, outcome } = breakpointQueue.suspend('request', 1_000, 'drop')!;
+    const { id, outcome } = breakpointQueue.suspend(
+      'request',
+      { mode: 'finite', timeoutMs: 1_000 },
+      'drop',
+    )!;
     expect(breakpointQueue.resolve(id, 'continue')).toBe('continued');
     vi.advanceTimersByTime(2_000);
     await expect(outcome).resolves.toEqual({ state: 'continued' });

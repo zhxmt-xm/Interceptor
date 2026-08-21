@@ -49,6 +49,11 @@ export class ProxiedWebSocketClient {
     this.socket.write(this.maskedFrame(8, payload));
   }
 
+  /** Send one masked UTF-8 text message through the real proxy connection. */
+  sendText(message: string): void {
+    this.socket.write(this.maskedFrame(1, Buffer.from(message, 'utf8')));
+  }
+
   /** Destroy the test-owned client socket. */
   destroy(): void {
     this.socket.destroy();
@@ -111,6 +116,9 @@ export class WebSocketLab {
   /** Close codes observed by the real origin. */
   private readonly observedCloseCodes: number[] = [];
 
+  /** Text messages observed by the real origin. */
+  private readonly observedMessages: string[] = [];
+
   /** Random origin port selected by the operating system. */
   readonly port: number;
 
@@ -132,6 +140,12 @@ export class WebSocketLab {
       });
     });
     webSocketServer.on('connection', (webSocket) => {
+      webSocket.on('message', (data, isBinary) => {
+        if (!isBinary) {
+          webSocketLab.observedMessages.push(data.toString());
+        }
+        webSocket.send(data, { binary: isBinary });
+      });
       webSocket.on('close', (closeCode) => {
         webSocketLab.observedCloseCodes.push(closeCode);
       });
@@ -169,9 +183,17 @@ export class WebSocketLab {
     return this.observedCloseCodes.at(-1);
   }
 
+  /** Return whether the real origin observed an exact text message. */
+  hasMessage(message: string): boolean {
+    return this.observedMessages.includes(message);
+  }
+
   /** Return serializable origin evidence. */
   evidence(): object {
-    return { closeCodes: [...this.observedCloseCodes] };
+    return {
+      closeCodes: [...this.observedCloseCodes],
+      messages: [...this.observedMessages],
+    };
   }
 
   /** Terminate all clients and server-side sockets before closing the origin. */

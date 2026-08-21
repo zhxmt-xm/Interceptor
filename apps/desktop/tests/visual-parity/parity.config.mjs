@@ -415,6 +415,98 @@ export const views = [
         ],
       },
       {
+        id: `capture-websocket-breakpoint-setup-custom${suffix}`,
+        theme,
+        designState: {
+          ...designState,
+          breakpointState: '',
+          websocketBreakpoint: 'setup',
+          websocketBreakpointDirection: 'both',
+          websocketBreakpointTimeout: 'custom',
+          websocketBreakpointCustomTimeoutSeconds: 7,
+          websocketBreakpointFrames: ['message'],
+        },
+        designShot: `${theme}/capture/websocket-breakpoint-setup-custom.png`,
+        rendererActions: [
+          ...rendererOpenMessages,
+          { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
+          {
+            type: 'clickAutomation',
+            automationId: 'capture.websocket.breakpoint.timeout',
+          },
+          {
+            type: 'clickAutomation',
+            automationId: 'capture.websocket.breakpoint.timeout-option.custom',
+          },
+          {
+            type: 'fillAutomation',
+            automationId: 'capture.websocket.breakpoint.custom-timeout',
+            value: '7',
+          },
+        ],
+        targets: [
+          {
+            name: 'WebSocket breakpoint popover',
+            designSelector: '.ant-popover:visible .ant-popover-container',
+            appSelector: '.ant-popover:visible .ant-popover-container',
+          },
+          { name: 'WebSocket breakpoint setup', parity: 'websocket-breakpoint-setup' },
+          { name: 'Timeout row', parity: 'websocket-breakpoint-timeout-row' },
+          { name: 'Custom timeout row', parity: 'websocket-breakpoint-custom-timeout-row' },
+          { name: 'Actions row', parity: 'websocket-breakpoint-actions-row' },
+          {
+            name: 'Custom timeout input',
+            parity: 'websocket-breakpoint-custom-timeout-input',
+          },
+          'Seconds',
+          'Enable breakpoint',
+        ],
+      },
+      {
+        id: `capture-websocket-breakpoint-setup-invalid${suffix}`,
+        theme,
+        designState: {
+          ...designState,
+          breakpointState: '',
+          websocketBreakpoint: 'setup',
+          websocketBreakpointDirection: 'both',
+          websocketBreakpointTimeout: 'custom',
+          websocketBreakpointCustomTimeoutSeconds: 0,
+          websocketBreakpointFrames: ['message'],
+        },
+        designShot: `${theme}/capture/websocket-breakpoint-setup-invalid.png`,
+        rendererActions: [
+          ...rendererOpenMessages,
+          { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
+          {
+            type: 'clickAutomation',
+            automationId: 'capture.websocket.breakpoint.timeout',
+          },
+          {
+            type: 'clickAutomation',
+            automationId: 'capture.websocket.breakpoint.timeout-option.custom',
+          },
+          {
+            type: 'fillAutomation',
+            automationId: 'capture.websocket.breakpoint.custom-timeout',
+            value: '0',
+          },
+        ],
+        targets: [
+          {
+            name: 'WebSocket breakpoint popover',
+            designSelector: '.ant-popover:visible .ant-popover-container',
+            appSelector: '.ant-popover:visible .ant-popover-container',
+          },
+          { name: 'WebSocket breakpoint setup', parity: 'websocket-breakpoint-setup' },
+          { name: 'Custom timeout row', parity: 'websocket-breakpoint-custom-timeout-row' },
+          { name: 'Timeout error', parity: 'websocket-breakpoint-timeout-error' },
+          { name: 'Actions row', parity: 'websocket-breakpoint-actions-row' },
+          'Enter a positive whole number of seconds.',
+          'Enable breakpoint',
+        ],
+      },
+      {
         id: `capture-websocket-breakpoint-enabled${suffix}`,
         theme,
         designState: {
@@ -1034,6 +1126,83 @@ export const views = [
       'Proxy & Listener',
     ],
   },
+  ...['light', 'dark'].flatMap((theme) => {
+    const suffix = theme === 'dark' ? '-dark' : '';
+    const openCustomTimeout = [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickAutomation', automationId: 'rules.row.rule-checkout' },
+      { type: 'clickAutomation', automationId: 'rules.action.rule-checkout.0.timeout' },
+      {
+        type: 'clickAutomation',
+        automationId: 'rules.action.rule-checkout.0.timeout-option.custom',
+      },
+    ];
+    const designState = {
+      view: 'rules',
+      theme,
+      sidebar: 'expanded',
+      overlay: '',
+      ruleBreakpointTimeout: 'custom',
+      ruleBreakpointTimeoutPolicy: 'continue',
+    };
+    const targets = [
+      { name: 'Breakpoint action', parity: 'rule-breakpoint-timeout-action' },
+      { name: 'Phase row', parity: 'rule-breakpoint-phase-row' },
+      { name: 'Timeout row', parity: 'rule-breakpoint-timeout-row' },
+      { name: 'Custom timeout row', parity: 'rule-breakpoint-custom-timeout-row' },
+      { name: 'Policy row', parity: 'rule-breakpoint-policy-row' },
+      {
+        name: 'Custom timeout input',
+        parity: 'rule-breakpoint-custom-timeout-input',
+      },
+      'Seconds',
+      'On timeout',
+    ];
+    return [
+      {
+        id: `rules-breakpoint-timeout-custom${suffix}`,
+        theme,
+        rendererNav: 'Rules & Map',
+        designState: {
+          ...designState,
+          ruleBreakpointCustomTimeoutSeconds: 7,
+        },
+        designShot: `${theme}/rules/breakpoint-timeout-custom.png`,
+        rendererActions: [
+          ...openCustomTimeout,
+          {
+            type: 'fillAutomation',
+            automationId: 'rules.action.rule-checkout.0.timeout-seconds',
+            value: '7',
+          },
+        ],
+        targets,
+      },
+      {
+        id: `rules-breakpoint-timeout-invalid${suffix}`,
+        theme,
+        rendererNav: 'Rules & Map',
+        designState: {
+          ...designState,
+          ruleBreakpointCustomTimeoutSeconds: 0,
+        },
+        designShot: `${theme}/rules/breakpoint-timeout-invalid.png`,
+        rendererActions: [
+          ...openCustomTimeout,
+          {
+            type: 'fillAutomation',
+            automationId: 'rules.action.rule-checkout.0.timeout-seconds',
+            value: '0',
+          },
+        ],
+        targets: [
+          ...targets,
+          { name: 'Timeout error', parity: 'rule-breakpoint-timeout-error' },
+          'Enter a positive whole number of seconds.',
+        ],
+      },
+    ];
+  }),
   {
     id: 'rules',
     theme: 'light',

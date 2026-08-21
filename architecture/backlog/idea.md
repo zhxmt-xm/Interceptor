@@ -173,12 +173,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint finite and infinite timeout</td>
-  <td><ul><li>显式支持无 timeout 与有限 timeout，并清楚表达超时策略。</li><li><strong>Steps:</strong><ul><li>待协议设计</li><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
-  <td><ul><li>N/A；当前 HTTP 与 WebSocket breakpoint 的 timeout 语义不完全一致。</li></ul></td>
-  <td><ul><li>用显式模式表达 infinite/finite，不用魔法数字，并验证 continue/drop wire 结果。</li></ul></td>
+  <td><ul><li>显式支持无 timeout 与有限 timeout，并清楚表达超时策略。</li><li><strong>Steps:</strong><ul><li>协议设计完成</li><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Queue/RuleService 36/36、Renderer/Rules/i18n聚焦57/57、MCP registry 19/19</li><li><strong>Integration:</strong> ✅ WebSocket真实proxy 9/9；HTTP策略由真实E2E验收</li><li><strong>E2E:</strong> ✅ HTTP/WS各自Red，当前2/2 Green与完整销毁/系统代理恢复</li><li><strong>Design/Parity:</strong> ✅ Custom/Invalid × Rules/WS × light/dark 8 views均0 missing / 0 flagged，最大0.6px</li></ul></td>
+  <td><ul><li><code>timeoutMs=0</code>以魔法值表达无限等待，HTTP无timeout时仍携带无意义policy；UI没有可验证的Custom正整数草稿边界。</li></ul></td>
+  <td><ul><li>用判别联合表达infinite/finite；单一下拉框提供No timeout、预设与Custom，只有finite HTTP显示policy；Custom原始文本只留在Renderer并通过正整数校验后写入协议。</li></ul></td>
 </tr>
 
 <tr>

@@ -73,17 +73,20 @@ export function WebSocketBreakpointInspector({
   const originalKind = draft.bodyFormat === 'hex'
     ? t('capture.binary').toLocaleLowerCase(i18n.language)
     : t('breakpoints.replacementText').toLocaleLowerCase(i18n.language);
-  const timeoutSummary = settings?.timeoutMs === 0
-    ? t('capture.wsBreakpointTimeoutNone')
-    : settings?.timeoutMs === 10_000
-      ? t('capture.wsBreakpointTimeout10')
-      : settings?.timeoutMs === 30_000
-        ? t('capture.wsBreakpointTimeout30')
-        : settings?.timeoutMs === 60_000
-          ? t('capture.wsBreakpointTimeout60')
-          : settings
-            ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 3 }).format(settings.timeoutMs / 1_000)} s`
-            : '';
+  const timeoutMs = settings?.timeout.mode === 'finite'
+    ? settings.timeout.timeoutMs
+    : null;
+  const timeoutSummary = !settings
+    ? ''
+    : timeoutMs === null
+      ? t('capture.wsBreakpointTimeoutNone')
+      : timeoutMs === 10_000
+        ? t('capture.wsBreakpointTimeout10')
+        : timeoutMs === 30_000
+          ? t('capture.wsBreakpointTimeout30')
+          : timeoutMs === 60_000
+            ? t('capture.wsBreakpointTimeout60')
+            : `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 3 }).format(timeoutMs / 1_000)} s`;
   const settingsSummary = settings
     ? `${
         settings.direction === 'both'

@@ -10,7 +10,9 @@
 
 import {
   collectLeaves,
+  type BreakpointTimeout,
   type RuleAction,
+  type RuleBreakpointAction,
   type RuleDefinition,
   type RuleSet,
 } from '@interceptor/core-protocol';
@@ -135,11 +137,11 @@ export class RuleService {
    */
   async pauseWebSocketMessage(
     snapshot: BreakpointSnapshot,
-    timeoutMs = 0,
+    timeout: BreakpointTimeout,
   ): Promise<BreakpointOutcome> {
     const suspension = this.breakpointQueue.suspend(
       'websocket',
-      timeoutMs,
+      timeout,
       'continue',
       snapshot,
     );
@@ -346,7 +348,7 @@ export class RuleService {
   /** 挂起规则断点并发布命中通知；关闭开关或队列已满时直接继续。 */
   private async awaitBreakpoint(
     phase: 'request' | 'response',
-    action: { timeoutMs: number; onTimeout: 'continue' | 'drop' },
+    action: RuleBreakpointAction,
     snapshot: BreakpointSnapshot,
     requestId?: string,
   ): Promise<BreakpointOutcome> {
@@ -358,8 +360,8 @@ export class RuleService {
     }
     const suspension = this.breakpointQueue.suspend(
       phase,
-      action.timeoutMs,
-      action.onTimeout,
+      action.timeout,
+      'onTimeout' in action ? action.onTimeout : 'continue',
       snapshot,
       requestId,
     );

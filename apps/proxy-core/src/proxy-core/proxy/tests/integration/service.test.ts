@@ -16,7 +16,12 @@ import { decryptWithCertificate } from './test-tls-setup';
 
 /** 只拦应用消息、不设超时的 WebSocket 断点配置。 */
 function messageBreakpoint(exchangeId: string) {
-  return { exchangeId, direction: 'both', frames: ['message'], timeoutMs: 0 } as const;
+  return {
+    exchangeId,
+    direction: 'both',
+    frames: ['message'],
+    timeout: { mode: 'infinite' },
+  } as const;
 }
 
 /** 等待 101 Exchange 落库并返回它的 id；断点作用域靠它锁定连接。 */
@@ -794,7 +799,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         actions: [{
           type: 'breakpoint',
           phase: 'request',
-          timeoutMs: 30_000,
+          timeout: { mode: 'finite', timeoutMs: 30_000 },
           onTimeout: 'continue',
         }],
       }],
@@ -1605,7 +1610,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['close'],
-        timeoutMs: 0,
+        timeout: { mode: 'infinite' },
       });
       sendWebSocketFrame(socket, 8, Buffer.from([0x03, 0xe8]));
 
@@ -1650,7 +1655,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['message'],
-        timeoutMs: 1_000,
+        timeout: { mode: 'finite', timeoutMs: 1_000 },
       });
       const echoed = readWebSocketFrames(socket, 1);
       sendWebSocketFrame(socket, 1, payload);
@@ -1746,7 +1751,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['message'],
-        timeoutMs: 0,
+        timeout: { mode: 'infinite' },
       });
       const echoed = readWebSocketFrames(socket, 1);
       sendWebSocketFrame(socket, 1, Buffer.from('outbound'));
@@ -1793,7 +1798,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'both',
         frames: ['ping'],
-        timeoutMs: 0,
+        timeout: { mode: 'infinite' },
       });
       const echoed = readWebSocketFrames(socket, 1);
       // 应用消息不在配置内，直接放行。

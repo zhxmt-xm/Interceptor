@@ -220,6 +220,8 @@ diagnostics.row.<traceKey>
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
+| `breakpoints.http-timeout-modes` | HTTP No timeout与有限Continue/Drop真实wire | privileged UI | passed |
+| `breakpoints.websocket-timeout-modes` | WebSocket No timeout与有限固定Continue真实wire | privileged UI | passed |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
 | `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 

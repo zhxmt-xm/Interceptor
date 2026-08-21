@@ -97,6 +97,13 @@ async function applyRendererActions(page, actions = []) {
       case 'clickSelector':
         await page.locator(action.selector).filter({ visible: true }).nth(index).click();
         break;
+      case 'clickAutomation':
+        await page
+          .locator(`[data-automation-id="${action.automationId}"]`)
+          .filter({ visible: true })
+          .nth(index)
+          .click();
+        break;
       case 'contextMenuText':
         await page.getByText(action.text, { exact: true }).nth(index).click({ button: 'right' });
         break;
@@ -142,6 +149,13 @@ async function applyRendererActions(page, actions = []) {
         break;
       case 'fillLabel':
         await page.getByLabel(action.label, { exact: true }).nth(index).fill(action.value);
+        break;
+      case 'fillAutomation':
+        await page
+          .locator(`[data-automation-id="${action.automationId}"]`)
+          .filter({ visible: true })
+          .nth(index)
+          .fill(action.value);
         break;
       case 'emitTlsCompatibility':
         await page.evaluate((events) => {

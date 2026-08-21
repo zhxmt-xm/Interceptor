@@ -1,13 +1,13 @@
-import { Button, Popover, Select } from 'antd';
+import { Button, InputNumber, Popover, Select } from 'antd';
 import { Pause, X } from 'lucide-react';
 
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { IconButton } from '../../components/IconButton/IconButton';
 import { SegmentedControl } from '../../components/SegmentedControl/SegmentedControl';
 import type {
+  BreakpointTimeoutSelection,
   WebSocketBreakpointDirection,
   WebSocketBreakpointFrame,
-  WebSocketBreakpointTimeout,
   WebSocketMessagePayload,
 } from '../../state/types';
 import { useDesignState } from '../../state/useDesignState';
@@ -24,6 +24,7 @@ const TIMEOUT_OPTIONS = [
   { value: '10', label: '10 seconds' },
   { value: '30', label: '30 seconds' },
   { value: '60', label: '1 minute' },
+  { value: 'custom', label: 'Custom…' },
 ];
 
 const FRAME_OPTIONS = [
@@ -47,6 +48,9 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
   const { state, updateState } = useDesignState();
   const setupOpen = state.websocketBreakpoint === 'setup';
   const enabled = state.websocketBreakpoint === 'enabled';
+  const customTimeoutValid = state.websocketBreakpointCustomTimeoutSeconds !== null
+    && Number.isInteger(state.websocketBreakpointCustomTimeoutSeconds)
+    && state.websocketBreakpointCustomTimeoutSeconds > 0;
   const toggleFrame = (frame: WebSocketBreakpointFrame): void => {
     updateState({
       websocketBreakpointFrames: state.websocketBreakpointFrames.includes(frame)
@@ -106,14 +110,46 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
       <div className={styles.settingRow} data-parity="websocket-breakpoint-timeout-row">
         <label htmlFor="websocket-breakpoint-timeout">Timeout</label>
         <Select
+          aria-label="Timeout"
+          className={styles.timeoutSelect}
           id="websocket-breakpoint-timeout"
           value={state.websocketBreakpointTimeout}
           options={TIMEOUT_OPTIONS}
           onChange={(timeout) => updateState({
-            websocketBreakpointTimeout: timeout as WebSocketBreakpointTimeout,
+            websocketBreakpointTimeout: timeout as BreakpointTimeoutSelection,
           })}
         />
       </div>
+      {state.websocketBreakpointTimeout === 'custom' ? (
+        <div className={styles.settingRow} data-parity="websocket-breakpoint-custom-timeout-row">
+          <label htmlFor="websocket-breakpoint-custom-timeout-seconds">Seconds</label>
+          <div className={styles.timeoutField}>
+            <div data-parity="websocket-breakpoint-custom-timeout-input">
+              <InputNumber
+                aria-label="Timeout seconds"
+                className={styles.timeoutSelect}
+                controls={false}
+                id="websocket-breakpoint-custom-timeout-seconds"
+                status={customTimeoutValid ? undefined : 'error'}
+                step={1}
+                value={state.websocketBreakpointCustomTimeoutSeconds}
+                onChange={(seconds) => updateState({
+                  websocketBreakpointCustomTimeoutSeconds: typeof seconds === 'number' ? seconds : null,
+                })}
+              />
+            </div>
+            {!customTimeoutValid ? (
+              <span
+                className={styles.timeoutError}
+                data-parity="websocket-breakpoint-timeout-error"
+                role="alert"
+              >
+                Enter a positive whole number of seconds.
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className={styles.setupActions} data-parity="websocket-breakpoint-actions-row">
         <span className={styles.actionSpacer} />
         <ActionButton
@@ -122,7 +158,8 @@ export function WebSocketBreakpointControl(): React.JSX.Element {
           onClick={() => updateState({ websocketBreakpoint: 'disabled' })}
         />
         <ActionButton
-          disabled={state.websocketBreakpointFrames.length === 0}
+          disabled={state.websocketBreakpointFrames.length === 0
+            || (state.websocketBreakpointTimeout === 'custom' && !customTimeoutValid)}
           icon={<Pause aria-hidden="true" />}
           label="Enable breakpoint"
           tone="primary"

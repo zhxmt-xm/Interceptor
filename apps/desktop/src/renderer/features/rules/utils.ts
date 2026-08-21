@@ -177,13 +177,13 @@ export function createBreakpointRule(
       {
         type: 'breakpoint',
         phase: 'request',
-        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        timeout: { mode: 'finite', timeoutMs: BREAKPOINT_TIMEOUT_MS },
         onTimeout: 'continue',
       },
       {
         type: 'breakpoint',
         phase: 'response',
-        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        timeout: { mode: 'finite', timeoutMs: BREAKPOINT_TIMEOUT_MS },
         onTimeout: 'continue',
       },
     ],
@@ -264,7 +264,7 @@ export function createAction(type: RuleActionType): RuleAction {
       return {
         type: 'breakpoint',
         phase: 'request',
-        timeoutMs: BREAKPOINT_TIMEOUT_MS,
+        timeout: { mode: 'finite', timeoutMs: BREAKPOINT_TIMEOUT_MS },
         onTimeout: 'continue',
       };
     default:
@@ -524,10 +524,19 @@ function hasImportActionFields(value: unknown): value is RuleAction {
     case 'delay':
       return IMPORT_PHASES.has(value.phase as string)
         && typeof value.ms === 'number' && Number.isFinite(value.ms);
-    case 'breakpoint':
-      return IMPORT_PHASES.has(value.phase as string)
-        && typeof value.timeoutMs === 'number' && Number.isFinite(value.timeoutMs)
+    case 'breakpoint': {
+      if (!IMPORT_PHASES.has(value.phase as string) || !isImportRecord(value.timeout)) {
+        return false;
+      }
+      if (value.timeout.mode === 'infinite') {
+        return value.timeout.timeoutMs === undefined && value.onTimeout === undefined;
+      }
+      return value.timeout.mode === 'finite'
+        && typeof value.timeout.timeoutMs === 'number'
+        && Number.isSafeInteger(value.timeout.timeoutMs)
+        && value.timeout.timeoutMs > 0
         && new Set(['continue', 'drop']).has(value.onTimeout as string);
+    }
     default:
       return false;
   }

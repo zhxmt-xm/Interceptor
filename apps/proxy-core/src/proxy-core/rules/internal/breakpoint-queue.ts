@@ -7,7 +7,7 @@
  * command 经 core-application 调 resolve；断线/关闭调 closeAll 把全部等待断点关为 timed_out。
  */
 
-import type { BreakpointEdit } from '@interceptor/core-protocol';
+import type { BreakpointEdit, BreakpointTimeout } from '@interceptor/core-protocol';
 import type {
   BreakpointOutcome,
   BreakpointPhase,
@@ -37,13 +37,13 @@ export class BreakpointQueue {
   private pendingChangeNotice = false;
 
   /**
-   * 挂起一个断点，返回稳定 id 与解除结果 Promise；timeoutMs>0 时到期自动 timed_out。
+   * 挂起一个断点，返回稳定 id 与解除结果 Promise；finite 到期自动 timed_out。
    * 队列已满时返回 null 并累加自动放行数，调用方必须原样放行，不得继续挂起真实流量。
    * 调用方：rule-engine 在 beforeRequestHead/beforeResponseHead 命中 breakpoint action 时。
    */
   suspend(
     phase: BreakpointPhase,
-    timeoutMs: number,
+    timeout: BreakpointTimeout,
     timeoutPolicy: BreakpointTimeoutPolicy,
     snapshot: BreakpointSnapshot = {
       ruleName: '',
@@ -64,18 +64,19 @@ export class BreakpointQueue {
       settle = resolve;
     });
     const createdAt = Date.now();
+    const timeoutMs = timeout.mode === 'finite' ? timeout.timeoutMs : null;
     const entry: PendingBreakpointEntry = {
       id,
       phase,
       createdAt,
-      deadline: timeoutMs > 0 ? createdAt + timeoutMs : 0,
+      deadline: timeoutMs === null ? 0 : createdAt + timeoutMs,
       snapshot,
       ...(requestId !== undefined ? { requestId } : {}),
       timeoutPolicy,
       settle,
       timer: null,
     };
-    if (timeoutMs > 0) {
+    if (timeoutMs !== null) {
       entry.timer = setTimeout(() => {
         this.finish(id, { state: 'timed_out', timeoutPolicy });
       }, timeoutMs);

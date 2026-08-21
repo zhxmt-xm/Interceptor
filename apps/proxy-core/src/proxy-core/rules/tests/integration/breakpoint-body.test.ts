@@ -152,7 +152,12 @@ function breakpointRule(phase: 'request' | 'response'): RuleDefinition {
     priority: 100,
     matchers: [{ type: 'host', value: '127.0.0.1', mode: 'exact' }],
     actions: [
-      { type: 'breakpoint', phase, timeoutMs: 30_000, onTimeout: 'continue' },
+      {
+        type: 'breakpoint',
+        phase,
+        timeout: { mode: 'finite', timeoutMs: 30_000 },
+        onTimeout: 'continue',
+      },
     ],
   };
 }

@@ -6,6 +6,8 @@ import {
   type FixtureElementRenderer,
 } from '../../fixtures/FixtureRenderer';
 import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode';
+import { useDesignState } from '../../state/useDesignState';
+import { BreakpointTimeoutAction } from './BreakpointTimeoutAction';
 
 interface RulesFixtureRendererProps {
   readonly node: FixtureNode;
@@ -15,24 +17,34 @@ function hasClass(node: FixtureElementNode, className: string): boolean {
   return node.attributes.class?.split(/\s+/).includes(className) ?? false;
 }
 
-const renderRulesElement: FixtureElementRenderer = (node, children) => {
-  if (node.attributes['data-rule-id'] === 'token') {
-    return null;
-  }
-  if (hasClass(node, 'vnote')) {
-    return null;
-  }
-  if (hasClass(node, 'edhead')) {
-    return (
-      <div className={fixtureClassNames('edhead')} data-fixture-node="">
-        {children}
-        <button className={fixtureClassNames('btn pri sm')} disabled type="button">Save</button>
-      </div>
-    );
-  }
-  return undefined;
-};
+function fixtureText(node: FixtureNode): string {
+  return node.type === 'text' ? node.value : node.children.map(fixtureText).join('');
+}
 
 export function RulesFixtureRenderer({ node }: RulesFixtureRendererProps): ReactNode {
+  const { state } = useDesignState();
+  const renderRulesElement: FixtureElementRenderer = (element, children) => {
+    if (element.attributes['data-rule-id'] === 'token') return null;
+    if (hasClass(element, 'vnote')) return null;
+    if (state.ruleBreakpointTimeout && hasClass(element, 'acards')) {
+      return <div className={fixtureClassNames('acards')}><BreakpointTimeoutAction /></div>;
+    }
+    if (
+      state.ruleBreakpointTimeout
+      && hasClass(element, 'sh')
+      && fixtureText(element).includes('Actions')
+    ) {
+      return <div className={fixtureClassNames('sh')}>Actions <span className={fixtureClassNames('c')}>1</span></div>;
+    }
+    if (hasClass(element, 'edhead')) {
+      return (
+        <div className={fixtureClassNames('edhead')} data-fixture-node="">
+          {children}
+          <button className={fixtureClassNames('btn pri sm')} disabled type="button">Save</button>
+        </div>
+      );
+    }
+    return undefined;
+  };
   return <FixtureRenderer node={node} renderElement={renderRulesElement} />;
 }

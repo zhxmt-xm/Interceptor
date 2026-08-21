@@ -29,7 +29,9 @@ export function WebSocketBreakpointInspector(): React.JSX.Element {
       : 'Received only';
   const timeoutLabel = state.websocketBreakpointTimeout === 'none'
     ? 'No timeout'
-    : state.websocketBreakpointTimeout === '60'
+    : state.websocketBreakpointTimeout === 'custom'
+      ? `${state.websocketBreakpointCustomTimeoutSeconds ?? 0}s timeout`
+      : state.websocketBreakpointTimeout === '60'
       ? '1 min timeout'
       : `${state.websocketBreakpointTimeout}s timeout`;
   const kindLabel = {

@@ -161,6 +161,58 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
 Drop真实中止目标数据面；请求不继续转发；pending badge、client和Capture均反映dropped/closed事实。
 
+<a id="breakpoints-http-timeout-modes"></a>
+## `breakpoints.http-timeout-modes`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence和记录请求的HTTP origin；启动真实Electron，等待冷启动Recording。
+2. 通过Rules UI创建request Breakpoint action，在单一Timeout下拉框选择`No timeout`并Apply；发送匹配请求，等待paused行。
+3. 等待超过后续自定义时长，确认pending仍为1、客户端未完成、origin未收到请求；通过UI Continue释放并确认origin 200。
+4. 编辑同一action，在Timeout选择`Custom…`；输入0时确认正整数错误且Save禁用，再输入1秒恢复有效，选择On timeout=Continue并Apply；再次发送匹配请求，不人工释放。
+5. 等待timeout后pending归0、客户端得到200、origin收到请求，Capture终态不是dropped。
+6. 改On timeout=Drop并Apply；第三次发送匹配请求，不人工释放。
+7. 等待timeout后pending归0、客户端连接失败/关闭、origin未收到第三次请求，Capture记录drop事实。
+8. 保存三段客户端/origin/Capture与规则配置证据；正常Close并验证Main/Core、8888、系统代理与profile恢复。
+
+### 预期效果
+
+`No timeout`不会隐式timer释放；自定义时长的Continue真实放行到origin，Drop真实中止且不触达origin。UI用单一下拉框表达无超时、预设与Custom；协议仍使用显式模式，不以0或空值编码。
+
+### TDD证据
+
+- Red：实现前同一workflow真实启动App、开始Recording并创建Breakpoint rule后，等待公开`rules.action.<ruleId>.0.timeout`超时；Main/Core PID为`26976/41564`，`gracefulDestroyVerified=true`。
+- Green：当前同一workflow`1/1`通过；No timeout超过1秒finite窗口仍pending并由UI Continue释放；Custom 0阻断Save，1秒Continue到达origin，1秒Drop使客户端失败且origin无第三次请求。
+- 销毁：最终Main/Core PID为`21420/1604`，`gracefulDestroyVerified=true`，8888释放；WinINet由App恢复为原`127.0.0.1:7890`。
+
+<a id="breakpoints-websocket-timeout-modes"></a>
+## `breakpoints.websocket-timeout-modes`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence与WebSocket lab；启动真实Electron并建立经8888转发的连接。
+2. 从Messages为当前连接打开Breakpoint setup，在单一Timeout下拉框选择`No timeout`并启用；发送匹配message，等待paused row。
+3. 等待超过后续自定义时长，确认消息仍pending且origin未收到；通过UI Continue释放并确认payload原样到达。
+4. 重新setup，在Timeout选择`Custom…`；输入0时确认正整数错误且Enable禁用，再输入1秒恢复有效；UI不提供Drop，因为WebSocket有限等待固定Continue。
+5. 发送第二条message，不人工释放；等待timeout后pending归0，origin收到精确原payload并回显，连接保持可用。
+6. 保存setup、pending、origin与socket证据；通过UI停用断点，正常Close并验证销毁、8888、系统代理与profile恢复。
+
+### 预期效果
+
+WebSocket的单一Timeout下拉框提供`No timeout`、预设与Custom；有限等待超时固定Continue，不能配置Drop。UI选择映射到显式协议模式，两种模式都只作用于当前连接且不破坏帧顺序。
+
+### TDD证据
+
+- Red：实现前同一workflow已建立经8888的真实WebSocket并打开setup，等待公开`capture.websocket.breakpoint.custom-timeout`超时；Main/Core PID为`5876/11856`，`gracefulDestroyVerified=true`。
+- Green：当前同一workflow`1/1`通过；Custom 0阻断Enable，No timeout超过1秒finite窗口仍pending并由UI Continue释放，Custom 1秒固定Continue把原文转发到origin，随后连接继续可用。
+- 销毁：最终Main/Core PID为`33656/35580`，`gracefulDestroyVerified=true`，8888释放；WinINet由App恢复为原`127.0.0.1:7890`。
+
 <a id="breakpoints-websocket-close"></a>
 ## `breakpoints.websocket-close`
 

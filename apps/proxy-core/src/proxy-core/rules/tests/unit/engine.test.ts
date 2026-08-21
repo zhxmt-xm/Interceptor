@@ -10,6 +10,19 @@ import type {
 import { RuleService } from '../../entry';
 import { BreakpointQueue } from '../../internal/breakpoint-queue';
 
+const REQUEST_BREAKPOINT: RuleAction = {
+  type: 'breakpoint',
+  phase: 'request',
+  timeout: { mode: 'finite', timeoutMs: 30_000 },
+  onTimeout: 'continue',
+};
+const RESPONSE_BREAKPOINT: RuleAction = {
+  type: 'breakpoint',
+  phase: 'response',
+  timeout: { mode: 'finite', timeoutMs: 30_000 },
+  onTimeout: 'continue',
+};
+
 function rule(
   id: string,
   matchers: RuleMatcher[],
@@ -216,13 +229,38 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
     const result = await ruleService.evaluateRequest(requestContext(), requestState());
     expect(result.kind).toBe('continue');
     expect(result.hits[0]).toMatchObject({ action: 'breakpoint', summary: 'continued' });
+  });
+
+  it('keeps an infinite request breakpoint pending until the user continues', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [
+        rule('r1', [{ type: 'method', value: 'GET' }], [
+          {
+            type: 'breakpoint',
+            phase: 'request',
+            timeout: { mode: 'infinite' },
+          },
+        ]),
+      ],
+    });
+
+    const evaluation = ruleService.evaluateRequest(requestContext(), requestState());
+    await expect.poll(() => breakpointQueue.size).toBe(1);
+    const [pending] = breakpointQueue.list();
+    expect(pending?.deadline).toBe(0);
+
+    breakpointQueue.resolve(pending!.id, 'continue');
+    await expect(evaluation).resolves.toMatchObject({ kind: 'continue' });
   });
 
   it('builds the request breakpoint snapshot after all regular rule actions', async () => {
@@ -232,7 +270,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ], { priority: 10 }),
         rule('rewrite-later', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-after', value: 'applied' },
@@ -261,7 +299,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ], { priority: 10 }),
         rule('rewrite-first', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-marker', value: 'same' },
@@ -293,7 +331,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ], { priority: 10 }),
         rule('append-values', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'append', name: 'x-duplicate', value: 'same' },
@@ -339,7 +377,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ], { priority: 10 }),
         rule('append-first', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'append', name: 'x-marker', value: 'same' },
@@ -378,7 +416,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
@@ -405,7 +443,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
@@ -451,7 +489,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
@@ -478,7 +516,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
@@ -519,7 +557,7 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
         ], { priority: 10 }),
         rule('rewrite-later', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'request', op: 'set', name: 'x-after', value: 'applied' },
@@ -560,8 +598,8 @@ describe('RuleService — breakpoints', () => {
       revision: 1,
       nodes: [
         rule('r1', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
-          { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' },
+          REQUEST_BREAKPOINT,
+          REQUEST_BREAKPOINT,
         ]),
       ],
     });
@@ -588,7 +626,7 @@ describe('RuleService — response evaluation', () => {
       revision: 1,
       nodes: [
         rule('response-breakpoint', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' },
+          RESPONSE_BREAKPOINT,
         ]),
       ],
     });
@@ -622,7 +660,7 @@ describe('RuleService — response evaluation', () => {
       revision: 1,
       nodes: [
         rule('breakpoint-first', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' },
+          RESPONSE_BREAKPOINT,
         ], { priority: 10 }),
         rule('rewrite-later', [{ type: 'method', value: 'GET' }], [
           { type: 'header', phase: 'response', op: 'set', name: 'x-after', value: 'applied' },
@@ -663,7 +701,7 @@ describe('RuleService — response evaluation', () => {
       revision: 1,
       nodes: [
         rule('response-breakpoint', [{ type: 'method', value: 'GET' }], [
-          { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' },
+          RESPONSE_BREAKPOINT,
         ]),
       ],
     });

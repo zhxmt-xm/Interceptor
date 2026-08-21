@@ -13,6 +13,7 @@ export interface ActionCardProps {
   tone: ActionTone;
   title: string;
   sub: string;
+  parity?: string;
   removeAutomationId?: AutomationId;
   onRemove: () => void;
   children: ReactNode;
@@ -24,13 +25,14 @@ export function ActionCard({
   tone,
   title,
   sub,
+  parity,
   removeAutomationId,
   onRemove,
   children,
 }: ActionCardProps): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-parity={parity}>
       <div className={styles.head}>
         <span className={cx(styles.icon, styles[tone])}>
           <Icon size={15} strokeWidth={1.9} />

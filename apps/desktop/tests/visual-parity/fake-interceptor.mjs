@@ -424,7 +424,7 @@ const stagingRule = rule('rule-staging', 'Redirect to staging', 'prod.example.co
 const authRule = { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false };
 const trackersRule = rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' });
 const uploadRule = rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 });
-const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeoutMs: 30_000, onTimeout: 'continue' });
+const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeout: { mode: 'finite', timeoutMs: 30_000 }, onTimeout: 'continue' });
 const managerCheckoutRule = {
   ...checkoutRule,
   name: 'Checkout endpoint',
@@ -435,7 +435,7 @@ const managerCheckoutRule = {
   ],
 };
 const managerTokenRule = {
-  ...rule('rule-token-breakpoint', 'Token API', 'api.example.com', '/v1/', { type: 'breakpoint', phase: 'response', timeoutMs: 30_000, onTimeout: 'continue' }),
+  ...rule('rule-token-breakpoint', 'Token API', 'api.example.com', '/v1/', { type: 'breakpoint', phase: 'response', timeout: { mode: 'finite', timeoutMs: 30_000 }, onTimeout: 'continue' }),
   matchers: [
     { type: 'host', value: 'api.example.com', mode: 'exact' },
     { type: 'path', value: '/v1/', mode: 'contains' },
@@ -860,7 +860,7 @@ export function installFakeInterceptor({
       exchangeId: 'ws-fixture',
       direction: 'both',
       frames: ['message'],
-      timeoutMs: 0,
+      timeout: { mode: 'infinite' },
     };
   }
   if (noRuleHits) {

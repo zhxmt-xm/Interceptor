@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Tooltip } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -52,6 +52,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const { t } = useTranslation();
   const [showAddCondition, setShowAddCondition] = useState(false);
   const [showAddAction, setShowAddAction] = useState(false);
+  const [invalidActionIndexes, setInvalidActionIndexes] = useState<ReadonlySet<number>>(new Set());
   const rule = useRulesStore(selectedRule);
   const complete = useRulesStore((state) => isRuleSetComplete(state.nodes));
   const dirty = useRulesStore((state) => isRulesDirty(state.nodes, state.applied));
@@ -68,6 +69,10 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   const updateAction = useRulesStore((state) => state.updateAction);
   const removeAction = useRulesStore((state) => state.removeAction);
 
+  useEffect(() => {
+    setInvalidActionIndexes(new Set());
+  }, [rule?.id, rule?.actions.length]);
+
   if (!rule) {
     return (
       <div className={styles.editor}>
@@ -77,7 +82,8 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
   }
 
   const matchedRequests = hits[rule.id] ?? 0;
-  const enableBlocked = !rule.enabled && !isRuleComplete(rule);
+  const hasInvalidActionDraft = invalidActionIndexes.size > 0;
+  const enableBlocked = !rule.enabled && (!isRuleComplete(rule) || hasInvalidActionDraft);
 
   const addAndClose = (type: RuleActionType): void => {
     addAction(rule.id, type);
@@ -167,7 +173,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
         <Button
           variant="primary"
           size="sm"
-          disabled={!dirty || saving || !complete}
+          disabled={!dirty || saving || !complete || hasInvalidActionDraft}
           onClick={() => void applyRules()}
           automationId={AUTOMATION_IDS.rules.apply}
         >
@@ -230,11 +236,19 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           <div className={styles.actionCards}>
             {rule.actions.map((action, index) => (
               <ActionEditor
-                key={index}
+                key={`${rule.id}:${index}`}
                 ruleId={rule.id}
                 index={index}
                 action={action}
                 onChange={(next) => updateAction(rule.id, index, next)}
+                onValidityChange={(valid) => {
+                  setInvalidActionIndexes((current) => {
+                    const next = new Set(current);
+                    if (valid) next.delete(index);
+                    else next.add(index);
+                    return next;
+                  });
+                }}
                 onRemove={() => removeAction(rule.id, index)}
               />
             ))}

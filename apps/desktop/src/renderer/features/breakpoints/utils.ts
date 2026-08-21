@@ -1,10 +1,53 @@
 import type {
   BreakpointEdit,
+  BreakpointTimeout,
   PendingBreakpoint,
 } from '../../../shared/desktop-api';
 import type { BreakpointDraft, BreakpointsState, EditHeaderRow } from './interfaces';
 
+export type BreakpointTimeoutSelection = 'none' | '10' | '30' | '60' | 'custom';
+
+export interface BreakpointTimeoutSelectionState {
+  readonly selection: BreakpointTimeoutSelection;
+  readonly customSeconds: string;
+}
+
 let sequence = 0;
+
+/** 将Timeout控件的选项与Custom秒数转换为显式协议值；无效输入返回null。 */
+export function breakpointTimeoutFromSelection(
+  selection: BreakpointTimeoutSelection,
+  customSeconds: string,
+): BreakpointTimeout | null {
+  if (selection === 'none') {
+    return { mode: 'infinite' };
+  }
+  const secondsText = selection === 'custom' ? customSeconds : selection;
+  if (!/^\d+$/.test(secondsText)) {
+    return null;
+  }
+  const seconds = Number(secondsText);
+  const timeoutMs = seconds * 1_000;
+  if (seconds <= 0 || !Number.isSafeInteger(seconds) || !Number.isSafeInteger(timeoutMs)) {
+    return null;
+  }
+  return { mode: 'finite', timeoutMs };
+}
+
+/** 将协议timeout映射回单一下拉框；非预设有限值使用Custom秒数。 */
+export function breakpointTimeoutSelection(
+  timeout: BreakpointTimeout,
+): BreakpointTimeoutSelectionState {
+  if (timeout.mode === 'infinite') {
+    return { selection: 'none', customSeconds: '' };
+  }
+  const seconds = timeout.timeoutMs / 1_000;
+  const customSeconds = String(seconds);
+  if (seconds === 10 || seconds === 30 || seconds === 60) {
+    return { selection: String(seconds) as '10' | '30' | '60', customSeconds };
+  }
+  return { selection: 'custom', customSeconds };
+}
 
 /** 生成断点草稿 header 行的本地 id。 */
 export function rowId(): string {

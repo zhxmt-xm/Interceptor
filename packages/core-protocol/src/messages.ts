@@ -1,5 +1,12 @@
 import type { Collection, CollectionNode } from './collection';
-import type { RuleDefinition, RuleHeaderPair, RuleHitCount, RuleNode, RuleSet } from './rules';
+import type {
+  BreakpointTimeout,
+  RuleDefinition,
+  RuleHeaderPair,
+  RuleHitCount,
+  RuleNode,
+  RuleSet,
+} from './rules';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
@@ -537,8 +544,7 @@ export interface WebSocketBreakpointSettings {
   exchangeId: string;
   direction: WebSocketBreakpointDirection;
   frames: readonly WebSocketBreakpointFrame[];
-  /** Core 允许挂起的上限；0 表示不设超时。 */
-  timeoutMs: number;
+  timeout: BreakpointTimeout;
 }
 
 /** 一条有序 WebSocket 应用消息摘要；payload 字节仍经 body.read-range 按需读取。 */

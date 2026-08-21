@@ -1,6 +1,6 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-12
+> 最后更新：2026-08-21
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
@@ -49,7 +49,9 @@ stateDiagram-v2
     aborted --> [*]
 ```
 
-**强制超时**：每个断点携带 `timeoutMs` 与 `onTimeout` 策略，绝不允许无限期挂起真实流量。它是 Core 允许等待的上限，不会覆盖客户端自己的超时；客户端更早断开时，Proxy 按 Mockttp request ID 立即把对应 suspension 结束为 `aborted`，不会把 stale breakpoint 留到 deadline。RPC 连接断开时 `closeAll()` 释放全部等待。
+**显式等待模式**：断点不再用`timeoutMs=0`编码无限等待。`timeout.mode='infinite'`不创建timer；`timeout.mode='finite'`必须携带正整数`timeoutMs`。UI用一个Timeout下拉框提供`No timeout`、常用时长与`Custom…`；Custom显示正整数Seconds输入。`No timeout`映射为infinite，其余选项映射为finite。HTTP仅在finite时显示`On timeout: Continue | Drop`；WebSocket finite固定continue，不显示产品不支持的policy控件。timeout只是Core允许等待的上限，不会覆盖客户端自己的超时；客户端更早断开时，Proxy按Mockttp request ID立即把对应suspension结束为`aborted`。RPC连接断开时`closeAll()`释放全部等待，因此无限等待也不会跨连接或进程泄漏。
+
+2026-08-21 TDD证据：Queue finite测试先Red于Promise不settle，RuleService显式action测试先Red于旧字段分派，WebSocket真实proxy先Red于pending不产生；实现后分别`12/12`、`24/24`与WS integration `9/9` Green。Renderer转换/正整数校验`9/9`、Rules import与15语言聚焦`57/57`、MCP registry `19/19`通过。真实Electron的HTTP/WS workflow实现前分别Red于timeout控件和Custom输入缺失，当前`2/2` Green；最终Main/Core PID为`21420/1604`与`33656/35580`，均`gracefulDestroyVerified=true`、8888释放且系统代理恢复。Custom/Invalid × Rules/WS × light/dark八个parity view全部`0 missing / 0 flagged`，最大几何差0.6px。
 
 ## 4. 调用流程
 
@@ -76,9 +78,9 @@ sequenceDiagram
     alt 全局开关关闭
         Engine-->>Engine: 直接 continued，不挂起
     else 开关开启
-        Engine->>Queue: suspend('request', timeoutMs, onTimeout, snapshot)
+        Engine->>Queue: suspend('request', action.timeout, timeoutPolicy, snapshot)
         Queue-->>Engine: { id, outcome: Promise }
-        Note over Queue: 记录 deadline
+        Note over Queue: finite记录deadline<br/>infinite不创建timer
 
         Queue-->>UI: breakpoint.pending 变更信号
         UI->>App: breakpoint.list
@@ -141,8 +143,8 @@ sequenceDiagram
     alt 未启用或不在配置内
         Proxy-->>Bridge: forward 原样
     else 方向与帧类别都命中
-        Proxy->>Engine: pauseWebSocketMessage(snapshot, timeoutMs)
-        Engine->>Queue: suspend('websocket', timeoutMs, 'continue', snapshot)
+        Proxy->>Engine: pauseWebSocketMessage(snapshot, settings.timeout)
+        Engine->>Queue: suspend('websocket', settings.timeout, 'continue', snapshot)
         Queue-->>Engine: outcome
         alt dropped
             Proxy-->>Bridge: drop
@@ -160,7 +162,7 @@ WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match
 不再检查 `breakpointsEnabled`，开关完全归 `ProxyService.webSocketBreakpointSettings`。
 配置里的 `exchangeId` 把断点锁在发起它的那条连接上，UI 说的 “Pause messages on this connection”
 就是字面意思；其他连接的帧不受影响，`websocket.frames` 也只在 exchangeId 匹配时才报告该配置。
-启用必须给出完整配置（`exchangeId` / `direction` / `frames` / `timeoutMs`），因此不存在“开了但不知道拦什么”的中间态。
+启用必须给出完整配置（`exchangeId` / `direction` / `frames` / `timeout`），因此不存在“开了但不知道拦什么”的中间态。
 ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
 
 Renderer 不把 WebSocket pause 替换成另一套全屏 Inspector。pending 到达后自动切到该连接的 Messages tab，
@@ -203,12 +205,26 @@ interface WebSocketBreakpointSettings {
   exchangeId: string;
   direction: 'both' | 'client-to-server' | 'server-to-client';
   frames: readonly ('message' | 'ping' | 'pong' | 'close')[];
-  /** Core 允许挂起的上限；0 表示不设超时。 */
-  timeoutMs: number;
+  timeout:
+    | { mode: 'infinite' }
+    | { mode: 'finite'; timeoutMs: number };
 }
 
+type RuleBreakpointAction =
+  | {
+      type: 'breakpoint';
+      phase: 'request' | 'response';
+      timeout: { mode: 'infinite' };
+    }
+  | {
+      type: 'breakpoint';
+      phase: 'request' | 'response';
+      timeout: { mode: 'finite'; timeoutMs: number };
+      onTimeout: 'continue' | 'drop';
+    };
+
 interface BreakpointOutcome {
-    state: 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
+  state: 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
   edit?: BreakpointEdit;
   timeoutPolicy?: 'continue' | 'drop';
 }
@@ -250,8 +266,8 @@ interface BreakpointOutcome {
     尚未建立 wire-level 回归；产品不能仅凭 UI 状态宣称正确。
 - WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
 - Binary 未编辑保真与 hex **编辑后**的字节还原均已有真实 socket 回归。
-- WebSocket deadline 固定 continue，已有真实 wire 回归；HTTP 的 `onTimeout: continue | drop` 虽已由
-    `BreakpointQueue` 锁定 policy 传播，但两种策略的真实 proxy wire 结果尚未分别建立集成测试。
+- WebSocket finite deadline固定continue；HTTP finite的Continue/Drop均已有真实Electron→Core→proxy→origin
+    workflow证据，Infinite在两条flow中都验证超过finite窗口后仍保持pending。
 
 ## 8. 验收要点
 
@@ -263,7 +279,7 @@ interface BreakpointOutcome {
 - [ ] 大正文断点有明确的预览上限与提示，不 OOM。
 - [x] Binary 消息可用 hex 编辑并正确还原。
 - [x] WebSocket deadline 到期后按固定 continue 策略原样转发。
-- [ ] HTTP 超时按 `onTimeout` 策略正确 continue 或 drop。
+- [x] HTTP finite超时按 `onTimeout` 策略正确continue或drop，Infinite只由用户或生命周期释放。
 - [x] 客户端在 deadline 前 abort 时立即释放对应断点，不影响其他等待请求。
 - [x] pending queue 超限自动 continue 并记录数量。
 - [x] RPC 断开时全部等待被释放，不泄漏挂起请求。

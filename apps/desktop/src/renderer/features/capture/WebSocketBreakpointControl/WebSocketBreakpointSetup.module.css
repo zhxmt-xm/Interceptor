@@ -63,7 +63,7 @@
 }
 
 .timeoutSelect {
-  height: 26px;
+  height: 25.5px;
   font-size: 13px;
   font-weight: 400;
 }
@@ -71,6 +71,35 @@
 .timeoutSelectContent {
   font-size: 13px;
   font-weight: 400;
+}
+
+.timeoutField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeoutInput {
+  width: 100%;
+  height: 25.5px;
+  padding: 0 7px;
+  font-size: 13px;
+}
+
+.timeoutInput input[type='number'] {
+  appearance: textfield;
+}
+
+.timeoutInput input[type='number']::-webkit-inner-spin-button,
+.timeoutInput input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.timeoutError {
+  color: var(--red);
+  font-size: 10.5px;
 }
 
 .actionButton {

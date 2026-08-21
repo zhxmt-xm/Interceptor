@@ -98,6 +98,8 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'body-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'body-full', detail: 'open', tab: 'response', bodyPreview: 'code' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup-custom', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'custom', websocketBreakpointCustomTimeoutSeconds: 7, websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup-invalid', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'custom', websocketBreakpointCustomTimeoutSeconds: 0, websocketBreakpointFrames: ['message'] } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-sent', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-received-binary', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketMessageDirection: 'received', websocketMessagePayload: 'binary' } });
@@ -133,6 +135,9 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
   shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
+  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-none', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'none' } });
+  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-custom', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'custom', ruleBreakpointCustomTimeoutSeconds: 7, ruleBreakpointTimeoutPolicy: 'continue' } });
+  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-invalid', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'custom', ruleBreakpointCustomTimeoutSeconds: 0, ruleBreakpointTimeoutPolicy: 'continue' } });
 }
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {
@@ -294,9 +299,13 @@ async function shoot(list) {
       breakpointFile: 'none',
       breakpointPanel: '',
       breakpointMessage: '',
+      ruleBreakpointTimeout: '',
+      ruleBreakpointCustomTimeoutSeconds: 30,
+      ruleBreakpointTimeoutPolicy: 'continue',
       websocketBreakpoint: 'disabled',
       websocketBreakpointDirection: 'both',
       websocketBreakpointTimeout: 'none',
+      websocketBreakpointCustomTimeoutSeconds: 30,
       websocketBreakpointFrames: ['message'],
       websocketMessageDirection: 'sent',
       websocketMessagePayload: 'text',
@@ -312,7 +321,10 @@ async function shoot(list) {
       ...st,
     }), s.state);
     await page.waitForTimeout(140);
-    if (s.interaction === 'request-menu' || s.interaction === 'breakpoint-menu') {
+    if (
+      s.interaction === 'request-menu'
+      || s.interaction === 'breakpoint-menu'
+    ) {
       await page.locator('.list-scroll .row').filter({ visible: true }).first().click({ button: 'right' });
     }
     if (s.interaction === 'breakpoint-menu') {
@@ -328,6 +340,7 @@ async function shoot(list) {
     if (
       s.interaction !== 'request-menu'
       && s.interaction !== 'breakpoint-menu'
+      && s.interaction !== 'websocket-breakpoint-setup'
       && await page.locator('.ant-dropdown:visible').count() > 0
     ) {
       throw new Error(`Unexpected open Dropdown before ${s.theme}/${s.feature}/${s.variant}`);
@@ -340,7 +353,11 @@ async function shoot(list) {
     const dest = path.join(shotsRoot, s.theme, s.feature);
     await mkdir(dest, { recursive: true });
     const outputPath = path.join(dest, `${s.variant}.png`);
-    if (s.interaction === 'request-menu' || s.interaction === 'breakpoint-menu') {
+    if (
+      s.interaction === 'request-menu'
+      || s.interaction === 'breakpoint-menu'
+      || s.interaction === 'websocket-breakpoint-setup'
+    ) {
       const clip = await app.boundingBox();
       if (!clip) throw new Error('Design app is not visible');
       await page.screenshot({ path: outputPath, clip });
