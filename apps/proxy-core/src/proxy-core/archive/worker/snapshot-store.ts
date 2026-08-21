@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import type {
   BodyRefInput,
+  BodyRuleEffectInput,
   CaptureSnapshotBatch,
   CaptureSnapshotExchange,
   ExchangeInput,
@@ -78,6 +79,16 @@ export class SnapshotStore {
       response_bytes INTEGER NOT NULL DEFAULT 0,
       request_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
       response_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
+      request_body_effect_rule_id TEXT,
+      request_body_effect TEXT CHECK (request_body_effect IN ('replace')),
+      request_body_effect_source TEXT CHECK (request_body_effect_source IN ('text', 'file')),
+      request_body_original_state TEXT CHECK (request_body_original_state IN ('available', 'empty', 'unavailable')),
+      request_original_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
+      response_body_effect_rule_id TEXT,
+      response_body_effect TEXT CHECK (response_body_effect IN ('replace')),
+      response_body_effect_source TEXT CHECK (response_body_effect_source IN ('text', 'file')),
+      response_body_original_state TEXT CHECK (response_body_original_state IN ('available', 'empty', 'unavailable')),
+      response_original_body_id TEXT REFERENCES body_ref(id) ON DELETE SET NULL,
       state TEXT NOT NULL,
       error_code TEXT,
       rule_ids TEXT
@@ -251,6 +262,8 @@ export class SnapshotStore {
   private insertExchange(exchange: ExchangeInput): void {
     this.insertBody(exchange.requestBody);
     this.insertBody(exchange.responseBody);
+    this.insertBody(exchange.requestBodyEffect?.originalBody);
+    this.insertBody(exchange.responseBodyEffect?.originalBody);
     const seq = this.nextSeq++;
     this.databaseSync
       .prepare(
@@ -259,13 +272,25 @@ export class SnapshotStore {
            port, path, url, protocol, status_code, status_text, request_mime,
            response_mime, app_id, app_name, started_at, request_sent_at,
            response_started_at, completed_at, request_bytes, response_bytes,
-           request_body_id, response_body_id, state, error_code, rule_ids)
+           request_body_id, response_body_id,
+           request_body_effect_rule_id, request_body_effect,
+           request_body_effect_source, request_body_original_state,
+           request_original_body_id, response_body_effect_rule_id,
+           response_body_effect, response_body_effect_source,
+           response_body_original_state, response_original_body_id,
+           state, error_code, rule_ids)
          VALUES
           (:id, :sessionId, :connectionId, :seq, :streamId, :method, :scheme,
            :host, :port, :path, :url, :protocol, :statusCode, :statusText,
            :requestMime, :responseMime, :appId, :appName, :startedAt, :requestSentAt,
            :responseStartedAt, :completedAt, :requestBytes, :responseBytes,
-           :requestBodyId, :responseBodyId, :state, :errorCode, :ruleIds)`,
+           :requestBodyId, :responseBodyId,
+           :requestBodyEffectRuleId, :requestBodyEffect,
+           :requestBodyEffectSource, :requestBodyOriginalState,
+           :requestOriginalBodyId, :responseBodyEffectRuleId,
+           :responseBodyEffect, :responseBodyEffectSource,
+           :responseBodyOriginalState, :responseOriginalBodyId,
+           :state, :errorCode, :ruleIds)`,
       )
       .run({
         id: exchange.id,
@@ -295,6 +320,16 @@ export class SnapshotStore {
         requestBodyId: exchange.requestBody?.id ?? exchange.requestBodyId ?? null,
         responseBodyId:
           exchange.responseBody?.id ?? exchange.responseBodyId ?? null,
+        requestBodyEffectRuleId: exchange.requestBodyEffect?.ruleId ?? null,
+        requestBodyEffect: exchange.requestBodyEffect?.effect ?? null,
+        requestBodyEffectSource: exchange.requestBodyEffect?.source ?? null,
+        requestBodyOriginalState: exchange.requestBodyEffect?.originalState ?? null,
+        requestOriginalBodyId: exchange.requestBodyEffect?.originalBody?.id ?? null,
+        responseBodyEffectRuleId: exchange.responseBodyEffect?.ruleId ?? null,
+        responseBodyEffect: exchange.responseBodyEffect?.effect ?? null,
+        responseBodyEffectSource: exchange.responseBodyEffect?.source ?? null,
+        responseBodyOriginalState: exchange.responseBodyEffect?.originalState ?? null,
+        responseOriginalBodyId: exchange.responseBodyEffect?.originalBody?.id ?? null,
         state: exchange.state,
         errorCode: exchange.errorCode ?? null,
         ruleIds: exchange.ruleIds?.length ? JSON.stringify(exchange.ruleIds) : null,
@@ -404,7 +439,18 @@ export class SnapshotStore {
                 response_started_at AS responseStartedAt,
                 completed_at AS completedAt, request_bytes AS requestBytes,
                 response_bytes AS responseBytes, request_body_id AS requestBodyId,
-                response_body_id AS responseBodyId, state, error_code AS errorCode,
+                response_body_id AS responseBodyId,
+                request_body_effect_rule_id AS requestBodyEffectRuleId,
+                request_body_effect AS requestBodyEffect,
+                request_body_effect_source AS requestBodyEffectSource,
+                request_body_original_state AS requestBodyOriginalState,
+                request_original_body_id AS requestOriginalBodyId,
+                response_body_effect_rule_id AS responseBodyEffectRuleId,
+                response_body_effect AS responseBodyEffect,
+                response_body_effect_source AS responseBodyEffectSource,
+                response_body_original_state AS responseBodyOriginalState,
+                response_original_body_id AS responseOriginalBodyId,
+                state, error_code AS errorCode,
                 rule_ids AS ruleIds
          FROM exchange WHERE id = ?`,
       )
@@ -428,6 +474,20 @@ export class SnapshotStore {
       }[];
     const requestBody = this.readBody(row.requestBodyId as string | null);
     const responseBody = this.readBody(row.responseBodyId as string | null);
+    const requestBodyEffect = this.readBodyEffect(
+      row.requestBodyEffectRuleId,
+      row.requestBodyEffect,
+      row.requestBodyEffectSource,
+      row.requestBodyOriginalState,
+      row.requestOriginalBodyId,
+    );
+    const responseBodyEffect = this.readBodyEffect(
+      row.responseBodyEffectRuleId,
+      row.responseBodyEffect,
+      row.responseBodyEffectSource,
+      row.responseBodyOriginalState,
+      row.responseOriginalBodyId,
+    );
     const exchange: ExchangeInput = {
       id: row.id as string,
       sessionId: row.sessionId as string,
@@ -453,6 +513,8 @@ export class SnapshotStore {
       responseBytes: row.responseBytes as number,
       requestBody,
       responseBody,
+      requestBodyEffect,
+      responseBodyEffect,
       state: row.state as ExchangeInput['state'],
       errorCode: (row.errorCode as string | null) ?? undefined,
       ruleIds: this.readRuleIds(row.ruleIds),
@@ -481,6 +543,39 @@ export class SnapshotStore {
       throw new Error('Archive exchange rule_ids must be a string array.');
     }
     return parsed.length > 0 ? parsed : undefined;
+  }
+
+  /** 读取并校验一侧Body effect三态与Original引用。 */
+  private readBodyEffect(
+    ruleIdValue: unknown,
+    effectValue: unknown,
+    sourceValue: unknown,
+    originalStateValue: unknown,
+    originalBodyIdValue: unknown,
+  ): BodyRuleEffectInput | undefined {
+    if (ruleIdValue === null || ruleIdValue === undefined) {
+      return undefined;
+    }
+    if (
+      typeof ruleIdValue !== 'string'
+      || effectValue !== 'replace'
+      || (sourceValue !== 'text' && sourceValue !== 'file')
+      || !['available', 'empty', 'unavailable'].includes(String(originalStateValue))
+    ) {
+      throw new Error('Archive body Rule effect is malformed.');
+    }
+    const originalState = originalStateValue as BodyRuleEffectInput['originalState'];
+    const originalBody = this.readBody((originalBodyIdValue as string | null) ?? null);
+    if ((originalState === 'available') !== Boolean(originalBody)) {
+      throw new Error('Archive body Rule effect has an inconsistent Original reference.');
+    }
+    return {
+      ruleId: ruleIdValue,
+      effect: 'replace',
+      source: sourceValue,
+      originalState,
+      ...(originalBody ? { originalBody } : {}),
+    };
   }
 
   /** 读取单条 body metadata。 */

@@ -328,8 +328,11 @@ export function RequestInspector({
             />
             <BodySection
               title={t('capture.requestPayload')}
+              exchangeId={view?.id}
               automationId={AUTOMATION_IDS.capture.inspector.section.requestBody}
               body={detail?.requestBody}
+              effect={detail?.requestBodyEffect}
+              onOpenRule={onOpenRule}
               mime={detail?.requestMime}
               bytes={view?.requestBytes ?? 0}
               url={url}
@@ -343,8 +346,11 @@ export function RequestInspector({
           <div className={styles.panel}>
             <BodySection
               title={t('capture.body')}
+              exchangeId={view?.id}
               automationId={AUTOMATION_IDS.capture.inspector.section.responseBody}
               body={detail?.responseBody}
+              effect={detail?.responseBodyEffect}
+              onOpenRule={onOpenRule}
               mime={view?.responseMime}
               bytes={view?.responseBytes ?? 0}
               url={url}

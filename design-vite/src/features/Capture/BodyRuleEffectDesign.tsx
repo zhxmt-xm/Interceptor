@@ -116,19 +116,28 @@ export function BodyRuleEffectDesign(): React.JSX.Element | null {
           <span className={styles.bodyRuleEffectEvidence}>
             <button
               className={styles.bodyRuleEffectMarker}
+              data-parity="capture-body-effect-marker"
               type="button"
               onClick={(event) => event.stopPropagation()}
             >
               Rule replaced
             </button>
-            <span className={styles.bodyRuleEffectSource}>{source}</span>
+            <span
+              className={styles.bodyRuleEffectSource}
+              data-parity="capture-body-effect-source"
+            >
+              {source}
+            </span>
           </span>
         )}
         open={open}
         title={response ? 'Body' : 'Request Payload'}
         onOpenChange={setOpen}
       >
-        <div className={styles.bodyRuleEffectVersionBar}>
+        <div
+          className={styles.bodyRuleEffectVersionBar}
+          data-parity="capture-body-effect-version-bar"
+        >
           <span>Body version</span>
           <SegmentedControl
             ariaLabel="Body version"
@@ -141,7 +150,10 @@ export function BodyRuleEffectDesign(): React.JSX.Element | null {
           />
         </div>
         {response ? (
-          <div className={styles.bodyRuleEffectUnavailable}>
+          <div
+            className={styles.bodyRuleEffectUnavailable}
+            data-parity="capture-body-effect-unavailable"
+          >
             <Info aria-hidden="true" />
             <span>Original response body is unavailable for a headers-stage replacement.</span>
           </div>

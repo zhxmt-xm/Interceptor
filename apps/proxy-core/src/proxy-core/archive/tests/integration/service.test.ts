@@ -108,6 +108,8 @@ async function tempDir(): Promise<string> {
 
 const BODY_BYTES = Buffer.from('<script>notExecuted()</script>');
 const BODY_HASH = createHash('sha256').update(BODY_BYTES).digest('hex');
+const ORIGINAL_BODY_BYTES = Buffer.from('original request body');
+const ORIGINAL_BODY_HASH = createHash('sha256').update(ORIGINAL_BODY_BYTES).digest('hex');
 
 /** 建立一个含 pseudo-header、trailer、认证头与正文引用的内存 Capture。 */
 function buildSourceCapture(): ExchangeStore {
@@ -152,6 +154,19 @@ function buildSourceCapture(): ExchangeStore {
         mediaType: 'text/html',
         truncated: false,
         decodeStatus: 'ok',
+      },
+      requestBodyEffect: {
+        ruleId: 'rule-body',
+        effect: 'replace',
+        source: 'file',
+        originalState: 'available',
+        originalBody: {
+          id: 'body-original',
+          blobHash: ORIGINAL_BODY_HASH,
+          encodedSize: ORIGINAL_BODY_BYTES.length,
+          mediaType: 'text/plain',
+          decodeStatus: 'ok',
+        },
       },
     },
   ]);
@@ -264,7 +279,10 @@ class ImportFake extends CaptureService {
 async function exportArchive(exchangeStore: ExchangeStore): Promise<string> {
   const directory = await tempDir();
   const archivePath = path.join(directory, 'capture.iarchive');
-  const blobs = new Map<string, Buffer>([[BODY_HASH, BODY_BYTES]]);
+  const blobs = new Map<string, Buffer>([
+    [BODY_HASH, BODY_BYTES],
+    [ORIGINAL_BODY_HASH, ORIGINAL_BODY_BYTES],
+  ]);
   const archiveService = new ArchiveService(
     new ExportFake(exchangeStore, blobs),
     new TransferService(),
@@ -314,6 +332,17 @@ describe('ArchiveService', () => {
     ).toBe('rule-a');
     expect(exchange?.requestBody?.blobHash).toBe(BODY_HASH);
     expect(importFake.blobs.get(BODY_HASH)?.equals(BODY_BYTES)).toBe(true);
+    expect(exchange?.requestBodyEffect).toMatchObject({
+      ruleId: 'rule-body',
+      effect: 'replace',
+      source: 'file',
+      originalState: 'available',
+      originalBody: {
+        blobHash: ORIGINAL_BODY_HASH,
+        encodedSize: ORIGINAL_BODY_BYTES.length,
+      },
+    });
+    expect(importFake.blobs.get(ORIGINAL_BODY_HASH)?.equals(ORIGINAL_BODY_BYTES)).toBe(true);
   });
 
   it('rolls back the imported session when persistence fails', async () => {

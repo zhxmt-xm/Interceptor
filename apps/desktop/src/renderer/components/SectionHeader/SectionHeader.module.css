@@ -47,6 +47,35 @@
 .button:hover .chevron {
   color: var(--accent);
 }
+.labelButton,
+.chevronButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.labelButton {
+  gap: 8px;
+}
+.chevronButton {
+  width: 24px;
+  height: 24px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.chevronButton .chevron {
+  margin-left: 0;
+}
+.labelButton:hover,
+.chevronButton:hover .chevron {
+  color: var(--accent);
+}
 .button {
   width: 100%;
   border-top: 0;

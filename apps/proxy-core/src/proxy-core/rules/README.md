@@ -12,6 +12,10 @@
 
 matcher 基于进入时的请求上下文（context 不可变），action 累积改写可变 state。
 
+正文替换只产出一个最终写入者：后执行的普通`body` action覆盖前者，延后执行的Breakpoint
+Text/File replacement再覆盖普通Rule。`RuleBodyEffect`只记录`ruleId`、request/response阶段与
+`text | file`来源；文件读取失败、Continue unmodified和header-only编辑都不制造effect。
+
 ## 组成
 
 | 文件 | 职责 |
@@ -22,7 +26,7 @@ matcher 基于进入时的请求上下文（context 不可变），action 累积
 
 ## 断点
 
-`breakpointsEnabled` 是全局 "break on match" 开关。挂起由 `BreakpointQueue` 用 Map 管理多个 pending，`breakpoint.resolve` command 解挂。WebSocket 消息断点走独立的 `pauseWebSocketMessage`。
+`breakpointsEnabled` 是全局 "break on match" 开关。挂起由 `BreakpointQueue` 用 Map 管理多个 pending，`breakpoint.resolve` command 解挂。HTTP Text/File编辑返回实际成功的正文来源，文件消失时保留原文；WebSocket 消息断点走独立的 `pauseWebSocketMessage`。
 
 ## 依赖
 

@@ -137,6 +137,17 @@ export const AUTOMATION_IDS = {
         raw: 'capture.inspector.body-mode.raw',
         hex: 'capture.inspector.body-mode.hex',
       },
+      bodyEffect: {
+        source: 'capture.inspector.body-effect.source',
+        original: 'capture.inspector.body-effect.original',
+        final: 'capture.inspector.body-effect.final',
+        unavailable: 'capture.inspector.body-effect.original-unavailable',
+      },
+      bodyAction: {
+        save: 'capture.inspector.body-action.save',
+        copy: 'capture.inspector.body-action.copy',
+        fullscreen: 'capture.inspector.body-action.fullscreen',
+      },
       setupHttps: 'capture.inspector.setup-https',
       viewTlsPassthroughPattern: 'capture.tls-tunnel.view-passthrough-pattern',
     },
@@ -333,6 +344,8 @@ export const AUTOMATION_IDS = {
       file: 'breakpoints.replacement.file',
     },
     body: 'breakpoints.body',
+    chooseFile: 'breakpoints.file.choose',
+    selectedFile: 'breakpoints.file.selected',
     drop: 'breakpoints.drop',
     continueUnmodified: 'breakpoints.continue-unmodified',
     executeEdited: 'breakpoints.execute-edited',
@@ -408,6 +421,7 @@ export const AUTOMATION_IDS = {
 /** Stable prefixes for Core-owned rows whose full IDs are only known at runtime. */
 export const AUTOMATION_ID_PREFIXES = {
   captureRequestRow: 'capture.request-row.',
+  captureBodyRuleEffect: 'capture.body-rule-effect.',
   websocketFrame: 'capture.websocket.frame.',
   grpcMessage: 'capture.grpc.message.',
   ruleRow: 'rules.row.',
@@ -465,6 +479,11 @@ export class AutomationIdFactory {
   /** Identify one persisted Rule effect shown in the Capture Inspector. */
   static captureRuleEffect(ruleId: string, effect: string, headerName: string): string {
     return `capture.rule-effect.${ruleId}.${effect}.${encodeURIComponent(headerName.toLowerCase())}`;
+  }
+
+  /** Identify the final body writer shown in the Capture Inspector. */
+  static captureBodyRuleEffect(ruleId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.captureBodyRuleEffect}${ruleId}`;
   }
 
   /** Identify one persisted TLS passthrough row by its normalized host pattern. */

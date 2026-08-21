@@ -25,6 +25,12 @@ Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmedi
 
 每条 Exchange 用自己的 `tail` Promise 串行化存储写入，保证顺序且不阻塞事件回调。
 
+正文规则结果与`request-body-data`同样可能乱序。`ExchangeTracker`把RuleService的最终replacement
+写为主Request/Response Body ref；客户端request stream另作为Original保存到
+`requestBodyEffect.originalBody`。Request空原文记`empty`，Response在headers-stage替换时不缓冲
+origin正文并固定记`unavailable`。规则结果先到或body-data先到都经同一条`tail`收敛，不从Rule hit
+反推证据。
+
 ## 依赖
 
 - 依赖：`capture/`（写入抓包数据）、`rules/`（请求/响应评估）、`client-app/`（源端口反查应用）、`diagnostics/`

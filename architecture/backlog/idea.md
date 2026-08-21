@@ -200,12 +200,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Body Rule effect evidence</td>
-  <td><ul><li>为普通 Rule body action 与 Breakpoint replacement 建立独立正文证据和 marker。</li><li><strong>Steps:</strong><ul><li>协议设计完成</li><li>设计完成</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 待Red</li><li><strong>Integration:</strong> ❌ 待Red</li><li><strong>E2E:</strong> ❌ 契约完成，待可执行Red</li><li><strong>Design/Parity:</strong> 🔄 Body effect专属交互2/2、明暗Text/File基线8张完成，产品parity待实现</li></ul></td>
+  <td><ul><li>为普通 Rule body action 与 Breakpoint replacement 建立独立正文证据和 marker。</li><li><strong>Steps:</strong><ul><li>协议设计完成</li><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ RuleService 27/27、Protocol 24/24</li><li><strong>Integration:</strong> ✅ Body三态2/2、Breakpoint File 2/2、Archive/HAR 9/9</li><li><strong>E2E:</strong> ✅ 有效Red于marker缺失、当前完整矩阵1/1 Green与完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ 8个明暗Text/File view均0 missing / 0 flagged / 0px，interaction 13/13</li></ul></td>
   <td><ul><li>当前只有 rule hit，没有原始/最终、text/file、request/response 的 body effect 契约。</li></ul></td>
-  <td><ul><li>证据模型和 design-vite 已定稿；后续按Unit/Integration Red → E2E Red → Protocol/Core/Renderer → Green实现。</li></ul></td>
+  <td><ul><li>公开协议记录最终writer与Original三态；Capture主ref恒为Final，Request保存Original，Response明确unavailable；Archive保真、HAR仅Final，Renderer提供marker与版本切换。</li></ul></td>
 </tr>
 
 <tr>

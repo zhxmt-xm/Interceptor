@@ -6,6 +6,10 @@
   gap: 10px;
 }
 
+.compact {
+  flex: 0 0 auto;
+}
+
 /* Preview truncation and, later, the format ceiling share one note component. */
 .note {
   display: flex;

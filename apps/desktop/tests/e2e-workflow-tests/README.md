@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture 与69条workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、79条Inventory与81份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -192,6 +192,7 @@ diagnostics.row.<traceKey>
 | `rules.validate-apply` | Validate、Apply、revision和持久化 | shared | planned |
 | `rules.apply-conflict` | 乐观并发冲突恢复 | shared | planned/blocked |
 | `rules.runtime-hit` | 规则真实作用于Proxy数据面 | shared | planned |
+| `rules.body-effect-evidence` | Final writer、Original三态与Text/File正文证据 | native-ui + privileged UI | passed |
 | `rules.import-tree` | 真实Save→Open、取消、纯追加、身份重生成与持久化 | native-ui | passed |
 
 详细步骤：[docs/rules.md](docs/rules.md)

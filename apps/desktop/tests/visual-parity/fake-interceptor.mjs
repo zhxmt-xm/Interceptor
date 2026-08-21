@@ -828,6 +828,7 @@ export function installFakeInterceptor({
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
   tlsTunnelHost = null,
+  bodyRuleEffect = null,
   fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
@@ -844,6 +845,58 @@ export function installFakeInterceptor({
         host: tlsTunnelHost,
       },
       url: `https://${tlsTunnelHost}:443`,
+    };
+  }
+  if (bodyRuleEffect) {
+    const response = bodyRuleEffect.startsWith('response-');
+    const source = bodyRuleEffect.endsWith('-file') ? 'file' : 'text';
+    const finalText = {
+      'request-text': '{"stage":"rule-text"}',
+      'request-file': '{"stage":"breakpoint-file"}',
+      'response-text': '{"stage":"response-text"}',
+      'response-file': '{"stage":"response-file"}',
+    }[bodyRuleEffect];
+    const originalText = '{"stage":"original"}';
+    const finalHash = `body-effect-${bodyRuleEffect}-final`;
+    const originalHash = 'body-effect-request-original';
+    fixture.capture.bodies[finalHash] = Array.from(new TextEncoder().encode(finalText));
+    fixture.capture.bodies[originalHash] = Array.from(new TextEncoder().encode(originalText));
+    const finalBody = {
+      bodyHash: finalHash,
+      mediaType: 'application/json',
+      encodedSize: finalText.length,
+      truncated: false,
+      decodeStatus: 'ok',
+    };
+    const originalBody = {
+      bodyHash: originalHash,
+      mediaType: 'application/json',
+      encodedSize: originalText.length,
+      truncated: false,
+      decodeStatus: 'ok',
+    };
+    const effect = {
+      ruleId: 'rule-auth',
+      effect: 'replace',
+      source,
+      originalState: response ? 'unavailable' : 'available',
+      ...(!response ? { originalBody } : {}),
+    };
+    const summary = fixture.capture.sessions.find((session) => session.id === 'http-1');
+    const nextSummary = {
+      ...summary,
+      ...(response
+        ? { responseBytes: finalText.length, responseMime: 'application/json' }
+        : { requestBytes: finalText.length }),
+    };
+    fixture.capture.sessions = fixture.capture.sessions.map((session) =>
+      session.id === 'http-1' ? nextSummary : session);
+    fixture.capture.details['http-1'] = {
+      ...fixture.capture.details['http-1'],
+      summary: nextSummary,
+      ...(response
+        ? { responseBody: finalBody, responseBodyEffect: effect }
+        : { requestBody: finalBody, requestBodyEffect: effect }),
     };
   }
   if (pausedBreakpoints) {

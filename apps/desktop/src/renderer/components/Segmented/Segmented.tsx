@@ -5,7 +5,7 @@ import { cx } from '../share/cx';
 import styles from './Segmented.module.css';
 
 export interface SegmentedProps {
-  options: Array<string | { label: string; value: string }>;
+  options: Array<string | { label: string; value: string; disabled?: boolean }>;
   value: string;
   onChange?: (value: string) => void;
   /** Extra class on the group root (e.g. protocol mono styling). */
@@ -25,13 +25,13 @@ export function Segmented({
   automationIds,
 }: SegmentedProps): React.JSX.Element {
   const items = options.map((option) =>
-    typeof option === 'string' ? { label: option, value: option } : option);
+    typeof option === 'string' ? { label: option, value: option, disabled: false } : option);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
 
   /** Select the option at an index and keep keyboard focus on it. */
   const selectAt = (index: number): void => {
     const item = items[index];
-    if (!item || !onChange) {
+    if (!item || item.disabled || !onChange) {
       return;
     }
     onChange(item.value);
@@ -70,6 +70,8 @@ export function Segmented({
           type="button"
           role="radio"
           aria-checked={item.value === value}
+          aria-disabled={item.disabled || undefined}
+          disabled={item.disabled}
           tabIndex={item.value === value ? 0 : -1}
           className={cx(styles.option, item.value === value && styles.active)}
           onClick={onChange ? () => onChange(item.value) : undefined}

@@ -1432,7 +1432,7 @@ flowchart LR
   与真实 host、状态码字符串不可能碰撞。
 - 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge。
 
-#### 10.1.1 Body effect evidence [待实现]
+#### 10.1.1 Body effect evidence [已实现]
 
 存在`requestBodyEffect/responseBodyEffect`时，Inspector Body section标题行依次显示标题、可点击`Rule replaced` marker、`Text/File`来源与chevron；marker点击沿用Header effect的Rules导航，MIME/大小只在BodyViewer工具栏显示。展开区顶部使用独立`Body version · Original / Final`证据栏并默认Final：Request Original为客户端入站正文，Response Original因header-stage流式替换不可观测而disabled，正文区显示明确不可用提示，不伪造diff。
 

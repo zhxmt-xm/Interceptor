@@ -1,5 +1,6 @@
 import type {
   CaptureBodyRef,
+  CaptureBodyRuleEffect,
   CaptureExchangeDetail,
   CaptureExchangeSummary,
   CaptureHeader,
@@ -7,6 +8,7 @@ import type {
 
 import type {
   BodyRefInput,
+  BodyRuleEffectInput,
   CaptureSessionInput,
   CaptureSnapshotBatch,
   CaptureSnapshotExchange,
@@ -71,6 +73,8 @@ export class ExchangeStore {
       }
       this.storeBodyRef(input.requestBody);
       this.storeBodyRef(input.responseBody);
+      this.storeBodyEffect(input.requestBodyEffect);
+      this.storeBodyEffect(input.responseBodyEffect);
       const seq = this.nextSeq++;
       this.exchanges.set(input.id, {
         seq,
@@ -92,6 +96,8 @@ export class ExchangeStore {
     }
     this.storeBodyRef(patch.requestBody);
     this.storeBodyRef(patch.responseBody);
+    this.storeBodyEffect(patch.requestBodyEffect);
+    this.storeBodyEffect(patch.responseBodyEffect);
     const exchange: ExchangeInput = {
       ...record.exchange,
       ...(patch.state !== undefined ? { state: patch.state } : {}),
@@ -106,6 +112,10 @@ export class ExchangeStore {
         : {}),
       ...(patch.requestBodyId !== undefined
         ? { requestBodyId: patch.requestBodyId }
+        : {}),
+      ...(patch.requestBody !== undefined ? { requestBody: patch.requestBody } : {}),
+      ...(patch.requestBodyEffect !== undefined
+        ? { requestBodyEffect: patch.requestBodyEffect }
         : {}),
       ...(patch.appId !== undefined ? { appId: patch.appId } : {}),
       ...(patch.appName !== undefined ? { appName: patch.appName } : {}),
@@ -122,6 +132,10 @@ export class ExchangeStore {
         : {}),
       ...(patch.responseBodyId !== undefined
         ? { responseBodyId: patch.responseBodyId }
+        : {}),
+      ...(patch.responseBody !== undefined ? { responseBody: patch.responseBody } : {}),
+      ...(patch.responseBodyEffect !== undefined
+        ? { responseBodyEffect: patch.responseBodyEffect }
         : {}),
       ...(patch.completedAt !== undefined
         ? { completedAt: patch.completedAt }
@@ -211,6 +225,8 @@ export class ExchangeStore {
       responseBody: this.readBodyRef(
         exchange.responseBody?.id ?? exchange.responseBodyId,
       ),
+      requestBodyEffect: this.readBodyEffect(exchange.requestBodyEffect),
+      responseBodyEffect: this.readBodyEffect(exchange.responseBodyEffect),
     };
   }
 
@@ -433,8 +449,12 @@ export class ExchangeStore {
     for (const record of records) {
       const requestHash = record.exchange.requestBody?.blobHash;
       const responseHash = record.exchange.responseBody?.blobHash;
+      const requestOriginalHash = record.exchange.requestBodyEffect?.originalBody?.blobHash;
+      const responseOriginalHash = record.exchange.responseBodyEffect?.originalBody?.blobHash;
       if (requestHash) hashes.add(requestHash);
       if (responseHash) hashes.add(responseHash);
+      if (requestOriginalHash) hashes.add(requestOriginalHash);
+      if (responseOriginalHash) hashes.add(responseOriginalHash);
       for (const frame of frames.get(record.exchange.id) ?? []) {
         if (frame.payload?.blobHash) hashes.add(frame.payload.blobHash);
       }
@@ -461,6 +481,11 @@ export class ExchangeStore {
     }
   }
 
+  /** 将effect携带的Original正文登记到统一body索引。 */
+  private storeBodyEffect(effect: BodyRuleEffectInput | undefined): void {
+    this.storeBodyRef(effect?.originalBody);
+  }
+
   /** 读取正文 metadata 并映射到公开 DTO。 */
   private readBodyRef(id: string | undefined): CaptureBodyRef | undefined {
     const body = id ? this.bodyRefs.get(id) : undefined;
@@ -477,6 +502,21 @@ export class ExchangeStore {
       decodedSize: body.decodedSize,
       truncated: body.truncated ?? false,
       decodeStatus: body.decodeStatus ?? 'ok',
+    };
+  }
+
+  /** 映射内部Body effect，并通过统一索引解析Original引用。 */
+  private readBodyEffect(effect: BodyRuleEffectInput | undefined): CaptureBodyRuleEffect | undefined {
+    if (!effect) {
+      return undefined;
+    }
+    const originalBody = this.readBodyRef(effect.originalBody?.id);
+    return {
+      ruleId: effect.ruleId,
+      effect: effect.effect,
+      source: effect.source,
+      originalState: effect.originalState,
+      ...(originalBody ? { originalBody } : {}),
     };
   }
 
@@ -654,8 +694,12 @@ export class ExchangeStore {
       const exchange = record.exchange;
       const requestId = exchange.requestBody?.id ?? exchange.requestBodyId;
       const responseId = exchange.responseBody?.id ?? exchange.responseBodyId;
+      const requestOriginalId = exchange.requestBodyEffect?.originalBody?.id;
+      const responseOriginalId = exchange.responseBodyEffect?.originalBody?.id;
       if (requestId) referenced.add(requestId);
       if (responseId) referenced.add(responseId);
+      if (requestOriginalId) referenced.add(requestOriginalId);
+      if (responseOriginalId) referenced.add(responseOriginalId);
     }
     for (const frames of this.webSocketFrames.values()) {
       for (const frame of frames) {
@@ -676,6 +720,22 @@ export class ExchangeStore {
       headers: exchange.headers?.map((header) => ({ ...header })),
       requestBody: exchange.requestBody ? { ...exchange.requestBody } : undefined,
       responseBody: exchange.responseBody ? { ...exchange.responseBody } : undefined,
+      requestBodyEffect: exchange.requestBodyEffect
+        ? {
+            ...exchange.requestBodyEffect,
+            originalBody: exchange.requestBodyEffect.originalBody
+              ? { ...exchange.requestBodyEffect.originalBody }
+              : undefined,
+          }
+        : undefined,
+      responseBodyEffect: exchange.responseBodyEffect
+        ? {
+            ...exchange.responseBodyEffect,
+            originalBody: exchange.responseBodyEffect.originalBody
+              ? { ...exchange.responseBodyEffect.originalBody }
+              : undefined,
+          }
+        : undefined,
     };
   }
 }

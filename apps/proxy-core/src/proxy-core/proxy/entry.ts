@@ -24,8 +24,10 @@ import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type { ClientAppService } from '../client-app/entry';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
+  HeaderBag,
   MutableRequestState,
   MutableResponseState,
+  RuleBodyEffect,
 } from '../rules/interfaces';
 import type { RuleService } from '../rules/entry';
 import type { CaptureService } from '../capture/entry';
@@ -39,6 +41,7 @@ import type {
   ProxyStartOptions,
   ProxyTlsConfig,
   RuleRequestInput,
+  RuleBodyReplacement,
   RuleResponseInput,
   WebSocketBridgeMessage,
 } from './interfaces';
@@ -829,6 +832,25 @@ export class ProxyService {
     }
   }
 
+  /** 将RuleService的最终writer与实际state正文收敛为Tracker replacement。 */
+  private ruleBodyReplacement(
+    effect: RuleBodyEffect | undefined,
+    body: string | Uint8Array | undefined,
+    headers: HeaderBag,
+  ): RuleBodyReplacement | undefined {
+    if (!effect || body === undefined) {
+      return undefined;
+    }
+    const mediaType = ProxyUtils.readHeader(headers, 'content-type');
+    const contentEncoding = ProxyUtils.readHeader(headers, 'content-encoding');
+    return {
+      effect,
+      content: typeof body === 'string' ? Buffer.from(body) : body,
+      ...(mediaType ? { mediaType } : {}),
+      ...(contentEncoding ? { contentEncoding } : {}),
+    };
+  }
+
   /**
    * 请求头阶段套用规则引擎：不等待请求正文，因此上传全程流式。
    * 命中则记录审计、按需延迟，返回短路响应 / 阻断 / 改写后的请求头。
@@ -856,6 +878,11 @@ export class ProxyService {
         request.id,
         evaluation.hits,
         evaluation.headerEffects,
+        this.ruleBodyReplacement(
+          evaluation.bodyEffect,
+          state.body,
+          state.headers,
+        ),
       );
       if (evaluation.kind === 'aborted') {
         return undefined;
@@ -911,6 +938,11 @@ export class ProxyService {
         request.id,
         evaluation.hits,
         evaluation.headerEffects,
+        this.ruleBodyReplacement(
+          evaluation.bodyEffect,
+          state.body,
+          state.headers,
+        ),
       );
       if (evaluation.kind === 'aborted') {
         return undefined;

@@ -49,7 +49,14 @@ export function ActionBody({
             ariaLabel={translate('rules.phase')}
             automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'phase')}
             value={current.phase}
-            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
+            options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate).map((option) => ({
+              ...option,
+              automationId: AutomationIdFactory.ruleActionField(
+                ruleId,
+                index,
+                `phase-option.${option.value}`,
+              ),
+            }))}
             onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
           />
           <Select
@@ -57,7 +64,16 @@ export function ActionBody({
             ariaLabel={translate('rules.operation')}
             automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'operation')}
             value={current.op}
-            options={localizeOptions(HEADER_OP_OPTIONS, 'rules.operation', translate)}
+            options={localizeOptions(HEADER_OP_OPTIONS, 'rules.operation', translate).map(
+              (option) => ({
+                ...option,
+                automationId: AutomationIdFactory.ruleActionField(
+                  ruleId,
+                  index,
+                  `operation-option.${option.value}`,
+                ),
+              }),
+            )}
             onValueChange={(op) => onChange({ ...current, op: op as HeaderOperation })}
           />
           <InputBox
@@ -119,21 +135,40 @@ export function ActionBody({
             <Select
               className={styles.phase}
               ariaLabel={translate('rules.phase')}
+              automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'phase')}
               value={current.phase}
-              options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate)}
+              options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate).map((option) => ({
+                ...option,
+                automationId: AutomationIdFactory.ruleActionField(
+                  ruleId,
+                  index,
+                  `phase-option.${option.value}`,
+                ),
+              }))}
               onValueChange={(phase) => onChange({ ...current, phase: phase as RulePhase })}
             />
             <Select
               className={styles.mode}
               ariaLabel={translate('rules.format')}
+              automationId={AutomationIdFactory.ruleActionField(ruleId, index, 'format')}
               value={current.format}
-              options={localizeOptions(BODY_FORMAT_OPTIONS, 'rules.bodyFormat', translate)}
+              options={localizeOptions(BODY_FORMAT_OPTIONS, 'rules.bodyFormat', translate).map(
+                (option) => ({
+                  ...option,
+                  automationId: AutomationIdFactory.ruleActionField(
+                    ruleId,
+                    index,
+                    `format-option.${option.value}`,
+                  ),
+                }),
+              )}
               onValueChange={(format) => onChange({ ...current, format: format as 'text' | 'json' })}
             />
           </div>
           <textarea
             className={styles.textarea}
             aria-label={translate('rules.bodyContent')}
+            data-automation-id={AutomationIdFactory.ruleActionField(ruleId, index, 'content')}
             value={current.content}
             spellCheck={false}
             onChange={(event) => onChange({ ...current, content: event.target.value })}

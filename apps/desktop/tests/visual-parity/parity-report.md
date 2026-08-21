@@ -1,16 +1,16 @@
 # Visual Parity Report
 
-Generated: 2026-08-21T10:56:23.665Z
+Generated: 2026-08-21T13:01:19.313Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 129 |
-| Average pixel diff | 2.52% |
-| Targets | 959 |
-| Matched | 925 |
+| Views checked | 137 |
+| Average pixel diff | 2.55% |
+| Targets | 995 |
+| Matched | 961 |
 | Missing | 34 |
 | Flagged | 304 |
 | Largest geometry delta | 1156.8 px |
@@ -24,9 +24,9 @@ Generated: 2026-08-21T10:56:23.665Z
 | breakpoint-request-paused | 2.93% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.93% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 3.15% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace | 3.09% | 10 | 10 | 0 | 7 | 3.3 px |
+| breakpoint-request-body-replace | 3.10% | 10 | 10 | 0 | 7 | 3.3 px |
 | breakpoint-request-body-file-empty | 3.11% | 10 | 10 | 0 | 9 | 302.1 px |
-| breakpoint-request-body-file | 3.12% | 10 | 10 | 0 | 6 | 3.3 px |
+| breakpoint-request-body-file | 3.13% | 10 | 10 | 0 | 6 | 3.3 px |
 | breakpoint-response-paused | 3.07% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-loaded | 3.26% | 10 | 10 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace | 3.26% | 11 | 10 | 1 | 6 | 2.0 px |
@@ -35,14 +35,14 @@ Generated: 2026-08-21T10:56:23.665Z
 | breakpoint-request-paused-dark | 2.93% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading-dark | 2.93% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loaded-dark | 3.14% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace-dark | 3.08% | 10 | 10 | 0 | 7 | 3.3 px |
+| breakpoint-request-body-replace-dark | 3.09% | 10 | 10 | 0 | 7 | 3.3 px |
 | breakpoint-request-body-file-empty-dark | 3.10% | 10 | 10 | 0 | 9 | 302.1 px |
 | breakpoint-request-body-file-dark | 3.11% | 10 | 10 | 0 | 6 | 3.3 px |
 | breakpoint-response-paused-dark | 3.06% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-loaded-dark | 3.26% | 10 | 10 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace-dark | 3.26% | 11 | 10 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty-dark | 3.26% | 11 | 11 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file-dark | 3.25% | 11 | 11 | 0 | 7 | 2.0 px |
+| breakpoint-response-body-file-empty-dark | 3.27% | 11 | 11 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file-dark | 3.26% | 11 | 11 | 0 | 7 | 2.0 px |
 | breakpoint-queue | 2.93% | 4 | 4 | 0 | 2 | 71.7 px |
 | breakpoint-queue-full | 2.82% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-dark | 2.93% | 4 | 4 | 0 | 2 | 71.7 px |
@@ -60,10 +60,18 @@ Generated: 2026-08-21T10:56:23.665Z
 | capture-websocket-breakpoint-setup-invalid-dark | 3.68% | 7 | 7 | 0 | 0 | 0.6 px |
 | capture-websocket-breakpoint-enabled-dark | 3.23% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused-dark | 3.64% | 12 | 12 | 0 | 8 | 2.0 px |
+| capture-body-effect-request-text | 2.90% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-body-effect-request-file | 2.91% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-body-effect-response-text | 3.02% | 5 | 5 | 0 | 0 | 0.0 px |
+| capture-body-effect-response-file | 3.02% | 5 | 5 | 0 | 0 | 0.0 px |
+| capture-body-effect-request-text-dark | 2.93% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-body-effect-request-file-dark | 2.94% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-body-effect-response-text-dark | 3.07% | 5 | 5 | 0 | 0 | 0.0 px |
+| capture-body-effect-response-file-dark | 3.07% | 5 | 5 | 0 | 0 | 0.0 px |
 | capture-request-json | 3.06% | 4 | 3 | 1 | 2 | 1001.7 px |
 | capture-timing | 2.83% | 4 | 4 | 0 | 4 | 4.4 px |
 | capture-cookies | 2.74% | 3 | 3 | 0 | 0 | 0.7 px |
-| capture-grpc | 3.47% | 8 | 8 | 0 | 3 | 1.6 px |
+| capture-grpc | 3.55% | 8 | 8 | 0 | 3 | 1.6 px |
 | capture-tunnel | 3.31% | 8 | 8 | 0 | 5 | 170.0 px |
 | capture-tunnel-dark | 3.37% | 6 | 6 | 0 | 3 | 170.0 px |
 | capture-tunnel-mitm-active | 3.36% | 7 | 7 | 0 | 3 | 170.0 px |
@@ -76,7 +84,7 @@ Generated: 2026-08-21T10:56:23.665Z
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
 | import-export | 2.96% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.97% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-export-menu | 2.94% | 2 | 2 | 0 | 2 | 8.0 px |
 | capture-request-rule-menu | 2.98% | 4 | 4 | 0 | 0 | 0.8 px |
 | capture-breakpoint-create-menu | 2.83% | 8 | 8 | 0 | 1 | 1.0 px |
 | capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
@@ -139,7 +147,7 @@ Generated: 2026-08-21T10:56:23.665Z
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
 | breakpoints-off | 2.66% | 1 | 1 | 0 | 1 | 0.0 px |
 | breakpoint-manager | 3.03% | 8 | 8 | 0 | 7 | 3.5 px |
-| breakpoint-created-message | 2.83% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message | 2.49% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-dark | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.62% | 1 | 1 | 0 | 1 | 13.0 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
@@ -531,6 +539,42 @@ Generated: 2026-08-21T10:56:23.665Z
 | capture-websocket-breakpoint-paused-dark | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
 | capture-websocket-breakpoint-paused-dark | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
 | capture-websocket-breakpoint-paused-dark | Forward edited | 0.4 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-body-effect-request-text | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-request-json | Capture | 63.0 px | -84.0 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture-request-json | Local traffic | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture-request-json | json · 63 B | 0.0 px | 0.7 px | 6.3 px | -0.7 px | 6.3 px | none | flagged |

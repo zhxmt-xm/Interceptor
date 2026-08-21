@@ -11,15 +11,24 @@ import type { CaptureExchangeSummary } from '@interceptor/core-protocol';
 import type { ClientAppService } from '../../client-app/entry';
 import * as ClientAppUtils from '../../client-app/utils';
 import type { DiagnosticsRecorder } from '../../core-diagnostics';
-import type { RuleHeaderEffect, RuleHitRecord } from '../../rules/interfaces';
+import type {
+  RuleBodyEffect,
+  RuleHeaderEffect,
+  RuleHitRecord,
+} from '../../rules/interfaces';
 import type { CaptureService } from '../../capture/entry';
 import type {
   BodyRefInput,
+  BodyRuleEffectInput,
   ExchangeInput,
   ExchangePatch,
   HeaderInput,
 } from '../../capture/interfaces';
-import type { OrphanRuleOutcome, TrackedExchange } from '../interfaces';
+import type {
+  OrphanRuleOutcome,
+  RuleBodyReplacement,
+  TrackedExchange,
+} from '../interfaces';
 import type { CaptureEventQueue } from './capture-event-queue';
 import * as ProxyUtils from '../utils';
 
@@ -211,6 +220,13 @@ export class ExchangeTracker {
       this.resolveExchangeReady(request.id, entry.exchangeId);
     });
 
+    if (orphan?.requestBodyReplacement) {
+      this.recordBodyReplacement(entry, orphan.requestBodyReplacement);
+    }
+    if (orphan?.responseBodyReplacement) {
+      this.recordBodyReplacement(entry, orphan.responseBodyReplacement);
+    }
+
     if (clientAppPort !== null && !knownApp) {
       this.scheduleClientAppLookup(entry, clientAppPort);
     }
@@ -379,13 +395,14 @@ export class ExchangeTracker {
     });
   }
 
-  /** 记录规则命中与 header 净效果；Exchange 未建立时暂存。 */
+  /** 记录规则命中、header净效果与最终正文写入者；Exchange未建立时暂存。 */
   recordRuleOutcome(
     requestId: string,
     hits: readonly RuleHitRecord[],
     effects: readonly RuleHeaderEffect[],
+    bodyReplacement?: RuleBodyReplacement,
   ): void {
-    if (hits.length === 0 && effects.length === 0) {
+    if (hits.length === 0 && effects.length === 0 && !bodyReplacement) {
       return;
     }
     const headers = ProxyUtils.toRuleHeaderInputs(effects);
@@ -397,6 +414,11 @@ export class ExchangeTracker {
       };
       orphan.hits.push(...hits);
       orphan.headers.push(...headers);
+      if (bodyReplacement?.effect.phase === 'request') {
+        orphan.requestBodyReplacement = bodyReplacement;
+      } else if (bodyReplacement) {
+        orphan.responseBodyReplacement = bodyReplacement;
+      }
       this.orphanRuleOutcomes.set(requestId, orphan);
       return;
     }
@@ -414,6 +436,9 @@ export class ExchangeTracker {
       this.schedule(entry, async () => {
         await this.captureService.appendRuleHits(entry.exchangeId, hits);
       });
+    }
+    if (bodyReplacement) {
+      this.recordBodyReplacement(entry, bodyReplacement);
     }
   }
 
@@ -578,30 +603,136 @@ export class ExchangeTracker {
     );
   }
 
+
+  /** 持久化一次最终正文replacement，并把证据绑定到对应阶段。 */
+  private recordBodyReplacement(
+    entry: TrackedExchange,
+    replacement: RuleBodyReplacement,
+  ): void {
+    if (replacement.effect.phase === 'request') {
+      entry.requestBodyEffect = replacement.effect;
+      this.schedule(entry, async () => {
+        const body = await this.persistRuleBody(replacement);
+        await this.captureService.updateExchange({
+          id: entry.exchangeId,
+          requestBody: body,
+          requestBodyId: body.id,
+        });
+      });
+      if (entry.requestOriginalState) {
+        this.patch(entry, {
+          requestBodyEffect: this.bodyEffectInput(
+            replacement.effect,
+            entry.requestOriginalState,
+            entry.requestOriginalBody,
+          ),
+        });
+      } else {
+        this.enqueue(entry, 'exchange-updated');
+      }
+      return;
+    }
+
+    entry.responseBodyEffect = replacement.effect;
+    entry.responseBodyReplacement = replacement;
+    this.patch(entry, {
+      responseBodyEffect: this.bodyEffectInput(
+        replacement.effect,
+        'unavailable',
+      ),
+    });
+  }
+
+  /** 将replacement字节写入BodyStore；空Final也保留encodedSize=0的有效引用。 */
+  private async persistRuleBody(
+    replacement: RuleBodyReplacement,
+  ): Promise<BodyRefInput> {
+    const id = `body-${ProxyUtils.cryptoRandomId()}`;
+    const common = {
+      id,
+      encodedSize: replacement.content.byteLength,
+      ...(replacement.mediaType ? { mediaType: replacement.mediaType } : {}),
+      ...(replacement.contentEncoding
+        ? { contentEncoding: replacement.contentEncoding }
+        : {}),
+    };
+    if (replacement.content.byteLength === 0) {
+      return { ...common, decodeStatus: 'ok' };
+    }
+    try {
+      const result = await this.captureService.writeBody(
+        ProxyUtils.singleChunk(replacement.content),
+      );
+      return {
+        ...common,
+        blobHash: result.hash,
+        encodedSize: result.size,
+        decodeStatus: 'ok',
+      };
+    } catch {
+      return { ...common, decodeStatus: 'skipped' };
+    }
+  }
+
+  /** 构造Capture内部effect，Original只在available时携带ref。 */
+  private bodyEffectInput(
+    effect: RuleBodyEffect,
+    originalState: BodyRuleEffectInput['originalState'],
+    originalBody?: BodyRefInput,
+  ): BodyRuleEffectInput {
+    return {
+      ruleId: effect.ruleId,
+      effect: effect.effect,
+      source: effect.source,
+      originalState,
+      ...(originalState === 'available' && originalBody ? { originalBody } : {}),
+    };
+  }
+
+  /** 将BodyWriter结果映射为Capture引用。 */
+  private capturedBodyRef(
+    result: { readonly hash: string; readonly size: number } | null,
+    mediaType: string | undefined,
+    contentEncoding: string | undefined,
+  ): BodyRefInput | undefined {
+    return result
+      ? {
+          id: `body-${ProxyUtils.cryptoRandomId()}`,
+          blobHash: result.hash,
+          encodedSize: result.size,
+          ...(mediaType !== undefined ? { mediaType } : {}),
+          ...(contentEncoding !== undefined ? { contentEncoding } : {}),
+          decodeStatus: 'ok',
+        }
+      : undefined;
+  }
   /** 请求正文结束：finalize writer 并绑定 body 引用。 */
   private finalizeRequestBody(entry: TrackedExchange): void {
     const writer = entry.requestWriter;
     entry.requestWriter = null;
     this.schedule(entry, async () => {
       const result = writer ? await writer.finalize() : null;
-      const body: BodyRefInput | undefined = result
-        ? {
-            id: `body-${ProxyUtils.cryptoRandomId()}`,
-            blobHash: result.hash,
-            encodedSize: result.size,
-            ...(entry.requestMime !== undefined
-              ? { mediaType: entry.requestMime }
-              : {}),
-            ...(entry.requestEncoding !== undefined
-              ? { contentEncoding: entry.requestEncoding }
-              : {}),
-            decodeStatus: 'ok',
-          }
-        : undefined;
+      const body = this.capturedBodyRef(
+        result,
+        entry.requestMime,
+        entry.requestEncoding,
+      );
+      entry.requestOriginalState = body ? 'available' : 'empty';
+      entry.requestOriginalBody = body;
       await this.captureService.updateExchange({
         id: entry.exchangeId,
         requestBytes: entry.requestBytes,
-        ...(body ? { requestBody: body, requestBodyId: body.id } : {}),
+        ...(entry.requestBodyEffect
+          ? {
+              requestBodyEffect: this.bodyEffectInput(
+                entry.requestBodyEffect,
+                entry.requestOriginalState,
+                body,
+              ),
+            }
+          : body
+            ? { requestBody: body, requestBodyId: body.id }
+            : {}),
       });
     });
     this.enqueue(entry, 'exchange-updated');
@@ -621,47 +752,57 @@ export class ExchangeTracker {
     this.schedule(entry, async () => {
       const requestResult = requestWriter ? await requestWriter.finalize() : null;
       const result = writer ? await writer.finalize() : null;
-      const body: BodyRefInput | undefined = result
-        ? {
-            id: `body-${ProxyUtils.cryptoRandomId()}`,
-            blobHash: result.hash,
-            encodedSize: result.size,
-            ...(entry.responseMime !== undefined
-              ? { mediaType: entry.responseMime }
-              : {}),
-            ...(entry.responseEncoding !== undefined
-              ? { contentEncoding: entry.responseEncoding }
-              : {}),
-            decodeStatus: 'ok',
-          }
-        : undefined;
-      const requestBody: BodyRefInput | undefined = requestResult
-        ? {
-            id: `body-${ProxyUtils.cryptoRandomId()}`,
-            blobHash: requestResult.hash,
-            encodedSize: requestResult.size,
-            ...(entry.requestMime !== undefined
-              ? { mediaType: entry.requestMime }
-              : {}),
-            ...(entry.requestEncoding !== undefined
-              ? { contentEncoding: entry.requestEncoding }
-              : {}),
-            decodeStatus: 'ok',
-          }
-        : undefined;
+      const requestBody = this.capturedBodyRef(
+        requestResult,
+        entry.requestMime,
+        entry.requestEncoding,
+      );
+      const completedRequestOriginal = entry.requestOriginalState === undefined;
+      if (completedRequestOriginal) {
+        entry.requestOriginalState = requestBody ? 'available' : 'empty';
+        entry.requestOriginalBody = requestBody;
+      }
+      const responseBody = result
+        ? this.capturedBodyRef(
+            result,
+            entry.responseBodyReplacement?.mediaType ?? entry.responseMime,
+            entry.responseBodyReplacement?.contentEncoding ?? entry.responseEncoding,
+          )
+        : entry.responseBodyEffect && entry.responseBodyReplacement
+          ? await this.persistRuleBody(entry.responseBodyReplacement)
+          : undefined;
       await this.captureService.updateExchange({
         id: entry.exchangeId,
         state: 'completed',
         completedAt,
         responseBytes: entry.responseBytes,
-        ...(body ? { responseBody: body, responseBodyId: body.id } : {}),
-        ...(requestBody
+        ...(responseBody
+          ? { responseBody, responseBodyId: responseBody.id }
+          : {}),
+        ...(entry.responseBodyEffect
           ? {
-              requestBytes: entry.requestBytes,
-              requestBody,
-              requestBodyId: requestBody.id,
+              responseBodyEffect: this.bodyEffectInput(
+                entry.responseBodyEffect,
+                'unavailable',
+              ),
             }
           : {}),
+        ...(entry.requestBodyEffect
+          ? {
+              requestBytes: entry.requestBytes,
+              requestBodyEffect: this.bodyEffectInput(
+                entry.requestBodyEffect,
+                entry.requestOriginalState ?? 'empty',
+                entry.requestOriginalBody,
+              ),
+            }
+          : completedRequestOriginal && requestBody
+            ? {
+                requestBytes: entry.requestBytes,
+                requestBody,
+                requestBodyId: requestBody.id,
+              }
+            : {}),
       });
     });
     this.captureEventQueue.enqueue('exchange-updated', {

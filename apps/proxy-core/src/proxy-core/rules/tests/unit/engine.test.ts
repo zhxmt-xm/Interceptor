@@ -121,6 +121,32 @@ describe('RuleService — request evaluation', () => {
     expect(state.headers['x-remove']).toBeUndefined();
   });
 
+  it('records only the final request body writer', async () => {
+    const ruleService = new RuleService(new BreakpointQueue());
+    ruleService.setRuleSet({
+      revision: 5,
+      nodes: [
+        rule('first-writer', [{ type: 'method', value: 'GET' }], [
+          { type: 'body', phase: 'request', format: 'text', content: 'first' },
+        ], { priority: 100 }),
+        rule('final-writer', [{ type: 'method', value: 'GET' }], [
+          { type: 'body', phase: 'request', format: 'json', content: '{"final":true}' },
+        ], { priority: 200 }),
+      ],
+    });
+    const state = requestState();
+
+    const result = await ruleService.evaluateRequest(requestContext(), state);
+
+    expect(state.body).toBe('{"final":true}');
+    expect(result.bodyEffect).toEqual({
+      ruleId: 'final-writer',
+      phase: 'request',
+      effect: 'replace',
+      source: 'text',
+    });
+  });
+
   it('skips non-matching and disabled rules', async () => {
     const ruleService = new RuleService(new BreakpointQueue());
     ruleService.setRuleSet({
@@ -499,6 +525,37 @@ describe('RuleService — breakpoints', () => {
     expect(result.headerEffects).toEqual([]);
   });
 
+  it('lets a request breakpoint body edit replace the regular Rule writer', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const ruleService = new RuleService(breakpointQueue, {
+      onBreakpointHit: ({ id }) => {
+        breakpointQueue.resolve(id, 'continue', { body: 'breakpoint final' });
+      },
+    });
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [
+        rule('regular-writer', [{ type: 'method', value: 'GET' }], [
+          { type: 'body', phase: 'request', format: 'text', content: 'regular' },
+        ], { priority: 100 }),
+        rule('breakpoint-writer', [{ type: 'method', value: 'GET' }], [
+          REQUEST_BREAKPOINT,
+        ], { priority: 200 }),
+      ],
+    });
+    const state = requestState();
+
+    const result = await ruleService.evaluateRequest(requestContext(), state);
+
+    expect(state.body).toBe('breakpoint final');
+    expect(result.bodyEffect).toEqual({
+      ruleId: 'breakpoint-writer',
+      phase: 'request',
+      effect: 'replace',
+      source: 'text',
+    });
+  });
+
   it('records only the changed value when editing duplicate breakpoint headers', async () => {
     const breakpointQueue = new BreakpointQueue();
     const ruleService = new RuleService(breakpointQueue, {
@@ -619,6 +676,33 @@ describe('RuleService — breakpoints', () => {
 });
 
 describe('RuleService — response evaluation', () => {
+  it('records only the final response body writer', async () => {
+    const ruleService = new RuleService(new BreakpointQueue());
+    ruleService.setRuleSet({
+      revision: 6,
+      nodes: [
+        rule('response-writer', [{ type: 'method', value: 'GET' }], [
+          { type: 'body', phase: 'response', format: 'text', content: 'final response' },
+        ]),
+      ],
+    });
+    const context: MatchContext = {
+      ...requestContext(),
+      response: { statusCode: 200, headers: {} },
+    };
+    const state: MutableResponseState = { statusCode: 200, headers: {} };
+
+    const result = await ruleService.evaluateResponse(context, state);
+
+    expect(state.body).toBe('final response');
+    expect(result.bodyEffect).toEqual({
+      ruleId: 'response-writer',
+      phase: 'response',
+      effect: 'replace',
+      source: 'text',
+    });
+  });
+
   it('keeps the request identity in a response breakpoint snapshot', async () => {
     const breakpointQueue = new BreakpointQueue();
     const ruleService = new RuleService(breakpointQueue);

@@ -118,6 +118,15 @@ test('Capture BodyViewer chains wheel scrolling to the Inspector at its boundary
     '.insp .tp[data-tab="request"] .bodyview.grow [data-monaco="fill"]',
   );
   await expect(bodyPane).toBeVisible();
+  await page.addStyleTag({
+    content: `
+      .insp .tp[data-tab="request"] .bodyview.grow [data-monaco="fill"] {
+        height: 80px !important;
+        max-height: 80px !important;
+        flex: 0 0 80px !important;
+      }
+    `,
+  });
   const outerMaxScroll = await scroll.evaluate(
     (element) => element.scrollHeight - element.clientHeight,
   );
@@ -132,6 +141,14 @@ test('Capture BodyViewer chains wheel scrolling to the Inspector at its boundary
     paneBox!.x + paneBox!.width / 2,
     Math.max(paneBox!.y + 12, 120),
   );
+
+  const outerBeforeInnerScroll = await scroll.evaluate((element) => element.scrollTop);
+  const linesBeforeInnerScroll = (await bodyPane.locator('.view-line').allTextContents()).join('\n');
+  await page.mouse.wheel(0, 100);
+  await expect.poll(async () =>
+    (await bodyPane.locator('.view-line').allTextContents()).join('\n'))
+    .not.toBe(linesBeforeInnerScroll);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(outerBeforeInnerScroll);
 
   await page.mouse.wheel(0, 5_000);
   const beforeOuterScroll = await scroll.evaluate((element) => element.scrollTop);

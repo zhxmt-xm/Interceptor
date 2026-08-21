@@ -30,6 +30,7 @@ import type {
   MutableResponseState,
   RequestEvaluation,
   ResponseEvaluation,
+  RuleBodyEffect,
   RuleServiceOptions,
   RuleHeaderEffect,
   RuleHitRecord,
@@ -190,6 +191,7 @@ export class RuleService {
   ): Promise<RequestEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
+    let bodyEffect: RuleBodyEffect | undefined;
     const deferredBreakpoints: Array<{
       rule: RuleDefinition;
       action: Extract<RuleAction, { type: 'breakpoint' }>;
@@ -221,14 +223,28 @@ export class RuleService {
             previousHeaderValues,
           ));
         }
+        if (action.type === 'body' && action.phase === 'request') {
+          bodyEffect = {
+            ruleId: compiled.rule.id,
+            phase: 'request',
+            effect: 'replace',
+            source: 'text',
+          };
+        }
         hits.push(
           this.toHit(compiled.rule, 'request', outcome.summary.action, outcome.summary.detail),
         );
         if (outcome.kind === 'respond') {
-          return { kind: 'respond', response: outcome.response, hits, headerEffects };
+          return {
+            kind: 'respond',
+            response: outcome.response,
+            hits,
+            headerEffects,
+            bodyEffect,
+          };
         }
         if (outcome.kind === 'block') {
-          return { kind: 'block', mode: outcome.mode, hits, headerEffects };
+          return { kind: 'block', mode: outcome.mode, hits, headerEffects, bodyEffect };
         }
         if (outcome.kind === 'delay') {
           delayMs = Math.max(delayMs, outcome.ms);
@@ -244,7 +260,7 @@ export class RuleService {
       );
       hits.push(this.toHit(rule, 'request', 'breakpoint', resolved.state));
       if (resolved.state === 'aborted') {
-        return { kind: 'aborted', hits, headerEffects };
+        return { kind: 'aborted', hits, headerEffects, bodyEffect };
       }
       if (resolved.state === 'edited' && resolved.edit) {
         headerEffects.push(...RuleUtils.buildBreakpointHeaderEffects(
@@ -253,13 +269,21 @@ export class RuleService {
           state.headers,
           resolved.edit,
         ));
-        await RuleUtils.applyRequestEdit(state, resolved.edit);
+        const source = await RuleUtils.applyRequestEdit(state, resolved.edit);
+        if (source) {
+          bodyEffect = {
+            ruleId: rule.id,
+            phase: 'request',
+            effect: 'replace',
+            source,
+          };
+        }
       }
       if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-        return { kind: 'block', mode: 'close', hits, headerEffects };
+        return { kind: 'block', mode: 'close', hits, headerEffects, bodyEffect };
       }
     }
-    return { kind: 'continue', hits, headerEffects, delayMs };
+    return { kind: 'continue', hits, headerEffects, bodyEffect, delayMs };
   }
 
   /**
@@ -273,6 +297,7 @@ export class RuleService {
   ): Promise<ResponseEvaluation> {
     const hits: RuleHitRecord[] = [];
     const headerEffects: RuleHeaderEffect[] = [];
+    let bodyEffect: RuleBodyEffect | undefined;
     const deferredBreakpoints: Array<{
       rule: RuleDefinition;
       action: Extract<RuleAction, { type: 'breakpoint' }>;
@@ -304,6 +329,14 @@ export class RuleService {
             previousHeaderValues,
           ));
         }
+        if (action.type === 'body' && action.phase === 'response') {
+          bodyEffect = {
+            ruleId: compiled.rule.id,
+            phase: 'response',
+            effect: 'replace',
+            source: 'text',
+          };
+        }
         hits.push(
           this.toHit(compiled.rule, 'response', outcome.summary.action, outcome.summary.detail),
         );
@@ -327,7 +360,7 @@ export class RuleService {
       );
       hits.push(this.toHit(rule, 'response', 'breakpoint', resolved.state));
       if (resolved.state === 'aborted') {
-        return { kind: 'aborted', hits, headerEffects };
+        return { kind: 'aborted', hits, headerEffects, bodyEffect };
       }
       if (resolved.state === 'edited' && resolved.edit) {
         headerEffects.push(...RuleUtils.buildBreakpointHeaderEffects(
@@ -336,13 +369,21 @@ export class RuleService {
           state.headers,
           resolved.edit,
         ));
-        await RuleUtils.applyResponseEdit(state, resolved.edit);
+        const source = await RuleUtils.applyResponseEdit(state, resolved.edit);
+        if (source) {
+          bodyEffect = {
+            ruleId: rule.id,
+            phase: 'response',
+            effect: 'replace',
+            source,
+          };
+        }
       }
       if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
-        return { kind: 'block', mode: 'close', hits, headerEffects };
+        return { kind: 'block', mode: 'close', hits, headerEffects, bodyEffect };
       }
     }
-    return { kind: 'continue', hits, headerEffects, delayMs };
+    return { kind: 'continue', hits, headerEffects, bodyEffect, delayMs };
   }
 
   /** 挂起规则断点并发布命中通知；关闭开关或队列已满时直接继续。 */

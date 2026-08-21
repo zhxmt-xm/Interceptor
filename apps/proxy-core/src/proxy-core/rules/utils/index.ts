@@ -385,7 +385,7 @@ export function isDropped(
 export async function applyRequestEdit(
   state: MutableRequestState,
   edit: BreakpointEdit,
-): Promise<void> {
+): Promise<'text' | 'file' | undefined> {
   if (edit.method !== undefined) {
     state.method = edit.method;
   }
@@ -399,16 +399,19 @@ export async function applyRequestEdit(
   const fileBody = await readEditBodyFile(edit);
   if (fileBody !== undefined) {
     state.body = fileBody;
+    return 'file';
   } else if (edit.body !== undefined) {
     state.body = edit.body;
+    return 'text';
   }
+  return undefined;
 }
 
 /** 将断点编辑应用到响应可变状态。 */
 export async function applyResponseEdit(
   state: MutableResponseState,
   edit: BreakpointEdit,
-): Promise<void> {
+): Promise<'text' | 'file' | undefined> {
   if (edit.statusCode !== undefined) {
     state.statusCode = edit.statusCode;
   }
@@ -419,9 +422,12 @@ export async function applyResponseEdit(
   const fileBody = await readEditBodyFile(edit);
   if (fileBody !== undefined) {
     state.body = fileBody;
+    return 'file';
   } else if (edit.body !== undefined) {
     state.body = edit.body;
+    return 'text';
   }
+  return undefined;
 }
 
 /** 合并用户显式编辑过的 header 名，供后续 framing 决策保留编辑意图。 */

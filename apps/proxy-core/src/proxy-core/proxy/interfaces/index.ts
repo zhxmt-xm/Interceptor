@@ -7,9 +7,10 @@ import type {
   WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
 
-import type { RuleHitRecord } from '../../rules/interfaces';
+import type { RuleBodyEffect, RuleHitRecord } from '../../rules/interfaces';
 import type { BodyWriter } from '../../capture/internal/body-writer';
 import type {
+  BodyRefInput,
   CaptureSessionInput,
   ExchangeInput,
   ExchangePatch,
@@ -142,11 +143,20 @@ export interface TrackedExchange {
   requestMime?: string;
   /** 请求正文的 content-encoding；未压缩时为 undefined。 */
   requestEncoding?: string;
+  /** 已完成的客户端入站Original；空正文时只有state没有ref。 */
+  requestOriginalState?: 'available' | 'empty';
+  requestOriginalBody?: BodyRefInput;
+  /** 请求正文最终写入者；原文在request body-data结束后补入effect。 */
+  requestBodyEffect?: RuleBodyEffect;
   /** 最终响应状态。 */
   statusCode?: number;
   responseMime?: string;
   /** 响应正文的 content-encoding；未压缩时为 undefined。 */
   responseEncoding?: string;
+  /** 响应正文最终写入者；Original在headers-stage固定不可用。 */
+  responseBodyEffect?: RuleBodyEffect;
+  /** 响应replacement元数据；用于空Final仍生成有效BodyRef。 */
+  responseBodyReplacement?: RuleBodyReplacement;
   /** 命中的规则 id，按首次出现顺序去重。 */
   readonly ruleIds: Set<string>;
   /** 发起该请求的本机应用 id；远程客户端或解析失败时为 undefined。 */
@@ -159,10 +169,20 @@ export interface TrackedExchange {
   tail: Promise<void>;
 }
 
+/** RuleService最终正文写入者与实际replacement字节。 */
+export interface RuleBodyReplacement {
+  readonly effect: RuleBodyEffect;
+  readonly content: Uint8Array;
+  readonly mediaType?: string;
+  readonly contentEncoding?: string;
+}
+
 /** request-initiated 之前到达的规则结果，等 Exchange 建立后合并。 */
 export interface OrphanRuleOutcome {
   hits: RuleHitRecord[];
   headers: HeaderInput[];
+  requestBodyReplacement?: RuleBodyReplacement;
+  responseBodyReplacement?: RuleBodyReplacement;
 }
 
 export interface ProxyResponseMessageResult {

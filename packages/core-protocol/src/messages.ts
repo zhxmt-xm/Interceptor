@@ -1189,6 +1189,18 @@ export interface CaptureBodyRef {
   decodeStatus: string;
 }
 
+export type CaptureBodyRuleEffectSource = 'text' | 'file';
+export type CaptureBodyOriginalState = 'available' | 'empty' | 'unavailable';
+
+/** 正文替换的最终写入者，以及可独立读取的原始正文证据。 */
+export interface CaptureBodyRuleEffect {
+  ruleId: string;
+  effect: 'replace';
+  source: CaptureBodyRuleEffectSource;
+  originalState: CaptureBodyOriginalState;
+  originalBody?: CaptureBodyRef;
+}
+
 /**
  * 单条 Exchange 的按需详情：在摘要基础上补齐 URL、头部与正文引用。
  * 由 Inspector 选中行时拉取；正文字节仍通过 body.read-range 单独按需读取。
@@ -1214,6 +1226,8 @@ export interface CaptureExchangeDetail {
   responseTrailers: CaptureHeader[];
   requestBody?: CaptureBodyRef;
   responseBody?: CaptureBodyRef;
+  requestBodyEffect?: CaptureBodyRuleEffect;
+  responseBodyEffect?: CaptureBodyRuleEffect;
 }
 
 export interface CoreEventBatch {

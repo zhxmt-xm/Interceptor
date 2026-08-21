@@ -15,7 +15,7 @@
 | 文件 | 职责 |
 | --- | --- |
 | `entry.ts` | `CaptureService`：组合下面两个 Store，对外统一门面 |
-| `internal/exchange-store.ts` | `ExchangeStore`：Session 元数据、Exchange 记录、body 引用、WebSocket frame、规则命中审计；分页查询与 cleanup |
+| `internal/exchange-store.ts` | `ExchangeStore`：Session 元数据、Exchange 记录、Final/Original body引用、Body/Header Rule effect、WebSocket frame、规则命中审计；分页查询、快照与cleanup |
 | `internal/body-store.ts` | `BodyStore`：内容寻址正文；小正文驻内存，超阈值异步 spill 到 `capture-temp/`，支持 GC 与 range 读 |
 | `internal/body-writer.ts` | `BodyWriter`：push 式增量写入器，供 Proxy 消费 body-data 事件 |
 | `internal/errors.ts` | `InvalidCursorError` |
@@ -25,6 +25,11 @@
 `initialize()` 建临时目录 → 抓包期间读写 → `cleanup(scope)` 按范围删除并 GC 孤立正文 → `dispose()` 清空并删除临时目录。
 
 Body 的内容寻址决定了 **hash 只有写完才能确定**，因此传输过程中 Exchange 只记录 observed bytes，`requestBodyId` / `responseBodyId` 在正文结束后才绑定。
+
+存在Body Rule effect时，公开`requestBody` / `responseBody`始终是Final。Request Original仅在
+`originalState: available`时通过effect引用；`empty`与Response的`unavailable`不携带虚假ref。
+Original参与storage统计、GC引用重建、Archive快照hash枚举和Clear生命周期，与Final同样由BodyStore
+内容寻址。
 
 ## 依赖
 

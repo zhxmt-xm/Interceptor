@@ -320,6 +320,20 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
       await expect(inFlight).resolves.toBe(200);
       expect(origin.received).toEqual(['{"replaced":true}']);
+      await expect.poll(
+        () => captureService.exchanges[0]?.requestBodyEffect,
+      ).toMatchObject({
+        ruleId: 'rule-breakpoint-request',
+        effect: 'replace',
+        source: 'file',
+        originalState: 'available',
+        originalBody: { encodedSize: Buffer.byteLength(UPLOAD_BODY) },
+      });
+      expect(captureService.exchanges[0]?.requestBody).toMatchObject({
+        encodedSize: Buffer.byteLength('{"replaced":true}'),
+      });
+      expect(JSON.stringify(captureService.exchanges[0]?.requestBodyEffect))
+        .not.toContain(fixturePath);
     } finally {
       await fs.rm(fixtureDirectory, { recursive: true, force: true });
     }
@@ -423,5 +437,6 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
     await expect(inFlight).resolves.toBe(200);
     expect(origin.received).toEqual([UPLOAD_BODY]);
+    expect(captureService.exchanges[0]?.requestBodyEffect).toBeUndefined();
   });
 });

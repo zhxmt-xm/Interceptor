@@ -259,6 +259,7 @@ for (const view of views) {
     requestMenu: '',
     ruleFilter: '',
     bodyPreview: '',
+    bodyRuleEffect: '',
     breakpoints: 'on',
     breakpointState: '',
     breakpointBody: 'loading',
@@ -300,6 +301,7 @@ for (const view of views) {
     tlsCompatibilityEvents: view.tlsCompatibilityEvents ?? [],
     tlsPassthroughHosts: view.tlsPassthroughHosts ?? null,
     tlsTunnelHost: view.tlsTunnelHost ?? null,
+    bodyRuleEffect: view.bodyRuleEffect ?? null,
     fileOperationDelayMs: view.fileOperationDelayMs ?? 0,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });

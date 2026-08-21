@@ -1,4 +1,4 @@
-import { Copy, Maximize2 } from 'lucide-react';
+import { Copy, Download, Maximize2 } from 'lucide-react';
 
 import { IconButton } from '../IconButton/IconButton';
 import { MonacoFixture } from '../MonacoFixture/MonacoFixture';
@@ -42,6 +42,11 @@ export function BodyViewerDesign({
         <span className={styles.bodyViewerSpacer} />
         <span className={styles.bodyViewerMeta}>{meta}</span>
         <div className={styles.bodyViewerActions}>
+          <IconButton
+            label="Save body"
+            icon={<Download aria-hidden="true" />}
+            onClick={() => undefined}
+          />
           <IconButton
             label="Copy body"
             icon={<Copy aria-hidden="true" />}

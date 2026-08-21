@@ -220,6 +220,10 @@ export function BreakpointInspector({
                   label={t('breakpoints.removeHeader')}
                   size="sm"
                   strokeWidth={2.2}
+                  automationId={AutomationIdFactory.breakpointHeaderField(
+                    header.id,
+                    'remove',
+                  )}
                   onClick={() => removeHeader(header.id)}
                 />
               </div>
@@ -348,11 +352,20 @@ export function BreakpointInspector({
           ) : draft.replacement === 'file' ? (
             <div className={styles.fileArea}>
               {draft.file === null ? (
-                <Button icon={FolderOpen} onClick={() => void pickFile()}>
+                <Button
+                  automationId={AUTOMATION_IDS.breakpoints.chooseFile}
+                  icon={FolderOpen}
+                  onClick={() => void pickFile()}
+                >
                   {t('breakpoints.chooseFile')}
                 </Button>
               ) : (
-                <div className={styles.fileCard}>
+                <div
+                  className={styles.fileCard}
+                  data-automation-id={AUTOMATION_IDS.breakpoints.selectedFile}
+                  data-file-name={draft.file.name}
+                  data-file-size={draft.file.size}
+                >
                   <div className={styles.fileHeader}>
                     <span className={styles.fileIcon}>
                       <FileText size={15} strokeWidth={2} />

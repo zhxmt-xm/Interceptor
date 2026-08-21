@@ -386,7 +386,7 @@ Renderer marker 语义（`RequestInspector.module.css`）：
 `headersWithRuleEffects` 合并 wire header 与 effect 行：request wire 是规则前原值，response wire 是规则后终值，
 精确重复的行从 wire 集合移除。
 
-### 7.3 Body effect [待实现]
+### 7.3 Body effect [已实现]
 
 正文是单一最终值，不像header可保留多个并列实例，因此一次request/response只保留**最终写入者**：后执行的普通body action覆盖前者，Breakpoint Text/File replacement再覆盖此前普通Rule effect；Breakpoint未替换正文时保留此前普通Rule effect。
 

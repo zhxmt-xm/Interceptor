@@ -51,6 +51,15 @@ export interface BodyRefInput {
   readonly decodeStatus?: BodyDecodeStatus;
 }
 
+/** Capture内部正文证据；Original仍保留带id的BodyRefInput供存储与Archive引用。 */
+export interface BodyRuleEffectInput {
+  readonly ruleId: string;
+  readonly effect: 'replace';
+  readonly source: 'text' | 'file';
+  readonly originalState: 'available' | 'empty' | 'unavailable';
+  readonly originalBody?: BodyRefInput;
+}
+
 /**
  * 追加一条 Exchange 时由上游（M3 代理数据面）提供的字段。
  * `seq` 由 ExchangeStore 分配，不由调用方提供。
@@ -91,6 +100,8 @@ export interface ExchangeInput {
   /** 请求/响应正文引用；提供时 appendExchanges 会绑定临时 hash metadata。 */
   readonly requestBody?: BodyRefInput;
   readonly responseBody?: BodyRefInput;
+  readonly requestBodyEffect?: BodyRuleEffectInput;
+  readonly responseBodyEffect?: BodyRuleEffectInput;
 }
 
 export type WebSocketFrameDirection = "client-to-server" | "server-to-client";
@@ -241,6 +252,8 @@ export interface ExchangePatch {
   readonly ruleIds?: readonly string[];
   readonly requestBody?: BodyRefInput;
   readonly responseBody?: BodyRefInput;
+  readonly requestBodyEffect?: BodyRuleEffectInput;
+  readonly responseBodyEffect?: BodyRuleEffectInput;
 }
 
 export interface CaptureStatusReport {

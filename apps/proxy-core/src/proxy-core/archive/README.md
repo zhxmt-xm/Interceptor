@@ -1,6 +1,6 @@
 # archive
 
-**Interceptor 原生 archive（ZIP）的导入导出。** 与 HAR 的区别：原生格式保留 HAR 无法表达的信息（WebSocket 帧、原始 trailer、二进制正文按内容寻址去重）。
+**Interceptor 原生 archive（ZIP）的导入导出。** 与 HAR 的区别：原生格式保留 HAR 无法表达的信息（WebSocket 帧、原始 trailer、Body/Header Rule effect、Request Original，以及二进制正文按内容寻址去重）。
 
 ## 主类
 
@@ -14,6 +14,11 @@
 - `worker/entry.ts` — `ArchiveWorkerApplication`：Worker 内应用，独占一个临时 SQLite 快照文件，只处理 snapshot 的 append / read
 
 Worker 不参与活动 Capture 数据面，因此 archive 任务再慢也不影响抓包。
+
+SQLite快照为Request/Response分别保存Body effect的`ruleId/effect/source/originalState`与可选
+Original body id；导入时为Final和Original重新分配当前Session内的body id，并严格校验
+`available`必须有Original、`empty/unavailable`不得伪造Original。标准HAR仍只导出Final，不承载这些
+原生证据字段。
 
 ## 组成
 

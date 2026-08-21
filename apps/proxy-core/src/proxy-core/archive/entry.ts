@@ -13,6 +13,7 @@ import { appVersion } from '../constants';
 import type { CaptureService } from '../capture/entry';
 import type {
   BodyRefInput,
+  BodyRuleEffectInput,
   ExchangeInput,
   WebSocketFrameInput,
 } from '../capture/interfaces';
@@ -367,6 +368,8 @@ export class ArchiveService {
       headers: exchange.headers?.map((header) => ({ ...header })),
       requestBody: this.remapBodyRef(exchange.requestBody),
       responseBody: this.remapBodyRef(exchange.responseBody),
+      requestBodyEffect: this.remapBodyEffect(exchange.requestBodyEffect),
+      responseBodyEffect: this.remapBodyEffect(exchange.responseBodyEffect),
       requestBodyId: undefined,
       responseBodyId: undefined,
     };
@@ -387,6 +390,18 @@ export class ArchiveService {
   private remapBodyRef(body: BodyRefInput | undefined): BodyRefInput | undefined {
     return body
       ? { ...body, id: `archive-body-${randomUUID()}` }
+      : undefined;
+  }
+
+  /** 保留effect语义，并为可用Original分配新的body id。 */
+  private remapBodyEffect(
+    effect: BodyRuleEffectInput | undefined,
+  ): BodyRuleEffectInput | undefined {
+    return effect
+      ? {
+          ...effect,
+          originalBody: this.remapBodyRef(effect.originalBody),
+        }
       : undefined;
   }
 

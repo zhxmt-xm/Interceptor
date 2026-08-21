@@ -112,7 +112,7 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-matcher-variants"></a>
 ## `rules.matcher-variants`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -250,19 +250,20 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 <a id="rules-body-effect-evidence"></a>
 ## `rules.body-effect-evidence`
 
-**状态**：planned
+**状态**：passed
 **策略**：native-ui + privileged UI
 
 ### Steps
 
 1. 创建独立profile、trace与可记录request/response body的loopback origin，启动真实Electron并通过UI开始Recording。
-2. 通过Rules UI创建request Text body rule并Apply；发送带非空原文的匹配POST，在Capture Request Body确认默认Final、marker绑定该rule、source=Text，切Original读回客户端原文，再切Final读回规则正文。
-3. 创建response Text body rule并Apply；发送匹配请求，在Response Body确认Final为规则正文、marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
-4. 创建request Breakpoint rule；通过真实UI触发暂停、选择Text replacement并Forward edited，确认Request Body effect最终写入者改为breakpoint rule，Original/Final分别可读。
-5. 经产品UI把一段已捕获正文Save到workflow临时目录，再创建response Breakpoint并通过真实Open Dialog选择该测试自产文件；Forward edited后确认source=File、绝对路径未进入Renderer/evidence、Final字节与文件一致、Original unavailable。
-6. 同一阶段额外发送未替换body与只编辑header的请求，确认不出现body marker；重复body writer只显示最终写入者。
-7. Native Archive round-trip保真与标准HAR只含Final、不含body effect历史的边界下沉到transfer unit/integration，本workflow不直接构造导入文件。
-8. 保存Original/Final hash/size、ruleId/source/availability、trace、日志与metadata；正常Close并验证Main/Core/Worker退出、8888释放、系统代理恢复并删除临时文件/profile。
+2. 通过Rules UI创建request Breakpoint；发送带非空原文的POST，经Capture选择Text replacement并Forward edited，确认origin收到Final，Capture marker绑定breakpoint rule、source=Text，默认Final，Original/Final可双向切换，marker可导航回Rules。
+3. 停用Breakpoint，通过Rules UI创建request Text body rule并Apply；用chunked POST隔离已登记framing债务，确认origin收到Final、Capture marker绑定普通rule，Original/Final分别可读。
+4. 创建response Text body rule并Apply；origin返回chunked正文，确认客户端和Capture都是Final，marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
+5. 同时启用普通request writer与request Breakpoint；Breakpoint Text覆盖普通writer后，确认只显示Breakpoint marker，普通writer marker不存在，Original仍是客户端入站正文。
+6. 经产品BodyViewer Save和真实Save Dialog生成唯一文件；创建response Breakpoint并通过真实Open Dialog选择同一文件，显式删除冲突的`transfer-encoding`后Forward edited，确认source=File、绝对路径未进入Renderer/evidence、客户端与Capture Final字节等于文件、Original unavailable。
+7. 同一阶段额外发送Continue unmodified与只编辑header的请求，确认原文不变且不出现body marker。
+8. Native Archive round-trip保真与标准HAR只含Final、不含body effect历史的边界下沉到transfer unit/integration，本workflow不直接构造导入文件。
+9. 保存Original/Final、ruleId/source/availability、origin观察、trace、日志与metadata；正常Close并验证Main/Core/Worker退出、8888释放、系统代理恢复并删除临时文件/profile。
 
 ### 预期效果
 
@@ -272,6 +273,13 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 
 - 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
 - unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
+
+### TDD证据
+
+- Red：RuleService unit中转发state已是最终正文但`bodyEffect=undefined`；真实Capture integration中主Request ref仍指向Original且双向effect均缺失；Native Archive导入丢失effect；真实Electron在Text replacement已到达origin后等待`capture.body-rule-effect.<ruleId>`15秒仍不存在。Red Main/Core PID为`10656/24836`，`gracefulDestroyVerified=true`。
+- Green：RuleService `27/27`、Body effect三态`2/2`、Breakpoint File相关`2/2`、Archive/HAR`9/9`通过；真实Electron同一workflow`1/1`通过上述Text/File/request/response/final-writer/负例矩阵。
+- 视觉：Request/Response × Text/File × light/dark 8个view均`0 missing / 0 flagged / 0px`；design interaction `13/13`。
+- 销毁：Green Main/Core PID为`45548/23816`，`gracefulDestroyVerified=true`；产品Save生成的临时文件已删除，8888无listener、无Interceptor/Electron残留，WinINet恢复`127.0.0.1:7890`。
 
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`

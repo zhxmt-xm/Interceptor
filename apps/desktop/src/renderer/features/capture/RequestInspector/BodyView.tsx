@@ -195,6 +195,7 @@ export function BodyView({
     <BodyViewer
       bytes={loaded.bytes}
       mediaType={body.mediaType}
+      size={body.encodedSize}
       fullscreenTitle={fullscreenTitle}
       notes={bodyNotes()}
       onSave={saveBody}
@@ -202,6 +203,7 @@ export function BodyView({
       compact={compact}
       automationId={AUTOMATION_IDS.capture.inspector.bodyView}
       paneAutomationId={AUTOMATION_IDS.capture.inspector.bodyPane}
+      actionAutomationIds={AUTOMATION_IDS.capture.inspector.bodyAction}
       parityId="capture-body-view"
       paneParityId="capture-body-preview"
       modeAutomationIds={AUTOMATION_IDS.capture.inspector.bodyMode}

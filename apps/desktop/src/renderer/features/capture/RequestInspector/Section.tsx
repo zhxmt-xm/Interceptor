@@ -9,6 +9,7 @@ export interface SectionProps {
   title: string;
   automationId?: AutomationId;
   count?: ReactNode;
+  labelExtra?: ReactNode;
   /** 让区块吃掉剩余高度，正文区用。 */
   grow?: boolean;
   children?: ReactNode;
@@ -19,6 +20,7 @@ export function Section({
   title,
   automationId,
   count,
+  labelExtra,
   grow = false,
   children,
 }: SectionProps): React.JSX.Element {
@@ -29,9 +31,11 @@ export function Section({
       <SectionHeader
         automationId={automationId}
         count={count}
+        extra={labelExtra}
         collapsed={collapsed}
         className={cx(styles.head, collapsed && styles.collapsedHead)}
         controlsId={contentId}
+        toggleLabel={title}
         onClick={() => setCollapsed(!collapsed)}
       >
         <span>{title}</span>

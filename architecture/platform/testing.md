@@ -23,9 +23,9 @@
 
 ## 3. 当前实现状态
 
-78 条 Inventory 条目与65份详细验收规格位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有22条可执行真实Electron workflow；`rules.import-tree`、`composer.collection.import`、`capture.clear-facets`、`capture.breakpoint-menu-hierarchy`、`capture.breakpoint-submenu-lifecycle`、`capture.navigate-tls-passthrough`与`settings.proxy-mitm.persistence`已通过同一workflow的retrospective Red、当前Green、trace/evidence与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
+79 条 Inventory 条目与81份详细验收规格位于 `e2e-workflow-tests/README.md` 与 `docs/`。`workflows/` 当前有23条可执行真实Electron workflow；`rules.body-effect-evidence`、`rules.import-tree`、`composer.collection.import`、`capture.clear-facets`、`capture.breakpoint-menu-hierarchy`、`capture.breakpoint-submenu-lifecycle`、`capture.navigate-tls-passthrough`与`settings.proxy-mitm.persistence`已通过同一workflow的实现前或retrospective Red、当前Green、trace/evidence与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
 
-`packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用这 69 条 workflow contract。
+`packaged-smoke/startup.spec.ts` 仍是最终 package 的综合 CDP smoke，尚未复用这 79 条 Inventory contract。
 
 ## 4. 执行约束
 

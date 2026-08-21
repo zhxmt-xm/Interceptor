@@ -6,6 +6,7 @@ import { FORMAT_AUTO_MAX_BYTES, FORMAT_MAX_BYTES } from '../../../shared/desktop
 import type { AutomationId } from '../../../shared/automation-ids';
 import { BodyFullscreen } from '../BodyFullscreen/BodyFullscreen';
 import { CodeViewer, type CodeViewerHandle } from '../CodeViewer/CodeViewer';
+import { cx } from '../share/cx';
 import { sizeLabel } from '../share/sizeLabel';
 import { useClipboardCopy } from '../share/useClipboardCopy';
 import {
@@ -33,6 +34,8 @@ import styles from './BodyViewer.module.css';
 export interface BodyViewerProps {
   bytes: Uint8Array;
   mediaType: string | undefined;
+  /** Evidence-owned byte size; defaults to the provided byte buffer length. */
+  size?: number;
   /** 全屏弹窗的标题；不给就不提供全屏入口。 */
   fullscreenTitle?: string;
   /** 关于这份正文的提示行：预览截断、解码失败等，按传入顺序显示在正文上方。 */
@@ -61,6 +64,7 @@ export interface BodyViewerProps {
 export function BodyViewer({
   bytes,
   mediaType,
+  size = bytes.byteLength,
   fullscreenTitle,
   notes,
   onSave,
@@ -116,7 +120,7 @@ export function BodyViewer({
 
   const meta = imageSize
     ? `${formatMediaType(mediaType)} · ${imageSize.width} × ${imageSize.height}`
-    : formatMediaType(mediaType);
+    : `${formatMediaType(mediaType)} · ${sizeLabel(size, i18n.language)}`;
 
   // Only minified code benefits: JSON already renders pretty-printed and the other kinds
   // have no formatter at all.
@@ -175,7 +179,7 @@ export function BodyViewer({
         formatState={formatState}
         onFormat={() => void runFormat()}
         onCopy={fullscreen ? undefined : copyAction}
-        onSave={format.kind === 'image' ? onSave : undefined}
+        onSave={onSave}
         onFullscreen={
           fullscreenTitle && !fullscreen ? () => setFullscreen(true) : undefined
         }
@@ -194,7 +198,7 @@ export function BodyViewer({
 
   return (
     <div
-      className={styles.host}
+      className={cx(styles.host, compact && styles.compact)}
       data-automation-id={automationId}
       data-parity={parityId}
     >

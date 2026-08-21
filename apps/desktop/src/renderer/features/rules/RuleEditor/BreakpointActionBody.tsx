@@ -120,6 +120,11 @@ export function BreakpointActionBody({
           options={localizeOptions(PHASE_OPTIONS, 'rules.phase', translate).map((option) => ({
             ...option,
             label: option.label.charAt(0).toLocaleUpperCase() + option.label.slice(1),
+            automationId: AutomationIdFactory.ruleActionField(
+              ruleId,
+              index,
+              `phase-option.${option.value}`,
+            ),
           }))}
           value={action.phase}
           onValueChange={(phase) => onChange({ ...action, phase: phase as RulePhase })}

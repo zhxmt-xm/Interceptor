@@ -573,6 +573,46 @@ export const views = [
       },
     ];
   }),
+  ...['light', 'dark'].flatMap((theme) =>
+    ['request-text', 'request-file', 'response-text', 'response-file'].map((bodyRuleEffect) => {
+      const response = bodyRuleEffect.startsWith('response-');
+      return {
+        id: `capture-body-effect-${bodyRuleEffect}${theme === 'dark' ? '-dark' : ''}`,
+        theme,
+        bodyRuleEffect,
+        designState: {
+          view: 'capture',
+          theme,
+          sidebar: 'collapsed',
+          overlay: '',
+          detail: 'open',
+          scene: 'http',
+          tab: response ? 'response' : 'request',
+          bodyPreview: 'json',
+          bodyRuleEffect,
+          breakpointState: '',
+        },
+        designShot: `${theme}/capture/body-effect-${bodyRuleEffect}.png`,
+        rendererActions: [
+          { type: 'clickText', text: '/user' },
+          { type: 'clickText', text: response ? 'Response' : 'Request' },
+        ],
+        targets: [
+          { name: 'Body effect marker', parity: 'capture-body-effect-marker' },
+          { name: 'Body effect source', parity: 'capture-body-effect-source' },
+          { name: 'Body version bar', parity: 'capture-body-effect-version-bar' },
+          ...(response
+            ? [{ name: 'Original unavailable', parity: 'capture-body-effect-unavailable' }]
+            : []),
+          {
+            name: 'Body effect viewer',
+            designSelector: '[data-parity="body-viewer-design"]',
+            appSelector: '[data-parity="capture-body-view"]',
+          },
+        ],
+      };
+    }),
+  ),
   {
     id: 'capture-request-json',
     theme: 'light',

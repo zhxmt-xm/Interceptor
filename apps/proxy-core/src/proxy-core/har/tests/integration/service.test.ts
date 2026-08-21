@@ -49,6 +49,7 @@ class FakeCaptureService extends CaptureService {
     this.details = details;
     this.failAppend = failAppend;
     this.bodies.set('request-hash', Buffer.from('<script>notExecuted()</script>'));
+    this.bodies.set('request-original-hash', Buffer.from('private original body'));
     this.bodies.set('response-hash', Buffer.from('{"created":true}'));
   }
 
@@ -157,6 +158,19 @@ class FakeCaptureService extends CaptureService {
         truncated: false,
         decodeStatus: 'ok',
       },
+      requestBodyEffect: {
+        ruleId: 'body-writer-rule',
+        effect: 'replace',
+        source: 'text',
+        originalState: 'available',
+        originalBody: {
+          bodyHash: 'request-original-hash',
+          mediaType: 'text/plain',
+          encodedSize: 21,
+          truncated: false,
+          decodeStatus: 'ok',
+        },
+      },
       responseBody: {
         bodyHash: 'response-hash',
         mediaType: 'application/json',
@@ -188,12 +202,15 @@ describe('HarService', () => {
       new AbortController().signal,
     );
 
-    const har = JSON.parse(await readFile(filePath, 'utf8')) as {
+    const harText = await readFile(filePath, 'utf8');
+    const har = JSON.parse(harText) as {
       log: { version: string; entries: Array<Record<string, unknown>> };
     };
     expect(exported.processed).toBe(1);
     expect(har.log.version).toBe('1.2');
     expect(har.log.entries).toHaveLength(1);
+    expect(harText).not.toContain('private original body');
+    expect(harText).not.toContain('body-writer-rule');
     expect(har.log.entries[0]).toMatchObject({
       startedDateTime: '2026-07-17T10:00:00.000Z',
       time: 12,
@@ -224,6 +241,7 @@ describe('HarService', () => {
       statusCode: 201,
       state: 'completed',
     });
+    expect(fakeCaptureService.imported[0]?.requestBodyEffect).toBeUndefined();
     const requestHash = fakeCaptureService.imported[0]?.requestBody?.blobHash;
     expect(requestHash && fakeCaptureService.bodies.get(requestHash)?.toString()).toBe(
       '<script>notExecuted()</script>',

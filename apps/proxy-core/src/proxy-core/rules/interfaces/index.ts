@@ -148,29 +148,41 @@ export interface RuleHeaderEffect {
   readonly value: string;
 }
 
+/** 单次正文替换的最终写入者；后执行的 Rule 或 Breakpoint 覆盖前者。 */
+export interface RuleBodyEffect {
+  readonly ruleId: string;
+  readonly phase: 'request' | 'response';
+  readonly effect: 'replace';
+  readonly source: 'text' | 'file';
+}
+
 export type RequestEvaluation =
   | {
       readonly kind: 'continue';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
       readonly delayMs: number;
     }
   | {
       readonly kind: 'aborted';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
     }
   | {
       readonly kind: 'respond';
       readonly response: SyntheticResponseInit;
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
     }
   | {
       readonly kind: 'block';
       readonly mode: 'reset' | 'close';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
     };
 
 export type ResponseEvaluation =
@@ -178,18 +190,21 @@ export type ResponseEvaluation =
       readonly kind: 'continue';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
       readonly delayMs: number;
     }
   | {
       readonly kind: 'aborted';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
     }
   | {
       readonly kind: 'block';
       readonly mode: 'reset' | 'close';
       readonly hits: readonly RuleHitRecord[];
       readonly headerEffects: readonly RuleHeaderEffect[];
+      readonly bodyEffect?: RuleBodyEffect;
     };
 
 export interface BreakpointHitInfo {
