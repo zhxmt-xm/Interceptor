@@ -34,6 +34,7 @@ export function SettingsNav({
           key={id}
           className={cx(styles.item, id === active && styles.active)}
           data-automation-id={AUTOMATION_ID_BY_SECTION[id]}
+          aria-current={id === active ? 'page' : undefined}
           onClick={() => onSelect(id)}
         >
           <Icon size={16} strokeWidth={1.9} />

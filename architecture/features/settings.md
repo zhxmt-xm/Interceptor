@@ -1,6 +1,6 @@
 # Feature: Settings
 
-> 最后更新：2026-08-21
+> 最后更新：2026-08-24
 > Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
 > Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
@@ -22,6 +22,17 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 Settings rail 的最后访问 section 由 App shell 持有。切换到 Capture / Rules / Composer / Diagnostics
 不会重置该值，返回 Settings 时仍打开离开前的 section；TLS compatibility、Proxy readiness 等明确的
 跨 feature 跳转可以覆盖它，直接打开对应目标 section。面板内未提交的瞬态 dialog 不跨 feature 保留。
+
+Settings rail 的当前项必须通过 `aria-current="page"` 暴露，不以 CSS class 或翻译文案作为状态契约。
+真实 Electron `settings.navigation` 从 Certificates 默认态开始，逐项操作八个 section，并在离开 Settings
+后通过普通 workspace 导航返回，证明最后 section 未被 remount 重置。显式 TLS 跳转的覆盖语义由
+`capture.navigate-tls-passthrough` 独立验证；两条 workflow 都必须保留 trace、语言无关 DOM 状态、
+Main/Core PID、8888 释放与 `gracefulDestroyVerified=true` 证据。
+
+当前 `settings.navigation` 已取得公共语义缺失的 Red 与真实 Electron Green：八个 section 的
+`aria-current` 唯一，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、
+Diagnostics 往返保持；显式 TLS 跳转继续由 `capture.navigate-tls-passthrough` 验收。Proxy readiness
+入口与 TLS 入口一样在 App shell 先覆盖目标 section 再切换 workspace，不为测试注入 readiness 状态。
 
 Capture 的 TLS tunnel Inspector 允许从已确认的`TLS passthrough`连接跳到当前配置项。跳转前读取
 TLS passthrough settings，并从当前host的所有覆盖项中选择最具体pattern：exact优先，其次选择suffix

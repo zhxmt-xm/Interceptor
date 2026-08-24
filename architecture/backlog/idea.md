@@ -102,12 +102,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Settings section persistence</td>
-  <td><ul><li>普通返回 Settings 时保留最后 section，显式 TLS/Proxy 跳转仍覆盖目标。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ❌ 未单列</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未记录真实 Electron Red/Green</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>Section 曾由页面局部状态持有，feature 卸载时丢失。</li></ul></td>
-  <td><ul><li>由 App shell 持有最后 section，并区分普通返回与显式跳转。</li></ul></td>
+  <td><ul><li>普通返回 Settings 时保留最后 section，显式 TLS/Proxy 跳转仍覆盖目标。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ App shell 持有section，Settings rail暴露唯一<code>aria-current=page</code></li><li><strong>Unit:</strong> ➖ 当前页面语义与跨workspace生命周期由真实E2E验收</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 公共语义缺失Red→当前1/1 Green，含四个workspace往返与完整销毁</li><li><strong>Design/Parity:</strong> ➖ 仅增加ARIA属性，无视觉变化</li></ul></td>
+  <td><ul><li>Section 曾由页面局部状态持有，feature 卸载时丢失；提升到App shell后的剩余缺口是视觉active没有公共当前页面语义，也没有真实Electron验收。</li></ul></td>
+  <td><ul><li>由App shell持有最后section，普通workspace切换不改值，显式TLS/Proxy入口先覆盖目标；Settings rail用<code>aria-current=page</code>表达唯一当前项，真实workflow覆盖八项导航与Capture/Rules/Composer/Diagnostics往返。</li></ul></td>
 </tr>
 
 <tr>

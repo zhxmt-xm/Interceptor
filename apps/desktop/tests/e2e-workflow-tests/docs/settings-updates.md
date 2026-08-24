@@ -1,29 +1,37 @@
 # Settings 与 Updates Workflows
 
-本文件定义 Settings 六个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
+本文件定义 Settings 八个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。
-2. 点击 `shell.workspace.settings`；检查Settings rail六个section可用且默认选中Certificates。
-3. 点击 `settings.section.proxy`，等待真实listener/system proxy状态。
-4. 点击 `settings.section.certificates`，等待CA/trust/insecure hosts状态。
-5. 点击 `settings.section.appearance`，检查明确的未实现占位。
-6. 点击 `settings.section.storage`、`settings.section.privacy`、`settings.section.updates`，逐项等待真实状态。
-7. 选择 AppContainer access，切换到 Capture，再返回 Settings，确认仍打开 AppContainer access；随后通过明确导航返回 Certificates，确认 section 和 scroll/layout 稳定。
-8. 保存evidence并Close。
-9. 验证进程/8888销毁。
-10. 删除profile。
+2. 点击 `shell.workspace.settings`；检查 Settings rail 八个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
+3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。
+4. 再次选择 App Containers，点击 `shell.workspace.capture` 离开 Settings，确认 Capture 成为当前 workspace。
+5. 通过普通 `shell.workspace.settings` 返回，确认 App Containers 仍是唯一 `aria-current=page`，没有回到默认 Certificates。
+6. 选择 TLS passthrough，依次切到 Rules、Composer、Diagnostics 并从每个 workspace 返回 Settings；每次确认 TLS passthrough 仍为当前 section。
+7. 确认全程无 Renderer page error，并附加每次离开/返回后的语言无关 `aria-current` 状态。
+8. 保存 screenshot、trace、Main/Renderer 日志和 PID/端口 metadata，并点击 `shell.window.close`。
+9. 验证 Main、Renderer、Core、Worker 全退，8888 释放且 `gracefulDestroyVerified=true`。
+10. 删除 profile。
 
 ### 预期效果
 
-六个section通过Settings rail真实导航；跨 feature 返回时保留最后访问 section；Proxy/Certificates/Storage/Updates使用真实后端；Appearance不伪造未实现功能；Header/Main/statusbar一致。
+八个 section 通过 Settings rail 真实导航；`aria-current` 准确且唯一；跨 feature 普通返回时保留最后访问 section；Proxy/Certificates/Storage/Updates 使用真实后端；Appearance 不伪造未实现功能；Header/Main/statusbar 一致。显式 TLS 跨 feature 跳转覆盖当前 section 的语义由独立 `capture.navigate-tls-passthrough` workflow 验收。
+
+### 证据
+
+- `section-navigation-state.json` 记录默认、逐项选择以及每次离开/返回后的 automation ID 与 `aria-current`，不记录翻译文案或 CSS class。
+- `trace.zip` 必须可见全部真实点击；`renderer-console.log` 不得包含 page error。
+- `metadata.json` 必须记录真实 Main/Core PID、listener `8888` 与 `gracefulDestroyVerified=true`。
+- 实现前 Red：真实 Electron 已打开默认 Certificates，视觉 active class 存在，但 `settings.section.certificates` 的 `aria-current` 为 `null`，workflow 精确失败于公共当前页面语义缺失。
+- 当前 Green：`1/1` 通过；八个 section 均只有目标项为 `aria-current=page`，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持；Main PID `12304`、Core PID `27200`、listener `8888`，`gracefulDestroyVerified=true`，Renderer page error 为 0。
 
 <a id="settings-app-containers-enable-all"></a>
 ## `settings.app-containers-enable-all`
