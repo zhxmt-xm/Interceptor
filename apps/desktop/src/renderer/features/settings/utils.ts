@@ -1,4 +1,5 @@
 import type {
+  AppContainerAccessInfo,
   SystemProxyStatus,
   TlsCompatibilityEvent,
   UpdateStatus,
@@ -81,6 +82,27 @@ export function proxyTitleStatus(status: SystemProxyStatus): {
 /** 把未知的 IPC 失败收敛成可展示的一行反馈。 */
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Stably place enabled AppContainers first, then filter the ordered identity fields. */
+export function listVisibleAppContainers(
+  containers: readonly AppContainerAccessInfo[],
+  search: string,
+): AppContainerAccessInfo[] {
+  const orderedContainers = [
+    ...containers.filter((appContainer) => appContainer.exempt),
+    ...containers.filter((appContainer) => !appContainer.exempt),
+  ];
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  if (!normalizedSearch) {
+    return orderedContainers;
+  }
+  return orderedContainers.filter((appContainer) => [
+    appContainer.displayName,
+    appContainer.packageFamilyName,
+    appContainer.packageFullName,
+    appContainer.appContainerSid,
+  ].some((value) => value?.toLocaleLowerCase().includes(normalizedSearch)));
 }
 
 /** Cheap UI check; Core performs canonical DNS/IP validation before persistence. */

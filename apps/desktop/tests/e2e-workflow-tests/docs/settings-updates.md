@@ -33,6 +33,35 @@
 - 实现前 Red：真实 Electron 已打开默认 Certificates，视觉 active class 存在，但 `settings.section.certificates` 的 `aria-current` 为 `null`，workflow 精确失败于公共当前页面语义缺失。
 - 当前 Green：`1/1` 通过；八个 section 均只有目标项为 `aria-current=page`，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持；Main PID `12304`、Core PID `27200`、listener `8888`，`gracefulDestroyVerified=true`，Renderer page error 为 0。
 
+<a id="settings-app-containers-ordering"></a>
+## `settings.app-containers.ordering`
+
+**状态**：passed
+**策略**：shared；Windows
+
+### Steps
+
+1. 创建独立空 profile/evidence，启动真实 Electron，等待 App/Core/8888/readiness；取消 readiness，不修改系统代理。
+2. 进入 Settings → App Containers，等待真实 Windows helper 枚举完成；读取公共 SID 行 automation ID 和 `data-exempt`，不得用显示名、翻译文案或 CSS class 判断顺序。
+3. 确认所有 enabled 行连续位于 disabled 行之前；同一状态内保持 helper 的名称顺序。当前宿主必须同时存在 enabled 与 disabled 样本，才可作为 retrospective Red/Green 证据。
+4. 从真实行 SID 中选择一个能缩小结果集的搜索值，通过 `settings.app-containers.search` 输入；确认结果是过滤前列表的有序子序列，且仍满足 enabled-first。
+5. 清空搜索，确认完整 SID 顺序逐项恢复；全程不得点击单项 switch、Enable all 或确认按钮，不触发 UAC、不改 exemption。
+6. 附加 `app-container-ordering.json`，记录过滤前、过滤后和恢复后的 SID/`exempt` 状态；确认 Renderer page error 为 0。
+7. 保存 screenshot、trace、Main/Renderer 日志和 metadata；通过 `shell.window.close` 正常关闭 App。
+8. 验证 Main、Renderer、Core、Worker 全退，8888 释放且 `gracefulDestroyVerified=true`；删除 profile。
+
+### 预期效果
+
+真实 Windows AppContainer 列表稳定地将 enabled 项置顶，同组顺序不变；搜索只筛选已经排序的列表，清空后不产生重排；只读验收不造成系统副作用。
+
+### 证据
+
+- 实现前 Red：真实 Windows helper integration 返回 `141` 条记录但只有 `138` 个唯一 SID；同一 `settings.app-containers.ordering` workflow 进入面板后，Main 因 `AppContainer helper returned a duplicate SID` 拒绝快照，真实列表完全不可用。Red Main PID `21104`、Core PID `36468`，失败后仍为 `gracefulDestroyVerified=true`且 8888 释放。
+- 当前 Green：helper 在 native 枚举边界按 SID 去重，package 内 helper 为 `138 records / 138 unique SIDs`；Main 继续拒绝任何回归的重复 helper JSON。真实 workflow 为 `1/1` Green，初始 `138` 行（`1 enabled / 137 disabled`），enabled 行位于首位，真实 SID 搜索缩小为 `1` 行，清空后 `138` 行逐项恢复。Main PID `34512`、Core PID `33872`、listener `8888`、`gracefulDestroyVerified=true`，Renderer page error 为 0，未触发 UAC或修改 exemption。
+- Renderer ordering unit `2/2`、真实 helper integration `1/1`、Main service unit `10/10`，聚焦合计 `13/13`；Desktop 串行全量 `320/320` 与 typecheck 通过。
+- AppContainer light/dark parity 各 `13/13 matched / 0 missing / 5` 个既有 flagged，最大 `3.8px`；完整 parity 保持 `137 views / 995 targets / 961 matched / 34 missing / 304 flagged`。
+- Windows x64 package 与 artifact audit 通过（`1,294 files / 391,746,994 bytes`），production audit 为 0 漏洞，packaged smoke 最终 `1/1` Green。首次 smoke 的产品断言已通过但清理临时 profile 时遇到一次 Windows `EPERM`；当时无残留进程或 8888 listener，目录随后可删除，原样复跑通过。
+
 <a id="settings-app-containers-enable-all"></a>
 ## `settings.app-containers-enable-all`
 

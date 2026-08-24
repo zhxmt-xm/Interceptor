@@ -373,6 +373,7 @@ export const AUTOMATION_IDS = {
       updates: 'settings.section.updates',
     },
     appContainers: {
+      search: 'settings.app-containers.search',
       enableAll: 'settings.app-containers.enable-all',
       enableAllConfirm: 'settings.app-containers.enable-all-confirm',
     },
@@ -489,6 +490,11 @@ export class AutomationIdFactory {
   /** Identify one persisted TLS passthrough row by its normalized host pattern. */
   static tlsPassthroughHost(host: string): string {
     return `settings.tls-passthrough.host.${encodeURIComponent(host)}`;
+  }
+
+  /** Identify one enumerated Windows AppContainer row by its stable SID. */
+  static appContainerRow(appContainerSid: string): string {
+    return `settings.app-containers.row.${encodeURIComponent(appContainerSid)}`;
   }
 
   /** Identify the remove action owned by one TLS passthrough host pattern. */

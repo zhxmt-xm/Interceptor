@@ -173,6 +173,8 @@ internal static class Program
         }
 
         List<AppContainerInfo> result = new List<AppContainerInfo>();
+        HashSet<string> appContainerSids = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
         try
         {
             int itemSize = Marshal.SizeOf(typeof(NativeAppContainer));
@@ -181,9 +183,14 @@ internal static class Program
                 NativeAppContainer appContainer = (NativeAppContainer)Marshal.PtrToStructure(
                     IntPtr.Add(appContainers, checked((int)index * itemSize)),
                     typeof(NativeAppContainer));
+                string appContainerSid = SidString(appContainer.AppContainerSid);
+                if (!appContainerSids.Add(appContainerSid))
+                {
+                    continue;
+                }
                 result.Add(new AppContainerInfo
                 {
-                    AppContainerSid = SidString(appContainer.AppContainerSid),
+                    AppContainerSid = appContainerSid,
                     UserSid = NullableSidString(appContainer.UserSid),
                     PackageFamilyName = NativeString(appContainer.AppContainerName),
                     DisplayName = ResolveIndirectString(NativeString(appContainer.DisplayName)),

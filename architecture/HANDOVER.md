@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `6f612ca`
+> Tracked commit: `4c2b9f9`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-24
 
@@ -11,6 +11,7 @@
 - [x] **已完成 · TLS 命令与 listener 生命周期**：`tls.useCertificate` 只记录当前 CA 材料，`tls.startDecryption` / `tls.stopDecryption` 只切换解密，`tls.replaceInsecureHosts` 只替换源站例外名单。只有“开始解密且 listener 仍挂旧证书”会换 listener；卸载信任或删除 CA 后会停止解密，全量 passthrough 下证书不出示，因此无需立即重建 listener。
 - [x] **已完成 · Settings 持久化**：TLS passthrough 名单、`tls_insecure_hosts` 与 `tls_decryption_preference` 全部落到 Core `workspace.sqlite`。源站例外和解密意图只有一个编辑入口，使用不比较 revision 的 `overwrite`；Main 启动先读回用户意图，再按“CA 已信任且用户开启”决定运行态，持久化的不是瞬时解密状态。
 - [x] **已完成 · Settings section 返回保持**：最后访问 section 由常驻 App shell 持有，普通 Capture / Rules / Composer / Diagnostics 往返不重置，显式 TLS / Proxy 入口仍先覆盖目标；Settings rail 以唯一 `aria-current=page` 暴露当前项。真实 Electron 在实现前 Red 于 Certificates 的该属性缺失，当前 `settings.navigation` 为 `1/1` Green，Main PID `12304`、Core PID `27200`、listener `8888`、`gracefulDestroyVerified=true`且 Renderer page error 为 0。
+- [x] **已完成 · AppContainer enabled-first 与重复 SID 收敛**：native helper 对 Windows 多用户枚举产生的重复 AppContainer SID 在边界去重，Main 继续拒绝重复 helper JSON；Renderer 以纯函数稳定地将 enabled 置顶后再过滤。真实 helper integration 从 `141 records / 138 unique` Red 到 `138/138` Green；真实 Electron 从面板因 duplicate SID 完全不可用 Red 到 `settings.app-containers.ordering` `1/1` Green，覆盖 `1 enabled / 137 disabled`、搜索缩到1行、清空后138行逐项恢复。Green Main PID `34512`、Core PID `33872`、listener `8888`、`gracefulDestroyVerified=true`，未触发UAC或修改exemption。聚焦`13/13`、Desktop串行`320/320`、typecheck、Windows package、artifact audit（1,294 files / 391,746,994 bytes）、production audit 0漏洞与packaged smoke最终`1/1`通过；完整parity仍为137 views / 995 targets / 961 matched / 34 missing / 304 flagged，AppContainer明暗各13/13 matched、0 missing。
 - [x] **已完成 · TLS compatibility event**：App 壳订阅事件并按规范化 host 累积为全局列表 dialog；每个 host 提供精确 host 与逐级父域 wildcard，最宽到二级域。精确 host 默认勾选、wildcard 默认不选；已覆盖项不重复写，已挂载页面通过 change sequence 立即刷新，旧批次保存完成不会 dismiss 同期到达的新 host。
 - [x] **已完成 · 源站证书失败出口**：Capture Inspector 的 Connection / TLS 面板在 `errorCode` 属于证书校验类时显示 callout 与 `Trust this host`，一键写入 per-host 例外；`EPROTO` 等协议协商错误不显示无效入口。
 - [x] **已完成 · Private GitHub App Device Flow**：Client ID 是公开配置，App 只需 `Contents: read-only` 并安装到当前仓库；token 与 OAuth 过期时间经 `safeStorage` 加密。启动时使用未过期 refresh token 轮换整组凭据，运行期按最新 access token 到期前 5 分钟刷新并重排唯一 timer；缺失、过期或非退出刷新失败即清空登录，退出取消 timer。仓库转 public 后应删除 auth service / IPC / store / UI，updater 恢复匿名访问。

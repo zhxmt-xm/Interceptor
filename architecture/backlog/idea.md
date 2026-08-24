@@ -111,12 +111,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>AppContainer enabled-first ordering</td>
-  <td><ul><li>Enabled/exempt 项稳定置顶，过滤不改变排序。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ❌ 未单列</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 未完成</li><li><strong>Design/Parity:</strong> ✅ 13/13 matched</li></ul></td>
-  <td><ul><li>过滤后未稳定按 <code>exempt</code> 状态排序。</li></ul></td>
-  <td><ul><li>Renderer 先按 <code>exempt</code> 稳定排序，再执行过滤。</li></ul></td>
+  <td><ul><li>Enabled/exempt 项稳定置顶，过滤不改变排序。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ native helper按SID去重；Renderer纯函数稳定分组后过滤；公共搜索/行状态探针完成</li><li><strong>Unit:</strong> ✅ Renderer 2/2、Main service 10/10</li><li><strong>Integration:</strong> ✅ 真实Windows helper Red于141/138→Green 138/138；package helper同样138/138</li><li><strong>E2E:</strong> ✅ 列表不可用Red→当前1/1 Green，覆盖1 enabled/137 disabled、搜索子序列、逐项恢复与完整销毁</li><li><strong>Design/Parity:</strong> ✅ 明暗各13/13 matched、0 missing；5个既有flagged，最大3.8px</li></ul></td>
+  <td><ul><li>Renderer虽已有enabled-first代码但缺owning测试；真实Windows又会按用户返回重复AppContainer SID，Main正确拒绝重复快照，导致列表在进入排序前即完全不可用。</li></ul></td>
+  <td><ul><li>native helper在枚举边界按SID保留一个稳定代表，Main继续保留重复拒绝；Renderer以<code>listVisibleAppContainers</code>稳定分组后再过滤，真实Electron只读验证排序、搜索与恢复，不触发UAC或修改exemption。</li></ul></td>
 </tr>
 
 <tr>

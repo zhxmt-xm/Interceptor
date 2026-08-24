@@ -15,7 +15,10 @@ import type {
   AppContainerAccessInfo,
   AppContainerAccessSnapshot,
 } from '../../../../shared/desktop-api';
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import {
+  AUTOMATION_IDS,
+  AutomationIdFactory,
+} from '../../../../shared/automation-ids';
 import {
   Button,
   IconButton,
@@ -23,7 +26,7 @@ import {
   StatusBadge,
   Switch,
 } from '../../../components';
-import { describeError } from '../utils';
+import { describeError, listVisibleAppContainers } from '../utils';
 
 import styles from './AppContainerPanel.module.css';
 
@@ -45,7 +48,7 @@ export function AppContainerPanel(): React.JSX.Element {
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
+  const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     let active = true;
@@ -115,20 +118,11 @@ export function AppContainerPanel(): React.JSX.Element {
       .finally(() => setChanging(false));
   };
 
-  // Main 已按名称排序，这里只把已启用项稳定地提到前面。
-  const containers = useMemo(
-    () => [...(snapshot?.containers ?? [])]
-      .sort((left, right) => Number(right.exempt) - Number(left.exempt)),
-    [snapshot],
+  const containers = snapshot?.containers ?? [];
+  const filteredContainers = useMemo(
+    () => listVisibleAppContainers(containers, deferredSearch),
+    [containers, deferredSearch],
   );
-  const filteredContainers = deferredSearch
-    ? containers.filter((appContainer) => [
-        appContainer.displayName,
-        appContainer.packageFamilyName,
-        appContainer.packageFullName,
-        appContainer.appContainerSid,
-      ].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
-    : containers;
   const enabledCount = containers.filter((appContainer) => appContainer.exempt).length;
   const disabledCount = containers.length - enabledCount;
 
@@ -176,6 +170,7 @@ export function AppContainerPanel(): React.JSX.Element {
               onValueChange={setSearch}
               placeholder={t('settings.appContainers.searchPlaceholder')}
               ariaLabel={t('settings.appContainers.searchLabel')}
+              automationId={AUTOMATION_IDS.settings.appContainers.search}
             >
               <Search size={14} strokeWidth={1.9} aria-hidden="true" />
             </InputBox>
@@ -216,7 +211,14 @@ export function AppContainerPanel(): React.JSX.Element {
                 || appContainer.packageFamilyName
                 || appContainer.appContainerSid;
               return (
-                <div className={styles.row} key={appContainer.appContainerSid}>
+                <div
+                  className={styles.row}
+                  key={appContainer.appContainerSid}
+                  data-automation-id={AutomationIdFactory.appContainerRow(
+                    appContainer.appContainerSid,
+                  )}
+                  data-exempt={appContainer.exempt}
+                >
                   <span className={recommended ? styles.recommendedIcon : styles.icon}>
                     <AppWindow aria-hidden="true" />
                   </span>

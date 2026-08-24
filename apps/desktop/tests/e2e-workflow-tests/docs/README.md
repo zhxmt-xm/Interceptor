@@ -10,9 +10,9 @@
 | Composer | [composer.md](composer.md) | 9 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 9 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
-| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 13 |
+| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 14 |
 
-总计：81 条 workflow。
+总计：82 条 workflow。
 
 ## 文档约定
 
