@@ -219,15 +219,6 @@
 
 <tr>
   <td><strong>⏳ 未开始</strong></td>
-  <td>Breakpoint from current Capture filter</td>
-  <td><ul><li>评估将当前可见流量 filter 转成 breakpoint matcher。</li><li><strong>Steps:</strong><ul><li>待产品决策</li><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
-  <td><ul><li>候选能力；风险是用户只切换视角却静默改变断点范围。</li></ul></td>
-  <td><ul><li>先决定一次性复制 filter 还是持续绑定，再进入 design 与 TDD。</li></ul></td>
-</tr>
-
-<tr>
-  <td><strong>⏳ 未开始</strong></td>
   <td>Breakpoint queue stepping and batch commands</td>
   <td><ul><li>Continue 后自动选中下一条，并提供清晰的批量操作。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
   <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
