@@ -224,7 +224,7 @@
 - **Work item commit boundary**
 	- 默认一个完整 work item 对应一个自洽 commit，以提高 PR 可读性和 review 便利性；不同 work item 不混入同一 commit。
 	- 同一 work item 的契约文档、TDD Red、实现、Green、evidence 与完成状态在全部闭环后一起提交；不要为中间文档、测试骨架、Red 或 checkpoint 分别创建碎片 commit，除非用户明确要求保存中间进度。
-	- 可以在本地按 work item 连续创建多个 commit，但不要每个 commit 后立即 push；当前约定的全部 work item 完成后再统一 push，除非用户明确要求提前 push。
+	- 每个 work item 的 commit 成功后必须立即 push 当前分支；不得在本地积攒多个 commit 后统一 push，除非用户明确要求暂缓推送。
 - **Before committing**
 	- Review the staged diff first.
 	- Update `architecture/HANDOVER.md`, affected `architecture/*.md`, and `README.md` as applicable.
