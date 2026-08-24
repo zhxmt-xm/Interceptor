@@ -9,6 +9,7 @@ export type FixtureOverlay =
   | 'body-full'
   | 'app-container-confirm'
   | 'app-container-enable-all'
+  | 'app-container-disable-all'
   | 'tls-compatibility'
   | 'rules-import'
   | 'composer-import'

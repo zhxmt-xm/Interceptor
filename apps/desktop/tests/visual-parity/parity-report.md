@@ -1,16 +1,16 @@
 # Visual Parity Report
 
-Generated: 2026-08-24T06:37:49.555Z
+Generated: 2026-08-24T08:01:51.029Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 137 |
-| Average pixel diff | 2.63% |
-| Targets | 995 |
-| Matched | 961 |
+| Views checked | 141 |
+| Average pixel diff | 2.59% |
+| Targets | 1019 |
+| Matched | 985 |
 | Missing | 34 |
 | Flagged | 304 |
 | Largest geometry delta | 1156.8 px |
@@ -28,7 +28,7 @@ Generated: 2026-08-24T06:37:49.555Z
 | breakpoint-request-body-file-empty | 3.37% | 10 | 10 | 0 | 9 | 302.1 px |
 | breakpoint-request-body-file | 3.39% | 10 | 10 | 0 | 6 | 3.3 px |
 | breakpoint-response-paused | 3.45% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded | 3.26% | 10 | 10 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded | 3.64% | 10 | 10 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace | 3.63% | 11 | 10 | 1 | 6 | 2.0 px |
 | breakpoint-response-body-file-empty | 3.64% | 11 | 11 | 0 | 7 | 302.1 px |
 | breakpoint-response-body-file | 3.63% | 11 | 11 | 0 | 7 | 2.0 px |
@@ -53,12 +53,12 @@ Generated: 2026-08-24T06:37:49.555Z
 | capture-websocket-breakpoint-setup | 3.62% | 14 | 14 | 0 | 1 | 2.0 px |
 | capture-websocket-breakpoint-setup-custom | 3.72% | 8 | 8 | 0 | 0 | 0.6 px |
 | capture-websocket-breakpoint-setup-invalid | 3.73% | 7 | 7 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-enabled | 3.12% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-enabled | 2.79% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused | 3.63% | 12 | 12 | 0 | 8 | 2.0 px |
 | capture-websocket-breakpoint-setup-dark | 3.60% | 14 | 14 | 0 | 1 | 2.0 px |
 | capture-websocket-breakpoint-setup-custom-dark | 3.69% | 8 | 8 | 0 | 0 | 0.6 px |
 | capture-websocket-breakpoint-setup-invalid-dark | 3.68% | 7 | 7 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-enabled-dark | 2.89% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.23% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused-dark | 3.64% | 12 | 12 | 0 | 8 | 2.0 px |
 | capture-body-effect-request-text | 3.20% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-body-effect-request-file | 3.22% | 4 | 4 | 0 | 0 | 0.0 px |
@@ -67,11 +67,11 @@ Generated: 2026-08-24T06:37:49.555Z
 | capture-body-effect-request-text-dark | 3.24% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-body-effect-request-file-dark | 3.25% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-body-effect-response-text-dark | 3.38% | 5 | 5 | 0 | 0 | 0.0 px |
-| capture-body-effect-response-file-dark | 3.07% | 5 | 5 | 0 | 0 | 0.0 px |
+| capture-body-effect-response-file-dark | 3.38% | 5 | 5 | 0 | 0 | 0.0 px |
 | capture-request-json | 3.37% | 4 | 3 | 1 | 2 | 1001.7 px |
-| capture-timing | 3.14% | 4 | 4 | 0 | 4 | 4.4 px |
+| capture-timing | 2.83% | 4 | 4 | 0 | 4 | 4.4 px |
 | capture-cookies | 3.04% | 3 | 3 | 0 | 0 | 0.7 px |
-| capture-grpc | 3.26% | 8 | 8 | 0 | 3 | 1.6 px |
+| capture-grpc | 3.55% | 8 | 8 | 0 | 3 | 1.6 px |
 | capture-tunnel | 3.31% | 8 | 8 | 0 | 5 | 170.0 px |
 | capture-tunnel-dark | 3.37% | 6 | 6 | 0 | 3 | 170.0 px |
 | capture-tunnel-mitm-active | 3.36% | 7 | 7 | 0 | 3 | 170.0 px |
@@ -84,14 +84,14 @@ Generated: 2026-08-24T06:37:49.555Z
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
 | import-export | 2.97% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.94% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-export-menu | 2.95% | 2 | 2 | 0 | 2 | 8.0 px |
 | capture-request-rule-menu | 3.16% | 4 | 4 | 0 | 0 | 0.8 px |
 | capture-breakpoint-create-menu | 2.83% | 8 | 8 | 0 | 1 | 1.0 px |
 | capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
 | capture-rule-filter | 1.47% | 3 | 0 | 3 | 0 | 0.0 px |
 | capture-rule-filter-disabled | 2.98% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-body-preview-limited | 3.85% | 2 | 2 | 0 | 2 | 9.2 px |
-| capture-body-media-save | 2.92% | 2 | 2 | 0 | 1 | 7.1 px |
+| capture-body-media-save | 3.25% | 2 | 2 | 0 | 1 | 7.1 px |
 | proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
 | rules-breakpoint-timeout-custom | 3.03% | 8 | 8 | 0 | 0 | 0.2 px |
@@ -99,16 +99,16 @@ Generated: 2026-08-24T06:37:49.555Z
 | rules-breakpoint-timeout-custom-dark | 3.33% | 8 | 8 | 0 | 0 | 0.2 px |
 | rules-breakpoint-timeout-invalid-dark | 3.24% | 10 | 10 | 0 | 0 | 0.3 px |
 | rules | n/a | 11 | 11 | 0 | 1 | 11.2 px |
-| rules-import-confirm-light | 1.33% | 9 | 9 | 0 | 0 | 0.5 px |
+| rules-import-confirm-light | 1.31% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
-| rules-import-confirm-dark | 0.45% | 9 | 9 | 0 | 0 | 0.5 px |
+| rules-import-confirm-dark | 0.46% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-add-action | 4.70% | 1 | 1 | 0 | 0 | 0.6 px |
 | rules-select-dropdown | 3.50% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 2.14% | 9 | 9 | 0 | 2 | 0.9 px |
-| composer-import-confirm-light | 1.08% | 8 | 8 | 0 | 0 | 0.5 px |
+| composer-import-confirm-light | 1.12% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-light | 0.50% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-export-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-import-confirm-dark | 0.26% | 8 | 8 | 0 | 0 | 0.5 px |
@@ -118,8 +118,12 @@ Generated: 2026-08-24T06:37:49.555Z
 | settings | 2.17% | 10 | 10 | 0 | 5 | 161.0 px |
 | settings-proxy | 1.81% | 13 | 13 | 0 | 12 | 1156.8 px |
 | settings-proxy-dark | 1.82% | 5 | 5 | 0 | 2 | 160.8 px |
-| settings-app-containers | 2.48% | 13 | 13 | 0 | 5 | 3.8 px |
-| settings-app-containers-dark | 2.50% | 13 | 13 | 0 | 5 | 3.8 px |
+| settings-app-containers | 2.52% | 15 | 15 | 0 | 5 | 3.8 px |
+| settings-app-containers-dark | 2.54% | 15 | 15 | 0 | 5 | 3.8 px |
+| settings-app-container-enable-all | 1.12% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-disable-all | 1.18% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-enable-all-dark | 0.48% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-disable-all-dark | 0.54% | 5 | 5 | 0 | 0 | 0.9 px |
 | tls-compatibility-dialog-add | 1.56% | 2 | 2 | 0 | 0 | 0.4 px |
 | settings-tls-passthrough | 1.53% | 9 | 7 | 2 | 2 | 131.2 px |
 | settings-tls-passthrough-dark | 1.52% | 9 | 7 | 2 | 2 | 131.2 px |
@@ -146,7 +150,7 @@ Generated: 2026-08-24T06:37:49.555Z
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
 | breakpoints-off | 2.66% | 1 | 1 | 0 | 1 | 0.0 px |
-| breakpoint-manager | 3.08% | 8 | 8 | 0 | 7 | 3.5 px |
+| breakpoint-manager | 3.03% | 8 | 8 | 0 | 7 | 3.5 px |
 | breakpoint-created-message | 2.83% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-dark | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.62% | 1 | 1 | 0 | 1 | 13.0 px |
@@ -816,30 +820,54 @@ Generated: 2026-08-24T06:37:49.555Z
 | settings-proxy-dark | Protected | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-app-containers | Choose which Windows app containers may connect to local proxy listeners. | 0.0 px | -0.3 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | settings-app-containers | Administrator approval is required for every change. | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
-| settings-app-containers | An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits. | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-app-containers | An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits. | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
 | settings-app-containers | AppContainer search | 0.0 px | 0.0 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
-| settings-app-containers | 0 enabled · 4 containers | 0.3 px | -0.2 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
-| settings-app-containers | Windows app containers | 0.0 px | 0.8 px | -0.4 px | -0.1 px | 0.8 px | none | ok |
-| settings-app-containers | SID is the stable identity | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-app-containers | 0 enabled · 4 containers | 0.7 px | -0.1 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-containers | Windows app containers | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
+| settings-app-containers | SID is the stable identity | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
 | settings-app-containers | Microsoft AAD Broker Plugin | 0.0 px | 0.0 px | -1.0 px | 0.4 px | 1.0 px | none | flagged |
-| settings-app-containers | Windows SSO · Recommended | -1.0 px | 0.7 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| settings-app-containers | Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy | 0.0 px | -0.4 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
-| settings-app-containers | S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272 | 0.0 px | 0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
+| settings-app-containers | Windows SSO · Recommended | -1.0 px | 0.8 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| settings-app-containers | Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy | 0.0 px | -0.3 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
+| settings-app-containers | S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272 | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
 | settings-app-containers | AppContainer switch | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | fontSize 13.3333px->13px; color rgb(0, 0, 0)->rgb(26, 27, 30) | flagged |
+| settings-app-containers | Disable all | 0.6 px | -0.1 px | -0.3 px | 0.0 px | 0.6 px | none | ok |
+| settings-app-containers | Enable all | 0.3 px | -0.1 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | settings-app-containers | Newly installed or first-run app containers appear after Refresh. Interceptor never enables every container automatically. | 0.0 px | 3.8 px | 0.0 px | 0.0 px | 3.8 px | none | flagged |
 | settings-app-containers-dark | Choose which Windows app containers may connect to local proxy listeners. | 0.0 px | -0.3 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | settings-app-containers-dark | Administrator approval is required for every change. | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
-| settings-app-containers-dark | An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits. | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-app-containers-dark | An enabled container can reach every loopback service on this PC, not only Interceptor at 127.0.0.1:8888. Access remains enabled after Interceptor exits. | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
 | settings-app-containers-dark | AppContainer search | 0.0 px | 0.0 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
-| settings-app-containers-dark | 0 enabled · 4 containers | 0.3 px | -0.2 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
-| settings-app-containers-dark | Windows app containers | 0.0 px | 0.8 px | -0.4 px | -0.1 px | 0.8 px | none | ok |
-| settings-app-containers-dark | SID is the stable identity | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-app-containers-dark | 0 enabled · 4 containers | 0.7 px | -0.1 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-containers-dark | Windows app containers | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
+| settings-app-containers-dark | SID is the stable identity | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
 | settings-app-containers-dark | Microsoft AAD Broker Plugin | 0.0 px | 0.0 px | -1.0 px | 0.4 px | 1.0 px | none | flagged |
-| settings-app-containers-dark | Windows SSO · Recommended | -1.0 px | 0.7 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| settings-app-containers-dark | Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy | 0.0 px | -0.4 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
-| settings-app-containers-dark | S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272 | 0.0 px | 0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
+| settings-app-containers-dark | Windows SSO · Recommended | -1.0 px | 0.8 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| settings-app-containers-dark | Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy | 0.0 px | -0.3 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
+| settings-app-containers-dark | S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272 | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
 | settings-app-containers-dark | AppContainer switch | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | fontSize 13.3333px->13px; color rgb(0, 0, 0)->rgb(243, 244, 248) | flagged |
+| settings-app-containers-dark | Disable all | 0.6 px | -0.1 px | -0.3 px | 0.0 px | 0.6 px | none | ok |
+| settings-app-containers-dark | Enable all | 0.3 px | -0.1 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | settings-app-containers-dark | Newly installed or first-run app containers appear after Refresh. Interceptor never enables every container automatically. | 0.0 px | 3.8 px | 0.0 px | 0.0 px | 3.8 px | none | flagged |
+| settings-app-container-enable-all | Enable all app containers? | 0.0 px | 0.7 px | 0.0 px | 0.8 px | 0.8 px | none | ok |
+| settings-app-container-enable-all | 4 app containers | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-app-container-enable-all | This grants access to every loopback port on this PC and persists after Interceptor exits. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-app-container-enable-all | Cancel | -0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-container-enable-all | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
+| settings-app-container-disable-all | Disable all app containers? | 0.0 px | 0.7 px | 0.0 px | 0.8 px | 0.8 px | none | ok |
+| settings-app-container-disable-all | 4 app containers | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-app-container-disable-all | Apps that depend on local loopback access may stop working until they are enabled again. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-app-container-disable-all | Cancel | -0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-container-disable-all | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
+| settings-app-container-enable-all-dark | Enable all app containers? | 0.0 px | 0.7 px | 0.0 px | 0.8 px | 0.8 px | none | ok |
+| settings-app-container-enable-all-dark | 4 app containers | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-app-container-enable-all-dark | This grants access to every loopback port on this PC and persists after Interceptor exits. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-app-container-enable-all-dark | Cancel | -0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-container-enable-all-dark | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
+| settings-app-container-disable-all-dark | Disable all app containers? | 0.0 px | 0.7 px | 0.0 px | 0.8 px | 0.8 px | none | ok |
+| settings-app-container-disable-all-dark | 4 app containers | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-app-container-disable-all-dark | Apps that depend on local loopback access may stop working until they are enabled again. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-app-container-disable-all-dark | Cancel | -0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-app-container-disable-all-dark | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
 | tls-compatibility-dialog-add | Passthrough host patterns | 0.0 px | 0.0 px | -0.4 px | -0.1 px | 0.4 px | none | ok |
 | tls-compatibility-dialog-add | TLS host rows | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
 | settings-tls-passthrough | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |

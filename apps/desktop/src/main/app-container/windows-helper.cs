@@ -149,7 +149,15 @@ internal static class Program
                 return 0;
             }
 
-            Console.Error.WriteLine("Usage: app-container-helper list | set <app-container-sid> <enabled|disabled> | enable-all");
+            if (args.Length == 1 && args[0] == "disable-all")
+            {
+                List<AppContainerInfo> appContainers = ReadAppContainers();
+                DisableAllExemptions(appContainers);
+                Console.WriteLine(ToJson(appContainers, ReadExemptSids()));
+                return 0;
+            }
+
+            Console.Error.WriteLine("Usage: app-container-helper list | set <app-container-sid> <enabled|disabled> | enable-all | disable-all");
             return 2;
         }
         catch (Exception error)
@@ -320,6 +328,28 @@ internal static class Program
         foreach (AppContainerInfo appContainer in appContainers)
         {
             intendedSet.Add(appContainer.AppContainerSid);
+        }
+        List<string> intended = new List<string>(intendedSet);
+        intended.Sort(StringComparer.OrdinalIgnoreCase);
+
+        if (!StringSetsEqual(current, intended))
+        {
+            WriteExemptSids(intended);
+        }
+        List<string> verified = ReadExemptSids();
+        if (!StringSetsEqual(intended, verified))
+        {
+            throw new InvalidOperationException("AppContainer exemptions did not match after write.");
+        }
+    }
+
+    private static void DisableAllExemptions(List<AppContainerInfo> appContainers)
+    {
+        List<string> current = ReadExemptSids();
+        HashSet<string> intendedSet = new HashSet<string>(current, StringComparer.OrdinalIgnoreCase);
+        foreach (AppContainerInfo appContainer in appContainers)
+        {
+            intendedSet.Remove(appContainer.AppContainerSid);
         }
         List<string> intended = new List<string>(intendedSet);
         intended.Sort(StringComparer.OrdinalIgnoreCase);

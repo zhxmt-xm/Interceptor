@@ -44,6 +44,8 @@ const api: InterceptorDesktopApi = {
     ),
   enableAllAppContainers: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerEnableAll),
+  disableAllAppContainers: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerDisableAll),
   getGitHubAuthStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthGetStatus),
   signInWithGitHub: () =>

@@ -430,6 +430,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'clearCapture',
         'closeApplication',
         'deleteCertificate',
+        'disableAllAppContainers',
         'disableWebSocketBreakpoints',
         'downloadUpdate',
         'echoCore',

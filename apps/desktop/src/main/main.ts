@@ -646,6 +646,15 @@ class DesktopApplication {
       });
     });
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerDisableAll, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.app-container.disable-all', async () => {
+        const snapshot = await this.requireAppContainerService()
+          .disableAllLoopbackExemptions();
+        return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+      });
+    });
+
     ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.requireGitHubAuthService().status();

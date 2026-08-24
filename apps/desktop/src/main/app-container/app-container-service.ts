@@ -134,6 +134,21 @@ export class AppContainerService {
     );
   }
 
+  /** Disable every current AppContainer through one elevated verified helper mutation. */
+  async disableAllLoopbackExemptions(): Promise<AppContainerSnapshot> {
+    if (!this.supported()) {
+      throw new AppContainerError(
+        `AppContainer access is not supported on ${this.platform}.`,
+      );
+    }
+    if (this.helperPath.includes('"')) {
+      throw new AppContainerError('AppContainer helper path is invalid.');
+    }
+    return AppContainerService.parseResult(
+      await this.elevatedRunner.run(`"${this.helperPath}" disable-all`),
+    );
+  }
+
   /** Validate and parse one helper command result. */
   private static parseResult(result: CommandResult): AppContainerSnapshot {
     AppContainerService.assertSuccess(result);

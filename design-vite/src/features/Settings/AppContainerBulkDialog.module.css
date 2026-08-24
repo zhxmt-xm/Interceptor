@@ -44,6 +44,11 @@
   color: var(--yellow);
 }
 
+.dialog[data-action='disable'] .icon {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
 .icon svg {
   width: 16px;
   height: 16px;
@@ -103,11 +108,20 @@
   line-height: 1.45;
 }
 
+.dialog[data-action='disable'] .warning {
+  border-color: color-mix(in srgb, var(--red) 25%, var(--border));
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+}
+
 .warning svg {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
   color: var(--yellow);
+}
+
+.dialog[data-action='disable'] .warning svg {
+  color: var(--red);
 }
 
 .footer {

@@ -464,6 +464,7 @@ export const DESKTOP_IPC_CHANNELS = {
   appContainerList: 'app-container:list',
   appContainerSetExemption: 'app-container:set-exemption',
   appContainerEnableAll: 'app-container:enable-all',
+  appContainerDisableAll: 'app-container:disable-all',
   githubAuthGetStatus: 'github-auth:get-status',
   githubAuthSignIn: 'github-auth:sign-in',
   githubAuthOpenAuthorization: 'github-auth:open-authorization',
@@ -546,6 +547,7 @@ export interface InterceptorDesktopApi {
     enabled: boolean,
   ): Promise<AppContainerAccessSnapshot>;
   enableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
+  disableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
   getGitHubAuthStatus(): Promise<GitHubAuthStatus>;
   signInWithGitHub(): Promise<GitHubAuthStatus>;
   openGitHubAuthorization(): Promise<void>;

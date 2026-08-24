@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ShieldX } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
@@ -49,6 +49,15 @@ export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps):
       return (
         <div className={fixtureClassNames('settings-toolbar')} data-fixture-node="">
           {children}
+          <button
+            className={fixtureClassNames('btn sm danger')}
+            type="button"
+            disabled
+            onClick={() => updateState({ overlay: 'app-container-disable-all' })}
+          >
+            <ShieldX aria-hidden="true" />
+            Disable all
+          </button>
           <button
             className={fixtureClassNames('btn sm')}
             type="button"

@@ -153,6 +153,25 @@ describe('AppContainerService', () => {
     expect(result.containers.every((container) => container.exempt)).toBe(true);
   });
 
+  it('disables every current AppContainer through one elevated helper command', async () => {
+    const fakeCommandRunner = new FakeCommandRunner();
+    const fakeElevatedRunner = new FakeElevatedRunner();
+    fakeElevatedRunner.result = ok(snapshot({ exemptSids: [UNKNOWN_EXEMPT_SID] }));
+    const appContainerService = createService(
+      fakeCommandRunner,
+      'win32',
+      fakeElevatedRunner,
+    );
+
+    const result = await appContainerService.disableAllLoopbackExemptions();
+
+    expect(fakeElevatedRunner.commands).toEqual([
+      '"C:/helpers/app-container-helper.exe" disable-all',
+    ]);
+    expect(result.exemptSids).toEqual([UNKNOWN_EXEMPT_SID]);
+    expect(result.containers.every((container) => !container.exempt)).toBe(true);
+  });
+
   it('rejects unsupported and non-AppContainer targets before elevation', async () => {
     const fakeCommandRunner = new FakeCommandRunner();
     const fakeElevatedRunner = new FakeElevatedRunner();

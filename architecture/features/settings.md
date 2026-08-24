@@ -309,10 +309,16 @@ AppContainer 搜索/刷新/单项开关与 UAC 确认、TLS host pattern 管理�
 影响。增加后删除、删除后加回、顺序或大小写变化同样不需要任何额外动作。真实 Windows App 登录与 RDP 行为仍需
 人工验收。
 
-AppContainer 面板同时提供单项开关与 `Enable all`。`Enable all` 先显示包含未启用数量和系统范围的
-确认 dialog，用户确认后只发送一条 `enableAllAppContainers()` Preload 意图；Main 只启动一次提权 helper。
-helper 枚举当前全部 AppContainer SID，将它们与已有 exemption（包括当前枚举之外的 SID）并集后一次写回并
-读回校验。Renderer 不循环调用单项命令，避免多次 UAC 和中途只成功一部分的状态。
+AppContainer 面板同时提供单项开关、`Enable all` 与对称的 `Disable all`。两个批量命令各自先显示
+目标数量、系统范围和后果明确的确认 dialog，再分别发送一条 `enableAllAppContainers()` 或
+`disableAllAppContainers()` Preload 意图；Main 每次只启动一次提权 helper。Enable all 将当前枚举的全部
+AppContainer SID 与已有 exemption 并集，Disable all 只从已有 exemption 中移除当前枚举 SID；两者都保留
+当前枚举之外的既有 exemption，并在一次写回后读回校验。Renderer 不循环调用单项命令，避免多次 UAC 和
+中途只成功一部分的状态，也不允许批量启用成为不可逆操作。
+
+真实验收先保存初始完整集合，再执行 Enable→check→Disable→check，最后只通过正式单项 UI恢复初始
+enabled SID，并要求最终集合 hash 精确相同。当前证据为 `1→138→0→1`，恢复前后 hash 相同。工具栏两个
+批量按钮是不可压缩单行命令；真实 E2E 同时验证 `white-space: nowrap`、28px 盒高与内容无溢出。
 
 AppContainer 列表保持 Main 按名称提供的原始相对顺序，只在 Renderer 做一层稳定分组：所有
 `exempt=true` 项置于 `exempt=false` 项之前，同组内不重排。搜索在该稳定分组之后执行，因此过滤结果必须是

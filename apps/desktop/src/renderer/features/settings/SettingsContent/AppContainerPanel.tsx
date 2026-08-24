@@ -5,6 +5,7 @@ import {
   Search,
   Shield,
   ShieldCheck,
+  ShieldX,
   TriangleAlert,
   X,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ import {
 } from '../../../../shared/automation-ids';
 import {
   Button,
+  cx,
   IconButton,
   InputBox,
   StatusBadge,
@@ -31,6 +33,7 @@ import { describeError, listVisibleAppContainers } from '../utils';
 import styles from './AppContainerPanel.module.css';
 
 type PanelState = 'loading' | 'ready' | 'error';
+type BulkAction = 'enable' | 'disable';
 
 interface PendingChange {
   readonly appContainer: AppContainerAccessInfo;
@@ -45,7 +48,7 @@ export function AppContainerPanel(): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
-  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -112,7 +115,22 @@ export function AppContainerPanel(): React.JSX.Element {
     void window.interceptor.enableAllAppContainers()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
-        setBulkConfirmOpen(false);
+        setBulkAction(null);
+      })
+      .catch((reason: unknown) => setError(describeError(reason)))
+      .finally(() => setChanging(false));
+  };
+
+  const disableAll = (): void => {
+    if (changing) {
+      return;
+    }
+    setChanging(true);
+    setError(null);
+    void window.interceptor.disableAllAppContainers()
+      .then((nextSnapshot) => {
+        setSnapshot(nextSnapshot);
+        setBulkAction(null);
       })
       .catch((reason: unknown) => setError(describeError(reason)))
       .finally(() => setChanging(false));
@@ -180,15 +198,6 @@ export function AppContainerPanel(): React.JSX.Element {
                 total: containers.length,
               })}
             </span>
-            <Button
-              icon={ShieldCheck}
-              size="sm"
-              disabled={disabledCount === 0 || refreshing || changing}
-              onClick={() => setBulkConfirmOpen(true)}
-              automationId={AUTOMATION_IDS.settings.appContainers.enableAll}
-            >
-              {t('settings.appContainers.enableAll')}
-            </Button>
             <IconButton
               icon={RefreshCw}
               label={t('settings.appContainers.refresh')}
@@ -197,6 +206,25 @@ export function AppContainerPanel(): React.JSX.Element {
               disabled={changing}
               onClick={refresh}
             />
+            <Button
+              icon={ShieldX}
+              size="sm"
+              variant="danger"
+              disabled={enabledCount === 0 || refreshing || changing}
+              onClick={() => setBulkAction('disable')}
+              automationId={AUTOMATION_IDS.settings.appContainers.disableAll}
+            >
+              {t('settings.appContainers.disableAll')}
+            </Button>
+            <Button
+              icon={ShieldCheck}
+              size="sm"
+              disabled={disabledCount === 0 || refreshing || changing}
+              onClick={() => setBulkAction('enable')}
+              automationId={AUTOMATION_IDS.settings.appContainers.enableAll}
+            >
+              {t('settings.appContainers.enableAll')}
+            </Button>
           </div>
 
           <div className={styles.list}>
@@ -244,6 +272,9 @@ export function AppContainerPanel(): React.JSX.Element {
                       checked={appContainer.exempt}
                       disabled={refreshing || changing}
                       onChange={(enabled) => setPendingChange({ appContainer, enabled })}
+                      automationId={AutomationIdFactory.appContainerToggle(
+                        appContainer.appContainerSid,
+                      )}
                     />
                   </div>
                 </div>
@@ -272,7 +303,7 @@ export function AppContainerPanel(): React.JSX.Element {
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
 
       <Modal
-        open={bulkConfirmOpen}
+        open={bulkAction !== null}
         centered
         width={540}
         closable={false}
@@ -283,7 +314,7 @@ export function AppContainerPanel(): React.JSX.Element {
         destroyOnHidden
         onCancel={() => {
           if (!changing) {
-            setBulkConfirmOpen(false);
+            setBulkAction(null);
           }
         }}
         classNames={{ container: styles.dialog, body: styles.dialogBody }}
@@ -291,42 +322,81 @@ export function AppContainerPanel(): React.JSX.Element {
           container: { padding: 0, border: '1px solid var(--border-2)' },
           body: { padding: 0, lineHeight: 1.23 },
         }}
-        aria-labelledby="app-container-enable-all-title"
+        aria-labelledby="app-container-bulk-title"
       >
-        <header className={styles.dialogHeader}>
-          <span className={styles.dialogIcon}><ShieldCheck aria-hidden="true" /></span>
-          <h2 id="app-container-enable-all-title">
-            {t('settings.appContainers.enableAllTitle')}
+        <header className={cx(styles.dialogHeader, styles.bulkDialogHeader)}>
+          <span className={cx(
+            styles.dialogIcon,
+            bulkAction === 'disable' && styles.dialogIconDanger,
+          )}>
+            {bulkAction === 'disable'
+              ? <ShieldX aria-hidden="true" />
+              : <ShieldCheck aria-hidden="true" />}
+          </span>
+          <h2
+            id="app-container-bulk-title"
+            data-automation-id={AUTOMATION_IDS.settings.appContainers.bulkDialog}
+            data-action={bulkAction ?? undefined}
+            data-count={bulkAction === 'disable' ? enabledCount : disabledCount}
+          >
+            {t(bulkAction === 'disable'
+              ? 'settings.appContainers.disableAllTitle'
+              : 'settings.appContainers.enableAllTitle')}
           </h2>
           <IconButton
             icon={X}
             label={t('settings.cancel')}
             size="sm"
             disabled={changing}
-            onClick={() => setBulkConfirmOpen(false)}
+            onClick={() => setBulkAction(null)}
+            automationId={AUTOMATION_IDS.settings.appContainers.bulkClose}
           />
         </header>
         <div className={styles.dialogContent}>
-          <p>{t('settings.appContainers.enableAllDescription', { count: disabledCount })}</p>
+          <p>{t(
+            bulkAction === 'disable'
+              ? 'settings.appContainers.disableAllDescription'
+              : 'settings.appContainers.enableAllDescription',
+            { count: bulkAction === 'disable' ? enabledCount : disabledCount },
+          )}</p>
           <div className={styles.bulkSummary}>
-            <span>{t('settings.appContainers.enableAll')}</span>
-            <strong>{t('settings.appContainers.enableAllSummary', { count: disabledCount })}</strong>
+            <span>{t(bulkAction === 'disable'
+              ? 'settings.appContainers.disableAll'
+              : 'settings.appContainers.enableAll')}</span>
+            <strong>{t(
+              bulkAction === 'disable'
+                ? 'settings.appContainers.disableAllSummary'
+                : 'settings.appContainers.enableAllSummary',
+              { count: bulkAction === 'disable' ? enabledCount : disabledCount },
+            )}</strong>
           </div>
-          <div className={styles.dialogWarning}>
+          <div className={cx(
+            styles.dialogWarning,
+            styles.bulkWarning,
+            bulkAction === 'disable' && styles.dialogWarningDanger,
+          )}>
             <TriangleAlert aria-hidden="true" />
-            <span>{t('settings.appContainers.enableAllWarning')}</span>
+            <span>{t(bulkAction === 'disable'
+              ? 'settings.appContainers.disableAllWarning'
+              : 'settings.appContainers.enableAllWarning')}</span>
           </div>
         </div>
         <footer className={styles.dialogFooter}>
-          <Button disabled={changing} onClick={() => setBulkConfirmOpen(false)}>
+          <Button
+            disabled={changing}
+            onClick={() => setBulkAction(null)}
+            automationId={AUTOMATION_IDS.settings.appContainers.bulkCancel}
+          >
             {t('settings.cancel')}
           </Button>
           <Button
-            icon={ShieldCheck}
-            variant="primary"
+            icon={bulkAction === 'disable' ? ShieldX : ShieldCheck}
+            variant={bulkAction === 'disable' ? 'danger' : 'primary'}
             loading={changing}
-            onClick={enableAll}
-            automationId={AUTOMATION_IDS.settings.appContainers.enableAllConfirm}
+            onClick={bulkAction === 'disable' ? disableAll : enableAll}
+            automationId={bulkAction === 'disable'
+              ? AUTOMATION_IDS.settings.appContainers.disableAllConfirm
+              : AUTOMATION_IDS.settings.appContainers.enableAllConfirm}
           >
             {t('settings.appContainers.continueApproval')}
           </Button>
@@ -395,7 +465,11 @@ export function AppContainerPanel(): React.JSX.Element {
           </div>
         </div>
         <footer className={styles.dialogFooter}>
-          <Button disabled={changing} onClick={() => setPendingChange(null)}>
+          <Button
+            disabled={changing}
+            onClick={() => setPendingChange(null)}
+            automationId={AUTOMATION_IDS.settings.appContainers.changeCancel}
+          >
             {t('settings.cancel')}
           </Button>
           <Button
@@ -403,6 +477,7 @@ export function AppContainerPanel(): React.JSX.Element {
             variant="primary"
             loading={changing}
             onClick={applyPendingChange}
+            automationId={AUTOMATION_IDS.settings.appContainers.changeConfirm}
           >
             {pendingChange?.enabled
               ? t('settings.appContainers.continueApproval')

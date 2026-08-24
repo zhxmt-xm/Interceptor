@@ -247,7 +247,7 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `settings.navigation` | 八个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |
-| `settings.app-containers.enable-all` | 一次UAC启用全部AppContainer并保留既有exemption | os-side-effect | planned |
+| `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |

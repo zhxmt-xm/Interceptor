@@ -833,6 +833,7 @@ export function installFakeInterceptor({
 }) {
   let captureEventsListener = null;
   window.__appContainerEnableAllCalls = 0;
+  window.__appContainerDisableAllCalls = 0;
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
   if (tlsTunnelHost) {
@@ -1314,6 +1315,17 @@ export function installFakeInterceptor({
         containers: appContainerSnapshot.containers.map((appContainer) => ({
           ...appContainer,
           exempt: true,
+        })),
+      };
+      return appContainerSnapshot;
+    },
+    disableAllAppContainers: async () => {
+      window.__appContainerDisableAllCalls += 1;
+      appContainerSnapshot = {
+        ...appContainerSnapshot,
+        containers: appContainerSnapshot.containers.map((appContainer) => ({
+          ...appContainer,
+          exempt: false,
         })),
       };
       return appContainerSnapshot;

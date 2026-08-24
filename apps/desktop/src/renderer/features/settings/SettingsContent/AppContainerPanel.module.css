@@ -60,7 +60,7 @@
 }
 
 .search {
-  width: min(390px, 55%);
+  width: min(330px, 45%);
   height: 32px;
   padding: 0 10px;
   background: var(--panel);
@@ -300,11 +300,21 @@
   height: 16px;
 }
 
+.dialogIconDanger {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
 .dialogHeader h2 {
   flex: 1;
   margin: 0;
   font-size: 14.5px;
   font-weight: 640;
+}
+
+.bulkDialogHeader h2 {
+  position: relative;
+  top: -2px;
 }
 
 .dialogContent {
@@ -401,7 +411,36 @@
 }
 
 .bulkSummary strong {
+  position: relative;
+  top: -3px;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 10.5px;
+}
+
+.dialogWarningDanger {
+  color: var(--text-2);
+  border: 1px solid color-mix(in srgb, var(--red) 25%, var(--border));
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+}
+
+.bulkWarning {
+  position: relative;
+  top: 2px;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--yellow) 8%, transparent);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.bulkWarning svg {
+  color: var(--yellow);
+}
+
+.bulkWarning.dialogWarningDanger svg {
+  color: var(--red);
 }

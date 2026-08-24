@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `4c2b9f9`
+> Tracked commit: `2d99fd4`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-24
 
@@ -70,7 +70,7 @@
 - [ ] **待实现 · macOS 上游检测**：多 network service 可能各有代理，合并语义尚未确定。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [x] **已完成 · statusbar upstream down**：light / dark 已收录到 visual parity，均为 `1/1 matched / 0 missing / 0 flagged`，最大几何差 0.5px。fake Preload 补齐 `upstreamProxy` / `upstreamReachable` 契约；harness 每个 view 前显式重置 `breakpointState`，普通 Capture 场景不再误继承断点状态栏。
-- [ ] **待验收 · AppContainer Enable all**：Main / Preload / Renderer、原生 helper、确认流程、15 种语言、fake / smoke 与 design-vite 状态已连通；提交后需复核一次提权、SID 并集、写后校验与 packaged smoke 证据。
+- [x] **已完成 · AppContainer Enable/Disable all**：Enable 与 Disable 分别经独立 Renderer→Preload→Main→native 命令，对当前枚举 SID 做并集/差集并读回，两者都保留枚举外 exemption。真实 Electron 先记录完整 OS 集合，再由产品 UI执行 Enable all、检查、Disable all、检查，并通过正式单项 UI恢复初始 enabled SID；最终集合 count/hash 为 `1/1a47…f773 → 138/72bb…d992 → 0/e3b0…b855 → 1/1a47…f773`，`finalRestoredExactly=true`。本机 `EnableLUA=1 / ConsentPromptBehaviorAdmin=0 / PromptOnSecureDesktop=0`，产品真实执行`runas`，Windows按策略自动批准而未显示可见UAC。Green Main/Core PID为`49296/43856`，`gracefulDestroyVerified=true`且8888释放。按钮均为`89.333×28px`、nowrap且无内容溢出；四个明暗Dialog parity均0 missing/0 flagged，完整parity为141 views / 1019 targets / 985 matched / 34 missing / 304 flagged。聚焦`22/22`、Desktop串行`321/321`、全workspace typecheck、design interaction`13/13`、Windows package、artifact audit（1,294 files / 391,760,334 bytes）、production audit 0漏洞与packaged smoke`1/1`通过。
 - [x] **已完成 · Rules hierarchy / menus / status / effect导航**：真实Electron先Red于status=invalid且2个issue时Apply仍enabled；`isRuleSetComplete`同时守住UI与`applyRules`后同一workflow `1/1` Green。覆盖三级目录、第三层菜单禁用、rule右键rename、folder selection保留editor、invalid→dirty→applied、revision=1、Renderer reload从Core恢复、真实origin header effect、hit count=1、Rules→Capture Rule facet导航与完整销毁；Rules Store `19/19`、Desktop `267/267`、Rules parity `11/11 / 0 missing / 0 flagged / 最大0.7px`通过。
 - [x] **已完成 · Composer Collection交互与快速remount持久化**：真实Electron先Red于rename后立即切出/返回时Core旧快照把request清空（`count=0 / name=null / url=null`）；`useCollection`提升到常驻App后同一workflow `1/1` Green，覆盖三级目录、第三层菜单禁用、request右键rename、目录落点/空白取消与打开文档正交、splitter `320→399.5px`、Core回载及完整销毁。
 - [ ] **待验收 · BodyViewer 全屏**：格式化已独立闭环；全屏入口、设计状态与基础代码已接入，仍需真实Electron验证打开/关闭、Copy与内容状态生命周期。

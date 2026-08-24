@@ -195,8 +195,8 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .omni .ph { color: var(--text-3); font-size: 12.5px; }
 .omni .sp { margin-left: auto; }
 /* primary button */
-.btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 1px solid var(--border-2); border-radius: 9px; background: var(--panel); color: var(--text); font-family: var(--font-ui); font-size: 12.5px; font-weight: 550; cursor: pointer; transition: background-color .14s ease, border-color .14s ease, color .14s ease; }
-.btn.sm { height: 28px; padding: 0 10px; font-size: 11.5px; }
+.btn { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 1px solid var(--border-2); border-radius: 9px; background: var(--panel); color: var(--text); font-family: var(--font-ui); font-size: 12.5px; font-weight: 550; white-space: nowrap; cursor: pointer; transition: background-color .14s ease, border-color .14s ease, color .14s ease; }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 11.5px; white-space: nowrap; }
 .btn:not(:disabled):hover { background: color-mix(in srgb, var(--panel) 94%, var(--text)); }
 .btn svg { width: 15px; height: 15px; }
 .btn.pri { background: var(--accent); border-color: transparent; color: #fff; }
@@ -1098,7 +1098,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .settings-warning b { font-size: 12px; font-weight: 600; color: var(--text); }
 .settings-warning span { font-size: 11.5px; line-height: 1.45; color: var(--text-2); }
 .settings-toolbar { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
-.settings-search { display: flex; align-items: center; gap: 8px; width: min(390px, 55%); height: 32px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); color: var(--text-3); }
+.settings-search { display: flex; align-items: center; gap: 8px; width: min(330px, 45%); height: 32px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); color: var(--text-3); }
 .settings-search:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
 .settings-search svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .settings-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: 12px var(--font-ui); }

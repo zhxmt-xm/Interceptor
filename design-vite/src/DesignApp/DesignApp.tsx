@@ -10,7 +10,7 @@ import { Rules } from '../features/Rules/Rules';
 import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { Settings } from '../features/Settings/Settings';
-import { AppContainerEnableAllDialog } from '../features/Settings/AppContainerEnableAllDialog';
+import { AppContainerBulkDialog } from '../features/Settings/AppContainerBulkDialog';
 import { FixtureRenderer, fixtureClassNames } from '../fixtures/FixtureRenderer';
 import { useDesignFixtureAdapter } from '../fixtures/useDesignFixtureAdapter';
 import { appAttributes } from '../fixtures/generated/appAttributes';
@@ -59,7 +59,7 @@ function DesignAppContent(): React.JSX.Element {
           </div>
           <FixtureRenderer node={statusbarFixture} />
           {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
-          <AppContainerEnableAllDialog />
+          <AppContainerBulkDialog />
           <RulesImportDialog />
           <ComposerImportDialog />
           <FileTransferBusyOverlay />

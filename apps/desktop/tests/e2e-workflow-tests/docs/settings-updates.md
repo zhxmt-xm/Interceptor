@@ -62,26 +62,39 @@
 - AppContainer light/dark parity 各 `13/13 matched / 0 missing / 5` 个既有 flagged，最大 `3.8px`；完整 parity 保持 `137 views / 995 targets / 961 matched / 34 missing / 304 flagged`。
 - Windows x64 package 与 artifact audit 通过（`1,294 files / 391,746,994 bytes`），production audit 为 0 漏洞，packaged smoke 最终 `1/1` Green。首次 smoke 的产品断言已通过但清理临时 profile 时遇到一次 Windows `EPERM`；当时无残留进程或 8888 listener，目录随后可删除，原样复跑通过。
 
-<a id="settings-app-containers-enable-all"></a>
-## `settings.app-containers-enable-all`
+<a id="settings-app-containers-bulk-access"></a>
+## `settings.app-containers.bulk-access`
 
-**状态**：planned
+**状态**：passed
 **策略**：os-side-effect；headed；Windows
 
 ### Steps
 
 1. 创建独立 profile/evidence，启动 Electron，等待 App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认 System Proxy 未修改。
-2. 进入 Settings → App Containers，等待真实枚举，确认 enabled 项置顶并记录 enabled/total。
-3. 点击 `settings.app-containers.enable-all`，确认 dialog 显示将新增 exemption 的准确数量、系统范围与一次 UAC 说明。
-4. 点击 Cancel，确认未调用 helper，列表和计数不变。
-5. 再次打开并确认，App 只发起一次原生 UAC；用户完成授权。
-6. 等待 helper 一次 read-modify-write 与读回校验完成，确认全部当前 AppContainer 为 enabled、计数为 total/total、按钮 disabled。
-7. 确认 helper 保留枚举外已有 exemption SID，且失败时 UI 保留原 snapshot 并显示错误。
-8. 保存 trace/evidence，关闭 App；验证 Main/Core/8888 完整销毁并删除 profile。
+2. 进入 Settings → App Containers，等待真实枚举；只读记录测试前完整 exemption SID 集合、当前枚举 SID、当前 enabled SID 与枚举外 exemption，后续不把测试自产状态注入产品。
+3. 点击 `settings.app-containers.enable-all`，确认 dialog 的 action/count 与 disabled 数一致；点击公共 Cancel，确认未发命令、列表和 OS 集合逐项不变。
+4. 再次打开并点击 `settings.app-containers.enable-all-confirm`；App 只发起一次真实 `runas` 提升。若宿主策略显示 UAC，必须用真实键鼠批准；不得改写 Dialog 返回值。本机策略自动批准时记录 UAC policy。等待一次 read-modify-write 与读回校验，确认当前枚举项全部 enabled，OS 集合精确等于“初始集合 ∪ 当前枚举 SID”，枚举外 exemption 保留。
+5. 点击 `settings.app-containers.disable-all`，确认 dialog 的 action/count 等于当前 enabled 数；点击 `settings.app-containers.disable-all-confirm` 并完成一次真实 `runas` 提升。确认当前枚举项全部 disabled，OS 集合精确等于“初始枚举外 exemption”，未移除枚举外 SID。
+6. 通过产品正式单项 switch 逐一重新启用步骤2记录的测试前 enabled SID，每项确认并完成真实 UAC；确认最终 UI 与 OS exemption 集合逐项恢复测试前状态。
+7. 确认 Enable all 仅在存在 disabled 项时可用，Disable all 仅在存在 enabled 项时可用；失败时保留最后一次成功 snapshot 并显示错误。
+8. 附加 `app-container-bulk-access.json`，记录所有 SID 集合的 hash/count、每阶段 UI 状态与恢复结论，不记录本机路径。
+9. 保存 trace、screenshot、Main/Renderer 日志和 metadata；通过 `shell.window.close` 正常关闭 App。
+10. 验证 Main、Renderer、Core、Worker 全退，8888 释放、`gracefulDestroyVerified=true`，系统 exemption 与测试前逐项相同；删除 profile。
 
 ### 预期效果
 
-一次用户交互对应一条 Main 命令和一次 UAC；所有当前 AppContainer 原子加入 exemption，不发生 Renderer 循环、重复提权或部分成功。
+Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者原子添加当前 SID，后者原子移除当前 SID，均保留枚举外 exemption。完整真实 flow 最终精确恢复测试前系统状态，不发生 Renderer 循环、隐式全量覆盖或不可逆批量启用。
+
+### 证据
+
+- 实现前 Red：Main service 新用例精确失败于 `disableAllLoopbackExemptions()` 缺失；真实 Electron 在加载实际 AppContainer 列表后、任何系统写入前精确失败于 `settings.app-containers.disable-all` 入口缺失，不是 selector、UAC、构建或 fixture 失败。
+- 当前 Green：同一真实 workflow `1/1` 通过。OS exemption 集合按 count/hash 记录为初始 `1 / 1a47…f773` → Enable all 后 `138 / 72bb…d992` → Disable all 后 `0 / e3b0…b855` → 通过正式单项 UI恢复为 `1 / 1a47…f773`；Cancel 前后初始集合不变，`finalRestoredExactly=true`。测试结束后独立 helper 读回仍为初始 hash。
+- Dialog 数量分别为 Enable `137`、Disable `138`；两个工具栏按钮均为 `89.333×28px`、`white-space: nowrap`、`scrollWidth 88 ≤ width`、`scrollHeight 27 ≤ height`，无换行或溢出。
+- Green metadata：Main PID `49296`、Core PID `43856`、listener `8888`、`gracefulDestroyVerified=true`、Renderer page error 为 0；结束后无 Interceptor/Electron 进程、无 8888 listener。
+- 本机真实提升策略为 `EnableLUA=1 / ConsentPromptBehaviorAdmin=0 / PromptOnSecureDesktop=0`：产品确实执行 `runas` elevated helper，但 Windows 按策略自动批准，因此本轮没有可见 UAC 弹窗，测试未注入或改写任何原生 Dialog 结果。
+- Main service/i18n 聚焦 `22/22`、Desktop 串行全量 `321/321`、全 workspace typecheck、design build 与 interaction `13/13` 通过。
+- Enable/Disable Dialog 明暗四个 parity view 均 `5/5 matched / 0 missing / 0 flagged`，最大 `0.9px`；AppContainer 主页面明暗各 `15/15 matched / 0 missing`，两个批量按钮均在 0.6px 内。完整 parity 为 `141 views / 1019 targets / 985 matched / 34 missing / 304 flagged`，既有 missing/flagged 未增加。
+- Windows x64 package、artifact audit（`1,294 files / 391,760,334 bytes`）、production audit 0 漏洞和 packaged smoke `1/1` 通过。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`

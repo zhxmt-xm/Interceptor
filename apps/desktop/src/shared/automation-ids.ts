@@ -376,6 +376,13 @@ export const AUTOMATION_IDS = {
       search: 'settings.app-containers.search',
       enableAll: 'settings.app-containers.enable-all',
       enableAllConfirm: 'settings.app-containers.enable-all-confirm',
+      disableAll: 'settings.app-containers.disable-all',
+      disableAllConfirm: 'settings.app-containers.disable-all-confirm',
+      bulkDialog: 'settings.app-containers.bulk-dialog',
+      bulkCancel: 'settings.app-containers.bulk-cancel',
+      bulkClose: 'settings.app-containers.bulk-close',
+      changeConfirm: 'settings.app-containers.change-confirm',
+      changeCancel: 'settings.app-containers.change-cancel',
     },
     proxy: {
       enable: 'settings.proxy.enable',
@@ -495,6 +502,11 @@ export class AutomationIdFactory {
   /** Identify one enumerated Windows AppContainer row by its stable SID. */
   static appContainerRow(appContainerSid: string): string {
     return `settings.app-containers.row.${encodeURIComponent(appContainerSid)}`;
+  }
+
+  /** Identify the exemption switch owned by one Windows AppContainer SID. */
+  static appContainerToggle(appContainerSid: string): string {
+    return `settings.app-containers.toggle.${encodeURIComponent(appContainerSid)}`;
   }
 
   /** Identify the remove action owned by one TLS passthrough host pattern. */

@@ -120,12 +120,12 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
-  <td>AppContainer Enable all</td>
-  <td><ul><li>一次确认后启用全部 AppContainer SID，并保留既有 exemption。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>待 UAC 验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Service 10/10</li><li><strong>Integration:</strong> 🔄 Helper 已编译，真实 UAC 未验收</li><li><strong>E2E:</strong> ❌ Headed workflow 未完成</li><li><strong>Design/Parity:</strong> ✅ 4/4 matched</li></ul></td>
-  <td><ul><li>逐项启用需要重复提权，且容易覆盖既有 exemption 集合。</li></ul></td>
-  <td><ul><li>Renderer 发一条语义命令，Main 启动一次 helper，native 层做 SID 并集和写后校验。</li></ul></td>
+  <td><strong>✅ 已完成</strong></td>
+  <td>AppContainer Enable/Disable all</td>
+  <td><ul><li>一次确认批量启用或停用当前 AppContainer SID，双向操作都保留枚举外既有 exemption。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>真实runas elevation验证完成（本机UAC策略自动批准）</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ Enable/Disable各有Renderer→Preload→Main→native独立命令，helper执行SID并集/差集并读回</li><li><strong>Unit:</strong> ✅ Main service与i18n聚焦22/22；Desktop串行321/321</li><li><strong>Integration:</strong> ✅ Windows package、artifact audit、package helper与packaged smoke通过</li><li><strong>E2E:</strong> ✅ 真实Electron入口缺失Red→当前1/1 Green；OS集合1→138→0→1且最终hash精确恢复</li><li><strong>Design/Parity:</strong> ✅ 四个Dialog view均0 missing/0 flagged；主页面按钮不换行且几何在0.6px内</li></ul></td>
+  <td><ul><li>只有Enable all会把批量操作变成不可逆能力；逐项启用又需要重复提权，且直接覆盖集合会破坏枚举外既有exemption。</li></ul></td>
+  <td><ul><li>Renderer分别发送Enable all与Disable all语义命令；Main每次只启动一次helper。native层对当前SID做集合并集或差集并读回校验，两种操作都保留枚举外exemption；真实workflow先记录完整初始集合，再Enable/check、Disable/check，并通过正式单项UI恢复初始enabled SID后逐项复核。</li></ul></td>
 </tr>
 <tr>
   <td><strong>✅ 已完成</strong></td>
