@@ -82,6 +82,8 @@ export interface WebSocketBridgeOptions {
    */
   readonly upstreamProxy?: () => UpstreamProxySetting | undefined;
   readonly onError?: (error: Error) => void;
+  /** 任一对端未发送close frame便异常断开时，释放该连接的数据面等待。 */
+  readonly onAbnormalDisconnect?: (streamId: string) => void;
   /**
    * 上游 Upgrade 失败时回调（streamId 即 request.id）。
    * Mockttp 对这条路径只发 completed `response`，Capture 为避免全量缓冲已退订，

@@ -169,7 +169,11 @@ export const AUTOMATION_IDS = {
       directionSent: 'capture.websocket.direction.sent',
       directionReceived: 'capture.websocket.direction.received',
       breakpointToggle: 'capture.websocket.breakpoint.toggle',
-      breakpointDirection: 'capture.websocket.breakpoint.direction',
+      breakpointDirection: {
+        both: 'capture.websocket.breakpoint.direction.both',
+        sent: 'capture.websocket.breakpoint.direction.sent',
+        received: 'capture.websocket.breakpoint.direction.received',
+      },
       breakpointFrame: {
         message: 'capture.websocket.breakpoint.frame.message',
         ping: 'capture.websocket.breakpoint.frame.ping',

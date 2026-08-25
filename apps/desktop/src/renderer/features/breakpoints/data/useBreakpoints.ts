@@ -61,7 +61,7 @@ export async function resolveSelected(
     await api.resolveBreakpoint(breakpointId, action, edit);
     advanceCaptureSelection(resolved, await refreshBreakpoints());
   } catch {
-    /* 已被超时/他处解除时忽略。 */
+    /* 已被客户端abort或他处解除时忽略。 */
   } finally {
     useBreakpointsStore.getState().setResolving(false);
   }

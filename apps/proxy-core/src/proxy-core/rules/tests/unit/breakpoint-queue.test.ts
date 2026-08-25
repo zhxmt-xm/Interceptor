@@ -6,13 +6,14 @@ type LogicalBreakpointQueue = Omit<CurrentBreakpointQueue, 'suspend'> & {
   suspend(
     phase: Parameters<CurrentBreakpointQueue['suspend']>[0],
     queueKey: 'http' | `ws:${string}`,
-    ruleId: string,
+    ruleId: string | undefined,
     snapshot?: Parameters<CurrentBreakpointQueue['suspend']>[3],
     requestId?: string,
   ): ReturnType<CurrentBreakpointQueue['suspend']>;
   continueQueue(queueKey: 'http' | `ws:${string}`): number;
   dropQueue(queueKey: 'http' | `ws:${string}`): number;
   continueRule(ruleId: string): number;
+  abortQueue(queueKey: 'http' | `ws:${string}`): number;
 };
 
 // 测试先声明目标契约；产品实现前运行时仍会精确失败，不给生产类增加兼容签名。
@@ -135,6 +136,36 @@ describe('BreakpointQueue', () => {
     await expect(untouched.outcome).resolves.toEqual({ state: 'continued' });
   });
 
+  it('aborts only breakpoints attached to the disconnected logical queue', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const first = breakpointQueue.suspend(
+      'websocket',
+      'ws:exchange-a',
+      undefined,
+      snapshot('First WebSocket frame', 'exchange-a'),
+    );
+    const second = breakpointQueue.suspend(
+      'websocket',
+      'ws:exchange-a',
+      undefined,
+      snapshot('Second WebSocket frame', 'exchange-a'),
+    );
+    const untouched = breakpointQueue.suspend(
+      'websocket',
+      'ws:exchange-b',
+      undefined,
+      snapshot('Other WebSocket frame', 'exchange-b'),
+    );
+
+    expect(breakpointQueue.abortQueue('ws:exchange-a')).toBe(2);
+    await expect(first.outcome).resolves.toEqual({ state: 'aborted' });
+    await expect(second.outcome).resolves.toEqual({ state: 'aborted' });
+    expect(breakpointQueue.list().map((entry) => entry.id)).toEqual([untouched.id]);
+
+    breakpointQueue.resolve(untouched.id, 'continue');
+    await expect(untouched.outcome).resolves.toEqual({ state: 'continued' });
+  });
+
   it('returns null for an unknown or already-resolved breakpoint', () => {
     const breakpointQueue = new BreakpointQueue();
     const { id } = breakpointQueue.suspend(
@@ -146,6 +177,22 @@ describe('BreakpointQueue', () => {
     expect(breakpointQueue.resolve('missing', 'continue')).toBeNull();
     expect(breakpointQueue.resolve(id, 'continue')).toBe('continued');
     expect(breakpointQueue.resolve(id, 'continue')).toBeNull();
+  });
+
+  it('leaves a breakpoint pending when a runtime caller supplies an invalid action', () => {
+    const breakpointQueue = new BreakpointQueue();
+    const { id } = breakpointQueue.suspend(
+      'request',
+      'http',
+      'rule-a',
+      snapshot('Rule A'),
+    );
+
+    expect(breakpointQueue.resolve(
+      id,
+      'invalid' as Parameters<CurrentBreakpointQueue['resolve']>[1],
+    )).toBeNull();
+    expect(breakpointQueue.list().map((entry) => entry.id)).toEqual([id]);
   });
 
   it('keeps every breakpoint pending without a hidden queue limit', () => {

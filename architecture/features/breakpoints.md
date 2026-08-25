@@ -48,8 +48,9 @@ stateDiagram-v2
 ```
 
 **人工等待模式**：产品没有 Breakpoint timeout。pending 只由用户 Continue / Forward edited / Drop、
-客户端 abort 或 Core / RPC 生命周期关闭释放。客户端断开时 Proxy 按 Mockttp
-request ID 只解除对应 HTTP suspension；`closeAll()` 将当前进程的全部等待结果结算为 `aborted`。Rules、
+客户端 abort 或 Core / RPC 生命周期关闭释放。HTTP客户端断开时Proxy按Mockttp request ID只解除对应
+suspension；WebSocket异常断开时解除该连接`ws:<exchangeId>`队列的全部pending，已收到的graceful close
+frame仍保留给用户编辑。`closeAll()` 将当前进程的全部等待结果结算为 `aborted`。Rules、
 WebSocket setup、Protocol、导入校验与MCP工具均不包含 timeout 字段，也不存在旧格式识别或迁移路径。
 
 ## 4. 调用流程
@@ -287,6 +288,8 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
     仍允许按 ID Continue 或 Drop 非队首项。
 - pending 始终附着在普通 Capture request / connection 行上。filter 只影响行是否可见，不改变队列成员或
     顺序。全局 badge 汇总所有逻辑队列。
+- WebSocket应用帧的pending row在同一`webSocketFrameSequence`位置替代历史行，不统一追加到列表尾部；
+    Sent / Received筛选同时约束历史帧与pending row，但`data-queue-position`仍表达未筛选逻辑队列的位置。
 - 只有选中的 pending 是其逻辑队列当前队首时才显示可编辑 Breakpoint Detail。非队首 pending 使用普通
     Request / connection Detail，并以 `Queued` 表达等待前序断点，而不是复用网络 `loading`。
 
@@ -297,8 +300,8 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
     再计算原 `queueKey` 的新队首，不得使用旧数组下标。
 - 若用户仍选中刚处理的队首 exchange，自动选择同一逻辑队列的新队首；若用户已切换到普通 request、
     非队首 pending 或其他逻辑队列，不得抢焦点。
-- 客户端 abort 只移除对应 pending 与草稿；Capture 行保留并进入普通 `aborted` / `failed` 终态。中间项
-    消失后，后续推进同样基于最新 snapshot。
+- HTTP客户端abort只移除对应request pending与草稿；WebSocket异常断开移除该连接的全部pending与草稿。
+    Capture行保留并进入普通`aborted` / `failed`终态。中间项消失后，后续推进同样基于最新snapshot。
 - 按 ID resolve 非队首只移除目标，不改变当前队首。非队首没有编辑器，因此不能产生 edited payload。
 
 #### 草稿生命周期

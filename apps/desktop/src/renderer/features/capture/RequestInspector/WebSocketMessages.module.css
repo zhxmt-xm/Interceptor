@@ -34,6 +34,9 @@
 .virtualItem {
   border-bottom: 1px solid var(--border);
 }
+.pendingVirtualItem {
+  border-bottom: 0;
+}
 .frame {
   display: grid;
   width: 100%;

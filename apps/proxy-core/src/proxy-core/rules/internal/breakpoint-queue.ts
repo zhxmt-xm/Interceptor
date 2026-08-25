@@ -87,9 +87,11 @@ export class BreakpointQueue {
     if (action === 'continue') {
       state = edit ? 'edited' : 'continued';
       outcome = edit ? { state, edit } : { state };
-    } else {
+    } else if (action === 'drop') {
       state = 'dropped';
       outcome = { state };
+    } else {
+      return null;
     }
     this.finish(id, outcome);
     return state;
@@ -104,6 +106,14 @@ export class BreakpointQueue {
       this.finish(entry.id, { state: 'aborted' });
     }
     return entries.length;
+  }
+
+  /** WebSocket异常断开时，只释放所属逻辑队列的全部等待断点。 */
+  abortQueue(queueKey: BreakpointQueueKey): number {
+    return this.resolveMatching(
+      (entry) => entry.queueKey === queueKey,
+      { state: 'aborted' },
+    );
   }
 
   /** 原样放行命令开始时属于指定逻辑队列的全部等待断点。 */

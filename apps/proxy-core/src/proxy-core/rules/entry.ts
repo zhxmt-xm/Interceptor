@@ -131,6 +131,17 @@ export class RuleService {
     return abortedCount;
   }
 
+  /** WebSocket异常断开时，释放该连接仍在等待的全部帧断点。 */
+  abortWebSocketBreakpoints(exchangeId: string): number {
+    const abortedCount = this.breakpointQueue.abortQueue(`ws:${exchangeId}`);
+    if (abortedCount > 0) {
+      this.diagnostics?.info('breakpoint.websocket-aborted', {
+        attributes: { exchangeId, abortedCount },
+      });
+    }
+    return abortedCount;
+  }
+
   /**
    * 显式 WebSocket 帧断点；由 Proxy bridge 在转发前调用。
    * 开关归 ProxyService 的 WebSocket 断点配置，与 HTTP 的 break-on-match 正交。
@@ -381,7 +392,7 @@ export class RuleService {
     return { kind: 'continue', hits, headerEffects, bodyEffect, delayMs };
   }
 
-  /** 挂起规则断点并发布命中通知；关闭开关或队列已满时直接继续。 */
+  /** 挂起规则断点并发布命中通知；关闭开关时直接继续。 */
   private async awaitBreakpoint(
     phase: 'request' | 'response',
     ruleId: string,

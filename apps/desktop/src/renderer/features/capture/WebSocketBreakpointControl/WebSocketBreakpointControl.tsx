@@ -21,8 +21,8 @@ export interface WebSocketBreakpointControlProps {
 
 /**
  * Message breakpoint switch for the connection currently open in the inspector.
- * Enabling always goes through the setup panel, so direction / frames / timeout are
- * never left implicit; disabling is a single click on the armed button.
+ * Enabling always goes through the setup panel, so direction and frames are never
+ * left implicit; disabling is a single click on the armed button.
  */
 export function WebSocketBreakpointControl({
   exchangeId,

@@ -357,6 +357,12 @@ export class ProxyService {
           errorCode: error.name,
         });
       },
+      onAbnormalDisconnect: (streamId) => {
+        const exchangeId = this.exchangeTracker.exchangeIdFor(streamId);
+        if (exchangeId !== undefined) {
+          this.ruleService?.abortWebSocketBreakpoints(exchangeId);
+        }
+      },
       onUpgradeFailed: (streamId, error) => {
         this.exchangeTracker.failWebSocketUpgrade(
           streamId,
@@ -455,8 +461,9 @@ export class ProxyService {
    * 推进 capture generation 并丢弃全部在途状态，返回仍在录制的活动 Session。
    * 调用方：CoreApplication 在 capture.cleanup(all) 入队前建立清空切面。
    */
-  prepareCaptureReset(): string | null {
+  async prepareCaptureReset(): Promise<string | null> {
     this.exchangeTracker.reset();
+    await Promise.allSettled(Array.from(this.captureOperations));
     this.webSocketTails.clear();
     this.pendingTunnels.clear();
     this.capturedExchanges = 0;
@@ -694,7 +701,7 @@ export class ProxyService {
     knownExchangeId?: string,
   ): Promise<number | undefined> {
     const tail = this.webSocketTails.get(message.streamId) ?? Promise.resolve();
-    const capture = tail
+    const capture = this.trackCapture(tail
       .then(async () => {
         const exchangeId = knownExchangeId
           ?? await this.exchangeTracker.whenExchangeReady(message.streamId);
@@ -723,7 +730,7 @@ export class ProxyService {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
         return undefined;
-      });
+      }));
     this.webSocketTails.set(message.streamId, capture.then(() => undefined));
     return capture;
   }
@@ -771,7 +778,7 @@ export class ProxyService {
       body,
       ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
     }, `ws:${exchangeId}`);
-    if (outcome.state === 'dropped') {
+    if (outcome.state === 'dropped' || outcome.state === 'aborted') {
       return { action: 'drop' as const };
     }
     if (

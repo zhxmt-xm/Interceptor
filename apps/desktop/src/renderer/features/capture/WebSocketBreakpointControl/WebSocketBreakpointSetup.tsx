@@ -64,6 +64,11 @@ export function WebSocketBreakpointSetup({
           ]}
           value={direction}
           onChange={(value) => setDirection(value as WebSocketBreakpointDirection)}
+          automationIds={{
+            both: AUTOMATION_IDS.capture.websocket.breakpointDirection.both,
+            'client-to-server': AUTOMATION_IDS.capture.websocket.breakpointDirection.sent,
+            'server-to-client': AUTOMATION_IDS.capture.websocket.breakpointDirection.received,
+          }}
         />
       </div>
 

@@ -1640,7 +1640,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const origin = getLocal();
     await origin.forAnyWebSocket().thenEcho();
     await origin.start();
-    const payload = Buffer.from('forward-after-timeout');
+    const payload = Buffer.from('forward-after-wait');
     let socket: net.Socket | undefined;
     try {
       socket = await openProxiedWebSocket(
@@ -1667,6 +1667,90 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         sendWebSocketFrame(socket, 8, new Uint8Array());
         socket.destroy();
       }
+      await origin.stop();
+    }
+  });
+
+  it('aborts pending websocket frames when the client disconnects abnormally', async () => {
+    await proxyService.stop();
+    const breakpointQueue = new BreakpointQueue();
+    proxyService = new ProxyService(
+      recordingCaptureService,
+      new CaptureEventQueue(),
+      new RuleService(breakpointQueue),
+    );
+    address = await proxyService.start();
+
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      proxyService.enableWebSocketBreakpoints({
+        exchangeId: await webSocketExchangeId(recordingCaptureService),
+        direction: 'client-to-server',
+        frames: ['message'],
+      });
+      sendWebSocketFrame(socket, 1, Buffer.from('disconnect-before-continue'));
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+
+      socket.destroy();
+      await expect.poll(() => breakpointQueue.size).toBe(0);
+    } finally {
+      socket?.destroy();
+      await origin.stop();
+    }
+  });
+
+  it('waits for in-flight websocket capture before resetting capture storage', async () => {
+    const origin = getLocal();
+    await origin.forAnyWebSocket().thenEcho();
+    await origin.start();
+    let socket: net.Socket | undefined;
+    let releaseAppend!: () => void;
+    const appendReleased = new Promise<void>((resolve) => {
+      releaseAppend = resolve;
+    });
+    let markAppendStarted!: () => void;
+    const appendStarted = new Promise<void>((resolve) => {
+      markAppendStarted = resolve;
+    });
+    const appendWebSocketFrames = recordingCaptureService.appendWebSocketFrames.bind(
+      recordingCaptureService,
+    );
+    vi.spyOn(recordingCaptureService, 'appendWebSocketFrames').mockImplementation(
+      async (...args) => {
+        markAppendStarted();
+        await appendReleased;
+        return appendWebSocketFrames(...args);
+      },
+    );
+    try {
+      socket = await openProxiedWebSocket(
+        address,
+        `ws://127.0.0.1:${origin.port}/echo`,
+      );
+      sendWebSocketFrame(socket, 1, Buffer.from('capture-before-reset'));
+      await appendStarted;
+
+      let resetCompleted = false;
+      const reset = Promise.resolve(proxyService.prepareCaptureReset()).then((sessionId) => {
+        resetCompleted = true;
+        return sessionId;
+      });
+      await Promise.resolve();
+      expect(resetCompleted).toBe(false);
+
+      releaseAppend();
+      await expect(reset).resolves.toBe(recordingCaptureService.sessions[0]?.id);
+      expect(recordingCaptureService.webSocketFrames).toHaveLength(1);
+    } finally {
+      releaseAppend();
+      socket?.destroy();
       await origin.stop();
     }
   });

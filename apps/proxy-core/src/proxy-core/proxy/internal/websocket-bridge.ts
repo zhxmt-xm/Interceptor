@@ -167,6 +167,17 @@ export class WebSocketBridge {
     this.pairs.add(pair);
     let clientTail = Promise.resolve();
     let serverTail = Promise.resolve();
+    let abnormalDisconnectHandled = false;
+    const abortAbnormalDisconnect = (): void => {
+      if (abnormalDisconnectHandled) {
+        return;
+      }
+      abnormalDisconnectHandled = true;
+      this.options.onAbnormalDisconnect?.(request.id);
+      downstream.terminate();
+      upstream.terminate();
+      this.pairs.delete(pair);
+    };
     // 控制帧与应用消息共用方向内的串行链，避免断点 await 打乱到达顺序。
     const queueClient = (run: () => Promise<void>): void => {
       clientTail = clientTail.then(run).catch((error: unknown) => this.failPair(pair, error));
@@ -196,9 +207,17 @@ export class WebSocketBridge {
     });
 
     downstream.on('close', (code, reason) => {
+      if (code === 1006) {
+        abortAbnormalDisconnect();
+        return;
+      }
       queueClient(() => this.forwardClose(request, upstream, 'client-to-server', code, reason));
     });
     upstream.on('close', (code, reason) => {
+      if (code === 1006) {
+        abortAbnormalDisconnect();
+        return;
+      }
       queueServer(() => this.forwardClose(request, downstream, 'server-to-client', code, reason));
     });
     downstream.on('error', (error) => this.failPair(pair, error));

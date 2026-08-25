@@ -1079,7 +1079,8 @@ sequenceDiagram
     App->>Proxy: prepareCaptureReset()
     Proxy->>Tracker: reset()
     Note over Tracker: generation += 1<br/>abort 全部在途 body writer<br/>清空 entries 与孤儿表<br/>未决 exchangeReady 一律 resolve(null)
-    Note over Proxy: 同时清空 webSocketTails 与 pendingTunnels
+    Proxy->>Proxy: await captureOperations
+    Note over Proxy: WebSocket frame持久化完成后<br/>再清空webSocketTails与pendingTunnels
     Proxy-->>App: 仍在监听则返回当前 sessionId，否则 null
 
     App->>Queue: reset()
@@ -1099,9 +1100,10 @@ sequenceDiagram
 ```
 
 **Clear 由 CoreApplication 编排，不是 ProxyService 自己完成。** 三步顺序不可换：先
-`prepareCaptureReset()` 建立切面（推进 generation，让在途事件立即失效），再 `captureEventQueue.reset()`
-丢弃已入队但未推送的事件，最后才真正 `capture.cleanup`。否则会出现「库已清空但队列里还有旧行」被推给
-Renderer 的窗口。
+`prepareCaptureReset()`先建立切面（推进generation，让在途Tracker事件立即失效），再等待统一登记的
+`captureOperations`完成。WebSocket frame写入与HTTP/tunnel写入使用同一排空边界，不得在Storage cleanup后
+继续写入旧exchange/body。随后`captureEventQueue.reset()`丢弃已入队但未推送的事件，最后才真正执行
+`capture.cleanup`；三步顺序不可换。
 
 **活动 Session 会被保留。** `prepareCaptureReset()` 在代理仍在监听时返回当前 `sessionId`，
 scope 随之收窄为 `all-except-session`——Exchange 与 Body 全部归零，但 Session 壳保留，
@@ -1111,6 +1113,8 @@ scope 随之收窄为 `all-except-session`——Exchange 与 Body 全部归零�
 
 - 录制中开始、暂停后完成的长请求：继续完整记录。
 - 暂停期间开始、恢复后完成的请求：始终不记录。
+- 暂停期间建立的WebSocket没有Capture exchange；`whenExchangeReady`立即返回`null`，不得创建会阻塞
+    Clear或Core退出的无主waiter。
 - Clear 后旧 generation 的所有 request/body/response/trailer/rule hit 全部拒绝，不得重新创建行。
 
 ## 8. 客户端应用归属 [已实现·仅 Windows]

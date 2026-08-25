@@ -84,6 +84,24 @@ function nextTick(): Promise<void> {
 }
 
 describe('ExchangeTracker client application attribution', () => {
+  it('does not create an exchange-ready waiter while recording is paused', async () => {
+    const exchangeTracker = new ExchangeTracker(
+      new RecordingExchangeCaptureService(),
+      new RecordingCaptureEventQueue(),
+    );
+    exchangeTracker.setSession('session-1');
+    exchangeTracker.setRecording(false);
+    let settled = false;
+
+    void exchangeTracker.whenExchangeReady('websocket-paused').then((exchangeId) => {
+      expect(exchangeId).toBeNull();
+      settled = true;
+    });
+    await nextTick();
+
+    expect(settled).toBe(true);
+  });
+
   it('publishes the exchange before the lookup helper is even touched', async () => {
     let helperCalls = 0;
     const runner: ClientAppLookupRunner = async () => {

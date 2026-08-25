@@ -553,7 +553,7 @@ export class CoreApplication implements CoreRpcHost {
         return this.withCapture(async (captureService) => {
           const requestedScope = toCleanupScope(command.payload);
           const activeSessionId = requestedScope.kind === 'all'
-            ? this.proxyService?.prepareCaptureReset() ?? null
+            ? (await this.proxyService?.prepareCaptureReset()) ?? null
             : null;
           if (requestedScope.kind === 'all') {
             this.captureEventQueue?.reset();

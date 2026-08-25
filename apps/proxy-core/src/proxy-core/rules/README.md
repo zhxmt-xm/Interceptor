@@ -22,7 +22,7 @@ Text/File replacement再覆盖普通Rule。`RuleBodyEffect`只记录`ruleId`、r
 | --- | --- |
 | `entry.ts` | `RuleService`：规则集持有、编译、请求/响应评估 |
 | `internal/action-executor.ts` | 执行单条 action 并累积到可变 state |
-| `internal/breakpoint-queue.ts` | `BreakpointQueue`：断点挂起状态机，每条独立 timer + Promise |
+| `internal/breakpoint-queue.ts` | `BreakpointQueue`：断点挂起状态机，每条独立 Promise |
 
 ## 断点
 

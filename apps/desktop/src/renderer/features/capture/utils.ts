@@ -674,18 +674,56 @@ export function filterDirection(
   return undefined;
 }
 
-/** pending行暂时代替同一Capture frame；只按Core分配的精确sequence过滤。 */
-export function visibleWebSocketHistoryFrames(
+export type WebSocketTimelineItem =
+  | { kind: 'history'; frame: WebSocketFrameSummary }
+  | { kind: 'pending'; breakpoint: PendingBreakpoint };
+
+/** pending行在精确Capture sequence处替代历史行，并与历史共用方向筛选。 */
+export function webSocketTimelineItems(
   frames: readonly WebSocketFrameSummary[],
   pendingBreakpoints: readonly PendingBreakpoint[],
-): WebSocketFrameSummary[] {
-  const pendingSequences = new Set(
-    pendingBreakpoints.flatMap((breakpoint) =>
+  direction?: WebSocketFrameDirection,
+): WebSocketTimelineItem[] {
+  const visibleFrames = frames.filter((frame) =>
+    direction === undefined || frame.direction === direction);
+  const visiblePending = pendingBreakpoints.filter((breakpoint) =>
+    direction === undefined || breakpoint.direction === direction);
+  const pendingBySequence = new Map(
+    visiblePending.flatMap((breakpoint) =>
       breakpoint.webSocketFrameSequence === undefined
         ? []
-        : [breakpoint.webSocketFrameSequence]),
+        : [[breakpoint.webSocketFrameSequence, breakpoint] as const]),
   );
-  return frames.filter((frame) => !pendingSequences.has(frame.seq));
+  const consumedBreakpointIds = new Set<string>();
+  const timeline: WebSocketTimelineItem[] = visibleFrames.map((frame) => {
+    const breakpoint = pendingBySequence.get(frame.seq);
+    if (!breakpoint) {
+      return { kind: 'history', frame };
+    }
+    consumedBreakpointIds.add(breakpoint.id);
+    return { kind: 'pending', breakpoint };
+  });
+  for (const breakpoint of visiblePending) {
+    if (consumedBreakpointIds.has(breakpoint.id)) {
+      continue;
+    }
+    const item: WebSocketTimelineItem = { kind: 'pending', breakpoint };
+    const sequence = breakpoint.webSocketFrameSequence;
+    const insertionIndex = sequence === undefined
+      ? -1
+      : timeline.findIndex((candidate) => {
+          const candidateSequence = candidate.kind === 'history'
+            ? candidate.frame.seq
+            : candidate.breakpoint.webSocketFrameSequence;
+          return candidateSequence !== undefined && candidateSequence > sequence;
+        });
+    if (insertionIndex === -1) {
+      timeline.push(item);
+    } else {
+      timeline.splice(insertionIndex, 0, item);
+    }
+  }
+  return timeline;
 }
 
 /** 帧时间相对会话起点显示，毫秒以内保留整数、超过则按秒。 */

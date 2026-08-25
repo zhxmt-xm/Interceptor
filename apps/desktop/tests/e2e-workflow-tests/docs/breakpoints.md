@@ -83,7 +83,8 @@ HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用
 
 1. 创建profile/evidence、HTTP origin和WebSocket lab；启动真实Electron，先建立当前连接并从Messages UI启用message断点，再创建HTTP request Breakpoint Rule。
 2. 同时制造一个HTTP pending，以及同一WebSocket连接的出站/入站两个pending；确认全局badge=3，分别属于`http`与`ws:<exchangeId>`。
-3. 确认WebSocket队首可编辑、第二项为Queued且没有编辑器；同一已捕获应用帧由pending row暂时代替，不重复显示历史行。
+3. 确认WebSocket队首可编辑、第二项为Queued且没有编辑器；同一已捕获应用帧由pending row在原sequence位置
+	暂时代替，后到的未挂起反向历史帧仍排在其后；Sent / Received筛选不显示另一方向的pending。
 4. 在HTTP与WebSocket队首分别填写不同Text草稿，往返选择后逐项恢复，证明草稿按`breakpointId`隔离。
 5. 对WebSocket执行Continue all；命令开始时两项原样放行，命令期间产生的echo作为未来项保持pending，HTTP与HTTP草稿不变。
 6. 再次Continue all释放未来WebSocket项；随后选择HTTP，确认草稿仍在，并用Continue unmodified原样发送客户端正文。
@@ -91,7 +92,8 @@ HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用
 
 ### 预期效果
 
-HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧稳定排序。草稿互不覆盖，批量Continue不应用草稿，调用开始后产生的未来项不被吸收。
+HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按Capture sequence稳定排序，方向筛选同时
+作用于历史与pending。草稿互不覆盖，批量Continue不应用草稿，调用开始后产生的未来项不被吸收。
 
 ### TDD证据要求
 
@@ -148,17 +150,21 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧稳�
 
 1. 创建profile/evidence、HTTP origin和WebSocket lab；启动真实Electron并进入Recording，通过产品UI启用HTTP与WebSocket断点。
 2. 同时制造HTTP与WebSocket pending；等待固定观察窗口，确认badge保持2且两种payload均未抵达origin。
-3. 保存关闭前截图/trace，通过产品Close触发Main→Core正常关闭。
-4. 确认HTTP客户端失败、WebSocket客户端关闭、两个origin仍无挂起payload；共享fixture验证Main/Core退出、8888释放和系统代理恢复。
+3. 异常断开WebSocket客户端；确认该连接pending立即消失、badge只剩HTTP的1，挂起payload未抵达origin。
+4. 建立第二条真实WebSocket连接，通过产品UI启用断点并再次制造pending，确认badge恢复为2。
+5. 保存关闭前截图/trace，通过产品Close触发Main→Core正常关闭。
+6. 确认HTTP客户端失败、第二个WebSocket客户端关闭、两个origin仍无挂起payload；共享fixture验证Main/Core退出、8888释放和系统代理恢复。
 
 ### 预期效果
 
-HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由用户操作、客户端abort或生命周期关闭释放；`closeAll()`统一结算为`aborted`并清空Renderer临时状态。
+HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由用户操作、HTTP客户端abort、WebSocket
+异常断开或Core生命周期关闭释放；异常断开只清理所属逻辑队列，`closeAll()`统一结算全部pending为
+`aborted`并清空Renderer临时状态。
 
 ### TDD证据要求
 
 - 删除timeout实现前，同一workflow必须因旧Timeout控件仍存在而Red。
-- 删除后，无自动释放、`aborted`结果、客户端关闭与完整销毁必须Green；无控件与协议字段由unit/typecheck/design验证。
+- 删除后，无自动释放、WebSocket异常断开精确清理、`aborted`结果、Core关闭与完整销毁必须Green；无控件与协议字段由unit/typecheck/design验证。
 
 ### 逻辑队列阶段TDD证据
 
@@ -173,6 +179,13 @@ HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由�
 - 无上限补充Green：`queue-stepping`通过真实Rules UI创建规则并依次发送11条真实HTTP请求；11条均带
 	`queueKey=http`与位置1至11，badge为11且origin零到达。随后真实客户端abort释放这些项，原有
 	中间abort、最新snapshot推进与不抢焦点流程继续Green。
+- 提交后复审Red：`queue-isolation`在pending应用帧后收到一条未挂起反向历史帧，DOM顺序断言为false，
+	证明pending被错误追加到列表末尾；`lifecycle-release`异常destroy WebSocket客户端后15秒仍保留1条
+	pending。对应Core unit / integration同时Red于timeline函数缺失、`abortQueue`缺失、非法action被结算为
+	`dropped`、capture reset越过阻塞frame写入和暂停Recording waiter未settle。
+- 提交后复审Green：同一`queue-isolation`锁定pending在原sequence替代历史行，Sent / Received同时筛选
+	history与pending；同一`lifecycle-release`锁定1006只清所属WebSocket队列，再由Core关闭清理第二条
+	连接与HTTP。逻辑队列四条workflow合并`4/4`、graceful close编辑`1/1`通过，均保留完整销毁证据。
 - 视觉证据独立于业务E2E：HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗
 	14 views均`0 missing / 0 flagged`，最大0.8px；业务workflow不包含像素或几何断言。
 

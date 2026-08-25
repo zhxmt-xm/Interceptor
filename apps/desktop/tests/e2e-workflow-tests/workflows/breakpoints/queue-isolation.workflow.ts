@@ -25,6 +25,8 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   const httpPath = '/e2e/queue-isolation-http';
   const clientMessage = 'client-queue-head';
   const originMessage = 'server-queue-follower';
+  const sequencePendingMessage = 'sequence-pending-before-history';
+  const sequenceHistoryMessage = 'sequence-history-after-pending';
   const captureRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
   const keywordFilter = getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter);
   const showCaptureRow = async (requestPath: string) => {
@@ -52,6 +54,42 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   const webSocketRow = await selectCaptureRow(webSocketPath);
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
+  await getByAutomationId(
+    page,
+    AUTOMATION_IDS.capture.websocket.breakpointDirection.sent,
+  ).click();
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
+
+  // Assert sequence ownership: a later unpaused inbound frame stays after the pending outbound frame.
+  // 断言sequence归属：后到且未挂起的入站历史帧必须排在出站pending帧之后。
+  const pendingRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.breakpointPending);
+  client.sendText(sequencePendingMessage);
+  await expect(pendingRows).toHaveCount(1);
+  webSocketLab.sendFromOrigin(sequenceHistoryMessage);
+  await client.waitForText(sequenceHistoryMessage);
+  await page.waitForTimeout(2_200);
+  const sequencePendingRow = pendingRows.filter({ hasText: sequencePendingMessage });
+  const sequenceHistoryRow = getByAutomationIdPrefix(
+    page,
+    AUTOMATION_ID_PREFIXES.websocketFrame,
+  ).filter({ hasText: sequenceHistoryMessage });
+  await expect(sequencePendingRow).toHaveCount(1);
+  await expect(sequenceHistoryRow).toHaveCount(1);
+  const sequenceHistoryElement = await sequenceHistoryRow.elementHandle();
+  expect(sequenceHistoryElement).not.toBeNull();
+  expect(await sequencePendingRow.evaluate((pending, history) => Boolean(
+    pending.compareDocumentPosition(history as Element) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ), sequenceHistoryElement)).toBe(true);
+
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.queueMenu).click();
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueQueue).click();
+  await expect.poll(() => webSocketLab.hasMessage(sequencePendingMessage)).toBe(true);
+  await expect(pendingRows).toHaveCount(0);
+
+  // Arrange the main scenario with both directions enabled.
+  // 准备主场景：停用单向配置，再通过产品UI启用双向断点。
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
   await createRequestBreakpointRule(page, 'E2E queue isolation');
 
@@ -71,13 +109,23 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
 
   await selectCaptureRow(webSocketPath);
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
-  const pendingRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.breakpointPending);
   client.sendText(clientMessage);
   await expect(pendingRows).toHaveCount(1);
   webSocketLab.sendFromOrigin(originMessage);
   await expect(pendingRows).toHaveCount(2);
 
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('3');
+
+  // Assert filtering: direction controls filter history and pending rows without renumbering the queue.
+  // 断言筛选：方向控件同时筛选历史与pending行，但不改变逻辑队列位置。
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionSent).click();
+  await expect(pendingRows).toHaveCount(1);
+  await expect(pendingRows).toHaveAttribute('data-queue-position', '1');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionReceived).click();
+  await expect(pendingRows).toHaveCount(1);
+  await expect(pendingRows).toHaveAttribute('data-queue-position', '2');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
+  await expect(pendingRows).toHaveCount(2);
 
   // Assert the current connection exposes one editable head and one queued non-editor row.
   // 断言当前连接只有一个可编辑队首，第二条为可选择但不可编辑的 queued 行。

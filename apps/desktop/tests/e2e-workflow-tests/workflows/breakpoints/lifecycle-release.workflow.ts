@@ -21,19 +21,21 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   });
 
   const { page } = desktopApp;
-  const webSocketPath = '/e2e/lifecycle-release-ws';
+  const disconnectWebSocketPath = '/e2e/lifecycle-release-disconnect-ws';
+  const shutdownWebSocketPath = '/e2e/lifecycle-release-shutdown-ws';
   const httpPath = '/e2e/lifecycle-release-http';
-  const webSocketPayload = 'lifecycle-must-not-forward';
+  const disconnectPayload = 'disconnect-must-not-forward';
+  const shutdownPayload = 'shutdown-must-not-forward';
 
   // Arrange: enable one real WebSocket breakpoint, then create a POST-only HTTP breakpoint Rule.
   // 准备：启用真实WebSocket断点，再通过产品UI创建只匹配POST的HTTP断点规则。
   await startRecording(desktopApp);
-  const client = await webSocketLab.openThroughProxy(
+  const disconnectClient = await webSocketLab.openThroughProxy(
     desktopApp.capturePort(),
-    webSocketPath,
+    disconnectWebSocketPath,
   );
   const captureRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
-  const webSocketRow = captureRows.filter({ hasText: webSocketPath }).last();
+  const webSocketRow = captureRows.filter({ hasText: disconnectWebSocketPath }).last();
   await expect(webSocketRow).toBeVisible();
   await webSocketRow.click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
@@ -55,14 +57,49 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await expect(httpRow).toHaveAttribute('data-breakpoint-state', 'head');
 
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
-  client.sendText(webSocketPayload);
+  disconnectClient.sendText(disconnectPayload);
   const pendingRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.breakpointPending);
   await expect(pendingRows).toHaveCount(1);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
   await page.waitForTimeout(1_200);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
   expect(loopbackLab.observation(httpPath)).toBeUndefined();
-  expect(webSocketLab.hasMessage(webSocketPayload)).toBe(false);
+  expect(webSocketLab.hasMessage(disconnectPayload)).toBe(false);
+
+  // Act and assert client lifecycle: abnormal disconnect releases only its WebSocket queue.
+  // 操作并断言客户端生命周期：异常断开只释放所属WebSocket队列。
+  disconnectClient.destroy();
+  await expect(pendingRows).toHaveCount(0);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('1');
+  expect(webSocketLab.hasMessage(disconnectPayload)).toBe(false);
+
+  // Arrange shutdown lifecycle: create a second real connection and hold one new frame.
+  // 准备Core关闭生命周期：建立第二条真实连接并再次挂起一帧。
+  const shutdownClient = await webSocketLab.openThroughProxy(
+    desktopApp.capturePort(),
+    shutdownWebSocketPath,
+  );
+  const shutdownWebSocketRow = captureRows.filter({ hasText: shutdownWebSocketPath }).last();
+  await expect(shutdownWebSocketRow).toBeVisible();
+  await shutdownWebSocketRow.click();
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
+  const breakpointToggle = getByAutomationId(
+    page,
+    AUTOMATION_IDS.capture.websocket.breakpointToggle,
+  );
+  const breakpointEnable = getByAutomationId(
+    page,
+    AUTOMATION_IDS.capture.websocket.breakpointEnable,
+  );
+  await breakpointToggle.click();
+  if (await breakpointEnable.count() === 0) {
+    await breakpointToggle.click();
+  }
+  await breakpointEnable.click();
+  shutdownClient.sendText(shutdownPayload);
+  await expect(pendingRows).toHaveCount(1);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
+  expect(webSocketLab.hasMessage(shutdownPayload)).toBe(false);
 
   // Act: product Close must release Core/RPC lifecycle state as aborted and close both clients.
   // 操作：产品Close必须以aborted释放Core/RPC生命周期状态，并关闭两个客户端。
@@ -73,9 +110,10 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   // Assert: lifecycle release never forwards the held payloads and leaves no listener/process behind.
   // 断言：生命周期释放绝不转发挂起payload，并且不遗留listener或进程。
   await expect(httpOutcome).resolves.toHaveProperty('error');
-  await expect.poll(() => client.isClosed()).toBe(true);
+  await expect.poll(() => shutdownClient.isClosed()).toBe(true);
   expect(loopbackLab.observation(httpPath)).toBeUndefined();
-  expect(webSocketLab.hasMessage(webSocketPayload)).toBe(false);
+  expect(webSocketLab.hasMessage(disconnectPayload)).toBe(false);
+  expect(webSocketLab.hasMessage(shutdownPayload)).toBe(false);
   await testInfo.attach('lifecycle-release-origin-observation', {
     body: Buffer.from(JSON.stringify({
       http: loopbackLab.evidence(),
