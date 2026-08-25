@@ -87,7 +87,10 @@ export function PayloadEditor({
             </span>
           </div>
         ) : (
-          <div className={styles.payloadEditorOriginalReady}>
+          <div
+            className={styles.payloadEditorOriginalReady}
+            data-parity="breakpoint-original-ready"
+          >
             <div className={styles.payloadEditorToolbar}>
               <SegmentedControl
                 ariaLabel={`${originalTitle} view`}

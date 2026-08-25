@@ -1,6 +1,7 @@
 import type {
   BreakpointEdit,
   BreakpointHeader,
+  BreakpointQueueKey,
   CaptureHeaderRuleEffect,
   RuleDefinition,
   WebSocketBreakpointFrame,
@@ -80,10 +81,9 @@ export type ActionOutcome =
     };
 
 export type BreakpointPhase = 'request' | 'response' | 'websocket';
-export type BreakpointResolutionAction = 'continue' | 'drop' | 'timeout';
-export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
+export type BreakpointResolutionAction = 'continue' | 'drop';
+export type BreakpointState = 'continued' | 'edited' | 'dropped' | 'aborted';
 export type BreakpointResolutionState = Exclude<BreakpointState, 'aborted'>;
-export type BreakpointTimeoutPolicy = 'continue' | 'drop';
 
 export interface BreakpointSnapshot {
   readonly ruleName: string;
@@ -94,6 +94,8 @@ export interface BreakpointSnapshot {
   readonly statusCode?: number;
   readonly direction?: 'client-to-server' | 'server-to-client';
   readonly frame?: WebSocketBreakpointFrame;
+  /** 当前应用消息已写入Capture时分配的frame sequence；控制帧缺省。 */
+  readonly webSocketFrameSequence?: number;
   readonly opcode?: 1 | 2;
   readonly bodyFormat?: 'text' | 'hex';
   readonly headers: BreakpointHeader[];
@@ -107,23 +109,22 @@ export interface BreakpointSnapshot {
 export interface BreakpointOutcome {
   readonly state: BreakpointState;
   readonly edit?: BreakpointEdit;
-  readonly timeoutPolicy?: BreakpointTimeoutPolicy;
 }
 
 export interface PendingBreakpointInfo {
   readonly id: string;
   readonly phase: BreakpointPhase;
+  readonly queueKey: BreakpointQueueKey;
+  /** 触发HTTP断点的Rule；WebSocket帧断点没有Rule。 */
+  readonly ruleId?: string;
   readonly createdAt: number;
-  readonly deadline: number;
   readonly snapshot: BreakpointSnapshot;
 }
 
 export interface PendingBreakpointEntry extends PendingBreakpointInfo {
   /** HTTP suspension 所属的 Mockttp request ID；WebSocket 消息断点缺省。 */
   readonly requestId?: string;
-  readonly timeoutPolicy: BreakpointTimeoutPolicy;
   readonly settle: (outcome: BreakpointOutcome) => void;
-  timer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface BreakpointSuspension {

@@ -234,21 +234,25 @@ export class ExchangeStore {
   appendWebSocketFrames(
     exchangeId: string,
     frames: readonly WebSocketFrameInput[],
-  ): void {
+  ): number[] {
     if (!this.exchanges.has(exchangeId)) {
       throw new Error(`Exchange '${exchangeId}' does not exist.`);
     }
     const target = [...(this.webSocketFrames.get(exchangeId) ?? [])];
     let nextSeq = (target.at(-1)?.seq ?? 0) + 1;
+    const sequences: number[] = [];
     for (const frame of frames) {
       this.storeBodyRef(frame.payload);
+      const seq = nextSeq++;
       target.push({
         ...frame,
         payload: frame.payload ? { ...frame.payload } : undefined,
-        seq: nextSeq++,
+        seq,
       });
+      sequences.push(seq);
     }
     this.webSocketFrames.set(exchangeId, target);
+    return sequences;
   }
 
   /** 按 frame sequence 升序分页，不加载 payload 字节。 */

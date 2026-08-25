@@ -36,6 +36,7 @@
 }
 .frame {
   display: grid;
+  width: 100%;
   grid-template-columns: 26px 48px minmax(0, 1fr) 54px 54px;
   align-items: center;
   gap: 8px;
@@ -59,6 +60,15 @@
 }
 .frame.pausedFrame {
   background: color-mix(in srgb, var(--yellow) 8%, var(--panel));
+  box-shadow: inset 2px 0 var(--yellow);
+}
+.frame.queuedFrame {
+  background: color-mix(in srgb, var(--yellow) 5%, var(--panel));
+  color: var(--text-3);
+}
+.frame.queuedFrame:hover,
+.frame.queuedFrame.selected {
+  background: color-mix(in srgb, var(--yellow) 9%, var(--panel));
   box-shadow: inset 2px 0 var(--yellow);
 }
 .direction {
@@ -110,4 +120,45 @@
 .breakpointEditor {
   display: flex;
   min-height: 0;
+}
+.queuedBreakpoint {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--yellow) 6%, var(--panel));
+}
+.queuedState {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--yellow);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 13px;
+  white-space: nowrap;
+}
+.queuedPosition {
+  display: inline-flex;
+  height: 20px;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  color: var(--yellow);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 650;
+}
+.queuedQueue {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

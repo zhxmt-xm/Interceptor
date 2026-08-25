@@ -1,6 +1,5 @@
 import { collectLeaves } from '@interceptor/core-protocol';
 import type {
-  BreakpointTimeout,
   RuleDefinition,
   RuleHeaderPair,
   WebSocketBreakpointDirection,
@@ -37,24 +36,6 @@ const WEBSOCKET_BREAKPOINT_FRAMES: readonly WebSocketBreakpointFrame[] = [
   'pong',
   'close',
 ];
-
-/** Parse the MCP-facing mode fields into the shared Core timeout contract. */
-function readWebSocketBreakpointTimeout(
-  args: Readonly<Record<string, unknown>>,
-): BreakpointTimeout {
-  const mode = requireEnum(args, 'timeoutMode', ['infinite', 'finite'] as const);
-  if (mode === 'infinite') {
-    if (args.timeoutMs !== undefined) {
-      throw new McpArgumentError('"timeoutMs" is only valid when "timeoutMode" is finite');
-    }
-    return { mode: 'infinite' };
-  }
-  const timeoutMs = requireInteger(args, 'timeoutMs');
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
-    throw new McpArgumentError('"timeoutMs" must be a positive integer');
-  }
-  return { mode: 'finite', timeoutMs };
-}
 
 /**
  * 全部 MCP 工具的定义。每个工具都只是既有 Core command 的第二个调用入口，
@@ -641,13 +622,13 @@ function buildWriteTools(): readonly McpToolDefinition[] {
       title: 'Enable WebSocket breakpoints',
       description:
         'Suspend WebSocket frames on the proxy before they are forwarded. '
-        + 'Direction, frame kinds and the maximum wait are all set here.',
+        + 'Direction and frame kinds are set here.',
       level: 'write',
       destructive: false,
       inputSchema: {
         type: 'object',
         additionalProperties: false,
-        required: ['exchangeId', 'frames', 'timeoutMode'],
+        required: ['exchangeId', 'frames'],
         properties: {
           exchangeId: {
             type: 'string',
@@ -667,16 +648,6 @@ function buildWriteTools(): readonly McpToolDefinition[] {
               enum: ['message', 'ping', 'pong', 'close'],
             },
           },
-          timeoutMode: {
-            type: 'string',
-            description: 'Whether Core waits indefinitely or uses a finite deadline.',
-            enum: ['infinite', 'finite'],
-          },
-          timeoutMs: {
-            type: 'integer',
-            description: 'Positive finite deadline in milliseconds. Required only in finite mode.',
-            minimum: 1,
-          },
         },
       },
       async execute(args, context) {
@@ -684,8 +655,6 @@ function buildWriteTools(): readonly McpToolDefinition[] {
           'exchangeId',
           'direction',
           'frames',
-          'timeoutMode',
-          'timeoutMs',
         ]);
         const result = await context.host.invoke({
           type: 'websocket.breakpoint.enable',
@@ -693,7 +662,6 @@ function buildWriteTools(): readonly McpToolDefinition[] {
             exchangeId: requireString(args, 'exchangeId'),
             direction: optionalEnum(args, 'direction', WEBSOCKET_BREAKPOINT_DIRECTIONS) ?? 'both',
             frames: requireStringArray(args, 'frames', WEBSOCKET_BREAKPOINT_FRAMES),
-            timeout: readWebSocketBreakpointTimeout(args),
           },
         }, context.abortSignal);
         return result.payload;

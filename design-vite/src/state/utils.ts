@@ -47,9 +47,8 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   requestMenu: '', ruleFilter: '', ruleOptions: '', scene: 'http', bodyPreview: 'json', bodyKind: 'json',
   bodyMode: 'default', bodyState: '', bodyRuleEffect: '', breakpoints: 'on', breakpointState: 'request', breakpointBody: 'loading',
   breakpointFile: 'none', breakpointPanel: '', breakpointMessage: '', breakpointUi: '', ruleTypography: 'composer',
-  ruleBreakpointTimeout: '', ruleBreakpointCustomTimeoutSeconds: 30, ruleBreakpointTimeoutPolicy: 'continue',
-  websocketBreakpoint: 'disabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none',
-  websocketBreakpointCustomTimeoutSeconds: 30,
+  breakpointQueueSelection: 'http-head', breakpointQueueMenu: '', ruleBreakpointAction: '',
+  websocketBreakpoint: 'disabled', websocketBreakpointDirection: 'both',
   websocketBreakpointFrames: ['message'], websocketMessageDirection: 'sent', websocketMessagePayload: 'text',
   websocketUpgradeResponse: 'accepted', ctxmenu: '', boot: '', hasFilter: false,
 };
@@ -84,7 +83,7 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
   }
   if (patch.bodyMode !== undefined) next = { ...next, bodyState: '' };
   if (patch.breakpointState !== undefined && patch.breakpointState) {
-    next = { ...next, detail: patch.breakpointState === 'full' ? 'closed' : 'open' };
+    next = { ...next, detail: 'open' };
   }
   if (patch.breakpointBody === 'loading') next = { ...next, breakpointFile: 'none' };
   if (patch.breakpointUi !== undefined) {
@@ -132,12 +131,11 @@ export function designRootAttributes(state: DesignState): Record<string, string 
     'data-breakpoints': state.breakpoints, 'data-breakpoint-state': optional(state.breakpointState),
     'data-breakpoint-body': state.breakpointBody, 'data-breakpoint-file': state.breakpointFile,
     'data-breakpoint-panel': optional(state.breakpointPanel),
-    'data-rule-breakpoint-timeout': optional(state.ruleBreakpointTimeout),
-    'data-rule-breakpoint-custom-seconds': String(state.ruleBreakpointCustomTimeoutSeconds ?? ''),
+    'data-breakpoint-queue-selection': state.breakpointQueueSelection,
+    'data-breakpoint-queue-menu': optional(state.breakpointQueueMenu),
+    'data-rule-breakpoint-action': optional(state.ruleBreakpointAction),
     'data-websocket-breakpoint': state.websocketBreakpoint,
     'data-websocket-breakpoint-direction': state.websocketBreakpointDirection,
-    'data-websocket-breakpoint-timeout': state.websocketBreakpointTimeout,
-    'data-websocket-breakpoint-custom-seconds': String(state.websocketBreakpointCustomTimeoutSeconds ?? ''),
     'data-websocket-breakpoint-frames': state.websocketBreakpointFrames.join(','),
     'data-websocket-message-direction': state.websocketMessageDirection,
     'data-websocket-message-payload': state.websocketMessagePayload,

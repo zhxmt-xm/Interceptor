@@ -9,6 +9,7 @@ import {
   type ReplacementMode,
 } from '../../components/PayloadEditor/PayloadEditor';
 import { useDesignState } from '../../state/useDesignState';
+import { BreakpointQueueMenu } from './BreakpointQueueMenu';
 import styles from './WebSocketBreakpointInspector.module.css';
 
 export function WebSocketBreakpointInspector(): React.JSX.Element {
@@ -27,13 +28,6 @@ export function WebSocketBreakpointInspector(): React.JSX.Element {
     : state.websocketBreakpointDirection === 'sent'
       ? 'Sent only'
       : 'Received only';
-  const timeoutLabel = state.websocketBreakpointTimeout === 'none'
-    ? 'No timeout'
-    : state.websocketBreakpointTimeout === 'custom'
-      ? `${state.websocketBreakpointCustomTimeoutSeconds ?? 0}s timeout`
-      : state.websocketBreakpointTimeout === '60'
-      ? '1 min timeout'
-      : `${state.websocketBreakpointTimeout}s timeout`;
   const kindLabel = {
     text: 'Text',
     binary: 'Binary',
@@ -67,9 +61,12 @@ export function WebSocketBreakpointInspector(): React.JSX.Element {
   return (
     <section className={styles.websocketBreakpointInspector}>
       <PauseBanner
+        actions={state.breakpointQueueSelection === 'websocket-head'
+          ? <BreakpointQueueMenu includeRule={false} />
+          : undefined}
         phase={directionLabel}
         received={!sent}
-        rule={`${ruleDirection} · ${timeoutLabel}`}
+        rule={ruleDirection}
       />
 
       <div className={styles.websocketPayloadEditor}>

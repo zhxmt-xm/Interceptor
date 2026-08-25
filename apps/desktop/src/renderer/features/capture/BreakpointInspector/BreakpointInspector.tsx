@@ -33,6 +33,7 @@ import { resolveSelected } from '../../breakpoints/data/useBreakpoints';
 import { expectsBody, replacesBody } from '../../breakpoints/utils';
 import { BodyView } from '../RequestInspector/BodyView';
 import { Section } from '../RequestInspector/Section';
+import { BreakpointQueueMenu } from './BreakpointQueueMenu';
 import styles from './BreakpointInspector.module.css';
 
 type ControlFrame = 'ping' | 'pong' | 'close';
@@ -139,6 +140,10 @@ export function BreakpointInspector({
               : t('breakpoints.requestPaused')}
         </span>
         <span className={styles.rule}>{breakpoint.ruleName}</span>
+        <BreakpointQueueMenu
+          queueKey={breakpoint.queueKey}
+          ruleId={breakpoint.ruleId}
+        />
       </div>
 
       <div className={styles.scroll}>
@@ -281,7 +286,10 @@ export function BreakpointInspector({
                 </div>
               </div>
             ) : (
-              <div className={styles.originalReady}>
+              <div
+                className={styles.originalReady}
+                data-parity="breakpoint-original-ready"
+              >
                 <BodyView body={originalBody} compact />
               </div>
             )}

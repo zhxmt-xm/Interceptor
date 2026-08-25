@@ -46,6 +46,8 @@ export interface WebSocketBridgeMessage {
   readonly url: string;
   readonly direction: WebSocketMessageDirection;
   readonly frame: WebSocketBreakpointFrame;
+  /** Bridge收到帧时的wall-clock时间。 */
+  readonly timestamp: number;
   readonly content: Buffer;
   readonly isBinary: boolean;
   /** 仅 close 帧：对端给出的 close code。 */

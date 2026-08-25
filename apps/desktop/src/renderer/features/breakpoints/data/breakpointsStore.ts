@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { BreakpointsState } from '../interfaces';
+import type { BreakpointDraft, BreakpointsState } from '../interfaces';
 import { draftFromBreakpoint, rowId } from '../utils';
 
 /** Append non-empty normalized header names while preserving first-edit order. */
@@ -18,38 +18,48 @@ function rememberEditedHeaderNames(
   return remembered;
 }
 
+/** 更新当前草稿并同步回它自己的breakpointId槽位。 */
+function updateSelectedDraft(
+  state: BreakpointsState,
+  update: (draft: BreakpointDraft) => BreakpointDraft,
+): BreakpointsState | Partial<BreakpointsState> {
+  if (!state.draft) {
+    return state;
+  }
+  const draft = update(state.draft);
+  return {
+    draft,
+    draftsById: {
+      ...state.draftsById,
+      [draft.breakpointId]: draft,
+    },
+  };
+}
+
 export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
   breakpoints: [],
   enabled: true,
-  autoContinued: 0,
   selectedId: null,
+  draftsById: {},
   draft: null,
   resolving: false,
 
   applySnapshot: (snapshot) =>
     set((state) => {
       const list = snapshot.breakpoints;
-      let selectedId = state.selectedId;
-      let draft = state.draft;
-
-      // 选中项仍存在则保留草稿；消失则切到第一个并重建草稿。
-      if (selectedId && !list.some((bp) => bp.id === selectedId)) {
-        selectedId = null;
-        draft = null;
-      }
-      if (!selectedId && list.length > 0) {
-        selectedId = list[0]!.id;
-        draft = draftFromBreakpoint(list[0]!);
-      }
-      if (list.length === 0) {
-        selectedId = null;
-        draft = null;
-      }
+      const draftsById = Object.fromEntries(list.map((breakpoint) => [
+        breakpoint.id,
+        state.draftsById[breakpoint.id] ?? draftFromBreakpoint(breakpoint),
+      ]));
+      const selectedId = state.selectedId && list.some((breakpoint) => breakpoint.id === state.selectedId)
+        ? state.selectedId
+        : list[0]?.id ?? null;
+      const draft = selectedId ? draftsById[selectedId] ?? null : null;
       return {
         breakpoints: list,
         enabled: snapshot.enabled,
-        autoContinued: snapshot.autoContinued,
         selectedId,
+        draftsById,
         draft,
       };
     }),
@@ -57,39 +67,47 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
   select: (id) =>
     set((state) => {
       const breakpoint = state.breakpoints.find((bp) => bp.id === id);
+      const draft = breakpoint
+        ? state.draftsById[id] ?? draftFromBreakpoint(breakpoint)
+        : null;
       return breakpoint
-        ? { selectedId: id, draft: draftFromBreakpoint(breakpoint) }
+        ? {
+            selectedId: id,
+            draft,
+            draftsById: { ...state.draftsById, [id]: draft! },
+          }
         : state;
     }),
 
   clear: () =>
-    set({ breakpoints: [], selectedId: null, draft: null, resolving: false }),
+    set({
+      breakpoints: [],
+      selectedId: null,
+      draftsById: {},
+      draft: null,
+      resolving: false,
+    }),
 
   setMethod: (method) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, method } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, method }))),
   setUrl: (url) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, url } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, url }))),
   setStatusCode: (statusCode) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, statusCode } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, statusCode }))),
   setCloseCode: (closeCode) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, closeCode } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, closeCode }))),
   setReplacement: (replacement) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, replacement } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, replacement }))),
   setFile: (file) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, file } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, file }))),
   setBody: (body) =>
-    set((state) => (state.draft ? { draft: { ...state.draft, body } } : state)),
+    set((state) => updateSelectedDraft(state, (draft) => ({ ...draft, body }))),
 
   addHeader: () =>
-    set((state) =>
-      state.draft
-        ? {
-            draft: {
-              ...state.draft,
-              headers: [...state.draft.headers, { id: rowId(), name: '', value: '' }],
-            },
-          }
-        : state),
+    set((state) => updateSelectedDraft(state, (draft) => ({
+      ...draft,
+      headers: [...draft.headers, { id: rowId(), name: '', value: '' }],
+    }))),
 
   updateHeader: (id, patch) =>
     set((state) => {
@@ -101,18 +119,16 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
         return state;
       }
       const nextHeader = { ...currentHeader, ...patch };
-      return {
-        draft: {
-          ...state.draft,
-          headers: state.draft.headers.map((header) =>
-            header.id === id ? nextHeader : header),
-          editedHeaderNames: rememberEditedHeaderNames(
-            state.draft.editedHeaderNames,
-            currentHeader.name,
-            nextHeader.name,
-          ),
-        },
-      };
+      return updateSelectedDraft(state, (draft) => ({
+        ...draft,
+        headers: draft.headers.map((header) =>
+          header.id === id ? nextHeader : header),
+        editedHeaderNames: rememberEditedHeaderNames(
+          draft.editedHeaderNames,
+          currentHeader.name,
+          nextHeader.name,
+        ),
+      }));
     }),
 
   removeHeader: (id) =>
@@ -121,16 +137,14 @@ export const useBreakpointsStore = create<BreakpointsState>((set, get) => ({
         return state;
       }
       const removedHeader = state.draft.headers.find((header) => header.id === id);
-      return {
-        draft: {
-          ...state.draft,
-          headers: state.draft.headers.filter((header) => header.id !== id),
-          editedHeaderNames: rememberEditedHeaderNames(
-            state.draft.editedHeaderNames,
-            removedHeader?.name ?? '',
-          ),
-        },
-      };
+      return updateSelectedDraft(state, (draft) => ({
+        ...draft,
+        headers: draft.headers.filter((header) => header.id !== id),
+        editedHeaderNames: rememberEditedHeaderNames(
+          draft.editedHeaderNames,
+          removedHeader?.name ?? '',
+        ),
+      }));
     }),
 
   setResolving: (resolving) => set({ resolving }),

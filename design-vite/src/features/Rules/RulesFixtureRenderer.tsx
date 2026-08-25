@@ -7,7 +7,7 @@ import {
 } from '../../fixtures/FixtureRenderer';
 import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode';
 import { useDesignState } from '../../state/useDesignState';
-import { BreakpointTimeoutAction } from './BreakpointTimeoutAction';
+import { BreakpointAction } from './BreakpointAction';
 
 interface RulesFixtureRendererProps {
   readonly node: FixtureNode;
@@ -26,11 +26,11 @@ export function RulesFixtureRenderer({ node }: RulesFixtureRendererProps): React
   const renderRulesElement: FixtureElementRenderer = (element, children) => {
     if (element.attributes['data-rule-id'] === 'token') return null;
     if (hasClass(element, 'vnote')) return null;
-    if (state.ruleBreakpointTimeout && hasClass(element, 'acards')) {
-      return <div className={fixtureClassNames('acards')}><BreakpointTimeoutAction /></div>;
+    if (state.ruleBreakpointAction && hasClass(element, 'acards')) {
+      return <div className={fixtureClassNames('acards')}><BreakpointAction /></div>;
     }
     if (
-      state.ruleBreakpointTimeout
+      state.ruleBreakpointAction
       && hasClass(element, 'sh')
       && fixtureText(element).includes('Actions')
     ) {

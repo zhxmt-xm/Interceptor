@@ -1,12 +1,12 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-21
+> 最后更新：2026-08-25
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
 >
 > 当前状态：断点已从独立 workspace 合并进 Capture（提交 `941e40a`）。
-> 第 1–6 节描述已实现产品；第 7 节只保留仍未验证的差异。两者不得混写。
+> 第 1–6 节描述已实现产品；第 7 节记录本阶段证据与仍未验证的差异。
 
 ## 1. 职责与边界
 
@@ -14,7 +14,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 
 | 归属 | 内容 |
 | --- | --- |
-| Breakpoints 负责 | 挂起状态机、超时策略、快照构造、用户编辑应用 |
+| Breakpoints 负责 | 挂起状态机、逻辑队列、快照构造、用户编辑与批量解决 |
 | Breakpoints 不负责 | 匹配判定（属于 Rules）、记录（属于 Capture） |
 
 断点由 `breakpoint` 类型的 Rule Action 触发，因此它是 Rules 的子系统，共享 `RuleService` 的执行上下文。
@@ -26,7 +26,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 | 参与者 | 职责 |
 | --- | --- |
 | `RuleService` | 遇到 `breakpoint` action 时调用 `awaitBreakpoint` |
-| `BreakpointQueue` | 持有等待中的断点，提供 suspend/resolve/list/closeAll |
+| `BreakpointQueue` | 持有 pending registry，提供 suspend/resolve/三条批量命令/list/closeAll |
 | `WebSocketBridge` | WebSocket 帧转发前调用 `pauseWebSocketMessage`，覆盖 message / ping / pong / close |
 | `CoreApplication` | 路由 `breakpoint.*` 命令 |
 | Renderer `useBreakpoints` | 订阅 `breakpoint.pending` 变更信号，刷新列表并提交解决方案 |
@@ -39,19 +39,18 @@ stateDiagram-v2
     waiting --> continued: resolve(continue)
     waiting --> edited: resolve(continue + edit)
     waiting --> dropped: resolve(drop)
-    waiting --> timed_out: deadline 到期
     waiting --> aborted: 客户端断开
-    timed_out --> continued: onTimeout = continue
-    timed_out --> dropped: onTimeout = drop
+    waiting --> aborted: Core / RPC 生命周期关闭
     continued --> [*]
     edited --> [*]
     dropped --> [*]
     aborted --> [*]
 ```
 
-**显式等待模式**：断点不再用`timeoutMs=0`编码无限等待。`timeout.mode='infinite'`不创建timer；`timeout.mode='finite'`必须携带正整数`timeoutMs`。UI用一个Timeout下拉框提供`No timeout`、常用时长与`Custom…`；Custom显示正整数Seconds输入。`No timeout`映射为infinite，其余选项映射为finite。HTTP仅在finite时显示`On timeout: Continue | Drop`；WebSocket finite固定continue，不显示产品不支持的policy控件。timeout只是Core允许等待的上限，不会覆盖客户端自己的超时；客户端更早断开时，Proxy按Mockttp request ID立即把对应suspension结束为`aborted`。RPC连接断开时`closeAll()`释放全部等待，因此无限等待也不会跨连接或进程泄漏。
-
-2026-08-21 TDD证据：Queue finite测试先Red于Promise不settle，RuleService显式action测试先Red于旧字段分派，WebSocket真实proxy先Red于pending不产生；实现后分别`12/12`、`24/24`与WS integration `9/9` Green。Renderer转换/正整数校验`9/9`、Rules import与15语言聚焦`57/57`、MCP registry `19/19`通过。真实Electron的HTTP/WS workflow实现前分别Red于timeout控件和Custom输入缺失，当前`2/2` Green；最终Main/Core PID为`21420/1604`与`33656/35580`，均`gracefulDestroyVerified=true`、8888释放且系统代理恢复。Custom/Invalid × Rules/WS × light/dark八个parity view全部`0 missing / 0 flagged`，最大几何差0.6px。
+**人工等待模式**：产品没有 Breakpoint timeout。pending 只由用户 Continue / Forward edited / Drop、
+客户端 abort 或 Core / RPC 生命周期关闭释放。客户端断开时 Proxy 按 Mockttp
+request ID 只解除对应 HTTP suspension；`closeAll()` 将当前进程的全部等待结果结算为 `aborted`。Rules、
+WebSocket setup、Protocol、导入校验与MCP工具均不包含 timeout 字段，也不存在旧格式识别或迁移路径。
 
 ## 4. 调用流程
 
@@ -78,9 +77,8 @@ sequenceDiagram
     alt 全局开关关闭
         Engine-->>Engine: 直接 continued，不挂起
     else 开关开启
-        Engine->>Queue: suspend('request', action.timeout, timeoutPolicy, snapshot)
+        Engine->>Queue: suspend('request', 'http', ruleId, snapshot, requestId)
         Queue-->>Engine: { id, outcome: Promise }
-        Note over Queue: finite记录deadline<br/>infinite不创建timer
 
         Queue-->>UI: breakpoint.pending 变更信号
         UI->>App: breakpoint.list
@@ -95,7 +93,7 @@ sequenceDiagram
 
     alt edited
         Engine->>Engine: applyRequestEdit(state, edit)
-    else dropped 或 timed_out + drop
+    else dropped
         Engine-->>Proxy: block close
     end
 
@@ -141,10 +139,14 @@ sequenceDiagram
     Client->>Bridge: 应用消息 / ping / pong / close
     Bridge->>Proxy: interceptWebSocketMessage
     alt 未启用或不在配置内
+        Proxy->>Proxy: 异步写入Capture frame
         Proxy-->>Bridge: forward 原样
     else 方向与帧类别都命中
-        Proxy->>Engine: pauseWebSocketMessage(snapshot, settings.timeout)
-        Engine->>Queue: suspend('websocket', settings.timeout, 'continue', snapshot)
+        opt 应用message
+            Proxy->>Proxy: 写入Capture并取得frame sequence
+        end
+        Proxy->>Engine: pauseWebSocketMessage(snapshot)
+        Engine->>Queue: suspend('websocket', ws:exchangeId, undefined, snapshot)
         Queue-->>Engine: outcome
         alt dropped
             Proxy-->>Bridge: drop
@@ -162,13 +164,15 @@ WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match
 不再检查 `breakpointsEnabled`，开关完全归 `ProxyService.webSocketBreakpointSettings`。
 配置里的 `exchangeId` 把断点锁在发起它的那条连接上，UI 说的 “Pause messages on this connection”
 就是字面意思；其他连接的帧不受影响，`websocket.frames` 也只在 exchangeId 匹配时才报告该配置。
-启用必须给出完整配置（`exchangeId` / `direction` / `frames` / `timeout`），因此不存在“开了但不知道拦什么”的中间态。
+启用必须给出完整配置（`exchangeId` / `direction` / `frames`），因此不存在“开了但不知道拦什么”的中间态。
 ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
 
 Renderer 不把 WebSocket pause 替换成另一套全屏 Inspector。pending 到达后自动切到该连接的 Messages tab，
-保留已转发帧并追加一条 paused row；下方内嵌 Original / Replacement message 编辑器。Original 直接消费
+保留已转发帧并为每个 pending 追加 head / queued row；只有队首下方挂载 Original / Replacement message
+编辑器。应用消息在挂起前先写入 Capture 并把 `webSocketFrameSequence` 带入 snapshot，pending row 暂时代替
+该 sequence 的历史行；解除后 pending 消失，历史行自然恢复，因此同一帧不会重复显示。Original 直接消费
 snapshot 的 text / hex 字节并复用 `BodyViewer`，Replacement 默认 Off，设置摘要来自同一连接的
-`WebSocketBreakpointSettings`，不会把 Core 的帧类别 `ruleName` 冒充成方向或超时。
+`WebSocketBreakpointSettings`，不会把 Core 的帧类别 `ruleName` 冒充成方向。
 
 ## 5. 当前感知方式
 
@@ -176,6 +180,16 @@ snapshot 的 text / hex 字节并复用 `BodyViewer`，Replacement 默认 Off，
 `useBreakpoints` 收到后调用 `breakpoint.list` 刷新。它不传大快照、不建第二条推送通道，也不依赖
 Capture 页面是否挂载。Core 重启时先清空本地 pending，恢复 running 后重新拉取。Pending count只显示在
 Capture workbar的Breakpoint入口；所有feature的Sidebar导航均不显示业务badge。
+
+Core 使用一个全局 registry，每项都有逻辑 `queueKey`：HTTP request / response / WebSocket
+Upgrade 使用 `http`，每条 WebSocket 连接使用 `ws:<exchangeId>`。registry 的 Map 插入顺序就是
+pending / request 到达顺序；每个逻辑队列只按 `queueKey` 过滤并保留该顺序，不按wall clock或ID重排。
+队首是默认编辑目标，不是 Core FIFO 锁；非队首按 ID 仍可被批量命令解除。
+
+Capture selection 是唯一可见选择。只有选中项是其逻辑队列队首时才挂载编辑器；非队首显示普通 Detail
+与 `Queued`。单项或批量命令完成后，Renderer 只拉取一次最新 snapshot：用户仍停留在已解决队首时才推进到
+同一 `queueKey` 的新队首；用户已查看普通流量或其他队列时不抢焦点。草稿由 Renderer 以 `breakpointId`
+独立保存在内存中，切换 selection 后可恢复，pending 消失、abort、resolve 或 Core 换代时精确删除。
 
 ## 6. 数据契约
 
@@ -190,6 +204,7 @@ interface BreakpointSnapshot {
   statusCode?: number;
   direction?: 'client-to-server' | 'server-to-client';   // WebSocket
   frame?: 'message' | 'ping' | 'pong' | 'close';         // WebSocket
+    webSocketFrameSequence?: number;                        // 已写入Capture的应用帧
   opcode?: 1 | 2;                                        // 仅 message 帧
   bodyFormat: 'text' | 'hex';
   headers: readonly RuleHeaderPair[];
@@ -205,28 +220,16 @@ interface WebSocketBreakpointSettings {
   exchangeId: string;
   direction: 'both' | 'client-to-server' | 'server-to-client';
   frames: readonly ('message' | 'ping' | 'pong' | 'close')[];
-  timeout:
-    | { mode: 'infinite' }
-    | { mode: 'finite'; timeoutMs: number };
 }
 
-type RuleBreakpointAction =
-  | {
-      type: 'breakpoint';
-      phase: 'request' | 'response';
-      timeout: { mode: 'infinite' };
-    }
-  | {
-      type: 'breakpoint';
-      phase: 'request' | 'response';
-      timeout: { mode: 'finite'; timeoutMs: number };
-      onTimeout: 'continue' | 'drop';
-    };
+interface RuleBreakpointAction {
+    type: 'breakpoint';
+    phase: 'request' | 'response';
+}
 
 interface BreakpointOutcome {
-  state: 'continued' | 'edited' | 'dropped' | 'timed_out' | 'aborted';
+    state: 'continued' | 'edited' | 'dropped' | 'aborted';
   edit?: BreakpointEdit;
-  timeoutPolicy?: 'continue' | 'drop';
 }
 ```
 
@@ -237,8 +240,11 @@ interface BreakpointOutcome {
 
 | 命令 | 用途 |
 | --- | --- |
-| `breakpoint.list` | 返回等待中快照、全局开关与 `autoContinued` 累计溢出数 |
+| `breakpoint.list` | 返回等待中快照与全局开关 |
 | `breakpoint.resolve` | continue / drop，可携带编辑 |
+| `breakpoint.continueQueue` | 原样放行命令开始时指定 `queueKey` 的全部 pending，返回 `resolvedCount` |
+| `breakpoint.dropQueue` | 丢弃命令开始时指定 `queueKey` 的全部 pending，返回 `resolvedCount` |
+| `breakpoint.continueRule` | 原样放行命令开始时指定 `ruleId` 的全部 pending，返回 `resolvedCount` |
 | `breakpoint.configure` | 设置 HTTP 断点全局开关 |
 | `websocket.breakpoint.enable` | 用完整配置启用 WebSocket 帧断点 |
 | `websocket.breakpoint.disable` | 停用 WebSocket 帧断点 |
@@ -253,21 +259,109 @@ interface BreakpointOutcome {
 
 2026-08-21 TDD证据：最终`capture.breakpoint-submenu-lifecycle`在`e5ca501`仅回植automation探针后精确Red于hover不产生submenu；当前`1/1` Green。右边界trigger与endpoint横坐标分别为`1030`与`628.126`，二级菜单向左翻转；父子共存、hover close/reopen、Escape与outside click均通过。Red/Green Main/Core PID为`21308/28948`与`46880/33620`，两边`gracefulDestroyVerified=true`且8888、系统代理与profile均恢复。
 
-队列上限：`BREAKPOINT_QUEUE_LIMIT = 10`。`suspend` 满时返回 `null`，调用方必须原样放行——
-浏览器对每个 host 只有 6 条 HTTP/1.1 连接，挂满之后第 7 个请求根本发不出去，用户看到的是整站卡死。
-溢出计数经 `breakpoint.pending` 上报并在 Capture 状态栏展示，Core 侧记 `breakpoint.queue-full`。
+pending registry不设隐藏上限。每次命中都由`suspend`创建等待项，不会因全局数量自动放行；用户可通过
+单项命令、按逻辑队列批量处理或按Rule批量Continue显式解除。大量断点可能占满站点连接，这是用户启用
+人工断点后的可见结果，产品不能用静默放行改变规则语义。
 
-## 7. 与当前实现的差异
+## 7. 逻辑队列阶段证据与剩余差异
 
-结构、感知、关联、队列保护、HTTP Original / Replacement body 与当前连接临时 WebSocket 断点均已实现。
-剩余差异只保留真实未验证项：
+结构、感知、关联、逻辑队列、批量命令、独立草稿、HTTP Original / Replacement body 与
+当前连接临时 WebSocket 断点均已实现。真实未验证项仍为：
 
 - HTTP `Execute edited` 后的 `Content-Length`、`content-encoding`、transfer-encoding 与 H2 framing
     尚未建立 wire-level 回归；产品不能仅凭 UI 状态宣称正确。
 - WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
 - Binary 未编辑保真与 hex **编辑后**的字节还原均已有真实 socket 回归。
-- WebSocket finite deadline固定continue；HTTP finite的Continue/Drop均已有真实Electron→Core→proxy→origin
-    workflow证据，Infinite在两条flow中都验证超过finite窗口后仍保持pending。
+
+### 7.1 逻辑队列、连续调试与批量命令（已实现）
+
+本阶段完整替换了单队列选择、单草稿与 timeout 契约，没有保留旧字段、兼容命令或迁移路径。
+
+#### 逻辑队列与展示
+
+- Core 继续以一个 pending registry 保存全部等待项；每个 pending 增加稳定的 `queueKey`。
+- HTTP request、HTTP response 与 WebSocket upgrade 使用 `queueKey: 'http'`；WebSocket message、ping、pong、
+    close 使用 <code>queueKey: `ws:${exchangeId}`</code>。不同 `queueKey` 互不阻塞；同一 WebSocket 连接的
+    双向帧保留registry插入顺序。
+- 同一逻辑队列只过滤`queueKey`，不重排Core snapshot。第一项是队首和默认编辑目标，但不是协议锁；Core
+    仍允许按 ID Continue 或 Drop 非队首项。
+- pending 始终附着在普通 Capture request / connection 行上。filter 只影响行是否可见，不改变队列成员或
+    顺序。全局 badge 汇总所有逻辑队列。
+- 只有选中的 pending 是其逻辑队列当前队首时才显示可编辑 Breakpoint Detail。非队首 pending 使用普通
+    Request / connection Detail，并以 `Queued` 表达等待前序断点，而不是复用网络 `loading`。
+
+#### 选择、推进与 abort
+
+- Capture selection 是唯一可见选择；不再维护会与 Capture 行分离的隐藏 breakpoint selection。
+- Continue unmodified、Forward edited 或 Drop 完成后，Renderer 必须先取得 Core 最新 pending snapshot，
+    再计算原 `queueKey` 的新队首，不得使用旧数组下标。
+- 若用户仍选中刚处理的队首 exchange，自动选择同一逻辑队列的新队首；若用户已切换到普通 request、
+    非队首 pending 或其他逻辑队列，不得抢焦点。
+- 客户端 abort 只移除对应 pending 与草稿；Capture 行保留并进入普通 `aborted` / `failed` 终态。中间项
+    消失后，后续推进同样基于最新 snapshot。
+- 按 ID resolve 非队首只移除目标，不改变当前队首。非队首没有编辑器，因此不能产生 edited payload。
+
+#### 草稿生命周期
+
+- Renderer 以 `breakpointId` 保存独立草稿。同一 HTTP exchange 的 request / response，以及同一 WebSocket
+    连接的不同帧不得共享草稿。
+- 切换 Capture selection 时保留草稿；重新选中同一 pending 时恢复。只有 Forward edited 应用草稿，
+    Continue unmodified 明确忽略草稿。
+- Continue、Forward edited、Drop、abort、pending 从最新 snapshot 消失或 Core 换代时删除对应草稿。
+    草稿只存在于 Renderer 内存，不写入 Capture 数据、Rules 配置或 workspace storage。
+
+#### 命令契约
+
+保留 `breakpoint.resolve` 处理单项 Continue / Forward edited / Drop；新增三条用户意图单一的命令：
+
+| 命令 | 作用域 | 语义 |
+| --- | --- | --- |
+| `breakpoint.continueQueue` | 显式 `queueKey` | Continue 调用开始时该逻辑队列中已存在的全部 pending |
+| `breakpoint.dropQueue` | 显式 `queueKey` | Drop 调用开始时该逻辑队列中已存在的全部 pending |
+| `breakpoint.continueRule` | 显式 `ruleId` | Continue 调用开始时所有逻辑队列中属于该 Rule 的 pending |
+
+- 三条命令必须分别贯穿 Protocol、Core、Main、Preload 与 Renderer；不得以布尔参数、空 ID、可选字段或魔法值
+    合并语义。
+- Core 在命令开始时固定目标 `breakpointId` 快照。执行期间新进入的 pending 不属于本次操作，避免命令持续
+    吸收新命中。
+- 目标在执行前已经消失视为未解决，不使整条命令失败。结果返回 `resolvedCount`，Renderer 完成后统一拉取
+    最新 snapshot，并分别推进所有受影响逻辑队列。
+- 批量 Continue 一律原样放行，不读取或复制任一 Renderer 草稿；批量 Drop 一律丢弃目标。批量命令不提供
+    edited 变体。
+
+#### 已删除 timeout
+
+- 删除 HTTP Rule breakpoint 与 WebSocket breakpoint 的 finite / infinite timeout 产品能力，包括协议字段、
+    Core timer / `onTimeout`、Rules 与 WebSocket UI、导入专判、i18n、MCP参数和既有 timeout 设计场景。
+- pending 只由用户 Continue / Forward edited / Drop、客户端 abort 或 Core / RPC 生命周期
+    关闭释放。生命周期关闭返回明确的 `aborted`，不得继续制造 `timed_out` 或 timeout policy。
+- pending registry不设数量上限，不存在`autoContinued`协议状态、queue-full诊断或对应UI。逻辑分组不能绕过
+    客户端 abort 或`closeAll()`清理。
+
+#### TDD 与验收证据
+
+- Unit：Protocol command/result、`BreakpointQueue` 排序/非队首 resolve/批量调用开始快照、Renderer 多草稿、
+    最新 snapshot 推进与精确 WebSocket frame sequence 均先取得目标缺口 Red，再实现 Green。
+- Integration：真实 Proxy 锁定 HTTP `queueKey/ruleId`、WebSocket pending sequence 与 Capture sequence 一致；
+    Capture/Archive frame 回归保持 Green。
+- E2E：`queue-stepping`、`queue-isolation`、`queue-commands` 与 `lifecycle-release` 经过真实
+    Renderer → Preload → Main → Core → Proxy → client/origin，覆盖中间 abort、不抢焦点、独立草稿、HTTP/WS
+    隔离、三条批量命令、调用开始快照和生命周期关闭。
+- Design/Parity：design-vite 先定稿 head / Queued / 批量菜单 / 无 timeout；视觉几何只由 design interaction
+    与 visual parity 验证，不混入业务 E2E。
+
+2026-08-25阶段证据：最终四条workflow源码在修复前`d854588`分别取得有效retrospective Red：
+`queue-stepping`与`queue-commands`已经通过真实Rules UI形成paused请求，但Capture行没有`data-queue-*`；
+`queue-isolation`的HTTP已真实pending但缺`queueKey`；`lifecycle-release`在真实WebSocket setup中仍找到1个
+timeout控件。Red Main/Core PID依次为`34028/1940`、`32556/29092`、`31380/12648`、`14964/31472`，
+四组`gracefulDestroyVerified=true`。当前同一组workflow合并`4/4` Green；Green Main/Core PID依次为
+`24768/21248`、`30096/30308`、`18196/12256`、`36720/2084`，四组同样
+`gracefulDestroyVerified=true`且8888释放。
+
+2026-08-25无上限补充TDD：`BreakpointQueue`先以25条连续命中在第11条返回`null`取得精确Red；删除
+`BREAKPOINT_QUEUE_LIMIT`、nullable suspension和queue-full状态后，同一测试25条全部pending并保持插入顺序。
+MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和payload字段后Green；MCP全量`46/46`
+与typecheck通过。最终全仓门禁与最新parity数字见`architecture/HANDOVER.md`。
 
 ## 8. 验收要点
 
@@ -278,9 +372,14 @@ interface BreakpointOutcome {
 - [x] Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
 - [ ] 大正文断点有明确的预览上限与提示，不 OOM。
 - [x] Binary 消息可用 hex 编辑并正确还原。
-- [x] WebSocket deadline 到期后按固定 continue 策略原样转发。
-- [x] HTTP finite超时按 `onTimeout` 策略正确continue或drop，Infinite只由用户或生命周期释放。
-- [x] 客户端在 deadline 前 abort 时立即释放对应断点，不影响其他等待请求。
-- [x] pending queue 超限自动 continue 并记录数量。
+- [x] HTTP / WebSocket 没有 timeout 产品能力，等待只由用户、客户端或生命周期释放。
+- [x] 客户端 abort 时立即释放对应断点，不影响其他等待请求。
+- [x] pending registry 无隐藏数量上限，每次命中都保持等待直到显式或生命周期释放。
 - [x] RPC 断开时全部等待被释放，不泄漏挂起请求。
 - [ ] Execute edited 后 content-length 与 encoding 一致。
+- [x] HTTP 与每条 WebSocket 连接按独立 `queueKey` 推进，互不阻塞。
+- [x] 仅队首可编辑；非队首显示 `Queued` 普通 Detail，filter 不改变队列。
+- [x] 单项处理按最新 snapshot 推进，查看普通 request 或其他队列时不抢焦点。
+- [x] 草稿按 `breakpointId` 独立保存，并在 resolve / abort / 消失 / Core 换代后精确清理。
+- [x] `Continue all`、`Drop all` 与 `Continue all from this rule` 分别走独立命令并只处理调用开始快照。
+- [x] HTTP / WebSocket timeout 产品能力及 `timed_out` 结果全部删除，生命周期释放使用 `aborted`。

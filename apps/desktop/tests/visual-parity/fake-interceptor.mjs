@@ -148,6 +148,8 @@ const bodyText = {
   'ws-body-1': '{"type":"subscribe","channel":"builds"}',
   'ws-body-2': '{"type":"subscribed","channel":"builds"}',
   'ws-body-3': '{"buildId":8431,"state":"running","branch":"main"}',
+  'ws-body-pending-head': '{"type":"presence","status":"online","userId":"u_1842"}     ',
+  'ws-body-pending-queued': '{"type":"presence","status":"away","userId":"u_1842"}',
 };
 const bodies = {
   ...Object.fromEntries(
@@ -214,6 +216,8 @@ const websocketFrames = [
   frame(2, 'server-to-client', 1, 12, 'ws-body-2', 40, 'text/plain; charset=utf-8'),
   frame(3, 'server-to-client', 1, 1_400, 'ws-body-3', 54, 'application/json'),
   frame(4, 'client-to-server', 2, 2_100, 'ws-body-4', 2_867, 'application/octet-stream'),
+  frame(5, 'client-to-server', 1, 2_200, 'ws-body-pending-head', 60, 'application/json'),
+  frame(6, 'server-to-client', 1, 2_300, 'ws-body-pending-queued', 58, 'application/json'),
 ];
 
 const httpDetail = {
@@ -424,7 +428,7 @@ const stagingRule = rule('rule-staging', 'Redirect to staging', 'prod.example.co
 const authRule = { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false };
 const trackersRule = rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' });
 const uploadRule = rule('rule-upload', 'Delay uploads', 'upload.example.com', '/', { type: 'delay', phase: 'request', ms: 1_000 });
-const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request', timeout: { mode: 'finite', timeoutMs: 30_000 }, onTimeout: 'continue' });
+const checkoutRule = rule('rule-checkout', 'Debug checkout', 'shop.example.com', '/checkout', { type: 'breakpoint', phase: 'request' });
 const managerCheckoutRule = {
   ...checkoutRule,
   name: 'Checkout endpoint',
@@ -435,7 +439,7 @@ const managerCheckoutRule = {
   ],
 };
 const managerTokenRule = {
-  ...rule('rule-token-breakpoint', 'Token API', 'api.example.com', '/v1/', { type: 'breakpoint', phase: 'response', timeout: { mode: 'finite', timeoutMs: 30_000 }, onTimeout: 'continue' }),
+  ...rule('rule-token-breakpoint', 'Token API', 'api.example.com', '/v1/', { type: 'breakpoint', phase: 'response' }),
   matchers: [
     { type: 'host', value: 'api.example.com', mode: 'exact' },
     { type: 'path', value: '/v1/', mode: 'contains' },
@@ -575,6 +579,8 @@ const pendingBreakpoints = [
     id: 'bp-checkout',
     exchangeId: 'bp-exchange-checkout',
     phase: 'request',
+    queueKey: 'http',
+    ruleId: 'rule-checkout',
     createdAt: startedAt,
     ruleName: 'Checkout API',
     method: 'POST',
@@ -595,6 +601,8 @@ const pendingBreakpoints = [
     id: 'bp-token',
     exchangeId: 'bp-exchange-token',
     phase: 'response',
+    queueKey: 'http',
+    ruleId: 'rule-token',
     createdAt: startedAt + 1_000,
     ruleName: 'Token API',
     method: 'POST',
@@ -613,21 +621,42 @@ const pendingBreakpoints = [
   },
 ];
 
-const pendingWebSocketBreakpoint = {
-  id: 'bp-websocket-message',
-  exchangeId: 'ws-fixture',
-  phase: 'websocket',
-  createdAt: startedAt + 1_400,
-  ruleName: 'WebSocket message',
-  url: 'realtime.example.com/socket',
-  direction: 'client-to-server',
-  frame: 'message',
-  opcode: 1,
-  bodyFormat: 'text',
-  headers: [],
-  bodyAvailable: true,
-  body: '{"type":"presence","status":"online","userId":"u_1842"}     ',
-};
+const pendingWebSocketBreakpoints = [
+  {
+    id: 'bp-websocket-message',
+    exchangeId: 'ws-fixture',
+    phase: 'websocket',
+    queueKey: 'ws:ws-fixture',
+    createdAt: startedAt + 1_400,
+    ruleName: 'WebSocket message',
+    url: 'realtime.example.com/socket',
+    direction: 'client-to-server',
+    frame: 'message',
+    webSocketFrameSequence: 5,
+    opcode: 1,
+    bodyFormat: 'text',
+    headers: [],
+    bodyAvailable: true,
+    body: '{"type":"presence","status":"online","userId":"u_1842"}     ',
+  },
+  {
+    id: 'bp-websocket-queued',
+    exchangeId: 'ws-fixture',
+    phase: 'websocket',
+    queueKey: 'ws:ws-fixture',
+    createdAt: startedAt + 1_500,
+    ruleName: 'WebSocket message',
+    url: 'realtime.example.com/socket',
+    direction: 'server-to-client',
+    frame: 'message',
+    webSocketFrameSequence: 6,
+    opcode: 1,
+    bodyFormat: 'text',
+    headers: [],
+    bodyAvailable: true,
+    body: '{"type":"presence","status":"away","userId":"u_1842"}',
+  },
+];
 
 export const fakeInterceptorFixture = {
   capture: {
@@ -687,7 +716,7 @@ export const fakeInterceptorFixture = {
     items: [],
     // 只在 pausedBreakpoints 场景生效。
     pendingItems: pendingBreakpoints,
-    pendingWebSocketItem: pendingWebSocketBreakpoint,
+    pendingWebSocketItems: pendingWebSocketBreakpoints,
   },
   diagnostics: {
     records: diagnostics,
@@ -813,9 +842,9 @@ export function installFakeInterceptor({
   largeTextBody = false,
   noRuleHits = false,
   pausedBreakpoints = false,
+  pausedBreakpointPhase = null,
   pausedWebSocketBreakpoint = false,
   breakpointBodyState = 'request-ready',
-  breakpointAutoContinued = 0,
   breakpointFile = null,
   breakpointsEnabled = true,
   breakpointManagerRules = false,
@@ -905,7 +934,11 @@ export function installFakeInterceptor({
       ...fixture.capture.pausedSessions,
       ...fixture.capture.sessions,
     ];
-    fixture.breakpoints.items = fixture.breakpoints.pendingItems;
+    fixture.breakpoints.items = pausedBreakpointPhase
+      ? fixture.breakpoints.pendingItems.filter(
+          (breakpoint) => breakpoint.phase === pausedBreakpointPhase,
+        )
+      : fixture.breakpoints.pendingItems;
     if (breakpointBodyState === 'request-loading') {
       delete fixture.capture.details['bp-exchange-checkout'].requestBody;
       fixture.capture.details['bp-exchange-checkout'].summary = {
@@ -922,12 +955,11 @@ export function installFakeInterceptor({
     }
   }
   if (pausedWebSocketBreakpoint) {
-    fixture.breakpoints.items = [fixture.breakpoints.pendingWebSocketItem];
+    fixture.breakpoints.items = fixture.breakpoints.pendingWebSocketItems;
     fixture.capture.websocketBreakpoint = {
       exchangeId: 'ws-fixture',
       direction: 'both',
       frames: ['message'],
-      timeout: { mode: 'infinite' },
     };
   }
   if (noRuleHits) {
@@ -1445,7 +1477,7 @@ export function installFakeInterceptor({
       const eligible = fixture.capture.websocketFrames.filter(
         (item) =>
           item.seq > cursor &&
-          (!pausedWebSocketBreakpoint || item.timestamp < fixture.breakpoints.pendingWebSocketItem.createdAt) &&
+          (!pausedWebSocketBreakpoint || item.timestamp < fixture.breakpoints.pendingWebSocketItems[0].createdAt) &&
           (!request.direction || item.direction === request.direction),
       );
       const items = eligible.slice(0, request.limit);
@@ -1577,12 +1609,26 @@ export function installFakeInterceptor({
     listBreakpoints: async () => ({
       breakpoints: breakpointItems,
       enabled: breakpointsEnabledState,
-      autoContinued: breakpointAutoContinued,
     }),
     pickBreakpointBodyFile: async () => breakpointFile,
     resolveBreakpoint: async (breakpointId, action, edit) => {
       breakpointItems = breakpointItems.filter((item) => item.id !== breakpointId);
       return { state: action === 'drop' ? 'dropped' : edit ? 'edited' : 'continued' };
+    },
+    continueBreakpointQueue: async (queueKey) => {
+      const initialCount = breakpointItems.length;
+      breakpointItems = breakpointItems.filter((item) => item.queueKey !== queueKey);
+      return { resolvedCount: initialCount - breakpointItems.length };
+    },
+    dropBreakpointQueue: async (queueKey) => {
+      const initialCount = breakpointItems.length;
+      breakpointItems = breakpointItems.filter((item) => item.queueKey !== queueKey);
+      return { resolvedCount: initialCount - breakpointItems.length };
+    },
+    continueBreakpointRule: async (ruleId) => {
+      const initialCount = breakpointItems.length;
+      breakpointItems = breakpointItems.filter((item) => item.ruleId !== ruleId);
+      return { resolvedCount: initialCount - breakpointItems.length };
     },
     setBreakpointsEnabled: async (enabled) => {
       breakpointsEnabledState = enabled;

@@ -1,0 +1,8 @@
+.queueMenu {
+  min-width: 238px;
+}
+
+.queueItemLabel {
+  display: inline-flex;
+  align-items: center;
+}

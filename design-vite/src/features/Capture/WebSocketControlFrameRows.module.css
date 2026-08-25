@@ -54,3 +54,30 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.queuedFrameRow {
+  display: grid;
+  grid-template-columns: 26px 48px minmax(0, 1fr) 54px 54px;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--yellow) 5%, var(--panel));
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queuedFrameRow:hover {
+  background: color-mix(in srgb, var(--yellow) 9%, var(--panel));
+}
+
+.queuedFrameRow > span:nth-last-child(-n + 2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

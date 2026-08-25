@@ -237,6 +237,12 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointPickBodyFile),
   resolveBreakpoint: (breakpointId, action, edit) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointResolve, breakpointId, action, edit),
+  continueBreakpointQueue: (queueKey) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointContinueQueue, queueKey),
+  dropBreakpointQueue: (queueKey) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointDropQueue, queueKey),
+  continueBreakpointRule: (ruleId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointContinueRule, ruleId),
   setBreakpointsEnabled: (enabled) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.breakpointConfigure, enabled),
   probeTls: (host, port) =>

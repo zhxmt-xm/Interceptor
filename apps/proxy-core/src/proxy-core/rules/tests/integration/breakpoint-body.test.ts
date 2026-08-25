@@ -155,8 +155,6 @@ function breakpointRule(phase: 'request' | 'response'): RuleDefinition {
       {
         type: 'breakpoint',
         phase,
-        timeout: { mode: 'finite', timeoutMs: 30_000 },
-        onTimeout: 'continue',
       },
     ],
   };
@@ -217,6 +215,45 @@ describe('Breakpoint snapshots (real proxy)', () => {
     });
     await expect(inFlight).resolves.toBe(200);
     expect(origin.received).toEqual([UPLOAD_BODY]);
+  });
+
+  it('groups concurrent HTTP breakpoints into one stable logical queue', async () => {
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(captureService, new CaptureEventQueue(), ruleService);
+    const address = await proxyService.start({ port: 0 });
+    origin = await startOrigin();
+
+    const firstRequest = proxiedPost(
+      address,
+      `http://127.0.0.1:${origin.port}/queue-a`,
+      'queue-a',
+    );
+    await expect.poll(() => breakpointQueue.size).toBe(1);
+    const secondRequest = proxiedPost(
+      address,
+      `http://127.0.0.1:${origin.port}/queue-b`,
+      'queue-b',
+    );
+    await expect.poll(() => breakpointQueue.size).toBe(2);
+
+    const pending = breakpointQueue.list();
+    try {
+      expect(pending).toMatchObject([
+        { queueKey: 'http', ruleId: 'rule-breakpoint-request' },
+        { queueKey: 'http', ruleId: 'rule-breakpoint-request' },
+      ]);
+      expect(pending[0]!.createdAt).toBeLessThanOrEqual(pending[1]!.createdAt);
+    } finally {
+      for (const breakpoint of pending) {
+        breakpointQueue.resolve(breakpoint.id, 'continue');
+      }
+      await Promise.allSettled([firstRequest, secondRequest]);
+    }
+    await expect(firstRequest).resolves.toBe(200);
+    await expect(secondRequest).resolves.toBe(200);
+    expect(origin.received).toEqual(['queue-a', 'queue-b']);
   });
 
   it('releases the paused request when the client aborts', async () => {

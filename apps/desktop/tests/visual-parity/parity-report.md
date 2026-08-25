@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-08-24T08:01:51.029Z
+Generated: 2026-08-25T09:01:54.082Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 141 |
-| Average pixel diff | 2.59% |
-| Targets | 1019 |
-| Matched | 985 |
+| Views checked | 140 |
+| Average pixel diff | 2.49% |
+| Targets | 974 |
+| Matched | 940 |
 | Missing | 34 |
-| Flagged | 304 |
+| Flagged | 306 |
 | Largest geometry delta | 1156.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -20,57 +20,59 @@ Generated: 2026-08-24T08:01:51.029Z
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture | 3.58% | 38 | 22 | 16 | 22 | 1001.7 px |
-| breakpoint-request-paused | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoints | 3.42% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace | 3.36% | 10 | 10 | 0 | 7 | 3.3 px |
-| breakpoint-request-body-file-empty | 3.37% | 10 | 10 | 0 | 9 | 302.1 px |
-| breakpoint-request-body-file | 3.39% | 10 | 10 | 0 | 6 | 3.3 px |
-| breakpoint-response-paused | 3.45% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded | 3.64% | 10 | 10 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace | 3.63% | 11 | 10 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty | 3.64% | 11 | 11 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file | 3.63% | 11 | 11 | 0 | 7 | 2.0 px |
-| breakpoint-request-paused-dark | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading-dark | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loaded-dark | 3.41% | 9 | 9 | 0 | 8 | 3.0 px |
-| breakpoint-request-body-replace-dark | 3.36% | 10 | 10 | 0 | 7 | 3.3 px |
-| breakpoint-request-body-file-empty-dark | 3.37% | 10 | 10 | 0 | 9 | 302.1 px |
-| breakpoint-request-body-file-dark | 3.38% | 10 | 10 | 0 | 6 | 3.3 px |
-| breakpoint-response-paused-dark | 3.50% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded-dark | 3.70% | 10 | 10 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace-dark | 3.70% | 11 | 10 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty-dark | 3.70% | 11 | 11 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file-dark | 3.69% | 11 | 11 | 0 | 7 | 2.0 px |
-| breakpoint-queue | 3.20% | 4 | 4 | 0 | 2 | 71.7 px |
-| breakpoint-queue-full | 2.82% | 2 | 2 | 0 | 0 | 0.5 px |
-| breakpoint-queue-dark | 3.20% | 4 | 4 | 0 | 2 | 71.7 px |
-| breakpoint-queue-full-dark | 2.93% | 2 | 2 | 0 | 0 | 0.5 px |
-| capture-websocket | 3.38% | 7 | 5 | 2 | 3 | 1001.7 px |
+| capture | 3.59% | 38 | 22 | 16 | 22 | 1001.7 px |
+| breakpoint-request-paused | 2.95% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading | 2.95% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoints | 3.17% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-replace | 3.10% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-file-empty | 3.14% | 11 | 11 | 0 | 10 | 302.1 px |
+| breakpoint-request-body-file | 3.15% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-response-paused | 2.95% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded | 2.98% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace | 2.99% | 12 | 11 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty | 2.99% | 12 | 12 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file | 2.98% | 12 | 12 | 0 | 6 | 2.0 px |
+| breakpoint-request-paused-dark | 3.00% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading-dark | 3.00% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loaded-dark | 3.22% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-replace-dark | 3.14% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-file-empty-dark | 3.19% | 11 | 11 | 0 | 10 | 302.1 px |
+| breakpoint-request-body-file-dark | 3.19% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-response-paused-dark | 2.99% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded-dark | 3.02% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace-dark | 3.03% | 12 | 11 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty-dark | 3.03% | 12 | 12 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file-dark | 3.02% | 12 | 12 | 0 | 6 | 2.0 px |
+| breakpoint-queue-head | 2.98% | 2 | 2 | 0 | 0 | 0.5 px |
+| breakpoint-queue-queued | 3.19% | 3 | 3 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 3.29% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-head-dark | 2.97% | 2 | 2 | 0 | 0 | 0.5 px |
+| breakpoint-queue-queued-dark | 3.31% | 3 | 3 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu-dark | 3.25% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-websocket | 3.37% | 7 | 5 | 2 | 3 | 1001.7 px |
 | statusbar-upstream-down | 2.65% | 1 | 1 | 0 | 0 | 0.5 px |
-| statusbar-upstream-down-dark | 2.67% | 1 | 1 | 0 | 0 | 0.5 px |
-| capture-websocket-breakpoint-setup | 3.62% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-setup-custom | 3.72% | 8 | 8 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-setup-invalid | 3.73% | 7 | 7 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-enabled | 2.79% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused | 3.63% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-websocket-breakpoint-setup-dark | 3.60% | 14 | 14 | 0 | 1 | 2.0 px |
-| capture-websocket-breakpoint-setup-custom-dark | 3.69% | 8 | 8 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-setup-invalid-dark | 3.68% | 7 | 7 | 0 | 0 | 0.6 px |
-| capture-websocket-breakpoint-enabled-dark | 3.23% | 5 | 5 | 0 | 1 | 1.0 px |
-| capture-websocket-breakpoint-paused-dark | 3.64% | 12 | 12 | 0 | 8 | 2.0 px |
-| capture-body-effect-request-text | 3.20% | 4 | 4 | 0 | 0 | 0.0 px |
-| capture-body-effect-request-file | 3.22% | 4 | 4 | 0 | 0 | 0.0 px |
-| capture-body-effect-response-text | 3.32% | 5 | 5 | 0 | 0 | 0.0 px |
-| capture-body-effect-response-file | 3.32% | 5 | 5 | 0 | 0 | 0.0 px |
-| capture-body-effect-request-text-dark | 3.24% | 4 | 4 | 0 | 0 | 0.0 px |
-| capture-body-effect-request-file-dark | 3.25% | 4 | 4 | 0 | 0 | 0.0 px |
-| capture-body-effect-response-text-dark | 3.38% | 5 | 5 | 0 | 0 | 0.0 px |
-| capture-body-effect-response-file-dark | 3.38% | 5 | 5 | 0 | 0 | 0.0 px |
-| capture-request-json | 3.37% | 4 | 3 | 1 | 2 | 1001.7 px |
-| capture-timing | 2.83% | 4 | 4 | 0 | 4 | 4.4 px |
-| capture-cookies | 3.04% | 3 | 3 | 0 | 0 | 0.7 px |
+| statusbar-upstream-down-dark | 2.66% | 1 | 1 | 0 | 0 | 0.5 px |
+| capture-websocket-breakpoint-setup | 3.62% | 10 | 10 | 0 | 0 | 0.8 px |
+| capture-websocket-breakpoint-enabled | 3.46% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused | 3.86% | 12 | 12 | 0 | 9 | 28.0 px |
+| capture-websocket-breakpoint-queue-head | 3.65% | 3 | 3 | 0 | 0 | 0.5 px |
+| capture-websocket-breakpoint-queue-queued | 3.18% | 3 | 3 | 0 | 0 | 0.0 px |
+| capture-websocket-breakpoint-setup-dark | 3.59% | 10 | 10 | 0 | 0 | 0.8 px |
+| capture-websocket-breakpoint-enabled-dark | 3.56% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-paused-dark | 3.87% | 12 | 12 | 0 | 9 | 28.0 px |
+| capture-websocket-breakpoint-queue-head-dark | 3.64% | 3 | 3 | 0 | 0 | 0.5 px |
+| capture-websocket-breakpoint-queue-queued-dark | 3.18% | 3 | 3 | 0 | 0 | 0.0 px |
+| capture-body-effect-request-text | 2.94% | 4 | 4 | 0 | 1 | 10.0 px |
+| capture-body-effect-request-file | 2.95% | 4 | 4 | 0 | 1 | 10.0 px |
+| capture-body-effect-response-text | 3.02% | 5 | 5 | 0 | 1 | 10.0 px |
+| capture-body-effect-response-file | 3.02% | 5 | 5 | 0 | 1 | 10.0 px |
+| capture-body-effect-request-text-dark | 2.97% | 4 | 4 | 0 | 1 | 10.0 px |
+| capture-body-effect-request-file-dark | 2.98% | 4 | 4 | 0 | 1 | 10.0 px |
+| capture-body-effect-response-text-dark | 3.07% | 5 | 5 | 0 | 1 | 10.0 px |
+| capture-body-effect-response-file-dark | 3.07% | 5 | 5 | 0 | 1 | 10.0 px |
+| capture-request-json | 3.10% | 4 | 3 | 1 | 2 | 1001.7 px |
+| capture-timing | 2.82% | 4 | 4 | 0 | 4 | 4.4 px |
+| capture-cookies | 2.73% | 3 | 3 | 0 | 0 | 0.7 px |
 | capture-grpc | 3.55% | 8 | 8 | 0 | 3 | 1.6 px |
 | capture-tunnel | 3.31% | 8 | 8 | 0 | 5 | 170.0 px |
 | capture-tunnel-dark | 3.37% | 6 | 6 | 0 | 3 | 170.0 px |
@@ -79,39 +81,36 @@ Generated: 2026-08-24T08:01:51.029Z
 | capture-tunnel-mitm-navigation | 3.36% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target | 1.55% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target-dark | 1.54% | 1 | 1 | 0 | 0 | 0.0 px |
-| https-setup | 6.62% | 9 | 9 | 0 | 1 | 487.7 px |
-| https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 487.7 px |
-| https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 488.0 px |
-| import-export | 2.97% | 7 | 7 | 0 | 2 | 24.5 px |
+| https-setup | 6.62% | 9 | 9 | 0 | 2 | 44.3 px |
+| https-setup-dark | 1.82% | 5 | 5 | 0 | 1 | 44.3 px |
+| https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 44.3 px |
+| import-export | 2.96% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.95% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 3.16% | 4 | 4 | 0 | 0 | 0.8 px |
-| capture-breakpoint-create-menu | 2.83% | 8 | 8 | 0 | 1 | 1.0 px |
-| capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
+| capture-export-menu | 2.96% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-request-rule-menu | 2.97% | 4 | 4 | 0 | 0 | 0.8 px |
+| capture-breakpoint-create-menu | 2.82% | 8 | 8 | 0 | 1 | 1.0 px |
+| capture-request-menu-dismiss | 2.66% | 1 | 1 | 0 | 1 | 0.3 px |
 | capture-rule-filter | 1.47% | 3 | 0 | 3 | 0 | 0.0 px |
 | capture-rule-filter-disabled | 2.98% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 3.85% | 2 | 2 | 0 | 2 | 9.2 px |
-| capture-body-media-save | 3.25% | 2 | 2 | 0 | 1 | 7.1 px |
-| proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
+| capture-body-preview-limited | 3.59% | 2 | 2 | 0 | 2 | 9.2 px |
+| capture-body-media-save | 2.93% | 2 | 2 | 0 | 1 | 7.1 px |
+| proxy-not-ready | 0.57% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
-| rules-breakpoint-timeout-custom | 3.03% | 8 | 8 | 0 | 0 | 0.2 px |
-| rules-breakpoint-timeout-invalid | 2.99% | 10 | 10 | 0 | 0 | 0.3 px |
-| rules-breakpoint-timeout-custom-dark | 3.33% | 8 | 8 | 0 | 0 | 0.2 px |
-| rules-breakpoint-timeout-invalid-dark | 3.24% | 10 | 10 | 0 | 0 | 0.3 px |
-| rules | n/a | 11 | 11 | 0 | 1 | 11.2 px |
-| rules-import-confirm-light | 1.31% | 9 | 9 | 0 | 0 | 0.5 px |
+| rules-breakpoint-action | 2.42% | 3 | 3 | 0 | 0 | 0.1 px |
+| rules-breakpoint-action-dark | 2.64% | 3 | 3 | 0 | 0 | 0.1 px |
+| rules-import-confirm-light | 1.08% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
-| rules-import-confirm-dark | 0.46% | 9 | 9 | 0 | 0 | 0.5 px |
+| rules-import-confirm-dark | 0.43% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-add-action | 4.70% | 1 | 1 | 0 | 0 | 0.6 px |
 | rules-select-dropdown | 3.50% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 2.14% | 9 | 9 | 0 | 2 | 0.9 px |
-| composer-import-confirm-light | 1.12% | 8 | 8 | 0 | 0 | 0.5 px |
+| composer-import-confirm-light | 0.77% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-light | 0.50% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-export-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
-| composer-import-confirm-dark | 0.26% | 8 | 8 | 0 | 0 | 0.5 px |
+| composer-import-confirm-dark | 0.23% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-dark | 0.11% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-export-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-response-headers | 2.11% | 2 | 2 | 0 | 0 | 0.7 px |
@@ -120,15 +119,15 @@ Generated: 2026-08-24T08:01:51.029Z
 | settings-proxy-dark | 1.82% | 5 | 5 | 0 | 2 | 160.8 px |
 | settings-app-containers | 2.52% | 15 | 15 | 0 | 5 | 3.8 px |
 | settings-app-containers-dark | 2.54% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-container-enable-all | 1.12% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-enable-all | 1.32% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all | 1.18% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-enable-all-dark | 0.48% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.54% | 5 | 5 | 0 | 0 | 0.9 px |
 | tls-compatibility-dialog-add | 1.56% | 2 | 2 | 0 | 0 | 0.4 px |
 | settings-tls-passthrough | 1.53% | 9 | 7 | 2 | 2 | 131.2 px |
 | settings-tls-passthrough-dark | 1.52% | 9 | 7 | 2 | 2 | 131.2 px |
-| tls-compatibility-dialog | 0.97% | 8 | 8 | 0 | 1 | 1.7 px |
-| tls-compatibility-dialog-dark | 0.42% | 8 | 8 | 0 | 1 | 1.7 px |
+| tls-compatibility-dialog | 0.98% | 8 | 8 | 0 | 1 | 1.7 px |
+| tls-compatibility-dialog-dark | 0.43% | 8 | 8 | 0 | 1 | 1.7 px |
 | settings-updates-checking | 2.00% | 13 | 13 | 0 | 3 | 13.8 px |
 | settings-updates-checking-dark | 1.94% | 13 | 13 | 0 | 3 | 13.8 px |
 | settings-updates-available | 2.23% | 14 | 14 | 0 | 1 | 5.7 px |
@@ -149,16 +148,16 @@ Generated: 2026-08-24T08:01:51.029Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints-off | 2.66% | 1 | 1 | 0 | 1 | 0.0 px |
+| breakpoints-off | 2.65% | 1 | 1 | 0 | 1 | 0.0 px |
 | breakpoint-manager | 3.03% | 8 | 8 | 0 | 7 | 3.5 px |
-| breakpoint-created-message | 2.83% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-dark | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message | 2.82% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 2.79% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.62% | 1 | 1 | 0 | 1 | 13.0 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
 | shell-v2-capture-dark | 3.60% | 3 | 2 | 1 | 1 | 999.1 px |
-| shell-v2-capture-collapsed | 3.47% | 3 | 2 | 1 | 1 | 839.1 px |
+| shell-v2-capture-collapsed | 3.48% | 3 | 2 | 1 | 1 | 839.1 px |
 | shell-v2-rules-dark | n/a | 3 | 3 | 0 | 1 | 13.0 px |
-| shell-v2-composer-dark | 2.15% | 5 | 5 | 0 | 1 | 0.9 px |
+| shell-v2-composer-dark | 2.16% | 5 | 5 | 0 | 1 | 0.9 px |
 | shell-v2-settings-dark | 2.18% | 4 | 2 | 2 | 2 | 997.2 px |
 | shell-v2-diagnostics-dark | 1.76% | 6 | 4 | 2 | 1 | 973.9 px |
 
@@ -166,7 +165,7 @@ Generated: 2026-08-24T08:01:51.029Z
 
 | View | Element | dx | dy | dw | dh | Max delta | Style differences | Status |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| capture | Capture | 233.0 px | -89.4 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
+| capture | Capture | 233.0 px | -89.9 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture | Rules & Map | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Composer | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Breakpoints | n/a | n/a | n/a | n/a | n/a | none | design missing |
@@ -176,34 +175,34 @@ Generated: 2026-08-24T08:01:51.029Z
 | capture | Theme | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture | Inspector host | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Inspector client app | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Filter panel | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter groups | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter item all | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
-| capture | Filter item | 10.0 px | 0.4 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter panel | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter groups | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter item all | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
+| capture | Filter item | 10.0 px | -0.1 px | 0.0 px | 0.0 px | 10.0 px | none | flagged |
 | capture | Filter search | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Filter clear all | 90.0 px | -0.1 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
-| capture | List app header | 8.0 px | 0.4 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
-| capture | List app cell | 8.0 px | -8.6 px | 0.0 px | 0.0 px | 8.6 px | none | flagged |
-| capture | List app cell unknown | 8.0 px | -268.6 px | 0.0 px | 0.0 px | 268.6 px | none | flagged |
-| capture | List path cell | 0.0 px | -7.9 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
-| capture | List host cell | 0.0 px | -9.5 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
-| capture | List status header | -249.0 px | 0.5 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
-| capture | List status cell | -243.0 px | -8.0 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
-| capture | List protocol header | -255.0 px | 0.5 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
-| capture | List protocol cell | -249.0 px | -8.3 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
-| capture | List type header | -267.0 px | 0.5 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
-| capture | List type cell | -261.0 px | -8.4 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
-| capture | List size header | -273.0 px | 0.5 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
-| capture | List size cell | -267.0 px | -8.2 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
-| capture | List time header | -279.0 px | 0.5 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
-| capture | List time cell | -273.0 px | -8.2 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
+| capture | Filter clear all | 90.0 px | -0.6 px | 0.0 px | 0.0 px | 90.0 px | fontSize 13.3333px->13px; color rgb(139, 142, 150)->rgb(26, 27, 30) | flagged |
+| capture | List app header | 8.0 px | -0.1 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
+| capture | List app cell | 8.0 px | -0.1 px | 0.0 px | 0.0 px | 8.0 px | none | flagged |
+| capture | List app cell unknown | 8.0 px | -260.1 px | 0.0 px | 0.0 px | 260.1 px | none | flagged |
+| capture | List path cell | 0.0 px | 0.6 px | -241.0 px | -1.6 px | 241.0 px | none | flagged |
+| capture | List host cell | 0.0 px | -1.0 px | -241.0 px | 0.1 px | 241.0 px | none | flagged |
+| capture | List status header | -249.0 px | 0.0 px | 0.0 px | -0.3 px | 249.0 px | none | flagged |
+| capture | List status cell | -243.0 px | 0.5 px | 0.0 px | -1.3 px | 243.0 px | none | flagged |
+| capture | List protocol header | -255.0 px | 0.0 px | 0.0 px | -0.3 px | 255.0 px | none | flagged |
+| capture | List protocol cell | -249.0 px | 0.2 px | 0.0 px | -0.7 px | 249.0 px | none | flagged |
+| capture | List type header | -267.0 px | 0.0 px | 0.0 px | -0.3 px | 267.0 px | none | flagged |
+| capture | List type cell | -261.0 px | 0.1 px | -4.0 px | -0.5 px | 261.0 px | none | flagged |
+| capture | List size header | -273.0 px | 0.0 px | 0.0 px | -0.3 px | 273.0 px | none | flagged |
+| capture | List size cell | -267.0 px | 0.3 px | 0.0 px | -0.9 px | 267.0 px | none | flagged |
+| capture | List time header | -279.0 px | 0.0 px | 0.0 px | -0.3 px | 279.0 px | none | flagged |
+| capture | List time cell | -273.0 px | 0.3 px | 0.0 px | -0.9 px | 273.0 px | none | flagged |
 | capture | Status endpoint | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Status passthrough | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule replaced | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule set | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule appended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture | Rule removed | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| capture | Recording | 10.0 px | 0.0 px | -0.3 px | -0.3 px | 10.0 px | none | flagged |
+| capture | Recording | 10.0 px | -0.5 px | -0.3 px | -0.3 px | 10.0 px | none | flagged |
 | breakpoint-request-paused | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
 | breakpoint-request-paused | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-paused | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
@@ -224,28 +223,31 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-request-body-loading | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-loading | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-loading | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
-| breakpoints | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoints | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
-| breakpoints | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
-| breakpoints | Replacement body | 0.0 px | 3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
-| breakpoints | Using original | 0.0 px | 3.0 px | -0.4 px | 0.0 px | 3.0 px | none | flagged |
-| breakpoints | Rule set | 0.0 px | 2.8 px | 0.0 px | 0.0 px | 2.8 px | none | flagged |
-| breakpoints | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| breakpoints | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoints | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-request-body-replace | Request paused | 0.0 px | -2.3 px | 0.0 px | -1.1 px | 2.3 px | none | flagged |
-| breakpoint-request-body-replace | Request headers | 0.0 px | -3.3 px | 0.0 px | 0.1 px | 3.3 px | none | flagged |
-| breakpoint-request-body-replace | Original body | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| breakpoint-request-body-replace | Replacement body | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
-| breakpoint-request-body-replace | Using original | 2.0 px | 0.7 px | -0.4 px | 0.0 px | 2.0 px | none | flagged |
-| breakpoint-request-body-replace | Replacement body editor | 0.0 px | 1.7 px | 0.0 px | 0.0 px | 1.7 px | none | flagged |
-| breakpoint-request-body-replace | Rule set | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
-| breakpoint-request-body-replace | Drop | 0.0 px | -2.9 px | -0.1 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-replace | Continue | -1.2 px | -2.9 px | -0.4 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-replace | Forward edited | -1.6 px | -2.9 px | 1.6 px | 0.0 px | 2.9 px | none | flagged |
+| breakpoints | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoints | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoints | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoints | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoints | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoints | Using original | 0.0 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| breakpoints | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoints | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoints | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoints | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoint-request-body-replace | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-request-body-replace | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-request-body-replace | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoint-request-body-replace | Using original | 2.0 px | 1.0 px | -0.4 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace | Replacement body editor | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-request-body-replace | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-file-empty | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
 | breakpoint-request-body-file-empty | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-request-body-file-empty | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
+| breakpoint-request-body-file-empty | Original body ready | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
 | breakpoint-request-body-file-empty | Replacement body | 0.0 px | 3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-body-file-empty | Using original | -14.0 px | 3.0 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
 | breakpoint-request-body-file-empty | Choose file… | -151.0 px | -36.0 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(91, 94, 101)->rgb(26, 27, 30) | flagged |
@@ -253,16 +255,17 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-request-body-file-empty | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-request-body-file-empty | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
 | breakpoint-request-body-file-empty | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-request-body-file | Request paused | 0.0 px | -2.3 px | 0.0 px | -1.1 px | 2.3 px | none | flagged |
-| breakpoint-request-body-file | Request headers | 0.0 px | -3.3 px | 0.0 px | 0.1 px | 3.3 px | none | flagged |
-| breakpoint-request-body-file | Original body | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| breakpoint-request-body-file | Replacement body | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
-| breakpoint-request-body-file | Using file | 0.0 px | 0.7 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| breakpoint-request-body-file | checkout-body.txt | 0.0 px | 1.7 px | 0.0 px | 0.0 px | 1.7 px | none | flagged |
-| breakpoint-request-body-file | Rule set | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
-| breakpoint-request-body-file | Drop | 0.0 px | -2.9 px | -0.1 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-file | Continue | -1.2 px | -2.9 px | -0.4 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-file | Forward edited | -1.6 px | -2.9 px | 1.6 px | 0.0 px | 2.9 px | none | flagged |
+| breakpoint-request-body-file | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoint-request-body-file | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoint-request-body-file | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-request-body-file | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-request-body-file | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoint-request-body-file | Using file | 0.0 px | 1.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
+| breakpoint-request-body-file | checkout-body.txt | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-file | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-request-body-file | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-file | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-file | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-response-paused | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
 | breakpoint-response-paused | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-paused | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
@@ -278,6 +281,7 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-loaded | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-loaded | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-loaded | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-response-body-loaded | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded | Using original | 0.0 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
@@ -288,6 +292,7 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-replace | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-replace | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-replace | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-replace | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-response-body-replace | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-replace | Using original | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | breakpoint-response-body-replace | Replacement body editor | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
@@ -295,28 +300,30 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-replace | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-replace | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
 | breakpoint-response-body-replace | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-response-body-file-empty | Response paused | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-response-body-file-empty | Response status input | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| breakpoint-response-body-file-empty | Response headers | 0.0 px | -0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| breakpoint-response-body-file-empty | Original body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
-| breakpoint-response-body-file-empty | Replacement body | 0.0 px | 1.5 px | 0.0 px | 0.1 px | 1.5 px | none | flagged |
-| breakpoint-response-body-file-empty | Using original | -14.0 px | 1.6 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
-| breakpoint-response-body-file-empty | Choose file… | -151.0 px | -37.4 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(91, 94, 101)->rgb(26, 27, 30) | flagged |
-| breakpoint-response-body-file-empty | Rule appended | 0.0 px | 1.3 px | 0.0 px | 0.0 px | 1.3 px | none | flagged |
-| breakpoint-response-body-file-empty | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| breakpoint-response-body-file-empty | Continue | -1.2 px | 0.0 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoint-response-body-file-empty | Forward edited | -1.6 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoint-response-body-file-empty | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| breakpoint-response-body-file-empty | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-empty | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file-empty | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-file-empty | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-response-body-file-empty | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file-empty | Using original | -14.0 px | 1.0 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
+| breakpoint-response-body-file-empty | Choose file… | -151.0 px | -38.0 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(91, 94, 101)->rgb(26, 27, 30) | flagged |
+| breakpoint-response-body-file-empty | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
+| breakpoint-response-body-file-empty | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-empty | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
+| breakpoint-response-body-file-empty | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
 | breakpoint-response-body-file | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-response-body-file | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file | Response status input | 0.0 px | -0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
 | breakpoint-response-body-file | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-file | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| breakpoint-response-body-file | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-response-body-file | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
 | breakpoint-response-body-file | Using file | 0.0 px | 1.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
 | breakpoint-response-body-file | token-response.json | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
-| breakpoint-response-body-file | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
-| breakpoint-response-body-file | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| breakpoint-response-body-file | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoint-response-body-file | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoint-response-body-file | Rule appended | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-response-body-file | Drop | 0.0 px | -0.6 px | -0.1 px | 0.0 px | 0.6 px | none | ok |
+| breakpoint-response-body-file | Continue | -1.2 px | -0.6 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
+| breakpoint-response-body-file | Forward edited | -1.6 px | -0.6 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
 | breakpoint-request-paused-dark | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
 | breakpoint-request-paused-dark | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-paused-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
@@ -337,28 +344,31 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-request-body-loading-dark | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-loading-dark | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-loading-dark | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Replacement body | 0.0 px | 3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Using original | 0.0 px | 3.0 px | -0.4 px | 0.0 px | 3.0 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Rule set | 0.0 px | 2.8 px | 0.0 px | 0.0 px | 2.8 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| breakpoint-request-body-loaded-dark | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoint-request-body-loaded-dark | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-request-body-replace-dark | Request paused | 0.0 px | -2.3 px | 0.0 px | -1.1 px | 2.3 px | none | flagged |
-| breakpoint-request-body-replace-dark | Request headers | 0.0 px | -3.3 px | 0.0 px | 0.1 px | 3.3 px | none | flagged |
-| breakpoint-request-body-replace-dark | Original body | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| breakpoint-request-body-replace-dark | Replacement body | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
-| breakpoint-request-body-replace-dark | Using original | 2.0 px | 0.7 px | -0.4 px | 0.0 px | 2.0 px | none | flagged |
-| breakpoint-request-body-replace-dark | Replacement body editor | 0.0 px | 1.7 px | 0.0 px | 0.0 px | 1.7 px | none | flagged |
-| breakpoint-request-body-replace-dark | Rule set | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
-| breakpoint-request-body-replace-dark | Drop | 0.0 px | -2.9 px | -0.1 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-replace-dark | Continue | -1.2 px | -2.9 px | -0.4 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-replace-dark | Forward edited | -1.6 px | -2.9 px | 1.6 px | 0.0 px | 2.9 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-request-body-loaded-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-request-body-loaded-dark | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoint-request-body-loaded-dark | Using original | 0.0 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-request-body-loaded-dark | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-loaded-dark | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace-dark | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace-dark | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoint-request-body-replace-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-request-body-replace-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-request-body-replace-dark | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoint-request-body-replace-dark | Using original | 2.0 px | 1.0 px | -0.4 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace-dark | Replacement body editor | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-replace-dark | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-request-body-replace-dark | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace-dark | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-replace-dark | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Request paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Request headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Original body | 0.0 px | 2.3 px | 0.0 px | 0.1 px | 2.3 px | none | flagged |
+| breakpoint-request-body-file-empty-dark | Original body ready | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Replacement body | 0.0 px | 3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Using original | -14.0 px | 3.0 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Choose file… | -151.0 px | -36.0 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(164, 171, 187)->rgb(243, 244, 248) | flagged |
@@ -366,16 +376,17 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-request-body-file-empty-dark | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-request-body-file-empty-dark | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
 | breakpoint-request-body-file-empty-dark | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-request-body-file-dark | Request paused | 0.0 px | -2.3 px | 0.0 px | -1.1 px | 2.3 px | none | flagged |
-| breakpoint-request-body-file-dark | Request headers | 0.0 px | -3.3 px | 0.0 px | 0.1 px | 3.3 px | none | flagged |
-| breakpoint-request-body-file-dark | Original body | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| breakpoint-request-body-file-dark | Replacement body | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
-| breakpoint-request-body-file-dark | Using file | 0.0 px | 0.7 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| breakpoint-request-body-file-dark | checkout-body.txt | 0.0 px | 1.7 px | 0.0 px | 0.0 px | 1.7 px | none | flagged |
-| breakpoint-request-body-file-dark | Rule set | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
-| breakpoint-request-body-file-dark | Drop | 0.0 px | -2.9 px | -0.1 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-file-dark | Continue | -1.2 px | -2.9 px | -0.4 px | 0.0 px | 2.9 px | none | flagged |
-| breakpoint-request-body-file-dark | Forward edited | -1.6 px | -2.9 px | 1.6 px | 0.0 px | 2.9 px | none | flagged |
+| breakpoint-request-body-file-dark | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
+| breakpoint-request-body-file-dark | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
+| breakpoint-request-body-file-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-request-body-file-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-request-body-file-dark | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
+| breakpoint-request-body-file-dark | Using file | 0.0 px | 1.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
+| breakpoint-request-body-file-dark | checkout-body.txt | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
+| breakpoint-request-body-file-dark | Rule set | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-request-body-file-dark | Drop | 0.0 px | -2.6 px | -0.1 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-file-dark | Continue | -1.2 px | -2.6 px | -0.4 px | 0.0 px | 2.6 px | none | flagged |
+| breakpoint-request-body-file-dark | Forward edited | -1.6 px | -2.6 px | 1.6 px | 0.0 px | 2.6 px | none | flagged |
 | breakpoint-response-paused-dark | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
 | breakpoint-response-paused-dark | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-paused-dark | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
@@ -391,6 +402,7 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-loaded-dark | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-loaded-dark | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-loaded-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-response-body-loaded-dark | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded-dark | Using original | 0.0 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
 | breakpoint-response-body-loaded-dark | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
@@ -401,6 +413,7 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-replace-dark | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-replace-dark | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-replace-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-replace-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | breakpoint-response-body-replace-dark | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-replace-dark | Using original | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | breakpoint-response-body-replace-dark | Replacement body editor | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
@@ -408,177 +421,159 @@ Generated: 2026-08-24T08:01:51.029Z
 | breakpoint-response-body-replace-dark | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
 | breakpoint-response-body-replace-dark | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
 | breakpoint-response-body-replace-dark | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Response paused | 0.0 px | 0.5 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Response status input | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| breakpoint-response-body-file-empty-dark | Response headers | 0.0 px | -0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| breakpoint-response-body-file-empty-dark | Original body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
-| breakpoint-response-body-file-empty-dark | Replacement body | 0.0 px | 1.5 px | 0.0 px | 0.1 px | 1.5 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Using original | -14.0 px | 1.6 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Choose file… | -151.0 px | -37.4 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(164, 171, 187)->rgb(243, 244, 248) | flagged |
-| breakpoint-response-body-file-empty-dark | Rule appended | 0.0 px | 1.3 px | 0.0 px | 0.0 px | 1.3 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| breakpoint-response-body-file-empty-dark | Continue | -1.2 px | 0.0 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoint-response-body-file-empty-dark | Forward edited | -1.6 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-empty-dark | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| breakpoint-response-body-file-empty-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-response-body-file-empty-dark | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Using original | -14.0 px | 1.0 px | -0.4 px | 0.0 px | 14.0 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Choose file… | -151.0 px | -38.0 px | 302.1 px | 2.0 px | 302.1 px | fontSize 11.5px->12.5px; color rgb(164, 171, 187)->rgb(243, 244, 248) | flagged |
+| breakpoint-response-body-file-empty-dark | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
+| breakpoint-response-body-file-empty-dark | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-empty-dark | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
+| breakpoint-response-body-file-empty-dark | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
 | breakpoint-response-body-file-dark | Response paused | 0.0 px | 0.0 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-response-body-file-dark | Response status input | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-dark | Response status input | 0.0 px | -0.6 px | 0.0 px | 0.0 px | 0.6 px | none | ok |
 | breakpoint-response-body-file-dark | Response headers | 0.0 px | -1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
 | breakpoint-response-body-file-dark | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| breakpoint-response-body-file-dark | Replacement body | 0.0 px | 1.0 px | 0.0 px | 0.1 px | 1.0 px | none | flagged |
+| breakpoint-response-body-file-dark | Original body ready | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-response-body-file-dark | Replacement body | 0.0 px | 0.9 px | 0.0 px | 0.1 px | 0.9 px | none | ok |
 | breakpoint-response-body-file-dark | Using file | 0.0 px | 1.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
 | breakpoint-response-body-file-dark | token-response.json | 0.0 px | 2.0 px | 0.0 px | 0.0 px | 2.0 px | none | flagged |
-| breakpoint-response-body-file-dark | Rule appended | 0.0 px | 0.8 px | 0.0 px | 0.0 px | 0.8 px | none | ok |
-| breakpoint-response-body-file-dark | Drop | 0.0 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| breakpoint-response-body-file-dark | Continue | -1.2 px | -0.5 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
-| breakpoint-response-body-file-dark | Forward edited | -1.6 px | -0.5 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
-| breakpoint-queue | Request paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-queue | Request headers | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
-| breakpoint-queue | Receiving request body… | 34.8 px | -3.6 px | -71.7 px | 2.0 px | 71.7 px | fontSize 11.5px->10.5px | flagged |
-| breakpoint-queue | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| breakpoint-queue-full | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| breakpoint-queue-full | Queue full status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| breakpoint-queue-dark | Request paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| breakpoint-queue-dark | Request headers | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
-| breakpoint-queue-dark | Receiving request body… | 34.8 px | -3.6 px | -71.7 px | 2.0 px | 71.7 px | fontSize 11.5px->10.5px | flagged |
-| breakpoint-queue-dark | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| breakpoint-queue-full-dark | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| breakpoint-queue-full-dark | Queue full status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| breakpoint-response-body-file-dark | Rule appended | 0.0 px | 0.7 px | 0.0 px | 0.0 px | 0.7 px | none | ok |
+| breakpoint-response-body-file-dark | Drop | 0.0 px | -0.6 px | -0.1 px | 0.0 px | 0.6 px | none | ok |
+| breakpoint-response-body-file-dark | Continue | -1.2 px | -0.6 px | -0.4 px | 0.0 px | 1.2 px | none | flagged |
+| breakpoint-response-body-file-dark | Forward edited | -1.6 px | -0.6 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| breakpoint-queue-head | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| breakpoint-queue-head | Queue actions trigger | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| breakpoint-queue-queued | Queued detail status | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-queued | Queued state | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-queued | Queued position | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu | Queue actions menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu | Continue all | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu | Drop all | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu | Continue all from this rule | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-head-dark | Paused queue status | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
+| breakpoint-queue-head-dark | Queue actions trigger | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| breakpoint-queue-queued-dark | Queued detail status | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-queued-dark | Queued state | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-queued-dark | Queued position | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu-dark | Queue actions menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu-dark | Continue all | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu-dark | Drop all | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| breakpoint-queue-menu-dark | Continue all from this rule | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket | Capture | 63.0 px | -89.7 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture-websocket | Inspector host | 0.0 px | 0.9 px | 0.0 px | -1.6 px | 1.6 px | none | flagged |
 | capture-websocket | Inspector status | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | capture-websocket | Messages | 0.0 px | 0.1 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | capture-websocket | Pause on message | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | capture-websocket | Received text | n/a | n/a | n/a | n/a | n/a | none | app missing |
-| capture-websocket | Binary | 0.0 px | -32.5 px | 0.0 px | -1.1 px | 32.5 px | none | flagged |
+| capture-websocket | Binary | 0.0 px | -22.5 px | 0.0 px | -1.1 px | 22.5 px | none | flagged |
 | statusbar-upstream-down | Status upstream | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | statusbar-upstream-down-dark | Status upstream | 0.0 px | 0.0 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-setup | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Direction row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Frames row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Actions row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup | Timeout select | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Pause messages on this connection | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Direction | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup | Frames | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup | Timeout | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup | No timeout | 0.0 px | 0.0 px | -2.0 px | 0.0 px | 2.0 px | none | flagged |
 | capture-websocket-breakpoint-setup | Cancel | 0.8 px | 0.0 px | -0.2 px | 0.0 px | 0.8 px | none | ok |
 | capture-websocket-breakpoint-setup | Enable breakpoint | 0.6 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Actions row | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Seconds | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-custom | Enable breakpoint | 0.6 px | -0.1 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | WebSocket breakpoint popover | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | WebSocket breakpoint setup | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | Custom timeout row | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | Timeout error | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | Actions row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | Enter a positive whole number of seconds. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid | Enable breakpoint | 0.6 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
 | capture-websocket-breakpoint-enabled | Messages | 0.0 px | 0.6 px | 0.0 px | 0.4 px | 0.6 px | none | ok |
 | capture-websocket-breakpoint-enabled | All | 0.0 px | 1.0 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
 | capture-websocket-breakpoint-enabled | Sent | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | capture-websocket-breakpoint-enabled | Received | -0.3 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-enabled | Armed WebSocket breakpoint | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-paused | Messages | 1.0 px | 0.2 px | 0.0 px | 0.4 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused | All | 1.0 px | 0.7 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused | Armed WebSocket breakpoint | 1.0 px | -0.4 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Messages | 1.0 px | -24.2 px | 0.0 px | 0.4 px | 24.2 px | none | flagged |
+| capture-websocket-breakpoint-paused | All | 1.0 px | -23.8 px | 0.0 px | -0.9 px | 23.8 px | none | flagged |
+| capture-websocket-breakpoint-paused | Armed WebSocket breakpoint | 1.0 px | -24.8 px | 0.0 px | 0.0 px | 24.8 px | none | flagged |
 | capture-websocket-breakpoint-paused | Sent message paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| capture-websocket-breakpoint-paused | Both directions · No timeout | 0.0 px | -0.3 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Both directions | 0.0 px | -0.3 px | -28.0 px | -0.1 px | 28.0 px | none | flagged |
 | capture-websocket-breakpoint-paused | Original message | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
-| capture-websocket-breakpoint-paused | Replacement message | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
-| capture-websocket-breakpoint-paused | Using original | 0.0 px | -1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused | The original message will be forwarded unchanged. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-paused | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-paused | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
-| capture-websocket-breakpoint-paused | Forward edited | 0.4 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-websocket-breakpoint-paused | Replacement message | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-websocket-breakpoint-paused | Using original | 0.0 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| capture-websocket-breakpoint-paused | The original message will be forwarded unchanged. | 0.0 px | 1.0 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Drop | 0.0 px | 1.0 px | -0.1 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Continue | 0.8 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused | Forward edited | 0.4 px | 1.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-websocket-breakpoint-queue-head | WebSocket queue head | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-head | WebSocket queued frame | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-head | Queue actions trigger | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-queue-queued | WebSocket queue head | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-queued | WebSocket queued frame | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-queued | WebSocket queued detail | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Direction row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Frames row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-dark | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Actions row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-dark | Timeout select | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Pause messages on this connection | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Direction | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Frames | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-dark | Timeout | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-dark | No timeout | 0.0 px | 0.0 px | -2.0 px | 0.0 px | 2.0 px | none | flagged |
 | capture-websocket-breakpoint-setup-dark | Cancel | 0.8 px | 0.0 px | -0.2 px | 0.0 px | 0.8 px | none | ok |
 | capture-websocket-breakpoint-setup-dark | Enable breakpoint | 0.6 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | WebSocket breakpoint popover | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | WebSocket breakpoint setup | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Actions row | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Seconds | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-custom-dark | Enable breakpoint | 0.6 px | -0.1 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | WebSocket breakpoint popover | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | WebSocket breakpoint setup | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | Custom timeout row | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | Timeout error | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | Actions row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | Enter a positive whole number of seconds. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-setup-invalid-dark | Enable breakpoint | 0.6 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
 | capture-websocket-breakpoint-enabled-dark | Messages | 0.0 px | 0.6 px | 0.0 px | 0.4 px | 0.6 px | none | ok |
 | capture-websocket-breakpoint-enabled-dark | All | 0.0 px | 1.0 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
 | capture-websocket-breakpoint-enabled-dark | Sent | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | capture-websocket-breakpoint-enabled-dark | Received | -0.3 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | capture-websocket-breakpoint-enabled-dark | Armed WebSocket breakpoint | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-paused-dark | Messages | 1.0 px | 0.2 px | 0.0 px | 0.4 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused-dark | All | 1.0 px | 0.7 px | 0.0 px | -0.9 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused-dark | Armed WebSocket breakpoint | 1.0 px | -0.4 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Messages | 1.0 px | -24.2 px | 0.0 px | 0.4 px | 24.2 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | All | 1.0 px | -23.8 px | 0.0 px | -0.9 px | 23.8 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Armed WebSocket breakpoint | 1.0 px | -24.8 px | 0.0 px | 0.0 px | 24.8 px | none | flagged |
 | capture-websocket-breakpoint-paused-dark | Sent message paused | 0.0 px | 0.3 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| capture-websocket-breakpoint-paused-dark | Both directions · No timeout | 0.0 px | -0.3 px | 2.0 px | -0.1 px | 2.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Both directions | 0.0 px | -0.3 px | -28.0 px | -0.1 px | 28.0 px | none | flagged |
 | capture-websocket-breakpoint-paused-dark | Original message | 0.0 px | -0.7 px | 0.0 px | 0.1 px | 0.7 px | none | ok |
-| capture-websocket-breakpoint-paused-dark | Replacement message | 0.0 px | -1.1 px | 0.0 px | 0.1 px | 1.1 px | none | flagged |
-| capture-websocket-breakpoint-paused-dark | Using original | 0.0 px | -1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
-| capture-websocket-breakpoint-paused-dark | The original message will be forwarded unchanged. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-websocket-breakpoint-paused-dark | Drop | 0.0 px | 0.0 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| capture-websocket-breakpoint-paused-dark | Continue | 0.8 px | 0.0 px | -0.4 px | 0.0 px | 0.8 px | none | ok |
-| capture-websocket-breakpoint-paused-dark | Forward edited | 0.4 px | 0.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Replacement message | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | Using original | 0.0 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| capture-websocket-breakpoint-paused-dark | The original message will be forwarded unchanged. | 0.0 px | 1.0 px | 0.0 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Drop | 0.0 px | 1.0 px | -0.1 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Continue | 0.8 px | 1.0 px | -0.4 px | 0.0 px | 1.0 px | none | flagged |
+| capture-websocket-breakpoint-paused-dark | Forward edited | 0.4 px | 1.0 px | 1.6 px | 0.0 px | 1.6 px | none | flagged |
+| capture-websocket-breakpoint-queue-head-dark | WebSocket queue head | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-head-dark | WebSocket queued frame | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-head-dark | Queue actions trigger | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| capture-websocket-breakpoint-queue-queued-dark | WebSocket queue head | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-queued-dark | WebSocket queued frame | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-websocket-breakpoint-queue-queued-dark | WebSocket queued detail | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-text | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-text | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-text | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-request-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-request-file | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-file | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-file | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-request-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-response-text | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-response-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-response-file | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-response-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-request-text-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-text-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-text-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-request-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-request-file-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-file-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-request-file-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-request-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-request-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-response-text-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-text-dark | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-response-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-text-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-body-effect-response-file-dark | Body effect marker | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file-dark | Body effect source | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file-dark | Body version bar | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-body-effect-response-file-dark | Original unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| capture-body-effect-response-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| capture-body-effect-response-file-dark | Body effect viewer | 0.0 px | 0.0 px | 0.0 px | 10.0 px | 10.0 px | none | flagged |
 | capture-request-json | Capture | 63.0 px | -84.0 px | 1001.7 px | 0.6 px | 1001.7 px | fontSize 13px->13.5px; fontWeight 600->620; color rgb(106, 91, 240)->rgb(26, 27, 30) | flagged |
 | capture-request-json | Local traffic | n/a | n/a | n/a | n/a | n/a | none | app missing |
 | capture-request-json | json · 63 B | 0.0 px | 0.7 px | 6.3 px | -0.7 px | 6.3 px | none | flagged |
@@ -624,21 +619,21 @@ Generated: 2026-08-24T08:01:51.029Z
 | capture-tunnel-mitm-navigation | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target-dark | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| https-setup | Decrypt HTTPS (MITM) | 487.7 px | 188.2 px | -245.7 px | 16.0 px | 487.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
-| https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
-| https-setup | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup | Install… | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | waiting for trust installation | -0.3 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| https-setup | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup-dark | Decrypt HTTPS (MITM) | 487.7 px | 188.2 px | -245.7 px | 16.0 px | 487.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(243, 244, 248)->rgb(255, 255, 255) | flagged |
-| https-setup-dark | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup-dark | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup-dark | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup-dark | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup-ready | Decrypt HTTPS (MITM) | 488.0 px | 188.3 px | -245.7 px | 16.0 px | 488.0 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
+| https-setup | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
+| https-setup | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup | No CA generated yet | 0.0 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
+| https-setup | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup | Install… | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | waiting for trust installation | 0.0 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| https-setup | Cancel | 1.0 px | 0.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
+| https-setup | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup-dark | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
+| https-setup-dark | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup-dark | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup-dark | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup-dark | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup-ready | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
 | https-setup-ready | Root Certificate Authority | 0.0 px | -0.2 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | https-setup-ready | Generated | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | https-setup-ready | Install to local trust store | 0.0 px | -0.2 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
@@ -688,53 +683,12 @@ Generated: 2026-08-24T08:01:51.029Z
 | proxy-not-ready | Proxy & Listener | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | proxy-not-ready | Enable | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | proxy-not-ready-settings | Proxy & Listener | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-custom | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-custom | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-custom | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom | Policy row | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom | Seconds | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom | On timeout | 0.0 px | -0.2 px | 0.0 px | 0.1 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-invalid | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-invalid | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid | Policy row | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-invalid | Seconds | 0.0 px | -0.2 px | 0.0 px | 0.1 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid | On timeout | 0.0 px | -0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| rules-breakpoint-timeout-invalid | Timeout error | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-invalid | Enter a positive whole number of seconds. | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Policy row | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | Seconds | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-custom-dark | On timeout | 0.0 px | -0.2 px | 0.0 px | 0.1 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Timeout row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Custom timeout row | 0.0 px | 0.0 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Policy row | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Custom timeout input | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Seconds | 0.0 px | -0.2 px | 0.0 px | 0.1 px | 0.2 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | On timeout | 0.0 px | -0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Timeout error | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules-breakpoint-timeout-invalid-dark | Enter a positive whole number of seconds. | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| rules | Mock folder row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Stub rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Force CORS rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Payments folder row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Refunds folder row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Redirect rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Mock payment rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Noise folder row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Debug checkout rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules | Add condition | 0.0 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
-| rules | Add action | 0.0 px | 11.2 px | -0.4 px | 0.0 px | 11.2 px | none | flagged |
+| rules-breakpoint-action | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-breakpoint-action | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-breakpoint-action | Phase | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| rules-breakpoint-action-dark | Breakpoint action | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-breakpoint-action-dark | Phase row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-breakpoint-action-dark | Phase | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | rules-import-confirm-light | Import header | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | rules-import-confirm-light | Import file name | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | rules-import-confirm-light | Rules count | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |

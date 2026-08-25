@@ -4,6 +4,7 @@ import type { DesignTheme } from '../state/types';
 
 interface DesignPalette {
   readonly accent: string;
+  readonly error: string;
   readonly panel: string;
   readonly success: string;
   readonly text: string;
@@ -13,6 +14,7 @@ interface DesignPalette {
 const PALETTE_BY_THEME: Readonly<Record<DesignTheme, DesignPalette>> = {
   light: {
     accent: '#6a5bf0',
+    error: '#e0483a',
     panel: '#ffffff',
     success: '#12a150',
     text: '#1a1b1e',
@@ -20,6 +22,7 @@ const PALETTE_BY_THEME: Readonly<Record<DesignTheme, DesignPalette>> = {
   },
   dark: {
     accent: '#2fd4b8',
+    error: '#f26d6d',
     panel: '#0f1116',
     success: '#3ecf8e',
     text: '#f3f4f8',
@@ -27,6 +30,7 @@ const PALETTE_BY_THEME: Readonly<Record<DesignTheme, DesignPalette>> = {
   },
   warm: {
     accent: '#c2703a',
+    error: '#cf4b3a',
     panel: '#fdfbf7',
     success: '#3f8f4f',
     text: '#2c2620',
@@ -34,6 +38,7 @@ const PALETTE_BY_THEME: Readonly<Record<DesignTheme, DesignPalette>> = {
   },
   ember: {
     accent: '#d99a3c',
+    error: '#e28470',
     panel: '#1e1a16',
     success: '#93c389',
     text: '#f4eee3',
@@ -49,6 +54,7 @@ export function createDesignTheme(mode: DesignTheme): ThemeConfig {
       : antTheme.defaultAlgorithm,
     token: {
       colorPrimary: palette.accent,
+      colorError: palette.error,
       colorSuccess: palette.success,
       colorBgElevated: palette.panel,
       colorText: palette.text,

@@ -5,6 +5,7 @@ import { useDesignState } from '../../state/useDesignState';
 import { WebSocketBreakpointControl } from './WebSocketBreakpointControl';
 import { WebSocketBreakpointInspector } from './WebSocketBreakpointInspector';
 import { WebSocketControlFrameRows } from './WebSocketControlFrameRows';
+import { WebSocketQueuedBreakpoint } from './WebSocketQueuedBreakpoint';
 import { WebSocketUpgradeBreakpointInspector } from './WebSocketUpgradeBreakpointInspector';
 
 export function WebSocketBreakpointDesign(): React.JSX.Element | null {
@@ -21,12 +22,32 @@ export function WebSocketBreakpointDesign(): React.JSX.Element | null {
     setInspectorHost(document.querySelector('.insp'));
   }, []);
 
+  useLayoutEffect(() => {
+    if (
+      !framesHost
+      || !messagePayloadHost
+      || !state.breakpointQueueSelection.startsWith('websocket-')
+    ) return;
+    const originalParent = messagePayloadHost.parentNode;
+    const originalNextSibling = messagePayloadHost.nextSibling;
+    framesHost.insertAdjacentElement('afterend', messagePayloadHost);
+    return () => {
+      if (!originalParent) return;
+      originalParent.insertBefore(messagePayloadHost, originalNextSibling);
+    };
+  }, [framesHost, messagePayloadHost, state.breakpointQueueSelection]);
+
   return (
     <>
       {controlHost ? createPortal(<WebSocketBreakpointControl />, controlHost) : null}
       {framesHost ? createPortal(<WebSocketControlFrameRows />, framesHost) : null}
       {messagePayloadHost && state.breakpointState === 'websocket'
-        ? createPortal(<WebSocketBreakpointInspector />, messagePayloadHost)
+        ? createPortal(
+            state.breakpointQueueSelection === 'websocket-queued'
+              ? <WebSocketQueuedBreakpoint />
+              : <WebSocketBreakpointInspector />,
+            messagePayloadHost,
+          )
         : null}
       {inspectorHost && state.breakpointState.startsWith('websocket-upgrade-')
         ? createPortal(<WebSocketUpgradeBreakpointInspector />, inspectorHost)

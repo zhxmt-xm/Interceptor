@@ -1,11 +1,16 @@
 import { Tooltip } from 'antd';
-import { Copy, X } from 'lucide-react';
+import { Copy, ListOrdered, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, IconButton, MethodBadge, sizeLabel, StatusBadge, useClipboardCopy } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
+import {
+  breakpointQueuePosition,
+  isBreakpointQueueHead,
+  webSocketQueueBreakpoints,
+} from '../../breakpoints/utils';
 import { BreakpointInspector } from '../BreakpointInspector/BreakpointInspector';
 import {
   GRPC_INSPECTOR_TABS,
@@ -78,10 +83,26 @@ export function RequestInspector({
   });
   const { detail } = useExchangeDetail(selectedId);
   // 被挂起的 exchange 就地编辑，不跳到另一个页面。
-  const pausedBreakpoint = useBreakpointsStore(
-    (state) =>
-      state.breakpoints.find((breakpoint) => breakpoint.exchangeId === selectedId) ?? null,
+  const breakpoints = useBreakpointsStore((state) => state.breakpoints);
+  const exchangeBreakpoints = breakpoints.filter(
+    (breakpoint) => breakpoint.exchangeId === selectedId,
   );
+  const webSocketBreakpoints = selectedId
+    ? webSocketQueueBreakpoints(breakpoints, selectedId)
+    : [];
+  const pausedBreakpoint = exchangeBreakpoints.find(
+    (breakpoint) => breakpoint.phase !== 'websocket',
+  ) ?? webSocketBreakpoints[0] ?? null;
+  const queuePosition = pausedBreakpoint
+    ? breakpointQueuePosition(breakpoints, pausedBreakpoint)
+    : null;
+  const queueSize = pausedBreakpoint
+    ? breakpoints.filter((breakpoint) => breakpoint.queueKey === pausedBreakpoint.queueKey).length
+    : 0;
+  const queueHead = pausedBreakpoint
+    ? isBreakpointQueueHead(breakpoints, pausedBreakpoint)
+    : false;
+  const queued = pausedBreakpoint !== null && !queueHead;
 
   const view = detail?.summary ?? summary;
 
@@ -153,7 +174,7 @@ export function RequestInspector({
     }
   }, [inspectorTabs, isGrpc, isTlsTunnel, isWebSocket, pausedBreakpoint?.phase, setTab, tab]);
 
-  if (pausedBreakpoint && pausedBreakpoint.phase !== 'websocket') {
+  if (pausedBreakpoint && queueHead && pausedBreakpoint.phase !== 'websocket') {
     return (
       <BreakpointInspector
         breakpoint={pausedBreakpoint}
@@ -164,7 +185,13 @@ export function RequestInspector({
   }
 
   return (
-    <div className={styles.inspector}>
+    <div
+      className={styles.inspector}
+      data-breakpoint-id={pausedBreakpoint?.id}
+      data-queue-key={pausedBreakpoint?.queueKey}
+      data-queue-position={queuePosition ?? undefined}
+      data-breakpoint-state={queued ? 'queued' : undefined}
+    >
       <div className={styles.head}>
         <div className={styles.summaryCard}>
           {view ? (
@@ -213,6 +240,27 @@ export function RequestInspector({
           </button>
         </Tooltip>
       </div>
+
+      {queued ? (
+        <div
+          className={styles.queuedBanner}
+          data-automation-id={AUTOMATION_IDS.breakpoints.queuedDetail}
+          data-parity="breakpoint-queued-banner"
+        >
+          <span className={styles.queuedState} data-parity="breakpoint-queued-state">
+            <ListOrdered aria-hidden="true" size={12} strokeWidth={2} />
+            {t('breakpoints.queued')}
+          </span>
+          <span className={styles.queuedPosition} data-parity="breakpoint-queued-position">
+            {t('breakpoints.queuePosition', { position: queuePosition, count: queueSize })}
+          </span>
+          <span className={styles.queuedQueue}>
+            {t('breakpoints.queueName', {
+              queue: pausedBreakpoint?.queueKey === 'http' ? 'HTTP' : 'WebSocket',
+            })}
+          </span>
+        </div>
+      ) : null}
 
       <div className={styles.tabs}>
         {inspectorTabs.map(({ id, labelKey }) => (
@@ -365,7 +413,7 @@ export function RequestInspector({
             exchangeId={view.id}
             startedAt={view.startedAt}
             connection={`${view.host}${view.path}`}
-            pausedBreakpoint={pausedBreakpoint}
+            pausedBreakpoints={webSocketBreakpoints}
           />
         ) : null}
 

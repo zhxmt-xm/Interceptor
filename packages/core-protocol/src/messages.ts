@@ -1,6 +1,5 @@
 import type { Collection, CollectionNode } from './collection';
 import type {
-  BreakpointTimeout,
   RuleDefinition,
   RuleHeaderPair,
   RuleHitCount,
@@ -200,8 +199,34 @@ export interface BreakpointResolveCommand {
   type: 'breakpoint.resolve';
   payload: {
     breakpointId: string;
-    action: 'continue' | 'drop' | 'timeout';
+    action: 'continue' | 'drop';
     edit?: BreakpointEdit;
+  };
+}
+
+export type BreakpointQueueKey = 'http' | `ws:${string}`;
+
+/** 原样放行命令开始时属于指定逻辑队列的全部等待断点。 */
+export interface BreakpointContinueQueueCommand {
+  type: 'breakpoint.continueQueue';
+  payload: {
+    queueKey: BreakpointQueueKey;
+  };
+}
+
+/** 丢弃命令开始时属于指定逻辑队列的全部等待断点。 */
+export interface BreakpointDropQueueCommand {
+  type: 'breakpoint.dropQueue';
+  payload: {
+    queueKey: BreakpointQueueKey;
+  };
+}
+
+/** 原样放行命令开始时由指定 Rule 挂起的全部等待断点。 */
+export interface BreakpointContinueRuleCommand {
+  type: 'breakpoint.continueRule';
+  payload: {
+    ruleId: string;
   };
 }
 
@@ -478,6 +503,9 @@ export type CoreCommand =
   | TlsPassthroughReplaceCommand
   | ComposerSendCommand
   | BreakpointResolveCommand
+  | BreakpointContinueQueueCommand
+  | BreakpointDropQueueCommand
+  | BreakpointContinueRuleCommand
   | BreakpointListCommand
   | BreakpointConfigureCommand
   | TlsProbeCommand
@@ -544,7 +572,6 @@ export interface WebSocketBreakpointSettings {
   exchangeId: string;
   direction: WebSocketBreakpointDirection;
   frames: readonly WebSocketBreakpointFrame[];
-  timeout: BreakpointTimeout;
 }
 
 /** 一条有序 WebSocket 应用消息摘要；payload 字节仍经 body.read-range 按需读取。 */
@@ -713,7 +740,15 @@ export interface BreakpointResolutionResult {
   type: 'breakpoint.resolution';
   payload: {
     breakpointId: string;
-    state: 'continued' | 'edited' | 'dropped' | 'timed_out';
+    state: 'continued' | 'edited' | 'dropped';
+  };
+}
+
+/** 批量断点命令实际解除的目标数；并发消失的目标不计入。 */
+export interface BreakpointBatchResolutionResult {
+  type: 'breakpoint.batch-resolution';
+  payload: {
+    resolvedCount: number;
   };
 }
 
@@ -727,6 +762,9 @@ export interface BreakpointHeader extends RuleHeaderPair {
 export interface PendingBreakpoint {
   id: string;
   phase: 'request' | 'response' | 'websocket';
+  queueKey: BreakpointQueueKey;
+  /** WebSocket 帧断点不由 Rule 触发，因此没有 ruleId。 */
+  ruleId?: string;
   /**
    * 挂起流量所属的 Capture Exchange，使暂停状态能在流量列表原行展示，
    * 也使同一 exchange 的 request / response 两阶段可关联。未记录时缺省。
@@ -740,6 +778,8 @@ export interface PendingBreakpoint {
   direction?: WebSocketFrameDirection;
   /** WebSocket 帧类别；message 之外的都是控制帧。 */
   frame?: WebSocketBreakpointFrame;
+  /** 当前应用消息已写入Capture时分配的frame sequence；控制帧缺省。 */
+  webSocketFrameSequence?: number;
   opcode?: 1 | 2;
   bodyFormat?: 'text' | 'hex';
   headers: BreakpointHeader[];
@@ -759,11 +799,6 @@ export interface BreakpointPendingResult {
   payload: {
     breakpoints: PendingBreakpoint[];
     enabled: boolean;
-    /**
-     * 队列已满而未挂起、直接放行的命中累计数。
-     * 挂起的是真实流量，因此溢出必须可见，不能静默。
-     */
-    autoContinued: number;
   };
 }
 
@@ -968,6 +1003,7 @@ export type CoreResult =
   | TlsPassthroughRevisionResult
   | ComposerResponseResult
   | BreakpointResolutionResult
+  | BreakpointBatchResolutionResult
   | BreakpointPendingResult
   | BreakpointConfigResult
   | TlsProbeResult
@@ -998,7 +1034,14 @@ export type CoreResultForCommand<T extends CoreCommand> =
             : T extends TlsPassthroughGetCommand ? TlsPassthroughSettingsResult
             : T extends TlsPassthroughReplaceCommand ? TlsPassthroughRevisionResult
               : T extends BreakpointResolveCommand
-                ? BreakpointResolutionResult                : T extends BreakpointListCommand
+                ? BreakpointResolutionResult
+                : T extends BreakpointContinueQueueCommand
+                  ? BreakpointBatchResolutionResult
+                  : T extends BreakpointDropQueueCommand
+                    ? BreakpointBatchResolutionResult
+                    : T extends BreakpointContinueRuleCommand
+                      ? BreakpointBatchResolutionResult
+                : T extends BreakpointListCommand
                   ? BreakpointPendingResult
                   : T extends BreakpointConfigureCommand
                     ? BreakpointConfigResult                : T extends DiagnosticsRecentCommand

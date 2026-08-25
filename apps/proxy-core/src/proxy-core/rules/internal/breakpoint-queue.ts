@@ -1,62 +1,51 @@
 /**
  * M7/T7.6 Breakpoint 状态机：规则命中 breakpoint action 时挂起请求/响应，等待用户
- * resolve（continue/edited/drop）或超时（timed_out），并在断线/退出时确定性关闭。
+ * resolve（continue/edited/drop），并在客户端断开或Core退出时确定性关闭。
  *
- * 纯逻辑（Promise + timer），不触碰 Mockttp/IPC：rule-engine（T7.7）在 beforeRequestHead/
+ * 纯逻辑（Promise），不触碰 Mockttp/IPC：rule-engine（T7.7）在 beforeRequestHead/
  * beforeResponseHead 调 suspend 并 await outcome，据 state 放行/编辑/丢弃；breakpoint.resolve
- * command 经 core-application 调 resolve；断线/关闭调 closeAll 把全部等待断点关为 timed_out。
+ * command 经 core-application 调 resolve；断线/关闭调 closeAll 把全部等待断点关为 aborted。
  */
 
-import type { BreakpointEdit, BreakpointTimeout } from '@interceptor/core-protocol';
+import type { BreakpointEdit, BreakpointQueueKey } from '@interceptor/core-protocol';
 import type {
   BreakpointOutcome,
   BreakpointPhase,
   BreakpointResolutionAction,
   BreakpointResolutionState,
   BreakpointSnapshot,
-  BreakpointState,
   BreakpointSuspension,
-  BreakpointTimeoutPolicy,
   PendingBreakpointEntry,
   PendingBreakpointInfo,
 } from '../interfaces';
-import { BREAKPOINT_QUEUE_LIMIT } from './constants';
 
 /**
  * 等待中断点的注册表。单实例由 CoreApplication 持有，rule-engine 与 breakpoint.resolve
- * handler 共享；所有解除路径都经 finish 统一清理 timer 并 settle Promise，保证不泄漏。
+ * handler 共享；所有解除路径都经 finish 统一移除记录并 settle Promise，保证不泄漏。
  */
 export class BreakpointQueue {
   /** 以断点 ID 索引的等待中记录。 */
   private readonly pending = new Map<string, PendingBreakpointEntry>();
   /** 同一进程内用于生成稳定 ID 后缀的递增序号。 */
   private sequence = 0;
-  /** 队列已满而未挂起、直接放行的命中累计数。 */
-  private autoContinuedCount = 0;
-  /** 欠 Renderer 的一次集合变更通知；挂起、解除与溢出放行都会置上。 */
+  /** 欠 Renderer 的一次集合变更通知。 */
   private pendingChangeNotice = false;
 
   /**
-   * 挂起一个断点，返回稳定 id 与解除结果 Promise；finite 到期自动 timed_out。
-   * 队列已满时返回 null 并累加自动放行数，调用方必须原样放行，不得继续挂起真实流量。
+    * 挂起一个断点，返回稳定 id 与解除结果 Promise。
    * 调用方：rule-engine 在 beforeRequestHead/beforeResponseHead 命中 breakpoint action 时。
    */
   suspend(
     phase: BreakpointPhase,
-    timeout: BreakpointTimeout,
-    timeoutPolicy: BreakpointTimeoutPolicy,
+    queueKey: BreakpointQueueKey,
+    ruleId: string | undefined,
     snapshot: BreakpointSnapshot = {
       ruleName: '',
       headers: [],
       bodyAvailable: false,
     },
     requestId?: string,
-  ): BreakpointSuspension | null {
-    if (this.pending.size >= BREAKPOINT_QUEUE_LIMIT) {
-      this.autoContinuedCount += 1;
-      this.pendingChangeNotice = true;
-      return null;
-    }
+  ): BreakpointSuspension {
     this.sequence += 1;
     const id = `bp-${Date.now().toString(36)}-${this.sequence}`;
     let settle!: (outcome: BreakpointOutcome) => void;
@@ -64,30 +53,23 @@ export class BreakpointQueue {
       settle = resolve;
     });
     const createdAt = Date.now();
-    const timeoutMs = timeout.mode === 'finite' ? timeout.timeoutMs : null;
     const entry: PendingBreakpointEntry = {
       id,
       phase,
+      queueKey,
+      ...(ruleId !== undefined ? { ruleId } : {}),
       createdAt,
-      deadline: timeoutMs === null ? 0 : createdAt + timeoutMs,
       snapshot,
       ...(requestId !== undefined ? { requestId } : {}),
-      timeoutPolicy,
       settle,
-      timer: null,
     };
-    if (timeoutMs !== null) {
-      entry.timer = setTimeout(() => {
-        this.finish(id, { state: 'timed_out', timeoutPolicy });
-      }, timeoutMs);
-    }
     this.pending.set(id, entry);
     this.pendingChangeNotice = true;
     return { id, outcome };
   }
 
   /**
-   * 解除一个等待中断点：continue（带 edit→edited）/drop/timeout。
+    * 解除一个等待中断点：continue（带 edit→edited）或drop。
    * 返回最终 state；id 不存在或已解除返回 null。
    * 调用方：breakpoint.resolve command handler。
    */
@@ -105,12 +87,9 @@ export class BreakpointQueue {
     if (action === 'continue') {
       state = edit ? 'edited' : 'continued';
       outcome = edit ? { state, edit } : { state };
-    } else if (action === 'drop') {
+    } else {
       state = 'dropped';
       outcome = { state };
-    } else {
-      state = 'timed_out';
-      outcome = { state, timeoutPolicy: entry.timeoutPolicy };
     }
     this.finish(id, outcome);
     return state;
@@ -127,16 +106,37 @@ export class BreakpointQueue {
     return entries.length;
   }
 
+  /** 原样放行命令开始时属于指定逻辑队列的全部等待断点。 */
+  continueQueue(queueKey: BreakpointQueueKey): number {
+    return this.resolveMatching(
+      (entry) => entry.queueKey === queueKey,
+      { state: 'continued' },
+    );
+  }
+
+  /** 丢弃命令开始时属于指定逻辑队列的全部等待断点。 */
+  dropQueue(queueKey: BreakpointQueueKey): number {
+    return this.resolveMatching(
+      (entry) => entry.queueKey === queueKey,
+      { state: 'dropped' },
+    );
+  }
+
+  /** 原样放行命令开始时由指定Rule挂起的全部等待断点。 */
+  continueRule(ruleId: string): number {
+    return this.resolveMatching(
+      (entry) => entry.ruleId === ruleId,
+      { state: 'continued' },
+    );
+  }
+
   /**
-   * 断线/退出时确定性关闭全部等待断点为 timed_out（按各自 timeoutPolicy 兜底）。
+   * 断线/退出时确定性关闭全部等待断点为aborted。
    * 调用方：CoreApplication.stop 与 RPC 断线。
    */
   closeAll(): void {
     for (const entry of [...this.pending.values()]) {
-      this.finish(entry.id, {
-        state: 'timed_out',
-        timeoutPolicy: entry.timeoutPolicy,
-      });
+      this.finish(entry.id, { state: 'aborted' });
     }
   }
 
@@ -145,8 +145,9 @@ export class BreakpointQueue {
     return [...this.pending.values()].map((entry) => ({
       id: entry.id,
       phase: entry.phase,
+      queueKey: entry.queueKey,
+      ...(entry.ruleId !== undefined ? { ruleId: entry.ruleId } : {}),
       createdAt: entry.createdAt,
-      deadline: entry.deadline,
       snapshot: entry.snapshot,
     }));
   }
@@ -154,11 +155,6 @@ export class BreakpointQueue {
   /** 等待中断点数量。 */
   get size(): number {
     return this.pending.size;
-  }
-
-  /** 队列已满而被自动放行的命中累计数；供 UI 与诊断说明为什么没有停下来。 */
-  get autoContinued(): number {
-    return this.autoContinuedCount;
   }
 
   /** 取走待发的变更通知；事件泵据此决定这一批要不要带信号。 */
@@ -173,17 +169,32 @@ export class BreakpointQueue {
     this.pendingChangeNotice = true;
   }
 
-  /** 统一清理 timer、移除记录并完成等待 Promise。 */
-  private finish(id: string, outcome: BreakpointOutcome): void {
+  /** 固定匹配项ID快照后逐项结算，返回执行时仍存在的目标数。 */
+  private resolveMatching(
+    matches: (entry: PendingBreakpointEntry) => boolean,
+    outcome: BreakpointOutcome,
+  ): number {
+    const breakpointIds = [...this.pending.values()]
+      .filter(matches)
+      .map((entry) => entry.id);
+    let resolvedCount = 0;
+    for (const breakpointId of breakpointIds) {
+      if (this.finish(breakpointId, outcome)) {
+        resolvedCount += 1;
+      }
+    }
+    return resolvedCount;
+  }
+
+  /** 移除一个等待记录并完成其Promise；目标已消失时返回false。 */
+  private finish(id: string, outcome: BreakpointOutcome): boolean {
     const entry = this.pending.get(id);
     if (!entry) {
-      return;
+      return false;
     }
     this.pending.delete(id);
     this.pendingChangeNotice = true;
-    if (entry.timer !== null) {
-      clearTimeout(entry.timer);
-    }
     entry.settle(outcome);
+    return true;
   }
 }

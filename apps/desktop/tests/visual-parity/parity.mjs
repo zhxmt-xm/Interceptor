@@ -3,6 +3,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import pixelmatch from 'pixelmatch';
@@ -25,6 +26,13 @@ const designRoot = path.join(repoRoot, 'design-vite');
 const onlyView = process.argv
   .find((arg) => arg.startsWith('--view='))
   ?.split('=')[1];
+const sliceArg = process.argv
+  .find((arg) => arg.startsWith('--slice='))
+  ?.split('=')[1];
+const sliceMatch = sliceArg?.match(/^(\d+):(\d+)$/);
+const resultJsonPath = process.argv
+  .find((arg) => arg.startsWith('--result-json='))
+  ?.split('=')[1];
 const outDir = path.resolve(process.argv
   .find((arg) => arg.startsWith('--out-dir='))
   ?.split('=')[1] ?? path.join(here, 'renderer-shots'));
@@ -40,8 +48,50 @@ const rendererViewport = viewportMatch
   : config.viewport;
 const inspectPopover = process.argv.includes('--inspect-popover');
 const inspectSelect = process.argv.includes('--inspect-select');
-const views = config.views.filter((view) => !onlyView || view.id === onlyView);
+const filteredViews = config.views.filter((view) => !onlyView || view.id === onlyView);
+const views = sliceMatch
+  ? filteredViews.slice(Number(sliceMatch[1]), Number(sliceMatch[2]))
+  : filteredViews;
 const STYLE_KEYS = ['fontSize', 'fontWeight', 'color'];
+
+if (!onlyView && !sliceMatch) {
+  const batchSize = 20;
+  await rm(outDir, { recursive: true, force: true });
+  await mkdir(outDir, { recursive: true });
+  const viewSummaries = [];
+  const elementDiffs = [];
+  for (let start = 0; start < config.views.length; start += batchSize) {
+    const end = Math.min(start + batchSize, config.views.length);
+    const batchResultPath = path.join(outDir, `.parity-batch-${start}.json`);
+    const batchReportPath = path.join(outDir, `.parity-batch-${start}.md`);
+    const args = [
+      fileURLToPath(import.meta.url),
+      `--slice=${start}:${end}`,
+      `--out-dir=${outDir}`,
+      `--report=${batchReportPath}`,
+      `--result-json=${batchResultPath}`,
+      ...(viewportArg ? [`--viewport=${viewportArg}`] : []),
+    ];
+    const result = spawnSync(process.execPath, args, {
+      cwd: repoRoot,
+      stdio: 'inherit',
+    });
+    if (result.status !== 0) {
+      throw new Error(`Visual parity batch ${start}:${end} failed with exit code ${result.status}.`);
+    }
+    const batch = JSON.parse(await readFile(batchResultPath, 'utf8'));
+    viewSummaries.push(...batch.viewSummaries);
+    elementDiffs.push(...batch.elementDiffs);
+    await rm(batchResultPath, { force: true });
+    await rm(batchReportPath, { force: true });
+  }
+  const report = buildMarkdownReport(viewSummaries, elementDiffs);
+  await writeFile(reportPath, report, 'utf8');
+  console.log('== Parity summary ==');
+  console.log(report);
+  console.log(`Report: ${reportPath}\n`);
+  process.exit(0);
+}
 
 const median = (numbers) => {
   const sorted = [...numbers].sort((left, right) => left - right);
@@ -72,10 +122,13 @@ async function collect(page, rootSelector, targets, side) {
     if (!element || !box || !origin) {
       continue;
     }
+    const styleKeys = typeof target === 'string'
+      ? STYLE_KEYS
+      : target.styleKeys ?? STYLE_KEYS;
     const style = await element.evaluate((node, keys) => {
       const computed = getComputedStyle(node);
       return Object.fromEntries(keys.map((key) => [key, computed[key]]));
-    }, STYLE_KEYS);
+    }, styleKeys);
     result[name] = {
       x: box.x - origin.x,
       y: box.y - origin.y,
@@ -205,7 +258,7 @@ async function applyRendererActions(page, actions = []) {
   }
 }
 
-if (!onlyView) {
+if (!onlyView && !sliceMatch) {
   await rm(outDir, { recursive: true, force: true });
 }
 await mkdir(outDir, { recursive: true });
@@ -222,27 +275,43 @@ console.log('renderer:', url, '\n');
 
 const browser = await chromium.launch({ channel: 'msedge' });
 const designPreview = await startDesignPreview(designRoot);
-const designPage = await browser.newPage({
-  viewport: {
-    width: config.viewport.width + 120,
-    height: config.viewport.height + 120,
-  },
-  colorScheme: 'light',
-});
-// Monaco spins its workers up through blob URLs, so `networkidle` never settles once the
-// design page carries more than a couple of editors; wait for the same readiness flag
-// shoot.mjs uses instead.
-await designPage.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
-await designPage.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
-await designPage.addStyleTag({
-  content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}',
-});
+
+async function openDesignPage() {
+  const context = await browser.newContext({
+    viewport: {
+      width: config.viewport.width + 120,
+      height: config.viewport.height + 120,
+    },
+    colorScheme: 'light',
+  });
+  const page = await context.newPage();
+  // Monaco spins its workers up through blob URLs, so `networkidle` never settles once the
+  // design page carries more than a couple of editors; wait for the same readiness flag
+  // shoot.mjs uses instead.
+  await page.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
+  await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
+  await page.addStyleTag({
+    content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}',
+  });
+  return { context, page };
+}
+
+let designSession = await openDesignPage();
+let designPage = designSession.page;
+let designPageViewCount = 0;
 
 let totalFlags = 0;
 const viewSummaries = [];
 const elementDiffs = [];
 
 for (const view of views) {
+  if (designPageViewCount === 24) {
+    await designSession.context.close();
+    designSession = await openDesignPage();
+    designPage = designSession.page;
+    designPageViewCount = 0;
+  }
+  designPageViewCount += 1;
   console.log(`== ${view.id} (${view.theme}) ==`);
   let pixelDiffPercent = null;
   let viewFlags = 0;
@@ -251,7 +320,7 @@ for (const view of views) {
 
   await designPage.evaluate((menuInteraction) => {
     document.body.classList.toggle('menu-interaction-shot', menuInteraction);
-  }, view.id === 'capture-breakpoint-create-menu');
+  }, view.id === 'capture-breakpoint-create-menu' || view.id.startsWith('breakpoint-queue-menu'));
   await designPage.evaluate((state) => window.__setState?.({
     fileMenu: '',
     settings: 'certificates',
@@ -266,6 +335,8 @@ for (const view of views) {
     breakpointFile: 'none',
     breakpointPanel: '',
     breakpointMessage: '',
+    breakpointQueueSelection: 'http-head',
+    breakpointQueueMenu: '',
     websocketBreakpoint: 'disabled',
     ...state,
   }), view.designState);
@@ -273,11 +344,12 @@ for (const view of views) {
   await applyRendererActions(designPage, view.designActions);
   await designPage.waitForTimeout(400);
 
-  const appPage = await browser.newPage({
+  const appContext = await browser.newContext({
     viewport: rendererViewport,
     deviceScaleFactor: 2,
     colorScheme: view.theme === 'dark' ? 'dark' : 'light',
   });
+  const appPage = await appContext.newPage();
   await appPage.addInitScript(installFakeInterceptor, {
     fixture: fakeInterceptorFixture,
     theme: view.theme,
@@ -286,9 +358,9 @@ for (const view of views) {
     largeTextBody: view.largeTextBody === true,
     noRuleHits: view.noRuleHits === true,
     pausedBreakpoints: view.pausedBreakpoints === true,
+    pausedBreakpointPhase: view.pausedBreakpointPhase ?? null,
     pausedWebSocketBreakpoint: view.pausedWebSocketBreakpoint === true,
     breakpointBodyState: view.breakpointBodyState ?? 'request-ready',
-    breakpointAutoContinued: view.breakpointAutoContinued ?? 0,
     breakpointFile: view.breakpointFile ?? null,
     breakpointsEnabled: view.breakpointsEnabled !== false,
     breakpointManagerRules: view.breakpointManagerRules === true,
@@ -487,7 +559,12 @@ for (const view of views) {
     const dy = +(app[name].y - design[name].y - systemY).toFixed(1);
     const dw = +(app[name].w - design[name].w).toFixed(1);
     const dh = +(app[name].h - design[name].h).toFixed(1);
-    const styleDiffs = STYLE_KEYS.filter(
+    const target = view.targets.find((candidate) =>
+      (typeof candidate === 'string' ? candidate : candidate.name) === name);
+    const styleKeys = typeof target === 'object' && target.styleKeys
+      ? target.styleKeys
+      : STYLE_KEYS;
+    const styleDiffs = styleKeys.filter(
       (key) => design[name].style[key] !== app[name].style[key],
     ).map(
       (key) =>
@@ -532,11 +609,18 @@ for (const view of views) {
     maxGeometryDelta: viewMaxGeometryDelta,
   });
   console.log('');
-  await appPage.close();
+  await appContext.close();
 }
 
 const report = buildMarkdownReport(viewSummaries, elementDiffs);
 await writeFile(reportPath, report, 'utf8');
+if (resultJsonPath) {
+  await writeFile(
+    resultJsonPath,
+    JSON.stringify({ viewSummaries, elementDiffs }),
+    'utf8',
+  );
+}
 
 console.log('== Parity summary ==');
 console.log(report);
@@ -548,7 +632,7 @@ console.log(
     : `${totalFlags} element(s) flagged - inspect deltas above and the diff PNGs`,
 );
 
-await designPage.close();
+await designSession.context.close();
 await browser.close();
 await server.close();
 await designPreview.close();

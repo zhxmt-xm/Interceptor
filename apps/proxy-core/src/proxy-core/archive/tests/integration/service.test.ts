@@ -212,7 +212,7 @@ class ExportFake extends CaptureService {
   override async appendExchanges(): Promise<{ id: string; seq: number }[]> {
     return [];
   }
-  override async appendWebSocketFrames(): Promise<void> {}
+  override async appendWebSocketFrames(): Promise<number[]> { return []; }
   override async cleanup(): Promise<CaptureStatusReport> {
     return EMPTY_STATUS;
   }
@@ -267,8 +267,9 @@ class ImportFake extends CaptureService {
   override async appendWebSocketFrames(
     exchangeId: string,
     frames: readonly WebSocketFrameInput[],
-  ): Promise<void> {
+  ): Promise<number[]> {
     this.frames.set(exchangeId, [...frames]);
+    return frames.map((_, index) => index + 1);
   }
   override async cleanup(scope: CleanupScope): Promise<CaptureStatusReport> {
     this.cleaned = scope;

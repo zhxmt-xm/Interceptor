@@ -219,11 +219,13 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `breakpoints.toggle` | Break on match与Core同步 | shared | planned |
 | `breakpoints.queue-select` | 真实pending队列和snapshot | shared | planned |
+| `breakpoints.queue-stepping` | HTTP队首、Queued、中间abort与不抢焦点 | privileged UI | passed |
+| `breakpoints.queue-isolation` | HTTP/WS隔离、同连接双向队列、独立草稿与精确frame去重 | privileged UI | passed |
+| `breakpoints.queue-commands` | queue/rule三条批量命令与原始数据面 | privileged UI | passed |
+| `breakpoints.lifecycle-release` | 无timeout等待与Core生命周期aborted释放 | privileged UI | passed |
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
-| `breakpoints.http-timeout-modes` | HTTP No timeout与有限Continue/Drop真实wire | privileged UI | passed |
-| `breakpoints.websocket-timeout-modes` | WebSocket No timeout与有限固定Continue真实wire | privileged UI | passed |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
 | `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 

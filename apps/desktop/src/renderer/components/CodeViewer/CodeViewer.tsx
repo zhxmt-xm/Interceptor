@@ -24,6 +24,7 @@ export interface CodeViewerHandle {
 }
 
 const FORMAT_PROVIDER_TIMEOUT_MS = 5_000;
+const COMPACT_FRAME_HEIGHT = 10;
 
 async function waitForEditor(
   getEditor: () => monaco.editor.IStandaloneCodeEditor | null,
@@ -102,7 +103,8 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
     // Compact viewers hug their content; full-size ones absorb whatever height the panel
     // leaves them and follow with automaticLayout.
     const hugContent = (): void => {
-      host.style.height = `${editor.getContentHeight()}px`;
+      // Monaco content height omits the 8px horizontal scrollbar slot and the host's 2px border.
+      host.style.height = `${editor.getContentHeight() + COMPACT_FRAME_HEIGHT}px`;
       editor.layout();
     };
     const sizeListener = compact ? editor.onDidContentSizeChange(hugContent) : null;

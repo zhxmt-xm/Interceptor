@@ -48,6 +48,134 @@
 
 真实请求在Core等待；Capture行与Rule/请求关联同一exchange；选择后Inspector展示同一不可变snapshot，且无隐藏独立queue或倒计时UI。
 
+<a id="breakpoints-queue-stepping"></a>
+## `breakpoints.queue-stepping`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence和HTTP origin；启动真实Electron并进入Recording；通过Rules UI创建POST request Breakpoint Rule，再经8888产生一条普通GET作为焦点负例。
+2. 按A、B、C顺序发送三个POST并逐项等待公开`queueKey=http`、`data-breakpoint-state`和1/2/3位置稳定。
+3. 真实中止B客户端，确认B的pending身份消失但Capture行保留，C更新为位置2。
+4. 选择A并Continue unmodified；确认A原样到达origin，C根据最新snapshot成为位置1并自动获得可编辑Inspector。
+5. 加入D后选择普通GET；中止C，确认D成为队首，但普通GET仍保持当前Detail且断点编辑按钮不存在。
+6. 手动选择D并Continue；确认A/D到达origin、B/C从未到达，badge归零。
+7. 保存客户端/origin/Capture/trace证据；正常Close并验证Main/Core、8888和系统代理恢复。
+
+### 预期效果
+
+HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用户仍查看已解决队首时自动推进，查看普通流量时不抢焦点。
+
+### TDD证据要求
+
+- 产品实现前，同一workflow必须因`queueKey`/队列位置/Queued Detail/推进语义缺失而Red；selector、fixture、授权、构建或环境失败不算Red。
+- 产品实现后，A/B/C、B/C abort、最新snapshot推进、普通行不抢焦点与完整销毁必须在同一workflow Green。
+
+<a id="breakpoints-queue-isolation"></a>
+## `breakpoints.queue-isolation`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence、HTTP origin和WebSocket lab；启动真实Electron，先建立当前连接并从Messages UI启用message断点，再创建HTTP request Breakpoint Rule。
+2. 同时制造一个HTTP pending，以及同一WebSocket连接的出站/入站两个pending；确认全局badge=3，分别属于`http`与`ws:<exchangeId>`。
+3. 确认WebSocket队首可编辑、第二项为Queued且没有编辑器；同一已捕获应用帧由pending row暂时代替，不重复显示历史行。
+4. 在HTTP与WebSocket队首分别填写不同Text草稿，往返选择后逐项恢复，证明草稿按`breakpointId`隔离。
+5. 对WebSocket执行Continue all；命令开始时两项原样放行，命令期间产生的echo作为未来项保持pending，HTTP与HTTP草稿不变。
+6. 再次Continue all释放未来WebSocket项；随后选择HTTP，确认草稿仍在，并用Continue unmodified原样发送客户端正文。
+7. 保存HTTP/双向WebSocket数据面、Capture/trace证据；正常Close并验证Main/Core、8888和系统代理恢复。
+
+### 预期效果
+
+HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧稳定排序。草稿互不覆盖，批量Continue不应用草稿，调用开始后产生的未来项不被吸收。
+
+### TDD证据要求
+
+- 产品实现前，同一workflow必须因多`queueKey`或非队首语义缺失而Red。
+- 产品实现后，HTTP/WS隔离、同连接顺序、Queued、独立草稿、调用开始快照、真实socket结果与完整销毁必须Green。
+
+<a id="breakpoints-queue-commands"></a>
+## `breakpoints.queue-commands`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence与HTTP origin；通过Rules UI创建POST与PUT两个互斥request Breakpoint Rule。
+2. 制造两个POST和一个PUT pending，在POST队首填写未提交草稿；执行Continue all from this rule。
+3. 确认两个POST原始正文到达origin、草稿未应用，PUT仍pending并因最新snapshot自动成为队首。
+4. 再加入一条PUT并执行Drop all；确认两条PUT客户端失败且origin零写入，badge归零。
+5. 新建两个POST pending并执行Continue all；确认两客户端与origin都收到原始正文，badge归零。
+6. 保存三种命令的数据面与trace证据；正常Close并验证Main/Core、8888和系统代理恢复。
+
+### 预期效果
+
+`Continue all`、`Drop all`和`Continue all from this rule`分别走独立意图链路。Rule与Queue作用域不串线，批量Continue不应用草稿，Core返回实际`resolvedCount`。
+
+### TDD证据要求
+
+- 产品实现前，同一workflow必须因三条公开批量命令入口缺失而Red。
+- 产品实现后，queue/rule作用域、草稿忽略、队列推进、客户端/origin结果和完整销毁必须Green；调用开始快照、stale目标与`resolvedCount`由Queue/CoreApplication单测锁定。
+
+### Automation Contract
+
+新增公开automation ID必须落在实际接收交互或表达状态的DOM上，不使用翻译文案、CSS class或私有API：
+
+| 交互/状态 | Automation ID或公开属性 |
+| --- | --- |
+| pending Capture行 | `capture.request-row.<exchangeId>` / `capture.websocket.frame.<exchangeId>.<seq>` |
+| pending身份与顺序 | `data-breakpoint-id`、`data-queue-key`、`data-queue-position`、`data-breakpoint-state=head\|queued` |
+| 打开批量菜单 | `breakpoints.queue-menu` |
+| 当前逻辑队列Continue all | `breakpoints.continue-queue` |
+| 当前逻辑队列Drop all | `breakpoints.drop-queue` |
+| 当前Rule Continue all | `breakpoints.continue-rule` |
+| 单项动作 | `breakpoints.continue-unmodified`、`breakpoints.execute-edited`、`breakpoints.drop` |
+
+动态`exchangeId`、frame sequence、`breakpointId`、`queueKey`和`ruleId`只能从产品已公开的动态行与属性读取。
+
+<a id="breakpoints-lifecycle-release"></a>
+## `breakpoints.lifecycle-release`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建profile/evidence、HTTP origin和WebSocket lab；启动真实Electron并进入Recording，通过产品UI启用HTTP与WebSocket断点。
+2. 同时制造HTTP与WebSocket pending；等待固定观察窗口，确认badge保持2且两种payload均未抵达origin。
+3. 保存关闭前截图/trace，通过产品Close触发Main→Core正常关闭。
+4. 确认HTTP客户端失败、WebSocket客户端关闭、两个origin仍无挂起payload；共享fixture验证Main/Core退出、8888释放和系统代理恢复。
+
+### 预期效果
+
+HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由用户操作、客户端abort或生命周期关闭释放；`closeAll()`统一结算为`aborted`并清空Renderer临时状态。
+
+### TDD证据要求
+
+- 删除timeout实现前，同一workflow必须因旧Timeout控件仍存在而Red。
+- 删除后，无自动释放、`aborted`结果、客户端关闭与完整销毁必须Green；无控件与协议字段由unit/typecheck/design验证。
+
+### 逻辑队列阶段TDD证据
+
+- Retrospective Red：最终四条workflow源码在`d854588`旧产品运行；`queue-stepping`与`queue-commands`
+	已经通过真实Rules UI形成paused请求但Capture行无`data-queue-*`，`queue-isolation`的HTTP已pending但无
+	`queueKey`，`lifecycle-release`在真实WebSocket setup仍找到1个timeout控件。Main/Core PID依次为
+	`34028/1940`、`32556/29092`、`31380/12648`、`14964/31472`，四组
+	`gracefulDestroyVerified=true`。
+- Green：当前`queue-stepping`、`queue-commands`、`queue-isolation`、`lifecycle-release`合并`4/4`
+	通过（26.9秒），Main/Core PID依次为`24768/21248`、`30096/30308`、`18196/12256`、
+	`36720/2084`；四组`gracefulDestroyVerified=true`，8888释放且系统代理恢复。
+- 无上限补充Green：`queue-stepping`通过真实Rules UI创建规则并依次发送11条真实HTTP请求；11条均带
+	`queueKey=http`与位置1至11，badge为11且origin零到达。随后真实客户端abort释放这些项，原有
+	中间abort、最新snapshot推进与不抢焦点流程继续Green。
+- 视觉证据独立于业务E2E：HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗
+	14 views均`0 missing / 0 flagged`，最大0.8px；业务workflow不包含像素或几何断言。
+
 <a id="breakpoints-continue-unmodified"></a>
 ## `breakpoints.continue-unmodified`
 
@@ -161,58 +289,6 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
 Drop真实中止目标数据面；请求不继续转发；pending badge、client和Capture均反映dropped/closed事实。
 
-<a id="breakpoints-http-timeout-modes"></a>
-## `breakpoints.http-timeout-modes`
-
-**状态**：passed
-**策略**：privileged UI
-
-### Steps
-
-1. 创建profile/evidence和记录请求的HTTP origin；启动真实Electron，等待冷启动Recording。
-2. 通过Rules UI创建request Breakpoint action，在单一Timeout下拉框选择`No timeout`并Apply；发送匹配请求，等待paused行。
-3. 等待超过后续自定义时长，确认pending仍为1、客户端未完成、origin未收到请求；通过UI Continue释放并确认origin 200。
-4. 编辑同一action，在Timeout选择`Custom…`；输入0时确认正整数错误且Save禁用，再输入1秒恢复有效，选择On timeout=Continue并Apply；再次发送匹配请求，不人工释放。
-5. 等待timeout后pending归0、客户端得到200、origin收到请求，Capture终态不是dropped。
-6. 改On timeout=Drop并Apply；第三次发送匹配请求，不人工释放。
-7. 等待timeout后pending归0、客户端连接失败/关闭、origin未收到第三次请求，Capture记录drop事实。
-8. 保存三段客户端/origin/Capture与规则配置证据；正常Close并验证Main/Core、8888、系统代理与profile恢复。
-
-### 预期效果
-
-`No timeout`不会隐式timer释放；自定义时长的Continue真实放行到origin，Drop真实中止且不触达origin。UI用单一下拉框表达无超时、预设与Custom；协议仍使用显式模式，不以0或空值编码。
-
-### TDD证据
-
-- Red：实现前同一workflow真实启动App、开始Recording并创建Breakpoint rule后，等待公开`rules.action.<ruleId>.0.timeout`超时；Main/Core PID为`26976/41564`，`gracefulDestroyVerified=true`。
-- Green：当前同一workflow`1/1`通过；No timeout超过1秒finite窗口仍pending并由UI Continue释放；Custom 0阻断Save，1秒Continue到达origin，1秒Drop使客户端失败且origin无第三次请求。
-- 销毁：最终Main/Core PID为`21420/1604`，`gracefulDestroyVerified=true`，8888释放；WinINet由App恢复为原`127.0.0.1:7890`。
-
-<a id="breakpoints-websocket-timeout-modes"></a>
-## `breakpoints.websocket-timeout-modes`
-
-**状态**：passed
-**策略**：privileged UI
-
-### Steps
-
-1. 创建profile/evidence与WebSocket lab；启动真实Electron并建立经8888转发的连接。
-2. 从Messages为当前连接打开Breakpoint setup，在单一Timeout下拉框选择`No timeout`并启用；发送匹配message，等待paused row。
-3. 等待超过后续自定义时长，确认消息仍pending且origin未收到；通过UI Continue释放并确认payload原样到达。
-4. 重新setup，在Timeout选择`Custom…`；输入0时确认正整数错误且Enable禁用，再输入1秒恢复有效；UI不提供Drop，因为WebSocket有限等待固定Continue。
-5. 发送第二条message，不人工释放；等待timeout后pending归0，origin收到精确原payload并回显，连接保持可用。
-6. 保存setup、pending、origin与socket证据；通过UI停用断点，正常Close并验证销毁、8888、系统代理与profile恢复。
-
-### 预期效果
-
-WebSocket的单一Timeout下拉框提供`No timeout`、预设与Custom；有限等待超时固定Continue，不能配置Drop。UI选择映射到显式协议模式，两种模式都只作用于当前连接且不破坏帧顺序。
-
-### TDD证据
-
-- Red：实现前同一workflow已建立经8888的真实WebSocket并打开setup，等待公开`capture.websocket.breakpoint.custom-timeout`超时；Main/Core PID为`5876/11856`，`gracefulDestroyVerified=true`。
-- Green：当前同一workflow`1/1`通过；Custom 0阻断Enable，No timeout超过1秒finite窗口仍pending并由UI Continue释放，Custom 1秒固定Continue把原文转发到origin，随后连接继续可用。
-- 销毁：最终Main/Core PID为`33656/35580`，`gracefulDestroyVerified=true`，8888释放；WinINet由App恢复为原`127.0.0.1:7890`。
-
 <a id="breakpoints-websocket-close"></a>
 ## `breakpoints.websocket-close`
 
@@ -225,7 +301,7 @@ WebSocket的单一Timeout下拉框提供`No timeout`、预设与Custom；有限�
 2. Fresh profile首次出现Proxy readiness时点击`capture.readiness.cancel`；点击`capture.recording.toggle`，在再次出现的readiness点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
 3. 测试lab在random loopback port启动真实`WebSocketServer`。Raw客户端连接8888，发送absolute-form `GET ws://127.0.0.1:<originPort>/e2e/websocket-close`、Upgrade headers与固定Sec-WebSocket-Key；必须收到真实`HTTP/1.1 101`才算连接建立。
 4. 等待包含`/e2e/websocket-close`的动态`capture.request-row.<exchangeId>`并点击；点击`capture.inspector.tab.messages`。点击`capture.websocket.breakpoint.toggle`打开当前连接的setup。
-5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions与`capture.websocket.breakpoint.timeout=0`，点击`capture.websocket.breakpoint.enable`。
+5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions，点击`capture.websocket.breakpoint.enable`。
 6. Raw客户端构造FIN+opcode8、mask bit、随机4字节mask和network-order code=1000的masked close frame并写入8888连接。等待`breakpoints.close-code`可见且value=1000，证明真实close帧已在Capture原行暂停。
 7. 只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001。
 8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁raw client与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。

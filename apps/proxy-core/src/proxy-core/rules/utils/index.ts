@@ -23,8 +23,6 @@ import type {
 
 import type {
   BreakpointSnapshot,
-  BreakpointState,
-  BreakpointTimeoutPolicy,
   CompiledMatcher,
   HeaderBag,
   MutableRequestState,
@@ -370,15 +368,6 @@ export function comparePriority(
       : first.id > second.id
         ? 1
         : 0;
-}
-
-/** 判断断点结果是否要求丢弃当前流量。 */
-export function isDropped(
-  state: BreakpointState,
-  timeoutPolicy: BreakpointTimeoutPolicy | undefined,
-): boolean {
-  return state === 'dropped' ||
-    (state === 'timed_out' && timeoutPolicy === 'drop');
 }
 
 /** 将断点编辑应用到请求可变状态。 */

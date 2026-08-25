@@ -13,14 +13,10 @@ import { BreakpointQueue } from '../../internal/breakpoint-queue';
 const REQUEST_BREAKPOINT: RuleAction = {
   type: 'breakpoint',
   phase: 'request',
-  timeout: { mode: 'finite', timeoutMs: 30_000 },
-  onTimeout: 'continue',
 };
 const RESPONSE_BREAKPOINT: RuleAction = {
   type: 'breakpoint',
   phase: 'response',
-  timeout: { mode: 'finite', timeoutMs: 30_000 },
-  onTimeout: 'continue',
 };
 
 function rule(
@@ -264,7 +260,7 @@ describe('RuleService — breakpoints', () => {
     expect(result.hits[0]).toMatchObject({ action: 'breakpoint', summary: 'continued' });
   });
 
-  it('keeps an infinite request breakpoint pending until the user continues', async () => {
+  it('keeps a request breakpoint pending until the user continues', async () => {
     const breakpointQueue = new BreakpointQueue();
     const ruleService = new RuleService(breakpointQueue);
     ruleService.setRuleSet({
@@ -274,7 +270,6 @@ describe('RuleService — breakpoints', () => {
           {
             type: 'breakpoint',
             phase: 'request',
-            timeout: { mode: 'infinite' },
           },
         ]),
       ],
@@ -283,7 +278,7 @@ describe('RuleService — breakpoints', () => {
     const evaluation = ruleService.evaluateRequest(requestContext(), requestState());
     await expect.poll(() => breakpointQueue.size).toBe(1);
     const [pending] = breakpointQueue.list();
-    expect(pending?.deadline).toBe(0);
+    expect(pending).not.toHaveProperty('deadline');
 
     breakpointQueue.resolve(pending!.id, 'continue');
     await expect(evaluation).resolves.toMatchObject({ kind: 'continue' });

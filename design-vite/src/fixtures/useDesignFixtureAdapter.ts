@@ -208,7 +208,9 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
     if (label) label.textContent = `Add ${count} ${count === 1 ? 'host' : 'hosts'}`;
   }
   const rows = Array.from(root.querySelectorAll<HTMLElement>('.list-scroll .row'));
-  const breakpointRow = state.breakpointState === 'websocket' || state.breakpointState.startsWith('websocket-upgrade-')
+  const breakpointRow = state.breakpointState === 'queue'
+    ? state.breakpointQueueSelection === 'http-queued' ? 'http' : 'breakpoint-request'
+    : state.breakpointState === 'websocket' || state.breakpointState.startsWith('websocket-upgrade-')
     ? 'websocket'
     : state.breakpointState === 'response'
       ? 'breakpoint-response'
@@ -454,6 +456,14 @@ export function useDesignFixtureAdapter(
       if (bodyMode) return patch({ bodyMode });
       const captureRow = closest(event.target, '.list-scroll .row');
       if (captureRow) {
+        if (root.dataset.breakpointState === 'queue' && captureRow.dataset.queueKey === 'http') {
+          return patch({
+            breakpointQueueSelection: captureRow.dataset.breakpointState === 'queued'
+              ? 'http-queued'
+              : 'http-head',
+            detail: 'open',
+          });
+        }
         const phase = captureRow.dataset.breakpointPhase as DesignState['breakpointState'] | undefined;
         if (phase) return patch({ breakpointState: phase, detail: 'open' });
         const scene = captureRow.dataset.captureRow === 'http' ? 'http' : captureRow.dataset.captureRow ?? 'http';

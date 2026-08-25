@@ -8,11 +8,7 @@ import type {
   WebSocketBreakpointSettings,
 } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Button, InputBox, Segmented, Select } from '../../../components';
-import {
-  breakpointTimeoutFromSelection,
-  type BreakpointTimeoutSelection,
-} from '../../breakpoints/utils';
+import { Button, Segmented } from '../../../components';
 import { FrameToggle } from './FrameToggle';
 import styles from './WebSocketBreakpointSetup.module.css';
 
@@ -37,10 +33,6 @@ export function WebSocketBreakpointSetup({
   const { t } = useTranslation();
   const [direction, setDirection] = useState<WebSocketBreakpointDirection>('both');
   const [frames, setFrames] = useState<WebSocketBreakpointFrame[]>(['message']);
-  const [timeoutSelection, setTimeoutSelection] = useState<BreakpointTimeoutSelection>('none');
-  const [customTimeoutSeconds, setCustomTimeoutSeconds] = useState('');
-  const timeout = breakpointTimeoutFromSelection(timeoutSelection, customTimeoutSeconds);
-  const customTimeoutInvalid = timeoutSelection === 'custom' && timeout === null;
   const frameLabels: Readonly<Record<WebSocketBreakpointFrame, string>> = {
     message: t('capture.wsBreakpointFrameMessage'),
     ping: t('capture.wsBreakpointFramePing'),
@@ -90,74 +82,6 @@ export function WebSocketBreakpointSetup({
         </div>
       </div>
 
-      <div className={styles.settingRow} data-parity="websocket-breakpoint-timeout-row">
-        <span>{t('capture.wsBreakpointTimeout')}</span>
-        <Select
-          className={styles.timeoutSelect}
-          contentClassName={styles.timeoutSelectContent}
-          ariaLabel={t('capture.wsBreakpointTimeout')}
-          options={[
-            {
-              value: 'none',
-              label: t('capture.wsBreakpointTimeoutNone'),
-              automationId: AUTOMATION_IDS.capture.websocket.breakpointTimeoutOption.none,
-            },
-            {
-              value: '10',
-              label: t('capture.wsBreakpointTimeout10'),
-              automationId: AUTOMATION_IDS.capture.websocket.breakpointTimeoutOption.ten,
-            },
-            {
-              value: '30',
-              label: t('capture.wsBreakpointTimeout30'),
-              automationId: AUTOMATION_IDS.capture.websocket.breakpointTimeoutOption.thirty,
-            },
-            {
-              value: '60',
-              label: t('capture.wsBreakpointTimeout60'),
-              automationId: AUTOMATION_IDS.capture.websocket.breakpointTimeoutOption.sixty,
-            },
-            {
-              value: 'custom',
-              label: t('capture.wsBreakpointTimeoutCustom'),
-              automationId: AUTOMATION_IDS.capture.websocket.breakpointTimeoutOption.custom,
-            },
-          ]}
-          value={timeoutSelection}
-          onValueChange={(value) => setTimeoutSelection(value as BreakpointTimeoutSelection)}
-          automationId={AUTOMATION_IDS.capture.websocket.breakpointTimeout}
-        />
-      </div>
-
-      {timeoutSelection === 'custom' ? (
-        <div className={styles.settingRow} data-parity="websocket-breakpoint-custom-timeout-row">
-          <span>{t('capture.wsBreakpointTimeoutSeconds')}</span>
-          <div className={styles.timeoutField}>
-            <InputBox
-              ariaInvalid={customTimeoutInvalid}
-              ariaLabel={t('capture.wsBreakpointTimeoutSeconds')}
-              automationId={AUTOMATION_IDS.capture.websocket.breakpointCustomTimeout}
-              className={styles.timeoutInput}
-              parity="websocket-breakpoint-custom-timeout-input"
-              step={1}
-              type="number"
-              value={customTimeoutSeconds}
-              onValueChange={setCustomTimeoutSeconds}
-            />
-            {customTimeoutInvalid ? (
-              <span
-                className={styles.timeoutError}
-                data-automation-id={AUTOMATION_IDS.capture.websocket.breakpointTimeoutError}
-                data-parity="websocket-breakpoint-timeout-error"
-                role="alert"
-              >
-                {t('capture.wsBreakpointTimeoutInvalid')}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
       <div className={styles.actions} data-parity="websocket-breakpoint-actions-row">
         <span className={styles.spacer} />
         <Button
@@ -172,12 +96,8 @@ export function WebSocketBreakpointSetup({
           icon={Pause}
           className={styles.actionButton}
           variant="primary"
-          disabled={frames.length === 0 || timeout === null}
-          onClick={() => {
-            if (timeout !== null) {
-              onEnable({ exchangeId, direction, frames, timeout });
-            }
-          }}
+          disabled={frames.length === 0}
+          onClick={() => onEnable({ exchangeId, direction, frames })}
           automationId={AUTOMATION_IDS.capture.websocket.breakpointEnable}
         >
           {t('capture.wsBreakpointConfirm')}

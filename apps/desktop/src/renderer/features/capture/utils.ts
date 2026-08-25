@@ -6,7 +6,9 @@ import type {
   CaptureExchangeSummary,
   CaptureHeader,
   HarExportRequest,
+  PendingBreakpoint,
   WebSocketFrameDirection,
+  WebSocketFrameSummary,
 } from '../../../shared/desktop-api';
 import {
   BODY_PREVIEW_MAX_BYTES,
@@ -670,6 +672,20 @@ export function filterDirection(
     return 'server-to-client';
   }
   return undefined;
+}
+
+/** pending行暂时代替同一Capture frame；只按Core分配的精确sequence过滤。 */
+export function visibleWebSocketHistoryFrames(
+  frames: readonly WebSocketFrameSummary[],
+  pendingBreakpoints: readonly PendingBreakpoint[],
+): WebSocketFrameSummary[] {
+  const pendingSequences = new Set(
+    pendingBreakpoints.flatMap((breakpoint) =>
+      breakpoint.webSocketFrameSequence === undefined
+        ? []
+        : [breakpoint.webSocketFrameSequence]),
+  );
+  return frames.filter((frame) => !pendingSequences.has(frame.seq));
 }
 
 /** 帧时间相对会话起点显示，毫秒以内保留整数、超过则按秒。 */

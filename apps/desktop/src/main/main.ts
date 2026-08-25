@@ -14,6 +14,7 @@ import {
 } from 'electron';
 
 import type {
+  BreakpointQueueKey,
   ClientAppIdentity,
   TlsCompatibilityEvent,
   TlsPassthroughSettings,
@@ -1381,7 +1382,6 @@ class DesktopApplication {
       return {
         breakpoints: result.payload.breakpoints,
         enabled: result.payload.enabled,
-        autoContinued: result.payload.autoContinued,
       };
     });
 
@@ -1422,6 +1422,45 @@ class DesktopApplication {
           },
         });
         return { state: result.payload.state };
+      },
+    );
+
+    // 原样放行命令开始时当前逻辑队列中的全部断点。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.breakpointContinueQueue,
+      async (event, queueKey: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({
+          type: 'breakpoint.continueQueue',
+          payload: { queueKey: queueKey as BreakpointQueueKey },
+        });
+        return { resolvedCount: result.payload.resolvedCount };
+      },
+    );
+
+    // 丢弃命令开始时当前逻辑队列中的全部断点。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.breakpointDropQueue,
+      async (event, queueKey: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({
+          type: 'breakpoint.dropQueue',
+          payload: { queueKey: queueKey as BreakpointQueueKey },
+        });
+        return { resolvedCount: result.payload.resolvedCount };
+      },
+    );
+
+    // 原样放行命令开始时由当前Rule挂起的全部断点。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.breakpointContinueRule,
+      async (event, ruleId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({
+          type: 'breakpoint.continueRule',
+          payload: { ruleId: ruleId as string },
+        });
+        return { resolvedCount: result.payload.resolvedCount };
       },
     );
 

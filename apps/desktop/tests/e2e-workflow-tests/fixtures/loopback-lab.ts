@@ -19,6 +19,13 @@ export interface LoopbackResponseDefinition {
   readonly body: string | Uint8Array;
 }
 
+export interface AbortableLoopbackRequest {
+  /** 请求完成或客户端/代理关闭时结算。 */
+  readonly result: Promise<{ statusCode: number | undefined; body: string }>;
+  /** 模拟真实客户端在请求仍挂起时主动断开。 */
+  abort(): void;
+}
+
 /** Deterministic loopback origin and explicit-proxy client shared by workflow tests. */
 export class LoopbackLab {
   /** Loopback HTTP server that returns bounded synthetic responses. */
@@ -139,9 +146,23 @@ export class LoopbackLab {
       headers?: OutgoingHttpHeaders;
     } = {},
   ): Promise<{ statusCode: number | undefined; body: string }> {
+    return this.startAbortableRequestThroughProxy(proxyPort, requestPath, options).result;
+  }
+
+  /** Send one request through Interceptor and expose a real client disconnect control. */
+  startAbortableRequestThroughProxy(
+    proxyPort: number,
+    requestPath: string,
+    options: {
+      method?: string;
+      body?: string | Uint8Array;
+      headers?: OutgoingHttpHeaders;
+    } = {},
+  ): AbortableLoopbackRequest {
     const method = options.method ?? 'GET';
     const body = Buffer.from(options.body ?? '');
-    return new Promise((resolve, reject) => {
+    let abortRequest = (): void => undefined;
+    const result = new Promise<{ statusCode: number | undefined; body: string }>((resolve, reject) => {
       const outgoing = request({
         host: '127.0.0.1',
         port: proxyPort,
@@ -166,11 +187,16 @@ export class LoopbackLab {
         }));
       });
       outgoing.once('error', reject);
+      abortRequest = () => outgoing.destroy(new Error('E2E client aborted request'));
       if (body.byteLength > 0) {
         outgoing.write(body);
       }
       outgoing.end();
     });
+    return {
+      result,
+      abort: () => abortRequest(),
+    };
   }
 
   /** Return the first completed origin observation for one exact request path. */

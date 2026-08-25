@@ -1,6 +1,7 @@
 import { DetailFixtureRenderer } from '../../fixtures/DetailFixtureRenderer';
 import { captureFixture } from '../../fixtures/generated/captureFixture';
 import { BreakpointCreatedMessage } from './BreakpointCreatedMessage';
+import { BreakpointQueueDesign } from './BreakpointQueueDesign';
 import { BodyRuleEffectDesign } from './BodyRuleEffectDesign';
 import { GrpcMessagePayload } from './GrpcMessagePayload';
 import { HttpBreakpointDesign } from './HttpBreakpointDesign';
@@ -16,6 +17,7 @@ export function Capture(): React.JSX.Element {
         <DetailFixtureRenderer node={captureFixture} />
       </RequestContextMenu>
       <BreakpointCreatedMessage />
+      <BreakpointQueueDesign />
       <BodyRuleEffectDesign />
       <HttpBreakpointDesign />
       <WebSocketMessagePayload />

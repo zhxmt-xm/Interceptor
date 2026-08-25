@@ -237,7 +237,7 @@ describe('McpToolRegistry', () => {
     expect(resolve).not.toHaveProperty('payload.edit');
   });
 
-  it('sends explicit infinite and finite WebSocket breakpoint timeouts', async () => {
+  it('enables a WebSocket breakpoint', async () => {
     const fakeHost = new FakeHost({
       'websocket.breakpoint.enable': {
         type: 'websocket.breakpoint.state',
@@ -248,14 +248,8 @@ describe('McpToolRegistry', () => {
 
     await call(mcpToolRegistry, 'enable_websocket_breakpoint', {
       exchangeId: 'exchange-1',
-      frames: ['message'],
-      timeoutMode: 'infinite',
-    });
-    await call(mcpToolRegistry, 'enable_websocket_breakpoint', {
-      exchangeId: 'exchange-2',
       frames: ['message', 'ping'],
-      timeoutMode: 'finite',
-      timeoutMs: 7_000,
+      direction: 'client-to-server',
     });
 
     expect(fakeHost.commands).toEqual([
@@ -263,39 +257,11 @@ describe('McpToolRegistry', () => {
         type: 'websocket.breakpoint.enable',
         payload: {
           exchangeId: 'exchange-1',
-          direction: 'both',
-          frames: ['message'],
-          timeout: { mode: 'infinite' },
-        },
-      },
-      {
-        type: 'websocket.breakpoint.enable',
-        payload: {
-          exchangeId: 'exchange-2',
-          direction: 'both',
+          direction: 'client-to-server',
           frames: ['message', 'ping'],
-          timeout: { mode: 'finite', timeoutMs: 7_000 },
         },
       },
     ]);
-  });
-
-  it.each([
-    { exchangeId: 'exchange-1', frames: ['message'], timeoutMs: 0 },
-    {
-      exchangeId: 'exchange-1',
-      frames: ['message'],
-      timeoutMode: 'finite',
-      timeoutMs: 0,
-    },
-  ])('rejects obsolete or invalid WebSocket timeout arguments %#', async (args) => {
-    const fakeHost = new FakeHost();
-    const mcpToolRegistry = new McpToolRegistry(fakeHost);
-
-    const outcome = await call(mcpToolRegistry, 'enable_websocket_breakpoint', args);
-
-    expect(outcome.ok).toBe(false);
-    expect(fakeHost.commands).toHaveLength(0);
   });
 
   it('reports tool failures without throwing', async () => {

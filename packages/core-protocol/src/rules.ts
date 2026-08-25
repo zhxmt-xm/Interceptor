@@ -11,29 +11,10 @@ import type { TreeFolder, TreeNode } from './tree';
 /** 规则作用阶段：请求发往上游前，或响应返回客户端前。 */
 export type RulePhase = 'request' | 'response';
 
-export interface InfiniteBreakpointTimeout {
-  readonly mode: 'infinite';
+export interface RuleBreakpointAction {
+  readonly type: 'breakpoint';
+  readonly phase: RulePhase;
 }
-
-export interface FiniteBreakpointTimeout {
-  readonly mode: 'finite';
-  readonly timeoutMs: number;
-}
-
-export type BreakpointTimeout = InfiniteBreakpointTimeout | FiniteBreakpointTimeout;
-
-export type RuleBreakpointAction =
-  | {
-      readonly type: 'breakpoint';
-      readonly phase: RulePhase;
-      readonly timeout: InfiniteBreakpointTimeout;
-    }
-  | {
-      readonly type: 'breakpoint';
-      readonly phase: RulePhase;
-      readonly timeout: FiniteBreakpointTimeout;
-      readonly onTimeout: 'continue' | 'drop';
-    };
 
 /** 字符串匹配模式：包含（默认）、精确、正则。 */
 export type StringMatchMode = 'contains' | 'exact' | 'regex';

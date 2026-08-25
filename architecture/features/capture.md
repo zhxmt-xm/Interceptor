@@ -1349,7 +1349,7 @@ interface CaptureEventSink {
 | `body.read-range` | 按 hash + offset + length 读取正文片段 |
 | `body.export.start` | Save body：把完整正文流式写到用户选定文件，不受预览上限限制 |
 | `websocket.frames` | WebSocket 帧分页 |
-| `websocket.breakpoint.enable` | 为当前 exchange 启用 direction / frames / timeout 配置 |
+| `websocket.breakpoint.enable` | 为当前 exchange 启用 direction / frames 配置 |
 | `websocket.breakpoint.disable` | 停用当前 WebSocket 帧断点 |
 | `grpc.messages` | gRPC envelope 分页 |
 | `proxy.start` / `proxy.status` / `proxy.setRecording` | 生命周期；Renderer 的 Stop 映射为 `setRecording{false}` |

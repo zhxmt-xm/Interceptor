@@ -17,6 +17,7 @@ import {
   replacesBody,
 } from '../../breakpoints/utils';
 import { Section } from '../RequestInspector/Section';
+import { BreakpointQueueMenu } from './BreakpointQueueMenu';
 import styles from './WebSocketBreakpointInspector.module.css';
 
 type ControlFrame = 'ping' | 'pong' | 'close';
@@ -73,28 +74,12 @@ export function WebSocketBreakpointInspector({
   const originalKind = draft.bodyFormat === 'hex'
     ? t('capture.binary').toLocaleLowerCase(i18n.language)
     : t('breakpoints.replacementText').toLocaleLowerCase(i18n.language);
-  const timeoutMs = settings?.timeout.mode === 'finite'
-    ? settings.timeout.timeoutMs
-    : null;
-  const timeoutSummary = !settings
-    ? ''
-    : timeoutMs === null
-      ? t('capture.wsBreakpointTimeoutNone')
-      : timeoutMs === 10_000
-        ? t('capture.wsBreakpointTimeout10')
-        : timeoutMs === 30_000
-          ? t('capture.wsBreakpointTimeout30')
-          : timeoutMs === 60_000
-            ? t('capture.wsBreakpointTimeout60')
-            : `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 3 }).format(timeoutMs / 1_000)} s`;
   const settingsSummary = settings
-    ? `${
-        settings.direction === 'both'
-          ? t('capture.wsBreakpointDirectionBothSummary')
-          : settings.direction === 'client-to-server'
-            ? t('capture.wsBreakpointDirectionSentSummary')
-            : t('capture.wsBreakpointDirectionReceivedSummary')
-      } · ${timeoutSummary}`
+    ? settings.direction === 'both'
+      ? t('capture.wsBreakpointDirectionBothSummary')
+      : settings.direction === 'client-to-server'
+        ? t('capture.wsBreakpointDirectionSentSummary')
+        : t('capture.wsBreakpointDirectionReceivedSummary')
     : breakpoint.ruleName;
 
   return (
@@ -111,6 +96,7 @@ export function WebSocketBreakpointInspector({
             : t('breakpoints.receivedFramePaused', { frame: frameLabel })}
         </span>
         <span className={styles.rule}>{settingsSummary}</span>
+        <BreakpointQueueMenu queueKey={breakpoint.queueKey} />
       </div>
 
       <div className={styles.scroll}>
@@ -161,6 +147,7 @@ export function WebSocketBreakpointInspector({
                 { value: 'off', label: t('breakpoints.replacementOff') },
                 { value: 'text', label: t('breakpoints.replacementText') },
               ]}
+              automationIds={AUTOMATION_IDS.breakpoints.replacement}
               onChange={(value) => setReplacement(value === 'text' ? 'text' : 'off')}
             />
             <IconButton

@@ -224,6 +224,7 @@ export class WebSocketBridge {
       url: request.url,
       direction,
       frame: 'message',
+      timestamp: Date.now(),
       content: ProxyUtils.toBuffer(data),
       isBinary,
     });
@@ -245,6 +246,7 @@ export class WebSocketBridge {
       url: request.url,
       direction,
       frame,
+      timestamp: Date.now(),
       content: ProxyUtils.toBuffer(data),
       isBinary: true,
     });
@@ -266,6 +268,7 @@ export class WebSocketBridge {
       url: request.url,
       direction,
       frame: 'close',
+      timestamp: Date.now(),
       content: ProxyUtils.toBuffer(reason),
       isBinary: false,
       closeCode: code,

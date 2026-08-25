@@ -4,15 +4,20 @@ import type { PendingBreakpoint } from '../../../../../shared/desktop-api';
 import {
   breakpointBodyBytes,
   breakpointBodyMediaType,
+  breakpointQueuePosition,
   buildEdit,
   draftFromBreakpoint,
   expectsBody,
+  isBreakpointQueueHead,
+  nextQueueHeadExchangeId,
+  webSocketQueueBreakpoints,
 } from '../../utils';
 
 function pending(overrides: Partial<PendingBreakpoint> = {}): PendingBreakpoint {
   return {
     id: 'bp-1',
     phase: 'request',
+    queueKey: 'http',
     createdAt: 0,
     ruleName: 'Pause on request',
     method: 'POST',
@@ -127,6 +132,80 @@ describe('breakpoint edits', () => {
     };
 
     expect(buildEdit(draft)).toMatchObject({ bodyFilePath: 'C:/fixtures/payload.bin' });
+  });
+});
+
+describe('breakpoint logical queues', () => {
+  it('preserves Core request order independently within each logical queue', () => {
+    const websocketHead = pending({
+      id: 'bp-ws',
+      phase: 'websocket',
+      queueKey: 'ws:exchange-1',
+      createdAt: 1,
+    });
+    const httpSecond = pending({ id: 'bp-http-b', createdAt: 3 });
+    const httpHead = pending({ id: 'bp-http-a', createdAt: 3 });
+    const breakpoints = [httpSecond, websocketHead, httpHead];
+
+    expect(breakpointQueuePosition(breakpoints, httpSecond)).toBe(1);
+    expect(breakpointQueuePosition(breakpoints, httpHead)).toBe(2);
+    expect(breakpointQueuePosition(breakpoints, websocketHead)).toBe(1);
+    expect(isBreakpointQueueHead(breakpoints, httpSecond)).toBe(true);
+    expect(isBreakpointQueueHead(breakpoints, httpHead)).toBe(false);
+    expect(isBreakpointQueueHead(breakpoints, websocketHead)).toBe(true);
+  });
+
+  it('advances only while Capture still shows the resolved queue head', () => {
+    const resolved = pending({ id: 'bp-a', exchangeId: 'exchange-a' });
+    const next = pending({ id: 'bp-b', exchangeId: 'exchange-b', createdAt: 2 });
+    const otherQueue = pending({
+      id: 'bp-ws',
+      phase: 'websocket',
+      queueKey: 'ws:exchange-ws',
+      exchangeId: 'exchange-ws',
+      createdAt: 1,
+    });
+
+    expect(nextQueueHeadExchangeId(resolved, [otherQueue, next], 'exchange-a'))
+      .toBe('exchange-b');
+    expect(nextQueueHeadExchangeId(resolved, [otherQueue, next], 'ordinary-exchange'))
+      .toBeUndefined();
+    expect(nextQueueHeadExchangeId(resolved, [otherQueue], 'exchange-a'))
+      .toBeUndefined();
+    expect(nextQueueHeadExchangeId(
+      resolved,
+      [pending({ id: 'bp-response', phase: 'response', exchangeId: 'exchange-a' })],
+      'exchange-a',
+    )).toBeUndefined();
+  });
+
+  it('lists every pending frame for one WebSocket connection in queue order', () => {
+    const second = pending({
+      id: 'bp-ws-b',
+      phase: 'websocket',
+      queueKey: 'ws:exchange-ws',
+      exchangeId: 'exchange-ws',
+      createdAt: 2,
+    });
+    const first = pending({
+      id: 'bp-ws-a',
+      phase: 'websocket',
+      queueKey: 'ws:exchange-ws',
+      exchangeId: 'exchange-ws',
+      createdAt: 1,
+    });
+    const otherConnection = pending({
+      id: 'bp-ws-other',
+      phase: 'websocket',
+      queueKey: 'ws:exchange-other',
+      exchangeId: 'exchange-other',
+      createdAt: 0,
+    });
+
+    expect(webSocketQueueBreakpoints(
+      [second, otherConnection, pending(), first],
+      'exchange-ws',
+    ).map((breakpoint) => breakpoint.id)).toEqual(['bp-ws-b', 'bp-ws-a']);
   });
 });
 

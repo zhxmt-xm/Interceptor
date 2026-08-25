@@ -294,19 +294,6 @@ export const dockFixture: FixtureNode = {
                       "value": "Queue"
                     }
                   ]
-                },
-                {
-                  "type": "element",
-                  "tag": "button",
-                  "attributes": {
-                    "data-set": "full"
-                  },
-                  "children": [
-                    {
-                      "type": "text",
-                      "value": "Full"
-                    }
-                  ]
                 }
               ]
             }

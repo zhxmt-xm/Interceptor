@@ -69,7 +69,7 @@ export function ActionEditor({
       tone={meta.tone}
       title={t(meta.titleKey)}
       sub={action.type === 'breakpoint' ? action.phase : t(meta.subKey)}
-      parity={action.type === 'breakpoint' ? 'rule-breakpoint-timeout-action' : undefined}
+      parity={action.type === 'breakpoint' ? 'rule-breakpoint-action' : undefined}
       removeAutomationId={AutomationIdFactory.ruleActionField(ruleId, index, 'remove')}
       onRemove={onRemove}
     >

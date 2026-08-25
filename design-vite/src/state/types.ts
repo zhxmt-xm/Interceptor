@@ -65,12 +65,11 @@ export type BreakpointState =
   | 'websocket-upgrade-request'
   | 'websocket-upgrade-response'
   | 'queue'
-  | 'full'
   | '';
 export type BreakpointBodyState = 'loading' | 'ready' | 'replace' | 'file';
 export type BreakpointFileState = 'none' | 'valid';
 export type BreakpointUiState = 'panel' | 'message' | '';
-export type BreakpointTimeoutSelection = 'none' | '10' | '30' | '60' | 'custom';
+export type BreakpointQueueSelection = 'http-head' | 'http-queued' | 'websocket-head' | 'websocket-queued';
 export type WebSocketBreakpointState = 'disabled' | 'setup' | 'enabled';
 export type WebSocketBreakpointDirection = 'both' | 'sent' | 'received';
 export type WebSocketBreakpointFrame = 'message' | 'ping' | 'pong' | 'close';
@@ -140,13 +139,11 @@ export interface DesignState {
   readonly breakpointPanel: 'open' | '';
   readonly breakpointMessage: 'created' | '';
   readonly breakpointUi: BreakpointUiState;
-  readonly ruleBreakpointTimeout: BreakpointTimeoutSelection | '';
-  readonly ruleBreakpointCustomTimeoutSeconds: number | null;
-  readonly ruleBreakpointTimeoutPolicy: 'continue' | 'drop';
+  readonly breakpointQueueSelection: BreakpointQueueSelection;
+  readonly breakpointQueueMenu: 'open' | '';
+  readonly ruleBreakpointAction: 'visible' | '';
   readonly websocketBreakpoint: WebSocketBreakpointState;
   readonly websocketBreakpointDirection: WebSocketBreakpointDirection;
-  readonly websocketBreakpointTimeout: BreakpointTimeoutSelection;
-  readonly websocketBreakpointCustomTimeoutSeconds: number | null;
   readonly websocketBreakpointFrames: readonly WebSocketBreakpointFrame[];
   readonly websocketMessageDirection: WebSocketMessageDirection;
   readonly websocketMessagePayload: WebSocketMessagePayload;

@@ -170,16 +170,6 @@ export const AUTOMATION_IDS = {
       directionReceived: 'capture.websocket.direction.received',
       breakpointToggle: 'capture.websocket.breakpoint.toggle',
       breakpointDirection: 'capture.websocket.breakpoint.direction',
-      breakpointTimeout: 'capture.websocket.breakpoint.timeout',
-      breakpointCustomTimeout: 'capture.websocket.breakpoint.custom-timeout',
-      breakpointTimeoutError: 'capture.websocket.breakpoint.timeout-error',
-      breakpointTimeoutOption: {
-        none: 'capture.websocket.breakpoint.timeout-option.none',
-        ten: 'capture.websocket.breakpoint.timeout-option.10',
-        thirty: 'capture.websocket.breakpoint.timeout-option.30',
-        sixty: 'capture.websocket.breakpoint.timeout-option.60',
-        custom: 'capture.websocket.breakpoint.timeout-option.custom',
-      },
       breakpointFrame: {
         message: 'capture.websocket.breakpoint.frame.message',
         ping: 'capture.websocket.breakpoint.frame.ping',
@@ -349,6 +339,11 @@ export const AUTOMATION_IDS = {
     drop: 'breakpoints.drop',
     continueUnmodified: 'breakpoints.continue-unmodified',
     executeEdited: 'breakpoints.execute-edited',
+    queueMenu: 'breakpoints.queue-menu',
+    continueQueue: 'breakpoints.continue-queue',
+    dropQueue: 'breakpoints.drop-queue',
+    continueRule: 'breakpoints.continue-rule',
+    queuedDetail: 'breakpoints.queued-detail',
   },
   diagnostics: {
     processFilter: 'diagnostics.filter.process',
@@ -430,6 +425,7 @@ export const AUTOMATION_IDS = {
 export const AUTOMATION_ID_PREFIXES = {
   captureRequestRow: 'capture.request-row.',
   captureBodyRuleEffect: 'capture.body-rule-effect.',
+  breakpointPending: 'breakpoints.pending.',
   websocketFrame: 'capture.websocket.frame.',
   grpcMessage: 'capture.grpc.message.',
   ruleRow: 'rules.row.',
@@ -522,6 +518,11 @@ export class AutomationIdFactory {
   /** Identify one captured WebSocket frame by exchange and sequence. */
   static websocketFrame(exchangeId: string, sequence: number): string {
     return `${AUTOMATION_ID_PREFIXES.websocketFrame}${exchangeId}.${sequence}`;
+  }
+
+  /** Identify one Core-owned pending breakpoint row by breakpoint ID. */
+  static breakpointPending(breakpointId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.breakpointPending}${breakpointId}`;
   }
 
   /** Identify payload copy for one captured WebSocket frame. */

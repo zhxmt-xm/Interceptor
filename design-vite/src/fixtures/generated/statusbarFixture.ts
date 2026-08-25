@@ -263,19 +263,6 @@ export const statusbarFixture: FixtureNode = {
                   "value": "Checkout API"
                 }
               ]
-            },
-            {
-              "type": "element",
-              "tag": "span",
-              "attributes": {
-                "class": "break-queue-full"
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "value": "Queue full · 3 requests auto-continued"
-                }
-              ]
             }
           ]
         }

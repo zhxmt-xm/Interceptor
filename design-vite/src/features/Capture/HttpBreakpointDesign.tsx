@@ -10,6 +10,7 @@ import {
   type ReplacementMode,
 } from '../../components/PayloadEditor/PayloadEditor';
 import { useDesignState } from '../../state/useDesignState';
+import { BreakpointQueueMenu } from './BreakpointQueueMenu';
 import styles from './HttpBreakpointDesign.module.css';
 
 interface BreakpointHosts {
@@ -48,7 +49,9 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
   const [hosts, setHosts] = useState<BreakpointHosts | null>(null);
   const [statusOpen, setStatusOpen] = useState(true);
   const response = state.breakpointState === 'response';
-  const visible = state.breakpointState === 'request' || response;
+  const queueHead = state.breakpointState === 'queue'
+    && state.breakpointQueueSelection === 'http-head';
+  const visible = state.breakpointState === 'request' || response || queueHead;
   const replacementMode: ReplacementMode = state.breakpointBody === 'replace'
     ? 'text'
     : state.breakpointBody === 'file'
@@ -95,6 +98,7 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
     <>
       {createPortal(
         <PauseBanner
+          actions={queueHead ? <BreakpointQueueMenu /> : undefined}
           phase={response ? 'Response paused' : 'Request paused'}
           received={response}
           rule={response ? 'Token API' : 'Checkout API'}

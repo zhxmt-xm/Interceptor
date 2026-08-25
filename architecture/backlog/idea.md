@@ -22,7 +22,7 @@
 <tbody>
 
 <tr>
-  <td><strong>✅ 已完成</strong></td>
+  <td><strong>🔄 进行中</strong></td>
   <td>Detail sections collapse</td>
   <td><ul><li>Capture 与 Composer 的详情区支持独立折叠和正确 ARIA 语义。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image.png" alt="Detail sections" width="240"></li></ul></td>
   <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Design interaction 2/2</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 2/2，含销毁证据</li><li><strong>Design/Parity:</strong> ✅ 2/2 matched，0 missing，0 flagged，最大 0.7px</li></ul></td>
@@ -31,7 +31,7 @@
 </tr>
 
 <tr>
-  <td><strong>✅ 已完成</strong></td>
+  <td><strong>🔄 进行中</strong></td>
   <td>BodyViewer formatting</td>
   <td><ul><li>按正文语言提供自动与手动格式化，并保留失败回退。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-1.png" alt="BodyViewer formatting" width="240"></li></ul></td>
   <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ BodyViewer/formatter 17/17；Store cache 9/9</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 1/1，含销毁证据</li><li><strong>Design/Parity:</strong> ➖ N/A，未改变布局</li></ul></td>
@@ -165,11 +165,11 @@
 
 <tr>
   <td><strong>✅ 已完成</strong></td>
-  <td>Breakpoint finite and infinite timeout</td>
-  <td><ul><li>显式支持无 timeout 与有限 timeout，并清楚表达超时策略。</li><li><strong>Steps:</strong><ul><li>协议设计完成</li><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
-  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Queue/RuleService 36/36、Renderer/Rules/i18n聚焦57/57、MCP registry 19/19</li><li><strong>Integration:</strong> ✅ WebSocket真实proxy 9/9；HTTP策略由真实E2E验收</li><li><strong>E2E:</strong> ✅ HTTP/WS各自Red，当前2/2 Green与完整销毁/系统代理恢复</li><li><strong>Design/Parity:</strong> ✅ Custom/Invalid × Rules/WS × light/dark 8 views均0 missing / 0 flagged，最大0.6px</li></ul></td>
-  <td><ul><li><code>timeoutMs=0</code>以魔法值表达无限等待，HTTP无timeout时仍携带无意义policy；UI没有可验证的Custom正整数草稿边界。</li></ul></td>
-  <td><ul><li>用判别联合表达infinite/finite；单一下拉框提供No timeout、预设与Custom，只有finite HTTP显示policy；Custom原始文本只留在Renderer并通过正整数校验后写入协议。</li></ul></td>
+  <td>Breakpoint timeout model（已移除）</td>
+  <td><ul><li>删除HTTP与WebSocket断点的整个timeout状态维度，人工断点只由用户操作、客户端abort或Core/RPC生命周期关闭释放。</li><li><strong>Steps:</strong><ul><li>删除决策完成</li><li>协议与设计删除完成</li><li>Desktop/Core/MCP代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ Protocol、Core timer、Rules/WS UI、导入专判、i18n、design场景与MCP schema/解析/payload均已删除，无兼容层</li><li><strong>Unit:</strong> ✅ Protocol 25/25、MCP 46/46、Rules import 11/11</li><li><strong>Integration:</strong> ✅ WebSocket保持pending直到用户操作</li><li><strong>E2E:</strong> ✅ lifecycle-release验证等待不自动释放且Close统一清理</li><li><strong>Design/Parity:</strong> ✅ 旧timeout场景删除，当前setup/Rules action场景0 missing / 0 flagged</li></ul></td>
+  <td><ul><li>排队但尚未进入编辑状态的项会被deadline自行Continue/Drop，与人工逻辑队列语义冲突。</li></ul></td>
+  <td><ul><li>删除整个timeout状态维度；pending只由用户命令、客户端abort或Core/RPC生命周期释放。</li></ul></td>
 </tr>
 
 <tr>
@@ -218,12 +218,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Breakpoint queue stepping and batch commands</td>
-  <td><ul><li>让多个 HTTP / WebSocket breakpoint 以独立逻辑队列连续调试，同时保留 Capture 对普通请求的自由查看，并提供语义明确的批量操作。</li><li><strong>Steps:</strong><ul><li>产品决策完成</li><li>待设计</li><li>待协议变更</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
+  <td><ul><li>让多个HTTP / WebSocket breakpoint以独立逻辑队列连续调试，同时保留Capture对普通请求的自由查看，提供语义明确的批量操作，并确保pending没有隐藏数量上限。</li><li><strong>Steps:</strong><ul><li>产品决策完成</li><li>设计完成</li><li>协议变更完成</li><li>Desktop/Core/MCP代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ Protocol / Core / Main / Preload / Renderer / 15语言 / MCP完成；上限、autoContinued与queue-full状态删除</li><li><strong>Unit:</strong> ✅ Queue 25条无上限Red→Green、CoreApplication、Renderer queue/drafts/frame去重、Rules import</li><li><strong>Integration:</strong> ✅ HTTP身份、WebSocket sequence、Proxy/Capture/Archive及本item Core聚焦17项通过；全量仅余2项独立framing债务</li><li><strong>E2E:</strong> ✅ d854588 retrospective Red→当前4/4 Green；queue-stepping真实验证11条pending，含完整销毁证据</li><li><strong>Design/Parity:</strong> ✅ design interaction 14/14；head / Queued / menu / setup / Rules action明暗14 views均0 missing / 0 flagged，最大0.8px</li></ul></td>
   <td><ul><li>当前 Core 只有一个包含 HTTP 与 WebSocket pending 的注册表；Renderer 的 breakpoint selection 与 Capture exchange selection 又彼此独立。解除当前项后，Breakpoint Store 会把不可见 draft 回退到 pending 首项，但 Capture 仍选中旧 exchange，因此不会在 UI 中进入下一条。</li><li>当前只保存一个 draft；切去查看普通 Request 或其他 pending 项时，无法为每个 breakpoint 独立保留临时编辑。</li><li>现有 timeout 会让仍在排队、尚未进入编辑状态的项自行继续或丢弃，与人工断点队列语义冲突。</li></ul></td>
-  <td><ul><li><strong>逻辑队列：</strong>Core 可以继续使用一个 pending registry，但每项必须带 <code>queueKey</code>。HTTP Request / Response / WebSocket Upgrade 进入一个 <code>http</code> 逻辑队列；每条 WebSocket 连接使用独立 <code>ws:&lt;exchangeId&gt;</code> 队列，同一连接的双向 message / ping / pong / close 按 <code>createdAt</code> 排序。HTTP 不阻塞 WebSocket，不同 WebSocket 连接也互不阻塞；每个逻辑队列内部允许队首阻塞后续项。</li><li><strong>Capture 与 Detail：</strong>所有 pending 仍是普通 Capture Request / WebSocket 连接行，可同时显示暂停状态，也可被现有 filter 隐藏；filter 只影响行可见性，不改变队列。Capture selection 保持独立，用户可随时查看任意普通非-breakpoint Request。只有选中项对应其逻辑队列当前队首时才显示可编辑 Breakpoint Detail；非队首 pending 按普通 Request / connection Detail 展示，并标记为 <code>Queued</code>（不是网络 loading）。</li><li><strong>队首推进：</strong>Continue / Forward edited / Drop 后必须根据 Core 最新 pending snapshot 重新计算该逻辑队列队首，不能使用旧数组下标。若用户仍停留在刚处理的队首 exchange，则自动选择同一逻辑队列的新队首；若用户已切去查看普通 Request 或其他队列，则不得抢焦点。HTTP 同一 exchange 后续产生 Response breakpoint、WebSocket 同一连接后续产生 frame breakpoint 时，按各自队列自然进入下一项。</li><li><strong>客户端断开：</strong>abort 只移除对应 pending breakpoint 和临时 draft；Capture Request / connection 行不删除，而是进入 aborted / failed 等普通终态并继续提供普通 Detail。例如 <code>A → B → C</code> 中 B 断开后队列变为 <code>A → C</code>，处理 A 后以最新 snapshot 进入 C。</li><li><strong>删除 timeout：</strong>移除 HTTP 与 WebSocket breakpoint 的 finite / infinite timeout 产品能力，包括协议字段、Core timer / <code>onTimeout</code>、Rules 与 WebSocket UI、导入解析、i18n 与 MCP 参数，不保留兼容路径。pending 只由用户 Continue / Forward edited / Drop、客户端 abort 或 Core / RPC 生命周期关闭释放；生命周期关闭不得再伪装成用户 timeout。</li><li><strong>草稿生命周期：</strong>草稿按 <code>breakpointId</code> 独立保存，不只按 exchange 保存，避免同一 HTTP exchange 的 Request / Response 以及同一 WebSocket 连接的多方向 frame 相互覆盖。切换 Capture selection 时保留；重新选中同一 pending 时恢复。只有 Forward edited 应用草稿；Continue unmodified 忽略草稿。Continue、Forward edited、Drop、abort、pending 消失或 Core 换代后删除对应临时内容，绝不写入 Capture 原始数据或持久化配置。</li><li><strong>非队首 resolve：</strong>Core 不强制 FIFO，也不拒绝非队首 ID。每个 suspension 独立，按 ID Continue / Drop 非队首项只会将其移出 registry，不改变当前队首；非队首没有编辑器时不产生 edited payload。队首是默认编辑目标和 UI 顺序，不是协议锁。</li><li><strong>批量命令：</strong><code>Continue all</code> 与 <code>Drop all</code> 作用于当前逻辑队列；<code>Continue all from this rule</code> 按当前 <code>ruleId</code> 筛选全部 pending。三种用户意图必须是独立协议 / Preload / Main / Core 命令，不用布尔参数、空 ID 或魔法 payload 复用；执行时允许解除非队首项，并在完成后按最新 snapshot 推进各受影响队列。</li><li><strong>计数与保护：</strong>全局 pending badge 继续汇总所有逻辑队列；队列拆分不得取消现有容量保护、auto-continue 诊断、客户端 abort 和 Core shutdown 清理。容量应继续以一个有界 pending registry 为系统安全边界，逻辑分组只决定展示、推进与批量命令作用域。</li></ul></td>
+  <td><ul><li><strong>逻辑队列：</strong>Core使用一个pending registry，每项带<code>queueKey</code>。HTTP Request / Response / WebSocket Upgrade进入<code>http</code>逻辑队列；每条WebSocket连接使用独立<code>ws:&lt;exchangeId&gt;</code>队列，同一连接的双向message / ping / pong / close保持registry插入顺序。HTTP不阻塞WebSocket，不同WebSocket连接也互不阻塞；每个逻辑队列内部允许队首阻塞后续项。</li><li><strong>Capture与Detail：</strong>所有pending仍是普通Capture Request / WebSocket连接行，也可被现有filter隐藏；filter只影响行可见性，不改变队列。Capture selection保持独立，用户可查看任意普通Request。只有选中项是其逻辑队列当前队首时才显示可编辑Breakpoint Detail；非队首pending按普通Detail展示，并标记为<code>Queued</code>。</li><li><strong>队首推进：</strong>Continue / Forward edited / Drop后根据Core最新pending snapshot重新计算队首。用户仍停留在刚处理的队首exchange时才自动选择同队列新队首；已切去普通Request或其他队列时不得抢焦点。</li><li><strong>客户端断开：</strong>abort只移除对应pending breakpoint和临时draft；Capture行保留并进入普通终态。例如<code>A → B → C</code>中B断开后队列变为<code>A → C</code>，处理A后按最新snapshot进入C。</li><li><strong>删除timeout：</strong>移除HTTP与WebSocket breakpoint的finite / infinite timeout能力，包括协议字段、Core timer / <code>onTimeout</code>、Rules与WebSocket UI、导入专判、i18n、design场景和MCP schema/解析/payload，不保留兼容路径。pending只由用户Continue / Forward edited / Drop、客户端abort或Core / RPC生命周期关闭释放；生命周期关闭统一结算为aborted。</li><li><strong>草稿生命周期：</strong>草稿按<code>breakpointId</code>独立保存。切换Capture selection时保留；重新选中同一pending时恢复。只有Forward edited应用草稿；Continue unmodified忽略草稿。Continue、Forward edited、Drop、abort、pending消失或Core换代后删除对应临时内容，不写入Capture数据或持久化配置。</li><li><strong>非队首resolve：</strong>Core不强制FIFO，也不拒绝非队首ID。按ID Continue / Drop非队首项只移出目标，不改变当前队首；非队首没有编辑器时不产生edited payload。</li><li><strong>批量命令：</strong><code>Continue all</code>与<code>Drop all</code>作用于当前逻辑队列；<code>Continue all from this rule</code>按当前<code>ruleId</code>筛选全部pending。三种用户意图使用独立Protocol / Core / Main / Preload / Renderer命令，固定调用开始ID快照并在完成后按最新snapshot推进。</li><li><strong>计数与生命周期：</strong>全局pending badge汇总所有逻辑队列；registry没有隐藏数量上限或自动放行。每次命中都保持pending，客户端abort和Core shutdown仍执行精确清理。</li></ul></td>
 </tr>
 
 <tr>

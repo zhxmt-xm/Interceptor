@@ -62,7 +62,7 @@ const BREAKPOINT_SCOPES: readonly DesignMenuItem[] = [
   { key: 'breakpoint:endpoint', name: 'This endpoint', hint: '/common/oauth2/v2.0/token', icon: Crosshair },
   { key: 'breakpoint:path-prefix', name: 'This path prefix', hint: '/common/oauth2/v2.0/token/*', icon: GitBranch },
   { key: 'breakpoint:host', name: 'This host', hint: 'login.microsoftonline.com/*', icon: Globe },
-  { key: 'breakpoint:custom', name: 'Custom breakpoint…', hint: 'method, timeout, phases', icon: Settings2 },
+  { key: 'breakpoint:custom', name: 'Custom breakpoint…', hint: 'method, host, phases', icon: Settings2 },
 ];
 
 export function RequestContextMenu({ children }: RequestContextMenuProps): React.JSX.Element {

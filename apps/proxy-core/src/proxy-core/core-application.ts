@@ -753,22 +753,45 @@ export class CoreApplication implements CoreRpcHost {
             payload: { breakpointId: command.payload.breakpointId, state },
           };
         });
+      case 'breakpoint.continueQueue':
+        return this.withBreakpoints((breakpointQueue) => ({
+          type: 'breakpoint.batch-resolution',
+          payload: {
+            resolvedCount: breakpointQueue.continueQueue(command.payload.queueKey),
+          },
+        }));
+      case 'breakpoint.dropQueue':
+        return this.withBreakpoints((breakpointQueue) => ({
+          type: 'breakpoint.batch-resolution',
+          payload: {
+            resolvedCount: breakpointQueue.dropQueue(command.payload.queueKey),
+          },
+        }));
+      case 'breakpoint.continueRule':
+        return this.withBreakpoints((breakpointQueue) => ({
+          type: 'breakpoint.batch-resolution',
+          payload: {
+            resolvedCount: breakpointQueue.continueRule(command.payload.ruleId),
+          },
+        }));
       case 'breakpoint.list': {
         const breakpoints = this.breakpointQueue
           ? this.breakpointQueue.list().map((entry) => ({
               id: entry.id,
               phase: entry.phase,
+              queueKey: entry.queueKey,
+              ...(entry.ruleId !== undefined ? { ruleId: entry.ruleId } : {}),
               ...(entry.snapshot.exchangeId !== undefined
                 ? { exchangeId: entry.snapshot.exchangeId }
                 : {}),
               createdAt: entry.createdAt,
-              deadline: entry.deadline,
               ruleName: entry.snapshot.ruleName,
               method: entry.snapshot.method,
               url: entry.snapshot.url,
               statusCode: entry.snapshot.statusCode,
               direction: entry.snapshot.direction,
               frame: entry.snapshot.frame,
+              webSocketFrameSequence: entry.snapshot.webSocketFrameSequence,
               opcode: entry.snapshot.opcode,
               bodyFormat: entry.snapshot.bodyFormat,
               headers: entry.snapshot.headers,
@@ -782,7 +805,6 @@ export class CoreApplication implements CoreRpcHost {
           payload: {
             breakpoints,
             enabled: this.ruleService?.breakpointsEnabled ?? true,
-            autoContinued: this.breakpointQueue?.autoContinued ?? 0,
           },
         };
       }

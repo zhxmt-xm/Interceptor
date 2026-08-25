@@ -124,8 +124,8 @@ export class CaptureService {
   async appendWebSocketFrames(
     exchangeId: string,
     frames: readonly WebSocketFrameInput[],
-  ): Promise<void> {
-    this.exchangeStore.appendWebSocketFrames(exchangeId, frames);
+  ): Promise<number[]> {
+    return this.exchangeStore.appendWebSocketFrames(exchangeId, frames);
   }
 
   async queryWebSocketFrames(query: WebSocketFrameQuery): Promise<WebSocketFramePage> {

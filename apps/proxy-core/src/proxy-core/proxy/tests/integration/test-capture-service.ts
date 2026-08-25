@@ -80,6 +80,7 @@ export class RecordingCaptureService extends CaptureService {
   /** 已记录的 WebSocket 帧。 */
   readonly webSocketFrames: Array<{
     exchangeId: string;
+    seq: number;
     frame: WebSocketFrameInput;
   }> = [];
 
@@ -150,10 +151,16 @@ export class RecordingCaptureService extends CaptureService {
   override appendWebSocketFrames(
     exchangeId: string,
     frames: readonly WebSocketFrameInput[],
-  ): Promise<void> {
-    this.webSocketFrames.push(
-      ...frames.map((frame) => ({ exchangeId, frame })),
-    );
-    return Promise.resolve();
+  ): Promise<number[]> {
+    const nextSequence = this.webSocketFrames
+      .filter((entry) => entry.exchangeId === exchangeId)
+      .reduce((highest, entry) => Math.max(highest, entry.seq), 0) + 1;
+    const sequences = frames.map((_, index) => nextSequence + index);
+    this.webSocketFrames.push(...frames.map((frame, index) => ({
+      exchangeId,
+      seq: sequences[index]!,
+      frame,
+    })));
+    return Promise.resolve(sequences);
   }
 }

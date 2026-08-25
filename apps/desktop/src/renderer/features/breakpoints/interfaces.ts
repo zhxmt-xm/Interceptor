@@ -53,9 +53,9 @@ export interface BreakpointDraft {
 export interface BreakpointsState {
   breakpoints: PendingBreakpoint[];
   enabled: boolean;
-  /** 队列已满而被自动放行的命中累计数。 */
-  autoContinued: number;
   selectedId: string | null;
+  /** 每个等待断点各自的临时草稿；只存在于当前Renderer代际。 */
+  draftsById: Record<string, BreakpointDraft>;
   draft: BreakpointDraft | null;
   resolving: boolean;
 

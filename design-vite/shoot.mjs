@@ -98,16 +98,16 @@ for (const theme of ['light', 'dark']) {
   }
   shots.push({ feature: 'capture', theme, variant: 'body-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'body-full', detail: 'open', tab: 'response', bodyPreview: 'code' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup-custom', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'custom', websocketBreakpointCustomTimeoutSeconds: 7, websocketBreakpointFrames: ['message'] } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup-invalid', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'custom', websocketBreakpointCustomTimeoutSeconds: 0, websocketBreakpointFrames: ['message'] } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message'] } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-sent', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-received-binary', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketMessageDirection: 'received', websocketMessagePayload: 'binary' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointTimeout: 'none', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-ping', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'sent', websocketBreakpointTimeout: 'none', websocketBreakpointFrames: ['message', 'ping'], websocketMessageDirection: 'sent', websocketMessagePayload: 'ping' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-close', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
-  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-close-edit', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointTimeout: '30', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointFrames: ['message'] } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-sent', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-queue-head', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', breakpointQueueSelection: 'websocket-head', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-queue-queued', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', breakpointQueueSelection: 'websocket-queued', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-received-binary', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketMessageDirection: 'received', websocketMessagePayload: 'binary' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-ping', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'sent', websocketBreakpointFrames: ['message', 'ping'], websocketMessageDirection: 'sent', websocketMessagePayload: 'ping' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-close', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
+  shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-close-edit', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'replace', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'received', websocketBreakpointFrames: ['message', 'close'], websocketMessageDirection: 'received', websocketMessagePayload: 'close' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-request-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-request', websocketUpgradeResponse: 'accepted' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-response-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-response', websocketUpgradeResponse: 'accepted' } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-upgrade-response-mock-error', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'headers', breakpointState: 'websocket-upgrade-response', websocketUpgradeResponse: 'mock-error' } });
@@ -127,8 +127,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-replace', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'replace' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file-empty', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'none' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-response-body-file', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'response', breakpointBody: 'file', breakpointFile: 'valid' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue' } });
-  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointState: 'full' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-menu', interaction: 'breakpoint-queue-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue', breakpointQueueSelection: 'http-head' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-head', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue', breakpointQueueSelection: 'http-head' } });
+  shots.push({ feature: 'capture', theme, variant: 'breakpoint-queue-queued', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', breakpoints: 'on', breakpointState: 'queue', breakpointQueueSelection: 'http-queued' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-create-menu', interaction: 'breakpoint-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', requestMenu: '' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-manager', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointPanel: 'open' } });
   shots.push({ feature: 'capture', theme, variant: 'breakpoint-created-message', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: '', breakpoints: 'on', breakpointMessage: 'created' } });
@@ -137,9 +138,7 @@ for (const theme of ['light', 'dark']) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'rules', theme, variant: 'add-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', pop: true } });
   shots.push({ feature: 'rules', theme, variant: 'select-dropdown', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleSelect: 'open' } });
-  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-none', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'none' } });
-  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-custom', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'custom', ruleBreakpointCustomTimeoutSeconds: 7, ruleBreakpointTimeoutPolicy: 'continue' } });
-  shots.push({ feature: 'rules', theme, variant: 'breakpoint-timeout-invalid', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointTimeout: 'custom', ruleBreakpointCustomTimeoutSeconds: 0, ruleBreakpointTimeoutPolicy: 'continue' } });
+  shots.push({ feature: 'rules', theme, variant: 'breakpoint-action', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', ruleBreakpointAction: 'visible' } });
 }
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {
@@ -245,12 +244,30 @@ await page.waitForTimeout(250);
 const app = page.locator('.app');
 async function shoot(list) {
   for (const s of list) {
+    if (
+      s.interaction === 'breakpoint-queue-menu'
+      || s.interaction === 'websocket-breakpoint-setup'
+    ) {
+      await page.reload({ waitUntil: 'load', timeout: 120_000 });
+      await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
+      await page.evaluate(() => document.fonts.ready);
+      await page.addStyleTag({ content: STABILIZE });
+      await page.evaluate(() => {
+        const controls = document.querySelector<HTMLElement>('.dock');
+        if (controls) controls.style.display = 'none';
+      });
+      await page.waitForTimeout(250);
+    }
     await page.evaluate(() => window.__setState({
       overlay: '',
       fileMenu: '',
       requestMenu: '',
+      breakpointState: '',
+      breakpointQueueSelection: 'http-head',
+      breakpointQueueMenu: '',
       breakpointPanel: '',
       breakpointMessage: '',
+      websocketBreakpoint: 'disabled',
       pop: false,
       pop2: '',
       ctxmenu: '',
@@ -267,7 +284,9 @@ async function shoot(list) {
     await page.evaluate((interaction) => {
       document.body.classList.toggle(
         'menu-interaction-shot',
-        interaction === 'breakpoint-menu' || interaction === 'websocket-breakpoint-setup',
+        interaction === 'breakpoint-menu'
+          || interaction === 'breakpoint-queue-menu'
+          || interaction === 'websocket-breakpoint-setup',
       );
     }, s.interaction);
     await page.evaluate((st) => window.__setState({
@@ -305,13 +324,11 @@ async function shoot(list) {
       breakpointFile: 'none',
       breakpointPanel: '',
       breakpointMessage: '',
-      ruleBreakpointTimeout: '',
-      ruleBreakpointCustomTimeoutSeconds: 30,
-      ruleBreakpointTimeoutPolicy: 'continue',
+      breakpointQueueSelection: 'http-head',
+      breakpointQueueMenu: '',
+      ruleBreakpointAction: '',
       websocketBreakpoint: 'disabled',
       websocketBreakpointDirection: 'both',
-      websocketBreakpointTimeout: 'none',
-      websocketBreakpointCustomTimeoutSeconds: 30,
       websocketBreakpointFrames: ['message'],
       websocketMessageDirection: 'sent',
       websocketMessagePayload: 'text',
@@ -343,10 +360,15 @@ async function shoot(list) {
     if (s.interaction === 'websocket-breakpoint-setup') {
       await page.waitForTimeout(300);
     }
+    if (s.interaction === 'breakpoint-queue-menu') {
+      await page.getByRole('button', { name: 'Queue actions' }).click();
+      await page.getByRole('menu', { name: 'Queue actions' }).waitFor();
+    }
     if (
       s.interaction !== 'request-menu'
       && s.interaction !== 'breakpoint-menu'
       && s.interaction !== 'websocket-breakpoint-setup'
+      && s.interaction !== 'breakpoint-queue-menu'
       && await page.locator('.ant-dropdown:visible').count() > 0
     ) {
       throw new Error(`Unexpected open Dropdown before ${s.theme}/${s.feature}/${s.variant}`);
@@ -363,6 +385,7 @@ async function shoot(list) {
       s.interaction === 'request-menu'
       || s.interaction === 'breakpoint-menu'
       || s.interaction === 'websocket-breakpoint-setup'
+      || s.interaction === 'breakpoint-queue-menu'
     ) {
       const clip = await app.boundingBox();
       if (!clip) throw new Error('Design app is not visible');

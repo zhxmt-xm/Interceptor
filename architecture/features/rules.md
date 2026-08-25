@@ -243,8 +243,8 @@ flowchart TD
 | `breakpoint` | 普通 action 全部完成后按原 encounter 顺序挂起；短路流量不挂起 |
 
 请求评估第一阶段可能包含异步普通 action。客户端若在 suspension 创建前 abort，RuleService 会记录该
-request ID 的活动评估已中止，第二阶段直接返回 `aborted`，不得在请求消失后再创建一个等待到 timeout 的
-pending breakpoint；评估 `finally` 清理这份瞬时状态。
+request ID 的活动评估已中止，第二阶段直接返回 `aborted`，不得在请求消失后再创建孤立 pending
+breakpoint；评估 `finally` 清理这份瞬时状态。
 
 ## 6. 调用流程
 
@@ -279,7 +279,7 @@ sequenceDiagram
     end
 
     loop 第二阶段：逐个执行暂存 breakpoint
-        Engine->>BP: suspend(phase, timeout, onTimeout, final-state snapshot)
+        Engine->>BP: suspend(phase, http, ruleId, final-state snapshot, requestId)
         BP-->>Engine: BreakpointOutcome
         Note over Engine: edited 应用编辑<br/>dropped 返回 block
     end

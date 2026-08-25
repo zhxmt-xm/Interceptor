@@ -1,6 +1,6 @@
 import type {
   BreakpointEdit,
-  BreakpointTimeout,
+  BreakpointQueueKey,
   CaptureBodyRef,
   CaptureBodyRuleEffect,
   CaptureExchangeDetail,
@@ -51,7 +51,7 @@ export {
 
 export type {
   BreakpointEdit,
-  BreakpointTimeout,
+  BreakpointQueueKey,
   CaptureBodyRef,
   CaptureBodyRuleEffect,
   CaptureExchangeDetail,
@@ -374,8 +374,6 @@ export interface ComposerResponse {
 export interface BreakpointsSnapshot {
   breakpoints: PendingBreakpoint[];
   enabled: boolean;
-  /** 队列已满而被自动放行的命中累计数；溢出必须可见，不能静默。 */
-  autoContinued: number;
 }
 
 /**
@@ -516,6 +514,9 @@ export const DESKTOP_IPC_CHANNELS = {
   breakpointsChanged: 'breakpoint:changed',
   breakpointPickBodyFile: 'breakpoint:pick-body-file',
   breakpointResolve: 'breakpoint:resolve',
+  breakpointContinueQueue: 'breakpoint:continue-queue',
+  breakpointDropQueue: 'breakpoint:drop-queue',
+  breakpointContinueRule: 'breakpoint:continue-rule',
   breakpointConfigure: 'breakpoint:configure',
   tlsProbe: 'tls:probe',
   clientAppIcons: 'client-app:icons',
@@ -648,6 +649,9 @@ export interface InterceptorDesktopApi {
     action: 'continue' | 'drop',
     edit?: BreakpointEdit,
   ): Promise<{ state: string }>;
+  continueBreakpointQueue(queueKey: BreakpointQueueKey): Promise<{ resolvedCount: number }>;
+  dropBreakpointQueue(queueKey: BreakpointQueueKey): Promise<{ resolvedCount: number }>;
+  continueBreakpointRule(ruleId: string): Promise<{ resolvedCount: number }>;
   setBreakpointsEnabled(enabled: boolean): Promise<boolean>;
   probeTls(host: string, port: number): Promise<TlsProbe>;
   startHarExport(

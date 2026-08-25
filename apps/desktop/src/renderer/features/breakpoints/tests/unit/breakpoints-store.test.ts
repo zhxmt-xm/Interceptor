@@ -9,6 +9,7 @@ function snapshot(): BreakpointsSnapshot {
       {
         id: 'bp-1',
         phase: 'request',
+        queueKey: 'http',
         createdAt: 0,
         ruleName: 'Pause on request',
         method: 'POST',
@@ -26,7 +27,6 @@ function snapshot(): BreakpointsSnapshot {
       },
     ],
     enabled: true,
-    autoContinued: 0,
   };
 }
 
@@ -83,6 +83,52 @@ describe('breakpoints store', () => {
         'x-original',
         'content-encoding',
       ],
+    });
+  });
+
+  it('preserves one independent draft per pending breakpoint and prunes resolved drafts', () => {
+    const store = useBreakpointsStore.getState();
+    store.clear();
+    const firstSnapshot = snapshot();
+    firstSnapshot.breakpoints.push({
+      ...firstSnapshot.breakpoints[0]!,
+      id: 'bp-2',
+      createdAt: 1,
+      url: 'https://api.test/second',
+    });
+    store.applySnapshot(firstSnapshot);
+
+    store.select('bp-1');
+    store.setReplacement('text');
+    store.setBody('draft-a');
+    store.select('bp-2');
+    store.setReplacement('text');
+    store.setBody('draft-b');
+
+    store.select('bp-1');
+    expect(useBreakpointsStore.getState().draft).toMatchObject({
+      breakpointId: 'bp-1',
+      replacement: 'text',
+      body: 'draft-a',
+    });
+    store.select('bp-2');
+    expect(useBreakpointsStore.getState().draft).toMatchObject({
+      breakpointId: 'bp-2',
+      replacement: 'text',
+      body: 'draft-b',
+    });
+
+    store.applySnapshot({
+      ...firstSnapshot,
+      breakpoints: firstSnapshot.breakpoints.filter((breakpoint) => breakpoint.id === 'bp-2'),
+    });
+    expect(useBreakpointsStore.getState()).toMatchObject({
+      selectedId: 'bp-2',
+      draft: {
+        breakpointId: 'bp-2',
+        replacement: 'text',
+        body: 'draft-b',
+      },
     });
   });
 });

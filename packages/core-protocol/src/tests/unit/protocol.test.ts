@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CORE_PROTOCOL_VERSION,
+  type CoreCommand,
+  type CoreResult,
 } from '../../messages';
+import type { RuleBreakpointAction } from '../../rules';
 import {
   parseCoreToMainMessage,
   parseMainToCoreMessage,
@@ -38,7 +41,6 @@ describe('core protocol validation', () => {
           exchangeId: 'exchange-ws',
           direction: 'both',
           frames: ['message'],
-          timeout: { mode: 'finite', timeoutMs: 30_000 },
         },
       },
       {
@@ -113,6 +115,18 @@ describe('core protocol validation', () => {
       {
         type: 'breakpoint.configure',
         payload: { enabled: false },
+      },
+      {
+        type: 'breakpoint.continueQueue',
+        payload: { queueKey: 'http' },
+      },
+      {
+        type: 'breakpoint.dropQueue',
+        payload: { queueKey: 'ws:exchange-ws' },
+      },
+      {
+        type: 'breakpoint.continueRule',
+        payload: { ruleId: 'rule-checkout' },
       },
       {
         type: 'tls.probe',
@@ -519,8 +533,9 @@ describe('core protocol validation', () => {
             {
               id: 'bp-1',
               phase: 'request',
+              queueKey: 'http',
+              ruleId: 'rule-checkout',
               createdAt: 1_000,
-              deadline: 31_000,
               ruleName: 'Debug checkout',
               method: 'POST',
               url: 'https://shop.example.com/checkout',
@@ -530,8 +545,9 @@ describe('core protocol validation', () => {
             {
               id: 'bp-ws',
               phase: 'websocket',
+              queueKey: 'ws:exchange-ws',
+              ruleId: 'rule-websocket',
               createdAt: 2_000,
-              deadline: 32_000,
               ruleName: 'WebSocket message',
               url: 'ws://example.test/socket',
               direction: 'client-to-server',
@@ -559,8 +575,9 @@ describe('core protocol validation', () => {
             {
               id: 'bp-2',
               phase: 'sideways',
+              queueKey: 'invalid',
+              ruleId: 'rule-invalid',
               createdAt: 0,
-              deadline: 0,
               ruleName: 'x',
               headers: [],
             },
@@ -568,6 +585,56 @@ describe('core protocol validation', () => {
         },
       },
     }).ok).toBe(true);
+  });
+
+  it('types logical breakpoint queues and batch commands', () => {
+    const commands: CoreCommand[] = [
+      {
+        type: 'breakpoint.continueQueue',
+        payload: { queueKey: 'http' },
+      },
+      {
+        type: 'breakpoint.dropQueue',
+        payload: { queueKey: 'ws:exchange-ws' },
+      },
+      {
+        type: 'breakpoint.continueRule',
+        payload: { ruleId: 'rule-checkout' },
+      },
+    ];
+    const ruleAction: RuleBreakpointAction = {
+      type: 'breakpoint',
+      phase: 'request',
+    };
+    const results: CoreResult[] = [
+      {
+        type: 'breakpoint.batch-resolution',
+        payload: { resolvedCount: 2 },
+      },
+      {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: 'bp-1',
+            phase: 'request',
+            queueKey: 'http',
+            ruleId: 'rule-checkout',
+            createdAt: 1_000,
+            ruleName: 'Checkout',
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      },
+    ];
+
+    expect(commands).toHaveLength(3);
+    expect(ruleAction).toEqual({ type: 'breakpoint', phase: 'request' });
+    expect(results[0]).toEqual({
+      type: 'breakpoint.batch-resolution',
+      payload: { resolvedCount: 2 },
+    });
   });
 
   it('passes TLS probe payloads without deep validation', () => {

@@ -10,9 +10,8 @@
 
 import {
   collectLeaves,
-  type BreakpointTimeout,
+  type BreakpointQueueKey,
   type RuleAction,
-  type RuleBreakpointAction,
   type RuleDefinition,
   type RuleSet,
 } from '@interceptor/core-protocol';
@@ -138,18 +137,14 @@ export class RuleService {
    */
   async pauseWebSocketMessage(
     snapshot: BreakpointSnapshot,
-    timeout: BreakpointTimeout,
+    queueKey: BreakpointQueueKey,
   ): Promise<BreakpointOutcome> {
     const suspension = this.breakpointQueue.suspend(
       'websocket',
-      timeout,
-      'continue',
+      queueKey,
+      undefined,
       snapshot,
     );
-    if (!suspension) {
-      this.reportQueueFull('websocket');
-      return { state: 'continued' };
-    }
     this.options.onBreakpointHit?.({
       id: suspension.id,
       phase: 'websocket',
@@ -254,7 +249,7 @@ export class RuleService {
     for (const { rule, action } of deferredBreakpoints) {
       const resolved = await this.awaitBreakpoint(
         'request',
-        action,
+        rule.id,
         RuleUtils.buildRequestSnapshot(rule.name, state, headerEffects, exchangeId),
         requestId,
       );
@@ -279,7 +274,7 @@ export class RuleService {
           };
         }
       }
-      if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
+      if (resolved.state === 'dropped') {
         return { kind: 'block', mode: 'close', hits, headerEffects, bodyEffect };
       }
     }
@@ -348,7 +343,7 @@ export class RuleService {
     for (const { rule, action } of deferredBreakpoints) {
       const resolved = await this.awaitBreakpoint(
         'response',
-        action,
+        rule.id,
         RuleUtils.buildResponseSnapshot(
           rule.name,
           context.request,
@@ -379,7 +374,7 @@ export class RuleService {
           };
         }
       }
-      if (RuleUtils.isDropped(resolved.state, resolved.timeoutPolicy)) {
+      if (resolved.state === 'dropped') {
         return { kind: 'block', mode: 'close', hits, headerEffects, bodyEffect };
       }
     }
@@ -389,7 +384,7 @@ export class RuleService {
   /** 挂起规则断点并发布命中通知；关闭开关或队列已满时直接继续。 */
   private async awaitBreakpoint(
     phase: 'request' | 'response',
-    action: RuleBreakpointAction,
+    ruleId: string,
     snapshot: BreakpointSnapshot,
     requestId?: string,
   ): Promise<BreakpointOutcome> {
@@ -401,15 +396,11 @@ export class RuleService {
     }
     const suspension = this.breakpointQueue.suspend(
       phase,
-      action.timeout,
-      'onTimeout' in action ? action.onTimeout : 'continue',
+      'http',
+      ruleId,
       snapshot,
       requestId,
     );
-    if (!suspension) {
-      this.reportQueueFull(phase);
-      return { state: 'continued' };
-    }
     // 请求停在这里是用户最需要解释的现象，挂起与解除都要留痕。
     this.diagnostics?.info('breakpoint.suspended', {
       attributes: {
@@ -431,17 +422,6 @@ export class RuleService {
       attributes: { phase, rule: snapshot.ruleName, state: outcome.state },
     });
     return outcome;
-  }
-
-  /** 队列已满导致自动放行时留痕，使用户能解释为什么这次没有停下来。 */
-  private reportQueueFull(phase: BreakpointPhase): void {
-    this.diagnostics?.warn('breakpoint.queue-full', {
-      attributes: {
-        phase,
-        pending: this.breakpointQueue.size,
-        autoContinued: this.breakpointQueue.autoContinued,
-      },
-    });
   }
 
   /** 构造不含敏感值的规则命中审计记录。 */

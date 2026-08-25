@@ -20,7 +20,6 @@ function messageBreakpoint(exchangeId: string) {
     exchangeId,
     direction: 'both',
     frames: ['message'],
-    timeout: { mode: 'infinite' },
   } as const;
 }
 
@@ -799,8 +798,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         actions: [{
           type: 'breakpoint',
           phase: 'request',
-          timeout: { mode: 'finite', timeoutMs: 30_000 },
-          onTimeout: 'continue',
         }],
       }],
     });
@@ -1610,7 +1607,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['close'],
-        timeout: { mode: 'infinite' },
       });
       sendWebSocketFrame(socket, 8, Buffer.from([0x03, 0xe8]));
 
@@ -1631,7 +1627,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
-  it('forwards the original websocket frame after the configured timeout', async () => {
+  it('keeps a websocket frame pending until the user continues it unchanged', async () => {
     await proxyService.stop();
     const breakpointQueue = new BreakpointQueue();
     proxyService = new ProxyService(
@@ -1655,12 +1651,15 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['message'],
-        timeout: { mode: 'finite', timeoutMs: 1_000 },
       });
       const echoed = readWebSocketFrames(socket, 1);
       sendWebSocketFrame(socket, 1, payload);
 
       await expect.poll(() => breakpointQueue.size, { timeout: 500 }).toBe(1);
+      await expect(waitForSocketData(socket)).resolves.toBeNull();
+      const [pending] = breakpointQueue.list();
+      expect(pending?.snapshot).toMatchObject({ webSocketFrameSequence: 1 });
+      breakpointQueue.resolve(pending!.id, 'continue');
       await expect(echoed).resolves.toEqual([{ opcode: 1, payload }]);
       expect(breakpointQueue.size).toBe(0);
     } finally {
@@ -1751,7 +1750,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'client-to-server',
         frames: ['message'],
-        timeout: { mode: 'infinite' },
       });
       const echoed = readWebSocketFrames(socket, 1);
       sendWebSocketFrame(socket, 1, Buffer.from('outbound'));
@@ -1798,7 +1796,6 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
         exchangeId: await webSocketExchangeId(recordingCaptureService),
         direction: 'both',
         frames: ['ping'],
-        timeout: { mode: 'infinite' },
       });
       const echoed = readWebSocketFrames(socket, 1);
       // 应用消息不在配置内，直接放行。

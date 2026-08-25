@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowRight, Copy, Pause } from 'lucide-react';
+import { ArrowRight, ListOrdered, Pause } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -11,9 +11,17 @@ import type {
 import { BODY_PREVIEW_MAX_BYTES } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, Segmented, sizeLabel } from '../../../components';
-import { breakpointBodyBytes } from '../../breakpoints/utils';
+import { useBreakpointsStore } from '../../breakpoints';
+import {
+  breakpointBodyBytes,
+  breakpointQueuePosition,
+} from '../../breakpoints/utils';
 import { WebSocketBreakpointInspector } from '../BreakpointInspector/WebSocketBreakpointInspector';
-import { filterDirection, frameRelativeTime } from '../utils';
+import {
+  filterDirection,
+  frameRelativeTime,
+  visibleWebSocketHistoryFrames,
+} from '../utils';
 import { WebSocketBreakpointControl } from '../WebSocketBreakpointControl/WebSocketBreakpointControl';
 import { FramePayload } from './FramePayload';
 import { FramePreview } from './FramePreview';
@@ -29,19 +37,21 @@ interface WebSocketMessagesProps {
   startedAt: number;
   /** Connection address shown in the breakpoint setup panel. */
   connection: string;
-  /** Frame currently held by Core before forwarding. */
-  pausedBreakpoint: PendingBreakpoint | null;
+  /** Frames currently held by Core before forwarding, in logical queue order. */
+  pausedBreakpoints: readonly PendingBreakpoint[];
 }
 
 export function WebSocketMessages({
   exchangeId,
   startedAt,
   connection,
-  pausedBreakpoint,
+  pausedBreakpoints,
 }: WebSocketMessagesProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const [filter, setFilter] = useState<DirectionFilter>('all');
   const [selectedSequence, setSelectedSequence] = useState<number | null>(null);
+  const selectedBreakpointId = useBreakpointsStore((state) => state.selectedId);
+  const selectBreakpoint = useBreakpointsStore((state) => state.select);
   const direction = filterDirection(filter);
   const {
     frames,
@@ -55,13 +65,20 @@ export function WebSocketMessages({
     disableBreakpoints,
   } =
     useWebSocketFrames(exchangeId, direction);
-  const selected = frames.find((frame) => frame.seq === selectedSequence) ?? null;
-  const pausedBodyBytes = pausedBreakpoint
-    ? breakpointBodyBytes(pausedBreakpoint.body ?? '', pausedBreakpoint.bodyFormat)
+  const visibleFrames = visibleWebSocketHistoryFrames(frames, pausedBreakpoints);
+  const selected = visibleFrames.find((frame) => frame.seq === selectedSequence) ?? null;
+  const queueHead = pausedBreakpoints[0] ?? null;
+  const selectedPending = pausedBreakpoints.find(
+    (pending) => pending.id === selectedBreakpointId,
+  ) ?? queueHead;
+  const selectedPendingPosition = selectedPending
+    ? breakpointQueuePosition(pausedBreakpoints, selectedPending)
     : null;
+  const selectedPendingIsHead = selectedPending?.id === queueHead?.id;
+  const pendingKey = pausedBreakpoints.map((pending) => pending.id).join('|');
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: frames.length,
+    count: visibleFrames.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
@@ -69,7 +86,7 @@ export function WebSocketMessages({
 
   useEffect(() => {
     setSelectedSequence(null);
-  }, [exchangeId, filter, pausedBreakpoint]);
+  }, [exchangeId, filter, pendingKey]);
 
   useEffect(() => {
     virtualizer.measure();
@@ -122,13 +139,13 @@ export function WebSocketMessages({
           {!loading && error ? (
             <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
           ) : null}
-          {!loading && !error && frames.length === 0 && !pausedBreakpoint ? (
+          {!loading && !error && visibleFrames.length === 0 && pausedBreakpoints.length === 0 ? (
             <div className={styles.empty}>{t('capture.noWebSocketMessages')}</div>
           ) : null}
-          {frames.length > 0 ? (
+          {visibleFrames.length > 0 ? (
             <div className={styles.viewport} style={{ height: virtualizer.getTotalSize() }}>
               {virtualizer.getVirtualItems().map((virtualRow) => {
-                const frame = frames[virtualRow.index];
+                const frame = visibleFrames[virtualRow.index];
                 if (!frame) {
                   return null;
                 }
@@ -161,42 +178,91 @@ export function WebSocketMessages({
               })}
             </div>
           ) : null}
-          {pausedBreakpoint ? (
-            <button type="button" className={cx(styles.frame, styles.pausedFrame)}>
-              <span className={cx(
-                styles.direction,
-                pausedBreakpoint.direction === 'client-to-server'
-                  ? styles.outgoing
-                  : styles.incoming,
-              )}>
-                <ArrowRight size={12} strokeWidth={1.9} />
-              </span>
-              <span className={styles.kind}>
-                {pausedBreakpoint.opcode === 2
-                  ? t('capture.binary')
-                  : t('breakpoints.replacementText')}
-              </span>
-              <span className={styles.preview}>
-                {(pausedBreakpoint.body ?? '').replace(/\s+/g, ' ')}
-              </span>
-              <span className={styles.size}>
-                {sizeLabel(pausedBodyBytes?.byteLength ?? 0, i18n.language)}
-              </span>
-              <span className={styles.time}>{t('capture.paused').toLocaleLowerCase(i18n.language)}</span>
-            </button>
-          ) : null}
+          {pausedBreakpoints.map((pending, index) => {
+            const queued = index > 0;
+            const bodyBytes = breakpointBodyBytes(pending.body ?? '', pending.bodyFormat);
+            const kind = pending.frame && pending.frame !== 'message'
+              ? pending.frame.charAt(0).toUpperCase() + pending.frame.slice(1)
+              : pending.opcode === 2
+                ? t('capture.binary')
+                : t('breakpoints.replacementText');
+            return (
+              <button
+                type="button"
+                key={pending.id}
+                className={cx(
+                  styles.frame,
+                  queued ? styles.queuedFrame : styles.pausedFrame,
+                  pending.id === selectedPending?.id && styles.selected,
+                )}
+                aria-pressed={pending.id === selectedPending?.id}
+                data-automation-id={AutomationIdFactory.breakpointPending(pending.id)}
+                data-breakpoint-id={pending.id}
+                data-queue-key={pending.queueKey}
+                data-queue-position={index + 1}
+                data-breakpoint-state={queued ? 'queued' : 'head'}
+                onClick={() => {
+                  setSelectedSequence(null);
+                  selectBreakpoint(pending.id);
+                }}
+              >
+                <span className={cx(
+                  styles.direction,
+                  pending.direction === 'client-to-server'
+                    ? styles.outgoing
+                    : styles.incoming,
+                )}>
+                  <ArrowRight size={12} strokeWidth={1.9} />
+                </span>
+                <span className={styles.kind}>{kind}</span>
+                <span className={styles.preview}>
+                  {(pending.body ?? '').replace(/\s+/g, ' ')}
+                </span>
+                <span className={styles.size}>
+                  {sizeLabel(bodyBytes.byteLength, i18n.language)}
+                </span>
+                <span className={styles.time}>
+                  {queued
+                    ? t('breakpoints.queued').toLocaleLowerCase(i18n.language)
+                    : t('capture.paused').toLocaleLowerCase(i18n.language)}
+                </span>
+              </button>
+            );
+          })}
           {loadingMore ? <div className={styles.loadingMore}>{t('capture.loadingMore')}</div> : null}
         </div>
 
       </div>
 
-      {pausedBreakpoint ? (
+      {selectedPending && selectedPendingIsHead ? (
         <div className={styles.breakpointEditor}>
-          <WebSocketBreakpointInspector breakpoint={pausedBreakpoint} settings={breakpoint} />
+          <WebSocketBreakpointInspector breakpoint={selectedPending} settings={breakpoint} />
         </div>
       ) : null}
 
-      {!pausedBreakpoint ? <div className={styles.note}>
+      {selectedPending && !selectedPendingIsHead ? (
+        <div
+          className={styles.queuedBreakpoint}
+          data-automation-id={AUTOMATION_IDS.breakpoints.queuedDetail}
+          data-parity="websocket-breakpoint-queued"
+        >
+          <span className={styles.queuedState}>
+            <ListOrdered aria-hidden="true" size={12} strokeWidth={2} />
+            {t('breakpoints.queued')}
+          </span>
+          <span className={styles.queuedPosition}>
+            {t('breakpoints.queuePosition', {
+              position: selectedPendingPosition,
+              count: pausedBreakpoints.length,
+            })}
+          </span>
+          <span className={styles.queuedQueue}>
+            {t('breakpoints.queueName', { queue: 'WebSocket' })}
+          </span>
+        </div>
+      ) : null}
+
+      {pausedBreakpoints.length === 0 ? <div className={styles.note}>
         <Pause size={13} strokeWidth={1.9} />
         {breakpoint
           ? t('capture.nextMessagePauses')

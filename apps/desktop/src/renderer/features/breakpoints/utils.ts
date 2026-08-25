@@ -1,53 +1,10 @@
 import type {
   BreakpointEdit,
-  BreakpointTimeout,
   PendingBreakpoint,
 } from '../../../shared/desktop-api';
 import type { BreakpointDraft, BreakpointsState, EditHeaderRow } from './interfaces';
 
-export type BreakpointTimeoutSelection = 'none' | '10' | '30' | '60' | 'custom';
-
-export interface BreakpointTimeoutSelectionState {
-  readonly selection: BreakpointTimeoutSelection;
-  readonly customSeconds: string;
-}
-
 let sequence = 0;
-
-/** 将Timeout控件的选项与Custom秒数转换为显式协议值；无效输入返回null。 */
-export function breakpointTimeoutFromSelection(
-  selection: BreakpointTimeoutSelection,
-  customSeconds: string,
-): BreakpointTimeout | null {
-  if (selection === 'none') {
-    return { mode: 'infinite' };
-  }
-  const secondsText = selection === 'custom' ? customSeconds : selection;
-  if (!/^\d+$/.test(secondsText)) {
-    return null;
-  }
-  const seconds = Number(secondsText);
-  const timeoutMs = seconds * 1_000;
-  if (seconds <= 0 || !Number.isSafeInteger(seconds) || !Number.isSafeInteger(timeoutMs)) {
-    return null;
-  }
-  return { mode: 'finite', timeoutMs };
-}
-
-/** 将协议timeout映射回单一下拉框；非预设有限值使用Custom秒数。 */
-export function breakpointTimeoutSelection(
-  timeout: BreakpointTimeout,
-): BreakpointTimeoutSelectionState {
-  if (timeout.mode === 'infinite') {
-    return { selection: 'none', customSeconds: '' };
-  }
-  const seconds = timeout.timeoutMs / 1_000;
-  const customSeconds = String(seconds);
-  if (seconds === 10 || seconds === 30 || seconds === 60) {
-    return { selection: String(seconds) as '10' | '30' | '60', customSeconds };
-  }
-  return { selection: 'custom', customSeconds };
-}
 
 /** 生成断点草稿 header 行的本地 id。 */
 export function rowId(): string {
@@ -139,6 +96,57 @@ export function expectsBody(headers: readonly EditHeaderRow[]): boolean {
 /** 当前选中的断点（无选中返回 null）。 */
 export function selectedBreakpoint(state: BreakpointsState): PendingBreakpoint | null {
   return state.breakpoints.find((bp) => bp.id === state.selectedId) ?? null;
+}
+
+/** 返回目标在Core snapshot插入顺序中的1-based队列位置；目标不在快照中时返回null。 */
+export function breakpointQueuePosition(
+  breakpoints: readonly PendingBreakpoint[],
+  target: PendingBreakpoint,
+): number | null {
+  const index = breakpoints
+    .filter((breakpoint) => breakpoint.queueKey === target.queueKey)
+    .findIndex((breakpoint) => breakpoint.id === target.id);
+  return index === -1 ? null : index + 1;
+}
+
+/** 判断目标是否为其逻辑队列当前可编辑的队首。 */
+export function isBreakpointQueueHead(
+  breakpoints: readonly PendingBreakpoint[],
+  target: PendingBreakpoint,
+): boolean {
+  return breakpointQueuePosition(breakpoints, target) === 1;
+}
+
+/**
+ * 用户仍查看刚处理的队首exchange时，返回最新snapshot中同队列的新队首exchange。
+ * 已切到普通流量、其他队列或新队首仍属同一exchange时不抢焦点。
+ */
+export function nextQueueHeadExchangeId(
+  resolved: PendingBreakpoint,
+  latest: readonly PendingBreakpoint[],
+  captureSelection: string | null,
+): string | undefined {
+  if (!resolved.exchangeId || captureSelection !== resolved.exchangeId) {
+    return undefined;
+  }
+  const next = latest.find(
+    (breakpoint) => breakpoint.queueKey === resolved.queueKey,
+  );
+  return next?.exchangeId && next.exchangeId !== resolved.exchangeId
+    ? next.exchangeId
+    : undefined;
+}
+
+/** 当前WebSocket连接的全部等待帧，按该连接逻辑队列顺序返回。 */
+export function webSocketQueueBreakpoints(
+  breakpoints: readonly PendingBreakpoint[],
+  exchangeId: string,
+): PendingBreakpoint[] {
+  return breakpoints
+    .filter((breakpoint) =>
+      breakpoint.phase === 'websocket'
+      && breakpoint.exchangeId === exchangeId
+      && breakpoint.queueKey === `ws:${exchangeId}`);
 }
 
 /**

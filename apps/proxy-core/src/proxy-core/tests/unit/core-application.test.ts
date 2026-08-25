@@ -21,6 +21,7 @@ import type { CleanupScope } from '../../capture/interfaces';
 import type { HarService } from '../../har/entry';
 import type { ProxyService } from '../../proxy/entry';
 import type { CaptureEventQueue } from '../../proxy/internal/capture-event-queue';
+import { BreakpointQueue } from '../../rules/internal/breakpoint-queue';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -175,6 +176,60 @@ describe('CoreApplication', () => {
     }, new AbortController().signal)).rejects.toMatchObject({
       detail: { code: 'internal', retryable: false },
     });
+  });
+
+  it('routes each batch breakpoint intention to its explicit queue operation', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
+      breakpointQueue,
+    });
+    const snapshot = { ruleName: 'Queue rule', headers: [], bodyAvailable: false };
+    const httpA = breakpointQueue.suspend('request', 'http', 'rule-a', snapshot)!;
+    const websocketA = breakpointQueue.suspend(
+      'websocket',
+      'ws:exchange-a',
+      'rule-a',
+      snapshot,
+    )!;
+    const httpB = breakpointQueue.suspend('response', 'http', 'rule-b', snapshot)!;
+    const abortSignal = new AbortController().signal;
+
+    await expect(coreApplication.executeCommand({
+      type: 'breakpoint.continueQueue',
+      payload: { queueKey: 'http' },
+    }, abortSignal)).resolves.toEqual({
+      type: 'breakpoint.batch-resolution',
+      payload: { resolvedCount: 2 },
+    });
+    await expect(httpA.outcome).resolves.toEqual({ state: 'continued' });
+    await expect(httpB.outcome).resolves.toEqual({ state: 'continued' });
+
+    const httpDrop = breakpointQueue.suspend('request', 'http', 'rule-a', snapshot)!;
+    await expect(coreApplication.executeCommand({
+      type: 'breakpoint.dropQueue',
+      payload: { queueKey: 'http' },
+    }, abortSignal)).resolves.toEqual({
+      type: 'breakpoint.batch-resolution',
+      payload: { resolvedCount: 1 },
+    });
+    await expect(httpDrop.outcome).resolves.toEqual({ state: 'dropped' });
+
+    const websocketB = breakpointQueue.suspend(
+      'websocket',
+      'ws:exchange-b',
+      'rule-a',
+      snapshot,
+    )!;
+    await expect(coreApplication.executeCommand({
+      type: 'breakpoint.continueRule',
+      payload: { ruleId: 'rule-a' },
+    }, abortSignal)).resolves.toEqual({
+      type: 'breakpoint.batch-resolution',
+      payload: { resolvedCount: 2 },
+    });
+    await expect(websocketA.outcome).resolves.toEqual({ state: 'continued' });
+    await expect(websocketB.outcome).resolves.toEqual({ state: 'continued' });
+    expect(breakpointQueue.size).toBe(0);
   });
 
   it('returns an internal error for storage commands when storage is unavailable', async () => {

@@ -11,7 +11,6 @@ import type {
   TlsPassthroughEvent,
   TrailerData,
   WebSocketClose,
-  WebSocketMessage,
 } from 'mockttp';
 
 import type {
@@ -545,12 +544,6 @@ export class ProxyService {
     void server.on('websocket-accepted', (response: CompletedResponse) => {
       this.exchangeTracker.acceptWebSocket(response.id, response.statusCode);
     });
-    void server.on('websocket-message-received', (message: WebSocketMessage) => {
-      this.enqueueWebSocketMessage(message);
-    });
-    void server.on('websocket-message-sent', (message: WebSocketMessage) => {
-      this.enqueueWebSocketMessage(message);
-    });
     void server.on('websocket-close', (close: WebSocketClose) => {
       const tail = this.webSocketTails.get(close.streamId) ?? Promise.resolve();
       void tail
@@ -696,15 +689,17 @@ export class ProxyService {
   }
 
   /** 单 stream Promise 链保持 Mockttp 事件顺序，并等待 101 Exchange 先落库。 */
-  private enqueueWebSocketMessage(message: WebSocketMessage): void {
+  private captureWebSocketMessage(
+    message: WebSocketBridgeMessage,
+    knownExchangeId?: string,
+  ): Promise<number | undefined> {
     const tail = this.webSocketTails.get(message.streamId) ?? Promise.resolve();
-    const next = tail
+    const capture = tail
       .then(async () => {
-        const exchangeId = await this.exchangeTracker.whenExchangeReady(
-          message.streamId,
-        );
+        const exchangeId = knownExchangeId
+          ?? await this.exchangeTracker.whenExchangeReady(message.streamId);
         if (!exchangeId) {
-          return;
+          return undefined;
         }
         const payload = await this.persistBody(
           message.content,
@@ -712,29 +707,25 @@ export class ProxyService {
             ? 'application/octet-stream'
             : 'text/plain; charset=utf-8',
         );
-        await this.captureService.appendWebSocketFrames(exchangeId, [
+        const [frameSequence] = await this.captureService.appendWebSocketFrames(exchangeId, [
           {
-            direction:
-              message.direction === 'received'
-                ? 'client-to-server'
-                : 'server-to-client',
+            direction: message.direction,
             opcode: message.isBinary ? 2 : 1,
             payloadSize: message.content.byteLength,
-            timestamp: ProxyUtils.toWallClockTimestamp(
-              message.timingEvents.startTime,
-              message.timingEvents.startTimestamp,
-              message.eventTimestamp,
-            ),
+            timestamp: message.timestamp,
             ...(payload ? { payload } : {}),
           },
         ]);
+        return frameSequence;
       })
       .catch((error) => {
         this.diagnostics?.error('websocket.persist-failed', {
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
+        return undefined;
       });
-    this.webSocketTails.set(message.streamId, next);
+    this.webSocketTails.set(message.streamId, capture.then(() => undefined));
+    return capture;
   }
 
   private async interceptWebSocketMessage(message: WebSocketBridgeMessage) {
@@ -749,11 +740,18 @@ export class ProxyService {
     if (
       !settings
       || !this.ruleService
+      || exchangeId === undefined
       || settings.exchangeId !== exchangeId
       || !ProxyUtils.matchesWebSocketBreakpoint(settings, message)
     ) {
+      if (message.frame === 'message') {
+        void this.captureWebSocketMessage(message, exchangeId);
+      }
       return forwardUnchanged;
     }
+    const webSocketFrameSequence = message.frame === 'message'
+      ? await this.captureWebSocketMessage(message, exchangeId)
+      : undefined;
     const bodyFormat = message.isBinary ? 'hex' : 'text';
     const body = message.isBinary
       ? ProxyUtils.toHexString(message.content)
@@ -764,6 +762,7 @@ export class ProxyService {
       url: message.url,
       direction: message.direction,
       frame: message.frame,
+      ...(webSocketFrameSequence !== undefined ? { webSocketFrameSequence } : {}),
       ...(message.frame === 'message' ? { opcode: message.isBinary ? 2 : 1 } as const : {}),
       bodyFormat,
       headers: [],
@@ -771,11 +770,8 @@ export class ProxyService {
       bodyAvailable: true,
       body,
       ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
-    }, settings.timeout);
-    if (
-      outcome.state === 'dropped' ||
-      (outcome.state === 'timed_out' && outcome.timeoutPolicy === 'drop')
-    ) {
+    }, `ws:${exchangeId}`);
+    if (outcome.state === 'dropped') {
       return { action: 'drop' as const };
     }
     if (

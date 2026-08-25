@@ -56,22 +56,6 @@
   font-weight: 550;
 }
 
-.timeoutSelect {
-  width: 100%;
-}
-
-.timeoutField {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.timeoutError {
-  color: var(--red);
-  font-size: 10.5px;
-}
-
 .setupActions {
   display: flex;
   align-items: center;

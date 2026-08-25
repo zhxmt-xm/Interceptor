@@ -1,19 +1,45 @@
 import { useEffect } from 'react';
 
+import type {
+  BreakpointQueueKey,
+  BreakpointsSnapshot,
+} from '../../../../shared/desktop-api';
+import { useCaptureStore } from '../../capture/data/captureStore';
 import { useBreakpointsStore } from './breakpointsStore';
-import { buildEdit } from '../utils';
+import { buildEdit, nextQueueHeadExchangeId, selectedBreakpoint } from '../utils';
 
 /** 拉取当前等待断点快照并写入视图状态；轮询与操作后调用。 */
-export async function refreshBreakpoints(): Promise<void> {
+export async function refreshBreakpoints(): Promise<BreakpointsSnapshot | null> {
   const api = window.interceptor;
   if (!api?.listBreakpoints) {
-    return;
+    return null;
   }
   try {
     const snapshot = await api.listBreakpoints();
     useBreakpointsStore.getState().applySnapshot(snapshot);
+    return snapshot;
   } catch {
     /* Core 重连瞬间断点列表不可用时保持既有视图。 */
+    return null;
+  }
+}
+
+/** 命令完成后只在用户仍查看旧队首时推进到最新同队列队首。 */
+function advanceCaptureSelection(
+  resolved: ReturnType<typeof selectedBreakpoint>,
+  latest: BreakpointsSnapshot | null,
+): void {
+  if (!resolved || !latest) {
+    return;
+  }
+  const captureStore = useCaptureStore.getState();
+  const nextExchangeId = nextQueueHeadExchangeId(
+    resolved,
+    latest.breakpoints,
+    captureStore.selectedId,
+  );
+  if (nextExchangeId) {
+    captureStore.select(nextExchangeId);
   }
 }
 
@@ -28,13 +54,71 @@ export async function resolveSelected(
     return;
   }
   const breakpointId = store.draft.breakpointId;
+  const resolved = selectedBreakpoint(store);
   store.setResolving(true);
   try {
     const edit = action === 'continue' && edited ? buildEdit(store.draft) : undefined;
     await api.resolveBreakpoint(breakpointId, action, edit);
-    await refreshBreakpoints();
+    advanceCaptureSelection(resolved, await refreshBreakpoints());
   } catch {
     /* 已被超时/他处解除时忽略。 */
+  } finally {
+    useBreakpointsStore.getState().setResolving(false);
+  }
+}
+
+/** 原样放行命令开始时当前逻辑队列中的全部断点。 */
+export async function continueQueue(queueKey: BreakpointQueueKey): Promise<void> {
+  const api = window.interceptor;
+  const store = useBreakpointsStore.getState();
+  if (!api?.continueBreakpointQueue || store.resolving) {
+    return;
+  }
+  store.setResolving(true);
+  const resolved = selectedBreakpoint(store);
+  try {
+    await api.continueBreakpointQueue(queueKey);
+    advanceCaptureSelection(resolved, await refreshBreakpoints());
+  } catch {
+    /* 调用期间目标并发消失时由Core返回实际计数；连接失败留给下一次快照纠正。 */
+  } finally {
+    useBreakpointsStore.getState().setResolving(false);
+  }
+}
+
+/** 丢弃命令开始时当前逻辑队列中的全部断点。 */
+export async function dropQueue(queueKey: BreakpointQueueKey): Promise<void> {
+  const api = window.interceptor;
+  const store = useBreakpointsStore.getState();
+  if (!api?.dropBreakpointQueue || store.resolving) {
+    return;
+  }
+  store.setResolving(true);
+  const resolved = selectedBreakpoint(store);
+  try {
+    await api.dropBreakpointQueue(queueKey);
+    advanceCaptureSelection(resolved, await refreshBreakpoints());
+  } catch {
+    /* Core重连时保留当前视图，下一次状态信号会同步真实队列。 */
+  } finally {
+    useBreakpointsStore.getState().setResolving(false);
+  }
+}
+
+/** 原样放行命令开始时由当前Rule挂起的全部断点。 */
+export async function continueRule(ruleId: string): Promise<void> {
+  const api = window.interceptor;
+  const store = useBreakpointsStore.getState();
+  if (!api?.continueBreakpointRule || store.resolving) {
+    return;
+  }
+  store.setResolving(true);
+  const resolved = selectedBreakpoint(store);
+  try {
+    await api.continueBreakpointRule(ruleId);
+    advanceCaptureSelection(resolved, await refreshBreakpoints());
+  } catch {
+    /* Rule已删除或Core重连时由后续快照纠正。 */
   } finally {
     useBreakpointsStore.getState().setResolving(false);
   }
