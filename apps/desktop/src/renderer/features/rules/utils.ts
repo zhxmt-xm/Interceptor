@@ -63,6 +63,20 @@ export function deriveChips(rule: RuleDefinition): Array<[ChipKind, string]> {
   return chips;
 }
 
+/** 为规则行保留前两个chip，同时给overflow Tooltip提供完整有序列表。 */
+export function deriveRuleRowChips(rule: RuleDefinition): {
+  allChips: Array<[ChipKind, string]>;
+  inlineChips: Array<[ChipKind, string]>;
+  hasOverflow: boolean;
+} {
+  const allChips = deriveChips(rule);
+  return {
+    allChips,
+    inlineChips: allChips.slice(0, 2),
+    hasOverflow: allChips.length > 2,
+  };
+}
+
 /** 从规则的 matchers 派生人类可读的匹配摘要（host · path 等）。 */
 export function matchSummary(rule: RuleDefinition, emptySummary?: string): string {
   const parts: string[] = [];

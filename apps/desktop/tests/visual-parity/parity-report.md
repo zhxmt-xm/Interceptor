@@ -1,16 +1,16 @@
 # Visual Parity Report
 
-Generated: 2026-08-25T09:01:54.082Z
+Generated: 2026-08-25T11:24:41.617Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 140 |
-| Average pixel diff | 2.49% |
-| Targets | 974 |
-| Matched | 940 |
+| Views checked | 142 |
+| Average pixel diff | 2.52% |
+| Targets | 992 |
+| Matched | 958 |
 | Missing | 34 |
 | Flagged | 306 |
 | Largest geometry delta | 1156.8 px |
@@ -20,45 +20,45 @@ Generated: 2026-08-25T09:01:54.082Z
 
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| capture | 3.59% | 38 | 22 | 16 | 22 | 1001.7 px |
-| breakpoint-request-paused | 2.95% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading | 2.95% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoints | 3.17% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-replace | 3.10% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-request-body-file-empty | 3.14% | 11 | 11 | 0 | 10 | 302.1 px |
-| breakpoint-request-body-file | 3.15% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-response-paused | 2.95% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded | 2.98% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace | 2.99% | 12 | 11 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty | 2.99% | 12 | 12 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file | 2.98% | 12 | 12 | 0 | 6 | 2.0 px |
-| breakpoint-request-paused-dark | 3.00% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading-dark | 3.00% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loaded-dark | 3.22% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-replace-dark | 3.14% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-request-body-file-empty-dark | 3.19% | 11 | 11 | 0 | 10 | 302.1 px |
-| breakpoint-request-body-file-dark | 3.19% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-response-paused-dark | 2.99% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded-dark | 3.02% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-replace-dark | 3.03% | 12 | 11 | 1 | 6 | 2.0 px |
-| breakpoint-response-body-file-empty-dark | 3.03% | 12 | 12 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file-dark | 3.02% | 12 | 12 | 0 | 6 | 2.0 px |
+| capture | 3.58% | 38 | 22 | 16 | 22 | 1001.7 px |
+| breakpoint-request-paused | 2.99% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading | 2.99% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoints | 3.20% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-replace | 3.14% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-file-empty | 3.16% | 11 | 11 | 0 | 10 | 302.1 px |
+| breakpoint-request-body-file | 3.17% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-response-paused | 3.06% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded | 3.26% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace | 3.26% | 12 | 11 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty | 3.26% | 12 | 12 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file | 3.25% | 12 | 12 | 0 | 6 | 2.0 px |
+| breakpoint-request-paused-dark | 3.04% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading-dark | 3.04% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loaded-dark | 3.26% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-replace-dark | 3.20% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-file-empty-dark | 3.21% | 11 | 11 | 0 | 10 | 302.1 px |
+| breakpoint-request-body-file-dark | 3.23% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-response-paused-dark | 3.12% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded-dark | 3.31% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-replace-dark | 3.31% | 12 | 11 | 1 | 6 | 2.0 px |
+| breakpoint-response-body-file-empty-dark | 3.31% | 12 | 12 | 0 | 7 | 302.1 px |
+| breakpoint-response-body-file-dark | 3.30% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.98% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 3.19% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 3.29% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 3.23% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.97% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 3.31% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu-dark | 3.25% | 4 | 4 | 0 | 0 | 0.0 px |
-| capture-websocket | 3.37% | 7 | 5 | 2 | 3 | 1001.7 px |
+| breakpoint-queue-menu-dark | 3.23% | 4 | 4 | 0 | 0 | 0.0 px |
+| capture-websocket | 3.38% | 7 | 5 | 2 | 3 | 1001.7 px |
 | statusbar-upstream-down | 2.65% | 1 | 1 | 0 | 0 | 0.5 px |
-| statusbar-upstream-down-dark | 2.66% | 1 | 1 | 0 | 0 | 0.5 px |
+| statusbar-upstream-down-dark | 2.67% | 1 | 1 | 0 | 0 | 0.5 px |
 | capture-websocket-breakpoint-setup | 3.62% | 10 | 10 | 0 | 0 | 0.8 px |
-| capture-websocket-breakpoint-enabled | 3.46% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-enabled | 3.17% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused | 3.86% | 12 | 12 | 0 | 9 | 28.0 px |
 | capture-websocket-breakpoint-queue-head | 3.65% | 3 | 3 | 0 | 0 | 0.5 px |
 | capture-websocket-breakpoint-queue-queued | 3.18% | 3 | 3 | 0 | 0 | 0.0 px |
 | capture-websocket-breakpoint-setup-dark | 3.59% | 10 | 10 | 0 | 0 | 0.8 px |
-| capture-websocket-breakpoint-enabled-dark | 3.56% | 5 | 5 | 0 | 1 | 1.0 px |
+| capture-websocket-breakpoint-enabled-dark | 3.29% | 5 | 5 | 0 | 1 | 1.0 px |
 | capture-websocket-breakpoint-paused-dark | 3.87% | 12 | 12 | 0 | 9 | 28.0 px |
 | capture-websocket-breakpoint-queue-head-dark | 3.64% | 3 | 3 | 0 | 0 | 0.5 px |
 | capture-websocket-breakpoint-queue-queued-dark | 3.18% | 3 | 3 | 0 | 0 | 0.0 px |
@@ -70,9 +70,9 @@ Generated: 2026-08-25T09:01:54.082Z
 | capture-body-effect-request-file-dark | 2.98% | 4 | 4 | 0 | 1 | 10.0 px |
 | capture-body-effect-response-text-dark | 3.07% | 5 | 5 | 0 | 1 | 10.0 px |
 | capture-body-effect-response-file-dark | 3.07% | 5 | 5 | 0 | 1 | 10.0 px |
-| capture-request-json | 3.10% | 4 | 3 | 1 | 2 | 1001.7 px |
-| capture-timing | 2.82% | 4 | 4 | 0 | 4 | 4.4 px |
-| capture-cookies | 2.73% | 3 | 3 | 0 | 0 | 0.7 px |
+| capture-request-json | 3.06% | 4 | 3 | 1 | 2 | 1001.7 px |
+| capture-timing | 2.83% | 4 | 4 | 0 | 4 | 4.4 px |
+| capture-cookies | 2.74% | 3 | 3 | 0 | 0 | 0.7 px |
 | capture-grpc | 3.55% | 8 | 8 | 0 | 3 | 1.6 px |
 | capture-tunnel | 3.31% | 8 | 8 | 0 | 5 | 170.0 px |
 | capture-tunnel-dark | 3.37% | 6 | 6 | 0 | 3 | 170.0 px |
@@ -86,17 +86,17 @@ Generated: 2026-08-25T09:01:54.082Z
 | https-setup-ready | 6.74% | 7 | 7 | 0 | 1 | 44.3 px |
 | import-export | 2.96% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 1.40% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.96% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 2.97% | 4 | 4 | 0 | 0 | 0.8 px |
+| capture-export-menu | 2.97% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-request-rule-menu | 2.98% | 4 | 4 | 0 | 0 | 0.8 px |
 | capture-breakpoint-create-menu | 2.82% | 8 | 8 | 0 | 1 | 1.0 px |
-| capture-request-menu-dismiss | 2.66% | 1 | 1 | 0 | 1 | 0.3 px |
+| capture-request-menu-dismiss | 2.65% | 1 | 1 | 0 | 1 | 0.3 px |
 | capture-rule-filter | 1.47% | 3 | 0 | 3 | 0 | 0.0 px |
 | capture-rule-filter-disabled | 2.98% | 1 | 1 | 0 | 0 | 0.0 px |
-| capture-body-preview-limited | 3.59% | 2 | 2 | 0 | 2 | 9.2 px |
-| capture-body-media-save | 2.93% | 2 | 2 | 0 | 1 | 7.1 px |
-| proxy-not-ready | 0.57% | 5 | 5 | 0 | 0 | 0.8 px |
+| capture-body-preview-limited | 3.52% | 2 | 2 | 0 | 2 | 9.2 px |
+| capture-body-media-save | 2.92% | 2 | 2 | 0 | 1 | 7.1 px |
+| proxy-not-ready | 0.56% | 5 | 5 | 0 | 0 | 0.8 px |
 | proxy-not-ready-settings | 1.99% | 1 | 1 | 0 | 0 | 0.0 px |
-| rules-breakpoint-action | 2.42% | 3 | 3 | 0 | 0 | 0.1 px |
+| rules-breakpoint-action | 2.43% | 3 | 3 | 0 | 0 | 0.1 px |
 | rules-breakpoint-action-dark | 2.64% | 3 | 3 | 0 | 0 | 0.1 px |
 | rules-import-confirm-light | 1.08% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-light | 0.49% | 1 | 1 | 0 | 0 | 0.1 px |
@@ -104,8 +104,10 @@ Generated: 2026-08-25T09:01:54.082Z
 | rules-import-confirm-dark | 0.43% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
-| rules-add-action | 4.70% | 1 | 1 | 0 | 0 | 0.6 px |
-| rules-select-dropdown | 3.50% | 1 | 1 | 0 | 0 | 0.0 px |
+| rules-action-tag-overflow-light | 3.61% | 9 | 9 | 0 | 0 | 0.0 px |
+| rules-action-tag-overflow-dark | 3.63% | 9 | 9 | 0 | 0 | 0.0 px |
+| rules-add-action | 4.71% | 1 | 1 | 0 | 0 | 0.6 px |
+| rules-select-dropdown | 3.48% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 2.14% | 9 | 9 | 0 | 2 | 0.9 px |
 | composer-import-confirm-light | 0.77% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-light | 0.50% | 1 | 1 | 0 | 0 | 0.1 px |
@@ -126,8 +128,8 @@ Generated: 2026-08-25T09:01:54.082Z
 | tls-compatibility-dialog-add | 1.56% | 2 | 2 | 0 | 0 | 0.4 px |
 | settings-tls-passthrough | 1.53% | 9 | 7 | 2 | 2 | 131.2 px |
 | settings-tls-passthrough-dark | 1.52% | 9 | 7 | 2 | 2 | 131.2 px |
-| tls-compatibility-dialog | 0.98% | 8 | 8 | 0 | 1 | 1.7 px |
-| tls-compatibility-dialog-dark | 0.43% | 8 | 8 | 0 | 1 | 1.7 px |
+| tls-compatibility-dialog | 0.97% | 8 | 8 | 0 | 1 | 1.7 px |
+| tls-compatibility-dialog-dark | 0.42% | 8 | 8 | 0 | 1 | 1.7 px |
 | settings-updates-checking | 2.00% | 13 | 13 | 0 | 3 | 13.8 px |
 | settings-updates-checking-dark | 1.94% | 13 | 13 | 0 | 3 | 13.8 px |
 | settings-updates-available | 2.23% | 14 | 14 | 0 | 1 | 5.7 px |
@@ -148,16 +150,16 @@ Generated: 2026-08-25T09:01:54.082Z
 | settings-updates-auth-authorizing-dark | 1.97% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed | 1.95% | 7 | 7 | 0 | 0 | 0.8 px |
 | settings-updates-auth-failed-dark | 1.93% | 7 | 7 | 0 | 0 | 0.8 px |
-| breakpoints-off | 2.65% | 1 | 1 | 0 | 1 | 0.0 px |
+| breakpoints-off | 2.66% | 1 | 1 | 0 | 1 | 0.0 px |
 | breakpoint-manager | 3.03% | 8 | 8 | 0 | 7 | 3.5 px |
-| breakpoint-created-message | 2.82% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-dark | 2.79% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-created-message-undo | 2.62% | 1 | 1 | 0 | 1 | 13.0 px |
+| breakpoint-created-message | 2.83% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-dark | 2.80% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-created-message-undo | 2.63% | 1 | 1 | 0 | 1 | 13.0 px |
 | diagnostics | 1.69% | 5 | 5 | 0 | 2 | 160.0 px |
-| shell-v2-capture-dark | 3.60% | 3 | 2 | 1 | 1 | 999.1 px |
-| shell-v2-capture-collapsed | 3.48% | 3 | 2 | 1 | 1 | 839.1 px |
+| shell-v2-capture-dark | 3.58% | 3 | 2 | 1 | 1 | 999.1 px |
+| shell-v2-capture-collapsed | 3.47% | 3 | 2 | 1 | 1 | 839.1 px |
 | shell-v2-rules-dark | n/a | 3 | 3 | 0 | 1 | 13.0 px |
-| shell-v2-composer-dark | 2.16% | 5 | 5 | 0 | 1 | 0.9 px |
+| shell-v2-composer-dark | 2.15% | 5 | 5 | 0 | 1 | 0.9 px |
 | shell-v2-settings-dark | 2.18% | 4 | 2 | 2 | 2 | 997.2 px |
 | shell-v2-diagnostics-dark | 1.76% | 6 | 4 | 2 | 1 | 973.9 px |
 
@@ -711,6 +713,24 @@ Generated: 2026-08-25T09:01:54.082Z
 | rules-import-confirm-dark | Import 6 rules | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-import-loading-dark | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | rules-export-loading-dark | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| rules-action-tag-overflow-light | Overflow Rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | First inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Second inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Action tag overflow | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Action tag Tooltip | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Tooltip action tag 1 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Tooltip action tag 2 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Tooltip action tag 3 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | Tooltip action tag 4 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Overflow Rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | First inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Second inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Action tag overflow | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Action tag Tooltip | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Tooltip action tag 1 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Tooltip action tag 2 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Tooltip action tag 3 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | Tooltip action tag 4 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-add-action | Add action menu | 0.0 px | 0.0 px | 0.0 px | 0.6 px | 0.6 px | none | ok |
 | rules-select-dropdown | Condition field menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | composer | Collection panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |

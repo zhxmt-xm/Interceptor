@@ -591,6 +591,19 @@ RuleList 递归渲染目录与规则。目录行只有折叠、名称和操作�
 action chips 与命中数。整行是拖拽源，目录中间区域表示移入、上下四分之一表示前后插入，
 收起目录悬停 500ms 自动展开；搜索结果拍平成一层并禁用拖拽，避免用不完整列表重排整棵树。
 
+Rule row 最多内联显示按 action 原顺序派生的前两个 chips。存在更多 action 时，第二个 chip 后显示
+可聚焦的省略入口；hover 或 focus 均打开 Tooltip，并按原顺序展示该规则的全部 chips。省略入口不改变
+rule selection、open editor、drag 或右侧 hit count；行在三级目录等窄宽度下仍必须为名称/匹配摘要保留
+可收缩空间，chips 与 hit count 不得溢出或互相遮挡。
+
+**TDD / E2E证据（2026-08-25）**：design interaction先Red于省略入口不存在，unit先Red于
+`deriveRuleRowChips`不存在；真实Electron完成三级目录和四action后精确Red于
+`rules.action-overflow.<ruleId>`缺失。当前unit `2/2`、Desktop `315/315`、design interaction `15/15`
+与全workspace typecheck通过；同一真实workflow `1/1` Green，row宽度`416/416`、入口`22×22px`、
+folder保持selected且rule保持open-but-not-selected。Green Main/Core PID为`10760/28336`，
+`gracefulDestroyVerified=true`；相邻hierarchy workflow同轮`1/1` Green。明暗parity共18个target全部0px、
+0 missing、0 flagged；完整报告为142 views / 992 targets / 958 matched / 34 missing / 306 flagged。
+
 Rule Collection 顶栏提供搜索以及 New rule / New folder / Export 三个图标命令；根级右键菜单保留
 New rule / New folder / Import / Export 作为辅助入口。Import 与 Export 对称出现在工具栏与根菜单。
 新建命令沿用当前 selection 计算落点，空树时

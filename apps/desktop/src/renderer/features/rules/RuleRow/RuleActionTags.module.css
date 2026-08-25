@@ -1,0 +1,82 @@
+.chips {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.disabled {
+  opacity: 0.5;
+}
+
+.chip {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip.map {
+  background: color-mix(in srgb, var(--blue) 14%, transparent);
+  color: var(--blue);
+}
+
+.chip.remote {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chip.rewrite {
+  background: color-mix(in srgb, var(--purple) 15%, transparent);
+  color: var(--purple);
+}
+
+.chip.block {
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+  color: var(--red);
+}
+
+.chip.flow {
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+  color: var(--yellow);
+}
+
+.chip.brk {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+
+.actionTagOverflow {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.actionTagOverflow:hover,
+.actionTagOverflow:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+  outline: none;
+}
+
+.actionTagOverflow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actionTagTooltip {
+  display: flex;
+  max-width: 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}

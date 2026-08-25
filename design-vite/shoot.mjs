@@ -143,6 +143,7 @@ for (const theme of ['light', 'dark']) {
 // rules list shapes: today's flat rows vs. the folder tree, with and without the match summary
 for (const theme of ['light', 'dark']) {
   const base = { view: 'rules', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' };
+  shots.push({ feature: 'rules', theme, variant: 'action-tag-overflow', interaction: 'rule-action-tags', state: base });
   shots.push({ feature: 'rules', theme, variant: 'tree-root-menu', state: { ...base, ctxmenu: 'rules-root' } });
   shots.push({ feature: 'rules', theme, variant: 'import-confirm', state: { ...base, overlay: 'rules-import' } });
   shots.push({ feature: 'rules', theme, variant: 'import-loading', state: { ...base, overlay: 'rules-import-loading' } });
@@ -243,10 +244,12 @@ await page.waitForTimeout(250);
 
 const app = page.locator('.app');
 async function shoot(list) {
+  let previousInteraction = '';
   for (const s of list) {
     if (
       s.interaction === 'breakpoint-queue-menu'
       || s.interaction === 'websocket-breakpoint-setup'
+      || previousInteraction === 'rule-action-tags'
     ) {
       await page.reload({ waitUntil: 'load', timeout: 120_000 });
       await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
@@ -364,6 +367,10 @@ async function shoot(list) {
       await page.getByRole('button', { name: 'Queue actions' }).click();
       await page.getByRole('menu', { name: 'Queue actions' }).waitFor();
     }
+    if (s.interaction === 'rule-action-tags') {
+      await page.getByRole('button', { name: 'Show all 4 actions' }).hover();
+      await page.getByRole('tooltip').waitFor();
+    }
     if (
       s.interaction !== 'request-menu'
       && s.interaction !== 'breakpoint-menu'
@@ -394,6 +401,7 @@ async function shoot(list) {
       await app.screenshot({ path: outputPath });
     }
     console.log('  ✓', `${s.theme}/${s.feature}/${s.variant}`);
+    previousInteraction = s.interaction ?? '';
   }
 }
 

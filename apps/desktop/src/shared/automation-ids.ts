@@ -549,9 +549,29 @@ export class AutomationIdFactory {
     return `${AUTOMATION_ID_PREFIXES.ruleRow}${ruleId}`;
   }
 
+  /** Identify the keyboard selection target owned by one rule row. */
+  static ruleTarget(ruleId: string): string {
+    return `rules.target.${ruleId}`;
+  }
+
   /** Identify the enable switch owned by one rule. */
   static ruleToggle(ruleId: string): string {
     return `rules.toggle.${ruleId}`;
+  }
+
+  /** Identify the focusable action-chip overflow owned by one rule. */
+  static ruleActionOverflow(ruleId: string): string {
+    return `rules.action-overflow.${ruleId}`;
+  }
+
+  /** Identify one inline action chip by its derived display order. */
+  static ruleInlineActionChip(ruleId: string, index: number): string {
+    return `rules.action-chip.inline.${ruleId}.${index}`;
+  }
+
+  /** Identify one complete-list action chip by its derived display order. */
+  static ruleOverflowActionChip(ruleId: string, index: number): string {
+    return `rules.action-chip.overflow.${ruleId}.${index}`;
   }
 
   /** Identify one Rule folder row by its stable folder ID. */

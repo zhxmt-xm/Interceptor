@@ -227,12 +227,12 @@
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Rules action tag overflow</td>
-  <td><ul><li>Rule row 最多显示两个 action tags，超出时显示可聚焦的省略入口，Tooltip 按原顺序展示完整 tags。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ Overflow 计算未覆盖</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ❌ 多 tag 与 Tooltip 交互未覆盖</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
+  <td><ul><li>Rule row 最多显示两个 action tags，超出时显示可聚焦的省略入口，Tooltip 按原顺序展示完整 tags。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 行内前两个tag、Ellipsis与完整有序Tooltip完成，selection/open/enabled/drag语义保持独立</li><li><strong>Unit:</strong> ✅ <code>deriveRuleRowChips</code> 2/2 Red→Green；Desktop 315/315</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ overflow入口缺失Red→当前1/1 Green；相邻hierarchy flow 1/1 Green，均含销毁证据</li><li><strong>Design/Parity:</strong> ✅ design interaction 15/15；明暗18/18 targets、0 missing、0 flagged、全几何0px</li></ul></td>
   <td><ul><li>Rule row 内联渲染全部 action tags，没有数量上限，会挤压 hit count 和可用宽度。</li></ul></td>
-  <td><ul><li>先在 design-vite 定稿；产品只渲染前两个 tag 与 Ellipsis，Tooltip 显示完整有序 tags，并补窄宽度 parity 与 hover/focus E2E。</li></ul></td>
+  <td><ul><li><code>deriveRuleRowChips</code>从同一完整有序列表派生前两个行内项；<code>RuleActionTags</code>使用独立sibling button与Ant Tooltip，避免按钮嵌套和selection串扰。</li><li>design-vite与fake Renderer使用同一四action深层rule，明暗parity覆盖row、两个行内tag、22px入口、Tooltip与四个完整tag。</li></ul></td>
 </tr>
 
 <tr>

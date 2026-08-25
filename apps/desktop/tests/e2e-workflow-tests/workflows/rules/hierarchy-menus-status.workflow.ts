@@ -94,7 +94,8 @@ test('rules.hierarchy-menus-status keeps hierarchy, validation and effects coher
   const ruleRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow);
   await expect(ruleRows).toHaveCount(1);
   const ruleId = await automationSuffix(ruleRows, AUTOMATION_ID_PREFIXES.ruleRow);
-  await expect(ruleRows).toHaveAttribute('aria-pressed', 'true');
+  await expect(getByAutomationId(page, AutomationIdFactory.ruleTarget(ruleId)))
+    .toHaveAttribute('aria-pressed', 'true');
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.editorName)).toBeVisible();
 
   // rule右键rename保持同一动态ID和打开editor。

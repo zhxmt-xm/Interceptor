@@ -17,6 +17,20 @@
   cursor: pointer;
   user-select: none;
 }
+.target {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .row:hover {
   background: var(--hover);
 }
@@ -38,7 +52,6 @@
   pointer-events: none;
 }
 .disabled .meta,
-.disabled .chips,
 .disabled .hits {
   opacity: 0.5;
 }
@@ -50,7 +63,7 @@
   flex: 0 0 auto;
 }
 .meta {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -77,42 +90,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.chips {
-  display: flex;
-  gap: 5px;
-  flex: 0 0 auto;
-}
-.chip {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-.chip.map {
-  color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 14%, transparent);
-}
-.chip.remote {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-.chip.rewrite {
-  color: var(--purple);
-  background: color-mix(in srgb, var(--purple) 15%, transparent);
-}
-.chip.block {
-  color: var(--red);
-  background: color-mix(in srgb, var(--red) 13%, transparent);
-}
-.chip.flow {
-  color: var(--yellow);
-  background: color-mix(in srgb, var(--yellow) 16%, transparent);
-}
-.chip.brk {
-  color: var(--green);
-  background: color-mix(in srgb, var(--green) 14%, transparent);
 }
 .hits {
   font-family: var(--font-mono);

@@ -1302,6 +1302,56 @@ export const views = [
       }],
     },
   ]),
+  ...['light', 'dark'].map((theme) => ({
+    id: `rules-action-tag-overflow-${theme}`,
+    theme,
+    rendererNav: 'Rules & Map',
+    designState: { view: 'rules', theme, sidebar: 'expanded', overlay: '' },
+    designShot: `${theme}/rules/action-tag-overflow.png`,
+    designActions: [{
+      type: 'hoverSelector',
+      selector: '[data-action-overflow="true"] .actionTagOverflow',
+    }],
+    rendererActions: [
+      ...EXPAND_RULE_TREE_ACTIONS,
+      {
+        type: 'hoverSelector',
+        selector: '[data-automation-id="rules.action-overflow.rule-dispute"]',
+      },
+    ],
+    targets: [
+      {
+        name: 'Overflow Rule row',
+        designSelector: '.rrule:has([data-action-overflow="true"])',
+        appSelector: '[data-automation-id="rules.row.rule-dispute"]',
+      },
+      {
+        name: 'First inline action tag',
+        designSelector: '[data-action-overflow="true"] > .rchip:nth-child(1)',
+        appSelector: '[data-automation-id="rules.action-chip.inline.rule-dispute.0"]',
+      },
+      {
+        name: 'Second inline action tag',
+        designSelector: '[data-action-overflow="true"] > .rchip:nth-child(2)',
+        appSelector: '[data-automation-id="rules.action-chip.inline.rule-dispute.1"]',
+      },
+      {
+        name: 'Action tag overflow',
+        designSelector: '[data-action-overflow="true"] > .actionTagOverflow',
+        appSelector: '[data-automation-id="rules.action-overflow.rule-dispute"]',
+      },
+      {
+        name: 'Action tag Tooltip',
+        designSelector: '.ant-tooltip:visible',
+        appSelector: '.ant-tooltip:visible',
+      },
+      ...[0, 1, 2, 3].map((index) => ({
+        name: `Tooltip action tag ${index + 1}`,
+        designSelector: `.ant-tooltip:visible .rchip:nth-child(${index + 1})`,
+        appSelector: `[data-automation-id="rules.action-chip.overflow.rule-dispute.${index}"]`,
+      })),
+    ],
+  })),
   {
     id: 'rules-add-action',
     theme: 'light',

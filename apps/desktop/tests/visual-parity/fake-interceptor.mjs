@@ -424,6 +424,12 @@ const corsRule = rule('rule-cors', 'Force CORS + JSON', '*.api.com', '/', { type
 const paymentRule = rule('rule-payment', 'Mock payment', 'api.stripe.com', '/v1/charges', { type: 'synthetic', statusCode: 200, headers: [{ name: 'content-type', value: 'application/json' }], body: '{"ok":true}' });
 const refundRule = rule('rule-refund', 'Refund stub', 'api.stripe.com', '/v1/refunds', { type: 'map-local', path: 'mocks/refund.json' });
 const disputeRule = rule('rule-dispute', 'Dispute stub', 'api.stripe.com', '/v1/disputes', { type: 'header', phase: 'response', op: 'set', name: 'x-dispute-fixture', value: 'true' });
+disputeRule.actions = [
+  { type: 'header', phase: 'response', op: 'set', name: 'x-dispute-fixture', value: 'true' },
+  { type: 'map-local', path: 'mocks/dispute.json' },
+  { type: 'delay', phase: 'response', ms: 1_000 },
+  { type: 'breakpoint', phase: 'request' },
+];
 const stagingRule = rule('rule-staging', 'Redirect to staging', 'prod.example.com', '/', { type: 'map-remote', scheme: 'https', host: 'stg.example.com' });
 const authRule = { ...rule('rule-auth', 'Rewrite auth header', 'api.github.com', '/', { type: 'header', phase: 'request', op: 'set', name: 'authorization', value: 'Bearer parity' }), enabled: false };
 const trackersRule = rule('rule-trackers', 'Block trackers', '*.doubleclick.net', '/', { type: 'block', mode: 'reset' });

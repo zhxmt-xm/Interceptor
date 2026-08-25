@@ -66,5 +66,12 @@ export function createDesignTheme(mode: DesignTheme): ThemeConfig {
       motionDurationFast: '0.12s',
       motionDurationMid: '0.18s',
     },
+    components: {
+      Tooltip: {
+        colorBgSpotlight: palette.panel,
+        colorTextLightSolid: palette.text,
+        borderRadius: 8,
+      },
+    },
   };
 }

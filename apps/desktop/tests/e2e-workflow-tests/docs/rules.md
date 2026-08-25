@@ -86,6 +86,40 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 
 树组织、editor打开项、节点命令、validation、持久化、命中数与Capture导航共享同一rule身份；invalid草稿不能进入Core。
 
+<a id="rules-action-tag-overflow"></a>
+## `rules.action-tag-overflow`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile、trace和evidence，启动真实Electron，等待App/Core/8888并进入Rules。
+2. 通过真实Rules UI创建一条测试rule，依次添加四种能产生不同chip的action并保持原顺序；本flow不Apply，不承担action字段完整性验收。
+3. 确认rule row只内联显示前两个action chips，省略入口可见且hit count仍完整位于行尾；三级目录中的同一rule不得产生横向溢出。
+4. 鼠标hover省略入口，确认Tooltip按原顺序展示四个完整chips；移开后Tooltip关闭。
+5. 用键盘聚焦同一省略入口，确认Tooltip再次显示；按Enter或Space不得改变rule selection、editor身份或enabled状态。
+6. 保存行宽、chip顺序、Tooltip、selection/editor与overflow证据，正常Close。
+7. 验证Main/Core/Worker退出、8888释放、系统代理恢复并删除profile。
+
+### 预期效果
+
+Rule row始终为名称、命中数和树缩进保留空间；超过两个action时只收起视觉标签，不丢失完整有序信息，鼠标与键盘都能访问且不触发其他行命令。
+
+### TDD证据要求
+
+- Unit Red先锁定四个派生chip只返回前两个内联项且保留完整有序列表；实现后同一测试Green。
+- 真实Electron Red必须失败于省略入口缺失或仍渲染超过两个内联chip，不能由selector、fixture、构建或环境失败代替。
+- Green必须覆盖hover/focus Tooltip、三级目录窄宽度、selection/editor不变与完整销毁。
+
+### TDD证据
+
+- Design Red：四action设计场景等待`Show all 4 actions`失败于元素不存在；实现后hover/focus与完整顺序交互`1/1` Green，design全量interaction `15/15`通过。
+- Unit Red：两条测试都精确失败于`deriveRuleRowChips is not a function`；实现后`2/2` Green，Desktop全量`315/315`通过。
+- Electron Red：真实UI完成三级目录与四action后等待动态`rules.action-overflow.<ruleId>`15秒仍不存在；Red Main/Core PID为`16704/14708`，`gracefulDestroyVerified=true`。
+- Electron Green：同一workflow `1/1`通过，行`clientWidth/scrollWidth=416/416`，Ellipsis `22×22px`且位于hit count之前；行内顺序`map/rewrite`，Tooltip顺序`map/rewrite/flow/brk`，keyboard激活后`folderSelected=true / ruleSelected=false / editorName`与enabled不变。Green Main/Core PID为`10760/28336`，`gracefulDestroyVerified=true`且8888释放；相邻`rules.hierarchy-menus-status`同轮`1/1` Green。
+- Parity：light/dark各9个target，合计`18/18 matched / 0 missing / 0 flagged / 全几何0px`；完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`，本项未新增missing或flagged。
+
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`
 

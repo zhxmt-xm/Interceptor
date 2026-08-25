@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、83条Inventory与84份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、84条Inventory与85份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -185,6 +185,7 @@ diagnostics.row.<traceKey>
 | `rules.load-search-select` | 加载、搜索、选择和命中数 | shared | planned |
 | `rules.root-toolbar` | 根级新建规则、新建目录与导出入口 | shared | passed |
 | `rules.hierarchy-menus-status` | 三级目录、节点菜单、validation、命中与Capture导航 | privileged UI | passed |
+| `rules.action-tag-overflow` | 两个行内action tags与完整有序Tooltip | shared | passed |
 | `rules.create-edit-delete` | 新建、重命名、启停、删除 | shared | planned |
 | `rules.matcher-variants` | 八种matcher及校验 | shared | planned |
 | `rules.action-variants` | 11种action及安全校验 | shared | planned |

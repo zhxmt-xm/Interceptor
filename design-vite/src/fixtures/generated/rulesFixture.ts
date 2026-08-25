@@ -1033,7 +1033,8 @@ export const rulesFixture: FixtureNode = {
                                           "type": "element",
                                           "tag": "div",
                                           "attributes": {
-                                            "class": "rchips"
+                                            "class": "rchips",
+                                            "data-action-overflow": "true"
                                           },
                                           "children": [
                                             {

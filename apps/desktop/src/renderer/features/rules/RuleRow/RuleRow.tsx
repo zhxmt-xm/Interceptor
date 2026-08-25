@@ -4,21 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
 import { cx, HighlightedName, Switch } from '../../../components';
 import type { RuleDefinition } from '../../../../shared/desktop-api';
-import type { ChipKind } from '../interfaces';
-import { deriveChips, isRuleComplete, matchSummary } from '../utils';
+import { deriveRuleRowChips, isRuleComplete, matchSummary } from '../utils';
 import { formatHits } from '../utils';
 
 import styles from './RuleRow.module.css';
+import { RuleActionTags } from './RuleActionTags';
 import { RuleRowMenu } from './RuleRowMenu';
-
-const CHIP_CLASS: Record<ChipKind, string | undefined> = {
-  map: styles.map,
-  remote: styles.remote,
-  rewrite: styles.rewrite,
-  block: styles.block,
-  flow: styles.flow,
-  brk: styles.brk,
-};
 
 export interface RuleRowProps {
   rule: RuleDefinition;
@@ -62,7 +53,7 @@ export const RuleRow = memo(function RuleRow({
 }: RuleRowProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const chips = deriveChips(rule);
+  const { allChips, inlineChips, hasOverflow } = deriveRuleRowChips(rule);
   // 字段还没填完的规则不允许启用；已启用的任何时候都可以关掉。
   const enableBlocked = !rule.enabled && !isRuleComplete(rule);
   return (
@@ -73,9 +64,7 @@ export const RuleRow = memo(function RuleRow({
       open={menuOpen}
       onOpenChange={setMenuOpen}
     >
-      <button
-        type="button"
-        aria-pressed={selected}
+      <div
         data-open={open || undefined}
         data-tree-row={rule.id}
         data-automation-id={AutomationIdFactory.ruleRow(rule.id)}
@@ -104,23 +93,30 @@ export const RuleRow = memo(function RuleRow({
             automationId={AutomationIdFactory.ruleToggle(rule.id)}
           />
         </span>
-        <div className={styles.meta}>
-          <HighlightedName
-            name={rule.name}
-            keyword={keyword}
-            className={styles.name}
-          />
-          <span className={styles.match}>
-            {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
-          </span>
-        </div>
-        <div className={styles.chips}>
-          {chips.map(([kind, labelKey], index) => (
-            <span key={index} className={cx(styles.chip, CHIP_CLASS[kind])}>
-              {t(labelKey)}
+        <button
+          type="button"
+          className={styles.target}
+          aria-pressed={selected}
+          data-automation-id={AutomationIdFactory.ruleTarget(rule.id)}
+        >
+          <span className={styles.meta}>
+            <HighlightedName
+              name={rule.name}
+              keyword={keyword}
+              className={styles.name}
+            />
+            <span className={styles.match}>
+              {matchSummary(rule, t('rules.conditionCount', { count: rule.matchers.length }))}
             </span>
-          ))}
-        </div>
+          </span>
+        </button>
+        <RuleActionTags
+          ruleId={rule.id}
+          allChips={allChips}
+          inlineChips={inlineChips}
+          hasOverflow={hasOverflow}
+          disabled={!rule.enabled}
+        />
         <span
           className={styles.hits}
           data-count={hits}
@@ -128,7 +124,7 @@ export const RuleRow = memo(function RuleRow({
         >
           {formatHits(hits, i18n.language)}
         </span>
-      </button>
+      </div>
     </RuleRowMenu>
   );
 });

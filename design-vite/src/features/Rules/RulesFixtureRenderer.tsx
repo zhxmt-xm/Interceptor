@@ -8,6 +8,14 @@ import {
 import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode';
 import { useDesignState } from '../../state/useDesignState';
 import { BreakpointAction } from './BreakpointAction';
+import { RuleActionTags } from './RuleActionTags';
+
+const OVERFLOW_ACTIONS = [
+  { kind: 'rewrite', label: 'Rewrite' },
+  { kind: 'map', label: 'Map Local' },
+  { kind: 'flow', label: 'Delay' },
+  { kind: 'brk', label: 'Breakpoint' },
+] as const;
 
 interface RulesFixtureRendererProps {
   readonly node: FixtureNode;
@@ -26,6 +34,9 @@ export function RulesFixtureRenderer({ node }: RulesFixtureRendererProps): React
   const renderRulesElement: FixtureElementRenderer = (element, children) => {
     if (element.attributes['data-rule-id'] === 'token') return null;
     if (hasClass(element, 'vnote')) return null;
+    if (element.attributes['data-action-overflow'] === 'true') {
+      return <RuleActionTags actions={OVERFLOW_ACTIONS} />;
+    }
     if (state.ruleBreakpointAction && hasClass(element, 'acards')) {
       return <div className={fixtureClassNames('acards')}><BreakpointAction /></div>;
     }
