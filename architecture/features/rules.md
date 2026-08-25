@@ -601,8 +601,16 @@ rule selection、open editor、drag 或右侧 hit count；行在三级目录等�
 `rules.action-overflow.<ruleId>`缺失。当前unit `2/2`、Desktop `315/315`、design interaction `15/15`
 与全workspace typecheck通过；同一真实workflow `1/1` Green，row宽度`416/416`、入口`22×22px`、
 folder保持selected且rule保持open-but-not-selected。Green Main/Core PID为`10760/28336`，
-`gracefulDestroyVerified=true`；相邻hierarchy workflow同轮`1/1` Green。明暗parity共18个target全部0px、
+`gracefulDestroyVerified=true`；相邻hierarchy workflow同轮`1/1` Green。明暗parity共18个target为
 0 missing、0 flagged；完整报告为142 views / 992 targets / 958 matched / 34 missing / 306 flagged。
+
+**高度回归修正（2026-08-26）**：初版只比较设计与产品，漏掉两边共同使用flex默认`align-items:stretch`，
+导致正常约17px的tag被22px Ellipsis按钮拉高。Design几何测试在修复前精确Red为`expected 17 / received 22`；
+最终workflow移植到修复前`1be6920`后，真实Electron精确Red于`tag height 22 < button height 22`不成立，
+Red Main/Core PID为`41388/21460`且`gracefulDestroyVerified=true`。现两端tags容器显式`align-items:center`；
+Green产品两枚tag均高`16.2917px`，按钮`22px`，三者border-box中心均为`215px`，row仍为`416/416`。
+Green Main/Core PID为`3680/24848`且`gracefulDestroyVerified=true`；明暗专项parity各`9/9 matched / 0 missing /
+0 flagged`，最大字体栅格差`0.3px`。正确性由自然高度与中心断言负责，不再用两端parity相同代替视觉契约。
 
 Rule Collection 顶栏提供搜索以及 New rule / New folder / Export 三个图标命令；根级右键菜单保留
 New rule / New folder / Import / Export 作为辅助入口。Import 与 Export 对称出现在工具栏与根菜单。

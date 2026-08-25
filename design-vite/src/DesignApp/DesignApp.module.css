@@ -753,7 +753,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .rmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .rname { font-size: 13px; font-weight: 550; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rmatch { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rchips { display: flex; gap: 5px; flex: 0 0 auto; }
+.rchips { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
 .rchip { font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
 .rchip.map { color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }
 .rchip.remote { color: var(--accent); background: var(--accent-soft); }

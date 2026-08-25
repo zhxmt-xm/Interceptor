@@ -118,7 +118,9 @@ Rule row始终为名称、命中数和树缩进保留空间；超过两个action
 - Unit Red：两条测试都精确失败于`deriveRuleRowChips is not a function`；实现后`2/2` Green，Desktop全量`315/315`通过。
 - Electron Red：真实UI完成三级目录与四action后等待动态`rules.action-overflow.<ruleId>`15秒仍不存在；Red Main/Core PID为`16704/14708`，`gracefulDestroyVerified=true`。
 - Electron Green：同一workflow `1/1`通过，行`clientWidth/scrollWidth=416/416`，Ellipsis `22×22px`且位于hit count之前；行内顺序`map/rewrite`，Tooltip顺序`map/rewrite/flow/brk`，keyboard激活后`folderSelected=true / ruleSelected=false / editorName`与enabled不变。Green Main/Core PID为`10760/28336`，`gracefulDestroyVerified=true`且8888释放；相邻`rules.hierarchy-menus-status`同轮`1/1` Green。
-- Parity：light/dark各9个target，合计`18/18 matched / 0 missing / 0 flagged / 全几何0px`；完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`，本项未新增missing或flagged。
+- Height regression Red：初版设计与产品共同使用flex默认stretch。Design测试精确Red为正常tag高17px、overflow行tag高22px；最终workflow移植到修复前`1be6920`后，真实Electron精确Red于`tag height 22 < button height 22`不成立。Red Main/Core PID为`41388/21460`，`gracefulDestroyVerified=true`。
+- Height regression Green：产品两枚tag均高`16.2917px`，Ellipsis高`22px`，三者border-box中心均为`215px`；Green Main/Core PID为`3680/24848`，`gracefulDestroyVerified=true`且8888释放。
+- Parity：light/dark各9个target，合计`18/18 matched / 0 missing / 0 flagged`、最大字体栅格差`0.3px`；完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`，本项未新增missing或flagged。
 
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`

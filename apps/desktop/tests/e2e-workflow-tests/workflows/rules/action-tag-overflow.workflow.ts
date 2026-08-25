@@ -118,12 +118,23 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
   const inlineKinds = await Promise.all(inlineChips.map((chip) =>
     chip.getAttribute('data-chip-kind')));
   expect(inlineKinds).toEqual(['map', 'rewrite']);
-  const [overflowBox, hitBox] = await Promise.all([
+  const [firstTagBox, secondTagBox, overflowBox, hitBox] = await Promise.all([
+    inlineChips[0]!.boundingBox(),
+    inlineChips[1]!.boundingBox(),
     overflow.boundingBox(),
     getByAutomationId(page, AutomationIdFactory.ruleHitCount(ruleId)).boundingBox(),
   ]);
+  expect(firstTagBox).not.toBeNull();
+  expect(secondTagBox).not.toBeNull();
   expect(overflowBox).not.toBeNull();
   expect(hitBox).not.toBeNull();
+  expect(firstTagBox!.height).toBeLessThan(overflowBox!.height);
+  expect(secondTagBox!.height).toBeLessThan(overflowBox!.height);
+  const overflowCenter = overflowBox!.y + overflowBox!.height / 2;
+  expect(Math.abs(firstTagBox!.y + firstTagBox!.height / 2 - overflowCenter))
+    .toBeLessThan(0.5);
+  expect(Math.abs(secondTagBox!.y + secondTagBox!.height / 2 - overflowCenter))
+    .toBeLessThan(0.5);
   expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(hitBox!.x);
   expect(await ruleRow.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 
@@ -157,6 +168,7 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
     ruleId,
     inlineKinds,
     overflowKinds: ['map', 'rewrite', 'flow', 'brk'],
+    inlineTagBoxes: [firstTagBox, secondTagBox],
     overflowBox,
     hitBox,
     rowClientWidth: await ruleRow.evaluate((element) => element.clientWidth),

@@ -230,9 +230,9 @@
   <td><strong>✅ 已完成</strong></td>
   <td>Rules action tag overflow</td>
   <td><ul><li>Rule row 最多显示两个 action tags，超出时显示可聚焦的省略入口，Tooltip 按原顺序展示完整 tags。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li></ul></td>
-  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 行内前两个tag、Ellipsis与完整有序Tooltip完成，selection/open/enabled/drag语义保持独立</li><li><strong>Unit:</strong> ✅ <code>deriveRuleRowChips</code> 2/2 Red→Green；Desktop 315/315</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ overflow入口缺失Red→当前1/1 Green；相邻hierarchy flow 1/1 Green，均含销毁证据</li><li><strong>Design/Parity:</strong> ✅ design interaction 15/15；明暗18/18 targets、0 missing、0 flagged、全几何0px</li></ul></td>
+  <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 行内前两个tag、Ellipsis与完整有序Tooltip完成，selection/open/enabled/drag语义保持独立；tags保持约16–17px自然高度并与22px入口居中</li><li><strong>Unit:</strong> ✅ <code>deriveRuleRowChips</code> 2/2 Red→Green；Desktop 315/315</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 入口缺失Red→Green；高度在<code>1be6920</code> retrospective Red为22px=22px，当前tag 16.2917px、按钮22px、中心差0px</li><li><strong>Design/Parity:</strong> ✅ design interaction 15/15；明暗18/18 targets、0 missing、0 flagged、最大0.3px</li></ul></td>
   <td><ul><li>Rule row 内联渲染全部 action tags，没有数量上限，会挤压 hit count 和可用宽度。</li></ul></td>
-  <td><ul><li><code>deriveRuleRowChips</code>从同一完整有序列表派生前两个行内项；<code>RuleActionTags</code>使用独立sibling button与Ant Tooltip，避免按钮嵌套和selection串扰。</li><li>design-vite与fake Renderer使用同一四action深层rule，明暗parity覆盖row、两个行内tag、22px入口、Tooltip与四个完整tag。</li></ul></td>
+  <td><ul><li><code>deriveRuleRowChips</code>从同一完整有序列表派生前两个行内项；<code>RuleActionTags</code>使用独立sibling button与Ant Tooltip，避免按钮嵌套和selection串扰。</li><li>tags容器显式<code>align-items:center</code>，防止flex默认stretch把tag拉到22px；设计交互与真实Electron分别锁定正常高度和border-box中心。</li><li>design-vite与fake Renderer使用同一四action深层rule，明暗parity覆盖row、两个行内tag、22px入口、Tooltip与四个完整tag。</li></ul></td>
 </tr>
 
 <tr>

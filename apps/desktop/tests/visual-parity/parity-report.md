@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-08-25T11:24:41.617Z
+Generated: 2026-08-25T17:26:20.986Z
 
 ## Overall Summary
 
@@ -45,7 +45,7 @@ Generated: 2026-08-25T11:24:41.617Z
 | breakpoint-response-body-file-dark | 3.30% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.98% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 3.19% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 3.23% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 3.26% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.97% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 3.31% | 3 | 3 | 0 | 0 | 0.0 px |
 | breakpoint-queue-menu-dark | 3.23% | 4 | 4 | 0 | 0 | 0.0 px |
@@ -104,10 +104,10 @@ Generated: 2026-08-25T11:24:41.617Z
 | rules-import-confirm-dark | 0.43% | 9 | 9 | 0 | 0 | 0.5 px |
 | rules-import-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-export-loading-dark | 0.10% | 1 | 1 | 0 | 0 | 0.1 px |
-| rules-action-tag-overflow-light | 3.61% | 9 | 9 | 0 | 0 | 0.0 px |
-| rules-action-tag-overflow-dark | 3.63% | 9 | 9 | 0 | 0 | 0.0 px |
+| rules-action-tag-overflow-light | 3.58% | 9 | 9 | 0 | 0 | 0.3 px |
+| rules-action-tag-overflow-dark | 3.63% | 9 | 9 | 0 | 0 | 0.3 px |
 | rules-add-action | 4.71% | 1 | 1 | 0 | 0 | 0.6 px |
-| rules-select-dropdown | 3.48% | 1 | 1 | 0 | 0 | 0.0 px |
+| rules-select-dropdown | 3.49% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 2.14% | 9 | 9 | 0 | 2 | 0.9 px |
 | composer-import-confirm-light | 0.77% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-light | 0.50% | 1 | 1 | 0 | 0 | 0.1 px |
@@ -121,7 +121,7 @@ Generated: 2026-08-25T11:24:41.617Z
 | settings-proxy-dark | 1.82% | 5 | 5 | 0 | 2 | 160.8 px |
 | settings-app-containers | 2.52% | 15 | 15 | 0 | 5 | 3.8 px |
 | settings-app-containers-dark | 2.54% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-container-enable-all | 1.32% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-enable-all | 1.12% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all | 1.18% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-enable-all-dark | 0.48% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.54% | 5 | 5 | 0 | 0 | 0.9 px |
@@ -714,8 +714,8 @@ Generated: 2026-08-25T11:24:41.617Z
 | rules-import-loading-dark | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | rules-export-loading-dark | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | rules-action-tag-overflow-light | Overflow Rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-action-tag-overflow-light | First inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-action-tag-overflow-light | Second inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-light | First inline action tag | 0.0 px | -0.2 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| rules-action-tag-overflow-light | Second inline action tag | 0.0 px | -0.2 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
 | rules-action-tag-overflow-light | Action tag overflow | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-light | Action tag Tooltip | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-light | Tooltip action tag 1 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -723,8 +723,8 @@ Generated: 2026-08-25T11:24:41.617Z
 | rules-action-tag-overflow-light | Tooltip action tag 3 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-light | Tooltip action tag 4 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-dark | Overflow Rule row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-action-tag-overflow-dark | First inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| rules-action-tag-overflow-dark | Second inline action tag | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-action-tag-overflow-dark | First inline action tag | 0.0 px | -0.2 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| rules-action-tag-overflow-dark | Second inline action tag | 0.0 px | -0.2 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
 | rules-action-tag-overflow-dark | Action tag overflow | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-dark | Action tag Tooltip | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | rules-action-tag-overflow-dark | Tooltip action tag 1 | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
