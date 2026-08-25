@@ -22,7 +22,7 @@
 <tbody>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>Detail sections collapse</td>
   <td><ul><li>Capture 与 Composer 的详情区支持独立折叠和正确 ARIA 语义。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image.png" alt="Detail sections" width="240"></li></ul></td>
   <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ Design interaction 2/2</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 2/2，含销毁证据</li><li><strong>Design/Parity:</strong> ✅ 2/2 matched，0 missing，0 flagged，最大 0.7px</li></ul></td>
@@ -31,7 +31,7 @@
 </tr>
 
 <tr>
-  <td><strong>🔄 进行中</strong></td>
+  <td><strong>✅ 已完成</strong></td>
   <td>BodyViewer formatting</td>
   <td><ul><li>按正文语言提供自动与手动格式化，并保留失败回退。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码已完成</li><li>自动验证完成</li><li>已完成</li></ul></li><li><img src="image-1.png" alt="BodyViewer formatting" width="240"></li></ul></td>
   <td><strong>✅ 完成</strong><ul><li><strong>Code:</strong> ✅ 完成</li><li><strong>Unit:</strong> ✅ BodyViewer/formatter 17/17；Store cache 9/9</li><li><strong>Integration:</strong> ➖ N/A</li><li><strong>E2E:</strong> ✅ 真实 Electron Red→Green 1/1，含销毁证据</li><li><strong>Design/Parity:</strong> ➖ N/A，未改变布局</li></ul></td>
