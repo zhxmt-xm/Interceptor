@@ -23,12 +23,12 @@
 
 ## 3. 当前实现状态
 
-83条Inventory条目与84份详细验收规格位于`e2e-workflow-tests/README.md`与`docs/`。`workflows/`当前有
-28条可执行真实Electron workflow；已通过项均保留实现前或retrospective Red、当前Green、trace/evidence
+84条Inventory条目与85份详细验收规格位于`e2e-workflow-tests/README.md`与`docs/`。`workflows/`当前有
+29条可执行真实Electron workflow；已通过项均保留实现前或retrospective Red、当前Green、trace/evidence
 与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。
 只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
 
-`packaged-smoke/startup.spec.ts`仍是最终package的综合CDP smoke，尚未复用这83条Inventory contract。
+`packaged-smoke/startup.spec.ts`仍是最终package的综合CDP smoke，尚未复用这84条Inventory contract。
 
 ## 4. 执行约束
 

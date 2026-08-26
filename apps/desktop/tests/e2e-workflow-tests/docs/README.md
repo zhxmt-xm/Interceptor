@@ -6,13 +6,13 @@
 | --- | --- | ---: |
 | Application 与 Shell | [application-shell.md](application-shell.md) | 9 |
 | Capture 与协议 | [capture.md](capture.md) | 24 |
-| Rules | [rules.md](rules.md) | 12 |
+| Rules | [rules.md](rules.md) | 13 |
 | Composer | [composer.md](composer.md) | 9 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 11 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 14 |
 
-总计：84 条 workflow。
+总计：85 条 workflow。
 
 ## 文档约定
 
