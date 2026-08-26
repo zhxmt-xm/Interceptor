@@ -48,6 +48,7 @@ feature 文档描述**架构应该是什么样**，每个章节用状态标记�
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
 | [features/mcp.md](features/mcp.md) | 对外 AI Host 暴露工具、调用方认证、工具分级与用户审批 | 无新增，复用既有 command；工具层在 `packages/mcp-server/`，transport 待接入 Main `mcp/` | `features/settings/` + App 级审批弹层 |
+| [features/agent.md](features/agent.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History、Tool 与用户审批 | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings Provider 配置 |
 
 ## 进程边界
 
