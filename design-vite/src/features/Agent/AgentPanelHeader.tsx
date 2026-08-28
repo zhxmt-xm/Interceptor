@@ -36,7 +36,8 @@ export function AgentPanelHeader(): React.JSX.Element {
       </button>
       <span
         className={`${styles.agentProviderOnline} ${unconfigured ? styles.agentProviderOffline : ''}`}
-        aria-label={unconfigured ? 'Model provider required' : 'DeepSeek connected'}
+        aria-label={unconfigured ? 'Model provider required' : 'Model provider connected'}
+        role="status"
       />
       <IconButton disabled={unconfigured} icon={<Plus aria-hidden="true" />} label="New chat" onClick={newChat} />
       <IconButton

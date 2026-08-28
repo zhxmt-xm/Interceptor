@@ -272,3 +272,20 @@ test('Configured model can be removed through an explicit confirmation', async (
   await expect(page.locator('.app')).toHaveAttribute('data-agent-default-model', 'deepseek');
   await expect(page.locator('.app')).toHaveAttribute('data-agent-current-model', 'deepseek');
 });
+
+test('Remove model dialog traps focus and restores its trigger', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+  }));
+
+  const remove = page.getByRole('button', { name: 'Remove Qwen3 Max' });
+  await remove.click();
+  const dialog = page.getByRole('dialog', { name: 'Remove Qwen3 Max' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'Confirm remove model' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(remove).toBeFocused();
+});

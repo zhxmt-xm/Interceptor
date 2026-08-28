@@ -24,6 +24,10 @@ export function AgentPanelChatMenu({ triggerRef }: AgentPanelChatMenuProps): Rea
     updateState({ agentChat: 'new', agentChatMenu: '', agentCurrentModel: state.agentDefaultModel, agentMessage: '' });
     restoreTriggerFocus();
   };
+  const openChatDialog = (agentChatDialog: 'rename' | 'delete'): void => {
+    triggerRef.current?.focus();
+    updateState({ agentChatDialog, agentChatMenu: '' });
+  };
 
   return (
     <div
@@ -66,10 +70,10 @@ export function AgentPanelChatMenu({ triggerRef }: AgentPanelChatMenuProps): Rea
       </div>
       {state.agentChat === 'checkout' && (
         <div className={styles.agentChatMenuActions}>
-          <button type="button" onClick={() => updateState({ agentChatDialog: 'rename', agentChatMenu: '' })}>
+          <button type="button" onClick={() => openChatDialog('rename')}>
             <Pencil aria-hidden="true" />Rename current chat
           </button>
-          <button type="button" onClick={() => updateState({ agentChatDialog: 'delete', agentChatMenu: '' })}>
+          <button type="button" onClick={() => openChatDialog('delete')}>
             <Trash2 aria-hidden="true" />Delete current chat
           </button>
         </div>

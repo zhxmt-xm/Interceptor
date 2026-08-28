@@ -19,6 +19,7 @@ test('Agent panel opens beside the current workspace without covering it', async
   await expect(app).toHaveAttribute('data-view', 'capture');
   await expect(app).toHaveAttribute('data-agent-panel', 'open');
   await expect(panel).toBeVisible();
+  await expect(panel.getByRole('status', { name: 'Model provider connected' })).toBeVisible();
   const [mainhostBox, panelBox] = await Promise.all([
     mainhost.boundingBox(),
     panel.boundingBox(),
@@ -170,6 +171,25 @@ test('Current chat can be renamed and deleted through explicit commands', async 
   await page.getByRole('button', { name: 'Confirm delete chat' }).click();
   await expect(selector).toContainText('New chat');
   await expect(page.locator('[data-parity="agent-panel"]')).not.toContainText('Help me diagnose repeated 401 responses');
+});
+
+test('Delete chat dialog traps focus and restores the chat selector', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+  }));
+
+  const selector = page.getByRole('button', { name: 'Select chat' });
+  await selector.click();
+  await page.getByRole('button', { name: 'Delete current chat' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete chat?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'Confirm delete chat' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(selector).toBeFocused();
 });
 
 test('Running turn can be stopped and retried without losing visible output', async ({ page }) => {
