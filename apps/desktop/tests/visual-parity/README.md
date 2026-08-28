@@ -201,7 +201,7 @@ getComputedStyle(element)
 
 ### 系统性偏移扣除
 
-Design PNG 保留带边框的 1280×800 画布用于像素对比；几何测量页会注入样式移除 `.app` 的 border/radius/shadow，让 Design 与真实 Renderer 都使用完整 1280×800 内容盒，避免边框同时造成约 1px 位置差和 2px 可用宽高差。
+Design PNG 保留带边框的 1600×900 画布用于像素对比；几何测量页会注入样式移除 `.app` 的 border/radius/shadow，让 Design 与真实 Renderer 都使用完整 1600×900 内容盒，避免边框同时造成约 1px 位置差和 2px 可用宽高差。
 
 Harness 对全部匹配 target 的位置差求中位数：
 

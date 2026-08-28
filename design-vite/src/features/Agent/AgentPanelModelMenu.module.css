@@ -1,0 +1,108 @@
+.agentModelMenu {
+  position: absolute;
+  bottom: calc(100% - 3px);
+  left: 10px;
+  z-index: 25;
+  width: 250px;
+  padding: 7px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+}
+
+.agentModelMenuLabel {
+  display: block;
+  padding: 4px 7px 7px;
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.agentModelMenuItem {
+  display: grid;
+  width: 100%;
+  min-height: 42px;
+  grid-template-columns: 22px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agentModelMenuItem:hover,
+.agentModelMenuManage:hover {
+  background: var(--hover);
+}
+
+.agentModelMenuItem:focus-visible,
+.agentModelMenuManage:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--hover);
+}
+
+.agentModelMenuItem > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.agentModelMenuItem > svg:last-child {
+  color: var(--accent);
+}
+
+.agentModelMenuItem > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agentModelMenuItem strong,
+.agentModelMenuItem code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentModelMenuItem strong {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.agentModelMenuItem code {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.agentModelMenuManage {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  padding: 0 7px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.agentModelMenuManage svg {
+  width: 14px;
+  height: 14px;
+}

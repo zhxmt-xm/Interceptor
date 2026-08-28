@@ -1,0 +1,108 @@
+.agentChatMenu {
+  position: absolute;
+  top: 38px;
+  left: 38px;
+  z-index: 30;
+  width: 238px;
+  padding: 6px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+}
+
+.agentChatMenuItem {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agentChatMenuItem:hover {
+  background: var(--hover);
+}
+
+.agentChatMenuItem:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--hover);
+}
+
+.agentChatMenuItem > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.agentChatMenuItem > svg:last-child {
+  color: var(--accent);
+}
+
+.agentChatMenuItem > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agentChatMenuItem strong,
+.agentChatMenuItem small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentChatMenuItem strong {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.agentChatMenuItem small {
+  color: var(--text-3);
+  font-size: 9px;
+}
+
+.agentChatMenuActions {
+  display: grid;
+  gap: 2px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+}
+
+.agentChatMenuActions button {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.agentChatMenuActions button:hover {
+  background: var(--hover);
+}
+
+.agentChatMenuActions button:last-child {
+  color: var(--red);
+}
+
+.agentChatMenuActions svg {
+  width: 13px;
+  height: 13px;
+}

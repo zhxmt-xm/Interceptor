@@ -9,6 +9,9 @@
 - **四套时段主题**(合起来是一天的流转):`warm`(清晨·赤陶)· `light`(中午·靛紫,默认)· `ember`(傍晚·琥珀)· `dark`(夜晚·青绿)。`light`/`warm` 为浅色,`dark`/`ember` 为深色。
 - 强调色 `--accent` 每主题不同(靛紫 / 青绿 / 赤陶 / 琥珀);语义色(绿/蓝/黄/红)只用于状态,不参与装饰。
 - 图标:统一 **Lucide 线性风格**(stroke 1.9、round cap),`1em` SVG;禁止手绘 inline path 之外的随意图标。
+- Model Provider 使用可枚举的品牌 Logo map：已知品牌图形与推荐色来自 `simple-icons`（CC0-1.0），
+  仅用于准确标识服务，不改形、不暗示合作；Custom / unknown Provider 使用 Lucide Bot fallback。品牌商标权
+  不因图标数据许可而转移，新增品牌时仍需复核对应 brand guideline。
 - 字体:`Inter`(界面) + `JetBrains Mono`(URL、header、数值等技术文本);数值列用 `font-variant-numeric: tabular-nums`。
 
 ## 颜色 Token
@@ -55,7 +58,12 @@
 
 ## 布局(Traffic 为参考基准)
 
-- 基准画布 `1280 × 800`。
+- **唯一产品与 parity 基准画布**：`1600 × 900`。Agent Side Panel 在该尺寸下使用 `440px` 右侧 grid 栏，
+  全局侧栏默认收起。Design PNG、Design DOM、Renderer viewport 与产品默认窗口必须使用同一尺寸，禁止维护
+  一套 `1280 × 800` 主基线造成几何与像素比较失真。
+- 更小窗口只作为响应式运行能力，不拥有第二套设计基线。Agent 打开时始终参与整体 grid 布局，主工作区
+  同步缩窄；不得覆盖 Capture / Rules 的任何内容。空间不足时用户可关闭 Agent，后续响应式设计再决定
+  是否收起 Filters / Inspector 等次级栏位。
 - Header V2 是设计 SPA 唯一且已批准的落地基线。侧栏从顶部到底部保持完整，右侧内容区按自然流依次为窗口 Header、主体和状态栏；业务布局不得依赖浮动、绝对定位或 `z-index` 拼接。
 - **侧栏默认收起**（`60px` 图标轨道），由用户点击 Header 折叠按钮展开为 `220px`。默认收起把横向空间让给 Capture 的筛选分栏。
 - 主体横向布局为 `filters / splitter / list / splitter / inspector`：

@@ -1,0 +1,42 @@
+.agentPanelUnconfigured {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 30px;
+  text-align: center;
+}
+
+.agentPanelUnconfiguredIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 4px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.agentPanelUnconfiguredIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.agentPanelUnconfigured h2 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.agentPanelUnconfigured p {
+  max-width: 300px;
+  margin-bottom: 6px;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.55;
+}

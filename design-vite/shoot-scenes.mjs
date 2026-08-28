@@ -16,7 +16,7 @@ await mkdir(out, { recursive: true });
 const STABILIZE = '*{transition:none!important;animation:none!important;caret-color:transparent!important}';
 const designPreview = await startDesignPreview(dir);
 const browser = await chromium.launch({ channel: 'msedge' });
-const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1360, height: 920 } });
+const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1680, height: 1000 } });
 await page.goto(designPreview.url, { waitUntil: 'networkidle' });
 await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 60_000 });
 await page.addStyleTag({ content: STABILIZE });

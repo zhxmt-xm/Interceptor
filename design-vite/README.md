@@ -36,7 +36,7 @@ design-vite/
 - **所有 feature UI 都合并在这一个 SPA 里**，不再每个 feature 一个目录。
 - 一个组件一个文件 + 同名 `*.module.css`，避免全局 class 串扰。
 - **图标一律用 `lucide-react`**（经 `src/fixtures/FixtureIcon.tsx` 的 `ICON_BY_ID` 映射）；不手写 SVG sprite、不内联自定义 icon。
-- Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧承载侧栏折叠按钮、feature 名称与该 feature 的一等命令（Capture = Recording + Breakpoints + Import/Export），右侧只保留窗口控制；状态统一放到底部状态栏。**侧栏默认收起**，Capture 的全部筛选与搜索位于 list 左侧的可收起筛选分栏。
+- Header V2 是 SPA 唯一布局与已批准落地基线。Header 左侧承载侧栏折叠按钮和 feature 名称，右侧保留全局 Agent toggle 与窗口控制；状态统一放到底部状态栏。**唯一产品与 parity 基准画布为 `1600×900`**，不维护第二套主尺寸。侧栏默认收起，Capture 的全部筛选与搜索位于 list 左侧的可收起筛选分栏。
 - 状态统一由 typed `DesignStateProvider` / `window.__setState(patch)` 驱动。人点击 UI 与截图脚本必须驱动同一套状态，不允许只为截图加一条假路径。
 - `reduceDesignState` 在收到 `view` 时会重置浮层类瞬态字段；`shoot.mjs` 的重置态也必须列全每个瞬态字段，漏一个就会让某场景的浮层泄漏进之后所有截图。
 - `src/fixtures/generated/*` 是**定稿的静态 DOM 快照**，描述旧稿抢救下来的结构；改设计时直接改它或改对应组件，已不存在再生成它的脚本。

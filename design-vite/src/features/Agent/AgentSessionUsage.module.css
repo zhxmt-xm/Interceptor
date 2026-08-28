@@ -1,0 +1,80 @@
+.agentSessionUsage {
+  position: relative;
+}
+
+.agentSessionUsage > button {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.agentSessionUsage > button:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.agentSessionUsage > button svg {
+  width: 11px;
+  height: 11px;
+}
+
+.agentSessionUsagePopover {
+  position: absolute;
+  right: 0;
+  bottom: 29px;
+  z-index: 28;
+  width: 220px;
+  padding: 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .2);
+}
+
+.agentSessionUsagePopover header,
+.agentSessionUsagePopover dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agentSessionUsagePopover header {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 10.5px;
+}
+
+.agentSessionUsagePopover header span {
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.agentSessionUsagePopover dl {
+  display: grid;
+  gap: 5px;
+  padding: 8px 0;
+}
+
+.agentSessionUsagePopover dt,
+.agentSessionUsagePopover dd,
+.agentSessionUsagePopover small {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.agentSessionUsagePopover dd {
+  color: var(--text-2);
+}

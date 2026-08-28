@@ -10,9 +10,10 @@
 | Composer | [composer.md](composer.md) | 9 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 11 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
+| Agent | [agent.md](agent.md) | 4 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 14 |
 
-总计：85 条 workflow。
+总计：89 条 workflow。
 
 ## 文档约定
 
@@ -39,6 +40,7 @@
 - Composer workflow：检查 Composer method/URL/protocol/default headers/body/auth/response/history；不检查无关的 Rules、Privacy 或 CA；
 - Breakpoints workflow：检查 Break on match、queue/selection/draft，并因需要真实代理流量而检查 Proxy/Recording；
 - Diagnostics workflow：检查 filters/selection/records；只有其输入动作涉及的子系统才检查相应前置；
+- Agent workflow：检查 Panel、Provider、Session、Streaming、Context/Usage 与恢复；不读取或注入 Agent Store；
 - Settings workflow：只检查目标 section 及其直接依赖，例如 Certificates 不重复检查 Composer，Updates 不重复检查 Capture。
 
 禁止用“完整默认态”大段覆盖所有 feature。相关默认态仍必须通过真实 App UI 检查，不能通过 API/Store 读取代替。

@@ -1,5 +1,5 @@
 // Each case declares design state, real Renderer navigation/actions, and comparison targets.
-export const viewport = { width: 1280, height: 800 };
+export const viewport = { width: 1600, height: 900 };
 export const designShotsDir = 'design-vite/shots';
 
 const EXPAND_RULE_TREE_ACTIONS = [

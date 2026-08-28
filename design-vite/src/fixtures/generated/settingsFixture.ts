@@ -259,6 +259,39 @@ export const settingsFixture: FixtureNode = {
           "tag": "div",
           "attributes": {
             "class": "sni",
+            "data-settings-nav": "agent"
+          },
+          "children": [
+            {
+              "type": "element",
+              "tag": "svg",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "use",
+                  "attributes": {
+                    "href": "#i-bot"
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "Agent"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n            "
+        },
+        {
+          "type": "element",
+          "tag": "div",
+          "attributes": {
+            "class": "sni",
             "data-settings-nav": "updates"
           },
           "children": [

@@ -1,0 +1,92 @@
+.agentChatDialogOverlay {
+  position: absolute;
+  inset: 44px 0 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .3);
+  backdrop-filter: blur(2px);
+}
+
+.agentChatDialog {
+  display: grid;
+  width: min(340px, 100%);
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .26);
+}
+
+.agentChatDialogIcon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.agentChatDialogIcon[data-danger='true'] {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
+.agentChatDialogIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.agentChatDialogCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentChatDialogCopy h2 {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.agentChatDialogCopy p,
+.agentChatDialogCopy label > span {
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.agentChatDialogCopy label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.agentChatDialogCopy input {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+
+.agentChatDialogCopy input:focus {
+  border-color: var(--accent);
+}
+
+.agentChatDialog footer {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 4px;
+}

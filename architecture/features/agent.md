@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-08-25
+> 最后更新：2026-08-28
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**[改造中] 目标是完整的内置 Chat Agent 产品；当前只有未接线的 Runtime 脚手架。**
+> 状态：**阶段 1 UI 设计完成，产品实现待开始；当前 main 只有未接线的 Runtime 脚手架。**
 
 ## 术语与关系
 
@@ -126,7 +126,7 @@
 
 ## 1. 产品目标
 
-Interceptor 内置 Agent 是一个长期存在的产品工作区，不是一次性演示程序。用户应当能够：
+Interceptor 内置 Agent 是一个跨 Workspace 常驻的右侧 Chat Panel，不是独立 Workspace，也不是一次性演示程序。用户应当能够：
 
 1. 配置自己的 Model Provider 凭据；
 2. 创建、恢复、重命名和删除 Chat Session；
@@ -137,6 +137,8 @@ Interceptor 内置 Agent 是一个长期存在的产品工作区，不是一次�
 7. 关闭并重新打开应用后继续历史 Session。
 8. 查看当前 Context Window 已用与剩余 Tokens，以及当前 Session 累计 Token Usage；
 9. 按 Model Call 和 Session 查看 cache hit / miss Token、Rate 与统计覆盖率。
+10. 在 Capture、Rules、Composer、Settings 与 Diagnostics 之间切换时保持同一个 Chat Panel 和 Session，
+  只有显式点击 Agent toggle 或 Panel Close 才关闭。
 
 产品从简单到复杂逐层交付，但每个产品阶段都必须形成可使用、可验证的完整纵向流程。
 
@@ -266,10 +268,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph R["Renderer · Agent Workspace"]
-        CHAT["Chat UI"]
-        SESSIONS["Session Rail"]
-        SETTINGS["Provider Settings"]
+    subgraph R["Renderer · Global Agent Side Panel"]
+      PANEL["Agent Panel\n440px right grid column"]
+      CHAT["Transcript + Composer"]
+      SESSIONS["Chat selector"]
+      SETTINGS["Settings > Agent"]
     end
 
     subgraph M["Main · Agent Host"]
@@ -288,6 +291,8 @@ flowchart LR
 
     API["DeepSeek API"]
 
+    PANEL --> CHAT
+    PANEL --> SESSIONS
     CHAT -->|"typed window.interceptor intents"| IPC
     SESSIONS --> IPC
     SETTINGS --> IPC
@@ -306,7 +311,7 @@ flowchart LR
 | `AgentCredentialStore` | Runtime 内部协作者；使用注入的 `safeStorage` 加密 Provider API Key |
 | `DeepSeekModelAdapter` | Runtime 拥有的 Provider Adapter；映射 DeepSeek Streaming wire contract 与内部 event |
 | `InterceptorToolGateway` | Runtime 拥有的 Tool 协作者；负责发现、Zod、Permission Mode 和 Core command 调用 |
-| Renderer | Session rail、Transcript、Composer、流式状态和 Permission UI；不运行 Agent Loop |
+| Renderer | 全局 Agent toggle、右侧Panel、Chat selector、Transcript、Composer、Context Window Usage、Settings > Agent与Permission UI；不运行Agent Loop |
 
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
 数据目录、`SecureStore`、`AgentCoreBridge` 和 `fetch`。Main 创建一次长期存活的 `agentRuntime`，所有 IPC
@@ -999,6 +1004,41 @@ Model request timeout 只描述单次网络故障，Tool timeout 只适用于 To
 
 ## 9. Chat 产品流程
 
+### 9.0 UI 所有权与布局
+
+- 产品、Design PNG、Design DOM 与 visual parity 使用唯一 `1600 × 900` 基准尺寸；真实窗口初始尺寸在
+  Application Shell 层按该值实现。更小窗口是响应式运行能力，不维护第二套主设计基线。
+- Header 右侧、窗口控制左边提供全局 Agent icon button。关闭态使用中性色；打开态使用
+  `--accent-soft` 背景、`--accent` 图标与轻 accent 描边。
+- Agent 打开后成为 `.app` 的 `440px` 右侧 grid column，Main workspace 同步缩窄。Panel 不使用 overlay，
+  不得覆盖 Capture Inspector、Rules Editor 或其他 Workspace 内容。
+- `agentPanel: open | closed` 是用户显式拥有的 Shell 状态。切换 Workspace、进入 Settings > Agent、打开
+  Provider Dialog 或切换 Chat 都不得自动关闭；只有用户点击全局 toggle 或 Panel 内 Close 才能关闭。
+- Workspace 导航不得隐式修改当前 Chat、Session History 或 Model input。第一版不自动把当前选中 Exchange / Rule
+  注入 Context；以后若增加 `Add to Agent`，必须由用户显式触发并在 Composer 里显示可移除附件。
+- Panel Header 使用 Chat selector 访问 Session，避免在 `440px` Panel 内常驻第二条 Session rail。New Chat 与 Close
+  是独立图标命令；未配置 Provider 时 New Chat disabled，并显示 `Configure Agent` 出口。
+- Composer 上方左侧是有边框、Provider Logo、模型名和 chevron 的 Model Select；右侧用圆形 Progress 显示
+  `Current Context Window Usage` 与精确 `current / max` Token。这里的 Context 只表示本次 Model Context 使用量，
+  不表示当前页面或选中业务对象。
+- Send 按钮相对 Composer 整体垂直居中；Transcript、Composer 与 Panel 分别拥有正确的 `min-height: 0` 和滚动边界。
+
+### 9.0.1 Settings > Agent
+
+- Provider 与模型配置只归全局 `Settings > Agent`，不把 API Key 表单塞进 Chat Panel。
+- `Configured models` 是唯一列表；每行同时显示 Provider 品牌、Model ID、连接状态、脱敏凭据摘要、
+  非交互 `Default` 状态或 `Set default` 命令，以及 `Edit`。默认行只增加左侧 `3px` accent 竖条，
+  不改变 Logo、文字或整行底色。
+- DeepSeek 是首个正式 preset；Custom OpenAI-compatible 是正式配置入口。设计稿里的 Qwen3 Max 用于验证
+  Custom profile 与品牌映射，不代表当前产品已经实现独立 Qwen Adapter。
+- DeepSeek Dialog 固定官方 endpoint，编辑 API Key 与 Model ID；Custom Dialog提供Profile name、Base URL、
+  可选API Key、Model ID、Context Window与Maximum Output。所有FieldControl统一为`34px`高，必须先Test connection，
+  成功后才允许Save。
+- Provider Logo 使用可枚举map。已知品牌使用Simple Icons提供的原始品牌path与推荐色；Custom / unknown回退Lucide Bot。
+  Logo仅作来源标识，不暗示品牌合作；新增品牌前复核对应brand guideline。
+- 当前 Chat 的 Model Select 只列已配置模型；选中项品牌 Logo 着色，未选中项同形状置灰；菜单末尾
+  `Agent settings…` 深链到 Settings > Agent，且保持 Panel 打开。
+
 ### 9.1 普通多轮对话
 
 ```mermaid
@@ -1039,7 +1079,7 @@ sequenceDiagram
 | `getAgentProviderStatus()` | 读取是否已配置 Provider，不返回 API Key |
 | `saveDeepSeekProvider(config)` | 保存 DeepSeek Key 与 Model |
 | `removeDeepSeekProvider()` | 删除凭据并阻止新 Turn |
-| `listAgentSessions()` | Session rail 快照 |
+| `listAgentSessions()` | Chat selector 的 Session 列表快照 |
 | `createAgentSession(options)` | 新建空 Chat |
 | `getAgentSession(sessionId)` | 读取完整 Transcript 快照 |
 | `renameAgentSession(sessionId, title)` | 显式改名 |
@@ -1048,7 +1088,7 @@ sequenceDiagram
 | `cancelAgentTurn(turnId)` | 停止当前 Turn，不删除 Session |
 | `onAgentSessionEvent(listener)` | 接收带 `sessionId / turnId / sequence` 的有序事件 |
 
-第一版 Chat UI 必须提供 Session rail、Transcript、Composer、Send、Stop、New Chat、Rename、Delete、
+第一版 Chat UI 必须提供全局 Side Panel、Chat selector、Transcript、Composer、Send、Stop、New Chat、Rename、Delete、
 Provider 未配置状态、失败状态、Context 圆环、Session Usage 和恢复入口。Tool 加入后，Transcript 继续显示 Tool Call 与结果摘要；
 Provider 明确返回的 reasoning 可折叠查看，但不与 Plan 或最终回答混合。
 
@@ -1108,10 +1148,11 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 
 目标：第一个用户可见版本就是完整 Chat，而不是命令行 demo。
 
-- 先在 `design-vite/` 完成 Agent workspace、Session rail、Provider Settings 与各状态设计；
+- 先在 `design-vite/` 完成全局Agent Side Panel、Chat selector、Settings > Agent、Provider Dialog、Model Select、
+  Context Progress与各状态设计；唯一画布与visual parity默认viewport为`1600 × 900`；
 - `AgentRuntime` 实现并拥有 Credential Store、Session Store、Context Builder 与 Usage ledger；
 - Main 只创建 `agentRuntime`、注册可信 IPC，并注入 `safeStorage`、数据目录与 Core bridge；
-- Renderer 实现多轮 Streaming Chat、New / Rename / Delete / Stop / Retry、Context 圆环、Session Usage，
+- Renderer 实现跨Workspace保持的右侧Panel、多轮Streaming Chat、New / Rename / Delete / Stop / Retry、Context圆环、Session Usage，
   以及 Model Call / Session 两层 cache hit / miss Token、加权 Rate 与 coverage；
 - DeepSeek 为默认 preset；同时提供正式的 Custom OpenAI-compatible endpoint，以支持本地模型和
   无真实凭据的确定性 E2E lab；
@@ -1186,7 +1227,7 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 | AgentRuntime integration | safeStorage adapter、SQLite、Session CRUD、三桶 Usage 聚合、Context 圆环、checkpoint 原子安装、重启恢复、事件 sequence |
 | Renderer unit | Session store、Transcript event reducer、Context / Session Usage、cache Token / Rate / coverage 展示、Composer 状态 |
 | 真实 E2E | 真实 Electron Chat flow、Provider 配置、两轮 cache split 展示、重启恢复、Tool、Compaction 与审批 |
-| Design/Parity | Agent workspace 全部明暗状态、长文本、窄窗口和错误状态 |
+| Design/Parity | 1600×900 全局 Agent Side Panel、Settings > Agent、Provider Dialog、Model Select、长文本和错误状态 |
 | Package/Smoke | 触及 Main / Preload / IPC / safeStorage / SQLite 后完整运行 |
 
 没有 Session History、真实 Streaming Chat 和重启恢复证据时，不能把阶段 1 标记为完成；只有 Runtime unit Green
@@ -1199,6 +1240,7 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - 当前 `maxSteps` 抛出 `AgentMaxStepsError`，目标实现删除默认硬 Step 上限；
 - 当前 Runtime 只返回内存 messages，还没有 Runtime-owned Credential/Session Store、Usage ledger 或重启恢复；
 - 当前 Runtime 一次性发送全部 Tool descriptor，目标为 Capability → discovery → schema 渐进披露；
-- `DeepSeekModelAdapter`、Provider Settings、Chat workspace 与 Preload intents 尚未实现；
+- `design-vite` 已完成全局右侧 Agent Panel 与 Settings > Agent 设计；真实 Renderer、Provider Settings、
+  自适应窗口与 Preload intents 尚未实现；
 - 当前 MCP Tool 仍绑定 MCP identity，通用 Tool package 尚未抽出；
-- 当前没有 Agent 真实 E2E、销毁证据或 Design/Parity 基线。
+- 当前已有 Agent Design 基线与交互测试，但还没有真实 Renderer parity、Agent E2E 或销毁证据。

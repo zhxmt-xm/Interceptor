@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `1be6920`
+> Tracked commit: `db857dc`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-08-26
+> 最后更新：2026-08-28
 
 ## Task List
 
@@ -20,6 +20,8 @@
 - [x] **已完成 · TLS / GitHub 更新阶段门禁**：该阶段曾通过 Desktop 224、Proxy Core 261、Protocol 15、MCP 45，共 545 项，以及全部 workspace typecheck、Core 构建、Windows package 与 artifact audit。Proxy Core 并行本地网络测试曾偶发瞬时 `ECONNRESET`；对应 H2 文件串行 6/6、Core 全量串行 261/261 通过。多 host compatibility dialog 和已挂载 Settings 批量保存/即时刷新场景均为 0 flagged。
 - [x] **已完成 · 设计源迁移**：设计稿统一到 `design-vite/`（Vite + React + CSS Modules），旧静态 `design/` 删除，`design-system.md` 与 `README.md` 已迁入。迁移前交互 71/71 match，像素平均 0.0239%、最大 0.051%，`0 missing / 0 resized / 0 not drawn`；仅旧手写 sprite 的 1.9 描边与 lucide-react 默认 2 有差，按决定不再收敛，产品统一使用 Lucide。
 - [x] **已完成 · 设计验收工具迁移**：`compare-shots.mjs` 改为必须显式提供基线；依赖旧稿的 `generate-fixtures.mjs` 与 `interaction-parity.mjs` 已删除，`src/fixtures/generated/*` 是定稿静态 DOM 快照。Visual parity 通过 `design-vite/tools/design-preview.mjs` build + preview 设计稿，基线 PNG 与应用图标来自 `design-vite/`；命令与陷阱见 [../design-vite/README.md](../design-vite/README.md) 和 `ui-design-mockup` skill。
+- [x] **已完成 · Agent 阶段 1 UI 设计**：唯一产品与 parity 基线迁移为 `1600×900`；Agent 是全局 `440px` 右侧 grid column，不是 Workspace 或 overlay。Header toggle / Panel Close 是唯二关闭入口，Capture、Rules、Composer、Diagnostics 与 Settings 导航均保持 Panel、当前 Chat 和 Transcript；第一版不隐式注入页面 Context或展示尚未接入的Traffic Tool。Settings 新增 Agent 一级项，以唯一 `Configured models` 列表管理 DeepSeek preset 与 Custom OpenAI-compatible profile；`Default` 为非交互状态，当前Chat模型与新Chat默认模型正交，Add/Edit在Test connection后回写列表，Remove使用独立确认。Chat selector、New/Rename/Delete、Composer、Stop/Retry、失败态、Session Usage、Model Select、Context Window Usage、Provider Dialog、未配置状态、键盘焦点与known/unknown Logo map均已定稿。Qwen3 Max只作为Custom profile与品牌映射示例，不表示独立Qwen Adapter已实现。全量design interaction `38/38`（其中Agent `23/23`）、React DOM/state/Monaco自检、typecheck、build、production audit 0漏洞通过；`366` 张主明暗设计图已按 `1600×900` 重出，其中Agent Panel / Settings状态共 `36` 张，另有`9`张scene资产。
+- [ ] **待实现 · Agent 阶段 1 产品纵向流程**：owning [features/agent.md](features/agent.md) 与四条真实 [E2E workflow](../apps/desktop/tests/e2e-workflow-tests/docs/agent.md) 已锁定契约。下一阶段先取得 Renderer unit/integration 与 `agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`、`agent.chat.restart-recovery` 的真实 Electron Red，再实现 `1600×900` 初始窗口、真实 Side Panel、Settings > Agent、Credential/Session Store、Context/Usage、Main/Preload intents、本地 OpenAI-compatible lab、Streaming 与重启恢复；完成前不得把设计稿或 Runtime unit 记为 Agent 产品可用。
 - [x] **已完成 · Windows App 现场验收**：2026-08-11 现场使用暂未发现问题，当前方案按现状收口。此前未单独留存自动化证据的细分矩阵不再阻塞主线；以后触及 Main / Preload / IPC、系统代理、AppContainer、TLS 或打包边界仍须重跑 packaged smoke。
 - [x] **已完成 · Breakpoint 感知与关联**：`useBreakpoints` 订阅 Main 的 `breakpointsChange` 信号，不再轮询；Core 重启时清空本地记录，恢复 `running` 后重新拉取。任意 workspace 都能感知，pending count 只显示在 Capture workbar；所有 feature 的 Sidebar 导航只表达位置与选中态，不显示业务 badge。`BreakpointSnapshot` / `PendingBreakpoint` 带 `exchangeId`，`ExchangeTracker.exchangeIdFor` 在规则钩子早于 `request-initiated` 时预留 ID 给 `beginRequest` 复用；未 Recording 的请求不产生 Capture 行，因此不提供 ID。
 - [x] **已完成 · Breakpoint pending无隐藏上限**：`BREAKPOINT_QUEUE_LIMIT`、nullable `suspend`、`autoContinued`协议状态、Core `breakpoint.queue-full`诊断与Capture queue-full提示均已删除；每次命中都进入pending，直到用户命令、客户端abort或Core/RPC生命周期关闭释放。Queue unit先在第11条返回`null`取得精确Red，当前25条连续命中全部pending并保持插入顺序；真实Electron再锁定11条HTTP命中均有公开队列位置、badge为11且origin零到达。
@@ -93,7 +95,7 @@
 - Forge Vite Plugin 仍为 Experimental；修改 Main、Preload、IPC、Fuses、CSP、Core 生命周期、native helper 或打包路径后，必须重跑 package、artifact audit 与真实 smoke。
 - Renderer 只能通过 `window.interceptor` 窄意图 API 访问 Main，正文留在 Core，通过有限 range / chunk 读取；`UtilityProcess.parentPort` 只承载 lifecycle 与 MessagePort transfer，业务 RPC 只走专用 MessagePort。
 - design SPA 尚未完全组件化，仍有全局 CSS / 手写 DOM 串扰风险；小改优先定向 DOM / geometry 检查，不用反复全量截图掩盖状态错误。
-- 不要删除或覆盖 `backlog/idea.md`、`backlog/image-13.png`、`backlog/image-14.png` 与 `apps/desktop/tests/visual-parity/parity-report.md`。`stash@{0}: wip: Windows App WVD gateway bypass` 已被当前实现取代，不要再次 apply。
+- 不要删除或覆盖 `backlog/idea.md`、`backlog/image-13.png`、`backlog/image-14.png` 与 `apps/desktop/tests/visual-parity/parity-report.md`。当前 `stash@{0}: wip: agent runtime stage 0 before model settings design` 保存 Agent Runtime/Tool Catalog 阶段 0，必须在真实 UI 提交后 apply 并手工合并 Agent/Handover/package-lock；`stash@{1}: wip: Windows App WVD gateway bypass` 已被当前实现取代，不得 apply。
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation

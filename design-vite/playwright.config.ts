@@ -8,7 +8,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4174',
     channel: 'msedge',
-    viewport: { width: 1280, height: 800 },
+    viewport: { width: 1600, height: 900 },
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4174',

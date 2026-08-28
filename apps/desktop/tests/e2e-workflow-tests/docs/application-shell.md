@@ -13,7 +13,7 @@
 1. 创建独立空profile、evidence目录；只读确认宿主无上次测试遗留的Interceptor Proxy ownership或测试CA。
 2. 启动trace并用 `_electron.launch()` 启动新的本地production bundle。
 3. 等待 `app.root`、`app.main`、`app.statusbar` 和 `shell.navigation` 可见，确认URL=`interceptor://app/index.html`。
-4. 只检查启动相关默认态：active workspace=Capture、Sidebar expanded、窗口1280x800且未最大化/最小化、Core Running并显示真实PID、listener Listening `127.0.0.1:8888`。
+4. 只检查启动相关默认态：active workspace=Capture、Sidebar expanded、窗口1600x900且未最大化/最小化、Core Running并显示真实PID、listener Listening `127.0.0.1:8888`。
 5. 检查Proxy readiness显示System Proxy off，UI Paused/Not recording；点击 `capture.readiness.cancel`，确认系统代理未被修改。
 6. 确认首窗、Header、Main、Statusbar可操作且无错误overlay。
 7. 保存final screenshot、trace、Main/Renderer日志和PID/端口metadata。
@@ -195,9 +195,9 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 ### Steps
 
 1. 创建空profile/evidence，启动trace/Electron并等待App/Core/listener。
-2. 只检查窗口相关默认态：1280x800、非maximized/minimized、Header window controls可用；点击readiness Cancel。
+2. 只检查窗口相关默认态：1600x900、非maximized/minimized、Header window controls可用；点击readiness Cancel。
 3. 点击 `shell.window.maximize-restore`，只读确认maximized=true。
-4. 再次点击并确认恢复1280x800、maximized=false。
+4. 再次点击并确认恢复1600x900、maximized=false。
 5. 点击 `shell.window.minimize`，只读确认minimized=true。
 6. 测试侧只恢复/show/focus窗口，不修改业务状态。
 7. 确认Renderer可交互、Core仍Running、窗口尺寸/状态准确。

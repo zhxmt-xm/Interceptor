@@ -2,6 +2,8 @@ import { App as AntApp, ConfigProvider } from 'antd';
 import { useMemo, useRef } from 'react';
 
 import { FileTransferBusyOverlay } from '../components/FileTransferBusyOverlay/FileTransferBusyOverlay';
+import { AgentPanelToggle } from '../features/Agent/AgentPanelToggle';
+import { AgentSidePanel } from '../features/Agent/AgentSidePanel';
 import { Composer } from '../features/Composer/Composer';
 import { ComposerImportDialog } from '../features/Composer/ComposerImportDialog';
 import { Capture } from '../features/Capture/Capture';
@@ -11,6 +13,8 @@ import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { Settings } from '../features/Settings/Settings';
 import { AppContainerBulkDialog } from '../features/Settings/AppContainerBulkDialog';
+import { AgentProviderDialog } from '../features/Settings/AgentProviderDialog';
+import { AgentRemoveModelDialog } from '../features/Settings/AgentRemoveModelDialog';
 import { FixtureRenderer, fixtureClassNames } from '../fixtures/FixtureRenderer';
 import { useDesignFixtureAdapter } from '../fixtures/useDesignFixtureAdapter';
 import { appAttributes } from '../fixtures/generated/appAttributes';
@@ -50,6 +54,7 @@ function DesignAppContent(): React.JSX.Element {
         >
           <Sidebar />
           <FixtureRenderer node={topbarFixture} />
+          <AgentPanelToggle />
           <div className={fixtureClassNames('mainhost')}>
             <Capture />
             <Rules />
@@ -57,9 +62,12 @@ function DesignAppContent(): React.JSX.Element {
             <Settings />
             <Diagnostics />
           </div>
+          <AgentSidePanel />
           <FixtureRenderer node={statusbarFixture} />
           {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
           <AppContainerBulkDialog />
+          <AgentProviderDialog />
+          <AgentRemoveModelDialog />
           <RulesImportDialog />
           <ComposerImportDialog />
           <FileTransferBusyOverlay />

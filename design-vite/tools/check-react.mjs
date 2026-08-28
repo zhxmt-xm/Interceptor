@@ -9,10 +9,10 @@ const requestedUrl = process.argv[2];
 const designPreview = requestedUrl ? null : await startDesignPreview(path.dirname(dir));
 const url = requestedUrl ?? designPreview.url;
 const expectedCounts = {
-  capture: 1587,
-  rules: 306,
-  composer: 428,
-  settings: 443,
+  capture: 1480,
+  rules: 296,
+  composer: 418,
+  settings: 425,
   diagnostics: 123,
 };
 
@@ -46,7 +46,7 @@ const before = await page.evaluate(() => ({
   counts: Object.fromEntries(
     ['capture', 'rules', 'composer', 'settings', 'diagnostics'].map((view) => [
       view,
-      document.querySelector(`.mainhost > [data-v="${view}"]`)?.querySelectorAll('[data-fixture-node]').length,
+      document.querySelector(`.mainhost [data-v="${view}"]`)?.querySelectorAll('[data-fixture-node]').length,
     ]),
   ),
   total: document.querySelector('.app')?.querySelectorAll('[data-fixture-node]').length,
@@ -77,7 +77,7 @@ if (after?.view !== 'rules' || after.theme !== 'dark' || !after.expanded) {
   failures.push(`state bridge failed: ${JSON.stringify(after)}`);
 }
 failures.push(...errors);
-if (before.total !== 3462) failures.push(`total: expected 3462, received ${before.total}`);
+if (before.total !== 3353) failures.push(`total: expected 3353, received ${before.total}`);
 
 console.log(JSON.stringify({ before, after, errors, readinessError }, null, 2));
 if (failures.length) {

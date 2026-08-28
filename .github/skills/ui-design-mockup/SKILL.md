@@ -30,7 +30,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 2. **样式写在同名 `*.module.css`**：`vite.config.ts` 配了 `generateScopedName: '[local]'` 以保留语义类名，所以**全局 class 仍可能串扰**——新增类名前先 grep 是否撞名。令牌与 reset 在 `src/styles/`。
 3. **状态全部经 typed `DesignState`**：人点击 UI 与 `window.__setState(patch)` 驱动同一套状态，不允许只为截图加一条假路径。新增场景就往 `DesignState` 加字段，并在 `state/utils.ts` 的 `INITIAL_DESIGN_STATE` 给默认值。
 4. **图标一律用 `lucide-react`**：经 `src/fixtures/FixtureIcon.tsx` 的 `ICON_BY_ID` 映射。不手写 SVG sprite、不内联自定义 icon。lucide 没有完全对应的图形时，选语义最近的 lucide 图标，不要自己画。
-5. **生成**：`node design-vite/shoot.mjs`。两趟——framed（1280×800 应用态）+ full（注入 CSS 展开所有滚动区，把隐藏内容也截全）。截图覆盖每个 feature × 浅/深 + 关键折叠 + 当前 overlay。主题/语言 switcher 场景另由 `node design-vite/shoot-scenes.mjs` 生成。
+5. **生成**：`node design-vite/shoot.mjs`。两趟——framed（唯一 `1600×900` 应用态）+ full（注入 CSS 展开所有滚动区，把隐藏内容也截全）。截图覆盖每个 feature × 浅/深 + 关键折叠 + 当前 overlay。主题/语言 switcher 场景另由 `node design-vite/shoot-scenes.mjs` 生成。
 6. **评审**：用 `view_image` 逐张查看，按用户反馈改组件后重跑，直到定稿。
 
 ## 关键陷阱（务必遵守，均已踩过）

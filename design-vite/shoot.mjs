@@ -1,6 +1,6 @@
 // Screenshot pipeline for the unified design SPA.
 // Opens index.html once, drives it via window.__setState(), captures the .app element.
-// Two passes: framed (1280x800 app state) and full (scroll areas expanded so nothing hides).
+// Two passes: framed (1600x900 app state) and full (scroll areas expanded so nothing hides).
 // Run from repo root:  node design-vite/shoot.mjs
 import { chromium } from '@playwright/test';
 import path from 'node:path';
@@ -33,6 +33,120 @@ for (const feature of FEATURES) {
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'capture-open',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers', agentPanel: 'open' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'rules-open',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'new-chat',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChat: 'new', agentCurrentModel: 'qwen' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'sent-message',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChat: 'sent', agentMessage: 'How should I retry an invalid_grant response?' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'chat-menu',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChatMenu: 'open' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'rename-chat',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChatDialog: 'rename' },
+  });
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'delete-chat',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChatDialog: 'delete' },
+  });
+  for (const agentTurnState of ['running', 'stopped', 'failed']) {
+    shots.push({
+      feature: 'agent-panel',
+      theme,
+      variant: `turn-${agentTurnState}`,
+      appSize: { width: 1600, height: 900 },
+      state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentChat: 'sent', agentMessage: 'Explain invalid_grant.', agentTurnState },
+    });
+  }
+  shots.push({
+    feature: 'agent-panel',
+    theme,
+    variant: 'session-usage',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentUsagePanel: 'open' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-agent',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-agent-qwen-default',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentDefaultModel: 'qwen' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-deepseek-dialog',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentProviderDialog: 'deepseek', agentProviderDialogMode: 'edit', agentProviderDialogTarget: 'deepseek' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-custom-dialog',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentProviderDialog: 'custom', agentProviderDialogMode: 'add', agentProviderDialogTarget: '' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-remove-model',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentRemoveModelTarget: 'qwen' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-unconfigured',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentProvider: 'unconfigured' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-model-menu',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentModelMenu: 'open' },
+  });
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', fileMenu: 'import' } });
@@ -209,7 +323,7 @@ for (const theme of ['light', 'dark']) {
 
 const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
 const FULL_CSS = `
-.app{height:auto!important;min-height:800px!important}
+.app{height:auto!important;min-height:900px!important}
 .mainhost,.mv{overflow:visible!important}
 .listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.ccol-scroll,.creq,.cresp,.cpane,.cscroll,.cedit,.jsonv,
 .snav,.scontent,.break-inspector,.break-scroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
@@ -234,7 +348,7 @@ await mkdir(shotsRoot, { recursive: true });
 
 const designPreview = await startDesignPreview(dir);
 const browser = await chromium.launch({ channel: 'msedge' });
-const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1360, height: 920 } });
+const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1680, height: 1000 } });
 await page.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
 await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
 await page.evaluate(() => document.fonts.ready);
@@ -274,6 +388,24 @@ async function shoot(list) {
       pop: false,
       pop2: '',
       ctxmenu: '',
+      agentPanel: 'closed',
+      agentProviderDialog: '',
+      agentProviderDialogMode: 'add',
+      agentProviderDialogTarget: '',
+      agentModelMenu: '',
+      agentCurrentModel: 'deepseek',
+      agentChat: 'checkout',
+      agentChatTitle: 'Checkout failures',
+      agentChatDialog: '',
+      agentTurnState: 'idle',
+      agentChatMenu: '',
+      agentMessage: '',
+      agentUsagePanel: '',
+      agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
+      agentQwenProfile: { displayName: 'Qwen3 Max', profileName: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '••••••••••••••••7M2P', modelId: 'qwen3-max', contextWindow: '131072', maximumOutput: '8192' },
+      agentAddedProfile: null,
+      agentRemovedModels: [],
+      agentRemoveModelTarget: '',
     }));
     for (let depth = 0; depth < 2; depth += 1) {
       await page.keyboard.press('Escape');
@@ -340,12 +472,38 @@ async function shoot(list) {
       collection: 'open',
       collectionRename: '',
       composerHistory: '',
+      agentPanel: 'closed',
+      agentProvider: 'configured',
+      agentProviderDialog: '',
+      agentProviderDialogMode: 'add',
+      agentProviderDialogTarget: '',
+      agentModelMenu: '',
+      agentDefaultModel: 'deepseek',
+      agentCurrentModel: 'deepseek',
+      agentChat: 'checkout',
+      agentChatTitle: 'Checkout failures',
+      agentChatDialog: '',
+      agentTurnState: 'idle',
+      agentChatMenu: '',
+      agentMessage: '',
+      agentUsagePanel: '',
+      agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
+      agentQwenProfile: { displayName: 'Qwen3 Max', profileName: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '••••••••••••••••7M2P', modelId: 'qwen3-max', contextWindow: '131072', maximumOutput: '8192' },
+      agentAddedProfile: null,
+      agentRemovedModels: [],
+      agentRemoveModelTarget: '',
       bodyType: 'json',
       ctxmenu: '',
       boot: '',
       detail: '',
       ...st,
     }), s.state);
+    await page.evaluate((appSize) => {
+      const designApp = document.querySelector('.app');
+      if (!(designApp instanceof HTMLElement)) return;
+      designApp.style.width = `${appSize.width}px`;
+      designApp.style.height = `${appSize.height}px`;
+    }, s.appSize ?? { width: 1600, height: 900 });
     await page.waitForTimeout(140);
     if (
       s.interaction === 'request-menu'

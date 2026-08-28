@@ -78,6 +78,25 @@ export type WebSocketMessagePayload = 'text' | 'binary' | 'ping' | 'pong' | 'clo
 export type WebSocketUpgradeResponse = 'accepted' | 'mock-error';
 export type TreeContextMenu = 'composer-item' | 'composer-folder' | 'rules-root' | 'rules-rule' | 'rules-folder' | '';
 export type BootPhase = 'core' | 'listener' | 'proxy' | 'ready' | 'error' | '';
+export type AgentPanelState = 'closed' | 'open';
+export type AgentProviderState = 'configured' | 'unconfigured';
+export type AgentProviderDialogState = 'deepseek' | 'custom' | '';
+export type AgentProviderDialogMode = 'add' | 'edit';
+export type AgentModelId = 'deepseek' | 'qwen' | 'added';
+export type AgentDefaultModel = AgentModelId;
+export type AgentCurrentModel = AgentModelId;
+export type AgentChatState = 'checkout' | 'new' | 'sent';
+export type AgentTurnState = 'idle' | 'running' | 'stopped' | 'failed';
+
+export interface AgentProviderProfileState {
+  readonly displayName: string;
+  readonly profileName: string;
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly modelId: string;
+  readonly contextWindow: string;
+  readonly maximumOutput: string;
+}
 
 export interface DesignState {
   readonly view: DesignView;
@@ -100,6 +119,26 @@ export interface DesignState {
   readonly collection: 'open' | 'closed';
   readonly collectionRename: string;
   readonly composerHistory: 'open' | '';
+  readonly agentPanel: AgentPanelState;
+  readonly agentProvider: AgentProviderState;
+  readonly agentProviderDialog: AgentProviderDialogState;
+  readonly agentProviderDialogMode: AgentProviderDialogMode;
+  readonly agentProviderDialogTarget: AgentModelId | '';
+  readonly agentModelMenu: 'open' | '';
+  readonly agentDefaultModel: AgentDefaultModel;
+  readonly agentCurrentModel: AgentCurrentModel;
+  readonly agentChat: AgentChatState;
+  readonly agentChatTitle: string;
+  readonly agentChatDialog: 'rename' | 'delete' | '';
+  readonly agentTurnState: AgentTurnState;
+  readonly agentChatMenu: 'open' | '';
+  readonly agentMessage: string;
+  readonly agentUsagePanel: 'open' | '';
+  readonly agentDeepSeekProfile: AgentProviderProfileState;
+  readonly agentQwenProfile: AgentProviderProfileState;
+  readonly agentAddedProfile: AgentProviderProfileState | null;
+  readonly agentRemovedModels: readonly AgentModelId[];
+  readonly agentRemoveModelTarget: AgentModelId | '';
   readonly bodyType: BodyType;
   readonly settings: string;
   readonly update: string;

@@ -120,6 +120,11 @@ test('Capture BodyViewer chains wheel scrolling to the Inspector at its boundary
   await expect(bodyPane).toBeVisible();
   await page.addStyleTag({
     content: `
+      .insp .scroll {
+        height: 520px !important;
+        max-height: 520px !important;
+        flex: 0 0 520px !important;
+      }
       .insp .tp[data-tab="request"] .bodyview.grow [data-monaco="fill"] {
         height: 80px !important;
         max-height: 80px !important;

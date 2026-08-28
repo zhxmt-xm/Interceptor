@@ -1,0 +1,17 @@
+.agentPanelToggle {
+  position: absolute;
+  top: 8px;
+  right: 116px;
+  z-index: 20;
+}
+
+.agentPanelToggle[data-open="true"] button {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.agentPanelToggle[data-open="true"] button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}

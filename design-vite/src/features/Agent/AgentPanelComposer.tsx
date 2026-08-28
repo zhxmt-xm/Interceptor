@@ -1,0 +1,91 @@
+import { Progress } from 'antd';
+import { ChevronDown, ChevronUp, Send, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+import { IconButton } from '../../components/IconButton/IconButton';
+import { useDesignState } from '../../state/useDesignState';
+import { AgentPanelModelMenu } from './AgentPanelModelMenu';
+import { AgentSessionUsage } from './AgentSessionUsage';
+import { ProviderLogo } from './ProviderLogo';
+import styles from './AgentPanelComposer.module.css';
+
+export function AgentPanelComposer(): React.JSX.Element {
+  const { state, updateState } = useDesignState();
+  const [draft, setDraft] = useState('');
+  const modelSelectorRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => setDraft(''), [state.agentChat]);
+  const currentModel = state.agentCurrentModel === 'added' && state.agentAddedProfile
+    ? { brand: 'unknown' as const, name: state.agentAddedProfile.displayName }
+    : state.agentCurrentModel === 'qwen'
+      ? { brand: 'qwen' as const, name: state.agentQwenProfile.displayName }
+      : { brand: 'deepseek' as const, name: state.agentDeepSeekProfile.displayName };
+  const sendMessage = (): void => {
+    const agentMessage = draft.trim();
+    if (!agentMessage) return;
+    updateState({ agentChat: 'sent', agentMessage, agentTurnState: 'running' });
+    setDraft('');
+  };
+  return (
+    <footer className={styles.agentComposerFooter}>
+      <AgentPanelModelMenu triggerRef={modelSelectorRef} />
+      <div className={styles.agentComposerMetrics}>
+        <button
+          aria-expanded={state.agentModelMenu === 'open'}
+          aria-haspopup="listbox"
+          aria-label={currentModel.name}
+          className={styles.agentComposerModelButton}
+          data-parity="agent-model-select"
+          ref={modelSelectorRef}
+          type="button"
+          onClick={() => updateState({ agentModelMenu: state.agentModelMenu === 'open' ? '' : 'open' })}
+        >
+          <ProviderLogo active brand={currentModel.brand} />
+          <span>{currentModel.name}</span>
+          {state.agentModelMenu === 'open'
+            ? <ChevronUp aria-hidden="true" />
+            : <ChevronDown aria-hidden="true" />}
+        </button>
+        <AgentSessionUsage />
+        <div className={styles.agentContextUsage} data-parity="agent-context-usage">
+          <Progress
+            percent={2.3}
+            railColor="var(--border)"
+            showInfo={false}
+            size={22}
+            strokeColor="var(--accent)"
+            strokeWidth={11}
+            type="circle"
+          />
+          <span>
+            <b>Context</b>
+            <code>2.3% · 23k / 1M</code>
+          </span>
+        </div>
+      </div>
+      <div className={styles.agentComposerBox} data-parity="agent-composer">
+        <textarea
+          aria-label="Message"
+          placeholder="Message Agent..."
+          rows={2}
+          value={draft}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) sendMessage();
+          }}
+        />
+        <span className={styles.agentComposerSend} data-parity="agent-send">
+          {state.agentTurnState === 'running' ? (
+            <IconButton
+              icon={<Square aria-hidden="true" />}
+              label="Stop response"
+              onClick={() => updateState({ agentTurnState: 'stopped' })}
+              tone="warning"
+            />
+          ) : (
+            <IconButton disabled={!draft.trim()} icon={<Send aria-hidden="true" />} label="Send message" onClick={sendMessage} />
+          )}
+        </span>
+      </div>
+    </footer>
+  );
+}

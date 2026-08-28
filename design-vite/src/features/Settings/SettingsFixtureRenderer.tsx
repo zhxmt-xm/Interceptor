@@ -9,6 +9,7 @@ import {
 import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode';
 import { useDesignState } from '../../state/useDesignState';
 import styles from './SettingsFixtureRenderer.module.css';
+import { AgentModelSettings } from './AgentModelSettings';
 
 interface SettingsFixtureRendererProps {
   readonly node: FixtureNode;
@@ -66,6 +67,14 @@ export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps):
             <ShieldCheck aria-hidden="true" />
             Enable all
           </button>
+        </div>
+      );
+    }
+    if (hasClass(element, 'scontent')) {
+      return (
+        <div className={fixtureClassNames('scontent')} data-fixture-node="">
+          {children}
+          <AgentModelSettings />
         </div>
       );
     }

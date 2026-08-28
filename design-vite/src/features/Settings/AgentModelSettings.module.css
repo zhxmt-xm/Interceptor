@@ -1,0 +1,185 @@
+.agentModelsPanel {
+  display: block;
+  max-width: 820px;
+}
+
+.modelSettingsSection {
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.modelSettingsSectionHeader {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.modelSettingsSectionHeader > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modelSettingsSectionHeader strong {
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.modelSettingsSectionHeader span {
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+.defaultModelRow {
+  position: relative;
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.defaultModelRow[data-default="true"] {
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.defaultModelRow:last-child {
+  border-bottom: 0;
+}
+
+.modelProviderIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+}
+
+.modelProviderIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.modelProviderCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modelProviderCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelProviderCopy code {
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelProviderName {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.modelProviderConnected {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--green);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.modelProviderConnected svg {
+  width: 10px;
+  height: 10px;
+}
+
+.modelRowActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.defaultModelButton,
+.defaultModelStatus,
+.modelProviderAction,
+.modelProviderRemove {
+  display: inline-flex;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.defaultModelButton:hover,
+.modelProviderAction:hover,
+.modelProviderRemove:hover {
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.modelProviderRemove {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+  color: var(--text-3);
+}
+
+.modelProviderRemove:hover {
+  color: var(--red);
+}
+
+.modelProviderRemove svg {
+  width: 12px;
+  height: 12px;
+}
+
+.defaultModelStatus svg {
+  width: 12px;
+  height: 12px;
+}
+
+.defaultModelStatus {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: default;
+}
+

@@ -31,9 +31,11 @@ body {
 :root[data-theme="ember"], .app[data-theme="ember"] { --bg:#1b1815; --chrome:#181410; --sidebar:#161310; --panel:#1e1a16; --panel-2:#26201a; --filter:#191510; --hover:rgba(240,230,214,.05); --sel:rgba(217,154,60,.15); --sel-line:#d99a3c; --border:rgba(240,230,214,.08); --border-2:rgba(240,230,214,.14); --text:#f4eee3; --text-2:#bdb4a4; --text-3:#8b8273; --accent:#d99a3c; --accent-soft:rgba(217,154,60,.16); --green:#93c389; --blue:#84b0cf; --yellow:#dcb968; --red:#e28470; --purple:#c6a3d8; --shadow:0 30px 80px rgba(0,0,0,.5); }
 
 /* ---- app shell ---- */
-.app { position: relative; width: 1280px; height: 800px; display: grid; grid-template-areas: "side top" "side main" "side status"; grid-template-rows: 46px minmax(0,1fr) 30px; container-type: inline-size; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg); color: var(--text); box-shadow: var(--shadow); font-size: 13px; }
+.app { position: relative; width: 1600px; height: 900px; display: grid; grid-template-areas: "side top" "side main" "side status"; grid-template-rows: 46px minmax(0,1fr) 30px; container-type: inline-size; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg); color: var(--text); box-shadow: var(--shadow); font-size: 13px; }
 .app.expanded { grid-template-columns: 220px minmax(0,1fr); }
 .app.collapsed { grid-template-columns: 60px minmax(0,1fr); }
+.app.expanded[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 220px minmax(0,1fr) 440px; }
+.app.collapsed[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 60px minmax(0,1fr) 440px; }
 
 /* ---- sidebar ---- */
 .side { grid-area: side; display: flex; flex-direction: column; gap: 3px; padding: 12px; background: var(--sidebar); border-right: 1px solid var(--border); overflow: hidden; }
@@ -1068,6 +1070,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .app[data-settings="appearance"] .sni[data-settings-nav="appearance"],
 .app[data-settings="storage"] .sni[data-settings-nav="storage"],
 .app[data-settings="privacy"] .sni[data-settings-nav="privacy"],
+.app[data-settings="agent"] .sni[data-settings-nav="agent"],
 .app[data-settings="updates"] .sni[data-settings-nav="updates"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .scontent { min-height: 0; overflow-y: auto; padding: 22px 26px; }
 .spanel { display: none; }
