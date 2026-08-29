@@ -55,7 +55,11 @@ import type {
   SystemProxyStatus,
   UpdateService,
 } from './interfaces';
-import { completeApplicationShutdown } from './lifecycle/application-shutdown';
+import {
+  ApplicationActionGate,
+  completeApplicationShutdown,
+  resumeApplicationAfterShutdownFailure,
+} from './lifecycle/application-shutdown';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
@@ -144,6 +148,8 @@ class DesktopApplication {
   private pendingCoreFailureDetail: string | null = null;
   /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
   private systemProxyRecovery: Promise<void> | null = null;
+  /** Rejects and drains Renderer IPC when guarded shutdown starts. */
+  private readonly applicationActionGate = new ApplicationActionGate();
   /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
   private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
@@ -160,7 +166,9 @@ class DesktopApplication {
         },
       });
     });
-    void app.whenReady().then(() => this.onReady());
+    void app.whenReady()
+      .then(() => this.onReady())
+      .catch((error: unknown) => this.failStartup(error));
     app.on('activate', () => this.onActivate());
     app.on('window-all-closed', () => this.onAllWindowsClosed());
     app.on('before-quit', (event) => this.onBeforeQuit(event));
@@ -173,6 +181,7 @@ class DesktopApplication {
       secureStore: safeStorage,
     });
     this.systemProxyService = this.createSystemProxyService();
+    await this.restoreSystemProxyOnStartup();
     this.appContainerService = new AppContainerService({
       helperPath: this.getAppContainerHelperPath(),
     });
@@ -220,7 +229,6 @@ class DesktopApplication {
       );
       this.packagedRendererProtocol.install();
     }
-    await this.restoreSystemProxyOnStartup();
     this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
       const previousState = this.lastCoreProcessState;
@@ -327,7 +335,8 @@ class DesktopApplication {
 
     // 先收敛 Agent Turn，再恢复系统代理；外层失败时 Agent 可恢复接收命令。
     this.quitting = true;
-    void this.requireAgentRuntime().beginShutdown()
+    void this.applicationActionGate.stopAcceptingAndDrain()
+      .then(() => this.requireAgentRuntime().beginShutdown())
       .then(() => this.restoreSystemProxyBeforeShutdown())
       .then(
         () => this.finishShutdown(),
@@ -368,13 +377,57 @@ class DesktopApplication {
 
   /** Resume a fully running application when shutdown fails before proxy restoration. */
   private resumeAfterShutdownFailure(error: unknown): void {
-    this.agentRuntime?.resumeAfterShutdownFailure();
-    this.quitting = false;
-    this.shutdownComplete = false;
+    resumeApplicationAfterShutdownFailure({
+      resumeCommands: () => {
+        this.applicationActionGate.resume();
+        this.quitting = false;
+        this.shutdownComplete = false;
+      },
+      resumeAgent: () => this.agentRuntime?.resumeAfterShutdownFailure(),
+      ensureWindow: () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+          this.createMainWindow();
+        }
+      },
+      reportFailure: (shutdownError) => {
+        dialog.showErrorBox(
+          'Unable to restore system proxy',
+          `${readErrorMessage(shutdownError)}\n\nInterceptor is still running so the local proxy remains available.`,
+        );
+      },
+      error,
+    });
+  }
+
+  /** Stop partially initialized services and quit after an unrecoverable startup failure. */
+  private async failStartup(error: unknown): Promise<void> {
+    this.diagnostics.error('main.startup.failed', {
+      outcome: 'failed',
+      errorCode: readErrorName(error),
+    });
     dialog.showErrorBox(
-      'Unable to restore system proxy',
-      `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
+      'Interceptor could not start',
+      'Startup did not complete. Interceptor will close without changing the current system proxy settings.',
     );
+    await completeApplicationShutdown({
+      tasks: [
+        { name: 'update-service', stop: () => this.updateService?.stop() },
+        { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
+        { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
+        { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
+      ],
+      reportStopFailure: (name, stopError) => {
+        this.diagnostics.error('main.startup.cleanup-failed', {
+          outcome: 'failed',
+          errorCode: readErrorName(stopError),
+          attributes: { name },
+        });
+      },
+      complete: () => {
+        this.shutdownComplete = true;
+        app.quit();
+      },
+    });
   }
 
   private createMainWindow(): BrowserWindow {
@@ -463,21 +516,23 @@ class DesktopApplication {
         listener: Parameters<typeof electronIpcMain.handle>[1],
       ): void => {
         electronIpcMain.handle(channel, async (event, ...args) => {
-          const startedAt = Date.now();
-          try {
-            return await listener(event, ...args);
-          } catch (error) {
-            this.diagnostics.error('main.ipc.failed', {
-              durationMs: Date.now() - startedAt,
-              outcome: 'failed',
-              errorCode: readErrorName(error),
-              attributes: {
-                channel,
-                message: readErrorMessage(error),
-              },
-            });
-            throw error;
-          }
+          return this.applicationActionGate.run(async () => {
+            const startedAt = Date.now();
+            try {
+              return await listener(event, ...args);
+            } catch (error) {
+              this.diagnostics.error('main.ipc.failed', {
+                durationMs: Date.now() - startedAt,
+                outcome: 'failed',
+                errorCode: readErrorName(error),
+                attributes: {
+                  channel,
+                  message: readErrorMessage(error),
+                },
+              });
+              throw error;
+            }
+          });
         });
       },
     };
