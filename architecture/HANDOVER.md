@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `925c5932`
+> Tracked commit: `797721a4`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-08-29
 
@@ -27,6 +27,7 @@
 - [x] **已完成 · Agent Provider提交后复审修复**：Model请求使用`redirect:error`，`[DONE]`作为协议EOF而不等待悬挂body；Provider record读写统一256KiB密文上限，瞬时`readFile`/decrypt故障保留原密文，只有确定JSON/schema/metadata损坏才清理。`AgentRuntime`以统一lifecycle queue串行start/stop，运行中start执行有序restart，启动对账失败完整关闭Session Store与Provider，stop等待Provider协调mutation。新增6条精确Red后当前Runtime`99/99`、typecheck Green；Provider配置与Chat重启真实Electron`2/2` Green并验证完整销毁。
 - [x] **已完成 · Agent Session控制提交后复审修复**：Provider保存/删除与Session绑定协调期间只阻止Send/Retry新Turn，Rename等非Model CRUD仍可执行；RunLoop只要当前attempt已有任意可观察event就禁止自动retry；每次Model Call按当前History与Tool schema重新计算Context和`max_tokens`，不沿用Turn首Call预算。三条精确Red后Runtime`102/102`、typecheck Green，Streaming真实Electron`1/1` Green。
 - [x] **已完成 · Agent Session Store提交后复审修复**：Item、Turn、Model Call与assistant chunk密文统一绑定`sessionId + rowType + rowId`，读取时逐行核对SQLite主键，跨行/跨Session密文串换被确定分类为损坏；Session列表从启动时已验证的Store缓存按稳定顺序返回，不重复解密完整Transcript。两条精确Red后Runtime`104/104`、typecheck Green，Chat重启恢复真实Electron`1/1` Green。
+- [x] **已完成 · Agent Renderer状态提交后复审修复**：Provider load使用snapshot generation，旧load不覆盖成功mutation；Session事件先校验identity/sequence再合并summary，选择目标Chat期间保留其先到事件；Create/Delete取得完整列表与Transcript后原子安装，失效load/gap reload的成功或错误均受selection generation约束，delete失败清理本次pending selection。七条精确Red后Agent Renderer store`17/17`、Desktop`339/339`、typecheck Green，Streaming与Restart真实Electron`2/2` Green。
 - [x] **已完成 · Windows App 现场验收**：2026-08-11 现场使用暂未发现问题，当前方案按现状收口。此前未单独留存自动化证据的细分矩阵不再阻塞主线；以后触及 Main / Preload / IPC、系统代理、AppContainer、TLS 或打包边界仍须重跑 packaged smoke。
 - [x] **已完成 · Breakpoint 感知与关联**：`useBreakpoints` 订阅 Main 的 `breakpointsChange` 信号，不再轮询；Core 重启时清空本地记录，恢复 `running` 后重新拉取。任意 workspace 都能感知，pending count 只显示在 Capture workbar；所有 feature 的 Sidebar 导航只表达位置与选中态，不显示业务 badge。`BreakpointSnapshot` / `PendingBreakpoint` 带 `exchangeId`，`ExchangeTracker.exchangeIdFor` 在规则钩子早于 `request-initiated` 时预留 ID 给 `beginRequest` 复用；未 Recording 的请求不产生 Capture 行，因此不提供 ID。
 - [x] **已完成 · Breakpoint pending无隐藏上限**：`BREAKPOINT_QUEUE_LIMIT`、nullable `suspend`、`autoContinued`协议状态、Core `breakpoint.queue-full`诊断与Capture queue-full提示均已删除；每次命中都进入pending，直到用户命令、客户端abort或Core/RPC生命周期关闭释放。Queue unit先在第11条返回`null`取得精确Red，当前25条连续命中全部pending并保持插入顺序；真实Electron再锁定11条HTTP命中均有公开队列位置、badge为11且origin零到达。

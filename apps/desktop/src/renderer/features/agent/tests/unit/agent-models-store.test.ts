@@ -122,4 +122,27 @@ describe('AgentModelsActions', () => {
       error: 'default failed',
     });
   });
+
+  it('does not let an older load overwrite a successful Provider mutation', async () => {
+    let resolveLoad!: (snapshot: AgentModelsSnapshot) => void;
+    const delayedLoad = new Promise<AgentModelsSnapshot>((resolve) => {
+      resolveLoad = resolve;
+    });
+    const interceptor = {
+      getAgentModels: vi.fn(async () => delayedLoad),
+      saveVerifiedAgentProvider: vi.fn(async () => configuredSnapshot),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+
+    const loading = AgentModelsActions.load();
+    await AgentModelsActions.saveVerified('verification-1');
+    resolveLoad(emptySnapshot);
+    await loading;
+
+    expect(useAgentModelsStore.getState()).toMatchObject({
+      snapshot: configuredSnapshot,
+      loading: false,
+      error: null,
+    });
+  });
 });

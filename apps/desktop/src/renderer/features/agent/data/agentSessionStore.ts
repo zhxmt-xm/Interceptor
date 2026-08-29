@@ -36,6 +36,8 @@ export const useAgentSessionStore = create<AgentSessionState>((set) => ({
 /** Routes Session intents and reconciles ordered Runtime snapshots. */
 export class AgentSessionActions {
   static #selectionGeneration = 0;
+  static #gapReloadGeneration = 0;
+  static #pendingSelectionId: string | null = null;
 
   /** Subscribe before initial load so no durable Runtime event can be missed. */
   static subscribe(): () => void {
@@ -78,10 +80,14 @@ export class AgentSessionActions {
         useAgentSessionStore.getState().setCurrentSession(currentSession);
       }
     } catch (error) {
-      store.setError(this.describeError(error));
+      if (selectionGeneration === this.#selectionGeneration) {
+        useAgentSessionStore.getState().setError(this.describeError(error));
+      }
       throw error;
     } finally {
-      useAgentSessionStore.getState().setLoading(false);
+      if (selectionGeneration === this.#selectionGeneration) {
+        useAgentSessionStore.getState().setLoading(false);
+      }
     }
   }
 
@@ -89,16 +95,18 @@ export class AgentSessionActions {
   static acceptEvent(event: AgentRuntimeEvent): void {
     const store = useAgentSessionStore.getState();
     const current = store.currentSession;
-    if (event.type === 'session-updated') {
-      this.mergeSummary(event.snapshot);
-    }
     if (store.sessions?.currentSessionId !== event.sessionId
-      && current?.sessionId !== event.sessionId) {
+      && current?.sessionId !== event.sessionId
+      && this.#pendingSelectionId !== event.sessionId) {
+      if (event.type === 'session-updated') {
+        this.mergeSummary(event.snapshot);
+      }
       return;
     }
     if (current === null || current.sessionId !== event.sessionId) {
       if (event.type === 'session-updated') {
         store.setCurrentSession(event.snapshot);
+        this.mergeSummary(event.snapshot);
       } else {
         this.reloadAfterSequenceGap(event.sessionId);
       }
@@ -110,6 +118,7 @@ export class AgentSessionActions {
     if (event.sequence === current.sequence + 1) {
       if (event.type === 'session-updated') {
         store.setCurrentSession(event.snapshot);
+        this.mergeSummary(event.snapshot);
       } else {
         const assistant = current.items.find(
           (item) => item.kind === 'assistant-message'
@@ -143,9 +152,11 @@ export class AgentSessionActions {
   /** Reload one complete snapshot after a missing or unapplicable incremental event. */
   private static reloadAfterSequenceGap(sessionId: string): void {
     const selectionGeneration = this.#selectionGeneration;
+    const gapReloadGeneration = ++this.#gapReloadGeneration;
     void window.interceptor.getAgentSession(sessionId)
       .then((snapshot) => {
         if (selectionGeneration !== this.#selectionGeneration
+          || gapReloadGeneration !== this.#gapReloadGeneration
           || useAgentSessionStore.getState().sessions?.currentSessionId
             !== sessionId) {
           return;
@@ -159,7 +170,11 @@ export class AgentSessionActions {
         this.mergeSummary(snapshot);
       })
       .catch((error: unknown) => {
-        useAgentSessionStore.getState().setError(this.describeError(error));
+        if (selectionGeneration === this.#selectionGeneration
+          && gapReloadGeneration === this.#gapReloadGeneration
+          && useAgentSessionStore.getState().sessions?.currentSessionId === sessionId) {
+          useAgentSessionStore.getState().setError(this.describeError(error));
+        }
       });
   }
 
@@ -169,24 +184,36 @@ export class AgentSessionActions {
     await this.run(async () => {
       const session = await window.interceptor.createAgentSession();
       if (selectionGeneration !== this.#selectionGeneration) return;
-      useAgentSessionStore.getState().setCurrentSession(session);
-      useAgentSessionStore.getState().setSessions(await window.interceptor.listAgentSessions());
+      const sessions = await window.interceptor.listAgentSessions();
+      if (selectionGeneration !== this.#selectionGeneration) return;
+      useAgentSessionStore.setState({ currentSession: session, sessions, error: null });
     });
   }
 
   /** Select one existing Chat and load its complete snapshot. */
   static async select(sessionId: string): Promise<void> {
     const selectionGeneration = ++this.#selectionGeneration;
+    this.#pendingSelectionId = sessionId;
+    useAgentSessionStore.getState().setLoading(false);
     await this.run(async () => {
-      const session = await window.interceptor.selectAgentSession(sessionId);
-      if (selectionGeneration !== this.#selectionGeneration) return;
-      useAgentSessionStore.getState().setCurrentSession(session);
-      const sessions = useAgentSessionStore.getState().sessions;
-      if (sessions !== null) {
-        useAgentSessionStore.getState().setSessions({
-          ...sessions,
-          currentSessionId: sessionId,
+      try {
+        const selectedSession = await window.interceptor.selectAgentSession(sessionId);
+        if (selectionGeneration !== this.#selectionGeneration) return;
+        const current = useAgentSessionStore.getState().currentSession;
+        const session = current?.sessionId === sessionId
+          && current.sequence > selectedSession.sequence
+          ? current
+          : selectedSession;
+        const sessions = useAgentSessionStore.getState().sessions;
+        useAgentSessionStore.setState({
+          currentSession: session,
+          sessions: sessions === null ? null : { ...sessions, currentSessionId: sessionId },
+          error: null,
         });
+      } finally {
+        if (selectionGeneration === this.#selectionGeneration) {
+          this.#pendingSelectionId = null;
+        }
       }
     });
   }
@@ -208,11 +235,30 @@ export class AgentSessionActions {
     await this.run(async () => {
       const sessions = await window.interceptor.deleteAgentSession(sessionId);
       if (selectionGeneration !== this.#selectionGeneration) return;
-      useAgentSessionStore.getState().setSessions(sessions);
-      const session = sessions.currentSessionId === null
-        ? null
-        : await window.interceptor.getAgentSession(sessions.currentSessionId);
-      useAgentSessionStore.getState().setCurrentSession(session);
+      const fallbackSessionId = sessions.currentSessionId;
+      this.#pendingSelectionId = fallbackSessionId;
+      try {
+        const session = fallbackSessionId === null
+          ? null
+          : await window.interceptor.getAgentSession(fallbackSessionId);
+        if (selectionGeneration !== this.#selectionGeneration) return;
+        const current = useAgentSessionStore.getState().currentSession;
+        const latestSession = session !== null
+          && current?.sessionId === session.sessionId
+          && current.sequence > session.sequence
+          ? current
+          : session;
+        useAgentSessionStore.setState({
+          sessions,
+          currentSession: latestSession,
+          error: null,
+        });
+      } finally {
+        if (selectionGeneration === this.#selectionGeneration
+          && this.#pendingSelectionId === fallbackSessionId) {
+          this.#pendingSelectionId = null;
+        }
+      }
     });
   }
 

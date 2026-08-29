@@ -31,18 +31,28 @@ export const useAgentModelsStore = create<AgentModelsState>((set) => ({
 
 /** Executes typed Provider intents and merges only successful public snapshots. */
 export class AgentModelsActions {
+  static #snapshotGeneration = 0;
+
   /** Load encrypted Provider metadata through Main without receiving credentials. */
   static async load(): Promise<void> {
+    const snapshotGeneration = ++this.#snapshotGeneration;
     const store = useAgentModelsStore.getState();
     store.setLoading(true);
     store.setError(null);
     try {
-      store.setSnapshot(await window.interceptor.getAgentModels());
+      const snapshot = await window.interceptor.getAgentModels();
+      if (snapshotGeneration === this.#snapshotGeneration) {
+        useAgentModelsStore.getState().setSnapshot(snapshot);
+      }
     } catch (error) {
-      store.setError(this.describeError(error));
+      if (snapshotGeneration === this.#snapshotGeneration) {
+        useAgentModelsStore.getState().setError(this.describeError(error));
+      }
       throw error;
     } finally {
-      useAgentModelsStore.getState().setLoading(false);
+      if (snapshotGeneration === this.#snapshotGeneration) {
+        useAgentModelsStore.getState().setLoading(false);
+      }
     }
   }
 
@@ -91,7 +101,10 @@ export class AgentModelsActions {
     operation: () => Promise<AgentModelsSnapshot>,
   ): Promise<void> {
     const snapshot = await this.run(operation);
-    useAgentModelsStore.getState().setSnapshot(snapshot);
+    this.#snapshotGeneration += 1;
+    const store = useAgentModelsStore.getState();
+    store.setSnapshot(snapshot);
+    store.setLoading(false);
   }
 
   /** Convert unknown IPC failures to bounded UI text. */

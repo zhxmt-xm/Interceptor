@@ -117,16 +117,25 @@ describe('AgentSessionActions', () => {
   });
 
   it('ignores stale events and reloads a complete snapshot after a sequence gap', async () => {
-    const current = { ...emptySession, sequence: 2 };
+    const current = {
+      ...emptySession,
+      sequence: 2,
+      summary: { ...summary, title: 'Current title', updatedAt: 3 },
+    };
     const recovered = { ...emptySession, sequence: 5 };
     const interceptor = {
       getAgentSession: vi.fn(async () => recovered),
     } as unknown as InterceptorDesktopApi;
     vi.stubGlobal('window', { interceptor });
-    useAgentSessionStore.setState({ sessions, currentSession: current });
+    useAgentSessionStore.setState({
+      sessions: { ...sessions, sessions: [current.summary] },
+      currentSession: current,
+    });
 
     AgentSessionActions.acceptEvent(event({ ...emptySession, sequence: 1 }));
     expect(useAgentSessionStore.getState().currentSession?.sequence).toBe(2);
+    expect(useAgentSessionStore.getState().sessions?.sessions[0]?.title)
+      .toBe('Current title');
     AgentSessionActions.acceptEvent(event({ ...emptySession, sequence: 4 }));
 
     await vi.waitFor(() => {
@@ -244,6 +253,134 @@ describe('AgentSessionActions', () => {
     await Promise.resolve();
 
     expect(useAgentSessionStore.getState().currentSession?.sessionId).toBe('session-2');
+  });
+
+  it('keeps a target Session event that arrives before select resolves', async () => {
+    let resolveSelect!: (session: AgentSessionSnapshot) => void;
+    const selected = new Promise<AgentSessionSnapshot>((resolve) => {
+      resolveSelect = resolve;
+    });
+    const interceptor = {
+      selectAgentSession: vi.fn(async () => selected),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    useAgentSessionStore.setState({
+      sessions: { currentSessionId: 'session-1', sessions: [summary, secondSummary] },
+      currentSession: emptySession,
+    });
+    const selecting = AgentSessionActions.select('session-2');
+    const streamed = {
+      ...secondSession,
+      sequence: 2,
+      summary: { ...secondSummary, itemCount: 1, updatedAt: 3 },
+    };
+
+    AgentSessionActions.acceptEvent(event(streamed));
+    resolveSelect({ ...secondSession, sequence: 1 });
+    await selecting;
+
+    expect(useAgentSessionStore.getState().currentSession).toEqual(streamed);
+    expect(useAgentSessionStore.getState().sessions?.currentSessionId).toBe('session-2');
+  });
+
+  it('does not commit half of create when the refreshed Session list fails', async () => {
+    const interceptor = {
+      createAgentSession: vi.fn(async () => secondSession),
+      listAgentSessions: vi.fn(async () => {
+        throw new Error('list failed');
+      }),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    useAgentSessionStore.setState({ sessions, currentSession: emptySession });
+
+    await expect(AgentSessionActions.create()).rejects.toThrow('list failed');
+
+    expect(useAgentSessionStore.getState()).toMatchObject({
+      sessions,
+      currentSession: emptySession,
+      error: 'list failed',
+    });
+  });
+
+  it('does not commit half of delete when the fallback snapshot fails', async () => {
+    const fallbackSessions: AgentSessionsSnapshot = {
+      currentSessionId: 'session-2',
+      sessions: [secondSummary],
+    };
+    const interceptor = {
+      deleteAgentSession: vi.fn(async () => fallbackSessions),
+      getAgentSession: vi.fn(async () => {
+        throw new Error('fallback failed');
+      }),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    useAgentSessionStore.setState({ sessions, currentSession: emptySession });
+
+    await expect(AgentSessionActions.deleteCurrent()).rejects.toThrow('fallback failed');
+
+    expect(useAgentSessionStore.getState()).toMatchObject({
+      sessions,
+      currentSession: emptySession,
+      error: 'fallback failed',
+    });
+
+    AgentSessionActions.acceptEvent(event({ ...secondSession, sequence: 1 }));
+    expect(useAgentSessionStore.getState().currentSession).toEqual(emptySession);
+  });
+
+  it('ignores a failed initial load after the user selects another Chat', async () => {
+    let rejectLoad!: (error: Error) => void;
+    const delayedLoad = new Promise<AgentSessionSnapshot>((_resolve, reject) => {
+      rejectLoad = reject;
+    });
+    const interceptor = {
+      listAgentSessions: vi.fn(async () => ({
+        currentSessionId: 'session-1',
+        sessions: [summary, secondSummary],
+      })),
+      getAgentSession: vi.fn(async () => delayedLoad),
+      selectAgentSession: vi.fn(async () => secondSession),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    const loading = AgentSessionActions.load().catch(() => undefined);
+    await vi.waitFor(() => expect(interceptor.getAgentSession).toHaveBeenCalledOnce());
+
+    await AgentSessionActions.select('session-2');
+    rejectLoad(new Error('stale load failed'));
+    await loading;
+
+    expect(useAgentSessionStore.getState()).toMatchObject({
+      currentSession: secondSession,
+      loading: false,
+      error: null,
+    });
+  });
+
+  it('ignores a failed gap reload after the user selects another Chat', async () => {
+    let rejectGap!: (error: Error) => void;
+    const gap = new Promise<AgentSessionSnapshot>((_resolve, reject) => {
+      rejectGap = reject;
+    });
+    const interceptor = {
+      getAgentSession: vi.fn(async () => gap),
+      selectAgentSession: vi.fn(async () => secondSession),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    useAgentSessionStore.setState({
+      sessions: { currentSessionId: 'session-1', sessions: [summary, secondSummary] },
+      currentSession: { ...emptySession, sequence: 2 },
+    });
+    AgentSessionActions.acceptEvent(event({ ...emptySession, sequence: 4 }));
+
+    await AgentSessionActions.select('session-2');
+    rejectGap(new Error('stale gap failed'));
+    await gap.catch(() => undefined);
+    await Promise.resolve();
+
+    expect(useAgentSessionStore.getState()).toMatchObject({
+      currentSession: secondSession,
+      error: null,
+    });
   });
 
   it('routes create, send, cancel and retry through one shared busy state', async () => {
