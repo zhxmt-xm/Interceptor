@@ -226,6 +226,7 @@
 	- 同一 work item 的契约文档、TDD Red、实现、Green、evidence 与完成状态在全部闭环后一起提交；不要为中间文档、测试骨架、Red 或 checkpoint 分别创建碎片 commit，除非用户明确要求保存中间进度。
 	- 每个 work item 的 commit 成功后必须立即 push 当前分支；不得在本地积攒多个 commit 后统一 push，除非用户明确要求暂缓推送。
 - **Before committing**
-	- Review the staged diff first.
+	- **禁止大规模 diff / review**：不得一次展开、读取或审查整仓、整批 staged changes 或大量文件的 diff；这会导致 VS Code 卡顿或崩溃。任何 diff 与 code review 都必须限制为单个文件或少量职责一致的文件，并逐批完成。
+	- 普通规模改动在提交前按单文件或小文件组 review staged diff。改动规模已经可能影响 VS Code 稳定时，完成可执行验证与文档同步后先提交并立即 push，再按明确路径逐文件或小组 review；发现问题后用聚焦的后续提交修正，禁止为了 review 重新展开完整 diff。
 	- Update `architecture/HANDOVER.md`, affected `architecture/*.md`, and `README.md` as applicable.
 	- Commit only after the documentation matches the change.
