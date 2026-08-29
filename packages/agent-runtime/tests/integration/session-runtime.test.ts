@@ -919,6 +919,51 @@ describe('AgentRuntime persistent Sessions', () => {
     await agentRuntime.stop();
   });
 
+  it('rejects a new Turn while Provider removal is reconciling Session bindings', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    const firstProviderId = await configureProvider(agentRuntime);
+    const fallbackVerification = await agentRuntime.testProviderConnection({
+      providerId: null,
+      kind: 'openai-compatible',
+      profileName: 'Fallback lab',
+      baseUrl: 'http://127.0.0.1:43123/v1',
+      modelId: 'fallback-model',
+      contextWindowTokens: 65_536,
+      maximumOutputTokens: 4_096,
+      credential: { action: 'remove' },
+    });
+    await agentRuntime.saveVerifiedProvider(fallbackVerification.verificationId);
+    const idleSession = await agentRuntime.createSession();
+    const activeSession = await agentRuntime.createSession();
+    let releaseAbort!: () => void;
+    let reportAbort!: () => void;
+    const abortGate = new Promise<void>((resolve) => {
+      releaseAbort = resolve;
+    });
+    const abortObserved = new Promise<void>((resolve) => {
+      reportAbort = resolve;
+    });
+    fixture.responses.push({
+      chunks: [],
+      waitForAbort: true,
+      abortGate,
+      onAbort: reportAbort,
+    });
+    await agentRuntime.sendMessage(activeSession.sessionId, 'hold removal');
+    const removal = agentRuntime.removeProvider(firstProviderId);
+    await abortObserved;
+
+    await expect(agentRuntime.sendMessage(idleSession.sessionId, 'must wait'))
+      .rejects.toThrow('Agent model configuration is changing.');
+    await agentRuntime.renameSession(idleSession.sessionId, 'Rename remains available');
+    releaseAbort();
+    await removal;
+    expect((await agentRuntime.getSession(idleSession.sessionId)).summary.title)
+      .toBe('Rename remains available');
+  });
+
   it('restores a saved Provider when its Session metadata cannot be reconciled', async () => {
     const fixture = await createFixture();
     const agentRuntime = fixture.createRuntime();
@@ -998,6 +1043,75 @@ describe('AgentRuntime persistent Sessions', () => {
     const afterRejected = await agentRuntime.getSession(session.sessionId);
     expect(afterRejected.items).toEqual(beforeRejected.items);
     await agentRuntime.stop();
+  });
+
+  it('recomputes the Context budget before each Model Call in a Tool loop', async () => {
+    const fixture = await createFixture();
+    const echo = {
+      descriptor: {
+        name: 'echo_large',
+        description: 'Return a large deterministic result.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      execute: async () => ({ ok: true as const, value: 'x'.repeat(160) }),
+    };
+    const agentRuntime = new AgentRuntime({
+      dataDirectory: fixture.root,
+      fetcher: fixture.fetcher as typeof fetch,
+      secureStore: fixture.secureStore,
+      tools: [echo],
+      createId: (() => {
+        let nextId = 1000;
+        return () => `tool-budget-${nextId++}`;
+      })(),
+      now: () => Date.parse('2026-08-29T00:00:00.000Z'),
+    });
+    fixture.runtimes.push(agentRuntime);
+    await agentRuntime.start();
+    const verification = await agentRuntime.testProviderConnection({
+      providerId: null,
+      kind: 'openai-compatible',
+      profileName: 'Tool budget',
+      baseUrl: 'http://127.0.0.1:43123/v1',
+      modelId: 'tool-budget-model',
+      contextWindowTokens: 1_024,
+      maximumOutputTokens: 800,
+      credential: { action: 'remove' },
+    });
+    await agentRuntime.saveVerifiedProvider(verification.verificationId);
+    fixture.requests.length = 0;
+    fixture.responses.length = 0;
+    fixture.responses.push(
+      {
+        chunks: [
+          sse({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-budget',
+                  type: 'function',
+                  function: { name: 'echo_large', arguments: '{}' },
+                }],
+              },
+            }],
+          }),
+          'data: [DONE]\n\n',
+        ],
+      },
+      {
+        chunks: [
+          sse({ choices: [{ delta: { content: 'complete' } }] }),
+          'data: [DONE]\n\n',
+        ],
+      },
+    );
+    const session = await agentRuntime.createSession();
+
+    await completeTurn(agentRuntime, session.sessionId, 'use the large tool result');
+
+    expect(fixture.requests).toHaveLength(2);
+    expect(fixture.requests[1]?.max_tokens).toBeLessThan(fixture.requests[0]?.max_tokens as number);
   });
 });
 

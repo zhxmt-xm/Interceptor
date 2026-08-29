@@ -94,6 +94,7 @@ export class AgentSessionService {
   #running = false;
   #acceptingCommands = false;
   #storageAvailable = false;
+  #modelConfigurationChanging = false;
 
   constructor(options: AgentSessionServiceOptions) {
     this.#sessionStore = new AgentSessionStore(options.dataDirectory, options.secureStore);
@@ -339,6 +340,17 @@ export class AgentSessionService {
     return { previousBindings };
   }
 
+  /** Block new model-bound commands while Provider metadata is being coordinated. */
+  beginModelConfigurationChange(): void {
+    this.#requireAcceptingCommands();
+    this.#modelConfigurationChanging = true;
+  }
+
+  /** Reopen model-bound commands after Provider coordination settles. */
+  endModelConfigurationChange(): void {
+    this.#modelConfigurationChanging = false;
+  }
+
   /** Restore exact model bindings when the coordinated Provider mutation fails. */
   restoreModelBindings(reconciliation: AgentSessionModelReconciliation): void {
     const replacements = reconciliation.previousBindings.map((binding) => {
@@ -372,6 +384,7 @@ export class AgentSessionService {
   /** Append one user Item and start a background Streaming Turn. */
   sendMessage(sessionId: string, contentInput: string): AgentTurnSnapshot {
     this.#requireAcceptingCommands();
+    this.#requireStableModelConfiguration();
     const content = contentInput.trim();
     if (content.length === 0 || content.length > 1_000_000) {
       throw new Error('Agent message must contain 1 to 1000000 characters.');
@@ -460,6 +473,7 @@ export class AgentSessionService {
   /** Retry one failed/cancelled Turn without duplicating its user Item. */
   retryTurn(turnId: string): AgentTurnSnapshot {
     this.#requireAcceptingCommands();
+    this.#requireStableModelConfiguration();
     const original = this.#findTurn(turnId);
     if (!['cancelled', 'failed'].includes(original.status)) {
       throw new Error('Only a cancelled or failed Agent Turn can be retried.');
@@ -1029,6 +1043,12 @@ export class AgentSessionService {
     this.#requireRunning();
     if (!this.#acceptingCommands) {
       throw new Error('Agent Session service is not accepting commands.');
+    }
+  }
+
+  #requireStableModelConfiguration(): void {
+    if (this.#modelConfigurationChanging) {
+      throw new Error('Agent model configuration is changing.');
     }
   }
 }

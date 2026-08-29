@@ -314,7 +314,14 @@ export class AgentRuntime {
 
   /** Serialize Provider mutations with their Session side effects. */
   #enqueueProviderMutation<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.#providerMutationTail.then(operation);
+    const result = this.#providerMutationTail.then(async () => {
+      this.#sessionService.beginModelConfigurationChange();
+      try {
+        return await operation();
+      } finally {
+        this.#sessionService.endModelConfigurationChange();
+      }
+    });
     this.#providerMutationTail = result.then(
       () => undefined,
       () => undefined,

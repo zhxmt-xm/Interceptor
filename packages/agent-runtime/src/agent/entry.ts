@@ -185,9 +185,10 @@ export class AgentRunLoop {
         {
           messages: [...progress.messages],
           tools: this.#toolDescriptors,
-          ...(progress.maxOutputTokens === undefined
-            ? {}
-            : { maxOutputTokens: progress.maxOutputTokens }),
+          maxOutputTokens: this.#requestMaxOutputTokens(
+            progress.messages,
+            progress.maxOutputTokens,
+          ),
         },
         progress.abortSignal,
       );
@@ -253,12 +254,20 @@ export class AgentRunLoop {
     let retryNumber = 0;
 
     while (true) {
+      let observedEvent = false;
       try {
-        return await this.#collectModelResponse(request, abortSignal);
+        return await this.#collectModelResponse(
+          request,
+          abortSignal,
+          () => {
+            observedEvent = true;
+          },
+        );
       } catch (error) {
         const retryPolicy = this.#modelRetryPolicy;
         if (!(error instanceof ModelCallError)
           || retryPolicy === undefined
+          || observedEvent
           || !isReplaySafeTransientModelError(error)
           || retryNumber >= retryPolicy.maxRetries) {
           throw error;
@@ -284,6 +293,7 @@ export class AgentRunLoop {
   async #collectModelResponse(
     request: ModelRequest,
     abortSignal: AbortSignal,
+    observeEvent: () => void,
   ): Promise<ModelResponse> {
     let content = '';
     let reasoningContent: string | undefined;
@@ -293,6 +303,7 @@ export class AgentRunLoop {
 
     for await (const event of this.#model.stream(request, { abortSignal })) {
       abortSignal.throwIfAborted();
+      observeEvent();
       if (completed) {
         throw new ModelProtocolError('Model stream emitted an event after response-completed.');
       }
@@ -330,6 +341,34 @@ export class AgentRunLoop {
       },
       ...(usage === undefined ? {} : { usage }),
     };
+  }
+
+  #requestMaxOutputTokens(
+    messages: readonly AgentMessage[],
+    requestedMaximum: number | undefined,
+  ): number {
+    const estimatedInputTokens = messages.reduce((total, message) => {
+      const contentBytes = message.role === 'assistant'
+        ? Buffer.byteLength(message.content)
+          + Buffer.byteLength(message.reasoningContent ?? '')
+          + Buffer.byteLength(JSON.stringify(message.toolCalls))
+        : message.role === 'tool'
+          ? Buffer.byteLength(message.content) + Buffer.byteLength(message.name)
+          : Buffer.byteLength(message.content);
+      return total + contentBytes + 64;
+    }, this.#toolDescriptors.length === 0
+      ? 0
+      : Buffer.byteLength(JSON.stringify(this.#toolDescriptors)));
+    const remainingContextTokens = this.#model.capabilities.contextWindowTokens
+      - estimatedInputTokens;
+    if (remainingContextTokens <= 0) {
+      throw new Error('Agent message exceeds the model Context Window.');
+    }
+    return Math.min(
+      requestedMaximum ?? this.#model.capabilities.maxOutputTokens,
+      this.#model.capabilities.maxOutputTokens,
+      remainingContextTokens,
+    );
   }
 
   /**

@@ -12,7 +12,10 @@ import {
 import { AgentRunLoop } from '../../src/agent/entry';
 import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
-type ModelAttempt = readonly ModelStreamEvent[] | Error;
+type ModelAttempt =
+  | readonly ModelStreamEvent[]
+  | Error
+  | { readonly events: readonly ModelStreamEvent[]; readonly error: Error };
 
 class AttemptModel implements ModelAdapter {
   readonly capabilities = TEST_MODEL_CAPABILITIES;
@@ -34,6 +37,10 @@ class AttemptModel implements ModelAdapter {
     }
     if (attempt instanceof Error) {
       throw attempt;
+    }
+    if ('events' in attempt) {
+      yield* attempt.events;
+      throw attempt.error;
     }
     yield* attempt;
   }
@@ -92,6 +99,34 @@ describe('AgentRuntime model retry', () => {
 
     expect(result.output).toBe('Recovered.');
     expect(model.requests).toHaveLength(2);
+  });
+
+  it('does not retry after any Model event has reached the observer', async () => {
+    const error = modelError('network_error');
+    const model = new AttemptModel([
+      {
+        events: [
+          { type: 'text-delta', delta: 'Visible once.' },
+          { type: 'usage', usage: { inputTokens: 12 } },
+        ],
+        error,
+      },
+      completedResponse('Duplicated response.'),
+    ]);
+    const onModelStreamEvent = vi.fn();
+    const agentRuntime = new AgentRunLoop({
+      model,
+      tools: [],
+      modelRetryPolicy: immediateRetryPolicy,
+      onModelStreamEvent,
+    });
+
+    await expect(agentRuntime.run({
+      messages: [{ role: 'user', content: 'Do not duplicate visible output.' }],
+    })).rejects.toBe(error);
+
+    expect(onModelStreamEvent).toHaveBeenCalledTimes(2);
+    expect(model.requests).toHaveLength(1);
   });
 
   it('does not repeat a completed tool when the following model call retries', async () => {

@@ -13,12 +13,16 @@ import { AgentRunLoop } from '../../src/agent/entry';
 import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
 class QueueModel implements ModelAdapter {
-  readonly capabilities = TEST_MODEL_CAPABILITIES;
+  readonly capabilities: ModelAdapter['capabilities'];
   readonly requests: ModelRequest[] = [];
   readonly #responses: ModelResponse[];
 
-  constructor(responses: ModelResponse[]) {
+  constructor(
+    responses: ModelResponse[],
+    capabilities: ModelAdapter['capabilities'] = TEST_MODEL_CAPABILITIES,
+  ) {
     this.#responses = [...responses];
+    this.capabilities = capabilities;
   }
 
   async *stream(request: ModelRequest): AsyncIterable<ModelStreamEvent> {
@@ -373,7 +377,10 @@ describe('AgentRunLoop', () => {
       { value: `value-${index + 1}` },
       `call-${index + 1}`,
     ));
-    const model = new QueueModel([...toolResponses, finalResponse('Finished.')]);
+    const model = new QueueModel(
+      [...toolResponses, finalResponse('Finished.')],
+      { ...TEST_MODEL_CAPABILITIES, contextWindowTokens: 10_000 },
+    );
     const agentRuntime = new AgentRunLoop({
       model,
       tools: [echo],
