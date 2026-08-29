@@ -1,0 +1,84 @@
+.usage {
+  position: relative;
+}
+
+.usage > button {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.usage > button:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.usage > button svg {
+  width: 11px;
+  height: 11px;
+}
+
+.popover {
+  position: absolute;
+  right: 0;
+  bottom: 29px;
+  z-index: 28;
+  width: 220px;
+  padding: 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .2);
+}
+
+.popover header,
+.popover dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.popover header {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 10.5px;
+}
+
+.popover header span {
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.popover dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.popover dt,
+.popover dd,
+.popover small {
+  margin: 0;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 11px;
+}
+
+.popover dd {
+  color: var(--text-2);
+}

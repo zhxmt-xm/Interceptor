@@ -1,0 +1,71 @@
+.modal {
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+
+.mask {
+  background: rgba(0, 0, 0, .36);
+  backdrop-filter: blur(2px);
+}
+
+.modalBody {
+  padding: 0;
+}
+
+.dialog {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+  padding: 16px;
+}
+
+.icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
+.icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.copy h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.copy p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.error {
+  color: var(--red);
+  font-size: 10px;
+}
+
+.dialog footer {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 5px;
+}

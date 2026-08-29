@@ -1,0 +1,11 @@
+.logo {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.active {
+  color: var(--accent);
+}

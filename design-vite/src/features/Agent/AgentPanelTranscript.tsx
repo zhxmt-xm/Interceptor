@@ -6,11 +6,11 @@ import styles from './AgentPanelTranscript.module.css';
 export function AgentPanelTranscript(): React.JSX.Element {
   const { state, updateState } = useDesignState();
   if (state.agentChat === 'new') {
-    return <div aria-label="Empty chat" className={styles.agentTranscriptScroll} />;
+    return <div aria-label="Empty chat" className={styles.agentTranscriptScroll} data-parity="agent-transcript" />;
   }
   const sent = state.agentChat === 'sent';
   return (
-    <div className={styles.agentTranscriptScroll}>
+    <div className={styles.agentTranscriptScroll} data-parity="agent-transcript">
       <div className={styles.agentTranscript}>
         <div className={styles.agentUserMessage}>
           {sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}

@@ -43,9 +43,10 @@
   height: 18px;
 }
 
-.empty > div {
+.emptyCopy {
   display: flex;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
   gap: 4px;
 }
@@ -62,4 +63,10 @@
   color: var(--text-2);
   font-size: 11px;
   line-height: 1.5;
+}
+
+.error {
+  margin-top: 10px;
+  color: var(--red);
+  font-size: 11px;
 }

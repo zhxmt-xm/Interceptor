@@ -73,6 +73,8 @@
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 9px;
+  font-weight: 400;
+  line-height: 11px;
 }
 
 .agentSessionUsagePopover dd {

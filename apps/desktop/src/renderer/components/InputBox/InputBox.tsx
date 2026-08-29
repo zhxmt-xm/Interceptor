@@ -13,9 +13,11 @@ export interface InputBoxProps {
   value?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
-  type?: 'text' | 'number';
+  type?: 'text' | 'number' | 'password';
   ariaLabel?: string;
   ariaInvalid?: boolean;
+  disabled?: boolean;
+  inputDataAttributes?: Readonly<Record<`data-${string}`, string>>;
   step?: number;
   parity?: string;
   automationId?: AutomationId;
@@ -35,6 +37,8 @@ export function InputBox({
   type = 'text',
   ariaLabel,
   ariaInvalid,
+  disabled,
+  inputDataAttributes,
   step,
   parity,
   automationId,
@@ -50,7 +54,9 @@ export function InputBox({
           placeholder={placeholder}
           aria-label={ariaLabel}
           aria-invalid={ariaInvalid}
+          disabled={disabled}
           data-automation-id={automationId}
+          {...inputDataAttributes}
           step={step}
           spellCheck={false}
           autoComplete="off"

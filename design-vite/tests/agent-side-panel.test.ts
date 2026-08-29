@@ -225,5 +225,5 @@ test('Failed turn exposes Retry and expandable Session usage', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Retry response' })).toBeVisible();
   await page.getByRole('button', { name: 'Session usage' }).click();
   await expect(panel).toContainText('47.2k tokens');
-  await expect(panel).toContainText('68% cache hit');
+  await expect(panel).toContainText('73.1% cache hit');
 });

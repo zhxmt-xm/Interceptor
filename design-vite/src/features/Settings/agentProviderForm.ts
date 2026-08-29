@@ -28,7 +28,7 @@ export function agentProviderForm(
     return {
       profileName: profile.profileName,
       baseUrl: profile.baseUrl,
-      apiKey: profile.apiKey,
+      apiKey: '',
       modelId: profile.modelId,
       contextWindow: profile.contextWindow,
       maximumOutput: profile.maximumOutput,
@@ -40,9 +40,10 @@ export function agentProviderForm(
 export function isAgentProviderFormComplete(
   form: AgentProviderForm,
   custom: boolean,
+  credentialConfigured = false,
 ): boolean {
   const requiredValues = custom
     ? [form.profileName, form.baseUrl, form.modelId, form.contextWindow, form.maximumOutput]
-    : [form.profileName, form.apiKey, form.modelId];
+    : [form.profileName, credentialConfigured ? 'configured' : form.apiKey, form.modelId];
   return requiredValues.every((value) => value.trim().length > 0);
 }

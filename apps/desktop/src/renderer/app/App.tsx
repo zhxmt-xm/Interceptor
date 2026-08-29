@@ -30,6 +30,8 @@ import {
   DiagnosticsStatusbar,
 } from '../features/diagnostics';
 import { AgentPanelToggle, AgentSidePanel } from '../features/agent';
+import { AgentModelsActions } from '../features/agent/data/agentModelsStore';
+import { AgentSessionActions } from '../features/agent/data/agentSessionStore';
 import {
   addBreakpointRule,
   addRequestRuleDraft,
@@ -146,6 +148,10 @@ export function App(): React.JSX.Element {
   useEffect(() => UpdateActions.subscribe(), []);
   useEffect(() => GitHubAuthActions.subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
+  useEffect(() => {
+    void AgentModelsActions.load().catch(() => undefined);
+  }, []);
+  useEffect(() => AgentSessionActions.subscribe(), []);
 
   useEffect(() => {
     if (!tlsPassthroughTarget) return undefined;

@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   DESKTOP_IPC_CHANNELS,
   CoreProcessStatus,
+  type AgentRuntimeEvent,
   type GitHubAuthStatus,
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
@@ -46,6 +47,48 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerEnableAll),
   disableAllAppContainers: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerDisableAll),
+  getAgentModels: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentModelsGet),
+  testAgentProviderConnection: (draft) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentProviderTest, draft),
+  saveVerifiedAgentProvider: (verificationId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentProviderSaveVerified, verificationId),
+  removeAgentProvider: (providerId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentProviderRemove, providerId),
+  setDefaultAgentModel: (providerId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentModelSetDefault, providerId),
+  listAgentSessions: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionsList),
+  createAgentSession: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionCreate),
+  selectAgentSession: (sessionId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionSelect, sessionId),
+  getAgentSession: (sessionId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionGet, sessionId),
+  renameAgentSession: (sessionId, title) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionRename, sessionId, title),
+  deleteAgentSession: (sessionId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionDelete, sessionId),
+  setAgentSessionModel: (sessionId, providerId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionSetModel, sessionId, providerId),
+  sendAgentMessage: (sessionId, content) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentMessageSend, sessionId, content),
+  cancelAgentTurn: (turnId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentTurnCancel, turnId),
+  retryAgentTurn: (turnId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentTurnRetry, turnId),
+  onAgentSessionEvent: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      agentRuntimeEvent: AgentRuntimeEvent,
+    ) => {
+      listener(agentRuntimeEvent);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.agentSessionEvent, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.agentSessionEvent, handler);
+    };
+  },
   getGitHubAuthStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthGetStatus),
   signInWithGitHub: () =>

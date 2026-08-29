@@ -1,0 +1,11 @@
+.menu {
+  min-width: 190px;
+}
+
+.menu :global(.ant-dropdown-menu-item-icon) {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  font-size: 15px;
+}

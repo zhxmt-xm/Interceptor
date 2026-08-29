@@ -1,6 +1,6 @@
 import { once } from 'node:events';
 import { execFile } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,10 +15,12 @@ import {
   type Page,
   type TestInfo,
 } from '@playwright/test';
+import extract from 'extract-zip';
 
 import { AUTOMATION_IDS } from '../../../src/shared/automation-ids';
 import { getByAutomationId } from './automation';
 import { LoopbackLab } from './loopback-lab';
+import { OpenAiCompatibleLab } from './openai-compatible-lab';
 import { WebSocketLab } from './websocket-lab';
 
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -32,6 +34,8 @@ interface LocalWorkflowFixtures {
   loopbackLab: LoopbackLab;
   /** Random-port WebSocket origin and explicit-proxy clients owned by this test. */
   webSocketLab: WebSocketLab;
+  /** Random-port OpenAI-compatible endpoint owned by Agent workflows. */
+  openAiCompatibleLab: OpenAiCompatibleLab;
 }
 
 interface DesktopWindowState {
@@ -73,6 +77,12 @@ export class LocalElectronApplicationDriver {
   /** Renderer console and page errors retained as bounded diagnostic evidence. */
   private rendererOutput = '';
 
+  /** Sensitive test values checked against every process-log chunk before truncation. */
+  private readonly sensitiveEvidenceTexts = new Set<string>();
+
+  /** Whether any registered sensitive value appeared in process-log evidence. */
+  private sensitiveTextFoundInProcessOutput = false;
+
   /** Core PID observed while the application is running. */
   private corePid: number | null = null;
 
@@ -81,6 +91,9 @@ export class LocalElectronApplicationDriver {
 
   /** Whether the BrowserContext trace is still recording. */
   private traceActive = true;
+
+  /** Final trace archives available after each stopTrace segment completes. */
+  private readonly tracePaths: string[] = [];
 
   /** Whether Electron has emitted its terminal close event. */
   private applicationClosed = false;
@@ -224,6 +237,14 @@ export class LocalElectronApplicationDriver {
       .filter((line) => line.startsWith('[renderer:pageerror]'));
   }
 
+  /** Register one runtime-generated sensitive value before it enters the application. */
+  registerSensitiveTextForEvidenceAudit(sensitiveText: string): void {
+    this.sensitiveEvidenceTexts.add(sensitiveText);
+    if (this.mainOutput.includes(sensitiveText) || this.rendererOutput.includes(sensitiveText)) {
+      this.sensitiveTextFoundInProcessOutput = true;
+    }
+  }
+
   /** Read the primary BrowserWindow state from Electron Main for UI assertions. */
   async windowState(): Promise<DesktopWindowState> {
     return this.application.evaluate(({ BrowserWindow }) => {
@@ -304,18 +325,75 @@ export class LocalElectronApplicationDriver {
     });
   }
 
+  /** Resume BrowserContext tracing after a deliberate sensitive-input interval. */
+  async startTrace(testInfo: TestInfo): Promise<void> {
+    if (this.traceActive) {
+      throw new Error('BrowserContext trace is already active.');
+    }
+    await this.context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: true,
+      title: this.evidencePrefix
+        ? `${testInfo.title} · ${this.evidencePrefix}`
+        : testInfo.title,
+    });
+    this.traceActive = true;
+  }
+
   /** Stop and attach the always-retained BrowserContext trace for this workflow. */
   async stopTrace(testInfo: TestInfo): Promise<void> {
     if (!this.traceActive) {
       return;
     }
     this.traceActive = false;
-    const tracePath = testInfo.outputPath(this.evidenceName('trace.zip'));
+    const segment = this.tracePaths.length + 1;
+    const tracePath = testInfo.outputPath(this.evidenceName(
+      segment === 1 ? 'trace.zip' : `trace-${segment}.zip`,
+    ));
     await this.context.tracing.stop({ path: tracePath });
-    await testInfo.attach(this.evidenceName('playwright-trace'), {
+    this.tracePaths.push(tracePath);
+    await testInfo.attach(this.evidenceName(
+      segment === 1 ? 'playwright-trace' : `playwright-trace-${segment}`,
+    ), {
       path: tracePath,
       contentType: 'application/zip',
     });
+  }
+
+  /** Prove that one sensitive value is absent from trace and process-log evidence. */
+  async assertSensitiveTextAbsentFromEvidence(sensitiveText: string): Promise<void> {
+    if (this.tracePaths.length === 0) {
+      throw new Error('Trace must be stopped before sensitive evidence is audited.');
+    }
+    if (this.sensitiveTextFoundInProcessOutput
+      || this.mainOutput.includes(sensitiveText)
+      || this.rendererOutput.includes(sensitiveText)) {
+      throw new Error('Sensitive text was found in process-log evidence.');
+    }
+
+    const extractionDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-trace-audit-'));
+    try {
+      const sensitiveBytes = Buffer.from(sensitiveText, 'utf8');
+      for (const [index, tracePath] of this.tracePaths.entries()) {
+        const segmentDirectory = path.join(extractionDirectory, String(index));
+        await mkdir(segmentDirectory);
+        await extract(tracePath, { dir: segmentDirectory });
+        const entries = await readdir(segmentDirectory, {
+          recursive: true,
+          withFileTypes: true,
+        });
+        for (const entry of entries) {
+          if (!entry.isFile()) continue;
+          const bytes = await readFile(path.join(entry.parentPath, entry.name));
+          if (bytes.includes(sensitiveBytes)) {
+            throw new Error('Sensitive text was found in Playwright trace evidence.');
+          }
+        }
+      }
+    } finally {
+      await rm(extractionDirectory, { force: true, recursive: true });
+    }
   }
 
   /** Request normal application shutdown and prove Main, Core and listener cleanup. */
@@ -398,7 +476,9 @@ export class LocalElectronApplicationDriver {
   /** Collect bounded stdout/stderr and Electron Main console output. */
   private captureProcessOutput(): void {
     const append = (value: string): void => {
-      this.mainOutput = `${this.mainOutput}${value}`.slice(-128_000);
+      const output = `${this.mainOutput}${value}`;
+      this.recordSensitiveTextMatch(output);
+      this.mainOutput = output.slice(-128_000);
     };
     this.application.process().stdout?.on('data', (chunk: Buffer | string) => {
       append(chunk.toString());
@@ -414,7 +494,9 @@ export class LocalElectronApplicationDriver {
   /** Collect bounded Renderer console output and uncaught page errors. */
   private captureRendererOutput(): void {
     const append = (value: string): void => {
-      this.rendererOutput = `${this.rendererOutput}${value}`.slice(-128_000);
+      const output = `${this.rendererOutput}${value}`;
+      this.recordSensitiveTextMatch(output);
+      this.rendererOutput = output.slice(-128_000);
     };
     this.page.on('console', (message) => {
       append(`[renderer:${message.type()}] ${message.text()}\n`);
@@ -422,6 +504,13 @@ export class LocalElectronApplicationDriver {
     this.page.on('pageerror', (error) => {
       append(`[renderer:pageerror] ${error.stack ?? error.message}\n`);
     });
+  }
+
+  /** Record a sensitive match before bounded evidence drops older output. */
+  private recordSensitiveTextMatch(output: string): void {
+    if ([...this.sensitiveEvidenceTexts].some((sensitiveText) => output.includes(sensitiveText))) {
+      this.sensitiveTextFoundInProcessOutput = true;
+    }
   }
 
   /** Prefix one evidence filename or attachment without changing initial-run names. */
@@ -603,6 +692,14 @@ export const test = base.extend<LocalWorkflowFixtures>({
       await use(webSocketLab);
     } finally {
       await webSocketLab.close();
+    }
+  },
+  openAiCompatibleLab: async ({}, use) => {
+    const openAiCompatibleLab = await OpenAiCompatibleLab.start();
+    try {
+      await use(openAiCompatibleLab);
+    } finally {
+      await openAiCompatibleLab.close();
     }
   },
 });

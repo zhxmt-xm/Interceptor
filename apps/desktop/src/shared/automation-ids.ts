@@ -366,6 +366,57 @@ export const AUTOMATION_IDS = {
     configure: 'agent.configure',
     chat: {
       new: 'agent.chat.new',
+      selector: 'agent.chat.selector',
+      menu: 'agent.chat.menu',
+      rename: 'agent.chat.rename',
+      delete: 'agent.chat.delete',
+      dialog: 'agent.chat.dialog',
+      title: 'agent.chat.title',
+      confirm: 'agent.chat.confirm',
+      cancel: 'agent.chat.cancel',
+    },
+    session: {
+      root: 'agent.session.root',
+      transcript: 'agent.session.transcript',
+    },
+    message: {
+      input: 'agent.message.input',
+      send: 'agent.message.send',
+    },
+    turn: {
+      stop: 'agent.turn.stop',
+      retry: 'agent.turn.retry',
+    },
+    usage: {
+      toggle: 'agent.usage.toggle',
+      panel: 'agent.usage.panel',
+    },
+    context: 'agent.context',
+    reasoning: 'agent.reasoning',
+    models: {
+      list: 'agent.models.list',
+      add: 'agent.models.add',
+      addDeepSeek: 'agent.models.add.deepseek',
+      addCustom: 'agent.models.add.openai-compatible',
+    },
+    provider: {
+      dialog: 'agent.provider.dialog',
+      profileName: 'agent.provider.profile-name',
+      baseUrl: 'agent.provider.base-url',
+      apiKey: 'agent.provider.api-key',
+      removeApiKey: 'agent.provider.remove-api-key',
+      modelId: 'agent.provider.model-id',
+      contextWindow: 'agent.provider.context-window',
+      maximumOutput: 'agent.provider.maximum-output',
+      testConnection: 'agent.provider.test-connection',
+      connectionStatus: 'agent.provider.connection-status',
+      save: 'agent.provider.save',
+      cancel: 'agent.provider.cancel',
+    },
+    removeProvider: {
+      dialog: 'agent.remove-provider.dialog',
+      confirm: 'agent.remove-provider.confirm',
+      cancel: 'agent.remove-provider.cancel',
     },
   },
   settings: {
@@ -694,6 +745,31 @@ export class AutomationIdFactory {
   /** Identify one diagnostics command row by its aggregate trace key. */
   static diagnosticRow(traceKey: string): string {
     return `${AUTOMATION_ID_PREFIXES.diagnosticRow}${traceKey}`;
+  }
+
+  /** Identify one configured Agent model row. */
+  static agentModelRow(providerId: string): string {
+    return `agent.model.row.${providerId}`;
+  }
+
+  /** Identify the edit command owned by one Agent model. */
+  static agentModelEdit(providerId: string): string {
+    return `agent.model.edit.${providerId}`;
+  }
+
+  /** Identify the remove command owned by one Agent model. */
+  static agentModelRemove(providerId: string): string {
+    return `agent.model.remove.${providerId}`;
+  }
+
+  /** Identify the set-default command owned by one Agent model. */
+  static agentModelSetDefault(providerId: string): string {
+    return `agent.model.set-default.${providerId}`;
+  }
+
+  /** Identify one Chat option in the Agent Session selector. */
+  static agentSessionOption(sessionId: string): string {
+    return `agent.session.option.${sessionId}`;
   }
 
   /** Identify removal of one configured TLS exception host. */

@@ -36,6 +36,23 @@ test('Unconfigured Agent settings shows an honest empty model state', async ({ p
   await expect(settings).not.toContainText('Qwen3 Max');
 });
 
+test('Add provider chooses a Provider type before opening its dialog', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'unconfigured',
+    agentProviderDialog: '',
+  }));
+
+  await page.getByRole('button', { name: 'Add provider' }).click();
+
+  const menu = page.getByRole('menu', { name: 'Provider types' });
+  await expect(menu).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await menu.getByRole('menuitem', { name: 'DeepSeek' }).click();
+  await expect(page.getByRole('dialog', { name: 'DeepSeek' })).toBeVisible();
+});
+
 test('Unconfigured Agent panel routes to Agent settings without closing itself', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
@@ -132,7 +149,7 @@ test('Provider rows open and close their owning configuration dialog', async ({ 
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button', { name: 'Save changes' })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit DeepSeek V4 Flash' })).toBeFocused();
@@ -189,6 +206,7 @@ test('Adding a Custom provider requires a successful connection test before Save
     agentProviderDialog: '',
   }));
   await page.getByRole('button', { name: 'Add provider' }).click();
+  await page.getByRole('menuitem', { name: 'OpenAI-compatible' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'OpenAI-compatible provider' });
   const save = dialog.getByRole('button', { name: 'Save provider' });
@@ -225,7 +243,7 @@ test('Editing the Qwen compatible profile opens its populated configuration', as
   await expect(dialog.getByLabel('Profile name')).toHaveValue('Qwen');
   await expect(dialog.getByLabel('Model ID')).toHaveValue('qwen3-max');
   const save = dialog.getByRole('button', { name: 'Save changes' });
-  await expect(save).toBeEnabled();
+  await expect(save).toBeDisabled();
   await dialog.getByLabel('Profile name').fill('Qwen gateway');
   await dialog.getByLabel('Model ID').fill('qwen3-coder');
   await dialog.getByRole('button', { name: 'Test connection' }).click();
@@ -236,7 +254,29 @@ test('Editing the Qwen compatible profile opens its populated configuration', as
   await expect(qwenModel).toContainText('qwen3-coder');
 });
 
-test('Editing DeepSeek invalidates verification until the connection is tested again', async ({ page }) => {
+test('Editing a Custom provider can explicitly remove its saved API key', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProviderDialog: '',
+  }));
+  await page.getByRole('button', { name: 'Edit Qwen3 Max' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'OpenAI-compatible provider' });
+  const removeKey = dialog.getByRole('checkbox', { name: 'Remove saved API key' });
+  const apiKey = dialog.getByRole('textbox', { name: 'API key', exact: true });
+  await expect(removeKey).not.toBeChecked();
+  await removeKey.check();
+  await expect(apiKey).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+
+  await dialog.getByRole('button', { name: 'Test connection' }).click();
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+
+  await expect(page.locator('[data-configured-model="qwen"]')).toContainText('No API key');
+});
+
+test('Editing DeepSeek requires a connection test before changes can be saved', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'settings',
     settings: 'agent',
@@ -247,7 +287,7 @@ test('Editing DeepSeek invalidates verification until the connection is tested a
 
   const dialog = page.getByRole('dialog', { name: 'DeepSeek' });
   const save = dialog.getByRole('button', { name: 'Save changes' });
-  await expect(save).toBeEnabled();
+  await expect(save).toBeDisabled();
   await dialog.getByLabel('Model ID').fill('deepseek-chat');
   await expect(save).toBeDisabled();
   await dialog.getByRole('button', { name: 'Test connection' }).click();
@@ -264,6 +304,7 @@ test('Known providers use mapped brand logos and Custom uses the unknown fallbac
   await expect(page.locator('[data-provider-brand="deepseek"]')).not.toHaveCount(0);
   await expect(page.locator('[data-provider-brand="qwen"]')).not.toHaveCount(0);
   await page.getByRole('button', { name: 'Add provider' }).click();
+  await page.getByRole('menuitem', { name: 'OpenAI-compatible' }).click();
   await expect(page.locator('[data-parity="model-provider-dialog"] [data-provider-brand="unknown"]'))
     .toHaveCount(1);
 });

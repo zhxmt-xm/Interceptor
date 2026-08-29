@@ -1,0 +1,108 @@
+.menu {
+  position: absolute;
+  top: 38px;
+  left: 38px;
+  z-index: 30;
+  width: 238px;
+  padding: 6px;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+}
+
+.item {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--hover);
+}
+
+.item:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.item > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.item > svg:last-child {
+  color: var(--accent);
+}
+
+.item > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item strong,
+.item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item strong {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.item small {
+  color: var(--text-3);
+  font-size: 9px;
+}
+
+.actions {
+  display: grid;
+  gap: 2px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+}
+
+.actions button {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: var(--hover);
+}
+
+.actions button:last-child {
+  color: var(--red);
+}
+
+.actions svg {
+  width: 13px;
+  height: 13px;
+}

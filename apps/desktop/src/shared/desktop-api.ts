@@ -41,6 +41,16 @@ import type {
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
+import type {
+  AgentModelSummary,
+  AgentModelsSnapshot,
+  AgentProviderDraft,
+  AgentProviderVerification,
+  AgentRuntimeEvent,
+  AgentSessionSnapshot,
+  AgentSessionsSnapshot,
+  AgentTurnSnapshot,
+} from '@interceptor/agent-runtime';
 
 export {
   BODY_PREVIEW_MAX_BYTES,
@@ -50,6 +60,14 @@ export {
 } from '@interceptor/core-protocol';
 
 export type {
+  AgentModelSummary,
+  AgentModelsSnapshot,
+  AgentProviderDraft,
+  AgentProviderVerification,
+  AgentRuntimeEvent,
+  AgentSessionSnapshot,
+  AgentSessionsSnapshot,
+  AgentTurnSnapshot,
   BreakpointEdit,
   BreakpointQueueKey,
   CaptureBodyRef,
@@ -463,6 +481,22 @@ export const DESKTOP_IPC_CHANNELS = {
   appContainerSetExemption: 'app-container:set-exemption',
   appContainerEnableAll: 'app-container:enable-all',
   appContainerDisableAll: 'app-container:disable-all',
+  agentModelsGet: 'agent-models:get',
+  agentProviderTest: 'agent-provider:test',
+  agentProviderSaveVerified: 'agent-provider:save-verified',
+  agentProviderRemove: 'agent-provider:remove',
+  agentModelSetDefault: 'agent-model:set-default',
+  agentSessionsList: 'agent-sessions:list',
+  agentSessionCreate: 'agent-session:create',
+  agentSessionSelect: 'agent-session:select',
+  agentSessionGet: 'agent-session:get',
+  agentSessionRename: 'agent-session:rename',
+  agentSessionDelete: 'agent-session:delete',
+  agentSessionSetModel: 'agent-session:set-model',
+  agentMessageSend: 'agent-message:send',
+  agentTurnCancel: 'agent-turn:cancel',
+  agentTurnRetry: 'agent-turn:retry',
+  agentSessionEvent: 'agent-session:event',
   githubAuthGetStatus: 'github-auth:get-status',
   githubAuthSignIn: 'github-auth:sign-in',
   githubAuthOpenAuthorization: 'github-auth:open-authorization',
@@ -549,6 +583,24 @@ export interface InterceptorDesktopApi {
   ): Promise<AppContainerAccessSnapshot>;
   enableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
   disableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
+  getAgentModels(): Promise<AgentModelsSnapshot>;
+  testAgentProviderConnection(
+    draft: AgentProviderDraft,
+  ): Promise<AgentProviderVerification>;
+  saveVerifiedAgentProvider(verificationId: string): Promise<AgentModelsSnapshot>;
+  removeAgentProvider(providerId: string): Promise<AgentModelsSnapshot>;
+  setDefaultAgentModel(providerId: string): Promise<AgentModelsSnapshot>;
+  listAgentSessions(): Promise<AgentSessionsSnapshot>;
+  createAgentSession(): Promise<AgentSessionSnapshot>;
+  selectAgentSession(sessionId: string): Promise<AgentSessionSnapshot>;
+  getAgentSession(sessionId: string): Promise<AgentSessionSnapshot>;
+  renameAgentSession(sessionId: string, title: string): Promise<AgentSessionSnapshot>;
+  deleteAgentSession(sessionId: string): Promise<AgentSessionsSnapshot>;
+  setAgentSessionModel(sessionId: string, providerId: string): Promise<AgentSessionSnapshot>;
+  sendAgentMessage(sessionId: string, content: string): Promise<AgentTurnSnapshot>;
+  cancelAgentTurn(turnId: string): Promise<AgentTurnSnapshot>;
+  retryAgentTurn(turnId: string): Promise<AgentTurnSnapshot>;
+  onAgentSessionEvent(listener: (event: AgentRuntimeEvent) => void): () => void;
   getGitHubAuthStatus(): Promise<GitHubAuthStatus>;
   signInWithGitHub(): Promise<GitHubAuthStatus>;
   openGitHubAuthorization(): Promise<void>;

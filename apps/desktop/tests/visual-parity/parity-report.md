@@ -1,17 +1,17 @@
 # Visual Parity Report
 
-Generated: 2026-08-29T06:56:40.495Z
+Generated: 2026-08-29T11:25:47.511Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 146 |
-| Average pixel diff | 1.93% |
-| Targets | 1022 |
-| Matched | 992 |
-| Missing | 30 |
+| Views checked | 178 |
+| Average pixel diff | 1.97% |
+| Targets | 1240 |
+| Matched | 1206 |
+| Missing | 34 |
 | Flagged | 304 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
@@ -21,10 +21,42 @@ Generated: 2026-08-29T06:56:40.495Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
-| agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured | 0.72% | 7 | 7 | 0 | 0 | 0.4 px |
+| agent-panel-unconfigured | 1.98% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-chat | 2.89% | 9 | 9 | 0 | 0 | 0.1 px |
+| agent-panel-new-chat | 1.99% | 6 | 6 | 0 | 0 | 0.4 px |
+| agent-panel-turn-running | 2.22% | 6 | 6 | 0 | 0 | 0.1 px |
+| agent-panel-turn-stopped | 2.25% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-usage | 2.56% | 4 | 4 | 0 | 0 | 0.1 px |
+| agent-panel-chat-menu | 2.41% | 5 | 5 | 0 | 0 | 0.1 px |
+| agent-panel-model-menu | 2.61% | 5 | 5 | 0 | 0 | 0.5 px |
+| agent-panel-rename-chat | 2.11% | 4 | 4 | 0 | 0 | 0.5 px |
+| agent-panel-delete-chat | 2.17% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-unconfigured | 0.74% | 8 | 8 | 0 | 0 | 0.4 px |
+| settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
+| settings-agent-configured | 0.90% | 11 | 11 | 0 | 0 | 0.6 px |
+| settings-agent-custom-dialog | 3.54% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog | 3.46% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog | 3.50% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider | 3.16% | 4 | 4 | 0 | 0 | 0.7 px |
 | agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured-dark | 0.72% | 7 | 7 | 0 | 0 | 0.4 px |
+| agent-panel-chat-dark | 2.91% | 9 | 9 | 0 | 0 | 0.1 px |
+| agent-panel-new-chat-dark | 1.97% | 6 | 6 | 0 | 0 | 0.4 px |
+| agent-panel-turn-running-dark | 2.20% | 6 | 6 | 0 | 0 | 0.1 px |
+| agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-usage-dark | 2.55% | 4 | 4 | 0 | 0 | 0.1 px |
+| agent-panel-chat-menu-dark | 2.39% | 5 | 5 | 0 | 0 | 0.1 px |
+| agent-panel-model-menu-dark | 2.60% | 5 | 5 | 0 | 0 | 0.5 px |
+| agent-panel-rename-chat-dark | 1.93% | 4 | 4 | 0 | 0 | 0.5 px |
+| agent-panel-delete-chat-dark | 1.97% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-unconfigured-dark | 0.73% | 8 | 8 | 0 | 0 | 0.4 px |
+| settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
+| settings-agent-configured-dark | 0.89% | 11 | 11 | 0 | 0 | 0.6 px |
+| settings-agent-custom-dialog-dark | 0.91% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 0.85% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog-dark | 0.92% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider-dark | 0.76% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 2.49% | 10 | 10 | 0 | 6 | 3.0 px |
@@ -49,10 +81,10 @@ Generated: 2026-08-29T06:56:40.495Z
 | breakpoint-response-body-file-dark | 2.79% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 2.53% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu-dark | 2.46% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
 | statusbar-upstream-down | 1.80% | 1 | 1 | 0 | 0 | 0.5 px |
 | statusbar-upstream-down-dark | 1.79% | 1 | 1 | 0 | 0 | 0.5 px |
@@ -130,8 +162,8 @@ Generated: 2026-08-29T06:56:40.495Z
 | settings-app-container-enable-all-dark | 0.34% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
 | tls-compatibility-dialog-add | 1.13% | 2 | 2 | 0 | 0 | 0.4 px |
-| settings-tls-passthrough | 1.11% | 9 | 9 | 0 | 2 | 1.1 px |
-| settings-tls-passthrough-dark | 1.10% | 9 | 9 | 0 | 2 | 1.1 px |
+| settings-tls-passthrough | 1.11% | 9 | 7 | 2 | 2 | 131.2 px |
+| settings-tls-passthrough-dark | 1.10% | 9 | 7 | 2 | 2 | 131.2 px |
 | tls-compatibility-dialog | 0.76% | 8 | 8 | 0 | 1 | 1.7 px |
 | tls-compatibility-dialog-dark | 0.29% | 8 | 8 | 0 | 1 | 1.7 px |
 | settings-updates-checking | 1.59% | 13 | 13 | 0 | 3 | 13.8 px |
@@ -217,13 +249,122 @@ Generated: 2026-08-29T06:56:40.495Z
 | agent-panel-unconfigured | Connect a model to start | 0.3 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | agent-panel-unconfigured | Add a hosted provider or connect an OpenAI-compatible local model. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-unconfigured | Configure Agent | 0.3 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| agent-panel-chat | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Agent model selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Agent Context usage | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Chat selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Help me diagnose repeated 401 responses after token refresh. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-new-chat | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat | Agent send | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat | New chat | 0.0 px | -0.1 px | -0.4 px | 0.1 px | 0.4 px | none | ok |
+| agent-panel-new-chat | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-turn-running | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running | Generating response… | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-turn-stopped | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped | Response stopped | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped | Retry response | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Model request failed | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed | Retry response | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage | Session usage popover | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-usage | Cache hit | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage | Cache miss | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage | Output | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu | Chat menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu | Checkout failures | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-chat-menu | New chat | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-chat-menu | Rename current chat | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu | Delete current chat | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-model-menu | Model menu | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-model-menu | Model for this chat | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-model-menu | DeepSeek V4 Flash | 0.0 px | 0.5 px | 0.0 px | -0.1 px | 0.5 px | none | ok |
+| agent-panel-model-menu | Qwen3 Max | 0.0 px | 0.5 px | 0.0 px | -0.1 px | 0.5 px | none | ok |
+| agent-panel-model-menu | Agent settings… | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rename-chat | Chat dialog | -0.5 px | 0.0 px | 0.0 px | -0.3 px | 0.5 px | none | ok |
+| agent-panel-rename-chat | Rename chat | -0.5 px | 0.0 px | 0.0 px | -0.3 px | 0.5 px | none | ok |
+| agent-panel-rename-chat | Cancel | 0.3 px | -0.3 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| agent-panel-rename-chat | Save chat title | 0.0 px | -0.3 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| agent-panel-delete-chat | Chat dialog | -0.7 px | 0.0 px | 0.0 px | -0.3 px | 0.7 px | none | ok |
+| agent-panel-delete-chat | Delete chat? | -0.7 px | 0.0 px | 0.0 px | -0.3 px | 0.7 px | none | ok |
+| agent-panel-delete-chat | Cancel | 0.3 px | -0.3 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| agent-panel-delete-chat | Confirm delete chat | 0.0 px | -0.3 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | settings-agent-unconfigured | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-unconfigured | Agent settings empty state | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-unconfigured | Agent settings empty icon | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| settings-agent-unconfigured | Agent settings empty copy | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
+| settings-agent-unconfigured | Agent settings empty copy | 0.0 px | 0.1 px | 0.4 px | -0.3 px | 0.4 px | none | ok |
 | settings-agent-unconfigured | Configure model providers and defaults used by Agent. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-agent-unconfigured | No models configured | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
+| settings-agent-unconfigured | No models configured | 0.0 px | 0.1 px | 0.4 px | -0.3 px | 0.4 px | none | ok |
 | settings-agent-unconfigured | Add a hosted provider or connect an OpenAI-compatible local model to start a chat. | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-unconfigured | Add provider | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-provider-menu | Provider type menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-provider-menu | DeepSeek menu item | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-provider-menu | Custom menu item | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | Configured models section | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | Configured models header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | DeepSeek model row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | Custom model row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | Configured models | 0.0 px | 0.0 px | 0.4 px | 0.1 px | 0.4 px | none | ok |
+| settings-agent-configured | DeepSeek V4 Flash | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
+| settings-agent-configured | Qwen3 Max | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
+| settings-agent-configured | Add provider | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-configured | Default | 0.4 px | 0.0 px | -0.3 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-configured | Set default | 0.5 px | 0.0 px | -0.3 px | 0.0 px | 0.5 px | none | ok |
+| settings-agent-custom-dialog | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Provider dialog header | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-custom-dialog | Provider field control | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog | OpenAI-compatible provider | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Profile name | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Base URL | 0.0 px | -0.3 px | 0.0 px | -0.1 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog | API key | 0.0 px | 0.3 px | 0.0 px | -0.1 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog | Model ID | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog | Context window | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-custom-dialog | Maximum output | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-custom-dialog | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-custom-dialog | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-custom-dialog | Save provider | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog header | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog body | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog footer | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-agent-deepseek-dialog | DeepSeek | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Profile name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Endpoint | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | API key | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Model ID | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog | Test connection | 0.0 px | -0.3 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-deepseek-dialog | Cancel | 0.7 px | -0.3 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog | Save changes | 0.4 px | -0.3 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-custom-edit-dialog | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-custom-edit-dialog | Remove key checkbox | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog | Remove saved API key | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-custom-edit-dialog | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-custom-edit-dialog | Save changes | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-remove-provider | Remove Provider dialog | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-agent-remove-provider | Remove Qwen3 Max | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-agent-remove-provider | Existing chats using this model will switch to the next configured model. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-remove-provider | Confirm remove model | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | agent-panel-unconfigured-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-unconfigured-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-unconfigured-dark | Agent unconfigured state | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -232,13 +373,122 @@ Generated: 2026-08-29T06:56:40.495Z
 | agent-panel-unconfigured-dark | Connect a model to start | 0.3 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | agent-panel-unconfigured-dark | Add a hosted provider or connect an OpenAI-compatible local model. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-unconfigured-dark | Configure Agent | 0.3 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| agent-panel-chat-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Agent model selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Agent Context usage | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Chat selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Help me diagnose repeated 401 responses after token refresh. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-dark | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-new-chat-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat-dark | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat-dark | Agent send | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-new-chat-dark | New chat | 0.0 px | -0.1 px | -0.4 px | 0.1 px | 0.4 px | none | ok |
+| agent-panel-new-chat-dark | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-turn-running-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running-dark | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running-dark | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running-dark | Generating response… | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-running-dark | Session usage | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-turn-stopped-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped-dark | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped-dark | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped-dark | Response stopped | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-stopped-dark | Retry response | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Agent transcript | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Explain invalid_grant. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Model request failed | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-turn-failed-dark | Retry response | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage-dark | Session usage popover | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-usage-dark | Cache hit | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage-dark | Cache miss | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-usage-dark | Output | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu-dark | Chat menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu-dark | Checkout failures | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-chat-menu-dark | New chat | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| agent-panel-chat-menu-dark | Rename current chat | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-chat-menu-dark | Delete current chat | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-model-menu-dark | Model menu | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-model-menu-dark | Model for this chat | 0.0 px | -0.1 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
+| agent-panel-model-menu-dark | DeepSeek V4 Flash | 0.0 px | 0.5 px | 0.0 px | -0.1 px | 0.5 px | none | ok |
+| agent-panel-model-menu-dark | Qwen3 Max | 0.0 px | 0.5 px | 0.0 px | -0.1 px | 0.5 px | none | ok |
+| agent-panel-model-menu-dark | Agent settings… | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rename-chat-dark | Chat dialog | -0.5 px | 0.0 px | 0.0 px | -0.3 px | 0.5 px | none | ok |
+| agent-panel-rename-chat-dark | Rename chat | -0.5 px | 0.0 px | 0.0 px | -0.3 px | 0.5 px | none | ok |
+| agent-panel-rename-chat-dark | Cancel | 0.3 px | -0.3 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| agent-panel-rename-chat-dark | Save chat title | 0.0 px | -0.3 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| agent-panel-delete-chat-dark | Chat dialog | -0.7 px | 0.0 px | 0.0 px | -0.3 px | 0.7 px | none | ok |
+| agent-panel-delete-chat-dark | Delete chat? | -0.7 px | 0.0 px | 0.0 px | -0.3 px | 0.7 px | none | ok |
+| agent-panel-delete-chat-dark | Cancel | 0.3 px | -0.3 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| agent-panel-delete-chat-dark | Confirm delete chat | 0.0 px | -0.3 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | settings-agent-unconfigured-dark | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-unconfigured-dark | Agent settings empty state | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-unconfigured-dark | Agent settings empty icon | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| settings-agent-unconfigured-dark | Agent settings empty copy | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
+| settings-agent-unconfigured-dark | Agent settings empty copy | 0.0 px | 0.1 px | 0.4 px | -0.3 px | 0.4 px | none | ok |
 | settings-agent-unconfigured-dark | Configure model providers and defaults used by Agent. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-agent-unconfigured-dark | No models configured | 0.0 px | 0.1 px | 0.0 px | -0.3 px | 0.3 px | none | ok |
+| settings-agent-unconfigured-dark | No models configured | 0.0 px | 0.1 px | 0.4 px | -0.3 px | 0.4 px | none | ok |
 | settings-agent-unconfigured-dark | Add a hosted provider or connect an OpenAI-compatible local model to start a chat. | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-unconfigured-dark | Add provider | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-provider-menu-dark | Provider type menu | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-provider-menu-dark | DeepSeek menu item | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-provider-menu-dark | Custom menu item | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | Configured models section | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | Configured models header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | DeepSeek model row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | Custom model row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | Configured models | 0.0 px | 0.0 px | 0.4 px | 0.1 px | 0.4 px | none | ok |
+| settings-agent-configured-dark | DeepSeek V4 Flash | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
+| settings-agent-configured-dark | Qwen3 Max | 0.0 px | 0.6 px | 0.0 px | 0.1 px | 0.6 px | none | ok |
+| settings-agent-configured-dark | Add provider | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-configured-dark | Default | 0.4 px | 0.0 px | -0.3 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-configured-dark | Set default | 0.5 px | 0.0 px | -0.3 px | 0.0 px | 0.5 px | none | ok |
+| settings-agent-custom-dialog-dark | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Provider dialog header | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-custom-dialog-dark | Provider field control | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog-dark | OpenAI-compatible provider | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Profile name | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Base URL | 0.0 px | -0.3 px | 0.0 px | -0.1 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog-dark | API key | 0.0 px | 0.3 px | 0.0 px | -0.1 px | 0.3 px | none | ok |
+| settings-agent-custom-dialog-dark | Model ID | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-dialog-dark | Context window | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-custom-dialog-dark | Maximum output | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-custom-dialog-dark | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-custom-dialog-dark | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-custom-dialog-dark | Save provider | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog header | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog body | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | API key | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.3 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Cancel | 0.7 px | -0.3 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Save changes | 0.4 px | -0.3 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Remove key checkbox | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Remove saved API key | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-custom-edit-dialog-dark | Save changes | 0.4 px | 0.0 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-remove-provider-dark | Remove Provider dialog | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-agent-remove-provider-dark | Remove Qwen3 Max | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-agent-remove-provider-dark | Existing chats using this model will switch to the next configured model. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-remove-provider-dark | Confirm remove model | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | breakpoint-request-paused | Request paused | 0.0 px | -2.0 px | 0.0 px | -1.1 px | 2.0 px | none | flagged |
 | breakpoint-request-paused | Request headers | 0.0 px | -3.0 px | 0.0 px | 0.1 px | 3.0 px | none | flagged |
 | breakpoint-request-paused | Original body | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
@@ -878,24 +1128,24 @@ Generated: 2026-08-29T06:56:40.495Z
 | settings-app-container-disable-all-dark | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
 | tls-compatibility-dialog-add | Passthrough host patterns | 0.0 px | 0.0 px | -0.4 px | -0.1 px | 0.4 px | none | ok |
 | tls-compatibility-dialog-add | TLS host rows | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-tls-passthrough | Hostname or wildcard | 0.0 px | 0.0 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
-| settings-tls-passthrough | Add | 0.1 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| settings-tls-passthrough | Passthrough host patterns | 0.0 px | 0.5 px | -0.4 px | -0.1 px | 0.5 px | none | ok |
-| settings-tls-passthrough | Matched before HTTPS interception | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
-| settings-tls-passthrough | *.wvd.microsoft.com | 0.0 px | -0.7 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
-| settings-tls-passthrough | Windows 365 · Recommended | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| settings-tls-passthrough | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| settings-tls-passthrough | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
-| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.0 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | Add | 0.1 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.5 px | -0.4 px | -0.1 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | *.wvd.microsoft.com | 0.0 px | -0.7 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
-| settings-tls-passthrough-dark | Windows 365 · Recommended | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
-| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
-| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
+| settings-tls-passthrough | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-tls-passthrough | Hostname or wildcard | 0.0 px | 0.4 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
+| settings-tls-passthrough | Add | 0.1 px | -0.1 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| settings-tls-passthrough | Passthrough host patterns | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
+| settings-tls-passthrough | Matched before HTTPS interception | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-tls-passthrough | *.wvd.microsoft.com | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| settings-tls-passthrough | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| settings-tls-passthrough | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
+| settings-tls-passthrough | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
+| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.4 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Add | 0.1 px | -0.1 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
+| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
+| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
+| settings-tls-passthrough-dark | *.wvd.microsoft.com | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| settings-tls-passthrough-dark | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
+| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
+| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
 | tls-compatibility-dialog | TLS interception may be incompatible | 0.0 px | 0.1 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
 | tls-compatibility-dialog | The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-compatibility-dialog | rdweb.wvd.microsoft.com | 0.0 px | 0.0 px | 0.0 px | -0.9 px | 0.9 px | none | ok |

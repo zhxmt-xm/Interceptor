@@ -40,30 +40,37 @@ Agent 是全局右侧栏，不是 Workspace 或 overlay；fresh profile 只显�
 <a id="agent-settings-model-configuration"></a>
 ## `agent.settings.model-configuration`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
-1. 创建独立空 profile/evidence 与两个具有不同 Model ID、Context Window 和 Usage 响应的本地 OpenAI-compatible lab endpoint；启动 trace/Electron。
-2. 等待 App/Core/8888/readiness；点击 `capture.readiness.cancel`，进入 Settings > Agent，确认空的 `Configured models` 状态和 Add model 命令。
+1. 创建独立空 profile、两代 evidence 与本地 OpenAI-compatible lab；lab 暴露两个 profile URL，记录每次 Chat Completions 的 model、Authorization 是否存在和脱敏 body hash；启动第一代 trace/Electron。
+2. 等待 App/Core/8888/readiness；点击 `capture.readiness.cancel`，进入 Settings > Agent，确认空模型列表和 Add Provider 命令。
 3. 打开 Custom Provider Dialog，确认 Profile name、Base URL、API Key、Model ID、Context Window、Maximum Output 均为空，六个 FieldControl 高度一致，未 Test connection 时 Save disabled。
-4. 填入第一个 endpoint 与可选测试 key；点击 `agent.provider.test-connection`，确认 lab 收到真实兼容请求且 UI 显示成功，再点击 Save。证据只记录 key 是否存在和脱敏尾号。
-5. 重复产品 UI 配置第二个 endpoint；确认唯一 `Configured models` 列表出现两行，每行包含 Provider Logo、Model ID、Connected、metadata、Edit 与默认状态命令。
-6. 确认第一行的 `Default` 是非交互状态，不具有 button role；点击第二行 `Set default`，确认默认状态只移到第二行并持久化，列表没有重复或重排。
-7. 打开 Agent Panel 的 Model Select，确认只列两项已配置模型、当前默认项 selected、已知 Provider 使用品牌 Logo、未知 Provider 回退 Bot；选择第一项只改变当前 Chat 的模型，不改全局 default。
-8. 从 Model Select 点击 `Agent settings…`，确认 Panel 不关闭；编辑第一项的 Model ID 并重新 Test connection/Save，随后用正式 Remove/confirm 删除第二项，确认剩余项成为唯一 default。
-9. 保存脱敏 model configuration、default/current model 正交状态、Logo mapping、Dialog validation、trace、final screenshot、日志与 metadata；不得记录 key、Authorization header 或完整响应正文。
-10. 点击 `shell.window.close`，验证所有 App 进程与 8888 销毁；关闭两个 lab endpoint并删除 profile。
+4. 填入第一个 profile URL、测试 Key、Model ID 与 limits；点击 `agent.provider.test-connection`，确认 lab 收到真实请求且有 Authorization，UI 显示 verified、Save enabled。修改 Model ID 后确认 verification 失效与 Save disabled；重新 Test 后 Save。
+5. 通过相同产品 UI 配置第二个无 Key profile；确认 lab 收到请求且没有 Authorization。保存后唯一 `Configured models` 列表出现两行，每行只显示 Provider Logo、Model ID、Connected、脱敏 metadata、Edit/Remove 与 default 命令。
+6. 确认第一行 `Default` 是非交互状态；点击第二行 `Set default`，确认状态只移到第二行且列表不重排。编辑第一项时 Key 只显示 configured/尾号，选择 keep，修改 Model ID 并重新 Test/Save，确认原行原位更新。
+7. 保存第一代 evidence并点击 `shell.window.close`；验证完整销毁但保留 profile。用同一 profile 启动第二代 Electron，确认两行、稳定顺序、脱敏凭据状态和第二行 default 恢复，且启动没有自动发起 Model 请求。
+8. 第二代先确认第一项仍只显示Key尾号；编辑该Custom Provider并显式移除已存Key，重新Test/Save，确认lab没有收到Authorization且列表改为无Key。随后通过正式Remove/confirm删除当前default第二项，确认第一项成为default；再删除第一项，确认回到unconfigured。全过程不得从Renderer API/DOM/trace/log读到Key明文。
+9. 保存脱敏配置、两代恢复、Test request计数、default切换/删除结果、trace、final screenshot、日志与 metadata；只记录 Authorization 是否存在和 Key 尾号，不记录 header值、完整请求正文或响应正文。测试Key在运行期随机生成，敏感输入期间暂停trace；Dialog卸载后恢复trace，并在每代销毁后结构化扫描全部trace分段、Main与Renderer日志。
+10. 点击第二代 `shell.window.close`，验证所有 App 进程与 8888 销毁；关闭 lab 并删除 profile。
 
 ### 预期效果
 
-Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 是 Save 的前置；`Default` 是状态，`Set default` 才是命令；全局默认模型与当前 Chat 模型正交且配置安全持久化。
+Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返回的 verification 是 Save 的前置，字段变化后必须重测；`Default` 是状态，`Set default` 才是命令；Provider顺序、default和脱敏凭据安全持久化并跨重启恢复。本 workflow 不验证当前 Chat 模型或 Session。
+
+### Evidence
+
+- 实现前有效Red精确停止在缺少 `agent.models.list`，不是selector、构建或环境失败；当前同一workflow `1/1` Green。
+- lab共观察5次真实Chat Completions Test：`keyed-model`、`keyed-model-v2`与第一次`keyed-model-edited`均有Authorization，`keyless-model`及显式移除已存Key后的第二次`keyed-model-edited`无Authorization；evidence只保存presence与body hash，重启自动请求数为0。
+- 第一代与第二代Provider ID顺序完全一致；第二行default跨重启恢复，依次删除default与最后一项后确定性回退并返回未配置态。
+- 第一代Main/Core PID为`16136/30948`，第二代为`18864/44704`；两代均为`gracefulDestroyVerified=true`，listener `8888`释放。三段trace与两代Main/Renderer日志均通过运行期随机测试Key全文扫描。
 
 <a id="agent-chat-streaming-context"></a>
 ## `agent.chat.streaming-context`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -83,10 +90,16 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 是 
 
 真实 HTTP Streaming 逐段进入 Transcript；多轮 Context、reasoning continuation、Context Window Usage、Session Usage、Stop 与 Retry 均由同一持久 Session 驱动，不重复用户消息或已完成调用。
 
+### Evidence
+
+- 当前workflow `1/1` Green；事件sequence从`0`严格递增到`23`，五次真实Model请求中第四次在可见delta后被Stop并由lab观测为aborted，第五次Retry复用同一request body hash且完成。
+- 多轮请求message count按`1 → 3 → 5`增长；Retry仍为`5`，没有重复user item。reasoning与assistant正文分离展示，Usage只记录Provider已报告的逐Call事实。
+- Main/Core PID为`36412/7948`，`gracefulDestroyVerified=true`，listener `8888`释放；trace分段、Main/Renderer日志及脱敏lab evidence均通过敏感文本扫描。
+
 <a id="agent-chat-restart-recovery"></a>
 ## `agent.chat.restart-recovery`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -105,3 +118,9 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 是 
 ### 预期效果
 
 Provider配置、默认模型、Session列表、当前Session、Transcript、outcome与Usage跨正常重启恢复；恢复不会重放网络请求；Rename/Delete/New Chat只影响目标Session。
+
+### Evidence
+
+- 当前workflow `1/1` Green；第一代完成3次Model请求，第二代启动新增请求为0，切回Chat A发送follow-up后总数为4。
+- 两个Session ID与重启前后Transcript hash稳定恢复；Chat A/B选择、独立历史、Rename、Delete与新建空Chat C均只影响目标Session。
+- 第一代Main/Core PID为`19804/15832`，第二代为`31668/27112`；两代均`gracefulDestroyVerified=true`并释放8888，分段trace与日志通过敏感文本扫描。

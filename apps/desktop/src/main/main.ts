@@ -20,6 +20,7 @@ import type {
   TlsPassthroughSettings,
   UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
+import { AgentRuntime, type AgentRuntimeEvent } from '@interceptor/agent-runtime';
 
 import {
   DESKTOP_IPC_CHANNELS,
@@ -54,6 +55,7 @@ import type {
   SystemProxyStatus,
   UpdateService,
 } from './interfaces';
+import { completeApplicationShutdown } from './lifecycle/application-shutdown';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
@@ -123,6 +125,10 @@ class DesktopApplication {
   );
   /** GitHub user authorization owner; credentials remain encrypted inside Main. */
   private gitHubAuthService: GitHubAuthService | null = null;
+  /** Agent domain composition root; Provider credentials remain encrypted inside Runtime. */
+  private agentRuntime: AgentRuntime | null = null;
+  /** Stops Runtime Session event broadcasts before Agent shutdown. */
+  private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Private GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
   private readonly trustStore = new TrustStoreService();
@@ -179,6 +185,16 @@ class DesktopApplication {
       },
     });
     await this.gitHubAuthService.start();
+    this.agentRuntime = new AgentRuntime({
+      dataDirectory: path.join(app.getPath('userData'), 'agent'),
+      secureStore: safeStorage,
+      fetcher: fetch,
+      tools: [],
+    });
+    await this.agentRuntime.start();
+    this.agentRuntimeUnsubscribe = this.agentRuntime.subscribe((event) => {
+      this.broadcastAgentSessionEvent(event);
+    });
     this.createUpdateService();
     const updateService = this.requireUpdateService();
     updateService.onStatusChange((status) => {
@@ -309,24 +325,56 @@ class DesktopApplication {
       return;
     }
 
-    // 先恢复仍由本产品持有的系统代理，再让 CoreProcess 完成清理。
+    // 先收敛 Agent Turn，再恢复系统代理；外层失败时 Agent 可恢复接收命令。
     this.quitting = true;
-    this.updateService?.stop();
-    this.gitHubAuthService?.stop();
-    void this.restoreSystemProxyBeforeShutdown()
-      .then(() => this.coreRuntime.stop())
-      .then(() => {
+    void this.requireAgentRuntime().beginShutdown()
+      .then(() => this.restoreSystemProxyBeforeShutdown())
+      .then(
+        () => this.finishShutdown(),
+        (error: unknown) => this.resumeAfterShutdownFailure(error),
+      );
+  }
+
+  /** Stop every application service after the system proxy is safely restored. */
+  private async finishShutdown(): Promise<void> {
+    await completeApplicationShutdown({
+      tasks: [
+        {
+          name: 'agent-session-events',
+          stop: () => {
+            const unsubscribe = this.agentRuntimeUnsubscribe;
+            this.agentRuntimeUnsubscribe = null;
+            unsubscribe?.();
+          },
+        },
+        { name: 'update-service', stop: () => this.updateService?.stop() },
+        { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
+        { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
+        { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
+      ],
+      reportStopFailure: (name, error) => {
+        this.diagnostics.error('main.shutdown.service-stop-failed', {
+          outcome: 'failed',
+          errorCode: readErrorName(error),
+          attributes: { name, message: readErrorMessage(error) },
+        });
+      },
+      complete: () => {
         this.shutdownComplete = true;
         app.quit();
-      })
-      .catch((error: unknown) => {
-        this.quitting = false;
-        this.shutdownComplete = false;
-        dialog.showErrorBox(
-          'Unable to restore system proxy',
-          `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
-        );
-      });
+      },
+    });
+  }
+
+  /** Resume a fully running application when shutdown fails before proxy restoration. */
+  private resumeAfterShutdownFailure(error: unknown): void {
+    this.agentRuntime?.resumeAfterShutdownFailure();
+    this.quitting = false;
+    this.shutdownComplete = false;
+    dialog.showErrorBox(
+      'Unable to restore system proxy',
+      `${readErrorMessage(error)}\n\nInterceptor is still running so the local proxy remains available.`,
+    );
   }
 
   private createMainWindow(): BrowserWindow {
@@ -656,6 +704,138 @@ class DesktopApplication {
           .disableAllLoopbackExemptions();
         return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
       });
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentModelsGet, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireAgentRuntime().getModels();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentProviderTest, (event, draft: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.agent-provider.test', () =>
+        this.requireAgentRuntime().testProviderConnection(draft));
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentProviderSaveVerified,
+      (event, verificationId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof verificationId !== 'string') {
+          throw new Error('Agent Provider verification ID is invalid.');
+        }
+        return this.runMainAction('main.agent-provider.save', () =>
+          this.requireAgentRuntime().saveVerifiedProvider(verificationId));
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentProviderRemove, (event, providerId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof providerId !== 'string') {
+        throw new Error('Agent Provider ID is invalid.');
+      }
+      return this.runMainAction('main.agent-provider.remove', () =>
+        this.requireAgentRuntime().removeProvider(providerId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentModelSetDefault, (event, providerId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof providerId !== 'string') {
+        throw new Error('Agent Provider ID is invalid.');
+      }
+      return this.runMainAction('main.agent-model.set-default', () =>
+        this.requireAgentRuntime().setDefaultModel(providerId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionsList, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireAgentRuntime().listSessions();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionCreate, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.agent-session.create', () =>
+        this.requireAgentRuntime().createSession());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionSelect, (event, sessionId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof sessionId !== 'string') {
+        throw new Error('Agent Session ID is invalid.');
+      }
+      return this.runMainAction('main.agent-session.select', () =>
+        this.requireAgentRuntime().selectSession(sessionId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionGet, (event, sessionId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof sessionId !== 'string') {
+        throw new Error('Agent Session ID is invalid.');
+      }
+      return this.requireAgentRuntime().getSession(sessionId);
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentSessionRename,
+      (event, sessionId: unknown, title: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof sessionId !== 'string' || typeof title !== 'string') {
+          throw new Error('Agent Session rename request is invalid.');
+        }
+        return this.runMainAction('main.agent-session.rename', () =>
+          this.requireAgentRuntime().renameSession(sessionId, title));
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionDelete, (event, sessionId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof sessionId !== 'string') {
+        throw new Error('Agent Session ID is invalid.');
+      }
+      return this.runMainAction('main.agent-session.delete', () =>
+        this.requireAgentRuntime().deleteSession(sessionId));
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentSessionSetModel,
+      (event, sessionId: unknown, providerId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof sessionId !== 'string' || typeof providerId !== 'string') {
+          throw new Error('Agent Session model request is invalid.');
+        }
+        return this.runMainAction('main.agent-session.set-model', () =>
+          this.requireAgentRuntime().setSessionModel(sessionId, providerId));
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentMessageSend,
+      (event, sessionId: unknown, content: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof sessionId !== 'string' || typeof content !== 'string') {
+          throw new Error('Agent message request is invalid.');
+        }
+        return this.runMainAction('main.agent-message.send', () =>
+          this.requireAgentRuntime().sendMessage(sessionId, content));
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentTurnCancel, (event, turnId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof turnId !== 'string') {
+        throw new Error('Agent Turn ID is invalid.');
+      }
+      return this.runMainAction('main.agent-turn.cancel', () =>
+        this.requireAgentRuntime().cancelTurn(turnId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentTurnRetry, (event, turnId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof turnId !== 'string') {
+        throw new Error('Agent Turn ID is invalid.');
+      }
+      return this.runMainAction('main.agent-turn.retry', () =>
+        this.requireAgentRuntime().retryTurn(turnId));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
@@ -1641,6 +1821,15 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast one already-persisted Agent Session snapshot to every Renderer. */
+  private broadcastAgentSessionEvent(event: AgentRuntimeEvent): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.agentSessionEvent, event);
+      }
+    }
+  }
+
   /** Broadcast one deduplicated TLS compatibility signal to every Renderer. */
   private broadcastTlsCompatibility(event: TlsCompatibilityEvent): void {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -1788,6 +1977,14 @@ class DesktopApplication {
       throw new Error('GitHubAuthService is not initialized');
     }
     return this.gitHubAuthService;
+  }
+
+  /** Return the initialized Agent domain composition root. */
+  private requireAgentRuntime(): AgentRuntime {
+    if (!this.agentRuntime) {
+      throw new Error('AgentRuntime is not initialized');
+    }
+    return this.agentRuntime;
   }
 
   /** Return the initialized GitHub release notification owner. */

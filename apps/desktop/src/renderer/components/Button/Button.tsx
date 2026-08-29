@@ -20,6 +20,7 @@ export interface ButtonProps {
   tooltip?: string;
   /** Tooltip shown while blocked to explain why. */
   disabledTooltip?: string;
+  ariaLabel?: string;
   className?: string;
   onClick?: () => void;
   automationId?: AutomationId;
@@ -37,6 +38,7 @@ export function Button({
   loading = false,
   tooltip,
   disabledTooltip,
+  ariaLabel,
   className,
   onClick,
   automationId,
@@ -47,6 +49,7 @@ export function Button({
     <button
       type="button"
       disabled={blocked}
+      aria-label={ariaLabel}
       className={cx(
         styles.button,
         size === 'sm' && styles.small,

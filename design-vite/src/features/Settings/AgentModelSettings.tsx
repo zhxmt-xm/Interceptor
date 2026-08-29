@@ -1,8 +1,9 @@
-import { Bot, Check, Plus, Trash2 } from 'lucide-react';
+import { Bot, Check, Trash2 } from 'lucide-react';
 
 import { fixtureClassNames } from '../../fixtures/FixtureRenderer';
 import { ProviderLogo, type ProviderBrand } from '../Agent/ProviderLogo';
 import { useDesignState } from '../../state/useDesignState';
+import { AgentAddProviderMenu } from './AgentAddProviderMenu';
 import styles from './AgentModelSettings.module.css';
 
 export function AgentModelSettings(): React.JSX.Element | null {
@@ -21,10 +22,11 @@ export function AgentModelSettings(): React.JSX.Element | null {
       {state.agentProvider === 'unconfigured' ? (
         <div className={styles.agentModelsEmpty} data-parity="agent-settings-empty">
           <span className={styles.agentModelsEmptyIcon} data-parity="agent-settings-empty-icon"><Bot aria-hidden="true" /></span>
-          <div data-parity="agent-settings-empty-copy">
+          <div className={styles.agentModelsEmptyCopy} data-parity="agent-settings-empty-copy">
             <strong>No models configured</strong>
             <p>Add a hosted provider or connect an OpenAI-compatible local model to start a chat.</p>
           </div>
+          <AgentAddProviderMenu />
         </div>
       ) : (
       <section className={styles.modelSettingsSection}>
@@ -33,18 +35,7 @@ export function AgentModelSettings(): React.JSX.Element | null {
             <strong>Configured models</strong>
             <span>Choose the default for new chats. Existing chats keep their selected model.</span>
           </div>
-          <button
-            className={fixtureClassNames('btn sm')}
-            type="button"
-            onClick={() => updateState({
-              agentProviderDialog: 'custom',
-              agentProviderDialogMode: 'add',
-              agentProviderDialogTarget: '',
-            })}
-          >
-            <Plus aria-hidden="true" />
-            Add provider
-          </button>
+          <AgentAddProviderMenu />
         </header>
         {([
           {
@@ -58,14 +49,14 @@ export function AgentModelSettings(): React.JSX.Element | null {
             id: 'qwen' as const,
             brand: 'qwen' as ProviderBrand,
             name: state.agentQwenProfile.displayName,
-            detail: `${state.agentQwenProfile.profileName} · ${state.agentQwenProfile.modelId} · OpenAI-compatible profile`,
+            detail: `${state.agentQwenProfile.profileName} · ${state.agentQwenProfile.modelId} · ${state.agentQwenProfile.apiKey ? `key •••• ${state.agentQwenProfile.apiKey.slice(-4)}` : 'No API key'}`,
             dialog: 'custom' as const,
           },
           ...(state.agentAddedProfile ? [{
             id: 'added' as const,
             brand: 'unknown' as ProviderBrand,
             name: state.agentAddedProfile.displayName,
-            detail: `${state.agentAddedProfile.profileName} · ${state.agentAddedProfile.modelId} · OpenAI-compatible profile`,
+            detail: `${state.agentAddedProfile.profileName} · ${state.agentAddedProfile.modelId} · ${state.agentAddedProfile.apiKey ? `key •••• ${state.agentAddedProfile.apiKey.slice(-4)}` : 'No API key'}`,
             dialog: 'custom' as const,
           }] : []),
         ]).filter((model) => !state.agentRemovedModels.includes(model.id)).map((model) => {

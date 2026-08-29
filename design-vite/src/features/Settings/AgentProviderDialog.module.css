@@ -198,3 +198,19 @@
 .modelProviderDialogFooter > span {
   flex: 1;
 }
+
+.modelCredentialChoice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.modelCredentialChoice input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}

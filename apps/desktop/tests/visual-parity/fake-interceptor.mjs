@@ -789,6 +789,105 @@ export const fakeInterceptorFixture = {
     expiresAt: null,
     message: null,
   },
+  agent: {
+    models: {
+      defaultProviderId: 'provider-deepseek',
+      models: [
+        {
+          providerId: 'provider-deepseek',
+          kind: 'deepseek',
+          profileName: 'DeepSeek V4 Flash',
+          baseUrl: 'https://api.deepseek.com',
+          modelId: 'deepseek-v4-flash',
+          contextWindowTokens: 1_000_000,
+          maximumOutputTokens: 384_000,
+          credentialConfigured: true,
+          credentialLastFour: '9K4Q',
+          isDefault: true,
+        },
+        {
+          providerId: 'provider-qwen',
+          kind: 'openai-compatible',
+          profileName: 'Qwen3 Max',
+          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+          modelId: 'qwen3-max',
+          contextWindowTokens: 131_072,
+          maximumOutputTokens: 8_192,
+          credentialConfigured: true,
+          credentialLastFour: '7M2P',
+          isDefault: false,
+        },
+      ],
+    },
+    session: {
+      sessionId: 'session-checkout',
+      summary: {
+        sessionId: 'session-checkout',
+        title: 'Checkout failures',
+        providerId: 'provider-deepseek',
+        modelId: 'deepseek-v4-flash',
+        createdAt: startedAt,
+        updatedAt: startedAt + 2_000,
+        itemCount: 2,
+      },
+      items: [
+        {
+          kind: 'user-message',
+          itemId: 'item-user-checkout',
+          turnId: 'turn-checkout',
+          content: 'Help me diagnose repeated 401 responses after token refresh.',
+          createdAt: startedAt,
+        },
+        {
+          kind: 'assistant-message',
+          itemId: 'item-assistant-checkout',
+          turnId: 'turn-checkout',
+          content: 'A repeated `401` after refresh usually means the client kept using an expired access token or the refresh grant was rejected.\n\n- Confirm the refreshed token replaces the old token atomically.\n- Check whether the token endpoint returns `invalid_grant`.\n- Compare the token audience and clock skew with the API.',
+          reasoningContent: '',
+          partial: false,
+          createdAt: startedAt + 1_000,
+        },
+      ],
+      turns: [{
+        turnId: 'turn-checkout',
+        userItemId: 'item-user-checkout',
+        assistantItemId: 'item-assistant-checkout',
+        status: 'completed',
+        retryOfTurnId: null,
+        error: null,
+        createdAt: startedAt,
+        updatedAt: startedAt + 2_000,
+      }],
+      currentTurn: {
+        turnId: 'turn-checkout',
+        userItemId: 'item-user-checkout',
+        assistantItemId: 'item-assistant-checkout',
+        status: 'completed',
+        retryOfTurnId: null,
+        error: null,
+        createdAt: startedAt,
+        updatedAt: startedAt + 2_000,
+      },
+      usage: {
+        modelCallCount: 2,
+        inputTokens: 43_900,
+        outputTokens: 3_300,
+        totalTokens: 47_200,
+        cacheHitInputTokens: 32_100,
+        cacheMissInputTokens: 11_800,
+        cacheHitRate: 32_100 / 43_900,
+        cacheMetricsCoverage: 1,
+      },
+      contextUsage: {
+        contextWindowTokens: 1_000_000,
+        currentContextTokens: 23_000,
+        remainingContextTokens: 977_000,
+        maxOutputTokens: 384_000,
+        source: 'provider',
+      },
+      sequence: 3,
+    },
+  },
   storage: {
     sessionCount: 3,
     exchangeCount: 241,
@@ -857,6 +956,9 @@ export function installFakeInterceptor({
   mitmActive = true,
   updateState = 'unsupported',
   githubAuthState = 'signed-in',
+  agentModels = 'empty',
+  agentSessionState = 'completed',
+  agentMessage = null,
   proxyReady = true,
   proxyEnableFails = false,
   upstreamDown = false,
@@ -867,6 +969,63 @@ export function installFakeInterceptor({
   fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
+  let agentSessionListener = null;
+  let agentModelsSnapshot = agentModels === 'configured'
+    ? fixture.agent.models
+    : { defaultProviderId: null, models: [] };
+  let agentSessionSnapshot = structuredClone(fixture.agent.session);
+  if (agentSessionState === 'empty') {
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: { ...agentSessionSnapshot.summary, title: 'New chat', itemCount: 0 },
+      items: [],
+      turns: [],
+      currentTurn: null,
+      sequence: 0,
+    };
+  } else if (agentSessionState !== 'completed') {
+    const status = agentSessionState === 'stopped'
+      ? 'cancelled'
+      : agentSessionState === 'sent'
+        ? 'completed'
+        : agentSessionState;
+    const content = status === 'failed'
+      ? ''
+      : 'Treat `invalid_grant` as a credential failure. Ask the user to authenticate again instead of retrying the same refresh token.';
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status,
+      error: status === 'failed'
+        ? { code: 'ModelCallError', message: 'The provider did not complete this response.' }
+        : null,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: { ...agentSessionSnapshot.summary, itemCount: 2 },
+      items: [
+        { ...agentSessionSnapshot.items[0], content: agentMessage ?? 'Explain invalid_grant.' },
+        { ...agentSessionSnapshot.items[1], content, partial: status !== 'completed' },
+      ],
+      turns: [turn],
+      currentTurn: turn,
+      sequence: 4,
+    };
+  }
+  let agentSessionsSnapshot = agentModels === 'configured'
+    ? {
+        currentSessionId: agentSessionSnapshot.sessionId,
+        sessions: [
+          agentSessionSnapshot.summary,
+          {
+            ...agentSessionSnapshot.summary,
+            sessionId: 'session-new',
+            title: 'New chat',
+            itemCount: 0,
+            updatedAt: agentSessionSnapshot.summary.updatedAt - 1,
+          },
+        ],
+      }
+    : { currentSessionId: null, sessions: [] };
   window.__appContainerEnableAllCalls = 0;
   window.__appContainerDisableAllCalls = 0;
   window.localStorage.setItem('interceptor.theme', theme);
@@ -1295,6 +1454,107 @@ export function installFakeInterceptor({
     }),
     getRecentDiagnostics: async () => fixture.diagnostics,
     reportRendererDiagnostic: async () => undefined,
+    getAgentModels: async () => agentModelsSnapshot,
+    testAgentProviderConnection: async (draft) => ({
+      verificationId: 'parity-verification',
+      model: {
+        providerId: draft.providerId ?? 'provider-new',
+        kind: draft.kind,
+        profileName: draft.profileName,
+        baseUrl: draft.kind === 'deepseek' ? 'https://api.deepseek.com' : draft.baseUrl,
+        modelId: draft.modelId,
+        contextWindowTokens: draft.kind === 'deepseek' ? 1_000_000 : draft.contextWindowTokens,
+        maximumOutputTokens: draft.kind === 'deepseek' ? 384_000 : draft.maximumOutputTokens,
+        credentialConfigured: draft.credential.action !== 'remove',
+        credentialLastFour: null,
+        isDefault: agentModelsSnapshot.models.length === 0,
+      },
+    }),
+    saveVerifiedAgentProvider: async () => agentModelsSnapshot,
+    removeAgentProvider: async (providerId) => {
+      const models = agentModelsSnapshot.models.filter((model) => model.providerId !== providerId);
+      const defaultProviderId = models.some((model) => model.isDefault)
+        ? agentModelsSnapshot.defaultProviderId
+        : models[0]?.providerId ?? null;
+      agentModelsSnapshot = {
+        defaultProviderId,
+        models: models.map((model) => ({
+          ...model,
+          isDefault: model.providerId === defaultProviderId,
+        })),
+      };
+      return agentModelsSnapshot;
+    },
+    setDefaultAgentModel: async (providerId) => {
+      agentModelsSnapshot = {
+        defaultProviderId: providerId,
+        models: agentModelsSnapshot.models.map((model) => ({
+          ...model,
+          isDefault: model.providerId === providerId,
+        })),
+      };
+      return agentModelsSnapshot;
+    },
+    listAgentSessions: async () => structuredClone(agentSessionsSnapshot),
+    createAgentSession: async () => {
+      const sessionId = `session-${agentSessionsSnapshot.sessions.length + 1}`;
+      agentSessionSnapshot = {
+        ...structuredClone(fixture.agent.session),
+        sessionId,
+        summary: {
+          ...structuredClone(fixture.agent.session.summary),
+          sessionId,
+          title: 'New chat',
+          itemCount: 0,
+        },
+        items: [],
+        turns: [],
+        currentTurn: null,
+        sequence: 0,
+      };
+      agentSessionsSnapshot = {
+        currentSessionId: sessionId,
+        sessions: [agentSessionSnapshot.summary, ...agentSessionsSnapshot.sessions],
+      };
+      return structuredClone(agentSessionSnapshot);
+    },
+    selectAgentSession: async (sessionId) => {
+      agentSessionsSnapshot = { ...agentSessionsSnapshot, currentSessionId: sessionId };
+      return structuredClone(agentSessionSnapshot);
+    },
+    getAgentSession: async () => structuredClone(agentSessionSnapshot),
+    renameAgentSession: async (_sessionId, title) => {
+      agentSessionSnapshot = {
+        ...agentSessionSnapshot,
+        summary: { ...agentSessionSnapshot.summary, title },
+      };
+      return structuredClone(agentSessionSnapshot);
+    },
+    deleteAgentSession: async () => {
+      agentSessionsSnapshot = { currentSessionId: null, sessions: [] };
+      return structuredClone(agentSessionsSnapshot);
+    },
+    setAgentSessionModel: async (_sessionId, providerId) => {
+      const model = agentModelsSnapshot.models.find((entry) => entry.providerId === providerId);
+      agentSessionSnapshot = {
+        ...agentSessionSnapshot,
+        summary: {
+          ...agentSessionSnapshot.summary,
+          providerId,
+          modelId: model?.modelId ?? agentSessionSnapshot.summary.modelId,
+        },
+      };
+      return structuredClone(agentSessionSnapshot);
+    },
+    sendAgentMessage: async () => agentSessionSnapshot.currentTurn,
+    cancelAgentTurn: async () => agentSessionSnapshot.currentTurn,
+    retryAgentTurn: async () => agentSessionSnapshot.currentTurn,
+    onAgentSessionEvent: (listener) => {
+      agentSessionListener = listener;
+      return () => {
+        if (agentSessionListener === listener) agentSessionListener = null;
+      };
+    },
     getUpdateStatus: async () => updateStatus,
     checkForUpdates: async () => updateStatus,
     downloadUpdate: async () => {

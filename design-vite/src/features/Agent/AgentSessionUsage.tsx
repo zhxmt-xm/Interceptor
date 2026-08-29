@@ -18,7 +18,7 @@ export function AgentSessionUsage(): React.JSX.Element {
       </button>
       {open && (
         <div className={styles.agentSessionUsagePopover} role="status">
-          <header><strong>47.2k tokens</strong><span>68% cache hit</span></header>
+          <header><strong>47.2k tokens</strong><span>73.1% cache hit</span></header>
           <dl>
             <div><dt>Cache hit</dt><dd>32.1k</dd></div>
             <div><dt>Cache miss</dt><dd>11.8k</dd></div>

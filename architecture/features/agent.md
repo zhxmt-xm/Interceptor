@@ -4,7 +4,7 @@
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 1 首层真实 UI 已完成；Provider、Session、Streaming 与 Runtime 接线待实现。**
+> 状态：**阶段 0 Runtime基础层与阶段 1持久化Chat已完成；业务Tool按后续阶段接入。**
 
 ## 术语与关系
 
@@ -145,7 +145,8 @@ Interceptor 内置 Agent 是一个跨 Workspace 常驻的右侧 Chat Panel，不
 ### 1.1 产品原则
 
 - **用户拥有最终控制权**：本产品面向本机单用户，不设置隐藏的 Model Call、Tool Call、Turn 时长、
-  Session 数量或数据条数配额；用户可以随时 Stop，也可以选择允许 Agent 连续执行。
+  Session 数量或数据条数配额。默认的连续执行检查点只暂停当前 Turn，不终结或丢弃状态；用户可以随时
+  Continue、切换为连续执行或 Stop，具体阈值必须在产品中可见，不能埋在 Agent Loop 常量里。
 - **渐进式披露，不是能力阉割**：所有已实现 Tool 始终可发现、可调用，但 Model 起初只看到能力目录，
   再按任务需要加载完整 Tool schema 和数据详情，避免无关信息占满 Context。
 - **正确性边界不是产品限制**：Zod 参数验证、`callId` 幂等、API Key 隔离、原生文件 Dialog、UAC 和
@@ -304,7 +305,9 @@ flowchart LR
     RUNTIME -->|"ordered session events via IPC"| IPC --> CHAT
 ```
 
-| 组件 | 所有权与职责 |
+下图与下表描述阶段1完成后的目标所有权；阶段0当前实现范围与剩余差异见第14节。
+
+| 目标组件 | 所有权与职责 |
 | --- | --- |
 | `AgentRuntime` | 唯一组合根；拥有 Provider、Credential、Session、Turn、History、Context、Usage、Tool disclosure、执行循环与事件 |
 | `AgentSessionStore` | Runtime 内部协作者；`<userData>/agent/agent.sqlite` 持久化 Session、Turn、Item 与 Model Call Usage |
@@ -982,25 +985,82 @@ Runtime 内部驱动 Streaming `ModelAdapter`，把 text delta、完整 Tool Cal
 - Usage 只记录 Provider 实际返回的字段，缺失字段保持未知；
 - Runtime 不修改调用方数组，也不知道 Electron IPC；但它拥有 Agent 数据持久化和所有 Agent 状态。
 
-## 8. 停止、失败与继续
+## 8. 停止、失败、超时与继续
 
-目标实现不设置默认 `maxSteps`、Model Call 总数、Tool Call 总数或 Turn 总时长。Runtime 持续执行，直到：
+本节区分产品执行控制、单次 I/O 故障和业务错误。OpenAI Agents SDK 默认使用可关闭的 `maxTurns` 安全限制，
+Anthropic 也将最大迭代数列为常见停止条件；MCP 则要求取消、Tool timeout 和错误结果保持独立。本项目不把
+任一框架默认值当成协议标准，而采用可见、可恢复的产品状态。
 
-- Model 返回没有 Tool Call 的最终回答；
-- 用户点击 Stop；
-- 应用退出；
-- Provider 明确拒绝、断线或返回不可恢复错误；
-- Tool 返回错误后 Model 选择结束。
+### 8.1 Turn 状态与结束条件
 
-UI 始终显示当前 Model Call、正在执行的 Tool、Current Context、Session Usage 和 Stop。检测到连续重复的相同 Tool Call 时，
-Runtime只发出可见 warning，不擅自停止。以后可以提供由用户主动设置的可选预算，但默认关闭，且不是隐藏策略。
+Turn 只有以下持久化 outcome；`calling-model`、`executing-tool`、`retrying` 和 `cancelling` 是运行态，不是 outcome：
 
-Stop 的语义是：取消当前可取消操作、保存已经完成的 Item、把 Turn 标记为 `cancelled`，Session 继续存在。
-用户下一条消息可以直接要求继续。已经完成的 Tool Call 按 `callId` 幂等记录，任何重试或恢复都不得重复副作用。
+| Outcome | 进入条件 | 是否继续同一 Turn |
+| --- | --- | --- |
+| `completed` | Model 返回没有 Tool Call 的最终回答 | 否；下一条用户消息创建新 Turn |
+| `cancelled` | 用户 Stop 或应用退出完成受控取消 | 否；已完成 Item 保留，用户可发新消息 |
+| `failed` | Provider 重试耗尽、明确拒绝或 Runtime 内部错误 | 否；Retry 从持久化安全边界创建新执行尝试 |
+| `suspended` | 等待 Tool 审批，或到达连续执行检查点 | 是；恢复同一 Turn，不重复已完成 Item |
 
-Model request timeout 只描述单次网络故障，Tool timeout 只适用于 Tool 自身声明可取消的操作；二者都不是
-产品用量限制。只有程序缺陷和无法归类的内部错误才 reject，用户取消、Provider 拒绝和普通 Tool 失败都是
-可持久化、可展示的 Turn outcome。
+Session 的执行模式与 Permission Mode 正交：
+
+- `checkpointed`：初版每连续执行 10 个 Step 后持久化 `suspended: step-checkpoint`，UI 显示已完成 Step、
+  当前 Model Call / Tool 和 Continue / Always continue / Stop；Continue 从同一 History 恢复并开始下一段计数；
+- `continuous`：不设置 Step 检查点，Runtime 继续到自然结束、Stop 或真实失败；
+- 两种模式都不设置 Turn 墙钟总时长。连续重复的同名 Tool 与规范化 arguments 产生可见 warning，并计入 Step；
+  Runtime 不把 warning 伪装成错误或静默丢弃调用。
+
+### 8.2 Model attempt timeout 与重试
+
+Model timeout 只约束一次 Provider 网络 attempt，不约束整个 Turn。`ModelAdapter` 必须把 HTTP 状态、
+`retryAfterMs`、是否已产生可见 Stream event、Provider replay 建议和底层原因规范化后交给 Runtime：
+
+- `400`、`401`、`402`、`422`、明确 refusal 与请求契约错误不自动重试；
+- `429`、`5xx`、网络故障和 attempt timeout 只有在未取消且确认 replay-safe 时才进入有限重试；
+- Retry policy 必须有可测试的最大次数，优先遵守 `Retry-After`，否则使用有 jitter 的指数退避；等待期间仍可 Stop；
+- Streaming 一旦向 Runtime 或 UI 发出任何可见事件，本 attempt 不自动重放。部分 Item 标记为 `incomplete`，
+  保留在 Transcript 但不进入下一次 Working Set；Turn 以可重试失败结束；
+- 重试耗尽后持久化具体失败 code 与安全摘要，不把 Provider 原始响应、Prompt 或凭据写入 Diagnostics。
+
+Retry 次数与 attempt timeout 是 Provider policy，不是 Agent 使用配额。第一版在 DeepSeek 与 Custom
+OpenAI-compatible preset 设计时确定可见默认值；unit / integration test 注入短延迟和确定性 jitter，生产测试不等待真实时间。
+
+### 8.3 Tool 错误、timeout 与副作用
+
+Tool 必须区分 Model 可修正的结果与 Runtime 故障：
+
+- 未知 Tool、Zod arguments 失败、权限拒绝和显式 `ToolExecutionError` 作为 `Tool Error Result` 返回 Model；
+- Tool 实现抛出的其他异常视为程序或依赖故障，终止当前 Turn 并记录脱敏诊断，不能由 `defineTool` 一律吞掉；
+- timeout 由各 Tool descriptor 选择性声明，并只用于会监听 `AbortSignal` 的操作；没有全局 Tool timeout；
+- 只读、明确可恢复的 Tool timeout 可以返回 Tool Error Result；有副作用的 Tool timeout 表示结果可能未知，
+  Runtime 必须暂停并先查询真实状态，不能假定未执行或自动重试；
+- 有副作用的调用在执行前事务写入 `callId + pending`，完成后写入 result。已完成 `callId` 返回已存结果；
+  崩溃后仍为 pending 的调用进入核对流程，绝不直接重放。
+
+MCP transport 可以把未知 Tool / 非法参数表达为 JSON-RPC protocol error，把业务执行失败表达为
+`isError: true`；内置 Agent 不经过 MCP transport，但沿用“可修正错误回到 Model、内部错误终止执行”的边界。
+
+### 8.4 Stop、取消竞态与恢复
+
+Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待和可取消 Tool。Runtime 随后：
+
+1. 不再启动新的 Model Call 或 Tool Call；
+2. 等待当前协作者完成取消清理，保存已经完成的 append-only Item；
+3. 将未完成 Item 标记为 `incomplete`，把 Turn 持久化为 `cancelled`；
+4. 忽略取消后迟到的 Provider / Tool 结果，但仍释放 listener、timer 和网络资源；
+5. 发出最终有序 Session event，Session 本身继续存在。
+
+取消通知可能与自然完成交错；最终 outcome 由先完成的原子状态迁移决定。取消已完成的 request、重复 Stop 和迟到结果
+都必须幂等。用户下一条消息可以要求继续，但它创建新 Turn；只有 `suspended` 才恢复原 Turn。
+
+### 8.5 所有权
+
+| 组件 | 负责 | 不负责 |
+| --- | --- | --- |
+| `AgentRuntime` | Turn 状态机、Step 检查点、retry policy、根取消与事件顺序 | Provider wire parsing、具体 Tool 业务 |
+| `ModelAdapter` | attempt timeout、Streaming 解析、Provider 错误规范化与 replay-safety 事实 | 自行重试完整 Agent Step |
+| `InterceptorToolGateway` | Zod、Permission、Tool timeout、`callId` 幂等与 Core 调用 | 吞掉未知内部异常 |
+| `AgentSessionStore` | Item / outcome / pending call 的事务持久化 | 决定下一步 Agent 行为 |
 
 ## 9. Chat 产品流程
 
@@ -1040,6 +1100,51 @@ Model request timeout 只描述单次网络故障，Tool timeout 只适用于 To
 - 当前 Chat 的 Model Select 只列已配置模型；选中项品牌 Logo 着色，未选中项同形状置灰；菜单末尾
   `Agent settings…` 深链到 Settings > Agent，且保持 Panel 打开。
 
+Provider 配置使用以下公开契约，API Key 不进入 snapshot：
+
+```ts
+type AgentProviderDraft =
+  | {
+      providerId: string | null;
+      kind: 'deepseek';
+      profileName: string;
+      modelId: string;
+      credential: AgentCredentialChange;
+    }
+  | {
+      providerId: string | null;
+      kind: 'openai-compatible';
+      profileName: string;
+      baseUrl: string;
+      modelId: string;
+      contextWindowTokens: number;
+      maximumOutputTokens: number;
+      credential: AgentCredentialChange;
+    };
+
+type AgentCredentialChange =
+  | { action: 'keep' }
+  | { action: 'replace'; apiKey: string }
+  | { action: 'remove' };
+```
+
+- `keep` 只允许编辑已有 Provider；新增 Provider 必须明确 `replace` 或（仅 Custom）`remove`；DeepSeek 必须有 Key；
+- Test connection 在 Main/Runtime 解析并规范化 draft、解析凭据动作，再向 Chat Completions endpoint 发最小请求；
+- Custom远端Base URL必须使用HTTPS；HTTP只允许`localhost`或数值loopback地址，避免API Key与Prompt经远端明文传输；
+- Test 成功返回不含 Key 的 model preview 与一次性 `verificationId`。Runtime 内存保存该次已验证的完整 draft；
+  Save 只提交 `verificationId`，因此字段或凭据变化后旧 verification不能保存；发起新Test立即撤销旧verification并取消旧请求，
+  Provider配置revision变化也会撤销verification。Test发送`max_tokens: 8`，有15秒attempt timeout与1MiB响应上限，
+  Runtime stop会取消并等待在途Test清理；普通Model attempt另有32MiB流式响应上限；
+- Provider registry、default model ID 与 API Key 作为一个 versioned record 经 `safeStorage` 加密并原子替换
+  `<userData>/agent/providers.enc`。所有Save/default/remove mutation在Runtime内串行，Renderer snapshot只含
+  `credentialConfigured`和`credentialLastFour`；secureStorage暂不可用时保留已有密文、阻断空基线修改，恢复后要求
+  重新启动并读取原记录，不降级、不删除也不覆盖；
+- 编辑Custom Provider时必须能显式选择保留、替换或移除已存Key；DeepSeek不提供移除Key；
+- 新增首个 model 自动成为 default；Set default 不重排列表；删除 default 后按现有稳定顺序选择下一项；
+  删除最后一项后回到 unconfigured；
+- 启动读取拒绝 symlink、非普通文件、超限、无法解密或 schema 非法的 record，并清理为诚实未配置态；
+  OS secure storage 不可用时拒绝 Test/Save，不把明文降级写盘。
+
 ### 9.1 普通多轮对话
 
 ```mermaid
@@ -1077,9 +1182,11 @@ sequenceDiagram
 
 | Intent | 语义 |
 | --- | --- |
-| `getAgentProviderStatus()` | 读取是否已配置 Provider，不返回 API Key |
-| `saveDeepSeekProvider(config)` | 保存 DeepSeek Key 与 Model |
-| `removeDeepSeekProvider()` | 删除凭据并阻止新 Turn |
+| `getAgentModels()` | 读取稳定有序的脱敏 model snapshot 与 default model ID |
+| `testAgentProviderConnection(draft)` | 测试完整 draft，成功后返回一次性 verification，不持久化 |
+| `saveVerifiedAgentProvider(verificationId)` | 原子保存刚验证的 draft；字段变化必须重新 Test |
+| `removeAgentProvider(providerId)` | 删除目标 Provider；必要时确定性选择新 default |
+| `setDefaultAgentModel(providerId)` | 只切换新 Chat 默认 model，不改变列表顺序 |
 | `listAgentSessions()` | Chat selector 的 Session 列表快照 |
 | `createAgentSession(options)` | 新建空 Chat |
 | `getAgentSession(sessionId)` | 读取完整 Transcript 快照 |
@@ -1134,15 +1241,16 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 
 ## 12. 分阶段交付
 
-### [阶段 0] Runtime 基础层
+### [阶段 0 · 已完成] Runtime 基础层
 
 目标：建立后续产品共用的可测试内核，不作为独立产品验收。
 
 - 主类统一为 `AgentRuntime`，删除 `AgentRunner` 旧名称；
-- `FakeModelAdapter` 锁定文本回答、Tool 循环、取消、重复调用 warning 和自然结束；
+- Fake `ModelAdapter` 锁定文本回答、Tool 循环、取消、连续执行检查点的暂停/恢复、重复调用 warning 和自然结束；
 - Zod 锁定 Tool descriptor 与 `unknown` arguments 校验；
 - Tool Catalog unit test 锁定 Capability → discovery → schema 披露流程；
-- `DeepSeekModelAdapter` 使用 fake `fetch` 锁定 Streaming、Tool Call、hit / miss Usage、Context capability 和错误映射；
+- `DeepSeekModelAdapter` 使用 fake `fetch` 锁定 Streaming、Tool Call、hit / miss Usage、Context capability、
+  attempt timeout、错误规范化与 replay-safety；
 - 不访问真实网络，不依赖开发者 API Key。
 
 ### [阶段 1] 可用的持久化 Chat
@@ -1156,7 +1264,8 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
   前一层保持可运行，不用假Provider、假Session或Renderer内存数据冒充后一层；
 - `AgentRuntime` 实现并拥有 Credential Store、Session Store、Context Builder 与 Usage ledger；
 - Main 只创建 `agentRuntime`、注册可信 IPC，并注入 `safeStorage`、数据目录与 Core bridge；
-- Renderer 实现跨Workspace保持的右侧Panel、多轮Streaming Chat、New / Rename / Delete / Stop / Retry、Context圆环、Session Usage，
+- Renderer 实现跨Workspace保持的右侧Panel、多轮Streaming Chat、New / Rename / Delete / Stop / Retry、
+  执行模式与 suspended 恢复、Context圆环、Session Usage，
   以及 Model Call / Session 两层 cache hit / miss Token、加权 Rate 与 coverage；
 - DeepSeek 为默认 preset；同时提供正式的 Custom OpenAI-compatible endpoint，以支持本地模型和
   无真实凭据的确定性 E2E lab；
@@ -1226,9 +1335,9 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 
 | 层 | 主要证据 |
 | --- | --- |
-| Runtime unit | Fake Model、Zod、自然 Tool Loop、取消、重复 warning、hit / miss 加权 Rate、Compaction 选择与事件顺序 |
-| Provider integration | 本地 OpenAI-compatible lab、Streaming、断线、HTTP 错误、DeepSeek cache Usage / capability 映射 |
-| AgentRuntime integration | safeStorage adapter、SQLite、Session CRUD、三桶 Usage 聚合、Context 圆环、checkpoint 原子安装、重启恢复、事件 sequence |
+| Runtime unit | Fake Model、Zod、自然 Tool Loop、Step 检查点暂停/恢复、取消竞态、重复 warning、Tool 错误分类、事件顺序 |
+| Provider integration | 本地 OpenAI-compatible lab、Streaming、attempt timeout、有限重试、断线后 replay-safety、HTTP 错误、DeepSeek cache Usage / capability 映射 |
+| AgentRuntime integration | safeStorage adapter、SQLite、Session CRUD、三桶 Usage 聚合、Context 圆环、pending call 幂等、checkpoint 原子安装、重启恢复、事件 sequence |
 | Renderer unit | Session store、Transcript event reducer、Context / Session Usage、cache Token / Rate / coverage 展示、Composer 状态 |
 | 真实 E2E | 真实 Electron Chat flow、Provider 配置、两轮 cache split 展示、重启恢复、Tool、Compaction 与审批 |
 | Design/Parity | 1600×900 全局 Agent Side Panel、Settings > Agent、Provider Dialog、Model Select、长文本和错误状态 |
@@ -1239,17 +1348,33 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 
 ## 14. 与当前实现的差异
 
-- 当前脚手架主类仍名为 `AgentRunner`，目标名称是 `AgentRuntime`，不保留旧别名；
-- 当前 `complete()` 是一次性 response，目标为 Streaming Model event；
-- 当前 `maxSteps` 抛出 `AgentMaxStepsError`，目标实现删除默认硬 Step 上限；
-- 当前 Runtime 只返回内存 messages，还没有 Runtime-owned Credential/Session Store、Usage ledger 或重启恢复；
-- 当前 Runtime 一次性发送全部 Tool descriptor，目标为 Capability → discovery → schema 渐进披露；
-- `design-vite` 已完成全局右侧 Agent Panel 与 Settings > Agent 设计；真实产品已实现精确 `1600 × 900`
-  Renderer content、Header toggle、`440px` 非覆盖右栏、诚实未配置态、Settings > Agent 深链和跨 Workspace 保持；
-- 当前真实 Settings > Agent 只有未配置空态，Provider Add/Test/Save/Default/Remove 尚未实现；Panel 也没有
-  Session selector、Transcript、Composer、Context/Usage 或 Streaming；
-- 当前 Agent UI 没有业务 Preload/Main intents；Credential/Session Store 与 Runtime 接线尚未实现；
-- 当前 MCP Tool 仍绑定 MCP identity，通用 Tool package 尚未抽出；
-- 当前首层 UI 已有真实 Electron `agent.panel.navigation-persistence` Red/Green、完整销毁证据及四个
-  light/dark visual parity view；`880×560` 时展开 Sidebar 仍保留 `440px` main，Agent 收缩为 `220px`；
-  Provider 配置、Streaming Chat 与重启恢复三条 workflow 仍为 planned。
+- `AgentRuntime` 已拥有加密Provider registry与规范化`agent.sqlite` Session Store。Session metadata、Turn、Item、
+  assistant增量chunk和逐Model Call Usage分别经`safeStorage`加密；删除使用`secure_delete`并截断WAL，确定损坏库隔离，
+  临时解密失败不删除原库；
+- Session Service已实现Create/Select/Rename/Delete、当前Model切换、Send/Stop/Retry、每Session单active Turn、Context预算、
+  Provider删除/编辑协调回滚与退出恢复。每个Model Call完成即持久化独立Usage ledger；缺失bucket保持unknown，不伪装为0；
+- Streaming assistant delta先持久化append-only chunk，再通过严格递增sequence事件发给Renderer；Renderer检测event gap时回读
+  完整snapshot，并用selection generation阻止旧load覆盖用户新选择。Main退出分成可回滚准备与不可逆完成两个阶段；
+- `design-vite` 已完成全局右侧Agent Panel与Settings > Agent设计；真实产品已实现精确`1600 × 900` Renderer content、
+  Header toggle、`440px`非覆盖右栏、跨Workspace/Panel关闭保持，以及最小窗口响应式收缩；
+- Settings > Agent已实现DeepSeek与Custom的Add/Edit/Test/Save、default切换、Remove、15语言文案和脱敏凭据展示；
+  Agent Panel已实现15语言Chat selector、New/Rename/Delete、Transcript、reasoning折叠、Composer、Model selector、
+  Context Window与Session Usage、Streaming、Stop和Retry；
+- Main/Preload已提供Provider与Session/Turn语义单一intent，并广播Runtime已持久化的snapshot/delta event；
+- `DeepSeekModelAdapter` 已通过原生 `fetch` 实现 Chat Completions SSE、文本、Tool Call arguments 重组、Usage、
+  cache hit / miss Usage、reasoning continuation、HTTP / 网络 / 非法响应分类、Streaming replay-safety 与可选的
+  单次 attempt timeout，并声明 `1M` Context Window、`384k` 最大输出及 Streaming / Tool / reasoning / cache
+  capability；
+- `reasoning_content` 已独立于最终回答加密持久化并按Provider协议回传，UI只在用户展开时显示；
+- `AgentRuntime` 已支持显式注入的有限 transient retry policy：默认零重试，只重放 safe 的 rate limit、server 和
+  network failure，遵守 `Retry-After` 或使用 capped exponential backoff + full jitter，退避可取消且不重复已完成 Tool；
+  DeepSeek / Custom Provider已接入产品，但尚未设置非零production retry或attempt timeout policy；
+- 当前Runtime尚未把Tool Catalog改为Capability → discovery → schema渐进披露；运行时仍一次性接收注入的Tool descriptor；
+- 当前没有 Tool `callId` pending journal；
+- `@interceptor/tools` 已建立 transport-neutral Capability Index 与确定性 discovery：初始只暴露能力摘要，
+  查询后返回完整 descriptor、matched terms 和稳定排序；MCP 的 18 个业务 Tool、Zod 执行边界与 Permission Policy
+  尚未迁入该 package，内置 Agent 也尚未注册 `discover_tools`；
+- 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
+  `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
+  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前产品不包含业务Tool，下一阶段从
+  只读Traffic Tool继续，不把尚未实现的能力展示在Chat中。

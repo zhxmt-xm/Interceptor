@@ -18,7 +18,8 @@ export function AgentProviderDialog(): React.JSX.Element | null {
     state.agentQwenProfile,
     state.agentAddedProfile,
   ));
-  const [verified, setVerified] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [removeApiKey, setRemoveApiKey] = useState(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +39,8 @@ export function AgentProviderDialog(): React.JSX.Element | null {
       state.agentQwenProfile,
       state.agentAddedProfile,
     ));
-    setVerified(state.agentProviderDialog === 'deepseek' || state.agentProviderDialogMode === 'edit');
+    setVerified(false);
+    setRemoveApiKey(false);
   }, [
     state.agentAddedProfile,
     state.agentDeepSeekProfile,
@@ -53,20 +55,37 @@ export function AgentProviderDialog(): React.JSX.Element | null {
   }
 
   const close = (): void => updateState({ agentProviderDialog: '' });
+  const selectedProfile = state.agentProviderDialogTarget === 'deepseek'
+    ? state.agentDeepSeekProfile
+    : state.agentProviderDialogTarget === 'qwen'
+      ? state.agentQwenProfile
+      : state.agentProviderDialogTarget === 'added'
+        ? state.agentAddedProfile
+        : null;
+  const credentialConfigured = state.agentProviderDialogMode === 'edit'
+    && (selectedProfile?.apiKey.length ?? 0) > 0;
   const setFieldValue = (field: keyof AgentProviderForm, value: string): void => {
     setForm((current) => ({ ...current, [field]: value }));
     setVerified(false);
   };
-  const complete = isAgentProviderFormComplete(form, custom);
+  const complete = isAgentProviderFormComplete(
+    form,
+    custom,
+    credentialConfigured && !removeApiKey,
+  );
   const verifyConnection = (): void => {
     if (complete) setVerified(true);
   };
   const save = (): void => {
     if (!verified) return;
+    const savedForm = {
+      ...form,
+      apiKey: removeApiKey ? '' : form.apiKey || selectedProfile?.apiKey || '',
+    };
     if (state.agentProviderDialogTarget === 'deepseek') {
       updateState({
         agentDeepSeekProfile: {
-          ...form,
+          ...savedForm,
           displayName: form.modelId === state.agentDeepSeekProfile.modelId
             ? state.agentDeepSeekProfile.displayName
             : form.modelId,
@@ -77,7 +96,7 @@ export function AgentProviderDialog(): React.JSX.Element | null {
     } else if (state.agentProviderDialogTarget === 'qwen') {
       updateState({
         agentQwenProfile: {
-          ...form,
+          ...savedForm,
           displayName: form.modelId === state.agentQwenProfile.modelId
             ? state.agentQwenProfile.displayName
             : form.modelId,
@@ -87,7 +106,7 @@ export function AgentProviderDialog(): React.JSX.Element | null {
       });
     } else {
       updateState({
-        agentAddedProfile: { ...form, displayName: form.profileName },
+        agentAddedProfile: { ...savedForm, displayName: form.profileName },
         agentRemovedModels: state.agentRemovedModels.filter((modelId) => modelId !== 'added'),
         agentProvider: 'configured',
         agentProviderDialog: '',
@@ -165,7 +184,7 @@ export function AgentProviderDialog(): React.JSX.Element | null {
                   value={form.baseUrl}
                 />
               </span>
-              <small>Must expose an OpenAI-compatible Chat Completions endpoint.</small>
+              <small>OpenAI-compatible Chat Completions; HTTPS remotely, HTTP only on localhost.</small>
             </label>
           ) : (
             <label className={styles.modelProviderField}>
@@ -181,13 +200,31 @@ export function AgentProviderDialog(): React.JSX.Element | null {
               <EyeOff aria-hidden="true" />
               <input
                 aria-label="API key"
+                disabled={removeApiKey}
                 onChange={(event) => setFieldValue('apiKey', event.currentTarget.value)}
-                placeholder={custom && !editingCustom ? 'No API key' : undefined}
+                placeholder={credentialConfigured
+                  ? `Leave blank to keep key ending ${selectedProfile?.apiKey.slice(-4)}`
+                  : custom && !editingCustom
+                    ? 'No API key'
+                    : undefined}
                 type="password"
                 value={form.apiKey}
               />
             </span>
           </label>
+          {custom && credentialConfigured && (
+            <label className={styles.modelCredentialChoice}>
+              <input
+                checked={removeApiKey}
+                onChange={(event) => {
+                  setRemoveApiKey(event.currentTarget.checked);
+                  setVerified(false);
+                }}
+                type="checkbox"
+              />
+              <span>Remove saved API key</span>
+            </label>
+          )}
           <label className={styles.modelProviderField}>
             <span>Model ID</span>
             <span className={styles.modelProviderTextInput} data-parity="model-provider-field-control">
