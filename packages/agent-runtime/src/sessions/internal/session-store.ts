@@ -92,7 +92,23 @@ interface EncryptedSessionRow {
   readonly encrypted_metadata: Uint8Array;
 }
 
+type EncryptedRowType = 'item' | 'turn' | 'model-call' | 'assistant-chunk';
+
+const encryptedRowEnvelopeSchema = z.object({
+  version: z.literal(1),
+  sessionId: z.string().min(1),
+  rowType: z.enum(['item', 'turn', 'model-call', 'assistant-chunk']),
+  rowId: z.string().min(1),
+  payload: z.unknown(),
+}).strict();
+
 interface EncryptedPayloadRow {
+  readonly row_id: string;
+  readonly encrypted_payload: Uint8Array;
+}
+
+interface EncryptedChunkRow {
+  readonly chunk_order: number;
   readonly encrypted_payload: Uint8Array;
 }
 
@@ -240,7 +256,9 @@ export class AgentSessionStore {
 
   /** Read Sessions in newest-first or oldest-first order. */
   list(): StoredAgentSession[] {
-    return this.#readAll('DESC');
+    return [...this.#sessionsById.values()]
+      .reverse()
+      .map((session) => structuredClone(session));
   }
 
   /** Read one complete Session from the validated in-memory cache. */
@@ -295,20 +313,13 @@ export class AgentSessionStore {
       if (result.changes !== 1) {
         throw new Error('Agent Session does not exist.');
       }
-      databaseSync.prepare(`
-        INSERT INTO agent_item_chunk(item_id, chunk_order, encrypted_payload)
-        VALUES (
-          ?,
-          COALESCE((SELECT MAX(chunk_order) + 1 FROM agent_item_chunk WHERE item_id = ?), 0),
-          ?
-        )
-      `).run(
+      this.#appendAssistantChunk(
+        write.sessionId,
         write.assistantItemId,
-        write.assistantItemId,
-        this.#encrypt(assistantChunkSchema.parse({
+        assistantChunkSchema.parse({
           content: write.textDelta,
           reasoningContent: write.reasoningDelta,
-        })),
+        }),
       );
       databaseSync.exec('COMMIT');
       assistant.content += write.textDelta;
@@ -423,32 +434,58 @@ export class AgentSessionStore {
         'Agent Session row identity does not match its encrypted metadata.',
       );
     }
-    const readPayloads = <T>(table: string, orderColumn: string, schema: z.ZodType<T>): T[] =>
+    const readPayloads = <T>(
+      table: string,
+      idColumn: string,
+      orderColumn: string,
+      rowType: EncryptedRowType,
+      schema: z.ZodType<T>,
+    ): T[] =>
       (this.#database().prepare(`
-        SELECT encrypted_payload FROM ${table}
+        SELECT ${idColumn} AS row_id, encrypted_payload FROM ${table}
         WHERE session_id = ? ORDER BY ${orderColumn}
       `).all(row.session_id) as unknown as EncryptedPayloadRow[])
-        .map((payloadRow) => schema.parse(this.#decrypt(payloadRow.encrypted_payload)));
+        .map((payloadRow) => this.#decryptRow(
+          payloadRow.encrypted_payload,
+          row.session_id,
+          rowType,
+          payloadRow.row_id,
+          schema,
+        ));
     const items = readPayloads(
       'agent_item',
+      'item_id',
       'item_order',
+      'item',
       transcriptItemSchema,
     );
     for (const item of items) {
       if (item.kind !== 'assistant-message') continue;
       const chunks = (this.#database().prepare(`
-        SELECT encrypted_payload FROM agent_item_chunk
+        SELECT chunk_order, encrypted_payload FROM agent_item_chunk
         WHERE item_id = ? ORDER BY chunk_order
-      `).all(item.itemId) as unknown as EncryptedPayloadRow[])
-        .map((chunkRow) => assistantChunkSchema.parse(this.#decrypt(chunkRow.encrypted_payload)));
+      `).all(item.itemId) as unknown as EncryptedChunkRow[])
+        .map((chunkRow) => this.#decryptRow(
+          chunkRow.encrypted_payload,
+          row.session_id,
+          'assistant-chunk',
+          `${item.itemId}:${chunkRow.chunk_order}`,
+          assistantChunkSchema,
+        ));
       item.content += chunks.map((chunk) => chunk.content).join('');
       item.reasoningContent += chunks.map((chunk) => chunk.reasoningContent).join('');
     }
     return {
       ...metadata,
       items,
-      turns: readPayloads('agent_turn', 'turn_order', turnSchema),
-      modelCalls: readPayloads('agent_model_call', 'call_order', modelCallSchema),
+      turns: readPayloads('agent_turn', 'turn_id', 'turn_order', 'turn', turnSchema),
+      modelCalls: readPayloads(
+        'agent_model_call',
+        'model_call_id',
+        'call_order',
+        'model-call',
+        modelCallSchema,
+      ),
     };
   }
 
@@ -463,6 +500,7 @@ export class AgentSessionStore {
       session.turns,
       previous?.turns ?? [],
       (turn) => turn.turnId,
+      'turn',
       turnSchema,
     );
     this.#syncRows(
@@ -473,6 +511,7 @@ export class AgentSessionStore {
       session.modelCalls,
       previous?.modelCalls ?? [],
       (modelCall) => modelCall.modelCallId,
+      'model-call',
       modelCallSchema,
     );
   }
@@ -489,14 +528,6 @@ export class AgentSessionStore {
         item_order = excluded.item_order,
         encrypted_payload = excluded.encrypted_payload
     `);
-    const appendChunk = this.#database().prepare(`
-      INSERT INTO agent_item_chunk(item_id, chunk_order, encrypted_payload)
-      VALUES (
-        ?,
-        COALESCE((SELECT MAX(chunk_order) + 1 FROM agent_item_chunk WHERE item_id = ?), 0),
-        ?
-      )
-    `);
     session.items.forEach((item, index) => {
       const previousItem = previousById.get(item.itemId);
       if (item.kind === 'user-message') {
@@ -506,7 +537,12 @@ export class AgentSessionStore {
             item.itemId,
             session.sessionId,
             index,
-            this.#encrypt(transcriptItemSchema.parse(item)),
+            this.#encryptRow(
+              session.sessionId,
+              'item',
+              item.itemId,
+              transcriptItemSchema.parse(item),
+            ),
           );
         }
         return;
@@ -525,7 +561,12 @@ export class AgentSessionStore {
           item.itemId,
           session.sessionId,
           index,
-          this.#encrypt(transcriptItemSchema.parse(metadata)),
+          this.#encryptRow(
+            session.sessionId,
+            'item',
+            item.itemId,
+            transcriptItemSchema.parse(metadata),
+          ),
         );
       }
 
@@ -544,10 +585,10 @@ export class AgentSessionStore {
         ? item.reasoningContent.slice(previousAssistant.reasoningContent.length)
         : item.reasoningContent;
       if (content !== '' || reasoningContent !== '') {
-        appendChunk.run(
+        this.#appendAssistantChunk(
+          session.sessionId,
           item.itemId,
-          item.itemId,
-          this.#encrypt(assistantChunkSchema.parse({ content, reasoningContent })),
+          assistantChunkSchema.parse({ content, reasoningContent }),
         );
       }
     });
@@ -568,6 +609,7 @@ export class AgentSessionStore {
     nextRows: readonly T[],
     previousRows: readonly T[],
     id: (row: T) => string,
+    rowType: EncryptedRowType,
     schema: z.ZodType<T>,
   ): void {
     const previousById = new Map(previousRows.map((row) => [id(row), row]));
@@ -584,7 +626,13 @@ export class AgentSessionStore {
       if (previousRow !== undefined && JSON.stringify(previousRow) === JSON.stringify(row)) {
         return;
       }
-      upsert.run(id(row), sessionId, index, this.#encrypt(schema.parse(row)));
+      const rowId = id(row);
+      upsert.run(
+        rowId,
+        sessionId,
+        index,
+        this.#encryptRow(sessionId, rowType, rowId, schema.parse(row)),
+      );
     });
     const remove = this.#database().prepare(`DELETE FROM ${table} WHERE ${idColumn} = ?`);
     for (const previousRow of previousRows) {
@@ -612,6 +660,60 @@ export class AgentSessionStore {
   /** Encrypt one validated payload before SQLite storage. */
   #encrypt(value: unknown): Buffer {
     return this.#secureStore.encryptString(JSON.stringify(value));
+  }
+
+  /** Encrypt a child payload together with its SQLite ownership identity. */
+  #encryptRow(
+    sessionId: string,
+    rowType: EncryptedRowType,
+    rowId: string,
+    payload: unknown,
+  ): Buffer {
+    return this.#encrypt({ version: 1, sessionId, rowType, rowId, payload });
+  }
+
+  /** Decrypt and verify one child row before parsing its domain payload. */
+  #decryptRow<T>(
+    bytes: Uint8Array,
+    sessionId: string,
+    rowType: EncryptedRowType,
+    rowId: string,
+    schema: z.ZodType<T>,
+  ): T {
+    const envelope = encryptedRowEnvelopeSchema.parse(this.#decrypt(bytes));
+    if (envelope.sessionId !== sessionId
+      || envelope.rowType !== rowType
+      || envelope.rowId !== rowId) {
+      throw new AgentSessionStoreCorruptionError(
+        'Agent Session encrypted row identity does not match SQLite.',
+      );
+    }
+    return schema.parse(envelope.payload);
+  }
+
+  /** Append one identity-bound assistant chunk inside the caller transaction. */
+  #appendAssistantChunk(
+    sessionId: string,
+    itemId: string,
+    chunk: z.infer<typeof assistantChunkSchema>,
+  ): void {
+    const chunkOrder = (this.#database().prepare(`
+      SELECT COALESCE(MAX(chunk_order) + 1, 0) AS value
+      FROM agent_item_chunk WHERE item_id = ?
+    `).get(itemId) as { value: number }).value;
+    this.#database().prepare(`
+      INSERT INTO agent_item_chunk(item_id, chunk_order, encrypted_payload)
+      VALUES (?, ?, ?)
+    `).run(
+      itemId,
+      chunkOrder,
+      this.#encryptRow(
+        sessionId,
+        'assistant-chunk',
+        `${itemId}:${chunkOrder}`,
+        chunk,
+      ),
+    );
   }
 
   /** Decrypt one untrusted SQLite payload. */

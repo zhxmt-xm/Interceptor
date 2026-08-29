@@ -339,6 +339,8 @@ type AgentItem =
 - 一个 Session 同时只有一个 active Turn，保证该 Session 的消息顺序；这属于会话一致性约束；
 - 不同 Session 可以并行运行，不设置产品级全局并发配额；实际吞吐由 Provider 和本机资源决定；
 - Item payload 使用现有 SecureStore 抽象加密后写入 SQLite BLOB；API Key 不进入 Session Store；
+- 每个加密子行同时绑定`sessionId + rowType + rowId`并在解密后与SQLite主键核对，禁止合法密文被跨行或跨Session静默串换；
+- Chat selector列表从启动时已完整验证的Store缓存生成summary，不为读取metadata重复解密和拼接全部Transcript；
 - Provider continuation state 作为独立加密记录保存；DeepSeek adapter 用它恢复 `reasoning_content` 等 wire 字段；
 - 删除 Session 必须删除其全部 Turn 和 Item，不保留隐藏副本；
 - Renderer 重新挂载或事件 sequence 缺口时重新读取 Main 快照，不依赖事件重放恢复状态。

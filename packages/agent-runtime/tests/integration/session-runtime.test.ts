@@ -1,4 +1,5 @@
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -663,6 +664,56 @@ describe('AgentRuntime persistent Sessions', () => {
     }
   });
 
+  it('rejects an encrypted Item payload moved to another SQLite row identity', async () => {
+    const fixture = await createFixture();
+    const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+    sessionStore.start();
+    sessionStore.create(storedSession('identity-a', 'item-a'));
+    sessionStore.create(storedSession('identity-b', 'item-b'));
+    sessionStore.stop();
+    const databaseSync = new DatabaseSync(path.join(fixture.root, 'agent.sqlite'));
+    try {
+      const rows = databaseSync.prepare(`
+        SELECT item_id, encrypted_payload FROM agent_item ORDER BY item_id
+      `).all() as unknown as Array<{ item_id: string; encrypted_payload: Uint8Array }>;
+      const [first, second] = rows;
+      if (first === undefined || second === undefined) {
+        throw new Error('Expected two encrypted Item rows.');
+      }
+      databaseSync.exec('BEGIN IMMEDIATE');
+      databaseSync.prepare('UPDATE agent_item SET encrypted_payload = ? WHERE item_id = ?')
+        .run(second.encrypted_payload, first.item_id);
+      databaseSync.prepare('UPDATE agent_item SET encrypted_payload = ? WHERE item_id = ?')
+        .run(first.encrypted_payload, second.item_id);
+      databaseSync.exec('COMMIT');
+    } finally {
+      databaseSync.close();
+    }
+    const restoredStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+
+    expect(() => restoredStore.start())
+      .toThrow('Agent Session encrypted row identity does not match SQLite.');
+  });
+
+  it('lists validated Sessions without decrypting complete history again', async () => {
+    const fixture = await createFixture();
+    const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+    sessionStore.start();
+    sessionStore.create(storedSession('list-session', 'list-item'));
+    sessionStore.stop();
+    sessionStore.start();
+    try {
+      const decryptionsAfterStart = fixture.secureStore.decryptions;
+
+      expect(sessionStore.list().map((session) => session.sessionId))
+        .toEqual(['list-session']);
+      expect(sessionStore.list()[0]?.items[0]).toMatchObject({ itemId: 'list-item' });
+      expect(fixture.secureStore.decryptions).toBe(decryptionsAfterStart);
+    } finally {
+      sessionStore.stop();
+    }
+  });
+
   it('closes SQLite after persistent Streaming writes fail and recovers the Turn on restart', async () => {
     const fixture = await createFixture();
     const agentRuntime = fixture.createRuntime();
@@ -1121,6 +1172,35 @@ async function createFixture(): Promise<SessionFixture> {
   const fixture = new SessionFixture(root);
   fixtures.push(fixture);
   return fixture;
+}
+
+function storedSession(sessionId: string, itemId: string): StoredAgentSession {
+  return {
+    version: 1,
+    sessionId,
+    title: sessionId,
+    providerId: 'provider',
+    modelId: 'model',
+    createdAt: 1,
+    updatedAt: 1,
+    sequence: 0,
+    items: [{
+      kind: 'user-message',
+      itemId,
+      turnId: `turn-${sessionId}`,
+      content: `content-${sessionId}`,
+      createdAt: 1,
+    }],
+    turns: [],
+    modelCalls: [],
+    contextUsage: {
+      contextWindowTokens: 8_192,
+      currentContextTokens: null,
+      remainingContextTokens: null,
+      maxOutputTokens: 1_024,
+      source: 'unavailable',
+    },
+  };
 }
 
 async function configureProvider(agentRuntime: AgentRuntime): Promise<string> {
