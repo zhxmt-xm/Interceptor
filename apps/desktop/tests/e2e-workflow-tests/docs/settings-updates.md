@@ -5,14 +5,14 @@
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。
 2. 点击 `shell.workspace.settings`；检查 Settings rail 九个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
-3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。
+3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。Agent section 额外通过键盘聚焦并按 Enter 激活，确认 rail item 使用原生 button 语义。
 4. 再次选择 App Containers，点击 `shell.workspace.capture` 离开 Settings，确认 Capture 成为当前 workspace。
 5. 通过普通 `shell.workspace.settings` 返回，确认 App Containers 仍是唯一 `aria-current=page`，没有回到默认 Certificates。
 6. 选择 TLS passthrough，依次切到 Rules、Composer、Diagnostics 并从每个 workspace 返回 Settings；每次确认 TLS passthrough 仍为当前 section。
@@ -23,7 +23,7 @@
 
 ### 预期效果
 
-九个 section 通过 Settings rail 真实导航；`aria-current` 准确且唯一；跨 feature 普通返回时保留最后访问 section；Proxy/Certificates/Storage/Agent/Updates 使用真实后端；Appearance 不伪造未实现功能；Header/Main/statusbar 一致。显式 TLS 跨 feature 跳转覆盖当前 section 的语义由独立 `capture.navigate-tls-passthrough` workflow 验收。
+九个 section 通过 Settings rail 真实导航；`aria-current` 准确且唯一；跨 feature 普通返回时保留最后访问 section；Proxy/Certificates/Storage/Updates 使用真实后端，Agent 只呈现诚实未配置空态；Appearance 不伪造未实现功能；Header/Main/statusbar 一致。显式 TLS 跨 feature 跳转覆盖当前 section 的语义由独立 `capture.navigate-tls-passthrough` workflow 验收。
 
 ### 证据
 
@@ -31,7 +31,9 @@
 - `trace.zip` 必须可见全部真实点击；`renderer-console.log` 不得包含 page error。
 - `metadata.json` 必须记录真实 Main/Core PID、listener `8888` 与 `gracefulDestroyVerified=true`。
 - 实现前 Red：真实 Electron 已打开默认 Certificates，视觉 active class 存在，但 `settings.section.certificates` 的 `aria-current` 为 `null`，workflow 精确失败于公共当前页面语义缺失。
-- 历史八项基线：`1/1` 通过；当时八个 section 均只有目标项为 `aria-current=page`，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持；Main PID `12304`、Core PID `27200`、listener `8888`，`gracefulDestroyVerified=true`，Renderer page error 为 0。该证据不覆盖新增的 Agent section，目标九项流程必须重新取得 Red/Green。
+- 历史八项基线：`1/1` 通过；当时八个 section 均只有目标项为 `aria-current=page`，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持；Main PID `12304`、Core PID `27200`。
+- 当前九项 Green：同一 workflow `1/1` 通过；Certificates 默认态和 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates 逐项选择时，只有目标 automation ID 为 `aria-current=page`。Agent section 先精确 Red 于 clickable `div` 没有 button role，改为原生 button 后通过焦点 + Enter 激活。App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持。
+- 当前 Main PID `44024`、Core PID `17732`、listener `8888`，`gracefulDestroyVerified=true`，Renderer page error 为 0。
 
 <a id="settings-app-containers-ordering"></a>
 ## `settings.app-containers.ordering`

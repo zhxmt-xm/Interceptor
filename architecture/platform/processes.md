@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-08-07
+> 最后更新：2026-08-29
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -104,6 +104,10 @@ Listener 每连接重新求值那份数组，因此不需要重建 listener，�
 Core PID 为 running 并记录 detail，不 kill/restart；shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
 
 ## 4. Workflow 详细表
+
+Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600 × 900`，并在隐藏菜单栏后显式
+`setContentSize(1600, 900)`，确保 Windows 不可见 resize border 不把 Renderer viewport 扩成 `1600 × 902`。
+最小窗口仍为 `880 × 560`；`1600 × 900` 是 fresh profile 与 Design/Parity 的唯一初始基线。
 
 | # | Workflow | 发起方 → 接收方 | 数据/调用 | 代码位置 | 成功结果 | 失败与清理 |
 | ---: | --- | --- | --- | --- | --- | --- |

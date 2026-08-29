@@ -23,6 +23,19 @@ test('Agent navigation opens the app-wide provider settings page', async ({ page
   );
 });
 
+test('Unconfigured Agent settings shows an honest empty model state', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'unconfigured',
+  }));
+
+  const settings = page.locator('[data-parity="agent-model-settings"]');
+  await expect(settings).toContainText('No models configured');
+  await expect(settings).not.toContainText('DeepSeek V4 Flash');
+  await expect(settings).not.toContainText('Qwen3 Max');
+});
+
 test('Unconfigured Agent panel routes to Agent settings without closing itself', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',

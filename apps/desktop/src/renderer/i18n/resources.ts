@@ -1,4 +1,5 @@
 import type { LanguageId } from './languages';
+import { agentMessages, type AgentMessageCatalog } from './agent-resources';
 import { englishCatalog, type MessageCatalog } from './english-catalog';
 import {
   githubAuthMessages,
@@ -22,22 +23,22 @@ import { zhTWCatalog } from './locales/zh-TW';
 export { englishCatalog, type MessageCatalog, type MessageKey } from './english-catalog';
 
 export const resources = {
-  en: { translation: { ...englishCatalog, ...githubAuthMessages.en } },
-  'zh-CN': { translation: { ...zhCNCatalog, ...githubAuthMessages['zh-CN'] } },
-  'zh-TW': { translation: { ...zhTWCatalog, ...githubAuthMessages['zh-TW'] } },
-  ja: { translation: { ...jaCatalog, ...githubAuthMessages.ja } },
-  ko: { translation: { ...koCatalog, ...githubAuthMessages.ko } },
-  de: { translation: { ...deCatalog, ...githubAuthMessages.de } },
-  fr: { translation: { ...frCatalog, ...githubAuthMessages.fr } },
-  es: { translation: { ...esCatalog, ...githubAuthMessages.es } },
-  it: { translation: { ...itCatalog, ...githubAuthMessages.it } },
-  'pt-BR': { translation: { ...ptBRCatalog, ...githubAuthMessages['pt-BR'] } },
-  ru: { translation: { ...ruCatalog, ...githubAuthMessages.ru } },
-  nl: { translation: { ...nlCatalog, ...githubAuthMessages.nl } },
-  pl: { translation: { ...plCatalog, ...githubAuthMessages.pl } },
-  tr: { translation: { ...trCatalog, ...githubAuthMessages.tr } },
-  uk: { translation: { ...ukCatalog, ...githubAuthMessages.uk } },
+  en: { translation: { ...englishCatalog, ...githubAuthMessages.en, ...agentMessages.en } },
+  'zh-CN': { translation: { ...zhCNCatalog, ...githubAuthMessages['zh-CN'], ...agentMessages['zh-CN'] } },
+  'zh-TW': { translation: { ...zhTWCatalog, ...githubAuthMessages['zh-TW'], ...agentMessages['zh-TW'] } },
+  ja: { translation: { ...jaCatalog, ...githubAuthMessages.ja, ...agentMessages.ja } },
+  ko: { translation: { ...koCatalog, ...githubAuthMessages.ko, ...agentMessages.ko } },
+  de: { translation: { ...deCatalog, ...githubAuthMessages.de, ...agentMessages.de } },
+  fr: { translation: { ...frCatalog, ...githubAuthMessages.fr, ...agentMessages.fr } },
+  es: { translation: { ...esCatalog, ...githubAuthMessages.es, ...agentMessages.es } },
+  it: { translation: { ...itCatalog, ...githubAuthMessages.it, ...agentMessages.it } },
+  'pt-BR': { translation: { ...ptBRCatalog, ...githubAuthMessages['pt-BR'], ...agentMessages['pt-BR'] } },
+  ru: { translation: { ...ruCatalog, ...githubAuthMessages.ru, ...agentMessages.ru } },
+  nl: { translation: { ...nlCatalog, ...githubAuthMessages.nl, ...agentMessages.nl } },
+  pl: { translation: { ...plCatalog, ...githubAuthMessages.pl, ...agentMessages.pl } },
+  tr: { translation: { ...trCatalog, ...githubAuthMessages.tr, ...agentMessages.tr } },
+  uk: { translation: { ...ukCatalog, ...githubAuthMessages.uk, ...agentMessages.uk } },
 } satisfies Record<
   LanguageId,
-  { translation: MessageCatalog & GitHubAuthMessageCatalog }
+  { translation: MessageCatalog & GitHubAuthMessageCatalog & AgentMessageCatalog }
 >;

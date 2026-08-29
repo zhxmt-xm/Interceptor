@@ -16,6 +16,7 @@ const SETTINGS_SECTION_IDS = [
   AUTOMATION_IDS.settings.section.appearance,
   AUTOMATION_IDS.settings.section.storage,
   AUTOMATION_IDS.settings.section.privacy,
+  AUTOMATION_IDS.settings.section.agent,
   AUTOMATION_IDS.settings.section.updates,
 ] as const;
 
@@ -65,12 +66,21 @@ test('settings.navigation keeps the active section across workspace navigation',
     'default',
   );
 
-  // 用户操作：逐项点击八个正式 section，并要求每一步只有目标项表达 current page。
-  // User actions: visit all eight public sections and require exactly the target to expose the current page state.
+  // 用户操作：逐项点击九个正式 section，并要求每一步只有目标项表达 current page。
+  // User actions: visit all nine public sections and require exactly the target to expose the current page state.
   for (const sectionId of SETTINGS_SECTION_IDS) {
     await getByAutomationId(page, sectionId).click();
     await expectCurrentSection(page, sectionId, sectionEvidence, `select:${sectionId}`);
   }
+
+  // 键盘交互：Agent section 必须是可聚焦的原生命令，并可用 Enter 激活。
+  // Keyboard interaction: the Agent section must be a focusable native command activated with Enter.
+  const agentSection = getByAutomationId(page, AUTOMATION_IDS.settings.section.agent);
+  await expect(agentSection).toHaveRole('button');
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
+  await agentSection.focus();
+  await page.keyboard.press('Enter');
+  await expectCurrentSection(page, AUTOMATION_IDS.settings.section.agent, sectionEvidence, 'keyboard:agent');
 
   // 业务断言：从 App Containers 普通离开到 Capture 后返回，必须恢复离开前的 section。
   // Business assertion: leaving App Containers for Capture and returning normally must restore the last section.

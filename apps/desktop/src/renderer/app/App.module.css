@@ -25,6 +25,16 @@
   grid-template-columns: 60px minmax(0, 1fr);
 }
 
+.app[data-agent-panel="open"][data-collapsed="false"] {
+  grid-template-areas: "side header header" "side main agent" "side footer footer";
+  grid-template-columns: 220px minmax(440px, 1fr) minmax(0, 440px);
+}
+
+.app[data-agent-panel="open"][data-collapsed="true"] {
+  grid-template-areas: "side header header" "side main agent" "side footer footer";
+  grid-template-columns: 60px minmax(440px, 1fr) minmax(0, 440px);
+}
+
 .header {
   grid-area: header;
   position: relative;

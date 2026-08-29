@@ -29,6 +29,7 @@ import {
   DiagnosticsProvider,
   DiagnosticsStatusbar,
 } from '../features/diagnostics';
+import { AgentPanelToggle, AgentSidePanel } from '../features/agent';
 import {
   addBreakpointRule,
   addRequestRuleDraft,
@@ -96,6 +97,7 @@ export function App(): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [settingsSection, setSettingsSection] = useState('certificates');
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [tlsPassthroughTarget, setTlsPassthroughTarget] =
     useState<TlsPassthroughNavigationTarget | null>(null);
   const [createdBreakpointRuleId, setCreatedBreakpointRuleId] = useState<string | null>(null);
@@ -109,6 +111,11 @@ export function App(): React.JSX.Element {
   const booting = useBootStore((state) => !state.dismissed);
 
   const toggleCollapse = (): void => setCollapsed((value) => !value);
+  const toggleAgentPanel = (): void => setAgentPanelOpen((value) => !value);
+  const openAgentSettings = (): void => {
+    setSettingsSection('agent');
+    setView('settings');
+  };
   const dismissBreakpointCreatedMessage = useCallback(
     (ruleId: string) => setCreatedBreakpointRuleId(
       (currentRuleId) => currentRuleId === ruleId ? null : currentRuleId,
@@ -247,6 +254,7 @@ export function App(): React.JSX.Element {
   const content = (
     <div
       className={styles.app}
+      data-agent-panel={agentPanelOpen ? 'open' : 'closed'}
       data-collapsed={collapsed}
       data-automation-id={AUTOMATION_IDS.app.root}
     >
@@ -275,12 +283,19 @@ export function App(): React.JSX.Element {
         <span className={styles.featureName} data-parity="window-header-title">
           {t(VIEW_LABEL_KEYS[view])}
         </span>
+        <AgentPanelToggle open={agentPanelOpen} onToggle={toggleAgentPanel} />
         <WindowControls />
       </header>
       <div className={styles.notification}>
         <UpdateNotification />
       </div>
       <main className={styles.main} data-automation-id={AUTOMATION_IDS.app.main}>{feature.main}</main>
+      {agentPanelOpen && (
+        <AgentSidePanel
+          onClose={() => setAgentPanelOpen(false)}
+          onConfigure={openAgentSettings}
+        />
+      )}
       <footer className={styles.footer} data-automation-id={AUTOMATION_IDS.app.statusbar}>{feature.statusbar}</footer>
     </div>
   );

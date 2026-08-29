@@ -1,5 +1,6 @@
 import {
   AppWindow,
+  Bot,
   Database,
   Download,
   Lock,
@@ -19,6 +20,7 @@ export const SECTIONS: SettingsSection[] = [
   { id: 'appearance', labelKey: 'settings.nav.appearance', Icon: Palette },
   { id: 'storage', labelKey: 'settings.nav.storage', Icon: Database },
   { id: 'privacy', labelKey: 'settings.nav.privacy', Icon: Lock },
+  { id: 'agent', labelKey: 'settings.nav.agent', Icon: Bot },
   { id: 'updates', labelKey: 'settings.nav.updates', Icon: Download },
 ];
 

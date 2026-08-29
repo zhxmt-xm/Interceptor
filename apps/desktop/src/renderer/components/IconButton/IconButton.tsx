@@ -21,6 +21,7 @@ export interface IconButtonProps {
   onClick?: () => void;
   className?: string;
   automationId?: AutomationId;
+  pressed?: boolean;
 }
 
 /** Transparent square icon button used across topbars, list bars and editors. */
@@ -36,6 +37,7 @@ export function IconButton({
   onClick,
   className,
   automationId,
+  pressed,
 }: IconButtonProps): React.JSX.Element {
   const iconSize = size === 'sm' ? 15 : 18;
   const blocked = disabled || loading;
@@ -48,6 +50,7 @@ export function IconButton({
       className={cx(styles.button, size === 'sm' && styles.small, className)}
       onClick={onClick}
       aria-label={label}
+      aria-pressed={pressed}
       data-automation-id={automationId}
     >
       {loading ? (

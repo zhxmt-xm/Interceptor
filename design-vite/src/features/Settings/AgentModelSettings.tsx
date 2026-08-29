@@ -1,4 +1,4 @@
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Bot, Check, Plus, Trash2 } from 'lucide-react';
 
 import { fixtureClassNames } from '../../fixtures/FixtureRenderer';
 import { ProviderLogo, type ProviderBrand } from '../Agent/ProviderLogo';
@@ -18,6 +18,15 @@ export function AgentModelSettings(): React.JSX.Element | null {
         Configure model providers and defaults used by Agent.
       </p>
 
+      {state.agentProvider === 'unconfigured' ? (
+        <div className={styles.agentModelsEmpty} data-parity="agent-settings-empty">
+          <span className={styles.agentModelsEmptyIcon} data-parity="agent-settings-empty-icon"><Bot aria-hidden="true" /></span>
+          <div data-parity="agent-settings-empty-copy">
+            <strong>No models configured</strong>
+            <p>Add a hosted provider or connect an OpenAI-compatible local model to start a chat.</p>
+          </div>
+        </div>
+      ) : (
       <section className={styles.modelSettingsSection}>
         <header className={styles.modelSettingsSectionHeader}>
           <div>
@@ -112,6 +121,7 @@ export function AgentModelSettings(): React.JSX.Element | null {
           );
         })}
       </section>
+      )}
     </section>
   );
 }

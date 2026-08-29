@@ -18,7 +18,7 @@ export function AgentPanelHeader(): React.JSX.Element {
     agentMessage: '',
   });
   return (
-    <header className={styles.agentPanelHeader}>
+    <header className={styles.agentPanelHeader} data-parity="agent-panel-header">
       <AgentPanelChatMenu triggerRef={chatSelectorRef} />
       <span className={styles.agentPanelIcon}><Bot aria-hidden="true" /></span>
       <button

@@ -1,6 +1,6 @@
 # 平台架构：Renderer Shell
 
-> 最后更新：2026-08-12
+> 最后更新：2026-08-29
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
 > 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
 >
@@ -8,7 +8,7 @@
 
 ## 1. App shell
 
-`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember），消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` 的 Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。`app/Sidebar.tsx` 负责导航与底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。Sidebar 的 feature 导航只表达位置与当前选中态，不显示任何业务 badge；待处理数量和告警必须留在对应 feature 的 workbar、内容区或 statusbar。
+`app/App.tsx` 持有 `themeMode`（light/warm/dark/ember）、Settings section 与全局 `agentPanelOpen`，消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` 的 Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。Agent 打开时 Grid 增加最大 `440px` 右栏，Header 与 footer 跨越 main + Agent 两列，main 同步缩窄而不被覆盖。Grid 以 `minmax(440px,1fr)` 优先保留 main；最小 `880px` 窗口且 Sidebar 展开时 Agent 收缩为 `220px`，不切换 overlay。`app/Sidebar.tsx` 负责导航与底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。Sidebar 的 feature 导航只表达位置与当前选中态，不显示任何业务 badge；待处理数量和告警必须留在对应 feature 的 workbar、内容区或 statusbar。
 
 ## 2. 冷启动加载界面
 
@@ -18,13 +18,13 @@
 
 ## 3. 自有窗口 chrome
 
-Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 的侧栏折叠按钮和 feature 名称，右侧固定 Minimize / Maximize-or-restore / Close 三按钮。Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。
+Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 的侧栏折叠按钮和 feature 名称，右侧依次是全局 Agent toggle 与 Minimize / Maximize-or-restore / Close。Agent toggle 只改变 Renderer Shell 布局；Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。
 
-业务命令不进入 Header；UpdateNotification 是 Header 下方的独立 overlay，不占 Header flex。
+feature 业务命令不进入 Header；Agent toggle 属于全局 Shell 控件。UpdateNotification 是 Header 下方的独立 overlay，不占 Header flex。
 
 ## 4. Feature workspaces
 
-`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。当前 Agent 只实现未配置状态、disabled New Chat、Configure Agent 与 Close；Configure 深链到 Settings > Agent，导航不会隐式关闭 Panel。`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
 
 WebSocket 帧断点保留在连接自己的 Messages tab：setup 只配置当前 `exchangeId` 的方向、帧类别与超时；
 命中后 Inspector 自动切到 Messages，已转发历史帧继续显示，Core snapshot 作为黄色 paused row 追加在列表末尾。
@@ -89,7 +89,7 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 
 ## 7. Automation 契约
 
-`apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell、Capture、Rules 目录树与 Composer Collection 已接线到同一公共契约。
+`apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell、Agent Panel、Settings Agent、Capture、Rules 目录树与 Composer Collection 已接线到同一公共契约。
 
 **禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。**
 
@@ -104,5 +104,6 @@ Renderer 经受限的 `setUiLanguage` Preload 意图把 15 值枚举同步给 Ma
 ## 9. 验收要点
 
 - 六视图双主题、900×600 与四语言状态共 42 张截图，无页面级溢出。
+- Agent 首层 light/dark Panel 与 Settings 空态四个 parity view 合计 `30/30 matched / 0 missing / 0 flagged`，最大几何差 `0.7px`。
 - 多语言 smoke 在真实 Windows package 中逐项切换 15 种语言，验证持久化、UI 文案与页面无溢出。
 - catalog 契约测试校验完整主 key、插值与 CLDR 多复数。

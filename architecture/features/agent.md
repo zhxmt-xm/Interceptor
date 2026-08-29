@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-08-28
+> 最后更新：2026-08-29
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 1 UI 设计完成，产品实现待开始；当前 main 只有未接线的 Runtime 脚手架。**
+> 状态：**阶段 1 首层真实 UI 已完成；Provider、Session、Streaming 与 Runtime 接线待实现。**
 
 ## 术语与关系
 
@@ -269,7 +269,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph R["Renderer · Global Agent Side Panel"]
-      PANEL["Agent Panel\n440px right grid column"]
+      PANEL["Agent Panel\n440px right grid column at baseline"]
       CHAT["Transcript + Composer"]
       SESSIONS["Chat selector"]
       SETTINGS["Settings > Agent"]
@@ -1010,7 +1010,8 @@ Model request timeout 只描述单次网络故障，Tool timeout 只适用于 To
   Application Shell 层按该值实现。更小窗口是响应式运行能力，不维护第二套主设计基线。
 - Header 右侧、窗口控制左边提供全局 Agent icon button。关闭态使用中性色；打开态使用
   `--accent-soft` 背景、`--accent` 图标与轻 accent 描边。
-- Agent 打开后成为 `.app` 的 `440px` 右侧 grid column，Main workspace 同步缩窄。Panel 不使用 overlay，
+- Agent 打开后在 `1600 × 900` 基线成为 `.app` 的 `440px` 右侧 grid column，Main workspace 同步缩窄。
+  窗口变窄时 Grid 优先为 main 保留 `440px`，Agent track 从 `440px` 响应式收缩；Panel 不使用 overlay，
   不得覆盖 Capture Inspector、Rules Editor 或其他 Workspace 内容。
 - `agentPanel: open | closed` 是用户显式拥有的 Shell 状态。切换 Workspace、进入 Settings > Agent、打开
   Provider Dialog 或切换 Chat 都不得自动关闭；只有用户点击全局 toggle 或 Panel 内 Close 才能关闭。
@@ -1150,6 +1151,9 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 
 - 先在 `design-vite/` 完成全局Agent Side Panel、Chat selector、Settings > Agent、Provider Dialog、Model Select、
   Context Progress与各状态设计；唯一画布与visual parity默认viewport为`1600 × 900`；
+- 产品实现按可验收纵向层增长：先完成真实窗口/Shell/未配置Panel/Settings深链并由
+  `agent.panel.navigation-persistence` 验收，再接Credential与Model配置，最后接持久Session与Streaming；
+  前一层保持可运行，不用假Provider、假Session或Renderer内存数据冒充后一层；
 - `AgentRuntime` 实现并拥有 Credential Store、Session Store、Context Builder 与 Usage ledger；
 - Main 只创建 `agentRuntime`、注册可信 IPC，并注入 `safeStorage`、数据目录与 Core bridge；
 - Renderer 实现跨Workspace保持的右侧Panel、多轮Streaming Chat、New / Rename / Delete / Stop / Retry、Context圆环、Session Usage，
@@ -1240,7 +1244,12 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - 当前 `maxSteps` 抛出 `AgentMaxStepsError`，目标实现删除默认硬 Step 上限；
 - 当前 Runtime 只返回内存 messages，还没有 Runtime-owned Credential/Session Store、Usage ledger 或重启恢复；
 - 当前 Runtime 一次性发送全部 Tool descriptor，目标为 Capability → discovery → schema 渐进披露；
-- `design-vite` 已完成全局右侧 Agent Panel 与 Settings > Agent 设计；真实 Renderer、Provider Settings、
-  自适应窗口与 Preload intents 尚未实现；
+- `design-vite` 已完成全局右侧 Agent Panel 与 Settings > Agent 设计；真实产品已实现精确 `1600 × 900`
+  Renderer content、Header toggle、`440px` 非覆盖右栏、诚实未配置态、Settings > Agent 深链和跨 Workspace 保持；
+- 当前真实 Settings > Agent 只有未配置空态，Provider Add/Test/Save/Default/Remove 尚未实现；Panel 也没有
+  Session selector、Transcript、Composer、Context/Usage 或 Streaming；
+- 当前 Agent UI 没有业务 Preload/Main intents；Credential/Session Store 与 Runtime 接线尚未实现；
 - 当前 MCP Tool 仍绑定 MCP identity，通用 Tool package 尚未抽出；
-- 当前已有 Agent Design 基线与交互测试，但还没有真实 Renderer parity、Agent E2E 或销毁证据。
+- 当前首层 UI 已有真实 Electron `agent.panel.navigation-persistence` Red/Green、完整销毁证据及四个
+  light/dark visual parity view；`880×560` 时展开 Sidebar 仍保留 `440px` main，Agent 收缩为 `220px`；
+  Provider 配置、Streaming Chat 与重启恢复三条 workflow 仍为 planned。

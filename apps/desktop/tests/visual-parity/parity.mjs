@@ -55,7 +55,7 @@ const views = sliceMatch
 const STYLE_KEYS = ['fontSize', 'fontWeight', 'color'];
 
 if (!onlyView && !sliceMatch) {
-  const batchSize = 20;
+  const batchSize = 5;
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
   const viewSummaries = [];
@@ -263,20 +263,16 @@ if (!onlyView && !sliceMatch) {
 }
 await mkdir(outDir, { recursive: true });
 
-const server = await createServer({
-  configFile: path.join(desktopRoot, 'vite.renderer.config.ts'),
-  root: desktopRoot,
-  server: { port: 5199, strictPort: true },
-  logLevel: 'warn',
-});
-await server.listen();
-const url = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5199/';
-console.log('renderer:', url, '\n');
-
-const browser = await chromium.launch({ channel: 'msedge' });
-const designPreview = await startDesignPreview(designRoot);
+let server = null;
+let browser = null;
+let designPreview = null;
+let designSession = null;
+let url = '';
 
 async function openDesignPage() {
+  if (!browser || !designPreview) {
+    throw new Error('Visual parity resources are not initialized.');
+  }
   const context = await browser.newContext({
     viewport: {
       width: config.viewport.width + 120,
@@ -296,7 +292,20 @@ async function openDesignPage() {
   return { context, page };
 }
 
-let designSession = await openDesignPage();
+try {
+server = await createServer({
+  configFile: path.join(desktopRoot, 'vite.renderer.config.ts'),
+  root: desktopRoot,
+  server: { port: 5199, strictPort: true },
+  logLevel: 'warn',
+});
+await server.listen();
+url = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5199/';
+console.log('renderer:', url, '\n');
+
+browser = await chromium.launch({ channel: 'msedge' });
+designPreview = await startDesignPreview(designRoot);
+designSession = await openDesignPage();
 let designPage = designSession.page;
 let designPageViewCount = 0;
 
@@ -338,6 +347,23 @@ for (const view of views) {
     breakpointQueueSelection: 'http-head',
     breakpointQueueMenu: '',
     websocketBreakpoint: 'disabled',
+    agentPanel: 'closed',
+    agentProvider: 'configured',
+    agentProviderDialog: '',
+    agentProviderDialogMode: 'add',
+    agentProviderDialogTarget: '',
+    agentModelMenu: '',
+    agentDefaultModel: 'deepseek',
+    agentCurrentModel: 'deepseek',
+    agentChat: 'checkout',
+    agentChatDialog: '',
+    agentChatMenu: '',
+    agentMessage: '',
+    agentTurnState: 'idle',
+    agentUsagePanel: '',
+    agentRemoveModelTarget: '',
+    agentRemovedModels: [],
+    agentAddedProfile: null,
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
@@ -631,11 +657,12 @@ console.log(
     ? 'OK - parity within 1px and matching font style after canvas-border offset'
     : `${totalFlags} element(s) flagged - inspect deltas above and the diff PNGs`,
 );
-
-await designSession.context.close();
-await browser.close();
-await server.close();
-await designPreview.close();
+} finally {
+  await designSession?.context.close().catch(() => {});
+  await browser.close().catch(() => {});
+  await server.close().catch(() => {});
+  await designPreview.close().catch(() => {});
+}
 
 function buildMarkdownReport(summaries, diffs) {
   const pixelDiffs = summaries

@@ -357,6 +357,17 @@ export const AUTOMATION_IDS = {
     loadEarlier: 'diagnostics.load-earlier',
     splitter: 'diagnostics.splitter',
   },
+  agent: {
+    panel: {
+      toggle: 'agent.panel.toggle',
+      root: 'agent.panel',
+      close: 'agent.panel.close',
+    },
+    configure: 'agent.configure',
+    chat: {
+      new: 'agent.chat.new',
+    },
+  },
   settings: {
     tlsCompatibility: {
       dismiss: 'settings.tls-compatibility.dismiss',
@@ -369,6 +380,7 @@ export const AUTOMATION_IDS = {
       appearance: 'settings.section.appearance',
       storage: 'settings.section.storage',
       privacy: 'settings.section.privacy',
+      agent: 'settings.section.agent',
       updates: 'settings.section.updates',
     },
     appContainers: {

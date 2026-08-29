@@ -4,6 +4,7 @@ import { SECTIONS } from '../constants';
 import type { TlsPassthroughNavigationTarget } from '../interfaces';
 
 import { AppContainerPanel } from './AppContainerPanel';
+import { AgentSettingsPanel } from './AgentSettingsPanel';
 import { CertificatesPanel } from './CertificatesPanel';
 import { PlaceholderPanel } from './PlaceholderPanel';
 import { PrivacyPanel } from './PrivacyPanel';
@@ -22,6 +23,7 @@ export interface SettingsContentProps {
 const PANELS: Record<string, () => React.JSX.Element> = {
   proxy: ProxyPanel,
   'app-containers': AppContainerPanel,
+  agent: AgentSettingsPanel,
   certificates: CertificatesPanel,
   storage: StoragePanel,
   privacy: PrivacyPanel,

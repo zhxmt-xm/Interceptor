@@ -248,7 +248,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | planned |
+| `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |
 | `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
@@ -269,7 +269,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `agent.panel.navigation-persistence` | 右侧Panel跨Workspace/Settings保持且只由显式入口关闭 | shared | planned |
+| `agent.panel.navigation-persistence` | 右侧Panel跨Workspace/Settings保持且只由显式入口关闭 | shared | passed |
 | `agent.settings.model-configuration` | 通过Settings配置、验证、切换与删除模型 | shared | planned |
 | `agent.chat.streaming-context` | 多轮Streaming、Context/Usage、Stop与Retry | shared | planned |
 | `agent.chat.restart-recovery` | Provider、Session、Transcript与Usage跨重启恢复 | shared | planned |

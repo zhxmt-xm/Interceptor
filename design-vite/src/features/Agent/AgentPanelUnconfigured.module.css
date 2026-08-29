@@ -28,6 +28,7 @@
 }
 
 .agentPanelUnconfigured h2 {
+  margin: 0;
   color: var(--text);
   font-size: 13px;
   font-weight: 650;
@@ -35,7 +36,7 @@
 
 .agentPanelUnconfigured p {
   max-width: 300px;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
   color: var(--text-2);
   font-size: 11px;
   line-height: 1.55;

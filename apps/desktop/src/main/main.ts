@@ -333,8 +333,9 @@ class DesktopApplication {
     const mainWindow = new BrowserWindow({
       autoHideMenuBar: process.platform !== 'darwin',
       icon: this.getWindowIconPath(),
-      width: 1280,
-      height: 800,
+      width: 1600,
+      height: 900,
+      useContentSize: true,
       minWidth: 880,
       minHeight: 560,
       backgroundColor: '#f2f4f5',
@@ -353,6 +354,7 @@ class DesktopApplication {
     if (process.platform !== 'darwin') {
       mainWindow.setMenuBarVisibility(false);
     }
+    mainWindow.setContentSize(1600, 900);
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
     // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。

@@ -347,6 +347,66 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
 
 export const views = [
   ...INITIAL_VIEWS,
+  ...['light', 'dark'].flatMap((theme) => {
+    const suffix = theme === 'dark' ? '-dark' : '';
+    return [
+      {
+        id: `agent-panel-unconfigured${suffix}`,
+        theme,
+        designState: {
+          view: 'capture',
+          theme,
+          sidebar: 'collapsed',
+          agentPanel: 'open',
+          agentProvider: 'unconfigured',
+        },
+        designShot: `${theme}/agent-models/panel-unconfigured.png`,
+        rendererActions: [
+          { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
+        ],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent panel header', parity: 'agent-panel-header' },
+          { name: 'Agent unconfigured state', parity: 'agent-panel-unconfigured' },
+          { name: 'Agent unconfigured icon', parity: 'agent-unconfigured-icon' },
+          {
+            name: 'Configure Agent button',
+            designSelector: '.agentPanelUnconfigured button',
+            appSelector: '[data-automation-id="agent.configure"]',
+          },
+          'Connect a model to start',
+          'Add a hosted provider or connect an OpenAI-compatible local model.',
+          'Configure Agent',
+        ],
+      },
+      {
+        id: `settings-agent-unconfigured${suffix}`,
+        theme,
+        rendererNav: 'Settings',
+        designState: {
+          view: 'settings',
+          theme,
+          sidebar: 'expanded',
+          settings: 'agent',
+          agentProvider: 'unconfigured',
+        },
+        designShot: `${theme}/agent-models/settings-agent-unconfigured.png`,
+        rendererActions: [
+          { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+          { type: 'clickText', text: 'Agent' },
+        ],
+        targets: [
+          { name: 'Agent settings', parity: 'agent-model-settings' },
+          { name: 'Agent settings empty state', parity: 'agent-settings-empty' },
+          { name: 'Agent settings empty icon', parity: 'agent-settings-empty-icon' },
+          { name: 'Agent settings empty copy', parity: 'agent-settings-empty-copy' },
+          'Configure model providers and defaults used by Agent.',
+          'No models configured',
+          'Add a hosted provider or connect an OpenAI-compatible local model to start a chat.',
+        ],
+      },
+    ];
+  }),
   ...HTTP_BREAKPOINT_VIEWS,
   ...BREAKPOINT_QUEUE_VIEWS,
   {

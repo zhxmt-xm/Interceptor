@@ -7,8 +7,8 @@ import styles from './AgentPanelUnconfigured.module.css';
 export function AgentPanelUnconfigured(): React.JSX.Element {
   const { updateState } = useDesignState();
   return (
-    <div className={styles.agentPanelUnconfigured}>
-      <span className={styles.agentPanelUnconfiguredIcon}><Bot aria-hidden="true" /></span>
+    <div className={styles.agentPanelUnconfigured} data-parity="agent-panel-unconfigured">
+      <span className={styles.agentPanelUnconfiguredIcon} data-parity="agent-unconfigured-icon"><Bot aria-hidden="true" /></span>
       <h2>Connect a model to start</h2>
       <p>Add a hosted provider or connect an OpenAI-compatible local model.</p>
       <button

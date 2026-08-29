@@ -13,6 +13,7 @@ const AUTOMATION_ID_BY_SECTION: Record<string, AutomationId> = {
   appearance: AUTOMATION_IDS.settings.section.appearance,
   storage: AUTOMATION_IDS.settings.section.storage,
   privacy: AUTOMATION_IDS.settings.section.privacy,
+  agent: AUTOMATION_IDS.settings.section.agent,
   updates: AUTOMATION_IDS.settings.section.updates,
 };
 
@@ -30,7 +31,8 @@ export function SettingsNav({
   return (
     <div className={styles.nav}>
       {SECTIONS.map(({ id, labelKey, Icon }) => (
-        <div
+        <button
+          type="button"
           key={id}
           className={cx(styles.item, id === active && styles.active)}
           data-automation-id={AUTOMATION_ID_BY_SECTION[id]}
@@ -39,7 +41,7 @@ export function SettingsNav({
         >
           <Icon size={16} strokeWidth={1.9} />
           {t(labelKey)}
-        </div>
+        </button>
       ))}
     </div>
   );

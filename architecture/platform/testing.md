@@ -47,6 +47,11 @@ npm run test --workspace @interceptor/mcp-server
 node apps/desktop/tests/visual-parity/parity.mjs
 ```
 
+完整 parity 在 `1600×900`、`deviceScaleFactor=2` 下按每批 5 个 view 启动独立 Edge 子进程；每个 view
+仍使用独立 BrowserContext。10–20 view 批次会在完整 146-view 运行中形成过高内存峰值，表现为后续
+page/context 被浏览器关闭；5-view 批次控制峰值，不改变单个 view 的状态、断言或像素算法。子进程的
+browser、Vite 与 design preview 统一在 `finally` 关闭，失败不得遗留测试 server。
+
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 
 ```powershell

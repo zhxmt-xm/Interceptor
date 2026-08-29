@@ -1,31 +1,41 @@
 # Agent Workflows
 
-本文件定义内置 Agent 阶段 1 的完整 E2E 流程。每条 workflow 独立启动真实 Electron、独占 profile、trace 与本地
-OpenAI-compatible lab；所有配置、Chat 与导航动作都经过 Renderer → Preload → Main → Agent Runtime → HTTP，
+本文件定义内置 Agent 阶段 1 的完整 E2E 流程。每条 workflow 独立启动真实 Electron、独占 profile 与 trace；
+只有需要 Model 的 workflow 才启动本地 OpenAI-compatible lab。所有配置、Chat 与导航动作都经过真实产品边界，
 不注入 Provider、Session、Transcript 或 Usage。
 
 <a id="agent-panel-navigation-persistence"></a>
 ## `agent.panel.navigation-persistence`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
-1. 创建独立空 profile/evidence 与支持 Streaming 的本地 OpenAI-compatible lab；启动 trace 和真实 Electron。
-2. 等待 App/Core/8888/readiness，确认窗口恢复为 `1600×900`、Capture active；点击 `capture.readiness.cancel`，确认系统代理未修改。
-3. 点击 `agent.panel.toggle`；确认 `agent.panel` 打开为 `440px` 右侧 grid column，Main workspace 同步缩窄且两者边界不重叠。
-4. 从未配置状态点击 `agent.configure`；确认进入 Settings > Agent 且 Panel 保持打开。通过 Add model → Custom 填入 lab URL、Model ID 与 Context Window，真实 Test connection 成功后 Save。
-5. 返回 Capture，点击 `agent.chat.new`，发送本轮唯一文本；等待 lab 分块响应完成，记录当前 Session ID、Transcript item IDs 与文本 hash。
-6. 依次经正式导航进入 Rules、Composer、Diagnostics 和 Capture；每次确认 Panel 仍打开、当前 Session ID、Transcript item IDs 与文本 hash 不变，Composer 没有自动出现页面 Context 附件。
-7. 从 `agent.model.select` 菜单点击 `agent.settings.open`；确认 Settings > Agent 打开但 Panel、Session 与 Transcript 均不变，再返回 Capture。
-8. 点击 Panel 内 `agent.panel.close`，确认右栏消失且 Main 释放 grid track；再用全局 toggle 打开并确认同一 Chat 恢复。最后用全局 toggle 关闭，证明两个显式入口都可关闭。
-9. 保存各 Workspace 边界、Panel 状态、Session/Transcript hash、无隐式 Context 结论、final screenshot、trace、Main/Renderer 日志与 PID/端口 metadata；证据不得包含 API Key 或完整 Prompt。
-10. 点击 `shell.window.close`，验证 Main、Renderer、Core、Worker 与 lab client 全退、8888 释放且 `gracefulDestroyVerified=true`；关闭 lab 并删除 profile。
+1. 创建独立空 profile/evidence；启动 trace 和真实 Electron，不启动 Model lab。
+2. 等待 App/Core/8888/readiness，确认窗口恢复为 `1600×900`、Capture active；点击 `capture.readiness.cancel`。
+3. 确认 `agent.panel` 初始不存在；记录关闭态 Main workspace 边界。点击 `agent.panel.toggle`，确认 Panel 打开为精确 `440px` 右侧 grid column，Main 同步缩窄且两者边界不重叠。
+4. 确认 fresh profile 显示未配置状态、`agent.chat.new` disabled，且 `agent.configure` 是唯一配置出口；不得显示伪造 Session、Transcript、Context Usage 或已连接 Provider。
+5. 点击 `agent.configure`；确认进入 Settings > Agent，Settings rail 只有 Agent 为 `aria-current=page`，Panel 保持打开且仍为同一未配置状态。
+6. 依次经正式导航进入 Rules、Composer、Diagnostics、Capture，再普通返回 Settings；每次确认 Panel 始终打开、宽度和未配置状态不变，Workspace 内容与 Panel 不重叠，也没有自动出现页面 Context。
+7. 点击 Panel 内 `agent.panel.close`，确认右栏消失且 Main 释放 `440px` grid track；Workspace 与当前 Settings section 不改变。
+8. 再用全局 toggle 打开 Panel，确认仍为未配置状态；最后再次点击全局 toggle 关闭，证明唯二关闭入口都有效且导航从不隐式关闭。
+9. 保存关闭/打开/跨 Workspace/Settings 深链的边界、Panel 状态、无隐式 Context 结论、final screenshot、trace、Main/Renderer 日志与 PID/端口 metadata。
+10. 点击 `shell.window.close`，验证 Main、Renderer、Core、Worker 全退、8888 释放且 `gracefulDestroyVerified=true`；删除 profile。
 
 ### 预期效果
 
-Agent 是全局右侧栏，不是 Workspace 或 overlay；Workspace/Settings 导航不自动关闭 Panel，也不改变当前 Chat 或注入页面 Context；只有用户点击全局 toggle 或 Panel Close 才关闭。
+Agent 是全局右侧栏，不是 Workspace 或 overlay；fresh profile 只显示诚实的未配置态。Workspace/Settings 导航不自动关闭 Panel或注入页面 Context；只有用户点击全局 toggle 或 Panel Close 才关闭。本 workflow 不替代 Provider 配置、Streaming Chat 或重启恢复验收。
+
+`440px` 是 `1600×900` 基线宽度。窗口缩小时 Grid 优先为 main 保留 `440px`，Agent 在同一右侧 track 内响应式收缩，不切换成 overlay；Close 始终可达。
+
+### 证据
+
+- 实现前 Red 依次锁定真实产品仍为 `1280×800`、Windows frameless content 高度多 `2px`，以及 `agent.panel.toggle` 缺失；Red 均来自预期产品缺口，失败后仍完整销毁。
+- 当前同一 workflow `1/1` Green：Renderer content 为精确 `1600×900`；Capture、Settings Agent、Rules、Composer、Diagnostics、Capture 与重新进入 Settings 七个节点均为 `panelWidth=440`、`mainRight=panelLeft=1160`、`provider=unconfigured`。
+- Main PID `11272`、Core PID `10928`、listener `8888`，`gracefulDestroyVerified=true`；Renderer page error 为 0。
+- light/dark 的 Panel 与 Settings Agent 四个 parity view 合计 `30/30 matched / 0 missing / 0 flagged`，最大几何差 `0.7px`。
+- `880×560` Renderer 响应式探针在展开 Sidebar + Settings Agent 下由修复前 `main=220 / panel=440 / settings=0` 收敛为 `main=440 / panel=220 / settings=162`，main 与 Panel 边界严格相接。
 
 <a id="agent-settings-model-configuration"></a>
 ## `agent.settings.model-configuration`
