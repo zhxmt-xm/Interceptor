@@ -1026,9 +1026,9 @@ export class AgentSessionService {
 
   /** Reject new public commands after shutdown starts while internal cleanup continues. */
   #requireAcceptingCommands(): void {
+    this.#requireRunning();
     if (!this.#acceptingCommands) {
       throw new Error('Agent Session service is not accepting commands.');
     }
-    this.#requireRunning();
   }
 }

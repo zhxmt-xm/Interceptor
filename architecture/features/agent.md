@@ -1131,14 +1131,16 @@ type AgentCredentialChange =
 - `keep` 只允许编辑已有 Provider；新增 Provider 必须明确 `replace` 或（仅 Custom）`remove`；DeepSeek 必须有 Key；
 - Test connection 在 Main/Runtime 解析并规范化 draft、解析凭据动作，再向 Chat Completions endpoint 发最小请求；
 - Custom远端Base URL必须使用HTTPS；HTTP只允许`localhost`或数值loopback地址，避免API Key与Prompt经远端明文传输；
+- Model请求禁止自动跟随HTTP redirect，避免已验证的安全endpoint把请求正文转发到未校验地址；
 - Test 成功返回不含 Key 的 model preview 与一次性 `verificationId`。Runtime 内存保存该次已验证的完整 draft；
   Save 只提交 `verificationId`，因此字段或凭据变化后旧 verification不能保存；发起新Test立即撤销旧verification并取消旧请求，
   Provider配置revision变化也会撤销verification。Test发送`max_tokens: 8`，有15秒attempt timeout与1MiB响应上限，
   Runtime stop会取消并等待在途Test清理；普通Model attempt另有32MiB流式响应上限；
 - Provider registry、default model ID 与 API Key 作为一个 versioned record 经 `safeStorage` 加密并原子替换
   `<userData>/agent/providers.enc`。所有Save/default/remove mutation在Runtime内串行，Renderer snapshot只含
-  `credentialConfigured`和`credentialLastFour`；secureStorage暂不可用时保留已有密文、阻断空基线修改，恢复后要求
-  重新启动并读取原记录，不降级、不删除也不覆盖；
+  `credentialConfigured`和`credentialLastFour`；读写使用同一256KiB密文上限，瞬时文件系统或无法分类的解密错误
+  保留已有密文并让启动失败，只有确定损坏的record才清理；secureStorage暂不可用时保留已有密文、阻断空基线修改，
+  恢复后要求重新启动并读取原记录，不降级、不删除也不覆盖；
 - 编辑Custom Provider时必须能显式选择保留、替换或移除已存Key；DeepSeek不提供移除Key；
 - 新增首个 model 自动成为 default；Set default 不重排列表；删除 default 后按现有稳定顺序选择下一项；
   删除最后一项后回到 unconfigured；

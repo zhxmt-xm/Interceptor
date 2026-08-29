@@ -153,6 +153,7 @@ export class DeepSeekModelAdapter implements ModelAdapter {
       }
       response = await this.#fetch(`${this.#baseUrl}/chat/completions`, {
         method: 'POST',
+        redirect: 'error',
         headers,
         body: JSON.stringify({
           model: this.#model,
@@ -200,6 +201,7 @@ export class DeepSeekModelAdapter implements ModelAdapter {
     const pendingToolCalls = new Map<number, PendingToolCall>();
     let responseStarted = false;
     let completed = false;
+    let terminalEvent: ModelStreamEvent | undefined;
     let responseBytes = 0;
 
     try {
@@ -222,23 +224,30 @@ export class DeepSeekModelAdapter implements ModelAdapter {
           responseStarted = true;
           completed = event.type === 'response-completed';
           if (completed) {
-            attemptAbort.finish();
+            terminalEvent = event;
+            break;
           }
           yield event;
         }
+        if (completed) {
+          break;
+        }
       }
       throwIfAttemptAborted(callerSignal, attemptAbort, responseStarted);
-      parser.feed(decoder.decode());
-      for (const event of consumeDataEvents(dataEvents, pendingToolCalls)) {
-        if (completed) {
-          throw invalidResponseError('DeepSeek emitted data after the DONE event.', true);
+      if (!completed) {
+        parser.feed(decoder.decode());
+        for (const event of consumeDataEvents(dataEvents, pendingToolCalls)) {
+          if (completed) {
+            throw invalidResponseError('DeepSeek emitted data after the DONE event.', true);
+          }
+          responseStarted = true;
+          completed = event.type === 'response-completed';
+          if (completed) {
+            terminalEvent = event;
+            break;
+          }
+          yield event;
         }
-        responseStarted = true;
-        completed = event.type === 'response-completed';
-        if (completed) {
-          attemptAbort.finish();
-        }
-        yield event;
       }
       if (!completed) {
         throw invalidResponseError(
@@ -246,6 +255,8 @@ export class DeepSeekModelAdapter implements ModelAdapter {
           responseStarted,
         );
       }
+      attemptAbort.finish();
+      yield terminalEvent!;
     } catch (error) {
       if (callerSignal.aborted) {
         throw callerSignal.reason;

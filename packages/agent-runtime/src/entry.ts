@@ -40,7 +40,9 @@ export class AgentRuntime {
   readonly #tools: readonly AgentTool[];
   readonly #executionMode: AgentExecutionMode | undefined;
   readonly #modelRetryPolicy: ModelRetryPolicy | undefined;
+  #lifecycleTail: Promise<void> = Promise.resolve();
   #providerMutationTail: Promise<void> = Promise.resolve();
+  #running = false;
 
   constructor(options: AgentRuntimeOptions) {
     const createId = options.createId ?? randomUUID;
@@ -68,21 +70,13 @@ export class AgentRuntime {
   }
 
   /** Restores encrypted Provider state before serving Main intents. */
-  async start(): Promise<void> {
-    await this.#providerRegistry.start();
-    try {
-      this.#sessionService.start();
-      await this.#sessionService.reconcileModels(this.#providerRegistry.snapshot());
-    } catch (error) {
-      await this.#providerRegistry.stop();
-      throw error;
-    }
+  start(): Promise<void> {
+    return this.#enqueueLifecycle(() => this.#start());
   }
 
   /** Clears in-memory one-time Provider verification state. */
-  async stop(): Promise<void> {
-    await this.#sessionService.stop();
-    await this.#providerRegistry.stop();
+  stop(): Promise<void> {
+    return this.#enqueueLifecycle(() => this.#stop());
   }
 
   /** Settle active Turns while outer platform shutdown can still fail. */
@@ -107,16 +101,19 @@ export class AgentRuntime {
 
   /** Persists exactly one previously tested Provider draft. */
   saveVerifiedProvider(verificationId: string): Promise<AgentModelsSnapshot> {
+    this.#requireRunning();
     return this.#enqueueProviderMutation(() => this.#saveVerifiedProvider(verificationId));
   }
 
   /** Selects the default model for future Chats without reordering Providers. */
   setDefaultModel(providerId: string): Promise<AgentModelsSnapshot> {
+    this.#requireRunning();
     return this.#enqueueProviderMutation(() => this.#providerRegistry.setDefault(providerId));
   }
 
   /** Removes one Provider and deterministically repairs the default. */
   removeProvider(providerId: string): Promise<AgentModelsSnapshot> {
+    this.#requireRunning();
     return this.#enqueueProviderMutation(() => this.#removeProvider(providerId));
   }
 
@@ -206,6 +203,59 @@ export class AgentRuntime {
       ...(this.#modelRetryPolicy === undefined ? {} : { modelRetryPolicy: this.#modelRetryPolicy }),
       ...(onModelStreamEvent === undefined ? {} : { onModelStreamEvent }),
     });
+  }
+
+  async #start(): Promise<void> {
+    if (this.#running) {
+      await this.#stop();
+    }
+    await this.#providerMutationTail;
+    await this.#providerRegistry.start();
+    try {
+      this.#sessionService.start();
+      await this.#sessionService.reconcileModels(this.#providerRegistry.snapshot());
+      this.#running = true;
+    } catch (startError) {
+      this.#running = false;
+      const cleanupErrors: unknown[] = [];
+      await this.#sessionService.stop().catch((error: unknown) => cleanupErrors.push(error));
+      await this.#providerRegistry.stop().catch((error: unknown) => cleanupErrors.push(error));
+      if (cleanupErrors.length > 0) {
+        throw new AggregateError(
+          [startError, ...cleanupErrors],
+          'Agent Runtime start and cleanup failed.',
+        );
+      }
+      throw startError;
+    }
+  }
+
+  async #stop(): Promise<void> {
+    if (!this.#running) return;
+    this.#running = false;
+    await this.#providerMutationTail;
+    const errors: unknown[] = [];
+    await this.#sessionService.stop().catch((error: unknown) => errors.push(error));
+    await this.#providerRegistry.stop().catch((error: unknown) => errors.push(error));
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) {
+      throw new AggregateError(errors, 'Agent Runtime stop failed.');
+    }
+  }
+
+  #enqueueLifecycle(operation: () => Promise<void>): Promise<void> {
+    const result = this.#lifecycleTail.then(operation);
+    this.#lifecycleTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  #requireRunning(): void {
+    if (!this.#running) {
+      throw new Error('Agent Runtime is not running.');
+    }
   }
 
   /** Save one Provider and update all Session references to its current model metadata. */

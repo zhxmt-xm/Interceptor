@@ -17,10 +17,22 @@ const renameProbe = vi.hoisted(() => ({
   maximumActive: 0,
 }));
 
+const readFileProbe = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
   return {
     ...actual,
+    async readFile(...arguments_: Parameters<typeof actual.readFile>) {
+      if (readFileProbe.error !== null) {
+        const error = readFileProbe.error;
+        readFileProbe.error = null;
+        throw error;
+      }
+      return actual.readFile(...arguments_);
+    },
     async rename(...arguments_: Parameters<typeof actual.rename>): Promise<void> {
       if (!renameProbe.enabled) {
         await actual.rename(...arguments_);
@@ -44,16 +56,28 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 class FakeAgentSecureStore implements AgentSecureStore {
   available = true;
   failNextDecryptAsUnavailable = false;
+  failNextDecrypt: Error | null = null;
+  nextEncryptedSize: number | null = null;
 
   isEncryptionAvailable(): boolean {
     return this.available;
   }
 
   encryptString(plaintext: string): Buffer {
+    if (this.nextEncryptedSize !== null) {
+      const size = this.nextEncryptedSize;
+      this.nextEncryptedSize = null;
+      return Buffer.alloc(size, 0x61);
+    }
     return Buffer.from(Buffer.from(plaintext, 'utf8').toString('base64'), 'utf8');
   }
 
   decryptString(data: Buffer): string {
+    if (this.failNextDecrypt !== null) {
+      const error = this.failNextDecrypt;
+      this.failNextDecrypt = null;
+      throw error;
+    }
     if (this.failNextDecryptAsUnavailable) {
       this.failNextDecryptAsUnavailable = false;
       this.available = false;
@@ -111,6 +135,7 @@ afterEach(async () => {
   renameProbe.calls = 0;
   renameProbe.active = 0;
   renameProbe.maximumActive = 0;
+  readFileProbe.error = null;
   await Promise.all(fixtures.splice(0).flatMap((fixture) =>
     fixture.runtimes.map((agentRuntime) => agentRuntime.stop().catch(() => undefined))));
   await Promise.all(roots.map(async (root) => {
@@ -487,6 +512,57 @@ describe('AgentRuntime Provider registry', () => {
     fixture.secureStore.available = true;
     await unavailableRuntime.start();
     expect(unavailableRuntime.getModels().models).toHaveLength(1);
+  });
+
+  it('preserves an encrypted record when a transient file read fails', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    const verification = await agentRuntime.testProviderConnection(customDraft());
+    await agentRuntime.saveVerifiedProvider(verification.verificationId);
+    const credentialPath = path.join(fixture.root, 'providers.enc');
+    const readError = Object.assign(new Error('temporary read failure'), { code: 'EIO' });
+    readFileProbe.error = readError;
+    const unavailableRuntime = fixture.createRuntime();
+
+    await expect(unavailableRuntime.start()).rejects.toBe(readError);
+    await expect(access(credentialPath)).resolves.toBeUndefined();
+  });
+
+  it('preserves an encrypted record when decryption fails without a corruption classification', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    const verification = await agentRuntime.testProviderConnection(customDraft());
+    await agentRuntime.saveVerifiedProvider(verification.verificationId);
+    const credentialPath = path.join(fixture.root, 'providers.enc');
+    const decryptError = new Error('temporary decrypt failure');
+    fixture.secureStore.failNextDecrypt = decryptError;
+    const unavailableRuntime = fixture.createRuntime();
+
+    await expect(unavailableRuntime.start()).rejects.toBe(decryptError);
+    await expect(access(credentialPath)).resolves.toBeUndefined();
+  });
+
+  it('rejects an encrypted record above the read limit without replacing the current file', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    const first = await agentRuntime.testProviderConnection(customDraft());
+    await agentRuntime.saveVerifiedProvider(first.verificationId);
+    const credentialPath = path.join(fixture.root, 'providers.enc');
+    const previousEncrypted = await readFile(credentialPath);
+    const providerId = agentRuntime.getModels().models[0]!.providerId;
+    const edited = await agentRuntime.testProviderConnection(customDraft({
+      providerId,
+      modelId: 'oversized-model',
+      credential: { action: 'keep' },
+    }));
+    fixture.secureStore.nextEncryptedSize = 256 * 1024 + 1;
+
+    await expect(agentRuntime.saveVerifiedProvider(edited.verificationId))
+      .rejects.toThrow('Agent Provider record exceeds the encrypted size limit.');
+    expect(await readFile(credentialPath)).toEqual(previousEncrypted);
   });
 
   it('clears malformed, oversized and symbolic-link Provider records on start', async () => {

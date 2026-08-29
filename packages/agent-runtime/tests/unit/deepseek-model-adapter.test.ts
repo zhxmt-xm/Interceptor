@@ -132,6 +132,7 @@ describe('DeepSeekModelAdapter', () => {
     expect(url).toBe('https://api.deepseek.com/chat/completions');
     expect(init).toMatchObject({
       method: 'POST',
+      redirect: 'error',
       headers: {
         accept: 'text/event-stream',
         authorization: 'Bearer test-key',
@@ -523,6 +524,52 @@ describe('DeepSeekModelAdapter', () => {
 
       await next;
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('treats DONE as protocol EOF without waiting for the response body to close', async () => {
+    vi.useFakeTimers();
+    const abortController = new AbortController();
+    try {
+      const encoder = new TextEncoder();
+      const fetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => {
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('Expected an AbortSignal.');
+        }
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            signal.addEventListener('abort', () => controller.error(signal.reason), { once: true });
+          },
+        });
+        return new Response(body, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        });
+      });
+      const deepSeekModelAdapter = new DeepSeekModelAdapter({
+        apiKey: 'test-key',
+        fetch,
+        attemptTimeoutMs: 1_000,
+      });
+      let settled = false;
+      const result = collectEvents(deepSeekModelAdapter.stream(request, {
+        abortSignal: abortController.signal,
+      })).then(
+        (events) => events,
+        (error: unknown) => error,
+      ).finally(() => {
+        settled = true;
+      });
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      expect(settled).toBe(true);
+      await expect(result).resolves.toEqual([{ type: 'response-completed' }]);
+    } finally {
+      abortController.abort();
       vi.useRealTimers();
     }
   });

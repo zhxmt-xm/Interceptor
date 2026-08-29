@@ -13,6 +13,7 @@ import type {
   ModelAdapter,
 } from '../interfaces';
 import { DeepSeekModelAdapter } from '../models/deepseek-model-adapter';
+import { AgentProviderRecordCorruptionError } from './internal/errors';
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CONTEXT_WINDOW_TOKENS = 1_000_000;
@@ -191,13 +192,15 @@ export class AgentProviderRegistry {
       const record = await this.#readRecord();
       this.#providers = record?.providers.map((provider) => ({ ...provider })) ?? [];
       this.#defaultProviderId = record?.defaultProviderId ?? null;
-    } catch {
+    } catch (error) {
       this.#providers = [];
       this.#defaultProviderId = null;
-      if (this.#secureStore.isEncryptionAvailable()) {
+      if (error instanceof AgentProviderRecordCorruptionError) {
         await rm(this.#credentialPath, { force: true });
-      } else {
+      } else if (!this.#secureStore.isEncryptionAvailable()) {
         this.#providerRecordPendingRestore = true;
+      } else {
+        throw error;
       }
     }
     this.#providerRevision += 1;
@@ -536,6 +539,9 @@ export class AgentProviderRegistry {
     this.#requireSecureStorage();
     const parsedRecord = providerRecordSchema.parse(record);
     const encrypted = this.#secureStore.encryptString(JSON.stringify(parsedRecord));
+    if (encrypted.byteLength > MAX_PROVIDER_RECORD_BYTES) {
+      throw new Error('Agent Provider record exceeds the encrypted size limit.');
+    }
     const directory = path.dirname(this.#credentialPath);
     const temporaryPath = path.join(
       directory,
@@ -570,11 +576,27 @@ export class AgentProviderRegistry {
     if (!metadata.isFile()
       || metadata.isSymbolicLink()
       || metadata.size > MAX_PROVIDER_RECORD_BYTES) {
-      throw new Error('Agent Provider record is invalid.');
+      throw new AgentProviderRecordCorruptionError('Agent Provider record is invalid.');
     }
     this.#requireSecureStorage();
     const plaintext = this.#secureStore.decryptString(await readFile(this.#credentialPath));
-    return providerRecordSchema.parse(JSON.parse(plaintext) as unknown);
+    let record: unknown;
+    try {
+      record = JSON.parse(plaintext) as unknown;
+    } catch (error) {
+      throw new AgentProviderRecordCorruptionError(
+        'Agent Provider record is not valid JSON.',
+        { cause: error },
+      );
+    }
+    const parsedRecord = providerRecordSchema.safeParse(record);
+    if (!parsedRecord.success) {
+      throw new AgentProviderRecordCorruptionError(
+        'Agent Provider record schema is invalid.',
+        { cause: parsedRecord.error },
+      );
+    }
+    return parsedRecord.data;
   }
 
   static #isMissing(error: unknown): boolean {

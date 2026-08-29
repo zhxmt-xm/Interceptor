@@ -159,6 +159,45 @@ afterEach(async () => {
 });
 
 describe('AgentRuntime persistent Sessions', () => {
+  it('leaves Runtime stopped when stop is requested during initial start', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    const starting = agentRuntime.start();
+    const stopping = agentRuntime.stop();
+    await starting;
+    await stopping;
+
+    await expect(agentRuntime.listSessions())
+      .rejects.toThrow('Agent Session service is not running.');
+  });
+
+  it('closes Session storage when model reconciliation fails during start', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+    await agentRuntime.createSession();
+    await agentRuntime.stop();
+    const providerPath = path.join(fixture.root, 'providers.enc');
+    const providerRecord = JSON.parse(fixture.secureStore.decryptString(
+      await readFile(providerPath),
+    )) as {
+      providers: Array<{ modelId: string }>;
+    };
+    providerRecord.providers[0]!.modelId = 'changed-outside-session';
+    await writeFile(
+      providerPath,
+      fixture.secureStore.encryptString(JSON.stringify(providerRecord)),
+    );
+    fixture.secureStore.failEncryption = true;
+    const failedRuntime = fixture.createRuntime();
+
+    await expect(failedRuntime.start()).rejects.toThrow('secure storage write failed');
+    fixture.secureStore.failEncryption = false;
+    await expect(failedRuntime.listSessions())
+      .rejects.toThrow('Agent Session service is not running.');
+  });
+
   it('encrypts Session content and restores list order, selection and transcript', async () => {
     const fixture = await createFixture();
     const agentRuntime = fixture.createRuntime();
