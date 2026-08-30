@@ -57,6 +57,16 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentProviderRemove, providerId),
   setDefaultAgentModel: (providerId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentModelSetDefault, providerId),
+  getToolCapabilitySettings: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.toolCapabilitySettingsGet),
+  disableAgentTool: (toolName) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentToolDisable, toolName),
+  enableAgentTool: (toolName) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentToolEnable, toolName),
+  disableMcpTool: (toolName) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolDisable, toolName),
+  enableMcpTool: (toolName) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolEnable, toolName),
   listAgentSessions: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionsList),
   createAgentSession: () =>

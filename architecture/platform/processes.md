@@ -20,6 +20,8 @@ flowchart LR
     UPDATE["GitHubReleaseUpdateService<br/>Check · Changelog · Manual Download"]
     AGENT["AgentRuntime<br/>Provider · Session · Streaming · Usage"]
     AGENT_STORE["providers.enc + agent.sqlite<br/>safeStorage 加密"]
+    TOOL_SETTINGS["ToolCapabilitySettingsService<br/>Registry projection · Agent/MCP disabled names"]
+    TOOL_SETTINGS_STORE["tool-capabilities/settings.json<br/>只保存关闭项"]
     RUNTIME["5 CoreRuntime<br/>CoreProcess · Status · MessageChannel"]
     RPC_CLIENT["6 CoreRpcClient<br/>Request → Promise · Timeout · Cancel"]
   end
@@ -45,6 +47,7 @@ flowchart LR
   MAIN --> AGENT
   AGENT --> AGENT_STORE
   AGENT --> MODEL_API
+  MAIN --> TOOL_SETTINGS --> TOOL_SETTINGS_STORE
   MAIN --> RUNTIME --> ENTRY --> APPLICATION
   RUNTIME -. "parentPort: rpc-port transfer" .-> APPLICATION
   APPLICATION -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
@@ -70,6 +73,10 @@ flowchart LR
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage` 与 `fetch`，并把已持久化的 Session event 广播给 Renderer。当前 Desktop 传入 `tools: []`，
 因此该图不包含尚未实现的 Tool Gateway 或 Agent→Core 业务调用。
+
+`ToolCapabilitySettingsService`是Main内全局Agent/MCP Tool开关owner，从`@interceptor/tools`的同一可执行registry
+投影四组Settings目录，只把两组关闭名称原子写入`<userData>/tool-capabilities/settings.json`。fresh profile与
+全开状态不保留文件；当前快照只驱动Settings，尚未接到Agent discovery或MCP `tools/list`。
 
 ## 2. 两条独立通道
 

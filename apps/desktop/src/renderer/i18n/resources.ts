@@ -5,6 +5,7 @@ import {
   type AgentProviderMessageCatalog,
 } from './agent-provider-resources';
 import { agentMessages, type AgentMessageCatalog } from './agent-resources';
+import { agentToolMessages, type AgentToolMessageCatalog } from './agent-tool-resources';
 import { englishCatalog, type MessageCatalog } from './english-catalog';
 import {
   githubAuthMessages,
@@ -28,22 +29,22 @@ import { zhTWCatalog } from './locales/zh-TW';
 export { englishCatalog, type MessageCatalog, type MessageKey } from './english-catalog';
 
 export const resources = {
-  en: { translation: { ...englishCatalog, ...githubAuthMessages.en, ...agentMessages.en, ...agentProviderMessages.en, ...agentChatMessages.en } },
-  'zh-CN': { translation: { ...zhCNCatalog, ...githubAuthMessages['zh-CN'], ...agentMessages['zh-CN'], ...agentProviderMessages['zh-CN'], ...agentChatMessages['zh-CN'] } },
-  'zh-TW': { translation: { ...zhTWCatalog, ...githubAuthMessages['zh-TW'], ...agentMessages['zh-TW'], ...agentProviderMessages['zh-TW'], ...agentChatMessages['zh-TW'] } },
-  ja: { translation: { ...jaCatalog, ...githubAuthMessages.ja, ...agentMessages.ja, ...agentProviderMessages.ja, ...agentChatMessages.ja } },
-  ko: { translation: { ...koCatalog, ...githubAuthMessages.ko, ...agentMessages.ko, ...agentProviderMessages.ko, ...agentChatMessages.ko } },
-  de: { translation: { ...deCatalog, ...githubAuthMessages.de, ...agentMessages.de, ...agentProviderMessages.de, ...agentChatMessages.de } },
-  fr: { translation: { ...frCatalog, ...githubAuthMessages.fr, ...agentMessages.fr, ...agentProviderMessages.fr, ...agentChatMessages.fr } },
-  es: { translation: { ...esCatalog, ...githubAuthMessages.es, ...agentMessages.es, ...agentProviderMessages.es, ...agentChatMessages.es } },
-  it: { translation: { ...itCatalog, ...githubAuthMessages.it, ...agentMessages.it, ...agentProviderMessages.it, ...agentChatMessages.it } },
-  'pt-BR': { translation: { ...ptBRCatalog, ...githubAuthMessages['pt-BR'], ...agentMessages['pt-BR'], ...agentProviderMessages['pt-BR'], ...agentChatMessages['pt-BR'] } },
-  ru: { translation: { ...ruCatalog, ...githubAuthMessages.ru, ...agentMessages.ru, ...agentProviderMessages.ru, ...agentChatMessages.ru } },
-  nl: { translation: { ...nlCatalog, ...githubAuthMessages.nl, ...agentMessages.nl, ...agentProviderMessages.nl, ...agentChatMessages.nl } },
-  pl: { translation: { ...plCatalog, ...githubAuthMessages.pl, ...agentMessages.pl, ...agentProviderMessages.pl, ...agentChatMessages.pl } },
-  tr: { translation: { ...trCatalog, ...githubAuthMessages.tr, ...agentMessages.tr, ...agentProviderMessages.tr, ...agentChatMessages.tr } },
-  uk: { translation: { ...ukCatalog, ...githubAuthMessages.uk, ...agentMessages.uk, ...agentProviderMessages.uk, ...agentChatMessages.uk } },
+  en: { translation: { ...englishCatalog, ...githubAuthMessages.en, ...agentMessages.en, ...agentProviderMessages.en, ...agentChatMessages.en, ...agentToolMessages.en } },
+  'zh-CN': { translation: { ...zhCNCatalog, ...githubAuthMessages['zh-CN'], ...agentMessages['zh-CN'], ...agentProviderMessages['zh-CN'], ...agentChatMessages['zh-CN'], ...agentToolMessages['zh-CN'] } },
+  'zh-TW': { translation: { ...zhTWCatalog, ...githubAuthMessages['zh-TW'], ...agentMessages['zh-TW'], ...agentProviderMessages['zh-TW'], ...agentChatMessages['zh-TW'], ...agentToolMessages['zh-TW'] } },
+  ja: { translation: { ...jaCatalog, ...githubAuthMessages.ja, ...agentMessages.ja, ...agentProviderMessages.ja, ...agentChatMessages.ja, ...agentToolMessages.ja } },
+  ko: { translation: { ...koCatalog, ...githubAuthMessages.ko, ...agentMessages.ko, ...agentProviderMessages.ko, ...agentChatMessages.ko, ...agentToolMessages.ko } },
+  de: { translation: { ...deCatalog, ...githubAuthMessages.de, ...agentMessages.de, ...agentProviderMessages.de, ...agentChatMessages.de, ...agentToolMessages.de } },
+  fr: { translation: { ...frCatalog, ...githubAuthMessages.fr, ...agentMessages.fr, ...agentProviderMessages.fr, ...agentChatMessages.fr, ...agentToolMessages.fr } },
+  es: { translation: { ...esCatalog, ...githubAuthMessages.es, ...agentMessages.es, ...agentProviderMessages.es, ...agentChatMessages.es, ...agentToolMessages.es } },
+  it: { translation: { ...itCatalog, ...githubAuthMessages.it, ...agentMessages.it, ...agentProviderMessages.it, ...agentChatMessages.it, ...agentToolMessages.it } },
+  'pt-BR': { translation: { ...ptBRCatalog, ...githubAuthMessages['pt-BR'], ...agentMessages['pt-BR'], ...agentProviderMessages['pt-BR'], ...agentChatMessages['pt-BR'], ...agentToolMessages['pt-BR'] } },
+  ru: { translation: { ...ruCatalog, ...githubAuthMessages.ru, ...agentMessages.ru, ...agentProviderMessages.ru, ...agentChatMessages.ru, ...agentToolMessages.ru } },
+  nl: { translation: { ...nlCatalog, ...githubAuthMessages.nl, ...agentMessages.nl, ...agentProviderMessages.nl, ...agentChatMessages.nl, ...agentToolMessages.nl } },
+  pl: { translation: { ...plCatalog, ...githubAuthMessages.pl, ...agentMessages.pl, ...agentProviderMessages.pl, ...agentChatMessages.pl, ...agentToolMessages.pl } },
+  tr: { translation: { ...trCatalog, ...githubAuthMessages.tr, ...agentMessages.tr, ...agentProviderMessages.tr, ...agentChatMessages.tr, ...agentToolMessages.tr } },
+  uk: { translation: { ...ukCatalog, ...githubAuthMessages.uk, ...agentMessages.uk, ...agentProviderMessages.uk, ...agentChatMessages.uk, ...agentToolMessages.uk } },
 } satisfies Record<
   LanguageId,
-  { translation: MessageCatalog & GitHubAuthMessageCatalog & AgentMessageCatalog & AgentProviderMessageCatalog & AgentChatMessageCatalog }
+  { translation: MessageCatalog & GitHubAuthMessageCatalog & AgentMessageCatalog & AgentProviderMessageCatalog & AgentChatMessageCatalog & AgentToolMessageCatalog }
 >;

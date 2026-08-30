@@ -51,6 +51,7 @@ import type {
   AgentSessionsSnapshot,
   AgentTurnSnapshot,
 } from '@interceptor/agent-runtime';
+import type { InterceptorToolSettingsGroup } from '@interceptor/tools';
 
 export {
   BODY_PREVIEW_MAX_BYTES,
@@ -68,6 +69,7 @@ export type {
   AgentSessionSnapshot,
   AgentSessionsSnapshot,
   AgentTurnSnapshot,
+  InterceptorToolSettingsGroup,
   BreakpointEdit,
   BreakpointQueueKey,
   CaptureBodyRef,
@@ -108,6 +110,13 @@ export type {
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 };
+
+/** Main-owned global Agent/MCP Tool exposure settings. */
+export interface ToolCapabilitySettingsSnapshot {
+  readonly groups: readonly InterceptorToolSettingsGroup[];
+  readonly agentDisabledToolNames: readonly string[];
+  readonly mcpDisabledToolNames: readonly string[];
+}
 
 export type CoreProcessState =
   | 'stopped'
@@ -486,6 +495,11 @@ export const DESKTOP_IPC_CHANNELS = {
   agentProviderSaveVerified: 'agent-provider:save-verified',
   agentProviderRemove: 'agent-provider:remove',
   agentModelSetDefault: 'agent-model:set-default',
+  toolCapabilitySettingsGet: 'tool-capabilities:get',
+  agentToolDisable: 'tool-capabilities:agent-disable',
+  agentToolEnable: 'tool-capabilities:agent-enable',
+  mcpToolDisable: 'tool-capabilities:mcp-disable',
+  mcpToolEnable: 'tool-capabilities:mcp-enable',
   agentSessionsList: 'agent-sessions:list',
   agentSessionCreate: 'agent-session:create',
   agentSessionSelect: 'agent-session:select',
@@ -590,6 +604,11 @@ export interface InterceptorDesktopApi {
   saveVerifiedAgentProvider(verificationId: string): Promise<AgentModelsSnapshot>;
   removeAgentProvider(providerId: string): Promise<AgentModelsSnapshot>;
   setDefaultAgentModel(providerId: string): Promise<AgentModelsSnapshot>;
+  getToolCapabilitySettings(): Promise<ToolCapabilitySettingsSnapshot>;
+  disableAgentTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
+  enableAgentTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
+  disableMcpTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
+  enableMcpTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
   listAgentSessions(): Promise<AgentSessionsSnapshot>;
   createAgentSession(): Promise<AgentSessionSnapshot>;
   selectAgentSession(sessionId: string): Promise<AgentSessionSnapshot>;

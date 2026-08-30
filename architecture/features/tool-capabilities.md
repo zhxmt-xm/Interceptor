@@ -3,8 +3,8 @@
 > 最后更新：2026-08-30
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录与Settings/问询UI设计已完成；`@interceptor/tools`已拥有首批24项共享registry、
-> Capability discovery、参数边界与脱敏，`packages/mcp-server`已改为消费同一registry；Desktop尚未接入Agent/MCP业务Tool。
+> 当前状态：完整目标目录、首批24项共享registry和Settings开关持久化已完成；`packages/mcp-server`已消费同一
+> registry。Desktop仍未把已开启Tool接入Agent discovery或MCP transport，当前Agent业务Tool为0。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -50,6 +50,29 @@ Tool已经接入Desktop。
 - `ask` 在执行前展示 Tool、参数与影响，`auto` 不增加应用内逐次确认；
 - 两种模式都继续使用正式产品命令，并保留已有参数校验、原生 Open/Save Dialog、UAC 与系统权限；
 - Tool 被关闭后，新的 discovery / `tools/list` 立即不再返回它；已经开始的调用按开始时快照完成。
+
+本阶段由Main中的`ToolCapabilitySettingsService`拥有全局设置，不归某个Workspace、Agent Session或MCP Client。
+它从同一可执行registry投影Settings专用的四组只读目录：`Traffic`、`Rules`、`Breakpoints`、
+`Requests & diagnostics`；最后一组只合并展示`requests`与`diagnostics`两个Capability，不改变Model discovery的
+五个Capability边界。Renderer和Design不得再维护第二份Tool名称、类型或说明清单。
+
+落盘位置为`<userData>/tool-capabilities/settings.json`，只保存关闭项：
+
+```ts
+interface ToolCapabilitySettingsRecord {
+   version: 1;
+   agentDisabledToolNames: string[];
+   mcpDisabledToolNames: string[];
+}
+```
+
+- fresh profile或两组关闭项都为空时不保留文件，24项自然全部开启；
+- 读取时拒绝非法schema，去重并按registry顺序规范化；registry已删除的旧名称从下次写入中清除；
+- `getToolCapabilitySettings`返回四组目录和两组关闭名称的完整快照；
+- `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
+- mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
+- Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
+- 本阶段只建立设置与持久化，Agent仍接收`tools: []`，MCP仍未接Desktop；过滤执行入口归后续纵向flow。
 
 ## 3. 完整 Tool 清单
 
@@ -172,7 +195,7 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 1. 在`design-vite`完成`Settings > Agent`能力列表、Agent/MCP双开关与`ask`问询态设计；
 2. **[已完成]** 将现有MCP 20个Tool的通用descriptor、schema与执行函数迁入`packages/interceptor-tools/`，
    同时把三个多义入口拆成24个语义单一Tool；MCP transport继续留在`packages/mcp-server/`；
-3. 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；
+3. **[已完成]** 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；本项只建立设置快照，不提前接执行入口；
 4. Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
 5. 接入`ask` / `auto`，再按本目录顺序逐项开发其余Tool；

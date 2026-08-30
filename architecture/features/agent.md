@@ -312,6 +312,7 @@ flowchart LR
 | `AgentSessionStore` | Runtime 内部协作者；`<userData>/agent/agent.sqlite` 持久化 Session、Turn、Item 与 Model Call Usage |
 | `AgentProviderRegistry` | Runtime 内部协作者；使用注入的 `safeStorage` 加密 Provider registry 与 API Key |
 | `DeepSeekModelAdapter` | Runtime 拥有的 Provider Adapter；映射 DeepSeek Streaming wire contract 与内部 event |
+| `ToolCapabilitySettingsService` | Main中的全局设置owner；从共享registry投影Settings目录，只持久化Agent/MCP关闭项 |
 | Renderer | 全局 Agent toggle、右侧Panel、Chat selector、Transcript、Composer、Context Window Usage 与 Settings > Agent；不运行Agent Loop |
 
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
@@ -1125,6 +1126,10 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
   Logo仅作来源标识，不暗示品牌合作；新增品牌前复核对应brand guideline。
 - 当前 Chat 的 Model Select 只列已配置模型；选中项品牌 Logo 着色，未选中项同形状置灰；菜单末尾
   `Agent settings…` 深链到 Settings > Agent，且保持 Panel 打开。
+- `Tool capabilities`始终显示在模型配置之后，即使尚未配置Provider；目录从Main返回的共享registry投影渲染，
+  四个Settings展示组不改变Model使用的五个Capability。搜索只过滤当前可见行，不改写Agent/MCP开关。
+- 每行Agent与MCP开关分别调用`disableAgentTool` / `enableAgentTool`和`disableMcpTool` / `enableMcpTool`；
+  fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。当前阶段只保存授权状态，Agent仍使用空Tool数组。
 
 Provider 配置使用以下公开契约，API Key 不进入 snapshot：
 
@@ -1303,15 +1308,16 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 真实 E2E 使用产品 Settings 配置 workflow 启动的本地 OpenAI-compatible lab，经真实
 Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不得注入 Session 或替换 Dialog 返回值。
 
-### [阶段 2] 共享 Tool 目录、能力开关与首个 Traffic Tool
+### [阶段 2 · 进行中] 共享 Tool 目录、能力开关与首个 Traffic Tool
 
 目标：先确定完整产品 Tool 目录和用户开关，再用最基础的三个查询 Tool 跑通第一个纵向流程；查询 Tool
 只是实现顺序，不是 Agent 的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
 - `design-vite`已完成Settings能力列表、Agent/MCP双开关、会话级`Ask/Auto`与Transcript内联问询卡；
-- 将现有 MCP Tool 的通用 descriptor、schema 和执行函数迁入 `packages/interceptor-tools/`；
-- `Settings > Agent` 从 registry 渲染 Agent / MCP 两个默认开启的独立开关；
+- [已完成] 将现有 MCP Tool 的通用 descriptor、schema 和执行函数迁入 `packages/interceptor-tools/`；
+- `Settings > Agent`从registry的Settings投影渲染Agent/MCP两个默认开启的独立开关；Main只持久化关闭项，
+  提供四条正反语义独立的mutation intent，本阶段不接Agent/MCP执行过滤；
 - 接入 Capability Index 与 `discover_tools`，只披露对应入口已开启的 Tool；
 - 首个产品纵向流程实现 `get_proxy_status`、`list_exchanges`、`get_exchange`；
 - Transcript 显示 Tool Call、参数与结果摘要；
@@ -1406,7 +1412,10 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
   参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent仍未注册
   `discover_tools`，Main仍注入空Tool数组；
+- `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
+  Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
+  UI文案已接入。该状态尚未应用到Agent执行或MCP transport；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
-  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前产品不包含业务Tool；下一阶段
-  实现registry驱动的Settings开关与持久化，再从三个基础Traffic查询Tool开始接入Agent。
+  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前产品不包含业务Tool；
+  Settings开关持久化已完成，下一work item从三个基础Traffic查询Tool开始接入Agent。

@@ -4,7 +4,8 @@
 
 **当前状态：认证、协议和共享Tool adapter已实现并单测通过，但尚未接入Main/Core。** 24个已实现Tool的
 descriptor、schema、参数边界、脱敏和执行函数由`@interceptor/tools`唯一拥有；本package只增加MCP身份、
-审批、审计、并发/结果上限和JSON-RPC映射。Settings驱动的MCP开关与Client `ask` / `auto`尚未实现。
+审批、审计、并发/结果上限和JSON-RPC映射。Desktop已持久化Settings中的MCP关闭项，但尚未接入本package的
+`tools/list` / `tools/call`；Client `ask` / `auto`也尚未实现。
 
 完整目标架构见 [`architecture/features/mcp.md`](../../architecture/features/mcp.md)，唯一完整Tool目录见
 [`architecture/features/tool-capabilities.md`](../../architecture/features/tool-capabilities.md)。
@@ -79,8 +80,9 @@ for await (const line of readLines(socket)) {
 这些不是可选的加固，而是本 package 存在的理由。
 
 **认证、Tool开关与执行模式正交。** Bearer token只证明调用方知道秘密；Settings的MCP开关决定Tool是否
-注册，Client的`ask` / `auto`决定已开启change Tool是否逐次问询。当前package尚未实现后二者，change Tool
-仍统一问询。Capture正文是完全不可信的外部输入，其触发面是整个互联网。
+注册，Client的`ask` / `auto`决定已开启change Tool是否逐次问询。Desktop现已保存MCP关闭项，但尚未把它接到
+本package；Client模式也未实现，因此当前24项仍全部注册且change Tool统一问询。Capture正文是完全不可信的
+外部输入，其触发面是整个互联网。
 
 - 目标`ask`模式展示Tool、参数与影响；`auto`是用户对该MCP Client的显式选择。
 - 两种模式都复用正式产品意图，不绕过原生Dialog、UAC或业务校验。

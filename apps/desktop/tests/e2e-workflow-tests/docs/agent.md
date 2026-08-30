@@ -128,22 +128,36 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 <a id="agent-tools-settings-capabilities"></a>
 ## `agent.tools.settings-capabilities`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
 1. 创建独立空profile并启动真实Electron；进入Settings > Agent。
-2. 确认`Tool capabilities`只列共享registry中已经实现的Tool，不展示架构目录里尚未开发的目标项。
-3. 确认每行有Agent与MCP两个独立Switch，首次启动时全部开启；关闭一个Tool的Agent开关不改变同一行MCP开关或其他Tool。
-4. 关闭另一个Tool的MCP开关，离开Settings并返回，确认两项状态保持且没有改变Capture、Rules或代理运行态。
-5. 正常关闭并用同一profile重启，确认关闭项恢复；重新开启后从持久配置中移除，证明未来新增Tool仍会默认开启。
-6. 保存registry行ID、两列状态、重启恢复、trace与销毁证据；不通过测试API读取或注入设置。
+2. 无需配置Provider，确认`agent.tools.capabilities`存在，四组共24行且每行有Agent/MCP两个Switch；只列共享
+	registry中已经实现的Tool，不展示架构目录里尚未开发的目标项。
+3. 首次启动48个Switch全部开启；关闭`get_proxy_status`的Agent开关，不改变同一行MCP开关或其他Tool；
+	关闭`apply_rules`的MCP开关，不改变同一行Agent开关。
+4. 用真实搜索框过滤到`query_diagnostics`，确认隐藏/恢复行不会改变开关；离开Settings并返回，确认两项关闭状态保持。
+5. 对比操作前后的Capture recording、Rules revision与系统代理状态，确认能力开关没有改写任何业务状态。
+6. 正常关闭并用同一profile重启，确认两项关闭状态恢复；重新开启两项并再次重启，确认恢复为全部开启，
+	证明关闭名称已从持久配置移除且未来新增Tool仍会默认开启。
+7. 保存24个`agent.tools.row.<toolName>`、48个公开switch状态、搜索、两次重启恢复、trace与每代销毁证据；
+	不通过测试API读取或注入设置文件。
 
 ### 预期效果
 
 Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不影响，只决定对应入口是否注册Tool，不改写
-业务状态，也不提前展示未实现能力。
+业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化；Agent仍不注册业务Tool，MCP仍不接Desktop。
+
+### Evidence
+
+- 实现前真实Electron精确Red于`agent.tools.capabilities`不存在；实现后同一workflow `1/1` Green。
+- fresh profile显示四组24行和48个默认开启Switch；`get_proxy_status`仅关闭Agent列，`apply_rules`仅关闭MCP列；
+	搜索、Settings往返不改变状态。第一代业务状态前后均为`recording=true / rules revision=0 / system proxy=owned`。
+- 第一代关闭两项，第二代同profile恢复后重新开启，第三代再次启动时48项全开，证明空关闭集不依赖持久文件。
+- 三代Main/Core PID分别为`31716/32188`、`13204/27660`、`29192/30064`；每代
+	`gracefulDestroyVerified=true`，最终8888释放。
 
 <a id="agent-tools-traffic-discovery"></a>
 ## `agent.tools.traffic-discovery`

@@ -66,6 +66,7 @@ import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-servi
 import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import { toUpstreamAuthority } from './system-proxy/system-proxy-upstream';
 import { UpstreamProbe } from './system-proxy/upstream-probe';
+import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
@@ -131,6 +132,8 @@ class DesktopApplication {
   private gitHubAuthService: GitHubAuthService | null = null;
   /** Agent domain composition root; Provider credentials remain encrypted inside Runtime. */
   private agentRuntime: AgentRuntime | null = null;
+  /** Global Agent/MCP Tool exposure settings owner. */
+  private toolCapabilitySettingsService: ToolCapabilitySettingsService | null = null;
   /** Stops Runtime Session event broadcasts before Agent shutdown. */
   private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Private GitHub release checker; downloads always remain user-controlled. */
@@ -194,6 +197,10 @@ class DesktopApplication {
       },
     });
     await this.gitHubAuthService.start();
+    this.toolCapabilitySettingsService = new ToolCapabilitySettingsService(
+      path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
+    );
+    await this.toolCapabilitySettingsService.start();
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
       secureStore: safeStorage,
@@ -800,6 +807,47 @@ class DesktopApplication {
       }
       return this.runMainAction('main.agent-model.set-default', () =>
         this.requireAgentRuntime().setDefaultModel(providerId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.toolCapabilitySettingsGet, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireToolCapabilitySettingsService().snapshot();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentToolDisable, (event, toolName: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof toolName !== 'string') {
+        throw new Error('Agent Tool name is invalid.');
+      }
+      return this.runMainAction('main.agent-tool.disable', () =>
+        this.requireToolCapabilitySettingsService().disableAgentTool(toolName));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentToolEnable, (event, toolName: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof toolName !== 'string') {
+        throw new Error('Agent Tool name is invalid.');
+      }
+      return this.runMainAction('main.agent-tool.enable', () =>
+        this.requireToolCapabilitySettingsService().enableAgentTool(toolName));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpToolDisable, (event, toolName: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof toolName !== 'string') {
+        throw new Error('MCP Tool name is invalid.');
+      }
+      return this.runMainAction('main.mcp-tool.disable', () =>
+        this.requireToolCapabilitySettingsService().disableMcpTool(toolName));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpToolEnable, (event, toolName: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof toolName !== 'string') {
+        throw new Error('MCP Tool name is invalid.');
+      }
+      return this.runMainAction('main.mcp-tool.enable', () =>
+        this.requireToolCapabilitySettingsService().enableMcpTool(toolName));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionsList, (event) => {
@@ -2040,6 +2088,14 @@ class DesktopApplication {
       throw new Error('AgentRuntime is not initialized');
     }
     return this.agentRuntime;
+  }
+
+  /** Return the initialized global Tool capability settings owner. */
+  private requireToolCapabilitySettingsService(): ToolCapabilitySettingsService {
+    if (!this.toolCapabilitySettingsService) {
+      throw new Error('ToolCapabilitySettingsService is not initialized');
+    }
+    return this.toolCapabilitySettingsService;
   }
 
   /** Return the initialized GitHub release notification owner. */

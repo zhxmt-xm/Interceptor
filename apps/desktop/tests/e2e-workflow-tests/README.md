@@ -273,7 +273,7 @@ diagnostics.row.<traceKey>
 | `agent.settings.model-configuration` | 通过Settings配置、验证、切换与删除模型 | shared | passed |
 | `agent.chat.streaming-context` | 多轮Streaming、Context/Usage、Stop与Retry | shared | passed |
 | `agent.chat.restart-recovery` | Provider、Session、Transcript与Usage跨重启恢复 | shared | passed |
-| `agent.tools.settings-capabilities` | 从共享registry配置Agent/MCP Tool开关并跨重启恢复 | shared | planned |
+| `agent.tools.settings-capabilities` | 从共享registry配置Agent/MCP Tool开关并跨重启恢复 | shared | passed |
 | `agent.tools.traffic-discovery` | Agent发现并查询产品UI产生的真实Traffic | shared | planned |
 | `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared | planned |
 

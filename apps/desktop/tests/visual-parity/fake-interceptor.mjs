@@ -790,6 +790,60 @@ export const fakeInterceptorFixture = {
     message: null,
   },
   agent: {
+    toolSettings: {
+      groups: [
+        {
+          id: 'traffic',
+          title: 'Traffic',
+          tools: [
+            { name: 'get_proxy_status', title: 'Proxy status', description: 'Read listener and recording state.', kind: 'query' },
+            { name: 'get_storage_status', title: 'Capture storage', description: 'Read captured item and byte counts.', kind: 'query' },
+            { name: 'start_recording', title: 'Start recording', description: 'Resume capture in the current session.', kind: 'change' },
+            { name: 'stop_recording', title: 'Stop recording', description: 'Pause capture without stopping the proxy.', kind: 'change' },
+            { name: 'clear_capture', title: 'Clear capture', description: 'Delete captured exchanges and bodies.', kind: 'change' },
+            { name: 'list_exchanges', title: 'List exchanges', description: 'Query lightweight captured traffic summaries.', kind: 'query' },
+            { name: 'get_exchange', title: 'Exchange detail', description: 'Read headers, timings, TLS, and rule effects.', kind: 'query' },
+            { name: 'get_exchange_body', title: 'Exchange body', description: 'Read a bounded body byte range.', kind: 'query' },
+            { name: 'list_websocket_messages', title: 'WebSocket messages', description: 'Page through captured WebSocket frames.', kind: 'query' },
+            { name: 'list_grpc_messages', title: 'gRPC messages', description: 'Page through decoded gRPC messages.', kind: 'query' },
+          ],
+        },
+        {
+          id: 'rules',
+          title: 'Rules',
+          tools: [
+            { name: 'get_rules', title: 'Rule set', description: 'Read the current rule tree and revision.', kind: 'query' },
+            { name: 'get_rule_hits', title: 'Rule hits', description: 'Read match counts for current rules.', kind: 'query' },
+            { name: 'apply_rules', title: 'Apply rules', description: 'Replace the rule set with revision checking.', kind: 'change' },
+          ],
+        },
+        {
+          id: 'breakpoints',
+          title: 'Breakpoints',
+          tools: [
+            { name: 'list_breakpoints', title: 'Pending breakpoints', description: 'Read requests, responses, and frames waiting for action.', kind: 'query' },
+            { name: 'enable_http_breakpoints', title: 'Enable HTTP breakpoints', description: 'Start suspending matching HTTP traffic.', kind: 'change' },
+            { name: 'disable_http_breakpoints', title: 'Disable HTTP breakpoints', description: 'Stop suspending matching HTTP traffic.', kind: 'change' },
+            { name: 'enable_websocket_breakpoint', title: 'Enable WebSocket breakpoint', description: 'Suspend selected frames on one connection.', kind: 'change' },
+            { name: 'disable_websocket_breakpoint', title: 'Disable WebSocket breakpoint', description: 'Resume frames on the selected connection.', kind: 'change' },
+            { name: 'continue_breakpoint', title: 'Continue breakpoint', description: 'Forward one suspended item unchanged.', kind: 'change' },
+            { name: 'forward_edited_breakpoint', title: 'Forward edited breakpoint', description: 'Forward one suspended item with explicit edits.', kind: 'change' },
+            { name: 'drop_breakpoint', title: 'Drop breakpoint', description: 'Discard one suspended item.', kind: 'change' },
+          ],
+        },
+        {
+          id: 'requests-diagnostics',
+          title: 'Requests & diagnostics',
+          tools: [
+            { name: 'send_request', title: 'Send request', description: 'Send a Composer request from this machine.', kind: 'change' },
+            { name: 'probe_connection', title: 'Probe connection', description: 'Open a TLS probe to a host and port.', kind: 'change' },
+            { name: 'query_diagnostics', title: 'Query diagnostics', description: 'Read filtered structured diagnostic records.', kind: 'query' },
+          ],
+        },
+      ],
+      agentDisabledToolNames: [],
+      mcpDisabledToolNames: [],
+    },
     models: {
       defaultProviderId: 'provider-deepseek',
       models: [
@@ -973,6 +1027,7 @@ export function installFakeInterceptor({
   let agentModelsSnapshot = agentModels === 'configured'
     ? fixture.agent.models
     : { defaultProviderId: null, models: [] };
+  let toolCapabilitySettingsSnapshot = structuredClone(fixture.agent.toolSettings);
   let agentSessionSnapshot = structuredClone(fixture.agent.session);
   if (agentSessionState === 'empty') {
     agentSessionSnapshot = {
@@ -1455,6 +1510,29 @@ export function installFakeInterceptor({
     getRecentDiagnostics: async () => fixture.diagnostics,
     reportRendererDiagnostic: async () => undefined,
     getAgentModels: async () => agentModelsSnapshot,
+    getToolCapabilitySettings: async () => structuredClone(toolCapabilitySettingsSnapshot),
+    disableAgentTool: async (toolName) => {
+      toolCapabilitySettingsSnapshot.agentDisabledToolNames = [
+        ...new Set([...toolCapabilitySettingsSnapshot.agentDisabledToolNames, toolName]),
+      ];
+      return structuredClone(toolCapabilitySettingsSnapshot);
+    },
+    enableAgentTool: async (toolName) => {
+      toolCapabilitySettingsSnapshot.agentDisabledToolNames =
+        toolCapabilitySettingsSnapshot.agentDisabledToolNames.filter((name) => name !== toolName);
+      return structuredClone(toolCapabilitySettingsSnapshot);
+    },
+    disableMcpTool: async (toolName) => {
+      toolCapabilitySettingsSnapshot.mcpDisabledToolNames = [
+        ...new Set([...toolCapabilitySettingsSnapshot.mcpDisabledToolNames, toolName]),
+      ];
+      return structuredClone(toolCapabilitySettingsSnapshot);
+    },
+    enableMcpTool: async (toolName) => {
+      toolCapabilitySettingsSnapshot.mcpDisabledToolNames =
+        toolCapabilitySettingsSnapshot.mcpDisabledToolNames.filter((name) => name !== toolName);
+      return structuredClone(toolCapabilitySettingsSnapshot);
+    },
     testAgentProviderConnection: async (draft) => ({
       verificationId: 'parity-verification',
       model: {

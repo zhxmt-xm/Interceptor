@@ -393,6 +393,10 @@ export const AUTOMATION_IDS = {
     },
     context: 'agent.context',
     reasoning: 'agent.reasoning',
+    tools: {
+      capabilities: 'agent.tools.capabilities',
+      search: 'agent.tools.search',
+    },
     models: {
       list: 'agent.models.list',
       add: 'agent.models.add',
@@ -765,6 +769,21 @@ export class AutomationIdFactory {
   /** Identify the set-default command owned by one Agent model. */
   static agentModelSetDefault(providerId: string): string {
     return `agent.model.set-default.${providerId}`;
+  }
+
+  /** Identify one Tool capability settings row. */
+  static agentToolRow(toolName: string): string {
+    return `agent.tools.row.${toolName}`;
+  }
+
+  /** Identify the Agent enable switch for one Tool. */
+  static agentToolAgentSwitch(toolName: string): string {
+    return `agent.tools.agent.${toolName}`;
+  }
+
+  /** Identify the MCP enable switch for one Tool. */
+  static agentToolMcpSwitch(toolName: string): string {
+    return `agent.tools.mcp.${toolName}`;
   }
 
   /** Identify one Chat option in the Agent Session selector. */

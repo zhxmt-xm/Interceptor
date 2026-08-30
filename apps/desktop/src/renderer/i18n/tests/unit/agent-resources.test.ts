@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { agentChatMessages } from '../../agent-chat-resources';
 import { agentProviderMessages } from '../../agent-provider-resources';
 import { agentMessages } from '../../agent-resources';
+import { agentToolMessages } from '../../agent-tool-resources';
 import { LANGUAGE_IDS } from '../../languages';
 
 describe('Agent messages', () => {
@@ -54,5 +55,20 @@ describe('Agent messages', () => {
   it('ships localized simplified Chinese for persistent Chat', () => {
     expect(agentChatMessages['zh-CN']['agent.sendMessage']).toBe('发送消息');
     expect(agentChatMessages['zh-CN']['agent.sessionUsage']).toBe('对话用量');
+  });
+
+  it('keeps every language aligned with the English Tool settings catalog', () => {
+    const englishKeys = Object.keys(agentToolMessages.en).sort();
+    for (const language of LANGUAGE_IDS) {
+      expect(Object.keys(agentToolMessages[language]).sort(), language).toEqual(englishKeys);
+      if (language !== 'en') {
+        expect(agentToolMessages[language], language).not.toBe(agentToolMessages.en);
+      }
+    }
+  });
+
+  it('ships localized simplified Chinese for Tool capability settings', () => {
+    expect(agentToolMessages['zh-CN']['settings.agent.tools.title']).toBe('Tool 能力');
+    expect(agentToolMessages['zh-CN']['settings.agent.tools.noMatches']).toBe('没有匹配的能力');
   });
 });

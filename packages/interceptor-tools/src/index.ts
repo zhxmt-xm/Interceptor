@@ -23,4 +23,9 @@ export type {
   InterceptorToolJsonSchemaProperty,
   InterceptorToolKind,
 } from './interfaces';
+export {
+  buildInterceptorToolSettingsGroups,
+  type InterceptorToolSettingsGroup,
+  type InterceptorToolSettingsItem,
+} from './settings/entry';
 export * from './constants';

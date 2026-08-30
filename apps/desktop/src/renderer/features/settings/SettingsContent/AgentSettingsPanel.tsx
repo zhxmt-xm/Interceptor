@@ -9,6 +9,7 @@ import { AgentAddProviderMenu } from '../AgentAddProviderMenu/AgentAddProviderMe
 import { AgentModelsList } from '../AgentModelsList/AgentModelsList';
 import { AgentProviderDialog } from '../AgentProviderDialog/AgentProviderDialog';
 import { AgentRemoveProviderDialog } from '../AgentRemoveProviderDialog/AgentRemoveProviderDialog';
+import { AgentToolCapabilities } from '../AgentToolCapabilities/AgentToolCapabilities';
 import styles from './AgentSettingsPanel.module.css';
 
 interface ProviderDialogTarget {
@@ -83,6 +84,7 @@ export function AgentSettingsPanel(): React.JSX.Element {
       {error !== null && providerDialog === null && removeTarget === null ? (
         <div className={styles.error} role="alert">{error}</div>
       ) : null}
+      <AgentToolCapabilities />
       {providerDialog !== null ? (
         <AgentProviderDialog
           kind={providerDialog.kind}

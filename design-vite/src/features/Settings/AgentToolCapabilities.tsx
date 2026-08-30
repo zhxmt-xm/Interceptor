@@ -1,9 +1,11 @@
 import { Input, Switch } from 'antd';
 import { Search } from 'lucide-react';
+import { buildInterceptorToolSettingsGroups } from '@interceptor/tools';
 
 import { useDesignState } from '../../state/useDesignState';
-import { AGENT_TOOL_CAPABILITY_GROUPS } from './toolCapabilityCatalog';
 import styles from './AgentToolCapabilities.module.css';
+
+const AGENT_TOOL_CAPABILITY_GROUPS = buildInterceptorToolSettingsGroups();
 
 export function AgentToolCapabilities(): React.JSX.Element {
   const { state, updateState } = useDesignState();
@@ -13,7 +15,7 @@ export function AgentToolCapabilities(): React.JSX.Element {
     tools: group.tools.filter((tool) => (
       query.length === 0
       || tool.name.includes(query)
-      || tool.label.toLowerCase().includes(query)
+      || tool.title.toLowerCase().includes(query)
       || tool.description.toLowerCase().includes(query)
     )),
   })).filter((group) => group.tools.length > 0);
@@ -55,16 +57,16 @@ export function AgentToolCapabilities(): React.JSX.Element {
       </div>
       <div className={styles.toolCapabilityGroups}>
         {groups.map((group) => (
-          <section className={styles.toolCapabilityGroup} key={group.label}>
+          <section className={styles.toolCapabilityGroup} key={group.id}>
             <header className={styles.toolCapabilityGroupHeader}>
-              <strong>{group.label}</strong>
+              <strong>{group.title}</strong>
               <span>{group.tools.length}</span>
             </header>
             {group.tools.map((tool) => (
               <div className={styles.toolCapabilityRow} data-tool-capability={tool.name} key={tool.name}>
                 <div className={styles.toolCapabilityCopy}>
                   <div className={styles.toolCapabilityName}>
-                    <strong>{tool.label}</strong>
+                    <strong>{tool.title}</strong>
                     <span data-kind={tool.kind}>{tool.kind}</span>
                   </div>
                   <div className={styles.toolCapabilityDetail}>

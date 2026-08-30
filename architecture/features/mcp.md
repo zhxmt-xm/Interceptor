@@ -123,6 +123,10 @@ interface McpClientIdentity {
 `tools/list`，调用同名 Tool 返回不存在。MCP Client 的执行模式默认 `ask`，用户可切换为 `auto`；模式不改变
 Tool 是否启用。`auto` 仍复用正式产品流程，原生 Dialog、UAC 和 OS 权限不会被 MCP 绕过。
 
+全局开关由Desktop Main的`ToolCapabilitySettingsService`拥有，和Agent共用一份只保存关闭项的record；
+MCP列使用独立`disableMcpTool` / `enableMcpTool` intent。本阶段先完成Settings快照、UI与跨重启持久化，
+MCP transport尚未接入Desktop，因此还不把关闭项应用到`tools/list`或`tools/call`。
+
 ### 4.2 完整目录与当前 package
 
 完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
@@ -537,9 +541,9 @@ Electron，可脱离app单测。Client `ask` / `auto`尚未实现，当前MCP ch
 - [x] schema 未声明的参数被拒绝；分页条数与结果字节均有上限。
 - [x] 只改 header 时不伪造 `body` 字段，避免把真实正文抹成空。
 
-**共享Tool与Settings（待实现）**
+**共享Tool与Settings（设置已实现，执行过滤待接线）**
 
-- [ ] Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启且互不影响。
+- [x] Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启、互不影响并跨重启恢复。
 - [ ] 关闭的Tool不进入对应Agent discovery或MCP `tools/list`，也不能按名称调用。
 - [ ] query直接执行；change在Client `ask`时问询、`auto`时直接复用正式产品意图。
 - [x] 三个多义早期Tool已拆成7个语义单一Tool；完整名称以Tool能力目录为准。
