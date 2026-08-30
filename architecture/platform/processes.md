@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-08-29
+> 最后更新：2026-08-30
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -18,12 +18,15 @@ flowchart LR
     MAIN["4 DesktopApplication<br/>Window · Security · Renderer IPC"]
     AUTH["GitHubAuthService<br/>Device Flow · Expiry Timer · safeStorage"]
     UPDATE["GitHubReleaseUpdateService<br/>Check · Changelog · Manual Download"]
+    AGENT["AgentRuntime<br/>Provider · Session · Streaming · Usage"]
+    AGENT_STORE["providers.enc + agent.sqlite<br/>safeStorage 加密"]
     RUNTIME["5 CoreRuntime<br/>CoreProcess · Status · MessageChannel"]
     RPC_CLIENT["6 CoreRpcClient<br/>Request → Promise · Timeout · Cancel"]
   end
 
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Envelope Validation"]
   GITHUB["Private GitHub Releases<br/>OAuth · Metadata · MSI · DMG · ZIP"]
+  MODEL_API["DeepSeek / OpenAI-compatible API<br/>Streaming Chat Completions"]
 
   subgraph CORE["Proxy Core UtilityProcess"]
     ENTRY["8 entry.cts<br/>Minimal Bootstrap · --data-dir"]
@@ -39,6 +42,9 @@ flowchart LR
   UI_APP --> UI_API --> PRELOAD --> MAIN
   MAIN --> AUTH --> GITHUB
   MAIN --> UPDATE --> GITHUB
+  MAIN --> AGENT
+  AGENT --> AGENT_STORE
+  AGENT --> MODEL_API
   MAIN --> RUNTIME --> ENTRY --> APPLICATION
   RUNTIME -. "parentPort: rpc-port transfer" .-> APPLICATION
   APPLICATION -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
@@ -57,7 +63,13 @@ flowchart LR
   APPLICATION --> PROXY
   PROXY --> STORAGE
   RUNTIME -->|"CoreProcessStatus"| MAIN --> PRELOAD --> UI_API --> UI_APP
+  AGENT -->|"ordered persisted Session events"| MAIN
 ```
+
+`AgentRuntime` 是 Main 内长期存活的 Agent domain 组合根，拥有 Provider registry、Credential、Session、Turn、
+History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
+`safeStorage` 与 `fetch`，并把已持久化的 Session event 广播给 Renderer。当前 Desktop 传入 `tools: []`，
+因此该图不包含尚未实现的 Tool Gateway 或 Agent→Core 业务调用。
 
 ## 2. 两条独立通道
 
@@ -134,6 +146,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 21 | GitHub Device Flow 与 token 刷新 | Renderer → Preload → Main → GitHub OAuth | get/signIn/open/signOut + auth status；启动 refresh；access 到期前 5 分钟 refresh | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-auth-service.ts`、Settings Updates | token/过期时间经 safeStorage 加密；每次成功轮换整组 token 并重排单 timer；Renderer 只见公开账号和设备码状态 | refresh token 缺失、过期或非退出刷新失败即删本地登录；退出取消 timer；无 client secret/private key |
 | 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
+| 24 | Agent Provider 与持久化 Chat | Renderer → Preload → Main → `AgentRuntime` → Model API | Provider Test/Save/Remove/default；Session Create/Select/Rename/Delete；Send/Stop/Retry；Streaming event | `desktop-api.ts`、`preload.ts`、`main.ts`、`packages/agent-runtime/`、Renderer `features/agent/` | Provider 与API Key整体加密，Session/Turn/Item/chunk/Usage写入`agent.sqlite`；Renderer按sequence合并Streaming，重启恢复且不重放请求 | Agent错误只结束目标Turn；退出先拒绝新IPC、排空已接受命令并取消Turn；Provider/Store启动失败走Desktop逐项清理，不跳过系统代理恢复 |
 
 ## 5. 关键数据结构
 
@@ -150,6 +163,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | `ExchangeInput` / `SessionQuery` | `apps/proxy-core/src/proxy-core/capture/interfaces/index.ts` | Core 内部抓包域类型；不跨进程，不复用 core-protocol |
 | `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |
 | `ClientAppIdentity` | `packages/core-protocol/src/messages.ts` | 客户端应用身份（id/name/path）；随 `event-batch` 只到 Main，path 不进 Renderer，系统权限进程的 path 为空 |
+| `AgentModelsSnapshot` / `AgentSessionSnapshot` / `AgentRuntimeEvent` | `packages/agent-runtime/src/interfaces/index.ts`、`apps/desktop/src/shared/desktop-api.ts` | Renderer可见的脱敏Provider、持久Session快照与有序Streaming事件；API Key和密文不跨Preload |
 
 ## 6. 扩展规则
 

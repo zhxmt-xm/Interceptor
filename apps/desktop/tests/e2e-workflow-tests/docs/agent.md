@@ -124,3 +124,64 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 - 当前workflow `1/1` Green；第一代完成3次Model请求，第二代启动新增请求为0，切回Chat A发送follow-up后总数为4。
 - 两个Session ID与重启前后Transcript hash稳定恢复；Chat A/B选择、独立历史、Rename、Delete与新建空Chat C均只影响目标Session。
 - 第一代Main/Core PID为`19804/15832`，第二代为`31668/27112`；两代均`gracefulDestroyVerified=true`并释放8888，分段trace与日志通过敏感文本扫描。
+
+<a id="agent-tools-settings-capabilities"></a>
+## `agent.tools.settings-capabilities`
+
+**状态**：planned
+**策略**：shared
+
+### Steps
+
+1. 创建独立空profile并启动真实Electron；进入Settings > Agent。
+2. 确认`Tool capabilities`只列共享registry中已经实现的Tool，不展示架构目录里尚未开发的目标项。
+3. 确认每行有Agent与MCP两个独立Switch，首次启动时全部开启；关闭一个Tool的Agent开关不改变同一行MCP开关或其他Tool。
+4. 关闭另一个Tool的MCP开关，离开Settings并返回，确认两项状态保持且没有改变Capture、Rules或代理运行态。
+5. 正常关闭并用同一profile重启，确认关闭项恢复；重新开启后从持久配置中移除，证明未来新增Tool仍会默认开启。
+6. 保存registry行ID、两列状态、重启恢复、trace与销毁证据；不通过测试API读取或注入设置。
+
+### 预期效果
+
+Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不影响，只决定对应入口是否注册Tool，不改写
+业务状态，也不提前展示未实现能力。
+
+<a id="agent-tools-traffic-discovery"></a>
+## `agent.tools.traffic-discovery`
+
+**状态**：planned
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile和本地OpenAI-compatible lab；通过Settings真实配置Provider。
+2. 经产品UI开始Recording，并让workflow fixture通过真实代理产生至少一条唯一HTTP exchange；不seed Capture或Agent Store。
+3. 打开Agent并发送要求查询当前代理和该exchange的消息；lab依次产生`discover_tools`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
+4. 确认首次Model request只含Capability Index与`discover_tools`，discovery后才向后续request披露匹配schema。
+5. 确认Transcript按顺序显示Tool Call、参数和结果摘要，最终回答引用真实exchange ID、method、URL与status。
+6. 在Settings关闭`get_exchange`的Agent开关，新建Chat再次discover，确认目录与schema都不再包含该Tool，直接调用返回未知Tool且不产生产品命令；重新开启后恢复。
+7. 保存脱敏lab请求、Tool事件sequence、Capture事实、trace与销毁证据；关闭lab并删除profile。
+
+### 预期效果
+
+Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真实Core中的Traffic；Settings关闭项既不可发现
+也不可调用。三个query Tool直接执行，不出现change问询。
+
+<a id="agent-tools-execution-modes"></a>
+## `agent.tools.execution-modes`
+
+**状态**：planned
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile与脚本化lab，配置Provider并新建Chat；确认Session执行模式默认为`ask`。
+2. 让Model调用`stop_recording`；确认Turn持久化等待状态，UI展示Tool、参数和影响，Core在用户裁决前仍为recording。
+3. 拒绝调用，确认Tool Result为拒绝且Recording不变；再次调用并允许，确认产品正式stop入口执行且Capture进入paused。
+4. 通过UI恢复Recording，将当前Session切换为`auto`；再次调用`stop_recording`，确认不出现问询且同一正式入口执行。
+5. 将`stop_recording`的Agent开关关闭，即使Session仍为`auto`，确认Tool不可发现、不可调用且Recording保持不变。
+6. 正常关闭并重启，确认Session的`auto`模式与Tool关闭状态恢复；通过UI恢复默认与Recording，完成销毁。
+
+### 预期效果
+
+Tool启用状态与执行模式正交：关闭永远不可调用；开启的query直接执行；开启的change在`ask`时由用户裁决，
+在`auto`时直接复用正式产品意图。模式和开关都不能绕过产品校验或改变无关状态。

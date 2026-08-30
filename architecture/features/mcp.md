@@ -1,26 +1,32 @@
 # Feature: MCP Server
 
-> 最后更新：2026-08-03
+> 最后更新：2026-08-30
 > 已实现：`packages/mcp-server/`（认证 + 工具层 + 协议层，与 transport 无关，已单测）
 > Main 模块（规划）：`apps/desktop/src/main/mcp/`
 > Bridge 产物（规划）：`apps/desktop/assets/mcp-bridge/bridge.mjs` → 打包进 `extraResource`
-> Renderer 模块（规划）：`features/settings/` 的 MCP 面板 + App 级审批弹层
-> 状态：**工具层已落地且不依赖 Electron；transport、Bridge、Preload 与 UI 尚未接线。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
+> Renderer 模块（规划）：`Settings > Agent` 的 MCP 接入、Tool 开关与 App 级问询弹层
+> 状态：**认证、协议与20项早期Tool已落地且不依赖Electron；共享Tool迁移、transport、Bridge、Preload与UI尚未接线。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
 
 ## 1. 职责与边界
 
-MCP Server 把 Interceptor 的抓包数据与代理控制能力，以 [Model Context Protocol](https://modelcontextprotocol.io) 工具的形式暴露给外部 AI Host（VS Code、Claude Desktop、Cursor 等），让用户在既有 AI 客户端里分析流量、生成规则，而**不需要 Interceptor 自己持有任何 LLM API Key**。
+MCP Server 把 Interceptor 的产品能力，以 [Model Context Protocol](https://modelcontextprotocol.io) Tool 的形式
+暴露给外部 AI Host（VS Code、Claude Desktop、Cursor 等）。它与内置 Agent 消费同一份
+[Tool 能力目录](tool-capabilities.md)，但不负责内置 Agent 的 Model、Session 或 Chat UI。
 
 | 归属 | 内容 |
 | --- | --- |
-| MCP 负责 | 工具注册与 schema、外部 Host 接入、调用方认证、工具级授权、结果脱敏 |
+| MCP 负责 | 外部 Host 接入、调用方认证、按 MCP Client 设置过滤共享 Tool、协议适配 |
 | MCP 不负责 | LLM 调用、Prompt 管理、对话状态、模型计费 |
-| Core 负责 | 全部业务执行，与 Renderer 走同一套 `packages/core-protocol` command |
-| Renderer 负责 | 开关与接入管理 UI、写操作的用户确认 |
+| 共享 Tool registry 负责 | 唯一 Tool 名称、schema、参数边界、执行函数与 Agent/MCP 启用状态 |
+| 产品正式入口负责 | Main/Core/Renderer 已实现的业务执行；Tool 不建立第二套业务逻辑 |
+| Renderer 负责 | Settings > Agent 的 MCP 接入、Tool 开关、`ask`/`auto` 与 `ask` 问询 UI |
 
-**根本定位：MCP Server 是 Core command 的第二个调用入口，不是第二套业务实现。** 任何 MCP 工具都必须映射到既有 command；不允许为 MCP 新增绕过 Renderer 既有能力边界的 Core 能力。
+**根本定位：MCP Server 是共享 Tool 的外部协议入口，不是第二套 Tool 或业务实现。** Tool 必须复用正式产品
+意图；产品缺少语义单一入口时先补产品入口，不在 MCP adapter 中实现 read-modify-write 或系统操作后门。
 
-**为什么不做 App 内置 LLM 客户端**：内置 BYOK chat 需要 provider 适配、流式、tool-call 循环、Key 存储与聊天 UI；而其中真正有价值的「工具层」与本文档完全重合。先落地 MCP 可以零 Key 成本验证「AI 操作抓包」的价值假设，内置 chat 留作后续增量（届时复用第 4 章的同一份 tool registry）。
+内置 Agent 阶段 1 已实现 BYOK Provider、持久化 Session、Streaming Chat 与恢复，但尚未接业务 Tool。
+MCP package 已有一套未接 Desktop 的早期 Tool 实现。下一阶段先把通用 Tool 迁到
+`packages/interceptor-tools/`，然后由两个入口复用。
 
 ## 2. 进程位置决策
 
@@ -38,8 +44,8 @@ flowchart LR
     subgraph M["Main 进程"]
         LISTEN["McpTransport<br/>named pipe / http"]
         AUTH["McpAuthenticator<br/>token 校验"]
-        REG["McpToolRegistry<br/>schema + 分级"]
-        GATE["McpApprovalGate<br/>写操作确认"]
+        REG["共享 Tool Registry<br/>MCP enabled filter"]
+        GATE["McpExecutionGate<br/>ask / auto"]
         RPCC["CoreRpcClient"]
     end
 
@@ -55,9 +61,9 @@ flowchart LR
     HOST -->|stdio| BRIDGE
     BRIDGE -->|"named pipe"| LISTEN
     LISTEN --> AUTH --> REG
-    REG -->|"只读工具"| RPCC
-    REG -->|"写工具"| GATE
-    GATE -->|"请求确认"| MODAL
+    REG -->|"query Tool"| RPCC
+    REG -->|"change Tool"| GATE
+    GATE -->|"ask 时请求确认"| MODAL
     MODAL -->|"用户裁决"| GATE
     GATE --> RPCC
     RPCC -->|MessagePort| APP
@@ -74,16 +80,19 @@ flowchart LR
 | --- | --- | --- | --- |
 | Transport | 字节收发、连接管理、会话 | Main（未实现） | ❌ 各自实现 |
 | Authentication | 识别调用方，产出 `McpClientIdentity` | `packages/mcp-server/` | ✅ 同一 `authenticate()` 契约 |
-| Tool Registry | 工具 schema、参数校验、只读/写分级、审批、脱敏 | `packages/mcp-server/` | ✅ 完全共用 |
+| Tool Registry | 唯一 Tool schema、参数边界与执行函数 | `packages/interceptor-tools/`（待迁移） | ✅ 完全共用 |
+| MCP Adapter | MCP `tools/list`过滤、`tools/call`映射与Client执行模式 | `packages/mcp-server/` | ✅ 完全共用 |
 | Core Bridge | 映射到 `core-protocol` command | Main 实现 `McpHostBridge` | ✅ 完全共用 |
 
-`packages/mcp-server/` 不引用 Electron、不持有 MessagePort、不接触文件系统；它向宿主要求三个能力：
+当前`packages/mcp-server/`不引用Electron、不持有MessagePort、不接触文件系统；早期20项Tool只调用Core，
+因此当前源码向宿主要求以下三个能力。迁入共享registry后，Tool执行改由Main注入的正式产品意图承接，
+不继续用`CoreCommand`表达证书、系统代理或原生Dialog能力。
 
 ```ts
 interface McpHostBridge {
   /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
   invoke<T extends CoreCommand>(command: T, signal: AbortSignal): Promise<CoreResultForCommand<T>>;
-  /** 请求用户确认写工具；宿主负责展示、超时与窗口聚焦。 */
+    /** ask 模式下请求用户确认 change Tool；宿主负责展示与窗口聚焦。 */
   requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict>;
   /** 记录审计事件；实现必须吞掉自身错误。 */
   record(event: McpAuditEvent): void;
@@ -102,91 +111,73 @@ interface McpClientIdentity {
 
 > `reportedName` 来自 MCP `initialize` 的 `clientInfo`，是调用方**自报**的，可伪造。**只允许用于 UI 展示与审计日志，禁止参与任何授权判断。**
 
-## 4. 工具层（两种 transport 共用）
+## 4. Tool 层（Agent 与两种 MCP transport 共用）
 
-### 4.1 分级
+### 4.1 开关与执行类型
 
-| 级别 | 语义 | 执行策略 |
+| 类型 | 语义 | 开启后的执行策略 |
 | --- | --- | --- |
-| **R** 只读 | 不改变代理行为、不产生外发流量、不删除数据 | 自动执行 |
-| **W** 写 | 改变代理行为、产生外发流量或删除数据 | **必须经用户确认** |
-| **—** 不暴露 | 触及信任根、系统设置、文件系统或内部通道 | 永不注册为工具 |
+| `query` | 读取当前产品状态或数据 | 直接执行 |
+| `change` | 改变产品/系统状态、产生外部动作或删除数据 | MCP Client 为 `ask` 时问询，`auto` 时直接执行 |
 
-### 4.2 工具清单
+`Settings > Agent` 为每个已实现 Tool 提供独立 MCP Switch，默认开启。关闭后该 Tool 不出现在目标 Client 的
+`tools/list`，调用同名 Tool 返回不存在。MCP Client 的执行模式默认 `ask`，用户可切换为 `auto`；模式不改变
+Tool 是否启用。`auto` 仍复用正式产品流程，原生 Dialog、UAC 和 OS 权限不会被 MCP 绕过。
 
-**只读工具 [阶段一]**
+### 4.2 完整目录与当前 package
 
-| Tool | Core command | 说明 |
-| --- | --- | --- |
-| `list_exchanges` | `sessions.query` | 支持既有 Omnibox 过滤语义与 keyset 分页 |
-| `get_exchange` | `sessions.detail` | 单条完整 metadata |
-| `get_exchange_body` | `body.read-range` | 受 preview 上限约束，见 4.4 |
-| `list_websocket_messages` | `websocket.frames` | |
-| `list_grpc_messages` | `grpc.messages` | |
-| `get_rules` | `rules.get` | 返回当前 RuleSet 与 `revision` |
-| `get_rule_hits` | `rules.hits` | |
-| `list_breakpoints` | `breakpoint.list` | |
-| `get_proxy_status` | `proxy.status` | `listening` / `recording` |
-| `get_storage_status` | `capture.status` | |
-| `query_diagnostics` | `diagnostics.query` | |
+完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
+Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
-**写工具 [阶段一]**
+当前 `packages/mcp-server` 实际实现 20 个尚未接入 Desktop 的早期 Tool：11 个 query、9 个 change。
+迁移共享 registry 时保留行为，但将三个用布尔值或 action 参数混合正反意图的入口拆开：
 
-| Tool | Core command | 破坏性 |
-| --- | --- | --- |
-| `apply_rules` | `rules.get` + `rules.replace` | 改变全部后续流量的处理方式 |
-| `set_recording` | `proxy.setRecording` | 低 |
-| `send_request` | `composer.send` | **产生真实外发流量** |
-| `configure_breakpoint` | `breakpoint.configure` | 开关 HTTP Rule breakpoint，会挂起真实请求 |
-| `enable_websocket_breakpoint` | `websocket.breakpoint.enable` | 为当前 exchange 启用帧断点 |
-| `disable_websocket_breakpoint` | `websocket.breakpoint.disable` | 停用当前 WebSocket 帧断点 |
-| `resolve_breakpoint` | `breakpoint.resolve` | 可篡改真实请求/响应 |
-| `clear_capture` | `capture.cleanup` | **不可逆删除** |
-| `probe_connection` | `tls.probe` | 产生真实外发连接 |
+- `set_recording(recording)` → `start_recording` / `stop_recording`；
+- `configure_breakpoint(enabled)` → `enable_http_breakpoints` / `disable_http_breakpoints`；
+- `resolve_breakpoint(action, edit?)` → `continue_breakpoint` / `forward_edited_breakpoint` / `drop_breakpoint`。
 
-**明确不暴露**
-
-| Core command | 拒绝理由 |
-| --- | --- |
-| `tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption` | 触及 CA 与 MITM 信任根 |
-| `proxy.start` / `proxy.stop` | 牵涉系统代理接管与恢复，属 Main 的 OS 级职责 |
-| `har.import.start` / `archive.import.start` | 需要从任意路径读文件 |
-| `har.export.start` / `archive.export.start` / `body.export.start` / `diagnostics.export.start` | 需要写任意路径，且真实路径只应在 Main↔Core 之间流转 |
-| `diagnostics.ingest` | 内部日志汇入通道 |
-| Main 侧证书 / 系统代理 / 更新 API | 不属于 Core command，任何情况下不进 MCP |
+证书、系统代理、AppContainer、导入导出和更新能力不是永久排除项。它们逐项复用 Main 的正式意图；文件 Tool
+触发产品原生 Open/Save Dialog，不接收任意路径；UAC 继续由操作系统显示。Agent自身控制、MCP接入控制、
+UI导航和内部编排不属于业务Tool，边界见完整目录第5节。
 
 ### 4.3 `apply_rules` 的并发约束
 
-`rules.replace` 是**全量替换**，而用户可能正在 Rules UI 里编辑。因此 `apply_rules` 必须走 read-modify-write + 乐观锁：
+`rules.replace` 是**全量替换**，而用户可能正在Rules UI里编辑。因此`apply_rules`必须携带完整RuleSet和
+`baseRevision`：先读取当前revision用于冲突判断与ask diff，再以同一完整集合执行compare-and-replace。
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant AI as MCP Client
     participant REG as McpToolRegistry
-    participant GATE as McpApprovalGate
+    participant GATE as McpExecutionGate
     participant UI as Renderer
     participant Core as CoreApplication
 
-    AI->>REG: apply_rules（baseRevision, 变更）
+    AI->>REG: apply_rules（baseRevision, 完整RuleSet）
     REG->>Core: rules.get
     Core-->>REG: RuleSet + revision
     alt revision 与 baseRevision 不一致
         REG-->>AI: 冲突错误，要求重新读取
     else 一致
-        REG->>GATE: 请求确认（展示 diff）
-        GATE->>UI: 弹出审批
-        UI-->>GATE: 用户裁决
-        alt 拒绝或超时
-            GATE-->>AI: 被拒绝
-        else 批准
-            GATE->>Core: rules.replace（合并后的 RuleSet）
+        REG->>GATE: 完整RuleSet + 当前Client mode
+        alt mode = ask
+            GATE->>UI: 展示完整替换diff并问询
+            UI-->>GATE: 用户裁决
+        else mode = auto
+            GATE->>GATE: 直接继续
+        end
+        alt ask拒绝
+            GATE-->>AI: 结构化拒绝
+        else auto或ask允许
+            GATE->>Core: rules.replace（完整RuleSet）
             Core-->>AI: 新 revision
         end
     end
 ```
 
-**新建或修改的规则一律以 `enabled:false` 落地**，与 Renderer 现有「不完整就不生效」安全边界保持一致。启用必须由用户在 Rules UI 里手动完成 —— AI 不得直接让一条规则对真实流量生效。
+`apply_rules` 复用产品完整 RuleSet 校验和乐观锁，不额外强制把合法规则改成 disabled。MCP Tool 开关决定
+该能力是否可达；`ask` / `auto` 决定执行前是否问询。
 
 ### 4.4 结果脱敏
 
@@ -201,10 +192,10 @@ flowchart LR
 ```
 
 - 默认对 `Authorization`、`Cookie`、`Set-Cookie`、URL query 中的凭据字段做遮罩，与 HAR 导出的遮罩策略一致。
-- 需要原文时，由用户在审批弹层里**逐次**授权，不提供「永久允许」。
+- 需要原文时，由产品现有的Session数据外发设置决定，不在MCP adapter里建立第二套授权状态。
 - 正文沿用既有 `BODY_PREVIEW_MAX_BYTES` 上限；音视频正文**零读取**，只返回 metadata。
 
-### 4.5 用户审批 [阶段一]
+### 4.5 `ask` / `auto` [阶段一]
 
 ```mermaid
 sequenceDiagram
@@ -214,26 +205,26 @@ sequenceDiagram
     participant Main
     participant UI as Renderer
 
-    AI->>GATE: 调用写工具
-    GATE->>GATE: 生成 approvalId 与参数摘要
-    GATE->>Main: 若窗口隐藏则 show 并 focus
-    Main->>UI: onMcpApprovalRequest（工具名、调用方 label、参数摘要）
-    Note over UI: 展示调用方、工具、完整参数<br/>与 apply_rules 的 diff
-    alt 用户批准
+    AI->>GATE: 调用 change Tool
+    alt Client mode = auto
+        GATE->>Main: 直接执行正式产品意图
+        Main-->>AI: Tool Result
+    else Client mode = ask
+        GATE->>GATE: 生成 approvalId
+        GATE->>Main: 若窗口隐藏则 show 并 focus
+        Main->>UI: onMcpApprovalRequest（调用方、Tool、参数、影响）
+        alt 用户批准
         UI->>Main: respondMcpApproval（approvalId, true）
         GATE->>AI: 执行并返回结果
-    else 用户拒绝
+        else 用户拒绝
         UI->>Main: respondMcpApproval（approvalId, false）
         GATE-->>AI: 结构化拒绝错误
-    else 超时
-        Note over GATE: 达到 MCP_APPROVAL_TIMEOUT_MS 视为拒绝
-        GATE-->>AI: 结构化超时错误
+        end
     end
 ```
 
-- 审批请求**不排队自动通过**，超时默认拒绝。
 - 主窗口隐藏或最小化时，Main 负责 show + focus，避免 AI 卡在无人可见的弹窗上。
-- 每次审批结果写入 Diagnostics，含 `clientId`、`reportedName`、工具名、裁决。
+- `ask` 的允许/拒绝和 `auto` 执行结果都进入调用审计，含 `clientId`、`reportedName`、Tool 名与模式。
 
 ---
 
@@ -406,7 +397,7 @@ flowchart TD
 
 Web Agent 必须把 token 放在浏览器可读之处（内存 / `localStorage`），该页面的 XSS 或恶意扩展即可窃取。**OAuth 也解决不了这个问题**，它只是把长期凭据换成短期 token 以缩小窗口。因此：
 
-- 浏览器来源默认**只授予只读 scope**；写工具需在批准弹层里额外勾选。
+- 浏览器来源仍必须通过Origin与Client认证；认证成功后只看到Settings为该Client开启的Tool。
 - 面板必须展示这一风险说明。
 
 ### 6.6 为什么不在阶段一/二做 OAuth 2.1
@@ -432,9 +423,11 @@ Interceptor 存放的是**解密后的 HTTPS 流量** —— Cookie、`Authoriza
 | **合法 client 被 Prompt Injection 操纵** | **高危** | **高危** | 见 7.3 |
 | 局域网访问 | 不适用 | 中 | 绑定 `127.0.0.1` |
 
-### 7.2 认证不等于授权
+### 7.2 认证、能力开关与执行模式
 
-Bearer token 证明「调用方知道这个秘密」，**不证明「调用方是善意的」**。它挡住的是未持有凭据者，挡不住持有合法凭据但行为被操纵的 client。因此第 4.5 章的用户审批与 token 校验是**正交的两层，缺一不可**。
+Bearer token 证明「调用方知道这个秘密」，不决定它能调用哪些 Tool，也不决定 change Tool 是否问询。
+三者是正交设置：认证决定Client身份，Settings的MCP开关决定该Tool是否注册，Client的`ask`/`auto`决定
+已开启change Tool的执行方式。
 
 ### 7.3 Prompt Injection：本 feature 最高危的风险
 
@@ -449,26 +442,27 @@ token 校验会**全部通过**，因为调用方确实是合法的 Claude/Copil
 ```mermaid
 flowchart TD
     A["流量正文进入 AI 上下文"] --> B["AI 决定调用写工具"]
-    B --> C{"工具级别"}
-    C -->|R 只读| D["自动执行"]
-    C -->|W 写| E["强制用户确认<br/>展示完整参数与 diff"]
-    E --> F{"用户裁决"}
-    F -->|批准| G["执行"]
-    F -->|拒绝 / 超时| H["结构化错误返回"]
+    B --> C{"Tool 是否为该Client开启"}
+    C -->|否| H["Tool不可发现/调用"]
+    C -->|是，query| D["执行"]
+    C -->|是，change| E{"Client mode"}
+    E -->|ask| F["展示参数与影响<br/>用户裁决"]
+    E -->|auto| G["执行正式产品意图"]
+    F -->|批准| G
+    F -->|拒绝| H
 ```
 
-配套硬约束：
+配套边界：
 
-1. 写工具**永远**不得自动执行，不提供「记住我的选择」或「本会话内全部允许」。
-2. `apply_rules` 产出的规则**强制 `enabled:false`**，启用只能由用户在 Rules UI 完成。
-3. 审批弹层展示**完整参数**而非摘要 —— 用户必须能看到 `evil.com` 这样的目标。
-4. 工具返回的正文内容在进入上下文前，标注其为不可信数据来源。
+1. `ask` 问询展示Tool、参数与影响；`auto`是用户对该Client的显式选择。
+2. Tool复用产品校验、revision与系统授权，不因`auto`获得额外能力。
+3. 工具返回的正文内容在进入上下文前，标注其为不可信数据来源。
 
 ### 7.4 不变量
 
 - MCP 关闭时不存在任何监听端点与 runtime 文件。
 - Renderer 永远拿不到 token、pipe 路径、端口或任何文件绝对路径。
-- CA 私钥、系统代理设置、信任库操作在任何 transport 下都不可达。
+- CA 私钥和系统代理原始快照永不进入Tool参数或结果；相关Tool只调用Main正式意图。
 - MCP 故障（认证失败、Host 断开、工具异常）**绝不影响抓包与转发**，与 Diagnostics 同为「失败不阻塞业务」。
 
 ## 8. 数据契约
@@ -483,6 +477,7 @@ flowchart TD
 | `setMcpEnabled(enabled)` | 开启/关闭监听端点 |
 | `createMcpClient(label)` | 新增一个接入，返回其 label（**不返回 token**） |
 | `revokeMcpClient(clientId)` | 撤销单个接入 |
+| `setMcpClientExecutionMode(clientId, mode)` | 设置该Client的`ask` / `auto` |
 | `writeMcpHostConfig(target)` | 一键写入 VS Code / Claude Desktop / Cursor 配置 |
 | `onMcpStatusChange(cb)` | 状态推送 |
 | `onMcpApprovalRequest(cb)` | 写工具审批请求 |
@@ -494,47 +489,55 @@ flowchart TD
 
 | 常量 | 用途 |
 | --- | --- |
-| `MCP_APPROVAL_TIMEOUT_MS` | 审批超时，超时视为拒绝 |
 | `MCP_TOOL_RESULT_MAX_BYTES` | 单次工具结果上限 |
 | `MCP_MAX_CONCURRENT_CALLS` | 并发工具调用上限 |
 | `MCP_RUNTIME_FILE_NAME` | runtime 文件名 |
 
 ## 9. 与当前实现的差异
 
-**已落地**：`packages/mcp-server/` 包含第 3 章的认证层、第 4 章的完整工具层（十一个只读 + 七个写工具）与 MCP 协议状态机（`initialize` / `ping` / `tools/list` / `tools/call`，协议修订版 `2025-06-18`，兼容 `2025-03-26` 与 `2024-11-05`）。工具分级通过 `tools/list` 的 `annotations`（`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`）告知 Host。`initialize` 的 `instructions` 向模型声明捕获流量是不可信输入。该 package 零运行时依赖（只用 `node:crypto`），不引用 Electron，因此可脱离整个 app 单测。
+**已落地**：`packages/mcp-server/` 包含认证层、20个早期Tool（11 query + 9 change）与MCP协议状态机
+（`initialize` / `ping` / `tools/list` / `tools/call`，协议修订版`2025-06-18`，兼容`2025-03-26`与
+`2024-11-05`）。当前package仍使用自己的Tool定义和强制change问询，尚未迁入共享registry或实现Client
+`ask` / `auto`。`initialize`的instructions声明Capture流量是不可信输入。该package不引用Electron，
+可脱离app单测。早期`clear_capture`还接受产品不存在的`scope: session`；迁移共享registry时删除该分支，
+不为旧schema增加兼容命令。
 
 **尚未接线**：
 
 | 位置 | 改动 |
 | --- | --- |
-| `apps/desktop/src/main/mcp/` | 新增：transport（named pipe / unix socket）、runtime 文件读写、`McpHostBridge` 实现（接 `CoreRpcClient`）、审批超时与窗口聚焦 |
+| `apps/desktop/src/main/mcp/` | 新增：transport（named pipe / unix socket）、runtime文件读写、共享Tool执行适配、Client模式与ask窗口聚焦 |
 | `apps/desktop/assets/mcp-bridge/` | 新增 `bridge.mjs`，经 `forge.config.ts` 的 `extraResource` 随包发布 |
 | `apps/desktop/src/preload/preload.ts` | 新增 8.1 的窄 API |
 | `apps/desktop/src/shared/desktop-api.ts` | 新增对应类型 |
-| `apps/desktop/src/renderer/features/settings/` | 新增 MCP 面板 |
-| `apps/desktop/src/renderer/app/` | 新增审批弹层（App 级，与 UpdateNotification 同层） |
+| `apps/desktop/src/renderer/features/settings/` | 在Settings > Agent新增MCP接入、Tool开关与Client执行模式 |
+| `apps/desktop/src/renderer/app/` | 新增ask问询弹层（App级，与UpdateNotification同层） |
 | `apps/desktop/src/shared/automation-ids.ts` | 新增 MCP 面板与审批弹层的稳定 ID |
 | `design-vite/` | 新增 MCP 面板与审批弹层视图，先出设计再实现 |
-| `packages/core-protocol/` | **无需改动** —— 已验证：十八个工具全部映射到现有 command |
+| `packages/interceptor-tools/` | 迁入20个早期Tool并按完整目录逐项增加正式产品能力 |
+| `packages/core-protocol/` / Main intents | 只有产品缺少语义单一入口时才先补正式入口；不为MCP增加专用后门 |
 
-`packages/core-protocol` 零改动是本设计的重要验证点，现已由实现证实：**若某个 MCP 工具需要新增 Core command，说明它越过了既有能力边界，应先质疑该工具是否该存在。**
+共享Tool只复用正式产品入口。需要新增入口时，先以产品用户意图设计并验证，再由Agent/MCP共同复用。
 
 ## 10. 验收要点
 
-**工具层（`packages/mcp-server/`，已由单测覆盖）**
+**当前早期工具层（`packages/mcp-server/`，已由单测覆盖，待迁移）**
 
-- [x] 任一写工具在未获用户确认时**不产生任何 Core command**。
-- [x] 审批超时按拒绝处理。
-- [x] 审批请求携带**完整参数**而非摘要。
-- [x] `apply_rules` 产出的规则一律为 `enabled:false`。
+- [x] 当前20个Tool的schema、参数解析、调用映射与结构化错误有unit覆盖。
 - [x] `apply_rules` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
 - [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
 - [x] 音视频正文不进入工具结果。
-- [x] 全部 `tls.*` 写入命令、`proxy.start` / `proxy.stop`、全部 import/export command 在工具列表中不可见且不可调用。
 - [x] 撤销某个 client 后，其 token 立即无法再建会话。
 - [x] 工具抛错返回结构化失败而非抛出。
 - [x] schema 未声明的参数被拒绝；分页条数与结果字节均有上限。
 - [x] 只改 header 时不伪造 `body` 字段，避免把真实正文抹成空。
+
+**共享Tool与Settings（待实现）**
+
+- [ ] Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启且互不影响。
+- [ ] 关闭的Tool不进入对应Agent discovery或MCP `tools/list`，也不能按名称调用。
+- [ ] query直接执行；change在Client `ask`时问询、`auto`时直接复用正式产品意图。
+- [ ] 三个多义早期Tool拆成语义单一的正反命令；完整名称以Tool能力目录为准。
 
 **阶段一（stdio，待接线后验证）**
 
@@ -543,10 +546,10 @@ flowchart TD
 - [ ] app 重启后 token 已更换，但两个 Host **无需修改任何配置**即可继续工作。
 - [ ] app 未运行或 MCP 未开启时，Bridge 返回可读的结构化错误，Host 不崩溃。
 - [ ] macOS unix socket 权限为 `0600`；Windows named pipe 名称含随机后缀。
-- [ ] 审批弹层在主窗口隐藏时能自动 show + focus。
+- [ ] ask问询弹层在主窗口隐藏时能自动show + focus；auto不创建问询。
 - [ ] 撤销某个 client 后，其**在途连接**立即失效。
 - [ ] MCP 认证失败、Host 异常断开、工具抛错均不影响抓包与转发。
-- [ ] 审批裁决与工具调用写入 Diagnostics，含 `clientId` 与不可信的 `reportedName`。
+- [ ] ask裁决、auto模式与工具调用写入Diagnostics，含`clientId`与不可信的`reportedName`。
 
 **阶段二（HTTP）追加**
 
@@ -555,5 +558,5 @@ flowchart TD
 - [ ] 未批准 Origin 的请求返回 403，且不返回任何 `Access-Control-Allow-*`。
 - [ ] 任意网页发起的跨域写工具调用无法产生副作用（预检被拒）。
 - [ ] token 比较使用 `crypto.timingSafeEqual`。
-- [ ] 浏览器来源默认只有只读 scope。
+- [ ] 浏览器来源认证后只看到Settings为该Client开启的Tool。
 - [ ] 工具层与分级逻辑与阶段一**完全共用**，无 transport 分支。

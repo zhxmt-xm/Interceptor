@@ -237,11 +237,11 @@
 
 <tr>
   <td><strong>🔄 进行中</strong></td>
-  <td>MCP server Main/Core integration</td>
-  <td><ul><li>接入已完成的 MCP package 到 Desktop/Main/Core。</li><li><strong>Steps:</strong><ul><li>设计完成</li><li>代码待完成</li><li>待自动验证</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> 🔄 Package 完成，Desktop 未开发</li><li><strong>Unit:</strong> ✅ Package 45/45</li><li><strong>Integration:</strong> ❌ Desktop 链路未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ❌ 未开始</li></ul></td>
-  <td><ul><li><code>b326bc3</code> 只交付独立 package，未接入 Desktop/Main/Core。</li></ul></td>
-  <td><ul><li>按 <a href="../features/mcp.md">MCP feature</a> 完成 transport、runtime、Preload、Settings 与 approval 全链路。</li></ul></td>
+  <td>Agent / MCP shared Tool capabilities</td>
+  <td><ul><li>用一份共享registry向内置Agent与外部MCP开放完整产品Tool目录，并由用户控制每项能力与change Tool执行方式。</li><li><strong>Steps:</strong><ul><li>架构与完整目录设计完成</li><li>Settings与问询交互待设计</li><li>共享registry代码待完成</li><li>Agent首个Traffic Tool flow待完成</li><li>MCP Desktop接入待完成</li><li>其余Tool按目录逐项开发</li><li>待自动验证</li></ul></li></ul></td>
+  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> 🔄 Agent阶段1已完成；<code>@interceptor/tools</code>已有Capability Index/discovery；MCP package有20个早期Tool；共享业务registry、Settings开关、ask/auto与Desktop接线未完成</li><li><strong>Unit:</strong> ✅ 当前MCP package 46/46、Tool Catalog 5/5；新契约待Red/Green</li><li><strong>Integration:</strong> ❌ 共享registry与Desktop链路未开始</li><li><strong>E2E:</strong> ❌ 三条Agent Tool workflow已登记为planned，尚无可执行Red/Green</li><li><strong>Design/Parity:</strong> ❌ Tool capabilities与问询态待design-vite定稿</li></ul></td>
+  <td><ul><li><code>b326bc3</code>只交付独立MCP package；内置Agent当前传入<code>tools: []</code>。两边没有共享业务descriptor，Settings也不能控制各入口是否注册Tool。</li></ul></td>
+  <td><ul><li>完整目录与逐项状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li><li>每个已实现Tool在Settings提供默认开启的Agent/MCP独立开关；query直接执行，change按调用方<code>ask</code>/<code>auto</code>。</li><li>按文档与E2E契约→design-vite→共享registry→开关持久化→三个Traffic查询Tool→ask/auto→逐项Tool的顺序推进；每个work item独立commit并立即push。</li></ul></td>
 </tr>
 
 <tr>

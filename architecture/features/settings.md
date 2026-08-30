@@ -1,6 +1,6 @@
 # Feature: Settings
 
-> 最后更新：2026-08-29
+> 最后更新：2026-08-30
 > Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
 > Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
@@ -16,7 +16,7 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 | 更新 | Main | 检查、changelog、手动下载、打开安装器 |
 | 存储 | Core | 用量状态、清理 |
 | 语言与主题 | Renderer | 15 种语言、4 套主题 |
-| Agent | Renderer（当前） | 未配置空态；Provider 持久化与 Main intents 待下一层实现 |
+| Agent | Main + Renderer | Provider/Credential、持久化 Chat、Streaming、Usage 与恢复已实现；Tool capability 配置待设计实现 |
 
 **核心边界：所有 OS 级操作只在 Main。** Core 不读写系统设置，Renderer 只表达意图。
 
@@ -435,13 +435,30 @@ flowchart LR
 | --- | --- |
 | 语言 | 15 种完整本地 catalog，英语默认与回退 |
 | 同步范围 | Ant Design `ConfigProvider.locale`、`html lang`、`localStorage`、`Intl` 格式 |
-| Main 同步 | 受限 `setUiLanguage` 意图，Main 仅用内存状态本地化自己的文件对话框 |
+| Main 同步 | 当前未实现；Desktop API没有语言intent，原生文件Dialog不接收Renderer语言设置 |
 | 主题 | light / warm / dark / ember 四套时段主题 |
 | 驱动 | `theme/theme.ts` ConfigProvider token + `:root[data-theme]` CSS 变量 |
 
-Main 不因语言暴露路径或通用 IPC。
+若以后把语言开放为Tool，先增加正式typed intent；Main仍不得因此暴露路径或通用IPC。
 
-## 7. 安全边界汇总
+## 7. Agent
+
+`Settings > Agent` 是全局Agent配置的唯一入口。阶段1已实现`Configured models`、Provider Add/Edit/Test/Save/
+Remove与新Chat默认Model；Provider registry和API Key由Main内`AgentRuntime`经`safeStorage`加密，Renderer只见
+脱敏snapshot。
+
+下一阶段在同一Settings section增加两个独立区域：
+
+- `Tool capabilities`：从`packages/interceptor-tools/`已实现registry渲染；每行提供Agent与MCP两个Switch，
+    默认全部开启，关闭后只停止向对应入口注册；
+- `Execution mode`：Agent按Session、MCP按Client选择`ask`或`auto`，默认`ask`。query Tool开启后直接执行，
+    change Tool才读取该模式。
+
+页面不显示架构目录中尚未实现的Tool。完整名称、状态和逐项顺序见
+[tool-capabilities.md](tool-capabilities.md)；Provider/Session/Tool Loop所有权见[agent.md](agent.md)，MCP接入见
+[mcp.md](mcp.md)。
+
+## 8. 安全边界汇总
 
 | 边界 | 保证 |
 | --- | --- |
