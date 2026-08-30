@@ -3,8 +3,8 @@
 > 最后更新：2026-08-30
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录已确认；`@interceptor/tools` 仅完成 Capability Index 与 discovery，
-> `packages/mcp-server` 现有 20 个 Tool 尚未迁入共享目录，Desktop 尚未接入 Agent/MCP 业务 Tool。
+> 当前状态：完整目标目录与Settings/问询UI设计已完成；`@interceptor/tools`仅完成Capability Index与discovery，
+> `packages/mcp-server`现有20个Tool尚未迁入共享目录，Desktop尚未接入Agent/MCP业务Tool。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -30,6 +30,10 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 
 `Settings > Agent > Tool capabilities` 从**已实现的共享 Tool registry**渲染，不维护第二份手写清单。
 尚未实现的目标 Tool 只保留在本文档，不在产品 UI 中显示不可用开关。
+
+设计稿已落地首批24项共享registry fixture、四个domain、搜索、Agent/MCP双Switch、会话级`Ask/Auto`与
+Transcript内联问询卡；明暗基线见`design-vite/shots/*/agent-models/`。这是产品实现基线，不表示这些
+Tool已经接入Desktop。
 
 每个已实现 Tool 显示两个独立 Switch：
 

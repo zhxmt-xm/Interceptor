@@ -36,6 +36,81 @@ test('Unconfigured Agent settings shows an honest empty model state', async ({ p
   await expect(settings).not.toContainText('Qwen3 Max');
 });
 
+test('Tool capabilities lists the complete initial shared registry with both targets enabled', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'configured',
+  }));
+
+  const capabilities = page.locator('[data-parity="agent-tool-capabilities"]');
+  await expect(capabilities).toBeVisible();
+  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(24);
+  await expect(capabilities.getByText('Traffic', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Rules', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Breakpoints', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Requests & diagnostics', { exact: true })).toBeVisible();
+  await expect(capabilities.getByRole('switch')).toHaveCount(48);
+  await expect(capabilities.getByRole('switch', { name: 'Enable get_exchange for Agent' }))
+    .toBeChecked();
+  await expect(capabilities.getByRole('switch', { name: 'Enable get_exchange for MCP' }))
+    .toBeChecked();
+});
+
+test('Agent and MCP capability switches remain independent', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'configured',
+  }));
+
+  const agentSwitch = page.getByRole('switch', { name: 'Enable get_exchange for Agent' });
+  const mcpSwitch = page.getByRole('switch', { name: 'Enable get_exchange for MCP' });
+  await agentSwitch.click();
+  await expect(agentSwitch).not.toBeChecked();
+  await expect(mcpSwitch).toBeChecked();
+
+  await mcpSwitch.click();
+  await expect(agentSwitch).not.toBeChecked();
+  await expect(mcpSwitch).not.toBeChecked();
+});
+
+test('Tool search filters by capability name without resetting switches', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'configured',
+  }));
+
+  const agentSwitch = page.getByRole('switch', { name: 'Enable get_exchange for Agent' });
+  await agentSwitch.click();
+  await page.getByRole('searchbox', { name: 'Search Tool capabilities' }).fill('websocket');
+  await expect(page.locator('[data-tool-capability]')).toHaveCount(3);
+  await page.getByRole('searchbox', { name: 'Search Tool capabilities' }).fill('get_exchange');
+  await expect(page.locator('[data-tool-capability]')).toHaveCount(2);
+  await expect(page.getByRole('switch', { name: 'Enable get_exchange for Agent' }))
+    .not.toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Enable get_exchange for MCP' }))
+    .toBeChecked();
+});
+
+test('Complete Tool capability registry remains reachable through Settings scrolling', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'configured',
+    agentToolSearch: '',
+  }));
+
+  const lastTool = page.locator('[data-tool-capability="query_diagnostics"]');
+  await lastTool.scrollIntoViewIfNeeded();
+  await expect(lastTool).toBeVisible();
+  await expect(lastTool.getByRole('switch', { name: 'Enable query_diagnostics for Agent' }))
+    .toBeChecked();
+  await expect(lastTool.getByRole('switch', { name: 'Enable query_diagnostics for MCP' }))
+    .toBeChecked();
+});
+
 test('Add provider chooses a Provider type before opening its dialog', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'settings',

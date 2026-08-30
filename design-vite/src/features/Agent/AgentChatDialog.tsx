@@ -37,6 +37,10 @@ export function AgentChatDialog(): React.JSX.Element | null {
     agentCurrentModel: state.agentDefaultModel,
     agentMessage: '',
     agentTurnState: 'idle',
+    agentExecutionMode: 'ask',
+    agentToolApproval: '',
+    agentCheckoutExecutionMode: 'ask',
+    agentCheckoutToolApproval: '',
   });
 
   return (

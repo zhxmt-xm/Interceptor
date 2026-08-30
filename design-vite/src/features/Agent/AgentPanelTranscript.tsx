@@ -1,6 +1,7 @@
 import { Bot, RefreshCw } from 'lucide-react';
 
 import { useDesignState } from '../../state/useDesignState';
+import { AgentToolApproval } from './AgentToolApproval';
 import styles from './AgentPanelTranscript.module.css';
 
 export function AgentPanelTranscript(): React.JSX.Element {
@@ -39,6 +40,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
               </>
             )}
             {state.agentTurnState === 'running' && <span className={styles.agentTurnProgress}>Generating response…</span>}
+            <AgentToolApproval />
             {state.agentTurnState === 'stopped' && (
               <div className={styles.agentTurnNotice}>
                 <strong>Response stopped</strong>

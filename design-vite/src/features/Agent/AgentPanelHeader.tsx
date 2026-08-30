@@ -16,6 +16,8 @@ export function AgentPanelHeader(): React.JSX.Element {
     agentChatMenu: '',
     agentCurrentModel: state.agentDefaultModel,
     agentMessage: '',
+    agentExecutionMode: 'ask',
+    agentToolApproval: '',
   });
   return (
     <header className={styles.agentPanelHeader} data-parity="agent-panel-header">

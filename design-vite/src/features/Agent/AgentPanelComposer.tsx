@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Send, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { IconButton } from '../../components/IconButton/IconButton';
+import { SegmentedControl } from '../../components/SegmentedControl/SegmentedControl';
 import { useDesignState } from '../../state/useDesignState';
 import { AgentPanelModelMenu } from './AgentPanelModelMenu';
 import { AgentSessionUsage } from './AgentSessionUsage';
@@ -22,13 +23,13 @@ export function AgentPanelComposer(): React.JSX.Element {
   const sendMessage = (): void => {
     const agentMessage = draft.trim();
     if (!agentMessage) return;
-    updateState({ agentChat: 'sent', agentMessage, agentTurnState: 'running' });
+    updateState({ agentChat: 'sent', agentMessage, agentTurnState: 'running', agentToolApproval: '' });
     setDraft('');
   };
   return (
     <footer className={styles.agentComposerFooter}>
       <AgentPanelModelMenu triggerRef={modelSelectorRef} />
-      <div className={styles.agentComposerMetrics}>
+      <div className={styles.agentComposerMetrics} data-parity="agent-composer-metrics">
         <button
           aria-expanded={state.agentModelMenu === 'open'}
           aria-haspopup="listbox"
@@ -45,7 +46,18 @@ export function AgentPanelComposer(): React.JSX.Element {
             ? <ChevronUp aria-hidden="true" />
             : <ChevronDown aria-hidden="true" />}
         </button>
-        <AgentSessionUsage />
+        <span className={styles.agentExecutionMode}>
+          <SegmentedControl
+            ariaLabel="Tool execution mode"
+            options={[
+              { label: 'Ask', value: 'ask' },
+              { label: 'Auto', value: 'auto' },
+            ]}
+            value={state.agentExecutionMode}
+            onChange={(agentExecutionMode) => updateState({ agentExecutionMode })}
+          />
+        </span>
+        <span className={styles.agentUsageSlot}><AgentSessionUsage /></span>
         <div className={styles.agentContextUsage} data-parity="agent-context-usage">
           <Progress
             percent={2.3}

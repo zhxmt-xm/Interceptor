@@ -17,11 +17,25 @@ export function AgentPanelChatMenu({ triggerRef }: AgentPanelChatMenuProps): Rea
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
   const selectExistingChat = (): void => {
-    updateState({ agentChat: 'checkout', agentChatMenu: '', agentCurrentModel: 'deepseek', agentMessage: '' });
+    updateState({
+      agentChat: 'checkout',
+      agentChatMenu: '',
+      agentCurrentModel: 'deepseek',
+      agentMessage: '',
+      agentExecutionMode: state.agentCheckoutExecutionMode,
+      agentToolApproval: state.agentCheckoutToolApproval,
+    });
     restoreTriggerFocus();
   };
   const selectNewChat = (): void => {
-    updateState({ agentChat: 'new', agentChatMenu: '', agentCurrentModel: state.agentDefaultModel, agentMessage: '' });
+    updateState({
+      agentChat: 'new',
+      agentChatMenu: '',
+      agentCurrentModel: state.agentDefaultModel,
+      agentMessage: '',
+      agentExecutionMode: 'ask',
+      agentToolApproval: '',
+    });
     restoreTriggerFocus();
   };
   const openChatDialog = (agentChatDialog: 'rename' | 'delete'): void => {

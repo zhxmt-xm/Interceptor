@@ -1309,6 +1309,7 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 只是实现顺序，不是 Agent 的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
+- `design-vite`已完成Settings能力列表、Agent/MCP双开关、会话级`Ask/Auto`与Transcript内联问询卡；
 - 将现有 MCP Tool 的通用 descriptor、schema 和执行函数迁入 `packages/interceptor-tools/`；
 - `Settings > Agent` 从 registry 渲染 Agent / MCP 两个默认开启的独立开关；
 - 接入 Capability Index 与 `discover_tools`，只披露对应入口已开启的 Tool；

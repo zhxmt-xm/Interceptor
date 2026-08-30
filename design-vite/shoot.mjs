@@ -122,6 +122,13 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
+    variant: 'settings-tool-capabilities-filtered',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentToolSearch: 'exchange', agentDisabledTools: ['get_exchange'] },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
     variant: 'settings-deepseek-dialog',
     appSize: { width: 1600, height: 900 },
     state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentProviderDialog: 'deepseek', agentProviderDialogMode: 'edit', agentProviderDialogTarget: 'deepseek' },
@@ -160,6 +167,20 @@ for (const theme of ['light', 'dark']) {
     variant: 'panel-model-menu',
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentModelMenu: 'open' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-tool-approval',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'pending' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-auto',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'auto' },
   });
 }
 for (const theme of ['light', 'dark']) {
@@ -415,11 +436,18 @@ async function shoot(list) {
       agentChatMenu: '',
       agentMessage: '',
       agentUsagePanel: '',
+      agentExecutionMode: 'ask',
+      agentToolApproval: '',
+      agentCheckoutExecutionMode: 'ask',
+      agentCheckoutToolApproval: '',
       agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
       agentQwenProfile: { displayName: 'Qwen3 Max', profileName: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '••••••••••••••••7M2P', modelId: 'qwen3-max', contextWindow: '131072', maximumOutput: '8192' },
       agentAddedProfile: null,
       agentRemovedModels: [],
       agentRemoveModelTarget: '',
+      agentToolSearch: '',
+      agentDisabledTools: [],
+      mcpDisabledTools: [],
     }));
     for (let depth = 0; depth < 2; depth += 1) {
       await page.keyboard.press('Escape');
@@ -501,11 +529,18 @@ async function shoot(list) {
       agentChatMenu: '',
       agentMessage: '',
       agentUsagePanel: '',
+      agentExecutionMode: 'ask',
+      agentToolApproval: '',
+      agentCheckoutExecutionMode: 'ask',
+      agentCheckoutToolApproval: '',
       agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
       agentQwenProfile: { displayName: 'Qwen3 Max', profileName: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '••••••••••••••••7M2P', modelId: 'qwen3-max', contextWindow: '131072', maximumOutput: '8192' },
       agentAddedProfile: null,
       agentRemovedModels: [],
       agentRemoveModelTarget: '',
+      agentToolSearch: '',
+      agentDisabledTools: [],
+      mcpDisabledTools: [],
       bodyType: 'json',
       ctxmenu: '',
       boot: '',

@@ -39,11 +39,12 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   filters: 'open', filterGroup: '', filterActive: '', search: '', tip: '', pop: false, pop2: '',
   composerTab: 'headers', composerResponseTab: 'body', composer: '', collection: 'open', collectionRename: '',
   composerHistory: '', agentPanel: 'closed', agentProvider: 'configured', agentProviderDialog: '', agentProviderDialogMode: 'add', agentProviderDialogTarget: '', agentModelMenu: '',
-  agentDefaultModel: 'deepseek', agentCurrentModel: 'deepseek', agentChat: 'checkout', agentChatTitle: 'Checkout failures', agentChatDialog: '', agentTurnState: 'idle', agentChatMenu: '', agentMessage: '', agentUsagePanel: '',
+  agentDefaultModel: 'deepseek', agentCurrentModel: 'deepseek', agentChat: 'checkout', agentChatTitle: 'Checkout failures', agentChatDialog: '', agentTurnState: 'idle', agentChatMenu: '', agentMessage: '', agentUsagePanel: '', agentExecutionMode: 'ask', agentToolApproval: '', agentCheckoutExecutionMode: 'ask', agentCheckoutToolApproval: '',
   agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
   agentQwenProfile: { displayName: 'Qwen3 Max', profileName: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '••••••••••••••••7M2P', modelId: 'qwen3-max', contextWindow: '131072', maximumOutput: '8192' },
   agentAddedProfile: null,
   agentRemovedModels: [], agentRemoveModelTarget: '',
+  agentToolSearch: '', agentDisabledTools: [], mcpDisabledTools: [],
   bodyType: 'json', settings: 'certificates', update: 'up-to-date',
   githubAuth: 'signed-in', appContainers: 'ready', tlsPassthrough: 'ready', tlsPatterns: null,
   tlsHostInput: '', tlsPassthroughTargetHost: '', tlsPassthroughTargetPattern: '', tlsPassthroughTargetSequence: 0,
@@ -91,6 +92,12 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
     next = { ...next, bodyPreview, bodyKind: bodyScene.kind, bodyMode: bodyScene.mode, bodyState: bodyScene.state ?? '' };
   }
   if (patch.bodyMode !== undefined) next = { ...next, bodyState: '' };
+  if (next.agentChat === 'checkout' && patch.agentExecutionMode !== undefined) {
+    next = { ...next, agentCheckoutExecutionMode: patch.agentExecutionMode };
+  }
+  if (next.agentChat === 'checkout' && patch.agentToolApproval !== undefined) {
+    next = { ...next, agentCheckoutToolApproval: patch.agentToolApproval };
+  }
   if (patch.breakpointState !== undefined && patch.breakpointState) {
     next = { ...next, detail: 'open' };
   }
@@ -133,7 +140,8 @@ export function designRootAttributes(state: DesignState): Record<string, string 
     'data-agent-default-model': state.agentDefaultModel, 'data-agent-current-model': state.agentCurrentModel,
     'data-agent-chat': state.agentChat, 'data-agent-turn-state': state.agentTurnState,
     'data-agent-chat-menu': optional(state.agentChatMenu), 'data-agent-chat-dialog': optional(state.agentChatDialog),
-    'data-agent-usage-panel': optional(state.agentUsagePanel),
+    'data-agent-usage-panel': optional(state.agentUsagePanel), 'data-agent-execution-mode': state.agentExecutionMode,
+    'data-agent-tool-approval': optional(state.agentToolApproval),
     'data-body-type': state.bodyType, 'data-settings': state.settings, 'data-update': state.update,
     'data-github-auth': state.githubAuth, 'data-app-containers': state.appContainers, 'data-tls-passthrough': state.tlsPassthrough,
     'data-tls-passthrough-target': optional(state.tlsPassthroughTargetPattern),

@@ -4,6 +4,7 @@ import { fixtureClassNames } from '../../fixtures/FixtureRenderer';
 import { ProviderLogo, type ProviderBrand } from '../Agent/ProviderLogo';
 import { useDesignState } from '../../state/useDesignState';
 import { AgentAddProviderMenu } from './AgentAddProviderMenu';
+import { AgentToolCapabilities } from './AgentToolCapabilities';
 import styles from './AgentModelSettings.module.css';
 
 export function AgentModelSettings(): React.JSX.Element | null {
@@ -113,6 +114,7 @@ export function AgentModelSettings(): React.JSX.Element | null {
         })}
       </section>
       )}
+      <AgentToolCapabilities />
     </section>
   );
 }

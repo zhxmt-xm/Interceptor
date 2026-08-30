@@ -9,16 +9,26 @@
 }
 
 .agentComposerMetrics {
-  display: flex;
+  display: grid;
   min-height: 26px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "model mode usage context";
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+}
+
+.agentExecutionMode {
+  grid-area: mode;
+}
+
+.agentUsageSlot {
+  grid-area: usage;
 }
 
 .agentContextUsage {
   display: inline-flex;
   min-width: 0;
+  grid-area: context;
   align-items: center;
   gap: 6px;
   color: var(--text-3);
@@ -89,7 +99,9 @@
 
 .agentComposerModelButton {
   display: inline-flex;
-  max-width: 210px;
+  min-width: 0;
+  max-width: 150px;
+  grid-area: model;
   height: 26px;
   align-items: center;
   gap: 6px;
@@ -120,4 +132,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@container (max-width: 300px) {
+  .agentComposerMetrics {
+    min-height: 56px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "model mode"
+      "usage context";
+    row-gap: 2px;
+  }
+
+  .agentComposerModelButton {
+    max-width: none;
+  }
 }

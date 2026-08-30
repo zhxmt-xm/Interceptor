@@ -74,6 +74,169 @@ test('Agent composer aligns the model select with visible context-window usage',
   expect(Math.abs(modelCenter - usageCenter)).toBeLessThanOrEqual(1);
 });
 
+test('Agent session exposes an explicit Ask or Auto execution mode', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'ask',
+  }));
+
+  const mode = page.getByRole('radiogroup', { name: 'Tool execution mode' });
+  await expect(mode.getByRole('radio', { name: 'Ask' })).toHaveAttribute('aria-checked', 'true');
+  await mode.getByRole('radio', { name: 'Auto' }).click();
+  await expect(mode.getByRole('radio', { name: 'Ask' })).toHaveAttribute('aria-checked', 'false');
+  await expect(mode.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'auto');
+});
+
+test('New Chat starts in Ask mode without the previous Tool result', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'auto',
+    agentToolApproval: 'allowed',
+  }));
+
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'ask');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
+});
+
+test('Execution mode stays with its Chat when switching away and back', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    agentPanel: 'open',
+    agentChat: 'checkout',
+    agentExecutionMode: 'ask',
+    agentCheckoutExecutionMode: 'ask',
+  }));
+
+  await page.getByRole('radiogroup', { name: 'Tool execution mode' })
+    .getByRole('radio', { name: 'Auto' })
+    .click();
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'ask');
+  await page.getByRole('button', { name: 'Select chat' }).click();
+  await page.getByRole('option', { name: 'Checkout failures' }).click();
+  await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'auto');
+});
+
+test('Pending Tool approval is isolated to its Chat and restored on return', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    agentPanel: 'open',
+    agentChat: 'checkout',
+    agentExecutionMode: 'ask',
+    agentCheckoutExecutionMode: 'ask',
+    agentToolApproval: 'pending',
+    agentCheckoutToolApproval: 'pending',
+  }));
+
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Select chat' }).click();
+  await page.getByRole('option', { name: 'Checkout failures' }).click();
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('stop_recording');
+});
+
+test('Ask mode keeps a change Tool pending until the user allows or denies it', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'ask',
+    agentToolApproval: 'pending',
+  }));
+
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('stop_recording');
+  await expect(approval).toContainText('Pause capture without stopping the proxy.');
+  await expect(approval).toContainText('No parameters');
+  await approval.getByRole('button', { name: 'Deny Tool' }).click();
+  await expect(approval).toContainText('Denied');
+  await expect(approval).toHaveAttribute('role', 'status');
+  await expect(approval).toBeFocused();
+
+  await page.evaluate(() => window.__setState?.({ agentToolApproval: 'pending' }));
+  await approval.getByRole('button', { name: 'Allow Tool' }).click();
+  await expect(approval).toContainText('Allowed');
+  await expect(approval).toHaveAttribute('role', 'status');
+  await expect(approval).toBeFocused();
+});
+
+test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentExecutionMode: 'ask',
+    agentToolApproval: 'pending',
+  }));
+
+  await page.getByRole('radiogroup', { name: 'Tool execution mode' })
+    .getByRole('radio', { name: 'Auto' })
+    .click();
+  await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'auto');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('stop_recording');
+});
+
+test('Pending Tool approval remains in the current Chat across workspace navigation', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentExecutionMode: 'ask',
+    agentToolApproval: 'pending',
+  }));
+
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('stop_recording');
+  await page.evaluate(() => window.__setState?.({ view: 'rules' }));
+  await expect(page.locator('.app')).toHaveAttribute('data-view', 'rules');
+  await expect(approval).toContainText('stop_recording');
+});
+
+test('Agent composer metrics fit when the panel contracts to 220px', async ({ page }) => {
+  await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>('.app');
+    if (app) {
+      app.style.width = '880px';
+      app.style.height = '560px';
+    }
+    window.__setState?.({
+      view: 'capture',
+      sidebar: 'expanded',
+      agentPanel: 'open',
+      agentProvider: 'configured',
+    });
+  });
+
+  const panel = page.locator('[data-parity="agent-panel"]');
+  const metrics = page.locator('[data-parity="agent-composer-metrics"]');
+  const [panelBox, mainBox, overflow] = await Promise.all([
+    panel.boundingBox(),
+    page.locator('.mainhost').boundingBox(),
+    metrics.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      childrenInside: [...element.children].every((child) => {
+        const parentBox = element.getBoundingClientRect();
+        const childBox = child.getBoundingClientRect();
+        return childBox.left >= parentBox.left && childBox.right <= parentBox.right;
+      }),
+    })),
+  ]);
+  expect(panelBox?.width).toBe(220);
+  expect(mainBox?.width).toBeGreaterThanOrEqual(440);
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+  expect(overflow.childrenInside).toBe(true);
+});
+
 test('Agent Send action is vertically centered in the composer', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',

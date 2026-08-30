@@ -87,6 +87,8 @@ export type AgentDefaultModel = AgentModelId;
 export type AgentCurrentModel = AgentModelId;
 export type AgentChatState = 'checkout' | 'new' | 'sent';
 export type AgentTurnState = 'idle' | 'running' | 'stopped' | 'failed';
+export type AgentExecutionMode = 'ask' | 'auto';
+export type AgentToolApprovalState = 'pending' | 'allowed' | 'denied' | '';
 
 export interface AgentProviderProfileState {
   readonly displayName: string;
@@ -134,11 +136,18 @@ export interface DesignState {
   readonly agentChatMenu: 'open' | '';
   readonly agentMessage: string;
   readonly agentUsagePanel: 'open' | '';
+  readonly agentExecutionMode: AgentExecutionMode;
+  readonly agentToolApproval: AgentToolApprovalState;
+  readonly agentCheckoutExecutionMode: AgentExecutionMode;
+  readonly agentCheckoutToolApproval: AgentToolApprovalState;
   readonly agentDeepSeekProfile: AgentProviderProfileState;
   readonly agentQwenProfile: AgentProviderProfileState;
   readonly agentAddedProfile: AgentProviderProfileState | null;
   readonly agentRemovedModels: readonly AgentModelId[];
   readonly agentRemoveModelTarget: AgentModelId | '';
+  readonly agentToolSearch: string;
+  readonly agentDisabledTools: readonly string[];
+  readonly mcpDisabledTools: readonly string[];
   readonly bodyType: BodyType;
   readonly settings: string;
   readonly update: string;

@@ -157,8 +157,10 @@
 - **默认捕获与 HTTPS**：应用进入 Capture 后自动启动 loopback listener 并尝试接管系统代理，不弹启动向导。默认不生成、不安装 CA，也不解密 HTTPS；CONNECT 以 `TLS / encrypted` tunnel 摘要展示，只保存 host/port/open-close/duration 等连接元数据。选中 tunnel 时 Inspector 只显示 TLS tunnel 页和明确的隐私说明；`Decrypt HTTPS` 打开三步弹层（生成本地 CA → 显式系统信任 → 开启 MITM）。信任成功后第三步显示黄色 `Ready` 提示，但不得自动开启 MITM，必须等待用户点击 `Start decrypting`；未完成前 HTTPS 始终原样透传。禁用或未完成步骤使用统一 disabled 视觉，不以 hover 暗示可操作。
 - **Settings / AppContainer access 与 TLS passthrough**：两者必须是 Settings 左侧导航中的独立页面，不能合并成一个 Windows App bypass 开关。
   - **AppContainer access**：顶部固定显示 UAC 与权限范围警告；说明 exemption 允许目标容器访问本机全部 loopback 服务、退出后继续保留。内容区提供按 display name / package family / SID 搜索、刷新、结果计数与逐项 Switch；SID 是稳定主键，AAD Broker 只显示 `Windows SSO · Recommended`，初始仍为 Off，不默认开启任何容器。切换前弹确认框，再进入 Windows 管理员批准；新安装或首次运行的容器由 Refresh 重新枚举。
-  - **TLS passthrough**：顶部固定说明保存会重启同地址 listener、打断活动连接，且只对新连接生效；host pattern 使用 mono 输入、明确校验、列表与删除按钮，`*.wvd.microsoft.com` 可标记为 Windows 365 推荐项。空列表明确表示所有 host 都会尝试 HTTPS interception。passthrough 流量仍经过 Interceptor 与现有上游，只保留 CONNECT / tunnel metadata。
-  - **TLS compatibility 提示**：`cert-rejected` 可给高置信建议；`reset` / `closed` 只能写“可能不兼容 MITM”，不得断言 pinning。提示必须显示 host、观测信号、listener 重启代价和“失败连接需重试”，只有用户点击 `Add host & restart` 后才加入名单，永不自动降级。
+  - **TLS passthrough**：host pattern 使用 mono 输入、明确校验、列表与删除按钮，`*.wvd.microsoft.com` 可标记为 Windows 365 推荐项。名单保存后由 listener 在每条新连接上重新求值，不重启 listener、不打断其他连接；已失败连接仍需客户端重试。空列表明确表示所有 host 都会尝试 HTTPS interception。passthrough 流量仍经过 Interceptor 与现有上游，只保留 CONNECT / tunnel metadata。
+  - **TLS compatibility 提示**：`cert-rejected` 可给高置信建议；`reset` / `closed` 只能写“可能不兼容 MITM”，不得断言 pinning。提示必须显示 host、观测信号和“失败连接需重试”，只有用户点击保存后才加入名单，永不自动降级。
+- **Settings / Agent Tool capabilities**：位于`Configured models`下方，使用同宽的紧凑表格而非卡片网格。Header左侧只显示标题与一句作用说明，右侧是`226px`搜索框；列固定为`Capability / Agent / MCP`，正文按Traffic、Rules、Breakpoints、Requests & diagnostics分组。每行显示人类可读名称、`query/change`徽标、mono Tool name与单行说明，右侧两个Ant Switch独立控制入口，默认全开；关闭态只改变目标Switch，不整行变灰。列表只渲染共享registry中已实现Tool，完整目录过长时由Settings内容面滚动，搜索不重置开关。
+- **Agent Tool执行模式与问询**：每个Chat在Composer指标行提供`Ask / Auto` Segmented，默认Ask；模式属于Chat，新Chat不继承上一Chat的模式或Tool结果。它与Model Select、Session Usage、Context Usage共用固定高度并允许模型名ellipsis；Agent栏收缩到`220px`时指标改为两行grid，所有控件仍在栏内。query Tool不触发问询；Ask模式下change Tool在Transcript原调用位置显示内联问询卡，不使用全局Modal。卡片必须显示Tool name、`change`类型、参数与真实影响，底部提供`Deny Tool`和实心主按钮`Allow Tool`；pending问询随当前Chat跨Workspace保持，切换到Auto只影响后续调用，不得隐藏已经pending的裁决。裁决后原位收敛为带`role=status`的Allowed/Denied结果行并接收焦点。Auto下的新调用不显示问询卡，但仍沿用正式产品Dialog、UAC和系统权限。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
 ## 交互状态
