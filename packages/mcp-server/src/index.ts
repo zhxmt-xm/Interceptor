@@ -1,9 +1,7 @@
 export { McpServer, type McpServerOptions } from './server/entry';
 export { McpProtocolHandler, type McpProtocolOptions } from './protocol/entry';
 export { McpToolRegistry } from './tools/entry';
-export { McpArgumentError } from './tools/tools-arguments';
 export { McpTokenAuthenticator } from './auth/entry';
-export { McpRedactor } from './redaction/entry';
 export {
   parseJsonRpcMessage,
   errorResponse,

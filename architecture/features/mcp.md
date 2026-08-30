@@ -5,7 +5,7 @@
 > Main 模块（规划）：`apps/desktop/src/main/mcp/`
 > Bridge 产物（规划）：`apps/desktop/assets/mcp-bridge/bridge.mjs` → 打包进 `extraResource`
 > Renderer 模块（规划）：`Settings > Agent` 的 MCP 接入、Tool 开关与 App 级问询弹层
-> 状态：**认证、协议与20项早期Tool已落地且不依赖Electron；共享Tool迁移、transport、Bridge、Preload与UI尚未接线。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
+> 状态：**认证、协议与24项共享Tool adapter已落地且不依赖Electron；transport、Bridge、Preload与UI尚未接线。** 章节按 `[阶段一]` / `[阶段二]` / `[待定]` 标记。
 
 ## 1. 职责与边界
 
@@ -25,8 +25,8 @@ MCP Server 把 Interceptor 的产品能力，以 [Model Context Protocol](https:
 意图；产品缺少语义单一入口时先补产品入口，不在 MCP adapter 中实现 read-modify-write 或系统操作后门。
 
 内置 Agent 阶段 1 已实现 BYOK Provider、持久化 Session、Streaming Chat 与恢复，但尚未接业务 Tool。
-MCP package 已有一套未接 Desktop 的早期 Tool 实现。下一阶段先把通用 Tool 迁到
-`packages/interceptor-tools/`，然后由两个入口复用。
+早期MCP Tool的通用descriptor、schema、参数边界、脱敏与执行函数已迁到`packages/interceptor-tools/`，
+三个多义入口已拆成24项。MCP只保留协议adapter；内置Agent与Desktop接线仍待后续work item。
 
 ## 2. 进程位置决策
 
@@ -80,13 +80,12 @@ flowchart LR
 | --- | --- | --- | --- |
 | Transport | 字节收发、连接管理、会话 | Main（未实现） | ❌ 各自实现 |
 | Authentication | 识别调用方，产出 `McpClientIdentity` | `packages/mcp-server/` | ✅ 同一 `authenticate()` 契约 |
-| Tool Registry | 唯一 Tool schema、参数边界与执行函数 | `packages/interceptor-tools/`（待迁移） | ✅ 完全共用 |
+| Tool Registry | 唯一 Tool schema、参数边界、脱敏与执行函数 | `packages/interceptor-tools/` | ✅ 完全共用 |
 | MCP Adapter | MCP `tools/list`过滤、`tools/call`映射与Client执行模式 | `packages/mcp-server/` | ✅ 完全共用 |
 | Core Bridge | 映射到 `core-protocol` command | Main 实现 `McpHostBridge` | ✅ 完全共用 |
 
-当前`packages/mcp-server/`不引用Electron、不持有MessagePort、不接触文件系统；早期20项Tool只调用Core，
-因此当前源码向宿主要求以下三个能力。迁入共享registry后，Tool执行改由Main注入的正式产品意图承接，
-不继续用`CoreCommand`表达证书、系统代理或原生Dialog能力。
+当前24项共享Tool只调用Core，因此`packages/mcp-server`向宿主要求以下三个能力。后续接入证书、系统代理或
+原生Dialog Tool时，由Main注入对应正式产品意图，不扩展`CoreCommand`表达不属于Core的能力。
 
 ```ts
 interface McpHostBridge {
@@ -129,8 +128,8 @@ Tool 是否启用。`auto` 仍复用正式产品流程，原生 Dialog、UAC 和
 完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
 Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
-当前 `packages/mcp-server` 实际实现 20 个尚未接入 Desktop 的早期 Tool：11 个 query、9 个 change。
-迁移共享 registry 时保留行为，但将三个用布尔值或 action 参数混合正反意图的入口拆开：
+当前共享registry实现24个尚未接入Desktop的Tool：11个query、13个change。三个原先用布尔值或action参数
+混合正反意图的入口已经拆开：
 
 - `set_recording(recording)` → `start_recording` / `stop_recording`；
 - `configure_breakpoint(enabled)` → `enable_http_breakpoints` / `disable_http_breakpoints`；
@@ -495,12 +494,16 @@ flowchart TD
 
 ## 9. 与当前实现的差异
 
-**已落地**：`packages/mcp-server/` 包含认证层、20个早期Tool（11 query + 9 change）与MCP协议状态机
-（`initialize` / `ping` / `tools/list` / `tools/call`，协议修订版`2025-06-18`，兼容`2025-03-26`与
-`2024-11-05`）。当前package仍使用自己的Tool定义和强制change问询，尚未迁入共享registry或实现Client
-`ask` / `auto`。`initialize`的instructions声明Capture流量是不可信输入。该package不引用Electron，
-可脱离app单测。早期`clear_capture`还接受产品不存在的`scope: session`；迁移共享registry时删除该分支，
-不为旧schema增加兼容命令。
+**已落地**：`packages/interceptor-tools/`唯一拥有24个Tool（11 query + 13 change）、5个Capability、
+deterministic discovery、参数边界、脱敏与Core执行映射；`packages/mcp-server/`消费同一registry并拥有认证、
+强制change问询、审计、并发/结果上限与MCP协议状态机（`initialize` / `ping` / `tools/list` / `tools/call`，
+协议修订版`2025-06-18`，兼容`2025-03-26`与`2024-11-05`）。`clear_capture`旧session scope和三个多义
+Tool已删除，不保留兼容路径；`apply_rules`保留完整树与enabled并按revision compare-and-replace。两包都不引用
+Electron，可脱离app单测。Client `ask` / `auto`尚未实现，当前MCP change Tool继续统一问询。
+
+正文读取不接受调用方自报MIME：`get_exchange_body`用`exchangeId + bodyId`回查该Exchange的正式Body引用，
+确认归属后使用可信`mediaType`和`contentEncoding`；音视频不读取字节。Exchange headers/trailers与Composer响应
+统一脱敏，Composer正文统一裁剪，同时保留Core返回的timing与TLS元数据。
 
 **尚未接线**：
 
@@ -514,17 +517,19 @@ flowchart TD
 | `apps/desktop/src/renderer/app/` | 新增ask问询弹层（App级，与UpdateNotification同层） |
 | `apps/desktop/src/shared/automation-ids.ts` | 新增 MCP 面板与审批弹层的稳定 ID |
 | `design-vite/` | 新增 MCP 面板与审批弹层视图，先出设计再实现 |
-| `packages/interceptor-tools/` | 迁入20个早期Tool并按完整目录逐项增加正式产品能力 |
+| `packages/interceptor-tools/` | 已迁入并拆分为24个共享Tool；后续按完整目录逐项增加正式产品能力 |
 | `packages/core-protocol/` / Main intents | 只有产品缺少语义单一入口时才先补正式入口；不为MCP增加专用后门 |
 
 共享Tool只复用正式产品入口。需要新增入口时，先以产品用户意图设计并验证，再由Agent/MCP共同复用。
 
 ## 10. 验收要点
 
-**当前早期工具层（`packages/mcp-server/`，已由单测覆盖，待迁移）**
+**共享Tool与MCP adapter（已由单测覆盖）**
 
-- [x] 当前20个Tool的schema、参数解析、调用映射与结构化错误有unit覆盖。
+- [x] 24个Tool使用稳定domain顺序；共享registry、Capability投影、参数/数值边界、脱敏与调用映射由`@interceptor/tools`测试覆盖。
+- [x] MCP精确列出同一24项，并保留query/change、destructive、open-world annotations与结构化错误。
 - [x] `apply_rules` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
+- [x] `apply_rules`不改写folder或enabled；完整递归Rule schema仍归该Tool独立实现item，未达到Desktop接线门禁。
 - [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
 - [x] 音视频正文不进入工具结果。
 - [x] 撤销某个 client 后，其 token 立即无法再建会话。
@@ -537,7 +542,7 @@ flowchart TD
 - [ ] Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启且互不影响。
 - [ ] 关闭的Tool不进入对应Agent discovery或MCP `tools/list`，也不能按名称调用。
 - [ ] query直接执行；change在Client `ask`时问询、`auto`时直接复用正式产品意图。
-- [ ] 三个多义早期Tool拆成语义单一的正反命令；完整名称以Tool能力目录为准。
+- [x] 三个多义早期Tool已拆成7个语义单一Tool；完整名称以Tool能力目录为准。
 
 **阶段一（stdio，待接线后验证）**
 

@@ -3,8 +3,8 @@
 > 最后更新：2026-08-30
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录与Settings/问询UI设计已完成；`@interceptor/tools`仅完成Capability Index与discovery，
-> `packages/mcp-server`现有20个Tool尚未迁入共享目录，Desktop尚未接入Agent/MCP业务Tool。
+> 当前状态：完整目标目录与Settings/问询UI设计已完成；`@interceptor/tools`已拥有首批24项共享registry、
+> Capability discovery、参数边界与脱敏，`packages/mcp-server`已改为消费同一registry；Desktop尚未接入Agent/MCP业务Tool。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -21,7 +21,7 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 
 状态含义：
 
-- **MCP package**：当前 `packages/mcp-server` 已有实现，但尚未接入 Desktop，也尚未迁入共享目录；
+- **共享 registry + MCP adapter**：Tool已由`@interceptor/tools`唯一实现并被MCP adapter消费，但尚未接入Desktop；
 - **产品已具备**：产品已有正式入口，Tool descriptor 与 Agent/MCP 接线待实现；
 - **先补 intent**：产品 UI 已有能力，但缺少可供 Tool 复用的语义单一入口；
 - **待产品实现**：产品本身尚无该能力，不先为 Tool 新建后门。
@@ -61,49 +61,49 @@ Tool已经接入Desktop。
 | `get_system_proxy_status` | query | `getSystemProxyStatus` | 产品已具备 |
 | `enable_system_proxy` | change | `enableSystemProxy` | 产品已具备 |
 | `restore_system_proxy` | change | `restoreSystemProxy` | 产品已具备 |
-| `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | MCP package |
-| `get_storage_status` | query | `getCaptureUsage` / `capture.status` | MCP package |
-| `start_recording` | change | `startCapture` | MCP package 的 `set_recording` 待拆分 |
-| `stop_recording` | change | `stopCapture` | MCP package 的 `set_recording` 待拆分 |
-| `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | MCP package；迁移时删除产品不存在的session scope |
-| `list_exchanges` | query | `querySessions` / `sessions.query` | MCP package |
-| `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | MCP package |
-| `get_exchange_body` | query | `readBody` / `body.read-range` | MCP package |
-| `list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | MCP package |
-| `list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | MCP package |
+| `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter |
+| `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter |
+| `start_recording` | change | `startCapture` | 共享 registry + MCP adapter |
+| `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter |
+| `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
+| `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter |
+| `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter |
+| `get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter；用`exchangeId + bodyId`回查可信MIME/encoding |
+| `list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | 共享 registry + MCP adapter |
+| `list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | 共享 registry + MCP adapter |
 | `export_body` | change | `startBodyExport` / 原生 Save Dialog | 产品已具备 |
 
 ### 3.2 Rules 与 Composer
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `get_rules` | query | `getRules` / `rules.get` | MCP package |
-| `get_rule_hits` | query | `getRuleHits` / `rules.hits` | MCP package |
-| `apply_rules` | change | `replaceRules` / `rules.replace` | MCP package；移除强制 disabled 的旧限制后迁移 |
+| `get_rules` | query | `getRules` / `rules.get` | 共享 registry + MCP adapter |
+| `get_rule_hits` | query | `getRuleHits` / `rules.hits` | 共享 registry + MCP adapter |
+| `apply_rules` | change | `replaceRules` / `rules.replace` | 共享 registry + MCP adapter；完整递归Rule schema待该Tool独立item |
 | `import_rules` | change | 当前由Renderer串联`readImportFile`、解析确认与`replaceRules` | 先补 intent |
 | `export_rules` | change | `exportRules` / 原生 Save Dialog | 产品已具备 |
 | `get_collection` | query | `getCollection` / `collection.get` | 产品已具备 |
 | `replace_collection` | change | `replaceCollection` / `collection.replace` | 产品已具备 |
 | `import_collection` | change | 当前由Renderer串联`readImportFile`、解析确认与`replaceCollection` | 先补 intent |
 | `export_collection` | change | `exportCollection` / 原生 Save Dialog | 产品已具备 |
-| `send_request` | change | `sendComposerRequest` / `composer.send` | MCP package |
+| `send_request` | change | `sendComposerRequest` / `composer.send` | 共享 registry + MCP adapter |
 
 ### 3.3 Breakpoints 与连接探测
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `list_breakpoints` | query | `listBreakpoints` / `breakpoint.list` | MCP package |
-| `enable_http_breakpoints` | change | `setBreakpointsEnabled(true)` | MCP package 的 `configure_breakpoint` 待拆分 |
-| `disable_http_breakpoints` | change | `setBreakpointsEnabled(false)` | MCP package 的 `configure_breakpoint` 待拆分 |
-| `enable_websocket_breakpoint` | change | `enableWebSocketBreakpoints` | MCP package |
-| `disable_websocket_breakpoint` | change | `disableWebSocketBreakpoints` | MCP package |
-| `continue_breakpoint` | change | `resolveBreakpoint(..., 'continue')` | MCP package 的 `resolve_breakpoint` 待拆分 |
-| `forward_edited_breakpoint` | change | `resolveBreakpoint(..., 'continue', edit)` | MCP package 的 `resolve_breakpoint` 待拆分 |
-| `drop_breakpoint` | change | `resolveBreakpoint(..., 'drop')` | MCP package 的 `resolve_breakpoint` 待拆分 |
+| `list_breakpoints` | query | `listBreakpoints` / `breakpoint.list` | 共享 registry + MCP adapter |
+| `enable_http_breakpoints` | change | `setBreakpointsEnabled(true)` | 共享 registry + MCP adapter |
+| `disable_http_breakpoints` | change | `setBreakpointsEnabled(false)` | 共享 registry + MCP adapter |
+| `enable_websocket_breakpoint` | change | `enableWebSocketBreakpoints` | 共享 registry + MCP adapter |
+| `disable_websocket_breakpoint` | change | `disableWebSocketBreakpoints` | 共享 registry + MCP adapter |
+| `continue_breakpoint` | change | `resolveBreakpoint(..., 'continue')` | 共享 registry + MCP adapter |
+| `forward_edited_breakpoint` | change | `resolveBreakpoint(..., 'continue', edit)` | 共享 registry + MCP adapter |
+| `drop_breakpoint` | change | `resolveBreakpoint(..., 'drop')` | 共享 registry + MCP adapter |
 | `continue_breakpoint_queue` | change | `continueBreakpointQueue` | 产品已具备 |
 | `drop_breakpoint_queue` | change | `dropBreakpointQueue` | 产品已具备 |
 | `continue_rule_breakpoints` | change | `continueBreakpointRule` | 产品已具备 |
-| `probe_connection` | change | `probeTls` / `tls.probe` | MCP package |
+| `probe_connection` | change | `probeTls` / `tls.probe` | 共享 registry + MCP adapter |
 
 ### 3.4 TLS、证书与 AppContainer
 
@@ -141,7 +141,7 @@ Tool已经接入Desktop。
 | `cancel_transfer_job` | change | `cancelTransferJob` | 产品已具备 |
 | `get_diagnostic_trace` | query | `getCoreTrace` | 产品已具备 |
 | `get_recent_diagnostics` | query | `getRecentDiagnostics` | 产品已具备 |
-| `query_diagnostics` | query | `queryDiagnostics` / `diagnostics.query` | MCP package |
+| `query_diagnostics` | query | `queryDiagnostics` / `diagnostics.query` | 共享 registry + MCP adapter |
 | `export_diagnostics` | change | `startDiagnosticsExport` / 原生 Save Dialog | 产品已具备 |
 
 ### 3.6 GitHub 更新
@@ -170,8 +170,8 @@ Tool已经接入Desktop。
 Tool 不按“只读产品版”和“完整产品版”切成两套。完整目录先确定，随后从最基础的纵向流程开始逐项完成：
 
 1. 在`design-vite`完成`Settings > Agent`能力列表、Agent/MCP双开关与`ask`问询态设计；
-2. 将现有MCP 20个Tool的通用descriptor、schema与执行函数迁入`packages/interceptor-tools/`，
-   同时把三个多义入口拆成语义单一名称；MCP transport继续留在`packages/mcp-server/`；
+2. **[已完成]** 将现有MCP 20个Tool的通用descriptor、schema与执行函数迁入`packages/interceptor-tools/`，
+   同时把三个多义入口拆成24个语义单一Tool；MCP transport继续留在`packages/mcp-server/`；
 3. 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；
 4. Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；

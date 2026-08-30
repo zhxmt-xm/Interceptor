@@ -18,7 +18,8 @@
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@interceptor/core-protocol": "*"
+    "@interceptor/core-protocol": "*",
+    "@interceptor/tools": "*"
   },
   "devDependencies": {
     "vitest": "4.1.10"

@@ -71,6 +71,33 @@ describe('McpToolRegistry', () => {
     const tools = mcpToolRegistry.listTools();
     const byName = new Map(tools.map((tool) => [tool.name, tool]));
 
+    expect(tools.map((tool) => tool.name)).toEqual([
+      'get_proxy_status',
+      'get_storage_status',
+      'start_recording',
+      'stop_recording',
+      'clear_capture',
+      'list_exchanges',
+      'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
+      'get_rules',
+      'get_rule_hits',
+      'apply_rules',
+      'list_breakpoints',
+      'enable_http_breakpoints',
+      'disable_http_breakpoints',
+      'enable_websocket_breakpoint',
+      'disable_websocket_breakpoint',
+      'continue_breakpoint',
+      'forward_edited_breakpoint',
+      'drop_breakpoint',
+      'send_request',
+      'probe_connection',
+      'query_diagnostics',
+    ]);
+
     expect(byName.get('list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });
     expect(byName.get('clear_capture')?.annotations).toMatchObject({
       readOnlyHint: false,
@@ -111,7 +138,7 @@ describe('McpToolRegistry', () => {
     );
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'clear_capture', { scope: 'all' });
+    const outcome = await call(mcpToolRegistry, 'clear_capture');
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.approvals).toHaveLength(1);
@@ -147,7 +174,7 @@ describe('McpToolRegistry', () => {
     expect(fakeHost.approvals[0]?.diff?.[0]).toContain('evil.com');
   });
 
-  it('forces AI-authored rules to land disabled', async () => {
+  it('preserves the complete AI-authored Rule tree and enabled state', async () => {
     const fakeHost = new FakeHost({
       'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, nodes: [] } } },
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
@@ -156,14 +183,23 @@ describe('McpToolRegistry', () => {
 
     const outcome = await call(mcpToolRegistry, 'apply_rules', {
       baseRevision: 7,
-      rules: [{ id: 'r1', name: 'redirect', enabled: true }],
+      nodes: [{
+        kind: 'folder',
+        id: 'f1',
+        name: 'Auth',
+        children: [{ kind: 'rule', id: 'r1', name: 'redirect', enabled: true }],
+      }],
     });
 
     expect(outcome.ok).toBe(true);
     const replace = fakeHost.commands.find((command) => command.type === 'rules.replace');
     expect(replace).toBeDefined();
-    expect((replace as { payload: { nodes: { enabled: boolean }[] } }).payload.nodes[0]?.enabled)
-      .toBe(false);
+    expect((replace as { payload: { nodes: unknown[] } }).payload.nodes).toEqual([{
+      kind: 'folder',
+      id: 'f1',
+      name: 'Auth',
+      children: [{ kind: 'rule', id: 'r1', name: 'redirect', enabled: true }],
+    }]);
   });
 
   it('refuses to overwrite rules edited since the AI last read them', async () => {
@@ -172,7 +208,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'apply_rules', { baseRevision: 7, rules: [] });
+    const outcome = await call(mcpToolRegistry, 'apply_rules', { baseRevision: 7, nodes: [] });
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('rules.replace');
@@ -195,33 +231,45 @@ describe('McpToolRegistry', () => {
     expect(outcome.ok).toBe(false);
   });
 
-  it('clamps page limits so one call cannot drain the whole capture', async () => {
+  it('rejects page limits outside the published schema', async () => {
     const fakeHost = new FakeHost({
       'sessions.query': { type: 'sessions.page', payload: { items: [], hasMore: false } },
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(mcpToolRegistry, 'list_exchanges', { limit: 100_000 });
+    const outcome = await call(mcpToolRegistry, 'list_exchanges', { limit: 100_000 });
 
-    const query = fakeHost.commands[0] as { payload: { limit: number } };
-    expect(query.payload.limit).toBe(200);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.payload).toMatchObject({ error: expect.stringContaining('at most 200') });
+    expect(fakeHost.commands).toHaveLength(0);
   });
 
-  it('never reads media bodies', async () => {
-    const fakeHost = new FakeHost();
+  it('derives media type from the exchange before deciding whether to read a body', async () => {
+    const fakeHost = new FakeHost({
+      'sessions.detail': {
+        type: 'sessions.detail',
+        payload: {
+          detail: {
+            responseBody: { bodyHash: 'b1', mediaType: 'video/mp4' },
+          },
+        },
+      },
+    });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
     const outcome = await call(mcpToolRegistry, 'get_exchange_body', {
+      exchangeId: 'exchange-1',
       bodyId: 'b1',
-      mimeType: 'video/mp4',
     });
 
     expect(outcome.ok).toBe(true);
     expect(outcome.payload).toMatchObject({ opaque: true });
-    expect(fakeHost.commands).toHaveLength(0);
+    expect(fakeHost.commands).toEqual([
+      { type: 'sessions.detail', payload: { exchangeId: 'exchange-1' } },
+    ]);
   });
 
-  it('does not fabricate a body edit when the model only changes a header', async () => {
+  it('continues a breakpoint unchanged without fabricating an edit', async () => {
     const fakeHost = new FakeHost({
       'breakpoint.resolve': {
         type: 'breakpoint.resolution',
@@ -230,7 +278,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(mcpToolRegistry, 'resolve_breakpoint', { breakpointId: 'bp1', action: 'continue' });
+    await call(mcpToolRegistry, 'continue_breakpoint', { breakpointId: 'bp1' });
 
     const resolve = fakeHost.commands.find((command) => command.type === 'breakpoint.resolve');
     expect(resolve).toBeDefined();

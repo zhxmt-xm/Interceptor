@@ -12,6 +12,9 @@
       "default": "./src/index.ts"
     }
   },
+  "dependencies": {
+    "@interceptor/core-protocol": "*"
+  },
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "test": "vitest run",

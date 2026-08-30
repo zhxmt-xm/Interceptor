@@ -119,7 +119,32 @@ describe('McpProtocolHandler', () => {
     const response = await session.handleMessage(request(2, 'tools/list'), SIGNAL);
 
     const tools = (response as { result: { tools: { name: string }[] } }).result.tools;
-    expect(tools.map((tool) => tool.name)).toContain('list_exchanges');
+    expect(tools.map((tool) => tool.name)).toEqual([
+      'get_proxy_status',
+      'get_storage_status',
+      'start_recording',
+      'stop_recording',
+      'clear_capture',
+      'list_exchanges',
+      'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
+      'get_rules',
+      'get_rule_hits',
+      'apply_rules',
+      'list_breakpoints',
+      'enable_http_breakpoints',
+      'disable_http_breakpoints',
+      'enable_websocket_breakpoint',
+      'disable_websocket_breakpoint',
+      'continue_breakpoint',
+      'forward_edited_breakpoint',
+      'drop_breakpoint',
+      'send_request',
+      'probe_connection',
+      'query_diagnostics',
+    ]);
   });
 
   it('returns tool failures as isError instead of a JSON-RPC error', async () => {

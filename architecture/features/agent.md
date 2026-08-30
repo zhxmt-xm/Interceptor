@@ -1238,14 +1238,14 @@ MCP Server 是供外部 Agent Host 调用的协议入口；内置 Agent 是同�
 
 ```text
 packages/agent-runtime/       AgentRuntime + ModelAdapter
-packages/interceptor-tools/   Capability index + Tool catalog + Zod + Permission policy
+packages/interceptor-tools/   Capability index + Tool registry + schema + executor
 packages/mcp-server/          MCP auth + JSON-RPC protocol adapter
 apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 ```
 
-`packages/interceptor-tools/` 已抽出 transport-neutral Capability Index 与 discovery；当前20项早期业务Tool的
-descriptor、参数解析与执行函数仍混在 `McpToolRegistry`。下一步把这些通用部分迁入共享registry，MCP只保留
-协议适配，内置Agent直接消费同一registry，不复制第二套行为。
+`packages/interceptor-tools/`已拥有transport-neutral Capability Index、deterministic discovery与24项共享Tool
+的descriptor、schema、参数边界、脱敏和Core executor。`packages/mcp-server/`只保留认证、审批、审计、并发/
+结果上限和协议适配。内置Agent尚未消费该registry，Desktop仍传入`tools: []`。
 
 抓包正文是完全不可信的数据，可能包含 Prompt Injection。Tool Gateway 必须区分“Model 请求了什么”和
 “用户允许什么”，但不维护永久能力 denylist。内置Agent按Session、MCP按Client选择执行模式：
@@ -1403,10 +1403,10 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
   network failure，遵守 `Retry-After` 或使用 capped exponential backoff + full jitter，退避可取消且不重复已完成 Tool；
   DeepSeek / Custom Provider已接入产品，但尚未设置非零production retry或attempt timeout policy；
 - 当前Runtime尚未把Tool Catalog改为Capability → discovery → schema渐进披露；运行时仍一次性接收注入的Tool descriptor；
-- `@interceptor/tools` 已建立 transport-neutral Capability Index 与确定性 discovery：初始只暴露能力摘要，
-  查询后返回完整 descriptor、matched terms 和稳定排序；MCP package 的20个业务 Tool、参数解析与执行函数
-  尚未迁入该 package，内置 Agent 也尚未注册 `discover_tools`；
+- `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
+  参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent仍未注册
+  `discover_tools`，Main仍注入空Tool数组；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
   0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前产品不包含业务Tool；下一阶段
-  先完成共享目录与Settings开关，再从三个基础Traffic查询Tool开始逐项实现完整目录。
+  实现registry驱动的Settings开关与持久化，再从三个基础Traffic查询Tool开始接入Agent。

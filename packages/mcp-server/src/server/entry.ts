@@ -1,7 +1,8 @@
+import type { InterceptorToolRedactor } from '@interceptor/tools';
+
 import type { McpHostBridge } from '../interfaces';
 import { McpTokenAuthenticator } from '../auth/entry';
 import { McpProtocolHandler } from '../protocol/entry';
-import { McpRedactor } from '../redaction/entry';
 import { McpToolRegistry } from '../tools/entry';
 
 /** 组装 MCP server 所需的宿主能力。 */
@@ -11,7 +12,7 @@ export interface McpServerOptions {
   /** 展示给 Host 的版本号，通常是 app 版本。 */
   version: string;
   /** 自定义脱敏策略；缺省用默认遮罩列表。 */
-  mcpRedactor?: McpRedactor;
+  interceptorToolRedactor?: InterceptorToolRedactor;
 }
 
 /**
@@ -30,7 +31,9 @@ export class McpServer {
   constructor(options: McpServerOptions) {
     this.#version = options.version;
     this.mcpToolRegistry = new McpToolRegistry(options.host, {
-      ...(options.mcpRedactor === undefined ? {} : { mcpRedactor: options.mcpRedactor }),
+      ...(options.interceptorToolRedactor === undefined
+        ? {}
+        : { interceptorToolRedactor: options.interceptorToolRedactor }),
     });
   }
 

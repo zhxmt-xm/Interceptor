@@ -2,16 +2,19 @@ import {
   MCP_MAX_CONCURRENT_CALLS,
   MCP_TOOL_RESULT_MAX_BYTES,
 } from '../constants';
+import {
+  buildInterceptorToolRegistry,
+  InterceptorToolArgumentError,
+  InterceptorToolRedactor,
+  type InterceptorToolContext,
+  type InterceptorToolDefinition,
+} from '@interceptor/tools';
 import type {
   McpApprovalRequest,
   McpClientIdentity,
   McpHostBridge,
   McpToolCallOutcome,
-  McpToolDefinition,
 } from '../interfaces';
-import { McpRedactor } from '../redaction/entry';
-import { annotationsFor, buildToolCatalog } from './tools-catalog';
-import { McpArgumentError } from './tools-arguments';
 
 /**
  * 工具层：注册表、分级、审批编排与结果裁剪。两种 transport 完全共用。
@@ -22,7 +25,7 @@ import { McpArgumentError } from './tools-arguments';
  */
 export class McpToolRegistry {
   /** 按名字索引的工具定义。 */
-  readonly #tools: ReadonlyMap<string, McpToolDefinition>;
+  readonly #tools: ReadonlyMap<string, InterceptorToolDefinition>;
   /** 宿主桥接。 */
   readonly #host: McpHostBridge;
   /** 生成审批 ID。 */
@@ -33,13 +36,15 @@ export class McpToolRegistry {
   constructor(
     host: McpHostBridge,
     options: {
-      mcpRedactor?: McpRedactor;
+      interceptorToolRedactor?: InterceptorToolRedactor;
       createApprovalId?: () => string;
     } = {},
   ) {
     this.#host = host;
     this.#createApprovalId = options.createApprovalId ?? (() => globalThis.crypto.randomUUID());
-    const catalog = buildToolCatalog(options.mcpRedactor ?? new McpRedactor());
+    const catalog = buildInterceptorToolRegistry(
+      options.interceptorToolRedactor ?? new InterceptorToolRedactor(),
+    );
     this.#tools = new Map(catalog.map((tool) => [tool.name, tool]));
   }
 
@@ -85,8 +90,8 @@ export class McpToolRegistry {
 
     this.#activeCalls += 1;
     try {
-      const context = { host: this.#host, identity, abortSignal };
-      if (tool.level === 'write') {
+      const context: InterceptorToolContext = { host: this.#host, abortSignal };
+      if (tool.kind === 'change') {
         const verdict = await this.#requestApproval(tool, args, context, identity);
         if (verdict !== 'approved') {
           this.#host.record({ kind: 'approval', identity, toolName: name, verdict });
@@ -103,7 +108,7 @@ export class McpToolRegistry {
       this.#host.record({ kind: 'tool-call', identity, toolName: name, ok: true });
       return { ok: true, payload: truncatePayload(payload) };
     } catch (error) {
-      const message = error instanceof McpArgumentError
+      const message = error instanceof InterceptorToolArgumentError
         ? error.message
         : describeError(error);
       this.#host.record({ kind: 'tool-call', identity, toolName: name, ok: false, message });
@@ -115,9 +120,9 @@ export class McpToolRegistry {
 
   /** 组装审批请求；差异说明失败不阻断审批，只是少一段上下文。 */
   async #requestApproval(
-    tool: McpToolDefinition,
+    tool: InterceptorToolDefinition,
     args: Readonly<Record<string, unknown>>,
-    context: { host: McpHostBridge; identity: McpClientIdentity; abortSignal: AbortSignal },
+    context: InterceptorToolContext,
     identity: McpClientIdentity,
   ): Promise<'approved' | 'rejected' | 'timeout'> {
     let diff: readonly string[] | undefined;
@@ -140,6 +145,22 @@ export class McpToolRegistry {
     };
     return this.#host.requestApproval(request);
   }
+}
+
+/** Maps shared Tool metadata to MCP protocol annotations. */
+function annotationsFor(tool: InterceptorToolDefinition): {
+  readOnlyHint: boolean;
+  destructiveHint: boolean;
+  idempotentHint: boolean;
+  openWorldHint: boolean;
+} {
+  const readOnly = tool.kind === 'query';
+  return {
+    readOnlyHint: readOnly,
+    destructiveHint: tool.destructive,
+    idempotentHint: readOnly,
+    openWorldHint: tool.openWorld,
+  };
 }
 
 /** 统一的失败结果。 */

@@ -1,7 +1,5 @@
 import type { CoreCommand, CoreResultForCommand } from '@interceptor/core-protocol';
-
-/** MCP 工具的能力级别；决定是否需要用户逐次确认。 */
-export type McpToolLevel = 'read' | 'write';
+import type { InterceptorToolHost } from '@interceptor/tools';
 
 /** 调用方身份。`clientId` 由 token 决定，是唯一可信的标识。 */
 export interface McpClientIdentity {
@@ -54,7 +52,7 @@ export interface McpAuditEvent {
  * 宿主（Main 进程）必须提供的能力。MCP package 自身不认识 Electron、
  * 不持有 MessagePort、不接触文件系统。
  */
-export interface McpHostBridge {
+export interface McpHostBridge extends InterceptorToolHost {
   /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
   invoke<T extends CoreCommand>(command: T, abortSignal: AbortSignal): Promise<CoreResultForCommand<T>>;
   /** 请求用户确认写工具。宿主负责展示、超时与窗口聚焦。 */
@@ -63,64 +61,12 @@ export interface McpHostBridge {
   record(event: McpAuditEvent): void;
 }
 
-/** 工具输入的 JSON Schema 子集；只覆盖工具参数实际用到的形态。 */
-export interface McpJsonSchema {
-  type: 'object';
-  properties: Readonly<Record<string, McpJsonSchemaProperty>>;
-  required?: readonly string[];
-  additionalProperties: false;
-}
-
-/** 单个参数的 schema。 */
-export interface McpJsonSchemaProperty {
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
-  description: string;
-  enum?: readonly string[];
-  items?: McpJsonSchemaProperty;
-  minimum?: number;
-  maximum?: number;
-  default?: string | number | boolean;
-}
-
 /** `tools/list` 中的注解，向 Host 表明工具的副作用形态。 */
 export interface McpToolAnnotations {
   readOnlyHint: boolean;
   destructiveHint: boolean;
   idempotentHint: boolean;
   openWorldHint: boolean;
-}
-
-/** 工具执行时可用的上下文。 */
-export interface McpToolContext {
-  /** 宿主桥接。 */
-  host: McpHostBridge;
-  /** 发起调用的身份。 */
-  identity: McpClientIdentity;
-  /** 调用取消信号。 */
-  abortSignal: AbortSignal;
-}
-
-/** 一个 MCP 工具的完整定义。 */
-export interface McpToolDefinition {
-  /** 暴露给 Host 的工具名。 */
-  name: string;
-  /** 人类可读标题。 */
-  title: string;
-  /** 给模型看的说明。 */
-  description: string;
-  /** 能力级别；`write` 必须经用户确认。 */
-  level: McpToolLevel;
-  /** 是否造成不可逆后果，影响审批 UI 的措辞。 */
-  destructive: boolean;
-  /** 参数 schema。 */
-  inputSchema: McpJsonSchema;
-  /** 执行工具并返回已脱敏的结果负载。 */
-  execute(args: Readonly<Record<string, unknown>>, context: McpToolContext): Promise<unknown>;
-  /** 仅写工具实现：为审批 UI 生成差异说明。 */
-  describeChange?(
-    args: Readonly<Record<string, unknown>>,
-    context: McpToolContext,
-  ): Promise<readonly string[]>;
 }
 
 /** 工具调用结果。 */
