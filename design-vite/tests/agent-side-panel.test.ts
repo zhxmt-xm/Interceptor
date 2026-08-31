@@ -63,12 +63,20 @@ test('Agent composer aligns the model select with visible context-window usage',
   await expect(contextUsage).toContainText('Context');
   await expect(contextUsage).toContainText('2.3%');
   await expect(contextUsage).toContainText('23k / 1M');
-  const [modelBox, usageBox] = await Promise.all([
+  const [modelBox, usageBox, modelTextBox, modelChevronBox] = await Promise.all([
     modelSelect.boundingBox(),
     contextUsage.boundingBox(),
+    modelSelect.locator('span').last().boundingBox(),
+    modelSelect.locator('svg').last().boundingBox(),
   ]);
   expect(modelBox).not.toBeNull();
   expect(usageBox).not.toBeNull();
+  expect(modelChevronBox!.x - (modelTextBox!.x + modelTextBox!.width)).toBe(6);
+  expect(modelBox!.x + modelBox!.width - (modelChevronBox!.x + modelChevronBox!.width)).toBe(8);
+  const circleBox = await contextUsage.locator('svg').first().boundingBox();
+  expect(circleBox).not.toBeNull();
+  expect(circleBox!.width).toBe(18);
+  expect(circleBox!.height).toBe(18);
   const modelCenter = modelBox!.y + modelBox!.height / 2;
   const usageCenter = usageBox!.y + usageBox!.height / 2;
   expect(Math.abs(modelCenter - usageCenter)).toBeLessThanOrEqual(1);
@@ -373,7 +381,7 @@ test('Running turn can be stopped and retried without losing visible output', as
   await expect(page.getByRole('button', { name: 'Stop response' })).toBeVisible();
 });
 
-test('Failed turn exposes Retry and expandable Session usage', async ({ page }) => {
+test('Failed turn exposes Retry and Session usage from Context hover', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
     agentPanel: 'open',
@@ -386,9 +394,15 @@ test('Failed turn exposes Retry and expandable Session usage', async ({ page }) 
   const panel = page.locator('[data-parity="agent-panel"]');
   await expect(panel).toContainText('Model request failed');
   await expect(page.getByRole('button', { name: 'Retry response' })).toBeVisible();
-  await page.getByRole('button', { name: 'Session usage' }).click();
-  await expect(panel).toContainText('47.2k tokens');
-  await expect(panel).toContainText('73.1% cache hit');
+  await expect(page.getByRole('button', { name: 'Session usage' })).toHaveCount(0);
+  const contextUsage = page.locator('[data-parity="agent-context-usage"]');
+  await contextUsage.hover();
+  const usagePopover = page.locator('[data-parity="agent-session-usage-popover"]');
+  await expect(usagePopover).toBeVisible();
+  await expect(usagePopover).toContainText('47.2k tokens');
+  await expect(usagePopover).toContainText('73.1% cache hit');
+  await page.locator('[data-parity="agent-panel-header"]').hover();
+  await expect(usagePopover).toHaveCount(0);
 });
 
 test('Traffic Tool activity keeps calls, arguments, results, and final answer in order', async ({ page }) => {

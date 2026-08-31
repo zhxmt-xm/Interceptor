@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Progress } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,32 +8,67 @@ import { compactTokenCount } from '../utils';
 import styles from './AgentSessionUsage.module.css';
 
 interface AgentSessionUsageProps {
+  readonly contextUsage: AgentSessionSnapshot['contextUsage'];
   readonly usage: AgentSessionSnapshot['usage'];
 }
 
-/** Displays exact Provider-reported Session token buckets and weighted cache rate. */
-export function AgentSessionUsage({ usage }: AgentSessionUsageProps): React.JSX.Element {
+/** Shows Context usage and reveals exact Session token details on hover or focus. */
+export function AgentSessionUsage({
+  contextUsage,
+  usage,
+}: AgentSessionUsageProps): React.JSX.Element {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const contextTokens = contextUsage.currentContextTokens ?? 0;
+  const contextWindowTokens = contextUsage.contextWindowTokens;
+  const contextPercent = contextWindowTokens === 0
+    ? 0
+    : Math.min(100, (contextTokens / contextWindowTokens) * 100);
   const cacheHitPercent = usage.cacheHitRate === null
     ? null
     : Math.round(usage.cacheHitRate * 1000) / 10;
 
   return (
-    <div className={styles.usage}>
+    <div
+      className={styles.usage}
+      data-automation-id={AUTOMATION_IDS.agent.context}
+      data-current-tokens={contextUsage.currentContextTokens ?? ''}
+      data-max-output-tokens={contextUsage.maxOutputTokens}
+      data-parity="agent-context-usage"
+      data-source={contextUsage.source}
+      data-window-tokens={contextWindowTokens}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onFocus={() => setOpen(true)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         aria-expanded={open}
-        data-automation-id={AUTOMATION_IDS.agent.usage.toggle}
+        aria-label={t('agent.context')}
         type="button"
-        onClick={() => setOpen((value) => !value)}
       >
-        <span>{t('agent.sessionUsage')}</span>
-        {open ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+        <Progress
+          percent={contextPercent}
+          railColor="var(--border)"
+          showInfo={false}
+          size={18}
+          strokeColor="var(--accent)"
+          strokeWidth={11}
+          type="circle"
+        />
+        <span className={styles.contextCopy}>
+          <b>{t('agent.context')}</b>
+          <code>{contextPercent.toFixed(1)}% · {compactTokenCount(contextTokens)} / {compactTokenCount(contextWindowTokens)}</code>
+        </span>
       </button>
       {open ? (
         <div
           className={styles.popover}
+          aria-label={t('agent.sessionUsage')}
           data-automation-id={AUTOMATION_IDS.agent.usage.panel}
+          data-parity="agent-session-usage-popover"
           data-cache-hit-rate={usage.cacheHitRate ?? ''}
           data-cache-hit-tokens={usage.cacheHitInputTokens ?? ''}
           data-cache-miss-tokens={usage.cacheMissInputTokens ?? ''}

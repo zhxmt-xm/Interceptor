@@ -26,6 +26,7 @@ const sessionMetadataSchema = z.object({
   title: z.string().min(1).max(80),
   providerId: z.string().min(1),
   modelId: z.string().min(1),
+  toolExecutionMode: z.enum(['ask', 'auto']),
   createdAt: z.number().int(),
   updatedAt: z.number().int(),
   sequence: z.number().int().nonnegative(),
@@ -57,6 +58,12 @@ const transcriptItemSchema = z.discriminatedUnion('kind', [
     name: z.string().min(1),
     arguments: z.unknown(),
     status: z.enum(['running', 'completed', 'failed']),
+    approval: z.object({
+      approvalId: z.string().min(1),
+      status: z.enum(['pending', 'allowed', 'denied', 'cancelled']),
+      description: z.string().min(1),
+      effect: z.string().min(1),
+    }).strict().nullable(),
     createdAt: z.number().int(),
   }).strict(),
   z.object({
@@ -89,7 +96,13 @@ const assistantChunkSchema = z.object({
 const turnSchema = z.object({
   turnId: z.string().min(1),
   userItemId: z.string().min(1),
-  status: z.enum(['running', 'completed', 'cancelled', 'failed']),
+  status: z.enum([
+    'running',
+    'waiting-for-tool-approval',
+    'completed',
+    'cancelled',
+    'failed',
+  ]),
   retryOfTurnId: z.string().min(1).nullable(),
   error: z.object({ code: z.string(), message: z.string() }).strict().nullable(),
   createdAt: z.number().int(),
@@ -588,6 +601,7 @@ export class AgentSessionStore {
     const toolKey = (turnId: string, callId: string): string => JSON.stringify([turnId, callId]);
     const toolCallsById = new Map<string, Extract<StoredAgentTranscriptItem, { kind: 'tool-call' }>>();
     const toolResultsByCallId = new Map<string, Extract<StoredAgentTranscriptItem, { kind: 'tool-result' }>>();
+    const approvalIds = new Set<string>();
     for (const item of session.items) {
       if (item.kind === 'tool-call') {
         const key = toolKey(item.turnId, item.callId);
@@ -597,6 +611,14 @@ export class AgentSessionStore {
           );
         }
         toolCallsById.set(key, item);
+        if (item.approval !== null) {
+          if (approvalIds.has(item.approval.approvalId)) {
+            throw new AgentSessionStoreCorruptionError(
+              'Agent Session contains duplicate Tool approval IDs.',
+            );
+          }
+          approvalIds.add(item.approval.approvalId);
+        }
       } else if (item.kind === 'tool-result') {
         const key = toolKey(item.turnId, item.callId);
         if (toolResultsByCallId.has(key)) {
@@ -619,13 +641,24 @@ export class AgentSessionStore {
       const result = toolResultsByCallId.get(toolKey(call.turnId, call.callId));
       const turn = turnsById.get(call.turnId)!;
       const matched = call.status === 'running'
-        ? result === undefined && turn.status === 'running'
+        ? result === undefined
+          && (turn.status === 'running' || turn.status === 'waiting-for-tool-approval')
         : call.status === 'completed'
           ? result?.result.ok === true
           : result?.result.ok === false;
       if (!matched) {
         throw new AgentSessionStoreCorruptionError(
           'Agent Session Tool Call status does not match its Result.',
+        );
+      }
+    }
+    for (const turn of session.turns) {
+      const pendingApprovals = [...toolCallsById.values()].filter((call) => (
+        call.turnId === turn.turnId && call.approval?.status === 'pending'
+      ));
+      if ((turn.status === 'waiting-for-tool-approval') !== (pendingApprovals.length === 1)) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session pending Tool approval does not match its Turn state.',
         );
       }
     }
@@ -834,6 +867,7 @@ export class AgentSessionStore {
       title: session.title,
       providerId: session.providerId,
       modelId: session.modelId,
+      toolExecutionMode: session.toolExecutionMode,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       sequence: session.sequence,

@@ -7,6 +7,7 @@ import type {
   AgentRunResult,
   AgentSuspendedRunResult,
   AgentTool,
+  AgentToolAuthorizer,
   AgentToolSource,
   AgentToolSourceSnapshot,
   AgentWarning,
@@ -41,6 +42,7 @@ export const DEFAULT_AGENT_EXECUTION_MODE: AgentExecutionMode = Object.freeze({
 export interface AgentRunLoopOptions {
   model: ModelAdapter;
   toolSource: AgentToolSource;
+  authorizeToolCall?: AgentToolAuthorizer;
   executionMode?: AgentExecutionMode;
   modelRetryPolicy?: ModelRetryPolicy;
   onRunEvent?: (event: AgentRunEvent) => void | Promise<void>;
@@ -96,6 +98,8 @@ export class AgentRunLoop {
   readonly #model: ModelAdapter;
   /** Resolves current Tool exposure for every request and execution. / 为每次请求和执行解析当前Tool暴露状态。 */
   readonly #toolSource: AgentToolSource;
+  /** Optional change Tool gate owned by the current Session. */
+  readonly #authorizeToolCall: AgentToolAuthorizer | undefined;
   /** Optional policy for replay-safe transient model failures. / 用于 replay-safe 瞬时模型故障的可选策略。 */
   readonly #modelRetryPolicy: ModelRetryPolicy | undefined;
   /** Ordered observer used by the persistent Session owner. / 持久Session owner使用的有序观察者。 */
@@ -118,6 +122,7 @@ export class AgentRunLoop {
     this.#modelRetryPolicy = options.modelRetryPolicy;
     this.#onRunEvent = options.onRunEvent;
     this.#toolSource = options.toolSource;
+    this.#authorizeToolCall = options.authorizeToolCall;
   }
 
   /**
@@ -400,15 +405,34 @@ export class AgentRunLoop {
       ? this.#toolSnapshot(messages).tools
         .find((candidate) => candidate.descriptor.name === toolCall.name)
       : undefined;
-    const result = tool === undefined
-      ? {
-          ok: false as const,
+    let result: ToolExecutionResult;
+    if (tool === undefined) {
+      result = unknownToolResult(toolCall.name);
+    } else if (tool.kind !== 'change' || this.#authorizeToolCall === undefined) {
+      result = await tool.execute(toolCall.arguments, { abortSignal });
+    } else {
+      const decision = await this.#authorizeToolCall({
+        toolCall: structuredClone(toolCall),
+        description: tool.descriptor.description,
+        effect: tool.effect ?? tool.descriptor.description,
+      }, { abortSignal });
+      abortSignal.throwIfAborted();
+      if (decision === 'deny') {
+        result = {
+          ok: false,
           error: {
-            code: 'unknown_tool',
-            message: `Unknown tool "${toolCall.name}".`,
+            code: 'tool_denied',
+            message: `Tool "${toolCall.name}" was denied by the user.`,
           },
-        }
-      : await tool.execute(toolCall.arguments, { abortSignal });
+        };
+      } else {
+        const approvedTool = this.#toolSnapshot(messages).tools
+          .find((candidate) => candidate.descriptor.name === toolCall.name);
+        result = approvedTool?.kind !== 'change'
+          ? unknownToolResult(toolCall.name)
+          : await approvedTool.execute(toolCall.arguments, { abortSignal });
+      }
+    }
 
     return {
       result,
@@ -433,6 +457,17 @@ export class AgentRunLoop {
     }
     return snapshot;
   }
+}
+
+/** Creates one stable unavailable Tool Result. */
+function unknownToolResult(toolName: string): ToolExecutionResult {
+  return {
+    ok: false,
+    error: {
+      code: 'unknown_tool',
+      message: `Unknown tool "${toolName}".`,
+    },
+  };
 }
 
 /**

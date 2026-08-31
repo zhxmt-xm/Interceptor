@@ -132,6 +132,7 @@ describe('AgentRuntime model retry', () => {
   it('does not repeat a completed tool when the following model call retries', async () => {
     const execute = vi.fn(() => 'status-ok');
     const readStatus = defineTool({
+      kind: 'query',
       name: 'read_status',
       description: 'Read status.',
       inputSchema: z.object({}).strict(),

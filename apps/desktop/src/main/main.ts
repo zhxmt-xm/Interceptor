@@ -28,6 +28,7 @@ import {
   type CaptureExchangeEvent,
   type ClientAppIcon,
   type CertificateInfo,
+  type CaptureStatus,
   type CoreProcessStatus,
   type GitHubAuthStatus,
   type SystemProxyStatus as DesktopSystemProxyStatus,
@@ -207,6 +208,7 @@ class DesktopApplication {
     this.agentToolService = new AgentToolService(
       this.coreRuntime,
       this.toolCapabilitySettingsService,
+      (captureStatus) => this.broadcastCaptureStatus(captureStatus),
     );
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
@@ -919,6 +921,30 @@ class DesktopApplication {
     );
 
     ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentSessionRequireToolApproval,
+      (event, sessionId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof sessionId !== 'string') {
+          throw new Error('Agent Session ID is invalid.');
+        }
+        return this.runMainAction('main.agent-session.require-tool-approval', () =>
+          this.requireAgentRuntime().requireToolApproval(sessionId));
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.agentSessionAutomaticallyExecuteTools,
+      (event, sessionId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        if (typeof sessionId !== 'string') {
+          throw new Error('Agent Session ID is invalid.');
+        }
+        return this.runMainAction('main.agent-session.automatically-execute-tools', () =>
+          this.requireAgentRuntime().automaticallyExecuteTools(sessionId));
+      },
+    );
+
+    ipcMain.handle(
       DESKTOP_IPC_CHANNELS.agentMessageSend,
       (event, sessionId: unknown, content: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
@@ -946,6 +972,24 @@ class DesktopApplication {
       }
       return this.runMainAction('main.agent-turn.retry', () =>
         this.requireAgentRuntime().retryTurn(turnId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentToolCallAllow, (event, approvalId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof approvalId !== 'string') {
+        throw new Error('Agent Tool approval ID is invalid.');
+      }
+      return this.runMainAction('main.agent-tool-call.allow', () =>
+        this.requireAgentRuntime().allowToolCall(approvalId));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.agentToolCallDeny, (event, approvalId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof approvalId !== 'string') {
+        throw new Error('Agent Tool approval ID is invalid.');
+      }
+      return this.runMainAction('main.agent-tool-call.deny', () =>
+        this.requireAgentRuntime().denyToolCall(approvalId));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
@@ -1023,7 +1067,9 @@ class DesktopApplication {
           type: 'proxy.start',
           payload: port === undefined ? {} : { port: port as number },
         });
-        return toRendererCaptureStatus(result.payload);
+        const status = toRendererCaptureStatus(result.payload);
+        this.broadcastCaptureStatus(status);
+        return status;
       },
     );
 
@@ -1035,7 +1081,9 @@ class DesktopApplication {
         type: 'proxy.setRecording',
         payload: { recording: false },
       });
-      return toRendererCaptureStatus(result.payload);
+      const status = toRendererCaptureStatus(result.payload);
+      this.broadcastCaptureStatus(status);
+      return status;
     });
 
     // 只读捕获状态查询；Renderer 启动时同步一次运行态。
@@ -1888,6 +1936,15 @@ class DesktopApplication {
           DESKTOP_IPC_CHANNELS.coreProcessStatus,
           status,
         );
+      }
+    }
+  }
+
+  /** Broadcast one committed Capture runtime state to every Renderer window. */
+  private broadcastCaptureStatus(status: CaptureStatus): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.captureStatus, status);
       }
     }
   }

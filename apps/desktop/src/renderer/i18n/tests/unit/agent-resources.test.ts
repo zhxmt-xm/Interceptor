@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { agentChatMessages } from '../../agent-chat-resources';
+import { agentExecutionMessages } from '../../agent-execution-resources';
 import { agentProviderMessages } from '../../agent-provider-resources';
 import { agentMessages } from '../../agent-resources';
 import { agentToolMessages } from '../../agent-tool-resources';
@@ -72,5 +73,20 @@ describe('Agent messages', () => {
     expect(agentToolMessages['zh-CN']['settings.agent.tools.noMatches']).toBe('没有匹配的能力');
     expect(agentToolMessages['zh-CN']['agent.tools.activity']).toBe('Tool 活动');
     expect(agentToolMessages['zh-CN']['agent.tools.noParameters']).toBe('无参数');
+  });
+
+  it('keeps every language aligned with the Agent execution catalog', () => {
+    const englishKeys = Object.keys(agentExecutionMessages.en).sort();
+    for (const language of LANGUAGE_IDS) {
+      expect(Object.keys(agentExecutionMessages[language]).sort(), language).toEqual(englishKeys);
+      if (language !== 'en') {
+        expect(agentExecutionMessages[language], language).not.toBe(agentExecutionMessages.en);
+      }
+    }
+  });
+
+  it('ships localized simplified Chinese for Tool execution decisions', () => {
+    expect(agentExecutionMessages['zh-CN']['agent.executionAsk']).toBe('询问');
+    expect(agentExecutionMessages['zh-CN']['agent.allowTool']).toBe('允许 Tool');
   });
 });

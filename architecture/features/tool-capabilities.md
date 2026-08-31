@@ -3,8 +3,8 @@
 > 最后更新：2026-08-31
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化和Agent首个Traffic query纵向流程已完成；
-> `packages/mcp-server`已消费同一registry。Desktop Agent当前接入3项query Tool，MCP transport仍未接Desktop。
+> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent三个Traffic query与首个change
+> Tool纵向流程已完成；`packages/mcp-server`已消费同一registry。MCP transport仍未接Desktop。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -73,8 +73,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入三个Traffic query Tool；关闭项同时过滤Capability Index、discovery、
-   schema与执行入口。MCP仍未接Desktop。
+- Agent当前通过动态`AgentToolSource`接入三个Traffic query Tool与`stop_recording`；关闭项同时过滤Capability
+   Index、discovery、schema与执行入口。MCP仍未接Desktop。
 
 ## 3. 完整 Tool 清单
 
@@ -89,7 +89,7 @@ interface ToolCapabilitySettingsRecord {
 | `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter + Agent |
 | `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter |
 | `start_recording` | change | `startCapture` | 共享 registry + MCP adapter |
-| `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter |
+| `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter + Agent；ask/auto纵向流程完成 |
 | `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
 | `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter + Agent |
 | `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter + Agent |
@@ -200,9 +200,10 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 3. **[已完成]** 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；本项只建立设置快照，不提前接执行入口；
 4. **[已完成]** Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
-5. 接入`ask` / `auto`，再按本目录顺序逐项开发其余Tool；
-6. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration；影响用户flow时增加真实E2E；
-7. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
+5. **[已完成]** 接入Session级`ask` / `auto`与首个change Tool `stop_recording`；
+6. 接入MCP Desktop，再按本目录顺序逐项开发其余Tool；
+7. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration；影响用户flow时增加真实E2E；
+8. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
 
 ## 5. 不注册为业务 Tool 的控制面
 
@@ -210,11 +211,11 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 
 | 类别 | 入口 | 原因 |
 | --- | --- | --- |
-| Agent 自身控制 | `getAgentModels`、`testAgentProviderConnection`、`saveVerifiedAgentProvider`、`removeAgentProvider`、`setDefaultAgentModel`、`listAgentSessions`、`createAgentSession`、`selectAgentSession`、`getAgentSession`、`renameAgentSession`、`deleteAgentSession`、`setAgentSessionModel`、`sendAgentMessage`、`cancelAgentTurn`、`retryAgentTurn` | 由用户直接控制当前Agent；自调用会递归或改写自身会话 |
+| Agent 自身控制 | `getAgentModels`、`testAgentProviderConnection`、`saveVerifiedAgentProvider`、`removeAgentProvider`、`setDefaultAgentModel`、`listAgentSessions`、`createAgentSession`、`selectAgentSession`、`getAgentSession`、`renameAgentSession`、`deleteAgentSession`、`setAgentSessionModel`、`requireAgentToolApproval`、`automaticallyExecuteAgentTools`、`sendAgentMessage`、`cancelAgentTurn`、`retryAgentTurn`、`allowAgentToolCall`、`denyAgentToolCall` | 由用户直接控制当前Agent；自调用会递归或改写自身会话 |
 | Tool 能力设置 | Agent/MCP Tool 开关、`ask` / `auto` 模式 | 这是 Tool 的授权来源，不能由被授权 Tool 自行修改 |
 | MCP 接入控制 | MCP Server 开关、Client 新增/撤销、Host 配置 | 这是外部调用方的认证与接入边界 |
 | App Shell | `closeApplication`、`minimizeWindow`、`toggleMaximizeWindow`、Workspace/Tab/Settings导航 | 只改变本地UI，不是业务能力 |
-| 事件订阅 | `onAgentSessionEvent`、`onBreakpointsChange`、`onCaptureEvents`、`onClientAppIcons`、`onCoreProcessStatusChange`、`onGitHubAuthStatusChange`、`onSystemProxyStatusChange`、`onTlsCompatibilityChange`、`onUpdateStatusChange` | 由Host订阅，不是Model发起的命令 |
+| 事件订阅 | `onAgentSessionEvent`、`onBreakpointsChange`、`onCaptureEvents`、`onCaptureStatusChange`、`onClientAppIcons`、`onCoreProcessStatusChange`、`onGitHubAuthStatusChange`、`onSystemProxyStatusChange`、`onTlsCompatibilityChange`、`onUpdateStatusChange` | 由Host订阅，不是Model发起的命令 |
 | Renderer诊断 | `reportRendererDiagnostic` | 内部错误汇入通道，不是用户查询或操作 |
 | 文件选择子步骤 | `pickBreakpointBodyFile` | 只服务`forward_edited_breakpoint`的File模式，不是独立业务意图 |
 | 内部编排 | `echoCore`、`diagnostics.ingest`、`proxy.setUpstream`、`tls.useCertificate`、TLS preference同步 | 不是用户意图，只服务进程协作 |

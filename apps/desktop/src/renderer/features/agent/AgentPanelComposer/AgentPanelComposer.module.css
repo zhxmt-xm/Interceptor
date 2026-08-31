@@ -9,46 +9,16 @@
 }
 
 .metrics {
-  display: flex;
+  display: grid;
   min-height: 26px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.contextUsage {
-  display: inline-flex;
-  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "model mode context";
   align-items: center;
   gap: 6px;
-  color: var(--text-3);
 }
 
-.contextUsage > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.contextUsage b,
-.contextUsage code {
-  overflow: hidden;
-  font-size: 8.5px;
-  line-height: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contextUsage b {
-  color: var(--text-2);
-  font-family: var(--font-ui);
-  font-weight: 600;
-}
-
-.contextUsage code {
-  color: var(--text-3);
-  font-family: var(--font-mono);
+.executionMode {
+  grid-area: mode;
 }
 
 .composer {
@@ -97,7 +67,11 @@
 
 .modelButton {
   display: inline-flex;
-  max-width: 210px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  grid-area: model;
+  justify-self: start;
   height: 26px;
   align-items: center;
   gap: 6px;
@@ -128,4 +102,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@container (max-width: 300px) {
+  .metrics {
+    min-height: 56px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "model mode"
+      "context context";
+    row-gap: 2px;
+  }
+
 }

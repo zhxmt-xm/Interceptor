@@ -14,6 +14,7 @@ import {
   type AgentRuntimeEvent,
   type AgentSecureStore,
   type AgentSessionSnapshot,
+  type AgentToolSource,
 } from '../../src';
 import { AgentSessionStore } from '../../src/sessions/internal/session-store';
 import type { StoredAgentSession } from '../../src/sessions/interfaces';
@@ -101,12 +102,16 @@ class SessionFixture {
     });
   });
 
-  createRuntime(): AgentRuntime {
+  createRuntime(
+    toolSource: AgentToolSource = {
+      snapshot: () => ({ systemMessages: [], tools: [] }),
+    },
+  ): AgentRuntime {
     const agentRuntime = new AgentRuntime({
       dataDirectory: this.root,
       fetcher: this.fetcher as typeof fetch,
       secureStore: this.secureStore,
-      toolSource: { snapshot: () => ({ systemMessages: [], tools: [] }) },
+      toolSource,
       createId: () => `id-${this.nextId++}`,
       now: () => this.now++,
     });
@@ -251,6 +256,239 @@ describe('AgentRuntime persistent Sessions', () => {
       },
     ]);
     await restoredRuntime.stop();
+  });
+
+  it('defaults each Session to ask and persists an explicit auto mode independently', async () => {
+    const fixture = await createFixture();
+    const agentRuntime = fixture.createRuntime();
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+
+    const first = await agentRuntime.createSession();
+    expect(first.toolExecutionMode).toBe('ask');
+    const updated = await agentRuntime.automaticallyExecuteTools(first.sessionId);
+    expect(updated.toolExecutionMode).toBe('auto');
+    const second = await agentRuntime.createSession();
+    expect(second.toolExecutionMode).toBe('ask');
+
+    await agentRuntime.stop();
+    const restoredRuntime = fixture.createRuntime();
+    await restoredRuntime.start();
+    await expect(restoredRuntime.getSession(first.sessionId)).resolves.toMatchObject({
+      toolExecutionMode: 'auto',
+    });
+    await expect(restoredRuntime.getSession(second.sessionId)).resolves.toMatchObject({
+      toolExecutionMode: 'ask',
+    });
+  });
+
+  it('keeps an Ask change Tool pending until Deny and then continues with tool_denied', async () => {
+    const fixture = await createFixture();
+    const execute = vi.fn(() => ({ recording: false }));
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute,
+    });
+    const agentRuntime = fixture.createRuntime({
+      snapshot: () => ({ systemMessages: [], tools: [stopRecording] }),
+    });
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+    fixture.requests.length = 0;
+    fixture.responses.push(
+      {
+        chunks: [
+          sse({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-denied-stop',
+                  type: 'function',
+                  function: { name: 'stop_recording', arguments: '{}' },
+                }],
+              },
+            }],
+          }),
+          'data: [DONE]\n\n',
+        ],
+      },
+      {
+        chunks: [
+          sse({ choices: [{ delta: { content: 'Recording remains active.' } }] }),
+          'data: [DONE]\n\n',
+        ],
+      },
+    );
+    const session = await agentRuntime.createSession();
+
+    const running = await agentRuntime.sendMessage(session.sessionId, 'Keep recording.');
+    let pending!: AgentSessionSnapshot;
+    await vi.waitFor(async () => {
+      pending = await agentRuntime.getSession(session.sessionId);
+      expect(pending.currentTurn?.status).toBe('waiting-for-tool-approval');
+    });
+    const pendingCall = pending.items.find((item) => item.kind === 'tool-call');
+    expect(pendingCall).toMatchObject({
+      kind: 'tool-call',
+      callId: 'call-denied-stop',
+      approval: {
+        status: 'pending',
+        description: 'Pause capture without stopping the proxy.',
+      },
+    });
+    const approvalId = pendingCall?.kind === 'tool-call'
+      ? pendingCall.approval?.approvalId
+      : undefined;
+    expect(approvalId).toBeTypeOf('string');
+
+    const changedMode = await agentRuntime.automaticallyExecuteTools(session.sessionId);
+    expect(changedMode.toolExecutionMode).toBe('auto');
+    expect(changedMode.currentTurn?.status).toBe('waiting-for-tool-approval');
+    await agentRuntime.denyToolCall(approvalId!);
+    await expect(agentRuntime.denyToolCall(approvalId!))
+      .rejects.toThrow('Agent Tool approval is not pending.');
+    const completed = await waitForTurn(
+      agentRuntime,
+      session.sessionId,
+      running.turnId,
+      'completed',
+    );
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(completed.items).toContainEqual(expect.objectContaining({
+      kind: 'tool-result',
+      callId: 'call-denied-stop',
+      result: {
+        ok: false,
+        error: {
+          code: 'tool_denied',
+          message: 'Tool "stop_recording" was denied by the user.',
+        },
+      },
+    }));
+    expect(fixture.requests[1]?.messages).toContainEqual(expect.objectContaining({
+      role: 'tool',
+      tool_call_id: 'call-denied-stop',
+    }));
+  });
+
+  it('cancels a pending change Tool approval and records a paired failure', async () => {
+    const fixture = await createFixture();
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute: vi.fn(() => ({ recording: false })),
+    });
+    const agentRuntime = fixture.createRuntime({
+      snapshot: () => ({ systemMessages: [], tools: [stopRecording] }),
+    });
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+    fixture.requests.length = 0;
+    fixture.responses.push({
+      chunks: [
+        sse({
+          choices: [{
+            delta: {
+              tool_calls: [{
+                index: 0,
+                id: 'call-cancel-stop',
+                type: 'function',
+                function: { name: 'stop_recording', arguments: '{}' },
+              }],
+            },
+          }],
+        }),
+        'data: [DONE]\n\n',
+      ],
+    });
+    const session = await agentRuntime.createSession();
+    const running = await agentRuntime.sendMessage(session.sessionId, 'Ask before stopping.');
+    let approvalId = '';
+    await vi.waitFor(async () => {
+      const pending = await agentRuntime.getSession(session.sessionId);
+      expect(pending.currentTurn?.status).toBe('waiting-for-tool-approval');
+      const call = pending.items.find((item) => item.kind === 'tool-call');
+      approvalId = call?.kind === 'tool-call' ? call.approval?.approvalId ?? '' : '';
+      expect(approvalId).not.toBe('');
+    });
+
+    const cancelled = await agentRuntime.cancelTurn(running.turnId);
+    const snapshot = await agentRuntime.getSession(session.sessionId);
+
+    expect(cancelled.status).toBe('cancelled');
+    expect(snapshot.items).toContainEqual(expect.objectContaining({
+      kind: 'tool-call',
+      callId: 'call-cancel-stop',
+      status: 'failed',
+      approval: expect.objectContaining({ approvalId, status: 'cancelled' }),
+    }));
+    expect(snapshot.items).toContainEqual(expect.objectContaining({
+      kind: 'tool-result',
+      callId: 'call-cancel-stop',
+      result: expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'tool_cancelled' }),
+      }),
+    }));
+  });
+
+  it('executes a change Tool directly when its Session is auto', async () => {
+    const fixture = await createFixture();
+    const execute = vi.fn(() => ({ recording: false }));
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute,
+    });
+    const agentRuntime = fixture.createRuntime({
+      snapshot: () => ({ systemMessages: [], tools: [stopRecording] }),
+    });
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+    fixture.requests.length = 0;
+    fixture.responses.push(
+      {
+        chunks: [
+          sse({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-auto-stop',
+                  type: 'function',
+                  function: { name: 'stop_recording', arguments: '{}' },
+                }],
+              },
+            }],
+          }),
+          'data: [DONE]\n\n',
+        ],
+      },
+      {
+        chunks: [
+          sse({ choices: [{ delta: { content: 'Recording stopped.' } }] }),
+          'data: [DONE]\n\n',
+        ],
+      },
+    );
+    const session = await agentRuntime.createSession();
+    await agentRuntime.automaticallyExecuteTools(session.sessionId);
+
+    const completed = await completeTurn(agentRuntime, session.sessionId, 'Stop recording.');
+
+    expect(execute).toHaveBeenCalledOnce();
+    expect(completed.items.filter((item) => (
+      item.kind === 'tool-call' && item.approval !== null
+    ))).toHaveLength(0);
   });
 
   it('emits strictly ordered Streaming snapshots and aggregates weighted Usage across turns', async () => {
@@ -459,13 +697,14 @@ describe('AgentRuntime persistent Sessions', () => {
     expect(files.some((name) => name.startsWith('agent.sqlite.corrupt-'))).toBe(false);
   });
 
-  it('marks a crash-left running Turn failed and retryable on startup', async () => {
+  it('marks a crash-left pending Tool approval failed and retryable on startup', async () => {
     const fixture = await createFixture();
     const session: StoredAgentSession = {
       sessionId: 'crashed-session',
       title: 'Interrupted chat',
       providerId: 'missing-provider',
       modelId: 'interrupted-model',
+      toolExecutionMode: 'ask',
       createdAt: 1,
       updatedAt: 2,
       sequence: 2,
@@ -477,16 +716,22 @@ describe('AgentRuntime persistent Sessions', () => {
           itemId: 'tool-call-crash',
           turnId: 'turn-crash',
           callId: 'call-crash',
-          name: 'get_proxy_status',
+          name: 'stop_recording',
           arguments: {},
           status: 'running',
+          approval: {
+            approvalId: 'approval-crash',
+            status: 'pending',
+            description: 'Pause capture without stopping the proxy.',
+            effect: 'New traffic will continue through the proxy but will not be captured.',
+          },
           createdAt: 2,
         },
       ],
       turns: [{
         turnId: 'turn-crash',
         userItemId: 'user-crash',
-        status: 'running',
+        status: 'waiting-for-tool-approval',
         retryOfTurnId: null,
         error: null,
         createdAt: 1,
@@ -517,10 +762,11 @@ describe('AgentRuntime persistent Sessions', () => {
     expect(restored.items.find((item) => item.kind === 'tool-call')).toMatchObject({
       callId: 'call-crash',
       status: 'failed',
+      approval: { approvalId: 'approval-crash', status: 'cancelled' },
     });
     expect(restored.items.find((item) => item.kind === 'tool-result')).toMatchObject({
       callId: 'call-crash',
-      name: 'get_proxy_status',
+      name: 'stop_recording',
       result: {
         ok: false,
         error: { code: 'tool_interrupted' },
@@ -629,6 +875,7 @@ describe('AgentRuntime persistent Sessions', () => {
       title: 'Append test',
       providerId: 'provider',
       modelId: 'model',
+      toolExecutionMode: 'ask',
       createdAt: 1,
       updatedAt: 1,
       sequence: 0,
@@ -725,6 +972,7 @@ describe('AgentRuntime persistent Sessions', () => {
       'sequence',
       'sessionId',
       'title',
+      'toolExecutionMode',
       'updatedAt',
     ]);
     expect(Object.keys(itemEnvelope).sort()).toEqual([
@@ -795,6 +1043,7 @@ describe('AgentRuntime persistent Sessions', () => {
         name: 'get_proxy_status',
         arguments: {},
         status: 'completed',
+        approval: null,
         createdAt: 3,
       },
       {
@@ -870,6 +1119,7 @@ describe('AgentRuntime persistent Sessions', () => {
         name: 'get_proxy_status',
         arguments: {},
         status: 'failed',
+        approval: null,
         createdAt: 2,
       });
       expect(() => sessionStore.create(failedWithoutResult))
@@ -908,6 +1158,7 @@ describe('AgentRuntime persistent Sessions', () => {
           name: 'get_proxy_status',
           arguments: {},
           status: 'completed',
+          approval: null,
           createdAt: 4,
         },
       );
@@ -1392,6 +1643,7 @@ describe('AgentRuntime persistent Sessions', () => {
     const fixture = await createFixture();
     const execute = vi.fn(() => ({ listening: true, recording: true }));
     const readStatus = defineTool({
+      kind: 'query',
       name: 'get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
@@ -1539,6 +1791,7 @@ function storedSession(sessionId: string, itemId: string): StoredAgentSession {
     title: sessionId,
     providerId: 'provider',
     modelId: 'model',
+    toolExecutionMode: 'ask',
     createdAt: 1,
     updatedAt: 1,
     sequence: 0,

@@ -1,11 +1,18 @@
-.menu {
-  min-width: 190px;
+.providerOptionIcon {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  place-items: center;
 }
 
-.menu :global(.ant-dropdown-menu-item-icon) {
-  display: grid;
-  width: 16px;
-  height: 16px;
-  place-items: center;
-  font-size: 15px;
+.providerOptionIcon > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.providerOptionLabel {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
 }

@@ -16,13 +16,13 @@ export function AgentAddProviderMenu({ children }: AgentAddProviderMenuProps): R
   const items: MenuProps['items'] = [
     {
       key: 'deepseek',
-      icon: <ProviderLogo active brand="deepseek" />,
-      label: 'DeepSeek',
+      icon: <span className={styles.providerOptionIcon}><ProviderLogo active brand="deepseek" /></span>,
+      label: <span className={styles.providerOptionLabel}>DeepSeek</span>,
     },
     {
       key: 'custom',
-      icon: <ProviderLogo brand="unknown" />,
-      label: 'OpenAI-compatible',
+      icon: <span className={styles.providerOptionIcon}><ProviderLogo brand="unknown" /></span>,
+      label: <span className={styles.providerOptionLabel}>OpenAI-compatible</span>,
     },
   ];
 
@@ -42,7 +42,17 @@ export function AgentAddProviderMenu({ children }: AgentAddProviderMenuProps): R
           agentProviderDialogTarget: key === 'deepseek' ? 'deepseek' : '',
         }),
       }}
-      classNames={{ root: styles.menu }}
+      styles={{
+        item: {
+          minHeight: 32,
+          marginBlock: 0,
+          marginInline: 0,
+          padding: '0 8px',
+          borderRadius: 6,
+          fontSize: 12,
+        },
+        itemContent: { fontSize: 12, fontWeight: 500, lineHeight: '18px' },
+      }}
     >
       {children ?? (
         <button className={fixtureClassNames('btn sm')} type="button">

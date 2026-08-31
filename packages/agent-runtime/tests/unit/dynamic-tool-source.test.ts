@@ -71,6 +71,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
   it('takes a fresh source snapshot for every Model Call', async () => {
     const execute = vi.fn(() => ({ listening: true }));
     const getProxyStatus = defineTool({
+      kind: 'query',
       name: 'get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
@@ -100,6 +101,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
   it('rechecks the current source before execution and returns unknown_tool when disabled', async () => {
     const execute = vi.fn(() => ({ listening: true }));
     const getProxyStatus = defineTool({
+      kind: 'query',
       name: 'get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
@@ -139,6 +141,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
 
   it('does not execute a Tool that was discovered inside the same Model response', async () => {
     const discover = defineTool({
+      kind: 'query',
       name: 'discover_tools',
       description: 'Discover Tools.',
       inputSchema: z.object({}).strict(),
@@ -146,6 +149,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     });
     const executeGetExchange = vi.fn(() => ({ id: 'exchange-1' }));
     const getExchange = defineTool({
+      kind: 'query',
       name: 'get_exchange',
       description: 'Read one exchange.',
       inputSchema: z.object({}).strict(),
@@ -197,5 +201,143 @@ describe('AgentRunLoop dynamic Tool source', () => {
       'discover_tools',
       'get_exchange',
     ]);
+  });
+
+  it('asks before a change Tool and returns tool_denied without executing it', async () => {
+    const execute = vi.fn(() => ({ recording: false }));
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute,
+    });
+    const authorizeToolCall = vi.fn(async () => 'deny' as const);
+    const model = new QueueModel([
+      toolResponse('stop_recording', 'call-stop'),
+      finalResponse('Recording was left running.'),
+    ]);
+    const runLoop = new AgentRunLoop({
+      model,
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [stopRecording] }) },
+      authorizeToolCall,
+    });
+
+    const result = await runLoop.run({ messages: [{ role: 'user', content: 'Stop capture.' }] });
+
+    expect(authorizeToolCall).toHaveBeenCalledWith(
+      {
+        toolCall: { id: 'call-stop', name: 'stop_recording', arguments: {} },
+        description: 'Pause capture without stopping the proxy.',
+        effect: 'Pause capture without stopping the proxy.',
+      },
+      { abortSignal: expect.any(AbortSignal) },
+    );
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.messages).toContainEqual({
+      role: 'tool',
+      toolCallId: 'call-stop',
+      name: 'stop_recording',
+      content: JSON.stringify({
+        ok: false,
+        error: {
+          code: 'tool_denied',
+          message: 'Tool "stop_recording" was denied by the user.',
+        },
+      }),
+    });
+  });
+
+  it('rechecks a change Tool after approval before invoking its executor', async () => {
+    const execute = vi.fn(() => ({ recording: false }));
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute,
+    });
+    const source = new MutableToolSource();
+    source.tools = [stopRecording];
+    let resolveDecision!: (decision: 'allow' | 'deny') => void;
+    const authorizeToolCall = vi.fn(() => new Promise<'allow' | 'deny'>((resolve) => {
+      resolveDecision = resolve;
+    }));
+    const model = new QueueModel([
+      toolResponse('stop_recording', 'call-stop'),
+      finalResponse('The Tool became unavailable.'),
+    ]);
+    const runLoop = new AgentRunLoop({ model, toolSource: source, authorizeToolCall });
+
+    const resultPromise = runLoop.run({ messages: [{ role: 'user', content: 'Stop capture.' }] });
+    await vi.waitFor(() => expect(authorizeToolCall).toHaveBeenCalledOnce());
+    source.tools = [];
+    resolveDecision('allow');
+    const result = await resultPromise;
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.messages).toContainEqual({
+      role: 'tool',
+      toolCallId: 'call-stop',
+      name: 'stop_recording',
+      content: JSON.stringify({
+        ok: false,
+        error: {
+          code: 'unknown_tool',
+          message: 'Unknown tool "stop_recording".',
+        },
+      }),
+    });
+  });
+
+  it('does not execute a same-name query substituted while change approval is pending', async () => {
+    const executeChange = vi.fn(() => ({ recording: false }));
+    const executeQuery = vi.fn(() => ({ recording: true }));
+    const stopRecording = defineTool({
+      kind: 'change',
+      name: 'stop_recording',
+      description: 'Pause capture without stopping the proxy.',
+      inputSchema: z.object({}).strict(),
+      execute: executeChange,
+    });
+    const substitutedQuery = defineTool({
+      kind: 'query',
+      name: 'stop_recording',
+      description: 'Read capture state.',
+      inputSchema: z.object({}).strict(),
+      execute: executeQuery,
+    });
+    const source = new MutableToolSource();
+    source.tools = [stopRecording];
+    let resolveDecision!: (decision: 'allow' | 'deny') => void;
+    const authorizeToolCall = vi.fn(() => new Promise<'allow' | 'deny'>((resolve) => {
+      resolveDecision = resolve;
+    }));
+    const model = new QueueModel([
+      toolResponse('stop_recording', 'call-substituted'),
+      finalResponse('The Tool became unavailable.'),
+    ]);
+    const runLoop = new AgentRunLoop({ model, toolSource: source, authorizeToolCall });
+
+    const resultPromise = runLoop.run({ messages: [{ role: 'user', content: 'Stop capture.' }] });
+    await vi.waitFor(() => expect(authorizeToolCall).toHaveBeenCalledOnce());
+    source.tools = [substitutedQuery];
+    resolveDecision('allow');
+    const result = await resultPromise;
+
+    expect(executeChange).not.toHaveBeenCalled();
+    expect(executeQuery).not.toHaveBeenCalled();
+    expect(result.messages).toContainEqual({
+      role: 'tool',
+      toolCallId: 'call-substituted',
+      name: 'stop_recording',
+      content: JSON.stringify({
+        ok: false,
+        error: {
+          code: 'unknown_tool',
+          message: 'Unknown tool "stop_recording".',
+        },
+      }),
+    });
   });
 });

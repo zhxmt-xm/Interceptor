@@ -297,6 +297,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'stop_recording',
     ]);
     for (const names of firstRequests.slice(1).map(requestToolNames)) {
       expect(names).toEqual(evidence.disclosedToolNames);
@@ -306,6 +307,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'stop_recording',
     ]);
     expect(toolResult(firstRequests[2]!, 'call-proxy')).toMatchObject({
       ok: true,
@@ -389,11 +391,16 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     evidence.disabledDiscoveryNames = discoveredNames(
       toolResult(disabledRequests[1]!, 'disabled-discover'),
     );
-    expect(evidence.disabledDiscoveryNames).toEqual(['get_proxy_status', 'list_exchanges']);
+    expect(evidence.disabledDiscoveryNames).toEqual([
+      'get_proxy_status',
+      'list_exchanges',
+      'stop_recording',
+    ]);
     expect(requestToolNames(disabledRequests[1]!)).toEqual([
       'discover_tools',
       'get_proxy_status',
       'list_exchanges',
+      'stop_recording',
     ]);
     const disabledResult = toolResult(disabledRequests[2]!, 'disabled-detail');
     expect(disabledResult).toMatchObject({
@@ -433,6 +440,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'stop_recording',
     ]);
     expect(requestToolNames(restoredRequests[1]!)).toEqual(evidence.disclosedToolNames);
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);

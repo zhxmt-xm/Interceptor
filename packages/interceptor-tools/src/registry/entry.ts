@@ -481,6 +481,7 @@ function buildChangeTools(
       'Pause capture without stopping the proxy.',
       'traffic',
       { type: 'proxy.setRecording', payload: { recording: false } },
+      'New traffic will continue through the proxy but will not be captured.',
     ),
     {
       name: 'send_request',
@@ -755,8 +756,10 @@ function commandChange(
     | { type: 'proxy.setRecording'; payload: { recording: boolean } }
     | { type: 'breakpoint.configure'; payload: { enabled: boolean } }
     | { type: 'websocket.breakpoint.disable'; payload: Record<string, never> },
+  effectDescription?: string,
 ): InterceptorToolDefinition {
   return {
+      ...(effectDescription === undefined ? {} : { effectDescription }),
     name,
     title,
     description,

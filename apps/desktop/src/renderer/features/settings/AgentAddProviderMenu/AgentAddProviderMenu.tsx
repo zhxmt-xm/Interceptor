@@ -23,18 +23,32 @@ export function AgentAddProviderMenu({
   const items: MenuProps['items'] = [
     {
       key: 'deepseek',
-      icon: <ProviderLogo active brand="deepseek" />,
+      icon: (
+        <span className={styles.providerOptionIcon}>
+          <ProviderLogo active brand="deepseek" />
+        </span>
+      ),
       label: (
-        <span data-automation-id={AUTOMATION_IDS.agent.models.addDeepSeek}>
+        <span
+          className={styles.providerOptionLabel}
+          data-automation-id={AUTOMATION_IDS.agent.models.addDeepSeek}
+        >
           DeepSeek
         </span>
       ),
     },
     {
       key: 'openai-compatible',
-      icon: <ProviderLogo brand="unknown" />,
+      icon: (
+        <span className={styles.providerOptionIcon}>
+          <ProviderLogo brand="unknown" />
+        </span>
+      ),
       label: (
-        <span data-automation-id={AUTOMATION_IDS.agent.models.addCustom}>
+        <span
+          className={styles.providerOptionLabel}
+          data-automation-id={AUTOMATION_IDS.agent.models.addCustom}
+        >
           {t('settings.agent.customProvider')}
         </span>
       ),
@@ -60,7 +74,17 @@ export function AgentAddProviderMenu({
           }
         },
       }}
-      classNames={{ root: styles.menu }}
+      styles={{
+        item: {
+          minHeight: 32,
+          marginBlock: 0,
+          marginInline: 0,
+          padding: '0 8px',
+          borderRadius: 6,
+          fontSize: 12,
+        },
+        itemContent: { fontSize: 12, fontWeight: 500, lineHeight: '18px' },
+      }}
     >
       <span>
         <Button

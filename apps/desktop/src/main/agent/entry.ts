@@ -17,13 +17,15 @@ import {
   type ToolDiscoveryMatch,
 } from '@interceptor/tools';
 
+import type { CaptureStatus } from '../../shared/desktop-api';
 import type { CoreRuntime } from '../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../tool-capabilities/entry';
 
 const CONNECTED_AGENT_TOOL_NAMES = [
-  'get_proxy_status',
-  'list_exchanges',
-  'get_exchange',
+  { name: 'get_proxy_status', kind: 'query' },
+  { name: 'list_exchanges', kind: 'query' },
+  { name: 'get_exchange', kind: 'query' },
+  { name: 'stop_recording', kind: 'change' },
 ] as const;
 
 const DISCOVER_TOOLS_NAME = 'discover_tools';
@@ -35,20 +37,23 @@ export class AgentToolService implements AgentToolSource {
   readonly #definitions: readonly InterceptorToolDefinition[];
   readonly #catalog: ReturnType<typeof buildInterceptorToolCatalog>;
   readonly #interceptorToolHost: InterceptorToolHost;
+  readonly #captureStatusChanged: (captureStatus: CaptureStatus) => void;
 
   constructor(
     coreRuntime: CoreRuntime,
     toolCapabilitySettingsService: ToolCapabilitySettingsService,
+    captureStatusChanged: (captureStatus: CaptureStatus) => void,
   ) {
     this.#coreRuntime = coreRuntime;
     this.#toolCapabilitySettingsService = toolCapabilitySettingsService;
+    this.#captureStatusChanged = captureStatusChanged;
     const definitionsByName = new Map(
       buildInterceptorToolRegistry().map((definition) => [definition.name, definition]),
     );
-    this.#definitions = CONNECTED_AGENT_TOOL_NAMES.map((name) => {
+    this.#definitions = CONNECTED_AGENT_TOOL_NAMES.map(({ name, kind }) => {
       const definition = definitionsByName.get(name);
-      if (definition === undefined || definition.kind !== 'query') {
-        throw new Error(`Agent Tool "${name}" must be an implemented query Tool.`);
+      if (definition === undefined || definition.kind !== kind) {
+        throw new Error(`Agent Tool "${name}" must be an implemented ${kind} Tool.`);
       }
       return definition;
     });
@@ -57,10 +62,20 @@ export class AgentToolService implements AgentToolSource {
       invoke: <T extends CoreCommand>(
         command: T,
         abortSignal: AbortSignal,
-      ): Promise<CoreResultForCommand<T>> => (
-        this.#coreRuntime.request(command, { abortSignal })
-      ),
+      ): Promise<CoreResultForCommand<T>> => this.#invokeCore(command, abortSignal),
     };
+  }
+
+  /** Invoke one shared Tool command and publish committed Capture state changes. */
+  async #invokeCore<T extends CoreCommand>(
+    command: T,
+    abortSignal: AbortSignal,
+  ): Promise<CoreResultForCommand<T>> {
+    const result = await this.#coreRuntime.request(command, { abortSignal });
+    if (command.type === 'proxy.start' || command.type === 'proxy.setRecording') {
+      this.#captureStatusChanged(result.payload as CaptureStatus);
+    }
+    return result;
   }
 
   /** Returns capabilities, discovery and previously disclosed enabled Tools for one Model Call. */
@@ -112,6 +127,7 @@ export class AgentToolService implements AgentToolSource {
   /** Builds the always-available progressive-discovery control Tool. */
   #discoverTool(): AgentTool {
     return defineTool({
+      kind: 'query',
       name: DISCOVER_TOOLS_NAME,
       description: 'Discover enabled Interceptor product Tools in one capability.',
       inputSchema: z.object({
@@ -136,6 +152,10 @@ export class AgentToolService implements AgentToolSource {
   /** Wraps one shared executor without duplicating its descriptor or argument behavior. */
   #agentTool(definition: InterceptorToolDefinition): AgentTool {
     return {
+      kind: definition.kind,
+      ...(definition.effectDescription === undefined
+        ? {}
+        : { effect: definition.effectDescription }),
       descriptor: {
         name: definition.name,
         description: definition.description,

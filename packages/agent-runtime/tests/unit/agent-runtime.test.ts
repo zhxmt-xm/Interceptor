@@ -115,6 +115,7 @@ describe('AgentRunLoop', () => {
   it('executes a validated tool call and returns its result to the model', async () => {
     const execute = vi.fn(({ left, right }: { left: number; right: number }) => left * right);
     const multiply = defineTool({
+      kind: 'query',
       name: 'multiply',
       description: 'Multiply two numbers.',
       inputSchema: z.object({
@@ -149,6 +150,7 @@ describe('AgentRunLoop', () => {
 
   it('accumulates cache usage across model calls', async () => {
     const echo = defineTool({
+      kind: 'query',
       name: 'echo',
       description: 'Return the supplied value.',
       inputSchema: z.object({ value: z.string() }).strict(),
@@ -188,6 +190,7 @@ describe('AgentRunLoop', () => {
 
   it('keeps a Usage bucket unknown when any model call omits that field', async () => {
     const echo = defineTool({
+      kind: 'query',
       name: 'echo',
       description: 'Return the supplied value.',
       inputSchema: z.object({ value: z.string() }).strict(),
@@ -222,6 +225,7 @@ describe('AgentRunLoop', () => {
   it('returns invalid tool arguments to the model without executing the tool', async () => {
     const execute = vi.fn(() => 0);
     const multiply = defineTool({
+      kind: 'query',
       name: 'multiply',
       description: 'Multiply two numbers.',
       inputSchema: z.object({
@@ -278,6 +282,7 @@ describe('AgentRunLoop', () => {
 
   it('warns when consecutive tool calls have the same name and canonical arguments', async () => {
     const inspect = defineTool({
+      kind: 'query',
       name: 'inspect',
       description: 'Inspect values.',
       inputSchema: z.object({ left: z.number(), right: z.number() }).strict(),
@@ -302,6 +307,7 @@ describe('AgentRunLoop', () => {
 
   it('does not warn when consecutive tool arguments differ', async () => {
     const echo = defineTool({
+      kind: 'query',
       name: 'echo',
       description: 'Return the supplied value.',
       inputSchema: z.object({ value: z.string() }).strict(),
@@ -322,6 +328,7 @@ describe('AgentRunLoop', () => {
   it('suspends at a step checkpoint and resumes without repeating completed tools', async () => {
     const execute = vi.fn(({ value }: { value: string }) => value);
     const echo = defineTool({
+      kind: 'query',
       name: 'echo',
       description: 'Return the supplied value.',
       inputSchema: z.object({ value: z.string() }).strict(),
@@ -367,6 +374,7 @@ describe('AgentRunLoop', () => {
 
   it('continues without a step checkpoint in continuous mode', async () => {
     const echo = defineTool({
+      kind: 'query',
       name: 'echo',
       description: 'Return the supplied value.',
       inputSchema: z.object({ value: z.string() }).strict(),

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   AgentTool,
+  AgentToolKind,
   ToolExecutionContext,
   ToolExecutionResult,
 } from '../interfaces';
@@ -10,6 +11,8 @@ import type {
  * 使用同一份 Zod schema 与校验后执行器定义一个 Tool。
  */
 export interface ToolDefinition<Input> {
+  kind: AgentToolKind;
+  effect?: string;
   name: string;
   description: string;
   inputSchema: z.ZodType<Input>;
@@ -45,6 +48,8 @@ export class ToolExecutionError extends Error {
  */
 export function defineTool<Input>(definition: ToolDefinition<Input>): AgentTool {
   return {
+    kind: definition.kind,
+    ...(definition.effect === undefined ? {} : { effect: definition.effect }),
     descriptor: {
       name: definition.name,
       description: definition.description,

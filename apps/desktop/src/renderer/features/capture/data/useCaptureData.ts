@@ -316,6 +316,11 @@ function setProxyReadinessIssue(
  * 切换 feature 不卸载；body/header 仍按需从 Core 拉取。
  */
 export function useCaptureData(): void {
+  // Capture commands may originate from this Renderer or from Agent Tools in Main.
+  useEffect(() => window.interceptor.onCaptureStatusChange((status) => {
+    useCaptureStore.getState().setCapturing(status.recording);
+  }), []);
+
   // 实时事件订阅：无论当前 feature/filter/live 状态都合并进全量 summary 镜像。
   useEffect(() => {
     const api = window.interceptor;

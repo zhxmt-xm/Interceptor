@@ -513,9 +513,13 @@ export const DESKTOP_IPC_CHANNELS = {
   agentSessionRename: 'agent-session:rename',
   agentSessionDelete: 'agent-session:delete',
   agentSessionSetModel: 'agent-session:set-model',
+  agentSessionRequireToolApproval: 'agent-session:require-tool-approval',
+  agentSessionAutomaticallyExecuteTools: 'agent-session:automatically-execute-tools',
   agentMessageSend: 'agent-message:send',
   agentTurnCancel: 'agent-turn:cancel',
   agentTurnRetry: 'agent-turn:retry',
+  agentToolCallAllow: 'agent-tool-call:allow',
+  agentToolCallDeny: 'agent-tool-call:deny',
   agentSessionEvent: 'agent-session:event',
   githubAuthGetStatus: 'github-auth:get-status',
   githubAuthSignIn: 'github-auth:sign-in',
@@ -532,6 +536,7 @@ export const DESKTOP_IPC_CHANNELS = {
   captureStart: 'capture:start',
   captureStop: 'capture:stop',
   captureGetStatus: 'capture:get-status',
+  captureStatus: 'capture:status-changed',
   captureEvents: 'capture:events',
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
@@ -622,9 +627,13 @@ export interface InterceptorDesktopApi {
   renameAgentSession(sessionId: string, title: string): Promise<AgentSessionSnapshot>;
   deleteAgentSession(sessionId: string): Promise<AgentSessionsSnapshot>;
   setAgentSessionModel(sessionId: string, providerId: string): Promise<AgentSessionSnapshot>;
+  requireAgentToolApproval(sessionId: string): Promise<AgentSessionSnapshot>;
+  automaticallyExecuteAgentTools(sessionId: string): Promise<AgentSessionSnapshot>;
   sendAgentMessage(sessionId: string, content: string): Promise<AgentTurnSnapshot>;
   cancelAgentTurn(turnId: string): Promise<AgentTurnSnapshot>;
   retryAgentTurn(turnId: string): Promise<AgentTurnSnapshot>;
+  allowAgentToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
+  denyAgentToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
   onAgentSessionEvent(listener: (event: AgentRuntimeEvent) => void): () => void;
   getGitHubAuthStatus(): Promise<GitHubAuthStatus>;
   signInWithGitHub(): Promise<GitHubAuthStatus>;
@@ -648,6 +657,7 @@ export interface InterceptorDesktopApi {
   startCapture(port?: number): Promise<CaptureStatus>;
   stopCapture(): Promise<CaptureStatus>;
   getCaptureStatus(): Promise<CaptureStatus>;
+  onCaptureStatusChange(listener: (status: CaptureStatus) => void): () => void;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;

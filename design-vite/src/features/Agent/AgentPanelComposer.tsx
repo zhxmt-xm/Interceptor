@@ -1,4 +1,3 @@
-import { Progress } from 'antd';
 import { ChevronDown, ChevronUp, Send, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -46,7 +45,7 @@ export function AgentPanelComposer(): React.JSX.Element {
             ? <ChevronUp aria-hidden="true" />
             : <ChevronDown aria-hidden="true" />}
         </button>
-        <span className={styles.agentExecutionMode}>
+        <span className={styles.agentExecutionMode} data-parity="agent-execution-mode">
           <SegmentedControl
             ariaLabel="Tool execution mode"
             options={[
@@ -57,22 +56,7 @@ export function AgentPanelComposer(): React.JSX.Element {
             onChange={(agentExecutionMode) => updateState({ agentExecutionMode })}
           />
         </span>
-        <span className={styles.agentUsageSlot}><AgentSessionUsage /></span>
-        <div className={styles.agentContextUsage} data-parity="agent-context-usage">
-          <Progress
-            percent={2.3}
-            railColor="var(--border)"
-            showInfo={false}
-            size={22}
-            strokeColor="var(--accent)"
-            strokeWidth={11}
-            type="circle"
-          />
-          <span>
-            <b>Context</b>
-            <code>2.3% · 23k / 1M</code>
-          </span>
-        </div>
+        <AgentSessionUsage />
       </div>
       <div className={styles.agentComposerBox} data-parity="agent-composer">
         <textarea

@@ -408,7 +408,6 @@ export const views = [
             appSelector: '[data-automation-id="agent.chat.selector"]',
           },
           'Help me diagnose repeated 401 responses after token refresh.',
-          'Session usage',
         ],
       },
       {
@@ -441,6 +440,61 @@ export const views = [
         ],
       },
       {
+        id: `agent-panel-tool-approval${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: 'approval',
+        designState: {
+          view: 'capture',
+          theme,
+          sidebar: 'collapsed',
+          agentPanel: 'open',
+          agentProvider: 'configured',
+          agentExecutionMode: 'ask',
+          agentToolApproval: 'pending',
+          agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-tool-approval.png`,
+        rendererActions: [
+          { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
+        ],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Agent Tool approval', parity: 'agent-tool-approval' },
+          'stop_recording',
+          'Pause capture without stopping the proxy.',
+        ],
+      },
+      {
+        id: `agent-panel-auto${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: 'auto',
+        designState: {
+          view: 'capture',
+          theme,
+          sidebar: 'collapsed',
+          agentPanel: 'open',
+          agentProvider: 'configured',
+          agentExecutionMode: 'auto',
+          agentToolApproval: '',
+          agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-auto.png`,
+        rendererActions: [
+          { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
+        ],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent model selector', parity: 'agent-model-select' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Agent Context usage', parity: 'agent-context-usage' },
+        ],
+      },
+      {
         id: `agent-panel-new-chat${suffix}`,
         theme,
         agentModels: 'configured',
@@ -461,7 +515,6 @@ export const views = [
           { name: 'Agent composer', parity: 'agent-composer' },
           { name: 'Agent send', parity: 'agent-send' },
           'New chat',
-          'Session usage',
         ],
       },
       ...['running', 'stopped', 'failed'].map((turnState) => ({
@@ -488,7 +541,7 @@ export const views = [
           { name: 'Agent composer', parity: 'agent-composer' },
           'Explain invalid_grant.',
           ...(turnState === 'running'
-            ? ['Generating response…', 'Session usage']
+            ? ['Generating response…']
             : turnState === 'stopped'
               ? ['Response stopped', 'Retry response']
               : ['Model request failed', 'Retry response']),
@@ -509,14 +562,10 @@ export const views = [
         designShot: `${theme}/agent-panel/session-usage.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
-          { type: 'clickAutomation', automationId: 'agent.usage.toggle' },
+          { type: 'hoverSelector', selector: '[data-automation-id="agent.context"]' },
         ],
         targets: [
-          {
-            name: 'Session usage popover',
-            designSelector: '.agentSessionUsagePopover',
-            appSelector: '[data-automation-id="agent.usage.panel"]',
-          },
+          { name: 'Session usage popover', parity: 'agent-session-usage-popover' },
           'Cache hit',
           'Cache miss',
           'Output',

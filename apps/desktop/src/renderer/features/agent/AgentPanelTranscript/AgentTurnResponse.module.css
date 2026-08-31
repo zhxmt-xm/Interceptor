@@ -32,6 +32,19 @@
   overflow-wrap: anywhere;
 }
 
+.toolActivity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .markdown p,
 .markdown ul,
 .markdown ol,

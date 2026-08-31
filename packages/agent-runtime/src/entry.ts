@@ -13,6 +13,7 @@ import type {
   AgentSessionsSnapshot,
   AgentTurnSnapshot,
   AgentTool,
+  AgentToolAuthorizer,
   AgentToolSource,
   AgentRunEvent,
 } from './interfaces';
@@ -65,8 +66,8 @@ export class AgentRuntime {
       createId,
       now: options.now ?? Date.now,
       getModels: () => this.#providerRegistry.snapshot(),
-      createRunLoop: (providerId, onModelStreamEvent) =>
-        this.#createRunLoop(providerId, onModelStreamEvent),
+      createRunLoop: (providerId, onModelStreamEvent, authorizeToolCall) =>
+        this.#createRunLoop(providerId, onModelStreamEvent, authorizeToolCall),
     });
   }
 
@@ -161,6 +162,16 @@ export class AgentRuntime {
     return this.#sessionService.setSessionModel(sessionId, providerId);
   }
 
+  /** Require approval for future change Tool calls in one Chat. */
+  async requireToolApproval(sessionId: string): Promise<AgentSessionSnapshot> {
+    return this.#sessionService.requireToolApproval(sessionId);
+  }
+
+  /** Automatically execute future enabled change Tools in one Chat. */
+  async automaticallyExecuteTools(sessionId: string): Promise<AgentSessionSnapshot> {
+    return this.#sessionService.automaticallyExecuteTools(sessionId);
+  }
+
   /** Append one user message and start a background Streaming Turn. */
   async sendMessage(sessionId: string, content: string): Promise<AgentTurnSnapshot> {
     return this.#sessionService.sendMessage(sessionId, content);
@@ -174,6 +185,16 @@ export class AgentRuntime {
   /** Retry one cancelled/failed Turn without duplicating its user Item. */
   async retryTurn(turnId: string): Promise<AgentTurnSnapshot> {
     return this.#sessionService.retryTurn(turnId);
+  }
+
+  /** Allow one pending change Tool call. */
+  async allowToolCall(approvalId: string): Promise<AgentSessionSnapshot> {
+    return this.#sessionService.allowToolCall(approvalId);
+  }
+
+  /** Deny one pending change Tool call. */
+  async denyToolCall(approvalId: string): Promise<AgentSessionSnapshot> {
+    return this.#sessionService.denyToolCall(approvalId);
   }
 
   /** Runs one in-memory Agent segment through the requested configured Provider. */
@@ -196,6 +217,7 @@ export class AgentRuntime {
   #createRunLoop(
     providerId: string,
     onRunEvent?: (event: AgentRunEvent) => void | Promise<void>,
+    authorizeToolCall?: AgentToolAuthorizer,
   ): AgentRunLoop {
     return new AgentRunLoop({
       model: this.#providerRegistry.modelAdapter(providerId),
@@ -203,6 +225,7 @@ export class AgentRuntime {
       ...(this.#executionMode === undefined ? {} : { executionMode: this.#executionMode }),
       ...(this.#modelRetryPolicy === undefined ? {} : { modelRetryPolicy: this.#modelRetryPolicy }),
       ...(onRunEvent === undefined ? {} : { onRunEvent }),
+      ...(authorizeToolCall === undefined ? {} : { authorizeToolCall }),
     });
   }
 

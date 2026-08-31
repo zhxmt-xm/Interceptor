@@ -875,6 +875,7 @@ export const fakeInterceptorFixture = {
     },
     session: {
       sessionId: 'session-checkout',
+      toolExecutionMode: 'ask',
       summary: {
         sessionId: 'session-checkout',
         title: 'Checkout failures',
@@ -1021,6 +1022,7 @@ export function installFakeInterceptor({
   fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
+  let captureStatusListener = null;
   let agentSessionListener = null;
   let agentModelsSnapshot = agentModels === 'configured'
     ? fixture.agent.models
@@ -1047,7 +1049,7 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['get_proxy_status', 'list_exchanges', 'get_exchange']
+            matches: ['get_proxy_status', 'list_exchanges', 'get_exchange', 'stop_recording']
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1107,6 +1109,7 @@ export function installFakeInterceptor({
           name: step.name,
           arguments: step.arguments,
           status: 'completed',
+          approval: null,
           createdAt: agentStartedAt + index * 3 + 2,
         },
         {
@@ -1150,6 +1153,52 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: 15,
     };
+  } else if (agentSessionState === 'approval') {
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: 'waiting-for-tool-approval',
+      updatedAt: createdAt + 3,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: 4, updatedAt: createdAt + 3 },
+      items: [
+        ...agentSessionSnapshot.items,
+        {
+          kind: 'assistant-message',
+          itemId: 'item-assistant-agent-approval',
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: createdAt + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: 'item-tool-call-agent-approval',
+          turnId,
+          callId: 'call-stop-recording',
+          name: 'stop_recording',
+          arguments: {},
+          status: 'running',
+          approval: {
+            approvalId: 'approval-stop-recording',
+            status: 'pending',
+            description: 'Pause capture without stopping the proxy.',
+            effect: 'New traffic will continue through the proxy but will not be captured.',
+          },
+          createdAt: createdAt + 2,
+        },
+      ],
+      turns: [turn],
+      currentTurn: turn,
+      sequence: 4,
+    };
+  } else if (agentSessionState === 'auto') {
+    agentSessionSnapshot = { ...agentSessionSnapshot, toolExecutionMode: 'auto' };
   } else if (agentSessionState !== 'completed') {
     const status = agentSessionState === 'stopped'
       ? 'cancelled'
@@ -1690,6 +1739,7 @@ export function installFakeInterceptor({
       const sessionId = `session-${agentSessionsSnapshot.sessions.length + 1}`;
       agentSessionSnapshot = {
         ...structuredClone(fixture.agent.session),
+        toolExecutionMode: 'ask',
         sessionId,
         summary: {
           ...structuredClone(fixture.agent.session.summary),
@@ -1736,6 +1786,16 @@ export function installFakeInterceptor({
       };
       return structuredClone(agentSessionSnapshot);
     },
+    requireAgentToolApproval: async () => {
+      agentSessionSnapshot = { ...agentSessionSnapshot, toolExecutionMode: 'ask' };
+      return structuredClone(agentSessionSnapshot);
+    },
+    automaticallyExecuteAgentTools: async () => {
+      agentSessionSnapshot = { ...agentSessionSnapshot, toolExecutionMode: 'auto' };
+      return structuredClone(agentSessionSnapshot);
+    },
+    allowAgentToolCall: async () => structuredClone(agentSessionSnapshot),
+    denyAgentToolCall: async () => structuredClone(agentSessionSnapshot),
     sendAgentMessage: async () => agentSessionSnapshot.currentTurn,
     cancelAgentTurn: async () => agentSessionSnapshot.currentTurn,
     retryAgentTurn: async () => agentSessionSnapshot.currentTurn,
@@ -1903,11 +1963,19 @@ export function installFakeInterceptor({
         sessionId: `parity-session-${captureGeneration}`,
         capturedExchanges: 0,
       };
+      captureStatusListener?.(captureStatus);
       return captureStatus;
     },
     stopCapture: async () => {
       captureStatus = { ...captureStatus, recording: false };
+      captureStatusListener?.(captureStatus);
       return captureStatus;
+    },
+    onCaptureStatusChange: (listener) => {
+      captureStatusListener = listener;
+      return () => {
+        if (captureStatusListener === listener) captureStatusListener = null;
+      };
     },
     onCaptureEvents: (listener) => {
       captureEventsListener = listener;

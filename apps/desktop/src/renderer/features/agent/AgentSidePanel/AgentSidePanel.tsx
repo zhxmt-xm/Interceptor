@@ -59,6 +59,7 @@ export function AgentSidePanel({ onClose, onConfigure }: AgentSidePanelProps): R
           data-automation-id={AUTOMATION_IDS.agent.session.root}
           data-sequence={currentSession.sequence}
           data-session-id={currentSession.sessionId}
+          data-tool-execution-mode={currentSession.toolExecutionMode}
           data-turn-status={currentSession.currentTurn?.status ?? 'idle'}
         >
           <AgentPanelTranscript session={currentSession} />

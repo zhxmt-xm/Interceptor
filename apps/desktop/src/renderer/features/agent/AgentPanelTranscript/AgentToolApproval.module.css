@@ -1,0 +1,174 @@
+.approval {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--yellow) 36%, var(--border));
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.header {
+  display: grid;
+  min-height: 46px;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--yellow) 7%, var(--panel-2));
+}
+
+.icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  color: var(--yellow);
+}
+
+.icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.header strong {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.header code {
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 38%, var(--border));
+  border-radius: 5px;
+  color: var(--yellow);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+}
+
+.body p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 10.5px;
+}
+
+.body dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.body dl > div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.body dt,
+.body dd {
+  margin: 0;
+  font-size: 9.5px;
+}
+
+.body dt {
+  color: var(--text-3);
+}
+
+.body dd {
+  color: var(--text-2);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 7px 9px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.actions button {
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.actions .allow {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
+.result {
+  display: grid;
+  min-height: 38px;
+  grid-template-columns: 16px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text-2);
+}
+
+.result[data-approval-status="allowed"] svg {
+  color: var(--green);
+}
+
+.result:not([data-approval-status="allowed"]) svg {
+  color: var(--red);
+}
+
+.result svg {
+  width: 13px;
+  height: 13px;
+}
+
+.result strong {
+  font-size: 10px;
+}
+
+.result code {
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

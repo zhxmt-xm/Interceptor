@@ -72,6 +72,13 @@ async function waitForTurnStatus(
     .toHaveAttribute('data-turn-status', status);
 }
 
+/** Move off command tooltips, then reveal Session Usage through the public Context control. */
+async function revealSessionUsage(page: Page): Promise<void> {
+  await page.mouse.move(1, 1);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await getByAutomationId(page, AUTOMATION_IDS.agent.context).hover();
+}
+
 /** Read the ordered sequence probe installed over the public Session DOM state. */
 async function eventSequences(page: Page): Promise<number[]> {
   return page.evaluate(() => (
@@ -186,12 +193,12 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     await expect(assistantItems.last()).toContainText('First ');
     await expect(assistantItems.last()).toContainText(FIRST_ANSWER);
     await waitForTurnStatus(desktopApp.page, 'completed');
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.context))
-      .toHaveAttribute('data-current-tokens', '10');
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.context))
-      .toHaveAttribute('data-window-tokens', '131072');
-    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.toggle).click();
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel))
+    const contextUsage = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.context);
+    await expect(contextUsage).toHaveAttribute('data-current-tokens', '10');
+    await expect(contextUsage).toHaveAttribute('data-window-tokens', '131072');
+    await revealSessionUsage(desktopApp.page);
+    const sessionUsage = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel);
+    await expect(sessionUsage)
       .toHaveAttribute('data-total-tokens', '12');
     const reasoning = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.reasoning).last();
     await reasoning.click();
@@ -214,14 +221,23 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.send).click();
     await waitForTurnStatus(desktopApp.page, 'completed');
     const secondRequest = openAiCompatibleLab.requestsForAssertions().at(-1);
-    expect(secondRequest?.messages).toMatchObject([
+    const secondConversation = Array.isArray(secondRequest?.messages)
+      ? secondRequest.messages.filter((message) => (
+          typeof message === 'object'
+          && message !== null
+          && 'role' in message
+          && message.role !== 'system'
+        ))
+      : [];
+    expect(secondConversation).toMatchObject([
       { role: 'user', content: FIRST_PROMPT },
       { role: 'assistant', content: FIRST_ANSWER, reasoning_content: FIRST_REASONING },
       { role: 'user', content: SECOND_PROMPT },
     ]);
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel))
+    await revealSessionUsage(desktopApp.page);
+    await expect(sessionUsage)
       .toHaveAttribute('data-input-tokens', '30');
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel))
+    await expect(sessionUsage)
       .toHaveAttribute('data-cache-hit-rate', '0.8');
 
     // 用户操作：可见delta后Stop必须abort真实HTTP；Retry复用原user item且不伪造取消调用Usage。
@@ -253,9 +269,10 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     await expect(assistantItems.last()).toContainText(RETRY_ANSWER);
     await expect(desktopApp.page.locator('[data-agent-item-kind="user-message"]'))
       .toHaveCount(3);
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel))
+    await revealSessionUsage(desktopApp.page);
+    await expect(sessionUsage)
       .toHaveAttribute('data-model-call-count', '3');
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel))
+    await expect(sessionUsage)
       .toHaveAttribute('data-total-tokens', '66');
 
     // 业务断言：事件sequence严格递增；只把计数、hash和脱敏HTTP事实写入evidence。

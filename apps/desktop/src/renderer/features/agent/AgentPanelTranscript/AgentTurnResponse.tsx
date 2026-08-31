@@ -11,6 +11,7 @@ import type {
 import { AgentSessionActions } from '../data/agentSessionStore';
 import { buildAgentTurnContentBlocks } from '../utils';
 import { AgentQueryToolTrace } from './AgentQueryToolTrace';
+import { AgentToolApproval } from './AgentToolApproval';
 import styles from './AgentTurnResponse.module.css';
 
 interface AgentTurnResponseProps {
@@ -53,12 +54,19 @@ export function AgentTurnResponse({ turn, items }: AgentTurnResponseProps): Reac
               </div>
             );
           }
+          const queryCalls = block.calls.filter((call) => call.approval === null);
+          const queryCallIds = new Set(queryCalls.map((call) => call.callId));
+          const queryResults = block.results.filter((result) => queryCallIds.has(result.callId));
+          const approvalCalls = block.calls.filter((call) => call.approval !== null);
           return (
-            <AgentQueryToolTrace
-              calls={block.calls}
-              key={`tools-${turn.turnId}-${index}`}
-              results={block.results}
-            />
+            <div className={styles.toolActivity} key={`tools-${turn.turnId}-${index}`}>
+              {queryCalls.length > 0 ? (
+                <AgentQueryToolTrace calls={queryCalls} results={queryResults} />
+              ) : null}
+              {approvalCalls.map((call) => (
+                <AgentToolApproval call={call} key={call.itemId} />
+              ))}
+            </div>
           );
         })}
         {turn.status === 'running' ? (

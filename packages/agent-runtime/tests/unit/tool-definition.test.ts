@@ -6,6 +6,7 @@ const abortSignal = new AbortController().signal;
 describe('defineTool', () => {
   it('returns an explicit tool execution error to the model', async () => {
     const unavailableTool = defineTool({
+      kind: 'query',
       name: 'read_status',
       description: 'Read the current status.',
       inputSchema: z.object({}).strict(),
@@ -26,6 +27,7 @@ describe('defineTool', () => {
   it('propagates an unexpected tool implementation error', async () => {
     const unexpectedError = new Error('Database connection failed.');
     const brokenTool = defineTool({
+      kind: 'query',
       name: 'read_status',
       description: 'Read the current status.',
       inputSchema: z.object({}).strict(),

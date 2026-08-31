@@ -51,6 +51,7 @@ export interface InterceptorToolDefinition {
   readonly kind: InterceptorToolKind;
   readonly destructive: boolean;
   readonly openWorld: boolean;
+  readonly effectDescription?: string;
   readonly inputSchema: InterceptorToolJsonSchema;
   execute(
     args: Readonly<Record<string, unknown>>,

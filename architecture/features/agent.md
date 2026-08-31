@@ -4,7 +4,7 @@
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat和首个Traffic query Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
+> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、三个Traffic query和首个change Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
 
 ## 术语与关系
 
@@ -318,7 +318,8 @@ flowchart LR
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
 数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
 所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
-Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。本阶段source只接入三个Traffic query Tool。
+Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source接入三个Traffic query Tool和
+首个change Tool `stop_recording`。
 
 ## 6. Session History
 
@@ -928,7 +929,7 @@ Chat 顶栏提供类似 VS Code 的展示：
 
 - 圆环：`Current context 62k / 1M · 6.2%`；
 - 圆环 tooltip：current、theoretical remaining、requested max output、source；
-- `Session usage`：累计 input / output / total tokens；
+- `Session usage`：累计 input / output / total tokens；不单独占用Composer指标位，悬停或键盘聚焦Context入口时显示详情；
 - `Cache hit 95.7%`：显示最近完成 Model Call 的 hit Rate；tooltip 显示 `22k hit · 1k miss · 23k reported`；
 - 点击后按 Turn / Model Call 展示 Model、Usage、cache 和时间。
 
@@ -986,9 +987,13 @@ class AgentRuntime {
   renameSession(sessionId: string, title: string): Promise<AgentSessionSnapshot>;
   deleteSession(sessionId: string): Promise<AgentSessionsSnapshot>;
   setSessionModel(sessionId: string, providerId: string): Promise<AgentSessionSnapshot>;
+  requireToolApproval(sessionId: string): Promise<AgentSessionSnapshot>;
+  automaticallyExecuteTools(sessionId: string): Promise<AgentSessionSnapshot>;
   sendMessage(sessionId: string, content: string): Promise<AgentTurnSnapshot>;
   cancelTurn(turnId: string): Promise<AgentTurnSnapshot>;
   retryTurn(turnId: string): Promise<AgentTurnSnapshot>;
+  allowToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
+  denyToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
   subscribe(listener: (event: AgentRuntimeEvent) => void): () => void;
 }
 ```
@@ -1008,6 +1013,11 @@ Runtime内部驱动Streaming `ModelAdapter`，把text delta、Usage和状态变�
   snapshot，关闭或未披露的名称统一返回`unknown_tool`且不调用产品入口；已进入executor的调用按开始快照完成；
 - Tool arguments 始终按 `unknown` 处理，通过 descriptor 的边界解析后才能执行；
 - Model 只能提出 Tool Call；Tool 是否注册由 Settings 开关决定，改动 Tool 是否直接执行由当前 `ask` / `auto` 决定；
+- `toolExecutionMode`是Session metadata的必填字段，新Session固定为`ask`且不继承当前Chat；不增加旧schema迁移；
+- query Tool不进入审批。change Tool在`ask`下先把Call与`approvalId/status=pending`原子持久化，再等待用户意图；
+  Allow和Deny分别使用独立Runtime/Main/Preload方法，切到`auto`不自动批准或拒绝既有pending；
+- Allow恢复同一Turn前再次读取Tool source；审批期间被关闭的Tool返回`unknown_tool`且不触达产品入口。Deny写入
+  `tool_denied` Result并继续同一Model loop；已完成或已拒绝的`approvalId`不能重复裁决；
 - 调用方取消后不再发起新的 Model 或 Tool 调用；
 - Usage 只记录 Provider 实际返回的字段，缺失字段保持未知；
 - Runtime 不修改调用方数组，也不知道 Electron IPC；但它拥有 Agent 数据持久化和所有 Agent 状态。
@@ -1020,18 +1030,19 @@ Anthropic 也将最大迭代数列为常见停止条件；MCP 则要求取消、
 
 ### 8.1 Turn 状态与结束条件
 
-阶段1持久`AgentTurnStatus`只有`running / completed / cancelled / failed`：
+持久`AgentTurnStatus`包含`running / waiting-for-tool-approval / completed / cancelled / failed`：
 
 | Status | 进入条件 | 是否继续同一 Turn |
 | --- | --- | --- |
 | `running` | User Item已提交，Model attempt正在执行 | 当前实现只允许Stop，不提供Continue |
+| `waiting-for-tool-approval` | `ask`模式的change Tool Call已持久化，executor尚未开始 | Allow或Deny后恢复同一Turn；切换Mode不自动恢复 |
 | `completed` | Model返回最终回答 | 否；下一条用户消息创建新Turn |
 | `cancelled` | 用户Stop或应用退出完成受控取消 | 否；已完成Item保留，用户可发新消息 |
 | `failed` | Provider重试耗尽、明确拒绝或Runtime内部错误 | 否；Retry从持久化安全边界创建新执行尝试 |
 
-底层内存`AgentRunLoop`已经能返回`suspended`执行片段，但阶段1 `AgentSessionService`会明确拒绝该结果，
-Renderer也没有Continue/Always continue UI。接入change Tool时再把`suspended`升级为持久Turn状态：`ask`
-等待用户裁决，或checkpointed执行到达可见Step检查点后暂停；恢复同一Turn时不得重复已完成Item。
+底层内存`AgentRunLoop`的checkpointed `suspended`仍不等于权限审批。本阶段只增加change Tool执行前的异步
+authorization gate：Session Service在同一个active Turn内等待裁决，不结束或重建Turn；Tool Result落账后继续
+Model loop。checkpointed执行到达可见Step后的Continue / Always continue仍留给后续item。
 
 目标执行模式与Permission Mode正交：
 
@@ -1111,8 +1122,9 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
 - Panel Header 使用 Chat selector 访问 Session，避免在 `440px` Panel 内常驻第二条 Session rail。New Chat 与 Close
   是独立图标命令；未配置 Provider 时 New Chat disabled，并显示 `Configure Agent` 出口。
 - Composer 上方左侧是有边框、Provider Logo、模型名和 chevron 的 Model Select；右侧用圆形 Progress 显示
-  `Current Context Window Usage` 与精确 `current / max` Token。这里的 Context 只表示本次 Model Context 使用量，
-  不表示当前页面或选中业务对象。
+  `Current Context Window Usage` 与精确 `current / max` Token。圆环固定为`18px`；整个Context入口支持hover和
+  键盘focus，并在上方显示当前Session的Token/cache详情，不再显示独立`Session usage`按钮。这里的 Context只表示
+  本次Model Context使用量，不表示当前页面或选中业务对象。
 - Send 按钮相对 Composer 整体垂直居中；Transcript、Composer 与 Panel 分别拥有正确的 `min-height: 0` 和滚动边界。
 
 ### 9.0.1 Settings > Agent
@@ -1134,7 +1146,7 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
   四个Settings展示组不改变Model使用的五个Capability。搜索只过滤当前可见行，不改写Agent/MCP开关。
 - 每行Agent与MCP开关分别调用`disableAgentTool` / `enableAgentTool`和`disableMcpTool` / `enableMcpTool`；
   fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。Agent当前将该授权状态用于三个Traffic query Tool
-  的Capability Index、discovery、schema与执行前检查；MCP Desktop接入仍待后续阶段。
+  与`stop_recording`的Capability Index、discovery、schema与执行前检查；MCP Desktop接入仍待后续阶段。
 
 Provider 配置使用以下公开契约，API Key 不进入 snapshot：
 
@@ -1271,7 +1283,8 @@ interface AgentToolSourceSnapshot {
 }
 ```
 
-Main的`AgentToolService`固定当前产品接入集合为三个Traffic query Tool，启动时断言名称齐全且类型为query；
+Main的`AgentToolService`固定当前产品接入集合为三个Traffic query Tool与首个change Tool `stop_recording`，
+启动时断言名称与类型准确；
 它用`ToolCapabilitySettingsService`过滤Agent关闭项，用同一registry建立Catalog，并把executor的host收敛到
 `CoreRuntime.request(command, { abortSignal })`。不向Runtime、Model或Renderer暴露通用Core client。
 
@@ -1284,6 +1297,8 @@ Main的`AgentToolService`固定当前产品接入集合为三个Traffic query To
 | `auto` | 已实现 Tool 自动执行；仍保留原生 Dialog、UAC 和 OS 权限确认 |
 
 用户可随时切换Mode。`auto`不跳过参数边界、`callId`幂等、产品业务校验或操作系统安全边界。
+切换Mode只影响之后抵达authorization gate的调用；已经pending的Call必须由原Session中的Allow/Deny显式收敛。
+用户Allow后、进入executor前再次读取Settings，因此等待期间关闭Tool始终优先于批准。
 
 ## 11. 凭据、隐私与故障隔离
 
@@ -1345,6 +1360,8 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 - [已完成] 首个产品纵向流程实现 `get_proxy_status`、`list_exchanges`、`get_exchange`；
 - [已完成] Session按顺序持久化assistant Tool Call与Tool Result，Provider history保持call ID配对；Transcript显示Tool名称、
   参数与query结果摘要，重启后恢复同一轨迹；
+- [已完成] Session持久化独立`ask`/`auto`，新Chat固定Ask；`stop_recording`在Ask下等待Allow/Deny，在Auto下
+  直接复用正式Core命令。pending跨Workspace/Chat保持，切换Mode不处置既有问询，取消/崩溃补失败Result；
 - 列表通过 summary → detail 渐进披露；分页只服务传输与 Context，提供完整遍历能力；
 - 真实 E2E 先由产品 UI 产生流量，再让 Agent 查询，不 seed Capture。
 - `agent.tools.traffic-discovery`已取得实现前公开Tool活动为空的有效Red，并在当前源码`1/1` Green；两代
@@ -1437,12 +1454,12 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
   参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
-  `discover_tools`并接入三个Traffic query Tool；
+  `discover_tools`、三个Traffic query Tool与首个change Tool `stop_recording`；
 - `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
   UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP transport仍未接Desktop；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
   0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含三个基础Traffic
-  query Tool；`agent.tools.traffic-discovery`另以真实8888流量、渐进schema、禁用/恢复和跨重启零重放完成验收。
-  下一work item接入会话级`ask`/`auto`和change Tool问询。
+  query Tool与`stop_recording`；`agent.tools.traffic-discovery`以真实8888流量验收query路径，
+  `agent.tools.execution-modes`以Deny/Allow/Auto、关闭项、跨Chat和跨重启验收首个change路径。

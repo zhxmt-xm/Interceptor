@@ -68,6 +68,7 @@ describe('AgentRuntime cancellation', () => {
     const reason = new Error('User stopped before the tool.');
     const execute = vi.fn(() => 'Unexpected.');
     const tool = defineTool({
+      kind: 'query',
       name: 'read_status',
       description: 'Read status.',
       inputSchema: z.object({}).strict(),
@@ -98,6 +99,7 @@ describe('AgentRuntime cancellation', () => {
       return 'Late result.';
     });
     const tool = defineTool({
+      kind: 'query',
       name: 'read_status',
       description: 'Read status.',
       inputSchema: z.object({}).strict(),

@@ -1,5 +1,7 @@
 import type {
   AgentContextUsage,
+  AgentToolApproval,
+  AgentToolExecutionMode,
   AgentTurnStatus,
   ModelUsage,
   ToolExecutionResult,
@@ -31,6 +33,7 @@ export interface StoredAgentToolCallItem {
   name: string;
   arguments: unknown;
   status: 'running' | 'completed' | 'failed';
+  approval: AgentToolApproval | null;
   createdAt: number;
 }
 
@@ -76,6 +79,7 @@ export interface StoredAgentSession {
   title: string;
   providerId: string;
   modelId: string;
+  toolExecutionMode: AgentToolExecutionMode;
   readonly createdAt: number;
   updatedAt: number;
   sequence: number;

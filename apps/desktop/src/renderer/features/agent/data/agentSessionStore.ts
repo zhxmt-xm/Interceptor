@@ -223,8 +223,7 @@ export class AgentSessionActions {
     const sessionId = this.requireCurrentSessionId();
     await this.run(async () => {
       const session = await window.interceptor.renameAgentSession(sessionId, title);
-      useAgentSessionStore.getState().setCurrentSession(session);
-      this.mergeSummary(session);
+      this.installMutationSnapshot(session);
     });
   }
 
@@ -267,8 +266,25 @@ export class AgentSessionActions {
     const sessionId = this.requireCurrentSessionId();
     await this.run(async () => {
       const session = await window.interceptor.setAgentSessionModel(sessionId, providerId);
-      useAgentSessionStore.getState().setCurrentSession(session);
-      this.mergeSummary(session);
+      this.installMutationSnapshot(session);
+    });
+  }
+
+  /** Require approval for future change Tools in the current Chat. */
+  static async requireToolApproval(): Promise<void> {
+    const sessionId = this.requireCurrentSessionId();
+    await this.run(async () => {
+      const session = await window.interceptor.requireAgentToolApproval(sessionId);
+      this.installMutationSnapshot(session);
+    });
+  }
+
+  /** Automatically execute future enabled change Tools in the current Chat. */
+  static async automaticallyExecuteTools(): Promise<void> {
+    const sessionId = this.requireCurrentSessionId();
+    await this.run(async () => {
+      const session = await window.interceptor.automaticallyExecuteAgentTools(sessionId);
+      this.installMutationSnapshot(session);
     });
   }
 
@@ -294,6 +310,22 @@ export class AgentSessionActions {
     });
   }
 
+  /** Allow one pending change Tool call in its owning Chat. */
+  static async allowToolCall(approvalId: string): Promise<void> {
+    await this.run(async () => {
+      const session = await window.interceptor.allowAgentToolCall(approvalId);
+      this.installMutationSnapshot(session);
+    });
+  }
+
+  /** Deny one pending change Tool call in its owning Chat. */
+  static async denyToolCall(approvalId: string): Promise<void> {
+    await this.run(async () => {
+      const session = await window.interceptor.denyAgentToolCall(approvalId);
+      this.installMutationSnapshot(session);
+    });
+  }
+
   /** Execute one Session command under the shared intent busy state. */
   private static async run(operation: () => Promise<void>): Promise<void> {
     const store = useAgentSessionStore.getState();
@@ -310,6 +342,18 @@ export class AgentSessionActions {
     } finally {
       useAgentSessionStore.getState().setBusy(false);
     }
+  }
+
+  /** Install one command response only when no newer event already owns this Session. */
+  private static installMutationSnapshot(snapshot: AgentSessionSnapshot): void {
+    const current = useAgentSessionStore.getState().currentSession;
+    if (current === null
+      || current.sessionId !== snapshot.sessionId
+      || current.sequence > snapshot.sequence) {
+      return;
+    }
+    useAgentSessionStore.getState().setCurrentSession(snapshot);
+    this.mergeSummary(snapshot);
   }
 
   /** Merge one Session summary without reordering Runtime's selector list. */

@@ -11,54 +11,14 @@
 .agentComposerMetrics {
   display: grid;
   min-height: 26px;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  grid-template-areas: "model mode usage context";
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "model mode context";
   align-items: center;
   gap: 6px;
 }
 
 .agentExecutionMode {
   grid-area: mode;
-}
-
-.agentUsageSlot {
-  grid-area: usage;
-}
-
-.agentContextUsage {
-  display: inline-flex;
-  min-width: 0;
-  grid-area: context;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-3);
-}
-
-.agentContextUsage > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.agentContextUsage b,
-.agentContextUsage code {
-  overflow: hidden;
-  font-size: 8.5px;
-  line-height: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.agentContextUsage b {
-  color: var(--text-2);
-  font-family: var(--font-ui);
-  font-weight: 600;
-}
-
-.agentContextUsage code {
-  color: var(--text-3);
-  font-family: var(--font-mono);
 }
 
 .agentComposerBox {
@@ -99,9 +59,11 @@
 
 .agentComposerModelButton {
   display: inline-flex;
+  width: fit-content;
   min-width: 0;
-  max-width: 150px;
+  max-width: 100%;
   grid-area: model;
+  justify-self: start;
   height: 26px;
   align-items: center;
   gap: 6px;
@@ -140,11 +102,8 @@
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "model mode"
-      "usage context";
+      "context context";
     row-gap: 2px;
   }
 
-  .agentComposerModelButton {
-    max-width: none;
-  }
 }

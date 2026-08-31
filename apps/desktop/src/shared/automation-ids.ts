@@ -379,6 +379,11 @@ export const AUTOMATION_IDS = {
       root: 'agent.session.root',
       transcript: 'agent.session.transcript',
     },
+    executionMode: {
+      root: 'agent.execution-mode',
+      ask: 'agent.execution-mode.ask',
+      auto: 'agent.execution-mode.auto',
+    },
     message: {
       input: 'agent.message.input',
       send: 'agent.message.send',
@@ -388,7 +393,6 @@ export const AUTOMATION_IDS = {
       retry: 'agent.turn.retry',
     },
     usage: {
-      toggle: 'agent.usage.toggle',
       panel: 'agent.usage.panel',
     },
     context: 'agent.context',
@@ -795,6 +799,21 @@ export class AutomationIdFactory {
   /** Identify one durable Tool Result in the Agent Transcript. */
   static agentToolResult(callId: string): string {
     return `agent.tools.result.${callId}`;
+  }
+
+  /** Identify one change Tool approval in the Agent Transcript. */
+  static agentToolApproval(callId: string): string {
+    return `agent.tools.approval.${callId}`;
+  }
+
+  /** Identify the Allow command for one Agent Tool approval. */
+  static agentToolAllow(callId: string): string {
+    return `agent.tools.allow.${callId}`;
+  }
+
+  /** Identify the Deny command for one Agent Tool approval. */
+  static agentToolDeny(callId: string): string {
+    return `agent.tools.deny.${callId}`;
   }
 
   /** Identify one Chat option in the Agent Session selector. */

@@ -11,6 +11,7 @@ import {
 function session(): AgentSessionSnapshot {
   return {
     sessionId: 'session-1',
+    toolExecutionMode: 'ask',
     summary: {
       sessionId: 'session-1',
       title: 'Traffic',
@@ -23,7 +24,7 @@ function session(): AgentSessionSnapshot {
     items: [
       { kind: 'user-message', itemId: 'user-1', turnId: 'turn-1', content: 'Inspect.', createdAt: 1 },
       { kind: 'assistant-message', itemId: 'assistant-1', turnId: 'turn-1', content: '', reasoningContent: '', partial: false, createdAt: 2 },
-      { kind: 'tool-call', itemId: 'call-item', turnId: 'turn-1', callId: 'call-1', name: 'get_proxy_status', arguments: {}, status: 'completed', createdAt: 3 },
+      { kind: 'tool-call', itemId: 'call-item', turnId: 'turn-1', callId: 'call-1', name: 'get_proxy_status', arguments: {}, status: 'completed', approval: null, createdAt: 3 },
       { kind: 'tool-result', itemId: 'result-item', turnId: 'turn-1', callId: 'call-1', name: 'get_proxy_status', result: { ok: true, value: { recording: true } }, createdAt: 4 },
       { kind: 'assistant-message', itemId: 'assistant-2', turnId: 'turn-1', content: 'Recording.', reasoningContent: '', partial: false, createdAt: 5 },
     ],
@@ -124,6 +125,7 @@ describe('Agent transcript utilities', () => {
         name: 'get_exchange',
         arguments: { exchangeId: 'exchange-1' },
         status: 'completed' as const,
+        approval: null,
         createdAt: 6,
       },
       {

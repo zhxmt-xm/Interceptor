@@ -121,6 +121,8 @@ describe('Interceptor Tool registry', () => {
       { type: 'breakpoint.configure', payload: { enabled: true } },
       { type: 'breakpoint.configure', payload: { enabled: false } },
     ]);
+    expect(definition('stop_recording').effectDescription)
+      .toBe('New traffic will continue through the proxy but will not be captured.');
   });
 
   it('maps continue, edited forward, and drop to distinct breakpoint actions', async () => {

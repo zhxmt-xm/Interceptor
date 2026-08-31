@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type {
   AgentMessage,
@@ -77,7 +77,7 @@ function discoveredHistory(result: ToolExecutionResult): readonly AgentMessage[]
 describe('AgentToolService', () => {
   it('initially exposes only enabled capabilities and discover_tools', () => {
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(new FakeCoreRuntime(), settings);
+    const service = new AgentToolService(new FakeCoreRuntime(), settings, () => undefined);
 
     const snapshot = service.snapshot([{ role: 'user', content: 'Inspect traffic.' }]);
 
@@ -87,10 +87,11 @@ describe('AgentToolService', () => {
     expect(snapshot.systemMessages[0]?.content).not.toContain('get_proxy_status');
   });
 
-  it('discovers and then discloses exactly the three connected Traffic query Tools', async () => {
+  it('discovers and then discloses the connected Traffic query and change Tools', async () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
+      () => undefined,
     );
     const initial = service.snapshot([]);
 
@@ -105,6 +106,7 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'get_proxy_status' } },
           { descriptor: { name: 'list_exchanges' } },
           { descriptor: { name: 'get_exchange' } },
+          { descriptor: { name: 'stop_recording' } },
         ],
       },
     });
@@ -115,12 +117,14 @@ describe('AgentToolService', () => {
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'stop_recording',
     ]);
+    expect(tool(disclosed, 'stop_recording').kind).toBe('change');
   });
 
   it('removes disabled capabilities and previously disclosed Tools on the next snapshot', async () => {
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(new FakeCoreRuntime(), settings);
+    const service = new AgentToolService(new FakeCoreRuntime(), settings, () => undefined);
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },
@@ -134,6 +138,7 @@ describe('AgentToolService', () => {
       'discover_tools',
       'list_exchanges',
       'get_exchange',
+      'stop_recording',
     ]);
   });
 
@@ -143,7 +148,11 @@ describe('AgentToolService', () => {
       type: 'proxy.status',
       payload: { running: true, recording: true },
     });
-    const service = new AgentToolService(coreRuntime, new FakeToolCapabilitySettingsService());
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+    );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },
@@ -161,10 +170,43 @@ describe('AgentToolService', () => {
     expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
   });
 
+  it('executes stop_recording through the formal Core recording command', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('proxy.setRecording', {
+      type: 'proxy.setRecording',
+      payload: { recording: false },
+    });
+    const captureStatusChanged = vi.fn();
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      captureStatusChanged,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+
+    const abortController = new AbortController();
+    const result = await tool(snapshot, 'stop_recording').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+
+    expect(result).toEqual({ ok: true, value: { recording: false } });
+    expect(coreRuntime.commands).toEqual([{
+      type: 'proxy.setRecording',
+      payload: { recording: false },
+    }]);
+    expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
+    expect(captureStatusChanged).toHaveBeenCalledWith({ recording: false });
+  });
+
   it('rejects a Tool disabled after disclosure without invoking CoreRuntime', async () => {
     const coreRuntime = new FakeCoreRuntime();
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(coreRuntime, settings);
+    const service = new AgentToolService(coreRuntime, settings, () => undefined);
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },

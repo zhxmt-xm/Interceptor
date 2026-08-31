@@ -4,6 +4,7 @@ import {
   DESKTOP_IPC_CHANNELS,
   CoreProcessStatus,
   type AgentRuntimeEvent,
+  type CaptureStatus,
   type GitHubAuthStatus,
   InterceptorDesktopApi,
   type CaptureExchangeEvent,
@@ -81,12 +82,20 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionDelete, sessionId),
   setAgentSessionModel: (sessionId, providerId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionSetModel, sessionId, providerId),
+  requireAgentToolApproval: (sessionId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionRequireToolApproval, sessionId),
+  automaticallyExecuteAgentTools: (sessionId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionAutomaticallyExecuteTools, sessionId),
   sendAgentMessage: (sessionId, content) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentMessageSend, sessionId, content),
   cancelAgentTurn: (turnId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentTurnCancel, turnId),
   retryAgentTurn: (turnId) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentTurnRetry, turnId),
+  allowAgentToolCall: (approvalId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentToolCallAllow, approvalId),
+  denyAgentToolCall: (approvalId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentToolCallDeny, approvalId),
   onAgentSessionEvent: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
@@ -173,6 +182,15 @@ const api: InterceptorDesktopApi = {
   stopCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStop),
   getCaptureStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureGetStatus),
+  onCaptureStatusChange: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: CaptureStatus) => {
+      listener(status);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.captureStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureStatus, handler);
+    };
+  },
   querySessions: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.sessionsQuery, request),
   getExchangeDetail: (exchangeId) =>

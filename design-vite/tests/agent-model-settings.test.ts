@@ -124,6 +124,26 @@ test('Add provider chooses a Provider type before opening its dialog', async ({ 
   const menu = page.getByRole('menu', { name: 'Provider types' });
   await expect(menu).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  const items = menu.getByRole('menuitem');
+  const firstItem = items.nth(0);
+  const secondItem = items.nth(1);
+  await expect.poll(async () => (await firstItem.boundingBox())?.height).toBe(32);
+  const [firstBox, secondBox, iconBox, firstTextBox, secondTextBox, fontSize] = await Promise.all([
+    firstItem.boundingBox(),
+    secondItem.boundingBox(),
+    firstItem.locator('svg').first().boundingBox(),
+    firstItem.getByText('DeepSeek', { exact: true }).boundingBox(),
+    secondItem.getByText('OpenAI-compatible', { exact: true }).boundingBox(),
+    firstItem.evaluate((element) => getComputedStyle(element).fontSize),
+  ]);
+  expect(secondBox?.height).toBe(32);
+  expect(secondBox!.y - (firstBox!.y + firstBox!.height)).toBe(0);
+  expect(iconBox?.width).toBe(14);
+  expect(iconBox?.height).toBe(14);
+  expect(fontSize).toBe('12px');
+  expect(iconBox!.x - firstBox!.x).toBe(8);
+  expect(firstTextBox!.x - (iconBox!.x + iconBox!.width)).toBe(8);
+  expect(secondBox!.x + secondBox!.width - (secondTextBox!.x + secondTextBox!.width)).toBe(8);
   await menu.getByRole('menuitem', { name: 'DeepSeek' }).click();
   await expect(page.getByRole('dialog', { name: 'DeepSeek' })).toBeVisible();
 });

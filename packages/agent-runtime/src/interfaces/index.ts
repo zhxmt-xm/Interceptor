@@ -240,6 +240,17 @@ export interface AgentAssistantTranscriptItem {
 }
 
 /** Shows one model-authored Tool invocation in the durable Transcript. */
+export interface AgentToolApproval {
+  readonly approvalId: string;
+  readonly status: 'pending' | 'allowed' | 'denied' | 'cancelled';
+  readonly description: string;
+  readonly effect: string;
+}
+
+/** Selects whether change Tools require a decision in one Session. */
+export type AgentToolExecutionMode = 'ask' | 'auto';
+
+/** Shows one model-authored Tool invocation in the durable Transcript. */
 export interface AgentToolCallTranscriptItem {
   readonly kind: 'tool-call';
   readonly itemId: string;
@@ -248,6 +259,7 @@ export interface AgentToolCallTranscriptItem {
   readonly name: string;
   readonly arguments: unknown;
   readonly status: 'running' | 'completed' | 'failed';
+  readonly approval: AgentToolApproval | null;
   readonly createdAt: number;
 }
 
@@ -270,7 +282,12 @@ export type AgentTranscriptItem =
   | AgentToolResultTranscriptItem;
 
 /** Defines persisted Turn terminal and running states. */
-export type AgentTurnStatus = 'running' | 'completed' | 'cancelled' | 'failed';
+export type AgentTurnStatus =
+  | 'running'
+  | 'waiting-for-tool-approval'
+  | 'completed'
+  | 'cancelled'
+  | 'failed';
 
 /** Exposes one persisted Turn without Provider wire details. */
 export interface AgentTurnSnapshot {
@@ -308,6 +325,7 @@ export interface AgentContextUsage {
 export interface AgentSessionSnapshot {
   readonly sessionId: string;
   readonly summary: AgentSessionSummary;
+  readonly toolExecutionMode: AgentToolExecutionMode;
   readonly items: readonly AgentTranscriptItem[];
   readonly turns: readonly AgentTurnSnapshot[];
   readonly currentTurn: AgentTurnSnapshot | null;
@@ -364,11 +382,32 @@ export interface ToolExecutionContext {
   abortSignal: AbortSignal;
 }
 
+/** Distinguishes read-only Tool access from product state changes. */
+export type AgentToolKind = 'query' | 'change';
+
+/** Describes one change Tool call before its executor can run. */
+export interface AgentToolAuthorizationRequest {
+  readonly toolCall: ModelToolCall;
+  readonly description: string;
+  readonly effect: string;
+}
+
+/** Represents one explicit decision for a change Tool call. */
+export type AgentToolAuthorizationDecision = 'allow' | 'deny';
+
+/** Resolves one change Tool decision under caller-owned cancellation. */
+export type AgentToolAuthorizer = (
+  request: AgentToolAuthorizationRequest,
+  context: ToolExecutionContext,
+) => Promise<AgentToolAuthorizationDecision>;
+
 /**
  * Couples a model-visible descriptor with its locally validated executor.
  * 将模型可见 descriptor 与本地校验后的执行器组合在一起。
  */
 export interface AgentTool {
+  readonly kind: AgentToolKind;
+  readonly effect?: string;
   descriptor: ModelToolDescriptor;
   /**
    * Validates and executes one model-issued call under caller-owned cancellation.

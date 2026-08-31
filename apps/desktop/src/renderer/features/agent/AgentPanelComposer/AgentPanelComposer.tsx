@@ -1,16 +1,14 @@
-import { Progress } from 'antd';
 import { ChevronDown, ChevronUp, Send, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { AgentModelSummary, AgentSessionSnapshot } from '../../../../shared/desktop-api';
-import { IconButton } from '../../../components';
+import { IconButton, Segmented } from '../../../components';
 import { AgentModelMenu } from '../AgentModelMenu/AgentModelMenu';
 import { AgentSessionUsage } from '../AgentSessionUsage/AgentSessionUsage';
 import { AgentSessionActions, useAgentSessionStore } from '../data/agentSessionStore';
 import { ProviderLogo } from '../ProviderLogo/ProviderLogo';
-import { compactTokenCount } from '../utils';
 import styles from './AgentPanelComposer.module.css';
 
 interface AgentPanelComposerProps {
@@ -31,14 +29,9 @@ export function AgentPanelComposer({
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const modelSelectorRef = useRef<HTMLButtonElement>(null);
   const turn = session.currentTurn;
-  const running = turn?.status === 'running';
+  const running = turn?.status === 'running' || turn?.status === 'waiting-for-tool-approval';
   const currentModel = models.find((model) => model.providerId === session.summary.providerId)
     ?? models[0];
-  const contextTokens = session.contextUsage.currentContextTokens ?? 0;
-  const contextWindowTokens = session.contextUsage.contextWindowTokens;
-  const contextPercent = contextWindowTokens === 0
-    ? 0
-    : Math.min(100, (contextTokens / contextWindowTokens) * 100);
 
   useEffect(() => {
     setDraft('');
@@ -83,30 +76,31 @@ export function AgentPanelComposer({
           <span>{currentModel?.profileName ?? session.summary.modelId}</span>
           {modelMenuOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
         </button>
-        <AgentSessionUsage usage={session.usage} />
-        <div
-          className={styles.contextUsage}
-          data-automation-id={AUTOMATION_IDS.agent.context}
-          data-current-tokens={session.contextUsage.currentContextTokens ?? ''}
-          data-max-output-tokens={session.contextUsage.maxOutputTokens}
-          data-source={session.contextUsage.source}
-          data-window-tokens={contextWindowTokens}
-          data-parity="agent-context-usage"
+        <span
+          className={styles.executionMode}
+          data-automation-id={AUTOMATION_IDS.agent.executionMode.root}
+          data-parity="agent-execution-mode"
         >
-          <Progress
-            percent={contextPercent}
-            railColor="var(--border)"
-            showInfo={false}
-            size={22}
-            strokeColor="var(--accent)"
-            strokeWidth={11}
-            type="circle"
+          <Segmented
+            ariaLabel={t('agent.executionMode')}
+            automationIds={{
+              ask: AUTOMATION_IDS.agent.executionMode.ask,
+              auto: AUTOMATION_IDS.agent.executionMode.auto,
+            }}
+            options={[
+              { label: t('agent.executionAsk'), value: 'ask', disabled: busy },
+              { label: t('agent.executionAuto'), value: 'auto', disabled: busy },
+            ]}
+            value={session.toolExecutionMode}
+            onChange={(mode) => {
+              const change = mode === 'ask'
+                ? AgentSessionActions.requireToolApproval()
+                : AgentSessionActions.automaticallyExecuteTools();
+              void change.catch(() => undefined);
+            }}
           />
-          <span>
-            <b>{t('agent.context')}</b>
-            <code>{contextPercent.toFixed(1)}% · {compactTokenCount(contextTokens)} / {compactTokenCount(contextWindowTokens)}</code>
-          </span>
-        </div>
+        </span>
+        <AgentSessionUsage contextUsage={session.contextUsage} usage={session.usage} />
       </div>
       <div className={styles.composer} data-parity="agent-composer">
         <textarea

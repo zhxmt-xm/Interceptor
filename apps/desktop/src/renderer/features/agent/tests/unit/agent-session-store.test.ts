@@ -22,6 +22,7 @@ const summary = {
 const emptySession: AgentSessionSnapshot = {
   sessionId: 'session-1',
   summary,
+  toolExecutionMode: 'ask',
   items: [],
   turns: [],
   currentTurn: null,
@@ -404,6 +405,52 @@ describe('AgentSessionActions', () => {
       busy: false,
       error: null,
     });
+  });
+
+  it('routes mode, Allow and Deny through three semantic Session intents', async () => {
+    const autoSession = { ...emptySession, toolExecutionMode: 'auto' as const };
+    const interceptor = {
+      automaticallyExecuteAgentTools: vi.fn(async () => autoSession),
+      requireAgentToolApproval: vi.fn(async () => emptySession),
+      allowAgentToolCall: vi.fn(async () => autoSession),
+      denyAgentToolCall: vi.fn(async () => autoSession),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    useAgentSessionStore.setState({ sessions, currentSession: emptySession });
+
+    await AgentSessionActions.automaticallyExecuteTools();
+    await AgentSessionActions.requireToolApproval();
+    await AgentSessionActions.allowToolCall('approval-allow');
+    await AgentSessionActions.denyToolCall('approval-deny');
+
+    expect(interceptor.automaticallyExecuteAgentTools).toHaveBeenCalledWith('session-1');
+    expect(interceptor.requireAgentToolApproval).toHaveBeenCalledWith('session-1');
+    expect(interceptor.allowAgentToolCall).toHaveBeenCalledWith('approval-allow');
+    expect(interceptor.denyAgentToolCall).toHaveBeenCalledWith('approval-deny');
+    expect(useAgentSessionStore.getState().currentSession).toEqual(autoSession);
+  });
+
+  it('does not let an Allow response overwrite a newer Tool Result event', async () => {
+    let resolveAllow!: (session: AgentSessionSnapshot) => void;
+    const allowResponse = new Promise<AgentSessionSnapshot>((resolve) => {
+      resolveAllow = resolve;
+    });
+    const interceptor = {
+      allowAgentToolCall: vi.fn(async () => allowResponse),
+    } as unknown as InterceptorDesktopApi;
+    vi.stubGlobal('window', { interceptor });
+    const pending = { ...emptySession, sequence: 3 };
+    const decided = { ...emptySession, sequence: 4 };
+    const completed = { ...emptySession, sequence: 5 };
+    useAgentSessionStore.setState({ sessions, currentSession: pending });
+
+    const allowing = AgentSessionActions.allowToolCall('approval-1');
+    AgentSessionActions.acceptEvent(event(decided));
+    AgentSessionActions.acceptEvent(event(completed));
+    resolveAllow(decided);
+    await allowing;
+
+    expect(useAgentSessionStore.getState().currentSession).toEqual(completed);
   });
 });
 

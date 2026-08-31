@@ -79,7 +79,7 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返�
 2. 等待 App/Core/8888/readiness并取消 readiness；通过 Settings > Agent 的 Custom Dialog 真实 Test connection/Save，然后从 Header 打开 Agent Panel。
 3. 点击 `agent.chat.new`，输入第一条唯一消息并点击 `agent.message.send`；确认 user item 只追加一次、Composer 进入 running、Send 变为 Stop。
 4. 按 lab 的 chunk 顺序观察同一 assistant item 原位增长，完成前不得出现最终状态；完成后确认 Stop 恢复为 Send、文本完整且 Session event sequence 严格递增。
-5. 从 UI 读取 Current Context Window Usage 圆环和 `current / max`，确认精确等于 lab capability/usage；展开 Session Usage，确认 input cache hit、cache miss、output、total、加权 rate 与 coverage 对应第一轮事实。
+5. 从UI读取Current Context Window Usage的`18px`圆环和`current / max`，确认精确等于lab capability/usage；鼠标悬停Context入口显示Session Usage详情，确认input cache hit、cache miss、output、total、加权rate与coverage对应第一轮事实，移出后详情关闭且页面不再有独立Session Usage按钮。
 6. 发送第二条 follow-up；确认 lab 实际收到第一轮 user/assistant history和第二条user item，reasoning以独立可折叠区域流入，最终回答与 reasoning 不混合；Session Usage按两次Model Call累加。
 7. 发送第三条消息，在首个可见 delta 后点击 `agent.turn.stop`；确认 HTTP request 被 abort、Turn 标记 stopped、已显示文本保留且没有伪造 completed Usage。
 8. 点击该 Turn 的 `agent.turn.retry`；确认只创建一次新 Model attempt，旧 user item 不重复，Streaming 完成后同一 Session 可继续发送下一条消息。
@@ -199,19 +199,38 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
 
-1. 创建独立profile与脚本化lab，配置Provider并新建Chat；确认Session执行模式默认为`ask`。
-2. 让Model调用`stop_recording`；确认Turn持久化等待状态，UI展示Tool、参数和影响，Core在用户裁决前仍为recording。
-3. 拒绝调用，确认Tool Result为拒绝且Recording不变；再次调用并允许，确认产品正式stop入口执行且Capture进入paused。
-4. 通过UI恢复Recording，将当前Session切换为`auto`；再次调用`stop_recording`，确认不出现问询且同一正式入口执行。
-5. 将`stop_recording`的Agent开关关闭，即使Session仍为`auto`，确认Tool不可发现、不可调用且Recording保持不变。
-6. 正常关闭并重启，确认Session的`auto`模式与Tool关闭状态恢复；通过UI恢复默认与Recording，完成销毁。
+1. 创建独立profile与脚本化lab，通过产品Settings配置Provider并新建Chat；确认Session执行模式默认为`ask`，
+	新Chat不会继承另一Chat的`auto`。
+2. 经产品UI开始Recording；让Model discovery后调用`stop_recording`，确认Turn持久化为
+	`waiting-for-tool-approval`，Transcript原位展示Tool、参数、影响与Allow/Deny，Core在裁决前仍为recording。
+3. pending期间切到`auto`，确认该问询仍在且未执行；切回原Chat后Deny，确认Tool Result为`tool_denied`、Model
+	得到配对Result并继续，Recording不变。
+4. 再次让Model调用`stop_recording`并Allow；确认批准后使用同一call ID执行正式`stopCapture`入口，Capture进入paused，
+	已裁决按钮不能重复提交。
+5. 通过UI恢复Recording，将当前Session切换为`auto`；再次调用`stop_recording`，确认不出现问询且直接经同一正式入口
+	进入paused。query Tool在两种Mode下均不出现问询。
+6. 再次恢复Recording并在Settings关闭`stop_recording`的Agent开关；即使Session仍为`auto`，新discovery/schema也不含
+	该Tool，猜测调用返回`unknown_tool`且Recording保持不变。
+7. 正常关闭并用同一profile重启，确认原Session的`auto`与Tool关闭状态恢复且没有重放Model/Tool调用；通过UI恢复
+	`ask`、重新开启Tool和Recording后完整销毁。
 
 ### 预期效果
 
 Tool启用状态与执行模式正交：关闭永远不可调用；开启的query直接执行；开启的change在`ask`时由用户裁决，
-在`auto`时直接复用正式产品意图。模式和开关都不能绕过产品校验或改变无关状态。
+在`auto`时直接复用正式产品意图。模式切换不处置已有pending，Allow前再次检查开关；模式和开关都不能绕过
+产品校验或改变无关状态。
+
+### Evidence
+
+- 实现前Runtime/Session聚焦测试5项精确Red于默认mode、authorization gate、pending状态和公开方法缺失；Desktop
+	聚焦测试3项精确Red于`stop_recording`接线与Renderer intent缺失。真实workflow再精确Red于Session根没有默认Ask。
+- 当前同一workflow`1/1` Green：新Chat固定Ask；pending切Auto、跨Rules/Capture与Chat切换均不自动裁决；Deny返回
+	`tool_denied`且Recording不变，Allow与Auto分别经正式`proxy.setRecording(false)`暂停Recording；关闭项返回
+	`unknown_tool`且不改变Recording。
+- 同一profile重启后原Session Auto与Tool关闭项恢复，启动Model/Tool请求增量为0；最终两代Main/Core PID为
+	`42872/36244`与`28784/8940`，均`gracefulDestroyVerified=true`，最终8888释放。

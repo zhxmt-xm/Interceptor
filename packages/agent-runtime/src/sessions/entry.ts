@@ -10,9 +10,13 @@ import type {
   AgentSessionSummary,
   AgentSessionsSnapshot,
   AgentSessionUsage,
+  AgentToolAuthorizationDecision,
+  AgentToolAuthorizationRequest,
+  AgentToolAuthorizer,
   AgentTranscriptItem,
   AgentTurnSnapshot,
   ModelUsage,
+  ToolExecutionContext,
 } from '../interfaces';
 import type { AgentRunLoop } from '../agent/entry';
 import { AgentSessionStore } from './internal/session-store';
@@ -30,6 +34,17 @@ interface ActiveAgentTurn {
   readonly turnId: string;
   readonly abortController: AbortController;
   readonly completion: Promise<void>;
+}
+
+interface ActiveAgentToolApproval {
+  readonly approvalId: string;
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly callId: string;
+  readonly abortSignal: AbortSignal;
+  readonly onAbort: () => void;
+  readonly resolve: (decision: AgentToolAuthorizationDecision) => void;
+  readonly reject: (reason: unknown) => void;
 }
 
 interface AgentTurnStreamBuffer {
@@ -80,6 +95,7 @@ export interface AgentSessionServiceOptions {
   readonly createRunLoop: (
     providerId: string,
     onRunEvent: (event: AgentRunEvent) => Promise<void>,
+    authorizeToolCall: AgentToolAuthorizer,
   ) => AgentRunLoop;
 }
 
@@ -93,6 +109,7 @@ export class AgentSessionService {
   readonly #createRunLoop: AgentSessionServiceOptions['createRunLoop'];
   readonly #sessionsById = new Map<string, StoredAgentSession>();
   readonly #activeTurnsById = new Map<string, ActiveAgentTurn>();
+  readonly #activeToolApprovalsById = new Map<string, ActiveAgentToolApproval>();
   readonly #listeners = new Set<AgentRuntimeEventListener>();
   #running = false;
   #acceptingCommands = false;
@@ -111,6 +128,7 @@ export class AgentSessionService {
   /** Restore and validate encrypted Sessions. */
   start(): void {
     this.#sessionsById.clear();
+    this.#activeToolApprovalsById.clear();
     if (!this.#secureStore.isEncryptionAvailable()) {
       this.#storageAvailable = false;
       this.#running = true;
@@ -208,6 +226,7 @@ export class AgentSessionService {
       title: 'New chat',
       providerId,
       modelId: model.modelId,
+      toolExecutionMode: 'ask',
       createdAt: now,
       updatedAt: now,
       sequence: 0,
@@ -286,6 +305,32 @@ export class AgentSessionService {
         source: 'unavailable',
       };
     });
+  }
+
+  /** Require approval for future change Tool calls in one Session. */
+  requireToolApproval(sessionId: string): AgentSessionSnapshot {
+    this.#requireAcceptingCommands();
+    return this.#commit(sessionId, null, (session) => {
+      session.toolExecutionMode = 'ask';
+    });
+  }
+
+  /** Automatically execute future enabled change Tools in one Session. */
+  automaticallyExecuteTools(sessionId: string): AgentSessionSnapshot {
+    this.#requireAcceptingCommands();
+    return this.#commit(sessionId, null, (session) => {
+      session.toolExecutionMode = 'auto';
+    });
+  }
+
+  /** Allow one pending change Tool call without changing later Session mode. */
+  allowToolCall(approvalId: string): AgentSessionSnapshot {
+    return this.#decideToolCall(approvalId, 'allow');
+  }
+
+  /** Deny one pending change Tool call without invoking its executor. */
+  denyToolCall(approvalId: string): AgentSessionSnapshot {
+    return this.#decideToolCall(approvalId, 'deny');
   }
 
   /** Reconcile persisted Session model references after Provider restore or mutation. */
@@ -419,6 +464,7 @@ export class AgentSessionService {
     const runLoop = this.#createRunLoop(
       contextPlan.providerId,
       (event) => this.#recordModelEvent(streamBuffer, event),
+      (request, context) => this.#authorizeToolCall(streamBuffer, request, context),
     );
     this.#commit(sessionId, turnId, (session) => {
       session.items.push({
@@ -497,6 +543,7 @@ export class AgentSessionService {
     const runLoop = this.#createRunLoop(
       contextPlan.providerId,
       (event) => this.#recordModelEvent(streamBuffer, event),
+      (request, context) => this.#authorizeToolCall(streamBuffer, request, context),
     );
     this.#commit(session.sessionId, retry.turnId, (next) => {
       next.turns.push(retry);
@@ -707,9 +754,110 @@ export class AgentSessionService {
         name: toolCall.name,
         arguments: structuredClone(toolCall.arguments),
         status: 'running',
+        approval: null,
         createdAt,
       });
     });
+  }
+
+  /** Wait for one Session-owned decision before a change Tool executor runs. */
+  #authorizeToolCall(
+    streamBuffer: AgentTurnStreamBuffer,
+    request: AgentToolAuthorizationRequest,
+    context: ToolExecutionContext,
+  ): Promise<AgentToolAuthorizationDecision> {
+    if (this.#requireSession(streamBuffer.sessionId).toolExecutionMode === 'auto') {
+      return Promise.resolve('allow');
+    }
+    context.abortSignal.throwIfAborted();
+    const approvalId = this.#createId();
+    return new Promise<AgentToolAuthorizationDecision>((resolve, reject) => {
+      const onAbort = (): void => {
+        const active = this.#activeToolApprovalsById.get(approvalId);
+        if (active === undefined) return;
+        this.#releaseToolApproval(active);
+        reject(context.abortSignal.reason ?? new DOMException(
+          'Agent Tool approval was cancelled.',
+          'AbortError',
+        ));
+      };
+      const active: ActiveAgentToolApproval = {
+        approvalId,
+        sessionId: streamBuffer.sessionId,
+        turnId: streamBuffer.turn.turnId,
+        callId: request.toolCall.id,
+        abortSignal: context.abortSignal,
+        onAbort,
+        resolve,
+        reject,
+      };
+      this.#activeToolApprovalsById.set(approvalId, active);
+      context.abortSignal.addEventListener('abort', onAbort, { once: true });
+      try {
+        this.#commit(streamBuffer.sessionId, streamBuffer.turn.turnId, (session) => {
+          const call = session.items.find((item) => (
+            item.kind === 'tool-call'
+            && item.turnId === streamBuffer.turn.turnId
+            && item.callId === request.toolCall.id
+          ));
+          if (call?.kind !== 'tool-call' || call.status !== 'running' || call.approval !== null) {
+            throw new Error(`Agent Tool Call "${request.toolCall.id}" cannot request approval.`);
+          }
+          call.approval = {
+            approvalId,
+            status: 'pending',
+            description: request.description,
+            effect: request.effect,
+          };
+          this.#mutableTurn(session, streamBuffer.turn.turnId).status =
+            'waiting-for-tool-approval';
+        });
+      } catch (error) {
+        this.#releaseToolApproval(active);
+        reject(error);
+      }
+    });
+  }
+
+  /** Persist one explicit decision before releasing the waiting RunLoop. */
+  #decideToolCall(
+    approvalId: string,
+    decision: AgentToolAuthorizationDecision,
+  ): AgentSessionSnapshot {
+    this.#requireAcceptingCommands();
+    const active = this.#activeToolApprovalsById.get(approvalId);
+    if (active === undefined) {
+      throw new Error('Agent Tool approval is not pending.');
+    }
+    const snapshot = this.#commit(active.sessionId, active.turnId, (session) => {
+      const call = session.items.find((item) => (
+        item.kind === 'tool-call'
+        && item.turnId === active.turnId
+        && item.callId === active.callId
+      ));
+      if (call?.kind !== 'tool-call'
+        || call.approval?.approvalId !== approvalId
+        || call.approval.status !== 'pending') {
+        throw new Error('Agent Tool approval is not pending.');
+      }
+      call.approval = {
+        ...call.approval,
+        status: decision === 'allow' ? 'allowed' : 'denied',
+      };
+      const turn = this.#mutableTurn(session, active.turnId);
+      turn.status = 'running';
+      turn.updatedAt = this.#now();
+    });
+    this.#releaseToolApproval(active);
+    active.resolve(decision);
+    return snapshot;
+  }
+
+  /** Remove one resolved or cancelled approval and its abort listener. */
+  #releaseToolApproval(active: ActiveAgentToolApproval): void {
+    if (this.#activeToolApprovalsById.get(active.approvalId) !== active) return;
+    this.#activeToolApprovalsById.delete(active.approvalId);
+    active.abortSignal.removeEventListener('abort', active.onAbort);
   }
 
   /** Complete one Tool Call and append its correlated durable result atomically. */
@@ -1010,6 +1158,7 @@ export class AgentSessionService {
       currentTurn: turns.at(-1) ?? null,
       usage: this.#usage(session.modelCalls),
       contextUsage: { ...session.contextUsage },
+      toolExecutionMode: session.toolExecutionMode,
       sequence: session.sequence,
     };
   }
@@ -1083,13 +1232,15 @@ export class AgentSessionService {
 
   /** Convert crash-left running Turns into durable retryable failures. */
   #settleInterruptedTurns(session: StoredAgentSession): StoredAgentSession {
-    if (!session.turns.some((turn) => turn.status === 'running')) {
+    if (!session.turns.some((turn) => (
+      turn.status === 'running' || turn.status === 'waiting-for-tool-approval'
+    ))) {
       return session;
     }
     const next = structuredClone(session);
     const now = this.#now();
     for (const turn of next.turns) {
-      if (turn.status !== 'running') continue;
+      if (turn.status !== 'running' && turn.status !== 'waiting-for-tool-approval') continue;
       turn.status = 'failed';
       turn.updatedAt = now;
       turn.error = {
@@ -1117,6 +1268,9 @@ export class AgentSessionService {
     ));
     for (const call of calls) {
       call.status = 'failed';
+      if (call.approval?.status === 'pending') {
+        call.approval = { ...call.approval, status: 'cancelled' };
+      }
       session.items.push({
         kind: 'tool-result',
         itemId: this.#createId(),

@@ -425,6 +425,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(securitySnapshot).toEqual({
       url: 'interceptor://app/index.html',
       apiKeys: [
+        'allowAgentToolCall',
+        'automaticallyExecuteAgentTools',
         'cancelAgentTurn',
         'cancelTransferJob',
         'checkForUpdates',
@@ -435,6 +437,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'createAgentSession',
         'deleteAgentSession',
         'deleteCertificate',
+        'denyAgentToolCall',
         'disableAgentTool',
         'disableAllAppContainers',
         'disableMcpTool',
@@ -477,6 +480,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onAgentSessionEvent',
         'onBreakpointsChange',
         'onCaptureEvents',
+        'onCaptureStatusChange',
         'onClientAppIcons',
         'onCoreProcessStatusChange',
         'onGitHubAuthStatusChange',
@@ -500,6 +504,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'replaceRules',
         'replaceTlsPassthroughSettings',
         'reportRendererDiagnostic',
+        'requireAgentToolApproval',
         'resolveBreakpoint',
         'restoreSystemProxy',
         'retryAgentTurn',
