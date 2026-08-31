@@ -390,3 +390,29 @@ test('Failed turn exposes Retry and expandable Session usage', async ({ page }) 
   await expect(panel).toContainText('47.2k tokens');
   await expect(panel).toContainText('73.1% cache hit');
 });
+
+test('Traffic Tool activity keeps calls, arguments, results, and final answer in order', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentToolTrace: 'traffic',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace).toBeVisible();
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(4);
+  await expect(trace.locator('[data-tool-name]').evaluateAll((rows) => (
+    rows.map((row) => row.getAttribute('data-tool-name'))
+  ))).resolves.toEqual([
+    'discover_tools',
+    'get_proxy_status',
+    'list_exchanges',
+    'get_exchange',
+  ]);
+  await expect(trace).toContainText('capabilityId: traffic');
+  await expect(trace).toContainText('GET /agent-e2e/traffic · 200');
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('exchange e2e-agent-traffic');
+});

@@ -2,6 +2,7 @@ import { Bot, RefreshCw } from 'lucide-react';
 
 import { useDesignState } from '../../state/useDesignState';
 import { AgentToolApproval } from './AgentToolApproval';
+import { AgentQueryToolTrace } from './AgentQueryToolTrace';
 import styles from './AgentPanelTranscript.module.css';
 
 export function AgentPanelTranscript(): React.JSX.Element {
@@ -14,12 +15,19 @@ export function AgentPanelTranscript(): React.JSX.Element {
     <div className={styles.agentTranscriptScroll} data-parity="agent-transcript">
       <div className={styles.agentTranscript}>
         <div className={styles.agentUserMessage}>
-          {sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
+          {state.agentToolTrace === 'traffic'
+            ? 'Inspect the latest captured request and summarize its status.'
+            : sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
         </div>
         <article className={styles.agentAssistantMessage}>
           <span className={styles.agentAssistantAvatar}><Bot aria-hidden="true" /></span>
           <div className={styles.agentAssistantResponse}>
-            {state.agentTurnState === 'failed' ? (
+            {state.agentToolTrace === 'traffic' ? (
+              <>
+                <AgentQueryToolTrace />
+                <p>The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code> on exchange <code>e2e-agent-traffic</code>.</p>
+              </>
+            ) : state.agentTurnState === 'failed' ? (
               <div className={styles.agentTurnNotice} data-tone="error">
                 <strong>Model request failed</strong>
                 <span>The provider did not complete this response.</span>

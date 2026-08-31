@@ -55,6 +55,7 @@ import type {
   SystemProxyStatus,
   UpdateService,
 } from './interfaces';
+import { AgentToolService } from './agent/entry';
 import {
   ApplicationActionGate,
   completeApplicationShutdown,
@@ -132,6 +133,8 @@ class DesktopApplication {
   private gitHubAuthService: GitHubAuthService | null = null;
   /** Agent domain composition root; Provider credentials remain encrypted inside Runtime. */
   private agentRuntime: AgentRuntime | null = null;
+  /** Adapts enabled shared Tools to AgentRuntime without exposing Core transport. */
+  private agentToolService: AgentToolService | null = null;
   /** Global Agent/MCP Tool exposure settings owner. */
   private toolCapabilitySettingsService: ToolCapabilitySettingsService | null = null;
   /** Stops Runtime Session event broadcasts before Agent shutdown. */
@@ -201,11 +204,15 @@ class DesktopApplication {
       path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
     );
     await this.toolCapabilitySettingsService.start();
+    this.agentToolService = new AgentToolService(
+      this.coreRuntime,
+      this.toolCapabilitySettingsService,
+    );
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
       secureStore: safeStorage,
       fetcher: fetch,
-      tools: [],
+      toolSource: this.agentToolService,
     });
     await this.agentRuntime.start();
     this.agentRuntimeUnsubscribe = this.agentRuntime.subscribe((event) => {

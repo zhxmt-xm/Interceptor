@@ -1,12 +1,9 @@
-import { Bot, RefreshCw } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { AgentSessionSnapshot } from '../../../../shared/desktop-api';
-import { AgentSessionActions } from '../data/agentSessionStore';
+import { buildAgentTranscriptEntries } from '../utils';
+import { AgentTurnResponse } from './AgentTurnResponse';
 import styles from './AgentPanelTranscript.module.css';
 
 interface AgentPanelTranscriptProps {
@@ -15,8 +12,8 @@ interface AgentPanelTranscriptProps {
 
 /** Renders the Runtime-owned append-only Transcript in persisted Item order. */
 export function AgentPanelTranscript({ session }: AgentPanelTranscriptProps): React.JSX.Element {
-  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const entries = buildAgentTranscriptEntries(session);
 
   useEffect(() => {
     const scroll = scrollRef.current;
@@ -33,61 +30,25 @@ export function AgentPanelTranscript({ session }: AgentPanelTranscriptProps): Re
       ref={scrollRef}
     >
       <div className={styles.transcript}>
-        {session.items.map((item) => {
-          if (item.kind === 'user-message') {
+        {entries.map((entry) => {
+          if (entry.kind === 'user') {
             return (
               <div
                 className={styles.userMessage}
-                data-agent-item-id={item.itemId}
-                data-agent-item-kind={item.kind}
-                key={item.itemId}
+                data-agent-item-id={entry.item.itemId}
+                data-agent-item-kind={entry.item.kind}
+                key={entry.item.itemId}
               >
-                {item.content}
+                {entry.item.content}
               </div>
             );
           }
-          const turn = session.turns.find((entry) => entry.turnId === item.turnId);
-          const retryable = turn?.status === 'cancelled' || turn?.status === 'failed';
           return (
-            <article
-              className={styles.assistantMessage}
-              data-agent-item-id={item.itemId}
-              data-agent-item-kind={item.kind}
-              key={item.itemId}
-            >
-              <span className={styles.avatar}><Bot aria-hidden="true" /></span>
-              <div className={styles.response}>
-                {item.reasoningContent ? (
-                  <details
-                    className={styles.reasoning}
-                    data-automation-id={AUTOMATION_IDS.agent.reasoning}
-                  >
-                    <summary>{t('agent.reasoning')}</summary>
-                    <p>{item.reasoningContent}</p>
-                  </details>
-                ) : null}
-                {item.content ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
-                ) : null}
-                {turn?.status === 'running' ? (
-                  <span className={styles.progress}>{t('agent.generating')}</span>
-                ) : null}
-                {retryable ? (
-                  <div className={styles.notice} data-tone={turn.status === 'failed' ? 'error' : 'default'}>
-                    <strong>{t(turn.status === 'failed' ? 'agent.requestFailed' : 'agent.responseStopped')}</strong>
-                    <span>{t(turn.status === 'failed' ? 'agent.requestFailedDescription' : 'agent.responseStoppedDescription')}</span>
-                    <button
-                      data-automation-id={AUTOMATION_IDS.agent.turn.retry}
-                      type="button"
-                      onClick={() => void AgentSessionActions.retry(turn.turnId).catch(() => undefined)}
-                    >
-                      <RefreshCw aria-hidden="true" />
-                      {t('agent.retryResponse')}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </article>
+            <AgentTurnResponse
+              items={entry.items}
+              key={entry.turn.turnId}
+              turn={entry.turn}
+            />
           );
         })}
       </div>

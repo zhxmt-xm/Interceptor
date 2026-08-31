@@ -10,7 +10,7 @@ import {
   type ModelStreamEvent,
 } from '../../src';
 import { AgentRunLoop } from '../../src/agent/entry';
-import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
+import { staticToolSource, TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
 type ModelAttempt =
   | readonly ModelStreamEvent[]
@@ -74,7 +74,7 @@ describe('AgentRuntime model retry', () => {
   it('does not retry when no policy is configured', async () => {
     const error = modelError('network_error');
     const model = new AttemptModel([error, completedResponse('Unexpected retry.')]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Try once.' }],
@@ -89,7 +89,7 @@ describe('AgentRuntime model retry', () => {
     ]);
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [],
+      toolSource: staticToolSource(),
       modelRetryPolicy: immediateRetryPolicy,
     });
 
@@ -113,19 +113,19 @@ describe('AgentRuntime model retry', () => {
       },
       completedResponse('Duplicated response.'),
     ]);
-    const onModelStreamEvent = vi.fn();
+    const onRunEvent = vi.fn();
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [],
+      toolSource: staticToolSource(),
       modelRetryPolicy: immediateRetryPolicy,
-      onModelStreamEvent,
+      onRunEvent,
     });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Do not duplicate visible output.' }],
     })).rejects.toBe(error);
 
-    expect(onModelStreamEvent).toHaveBeenCalledTimes(2);
+    expect(onRunEvent).toHaveBeenCalledTimes(3);
     expect(model.requests).toHaveLength(1);
   });
 
@@ -150,7 +150,7 @@ describe('AgentRuntime model retry', () => {
     ]);
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [readStatus],
+      toolSource: staticToolSource([readStatus]),
       modelRetryPolicy: immediateRetryPolicy,
     });
 
@@ -172,7 +172,7 @@ describe('AgentRuntime model retry', () => {
     const model = new AttemptModel([error]);
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [],
+      toolSource: staticToolSource(),
       modelRetryPolicy: immediateRetryPolicy,
     });
 
@@ -189,7 +189,7 @@ describe('AgentRuntime model retry', () => {
     const model = new AttemptModel([firstError, secondError, finalError]);
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [],
+      toolSource: staticToolSource(),
       modelRetryPolicy: immediateRetryPolicy,
     });
 
@@ -212,7 +212,11 @@ describe('AgentRuntime model retry', () => {
       maxRetries: 1,
       delayBeforeRetry: () => 60_000,
     };
-    const agentRuntime = new AgentRunLoop({ model, tools: [], modelRetryPolicy: retryPolicy });
+    const agentRuntime = new AgentRunLoop({
+      model,
+      toolSource: staticToolSource(),
+      modelRetryPolicy: retryPolicy,
+    });
     const abortController = new AbortController();
 
     const run = agentRuntime.run({

@@ -148,7 +148,7 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 ### 预期效果
 
 Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不影响，只决定对应入口是否注册Tool，不改写
-业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化；Agent仍不注册业务Tool，MCP仍不接Desktop。
+业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化，不替代业务Tool执行验收；MCP仍不接Desktop。
 
 ### Evidence
 
@@ -162,7 +162,7 @@ Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不�
 <a id="agent-tools-traffic-discovery"></a>
 ## `agent.tools.traffic-discovery`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -170,15 +170,31 @@ Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不�
 1. 创建独立profile和本地OpenAI-compatible lab；通过Settings真实配置Provider。
 2. 经产品UI开始Recording，并让workflow fixture通过真实代理产生至少一条唯一HTTP exchange；不seed Capture或Agent Store。
 3. 打开Agent并发送要求查询当前代理和该exchange的消息；lab依次产生`discover_tools`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
-4. 确认首次Model request只含Capability Index与`discover_tools`，discovery后才向后续request披露匹配schema。
-5. 确认Transcript按顺序显示Tool Call、参数和结果摘要，最终回答引用真实exchange ID、method、URL与status。
-6. 在Settings关闭`get_exchange`的Agent开关，新建Chat再次discover，确认目录与schema都不再包含该Tool，直接调用返回未知Tool且不产生产品命令；重新开启后恢复。
-7. 保存脱敏lab请求、Tool事件sequence、Capture事实、trace与销毁证据；关闭lab并删除profile。
+4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回三个匹配
+	descriptor，下一request才披露`get_proxy_status`、`list_exchanges`、`get_exchange`。
+5. 确认后续每个request都保持assistant Tool Call与Tool Result的call ID配对；Transcript按顺序显示discovery、
+	三个query调用、参数与结果摘要，最终回答引用真实exchange ID、method、URL与status。
+6. 正常关闭并用同一profile重启，确认Tool Call/Result轨迹与最终回答恢复；启动不自动重放Model或Tool调用。
+7. 在Settings关闭`get_exchange`的Agent开关，新建Chat再次discover，确认Capability仍存在但结果与下一request
+	schema都不含该Tool；让lab直接猜测调用`get_exchange`，确认返回`unknown_tool`。执行前关闭后Core零命令由
+	`AgentToolService` owning unit使用`FakeCoreRuntime.commands`证明，不在E2E中调用测试后门观察Main内部状态。
+8. 重新开启后再新建Chat并discover，确认`get_exchange`恢复；关闭该Chat不影响前一Chat的披露轨迹。
+9. 保存脱敏lab请求、Tool item sequence、Capture事实、trace与每代销毁证据；关闭lab并删除profile。
 
 ### 预期效果
 
 Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真实Core中的Traffic；Settings关闭项既不可发现
-也不可调用。三个query Tool直接执行，不出现change问询。
+也不可调用。三个query Tool直接执行，不出现change问询；Tool协议轨迹持久化后可跨重启重建Provider history。
+
+### Evidence
+
+- 实现前同一workflow精确Red于公开Tool活动为空；当前源码`1/1` Green。
+- 首次Model request只含`discover_tools`，后续才披露三个Traffic query schema；四个Tool Call/Result的call ID
+	完整配对，并返回产品UI产生的真实8888 exchange事实。
+- 重启后Model请求增量为0；关闭`get_exchange`后discovery不再返回它，猜测调用得到`unknown_tool`，重新开启后
+	新Chat再次发现该Tool。
+- 两代Main/Core PID为`4452/16276`与`31948/37416`，均`gracefulDestroyVerified=true`；Renderer page error为0，
+	最终8888释放。
 
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`

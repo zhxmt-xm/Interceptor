@@ -1,4 +1,166 @@
 import type { KeyboardEvent, RefObject } from 'react';
+import type {
+  AgentSessionSnapshot,
+  AgentTranscriptItem,
+  AgentTurnSnapshot,
+  ToolExecutionResult,
+} from '@interceptor/agent-runtime';
+
+export type AgentTranscriptEntry =
+  | { readonly kind: 'user'; readonly item: Extract<AgentTranscriptItem, { kind: 'user-message' }> }
+  | {
+      readonly kind: 'turn';
+      readonly turn: AgentTurnSnapshot;
+      readonly items: readonly AgentResponseTranscriptItem[];
+    };
+
+export type AgentResponseTranscriptItem = Exclude<AgentTranscriptItem, { kind: 'user-message' }>;
+
+export type AgentTurnContentBlock =
+  | {
+      readonly kind: 'assistant';
+      readonly item: Extract<AgentResponseTranscriptItem, { kind: 'assistant-message' }>;
+    }
+  | {
+      readonly kind: 'tools';
+      readonly calls: readonly Extract<AgentResponseTranscriptItem, { kind: 'tool-call' }>[];
+      readonly results: readonly Extract<AgentResponseTranscriptItem, { kind: 'tool-result' }>[];
+    };
+
+type AgentToolCallItem = Extract<AgentResponseTranscriptItem, { kind: 'tool-call' }>;
+type AgentToolResultItem = Extract<AgentResponseTranscriptItem, { kind: 'tool-result' }>;
+interface MutableAgentToolBlock {
+  kind: 'tools';
+  calls: AgentToolCallItem[];
+  results: AgentToolResultItem[];
+}
+
+export type AgentToolResultSummary =
+  | { readonly kind: 'discovery'; readonly count: number }
+  | { readonly kind: 'proxy'; readonly recording: boolean; readonly address: string }
+  | { readonly kind: 'exchanges'; readonly count: number }
+  | {
+      readonly kind: 'exchange';
+      readonly method: string;
+      readonly path: string;
+      readonly status: string;
+    }
+  | { readonly kind: 'error'; readonly message: string }
+  | { readonly kind: 'value'; readonly value: string };
+
+/** Groups persisted items into user messages and one response block per Turn. */
+export function buildAgentTranscriptEntries(
+  session: AgentSessionSnapshot,
+): readonly AgentTranscriptEntry[] {
+  const turnById = new Map(session.turns.map((turn) => [turn.turnId, turn]));
+  const renderedTurnIds = new Set<string>();
+  const entries: AgentTranscriptEntry[] = [];
+  for (const item of session.items) {
+    if (item.kind === 'user-message') {
+      entries.push({ kind: 'user', item });
+      continue;
+    }
+    if (renderedTurnIds.has(item.turnId)) continue;
+    const turn = turnById.get(item.turnId);
+    if (turn === undefined) continue;
+    renderedTurnIds.add(item.turnId);
+    entries.push({
+      kind: 'turn',
+      turn,
+      items: session.items.filter((candidate): candidate is AgentResponseTranscriptItem => (
+        candidate.kind !== 'user-message' && candidate.turnId === item.turnId
+      )),
+    });
+  }
+  return entries;
+}
+
+/** Preserve visible assistant text between consecutive Tool activity segments. */
+export function buildAgentTurnContentBlocks(
+  items: readonly AgentResponseTranscriptItem[],
+): readonly AgentTurnContentBlock[] {
+  const blocks: Array<AgentTurnContentBlock | MutableAgentToolBlock> = [];
+  let tools: MutableAgentToolBlock | null = null;
+  for (const item of items) {
+    if (item.kind === 'assistant-message') {
+      if (item.content !== '' || item.reasoningContent !== '') {
+        blocks.push({ kind: 'assistant', item });
+        tools = null;
+      }
+      continue;
+    }
+    if (item.kind === 'tool-call') {
+      if (tools === null) {
+        tools = { kind: 'tools', calls: [], results: [] };
+        blocks.push(tools);
+      }
+      tools.calls.push(item);
+      continue;
+    }
+    if (tools !== null) tools.results.push(item);
+  }
+  return blocks;
+}
+
+/** Formats compact model-authored arguments without hiding structured values. */
+export function formatAgentToolArguments(value: unknown): string | null {
+  if (!isRecord(value)) return compactJson(value);
+  const entries = Object.entries(value);
+  if (entries.length === 0) return null;
+  return entries.map(([key, item]) => `${key}: ${formatScalar(item)}`).join(' · ');
+}
+
+/** Extracts a concise summary from one already-redacted Tool result. */
+export function summarizeAgentToolResult(
+  name: string,
+  result: ToolExecutionResult,
+): AgentToolResultSummary {
+  if (!result.ok) return { kind: 'error', message: result.error.message };
+  if (name === 'discover_tools' && isRecord(result.value) && Array.isArray(result.value['matches'])) {
+    return { kind: 'discovery', count: result.value['matches'].length };
+  }
+  if (name === 'get_proxy_status' && isRecord(result.value)) {
+    const host = typeof result.value['host'] === 'string' ? result.value['host'] : null;
+    const port = typeof result.value['port'] === 'number' ? result.value['port'] : null;
+    return {
+      kind: 'proxy',
+      recording: result.value['recording'] === true,
+      address: host === null || port === null ? 'not listening' : `${host}:${port}`,
+    };
+  }
+  if (name === 'list_exchanges' && isRecord(result.value) && Array.isArray(result.value['items'])) {
+    return { kind: 'exchanges', count: result.value['items'].length };
+  }
+  if (name === 'get_exchange' && isRecord(result.value) && isRecord(result.value['detail'])) {
+    const detail = result.value['detail'];
+    const summary = isRecord(detail['summary']) ? detail['summary'] : {};
+    return {
+      kind: 'exchange',
+      method: typeof summary['method'] === 'string' ? summary['method'] : 'HTTP',
+      path: typeof summary['path'] === 'string' ? summary['path'] : '/',
+      status: typeof summary['status'] === 'number' ? String(summary['status']) : 'pending',
+    };
+  }
+  return { kind: 'value', value: compactJson(result.value) };
+}
+
+/** Returns whether an unknown value is a non-array record. */
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Formats one compact argument value. */
+function formatScalar(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? String(value)
+    : compactJson(value);
+}
+
+/** Bounds structured fallback summaries so one row remains scannable. */
+function compactJson(value: unknown): string {
+  const serialized = JSON.stringify(value) ?? String(value);
+  return serialized.length <= 160 ? serialized : `${serialized.slice(0, 157)}...`;
+}
 
 /** Format token counts compactly without hiding exact values from data attributes. */
 export function compactTokenCount(value: number): string {

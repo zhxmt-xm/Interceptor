@@ -39,6 +39,7 @@ export function AgentChatDialog(): React.JSX.Element | null {
     agentTurnState: 'idle',
     agentExecutionMode: 'ask',
     agentToolApproval: '',
+    agentToolTrace: '',
     agentCheckoutExecutionMode: 'ask',
     agentCheckoutToolApproval: '',
   });

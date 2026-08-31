@@ -29,6 +29,13 @@ export interface OpenAiCompatibleTurnOptions {
   readonly holdOpen?: boolean;
 }
 
+export interface OpenAiCompatibleToolCallOptions {
+  readonly callId: string;
+  readonly name: string;
+  readonly arguments: Readonly<Record<string, unknown>>;
+  readonly delayMs?: number;
+}
+
 /** Deterministic OpenAI-compatible endpoint owned by one Agent workflow. */
 export class OpenAiCompatibleLab {
   /** Loopback HTTP server implementing streaming Chat Completions. */
@@ -167,6 +174,32 @@ export class OpenAiCompatibleLab {
       events,
       delayMs: options.delayMs ?? 0,
       holdOpen: options.holdOpen ?? false,
+    });
+  }
+
+  /** Queue one complete structured Tool Call for the next Chat request. */
+  enqueueToolCall(options: OpenAiCompatibleToolCallOptions): void {
+    this.turnScripts.push({
+      events: [
+        JSON.stringify({
+          choices: [{
+            delta: {
+              tool_calls: [{
+                index: 0,
+                id: options.callId,
+                type: 'function',
+                function: {
+                  name: options.name,
+                  arguments: JSON.stringify(options.arguments),
+                },
+              }],
+            },
+          }],
+        }),
+        '[DONE]',
+      ],
+      delayMs: options.delayMs ?? 0,
+      holdOpen: false,
     });
   }
 

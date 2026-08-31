@@ -905,7 +905,6 @@ export const fakeInterceptorFixture = {
       turns: [{
         turnId: 'turn-checkout',
         userItemId: 'item-user-checkout',
-        assistantItemId: 'item-assistant-checkout',
         status: 'completed',
         retryOfTurnId: null,
         error: null,
@@ -915,7 +914,6 @@ export const fakeInterceptorFixture = {
       currentTurn: {
         turnId: 'turn-checkout',
         userItemId: 'item-user-checkout',
-        assistantItemId: 'item-assistant-checkout',
         status: 'completed',
         retryOfTurnId: null,
         error: null,
@@ -1037,6 +1035,120 @@ export function installFakeInterceptor({
       turns: [],
       currentTurn: null,
       sequence: 0,
+    };
+  } else if (agentSessionState === 'traffic') {
+    const turnId = 'turn-agent-traffic';
+    const agentStartedAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'call-discover',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'traffic' },
+        result: {
+          ok: true,
+          value: {
+            matches: ['get_proxy_status', 'list_exchanges', 'get_exchange']
+              .map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-proxy',
+        name: 'get_proxy_status',
+        arguments: {},
+        result: {
+          ok: true,
+          value: { listening: true, recording: true, host: '127.0.0.1', port: 8888 },
+        },
+      },
+      {
+        callId: 'call-list',
+        name: 'list_exchanges',
+        arguments: { limit: 50 },
+        result: { ok: true, value: { items: [{ id: 'e2e-agent-traffic' }] } },
+      },
+      {
+        callId: 'call-detail',
+        name: 'get_exchange',
+        arguments: { exchangeId: 'e2e-agent-traffic' },
+        result: {
+          ok: true,
+          value: {
+            detail: {
+              summary: { method: 'GET', path: '/agent-e2e/traffic', status: 200 },
+            },
+          },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-traffic',
+      turnId,
+      content: 'Inspect the latest captured request and summarize its status.',
+      createdAt: agentStartedAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-traffic-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-traffic-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          createdAt: agentStartedAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-traffic-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: agentStartedAt + index * 3 + 3,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-traffic-final',
+      turnId,
+      content: 'The latest exchange is `GET /agent-e2e/traffic` with status `200` on exchange `e2e-agent-traffic`.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: agentStartedAt + 14,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-traffic',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt: agentStartedAt,
+      updatedAt: agentStartedAt + 15,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: {
+        ...agentSessionSnapshot.summary,
+        itemCount: items.length,
+        updatedAt: agentStartedAt + 15,
+      },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: 15,
     };
   } else if (agentSessionState !== 'completed') {
     const status = agentSessionState === 'stopped'

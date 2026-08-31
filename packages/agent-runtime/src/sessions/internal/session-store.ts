@@ -22,7 +22,6 @@ const contextUsageSchema = z.object({
 }).strict();
 
 const sessionMetadataSchema = z.object({
-  version: z.literal(1),
   sessionId: z.string().min(1),
   title: z.string().min(1).max(80),
   providerId: z.string().min(1),
@@ -50,6 +49,36 @@ const transcriptItemSchema = z.discriminatedUnion('kind', [
     partial: z.boolean(),
     createdAt: z.number().int(),
   }).strict(),
+  z.object({
+    kind: z.literal('tool-call'),
+    itemId: z.string().min(1),
+    turnId: z.string().min(1),
+    callId: z.string().min(1),
+    name: z.string().min(1),
+    arguments: z.unknown(),
+    status: z.enum(['running', 'completed', 'failed']),
+    createdAt: z.number().int(),
+  }).strict(),
+  z.object({
+    kind: z.literal('tool-result'),
+    itemId: z.string().min(1),
+    turnId: z.string().min(1),
+    callId: z.string().min(1),
+    name: z.string().min(1),
+    result: z.discriminatedUnion('ok', [
+      z.object({ ok: z.literal(true), value: z.unknown() }).strict(),
+      z.object({
+        ok: z.literal(false),
+        error: z.object({ code: z.string(), message: z.string() }).strict(),
+        issues: z.array(z.object({
+          code: z.string(),
+          path: z.array(z.union([z.string(), z.number()])),
+          message: z.string(),
+        }).strict()).optional(),
+      }).strict(),
+    ]),
+    createdAt: z.number().int(),
+  }).strict(),
 ]);
 
 const assistantChunkSchema = z.object({
@@ -60,7 +89,6 @@ const assistantChunkSchema = z.object({
 const turnSchema = z.object({
   turnId: z.string().min(1),
   userItemId: z.string().min(1),
-  assistantItemId: z.string().min(1),
   status: z.enum(['running', 'completed', 'cancelled', 'failed']),
   retryOfTurnId: z.string().min(1).nullable(),
   error: z.object({ code: z.string(), message: z.string() }).strict().nullable(),
@@ -95,7 +123,6 @@ interface EncryptedSessionRow {
 type EncryptedRowType = 'item' | 'turn' | 'model-call' | 'assistant-chunk';
 
 const encryptedRowEnvelopeSchema = z.object({
-  version: z.literal(1),
   sessionId: z.string().min(1),
   rowType: z.enum(['item', 'turn', 'model-call', 'assistant-chunk']),
   rowId: z.string().min(1),
@@ -269,6 +296,7 @@ export class AgentSessionStore {
 
   /** Insert one empty Session as the newest selector item and current selection. */
   create(session: StoredAgentSession): void {
+    AgentSessionStore.#validateRelationships(session);
     const databaseSync = this.#database();
     const nextOrder = (databaseSync.prepare(
       'SELECT COALESCE(MAX(sort_order), 0) + 1 AS value FROM agent_session',
@@ -335,6 +363,7 @@ export class AgentSessionStore {
   /** Atomically update multiple Sessions or leave every Session unchanged. */
   replaceMany(sessions: readonly StoredAgentSession[]): void {
     const replacements = sessions.map((session) => {
+      AgentSessionStore.#validateRelationships(session);
       const previous = this.#sessionsById.get(session.sessionId);
       if (previous === undefined) {
         throw new Error('Agent Session does not exist.');
@@ -475,7 +504,7 @@ export class AgentSessionStore {
       item.content += chunks.map((chunk) => chunk.content).join('');
       item.reasoningContent += chunks.map((chunk) => chunk.reasoningContent).join('');
     }
-    return {
+    const session = {
       ...metadata,
       items,
       turns: readPayloads('agent_turn', 'turn_id', 'turn_order', 'turn', turnSchema),
@@ -487,6 +516,162 @@ export class AgentSessionStore {
         modelCallSchema,
       ),
     };
+    AgentSessionStore.#validateRelationships(session);
+    return session;
+  }
+
+  /** Rejects structurally valid rows whose cross-row Session relationships are invalid. */
+  static #validateRelationships(session: StoredAgentSession): void {
+    const turnsById = new Map(session.turns.map((turn) => [turn.turnId, turn]));
+    const turnOrderById = new Map(session.turns.map((turn, index) => [turn.turnId, index]));
+    const itemsById = new Map(session.items.map((item) => [item.itemId, item]));
+    if (turnsById.size !== session.turns.length || itemsById.size !== session.items.length) {
+      throw new AgentSessionStoreCorruptionError('Agent Session contains duplicate row identities.');
+    }
+    for (const item of session.items) {
+      if (!turnsById.has(item.turnId)) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Item references a missing Turn.',
+        );
+      }
+    }
+    let lastItemTurnOrder = -1;
+    for (const item of session.items) {
+      const itemTurnOrder = turnOrderById.get(item.turnId)!;
+      if (itemTurnOrder < lastItemTurnOrder) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Items from different Turns are interleaved.',
+        );
+      }
+      lastItemTurnOrder = itemTurnOrder;
+    }
+    for (const turn of session.turns) {
+      const userItem = itemsById.get(turn.userItemId);
+      if (userItem?.kind !== 'user-message') {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Turn references a missing user Item.',
+        );
+      }
+      if (turn.retryOfTurnId === null) {
+        if (userItem.turnId !== turn.turnId) {
+          throw new AgentSessionStoreCorruptionError(
+            'Agent Session user Item does not belong to its Turn.',
+          );
+        }
+        continue;
+      }
+      const original = turnsById.get(turn.retryOfTurnId);
+      if (original === undefined
+        || original.turnId === turn.turnId
+        || original.userItemId !== turn.userItemId
+        || turnOrderById.get(original.turnId)! >= turnOrderById.get(turn.turnId)!) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session retry relationship is invalid.',
+        );
+      }
+    }
+    const modelCallIds = new Set<string>();
+    for (const modelCall of session.modelCalls) {
+      if (modelCallIds.has(modelCall.modelCallId)) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session contains duplicate Model Call IDs.',
+        );
+      }
+      modelCallIds.add(modelCall.modelCallId);
+      if (!turnsById.has(modelCall.turnId)) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Model Call references a missing Turn.',
+        );
+      }
+    }
+
+    const toolKey = (turnId: string, callId: string): string => JSON.stringify([turnId, callId]);
+    const toolCallsById = new Map<string, Extract<StoredAgentTranscriptItem, { kind: 'tool-call' }>>();
+    const toolResultsByCallId = new Map<string, Extract<StoredAgentTranscriptItem, { kind: 'tool-result' }>>();
+    for (const item of session.items) {
+      if (item.kind === 'tool-call') {
+        const key = toolKey(item.turnId, item.callId);
+        if (toolCallsById.has(key)) {
+          throw new AgentSessionStoreCorruptionError(
+            'Agent Session contains duplicate Tool Call IDs.',
+          );
+        }
+        toolCallsById.set(key, item);
+      } else if (item.kind === 'tool-result') {
+        const key = toolKey(item.turnId, item.callId);
+        if (toolResultsByCallId.has(key)) {
+          throw new AgentSessionStoreCorruptionError(
+            'Agent Session contains duplicate Tool Results.',
+          );
+        }
+        toolResultsByCallId.set(key, item);
+      }
+    }
+    for (const result of toolResultsByCallId.values()) {
+      const call = toolCallsById.get(toolKey(result.turnId, result.callId));
+      if (call === undefined || call.turnId !== result.turnId || call.name !== result.name) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Tool Result does not match its Tool Call.',
+        );
+      }
+    }
+    for (const call of toolCallsById.values()) {
+      const result = toolResultsByCallId.get(toolKey(call.turnId, call.callId));
+      const turn = turnsById.get(call.turnId)!;
+      const matched = call.status === 'running'
+        ? result === undefined && turn.status === 'running'
+        : call.status === 'completed'
+          ? result?.result.ok === true
+          : result?.result.ok === false;
+      if (!matched) {
+        throw new AgentSessionStoreCorruptionError(
+          'Agent Session Tool Call status does not match its Result.',
+        );
+      }
+    }
+    for (const turn of session.turns) {
+      const responseItems = session.items.filter((item): item is Exclude<
+        StoredAgentTranscriptItem,
+        { kind: 'user-message' }
+      > => (
+        item.turnId === turn.turnId && item.kind !== 'user-message'
+      ));
+      let currentCalls: Array<Extract<StoredAgentTranscriptItem, { kind: 'tool-call' }>> = [];
+      let resultIndex = 0;
+      let phase: 'before-assistant' | 'calls' | 'results' = 'before-assistant';
+      for (const item of responseItems) {
+        if (item.kind === 'assistant-message') {
+          if (currentCalls.length !== resultIndex) {
+            throw new AgentSessionStoreCorruptionError(
+              'Agent Session Tool protocol item order is invalid.',
+            );
+          }
+          currentCalls = [];
+          resultIndex = 0;
+          phase = 'calls';
+          continue;
+        }
+        if (item.kind === 'tool-call') {
+          if (phase !== 'calls') {
+            throw new AgentSessionStoreCorruptionError(
+              'Agent Session Tool protocol item order is invalid.',
+            );
+          }
+          currentCalls.push(item);
+          continue;
+        }
+        if (phase === 'calls') phase = 'results';
+        const expectedCall = currentCalls[resultIndex];
+        if (phase !== 'results'
+          || expectedCall === undefined
+          || expectedCall.callId !== item.callId) {
+          throw new AgentSessionStoreCorruptionError(
+            'Agent Session Tool protocol item order is invalid.',
+          );
+        }
+        resultIndex += 1;
+      }
+    }
   }
 
   /** Update only changed Item, Turn and Model Call payload rows. */
@@ -530,7 +715,7 @@ export class AgentSessionStore {
     `);
     session.items.forEach((item, index) => {
       const previousItem = previousById.get(item.itemId);
-      if (item.kind === 'user-message') {
+      if (item.kind !== 'assistant-message') {
         if (previousItem === undefined
           || JSON.stringify(previousItem) !== JSON.stringify(item)) {
           upsert.run(
@@ -645,7 +830,6 @@ export class AgentSessionStore {
   /** Encrypt one Session metadata payload. */
   #encryptMetadata(session: StoredAgentSession): Buffer {
     return this.#encrypt(sessionMetadataSchema.parse({
-      version: session.version,
       sessionId: session.sessionId,
       title: session.title,
       providerId: session.providerId,
@@ -669,7 +853,7 @@ export class AgentSessionStore {
     rowId: string,
     payload: unknown,
   ): Buffer {
-    return this.#encrypt({ version: 1, sessionId, rowType, rowId, payload });
+    return this.#encrypt({ sessionId, rowType, rowId, payload });
   }
 
   /** Decrypt and verify one child row before parsing its domain payload. */

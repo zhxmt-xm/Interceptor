@@ -1,0 +1,189 @@
+import { describe, expect, it } from 'vitest';
+
+import type {
+  AgentMessage,
+  AgentTool,
+  ToolExecutionResult,
+} from '@interceptor/agent-runtime';
+import type { CoreCommand, CoreResultForCommand } from '@interceptor/core-protocol';
+import { buildInterceptorToolSettingsGroups } from '@interceptor/tools';
+
+import type { ToolCapabilitySettingsSnapshot } from '../../../../shared/desktop-api';
+import { CoreRuntime } from '../../../core/core-runtime';
+import type { CoreRequestOptions } from '../../../interfaces';
+import { ToolCapabilitySettingsService } from '../../../tool-capabilities/entry';
+import { AgentToolService } from '../../entry';
+
+class FakeCoreRuntime extends CoreRuntime {
+  readonly commands: CoreCommand[] = [];
+  readonly abortSignals: Array<AbortSignal | undefined> = [];
+  readonly results = new Map<string, unknown>();
+
+  override async request<T extends CoreCommand>(
+    command: T,
+    options: CoreRequestOptions = {},
+  ): Promise<CoreResultForCommand<T>> {
+    this.commands.push(command);
+    this.abortSignals.push(options.abortSignal);
+    const result = this.results.get(command.type);
+    if (result === undefined) throw new Error(`No fake result for ${command.type}.`);
+    return result as CoreResultForCommand<T>;
+  }
+}
+
+class FakeToolCapabilitySettingsService extends ToolCapabilitySettingsService {
+  agentDisabledToolNames: string[] = [];
+
+  constructor() {
+    super('unused');
+  }
+
+  override snapshot(): ToolCapabilitySettingsSnapshot {
+    return {
+      groups: buildInterceptorToolSettingsGroups(),
+      agentDisabledToolNames: [...this.agentDisabledToolNames],
+      mcpDisabledToolNames: [],
+    };
+  }
+}
+
+function tool(snapshot: { readonly tools: readonly AgentTool[] }, name: string): AgentTool {
+  const result = snapshot.tools.find((candidate) => candidate.descriptor.name === name);
+  if (result === undefined) throw new Error(`Missing Agent Tool ${name}.`);
+  return result;
+}
+
+function discoveredHistory(result: ToolExecutionResult): readonly AgentMessage[] {
+  return [
+    { role: 'user', content: 'Inspect current traffic.' },
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [{
+        id: 'discover-1',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'traffic' },
+      }],
+    },
+    {
+      role: 'tool',
+      toolCallId: 'discover-1',
+      name: 'discover_tools',
+      content: JSON.stringify(result),
+    },
+  ];
+}
+
+describe('AgentToolService', () => {
+  it('initially exposes only enabled capabilities and discover_tools', () => {
+    const settings = new FakeToolCapabilitySettingsService();
+    const service = new AgentToolService(new FakeCoreRuntime(), settings);
+
+    const snapshot = service.snapshot([{ role: 'user', content: 'Inspect traffic.' }]);
+
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual(['discover_tools']);
+    expect(snapshot.systemMessages).toHaveLength(1);
+    expect(snapshot.systemMessages[0]?.content).toContain('traffic');
+    expect(snapshot.systemMessages[0]?.content).not.toContain('get_proxy_status');
+  });
+
+  it('discovers and then discloses exactly the three connected Traffic query Tools', async () => {
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      new FakeToolCapabilitySettingsService(),
+    );
+    const initial = service.snapshot([]);
+
+    const discovery = await tool(initial, 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    expect(discovery).toMatchObject({
+      ok: true,
+      value: {
+        matches: [
+          { descriptor: { name: 'get_proxy_status' } },
+          { descriptor: { name: 'list_exchanges' } },
+          { descriptor: { name: 'get_exchange' } },
+        ],
+      },
+    });
+
+    const disclosed = service.snapshot(discoveredHistory(discovery));
+    expect(disclosed.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      'get_proxy_status',
+      'list_exchanges',
+      'get_exchange',
+    ]);
+  });
+
+  it('removes disabled capabilities and previously disclosed Tools on the next snapshot', async () => {
+    const settings = new FakeToolCapabilitySettingsService();
+    const service = new AgentToolService(new FakeCoreRuntime(), settings);
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const history = discoveredHistory(discovery);
+
+    settings.agentDisabledToolNames = ['get_proxy_status'];
+
+    const snapshot = service.snapshot(history);
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      'list_exchanges',
+      'get_exchange',
+    ]);
+  });
+
+  it('executes disclosed Tools through the shared registry and CoreRuntime', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('proxy.status', {
+      type: 'proxy.status',
+      payload: { running: true, recording: true },
+    });
+    const service = new AgentToolService(coreRuntime, new FakeToolCapabilitySettingsService());
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+
+    const abortController = new AbortController();
+    const result = await tool(snapshot, 'get_proxy_status').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+
+    expect(result).toEqual({ ok: true, value: { running: true, recording: true } });
+    expect(coreRuntime.commands).toEqual([{ type: 'proxy.status', payload: {} }]);
+    expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
+  });
+
+  it('rejects a Tool disabled after disclosure without invoking CoreRuntime', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    const settings = new FakeToolCapabilitySettingsService();
+    const service = new AgentToolService(coreRuntime, settings);
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const getExchange = tool(service.snapshot(discoveredHistory(discovery)), 'get_exchange');
+
+    settings.agentDisabledToolNames = ['get_exchange'];
+    const result = await getExchange.execute(
+      { exchangeId: 'exchange-1' },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'unknown_tool',
+        message: 'Unknown tool "get_exchange".',
+      },
+    });
+    expect(coreRuntime.commands).toHaveLength(0);
+  });
+});

@@ -1,10 +1,10 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-08-30
+> 最后更新：2026-08-31
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录、首批24项共享registry和Settings开关持久化已完成；`packages/mcp-server`已消费同一
-> registry。Desktop仍未把已开启Tool接入Agent discovery或MCP transport，当前Agent业务Tool为0。
+> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化和Agent首个Traffic query纵向流程已完成；
+> `packages/mcp-server`已消费同一registry。Desktop Agent当前接入3项query Tool，MCP transport仍未接Desktop。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -21,6 +21,7 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 
 状态含义：
 
+- **共享 registry + MCP adapter + Agent**：Tool已由`@interceptor/tools`唯一实现，并接入MCP adapter与Desktop Agent；
 - **共享 registry + MCP adapter**：Tool已由`@interceptor/tools`唯一实现并被MCP adapter消费，但尚未接入Desktop；
 - **产品已具备**：产品已有正式入口，Tool descriptor 与 Agent/MCP 接线待实现；
 - **先补 intent**：产品 UI 已有能力，但缺少可供 Tool 复用的语义单一入口；
@@ -33,7 +34,7 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 
 设计稿已落地首批24项共享registry fixture、四个domain、搜索、Agent/MCP双Switch、会话级`Ask/Auto`与
 Transcript内联问询卡；明暗基线见`design-vite/shots/*/agent-models/`。这是产品实现基线，不表示这些
-Tool已经接入Desktop。
+Tool已全部接入Desktop。
 
 每个已实现 Tool 显示两个独立 Switch：
 
@@ -49,7 +50,8 @@ Tool已经接入Desktop。
 - 改动 Tool 在开启后按当前 Agent Session 或 MCP Client 的 `ask` / `auto` 模式执行；默认 `ask`；
 - `ask` 在执行前展示 Tool、参数与影响，`auto` 不增加应用内逐次确认；
 - 两种模式都继续使用正式产品命令，并保留已有参数校验、原生 Open/Save Dialog、UAC 与系统权限；
-- Tool 被关闭后，新的 discovery / `tools/list` 立即不再返回它；已经开始的调用按开始时快照完成。
+- Tool 被关闭后，新的 discovery / `tools/list` 立即不再返回它；Agent每次Model Call和每项Tool执行开始前
+   重读开关，已经进入executor的调用继续使用该次调用的`AbortSignal`完成。
 
 本阶段由Main中的`ToolCapabilitySettingsService`拥有全局设置，不归某个Workspace、Agent Session或MCP Client。
 它从同一可执行registry投影Settings专用的四组只读目录：`Traffic`、`Rules`、`Breakpoints`、
@@ -60,19 +62,19 @@ Tool已经接入Desktop。
 
 ```ts
 interface ToolCapabilitySettingsRecord {
-   version: 1;
    agentDisabledToolNames: string[];
    mcpDisabledToolNames: string[];
 }
 ```
 
 - fresh profile或两组关闭项都为空时不保留文件，24项自然全部开启；
-- 读取时拒绝非法schema，去重并按registry顺序规范化；registry已删除的旧名称从下次写入中清除；
+- 读取时拒绝非法schema、未知名称、重复名称和额外字段；写入按registry顺序规范化；
 - `getToolCapabilitySettings`返回四组目录和两组关闭名称的完整快照；
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- 本阶段只建立设置与持久化，Agent仍接收`tools: []`，MCP仍未接Desktop；过滤执行入口归后续纵向flow。
+- Agent当前通过动态`AgentToolSource`接入三个Traffic query Tool；关闭项同时过滤Capability Index、discovery、
+   schema与执行入口。MCP仍未接Desktop。
 
 ## 3. 完整 Tool 清单
 
@@ -84,13 +86,13 @@ interface ToolCapabilitySettingsRecord {
 | `get_system_proxy_status` | query | `getSystemProxyStatus` | 产品已具备 |
 | `enable_system_proxy` | change | `enableSystemProxy` | 产品已具备 |
 | `restore_system_proxy` | change | `restoreSystemProxy` | 产品已具备 |
-| `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter |
+| `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter + Agent |
 | `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter |
 | `start_recording` | change | `startCapture` | 共享 registry + MCP adapter |
 | `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter |
 | `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
-| `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter |
-| `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter |
+| `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter + Agent |
+| `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter + Agent |
 | `get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter；用`exchangeId + bodyId`回查可信MIME/encoding |
 | `list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | 共享 registry + MCP adapter |
 | `list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | 共享 registry + MCP adapter |
@@ -196,7 +198,7 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 2. **[已完成]** 将现有MCP 20个Tool的通用descriptor、schema与执行函数迁入`packages/interceptor-tools/`，
    同时把三个多义入口拆成24个语义单一Tool；MCP transport继续留在`packages/mcp-server/`；
 3. **[已完成]** 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；本项只建立设置快照，不提前接执行入口；
-4. Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
+4. **[已完成]** Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
 5. 接入`ask` / `auto`，再按本目录顺序逐项开发其余Tool；
 6. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration；影响用户flow时增加真实E2E；

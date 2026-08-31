@@ -70,5 +70,7 @@ describe('Agent messages', () => {
   it('ships localized simplified Chinese for Tool capability settings', () => {
     expect(agentToolMessages['zh-CN']['settings.agent.tools.title']).toBe('Tool 能力');
     expect(agentToolMessages['zh-CN']['settings.agent.tools.noMatches']).toBe('没有匹配的能力');
+    expect(agentToolMessages['zh-CN']['agent.tools.activity']).toBe('Tool 活动');
+    expect(agentToolMessages['zh-CN']['agent.tools.noParameters']).toBe('无参数');
   });
 });

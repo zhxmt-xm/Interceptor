@@ -10,7 +10,7 @@ import {
   type ModelStreamEvent,
 } from '../../src';
 import { AgentRunLoop } from '../../src/agent/entry';
-import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
+import { staticToolSource, TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
 class QueueModel implements ModelAdapter {
   readonly capabilities: ModelAdapter['capabilities'];
@@ -79,7 +79,7 @@ function userMessage(content: string): AgentMessage {
 describe('AgentRunLoop', () => {
   it('uses the public checkpointed execution mode by default', () => {
     const model = new QueueModel([]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     expect(DEFAULT_AGENT_EXECUTION_MODE).toEqual({
       type: 'checkpointed',
@@ -93,14 +93,14 @@ describe('AgentRunLoop', () => {
 
     expect(() => new AgentRunLoop({
       model,
-      tools: [],
+      toolSource: staticToolSource(),
       executionMode: { type: 'checkpointed', stepsPerCheckpoint: 0 },
     })).toThrow(new RangeError('stepsPerCheckpoint must be a positive integer.'));
   });
 
   it('returns a final model answer without executing tools', async () => {
     const model = new QueueModel([finalResponse('Hello')]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     const result = await agentRuntime.run({
       messages: [userMessage('Say hello')],
@@ -127,7 +127,7 @@ describe('AgentRunLoop', () => {
       toolResponse('multiply', { left: 6, right: 7 }),
       finalResponse('The result is 42.'),
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [multiply] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([multiply]) });
 
     const result = await agentRuntime.run({
       messages: [userMessage('What is 6 * 7?')],
@@ -171,7 +171,7 @@ describe('AgentRunLoop', () => {
       cacheMissInputTokens: 5,
     };
     const model = new QueueModel([firstResponse, secondResponse]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [echo] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([echo]) });
 
     const result = await agentRuntime.run({
       messages: [userMessage('Echo once.')],
@@ -202,7 +202,7 @@ describe('AgentRunLoop', () => {
       cacheMissInputTokens: 4,
     };
     const model = new QueueModel([firstResponse, finalResponse('Finished.')]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [echo] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([echo]) });
 
     const result = await agentRuntime.run({ messages: [userMessage('Echo once.')] });
 
@@ -234,7 +234,7 @@ describe('AgentRunLoop', () => {
       toolResponse('multiply', { left: 'six', right: 7 }),
       finalResponse('I could not calculate that because the arguments were invalid.'),
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [multiply] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([multiply]) });
 
     await agentRuntime.run({ messages: [userMessage('What is 6 * 7?')] });
 
@@ -258,7 +258,7 @@ describe('AgentRunLoop', () => {
       toolResponse('missing_tool', {}),
       finalResponse('That tool is unavailable.'),
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     await agentRuntime.run({ messages: [userMessage('Use the missing tool')] });
 
@@ -288,7 +288,7 @@ describe('AgentRunLoop', () => {
       toolResponse('inspect', { right: 2, left: 1 }, 'call-2'),
       finalResponse('Finished.'),
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [inspect] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([inspect]) });
 
     const result = await agentRuntime.run({ messages: [userMessage('Inspect twice.')] });
 
@@ -312,7 +312,7 @@ describe('AgentRunLoop', () => {
       toolResponse('echo', { value: 'two' }, 'call-2'),
       finalResponse('Finished.'),
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [echo] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([echo]) });
 
     const result = await agentRuntime.run({ messages: [userMessage('Echo twice.')] });
 
@@ -334,7 +334,7 @@ describe('AgentRunLoop', () => {
     ]);
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [echo],
+      toolSource: staticToolSource([echo]),
       executionMode: { type: 'checkpointed', stepsPerCheckpoint: 2 },
     });
 
@@ -383,7 +383,7 @@ describe('AgentRunLoop', () => {
     );
     const agentRuntime = new AgentRunLoop({
       model,
-      tools: [echo],
+      toolSource: staticToolSource([echo]),
       executionMode: { type: 'continuous' },
     });
 

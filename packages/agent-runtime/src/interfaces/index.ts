@@ -110,6 +110,12 @@ export type ModelStreamEvent =
   | { type: 'usage'; usage: ModelUsage }
   | { type: 'response-completed' };
 
+/** Extends Provider stream events with Runtime-owned Model/Tool lifecycle boundaries. */
+export type AgentRunEvent =
+  | { type: 'model-call-started'; maxOutputTokens: number }
+  | ModelStreamEvent
+  | { type: 'tool-result'; toolCall: ModelToolCall; result: ToolExecutionResult };
+
 /**
  * Supplies caller-owned cancellation to one model attempt.
  * 向一次模型 attempt 传入调用方拥有的取消信号。
@@ -233,8 +239,35 @@ export interface AgentAssistantTranscriptItem {
   readonly createdAt: number;
 }
 
-/** Represents the complete first-stage transcript item set. */
-export type AgentTranscriptItem = AgentUserTranscriptItem | AgentAssistantTranscriptItem;
+/** Shows one model-authored Tool invocation in the durable Transcript. */
+export interface AgentToolCallTranscriptItem {
+  readonly kind: 'tool-call';
+  readonly itemId: string;
+  readonly turnId: string;
+  readonly callId: string;
+  readonly name: string;
+  readonly arguments: unknown;
+  readonly status: 'running' | 'completed' | 'failed';
+  readonly createdAt: number;
+}
+
+/** Shows one locally executed Tool result correlated to its invocation. */
+export interface AgentToolResultTranscriptItem {
+  readonly kind: 'tool-result';
+  readonly itemId: string;
+  readonly turnId: string;
+  readonly callId: string;
+  readonly name: string;
+  readonly result: ToolExecutionResult;
+  readonly createdAt: number;
+}
+
+/** Represents the complete durable transcript item set. */
+export type AgentTranscriptItem =
+  | AgentUserTranscriptItem
+  | AgentAssistantTranscriptItem
+  | AgentToolCallTranscriptItem
+  | AgentToolResultTranscriptItem;
 
 /** Defines persisted Turn terminal and running states. */
 export type AgentTurnStatus = 'running' | 'completed' | 'cancelled' | 'failed';
@@ -243,7 +276,6 @@ export type AgentTurnStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 export interface AgentTurnSnapshot {
   readonly turnId: string;
   readonly userItemId: string;
-  readonly assistantItemId: string;
   readonly status: AgentTurnStatus;
   readonly retryOfTurnId: string | null;
   readonly error: { readonly code: string; readonly message: string } | null;
@@ -343,6 +375,17 @@ export interface AgentTool {
    * 在调用方拥有的取消信号下校验并执行一次模型发起的调用。
    */
   execute(input: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult>;
+}
+
+/** One immutable Tool exposure snapshot for a Model Call or Tool execution. */
+export interface AgentToolSourceSnapshot {
+  readonly systemMessages: readonly SystemMessage[];
+  readonly tools: readonly AgentTool[];
+}
+
+/** Resolves currently authorized Tools from the persisted Session history. */
+export interface AgentToolSource {
+  snapshot(messages: readonly AgentMessage[]): AgentToolSourceSnapshot;
 }
 
 /**

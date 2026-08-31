@@ -5,7 +5,7 @@ import {
   type ModelStreamEvent,
 } from '../../src';
 import { AgentRunLoop } from '../../src/agent/entry';
-import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
+import { staticToolSource, TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
 class EventModel implements ModelAdapter {
   readonly capabilities = TEST_MODEL_CAPABILITIES;
@@ -37,7 +37,7 @@ describe('AgentRuntime model stream', () => {
       },
       { type: 'response-completed' },
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     const result = await agentRuntime.run({
       messages: [{ role: 'user', content: 'Say hello.' }],
@@ -60,7 +60,7 @@ describe('AgentRuntime model stream', () => {
     const model = new EventModel([
       { type: 'text-delta', delta: 'Incomplete' },
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Say hello.' }],
@@ -77,7 +77,7 @@ describe('AgentRuntime model stream', () => {
       { type: 'text-delta', delta: 'The state is healthy.' },
       { type: 'response-completed' },
     ]);
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     const result = await agentRuntime.run({
       messages: [{ role: 'user', content: 'Check the state.' }],

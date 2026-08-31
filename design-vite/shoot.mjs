@@ -182,6 +182,13 @@ for (const theme of ['light', 'dark']) {
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'auto' },
   });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-traffic-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'traffic' },
+  });
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', fileMenu: 'import' } });
@@ -438,6 +445,7 @@ async function shoot(list) {
       agentUsagePanel: '',
       agentExecutionMode: 'ask',
       agentToolApproval: '',
+      agentToolTrace: '',
       agentCheckoutExecutionMode: 'ask',
       agentCheckoutToolApproval: '',
       agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },
@@ -531,6 +539,7 @@ async function shoot(list) {
       agentUsagePanel: '',
       agentExecutionMode: 'ask',
       agentToolApproval: '',
+      agentToolTrace: '',
       agentCheckoutExecutionMode: 'ask',
       agentCheckoutToolApproval: '',
       agentDeepSeekProfile: { displayName: 'DeepSeek V4 Flash', profileName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: '••••••••••••••••9K4Q', modelId: 'deepseek-v4-flash', contextWindow: '1000000', maximumOutput: '8192' },

@@ -35,6 +35,7 @@ export function AgentPanelChatMenu({ triggerRef }: AgentPanelChatMenuProps): Rea
       agentMessage: '',
       agentExecutionMode: 'ask',
       agentToolApproval: '',
+      agentToolTrace: '',
     });
     restoreTriggerFocus();
   };

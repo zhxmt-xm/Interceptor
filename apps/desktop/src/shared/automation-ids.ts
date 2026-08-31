@@ -396,6 +396,7 @@ export const AUTOMATION_IDS = {
     tools: {
       capabilities: 'agent.tools.capabilities',
       search: 'agent.tools.search',
+      activity: 'agent.tools.activity',
     },
     models: {
       list: 'agent.models.list',
@@ -784,6 +785,16 @@ export class AutomationIdFactory {
   /** Identify the MCP enable switch for one Tool. */
   static agentToolMcpSwitch(toolName: string): string {
     return `agent.tools.mcp.${toolName}`;
+  }
+
+  /** Identify one durable Tool Call in the Agent Transcript. */
+  static agentToolCall(callId: string): string {
+    return `agent.tools.call.${callId}`;
+  }
+
+  /** Identify one durable Tool Result in the Agent Transcript. */
+  static agentToolResult(callId: string): string {
+    return `agent.tools.result.${callId}`;
   }
 
   /** Identify one Chat option in the Agent Session selector. */

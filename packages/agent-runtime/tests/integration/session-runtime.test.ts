@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AgentRuntime,
+  defineTool,
+  z,
   type AgentProviderDraft,
   type AgentRuntimeEvent,
   type AgentSecureStore,
@@ -104,7 +106,7 @@ class SessionFixture {
       dataDirectory: this.root,
       fetcher: this.fetcher as typeof fetch,
       secureStore: this.secureStore,
-      tools: [],
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [] }) },
       createId: () => `id-${this.nextId++}`,
       now: () => this.now++,
     });
@@ -460,7 +462,6 @@ describe('AgentRuntime persistent Sessions', () => {
   it('marks a crash-left running Turn failed and retryable on startup', async () => {
     const fixture = await createFixture();
     const session: StoredAgentSession = {
-      version: 1,
       sessionId: 'crashed-session',
       title: 'Interrupted chat',
       providerId: 'missing-provider',
@@ -471,11 +472,20 @@ describe('AgentRuntime persistent Sessions', () => {
       items: [
         { kind: 'user-message', itemId: 'user-crash', turnId: 'turn-crash', content: 'prompt', createdAt: 1 },
         { kind: 'assistant-message', itemId: 'assistant-crash', turnId: 'turn-crash', content: 'partial', reasoningContent: '', partial: true, createdAt: 2 },
+        {
+          kind: 'tool-call',
+          itemId: 'tool-call-crash',
+          turnId: 'turn-crash',
+          callId: 'call-crash',
+          name: 'get_proxy_status',
+          arguments: {},
+          status: 'running',
+          createdAt: 2,
+        },
       ],
       turns: [{
         turnId: 'turn-crash',
         userItemId: 'user-crash',
-        assistantItemId: 'assistant-crash',
         status: 'running',
         retryOfTurnId: null,
         error: null,
@@ -503,6 +513,18 @@ describe('AgentRuntime persistent Sessions', () => {
     expect(restored.currentTurn).toMatchObject({
       status: 'failed',
       error: { code: 'AgentTurnInterrupted' },
+    });
+    expect(restored.items.find((item) => item.kind === 'tool-call')).toMatchObject({
+      callId: 'call-crash',
+      status: 'failed',
+    });
+    expect(restored.items.find((item) => item.kind === 'tool-result')).toMatchObject({
+      callId: 'call-crash',
+      name: 'get_proxy_status',
+      result: {
+        ok: false,
+        error: { code: 'tool_interrupted' },
+      },
     });
     expect(restored.sequence).toBe(3);
     await agentRuntime.stop();
@@ -603,7 +625,6 @@ describe('AgentRuntime persistent Sessions', () => {
     const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
     sessionStore.start();
     const session: StoredAgentSession = {
-      version: 1,
       sessionId: 'append-session',
       title: 'Append test',
       providerId: 'provider',
@@ -611,19 +632,27 @@ describe('AgentRuntime persistent Sessions', () => {
       createdAt: 1,
       updatedAt: 1,
       sequence: 0,
-      items: [{
-        kind: 'assistant-message',
-        itemId: 'append-item',
-        turnId: 'append-turn',
-        content: '',
-        reasoningContent: '',
-        partial: true,
-        createdAt: 1,
-      }],
+      items: [
+        {
+          kind: 'user-message',
+          itemId: 'append-user',
+          turnId: 'append-turn',
+          content: 'append',
+          createdAt: 1,
+        },
+        {
+          kind: 'assistant-message',
+          itemId: 'append-item',
+          turnId: 'append-turn',
+          content: '',
+          reasoningContent: '',
+          partial: true,
+          createdAt: 1,
+        },
+      ],
       turns: [{
         turnId: 'append-turn',
         userItemId: 'append-user',
-        assistantItemId: 'append-item',
         status: 'running',
         retryOfTurnId: null,
         error: null,
@@ -656,12 +685,54 @@ describe('AgentRuntime persistent Sessions', () => {
       }
 
       expect(fixture.secureStore.encryptedPlaintextBytes).toBeLessThan(2 * 1024 * 1024);
-      expect(sessionStore.get(session.sessionId)?.items[0]).toMatchObject({
+      expect(sessionStore.get(session.sessionId)?.items.find((item) => (
+        item.kind === 'assistant-message'
+      ))).toMatchObject({
         content: chunk.repeat(20),
       });
     } finally {
       sessionStore.stop();
     }
+  });
+
+  it('stores the exact current Session metadata and encrypted child-row shapes', async () => {
+    const fixture = await createFixture();
+    const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+    sessionStore.start();
+    sessionStore.create(storedSession('current-session', 'current-item'));
+    sessionStore.stop();
+
+    const databaseSync = new DatabaseSync(path.join(fixture.root, 'agent.sqlite'));
+    const sessionRow = databaseSync.prepare(`
+      SELECT encrypted_metadata FROM agent_session WHERE session_id = ?
+    `).get('current-session') as unknown as { encrypted_metadata: Uint8Array };
+    const itemRow = databaseSync.prepare(`
+      SELECT encrypted_payload FROM agent_item WHERE item_id = ?
+    `).get('current-item') as unknown as { encrypted_payload: Uint8Array };
+    databaseSync.close();
+
+    const metadata = JSON.parse(fixture.secureStore.decryptString(
+      Buffer.from(sessionRow.encrypted_metadata),
+    )) as Record<string, unknown>;
+    const itemEnvelope = JSON.parse(fixture.secureStore.decryptString(
+      Buffer.from(itemRow.encrypted_payload),
+    )) as Record<string, unknown>;
+    expect(Object.keys(metadata).sort()).toEqual([
+      'contextUsage',
+      'createdAt',
+      'modelId',
+      'providerId',
+      'sequence',
+      'sessionId',
+      'title',
+      'updatedAt',
+    ]);
+    expect(Object.keys(itemEnvelope).sort()).toEqual([
+      'payload',
+      'rowId',
+      'rowType',
+      'sessionId',
+    ]);
   });
 
   it('rejects an encrypted Item payload moved to another SQLite row identity', async () => {
@@ -693,6 +764,158 @@ describe('AgentRuntime persistent Sessions', () => {
 
     expect(() => restoredStore.start())
       .toThrow('Agent Session encrypted row identity does not match SQLite.');
+  });
+
+  it('rejects Tool Results that do not match the owning Call relationship', async () => {
+    const fixture = await createFixture();
+    const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+    const session = storedSession('relationship-session', 'relationship-user');
+    const turnId = 'turn-relationship-session';
+    session.turns[0] = {
+      ...session.turns[0]!,
+      status: 'completed',
+      error: null,
+      updatedAt: 4,
+    };
+    session.items.push(
+      {
+        kind: 'assistant-message',
+        itemId: 'relationship-assistant',
+        turnId,
+        content: '',
+        reasoningContent: '',
+        partial: false,
+        createdAt: 2,
+      },
+      {
+        kind: 'tool-call',
+        itemId: 'relationship-call',
+        turnId,
+        callId: 'relationship-call-id',
+        name: 'get_proxy_status',
+        arguments: {},
+        status: 'completed',
+        createdAt: 3,
+      },
+      {
+        kind: 'tool-result',
+        itemId: 'relationship-result',
+        turnId,
+        callId: 'relationship-call-id',
+        name: 'get_exchange',
+        result: { ok: true, value: {} },
+        createdAt: 4,
+      },
+    );
+
+    sessionStore.start();
+    try {
+      expect(() => sessionStore.create(session))
+        .toThrow('Agent Session Tool Result does not match its Tool Call.');
+    } finally {
+      sessionStore.stop();
+    }
+  });
+
+  it('rejects invalid Turn ownership and duplicate Model Call identities', async () => {
+    const fixture = await createFixture();
+    const sessionStore = new AgentSessionStore(fixture.root, fixture.secureStore);
+    sessionStore.start();
+    try {
+      const wrongUserOwner = storedSession('wrong-user-owner', 'wrong-user-item');
+      wrongUserOwner.items[0] = { ...wrongUserOwner.items[0]!, turnId: 'another-turn' };
+      expect(() => sessionStore.create(wrongUserOwner))
+        .toThrow('Agent Session Item references a missing Turn.');
+
+      const invalidRetry = storedSession('invalid-retry', 'retry-user-item');
+      invalidRetry.turns[0] = {
+        ...invalidRetry.turns[0]!,
+        retryOfTurnId: invalidRetry.turns[0]!.turnId,
+      };
+      expect(() => sessionStore.create(invalidRetry))
+        .toThrow('Agent Session retry relationship is invalid.');
+
+      const duplicateModelCalls = storedSession('duplicate-calls', 'model-user-item');
+      duplicateModelCalls.modelCalls.push(
+        {
+          modelCallId: 'duplicate-model-call',
+          turnId: duplicateModelCalls.turns[0]!.turnId,
+          providerId: 'provider',
+          modelId: 'model',
+          usage: {},
+          contextWindowTokens: 8_192,
+          maxOutputTokens: 1_024,
+          createdAt: 2,
+        },
+        {
+          modelCallId: 'duplicate-model-call',
+          turnId: duplicateModelCalls.turns[0]!.turnId,
+          providerId: 'provider',
+          modelId: 'model',
+          usage: {},
+          contextWindowTokens: 8_192,
+          maxOutputTokens: 1_024,
+          createdAt: 3,
+        },
+      );
+      expect(() => sessionStore.create(duplicateModelCalls))
+        .toThrow('Agent Session contains duplicate Model Call IDs.');
+
+      const failedWithoutResult = storedSession('failed-without-result', 'failed-user-item');
+      failedWithoutResult.items.push({
+        kind: 'tool-call',
+        itemId: 'failed-call-item',
+        turnId: failedWithoutResult.turns[0]!.turnId,
+        callId: 'failed-call',
+        name: 'get_proxy_status',
+        arguments: {},
+        status: 'failed',
+        createdAt: 2,
+      });
+      expect(() => sessionStore.create(failedWithoutResult))
+        .toThrow('Agent Session Tool Call status does not match its Result.');
+
+      const outOfOrder = storedSession('out-of-order', 'ordered-user-item');
+      outOfOrder.turns[0] = {
+        ...outOfOrder.turns[0]!,
+        status: 'completed',
+        error: null,
+      };
+      outOfOrder.items.push(
+        {
+          kind: 'assistant-message',
+          itemId: 'ordered-assistant',
+          turnId: outOfOrder.turns[0]!.turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: 'early-result',
+          turnId: outOfOrder.turns[0]!.turnId,
+          callId: 'ordered-call',
+          name: 'get_proxy_status',
+          result: { ok: true, value: {} },
+          createdAt: 3,
+        },
+        {
+          kind: 'tool-call',
+          itemId: 'late-call',
+          turnId: outOfOrder.turns[0]!.turnId,
+          callId: 'ordered-call',
+          name: 'get_proxy_status',
+          arguments: {},
+          status: 'completed',
+          createdAt: 4,
+        },
+      );
+      expect(() => sessionStore.create(outOfOrder))
+        .toThrow('Agent Session Tool protocol item order is invalid.');
+    } finally {
+      sessionStore.stop();
+    }
   });
 
   it('lists validated Sessions without decrypting complete history again', async () => {
@@ -1110,7 +1333,7 @@ describe('AgentRuntime persistent Sessions', () => {
       dataDirectory: fixture.root,
       fetcher: fixture.fetcher as typeof fetch,
       secureStore: fixture.secureStore,
-      tools: [echo],
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [echo] }) },
       createId: (() => {
         let nextId = 1000;
         return () => `tool-budget-${nextId++}`;
@@ -1164,6 +1387,141 @@ describe('AgentRuntime persistent Sessions', () => {
     expect(fixture.requests).toHaveLength(2);
     expect(fixture.requests[1]?.max_tokens).toBeLessThan(fixture.requests[0]?.max_tokens as number);
   });
+
+  it('persists Tool protocol items and rebuilds paired Provider history after restart', async () => {
+    const fixture = await createFixture();
+    const execute = vi.fn(() => ({ listening: true, recording: true }));
+    const readStatus = defineTool({
+      name: 'get_proxy_status',
+      description: 'Read proxy status.',
+      inputSchema: z.object({}).strict(),
+      execute,
+    });
+    const toolSource = {
+      snapshot: () => ({ systemMessages: [], tools: [readStatus] }),
+    };
+    let nextId = 2000;
+    const createRuntime = (): AgentRuntime => {
+      const agentRuntime = new AgentRuntime({
+        dataDirectory: fixture.root,
+        fetcher: fixture.fetcher as typeof fetch,
+        secureStore: fixture.secureStore,
+        toolSource,
+        createId: () => `tool-history-${nextId++}`,
+        now: () => Date.parse('2026-08-30T00:00:00.000Z'),
+      });
+      fixture.runtimes.push(agentRuntime);
+      return agentRuntime;
+    };
+    const agentRuntime = createRuntime();
+    await agentRuntime.start();
+    await configureProvider(agentRuntime);
+    fixture.requests.length = 0;
+    fixture.responses.length = 0;
+    fixture.responses.push(
+      {
+        chunks: [
+          sse({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-status',
+                  type: 'function',
+                  function: { name: 'get_proxy_status', arguments: '{}' },
+                }],
+              },
+            }],
+          }),
+          'data: [DONE]\n\n',
+        ],
+      },
+      {
+        chunks: [
+          sse({ choices: [{ delta: { content: 'Recording is on.' } }] }),
+          'data: [DONE]\n\n',
+        ],
+      },
+    );
+    const session = await agentRuntime.createSession();
+
+    const completed = await completeTurn(agentRuntime, session.sessionId, 'Check proxy status.');
+
+    expect(completed.items.map((item) => item.kind)).toEqual([
+      'user-message',
+      'assistant-message',
+      'tool-call',
+      'tool-result',
+      'assistant-message',
+    ]);
+    expect(completed.items[2]).toMatchObject({
+      kind: 'tool-call',
+      callId: 'call-status',
+      name: 'get_proxy_status',
+      arguments: {},
+      status: 'completed',
+    });
+    expect(completed.items[3]).toMatchObject({
+      kind: 'tool-result',
+      callId: 'call-status',
+      name: 'get_proxy_status',
+      result: { ok: true, value: { listening: true, recording: true } },
+    });
+    expect(completed.items[4]).toMatchObject({
+      kind: 'assistant-message',
+      content: 'Recording is on.',
+      partial: false,
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+
+    await agentRuntime.stop();
+    fixture.requests.length = 0;
+    const restoredRuntime = createRuntime();
+    await restoredRuntime.start();
+    const restored = await restoredRuntime.getSession(session.sessionId);
+    expect(restored.items).toEqual(completed.items);
+    expect(fixture.requests).toHaveLength(0);
+    fixture.responses.push(
+      {
+        chunks: [
+          sse({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-status',
+                  type: 'function',
+                  function: { name: 'get_proxy_status', arguments: '{}' },
+                }],
+              },
+            }],
+          }),
+          'data: [DONE]\n\n',
+        ],
+      },
+      {
+        chunks: [
+          sse({ choices: [{ delta: { content: 'Still recording.' } }] }),
+          'data: [DONE]\n\n',
+        ],
+      },
+    );
+
+    await completeTurn(restoredRuntime, session.sessionId, 'Check again.');
+
+    const messages = fixture.requests[0]?.messages as Array<Record<string, unknown>>;
+    expect(messages.slice(0, 5)).toMatchObject([
+      { role: 'user', content: 'Check proxy status.' },
+      {
+        role: 'assistant',
+        tool_calls: [{ id: 'call-status', function: { name: 'get_proxy_status' } }],
+      },
+      { role: 'tool', tool_call_id: 'call-status' },
+      { role: 'assistant', content: 'Recording is on.' },
+      { role: 'user', content: 'Check again.' },
+    ]);
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
 });
 
 async function createFixture(): Promise<SessionFixture> {
@@ -1175,8 +1533,8 @@ async function createFixture(): Promise<SessionFixture> {
 }
 
 function storedSession(sessionId: string, itemId: string): StoredAgentSession {
+  const turnId = `turn-${sessionId}`;
   return {
-    version: 1,
     sessionId,
     title: sessionId,
     providerId: 'provider',
@@ -1187,11 +1545,19 @@ function storedSession(sessionId: string, itemId: string): StoredAgentSession {
     items: [{
       kind: 'user-message',
       itemId,
-      turnId: `turn-${sessionId}`,
+      turnId,
       content: `content-${sessionId}`,
       createdAt: 1,
     }],
-    turns: [],
+    turns: [{
+      turnId,
+      userItemId: itemId,
+      status: 'failed',
+      retryOfTurnId: null,
+      error: { code: 'FixtureTurn', message: 'Fixture has no model response.' },
+      createdAt: 1,
+      updatedAt: 1,
+    }],
     modelCalls: [],
     contextUsage: {
       contextWindowTokens: 8_192,

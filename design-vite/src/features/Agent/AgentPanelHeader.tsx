@@ -18,6 +18,7 @@ export function AgentPanelHeader(): React.JSX.Element {
     agentMessage: '',
     agentExecutionMode: 'ask',
     agentToolApproval: '',
+    agentToolTrace: '',
   });
   return (
     <header className={styles.agentPanelHeader} data-parity="agent-panel-header">

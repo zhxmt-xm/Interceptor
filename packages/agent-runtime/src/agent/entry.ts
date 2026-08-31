@@ -1,11 +1,14 @@
 import type {
   AgentExecutionMode,
   AgentMessage,
+  AgentRunEvent,
   AgentResumeOptions,
   AgentRunInput,
   AgentRunResult,
   AgentSuspendedRunResult,
   AgentTool,
+  AgentToolSource,
+  AgentToolSourceSnapshot,
   AgentWarning,
   ModelAdapter,
   ModelRequest,
@@ -13,6 +16,7 @@ import type {
   ModelStreamEvent,
   ModelToolCall,
   ModelUsage,
+  ToolExecutionResult,
   ToolMessage,
 } from '../interfaces';
 import { ModelCallError } from '../models/errors';
@@ -36,10 +40,10 @@ export const DEFAULT_AGENT_EXECUTION_MODE: AgentExecutionMode = Object.freeze({
  */
 export interface AgentRunLoopOptions {
   model: ModelAdapter;
-  tools: readonly AgentTool[];
+  toolSource: AgentToolSource;
   executionMode?: AgentExecutionMode;
   modelRetryPolicy?: ModelRetryPolicy;
-  onModelStreamEvent?: (event: ModelStreamEvent) => void | Promise<void>;
+  onRunEvent?: (event: AgentRunEvent) => void | Promise<void>;
 }
 
 /**
@@ -90,14 +94,12 @@ export class AgentRunLoop {
   readonly executionMode: AgentExecutionMode;
   /** Model adapter used for every model attempt. / 每次模型 attempt 使用的适配器。 */
   readonly #model: ModelAdapter;
-  /** Tool implementations indexed by their model-visible names. / 按模型可见名称索引的 Tool 实现。 */
-  readonly #tools: ReadonlyMap<string, AgentTool>;
-  /** Stable descriptor list sent to the model. / 发送给模型的稳定 descriptor 列表。 */
-  readonly #toolDescriptors: readonly AgentTool['descriptor'][];
+  /** Resolves current Tool exposure for every request and execution. / 为每次请求和执行解析当前Tool暴露状态。 */
+  readonly #toolSource: AgentToolSource;
   /** Optional policy for replay-safe transient model failures. / 用于 replay-safe 瞬时模型故障的可选策略。 */
   readonly #modelRetryPolicy: ModelRetryPolicy | undefined;
   /** Ordered observer used by the persistent Session owner. / 持久Session owner使用的有序观察者。 */
-  readonly #onModelStreamEvent: ((event: ModelStreamEvent) => void | Promise<void>) | undefined;
+  readonly #onRunEvent: ((event: AgentRunEvent) => void | Promise<void>) | undefined;
 
   /**
    * Validates configuration once and snapshots the Tool registry.
@@ -114,17 +116,8 @@ export class AgentRunLoop {
       throw new RangeError('modelRetryPolicy.maxRetries must be a non-negative integer.');
     }
     this.#modelRetryPolicy = options.modelRetryPolicy;
-    this.#onModelStreamEvent = options.onModelStreamEvent;
-
-    const tools = new Map<string, AgentTool>();
-    for (const tool of options.tools) {
-      if (tools.has(tool.descriptor.name)) {
-        throw new Error(`Duplicate tool "${tool.descriptor.name}".`);
-      }
-      tools.set(tool.descriptor.name, tool);
-    }
-    this.#tools = tools;
-    this.#toolDescriptors = [...tools.values()].map((tool) => tool.descriptor);
+    this.#onRunEvent = options.onRunEvent;
+    this.#toolSource = options.toolSource;
   }
 
   /**
@@ -179,16 +172,28 @@ export class AgentRunLoop {
 
     while (true) {
       progress.abortSignal.throwIfAborted();
+      const toolSnapshot = this.#toolSnapshot(progress.messages);
+      const disclosedToolNames = new Set(
+        toolSnapshot.tools.map((tool) => tool.descriptor.name),
+      );
+      const requestMessages = [
+        ...toolSnapshot.systemMessages.map((message) => structuredClone(message)),
+        ...progress.messages,
+      ];
+      const toolDescriptors = toolSnapshot.tools.map((tool) => tool.descriptor);
+      const maxOutputTokens = this.#requestMaxOutputTokens(
+        requestMessages,
+        toolDescriptors,
+        progress.maxOutputTokens,
+      );
+      await this.#onRunEvent?.({ type: 'model-call-started', maxOutputTokens });
       // One Step is one complete model response plus all Tool calls it requested.
       // 一个 Step 包含一次完整模型响应及其请求的全部 Tool 调用。
       const response = await this.#requestModelWithRetry(
         {
-          messages: [...progress.messages],
-          tools: this.#toolDescriptors,
-          maxOutputTokens: this.#requestMaxOutputTokens(
-            progress.messages,
-            progress.maxOutputTokens,
-          ),
+          messages: requestMessages,
+          tools: toolDescriptors,
+          maxOutputTokens,
         },
         progress.abortSignal,
       );
@@ -224,8 +229,17 @@ export class AgentRunLoop {
           });
         }
         progress.previousToolCall = { id: toolCall.id, signature };
-        const toolMessage = await this.#executeTool(toolCall, progress.abortSignal);
-        progress.abortSignal.throwIfAborted();
+        const { message: toolMessage, result: toolResult } = await this.#executeTool(
+          toolCall,
+          progress.messages,
+          disclosedToolNames,
+          progress.abortSignal,
+        );
+        await this.#onRunEvent?.({
+          type: 'tool-result',
+          toolCall: structuredClone(toolCall),
+          result: structuredClone(toolResult),
+        });
         progress.messages.push(toolMessage);
       }
 
@@ -307,7 +321,7 @@ export class AgentRunLoop {
       if (completed) {
         throw new ModelProtocolError('Model stream emitted an event after response-completed.');
       }
-      await this.#onModelStreamEvent?.(event);
+      await this.#onRunEvent?.(event);
       switch (event.type) {
         case 'text-delta':
           content += event.delta;
@@ -345,6 +359,7 @@ export class AgentRunLoop {
 
   #requestMaxOutputTokens(
     messages: readonly AgentMessage[],
+    toolDescriptors: readonly AgentTool['descriptor'][],
     requestedMaximum: number | undefined,
   ): number {
     const estimatedInputTokens = messages.reduce((total, message) => {
@@ -356,9 +371,9 @@ export class AgentRunLoop {
           ? Buffer.byteLength(message.content) + Buffer.byteLength(message.name)
           : Buffer.byteLength(message.content);
       return total + contentBytes + 64;
-    }, this.#toolDescriptors.length === 0
+    }, toolDescriptors.length === 0
       ? 0
-      : Buffer.byteLength(JSON.stringify(this.#toolDescriptors)));
+      : Buffer.byteLength(JSON.stringify(toolDescriptors)));
     const remainingContextTokens = this.#model.capabilities.contextWindowTokens
       - estimatedInputTokens;
     if (remainingContextTokens <= 0) {
@@ -377,9 +392,14 @@ export class AgentRunLoop {
    */
   async #executeTool(
     toolCall: ModelToolCall,
+    messages: readonly AgentMessage[],
+    disclosedToolNames: ReadonlySet<string>,
     abortSignal: AbortSignal,
-  ): Promise<ToolMessage> {
-    const tool = this.#tools.get(toolCall.name);
+  ): Promise<{ message: ToolMessage; result: ToolExecutionResult }> {
+    const tool = disclosedToolNames.has(toolCall.name)
+      ? this.#toolSnapshot(messages).tools
+        .find((candidate) => candidate.descriptor.name === toolCall.name)
+      : undefined;
     const result = tool === undefined
       ? {
           ok: false as const,
@@ -391,11 +411,27 @@ export class AgentRunLoop {
       : await tool.execute(toolCall.arguments, { abortSignal });
 
     return {
-      role: 'tool',
-      toolCallId: toolCall.id,
-      name: toolCall.name,
-      content: JSON.stringify(result),
+      result,
+      message: {
+        role: 'tool',
+        toolCallId: toolCall.id,
+        name: toolCall.name,
+        content: JSON.stringify(result),
+      },
     };
+  }
+
+  /** Validates one dynamic Tool snapshot before it reaches a Model or executor. */
+  #toolSnapshot(messages: readonly AgentMessage[]): AgentToolSourceSnapshot {
+    const snapshot = this.#toolSource.snapshot(messages);
+    const names = new Set<string>();
+    for (const tool of snapshot.tools) {
+      if (names.has(tool.descriptor.name)) {
+        throw new Error(`Duplicate tool "${tool.descriptor.name}".`);
+      }
+      names.add(tool.descriptor.name);
+    }
+    return snapshot;
   }
 }
 

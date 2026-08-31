@@ -18,7 +18,6 @@ import { AgentProviderRecordCorruptionError } from './internal/errors';
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CONTEXT_WINDOW_TOKENS = 1_000_000;
 const DEEPSEEK_MAXIMUM_OUTPUT_TOKENS = 384_000;
-const PROVIDER_RECORD_VERSION = 1;
 const MAX_PROVIDER_RECORD_BYTES = 256 * 1024;
 const PROVIDER_CONNECTION_TEST_TIMEOUT_MS = 15_000;
 const PROVIDER_CONNECTION_TEST_MAX_OUTPUT_TOKENS = 8;
@@ -85,7 +84,6 @@ const storedProviderSchema = z.object({
 }).strict();
 
 const providerRecordSchema = z.object({
-  version: z.literal(PROVIDER_RECORD_VERSION),
   defaultProviderId: z.string().min(1).nullable(),
   providers: z.array(storedProviderSchema),
 }).strict().superRefine((record, context) => {
@@ -301,7 +299,6 @@ export class AgentProviderRegistry {
         throw new Error('Provider verification is missing or expired.');
       }
       const previousRecord: ProviderRecord = {
-        version: PROVIDER_RECORD_VERSION,
         defaultProviderId: this.#defaultProviderId,
         providers: this.#providers.map((provider) => ({ ...provider })),
       };
@@ -316,7 +313,6 @@ export class AgentProviderRegistry {
       }
       const defaultProviderId = this.#defaultProviderId ?? verification.provider.providerId;
       await this.#writeRecord({
-        version: PROVIDER_RECORD_VERSION,
         defaultProviderId,
         providers,
       });
@@ -357,7 +353,6 @@ export class AgentProviderRegistry {
         throw new Error('Agent Provider does not exist.');
       }
       await this.#writeRecord({
-        version: PROVIDER_RECORD_VERSION,
         defaultProviderId: providerId,
         providers: this.#providers,
       });
@@ -383,7 +378,6 @@ export class AgentProviderRegistry {
         ? providers[0]?.providerId ?? null
         : this.#defaultProviderId;
       await this.#writeRecord({
-        version: PROVIDER_RECORD_VERSION,
         defaultProviderId,
         providers,
       });

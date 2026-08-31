@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-08-29
+> 最后更新：2026-08-31
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 0 Runtime基础层与阶段 1持久化Chat已完成；业务Tool按后续阶段接入。**
+> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat和首个Traffic query Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
 
 ## 术语与关系
 
@@ -316,9 +316,9 @@ flowchart LR
 | Renderer | 全局 Agent toggle、右侧Panel、Chat selector、Transcript、Composer、Context Window Usage 与 Settings > Agent；不运行Agent Loop |
 
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
-数据目录、`AgentSecureStore`、注入的 Tool 数组和可选 `fetcher`。Main 创建一次长期存活的 `agentRuntime`，
-所有 IPC 只转发语义单一的 intent。当前 Desktop 明确传入 `tools: []`。下一阶段由共享 registry 产生已开启
-Tool，并由 Main 提供复用正式产品命令的执行函数，不把通用 Core bridge 暴露给 Model 或 Renderer。
+数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
+所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
+Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。本阶段source只接入三个Traffic query Tool。
 
 ## 6. Session History
 
@@ -959,7 +959,7 @@ Usage detail 同时提供两个层级：
 interface AgentRuntimeOptions {
   readonly dataDirectory: string;
   readonly secureStore: AgentSecureStore;
-  readonly tools: readonly AgentTool[];
+  readonly toolSource: AgentToolSource;
   readonly fetcher?: typeof fetch;
   readonly createId?: () => string;
   readonly providerConnectionTestTimeoutMs?: number;
@@ -993,15 +993,19 @@ class AgentRuntime {
 }
 ```
 
-Runtime 内部驱动 Streaming `ModelAdapter`，把 text delta、Usage 和状态变化转成 Provider-neutral event，
-并自行维护 Store、Context 和 Session aggregate。底层 RunLoop 已支持注入 Tool 的循环，但 Desktop 当前注入
-空数组，因此产品中没有业务 Tool Call/Result。第一版使用原生 `fetch` 实现 DeepSeek SSE，不引入完整 Agent SDK。
+Runtime内部驱动Streaming `ModelAdapter`，把text delta、Usage和状态变化转成Provider-neutral event，
+并自行维护Store、Context和Session aggregate。`AgentToolSource.snapshot()`在每次Model Call以及业务Tool执行前
+重新求值，Settings关闭项无需重建Runtime即可生效。第一版使用原生`fetch`实现DeepSeek SSE，不引入完整Agent SDK。
 
 运行不变量：
 
 - 输入 History 与 Runtime event 都是 append-only；
-- 当前 Desktop Model request 不携带业务 Tool schema；
-- 下一阶段初始 request 只携带已开启能力的索引和 `discover_tools`，完整 Tool schema 按需披露；
+- 初始request只携带已开启能力的索引和常驻`discover_tools`，不携带业务Tool schema；
+- `discover_tools({ capabilityId, query? })`复用共享Catalog的deterministic discovery，结果返回匹配descriptor；
+- 成功discovery后，匹配且仍启用的业务schema从下一次Model Call开始披露；披露集合由当前Session已持久化的
+  `discover_tools` Call/Result轨迹推导，不增加独立影子字段，也不跨Session继承；
+- 每次Model Call重新读取source snapshot，关闭的已披露Tool立即从后续request消失；业务Tool执行前再次读取
+  snapshot，关闭或未披露的名称统一返回`unknown_tool`且不调用产品入口；已进入executor的调用按开始快照完成；
 - Tool arguments 始终按 `unknown` 处理，通过 descriptor 的边界解析后才能执行；
 - Model 只能提出 Tool Call；Tool 是否注册由 Settings 开关决定，改动 Tool 是否直接执行由当前 `ask` / `auto` 决定；
 - 调用方取消后不再发起新的 Model 或 Tool 调用；
@@ -1129,7 +1133,8 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
 - `Tool capabilities`始终显示在模型配置之后，即使尚未配置Provider；目录从Main返回的共享registry投影渲染，
   四个Settings展示组不改变Model使用的五个Capability。搜索只过滤当前可见行，不改写Agent/MCP开关。
 - 每行Agent与MCP开关分别调用`disableAgentTool` / `enableAgentTool`和`disableMcpTool` / `enableMcpTool`；
-  fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。当前阶段只保存授权状态，Agent仍使用空Tool数组。
+  fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。Agent当前将该授权状态用于三个Traffic query Tool
+  的Capability Index、discovery、schema与执行前检查；MCP Desktop接入仍待后续阶段。
 
 Provider 配置使用以下公开契约，API Key 不进入 snapshot：
 
@@ -1167,7 +1172,7 @@ type AgentCredentialChange =
   Save 只提交 `verificationId`，因此字段或凭据变化后旧 verification不能保存；发起新Test立即撤销旧verification并取消旧请求，
   Provider配置revision变化也会撤销verification。Test发送`max_tokens: 8`，有15秒attempt timeout与1MiB响应上限，
   Runtime stop会取消并等待在途Test清理；普通Model attempt另有32MiB流式响应上限；
-- Provider registry、default model ID 与 API Key 作为一个 versioned record 经 `safeStorage` 加密并原子替换
+- Provider registry、default model ID 与 API Key 作为一个当前固定schema的record经`safeStorage`加密并原子替换
   `<userData>/agent/providers.enc`。所有Save/default/remove mutation在Runtime内串行，Renderer snapshot只含
   `credentialConfigured`和`credentialLastFour`；读写使用同一256KiB密文上限，瞬时文件系统或无法分类的解密错误
   保留已有密文并让启动失败，只有确定损坏的record才清理；secureStorage暂不可用时保留已有密文、阻断空基线修改，
@@ -1250,7 +1255,25 @@ apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 
 `packages/interceptor-tools/`已拥有transport-neutral Capability Index、deterministic discovery与24项共享Tool
 的descriptor、schema、参数边界、脱敏和Core executor。`packages/mcp-server/`只保留认证、审批、审计、并发/
-结果上限和协议适配。内置Agent尚未消费该registry，Desktop仍传入`tools: []`。
+结果上限和协议适配。内置Agent首个纵向flow只接入`get_proxy_status`、`list_exchanges`和`get_exchange`；
+`discover_tools`属于Runtime控制面，不计入24项业务目录，也不受单项Settings开关控制。
+
+`AgentToolSource`是Runtime与Main之间的唯一动态契约：
+
+```ts
+interface AgentToolSource {
+  snapshot(messages: readonly AgentMessage[]): AgentToolSourceSnapshot;
+}
+
+interface AgentToolSourceSnapshot {
+  readonly systemMessages: readonly SystemMessage[];
+  readonly tools: readonly AgentTool[];
+}
+```
+
+Main的`AgentToolService`固定当前产品接入集合为三个Traffic query Tool，启动时断言名称齐全且类型为query；
+它用`ToolCapabilitySettingsService`过滤Agent关闭项，用同一registry建立Catalog，并把executor的host收敛到
+`CoreRuntime.request(command, { abortSignal })`。不向Runtime、Model或Renderer暴露通用Core client。
 
 抓包正文是完全不可信的数据，可能包含 Prompt Injection。Tool Gateway 必须区分“Model 请求了什么”和
 “用户允许什么”，但不维护永久能力 denylist。内置Agent按Session、MCP按Client选择执行模式：
@@ -1316,13 +1339,16 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
 - `design-vite`已完成Settings能力列表、Agent/MCP双开关、会话级`Ask/Auto`与Transcript内联问询卡；
 - [已完成] 将现有 MCP Tool 的通用 descriptor、schema 和执行函数迁入 `packages/interceptor-tools/`；
-- `Settings > Agent`从registry的Settings投影渲染Agent/MCP两个默认开启的独立开关；Main只持久化关闭项，
-  提供四条正反语义独立的mutation intent，本阶段不接Agent/MCP执行过滤；
-- 接入 Capability Index 与 `discover_tools`，只披露对应入口已开启的 Tool；
-- 首个产品纵向流程实现 `get_proxy_status`、`list_exchanges`、`get_exchange`；
-- Transcript 显示 Tool Call、参数与结果摘要；
+- [已完成] `Settings > Agent`从registry的Settings投影渲染Agent/MCP两个默认开启的独立开关；Main只持久化关闭项，
+  提供四条正反语义独立的mutation intent；
+- [已完成] 接入动态`AgentToolSource`、Capability Index与`discover_tools`，只披露Agent入口已开启且本Session已发现的Tool；
+- [已完成] 首个产品纵向流程实现 `get_proxy_status`、`list_exchanges`、`get_exchange`；
+- [已完成] Session按顺序持久化assistant Tool Call与Tool Result，Provider history保持call ID配对；Transcript显示Tool名称、
+  参数与query结果摘要，重启后恢复同一轨迹；
 - 列表通过 summary → detail 渐进披露；分页只服务传输与 Context，提供完整遍历能力；
 - 真实 E2E 先由产品 UI 产生流量，再让 Agent 查询，不 seed Capture。
+- `agent.tools.traffic-discovery`已取得实现前公开Tool活动为空的有效Red，并在当前源码`1/1` Green；两代
+  Main/Core PID为`4452/16276`与`31948/37416`，均`gracefulDestroyVerified=true`且释放8888。
 
 ### [阶段 3] 正文分析与数据外发控制
 
@@ -1408,14 +1434,15 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - `AgentRuntime` 已支持显式注入的有限 transient retry policy：默认零重试，只重放 safe 的 rate limit、server 和
   network failure，遵守 `Retry-After` 或使用 capped exponential backoff + full jitter，退避可取消且不重复已完成 Tool；
   DeepSeek / Custom Provider已接入产品，但尚未设置非零production retry或attempt timeout policy；
-- 当前Runtime尚未把Tool Catalog改为Capability → discovery → schema渐进披露；运行时仍一次性接收注入的Tool descriptor；
+- Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
-  参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent仍未注册
-  `discover_tools`，Main仍注入空Tool数组；
+  参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
+  `discover_tools`并接入三个Traffic query Tool；
 - `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
-  UI文案已接入。该状态尚未应用到Agent执行或MCP transport；
+  UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP transport仍未接Desktop；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
-  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前产品不包含业务Tool；
-  Settings开关持久化已完成，下一work item从三个基础Traffic查询Tool开始接入Agent。
+  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含三个基础Traffic
+  query Tool；`agent.tools.traffic-discovery`另以真实8888流量、渐进schema、禁用/恢复和跨重启零重放完成验收。
+  下一work item接入会话级`ask`/`auto`和change Tool问询。

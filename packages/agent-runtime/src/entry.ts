@@ -13,7 +13,8 @@ import type {
   AgentSessionsSnapshot,
   AgentTurnSnapshot,
   AgentTool,
-  ModelStreamEvent,
+  AgentToolSource,
+  AgentRunEvent,
 } from './interfaces';
 import { AgentRunLoop } from './agent/entry';
 import type { ModelRetryPolicy } from './models/retry';
@@ -24,7 +25,7 @@ import { AgentSessionService } from './sessions/entry';
 export interface AgentRuntimeOptions {
   readonly dataDirectory: string;
   readonly secureStore: AgentSecureStore;
-  readonly tools: readonly AgentTool[];
+  readonly toolSource: AgentToolSource;
   readonly fetcher?: typeof fetch;
   readonly createId?: () => string;
   readonly providerConnectionTestTimeoutMs?: number;
@@ -37,7 +38,7 @@ export interface AgentRuntimeOptions {
 export class AgentRuntime {
   readonly #providerRegistry: AgentProviderRegistry;
   readonly #sessionService: AgentSessionService;
-  readonly #tools: readonly AgentTool[];
+  readonly #toolSource: AgentToolSource;
   readonly #executionMode: AgentExecutionMode | undefined;
   readonly #modelRetryPolicy: ModelRetryPolicy | undefined;
   #lifecycleTail: Promise<void> = Promise.resolve();
@@ -55,7 +56,7 @@ export class AgentRuntime {
         ? {}
         : { connectionTestTimeoutMs: options.providerConnectionTestTimeoutMs }),
     });
-    this.#tools = [...options.tools];
+    this.#toolSource = options.toolSource;
     this.#executionMode = options.executionMode;
     this.#modelRetryPolicy = options.modelRetryPolicy;
     this.#sessionService = new AgentSessionService({
@@ -194,14 +195,14 @@ export class AgentRuntime {
 
   #createRunLoop(
     providerId: string,
-    onModelStreamEvent?: (event: ModelStreamEvent) => void | Promise<void>,
+    onRunEvent?: (event: AgentRunEvent) => void | Promise<void>,
   ): AgentRunLoop {
     return new AgentRunLoop({
       model: this.#providerRegistry.modelAdapter(providerId),
-      tools: this.#tools,
+      toolSource: this.#toolSource,
       ...(this.#executionMode === undefined ? {} : { executionMode: this.#executionMode }),
       ...(this.#modelRetryPolicy === undefined ? {} : { modelRetryPolicy: this.#modelRetryPolicy }),
-      ...(onModelStreamEvent === undefined ? {} : { onModelStreamEvent }),
+      ...(onRunEvent === undefined ? {} : { onRunEvent }),
     });
   }
 

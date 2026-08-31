@@ -1,0 +1,105 @@
+.toolTrace {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--filter);
+}
+
+.toolTraceHeader {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.toolTraceHeader > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolTraceHeader svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.toolTraceHeader strong {
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.toolTraceHeader small {
+  color: var(--text-3);
+  font-size: 9px;
+}
+
+.toolTrace ol {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.toolTrace li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.toolTrace li:last-child {
+  border-bottom: 0;
+}
+
+.toolTraceStatus {
+  display: grid;
+  height: 15px;
+  place-items: center;
+}
+
+.toolTraceStatus svg {
+  width: 11px;
+  height: 11px;
+  color: var(--green);
+}
+
+.toolTraceCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toolTraceCopy > code {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolTraceCopy > span {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 5px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 9px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolTraceCopy b {
+  color: var(--text-2);
+  font-weight: 600;
+}

@@ -1,6 +1,7 @@
 import type {
   AgentContextUsage,
   AgentMessage,
+  AgentRunEvent,
   AgentModelsSnapshot,
   AgentRuntimeEvent,
   AgentRuntimeEventListener,
@@ -12,7 +13,6 @@ import type {
   AgentTranscriptItem,
   AgentTurnSnapshot,
   ModelUsage,
-  ModelStreamEvent,
 } from '../interfaces';
 import type { AgentRunLoop } from '../agent/entry';
 import { AgentSessionStore } from './internal/session-store';
@@ -21,6 +21,7 @@ import type {
   StoredAgentAssistantItem,
   StoredAgentModelCall,
   StoredAgentSession,
+  StoredAgentToolCallItem,
   StoredAgentTurn,
 } from './interfaces';
 
@@ -36,6 +37,8 @@ interface AgentTurnStreamBuffer {
   readonly turn: AgentTurnSnapshot;
   readonly abortController: AbortController;
   readonly contextPlan: AgentTurnContextPlan;
+  currentAssistantItemId: string | null;
+  currentMaxOutputTokens: number;
   text: string;
   reasoning: string;
   usage: ModelUsage | null;
@@ -76,7 +79,7 @@ export interface AgentSessionServiceOptions {
   readonly getModels: () => AgentModelsSnapshot;
   readonly createRunLoop: (
     providerId: string,
-    onModelStreamEvent: (event: ModelStreamEvent) => Promise<void>,
+    onRunEvent: (event: AgentRunEvent) => Promise<void>,
   ) => AgentRunLoop;
 }
 
@@ -201,7 +204,6 @@ export class AgentSessionService {
     }
     const now = this.#now();
     const session: StoredAgentSession = {
-      version: 1,
       sessionId: this.#createId(),
       title: 'New chat',
       providerId,
@@ -398,11 +400,9 @@ export class AgentSessionService {
     const now = this.#now();
     const turnId = this.#createId();
     const userItemId = this.#createId();
-    const assistantItemId = this.#createId();
     const turn: AgentTurnSnapshot = {
       turnId,
       userItemId,
-      assistantItemId,
       status: 'running',
       retryOfTurnId: null,
       error: null,
@@ -426,15 +426,6 @@ export class AgentSessionService {
         itemId: userItemId,
         turnId,
         content,
-        createdAt: now,
-      });
-      session.items.push({
-        kind: 'assistant-message',
-        itemId: assistantItemId,
-        turnId,
-        content: '',
-        reasoningContent: '',
-        partial: true,
         createdAt: now,
       });
       session.turns.push(turn);
@@ -490,7 +481,6 @@ export class AgentSessionService {
     const retry: AgentTurnSnapshot = {
       turnId: this.#createId(),
       userItemId: original.userItemId,
-      assistantItemId: this.#createId(),
       status: 'running',
       retryOfTurnId: original.turnId,
       error: null,
@@ -509,15 +499,6 @@ export class AgentSessionService {
       (event) => this.#recordModelEvent(streamBuffer, event),
     );
     this.#commit(session.sessionId, retry.turnId, (next) => {
-      next.items.push({
-        kind: 'assistant-message',
-        itemId: retry.assistantItemId,
-        turnId: retry.turnId,
-        content: '',
-        reasoningContent: '',
-        partial: true,
-        createdAt: now,
-      });
       next.turns.push(retry);
       next.contextUsage = {
         contextWindowTokens: contextPlan.contextWindowTokens,
@@ -581,7 +562,6 @@ export class AgentSessionService {
     streamBuffer: AgentTurnStreamBuffer,
   ): Promise<void> {
     try {
-      const session = this.#requireSession(sessionId);
       const result = await runLoop.run({
         messages: contextPlan.messages,
         maxOutputTokens: contextPlan.requestedOutputTokens,
@@ -595,8 +575,6 @@ export class AgentSessionService {
         const nextTurn = this.#mutableTurn(next, turn.turnId);
         nextTurn.status = 'completed';
         nextTurn.updatedAt = this.#now();
-        const assistant = this.#mutableAssistant(next, turn.assistantItemId);
-        assistant.partial = false;
       });
     } catch (error) {
       const cancelled = abortController.signal.reason instanceof DOMException
@@ -620,16 +598,29 @@ export class AgentSessionService {
   /** Persist each visible text/reasoning delta before broadcasting it. */
   async #recordModelEvent(
     streamBuffer: AgentTurnStreamBuffer,
-    event: ModelStreamEvent,
+    event: AgentRunEvent,
   ): Promise<void> {
+    if (event.type === 'model-call-started') {
+      this.#startModelCall(streamBuffer, event.maxOutputTokens);
+      return;
+    }
     if (event.type === 'response-completed') {
       this.#flushStreamBuffer(streamBuffer);
       this.#recordCompletedModelCall(streamBuffer);
+      streamBuffer.currentAssistantItemId = null;
       streamBuffer.usage = null;
       return;
     }
     if (event.type === 'usage') {
       streamBuffer.usage = { ...event.usage };
+      return;
+    }
+    if (event.type === 'tool-call') {
+      this.#recordToolCall(streamBuffer, event.toolCall);
+      return;
+    }
+    if (event.type === 'tool-result') {
+      this.#recordToolResult(streamBuffer, event.toolCall, event.result);
       return;
     }
     if (event.type !== 'text-delta' && event.type !== 'reasoning-delta') return;
@@ -662,6 +653,8 @@ export class AgentSessionService {
       turn,
       abortController,
       contextPlan,
+      currentAssistantItemId: null,
+      currentMaxOutputTokens: contextPlan.requestedOutputTokens,
       text: '',
       reasoning: '',
       usage: null,
@@ -669,11 +662,91 @@ export class AgentSessionService {
     };
   }
 
+  /** Persist the assistant item owned by one new Model Call. */
+  #startModelCall(streamBuffer: AgentTurnStreamBuffer, maxOutputTokens: number): void {
+    if (streamBuffer.currentAssistantItemId !== null) {
+      throw new Error('Agent Model Call started before the previous response completed.');
+    }
+    const assistantItemId = this.#createId();
+    const createdAt = this.#now();
+    this.#commit(streamBuffer.sessionId, streamBuffer.turn.turnId, (session) => {
+      session.items.push({
+        kind: 'assistant-message',
+        itemId: assistantItemId,
+        turnId: streamBuffer.turn.turnId,
+        content: '',
+        reasoningContent: '',
+        partial: true,
+        createdAt,
+      });
+    });
+    streamBuffer.currentAssistantItemId = assistantItemId;
+    streamBuffer.currentMaxOutputTokens = maxOutputTokens;
+  }
+
+  /** Persist one model-authored Tool Call after any preceding assistant text. */
+  #recordToolCall(
+    streamBuffer: AgentTurnStreamBuffer,
+    toolCall: Extract<AgentRunEvent, { type: 'tool-call' }>['toolCall'],
+  ): void {
+    this.#flushStreamBuffer(streamBuffer);
+    this.#requireCurrentAssistantItemId(streamBuffer);
+    const createdAt = this.#now();
+    this.#commit(streamBuffer.sessionId, streamBuffer.turn.turnId, (session) => {
+      if (session.items.some((item) =>
+        item.kind === 'tool-call'
+        && item.turnId === streamBuffer.turn.turnId
+        && item.callId === toolCall.id)) {
+        throw new Error(`Agent Tool Call "${toolCall.id}" already exists.`);
+      }
+      session.items.push({
+        kind: 'tool-call',
+        itemId: this.#createId(),
+        turnId: streamBuffer.turn.turnId,
+        callId: toolCall.id,
+        name: toolCall.name,
+        arguments: structuredClone(toolCall.arguments),
+        status: 'running',
+        createdAt,
+      });
+    });
+  }
+
+  /** Complete one Tool Call and append its correlated durable result atomically. */
+  #recordToolResult(
+    streamBuffer: AgentTurnStreamBuffer,
+    toolCall: Extract<AgentRunEvent, { type: 'tool-result' }>['toolCall'],
+    result: Extract<AgentRunEvent, { type: 'tool-result' }>['result'],
+  ): void {
+    const createdAt = this.#now();
+    this.#commit(streamBuffer.sessionId, streamBuffer.turn.turnId, (session) => {
+      const call = session.items.find((item) =>
+        item.kind === 'tool-call'
+        && item.turnId === streamBuffer.turn.turnId
+        && item.callId === toolCall.id);
+      if (call?.kind !== 'tool-call' || call.status !== 'running') {
+        throw new Error(`Agent Tool Call "${toolCall.id}" is not running.`);
+      }
+      call.status = result.ok ? 'completed' : 'failed';
+      session.items.push({
+        kind: 'tool-result',
+        itemId: this.#createId(),
+        turnId: streamBuffer.turn.turnId,
+        callId: toolCall.id,
+        name: toolCall.name,
+        result: structuredClone(result),
+        createdAt,
+      });
+    });
+  }
+
   /** Persist one completed Model Call before the RunLoop starts any subsequent call. */
   #recordCompletedModelCall(streamBuffer: AgentTurnStreamBuffer): void {
     const usage = streamBuffer.usage;
     const contextPlan = streamBuffer.contextPlan;
+    const assistantItemId = this.#requireCurrentAssistantItemId(streamBuffer);
     this.#commit(streamBuffer.sessionId, streamBuffer.turn.turnId, (session) => {
+      this.#mutableAssistant(session, assistantItemId).partial = false;
       session.modelCalls.push({
         modelCallId: this.#createId(),
         turnId: streamBuffer.turn.turnId,
@@ -681,7 +754,7 @@ export class AgentSessionService {
         modelId: contextPlan.modelId,
         usage: usage === null ? {} : { ...usage },
         contextWindowTokens: contextPlan.contextWindowTokens,
-        maxOutputTokens: contextPlan.requestedOutputTokens,
+        maxOutputTokens: streamBuffer.currentMaxOutputTokens,
         createdAt: this.#now(),
       });
       const currentContextTokens = usage?.inputTokens ?? null;
@@ -691,7 +764,7 @@ export class AgentSessionService {
         remainingContextTokens: currentContextTokens === null
           ? null
           : Math.max(0, contextPlan.contextWindowTokens - currentContextTokens),
-        maxOutputTokens: contextPlan.requestedOutputTokens,
+        maxOutputTokens: streamBuffer.currentMaxOutputTokens,
         source: currentContextTokens === null ? 'unavailable' : 'provider',
       };
     });
@@ -706,14 +779,12 @@ export class AgentSessionService {
     const text = streamBuffer.text;
     const reasoning = streamBuffer.reasoning;
     if (text === '' && reasoning === '') return;
+    const assistantItemId = this.#requireCurrentAssistantItemId(streamBuffer);
     streamBuffer.text = '';
     streamBuffer.reasoning = '';
     try {
       const session = this.#requireSession(streamBuffer.sessionId);
-      const assistant = this.#mutableAssistant(
-        session,
-        streamBuffer.turn.assistantItemId,
-      );
+      const assistant = this.#mutableAssistant(session, assistantItemId);
       const updatedAt = this.#now();
       const sequence = session.sequence + 1;
       this.#sessionStore.appendAssistantDelta({
@@ -732,7 +803,7 @@ export class AgentSessionService {
         type: 'assistant-delta',
         sessionId: session.sessionId,
         turnId: streamBuffer.turn.turnId,
-        assistantItemId: streamBuffer.turn.assistantItemId,
+        assistantItemId,
         textDelta: text,
         reasoningDelta: reasoning,
         updatedAt,
@@ -743,6 +814,14 @@ export class AgentSessionService {
       streamBuffer.reasoning = reasoning + streamBuffer.reasoning;
       throw error;
     }
+  }
+
+  /** Require the assistant currently owned by the active Model Call. */
+  #requireCurrentAssistantItemId(streamBuffer: AgentTurnStreamBuffer): string {
+    if (streamBuffer.currentAssistantItemId === null) {
+      throw new Error('Agent Model event arrived without an active Model Call.');
+    }
+    return streamBuffer.currentAssistantItemId;
   }
 
   /** Apply one terminal Turn state to a mutable Session record. */
@@ -759,7 +838,15 @@ export class AgentSessionService {
       code: error instanceof Error ? error.name : 'AgentTurnError',
       message: error instanceof Error ? error.message : String(error),
     };
-    this.#mutableAssistant(session, turn.assistantItemId).partial = true;
+    this.#failRunningToolCalls(session, turn.turnId, cancelled
+      ? {
+          code: 'tool_cancelled',
+          message: 'Tool execution was cancelled before a result was recorded.',
+        }
+      : {
+          code: 'tool_failed',
+          message: 'Tool execution failed before a result was recorded.',
+        });
   }
 
   /** Settle in memory when storage is unavailable, without emitting a non-durable event. */
@@ -779,19 +866,54 @@ export class AgentSessionService {
   /** Build Provider-neutral history without incomplete assistant attempts. */
   #modelMessages(session: StoredAgentSession): AgentMessage[] {
     const messages: AgentMessage[] = [];
-    for (const item of session.items) {
+    const includedToolCallIds = new Set<string>();
+    for (let index = 0; index < session.items.length; index += 1) {
+      const item = session.items[index]!;
       if (item.kind === 'user-message') {
         messages.push({ role: 'user', content: item.content });
         continue;
       }
-      if (!item.partial) {
+      if (item.kind === 'assistant-message' && !item.partial) {
+        const toolCalls = [];
+        let nextIndex = index + 1;
+        while (nextIndex < session.items.length) {
+          const nextItem = session.items[nextIndex]!;
+          if (nextItem.kind !== 'tool-call' || nextItem.turnId !== item.turnId) break;
+          toolCalls.push(nextItem);
+          nextIndex += 1;
+        }
+        const resultCallIds = new Set<string>();
+        while (nextIndex < session.items.length) {
+          const nextItem = session.items[nextIndex]!;
+          if (nextItem.kind !== 'tool-result' || nextItem.turnId !== item.turnId) break;
+          resultCallIds.add(nextItem.callId);
+          nextIndex += 1;
+        }
+        if (toolCalls.some((toolCall) =>
+          toolCall.status === 'running' || !resultCallIds.has(toolCall.callId))) {
+          continue;
+        }
+        for (const toolCall of toolCalls) includedToolCallIds.add(toolCall.callId);
         messages.push({
           role: 'assistant',
           content: item.content,
           ...(item.reasoningContent === ''
             ? {}
             : { reasoningContent: item.reasoningContent }),
-          toolCalls: [],
+          toolCalls: toolCalls.map((toolCall) => ({
+            id: toolCall.callId,
+            name: toolCall.name,
+            arguments: structuredClone(toolCall.arguments),
+          })),
+        });
+        continue;
+      }
+      if (item.kind === 'tool-result' && includedToolCallIds.has(item.callId)) {
+        messages.push({
+          role: 'tool',
+          toolCallId: item.callId,
+          name: item.name,
+          content: JSON.stringify(item.result),
         });
       }
     }
@@ -974,11 +1096,37 @@ export class AgentSessionService {
         code: 'AgentTurnInterrupted',
         message: 'The application exited before this response completed.',
       };
-      this.#mutableAssistant(next, turn.assistantItemId).partial = true;
+      this.#failRunningToolCalls(next, turn.turnId, {
+        code: 'tool_interrupted',
+        message: 'The application exited before the Tool result was recorded.',
+      });
     }
     next.sequence += 1;
     next.updatedAt = now;
     return next;
+  }
+
+  /** Complete Tool protocol pairs locally when their Turn terminates before a Result. */
+  #failRunningToolCalls(
+    session: StoredAgentSession,
+    turnId: string,
+    error: { readonly code: string; readonly message: string },
+  ): void {
+    const calls = session.items.filter((item): item is StoredAgentToolCallItem => (
+      item.kind === 'tool-call' && item.turnId === turnId && item.status === 'running'
+    ));
+    for (const call of calls) {
+      call.status = 'failed';
+      session.items.push({
+        kind: 'tool-result',
+        itemId: this.#createId(),
+        turnId,
+        callId: call.callId,
+        name: call.name,
+        result: { ok: false, error: { ...error } },
+        createdAt: this.#now(),
+      });
+    }
   }
 
   /** Return one mutable Turn inside a cloned Session. */

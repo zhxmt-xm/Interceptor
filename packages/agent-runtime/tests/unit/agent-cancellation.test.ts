@@ -7,7 +7,7 @@ import {
   type ModelStreamEvent,
 } from '../../src';
 import { AgentRunLoop } from '../../src/agent/entry';
-import { TEST_MODEL_CAPABILITIES } from './model-fixtures';
+import { staticToolSource, TEST_MODEL_CAPABILITIES } from './model-fixtures';
 
 class CancellationModel implements ModelAdapter {
   readonly capabilities = TEST_MODEL_CAPABILITIES;
@@ -34,7 +34,7 @@ function completedResponse(content: string): AsyncIterable<ModelStreamEvent> {
 describe('AgentRuntime cancellation', () => {
   it('does not call the model when the run is already cancelled', async () => {
     const model = new CancellationModel(() => completedResponse('Unexpected.'));
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
     const abortController = new AbortController();
     const reason = new Error('User stopped the turn.');
     abortController.abort(reason);
@@ -54,7 +54,7 @@ describe('AgentRuntime cancellation', () => {
       yield { type: 'text-delta' as const, delta: 'Late response.' };
       yield { type: 'response-completed' as const };
     })());
-    const agentRuntime = new AgentRunLoop({ model, tools: [] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource() });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Stop during the model call.' }],
@@ -81,7 +81,7 @@ describe('AgentRuntime cancellation', () => {
       abortController.abort(reason);
       yield { type: 'response-completed' as const };
     })());
-    const agentRuntime = new AgentRunLoop({ model, tools: [tool] });
+    const agentRuntime = new AgentRunLoop({ model, toolSource: staticToolSource([tool]) });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Stop before the tool.' }],
@@ -103,6 +103,7 @@ describe('AgentRuntime cancellation', () => {
       inputSchema: z.object({}).strict(),
       execute,
     });
+    const onRunEvent = vi.fn();
     const model = new CancellationModel(() => (async function* stream() {
       yield {
         type: 'tool-call' as const,
@@ -110,7 +111,11 @@ describe('AgentRuntime cancellation', () => {
       };
       yield { type: 'response-completed' as const };
     })());
-    const agentRuntime = new AgentRunLoop({ model, tools: [tool] });
+    const agentRuntime = new AgentRunLoop({
+      model,
+      toolSource: staticToolSource([tool]),
+      onRunEvent,
+    });
 
     await expect(agentRuntime.run({
       messages: [{ role: 'user', content: 'Stop during the tool.' }],
@@ -118,5 +123,10 @@ describe('AgentRuntime cancellation', () => {
     })).rejects.toBe(reason);
     expect(execute).toHaveBeenCalledOnce();
     expect(model.requests).toHaveLength(1);
+    expect(onRunEvent).toHaveBeenCalledWith({
+      type: 'tool-result',
+      toolCall: { id: 'call-1', name: 'read_status', arguments: {} },
+      result: { ok: true, value: 'Late result.' },
+    });
   });
 });

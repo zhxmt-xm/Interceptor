@@ -49,7 +49,10 @@ import type {
   AgentRuntimeEvent,
   AgentSessionSnapshot,
   AgentSessionsSnapshot,
+  AgentTranscriptItem,
   AgentTurnSnapshot,
+  AgentToolCallTranscriptItem,
+  AgentToolResultTranscriptItem,
 } from '@interceptor/agent-runtime';
 import type { InterceptorToolSettingsGroup } from '@interceptor/tools';
 
@@ -68,6 +71,9 @@ export type {
   AgentRuntimeEvent,
   AgentSessionSnapshot,
   AgentSessionsSnapshot,
+  AgentTranscriptItem,
+  AgentToolCallTranscriptItem,
+  AgentToolResultTranscriptItem,
   AgentTurnSnapshot,
   InterceptorToolSettingsGroup,
   BreakpointEdit,

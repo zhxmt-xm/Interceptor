@@ -60,7 +60,6 @@ const secondSession: AgentSessionSnapshot = {
 const runningTurn: AgentTurnSnapshot = {
   turnId: 'turn-1',
   userItemId: 'user-1',
-  assistantItemId: 'assistant-1',
   status: 'running',
   retryOfTurnId: null,
   error: null,

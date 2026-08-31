@@ -116,7 +116,7 @@ class ProviderFixture {
       dataDirectory: this.root,
       fetcher: this.fetcher as typeof fetch,
       secureStore: this.secureStore,
-      tools: [],
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [] }) },
       createId: () => `id-${this.nextId++}`,
       ...options,
     };
@@ -181,6 +181,10 @@ describe('AgentRuntime Provider registry', () => {
     const encrypted = await readFile(path.join(fixture.root, 'providers.enc'));
     expect(encrypted.toString('utf8')).not.toContain('custom-secret-9K4Q');
     expect(encrypted.toString('utf8')).not.toContain('lab-model');
+    const providerRecord = JSON.parse(
+      fixture.secureStore.decryptString(encrypted),
+    ) as Record<string, unknown>;
+    expect(Object.keys(providerRecord).sort()).toEqual(['defaultProviderId', 'providers']);
   });
 
   it('omits Authorization for a Custom Provider with an explicit removed credential', async () => {
@@ -568,7 +572,7 @@ describe('AgentRuntime Provider registry', () => {
   it('clears malformed, oversized and symbolic-link Provider records on start', async () => {
     for (const arrange of [
       async (credentialPath: string, fixture: ProviderFixture) => {
-        await writeFile(credentialPath, fixture.secureStore.encryptString('{"version":99}'));
+        await writeFile(credentialPath, fixture.secureStore.encryptString('{"unexpected":true}'));
       },
       async (credentialPath: string) => {
         await writeFile(credentialPath, Buffer.alloc(256 * 1024 + 1));
@@ -580,7 +584,6 @@ describe('AgentRuntime Provider registry', () => {
       },
       async (credentialPath: string, fixture: ProviderFixture) => {
         await writeFile(credentialPath, fixture.secureStore.encryptString(JSON.stringify({
-          version: 1,
           defaultProviderId: 'remote-http',
           providers: [{
             providerId: 'remote-http',

@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './tests/packaged-smoke',
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
