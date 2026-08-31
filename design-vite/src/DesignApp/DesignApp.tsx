@@ -15,6 +15,9 @@ import { Settings } from '../features/Settings/Settings';
 import { AppContainerBulkDialog } from '../features/Settings/AppContainerBulkDialog';
 import { AgentProviderDialog } from '../features/Settings/AgentProviderDialog';
 import { AgentRemoveModelDialog } from '../features/Settings/AgentRemoveModelDialog';
+import { McpClientConfirmationDialog } from '../features/Settings/McpClientConfirmationDialog';
+import { McpClientDialog } from '../features/Settings/McpClientDialog';
+import { McpToolApprovalDialog } from '../features/Settings/McpToolApprovalDialog';
 import { FixtureRenderer, fixtureClassNames } from '../fixtures/FixtureRenderer';
 import { useDesignFixtureAdapter } from '../fixtures/useDesignFixtureAdapter';
 import { appAttributes } from '../fixtures/generated/appAttributes';
@@ -68,6 +71,9 @@ function DesignAppContent(): React.JSX.Element {
           <AppContainerBulkDialog />
           <AgentProviderDialog />
           <AgentRemoveModelDialog />
+          <McpClientDialog />
+          <McpClientConfirmationDialog />
+          <McpToolApprovalDialog />
           <RulesImportDialog />
           <ComposerImportDialog />
           <FileTransferBusyOverlay />

@@ -55,6 +55,10 @@ import type {
   AgentToolResultTranscriptItem,
 } from '@interceptor/agent-runtime';
 import type { InterceptorToolSettingsGroup } from '@interceptor/tools';
+import type {
+  McpApprovalRequest as McpServerApprovalRequest,
+  McpToolExecutionMode,
+} from '@interceptor/mcp-server';
 
 export {
   BODY_PREVIEW_MAX_BYTES,
@@ -123,6 +127,24 @@ export interface ToolCapabilitySettingsSnapshot {
   readonly agentDisabledToolNames: readonly string[];
   readonly mcpDisabledToolNames: readonly string[];
 }
+
+/** Renderer-safe MCP Client state; credentials never cross Preload. */
+export interface McpDesktopClientSummary {
+  readonly clientId: string;
+  readonly label: string;
+  readonly executionMode: McpToolExecutionMode;
+}
+
+/** Renderer-safe Desktop MCP listener state. */
+export interface McpDesktopStatus {
+  readonly state: 'disabled' | 'running' | 'endpoint-conflict';
+  readonly endpoint: string | null;
+  readonly detail: string | null;
+  readonly clients: readonly McpDesktopClientSummary[];
+}
+
+/** App-level change Tool approval request; contains no credential. */
+export type McpApprovalRequest = McpServerApprovalRequest;
 
 export type CoreProcessState =
   | 'stopped'
@@ -506,6 +528,21 @@ export const DESKTOP_IPC_CHANNELS = {
   agentToolEnable: 'tool-capabilities:agent-enable',
   mcpToolDisable: 'tool-capabilities:mcp-disable',
   mcpToolEnable: 'tool-capabilities:mcp-enable',
+  mcpStatusGet: 'mcp:status-get',
+  mcpServerEnable: 'mcp:server-enable',
+  mcpServerDisable: 'mcp:server-disable',
+  mcpEndpointChange: 'mcp:endpoint-change',
+  mcpClientCreate: 'mcp:client-create',
+  mcpClientCredentialRegenerate: 'mcp:client-credential-regenerate',
+  mcpClientRevoke: 'mcp:client-revoke',
+  mcpClientRequireApproval: 'mcp:client-require-approval',
+  mcpClientAutomaticallyExecuteTools: 'mcp:client-automatically-execute-tools',
+  mcpClientConfigurationCopy: 'mcp:client-configuration-copy',
+  mcpToolCallAllow: 'mcp:tool-call-allow',
+  mcpToolCallDeny: 'mcp:tool-call-deny',
+  mcpStatus: 'mcp:status-changed',
+  mcpApprovalRequest: 'mcp:approval-request',
+  mcpApprovalSettled: 'mcp:approval-settled',
   agentSessionsList: 'agent-sessions:list',
   agentSessionCreate: 'agent-session:create',
   agentSessionSelect: 'agent-session:select',
@@ -620,6 +657,21 @@ export interface InterceptorDesktopApi {
   enableAgentTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
   disableMcpTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
   enableMcpTool(toolName: string): Promise<ToolCapabilitySettingsSnapshot>;
+  getMcpStatus(): Promise<McpDesktopStatus>;
+  enableMcpServer(): Promise<McpDesktopStatus>;
+  disableMcpServer(): Promise<McpDesktopStatus>;
+  changeMcpEndpoint(): Promise<McpDesktopStatus>;
+  createMcpClient(label: string): Promise<McpDesktopStatus>;
+  regenerateMcpClientCredential(clientId: string): Promise<McpDesktopStatus>;
+  revokeMcpClient(clientId: string): Promise<McpDesktopStatus>;
+  requireMcpClientApproval(clientId: string): Promise<McpDesktopStatus>;
+  automaticallyExecuteMcpClientTools(clientId: string): Promise<McpDesktopStatus>;
+  copyMcpClientConfiguration(clientId: string): Promise<void>;
+  allowMcpToolCall(approvalId: string): Promise<void>;
+  denyMcpToolCall(approvalId: string): Promise<void>;
+  onMcpStatusChange(listener: (status: McpDesktopStatus) => void): () => void;
+  onMcpApprovalRequest(listener: (request: McpApprovalRequest) => void): () => void;
+  onMcpApprovalSettled(listener: (approvalId: string) => void): () => void;
   listAgentSessions(): Promise<AgentSessionsSnapshot>;
   createAgentSession(): Promise<AgentSessionSnapshot>;
   selectAgentSession(sessionId: string): Promise<AgentSessionSnapshot>;

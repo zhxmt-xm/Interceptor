@@ -129,6 +129,41 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
+    variant: 'settings-mcp-running',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', mcpServerState: 'running', mcpEndpointAssigned: true, mcpClientLabel: 'VS Code', mcpClientExecutionMode: 'ask' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-mcp-conflict',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', mcpServerState: 'conflict', mcpEndpointAssigned: true, mcpClientLabel: 'VS Code' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-mcp-add-client',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', mcpServerState: 'running', mcpEndpointAssigned: true, mcpClientDialog: 'add' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-mcp-regenerate',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', mcpServerState: 'running', mcpEndpointAssigned: true, mcpClientLabel: 'VS Code', mcpClientDialog: 'regenerate' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'mcp-tool-approval',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', mcpToolApproval: 'pending' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
     variant: 'settings-deepseek-dialog',
     appSize: { width: 1600, height: 900 },
     state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentProviderDialog: 'deepseek', agentProviderDialogMode: 'edit', agentProviderDialogTarget: 'deepseek' },
@@ -456,6 +491,14 @@ async function shoot(list) {
       agentToolSearch: '',
       agentDisabledTools: [],
       mcpDisabledTools: [],
+      mcpServerState: 'disabled',
+      mcpEndpointAssigned: false,
+      mcpClientLabel: '',
+      mcpClientExecutionMode: 'ask',
+      mcpClientDialog: '',
+      mcpConfigCopied: false,
+      mcpCredentialGeneration: 0,
+      mcpToolApproval: '',
     }));
     for (let depth = 0; depth < 2; depth += 1) {
       await page.keyboard.press('Escape');
@@ -550,6 +593,14 @@ async function shoot(list) {
       agentToolSearch: '',
       agentDisabledTools: [],
       mcpDisabledTools: [],
+      mcpServerState: 'disabled',
+      mcpEndpointAssigned: false,
+      mcpClientLabel: '',
+      mcpClientExecutionMode: 'ask',
+      mcpClientDialog: '',
+      mcpConfigCopied: false,
+      mcpCredentialGeneration: 0,
+      mcpToolApproval: '',
       bodyType: 'json',
       ctxmenu: '',
       boot: '',

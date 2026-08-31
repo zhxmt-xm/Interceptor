@@ -148,7 +148,8 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 ### 预期效果
 
 Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不影响，只决定对应入口是否注册Tool，不改写
-业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化，不替代业务Tool执行验收；MCP仍不接Desktop。
+业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化，不替代独立的Agent或MCP Tool执行验收；
+MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 
 ### Evidence
 

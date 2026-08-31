@@ -7,8 +7,17 @@ export interface McpClientIdentity {
   clientId: string;
   /** 可信：用户在 Settings 里为该接入起的名字。 */
   label: string;
-  /** 不可信：MCP initialize 自报的 clientInfo.name，仅供展示与审计。 */
-  reportedName?: string;
+}
+
+/** 已开启change Tool的Client级执行方式。 */
+export type McpToolExecutionMode = 'ask' | 'auto';
+
+/** 一次Tool调用从Main动态读取的授权快照。 */
+export interface McpToolCallAccess {
+  /** 当前允许该Client调用的共享Tool名称。 */
+  readonly enabledToolNames?: readonly string[];
+  /** change Tool是否逐次问询。 */
+  readonly executionMode?: McpToolExecutionMode;
 }
 
 /** 写工具的审批请求；宿主据此弹出确认 UI。 */
@@ -25,12 +34,14 @@ export interface McpApprovalRequest {
   destructive: boolean;
   /** 完整调用参数；审批 UI 必须原样展示，不得只给摘要。 */
   arguments: Readonly<Record<string, unknown>>;
+  /** Tool registry声明的真实影响。 */
+  effectDescription?: string;
   /** 仅 apply_rules 使用：待写入规则相对当前 RuleSet 的差异说明。 */
   diff?: readonly string[];
 }
 
-/** 审批裁决。超时与拒绝在语义上等价，但要分别记入审计。 */
-export type McpApprovalVerdict = 'approved' | 'rejected' | 'timeout';
+/** 审批裁决；拒绝、超时与生命周期取消分别进入审计。 */
+export type McpApprovalVerdict = 'approved' | 'rejected' | 'timeout' | 'cancelled';
 
 /** 写入 Diagnostics 的审计事件；失败不得阻塞工具调用。 */
 export interface McpAuditEvent {
@@ -44,6 +55,8 @@ export interface McpAuditEvent {
   verdict?: McpApprovalVerdict;
   /** 调用是否成功。 */
   ok?: boolean;
+  /** change Tool调用时采用的执行模式。 */
+  executionMode?: McpToolExecutionMode;
   /** 失败原因。 */
   message?: string;
 }
@@ -55,8 +68,11 @@ export interface McpAuditEvent {
 export interface McpHostBridge extends InterceptorToolHost {
   /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
   invoke<T extends CoreCommand>(command: T, abortSignal: AbortSignal): Promise<CoreResultForCommand<T>>;
-  /** 请求用户确认写工具。宿主负责展示、超时与窗口聚焦。 */
-  requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict>;
+  /** 请求用户确认写工具。宿主负责展示、超时、窗口聚焦与调用取消。 */
+  requestApproval(
+    request: McpApprovalRequest,
+    abortSignal: AbortSignal,
+  ): Promise<McpApprovalVerdict>;
   /** 记录审计事件。实现必须吞掉自身错误。 */
   record(event: McpAuditEvent): void;
 }
@@ -77,42 +93,7 @@ export interface McpToolCallOutcome {
   payload: unknown;
 }
 
-/** JSON-RPC 请求。 */
-export interface McpJsonRpcRequest {
-  jsonrpc: '2.0';
-  id: string | number;
-  method: string;
-  params?: unknown;
-}
-
-/** JSON-RPC 通知（无 id，不需要回复）。 */
-export interface McpJsonRpcNotification {
-  jsonrpc: '2.0';
-  method: string;
-  params?: unknown;
-}
-
-/** JSON-RPC 成功响应。 */
-export interface McpJsonRpcSuccess {
-  jsonrpc: '2.0';
-  id: string | number;
-  result: unknown;
-}
-
-/** JSON-RPC 错误响应。 */
-export interface McpJsonRpcFailure {
-  jsonrpc: '2.0';
-  id: string | number | null;
-  error: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
-}
-
-export type McpJsonRpcResponse = McpJsonRpcSuccess | McpJsonRpcFailure;
-
-/** 已注册的接入凭据。token 只存在于内存中。 */
+/** 已注册的接入凭据；Desktop宿主负责加密持久化。 */
 export interface McpClientRegistration {
   /** 可信客户端 ID。 */
   clientId: string;
@@ -120,10 +101,4 @@ export interface McpClientRegistration {
   label: string;
   /** 该接入的 bearer token 明文，仅在创建时返回一次。 */
   token: string;
-}
-
-/** 传给协议处理器的一次会话。 */
-export interface McpSessionOptions {
-  /** 已认证的身份。 */
-  identity: McpClientIdentity;
 }

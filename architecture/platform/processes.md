@@ -21,6 +21,8 @@ flowchart LR
     AGENT["AgentRuntime<br/>Provider · Session · Streaming · Usage"]
     AGENT_TOOLS["AgentToolService<br/>Capability Index · Discovery · Query execution"]
     AGENT_STORE["providers.enc + agent.sqlite<br/>safeStorage 加密"]
+    MCP["McpDesktopService<br/>Loopback HTTP · Auth · Approval"]
+    MCP_STORE["mcp-settings.enc<br/>safeStorage 加密"]
     TOOL_SETTINGS["ToolCapabilitySettingsService<br/>Registry projection · Agent/MCP disabled names"]
     TOOL_SETTINGS_STORE["tool-capabilities/settings.json<br/>只保存关闭项"]
     RUNTIME["5 CoreRuntime<br/>CoreProcess · Status · MessageChannel"]
@@ -30,6 +32,7 @@ flowchart LR
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Envelope Validation"]
   GITHUB["Private GitHub Releases<br/>OAuth · Metadata · MSI · DMG · ZIP"]
   MODEL_API["DeepSeek / OpenAI-compatible API<br/>Streaming Chat Completions"]
+  MCP_HOST["External MCP Host<br/>VS Code · Claude Desktop · Cursor"]
 
   subgraph CORE["Proxy Core UtilityProcess"]
     ENTRY["8 entry.cts<br/>Minimal Bootstrap · --data-dir"]
@@ -48,10 +51,14 @@ flowchart LR
   MAIN --> AGENT
   AGENT --> AGENT_STORE
   AGENT --> MODEL_API
+  MCP_HOST -->|"127.0.0.1:&lt;port&gt;/mcp<br/>Bearer · MCP 2026-07-28"| MCP
+  MAIN --> MCP --> MCP_STORE
   MAIN --> TOOL_SETTINGS --> TOOL_SETTINGS_STORE
   AGENT --> AGENT_TOOLS
   TOOL_SETTINGS --> AGENT_TOOLS
   AGENT_TOOLS -->|"query Tool command + AbortSignal"| RUNTIME
+  MCP -->|"enabled shared Tool + AbortSignal"| RUNTIME
+  TOOL_SETTINGS --> MCP
   MAIN --> RUNTIME --> ENTRY --> APPLICATION
   RUNTIME -. "parentPort: rpc-port transfer" .-> APPLICATION
   APPLICATION -. "parentPort: ready / heartbeat / stopped" .-> RUNTIME
@@ -86,7 +93,13 @@ Traffic query Tool（`get_proxy_status`、`list_exchanges`、`get_exchange`）�
 `ToolCapabilitySettingsService`是Main内全局Agent/MCP Tool开关owner，从`@interceptor/tools`的同一可执行registry
 投影四组Settings目录，只把两组关闭名称原子写入`<userData>/tool-capabilities/settings.json`。fresh profile与
 全开状态不保留文件；当前快照已驱动Agent Capability Index、discovery、schema与执行前检查，MCP `tools/list`
-仍未接Desktop。
+和`tools/call`也在每次请求前读取同一快照。
+
+`McpDesktopService`是Main内唯一外部MCP入口。用户显式开启后，它只在`127.0.0.1`创建独立高位端口的
+Streamable HTTP listener，不复用代理端口`8888`。每个Client的Bearer token、label与`ask` / `auto`经
+`safeStorage`整体加密；启停和app重启不轮换Token，只有用户手动重新生成或撤销才失效。Main逐请求认证、
+拒绝所有带`Origin`的浏览器请求，再通过`@interceptor/mcp-server`官方SDK handler与共享Tool registry执行；
+旧MCP协议请求被拒绝，不保留兼容路径。
 
 ## 2. 两条独立通道
 
@@ -165,6 +178,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
 | 24 | Agent Provider 与持久化 Chat | Renderer → Preload → Main → `AgentRuntime` → Model API | Provider Test/Save/Remove/default；Session Create/Select/Rename/Delete；Send/Stop/Retry；Streaming event | `desktop-api.ts`、`preload.ts`、`main.ts`、`packages/agent-runtime/`、Renderer `features/agent/` | Provider 与API Key整体加密，Session/Turn/Item/chunk/Usage写入`agent.sqlite`；Renderer按sequence合并Streaming，重启恢复且不重放请求 | Agent错误只结束目标Turn；退出先拒绝新IPC、排空已接受命令并取消Turn；Provider/Store启动失败走Desktop逐项清理，不跳过系统代理恢复 |
 | 25 | Agent Traffic Tool | `AgentRuntime` → `AgentToolService` → `CoreRuntime` | Capability Index、`discover_tools`、三个query、`stop_recording` | `packages/agent-runtime/src/agent/entry.ts`、`sessions/entry.ts`、`main/agent/entry.ts` | query直接执行；change按Session的`ask/auto`等待裁决或执行，Tool Result按call ID持久化并返回真实Core数据 | 未披露/已关闭Tool返回`unknown_tool`；Deny返回`tool_denied`；取消沿原`AbortSignal`进入Core RPC并补失败Result |
+| 26 | 外部MCP Tool | MCP Host → Main loopback HTTP → `McpDesktopService` → `CoreRuntime` | 当前MCP协议、Bearer、`tools/list`、`tools/call`、Client `ask/auto` | `main/mcp/`、`packages/mcp-server/`、Settings MCP组件 | 每次请求重读MCP Tool开关与Client模式；query直达，change按Ask/Auto执行正式命令 | 缺失/错误Token为401，带Origin为403，旧协议拒绝；停用、撤销、轮换或退出取消归属调用且不影响代理转发 |
 
 ## 5. 关键数据结构
 
@@ -182,6 +196,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | `TransferJobSnapshot` | `packages/core-protocol/src/messages.ts` | HAR/native 文件任务的有限公开状态；不含绝对路径 |
 | `ClientAppIdentity` | `packages/core-protocol/src/messages.ts` | 客户端应用身份（id/name/path）；随 `event-batch` 只到 Main，path 不进 Renderer，系统权限进程的 path 为空 |
 | `AgentModelsSnapshot` / `AgentSessionSnapshot` / `AgentRuntimeEvent` | `packages/agent-runtime/src/interfaces/index.ts`、`apps/desktop/src/shared/desktop-api.ts` | Renderer可见的脱敏Provider、持久Session快照与有序Streaming事件；API Key和密文不跨Preload |
+| `McpDesktopStatus` / `McpApprovalRequest` | `apps/desktop/src/shared/desktop-api.ts`、`packages/mcp-server/src/interfaces/index.ts` | Renderer可见的无凭据endpoint/Client状态与App级change Tool审批；Bearer token不跨Preload |
 
 ## 6. 扩展规则
 

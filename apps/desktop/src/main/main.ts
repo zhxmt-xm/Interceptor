@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain as electronIpcMain,
   safeStorage,
@@ -21,6 +22,7 @@ import type {
   UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
 import { AgentRuntime, type AgentRuntimeEvent } from '@interceptor/agent-runtime';
+import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
 
 import {
   DESKTOP_IPC_CHANNELS,
@@ -31,6 +33,7 @@ import {
   type CaptureStatus,
   type CoreProcessStatus,
   type GitHubAuthStatus,
+  type McpDesktopStatus,
   type SystemProxyStatus as DesktopSystemProxyStatus,
   type UpdateStatus,
   type BreakpointBodyFile,
@@ -69,6 +72,7 @@ import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
 import { toUpstreamAuthority } from './system-proxy/system-proxy-upstream';
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
+import { McpDesktopService } from './mcp/entry';
 import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
 import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
@@ -101,6 +105,11 @@ import {
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
+
+/** Validate one required string at the IPC boundary. */
+function assertString(value: unknown, field: string): asserts value is string {
+  if (typeof value !== 'string') throw new Error(`${field} is invalid.`);
+}
 
 // 采用 Chromium overlay 滚动条：滚动条悬浮在内容上、不占布局宽度，
 // 避免独立表头与虚拟滚动列表因滚动条占位产生的列错位。
@@ -138,6 +147,8 @@ class DesktopApplication {
   private agentToolService: AgentToolService | null = null;
   /** Global Agent/MCP Tool exposure settings owner. */
   private toolCapabilitySettingsService: ToolCapabilitySettingsService | null = null;
+  /** External Host MCP endpoint, Client credentials and approval owner. */
+  private mcpDesktopService: McpDesktopService | null = null;
   /** Stops Runtime Session event broadcasts before Agent shutdown. */
   private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Private GitHub release checker; downloads always remain user-controlled. */
@@ -205,6 +216,20 @@ class DesktopApplication {
       path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
     );
     await this.toolCapabilitySettingsService.start();
+    this.mcpDesktopService = new McpDesktopService({
+      appVersion: app.getVersion(),
+      coreRuntime: this.coreRuntime,
+      dataDirectory: path.join(app.getPath('userData'), 'mcp'),
+      secureStore: safeStorage,
+      toolCapabilitySettingsService: this.toolCapabilitySettingsService,
+      approvalRequested: (request) => this.broadcastMcpApprovalRequest(request),
+      approvalClosed: (approvalId) => this.broadcastMcpApprovalSettled(approvalId),
+      captureStatusChanged: (captureStatus) => this.broadcastCaptureStatus(captureStatus),
+      copyText: (value) => clipboard.writeText(value),
+      showAndFocusWindow: () => this.showAndFocusMainWindow(),
+      recordAudit: (event) => this.recordMcpAudit(event),
+    });
+    this.mcpDesktopService.onStatusChange((status) => this.broadcastMcpStatus(status));
     this.agentToolService = new AgentToolService(
       this.coreRuntime,
       this.toolCapabilitySettingsService,
@@ -324,6 +349,7 @@ class DesktopApplication {
     });
     this.coreRuntime.start();
     this.createMainWindow();
+    await this.mcpDesktopService.start();
     updateService.start();
   }
 
@@ -374,6 +400,7 @@ class DesktopApplication {
         },
         { name: 'update-service', stop: () => this.updateService?.stop() },
         { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
+        { name: 'mcp-desktop', stop: () => this.mcpDesktopService?.stop() },
         { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
       ],
@@ -429,6 +456,7 @@ class DesktopApplication {
       tasks: [
         { name: 'update-service', stop: () => this.updateService?.stop() },
         { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
+        { name: 'mcp-desktop', stop: () => this.mcpDesktopService?.stop() },
         { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
       ],
@@ -504,6 +532,15 @@ class DesktopApplication {
       void mainWindow.loadURL(PackagedRendererProtocol.entryUrl);
     }
     return mainWindow;
+  }
+
+  /** Shows and focuses the product window before publishing an external Tool approval. */
+  private showAndFocusMainWindow(): void {
+    const mainWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
+      ?? this.createMainWindow();
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
   }
 
   private configureSessionSecurity(): void {
@@ -857,6 +894,103 @@ class DesktopApplication {
       }
       return this.runMainAction('main.mcp-tool.enable', () =>
         this.requireToolCapabilitySettingsService().enableMcpTool(toolName));
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpStatusGet, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireMcpDesktopService().status();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpServerEnable, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.mcp-server.enable', () =>
+        this.requireMcpDesktopService().enableServer());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpServerDisable, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.mcp-server.disable', () =>
+        this.requireMcpDesktopService().disableServer());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpEndpointChange, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.mcp-endpoint.change', () =>
+        this.requireMcpDesktopService().changeEndpoint());
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.mcpClientCreate,
+      async (event, label: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(label, 'MCP Client label');
+        await this.runMainAction('main.mcp-client.create', () =>
+          this.requireMcpDesktopService().createClient(label));
+        return this.requireMcpDesktopService().status();
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.mcpClientCredentialRegenerate,
+      (event, clientId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(clientId, 'MCP Client ID');
+        return this.runMainAction('main.mcp-client.regenerate-credential', () =>
+          this.requireMcpDesktopService().regenerateClientCredential(clientId));
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpClientRevoke, (event, clientId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      assertString(clientId, 'MCP Client ID');
+      return this.runMainAction('main.mcp-client.revoke', () =>
+        this.requireMcpDesktopService().revokeClient(clientId));
+    });
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.mcpClientRequireApproval,
+      (event, clientId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(clientId, 'MCP Client ID');
+        return this.runMainAction('main.mcp-client.require-approval', () =>
+          this.requireMcpDesktopService().requireClientApproval(clientId));
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.mcpClientAutomaticallyExecuteTools,
+      (event, clientId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(clientId, 'MCP Client ID');
+        return this.runMainAction('main.mcp-client.automatically-execute-tools', () =>
+          this.requireMcpDesktopService().automaticallyExecuteClientTools(clientId));
+      },
+    );
+
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.mcpClientConfigurationCopy,
+      async (event, clientId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(clientId, 'MCP Client ID');
+        await this.runMainAction('main.mcp-client.copy-configuration', () =>
+          this.requireMcpDesktopService().copyClientConfiguration(clientId));
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpToolCallAllow, async (event, approvalId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      assertString(approvalId, 'MCP approval ID');
+      await this.runMainAction('main.mcp-tool-call.allow', async () => {
+        this.requireMcpDesktopService().allowToolCall(approvalId);
+      });
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.mcpToolCallDeny, async (event, approvalId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      assertString(approvalId, 'MCP approval ID');
+      await this.runMainAction('main.mcp-tool-call.deny', async () => {
+        this.requireMcpDesktopService().denyToolCall(approvalId);
+      });
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.agentSessionsList, (event) => {
@@ -1997,6 +2131,47 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast one credential-free MCP status to every Renderer. */
+  private broadcastMcpStatus(status: McpDesktopStatus): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.mcpStatus, status);
+      }
+    }
+  }
+
+  /** Broadcast one external change Tool approval after the window is visible. */
+  private broadcastMcpApprovalRequest(request: McpApprovalRequest): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.mcpApprovalRequest, request);
+      }
+    }
+  }
+
+  /** Remove one completed or cancelled external Tool approval from every Renderer. */
+  private broadcastMcpApprovalSettled(approvalId: string): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.mcpApprovalSettled, approvalId);
+      }
+    }
+  }
+
+  /** Records bounded MCP audit metadata without arguments, results or credentials. */
+  private recordMcpAudit(event: McpAuditEvent): void {
+    this.diagnostics.info('main.mcp.audit', {
+      outcome: event.ok === false ? 'failed' : 'success',
+      attributes: {
+        kind: event.kind,
+        ...(event.identity === null ? {} : { clientId: event.identity.clientId }),
+        ...(event.toolName === undefined ? {} : { toolName: event.toolName }),
+        ...(event.executionMode === undefined ? {} : { executionMode: event.executionMode }),
+        ...(event.verdict === undefined ? {} : { verdict: event.verdict }),
+      },
+    });
+  }
+
   /** Broadcast one deduplicated TLS compatibility signal to every Renderer. */
   private broadcastTlsCompatibility(event: TlsCompatibilityEvent): void {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -2160,6 +2335,14 @@ class DesktopApplication {
       throw new Error('ToolCapabilitySettingsService is not initialized');
     }
     return this.toolCapabilitySettingsService;
+  }
+
+  /** Return the initialized external MCP endpoint owner. */
+  private requireMcpDesktopService(): McpDesktopService {
+    if (!this.mcpDesktopService) {
+      throw new Error('McpDesktopService is not initialized');
+    }
+    return this.mcpDesktopService;
   }
 
   /** Return the initialized GitHub release notification owner. */

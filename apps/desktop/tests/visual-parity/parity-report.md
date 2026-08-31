@@ -1,16 +1,16 @@
 # Visual Parity Report
 
-Generated: 2026-08-31T07:54:41.411Z
+Generated: 2026-08-31T12:20:55.524Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 186 |
-| Average pixel diff | 2.06% |
-| Targets | 1292 |
-| Matched | 1262 |
+| Views checked | 196 |
+| Average pixel diff | 2.09% |
+| Targets | 1340 |
+| Matched | 1310 |
 | Missing | 30 |
 | Flagged | 304 |
 | Largest geometry delta | 1476.8 px |
@@ -21,13 +21,13 @@ Generated: 2026-08-31T07:54:41.411Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
-| agent-panel-unconfigured | 1.98% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-traffic-tools | 2.55% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
-| agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-auto | 2.49% | 5 | 5 | 0 | 0 | 0.3 px |
+| agent-panel-new-chat | 2.00% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-turn-running | 2.22% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped | 2.27% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-usage | 2.57% | 4 | 4 | 0 | 0 | 0.1 px |
@@ -35,20 +35,25 @@ Generated: 2026-08-31T07:54:41.411Z
 | agent-panel-model-menu | 2.62% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat | 2.11% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat | 2.17% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured | 1.81% | 9 | 9 | 0 | 0 | 0.4 px |
+| settings-agent-unconfigured | 1.60% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured | 1.77% | 14 | 14 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered | 1.46% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-agent-custom-dialog | 4.94% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog | 4.98% | 12 | 12 | 0 | 0 | 0.7 px |
-| settings-agent-custom-edit-dialog | 4.96% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider | 4.70% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-configured | 1.60% | 14 | 14 | 0 | 0 | 0.6 px |
+| settings-agent-tool-capabilities-filtered | 1.97% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict | 1.68% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client | 5.43% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate | 4.97% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog | 4.83% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog | 5.01% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog | 4.87% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider | 4.46% | 4 | 4 | 0 | 0 | 0.7 px |
 | agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-traffic-tools-dark | 2.52% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval-dark | 2.90% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat-dark | 1.97% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat-dark | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -57,14 +62,19 @@ Generated: 2026-08-31T07:54:41.411Z
 | agent-panel-model-menu-dark | 2.61% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat-dark | 1.93% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat-dark | 1.97% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured-dark | 1.79% | 9 | 9 | 0 | 0 | 0.4 px |
+| settings-agent-unconfigured-dark | 1.58% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured-dark | 1.74% | 14 | 14 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered-dark | 1.49% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-agent-custom-dialog-dark | 1.58% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.57% | 12 | 12 | 0 | 0 | 0.7 px |
-| settings-agent-custom-edit-dialog-dark | 1.62% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider-dark | 1.63% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-configured-dark | 1.57% | 14 | 14 | 0 | 0 | 0.6 px |
+| settings-agent-tool-capabilities-filtered-dark | 2.11% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running-dark | 1.61% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict-dark | 1.65% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client-dark | 1.35% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate-dark | 1.44% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 2.49% | 10 | 10 | 0 | 6 | 3.0 px |
@@ -195,7 +205,7 @@ Generated: 2026-08-31T07:54:41.411Z
 | settings-updates-auth-failed | 1.50% | 7 | 7 | 0 | 0 | 0.4 px |
 | settings-updates-auth-failed-dark | 1.48% | 7 | 7 | 0 | 0 | 0.4 px |
 | breakpoints-off | 1.80% | 1 | 1 | 0 | 1 | 0.0 px |
-| breakpoint-manager | 1.71% | 8 | 8 | 0 | 7 | 3.5 px |
+| breakpoint-manager | 2.11% | 8 | 8 | 0 | 7 | 3.5 px |
 | breakpoint-created-message | 1.90% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-dark | 1.86% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-created-message-undo | 2.10% | 1 | 1 | 0 | 1 | 13.0 px |
@@ -360,6 +370,30 @@ Generated: 2026-08-31T07:54:41.411Z
 | settings-agent-tool-capabilities-filtered | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Exchange detail | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | settings-agent-tool-capabilities-filtered | get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running | MCP server header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running | MCP endpoint row | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-mcp-running | MCP client row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running | http://127.0.0.1:43127/mcp | 0.0 px | 0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-mcp-running | VS Code | 0.0 px | 0.0 px | 0.5 px | 0.1 px | 0.5 px | none | ok |
+| settings-mcp-conflict | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict | MCP conflict | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict | Port unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict | Change endpoint | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-mcp-add-client | MCP client dialog | 0.0 px | -0.3 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| settings-mcp-add-client | Add MCP client | 0.0 px | -0.3 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-mcp-add-client | Client name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-mcp-add-client | Create client | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-mcp-add-client | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-mcp-regenerate | MCP regenerate dialog | -0.8 px | -0.4 px | 0.0 px | 0.4 px | 0.8 px | none | ok |
+| settings-mcp-regenerate | Regenerate MCP credential | -0.8 px | -0.4 px | 0.0 px | 0.4 px | 0.8 px | none | ok |
+| settings-mcp-regenerate | Regenerate credential | 0.0 px | 0.0 px | -0.8 px | 0.0 px | 0.8 px | none | ok |
+| settings-mcp-regenerate | Cancel | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| mcp-tool-approval | MCP Tool approval | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| mcp-tool-approval | Approve MCP Tool call | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| mcp-tool-approval | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| mcp-tool-approval | Deny Tool call | 0.9 px | 0.0 px | -0.3 px | 0.0 px | 0.9 px | none | ok |
+| mcp-tool-approval | Allow Tool call | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | settings-agent-custom-dialog | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-dialog | Provider dialog header | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-custom-dialog | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
@@ -375,18 +409,18 @@ Generated: 2026-08-31T07:54:41.411Z
 | settings-agent-custom-dialog | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
 | settings-agent-custom-dialog | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
 | settings-agent-custom-dialog | Save provider | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
-| settings-agent-deepseek-dialog | Provider dialog | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
-| settings-agent-deepseek-dialog | Provider dialog header | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog | Provider dialog body | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
-| settings-agent-deepseek-dialog | Provider dialog footer | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
-| settings-agent-deepseek-dialog | DeepSeek | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog | Profile name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog | Endpoint | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog | API key | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog | Model ID | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog | Test connection | 0.0 px | -0.3 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| settings-agent-deepseek-dialog | Cancel | 0.7 px | -0.3 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| settings-agent-deepseek-dialog | Save changes | 0.4 px | -0.3 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog | 0.0 px | 0.2 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog header | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog body | 0.0 px | 0.2 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-deepseek-dialog | Cancel | 0.7 px | -0.2 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog | Save changes | 0.4 px | -0.2 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
 | settings-agent-custom-edit-dialog | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-edit-dialog | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-edit-dialog | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -510,6 +544,30 @@ Generated: 2026-08-31T07:54:41.411Z
 | settings-agent-tool-capabilities-filtered-dark | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Exchange detail | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running-dark | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running-dark | MCP server header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running-dark | MCP endpoint row | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-mcp-running-dark | MCP client row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-running-dark | http://127.0.0.1:43127/mcp | 0.0 px | 0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
+| settings-mcp-running-dark | VS Code | 0.0 px | 0.0 px | 0.5 px | 0.1 px | 0.5 px | none | ok |
+| settings-mcp-conflict-dark | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict-dark | MCP conflict | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict-dark | Port unavailable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-mcp-conflict-dark | Change endpoint | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-mcp-add-client-dark | MCP client dialog | 0.0 px | -0.3 px | 0.0 px | 0.3 px | 0.3 px | none | ok |
+| settings-mcp-add-client-dark | Add MCP client | 0.0 px | -0.3 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-mcp-add-client-dark | Client name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-mcp-add-client-dark | Create client | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-mcp-add-client-dark | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-mcp-regenerate-dark | MCP regenerate dialog | -0.8 px | -0.4 px | 0.0 px | 0.4 px | 0.8 px | none | ok |
+| settings-mcp-regenerate-dark | Regenerate MCP credential | -0.8 px | -0.4 px | 0.0 px | 0.4 px | 0.8 px | none | ok |
+| settings-mcp-regenerate-dark | Regenerate credential | 0.0 px | 0.0 px | -0.8 px | 0.0 px | 0.8 px | none | ok |
+| settings-mcp-regenerate-dark | Cancel | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| mcp-tool-approval-dark | MCP Tool approval | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| mcp-tool-approval-dark | Approve MCP Tool call | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| mcp-tool-approval-dark | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| mcp-tool-approval-dark | Deny Tool call | 0.9 px | 0.0 px | -0.3 px | 0.0 px | 0.9 px | none | ok |
+| mcp-tool-approval-dark | Allow Tool call | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | settings-agent-custom-dialog-dark | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-dialog-dark | Provider dialog header | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-custom-dialog-dark | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
@@ -525,18 +583,18 @@ Generated: 2026-08-31T07:54:41.411Z
 | settings-agent-custom-dialog-dark | Test connection | 0.0 px | 0.0 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
 | settings-agent-custom-dialog-dark | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
 | settings-agent-custom-dialog-dark | Save provider | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Provider dialog | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Provider dialog header | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Provider dialog body | 0.0 px | 0.1 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.3 px | 0.0 px | 0.0 px | 0.3 px | none | ok |
-| settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog-dark | API key | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.3 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Cancel | 0.7 px | -0.3 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Save changes | 0.4 px | -0.3 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog | 0.0 px | 0.2 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog header | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog body | 0.0 px | 0.2 px | 0.0 px | -0.4 px | 0.4 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog-dark | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Cancel | 0.7 px | -0.2 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Save changes | 0.4 px | -0.2 px | -0.4 px | 0.0 px | 0.4 px | none | ok |
 | settings-agent-custom-edit-dialog-dark | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-edit-dialog-dark | Provider dialog body | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
 | settings-agent-custom-edit-dialog-dark | Provider dialog footer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |

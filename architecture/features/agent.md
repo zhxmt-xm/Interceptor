@@ -30,7 +30,7 @@
 ### Tool 与执行结果
 
 - **Tool**：让 Model 与外部系统交互的能力，例如查询数据库、调用 API 或执行计算。Tool 定义至少包含名称、
-  描述和参数 JSON Schema。来源：[MCP Tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)。
+  描述和参数 JSON Schema。来源：[MCP Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)。
 - **Tool Call**：Model 生成的结构化调用请求，包含 Tool 名、`callId` 和 arguments；它是请求，不是执行结果。
 - **Tool Result**：应用执行 Tool 后产生并回传给 Model 的结果。MCP 允许文本、结构化内容、媒体或 Resource Link。
 - **Observation**：ReAct 对 Action 执行后环境反馈的称呼；在本项目里通常对应 Tool Result。
@@ -99,7 +99,7 @@
 
 - **MCP**：连接 AI 应用与外部系统的开放标准；采用 Host–Client–Server 架构。Host 协调 LLM 与 Context，
   Client 与一个 Server 保持一对一 Session，Server 暴露 Tools、Resources 和 Prompts。
-  来源：[MCP Architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture)。
+  来源：[MCP Architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)。
 - **Agent Framework / Orchestration Framework**：复用 Model、Tool、Loop、持久化或图编排能力的实现库；
   LangChain、LangGraph 等是实现选项，不是本项目术语的权威定义来源，当前也不依赖它们。
 - **Subagent**：由另一个 Agent 作为 Tool 调用或通过 Handoff 接管任务的独立 Agent。
@@ -1146,7 +1146,8 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
   四个Settings展示组不改变Model使用的五个Capability。搜索只过滤当前可见行，不改写Agent/MCP开关。
 - 每行Agent与MCP开关分别调用`disableAgentTool` / `enableAgentTool`和`disableMcpTool` / `enableMcpTool`；
   fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。Agent当前将该授权状态用于三个Traffic query Tool
-  与`stop_recording`的Capability Index、discovery、schema与执行前检查；MCP Desktop接入仍待后续阶段。
+  与`stop_recording`的Capability Index、discovery、schema与执行前检查；MCP Desktop在每次`tools/list`和
+  `tools/call`前应用同一份MCP授权状态。
 
 Provider 配置使用以下公开契约，API Key 不进入 snapshot：
 
@@ -1457,7 +1458,8 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
   `discover_tools`、三个Traffic query Tool与首个change Tool `stop_recording`；
 - `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
-  UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP transport仍未接Desktop；
+  UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP关闭项已应用到外部`tools/list`
+  与执行前检查；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
   0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含三个基础Traffic

@@ -428,6 +428,32 @@ export const AUTOMATION_IDS = {
       cancel: 'agent.remove-provider.cancel',
     },
   },
+  mcp: {
+    server: {
+      root: 'mcp.server.root',
+      enable: 'mcp.server.enable',
+      endpoint: 'mcp.server.endpoint',
+      changeEndpoint: 'mcp.server.change-endpoint',
+    },
+    client: {
+      add: 'mcp.client.add',
+      dialog: 'mcp.client.dialog',
+      label: 'mcp.client.label',
+      create: 'mcp.client.create',
+      cancel: 'mcp.client.cancel',
+      regenerateDialog: 'mcp.client.regenerate.dialog',
+      regenerateConfirm: 'mcp.client.regenerate.confirm',
+      regenerateCancel: 'mcp.client.regenerate.cancel',
+      revokeDialog: 'mcp.client.revoke.dialog',
+      revokeConfirm: 'mcp.client.revoke.confirm',
+      revokeCancel: 'mcp.client.revoke.cancel',
+    },
+    approval: {
+      root: 'mcp.approval.root',
+      allow: 'mcp.approval.allow',
+      deny: 'mcp.approval.deny',
+    },
+  },
   settings: {
     tlsCompatibility: {
       dismiss: 'settings.tls-compatibility.dismiss',
@@ -814,6 +840,36 @@ export class AutomationIdFactory {
   /** Identify the Deny command for one Agent Tool approval. */
   static agentToolDeny(callId: string): string {
     return `agent.tools.deny.${callId}`;
+  }
+
+  /** Identify one configured MCP Client row. */
+  static mcpClientRow(clientId: string): string {
+    return `mcp.client.row.${clientId}`;
+  }
+
+  /** Identify the configuration-copy command for one MCP Client. */
+  static mcpClientCopyConfiguration(clientId: string): string {
+    return `mcp.client.copy-configuration.${clientId}`;
+  }
+
+  /** Identify Ask mode for one MCP Client. */
+  static mcpClientAsk(clientId: string): string {
+    return `mcp.client.ask.${clientId}`;
+  }
+
+  /** Identify Auto mode for one MCP Client. */
+  static mcpClientAuto(clientId: string): string {
+    return `mcp.client.auto.${clientId}`;
+  }
+
+  /** Identify credential regeneration for one MCP Client. */
+  static mcpClientRegenerate(clientId: string): string {
+    return `mcp.client.regenerate.${clientId}`;
+  }
+
+  /** Identify revocation for one MCP Client. */
+  static mcpClientRevoke(clientId: string): string {
+    return `mcp.client.revoke.${clientId}`;
   }
 
   /** Identify one Chat option in the Agent Session selector. */

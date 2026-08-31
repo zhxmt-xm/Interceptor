@@ -1,0 +1,94 @@
+.mcpClientDialogOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 122;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, .36);
+  backdrop-filter: blur(2px);
+}
+
+.mcpClientDialog {
+  display: flex;
+  width: min(440px, 100%);
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+
+.mcpClientDialogHeader {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+}
+
+.mcpClientDialogHeader > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.mcpClientDialogHeader svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mcpClientDialogHeader > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mcpClientDialog h2 {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.mcpClientDialog p {
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.mcpClientDialogFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.mcpClientDialogFields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mcpClientDialogFields label > span {
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.mcpClientDialogFields :global(.ant-select),
+.mcpClientDialogFields :global(.ant-input) {
+  width: 100%;
+}
+
+.mcpClientDialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 2px;
+}

@@ -7,6 +7,8 @@ import {
   type CaptureStatus,
   type GitHubAuthStatus,
   InterceptorDesktopApi,
+  type McpApprovalRequest,
+  type McpDesktopStatus,
   type CaptureExchangeEvent,
   type ClientAppIcon,
   type SystemProxyStatus,
@@ -68,6 +70,66 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolDisable, toolName),
   enableMcpTool: (toolName) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolEnable, toolName),
+  getMcpStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpStatusGet),
+  enableMcpServer: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpServerEnable),
+  disableMcpServer: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpServerDisable),
+  changeMcpEndpoint: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpEndpointChange),
+  createMcpClient: (label) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientCreate, label),
+  regenerateMcpClientCredential: (clientId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientCredentialRegenerate, clientId),
+  revokeMcpClient: (clientId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientRevoke, clientId),
+  requireMcpClientApproval: (clientId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientRequireApproval, clientId),
+  automaticallyExecuteMcpClientTools: (clientId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientAutomaticallyExecuteTools, clientId),
+  copyMcpClientConfiguration: (clientId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpClientConfigurationCopy, clientId),
+  allowMcpToolCall: (approvalId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolCallAllow, approvalId),
+  denyMcpToolCall: (approvalId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.mcpToolCallDeny, approvalId),
+  onMcpStatusChange: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      status: McpDesktopStatus,
+    ) => {
+      listener(status);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.mcpStatus, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.mcpStatus, handler);
+    };
+  },
+  onMcpApprovalRequest: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      request: McpApprovalRequest,
+    ) => {
+      listener(request);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.mcpApprovalRequest, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.mcpApprovalRequest, handler);
+    };
+  },
+  onMcpApprovalSettled: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      approvalId: string,
+    ) => {
+      listener(approvalId);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.mcpApprovalSettled, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.mcpApprovalSettled, handler);
+    };
+  },
   listAgentSessions: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentSessionsList),
   createAgentSession: () =>

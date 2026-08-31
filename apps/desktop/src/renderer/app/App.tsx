@@ -42,6 +42,8 @@ import {
 } from '../features/rules';
 import {
   GitHubAuthActions,
+  McpSettingsActions,
+  McpToolApprovalDialog,
   SettingsMain,
   SettingsStatusbar,
   TlsCompatibilityDialog,
@@ -148,6 +150,7 @@ export function App(): React.JSX.Element {
   useEffect(() => UpdateActions.subscribe(), []);
   useEffect(() => GitHubAuthActions.subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
+  useEffect(() => McpSettingsActions.subscribe(), []);
   useEffect(() => {
     void AgentModelsActions.load().catch(() => undefined);
   }, []);
@@ -332,6 +335,7 @@ export function App(): React.JSX.Element {
             setView('settings');
           }}
         />
+        <McpToolApprovalDialog />
         <BreakpointCreatedMessage
           ruleId={createdBreakpointRuleId}
           onDismiss={dismissBreakpointCreatedMessage}

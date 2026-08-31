@@ -14,7 +14,6 @@ import { McpToolRegistry } from '../../tools/entry';
 const IDENTITY: McpClientIdentity = {
   clientId: 'client-1',
   label: 'VS Code',
-  reportedName: 'not-trusted',
 };
 
 /** 记录全部下沉调用的假宿主，用来断言"未获批准就不产生 Core command"。 */
@@ -159,6 +158,24 @@ describe('McpToolRegistry', () => {
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('capture.cleanup');
     expect(fakeHost.audit).toContainEqual(
       expect.objectContaining({ kind: 'approval', verdict: 'timeout' }),
+    );
+  });
+
+  it('reports a cancelled approval separately from a user rejection', async () => {
+    const fakeHost = new FakeHost(
+      { 'capture.status': { type: 'capture.status', payload: { exchangeCount: 0, bodyCount: 0 } } },
+      'cancelled' as McpApprovalVerdict,
+    );
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
+
+    const outcome = await call(mcpToolRegistry, 'clear_capture');
+
+    expect(outcome).toEqual({
+      ok: false,
+      payload: { error: 'the MCP call was cancelled before approval' },
+    });
+    expect(fakeHost.audit).toContainEqual(
+      expect.objectContaining({ kind: 'approval', verdict: 'cancelled' }),
     );
   });
 

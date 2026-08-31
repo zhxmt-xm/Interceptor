@@ -1,0 +1,122 @@
+.mcpApprovalModal {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.mcpApprovalModalBody {
+  padding: 0;
+}
+
+.mcpApprovalMask {
+  background: rgba(0, 0, 0, .36);
+  backdrop-filter: blur(2px);
+}
+
+.mcpApprovalDialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+
+.mcpApprovalHeader {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+}
+
+.mcpApprovalHeader > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--yellow) 13%, transparent);
+  color: var(--yellow);
+}
+
+.mcpApprovalHeader svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mcpApprovalHeader > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mcpApprovalHeader h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.mcpApprovalHeader p,
+.mcpApprovalDetails dd {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.mcpApprovalHeader p strong {
+  color: var(--text-2);
+  font-weight: 650;
+}
+
+.mcpApprovalDetails {
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.mcpApprovalDetails > div {
+  display: grid;
+  min-height: 34px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mcpApprovalDetails > div:last-child {
+  border-bottom: 0;
+}
+
+.mcpApprovalDetails dt {
+  color: var(--text-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mcpApprovalDetails dd {
+  min-width: 0;
+}
+
+.mcpApprovalDetails code {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.mcpApprovalError {
+  color: var(--red);
+  font-size: 10.5px;
+}
+
+.mcpApprovalDialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}

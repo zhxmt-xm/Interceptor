@@ -1,26 +1,33 @@
-import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
 import type { McpClientIdentity, McpClientRegistration } from '../interfaces';
 
-/**
- * per-client token 认证。token 只存在于内存中，进程退出即失效，
- * 因此不需要持久化，也无法在 app 未运行时被重放。
- */
+/** per-client token认证；持久化策略由Desktop宿主拥有。 */
 export class McpTokenAuthenticator {
   /** clientId → 该接入的 token 明文与展示名。 */
   readonly #clients = new Map<string, { label: string; token: Buffer }>();
 
-  /** 新增一个接入，返回其一次性 token 明文。 */
-  register(label: string): McpClientRegistration {
-    const clientId = randomUUID();
-    const token = randomBytes(32).toString('base64url');
-    this.#clients.set(clientId, { label, token: Buffer.from(token, 'utf8') });
-    return { clientId, label, token };
-  }
-
-  /** 撤销一个接入；宿主负责断开其在途连接。 */
-  revoke(clientId: string): boolean {
-    return this.#clients.delete(clientId);
+  /** 恢复宿主从加密Store读取的完整Client集合。 */
+  restore(registrations: readonly McpClientRegistration[]): void {
+    const clients = new Map<string, { label: string; token: Buffer }>();
+    const tokens = new Set<string>();
+    for (const registration of registrations) {
+      if (clients.has(registration.clientId)) {
+        throw new Error(`Duplicate client id "${registration.clientId}".`);
+      }
+      if (tokens.has(registration.token)) {
+        throw new Error('Duplicate token.');
+      }
+      clients.set(registration.clientId, {
+        label: registration.label,
+        token: Buffer.from(registration.token, 'utf8'),
+      });
+      tokens.add(registration.token);
+    }
+    this.#clients.clear();
+    for (const [clientId, client] of clients) {
+      this.#clients.set(clientId, client);
+    }
   }
 
   /** 已注册接入的展示信息，不含 token。 */
@@ -31,24 +38,24 @@ export class McpTokenAuthenticator {
     }));
   }
 
-  /**
-   * 校验 token 并产出可信身份。
-   *
-   * `reportedName` 来自 MCP initialize 的 clientInfo，是调用方自报的，
-   * 只用于展示与审计，不参与任何授权判断。
-   */
-  authenticate(token: string, reportedName?: string): McpClientIdentity | null {
+  /** 校验token并产出可信身份。 */
+  authenticate(token: string): McpClientIdentity | null {
     const candidate = Buffer.from(token, 'utf8');
     for (const [clientId, entry] of this.#clients) {
       if (equalsInConstantTime(candidate, entry.token)) {
         return {
           clientId,
           label: entry.label,
-          ...(reportedName === undefined ? {} : { reportedName }),
         };
       }
     }
     return null;
+  }
+
+  /** 按可信Client ID读取当前身份；已撤销Client返回null。 */
+  identity(clientId: string): McpClientIdentity | null {
+    const client = this.#clients.get(clientId);
+    return client === undefined ? null : { clientId, label: client.label };
   }
 
   /** 全部撤销；关闭 MCP 时调用。 */

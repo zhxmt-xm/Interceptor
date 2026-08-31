@@ -13,11 +13,12 @@ import type {
   McpApprovalRequest,
   McpClientIdentity,
   McpHostBridge,
+  McpToolCallAccess,
   McpToolCallOutcome,
 } from '../interfaces';
 
 /**
- * 工具层：注册表、分级、审批编排与结果裁剪。两种 transport 完全共用。
+ * 工具层：注册表、分级、审批编排与结果裁剪，不依赖Desktop transport。
  *
  * 认证证明"调用方知道秘密"，不证明"调用方是善意的"。合法的 Host 仍可能
  * 被抓包正文里的 prompt injection 操纵，因此写工具的用户确认与 token 校验
@@ -49,14 +50,17 @@ export class McpToolRegistry {
   }
 
   /** `tools/list` 的负载。 */
-  listTools(): readonly {
+  listTools(enabledToolNames?: readonly string[]): readonly {
     name: string;
     title: string;
     description: string;
     inputSchema: unknown;
     annotations: unknown;
   }[] {
-    return [...this.#tools.values()].map((tool) => ({
+    const enabledNames = enabledToolNames === undefined ? null : new Set(enabledToolNames);
+    return [...this.#tools.values()].filter((tool) => (
+      enabledNames === null || enabledNames.has(tool.name)
+    )).map((tool) => ({
       name: tool.name,
       title: tool.title,
       description: tool.description,
@@ -79,9 +83,13 @@ export class McpToolRegistry {
     args: Readonly<Record<string, unknown>>,
     identity: McpClientIdentity,
     abortSignal: AbortSignal,
+    access: McpToolCallAccess = {},
   ): Promise<McpToolCallOutcome> {
     const tool = this.#tools.get(name);
-    if (tool === undefined) {
+    if (
+      tool === undefined
+      || (access.enabledToolNames !== undefined && !access.enabledToolNames.includes(name))
+    ) {
       return failure(`unknown tool: ${name}`);
     }
     if (this.#activeCalls >= MCP_MAX_CONCURRENT_CALLS) {
@@ -91,21 +99,42 @@ export class McpToolRegistry {
     this.#activeCalls += 1;
     try {
       const context: InterceptorToolContext = { host: this.#host, abortSignal };
-      if (tool.kind === 'change') {
+      const executionMode = access.executionMode ?? 'ask';
+      if (tool.kind === 'change' && executionMode === 'ask') {
         const verdict = await this.#requestApproval(tool, args, context, identity);
         if (verdict !== 'approved') {
-          this.#host.record({ kind: 'approval', identity, toolName: name, verdict });
+          this.#host.record({
+            kind: 'approval',
+            identity,
+            toolName: name,
+            verdict,
+            executionMode,
+          });
           return failure(
             verdict === 'timeout'
               ? 'the user did not respond in time; the call was rejected'
-              : 'the user rejected this call',
+              : verdict === 'cancelled'
+                ? 'the MCP call was cancelled before approval'
+                : 'the user rejected this call',
           );
         }
-        this.#host.record({ kind: 'approval', identity, toolName: name, verdict });
+        this.#host.record({
+          kind: 'approval',
+          identity,
+          toolName: name,
+          verdict,
+          executionMode,
+        });
       }
 
       const payload = await tool.execute(args, context);
-      this.#host.record({ kind: 'tool-call', identity, toolName: name, ok: true });
+      this.#host.record({
+        kind: 'tool-call',
+        identity,
+        toolName: name,
+        ok: true,
+        ...(tool.kind === 'change' ? { executionMode } : {}),
+      });
       return { ok: true, payload: truncatePayload(payload) };
     } catch (error) {
       const message = error instanceof InterceptorToolArgumentError
@@ -124,7 +153,7 @@ export class McpToolRegistry {
     args: Readonly<Record<string, unknown>>,
     context: InterceptorToolContext,
     identity: McpClientIdentity,
-  ): Promise<'approved' | 'rejected' | 'timeout'> {
+  ): Promise<'approved' | 'rejected' | 'timeout' | 'cancelled'> {
     let diff: readonly string[] | undefined;
     if (tool.describeChange !== undefined) {
       try {
@@ -141,9 +170,12 @@ export class McpToolRegistry {
       destructive: tool.destructive,
       // 审批 UI 必须能看到 evil.com 这样的目标，因此传完整参数而非摘要。
       arguments: args,
+      ...(tool.effectDescription === undefined
+        ? {}
+        : { effectDescription: tool.effectDescription }),
       ...(diff === undefined ? {} : { diff }),
     };
-    return this.#host.requestApproval(request);
+    return this.#host.requestApproval(request, context.abortSignal);
   }
 }
 

@@ -1012,6 +1012,9 @@ export function installFakeInterceptor({
   agentModels = 'empty',
   agentSessionState = 'completed',
   agentMessage = null,
+  mcpState = 'disabled',
+  mcpClientConfigured = false,
+  mcpApproval = false,
   proxyReady = true,
   proxyEnableFails = false,
   upstreamDown = false,
@@ -1024,10 +1027,34 @@ export function installFakeInterceptor({
   let captureEventsListener = null;
   let captureStatusListener = null;
   let agentSessionListener = null;
+  let mcpStatusListener = null;
+  let mcpApprovalListener = null;
+  let mcpApprovalSettledListener = null;
   let agentModelsSnapshot = agentModels === 'configured'
     ? fixture.agent.models
     : { defaultProviderId: null, models: [] };
   let toolCapabilitySettingsSnapshot = structuredClone(fixture.agent.toolSettings);
+  let mcpStatus = {
+    state: mcpState,
+    endpoint: mcpState === 'disabled' ? null : 'http://127.0.0.1:43127/mcp',
+    detail: mcpState === 'endpoint-conflict'
+      ? 'The saved MCP endpoint port is already in use.'
+      : null,
+    clients: mcpClientConfigured ? [{
+      clientId: 'mcp-client-vscode',
+      label: 'VS Code',
+      executionMode: 'ask',
+    }] : [],
+  };
+  const mcpApprovalRequest = {
+    approvalId: 'mcp-approval-stop-recording',
+    identity: { clientId: 'mcp-client-vscode', label: 'VS Code' },
+    toolName: 'stop_recording',
+    toolTitle: 'Stop recording',
+    destructive: false,
+    arguments: {},
+    effectDescription: 'New traffic will continue through the proxy but will not be captured.',
+  };
   let agentSessionSnapshot = structuredClone(fixture.agent.session);
   if (agentSessionState === 'empty') {
     agentSessionSnapshot = {
@@ -1693,6 +1720,87 @@ export function installFakeInterceptor({
       toolCapabilitySettingsSnapshot.mcpDisabledToolNames =
         toolCapabilitySettingsSnapshot.mcpDisabledToolNames.filter((name) => name !== toolName);
       return structuredClone(toolCapabilitySettingsSnapshot);
+    },
+    getMcpStatus: async () => structuredClone(mcpStatus),
+    enableMcpServer: async () => {
+      mcpStatus = {
+        ...mcpStatus,
+        state: 'running',
+        endpoint: mcpStatus.endpoint ?? 'http://127.0.0.1:43127/mcp',
+        detail: null,
+      };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    disableMcpServer: async () => {
+      mcpStatus = { ...mcpStatus, state: 'disabled', detail: null };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    changeMcpEndpoint: async () => {
+      mcpStatus = { ...mcpStatus, state: 'running', endpoint: 'http://127.0.0.1:43127/mcp', detail: null };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    createMcpClient: async (label) => {
+      mcpStatus = {
+        ...mcpStatus,
+        clients: [{
+          clientId: 'mcp-client-vscode',
+          label,
+          executionMode: 'ask',
+        }],
+      };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    regenerateMcpClientCredential: async () => structuredClone(mcpStatus),
+    revokeMcpClient: async () => {
+      mcpStatus = { ...mcpStatus, clients: [] };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    requireMcpClientApproval: async (clientId) => {
+      mcpStatus = {
+        ...mcpStatus,
+        clients: mcpStatus.clients.map((client) => (
+          client.clientId === clientId ? { ...client, executionMode: 'ask' } : client
+        )),
+      };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    automaticallyExecuteMcpClientTools: async (clientId) => {
+      mcpStatus = {
+        ...mcpStatus,
+        clients: mcpStatus.clients.map((client) => (
+          client.clientId === clientId ? { ...client, executionMode: 'auto' } : client
+        )),
+      };
+      mcpStatusListener?.(structuredClone(mcpStatus));
+      return structuredClone(mcpStatus);
+    },
+    copyMcpClientConfiguration: async () => undefined,
+    allowMcpToolCall: async (approvalId) => mcpApprovalSettledListener?.(approvalId),
+    denyMcpToolCall: async (approvalId) => mcpApprovalSettledListener?.(approvalId),
+    onMcpStatusChange: (listener) => {
+      mcpStatusListener = listener;
+      return () => {
+        if (mcpStatusListener === listener) mcpStatusListener = null;
+      };
+    },
+    onMcpApprovalRequest: (listener) => {
+      mcpApprovalListener = listener;
+      if (mcpApproval) queueMicrotask(() => mcpApprovalListener?.(mcpApprovalRequest));
+      return () => {
+        if (mcpApprovalListener === listener) mcpApprovalListener = null;
+      };
+    },
+    onMcpApprovalSettled: (listener) => {
+      mcpApprovalSettledListener = listener;
+      return () => {
+        if (mcpApprovalSettledListener === listener) mcpApprovalSettledListener = null;
+      };
     },
     testAgentProviderConnection: async (draft) => ({
       verificationId: 'parity-verification',

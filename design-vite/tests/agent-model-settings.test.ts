@@ -111,6 +111,92 @@ test('Complete Tool capability registry remains reachable through Settings scrol
     .toBeChecked();
 });
 
+test('MCP server stays off until the user enables its loopback endpoint', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+    agentProvider: 'configured',
+  }));
+
+  const server = page.locator('[data-parity="mcp-server-settings"]');
+  const enabled = server.getByRole('switch', { name: 'Enable MCP server' });
+  await expect(enabled).not.toBeChecked();
+  await expect(server).toContainText('No listener');
+
+  await enabled.click();
+
+  await expect(enabled).toBeChecked();
+  await expect(server).toContainText('http://127.0.0.1:43127/mcp');
+  await expect(server.getByRole('button', { name: 'Add client' })).toBeEnabled();
+});
+
+test('MCP client configuration exposes Ask and Auto without revealing its token', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+  }));
+  const server = page.locator('[data-parity="mcp-server-settings"]');
+  await server.getByRole('switch', { name: 'Enable MCP server' }).click();
+  await server.getByRole('button', { name: 'Add client' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add MCP client' });
+  await expect(dialog.getByLabel('Host')).toHaveCount(0);
+  await dialog.getByLabel('Client name').fill('VS Code E2E');
+  await dialog.getByRole('button', { name: 'Create client' }).click();
+
+  const client = page.locator('[data-parity="mcp-client-row"]');
+  await expect(client).toContainText('VS Code E2E');
+  await expect(client.getByRole('radio', { name: 'Ask' })).toBeChecked();
+  await client.getByRole('radio', { name: 'Auto' }).click();
+  await expect(client.getByRole('radio', { name: 'Auto' })).toBeChecked();
+  await client.getByRole('button', { name: 'Copy MCP configuration' }).click();
+  await expect(client).toHaveAttribute('data-config-copied', 'true');
+  await expect(server).not.toContainText('Bearer');
+});
+
+test('MCP credential rotates only through its explicit confirmation', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'settings',
+    settings: 'agent',
+  }));
+  const server = page.locator('[data-parity="mcp-server-settings"]');
+  const enabled = server.getByRole('switch', { name: 'Enable MCP server' });
+  await enabled.click();
+  await server.getByRole('button', { name: 'Add client' }).click();
+  await page.getByRole('dialog', { name: 'Add MCP client' })
+    .getByRole('button', { name: 'Create client' }).click();
+
+  const client = page.locator('[data-parity="mcp-client-row"]');
+  await expect(client).toHaveAttribute('data-credential-generation', '0');
+  await enabled.click();
+  await enabled.click();
+  await expect(client).toHaveAttribute('data-credential-generation', '0');
+
+  await client.getByRole('button', { name: 'Regenerate credential' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Regenerate MCP credential' });
+  await expect(client).toHaveAttribute('data-credential-generation', '0');
+  await dialog.getByRole('button', { name: 'Regenerate credential' }).click();
+  await expect(client).toHaveAttribute('data-credential-generation', '1');
+});
+
+test('MCP change Tool approval is app-wide and requires an explicit verdict', async ({ page }) => {
+  await page.evaluate(() => {
+    const setState = window.__setState as ((patch: Record<string, unknown>) => void) | undefined;
+    setState?.({
+      view: 'capture',
+      agentPanel: 'closed',
+      mcpToolApproval: 'pending',
+    });
+  });
+
+  const dialog = page.getByRole('dialog', { name: 'Approve MCP Tool call' });
+  await expect(dialog).toContainText('VS Code');
+  await expect(dialog).toContainText('stop_recording');
+  await expect(dialog).toContainText('New traffic will continue through the proxy but will not be captured.');
+  await dialog.getByRole('button', { name: 'Deny Tool call' }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test('Add provider chooses a Provider type before opening its dialog', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'settings',

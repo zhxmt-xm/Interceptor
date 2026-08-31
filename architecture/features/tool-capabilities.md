@@ -4,7 +4,7 @@
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent三个Traffic query与首个change
-> Tool纵向流程已完成；`packages/mcp-server`已消费同一registry。MCP transport仍未接Desktop。
+> Tool纵向流程已完成；Desktop MCP已通过loopback Streamable HTTP消费同一registry并完成首个纵向流程。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -22,7 +22,7 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 状态含义：
 
 - **共享 registry + MCP adapter + Agent**：Tool已由`@interceptor/tools`唯一实现，并接入MCP adapter与Desktop Agent；
-- **共享 registry + MCP adapter**：Tool已由`@interceptor/tools`唯一实现并被MCP adapter消费，但尚未接入Desktop；
+- **共享 registry + MCP adapter**：Tool已由`@interceptor/tools`唯一实现并由Desktop MCP adapter对外提供；尚未接入内置Agent；
 - **产品已具备**：产品已有正式入口，Tool descriptor 与 Agent/MCP 接线待实现；
 - **先补 intent**：产品 UI 已有能力，但缺少可供 Tool 复用的语义单一入口；
 - **待产品实现**：产品本身尚无该能力，不先为 Tool 新建后门。
@@ -201,7 +201,7 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 4. **[已完成]** Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
 5. **[已完成]** 接入Session级`ask` / `auto`与首个change Tool `stop_recording`；
-6. 接入MCP Desktop，再按本目录顺序逐项开发其余Tool；
+6. **[已完成]** 接入MCP Desktop loopback Streamable HTTP、Client级`ask` / `auto`、Tool过滤与首个query/change纵向流程；
 7. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration；影响用户flow时增加真实E2E；
 8. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
 

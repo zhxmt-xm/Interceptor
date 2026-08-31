@@ -2,7 +2,7 @@
   "name": "@interceptor/mcp-server",
   "version": "0.0.0",
   "private": true,
-  "description": "Transport-agnostic MCP tool layer exposing Interceptor capture data to external AI hosts",
+  "description": "Authenticated MCP HTTP adapter exposing Interceptor tools to external AI hosts",
   "type": "commonjs",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -19,9 +19,11 @@
   },
   "dependencies": {
     "@interceptor/core-protocol": "*",
-    "@interceptor/tools": "*"
+    "@interceptor/tools": "*",
+    "@modelcontextprotocol/server": "2.0.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
     "vitest": "4.1.10"
   }
 }

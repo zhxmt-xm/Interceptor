@@ -11,9 +11,10 @@
 | Breakpoints | [breakpoints.md](breakpoints.md) | 11 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
 | Agent | [agent.md](agent.md) | 7 |
+| MCP | [mcp.md](mcp.md) | 1 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 14 |
 
-总计：89 条 workflow。
+总计：90 条 workflow。
 
 ## 文档约定
 

@@ -90,6 +90,9 @@ export type AgentTurnState = 'idle' | 'running' | 'stopped' | 'failed';
 export type AgentExecutionMode = 'ask' | 'auto';
 export type AgentToolApprovalState = 'pending' | 'allowed' | 'denied' | '';
 export type AgentToolTraceState = 'traffic' | '';
+export type McpServerState = 'disabled' | 'running' | 'conflict';
+export type McpClientDialogState = 'add' | 'regenerate' | 'revoke' | '';
+export type McpToolApprovalState = 'pending' | '';
 
 export interface AgentProviderProfileState {
   readonly displayName: string;
@@ -150,6 +153,14 @@ export interface DesignState {
   readonly agentToolSearch: string;
   readonly agentDisabledTools: readonly string[];
   readonly mcpDisabledTools: readonly string[];
+  readonly mcpServerState: McpServerState;
+  readonly mcpEndpointAssigned: boolean;
+  readonly mcpClientLabel: string;
+  readonly mcpClientExecutionMode: AgentExecutionMode;
+  readonly mcpClientDialog: McpClientDialogState;
+  readonly mcpConfigCopied: boolean;
+  readonly mcpCredentialGeneration: number;
+  readonly mcpToolApproval: McpToolApprovalState;
   readonly bodyType: BodyType;
   readonly settings: string;
   readonly update: string;
