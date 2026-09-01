@@ -1,6 +1,6 @@
 # Interceptor 架构设计索引
 
-> 最后更新：2026-08-30
+> 最后更新：2026-09-01
 > 范围：本目录是架构文档的唯一入口——feature 设计、跨 feature 平台架构、当前交接状态与待办全部在此。
 
 ## 文档分工
@@ -49,6 +49,7 @@ feature 文档描述**架构应该是什么样**，每个章节用状态标记�
 | [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
 | [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP 共用的完整 Tool 目录、Settings 开关、`ask`/`auto` 与逐项状态 | 复用既有 command；共享 registry 位于 `packages/interceptor-tools/` | Settings > Agent Tool capabilities |
 | [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增业务实现；transport 待接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |
+| [features/playground.md](features/playground.md) | Web人工验收工作台、Browser MCP/CORS、Traffic Lab与手工证据 | 复用正式MCP与Proxy入口；开发代码位于`apps/playground/` | 独立Browser UI，不进入产品包 |
 | [features/agent.md](features/agent.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History 与 Tool Loop | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings > Agent |
 
 ## 进程边界

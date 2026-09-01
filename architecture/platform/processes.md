@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-08-31
+> 最后更新：2026-09-01
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -32,7 +32,7 @@ flowchart LR
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Envelope Validation"]
   GITHUB["Private GitHub Releases<br/>OAuth · Metadata · MSI · DMG · ZIP"]
   MODEL_API["DeepSeek / OpenAI-compatible API<br/>Streaming Chat Completions"]
-  MCP_HOST["External MCP Host<br/>VS Code · Claude Desktop · Cursor"]
+  MCP_HOST["External MCP Host<br/>Native Host · Browser Playground"]
 
   subgraph CORE["Proxy Core UtilityProcess"]
     ENTRY["8 entry.cts<br/>Minimal Bootstrap · --data-dir"]
@@ -98,8 +98,10 @@ Traffic query Tool（`get_proxy_status`、`list_exchanges`、`get_exchange`）�
 `McpDesktopService`是Main内唯一外部MCP入口。用户显式开启后，它只在`127.0.0.1`创建独立高位端口的
 Streamable HTTP listener，不复用代理端口`8888`。每个Client的Bearer token、label与`ask` / `auto`经
 `safeStorage`整体加密；启停和app重启不轮换Token，只有用户手动重新生成或撤销才失效。Main逐请求认证、
-拒绝所有带`Origin`的浏览器请求，再通过`@interceptor/mcp-server`官方SDK handler与共享Tool registry执行；
-旧MCP协议请求被拒绝，不保留兼容路径。
+对Browser提供标准CORS；Origin与Host都不参与身份判断。Main只处理`/mcp`路由、无凭据preflight与Bearer，
+认证成功后原样交给`@interceptor/mcp-server`官方SDK handler与共享Tool registry；旧MCP协议请求被拒绝，
+不保留兼容路径。`apps/playground`是独立Web人工验收工具，不进入Desktop包；Browser直接访问MCP，Node
+Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 
 ## 2. 两条独立通道
 
@@ -178,7 +180,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
 | 24 | Agent Provider 与持久化 Chat | Renderer → Preload → Main → `AgentRuntime` → Model API | Provider Test/Save/Remove/default；Session Create/Select/Rename/Delete；Send/Stop/Retry；Streaming event | `desktop-api.ts`、`preload.ts`、`main.ts`、`packages/agent-runtime/`、Renderer `features/agent/` | Provider 与API Key整体加密，Session/Turn/Item/chunk/Usage写入`agent.sqlite`；Renderer按sequence合并Streaming，重启恢复且不重放请求 | Agent错误只结束目标Turn；退出先拒绝新IPC、排空已接受命令并取消Turn；Provider/Store启动失败走Desktop逐项清理，不跳过系统代理恢复 |
 | 25 | Agent Traffic Tool | `AgentRuntime` → `AgentToolService` → `CoreRuntime` | Capability Index、`discover_tools`、三个query、`stop_recording` | `packages/agent-runtime/src/agent/entry.ts`、`sessions/entry.ts`、`main/agent/entry.ts` | query直接执行；change按Session的`ask/auto`等待裁决或执行，Tool Result按call ID持久化并返回真实Core数据 | 未披露/已关闭Tool返回`unknown_tool`；Deny返回`tool_denied`；取消沿原`AbortSignal`进入Core RPC并补失败Result |
-| 26 | 外部MCP Tool | MCP Host → Main loopback HTTP → `McpDesktopService` → `CoreRuntime` | 当前MCP协议、Bearer、`tools/list`、`tools/call`、Client `ask/auto` | `main/mcp/`、`packages/mcp-server/`、Settings MCP组件 | 每次请求重读MCP Tool开关与Client模式；query直达，change按Ask/Auto执行正式命令 | 缺失/错误Token为401，带Origin为403，旧协议拒绝；停用、撤销、轮换或退出取消归属调用且不影响代理转发 |
+| 26 | 外部MCP Tool | MCP Host → Main loopback HTTP → `McpDesktopService` → `CoreRuntime` | 当前MCP协议、Bearer、CORS、`tools/list`、`tools/call`、Client `ask/auto` | `main/mcp/`、`packages/mcp-server/`、Settings MCP组件、`apps/playground/` | 每次请求重读MCP Tool开关与Client模式；query直达，change按Ask/Auto执行正式命令；Browser与原生Host共用同一入口 | `OPTIONS /mcp`返回204；实际请求缺失/错误Token为401；旧协议由SDK拒绝；停用、撤销、轮换或退出取消归属调用且不影响代理转发 |
 
 ## 5. 关键数据结构
 

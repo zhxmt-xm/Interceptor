@@ -1,0 +1,22 @@
+.playgroundHeader { min-width: 0; display: grid; grid-template-columns: 292px minmax(0,1fr) auto; align-items: center; border-bottom: 1px solid var(--border); background: var(--chrome); }
+.playgroundBrand { height: 100%; display: flex; align-items: center; gap: 11px; padding: 0 16px; border-right: 1px solid var(--border); }
+.playgroundBrand > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: linear-gradient(140deg,var(--accent),var(--purple)); }
+.playgroundBrand svg { width: 17px; height: 17px; }
+.playgroundBrand div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.playgroundBrand strong { font-size: 14px; font-weight: 650; }
+.playgroundBrand small { color: var(--text-3); font-size: 10.5px; }
+.playgroundConnection { min-width: 0; display: flex; align-items: center; gap: 13px; padding: 0 18px; }
+.playgroundConnection > span { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color: var(--text-2); font-size: 11.5px; text-transform: capitalize; }
+.playgroundConnection > span i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+.playgroundConnection > span[data-state="connected"] i { background: var(--green); }
+.playgroundConnection > span[data-state="connecting"] i { background: var(--yellow); }
+.playgroundConnection > span[data-state="error"] i { background: var(--red); }
+.playgroundConnection code { min-width: 0; overflow: hidden; color: var(--text-2); font: 11px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.playgroundConnection small { color: var(--text-3); font: 9.5px var(--font-mono); }
+.playgroundConnection em { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color: var(--accent); font: normal 11px var(--font-mono); }
+.playgroundConnection em svg { width: 13px; height: 13px; }
+.playgroundCommands { display: flex; gap: 3px; padding-right: 12px; }
+.playgroundCommands button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--text-2); cursor: pointer; }
+.playgroundCommands button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.playgroundCommands button:disabled { color: var(--text-3); cursor: not-allowed; }
+.playgroundCommands svg { width: 15px; height: 15px; }

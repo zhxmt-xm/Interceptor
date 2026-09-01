@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "postinstall": "patch-package",
+    "playground": "npm run dev --workspace @interceptor/playground",
     "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
     "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
     "package": "npm run build:core && npm run package --workspace @interceptor/desktop",

@@ -1,6 +1,6 @@
 # 平台架构：测试分层
 
-> 最后更新：2026-08-21
+> 最后更新：2026-09-01
 > 范围：三套互不替代的测试层，以及它们的边界与当前实现状态。
 
 ## 1. 三层职责
@@ -11,6 +11,7 @@
 | Local E2E workflow | `apps/desktop/tests/e2e-workflow-tests/` | Playwright `_electron.launch()` | 从真实 App UI 出发的端到端 workflow |
 | Packaged smoke | `apps/desktop/tests/packaged-smoke/` | 最终 package + CDP | 打包产物的综合验证 |
 | 设计一致性 | `apps/desktop/tests/visual-parity/` | 测试目录内 fake Preload | Renderer 与 `design-vite/` 的几何/像素一致性 |
+| 人工验收工具 | `apps/playground/` | Browser手动点击 + Node Traffic Lab | 最新MCP全部详情、逐Tool人工结论与可控协议流量；不替代任何自动层 |
 
 **三套测试职责独立，不能互相冒充覆盖。**
 
@@ -23,12 +24,16 @@
 
 ## 3. 当前实现状态
 
-84条Inventory条目与85份详细验收规格位于`e2e-workflow-tests/README.md`与`docs/`。`workflows/`当前有
-29条可执行真实Electron workflow；已通过项均保留实现前或retrospective Red、当前Green、trace/evidence
+Inventory与详细验收规格位于`e2e-workflow-tests/README.md`与`docs/`。`workflows/`当前有
+38条可执行真实Electron workflow；已通过项均保留实现前或retrospective Red、当前Green、trace/evidence
 与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。
 只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
 
-`packaged-smoke/startup.spec.ts`仍是最终package的综合CDP smoke，尚未复用这84条Inventory contract。
+`packaged-smoke/startup.spec.ts`仍是最终package的综合CDP smoke，尚未复用完整Inventory contract。
+
+`apps/playground`不是测试Runner。Vitest只覆盖配置解析、Token脱敏、报告完整性和真实socket Traffic Lab；
+`mcp.browser-playground-cors`证明真实Electron与系统Edge的Browser → Main → Core链路。24项Tool的Pass / Fail /
+Blocked仍必须由Developer在Playground逐项点击并观察产品与origin后填写，不能由自动Green代替。
 
 ## 4. 执行约束
 

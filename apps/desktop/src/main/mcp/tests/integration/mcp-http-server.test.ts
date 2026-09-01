@@ -66,29 +66,77 @@ describe('McpHttpServer', () => {
     expect(tools.tools.map((tool) => tool.name)).toContain('get_proxy_status');
   });
 
-  it('rejects missing credentials and every browser Origin before MCP dispatch', async () => {
+  it('serves browser CORS while authenticating every actual MCP request', async () => {
     const fixture = await startServer(servers);
     const requestBody = '{}';
 
+    const preflight = await fetch(fixture.endpoint, {
+      method: 'OPTIONS',
+      headers: {
+        'Access-Control-Request-Headers': 'authorization,x-playground-debug',
+        'Access-Control-Request-Method': 'PATCH',
+        Origin: 'https://playground.example',
+      },
+    });
     const missing = await fetch(fixture.endpoint, {
       method: 'POST',
-      headers: { Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json' },
+      headers: {
+        Accept: 'application/json, text/event-stream',
+        'Content-Type': 'application/json',
+        Origin: 'https://playground.example',
+      },
       body: requestBody,
     });
-    const browser = await fetch(fixture.endpoint, {
+    const invalid = await fetch(fixture.endpoint, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json, text/event-stream',
+        Authorization: 'Bearer invalid',
+        'Content-Type': 'application/json',
+        Origin: 'https://playground.example',
+      },
+      body: requestBody,
+    });
+    const hostAgnostic = await fetch(fixture.endpoint, {
       method: 'POST',
       headers: {
         Accept: 'application/json, text/event-stream',
         Authorization: `Bearer ${fixture.token}`,
         'Content-Type': 'application/json',
-        Origin: 'https://attacker.example',
+        Host: 'playground.example',
+        Origin: 'https://playground.example',
       },
       body: requestBody,
     });
+    const browserClient = new Client(
+      { name: 'browser-playground', version: '1.0.0' },
+      { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+    );
+    clients.push(browserClient);
+    await browserClient.connect(new StreamableHTTPClientTransport(new URL(fixture.endpoint), {
+      requestInit: {
+        headers: {
+          Authorization: `Bearer ${fixture.token}`,
+          Origin: 'https://playground.example',
+        },
+      },
+    }));
 
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('*');
+    expect(preflight.headers.get('access-control-allow-methods')).toBe('PATCH');
+    expect(preflight.headers.get('access-control-allow-headers'))
+      .toBe('authorization,x-playground-debug');
     expect(missing.status).toBe(401);
-    expect(browser.status).toBe(403);
-    expect(browser.headers.has('access-control-allow-origin')).toBe(false);
+    expect(invalid.status).toBe(401);
+    expect(missing.headers.get('access-control-allow-origin')).toBe('*');
+    expect(invalid.headers.get('access-control-allow-origin')).toBe('*');
+    expect(hostAgnostic.status).not.toBe(403);
+    await expect(browserClient.listTools()).resolves.toMatchObject({
+      tools: expect.arrayContaining([
+        expect.objectContaining({ name: 'get_proxy_status' }),
+      ]),
+    });
   });
 
   it('serves only the MCP endpoint and releases its port on close', async () => {

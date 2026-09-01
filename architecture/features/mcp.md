@@ -4,7 +4,7 @@
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
-> 状态：**loopback Streamable HTTP纵向流程已实现并通过真实Electron E2E；真实VS Code/Copilot Host互操作因协议代际不一致blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
+> 状态：**loopback Streamable HTTP、Browser CORS与Web人工验收Playground已实现并通过自动门禁；24项Tool待Developer逐项人工验收；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
 
 ## 1. 职责与边界
 
@@ -250,7 +250,7 @@ transport，Tool最终都必须访问正在运行的Interceptor Desktop所拥有
 | 生命周期 | Main拥有listener、HTTP交换、SSE与请求取消 | Host拥有bridge子进程；Main另拥有pipe/socket listener与连接取消 |
 | endpoint稳定性 | 首次分配并持久化端口；冲突时需显式换端口并更新Host配置 | Host命令稳定；bridge通过runtime文件发现每次启动的pipe/socket |
 | 调用方认证 | 每个Client独立Bearer token | Host到bridge由父子进程边界保护；bridge到Main仍需OS ACL或握手凭据 |
-| 浏览器攻击面 | 浏览器可触达loopback，必须校验Origin、禁止CORS并要求Token | 浏览器不能直接访问stdio、named pipe或unix socket |
+| 浏览器调用 | Browser可直接使用标准CORS与per-client Bearer访问loopback | 浏览器不能直接访问stdio、named pipe或unix socket |
 | 跨平台打包 | 使用Electron/Node现有HTTP能力，无额外产物 | 需要发布bridge；`RunAsNode: false`下还需用户Node或独立签名二进制 |
 | 多Client | 一个listener服务多个独立认证Client | 每个Host一个bridge，最终仍汇聚到同一个Main listener |
 | 远程扩展 | 未来可在独立安全设计下扩展TLS/OAuth/远程部署 | 仅适合本机；远程仍需增加另一种transport |
@@ -280,7 +280,7 @@ transport，Tool最终都必须访问正在运行的Interceptor Desktop所拥有
 ```mermaid
 flowchart LR
         HOST["VS Code / Claude Desktop / Cursor"] -->|"HTTP + Bearer"| HTTP["Main · McpHttpTransport<br/>127.0.0.1:&lt;port&gt;/mcp"]
-        WEB["任意网页"] -.->|"Origin存在，拒绝"| HTTP
+    WEB["Browser Playground"] -->|"CORS + Bearer"| HTTP
         HTTP --> AUTH["McpAuthenticator"]
         AUTH --> HANDLER["Per-request SDK Server"]
         HANDLER --> REG["共享 McpToolRegistry"]
@@ -347,19 +347,21 @@ Settings只提供一个明确动作：Main把通用Streamable HTTP配置片段�
 管理。Preload与Renderer只接收成功/失败状态，不返回token。撤销Client立即终止其全部在途调用；重新生成
 凭据会使旧token立即失效，并要求显式重写该Client配置。
 
-### 6.5 loopback HTTP安全边界
+### 6.5 loopback HTTP安全边界 [改造中]
 
-Bearer token证明调用方持有该Client的秘密，但不代替网络边界与来源检查。首期只支持原生MCP Host，
-**不支持浏览器Client，也不返回任何CORS header**：
+Bearer token证明调用方持有该Client的秘密，也是本机Browser与原生Host统一的调用方身份。Origin和Host都不是
+身份，Main不再以它们授权或拒绝请求：
 
-1. 所有`/mcp`请求都强制要求`Authorization: Bearer ...`，token使用`crypto.timingSafeEqual`比较。
-2. 无`Origin`的原生Host请求可继续认证；只要存在`Origin`，首期一律返回`403`，防止DNS rebinding与网页访问。
-3. 缺失或错误token返回`401`，且不得泄露Client是否存在、Tool列表或结果。
-4. 请求方法、`Content-Type`、`Accept`、协议版本与请求体上限在transport边界校验；错误只关闭目标HTTP交换。
-5. Token、Tool开关和执行模式保持正交：认证通过不代表Tool已启用，也不代表change Tool可以跳过`ask`。
+1. listener继续只绑定`127.0.0.1`，Main不再检查请求Host；
+2. `OPTIONS /mcp`不要求Bearer并返回标准CORS preflight；
+3. 实际`/mcp`请求无论是否带Origin，都必须提供`Authorization: Bearer ...`；
+4. 缺失或错误token返回`401`，且不得泄露Client是否存在、Tool列表或结果；
+5. Browser响应允许任意Origin读取，但不返回`Access-Control-Allow-Credentials`，不使用Cookie认证；
+6. Bearer通过后Main原样交给官方SDK；method、`Content-Type`、`Accept`、协议版本与JSON-RPC内容由SDK校验；
+7. Token、Tool开关和执行模式保持正交：认证通过不代表Tool已启用，也不代表change Tool可以跳过`ask`。
 
-如果未来明确支持浏览器或远程Client，必须作为独立work item设计TLS、OAuth 2.1、Origin allowlist、CORS、
-授权回调和远程威胁模型；不得通过放宽首期loopback规则获得该能力。
+CORS header与Token内存边界由[Playground feature](playground.md#53-cors)统一定义。远程Client仍不在范围内；
+允许Browser访问loopback不代表绑定局域网、增加TLS/OAuth或放宽Bearer。
 
 ### 6.6 为什么不做OAuth 2.1
 
@@ -391,8 +393,8 @@ Interceptor 存放的是**解密后的 HTTPS 流量** —— Cookie、`Authoriza
 
 | 威胁 | Streamable HTTP | stdio + Bridge | 首期防护 |
 | --- | --- | --- | --- |
-| 任意网页访问抓包 | **高危，可触达loopback** | 浏览器不能直接访问stdio或本地IPC | 强制Bearer；存在`Origin`即拒绝；不返回CORS header；只接受声明的JSON类型 |
-| DNS rebinding | **高危** | 不适用 | 绑定`127.0.0.1`并拒绝所有带`Origin`的请求 |
+| 任意网页访问抓包 | **高危，可触达loopback** | 浏览器不能直接访问stdio或本地IPC | 强制per-client Bearer；无Token统一401；Browser端Token只驻留内存 |
+| DNS rebinding | **高危** | 不适用 | listener只绑定`127.0.0.1`；所有实际请求仍需不可猜测的per-client Bearer，Origin与Host不参与身份判断 |
 | 本机其他进程连接 | 中 | 中 | HTTP使用per-client token；Bridge到Main使用OS ACL或握手凭据 |
 | token泄露后重放 | 中，直到该Client撤销或重新生成 | 取决于Bridge到Main的凭据生命周期 | safeStorage加密持久化、日志零泄露、按Client撤销/重新生成 |
 | **合法Client被Prompt Injection操纵** | **高危** | **高危** | 见7.3；transport与认证不能解决合法调用方被操纵的问题 |
@@ -532,9 +534,9 @@ Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴�
 - [x] MCP默认关闭；关闭状态下不存在HTTP listener、SDK handler与在途调用，已配置Client和endpoint设置保留。
 - [x] 首次开启由OS分配空闲端口并持久化；重启复用同一URL；端口冲突进入明确状态而不静默改变Host配置。
 - [x] listener只绑定`127.0.0.1`且不复用`8888`；缺失或错误Bearer token返回`401`。
-- [x] 任意带`Origin`的请求返回`403`且不含任何`Access-Control-Allow-*`；网页请求不能产生副作用。
+- [x] Browser CORS：`OPTIONS /mcp`返回204 preflight，带Origin的实际请求仍按Bearer认证；Main不检查Origin或Host。
 - [x] token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
-- [ ] **blocked · VS Code/Copilot互操作**：2026-09-01使用真实VS Code `1.135.0`（commit `08d4889f9e`）读取Interceptor复制的HTTP配置。Host识别并启动`interceptor`，但首个Streamable HTTP请求收到`400`，随后回退legacy SSE并收到预期`405 Method not allowed`，因此尚未进入`tools/list`。本机VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor使用官方SDK v2的`2026-07-28`并配置`legacy: 'reject'`，旧协议初始化会被明确拒绝。24项Tool发现、`get_proxy_status`、`stop_recording` Ask Deny/Allow及重启重连均未达到可验收状态。不得以官方SDK自动化代替Host结果，也不得静默增加legacy兼容层；需先决定支持的VS Code版本是否升级到`2026-07-28`，或另立产品契约允许2025-era协议，再用同一真实Host矩阵复验。
+- [ ] **blocked · VS Code/Copilot互操作**：2026-09-01真实VS Code `1.135.0`（commit `08d4889f9e`）固定`LATEST_PROTOCOL_VERSION="2025-11-25"`，而产品已决定只支持官方SDK v2的`2026-07-28`并保持`legacy: 'reject'`。Host首个HTTP请求返回400并回退legacy SSE后收到405，未进入`tools/list`。不增加legacy兼容；等待VS Code支持当前协议后用同一Host矩阵复验。
 - [ ] VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
 - [x] app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
 - [x] 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。

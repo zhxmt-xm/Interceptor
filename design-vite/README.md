@@ -71,3 +71,4 @@ node design-vite/tools/compare-shots.mjs <baselineDir> [feature]
   - **composer** — 可嵌套命名目录的 Collection 分栏 + 多请求文档标签 + URL/Send 行 + 请求编辑区（Query/Headers/Body/Auth）+ 响应区（Body/Headers/Cookies/Timing）
   - **settings** — Proxy / AppContainer access / TLS passthrough / Certificates / Appearance / Storage / Privacy / Updates
   - **diagnostics** — 命令诊断表格 + action 时间线
+  - **playground** — 独立全屏Web人工验收工作台：在线MCP目录、Raw JSON调用、完整交换、手工结论与Traffic Lab

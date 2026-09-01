@@ -1,4 +1,4 @@
-export type DesignView = 'capture' | 'rules' | 'composer' | 'settings' | 'diagnostics';
+export type DesignView = 'capture' | 'rules' | 'composer' | 'settings' | 'diagnostics' | 'playground';
 export type DesignTheme = 'warm' | 'light' | 'ember' | 'dark';
 export type SidebarState = 'expanded' | 'collapsed';
 export type DetailState = 'open' | 'closed';
@@ -93,6 +93,9 @@ export type AgentToolTraceState = 'traffic' | '';
 export type McpServerState = 'disabled' | 'running' | 'conflict';
 export type McpClientDialogState = 'add' | 'regenerate' | 'revoke' | '';
 export type McpToolApprovalState = 'pending' | '';
+export type PlaygroundSection = 'mcp' | 'traffic';
+export type PlaygroundCallState = 'complete' | 'approval' | 'error';
+export type PlaygroundManualStatus = 'not-run' | 'pass' | 'fail' | 'blocked';
 
 export interface AgentProviderProfileState {
   readonly displayName: string;
@@ -161,6 +164,11 @@ export interface DesignState {
   readonly mcpConfigCopied: boolean;
   readonly mcpCredentialGeneration: number;
   readonly mcpToolApproval: McpToolApprovalState;
+  readonly playgroundSection: PlaygroundSection;
+  readonly playgroundSelectedTool: string;
+  readonly playgroundSelectedScenario: string;
+  readonly playgroundCallState: PlaygroundCallState;
+  readonly playgroundManualStatus: PlaygroundManualStatus;
   readonly bodyType: BodyType;
   readonly settings: string;
   readonly update: string;

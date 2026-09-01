@@ -11,7 +11,7 @@ import { startDesignPreview } from './tools/design-preview.mjs';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const shotsRoot = path.join(dir, 'shots');
 
-const FEATURES = ['capture', 'rules', 'composer', 'settings', 'diagnostics'];
+const FEATURES = ['capture', 'rules', 'composer', 'settings', 'diagnostics', 'playground'];
 const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
 const onlyFeature = process.argv
   .find((argument) => argument.startsWith('--feature='))
@@ -31,6 +31,8 @@ for (const feature of FEATURES) {
   }
 }
 for (const theme of ['light', 'dark']) {
+  shots.push({ feature: 'playground', theme, variant: 'tool-approval', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'mcp', playgroundSelectedTool: 'stop_recording', playgroundCallState: 'approval' } });
+  shots.push({ feature: 'playground', theme, variant: 'traffic-h1-json', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'traffic', playgroundSelectedScenario: 'h1-json', playgroundCallState: 'complete' } });
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
   shots.push({

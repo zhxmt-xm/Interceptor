@@ -34,6 +34,7 @@ body {
 .app { position: relative; width: 1600px; height: 900px; display: grid; grid-template-areas: "side top" "side main" "side status"; grid-template-rows: 46px minmax(0,1fr) 30px; container-type: inline-size; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg); color: var(--text); box-shadow: var(--shadow); font-size: 13px; }
 .app.expanded { grid-template-columns: 220px minmax(0,1fr); }
 .app.collapsed { grid-template-columns: 60px minmax(0,1fr); }
+.app[data-view="playground"] { display: block; border-radius: 8px; }
 .app.expanded[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 220px minmax(440px,1fr) minmax(220px,440px); }
 .app.collapsed[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 60px minmax(440px,1fr) minmax(220px,440px); }
 

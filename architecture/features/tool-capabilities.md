@@ -1,10 +1,11 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-08-31
+> 最后更新：2026-09-01
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent三个Traffic query与首个change
-> Tool纵向流程已完成；Desktop MCP已通过loopback Streamable HTTP消费同一registry并完成首个纵向流程。
+> Tool纵向流程已完成；Desktop MCP与Browser Playground已通过loopback Streamable HTTP消费同一registry；
+> Playground代码完成，首批24项待Developer逐项人工验收。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -202,8 +203,10 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
    与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
 5. **[已完成]** 接入Session级`ask` / `auto`与首个change Tool `stop_recording`；
 6. **[已完成]** 接入MCP Desktop loopback Streamable HTTP、Client级`ask` / `auto`、Tool过滤与首个query/change纵向流程；
-7. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration；影响用户flow时增加真实E2E；
-8. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
+7. **[代码完成 · 待人工验收]** 建立[Web人工验收Playground](playground.md)，直接消费实时`tools/list`并为每项Tool提供手工recipe、
+   完整协议详情和Developer Pass / Fail / Blocked记录；Playground不复制registry，也不接LLM；
+8. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration、Playground人工recipe；影响用户flow时增加真实E2E；
+9. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
 
 ## 5. 不注册为业务 Tool 的控制面
 

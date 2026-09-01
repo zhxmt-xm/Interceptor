@@ -6,7 +6,6 @@ import {
 } from 'node:http';
 
 import {
-  localhostHostValidation,
   toNodeHandler,
   type NodeMcpRequestHandler,
 } from '@modelcontextprotocol/node';
@@ -21,8 +20,6 @@ export class McpHttpServer {
   readonly #mcpServer: McpServer;
   /** Official Node adapter for the SDK's Web-standard handler. */
   readonly #nodeMcpRequestHandler: NodeMcpRequestHandler;
-  /** Official localhost Host-header guard. */
-  readonly #validateHost = localhostHostValidation();
   /** Active listener; null before start and after close. */
   #nodeHttpServer: NodeHttpServer | null = null;
 
@@ -85,16 +82,29 @@ export class McpHttpServer {
 
   /** Applies the product HTTP boundary before delegating MCP semantics to the SDK. */
   async #handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
     if (requestUrl.pathname !== MCP_ENDPOINT_PATH) {
       response.writeHead(404).end();
       return;
     }
-    if (request.headers.origin !== undefined) {
-      response.writeHead(403).end();
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader(
+      'Access-Control-Expose-Headers',
+      'MCP-Protocol-Version, WWW-Authenticate',
+    );
+    if (request.method === 'OPTIONS') {
+      const requestedHeaders = request.headers['access-control-request-headers'];
+      const requestedMethod = request.headers['access-control-request-method'];
+      if (requestedHeaders !== undefined) {
+        response.setHeader('Access-Control-Allow-Headers', requestedHeaders);
+      }
+      if (requestedMethod !== undefined) {
+        response.setHeader('Access-Control-Allow-Methods', requestedMethod);
+      }
+      response.setHeader('Access-Control-Max-Age', '600');
+      response.writeHead(204).end();
       return;
     }
-    if (!this.#validateHost(request, response)) return;
     try {
       await this.#nodeMcpRequestHandler(request, response);
     } catch {

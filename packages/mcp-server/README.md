@@ -54,7 +54,7 @@ loopback可省去bridge进程、named pipe/unix socket、runtime endpoint发现�
 - 默认关闭，只绑定`127.0.0.1`，不绑定`0.0.0.0`，也不复用代理端口`8888`；
 - 首次启用由OS分配空闲端口并持久化，后续重启复用；冲突时明确报错，不静默改变Host配置；
 - 每个Client使用独立Bearer token，缺失或错误token返回`401`；
-- 首期不支持浏览器Client，任何带`Origin`的请求返回`403`，且不返回CORS header；
+- Browser与原生Client共用Bearer认证；CORS与`OPTIONS`由Desktop Main HTTP边界负责，本package不判断Origin或Host；
 - MCP关闭或app退出时关闭listener、SDK handler和在途调用，但保留endpoint与Client配置。
 
 ### Token生命周期：只手动轮换

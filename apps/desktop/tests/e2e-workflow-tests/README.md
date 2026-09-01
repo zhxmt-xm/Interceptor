@@ -284,6 +284,7 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `mcp.desktop.streamable-http` | 外部Host经loopback HTTP接入、授权Tool并跨重启保持凭据 | shared | passed |
+| `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 
 详细步骤：[docs/mcp.md](docs/mcp.md)
 

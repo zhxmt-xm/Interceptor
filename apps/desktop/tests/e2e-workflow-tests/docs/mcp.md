@@ -4,6 +4,34 @@
 创建的配置连接Main公开的loopback Streamable HTTP endpoint；不得直接构造Client记录、读取加密Store、调用
 Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品「复制配置」结果中取得，evidence只保存hash。
 
+<a id="mcp-browser-playground-cors"></a>
+## `mcp.browser-playground-cors`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 通过真实产品UI开启MCP并创建默认Ask的Client；暂停trace后Copy config，只在测试内存保留Token。
+2. 从真实Browser origin向`/mcp`发送preflight，确认`204`、原样允许Browser声明的method/header且不要求Bearer。
+3. Browser使用无Token和错误Token发送实际请求，均确认`401`且Browser可读取状态，Core无业务命令。
+4. Browser使用正确Bearer和固定`2026-07-28`官方Client完成discover与`tools/list`，确认当前24项可见。
+5. Browser调用`get_proxy_status`并读取真实Core状态；调用`stop_recording`后在Interceptor真实Modal中Deny，
+   再次调用并Allow，分别确认无副作用与正式Recording停止。
+6. 关闭Browser与App，确认在途调用、审批、MCP端口、8888、Main/Core/Worker与系统代理全部收敛。
+
+### 预期效果
+
+Origin与Host都不作为身份。任意Browser origin只有持有产品创建的有效Bearer才能调用；无Token仍不可读取Tool或
+业务数据。listener继续只绑定loopback，错误path仍由路由返回404；Bearer通过后的旧协议由官方SDK拒绝。
+
+### Evidence
+
+- 实现前真实系统Edge在`server/discover`的preflight后以`TypeError: Failed to fetch`取得有效Red；当前同一workflow Green；
+- integration锁定CORS preflight与实际response headers；真实Browser锁定最新协议、24项Tool、query、Deny/Allow及Recording前后态；
+- Token只保存hash，trace、截图与日志不含明文；
+- Main/Core PID、MCP/8888释放、系统代理恢复与`gracefulDestroyVerified=true`。
+
 <a id="mcp-desktop-streamable-http"></a>
 ## `mcp.desktop.streamable-http`
 
@@ -18,9 +46,8 @@ Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品�
    `127.0.0.1`分配空闲高位端口，公开状态显示`http://127.0.0.1:<port>/mcp`且端口不为`8888`。
 3. 通过产品UI创建名为`VS Code E2E`的Client，确认默认模式为`ask`。暂停trace，点击该Client的Copy config，
    从系统剪贴板读取标准HTTP MCP配置并恢复trace；只保存URL、token SHA-256与配置结构，不保存token明文。
-4. 测试侧以真实MCP Client向该URL发送无Token、错误Token和带任意`Origin`的请求，分别确认`401`、`401`、
-   `403`，响应无CORS header且没有业务副作用；随后使用正确Bearer和固定当前`2026-07-28`协议的官方Client
-   连接。Server不提供旧协议兼容路径。
+4. 测试侧使用正确Bearer和固定当前`2026-07-28`协议的官方Client连接；无Token、错误Token、Browser CORS与
+   Main auth-only边界由integration及`mcp.browser-playground-cors`覆盖。Server不提供旧协议兼容路径。
 5. 在Settings关闭`get_proxy_status`的MCP开关，经已连接Client调用`tools/list`，确认24项共享registry中只缺该项，
    Agent开关不变；猜测调用同名Tool得到不存在结果且Core未执行。重新开启后再次`tools/list`，确认该项恢复。
 6. 用产品UI开始Recording；真实MCP Client调用query Tool `get_proxy_status`，确认同一个POST直接返回JSON，结果
@@ -46,9 +73,8 @@ Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品�
 `ask`/`auto`相互正交；app重启不轮换token，只有用户显式重新生成或撤销才让旧凭据失效。MCP失败、断连、
 认证拒绝和审批等待都不影响抓包转发，关闭MCP不会关闭Proxy Core或修改系统代理。
 
-本workflow验收首期原生Host场景，不支持浏览器或远程Client。带`Origin`的请求必须统一拒绝；SSE响应形态由
-独立transport integration test覆盖进度/多消息分帧，本workflow至少验证一个等待审批的在途HTTP调用能够在
-用户裁决后返回最终结果。
+本workflow保留原生Host链路；Browser CORS由`mcp.browser-playground-cors`独立覆盖。SSE响应形态由独立transport
+integration test覆盖进度/多消息分帧，本workflow至少验证一个等待审批的在途HTTP调用能够在用户裁决后返回最终结果。
 
 测试侧使用官方`@modelcontextprotocol/client` runtime并固定当前`2026-07-28`协议，角色等同于VS Code等
 Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则测试结果会依赖VS Code/Claude自身界面与配置
