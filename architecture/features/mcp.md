@@ -1,10 +1,10 @@
 # Feature: MCP Server
 
-> 最后更新：2026-08-31
+> 最后更新：2026-09-01
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
-> 状态：**loopback Streamable HTTP纵向流程已实现并通过真实Electron E2E；stdio + Bridge仅保留为已评估但当前不采用的方案。**
+> 状态：**loopback Streamable HTTP纵向流程已实现并通过真实Electron E2E；真实VS Code/Copilot Host互操作因协议代际不一致blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
 
 ## 1. 职责与边界
 
@@ -534,6 +534,7 @@ Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴�
 - [x] listener只绑定`127.0.0.1`且不复用`8888`；缺失或错误Bearer token返回`401`。
 - [x] 任意带`Origin`的请求返回`403`且不含任何`Access-Control-Allow-*`；网页请求不能产生副作用。
 - [x] token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
+- [ ] **blocked · VS Code/Copilot互操作**：2026-09-01使用真实VS Code `1.135.0`（commit `08d4889f9e`）读取Interceptor复制的HTTP配置。Host识别并启动`interceptor`，但首个Streamable HTTP请求收到`400`，随后回退legacy SSE并收到预期`405 Method not allowed`，因此尚未进入`tools/list`。本机VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor使用官方SDK v2的`2026-07-28`并配置`legacy: 'reject'`，旧协议初始化会被明确拒绝。24项Tool发现、`get_proxy_status`、`stop_recording` Ask Deny/Allow及重启重连均未达到可验收状态。不得以官方SDK自动化代替Host结果，也不得静默增加legacy兼容层；需先决定支持的VS Code版本是否升级到`2026-07-28`，或另立产品契约允许2025-era协议，再用同一真实Host矩阵复验。
 - [ ] VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
 - [x] app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
 - [x] 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。
