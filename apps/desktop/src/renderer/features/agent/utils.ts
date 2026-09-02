@@ -38,6 +38,12 @@ interface MutableAgentToolBlock {
 export type AgentToolResultSummary =
   | { readonly kind: 'discovery'; readonly count: number }
   | { readonly kind: 'proxy'; readonly recording: boolean; readonly address: string }
+  | {
+      readonly kind: 'storage';
+      readonly exchangeCount: number;
+      readonly bodyCount: number;
+      readonly totalBytes: number;
+    }
   | { readonly kind: 'exchanges'; readonly count: number }
   | {
       readonly kind: 'exchange';
@@ -128,6 +134,16 @@ export function summarizeAgentToolResult(
       address: host === null || port === null ? 'not listening' : `${host}:${port}`,
     };
   }
+  if (name === 'get_storage_status' && isRecord(result.value)) {
+    const exchangeCount = result.value['exchangeCount'];
+    const bodyCount = result.value['bodyCount'];
+    const totalBytes = result.value['totalBytes'];
+    if (typeof exchangeCount === 'number'
+      && typeof bodyCount === 'number'
+      && typeof totalBytes === 'number') {
+      return { kind: 'storage', exchangeCount, bodyCount, totalBytes };
+    }
+  }
   if (name === 'list_exchanges' && isRecord(result.value) && Array.isArray(result.value['items'])) {
     return { kind: 'exchanges', count: result.value['items'].length };
   }
@@ -138,7 +154,9 @@ export function summarizeAgentToolResult(
       kind: 'exchange',
       method: typeof summary['method'] === 'string' ? summary['method'] : 'HTTP',
       path: typeof summary['path'] === 'string' ? summary['path'] : '/',
-      status: typeof summary['status'] === 'number' ? String(summary['status']) : 'pending',
+      status: typeof summary['statusCode'] === 'number'
+        ? String(summary['statusCode'])
+        : 'pending',
     };
   }
   return { kind: 'value', value: compactJson(result.value) };

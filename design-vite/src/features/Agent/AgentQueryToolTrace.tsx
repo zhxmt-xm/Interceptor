@@ -6,7 +6,12 @@ const TOOL_STEPS = [
   {
     name: 'discover_tools',
     arguments: 'capabilityId: traffic',
-    result: '3 tools discovered',
+    result: '5 tools discovered',
+  },
+  {
+    name: 'get_storage_status',
+    arguments: 'No parameters',
+    result: 'Exchanges 1 · Bodies 2 · 184 B',
   },
   {
     name: 'get_proxy_status',
@@ -31,7 +36,7 @@ export function AgentQueryToolTrace(): React.JSX.Element {
     <section aria-label="Tool activity" className={styles.toolTrace} data-parity="agent-query-tool-trace">
       <header className={styles.toolTraceHeader}>
         <span><Wrench aria-hidden="true" /><strong>Tool activity</strong></span>
-        <small>4 completed</small>
+        <small>5 completed</small>
       </header>
       <ol>
         {TOOL_STEPS.map((step) => (

@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, LoaderCircle, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
+import { sizeLabel } from '../../../components/share/sizeLabel';
 import type {
   AgentToolCallTranscriptItem,
   AgentToolResultTranscriptItem,
@@ -19,7 +20,7 @@ interface AgentQueryToolTraceProps {
 
 /** Renders completed and running query Tool calls as one ordered activity log. */
 export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps): React.JSX.Element {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const resultByCallId = new Map(results.map((result) => [result.callId, result]));
   const completedCount = calls.filter((call) => call.status === 'completed').length;
 
@@ -62,9 +63,17 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   <b>{t('agent.tools.arguments')}</b>
                   {argumentsText ?? t('agent.tools.noParameters')}
                 </span>
-                <span data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}>
+                <span
+                  data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
+                  data-summary-kind={summary?.kind}
+                  data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
+                  data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
+                  data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}
+                >
                   <b>{t('agent.tools.result')}</b>
-                  {summary === null ? t('agent.tools.running') : formatResultSummary(summary, t)}
+                  {summary === null
+                    ? t('agent.tools.running')
+                    : formatResultSummary(summary, t, i18n.language)}
                 </span>
               </div>
             </li>
@@ -79,12 +88,19 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
 function formatResultSummary(
   summary: ReturnType<typeof summarizeAgentToolResult>,
   t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
 ): string {
   switch (summary.kind) {
     case 'discovery':
       return t('agent.tools.discovered', { count: summary.count });
     case 'proxy':
       return `${t(summary.recording ? 'agent.tools.recordingOn' : 'agent.tools.recordingOff')} · ${summary.address}`;
+    case 'storage':
+      return t('agent.tools.storage', {
+        exchangeCount: new Intl.NumberFormat(locale).format(summary.exchangeCount),
+        bodyCount: new Intl.NumberFormat(locale).format(summary.bodyCount),
+        totalBytes: sizeLabel(summary.totalBytes, locale),
+      });
     case 'exchanges':
       return t('agent.tools.exchanges', { count: summary.count });
     case 'exchange':

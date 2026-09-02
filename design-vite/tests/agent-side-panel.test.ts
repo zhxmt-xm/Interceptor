@@ -50,6 +50,23 @@ test('Agent chat remains unchanged when the active workspace changes', async ({ 
   await expect(panel).not.toContainText('Rewrite auth header');
 });
 
+test('Agent Traffic Tool activity includes a compact Capture storage result', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentToolTrace: 'traffic',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
+  await expect(trace.locator('[data-tool-name="discover_tools"]'))
+    .toContainText('5 tools discovered');
+  await expect(trace.locator('[data-tool-name="get_storage_status"]'))
+    .toContainText('Exchanges 1 · Bodies 2 · 184 B');
+});
+
 test('Agent composer aligns the model select with visible context-window usage', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
@@ -416,17 +433,19 @@ test('Traffic Tool activity keeps calls, arguments, results, and final answer in
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace).toBeVisible();
-  await expect(trace.locator('[data-tool-name]')).toHaveCount(4);
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
   await expect(trace.locator('[data-tool-name]').evaluateAll((rows) => (
     rows.map((row) => row.getAttribute('data-tool-name'))
   ))).resolves.toEqual([
     'discover_tools',
+    'get_storage_status',
     'get_proxy_status',
     'list_exchanges',
     'get_exchange',
   ]);
   await expect(trace).toContainText('capabilityId: traffic');
+  await expect(trace).toContainText('Exchanges 1 · Bodies 2 · 184 B');
   await expect(trace).toContainText('GET /agent-e2e/traffic · 200');
   await expect(page.locator('[data-parity="agent-transcript"]'))
-    .toContainText('exchange e2e-agent-traffic');
+    .toContainText('Capture storage is non-empty');
 });

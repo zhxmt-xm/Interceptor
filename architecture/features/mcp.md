@@ -1,6 +1,6 @@
 # Feature: MCP Server
 
-> 最后更新：2026-09-01
+> 最后更新：2026-09-02
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
@@ -23,10 +23,10 @@ MCP Server 把 Interceptor 的产品能力，以 [Model Context Protocol](https:
 **根本定位：MCP Server 是共享 Tool 的外部协议入口，不是第二套 Tool 或业务实现。** Tool 必须复用正式产品
 意图；产品缺少语义单一入口时先补产品入口，不在 MCP adapter 中实现 read-modify-write 或系统操作后门。
 
-内置 Agent 已实现 BYOK Provider、持久化 Session、Streaming Chat与恢复，并已接入三个Traffic query Tool、
+内置 Agent 已实现 BYOK Provider、持久化 Session、Streaming Chat与恢复，并已接入四个Traffic query Tool、
 `stop_recording`及Session级`ask` / `auto`。
 早期MCP Tool的通用descriptor、schema、参数边界、脱敏与执行函数已迁到`packages/interceptor-tools/`，
-三个多义入口已拆成24项。MCP只保留协议adapter；Desktop纵向接线已完成，其余Tool仍按目录逐项开发。
+三个多义入口已拆成24项。MCP只保留协议adapter；Desktop纵向接线已完成，内置Agent其余Tool按能力分组接入。
 
 ## 2. 进程位置决策
 

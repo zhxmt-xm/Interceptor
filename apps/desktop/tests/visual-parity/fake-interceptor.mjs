@@ -1076,8 +1076,24 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['get_proxy_status', 'list_exchanges', 'get_exchange', 'stop_recording']
+            matches: ['get_proxy_status', 'get_storage_status', 'list_exchanges', 'get_exchange', 'stop_recording']
               .map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-storage',
+        name: 'get_storage_status',
+        arguments: {},
+        result: {
+          ok: true,
+          value: {
+            sessionCount: 1,
+            exchangeCount: 1,
+            bodyCount: 2,
+            databaseBytes: 0,
+            blobBytes: 184,
+            totalBytes: 184,
           },
         },
       },
@@ -1104,7 +1120,7 @@ export function installFakeInterceptor({
           ok: true,
           value: {
             detail: {
-              summary: { method: 'GET', path: '/agent-e2e/traffic', status: 200 },
+              summary: { method: 'GET', path: '/agent-e2e/traffic', statusCode: 200 },
             },
           },
         },
@@ -1114,7 +1130,7 @@ export function installFakeInterceptor({
       kind: 'user-message',
       itemId: 'item-user-agent-traffic',
       turnId,
-      content: 'Inspect the latest captured request and summarize its status.',
+      content: 'Inspect Capture storage and the latest captured request, then summarize their status.',
       createdAt: agentStartedAt,
     }];
     for (const [index, step] of toolSteps.entries()) {
@@ -1154,10 +1170,10 @@ export function installFakeInterceptor({
       kind: 'assistant-message',
       itemId: 'item-assistant-agent-traffic-final',
       turnId,
-      content: 'The latest exchange is `GET /agent-e2e/traffic` with status `200` on exchange `e2e-agent-traffic`.',
+      content: 'Capture storage is non-empty. The latest exchange is `GET /agent-e2e/traffic` with status `200`.',
       reasoningContent: '',
       partial: false,
-      createdAt: agentStartedAt + 14,
+      createdAt: agentStartedAt + 17,
     });
     const turn = {
       turnId,
@@ -1166,7 +1182,7 @@ export function installFakeInterceptor({
       retryOfTurnId: null,
       error: null,
       createdAt: agentStartedAt,
-      updatedAt: agentStartedAt + 15,
+      updatedAt: agentStartedAt + 18,
     };
     agentSessionSnapshot = {
       ...agentSessionSnapshot,

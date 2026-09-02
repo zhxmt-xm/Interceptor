@@ -104,6 +104,7 @@ describe('AgentToolService', () => {
       value: {
         matches: [
           { descriptor: { name: 'get_proxy_status' } },
+          { descriptor: { name: 'get_storage_status' } },
           { descriptor: { name: 'list_exchanges' } },
           { descriptor: { name: 'get_exchange' } },
           { descriptor: { name: 'stop_recording' } },
@@ -115,6 +116,7 @@ describe('AgentToolService', () => {
     expect(disclosed.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
       'get_proxy_status',
+      'get_storage_status',
       'list_exchanges',
       'get_exchange',
       'stop_recording',
@@ -136,10 +138,56 @@ describe('AgentToolService', () => {
     const snapshot = service.snapshot(history);
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
+      'get_storage_status',
       'list_exchanges',
       'get_exchange',
       'stop_recording',
     ]);
+  });
+
+  it('executes get_storage_status through capture.status with the caller AbortSignal', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('capture.status', {
+      type: 'capture.status',
+      payload: {
+        sessionCount: 1,
+        exchangeCount: 2,
+        bodyCount: 3,
+        databaseBytes: 0,
+        blobBytes: 184,
+        totalBytes: 184,
+      },
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+    const abortController = new AbortController();
+
+    const result = await tool(snapshot, 'get_storage_status').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        sessionCount: 1,
+        exchangeCount: 2,
+        bodyCount: 3,
+        databaseBytes: 0,
+        blobBytes: 184,
+        totalBytes: 184,
+      },
+    });
+    expect(coreRuntime.commands).toEqual([{ type: 'capture.status', payload: {} }]);
+    expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
   });
 
   it('executes disclosed Tools through the shared registry and CoreRuntime', async () => {
@@ -211,11 +259,14 @@ describe('AgentToolService', () => {
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },
     );
-    const getExchange = tool(service.snapshot(discoveredHistory(discovery)), 'get_exchange');
+    const getStorageStatus = tool(
+      service.snapshot(discoveredHistory(discovery)),
+      'get_storage_status',
+    );
 
-    settings.agentDisabledToolNames = ['get_exchange'];
-    const result = await getExchange.execute(
-      { exchangeId: 'exchange-1' },
+    settings.agentDisabledToolNames = ['get_storage_status'];
+    const result = await getStorageStatus.execute(
+      {},
       { abortSignal: new AbortController().signal },
     );
 
@@ -223,7 +274,7 @@ describe('AgentToolService', () => {
       ok: false,
       error: {
         code: 'unknown_tool',
-        message: 'Unknown tool "get_exchange".',
+        message: 'Unknown tool "get_storage_status".',
       },
     });
     expect(coreRuntime.commands).toHaveLength(0);

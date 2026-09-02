@@ -21,14 +21,15 @@ import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
 
 const REQUEST_PATH = '/agent-e2e/traffic';
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
-const FIRST_PROMPT = phrase('Inspect the latest', 'captured request and', 'summarize its status.');
+const FIRST_PROMPT = phrase('Inspect Capture storage and the latest', 'captured request, then', 'summarize their status.');
 const FIRST_ANSWER_PREFIX = phrase('The latest', 'exchange is');
-const DISABLED_PROMPT = phrase('Try the disabled', 'detail Tool.');
-const DISABLED_ANSWER = phrase('The detail Tool', 'is unavailable.');
-const RESTORED_PROMPT = phrase('Discover the restored', 'detail Tool.');
-const RESTORED_ANSWER = phrase('The detail Tool', 'is available again.');
+const DISABLED_PROMPT = phrase('Try the disabled', 'storage Tool.');
+const DISABLED_ANSWER = phrase('The storage Tool', 'is unavailable.');
+const RESTORED_PROMPT = phrase('Discover the restored', 'storage Tool.');
+const RESTORED_ANSWER = phrase('The storage Tool', 'is available again.');
 const FIRST_CALLS = [
   ['call-discover', 'discover_tools'],
+  ['call-storage', 'get_storage_status'],
   ['call-proxy', 'get_proxy_status'],
   ['call-list', 'list_exchanges'],
   ['call-detail', 'get_exchange'],
@@ -50,7 +51,17 @@ interface TrafficToolEvidence {
   disabledDiscoveryNames: readonly string[];
   disabledErrorCode: string;
   restoredDiscoveryNames: readonly string[];
+  storageStatus: StorageStatusEvidence | null;
   requestBodyHashes: readonly string[];
+}
+
+interface StorageStatusEvidence {
+  readonly sessionCount: number;
+  readonly exchangeCount: number;
+  readonly bodyCount: number;
+  readonly databaseBytes: number;
+  readonly blobBytes: number;
+  readonly totalBytes: number;
 }
 
 /** Configure one keyless local Provider entirely through public Settings controls. */
@@ -80,13 +91,14 @@ async function exchangeId(row: Locator): Promise<string> {
   return automationId.slice(AUTOMATION_ID_PREFIXES.captureRequestRow.length);
 }
 
-/** Queue the complete first discovery and three-query model sequence. */
+/** Queue the complete first discovery and four-query model sequence. */
 function enqueueFirstTurn(lab: OpenAiCompatibleLab, capturedExchangeId: string): string {
   lab.enqueueToolCall({
     callId: 'call-discover',
     name: 'discover_tools',
     arguments: { capabilityId: 'traffic' },
   });
+  lab.enqueueToolCall({ callId: 'call-storage', name: 'get_storage_status', arguments: {} });
   lab.enqueueToolCall({ callId: 'call-proxy', name: 'get_proxy_status', arguments: {} });
   lab.enqueueToolCall({
     callId: 'call-list',
@@ -98,22 +110,22 @@ function enqueueFirstTurn(lab: OpenAiCompatibleLab, capturedExchangeId: string):
     name: 'get_exchange',
     arguments: { exchangeId: capturedExchangeId },
   });
-  const answer = `${FIRST_ANSWER_PREFIX} ${capturedExchangeId}: GET ${REQUEST_PATH} 200.`;
+  const answer = `Capture storage is non-empty. ${FIRST_ANSWER_PREFIX} ${capturedExchangeId}: GET ${REQUEST_PATH} 200.`;
   lab.enqueueTurn({ textChunks: [answer] });
   return answer;
 }
 
 /** Queue discovery followed by a deliberate call to a disabled Tool. */
-function enqueueDisabledTurn(lab: OpenAiCompatibleLab, capturedExchangeId: string): void {
+function enqueueDisabledTurn(lab: OpenAiCompatibleLab): void {
   lab.enqueueToolCall({
     callId: 'disabled-discover',
     name: 'discover_tools',
     arguments: { capabilityId: 'traffic' },
   });
   lab.enqueueToolCall({
-    callId: 'disabled-detail',
-    name: 'get_exchange',
-    arguments: { exchangeId: capturedExchangeId },
+    callId: 'disabled-storage',
+    name: 'get_storage_status',
+    arguments: {},
   });
   lab.enqueueTurn({ textChunks: [DISABLED_ANSWER] });
 }
@@ -187,6 +199,13 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Read one required numeric field from a Tool Result. */
+function numericField(value: Readonly<Record<string, unknown>>, name: string): number {
+  const field = value[name];
+  if (typeof field !== 'number') throw new Error(`Storage status ${name} is not numeric.`);
+  return field;
+}
+
 /** Read ordered Tool names from the public Transcript contract. */
 async function transcriptToolNames(page: Page): Promise<string[]> {
   return getByAutomationId(page, AUTOMATION_IDS.agent.tools.activity)
@@ -240,6 +259,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     disabledDiscoveryNames: [],
     disabledErrorCode: '',
     restoredDiscoveryNames: [],
+    storageStatus: null,
     requestBodyHashes: [],
   };
 
@@ -262,8 +282,8 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     await expect(row).toBeVisible();
     evidence.exchangeId = await exchangeId(row);
 
-    // 用户操作：本地Model依次发现能力并调用三个query Tool；所有输入都来自产品UI与真实Capture。
-    // User actions: the local Model discovers capabilities and calls three query Tools using only UI and real Capture input.
+    // 用户操作：本地Model依次发现能力并调用四个query Tool；所有输入都来自产品UI与真实Capture。
+    // User actions: the local Model discovers capabilities and calls four query Tools using only UI and real Capture input.
     const firstRequestOffset = openAiCompatibleLab.requestsForAssertions().length;
     firstAnswer = enqueueFirstTurn(openAiCompatibleLab, evidence.exchangeId);
     desktopApp.registerSensitiveTextForEvidenceAudit(firstAnswer);
@@ -285,16 +305,17 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       )).toBeVisible();
     }
 
-    // 业务断言：首次只披露discover_tools；发现后披露三项schema，Tool Result携带真实exchange事实且call ID配对。
-    // Business assertions: initially disclose only discovery, then three schemas; correlated results contain the real exchange facts.
+    // 业务断言：首次只披露discover_tools；发现后披露四项query与change schema，结果携带真实Capture事实并按call ID配对。
+    // Business assertions: initially disclose only discovery, then four query and change schemas with correlated real Capture facts.
     const firstRequests = openAiCompatibleLab.requestsForAssertions().slice(firstRequestOffset);
-    expect(firstRequests).toHaveLength(5);
+    expect(firstRequests).toHaveLength(6);
     evidence.firstRequestToolNames = requestToolNames(firstRequests[0]!);
     evidence.disclosedToolNames = requestToolNames(firstRequests[1]!);
     expect(evidence.firstRequestToolNames).toEqual(['discover_tools']);
     expect(evidence.disclosedToolNames).toEqual([
       'discover_tools',
       'get_proxy_status',
+      'get_storage_status',
       'list_exchanges',
       'get_exchange',
       'stop_recording',
@@ -305,11 +326,58 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     const discoveryResult = toolResult(firstRequests[1]!, 'call-discover');
     expect(discoveredNames(discoveryResult)).toEqual([
       'get_proxy_status',
+      'get_storage_status',
       'list_exchanges',
       'get_exchange',
       'stop_recording',
     ]);
-    expect(toolResult(firstRequests[2]!, 'call-proxy')).toMatchObject({
+    const storageResult = toolResult(firstRequests[2]!, 'call-storage');
+    expect(storageResult).toMatchObject({
+      ok: true,
+      value: {
+        sessionCount: expect.any(Number),
+        exchangeCount: expect.any(Number),
+        bodyCount: expect.any(Number),
+        databaseBytes: expect.any(Number),
+        blobBytes: expect.any(Number),
+        totalBytes: expect.any(Number),
+      },
+    });
+    const storageValue = storageResult.value;
+    if (!isRecord(storageValue)) throw new Error('Storage Tool Result has no value.');
+    const storageStatus: StorageStatusEvidence = {
+      sessionCount: numericField(storageValue, 'sessionCount'),
+      exchangeCount: numericField(storageValue, 'exchangeCount'),
+      bodyCount: numericField(storageValue, 'bodyCount'),
+      databaseBytes: numericField(storageValue, 'databaseBytes'),
+      blobBytes: numericField(storageValue, 'blobBytes'),
+      totalBytes: numericField(storageValue, 'totalBytes'),
+    };
+    evidence.storageStatus = storageStatus;
+    expect(storageStatus.sessionCount).toBeGreaterThanOrEqual(1);
+    expect(storageStatus.exchangeCount).toBeGreaterThanOrEqual(1);
+    expect(storageStatus.bodyCount).toBeGreaterThanOrEqual(1);
+    expect(storageStatus.blobBytes).toBeGreaterThan(0);
+    expect(storageStatus.totalBytes).toBe(
+      storageStatus.databaseBytes + storageStatus.blobBytes,
+    );
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-storage'),
+    )).toHaveAttribute('data-summary-kind', 'storage');
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-storage'),
+    )).toHaveAttribute('data-storage-exchange-count', String(storageStatus.exchangeCount));
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-storage'),
+    )).toHaveAttribute('data-storage-body-count', String(storageStatus.bodyCount));
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-storage'),
+    )).toHaveAttribute('data-storage-total-bytes', String(storageStatus.totalBytes));
+    expect(toolResult(firstRequests[3]!, 'call-proxy')).toMatchObject({
       ok: true,
       value: {
         listening: true,
@@ -318,7 +386,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
         port: 8888,
       },
     });
-    const listResult = toolResult(firstRequests[3]!, 'call-list');
+    const listResult = toolResult(firstRequests[4]!, 'call-list');
     expect(listResult).toMatchObject({
       ok: true,
       value: {
@@ -331,7 +399,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
         hasMore: false,
       },
     });
-    const detailResult = toolResult(firstRequests[4]!, 'call-detail');
+    const detailResult = toolResult(firstRequests[5]!, 'call-detail');
     expect(detailResult).toMatchObject({
       ok: true,
       value: {
@@ -346,6 +414,14 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
         },
       },
     });
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-detail'),
+    )).toHaveAttribute('data-summary-kind', 'exchange');
+    await expect(getByAutomationId(
+      desktopApp.page,
+      AutomationIdFactory.agentToolResult('call-detail'),
+    )).toContainText(`GET ${REQUEST_PATH} · 200`);
     expect(desktopApp.rendererPageErrors()).toEqual([]);
 
     // 重启：完整销毁第一代；同一profile恢复Tool轨迹和回答，启动不得重放Model或Tool调用。
@@ -370,19 +446,19 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     await expect(relaunchedApp.page.locator('[data-agent-item-kind="assistant-message"]').last())
       .toContainText(firstAnswer);
 
-    // 用户操作：关闭get_exchange后新建Chat；discovery与下一次schema都移除它，直接猜测调用得到unknown_tool。
-    // User actions: disable get_exchange in a new Chat; discovery and schemas omit it and a guessed call returns unknown_tool.
+    // 用户操作：关闭get_storage_status后新建Chat；discovery与下一次schema都移除它，直接猜测调用得到unknown_tool。
+    // User actions: disable get_storage_status in a new Chat; discovery and schemas omit it and a guessed call returns unknown_tool.
     await openAgentSettings(relaunchedApp.page);
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_exchange'),
+      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
     ).click();
     await expect(getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_exchange'),
+      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
     )).toHaveAttribute('aria-checked', 'false');
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
-    enqueueDisabledTurn(openAiCompatibleLab, evidence.exchangeId);
+    enqueueDisabledTurn(openAiCompatibleLab);
     await completeNewChat(relaunchedApp.page, DISABLED_PROMPT);
     await expect(relaunchedApp.page.locator('[data-agent-item-kind="assistant-message"]').last())
       .toContainText(DISABLED_ANSWER);
@@ -394,15 +470,17 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     expect(evidence.disabledDiscoveryNames).toEqual([
       'get_proxy_status',
       'list_exchanges',
+      'get_exchange',
       'stop_recording',
     ]);
     expect(requestToolNames(disabledRequests[1]!)).toEqual([
       'discover_tools',
       'get_proxy_status',
       'list_exchanges',
+      'get_exchange',
       'stop_recording',
     ]);
-    const disabledResult = toolResult(disabledRequests[2]!, 'disabled-detail');
+    const disabledResult = toolResult(disabledRequests[2]!, 'disabled-storage');
     expect(disabledResult).toMatchObject({
       ok: false,
       error: { code: 'unknown_tool' },
@@ -413,18 +491,18 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       : '';
     await expect(getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolCall('disabled-detail'),
+      AutomationIdFactory.agentToolCall('disabled-storage'),
     )).toHaveAttribute('data-tool-status', 'failed');
 
-    // 用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复get_exchange。
+    // 用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复get_storage_status。
     // User actions: re-enable the Tool, then prove a new Chat discovers and receives its schema again.
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_exchange'),
+      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
     ).click();
     await expect(getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_exchange'),
+      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
     )).toHaveAttribute('aria-checked', 'true');
     const restoredOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueRestoredTurn(openAiCompatibleLab);
@@ -438,6 +516,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     );
     expect(evidence.restoredDiscoveryNames).toEqual([
       'get_proxy_status',
+      'get_storage_status',
       'list_exchanges',
       'get_exchange',
       'stop_recording',

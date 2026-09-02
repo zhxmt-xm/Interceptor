@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-08-31
+> 最后更新：2026-09-02
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、三个Traffic query和首个change Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
+> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、四个Traffic query和首个change Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
 
 ## 术语与关系
 
@@ -318,7 +318,7 @@ flowchart LR
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
 数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
 所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
-Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source接入三个Traffic query Tool和
+Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source接入四个Traffic query Tool和
 首个change Tool `stop_recording`。
 
 ## 6. Session History
@@ -1145,7 +1145,7 @@ Stop 通过 Turn 根 `AbortSignal` 传播到当前 Model attempt、退避等待�
 - `Tool capabilities`始终显示在模型配置之后，即使尚未配置Provider；目录从Main返回的共享registry投影渲染，
   四个Settings展示组不改变Model使用的五个Capability。搜索只过滤当前可见行，不改写Agent/MCP开关。
 - 每行Agent与MCP开关分别调用`disableAgentTool` / `enableAgentTool`和`disableMcpTool` / `enableMcpTool`；
-  fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。Agent当前将该授权状态用于三个Traffic query Tool
+  fresh profile全部开启，关闭项跨Settings往返和应用重启恢复。Agent当前将该授权状态用于四个Traffic query Tool
   与`stop_recording`的Capability Index、discovery、schema与执行前检查；MCP Desktop在每次`tools/list`和
   `tools/call`前应用同一份MCP授权状态。
 
@@ -1284,7 +1284,8 @@ interface AgentToolSourceSnapshot {
 }
 ```
 
-Main的`AgentToolService`固定当前产品接入集合为三个Traffic query Tool与首个change Tool `stop_recording`，
+Main的`AgentToolService`固定当前产品接入集合为`get_proxy_status`、`get_storage_status`、`list_exchanges`、
+`get_exchange`四个Traffic query Tool与首个change Tool `stop_recording`，
 启动时断言名称与类型准确；
 它用`ToolCapabilitySettingsService`过滤Agent关闭项，用同一registry建立Catalog，并把executor的host收敛到
 `CoreRuntime.request(command, { abortSignal })`。不向Runtime、Model或Renderer暴露通用Core client。
@@ -1349,7 +1350,7 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 
 ### [阶段 2 · 进行中] 共享 Tool 目录、能力开关与首个 Traffic Tool
 
-目标：先确定完整产品 Tool 目录和用户开关，再用最基础的三个查询 Tool 跑通第一个纵向流程；查询 Tool
+目标：先确定完整产品 Tool 目录和用户开关，再用最基础的四个查询 Tool 跑通第一个纵向流程；查询 Tool
 只是实现顺序，不是 Agent 的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
@@ -1359,14 +1360,17 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
   提供四条正反语义独立的mutation intent；
 - [已完成] 接入动态`AgentToolSource`、Capability Index与`discover_tools`，只披露Agent入口已开启且本Session已发现的Tool；
 - [已完成] 首个产品纵向流程实现 `get_proxy_status`、`list_exchanges`、`get_exchange`；
+- [已完成] `get_storage_status`复用共享registry的`capture.status` executor；discovery、Settings关闭、执行前重检、
+  Transcript紧凑摘要与重启恢复继续使用现有动态Tool链路，不新增Core命令或Agent专用executor；
 - [已完成] Session按顺序持久化assistant Tool Call与Tool Result，Provider history保持call ID配对；Transcript显示Tool名称、
   参数与query结果摘要，重启后恢复同一轨迹；
 - [已完成] Session持久化独立`ask`/`auto`，新Chat固定Ask；`stop_recording`在Ask下等待Allow/Deny，在Auto下
   直接复用正式Core命令。pending跨Workspace/Chat保持，切换Mode不处置既有问询，取消/崩溃补失败Result；
 - 列表通过 summary → detail 渐进披露；分页只服务传输与 Context，提供完整遍历能力；
 - 真实 E2E 先由产品 UI 产生流量，再让 Agent 查询，不 seed Capture。
-- `agent.tools.traffic-discovery`已取得实现前公开Tool活动为空的有效Red，并在当前源码`1/1` Green；两代
-  Main/Core PID为`4452/16276`与`31948/37416`，均`gracefulDestroyVerified=true`且释放8888。
+- `agent.tools.traffic-discovery`扩展Storage前精确Red于`call-storage`状态为`failed`，当前源码`1/1` Green；最终一次
+  真实`capture.status`为`1 session / 3 exchanges / 1 body / 92 B`，关闭后返回`unknown_tool`，恢复后重新进入discovery；
+  两代Main/Core PID为`20596/42100`与`44412/12224`，均`gracefulDestroyVerified=true`且释放8888。
 
 ### [阶段 3] 正文分析与数据外发控制
 
@@ -1455,13 +1459,13 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
   参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
-  `discover_tools`、三个Traffic query Tool与首个change Tool `stop_recording`；
+  `discover_tools`、四个Traffic query Tool与首个change Tool `stop_recording`；
 - `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
   UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP关闭项已应用到外部`tools/list`
   与执行前检查；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
-  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含三个基础Traffic
+  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含四个基础Traffic
   query Tool与`stop_recording`；`agent.tools.traffic-discovery`以真实8888流量验收query路径，
   `agent.tools.execution-modes`以Deny/Allow/Auto、关闭项、跨Chat和跨重启验收首个change路径。

@@ -1,9 +1,9 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-01
+> 最后更新：2026-09-02
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent三个Traffic query与首个change
+> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent四个Traffic query与首个change
 > Tool纵向流程已完成；Desktop MCP与Browser Playground已通过loopback Streamable HTTP消费同一registry；
 > Playground代码完成，首批24项待Developer逐项人工验收。
 
@@ -74,8 +74,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入三个Traffic query Tool与`stop_recording`；关闭项同时过滤Capability
-   Index、discovery、schema与执行入口。MCP仍未接Desktop。
+- Agent当前通过动态`AgentToolSource`接入四个Traffic query Tool与`stop_recording`；关闭项同时过滤Capability
+   Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
 
@@ -88,7 +88,7 @@ interface ToolCapabilitySettingsRecord {
 | `enable_system_proxy` | change | `enableSystemProxy` | 产品已具备 |
 | `restore_system_proxy` | change | `restoreSystemProxy` | 产品已具备 |
 | `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter + Agent |
-| `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter |
+| `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter + Agent |
 | `start_recording` | change | `startCapture` | 共享 registry + MCP adapter |
 | `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter + Agent；ask/auto纵向流程完成 |
 | `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
@@ -234,4 +234,6 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 - `packages/interceptor-tools/` registry 是 Settings 列表、Agent discovery 与 MCP `tools/list` 的唯一数据源；
 - 文档完整目录可以先于代码，产品 UI 只展示 registry 中已经实现的 Tool；
 - 新增、删除或改名 Tool 时，同一改动必须更新本文、registry、Settings、Agent/MCP 测试和对应 E2E Inventory；
+- 最终24项业务Tool必须逐项拥有共享executor测试，并在所属能力workflow中至少执行一次真实Agent或MCP Tool Call；
+   不把全部Tool塞入单个巨型workflow，按Traffic、正文/消息、Rules、Breakpoints、Requests与Diagnostics分组定位失败；
 - Tool 的结果不得比正式产品入口拥有更多权限；文件路径、凭据与私钥继续遵守原有进程边界。

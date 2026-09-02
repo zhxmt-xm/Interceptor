@@ -23,6 +23,7 @@ import type { ToolCapabilitySettingsService } from '../tool-capabilities/entry';
 
 const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'get_proxy_status', kind: 'query' },
+  { name: 'get_storage_status', kind: 'query' },
   { name: 'list_exchanges', kind: 'query' },
   { name: 'get_exchange', kind: 'query' },
   { name: 'stop_recording', kind: 'change' },

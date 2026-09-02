@@ -16,7 +16,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
       <div className={styles.agentTranscript}>
         <div className={styles.agentUserMessage}>
           {state.agentToolTrace === 'traffic'
-            ? 'Inspect the latest captured request and summarize its status.'
+            ? 'Inspect Capture storage and the latest captured request, then summarize their status.'
             : sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
         </div>
         <article className={styles.agentAssistantMessage}>
@@ -25,7 +25,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
             {state.agentToolTrace === 'traffic' ? (
               <>
                 <AgentQueryToolTrace />
-                <p>The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code> on exchange <code>e2e-agent-traffic</code>.</p>
+                <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
               </>
             ) : state.agentTurnState === 'failed' ? (
               <div className={styles.agentTurnNotice} data-tone="error">

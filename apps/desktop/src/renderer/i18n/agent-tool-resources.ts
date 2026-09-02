@@ -20,6 +20,7 @@ export const agentToolEnglishMessages = {
   'agent.tools.recordingOn': 'Recording on',
   'agent.tools.recordingOff': 'Recording off',
   'agent.tools.exchanges': '{{count}} matching exchanges',
+  'agent.tools.storage': 'Exchanges {{exchangeCount}} · Bodies {{bodyCount}} · {{totalBytes}}',
 } as const;
 
 export type AgentToolMessageKey = keyof typeof agentToolEnglishMessages;
@@ -47,6 +48,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': '正在记录',
     'agent.tools.recordingOff': '已停止记录',
     'agent.tools.exchanges': '{{count}} 条匹配流量',
+    'agent.tools.storage': '流量 {{exchangeCount}} · 正文 {{bodyCount}} · {{totalBytes}}',
   },
   'zh-TW': {
     'settings.agent.tools.title': 'Tool 能力',
@@ -68,6 +70,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': '正在記錄',
     'agent.tools.recordingOff': '已停止記錄',
     'agent.tools.exchanges': '{{count}} 筆相符流量',
+    'agent.tools.storage': '流量 {{exchangeCount}} · 本文 {{bodyCount}} · {{totalBytes}}',
   },
   ja: {
     'settings.agent.tools.title': 'Tool 機能',
@@ -89,6 +92,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': '記録中',
     'agent.tools.recordingOff': '記録停止',
     'agent.tools.exchanges': '{{count}} 件の一致する通信',
+    'agent.tools.storage': '通信 {{exchangeCount}} · 本文 {{bodyCount}} · {{totalBytes}}',
   },
   ko: {
     'settings.agent.tools.title': 'Tool 기능',
@@ -110,6 +114,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': '기록 중',
     'agent.tools.recordingOff': '기록 중지',
     'agent.tools.exchanges': '일치하는 트래픽 {{count}}개',
+    'agent.tools.storage': '트래픽 {{exchangeCount}} · 본문 {{bodyCount}} · {{totalBytes}}',
   },
   de: {
     'settings.agent.tools.title': 'Tool-Funktionen',
@@ -131,6 +136,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Aufzeichnung aktiv',
     'agent.tools.recordingOff': 'Aufzeichnung inaktiv',
     'agent.tools.exchanges': '{{count}} passende Vorgänge',
+    'agent.tools.storage': 'Vorgänge {{exchangeCount}} · Inhalte {{bodyCount}} · {{totalBytes}}',
   },
   fr: {
     'settings.agent.tools.title': 'Capacités Tool',
@@ -152,6 +158,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Enregistrement actif',
     'agent.tools.recordingOff': 'Enregistrement arrêté',
     'agent.tools.exchanges': '{{count}} échanges correspondants',
+    'agent.tools.storage': 'Échanges {{exchangeCount}} · Corps {{bodyCount}} · {{totalBytes}}',
   },
   es: {
     'settings.agent.tools.title': 'Capacidades Tool',
@@ -173,6 +180,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Grabación activa',
     'agent.tools.recordingOff': 'Grabación detenida',
     'agent.tools.exchanges': '{{count}} intercambios coincidentes',
+    'agent.tools.storage': 'Intercambios {{exchangeCount}} · Cuerpos {{bodyCount}} · {{totalBytes}}',
   },
   it: {
     'settings.agent.tools.title': 'Funzionalità Tool',
@@ -194,6 +202,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Registrazione attiva',
     'agent.tools.recordingOff': 'Registrazione interrotta',
     'agent.tools.exchanges': '{{count}} scambi corrispondenti',
+    'agent.tools.storage': 'Scambi {{exchangeCount}} · Corpi {{bodyCount}} · {{totalBytes}}',
   },
   'pt-BR': {
     'settings.agent.tools.title': 'Recursos de Tool',
@@ -215,6 +224,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Gravação ativa',
     'agent.tools.recordingOff': 'Gravação desativada',
     'agent.tools.exchanges': '{{count}} trocas correspondentes',
+    'agent.tools.storage': 'Trocas {{exchangeCount}} · Corpos {{bodyCount}} · {{totalBytes}}',
   },
   ru: {
     'settings.agent.tools.title': 'Возможности Tool',
@@ -236,6 +246,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Запись включена',
     'agent.tools.recordingOff': 'Запись выключена',
     'agent.tools.exchanges': 'Подходящих обменов: {{count}}',
+    'agent.tools.storage': 'Обмены {{exchangeCount}} · Тела {{bodyCount}} · {{totalBytes}}',
   },
   nl: {
     'settings.agent.tools.title': 'Tool-mogelijkheden',
@@ -257,6 +268,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Opname actief',
     'agent.tools.recordingOff': 'Opname gestopt',
     'agent.tools.exchanges': '{{count}} overeenkomende uitwisselingen',
+    'agent.tools.storage': 'Uitwisselingen {{exchangeCount}} · Bodies {{bodyCount}} · {{totalBytes}}',
   },
   pl: {
     'settings.agent.tools.title': 'Możliwości Tool',
@@ -278,6 +290,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Nagrywanie włączone',
     'agent.tools.recordingOff': 'Nagrywanie wyłączone',
     'agent.tools.exchanges': 'Pasujące wymiany: {{count}}',
+    'agent.tools.storage': 'Wymiany {{exchangeCount}} · Treści {{bodyCount}} · {{totalBytes}}',
   },
   tr: {
     'settings.agent.tools.title': 'Tool yetenekleri',
@@ -299,6 +312,7 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Kayıt açık',
     'agent.tools.recordingOff': 'Kayıt kapalı',
     'agent.tools.exchanges': '{{count}} eşleşen alışveriş',
+    'agent.tools.storage': 'Alışverişler {{exchangeCount}} · Gövdeler {{bodyCount}} · {{totalBytes}}',
   },
   uk: {
     'settings.agent.tools.title': 'Можливості Tool',
@@ -320,5 +334,6 @@ export const agentToolMessages = {
     'agent.tools.recordingOn': 'Запис увімкнено',
     'agent.tools.recordingOff': 'Запис вимкнено',
     'agent.tools.exchanges': 'Відповідних обмінів: {{count}}',
+    'agent.tools.storage': 'Обміни {{exchangeCount}} · Тіла {{bodyCount}} · {{totalBytes}}',
   },
 } satisfies Record<LanguageId, AgentToolMessageCatalog>;

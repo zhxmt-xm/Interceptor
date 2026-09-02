@@ -434,9 +434,10 @@ export const views = [
           { name: 'Agent Tool activity', parity: 'agent-query-tool-trace' },
           { name: 'Agent composer', parity: 'agent-composer' },
           { name: 'First Tool Call', appSelector: '[data-tool-call-id="call-discover"]', designSelector: '[data-tool-name="discover_tools"]' },
+          { name: 'Storage Tool Call', appSelector: '[data-tool-call-id="call-storage"]', designSelector: '[data-tool-name="get_storage_status"]' },
           { name: 'Last Tool Call', appSelector: '[data-tool-call-id="call-detail"]', designSelector: '[data-tool-name="get_exchange"]' },
-          'Inspect the latest captured request and summarize its status.',
-          'The latest exchange is GET /agent-e2e/traffic with status 200 on exchange e2e-agent-traffic.',
+          'Inspect Capture storage and the latest captured request, then summarize their status.',
+          'Capture storage is non-empty. The latest exchange is GET /agent-e2e/traffic with status 200.',
         ],
       },
       {

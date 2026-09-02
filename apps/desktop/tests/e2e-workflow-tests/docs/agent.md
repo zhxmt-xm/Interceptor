@@ -170,32 +170,35 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 
 1. 创建独立profile和本地OpenAI-compatible lab；通过Settings真实配置Provider。
 2. 经产品UI开始Recording，并让workflow fixture通过真实代理产生至少一条唯一HTTP exchange；不seed Capture或Agent Store。
-3. 打开Agent并发送要求查询当前代理和该exchange的消息；lab依次产生`discover_tools`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
-4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回三个匹配
-	descriptor，下一request才披露`get_proxy_status`、`list_exchanges`、`get_exchange`。
+3. 打开Agent并发送要求查询当前代理、Capture storage和该exchange的消息；lab依次产生`discover_tools`、
+	`get_storage_status`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
+4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回四个query
+	descriptor和`stop_recording`，下一request才披露`get_storage_status`、`get_proxy_status`、`list_exchanges`与`get_exchange`。
 5. 确认后续每个request都保持assistant Tool Call与Tool Result的call ID配对；Transcript按顺序显示discovery、
-	三个query调用、参数与结果摘要，最终回答引用真实exchange ID、method、URL与status。
+	四个query调用、参数与结果摘要；Storage结果包含`sessionCount / exchangeCount / bodyCount / databaseBytes /
+	blobBytes / totalBytes`，真实正文使`exchangeCount / bodyCount / blobBytes`非零；Exchange摘要读取正式
+	`statusCode`而非不存在的`status`，最终回答引用真实exchange与Storage事实。
 6. 正常关闭并用同一profile重启，确认Tool Call/Result轨迹与最终回答恢复；启动不自动重放Model或Tool调用。
-7. 在Settings关闭`get_exchange`的Agent开关，新建Chat再次discover，确认Capability仍存在但结果与下一request
-	schema都不含该Tool；让lab直接猜测调用`get_exchange`，确认返回`unknown_tool`。执行前关闭后Core零命令由
+7. 在Settings关闭`get_storage_status`的Agent开关，新建Chat再次discover，确认Capability仍存在但结果与下一request
+	schema都不含该Tool；让lab直接猜测调用`get_storage_status`，确认返回`unknown_tool`。执行前关闭后Core零命令由
 	`AgentToolService` owning unit使用`FakeCoreRuntime.commands`证明，不在E2E中调用测试后门观察Main内部状态。
-8. 重新开启后再新建Chat并discover，确认`get_exchange`恢复；关闭该Chat不影响前一Chat的披露轨迹。
+8. 重新开启后再新建Chat并discover，确认`get_storage_status`恢复；关闭该Chat不影响前一Chat的披露轨迹。
 9. 保存脱敏lab请求、Tool item sequence、Capture事实、trace与每代销毁证据；关闭lab并删除profile。
 
 ### 预期效果
 
-Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真实Core中的Traffic；Settings关闭项既不可发现
-也不可调用。三个query Tool直接执行，不出现change问询；Tool协议轨迹持久化后可跨重启重建Provider history。
+Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真实Core中的Traffic与Capture storage；Settings关闭项
+既不可发现也不可调用。四个query Tool直接执行，不出现change问询；Tool协议轨迹持久化后可跨重启重建Provider history。
 
-### Evidence
+### TDD证据
 
-- 实现前同一workflow精确Red于公开Tool活动为空；当前源码`1/1` Green。
-- 首次Model request只含`discover_tools`，后续才披露三个Traffic query schema；四个Tool Call/Result的call ID
-	完整配对，并返回产品UI产生的真实8888 exchange事实。
-- 重启后Model请求增量为0；关闭`get_exchange`后discovery不再返回它，猜测调用得到`unknown_tool`，重新开启后
-	新Chat再次发现该Tool。
-- 两代Main/Core PID为`4452/16276`与`31948/37416`，均`gracefulDestroyVerified=true`；Renderer page error为0，
-	最终8888释放。
+- Red：实现前同一workflow的真实Provider、Capture与Agent链路运行成功，`call-storage`公开状态精确为`failed`；
+	metadata仍记录Main/Core优雅销毁，证明失败来自Agent未注册`get_storage_status`。
+- Green：同一workflow `1/1`通过，最终一次真实`capture.status`返回`1 session / 3 exchanges / 1 body / 92 B`；六个字段
+	完整进入Provider history，Transcript公开摘要属性与结果一致，query未出现审批。
+- 重启后Model请求增量为0；关闭`get_storage_status`后discovery/schema移除该Tool，猜测调用返回`unknown_tool`，
+	重新开启后恢复。两代Main/Core PID为`20596/42100`与`44412/12224`，均
+	`gracefulDestroyVerified=true`；Renderer page error为0，最终8888释放且系统代理恢复。
 
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`
