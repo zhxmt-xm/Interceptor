@@ -21,6 +21,7 @@ import { AUTOMATION_IDS } from '../../../src/shared/automation-ids';
 import { getByAutomationId } from './automation';
 import { LoopbackLab } from './loopback-lab';
 import { OpenAiCompatibleLab } from './openai-compatible-lab';
+import { PlaygroundServer } from './playground-server';
 import { WebSocketLab } from './websocket-lab';
 
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -36,6 +37,8 @@ interface LocalWorkflowFixtures {
   webSocketLab: WebSocketLab;
   /** Random-port OpenAI-compatible endpoint owned by Agent workflows. */
   openAiCompatibleLab: OpenAiCompatibleLab;
+  /** Real Browser Playground process owned by this workflow. */
+  playgroundServer: PlaygroundServer;
 }
 
 interface DesktopWindowState {
@@ -701,6 +704,21 @@ export const test = base.extend<LocalWorkflowFixtures>({
     } finally {
       await openAiCompatibleLab.close();
     }
+  },
+  playgroundServer: async ({}, use, testInfo) => {
+    const playgroundServer = await PlaygroundServer.start();
+    let cleanupError: unknown;
+    try {
+      await use(playgroundServer);
+    } finally {
+      try {
+        await playgroundServer.close();
+      } catch (error) {
+        cleanupError = error;
+      }
+      await playgroundServer.writeEvidence(testInfo).catch(() => undefined);
+    }
+    if (cleanupError) throw cleanupError;
   },
 });
 

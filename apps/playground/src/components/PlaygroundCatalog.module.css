@@ -1,10 +1,9 @@
 .playgroundCatalog { min-width: 0; min-height: 0; display: grid; grid-template-rows: 45px 48px minmax(0,1fr); border-right: 1px solid var(--border); background: var(--filter); overflow: hidden; }
-.playgroundCatalogTabs { display: grid; grid-template-columns: 1fr 1fr; padding: 7px 8px; border-bottom: 1px solid var(--border); }
-.playgroundCatalogTabs button { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 7px; background: transparent; color: var(--text-3); font: 11.5px var(--font-ui); cursor: pointer; }
-.playgroundCatalogTabs button:hover { background: var(--hover); color: var(--text-2); }
-.playgroundCatalogTabs button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.playgroundCatalogTabs svg { width: 14px; height: 14px; }
-.playgroundCatalogToolbar { display: grid; grid-template-columns: minmax(0,1fr) 30px; align-items: center; gap: 5px; padding: 0 10px; }
+.playgroundCatalogTitle { display: flex; align-items: baseline; gap: 7px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.playgroundCatalogTitle strong { font-size: 12px; font-weight: 650; }
+.playgroundCatalogTitle span { color: var(--text-3); font: 9.5px var(--font-mono); }
+.playgroundCatalogToolbar { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: 5px; padding: 0 10px; }
+.playgroundCatalogToolbar.withCommand { grid-template-columns: minmax(0,1fr) 30px; }
 .playgroundCatalogToolbar label { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text-3); }
 .playgroundCatalogToolbar label svg { width: 13px; height: 13px; }
 .playgroundCatalogToolbar input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: 11.5px var(--font-ui); }

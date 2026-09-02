@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 
 import { ConnectionPanel } from './components/ConnectionPanel';
 import { PlaygroundCatalog } from './components/PlaygroundCatalog';
 import { PlaygroundHeader } from './components/PlaygroundHeader';
 import { PlaygroundInspector } from './components/PlaygroundInspector';
+import { PlaygroundNavigation } from './components/PlaygroundNavigation';
 import { PlaygroundWorkbench } from './components/PlaygroundWorkbench';
 import type {
   PlaygroundConnectionState,
@@ -26,12 +27,18 @@ import type {
   TrafficScenarioResult,
 } from '../server/interfaces.ts';
 import { buildAcceptanceReport, downloadAcceptanceReport } from './acceptance/report';
+import {
+  clampPlaygroundDetailWidth,
+  createTrafficRequestDraftJson,
+  parseTrafficRequestDraftJson,
+  protocolForTrafficRequestDraft,
+} from './capture-workspace';
 
 const EMPTY_RUN: PlaygroundToolRun = { state: 'idle' };
 const EMPTY_MANUAL_RECORD: PlaygroundManualRecord = { notes: '', status: 'not-run' };
 
 export function App(): React.JSX.Element {
-  const [section, setSection] = useState<PlaygroundSection>('mcp');
+  const [section, setSection] = useState<PlaygroundSection>('capture');
   const [configuration, setConfiguration] = useState<PlaygroundMcpConfiguration | null>(null);
   const [connection, setConnection] = useState<PlaygroundMcpConnection | null>(null);
   const [connectionState, setConnectionState] = useState<PlaygroundConnectionState>('disconnected');
@@ -45,17 +52,33 @@ export function App(): React.JSX.Element {
   const [manualRecords, setManualRecords] = useState<Record<string, PlaygroundManualRecord>>({});
   const [trafficScenarios, setTrafficScenarios] = useState<readonly TrafficScenarioDescriptor[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<TrafficScenarioId>('h1-json');
+  const [trafficDraftText, setTrafficDraftText] = useState('');
+  const [trafficDraftError, setTrafficDraftError] = useState('');
   const [trafficResult, setTrafficResult] = useState<TrafficScenarioResult | null>(null);
   const [trafficResults, setTrafficResults] = useState<readonly TrafficScenarioResult[]>([]);
   const [trafficRunning, setTrafficRunning] = useState(false);
+  const [detailWidths, setDetailWidths] = useState<Readonly<Record<PlaygroundSection, number>>>({
+    capture: 560,
+    mcp: 560,
+  });
+  const pageBodyRef = useRef<HTMLDivElement>(null);
+  const splitterDragRef = useRef<{ readonly pointerId: number; readonly startWidth: number; readonly startX: number } | null>(null);
   const sessionRef = useRef<PlaygroundMcpSession | null>(null);
   const connectionAttemptsRef = useRef(new AbortableAttempts());
+  const trafficRunAttemptsRef = useRef(new AbortableAttempts());
   const toolCallAttemptsRef = useRef(new AbortableAttempts());
 
   useEffect(() => {
     void fetch('/api/traffic/scenarios')
       .then((response) => response.json() as Promise<TrafficScenarioDescriptor[]>)
-      .then(setTrafficScenarios)
+      .then((scenarios) => {
+        setTrafficScenarios(scenarios);
+        const firstScenario = scenarios.find((scenario) => scenario.id === 'h1-json') ?? scenarios[0];
+        if (firstScenario !== undefined) {
+          setSelectedScenarioId(firstScenario.id);
+          setTrafficDraftText(createTrafficRequestDraftJson(firstScenario.defaultDraft));
+        }
+      })
       .catch((error: unknown) => setConnectionError(
         error instanceof Error ? error.message : String(error),
       ));
@@ -63,11 +86,13 @@ export function App(): React.JSX.Element {
 
   useEffect(() => () => {
     connectionAttemptsRef.current.invalidate();
+    trafficRunAttemptsRef.current.invalidate();
     toolCallAttemptsRef.current.invalidate();
     void sessionRef.current?.close();
   }, []);
 
   const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? tools[0];
+  const selectedTrafficScenario = trafficScenarios.find((scenario) => scenario.id === selectedScenarioId);
   const manualRecordKey = section === 'mcp'
     ? selectedTool?.name ?? ''
     : `traffic:${selectedScenarioId}`;
@@ -161,7 +186,9 @@ export function App(): React.JSX.Element {
       const nextTools = await sessionRef.current.refreshTools();
       setTools(nextTools);
       if (!nextTools.some((tool) => tool.name === selectedToolName)) {
+        toolCallAttemptsRef.current.invalidate();
         setSelectedToolName(nextTools[0]?.name ?? '');
+        setRun(EMPTY_RUN);
       }
     } catch (error) {
       setConnectionError(error instanceof Error ? error.message : String(error));
@@ -208,6 +235,15 @@ export function App(): React.JSX.Element {
   };
 
   const runTrafficScenario = async (): Promise<void> => {
+    let draft;
+    try {
+      draft = parseTrafficRequestDraftJson(trafficDraftText);
+      setTrafficDraftError('');
+    } catch (error) {
+      setTrafficDraftError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    const attempt = trafficRunAttemptsRef.current.start();
     setTrafficRunning(true);
     setTrafficResult(null);
     setManualRecords((current) => ({
@@ -221,19 +257,23 @@ export function App(): React.JSX.Element {
       const response = await fetch('/api/traffic/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proxyPort: 8888, scenarioId: selectedScenarioId }),
+        body: JSON.stringify({ draft, proxyPort: 8888, scenarioId: selectedScenarioId }),
+        signal: attempt.signal,
       });
       const result = await response.json() as TrafficScenarioResult | { error: string };
+      if (!trafficRunAttemptsRef.current.isCurrent(attempt.id)) return;
       if (!response.ok || !('scenarioId' in result)) {
         throw new Error('error' in result ? result.error : `Traffic Lab returned HTTP ${response.status}.`);
       }
       setTrafficResult(result);
       setTrafficResults((current) => [result, ...current]);
     } catch (error) {
+      if (!trafficRunAttemptsRef.current.isCurrent(attempt.id)) return;
       const failedResult: TrafficScenarioResult = {
         attempt: { method: 'GET', path: '', url: '' },
         durationMs: 0,
         error: error instanceof Error ? error.message : String(error),
+        protocol: protocolForTrafficRequestDraft(draft),
         request: null,
         scenarioId: selectedScenarioId,
         startedAt: new Date().toISOString(),
@@ -242,7 +282,9 @@ export function App(): React.JSX.Element {
       setTrafficResult(failedResult);
       setTrafficResults((current) => [failedResult, ...current]);
     } finally {
-      setTrafficRunning(false);
+      const isCurrent = trafficRunAttemptsRef.current.isCurrent(attempt.id);
+      trafficRunAttemptsRef.current.finish(attempt.id);
+      if (isCurrent) setTrafficRunning(false);
     }
   };
 
@@ -261,75 +303,133 @@ export function App(): React.JSX.Element {
 
   const selectedExchange = exchanges.find((exchange) => exchange.id === selectedExchangeId)
     ?? exchanges[0];
+  const detailWidth = detailWidths[section];
+  const detailWidthStyle = { '--playground-detail-width': `${detailWidth}px` } as CSSProperties;
+
+  const resetTrafficRequest = (): void => {
+    if (selectedTrafficScenario === undefined) return;
+    setTrafficDraftText(createTrafficRequestDraftJson(selectedTrafficScenario.defaultDraft));
+    setTrafficDraftError('');
+    setTrafficResult(null);
+  };
+
+  const resizeDetailFromPointer = (event: PointerEvent<HTMLDivElement>): void => {
+    if (splitterDragRef.current?.pointerId !== event.pointerId || pageBodyRef.current === null) return;
+    const requestedWidth = splitterDragRef.current.startWidth + splitterDragRef.current.startX - event.clientX;
+    const width = clampPlaygroundDetailWidth(requestedWidth, pageBodyRef.current.clientWidth);
+    setDetailWidths((current) => ({ ...current, [section]: width }));
+  };
+
+  const resizeDetailFromKeyboard = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || pageBodyRef.current === null) return;
+    event.preventDefault();
+    const requestedWidth = detailWidth + (event.key === 'ArrowLeft' ? 24 : -24);
+    const width = clampPlaygroundDetailWidth(requestedWidth, pageBodyRef.current.clientWidth);
+    setDetailWidths((current) => ({ ...current, [section]: width }));
+  };
 
   return (
-    <main className={styles.playgroundApp}>
-      <PlaygroundHeader
-        connection={connection}
-        connectionState={connectionState}
-        endpoint={configuration?.endpoint ?? ''}
-        onClearConfiguration={() => void clearConfiguration()}
-        onExportReport={() => void exportReport()}
-        onReconnect={() => void reconnect()}
-      />
-      <div className={styles.playgroundBody}>
-        <PlaygroundCatalog
+    <main className={styles.playgroundApp} data-section={section}>
+      <PlaygroundNavigation connectionState={connectionState} scenarioCount={trafficScenarios.length} section={section} onSectionChange={setSection} />
+      <section className={styles.playgroundPage}>
+        <PlaygroundHeader
+          connection={connection}
+          connectionState={connectionState}
+          endpoint={configuration?.endpoint ?? ''}
           section={section}
-          selectedScenarioId={selectedScenarioId}
-          selectedToolName={selectedTool?.name ?? ''}
-          trafficScenarios={trafficScenarios}
-          tools={tools}
-          onRefreshTools={() => void refreshTools()}
-          onSectionChange={setSection}
-          onSelectScenario={(scenarioId) => {
-            setSelectedScenarioId(scenarioId);
-            setTrafficResult(null);
-          }}
-          onSelectTool={(name) => {
-            setSelectedToolName(name);
-            setArgumentsText('{}');
-            setRun(EMPTY_RUN);
-          }}
+          trafficRunning={trafficRunning}
+          trafficScenario={selectedTrafficScenario}
+          onClearConfiguration={() => void clearConfiguration()}
+          onExportReport={() => void exportReport()}
+          onReconnect={() => void reconnect()}
+          onResetRequest={resetTrafficRequest}
+          onRunTraffic={() => void runTrafficScenario()}
         />
-        {section === 'traffic' || connectionState === 'connected' && selectedTool !== undefined ? (
-          <PlaygroundWorkbench
-            argumentsText={argumentsText}
+        <div className={styles.playgroundBody} ref={pageBodyRef} style={detailWidthStyle}>
+          <PlaygroundCatalog
+            section={section}
+            selectedScenarioId={selectedScenarioId}
+            selectedToolName={selectedTool?.name ?? ''}
+            trafficScenarios={trafficScenarios}
+            tools={tools}
+            onRefreshTools={() => void refreshTools()}
+            onSelectScenario={(scenarioId) => {
+              const scenario = trafficScenarios.find((item) => item.id === scenarioId);
+              if (scenario === undefined) return;
+              trafficRunAttemptsRef.current.invalidate();
+              setTrafficRunning(false);
+              setSelectedScenarioId(scenarioId);
+              setTrafficDraftText(createTrafficRequestDraftJson(scenario.defaultDraft));
+              setTrafficDraftError('');
+              setTrafficResult(null);
+            }}
+            onSelectTool={(name) => {
+              toolCallAttemptsRef.current.invalidate();
+              setSelectedToolName(name);
+              setArgumentsText('{}');
+              setRun(EMPTY_RUN);
+            }}
+          />
+          {section === 'capture' || connectionState === 'connected' && selectedTool !== undefined ? (
+            <PlaygroundWorkbench
+              argumentsText={argumentsText}
+              draftError={trafficDraftError}
+              draftText={trafficDraftText}
+              run={run}
+              section={section}
+              tool={selectedTool}
+              trafficResult={trafficResult}
+              trafficRunning={trafficRunning}
+              trafficScenario={selectedTrafficScenario}
+              onAbort={() => toolCallAttemptsRef.current.abortCurrent()}
+              onArgumentsChange={setArgumentsText}
+              onCall={() => void callTool()}
+              onDraftChange={(value) => {
+                setTrafficDraftText(value);
+                setTrafficDraftError('');
+              }}
+            />
+          ) : (
+            <ConnectionPanel error={connectionError} state={connectionState} onConnect={(text) => void connect(text)} />
+          )}
+          <div
+            aria-label="Resize Response Detail"
+            aria-orientation="vertical"
+            aria-valuemin={360}
+            aria-valuenow={detailWidth}
+            className={styles.playgroundSplitter}
+            role="separator"
+            tabIndex={0}
+            onKeyDown={resizeDetailFromKeyboard}
+            onPointerDown={(event) => {
+              splitterDragRef.current = { pointerId: event.pointerId, startWidth: detailWidth, startX: event.clientX };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={resizeDetailFromPointer}
+            onPointerUp={(event) => {
+              if (splitterDragRef.current?.pointerId === event.pointerId) splitterDragRef.current = null;
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+          ><span /></div>
+          <PlaygroundInspector
+            exchange={selectedExchange}
+            exchanges={exchanges}
+            manualRecord={manualRecord}
             run={run}
             section={section}
-            tool={selectedTool}
             trafficResult={trafficResult}
-            trafficRunning={trafficRunning}
-            trafficScenario={trafficScenarios.find((scenario) => scenario.id === selectedScenarioId)}
-            onAbort={() => toolCallAttemptsRef.current.abortCurrent()}
-            onArgumentsChange={setArgumentsText}
-            onCall={() => void callTool()}
-            onRunTraffic={() => void runTrafficScenario()}
+            onClearExchanges={() => {
+              setExchanges([]);
+              setSelectedExchangeId('');
+            }}
+            onManualRecordChange={(record) => {
+              if (manualRecordKey.length === 0) return;
+              setManualRecords((current) => ({ ...current, [manualRecordKey]: record }));
+            }}
+            onSelectExchange={setSelectedExchangeId}
           />
-        ) : (
-          <ConnectionPanel
-            error={connectionError}
-            state={connectionState}
-            onConnect={(text) => void connect(text)}
-          />
-        )}
-        <PlaygroundInspector
-          exchange={selectedExchange}
-          exchanges={exchanges}
-          manualRecord={manualRecord}
-          run={run}
-          section={section}
-          trafficResult={trafficResult}
-          onClearExchanges={() => {
-            setExchanges([]);
-            setSelectedExchangeId('');
-          }}
-          onManualRecordChange={(record) => {
-            if (manualRecordKey.length === 0) return;
-            setManualRecords((current) => ({ ...current, [manualRecordKey]: record }));
-          }}
-          onSelectExchange={setSelectedExchangeId}
-        />
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

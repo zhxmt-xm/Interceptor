@@ -1,3 +1,6 @@
-.playgroundApp { width: 100vw; height: 100vh; min-width: 860px; display: grid; grid-template-rows: 58px minmax(0,1fr); overflow: hidden; background: var(--bg); color: var(--text); }
-.playgroundBody { min-width: 0; min-height: 0; display: grid; grid-template-columns: 292px minmax(460px,1fr) minmax(360px,454px); overflow: hidden; }
-@media (max-width: 1120px) { .playgroundBody { grid-template-columns: 260px minmax(420px,1fr); } .playgroundBody > :last-child { display: none; } }
+.playgroundApp { width: 100vw; height: 100vh; display: grid; grid-template-columns: 220px minmax(1261px,1fr); overflow: auto; background: var(--bg); color: var(--text); }
+.playgroundPage { min-width: 1261px; min-height: 0; display: grid; grid-template-rows: 58px minmax(0,1fr); overflow: hidden; }
+.playgroundBody { min-width: 0; min-height: 0; display: grid; grid-template-columns: 260px minmax(440px,1fr) 1px var(--playground-detail-width); overflow: hidden; }
+.playgroundSplitter { position: relative; z-index: 3; width: 1px; min-height: 0; background: var(--border-2); cursor: col-resize; outline: 0; touch-action: none; }
+.playgroundSplitter span { position: absolute; inset-block: 0; left: 50%; width: 9px; transform: translateX(-50%); }
+.playgroundSplitter:hover, .playgroundSplitter:focus-visible { background: var(--accent); }

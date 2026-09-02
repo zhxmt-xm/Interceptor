@@ -1,4 +1,4 @@
-.playgroundInspector { min-width: 0; min-height: 0; display: grid; grid-template-rows: 58px minmax(0,1fr); border-left: 1px solid var(--border); background: var(--panel); overflow: hidden; }
+.playgroundInspector { min-width: 0; min-height: 0; display: grid; grid-template-rows: 58px minmax(0,1fr); background: var(--panel); overflow: hidden; }
 .playgroundInspector > header { display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--chrome); }
 .playgroundInspector > header div { display: flex; flex-direction: column; gap: 3px; }
 .playgroundInspector > header strong { font-size: 12px; }

@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
 import type { TrafficScenarioId } from './interfaces.ts';
 import { TrafficLab } from './traffic-lab.ts';
+import { parseTrafficRequestDraft } from './traffic-request-draft.ts';
 
 const playgroundRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PLAYGROUND_PORT ?? 4175);
 const vite = await createViteServer({
   appType: 'spa',
   root: playgroundRoot,
-  server: { middlewareMode: true },
+  server: { hmr: false, middlewareMode: true, ws: false },
 });
 const trafficLab = await TrafficLab.start();
 
@@ -51,14 +52,16 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     try {
       const body = await readJsonBody(request) as {
         proxyPort?: unknown;
+        draft?: unknown;
         scenarioId?: unknown;
       };
       if (typeof body.scenarioId !== 'string') throw new Error('scenarioId is required.');
+      const draft = parseTrafficRequestDraft(body.draft);
       const proxyPort = body.proxyPort === undefined ? 8888 : Number(body.proxyPort);
       if (!Number.isInteger(proxyPort) || proxyPort < 1 || proxyPort > 65_535) {
         throw new Error('proxyPort must be a valid TCP port.');
       }
-      const result = await trafficLab.run(body.scenarioId as TrafficScenarioId, proxyPort);
+      const result = await trafficLab.run(body.scenarioId as TrafficScenarioId, draft, proxyPort);
       writeJson(response, 200, result);
     } catch (error) {
       writeJson(response, 400, {

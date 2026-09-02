@@ -1,8 +1,8 @@
-import { Activity, Braces, Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 
 import { buildInterceptorToolSettingsGroups } from '@interceptor/tools';
 import { useDesignState } from '../../state/useDesignState';
-import { PLAYGROUND_TRAFFIC_SCENARIOS } from './playgroundData';
+import { PLAYGROUND_TRAFFIC_GROUPS } from './playgroundData';
 import styles from './PlaygroundCatalog.module.css';
 
 const PLAYGROUND_TOOL_GROUPS = buildInterceptorToolSettingsGroups();
@@ -11,11 +11,8 @@ export function PlaygroundCatalog(): React.JSX.Element {
   const { state, updateState } = useDesignState();
   return (
     <aside className={styles.playgroundCatalog}>
-      <div className={styles.playgroundCatalogTabs}>
-        <button className={state.playgroundSection === 'mcp' ? styles.active : ''} type="button" onClick={() => updateState({ playgroundSection: 'mcp' })}><Braces aria-hidden="true" />MCP Tools</button>
-        <button className={state.playgroundSection === 'traffic' ? styles.active : ''} type="button" onClick={() => updateState({ playgroundSection: 'traffic' })}><Activity aria-hidden="true" />Traffic Lab</button>
-      </div>
-      <label className={styles.playgroundSearch}><Search aria-hidden="true" /><input aria-label="Search catalog" placeholder="Search" /></label>
+      <div className={styles.playgroundCatalogTitle}><strong>{state.playgroundSection === 'mcp' ? 'Tools' : 'Scenarios'}</strong><span>{state.playgroundSection === 'mcp' ? 'Live catalog' : 'Capture matrix'}</span></div>
+      <div className={`${styles.playgroundCatalogToolbar} ${state.playgroundSection === 'mcp' ? styles.withCommand : ''}`}><label className={styles.playgroundSearch}><Search aria-hidden="true" /><input aria-label="Search catalog" placeholder="Search" /></label>{state.playgroundSection === 'mcp' ? <button aria-label="Refresh tools" type="button"><RefreshCw aria-hidden="true" /></button> : null}</div>
       <div className={styles.playgroundCatalogScroll}>
         {state.playgroundSection === 'mcp' ? PLAYGROUND_TOOL_GROUPS.map((group) => (
           <section className={styles.playgroundGroup} key={group.id}>
@@ -33,20 +30,24 @@ export function PlaygroundCatalog(): React.JSX.Element {
               </button>
             ))}
           </section>
-        )) : (
-          <section className={styles.playgroundGroup}>
-            <header><span>HTTP/1.1</span><code>4</code></header>
-            {PLAYGROUND_TRAFFIC_SCENARIOS.map((scenario) => (
+        )) : PLAYGROUND_TRAFFIC_GROUPS.map((group) => (
+          <section className={styles.playgroundGroup} key={group.id}>
+            <header><span>{group.title}</span><code>{group.scenarios.length}</code></header>
+            {group.scenarios.map((scenario) => (
               <button
                 className={state.playgroundSelectedScenario === scenario.id ? styles.selected : ''}
                 data-playground-scenario={scenario.id}
                 key={scenario.id}
                 type="button"
-                onClick={() => updateState({ playgroundSelectedScenario: scenario.id, playgroundManualStatus: 'not-run' })}
+                onClick={() => updateState({
+                  playgroundSelectedScenario: scenario.id,
+                  playgroundRequestDraft: JSON.stringify(scenario.draft, null, 2),
+                  playgroundManualStatus: 'not-run',
+                })}
               ><span><strong>{scenario.title}</strong></span><small>{scenario.detail}</small></button>
             ))}
           </section>
-        )}
+        ))}
       </div>
     </aside>
   );

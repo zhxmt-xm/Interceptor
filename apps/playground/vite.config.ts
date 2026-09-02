@@ -3,4 +3,5 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  server: { hmr: false, ws: false },
 });

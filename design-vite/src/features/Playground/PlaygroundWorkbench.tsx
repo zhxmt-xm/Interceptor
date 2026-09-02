@@ -1,18 +1,21 @@
 import { CircleCheck, Clock3, Play, Square } from 'lucide-react';
 
 import { useDesignState } from '../../state/useDesignState';
-import { playgroundSchema, playgroundTool, PLAYGROUND_TRAFFIC_SCENARIOS } from './playgroundData';
+import { playgroundSchema, playgroundTool, playgroundTrafficScenario } from './playgroundData';
 import styles from './PlaygroundWorkbench.module.css';
 
 export function PlaygroundWorkbench(): React.JSX.Element {
   const { state, updateState } = useDesignState();
-  if (state.playgroundSection === 'traffic') {
-    const scenario = PLAYGROUND_TRAFFIC_SCENARIOS.find((item) => item.id === state.playgroundSelectedScenario) ?? PLAYGROUND_TRAFFIC_SCENARIOS[0];
+  if (state.playgroundSection === 'capture') {
+    const scenario = playgroundTrafficScenario(state.playgroundSelectedScenario);
     return (
-      <section className={styles.playgroundWorkbench} data-playground-workbench="traffic">
-        <header className={styles.playgroundWorkbenchTitle}><div><span>Traffic Lab</span><h1>{scenario.title}</h1><p>{scenario.detail}</p></div><button className={styles.primary} type="button"><Play aria-hidden="true" />Run through 127.0.0.1:8888</button></header>
-        <div className={styles.playgroundSection}><h2>Scenario input</h2><div className={styles.fieldGrid}><label>Method<input value="GET" readOnly /></label><label>Path<input value="/playground/orders/42" readOnly /></label></div></div>
-        <div className={styles.playgroundSection}><h2>Response</h2><pre>{'{\n  "orderId": "ord_42",\n  "status": "ready",\n  "items": 3\n}'}</pre></div>
+      <section className={styles.playgroundWorkbench} data-playground-workbench="capture">
+        <header className={styles.playgroundWorkbenchTitle}><div><span>Capture scenario</span><h1>{scenario.title}</h1><p>{scenario.detail}</p></div></header>
+        <div className={styles.playgroundSection}>
+          <h2>Request Draft JSON</h2>
+          <textarea className={styles.draftEditor} aria-label="Request Draft JSON" spellCheck={false} value={state.playgroundRequestDraft} onChange={(event) => updateState({ playgroundRequestDraft: event.target.value })} />
+        </div>
+        <section className={styles.playgroundRecipe}><div data-testid="scenario-setup"><h2>Setup manually</h2><ol>{scenario.setup.map((step) => <li key={step}>{step}</li>)}</ol></div><div data-testid="scenario-observations"><h2>Observe</h2><ol>{scenario.observations.map((step) => <li key={step}>{step}</li>)}</ol></div></section>
         <div className={styles.playgroundActivity}><CircleCheck aria-hidden="true" /><div><strong>Last run completed</strong><span>Origin received 1 request · 200 OK · 184 B · 38 ms</span></div></div>
       </section>
     );

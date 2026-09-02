@@ -19,6 +19,38 @@
 - H2 path：`/e2e/mitm/h2?source=workflow`，response trailer `x-interceptor-e2e-trailer: h2-complete`；
 - gRPC path：`/interceptor.e2e.WorkflowService/Stream`；一个 request envelope、两个 response envelope，第二个 compressed flag=true；trailers=`grpc-status: 0`、`grpc-message: OK`。
 
+<a id="capture-playground-traffic"></a>
+## `capture.playground-traffic`
+
+**状态**：passed
+
+**策略**：os-side-effect
+
+### Steps
+
+1. 创建fresh profile、trace与独立Playground端口；启动真实Electron并等待Core与8888，使用产品UI开启Recording。
+2. 系统Edge打开真实`apps/playground`，确认默认Capture Lab、39项目录、Capture专属Header与可编辑Draft。
+3. 选择`h1-json`并点击Run；等待Playground显示complete。
+4. 在真实Capture中等待自产`/playground/h1-json`行，选择后进入Response，验证h1和`ord_42`正文。
+5. 回到Edge选择`ws-text`并点击Run；等待Playground显示complete。
+6. 在真实Capture中等待自产`/playground/ws/text`行，选择后进入Messages，验证双向自产text message。
+7. 关闭Edge与Playground；正常Close Electron并验证Main/Core退出、8888/Playground端口释放、系统代理恢复与profile删除。
+
+### TDD证据要求
+
+- Retrospective Red：同一workflow针对改造前提交运行，失败必须源于默认页/39项目录/协议场景能力缺失，不得是build、selector或环境失败。
+- Green：同一workflow在当前代码通过H1与WebSocket两段真实UI → Proxy → Core → Renderer链路，日志无Renderer page error，所有进程与端口完成销毁。
+
+### TDD证据
+
+- Retrospective Red：最终workflow在`570c5447`精确失败于旧Playground默认MCP页缺少`data-section="capture"`；旧页面尚无39项Capture目录，构建、fixture和Electron启动均成功。
+- Green：当前同一workflow `1/1`通过，H1 `/playground/h1-json`的`ord_42`正文与WebSocket `/playground/ws/text`双向`hello from client`均在真实Capture可见。
+- 销毁：metadata记录`gracefulDestroyVerified=true`；Main/Core、8888与Playground随机端口均释放，Renderer page error为0。
+
+### 预期效果
+
+Playground不是直接构造Core状态的测试后门；真实Browser点击自产流量进入产品Capture，H1正文与WebSocket消息均可在产品UI检查，退出不遗留listener或系统副作用。
+
 <a id="capture-recording-pause-resume"></a>
 ## `capture.recording.pause-resume`
 

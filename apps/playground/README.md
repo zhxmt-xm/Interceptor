@@ -13,8 +13,8 @@ npm run playground
 打开 `http://127.0.0.1:4175`。同一Node进程提供Vite页面、Traffic Lab API和本地origin；关闭命令后这些端口
 一起释放。
 
-Browser组件支持Vite HMR；修改`server/`下的Node代码后需要停止并重新运行`npm run playground`，确保页面与
-Traffic Lab使用同一代接口。
+Playground默认进入`Capture Lab`，左侧一级导航的第二项是`MCP`。修改Browser或`server/`代码后需要停止并
+重新运行`npm run playground`，确保页面与Traffic Lab使用同一代接口。
 
 ## MCP人工验收
 
@@ -31,21 +31,29 @@ Traffic Lab使用同一代接口。
 Token只保存在当前页面内存。刷新、关闭页面或点击Clear configuration都会清除Token；页面不使用
 `localStorage`、`sessionStorage`或IndexedDB。
 
-## Traffic Lab
+## Capture Lab
 
-Traffic Lab无需MCP配置。当前四个场景都由Node使用显式代理`127.0.0.1:8888`发送到Playground自有origin：
+Capture Lab无需MCP配置。39个场景都由Node使用显式代理`127.0.0.1:8888`发送到Playground自有origin：
 
-- `H1 JSON`：结构化JSON响应；
-- `H1 upload`：三段定时上传；
-- `H1 stream`：三段定时响应与chunk timing；
-- `H1 failure`：origin在响应前reset连接。
+| 分组 | 场景 |
+| --- | --- |
+| HTTP | H1 JSON、upload、streaming、early response、abort，以及H2 JSON |
+| Bodies | JSON、text、HTML、CSS、JavaScript、XML、YAML、SVG、Markdown、form、PNG、binary、audio、video、unknown text/binary |
+| Encoding | gzip、deflate、brotli、corrupt gzip、invalid image |
+| WebSocket | text、binary、bidirectional、ping/pong/close control frames |
+| gRPC | proto、JSON、trailers error、compressed、malformed envelope |
+| TLS | passthrough tunnel、MITM H1、MITM H2 |
 
-运行后，中间区显示client结果，右侧显示origin实际收到的method、URL、headers、body，以及client响应与
-chunk timing。Developer在Interceptor Capture中对照同一请求，再记录人工结论。
+每个场景提供完整Raw Request Draft。发送前可以编辑；`Reset request`、切换场景或刷新页面会恢复默认Draft，
+不会写入Browser持久化。页面会明确列出需要Developer在Interceptor中完成的MITM、origin trust或passthrough前置条件。
+
+运行后，中间区显示client结果，右侧`Response Detail`显示origin request、client response、frame/envelope、ALPN、
+trailers和timing。详情默认宽560px，可用splitter拖拽；窄窗口保留全部栏并允许水平滚动。Developer在Interceptor
+Capture中对照同一请求，再记录人工结论。
 
 ## 边界
 
 - Browser直接访问Interceptor MCP，因此真实覆盖CORS与Bearer；
 - Main只处理`/mcp`路由、preflight与Bearer；认证后的协议判断由官方SDK负责；
 - Playground不读取Interceptor内部Store，不构造Client记录，也不绕过Ask/Auto、Dialog、UAC或系统权限；
-- 自动测试只保护基础设施，不能替代逐项手工点击。
+- 自动测试覆盖39个协议场景、Browser交互及真实Electron中的H1/WebSocket Capture链路，但不能替代24项Tool逐项人工验收。

@@ -1,7 +1,7 @@
 # Feature: Manual Acceptance Playground
 
-> 最后更新：2026-09-01
-> 状态：**[改造中] 架构、UI设计、Browser CORS、`apps/playground`与自动防回归已完成；24项Tool待Developer逐项人工验收。**
+> 最后更新：2026-09-02
+> 状态：**[代码完成 · 待Developer人工验收] App式双页面、39项Capture Lab、Browser CORS、MCP人工工作台、自动防回归与Capture Lab真实Electron E2E已完成；24项Tool待Developer逐项人工验收。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -143,25 +143,54 @@ JSON-RPC内容；这些协议判断全部交给官方SDK，并原样返回SDK结
 
 ## 6. 页面结构
 
-Playground第一屏就是验收工作台，不做Landing page。
+Playground第一屏就是验收工作台，不做Landing page。整体复用Interceptor的App式信息架构，但不是产品壳：
 
-### 6.1 顶部连接栏
+```text
+220px一级导航 / 页面专属Header + 页面内容
+```
+
+一级导航固定顺序为`Capture Lab`、`MCP`，默认进入`Capture Lab`。两者是两个独立页面，不是同一个目录栏内的
+tab；切页只保留当前进程内状态，刷新页面后全部恢复默认。
+
+### 6.1 左侧一级导航
+
+- 顶部显示Interceptor Playground品牌；
+- `Capture Lab`为第一项与默认项，显示当前场景数；
+- `MCP`为第二项，显示未连接、连接中、已连接或错误状态；
+- 底部只显示`Manual acceptance · local only`，不放产品Settings、Agent或窗口控制。
+
+### 6.2 页面专属顶部栏
+
+`Capture Lab`顶部栏只显示：当前页名称、显式代理`127.0.0.1:8888`、Run、Reset request和详情显示状态。
+不得显示MCP endpoint、协议、Token摘要、Reconnect或Clear configuration。
+
+`MCP`顶部栏只显示：
 
 - 配置状态、endpoint、固定协议、Connect / Reconnect / Clear configuration；
 - Server identity、discovery结果、连接耗时和最后错误；
 - Paste config只在未配置时显示，配置后只能Clear后重贴。
 
-### 6.2 左侧目录
+### 6.3 页面内部目录
 
-两个一级Tab：
+`Capture Lab`页面的第二列是场景目录，按`HTTP / Bodies / Encoding / WebSocket / gRPC / TLS`分组。
+`MCP`页面的第二列是实时Tool目录，按query/change分组，支持搜索。
 
-- `MCP Tools`：完全来自当前连接的`tools/list`，支持搜索与query/change筛选；
-- `Traffic Lab`：来自Playground Node的场景目录。
-
-Tool行显示名称、title、类型annotations与最近一次人工状态。不得import共享registry来补缺项；Server漏返回的
+Tool行显示名称、title、类型annotations与最近一次人工状态。MCP页面不得import共享registry来补缺项；Server漏返回的
 Tool必须在Playground中真实表现为缺失。
 
-### 6.3 中间操作区
+### 6.4 Capture Request Draft
+
+选择Capture场景后，中间区显示该场景的可编辑Request Draft。字段由场景种类决定，但统一包含完整Raw JSON：
+
+- HTTP：method、path、headers、body与响应场景参数；
+- WebSocket：path、headers、client→server / server→client的text/binary messages与control frame动作；
+- gRPC：path、request/response envelope payload、compressed flag与trailers；
+- TLS：target host、CONNECT headers、是否只建立tunnel或继续TLS/H2。
+
+Run只读取点击瞬间的Draft并发送，不自动写回场景默认值。`Reset request`恢复当前场景默认Draft；切换场景加载
+目标场景默认Draft；页面刷新后所有Draft、结果、人工状态和splitter宽度全部重置，不使用任何Browser持久化。
+
+### 6.5 MCP Tool操作区
 
 选择Tool后显示：
 
@@ -172,7 +201,16 @@ Tool必须在Playground中真实表现为缺失。
 
 Playground不从schema猜默认值；Developer直接编辑完整arguments JSON，服务端负责参数校验。
 
-### 6.4 右侧详情
+### 6.6 右侧Response Detail与splitter
+
+Response Detail属于当前页面：Capture显示origin request、client response、frame/envelope/timing与错误；MCP显示
+Browser HTTP/JSON/SSE、SDK result与错误。详情默认宽`560px`，由中间与详情之间的真实splitter拖拽调整：
+
+- splitter轨道占`1px`，命中抓手为同轴普通子项；
+- 下限`360px`；上限由`总宽 - 220px一级导航 - 260px目录 - 440px操作区 - 轨道宽`实时推导；
+- 不使用固定max，不靠margin/padding硬凑；
+- 拖动只改变当前页面内存，刷新恢复默认；
+- 窄窗口不隐藏详情，容器在最小尺寸下允许页面整体水平滚动，Developer仍能访问完整证据。
 
 每次操作生成不可变记录，按时间线展示：
 
@@ -186,7 +224,7 @@ Playground不从schema猜默认值；Developer直接编辑完整arguments JSON�
 Authorization固定显示为`Bearer <redacted>`加摘要。其余Playground自造流量默认完整展示；连接真实用户数据时
 证据导出必须再次确认。
 
-### 6.5 人工验收状态
+### 6.7 人工验收状态
 
 每个Tool由Developer手工选择`Not run / Pass / Fail / Blocked`并填写备注。状态只存在当前页面内存；可导出
 脱敏JSON报告，不能导入后冒充本轮事实。报告包含协议版本、Tool schema hash、调用时间线、人工结论和环境版本，
@@ -194,24 +232,27 @@ Authorization固定显示为`Bearer <redacted>`加摘要。其余Playground自�
 
 ## 7. Traffic Lab
 
-### 7.1 首个纵向切片
+### 7.1 当前完整场景目录
 
-先实现四个足以验收当前Traffic query与Recording Tool的场景：
-
-| 场景 | Node行为 | 人工可见事实 |
+| 分组 | 场景 | 覆盖能力 |
 | --- | --- | --- |
-| H1 JSON | 经`8888`向本地origin发送GET并返回JSON | method、URL、headers、status、body |
-| H1 upload | 分块发送有限正文 | origin已收字节、Capture request body |
-| H1 stream | 分段返回有限响应 | TTFB、chunk时间线、Capture streaming状态 |
-| H1 failure | origin reset或client abort | 错误归属、Capture终态 |
+| HTTP | H1 JSON、H1 upload、H1 streaming、H1 early response、H1 abort、H2 JSON | H1/H2、上传、response-streaming、request-complete、completed、aborted |
+| Bodies | JSON、plain text、HTML、CSS、JavaScript、XML、YAML、SVG、Markdown、form、PNG、binary、audio、video、unknown text、unknown binary | BodyViewer当前所有格式与默认模式 |
+| Encoding | gzip、deflate、br、corrupt gzip、invalid image | 解码成功、decode failed与image unavailable |
+| WebSocket | text echo、binary echo、bidirectional messages、control frames | WS协议、两方向、opcode 1/2、ping/pong/close断点入口 |
+| gRPC | unary proto、unary JSON、trailers error、compressed envelope、malformed envelope | H2 gRPC识别、request/response、trailers、compressed/truncated/malformed |
+| TLS | passthrough tunnel、MITM H1、MITM H2 | CONNECT tunnel、passthrough、解密后的H1/H2 |
+
+每个场景在目录中只强调一个主观察点，但可组合覆盖同一次请求的多个真实事实。场景是否需要MITM、TLS insecure
+host或Breakpoint设置必须在页面Setup中明确显示；Playground不得静默修改这些产品设置。
 
 场景输入由Developer在Playground填写；Node返回client结果与origin观测。它不直接读取Core或Renderer状态，
 Developer在Interceptor UI和MCP Tool结果中对照事实。
 
 ### 7.2 后续场景
 
-在首个切片稳定后依次增加H2、SSE、WebSocket text/binary、gRPC unary/streaming、large upload/download、
-trailers、early response和TLS。每种场景先满足对应产品work item，不提前搭建通用网络模拟框架。
+当前产品尚未实现的HTTP/3、H2 Extended CONNECT WebSocket、gRPC真正增量stream parser等能力不进入目录。
+后续产品能力落地时，同一work item增加对应场景，不预建未实现入口。
 
 ## 8. 24项Tool人工矩阵
 
@@ -236,11 +277,35 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 - CORS preflight、实际响应header、Bearer `401`与`/mcp`路由；
 - 最新官方Browser Client可connect、discover和`tools/list`；
 - Token解析与日志/报告脱敏；
-- Node Traffic Lab启动、端口释放和单个H1纵向场景；
+- Node Traffic Lab启动、端口释放，以及HTTP/Body/Encoding/WebSocket/H2/gRPC/TLS全部39项场景；
+- Browser默认Capture页、39项目录、页面专属Header、原生Draft、Reset、splitter与窄窗访问；
+- WebSocket与CONNECT详情只返回两端实际握手事实；Secure runner并发首跑复用同一实例，关闭Lab会取消停滞CONNECT；
+- 场景transport与Draft discriminator保持一致；切场景/Tool会使旧操作代际失效，Capture与MCP各自保存Detail宽度；
 - build、typecheck与关闭后无listener。
 
 自动测试不得把Tool标记为人工Pass，也不替代Developer逐项点击、查看完整详情和验证产品副作用。
 真实Electron workflow仍负责证明Browser → Main → Core链路和退出销毁；Playground自身不伪装成产品E2E。
+
+### 9.1 `capture.playground-traffic`真实E2E
+
+该workflow从fresh profile启动真实Electron和系统Edge，所有业务输入都由Developer可见的Playground UI产生：
+
+1. 通过Interceptor产品UI开启Recording；
+2. 系统Edge打开真实`apps/playground`，确认默认页为Capture Lab且目录为39项；
+3. 在Playground点击H1 JSON的Run，不直接调用Lab API；
+4. 在Interceptor Capture中选择自产exchange，验证h1、`/playground/h1-json`和`ord_42`响应正文；
+5. 回到Playground选择WebSocket text并点击Run；
+6. 在Interceptor Capture中选择自产WebSocket exchange，进入Messages并验证text message；
+7. 关闭Edge与Playground，正常Close Electron；验证Main/Core退出、8888和Playground端口释放、系统代理恢复。
+
+测试定位Interceptor只使用公共`data-automation-id`、协议path和本workflow自产payload；定位Playground使用公开
+`data-section`、`data-scenario-id`、ARIA role与运行状态，不依赖翻译文案。evidence必须包含Electron trace、最终截图、
+Main/Renderer日志、PID/listener销毁metadata，以及Playground子进程输出与端口释放事实。
+
+同一workflow在改造前提交`570c5447`取得retrospective Red：系统Edge加载旧Playground后精确失败于默认页面缺少
+`data-section="capture"`，页面仍显示MCP连接面板，尚无39项Capture目录；构建、fixture与Electron启动均成功。
+当前代码同一workflow `1/1` Green：H1 JSON响应正文与WebSocket双向text frame均在真实Capture UI可见，
+`gracefulDestroyVerified=true`，Main/Core、8888与Playground随机端口全部销毁。
 
 ## 10. 实现顺序
 
@@ -251,15 +316,14 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 5. **[已完成]** Main实现CORS并只保留Bearer认证与path路由，官方SDK继续拥有最新协议边界，同组测试Green；
 6. **[已完成]** 创建`apps/playground`，完成Paste config → Connect → Refresh Tools → query/change Call纵向流程；
 7. **[已完成]** 增加Ask等待、Abort和完整HTTP/JSON/SSE详情；Deny/Allow/Auto继续在Interceptor人工操作；
-8. **[已完成]** 增加首批四个H1 Traffic Lab场景；
+8. **[已完成]** 将Capture Lab扩展到当前完整协议、正文、编码、WebSocket、gRPC、TLS与生命周期场景；
 9. **[已完成]** 增加24项人工recipe、手工状态与脱敏证据导出；
-10. **[已完成]** 完成typecheck/build、Browser CORS integration、真实Electron E2E与销毁检查；
+10. **[已完成]** 完成typecheck/build、Browser CORS integration、MCP与Capture Lab真实Electron E2E及销毁检查；
 11. **[已完成]** 同步platform现状、Inventory、Handover和根README命令；
 12. **[待Developer人工验收]** 按页面recipe逐项执行24项Tool并导出脱敏报告。
 
 ## 11. 与当前实现的差异
 
 - 24项Tool尚未由Developer逐项完成Ask/Auto、invalid、disabled、cancellation与产品副作用人工矩阵；
-- H2、SSE、WebSocket、gRPC、large body、trailers、early response与TLS Traffic场景仍按后续产品item增加；
 - 当前VS Code `1.135.0`仍使用`2025-11-25`，产品决定不支持legacy；真实Host canary等待Host升级，
   不阻塞最新协议Playground建设。

@@ -8,6 +8,8 @@ import styles from './PlaygroundWorkbench.module.css';
 
 interface PlaygroundWorkbenchProps {
   readonly argumentsText: string;
+  readonly draftText: string;
+  readonly draftError: string;
   readonly run: PlaygroundToolRun;
   readonly section: PlaygroundSection;
   readonly tool?: PlaygroundMcpTool;
@@ -17,16 +19,17 @@ interface PlaygroundWorkbenchProps {
   readonly onAbort: () => void;
   readonly onArgumentsChange: (value: string) => void;
   readonly onCall: () => void;
-  readonly onRunTraffic: () => void;
+  readonly onDraftChange: (value: string) => void;
 }
 
-export function PlaygroundWorkbench({ argumentsText, run, section, tool, trafficResult, trafficRunning, trafficScenario, onAbort, onArgumentsChange, onCall, onRunTraffic }: PlaygroundWorkbenchProps): React.JSX.Element {
-  if (section === 'traffic') return (
-    <section className={styles.playgroundWorkbench}>
-      <header className={styles.playgroundWorkbenchTitle}><div><span>TRAFFIC LAB</span><h1>{trafficScenario?.title ?? 'Traffic scenario'}</h1><p>{trafficScenario?.description}</p></div><button disabled={trafficRunning || trafficScenario === undefined} type="button" onClick={onRunTraffic}><Play aria-hidden="true" />{trafficRunning ? 'Running…' : 'Run through 127.0.0.1:8888'}</button></header>
-      <section className={styles.playgroundSection}><h2>Scenario</h2><pre>{JSON.stringify({ proxy: '127.0.0.1:8888', scenarioId: trafficScenario?.id }, null, 2)}</pre></section>
+export function PlaygroundWorkbench({ argumentsText, draftText, draftError, run, section, tool, trafficResult, trafficRunning, trafficScenario, onAbort, onArgumentsChange, onCall, onDraftChange }: PlaygroundWorkbenchProps): React.JSX.Element {
+  if (section === 'capture') return (
+    <section className={styles.playgroundWorkbench} data-playground-workbench>
+      <header className={styles.playgroundWorkbenchTitle}><div><span>CAPTURE SCENARIO</span><h1>{trafficScenario?.title ?? 'Traffic scenario'}</h1><p>{trafficScenario?.description}</p></div></header>
+      <section className={styles.playgroundSection}><h2>Request Draft JSON</h2><textarea aria-label="Request Draft JSON" className={styles.draftEditor} disabled={trafficScenario === undefined || trafficRunning} spellCheck={false} value={draftText} onChange={(event) => onDraftChange(event.target.value)} />{draftError ? <div className={styles.draftError} role="alert">{draftError}</div> : null}</section>
+      {trafficScenario ? <section className={styles.playgroundRecipe}><div data-testid="scenario-setup"><h2>Setup manually</h2><ol>{trafficScenario.setup.map((step) => <li key={step}>{step}</li>)}</ol></div><div data-testid="scenario-observations"><h2>Observe</h2><ol>{trafficScenario.observations.map((step) => <li key={step}>{step}</li>)}</ol></div></section> : null}
       <section className={styles.playgroundSection}><h2>Client result</h2><pre>{trafficResult ? JSON.stringify(trafficResult.response ?? { error: trafficResult.error }, null, 2) : 'Run the scenario to see the response and timing.'}</pre></section>
-      {trafficResult ? <div className={styles.playgroundActivity} data-state={trafficResult.state === 'complete' ? 'complete' : 'failed'}>{trafficResult.state === 'complete' ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}<div><strong>{trafficResult.state === 'complete' ? 'Traffic run completed' : 'Traffic run failed as designed or by environment'}</strong><span>{trafficResult.attempt.method} {trafficResult.attempt.path} · {trafficResult.durationMs} ms</span></div></div> : null}
+      {trafficResult ? <div className={styles.playgroundActivity} data-state={trafficResult.state === 'complete' ? 'complete' : 'failed'} data-traffic-state={trafficResult.state}>{trafficResult.state === 'complete' ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}<div><strong>{trafficResult.state === 'complete' ? 'Traffic run completed' : 'Traffic run failed as designed or by environment'}</strong><span>{trafficResult.attempt.method} {trafficResult.attempt.path} · {trafficResult.durationMs} ms</span></div></div> : null}
     </section>
   );
   if (tool === undefined) return <section className={styles.playgroundWorkbench}><div className={styles.playgroundPlaceholder}>No Tool selected.</div></section>;
@@ -34,7 +37,7 @@ export function PlaygroundWorkbench({ argumentsText, run, section, tool, traffic
   const kind = tool.annotations?.readOnlyHint ? 'query' : 'change';
   const recipe = acceptanceRecipe(tool.name);
   return (
-    <section className={styles.playgroundWorkbench}>
+    <section className={styles.playgroundWorkbench} data-playground-workbench>
       <header className={styles.playgroundWorkbenchTitle}><div><span>LIVE TOOLS/LIST</span><h1>{tool.title ?? tool.name}<em data-kind={kind}>{kind}</em></h1><p>{tool.description}</p></div><button type="button" onClick={running ? onAbort : onCall}>{running ? <Square aria-hidden="true" /> : <Play aria-hidden="true" />}{running ? 'Abort' : 'Call Tool'}</button></header>
       <section className={styles.playgroundAnnotations}><span>read only <strong>{String(tool.annotations?.readOnlyHint ?? false)}</strong></span><span>destructive <strong>{String(tool.annotations?.destructiveHint ?? false)}</strong></span><span>idempotent <strong>{String(tool.annotations?.idempotentHint ?? false)}</strong></span><span>open world <strong>{String(tool.annotations?.openWorldHint ?? false)}</strong></span></section>
       <section className={styles.playgroundSection}><h2>Arguments</h2><textarea aria-label="Tool arguments" spellCheck={false} value={argumentsText} onChange={(event) => onArgumentsChange(event.target.value)} /></section>

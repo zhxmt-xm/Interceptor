@@ -32,7 +32,7 @@ for (const feature of FEATURES) {
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'playground', theme, variant: 'tool-approval', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'mcp', playgroundSelectedTool: 'stop_recording', playgroundCallState: 'approval' } });
-  shots.push({ feature: 'playground', theme, variant: 'traffic-h1-json', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'traffic', playgroundSelectedScenario: 'h1-json', playgroundCallState: 'complete' } });
+  shots.push({ feature: 'playground', theme, variant: 'capture-h1-json', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'capture', playgroundSelectedScenario: 'h1-json', playgroundRequestDraft: '{\n  "body": "",\n  "headers": {\n    "accept": "application/json"\n  },\n  "kind": "http",\n  "method": "GET",\n  "path": "/playground/h1-json",\n  "protocol": "h1"\n}', playgroundCaptureDetailWidth: 560, playgroundMcpDetailWidth: 560, playgroundCallState: 'complete' } });
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
   shots.push({
@@ -501,6 +501,14 @@ async function shoot(list) {
       mcpConfigCopied: false,
       mcpCredentialGeneration: 0,
       mcpToolApproval: '',
+      playgroundSection: 'capture',
+      playgroundSelectedTool: 'get_proxy_status',
+      playgroundSelectedScenario: 'h1-json',
+      playgroundRequestDraft: '{\n  "body": "",\n  "headers": {\n    "accept": "application/json"\n  },\n  "kind": "http",\n  "method": "GET",\n  "path": "/playground/h1-json",\n  "protocol": "h1"\n}',
+      playgroundCaptureDetailWidth: 560,
+      playgroundMcpDetailWidth: 560,
+      playgroundCallState: 'complete',
+      playgroundManualStatus: 'not-run',
     }));
     for (let depth = 0; depth < 2; depth += 1) {
       await page.keyboard.press('Escape');

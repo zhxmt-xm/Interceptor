@@ -14,9 +14,8 @@
 .playgroundSection { padding: 18px 24px 0; }
 .playgroundSection h2 { margin-bottom: 8px; color: var(--text-2); font-size: 10.5px; font-weight: 650; }
 .playgroundSection pre { min-height: 54px; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-2); color: var(--text-2); font: 10.5px/1.65 var(--font-mono); white-space: pre-wrap; }
-.fieldGrid { display: grid; grid-template-columns: 130px minmax(0,1fr); gap: 10px; }
-.fieldGrid label { display: flex; flex-direction: column; gap: 6px; color: var(--text-3); font-size: 10px; }
-.fieldGrid input { height: 32px; min-width: 0; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; outline: 0; background: var(--panel); color: var(--text); font: 10.5px var(--font-mono); }
+.playgroundSection textarea { width: 100%; min-height: 76px; resize: vertical; padding: 10px 12px; border: 1px solid var(--border); border-radius: 7px; outline: 0; background: var(--panel-2); color: var(--text-2); font: 10.5px/1.6 var(--font-mono); }
+.playgroundSection textarea.draftEditor { min-height: 286px; resize: none; }
 .playgroundRecipe { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 18px 24px 0; }
 .playgroundRecipe > div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); }
 .playgroundRecipe h2 { margin-bottom: 7px; color: var(--text-2); font-size: 10.5px; font-weight: 650; }

@@ -102,9 +102,10 @@ npm run test --workspace @interceptor/desktop -- --run src/main/security/tests/u
 npm run playground
 ```
 
-This starts the browser-based manual acceptance workspace at `http://127.0.0.1:4175`. It connects directly to the
-current MCP endpoint using configuration copied from Interceptor and provides four local HTTP/1.1 Traffic Lab scenarios.
-It is a development tool under `apps/playground/` and is not included in Desktop packages. See
+This starts the browser-based manual acceptance workspace at `http://127.0.0.1:4175`. It opens Capture Lab by default
+with 39 editable HTTP, body, encoding, WebSocket, gRPC, and TLS scenarios routed through `127.0.0.1:8888`; the separate
+MCP page connects directly using configuration copied from Interceptor. It is a development tool under `apps/playground/`
+and is not included in Desktop packages. See
 [apps/playground/README.md](apps/playground/README.md) for the manual workflow and credential boundary.
 
 ### Debug Renderer

@@ -1,269 +1,354 @@
-import {
-  createServer,
-  request,
-  type IncomingHttpHeaders,
-  type Server,
-  type ServerResponse,
-} from 'node:http';
-import { randomUUID } from 'node:crypto';
-
 import type {
-  TrafficRequestFact,
-  TrafficResponseFact,
+  TrafficRequestDraft,
   TrafficScenarioDescriptor,
   TrafficScenarioId,
   TrafficScenarioResult,
 } from './interfaces.ts';
+import { HttpTrafficRunner } from './internal/http-traffic.ts';
+import { SecureTrafficRunner } from './internal/secure-traffic.ts';
+import { elapsed } from './internal/traffic-utils.ts';
+import { WebSocketTrafficRunner } from './internal/websocket-traffic.ts';
+
+const GET_HEADERS = { accept: 'application/json' };
+const POST_HEADERS = { 'content-type': 'application/json' };
 
 export const TRAFFIC_SCENARIOS: readonly TrafficScenarioDescriptor[] = [
-  { id: 'h1-json', title: 'H1 JSON', description: 'GET with a structured JSON response.' },
-  { id: 'h1-upload', title: 'H1 upload', description: 'POST a request body in three timed chunks.' },
-  { id: 'h1-stream', title: 'H1 stream', description: 'Receive three timed response chunks.' },
-  { id: 'h1-failure', title: 'H1 failure', description: 'Origin resets the connection before a response.' },
+  scenario('h1-json', 'HTTP', 'H1 JSON', 'Structured request and response.', 'GET', '/playground/h1-json'),
+  scenario('h1-upload', 'HTTP', 'H1 upload', 'Chunked upload with origin counters.', 'POST', '/playground/h1-upload', '{"part":1,"message":"playground","done":true}'),
+  scenario('h1-stream', 'HTTP', 'H1 streaming', 'Timed chunks and first-byte timing.', 'GET', '/playground/h1-stream'),
+  scenario('h1-early-response', 'HTTP', 'H1 early response', 'Response before request completion.', 'POST', '/playground/h1-early-response', '{"request":"continues-after-response"}'),
+  scenario('h1-abort', 'HTTP', 'H1 abort', 'Client abort and origin reset.', 'GET', '/playground/h1-abort'),
+  scenario('h2-json', 'HTTP', 'H2 JSON', 'HTTP/2 stream and pseudo-headers.', 'GET', '/playground/h2-json'),
+  scenario('body-json', 'Bodies', 'JSON', 'Tree, raw and hex views.', 'POST', '/playground/body/json', '{"ready":true}'),
+  scenario('body-text', 'Bodies', 'Plain text', 'UTF-8 text response.', 'POST', '/playground/body/text', 'Interceptor body lab', { 'content-type': 'text/plain; charset=utf-8' }),
+  scenario('body-html', 'Bodies', 'HTML', 'Markup syntax and preview.', 'GET', '/playground/body/html'),
+  scenario('body-css', 'Bodies', 'CSS', 'Stylesheet syntax.', 'GET', '/playground/body/css'),
+  scenario('body-javascript', 'Bodies', 'JavaScript', 'Script syntax.', 'GET', '/playground/body/javascript'),
+  scenario('body-xml', 'Bodies', 'XML', 'XML syntax and formatting.', 'GET', '/playground/body/xml'),
+  scenario('body-yaml', 'Bodies', 'YAML', 'YAML syntax and formatting.', 'GET', '/playground/body/yaml'),
+  scenario('body-svg', 'Bodies', 'SVG', 'Vector image preview.', 'GET', '/playground/body/svg'),
+  scenario('body-markdown', 'Bodies', 'Markdown', 'Source, preview and split modes.', 'GET', '/playground/body/markdown'),
+  scenario('body-form', 'Bodies', 'Form URL encoded', 'Decoded form fields.', 'POST', '/playground/body/form', 'name=Interceptor&ready=true', { 'content-type': 'application/x-www-form-urlencoded' }),
+  scenario('body-png', 'Bodies', 'PNG', 'Raster image preview.', 'GET', '/playground/body/png'),
+  scenario('body-binary', 'Bodies', 'Binary', 'Hex and download actions.', 'GET', '/playground/body/binary'),
+  scenario('body-audio', 'Bodies', 'Audio', 'Inline media controls.', 'GET', '/playground/body/audio'),
+  scenario('body-video', 'Bodies', 'Video', 'Inline media controls.', 'GET', '/playground/body/video'),
+  scenario('body-unknown-text', 'Bodies', 'Unknown text', 'Text sniffing without MIME.', 'GET', '/playground/body/unknown-text'),
+  scenario('body-unknown-binary', 'Bodies', 'Unknown binary', 'Binary fallback without MIME.', 'GET', '/playground/body/unknown-binary'),
+  scenario('encoding-gzip', 'Encoding', 'gzip', 'Decoded compressed response.', 'GET', '/playground/encoding/gzip'),
+  scenario('encoding-deflate', 'Encoding', 'deflate', 'Decoded compressed response.', 'GET', '/playground/encoding/deflate'),
+  scenario('encoding-br', 'Encoding', 'brotli', 'Decoded compressed response.', 'GET', '/playground/encoding/br'),
+  scenario('encoding-corrupt-gzip', 'Encoding', 'Corrupt gzip', 'Decode failure evidence.', 'GET', '/playground/encoding/corrupt-gzip'),
+  scenario('encoding-invalid-image', 'Encoding', 'Invalid image', 'Unavailable image evidence.', 'GET', '/playground/encoding/invalid-image'),
+  webSocketScenario('ws-text', 'Text echo', 'Client and server text messages.', '/playground/ws/text', [{ data: 'hello from client', encoding: 'utf8' }]),
+  webSocketScenario('ws-binary', 'Binary echo', 'Client and server binary messages.', '/playground/ws/binary', [{ data: 'AAECA/8=', encoding: 'base64' }]),
+  webSocketScenario('ws-bidirectional', 'Bidirectional', 'Interleaved messages in both directions.', '/playground/ws/bidirectional', [{ data: 'client message', encoding: 'utf8' }], [{ data: 'origin message', encoding: 'utf8' }]),
+  webSocketScenario('ws-control', 'Control frames', 'Ping, pong and close frames.', '/playground/ws/control', [], [], ['ping', 'pong', 'close']),
+  grpcScenario('grpc-unary-proto', 'Unary proto', 'Binary protobuf envelopes.', '/playground.Capture/UnaryProto', 'application/grpc+proto', [{ compressed: false, data: 'cHJvdG8tcmVxdWVzdA==', encoding: 'base64' }], [{ compressed: false, data: 'cHJvdG8tcmVzcG9uc2U=', encoding: 'base64' }]),
+  grpcScenario('grpc-unary-json', 'Unary JSON', 'JSON payload envelope.', '/playground.Capture/UnaryJson', 'application/grpc+json', [{ compressed: false, data: '{"message":"hello"}', encoding: 'utf8' }], [{ compressed: false, data: '{"message":"world"}', encoding: 'utf8' }]),
+  grpcScenario('grpc-trailers-error', 'Trailers error', 'Non-zero grpc-status.', '/playground.Capture/TrailersError', 'application/grpc+proto', [{ compressed: false, data: 'cmVxdWVzdA==', encoding: 'base64' }], [], { 'grpc-message': 'Playground failure', 'grpc-status': '13' }),
+  grpcScenario('grpc-compressed', 'Compressed envelope', 'Compressed message flag.', '/playground.Capture/Compressed', 'application/grpc+proto', [{ compressed: true, data: 'Y29tcHJlc3NlZCByZXF1ZXN0', encoding: 'base64' }], [{ compressed: true, data: 'Y29tcHJlc3NlZCByZXNwb25zZQ==', encoding: 'base64' }]),
+  grpcScenario('grpc-malformed', 'Malformed envelope', 'Truncated frame evidence.', '/playground.Capture/Malformed', 'application/grpc+proto', [{ compressed: false, data: 'cmVxdWVzdA==', encoding: 'base64' }], [{ compressed: false, data: 'dHJ1bmNhdGVk', encoding: 'base64' }], { 'grpc-status': '0' }, 'truncated'),
+  tlsScenario('tls-passthrough', 'Passthrough tunnel', 'Opaque CONNECT tunnel.', 'tunnel-only', 'CONNECT', 'localhost', '/'),
+  tlsScenario('tls-mitm-h1', 'MITM H1', 'Decrypted HTTPS over HTTP/1.1.', 'https-h1', 'GET', 'localhost', '/playground/tls/h1'),
+  tlsScenario('tls-mitm-h2', 'MITM H2', 'Decrypted HTTPS over HTTP/2.', 'https-h2', 'GET', 'localhost', '/playground/tls/h2'),
 ];
 
 export class TrafficLab {
-  readonly #originServer: Server;
-  readonly #originPort: number;
-  readonly #requestByRunId = new Map<string, TrafficRequestFact>();
+  readonly #httpTrafficRunner: HttpTrafficRunner;
+  #secureTrafficRunnerPromise: Promise<SecureTrafficRunner> | null = null;
+  readonly #webSocketTrafficRunner: WebSocketTrafficRunner;
 
-  private constructor(originServer: Server, originPort: number) {
-    this.#originServer = originServer;
-    this.#originPort = originPort;
+  private constructor(
+    httpTrafficRunner: HttpTrafficRunner,
+    webSocketTrafficRunner: WebSocketTrafficRunner,
+  ) {
+    this.#httpTrafficRunner = httpTrafficRunner;
+    this.#webSocketTrafficRunner = webSocketTrafficRunner;
   }
 
   static async start(): Promise<TrafficLab> {
-    let trafficLab: TrafficLab;
-    const originServer = createServer((incoming, response) => {
-      const chunks: Buffer[] = [];
-      incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
-      incoming.on('end', () => {
-        const body = Buffer.concat(chunks);
-        const runId = readHeader(incoming.headers, 'x-playground-run-id');
-        if (runId !== undefined) {
-          trafficLab.#requestByRunId.set(runId, {
-            body: body.toString('utf8'),
-            bodyBytes: body.byteLength,
-            headers: stringHeaders(incoming.headers),
-            method: incoming.method ?? 'GET',
-            path: incoming.url ?? '/',
-            url: `http://127.0.0.1:${trafficLab.#originPort}${incoming.url ?? '/'}`,
-          });
-        }
-        switch (incoming.url) {
-          case '/playground/h1-json':
-            respondJson(response, { orderId: 'ord_42', status: 'ready', items: 3 });
-            break;
-          case '/playground/h1-upload':
-            respondJson(response, { receivedBytes: body.byteLength, sha: 'playground-upload' });
-            break;
-          case '/playground/h1-stream':
-            response.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
-            response.write('{"chunk":1}\n');
-            setTimeout(() => response.write('{"chunk":2}\n'), 35);
-            setTimeout(() => response.end('{"chunk":3}\n'), 70);
-            break;
-          case '/playground/h1-failure':
-            incoming.socket.destroy();
-            break;
-          default:
-            response.writeHead(404).end();
-        }
-      });
-    });
-    const originPort = await listen(originServer);
-    trafficLab = new TrafficLab(originServer, originPort);
-    return trafficLab;
+    const httpTrafficRunner = await HttpTrafficRunner.start();
+    try {
+      return new TrafficLab(httpTrafficRunner, await WebSocketTrafficRunner.start());
+    } catch (error) {
+      await httpTrafficRunner.close();
+      throw error;
+    }
   }
 
   scenarios(): readonly TrafficScenarioDescriptor[] {
     return TRAFFIC_SCENARIOS;
   }
 
-  async run(scenarioId: TrafficScenarioId, proxyPort = 8888): Promise<TrafficScenarioResult> {
-    if (!TRAFFIC_SCENARIOS.some((scenario) => scenario.id === scenarioId)) {
+  async run(
+    scenarioId: TrafficScenarioId,
+    draft: TrafficRequestDraft,
+    proxyPort = 8888,
+  ): Promise<TrafficScenarioResult> {
+    const scenario = TRAFFIC_SCENARIOS.find((item) => item.id === scenarioId);
+    if (scenario === undefined) {
       throw new Error(`Unknown Traffic Lab scenario "${scenarioId}".`);
+    }
+    if (!sameTransport(scenario.defaultDraft, draft)) {
+      throw new Error(`Draft transport does not match scenario "${scenarioId}".`);
     }
     const startedAt = new Date().toISOString();
     const startedAtMs = performance.now();
-    const runId = randomUUID();
-    const path = `/playground/${scenarioId}`;
-    const method = scenarioId === 'h1-upload' ? 'POST' : 'GET';
-    const attempt = {
-      method,
-      path,
-      url: this.#originUrl(path),
-    };
-    try {
-      const response = await this.#requestThroughProxy(proxyPort, runId, scenarioId);
-      const requestFact = this.#requestByRunId.get(runId) ?? null;
-      this.#requestByRunId.delete(runId);
-      if (requestFact === null) {
-        return {
-          attempt,
-          durationMs: elapsed(startedAtMs),
-          error: 'Origin did not receive or record this request.',
-          request: null,
-          response,
-          scenarioId,
-          startedAt,
-          state: 'failed',
-        };
+    let execution;
+    if (draft.kind === 'http' && draft.protocol === 'h1') {
+      execution = await this.#httpTrafficRunner.run(scenarioId, draft, proxyPort);
+    } else if (draft.kind === 'websocket') {
+      execution = await this.#webSocketTrafficRunner.run(draft, proxyPort);
+    } else {
+      const secureTrafficRunner = await this.#getSecureTrafficRunner();
+      if (draft.kind === 'http') {
+        execution = await secureTrafficRunner.runHttp2(draft, proxyPort);
+      } else if (draft.kind === 'grpc') {
+        execution = await secureTrafficRunner.runGrpc(draft, proxyPort);
+      } else if (draft.kind === 'tls') {
+        execution = await secureTrafficRunner.runTls(draft, proxyPort);
+      } else {
+        execution = unsupportedExecution(scenarioId, draft, startedAt, startedAtMs);
       }
-      return {
-        attempt,
-        durationMs: elapsed(startedAtMs),
-        request: requestFact,
-        response,
-        scenarioId,
-        startedAt,
-        state: scenarioId === 'h1-failure' || response.statusCode >= 500 ? 'failed' : 'complete',
-      };
-    } catch (error) {
-      const requestFact = this.#requestByRunId.get(runId) ?? null;
-      this.#requestByRunId.delete(runId);
-      return {
-        attempt,
-        durationMs: elapsed(startedAtMs),
-        error: error instanceof Error ? error.message : String(error),
-        request: requestFact,
-        scenarioId,
-        startedAt,
-        state: 'failed',
-      };
     }
+    return { ...execution, durationMs: elapsed(startedAtMs), scenarioId, startedAt };
   }
 
   async close(): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      this.#originServer.close((error) => error ? reject(error) : resolve());
-    });
+    const secureTrafficRunnerPromise = this.#secureTrafficRunnerPromise;
+    this.#secureTrafficRunnerPromise = null;
+    const secureTrafficRunner = await secureTrafficRunnerPromise?.catch(() => null) ?? null;
+    await Promise.all([
+      this.#httpTrafficRunner.close(),
+      secureTrafficRunner?.close(),
+      this.#webSocketTrafficRunner.close(),
+    ]);
   }
 
-  async #requestThroughProxy(
-    proxyPort: number,
-    runId: string,
-    scenarioId: TrafficScenarioId,
-  ): Promise<TrafficResponseFact> {
-    const path = `/playground/${scenarioId}`;
-    const bodyChunks = scenarioId === 'h1-upload'
-      ? ['{"part":1,', '"message":"playground",', '"done":true}']
-      : [];
-    const bodyBytes = bodyChunks.reduce((total, chunk) => total + Buffer.byteLength(chunk), 0);
-    return new Promise((resolve, reject) => {
-      const startedAtMs = performance.now();
-      let settled = false;
-      let outgoing: ReturnType<typeof request>;
-      const settle = (
-        outcome: { readonly error: unknown } | { readonly response: TrafficResponseFact },
-      ): void => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        if ('error' in outcome) reject(outcome.error);
-        else resolve(outcome.response);
-      };
-      const timeout = setTimeout(() => {
-        const error = new Error('Traffic Lab request timed out.');
-        outgoing.destroy(error);
-        settle({ error });
-      }, 15_000);
-      outgoing = request({
-        host: '127.0.0.1',
-        port: proxyPort,
-        method: bodyChunks.length > 0 ? 'POST' : 'GET',
-        path: this.#originUrl(path),
-        headers: {
-          connection: 'close',
-          host: `127.0.0.1:${this.#originPort}`,
-          ...(bodyChunks.length > 0 ? {
-            'content-length': String(bodyBytes),
-            'content-type': 'application/json',
-          } : {}),
-          'x-playground-run-id': runId,
-        },
-      }, (incoming) => {
-        const chunks: Buffer[] = [];
-        const chunkTimingsMs: number[] = [];
-        incoming.on('data', (chunk: Buffer) => {
-          chunks.push(chunk);
-          chunkTimingsMs.push(elapsed(startedAtMs));
-        });
-        incoming.on('error', (error) => settle({ error }));
-        incoming.on('aborted', () => settle({ error: new Error('Proxy response was aborted.') }));
-        incoming.on('close', () => {
-          if (!incoming.complete) settle({ error: new Error('Proxy response closed before completion.') });
-        });
-        incoming.on('end', () => settle({
-          response: {
-            body: Buffer.concat(chunks).toString('utf8'),
-            chunkTimingsMs,
-            headers: stringHeaders(incoming.headers),
-            statusCode: incoming.statusCode ?? 0,
-          },
-        }));
-      });
-      outgoing.on('error', (error) => settle({ error }));
-      if (bodyChunks.length === 0) {
-        outgoing.end();
-        return;
+  async #getSecureTrafficRunner(): Promise<SecureTrafficRunner> {
+    const secureTrafficRunnerPromise = this.#secureTrafficRunnerPromise
+      ?? SecureTrafficRunner.start();
+    this.#secureTrafficRunnerPromise = secureTrafficRunnerPromise;
+    try {
+      return await secureTrafficRunnerPromise;
+    } catch (error) {
+      if (this.#secureTrafficRunnerPromise === secureTrafficRunnerPromise) {
+        this.#secureTrafficRunnerPromise = null;
       }
-      const writeChunk = (index: number): void => {
-        const chunk = bodyChunks[index];
-        if (chunk === undefined) {
-          outgoing.end();
-          return;
-        }
-        outgoing.write(chunk);
-        setTimeout(() => writeChunk(index + 1), 30);
-      };
-      writeChunk(0);
-    });
-  }
-
-  #originUrl(path: string): string {
-    return `http://127.0.0.1:${this.#originPort}${path}`;
+      throw error;
+    }
   }
 }
 
-function elapsed(startedAtMs: number): number {
-  return Math.round((performance.now() - startedAtMs) * 10) / 10;
+function sameTransport(expected: TrafficRequestDraft, actual: TrafficRequestDraft): boolean {
+  if (expected.kind !== actual.kind) return false;
+  if (expected.kind === 'http' && actual.kind === 'http') {
+    return expected.protocol === actual.protocol;
+  }
+  if (expected.kind === 'tls' && actual.kind === 'tls') {
+    return expected.mode === actual.mode;
+  }
+  return true;
 }
 
-function listen(server: Server): Promise<number> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (address === null || typeof address === 'string') {
-        reject(new Error('Traffic Lab origin did not expose a numeric port.'));
-        return;
-      }
-      resolve(address.port);
-    });
-  });
+function scenario(
+  id: TrafficScenarioId,
+  group: TrafficScenarioDescriptor['group'],
+  title: string,
+  description: string,
+  method: string,
+  path: string,
+  body = '',
+  headers: Readonly<Record<string, string>> = method === 'GET' ? GET_HEADERS : POST_HEADERS,
+): TrafficScenarioDescriptor {
+  const acceptance = acceptanceSteps(id, group, description);
+  return {
+    defaultDraft: {
+      body,
+      headers,
+      kind: 'http',
+      method,
+      path,
+      protocol: id === 'h2-json' ? 'h2' : 'h1',
+    },
+    description,
+    group,
+    id,
+    ...acceptance,
+    title,
+  };
 }
 
-function readHeader(headers: IncomingHttpHeaders, name: string): string | undefined {
-  const value = headers[name];
-  return Array.isArray(value) ? value[0] : value;
+function unsupportedExecution(
+  scenarioId: TrafficScenarioId,
+  draft: TrafficRequestDraft,
+  startedAt: string,
+  startedAtMs: number,
+): TrafficScenarioResult {
+  const path = 'path' in draft ? draft.path : scenarioId;
+  const method = 'method' in draft ? draft.method : draft.kind === 'grpc' ? 'POST' : 'GET';
+  return {
+    attempt: { method, path, url: path },
+    durationMs: elapsed(startedAtMs),
+    error: `Traffic transport "${draft.kind}" is not implemented.`,
+    protocol: draft.kind === 'grpc' ? 'grpc' : draft.kind === 'websocket' ? 'websocket' : draft.kind === 'tls' ? 'tls' : 'h2',
+    request: null,
+    scenarioId,
+    startedAt,
+    state: 'failed',
+  };
 }
 
-function respondJson(
-  response: ServerResponse,
-  body: Readonly<Record<string, unknown>>,
-): void {
-  const text = JSON.stringify(body, null, 2);
-  response.writeHead(200, {
-    'Content-Length': Buffer.byteLength(text),
-    'Content-Type': 'application/json',
-  });
-  response.end(text);
+function webSocketScenario(
+  id: Extract<TrafficScenarioId, `ws-${string}`>,
+  title: string,
+  description: string,
+  path: string,
+  clientMessages: readonly { readonly data: string; readonly encoding: 'base64' | 'utf8' }[],
+  serverMessages: readonly { readonly data: string; readonly encoding: 'base64' | 'utf8' }[] = [],
+  controls: readonly ('close' | 'ping' | 'pong')[] = [],
+): TrafficScenarioDescriptor {
+  const acceptance = acceptanceSteps(id, 'WebSocket', description);
+  return {
+    defaultDraft: {
+      clientMessages,
+      controls,
+      headers: {},
+      kind: 'websocket',
+      path,
+      serverMessages,
+    },
+    description,
+    group: 'WebSocket',
+    id,
+    ...acceptance,
+    title,
+  };
 }
 
-function stringHeaders(headers: IncomingHttpHeaders): Readonly<Record<string, string>> {
-  return Object.fromEntries(Object.entries(headers).flatMap(([name, value]) => {
-    if (value === undefined) return [];
-    return [[name, Array.isArray(value) ? value.join(', ') : value]];
-  }));
+function grpcScenario(
+  id: Extract<TrafficScenarioId, `grpc-${string}`>,
+  title: string,
+  description: string,
+  path: string,
+  contentType: string,
+  requestMessages: Extract<TrafficRequestDraft, { kind: 'grpc' }>['requestMessages'],
+  responseMessages: Extract<TrafficRequestDraft, { kind: 'grpc' }>['responseMessages'],
+  responseTrailers: Readonly<Record<string, string>> = { 'grpc-status': '0' },
+  framing: Extract<TrafficRequestDraft, { kind: 'grpc' }>['framing'] = 'valid',
+): TrafficScenarioDescriptor {
+  const acceptance = acceptanceSteps(id, 'gRPC', description);
+  return {
+    defaultDraft: {
+      framing,
+      headers: { 'content-type': contentType },
+      kind: 'grpc',
+      path,
+      requestMessages,
+      responseMessages,
+      responseTrailers,
+    },
+    description,
+    group: 'gRPC',
+    id,
+    ...acceptance,
+    title,
+  };
+}
+
+function tlsScenario(
+  id: Extract<TrafficScenarioId, `tls-${string}`>,
+  title: string,
+  description: string,
+  mode: Extract<TrafficRequestDraft, { kind: 'tls' }>['mode'],
+  method: string,
+  targetHost: string,
+  path: string,
+): TrafficScenarioDescriptor {
+  const acceptance = acceptanceSteps(id, 'TLS', description);
+  return {
+    defaultDraft: {
+      connectHeaders: {},
+      headers: { accept: 'application/json' },
+      kind: 'tls',
+      method,
+      mode,
+      path,
+      targetHost,
+    },
+    description,
+    group: 'TLS',
+    id,
+    ...acceptance,
+    title,
+  };
+}
+
+function acceptanceSteps(
+  id: TrafficScenarioId,
+  group: TrafficScenarioDescriptor['group'],
+  description: string,
+): Pick<TrafficScenarioDescriptor, 'observations' | 'setup'> {
+  if (id === 'tls-passthrough') {
+    return {
+      setup: [
+        'Add localhost to Settings > TLS passthrough before Run.',
+        'Open Capture and keep Recording active.',
+      ],
+      observations: [
+        'Capture shows an opaque CONNECT tunnel without decrypted HTTP details.',
+        'The TLS handshake completes through the explicit proxy.',
+      ],
+    };
+  }
+  if (group === 'TLS') {
+    return {
+      setup: [
+        'Remove localhost from TLS passthrough, then enable HTTPS decryption.',
+        'Trust the Playground localhost origin certificate if Capture asks, then rerun.',
+      ],
+      observations: [
+        `${description} is visible as decrypted traffic.`,
+        'ALPN, cipher, request and response facts match Response Detail.',
+      ],
+    };
+  }
+  if (group === 'gRPC' || id === 'h2-json') {
+    const primaryObservation = id === 'grpc-compressed'
+      ? 'Capture identifies the compressed envelope and preserves its compressed flag.'
+      : `${description} is visible in the protocol-specific inspector.`;
+    return {
+      setup: [
+        'Enable HTTPS decryption and keep Recording active.',
+        'Trust the Playground localhost origin certificate if Capture asks, then rerun.',
+      ],
+      observations: [
+        primaryObservation,
+        'HTTP/2 pseudo-headers, response trailers and ALPN remain visible.',
+      ],
+    };
+  }
+  if (group === 'WebSocket') {
+    return {
+      setup: [
+        'Open Capture and keep Recording active.',
+        'Keep WebSocket breakpoints disabled unless the breakpoint flow is under test.',
+      ],
+      observations: [
+        `${description} appears in the Messages inspector.`,
+        'Direction, opcode, payload encoding and close lifecycle remain visible.',
+      ],
+    };
+  }
+  return {
+    setup: [
+      'Open Capture and keep Recording active.',
+      'Keep Interceptor listening on 127.0.0.1:8888.',
+    ],
+    observations: [
+      `${description} is visible in Capture.`,
+      'Origin request and client response match the Request Draft.',
+    ],
+  };
 }

@@ -93,7 +93,7 @@ export type AgentToolTraceState = 'traffic' | '';
 export type McpServerState = 'disabled' | 'running' | 'conflict';
 export type McpClientDialogState = 'add' | 'regenerate' | 'revoke' | '';
 export type McpToolApprovalState = 'pending' | '';
-export type PlaygroundSection = 'mcp' | 'traffic';
+export type PlaygroundSection = 'capture' | 'mcp';
 export type PlaygroundCallState = 'complete' | 'approval' | 'error';
 export type PlaygroundManualStatus = 'not-run' | 'pass' | 'fail' | 'blocked';
 
@@ -167,6 +167,9 @@ export interface DesignState {
   readonly playgroundSection: PlaygroundSection;
   readonly playgroundSelectedTool: string;
   readonly playgroundSelectedScenario: string;
+  readonly playgroundRequestDraft: string;
+  readonly playgroundCaptureDetailWidth: number;
+  readonly playgroundMcpDetailWidth: number;
   readonly playgroundCallState: PlaygroundCallState;
   readonly playgroundManualStatus: PlaygroundManualStatus;
   readonly bodyType: BodyType;
