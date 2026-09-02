@@ -3,9 +3,9 @@
 > 最后更新：2026-09-02
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录、首批24项共享registry、Settings开关持久化、Agent四个Traffic query与首个change
-> Tool纵向流程已完成；Desktop MCP与Browser Playground已通过loopback Streamable HTTP消费同一registry；
-> Playground代码完成，首批24项待Developer逐项人工验收。
+> 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
+> 代码已接入8/24，已验收真实Agent或MCP Tool Call覆盖8/24，owning package正向executor unit覆盖14/24；Playground
+> recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -94,9 +94,9 @@ interface ToolCapabilitySettingsRecord {
 | `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
 | `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter + Agent |
 | `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter + Agent |
-| `get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter；用`exchangeId + bodyId`回查可信MIME/encoding |
-| `list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | 共享 registry + MCP adapter |
-| `list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | 共享 registry + MCP adapter |
+| `get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter + Agent；用`exchangeId + bodyId`回查可信MIME/encoding，真实E2E完成 |
+| `list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `export_body` | change | `startBodyExport` / 原生 Save Dialog | 产品已具备 |
 
 ### 3.2 Rules 与 Composer
@@ -191,24 +191,85 @@ interface ToolCapabilitySettingsRecord {
 | `set_theme` | change | 当前仅 Renderer 状态 | 先补 intent |
 | `set_export_privacy_defaults` | change | 当前仅 Renderer 状态 | 先补 intent |
 
-## 4. 逐项交付
+## 4. 首批24项交付矩阵
 
-Tool 不按“只读产品版”和“完整产品版”切成两套。完整目录先确定，随后从最基础的纵向流程开始逐项完成：
+这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
+adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
+`tools/list`枚举或Playground recipe不算执行覆盖。
 
-1. 在`design-vite`完成`Settings > Agent`能力列表、Agent/MCP双开关与`ask`问询态设计；
-2. **[已完成]** 将现有MCP 20个Tool的通用descriptor、schema与执行函数迁入`packages/interceptor-tools/`，
-   同时把三个多义入口拆成24个语义单一Tool；MCP transport继续留在`packages/mcp-server/`；
-3. **[已完成]** 实现registry驱动的Agent/MCP开关及持久化，默认全部开启；本项只建立设置快照，不提前接执行入口；
-4. **[已完成]** Agent首个真实流程接入`get_proxy_status`、`list_exchanges`、`get_exchange`，验证discovery、Transcript
-   与真实 UI 产生的 Capture 数据；它们只是最先开发的三项，不是永久只读边界；
-5. **[已完成]** 接入Session级`ask` / `auto`与首个change Tool `stop_recording`；
-6. **[已完成]** 接入MCP Desktop loopback Streamable HTTP、Client级`ask` / `auto`、Tool过滤与首个query/change纵向流程；
-7. **[代码完成 · 待人工验收]** 建立[Web人工验收Playground](playground.md)，直接消费实时`tools/list`并为每项Tool提供手工recipe、
-   完整协议详情和Developer Pass / Fail / Blocked记录；Playground不复制registry，也不接LLM；
-8. 每完成一个Tool，同一work item更新本表状态并增加最小unit/integration、Playground人工recipe；影响用户flow时增加真实E2E；
-9. 没有正式产品入口的Tool先补产品intent，再复用该入口，不在Tool层实现第二套业务逻辑。
+| Tool | Agent接入 | 正向executor unit | 真实Agent/MCP调用 |
+| --- | --- | --- | --- |
+| `get_proxy_status` | 已完成 | 待补 | Agent + MCP已完成 |
+| `get_storage_status` | 已完成 | 待补 | Agent已完成 |
+| `start_recording` | 待接入 | 已完成 | 待完成 |
+| `stop_recording` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `clear_capture` | 待接入 | 已完成 | 待完成 |
+| `list_exchanges` | 已完成 | 待补 | Agent已完成 |
+| `get_exchange` | 已完成 | 已完成 | Agent已完成 |
+| `get_exchange_body` | 已完成 | 已完成 | Agent已完成 |
+| `list_websocket_messages` | 已完成 | 已完成 | Agent已完成 |
+| `list_grpc_messages` | 已完成 | 已完成 | Agent已完成 |
+| `get_rules` | 待接入 | 待补 | 待完成 |
+| `get_rule_hits` | 待接入 | 待补 | 待完成 |
+| `apply_rules` | 待接入；递归Rule schema待完成 | 已完成 | 待完成 |
+| `list_breakpoints` | 待接入 | 待补 | 待完成 |
+| `enable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
+| `disable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
+| `enable_websocket_breakpoint` | 待接入 | 待补 | 待完成 |
+| `disable_websocket_breakpoint` | 待接入 | 待补 | 待完成 |
+| `continue_breakpoint` | 待接入 | 已完成 | 待完成 |
+| `forward_edited_breakpoint` | 待接入 | 已完成 | 待完成 |
+| `drop_breakpoint` | 待接入 | 已完成 | 待完成 |
+| `send_request` | 待接入 | 已完成 | 待完成 |
+| `probe_connection` | 待接入 | 待补 | 待完成 |
+| `query_diagnostics` | 待接入 | 待补 | 待完成 |
 
-## 5. 不注册为业务 Tool 的控制面
+## 5. 实施顺序与阶段门禁
+
+Tool 不按“只读产品版”和“完整产品版”切成两套。当前主线先完成既定Tool能力，再进行Playground人工验收和
+Capture 39项真实Electron收敛：
+
+1. **[已完成] 基础层**：设计能力列表与`ask`问询；建立24项共享registry、MCP adapter、Settings持久化、
+   Agent渐进discovery；接入四个Traffic query和`stop_recording`，完成首个query/change真实纵向流程。
+2. **[已完成] 正文/消息**：`get_exchange_body`、`list_websocket_messages`、`list_grpc_messages`已接入Agent，
+   owning executor unit、结构化Transcript摘要、15语言与明暗Parity完成。真实workflow覆盖正文range、WebSocket
+   全部/单方向和gRPC request/response；重启请求增量0，关闭三项后均返回`unknown_tool`。E2E曾暴露Electron
+   UtilityProcess中的Mockttp对不安全源站追加OpenSSL专用`@SECLEVEL=0`并报`INVALID_COMMAND`；Developer批准后，
+   第三方patch只在Electron省略该命令，Node行为保持。补丁Unit 2/2、H2 integration 6/6、真实E2E 1/1、
+   Windows package/artifact audit/smoke均Green。
+3. **[待实现] Traffic控制补尾**：接入`start_recording`、`clear_capture`，验证Ask/Auto、Capture UI同步、
+   清理结果和系统副作用恢复。
+4. **[待实现] Rules**：先完成`apply_rules`完整递归Rule schema，再接入`get_rules`、`get_rule_hits`、
+   `apply_rules`并验证revision、conflict与真实Rule effect。
+5. **[待实现] Breakpoints**：按HTTP与WebSocket拆分接入八项现有Tool，使用真实pending、队列、编辑、
+   Allow/Deny/Auto与origin事实验收。
+6. **[待实现] Requests**：接入`send_request`与`probe_connection`，验证真实origin/TLS、取消和网络结果。
+7. **[待实现] Diagnostics**：接入`query_diagnostics`，先由真实产品动作产生记录，再验证过滤、脱敏与稳定顺序。
+8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
+   recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。
+9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
+   WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
+   从当前2/39收敛到39/39，不建立一个巨型workflow。
+
+每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
+同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
+该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
+分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Traffic控制补尾。
+
+## 6. 相关未完成验收
+
+这些事项与24项Tool主线相关，但不计入Agent接线或真实Tool Call完成数：
+
+| 事项 | 当前进度 | 顺序/解除条件 |
+| --- | --- | --- |
+| Playground 24项人工矩阵 | recipe 24/24；Developer结论0/24 | Tool自动主线24/24后逐项Pass/Fail/Blocked并导出脱敏报告 |
+| Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
+| VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
+| VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |
+| MCP Streamable HTTP进度SSE | 待真实flow | 只有出现需要中间进度的正式Tool后实现并验收 |
+| DeepSeek线上兼容 | 待Developer BYOK人工验收 | 自动开发继续使用本地OpenAI-compatible lab，Key只在产品Settings输入 |
+
+## 7. 不注册为业务 Tool 的控制面
 
 以下入口仍保留在产品中，但不属于 Agent/MCP 业务能力目录：
 
@@ -226,7 +287,7 @@ Tool 不按“只读产品版”和“完整产品版”切成两套。完整目
 这不是永久能力 denylist。若以后出现“由 AI 管理 Agent Session”或“由 AI 操作 UI”的独立产品需求，
 先为该需求设计新的用户流程与正式命令，再加入目录；当前不把宿主控制面伪装成业务 Tool。
 
-## 6. 一致性规则
+## 8. 一致性规则
 
 - Tool 名全局唯一，使用具体动词；正反操作使用两个 Tool，不用布尔值编码；
 - Tool层的正反名称可以复用产品已有的Switch intent；Main/Core仍按payload分派到语义单一方法，不为Tool复制命令；

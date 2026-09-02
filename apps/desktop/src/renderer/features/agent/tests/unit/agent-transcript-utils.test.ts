@@ -111,6 +111,36 @@ describe('Agent transcript utilities', () => {
       ok: true,
       value: { detail: { summary: { method: 'GET', path: '/traffic', statusCode: 200 } } },
     })).toEqual({ kind: 'exchange', method: 'GET', path: '/traffic', status: '200' });
+    expect(summarizeAgentToolResult('get_exchange_body', {
+      ok: true,
+      value: {
+        bodyId: 'body-1',
+        offset: 0,
+        end: true,
+        decodeStatus: 'ok',
+        text: '{"ready":true}',
+        truncated: false,
+        bytesRead: 14,
+      },
+    })).toEqual({ kind: 'body', bytesRead: 14, end: true, opaque: false });
+    expect(summarizeAgentToolResult('list_websocket_messages', {
+      ok: true,
+      value: { items: [{ seq: 1 }, { seq: 2 }], hasMore: false, breakpoint: null },
+    })).toEqual({ kind: 'websocket', count: 2, hasMore: false });
+    expect(summarizeAgentToolResult('list_grpc_messages', {
+      ok: true,
+      value: { recognized: true, side: 'response', items: [{ index: 0 }], hasMore: true },
+    })).toEqual({
+      kind: 'grpc',
+      count: 1,
+      side: 'response',
+      hasMore: true,
+      recognized: true,
+    });
+    expect(summarizeAgentToolResult('list_grpc_messages', {
+      ok: true,
+      value: { recognized: false, side: 'response', items: [], hasMore: false },
+    })).toEqual({ kind: 'not-grpc' });
   });
 
   it('keeps later Tool activity after visible assistant content', () => {

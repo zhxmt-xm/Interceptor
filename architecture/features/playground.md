@@ -1,7 +1,7 @@
 # Feature: Manual Acceptance Playground
 
 > 最后更新：2026-09-02
-> 状态：**[代码完成 · 待Developer人工验收] App式双页面、39项Capture Lab、Browser CORS、MCP人工工作台、自动防回归与Capture Lab真实Electron E2E已完成；24项Tool待Developer逐项人工验收。**
+> 状态：**[代码完成 · 待Developer人工验收] App式双页面、39项Capture Lab integration、Browser CORS、MCP人工工作台与自动防回归已完成；Capture真实Electron为代表性2/39，24项Tool人工结论为0/24。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -285,6 +285,11 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 
 自动测试不得把Tool标记为人工Pass，也不替代Developer逐项点击、查看完整详情和验证产品副作用。
 真实Electron workflow仍负责证明Browser → Main → Core链路和退出销毁；Playground自身不伪装成产品E2E。
+
+Tool自动主线完成后先执行24项Developer人工矩阵；随后另立Capture E2E收敛阶段，按HTTP、Bodies、Encoding、
+WebSocket、gRPC、TLS六组单向启动正式Playground并通过公开UI运行同一场景目录。E2E复用场景ID、默认Draft与
+流量发生器，但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个
+39项巨型workflow。当前下面的`capture.playground-traffic`只证明其中2/39的代表性纵向链路。
 
 ### 9.1 `capture.playground-traffic`真实E2E
 

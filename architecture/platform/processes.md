@@ -83,8 +83,9 @@ flowchart LR
 `AgentRuntime` 是 Main 内长期存活的 Agent domain 组合根，拥有 Provider registry、Credential、Session、Turn、
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。
-`AgentToolService`把共享registry、Tool开关与`CoreRuntime`组合成Capability Index、`discover_tools`、三个
-Traffic query Tool（`get_proxy_status`、`list_exchanges`、`get_exchange`）和首个change Tool `stop_recording`。
+`AgentToolService`把共享registry、Tool开关与`CoreRuntime`组合成Capability Index、`discover_tools`、七个
+Traffic query Tool（`get_proxy_status`、`get_storage_status`、`list_exchanges`、`get_exchange`、
+`get_exchange_body`、`list_websocket_messages`、`list_grpc_messages`）和首个change Tool`stop_recording`。
 每次Model Call与每项Tool执行前都重取
 快照；产生当前响应时披露的集合继续约束该响应，执行时已关闭的Tool返回`unknown_tool`，不触达Core。
 业务Tool的`AbortSignal`原样进入Core RPC取消链路。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI
@@ -146,6 +147,8 @@ Listener 每连接重新求值那份数组，因此不需要重建 listener，�
 连接无法原地倒带，仍需客户端重试。唯一会换 listener 的场景是开始解密且 listener 上仍挂旧证书；
 此时在途 Exchange 按 `ERR_LISTENER_REBUILD` 干净终结，代际与计数不重置。TLS ready 初始化失败保持同一
 Core PID 为 running 并记录 detail，不 kill/restart；shutdown timeout 强杀属于 operator shutdown，不是故障恢复。
+同一patch还在Electron UtilityProcess中避免向不安全源站的TLS cipher配置追加OpenSSL专用`@SECLEVEL=0`；
+Electron不支持该命令。Node/OpenSSL路径继续保留原行为，`rejectUnauthorized: false`的源站例外语义不变。
 
 ## 4. Workflow 详细表
 

@@ -1348,10 +1348,11 @@ Main的`AgentToolService`固定当前产品接入集合为`get_proxy_status`、`
 真实 E2E 使用产品 Settings 配置 workflow 启动的本地 OpenAI-compatible lab，经真实
 Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不得注入 Session 或替换 Dialog 返回值。
 
-### [阶段 2 · 进行中] 共享 Tool 目录、能力开关与首个 Traffic Tool
+### [阶段 2 · 进行中] 共享 Tool 目录与24项业务能力
 
-目标：先确定完整产品 Tool 目录和用户开关，再用最基础的四个查询 Tool 跑通第一个纵向流程；查询 Tool
-只是实现顺序，不是 Agent 的永久只读边界。
+目标：先确定完整产品 Tool 目录和用户开关，再按能力组把24项共享Tool全部接入内置Agent。当前Agent代码为
+8/24、已验收真实Agent或MCP Tool Call为8/24，MCP adapter为24/24；已完成的四个查询Tool只是第一组，
+不是Agent的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
 - `design-vite`已完成Settings能力列表、Agent/MCP双开关、会话级`Ask/Auto`与Transcript内联问询卡；
@@ -1371,15 +1372,42 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 - `agent.tools.traffic-discovery`扩展Storage前精确Red于`call-storage`状态为`failed`，当前源码`1/1` Green；最终一次
   真实`capture.status`为`1 session / 3 exchanges / 1 body / 92 B`，关闭后返回`unknown_tool`，恢复后重新进入discovery；
   两代Main/Core PID为`20596/42100`与`44412/12224`，均`gracefulDestroyVerified=true`且释放8888。
+- 后续固定顺序为：正文/消息3项、Traffic控制补尾2项、Rules 3项、Breakpoints 8项、Requests 2项、
+  Diagnostics 1项；逐项矩阵、owning executor测试缺口和真实调用状态只在[Tool能力目录](tool-capabilities.md)维护。
+- Tool主线完成后再执行Playground 24项Developer人工报告，最后将Capture对正式Playground场景的真实Electron覆盖
+  从2/39按六组收敛到39/39；该收敛不替代每个Tool work item自己的真实E2E。
 
-### [阶段 3] 正文分析与数据外发控制
+### [阶段 3 · 已完成] 正文与消息查询
 
-目标：Agent 可以分析选定 Exchange 的 headers/body，同时不把整个 Capture 无界发送给 Model。
+目标：Agent按选定Exchange读取有限正文、WebSocket frame或gRPC message，不把整个Capture无界发送给Model。
 
-- 增加可连续 range 读取的正文、WebSocket 与 gRPC Tool；每次结果明确 total / offset / nextOffset；
-- 默认遮罩敏感 headers/query；用户可在当前 Session 选择发送原始内容；
-- UI 清楚显示本次发送给远程 Model 的 Exchange 范围；
-- Prompt Injection、超大正文、二进制和截断场景必须有独立测试。
+- 本组只接入已有共享query Tool：`get_exchange_body`、`list_websocket_messages`、`list_grpc_messages`；query
+  在Ask与Auto下都直接执行，不产生change审批。
+- `get_exchange_body`必须先用`exchangeId + bodyId`回查正文归属和可信MIME/content-encoding；只读取有界range，
+  解码后严格按明文字节`offset + length`分页并以`end`标记末页；media正文返回opaque，不接受Model伪造MIME
+  或读取另一Exchange的body。
+- WebSocket按`exchangeId + cursor + limit + direction`分页；gRPC按`exchangeId + side + cursor + limit`分页；
+  参数边界与共享executor完全一致，不在Agent adapter复制解析。
+- Transcript为三类结果提供结构化紧凑摘要和公开证据属性；Tool Result原值仍按call ID完整进入下一次Model request。
+- `agent.tools.body-messages`必须通过产品UI与正式Playground UI自产HTTP正文、双向WebSocket和gRPC数据，依次验证
+  discovery/schema、真实Core结果、重启零重放、Settings关闭后的`unknown_tool`和完整销毁；不得seed Capture、
+  直接调用Lab API或绕过TLS/CA产品流程。
+- 后续独立的数据外发控制仍包括原始内容授权、Prompt Injection、超大正文、二进制和截断策略；不把这些尚未
+  设计的能力塞进本次三项共享Tool接线。
+- 当前三项固定接线、共享executor成功路径、typed摘要、15语言资源与明暗设计/Parity已完成；Main adapter与
+  Renderer聚焦Unit为12/12，语言资源10/10，Tools owning测试13/13，明暗Parity各10/10、0 missing、0 flagged、0px。
+- 真实E2E实现前精确Red于discovery缺少三项；接线后正文range与WebSocket全部/单方向调用先通过。正式H2/gRPC
+  输入随后在Electron UtilityProcess的Mockttp上游TLS阶段失败，临时诊断502正文为
+  `OPENSSL_internal:INVALID_COMMAND`。根因是Mockttp在显式不安全源站例外时追加OpenSSL专用`@SECLEVEL=0`。
+  Developer批准后，第三方patch只在Electron运行时省略该命令，Node路径保持；补丁Unit 2/2与H2 integration 6/6 Green。
+- 最终同一`agent.tools.body-messages`真实Electron workflow `1/1` Green：正文30 B、WebSocket 3条、gRPC
+  request/response各1条，关闭三项后均为`unknown_tool`，重启请求增量0；干净Mockttp 4.5.0只应用仓库patch后
+  同一E2E仍Green；最终两代Main/Core为`22044/2088`与`38676/35912`，均`gracefulDestroyVerified=true`，
+  完整Prompt/回答在两代trace与进程日志中均为0命中。CA、localhost例外、MITM、系统代理、8888和Playground端口均恢复。
+- 提交前复审另精确Red于`decode:true`忽略明文`offset/length`、`recognized:false`显示为0条gRPC完成、
+  Parity省略必填`exchangeId`和失败代可能截图/跳过敏感审计。现流式解码先跳过offset再读取length并独立返回end；
+  E2E用10 B + 20 B两段重组30 B JSON；非gRPC显示明确状态；设计/Parity参数合法；两代失败关闭均聚合执行
+  stop trace、销毁、敏感扫描和evidence且不截图。
 
 ### [阶段 4] 操作 Tool 与 Permission Mode
 
@@ -1459,13 +1487,14 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
   参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
-  `discover_tools`、四个Traffic query Tool与首个change Tool `stop_recording`；
+  `discover_tools`、七个Traffic query Tool与首个change Tool `stop_recording`；正文、WebSocket和gRPC三项代码已完成，
+  整组E2E仍受上文Electron/Mockttp H2 patch审批阻塞；
 - `ToolCapabilitySettingsService`已从同一registry投影四组Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
   UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP关闭项已应用到外部`tools/list`
   与执行前检查；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和
   `agent.chat.restart-recovery`四条真实Electron workflow验收。Agent专项parity为`36 views / 248 targets / 0 missing /
-  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent包含四个基础Traffic
-  query Tool与`stop_recording`；`agent.tools.traffic-discovery`以真实8888流量验收query路径，
+  0 flagged`；`880×560`时展开Sidebar仍保留`440px` main，Agent收缩为`220px`。当前Agent代码包含七个Traffic
+  query Tool与`stop_recording`；`agent.tools.traffic-discovery`以真实8888流量验收基础query路径，
   `agent.tools.execution-modes`以Deny/Allow/Auto、关闭项、跨Chat和跨重启验收首个change路径。

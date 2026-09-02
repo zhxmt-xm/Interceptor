@@ -26,6 +26,9 @@ const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'get_storage_status', kind: 'query' },
   { name: 'list_exchanges', kind: 'query' },
   { name: 'get_exchange', kind: 'query' },
+  { name: 'get_exchange_body', kind: 'query' },
+  { name: 'list_websocket_messages', kind: 'query' },
+  { name: 'list_grpc_messages', kind: 'query' },
   { name: 'stop_recording', kind: 'change' },
 ] as const;
 

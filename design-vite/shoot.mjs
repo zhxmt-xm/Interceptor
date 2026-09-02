@@ -226,6 +226,13 @@ for (const theme of ['light', 'dark']) {
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'traffic' },
   });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-body-message-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'body-messages' },
+  });
 }
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'import-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', fileMenu: 'import' } });

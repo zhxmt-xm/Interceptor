@@ -1361,7 +1361,7 @@ interface CaptureEventSink {
 
 `proxy.stop` 不对 Renderer 开放常规入口，仅在 Main 的紧急修复路径中调用。
 
-**按需解码**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块。带 `decode` 的请求由 `proxy/utils/index.ts` 的 `decodeBody` 按 gzip / deflate / brotli **多层且容错**地延迟解压，并回传 `decodeStatus`——正文本身始终按线上编码保存（见 6.4）。
+**按需解码**：`sessions.detail` 返回 `CaptureExchangeDetail`，正文经 `body.read-range` 按 hash 分块。带 `decode` 的请求由 `proxy/utils/index.ts` 按 gzip / deflate / brotli **多层且容错**地流式延迟解压，再按明文字节 `offset + length` 返回range并回传`end`与`decodeStatus`——正文本身始终按线上编码保存（见 6.4）。
 
 **gRPC framing 不读整段正文**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5 字节 envelope——每条只从 Blob 读 5B header，再按 payload length 跳到下一个 offset。payload 继续走既有的 range 读取，不需要新的存储结构。
 

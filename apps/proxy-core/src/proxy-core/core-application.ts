@@ -5,7 +5,7 @@ import type {
   CoreError,
   CoreResult,
 } from '@interceptor/core-protocol';
-import { BODY_PREVIEW_MAX_BYTES, collectLeaves } from '@interceptor/core-protocol';
+import { collectLeaves } from '@interceptor/core-protocol';
 
 import {
   EVENT_DRAIN_BATCH,
@@ -402,7 +402,8 @@ export class CoreApplication implements CoreRpcHost {
                 () => decodeBodyStream(
                   () => captureService.openBlobStream(command.payload.bodyId),
                   command.payload.encoding,
-                  BODY_PREVIEW_MAX_BYTES,
+                  command.payload.length,
+                  command.payload.offset,
                 ),
               );
               return {
@@ -411,7 +412,7 @@ export class CoreApplication implements CoreRpcHost {
                   bodyId: command.payload.bodyId,
                   offset: command.payload.offset,
                   data: decoded.data,
-                  end: decoded.status !== 'limited',
+                  end: decoded.end,
                   decodeStatus: decoded.status,
                 },
               };

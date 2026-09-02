@@ -107,6 +107,9 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'get_storage_status' } },
           { descriptor: { name: 'list_exchanges' } },
           { descriptor: { name: 'get_exchange' } },
+          { descriptor: { name: 'get_exchange_body' } },
+          { descriptor: { name: 'list_websocket_messages' } },
+          { descriptor: { name: 'list_grpc_messages' } },
           { descriptor: { name: 'stop_recording' } },
         ],
       },
@@ -119,6 +122,9 @@ describe('AgentToolService', () => {
       'get_storage_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     expect(tool(disclosed, 'stop_recording').kind).toBe('change');
@@ -141,7 +147,123 @@ describe('AgentToolService', () => {
       'get_storage_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
+    ]);
+  });
+
+  it('executes body, WebSocket and gRPC queries through the shared registry', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('sessions.detail', {
+      type: 'sessions.detail',
+      payload: {
+        detail: {
+          responseBody: {
+            bodyHash: 'body-1',
+            mediaType: 'application/json',
+          },
+        },
+      },
+    });
+    coreRuntime.results.set('body.read-range', {
+      type: 'body.range',
+      payload: {
+        bodyId: 'body-1',
+        offset: 0,
+        data: new TextEncoder().encode('{"ready":true}'),
+        end: true,
+        decodeStatus: 'ok',
+      },
+    });
+    coreRuntime.results.set('websocket.frames', {
+      type: 'websocket.frames',
+      payload: {
+        items: [{
+          seq: 1,
+          direction: 'client-to-server',
+          opcode: 1,
+          timestamp: 1_000,
+          payloadSize: 5,
+        }],
+        hasMore: false,
+        breakpoint: null,
+      },
+    });
+    coreRuntime.results.set('grpc.messages', {
+      type: 'grpc.messages',
+      payload: {
+        recognized: true,
+        side: 'response',
+        contentType: 'application/grpc+json',
+        bodySize: 24,
+        items: [{
+          index: 0,
+          envelopeOffset: 0,
+          payloadOffset: 5,
+          payloadLength: 19,
+          compressed: false,
+          truncated: false,
+        }],
+        hasMore: false,
+      },
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+    const abortController = new AbortController();
+
+    await expect(tool(snapshot, 'get_exchange_body').execute(
+      { exchangeId: 'exchange-http', bodyId: 'body-1', length: 32 },
+      { abortSignal: abortController.signal },
+    )).resolves.toMatchObject({ ok: true, value: { bodyId: 'body-1', end: true } });
+    await expect(tool(snapshot, 'list_websocket_messages').execute(
+      { exchangeId: 'exchange-ws', direction: 'client-to-server', limit: 25 },
+      { abortSignal: abortController.signal },
+    )).resolves.toMatchObject({ ok: true, value: { items: [{ seq: 1 }] } });
+    await expect(tool(snapshot, 'list_grpc_messages').execute(
+      { exchangeId: 'exchange-grpc', side: 'response', limit: 30 },
+      { abortSignal: abortController.signal },
+    )).resolves.toMatchObject({ ok: true, value: { recognized: true, side: 'response' } });
+
+    expect(coreRuntime.commands).toEqual([
+      { type: 'sessions.detail', payload: { exchangeId: 'exchange-http' } },
+      {
+        type: 'body.read-range',
+        payload: { bodyId: 'body-1', offset: 0, length: 32, decode: true },
+      },
+      {
+        type: 'websocket.frames',
+        payload: {
+          exchangeId: 'exchange-ws',
+          cursor: undefined,
+          limit: 25,
+          direction: 'client-to-server',
+        },
+      },
+      {
+        type: 'grpc.messages',
+        payload: {
+          exchangeId: 'exchange-grpc',
+          side: 'response',
+          cursor: undefined,
+          limit: 30,
+        },
+      },
+    ]);
+    expect(coreRuntime.abortSignals).toEqual([
+      abortController.signal,
+      abortController.signal,
+      abortController.signal,
+      abortController.signal,
     ]);
   });
 

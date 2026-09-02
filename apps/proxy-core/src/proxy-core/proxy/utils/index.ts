@@ -18,6 +18,7 @@ import type { WebSocketBridgeMessage } from '../interfaces';
 import { SUPPORTED_ENCODINGS } from '../internal/constants';
 import type {
   DecodeResult,
+  StreamDecodeResult,
   ProxyResponseMessageResult,
   ProxyTarget,
   RuleRequestInput,
@@ -63,37 +64,43 @@ export async function decodeBodyStream(
   openSource: () => AsyncIterable<Uint8Array>,
   contentEncoding: string | undefined,
   maxOutputLength: number,
-): Promise<DecodeResult> {
+  offset = 0,
+): Promise<StreamDecodeResult> {
   const encodings = parseEncodings(contentEncoding);
   if (encodings.length === 0) {
-    const prefix = await readStreamPrefix(openSource(), maxOutputLength);
+    const range = await readStreamRange(openSource(), offset, maxOutputLength);
     return {
-      status: prefix.limited ? 'limited' : 'skipped',
-      data: prefix.data,
+      status: range.end ? 'skipped' : 'limited',
+      data: range.data,
+      end: range.end,
     };
   }
   if (encodings.some((encoding) => !SUPPORTED_ENCODINGS.has(encoding))) {
+    const range = await readStreamRange(openSource(), offset, maxOutputLength);
     return {
       status: 'failed',
-      data: (await readStreamPrefix(openSource(), maxOutputLength)).data,
+      data: range.data,
+      end: range.end,
     };
   }
   try {
-    return await decodeStreamOnce(openSource(), encodings, maxOutputLength);
+    return await decodeStreamOnce(openSource(), encodings, offset, maxOutputLength);
   } catch {
     for (let index = 0; index < encodings.length; index += 1) {
       if (encodings[index] !== 'deflate') {
         continue;
       }
       try {
-        return await decodeStreamOnce(openSource(), encodings, maxOutputLength, index);
+        return await decodeStreamOnce(openSource(), encodings, offset, maxOutputLength, index);
       } catch {
         // Try the next deflate layer before falling back to raw bytes.
       }
     }
+    const range = await readStreamRange(openSource(), offset, maxOutputLength);
     return {
       status: 'failed',
-      data: (await readStreamPrefix(openSource(), maxOutputLength)).data,
+      data: range.data,
+      end: range.end,
     };
   }
 }
@@ -102,9 +109,10 @@ export async function decodeBodyStream(
 async function decodeStreamOnce(
   source: AsyncIterable<Uint8Array>,
   encodings: readonly string[],
+  offset: number,
   maxOutputLength: number,
   rawDeflateIndex?: number,
-): Promise<DecodeResult> {
+): Promise<StreamDecodeResult> {
   const streams: Readable[] = [Readable.from(source)];
   let decoded = streams[0]!;
   for (let index = encodings.length - 1; index >= 0; index -= 1) {
@@ -116,14 +124,21 @@ async function decodeStreamOnce(
     streams.push(decoded);
   }
   const chunks: Buffer[] = [];
+  let skipped = 0;
   let total = 0;
   try {
     for await (const chunk of decoded) {
       const buffer = Buffer.from(chunk);
+      const start = Math.min(buffer.byteLength, offset - skipped);
+      skipped += start;
+      if (start === buffer.byteLength) {
+        continue;
+      }
       const remaining = maxOutputLength - total;
-      if (buffer.byteLength > remaining) {
+      const available = buffer.byteLength - start;
+      if (available > remaining) {
         if (remaining > 0) {
-          chunks.push(buffer.subarray(0, remaining));
+          chunks.push(buffer.subarray(start, start + remaining));
           total += remaining;
         }
         for (const stream of streams) {
@@ -132,10 +147,11 @@ async function decodeStreamOnce(
         return {
           status: 'limited',
           data: new Uint8Array(Buffer.concat(chunks, total)),
+          end: false,
         };
       }
-      chunks.push(buffer);
-      total += buffer.byteLength;
+      chunks.push(buffer.subarray(start));
+      total += available;
     }
   } catch (error) {
     for (const stream of streams) {
@@ -143,7 +159,7 @@ async function decodeStreamOnce(
     }
     throw error;
   }
-  return { status: 'ok', data: new Uint8Array(Buffer.concat(chunks, total)) };
+  return { status: 'ok', data: new Uint8Array(Buffer.concat(chunks, total)), end: true };
 }
 
 /** 创建单层 content-encoding 解码器。 */
@@ -161,33 +177,35 @@ function createDecoder(encoding: string, rawDeflate: boolean): Transform {
   }
 }
 
-/** 读取流的有限原始前缀，供不支持或损坏编码的安全回退。 */
-async function readStreamPrefix(
+/** Skip decoded bytes and return one bounded range while detecting whether more data follows. */
+async function readStreamRange(
   source: AsyncIterable<Uint8Array>,
-  maxLength: number,
-): Promise<{ data: Uint8Array; limited: boolean }> {
+  offset: number,
+  length: number,
+): Promise<{ data: Uint8Array; end: boolean }> {
   const chunks: Buffer[] = [];
+  let skipped = 0;
   let total = 0;
-  let limited = false;
   for await (const chunk of source) {
     const buffer = Buffer.from(chunk);
-    const remaining = maxLength - total;
-    if (remaining === 0) {
-      limited = true;
-      break;
+    const start = Math.min(buffer.byteLength, offset - skipped);
+    skipped += start;
+    if (start === buffer.byteLength) {
+      continue;
     }
-    if (buffer.byteLength > remaining) {
+    const remaining = length - total;
+    const available = buffer.byteLength - start;
+    if (available > remaining) {
       if (remaining > 0) {
-        chunks.push(buffer.subarray(0, remaining));
+        chunks.push(buffer.subarray(start, start + remaining));
         total += remaining;
       }
-      limited = true;
-      break;
+      return { data: new Uint8Array(Buffer.concat(chunks, total)), end: false };
     }
-    chunks.push(buffer);
-    total += buffer.byteLength;
+    chunks.push(buffer.subarray(start));
+    total += available;
   }
-  return { data: new Uint8Array(Buffer.concat(chunks, total)), limited };
+  return { data: new Uint8Array(Buffer.concat(chunks, total)), end: true };
 }
 
 /** 解析并规范化逗号分隔的 content-encoding。 */

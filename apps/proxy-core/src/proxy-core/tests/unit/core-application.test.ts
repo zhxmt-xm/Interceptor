@@ -579,6 +579,37 @@ describe('CoreApplication', () => {
       );
     }
   });
+
+  it('applies body.read-range offset and length after streaming decompression', async () => {
+    const gzipped = zlib.gzipSync(Buffer.from('0123456789'));
+    const storage = {
+      initialize: () => Promise.resolve(),
+      openBlobStream: () => Readable.from([gzipped]),
+      dispose: () => Promise.resolve(),
+      attachDiagnostics: () => undefined,
+    } as unknown as CaptureService;
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
+      captureService: storage,
+    });
+
+    const result = await coreApplication.executeCommand({
+      type: 'body.read-range',
+      payload: {
+        bodyId: 'a'.repeat(64),
+        offset: 3,
+        length: 4,
+        decode: true,
+        encoding: 'gzip',
+      },
+    }, new AbortController().signal);
+
+    expect(result.type).toBe('body.range');
+    if (result.type === 'body.range') {
+      expect(result.payload.offset).toBe(3);
+      expect(result.payload.end).toBe(false);
+      expect(Buffer.from(result.payload.data).toString()).toBe('3456');
+    }
+  });
 });
 
 function expectIsoTimestamp(value: string): void {

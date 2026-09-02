@@ -62,9 +62,32 @@ test('Agent Traffic Tool activity includes a compact Capture storage result', as
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
   await expect(trace.locator('[data-tool-name="discover_tools"]'))
-    .toContainText('5 tools discovered');
+    .toContainText('8 tools discovered');
   await expect(trace.locator('[data-tool-name="get_storage_status"]'))
     .toContainText('Exchanges 1 · Bodies 2 · 184 B');
+});
+
+test('Agent body and message Tool activity keeps bounded result summaries scannable', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentToolTrace: 'body-messages',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
+  await expect(trace.locator('[data-tool-name="get_exchange_body"]'))
+    .toContainText('exchangeId: body-json');
+  await expect(trace.locator('[data-tool-name="get_exchange_body"]'))
+    .toContainText('14 B · complete');
+  await expect(trace.locator('[data-tool-name="list_websocket_messages"]'))
+    .toContainText('2 messages · complete');
+  await expect(trace.locator('[data-tool-name="list_grpc_messages"]'))
+    .toContainText('exchangeId: grpc-unary-json');
+  await expect(trace.locator('[data-tool-name="list_grpc_messages"]'))
+    .toContainText('response · 1 message · complete');
 });
 
 test('Agent composer aligns the model select with visible context-window usage', async ({ page }) => {

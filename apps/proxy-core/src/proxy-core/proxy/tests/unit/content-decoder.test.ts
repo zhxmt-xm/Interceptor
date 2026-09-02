@@ -152,4 +152,18 @@ describe('decodeBody', () => {
     expect(longer.status).toBe('limited');
     expect(longer.data).toHaveLength(8);
   });
+
+  it('returns a bounded range after streaming decompression', async () => {
+    const raw = Buffer.from('0123456789');
+    const compressed = zlib.gzipSync(raw);
+    const openSource = () => (async function* () { yield compressed; })();
+
+    const middle = await decodeBodyStream(openSource, 'gzip', 4, 3);
+    const tail = await decodeBodyStream(openSource, 'gzip', 3, 7);
+
+    expect(middle.status).toBe('limited');
+    expect(Buffer.from(middle.data).toString()).toBe('3456');
+    expect(tail.status).toBe('ok');
+    expect(Buffer.from(tail.data).toString()).toBe('789');
+  });
 });

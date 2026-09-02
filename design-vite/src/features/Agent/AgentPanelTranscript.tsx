@@ -11,21 +11,26 @@ export function AgentPanelTranscript(): React.JSX.Element {
     return <div aria-label="Empty chat" className={styles.agentTranscriptScroll} data-parity="agent-transcript" />;
   }
   const sent = state.agentChat === 'sent';
+  const toolTrace = state.agentToolTrace;
   return (
     <div className={styles.agentTranscriptScroll} data-parity="agent-transcript">
       <div className={styles.agentTranscript}>
         <div className={styles.agentUserMessage}>
-          {state.agentToolTrace === 'traffic'
+          {toolTrace === 'traffic'
             ? 'Inspect Capture storage and the latest captured request, then summarize their status.'
+            : toolTrace === 'body-messages'
+              ? 'Read the JSON response body, WebSocket messages, and gRPC response messages.'
             : sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
         </div>
         <article className={styles.agentAssistantMessage}>
           <span className={styles.agentAssistantAvatar}><Bot aria-hidden="true" /></span>
           <div className={styles.agentAssistantResponse}>
-            {state.agentToolTrace === 'traffic' ? (
+            {toolTrace !== '' ? (
               <>
-                <AgentQueryToolTrace />
-                <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
+                <AgentQueryToolTrace variant={toolTrace} />
+                {toolTrace === 'traffic'
+                  ? <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
+                  : <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>}
               </>
             ) : state.agentTurnState === 'failed' ? (
               <div className={styles.agentTurnNotice} data-tone="error">

@@ -266,6 +266,74 @@ describe('Interceptor Tool registry', () => {
     expect(definition('get_exchange_body').inputSchema.properties).not.toHaveProperty('mimeType');
   });
 
+  it('maps WebSocket and gRPC message pagination to their formal Core commands', async () => {
+    const webSocketPage = {
+      items: [{
+        seq: 2,
+        direction: 'server-to-client',
+        opcode: 1,
+        timestamp: 1_000,
+        payloadSize: 5,
+      }],
+      nextCursor: 'ws-next',
+      hasMore: true,
+      breakpoint: null,
+    };
+    const grpcPage = {
+      recognized: true,
+      side: 'response',
+      contentType: 'application/grpc+json',
+      bodySize: 24,
+      items: [{
+        index: 0,
+        envelopeOffset: 0,
+        payloadOffset: 5,
+        payloadLength: 19,
+        compressed: false,
+        truncated: false,
+      }],
+      hasMore: false,
+    };
+    const fakeToolHost = new FakeToolHost({
+      'websocket.frames': { type: 'websocket.frames', payload: webSocketPage },
+      'grpc.messages': { type: 'grpc.messages', payload: grpcPage },
+    });
+
+    await expect(execute('list_websocket_messages', {
+      exchangeId: 'exchange-ws',
+      cursor: 'ws-cursor',
+      limit: 25,
+      direction: 'server-to-client',
+    }, fakeToolHost)).resolves.toEqual(webSocketPage);
+    await expect(execute('list_grpc_messages', {
+      exchangeId: 'exchange-grpc',
+      side: 'response',
+      cursor: 'grpc-cursor',
+      limit: 30,
+    }, fakeToolHost)).resolves.toEqual(grpcPage);
+
+    expect(fakeToolHost.commands).toEqual([
+      {
+        type: 'websocket.frames',
+        payload: {
+          exchangeId: 'exchange-ws',
+          cursor: 'ws-cursor',
+          limit: 25,
+          direction: 'server-to-client',
+        },
+      },
+      {
+        type: 'grpc.messages',
+        payload: {
+          exchangeId: 'exchange-grpc',
+          side: 'response',
+          cursor: 'grpc-cursor',
+          limit: 30,
+        },
+      },
+    ]);
+  });
+
   it('redacts sensitive request and response trailers with headers', async () => {
     const fakeToolHost = new FakeToolHost({
       'sessions.detail': {

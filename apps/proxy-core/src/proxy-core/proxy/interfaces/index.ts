@@ -37,6 +37,10 @@ export interface DecodeResult {
   readonly data: Uint8Array;
 }
 
+export interface StreamDecodeResult extends DecodeResult {
+  readonly end: boolean;
+}
+
 export type WebSocketMessageDirection =
   | 'client-to-server'
   | 'server-to-client';

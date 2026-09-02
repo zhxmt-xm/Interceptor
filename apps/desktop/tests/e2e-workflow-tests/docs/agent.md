@@ -172,8 +172,8 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 2. 经产品UI开始Recording，并让workflow fixture通过真实代理产生至少一条唯一HTTP exchange；不seed Capture或Agent Store。
 3. 打开Agent并发送要求查询当前代理、Capture storage和该exchange的消息；lab依次产生`discover_tools`、
 	`get_storage_status`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
-4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回四个query
-	descriptor和`stop_recording`，下一request才披露`get_storage_status`、`get_proxy_status`、`list_exchanges`与`get_exchange`。
+4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回当前七个query
+	descriptor和`stop_recording`，下一request才披露全部八项；本workflow仍只执行Storage、Proxy、List与Detail四项query。
 5. 确认后续每个request都保持assistant Tool Call与Tool Result的call ID配对；Transcript按顺序显示discovery、
 	四个query调用、参数与结果摘要；Storage结果包含`sessionCount / exchangeCount / bodyCount / databaseBytes /
 	blobBytes / totalBytes`，真实正文使`exchangeCount / bodyCount / blobBytes`非零；Exchange摘要读取正式
@@ -199,6 +199,71 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 - 重启后Model请求增量为0；关闭`get_storage_status`后discovery/schema移除该Tool，猜测调用返回`unknown_tool`，
 	重新开启后恢复。两代Main/Core PID为`20596/42100`与`44412/12224`，均
 	`gracefulDestroyVerified=true`；Renderer page error为0，最终8888释放且系统代理恢复。
+
+<a id="agent-tools-body-messages"></a>
+## `agent.tools.body-messages`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile、两代evidence、本地OpenAI-compatible lab和随机端口正式Playground；通过产品Settings真实配置Provider。
+2. 经产品UI开启Recording；系统Edge打开正式Playground，只通过公开场景目录和Run控件依次自产`body-json`与
+	`ws-bidirectional`流量，不直接调用Lab API或seed Capture。
+3. 从公开Capture行取得两条exchange identity。Model先discover `traffic`，再调用`get_exchange`读取HTTP detail，
+	从该真实Tool Result取得response `bodyId`后分两段调用`get_exchange_body`并重组完整JSON；不得由测试构造或
+	预读body ID。每段严格遵守解码后明文字节`offset + length`，第一页明确`end=false`、末页`end=true`。
+4. Model调用`list_websocket_messages`读取同一WebSocket exchange，分别验证双向完整页与单方向过滤；cursor、limit、
+	direction和返回frame顺序都使用共享schema与真实Core结果。
+5. 经产品Certificates UI生成并安装CA、添加`localhost`源站例外并开启HTTPS解密；再从正式Playground运行
+	`grpc-unary-json`。Model调用`list_grpc_messages`读取request与response两侧，验证recognized、body metadata、
+	envelope offset/length、compressed/truncated标志和分页结果；payload字节继续通过正文range读取，不由该Tool复制。
+6. 确认首次Model request仍只有Capability Index与`discover_tools`；成功discovery后的request才披露三项新schema。
+	每项Tool Call/Result保持call ID配对，query在Ask/Auto下均不出现审批。
+7. Transcript依调用顺序显示正文range、WebSocket消息和gRPC消息的结构化摘要与公开证据属性；下一次Provider
+	request包含三项未被UI摘要裁剪的完整、已脱敏Tool Result。
+8. 正常关闭并用同一profile重启，确认Transcript与三项Tool轨迹恢复，启动期间Model和Tool请求增量均为0。
+9. 在Settings关闭三项Agent开关，新Chat discovery与schema不再包含它们；分别猜测调用均返回`unknown_tool`。
+	重新开启后恢复。最后经产品UI关闭MITM、移除源站例外、卸载并删除本轮CA、恢复系统代理，关闭Edge、
+	Playground与两代Electron，验证Main/Core/8888/Playground端口和系统副作用全部收敛。
+
+### 预期效果
+
+三项query Tool只复用共享registry和正式Core命令。正文必须属于目标Exchange并使用可信MIME/encoding；WebSocket
+和gRPC按各自方向/side稳定分页。Settings关闭立即从discovery/schema移除并阻止执行，重启不重放任何调用。
+本workflow只为三个Tool自产代表性输入，不等同于后续Capture对Playground 39项场景的完整收敛。
+
+### TDD证据要求
+
+- Unit Red：owning executor测试先精确失败于WebSocket/gRPC成功命令映射缺失，Agent adapter测试失败于三项Tool
+	未发现/未披露/不可执行；Renderer测试失败于三类结构化摘要缺失。
+- E2E Red：在业务实现前运行同一workflow，Playground流量与Capture行成功产生，但首个新Tool Call公开状态因
+	Agent未注册而失败；不得把selector、TLS、UAC、build或fixture错误当作Red。
+- Green：同一workflow完成三项真实Tool能力调用（正文含两段range）、Provider history与Transcript断言、关闭/恢复、跨重启零重放，
+	并验证CA、源站例外、系统代理、Main/Core、8888和Playground端口完整恢复。
+
+### TDD证据
+
+- Unit Red：Agent discovery/执行与Renderer摘要共4项精确失败；实现后Desktop聚焦12/12 Green。Tools owning
+	新增WebSocket/gRPC成功命令映射并为13/13 Green；15语言Agent资源10/10 Green。
+- E2E Red：业务实现前正式Playground先成功产生`body-json`与`ws-bidirectional`，随后Agent discovery精确只返回
+	旧5项，缺少三项新Tool；Main/Core优雅销毁且8888释放，是有效行为Red。
+- 接线后正文range与WebSocket全部/单方向真实Tool Call先成功；gRPC输入前置的正式H2链路在Electron
+	UtilityProcess中失败，Core记录secure h2 exchange为aborted、response 0 B。
+- 根因证据：临时关闭`simulateConnectionErrors`后，同一真实链路返回502；再由Agent `get_exchange_body`读取到
+	`OPENSSL_internal:INVALID_COMMAND`。Mockttp对`ignoreHostHttpsErrors`追加OpenSSL专用`@SECLEVEL=0`，Electron
+	TLS运行时不支持。诊断探针已撤回，产品透明连接错误语义、CA、系统代理、进程和8888均恢复。
+- Developer于2026-09-02明确批准扩展`patches/mockttp+4.5.0.patch`；最终补丁只在Electron运行时省略
+	`@SECLEVEL=0`，Node/OpenSSL路径保持，源站例外仍为`rejectUnauthorized: false`。补丁Unit 2/2、H2 integration
+	6/6与干净npm包patch apply检查均Green。
+- 最终同一workflow`1/1` Green：正文30 B、WebSocket 3条、gRPC request/response各1条；三项关闭后均返回
+	`unknown_tool`，重启Model请求增量0。干净Mockttp 4.5.0只应用仓库patch后同一E2E仍Green；最终两代Main/Core为
+	`22044/2088`与`38676/35912`，均`gracefulDestroyVerified=true`。完整Prompt/回答在两代trace与进程日志中均为
+	0命中；CA、localhost例外、MITM、系统代理、8888与Playground端口全部恢复。
+- 提交前复审新增Red：Core解码路径忽略明文range、非gRPC结果误显示为0条完成、Parity参数不满足schema、
+	失败代可能在审计前截图或因单步异常跳过后续清理。修复后Proxy聚焦27/27、Agent聚焦22/22和同一E2E Green；
+	正文由10 B第一页（`end=false`）与20 B末页（`end=true`）重组为完整30 B，失败代不截图并聚合执行全部审计/销毁步骤。
 
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`

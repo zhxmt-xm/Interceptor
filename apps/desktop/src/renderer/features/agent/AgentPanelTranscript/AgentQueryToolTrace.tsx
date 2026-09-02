@@ -69,6 +69,13 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
                   data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
                   data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}
+                  data-body-bytes-read={summary?.kind === 'body' && !summary.opaque ? summary.bytesRead : undefined}
+                  data-body-end={summary?.kind === 'body' && !summary.opaque ? summary.end : undefined}
+                  data-body-opaque={summary?.kind === 'body' ? summary.opaque : undefined}
+                  data-message-count={summary?.kind === 'websocket' || summary?.kind === 'grpc' ? summary.count : undefined}
+                  data-message-has-more={summary?.kind === 'websocket' || summary?.kind === 'grpc' ? summary.hasMore : undefined}
+                  data-grpc-recognized={summary?.kind === 'grpc' ? summary.recognized : undefined}
+                  data-grpc-side={summary?.kind === 'grpc' ? summary.side : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
                   {summary === null
@@ -105,6 +112,16 @@ function formatResultSummary(
       return t('agent.tools.exchanges', { count: summary.count });
     case 'exchange':
       return `${summary.method} ${summary.path} · ${summary.status}`;
+    case 'body':
+      return summary.opaque
+        ? t('agent.tools.opaqueBody', { mimeType: summary.mimeType })
+        : `${sizeLabel(summary.bytesRead, locale)} · ${t(summary.end ? 'agent.tools.complete' : 'agent.tools.moreAvailable')}`;
+    case 'websocket':
+      return `${t(summary.count === 1 ? 'agent.tools.oneMessage' : 'agent.tools.messages', { count: summary.count })} · ${t(summary.hasMore ? 'agent.tools.moreAvailable' : 'agent.tools.complete')}`;
+    case 'grpc':
+      return `${summary.side} · ${t(summary.count === 1 ? 'agent.tools.oneMessage' : 'agent.tools.messages', { count: summary.count })} · ${t(summary.hasMore ? 'agent.tools.moreAvailable' : 'agent.tools.complete')}`;
+    case 'not-grpc':
+      return t('agent.tools.notGrpc');
     case 'error':
       return summary.message;
     case 'value':

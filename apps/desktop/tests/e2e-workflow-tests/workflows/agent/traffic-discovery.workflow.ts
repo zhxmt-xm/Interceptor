@@ -305,8 +305,8 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       )).toBeVisible();
     }
 
-    // 业务断言：首次只披露discover_tools；发现后披露四项query与change schema，结果携带真实Capture事实并按call ID配对。
-    // Business assertions: initially disclose only discovery, then four query and change schemas with correlated real Capture facts.
+    // 业务断言：首次只披露discover_tools；发现后披露全部已接Traffic schema，仍只调用本workflow拥有的四项query。
+    // Business assertions: initially disclose only discovery, then every connected Traffic schema while calling only this workflow's four queries.
     const firstRequests = openAiCompatibleLab.requestsForAssertions().slice(firstRequestOffset);
     expect(firstRequests).toHaveLength(6);
     evidence.firstRequestToolNames = requestToolNames(firstRequests[0]!);
@@ -318,6 +318,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_storage_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     for (const names of firstRequests.slice(1).map(requestToolNames)) {
@@ -329,6 +332,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_storage_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     const storageResult = toolResult(firstRequests[2]!, 'call-storage');
@@ -471,6 +477,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     expect(requestToolNames(disabledRequests[1]!)).toEqual([
@@ -478,6 +487,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_proxy_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     const disabledResult = toolResult(disabledRequests[2]!, 'disabled-storage');
@@ -519,6 +531,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       'get_storage_status',
       'list_exchanges',
       'get_exchange',
+      'get_exchange_body',
+      'list_websocket_messages',
+      'list_grpc_messages',
       'stop_recording',
     ]);
     expect(requestToolNames(restoredRequests[1]!)).toEqual(evidence.disclosedToolNames);

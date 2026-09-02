@@ -1076,7 +1076,16 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['get_proxy_status', 'get_storage_status', 'list_exchanges', 'get_exchange', 'stop_recording']
+            matches: [
+              'get_proxy_status',
+              'get_storage_status',
+              'list_exchanges',
+              'get_exchange',
+              'get_exchange_body',
+              'list_websocket_messages',
+              'list_grpc_messages',
+              'stop_recording',
+            ]
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1178,6 +1187,141 @@ export function installFakeInterceptor({
     const turn = {
       turnId,
       userItemId: 'item-user-agent-traffic',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt: agentStartedAt,
+      updatedAt: agentStartedAt + 18,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: {
+        ...agentSessionSnapshot.summary,
+        itemCount: items.length,
+        updatedAt: agentStartedAt + 15,
+      },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: 15,
+    };
+  } else if (agentSessionState === 'body-messages') {
+    const turnId = 'turn-agent-body-messages';
+    const agentStartedAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'call-discover-body-messages',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'traffic' },
+        result: {
+          ok: true,
+          value: {
+            matches: [
+              'get_proxy_status',
+              'get_storage_status',
+              'list_exchanges',
+              'get_exchange',
+              'get_exchange_body',
+              'list_websocket_messages',
+              'list_grpc_messages',
+              'stop_recording',
+            ].map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-detail-body-messages',
+        name: 'get_exchange',
+        arguments: { exchangeId: 'body-json' },
+        result: {
+          ok: true,
+          value: {
+            detail: {
+              summary: { method: 'POST', path: '/playground/body/json', statusCode: 200 },
+            },
+          },
+        },
+      },
+      {
+        callId: 'call-body',
+        name: 'get_exchange_body',
+        arguments: { exchangeId: 'body-json', bodyId: 'body-1', length: 65_536 },
+        result: {
+          ok: true,
+          value: { bodyId: 'body-1', offset: 0, end: true, bytesRead: 14, truncated: false },
+        },
+      },
+      {
+        callId: 'call-ws',
+        name: 'list_websocket_messages',
+        arguments: { exchangeId: 'ws-bidirectional' },
+        result: {
+          ok: true,
+          value: { items: [{ seq: 1 }, { seq: 2 }], hasMore: false, breakpoint: null },
+        },
+      },
+      {
+        callId: 'call-grpc',
+        name: 'list_grpc_messages',
+        arguments: { exchangeId: 'grpc-unary-json', side: 'response', limit: 200 },
+        result: {
+          ok: true,
+          value: { recognized: true, side: 'response', items: [{ index: 0 }], hasMore: false },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-body-messages',
+      turnId,
+      content: 'Read the JSON response body, WebSocket messages, and gRPC response messages.',
+      createdAt: agentStartedAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-body-messages-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-body-messages-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          approval: null,
+          createdAt: agentStartedAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-body-messages-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: agentStartedAt + index * 3 + 3,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-body-messages-final',
+      turnId,
+      content: 'The JSON body is ready. WebSocket has `2` messages, and the gRPC response contains `1` message.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: agentStartedAt + 17,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-body-messages',
       status: 'completed',
       retryOfTurnId: null,
       error: null,

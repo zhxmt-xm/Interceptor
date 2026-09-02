@@ -55,7 +55,7 @@ export interface BodyReadRangeCommand {
     bodyId: string;
     offset: number;
     length: number;
-    /** true 时 Core 忽略 range，直接从 Body Store 流式解码并返回有限明文前缀。 */
+    /** true 时 Core 从 Body Store流式解码，再按明文字节 offset + length 返回有限range。 */
     decode?: boolean;
     /** 解码用的 content-encoding（gzip/deflate/br，可逗号分隔多层）。 */
     encoding?: string;

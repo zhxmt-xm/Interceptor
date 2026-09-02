@@ -51,6 +51,30 @@ export type AgentToolResultSummary =
       readonly path: string;
       readonly status: string;
     }
+  | {
+      readonly kind: 'body';
+      readonly bytesRead: number;
+      readonly end: boolean;
+      readonly opaque: false;
+    }
+  | {
+      readonly kind: 'body';
+      readonly mimeType: string;
+      readonly opaque: true;
+    }
+  | {
+      readonly kind: 'websocket';
+      readonly count: number;
+      readonly hasMore: boolean;
+    }
+  | {
+      readonly kind: 'grpc';
+      readonly count: number;
+      readonly side: 'request' | 'response';
+      readonly hasMore: boolean;
+      readonly recognized: boolean;
+    }
+  | { readonly kind: 'not-grpc' }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'value'; readonly value: string };
 
@@ -157,6 +181,41 @@ export function summarizeAgentToolResult(
       status: typeof summary['statusCode'] === 'number'
         ? String(summary['statusCode'])
         : 'pending',
+    };
+  }
+  if (name === 'get_exchange_body' && isRecord(result.value)) {
+    if (result.value['opaque'] === true && typeof result.value['mimeType'] === 'string') {
+      return { kind: 'body', mimeType: result.value['mimeType'], opaque: true };
+    }
+    const bytesRead = result.value['bytesRead'];
+    const end = result.value['end'];
+    if (typeof bytesRead === 'number' && typeof end === 'boolean') {
+      return { kind: 'body', bytesRead, end, opaque: false };
+    }
+  }
+  if (name === 'list_websocket_messages'
+    && isRecord(result.value)
+    && Array.isArray(result.value['items'])
+    && typeof result.value['hasMore'] === 'boolean') {
+    return {
+      kind: 'websocket',
+      count: result.value['items'].length,
+      hasMore: result.value['hasMore'],
+    };
+  }
+  if (name === 'list_grpc_messages'
+    && isRecord(result.value)
+    && Array.isArray(result.value['items'])
+    && (result.value['side'] === 'request' || result.value['side'] === 'response')
+    && typeof result.value['hasMore'] === 'boolean'
+    && typeof result.value['recognized'] === 'boolean') {
+    if (!result.value['recognized']) return { kind: 'not-grpc' };
+    return {
+      kind: 'grpc',
+      count: result.value['items'].length,
+      side: result.value['side'],
+      hasMore: result.value['hasMore'],
+      recognized: result.value['recognized'],
     };
   }
   return { kind: 'value', value: compactJson(result.value) };

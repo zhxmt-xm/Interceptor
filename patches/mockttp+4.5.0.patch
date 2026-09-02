@@ -87,6 +87,19 @@ index 3dd0793..979caba 100644
  /**
   * @hidden
   */
+diff --git a/node_modules/mockttp/dist/rules/passthrough-handling.js b/node_modules/mockttp/dist/rules/passthrough-handling.js
+index 92d0359..6830edd 100644
+--- a/node_modules/mockttp/dist/rules/passthrough-handling.js
++++ b/node_modules/mockttp/dist/rules/passthrough-handling.js
+@@ -136,7 +136,7 @@ function getUpstreamTlsOptions({ hostname, port, ignoreHostHttpsErrors, clientCe
+             'AES256-SHA',
+             // This magic cipher is the very obtuse way that OpenSSL downgrades the overall
+             // security level to allow various legacy settings, protocols & ciphers:
+-            ...(!strictHttpsChecks
++            ...(!strictHttpsChecks && !process.versions.electron
+                 ? ['@SECLEVEL=0']
+                 : [])
+         ].join(':'),
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts b/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
 index 3f57894..3631162 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
@@ -639,3 +652,15 @@ index 7f00865..6399d8e 100644
          return originalAddTrailers.apply(this, args);
      };
      const trackingWrite = function (...args) {
+diff --git a/node_modules/mockttp/src/rules/passthrough-handling.ts b/node_modules/mockttp/src/rules/passthrough-handling.ts
+index 9e56a2a..5808d8b 100644
+--- a/node_modules/mockttp/src/rules/passthrough-handling.ts
++++ b/node_modules/mockttp/src/rules/passthrough-handling.ts
+@@ -180,6 +180,6 @@ export function getUpstreamTlsOptions({
+             // This magic cipher is the very obtuse way that OpenSSL downgrades the overall
+             // security level to allow various legacy settings, protocols & ciphers:
+-            ...(!strictHttpsChecks
++            ...(!strictHttpsChecks && !process.versions.electron
+                 ? ['@SECLEVEL=0']
+                 : []
+             )
