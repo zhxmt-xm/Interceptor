@@ -63,6 +63,10 @@ const transcriptItemSchema = z.discriminatedUnion('kind', [
       status: z.enum(['pending', 'allowed', 'denied', 'cancelled']),
       description: z.string().min(1),
       effect: z.string().min(1),
+      effectMetadata: z.record(
+        z.string(),
+        z.union([z.string(), z.number(), z.boolean()]),
+      ).optional(),
     }).strict().nullable(),
     createdAt: z.number().int(),
   }).strict(),

@@ -444,11 +444,13 @@ function buildChangeTools(
         const nextNodes = requireObjectArray(args, 'nodes') as unknown as RuleNode[];
         const currentNames = collectLeaves(current.payload.ruleSet.nodes).map((rule) => rule.name);
         const nextNames = collectLeaves(nextNodes).map((rule) => rule.name);
-        return [
-          `Rule count: ${currentNames.length} → ${nextNames.length}`,
-          `Removed: ${diffNames(currentNames, nextNames) || '(none)'}`,
-          `Added: ${diffNames(nextNames, currentNames) || '(none)'}`,
-        ];
+        return {
+          lines: [
+            `Rule count: ${currentNames.length} → ${nextNames.length}`,
+            `Removed: ${diffNames(currentNames, nextNames) || '(none)'}`,
+            `Added: ${diffNames(nextNames, currentNames) || '(none)'}`,
+          ],
+        };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, ['baseRevision', 'nodes']);
@@ -510,10 +512,12 @@ function buildChangeTools(
         timeoutMs: property('integer', 'Request timeout in milliseconds.', { minimum: 1 }),
       }, ['method', 'url']),
       async describeChange(args) {
-        return [
-          `${requireString(args, 'method')} ${requireString(args, 'url')}`,
-          'This sends real traffic from your machine.',
-        ];
+        return {
+          lines: [
+            `${requireString(args, 'method')} ${requireString(args, 'url')}`,
+            'This sends real traffic from your machine.',
+          ],
+        };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, ['method', 'url', 'headers', 'body', 'protocol', 'timeoutMs']);
@@ -621,7 +625,9 @@ function buildChangeTools(
         body: property('string', 'Replacement body; empty text explicitly clears it.'),
       }, ['breakpointId']),
       async describeChange(args) {
-        return [`Breakpoint ${requireString(args, 'breakpointId')}`, ...describeEdit(args)];
+        return {
+          lines: [`Breakpoint ${requireString(args, 'breakpointId')}`, ...describeEdit(args)],
+        };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, ['breakpointId', 'method', 'url', 'statusCode', 'body']);
@@ -662,11 +668,18 @@ function buildChangeTools(
       async describeChange(args, context) {
         rejectUnknownKeys(args, []);
         const status = await context.host.invoke({ type: 'capture.status', payload: {} }, context.abortSignal);
-        return [
-          'Scope: all',
-          `This permanently deletes ${status.payload.exchangeCount} exchange(s) `
-          + `and ${status.payload.bodyCount} body/bodies.`,
-        ];
+        return {
+          lines: [
+            'Scope: all',
+            `This permanently deletes ${status.payload.exchangeCount} exchange(s) `
+            + `and ${status.payload.bodyCount} body/bodies.`,
+          ],
+          metadata: {
+            scope: 'all',
+            exchangeCount: status.payload.exchangeCount,
+            bodyCount: status.payload.bodyCount,
+          },
+        };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, []);
@@ -692,7 +705,11 @@ function buildChangeTools(
         timeoutMs: property('integer', 'Probe timeout in milliseconds.', { minimum: 1 }),
       }, ['host', 'port']),
       async describeChange(args) {
-        return [`Opens a real connection to ${requireString(args, 'host')}:${requireInteger(args, 'port')}`];
+        return {
+          lines: [
+            `Opens a real connection to ${requireString(args, 'host')}:${requireInteger(args, 'port')}`,
+          ],
+        };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, ['host', 'port', 'timeoutMs']);

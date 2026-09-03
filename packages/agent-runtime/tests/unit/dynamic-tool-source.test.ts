@@ -248,6 +248,118 @@ describe('AgentRunLoop dynamic Tool source', () => {
     });
   });
 
+  it('describes the current change effect before requesting approval', async () => {
+    const execute = vi.fn(() => ({ exchangeCount: 0, bodyCount: 0 }));
+    const describeEffect = vi.fn(async () => ({
+      text: 'Scope: all\nThis permanently deletes 7 exchange(s) and 3 body/bodies.',
+      metadata: { scope: 'all', exchangeCount: 7, bodyCount: 3 },
+    }));
+    const clearCapture = defineTool({
+      kind: 'change',
+      name: 'clear_capture',
+      description: 'Delete captured exchanges and bodies.',
+      inputSchema: z.object({}).strict(),
+      describeEffect,
+      execute,
+    });
+    const authorizeToolCall = vi.fn(async () => 'deny' as const);
+    const model = new QueueModel([
+      toolResponse('clear_capture', 'call-clear'),
+      finalResponse('Capture was preserved.'),
+    ]);
+    const runLoop = new AgentRunLoop({
+      model,
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [clearCapture] }) },
+      authorizeToolCall,
+    });
+
+    await runLoop.run({ messages: [{ role: 'user', content: 'Clear capture.' }] });
+
+    expect(describeEffect).toHaveBeenCalledWith(
+      {},
+      { abortSignal: expect.any(AbortSignal) },
+    );
+    expect(authorizeToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        effect: 'Scope: all\nThis permanently deletes 7 exchange(s) and 3 body/bodies.',
+        effectMetadata: { scope: 'all', exchangeCount: 7, bodyCount: 3 },
+      }),
+      { abortSignal: expect.any(AbortSignal) },
+    );
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the static effect when dynamic description fails', async () => {
+    const clearCapture = defineTool({
+      kind: 'change',
+      name: 'clear_capture',
+      description: 'Delete captured exchanges and bodies.',
+      effect: 'Captured traffic will be deleted.',
+      inputSchema: z.object({}).strict(),
+      describeEffect: async () => {
+        throw new Error('usage unavailable');
+      },
+      execute: () => ({ exchangeCount: 0 }),
+    });
+    const authorizeToolCall = vi.fn(async () => 'deny' as const);
+    const runLoop = new AgentRunLoop({
+      model: new QueueModel([
+        toolResponse('clear_capture', 'call-clear-fallback'),
+        finalResponse('Capture was preserved.'),
+      ]),
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [clearCapture] }) },
+      authorizeToolCall,
+    });
+
+    await runLoop.run({ messages: [{ role: 'user', content: 'Clear capture.' }] });
+
+    expect(authorizeToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ effect: 'Captured traffic will be deleted.' }),
+      { abortSignal: expect.any(AbortSignal) },
+    );
+    expect(authorizeToolCall.mock.calls[0]?.[0]).not.toHaveProperty('effectMetadata');
+  });
+
+  it('does not request approval when cancellation interrupts dynamic description', async () => {
+    let descriptionStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      descriptionStarted = resolve;
+    });
+    const clearCapture = defineTool({
+      kind: 'change',
+      name: 'clear_capture',
+      description: 'Delete captured exchanges and bodies.',
+      inputSchema: z.object({}).strict(),
+      describeEffect: async (_input, context) => {
+        descriptionStarted?.();
+        await new Promise<void>((_resolve, reject) => {
+          context.abortSignal.addEventListener('abort', () => reject(context.abortSignal.reason), {
+            once: true,
+          });
+        });
+        return 'unreachable';
+      },
+      execute: () => ({ exchangeCount: 0 }),
+    });
+    const authorizeToolCall = vi.fn(async () => 'allow' as const);
+    const abortController = new AbortController();
+    const runLoop = new AgentRunLoop({
+      model: new QueueModel([toolResponse('clear_capture', 'call-clear-cancelled')]),
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [clearCapture] }) },
+      authorizeToolCall,
+    });
+
+    const running = runLoop.run({
+      messages: [{ role: 'user', content: 'Clear capture.' }],
+      abortSignal: abortController.signal,
+    });
+    await started;
+    abortController.abort(new Error('cancelled'));
+
+    await expect(running).rejects.toThrow('cancelled');
+    expect(authorizeToolCall).not.toHaveBeenCalled();
+  });
+
   it('rechecks a change Tool after approval before invoking its executor', async () => {
     const execute = vi.fn(() => ({ recording: false }));
     const stopRecording = defineTool({

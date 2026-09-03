@@ -489,6 +489,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onAgentSessionEvent',
         'onBreakpointsChange',
         'onCaptureEvents',
+        'onCaptureReset',
         'onCaptureStatusChange',
         'onClientAppIcons',
         'onCoreProcessStatusChange',

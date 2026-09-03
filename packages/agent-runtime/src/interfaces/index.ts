@@ -245,6 +245,7 @@ export interface AgentToolApproval {
   readonly status: 'pending' | 'allowed' | 'denied' | 'cancelled';
   readonly description: string;
   readonly effect: string;
+  readonly effectMetadata?: AgentToolEffectMetadata;
 }
 
 /** Selects whether change Tools require a decision in one Session. */
@@ -385,11 +386,21 @@ export interface ToolExecutionContext {
 /** Distinguishes read-only Tool access from product state changes. */
 export type AgentToolKind = 'query' | 'change';
 
+/** Language-independent state exposed alongside one human-readable effect. */
+export type AgentToolEffectMetadata = Readonly<Record<string, string | number | boolean>>;
+
+/** Describes one current change effect before approval. */
+export interface AgentToolEffectDescription {
+  readonly text: string;
+  readonly metadata?: AgentToolEffectMetadata;
+}
+
 /** Describes one change Tool call before its executor can run. */
 export interface AgentToolAuthorizationRequest {
   readonly toolCall: ModelToolCall;
   readonly description: string;
   readonly effect: string;
+  readonly effectMetadata?: AgentToolEffectMetadata;
 }
 
 /** Represents one explicit decision for a change Tool call. */
@@ -409,6 +420,11 @@ export interface AgentTool {
   readonly kind: AgentToolKind;
   readonly effect?: string;
   descriptor: ModelToolDescriptor;
+  /** Describes the current effect before a change Tool asks for approval. */
+  describeEffect?(
+    input: unknown,
+    context: ToolExecutionContext,
+  ): Promise<AgentToolEffectDescription>;
   /**
    * Validates and executes one model-issued call under caller-owned cancellation.
    * 在调用方拥有的取消信号下校验并执行一次模型发起的调用。

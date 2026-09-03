@@ -38,6 +38,8 @@ class FakeSecureStore implements SecureStore {
 class FakeCoreRuntime extends CoreRuntime {
   /** Commands received from MCP Tools. */
   readonly commands: CoreCommand[] = [];
+  /** Whether Capture cleanup should fail before committing. */
+  failCaptureCleanup = false;
 
   /** Returns deterministic results for the connected vertical slice. */
   override async request<T extends CoreCommand>(
@@ -55,6 +57,20 @@ class FakeCoreRuntime extends CoreRuntime {
       return {
         type: 'capture.status',
         payload: { recording: false },
+      } as unknown as CoreResultForCommand<T>;
+    }
+    if (command.type === 'capture.cleanup') {
+      if (this.failCaptureCleanup) throw new Error('cleanup failed');
+      return {
+        type: 'capture.status',
+        payload: {
+          sessionCount: 0,
+          exchangeCount: 0,
+          bodyCount: 0,
+          databaseBytes: 4_096,
+          blobBytes: 0,
+          totalBytes: 4_096,
+        },
       } as unknown as CoreResultForCommand<T>;
     }
     throw new Error(`Unexpected Core command "${command.type}".`);
@@ -93,6 +109,30 @@ describe('McpDesktopService', () => {
     await Promise.allSettled(services.splice(0).map((service) => service.stop()));
     await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
     vi.restoreAllMocks();
+  });
+
+  it('publishes one timestamped reset after Capture cleanup succeeds', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_234);
+    const fixture = await createFixture(roots, services);
+
+    await fixture.mcpDesktopService.invoke(
+      { type: 'capture.cleanup', payload: { scope: 'all' } },
+      new AbortController().signal,
+    );
+
+    expect(fixture.captureReset).toHaveBeenCalledWith({ clearedBefore: 1_234 });
+  });
+
+  it('does not publish a reset when Capture cleanup fails', async () => {
+    const fixture = await createFixture(roots, services);
+    fixture.coreRuntime.failCaptureCleanup = true;
+
+    await expect(fixture.mcpDesktopService.invoke(
+      { type: 'capture.cleanup', payload: { scope: 'all' } },
+      new AbortController().signal,
+    )).rejects.toThrow('cleanup failed');
+
+    expect(fixture.captureReset).not.toHaveBeenCalled();
   });
 
   it('enables one loopback endpoint and projects current MCP Tool switches', async () => {
@@ -255,6 +295,7 @@ async function createFixture(
   options: { approvalTimeoutMilliseconds?: number } = {},
 ): Promise<{
   approvals: McpApprovalRequest[];
+  captureReset: ReturnType<typeof vi.fn>;
   closedApprovalIds: string[];
   copiedText: () => string;
   coreRuntime: FakeCoreRuntime;
@@ -267,6 +308,7 @@ async function createFixture(
   const coreRuntime = new FakeCoreRuntime();
   const toolCapabilitySettingsService = new FakeToolCapabilitySettingsService();
   const approvals: McpApprovalRequest[] = [];
+  const captureReset = vi.fn();
   const closedApprovalIds: string[] = [];
   let copiedText = '';
   const mcpDesktopService = new McpDesktopService({
@@ -278,6 +320,7 @@ async function createFixture(
     approvalRequested: (request) => approvals.push(request),
     approvalClosed: (approvalId) => closedApprovalIds.push(approvalId),
     captureStatusChanged: () => undefined,
+    captureReset,
     copyText: (value) => {
       copiedText = value;
     },
@@ -290,6 +333,7 @@ async function createFixture(
   await mcpDesktopService.start();
   return {
     approvals,
+    captureReset,
     closedApprovalIds,
     copiedText: () => copiedText,
     coreRuntime,

@@ -2,7 +2,6 @@ import { CheckCircle2, CircleAlert, LoaderCircle, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
-import { sizeLabel } from '../../../components/share/sizeLabel';
 import type {
   AgentToolCallTranscriptItem,
   AgentToolResultTranscriptItem,
@@ -11,6 +10,7 @@ import {
   formatAgentToolArguments,
   summarizeAgentToolResult,
 } from '../utils';
+import { AgentToolResultSummary } from './AgentToolResultSummary';
 import styles from './AgentQueryToolTrace.module.css';
 
 interface AgentQueryToolTraceProps {
@@ -20,7 +20,7 @@ interface AgentQueryToolTraceProps {
 
 /** Renders completed and running query Tool calls as one ordered activity log. */
 export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps): React.JSX.Element {
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
   const resultByCallId = new Map(results.map((result) => [result.callId, result]));
   const completedCount = calls.filter((call) => call.status === 'completed').length;
 
@@ -80,7 +80,7 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   <b>{t('agent.tools.result')}</b>
                   {summary === null
                     ? t('agent.tools.running')
-                    : formatResultSummary(summary, t, i18n.language)}
+                    : <AgentToolResultSummary summary={summary} />}
                 </span>
               </div>
             </li>
@@ -89,42 +89,4 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
       </ol>
     </section>
   );
-}
-
-/** Formats one typed Tool summary into localized display text. */
-function formatResultSummary(
-  summary: ReturnType<typeof summarizeAgentToolResult>,
-  t: ReturnType<typeof useTranslation>['t'],
-  locale: string,
-): string {
-  switch (summary.kind) {
-    case 'discovery':
-      return t('agent.tools.discovered', { count: summary.count });
-    case 'proxy':
-      return `${t(summary.recording ? 'agent.tools.recordingOn' : 'agent.tools.recordingOff')} · ${summary.address}`;
-    case 'storage':
-      return t('agent.tools.storage', {
-        exchangeCount: new Intl.NumberFormat(locale).format(summary.exchangeCount),
-        bodyCount: new Intl.NumberFormat(locale).format(summary.bodyCount),
-        totalBytes: sizeLabel(summary.totalBytes, locale),
-      });
-    case 'exchanges':
-      return t('agent.tools.exchanges', { count: summary.count });
-    case 'exchange':
-      return `${summary.method} ${summary.path} · ${summary.status}`;
-    case 'body':
-      return summary.opaque
-        ? t('agent.tools.opaqueBody', { mimeType: summary.mimeType })
-        : `${sizeLabel(summary.bytesRead, locale)} · ${t(summary.end ? 'agent.tools.complete' : 'agent.tools.moreAvailable')}`;
-    case 'websocket':
-      return `${t(summary.count === 1 ? 'agent.tools.oneMessage' : 'agent.tools.messages', { count: summary.count })} · ${t(summary.hasMore ? 'agent.tools.moreAvailable' : 'agent.tools.complete')}`;
-    case 'grpc':
-      return `${summary.side} · ${t(summary.count === 1 ? 'agent.tools.oneMessage' : 'agent.tools.messages', { count: summary.count })} · ${t(summary.hasMore ? 'agent.tools.moreAvailable' : 'agent.tools.complete')}`;
-    case 'not-grpc':
-      return t('agent.tools.notGrpc');
-    case 'error':
-      return summary.message;
-    case 'value':
-      return summary.value;
-  }
 }

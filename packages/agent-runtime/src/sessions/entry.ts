@@ -808,6 +808,9 @@ export class AgentSessionService {
             status: 'pending',
             description: request.description,
             effect: request.effect,
+            ...(request.effectMetadata === undefined
+              ? {}
+              : { effectMetadata: structuredClone(request.effectMetadata) }),
           };
           this.#mutableTurn(session, streamBuffer.turn.turnId).status =
             'waiting-for-tool-approval';

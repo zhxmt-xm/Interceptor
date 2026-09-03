@@ -77,7 +77,12 @@ function discoveredHistory(result: ToolExecutionResult): readonly AgentMessage[]
 describe('AgentToolService', () => {
   it('initially exposes only enabled capabilities and discover_tools', () => {
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(new FakeCoreRuntime(), settings, () => undefined);
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      settings,
+      () => undefined,
+      () => undefined,
+    );
 
     const snapshot = service.snapshot([{ role: 'user', content: 'Inspect traffic.' }]);
 
@@ -91,6 +96,7 @@ describe('AgentToolService', () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
+      () => undefined,
       () => undefined,
     );
     const initial = service.snapshot([]);
@@ -110,7 +116,9 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'get_exchange_body' } },
           { descriptor: { name: 'list_websocket_messages' } },
           { descriptor: { name: 'list_grpc_messages' } },
+          { descriptor: { name: 'start_recording' } },
           { descriptor: { name: 'stop_recording' } },
+          { descriptor: { name: 'clear_capture' } },
         ],
       },
     });
@@ -125,14 +133,23 @@ describe('AgentToolService', () => {
       'get_exchange_body',
       'list_websocket_messages',
       'list_grpc_messages',
+      'start_recording',
       'stop_recording',
+      'clear_capture',
     ]);
+    expect(tool(disclosed, 'start_recording').kind).toBe('change');
     expect(tool(disclosed, 'stop_recording').kind).toBe('change');
+    expect(tool(disclosed, 'clear_capture').kind).toBe('change');
   });
 
   it('removes disabled capabilities and previously disclosed Tools on the next snapshot', async () => {
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(new FakeCoreRuntime(), settings, () => undefined);
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      settings,
+      () => undefined,
+      () => undefined,
+    );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },
@@ -150,7 +167,9 @@ describe('AgentToolService', () => {
       'get_exchange_body',
       'list_websocket_messages',
       'list_grpc_messages',
+      'start_recording',
       'stop_recording',
+      'clear_capture',
     ]);
   });
 
@@ -212,6 +231,7 @@ describe('AgentToolService', () => {
     const service = new AgentToolService(
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
+      () => undefined,
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
@@ -284,6 +304,7 @@ describe('AgentToolService', () => {
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
       () => undefined,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -322,6 +343,7 @@ describe('AgentToolService', () => {
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
       () => undefined,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -351,6 +373,7 @@ describe('AgentToolService', () => {
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
       captureStatusChanged,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -373,10 +396,115 @@ describe('AgentToolService', () => {
     expect(captureStatusChanged).toHaveBeenCalledWith({ recording: false });
   });
 
+  it('starts recording and clears Capture through formal Core commands', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_234);
+    const coreRuntime = new FakeCoreRuntime();
+    const captureStatus = {
+      listening: true,
+      recording: true,
+      host: '127.0.0.1',
+      port: 8_888,
+      sessionId: 'session-1',
+      capturedExchanges: 0,
+    };
+    const clearedUsage = {
+      sessionCount: 0,
+      exchangeCount: 0,
+      bodyCount: 0,
+      databaseBytes: 4_096,
+      blobBytes: 0,
+      totalBytes: 4_096,
+    };
+    coreRuntime.results.set('capture.status', {
+      type: 'capture.status',
+      payload: { exchangeCount: 7, bodyCount: 3 },
+    });
+    coreRuntime.results.set('proxy.start', {
+      type: 'proxy.status',
+      payload: captureStatus,
+    });
+    coreRuntime.results.set('capture.cleanup', {
+      type: 'capture.status',
+      payload: clearedUsage,
+    });
+    const captureStatusChanged = vi.fn();
+    const captureReset = vi.fn();
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      captureStatusChanged,
+      captureReset,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+    const abortController = new AbortController();
+    const clearCapture = tool(snapshot, 'clear_capture');
+
+    await expect(clearCapture.describeEffect?.(
+      {},
+      { abortSignal: abortController.signal },
+    )).resolves.toEqual({
+      text: 'Scope: all\nThis permanently deletes 7 exchange(s) and 3 body/bodies.',
+      metadata: { scope: 'all', exchangeCount: 7, bodyCount: 3 },
+    });
+    await expect(tool(snapshot, 'start_recording').execute(
+      {},
+      { abortSignal: abortController.signal },
+    )).resolves.toEqual({ ok: true, value: captureStatus });
+    await expect(clearCapture.execute(
+      {},
+      { abortSignal: abortController.signal },
+    )).resolves.toEqual({ ok: true, value: clearedUsage });
+
+    expect(coreRuntime.commands).toEqual([
+      { type: 'capture.status', payload: {} },
+      { type: 'proxy.start', payload: {} },
+      { type: 'capture.cleanup', payload: { scope: 'all' } },
+    ]);
+    expect(coreRuntime.abortSignals).toEqual([
+      abortController.signal,
+      abortController.signal,
+      abortController.signal,
+    ]);
+    expect(captureStatusChanged).toHaveBeenCalledWith(captureStatus);
+    expect(captureReset).toHaveBeenCalledWith({ clearedBefore: 1_234 });
+    now.mockRestore();
+  });
+
+  it('does not reset Capture when cleanup fails', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    const captureReset = vi.fn();
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      captureReset,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'traffic' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery));
+
+    await expect(tool(snapshot, 'clear_capture').execute(
+      {},
+      { abortSignal: new AbortController().signal },
+    )).rejects.toThrow('No fake result for capture.cleanup.');
+    expect(captureReset).not.toHaveBeenCalled();
+  });
+
   it('rejects a Tool disabled after disclosure without invoking CoreRuntime', async () => {
     const coreRuntime = new FakeCoreRuntime();
     const settings = new FakeToolCapabilitySettingsService();
-    const service = new AgentToolService(coreRuntime, settings, () => undefined);
+    const service = new AgentToolService(
+      coreRuntime,
+      settings,
+      () => undefined,
+      () => undefined,
+    );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
       { abortSignal: new AbortController().signal },

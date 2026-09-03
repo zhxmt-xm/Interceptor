@@ -4,6 +4,7 @@ import {
   DESKTOP_IPC_CHANNELS,
   CoreProcessStatus,
   type AgentRuntimeEvent,
+  type CaptureReset,
   type CaptureStatus,
   type GitHubAuthStatus,
   InterceptorDesktopApi,
@@ -251,6 +252,15 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.on(DESKTOP_IPC_CHANNELS.captureStatus, handler);
     return () => {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureStatus, handler);
+    };
+  },
+  onCaptureReset: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, reset: CaptureReset) => {
+      listener(reset);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.captureReset, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureReset, handler);
     };
   },
   querySessions: (request) =>

@@ -149,7 +149,8 @@ export function summarizeAgentToolResult(
   if (name === 'discover_tools' && isRecord(result.value) && Array.isArray(result.value['matches'])) {
     return { kind: 'discovery', count: result.value['matches'].length };
   }
-  if (name === 'get_proxy_status' && isRecord(result.value)) {
+  if ((name === 'get_proxy_status' || name === 'start_recording' || name === 'stop_recording')
+    && isRecord(result.value)) {
     const host = typeof result.value['host'] === 'string' ? result.value['host'] : null;
     const port = typeof result.value['port'] === 'number' ? result.value['port'] : null;
     return {
@@ -158,7 +159,7 @@ export function summarizeAgentToolResult(
       address: host === null || port === null ? 'not listening' : `${host}:${port}`,
     };
   }
-  if (name === 'get_storage_status' && isRecord(result.value)) {
+  if ((name === 'get_storage_status' || name === 'clear_capture') && isRecord(result.value)) {
     const exchangeCount = result.value['exchangeCount'];
     const bodyCount = result.value['bodyCount'];
     const totalBytes = result.value['totalBytes'];

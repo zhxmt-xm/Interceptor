@@ -285,6 +285,11 @@ export interface CaptureStatus {
   capturedExchanges: number;
 }
 
+/** One committed full Capture cleanup and its old-event rejection boundary. */
+export interface CaptureReset {
+  clearedBefore: number;
+}
+
 /** Renderer 侧会话分页查询请求；与 Core sessions.query 载荷保持同构。 */
 export interface SessionQueryRequest {
   cursor?: string;
@@ -574,6 +579,7 @@ export const DESKTOP_IPC_CHANNELS = {
   captureStop: 'capture:stop',
   captureGetStatus: 'capture:get-status',
   captureStatus: 'capture:status-changed',
+  captureReset: 'capture:reset',
   captureEvents: 'capture:events',
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
@@ -710,6 +716,7 @@ export interface InterceptorDesktopApi {
   stopCapture(): Promise<CaptureStatus>;
   getCaptureStatus(): Promise<CaptureStatus>;
   onCaptureStatusChange(listener: (status: CaptureStatus) => void): () => void;
+  onCaptureReset(listener: (reset: CaptureReset) => void): () => void;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;

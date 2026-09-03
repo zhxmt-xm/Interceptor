@@ -2,7 +2,7 @@ import type { McpClientRegistration, McpToolExecutionMode } from '@interceptor/m
 import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
 
 import type { SecureStore } from '../../interfaces';
-import type { CaptureStatus } from '../../../shared/desktop-api';
+import type { CaptureReset, CaptureStatus } from '../../../shared/desktop-api';
 import type { CoreRuntime } from '../../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../../tool-capabilities/entry';
 
@@ -65,6 +65,7 @@ export interface McpDesktopServiceOptions {
   readonly approvalRequested: (request: McpApprovalRequest) => void;
   readonly approvalClosed: (approvalId: string) => void;
   readonly captureStatusChanged: (captureStatus: CaptureStatus) => void;
+  readonly captureReset: (captureReset: CaptureReset) => void;
   readonly copyText: (value: string) => void | Promise<void>;
   readonly showAndFocusWindow: () => void;
   readonly recordAudit?: (event: McpAuditEvent) => void;

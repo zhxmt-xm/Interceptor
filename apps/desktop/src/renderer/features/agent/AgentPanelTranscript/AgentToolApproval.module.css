@@ -70,9 +70,11 @@
 }
 
 .body p {
+  min-width: 0;
   margin: 0;
   color: var(--text-2);
   font-size: 10.5px;
+  overflow-wrap: anywhere;
 }
 
 .body dl {
@@ -98,7 +100,9 @@
 }
 
 .body dd {
+  min-width: 0;
   color: var(--text-2);
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -165,9 +169,22 @@
 }
 
 .result code {
-  overflow: hidden;
   color: var(--text-3);
   font-family: var(--font-mono);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.resultCopy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.resultCopy > span {
+  overflow: hidden;
+  color: var(--text-2);
   font-size: 9.5px;
   text-overflow: ellipsis;
   white-space: nowrap;

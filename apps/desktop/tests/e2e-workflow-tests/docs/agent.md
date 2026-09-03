@@ -303,3 +303,52 @@ Tool启用状态与执行模式正交：关闭永远不可调用；开启的quer
 	`unknown_tool`且不改变Recording。
 - 同一profile重启后原Session Auto与Tool关闭项恢复，启动Model/Tool请求增量为0；最终两代Main/Core PID为
 	`42872/36244`与`28784/8940`，均`gracefulDestroyVerified=true`，最终8888释放。
+
+<a id="agent-tools-traffic-control"></a>
+## `agent.tools.traffic-control`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile与脚本化lab，经产品UI配置Provider并开启Recording；产生可辨识的HTTP流量与Rule hit，选中一行并
+	启用method facet，让Capture列表、Inspector、Facet和Rules hit同时持有待清理状态。
+2. 在Ask模式调用`start_recording`并Deny，确认返回`tool_denied`且Recording保持暂停；再次调用并Allow，确认复用正式
+	`proxy.start`后Capture toggle立即同步为Recording。暂停后切换Auto再次调用，确认不出现问询并恢复Recording。
+3. 先暂停Recording形成稳定storage窗口，再在Ask模式调用`clear_capture`，确认批准卡展示的Exchange/Body删除影响
+	与同Turn的`get_storage_status`精确一致；Deny后列表、Inspector、Facet、Rules hit和Core usage均不变，再恢复Recording。
+4. 再次调用`clear_capture`并Allow，确认Core usage归零；Main发布带`clearedBefore`的reset后，Capture rows、selection、
+	Inspector、Facet和Rules hit同步归零，旧事件/分页不能回填；Transcript显示归零后的storage摘要。立即再发一条流量，
+	确认Recording仍开启且新行正常进入。
+5. 重新产生一条流量并切换Auto，调用`clear_capture`；确认无问询且沿同一正式命令和reset事件完成清理，清空后仍能继续
+	捕获。
+6. 在Settings分别关闭`start_recording`和`clear_capture`；新discovery/schema不包含对应Tool，猜测调用均返回
+	`unknown_tool`，且Recording与usage不被改变。
+7. 正常关闭并用同一profile重启，确认Tool关闭状态、第一代审批的结构化effect metadata恢复且没有重放Model/Tool调用；
+	恢复Settings与Capture运行态后完成Main/Core优雅销毁、8888释放、系统代理与lab副作用恢复。
+
+### 预期效果
+
+两项Traffic change Tool完整服从Session Ask/Auto与共享Settings开关。`start_recording`复用正式Capture状态广播；
+`clear_capture`的影响来自审批时的真实usage，成功后所有入口都由同一个`capture:reset { clearedBefore }`事件收敛
+Renderer镜像，且不丢失清理开始后到达的新流量。
+
+### Evidence
+
+- Runtime动态effect先Red于`describeEffect`调用0次；Desktop Agent先有3项Red于discovery缺项/Tool不存在，MCP
+	reset先Red于回调0次，Renderer先Red于共享reset入口不存在。最终Runtime`121/121`、Desktop`397/397`、
+	全workspace typecheck Green；Proxy Core仍仅父提交已登记的chunked framing 2项失败，其余319项通过。
+- 同一workflow字节级放入父提交`4da20a1e`的detached worktree后，Session在`start_recording`后直接`completed`、
+	未进入预期审批，取得有效行为Red；失败代Main/Core `34956/20616`优雅销毁，8888释放且敏感证据审计通过。
+- 当前同一workflow`1/1` Green：start与clear各自Ask Deny/Allow和Auto通过；最终动态effect metadata显示
+	19个Exchange/1个Body并与同Turn storage精确一致，重启后原值恢复；Allow后的proxy/storage typed摘要通过。
+	两次Deny均为`tool_denied`，两项关闭后均为`unknown_tool`。
+- Clear后rows、Inspector、method facet与Rule hit原始DOM同步为`0/0/0/0`，随后真实GET继续进入Capture；cutoff后的
+	现有流量保留与乱序旧reset幂等由Capture Store unit锁定。产品按钮既有`capture.clear-facets`也`1/1` Green。
+	重启Model请求增量0；最终两代Main/Core为
+	`17868/32476`与`41868/39536`，均`gracefulDestroyVerified=true`并释放8888、恢复系统代理。
+- 结果行design interaction`67/67`；完整parity为`200 views / 1,374 targets / 1,342 matched / 32既有missing /
+	303既有flagged`，本轮结果行明暗`12/12`与Traffic/body四视图`38/38`均0 missing、0 flagged。Windows package与
+	artifact audit（1,294 files / 392,792,364 bytes）、production audit 0漏洞和
+	packaged smoke`1/1`通过。

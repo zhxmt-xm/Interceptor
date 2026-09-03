@@ -148,7 +148,7 @@ describe('Interceptor Tool registry', () => {
 
   it('clears only the complete Capture and rejects the obsolete session scope', async () => {
     const fakeToolHost = new FakeToolHost({
-      'capture.cleanup': { type: 'capture.cleaned', payload: {} },
+      'capture.cleanup': { type: 'capture.status', payload: {} },
     });
 
     await execute('clear_capture', {}, fakeToolHost);
@@ -158,6 +158,28 @@ describe('Interceptor Tool registry', () => {
     ]);
     await expect(execute('clear_capture', { scope: 'session', sessionId: 's1' }, fakeToolHost))
       .rejects.toThrow('unknown argument');
+  });
+
+  it('describes the current Capture cleanup effect with structured counts', async () => {
+    const fakeToolHost = new FakeToolHost({
+      'capture.status': {
+        type: 'capture.status',
+        payload: { exchangeCount: 7, bodyCount: 3 },
+      },
+    });
+
+    const description = await definition('clear_capture').describeChange?.({}, {
+      host: fakeToolHost,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(description).toEqual({
+      lines: [
+        'Scope: all',
+        'This permanently deletes 7 exchange(s) and 3 body/bodies.',
+      ],
+      metadata: { scope: 'all', exchangeCount: 7, bodyCount: 3 },
+    });
   });
 
   it('preserves the complete Rule tree and enabled state during compare-and-replace', async () => {

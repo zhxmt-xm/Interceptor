@@ -3,17 +3,25 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
-import type { AgentToolCallTranscriptItem } from '../../../../shared/desktop-api';
+import type {
+  AgentToolCallTranscriptItem,
+  AgentToolResultTranscriptItem,
+} from '../../../../shared/desktop-api';
 import { AgentSessionActions, useAgentSessionStore } from '../data/agentSessionStore';
-import { formatAgentToolArguments } from '../utils';
+import { formatAgentToolArguments, summarizeAgentToolResult } from '../utils';
+import { AgentToolResultSummary } from './AgentToolResultSummary';
 import styles from './AgentToolApproval.module.css';
 
 interface AgentToolApprovalProps {
   readonly call: AgentToolCallTranscriptItem;
+  readonly result: AgentToolResultTranscriptItem | undefined;
 }
 
 /** Renders one persisted change Tool decision at its Transcript position. */
-export function AgentToolApproval({ call }: AgentToolApprovalProps): React.JSX.Element | null {
+export function AgentToolApproval({
+  call,
+  result,
+}: AgentToolApprovalProps): React.JSX.Element | null {
   const { t } = useTranslation();
   const busy = useAgentSessionStore((state) => state.busy);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -28,6 +36,7 @@ export function AgentToolApproval({ call }: AgentToolApprovalProps): React.JSX.E
   if (approval === null) return null;
   if (approval.status !== 'pending') {
     const allowed = approval.status === 'allowed';
+    const summary = result === undefined ? null : summarizeAgentToolResult(call.name, result.result);
     const label = allowed
       ? t('agent.toolAllowed')
       : approval.status === 'denied'
@@ -39,6 +48,10 @@ export function AgentToolApproval({ call }: AgentToolApprovalProps): React.JSX.E
         className={styles.result}
         data-approval-status={approval.status}
         data-automation-id={AutomationIdFactory.agentToolApproval(call.callId)}
+        data-effect-metadata={approval.effectMetadata === undefined
+          ? undefined
+          : JSON.stringify(approval.effectMetadata)}
+        data-parity="agent-tool-approval"
         data-tool-kind="change"
         data-tool-name={call.name}
         ref={resultRef}
@@ -47,7 +60,17 @@ export function AgentToolApproval({ call }: AgentToolApprovalProps): React.JSX.E
       >
         {allowed ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
         <strong>{label}</strong>
-        <code>{call.name}</code>
+        <span
+          className={styles.resultCopy}
+          data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
+          data-summary-kind={summary?.kind}
+          data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
+          data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
+          data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}
+        >
+          <code>{call.name}</code>
+          {allowed && summary !== null ? <AgentToolResultSummary summary={summary} /> : null}
+        </span>
       </div>
     );
   }
@@ -58,6 +81,9 @@ export function AgentToolApproval({ call }: AgentToolApprovalProps): React.JSX.E
       data-approval-id={approval.approvalId}
       data-approval-status={approval.status}
       data-automation-id={AutomationIdFactory.agentToolApproval(call.callId)}
+      data-effect-metadata={approval.effectMetadata === undefined
+        ? undefined
+        : JSON.stringify(approval.effectMetadata)}
       data-parity="agent-tool-approval"
       data-tool-kind="change"
       data-tool-name={call.name}

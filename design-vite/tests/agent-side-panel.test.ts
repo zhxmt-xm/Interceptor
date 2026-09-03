@@ -62,7 +62,7 @@ test('Agent Traffic Tool activity includes a compact Capture storage result', as
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
   await expect(trace.locator('[data-tool-name="discover_tools"]'))
-    .toContainText('8 tools discovered');
+    .toContainText('10 tools discovered');
   await expect(trace.locator('[data-tool-name="get_storage_status"]'))
     .toContainText('Exchanges 1 · Bodies 2 · 184 B');
 });
@@ -213,8 +213,16 @@ test('Ask mode keeps a change Tool pending until the user allows or denies it', 
   await page.evaluate(() => window.__setState?.({ agentToolApproval: 'pending' }));
   await approval.getByRole('button', { name: 'Allow Tool' }).click();
   await expect(approval).toContainText('Allowed');
+  await expect(approval).toContainText('Recording off');
   await expect(approval).toHaveAttribute('role', 'status');
   await expect(approval).toBeFocused();
+
+  await page.evaluate(() => window.__setState?.({
+    agentToolApproval: 'allowed',
+    agentToolApprovalName: 'clear_capture',
+  }));
+  await expect(approval).toContainText('Exchanges 0 · Bodies 0 · 4 KB');
+  expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {

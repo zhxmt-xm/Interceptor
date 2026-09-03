@@ -411,10 +411,22 @@ export class AgentRunLoop {
     } else if (tool.kind !== 'change' || this.#authorizeToolCall === undefined) {
       result = await tool.execute(toolCall.arguments, { abortSignal });
     } else {
+      let effect = tool.effect ?? tool.descriptor.description;
+      let effectMetadata;
+      if (tool.describeEffect !== undefined) {
+        try {
+          const description = await tool.describeEffect(toolCall.arguments, { abortSignal });
+          effect = description.text;
+          effectMetadata = description.metadata;
+        } catch {
+          abortSignal.throwIfAborted();
+        }
+      }
       const decision = await this.#authorizeToolCall({
         toolCall: structuredClone(toolCall),
         description: tool.descriptor.description,
-        effect: tool.effect ?? tool.descriptor.description,
+        effect,
+        ...(effectMetadata === undefined ? {} : { effectMetadata }),
       }, { abortSignal });
       abortSignal.throwIfAborted();
       if (decision === 'deny') {

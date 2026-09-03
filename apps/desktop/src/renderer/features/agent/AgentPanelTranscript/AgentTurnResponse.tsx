@@ -58,13 +58,18 @@ export function AgentTurnResponse({ turn, items }: AgentTurnResponseProps): Reac
           const queryCallIds = new Set(queryCalls.map((call) => call.callId));
           const queryResults = block.results.filter((result) => queryCallIds.has(result.callId));
           const approvalCalls = block.calls.filter((call) => call.approval !== null);
+          const resultByCallId = new Map(block.results.map((result) => [result.callId, result]));
           return (
             <div className={styles.toolActivity} key={`tools-${turn.turnId}-${index}`}>
               {queryCalls.length > 0 ? (
                 <AgentQueryToolTrace calls={queryCalls} results={queryResults} />
               ) : null}
               {approvalCalls.map((call) => (
-                <AgentToolApproval call={call} key={call.itemId} />
+                <AgentToolApproval
+                  call={call}
+                  key={call.itemId}
+                  result={resultByCallId.get(call.callId)}
+                />
               ))}
             </div>
           );

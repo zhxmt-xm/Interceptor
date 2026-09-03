@@ -92,6 +92,10 @@ describe('Agent transcript utilities', () => {
       ok: true,
       value: { recording: true, host: '127.0.0.1', port: 8888 },
     })).toEqual({ kind: 'proxy', recording: true, address: '127.0.0.1:8888' });
+    expect(summarizeAgentToolResult('start_recording', {
+      ok: true,
+      value: { recording: true, host: '127.0.0.1', port: 8888 },
+    })).toEqual({ kind: 'proxy', recording: true, address: '127.0.0.1:8888' });
     expect(summarizeAgentToolResult('get_storage_status', {
       ok: true,
       value: {
@@ -103,6 +107,17 @@ describe('Agent transcript utilities', () => {
         totalBytes: 184,
       },
     })).toEqual({ kind: 'storage', exchangeCount: 1, bodyCount: 2, totalBytes: 184 });
+    expect(summarizeAgentToolResult('clear_capture', {
+      ok: true,
+      value: {
+        sessionCount: 0,
+        exchangeCount: 0,
+        bodyCount: 0,
+        databaseBytes: 4_096,
+        blobBytes: 0,
+        totalBytes: 4_096,
+      },
+    })).toEqual({ kind: 'storage', exchangeCount: 0, bodyCount: 0, totalBytes: 4_096 });
     expect(summarizeAgentToolResult('list_exchanges', {
       ok: true,
       value: { items: [{ id: 'exchange-1' }] },

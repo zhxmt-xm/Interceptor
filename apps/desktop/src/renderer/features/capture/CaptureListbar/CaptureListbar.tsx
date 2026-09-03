@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
 import { cx, Flyout, IconButton } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
-import { useRulesStore } from '../../rules/data/rulesStore';
 import { BreakpointManager } from '../BreakpointManager/BreakpointManager';
 import { useCaptureStore } from '../data/captureStore';
 import { toggleCapture } from '../data/useCaptureData';
@@ -47,7 +46,6 @@ export function CaptureListbar({
   const toggleFiltersOpen = useCaptureStore((state) => state.toggleFiltersOpen);
   const setSearch = useCaptureStore((state) => state.setSearch);
   const clearAllFilters = useCaptureStore((state) => state.clearAllFilters);
-  const clearView = useCaptureStore((state) => state.clearView);
   const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const toggleQueryParams = useCaptureStore((state) => state.toggleQueryParams);
   const setTransferAction = useCaptureStore((state) => state.setTransferAction);
@@ -85,14 +83,8 @@ export function CaptureListbar({
     if (clearing) {
       return;
     }
-    const clearedBefore = Date.now();
     setClearing(true);
     void window.interceptor.clearCapture()
-      .then(() => {
-        clearView(clearedBefore);
-        // 命中数是从 Capture 记录派生的，清空后必须立即归零，而不是等下一次轮询。
-        useRulesStore.getState().setHits([]);
-      })
       .catch((error: unknown) => {
         useCaptureStore.getState().loadFailed(
           error instanceof Error ? error.message : String(error),

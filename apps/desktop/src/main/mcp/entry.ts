@@ -46,6 +46,8 @@ export class McpDesktopService implements McpHostBridge {
   readonly #approvalClosed: McpDesktopServiceOptions['approvalClosed'];
   /** Synchronizes capture UI after a Tool changes recording. */
   readonly #captureStatusChanged: McpDesktopServiceOptions['captureStatusChanged'];
+  /** Synchronizes capture UI after a Tool clears persisted traffic. */
+  readonly #captureReset: McpDesktopServiceOptions['captureReset'];
   /** Main-only clipboard boundary for secret-bearing MCP configuration. */
   readonly #copyText: McpDesktopServiceOptions['copyText'];
   /** Makes approval UI visible before publishing the request. */
@@ -82,6 +84,7 @@ export class McpDesktopService implements McpHostBridge {
     this.#approvalRequested = options.approvalRequested;
     this.#approvalClosed = options.approvalClosed;
     this.#captureStatusChanged = options.captureStatusChanged;
+    this.#captureReset = options.captureReset;
     this.#copyText = options.copyText;
     this.#showAndFocusWindow = options.showAndFocusWindow;
     this.#recordAudit = options.recordAudit ?? (() => undefined);
@@ -270,9 +273,15 @@ export class McpDesktopService implements McpHostBridge {
     abortSignal: AbortSignal,
   ): Promise<CoreResultForCommand<T>> {
     const options: CoreRequestOptions = { abortSignal };
+    const captureReset = command.type === 'capture.cleanup'
+      ? { clearedBefore: Date.now() }
+      : null;
     const result = await this.#coreRuntime.request(command, options);
     if (command.type === 'proxy.start' || command.type === 'proxy.setRecording') {
       this.#captureStatusChanged(result.payload as never);
+    }
+    if (captureReset !== null) {
+      this.#captureReset(captureReset);
     }
     return result;
   }

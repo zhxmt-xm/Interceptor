@@ -89,6 +89,7 @@ export type AgentChatState = 'checkout' | 'new' | 'sent';
 export type AgentTurnState = 'idle' | 'running' | 'stopped' | 'failed';
 export type AgentExecutionMode = 'ask' | 'auto';
 export type AgentToolApprovalState = 'pending' | 'allowed' | 'denied' | '';
+export type AgentToolApprovalName = 'start_recording' | 'stop_recording' | 'clear_capture';
 export type AgentToolTraceState = 'body-messages' | 'traffic' | '';
 export type McpServerState = 'disabled' | 'running' | 'conflict';
 export type McpClientDialogState = 'add' | 'regenerate' | 'revoke' | '';
@@ -145,6 +146,7 @@ export interface DesignState {
   readonly agentUsagePanel: 'open' | '';
   readonly agentExecutionMode: AgentExecutionMode;
   readonly agentToolApproval: AgentToolApprovalState;
+  readonly agentToolApprovalName: AgentToolApprovalName;
   readonly agentToolTrace: AgentToolTraceState;
   readonly agentCheckoutExecutionMode: AgentExecutionMode;
   readonly agentCheckoutToolApproval: AgentToolApprovalState;

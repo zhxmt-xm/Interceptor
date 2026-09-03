@@ -117,17 +117,23 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
       return { showQueryParams };
     }),
 
-  clearView: (clearedBefore = get().clearedBefore) =>
-    set((state) => ({
-      rows: [],
-      indexById: new Map(),
-      selectedId: null,
-      listScrollTop: 0,
-      clearedBefore,
-      syncRevision: state.syncRevision + 1,
-      loading: false,
-      error: null,
-    })),
+  clearView: (clearedBefore) =>
+    set((state) => {
+      if (clearedBefore <= state.clearedBefore) {
+        return {};
+      }
+      const rows = state.rows.filter((row) => row.startedAt > clearedBefore);
+      return {
+        rows,
+        indexById: buildIndex(rows),
+        selectedId: null,
+        listScrollTop: 0,
+        clearedBefore,
+        syncRevision: state.syncRevision + 1,
+        loading: false,
+        error: null,
+      };
+    }),
 
   beginLoad: () => {
     const revision = get().syncRevision;
@@ -143,7 +149,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     }
     set((state) => {
       const byId = new Map(
-        loadedRows.map((row) => [row.id, row] as const),
+        loadedRows
+          .filter((row) => row.startedAt > state.clearedBefore)
+          .map((row) => [row.id, row] as const),
       );
       for (const row of state.rows) {
         if (row.startedAt > state.clearedBefore) {

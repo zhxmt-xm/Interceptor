@@ -1431,6 +1431,10 @@ flowchart LR
 - Application / Status / Content type 的 Pending option在count=0时也始终渲染并可选择；新进入加载态的request会自动命中已选bucket。请求完成后count回0但option不增删，避免facet高度与DOM抖动。Method / Host / Protocol在request headers阶段已确定，不提供虚假的loading项；Rule当前没有独立“计算中”字段，也不编码无法区分的状态。
 - Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
     已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
+- 产品按钮、Agent和MCP的Clear都在Main取得清理开始时间，并只在`capture.cleanup{all}`成功后广播
+    `capture:reset { clearedBefore }`。Renderer统一以该时间边界清空rows、selection与Rules hits；旧分页和
+    `startedAt <= clearedBefore`的迟到事件不得回填，清理开始后到达的新流量仍可进入当前视图。并发Clear乱序完成时
+    cutoff只允许单调增加；旧reset不得再次删除较新cutoff之后已经进入Store的rows。
 - 2026-08-20 TDD证据：专用`capture.clear-facets`最终源码在`89d8dda`仅回植公开automation探针与driver helper后，原始DOM精确Red为`rows=0 / inspector=0 / method count=1 / GET option=1`；当前同一workflow原始DOM为`0/0/0/0`并`1/1` Green。Main PID `20116`、Core PID `35120`均退出，`gracefulDestroyVerified=true`且8888释放、系统代理恢复。
 - 哨兵值用 `\u0000` 前缀（`UNKNOWN_FACET_VALUE` / `FAILED_FACET_VALUE` / `PENDING_FACET_VALUE`），
   与真实 host、状态码字符串不可能碰撞。

@@ -6,6 +6,7 @@ import type {
   SessionQueryRequest,
 } from '../../../../shared/desktop-api';
 import { useBootStore } from '../../../app/bootStore';
+import { useRulesStore } from '../../rules/data/rulesStore';
 import { useCaptureStore } from './captureStore';
 
 const PAGE_SIZE = 500;
@@ -50,6 +51,12 @@ export async function refetchSessions(): Promise<void> {
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Applies one committed Capture cleanup to every Renderer-owned derived mirror. */
+export function resetCaptureData(reset: { readonly clearedBefore: number }): void {
+  useCaptureStore.getState().clearView(reset.clearedBefore);
+  useRulesStore.getState().setHits([]);
 }
 
 /** 切换记录开关：Start 确保监听器/系统代理就绪并恢复记录；Stop 只暂停记录，保留代理管线。 */
@@ -320,6 +327,9 @@ export function useCaptureData(): void {
   useEffect(() => window.interceptor.onCaptureStatusChange((status) => {
     useCaptureStore.getState().setCapturing(status.recording);
   }), []);
+
+  // 产品按钮与外部Tool都由Main发布同一个提交后的清理事实。
+  useEffect(() => window.interceptor.onCaptureReset(resetCaptureData), []);
 
   // 实时事件订阅：无论当前 feature/filter/live 状态都合并进全量 summary 镜像。
   useEffect(() => {

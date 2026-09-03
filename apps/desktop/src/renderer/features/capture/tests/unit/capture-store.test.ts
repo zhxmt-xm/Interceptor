@@ -5,6 +5,8 @@ import type {
   CaptureExchangeSummary,
 } from '../../../../../shared/desktop-api';
 import { useCaptureStore } from '../../data/captureStore';
+import { resetCaptureData } from '../../data/useCaptureData';
+import { useRulesStore } from '../../../rules/data/rulesStore';
 import {
   EMPTY_FILTER,
   FAILED_FACET_VALUE,
@@ -75,6 +77,55 @@ describe('captureStore clear timeline', () => {
     expect(state.clearedBefore).toBe(100);
   });
 
+  it('keeps rows newer than the latest cutoff when reset events complete out of order', () => {
+    const store = useCaptureStore.getState();
+    store.applyEvents([
+      captureEvent('before-clear', 190),
+      captureEvent('during-newer-clear', 201),
+    ]);
+
+    store.clearView(200);
+    useCaptureStore.getState().applyEvents([captureEvent('after-newer-clear', 250)]);
+    useCaptureStore.getState().select('after-newer-clear');
+    const revisionAfterNewerClear = useCaptureStore.getState().syncRevision;
+    useCaptureStore.getState().clearView(100);
+
+    const state = useCaptureStore.getState();
+    expect(state.rows.map((row) => row.id)).toEqual([
+      'during-newer-clear',
+      'after-newer-clear',
+    ]);
+    expect(state.indexById).toEqual(new Map([
+      ['during-newer-clear', 0],
+      ['after-newer-clear', 1],
+    ]));
+    expect(state.selectedId).toBe('after-newer-clear');
+    expect(state.clearedBefore).toBe(200);
+    expect(state.syncRevision).toBe(revisionAfterNewerClear);
+  });
+
+  it('resets Capture rows, derived facets and Rule hits at one timeline boundary', () => {
+    const store = useCaptureStore.getState();
+    store.applyEvents([captureEvent('before-clear', 90)]);
+    store.select('before-clear');
+    useRulesStore.setState({ hits: { 'rule-1': 2 } });
+
+    resetCaptureData({ clearedBefore: 100 });
+
+    const cleared = useCaptureStore.getState();
+    expect(cleared.rows).toEqual([]);
+    expect(cleared.selectedId).toBeNull();
+    expect(cleared.clearedBefore).toBe(100);
+    expect(allFacetOptions(cleared.rows).method).toEqual([]);
+    expect(useRulesStore.getState().hits).toEqual({});
+
+    cleared.applyEvents([
+      captureEvent('late-old-event', 99),
+      captureEvent('after-clear', 101),
+    ]);
+    expect(useCaptureStore.getState().rows.map((row) => row.id)).toEqual(['after-clear']);
+  });
+
   it('keeps workspace position and inspector state while Capture is unmounted', () => {
     const store = useCaptureStore.getState();
     store.select('request-42');
@@ -116,6 +167,22 @@ describe('captureStore clear timeline', () => {
 
     expect(useCaptureStore.getState().rows).toEqual([]);
     expect(useCaptureStore.getState().loading).toBe(false);
+  });
+
+  it('filters rows at or before the clear boundary from a new full sync', () => {
+    const store = useCaptureStore.getState();
+    store.clearView(200);
+    const revision = useCaptureStore.getState().beginLoad();
+
+    useCaptureStore.getState().replaceAllRows([
+      captureEvent('before-clear', 199).summary,
+      captureEvent('at-clear', 200).summary,
+      captureEvent('after-clear', 201).summary,
+    ], revision);
+
+    const state = useCaptureStore.getState();
+    expect(state.rows.map((row) => row.id)).toEqual(['after-clear']);
+    expect(state.indexById).toEqual(new Map([['after-clear', 0]]));
   });
 
   it('tracks one explicit file transfer action at a time', () => {

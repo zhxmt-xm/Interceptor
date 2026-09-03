@@ -135,7 +135,7 @@ export interface CaptureState {
   filterPanelWidth: number;
   /** 用户手动展开的 facet 分组；有值生效的分组无条件展开。 */
   expandedFacets: CaptureFacetId[];
-  /** 最近一次持久化清空的点击时间；更早开始的迟到事件不得重新进入视图。 */
+  /** 最近一次已提交清空的单调时间边界；更早开始的迟到事件不得重新进入视图。 */
   clearedBefore: number;
   /** 代理是否正在监听捕获（proxy.status.listening）。 */
   capturing: boolean;
@@ -187,7 +187,7 @@ export interface CaptureState {
   setInspectorWidth(width: number): void;
   /** 切换列表/详情 path 是否包含 query 参数，并持久化。 */
   toggleQueryParams(): void;
-  clearView(clearedBefore?: number): void;
+  clearView(clearedBefore: number): void;
   beginLoad(): number;
   loadFailed(message: string): void;
   replaceAllRows(rows: CaptureExchangeSummary[], syncRevision: number): void;

@@ -28,6 +28,7 @@ import {
   DESKTOP_IPC_CHANNELS,
   type AppContainerAccessSnapshot,
   type CaptureExchangeEvent,
+  type CaptureReset,
   type ClientAppIcon,
   type CertificateInfo,
   type CaptureStatus,
@@ -225,6 +226,7 @@ class DesktopApplication {
       approvalRequested: (request) => this.broadcastMcpApprovalRequest(request),
       approvalClosed: (approvalId) => this.broadcastMcpApprovalSettled(approvalId),
       captureStatusChanged: (captureStatus) => this.broadcastCaptureStatus(captureStatus),
+      captureReset: (captureReset) => this.broadcastCaptureReset(captureReset),
       copyText: (value) => clipboard.writeText(value),
       showAndFocusWindow: () => this.showAndFocusMainWindow(),
       recordAudit: (event) => this.recordMcpAudit(event),
@@ -234,6 +236,7 @@ class DesktopApplication {
       this.coreRuntime,
       this.toolCapabilitySettingsService,
       (captureStatus) => this.broadcastCaptureStatus(captureStatus),
+      (captureReset) => this.broadcastCaptureReset(captureReset),
     );
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
@@ -1185,10 +1188,12 @@ class DesktopApplication {
     // 清空全部捕获数据属于破坏性操作，由 Renderer 侧显式确认后调用。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.captureClear, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
+      const captureReset: CaptureReset = { clearedBefore: Date.now() };
       const result = await this.coreRuntime.request({
         type: 'capture.cleanup',
         payload: { scope: 'all' },
       });
+      this.broadcastCaptureReset(captureReset);
       return toRendererCaptureUsage(result.payload);
     });
 
@@ -2079,6 +2084,15 @@ class DesktopApplication {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.captureStatus, status);
+      }
+    }
+  }
+
+  /** Broadcast one committed Capture cleanup to every Renderer window. */
+  private broadcastCaptureReset(reset: CaptureReset): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.captureReset, reset);
       }
     }
   }

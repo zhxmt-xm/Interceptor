@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   AgentTool,
+  AgentToolEffectDescription,
   AgentToolKind,
   ToolExecutionContext,
   ToolExecutionResult,
@@ -16,6 +17,11 @@ export interface ToolDefinition<Input> {
   name: string;
   description: string;
   inputSchema: z.ZodType<Input>;
+  /** Describes the current effect after validating the model-issued arguments. */
+  describeEffect?(
+    input: Input,
+    context: ToolExecutionContext,
+  ): AgentToolEffectDescription | Promise<AgentToolEffectDescription>;
   /**
    * Executes only arguments that have passed the declared Zod schema.
    * 只执行已经通过所声明 Zod schema 的参数。
@@ -55,6 +61,18 @@ export function defineTool<Input>(definition: ToolDefinition<Input>): AgentTool 
       description: definition.description,
       inputSchema: z.toJSONSchema(definition.inputSchema) as Record<string, unknown>,
     },
+    ...(definition.describeEffect === undefined ? {} : {
+      async describeEffect(input, context): Promise<AgentToolEffectDescription> {
+        const parsed = definition.inputSchema.safeParse(input);
+        if (!parsed.success) {
+          throw new ToolExecutionError(
+            'invalid_arguments',
+            `Invalid arguments for tool "${definition.name}".`,
+          );
+        }
+        return definition.describeEffect!(parsed.data, context);
+      },
+    }),
     async execute(input, context): Promise<ToolExecutionResult> {
       const parsed = definition.inputSchema.safeParse(input);
       if (!parsed.success) {

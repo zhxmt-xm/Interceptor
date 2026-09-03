@@ -1025,6 +1025,7 @@ export function installFakeInterceptor({
   fileOperationDelayMs = 0,
 }) {
   let captureEventsListener = null;
+  let captureResetListener = null;
   let captureStatusListener = null;
   let agentSessionListener = null;
   let mcpStatusListener = null;
@@ -1084,7 +1085,9 @@ export function installFakeInterceptor({
               'get_exchange_body',
               'list_websocket_messages',
               'list_grpc_messages',
+              'start_recording',
               'stop_recording',
+              'clear_capture',
             ]
               .map((name) => ({ descriptor: { name } })),
           },
@@ -1224,7 +1227,9 @@ export function installFakeInterceptor({
               'get_exchange_body',
               'list_websocket_messages',
               'list_grpc_messages',
+              'start_recording',
               'stop_recording',
+              'clear_capture',
             ].map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1339,6 +1344,69 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: 15,
+    };
+  } else if (agentSessionState === 'approval-result') {
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: 'completed',
+      updatedAt: createdAt + 4,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: 5, updatedAt: createdAt + 4 },
+      items: [
+        ...agentSessionSnapshot.items,
+        {
+          kind: 'assistant-message',
+          itemId: 'item-assistant-agent-clear-result',
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: createdAt + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: 'item-tool-call-agent-clear-result',
+          turnId,
+          callId: 'call-clear-capture',
+          name: 'clear_capture',
+          arguments: {},
+          status: 'completed',
+          approval: {
+            approvalId: 'approval-clear-capture',
+            status: 'allowed',
+            description: 'Delete captured exchanges and bodies.',
+            effect: 'Scope: all\nThis permanently deletes 13 exchange(s) and 1 body/bodies.',
+          },
+          createdAt: createdAt + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: 'item-tool-result-agent-clear-result',
+          turnId,
+          callId: 'call-clear-capture',
+          name: 'clear_capture',
+          result: {
+            ok: true,
+            value: {
+              sessionCount: 0,
+              exchangeCount: 0,
+              bodyCount: 0,
+              databaseBytes: 4_096,
+              blobBytes: 0,
+              totalBytes: 4_096,
+            },
+          },
+          createdAt: createdAt + 3,
+        },
+      ],
+      turns: [turn],
+      currentTurn: turn,
+      sequence: 5,
     };
   } else if (agentSessionState === 'approval') {
     const turnId = agentSessionSnapshot.turns[0].turnId;
@@ -2211,6 +2279,7 @@ export function installFakeInterceptor({
     onBreakpointsChange: () => () => undefined,
     getCaptureUsage: async () => storage,
     clearCapture: async () => {
+      const captureReset = { clearedBefore: Date.now() };
       storage = {
         ...storage,
         sessionCount: 0,
@@ -2219,6 +2288,7 @@ export function installFakeInterceptor({
         blobBytes: 0,
         totalBytes: storage.databaseBytes,
       };
+      captureResetListener?.(captureReset);
       return storage;
     },
     getCaptureStatus: async () => captureStatus,
@@ -2243,6 +2313,12 @@ export function installFakeInterceptor({
       captureStatusListener = listener;
       return () => {
         if (captureStatusListener === listener) captureStatusListener = null;
+      };
+    },
+    onCaptureReset: (listener) => {
+      captureResetListener = listener;
+      return () => {
+        if (captureResetListener === listener) captureResetListener = null;
       };
     },
     onCaptureEvents: (listener) => {

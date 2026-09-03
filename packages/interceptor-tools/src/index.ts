@@ -16,6 +16,7 @@ export {
   buildInterceptorToolRegistry,
 } from './registry/entry';
 export type {
+  InterceptorToolChangeDescription,
   InterceptorToolContext,
   InterceptorToolDefinition,
   InterceptorToolHost,

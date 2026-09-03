@@ -157,7 +157,7 @@ export class McpToolRegistry {
     let diff: readonly string[] | undefined;
     if (tool.describeChange !== undefined) {
       try {
-        diff = await tool.describeChange(args, context);
+        diff = (await tool.describeChange(args, context)).lines;
       } catch {
         diff = undefined;
       }

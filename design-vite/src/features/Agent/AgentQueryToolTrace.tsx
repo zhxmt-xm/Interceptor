@@ -5,14 +5,14 @@ import styles from './AgentQueryToolTrace.module.css';
 
 const TOOL_STEPS = {
   traffic: [
-    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '8 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '10 tools discovered' },
     { name: 'get_storage_status', arguments: 'No parameters', result: 'Exchanges 1 · Bodies 2 · 184 B' },
     { name: 'get_proxy_status', arguments: 'No parameters', result: 'Recording on · 127.0.0.1:8888' },
     { name: 'list_exchanges', arguments: 'limit: 50', result: '1 matching exchange' },
     { name: 'get_exchange', arguments: 'exchangeId: e2e-agent-traffic', result: 'GET /agent-e2e/traffic · 200' },
   ],
   'body-messages': [
-    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '8 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '10 tools discovered' },
     { name: 'get_exchange', arguments: 'exchangeId: body-json', result: 'POST /playground/body/json · 200' },
     { name: 'get_exchange_body', arguments: 'exchangeId: body-json · bodyId: body-1 · length: 65536', result: '14 B · complete' },
     { name: 'list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },

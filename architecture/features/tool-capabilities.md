@@ -1,10 +1,10 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-02
+> 最后更新：2026-09-03
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入8/24，已验收真实Agent或MCP Tool Call覆盖8/24，owning package正向executor unit覆盖14/24；Playground
+> 代码已接入10/24，已验收真实Agent或MCP Tool Call覆盖10/24，owning package正向executor unit覆盖14/24；Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
@@ -74,7 +74,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入四个Traffic query Tool与`stop_recording`；关闭项同时过滤Capability
+- Agent当前通过动态`AgentToolSource`接入七个Traffic query Tool与`start_recording`、`stop_recording`、
+   `clear_capture`；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -89,9 +90,9 @@ interface ToolCapabilitySettingsRecord {
 | `restore_system_proxy` | change | `restoreSystemProxy` | 产品已具备 |
 | `get_proxy_status` | query | `getCaptureStatus` / `proxy.status` | 共享 registry + MCP adapter + Agent |
 | `get_storage_status` | query | `getCaptureUsage` / `capture.status` | 共享 registry + MCP adapter + Agent |
-| `start_recording` | change | `startCapture` | 共享 registry + MCP adapter |
+| `start_recording` | change | `startCapture` | 共享 registry + MCP adapter + Agent；ask/auto纵向流程完成 |
 | `stop_recording` | change | `stopCapture` | 共享 registry + MCP adapter + Agent；ask/auto纵向流程完成 |
-| `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter；旧session scope已删除 |
+| `clear_capture` | change | `clearCapture` / `capture.cleanup(scope: 'all')` | 共享 registry + MCP adapter + Agent；旧session scope已删除，ask/auto纵向流程完成 |
 | `list_exchanges` | query | `querySessions` / `sessions.query` | 共享 registry + MCP adapter + Agent |
 | `get_exchange` | query | `getExchangeDetail` / `sessions.detail` | 共享 registry + MCP adapter + Agent |
 | `get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter + Agent；用`exchangeId + bodyId`回查可信MIME/encoding，真实E2E完成 |
@@ -201,9 +202,9 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | --- | --- | --- | --- |
 | `get_proxy_status` | 已完成 | 待补 | Agent + MCP已完成 |
 | `get_storage_status` | 已完成 | 待补 | Agent已完成 |
-| `start_recording` | 待接入 | 已完成 | 待完成 |
+| `start_recording` | 已完成 | 已完成 | Agent已完成 |
 | `stop_recording` | 已完成 | 已完成 | Agent + MCP已完成 |
-| `clear_capture` | 待接入 | 已完成 | 待完成 |
+| `clear_capture` | 已完成 | 已完成 | Agent已完成 |
 | `list_exchanges` | 已完成 | 待补 | Agent已完成 |
 | `get_exchange` | 已完成 | 已完成 | Agent已完成 |
 | `get_exchange_body` | 已完成 | 已完成 | Agent已完成 |
@@ -237,8 +238,10 @@ Capture 39项真实Electron收敛：
    UtilityProcess中的Mockttp对不安全源站追加OpenSSL专用`@SECLEVEL=0`并报`INVALID_COMMAND`；Developer批准后，
    第三方patch只在Electron省略该命令，Node行为保持。补丁Unit 2/2、H2 integration 6/6、真实E2E 1/1、
    Windows package/artifact audit/smoke均Green。
-3. **[待实现] Traffic控制补尾**：接入`start_recording`、`clear_capture`，验证Ask/Auto、Capture UI同步、
-   清理结果和系统副作用恢复。
+3. **[已完成] Traffic控制补尾**：`start_recording`、`clear_capture`已接入Agent；两项均完成Ask Deny/Allow与Auto。
+   `clear_capture`审批前动态读取usage；产品按钮、Agent和MCP成功清理后统一发布带`clearedBefore`的reset，使rows、
+   selection、facets、Rules hits与旧分页同步收敛。真实workflow验证清空后继续捕获、typed摘要、关闭项
+   `unknown_tool`、重启零重放和系统副作用恢复。
 4. **[待实现] Rules**：先完成`apply_rules`完整递归Rule schema，再接入`get_rules`、`get_rule_hits`、
    `apply_rules`并验证revision、conflict与真实Rule effect。
 5. **[待实现] Breakpoints**：按HTTP与WebSocket拆分接入八项现有Tool，使用真实pending、队列、编辑、
@@ -254,7 +257,7 @@ Capture 39项真实Electron收敛：
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Traffic控制补尾。
+分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Rules三项。
 
 ## 6. 相关未完成验收
 

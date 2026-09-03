@@ -17,7 +17,7 @@ import {
   type ToolDiscoveryMatch,
 } from '@interceptor/tools';
 
-import type { CaptureStatus } from '../../shared/desktop-api';
+import type { CaptureReset, CaptureStatus } from '../../shared/desktop-api';
 import type { CoreRuntime } from '../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../tool-capabilities/entry';
 
@@ -29,7 +29,9 @@ const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'get_exchange_body', kind: 'query' },
   { name: 'list_websocket_messages', kind: 'query' },
   { name: 'list_grpc_messages', kind: 'query' },
+  { name: 'start_recording', kind: 'change' },
   { name: 'stop_recording', kind: 'change' },
+  { name: 'clear_capture', kind: 'change' },
 ] as const;
 
 const DISCOVER_TOOLS_NAME = 'discover_tools';
@@ -42,15 +44,18 @@ export class AgentToolService implements AgentToolSource {
   readonly #catalog: ReturnType<typeof buildInterceptorToolCatalog>;
   readonly #interceptorToolHost: InterceptorToolHost;
   readonly #captureStatusChanged: (captureStatus: CaptureStatus) => void;
+  readonly #captureReset: (captureReset: CaptureReset) => void;
 
   constructor(
     coreRuntime: CoreRuntime,
     toolCapabilitySettingsService: ToolCapabilitySettingsService,
     captureStatusChanged: (captureStatus: CaptureStatus) => void,
+    captureReset: (captureReset: CaptureReset) => void,
   ) {
     this.#coreRuntime = coreRuntime;
     this.#toolCapabilitySettingsService = toolCapabilitySettingsService;
     this.#captureStatusChanged = captureStatusChanged;
+    this.#captureReset = captureReset;
     const definitionsByName = new Map(
       buildInterceptorToolRegistry().map((definition) => [definition.name, definition]),
     );
@@ -75,9 +80,15 @@ export class AgentToolService implements AgentToolSource {
     command: T,
     abortSignal: AbortSignal,
   ): Promise<CoreResultForCommand<T>> {
+    const captureReset = command.type === 'capture.cleanup'
+      ? { clearedBefore: Date.now() }
+      : null;
     const result = await this.#coreRuntime.request(command, { abortSignal });
     if (command.type === 'proxy.start' || command.type === 'proxy.setRecording') {
       this.#captureStatusChanged(result.payload as CaptureStatus);
+    }
+    if (captureReset !== null) {
+      this.#captureReset(captureReset);
     }
     return result;
   }
@@ -155,6 +166,7 @@ export class AgentToolService implements AgentToolSource {
 
   /** Wraps one shared executor without duplicating its descriptor or argument behavior. */
   #agentTool(definition: InterceptorToolDefinition): AgentTool {
+    const describeChange = definition.describeChange;
     return {
       kind: definition.kind,
       ...(definition.effectDescription === undefined
@@ -165,6 +177,27 @@ export class AgentToolService implements AgentToolSource {
         description: definition.description,
         inputSchema: definition.inputSchema,
       },
+      ...(describeChange === undefined ? {} : {
+        describeEffect: async (input, context) => {
+          if (!isRecord(input)) {
+            throw new InterceptorToolArgumentError(
+              `Invalid arguments for tool "${definition.name}".`,
+            );
+          }
+          const changeDescription = await describeChange(input, {
+            host: this.#interceptorToolHost,
+            abortSignal: context.abortSignal,
+          });
+          return {
+            text: [definition.effectDescription, ...changeDescription.lines]
+              .filter((line): line is string => line !== undefined)
+              .join('\n'),
+            ...(changeDescription.metadata === undefined
+              ? {}
+              : { metadata: changeDescription.metadata }),
+          };
+        },
+      }),
       execute: async (input, context): Promise<ToolExecutionResult> => {
         if (!this.#enabledDefinitions().some((candidate) => candidate.name === definition.name)) {
           return {

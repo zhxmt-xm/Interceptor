@@ -41,6 +41,12 @@ export interface InterceptorToolContext {
   readonly abortSignal: AbortSignal;
 }
 
+/** Structured change description shared by approval adapters. */
+export interface InterceptorToolChangeDescription {
+  readonly lines: readonly string[];
+  readonly metadata?: Readonly<Record<string, string | number | boolean>>;
+}
+
 /** One transport-neutral Tool definition and executor. */
 export interface InterceptorToolDefinition {
   readonly name: string;
@@ -60,5 +66,5 @@ export interface InterceptorToolDefinition {
   describeChange?(
     args: Readonly<Record<string, unknown>>,
     context: InterceptorToolContext,
-  ): Promise<readonly string[]>;
+  ): Promise<InterceptorToolChangeDescription>;
 }

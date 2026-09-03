@@ -141,6 +141,11 @@ describe('McpToolRegistry', () => {
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.approvals).toHaveLength(1);
+    expect(fakeHost.approvals[0]?.diff).toEqual([
+      'Scope: all',
+      'This permanently deletes 3 exchange(s) and 2 body/bodies.',
+    ]);
+    expect(fakeHost.approvals[0]).not.toHaveProperty('metadata');
     // 只允许出现 describeChange 为审批 UI 读取的状态，绝不能出现 capture.cleanup。
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('capture.cleanup');
   });
