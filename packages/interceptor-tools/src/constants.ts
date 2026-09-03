@@ -37,5 +37,8 @@ export const TOOL_REDACTED_QUERY_KEYS: readonly string[] = [
 /** Placeholder used for masked values. */
 export const TOOL_REDACTED_PLACEHOLDER = '<redacted>';
 
+/** Tool-visible marker that can only retain an existing Map Local path in place. */
+export const TOOL_PRESERVE_LOCAL_PATH = '<preserve-existing-local-path>';
+
 /** MIME prefixes whose body bytes never enter a Tool result. */
 export const TOOL_OPAQUE_BODY_MIME_PREFIXES: readonly string[] = ['video/', 'audio/'];

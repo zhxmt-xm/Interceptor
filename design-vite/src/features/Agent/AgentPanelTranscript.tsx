@@ -12,6 +12,9 @@ export function AgentPanelTranscript(): React.JSX.Element {
   }
   const sent = state.agentChat === 'sent';
   const toolTrace = state.agentToolTrace;
+  const rulesApplied = toolTrace === 'rules'
+    && state.agentToolApprovalName === 'apply_rules'
+    && state.agentToolApproval === 'allowed';
   return (
     <div className={styles.agentTranscriptScroll} data-parity="agent-transcript">
       <div className={styles.agentTranscript}>
@@ -20,6 +23,10 @@ export function AgentPanelTranscript(): React.JSX.Element {
             ? 'Inspect Capture storage and the latest captured request, then summarize their status.'
             : toolTrace === 'body-messages'
               ? 'Read the JSON response body, WebSocket messages, and gRPC response messages.'
+              : toolTrace === 'rules'
+                ? state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
+                  ? 'Read the current Rule tree, then apply the approved replacement.'
+                  : 'Read the current Rule tree and its real Capture hit counts.'
             : sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
         </div>
         <article className={styles.agentAssistantMessage}>
@@ -27,10 +34,17 @@ export function AgentPanelTranscript(): React.JSX.Element {
           <div className={styles.agentAssistantResponse}>
             {toolTrace !== '' ? (
               <>
-                <AgentQueryToolTrace variant={toolTrace} />
+                <div className={styles.agentToolActivity}>
+                  <AgentQueryToolTrace variant={toolTrace} />
+                  {rulesApplied ? <AgentToolApproval /> : null}
+                </div>
                 {toolTrace === 'traffic'
                   ? <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
-                  : <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>}
+                  : toolTrace === 'body-messages'
+                    ? <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>
+                    : state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
+                      ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
+                      : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}
               </>
             ) : state.agentTurnState === 'failed' ? (
               <div className={styles.agentTurnNotice} data-tone="error">
@@ -53,7 +67,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
               </>
             )}
             {state.agentTurnState === 'running' && <span className={styles.agentTurnProgress}>Generating response…</span>}
-            <AgentToolApproval />
+            {!rulesApplied ? <AgentToolApproval /> : null}
             {state.agentTurnState === 'stopped' && (
               <div className={styles.agentTurnNotice}>
                 <strong>Response stopped</strong>

@@ -17,7 +17,7 @@ import {
   type ToolDiscoveryMatch,
 } from '@interceptor/tools';
 
-import type { CaptureReset, CaptureStatus } from '../../shared/desktop-api';
+import type { CaptureReset, CaptureStatus, RulesChanged } from '../../shared/desktop-api';
 import type { CoreRuntime } from '../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../tool-capabilities/entry';
 
@@ -32,6 +32,9 @@ const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'start_recording', kind: 'change' },
   { name: 'stop_recording', kind: 'change' },
   { name: 'clear_capture', kind: 'change' },
+  { name: 'get_rules', kind: 'query' },
+  { name: 'get_rule_hits', kind: 'query' },
+  { name: 'apply_rules', kind: 'change' },
 ] as const;
 
 const DISCOVER_TOOLS_NAME = 'discover_tools';
@@ -45,17 +48,20 @@ export class AgentToolService implements AgentToolSource {
   readonly #interceptorToolHost: InterceptorToolHost;
   readonly #captureStatusChanged: (captureStatus: CaptureStatus) => void;
   readonly #captureReset: (captureReset: CaptureReset) => void;
+  readonly #rulesChanged: (change: RulesChanged) => void;
 
   constructor(
     coreRuntime: CoreRuntime,
     toolCapabilitySettingsService: ToolCapabilitySettingsService,
     captureStatusChanged: (captureStatus: CaptureStatus) => void,
     captureReset: (captureReset: CaptureReset) => void,
+    rulesChanged: (change: RulesChanged) => void,
   ) {
     this.#coreRuntime = coreRuntime;
     this.#toolCapabilitySettingsService = toolCapabilitySettingsService;
     this.#captureStatusChanged = captureStatusChanged;
     this.#captureReset = captureReset;
+    this.#rulesChanged = rulesChanged;
     const definitionsByName = new Map(
       buildInterceptorToolRegistry().map((definition) => [definition.name, definition]),
     );
@@ -89,6 +95,9 @@ export class AgentToolService implements AgentToolSource {
     }
     if (captureReset !== null) {
       this.#captureReset(captureReset);
+    }
+    if (command.type === 'rules.replace') {
+      this.#rulesChanged(result.payload as RulesChanged);
     }
     return result;
   }

@@ -13,7 +13,8 @@
     }
   },
   "dependencies": {
-    "@interceptor/core-protocol": "*"
+    "@interceptor/core-protocol": "*",
+    "zod": "4.1.12"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

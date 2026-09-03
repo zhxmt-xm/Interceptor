@@ -156,6 +156,36 @@ describe('Agent transcript utilities', () => {
       ok: true,
       value: { recognized: false, side: 'response', items: [], hasMore: false },
     })).toEqual({ kind: 'not-grpc' });
+    expect(summarizeAgentToolResult('get_rules', {
+      ok: true,
+      value: {
+        ruleSet: {
+          revision: 4,
+          nodes: [{
+            kind: 'folder',
+            id: 'folder-1',
+            name: 'API',
+            children: [{
+              kind: 'rule',
+              id: 'rule-1',
+              name: 'Header',
+              enabled: true,
+              priority: 0,
+              matchers: [],
+              actions: [],
+            }],
+          }],
+        },
+      },
+    })).toEqual({ kind: 'rules', revision: 4, ruleCount: 1, enabledCount: 1 });
+    expect(summarizeAgentToolResult('get_rule_hits', {
+      ok: true,
+      value: { counts: [{ ruleId: 'rule-1', count: 3 }, { ruleId: 'rule-2', count: 0 }] },
+    })).toEqual({ kind: 'ruleHits', ruleCount: 2, totalHits: 3 });
+    expect(summarizeAgentToolResult('apply_rules', {
+      ok: true,
+      value: { revision: 5 },
+    })).toEqual({ kind: 'rulesApplied', revision: 5 });
   });
 
   it('keeps later Tool activity after visible assistant content', () => {

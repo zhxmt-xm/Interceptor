@@ -18,6 +18,11 @@ const TOOL_STEPS = {
     { name: 'list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },
     { name: 'list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
   ],
+  rules: [
+    { name: 'discover_tools', arguments: 'capabilityId: rules', result: '3 tools discovered' },
+    { name: 'get_rules', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
+    { name: 'get_rule_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
+  ],
 } as const;
 
 interface AgentQueryToolTraceProps {

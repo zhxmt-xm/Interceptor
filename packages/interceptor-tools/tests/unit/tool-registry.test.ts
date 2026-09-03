@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CoreCommand } from '@interceptor/core-protocol';
+import type { CoreCommand, RuleNode } from '@interceptor/core-protocol';
 
 import {
   buildInterceptorToolCatalog,
   buildInterceptorToolRegistry,
   TOOL_BODY_PREVIEW_MAX_BYTES,
+  TOOL_PRESERVE_LOCAL_PATH,
   type InterceptorToolDefinition,
   type InterceptorToolHost,
 } from '../../src';
@@ -57,6 +58,71 @@ function definition(name: string): InterceptorToolDefinition {
   const result = buildInterceptorToolRegistry().find((tool) => tool.name === name);
   if (!result) throw new Error(`missing Tool ${name}`);
   return result;
+}
+
+function completeRuleTree(): RuleNode[] {
+  return [{
+    kind: 'folder',
+    id: 'folder-1',
+    name: 'API',
+    children: [{
+      kind: 'folder',
+      id: 'folder-2',
+      name: 'Version 1',
+      children: [{
+        kind: 'folder',
+        id: 'folder-3',
+        name: 'Users',
+        children: [{
+          kind: 'rule',
+          id: 'rule-1',
+          name: 'Rewrite user request',
+          enabled: true,
+          priority: 0,
+          matchers: [
+            { type: 'method', value: 'GET' },
+            { type: 'host', value: 'api.test', mode: 'exact', caseSensitive: false },
+            { type: 'path', value: '/v1/users', mode: 'contains' },
+            { type: 'url', value: 'https://api.test/v1/users', mode: 'regex' },
+            { type: 'query', key: 'active', mode: 'exact', value: 'true' },
+            { type: 'header', phase: 'request', name: 'accept', mode: 'contains', value: 'json' },
+            { type: 'status', min: 200, max: 299 },
+            { type: 'mime', phase: 'response', value: 'application/json' },
+          ],
+          actions: [
+            { type: 'header', phase: 'request', op: 'set', name: 'x-mode', value: 'active' },
+            { type: 'query', op: 'set', name: 'source', value: 'agent' },
+            { type: 'body', phase: 'request', format: 'json', content: '{}' },
+            {
+              type: 'synthetic',
+              statusCode: 201,
+              headers: [{ name: 'content-type', value: 'application/json' }],
+              body: '{}',
+            },
+            { type: 'map-local', path: TOOL_PRESERVE_LOCAL_PATH },
+            { type: 'map-remote', scheme: 'https', host: 'upstream.test', port: 443, path: '/v2' },
+            { type: 'block', mode: 'reset' },
+            { type: 'status', statusCode: 202 },
+            { type: 'delay', phase: 'response', ms: 25 },
+            { type: 'breakpoint', phase: 'request' },
+          ],
+        }],
+      }],
+    }],
+  }];
+}
+
+function schemaConstants(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(schemaConstants);
+  if (typeof value !== 'object' || value === null) return [];
+  const record = value as Readonly<Record<string, unknown>>;
+  return [
+    ...(typeof record['const'] === 'string' ? [record['const']] : []),
+    ...(Array.isArray(record['enum'])
+      ? record['enum'].filter((entry): entry is string => typeof entry === 'string')
+      : []),
+    ...Object.values(record).flatMap(schemaConstants),
+  ];
 }
 
 async function execute(
@@ -183,14 +249,13 @@ describe('Interceptor Tool registry', () => {
   });
 
   it('preserves the complete Rule tree and enabled state during compare-and-replace', async () => {
-    const nodes = [{
-      kind: 'folder',
-      id: 'folder-1',
-      name: 'Auth',
-      children: [{ kind: 'rule', id: 'rule-1', name: 'Redirect', enabled: true }],
-    }];
+    const nodes = completeRuleTree();
+    const persistedNodes = structuredClone(nodes);
+    const persistedRule = (persistedNodes[0] as { children: Array<{ children: Array<{ children: Array<{ actions: Array<Record<string, unknown>> }> }> }> })
+      .children[0]!.children[0]!.children[0]!;
+    persistedRule.actions[4] = { type: 'map-local', path: 'C:\\fixtures\\response.json' };
     const fakeToolHost = new FakeToolHost({
-      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, nodes: [] } } },
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 7, nodes: persistedNodes } } },
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
     });
 
@@ -198,7 +263,234 @@ describe('Interceptor Tool registry', () => {
 
     expect(fakeToolHost.commands.at(-1)).toEqual({
       type: 'rules.replace',
-      payload: { expectedRevision: 7, nodes },
+      payload: { expectedRevision: 7, nodes: persistedNodes },
+    });
+  });
+
+  it('redacts Map Local paths and only preserves an unchanged Rule across folder moves', async () => {
+    const persistedRule = {
+      kind: 'rule' as const,
+      id: 'rule-local',
+      name: 'Local response',
+      enabled: true,
+      priority: 0,
+      matchers: [{ type: 'method' as const, value: 'GET' }],
+      actions: [{ type: 'map-local' as const, path: 'C:\\Users\\me\\secret.txt' }],
+    };
+    const persistedNodes: RuleNode[] = [{
+      kind: 'folder',
+      id: 'folder-before',
+      name: 'Before',
+      children: [persistedRule],
+    }];
+    const fakeToolHost = new FakeToolHost({
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 3, nodes: persistedNodes } } },
+      'rules.replace': { type: 'rules.revision', payload: { revision: 4 } },
+    });
+
+    const result = await execute('get_rules', {}, fakeToolHost) as { ruleSet: { nodes: RuleNode[] } };
+    const returnedFolder = result.ruleSet.nodes[0];
+    if (returnedFolder?.kind !== 'folder' || returnedFolder.children[0]?.kind !== 'rule') {
+      throw new Error('Expected the redacted Map Local Rule inside its folder.');
+    }
+    const redactedRule = returnedFolder.children[0];
+    expect(redactedRule.actions[0]).toMatchObject({
+      type: 'map-local',
+      path: TOOL_PRESERVE_LOCAL_PATH,
+    });
+    expect(JSON.stringify(result)).not.toContain('secret.txt');
+
+    const movedNodes: RuleNode[] = [{
+      kind: 'folder',
+      id: 'folder-after',
+      name: 'After',
+      children: [{ ...redactedRule, priority: -0 }],
+    }];
+    await execute('apply_rules', {
+      baseRevision: 3,
+      nodes: movedNodes,
+    }, fakeToolHost);
+    expect(fakeToolHost.commands.at(-1)).toEqual({
+      type: 'rules.replace',
+      payload: {
+        expectedRevision: 3,
+        nodes: [{
+          kind: 'folder',
+          id: 'folder-after',
+          name: 'After',
+          children: [{ ...persistedRule, priority: -0 }],
+        }],
+      },
+    });
+
+    await expect(execute('apply_rules', {
+      baseRevision: 3,
+      nodes: [{
+        ...movedNodes[0],
+        children: [{
+          ...redactedRule,
+          matchers: [{ type: 'method', value: 'POST' }],
+        }],
+      }],
+    }, fakeToolHost)).rejects.toThrow('only be preserved while its Rule remains unchanged');
+    expect(fakeToolHost.commands.filter((command) => command.type === 'rules.replace')).toHaveLength(1);
+  });
+
+  it('rejects a Model-authored Map Local path before Core access', async () => {
+    const nodes = [{
+      kind: 'rule', id: 'rule-local', name: 'Read secret', enabled: true, priority: 0,
+      matchers: [{ type: 'method', value: 'GET' }],
+      actions: [{ type: 'map-local', path: 'C:\\Users\\me\\secret.txt' }],
+    }];
+    const fakeToolHost = new FakeToolHost();
+
+    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+      .rejects.toThrow('invalid Rule tree');
+    expect(fakeToolHost.commands).toEqual([]);
+  });
+
+  it('does not let the Map Local placeholder create a new file action', async () => {
+    const nodes = [{
+      kind: 'rule', id: 'rule-local', name: 'New local action', enabled: true, priority: 0,
+      matchers: [{ type: 'method', value: 'GET' }],
+      actions: [{ type: 'map-local', path: TOOL_PRESERVE_LOCAL_PATH }],
+    }];
+    const fakeToolHost = new FakeToolHost({
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 0, nodes: [] } } },
+    });
+
+    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+      .rejects.toThrow('can only preserve an existing path in place');
+    expect(fakeToolHost.commands.map((command) => command.type)).toEqual(['rules.get']);
+  });
+
+  it('reads Rule hit counts through the formal Core command', async () => {
+    const counts = [{ ruleId: 'rule-1', count: 3 }, { ruleId: 'rule-2', count: 0 }];
+    const fakeToolHost = new FakeToolHost({
+      'rules.hits': { type: 'rules.hits', payload: { counts } },
+    });
+
+    await expect(execute('get_rule_hits', {}, fakeToolHost))
+      .resolves.toEqual({ counts });
+    expect(fakeToolHost.commands).toEqual([{ type: 'rules.hits', payload: {} }]);
+  });
+
+  it('describes apply_rules counts and name changes from current Core state', async () => {
+    const currentNodes = [{
+      kind: 'rule' as const,
+      id: 'rule-1',
+      name: 'Before',
+      enabled: true,
+      priority: 0,
+      matchers: [{ type: 'method' as const, value: 'GET' }],
+      actions: [{ type: 'status' as const, statusCode: 200 }],
+    }];
+    const nextNodes = [{ ...currentNodes[0]!, name: 'After', enabled: false }];
+    const fakeToolHost = new FakeToolHost({
+      'rules.get': {
+        type: 'rules.ruleset',
+        payload: { ruleSet: { revision: 2, nodes: currentNodes } },
+      },
+    });
+
+    await expect(definition('apply_rules').describeChange?.(
+      { baseRevision: 1, nodes: nextNodes },
+      { host: fakeToolHost, abortSignal: new AbortController().signal },
+    )).rejects.toThrow('rule set moved from revision 1 to 2');
+
+    await expect(definition('apply_rules').describeChange?.(
+      { baseRevision: 2, nodes: nextNodes },
+      { host: fakeToolHost, abortSignal: new AbortController().signal },
+    )).resolves.toEqual({
+      lines: [
+        'Rule count: 1 → 1',
+        'Removed: Before',
+        'Added: After',
+      ],
+      metadata: {
+        baseRevision: 2,
+        currentRuleCount: 1,
+        nextRuleCount: 1,
+        currentEnabledCount: 1,
+        nextEnabledCount: 0,
+        removedNames: 'Before',
+        addedNames: 'After',
+      },
+    });
+  });
+
+  it('publishes the complete recursive Rule union in apply_rules schema', () => {
+    const inputSchema = definition('apply_rules').inputSchema as unknown as Readonly<
+      Record<string, unknown>
+    >;
+    const constants = schemaConstants(inputSchema);
+
+    expect(inputSchema).toHaveProperty('$defs');
+    expect(inputSchema).toHaveProperty('properties.nodes.items.$ref');
+    expect(constants).toEqual(expect.arrayContaining([
+      'folder', 'rule',
+      'method', 'host', 'path', 'url', 'query', 'header', 'status', 'mime',
+      'body', 'synthetic', 'map-local', 'map-remote', 'block', 'delay', 'breakpoint',
+      'request', 'response', 'contains', 'exact', 'regex',
+    ]));
+  });
+
+  it.each([
+    ['extra folder field', [{ kind: 'folder', id: 'folder-1', name: 'A', children: [], extra: true }]],
+    ['incomplete rule', [{ kind: 'rule', id: 'rule-1', name: 'A', enabled: true }]],
+    ['unknown matcher', [{
+      kind: 'rule', id: 'rule-1', name: 'A', enabled: true, priority: 0,
+      matchers: [{ type: 'unknown' }], actions: [{ type: 'status', statusCode: 200 }],
+    }]],
+    ['unknown action', [{
+      kind: 'rule', id: 'rule-1', name: 'A', enabled: true, priority: 0,
+      matchers: [{ type: 'method', value: 'GET' }], actions: [{ type: 'unknown' }],
+    }]],
+    ['four nested folders', [{
+      kind: 'folder', id: 'folder-1', name: '1', children: [{
+        kind: 'folder', id: 'folder-2', name: '2', children: [{
+          kind: 'folder', id: 'folder-3', name: '3', children: [{
+            kind: 'folder', id: 'folder-4', name: '4', children: [],
+          }],
+        }],
+      }],
+    }]],
+    ['duplicate node ids', [{
+      kind: 'folder', id: 'duplicate', name: 'Folder', children: [{
+        kind: 'rule', id: 'duplicate', name: 'Rule', enabled: true, priority: 0,
+        matchers: [{ type: 'method', value: 'GET' }],
+        actions: [{ type: 'status', statusCode: 200 }],
+      }],
+    }]],
+  ])('rejects an invalid apply_rules tree before Core access: %s', async (_name, nodes) => {
+    const fakeToolHost = new FakeToolHost();
+
+    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+      .rejects.toThrow('invalid Rule tree');
+    expect(fakeToolHost.commands).toEqual([]);
+  });
+
+  it('preserves finite numeric Rule values accepted by the product model', async () => {
+    const nodes = [{
+      kind: 'rule', id: 'rule-numbers', name: 'Numeric values', enabled: true, priority: 0.5,
+      matchers: [{ type: 'status', min: 700, max: 99 }],
+      actions: [
+        { type: 'synthetic', statusCode: 700, headers: [{ name: '', value: '' }] },
+        { type: 'map-remote', port: 0 },
+        { type: 'status', statusCode: 99 },
+        { type: 'delay', phase: 'request', ms: -1 },
+      ],
+    }];
+    const fakeToolHost = new FakeToolHost({
+      'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 0, nodes: [] } } },
+      'rules.replace': { type: 'rules.revision', payload: { revision: 1 } },
+    });
+
+    await execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost);
+
+    expect(fakeToolHost.commands.at(-1)).toEqual({
+      type: 'rules.replace',
+      payload: { expectedRevision: 0, nodes },
     });
   });
 

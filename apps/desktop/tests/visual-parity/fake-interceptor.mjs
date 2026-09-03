@@ -1208,6 +1208,174 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: 15,
     };
+  } else if (agentSessionState === 'rules' || agentSessionState === 'rules-result') {
+    const applied = agentSessionState === 'rules-result';
+    const turnId = 'turn-agent-rules';
+    const agentStartedAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'call-discover-rules',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'rules' },
+        result: {
+          ok: true,
+          value: {
+            matches: ['get_rules', 'get_rule_hits', 'apply_rules']
+              .map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-get-rules',
+        name: 'get_rules',
+        arguments: {},
+        result: {
+          ok: true,
+          value: {
+            ruleSet: {
+              revision: 1,
+              nodes: [{
+                kind: 'rule',
+                id: 'agent-rule-1',
+                name: 'Agent header',
+                enabled: true,
+                priority: 0,
+                matchers: [],
+                actions: [],
+              }],
+            },
+          },
+        },
+      },
+      {
+        callId: 'call-get-rule-hits',
+        name: 'get_rule_hits',
+        arguments: {},
+        result: {
+          ok: true,
+          value: { counts: [{ ruleId: 'agent-rule-1', count: 1 }] },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-rules',
+      turnId,
+      content: applied
+        ? 'Read the current Rule tree, then apply the approved replacement.'
+        : 'Read the current Rule tree and its real Capture hit counts.',
+      createdAt: agentStartedAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-rules-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-rules-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          approval: null,
+          createdAt: agentStartedAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-rules-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: agentStartedAt + index * 3 + 3,
+        },
+      );
+    }
+    if (applied) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: 'item-assistant-agent-rules-apply',
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + 10,
+        },
+        {
+          kind: 'tool-call',
+          itemId: 'item-tool-call-agent-rules-apply',
+          turnId,
+          callId: 'call-apply-rules',
+          name: 'apply_rules',
+          arguments: { baseRevision: 1, nodes: [] },
+          status: 'completed',
+          approval: {
+            approvalId: 'approval-apply-rules',
+            status: 'allowed',
+            description: 'Replace the rule set with revision checking.',
+            effect: 'Rule count: 1 → 1\nRemoved: Agent header\nAdded: Updated header',
+            effectMetadata: {
+              baseRevision: 1,
+              currentRuleCount: 1,
+              nextRuleCount: 1,
+              currentEnabledCount: 1,
+              nextEnabledCount: 1,
+            },
+          },
+          createdAt: agentStartedAt + 11,
+        },
+        {
+          kind: 'tool-result',
+          itemId: 'item-tool-result-agent-rules-apply',
+          turnId,
+          callId: 'call-apply-rules',
+          name: 'apply_rules',
+          result: { ok: true, value: { revision: 2 } },
+          createdAt: agentStartedAt + 12,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-rules-final',
+      turnId,
+      content: applied
+        ? 'Revision `2` is now applied with the approved Rule effect.'
+        : 'Revision `1` contains `1` enabled Rule with `1` captured hit.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: agentStartedAt + 13,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-rules',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt: agentStartedAt,
+      updatedAt: agentStartedAt + 14,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: {
+        ...agentSessionSnapshot.summary,
+        itemCount: items.length,
+        updatedAt: agentStartedAt + 14,
+      },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: items.length,
+    };
   } else if (agentSessionState === 'body-messages') {
     const turnId = 'turn-agent-body-messages';
     const agentStartedAt = agentSessionSnapshot.summary.createdAt;
@@ -2443,6 +2611,7 @@ export function installFakeInterceptor({
       return { ok: true, revision: ruleRevision };
     },
     getRuleHits: async () => fixture.rules.hits,
+    onRulesChanged: () => () => undefined,
     getCollection: async () => ({
       revision: collectionRevision,
       nodes: currentCollectionNodes,

@@ -12,10 +12,12 @@ import {
   addBreakpointRule,
   addRequestRuleDraft,
   applyRules,
+  importRules,
   loadRules,
   removeBreakpointRule,
   selectRuleDraft,
   toggleBreakpointRule,
+  synchronizeExternalRulesChange,
 } from '../../data/useRulesData';
 import { createRuleFromRequest, isRulesDirty } from '../../utils';
 
@@ -71,6 +73,7 @@ function seed(nodes: RuleNode[], selectedId: string | null = null): void {
     saving: false,
     error: null,
     conflict: false,
+    latestExternalRevision: 0,
   });
 }
 
@@ -145,6 +148,37 @@ describe('rulesStore ordering', () => {
     expect(useRulesStore.getState().nodes.map((item) => item.id))
       .toEqual(['z-rule', 'group', 'a-rule']);
     expect(order().map(({ id }) => id)).toEqual(['z-rule', 'b-rule', 'a-rule']);
+  });
+
+  it('reloads a clean draft after an external Rules replacement', async () => {
+    const next = rule('external', 10);
+    const getRules = vi.fn(async () => ({ revision: 2, nodes: [next] }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    await synchronizeExternalRulesChange({ revision: 2 });
+
+    expect(getRules).toHaveBeenCalledOnce();
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 2,
+      nodes: [next],
+      applied: [next],
+      conflict: false,
+    });
+  });
+
+  it('preserves a dirty draft when an external Rules replacement arrives', async () => {
+    useRulesStore.getState().renameNode('first', 'Local draft');
+    const getRules = vi.fn(async () => ({ revision: 2, nodes: [rule('external', 10)] }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    await synchronizeExternalRulesChange({ revision: 2 });
+
+    expect(getRules).not.toHaveBeenCalled();
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 1,
+      conflict: true,
+    });
+    expect(useRulesStore.getState().nodes[0]?.name).toBe('Local draft');
   });
 
   it('adds an exact-URL request rule as an unsaved selected draft', () => {
@@ -340,6 +374,217 @@ describe('rulesStore apply conflict', () => {
 
     expect(order().map(({ id }) => id)).toEqual(['remote']);
     expect(useRulesStore.getState()).toMatchObject({ revision: 9, conflict: false });
+  });
+
+  it('keeps edits made while Apply is pending dirty after the saved snapshot commits', async () => {
+    seed([rule('submitted', 100)], 'submitted');
+    useRulesStore.getState().renameNode('submitted', 'Submitted snapshot');
+    let completeSave: ((result: { ok: true; revision: number }) => void) | undefined;
+    const replaceRules = vi.fn(() => new Promise<{ ok: true; revision: number }>((resolve) => {
+      completeSave = resolve;
+    }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    const saving = applyRules();
+    await vi.waitFor(() => expect(replaceRules).toHaveBeenCalledOnce());
+    useRulesStore.getState().renameNode('submitted', 'Edited while saving');
+    completeSave?.({ ok: true, revision: 2 });
+    await saving;
+
+    const state = useRulesStore.getState();
+    expect(collectLeaves(state.nodes)[0]?.name).toBe('Edited while saving');
+    expect(collectLeaves(state.applied)[0]?.name).toBe('Submitted snapshot');
+    expect(isRulesDirty(state.nodes, state.applied)).toBe(true);
+    expect(state).toMatchObject({ revision: 2, saving: false });
+  });
+
+  it('keeps edits and an external conflict that arrive while Import is saving', async () => {
+    seed([rule('baseline', 100)], 'baseline');
+    let completeSave: ((result: { ok: true; revision: number }) => void) | undefined;
+    const replaceRules = vi.fn(() => new Promise<{ ok: true; revision: number }>((resolve) => {
+      completeSave = resolve;
+    }));
+    vi.stubGlobal('window', { interceptor: { replaceRules } });
+
+    const importing = importRules([rule('imported', 200)]);
+    await vi.waitFor(() => expect(replaceRules).toHaveBeenCalledOnce());
+    useRulesStore.getState().renameNode('baseline', 'Edited while importing');
+    await synchronizeExternalRulesChange({ revision: 3 });
+    completeSave?.({ ok: true, revision: 2 });
+    await expect(importing).resolves.toBe(true);
+
+    const state = useRulesStore.getState();
+    expect(collectLeaves(state.nodes).map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: 'baseline', name: 'Edited while importing' },
+    ]);
+    expect(collectLeaves(state.applied).map(({ id }) => id)).toEqual(['baseline', 'imported']);
+    expect(state).toMatchObject({
+      revision: 2,
+      latestExternalRevision: 3,
+      saving: false,
+      conflict: true,
+    });
+  });
+
+  it('does not overwrite edits made while an external reload is pending', async () => {
+    seed([rule('first', 100)], 'first');
+    let completeLoad: ((ruleSet: { revision: number; nodes: RuleNode[] }) => void) | undefined;
+    const getRules = vi.fn(() => new Promise<{ revision: number; nodes: RuleNode[] }>((resolve) => {
+      completeLoad = resolve;
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    const synchronizing = synchronizeExternalRulesChange({ revision: 2 });
+    await vi.waitFor(() => expect(getRules).toHaveBeenCalledOnce());
+    useRulesStore.getState().renameNode('first', 'Local edit during reload');
+    completeLoad?.({ revision: 2, nodes: [rule('external', 10)] });
+    await synchronizing;
+
+    expect(useRulesStore.getState().nodes[0]?.name).toBe('Local edit during reload');
+    expect(useRulesStore.getState()).toMatchObject({ revision: 1, conflict: true });
+  });
+
+  it('ignores an older external reload that completes after a newer revision', async () => {
+    seed([rule('first', 100)], 'first');
+    const completeLoads: Array<(ruleSet: { revision: number; nodes: RuleNode[] }) => void> = [];
+    const getRules = vi.fn(() => new Promise<{ revision: number; nodes: RuleNode[] }>((resolve) => {
+      completeLoads.push(resolve);
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    const revisionTwo = synchronizeExternalRulesChange({ revision: 2 });
+    const revisionThree = synchronizeExternalRulesChange({ revision: 3 });
+    await vi.waitFor(() => expect(getRules).toHaveBeenCalledTimes(2));
+    completeLoads[1]?.({ revision: 3, nodes: [rule('revision-3', 10)] });
+    await revisionThree;
+    completeLoads[0]?.({ revision: 2, nodes: [rule('revision-2', 10)] });
+    await revisionTwo;
+
+    expect(useRulesStore.getState()).toMatchObject({ revision: 3, conflict: false });
+    expect(useRulesStore.getState().nodes[0]?.id).toBe('revision-3');
+  });
+
+  it('does not let an initial or explicit load overwrite a newer external revision', async () => {
+    seed([], null);
+    useRulesStore.setState({ initialized: false, revision: 0, latestExternalRevision: 0 });
+    const completeLoads: Array<(ruleSet: { revision: number; nodes: RuleNode[] }) => void> = [];
+    const getRules = vi.fn(() => new Promise<{ revision: number; nodes: RuleNode[] }>((resolve) => {
+      completeLoads.push(resolve);
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    const initial = loadRules();
+    const external = synchronizeExternalRulesChange({ revision: 2 });
+    await vi.waitFor(() => expect(getRules).toHaveBeenCalledTimes(2));
+    completeLoads[1]?.({ revision: 2, nodes: [rule('revision-2', 10)] });
+    await external;
+    completeLoads[0]?.({ revision: 1, nodes: [rule('revision-1', 10)] });
+    await initial;
+
+    expect(useRulesStore.getState().revision).toBe(2);
+    expect(useRulesStore.getState().nodes[0]?.id).toBe('revision-2');
+
+    seed([rule('baseline', 100)], 'baseline');
+    const completeExplicitLoads: Array<(
+      ruleSet: { revision: number; nodes: RuleNode[] },
+    ) => void> = [];
+    const explicitGetRules = vi.fn(() => new Promise<{
+      revision: number;
+      nodes: RuleNode[];
+    }>((resolve) => {
+      completeExplicitLoads.push(resolve);
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules: explicitGetRules } });
+
+    const revisionThree = synchronizeExternalRulesChange({ revision: 3 });
+    await vi.waitFor(() => expect(explicitGetRules).toHaveBeenCalledOnce());
+    const explicitReload = loadRules();
+    await vi.waitFor(() => expect(explicitGetRules).toHaveBeenCalledTimes(2));
+    completeExplicitLoads[1]?.({ revision: 2, nodes: [rule('revision-2', 10)] });
+    await explicitReload;
+    completeExplicitLoads[0]?.({ revision: 3, nodes: [rule('revision-3', 10)] });
+    await revisionThree;
+
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 1,
+      latestExternalRevision: 3,
+      loading: false,
+      conflict: true,
+    });
+    expect(useRulesStore.getState().nodes[0]?.id).toBe('baseline');
+
+    seed([rule('loading-baseline', 100)], 'loading-baseline');
+    useRulesStore.setState({ initialized: false });
+    const completeStaleLoads: Array<(
+      ruleSet: { revision: number; nodes: RuleNode[] },
+    ) => void> = [];
+    const staleGetRules = vi.fn(() => new Promise<{
+      revision: number;
+      nodes: RuleNode[];
+    }>((resolve) => {
+      completeStaleLoads.push(resolve);
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules: staleGetRules } });
+
+    const loadingInitial = loadRules();
+    await vi.waitFor(() => expect(staleGetRules).toHaveBeenCalledOnce());
+    const staleExternal = synchronizeExternalRulesChange({ revision: 3 });
+    await vi.waitFor(() => expect(staleGetRules).toHaveBeenCalledTimes(2));
+    completeStaleLoads[1]?.({ revision: 2, nodes: [rule('stale-external', 10)] });
+    await staleExternal;
+    completeStaleLoads[0]?.({ revision: 1, nodes: [rule('stale-initial', 10)] });
+    await loadingInitial;
+
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 1,
+      latestExternalRevision: 3,
+      loading: false,
+      conflict: true,
+    });
+    expect(useRulesStore.getState().nodes[0]?.id).toBe('loading-baseline');
+  });
+
+  it('ignores a lower revision event received while a higher revision is loading', async () => {
+    seed([rule('first', 100)], 'first');
+    let completeLoad: ((ruleSet: { revision: number; nodes: RuleNode[] }) => void) | undefined;
+    const getRules = vi.fn(() => new Promise<{ revision: number; nodes: RuleNode[] }>((resolve) => {
+      completeLoad = resolve;
+    }));
+    vi.stubGlobal('window', { interceptor: { getRules } });
+
+    const revisionThree = synchronizeExternalRulesChange({ revision: 3 });
+    const revisionTwo = synchronizeExternalRulesChange({ revision: 2 });
+    await vi.waitFor(() => expect(getRules).toHaveBeenCalledOnce());
+    completeLoad?.({ revision: 3, nodes: [rule('revision-3', 10)] });
+    await Promise.all([revisionThree, revisionTwo]);
+
+    expect(useRulesStore.getState().revision).toBe(3);
+    expect(useRulesStore.getState().nodes[0]?.id).toBe('revision-3');
+  });
+
+  it('retains an external conflict that arrives while a local save is pending', async () => {
+    seed([rule('submitted', 100)], 'submitted');
+    useRulesStore.getState().renameNode('submitted', 'Submitted snapshot');
+    let completeSave: ((result: { ok: true; revision: number }) => void) | undefined;
+    const replaceRules = vi.fn(() => new Promise<{ ok: true; revision: number }>((resolve) => {
+      completeSave = resolve;
+    }));
+    const getRules = vi.fn();
+    vi.stubGlobal('window', { interceptor: { replaceRules, getRules } });
+
+    const saving = applyRules();
+    await vi.waitFor(() => expect(replaceRules).toHaveBeenCalledOnce());
+    await synchronizeExternalRulesChange({ revision: 3 });
+    expect(useRulesStore.getState()).toMatchObject({ saving: true, conflict: true });
+    completeSave?.({ ok: true, revision: 2 });
+    await saving;
+
+    expect(getRules).not.toHaveBeenCalled();
+    expect(useRulesStore.getState()).toMatchObject({
+      revision: 2,
+      saving: false,
+      conflict: true,
+    });
   });
 });
 

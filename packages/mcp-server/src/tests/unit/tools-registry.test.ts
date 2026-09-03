@@ -202,26 +202,36 @@ describe('McpToolRegistry', () => {
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
+    const nodes = [{
+      kind: 'folder',
+      id: 'f1',
+      name: 'Auth',
+      children: [{
+        kind: 'rule',
+        id: 'r1',
+        name: 'redirect',
+        enabled: true,
+        priority: 10,
+        matchers: [{ type: 'host', value: 'api.test', mode: 'exact' }],
+        actions: [{
+          type: 'header',
+          phase: 'request',
+          op: 'set',
+          name: 'x-auth-mode',
+          value: 'active',
+        }],
+      }],
+    }];
 
     const outcome = await call(mcpToolRegistry, 'apply_rules', {
       baseRevision: 7,
-      nodes: [{
-        kind: 'folder',
-        id: 'f1',
-        name: 'Auth',
-        children: [{ kind: 'rule', id: 'r1', name: 'redirect', enabled: true }],
-      }],
+      nodes,
     });
 
     expect(outcome.ok).toBe(true);
     const replace = fakeHost.commands.find((command) => command.type === 'rules.replace');
     expect(replace).toBeDefined();
-    expect((replace as { payload: { nodes: unknown[] } }).payload.nodes).toEqual([{
-      kind: 'folder',
-      id: 'f1',
-      name: 'Auth',
-      children: [{ kind: 'rule', id: 'r1', name: 'redirect', enabled: true }],
-    }]);
+    expect((replace as { payload: { nodes: unknown[] } }).payload.nodes).toEqual(nodes);
   });
 
   it('refuses to overwrite rules edited since the AI last read them', async () => {

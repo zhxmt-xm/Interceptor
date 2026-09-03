@@ -23,8 +23,20 @@ using System;
 using System.Runtime.InteropServices;
 
 public static class NativeForegroundWindow {
+  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] public static extern bool AttachThreadInput(
+    uint attachThreadId,
+    uint attachToThreadId,
+    bool attach
+  );
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(
+    IntPtr windowHandle,
+    IntPtr processId
+  );
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr windowHandle);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr windowHandle, int command);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr windowHandle);
@@ -36,6 +48,28 @@ public static class NativeForegroundWindow {
     uint data,
     UIntPtr extraInfo
   );
+
+  public static bool FocusWindow(IntPtr windowHandle) {
+    uint currentThreadId = GetCurrentThreadId();
+    uint foregroundThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+    uint targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
+    bool foregroundAttached = foregroundThreadId != 0
+      && foregroundThreadId != currentThreadId
+      && AttachThreadInput(currentThreadId, foregroundThreadId, true);
+    bool targetAttached = targetThreadId != 0
+      && targetThreadId != currentThreadId
+      && targetThreadId != foregroundThreadId
+      && AttachThreadInput(currentThreadId, targetThreadId, true);
+    try {
+      ShowWindow(windowHandle, 5);
+      BringWindowToTop(windowHandle);
+      SetForegroundWindow(windowHandle);
+      return GetForegroundWindow() == windowHandle;
+    } finally {
+      if (targetAttached) AttachThreadInput(currentThreadId, targetThreadId, false);
+      if (foregroundAttached) AttachThreadInput(currentThreadId, foregroundThreadId, false);
+    }
+  }
 }
 '@
 
@@ -44,6 +78,10 @@ $targetPath = [System.Text.Encoding]::Unicode.GetString(
   [System.Convert]::FromBase64String('${encodedPath}')
 )
 $shell = New-Object -ComObject WScript.Shell
+$parentProcessIdByProcessId = @{}
+Get-CimInstance Win32_Process | ForEach-Object {
+  $parentProcessIdByProcessId[[int]$_.ProcessId] = [int]$_.ParentProcessId
+}
 $fileNameCondition = [System.Windows.Automation.OrCondition]::new(
   [System.Windows.Automation.PropertyCondition]::new(
     [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
@@ -69,6 +107,21 @@ $dialogCondition = [System.Windows.Automation.PropertyCondition]::new(
   '#32770'
 )
 
+function Test-OwnerProcess([int]$processId) {
+  $visited = @{}
+  while ($processId -gt 0 -and -not $visited.ContainsKey($processId)) {
+    if ($processId -eq $ownerProcessId) {
+      return $true
+    }
+    $visited[$processId] = $true
+    if (-not $parentProcessIdByProcessId.ContainsKey($processId)) {
+      return $false
+    }
+    $processId = [int]$parentProcessIdByProcessId[$processId]
+  }
+  return $false
+}
+
 function Find-FileDialog {
   $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
     [System.Windows.Automation.TreeScope]::Children,
@@ -79,6 +132,7 @@ function Find-FileDialog {
     $windowHandle = [IntPtr]$dialog.Current.NativeWindowHandle
     if (
       $windowHandle -eq [IntPtr]::Zero -or
+      -not (Test-OwnerProcess $dialog.Current.ProcessId) -or
       $dialog.Current.IsOffscreen -or
       -not [NativeForegroundWindow]::IsWindowVisible($windowHandle) -or
       -not [NativeForegroundWindow]::IsWindowEnabled($windowHandle)
@@ -134,15 +188,15 @@ while (-not $fileDialog -and [DateTime]::UtcNow -lt $deadline) {
   }
 }
 if (-not $fileDialog) {
-  $shell.SendKeys('{ESC}')
   $remainingWindows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
     [System.Windows.Automation.TreeScope]::Children,
     $dialogCondition
   )
   $remaining = @($remainingWindows) | ForEach-Object {
     $handle = [IntPtr]$_.Current.NativeWindowHandle
-    "$($_.Current.Name)|$handle|$([NativeForegroundWindow]::IsWindowVisible($handle))|$([NativeForegroundWindow]::IsWindowEnabled($handle))"
+    "$($_.Current.Name)|pid=$($_.Current.ProcessId)|handle=$handle|visible=$([NativeForegroundWindow]::IsWindowVisible($handle))|enabled=$([NativeForegroundWindow]::IsWindowEnabled($handle))"
   }
+  $shell.SendKeys('{ESC}')
   throw "未找到 Electron Main PID $ownerProcessId 的真实文件对话框。候选：$($remaining -join '; ')"
 }
 
@@ -162,15 +216,19 @@ if (
 }
 
 try {
-  [void][NativeForegroundWindow]::SetForegroundWindow($dialogWindowHandle)
+  if (-not [NativeForegroundWindow]::FocusWindow($dialogWindowHandle)) {
+    throw '无法把真实文件对话框切换到前台。'
+  }
+  $shell.SendKeys('%n')
   [System.Threading.Thread]::Sleep(100)
-  [void][NativeForegroundWindow]::SetCursorPos(
-    [int]($fileNameBounds.Left + $fileNameBounds.Width / 2),
-    [int]($fileNameBounds.Top + $fileNameBounds.Height / 2)
-  )
-  [NativeForegroundWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-  [NativeForegroundWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
-  [System.Threading.Thread]::Sleep(100)
+  $focusedElement = [System.Windows.Automation.AutomationElement]::FocusedElement
+  if (
+    -not $focusedElement -or
+    $focusedElement.Current.ClassName -ne 'Edit' -or
+    @('1001', '1148') -notcontains $focusedElement.Current.AutomationId
+  ) {
+    throw '真实文件对话框的文件名字段未获得输入焦点。'
+  }
   $shell.SendKeys('^a')
   $previousClipboard = [System.Windows.Forms.Clipboard]::GetDataObject()
   try {
@@ -184,12 +242,13 @@ try {
       [System.Windows.Forms.Clipboard]::Clear()
     }
   }
-  [void][NativeForegroundWindow]::SetCursorPos(
-    [int]($submitBounds.Left + $submitBounds.Width / 2),
-    [int]($submitBounds.Top + $submitBounds.Height / 2)
+  $valuePattern = $fileNameField.GetCurrentPattern(
+    [System.Windows.Automation.ValuePattern]::Pattern
   )
-  [NativeForegroundWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-  [NativeForegroundWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  if ($valuePattern.Current.Value -ne $targetPath) {
+    throw "真实文件对话框没有收到目标路径。actual=$($valuePattern.Current.Value)"
+  }
+  $shell.SendKeys('{ENTER}')
 } catch {
   $shell.SendKeys('{ESC}')
   throw
@@ -207,7 +266,7 @@ if (
   [NativeForegroundWindow]::IsWindow($dialogWindowHandle) -and
   [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle)
 ) {
-  [void][NativeForegroundWindow]::SetForegroundWindow($dialogWindowHandle)
+  [void][NativeForegroundWindow]::FocusWindow($dialogWindowHandle)
   $shell.SendKeys('{ESC}')
   throw '提交文件路径后，真实文件对话框没有关闭。'
 }

@@ -10,6 +10,7 @@ import {
   InterceptorDesktopApi,
   type McpApprovalRequest,
   type McpDesktopStatus,
+  type RulesChanged,
   type CaptureExchangeEvent,
   type ClientAppIcon,
   type SystemProxyStatus,
@@ -360,6 +361,15 @@ const api: InterceptorDesktopApi = {
   replaceRules: (expectedRevision, nodes) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesReplace, expectedRevision, nodes),
   getRuleHits: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesHits),
+  onRulesChanged: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, change: RulesChanged) => {
+      listener(change);
+    };
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.rulesChanged, handler);
+    return () => {
+      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.rulesChanged, handler);
+    };
+  },
   getCollection: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionGet),
   replaceCollection: (expectedRevision, nodes) =>
     ipcRenderer.invoke(

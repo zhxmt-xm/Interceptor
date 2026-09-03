@@ -67,6 +67,7 @@ export function AgentToolApproval({
           data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
           data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
           data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}
+          data-rule-revision={summary?.kind === 'rulesApplied' ? summary.revision : undefined}
         >
           <code>{call.name}</code>
           {allowed && summary !== null ? <AgentToolResultSummary summary={summary} /> : null}

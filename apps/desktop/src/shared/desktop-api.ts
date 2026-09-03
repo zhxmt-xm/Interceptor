@@ -384,6 +384,11 @@ export type RuleReplaceResult =
   | { ok: true; revision: number }
   | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
 
+/** One externally committed Rule tree revision. */
+export interface RulesChanged {
+  revision: number;
+}
+
 /** Composer 集合替换结果：语义与 RuleReplaceResult 一致。 */
 export type CollectionReplaceResult =
   | { ok: true; revision: number }
@@ -606,6 +611,7 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesGet: 'rules:get',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
+  rulesChanged: 'rules:changed',
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
   collectionExport: 'collection:export',
@@ -768,6 +774,7 @@ export interface InterceptorDesktopApi {
     nodes: RuleNode[],
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
+  onRulesChanged(listener: (change: RulesChanged) => void): () => void;
   getCollection(): Promise<Collection>;
   replaceCollection(
     expectedRevision: number,

@@ -35,6 +35,7 @@ import {
   type CoreProcessStatus,
   type GitHubAuthStatus,
   type McpDesktopStatus,
+  type RulesChanged,
   type SystemProxyStatus as DesktopSystemProxyStatus,
   type UpdateStatus,
   type BreakpointBodyFile,
@@ -227,6 +228,7 @@ class DesktopApplication {
       approvalClosed: (approvalId) => this.broadcastMcpApprovalSettled(approvalId),
       captureStatusChanged: (captureStatus) => this.broadcastCaptureStatus(captureStatus),
       captureReset: (captureReset) => this.broadcastCaptureReset(captureReset),
+      rulesChanged: (change) => this.broadcastRulesChanged(change),
       copyText: (value) => clipboard.writeText(value),
       showAndFocusWindow: () => this.showAndFocusMainWindow(),
       recordAudit: (event) => this.recordMcpAudit(event),
@@ -237,6 +239,7 @@ class DesktopApplication {
       this.toolCapabilitySettingsService,
       (captureStatus) => this.broadcastCaptureStatus(captureStatus),
       (captureReset) => this.broadcastCaptureReset(captureReset),
+      (change) => this.broadcastRulesChanged(change),
     );
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
@@ -1707,6 +1710,10 @@ class DesktopApplication {
               nodes: ruleNodes,
             },
           });
+          this.broadcastRulesChanged(
+            { revision: result.payload.revision },
+            event.sender.id,
+          );
           return { ok: true, revision: result.payload.revision };
         } catch (error) {
           return DesktopApplication.toReplaceFailure(error);
@@ -2093,6 +2100,22 @@ class DesktopApplication {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.captureReset, reset);
+      }
+    }
+  }
+
+  /** Broadcast one Rule tree revision committed by an external Tool. */
+  private broadcastRulesChanged(
+    change: RulesChanged,
+    excludedWebContentsId?: number,
+  ): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (
+        !window.isDestroyed()
+        && !window.webContents.isDestroyed()
+        && window.webContents.id !== excludedWebContentsId
+      ) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.rulesChanged, change);
       }
     }
   }

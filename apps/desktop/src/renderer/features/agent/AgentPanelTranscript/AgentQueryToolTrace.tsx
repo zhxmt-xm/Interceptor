@@ -76,6 +76,18 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-message-has-more={summary?.kind === 'websocket' || summary?.kind === 'grpc' ? summary.hasMore : undefined}
                   data-grpc-recognized={summary?.kind === 'grpc' ? summary.recognized : undefined}
                   data-grpc-side={summary?.kind === 'grpc' ? summary.side : undefined}
+                  data-rule-revision={summary?.kind === 'rules' || summary?.kind === 'rulesApplied'
+                    ? summary.revision
+                    : undefined}
+                  data-rule-count={summary?.kind === 'rules' || summary?.kind === 'ruleHits'
+                    ? summary.ruleCount
+                    : undefined}
+                  data-rule-enabled-count={summary?.kind === 'rules'
+                    ? summary.enabledCount
+                    : undefined}
+                  data-rule-total-hits={summary?.kind === 'ruleHits'
+                    ? summary.totalHits
+                    : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
                   {summary === null

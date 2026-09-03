@@ -480,3 +480,33 @@ test('Traffic Tool activity keeps calls, arguments, results, and final answer in
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('Capture storage is non-empty');
 });
+
+test('Agent Rules Tool activity summarizes tree, hits and applied revision', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'rules',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentToolTrace: 'rules',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('1 enabled Rule with 1 captured hit');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
+  await expect(trace.locator('[data-tool-name="get_rules"]'))
+    .toContainText('Revision 1 · Rules 1 · Enabled 1');
+  await expect(trace.locator('[data-tool-name="get_rule_hits"]'))
+    .toContainText('Rules 1 · Hits 1');
+
+  await page.evaluate(() => window.__setState?.({
+    agentToolApproval: 'allowed',
+    agentToolApprovalName: 'apply_rules',
+  }));
+  const result = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('Revision 2 is now applied');
+  await expect(result).toContainText('Revision 2 applied');
+  await expect(result).toHaveAttribute('data-approval-status', 'allowed');
+  expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});

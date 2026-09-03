@@ -75,6 +75,14 @@ export type AgentToolResultSummary =
       readonly recognized: boolean;
     }
   | { readonly kind: 'not-grpc' }
+  | {
+      readonly kind: 'rules';
+      readonly revision: number;
+      readonly ruleCount: number;
+      readonly enabledCount: number;
+    }
+  | { readonly kind: 'ruleHits'; readonly ruleCount: number; readonly totalHits: number }
+  | { readonly kind: 'rulesApplied'; readonly revision: number }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'value'; readonly value: string };
 
@@ -219,7 +227,48 @@ export function summarizeAgentToolResult(
       recognized: result.value['recognized'],
     };
   }
+  if (name === 'get_rules' && isRecord(result.value) && isRecord(result.value['ruleSet'])) {
+    const ruleSet = result.value['ruleSet'];
+    const revision = ruleSet['revision'];
+    const counts = countRuleNodes(ruleSet['nodes']);
+    if (typeof revision === 'number' && counts !== null) {
+      return { kind: 'rules', revision, ...counts };
+    }
+  }
+  if (name === 'get_rule_hits' && isRecord(result.value) && Array.isArray(result.value['counts'])) {
+    let totalHits = 0;
+    for (const count of result.value['counts']) {
+      if (!isRecord(count) || typeof count['count'] !== 'number') {
+        return { kind: 'value', value: compactJson(result.value) };
+      }
+      totalHits += count['count'];
+    }
+    return { kind: 'ruleHits', ruleCount: result.value['counts'].length, totalHits };
+  }
+  if (name === 'apply_rules' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
+    return { kind: 'rulesApplied', revision: result.value['revision'] };
+  }
   return { kind: 'value', value: compactJson(result.value) };
+}
+
+/** Counts trusted Rule leaves without assuming one concrete tree depth. */
+function countRuleNodes(
+  value: unknown,
+): { readonly ruleCount: number; readonly enabledCount: number } | null {
+  if (!Array.isArray(value)) return null;
+  let ruleCount = 0;
+  let enabledCount = 0;
+  const visit = (node: unknown): boolean => {
+    if (!isRecord(node)) return false;
+    if (node['kind'] === 'rule' && typeof node['enabled'] === 'boolean') {
+      ruleCount += 1;
+      if (node['enabled']) enabledCount += 1;
+      return true;
+    }
+    if (node['kind'] !== 'folder' || !Array.isArray(node['children'])) return false;
+    return node['children'].every(visit);
+  };
+  return value.every(visit) ? { ruleCount, enabledCount } : null;
 }
 
 /** Returns whether an unknown value is a non-array record. */

@@ -352,3 +352,55 @@ Renderer镜像，且不丢失清理开始后到达的新流量。
 	303既有flagged`，本轮结果行明暗`12/12`与Traffic/body四视图`38/38`均0 missing、0 flagged。Windows package与
 	artifact audit（1,294 files / 392,792,364 bytes）、production audit 0漏洞和
 	packaged smoke`1/1`通过。
+
+<a id="agent-tools-rules"></a>
+## `agent.tools.rules`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 创建独立profile与脚本化Provider；通过真实Rules UI创建一级folder及其中一条启用的host/path + request-header
+	rule并Apply，记录公共rule/folder ID与revision。经8888发送匹配GET，确认origin收到初始header且Rule hit为1。
+2. 新建默认Ask Chat，先`discover_tools(capabilityId:'rules')`，再调用`get_rules`与`get_rule_hits`；确认渐进schema只含
+	三项Rules Tool，结果中的嵌套folder/rule、revision、目标hit与typed摘要一致。
+3. Ask调用`apply_rules`把同一Rule header改为Deny候选；审批metadata精确显示当前/目标rule数、启用数与名称差异。
+	Deny后返回`tool_denied`，revision不变，真实GET仍得到初始header。
+4. 再以同一baseRevision调用并Allow；确认完整树经正式`rules.replace`写入、revision增加、结果摘要更新，真实GET得到
+	Allow header且新命中可由`get_rule_hits`读取。
+5. 切换Auto，用最新revision再次替换为Auto header；确认不出现问询、revision增加且真实GET得到Auto header。随后用
+	旧baseRevision调用，确认返回`invalid_arguments`、不推进revision且Auto effect保持。
+6. 在Settings关闭三项Agent开关；新discovery/schema不含三项，逐项猜测调用均返回`unknown_tool`且Rule tree/revision
+	不变。
+7. 正常关闭并用同一profile重启；确认Rule tree/revision、三项关闭状态及第一代审批metadata恢复，Model请求增量0。
+	重新开启三项并恢复Ask，完成Main/Core优雅销毁、8888释放、系统代理与lab副作用恢复。
+
+### 预期效果
+
+Model只能提交严格递归且符合正式Rule联合的完整树；query直接读取权威Core状态，change服从Session Ask/Auto与共享
+Settings。Deny、invalid tree、stale revision和关闭项均不改Rule；Allow/Auto只经正式replace推进revision，真实代理
+effect与查询结果一致。
+
+### Evidence
+
+- Owner Red精确失败于schema无`$defs`且7类非法树先触达`rules.get`；Agent Red为Rules discovery空数组与
+	`apply_rules`不存在，摘要Red退化为原始JSON；Rules revision回调与Renderer同步分别Red于0次/入口不存在；
+	复审再Red于stale revision仍生成审批摘要及设计结果态使用错误DOM属性。
+- 父提交`1234ea9a`在源码、workspace链接和npm依赖均隔离的detached worktree运行同一workflow，第二次Model request
+	只有`discover_tools`而缺三项Rules schema，取得有效行为Red；失败代Main/Core `37404/8912`优雅销毁并释放8888。
+- 当前同一workflow`1/1` Green：真实UI创建folder/rule，完整matcher/action/priority由`get_rules`返回；初始hit为1，
+	Deny保持初始effect，Allow/Auto令revision `1→2→3`并由真实origin header验证，stale返回`invalid_arguments`；
+	三项关闭后discovery为空且均返回`unknown_tool`，重启恢复Rule、审批metadata、Auto/开关且Model请求增量0。
+- `mcp.desktop.streamable-http`补充同一共享入口的外部同步证明：父提交`1234ea9a`中MCP替换已成功但Renderer仍为
+	revision 1，取得有效Red；当前官方Client Auto `get_rules → apply_rules`令Renderer与origin同步到revision 2，
+	重启恢复同一Rule并再次验证真实origin effect。两代Main/Core为`38740/43808`与`26768/39376`，均完整销毁且
+	Renderer pageerror为0。
+- Map Local真实路径由owner测试证明不会离开Core，任意路径、新建占位或借占位修改matcher/enabled/priority/action
+	均无法触达replace；只有未变Rule可连同路径跨folder移动。Rules Store `30/30`覆盖保存期间编辑、普通/外部load乱序、
+	dirty/saving冲突、最高revision及显式Reload不得回退已观察revision且必须结束loading。最终Tools`43/43`、Desktop`410/410`、
+	Runtime`121/121`、MCP`30/30`、design interaction`68/68`与全workspace typecheck Green。
+- 最终Agent两代Main/Core为`31464/7148`与`11940/44028`，均`gracefulDestroyVerified=true`，Renderer pageerror为0且
+	8888/系统代理恢复。完整parity为`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`；
+	Rules新增query/result明暗4 views合计`30/30 matched / 0 missing / 0 flagged / 0px`。Windows package、artifact audit
+	（1,294 files / 392,804,000 bytes）、production audit 0漏洞与packaged smoke`1/1`通过。

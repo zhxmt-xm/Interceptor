@@ -72,6 +72,12 @@
   padding-left: 17px;
 }
 
+.agentToolActivity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .agentTurnProgress {
   color: var(--accent);
   font-size: 10px;

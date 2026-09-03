@@ -497,6 +497,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onMcpApprovalRequest',
         'onMcpApprovalSettled',
         'onMcpStatusChange',
+        'onRulesChanged',
         'onSystemProxyStatusChange',
         'onTlsCompatibilityChange',
         'onUpdateStatusChange',

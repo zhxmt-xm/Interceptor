@@ -210,7 +210,7 @@ for (const theme of ['light', 'dark']) {
     theme,
     variant: 'panel-tool-approval',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'pending' },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'pending', agentToolApprovalName: 'stop_recording' },
   });
   shots.push({
     feature: 'agent-models',
@@ -239,6 +239,20 @@ for (const theme of ['light', 'dark']) {
     variant: 'panel-body-message-tools',
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'body-messages' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-rules-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'panel-rules-result',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules', agentToolApproval: 'allowed', agentToolApprovalName: 'apply_rules' },
   });
 }
 for (const theme of ['light', 'dark']) {

@@ -57,9 +57,12 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
    确认返回结构化`tool_denied`且Recording保持。第三次调用点击Allow，确认正式Recording入口
    停止捕获、Capture UI同步且同一调用只执行一次。通过产品UI恢复Recording。
 8. 将`VS Code E2E`切换为`auto`，再次调用`stop_recording`，确认无审批弹层并直接停止Recording；query/change均
-   写入不含Token的Diagnostics审计。通过产品UI恢复Recording，保存第一代trace、截图和销毁证据后正常关闭App。
+   写入不含Token的Diagnostics审计。通过产品UI恢复Recording；再经真实Rules UI创建并Apply一条初始header Rule，
+   官方Client调用`get_rules`取得同一完整树并以`apply_rules`替换header。确认Auto不显示审批、Rules Renderer收到
+   revision事件后重载，真实8888请求令origin收到MCP更新后的header。
 9. 保留profile和测试内存中的首代token，用同一profile启动第二代Electron；确认MCP仍开启、endpoint完全相同、
-   Client与`auto`恢复，并且旧配置无需修改即可重新initialize、`tools/list`和调用`get_proxy_status`。
+   Client与`auto`及MCP更新后的Rule/revision恢复，并且旧配置无需修改即可重新initialize、`tools/list`和调用
+   `get_proxy_status`。
 10. 在产品UI点击该Client的Regenerate credential。确认旧token后续请求返回`401`且该Client在途调用取消；暂停trace
     再次Copy config并只记录新token hash，确认hash已改变且新token可建立Session。其他Client若存在不得受影响。
 11. 撤销测试Client并关闭MCP，确认listener、SDK handler和在途调用全部消失，但Proxy Core的`8888`生命周期不受影响；
@@ -82,7 +85,13 @@ Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则�
 
 ### Evidence
 
-- 实现前取得由公开MCP Server控制缺口导致的真实Electron Red，不以缺selector、fixture、构建或端口冲突冒充。
-- Green记录两代Main/Core PID、MCP endpoint、token hash变化、当前协议版本、HTTP状态、Tool集合、审批结果、
-   `gracefulDestroyVerified`、MCP端口/8888释放和系统代理恢复。
+- 原MCP Server实现前取得公开控制缺口Red。Rules同步补强在父提交`1234ea9a`的隔离worktree运行同一扩展workflow：
+   官方Client的`apply_rules`成功且目标revision为2，但Rules Renderer保持`data-revision=1`，精确取得外部同步缺口Red；
+   失败代Main/Core为`37156/46644`，`gracefulDestroyVerified=true`且8888释放。
+- 当前同一workflow`1/1` Green：真实Rules UI自产revision 1的初始Rule，官方Client读取完整树并在Auto下替换为
+   revision 2且返回同一revision，无审批弹层；Renderer name/revision重载，真实origin header由`initial`变为`updated`，
+   第二代恢复同一Rule/revision并再次产生`updated` origin header。旧token在轮换后返回401，协议为`2026-07-28`，
+   evidence只保存前后不同的token SHA-256。
+- 最终两代Main/Core为`38740/43808`与`26768/39376`，均`gracefulDestroyVerified=true`、Renderer pageerror为0，
+   MCP端口/8888释放且系统代理恢复。
 - trace、截图、日志与metadata不得包含Bearer token、加密Client记录、Capture敏感正文或Host配置绝对路径。

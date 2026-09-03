@@ -47,6 +47,22 @@ export function AgentToolResultSummary({
     case 'not-grpc':
       content = t('agent.tools.notGrpc');
       break;
+    case 'rules':
+      content = t('agent.tools.rules', {
+        revision: summary.revision,
+        ruleCount: summary.ruleCount,
+        enabledCount: summary.enabledCount,
+      });
+      break;
+    case 'ruleHits':
+      content = t('agent.tools.ruleHits', {
+        ruleCount: summary.ruleCount,
+        totalHits: summary.totalHits,
+      });
+      break;
+    case 'rulesApplied':
+      content = t('agent.tools.rulesApplied', { revision: summary.revision });
+      break;
     case 'error':
       content = summary.message;
       break;

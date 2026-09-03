@@ -24,7 +24,7 @@ describe('rulesStore.importSucceeded', () => {
     useRulesStore.setState({ nodes: [existing] });
 
     const imported = { ...createRule('Imported'), id: 'imported-1' };
-    useRulesStore.getState().importSucceeded([existing, imported], 2);
+    useRulesStore.getState().importSucceeded([existing, imported], 2, [existing]);
 
     expect(useRulesStore.getState().nodes.map((node) => node.name))
       .toEqual(['Local', 'Imported']);
@@ -41,7 +41,7 @@ describe('rulesStore.importSucceeded', () => {
       { ...createRule('A'), id: 'a', priority: 20 },
       { ...createRule('B'), id: 'b', priority: 30 },
     ];
-    useRulesStore.getState().importSucceeded(combined, 2);
+    useRulesStore.getState().importSucceeded(combined, 2, useRulesStore.getState().nodes);
 
     expect(collectLeaves(useRulesStore.getState().nodes).map((rule) => rule.priority))
       .toEqual([10, 20, 30]);
@@ -55,7 +55,7 @@ describe('rulesStore.importSucceeded', () => {
         name: 'Ads',
         children: [{ ...createRule('Inside'), id: 'inside' }],
       },
-    ], 2);
+    ], 2, []);
 
     const folder = useRulesStore.getState().nodes[0];
     expect(folder && isFolder(folder)).toBe(true);
@@ -73,7 +73,7 @@ describe('rulesStore.importSucceeded', () => {
     useRulesStore.getState().importSucceeded([
       existing,
       { ...createRule('Imported'), id: 'i' },
-    ], 2);
+    ], 2, [existing]);
 
     const state = useRulesStore.getState();
     expect(state.selectedId).toBe(existing.id);

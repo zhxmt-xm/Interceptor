@@ -20,6 +20,11 @@ const TOOL_CONTENT = {
     effect: 'Scope: all · Permanently deletes 13 exchanges and 1 body.',
     result: 'Exchanges 0 · Bodies 0 · 4 KB',
   },
+  apply_rules: {
+    description: 'Replace the rule set with revision checking.',
+    effect: 'Rule count: 1 → 1 · Enabled: 1 → 1',
+    result: 'Revision 2 applied',
+  },
 } as const;
 
 export function AgentToolApproval(): React.JSX.Element | null {
@@ -39,8 +44,8 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div
         aria-live="polite"
         className={styles.toolApprovalResult}
+        data-approval-status={state.agentToolApproval}
         data-parity="agent-tool-approval"
-        data-result={state.agentToolApproval}
         ref={resultRef}
         role="status"
         tabIndex={-1}
@@ -56,7 +61,11 @@ export function AgentToolApproval(): React.JSX.Element | null {
   }
 
   return (
-    <section className={styles.toolApproval} data-parity="agent-tool-approval">
+    <section
+      className={styles.toolApproval}
+      data-approval-status="pending"
+      data-parity="agent-tool-approval"
+    >
       <header className={styles.toolApprovalHeader}>
         <span className={styles.toolApprovalIcon}><ShieldAlert aria-hidden="true" /></span>
         <div>

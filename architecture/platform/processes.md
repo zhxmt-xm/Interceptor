@@ -94,6 +94,9 @@ Traffic query Tool（`get_proxy_status`、`get_storage_status`、`list_exchanges
 产品按钮、Agent或MCP完成`capture.cleanup(all)`后，Main还会广播同一个带`clearedBefore`时间边界的
 `capture:reset`事件。Renderer常驻Capture管线据此同步清空rows、selection、facet派生状态与Rules hits，并以
 现有`syncRevision`和时间边界拒绝旧分页/事件回填；业务入口不各自维护第二套clear逻辑。
+Agent或MCP完成`rules.replace`后，Main广播`rules:changed { revision }`；产品UI保存则只通知其他Renderer窗口。
+clean Rules Store按最新revision重载，dirty/saving Store保留草稿并进入conflict；提交快照、最高外部revision与加载序列
+分别防止保存期间编辑被误判clean、低revision事件重入和旧异步响应回退。
 
 `ToolCapabilitySettingsService`是Main内全局Agent/MCP Tool开关owner，从`@interceptor/tools`的同一可执行registry
 投影四组Settings目录，只把两组关闭名称原子写入`<userData>/tool-capabilities/settings.json`。fresh profile与

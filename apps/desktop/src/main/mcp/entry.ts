@@ -48,6 +48,8 @@ export class McpDesktopService implements McpHostBridge {
   readonly #captureStatusChanged: McpDesktopServiceOptions['captureStatusChanged'];
   /** Synchronizes capture UI after a Tool clears persisted traffic. */
   readonly #captureReset: McpDesktopServiceOptions['captureReset'];
+  /** Synchronizes Rules UI after a Tool commits a replacement. */
+  readonly #rulesChanged: McpDesktopServiceOptions['rulesChanged'];
   /** Main-only clipboard boundary for secret-bearing MCP configuration. */
   readonly #copyText: McpDesktopServiceOptions['copyText'];
   /** Makes approval UI visible before publishing the request. */
@@ -85,6 +87,7 @@ export class McpDesktopService implements McpHostBridge {
     this.#approvalClosed = options.approvalClosed;
     this.#captureStatusChanged = options.captureStatusChanged;
     this.#captureReset = options.captureReset;
+    this.#rulesChanged = options.rulesChanged;
     this.#copyText = options.copyText;
     this.#showAndFocusWindow = options.showAndFocusWindow;
     this.#recordAudit = options.recordAudit ?? (() => undefined);
@@ -282,6 +285,9 @@ export class McpDesktopService implements McpHostBridge {
     }
     if (captureReset !== null) {
       this.#captureReset(captureReset);
+    }
+    if (command.type === 'rules.replace') {
+      this.#rulesChanged(result.payload as never);
     }
     return result;
   }

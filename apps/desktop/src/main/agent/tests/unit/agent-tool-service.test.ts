@@ -53,7 +53,10 @@ function tool(snapshot: { readonly tools: readonly AgentTool[] }, name: string):
   return result;
 }
 
-function discoveredHistory(result: ToolExecutionResult): readonly AgentMessage[] {
+function discoveredHistory(
+  result: ToolExecutionResult,
+  capabilityId = 'traffic',
+): readonly AgentMessage[] {
   return [
     { role: 'user', content: 'Inspect current traffic.' },
     {
@@ -62,7 +65,7 @@ function discoveredHistory(result: ToolExecutionResult): readonly AgentMessage[]
       toolCalls: [{
         id: 'discover-1',
         name: 'discover_tools',
-        arguments: { capabilityId: 'traffic' },
+        arguments: { capabilityId },
       }],
     },
     {
@@ -82,6 +85,7 @@ describe('AgentToolService', () => {
       settings,
       () => undefined,
       () => undefined,
+      () => undefined,
     );
 
     const snapshot = service.snapshot([{ role: 'user', content: 'Inspect traffic.' }]);
@@ -96,6 +100,7 @@ describe('AgentToolService', () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
+      () => undefined,
       () => undefined,
       () => undefined,
     );
@@ -149,6 +154,7 @@ describe('AgentToolService', () => {
       settings,
       () => undefined,
       () => undefined,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -171,6 +177,41 @@ describe('AgentToolService', () => {
       'stop_recording',
       'clear_capture',
     ]);
+  });
+
+  it('discovers and discloses exactly the three connected Rules Tools', async () => {
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'rules' },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(discovery).toMatchObject({
+      ok: true,
+      value: {
+        matches: [
+          { descriptor: { name: 'get_rules' } },
+          { descriptor: { name: 'get_rule_hits' } },
+          { descriptor: { name: 'apply_rules' } },
+        ],
+      },
+    });
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      'get_rules',
+      'get_rule_hits',
+      'apply_rules',
+    ]);
+    expect(tool(snapshot, 'get_rules').kind).toBe('query');
+    expect(tool(snapshot, 'get_rule_hits').kind).toBe('query');
+    expect(tool(snapshot, 'apply_rules').kind).toBe('change');
   });
 
   it('executes body, WebSocket and gRPC queries through the shared registry', async () => {
@@ -231,6 +272,7 @@ describe('AgentToolService', () => {
     const service = new AgentToolService(
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
+      () => undefined,
       () => undefined,
       () => undefined,
     );
@@ -305,6 +347,7 @@ describe('AgentToolService', () => {
       new FakeToolCapabilitySettingsService(),
       () => undefined,
       () => undefined,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -344,6 +387,7 @@ describe('AgentToolService', () => {
       new FakeToolCapabilitySettingsService(),
       () => undefined,
       () => undefined,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -373,6 +417,7 @@ describe('AgentToolService', () => {
       coreRuntime,
       new FakeToolCapabilitySettingsService(),
       captureStatusChanged,
+      () => undefined,
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
@@ -434,6 +479,7 @@ describe('AgentToolService', () => {
       new FakeToolCapabilitySettingsService(),
       captureStatusChanged,
       captureReset,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -474,6 +520,122 @@ describe('AgentToolService', () => {
     now.mockRestore();
   });
 
+  it('queries and replaces Rules through the shared registry', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    const nodes = [{
+      kind: 'folder' as const,
+      id: 'folder-1',
+      name: 'API',
+      children: [{
+        kind: 'rule' as const,
+        id: 'rule-1',
+        name: 'Agent header',
+        enabled: true,
+        priority: 0,
+        matchers: [{ type: 'host' as const, value: '127.0.0.1', mode: 'exact' as const }],
+        actions: [{
+          type: 'header' as const,
+          phase: 'request' as const,
+          op: 'set' as const,
+          name: 'x-agent-rules',
+          value: 'active',
+        }],
+      }],
+    }];
+    coreRuntime.results.set('rules.get', {
+      type: 'rules.ruleset',
+      payload: { ruleSet: { revision: 4, nodes } },
+    });
+    coreRuntime.results.set('rules.hits', {
+      type: 'rules.hits',
+      payload: { counts: [{ ruleId: 'rule-1', count: 2 }] },
+    });
+    coreRuntime.results.set('rules.replace', {
+      type: 'rules.revision',
+      payload: { revision: 5 },
+    });
+    const rulesChanged = vi.fn();
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      rulesChanged,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'rules' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
+    const abortController = new AbortController();
+    const applyRules = tool(snapshot, 'apply_rules');
+
+    await expect(tool(snapshot, 'get_rules').execute(
+      {},
+      { abortSignal: abortController.signal },
+    )).resolves.toMatchObject({ ok: true, value: { ruleSet: { revision: 4 } } });
+    await expect(tool(snapshot, 'get_rule_hits').execute(
+      {},
+      { abortSignal: abortController.signal },
+    )).resolves.toEqual({
+      ok: true,
+      value: { counts: [{ ruleId: 'rule-1', count: 2 }] },
+    });
+    await expect(applyRules.describeEffect?.(
+      { baseRevision: 4, nodes },
+      { abortSignal: abortController.signal },
+    )).resolves.toMatchObject({
+      metadata: {
+        baseRevision: 4,
+        currentRuleCount: 1,
+        nextRuleCount: 1,
+        currentEnabledCount: 1,
+        nextEnabledCount: 1,
+      },
+    });
+    await expect(applyRules.execute(
+      { baseRevision: 4, nodes },
+      { abortSignal: abortController.signal },
+    )).resolves.toEqual({ ok: true, value: { revision: 5 } });
+
+    expect(coreRuntime.commands).toEqual([
+      { type: 'rules.get', payload: {} },
+      { type: 'rules.hits', payload: {} },
+      { type: 'rules.get', payload: {} },
+      { type: 'rules.get', payload: {} },
+      { type: 'rules.replace', payload: { expectedRevision: 4, nodes } },
+    ]);
+    expect(coreRuntime.abortSignals).toEqual(Array(5).fill(abortController.signal));
+    expect(rulesChanged).toHaveBeenCalledWith({ revision: 5 });
+  });
+
+  it('does not publish a Rules revision when replacement fails', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('rules.get', {
+      type: 'rules.ruleset',
+      payload: { ruleSet: { revision: 0, nodes: [] } },
+    });
+    const rulesChanged = vi.fn();
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      rulesChanged,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'rules' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
+
+    await expect(tool(snapshot, 'apply_rules').execute(
+      { baseRevision: 0, nodes: [] },
+      { abortSignal: new AbortController().signal },
+    )).rejects.toThrow('No fake result for rules.replace.');
+    expect(rulesChanged).not.toHaveBeenCalled();
+  });
+
   it('does not reset Capture when cleanup fails', async () => {
     const coreRuntime = new FakeCoreRuntime();
     const captureReset = vi.fn();
@@ -482,6 +644,7 @@ describe('AgentToolService', () => {
       new FakeToolCapabilitySettingsService(),
       () => undefined,
       captureReset,
+      () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'traffic' },
@@ -502,6 +665,7 @@ describe('AgentToolService', () => {
     const service = new AgentToolService(
       coreRuntime,
       settings,
+      () => undefined,
       () => undefined,
       () => undefined,
     );

@@ -1,6 +1,6 @@
 # Feature: Settings
 
-> 最后更新：2026-08-30
+> 最后更新：2026-09-03
 > Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
 > Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
@@ -16,7 +16,7 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 | 更新 | Main | 检查、changelog、手动下载、打开安装器 |
 | 存储 | Core | 用量状态、清理 |
 | 语言与主题 | Renderer | 15 种语言、4 套主题 |
-| Agent | Main + Renderer | Provider/Credential、持久化 Chat、Streaming、Usage 与恢复已实现；Tool capability 配置待设计实现 |
+| Agent | Main + Renderer | Provider/Credential、持久化Chat、Streaming、Usage、恢复与24项Tool capability双列配置均已实现 |
 
 **核心边界：所有 OS 级操作只在 Main。** Core 不读写系统设置，Renderer 只表达意图。
 

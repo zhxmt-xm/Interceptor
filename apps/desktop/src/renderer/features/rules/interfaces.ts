@@ -79,6 +79,8 @@ export interface RulesState {
   error: string | null;
   /** 上次保存因 revision 冲突失败（他处已修改），需重新加载。 */
   conflict: boolean;
+  /** 已观察到的最高外部revision，防止乱序事件重新发起旧reload。 */
+  latestExternalRevision: number;
 
   loadRuleSet(ruleSet: RuleSet): void;
   setHits(counts: RuleHitCount[]): void;
@@ -91,7 +93,11 @@ export interface RulesState {
   addRule(name?: string, parentId?: string | null): void;
   addRuleDraft(rule: RuleDefinition): void;
   /** 导入写入 Core 成功后，原子更新草稿、已应用快照与 revision。 */
-  importSucceeded(nodes: readonly RuleNode[], revision: number): void;
+  importSucceeded(
+    nodes: readonly RuleNode[],
+    revision: number,
+    startingNodes: readonly RuleNode[],
+  ): void;
   addFolder(name: string, parentId?: string | null): void;
   /** 删除任意节点；目录连同其子树一起删除。 */
   removeNode(id: string): void;
@@ -110,10 +116,13 @@ export interface RulesState {
   removeAction(ruleId: string, index: number): void;
 
   beginLoad(): void;
+  finishLoad(): void;
   loadFailed(message: string): void;
   beginSave(): void;
-  saveSucceeded(revision: number): void;
+  saveSucceeded(revision: number, savedNodes: readonly RuleNode[]): void;
   saveFailed(message: string, conflict: boolean): void;
+  markConflict(message: string): void;
+  recordExternalRevision(revision: number): void;
 }
 
 /** 匹配方式（与 StringMatchMode / KeyMatchMode 共用值域）。 */

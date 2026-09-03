@@ -4,7 +4,7 @@
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、七个Traffic query和三个change Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
+> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、Traffic十项与Rules三项Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
 
 ## 术语与关系
 
@@ -1352,7 +1352,7 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 ### [阶段 2 · 进行中] 共享 Tool 目录与24项业务能力
 
 目标：先确定完整产品 Tool 目录和用户开关，再按能力组把24项共享Tool全部接入内置Agent。当前Agent代码为
-10/24、已验收真实Agent或MCP Tool Call为10/24，MCP adapter为24/24；已完成的查询与Traffic控制Tool只是前两组，
+13/24、已验收真实Agent或MCP Tool Call为13/24，MCP adapter为24/24；已完成Traffic与Rules两组，
 不是Agent的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
@@ -1375,7 +1375,7 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 - `agent.tools.traffic-discovery`扩展Storage前精确Red于`call-storage`状态为`failed`，当前源码`1/1` Green；最终一次
   真实`capture.status`为`1 session / 3 exchanges / 1 body / 92 B`，关闭后返回`unknown_tool`，恢复后重新进入discovery；
   两代Main/Core PID为`20596/42100`与`44412/12224`，均`gracefulDestroyVerified=true`且释放8888。
-- 后续固定顺序为：Rules 3项、Breakpoints 8项、Requests 2项、
+- 后续固定顺序为：Breakpoints 8项、Requests 2项、
   Diagnostics 1项；逐项矩阵、owning executor测试缺口和真实调用状态只在[Tool能力目录](tool-capabilities.md)维护。
 - Tool主线完成后再执行Playground 24项Developer人工报告，最后将Capture对正式Playground场景的真实Electron覆盖
   从2/39按六组收敛到39/39；该收敛不替代每个Tool work item自己的真实E2E。
@@ -1436,6 +1436,26 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
   产品按钮不再拥有独立的本地clear逻辑；Transcript复用`storage`摘要展示清理后的归零计数。
 - 独立`agent.tools.traffic-control`真实workflow覆盖两项Deny/Allow/Auto、动态影响、UI同步、清空后继续捕获、
   Settings关闭后的`unknown_tool`、跨重启零重放以及Main/Core/8888/系统代理完整恢复。
+
+#### Rules三项
+
+- `get_rules`、`get_rule_hits`、`apply_rules`继续复用共享registry的`rules.get`、`rules.hits`与
+  `rules.replace`，Agent不新增Rules IPC、Core命令或旁路状态。
+- `apply_rules`的`nodes`必须由共享Tool包中的一份递归Rule schema同时生成Model JSON Schema并解析不可信参数；
+  覆盖folder/rule、全部matcher/action联合、严格额外字段、最大三级目录和全树ID唯一性，禁止`RuleNode[]`强转。
+- `get_rules`不得暴露Map Local真实路径，只返回`<preserve-existing-local-path>`；`apply_rules`只允许同Rule ID、同action
+  索引且Rule其余内容完全不变时原样保留Core已有路径，不能借保留路径改变matcher、enabled、priority或其他action。
+  整个未变Rule在目录间移动仍允许，因为folder只组织、不参与匹配或文件权限。
+- `baseRevision`在执行前与最新`rules.get`精确比较；过期返回`invalid_arguments`并要求重新读取，不触达
+  `rules.replace`。Ask的动态影响携带规则总数、启用数和Added/Removed，Deny不改revision；Allow/Auto都执行正式替换。
+- 三项结果使用typed摘要：Rule tree显示revision/规则数/启用数，hits显示规则数/总命中，apply显示新revision。
+- Agent/MCP成功replace后Main广播`rules:changed { revision }`；clean Renderer重载，dirty/saving Renderer保留草稿并
+  标记conflict。最高外部revision与异步序列共同阻止乱序回退，产品UI保存通知其他窗口但跳过发送窗口。
+- 独立`agent.tools.rules`真实workflow由Rules UI先创建嵌套Rule并Apply，再让Agent读取、查询真实HTTP命中、
+  Deny/Allow/Auto替换并验证origin header effect；随后验证stale revision、三项关闭后的`unknown_tool`、重启零重放、
+  Rule与审批metadata恢复以及完整销毁。
+- 既有`mcp.desktop.streamable-http`再由官方Client以Auto执行`get_rules → apply_rules`，锁定同一Main广播会让clean Rules
+  Renderer重载revision/name并改变真实origin header；第二代恢复同一Rule与revision。
 
 ### [阶段 5] 长 Session 与恢复
 

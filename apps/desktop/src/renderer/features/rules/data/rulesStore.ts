@@ -20,6 +20,7 @@ import {
   createFolder,
   createMatcher,
   createRule,
+  isRulesDirty,
   isRuleComplete,
   mapRule,
   normalizePriorities,
@@ -63,6 +64,7 @@ export const useRulesStore = create<RulesState>((set) => ({
   saving: false,
   error: null,
   conflict: false,
+  latestExternalRevision: 0,
 
   loadRuleSet: (ruleSet) =>
     set((state) => {
@@ -71,6 +73,7 @@ export const useRulesStore = create<RulesState>((set) => ({
       const selectedId = fallbackRuleId(ruleIds, state.selectedId);
       return {
         revision: ruleSet.revision,
+        latestExternalRevision: Math.max(state.latestExternalRevision, ruleSet.revision),
         initialized: true,
         nodes,
         applied: cloneNodes(ruleSet.nodes),
@@ -136,15 +139,15 @@ export const useRulesStore = create<RulesState>((set) => ({
       openRuleId: rule.id,
     })),
 
-  importSucceeded: (nodes, revision) =>
-    set({
-      nodes: cloneNodes(nodes),
+  importSucceeded: (nodes, revision, startingNodes) =>
+    set((state) => ({
+      nodes: isRulesDirty(state.nodes, startingNodes) ? state.nodes : cloneNodes(nodes),
       applied: cloneNodes(nodes),
       revision,
       saving: false,
-      conflict: false,
-      error: null,
-    }),
+      conflict: state.conflict,
+      error: state.conflict ? state.error : null,
+    })),
 
   addFolder: (name, parentId) =>
     set((state) => {
@@ -252,19 +255,27 @@ export const useRulesStore = create<RulesState>((set) => ({
 
   beginLoad: () => set({ loading: true, error: null }),
 
+  finishLoad: () => set({ loading: false }),
+
   loadFailed: (message) => set({ loading: false, error: message }),
 
   beginSave: () => set({ saving: true, error: null, conflict: false }),
 
-  saveSucceeded: (revision) =>
+  saveSucceeded: (revision, savedNodes) =>
     set((state) => ({
       revision,
-      applied: cloneNodes(state.nodes),
+      applied: cloneNodes(savedNodes),
       saving: false,
-      conflict: false,
-      error: null,
+      conflict: state.conflict,
+      error: state.conflict ? state.error : null,
     })),
 
   saveFailed: (message, conflict) =>
     set({ saving: false, error: message, conflict }),
+
+  markConflict: (message) => set({ error: message, conflict: true }),
+
+  recordExternalRevision: (revision) => set((state) => ({
+    latestExternalRevision: Math.max(state.latestExternalRevision, revision),
+  })),
 }));

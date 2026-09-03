@@ -279,6 +279,7 @@ diagnostics.row.<traceKey>
 | `agent.tools.body-messages` | Agent读取真实HTTP正文、WebSocket frame与gRPC message | privileged UI | passed |
 | `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared | passed |
 | `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared | passed |
+| `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 
@@ -286,7 +287,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `mcp.desktop.streamable-http` | 外部Host经loopback HTTP接入、授权Tool并跨重启保持凭据 | shared | passed |
+| `mcp.desktop.streamable-http` | 外部Host经loopback HTTP接入、授权Tool、同步Rules并跨重启保持状态 | shared | passed |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 
 详细步骤：[docs/mcp.md](docs/mcp.md)

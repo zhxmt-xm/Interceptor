@@ -4,7 +4,7 @@
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入10/24，已验收真实Agent或MCP Tool Call覆盖10/24，owning package正向executor unit覆盖14/24；Playground
+> 代码已接入13/24，已验收真实Agent或MCP Tool Call覆盖13/24，owning package正向executor unit覆盖16/24；Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
@@ -74,8 +74,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入七个Traffic query Tool与`start_recording`、`stop_recording`、
-   `clear_capture`；关闭项同时过滤Capability
+- Agent当前通过动态`AgentToolSource`接入七个Traffic query Tool、三个Rules Tool与`start_recording`、
+   `stop_recording`、`clear_capture`；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -104,9 +104,9 @@ interface ToolCapabilitySettingsRecord {
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `get_rules` | query | `getRules` / `rules.get` | 共享 registry + MCP adapter |
-| `get_rule_hits` | query | `getRuleHits` / `rules.hits` | 共享 registry + MCP adapter |
-| `apply_rules` | change | `replaceRules` / `rules.replace` | 共享 registry + MCP adapter；完整递归Rule schema待该Tool独立item |
+| `get_rules` | query | `getRules` / `rules.get` | 共享 registry + MCP adapter + Agent；Map Local路径脱敏 |
+| `get_rule_hits` | query | `getRuleHits` / `rules.hits` | 共享 registry + MCP adapter + Agent |
+| `apply_rules` | change | `replaceRules` / `rules.replace` | 共享 registry + MCP adapter + Agent；严格递归schema，Map Local仅随未变Rule保留 |
 | `import_rules` | change | 当前由Renderer串联`readImportFile`、解析确认与`replaceRules` | 先补 intent |
 | `export_rules` | change | `exportRules` / 原生 Save Dialog | 产品已具备 |
 | `get_collection` | query | `getCollection` / `collection.get` | 产品已具备 |
@@ -210,9 +210,9 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `get_exchange_body` | 已完成 | 已完成 | Agent已完成 |
 | `list_websocket_messages` | 已完成 | 已完成 | Agent已完成 |
 | `list_grpc_messages` | 已完成 | 已完成 | Agent已完成 |
-| `get_rules` | 待接入 | 待补 | 待完成 |
-| `get_rule_hits` | 待接入 | 待补 | 待完成 |
-| `apply_rules` | 待接入；递归Rule schema待完成 | 已完成 | 待完成 |
+| `get_rules` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `get_rule_hits` | 已完成 | 已完成 | Agent已完成 |
+| `apply_rules` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `list_breakpoints` | 待接入 | 待补 | 待完成 |
 | `enable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
 | `disable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
@@ -242,8 +242,9 @@ Capture 39项真实Electron收敛：
    `clear_capture`审批前动态读取usage；产品按钮、Agent和MCP成功清理后统一发布带`clearedBefore`的reset，使rows、
    selection、facets、Rules hits与旧分页同步收敛。真实workflow验证清空后继续捕获、typed摘要、关闭项
    `unknown_tool`、重启零重放和系统副作用恢复。
-4. **[待实现] Rules**：先完成`apply_rules`完整递归Rule schema，再接入`get_rules`、`get_rule_hits`、
-   `apply_rules`并验证revision、conflict与真实Rule effect。
+4. **[已完成] Rules**：同一Zod递归schema生成Model JSON Schema并严格解析folder/rule及全部matcher/action联合，
+   校验三级目录与ID唯一性；三项已接入Agent。Map Local真实路径不进入Tool上下文且只可原位安全保留；typed摘要、
+   动态影响、Ask Deny/Allow、Auto、stale revision、真实Rule effect、外部revision并发同步、关闭项与重启零重放均通过。
 5. **[待实现] Breakpoints**：按HTTP与WebSocket拆分接入八项现有Tool，使用真实pending、队列、编辑、
    Allow/Deny/Auto与origin事实验收。
 6. **[待实现] Requests**：接入`send_request`与`probe_connection`，验证真实origin/TLS、取消和网络结果。
@@ -257,7 +258,7 @@ Capture 39项真实Electron收敛：
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Rules三项。
+分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Breakpoints八项。
 
 ## 6. 相关未完成验收
 

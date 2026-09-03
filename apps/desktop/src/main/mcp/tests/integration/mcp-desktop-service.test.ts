@@ -40,6 +40,8 @@ class FakeCoreRuntime extends CoreRuntime {
   readonly commands: CoreCommand[] = [];
   /** Whether Capture cleanup should fail before committing. */
   failCaptureCleanup = false;
+  /** Whether Rules replacement should fail before committing. */
+  failRulesReplacement = false;
 
   /** Returns deterministic results for the connected vertical slice. */
   override async request<T extends CoreCommand>(
@@ -72,6 +74,13 @@ class FakeCoreRuntime extends CoreRuntime {
           totalBytes: 4_096,
         },
       } as unknown as CoreResultForCommand<T>;
+    }
+    if (command.type === 'rules.replace') {
+      if (this.failRulesReplacement) throw new Error('replacement failed');
+      return {
+        type: 'rules.revision',
+        payload: { revision: 5 },
+      } as CoreResultForCommand<T>;
     }
     throw new Error(`Unexpected Core command "${command.type}".`);
   }
@@ -133,6 +142,29 @@ describe('McpDesktopService', () => {
     )).rejects.toThrow('cleanup failed');
 
     expect(fixture.captureReset).not.toHaveBeenCalled();
+  });
+
+  it('publishes the committed revision after a Rules replacement succeeds', async () => {
+    const fixture = await createFixture(roots, services);
+
+    await fixture.mcpDesktopService.invoke(
+      { type: 'rules.replace', payload: { expectedRevision: 4, nodes: [] } },
+      new AbortController().signal,
+    );
+
+    expect(fixture.rulesChanged).toHaveBeenCalledWith({ revision: 5 });
+  });
+
+  it('does not publish a revision when Rules replacement fails', async () => {
+    const fixture = await createFixture(roots, services);
+    fixture.coreRuntime.failRulesReplacement = true;
+
+    await expect(fixture.mcpDesktopService.invoke(
+      { type: 'rules.replace', payload: { expectedRevision: 4, nodes: [] } },
+      new AbortController().signal,
+    )).rejects.toThrow('replacement failed');
+
+    expect(fixture.rulesChanged).not.toHaveBeenCalled();
   });
 
   it('enables one loopback endpoint and projects current MCP Tool switches', async () => {
@@ -301,6 +333,7 @@ async function createFixture(
   coreRuntime: FakeCoreRuntime;
   mcpDesktopService: McpDesktopService;
   root: string;
+  rulesChanged: ReturnType<typeof vi.fn>;
   toolCapabilitySettingsService: FakeToolCapabilitySettingsService;
 }> {
   const root = existingRoot ?? await mkdtemp(path.join(os.tmpdir(), 'interceptor-mcp-service-'));
@@ -309,6 +342,7 @@ async function createFixture(
   const toolCapabilitySettingsService = new FakeToolCapabilitySettingsService();
   const approvals: McpApprovalRequest[] = [];
   const captureReset = vi.fn();
+  const rulesChanged = vi.fn();
   const closedApprovalIds: string[] = [];
   let copiedText = '';
   const mcpDesktopService = new McpDesktopService({
@@ -321,6 +355,7 @@ async function createFixture(
     approvalClosed: (approvalId) => closedApprovalIds.push(approvalId),
     captureStatusChanged: () => undefined,
     captureReset,
+    rulesChanged,
     copyText: (value) => {
       copiedText = value;
     },
@@ -339,6 +374,7 @@ async function createFixture(
     coreRuntime,
     mcpDesktopService,
     root,
+    rulesChanged,
     toolCapabilitySettingsService,
   };
 }

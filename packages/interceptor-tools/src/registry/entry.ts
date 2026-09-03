@@ -33,6 +33,12 @@ import type {
   InterceptorToolJsonSchemaProperty,
 } from '../interfaces';
 import { InterceptorToolRedactor } from '../redaction/entry';
+import {
+  APPLY_RULES_INPUT_SCHEMA,
+  parseRuleNodes,
+  redactRuleNodesForTools,
+  restorePreservedRuleLocalPaths,
+} from '../rules/entry';
 import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
@@ -356,7 +362,26 @@ function buildQueryTools(
         return result.payload;
       },
     },
-    simpleQuery('get_rules', 'Rule set', 'Read the current rule tree and revision.', 'rules', 'rules.get'),
+    {
+      name: 'get_rules',
+      title: 'Rule set',
+      description: 'Read the current rule tree and revision.',
+      capabilityId: 'rules',
+      kind: 'query',
+      destructive: false,
+      openWorld: false,
+      inputSchema: schema(),
+      async execute(args, context) {
+        rejectUnknownKeys(args, []);
+        const result = await context.host.invoke({ type: 'rules.get', payload: {} }, context.abortSignal);
+        return {
+          ruleSet: {
+            ...result.payload.ruleSet,
+            nodes: redactRuleNodesForTools(result.payload.ruleSet.nodes),
+          },
+        };
+      },
+    },
     simpleQuery('get_rule_hits', 'Rule hits', 'Read match counts for current rules.', 'rules', 'rules.hits'),
     simpleQuery(
       'list_breakpoints',
@@ -432,37 +457,49 @@ function buildChangeTools(
       kind: 'change',
       destructive: false,
       openWorld: false,
-      inputSchema: schema({
-        baseRevision: property('integer', 'Revision returned by get_rules.', { minimum: 0 }),
-        nodes: property('array', 'Complete replacement Rule tree.', {
-          items: property('object', 'A Rule or folder node.'),
-        }),
-      }, ['baseRevision', 'nodes']),
+      inputSchema: APPLY_RULES_INPUT_SCHEMA,
       async describeChange(args, context) {
         rejectUnknownKeys(args, ['baseRevision', 'nodes']);
+        const baseRevision = requireIntegerInRange(args, 'baseRevision', { minimum: 0 });
+        const parsedNodes = parseRuleNodes(args['nodes']);
         const current = await context.host.invoke({ type: 'rules.get', payload: {} }, context.abortSignal);
-        const nextNodes = requireObjectArray(args, 'nodes') as unknown as RuleNode[];
+        requireCurrentRuleRevision(baseRevision, current.payload.ruleSet.revision);
+        const nextNodes = restorePreservedRuleLocalPaths(
+          parsedNodes,
+          current.payload.ruleSet.nodes,
+        );
         const currentNames = collectLeaves(current.payload.ruleSet.nodes).map((rule) => rule.name);
         const nextNames = collectLeaves(nextNodes).map((rule) => rule.name);
+        const currentEnabledCount = collectLeaves(current.payload.ruleSet.nodes)
+          .filter((rule) => rule.enabled).length;
+        const nextEnabledCount = collectLeaves(nextNodes).filter((rule) => rule.enabled).length;
         return {
           lines: [
             `Rule count: ${currentNames.length} → ${nextNames.length}`,
             `Removed: ${diffNames(currentNames, nextNames) || '(none)'}`,
             `Added: ${diffNames(nextNames, currentNames) || '(none)'}`,
           ],
+          metadata: {
+            baseRevision,
+            currentRuleCount: currentNames.length,
+            nextRuleCount: nextNames.length,
+            currentEnabledCount,
+            nextEnabledCount,
+            removedNames: diffNames(currentNames, nextNames),
+            addedNames: diffNames(nextNames, currentNames),
+          },
         };
       },
       async execute(args, context) {
         rejectUnknownKeys(args, ['baseRevision', 'nodes']);
-        const baseRevision = requireInteger(args, 'baseRevision');
-        const nodes = requireObjectArray(args, 'nodes') as unknown as RuleNode[];
+        const baseRevision = requireIntegerInRange(args, 'baseRevision', { minimum: 0 });
+        const parsedNodes = parseRuleNodes(args['nodes']);
         const current = await context.host.invoke({ type: 'rules.get', payload: {} }, context.abortSignal);
-        if (current.payload.ruleSet.revision !== baseRevision) {
-          throw new InterceptorToolArgumentError(
-            `rule set moved from revision ${baseRevision} to ${current.payload.ruleSet.revision}; `
-            + 're-read with get_rules and retry',
-          );
-        }
+        requireCurrentRuleRevision(baseRevision, current.payload.ruleSet.revision);
+        const nodes = restorePreservedRuleLocalPaths(
+          parsedNodes,
+          current.payload.ruleSet.nodes,
+        );
         const result = await context.host.invoke({
           type: 'rules.replace',
           payload: { expectedRevision: baseRevision, nodes },
@@ -911,6 +948,15 @@ function describeEdit(args: Readonly<Record<string, unknown>>): readonly string[
 /** Returns names that occur only in the left collection. */
 function diffNames(left: readonly string[], right: readonly string[]): string {
   return left.filter((name) => !right.includes(name)).join(', ');
+}
+
+/** Rejects a stale Rule replacement before approval or execution. */
+function requireCurrentRuleRevision(baseRevision: number, currentRevision: number): void {
+  if (currentRevision === baseRevision) return;
+  throw new InterceptorToolArgumentError(
+    `rule set moved from revision ${baseRevision} to ${currentRevision}; `
+    + 're-read with get_rules and retry',
+  );
 }
 
 /** Projects progressive-disclosure descriptors from the executable registry. */

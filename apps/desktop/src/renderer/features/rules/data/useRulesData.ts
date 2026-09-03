@@ -2,19 +2,23 @@ import { useEffect } from 'react';
 
 import { collectLeafIds } from '@interceptor/core-protocol';
 
-import type { RuleActionType, RuleNode } from '../../../../shared/desktop-api';
+import type { RuleActionType, RuleNode, RulesChanged } from '../../../../shared/desktop-api';
 import { useRulesStore } from './rulesStore';
 import type { BreakpointScope, RuleImportPreview } from '../interfaces';
 import {
   createBreakpointRule,
   createRuleFromRequest,
   isRuleSetComplete,
+  isRulesDirty,
   normalizePriorities,
   parseImportedRules,
 } from '../utils';
 
 const HITS_POLL_INTERVAL_MS = 4_000;
 let initialLoad: Promise<void> | null = null;
+let externalRulesLoadSequence = 0;
+const EXTERNAL_RULES_CONFLICT_MESSAGE =
+  'Rules changed outside this editor. Reload to discard the local draft.';
 
 function canApplyRuleSet(): boolean {
   const store = useRulesStore.getState();
@@ -27,6 +31,7 @@ function describeError(error: unknown): string {
 
 /** 拉取当前规则集并载入草稿；供挂载与冲突后重载调用。 */
 export async function loadRules(): Promise<void> {
+  const sequence = ++externalRulesLoadSequence;
   const api = window.interceptor;
   if (!api?.getRules) {
     return;
@@ -34,9 +39,59 @@ export async function loadRules(): Promise<void> {
   useRulesStore.getState().beginLoad();
   try {
     const ruleSet = await api.getRules();
-    useRulesStore.getState().loadRuleSet(ruleSet);
+    if (sequence !== externalRulesLoadSequence) return;
+    const store = useRulesStore.getState();
+    if (ruleSet.revision < Math.max(store.revision, store.latestExternalRevision)) {
+      store.finishLoad();
+      if (ruleSet.revision < store.latestExternalRevision) {
+        store.markConflict(EXTERNAL_RULES_CONFLICT_MESSAGE);
+      }
+      return;
+    }
+    store.loadRuleSet(ruleSet);
   } catch (error) {
-    useRulesStore.getState().loadFailed(describeError(error));
+    if (sequence === externalRulesLoadSequence) {
+      useRulesStore.getState().loadFailed(describeError(error));
+    }
+  }
+}
+
+/** Synchronizes a Tool-owned replacement without discarding a local Rules draft. */
+export async function synchronizeExternalRulesChange(change: RulesChanged): Promise<void> {
+  const store = useRulesStore.getState();
+  if (change.revision <= Math.max(store.revision, store.latestExternalRevision)) {
+    return;
+  }
+  store.recordExternalRevision(change.revision);
+  if (store.saving || isRulesDirty(store.nodes, store.applied)) {
+    store.markConflict(EXTERNAL_RULES_CONFLICT_MESSAGE);
+    return;
+  }
+  const api = window.interceptor;
+  if (!api?.getRules) return;
+  const sequence = ++externalRulesLoadSequence;
+  const cleanBaseline = structuredClone(store.nodes);
+  try {
+    const ruleSet = await api.getRules();
+    if (sequence !== externalRulesLoadSequence) return;
+    const current = useRulesStore.getState();
+    current.finishLoad();
+    if (current.saving || isRulesDirty(current.nodes, cleanBaseline)) {
+      current.markConflict(EXTERNAL_RULES_CONFLICT_MESSAGE);
+      return;
+    }
+    if (ruleSet.revision < change.revision) {
+      current.markConflict(EXTERNAL_RULES_CONFLICT_MESSAGE);
+      return;
+    }
+    if (ruleSet.revision <= current.revision) return;
+    current.loadRuleSet(ruleSet);
+  } catch {
+    if (sequence === externalRulesLoadSequence) {
+      const current = useRulesStore.getState();
+      current.finishLoad();
+      current.markConflict(EXTERNAL_RULES_CONFLICT_MESSAGE);
+    }
   }
 }
 
@@ -148,10 +203,11 @@ export async function applyRules(): Promise<boolean> {
     return false;
   }
   store.beginSave();
+  const savedNodes = structuredClone(store.nodes);
   try {
-    const result = await api.replaceRules(store.revision, store.nodes);
+    const result = await api.replaceRules(store.revision, savedNodes);
     if (result.ok) {
-      useRulesStore.getState().saveSucceeded(result.revision);
+      useRulesStore.getState().saveSucceeded(result.revision, savedNodes);
       void loadRuleHits();
       return true;
     }
@@ -221,7 +277,8 @@ export async function importRules(nodes: readonly RuleNode[]): Promise<boolean> 
     return false;
   }
   const store = useRulesStore.getState();
-  const combined = normalizePriorities([...store.nodes, ...nodes]);
+  const startingNodes = structuredClone(store.nodes);
+  const combined = normalizePriorities([...startingNodes, ...nodes]);
   if (!isRuleSetComplete(combined)) {
     return false;
   }
@@ -229,7 +286,7 @@ export async function importRules(nodes: readonly RuleNode[]): Promise<boolean> 
   try {
     const result = await api.replaceRules(store.revision, combined);
     if (result.ok) {
-      useRulesStore.getState().importSucceeded(combined, result.revision);
+      useRulesStore.getState().importSucceeded(combined, result.revision, startingNodes);
       void loadRuleHits();
       return true;
     }
@@ -251,6 +308,11 @@ export function useRulesData(): void {
     void ensureRulesLoaded();
     void loadRuleHits();
   }, []);
+
+  // Agent与MCP成功替换后，clean视图重载；本地草稿则保留并进入现有conflict流程。
+  useEffect(() => window.interceptor.onRulesChanged((change) => {
+    void synchronizeExternalRulesChange(change);
+  }), []);
 
   // 周期刷新命中计数（捕获运行时命中会增长）。
   useEffect(() => {

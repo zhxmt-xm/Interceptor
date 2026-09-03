@@ -2,6 +2,12 @@
 
 本文件定义 Rules 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile/trace，并通过真实 Rules UI、Preload、Core RuleStore 与 Proxy data plane 验证。
 
+内置Agent的`get_rules`、`get_rule_hits`与`apply_rules`纵向流程由
+[`agent.tools.rules`](agent.md#agent-tools-rules)拥有。它复用真实Rules UI创建输入与本文件既有revision/hit/effect契约，
+但不替代Rules工作区自身的层级、菜单、冲突与编辑器workflow。
+外部MCP提交后的Renderer同步由[`mcp.desktop.streamable-http`](mcp.md#mcp-desktop-streamable-http)拥有，使用官方Client
+和真实origin验证`get_rules → apply_rules`、revision事件与跨重启恢复。
+
 <a id="rules-load-search-select"></a>
 ## `rules.load-search-select`
 
