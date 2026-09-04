@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、100条Inventory与101份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、101条Inventory与102份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -282,6 +282,7 @@ diagnostics.row.<traceKey>
 | `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared | passed |
 | `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
 | `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI | passed |
+| `agent.tools.requests` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI | passed |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 

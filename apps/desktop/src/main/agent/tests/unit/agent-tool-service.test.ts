@@ -351,6 +351,127 @@ describe('AgentToolService', () => {
     expect(coreRuntime.abortSignals).toEqual(Array(9).fill(abortController.signal));
   });
 
+  it('discovers and discloses exactly the two connected Requests Tools', async () => {
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'requests' },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(discovery).toEqual({
+      ok: true,
+      value: {
+        matches: expect.arrayContaining([
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'send_request' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'probe_connection' }) }),
+        ]),
+      },
+    });
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'requests'));
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      'send_request',
+      'probe_connection',
+    ]);
+    expect(tool(snapshot, 'send_request').kind).toBe('change');
+    expect(tool(snapshot, 'probe_connection').kind).toBe('change');
+  });
+
+  it('executes both Requests Tools through CoreRuntime with cancellation', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('composer.send', {
+      type: 'composer.response',
+      payload: {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        httpVersion: 'HTTP/1.1',
+        headers: [],
+        body: new Uint8Array(),
+        totalBytes: 0,
+        durationMs: 1,
+        timing: {
+          dnsMs: 0,
+          tcpMs: 0,
+          tlsMs: 0,
+          requestMs: 0,
+          waitingMs: 1,
+          downloadMs: 0,
+          totalMs: 1,
+        },
+        tls: null,
+        remoteAddress: '127.0.0.1',
+      },
+    });
+    coreRuntime.results.set('tls.probe', {
+      type: 'tls.probed',
+      payload: {
+        ok: true,
+        protocol: 'TLSv1.3',
+        cipher: 'TLS_AES_256_GCM_SHA384',
+        alpn: 'h2',
+        authorized: false,
+        certificates: [],
+      },
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'requests' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'requests'));
+    const abortController = new AbortController();
+
+    await tool(snapshot, 'send_request').execute({
+      method: 'POST',
+      url: 'https://api.test/items',
+      headers: [{ name: 'x-mode', value: 'agent' }],
+      body: '',
+      protocol: 'http/1.1',
+      timeoutMs: 2_000,
+    }, { abortSignal: abortController.signal });
+    await tool(snapshot, 'probe_connection').execute({
+      host: 'api.test',
+      port: 443,
+      timeoutMs: 1_000,
+    }, { abortSignal: abortController.signal });
+
+    expect(coreRuntime.commands).toEqual([
+      {
+        type: 'composer.send',
+        payload: {
+          method: 'POST',
+          url: 'https://api.test/items',
+          headers: [{ name: 'x-mode', value: 'agent' }],
+          body: '',
+          protocol: 'http/1.1',
+          timeoutMs: 2_000,
+        },
+      },
+      {
+        type: 'tls.probe',
+        payload: { host: 'api.test', port: 443, timeoutMs: 1_000 },
+      },
+    ]);
+    expect(coreRuntime.abortSignals).toEqual([
+      abortController.signal,
+      abortController.signal,
+    ]);
+  });
+
   it('rejects a Breakpoint Tool disabled after disclosure without invoking CoreRuntime', async () => {
     const coreRuntime = new FakeCoreRuntime();
     const settings = new FakeToolCapabilitySettingsService();

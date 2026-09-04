@@ -1337,6 +1337,144 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: items.length,
     };
+  } else if (agentSessionState === 'requests') {
+    const turnId = 'turn-agent-requests';
+    const agentStartedAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'call-discover-requests',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'requests' },
+        approval: null,
+        result: {
+          ok: true,
+          value: {
+            matches: ['send_request', 'probe_connection']
+              .map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-send-request',
+        name: 'send_request',
+        arguments: {
+          method: 'POST',
+          url: 'http://127.0.0.1:43127/e2e/agent/requests/allowed',
+        },
+        approval: {
+          approvalId: 'approval-send-request',
+          status: 'allowed',
+          description: 'Send a Composer request from this machine.',
+          effect: 'POST http://127.0.0.1:43127/e2e/agent/requests/allowed\nThis sends real traffic from your machine.',
+        },
+        result: {
+          ok: true,
+          value: {
+            ok: true,
+            method: 'POST',
+            url: 'http://127.0.0.1:43127/e2e/agent/requests/allowed',
+            status: 201,
+            totalBytes: 32,
+          },
+        },
+      },
+      {
+        callId: 'call-probe-success',
+        name: 'probe_connection',
+        arguments: { host: '127.0.0.1', port: 43128, timeoutMs: 5_000 },
+        approval: null,
+        result: {
+          ok: true,
+          value: {
+            ok: true,
+            protocol: 'TLSv1.3',
+            alpn: 'h2',
+            certificates: [{ subject: 'CN=Interceptor Requests E2E' }],
+          },
+        },
+      },
+      {
+        callId: 'call-probe-failure',
+        name: 'probe_connection',
+        arguments: { host: '127.0.0.1', port: 43129, timeoutMs: 2_000 },
+        approval: null,
+        result: {
+          ok: true,
+          value: { ok: false, error: 'connect ECONNREFUSED', certificates: [] },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-requests',
+      turnId,
+      content: 'Send the approved request and probe the local TLS endpoint.',
+      createdAt: agentStartedAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-requests-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-requests-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          approval: step.approval,
+          createdAt: agentStartedAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-requests-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: agentStartedAt + index * 3 + 3,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-requests-final',
+      turnId,
+      content: 'The request returned `201`. TLS negotiated `h2` with one certificate.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: agentStartedAt + 14,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-requests',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt: agentStartedAt,
+      updatedAt: agentStartedAt + 15,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      toolExecutionMode: 'auto',
+      summary: {
+        ...agentSessionSnapshot.summary,
+        itemCount: items.length,
+        updatedAt: agentStartedAt + 15,
+      },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: items.length,
+    };
   } else if (agentSessionState === 'rules' || agentSessionState === 'rules-result') {
     const applied = agentSessionState === 'rules-result';
     const turnId = 'turn-agent-rules';

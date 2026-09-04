@@ -36,7 +36,16 @@ export class InterceptorToolRedactor {
     } catch {
       return url;
     }
-    return this.#redactSearchParams(parsed) ? parsed.toString() : url;
+    let changed = this.#redactSearchParams(parsed);
+    if (parsed.username !== '') {
+      parsed.username = TOOL_REDACTED_PLACEHOLDER;
+      changed = true;
+    }
+    if (parsed.password !== '') {
+      parsed.password = TOOL_REDACTED_PLACEHOLDER;
+      changed = true;
+    }
+    return changed ? parsed.toString() : url;
   }
 
   /** Masks credential query parameters in a relative request path. */

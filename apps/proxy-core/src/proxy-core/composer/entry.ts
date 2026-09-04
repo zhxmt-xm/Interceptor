@@ -18,7 +18,10 @@ import * as ComposerUtils from './utils';
  */
 export class ComposerService {
   /** 执行一次出站请求；网络错误转换为 ok=false 结果供 UI 展示。 */
-  async send(request: ComposerRequestInput): Promise<ComposerResponseOutput> {
+  async send(
+    request: ComposerRequestInput,
+    abortSignal?: AbortSignal,
+  ): Promise<ComposerResponseOutput> {
     let url: URL;
     try {
       url = new URL(request.url);
@@ -32,8 +35,8 @@ export class ComposerService {
     const useH2 = request.protocol === 'h2' && url.protocol === 'https:';
     try {
       return useH2
-        ? await this.sendH2(url, request, timeoutMs)
-        : await this.sendH1(url, request, timeoutMs);
+        ? await this.sendH2(url, request, timeoutMs, abortSignal)
+        : await this.sendH1(url, request, timeoutMs, abortSignal);
     } catch (error) {
       return this.failure(
         error instanceof Error ? error.message : String(error),
@@ -68,17 +71,31 @@ export class ComposerService {
     url: URL,
     request: ComposerRequestInput,
     timeoutMs: number | undefined,
+    abortSignal: AbortSignal | undefined,
   ): Promise<ComposerResponseOutput> {
     return new Promise((resolve, reject) => {
       const isHttps = url.protocol === 'https:';
       const transport = isHttps ? https : http;
       const start = Date.now();
       const timingRecorder = new TimingRecorder();
+      let settled = false;
+      let removeAbortListener = (): void => undefined;
+      const finish = (outcome: ComposerResponseOutput | null, error?: unknown): void => {
+        if (settled) return;
+        settled = true;
+        removeAbortListener();
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+        } else if (outcome) {
+          resolve(outcome);
+        }
+      };
       const clientRequest = transport.request(
         url,
         {
           method: request.method,
           headers: ComposerUtils.buildOutgoingHeaders(request.headers),
+          agent: false,
           rejectUnauthorized: false,
         },
         (response) => {
@@ -87,7 +104,7 @@ export class ComposerService {
           response.on('data', (chunk: Buffer) => responseBody.push(chunk));
           response.on('end', () => {
             const socket = response.socket as TLSSocket;
-            resolve({
+            finish({
               ok: true,
               status: response.statusCode ?? 0,
               statusText: response.statusMessage ?? '',
@@ -101,11 +118,19 @@ export class ComposerService {
               remoteAddress: response.socket?.remoteAddress ?? null,
             });
           });
-          response.on('error', reject);
+          response.on('error', (error) => finish(null, error));
         },
       );
       clientRequest.on('socket', (socket) => timingRecorder.observeSocket(socket));
-      clientRequest.on('error', reject);
+      clientRequest.on('error', (error) => finish(null, error));
+      const cancel = (): void => {
+        clientRequest.destroy(new Error('Composer request was cancelled.'));
+      };
+      if (abortSignal !== undefined) {
+        abortSignal.addEventListener('abort', cancel, { once: true });
+        removeAbortListener = () => abortSignal.removeEventListener('abort', cancel);
+        if (abortSignal.aborted) cancel();
+      }
       if (timeoutMs !== undefined) {
         clientRequest.setTimeout(timeoutMs, () => {
           clientRequest.destroy(new Error('Composer request timed out.'));
@@ -123,6 +148,7 @@ export class ComposerService {
     url: URL,
     request: ComposerRequestInput,
     timeoutMs: number | undefined,
+    abortSignal: AbortSignal | undefined,
   ): Promise<ComposerResponseOutput> {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -133,6 +159,7 @@ export class ComposerService {
       });
       client.on('socket', (socket) => timingRecorder.observeSocket(socket));
       let settled = false;
+      let removeAbortListener = (): void => undefined;
       const finish = (
         outcome: ComposerResponseOutput | null,
         error?: unknown,
@@ -141,21 +168,23 @@ export class ComposerService {
           return;
         }
         settled = true;
-        client.close();
+        removeAbortListener();
         if (error) {
+          client.destroy();
           reject(error instanceof Error ? error : new Error(String(error)));
         } else if (outcome) {
+          client.close();
           resolve(outcome);
         }
       };
 
       client.on('error', (error) => finish(null, error));
       const requestHeaders: http2.OutgoingHttpHeaders = {
+        ...ComposerUtils.buildOutgoingHeaders(request.headers),
         ':method': request.method,
         ':path': `${url.pathname}${url.search}`,
         ':scheme': 'https',
         ':authority': url.host,
-        ...ComposerUtils.buildOutgoingHeaders(request.headers),
       };
       const stream = client.request(requestHeaders);
       const responseBody = new ResponseBody();
@@ -189,6 +218,14 @@ export class ComposerService {
         stream.setTimeout(timeoutMs, () => {
           finish(null, new Error('Composer request timed out.'));
         });
+      }
+      const cancel = (): void => {
+        stream.destroy(new Error('Composer request was cancelled.'));
+      };
+      if (abortSignal !== undefined) {
+        abortSignal.addEventListener('abort', cancel, { once: true });
+        removeAbortListener = () => abortSignal.removeEventListener('abort', cancel);
+        if (abortSignal.aborted) cancel();
       }
       if (request.body) {
         stream.write(Buffer.from(request.body, 'utf8'));

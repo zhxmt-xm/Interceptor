@@ -25,6 +25,11 @@ const TOOL_STEPS = {
     { name: 'enable_http_breakpoints', arguments: 'No parameters', result: 'Enabled' },
     { name: 'continue_breakpoint', arguments: 'breakpointId: bp-agent-request', result: 'Continued · bp-agent-request' },
   ],
+  requests: [
+    { name: 'discover_tools', arguments: 'capabilityId: requests', result: '2 tools discovered' },
+    { name: 'probe_connection', arguments: 'host: 127.0.0.1 · port: 43128 · timeoutMs: 5000', result: 'TLSv1.3 · h2 · Certificates 1' },
+    { name: 'probe_connection', arguments: 'host: 127.0.0.1 · port: 43129 · timeoutMs: 2000', result: 'TLS probe failed · connect ECONNREFUSED' },
+  ],
   rules: [
     { name: 'discover_tools', arguments: 'capabilityId: rules', result: '3 tools discovered' },
     { name: 'get_rules', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
@@ -46,8 +51,8 @@ export function AgentQueryToolTrace({ variant }: AgentQueryToolTraceProps): Reac
         <small>{steps.length} completed</small>
       </header>
       <ol>
-        {steps.map((step) => (
-          <li data-tool-name={step.name} key={step.name}>
+        {steps.map((step, index) => (
+          <li data-tool-name={step.name} key={`${step.name}-${index}`}>
             <span className={styles.toolTraceStatus}><CheckCircle2 aria-label="Completed" /></span>
             <div className={styles.toolTraceCopy}>
               <code>{step.name}</code>

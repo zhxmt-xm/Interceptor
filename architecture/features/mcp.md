@@ -127,7 +127,7 @@ MCP列使用独立`disableMcpTool` / `enableMcpTool` intent。当前关闭项在
 Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
 当前共享registry实现24个Tool：11个query、13个change。MCP adapter完整接入24项；Agent/MCP真实调用已验收
-21/24，包含Traffic、Rules与Breakpoints，剩余Requests两项和Diagnostics一项继续按
+23/24，包含Traffic、Rules、Breakpoints与Requests，剩余Diagnostics一项继续按
 [tool-capabilities.md](tool-capabilities.md)完成正式产品入口与验收。
 三个原先用布尔值或action参数混合正反意图的入口已经拆开：
 

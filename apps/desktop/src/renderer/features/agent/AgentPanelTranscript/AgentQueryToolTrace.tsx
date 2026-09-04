@@ -101,6 +101,16 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-breakpoint-state={summary?.kind === 'breakpointResolution'
                     ? summary.state
                     : undefined}
+                  data-request-method={summary?.kind === 'request' ? summary.method : undefined}
+                  data-request-status={summary?.kind === 'request' ? summary.status : undefined}
+                  data-request-total-bytes={summary?.kind === 'request' ? summary.totalBytes : undefined}
+                  data-probe-ok={summary?.kind === 'probe' ? summary.ok : undefined}
+                  data-probe-protocol={summary?.kind === 'probe' && summary.ok
+                    ? summary.protocol
+                    : undefined}
+                  data-probe-certificate-count={summary?.kind === 'probe' && summary.ok
+                    ? summary.certificateCount
+                    : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
                   {summary === null

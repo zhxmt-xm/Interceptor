@@ -453,7 +453,7 @@ export class CoreApplication implements CoreRpcHost {
         });
       case 'composer.send': {
         const payload = await this.coreDiagnostics.action('composer.send', () =>
-          this.composerService.send(command.payload),
+          this.composerService.send(command.payload, abortSignal),
         );
         return { type: 'composer.response', payload };
       }
@@ -463,6 +463,7 @@ export class CoreApplication implements CoreRpcHost {
             command.payload.host,
             command.payload.port,
             command.payload.timeoutMs,
+            abortSignal,
           ),
         );
         return { type: 'tls.probed', payload };

@@ -12,6 +12,9 @@ export function AgentPanelTranscript(): React.JSX.Element {
   }
   const sent = state.agentChat === 'sent';
   const toolTrace = state.agentToolTrace;
+  const tracedApproval = state.agentToolApproval === 'allowed'
+    && ((toolTrace === 'rules' && state.agentToolApprovalName === 'apply_rules')
+      || (toolTrace === 'requests' && state.agentToolApprovalName === 'send_request'));
   const rulesApplied = toolTrace === 'rules'
     && state.agentToolApprovalName === 'apply_rules'
     && state.agentToolApproval === 'allowed';
@@ -25,6 +28,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
               ? 'Read the JSON response body, WebSocket messages, and gRPC response messages.'
               : toolTrace === 'breakpoints'
                 ? 'Inspect the waiting request, verify HTTP Breakpoint controls, then continue it.'
+              : toolTrace === 'requests'
+                ? 'Send the approved request and probe the local TLS endpoint.'
               : toolTrace === 'rules'
                 ? state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
                   ? 'Read the current Rule tree, then apply the approved replacement.'
@@ -38,7 +43,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
               <>
                 <div className={styles.agentToolActivity}>
                   <AgentQueryToolTrace variant={toolTrace} />
-                  {rulesApplied ? <AgentToolApproval /> : null}
+                  {tracedApproval ? <AgentToolApproval /> : null}
                 </div>
                 {toolTrace === 'traffic'
                   ? <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
@@ -46,6 +51,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                     ? <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>
                     : toolTrace === 'breakpoints'
                       ? <p>One request was waiting. HTTP Breakpoints were verified and <code>bp-agent-request</code> continued.</p>
+                    : toolTrace === 'requests'
+                      ? <p>The request returned <code>201</code>. TLS negotiated <code>h2</code> with one certificate.</p>
                     : state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
                       ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
                       : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}
@@ -71,7 +78,7 @@ export function AgentPanelTranscript(): React.JSX.Element {
               </>
             )}
             {state.agentTurnState === 'running' && <span className={styles.agentTurnProgress}>Generating response…</span>}
-            {!rulesApplied ? <AgentToolApproval /> : null}
+            {!tracedApproval ? <AgentToolApproval /> : null}
             {state.agentTurnState === 'stopped' && (
               <div className={styles.agentTurnNotice}>
                 <strong>Response stopped</strong>

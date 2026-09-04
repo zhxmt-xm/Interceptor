@@ -78,6 +78,16 @@ export function AgentToolResultSummary({
           ? 'agent.tools.edited'
           : 'agent.tools.dropped')} · ${summary.breakpointId}`;
       break;
+    case 'request':
+      content = summary.ok
+        ? `${summary.method} ${summary.path} · ${summary.status} · ${sizeLabel(summary.totalBytes, i18n.language)}`
+        : `${t('agent.tools.requestFailed')} · ${summary.method} ${summary.path}`;
+      break;
+    case 'probe':
+      content = summary.ok
+        ? `${summary.protocol} · ${summary.alpn || '-'} · ${t('agent.tools.certificates', { count: summary.certificateCount })}`
+        : `${t('agent.tools.probeFailed')} · ${summary.error}`;
+      break;
     case 'error':
       content = summary.message;
       break;

@@ -10,14 +10,20 @@ export class TlsProbeService {
     host: string,
     port: number,
     timeoutMs?: number,
+    abortSignal?: AbortSignal,
   ): Promise<TlsProbeResult> {
+    if (abortSignal?.aborted) {
+      return Promise.resolve(ConnectionUtils.failure('The TLS probe was cancelled.'));
+    }
     return new Promise((resolve) => {
       let settled = false;
+      let removeAbortListener = (): void => undefined;
       const finish = (result: TlsProbeResult): void => {
         if (settled) {
           return;
         }
         settled = true;
+        removeAbortListener();
         resolve(result);
       };
 
@@ -54,6 +60,15 @@ export class TlsProbeService {
         socket.destroy();
         finish(ConnectionUtils.failure('The TLS connection timed out.'));
       });
+      const cancel = (): void => {
+        socket.destroy();
+        finish(ConnectionUtils.failure('The TLS probe was cancelled.'));
+      };
+      if (abortSignal !== undefined) {
+        abortSignal.addEventListener('abort', cancel, { once: true });
+        removeAbortListener = () => abortSignal.removeEventListener('abort', cancel);
+        if (abortSignal.aborted) cancel();
+      }
     });
   }
 }

@@ -44,6 +44,8 @@ const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'continue_breakpoint', kind: 'change' },
   { name: 'forward_edited_breakpoint', kind: 'change' },
   { name: 'drop_breakpoint', kind: 'change' },
+  { name: 'send_request', kind: 'change' },
+  { name: 'probe_connection', kind: 'change' },
 ] as const;
 
 const DISCOVER_TOOLS_NAME = 'discover_tools';

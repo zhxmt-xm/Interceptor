@@ -442,3 +442,42 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 	`gracefulDestroyVerified=true`，Renderer pageerror为0且8888、journal和系统代理恢复。
 - Breakpoints Agent明暗设计场景合计`22/22 matched / 0 missing / 0 flagged / 0px`；既有44张Agent设计图逐像素
 	不变。完整Parity为`206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。
+
+<a id="agent-tools-requests"></a>
+## `agent.tools.requests`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 通过产品Settings配置本地Provider并开始Recording；测试启动真实HTTP origin与自签名TLS origin，不经产品后门。
+2. Agent discovery对`requests`只披露`send_request`与`probe_connection`，两项均为change且schema来自共享registry。
+3. Ask调用`send_request`并Deny，确认HTTP origin零到达；再次调用并Allow，真实origin收到声明的method、URL query、
+	header与文本body，返回指定status/header/body。Tool Result遮罩`Set-Cookie`，typed摘要与真实响应一致；Capture中无该请求。
+4. Auto调用`probe_connection`，确认无审批、TLS origin完成一次握手且收到0应用字节；Tool Result包含协议、cipher、ALPN
+	与证书链。再探测未监听端口，返回稳定失败而不让Turn失败。
+5. Auto发送由origin暂缓响应的请求；origin收到request后点击`agent.turn.stop`，确认Turn取消、真实client socket关闭、
+	不产生后续Model Call；释放origin gate不得补写Tool Result或重放请求。
+6. Settings关闭两项Agent开关；discovery为空，逐项猜测调用均为`unknown_tool`且origin/TLS计数不变；恢复开关与Ask。
+7. 完整关闭第一代App；同profile启动第二代，确认Model、HTTP origin和TLS握手增量均为0，已完成与已取消Transcript
+	恢复但网络操作不重放。再次关闭并验证两代Main/Core/Worker、8888、journal与系统代理完整恢复。
+
+### 预期效果
+
+Agent只通过正式Core命令产生显式获批的外部网络动作。Composer请求保持直连且不污染Capture，TLS probe只握手；
+Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，响应凭据与测试正文不进入trace或进程日志。
+
+### Evidence
+
+- Agent实现前，同一最终workflow启动真实Electron后精确Red于`requests` discovery返回`[]`；修复前owner integration
+	进一步精确Red于H1与TLS在Abort后仍等到timeout。当前H1/H2/TLS真实网络integration `8/8`、TLS预取消零
+	`tls.connect` unit `1/1` Green。
+- 当前`agent.tools.requests` `1/1` Green：Ask Deny/Allow、method/query/header/body真实origin事实、响应header/query
+	脱敏、Capture零新增、TLS成功/失败、Stop关闭真实socket、两项`unknown_tool`与重启零网络全部通过。
+- 业务证据`directRequestVerified/tlsProbeVerified/cancelledSocketVerified=true`、`restartNetworkRequestCount=0`；
+	两代Main/Core为`11120/16796`与`29936/34788`，均`gracefulDestroyVerified=true`，8888、journal和系统代理恢复。
+- 提示词、请求/响应正文、凭据header/query与URL均经截图前可见DOM/输入、trace与进程日志敏感审计；final screenshot
+	只在审计通过后attach，evidence只保存布尔、计数和Provider request hash。明暗Requests parity合计
+	`20/20 matched / 0 missing / 0 flagged / 0px`，既有46张Agent设计图逐像素
+	不变。完整Parity为`208 views / 1,446 targets / 1,412 matched / 34既有missing / 305既有flagged`。

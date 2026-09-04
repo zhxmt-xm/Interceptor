@@ -90,6 +90,22 @@ export type AgentToolResultSummary =
       readonly breakpointId: string;
       readonly state: 'continued' | 'edited' | 'dropped';
     }
+  | {
+      readonly kind: 'request';
+      readonly ok: boolean;
+      readonly method: string;
+      readonly path: string;
+      readonly status: number;
+      readonly totalBytes: number;
+    }
+  | {
+      readonly kind: 'probe';
+      readonly ok: true;
+      readonly protocol: string;
+      readonly alpn: string;
+      readonly certificateCount: number;
+    }
+  | { readonly kind: 'probe'; readonly ok: false; readonly error: string }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'value'; readonly value: string };
 
@@ -285,7 +301,56 @@ export function summarizeAgentToolResult(
       return { kind: 'breakpointResolution', breakpointId, state };
     }
   }
+  if (name === 'send_request' && isRecord(result.value)) {
+    const method = result.value['method'];
+    const url = result.value['url'];
+    const status = result.value['status'];
+    const totalBytes = result.value['totalBytes'];
+    if (typeof method === 'string'
+      && typeof url === 'string'
+      && typeof status === 'number'
+      && typeof totalBytes === 'number') {
+      return {
+        kind: 'request',
+        ok: result.value['ok'] === true,
+        method,
+        path: requestPath(url),
+        status,
+        totalBytes,
+      };
+    }
+  }
+  if (name === 'probe_connection' && isRecord(result.value)) {
+    if (result.value['ok'] === false && typeof result.value['error'] === 'string') {
+      return { kind: 'probe', ok: false, error: result.value['error'] };
+    }
+    const protocol = result.value['protocol'];
+    const alpn = result.value['alpn'];
+    const certificates = result.value['certificates'];
+    if (result.value['ok'] === true
+      && typeof protocol === 'string'
+      && typeof alpn === 'string'
+      && Array.isArray(certificates)) {
+      return {
+        kind: 'probe',
+        ok: true,
+        protocol,
+        alpn,
+        certificateCount: certificates.length,
+      };
+    }
+  }
   return { kind: 'value', value: compactJson(result.value) };
+}
+
+/** Return only the redacted path and query from one Tool result URL. */
+function requestPath(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
 }
 
 /** Counts trusted Rule leaves without assuming one concrete tree depth. */

@@ -37,6 +37,9 @@ export class LoopbackLab {
   /** Requests that reached the origin, in completion order. */
   private readonly requestObservations: LoopbackRequestObservation[] = [];
 
+  /** Response paths whose real client socket closed before a response completed. */
+  private readonly abortedResponsePaths = new Set<string>();
+
   /** Test-owned response gates keyed by exact request path. */
   private readonly responseGates = new Map<string, {
     promise: Promise<void>;
@@ -56,6 +59,10 @@ export class LoopbackLab {
   static async start(): Promise<LoopbackLab> {
     let loopbackLab: LoopbackLab;
     const server = createServer((incoming, response) => {
+      const requestPath = incoming.url ?? '/';
+      response.once('close', () => {
+        if (!response.writableEnded) loopbackLab.abortedResponsePaths.add(requestPath);
+      });
       const chunks: Buffer[] = [];
       incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
       incoming.on('end', () => {
@@ -67,7 +74,8 @@ export class LoopbackLab {
           body,
         });
         const finishResponse = (): void => {
-          const configured = loopbackLab.responses.get(incoming.url ?? '/');
+          if (response.destroyed) return;
+          const configured = loopbackLab.responses.get(requestPath);
           const responseBody = configured
             ? Buffer.from(configured.body)
             : Buffer.from(JSON.stringify({
@@ -202,6 +210,11 @@ export class LoopbackLab {
   /** Return the first completed origin observation for one exact request path. */
   observation(requestPath: string): LoopbackRequestObservation | undefined {
     return this.requestObservations.find((entry) => entry.path === requestPath);
+  }
+
+  /** Return whether the real response socket closed before completion. */
+  responseWasAborted(requestPath: string): boolean {
+    return this.abortedResponsePaths.has(requestPath);
   }
 
   /** Return serializable origin evidence without exposing mutable internal buffers. */

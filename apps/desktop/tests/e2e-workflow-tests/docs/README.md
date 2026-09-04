@@ -10,11 +10,11 @@
 | Composer | [composer.md](composer.md) | 9 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 11 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
-| Agent | [agent.md](agent.md) | 11 |
+| Agent | [agent.md](agent.md) | 12 |
 | MCP | [mcp.md](mcp.md) | 3 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 15 |
 
-总计：101 条 workflow 契约。
+总计：102 条 workflow 契约。
 
 ## 文档约定
 

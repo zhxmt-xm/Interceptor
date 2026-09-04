@@ -533,3 +533,29 @@ test('Agent Breakpoints Tool activity keeps pending and resolution summaries sca
     .toContainText('bp-agent-request continued');
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
+
+test('Agent Requests Tool activity summarizes direct HTTP and TLS results', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'auto',
+    agentToolTrace: 'requests',
+    agentToolApproval: 'allowed',
+    agentToolApprovalName: 'send_request',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  const result = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
+  await expect(trace.locator('[data-tool-name="probe_connection"]').first())
+    .toContainText('TLSv1.3 · h2 · Certificates 1');
+  await expect(trace.locator('[data-tool-name="probe_connection"]').last())
+    .toContainText('TLS probe failed · connect ECONNREFUSED');
+  await expect(result).toContainText('POST /e2e/agent/requests/allowed · 201 · 32 B');
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('TLS negotiated h2 with one certificate');
+  expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});

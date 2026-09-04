@@ -22,6 +22,7 @@ import { getByAutomationId } from './automation';
 import { LoopbackLab } from './loopback-lab';
 import { OpenAiCompatibleLab } from './openai-compatible-lab';
 import { PlaygroundServer } from './playground-server';
+import { TlsOriginLab } from './tls-origin-lab';
 import { WebSocketLab } from './websocket-lab';
 import {
   dismissWindowsFileDialogs,
@@ -47,6 +48,8 @@ interface LocalWorkflowFixtures {
   webSocketLab: WebSocketLab;
   /** Random-port OpenAI-compatible endpoint owned by Agent workflows. */
   openAiCompatibleLab: OpenAiCompatibleLab;
+  /** Random-port self-signed TLS origin owned by Requests workflows. */
+  tlsOriginLab: TlsOriginLab;
   /** Real Browser Playground process owned by this workflow. */
   playgroundServer: PlaygroundServer;
 }
@@ -110,6 +113,9 @@ export class LocalElectronApplicationDriver {
 
   /** Final trace archives available after each stopTrace segment completes. */
   private readonly tracePaths: string[] = [];
+
+  /** Final screenshot retained until sensitive evidence auditing succeeds. */
+  private finalScreenshotPath: string | null = null;
 
   /** Whether Electron has emitted its terminal close event. */
   private applicationClosed = false;
@@ -424,20 +430,28 @@ export class LocalElectronApplicationDriver {
     this.abruptDestroyVerified = true;
   }
 
-  /** Capture the final visible Renderer state before trace and process teardown. */
+  /** Capture the final visible Renderer state for attachment after evidence auditing. */
   async captureFinalScreenshot(testInfo: TestInfo): Promise<void> {
     if (this.page.isClosed()) {
       return;
+    }
+    const visibleText = await this.page.locator('body').innerText();
+    const visibleInputValues = await this.page.locator('input:visible, textarea:visible')
+      .evaluateAll((elements) => elements.map((element) => (
+        element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
+          ? element.value
+          : ''
+      )));
+    const visibleEvidence = `${visibleText}\n${visibleInputValues.join('\n')}`;
+    if ([...this.sensitiveEvidenceTexts].some((text) => visibleEvidence.includes(text))) {
+      throw new Error('Sensitive text was found in the final visible Renderer state.');
     }
     const screenshotPath = testInfo.outputPath(this.evidenceName('final.png'));
     await this.page.screenshot({
       path: screenshotPath,
       animations: 'disabled',
     });
-    await testInfo.attach(this.evidenceName('final-state'), {
-      path: screenshotPath,
-      contentType: 'image/png',
-    });
+    this.finalScreenshotPath = screenshotPath;
   }
 
   /** Resume BrowserContext tracing after a deliberate sensitive-input interval. */
@@ -456,7 +470,7 @@ export class LocalElectronApplicationDriver {
     this.traceActive = true;
   }
 
-  /** Stop and attach the always-retained BrowserContext trace for this workflow. */
+  /** Stop and retain the BrowserContext trace until evidence auditing succeeds. */
   async stopTrace(testInfo: TestInfo): Promise<void> {
     if (!this.traceActive) {
       return;
@@ -468,28 +482,31 @@ export class LocalElectronApplicationDriver {
     ));
     await this.context.tracing.stop({ path: tracePath });
     this.tracePaths.push(tracePath);
-    await testInfo.attach(this.evidenceName(
-      segment === 1 ? 'playwright-trace' : `playwright-trace-${segment}`,
-    ), {
-      path: tracePath,
-      contentType: 'application/zip',
-    });
   }
 
   /** Prove that one sensitive value is absent from trace and process-log evidence. */
   async assertSensitiveTextAbsentFromEvidence(sensitiveText: string): Promise<void> {
+    await this.assertSensitiveTextsAbsentFromEvidence([sensitiveText]);
+  }
+
+  /** Prove that registered sensitive values are absent before any raw evidence is attached. */
+  private async assertSensitiveTextsAbsentFromEvidence(
+    sensitiveTexts: readonly string[],
+  ): Promise<void> {
+    if (sensitiveTexts.length === 0) return;
     if (this.tracePaths.length === 0) {
       throw new Error('Trace must be stopped before sensitive evidence is audited.');
     }
     if (this.sensitiveTextFoundInProcessOutput
-      || this.mainOutput.includes(sensitiveText)
-      || this.rendererOutput.includes(sensitiveText)) {
+      || sensitiveTexts.some((text) => (
+        this.mainOutput.includes(text) || this.rendererOutput.includes(text)
+      ))) {
       throw new Error('Sensitive text was found in process-log evidence.');
     }
 
     const extractionDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-trace-audit-'));
     try {
-      const sensitiveBytes = Buffer.from(sensitiveText, 'utf8');
+      const sensitiveBytes = sensitiveTexts.map((text) => Buffer.from(text, 'utf8'));
       for (const [index, tracePath] of this.tracePaths.entries()) {
         const segmentDirectory = path.join(extractionDirectory, String(index));
         await mkdir(segmentDirectory);
@@ -501,7 +518,7 @@ export class LocalElectronApplicationDriver {
         for (const entry of entries) {
           if (!entry.isFile()) continue;
           const bytes = await readFile(path.join(entry.parentPath, entry.name));
-          if (bytes.includes(sensitiveBytes)) {
+          if (sensitiveBytes.some((value) => bytes.includes(value))) {
             throw new Error('Sensitive text was found in Playwright trace evidence.');
           }
         }
@@ -525,6 +542,7 @@ export class LocalElectronApplicationDriver {
 
   /** Persist process logs and metadata after the workflow and destroy assertions finish. */
   async writeEvidence(testInfo: TestInfo): Promise<void> {
+    await this.assertSensitiveTextsAbsentFromEvidence([...this.sensitiveEvidenceTexts]);
     const mainLogPath = testInfo.outputPath(this.evidenceName('main-process.log'));
     const rendererLogPath = testInfo.outputPath(this.evidenceName('renderer-console.log'));
     const metadataPath = testInfo.outputPath(this.evidenceName('metadata.json'));
@@ -553,6 +571,19 @@ export class LocalElectronApplicationDriver {
       ),
     ]);
     await Promise.all([
+      ...(this.finalScreenshotPath === null ? [] : [testInfo.attach(
+        this.evidenceName('final-state'),
+        {
+          path: this.finalScreenshotPath,
+          contentType: 'image/png',
+        },
+      )]),
+      ...this.tracePaths.map((tracePath, index) => testInfo.attach(this.evidenceName(
+        index === 0 ? 'playwright-trace' : `playwright-trace-${index + 1}`,
+      ), {
+        path: tracePath,
+        contentType: 'application/zip',
+      })),
       testInfo.attach(this.evidenceName('main-process-log'), {
         path: mainLogPath,
         contentType: 'text/plain',
@@ -882,6 +913,14 @@ export const test = base.extend<LocalWorkflowFixtures>({
       await use(openAiCompatibleLab);
     } finally {
       await openAiCompatibleLab.close();
+    }
+  },
+  tlsOriginLab: async ({}, use) => {
+    const tlsOriginLab = await TlsOriginLab.start();
+    try {
+      await use(tlsOriginLab);
+    } finally {
+      await tlsOriginLab.close();
     }
   },
   playgroundServer: async ({}, use, testInfo) => {

@@ -3,9 +3,11 @@ import type {
   BreakpointEdit,
   CaptureBodyRef,
   CaptureExchangeDetail,
+  ComposerSendCommand,
   PendingBreakpoint,
   RuleHeaderPair,
   RuleNode,
+  TlsProbeCommand,
   WebSocketBreakpointDirection,
   WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
@@ -20,7 +22,6 @@ import {
   readPageLimit,
   rejectUnknownKeys,
   requireEnum,
-  requireInteger,
   requireIntegerInRange,
   requireObjectArray,
   requireString,
@@ -552,29 +553,25 @@ function buildChangeTools(
         timeoutMs: property('integer', 'Request timeout in milliseconds.', { minimum: 1 }),
       }, ['method', 'url']),
       async describeChange(args) {
+        const request = readComposerRequest(args);
         return {
           lines: [
-            `${requireString(args, 'method')} ${requireString(args, 'url')}`,
+            `${request.method} ${request.url}`,
             'This sends real traffic from your machine.',
           ],
         };
       },
       async execute(args, context) {
-        rejectUnknownKeys(args, ['method', 'url', 'headers', 'body', 'protocol', 'timeoutMs']);
+        const request = readComposerRequest(args);
         const result = await context.host.invoke({
           type: 'composer.send',
-          payload: {
-            method: requireString(args, 'method'),
-            url: requireString(args, 'url'),
-            headers: readHeaderPairs(args),
-            body: optionalText(args, 'body'),
-            protocol: optionalEnum(args, 'protocol', ['auto', 'http/1.1', 'h2'] as const) ?? 'auto',
-            timeoutMs: optionalIntegerInRange(args, 'timeoutMs', { minimum: 1 }),
-          },
+          payload: request,
         }, context.abortSignal);
         const payload = result.payload;
         const mimeType = headerValue(payload.headers, 'content-type');
         return {
+          method: request.method,
+          url: interceptorToolRedactor.redactUrl(request.url),
           ok: payload.ok,
           error: payload.error,
           status: payload.status,
@@ -773,21 +770,18 @@ function buildChangeTools(
         timeoutMs: property('integer', 'Probe timeout in milliseconds.', { minimum: 1 }),
       }, ['host', 'port']),
       async describeChange(args) {
+        const request = readTlsProbeRequest(args);
         return {
           lines: [
-            `Opens a real connection to ${requireString(args, 'host')}:${requireInteger(args, 'port')}`,
+            `Opens a real connection to ${request.host}:${request.port}`,
           ],
         };
       },
       async execute(args, context) {
-        rejectUnknownKeys(args, ['host', 'port', 'timeoutMs']);
+        const request = readTlsProbeRequest(args);
         const result = await context.host.invoke({
           type: 'tls.probe',
-          payload: {
-            host: requireString(args, 'host'),
-                  port: requireIntegerInRange(args, 'port', { minimum: 1, maximum: 65_535 }),
-                  timeoutMs: optionalIntegerInRange(args, 'timeoutMs', { minimum: 1 }),
-          },
+          payload: request,
         }, context.abortSignal);
         return result.payload;
       },
@@ -1040,6 +1034,11 @@ function readHeaderPairs(args: Readonly<Record<string, unknown>>): RuleHeaderPai
   return requireObjectArray(args, 'headers').map((pair, index) => {
     rejectUnknownKeys(pair, ['name', 'value']);
     const name = requireString(pair, 'name');
+    if (name.startsWith(':')) {
+      throw new InterceptorToolArgumentError(
+        `"headers[${index}].name" must not contain an HTTP/2 pseudo-header`,
+      );
+    }
     const value = pair['value'];
     if (typeof value !== 'string') {
       throw new InterceptorToolArgumentError(
@@ -1122,4 +1121,51 @@ export function buildInterceptorToolCatalog(
     inputSchema: tool.inputSchema,
   }));
   return new InterceptorToolCatalog(INTERCEPTOR_TOOL_CAPABILITIES, descriptors);
+}
+
+/** Reads one complete Composer request for approval and execution. */
+function readComposerRequest(
+  args: Readonly<Record<string, unknown>>,
+): ComposerSendCommand['payload'] {
+  rejectUnknownKeys(args, ['method', 'url', 'headers', 'body', 'protocol', 'timeoutMs']);
+  return {
+    method: requireString(args, 'method'),
+    url: requireHttpUrl(args, 'url'),
+    headers: readHeaderPairs(args),
+    body: optionalText(args, 'body'),
+    protocol: optionalEnum(args, 'protocol', ['auto', 'http/1.1', 'h2'] as const) ?? 'auto',
+    timeoutMs: optionalIntegerInRange(args, 'timeoutMs', { minimum: 1 }),
+  };
+}
+
+/** Reads one absolute HTTP(S) URL before any open-world approval is requested. */
+function requireHttpUrl(
+  args: Readonly<Record<string, unknown>>,
+  key: string,
+): string {
+  const value = requireString(args, key);
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new InterceptorToolArgumentError(
+      `"${key}" must be an absolute http or https URL`,
+    );
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new InterceptorToolArgumentError(`"${key}" must use http or https`);
+  }
+  return value;
+}
+
+/** Reads one bounded TLS probe target for approval and execution. */
+function readTlsProbeRequest(
+  args: Readonly<Record<string, unknown>>,
+): TlsProbeCommand['payload'] {
+  rejectUnknownKeys(args, ['host', 'port', 'timeoutMs']);
+  return {
+    host: requireString(args, 'host'),
+    port: requireIntegerInRange(args, 'port', { minimum: 1, maximum: 65_535 }),
+    timeoutMs: optionalIntegerInRange(args, 'timeoutMs', { minimum: 1 }),
+  };
 }

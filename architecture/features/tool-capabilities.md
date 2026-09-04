@@ -4,7 +4,7 @@
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入21/24，已验收真实Agent或MCP Tool Call覆盖21/24，owning package正向executor unit覆盖19/24；Playground
+> 代码已接入23/24，已验收真实Agent或MCP Tool Call覆盖23/24，owning package正向executor unit覆盖20/24；Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
@@ -113,7 +113,7 @@ interface ToolCapabilitySettingsRecord {
 | `replace_collection` | change | `replaceCollection` / `collection.replace` | 产品已具备 |
 | `import_collection` | change | 当前由Renderer串联`readImportFile`、解析确认与`replaceCollection` | 先补 intent |
 | `export_collection` | change | `exportCollection` / 原生 Save Dialog | 产品已具备 |
-| `send_request` | change | `sendComposerRequest` / `composer.send` | 共享 registry + MCP adapter |
+| `send_request` | change | `sendComposerRequest` / `composer.send` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 
 ### 3.3 Breakpoints 与连接探测
 
@@ -130,7 +130,7 @@ interface ToolCapabilitySettingsRecord {
 | `continue_breakpoint_queue` | change | `continueBreakpointQueue` | 产品已具备 |
 | `drop_breakpoint_queue` | change | `dropBreakpointQueue` | 产品已具备 |
 | `continue_rule_breakpoints` | change | `continueBreakpointRule` | 产品已具备 |
-| `probe_connection` | change | `probeTls` / `tls.probe` | 共享 registry + MCP adapter |
+| `probe_connection` | change | `probeTls` / `tls.probe` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 
 本阶段只接入前八项Breakpoints Tool。`list_breakpoints`是唯一query；其余七项是change并服从Agent Session或
 MCP Client的`ask`/`auto`。pending identity只在当前Core代际内由`breakpointId`标识，没有revision；审批前读取
@@ -231,8 +231,8 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `continue_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `forward_edited_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `drop_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
-| `send_request` | 待接入 | 已完成 | 待完成 |
-| `probe_connection` | 待接入 | 待补 | 待完成 |
+| `send_request` | 已完成 | 已完成 | Agent已完成 |
+| `probe_connection` | 已完成 | 已完成 | Agent已完成 |
 | `query_diagnostics` | 待接入 | 待补 | 待完成 |
 
 ## 5. 实施顺序与阶段门禁
@@ -268,7 +268,10 @@ Capture 39项真实Electron收敛：
    `206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。Windows package artifact
    audit为`1,294 files / 392,817,170 bytes`、production audit 0漏洞、packaged smoke`1/1` Green。全仓unit仅保留
    已登记的Proxy Core两项chunked framing债务失败。
-6. **[待实现] Requests**：接入`send_request`与`probe_connection`，验证真实origin/TLS、取消和网络结果。
+6. **[已完成] Requests**：`send_request`与`probe_connection`已接入Agent。真实workflow覆盖Ask Deny/Allow、Auto、
+   HTTP method/query/header/body、响应脱敏、Capture隔离、TLS成功/失败、两项撤权与双代零重放；owner integration
+   覆盖H1/H2/TLS真实socket取消、连接释放与H2目标完整性`8/8`，TLS预取消零连接unit `1/1`。修复前`ffaf323f`同一workflow精确Red于
+   requests discovery为空，当前`1/1` Green。
 7. **[待实现] Diagnostics**：接入`query_diagnostics`，先由真实产品动作产生记录，再验证过滤、脱敏与稳定顺序。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。
@@ -279,7 +282,7 @@ Capture 39项真实Electron收敛：
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Requests两项。
+分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Diagnostics一项。
 
 ## 6. 相关未完成验收
 

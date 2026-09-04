@@ -25,6 +25,11 @@ const TOOL_CONTENT = {
     effect: 'Rule count: 1 → 1 · Enabled: 1 → 1',
     result: 'Revision 2 applied',
   },
+  send_request: {
+    description: 'Send a Composer request from this machine.',
+    effect: 'POST http://127.0.0.1:43127/e2e/agent/requests/allowed',
+    result: 'POST /e2e/agent/requests/allowed · 201 · 32 B',
+  },
 } as const;
 
 export function AgentToolApproval(): React.JSX.Element | null {

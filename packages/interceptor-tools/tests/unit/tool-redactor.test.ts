@@ -40,6 +40,16 @@ describe('InterceptorToolRedactor', () => {
     expect(result).toContain('page=2');
   });
 
+  it('masks URL userinfo credentials', () => {
+    const result = interceptorToolRedactor.redactUrl(
+      'https://user:password@api.example.com/v1',
+    );
+
+    expect(result).toBe('https://%3Credacted%3E:%3Credacted%3E@api.example.com/v1');
+    expect(result).not.toContain('user');
+    expect(result).not.toContain('password');
+  });
+
   it('masks credential query parameters in relative paths', () => {
     expect(interceptorToolRedactor.redactPath('/v1/me?token=abc&x=1'))
       .toBe('/v1/me?token=%3Credacted%3E&x=1');

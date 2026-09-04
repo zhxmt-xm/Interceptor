@@ -975,6 +975,44 @@ describe('Interceptor Tool registry', () => {
     });
   });
 
+  it.each([
+    ['send_request', {
+      method: 'POST',
+      url: 'https://api.test/items',
+      protocol: 'ftp',
+    }, '"protocol" must be one of'],
+    ['send_request', {
+      method: 'POST',
+      url: 'https://api.test/items',
+      headers: [{ name: '', value: 'x' }],
+    }, '"name" must be a non-empty string'],
+    ['send_request', {
+      method: 'POST',
+      url: 'https://api.test/items',
+      headers: [{ name: ':method', value: 'DELETE' }],
+    }, 'must not contain an HTTP/2 pseudo-header'],
+    ['probe_connection', {
+      host: 'api.test',
+      port: 0,
+    }, '"port" must be at least 1'],
+    ['send_request', {
+      method: 'GET',
+      url: 'ftp://api.test/items',
+    }, '"url" must use http or https'],
+    ['send_request', {
+      method: 'GET',
+      url: 'not-an-absolute-url',
+    }, '"url" must be an absolute http or https URL'],
+  ])('rejects invalid %s arguments before approval', async (name, args, message) => {
+    const fakeToolHost = new FakeToolHost();
+
+    await expect(definition(name).describeChange?.(
+      args,
+      { host: fakeToolHost, abortSignal: new AbortController().signal },
+    )).rejects.toThrow(message);
+    expect(fakeToolHost.commands).toEqual([]);
+  });
+
   it('preserves an empty Composer body and redacts its bounded response', async () => {
     const timing = {
       dnsMs: 1,
@@ -1018,15 +1056,20 @@ describe('Interceptor Tool registry', () => {
 
     const result = await execute('send_request', {
       method: 'POST',
-      url: 'https://example.test/',
+      url: 'https://user:password@example.test/?access_token=request-secret',
       body: '',
     }, fakeToolHost);
 
     expect(fakeToolHost.commands[0]).toMatchObject({
       type: 'composer.send',
-      payload: { body: '' },
+      payload: {
+        body: '',
+        url: 'https://user:password@example.test/?access_token=request-secret',
+      },
     });
     expect(result).toMatchObject({
+      method: 'POST',
+      url: 'https://%3Credacted%3E:%3Credacted%3E@example.test/?access_token=%3Credacted%3E',
       headers: [
         { name: 'content-type', value: 'text/plain' },
         { name: 'set-cookie', value: '<redacted>' },
@@ -1036,5 +1079,36 @@ describe('Interceptor Tool registry', () => {
       body: { truncated: true, bytesRead: TOOL_BODY_PREVIEW_MAX_BYTES },
     });
     expect(result).not.toHaveProperty('bodyText');
+  });
+
+  it('maps a connection probe to the formal TLS command and returns its result', async () => {
+    const probe = {
+      ok: true,
+      protocol: 'TLSv1.3',
+      cipher: 'TLS_AES_256_GCM_SHA384',
+      alpn: 'h2',
+      authorized: false,
+      certificates: [{
+        subject: 'CN=example.test',
+        issuer: 'CN=example.test',
+        validFrom: '2026-01-01',
+        validTo: '2027-01-01',
+        serialNumber: '01',
+        fingerprint256: 'AA:BB',
+      }],
+    };
+    const fakeToolHost = new FakeToolHost({
+      'tls.probe': { type: 'tls.probed', payload: probe },
+    });
+
+    await expect(execute('probe_connection', {
+      host: 'example.test',
+      port: 443,
+      timeoutMs: 2_000,
+    }, fakeToolHost)).resolves.toEqual(probe);
+    expect(fakeToolHost.commands).toEqual([{
+      type: 'tls.probe',
+      payload: { host: 'example.test', port: 443, timeoutMs: 2_000 },
+    }]);
   });
 });

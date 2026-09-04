@@ -202,6 +202,46 @@ describe('Agent transcript utilities', () => {
       breakpointId: 'bp-1',
       state: 'continued',
     });
+    expect(summarizeAgentToolResult('send_request', {
+      ok: true,
+      value: {
+        ok: true,
+        method: 'POST',
+        url: 'https://api.test/items?access_token=%3Credacted%3E',
+        status: 201,
+        totalBytes: 27,
+      },
+    })).toEqual({
+      kind: 'request',
+      ok: true,
+      method: 'POST',
+      path: '/items?access_token=%3Credacted%3E',
+      status: 201,
+      totalBytes: 27,
+    });
+    expect(summarizeAgentToolResult('probe_connection', {
+      ok: true,
+      value: {
+        ok: true,
+        protocol: 'TLSv1.3',
+        alpn: 'h2',
+        certificates: [{ subject: 'CN=api.test' }],
+      },
+    })).toEqual({
+      kind: 'probe',
+      ok: true,
+      protocol: 'TLSv1.3',
+      alpn: 'h2',
+      certificateCount: 1,
+    });
+    expect(summarizeAgentToolResult('probe_connection', {
+      ok: true,
+      value: { ok: false, error: 'connect ECONNREFUSED', certificates: [] },
+    })).toEqual({
+      kind: 'probe',
+      ok: false,
+      error: 'connect ECONNREFUSED',
+    });
   });
 
   it('keeps later Tool activity after visible assistant content', () => {
