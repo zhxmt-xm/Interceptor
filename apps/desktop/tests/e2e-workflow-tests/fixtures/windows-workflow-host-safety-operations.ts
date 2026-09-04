@@ -76,6 +76,10 @@ export class WindowsWorkflowHostSafetyOperations implements WorkflowHostSafetyOp
   private readonly userDataDirectories = new Set<string>();
   /** PIDs and creation tokens discovered while their Electron parent is still alive. */
   private readonly knownProcessCreationById = new Map<number, string>();
+  /** Process generations proven by a profile argument or registered Main ancestry. */
+  private readonly workflowProcessCreationById = new Map<number, string>();
+  /** Core generations proven to own the workflow's exclusive capture listener. */
+  private readonly captureListenerProcessCreationById = new Map<number, string>();
 
   constructor(options: WindowsWorkflowHostSafetyOperationsOptions) {
     this.helperPath = options.helperPath ?? path.join(
@@ -158,6 +162,10 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
       throw new Error('Capture listener is not owned by this workflow.');
     }
     this.registerProcessIdentity(processIdentity);
+    this.captureListenerProcessCreationById.set(
+      processIdentity.processId,
+      processIdentity.processStartedAt,
+    );
   }
 
   /** Read the complete current WinINet snapshot through the production helper. */
@@ -190,11 +198,13 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
     const processEntries = await this.readProcessTable();
     const processById = new Map(processEntries.map((entry) => [entry.processId, entry]));
     const trackedProcessIds = new Set<number>();
+    const workflowProcessIds = new Set<number>();
 
     for (const processEntry of processEntries) {
       if (this.belongsToRegisteredProfile(processEntry.commandLine)) {
         this.rememberProcess(processEntry);
         trackedProcessIds.add(processEntry.processId);
+        workflowProcessIds.add(processEntry.processId);
       }
     }
 
@@ -208,6 +218,7 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
         && this.knownProcessCreationById.get(rootProcessId) === root.creationDate
       ) {
         trackedProcessIds.add(rootProcessId);
+        workflowProcessIds.add(rootProcessId);
       }
     }
     for (const [processId, creationDate] of this.knownProcessCreationById) {
@@ -229,6 +240,19 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
           trackedProcessIds.add(processEntry.processId);
           discovered = true;
         }
+        if (
+          !workflowProcessIds.has(processEntry.processId)
+          && workflowProcessIds.has(processEntry.parentProcessId)
+        ) {
+          workflowProcessIds.add(processEntry.processId);
+          discovered = true;
+        }
+      }
+    }
+    for (const processId of workflowProcessIds) {
+      const processEntry = processById.get(processId);
+      if (processEntry) {
+        this.workflowProcessCreationById.set(processId, processEntry.creationDate);
       }
     }
     return [...trackedProcessIds]
@@ -248,6 +272,23 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
       processId: processEntry.processId,
       processStartedAt: processEntry.creationDate,
     })));
+  }
+
+  /** Terminate one exact Core generation only after it was registered by the workflow. */
+  async terminateProcessGeneration(
+    processIdentity: WorkflowProcessIdentity,
+  ): Promise<void> {
+    const registered = this.registeredProcessIdentity(processIdentity.processId);
+    if (registered?.processStartedAt !== processIdentity.processStartedAt) {
+      throw new Error('Workflow process generation was not registered for termination.');
+    }
+    const processStartedAt = this.workflowProcessCreationById.get(
+      processIdentity.processId,
+    ) ?? this.captureListenerProcessCreationById.get(processIdentity.processId);
+    if (processStartedAt !== processIdentity.processStartedAt) {
+      throw new Error('Workflow process generation does not belong to this workflow process tree.');
+    }
+    await this.terminateProcessGenerations([processIdentity], true);
   }
 
   /** Force tracked roots and remembered descendants to exit without touching unrelated apps. */
@@ -285,6 +326,7 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
   /** Terminate exact process objects after rechecking their immutable start tokens. */
   private async terminateProcessGenerations(
     processIdentities: readonly WorkflowProcessIdentity[],
+    requireAlive = false,
   ): Promise<void> {
     for (const processIdentity of processIdentities) {
       const encodedIdentity = Buffer.from(
@@ -297,7 +339,9 @@ $identity = [System.Text.Encoding]::UTF8.GetString(
 ) | ConvertFrom-Json
 $process = Get-Process -Id ([int]$identity.processId) -ErrorAction SilentlyContinue
 if ($null -eq $process -or $process.HasExited) {
-  exit 0
+  ${requireAlive
+    ? "throw 'Workflow process exited before required termination.'"
+    : 'exit 0'}
 }
 $processStartedAt = $process.StartTime.ToUniversalTime().ToString(
   'O',

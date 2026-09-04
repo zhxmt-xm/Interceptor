@@ -194,6 +194,14 @@ describe('WindowsWorkflowHostSafetyOperations', () => {
     await operations.registerCaptureListenerProcess();
 
     expect(await operations.listLiveProcessIds([100])).toEqual([103]);
+    await operations.terminateProcessGeneration({
+      processId: 103,
+      processStartedAt: 'listener-owner-start',
+    });
+    expectTerminationScripts(commandRunner, [{
+      processId: 103,
+      processStartedAt: 'listener-owner-start',
+    }]);
   });
 
   it('rejects a capture listener process that was never owned by this workflow', async () => {
@@ -382,6 +390,87 @@ describe('WindowsWorkflowHostSafetyOperations', () => {
     expectTerminationScripts(commandRunner, [
       { processId: 100, processStartedAt: 'registered-root-start' },
     ]);
+  });
+
+  it('terminates one explicitly registered Core generation without its Main tree', async () => {
+    const fileStore = new FakeWorkflowHostFileStore();
+    const commandRunner = new FakeWorkflowHostCommandRunner();
+    const profileDirectory = String.raw`C:\profiles\owner-a`;
+    commandRunner.processTables = [[{
+      processId: 102,
+      parentProcessId: 100,
+      creationDate: 'registered-core-start',
+      commandLine: String.raw`utility.exe --data-dir=C:\profiles\owner-a\storage`,
+    }]];
+    const operations = createOperations(fileStore, commandRunner);
+    operations.registerUserDataDirectory(profileDirectory);
+    const coreProcessIdentity = {
+      processId: 102,
+      processStartedAt: 'registered-core-start',
+    };
+    operations.registerProcessIdentity(coreProcessIdentity);
+    await expect(operations.listLiveProcessIds([100])).resolves.toEqual([102]);
+
+    await operations.terminateProcessGeneration(coreProcessIdentity);
+
+    expectTerminationScripts(commandRunner, [coreProcessIdentity]);
+    expect(commandRunner.calls.at(-1)?.args.at(-1)).toContain(
+      "throw 'Workflow process exited before required termination.'",
+    );
+  });
+
+  it('terminates a Core with no command line after proving registered Main ancestry', async () => {
+    const fileStore = new FakeWorkflowHostFileStore();
+    const commandRunner = new FakeWorkflowHostCommandRunner();
+    commandRunner.processTables = [[
+      {
+        processId: 100,
+        parentProcessId: 50,
+        creationDate: 'main-start',
+        commandLine: '',
+      },
+      {
+        processId: 102,
+        parentProcessId: 100,
+        creationDate: 'core-start',
+        commandLine: '',
+      },
+    ]];
+    const operations = createOperations(fileStore, commandRunner);
+    const coreProcessIdentity = {
+      processId: 102,
+      processStartedAt: 'core-start',
+    };
+    operations.registerProcessIdentity(coreProcessIdentity);
+
+    await expect(operations.listLiveProcessIds([100])).resolves.toEqual([100, 102]);
+    await operations.terminateProcessGeneration(coreProcessIdentity);
+
+    expectTerminationScripts(commandRunner, [coreProcessIdentity]);
+  });
+
+  it('refuses to terminate a registered generation outside the workflow profile', async () => {
+    const fileStore = new FakeWorkflowHostFileStore();
+    const commandRunner = new FakeWorkflowHostCommandRunner();
+    commandRunner.processTables = [[{
+      processId: 999,
+      parentProcessId: 4,
+      creationDate: 'external-start',
+      commandLine: String.raw`external.exe --data-dir=C:\external\storage`,
+    }]];
+    const operations = createOperations(fileStore, commandRunner);
+    operations.registerUserDataDirectory(String.raw`C:\profiles\owner-a`);
+    const externalProcessIdentity = {
+      processId: 999,
+      processStartedAt: 'external-start',
+    };
+    operations.registerProcessIdentity(externalProcessIdentity);
+    await expect(operations.listLiveProcessIds([100])).resolves.toEqual([999]);
+
+    await expect(operations.terminateProcessGeneration(externalProcessIdentity))
+      .rejects.toThrow('does not belong to this workflow process tree');
+
+    expectTerminationScripts(commandRunner, []);
   });
 
   it('reads WinINet through an explicitly supplied packaged helper path', async () => {

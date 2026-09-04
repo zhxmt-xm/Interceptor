@@ -24,6 +24,7 @@ export interface WorkflowHostSafetyOperations {
   listLiveProcessIds(rootProcessIds: readonly number[]): Promise<readonly number[]>;
   canBindCapturePort(): Promise<boolean>;
   dismissOwnedDialogs(rootProcessIds: readonly number[]): Promise<void>;
+  terminateProcessGeneration(processIdentity: WorkflowProcessIdentity): Promise<void>;
   terminateProcessTrees(rootProcessIds: readonly number[]): Promise<void>;
   restoreCrashJournal(baseline: WinInetProxySettings): Promise<void>;
 }
@@ -90,6 +91,13 @@ export class WorkflowHostSafetyGuard {
   /** Terminate every registered process generation for an intentional crash boundary. */
   terminateRegisteredApplications(): Promise<void> {
     return this.operations.terminateProcessTrees(this.registeredProcessIds());
+  }
+
+  /** Terminate one registered Core generation without stopping its Main root. */
+  terminateProcessGeneration(
+    processIdentity: WorkflowProcessIdentity,
+  ): Promise<void> {
+    return this.operations.terminateProcessGeneration(processIdentity);
   }
 
   /** List exact registered process generations that remain alive. */

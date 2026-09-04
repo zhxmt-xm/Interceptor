@@ -1,16 +1,11 @@
 # Interceptor Handover
 
-> Tracked commit: `e1ce8e75`
+> Tracked commit: `59ede926`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-04
 
 ## Task List
 
-- [ ] **代码完成 · Windows崩溃恢复主路径E2E完成 · 待剩余真实E2E · 系统代理跨profile crash recovery**：2026-09-03真实Electron `rules.import-tree`卡在Windows原生Save Dialog后，teardown只检查进程与8888，没有恢复完整WinINet；后续独立profile又把遗留8888误记为`original`。Developer最终手工恢复网络。根因是journal跟随Electron `userData`，不同profile看不到同一份首次快照。
-    **当前契约**：产品只支持同一时间一个Interceptor App，不维护owner、PID、启动时间、instance ID、跨进程锁或多实例竞争。Windows固定使用`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`；macOS使用当前`userData/system-proxy/journal.json`。两平台journal都只包含`version/original/owned`。接管前先原子保存完整`original/owned`再修改系统代理；启动恢复时`current == owned`则加载快照且不重写系统代理，`current == original`则只删journal，其他值表示外部修改，零系统代理写入并删失效journal；正常退出仅在`current == owned`时恢复`original`，恢复失败保留journal。
-    **结构与安全门禁**：平台代码已拆为`system-proxy/windows/`与`system-proxy/macos/`，各自拥有`entry.ts`、`journal.ts`、helper、build脚本和tests；共享error、upstream probe与单App内操作队列留在模块根。Main将启动恢复、用户Enable/Restore、Core故障恢复和退出恢复顺序执行；该队列不保存进程身份，也不是跨进程锁。产品Windows helper只保留WinINet `get/set`。E2E runner自己的PowerShell边界按PID+启动时间清理测试进程、只对已登记前台Dialog发键，并在每条真实Electron结束后硬断言完整WinINet、`journal.json`、测试进程树与8888。
-    **已完成证据**：Windows真实Electron `settings.system-proxy.crash-recovery`为`1/1` Green（16.2秒），A Main/Core `30640/39876`异常销毁，B `8472/27844`顺序启动并正常销毁，六项快照/路径/销毁证据全true；`settings.proxy-mitm.persistence`为`1/1` Green（27.3秒），A `27820/16504`异常销毁，B `39564/21692`正常销毁，16项代理/CA/MITM/TLS证据全true。系统代理+fixture聚焦`76/76`、Desktop全量`445/445`、全workspace typecheck、native build、Windows package、artifact audit（`1,294 files / 392,808,773 bytes`）、离线production audit 0漏洞与packaged smoke`1/1`（39.1秒）Green。最终宿主保持Clash的`ProxyEnable=1 / ProxyServer=127.0.0.1:7890`，无`journal.json`、Electron或8888 listener。
-    **验证边界与待办**：`current == original`、外部修改零写入、恢复失败保留journal、启动失败清理顺序和Promise队列目前由unit/integration验证；其中无法从正常产品路径稳定制造的启动/写入故障保持在owning unit，不用故障注入冒充E2E。仍缺Windows真实Core故障与用户Enable/退出竞争、外部程序改写系统代理，以及macOS真实Electron crash/relaunch、Authorization、系统副作用恢复证据。故该项不得标记completed；详细参与者、生命周期时序与逐流程证据矩阵见[features/settings.md](features/settings.md) §3.2。全workspace unit仍只有既有Proxy Core chunked framing两项失败。
 - [ ] **下一优先级 · 代理门禁已完成，待Rules Import E2E/完成提交 · Agent Rules三项收口**：基线为checkpoint `8ff403d1`；2026-09-04 checkpoint纳入当前全部tracked Rules、Import并发与Dialog驱动现场，仅用于完整保存代码，不作为work item完成或验收证据。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不得修改、暂存或提交；`AgentQueryToolTrace.tsx`曾被用户或formatter改动，后续编辑前必须重读。
     `get_rules`、`get_rule_hits`、`apply_rules`业务主体、严格递归Zod schema、Map Local路径隔离、typed摘要、Ask/Auto、stale revision、`rules:changed`跨Agent/MCP/窗口同步、Rules Store异步序列、15语言与design/parity已完成。后续复审还锁定：只有除真实路径外JSON语义完全不变的Rule可保留Map Local路径；`describeChange`与`execute`共用revision守卫；过旧外部响应结束loading并保持conflict；Import保存使用提交快照，保存期间编辑保留在draft且更高外部revision conflict不清除；设计与产品统一`data-approval-status`。
     最近自动验证为Tools`43/43`、Runtime`121/121`、MCP`30/30`、Desktop`411/411`、design interaction`68/68`和全workspace typecheck Green；Agent Rules与MCP Rules真实Electron在最新业务实现上联合`2/2` Green。此前完整parity为`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`，新增Rules query/result明暗4 views为`30/30`、0 missing、0 flagged、0px；最后一次package基线为`1,294 files / 392,804,000 bytes`、production audit 0漏洞、packaged smoke`1/1`，但这些发布门禁早于最新Import并发增量，收口时必须重跑。
@@ -23,7 +18,7 @@
 - [ ] **验收进行中 · Breakpoint parity 几何收敛**：HTTP request/response旧场景仍有既有差异：常规状态最大约1.6–3.3px，response text明暗各有1个target missing，file-empty按钮仍有302.1px层级差。本轮已删除不存在的queue-full明暗场景并消除Original body重复外框；HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗14 views全部`0 missing / 0 flagged`，最大0.8px。2026-08-25当前完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`；Rules overflow高度修正后明暗18个target仍为0 missing / 0 flagged，最大0.3px，详见visual parity report。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待验证 · 上游认证代理**：公司 SSO / `Proxy-Authorization` 尚未验证；WinINet 不保存凭据，需要设计用户手工提供方式。
-- [ ] **待实现 · macOS 上游检测**：多 network service 可能各有代理，合并语义尚未确定。
+- [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [ ] **待验收 · BodyViewer 全屏**：格式化已独立闭环；全屏入口、设计状态与基础代码已接入，仍需真实Electron验证打开/关闭、Copy与内容状态生命周期。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector分组与正文工具条变化后尚未整体收敛；2026-08-25当前完整复跑为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`。Rules action tag overflow高度修正后明暗2 views、18个target全部`0 missing / 0 flagged`、最大0.3px；既有14个逻辑队列/无timeout场景与Original body wrapper证据保持。原有债务仍集中在Capture、Settings、Breakpoint file-empty与旧Shell，详见`apps/desktop/tests/visual-parity/parity-report.md`。

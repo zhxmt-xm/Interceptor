@@ -278,13 +278,13 @@ Core 从 `running` 进入 `unresponsive/restarting` 时，Main 只把一个自�
 | --- | --- | --- |
 | Windows 首次接管、App A 强杀、App B 跨 profile 加载 `current == owned`、B 正常退出恢复首次 `original` | 真实 Electron `settings.system-proxy.crash-recovery` | 已取得 Red/Green 与完整销毁证据 |
 | Windows journal 恢复后的 CA、MITM、TLS 用户配置跨进程保持 | 真实 Electron `settings.proxy-mitm.persistence` | 已取得 Green 与完整销毁证据 |
-| `current == original`、外部修改零写入、恢复失败保留 journal | Windows/macOS Service unit 与 journal integration | 产品分支已验证；外部修改尚无真实 OS 交互 E2E |
+| `current == original`、外部修改零写入、恢复失败保留 journal | Windows/macOS Service unit 与 journal integration | owning边界已完成；外部程序改写不是产品用户flow，不用测试脚本改WinINet冒充E2E |
 | 启动失败先恢复代理再清理其他服务 | `application-shutdown` unit | 属无法由正常用户路径稳定制造的故障分支，不用故障注入冒充 E2E |
-| Promise 队列严格串行且前序失败不阻塞后续 | `operation-queue` unit | 队列本身已验证；Core 故障与用户 Enable/退出竞争尚无真实 Electron E2E |
-| Core 异常退出后的自动 Restore 与新 Core 生命周期 | packaged smoke 会重启 Core，但按本仓定义不属于真实 E2E | 待专项真实 Electron workflow |
+| Promise 队列严格串行且前序失败不阻塞后续 | `operation-queue` unit + 真实Electron `application.lifecycle.core-restart` | 队列unit Green；Core故障后的重新接管及第二次故障与Close竞争Green |
+| Core 异常退出后的自动 Restore 与新 Core 生命周期 | 真实Electron `application.lifecycle.core-restart` | Retrospective Red与当前Green、真实请求、两代PID及完整销毁证据已取得 |
 | macOS 三态 journal 与多 network service 恢复 | macOS Service unit、journal integration；Windows package 不执行 Swift helper | 待真实 macOS Electron、Authorization 与系统副作用证据 |
 
-因此当前只能称为“Windows 跨 profile 崩溃恢复主路径 E2E 完成”；不能称为上述全部流程均已真实 E2E。
+Windows系统代理崩溃恢复已完成：跨profile App crash/relaunch、Core-only crash/restart、第二次Core故障与正常退出竞争均有真实Electron证据；不可由正常产品路径制造的边界保留在owning unit/integration。macOS实机验收独立跟踪。
 
 **窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`。Main 日志不包含 snapshot。
 
@@ -573,8 +573,8 @@ Remove与新Chat默认Model；Provider registry和API Key由Main内`AgentRuntime
 
 - [ ] CA 私钥不出现在 Renderer、日志、导出、packaged smoke 的 API 白名单中。
 - [x] Windows App A强杀后，跨profile App B加载首次`original/owned`，正常退出恢复宿主并完整销毁。
-- [ ] Windows外部程序改写代理后保持零系统写入，并清除失效journal的真实OS交互证据。
-- [ ] Windows Core故障自动Restore与用户Enable/退出竞争的真实Electron证据。
+- [x] Windows外部程序改写代理后保持零系统写入并清除失效journal，由owning unit/integration验证。
+- [x] Windows Core故障自动Restore、重新接管及第二次故障与Close竞争的真实Electron证据。
 - [ ] macOS真实Electron crash/relaunch、Authorization与系统副作用恢复证据。
 - [ ] 更新下载的 SHA-256 与 size 校验失败时不保留文件。
 - [ ] 15 种语言切换后无页面溢出，持久化生效。

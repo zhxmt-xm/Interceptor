@@ -27,7 +27,10 @@ import {
   dismissWindowsFileDialogs,
   type WindowsFileDialogOwner,
 } from './windows-file-dialog';
-import { WorkflowHostSafetyGuard } from './workflow-host-safety-guard';
+import {
+  WorkflowHostSafetyGuard,
+  type WorkflowProcessIdentity,
+} from './workflow-host-safety-guard';
 import { WindowsWorkflowHostSafetyOperations } from './windows-workflow-host-safety-operations';
 
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -231,6 +234,55 @@ export class LocalElectronApplicationDriver {
       throw new Error('Windows Main process identity is unavailable on this platform.');
     }
     return this.windowsMainOwner;
+  }
+
+  /** Read and register the exact Core generation currently exposed by public UI state. */
+  async currentCoreProcessIdentity(): Promise<WorkflowProcessIdentity> {
+    if (process.platform !== 'win32' || !this.workflowHostSafetyGuard) {
+      throw new Error('Exact Core process identity requires the Windows host guard.');
+    }
+    const processId = await this.readCoreProcessId();
+    const processIdentity = await LocalElectronApplicationDriver
+      .readWindowsProcessIdentity(processId);
+    this.workflowHostSafetyGuard.registerProcessIdentity(processIdentity);
+    this.corePid = processId;
+    return processIdentity;
+  }
+
+  /** Terminate one registered Core generation without stopping Electron Main. */
+  terminateCoreProcessGeneration(
+    processIdentity: WorkflowProcessIdentity,
+  ): Promise<void> {
+    if (!this.workflowHostSafetyGuard) {
+      throw new Error('Core process termination requires the Windows host guard.');
+    }
+    return this.workflowHostSafetyGuard.terminateProcessGeneration(processIdentity);
+  }
+
+  /** List every workflow-owned process generation still alive. */
+  listLiveRegisteredProcessIds(): Promise<readonly number[]> {
+    if (!this.workflowHostSafetyGuard) {
+      throw new Error('Live process inspection requires the Windows host guard.');
+    }
+    return this.workflowHostSafetyGuard.listLiveRegisteredProcessIds();
+  }
+
+  /** Wait for a new Core PID and register its process tree and capture listener. */
+  async waitForRestartedCoreProcess(
+    previousProcessId: number,
+  ): Promise<WorkflowProcessIdentity> {
+    await expect.poll(
+      () => this.readCoreProcessId(),
+      { message: 'Core did not restart with a new PID', timeout: 20_000 },
+    ).not.toBe(previousProcessId);
+    await expect.poll(
+      () => LocalElectronApplicationDriver.canConnectPort(DEFAULT_CAPTURE_PORT),
+      { message: 'Restarted Core listener did not start on 8888', timeout: 20_000 },
+    ).toBe(true);
+    const processIdentity = await this.currentCoreProcessIdentity();
+    await this.workflowHostSafetyGuard?.captureProcessTrees();
+    await this.workflowHostSafetyGuard?.registerCaptureListenerProcess();
+    return processIdentity;
   }
 
   /** Wait until Renderer, Core and Capture bootstrap reach a stable workflow state. */
@@ -734,6 +786,16 @@ export class LocalElectronApplicationDriver {
       throw new Error('PowerShell could not identify the Electron process generation.');
     }
     return { processId, processStartedAt: value.processStartedAt };
+  }
+
+  /** Read the current Core PID from the same public status title visible to users. */
+  private async readCoreProcessId(): Promise<number> {
+    const title = await this.page.locator('[title*=" · PID "]').getAttribute('title');
+    const processId = Number(title?.match(/PID (\d+)$/)?.[1]);
+    if (!Number.isInteger(processId) || processId <= 0) {
+      throw new Error('Current Core PID is unavailable from public UI state.');
+    }
+    return processId;
   }
 }
 

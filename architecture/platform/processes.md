@@ -132,8 +132,8 @@ Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
 每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并复核完整 WinINet、crash
 journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
-E2E；当前只有 Windows 跨 profile 崩溃恢复主路径与 MITM 持久化取得真实 Electron 证据，Core 故障并发和
-macOS 实机流程仍待 E2E。
+E2E；Windows跨profile崩溃恢复、MITM持久化和`application.lifecycle.core-restart`均已取得真实Electron
+证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS实机流程仍待E2E。
 
 ## 2. 两条独立通道
 

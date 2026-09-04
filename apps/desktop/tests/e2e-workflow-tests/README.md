@@ -137,7 +137,7 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `application.startup.ready` | 新 profile 启动后首窗、Core 和 listener ready | shared | planned |
-| `application.lifecycle.core-restart` | Core 被结束后自动重启并恢复 UI/RPC | shared | planned |
+| `application.lifecycle.core-restart` | Core被结束后恢复UI/RPC、系统代理并验证故障与退出竞争 | os-side-effect | passed |
 | `application.lifecycle.graceful-close` | 产品 Close 完整销毁 Main/Core/Renderer/Worker/listener | shared | planned |
 | `application.lifecycle.profile-isolation` | 两个 profile 的持久/临时状态严格隔离 | shared | planned |
 | `shell.navigation.workspaces` | 五个 workspace 的 Header/Main/Statusbar 同步切换 | shared | planned |

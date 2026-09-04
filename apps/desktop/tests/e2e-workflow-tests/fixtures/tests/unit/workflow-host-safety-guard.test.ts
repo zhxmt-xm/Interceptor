@@ -90,6 +90,18 @@ class FakeWorkflowHostSafetyOperations implements WorkflowHostSafetyOperations {
     return Promise.resolve();
   }
 
+  /** Terminate one exact test-owned process generation. */
+  terminateProcessGeneration(processIdentity: {
+    readonly processId: number;
+    readonly processStartedAt: string;
+  }): Promise<void> {
+    this.calls.push(`terminate-generation:${processIdentity.processId}`);
+    this.liveProcessIds = this.liveProcessIds.filter(
+      (processId) => processId !== processIdentity.processId,
+    );
+    return Promise.resolve();
+  }
+
   /** Restore the exact workflow baseline from its crash journal. */
   restoreCrashJournal(baseline: WinInetProxySettings): Promise<void> {
     this.calls.push('restore-journal');
@@ -143,6 +155,25 @@ describe('WorkflowHostSafetyGuard', () => {
 
     expect(operations.calls).toEqual(['terminate-test-processes:101']);
     expect(operations.liveProcessIds).toEqual([]);
+  });
+
+  it('terminates one registered Core generation without stopping its Main root', async () => {
+    const operations = new FakeWorkflowHostSafetyOperations();
+    const workflowHostSafetyGuard = new WorkflowHostSafetyGuard(operations);
+    await workflowHostSafetyGuard.captureBaseline();
+    workflowHostSafetyGuard.registerApplication(101, 'profile-a');
+    const coreProcessIdentity = {
+      processId: 111,
+      processStartedAt: 'core-start',
+    };
+    workflowHostSafetyGuard.registerProcessIdentity(coreProcessIdentity);
+    operations.liveProcessIds = [101, 111];
+    operations.calls.length = 0;
+
+    await workflowHostSafetyGuard.terminateProcessGeneration(coreProcessIdentity);
+
+    expect(operations.calls).toEqual(['terminate-generation:111']);
+    expect(operations.liveProcessIds).toEqual([101]);
   });
 
   it('lists only live registered process generations for destroy verification', async () => {

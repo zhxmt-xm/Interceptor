@@ -28,25 +28,30 @@
 <a id="application-lifecycle-core-restart"></a>
 ## `application.lifecycle.core-restart`
 
-**状态**：planned
+**状态**：passed
 **策略**：os-side-effect
 
 ### Steps
 
 1. 创建独立profile/evidence和HTTP origin；启动trace/Electron，等待App root、Core Running、8888和readiness modal。
 2. 点击 `capture.readiness.enable`，完成App发起的原生授权；等待Recording，并在Settings Proxy确认Owned by Interceptor。
-3. 返回Capture，记录UI显示的旧Core PID；发送一条真实请求并确认row出现。
-4. 测试进程只做故障注入结束旧Core PID，不调用重启API。
-5. 等待UI进入Unresponsive/Restarting再回Running；确认新PID不同、旧PID退出、listener重新Listening。
-6. 确认新Core的临时Capture为空；若guarded recovery已恢复system proxy，则从readiness UI再次Enable。
-7. 通过8888发送新请求，确认row和Inspector详情可用；切换Rules/Composer/Capture确认Shell/RPC恢复。
-8. 进入Settings Proxy点击 `settings.proxy.restore`，确认非owned和Paused；保存evidence。
-9. 点击 `shell.window.close`，验证Main/Renderer/新Core/Worker全退且8888释放。
-10. 关闭origin并删除profile；残留ownership/journal使workflow失败。
+3. 返回Capture，记录UI显示的Core A PID和三字段journal；通过8888发送真实请求并确认row与Inspector可用。
+4. 测试环境按PID+启动时间精确终止Core A，不调用产品重启API、不终止Main；等待旧PID退出。
+5. 等待UI进入Restarting再回Running，确认Core B PID不同、8888重新Listening且旧临时Capture已按代际清空。
+6. 确认Main已把系统代理从journal的`owned`恢复为`original`并清除journal；新Core ready后，Renderer代际bootstrap自动重新Enable，确认新journal的`original`仍等于workflow启动快照，没有把8888重记为恢复目标。
+7. 通过8888发送第二条真实请求，确认新row、Inspector和Rules/Composer/Capture导航可用，证明新Core、RPC与Renderer恢复。
+8. 记录Core B的PID+启动时间，精确终止Core B后立即点击真实 `shell.window.close`；Core重启计时与退出清理相遇时必须以退出为准。
+9. 验证Main/Renderer/Core/Worker没有任何代际存活、8888释放、journal不存在且完整WinINet等于workflow启动快照；保存两代PID、请求、代理和销毁evidence。
+10. 关闭origin并删除profile；任何强制清理、残留进程、journal或系统代理差异都使workflow失败。
 
 ### 预期效果
 
-Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；旧临时Capture不泄漏；系统代理guarded recovery与最终Restore正确。
+Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；旧临时Capture不泄漏；系统代理在Core故障后先安全交回，在新Core ready后由Renderer代际bootstrap自动重新接管；Core故障后立即正常退出时不留下任何进程代际或系统代理副作用。
+
+### 证据
+
+- Retrospective Red：在`8ff403d1`旧产品上运行同一workflow，真实Electron完成启动后因“用户级三字段crash journal未创建”失败；Main/Core `30600/4076`正常销毁，宿主恢复且无journal、8888或Electron残留。
+- 当前Green：`1/1`通过（17.2秒）；Main `17376`，Core `7840 -> 11712`。Core A精确终止、旧journal删除、WinINet先恢复`original`、Core B与新journal建立、首次`original/owned`保持、两代真实请求、旧Capture清空、Rules RPC恢复、Core B故障后Close无存活进程及最终宿主恢复共13项脱敏证据全部为`true`，`gracefulDestroyVerified=true`。
 
 <a id="application-lifecycle-graceful-close"></a>
 ## `application.lifecycle.graceful-close`
