@@ -57,7 +57,7 @@ export function AgentToolCapabilities(): React.JSX.Element {
       </div>
       <div className={styles.toolCapabilityGroups}>
         {groups.map((group) => (
-          <section className={styles.toolCapabilityGroup} key={group.id}>
+          <section className={styles.toolCapabilityGroup} data-tool-group={group.id} key={group.id}>
             <header className={styles.toolCapabilityGroupHeader}>
               <strong>{group.title}</strong>
               <span>{group.tools.length}</span>

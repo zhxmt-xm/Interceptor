@@ -134,11 +134,11 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 ### Steps
 
 1. 创建独立空profile并启动真实Electron；进入Settings > Agent。
-2. 无需配置Provider，确认`agent.tools.capabilities`存在，四组共24行且每行有Agent/MCP两个Switch；只列共享
+2. 无需配置Provider，确认`agent.tools.capabilities`存在，五组共24行且每行有Agent/MCP两个Switch；只列共享
 	registry中已经实现的Tool，不展示架构目录里尚未开发的目标项。
-3. 首次启动48个Switch全部开启；关闭`get_proxy_status`的Agent开关，不改变同一行MCP开关或其他Tool；
-	关闭`apply_rules`的MCP开关，不改变同一行Agent开关。
-4. 用真实搜索框过滤到`query_diagnostics`，确认隐藏/恢复行不会改变开关；离开Settings并返回，确认两项关闭状态保持。
+3. 首次启动48个Switch全部开启；关闭`capture_get_proxy_status`的Agent开关，不改变同一行MCP开关或其他Tool；
+	关闭`rules_replace_tree`的MCP开关，不改变同一行Agent开关。
+4. 用真实搜索框过滤到`diagnostics_query`，确认隐藏/恢复行不会改变开关；离开Settings并返回，确认两项关闭状态保持。
 5. 对比操作前后的Capture recording、Rules revision与系统代理状态，确认能力开关没有改写任何业务状态。
 6. 正常关闭并用同一profile重启，确认两项关闭状态恢复；重新开启两项并再次重启，确认恢复为全部开启，
 	证明关闭名称已从持久配置移除且未来新增Tool仍会默认开启。
@@ -151,17 +151,23 @@ Settings列表由共享registry驱动。Agent与MCP开关默认开启、互不�
 业务状态，也不提前展示未实现能力。本workflow只验收Settings与持久化，不替代独立的Agent或MCP Tool执行验收；
 MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 
+24行Tool名称必须全部符合`<feature>_<verb>[_<object>]`，且前缀只来自`capture/rules/composer/breakpoints/diagnostics`；
+旧无前缀名称不得出现在行、Switch automation ID或持久化恢复结果中。五个Capability ID、Settings分组与前缀一致。
+
 ### Evidence
 
 - 实现前真实Electron精确Red于`agent.tools.capabilities`不存在；实现后同一workflow `1/1` Green。
-- fresh profile显示四组24行和48个默认开启Switch；`get_proxy_status`仅关闭Agent列，`apply_rules`仅关闭MCP列；
+- fresh profile显示Capture、Rules、Composer、Breakpoints、Diagnostics五组24行和48个默认开启Switch；
+	`capture_get_proxy_status`仅关闭Agent列，`rules_replace_tree`仅关闭MCP列；
 	搜索、Settings往返不改变状态。第一代业务状态前后均为`recording=true / rules revision=0 / system proxy=owned`。
 - 第一代关闭两项，第二代同profile恢复后重新开启，第三代再次启动时48项全开，证明空关闭集不依赖持久文件。
 - 三代Main/Core PID分别为`31716/32188`、`13204/27660`、`29192/30064`；每代
 	`gracefulDestroyVerified=true`，最终8888释放。
+- feature命名切换后同一workflow再次`1/1` Green：24行严格按五组顺序出现，组automation ID分别为
+  `capture/rules/composer/breakpoints/diagnostics`，48个开关与两次重启恢复保持；旧无前缀名称零行。
 
-<a id="agent-tools-traffic-discovery"></a>
-## `agent.tools.traffic-discovery`
+<a id="agent-tools-capture-discovery"></a>
+## `agent.tools.capture-discovery`
 
 **状态**：passed
 **策略**：shared
@@ -171,18 +177,18 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 1. 创建独立profile和本地OpenAI-compatible lab；通过Settings真实配置Provider。
 2. 经产品UI开始Recording，并让workflow fixture通过真实代理产生至少一条唯一HTTP exchange；不seed Capture或Agent Store。
 3. 打开Agent并发送要求查询当前代理、Capture storage和该exchange的消息；lab依次产生`discover_tools`、
-	`get_storage_status`、`get_proxy_status`、`list_exchanges`与`get_exchange`调用。
+	`capture_get_storage_status`、`capture_get_proxy_status`、`capture_list_exchanges`与`capture_get_exchange`调用。
 4. 确认首次Model request只含Capability Index与`discover_tools`，不含业务schema；discovery结果返回当前七个query
-	descriptor和`stop_recording`，下一request才披露全部八项；本workflow仍只执行Storage、Proxy、List与Detail四项query。
+	descriptor和`capture_stop_recording`，下一request才披露全部八项；本workflow仍只执行Storage、Proxy、List与Detail四项query。
 5. 确认后续每个request都保持assistant Tool Call与Tool Result的call ID配对；Transcript按顺序显示discovery、
 	四个query调用、参数与结果摘要；Storage结果包含`sessionCount / exchangeCount / bodyCount / databaseBytes /
 	blobBytes / totalBytes`，真实正文使`exchangeCount / bodyCount / blobBytes`非零；Exchange摘要读取正式
 	`statusCode`而非不存在的`status`，最终回答引用真实exchange与Storage事实。
 6. 正常关闭并用同一profile重启，确认Tool Call/Result轨迹与最终回答恢复；启动不自动重放Model或Tool调用。
-7. 在Settings关闭`get_storage_status`的Agent开关，新建Chat再次discover，确认Capability仍存在但结果与下一request
-	schema都不含该Tool；让lab直接猜测调用`get_storage_status`，确认返回`unknown_tool`。执行前关闭后Core零命令由
+7. 在Settings关闭`capture_get_storage_status`的Agent开关，新建Chat再次discover，确认Capability仍存在但结果与下一request
+	schema都不含该Tool；让lab直接猜测调用`capture_get_storage_status`，确认返回`unknown_tool`。执行前关闭后Core零命令由
 	`AgentToolService` owning unit使用`FakeCoreRuntime.commands`证明，不在E2E中调用测试后门观察Main内部状态。
-8. 重新开启后再新建Chat并discover，确认`get_storage_status`恢复；关闭该Chat不影响前一Chat的披露轨迹。
+8. 重新开启后再新建Chat并discover，确认`capture_get_storage_status`恢复；关闭该Chat不影响前一Chat的披露轨迹。
 9. 保存脱敏lab请求、Tool item sequence、Capture事实、trace与每代销毁证据；关闭lab并删除profile。
 
 ### 预期效果
@@ -193,10 +199,10 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 ### TDD证据
 
 - Red：实现前同一workflow的真实Provider、Capture与Agent链路运行成功，`call-storage`公开状态精确为`failed`；
-	metadata仍记录Main/Core优雅销毁，证明失败来自Agent未注册`get_storage_status`。
+	metadata仍记录Main/Core优雅销毁，证明失败来自Agent未注册`capture_get_storage_status`。
 - Green：同一workflow `1/1`通过，最终一次真实`capture.status`返回`1 session / 3 exchanges / 1 body / 92 B`；六个字段
 	完整进入Provider history，Transcript公开摘要属性与结果一致，query未出现审批。
-- 重启后Model请求增量为0；关闭`get_storage_status`后discovery/schema移除该Tool，猜测调用返回`unknown_tool`，
+- 重启后Model请求增量为0；关闭`capture_get_storage_status`后discovery/schema移除该Tool，猜测调用返回`unknown_tool`，
 	重新开启后恢复。两代Main/Core PID为`20596/42100`与`44412/12224`，均
 	`gracefulDestroyVerified=true`；Renderer page error为0，最终8888释放且系统代理恢复。
 
@@ -211,13 +217,13 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 1. 创建独立profile、两代evidence、本地OpenAI-compatible lab和随机端口正式Playground；通过产品Settings真实配置Provider。
 2. 经产品UI开启Recording；系统Edge打开正式Playground，只通过公开场景目录和Run控件依次自产`body-json`与
 	`ws-bidirectional`流量，不直接调用Lab API或seed Capture。
-3. 从公开Capture行取得两条exchange identity。Model先discover `traffic`，再调用`get_exchange`读取HTTP detail，
-	从该真实Tool Result取得response `bodyId`后分两段调用`get_exchange_body`并重组完整JSON；不得由测试构造或
+3. 从公开Capture行取得两条exchange identity。Model先discover `capture`，再调用`capture_get_exchange`读取HTTP detail，
+	从该真实Tool Result取得response `bodyId`后分两段调用`capture_get_exchange_body`并重组完整JSON；不得由测试构造或
 	预读body ID。每段严格遵守解码后明文字节`offset + length`，第一页明确`end=false`、末页`end=true`。
-4. Model调用`list_websocket_messages`读取同一WebSocket exchange，分别验证双向完整页与单方向过滤；cursor、limit、
+4. Model调用`capture_list_websocket_messages`读取同一WebSocket exchange，分别验证双向完整页与单方向过滤；cursor、limit、
 	direction和返回frame顺序都使用共享schema与真实Core结果。
 5. 经产品Certificates UI生成并安装CA、添加`localhost`源站例外并开启HTTPS解密；再从正式Playground运行
-	`grpc-unary-json`。Model调用`list_grpc_messages`读取request与response两侧，验证recognized、body metadata、
+	`grpc-unary-json`。Model调用`capture_list_grpc_messages`读取request与response两侧，验证recognized、body metadata、
 	envelope offset/length、compressed/truncated标志和分页结果；payload字节继续通过正文range读取，不由该Tool复制。
 6. 确认首次Model request仍只有Capability Index与`discover_tools`；成功discovery后的request才披露三项新schema。
 	每项Tool Call/Result保持call ID配对，query在Ask/Auto下均不出现审批。
@@ -251,7 +257,7 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 	旧5项，缺少三项新Tool；Main/Core优雅销毁且8888释放，是有效行为Red。
 - 接线后正文range与WebSocket全部/单方向真实Tool Call先成功；gRPC输入前置的正式H2链路在Electron
 	UtilityProcess中失败，Core记录secure h2 exchange为aborted、response 0 B。
-- 根因证据：临时关闭`simulateConnectionErrors`后，同一真实链路返回502；再由Agent `get_exchange_body`读取到
+- 根因证据：临时关闭`simulateConnectionErrors`后，同一真实链路返回502；再由Agent `capture_get_exchange_body`读取到
 	`OPENSSL_internal:INVALID_COMMAND`。Mockttp对`ignoreHostHttpsErrors`追加OpenSSL专用`@SECLEVEL=0`，Electron
 	TLS运行时不支持。诊断探针已撤回，产品透明连接错误语义、CA、系统代理、进程和8888均恢复。
 - Developer于2026-09-02明确批准扩展`patches/mockttp+4.5.0.patch`；最终补丁只在Electron运行时省略
@@ -275,15 +281,15 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 
 1. 创建独立profile与脚本化lab，通过产品Settings配置Provider并新建Chat；确认Session执行模式默认为`ask`，
 	新Chat不会继承另一Chat的`auto`。
-2. 经产品UI开始Recording；让Model discovery后调用`stop_recording`，确认Turn持久化为
+2. 经产品UI开始Recording；让Model discovery后调用`capture_stop_recording`，确认Turn持久化为
 	`waiting-for-tool-approval`，Transcript原位展示Tool、参数、影响与Allow/Deny，Core在裁决前仍为recording。
 3. pending期间切到`auto`，确认该问询仍在且未执行；切回原Chat后Deny，确认Tool Result为`tool_denied`、Model
 	得到配对Result并继续，Recording不变。
-4. 再次让Model调用`stop_recording`并Allow；确认批准后使用同一call ID执行正式`stopCapture`入口，Capture进入paused，
+4. 再次让Model调用`capture_stop_recording`并Allow；确认批准后使用同一call ID执行正式`stopCapture`入口，Capture进入paused，
 	已裁决按钮不能重复提交。
-5. 通过UI恢复Recording，将当前Session切换为`auto`；再次调用`stop_recording`，确认不出现问询且直接经同一正式入口
+5. 通过UI恢复Recording，将当前Session切换为`auto`；再次调用`capture_stop_recording`，确认不出现问询且直接经同一正式入口
 	进入paused。query Tool在两种Mode下均不出现问询。
-6. 再次恢复Recording并在Settings关闭`stop_recording`的Agent开关；即使Session仍为`auto`，新discovery/schema也不含
+6. 再次恢复Recording并在Settings关闭`capture_stop_recording`的Agent开关；即使Session仍为`auto`，新discovery/schema也不含
 	该Tool，猜测调用返回`unknown_tool`且Recording保持不变。
 7. 正常关闭并用同一profile重启，确认原Session的`auto`与Tool关闭状态恢复且没有重放Model/Tool调用；通过UI恢复
 	`ask`、重新开启Tool和Recording后完整销毁。
@@ -297,7 +303,7 @@ Tool启用状态与执行模式正交：关闭永远不可调用；开启的quer
 ### Evidence
 
 - 实现前Runtime/Session聚焦测试5项精确Red于默认mode、authorization gate、pending状态和公开方法缺失；Desktop
-	聚焦测试3项精确Red于`stop_recording`接线与Renderer intent缺失。真实workflow再精确Red于Session根没有默认Ask。
+	聚焦测试3项精确Red于`capture_stop_recording`接线与Renderer intent缺失。真实workflow再精确Red于Session根没有默认Ask。
 - 当前同一workflow`1/1` Green：新Chat固定Ask；pending切Auto、跨Rules/Capture与Chat切换均不自动裁决；Deny返回
 	`tool_denied`且Recording不变，Allow与Auto分别经正式`proxy.setRecording(false)`暂停Recording；关闭项返回
 	`unknown_tool`且不改变Recording。
@@ -314,24 +320,24 @@ Tool启用状态与执行模式正交：关闭永远不可调用；开启的quer
 
 1. 创建独立profile与脚本化lab，经产品UI配置Provider并开启Recording；产生可辨识的HTTP流量与Rule hit，选中一行并
 	启用method facet，让Capture列表、Inspector、Facet和Rules hit同时持有待清理状态。
-2. 在Ask模式调用`start_recording`并Deny，确认返回`tool_denied`且Recording保持暂停；再次调用并Allow，确认复用正式
+2. 在Ask模式调用`capture_start_recording`并Deny，确认返回`tool_denied`且Recording保持暂停；再次调用并Allow，确认复用正式
 	`proxy.start`后Capture toggle立即同步为Recording。暂停后切换Auto再次调用，确认不出现问询并恢复Recording。
-3. 先暂停Recording形成稳定storage窗口，再在Ask模式调用`clear_capture`，确认批准卡展示的Exchange/Body删除影响
-	与同Turn的`get_storage_status`精确一致；Deny后列表、Inspector、Facet、Rules hit和Core usage均不变，再恢复Recording。
-4. 再次调用`clear_capture`并Allow，确认Core usage归零；Main发布带`clearedBefore`的reset后，Capture rows、selection、
+3. 先暂停Recording形成稳定storage窗口，再在Ask模式调用`capture_clear`，确认批准卡展示的Exchange/Body删除影响
+	与同Turn的`capture_get_storage_status`精确一致；Deny后列表、Inspector、Facet、Rules hit和Core usage均不变，再恢复Recording。
+4. 再次调用`capture_clear`并Allow，确认Core usage归零；Main发布带`clearedBefore`的reset后，Capture rows、selection、
 	Inspector、Facet和Rules hit同步归零，旧事件/分页不能回填；Transcript显示归零后的storage摘要。立即再发一条流量，
 	确认Recording仍开启且新行正常进入。
-5. 重新产生一条流量并切换Auto，调用`clear_capture`；确认无问询且沿同一正式命令和reset事件完成清理，清空后仍能继续
+5. 重新产生一条流量并切换Auto，调用`capture_clear`；确认无问询且沿同一正式命令和reset事件完成清理，清空后仍能继续
 	捕获。
-6. 在Settings分别关闭`start_recording`和`clear_capture`；新discovery/schema不包含对应Tool，猜测调用均返回
+6. 在Settings分别关闭`capture_start_recording`和`capture_clear`；新discovery/schema不包含对应Tool，猜测调用均返回
 	`unknown_tool`，且Recording与usage不被改变。
 7. 正常关闭并用同一profile重启，确认Tool关闭状态、第一代审批的结构化effect metadata恢复且没有重放Model/Tool调用；
 	恢复Settings与Capture运行态后完成Main/Core优雅销毁、8888释放、系统代理与lab副作用恢复。
 
 ### 预期效果
 
-两项Traffic change Tool完整服从Session Ask/Auto与共享Settings开关。`start_recording`复用正式Capture状态广播；
-`clear_capture`的影响来自审批时的真实usage，成功后所有入口都由同一个`capture:reset { clearedBefore }`事件收敛
+两项Capture change Tool完整服从Session Ask/Auto与共享Settings开关。`capture_start_recording`复用正式Capture状态广播；
+`capture_clear`的影响来自审批时的真实usage，成功后所有入口都由同一个`capture:reset { clearedBefore }`事件收敛
 Renderer镜像，且不丢失清理开始后到达的新流量。
 
 ### Evidence
@@ -339,7 +345,7 @@ Renderer镜像，且不丢失清理开始后到达的新流量。
 - Runtime动态effect先Red于`describeEffect`调用0次；Desktop Agent先有3项Red于discovery缺项/Tool不存在，MCP
 	reset先Red于回调0次，Renderer先Red于共享reset入口不存在。最终Runtime`121/121`、Desktop`397/397`、
 	全workspace typecheck Green；Proxy Core仍仅父提交已登记的chunked framing 2项失败，其余319项通过。
-- 同一workflow字节级放入父提交`4da20a1e`的detached worktree后，Session在`start_recording`后直接`completed`、
+- 同一workflow字节级放入父提交`4da20a1e`的detached worktree后，Session在`capture_start_recording`后直接`completed`、
 	未进入预期审批，取得有效行为Red；失败代Main/Core `34956/20616`优雅销毁，8888释放且敏感证据审计通过。
 - 当前同一workflow`1/1` Green：start与clear各自Ask Deny/Allow和Auto通过；最终动态effect metadata显示
 	19个Exchange/1个Body并与同Turn storage精确一致，重启后原值恢复；Allow后的proxy/storage typed摘要通过。
@@ -363,12 +369,12 @@ Renderer镜像，且不丢失清理开始后到达的新流量。
 
 1. 创建独立profile与脚本化Provider；通过真实Rules UI创建一级folder及其中一条启用的host/path + request-header
 	rule并Apply，记录公共rule/folder ID与revision。经8888发送匹配GET，确认origin收到初始header且Rule hit为1。
-2. 新建默认Ask Chat，先`discover_tools(capabilityId:'rules')`，再调用`get_rules`与`get_rule_hits`；确认渐进schema只含
+2. 新建默认Ask Chat，先`discover_tools(capabilityId:'rules')`，再调用`rules_get_tree`与`rules_get_hits`；确认渐进schema只含
 	三项Rules Tool，结果中的嵌套folder/rule、revision、目标hit与typed摘要一致。
-3. Ask调用`apply_rules`把同一Rule header改为Deny候选；审批metadata精确显示当前/目标rule数、启用数与名称差异。
+3. Ask调用`rules_replace_tree`把同一Rule header改为Deny候选；审批metadata精确显示当前/目标rule数、启用数与名称差异。
 	Deny后返回`tool_denied`，revision不变，真实GET仍得到初始header。
 4. 再以同一baseRevision调用并Allow；确认完整树经正式`rules.replace`写入、revision增加、结果摘要更新，真实GET得到
-	Allow header且新命中可由`get_rule_hits`读取。
+	Allow header且新命中可由`rules_get_hits`读取。
 5. 切换Auto，用最新revision再次替换为Auto header；确认不出现问询、revision增加且真实GET得到Auto header。随后用
 	旧baseRevision调用，确认返回`invalid_arguments`、不推进revision且Auto effect保持。
 6. 在Settings关闭三项Agent开关；新discovery/schema不含三项，逐项猜测调用均返回`unknown_tool`且Rule tree/revision
@@ -385,15 +391,15 @@ effect与查询结果一致。
 ### Evidence
 
 - Owner Red精确失败于schema无`$defs`且7类非法树先触达`rules.get`；Agent Red为Rules discovery空数组与
-	`apply_rules`不存在，摘要Red退化为原始JSON；Rules revision回调与Renderer同步分别Red于0次/入口不存在；
+	`rules_replace_tree`不存在，摘要Red退化为原始JSON；Rules revision回调与Renderer同步分别Red于0次/入口不存在；
 	复审再Red于stale revision仍生成审批摘要及设计结果态使用错误DOM属性。
 - 父提交`1234ea9a`在源码、workspace链接和npm依赖均隔离的detached worktree运行同一workflow，第二次Model request
 	只有`discover_tools`而缺三项Rules schema，取得有效行为Red；失败代Main/Core `37404/8912`优雅销毁并释放8888。
-- 当前同一workflow`1/1` Green：真实UI创建folder/rule，完整matcher/action/priority由`get_rules`返回；初始hit为1，
+- 当前同一workflow`1/1` Green：真实UI创建folder/rule，完整matcher/action/priority由`rules_get_tree`返回；初始hit为1，
 	Deny保持初始effect，Allow/Auto令revision `1→2→3`并由真实origin header验证，stale返回`invalid_arguments`；
 	三项关闭后discovery为空且均返回`unknown_tool`，重启恢复Rule、审批metadata、Auto/开关且Model请求增量0。
 - `mcp.desktop.streamable-http`补充同一共享入口的外部同步证明：父提交`1234ea9a`中MCP替换已成功但Renderer仍为
-	revision 1，取得有效Red；当前官方Client Auto `get_rules → apply_rules`令Renderer与origin同步到revision 2，
+	revision 1，取得有效Red；当前官方Client Auto `rules_get_tree → rules_replace_tree`令Renderer与origin同步到revision 2，
 	重启恢复同一Rule并再次验证真实origin effect。两代Main/Core为`38740/43808`与`26768/39376`，均完整销毁且
 	Renderer pageerror为0。
 - Map Local真实路径由owner测试证明不会离开Core，任意路径、新建占位或借占位修改matcher/enabled/priority/action
@@ -414,7 +420,7 @@ effect与查询结果一致。
 ### Steps
 
 1. 真实UI创建并Apply只匹配POST的request Breakpoint Rule；经8888发送真实请求，等待公共pending行并取得动态ID。
-2. Agent discovery只披露八项Breakpoints Tool；`list_breakpoints`直接返回同一pending identity与typed snapshot。
+2. Agent discovery只披露八项Breakpoints Tool；`breakpoints_list`直接返回同一pending identity与typed snapshot。
 3. Ask调用Continue并Deny，确认客户端继续等待、origin零到达；再次Allow后请求原样完成。
 4. Ask调用Forward edited并Allow，确认真实origin只收到Tool声明的method/body文本改动；已解决ID在审批前返回
 	`invalid_arguments`且不影响其他pending，Core执行竞态仍以`conflict`为准。
@@ -443,8 +449,8 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 - Breakpoints Agent明暗设计场景合计`22/22 matched / 0 missing / 0 flagged / 0px`；既有44张Agent设计图逐像素
 	不变。完整Parity为`206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。
 
-<a id="agent-tools-requests"></a>
-## `agent.tools.requests`
+<a id="agent-tools-composer"></a>
+## `agent.tools.composer`
 
 **状态**：passed
 **策略**：privileged UI
@@ -452,10 +458,10 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 ### Steps
 
 1. 通过产品Settings配置本地Provider并开始Recording；测试启动真实HTTP origin与自签名TLS origin，不经产品后门。
-2. Agent discovery对`requests`只披露`send_request`与`probe_connection`，两项均为change且schema来自共享registry。
-3. Ask调用`send_request`并Deny，确认HTTP origin零到达；再次调用并Allow，真实origin收到声明的method、URL query、
+2. Agent discovery对`composer`只披露`composer_send_request`与`composer_probe_connection`，两项均为change且schema来自共享registry。
+3. Ask调用`composer_send_request`并Deny，确认HTTP origin零到达；再次调用并Allow，真实origin收到声明的method、URL query、
 	header与文本body，返回指定status/header/body。Tool Result遮罩`Set-Cookie`，typed摘要与真实响应一致；Capture中无该请求。
-4. Auto调用`probe_connection`，确认无审批、TLS origin完成一次握手且收到0应用字节；Tool Result包含协议、cipher、ALPN
+4. Auto调用`composer_probe_connection`，确认无审批、TLS origin完成一次握手且收到0应用字节；Tool Result包含协议、cipher、ALPN
 	与证书链。再探测未监听端口，返回稳定失败而不让Turn失败。
 5. Auto发送由origin暂缓响应的请求；origin收到request后点击`agent.turn.stop`，确认Turn取消、真实client socket关闭、
 	不产生后续Model Call；释放origin gate不得补写Tool Result或重放请求。
@@ -470,10 +476,10 @@ Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，
 
 ### Evidence
 
-- Agent实现前，同一最终workflow启动真实Electron后精确Red于`requests` discovery返回`[]`；修复前owner integration
+- Agent实现前，同一最终workflow启动真实Electron后精确Red于Composer discovery返回`[]`；修复前owner integration
 	进一步精确Red于H1与TLS在Abort后仍等到timeout。当前H1/H2/TLS真实网络integration `8/8`、TLS预取消零
 	`tls.connect` unit `1/1` Green。
-- 当前`agent.tools.requests` `1/1` Green：Ask Deny/Allow、method/query/header/body真实origin事实、响应header/query
+- 当前`agent.tools.composer` `1/1` Green：Ask Deny/Allow、method/query/header/body真实origin事实、响应header/query
 	脱敏、Capture零新增、TLS成功/失败、Stop关闭真实socket、两项`unknown_tool`与重启零网络全部通过。
 - 业务证据`directRequestVerified/tlsProbeVerified/cancelledSocketVerified=true`、`restartNetworkRequestCount=0`；
 	两代Main/Core为`11120/16796`与`29936/34788`，均`gracefulDestroyVerified=true`，8888、journal和系统代理恢复。

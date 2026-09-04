@@ -38,14 +38,14 @@ const MCP_BREAKPOINT_TEXTS = {
   rotationBody: joined('mcp-rotation-', 'pending'),
 } as const;
 const BREAKPOINT_TOOL_NAMES = [
-  'list_breakpoints',
-  'enable_http_breakpoints',
-  'disable_http_breakpoints',
-  'enable_websocket_breakpoint',
-  'disable_websocket_breakpoint',
-  'continue_breakpoint',
-  'forward_edited_breakpoint',
-  'drop_breakpoint',
+  'breakpoints_list',
+  'breakpoints_enable_http',
+  'breakpoints_disable_http',
+  'breakpoints_enable_websocket',
+  'breakpoints_disable_websocket',
+  'breakpoints_continue',
+  'breakpoints_forward_edited',
+  'breakpoints_drop',
 ] as const;
 
 interface McpHostConfiguration {
@@ -209,7 +209,7 @@ function replaceMcpRule(nodes: readonly RuleNode[], ruleId: string): RuleNode[] 
     };
   };
   const next = nodes.map(visit);
-  if (!replaced) throw new Error(`MCP Rule ${ruleId} was not returned by get_rules.`);
+  if (!replaced) throw new Error(`MCP Rule ${ruleId} was not returned by rules_get_tree.`);
   return next;
 }
 
@@ -374,26 +374,33 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     clients.push(client);
     protocolVersion = client.getNegotiatedProtocolVersion() ?? null;
     expect(protocolVersion).toBe('2026-07-28');
-    expect((await client.listTools()).tools.map((tool) => tool.name))
-      .toContain('get_proxy_status');
+    const initialToolNames = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(initialToolNames).toHaveLength(24);
+    expect(initialToolNames.every((name) => (
+      /^(capture|rules|composer|breakpoints|diagnostics)_/.test(name)
+    ))).toBe(true);
+    expect(initialToolNames).toContain('capture_get_proxy_status');
+    expect(initialToolNames).not.toContain('get_proxy_status');
+    await expect(client.callTool({ name: 'get_proxy_status', arguments: {} }))
+      .rejects.toThrow('Tool get_proxy_status not found');
 
     // 业务断言：MCP列关闭项即时不可发现；重新开启后query直接读取真实Core状态。
     // Business assertion: an MCP-column disable hides the Tool; re-enable lets a query read real Core state directly.
     await getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolMcpSwitch('get_proxy_status'),
+      AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status'),
     ).click();
     const filteredClient = await connectClient(original);
     clients.push(filteredClient);
     expect((await filteredClient.listTools()).tools.map((tool) => tool.name))
-      .not.toContain('get_proxy_status');
+      .not.toContain('capture_get_proxy_status');
     await getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolMcpSwitch('get_proxy_status'),
+      AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status'),
     ).click();
     const queryClient = await connectClient(original);
     clients.push(queryClient);
-    await expect(queryClient.callTool({ name: 'get_proxy_status', arguments: {} }))
+    await expect(queryClient.callTool({ name: 'capture_get_proxy_status', arguments: {} }))
       .resolves.not.toMatchObject({ isError: true });
 
     // 用户操作：Host断开先取消Ask；重连后的Deny/Allow分别保持/停止Recording。
@@ -401,8 +408,8 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await startRecording(desktopApp);
     const approval = getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root);
-    const disconnectedCall = queryClient.callTool({ name: 'stop_recording', arguments: {} });
-    await expect(approval).toHaveAttribute('data-tool-name', 'stop_recording');
+    const disconnectedCall = queryClient.callTool({ name: 'capture_stop_recording', arguments: {} });
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await queryClient.close();
     clients.splice(clients.indexOf(queryClient), 1);
     await Promise.allSettled([disconnectedCall]);
@@ -412,14 +419,14 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
 
     const actionClient = await connectClient(original);
     clients.push(actionClient);
-    const deniedCall = actionClient.callTool({ name: 'stop_recording', arguments: {} });
-    await expect(approval).toHaveAttribute('data-tool-name', 'stop_recording');
+    const deniedCall = actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny).click();
     await expect(deniedCall).resolves.toMatchObject({ isError: true });
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'true');
-    const allowedCall = actionClient.callTool({ name: 'stop_recording', arguments: {} });
-    await expect(approval).toHaveAttribute('data-tool-name', 'stop_recording');
+    const allowedCall = actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(allowedCall).resolves.not.toMatchObject({ isError: true });
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
@@ -428,7 +435,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     await openMcpSettings(desktopApp.page);
     await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(clientId)).click();
     await expect(clientRow).toHaveAttribute('data-execution-mode', 'auto');
-    await actionClient.callTool({ name: 'stop_recording', arguments: {} });
+    await actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
@@ -439,11 +446,11 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     // External interaction: after product UI creates a Rule, the official Client reads and replaces the full tree in Auto; Renderer and origin update.
     const mcpRuleId = await createMcpRule(desktopApp.page);
     await expectMcpRuleEffect(desktopApp, loopbackLab, 'initial', MCP_RULE_INITIAL_VALUE);
-    const getRulesResult = await actionClient.callTool({ name: 'get_rules', arguments: {} });
+    const getRulesResult = await actionClient.callTool({ name: 'rules_get_tree', arguments: {} });
     const getRulesPayload = mcpToolPayload(getRulesResult);
     const ruleSet = getRulesPayload.ruleSet;
     if (!isRecord(ruleSet) || typeof ruleSet.revision !== 'number' || !Array.isArray(ruleSet.nodes)) {
-      throw new Error('MCP get_rules did not return a complete RuleSet.');
+      throw new Error('MCP rules_get_tree did not return a complete RuleSet.');
     }
     const currentRuleNodes = ruleSet.nodes as RuleNode[];
     expect(currentRuleNodes).toHaveLength(1);
@@ -454,7 +461,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
       enabled: true,
     }]);
     const currentRule = currentRuleNodes[0];
-    if (currentRule?.kind !== 'rule') throw new Error('MCP get_rules did not return the UI-created Rule.');
+    if (currentRule?.kind !== 'rule') throw new Error('MCP rules_get_tree did not return the UI-created Rule.');
     expect(Number.isInteger(currentRule.priority)).toBe(true);
     expect(currentRule.matchers).toEqual([
       { type: 'host', value: '127.0.0.1', mode: 'contains' },
@@ -469,7 +476,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     }]);
     const nextRuleNodes = replaceMcpRule(currentRuleNodes, mcpRuleId);
     const applyRulesResult = await actionClient.callTool({
-      name: 'apply_rules',
+      name: 'rules_replace_tree',
       arguments: { baseRevision: ruleSet.revision, nodes: nextRuleNodes },
     });
     expect(applyRulesResult).not.toMatchObject({ isError: true });
@@ -518,7 +525,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     );
     registerBreakpointSensitiveText(desktopApp, firstPending.breakpointId);
     const listResult = await actionClient.callTool({
-      name: 'list_breakpoints',
+      name: 'breakpoints_list',
       arguments: {},
     });
     expect(listResult).not.toMatchObject({ isError: true });
@@ -533,10 +540,10 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     // Ask Continue：Deny不解除客户端，Allow只继续指定ID；同一旧ID随后在审批前被拒绝。
     // Ask Continue: Deny leaves the client suspended, Allow continues only the selected ID, and the stale ID is rejected before approval.
     const deniedContinue = actionClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: firstPending.breakpointId },
     });
-    await expect(approval).toHaveAttribute('data-tool-name', 'continue_breakpoint');
+    await expect(approval).toHaveAttribute('data-tool-name', 'breakpoints_continue');
     await expect(approval).toContainText(firstPending.breakpointId);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny).click();
     await expect(deniedContinue).resolves.toMatchObject({ isError: true });
@@ -547,17 +554,17 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     expect(loopbackLab.observation(firstPath)).toBeUndefined();
 
     const allowedContinue = actionClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: firstPending.breakpointId },
     });
-    await expect(approval).toHaveAttribute('data-tool-name', 'continue_breakpoint');
+    await expect(approval).toHaveAttribute('data-tool-name', 'breakpoints_continue');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(allowedContinue).resolves.not.toMatchObject({ isError: true });
     await expect(firstPending.outcome).resolves.toMatchObject({ result: { statusCode: 200 } });
 
     const staleContinue = await settleWithoutApproval(
       actionClient.callTool({
-        name: 'continue_breakpoint',
+        name: 'breakpoints_continue',
         arguments: { breakpointId: firstPending.breakpointId },
       }),
       approval,
@@ -581,7 +588,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     const editDestinationUrl = loopbackLab.url(editDestinationPath);
     registerBreakpointSensitiveText(desktopApp, editDestinationUrl);
     const editCall = actionClient.callTool({
-      name: 'forward_edited_breakpoint',
+      name: 'breakpoints_forward_edited',
       arguments: {
         breakpointId: editPending.breakpointId,
         method: 'PUT',
@@ -589,7 +596,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
         body: MCP_BREAKPOINT_TEXTS.editedBody,
       },
     });
-    await expect(approval).toHaveAttribute('data-tool-name', 'forward_edited_breakpoint');
+    await expect(approval).toHaveAttribute('data-tool-name', 'breakpoints_forward_edited');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(editCall).resolves.not.toMatchObject({ isError: true });
     await expect(editPending.outcome).resolves.toMatchObject({ result: { statusCode: 200 } });
@@ -614,7 +621,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     );
     registerBreakpointSensitiveText(desktopApp, dropPending.breakpointId);
     const dropResult = await actionClient.callTool({
-      name: 'drop_breakpoint',
+      name: 'breakpoints_drop',
       arguments: { breakpointId: dropPending.breakpointId },
     });
     expect(dropResult).not.toMatchObject({ isError: true });
@@ -623,7 +630,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     await expect(approval).toHaveCount(0);
 
     await expect(actionClient.callTool({
-      name: 'disable_http_breakpoints',
+      name: 'breakpoints_disable_http',
       arguments: {},
     })).resolves.not.toMatchObject({ isError: true });
     const disabledPath = `${MCP_BREAKPOINT_PATH}/disabled`;
@@ -636,7 +643,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
       .toBe(MCP_BREAKPOINT_TEXTS.disabledBody);
 
     await expect(actionClient.callTool({
-      name: 'enable_http_breakpoints',
+      name: 'breakpoints_enable_http',
       arguments: {},
     })).resolves.not.toMatchObject({ isError: true });
     const enabledPath = `${MCP_BREAKPOINT_PATH}/enabled`;
@@ -649,7 +656,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     );
     registerBreakpointSensitiveText(desktopApp, enabledPending.breakpointId);
     await expect(actionClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: enabledPending.breakpointId },
     })).resolves.not.toMatchObject({ isError: true });
     await expect(enabledPending.outcome).resolves.toMatchObject({ result: { statusCode: 200 } });
@@ -673,7 +680,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     );
     registerBreakpointSensitiveText(desktopApp, exchangeId);
     await expect(actionClient.callTool({
-      name: 'enable_websocket_breakpoint',
+      name: 'breakpoints_enable_websocket',
       arguments: {
         exchangeId,
         direction: 'client-to-server',
@@ -696,7 +703,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     if (!frameBreakpointId) throw new Error('MCP WebSocket pending did not expose breakpoint identity.');
     registerBreakpointSensitiveText(desktopApp, frameBreakpointId);
     const webSocketListResult = await actionClient.callTool({
-      name: 'list_breakpoints',
+      name: 'breakpoints_list',
       arguments: {},
     });
     const webSocketBreakpoints = mcpToolPayload(webSocketListResult).breakpoints;
@@ -706,14 +713,14 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
       && entry.phase === 'websocket'
     ))).toBe(true);
     await expect(actionClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: frameBreakpointId },
     })).resolves.not.toMatchObject({ isError: true });
     await expect.poll(() => webSocketLab.hasMessage(pendingMessage)).toBe(true);
     await webSocketClient.waitForText(pendingMessage);
 
     await expect(actionClient.callTool({
-      name: 'disable_websocket_breakpoint',
+      name: 'breakpoints_disable_websocket',
       arguments: {},
     })).resolves.not.toMatchObject({ isError: true });
     const afterDisableMessage = MCP_BREAKPOINT_TEXTS.afterDisableMessage;
@@ -740,11 +747,11 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
       BREAKPOINT_TOOL_NAMES.includes(name as typeof BREAKPOINT_TOOL_NAMES[number])
     ))).toEqual([]);
     for (const toolName of BREAKPOINT_TOOL_NAMES) {
-      const args: Record<string, unknown> = toolName === 'enable_websocket_breakpoint'
+      const args: Record<string, unknown> = toolName === 'breakpoints_enable_websocket'
         ? { exchangeId, frames: ['message'] }
-        : toolName === 'continue_breakpoint' || toolName === 'drop_breakpoint'
+        : toolName === 'breakpoints_continue' || toolName === 'breakpoints_drop'
           ? { breakpointId: firstPending.breakpointId }
-          : toolName === 'forward_edited_breakpoint'
+          : toolName === 'breakpoints_forward_edited'
             ? { breakpointId: firstPending.breakpointId, body: '' }
             : {};
       await expect(actionClient.callTool({
@@ -824,14 +831,14 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     );
     registerBreakpointSensitiveText(relaunchedApp, rotationPending.breakpointId);
     const cancelledContinue = restoredClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: rotationPending.breakpointId },
     });
     const relaunchedApproval = getByAutomationId(
       relaunchedApp.page,
       AUTOMATION_IDS.mcp.approval.root,
     );
-    await expect(relaunchedApproval).toHaveAttribute('data-tool-name', 'continue_breakpoint');
+    await expect(relaunchedApproval).toHaveAttribute('data-tool-name', 'breakpoints_continue');
     await restoredClient.close();
     clients.splice(clients.indexOf(restoredClient), 1);
     await Promise.allSettled([cancelledContinue]);
@@ -883,10 +890,10 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     // 恢复与清理：新Client在Ask下显式Allow同一ID，再删除测试Breakpoint Rule并保留MCP更新的Rule。
     // Recovery and cleanup: the new Client explicitly Allows the same ID in Ask, then removes the test Breakpoint Rule while preserving the MCP-updated Rule.
     const recoveredContinue = regeneratedClient.callTool({
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       arguments: { breakpointId: rotationPending.breakpointId },
     });
-    await expect(relaunchedApproval).toHaveAttribute('data-tool-name', 'continue_breakpoint');
+    await expect(relaunchedApproval).toHaveAttribute('data-tool-name', 'breakpoints_continue');
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(recoveredContinue).resolves.not.toMatchObject({ isError: true });
     await expect(rotationPending.outcome).resolves.toMatchObject({ result: { statusCode: 200 } });

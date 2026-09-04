@@ -1,6 +1,6 @@
 # Visual Parity Report
 
-Generated: 2026-09-04T12:31:11.943Z
+Generated: 2026-09-04T17:06:20.361Z
 
 ## Overall Summary
 
@@ -8,9 +8,9 @@ Generated: 2026-09-04T12:31:11.943Z
 | --- | ---: |
 | Result | Review required |
 | Views checked | 208 |
-| Average pixel diff | 2.12% |
-| Targets | 1446 |
-| Matched | 1412 |
+| Average pixel diff | 2.13% |
+| Targets | 1456 |
+| Matched | 1422 |
 | Missing | 34 |
 | Flagged | 305 |
 | Largest geometry delta | 1476.8 px |
@@ -23,47 +23,47 @@ Generated: 2026-09-04T12:31:11.943Z
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
 | agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat | 2.90% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-traffic-tools | 2.68% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-body-message-tools | 2.78% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools | 2.69% | 11 | 11 | 0 | 0 | 0.0 px |
-| agent-panel-request-tools | 2.69% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools | 2.30% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result | 2.45% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result | 2.65% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-capture-tools | 2.71% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-body-message-tools | 2.60% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools | 2.47% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-composer-tools | 2.72% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools | 2.28% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result | 2.43% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval | 2.76% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result | 2.53% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 1.99% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat | 2.01% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
-| agent-panel-turn-stopped | 2.27% | 6 | 6 | 0 | 0 | 0.0 px |
-| agent-panel-turn-failed | 2.22% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-stopped | 2.26% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-usage | 2.57% | 4 | 4 | 0 | 0 | 0.1 px |
 | agent-panel-chat-menu | 2.41% | 5 | 5 | 0 | 0 | 0.1 px |
 | agent-panel-model-menu | 2.62% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat | 2.11% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat | 2.17% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured | 1.60% | 9 | 9 | 0 | 0 | 0.4 px |
+| settings-agent-unconfigured | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured | 1.60% | 14 | 14 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered | 1.97% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
-| settings-mcp-conflict | 1.68% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client | 5.43% | 5 | 5 | 0 | 0 | 0.7 px |
-| settings-mcp-regenerate | 4.97% | 4 | 4 | 0 | 0 | 0.8 px |
-| mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog | 4.83% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog | 5.01% | 12 | 12 | 0 | 0 | 0.7 px |
-| settings-agent-custom-edit-dialog | 4.87% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider | 4.46% | 4 | 4 | 0 | 0 | 0.7 px |
-| agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-configured | 1.63% | 19 | 19 | 0 | 0 | 0.6 px |
+| settings-agent-tool-capabilities-filtered | 2.03% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running | 1.67% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict | 1.72% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client | 5.80% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate | 5.18% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval | 5.36% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog | 5.77% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog | 5.57% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog | 5.68% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider | 4.64% | 4 | 4 | 0 | 0 | 0.7 px |
+| agent-panel-unconfigured-dark | 1.94% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-traffic-tools-dark | 2.65% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-body-message-tools-dark | 2.75% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
-| agent-panel-request-tools-dark | 2.60% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools-dark | 2.39% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result-dark | 2.51% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval-dark | 2.90% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-capture-tools-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-body-message-tools-dark | 2.58% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.44% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-composer-tools-dark | 2.63% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools-dark | 2.36% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result-dark | 2.47% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval-dark | 2.75% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result-dark | 2.45% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
 | agent-panel-new-chat-dark | 1.96% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
@@ -74,32 +74,32 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-model-menu-dark | 2.61% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat-dark | 1.93% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat-dark | 1.97% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured-dark | 1.58% | 9 | 9 | 0 | 0 | 0.4 px |
+| settings-agent-unconfigured-dark | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured-dark | 1.57% | 14 | 14 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered-dark | 2.11% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running-dark | 1.61% | 6 | 6 | 0 | 0 | 0.7 px |
-| settings-mcp-conflict-dark | 1.65% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client-dark | 1.35% | 5 | 5 | 0 | 0 | 0.7 px |
-| settings-mcp-regenerate-dark | 1.44% | 4 | 4 | 0 | 0 | 0.8 px |
-| mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 1 | 40.0 px |
-| settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-configured-dark | 1.63% | 19 | 19 | 0 | 0 | 0.6 px |
+| settings-agent-tool-capabilities-filtered-dark | 2.18% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running-dark | 1.67% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict-dark | 1.72% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client-dark | 1.67% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate-dark | 1.59% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval-dark | 1.40% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog-dark | 1.81% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 1.55% | 12 | 12 | 0 | 1 | 40.0 px |
+| settings-agent-custom-edit-dialog-dark | 1.83% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider-dark | 1.40% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 2.49% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-replace | 2.44% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-request-body-file-empty | 2.46% | 11 | 11 | 0 | 10 | 302.1 px |
 | breakpoint-request-body-file | 2.51% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-response-paused | 2.63% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-paused | 2.33% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-loaded | 2.71% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace | 2.66% | 12 | 11 | 1 | 6 | 2.0 px |
 | breakpoint-response-body-file-empty | 2.68% | 12 | 12 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file | 2.74% | 12 | 12 | 0 | 6 | 2.0 px |
+| breakpoint-response-body-file | 2.44% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-request-paused-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading-dark | 2.61% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loaded-dark | 2.52% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-replace-dark | 2.47% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-request-body-file-empty-dark | 2.50% | 11 | 11 | 0 | 10 | 302.1 px |
@@ -112,7 +112,7 @@ Generated: 2026-09-04T12:31:11.943Z
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
 | breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
+| breakpoint-queue-head-dark | 2.51% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
 | breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
@@ -287,15 +287,15 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-chat | Agent Context usage | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-chat | Chat selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-chat | Help me diagnose repeated 401 responses after token refresh. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | First Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Storage Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Last Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Inspect Capture storage and the latest captured request, then summarize their status. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools | Capture storage is non-empty. The latest exchange is GET /agent-e2e/traffic with status 200. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | First Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Storage Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Last Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Inspect Capture storage and the latest captured request, then summarize their status. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools | Capture storage is non-empty. The latest exchange is GET /agent-e2e/traffic with status 200. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -317,16 +317,16 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-breakpoint-tools | Breakpoint resolution | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-breakpoint-tools | Inspect the waiting request, verify HTTP Breakpoint controls, then continue it. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-breakpoint-tools | One request was waiting. HTTP Breakpoints were verified and bp-agent-request continued. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Agent request result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Requests discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | TLS probe success | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Agent Composer result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Composer discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | TLS probe success | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -339,20 +339,20 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-rules-result | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-rules-result | apply_rules | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | rules_replace_tree | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result | Revision 2 applied | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result | Revision 2 is now applied with the approved Rule effect. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-approval | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-tool-approval | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-approval | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-result | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-tool-result | clear_capture | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | capture_clear | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Exchanges 0 · Bodies 0 · 4 KB | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -429,12 +429,17 @@ Generated: 2026-09-04T12:31:11.943Z
 | settings-agent-configured | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-configured | Tool capabilities header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-configured | First Tool row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | capture Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | rules Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | composer Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | breakpoints Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured | diagnostics Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Filtered Tool row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered | Exchange detail | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| settings-agent-tool-capabilities-filtered | get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-tool-capabilities-filtered | capture_get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running | MCP server header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running | MCP endpoint row | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
@@ -456,7 +461,7 @@ Generated: 2026-09-04T12:31:11.943Z
 | settings-mcp-regenerate | Cancel | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | mcp-tool-approval | MCP Tool approval | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | mcp-tool-approval | Approve MCP Tool call | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| mcp-tool-approval | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| mcp-tool-approval | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | mcp-tool-approval | Deny Tool call | 0.9 px | 0.0 px | -0.3 px | 0.0 px | 0.9 px | none | ok |
 | mcp-tool-approval | Allow Tool call | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | settings-agent-custom-dialog | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |
@@ -514,15 +519,15 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-chat-dark | Agent Context usage | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-chat-dark | Chat selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-chat-dark | Help me diagnose repeated 401 responses after token refresh. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | First Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Storage Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Last Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Inspect Capture storage and the latest captured request, then summarize their status. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-traffic-tools-dark | Capture storage is non-empty. The latest exchange is GET /agent-e2e/traffic with status 200. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | First Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Storage Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Last Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Inspect Capture storage and the latest captured request, then summarize their status. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-capture-tools-dark | Capture storage is non-empty. The latest exchange is GET /agent-e2e/traffic with status 200. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -544,16 +549,16 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-breakpoint-tools-dark | Breakpoint resolution | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-breakpoint-tools-dark | Inspect the waiting request, verify HTTP Breakpoint controls, then continue it. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-breakpoint-tools-dark | One request was waiting. HTTP Breakpoints were verified and bp-agent-request continued. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Agent request result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Requests discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | TLS probe success | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-request-tools-dark | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Agent Composer result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Composer discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | TLS probe success | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-composer-tools-dark | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -566,20 +571,20 @@ Generated: 2026-09-04T12:31:11.943Z
 | agent-panel-rules-result-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result-dark | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-rules-result-dark | apply_rules | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | rules_replace_tree | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result-dark | Revision 2 applied | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-result-dark | Revision 2 is now applied with the approved Rule effect. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-approval-dark | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-tool-approval-dark | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-approval-dark | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-result-dark | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| agent-panel-tool-result-dark | clear_capture | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | capture_clear | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Exchanges 0 · Bodies 0 · 4 KB | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -656,12 +661,17 @@ Generated: 2026-09-04T12:31:11.943Z
 | settings-agent-configured-dark | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-configured-dark | Tool capabilities header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-configured-dark | First Tool row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | capture Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | rules Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | composer Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | breakpoints Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-configured-dark | diagnostics Tool group | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Agent settings | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Filtered Tool row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Tool capabilities | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
 | settings-agent-tool-capabilities-filtered-dark | Exchange detail | 0.0 px | 0.2 px | 0.0 px | -0.5 px | 0.5 px | none | ok |
-| settings-agent-tool-capabilities-filtered-dark | get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-agent-tool-capabilities-filtered-dark | capture_get_exchange | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running-dark | MCP server | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running-dark | MCP server header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-mcp-running-dark | MCP endpoint row | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
@@ -683,7 +693,7 @@ Generated: 2026-09-04T12:31:11.943Z
 | settings-mcp-regenerate-dark | Cancel | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | mcp-tool-approval-dark | MCP Tool approval | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | mcp-tool-approval-dark | Approve MCP Tool call | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| mcp-tool-approval-dark | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| mcp-tool-approval-dark | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | mcp-tool-approval-dark | Deny Tool call | 0.9 px | 0.0 px | -0.3 px | 0.0 px | 0.9 px | none | ok |
 | mcp-tool-approval-dark | Allow Tool call | 0.5 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | settings-agent-custom-dialog-dark | Provider dialog | 0.0 px | -0.2 px | 0.0 px | 0.2 px | 0.2 px | none | ok |

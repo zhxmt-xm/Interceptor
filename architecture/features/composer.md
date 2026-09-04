@@ -87,19 +87,19 @@ sequenceDiagram
 
 用于诊断 MITM 兼容性、证书链问题、ALPN 协商结果。
 
-### 2.3 Agent / MCP Requests Tool [已实现]
+### 2.3 Agent / MCP Composer Tool [已实现]
 
-共享registry将现有两个正式命令投影为`send_request`与`probe_connection`，两者均为`openWorld` change Tool，
+共享registry将现有两个正式命令投影为`composer_send_request`与`composer_probe_connection`，两者均为`openWorld` change Tool，
 Agent/MCP只负责Settings过滤与Ask/Auto，不拥有第二套网络实现。
 
-- `send_request`接受method、绝对HTTP(S) URL、name/value headers、可选文本body、protocol与显式timeout；结果经
+- `composer_send_request`接受method、绝对HTTP(S) URL、name/value headers、可选文本body、protocol与显式timeout；结果经
     共享redactor遮罩凭据header并限制正文预览。它继续直连origin，不经过代理、Capture或Rules。
-- `probe_connection`接受host、1..65535端口与可选timeout，只返回TLS握手事实，不发送应用数据。
+- `composer_probe_connection`接受host、1..65535端口与可选timeout，只返回TLS握手事实，不发送应用数据。
 - Tool调用的AbortSignal必须穿过Core RPC进入`ComposerService.send`与`TlsProbeService.probe`。取消时主动销毁
     HTTP/1.1 request、HTTP/2 stream/session或TLS socket；仅忽略late RPC response不算取消网络副作用。
 - Renderer现有Composer Send与Capture TLS Probe仍使用同一Core命令；本阶段不改变其UI语义或增加兼容入口。
 
-真实`agent.tools.requests`经本地OpenAI-compatible Provider与测试拥有的HTTP/TLS origin验证Ask Deny/Allow、Auto、
+真实`agent.tools.composer`经本地OpenAI-compatible Provider与测试拥有的HTTP/TLS origin验证Ask Deny/Allow、Auto、
 原始request facts、响应脱敏、Capture零新增、TLS成功/失败、Settings撤权与双代零重放。H1、H2与TLS socket取消由
 owning integration `8/8`锁定，另有TLS预取消零`tls.connect` unit `1/1`；最终E2E Stop后origin观察到response socket
 关闭且只持久化一条失败Tool Result。

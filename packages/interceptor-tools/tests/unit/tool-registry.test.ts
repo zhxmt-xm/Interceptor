@@ -12,30 +12,30 @@ import {
 } from '../../src';
 
 const TOOL_NAMES = [
-  'get_proxy_status',
-  'get_storage_status',
-  'start_recording',
-  'stop_recording',
-  'clear_capture',
-  'list_exchanges',
-  'get_exchange',
-  'get_exchange_body',
-  'list_websocket_messages',
-  'list_grpc_messages',
-  'get_rules',
-  'get_rule_hits',
-  'apply_rules',
-  'list_breakpoints',
-  'enable_http_breakpoints',
-  'disable_http_breakpoints',
-  'enable_websocket_breakpoint',
-  'disable_websocket_breakpoint',
-  'continue_breakpoint',
-  'forward_edited_breakpoint',
-  'drop_breakpoint',
-  'send_request',
-  'probe_connection',
-  'query_diagnostics',
+  'capture_get_proxy_status',
+  'capture_get_storage_status',
+  'capture_start_recording',
+  'capture_stop_recording',
+  'capture_clear',
+  'capture_list_exchanges',
+  'capture_get_exchange',
+  'capture_get_exchange_body',
+  'capture_list_websocket_messages',
+  'capture_list_grpc_messages',
+  'rules_get_tree',
+  'rules_get_hits',
+  'rules_replace_tree',
+  'composer_send_request',
+  'composer_probe_connection',
+  'breakpoints_list',
+  'breakpoints_enable_http',
+  'breakpoints_disable_http',
+  'breakpoints_enable_websocket',
+  'breakpoints_disable_websocket',
+  'breakpoints_continue',
+  'breakpoints_forward_edited',
+  'breakpoints_drop',
+  'diagnostics_query',
 ] as const;
 
 class FakeToolHost implements InterceptorToolHost {
@@ -143,8 +143,14 @@ describe('Interceptor Tool registry', () => {
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
     expect(new Set(tools.map((tool) => tool.name))).toHaveLength(24);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
+    expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);
     expect(tools.map((tool) => tool.name)).not.toEqual(expect.arrayContaining([
+      'get_proxy_status',
+      'apply_rules',
+      'send_request',
+      'list_breakpoints',
+      'query_diagnostics',
       'set_recording',
       'configure_breakpoint',
       'resolve_breakpoint',
@@ -156,15 +162,15 @@ describe('Interceptor Tool registry', () => {
     const catalog = buildInterceptorToolCatalog(registry);
 
     expect(catalog.listCapabilities().map((capability) => capability.id)).toEqual([
-      'traffic',
+      'capture',
       'rules',
+      'composer',
       'breakpoints',
-      'requests',
       'diagnostics',
     ]);
-    const discovered = catalog.discover({ capabilityId: 'traffic' });
+    const discovered = catalog.discover({ capabilityId: 'capture' });
     expect(discovered.map((match) => match.descriptor.name)).toEqual(
-      registry.filter((tool) => tool.capabilityId === 'traffic').map((tool) => tool.name),
+      registry.filter((tool) => tool.capabilityId === 'capture').map((tool) => tool.name),
     );
     expect(discovered[0]?.descriptor).not.toHaveProperty('execute');
   });
@@ -176,10 +182,10 @@ describe('Interceptor Tool registry', () => {
       'breakpoint.configure': { type: 'breakpoint.configuration', payload: {} },
     });
 
-    await execute('start_recording', {}, fakeToolHost);
-    await execute('stop_recording', {}, fakeToolHost);
-    await execute('enable_http_breakpoints', {}, fakeToolHost);
-    await execute('disable_http_breakpoints', {}, fakeToolHost);
+    await execute('capture_start_recording', {}, fakeToolHost);
+    await execute('capture_stop_recording', {}, fakeToolHost);
+    await execute('breakpoints_enable_http', {}, fakeToolHost);
+    await execute('breakpoints_disable_http', {}, fakeToolHost);
 
     expect(fakeToolHost.commands).toEqual([
       { type: 'proxy.start', payload: {} },
@@ -187,7 +193,7 @@ describe('Interceptor Tool registry', () => {
       { type: 'breakpoint.configure', payload: { enabled: true } },
       { type: 'breakpoint.configure', payload: { enabled: false } },
     ]);
-    expect(definition('stop_recording').effectDescription)
+    expect(definition('capture_stop_recording').effectDescription)
       .toBe('New traffic will continue through the proxy but will not be captured.');
   });
 
@@ -211,9 +217,9 @@ describe('Interceptor Tool registry', () => {
       'breakpoint.resolve': { type: 'breakpoint.resolution', payload: {} },
     });
 
-    await execute('continue_breakpoint', { breakpointId: 'bp-1' }, fakeToolHost);
-    await execute('forward_edited_breakpoint', { breakpointId: 'bp-2', body: '' }, fakeToolHost);
-    await execute('drop_breakpoint', { breakpointId: 'bp-3' }, fakeToolHost);
+    await execute('breakpoints_continue', { breakpointId: 'bp-1' }, fakeToolHost);
+    await execute('breakpoints_forward_edited', { breakpointId: 'bp-2', body: '' }, fakeToolHost);
+    await execute('breakpoints_drop', { breakpointId: 'bp-3' }, fakeToolHost);
 
     expect(fakeToolHost.commands).toEqual([
       { type: 'breakpoint.resolve', payload: { breakpointId: 'bp-1', action: 'continue' } },
@@ -224,7 +230,7 @@ describe('Interceptor Tool registry', () => {
       },
       { type: 'breakpoint.resolve', payload: { breakpointId: 'bp-3', action: 'drop' } },
     ]);
-    await expect(execute('forward_edited_breakpoint', { breakpointId: 'bp-4' }, fakeToolHost))
+    await expect(execute('breakpoints_forward_edited', { breakpointId: 'bp-4' }, fakeToolHost))
       .rejects.toThrow('at least one edit');
   });
 
@@ -240,12 +246,12 @@ describe('Interceptor Tool registry', () => {
       abortSignal: new AbortController().signal,
     };
 
-    await expect(definition('enable_http_breakpoints').describeChange?.({}, context))
+    await expect(definition('breakpoints_enable_http').describeChange?.({}, context))
       .resolves.toEqual({
         lines: ['HTTP breakpoints: disabled → enabled', 'Currently pending: 2'],
         metadata: { currentEnabled: false, nextEnabled: true, pendingCount: 2 },
       });
-    await expect(definition('disable_http_breakpoints').describeChange?.({}, context))
+    await expect(definition('breakpoints_disable_http').describeChange?.({}, context))
       .resolves.toEqual({
         lines: ['HTTP breakpoints: disabled → disabled', 'Currently pending: 2'],
         metadata: { currentEnabled: false, nextEnabled: false, pendingCount: 2 },
@@ -284,15 +290,15 @@ describe('Interceptor Tool registry', () => {
       abortSignal: new AbortController().signal,
     };
 
-    const continuation = await definition('continue_breakpoint').describeChange?.(
+    const continuation = await definition('breakpoints_continue').describeChange?.(
       { breakpointId: 'bp-1' },
       context,
     );
-    const edited = await definition('forward_edited_breakpoint').describeChange?.(
+    const edited = await definition('breakpoints_forward_edited').describeChange?.(
       { breakpointId: 'bp-1', method: 'PUT', body: '' },
       context,
     );
-    const dropped = await definition('drop_breakpoint').describeChange?.(
+    const dropped = await definition('breakpoints_drop').describeChange?.(
       { breakpointId: 'bp-1' },
       context,
     );
@@ -355,11 +361,11 @@ describe('Interceptor Tool registry', () => {
       const descriptionHost = new FakeToolHost({ 'breakpoint.list': result });
       const executionHost = new FakeToolHost({ 'breakpoint.list': result });
 
-      await expect(definition('forward_edited_breakpoint').describeChange?.(
+      await expect(definition('breakpoints_forward_edited').describeChange?.(
         args,
         { host: descriptionHost, abortSignal: new AbortController().signal },
       )).rejects.toThrow(`"${field}" cannot edit a ${phase} breakpoint`);
-      await expect(execute('forward_edited_breakpoint', args, executionHost))
+      await expect(execute('breakpoints_forward_edited', args, executionHost))
         .rejects.toThrow(`"${field}" cannot edit a ${phase} breakpoint`);
       expect(descriptionHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
       expect(executionHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
@@ -394,7 +400,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    await expect(execute('forward_edited_breakpoint', {
+    await expect(execute('breakpoints_forward_edited', {
       breakpointId,
       ...edit,
     }, fakeToolHost)).resolves.toEqual({ breakpointId, state: 'edited' });
@@ -409,11 +415,11 @@ describe('Interceptor Tool registry', () => {
     const executionHost = new FakeToolHost();
     const args = { exchangeId: 'exchange-1', frames: [] };
 
-    await expect(definition('enable_websocket_breakpoint').describeChange?.(
+    await expect(definition('breakpoints_enable_websocket').describeChange?.(
       args,
       { host: descriptionHost, abortSignal: new AbortController().signal },
     )).rejects.toThrow('"frames" must be a non-empty array');
-    await expect(execute('enable_websocket_breakpoint', args, executionHost))
+    await expect(execute('breakpoints_enable_websocket', args, executionHost))
       .rejects.toThrow('"frames" must be a non-empty array');
     expect(descriptionHost.commands).toEqual([]);
     expect(executionHost.commands).toEqual([]);
@@ -427,7 +433,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    await expect(definition('drop_breakpoint').describeChange?.(
+    await expect(definition('breakpoints_drop').describeChange?.(
       { breakpointId: 'bp-stale' },
       { host: fakeToolHost, abortSignal: new AbortController().signal },
     )).rejects.toThrow('is no longer pending');
@@ -435,7 +441,7 @@ describe('Interceptor Tool registry', () => {
   });
 
   it('describes WebSocket breakpoint enable and disable without local paths', async () => {
-    const description = await definition('enable_websocket_breakpoint').describeChange?.({
+    const description = await definition('breakpoints_enable_websocket').describeChange?.({
       exchangeId: 'exchange-ws',
       direction: 'server-to-client',
       frames: ['message', 'close'],
@@ -456,7 +462,7 @@ describe('Interceptor Tool registry', () => {
         frameCount: 2,
       },
     });
-    expect(definition('disable_websocket_breakpoint').effectDescription)
+    expect(definition('breakpoints_disable_websocket').effectDescription)
       .toBe('The active WebSocket breakpoint configuration will be disabled.');
     expect(JSON.stringify(description)).not.toContain('path');
   });
@@ -466,12 +472,12 @@ describe('Interceptor Tool registry', () => {
       'capture.cleanup': { type: 'capture.status', payload: {} },
     });
 
-    await execute('clear_capture', {}, fakeToolHost);
+    await execute('capture_clear', {}, fakeToolHost);
 
     expect(fakeToolHost.commands).toEqual([
       { type: 'capture.cleanup', payload: { scope: 'all' } },
     ]);
-    await expect(execute('clear_capture', { scope: 'session', sessionId: 's1' }, fakeToolHost))
+    await expect(execute('capture_clear', { scope: 'session', sessionId: 's1' }, fakeToolHost))
       .rejects.toThrow('unknown argument');
   });
 
@@ -483,7 +489,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    const description = await definition('clear_capture').describeChange?.({}, {
+    const description = await definition('capture_clear').describeChange?.({}, {
       host: fakeToolHost,
       abortSignal: new AbortController().signal,
     });
@@ -508,7 +514,7 @@ describe('Interceptor Tool registry', () => {
       'rules.replace': { type: 'rules.revision', payload: { revision: 8 } },
     });
 
-    await execute('apply_rules', { baseRevision: 7, nodes }, fakeToolHost);
+    await execute('rules_replace_tree', { baseRevision: 7, nodes }, fakeToolHost);
 
     expect(fakeToolHost.commands.at(-1)).toEqual({
       type: 'rules.replace',
@@ -537,7 +543,7 @@ describe('Interceptor Tool registry', () => {
       'rules.replace': { type: 'rules.revision', payload: { revision: 4 } },
     });
 
-    const result = await execute('get_rules', {}, fakeToolHost) as { ruleSet: { nodes: RuleNode[] } };
+    const result = await execute('rules_get_tree', {}, fakeToolHost) as { ruleSet: { nodes: RuleNode[] } };
     const returnedFolder = result.ruleSet.nodes[0];
     if (returnedFolder?.kind !== 'folder' || returnedFolder.children[0]?.kind !== 'rule') {
       throw new Error('Expected the redacted Map Local Rule inside its folder.');
@@ -555,7 +561,7 @@ describe('Interceptor Tool registry', () => {
       name: 'After',
       children: [{ ...redactedRule, priority: -0 }],
     }];
-    await execute('apply_rules', {
+    await execute('rules_replace_tree', {
       baseRevision: 3,
       nodes: movedNodes,
     }, fakeToolHost);
@@ -572,7 +578,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    await expect(execute('apply_rules', {
+    await expect(execute('rules_replace_tree', {
       baseRevision: 3,
       nodes: [{
         ...movedNodes[0],
@@ -593,7 +599,7 @@ describe('Interceptor Tool registry', () => {
     }];
     const fakeToolHost = new FakeToolHost();
 
-    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+    await expect(execute('rules_replace_tree', { baseRevision: 0, nodes }, fakeToolHost))
       .rejects.toThrow('invalid Rule tree');
     expect(fakeToolHost.commands).toEqual([]);
   });
@@ -608,7 +614,7 @@ describe('Interceptor Tool registry', () => {
       'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 0, nodes: [] } } },
     });
 
-    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+    await expect(execute('rules_replace_tree', { baseRevision: 0, nodes }, fakeToolHost))
       .rejects.toThrow('can only preserve an existing path in place');
     expect(fakeToolHost.commands.map((command) => command.type)).toEqual(['rules.get']);
   });
@@ -619,12 +625,12 @@ describe('Interceptor Tool registry', () => {
       'rules.hits': { type: 'rules.hits', payload: { counts } },
     });
 
-    await expect(execute('get_rule_hits', {}, fakeToolHost))
+    await expect(execute('rules_get_hits', {}, fakeToolHost))
       .resolves.toEqual({ counts });
     expect(fakeToolHost.commands).toEqual([{ type: 'rules.hits', payload: {} }]);
   });
 
-  it('describes apply_rules counts and name changes from current Core state', async () => {
+  it('describes rules_replace_tree counts and name changes from current Core state', async () => {
     const currentNodes = [{
       kind: 'rule' as const,
       id: 'rule-1',
@@ -642,12 +648,12 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    await expect(definition('apply_rules').describeChange?.(
+    await expect(definition('rules_replace_tree').describeChange?.(
       { baseRevision: 1, nodes: nextNodes },
       { host: fakeToolHost, abortSignal: new AbortController().signal },
     )).rejects.toThrow('rule set moved from revision 1 to 2');
 
-    await expect(definition('apply_rules').describeChange?.(
+    await expect(definition('rules_replace_tree').describeChange?.(
       { baseRevision: 2, nodes: nextNodes },
       { host: fakeToolHost, abortSignal: new AbortController().signal },
     )).resolves.toEqual({
@@ -668,8 +674,8 @@ describe('Interceptor Tool registry', () => {
     });
   });
 
-  it('publishes the complete recursive Rule union in apply_rules schema', () => {
-    const inputSchema = definition('apply_rules').inputSchema as unknown as Readonly<
+  it('publishes the complete recursive Rule union in rules_replace_tree schema', () => {
+    const inputSchema = definition('rules_replace_tree').inputSchema as unknown as Readonly<
       Record<string, unknown>
     >;
     const constants = schemaConstants(inputSchema);
@@ -711,10 +717,10 @@ describe('Interceptor Tool registry', () => {
         actions: [{ type: 'status', statusCode: 200 }],
       }],
     }]],
-  ])('rejects an invalid apply_rules tree before Core access: %s', async (_name, nodes) => {
+  ])('rejects an invalid rules_replace_tree tree before Core access: %s', async (_name, nodes) => {
     const fakeToolHost = new FakeToolHost();
 
-    await expect(execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost))
+    await expect(execute('rules_replace_tree', { baseRevision: 0, nodes }, fakeToolHost))
       .rejects.toThrow('invalid Rule tree');
     expect(fakeToolHost.commands).toEqual([]);
   });
@@ -735,7 +741,7 @@ describe('Interceptor Tool registry', () => {
       'rules.replace': { type: 'rules.revision', payload: { revision: 1 } },
     });
 
-    await execute('apply_rules', { baseRevision: 0, nodes }, fakeToolHost);
+    await execute('rules_replace_tree', { baseRevision: 0, nodes }, fakeToolHost);
 
     expect(fakeToolHost.commands.at(-1)).toEqual({
       type: 'rules.replace',
@@ -748,7 +754,7 @@ describe('Interceptor Tool registry', () => {
       'rules.get': { type: 'rules.ruleset', payload: { ruleSet: { revision: 9, nodes: [] } } },
     });
 
-    await expect(execute('apply_rules', { baseRevision: 7, nodes: [] }, fakeToolHost))
+    await expect(execute('rules_replace_tree', { baseRevision: 7, nodes: [] }, fakeToolHost))
       .rejects.toThrow('rule set moved from revision 7 to 9');
     expect(fakeToolHost.commands.map((command) => command.type)).not.toContain('rules.replace');
   });
@@ -769,7 +775,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    const media = await execute('get_exchange_body', {
+    const media = await execute('capture_get_exchange_body', {
       exchangeId: 'exchange-1',
       bodyId: 'media-body',
     }, mediaHost);
@@ -804,7 +810,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    await execute('get_exchange_body', {
+    await execute('capture_get_exchange_body', {
       exchangeId: 'exchange-2',
       bodyId: 'text-body',
     }, textHost);
@@ -822,11 +828,11 @@ describe('Interceptor Tool registry', () => {
         },
       },
     ]);
-    expect(definition('get_exchange_body').inputSchema).toMatchObject({
+    expect(definition('capture_get_exchange_body').inputSchema).toMatchObject({
       required: ['exchangeId', 'bodyId'],
       properties: { exchangeId: { type: 'string' }, bodyId: { type: 'string' } },
     });
-    expect(definition('get_exchange_body').inputSchema.properties).not.toHaveProperty('mimeType');
+    expect(definition('capture_get_exchange_body').inputSchema.properties).not.toHaveProperty('mimeType');
   });
 
   it('maps WebSocket and gRPC message pagination to their formal Core commands', async () => {
@@ -862,13 +868,13 @@ describe('Interceptor Tool registry', () => {
       'grpc.messages': { type: 'grpc.messages', payload: grpcPage },
     });
 
-    await expect(execute('list_websocket_messages', {
+    await expect(execute('capture_list_websocket_messages', {
       exchangeId: 'exchange-ws',
       cursor: 'ws-cursor',
       limit: 25,
       direction: 'server-to-client',
     }, fakeToolHost)).resolves.toEqual(webSocketPage);
-    await expect(execute('list_grpc_messages', {
+    await expect(execute('capture_list_grpc_messages', {
       exchangeId: 'exchange-grpc',
       side: 'response',
       cursor: 'grpc-cursor',
@@ -914,7 +920,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    const result = await execute('get_exchange', { exchangeId: 'exchange-1' }, fakeToolHost);
+    const result = await execute('capture_get_exchange', { exchangeId: 'exchange-1' }, fakeToolHost);
 
     expect(result).toMatchObject({
       detail: {
@@ -929,31 +935,31 @@ describe('Interceptor Tool registry', () => {
   it('rejects declared numeric bounds before invoking a product command', async () => {
     const fakeToolHost = new FakeToolHost();
 
-    await expect(execute('probe_connection', { host: 'example.com', port: 0 }, fakeToolHost))
+    await expect(execute('composer_probe_connection', { host: 'example.com', port: 0 }, fakeToolHost))
       .rejects.toThrow('"port" must be at least 1');
-    await expect(execute('probe_connection', { host: 'example.com', port: 65_536 }, fakeToolHost))
+    await expect(execute('composer_probe_connection', { host: 'example.com', port: 65_536 }, fakeToolHost))
       .rejects.toThrow('"port" must be at most 65535');
     await expect(execute(
-      'probe_connection',
+      'composer_probe_connection',
       { host: 'example.com', port: 443, timeoutMs: 0 },
       fakeToolHost,
     )).rejects.toThrow('"timeoutMs" must be at least 1');
     await expect(execute(
-      'forward_edited_breakpoint',
+      'breakpoints_forward_edited',
       { breakpointId: 'bp-1', statusCode: 99 },
       fakeToolHost,
     )).rejects.toThrow('"statusCode" must be at least 100');
-    await expect(execute('list_exchanges', { limit: 0 }, fakeToolHost))
+    await expect(execute('capture_list_exchanges', { limit: 0 }, fakeToolHost))
       .rejects.toThrow('"limit" must be at least 1');
-    await expect(execute('list_exchanges', { limit: 201 }, fakeToolHost))
+    await expect(execute('capture_list_exchanges', { limit: 201 }, fakeToolHost))
       .rejects.toThrow('"limit" must be at most 200');
     await expect(execute(
-      'get_exchange_body',
+      'capture_get_exchange_body',
       { exchangeId: 'exchange-1', bodyId: 'body-1', length: 0 },
       fakeToolHost,
     )).rejects.toThrow('"length" must be at least 1');
     await expect(execute(
-      'get_exchange_body',
+      'capture_get_exchange_body',
       { exchangeId: 'exchange-1', bodyId: 'body-1', length: TOOL_BODY_PREVIEW_MAX_BYTES + 1 },
       fakeToolHost,
     )).rejects.toThrow(`"length" must be at most ${TOOL_BODY_PREVIEW_MAX_BYTES}`);
@@ -961,7 +967,7 @@ describe('Interceptor Tool registry', () => {
   });
 
   it('publishes the exact Composer header schema', () => {
-    expect(definition('send_request').inputSchema.properties['headers']).toMatchObject({
+    expect(definition('composer_send_request').inputSchema.properties['headers']).toMatchObject({
       type: 'array',
       items: {
         type: 'object',
@@ -976,30 +982,30 @@ describe('Interceptor Tool registry', () => {
   });
 
   it.each([
-    ['send_request', {
+    ['composer_send_request', {
       method: 'POST',
       url: 'https://api.test/items',
       protocol: 'ftp',
     }, '"protocol" must be one of'],
-    ['send_request', {
+    ['composer_send_request', {
       method: 'POST',
       url: 'https://api.test/items',
       headers: [{ name: '', value: 'x' }],
     }, '"name" must be a non-empty string'],
-    ['send_request', {
+    ['composer_send_request', {
       method: 'POST',
       url: 'https://api.test/items',
       headers: [{ name: ':method', value: 'DELETE' }],
     }, 'must not contain an HTTP/2 pseudo-header'],
-    ['probe_connection', {
+    ['composer_probe_connection', {
       host: 'api.test',
       port: 0,
     }, '"port" must be at least 1'],
-    ['send_request', {
+    ['composer_send_request', {
       method: 'GET',
       url: 'ftp://api.test/items',
     }, '"url" must use http or https'],
-    ['send_request', {
+    ['composer_send_request', {
       method: 'GET',
       url: 'not-an-absolute-url',
     }, '"url" must be an absolute http or https URL'],
@@ -1054,7 +1060,7 @@ describe('Interceptor Tool registry', () => {
       },
     });
 
-    const result = await execute('send_request', {
+    const result = await execute('composer_send_request', {
       method: 'POST',
       url: 'https://user:password@example.test/?access_token=request-secret',
       body: '',
@@ -1101,7 +1107,7 @@ describe('Interceptor Tool registry', () => {
       'tls.probe': { type: 'tls.probed', payload: probe },
     });
 
-    await expect(execute('probe_connection', {
+    await expect(execute('composer_probe_connection', {
       host: 'example.test',
       port: 443,
       timeoutMs: 2_000,

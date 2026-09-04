@@ -36,7 +36,7 @@ const autoStatus: McpDesktopStatus = {
 const approval: McpApprovalRequest = {
   approvalId: 'approval-1',
   identity: { clientId: 'client-1', label: 'VS Code' },
-  toolName: 'stop_recording',
+  toolName: 'capture_stop_recording',
   toolTitle: 'Stop recording',
   destructive: false,
   arguments: {},

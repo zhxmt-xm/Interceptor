@@ -46,14 +46,15 @@ test('Tool capabilities lists the complete initial shared registry with both tar
   const capabilities = page.locator('[data-parity="agent-tool-capabilities"]');
   await expect(capabilities).toBeVisible();
   await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(24);
-  await expect(capabilities.getByText('Traffic', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Capture', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Rules', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Composer', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Breakpoints', { exact: true })).toBeVisible();
-  await expect(capabilities.getByText('Requests & diagnostics', { exact: true })).toBeVisible();
+  await expect(capabilities.getByText('Diagnostics', { exact: true })).toBeVisible();
   await expect(capabilities.getByRole('switch')).toHaveCount(48);
-  await expect(capabilities.getByRole('switch', { name: 'Enable get_exchange for Agent' }))
+  await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' }))
     .toBeChecked();
-  await expect(capabilities.getByRole('switch', { name: 'Enable get_exchange for MCP' }))
+  await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' }))
     .toBeChecked();
 });
 
@@ -64,8 +65,8 @@ test('Agent and MCP capability switches remain independent', async ({ page }) =>
     agentProvider: 'configured',
   }));
 
-  const agentSwitch = page.getByRole('switch', { name: 'Enable get_exchange for Agent' });
-  const mcpSwitch = page.getByRole('switch', { name: 'Enable get_exchange for MCP' });
+  const agentSwitch = page.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' });
+  const mcpSwitch = page.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' });
   await agentSwitch.click();
   await expect(agentSwitch).not.toBeChecked();
   await expect(mcpSwitch).toBeChecked();
@@ -82,15 +83,15 @@ test('Tool search filters by capability name without resetting switches', async 
     agentProvider: 'configured',
   }));
 
-  const agentSwitch = page.getByRole('switch', { name: 'Enable get_exchange for Agent' });
+  const agentSwitch = page.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' });
   await agentSwitch.click();
   await page.getByRole('searchbox', { name: 'Search Tool capabilities' }).fill('websocket');
   await expect(page.locator('[data-tool-capability]')).toHaveCount(3);
-  await page.getByRole('searchbox', { name: 'Search Tool capabilities' }).fill('get_exchange');
+  await page.getByRole('searchbox', { name: 'Search Tool capabilities' }).fill('capture_get_exchange');
   await expect(page.locator('[data-tool-capability]')).toHaveCount(2);
-  await expect(page.getByRole('switch', { name: 'Enable get_exchange for Agent' }))
+  await expect(page.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' }))
     .not.toBeChecked();
-  await expect(page.getByRole('switch', { name: 'Enable get_exchange for MCP' }))
+  await expect(page.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' }))
     .toBeChecked();
 });
 
@@ -102,12 +103,12 @@ test('Complete Tool capability registry remains reachable through Settings scrol
     agentToolSearch: '',
   }));
 
-  const lastTool = page.locator('[data-tool-capability="query_diagnostics"]');
+  const lastTool = page.locator('[data-tool-capability="diagnostics_query"]');
   await lastTool.scrollIntoViewIfNeeded();
   await expect(lastTool).toBeVisible();
-  await expect(lastTool.getByRole('switch', { name: 'Enable query_diagnostics for Agent' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable diagnostics_query for Agent' }))
     .toBeChecked();
-  await expect(lastTool.getByRole('switch', { name: 'Enable query_diagnostics for MCP' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable diagnostics_query for MCP' }))
     .toBeChecked();
 });
 
@@ -191,7 +192,7 @@ test('MCP change Tool approval is app-wide and requires an explicit verdict', as
 
   const dialog = page.getByRole('dialog', { name: 'Approve MCP Tool call' });
   await expect(dialog).toContainText('VS Code');
-  await expect(dialog).toContainText('stop_recording');
+  await expect(dialog).toContainText('capture_stop_recording');
   await expect(dialog).toContainText('New traffic will continue through the proxy but will not be captured.');
   await dialog.getByRole('button', { name: 'Deny Tool call' }).click();
   await expect(dialog).toHaveCount(0);

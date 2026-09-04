@@ -13,25 +13,25 @@ export function AgentPanelTranscript(): React.JSX.Element {
   const sent = state.agentChat === 'sent';
   const toolTrace = state.agentToolTrace;
   const tracedApproval = state.agentToolApproval === 'allowed'
-    && ((toolTrace === 'rules' && state.agentToolApprovalName === 'apply_rules')
-      || (toolTrace === 'requests' && state.agentToolApprovalName === 'send_request'));
+    && ((toolTrace === 'rules' && state.agentToolApprovalName === 'rules_replace_tree')
+      || (toolTrace === 'composer' && state.agentToolApprovalName === 'composer_send_request'));
   const rulesApplied = toolTrace === 'rules'
-    && state.agentToolApprovalName === 'apply_rules'
+    && state.agentToolApprovalName === 'rules_replace_tree'
     && state.agentToolApproval === 'allowed';
   return (
     <div className={styles.agentTranscriptScroll} data-parity="agent-transcript">
       <div className={styles.agentTranscript}>
         <div className={styles.agentUserMessage}>
-          {toolTrace === 'traffic'
+          {toolTrace === 'capture'
             ? 'Inspect Capture storage and the latest captured request, then summarize their status.'
             : toolTrace === 'body-messages'
               ? 'Read the JSON response body, WebSocket messages, and gRPC response messages.'
               : toolTrace === 'breakpoints'
                 ? 'Inspect the waiting request, verify HTTP Breakpoint controls, then continue it.'
-              : toolTrace === 'requests'
+              : toolTrace === 'composer'
                 ? 'Send the approved request and probe the local TLS endpoint.'
               : toolTrace === 'rules'
-                ? state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
+                ? state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                   ? 'Read the current Rule tree, then apply the approved replacement.'
                   : 'Read the current Rule tree and its real Capture hit counts.'
             : sent ? state.agentMessage : 'Help me diagnose repeated 401 responses after token refresh.'}
@@ -45,15 +45,15 @@ export function AgentPanelTranscript(): React.JSX.Element {
                   <AgentQueryToolTrace variant={toolTrace} />
                   {tracedApproval ? <AgentToolApproval /> : null}
                 </div>
-                {toolTrace === 'traffic'
+                {toolTrace === 'capture'
                   ? <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
                   : toolTrace === 'body-messages'
                     ? <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>
                     : toolTrace === 'breakpoints'
                       ? <p>One request was waiting. HTTP Breakpoints were verified and <code>bp-agent-request</code> continued.</p>
-                    : toolTrace === 'requests'
+                    : toolTrace === 'composer'
                       ? <p>The request returned <code>201</code>. TLS negotiated <code>h2</code> with one certificate.</p>
-                    : state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
+                    : state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                       ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
                       : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}
               </>

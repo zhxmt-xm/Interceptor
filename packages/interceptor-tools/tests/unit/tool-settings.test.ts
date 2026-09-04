@@ -6,45 +6,49 @@ import {
 } from '../../src';
 
 const EXPECTED_SETTINGS_COPY = [
-  ['get_proxy_status', 'Proxy status', 'Read listener and recording state.'],
-  ['get_storage_status', 'Capture storage', 'Read captured item and byte counts.'],
-  ['start_recording', 'Start recording', 'Resume capture in the current session.'],
-  ['stop_recording', 'Stop recording', 'Pause capture without stopping the proxy.'],
-  ['clear_capture', 'Clear capture', 'Delete captured exchanges and bodies.'],
-  ['list_exchanges', 'List exchanges', 'Query lightweight captured traffic summaries.'],
-  ['get_exchange', 'Exchange detail', 'Read headers, timings, TLS, and rule effects.'],
-  ['get_exchange_body', 'Exchange body', 'Read a bounded body byte range.'],
-  ['list_websocket_messages', 'WebSocket messages', 'Page through captured WebSocket frames.'],
-  ['list_grpc_messages', 'gRPC messages', 'Page through decoded gRPC messages.'],
-  ['get_rules', 'Rule set', 'Read the current rule tree and revision.'],
-  ['get_rule_hits', 'Rule hits', 'Read match counts for current rules.'],
-  ['apply_rules', 'Apply rules', 'Replace the rule set with revision checking.'],
-  ['list_breakpoints', 'Pending breakpoints', 'Read requests, responses, and frames waiting for action.'],
-  ['enable_http_breakpoints', 'Enable HTTP breakpoints', 'Start suspending matching HTTP traffic.'],
-  ['disable_http_breakpoints', 'Disable HTTP breakpoints', 'Stop suspending matching HTTP traffic.'],
-  ['enable_websocket_breakpoint', 'Enable WebSocket breakpoint', 'Suspend selected frames on one connection.'],
-  ['disable_websocket_breakpoint', 'Disable WebSocket breakpoint', 'Resume frames on the selected connection.'],
-  ['continue_breakpoint', 'Continue breakpoint', 'Forward one suspended item unchanged.'],
-  ['forward_edited_breakpoint', 'Forward edited breakpoint', 'Forward one suspended item with explicit edits.'],
-  ['drop_breakpoint', 'Drop breakpoint', 'Discard one suspended item.'],
-  ['send_request', 'Send request', 'Send a Composer request from this machine.'],
-  ['probe_connection', 'Probe connection', 'Open a TLS probe to a host and port.'],
-  ['query_diagnostics', 'Query diagnostics', 'Read filtered structured diagnostic records.'],
+  ['capture_get_proxy_status', 'Proxy status', 'Read listener and recording state.'],
+  ['capture_get_storage_status', 'Capture storage', 'Read captured item and byte counts.'],
+  ['capture_start_recording', 'Start recording', 'Resume capture in the current session.'],
+  ['capture_stop_recording', 'Stop recording', 'Pause capture without stopping the proxy.'],
+  ['capture_clear', 'Clear capture', 'Delete captured exchanges and bodies.'],
+  ['capture_list_exchanges', 'List exchanges', 'Query lightweight captured traffic summaries.'],
+  ['capture_get_exchange', 'Exchange detail', 'Read headers, timings, TLS, and rule effects.'],
+  ['capture_get_exchange_body', 'Exchange body', 'Read a bounded body byte range.'],
+  ['capture_list_websocket_messages', 'WebSocket messages', 'Page through captured WebSocket frames.'],
+  ['capture_list_grpc_messages', 'gRPC messages', 'Page through decoded gRPC messages.'],
+  ['rules_get_tree', 'Rule set', 'Read the current rule tree and revision.'],
+  ['rules_get_hits', 'Rule hits', 'Read match counts for current rules.'],
+  ['rules_replace_tree', 'Apply rules', 'Replace the rule set with revision checking.'],
+  ['composer_send_request', 'Send request', 'Send a Composer request from this machine.'],
+  ['composer_probe_connection', 'Probe connection', 'Open a TLS probe to a host and port.'],
+  ['breakpoints_list', 'Pending breakpoints', 'Read requests, responses, and frames waiting for action.'],
+  ['breakpoints_enable_http', 'Enable HTTP breakpoints', 'Start suspending matching HTTP traffic.'],
+  ['breakpoints_disable_http', 'Disable HTTP breakpoints', 'Stop suspending matching HTTP traffic.'],
+  ['breakpoints_enable_websocket', 'Enable WebSocket breakpoint', 'Suspend selected frames on one connection.'],
+  ['breakpoints_disable_websocket', 'Disable WebSocket breakpoint', 'Resume frames on the selected connection.'],
+  ['breakpoints_continue', 'Continue breakpoint', 'Forward one suspended item unchanged.'],
+  ['breakpoints_forward_edited', 'Forward edited breakpoint', 'Forward one suspended item with explicit edits.'],
+  ['breakpoints_drop', 'Drop breakpoint', 'Discard one suspended item.'],
+  ['diagnostics_query', 'Query diagnostics', 'Read filtered structured diagnostic records.'],
 ] as const;
 
 describe('Tool Settings projection', () => {
-  it('projects every executable Tool once into the four designed Settings groups', () => {
+  it('projects every executable Tool once into five feature Settings groups', () => {
     const groups = buildInterceptorToolSettingsGroups();
 
     expect(groups.map((group) => [group.id, group.title])).toEqual([
-      ['traffic', 'Traffic'],
+      ['capture', 'Capture'],
       ['rules', 'Rules'],
+      ['composer', 'Composer'],
       ['breakpoints', 'Breakpoints'],
-      ['requests-diagnostics', 'Requests & diagnostics'],
+      ['diagnostics', 'Diagnostics'],
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
     expect(groups.flatMap((group) => group.tools)).toHaveLength(24);
+    expect(groups.every((group) => (
+      group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
+    ))).toBe(true);
   });
 
   it('exposes display metadata without schemas or executors', () => {
@@ -52,7 +56,7 @@ describe('Tool Settings projection', () => {
     const proxyStatus = settingsTools[0];
 
     expect(proxyStatus).toEqual({
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       title: 'Proxy status',
       description: 'Read listener and recording state.',
       kind: 'query',

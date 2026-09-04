@@ -29,55 +29,77 @@ describe('ToolCapabilitySettingsService', () => {
   it('persists Agent and MCP disabled names independently across service instances', async () => {
     const { service, settingsPath } = await createService(temporaryDirectories);
 
-    await service.disableAgentTool('get_proxy_status');
-    await service.disableMcpTool('apply_rules');
+    await service.disableAgentTool('capture_get_proxy_status');
+    await service.disableMcpTool('rules_replace_tree');
 
     expect(service.snapshot()).toMatchObject({
-      agentDisabledToolNames: ['get_proxy_status'],
-      mcpDisabledToolNames: ['apply_rules'],
+      agentDisabledToolNames: ['capture_get_proxy_status'],
+      mcpDisabledToolNames: ['rules_replace_tree'],
     });
     expect(JSON.parse(await readFile(settingsPath, 'utf8'))).toEqual({
-      agentDisabledToolNames: ['get_proxy_status'],
-      mcpDisabledToolNames: ['apply_rules'],
+      agentDisabledToolNames: ['capture_get_proxy_status'],
+      mcpDisabledToolNames: ['rules_replace_tree'],
     });
 
     const restored = new ToolCapabilitySettingsService(settingsPath);
     await restored.start();
     expect(restored.snapshot()).toMatchObject({
-      agentDisabledToolNames: ['get_proxy_status'],
-      mcpDisabledToolNames: ['apply_rules'],
+      agentDisabledToolNames: ['capture_get_proxy_status'],
+      mcpDisabledToolNames: ['rules_replace_tree'],
     });
 
-    await restored.enableAgentTool('get_proxy_status');
-    await restored.enableMcpTool('apply_rules');
+    await restored.enableAgentTool('capture_get_proxy_status');
+    await restored.enableMcpTool('rules_replace_tree');
     await expect(readFile(settingsPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('rejects unknown and duplicate stored names', async () => {
+  it('drops obsolete stored names without migrating them', async () => {
     const directory = await createTemporaryDirectory(temporaryDirectories);
     const settingsPath = path.join(directory, 'tool-capabilities', 'settings.json');
     await mkdir(path.dirname(settingsPath), { recursive: true });
     await writeFile(settingsPath, JSON.stringify({
-      agentDisabledToolNames: ['unknown_tool', 'get_exchange', 'get_exchange'],
-      mcpDisabledToolNames: ['query_diagnostics', 'unknown_tool'],
+      agentDisabledToolNames: ['get_exchange', 'capture_get_exchange'],
+      mcpDisabledToolNames: ['query_diagnostics', 'diagnostics_query'],
     }), 'utf8');
     const service = new ToolCapabilitySettingsService(settingsPath);
 
-    await expect(service.start()).rejects.toThrow('fields are invalid');
+    await service.start();
+
+    expect(service.snapshot()).toMatchObject({
+      agentDisabledToolNames: ['capture_get_exchange'],
+      mcpDisabledToolNames: ['diagnostics_query'],
+    });
+    expect(JSON.parse(await readFile(settingsPath, 'utf8'))).toEqual({
+      agentDisabledToolNames: ['get_exchange', 'capture_get_exchange'],
+      mcpDisabledToolNames: ['query_diagnostics', 'diagnostics_query'],
+    });
+  });
+
+  it('rejects duplicate stored names', async () => {
+    const directory = await createTemporaryDirectory(temporaryDirectories);
+    const settingsPath = path.join(directory, 'tool-capabilities', 'settings.json');
+    await mkdir(path.dirname(settingsPath), { recursive: true });
+    await writeFile(settingsPath, JSON.stringify({
+      agentDisabledToolNames: ['capture_get_exchange', 'capture_get_exchange'],
+      mcpDisabledToolNames: [],
+    }), 'utf8');
+
+    await expect(new ToolCapabilitySettingsService(settingsPath).start())
+      .rejects.toThrow('fields are invalid');
   });
 
   it('serializes concurrent mutations without losing independent changes', async () => {
     const { service } = await createService(temporaryDirectories);
 
     await Promise.all([
-      service.disableAgentTool('get_proxy_status'),
-      service.disableAgentTool('get_exchange'),
-      service.disableMcpTool('apply_rules'),
+      service.disableAgentTool('capture_get_proxy_status'),
+      service.disableAgentTool('capture_get_exchange'),
+      service.disableMcpTool('rules_replace_tree'),
     ]);
 
     expect(service.snapshot()).toMatchObject({
-      agentDisabledToolNames: ['get_proxy_status', 'get_exchange'],
-      mcpDisabledToolNames: ['apply_rules'],
+      agentDisabledToolNames: ['capture_get_proxy_status', 'capture_get_exchange'],
+      mcpDisabledToolNames: ['rules_replace_tree'],
     });
   });
 
@@ -91,7 +113,7 @@ describe('ToolCapabilitySettingsService', () => {
     const settingsPath = path.join(directory, 'tool-capabilities', 'settings.json');
     await mkdir(path.dirname(settingsPath), { recursive: true });
     await writeFile(settingsPath, JSON.stringify({
-      agentDisabledToolNames: 'get_exchange',
+      agentDisabledToolNames: 'capture_get_exchange',
       mcpDisabledToolNames: [],
     }), 'utf8');
 

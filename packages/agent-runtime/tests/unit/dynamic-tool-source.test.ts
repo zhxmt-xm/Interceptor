@@ -73,16 +73,16 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const execute = vi.fn(() => ({ listening: true }));
     const getProxyStatus = defineTool({
       kind: 'query',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
       execute,
     });
     const source = new MutableToolSource();
-    source.systemMessages = [{ role: 'system', content: 'Capability index: traffic' }];
+    source.systemMessages = [{ role: 'system', content: 'Capability index: capture' }];
     source.tools = [getProxyStatus];
     const model = new QueueModel([
-      toolResponse('get_proxy_status', 'call-1'),
+      toolResponse('capture_get_proxy_status', 'call-1'),
       finalResponse('Recording is on.'),
     ]);
     const runLoop = new AgentRunLoop({ model, toolSource: source });
@@ -93,9 +93,9 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(model.requests).toHaveLength(2);
     expect(model.requests[0]?.messages[0]).toEqual({
       role: 'system',
-      content: 'Capability index: traffic',
+      content: 'Capability index: capture',
     });
-    expect(model.requests[0]?.tools.map((tool) => tool.name)).toEqual(['get_proxy_status']);
+    expect(model.requests[0]?.tools.map((tool) => tool.name)).toEqual(['capture_get_proxy_status']);
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
@@ -103,7 +103,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const execute = vi.fn(() => ({ listening: true }));
     const getProxyStatus = defineTool({
       kind: 'query',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
       execute,
@@ -111,7 +111,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const source = new MutableToolSource();
     source.tools = [getProxyStatus];
     const model = new QueueModel([
-      toolResponse('get_proxy_status', 'call-disabled'),
+      toolResponse('capture_get_proxy_status', 'call-disabled'),
       finalResponse('The Tool is unavailable.'),
     ]);
     const runLoop = new AgentRunLoop({ model, toolSource: source });
@@ -129,12 +129,12 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(model.requests[1]?.messages.at(-1)).toEqual({
       role: 'tool',
       toolCallId: 'call-disabled',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       content: JSON.stringify({
         ok: false,
         error: {
           code: 'unknown_tool',
-          message: 'Unknown tool "get_proxy_status".',
+          message: 'Unknown tool "capture_get_proxy_status".',
         },
       }),
     });
@@ -146,12 +146,12 @@ describe('AgentRunLoop dynamic Tool source', () => {
       name: 'discover_tools',
       description: 'Discover Tools.',
       inputSchema: z.object({}).strict(),
-      execute: () => ({ names: ['get_exchange'] }),
+      execute: () => ({ names: ['capture_get_exchange'] }),
     });
     const executeGetExchange = vi.fn(() => ({ id: 'exchange-1' }));
     const getExchange = defineTool({
       kind: 'query',
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       description: 'Read one exchange.',
       inputSchema: z.object({}).strict(),
       execute: executeGetExchange,
@@ -174,7 +174,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
           content: '',
           toolCalls: [
             { id: 'call-discover', name: 'discover_tools', arguments: {} },
-            { id: 'call-guessed', name: 'get_exchange', arguments: {} },
+            { id: 'call-guessed', name: 'capture_get_exchange', arguments: {} },
           ],
         },
       },
@@ -188,19 +188,19 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(result.messages).toContainEqual({
       role: 'tool',
       toolCallId: 'call-guessed',
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       content: JSON.stringify({
         ok: false,
         error: {
           code: 'unknown_tool',
-          message: 'Unknown tool "get_exchange".',
+          message: 'Unknown tool "capture_get_exchange".',
         },
       }),
     });
     expect(model.requests[0]?.tools.map((tool) => tool.name)).toEqual(['discover_tools']);
     expect(model.requests[1]?.tools.map((tool) => tool.name)).toEqual([
       'discover_tools',
-      'get_exchange',
+      'capture_get_exchange',
     ]);
   });
 
@@ -208,14 +208,14 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const execute = vi.fn(() => ({ recording: false }));
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute,
     });
     const authorizeToolCall = vi.fn(async () => 'deny' as const);
     const model = new QueueModel([
-      toolResponse('stop_recording', 'call-stop'),
+      toolResponse('capture_stop_recording', 'call-stop'),
       finalResponse('Recording was left running.'),
     ]);
     const runLoop = new AgentRunLoop({
@@ -228,7 +228,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
 
     expect(authorizeToolCall).toHaveBeenCalledWith(
       {
-        toolCall: { id: 'call-stop', name: 'stop_recording', arguments: {} },
+        toolCall: { id: 'call-stop', name: 'capture_stop_recording', arguments: {} },
         description: 'Pause capture without stopping the proxy.',
         effect: 'Pause capture without stopping the proxy.',
       },
@@ -238,12 +238,12 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(result.messages).toContainEqual({
       role: 'tool',
       toolCallId: 'call-stop',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       content: JSON.stringify({
         ok: false,
         error: {
           code: 'tool_denied',
-          message: 'Tool "stop_recording" was denied by the user.',
+          message: 'Tool "capture_stop_recording" was denied by the user.',
         },
       }),
     });
@@ -257,7 +257,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     }));
     const clearCapture = defineTool({
       kind: 'change',
-      name: 'clear_capture',
+      name: 'capture_clear',
       description: 'Delete captured exchanges and bodies.',
       inputSchema: z.object({}).strict(),
       describeEffect,
@@ -265,7 +265,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     });
     const authorizeToolCall = vi.fn(async () => 'deny' as const);
     const model = new QueueModel([
-      toolResponse('clear_capture', 'call-clear'),
+      toolResponse('capture_clear', 'call-clear'),
       finalResponse('Capture was preserved.'),
     ]);
     const runLoop = new AgentRunLoop({
@@ -293,7 +293,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
   it('falls back to the static effect when dynamic description fails', async () => {
     const clearCapture = defineTool({
       kind: 'change',
-      name: 'clear_capture',
+      name: 'capture_clear',
       description: 'Delete captured exchanges and bodies.',
       effect: 'Captured traffic will be deleted.',
       inputSchema: z.object({}).strict(),
@@ -305,7 +305,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const authorizeToolCall = vi.fn(async () => 'deny' as const);
     const runLoop = new AgentRunLoop({
       model: new QueueModel([
-        toolResponse('clear_capture', 'call-clear-fallback'),
+        toolResponse('capture_clear', 'call-clear-fallback'),
         finalResponse('Capture was preserved.'),
       ]),
       toolSource: { snapshot: () => ({ systemMessages: [], tools: [clearCapture] }) },
@@ -325,7 +325,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const execute = vi.fn(() => ({ state: 'continued' }));
     const continueBreakpoint = defineTool({
       kind: 'change',
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       description: 'Forward one suspended item unchanged.',
       inputSchema: z.object({}).strict(),
       describeEffect: async () => {
@@ -339,7 +339,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const authorizeToolCall = vi.fn(async () => 'allow' as const);
     const runLoop = new AgentRunLoop({
       model: new QueueModel([
-        toolResponse('continue_breakpoint', 'call-stale'),
+        toolResponse('breakpoints_continue', 'call-stale'),
         finalResponse('The Breakpoint is stale.'),
       ]),
       toolSource: { snapshot: () => ({ systemMessages: [], tools: [continueBreakpoint] }) },
@@ -355,7 +355,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(result.messages).toContainEqual({
       role: 'tool',
       toolCallId: 'call-stale',
-      name: 'continue_breakpoint',
+      name: 'breakpoints_continue',
       content: JSON.stringify({
         ok: false,
         error: {
@@ -373,7 +373,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     });
     const clearCapture = defineTool({
       kind: 'change',
-      name: 'clear_capture',
+      name: 'capture_clear',
       description: 'Delete captured exchanges and bodies.',
       inputSchema: z.object({}).strict(),
       describeEffect: async (_input, context) => {
@@ -390,7 +390,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const authorizeToolCall = vi.fn(async () => 'allow' as const);
     const abortController = new AbortController();
     const runLoop = new AgentRunLoop({
-      model: new QueueModel([toolResponse('clear_capture', 'call-clear-cancelled')]),
+      model: new QueueModel([toolResponse('capture_clear', 'call-clear-cancelled')]),
       toolSource: { snapshot: () => ({ systemMessages: [], tools: [clearCapture] }) },
       authorizeToolCall,
     });
@@ -410,7 +410,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const execute = vi.fn(() => ({ recording: false }));
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute,
@@ -422,7 +422,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
       resolveDecision = resolve;
     }));
     const model = new QueueModel([
-      toolResponse('stop_recording', 'call-stop'),
+      toolResponse('capture_stop_recording', 'call-stop'),
       finalResponse('The Tool became unavailable.'),
     ]);
     const runLoop = new AgentRunLoop({ model, toolSource: source, authorizeToolCall });
@@ -437,12 +437,12 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(result.messages).toContainEqual({
       role: 'tool',
       toolCallId: 'call-stop',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       content: JSON.stringify({
         ok: false,
         error: {
           code: 'unknown_tool',
-          message: 'Unknown tool "stop_recording".',
+          message: 'Unknown tool "capture_stop_recording".',
         },
       }),
     });
@@ -453,14 +453,14 @@ describe('AgentRunLoop dynamic Tool source', () => {
     const executeQuery = vi.fn(() => ({ recording: true }));
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute: executeChange,
     });
     const substitutedQuery = defineTool({
       kind: 'query',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Read capture state.',
       inputSchema: z.object({}).strict(),
       execute: executeQuery,
@@ -472,7 +472,7 @@ describe('AgentRunLoop dynamic Tool source', () => {
       resolveDecision = resolve;
     }));
     const model = new QueueModel([
-      toolResponse('stop_recording', 'call-substituted'),
+      toolResponse('capture_stop_recording', 'call-substituted'),
       finalResponse('The Tool became unavailable.'),
     ]);
     const runLoop = new AgentRunLoop({ model, toolSource: source, authorizeToolCall });
@@ -488,12 +488,12 @@ describe('AgentRunLoop dynamic Tool source', () => {
     expect(result.messages).toContainEqual({
       role: 'tool',
       toolCallId: 'call-substituted',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       content: JSON.stringify({
         ok: false,
         error: {
           code: 'unknown_tool',
-          message: 'Unknown tool "stop_recording".',
+          message: 'Unknown tool "capture_stop_recording".',
         },
       }),
     });

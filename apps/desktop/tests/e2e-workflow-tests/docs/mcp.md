@@ -16,7 +16,7 @@ Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品�
 2. 从真实Browser origin向`/mcp`发送preflight，确认`204`、原样允许Browser声明的method/header且不要求Bearer。
 3. Browser使用无Token和错误Token发送实际请求，均确认`401`且Browser可读取状态，Core无业务命令。
 4. Browser使用正确Bearer和固定`2026-07-28`官方Client完成discover与`tools/list`，确认当前24项可见。
-5. Browser调用`get_proxy_status`并读取真实Core状态；调用`stop_recording`后在Interceptor真实Modal中Deny，
+5. Browser调用`capture_get_proxy_status`并读取真实Core状态；调用`capture_stop_recording`后在Interceptor真实Modal中Deny，
    再次调用并Allow，分别确认无副作用与正式Recording停止。
 6. 关闭Browser与App，确认在途调用、审批、MCP端口、8888、Main/Core/Worker与系统代理全部收敛。
 
@@ -48,21 +48,21 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
    从系统剪贴板读取标准HTTP MCP配置并恢复trace；只保存URL、token SHA-256与配置结构，不保存token明文。
 4. 测试侧使用正确Bearer和固定当前`2026-07-28`协议的官方Client连接；无Token、错误Token、Browser CORS与
    Main auth-only边界由integration及`mcp.browser-playground-cors`覆盖。Server不提供旧协议兼容路径。
-5. 在Settings关闭`get_proxy_status`的MCP开关，经已连接Client调用`tools/list`，确认24项共享registry中只缺该项，
+5. 在Settings关闭`capture_get_proxy_status`的MCP开关，经已连接Client调用`tools/list`，确认24项共享registry中只缺该项，
    Agent开关不变；猜测调用同名Tool得到不存在结果且Core未执行。重新开启后再次`tools/list`，确认该项恢复。
-6. 用产品UI开始Recording；真实MCP Client调用query Tool `get_proxy_status`，确认同一个POST直接返回JSON，结果
-   来自当前Core且不出现审批。调用change Tool `stop_recording`，保持HTTP请求在途，确认Main显示App级审批弹层，
+6. 用产品UI开始Recording；真实MCP Client调用query Tool `capture_get_proxy_status`，确认同一个POST直接返回JSON，结果
+   来自当前Core且不出现审批。调用change Tool `capture_stop_recording`，保持HTTP请求在途，确认Main显示App级审批弹层，
    调用方、Tool、参数与Effect完整可见且Recording尚未改变。
 7. 关闭该外部Client，确认在途调用取消、审批弹层自动消失且Recording保持；重新连接后再次调用并点击Deny，
    确认返回结构化`tool_denied`且Recording保持。第三次调用点击Allow，确认正式Recording入口
    停止捕获、Capture UI同步且同一调用只执行一次。通过产品UI恢复Recording。
-8. 将`VS Code E2E`切换为`auto`，再次调用`stop_recording`，确认无审批弹层并直接停止Recording；query/change均
+8. 将`VS Code E2E`切换为`auto`，再次调用`capture_stop_recording`，确认无审批弹层并直接停止Recording；query/change均
    写入不含Token的Diagnostics审计。通过产品UI恢复Recording；再经真实Rules UI创建并Apply一条初始header Rule，
-   官方Client调用`get_rules`取得同一完整树并以`apply_rules`替换header。确认Auto不显示审批、Rules Renderer收到
+   官方Client调用`rules_get_tree`取得同一完整树并以`rules_replace_tree`替换header。确认Auto不显示审批、Rules Renderer收到
    revision事件后重载，真实8888请求令origin收到MCP更新后的header。
 9. 保留profile和测试内存中的首代token，用同一profile启动第二代Electron；确认MCP仍开启、endpoint完全相同、
    Client与`auto`及MCP更新后的Rule/revision恢复，并且旧配置无需修改即可重新initialize、`tools/list`和调用
-   `get_proxy_status`。
+   `capture_get_proxy_status`。
 10. 在产品UI点击该Client的Regenerate credential。确认旧token后续请求返回`401`且该Client在途调用取消；暂停trace
     再次Copy config并只记录新token hash，确认hash已改变且新token可建立Session。其他Client若存在不得受影响。
 11. 撤销测试Client并关闭MCP，确认listener、SDK handler和在途调用全部消失，但Proxy Core的`8888`生命周期不受影响；
@@ -76,6 +76,9 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
 `ask`/`auto`相互正交；app重启不轮换token，只有用户显式重新生成或撤销才让旧凭据失效。MCP失败、断连、
 认证拒绝和审批等待都不影响抓包转发，关闭MCP不会关闭Proxy Core或修改系统代理。
 
+`tools/list`只披露按feature命名的24项：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`与
+`diagnostics_*`。所有旧无前缀名称都必须不存在，逐项调用旧名由协议层拒绝且Core零命令；不提供alias或迁移期双目录。
+
 本workflow保留原生Host链路；Browser CORS由`mcp.browser-playground-cors`独立覆盖。SSE响应形态由独立transport
 integration test覆盖进度/多消息分帧，本workflow至少验证一个等待审批的在途HTTP调用能够在用户裁决后返回最终结果。
 
@@ -86,7 +89,7 @@ Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则�
 ### Evidence
 
 - 原MCP Server实现前取得公开控制缺口Red。Rules同步补强在父提交`1234ea9a`的隔离worktree运行同一扩展workflow：
-   官方Client的`apply_rules`成功且目标revision为2，但Rules Renderer保持`data-revision=1`，精确取得外部同步缺口Red；
+   官方Client的`rules_replace_tree`成功且目标revision为2，但Rules Renderer保持`data-revision=1`，精确取得外部同步缺口Red；
    失败代Main/Core为`37156/46644`，`gracefulDestroyVerified=true`且8888释放。
 - 当前同一workflow`1/1` Green：真实Rules UI自产revision 1的初始Rule，官方Client读取完整树并在Auto下替换为
    revision 2且返回同一revision，无审批弹层；Renderer name/revision重载，真实origin header由`initial`变为`updated`，
@@ -105,7 +108,7 @@ Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则�
 ### Steps
 
 1. 延续真实官方MCP Client和产品UI配置；通过Rules UI及8888请求自产HTTP pending并取得动态ID。
-2. `tools/list`披露八项；query `list_breakpoints`直接返回，change在Ask下分别验证Deny/Allow，Auto下无审批。
+2. `tools/list`披露八项；query `breakpoints_list`直接返回，change在Ask下分别验证Deny/Allow，Auto下无审批。
 3. Continue、Forward edited与Drop由真实client/origin证明；已解除旧ID在审批前直接返回错误，执行竞态由Core
    `conflict`收敛。
 4. HTTP enable/disable控制后续真实请求；真实WebSocket连接自产exchangeId与pending后验证enable/disable和帧结果。

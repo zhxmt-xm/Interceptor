@@ -19,7 +19,7 @@ import {
 } from '../../fixtures/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
 
-const REQUEST_PATH = '/agent-e2e/traffic';
+const REQUEST_PATH = '/agent-e2e/capture';
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const FIRST_PROMPT = phrase('Inspect Capture storage and the latest', 'captured request, then', 'summarize their status.');
 const FIRST_ANSWER_PREFIX = phrase('The latest', 'exchange is');
@@ -29,10 +29,22 @@ const RESTORED_PROMPT = phrase('Discover the restored', 'storage Tool.');
 const RESTORED_ANSWER = phrase('The storage Tool', 'is available again.');
 const FIRST_CALLS = [
   ['call-discover', 'discover_tools'],
-  ['call-storage', 'get_storage_status'],
-  ['call-proxy', 'get_proxy_status'],
-  ['call-list', 'list_exchanges'],
-  ['call-detail', 'get_exchange'],
+  ['call-storage', 'capture_get_storage_status'],
+  ['call-proxy', 'capture_get_proxy_status'],
+  ['call-list', 'capture_list_exchanges'],
+  ['call-detail', 'capture_get_exchange'],
+] as const;
+const CAPTURE_TOOL_NAMES = [
+  'capture_get_proxy_status',
+  'capture_get_storage_status',
+  'capture_start_recording',
+  'capture_stop_recording',
+  'capture_clear',
+  'capture_list_exchanges',
+  'capture_get_exchange',
+  'capture_get_exchange_body',
+  'capture_list_websocket_messages',
+  'capture_list_grpc_messages',
 ] as const;
 const SENSITIVE_TEXTS = [
   FIRST_PROMPT,
@@ -42,7 +54,7 @@ const SENSITIVE_TEXTS = [
   RESTORED_ANSWER,
 ];
 
-interface TrafficToolEvidence {
+interface CaptureToolEvidence {
   exchangeId: string;
   firstCallNames: readonly string[];
   firstRequestToolNames: readonly string[];
@@ -70,10 +82,10 @@ async function configureProvider(page: Page, lab: OpenAiCompatibleLab): Promise<
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.add).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.addCustom).click();
-  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill('Traffic Tool lab');
+  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill('Capture Tool lab');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl)
-    .fill(lab.baseUrl('traffic-tools'));
-  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill('traffic-tool-model');
+    .fill(lab.baseUrl('capture-tools'));
+  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill('capture-tool-model');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.contextWindow).fill('131072');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.maximumOutput).fill('8192');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.testConnection).click();
@@ -96,18 +108,18 @@ function enqueueFirstTurn(lab: OpenAiCompatibleLab, capturedExchangeId: string):
   lab.enqueueToolCall({
     callId: 'call-discover',
     name: 'discover_tools',
-    arguments: { capabilityId: 'traffic' },
+    arguments: { capabilityId: 'capture' },
   });
-  lab.enqueueToolCall({ callId: 'call-storage', name: 'get_storage_status', arguments: {} });
-  lab.enqueueToolCall({ callId: 'call-proxy', name: 'get_proxy_status', arguments: {} });
+  lab.enqueueToolCall({ callId: 'call-storage', name: 'capture_get_storage_status', arguments: {} });
+  lab.enqueueToolCall({ callId: 'call-proxy', name: 'capture_get_proxy_status', arguments: {} });
   lab.enqueueToolCall({
     callId: 'call-list',
-    name: 'list_exchanges',
+    name: 'capture_list_exchanges',
     arguments: { search: REQUEST_PATH, limit: 10 },
   });
   lab.enqueueToolCall({
     callId: 'call-detail',
-    name: 'get_exchange',
+    name: 'capture_get_exchange',
     arguments: { exchangeId: capturedExchangeId },
   });
   const answer = `Capture storage is non-empty. ${FIRST_ANSWER_PREFIX} ${capturedExchangeId}: GET ${REQUEST_PATH} 200.`;
@@ -120,11 +132,11 @@ function enqueueDisabledTurn(lab: OpenAiCompatibleLab): void {
   lab.enqueueToolCall({
     callId: 'disabled-discover',
     name: 'discover_tools',
-    arguments: { capabilityId: 'traffic' },
+    arguments: { capabilityId: 'capture' },
   });
   lab.enqueueToolCall({
     callId: 'disabled-storage',
-    name: 'get_storage_status',
+    name: 'capture_get_storage_status',
     arguments: {},
   });
   lab.enqueueTurn({ textChunks: [DISABLED_ANSWER] });
@@ -135,7 +147,7 @@ function enqueueRestoredTurn(lab: OpenAiCompatibleLab): void {
   lab.enqueueToolCall({
     callId: 'restored-discover',
     name: 'discover_tools',
-    arguments: { capabilityId: 'traffic' },
+    arguments: { capabilityId: 'capture' },
   });
   lab.enqueueTurn({ textChunks: [RESTORED_ANSWER] });
 }
@@ -235,7 +247,7 @@ async function closeGeneration(
   await desktopApp.forceCleanup();
 }
 
-test('agent.tools.traffic-discovery discovers, executes and restores query Tools', async ({
+test('agent.tools.capture-discovery discovers, executes and restores query Tools', async ({
   desktopApp,
   loopbackLab,
   openAiCompatibleLab,
@@ -243,14 +255,14 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
   test.setTimeout(180_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
-    description: 'agent.tools.traffic-discovery',
+    description: 'agent.tools.capture-discovery',
   });
 
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   let cleanupError: unknown;
   let firstAnswer = '';
-  const evidence: TrafficToolEvidence = {
+  const evidence: CaptureToolEvidence = {
     exchangeId: '',
     firstCallNames: [],
     firstRequestToolNames: [],
@@ -305,38 +317,19 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       )).toBeVisible();
     }
 
-    // 业务断言：首次只披露discover_tools；发现后披露全部已接Traffic schema，仍只调用本workflow拥有的四项query。
-    // Business assertions: initially disclose only discovery, then every connected Traffic schema while calling only this workflow's four queries.
+    // 业务断言：首次只披露discover_tools；发现后披露全部已接Capture schema，仍只调用本workflow拥有的四项query。
+    // Business assertions: initially disclose only discovery, then every connected Capture schema while calling only this workflow's four queries.
     const firstRequests = openAiCompatibleLab.requestsForAssertions().slice(firstRequestOffset);
     expect(firstRequests).toHaveLength(6);
     evidence.firstRequestToolNames = requestToolNames(firstRequests[0]!);
     evidence.disclosedToolNames = requestToolNames(firstRequests[1]!);
     expect(evidence.firstRequestToolNames).toEqual(['discover_tools']);
-    expect(evidence.disclosedToolNames).toEqual([
-      'discover_tools',
-      'get_proxy_status',
-      'get_storage_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'stop_recording',
-    ]);
+    expect(evidence.disclosedToolNames).toEqual(['discover_tools', ...CAPTURE_TOOL_NAMES]);
     for (const names of firstRequests.slice(1).map(requestToolNames)) {
       expect(names).toEqual(evidence.disclosedToolNames);
     }
     const discoveryResult = toolResult(firstRequests[1]!, 'call-discover');
-    expect(discoveredNames(discoveryResult)).toEqual([
-      'get_proxy_status',
-      'get_storage_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'stop_recording',
-    ]);
+    expect(discoveredNames(discoveryResult)).toEqual(CAPTURE_TOOL_NAMES);
     const storageResult = toolResult(firstRequests[2]!, 'call-storage');
     expect(storageResult).toMatchObject({
       ok: true,
@@ -452,16 +445,16 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     await expect(relaunchedApp.page.locator('[data-agent-item-kind="assistant-message"]').last())
       .toContainText(firstAnswer);
 
-    // 用户操作：关闭get_storage_status后新建Chat；discovery与下一次schema都移除它，直接猜测调用得到unknown_tool。
-    // User actions: disable get_storage_status in a new Chat; discovery and schemas omit it and a guessed call returns unknown_tool.
+    // 用户操作：关闭capture_get_storage_status后新建Chat；discovery与下一次schema都移除它，直接猜测调用得到unknown_tool。
+    // User actions: disable capture_get_storage_status in a new Chat; discovery and schemas omit it and a guessed call returns unknown_tool.
     await openAgentSettings(relaunchedApp.page);
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_storage_status'),
     ).click();
     await expect(getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_storage_status'),
     )).toHaveAttribute('aria-checked', 'false');
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueDisabledTurn(openAiCompatibleLab);
@@ -473,24 +466,13 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     evidence.disabledDiscoveryNames = discoveredNames(
       toolResult(disabledRequests[1]!, 'disabled-discover'),
     );
-    expect(evidence.disabledDiscoveryNames).toEqual([
-      'get_proxy_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'stop_recording',
-    ]);
+    const enabledCaptureToolNames = CAPTURE_TOOL_NAMES.filter(
+      (name) => name !== 'capture_get_storage_status',
+    );
+    expect(evidence.disabledDiscoveryNames).toEqual(enabledCaptureToolNames);
     expect(requestToolNames(disabledRequests[1]!)).toEqual([
       'discover_tools',
-      'get_proxy_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'stop_recording',
+      ...enabledCaptureToolNames,
     ]);
     const disabledResult = toolResult(disabledRequests[2]!, 'disabled-storage');
     expect(disabledResult).toMatchObject({
@@ -506,15 +488,15 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
       AutomationIdFactory.agentToolCall('disabled-storage'),
     )).toHaveAttribute('data-tool-status', 'failed');
 
-    // 用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复get_storage_status。
+    // 用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复capture_get_storage_status。
     // User actions: re-enable the Tool, then prove a new Chat discovers and receives its schema again.
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_storage_status'),
     ).click();
     await expect(getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_storage_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_storage_status'),
     )).toHaveAttribute('aria-checked', 'true');
     const restoredOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueRestoredTurn(openAiCompatibleLab);
@@ -526,16 +508,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     evidence.restoredDiscoveryNames = discoveredNames(
       toolResult(restoredRequests[1]!, 'restored-discover'),
     );
-    expect(evidence.restoredDiscoveryNames).toEqual([
-      'get_proxy_status',
-      'get_storage_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'stop_recording',
-    ]);
+    expect(evidence.restoredDiscoveryNames).toEqual(CAPTURE_TOOL_NAMES);
     expect(requestToolNames(restoredRequests[1]!)).toEqual(evidence.disclosedToolNames);
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);
 
@@ -543,9 +516,9 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
     // Evidence and teardown: attach only protocol IDs, schema names and request hashes; hide Transcript before tracing teardown.
     evidence.requestBodyHashes = openAiCompatibleLab.evidence()
       .map((observation) => observation.requestBodyHash);
-    const evidencePath = testInfo.outputPath('agent-tool-traffic-discovery.json');
+    const evidencePath = testInfo.outputPath('agent-tool-capture-discovery.json');
     await writeFile(evidencePath, JSON.stringify(evidence, null, 2), 'utf8');
-    await testInfo.attach('agent-tool-traffic-discovery.json', {
+    await testInfo.attach('agent-tool-capture-discovery.json', {
       path: evidencePath,
       contentType: 'application/json',
     });
@@ -565,7 +538,7 @@ test('agent.tools.traffic-discovery discovers, executes and restores query Tools
   }
 
   if (workflowError && cleanupError) {
-    throw new AggregateError([workflowError, cleanupError], 'Traffic Tool workflow and cleanup failed.');
+    throw new AggregateError([workflowError, cleanupError], 'Capture Tool workflow and cleanup failed.');
   }
   if (workflowError) throw workflowError;
   if (cleanupError) throw cleanupError;

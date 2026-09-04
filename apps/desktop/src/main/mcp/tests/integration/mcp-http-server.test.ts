@@ -63,7 +63,7 @@ describe('McpHttpServer', () => {
 
     expect(new URL(fixture.endpoint).hostname).toBe('127.0.0.1');
     expect(new URL(fixture.endpoint).port).not.toBe('8888');
-    expect(tools.tools.map((tool) => tool.name)).toContain('get_proxy_status');
+    expect(tools.tools.map((tool) => tool.name)).toContain('capture_get_proxy_status');
   });
 
   it('serves browser CORS while authenticating every actual MCP request', async () => {
@@ -134,7 +134,7 @@ describe('McpHttpServer', () => {
     expect(hostAgnostic.status).not.toBe(403);
     await expect(browserClient.listTools()).resolves.toMatchObject({
       tools: expect.arrayContaining([
-        expect.objectContaining({ name: 'get_proxy_status' }),
+        expect.objectContaining({ name: 'capture_get_proxy_status' }),
       ]),
     });
   });

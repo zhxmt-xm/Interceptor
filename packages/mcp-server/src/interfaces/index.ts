@@ -36,7 +36,7 @@ export interface McpApprovalRequest {
   arguments: Readonly<Record<string, unknown>>;
   /** Tool registry声明的真实影响。 */
   effectDescription?: string;
-  /** 仅 apply_rules 使用：待写入规则相对当前 RuleSet 的差异说明。 */
+  /** 仅 rules_replace_tree 使用：待写入规则相对当前 RuleSet 的差异说明。 */
   diff?: readonly string[];
 }
 

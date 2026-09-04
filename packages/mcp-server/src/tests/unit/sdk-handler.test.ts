@@ -132,17 +132,17 @@ describe('McpServer official SDK handler', () => {
   });
 
   it('reads the current MCP Tool exposure for every request', async () => {
-    let enabledToolNames = INTERCEPTOR_TOOL_NAMES.filter((name) => name !== 'get_proxy_status');
+    let enabledToolNames = INTERCEPTOR_TOOL_NAMES.filter((name) => name !== 'capture_get_proxy_status');
     const { mcpServer, token } = createServer({ enabledToolNames: () => enabledToolNames });
     const firstClient = await connectClient(mcpServer, token);
 
     expect((await firstClient.listTools()).tools.map((tool) => tool.name))
-      .not.toContain('get_proxy_status');
+      .not.toContain('capture_get_proxy_status');
     await firstClient.close();
     enabledToolNames = [...INTERCEPTOR_TOOL_NAMES];
     const secondClient = await connectClient(mcpServer, token);
     expect((await secondClient.listTools()).tools.map((tool) => tool.name))
-      .toContain('get_proxy_status');
+      .toContain('capture_get_proxy_status');
   });
 
   it('executes query Tools directly and gates change Tools by the current Client mode', async () => {
@@ -150,17 +150,17 @@ describe('McpServer official SDK handler', () => {
     const { fakeHost, mcpServer, token } = createServer({ executionMode: () => executionMode });
     const client = await connectClient(mcpServer, token);
 
-    const queryResult = await client.callTool({ name: 'get_proxy_status', arguments: {} });
+    const queryResult = await client.callTool({ name: 'capture_get_proxy_status', arguments: {} });
     expect(queryResult.isError).not.toBe(true);
     expect(fakeHost.approvals).toHaveLength(0);
 
-    const denied = await client.callTool({ name: 'stop_recording', arguments: {} });
+    const denied = await client.callTool({ name: 'capture_stop_recording', arguments: {} });
     expect(denied.isError).toBe(true);
     expect(fakeHost.approvals).toHaveLength(1);
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('proxy.setRecording');
 
     executionMode = 'auto';
-    const completed = await client.callTool({ name: 'stop_recording', arguments: {} });
+    const completed = await client.callTool({ name: 'capture_stop_recording', arguments: {} });
     expect(completed.isError).not.toBe(true);
     expect(fakeHost.approvals).toHaveLength(1);
     expect(fakeHost.commands.map((command) => command.type)).toContain('proxy.setRecording');

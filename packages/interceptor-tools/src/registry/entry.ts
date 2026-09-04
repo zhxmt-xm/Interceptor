@@ -61,8 +61,8 @@ const WEBSOCKET_FRAMES: readonly WebSocketBreakpointFrame[] = [
 /** Capability summaries disclosed before individual Tool schemas. */
 export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
   {
-    id: 'traffic',
-    title: 'Traffic',
+    id: 'capture',
+    title: 'Capture',
     description: 'Inspect and control Capture, proxy state, HTTP, WebSocket, and gRPC traffic.',
   },
   {
@@ -71,14 +71,14 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
     description: 'Inspect Rule configuration and replace the complete Rule tree.',
   },
   {
+    id: 'composer',
+    title: 'Composer',
+    description: 'Send Composer requests and probe TLS connections.',
+  },
+  {
     id: 'breakpoints',
     title: 'Breakpoints',
     description: 'Inspect and resolve suspended HTTP and WebSocket traffic.',
-  },
-  {
-    id: 'requests',
-    title: 'Requests',
-    description: 'Send Composer requests and probe TLS connections.',
   },
   {
     id: 'diagnostics',
@@ -89,30 +89,30 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
 
 /** Stable registry order grouped for Settings and discovery. */
 export const INTERCEPTOR_TOOL_NAMES = [
-  'get_proxy_status',
-  'get_storage_status',
-  'start_recording',
-  'stop_recording',
-  'clear_capture',
-  'list_exchanges',
-  'get_exchange',
-  'get_exchange_body',
-  'list_websocket_messages',
-  'list_grpc_messages',
-  'get_rules',
-  'get_rule_hits',
-  'apply_rules',
-  'list_breakpoints',
-  'enable_http_breakpoints',
-  'disable_http_breakpoints',
-  'enable_websocket_breakpoint',
-  'disable_websocket_breakpoint',
-  'continue_breakpoint',
-  'forward_edited_breakpoint',
-  'drop_breakpoint',
-  'send_request',
-  'probe_connection',
-  'query_diagnostics',
+  'capture_get_proxy_status',
+  'capture_get_storage_status',
+  'capture_start_recording',
+  'capture_stop_recording',
+  'capture_clear',
+  'capture_list_exchanges',
+  'capture_get_exchange',
+  'capture_get_exchange_body',
+  'capture_list_websocket_messages',
+  'capture_list_grpc_messages',
+  'rules_get_tree',
+  'rules_get_hits',
+  'rules_replace_tree',
+  'composer_send_request',
+  'composer_probe_connection',
+  'breakpoints_list',
+  'breakpoints_enable_http',
+  'breakpoints_disable_http',
+  'breakpoints_enable_websocket',
+  'breakpoints_disable_websocket',
+  'breakpoints_continue',
+  'breakpoints_forward_edited',
+  'breakpoints_drop',
+  'diagnostics_query',
 ] as const;
 
 /** Builds the complete set of currently implemented transport-neutral Tools. */
@@ -147,10 +147,10 @@ function buildQueryTools(
 ): readonly InterceptorToolDefinition[] {
   return [
     {
-      name: 'list_exchanges',
+      name: 'capture_list_exchanges',
       title: 'List exchanges',
       description: 'Query lightweight captured traffic summaries.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['capture', 'http', 'request', 'response'],
       kind: 'query',
       destructive: false,
@@ -201,16 +201,16 @@ function buildQueryTools(
       },
     },
     {
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       title: 'Exchange detail',
       description: 'Read headers, timings, TLS, and rule effects.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['capture', 'request', 'response', 'headers', 'timing', 'tls'],
       kind: 'query',
       destructive: false,
       openWorld: false,
       inputSchema: schema({
-        exchangeId: property('string', 'Exchange identifier from list_exchanges.'),
+        exchangeId: property('string', 'Exchange identifier from capture_list_exchanges.'),
       }, ['exchangeId']),
       async execute(args, context) {
         rejectUnknownKeys(args, ['exchangeId']);
@@ -237,17 +237,17 @@ function buildQueryTools(
       },
     },
     {
-      name: 'get_exchange_body',
+      name: 'capture_get_exchange_body',
       title: 'Exchange body',
       description: 'Read a bounded body byte range.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['capture', 'request', 'response', 'payload', 'content'],
       kind: 'query',
       destructive: false,
       openWorld: false,
       inputSchema: schema({
-        exchangeId: property('string', 'Exchange identifier from get_exchange.'),
-        bodyId: property('string', 'Body identifier from get_exchange.'),
+        exchangeId: property('string', 'Exchange identifier from capture_get_exchange.'),
+        bodyId: property('string', 'Body identifier from capture_get_exchange.'),
         offset: property('integer', 'Byte offset to start from.', { minimum: 0 }),
         length: property('integer', 'Bytes to read.', {
           minimum: 1,
@@ -303,10 +303,10 @@ function buildQueryTools(
       },
     },
     {
-      name: 'list_websocket_messages',
+      name: 'capture_list_websocket_messages',
       title: 'WebSocket messages',
       description: 'Page through captured WebSocket frames.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['websocket', 'frame', 'message'],
       kind: 'query',
       destructive: false,
@@ -338,10 +338,10 @@ function buildQueryTools(
       },
     },
     {
-      name: 'list_grpc_messages',
+      name: 'capture_list_grpc_messages',
       title: 'gRPC messages',
       description: 'Page through decoded gRPC messages.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['grpc', 'message', 'protobuf'],
       kind: 'query',
       destructive: false,
@@ -367,7 +367,7 @@ function buildQueryTools(
       },
     },
     {
-      name: 'get_rules',
+      name: 'rules_get_tree',
       title: 'Rule set',
       description: 'Read the current rule tree and revision.',
       capabilityId: 'rules',
@@ -386,18 +386,18 @@ function buildQueryTools(
         };
       },
     },
-    simpleQuery('get_rule_hits', 'Rule hits', 'Read match counts for current rules.', 'rules', 'rules.hits'),
+    simpleQuery('rules_get_hits', 'Rule hits', 'Read match counts for current rules.', 'rules', 'rules.hits'),
     simpleQuery(
-      'list_breakpoints',
+      'breakpoints_list',
       'Pending breakpoints',
       'Read requests, responses, and frames waiting for action.',
       'breakpoints',
       'breakpoint.list',
     ),
-    simpleQuery('get_proxy_status', 'Proxy status', 'Read listener and recording state.', 'traffic', 'proxy.status'),
-    simpleQuery('get_storage_status', 'Capture storage', 'Read captured item and byte counts.', 'traffic', 'capture.status'),
+    simpleQuery('capture_get_proxy_status', 'Proxy status', 'Read listener and recording state.', 'capture', 'proxy.status'),
+    simpleQuery('capture_get_storage_status', 'Capture storage', 'Read captured item and byte counts.', 'capture', 'capture.status'),
     {
-      name: 'query_diagnostics',
+      name: 'diagnostics_query',
       title: 'Query diagnostics',
       description: 'Read filtered structured diagnostic records.',
       capabilityId: 'diagnostics',
@@ -453,7 +453,7 @@ function buildChangeTools(
 ): readonly InterceptorToolDefinition[] {
   return [
     {
-      name: 'apply_rules',
+      name: 'rules_replace_tree',
       title: 'Apply rules',
       description: 'Replace the rule set with revision checking.',
       capabilityId: 'rules',
@@ -512,25 +512,25 @@ function buildChangeTools(
       },
     },
     commandChange(
-      'start_recording',
+      'capture_start_recording',
       'Start recording',
       'Resume capture in the current session.',
-      'traffic',
+      'capture',
       { type: 'proxy.start', payload: {} },
     ),
     commandChange(
-      'stop_recording',
+      'capture_stop_recording',
       'Stop recording',
       'Pause capture without stopping the proxy.',
-      'traffic',
+      'capture',
       { type: 'proxy.setRecording', payload: { recording: false } },
       'New traffic will continue through the proxy but will not be captured.',
     ),
     {
-      name: 'send_request',
+      name: 'composer_send_request',
       title: 'Send request',
       description: 'Send a Composer request from this machine.',
-      capabilityId: 'requests',
+      capabilityId: 'composer',
       searchTerms: ['composer', 'http', 'outbound'],
       kind: 'change',
       destructive: false,
@@ -588,21 +588,21 @@ function buildChangeTools(
       },
     },
     commandChange(
-      'enable_http_breakpoints',
+      'breakpoints_enable_http',
       'Enable HTTP breakpoints',
       'Start suspending matching HTTP traffic.',
       'breakpoints',
       { type: 'breakpoint.configure', payload: { enabled: true } },
     ),
     commandChange(
-      'disable_http_breakpoints',
+      'breakpoints_disable_http',
       'Disable HTTP breakpoints',
       'Stop suspending matching HTTP traffic.',
       'breakpoints',
       { type: 'breakpoint.configure', payload: { enabled: false } },
     ),
     {
-      name: 'enable_websocket_breakpoint',
+      name: 'breakpoints_enable_websocket',
       title: 'Enable WebSocket breakpoint',
       description: 'Suspend selected frames on one connection.',
       capabilityId: 'breakpoints',
@@ -647,7 +647,7 @@ function buildChangeTools(
       },
     },
     commandChange(
-      'disable_websocket_breakpoint',
+      'breakpoints_disable_websocket',
       'Disable WebSocket breakpoint',
       'Resume frames on the selected connection.',
       'breakpoints',
@@ -655,13 +655,13 @@ function buildChangeTools(
       'The active WebSocket breakpoint configuration will be disabled.',
     ),
     breakpointResolveTool(
-      'continue_breakpoint',
+      'breakpoints_continue',
       'Continue breakpoint',
       'Forward one suspended item unchanged.',
       'continue',
     ),
     {
-      name: 'forward_edited_breakpoint',
+      name: 'breakpoints_forward_edited',
       title: 'Forward edited breakpoint',
       description: 'Forward one suspended item with explicit edits.',
       capabilityId: 'breakpoints',
@@ -670,7 +670,7 @@ function buildChangeTools(
       destructive: false,
       openWorld: false,
       inputSchema: schema({
-        breakpointId: property('string', 'Identifier from list_breakpoints.'),
+        breakpointId: property('string', 'Identifier from breakpoints_list.'),
         method: property('string', 'Replacement HTTP method.'),
         url: property('string', 'Replacement URL.'),
         statusCode: property('integer', 'Replacement response status.', { minimum: 100 }),
@@ -681,7 +681,7 @@ function buildChangeTools(
         const edit = buildBreakpointEdit(args);
         if (edit === null) {
           throw new InterceptorToolArgumentError(
-            'forward_edited_breakpoint requires at least one edit',
+            'breakpoints_forward_edited requires at least one edit',
           );
         }
         const breakpoint = await requirePendingBreakpoint(args, context);
@@ -697,7 +697,7 @@ function buildChangeTools(
         const edit = buildBreakpointEdit(args);
         if (edit === null) {
           throw new InterceptorToolArgumentError(
-            'forward_edited_breakpoint requires at least one edit',
+            'breakpoints_forward_edited requires at least one edit',
           );
         }
         const breakpoint = await requirePendingBreakpoint(args, context);
@@ -714,17 +714,17 @@ function buildChangeTools(
       },
     },
     breakpointResolveTool(
-      'drop_breakpoint',
+      'breakpoints_drop',
       'Drop breakpoint',
       'Discard one suspended item.',
       'drop',
       true,
     ),
     {
-      name: 'clear_capture',
+      name: 'capture_clear',
       title: 'Clear capture',
       description: 'Delete captured exchanges and bodies.',
-      capabilityId: 'traffic',
+      capabilityId: 'capture',
       searchTerms: ['delete', 'reset'],
       kind: 'change',
       destructive: true,
@@ -756,10 +756,10 @@ function buildChangeTools(
       },
     },
     {
-      name: 'probe_connection',
+      name: 'composer_probe_connection',
       title: 'Probe connection',
       description: 'Open a TLS probe to a host and port.',
-      capabilityId: 'requests',
+      capabilityId: 'composer',
       searchTerms: ['tls', 'certificate', 'alpn'],
       kind: 'change',
       destructive: false,
@@ -886,7 +886,7 @@ function breakpointResolveTool(
     destructive,
     openWorld: false,
     inputSchema: schema({
-      breakpointId: property('string', 'Identifier from list_breakpoints.'),
+      breakpointId: property('string', 'Identifier from breakpoints_list.'),
     }, ['breakpointId']),
     async describeChange(args, context) {
       rejectUnknownKeys(args, ['breakpointId']);
@@ -950,7 +950,7 @@ async function requirePendingBreakpoint(
   );
   if (!breakpoint) {
     throw new InterceptorToolArgumentError(
-      `breakpoint "${breakpointId}" is no longer pending; re-read with list_breakpoints`,
+      `breakpoint "${breakpointId}" is no longer pending; re-read with breakpoints_list`,
     );
   }
   return breakpoint;
@@ -1104,7 +1104,7 @@ function requireCurrentRuleRevision(baseRevision: number, currentRevision: numbe
   if (currentRevision === baseRevision) return;
   throw new InterceptorToolArgumentError(
     `rule set moved from revision ${baseRevision} to ${currentRevision}; `
-    + 're-read with get_rules and retry',
+    + 're-read with rules_get_tree and retry',
   );
 }
 

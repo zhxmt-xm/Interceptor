@@ -71,40 +71,40 @@ describe('McpToolRegistry', () => {
     const byName = new Map(tools.map((tool) => [tool.name, tool]));
 
     expect(tools.map((tool) => tool.name)).toEqual([
-      'get_proxy_status',
-      'get_storage_status',
-      'start_recording',
-      'stop_recording',
-      'clear_capture',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'get_rules',
-      'get_rule_hits',
-      'apply_rules',
-      'list_breakpoints',
-      'enable_http_breakpoints',
-      'disable_http_breakpoints',
-      'enable_websocket_breakpoint',
-      'disable_websocket_breakpoint',
-      'continue_breakpoint',
-      'forward_edited_breakpoint',
-      'drop_breakpoint',
-      'send_request',
-      'probe_connection',
-      'query_diagnostics',
+      'capture_get_proxy_status',
+      'capture_get_storage_status',
+      'capture_start_recording',
+      'capture_stop_recording',
+      'capture_clear',
+      'capture_list_exchanges',
+      'capture_get_exchange',
+      'capture_get_exchange_body',
+      'capture_list_websocket_messages',
+      'capture_list_grpc_messages',
+      'rules_get_tree',
+      'rules_get_hits',
+      'rules_replace_tree',
+      'composer_send_request',
+      'composer_probe_connection',
+      'breakpoints_list',
+      'breakpoints_enable_http',
+      'breakpoints_disable_http',
+      'breakpoints_enable_websocket',
+      'breakpoints_disable_websocket',
+      'breakpoints_continue',
+      'breakpoints_forward_edited',
+      'breakpoints_drop',
+      'diagnostics_query',
     ]);
 
-    expect(byName.get('list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });
-    expect(byName.get('clear_capture')?.annotations).toMatchObject({
+    expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(byName.get('capture_clear')?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,
     });
-    expect(byName.get('send_request')?.annotations).toMatchObject({ openWorldHint: true });
-    expect(byName.get('list_breakpoints')?.annotations).toMatchObject({ readOnlyHint: true });
-    expect(byName.get('drop_breakpoint')?.annotations).toMatchObject({
+    expect(byName.get('composer_send_request')?.annotations).toMatchObject({ openWorldHint: true });
+    expect(byName.get('breakpoints_list')?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(byName.get('breakpoints_drop')?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,
     });
@@ -128,7 +128,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'capture_get_proxy_status');
 
     expect(outcome.ok).toBe(true);
     expect(fakeHost.approvals).toHaveLength(0);
@@ -142,7 +142,7 @@ describe('McpToolRegistry', () => {
     );
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'clear_capture');
+    const outcome = await call(mcpToolRegistry, 'capture_clear');
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.approvals).toHaveLength(1);
@@ -162,7 +162,7 @@ describe('McpToolRegistry', () => {
     );
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'clear_capture', {});
+    const outcome = await call(mcpToolRegistry, 'capture_clear', {});
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('capture.cleanup');
@@ -178,7 +178,7 @@ describe('McpToolRegistry', () => {
     );
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'clear_capture');
+    const outcome = await call(mcpToolRegistry, 'capture_clear');
 
     expect(outcome).toEqual({
       ok: false,
@@ -195,7 +195,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(mcpToolRegistry, 'probe_connection', { host: 'evil.com', port: 443 });
+    await call(mcpToolRegistry, 'composer_probe_connection', { host: 'evil.com', port: 443 });
 
     expect(fakeHost.approvals[0]?.arguments).toEqual({ host: 'evil.com', port: 443 });
     expect(fakeHost.approvals[0]?.diff?.[0]).toContain('evil.com');
@@ -228,7 +228,7 @@ describe('McpToolRegistry', () => {
       }],
     }];
 
-    const outcome = await call(mcpToolRegistry, 'apply_rules', {
+    const outcome = await call(mcpToolRegistry, 'rules_replace_tree', {
       baseRevision: 7,
       nodes,
     });
@@ -245,7 +245,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'apply_rules', { baseRevision: 7, nodes: [] });
+    const outcome = await call(mcpToolRegistry, 'rules_replace_tree', { baseRevision: 7, nodes: [] });
 
     expect(outcome.ok).toBe(false);
     expect(fakeHost.commands.map((command) => command.type)).not.toContain('rules.replace');
@@ -254,7 +254,7 @@ describe('McpToolRegistry', () => {
   it('rejects arguments the schema does not declare', async () => {
     const mcpToolRegistry = new McpToolRegistry(new FakeHost());
 
-    const outcome = await call(mcpToolRegistry, 'get_proxy_status', { extra: 1 });
+    const outcome = await call(mcpToolRegistry, 'capture_get_proxy_status', { extra: 1 });
 
     expect(outcome.ok).toBe(false);
     expect(outcome.payload).toMatchObject({ error: expect.stringContaining('unknown argument') });
@@ -274,7 +274,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'list_exchanges', { limit: 100_000 });
+    const outcome = await call(mcpToolRegistry, 'capture_list_exchanges', { limit: 100_000 });
 
     expect(outcome.ok).toBe(false);
     expect(outcome.payload).toMatchObject({ error: expect.stringContaining('at most 200') });
@@ -294,7 +294,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'get_exchange_body', {
+    const outcome = await call(mcpToolRegistry, 'capture_get_exchange_body', {
       exchangeId: 'exchange-1',
       bodyId: 'b1',
     });
@@ -332,7 +332,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(mcpToolRegistry, 'continue_breakpoint', { breakpointId: 'bp1' });
+    await call(mcpToolRegistry, 'breakpoints_continue', { breakpointId: 'bp1' });
 
     expect(fakeHost.approvals).toHaveLength(1);
     expect(fakeHost.approvals[0]?.diff).toContain('Breakpoint: bp1');
@@ -364,7 +364,7 @@ describe('McpToolRegistry', () => {
     }, 'rejected');
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'continue_breakpoint', {
+    const outcome = await call(mcpToolRegistry, 'breakpoints_continue', {
       breakpointId: 'bp1',
     });
 
@@ -387,7 +387,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'drop_breakpoint', {
+    const outcome = await call(mcpToolRegistry, 'breakpoints_drop', {
       breakpointId: 'bp-stale',
     });
 
@@ -408,7 +408,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    await call(mcpToolRegistry, 'enable_websocket_breakpoint', {
+    await call(mcpToolRegistry, 'breakpoints_enable_websocket', {
       exchangeId: 'exchange-1',
       frames: ['message', 'ping'],
       direction: 'client-to-server',
@@ -431,7 +431,7 @@ describe('McpToolRegistry', () => {
     vi.spyOn(fakeHost, 'invoke').mockRejectedValue(new Error('core disconnected'));
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'capture_get_proxy_status');
 
     expect(outcome).toEqual({ ok: false, payload: { error: 'core disconnected' } });
   });
@@ -448,8 +448,8 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const inflight = Array.from({ length: 4 }, () => call(mcpToolRegistry, 'get_proxy_status'));
-    const overflow = await call(mcpToolRegistry, 'get_proxy_status');
+    const inflight = Array.from({ length: 4 }, () => call(mcpToolRegistry, 'capture_get_proxy_status'));
+    const overflow = await call(mcpToolRegistry, 'capture_get_proxy_status');
 
     expect(overflow.ok).toBe(false);
     expect(overflow.payload).toMatchObject({
@@ -465,7 +465,7 @@ describe('McpToolRegistry', () => {
     });
     const mcpToolRegistry = new McpToolRegistry(fakeHost);
 
-    const outcome = await call(mcpToolRegistry, 'get_proxy_status');
+    const outcome = await call(mcpToolRegistry, 'capture_get_proxy_status');
 
     expect(outcome.ok).toBe(true);
     expect(outcome.payload).toMatchObject({ truncated: true });

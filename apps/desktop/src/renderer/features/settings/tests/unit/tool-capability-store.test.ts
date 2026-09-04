@@ -11,10 +11,10 @@ import {
 
 const enabledSnapshot: ToolCapabilitySettingsSnapshot = {
   groups: [{
-    id: 'traffic',
-    title: 'Traffic',
+    id: 'capture',
+    title: 'Capture',
     tools: [{
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       title: 'Proxy status',
       description: 'Read listener and recording state.',
       kind: 'query',
@@ -26,12 +26,12 @@ const enabledSnapshot: ToolCapabilitySettingsSnapshot = {
 
 const agentDisabledSnapshot: ToolCapabilitySettingsSnapshot = {
   ...enabledSnapshot,
-  agentDisabledToolNames: ['get_proxy_status'],
+  agentDisabledToolNames: ['capture_get_proxy_status'],
 };
 
 const mcpDisabledSnapshot: ToolCapabilitySettingsSnapshot = {
   ...agentDisabledSnapshot,
-  mcpDisabledToolNames: ['get_proxy_status'],
+  mcpDisabledToolNames: ['capture_get_proxy_status'],
 };
 
 afterEach(() => {
@@ -70,19 +70,19 @@ describe('ToolCapabilitySettingsActions', () => {
     vi.stubGlobal('window', { interceptor });
     useToolCapabilitySettingsStore.setState({ snapshot: enabledSnapshot });
 
-    await ToolCapabilitySettingsActions.disableAgentTool('get_proxy_status');
+    await ToolCapabilitySettingsActions.disableAgentTool('capture_get_proxy_status');
     expect(useToolCapabilitySettingsStore.getState().snapshot).toBe(agentDisabledSnapshot);
-    await ToolCapabilitySettingsActions.disableMcpTool('get_proxy_status');
+    await ToolCapabilitySettingsActions.disableMcpTool('capture_get_proxy_status');
     expect(useToolCapabilitySettingsStore.getState().snapshot).toBe(mcpDisabledSnapshot);
-    await ToolCapabilitySettingsActions.enableMcpTool('get_proxy_status');
+    await ToolCapabilitySettingsActions.enableMcpTool('capture_get_proxy_status');
     expect(useToolCapabilitySettingsStore.getState().snapshot).toBe(agentDisabledSnapshot);
-    await ToolCapabilitySettingsActions.enableAgentTool('get_proxy_status');
+    await ToolCapabilitySettingsActions.enableAgentTool('capture_get_proxy_status');
     expect(useToolCapabilitySettingsStore.getState().snapshot).toBe(enabledSnapshot);
 
-    expect(interceptor.disableAgentTool).toHaveBeenCalledWith('get_proxy_status');
-    expect(interceptor.enableAgentTool).toHaveBeenCalledWith('get_proxy_status');
-    expect(interceptor.disableMcpTool).toHaveBeenCalledWith('get_proxy_status');
-    expect(interceptor.enableMcpTool).toHaveBeenCalledWith('get_proxy_status');
+    expect(interceptor.disableAgentTool).toHaveBeenCalledWith('capture_get_proxy_status');
+    expect(interceptor.enableAgentTool).toHaveBeenCalledWith('capture_get_proxy_status');
+    expect(interceptor.disableMcpTool).toHaveBeenCalledWith('capture_get_proxy_status');
+    expect(interceptor.enableMcpTool).toHaveBeenCalledWith('capture_get_proxy_status');
   });
 
   it('keeps the last successful snapshot when a mutation fails', async () => {
@@ -94,7 +94,7 @@ describe('ToolCapabilitySettingsActions', () => {
     vi.stubGlobal('window', { interceptor });
     useToolCapabilitySettingsStore.setState({ snapshot: enabledSnapshot });
 
-    await expect(ToolCapabilitySettingsActions.disableAgentTool('get_proxy_status'))
+    await expect(ToolCapabilitySettingsActions.disableAgentTool('capture_get_proxy_status'))
       .rejects.toThrow('save failed');
 
     expect(useToolCapabilitySettingsStore.getState()).toMatchObject({
@@ -116,7 +116,7 @@ describe('ToolCapabilitySettingsActions', () => {
     vi.stubGlobal('window', { interceptor });
 
     const loading = ToolCapabilitySettingsActions.load();
-    await ToolCapabilitySettingsActions.disableAgentTool('get_proxy_status');
+    await ToolCapabilitySettingsActions.disableAgentTool('capture_get_proxy_status');
     resolveLoad(enabledSnapshot);
     await loading;
 

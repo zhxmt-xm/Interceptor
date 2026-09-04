@@ -4,36 +4,36 @@ import type { AgentToolTraceState } from '../../state/types';
 import styles from './AgentQueryToolTrace.module.css';
 
 const TOOL_STEPS = {
-  traffic: [
-    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '10 tools discovered' },
-    { name: 'get_storage_status', arguments: 'No parameters', result: 'Exchanges 1 · Bodies 2 · 184 B' },
-    { name: 'get_proxy_status', arguments: 'No parameters', result: 'Recording on · 127.0.0.1:8888' },
-    { name: 'list_exchanges', arguments: 'limit: 50', result: '1 matching exchange' },
-    { name: 'get_exchange', arguments: 'exchangeId: e2e-agent-traffic', result: 'GET /agent-e2e/traffic · 200' },
+  capture: [
+    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '10 tools discovered' },
+    { name: 'capture_get_storage_status', arguments: 'No parameters', result: 'Exchanges 1 · Bodies 2 · 184 B' },
+    { name: 'capture_get_proxy_status', arguments: 'No parameters', result: 'Recording on · 127.0.0.1:8888' },
+    { name: 'capture_list_exchanges', arguments: 'limit: 50', result: '1 matching exchange' },
+    { name: 'capture_get_exchange', arguments: 'exchangeId: e2e-agent-traffic', result: 'GET /agent-e2e/traffic · 200' },
   ],
   'body-messages': [
-    { name: 'discover_tools', arguments: 'capabilityId: traffic', result: '10 tools discovered' },
-    { name: 'get_exchange', arguments: 'exchangeId: body-json', result: 'POST /playground/body/json · 200' },
-    { name: 'get_exchange_body', arguments: 'exchangeId: body-json · bodyId: body-1 · length: 65536', result: '14 B · complete' },
-    { name: 'list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },
-    { name: 'list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
+    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '10 tools discovered' },
+    { name: 'capture_get_exchange', arguments: 'exchangeId: body-json', result: 'POST /playground/body/json · 200' },
+    { name: 'capture_get_exchange_body', arguments: 'exchangeId: body-json · bodyId: body-1 · length: 65536', result: '14 B · complete' },
+    { name: 'capture_list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },
+    { name: 'capture_list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
   ],
   breakpoints: [
     { name: 'discover_tools', arguments: 'capabilityId: breakpoints', result: '8 tools discovered' },
-    { name: 'list_breakpoints', arguments: 'No parameters', result: 'Pending breakpoints: 1 · Enabled' },
-    { name: 'disable_http_breakpoints', arguments: 'No parameters', result: 'Disabled' },
-    { name: 'enable_http_breakpoints', arguments: 'No parameters', result: 'Enabled' },
-    { name: 'continue_breakpoint', arguments: 'breakpointId: bp-agent-request', result: 'Continued · bp-agent-request' },
+    { name: 'breakpoints_list', arguments: 'No parameters', result: 'Pending breakpoints: 1 · Enabled' },
+    { name: 'breakpoints_disable_http', arguments: 'No parameters', result: 'Disabled' },
+    { name: 'breakpoints_enable_http', arguments: 'No parameters', result: 'Enabled' },
+    { name: 'breakpoints_continue', arguments: 'breakpointId: bp-agent-request', result: 'Continued · bp-agent-request' },
   ],
-  requests: [
-    { name: 'discover_tools', arguments: 'capabilityId: requests', result: '2 tools discovered' },
-    { name: 'probe_connection', arguments: 'host: 127.0.0.1 · port: 43128 · timeoutMs: 5000', result: 'TLSv1.3 · h2 · Certificates 1' },
-    { name: 'probe_connection', arguments: 'host: 127.0.0.1 · port: 43129 · timeoutMs: 2000', result: 'TLS probe failed · connect ECONNREFUSED' },
+  composer: [
+    { name: 'discover_tools', arguments: 'capabilityId: composer', result: '2 tools discovered' },
+    { name: 'composer_probe_connection', arguments: 'host: 127.0.0.1 · port: 43128 · timeoutMs: 5000', result: 'TLSv1.3 · h2 · Certificates 1' },
+    { name: 'composer_probe_connection', arguments: 'host: 127.0.0.1 · port: 43129 · timeoutMs: 2000', result: 'TLS probe failed · connect ECONNREFUSED' },
   ],
   rules: [
     { name: 'discover_tools', arguments: 'capabilityId: rules', result: '3 tools discovered' },
-    { name: 'get_rules', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
-    { name: 'get_rule_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
+    { name: 'rules_get_tree', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
+    { name: 'rules_get_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
   ],
 } as const;
 

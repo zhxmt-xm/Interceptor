@@ -173,12 +173,12 @@ function enqueueRulesQuery(lab: OpenAiCompatibleLab): void {
     name: 'discover_tools',
     arguments: { capabilityId: 'rules' },
   });
-  lab.enqueueToolCall({ callId: 'rules-get', name: 'get_rules', arguments: {} });
-  lab.enqueueToolCall({ callId: 'rules-hits-initial', name: 'get_rule_hits', arguments: {} });
+  lab.enqueueToolCall({ callId: 'rules-get', name: 'rules_get_tree', arguments: {} });
+  lab.enqueueToolCall({ callId: 'rules-hits-initial', name: 'rules_get_hits', arguments: {} });
   lab.enqueueTurn({ textChunks: [QUERY_ANSWER] });
 }
 
-/** Queue one apply_rules call and its final answer. */
+/** Queue one rules_replace_tree call and its final answer. */
 function enqueueApply(
   lab: OpenAiCompatibleLab,
   callId: string,
@@ -188,7 +188,7 @@ function enqueueApply(
 ): void {
   lab.enqueueToolCall({
     callId,
-    name: 'apply_rules',
+    name: 'rules_replace_tree',
     arguments: { baseRevision, nodes },
   });
   lab.enqueueTurn({ textChunks: [answer] });
@@ -279,7 +279,7 @@ function discoveredNames(
   ));
 }
 
-/** Return one target Rule hit count from a get_rule_hits result. */
+/** Return one target Rule hit count from a rules_get_hits result. */
 function hitCountForRule(
   requests: readonly Readonly<Record<string, unknown>>[],
   callId: string,
@@ -442,10 +442,10 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     const queryRequests = openAiCompatibleLab.requestsForAssertions().slice(queryOffset);
     expect(requestToolNames(queryRequests[0]!)).toEqual(['discover_tools']);
     expect(requestToolNames(queryRequests[1]!)).toEqual([
-      'discover_tools', 'get_rules', 'get_rule_hits', 'apply_rules',
+      'discover_tools', 'rules_get_tree', 'rules_get_hits', 'rules_replace_tree',
     ]);
     expect(discoveredNames(queryRequests, 'rules-discover')).toEqual([
-      'get_rules', 'get_rule_hits', 'apply_rules',
+      'rules_get_tree', 'rules_get_hits', 'rules_replace_tree',
     ]);
     const firstRuleSet = ruleSetFromResult(queryRequests, 'rules-get');
     expect(firstRuleSet.revision).toBe(firstRevision);
@@ -567,7 +567,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
 
     openAiCompatibleLab.enqueueToolCall({
       callId: 'rules-hits-updated',
-      name: 'get_rule_hits',
+      name: 'rules_get_hits',
       arguments: {},
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [HITS_ANSWER] });
@@ -619,7 +619,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     // User action: disabling all three in Settings overrides Auto; schemas disappear, guessed calls are unknown, and the Rule stays unchanged.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['get_rules', 'get_rule_hits', 'apply_rules'] as const) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree'] as const) {
       await getByAutomationId(
         desktopApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),
@@ -632,18 +632,18 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
       name: 'discover_tools',
       arguments: { capabilityId: 'rules' },
     });
-    openAiCompatibleLab.enqueueToolCall({ callId: 'disabled-get-rules', name: 'get_rules', arguments: {} });
-    openAiCompatibleLab.enqueueToolCall({ callId: 'disabled-get-hits', name: 'get_rule_hits', arguments: {} });
+    openAiCompatibleLab.enqueueToolCall({ callId: 'disabled-get-rules', name: 'rules_get_tree', arguments: {} });
+    openAiCompatibleLab.enqueueToolCall({ callId: 'disabled-get-hits', name: 'rules_get_hits', arguments: {} });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'disabled-apply-rules',
-      name: 'apply_rules',
+      name: 'rules_replace_tree',
       arguments: { baseRevision: latestRevision, nodes: automaticNodes },
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [DISABLED_ANSWER] });
     await sendMessage(desktopApp.page, DISABLED_PROMPT);
     await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
     const disabledRequests = openAiCompatibleLab.requestsForAssertions().slice(disabledOffset);
-    for (const toolName of ['get_rules', 'get_rule_hits', 'apply_rules']) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree']) {
       expect(requestToolNames(disabledRequests[0]!)).not.toContain(toolName);
     }
     expect(discoveredNames(disabledRequests, 'disabled-discover-rules')).toEqual([]);
@@ -687,7 +687,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     )).toHaveAttribute('data-effect-metadata', JSON.stringify(deniedEffectMetadata));
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['get_rules', 'get_rule_hits', 'apply_rules'] as const) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree'] as const) {
       const toolSwitch = getByAutomationId(
         relaunchedApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),

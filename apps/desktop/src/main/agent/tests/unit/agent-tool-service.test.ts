@@ -55,10 +55,10 @@ function tool(snapshot: { readonly tools: readonly AgentTool[] }, name: string):
 
 function discoveredHistory(
   result: ToolExecutionResult,
-  capabilityId = 'traffic',
+  capabilityId = 'capture',
 ): readonly AgentMessage[] {
   return [
-    { role: 'user', content: 'Inspect current traffic.' },
+    { role: 'user', content: 'Inspect the current feature.' },
     {
       role: 'assistant',
       content: '',
@@ -88,15 +88,15 @@ describe('AgentToolService', () => {
       () => undefined,
     );
 
-    const snapshot = service.snapshot([{ role: 'user', content: 'Inspect traffic.' }]);
+    const snapshot = service.snapshot([{ role: 'user', content: 'Inspect Capture.' }]);
 
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual(['discover_tools']);
     expect(snapshot.systemMessages).toHaveLength(1);
-    expect(snapshot.systemMessages[0]?.content).toContain('traffic');
-    expect(snapshot.systemMessages[0]?.content).not.toContain('get_proxy_status');
+    expect(snapshot.systemMessages[0]?.content).toContain('- capture:');
+    expect(snapshot.systemMessages[0]?.content).not.toContain('capture_get_proxy_status');
   });
 
-  it('discovers and then discloses the connected Traffic query and change Tools', async () => {
+  it('discovers and then discloses the connected Capture Tools in registry order', async () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
@@ -107,23 +107,23 @@ describe('AgentToolService', () => {
     const initial = service.snapshot([]);
 
     const discovery = await tool(initial, 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     expect(discovery).toMatchObject({
       ok: true,
       value: {
         matches: [
-          { descriptor: { name: 'get_proxy_status' } },
-          { descriptor: { name: 'get_storage_status' } },
-          { descriptor: { name: 'list_exchanges' } },
-          { descriptor: { name: 'get_exchange' } },
-          { descriptor: { name: 'get_exchange_body' } },
-          { descriptor: { name: 'list_websocket_messages' } },
-          { descriptor: { name: 'list_grpc_messages' } },
-          { descriptor: { name: 'start_recording' } },
-          { descriptor: { name: 'stop_recording' } },
-          { descriptor: { name: 'clear_capture' } },
+          { descriptor: { name: 'capture_get_proxy_status' } },
+          { descriptor: { name: 'capture_get_storage_status' } },
+          { descriptor: { name: 'capture_start_recording' } },
+          { descriptor: { name: 'capture_stop_recording' } },
+          { descriptor: { name: 'capture_clear' } },
+          { descriptor: { name: 'capture_list_exchanges' } },
+          { descriptor: { name: 'capture_get_exchange' } },
+          { descriptor: { name: 'capture_get_exchange_body' } },
+          { descriptor: { name: 'capture_list_websocket_messages' } },
+          { descriptor: { name: 'capture_list_grpc_messages' } },
         ],
       },
     });
@@ -131,20 +131,20 @@ describe('AgentToolService', () => {
     const disclosed = service.snapshot(discoveredHistory(discovery));
     expect(disclosed.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
-      'get_proxy_status',
-      'get_storage_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'start_recording',
-      'stop_recording',
-      'clear_capture',
+      'capture_get_proxy_status',
+      'capture_get_storage_status',
+      'capture_start_recording',
+      'capture_stop_recording',
+      'capture_clear',
+      'capture_list_exchanges',
+      'capture_get_exchange',
+      'capture_get_exchange_body',
+      'capture_list_websocket_messages',
+      'capture_list_grpc_messages',
     ]);
-    expect(tool(disclosed, 'start_recording').kind).toBe('change');
-    expect(tool(disclosed, 'stop_recording').kind).toBe('change');
-    expect(tool(disclosed, 'clear_capture').kind).toBe('change');
+    expect(tool(disclosed, 'capture_start_recording').kind).toBe('change');
+    expect(tool(disclosed, 'capture_stop_recording').kind).toBe('change');
+    expect(tool(disclosed, 'capture_clear').kind).toBe('change');
   });
 
   it('removes disabled capabilities and previously disclosed Tools on the next snapshot', async () => {
@@ -157,25 +157,25 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const history = discoveredHistory(discovery);
 
-    settings.agentDisabledToolNames = ['get_proxy_status'];
+    settings.agentDisabledToolNames = ['capture_get_proxy_status'];
 
     const snapshot = service.snapshot(history);
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
-      'get_storage_status',
-      'list_exchanges',
-      'get_exchange',
-      'get_exchange_body',
-      'list_websocket_messages',
-      'list_grpc_messages',
-      'start_recording',
-      'stop_recording',
-      'clear_capture',
+      'capture_get_storage_status',
+      'capture_start_recording',
+      'capture_stop_recording',
+      'capture_clear',
+      'capture_list_exchanges',
+      'capture_get_exchange',
+      'capture_get_exchange_body',
+      'capture_list_websocket_messages',
+      'capture_list_grpc_messages',
     ]);
   });
 
@@ -196,22 +196,22 @@ describe('AgentToolService', () => {
       ok: true,
       value: {
         matches: [
-          { descriptor: { name: 'get_rules' } },
-          { descriptor: { name: 'get_rule_hits' } },
-          { descriptor: { name: 'apply_rules' } },
+          { descriptor: { name: 'rules_get_tree' } },
+          { descriptor: { name: 'rules_get_hits' } },
+          { descriptor: { name: 'rules_replace_tree' } },
         ],
       },
     });
     const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
-      'get_rules',
-      'get_rule_hits',
-      'apply_rules',
+      'rules_get_tree',
+      'rules_get_hits',
+      'rules_replace_tree',
     ]);
-    expect(tool(snapshot, 'get_rules').kind).toBe('query');
-    expect(tool(snapshot, 'get_rule_hits').kind).toBe('query');
-    expect(tool(snapshot, 'apply_rules').kind).toBe('change');
+    expect(tool(snapshot, 'rules_get_tree').kind).toBe('query');
+    expect(tool(snapshot, 'rules_get_hits').kind).toBe('query');
+    expect(tool(snapshot, 'rules_replace_tree').kind).toBe('change');
   });
 
   it('discovers and discloses exactly the eight connected Breakpoints Tools', async () => {
@@ -227,14 +227,14 @@ describe('AgentToolService', () => {
       { abortSignal: new AbortController().signal },
     );
     const names = [
-      'list_breakpoints',
-      'enable_http_breakpoints',
-      'disable_http_breakpoints',
-      'enable_websocket_breakpoint',
-      'disable_websocket_breakpoint',
-      'continue_breakpoint',
-      'forward_edited_breakpoint',
-      'drop_breakpoint',
+      'breakpoints_list',
+      'breakpoints_enable_http',
+      'breakpoints_disable_http',
+      'breakpoints_enable_websocket',
+      'breakpoints_disable_websocket',
+      'breakpoints_continue',
+      'breakpoints_forward_edited',
+      'breakpoints_drop',
     ];
 
     expect(discovery).toMatchObject({
@@ -248,7 +248,7 @@ describe('AgentToolService', () => {
       'discover_tools',
       ...names,
     ]);
-    expect(tool(snapshot, 'list_breakpoints').kind).toBe('query');
+    expect(tool(snapshot, 'breakpoints_list').kind).toBe('query');
     for (const name of names.slice(1)) {
       expect(tool(snapshot, name).kind).toBe('change');
     }
@@ -301,32 +301,32 @@ describe('AgentToolService', () => {
     const snapshot = service.snapshot(discoveredHistory(discovery, 'breakpoints'));
     const abortController = new AbortController();
 
-    await tool(snapshot, 'list_breakpoints').execute({}, { abortSignal: abortController.signal });
-    await tool(snapshot, 'enable_http_breakpoints').execute(
+    await tool(snapshot, 'breakpoints_list').execute({}, { abortSignal: abortController.signal });
+    await tool(snapshot, 'breakpoints_enable_http').execute(
       {},
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'disable_http_breakpoints').execute(
+    await tool(snapshot, 'breakpoints_disable_http').execute(
       {},
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'enable_websocket_breakpoint').execute(
+    await tool(snapshot, 'breakpoints_enable_websocket').execute(
       { exchangeId: 'exchange-ws', frames: ['message'] },
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'disable_websocket_breakpoint').execute(
+    await tool(snapshot, 'breakpoints_disable_websocket').execute(
       {},
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'continue_breakpoint').execute(
+    await tool(snapshot, 'breakpoints_continue').execute(
       { breakpointId: 'bp-1' },
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'forward_edited_breakpoint').execute(
+    await tool(snapshot, 'breakpoints_forward_edited').execute(
       { breakpointId: 'bp-2', body: '' },
       { abortSignal: abortController.signal },
     );
-    await tool(snapshot, 'drop_breakpoint').execute(
+    await tool(snapshot, 'breakpoints_drop').execute(
       { breakpointId: 'bp-3' },
       { abortSignal: abortController.signal },
     );
@@ -351,7 +351,7 @@ describe('AgentToolService', () => {
     expect(coreRuntime.abortSignals).toEqual(Array(9).fill(abortController.signal));
   });
 
-  it('discovers and discloses exactly the two connected Requests Tools', async () => {
+  it('discovers and discloses exactly the two connected Composer Tools', async () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
@@ -361,7 +361,7 @@ describe('AgentToolService', () => {
     );
 
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'requests' },
+      { capabilityId: 'composer' },
       { abortSignal: new AbortController().signal },
     );
 
@@ -369,22 +369,22 @@ describe('AgentToolService', () => {
       ok: true,
       value: {
         matches: expect.arrayContaining([
-          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'send_request' }) }),
-          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'probe_connection' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_send_request' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_probe_connection' }) }),
         ]),
       },
     });
-    const snapshot = service.snapshot(discoveredHistory(discovery, 'requests'));
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'composer'));
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
-      'send_request',
-      'probe_connection',
+      'composer_send_request',
+      'composer_probe_connection',
     ]);
-    expect(tool(snapshot, 'send_request').kind).toBe('change');
-    expect(tool(snapshot, 'probe_connection').kind).toBe('change');
+    expect(tool(snapshot, 'composer_send_request').kind).toBe('change');
+    expect(tool(snapshot, 'composer_probe_connection').kind).toBe('change');
   });
 
-  it('executes both Requests Tools through CoreRuntime with cancellation', async () => {
+  it('executes both Composer Tools through CoreRuntime with cancellation', async () => {
     const coreRuntime = new FakeCoreRuntime();
     coreRuntime.results.set('composer.send', {
       type: 'composer.response',
@@ -429,13 +429,13 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'requests' },
+      { capabilityId: 'composer' },
       { abortSignal: new AbortController().signal },
     );
-    const snapshot = service.snapshot(discoveredHistory(discovery, 'requests'));
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'composer'));
     const abortController = new AbortController();
 
-    await tool(snapshot, 'send_request').execute({
+    await tool(snapshot, 'composer_send_request').execute({
       method: 'POST',
       url: 'https://api.test/items',
       headers: [{ name: 'x-mode', value: 'agent' }],
@@ -443,7 +443,7 @@ describe('AgentToolService', () => {
       protocol: 'http/1.1',
       timeoutMs: 2_000,
     }, { abortSignal: abortController.signal });
-    await tool(snapshot, 'probe_connection').execute({
+    await tool(snapshot, 'composer_probe_connection').execute({
       host: 'api.test',
       port: 443,
       timeoutMs: 1_000,
@@ -488,10 +488,10 @@ describe('AgentToolService', () => {
     );
     const continueBreakpoint = tool(
       service.snapshot(discoveredHistory(discovery, 'breakpoints')),
-      'continue_breakpoint',
+      'breakpoints_continue',
     );
 
-    settings.agentDisabledToolNames = ['continue_breakpoint'];
+    settings.agentDisabledToolNames = ['breakpoints_continue'];
     const result = await continueBreakpoint.execute(
       { breakpointId: 'bp-1' },
       { abortSignal: new AbortController().signal },
@@ -501,7 +501,7 @@ describe('AgentToolService', () => {
       ok: false,
       error: {
         code: 'unknown_tool',
-        message: 'Unknown tool "continue_breakpoint".',
+        message: 'Unknown tool "breakpoints_continue".',
       },
     });
     expect(coreRuntime.commands).toEqual([]);
@@ -540,7 +540,7 @@ describe('AgentToolService', () => {
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery, 'breakpoints'));
-    const continueBreakpoint = tool(snapshot, 'continue_breakpoint');
+    const continueBreakpoint = tool(snapshot, 'breakpoints_continue');
 
     const description = await continueBreakpoint.describeEffect?.(
       { breakpointId: 'bp-1' },
@@ -630,21 +630,21 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
     const abortController = new AbortController();
 
-    await expect(tool(snapshot, 'get_exchange_body').execute(
+    await expect(tool(snapshot, 'capture_get_exchange_body').execute(
       { exchangeId: 'exchange-http', bodyId: 'body-1', length: 32 },
       { abortSignal: abortController.signal },
     )).resolves.toMatchObject({ ok: true, value: { bodyId: 'body-1', end: true } });
-    await expect(tool(snapshot, 'list_websocket_messages').execute(
+    await expect(tool(snapshot, 'capture_list_websocket_messages').execute(
       { exchangeId: 'exchange-ws', direction: 'client-to-server', limit: 25 },
       { abortSignal: abortController.signal },
     )).resolves.toMatchObject({ ok: true, value: { items: [{ seq: 1 }] } });
-    await expect(tool(snapshot, 'list_grpc_messages').execute(
+    await expect(tool(snapshot, 'capture_list_grpc_messages').execute(
       { exchangeId: 'exchange-grpc', side: 'response', limit: 30 },
       { abortSignal: abortController.signal },
     )).resolves.toMatchObject({ ok: true, value: { recognized: true, side: 'response' } });
@@ -682,7 +682,7 @@ describe('AgentToolService', () => {
     ]);
   });
 
-  it('executes get_storage_status through capture.status with the caller AbortSignal', async () => {
+  it('executes capture_get_storage_status through capture.status with the caller AbortSignal', async () => {
     const coreRuntime = new FakeCoreRuntime();
     coreRuntime.results.set('capture.status', {
       type: 'capture.status',
@@ -703,13 +703,13 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
     const abortController = new AbortController();
 
-    const result = await tool(snapshot, 'get_storage_status').execute(
+    const result = await tool(snapshot, 'capture_get_storage_status').execute(
       {},
       { abortSignal: abortController.signal },
     );
@@ -743,13 +743,13 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
 
     const abortController = new AbortController();
-    const result = await tool(snapshot, 'get_proxy_status').execute(
+    const result = await tool(snapshot, 'capture_get_proxy_status').execute(
       {},
       { abortSignal: abortController.signal },
     );
@@ -759,7 +759,7 @@ describe('AgentToolService', () => {
     expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
   });
 
-  it('executes stop_recording through the formal Core recording command', async () => {
+  it('executes capture_stop_recording through the formal Core recording command', async () => {
     const coreRuntime = new FakeCoreRuntime();
     coreRuntime.results.set('proxy.setRecording', {
       type: 'proxy.setRecording',
@@ -774,13 +774,13 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
 
     const abortController = new AbortController();
-    const result = await tool(snapshot, 'stop_recording').execute(
+    const result = await tool(snapshot, 'capture_stop_recording').execute(
       {},
       { abortSignal: abortController.signal },
     );
@@ -835,12 +835,12 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
     const abortController = new AbortController();
-    const clearCapture = tool(snapshot, 'clear_capture');
+    const clearCapture = tool(snapshot, 'capture_clear');
 
     await expect(clearCapture.describeEffect?.(
       {},
@@ -849,7 +849,7 @@ describe('AgentToolService', () => {
       text: 'Scope: all\nThis permanently deletes 7 exchange(s) and 3 body/bodies.',
       metadata: { scope: 'all', exchangeCount: 7, bodyCount: 3 },
     });
-    await expect(tool(snapshot, 'start_recording').execute(
+    await expect(tool(snapshot, 'capture_start_recording').execute(
       {},
       { abortSignal: abortController.signal },
     )).resolves.toEqual({ ok: true, value: captureStatus });
@@ -921,13 +921,13 @@ describe('AgentToolService', () => {
     );
     const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
     const abortController = new AbortController();
-    const applyRules = tool(snapshot, 'apply_rules');
+    const applyRules = tool(snapshot, 'rules_replace_tree');
 
-    await expect(tool(snapshot, 'get_rules').execute(
+    await expect(tool(snapshot, 'rules_get_tree').execute(
       {},
       { abortSignal: abortController.signal },
     )).resolves.toMatchObject({ ok: true, value: { ruleSet: { revision: 4 } } });
-    await expect(tool(snapshot, 'get_rule_hits').execute(
+    await expect(tool(snapshot, 'rules_get_hits').execute(
       {},
       { abortSignal: abortController.signal },
     )).resolves.toEqual({
@@ -982,7 +982,7 @@ describe('AgentToolService', () => {
     );
     const snapshot = service.snapshot(discoveredHistory(discovery, 'rules'));
 
-    await expect(tool(snapshot, 'apply_rules').execute(
+    await expect(tool(snapshot, 'rules_replace_tree').execute(
       { baseRevision: 0, nodes: [] },
       { abortSignal: new AbortController().signal },
     )).rejects.toThrow('No fake result for rules.replace.');
@@ -1000,12 +1000,12 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const snapshot = service.snapshot(discoveredHistory(discovery));
 
-    await expect(tool(snapshot, 'clear_capture').execute(
+    await expect(tool(snapshot, 'capture_clear').execute(
       {},
       { abortSignal: new AbortController().signal },
     )).rejects.toThrow('No fake result for capture.cleanup.');
@@ -1023,15 +1023,15 @@ describe('AgentToolService', () => {
       () => undefined,
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
-      { capabilityId: 'traffic' },
+      { capabilityId: 'capture' },
       { abortSignal: new AbortController().signal },
     );
     const getStorageStatus = tool(
       service.snapshot(discoveredHistory(discovery)),
-      'get_storage_status',
+      'capture_get_storage_status',
     );
 
-    settings.agentDisabledToolNames = ['get_storage_status'];
+    settings.agentDisabledToolNames = ['capture_get_storage_status'];
     const result = await getStorageStatus.execute(
       {},
       { abortSignal: new AbortController().signal },
@@ -1041,7 +1041,7 @@ describe('AgentToolService', () => {
       ok: false,
       error: {
         code: 'unknown_tool',
-        message: 'Unknown tool "get_storage_status".',
+        message: 'Unknown tool "capture_get_storage_status".',
       },
     });
     expect(coreRuntime.commands).toHaveLength(0);

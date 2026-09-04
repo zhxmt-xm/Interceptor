@@ -180,7 +180,7 @@ export function summarizeAgentToolResult(
   if (name === 'discover_tools' && isRecord(result.value) && Array.isArray(result.value['matches'])) {
     return { kind: 'discovery', count: result.value['matches'].length };
   }
-  if ((name === 'get_proxy_status' || name === 'start_recording' || name === 'stop_recording')
+  if ((name === 'capture_get_proxy_status' || name === 'capture_start_recording' || name === 'capture_stop_recording')
     && isRecord(result.value)) {
     const host = typeof result.value['host'] === 'string' ? result.value['host'] : null;
     const port = typeof result.value['port'] === 'number' ? result.value['port'] : null;
@@ -190,7 +190,7 @@ export function summarizeAgentToolResult(
       address: host === null || port === null ? 'not listening' : `${host}:${port}`,
     };
   }
-  if ((name === 'get_storage_status' || name === 'clear_capture') && isRecord(result.value)) {
+  if ((name === 'capture_get_storage_status' || name === 'capture_clear') && isRecord(result.value)) {
     const exchangeCount = result.value['exchangeCount'];
     const bodyCount = result.value['bodyCount'];
     const totalBytes = result.value['totalBytes'];
@@ -200,10 +200,10 @@ export function summarizeAgentToolResult(
       return { kind: 'storage', exchangeCount, bodyCount, totalBytes };
     }
   }
-  if (name === 'list_exchanges' && isRecord(result.value) && Array.isArray(result.value['items'])) {
+  if (name === 'capture_list_exchanges' && isRecord(result.value) && Array.isArray(result.value['items'])) {
     return { kind: 'exchanges', count: result.value['items'].length };
   }
-  if (name === 'get_exchange' && isRecord(result.value) && isRecord(result.value['detail'])) {
+  if (name === 'capture_get_exchange' && isRecord(result.value) && isRecord(result.value['detail'])) {
     const detail = result.value['detail'];
     const summary = isRecord(detail['summary']) ? detail['summary'] : {};
     return {
@@ -215,7 +215,7 @@ export function summarizeAgentToolResult(
         : 'pending',
     };
   }
-  if (name === 'get_exchange_body' && isRecord(result.value)) {
+  if (name === 'capture_get_exchange_body' && isRecord(result.value)) {
     if (result.value['opaque'] === true && typeof result.value['mimeType'] === 'string') {
       return { kind: 'body', mimeType: result.value['mimeType'], opaque: true };
     }
@@ -225,7 +225,7 @@ export function summarizeAgentToolResult(
       return { kind: 'body', bytesRead, end, opaque: false };
     }
   }
-  if (name === 'list_websocket_messages'
+  if (name === 'capture_list_websocket_messages'
     && isRecord(result.value)
     && Array.isArray(result.value['items'])
     && typeof result.value['hasMore'] === 'boolean') {
@@ -235,7 +235,7 @@ export function summarizeAgentToolResult(
       hasMore: result.value['hasMore'],
     };
   }
-  if (name === 'list_grpc_messages'
+  if (name === 'capture_list_grpc_messages'
     && isRecord(result.value)
     && Array.isArray(result.value['items'])
     && (result.value['side'] === 'request' || result.value['side'] === 'response')
@@ -250,7 +250,7 @@ export function summarizeAgentToolResult(
       recognized: result.value['recognized'],
     };
   }
-  if (name === 'get_rules' && isRecord(result.value) && isRecord(result.value['ruleSet'])) {
+  if (name === 'rules_get_tree' && isRecord(result.value) && isRecord(result.value['ruleSet'])) {
     const ruleSet = result.value['ruleSet'];
     const revision = ruleSet['revision'];
     const counts = countRuleNodes(ruleSet['nodes']);
@@ -258,7 +258,7 @@ export function summarizeAgentToolResult(
       return { kind: 'rules', revision, ...counts };
     }
   }
-  if (name === 'get_rule_hits' && isRecord(result.value) && Array.isArray(result.value['counts'])) {
+  if (name === 'rules_get_hits' && isRecord(result.value) && Array.isArray(result.value['counts'])) {
     let totalHits = 0;
     for (const count of result.value['counts']) {
       if (!isRecord(count) || typeof count['count'] !== 'number') {
@@ -268,10 +268,10 @@ export function summarizeAgentToolResult(
     }
     return { kind: 'ruleHits', ruleCount: result.value['counts'].length, totalHits };
   }
-  if (name === 'apply_rules' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
+  if (name === 'rules_replace_tree' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
     return { kind: 'rulesApplied', revision: result.value['revision'] };
   }
-  if (name === 'list_breakpoints'
+  if (name === 'breakpoints_list'
     && isRecord(result.value)
     && Array.isArray(result.value['breakpoints'])
     && typeof result.value['enabled'] === 'boolean') {
@@ -282,17 +282,17 @@ export function summarizeAgentToolResult(
     };
   }
   if ([
-    'enable_http_breakpoints',
-    'disable_http_breakpoints',
-    'enable_websocket_breakpoint',
-    'disable_websocket_breakpoint',
+    'breakpoints_enable_http',
+    'breakpoints_disable_http',
+    'breakpoints_enable_websocket',
+    'breakpoints_disable_websocket',
   ].includes(name) && isRecord(result.value) && typeof result.value['enabled'] === 'boolean') {
     return { kind: 'breakpointConfig', enabled: result.value['enabled'] };
   }
   if ([
-    'continue_breakpoint',
-    'forward_edited_breakpoint',
-    'drop_breakpoint',
+    'breakpoints_continue',
+    'breakpoints_forward_edited',
+    'breakpoints_drop',
   ].includes(name) && isRecord(result.value)) {
     const breakpointId = result.value['breakpointId'];
     const state = result.value['state'];
@@ -301,7 +301,7 @@ export function summarizeAgentToolResult(
       return { kind: 'breakpointResolution', breakpointId, state };
     }
   }
-  if (name === 'send_request' && isRecord(result.value)) {
+  if (name === 'composer_send_request' && isRecord(result.value)) {
     const method = result.value['method'];
     const url = result.value['url'];
     const status = result.value['status'];
@@ -320,7 +320,7 @@ export function summarizeAgentToolResult(
       };
     }
   }
-  if (name === 'probe_connection' && isRecord(result.value)) {
+  if (name === 'composer_probe_connection' && isRecord(result.value)) {
     if (result.value['ok'] === false && typeof result.value['error'] === 'string') {
       return { kind: 'probe', ok: false, error: result.value['error'] };
     }

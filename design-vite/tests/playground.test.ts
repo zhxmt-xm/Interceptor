@@ -94,7 +94,7 @@ test('MCP change Tool and manual result controls remain available on the MCP pag
   await playground.getByRole('navigation', { name: 'Playground' })
     .getByRole('button', { name: /MCP/ })
     .click();
-  await playground.locator('[data-playground-tool="stop_recording"]').click();
+  await playground.locator('[data-playground-tool="capture_stop_recording"]').click();
 
   await expect(page.locator('.app')).toHaveAttribute('data-playground-call-state', 'approval');
   await expect(playground).toContainText('Waiting for approval in Interceptor');

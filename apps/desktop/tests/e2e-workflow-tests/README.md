@@ -276,13 +276,13 @@ diagnostics.row.<traceKey>
 | `agent.chat.streaming-context` | 多轮Streaming、Context/Usage、Stop与Retry | shared | passed |
 | `agent.chat.restart-recovery` | Provider、Session、Transcript与Usage跨重启恢复 | shared | passed |
 | `agent.tools.settings-capabilities` | 从共享registry配置Agent/MCP Tool开关并跨重启恢复 | shared | passed |
-| `agent.tools.traffic-discovery` | Agent发现并查询产品UI产生的真实Traffic与Capture storage | shared | passed |
+| `agent.tools.capture-discovery` | Agent发现并查询产品UI产生的真实Capture与storage状态 | shared | passed |
 | `agent.tools.body-messages` | Agent读取真实HTTP正文、WebSocket frame与gRPC message | privileged UI | passed |
 | `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared | passed |
 | `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared | passed |
 | `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
 | `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI | passed |
-| `agent.tools.requests` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI | passed |
+| `agent.tools.composer` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI | passed |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 

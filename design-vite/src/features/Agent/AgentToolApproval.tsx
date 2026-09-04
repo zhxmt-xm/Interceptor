@@ -5,27 +5,27 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
-  start_recording: {
+  capture_start_recording: {
     description: 'Resume capture in the current session.',
     effect: 'Recording resumes on 127.0.0.1:8888.',
     result: 'Recording on · 127.0.0.1:8888',
   },
-  stop_recording: {
+  capture_stop_recording: {
     description: 'Pause capture without stopping the proxy.',
     effect: 'New traffic will continue through the proxy but will not be captured.',
     result: 'Recording off · 127.0.0.1:8888',
   },
-  clear_capture: {
+  capture_clear: {
     description: 'Delete captured exchanges and bodies.',
     effect: 'Scope: all · Permanently deletes 13 exchanges and 1 body.',
     result: 'Exchanges 0 · Bodies 0 · 4 KB',
   },
-  apply_rules: {
+  rules_replace_tree: {
     description: 'Replace the rule set with revision checking.',
     effect: 'Rule count: 1 → 1 · Enabled: 1 → 1',
     result: 'Revision 2 applied',
   },
-  send_request: {
+  composer_send_request: {
     description: 'Send a Composer request from this machine.',
     effect: 'POST http://127.0.0.1:43127/e2e/agent/requests/allowed',
     result: 'POST /e2e/agent/requests/allowed · 201 · 32 B',

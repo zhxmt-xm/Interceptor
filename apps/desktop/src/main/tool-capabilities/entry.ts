@@ -166,8 +166,8 @@ export class ToolCapabilitySettingsService {
     const record = value as Record<string, unknown>;
     const expectedKeys = ['agentDisabledToolNames', 'mcpDisabledToolNames'];
     if (
-      !this.#areCurrentToolNames(record.agentDisabledToolNames)
-      || !this.#areCurrentToolNames(record.mcpDisabledToolNames)
+      !ToolCapabilitySettingsService.#areUniqueNames(record.agentDisabledToolNames)
+      || !ToolCapabilitySettingsService.#areUniqueNames(record.mcpDisabledToolNames)
       || Object.keys(record).some((key) => !expectedKeys.includes(key))
     ) {
       throw new Error('Tool capability settings fields are invalid.');
@@ -178,10 +178,10 @@ export class ToolCapabilitySettingsService {
     };
   }
 
-  /** Accepts only unique names from the current executable registry. */
-  #areCurrentToolNames(value: unknown): value is string[] {
+  /** Accepts unique string names; start() drops names absent from the current registry. */
+  static #areUniqueNames(value: unknown): value is string[] {
     return Array.isArray(value)
-      && value.every((name) => typeof name === 'string' && this.#toolNames.has(name))
+      && value.every((name) => typeof name === 'string')
       && new Set(value).size === value.length;
   }
 

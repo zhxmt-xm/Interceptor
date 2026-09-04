@@ -793,51 +793,57 @@ export const fakeInterceptorFixture = {
     toolSettings: {
       groups: [
         {
-          id: 'traffic',
-          title: 'Traffic',
+          id: 'capture',
+          title: 'Capture',
           tools: [
-            { name: 'get_proxy_status', title: 'Proxy status', description: 'Read listener and recording state.', kind: 'query' },
-            { name: 'get_storage_status', title: 'Capture storage', description: 'Read captured item and byte counts.', kind: 'query' },
-            { name: 'start_recording', title: 'Start recording', description: 'Resume capture in the current session.', kind: 'change' },
-            { name: 'stop_recording', title: 'Stop recording', description: 'Pause capture without stopping the proxy.', kind: 'change' },
-            { name: 'clear_capture', title: 'Clear capture', description: 'Delete captured exchanges and bodies.', kind: 'change' },
-            { name: 'list_exchanges', title: 'List exchanges', description: 'Query lightweight captured traffic summaries.', kind: 'query' },
-            { name: 'get_exchange', title: 'Exchange detail', description: 'Read headers, timings, TLS, and rule effects.', kind: 'query' },
-            { name: 'get_exchange_body', title: 'Exchange body', description: 'Read a bounded body byte range.', kind: 'query' },
-            { name: 'list_websocket_messages', title: 'WebSocket messages', description: 'Page through captured WebSocket frames.', kind: 'query' },
-            { name: 'list_grpc_messages', title: 'gRPC messages', description: 'Page through decoded gRPC messages.', kind: 'query' },
+            { name: 'capture_get_proxy_status', title: 'Proxy status', description: 'Read listener and recording state.', kind: 'query' },
+            { name: 'capture_get_storage_status', title: 'Capture storage', description: 'Read captured item and byte counts.', kind: 'query' },
+            { name: 'capture_start_recording', title: 'Start recording', description: 'Resume capture in the current session.', kind: 'change' },
+            { name: 'capture_stop_recording', title: 'Stop recording', description: 'Pause capture without stopping the proxy.', kind: 'change' },
+            { name: 'capture_clear', title: 'Clear capture', description: 'Delete captured exchanges and bodies.', kind: 'change' },
+            { name: 'capture_list_exchanges', title: 'List exchanges', description: 'Query lightweight captured traffic summaries.', kind: 'query' },
+            { name: 'capture_get_exchange', title: 'Exchange detail', description: 'Read headers, timings, TLS, and rule effects.', kind: 'query' },
+            { name: 'capture_get_exchange_body', title: 'Exchange body', description: 'Read a bounded body byte range.', kind: 'query' },
+            { name: 'capture_list_websocket_messages', title: 'WebSocket messages', description: 'Page through captured WebSocket frames.', kind: 'query' },
+            { name: 'capture_list_grpc_messages', title: 'gRPC messages', description: 'Page through decoded gRPC messages.', kind: 'query' },
           ],
         },
         {
           id: 'rules',
           title: 'Rules',
           tools: [
-            { name: 'get_rules', title: 'Rule set', description: 'Read the current rule tree and revision.', kind: 'query' },
-            { name: 'get_rule_hits', title: 'Rule hits', description: 'Read match counts for current rules.', kind: 'query' },
-            { name: 'apply_rules', title: 'Apply rules', description: 'Replace the rule set with revision checking.', kind: 'change' },
+            { name: 'rules_get_tree', title: 'Rule set', description: 'Read the current rule tree and revision.', kind: 'query' },
+            { name: 'rules_get_hits', title: 'Rule hits', description: 'Read match counts for current rules.', kind: 'query' },
+            { name: 'rules_replace_tree', title: 'Apply rules', description: 'Replace the rule set with revision checking.', kind: 'change' },
+          ],
+        },
+        {
+          id: 'composer',
+          title: 'Composer',
+          tools: [
+            { name: 'composer_send_request', title: 'Send request', description: 'Send a Composer request from this machine.', kind: 'change' },
+            { name: 'composer_probe_connection', title: 'Probe connection', description: 'Open a TLS probe to a host and port.', kind: 'change' },
           ],
         },
         {
           id: 'breakpoints',
           title: 'Breakpoints',
           tools: [
-            { name: 'list_breakpoints', title: 'Pending breakpoints', description: 'Read requests, responses, and frames waiting for action.', kind: 'query' },
-            { name: 'enable_http_breakpoints', title: 'Enable HTTP breakpoints', description: 'Start suspending matching HTTP traffic.', kind: 'change' },
-            { name: 'disable_http_breakpoints', title: 'Disable HTTP breakpoints', description: 'Stop suspending matching HTTP traffic.', kind: 'change' },
-            { name: 'enable_websocket_breakpoint', title: 'Enable WebSocket breakpoint', description: 'Suspend selected frames on one connection.', kind: 'change' },
-            { name: 'disable_websocket_breakpoint', title: 'Disable WebSocket breakpoint', description: 'Resume frames on the selected connection.', kind: 'change' },
-            { name: 'continue_breakpoint', title: 'Continue breakpoint', description: 'Forward one suspended item unchanged.', kind: 'change' },
-            { name: 'forward_edited_breakpoint', title: 'Forward edited breakpoint', description: 'Forward one suspended item with explicit edits.', kind: 'change' },
-            { name: 'drop_breakpoint', title: 'Drop breakpoint', description: 'Discard one suspended item.', kind: 'change' },
+            { name: 'breakpoints_list', title: 'Pending breakpoints', description: 'Read requests, responses, and frames waiting for action.', kind: 'query' },
+            { name: 'breakpoints_enable_http', title: 'Enable HTTP breakpoints', description: 'Start suspending matching HTTP traffic.', kind: 'change' },
+            { name: 'breakpoints_disable_http', title: 'Disable HTTP breakpoints', description: 'Stop suspending matching HTTP traffic.', kind: 'change' },
+            { name: 'breakpoints_enable_websocket', title: 'Enable WebSocket breakpoint', description: 'Suspend selected frames on one connection.', kind: 'change' },
+            { name: 'breakpoints_disable_websocket', title: 'Disable WebSocket breakpoint', description: 'Resume frames on the selected connection.', kind: 'change' },
+            { name: 'breakpoints_continue', title: 'Continue breakpoint', description: 'Forward one suspended item unchanged.', kind: 'change' },
+            { name: 'breakpoints_forward_edited', title: 'Forward edited breakpoint', description: 'Forward one suspended item with explicit edits.', kind: 'change' },
+            { name: 'breakpoints_drop', title: 'Drop breakpoint', description: 'Discard one suspended item.', kind: 'change' },
           ],
         },
         {
-          id: 'requests-diagnostics',
-          title: 'Requests & diagnostics',
+          id: 'diagnostics',
+          title: 'Diagnostics',
           tools: [
-            { name: 'send_request', title: 'Send request', description: 'Send a Composer request from this machine.', kind: 'change' },
-            { name: 'probe_connection', title: 'Probe connection', description: 'Open a TLS probe to a host and port.', kind: 'change' },
-            { name: 'query_diagnostics', title: 'Query diagnostics', description: 'Read filtered structured diagnostic records.', kind: 'query' },
+            { name: 'diagnostics_query', title: 'Query diagnostics', description: 'Read filtered structured diagnostic records.', kind: 'query' },
           ],
         },
       ],
@@ -1050,7 +1056,7 @@ export function installFakeInterceptor({
   const mcpApprovalRequest = {
     approvalId: 'mcp-approval-stop-recording',
     identity: { clientId: 'mcp-client-vscode', label: 'VS Code' },
-    toolName: 'stop_recording',
+    toolName: 'capture_stop_recording',
     toolTitle: 'Stop recording',
     destructive: false,
     arguments: {},
@@ -1066,28 +1072,28 @@ export function installFakeInterceptor({
       currentTurn: null,
       sequence: 0,
     };
-  } else if (agentSessionState === 'traffic') {
-    const turnId = 'turn-agent-traffic';
+  } else if (agentSessionState === 'capture') {
+    const turnId = 'turn-agent-capture';
     const agentStartedAt = agentSessionSnapshot.summary.createdAt;
     const toolSteps = [
       {
         callId: 'call-discover',
         name: 'discover_tools',
-        arguments: { capabilityId: 'traffic' },
+        arguments: { capabilityId: 'capture' },
         result: {
           ok: true,
           value: {
             matches: [
-              'get_proxy_status',
-              'get_storage_status',
-              'list_exchanges',
-              'get_exchange',
-              'get_exchange_body',
-              'list_websocket_messages',
-              'list_grpc_messages',
-              'start_recording',
-              'stop_recording',
-              'clear_capture',
+              'capture_get_proxy_status',
+              'capture_get_storage_status',
+              'capture_list_exchanges',
+              'capture_get_exchange',
+              'capture_get_exchange_body',
+              'capture_list_websocket_messages',
+              'capture_list_grpc_messages',
+              'capture_start_recording',
+              'capture_stop_recording',
+              'capture_clear',
             ]
               .map((name) => ({ descriptor: { name } })),
           },
@@ -1095,7 +1101,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-storage',
-        name: 'get_storage_status',
+        name: 'capture_get_storage_status',
         arguments: {},
         result: {
           ok: true,
@@ -1111,7 +1117,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-proxy',
-        name: 'get_proxy_status',
+        name: 'capture_get_proxy_status',
         arguments: {},
         result: {
           ok: true,
@@ -1120,13 +1126,13 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-list',
-        name: 'list_exchanges',
+        name: 'capture_list_exchanges',
         arguments: { limit: 50 },
         result: { ok: true, value: { items: [{ id: 'e2e-agent-traffic' }] } },
       },
       {
         callId: 'call-detail',
-        name: 'get_exchange',
+        name: 'capture_get_exchange',
         arguments: { exchangeId: 'e2e-agent-traffic' },
         result: {
           ok: true,
@@ -1140,7 +1146,7 @@ export function installFakeInterceptor({
     ];
     const items = [{
       kind: 'user-message',
-      itemId: 'item-user-agent-traffic',
+      itemId: 'item-user-agent-capture',
       turnId,
       content: 'Inspect Capture storage and the latest captured request, then summarize their status.',
       createdAt: agentStartedAt,
@@ -1149,7 +1155,7 @@ export function installFakeInterceptor({
       items.push(
         {
           kind: 'assistant-message',
-          itemId: `item-assistant-agent-traffic-${index}`,
+          itemId: `item-assistant-agent-capture-${index}`,
           turnId,
           content: '',
           reasoningContent: '',
@@ -1158,7 +1164,7 @@ export function installFakeInterceptor({
         },
         {
           kind: 'tool-call',
-          itemId: `item-tool-call-agent-traffic-${index}`,
+          itemId: `item-tool-call-agent-capture-${index}`,
           turnId,
           callId: step.callId,
           name: step.name,
@@ -1169,7 +1175,7 @@ export function installFakeInterceptor({
         },
         {
           kind: 'tool-result',
-          itemId: `item-tool-result-agent-traffic-${index}`,
+          itemId: `item-tool-result-agent-capture-${index}`,
           turnId,
           callId: step.callId,
           name: step.name,
@@ -1180,7 +1186,7 @@ export function installFakeInterceptor({
     }
     items.push({
       kind: 'assistant-message',
-      itemId: 'item-assistant-agent-traffic-final',
+      itemId: 'item-assistant-agent-capture-final',
       turnId,
       content: 'Capture storage is non-empty. The latest exchange is `GET /agent-e2e/traffic` with status `200`.',
       reasoningContent: '',
@@ -1189,7 +1195,7 @@ export function installFakeInterceptor({
     });
     const turn = {
       turnId,
-      userItemId: 'item-user-agent-traffic',
+      userItemId: 'item-user-agent-capture',
       status: 'completed',
       retryOfTurnId: null,
       error: null,
@@ -1220,21 +1226,21 @@ export function installFakeInterceptor({
           ok: true,
           value: {
             matches: [
-              'list_breakpoints',
-              'enable_http_breakpoints',
-              'disable_http_breakpoints',
-              'enable_websocket_breakpoint',
-              'disable_websocket_breakpoint',
-              'continue_breakpoint',
-              'forward_edited_breakpoint',
-              'drop_breakpoint',
+              'breakpoints_list',
+              'breakpoints_enable_http',
+              'breakpoints_disable_http',
+              'breakpoints_enable_websocket',
+              'breakpoints_disable_websocket',
+              'breakpoints_continue',
+              'breakpoints_forward_edited',
+              'breakpoints_drop',
             ].map((name) => ({ descriptor: { name } })),
           },
         },
       },
       {
         callId: 'call-list-breakpoints',
-        name: 'list_breakpoints',
+        name: 'breakpoints_list',
         arguments: {},
         result: {
           ok: true,
@@ -1246,19 +1252,19 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-disable-http-breakpoints',
-        name: 'disable_http_breakpoints',
+        name: 'breakpoints_disable_http',
         arguments: {},
         result: { ok: true, value: { enabled: false } },
       },
       {
         callId: 'call-enable-http-breakpoints',
-        name: 'enable_http_breakpoints',
+        name: 'breakpoints_enable_http',
         arguments: {},
         result: { ok: true, value: { enabled: true } },
       },
       {
         callId: 'call-continue-breakpoint',
-        name: 'continue_breakpoint',
+        name: 'breakpoints_continue',
         arguments: { breakpointId: 'bp-agent-request' },
         result: {
           ok: true,
@@ -1337,26 +1343,26 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: items.length,
     };
-  } else if (agentSessionState === 'requests') {
-    const turnId = 'turn-agent-requests';
+  } else if (agentSessionState === 'composer') {
+    const turnId = 'turn-agent-composer';
     const agentStartedAt = agentSessionSnapshot.summary.createdAt;
     const toolSteps = [
       {
-        callId: 'call-discover-requests',
+        callId: 'call-discover-composer',
         name: 'discover_tools',
-        arguments: { capabilityId: 'requests' },
+        arguments: { capabilityId: 'composer' },
         approval: null,
         result: {
           ok: true,
           value: {
-            matches: ['send_request', 'probe_connection']
+            matches: ['composer_send_request', 'composer_probe_connection']
               .map((name) => ({ descriptor: { name } })),
           },
         },
       },
       {
         callId: 'call-send-request',
-        name: 'send_request',
+        name: 'composer_send_request',
         arguments: {
           method: 'POST',
           url: 'http://127.0.0.1:43127/e2e/agent/requests/allowed',
@@ -1380,7 +1386,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-probe-success',
-        name: 'probe_connection',
+        name: 'composer_probe_connection',
         arguments: { host: '127.0.0.1', port: 43128, timeoutMs: 5_000 },
         approval: null,
         result: {
@@ -1395,7 +1401,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-probe-failure',
-        name: 'probe_connection',
+        name: 'composer_probe_connection',
         arguments: { host: '127.0.0.1', port: 43129, timeoutMs: 2_000 },
         approval: null,
         result: {
@@ -1406,7 +1412,7 @@ export function installFakeInterceptor({
     ];
     const items = [{
       kind: 'user-message',
-      itemId: 'item-user-agent-requests',
+      itemId: 'item-user-agent-composer',
       turnId,
       content: 'Send the approved request and probe the local TLS endpoint.',
       createdAt: agentStartedAt,
@@ -1415,7 +1421,7 @@ export function installFakeInterceptor({
       items.push(
         {
           kind: 'assistant-message',
-          itemId: `item-assistant-agent-requests-${index}`,
+          itemId: `item-assistant-agent-composer-${index}`,
           turnId,
           content: '',
           reasoningContent: '',
@@ -1424,7 +1430,7 @@ export function installFakeInterceptor({
         },
         {
           kind: 'tool-call',
-          itemId: `item-tool-call-agent-requests-${index}`,
+          itemId: `item-tool-call-agent-composer-${index}`,
           turnId,
           callId: step.callId,
           name: step.name,
@@ -1435,7 +1441,7 @@ export function installFakeInterceptor({
         },
         {
           kind: 'tool-result',
-          itemId: `item-tool-result-agent-requests-${index}`,
+          itemId: `item-tool-result-agent-composer-${index}`,
           turnId,
           callId: step.callId,
           name: step.name,
@@ -1446,7 +1452,7 @@ export function installFakeInterceptor({
     }
     items.push({
       kind: 'assistant-message',
-      itemId: 'item-assistant-agent-requests-final',
+      itemId: 'item-assistant-agent-composer-final',
       turnId,
       content: 'The request returned `201`. TLS negotiated `h2` with one certificate.',
       reasoningContent: '',
@@ -1455,7 +1461,7 @@ export function installFakeInterceptor({
     });
     const turn = {
       turnId,
-      userItemId: 'item-user-agent-requests',
+      userItemId: 'item-user-agent-composer',
       status: 'completed',
       retryOfTurnId: null,
       error: null,
@@ -1487,14 +1493,14 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['get_rules', 'get_rule_hits', 'apply_rules']
+            matches: ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree']
               .map((name) => ({ descriptor: { name } })),
           },
         },
       },
       {
         callId: 'call-get-rules',
-        name: 'get_rules',
+        name: 'rules_get_tree',
         arguments: {},
         result: {
           ok: true,
@@ -1516,7 +1522,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-get-rule-hits',
-        name: 'get_rule_hits',
+        name: 'rules_get_hits',
         arguments: {},
         result: {
           ok: true,
@@ -1582,7 +1588,7 @@ export function installFakeInterceptor({
           itemId: 'item-tool-call-agent-rules-apply',
           turnId,
           callId: 'call-apply-rules',
-          name: 'apply_rules',
+          name: 'rules_replace_tree',
           arguments: { baseRevision: 1, nodes: [] },
           status: 'completed',
           approval: {
@@ -1605,7 +1611,7 @@ export function installFakeInterceptor({
           itemId: 'item-tool-result-agent-rules-apply',
           turnId,
           callId: 'call-apply-rules',
-          name: 'apply_rules',
+          name: 'rules_replace_tree',
           result: { ok: true, value: { revision: 2 } },
           createdAt: agentStartedAt + 12,
         },
@@ -1650,28 +1656,28 @@ export function installFakeInterceptor({
       {
         callId: 'call-discover-body-messages',
         name: 'discover_tools',
-        arguments: { capabilityId: 'traffic' },
+        arguments: { capabilityId: 'capture' },
         result: {
           ok: true,
           value: {
             matches: [
-              'get_proxy_status',
-              'get_storage_status',
-              'list_exchanges',
-              'get_exchange',
-              'get_exchange_body',
-              'list_websocket_messages',
-              'list_grpc_messages',
-              'start_recording',
-              'stop_recording',
-              'clear_capture',
+              'capture_get_proxy_status',
+              'capture_get_storage_status',
+              'capture_list_exchanges',
+              'capture_get_exchange',
+              'capture_get_exchange_body',
+              'capture_list_websocket_messages',
+              'capture_list_grpc_messages',
+              'capture_start_recording',
+              'capture_stop_recording',
+              'capture_clear',
             ].map((name) => ({ descriptor: { name } })),
           },
         },
       },
       {
         callId: 'call-detail-body-messages',
-        name: 'get_exchange',
+        name: 'capture_get_exchange',
         arguments: { exchangeId: 'body-json' },
         result: {
           ok: true,
@@ -1684,7 +1690,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-body',
-        name: 'get_exchange_body',
+        name: 'capture_get_exchange_body',
         arguments: { exchangeId: 'body-json', bodyId: 'body-1', length: 65_536 },
         result: {
           ok: true,
@@ -1693,7 +1699,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-ws',
-        name: 'list_websocket_messages',
+        name: 'capture_list_websocket_messages',
         arguments: { exchangeId: 'ws-bidirectional' },
         result: {
           ok: true,
@@ -1702,7 +1708,7 @@ export function installFakeInterceptor({
       },
       {
         callId: 'call-grpc',
-        name: 'list_grpc_messages',
+        name: 'capture_list_grpc_messages',
         arguments: { exchangeId: 'grpc-unary-json', side: 'response', limit: 200 },
         result: {
           ok: true,
@@ -1808,7 +1814,7 @@ export function installFakeInterceptor({
           itemId: 'item-tool-call-agent-clear-result',
           turnId,
           callId: 'call-clear-capture',
-          name: 'clear_capture',
+          name: 'capture_clear',
           arguments: {},
           status: 'completed',
           approval: {
@@ -1824,7 +1830,7 @@ export function installFakeInterceptor({
           itemId: 'item-tool-result-agent-clear-result',
           turnId,
           callId: 'call-clear-capture',
-          name: 'clear_capture',
+          name: 'capture_clear',
           result: {
             ok: true,
             value: {
@@ -1871,7 +1877,7 @@ export function installFakeInterceptor({
           itemId: 'item-tool-call-agent-approval',
           turnId,
           callId: 'call-stop-recording',
-          name: 'stop_recording',
+          name: 'capture_stop_recording',
           arguments: {},
           status: 'running',
           approval: {

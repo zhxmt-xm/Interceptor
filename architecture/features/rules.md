@@ -433,12 +433,12 @@ action 次数）与 `blocked`（短路或阻断次数）需要扩展协议与 St
 
 ### 8.1 Agent Rules Tool边界
 
-`get_rules`、`get_rule_hits`和`apply_rules`由`@interceptor/tools`唯一拥有descriptor、schema与executor，内置Agent和
-MCP共用同一实现。`apply_rules`接收完整替换树与`baseRevision`；不可信Model输入必须先通过严格递归Rule schema，
+`rules_get_tree`、`rules_get_hits`和`rules_replace_tree`由`@interceptor/tools`唯一拥有descriptor、schema与executor，内置Agent和
+MCP共用同一实现。`rules_replace_tree`接收完整替换树与`baseRevision`；不可信Model输入必须先通过严格递归Rule schema，
 再读取当前revision并执行`rules.replace`。目录最多三级，节点ID全树唯一，folder/rule及全部matcher/action字段
 拒绝额外属性；非法树与过期revision在生成审批摘要前即拒绝，且不得触达replace。
 
-Map Local路径属于本机文件边界：`get_rules`只返回`<preserve-existing-local-path>`，`apply_rules`只在同Rule ID、
+Map Local路径属于本机文件边界：`rules_get_tree`只返回`<preserve-existing-local-path>`，`rules_replace_tree`只在同Rule ID、
 同action索引仍为Map Local且Rule自身其余内容完全不变时从当前Core树恢复路径。Tool不能读取、新建或改写路径，也不能
 借保留路径改变matcher、enabled、priority或其他action；整个未变Rule仍可在folder间移动，因为目录不参与执行。
 Agent/MCP提交成功后Main发布revision事件；clean Renderer重载，
@@ -448,7 +448,7 @@ dirty/saving草稿保留并进入conflict；普通Apply与Import都以实际提�
 真实Agent flow必须先由Rules UI创建并Apply规则，再由Agent读取同一树、查询真实Capture hit并修改完整树；
 Ask Deny保持原revision/effect，Allow与Auto各自推进revision并由真实8888请求证明新header effect。双实例UI冲突仍归
 独立Rules workflow；Agent workflow以真实已推进revision的stale调用和owning unit验证冲突，不构造第二份存储状态。
-既有`mcp.desktop.streamable-http`还以官方当前协议Client在Auto模式执行一次`get_rules → apply_rules`，验证MCP提交的
+既有`mcp.desktop.streamable-http`还以官方当前协议Client在Auto模式执行一次`rules_get_tree → rules_replace_tree`，验证MCP提交的
 revision事件同样重载Rules Renderer并改变真实origin header；Agent与MCP不保留两套同步语义。
 
 **TDD / E2E证据（2026-09-03）**：父提交`1234ea9a`的隔离worktree中，官方MCP Client已成功把Rule revision推进到2，

@@ -23,10 +23,10 @@ export function PlaygroundWorkbench(): React.JSX.Element {
 
   const tool = playgroundTool(state.playgroundSelectedTool);
   const waiting = state.playgroundCallState === 'approval';
-  const setupSteps = tool.name === 'stop_recording'
+  const setupSteps = tool.name === 'capture_stop_recording'
     ? ['Start Recording in Capture.', 'Keep this MCP Client in Ask mode.']
     : ['Open Capture and note listener and Recording state.'];
-  const observationSteps = tool.name === 'stop_recording'
+  const observationSteps = tool.name === 'capture_stop_recording'
     ? ['Deny keeps Recording active.', 'Allow pauses capture without stopping proxy forwarding.']
     : ['Result matches the visible listener and Recording state.', 'No approval appears.'];
   return (

@@ -62,7 +62,7 @@ async function configureProvider(page: Page, lab: OpenAiCompatibleLab): Promise<
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.save).click();
 }
 
-/** Queue discovery, one stop_recording call and the answer after its Result. */
+/** Queue discovery, one capture_stop_recording call and the answer after its Result. */
 function enqueueDiscoveredStop(
   lab: OpenAiCompatibleLab,
   discoveryCallId: string,
@@ -72,14 +72,14 @@ function enqueueDiscoveredStop(
   lab.enqueueToolCall({
     callId: discoveryCallId,
     name: 'discover_tools',
-    arguments: { capabilityId: 'traffic' },
+    arguments: { capabilityId: 'capture' },
   });
   enqueueStop(lab, stopCallId, answer);
 }
 
-/** Queue one stop_recording call and its following final answer. */
+/** Queue one capture_stop_recording call and its following final answer. */
 function enqueueStop(lab: OpenAiCompatibleLab, callId: string, answer: string): void {
-  lab.enqueueToolCall({ callId, name: 'stop_recording', arguments: {} });
+  lab.enqueueToolCall({ callId, name: 'capture_stop_recording', arguments: {} });
   lab.enqueueTurn({ textChunks: [answer] });
 }
 
@@ -226,7 +226,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     );
     await expect(deniedApproval).toHaveAttribute('data-approval-status', 'pending');
     await expect(deniedApproval).toHaveAttribute('data-tool-kind', 'change');
-    await expect(deniedApproval).toHaveAttribute('data-tool-name', 'stop_recording');
+    await expect(deniedApproval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'true');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
@@ -302,7 +302,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
     await getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('stop_recording'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_stop_recording'),
     ).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
@@ -310,7 +310,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await sendMessage(desktopApp.page, DISABLED_PROMPT);
     await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
     const disabledRequests = openAiCompatibleLab.requestsForAssertions().slice(disabledOffset);
-    expect(requestToolNames(disabledRequests[0]!)).not.toContain('stop_recording');
+    expect(requestToolNames(disabledRequests[0]!)).not.toContain('capture_stop_recording');
     const disabledResult = resultForCall(disabledRequests, 'disabled-stop');
     disabledErrorCode = isRecord(disabledResult.error) && typeof disabledResult.error.code === 'string'
       ? disabledResult.error.code
@@ -341,7 +341,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
     const stopRecordingSwitch = getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('stop_recording'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_stop_recording'),
     );
     await expect(stopRecordingSwitch).toHaveAttribute('aria-checked', 'false');
     await stopRecordingSwitch.click();

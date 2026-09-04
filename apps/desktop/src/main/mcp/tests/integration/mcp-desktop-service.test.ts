@@ -182,13 +182,13 @@ describe('McpDesktopService', () => {
       clients: [{ clientId: client.clientId, label: 'VS Code', executionMode: 'ask' }],
     });
     expect((await firstClient.listTools()).tools.map((tool) => tool.name))
-      .toContain('get_proxy_status');
+      .toContain('capture_get_proxy_status');
 
-    fixture.toolCapabilitySettingsService.mcpDisabledToolNames = ['get_proxy_status'];
+    fixture.toolCapabilitySettingsService.mcpDisabledToolNames = ['capture_get_proxy_status'];
     const secondClient = await connectClient(firstConfiguration);
     clients.push(secondClient);
     expect((await secondClient.listTools()).tools.map((tool) => tool.name))
-      .not.toContain('get_proxy_status');
+      .not.toContain('capture_get_proxy_status');
   });
 
   it('holds an Ask call for an app-level verdict and lets Auto bypass only the prompt', async () => {
@@ -199,7 +199,7 @@ describe('McpDesktopService', () => {
     const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()));
     clients.push(client);
 
-    const deniedCall = client.callTool({ name: 'stop_recording', arguments: {} });
+    const deniedCall = client.callTool({ name: 'capture_stop_recording', arguments: {} });
     await vi.waitFor(() => expect(fixture.approvals).toHaveLength(1));
     expect(fixture.coreRuntime.commands.map((command) => command.type))
       .not.toContain('proxy.setRecording');
@@ -207,7 +207,7 @@ describe('McpDesktopService', () => {
     await expect(deniedCall).resolves.toMatchObject({ isError: true });
 
     await fixture.mcpDesktopService.automaticallyExecuteClientTools(registration.clientId);
-    await expect(client.callTool({ name: 'stop_recording', arguments: {} }))
+    await expect(client.callTool({ name: 'capture_stop_recording', arguments: {} }))
       .resolves.not.toMatchObject({ isError: true });
     expect(fixture.approvals).toHaveLength(1);
     expect(fixture.coreRuntime.commands.map((command) => command.type))
@@ -222,7 +222,7 @@ describe('McpDesktopService', () => {
     const approval: McpApprovalRequest = {
       approvalId: 'approval-aborted',
       identity: { clientId: 'client-aborted', label: 'External client' },
-      toolName: 'stop_recording',
+      toolName: 'capture_stop_recording',
       toolTitle: 'Stop recording',
       destructive: false,
       arguments: {},

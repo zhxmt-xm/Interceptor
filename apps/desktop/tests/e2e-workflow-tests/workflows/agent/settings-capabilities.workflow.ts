@@ -26,6 +26,36 @@ interface ToolSettingsEvidence {
   allEnabledRestored: boolean;
 }
 
+const TOOL_NAMES = [
+  'capture_get_proxy_status',
+  'capture_get_storage_status',
+  'capture_start_recording',
+  'capture_stop_recording',
+  'capture_clear',
+  'capture_list_exchanges',
+  'capture_get_exchange',
+  'capture_get_exchange_body',
+  'capture_list_websocket_messages',
+  'capture_list_grpc_messages',
+  'rules_get_tree',
+  'rules_get_hits',
+  'rules_replace_tree',
+  'composer_send_request',
+  'composer_probe_connection',
+  'breakpoints_list',
+  'breakpoints_enable_http',
+  'breakpoints_disable_http',
+  'breakpoints_enable_websocket',
+  'breakpoints_disable_websocket',
+  'breakpoints_continue',
+  'breakpoints_forward_edited',
+  'breakpoints_drop',
+  'diagnostics_query',
+] as const;
+
+const TOOL_GROUP_IDS = ['capture', 'rules', 'composer', 'breakpoints', 'diagnostics'] as const;
+const TOOL_GROUP_AUTOMATION_PREFIX = 'agent.tools.group.';
+
 /** Navigate through public UI to the global Agent settings section. */
 async function openAgentSettings(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
@@ -115,8 +145,16 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     evidence.initialProductState = await readProductState(desktopApp.page);
     await openAgentSettings(desktopApp.page);
     evidence.toolNames = await toolNames(desktopApp.page);
-    expect(evidence.toolNames).toHaveLength(24);
-    expect(new Set(evidence.toolNames).size).toBe(24);
+    expect(evidence.toolNames).toEqual(TOOL_NAMES);
+    const groupIds = await desktopApp.page.locator(
+      `[data-automation-id^="${TOOL_GROUP_AUTOMATION_PREFIX}"]`,
+    ).evaluateAll((groups, prefix) => groups.map((group) => (
+      group.getAttribute('data-automation-id')?.replace(
+        prefix,
+        '',
+      ) ?? ''
+    )), TOOL_GROUP_AUTOMATION_PREFIX);
+    expect(groupIds).toEqual(TOOL_GROUP_IDS);
 
     // 业务断言：fresh profile的24行、48个Agent/MCP开关必须全部开启。
     // Business assertion: all 48 Agent/MCP switches across 24 fresh-profile rows start enabled.
@@ -133,18 +171,18 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     // User actions: disable one Tool in each column without changing its peer or other Tools.
     await getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_proxy_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status'),
     ).click();
-    await expectToolState(desktopApp.page, 'get_proxy_status', 'agent', false);
-    await expectToolState(desktopApp.page, 'get_proxy_status', 'mcp', true);
+    await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'agent', false);
+    await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'mcp', true);
     await getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolMcpSwitch('apply_rules'),
+      AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree'),
     ).click();
-    await expectToolState(desktopApp.page, 'apply_rules', 'agent', true);
-    await expectToolState(desktopApp.page, 'apply_rules', 'mcp', false);
-    await expectToolState(desktopApp.page, 'get_exchange', 'agent', true);
-    await expectToolState(desktopApp.page, 'get_exchange', 'mcp', true);
+    await expectToolState(desktopApp.page, 'rules_replace_tree', 'agent', true);
+    await expectToolState(desktopApp.page, 'rules_replace_tree', 'mcp', false);
+    await expectToolState(desktopApp.page, 'capture_get_exchange', 'agent', true);
+    await expectToolState(desktopApp.page, 'capture_get_exchange', 'mcp', true);
 
     // 用户操作：搜索只过滤可见行；清空与Settings往返后关闭状态仍由Main快照恢复。
     // User actions: search only filters rows; clearing it and returning to Settings retain Main state.
@@ -152,15 +190,15 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await search.fill('diagnostics');
     await expect(getByAutomationId(
       desktopApp.page,
-      AutomationIdFactory.agentToolRow('query_diagnostics'),
+      AutomationIdFactory.agentToolRow('diagnostics_query'),
     )).toBeVisible();
-    expect(await toolNames(desktopApp.page)).toEqual(['query_diagnostics']);
+    expect(await toolNames(desktopApp.page)).toEqual(['diagnostics_query']);
     await search.fill('');
     expect(await toolNames(desktopApp.page)).toEqual(evidence.toolNames);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await openAgentSettings(desktopApp.page);
-    await expectToolState(desktopApp.page, 'get_proxy_status', 'agent', false);
-    await expectToolState(desktopApp.page, 'apply_rules', 'mcp', false);
+    await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'agent', false);
+    await expectToolState(desktopApp.page, 'rules_replace_tree', 'mcp', false);
 
     // 业务断言：开关交互没有改变Capture、Rules或系统代理状态。
     // Business assertion: capability switches do not change Capture, Rules, or system proxy state.
@@ -178,19 +216,19 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     activeApp = relaunchedApp;
     await relaunchedApp.waitUntilReady();
     await openAgentSettings(relaunchedApp.page);
-    await expectToolState(relaunchedApp.page, 'get_proxy_status', 'agent', false);
-    await expectToolState(relaunchedApp.page, 'apply_rules', 'mcp', false);
+    await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', false);
+    await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', false);
     evidence.disabledRestored = true;
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('get_proxy_status'),
+      AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status'),
     ).click();
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentToolMcpSwitch('apply_rules'),
+      AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree'),
     ).click();
-    await expectToolState(relaunchedApp.page, 'get_proxy_status', 'agent', true);
-    await expectToolState(relaunchedApp.page, 'apply_rules', 'mcp', true);
+    await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', true);
+    await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
 
     // 重启二：空关闭集不依赖文件存在，24项必须再次全部开启。
     // Restart two: an empty disabled set needs no file and all 24 Tools must return enabled.

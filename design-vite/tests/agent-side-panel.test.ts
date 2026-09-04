@@ -40,7 +40,7 @@ test('Agent chat remains unchanged when the active workspace changes', async ({ 
   const panel = page.locator('[data-parity="agent-panel"]');
   await expect(panel).toContainText('Checkout failures');
   await expect(panel).toContainText('Help me diagnose repeated 401 responses');
-  await expect(panel).not.toContainText('list_exchanges');
+  await expect(panel).not.toContainText('capture_list_exchanges');
 
   await page.evaluate(() => window.__setState?.({ view: 'rules' }));
 
@@ -50,20 +50,20 @@ test('Agent chat remains unchanged when the active workspace changes', async ({ 
   await expect(panel).not.toContainText('Rewrite auth header');
 });
 
-test('Agent Traffic Tool activity includes a compact Capture storage result', async ({ page }) => {
+test('Agent Capture Tool activity includes a compact storage result', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
     sidebar: 'collapsed',
     agentPanel: 'open',
     agentProvider: 'configured',
-    agentToolTrace: 'traffic',
+    agentToolTrace: 'capture',
   }));
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
   await expect(trace.locator('[data-tool-name="discover_tools"]'))
     .toContainText('10 tools discovered');
-  await expect(trace.locator('[data-tool-name="get_storage_status"]'))
+  await expect(trace.locator('[data-tool-name="capture_get_storage_status"]'))
     .toContainText('Exchanges 1 · Bodies 2 · 184 B');
 });
 
@@ -78,15 +78,15 @@ test('Agent body and message Tool activity keeps bounded result summaries scanna
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
-  await expect(trace.locator('[data-tool-name="get_exchange_body"]'))
+  await expect(trace.locator('[data-tool-name="capture_get_exchange_body"]'))
     .toContainText('exchangeId: body-json');
-  await expect(trace.locator('[data-tool-name="get_exchange_body"]'))
+  await expect(trace.locator('[data-tool-name="capture_get_exchange_body"]'))
     .toContainText('14 B · complete');
-  await expect(trace.locator('[data-tool-name="list_websocket_messages"]'))
+  await expect(trace.locator('[data-tool-name="capture_list_websocket_messages"]'))
     .toContainText('2 messages · complete');
-  await expect(trace.locator('[data-tool-name="list_grpc_messages"]'))
+  await expect(trace.locator('[data-tool-name="capture_list_grpc_messages"]'))
     .toContainText('exchangeId: grpc-unary-json');
-  await expect(trace.locator('[data-tool-name="list_grpc_messages"]'))
+  await expect(trace.locator('[data-tool-name="capture_list_grpc_messages"]'))
     .toContainText('response · 1 message · complete');
 });
 
@@ -188,7 +188,7 @@ test('Pending Tool approval is isolated to its Chat and restored on return', asy
   await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Select chat' }).click();
   await page.getByRole('option', { name: 'Checkout failures' }).click();
-  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('stop_recording');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('capture_stop_recording');
 });
 
 test('Ask mode keeps a change Tool pending until the user allows or denies it', async ({ page }) => {
@@ -202,7 +202,7 @@ test('Ask mode keeps a change Tool pending until the user allows or denies it', 
   }));
 
   const approval = page.locator('[data-parity="agent-tool-approval"]');
-  await expect(approval).toContainText('stop_recording');
+  await expect(approval).toContainText('capture_stop_recording');
   await expect(approval).toContainText('Pause capture without stopping the proxy.');
   await expect(approval).toContainText('No parameters');
   await approval.getByRole('button', { name: 'Deny Tool' }).click();
@@ -219,7 +219,7 @@ test('Ask mode keeps a change Tool pending until the user allows or denies it', 
 
   await page.evaluate(() => window.__setState?.({
     agentToolApproval: 'allowed',
-    agentToolApprovalName: 'clear_capture',
+    agentToolApprovalName: 'capture_clear',
   }));
   await expect(approval).toContainText('Exchanges 0 · Bodies 0 · 4 KB');
   expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -238,7 +238,7 @@ test('Changing to Auto keeps an existing pending Tool available for a decision',
     .getByRole('radio', { name: 'Auto' })
     .click();
   await expect(page.locator('.app')).toHaveAttribute('data-agent-execution-mode', 'auto');
-  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('stop_recording');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toContainText('capture_stop_recording');
 });
 
 test('Pending Tool approval remains in the current Chat across workspace navigation', async ({ page }) => {
@@ -251,10 +251,10 @@ test('Pending Tool approval remains in the current Chat across workspace navigat
   }));
 
   const approval = page.locator('[data-parity="agent-tool-approval"]');
-  await expect(approval).toContainText('stop_recording');
+  await expect(approval).toContainText('capture_stop_recording');
   await page.evaluate(() => window.__setState?.({ view: 'rules' }));
   await expect(page.locator('.app')).toHaveAttribute('data-view', 'rules');
-  await expect(approval).toContainText('stop_recording');
+  await expect(approval).toContainText('capture_stop_recording');
 });
 
 test('Agent composer metrics fit when the panel contracts to 220px', async ({ page }) => {
@@ -453,13 +453,13 @@ test('Failed turn exposes Retry and Session usage from Context hover', async ({ 
   await expect(usagePopover).toHaveCount(0);
 });
 
-test('Traffic Tool activity keeps calls, arguments, results, and final answer in order', async ({ page }) => {
+test('Capture Tool activity keeps calls, arguments, results, and final answer in order', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
     sidebar: 'collapsed',
     agentPanel: 'open',
     agentProvider: 'configured',
-    agentToolTrace: 'traffic',
+    agentToolTrace: 'capture',
   }));
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
@@ -469,12 +469,12 @@ test('Traffic Tool activity keeps calls, arguments, results, and final answer in
     rows.map((row) => row.getAttribute('data-tool-name'))
   ))).resolves.toEqual([
     'discover_tools',
-    'get_storage_status',
-    'get_proxy_status',
-    'list_exchanges',
-    'get_exchange',
+    'capture_get_storage_status',
+    'capture_get_proxy_status',
+    'capture_list_exchanges',
+    'capture_get_exchange',
   ]);
-  await expect(trace).toContainText('capabilityId: traffic');
+  await expect(trace).toContainText('capabilityId: capture');
   await expect(trace).toContainText('Exchanges 1 · Bodies 2 · 184 B');
   await expect(trace).toContainText('GET /agent-e2e/traffic · 200');
   await expect(page.locator('[data-parity="agent-transcript"]'))
@@ -494,14 +494,14 @@ test('Agent Rules Tool activity summarizes tree, hits and applied revision', asy
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('1 enabled Rule with 1 captured hit');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
-  await expect(trace.locator('[data-tool-name="get_rules"]'))
+  await expect(trace.locator('[data-tool-name="rules_get_tree"]'))
     .toContainText('Revision 1 · Rules 1 · Enabled 1');
-  await expect(trace.locator('[data-tool-name="get_rule_hits"]'))
+  await expect(trace.locator('[data-tool-name="rules_get_hits"]'))
     .toContainText('Rules 1 · Hits 1');
 
   await page.evaluate(() => window.__setState?.({
     agentToolApproval: 'allowed',
-    agentToolApprovalName: 'apply_rules',
+    agentToolApprovalName: 'rules_replace_tree',
   }));
   const result = page.locator('[data-parity="agent-tool-approval"]');
   await expect(page.locator('[data-parity="agent-transcript"]'))
@@ -523,35 +523,35 @@ test('Agent Breakpoints Tool activity keeps pending and resolution summaries sca
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
-  await expect(trace.locator('[data-tool-name="list_breakpoints"]'))
+  await expect(trace.locator('[data-tool-name="breakpoints_list"]'))
     .toContainText('Pending breakpoints: 1 · Enabled');
-  await expect(trace.locator('[data-tool-name="disable_http_breakpoints"]'))
+  await expect(trace.locator('[data-tool-name="breakpoints_disable_http"]'))
     .toContainText('Disabled');
-  await expect(trace.locator('[data-tool-name="continue_breakpoint"]'))
+  await expect(trace.locator('[data-tool-name="breakpoints_continue"]'))
     .toContainText('Continued · bp-agent-request');
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('bp-agent-request continued');
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('Agent Requests Tool activity summarizes direct HTTP and TLS results', async ({ page }) => {
+test('Agent Composer Tool activity summarizes direct HTTP and TLS results', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
     sidebar: 'collapsed',
     agentPanel: 'open',
     agentProvider: 'configured',
     agentExecutionMode: 'auto',
-    agentToolTrace: 'requests',
+    agentToolTrace: 'composer',
     agentToolApproval: 'allowed',
-    agentToolApprovalName: 'send_request',
+    agentToolApprovalName: 'composer_send_request',
   }));
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   const result = page.locator('[data-parity="agent-tool-approval"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
-  await expect(trace.locator('[data-tool-name="probe_connection"]').first())
+  await expect(trace.locator('[data-tool-name="composer_probe_connection"]').first())
     .toContainText('TLSv1.3 · h2 · Certificates 1');
-  await expect(trace.locator('[data-tool-name="probe_connection"]').last())
+  await expect(trace.locator('[data-tool-name="composer_probe_connection"]').last())
     .toContainText('TLS probe failed · connect ECONNREFUSED');
   await expect(result).toContainText('POST /e2e/agent/requests/allowed · 201 · 32 B');
   await expect(page.locator('[data-parity="agent-transcript"]'))

@@ -24,7 +24,7 @@ export function McpToolApprovalDialog(): React.JSX.Element | null {
           </div>
         </header>
         <dl className={styles.mcpToolApprovalDetails}>
-          <div><dt>Tool</dt><dd><code>stop_recording</code></dd></div>
+          <div><dt>Tool</dt><dd><code>capture_stop_recording</code></dd></div>
           <div><dt>Arguments</dt><dd><code>{'{}'}</code></dd></div>
           <div><dt>Effect</dt><dd>New traffic will continue through the proxy but will not be captured.</dd></div>
         </dl>

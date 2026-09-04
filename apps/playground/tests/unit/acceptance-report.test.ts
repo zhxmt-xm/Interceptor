@@ -11,7 +11,7 @@ describe('buildAcceptanceReport', () => {
         serverName: 'Interceptor',
         serverVersion: '0.1.0',
         tools: [{
-          name: 'get_proxy_status',
+          name: 'capture_get_proxy_status',
           title: 'Proxy status',
           inputSchema: { type: 'object', properties: {} },
         }],
@@ -31,7 +31,7 @@ describe('buildAcceptanceReport', () => {
         state: 'complete',
       }],
       manualRecords: {
-        get_proxy_status: { notes: 'Matches Recording state.', status: 'pass' },
+        capture_get_proxy_status: { notes: 'Matches Recording state.', status: 'pass' },
       },
       token: 'playground-secret',
       trafficResults: [],
@@ -39,7 +39,7 @@ describe('buildAcceptanceReport', () => {
 
     expect(report.protocol).toBe('2026-07-28');
     expect(report.tools[0]).toMatchObject({
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       schemaHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       status: 'pass',
     });

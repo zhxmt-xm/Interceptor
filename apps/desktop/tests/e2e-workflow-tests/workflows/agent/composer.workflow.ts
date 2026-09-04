@@ -18,34 +18,34 @@ import {
 } from '../../fixtures/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
 
-const REQUEST_TOOL_NAMES = ['send_request', 'probe_connection'] as const;
+const COMPOSER_TOOL_NAMES = ['composer_send_request', 'composer_probe_connection'] as const;
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const joined = (...parts: readonly string[]): string => parts.join('');
 const prompts = {
-  discover: phrase('Discover the available', 'Requests Tools.'),
+  discover: phrase('Discover the available', 'Composer Tools.'),
   deny: phrase('Prepare the direct request', 'but wait for approval.'),
   allow: phrase('Send the approved direct', 'request now.'),
   probe: phrase('Probe the local TLS', 'connection now.'),
   probeFailure: phrase('Probe the unavailable TLS', 'connection now.'),
   cancel: phrase('Send the cancellable direct', 'request now.'),
-  disabled: phrase('Try both disabled', 'Requests Tools.'),
+  disabled: phrase('Try both disabled', 'Composer Tools.'),
 } as const;
 const answers = Object.fromEntries(
   Object.keys(prompts).map((key) => [key, `${key} complete.`]),
 ) as Record<keyof typeof prompts, string>;
-const trafficTexts = {
-  deniedBody: joined('requests-denied-', 'body'),
-  allowedBody: joined('requests-allowed-', 'body'),
-  cancelledBody: joined('requests-cancelled-', 'body'),
-  requestAuthorization: joined('Bearer requests-', 'request-secret'),
-  requestQuerySecret: joined('requests-query-', 'secret'),
-  responseBody: joined('{"accepted":"requests-', 'response"}'),
-  responseCookie: joined('requests_session=', 'response-secret'),
+const composerTexts = {
+  deniedBody: joined('composer-denied-', 'body'),
+  allowedBody: joined('composer-allowed-', 'body'),
+  cancelledBody: joined('composer-cancelled-', 'body'),
+  requestAuthorization: joined('Bearer composer-', 'request-secret'),
+  requestQuerySecret: joined('composer-query-', 'secret'),
+  responseBody: joined('{"accepted":"composer-', 'response"}'),
+  responseCookie: joined('composer_session=', 'response-secret'),
 } as const;
 const SENSITIVE_TEXTS = [
   ...Object.values(prompts),
   ...Object.values(answers),
-  ...Object.values(trafficTexts),
+  ...Object.values(composerTexts),
 ];
 
 /** Configure one keyless local Provider entirely through public Settings controls. */
@@ -55,11 +55,11 @@ async function configureProvider(page: Page, lab: OpenAiCompatibleLab): Promise<
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.add).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.addCustom).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName)
-    .fill('Requests Tool lab');
+    .fill('Composer Tool lab');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl)
-    .fill(lab.baseUrl('requests-tools'));
+    .fill(lab.baseUrl('composer-tools'));
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId)
-    .fill('requests-tool-model');
+    .fill('composer-tool-model');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.contextWindow).fill('131072');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.maximumOutput).fill('8192');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.testConnection).click();
@@ -186,7 +186,7 @@ async function closeGeneration(
   }
 }
 
-test('agent.tools.requests sends direct HTTP and probes TLS with real cancellation', async ({
+test('agent.tools.composer sends direct HTTP and probes TLS with real cancellation', async ({
   desktopApp,
   loopbackLab,
   openAiCompatibleLab,
@@ -195,7 +195,7 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   test.setTimeout(180_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
-    description: 'agent.tools.requests',
+    description: 'agent.tools.composer',
   });
 
   const sensitiveTexts = new Set(SENSITIVE_TEXTS);
@@ -220,34 +220,34 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   await startRecording(desktopApp);
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.chat.new).click();
-  const requestsSessionId = await sessionRoot.getAttribute('data-session-id');
-  if (!requestsSessionId) throw new Error('Requests Chat did not expose a Session ID.');
+  const composerSessionId = await sessionRoot.getAttribute('data-session-id');
+  if (!composerSessionId) throw new Error('Composer Chat did not expose a Session ID.');
   await desktopApp.stopTrace(testInfo);
 
-  // Discovery：requests能力严格只披露两个共享change Tool。
-  // Discovery: the requests capability exposes exactly two shared change Tools.
+  // Discovery：composer能力严格只披露两个共享change Tool。
+  // Discovery: the composer capability exposes exactly two shared change Tools.
   openAiCompatibleLab.enqueueToolCall({
-    callId: 'requests-discover',
+    callId: 'composer-discover',
     name: 'discover_tools',
-    arguments: { capabilityId: 'requests' },
+    arguments: { capabilityId: 'composer' },
   });
   openAiCompatibleLab.enqueueTurn({ textChunks: [answers.discover] });
   await sendMessage(page, prompts.discover);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   expect(discoveredNames(
     openAiCompatibleLab.requestsForAssertions(),
-    'requests-discover',
-  )).toEqual(REQUEST_TOOL_NAMES);
+    'composer-discover',
+  )).toEqual(COMPOSER_TOOL_NAMES);
 
   // Ask Deny：问询展示完整目标；拒绝后origin零到达。
   // Ask Deny: approval shows the complete target; denial leaves the origin untouched.
-  const deniedPath = '/e2e/agent/requests/denied';
+  const deniedPath = '/e2e/agent/composer/denied';
   const deniedUrl = loopbackLab.url(deniedPath);
   registerSensitiveText(deniedUrl);
-  enqueueTool(openAiCompatibleLab, 'send-deny', 'send_request', {
+  enqueueTool(openAiCompatibleLab, 'send-deny', 'composer_send_request', {
     method: 'POST',
     url: deniedUrl,
-    body: trafficTexts.deniedBody,
+    body: composerTexts.deniedBody,
   }, answers.deny);
   await sendMessage(page, prompts.deny);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'waiting-for-tool-approval');
@@ -258,25 +258,25 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
 
   // Ask Allow：真实origin接收method/query/header/body；结果遮罩凭据并且不进入Capture。
   // Ask Allow: the real origin receives method/query/header/body; the result redacts credentials and never enters Capture.
-  const allowedPath = `/e2e/agent/requests/allowed?access_token=${trafficTexts.requestQuerySecret}&mode=tool`;
+  const allowedPath = `/e2e/agent/composer/allowed?access_token=${composerTexts.requestQuerySecret}&mode=tool`;
   const allowedUrl = loopbackLab.url(allowedPath);
   registerSensitiveText(allowedUrl);
   loopbackLab.respondWith(allowedPath, {
     statusCode: 201,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'set-cookie': trafficTexts.responseCookie,
+      'set-cookie': composerTexts.responseCookie,
     },
-    body: trafficTexts.responseBody,
+    body: composerTexts.responseBody,
   });
-  enqueueTool(openAiCompatibleLab, 'send-allow', 'send_request', {
+  enqueueTool(openAiCompatibleLab, 'send-allow', 'composer_send_request', {
     method: 'POST',
     url: allowedUrl,
     headers: [
-      { name: 'authorization', value: trafficTexts.requestAuthorization },
+      { name: 'authorization', value: composerTexts.requestAuthorization },
       { name: 'x-agent-request', value: 'allowed' },
     ],
-    body: trafficTexts.allowedBody,
+    body: composerTexts.allowedBody,
     protocol: 'http/1.1',
   }, answers.allow);
   await sendMessage(page, prompts.allow);
@@ -285,9 +285,9 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   await expect.poll(() => loopbackLab.observation(allowedPath)?.method).toBe('POST');
   const allowedObservation = loopbackLab.observation(allowedPath);
-  expect(allowedObservation?.headers.authorization).toBe(trafficTexts.requestAuthorization);
+  expect(allowedObservation?.headers.authorization).toBe(composerTexts.requestAuthorization);
   expect(allowedObservation?.headers['x-agent-request']).toBe('allowed');
-  expect(allowedObservation?.body.toString('utf8')).toBe(trafficTexts.allowedBody);
+  expect(allowedObservation?.body.toString('utf8')).toBe(composerTexts.allowedBody);
   const requestResult = successfulValue(
     openAiCompatibleLab.requestsForAssertions(),
     'send-allow',
@@ -302,7 +302,7 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   expect(requestResult.headers).toEqual(expect.arrayContaining([
     expect.objectContaining({ name: 'set-cookie', value: '<redacted>' }),
   ]));
-  expect(requestResult.body).toMatchObject({ text: trafficTexts.responseBody, truncated: false });
+  expect(requestResult.body).toMatchObject({ text: composerTexts.responseBody, truncated: false });
   await expect(getByAutomationId(
     page,
     AutomationIdFactory.agentToolResult('send-allow'),
@@ -310,13 +310,13 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   await expect(getByAutomationIdPrefix(
     page,
     AUTOMATION_ID_PREFIXES.captureRequestRow,
-  ).filter({ hasText: '/e2e/agent/requests/allowed' })).toHaveCount(0);
+  ).filter({ hasText: '/e2e/agent/composer/allowed' })).toHaveCount(0);
   evidence.directRequestVerified = true;
 
   // Auto TLS：成功探测只握手不发应用数据；未监听端口返回稳定失败结果。
   // Auto TLS: a successful probe performs only a handshake; a closed port returns a stable failure result.
   await setExecutionMode(page, 'auto');
-  enqueueTool(openAiCompatibleLab, 'probe-success', 'probe_connection', {
+  enqueueTool(openAiCompatibleLab, 'probe-success', 'composer_probe_connection', {
     host: '127.0.0.1',
     port: tlsOriginLab.port,
     timeoutMs: 5_000,
@@ -338,7 +338,7 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   )).toHaveAttribute('data-probe-certificate-count', '1');
 
   const unavailablePort = await closedLoopbackPort();
-  enqueueTool(openAiCompatibleLab, 'probe-failure', 'probe_connection', {
+  enqueueTool(openAiCompatibleLab, 'probe-failure', 'composer_probe_connection', {
     host: '127.0.0.1',
     port: unavailablePort,
     timeoutMs: 2_000,
@@ -355,17 +355,17 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
 
   // Stop：真实origin已收到请求但暂缓响应；停止Turn必须立即关闭socket且不发起下一次Model Call。
   // Stop: the real origin has received a held request; stopping the Turn must close the socket and skip the next Model Call.
-  const cancelPath = '/e2e/agent/requests/cancel';
+  const cancelPath = '/e2e/agent/composer/cancel';
   const cancelUrl = loopbackLab.url(cancelPath);
   registerSensitiveText(cancelUrl);
   const releaseCancelledResponse = loopbackLab.holdResponse(cancelPath);
   openAiCompatibleLab.enqueueToolCall({
     callId: 'send-cancel',
-    name: 'send_request',
+    name: 'composer_send_request',
     arguments: {
       method: 'POST',
       url: cancelUrl,
-      body: trafficTexts.cancelledBody,
+      body: composerTexts.cancelledBody,
       timeoutMs: 60_000,
     },
   });
@@ -390,7 +390,7 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   // Settings revocation: disabling both empties discovery; guessed calls are unknown and network counts stay unchanged.
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
-  for (const toolName of REQUEST_TOOL_NAMES) {
+  for (const toolName of COMPOSER_TOOL_NAMES) {
     await getByAutomationId(
       page,
       AutomationIdFactory.agentToolAgentSwitch(toolName),
@@ -401,32 +401,32 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
   const handshakeCountBeforeDisabled = tlsOriginLab.handshakeCount();
   await getByAutomationId(page, AUTOMATION_IDS.agent.chat.new).click();
   openAiCompatibleLab.enqueueToolCall({
-    callId: 'disabled-requests-discover',
+    callId: 'disabled-composer-discover',
     name: 'discover_tools',
-    arguments: { capabilityId: 'requests' },
+    arguments: { capabilityId: 'composer' },
   });
   openAiCompatibleLab.enqueueToolCall({
     callId: 'disabled-send-request',
-    name: 'send_request',
+    name: 'composer_send_request',
     arguments: { method: 'GET', url: allowedUrl },
   });
   openAiCompatibleLab.enqueueToolCall({
     callId: 'disabled-probe-connection',
-    name: 'probe_connection',
+    name: 'composer_probe_connection',
     arguments: { host: '127.0.0.1', port: tlsOriginLab.port },
   });
   openAiCompatibleLab.enqueueTurn({ textChunks: [answers.disabled] });
   await sendMessage(page, prompts.disabled);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const finalRequests = openAiCompatibleLab.requestsForAssertions();
-  expect(discoveredNames(finalRequests, 'disabled-requests-discover')).toEqual([]);
+  expect(discoveredNames(finalRequests, 'disabled-composer-discover')).toEqual([]);
   expect([
     errorCode(finalRequests, 'disabled-send-request'),
     errorCode(finalRequests, 'disabled-probe-connection'),
   ]).toEqual(['unknown_tool', 'unknown_tool']);
   expect(loopbackLab.evidence()).toHaveLength(originCountBeforeDisabled);
   expect(tlsOriginLab.handshakeCount()).toBe(handshakeCountBeforeDisabled);
-  for (const toolName of REQUEST_TOOL_NAMES) {
+  for (const toolName of COMPOSER_TOOL_NAMES) {
     await getByAutomationId(
       page,
       AutomationIdFactory.agentToolAgentSwitch(toolName),
@@ -460,7 +460,7 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.chat.selector).click();
     await getByAutomationId(
       relaunchedApp.page,
-      AutomationIdFactory.agentSessionOption(requestsSessionId),
+      AutomationIdFactory.agentSessionOption(composerSessionId),
     ).click();
     const restoredRoot = getByAutomationId(
       relaunchedApp.page,
@@ -482,12 +482,12 @@ test('agent.tools.requests sends direct HTTP and probes TLS with real cancellati
     expect(tlsOriginLab.handshakeCount()).toBe(handshakeCountBeforeRestart);
     evidence.restartNetworkRequestCount = 0;
 
-    const evidencePath = testInfo.outputPath('agent-tool-requests.json');
+    const evidencePath = testInfo.outputPath('agent-tool-composer.json');
     await writeFile(evidencePath, JSON.stringify({
       ...evidence,
       requestBodyHashes: openAiCompatibleLab.evidence().map((entry) => entry.requestBodyHash),
     }, null, 2), 'utf8');
-    await testInfo.attach('agent-tool-requests.json', {
+    await testInfo.attach('agent-tool-composer.json', {
       path: evidencePath,
       contentType: 'application/json',
     });

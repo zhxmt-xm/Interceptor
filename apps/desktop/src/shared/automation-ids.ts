@@ -523,7 +523,7 @@ export const AUTOMATION_IDS = {
   },
 } as const;
 
-/** Stable prefixes for Core-owned rows whose full IDs are only known at runtime. */
+/** Stable prefixes for data-backed rows whose full IDs are only known at runtime. */
 export const AUTOMATION_ID_PREFIXES = {
   captureRequestRow: 'capture.request-row.',
   captureBodyRuleEffect: 'capture.body-rule-effect.',
@@ -538,6 +538,7 @@ export const AUTOMATION_ID_PREFIXES = {
   composerCollectionFolder: 'composer.collection.folder.',
   composerCollectionFolderRename: 'composer.collection.folder-rename.',
   diagnosticRow: 'diagnostics.row.',
+  agentToolGroup: 'agent.tools.group.',
 } as const;
 
 /** Dynamic automation IDs for data-backed rows whose identity comes from Core. */
@@ -805,6 +806,11 @@ export class AutomationIdFactory {
   /** Identify one Tool capability settings row. */
   static agentToolRow(toolName: string): string {
     return `agent.tools.row.${toolName}`;
+  }
+
+  /** Identify one feature-owned Tool capability settings group. */
+  static agentToolGroup(groupId: string): string {
+    return `${AUTOMATION_ID_PREFIXES.agentToolGroup}${groupId}`;
   }
 
   /** Identify the Agent enable switch for one Tool. */

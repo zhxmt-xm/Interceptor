@@ -23,14 +23,11 @@ interface SettingsGroupDefinition {
 }
 
 const SETTINGS_GROUP_DEFINITIONS: readonly SettingsGroupDefinition[] = [
-  { id: 'traffic', title: 'Traffic', capabilityIds: ['traffic'] },
+  { id: 'capture', title: 'Capture', capabilityIds: ['capture'] },
   { id: 'rules', title: 'Rules', capabilityIds: ['rules'] },
+  { id: 'composer', title: 'Composer', capabilityIds: ['composer'] },
   { id: 'breakpoints', title: 'Breakpoints', capabilityIds: ['breakpoints'] },
-  {
-    id: 'requests-diagnostics',
-    title: 'Requests & diagnostics',
-    capabilityIds: ['requests', 'diagnostics'],
-  },
+  { id: 'diagnostics', title: 'Diagnostics', capabilityIds: ['diagnostics'] },
 ];
 
 /** Projects every executable Tool once into the Settings display groups. */

@@ -137,13 +137,13 @@ function enqueueDiscoveredChange(
   lab: OpenAiCompatibleLab,
   discoveryCallId: string,
   callId: string,
-  name: 'start_recording' | 'clear_capture',
+  name: 'capture_start_recording' | 'capture_clear',
   answer: string,
 ): void {
   lab.enqueueToolCall({
     callId: discoveryCallId,
     name: 'discover_tools',
-    arguments: { capabilityId: 'traffic' },
+    arguments: { capabilityId: 'capture' },
   });
   enqueueChange(lab, callId, name, answer);
 }
@@ -152,7 +152,7 @@ function enqueueDiscoveredChange(
 function enqueueChange(
   lab: OpenAiCompatibleLab,
   callId: string,
-  name: 'start_recording' | 'clear_capture',
+  name: 'capture_start_recording' | 'capture_clear',
   answer: string,
 ): void {
   lab.enqueueToolCall({ callId, name, arguments: {} });
@@ -161,8 +161,8 @@ function enqueueChange(
 
 /** Queue storage inspection, Clear, and the final answer after its verdict. */
 function enqueueInspectedClear(lab: OpenAiCompatibleLab): void {
-  lab.enqueueToolCall({ callId: 'clear-storage', name: 'get_storage_status', arguments: {} });
-  enqueueChange(lab, 'clear-deny', 'clear_capture', CLEAR_DENY_ANSWER);
+  lab.enqueueToolCall({ callId: 'clear-storage', name: 'capture_get_storage_status', arguments: {} });
+  enqueueChange(lab, 'clear-deny', 'capture_clear', CLEAR_DENY_ANSWER);
 }
 
 /** Send one user message through the current Chat. */
@@ -294,13 +294,13 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     await expect(sessionRoot).toHaveAttribute('data-tool-execution-mode', 'ask');
     await desktopApp.stopTrace(testInfo);
 
-    // 用户操作：start_recording在Ask下分别Deny/Allow，再在Auto下无问询执行，Capture toggle始终同步。
-    // User actions: start_recording is denied and allowed in Ask, then runs without a prompt in Auto while the toggle stays synchronized.
+    // 用户操作：capture_start_recording在Ask下分别Deny/Allow，再在Auto下无问询执行，Capture toggle始终同步。
+    // User actions: capture_start_recording is denied and allowed in Ask, then runs without a prompt in Auto while the toggle stays synchronized.
     enqueueDiscoveredChange(
       openAiCompatibleLab,
       'start-discover',
       'start-deny',
-      'start_recording',
+      'capture_start_recording',
       START_DENY_ANSWER,
     );
     await sendMessage(desktopApp.page, START_DENY_PROMPT);
@@ -309,7 +309,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
       desktopApp.page,
       AutomationIdFactory.agentToolApproval('start-deny'),
     );
-    await expect(startDeniedApproval).toHaveAttribute('data-tool-name', 'start_recording');
+    await expect(startDeniedApproval).toHaveAttribute('data-tool-name', 'capture_start_recording');
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolDeny('start-deny'),
@@ -324,7 +324,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     enqueueChange(
       openAiCompatibleLab,
       'start-allow',
-      'start_recording',
+      'capture_start_recording',
       START_ALLOW_ANSWER,
     );
     await sendMessage(desktopApp.page, START_ALLOW_PROMPT);
@@ -346,7 +346,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     enqueueChange(
       openAiCompatibleLab,
       'start-auto',
-      'start_recording',
+      'capture_start_recording',
       START_AUTO_ANSWER,
     );
     await sendMessage(desktopApp.page, START_AUTO_PROMPT);
@@ -454,7 +454,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     enqueueChange(
       openAiCompatibleLab,
       'clear-allow',
-      'clear_capture',
+      'capture_clear',
       CLEAR_ALLOW_ANSWER,
     );
     await sendMessage(desktopApp.page, CLEAR_ALLOW_PROMPT);
@@ -506,7 +506,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     enqueueChange(
       openAiCompatibleLab,
       'clear-auto',
-      'clear_capture',
+      'capture_clear',
       CLEAR_AUTO_ANSWER,
     );
     await sendMessage(desktopApp.page, CLEAR_AUTO_PROMPT);
@@ -529,7 +529,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     await expect(recording).toHaveAttribute('aria-pressed', 'false');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['start_recording', 'clear_capture'] as const) {
+    for (const toolName of ['capture_start_recording', 'capture_clear'] as const) {
       await getByAutomationId(
         desktopApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),
@@ -539,20 +539,20 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
     openAiCompatibleLab.enqueueToolCall({
       callId: 'disabled-start',
-      name: 'start_recording',
+      name: 'capture_start_recording',
       arguments: {},
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'disabled-clear',
-      name: 'clear_capture',
+      name: 'capture_clear',
       arguments: {},
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [DISABLED_ANSWER] });
     await sendMessage(desktopApp.page, DISABLED_PROMPT);
     await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
     const disabledRequests = openAiCompatibleLab.requestsForAssertions().slice(disabledOffset);
-    expect(requestToolNames(disabledRequests[0]!)).not.toContain('start_recording');
-    expect(requestToolNames(disabledRequests[0]!)).not.toContain('clear_capture');
+    expect(requestToolNames(disabledRequests[0]!)).not.toContain('capture_start_recording');
+    expect(requestToolNames(disabledRequests[0]!)).not.toContain('capture_clear');
     disabledErrorCodes.push(
       errorCode(disabledRequests, 'disabled-start'),
       errorCode(disabledRequests, 'disabled-clear'),
@@ -589,7 +589,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     }));
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['start_recording', 'clear_capture'] as const) {
+    for (const toolName of ['capture_start_recording', 'capture_clear'] as const) {
       const toolSwitch = getByAutomationId(
         relaunchedApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),

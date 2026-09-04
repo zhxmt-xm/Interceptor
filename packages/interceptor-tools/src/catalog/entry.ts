@@ -22,8 +22,8 @@ export interface ToolDescriptor {
 }
 
 /**
- * Requests Tool discovery within one capability domain.
- * 请求在一个能力域内发现 Tool。
+ * Describes one Tool discovery request within a feature capability.
+ * 描述一个限定在 feature capability 内的 Tool discovery 请求。
  */
 export interface ToolDiscoveryQuery {
   readonly capabilityId: string;

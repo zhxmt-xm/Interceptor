@@ -34,17 +34,17 @@ const BODY_ANSWER = phrase('The JSON body and', 'WebSocket messages are availabl
 const GRPC_ANSWER = phrase('Both gRPC message', 'sides are available.');
 const DISABLED_ANSWER = phrase('Those body and message', 'Tools are unavailable.');
 const NEW_TOOL_NAMES = [
-  'get_exchange_body',
-  'list_websocket_messages',
-  'list_grpc_messages',
+  'capture_get_exchange_body',
+  'capture_list_websocket_messages',
+  'capture_list_grpc_messages',
 ] as const;
 const DISCOVERED_TRAFFIC_TOOL_NAMES = [
-  'get_proxy_status',
-  'get_storage_status',
-  'list_exchanges',
-  'get_exchange',
+  'capture_get_proxy_status',
+  'capture_get_storage_status',
+  'capture_list_exchanges',
+  'capture_get_exchange',
   ...NEW_TOOL_NAMES,
-  'stop_recording',
+  'capture_stop_recording',
 ] as const;
 
 interface BodyMessagesEvidence {
@@ -168,7 +168,7 @@ function arrayField(value: Readonly<Record<string, unknown>>, name: string): rea
   return field;
 }
 
-/** Read the response body identity returned by get_exchange. */
+/** Read the response body identity returned by capture_get_exchange. */
 function responseBodyId(result: Readonly<Record<string, unknown>>): string {
   const value = successfulValue(result, 'call-detail');
   if (!isRecord(value.detail) || !isRecord(value.detail.responseBody)) {
@@ -312,11 +312,11 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-discover',
       name: 'discover_tools',
-      arguments: { capabilityId: 'traffic' },
+      arguments: { capabilityId: 'capture' },
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-detail',
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       arguments: { exchangeId: httpExchangeId },
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [FIRST_ANSWER] });
@@ -339,22 +339,22 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     const bodyOffset = openAiCompatibleLab.requestsForAssertions().length;
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-body-first',
-      name: 'get_exchange_body',
+      name: 'capture_get_exchange_body',
       arguments: { exchangeId: httpExchangeId, bodyId, offset: 0, length: 10 },
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-body-rest',
-      name: 'get_exchange_body',
+      name: 'capture_get_exchange_body',
       arguments: { exchangeId: httpExchangeId, bodyId, offset: 10, length: 65_536 },
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-ws-all',
-      name: 'list_websocket_messages',
+      name: 'capture_list_websocket_messages',
       arguments: { exchangeId: webSocketExchangeId, limit: 200 },
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-ws-client',
-      name: 'list_websocket_messages',
+      name: 'capture_list_websocket_messages',
       arguments: { exchangeId: webSocketExchangeId, direction: 'client-to-server', limit: 200 },
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [BODY_ANSWER] });
@@ -424,12 +424,12 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     const grpcOffset = openAiCompatibleLab.requestsForAssertions().length;
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-grpc-request',
-      name: 'list_grpc_messages',
+      name: 'capture_list_grpc_messages',
       arguments: { exchangeId: grpcExchangeId, side: 'request', limit: 200 },
     });
     openAiCompatibleLab.enqueueToolCall({
       callId: 'call-grpc-response',
-      name: 'list_grpc_messages',
+      name: 'capture_list_grpc_messages',
       arguments: { exchangeId: grpcExchangeId, side: 'response', limit: 200 },
     });
     openAiCompatibleLab.enqueueTurn({ textChunks: [GRPC_ANSWER] });
@@ -519,15 +519,15 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     openAiCompatibleLab.enqueueToolCall({
       callId: 'disabled-discover',
       name: 'discover_tools',
-      arguments: { capabilityId: 'traffic' },
+      arguments: { capabilityId: 'capture' },
     });
     for (const name of NEW_TOOL_NAMES) {
       openAiCompatibleLab.enqueueToolCall({
         callId: `disabled-${name}`,
         name,
-        arguments: name === 'get_exchange_body'
+        arguments: name === 'capture_get_exchange_body'
           ? { exchangeId: httpExchangeId, bodyId }
-          : name === 'list_websocket_messages'
+          : name === 'capture_list_websocket_messages'
             ? { exchangeId: webSocketExchangeId }
             : { exchangeId: grpcExchangeId, side: 'response' },
       });

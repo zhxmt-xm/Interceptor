@@ -252,14 +252,14 @@ interface BreakpointOutcome {
 
 ### 6.1 Agent / MCP Tool入口 [已实现]
 
-共享registry已定义`list_breakpoints`、HTTP启停、WebSocket启停以及单项Continue、Forward edited、Drop八项。
+共享registry已定义`breakpoints_list`、HTTP启停、WebSocket启停以及单项Continue、Forward edited、Drop八项。
 Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Renderer与Agent/MCP看到同一pending集合。
 
 - `breakpointId`只标识当前Core pending；客户端abort、其他入口resolve或Core重启后即stale。审批前已知stale返回
     参数错误，描述后才失效的执行竞态返回Core `conflict`；两者都不得按列表位置改动另一个pending。
 - Ask摘要先读取目标pending，只展示phase、queue、URL/frame等必要影响，不回传完整敏感正文；Allow/Auto执行时
     Core再次按ID判定。
-- `forward_edited_breakpoint`按pending phase收窄字段：request只接受method、URL和文本body；response只接受status和
+- `breakpoints_forward_edited`按pending phase收窄字段：request只接受method、URL和文本body；response只接受status和
     文本body；WebSocket只接受文本body。跨phase字段在审批和执行前均拒绝；不接受headers、文件路径或close code。
 - HTTP与WebSocket pending都必须由正式UI配置和真实客户端流量产生。Tool测试不得直接构造queue成员。
 - Agent/MCP开关只决定Tool是否可发现/调用，不改变产品HTTP全局开关或当前WebSocket连接配置。

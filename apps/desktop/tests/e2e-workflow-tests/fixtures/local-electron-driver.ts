@@ -48,7 +48,7 @@ interface LocalWorkflowFixtures {
   webSocketLab: WebSocketLab;
   /** Random-port OpenAI-compatible endpoint owned by Agent workflows. */
   openAiCompatibleLab: OpenAiCompatibleLab;
-  /** Random-port self-signed TLS origin owned by Requests workflows. */
+  /** Random-port self-signed TLS origin owned by Composer workflows. */
   tlsOriginLab: TlsOriginLab;
   /** Real Browser Playground process owned by this workflow. */
   playgroundServer: PlaygroundServer;

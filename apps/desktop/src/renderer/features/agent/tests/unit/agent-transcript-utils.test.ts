@@ -24,8 +24,8 @@ function session(): AgentSessionSnapshot {
     items: [
       { kind: 'user-message', itemId: 'user-1', turnId: 'turn-1', content: 'Inspect.', createdAt: 1 },
       { kind: 'assistant-message', itemId: 'assistant-1', turnId: 'turn-1', content: '', reasoningContent: '', partial: false, createdAt: 2 },
-      { kind: 'tool-call', itemId: 'call-item', turnId: 'turn-1', callId: 'call-1', name: 'get_proxy_status', arguments: {}, status: 'completed', approval: null, createdAt: 3 },
-      { kind: 'tool-result', itemId: 'result-item', turnId: 'turn-1', callId: 'call-1', name: 'get_proxy_status', result: { ok: true, value: { recording: true } }, createdAt: 4 },
+      { kind: 'tool-call', itemId: 'call-item', turnId: 'turn-1', callId: 'call-1', name: 'capture_get_proxy_status', arguments: {}, status: 'completed', approval: null, createdAt: 3 },
+      { kind: 'tool-result', itemId: 'result-item', turnId: 'turn-1', callId: 'call-1', name: 'capture_get_proxy_status', result: { ok: true, value: { recording: true } }, createdAt: 4 },
       { kind: 'assistant-message', itemId: 'assistant-2', turnId: 'turn-1', content: 'Recording.', reasoningContent: '', partial: false, createdAt: 5 },
     ],
     turns: [{
@@ -88,15 +88,15 @@ describe('Agent transcript utilities', () => {
       ok: true,
       value: { matches: [{}, {}, {}] },
     })).toEqual({ kind: 'discovery', count: 3 });
-    expect(summarizeAgentToolResult('get_proxy_status', {
+    expect(summarizeAgentToolResult('capture_get_proxy_status', {
       ok: true,
       value: { recording: true, host: '127.0.0.1', port: 8888 },
     })).toEqual({ kind: 'proxy', recording: true, address: '127.0.0.1:8888' });
-    expect(summarizeAgentToolResult('start_recording', {
+    expect(summarizeAgentToolResult('capture_start_recording', {
       ok: true,
       value: { recording: true, host: '127.0.0.1', port: 8888 },
     })).toEqual({ kind: 'proxy', recording: true, address: '127.0.0.1:8888' });
-    expect(summarizeAgentToolResult('get_storage_status', {
+    expect(summarizeAgentToolResult('capture_get_storage_status', {
       ok: true,
       value: {
         sessionCount: 1,
@@ -107,7 +107,7 @@ describe('Agent transcript utilities', () => {
         totalBytes: 184,
       },
     })).toEqual({ kind: 'storage', exchangeCount: 1, bodyCount: 2, totalBytes: 184 });
-    expect(summarizeAgentToolResult('clear_capture', {
+    expect(summarizeAgentToolResult('capture_clear', {
       ok: true,
       value: {
         sessionCount: 0,
@@ -118,15 +118,15 @@ describe('Agent transcript utilities', () => {
         totalBytes: 4_096,
       },
     })).toEqual({ kind: 'storage', exchangeCount: 0, bodyCount: 0, totalBytes: 4_096 });
-    expect(summarizeAgentToolResult('list_exchanges', {
+    expect(summarizeAgentToolResult('capture_list_exchanges', {
       ok: true,
       value: { items: [{ id: 'exchange-1' }] },
     })).toEqual({ kind: 'exchanges', count: 1 });
-    expect(summarizeAgentToolResult('get_exchange', {
+    expect(summarizeAgentToolResult('capture_get_exchange', {
       ok: true,
       value: { detail: { summary: { method: 'GET', path: '/traffic', statusCode: 200 } } },
     })).toEqual({ kind: 'exchange', method: 'GET', path: '/traffic', status: '200' });
-    expect(summarizeAgentToolResult('get_exchange_body', {
+    expect(summarizeAgentToolResult('capture_get_exchange_body', {
       ok: true,
       value: {
         bodyId: 'body-1',
@@ -138,11 +138,11 @@ describe('Agent transcript utilities', () => {
         bytesRead: 14,
       },
     })).toEqual({ kind: 'body', bytesRead: 14, end: true, opaque: false });
-    expect(summarizeAgentToolResult('list_websocket_messages', {
+    expect(summarizeAgentToolResult('capture_list_websocket_messages', {
       ok: true,
       value: { items: [{ seq: 1 }, { seq: 2 }], hasMore: false, breakpoint: null },
     })).toEqual({ kind: 'websocket', count: 2, hasMore: false });
-    expect(summarizeAgentToolResult('list_grpc_messages', {
+    expect(summarizeAgentToolResult('capture_list_grpc_messages', {
       ok: true,
       value: { recognized: true, side: 'response', items: [{ index: 0 }], hasMore: true },
     })).toEqual({
@@ -152,11 +152,11 @@ describe('Agent transcript utilities', () => {
       hasMore: true,
       recognized: true,
     });
-    expect(summarizeAgentToolResult('list_grpc_messages', {
+    expect(summarizeAgentToolResult('capture_list_grpc_messages', {
       ok: true,
       value: { recognized: false, side: 'response', items: [], hasMore: false },
     })).toEqual({ kind: 'not-grpc' });
-    expect(summarizeAgentToolResult('get_rules', {
+    expect(summarizeAgentToolResult('rules_get_tree', {
       ok: true,
       value: {
         ruleSet: {
@@ -178,23 +178,23 @@ describe('Agent transcript utilities', () => {
         },
       },
     })).toEqual({ kind: 'rules', revision: 4, ruleCount: 1, enabledCount: 1 });
-    expect(summarizeAgentToolResult('get_rule_hits', {
+    expect(summarizeAgentToolResult('rules_get_hits', {
       ok: true,
       value: { counts: [{ ruleId: 'rule-1', count: 3 }, { ruleId: 'rule-2', count: 0 }] },
     })).toEqual({ kind: 'ruleHits', ruleCount: 2, totalHits: 3 });
-    expect(summarizeAgentToolResult('apply_rules', {
+    expect(summarizeAgentToolResult('rules_replace_tree', {
       ok: true,
       value: { revision: 5 },
     })).toEqual({ kind: 'rulesApplied', revision: 5 });
-    expect(summarizeAgentToolResult('list_breakpoints', {
+    expect(summarizeAgentToolResult('breakpoints_list', {
       ok: true,
       value: { enabled: true, breakpoints: [{ id: 'bp-1' }, { id: 'bp-2' }] },
     })).toEqual({ kind: 'breakpoints', count: 2, enabled: true });
-    expect(summarizeAgentToolResult('disable_http_breakpoints', {
+    expect(summarizeAgentToolResult('breakpoints_disable_http', {
       ok: true,
       value: { enabled: false },
     })).toEqual({ kind: 'breakpointConfig', enabled: false });
-    expect(summarizeAgentToolResult('continue_breakpoint', {
+    expect(summarizeAgentToolResult('breakpoints_continue', {
       ok: true,
       value: { breakpointId: 'bp-1', state: 'continued' },
     })).toEqual({
@@ -202,7 +202,7 @@ describe('Agent transcript utilities', () => {
       breakpointId: 'bp-1',
       state: 'continued',
     });
-    expect(summarizeAgentToolResult('send_request', {
+    expect(summarizeAgentToolResult('composer_send_request', {
       ok: true,
       value: {
         ok: true,
@@ -219,7 +219,7 @@ describe('Agent transcript utilities', () => {
       status: 201,
       totalBytes: 27,
     });
-    expect(summarizeAgentToolResult('probe_connection', {
+    expect(summarizeAgentToolResult('composer_probe_connection', {
       ok: true,
       value: {
         ok: true,
@@ -234,7 +234,7 @@ describe('Agent transcript utilities', () => {
       alpn: 'h2',
       certificateCount: 1,
     });
-    expect(summarizeAgentToolResult('probe_connection', {
+    expect(summarizeAgentToolResult('composer_probe_connection', {
       ok: true,
       value: { ok: false, error: 'connect ECONNREFUSED', certificates: [] },
     })).toEqual({
@@ -264,7 +264,7 @@ describe('Agent transcript utilities', () => {
         itemId: 'call-second',
         turnId: 'turn-1',
         callId: 'call-2',
-        name: 'get_exchange',
+        name: 'capture_get_exchange',
         arguments: { exchangeId: 'exchange-1' },
         status: 'completed' as const,
         approval: null,
@@ -275,7 +275,7 @@ describe('Agent transcript utilities', () => {
         itemId: 'result-second',
         turnId: 'turn-1',
         callId: 'call-2',
-        name: 'get_exchange',
+        name: 'capture_get_exchange',
         result: { ok: true as const, value: { detail: null } },
         createdAt: 7,
       },

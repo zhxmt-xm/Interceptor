@@ -15,7 +15,7 @@ describe('OpenAiCompatibleLab', () => {
     lab.enqueueToolCall({
       callId: 'call-discover',
       name: 'discover_tools',
-      arguments: { capabilityId: 'traffic' },
+      arguments: { capabilityId: 'capture' },
     });
 
     const response = await fetch(`${lab.baseUrl('tool-call')}/chat/completions`, {
@@ -38,7 +38,7 @@ describe('OpenAiCompatibleLab', () => {
               type: 'function',
               function: {
                 name: 'discover_tools',
-                arguments: JSON.stringify({ capabilityId: 'traffic' }),
+                arguments: JSON.stringify({ capabilityId: 'capture' }),
               },
             }],
           },

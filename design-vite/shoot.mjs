@@ -31,7 +31,7 @@ for (const feature of FEATURES) {
   }
 }
 for (const theme of ['light', 'dark']) {
-  shots.push({ feature: 'playground', theme, variant: 'tool-approval', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'mcp', playgroundSelectedTool: 'stop_recording', playgroundCallState: 'approval' } });
+  shots.push({ feature: 'playground', theme, variant: 'tool-approval', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'mcp', playgroundSelectedTool: 'capture_stop_recording', playgroundCallState: 'approval' } });
   shots.push({ feature: 'playground', theme, variant: 'capture-h1-json', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'capture', playgroundSelectedScenario: 'h1-json', playgroundRequestDraft: '{\n  "body": "",\n  "headers": {\n    "accept": "application/json"\n  },\n  "kind": "http",\n  "method": "GET",\n  "path": "/playground/h1-json",\n  "protocol": "h1"\n}', playgroundCaptureDetailWidth: 560, playgroundMcpDetailWidth: 560, playgroundCallState: 'complete' } });
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'rules', theme, variant: 'collapsed', state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
@@ -126,7 +126,7 @@ for (const theme of ['light', 'dark']) {
     theme,
     variant: 'settings-tool-capabilities-filtered',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentToolSearch: 'exchange', agentDisabledTools: ['get_exchange'] },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentToolSearch: 'exchange', agentDisabledTools: ['capture_get_exchange'] },
   });
   shots.push({
     feature: 'agent-models',
@@ -210,14 +210,14 @@ for (const theme of ['light', 'dark']) {
     theme,
     variant: 'panel-tool-approval',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'pending', agentToolApprovalName: 'stop_recording' },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'pending', agentToolApprovalName: 'capture_stop_recording' },
   });
   shots.push({
     feature: 'agent-models',
     theme,
     variant: 'panel-tool-result',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'allowed', agentToolApprovalName: 'clear_capture' },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: 'allowed', agentToolApprovalName: 'capture_clear' },
   });
   shots.push({
     feature: 'agent-models',
@@ -229,9 +229,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
-    variant: 'panel-traffic-tools',
+    variant: 'panel-capture-tools',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'traffic' },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'capture' },
   });
   shots.push({
     feature: 'agent-models',
@@ -250,9 +250,9 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
-    variant: 'panel-request-tools',
+    variant: 'panel-composer-tools',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'auto', agentToolTrace: 'requests', agentToolApproval: 'allowed', agentToolApprovalName: 'send_request' },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'auto', agentToolTrace: 'composer', agentToolApproval: 'allowed', agentToolApprovalName: 'composer_send_request' },
   });
   shots.push({
     feature: 'agent-models',
@@ -266,7 +266,7 @@ for (const theme of ['light', 'dark']) {
     theme,
     variant: 'panel-rules-result',
     appSize: { width: 1600, height: 900 },
-    state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules', agentToolApproval: 'allowed', agentToolApprovalName: 'apply_rules' },
+    state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules', agentToolApproval: 'allowed', agentToolApprovalName: 'rules_replace_tree' },
   });
 }
 for (const theme of ['light', 'dark']) {
@@ -544,7 +544,7 @@ async function shoot(list) {
       mcpCredentialGeneration: 0,
       mcpToolApproval: '',
       playgroundSection: 'capture',
-      playgroundSelectedTool: 'get_proxy_status',
+      playgroundSelectedTool: 'capture_get_proxy_status',
       playgroundSelectedScenario: 'h1-json',
       playgroundRequestDraft: '{\n  "body": "",\n  "headers": {\n    "accept": "application/json"\n  },\n  "kind": "http",\n  "method": "GET",\n  "path": "/playground/h1-json",\n  "protocol": "h1"\n}',
       playgroundCaptureDetailWidth: 560,

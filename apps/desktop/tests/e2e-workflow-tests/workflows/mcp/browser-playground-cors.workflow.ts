@@ -166,7 +166,7 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     const toolNames = JSON.parse(toolList.body).result.tools
       .map((tool: { name: string }) => tool.name) as string[];
     expect(toolNames).toHaveLength(24);
-    expect(toolNames).toContain('get_proxy_status');
+    expect(toolNames).toContain('capture_get_proxy_status');
 
     // 业务断言：query直接读取Core；change在Ask下分别由Developer拒绝和允许。
     // Business assertion: query reads Core directly; Ask-mode change is rejected and approved by the Developer.
@@ -177,8 +177,8 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
       configuration,
       3,
       'tools/call',
-      { name: 'get_proxy_status', arguments: {} },
-      'get_proxy_status',
+      { name: 'capture_get_proxy_status', arguments: {} },
+      'capture_get_proxy_status',
     );
     expect(proxyStatus.status).toBe(200);
     expect(proxyStatus.body).toContain('recording');
@@ -189,10 +189,10 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
       configuration,
       4,
       'tools/call',
-      { name: 'stop_recording', arguments: {} },
-      'stop_recording',
+      { name: 'capture_stop_recording', arguments: {} },
+      'capture_stop_recording',
     );
-    await expect(approval).toHaveAttribute('data-tool-name', 'stop_recording');
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny).click();
     const deniedResult = JSON.parse((await deniedCall).body).result as {
       content: Array<{ text?: string }>;
@@ -208,10 +208,10 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
       configuration,
       5,
       'tools/call',
-      { name: 'stop_recording', arguments: {} },
-      'stop_recording',
+      { name: 'capture_stop_recording', arguments: {} },
+      'capture_stop_recording',
     );
-    await expect(approval).toHaveAttribute('data-tool-name', 'stop_recording');
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     expect((await allowedCall).status).toBe(200);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))

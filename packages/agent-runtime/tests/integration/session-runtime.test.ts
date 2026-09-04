@@ -287,7 +287,7 @@ describe('AgentRuntime persistent Sessions', () => {
     const execute = vi.fn(() => ({ recording: false }));
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute,
@@ -308,7 +308,7 @@ describe('AgentRuntime persistent Sessions', () => {
                   index: 0,
                   id: 'call-denied-stop',
                   type: 'function',
-                  function: { name: 'stop_recording', arguments: '{}' },
+                  function: { name: 'capture_stop_recording', arguments: '{}' },
                 }],
               },
             }],
@@ -366,7 +366,7 @@ describe('AgentRuntime persistent Sessions', () => {
         ok: false,
         error: {
           code: 'tool_denied',
-          message: 'Tool "stop_recording" was denied by the user.',
+          message: 'Tool "capture_stop_recording" was denied by the user.',
         },
       },
     }));
@@ -380,7 +380,7 @@ describe('AgentRuntime persistent Sessions', () => {
     const fixture = await createFixture();
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute: vi.fn(() => ({ recording: false })),
@@ -400,7 +400,7 @@ describe('AgentRuntime persistent Sessions', () => {
                 index: 0,
                 id: 'call-cancel-stop',
                 type: 'function',
-                function: { name: 'stop_recording', arguments: '{}' },
+                function: { name: 'capture_stop_recording', arguments: '{}' },
               }],
             },
           }],
@@ -444,7 +444,7 @@ describe('AgentRuntime persistent Sessions', () => {
     const execute = vi.fn(() => ({ recording: false }));
     const stopRecording = defineTool({
       kind: 'change',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       description: 'Pause capture without stopping the proxy.',
       inputSchema: z.object({}).strict(),
       execute,
@@ -465,7 +465,7 @@ describe('AgentRuntime persistent Sessions', () => {
                   index: 0,
                   id: 'call-auto-stop',
                   type: 'function',
-                  function: { name: 'stop_recording', arguments: '{}' },
+                  function: { name: 'capture_stop_recording', arguments: '{}' },
                 }],
               },
             }],
@@ -716,7 +716,7 @@ describe('AgentRuntime persistent Sessions', () => {
           itemId: 'tool-call-crash',
           turnId: 'turn-crash',
           callId: 'call-crash',
-          name: 'stop_recording',
+          name: 'capture_stop_recording',
           arguments: {},
           status: 'running',
           approval: {
@@ -766,7 +766,7 @@ describe('AgentRuntime persistent Sessions', () => {
     });
     expect(restored.items.find((item) => item.kind === 'tool-result')).toMatchObject({
       callId: 'call-crash',
-      name: 'stop_recording',
+      name: 'capture_stop_recording',
       result: {
         ok: false,
         error: { code: 'tool_interrupted' },
@@ -1040,7 +1040,7 @@ describe('AgentRuntime persistent Sessions', () => {
         itemId: 'relationship-call',
         turnId,
         callId: 'relationship-call-id',
-        name: 'get_proxy_status',
+        name: 'capture_get_proxy_status',
         arguments: {},
         status: 'completed',
         approval: null,
@@ -1051,7 +1051,7 @@ describe('AgentRuntime persistent Sessions', () => {
         itemId: 'relationship-result',
         turnId,
         callId: 'relationship-call-id',
-        name: 'get_exchange',
+        name: 'capture_get_exchange',
         result: { ok: true, value: {} },
         createdAt: 4,
       },
@@ -1116,7 +1116,7 @@ describe('AgentRuntime persistent Sessions', () => {
         itemId: 'failed-call-item',
         turnId: failedWithoutResult.turns[0]!.turnId,
         callId: 'failed-call',
-        name: 'get_proxy_status',
+        name: 'capture_get_proxy_status',
         arguments: {},
         status: 'failed',
         approval: null,
@@ -1146,7 +1146,7 @@ describe('AgentRuntime persistent Sessions', () => {
           itemId: 'early-result',
           turnId: outOfOrder.turns[0]!.turnId,
           callId: 'ordered-call',
-          name: 'get_proxy_status',
+          name: 'capture_get_proxy_status',
           result: { ok: true, value: {} },
           createdAt: 3,
         },
@@ -1155,7 +1155,7 @@ describe('AgentRuntime persistent Sessions', () => {
           itemId: 'late-call',
           turnId: outOfOrder.turns[0]!.turnId,
           callId: 'ordered-call',
-          name: 'get_proxy_status',
+          name: 'capture_get_proxy_status',
           arguments: {},
           status: 'completed',
           approval: null,
@@ -1644,7 +1644,7 @@ describe('AgentRuntime persistent Sessions', () => {
     const execute = vi.fn(() => ({ listening: true, recording: true }));
     const readStatus = defineTool({
       kind: 'query',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       description: 'Read proxy status.',
       inputSchema: z.object({}).strict(),
       execute,
@@ -1680,7 +1680,7 @@ describe('AgentRuntime persistent Sessions', () => {
                   index: 0,
                   id: 'call-status',
                   type: 'function',
-                  function: { name: 'get_proxy_status', arguments: '{}' },
+                  function: { name: 'capture_get_proxy_status', arguments: '{}' },
                 }],
               },
             }],
@@ -1709,14 +1709,14 @@ describe('AgentRuntime persistent Sessions', () => {
     expect(completed.items[2]).toMatchObject({
       kind: 'tool-call',
       callId: 'call-status',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       arguments: {},
       status: 'completed',
     });
     expect(completed.items[3]).toMatchObject({
       kind: 'tool-result',
       callId: 'call-status',
-      name: 'get_proxy_status',
+      name: 'capture_get_proxy_status',
       result: { ok: true, value: { listening: true, recording: true } },
     });
     expect(completed.items[4]).toMatchObject({
@@ -1743,7 +1743,7 @@ describe('AgentRuntime persistent Sessions', () => {
                   index: 0,
                   id: 'call-status',
                   type: 'function',
-                  function: { name: 'get_proxy_status', arguments: '{}' },
+                  function: { name: 'capture_get_proxy_status', arguments: '{}' },
                 }],
               },
             }],
@@ -1766,7 +1766,7 @@ describe('AgentRuntime persistent Sessions', () => {
       { role: 'user', content: 'Check proxy status.' },
       {
         role: 'assistant',
-        tool_calls: [{ id: 'call-status', function: { name: 'get_proxy_status' } }],
+        tool_calls: [{ id: 'call-status', function: { name: 'capture_get_proxy_status' } }],
       },
       { role: 'tool', tool_call_id: 'call-status' },
       { role: 'assistant', content: 'Recording is on.' },

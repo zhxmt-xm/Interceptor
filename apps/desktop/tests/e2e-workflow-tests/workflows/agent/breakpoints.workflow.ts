@@ -22,14 +22,14 @@ import type { LoopbackLab } from '../../fixtures/loopback-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
 
 const BREAKPOINT_TOOL_NAMES = [
-  'list_breakpoints',
-  'enable_http_breakpoints',
-  'disable_http_breakpoints',
-  'enable_websocket_breakpoint',
-  'disable_websocket_breakpoint',
-  'continue_breakpoint',
-  'forward_edited_breakpoint',
-  'drop_breakpoint',
+  'breakpoints_list',
+  'breakpoints_enable_http',
+  'breakpoints_disable_http',
+  'breakpoints_enable_websocket',
+  'breakpoints_disable_websocket',
+  'breakpoints_continue',
+  'breakpoints_forward_edited',
+  'breakpoints_drop',
 ] as const;
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -301,7 +301,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   });
   openAiCompatibleLab.enqueueToolCall({
     callId: 'breakpoints-list',
-    name: 'list_breakpoints',
+    name: 'breakpoints_list',
     arguments: {},
   });
   openAiCompatibleLab.enqueueTurn({ textChunks: [answers.query] });
@@ -323,7 +323,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   enqueueTool(
     openAiCompatibleLab,
     'continue-deny',
-    'continue_breakpoint',
+    'breakpoints_continue',
     { breakpointId: first.breakpointId },
     answers.deny,
   );
@@ -345,7 +345,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   enqueueTool(
     openAiCompatibleLab,
     'continue-allow',
-    'continue_breakpoint',
+    'breakpoints_continue',
     { breakpointId: first.breakpointId },
     answers.allow,
   );
@@ -365,7 +365,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   enqueueTool(
     openAiCompatibleLab,
     'continue-stale',
-    'continue_breakpoint',
+    'breakpoints_continue',
     { breakpointId: first.breakpointId },
     answers.stale,
   );
@@ -390,7 +390,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     trafficTexts.editBody,
   );
   registerSensitiveText(edited.breakpointId);
-  enqueueTool(openAiCompatibleLab, 'forward-edited', 'forward_edited_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'forward-edited', 'breakpoints_forward_edited', {
     breakpointId: edited.breakpointId,
     method: 'PUT',
     body: trafficTexts.editedBody,
@@ -418,7 +418,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     trafficTexts.dropBody,
   );
   registerSensitiveText(dropped.breakpointId);
-  enqueueTool(openAiCompatibleLab, 'drop-auto', 'drop_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'drop-auto', 'breakpoints_drop', {
     breakpointId: dropped.breakpointId,
   }, answers.drop);
   await sendMessage(page, prompts.drop);
@@ -429,7 +429,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
 
   // HTTP配置：disable让后续POST直通，enable让下一条POST重新pending并可继续。
   // HTTP configuration: disable lets the next POST pass; enable makes the following POST pending again and resolvable.
-  enqueueTool(openAiCompatibleLab, 'http-disable', 'disable_http_breakpoints', {}, answers.disableHttp);
+  enqueueTool(openAiCompatibleLab, 'http-disable', 'breakpoints_disable_http', {}, answers.disableHttp);
   await sendMessage(page, prompts.disableHttp);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const disabledPath = '/e2e/agent/breakpoints/disabled';
@@ -441,7 +441,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   await expect.poll(() => loopbackLab.observation(disabledPath)?.body.toString('utf8'))
     .toBe(trafficTexts.disabledBody);
 
-  enqueueTool(openAiCompatibleLab, 'http-enable', 'enable_http_breakpoints', {}, answers.enableHttp);
+  enqueueTool(openAiCompatibleLab, 'http-enable', 'breakpoints_enable_http', {}, answers.enableHttp);
   await sendMessage(page, prompts.enableHttp);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const enabledPath = '/e2e/agent/breakpoints/enabled';
@@ -453,7 +453,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     trafficTexts.enabledBody,
   );
   registerSensitiveText(enabled.breakpointId);
-  enqueueTool(openAiCompatibleLab, 'continue-enabled', 'continue_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'continue-enabled', 'breakpoints_continue', {
     breakpointId: enabled.breakpointId,
   }, answers.enableHttp);
   await sendMessage(page, prompts.enableHttp);
@@ -477,7 +477,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   await expect(webSocketRow).toBeVisible();
   const exchangeId = await automationSuffix(webSocketRow, AUTOMATION_ID_PREFIXES.captureRequestRow);
   registerSensitiveText(exchangeId);
-  enqueueTool(openAiCompatibleLab, 'websocket-enable', 'enable_websocket_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'websocket-enable', 'breakpoints_enable_websocket', {
     exchangeId,
     direction: 'client-to-server',
     frames: ['message'],
@@ -506,7 +506,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   if (!webSocketBreakpointId) throw new Error('WebSocket pending did not expose breakpoint ID.');
   registerSensitiveText(webSocketBreakpointId);
 
-  enqueueTool(openAiCompatibleLab, 'websocket-list', 'list_breakpoints', {}, answers.listWebSocket);
+  enqueueTool(openAiCompatibleLab, 'websocket-list', 'breakpoints_list', {}, answers.listWebSocket);
   await sendMessage(page, prompts.listWebSocket);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const websocketPending = successfulValue(
@@ -516,7 +516,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   expect(Array.isArray(websocketPending) && websocketPending.some((entry) => (
     isRecord(entry) && entry.id === webSocketBreakpointId && entry.phase === 'websocket'
   ))).toBe(true);
-  enqueueTool(openAiCompatibleLab, 'websocket-continue', 'continue_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'websocket-continue', 'breakpoints_continue', {
     breakpointId: webSocketBreakpointId,
   }, answers.continueWebSocket);
   await sendMessage(page, prompts.continueWebSocket);
@@ -535,7 +535,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   const editBreakpointId = await editPendingRow.getAttribute('data-breakpoint-id');
   if (!editBreakpointId) throw new Error('Editable WebSocket pending did not expose breakpoint ID.');
   registerSensitiveText(editBreakpointId);
-  enqueueTool(openAiCompatibleLab, 'websocket-edit', 'forward_edited_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'websocket-edit', 'breakpoints_forward_edited', {
     breakpointId: editBreakpointId,
     body: editReplacement,
   }, answers.edit);
@@ -559,14 +559,14 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   const dropBreakpointId = await dropPendingRow.getAttribute('data-breakpoint-id');
   if (!dropBreakpointId) throw new Error('Dropped WebSocket pending did not expose breakpoint ID.');
   registerSensitiveText(dropBreakpointId);
-  enqueueTool(openAiCompatibleLab, 'websocket-drop', 'drop_breakpoint', {
+  enqueueTool(openAiCompatibleLab, 'websocket-drop', 'breakpoints_drop', {
     breakpointId: dropBreakpointId,
   }, answers.drop);
   await sendMessage(page, prompts.drop);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   await expect(dropPendingRow).toHaveCount(0);
 
-  enqueueTool(openAiCompatibleLab, 'websocket-disable', 'disable_websocket_breakpoint', {}, answers.disableWebSocket);
+  enqueueTool(openAiCompatibleLab, 'websocket-disable', 'breakpoints_disable_websocket', {}, answers.disableWebSocket);
   await sendMessage(page, prompts.disableWebSocket);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const afterDisable = trafficTexts.afterDisableMessage;
@@ -597,11 +597,11 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     arguments: { capabilityId: 'breakpoints' },
   });
   for (const toolName of BREAKPOINT_TOOL_NAMES) {
-    const argumentsByName: Record<string, unknown> = toolName === 'enable_websocket_breakpoint'
+    const argumentsByName: Record<string, unknown> = toolName === 'breakpoints_enable_websocket'
       ? { exchangeId, frames: ['message'] }
-      : toolName === 'continue_breakpoint' || toolName === 'drop_breakpoint'
+      : toolName === 'breakpoints_continue' || toolName === 'breakpoints_drop'
         ? { breakpointId: first.breakpointId }
-        : toolName === 'forward_edited_breakpoint'
+        : toolName === 'breakpoints_forward_edited'
           ? { breakpointId: first.breakpointId, body: '' }
           : {};
     openAiCompatibleLab.enqueueToolCall({

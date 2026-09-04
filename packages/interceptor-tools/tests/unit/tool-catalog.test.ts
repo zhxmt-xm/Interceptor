@@ -20,7 +20,7 @@ const capabilities: readonly ToolCapability[] = [
 
 const tools: readonly ToolDescriptor[] = [
   {
-    name: 'list_exchanges',
+    name: 'capture_list_exchanges',
     title: 'List exchanges',
     description: 'List captured exchanges and response summaries.',
     capabilityId: 'capture',
@@ -47,7 +47,7 @@ const tools: readonly ToolDescriptor[] = [
     },
   },
   {
-    name: 'get_rules',
+    name: 'rules_get_tree',
     title: 'Get rules',
     description: 'Return the current rule set.',
     capabilityId: 'rules',
@@ -90,7 +90,7 @@ describe('InterceptorToolCatalog', () => {
     const toolCatalog = new InterceptorToolCatalog(capabilities, tools);
 
     expect(toolCatalog.discover({ capabilityId: 'capture' }).map((match) => match.descriptor.name))
-      .toEqual(['list_exchanges', 'read_exchange_body']);
+      .toEqual(['capture_list_exchanges', 'read_exchange_body']);
     expect(toolCatalog.discover({ capabilityId: 'missing' })).toEqual([]);
   });
 
@@ -102,11 +102,11 @@ describe('InterceptorToolCatalog', () => {
     expect(() => new InterceptorToolCatalog(
       capabilities,
       [...tools, tools[0]!],
-    )).toThrow('Duplicate tool "list_exchanges".');
+    )).toThrow('Duplicate tool "capture_list_exchanges".');
     expect(() => new InterceptorToolCatalog(capabilities, [{
       ...tools[0]!,
       capabilityId: 'missing',
-    }])).toThrow('Tool "list_exchanges" references unknown capability "missing".');
+    }])).toThrow('Tool "capture_list_exchanges" references unknown capability "missing".');
   });
 
   it('keeps immutable snapshots of capabilities, descriptors, and nested schemas', () => {
@@ -123,7 +123,7 @@ describe('InterceptorToolCatalog', () => {
       additionalProperties: false,
     };
     const mutableTool = {
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       title: 'Get exchange',
       description: 'Return one captured exchange.',
       capabilityId: 'capture',
@@ -139,7 +139,7 @@ describe('InterceptorToolCatalog', () => {
     expect(toolCatalog.listCapabilities()[0]?.title).toBe('Capture');
     const descriptor = toolCatalog.discover({ capabilityId: 'capture' })[0]?.descriptor;
     expect(descriptor).toMatchObject({
-      name: 'get_exchange',
+      name: 'capture_get_exchange',
       inputSchema: {
         properties: {
           exchangeId: { type: 'string' },
@@ -156,6 +156,6 @@ describe('InterceptorToolCatalog', () => {
       schema.properties.exchangeId.type = 'number';
     }).toThrow(TypeError);
     expect(toolCatalog.discover({ capabilityId: 'capture' })[0]?.descriptor.name)
-      .toBe('get_exchange');
+      .toBe('capture_get_exchange');
   });
 });
