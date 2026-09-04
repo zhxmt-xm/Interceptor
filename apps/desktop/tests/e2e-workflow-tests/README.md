@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、90条Inventory与91份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、100条Inventory与101份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -281,6 +281,7 @@ diagnostics.row.<traceKey>
 | `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared | passed |
 | `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared | passed |
 | `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
+| `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI | passed |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 
@@ -290,6 +291,7 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `mcp.desktop.streamable-http` | 外部Host经loopback HTTP接入、授权Tool、同步Rules并跨重启保持状态 | shared | passed |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
+| `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
 
 详细步骤：[docs/mcp.md](docs/mcp.md)
 

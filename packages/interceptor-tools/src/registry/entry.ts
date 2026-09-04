@@ -3,6 +3,7 @@ import type {
   BreakpointEdit,
   CaptureBodyRef,
   CaptureExchangeDetail,
+  PendingBreakpoint,
   RuleHeaderPair,
   RuleNode,
   WebSocketBreakpointDirection,
@@ -28,6 +29,8 @@ import {
 import { InterceptorToolCatalog } from '../catalog/entry';
 import type { ToolCapability, ToolDescriptor } from '../catalog/entry';
 import type {
+  InterceptorToolChangeDescription,
+  InterceptorToolContext,
   InterceptorToolDefinition,
   InterceptorToolJsonSchema,
   InterceptorToolJsonSchemaProperty,
@@ -619,6 +622,20 @@ function buildChangeTools(
           items: property('string', 'One frame kind.', { enum: ['message', 'ping', 'pong', 'close'] }),
         }),
       }, ['exchangeId', 'frames']),
+      async describeChange(args) {
+        rejectUnknownKeys(args, ['exchangeId', 'direction', 'frames']);
+        const exchangeId = requireString(args, 'exchangeId');
+        const direction = optionalEnum(args, 'direction', WEBSOCKET_DIRECTIONS) ?? 'both';
+        const frames = requireStringArray(args, 'frames', WEBSOCKET_FRAMES);
+        return {
+          lines: [
+            `Connection: ${exchangeId}`,
+            `Direction: ${direction}`,
+            `Frames: ${frames.join(', ')}`,
+          ],
+          metadata: { exchangeId, direction, frameCount: frames.length },
+        };
+      },
       async execute(args, context) {
         rejectUnknownKeys(args, ['exchangeId', 'direction', 'frames']);
         const result = await context.host.invoke({
@@ -638,6 +655,7 @@ function buildChangeTools(
       'Resume frames on the selected connection.',
       'breakpoints',
       { type: 'websocket.breakpoint.disable', payload: {} },
+      'The active WebSocket breakpoint configuration will be disabled.',
     ),
     breakpointResolveTool(
       'continue_breakpoint',
@@ -661,9 +679,20 @@ function buildChangeTools(
         statusCode: property('integer', 'Replacement response status.', { minimum: 100 }),
         body: property('string', 'Replacement body; empty text explicitly clears it.'),
       }, ['breakpointId']),
-      async describeChange(args) {
+      async describeChange(args, context) {
+        rejectUnknownKeys(args, ['breakpointId', 'method', 'url', 'statusCode', 'body']);
+        const edit = buildBreakpointEdit(args);
+        if (edit === null) {
+          throw new InterceptorToolArgumentError(
+            'forward_edited_breakpoint requires at least one edit',
+          );
+        }
+        const breakpoint = await requirePendingBreakpoint(args, context);
+        validateBreakpointEdit(breakpoint, edit);
+        const current = describePendingBreakpointValue(breakpoint);
         return {
-          lines: [`Breakpoint ${requireString(args, 'breakpointId')}`, ...describeEdit(args)],
+          lines: [...current.lines, ...describeEdit(args)],
+          metadata: current.metadata,
         };
       },
       async execute(args, context) {
@@ -674,6 +703,8 @@ function buildChangeTools(
             'forward_edited_breakpoint requires at least one edit',
           );
         }
+        const breakpoint = await requirePendingBreakpoint(args, context);
+        validateBreakpointEdit(breakpoint, edit);
         const result = await context.host.invoke({
           type: 'breakpoint.resolve',
           payload: {
@@ -813,7 +844,7 @@ function commandChange(
   effectDescription?: string,
 ): InterceptorToolDefinition {
   return {
-      ...(effectDescription === undefined ? {} : { effectDescription }),
+    ...(effectDescription === undefined ? {} : { effectDescription }),
     name,
     title,
     description,
@@ -822,6 +853,12 @@ function commandChange(
     destructive: false,
     openWorld: false,
     inputSchema: schema(),
+    ...(command.type === 'breakpoint.configure' ? {
+      describeChange: (
+        args: Readonly<Record<string, unknown>>,
+        context: InterceptorToolContext,
+      ) => describeHttpBreakpointConfiguration(args, context, command.payload.enabled),
+    } : {}),
     async execute(args, context) {
       rejectUnknownKeys(args, []);
       switch (command.type) {
@@ -857,6 +894,10 @@ function breakpointResolveTool(
     inputSchema: schema({
       breakpointId: property('string', 'Identifier from list_breakpoints.'),
     }, ['breakpointId']),
+    async describeChange(args, context) {
+      rejectUnknownKeys(args, ['breakpointId']);
+      return describePendingBreakpoint(args, context);
+    },
     async execute(args, context) {
       rejectUnknownKeys(args, ['breakpointId']);
       const result = await context.host.invoke({
@@ -866,6 +907,96 @@ function breakpointResolveTool(
       return result.payload;
     },
   };
+}
+
+/** Describes one HTTP breakpoint toggle from the current pending state. */
+async function describeHttpBreakpointConfiguration(
+  args: Readonly<Record<string, unknown>>,
+  context: InterceptorToolContext,
+  nextEnabled: boolean,
+): Promise<InterceptorToolChangeDescription> {
+  rejectUnknownKeys(args, []);
+  const current = await context.host.invoke(
+    { type: 'breakpoint.list', payload: {} },
+    context.abortSignal,
+  );
+  return {
+    lines: [
+      `HTTP breakpoints: ${current.payload.enabled ? 'enabled' : 'disabled'} → ${nextEnabled ? 'enabled' : 'disabled'}`,
+      `Currently pending: ${current.payload.breakpoints.length}`,
+    ],
+    metadata: {
+      currentEnabled: current.payload.enabled,
+      nextEnabled,
+      pendingCount: current.payload.breakpoints.length,
+    },
+  };
+}
+
+/** Finds one current pending and returns a bounded approval description. */
+async function describePendingBreakpoint(
+  args: Readonly<Record<string, unknown>>,
+  context: InterceptorToolContext,
+): Promise<InterceptorToolChangeDescription> {
+  return describePendingBreakpointValue(await requirePendingBreakpoint(args, context));
+}
+
+/** Finds one current pending by its Core-owned identity. */
+async function requirePendingBreakpoint(
+  args: Readonly<Record<string, unknown>>,
+  context: InterceptorToolContext,
+): Promise<PendingBreakpoint> {
+  const breakpointId = requireString(args, 'breakpointId');
+  const current = await context.host.invoke(
+    { type: 'breakpoint.list', payload: {} },
+    context.abortSignal,
+  );
+  const breakpoint = current.payload.breakpoints.find(
+    (candidate) => candidate.id === breakpointId,
+  );
+  if (!breakpoint) {
+    throw new InterceptorToolArgumentError(
+      `breakpoint "${breakpointId}" is no longer pending; re-read with list_breakpoints`,
+    );
+  }
+  return breakpoint;
+}
+
+/** Builds one bounded approval description from a current pending. */
+function describePendingBreakpointValue(
+  breakpoint: PendingBreakpoint,
+): InterceptorToolChangeDescription {
+  const target = describeBreakpointTarget(breakpoint);
+  return {
+    lines: [
+      `Breakpoint: ${breakpoint.id}`,
+      `Phase: ${breakpoint.phase}`,
+      `Queue: ${breakpoint.queueKey}`,
+      `Target: ${target}`,
+    ],
+    metadata: {
+      breakpointId: breakpoint.id,
+      phase: breakpoint.phase,
+      queueKey: breakpoint.queueKey,
+      ...(breakpoint.ruleId === undefined ? {} : { ruleId: breakpoint.ruleId }),
+      ...(breakpoint.exchangeId === undefined ? {} : { exchangeId: breakpoint.exchangeId }),
+      target,
+    },
+  };
+}
+
+/** Formats one pending target without including headers or body content. */
+function describeBreakpointTarget(breakpoint: PendingBreakpoint): string {
+  if (breakpoint.phase === 'websocket') {
+    return [
+      breakpoint.direction ?? 'unknown-direction',
+      breakpoint.frame ?? 'frame',
+      breakpoint.exchangeId === undefined ? '' : `on ${breakpoint.exchangeId}`,
+    ].filter((part) => part.length > 0).join(' ');
+  }
+  return [breakpoint.method, breakpoint.url]
+    .filter((part): part is string => part !== undefined && part.length > 0)
+    .join(' ') || breakpoint.ruleName;
 }
 
 /** Creates a JSON Schema object. */
@@ -936,6 +1067,25 @@ function buildBreakpointEdit(args: Readonly<Record<string, unknown>>): Breakpoin
   if (statusCode !== undefined) edit.statusCode = statusCode;
   if (body !== undefined) edit.body = body;
   return Object.keys(edit).length === 0 ? null : edit;
+}
+
+/** Rejects HTTP fields that cannot affect the selected Breakpoint phase. */
+function validateBreakpointEdit(breakpoint: PendingBreakpoint, edit: BreakpointEdit): void {
+  let invalidField: string | undefined;
+  if (breakpoint.phase === 'request') {
+    if (edit.statusCode !== undefined) invalidField = 'statusCode';
+  } else if (breakpoint.phase === 'response') {
+    if (edit.method !== undefined) invalidField = 'method';
+    else if (edit.url !== undefined) invalidField = 'url';
+  } else {
+    if (edit.method !== undefined) invalidField = 'method';
+    else if (edit.url !== undefined) invalidField = 'url';
+    else if (edit.statusCode !== undefined) invalidField = 'statusCode';
+  }
+  if (invalidField === undefined) return;
+  throw new InterceptorToolArgumentError(
+    `"${invalidField}" cannot edit a ${breakpoint.phase} breakpoint`,
+  );
 }
 
 /** Describes explicit breakpoint edits for an ask-mode UI. */

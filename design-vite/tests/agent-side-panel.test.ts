@@ -510,3 +510,26 @@ test('Agent Rules Tool activity summarizes tree, hits and applied revision', asy
   await expect(result).toHaveAttribute('data-approval-status', 'allowed');
   expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
+
+test('Agent Breakpoints Tool activity keeps pending and resolution summaries scannable', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'auto',
+    agentToolTrace: 'breakpoints',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
+  await expect(trace.locator('[data-tool-name="list_breakpoints"]'))
+    .toContainText('Pending breakpoints: 1 · Enabled');
+  await expect(trace.locator('[data-tool-name="disable_http_breakpoints"]'))
+    .toContainText('Disabled');
+  await expect(trace.locator('[data-tool-name="continue_breakpoint"]'))
+    .toContainText('Continued · bp-agent-request');
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('bp-agent-request continued');
+  expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});

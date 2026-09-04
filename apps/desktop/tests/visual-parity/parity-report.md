@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-09-02T16:34:46.424Z
+Generated: 2026-09-04T11:04:08.709Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 198 |
-| Average pixel diff | 2.10% |
-| Targets | 1362 |
-| Matched | 1327 |
-| Missing | 35 |
-| Flagged | 305 |
+| Views checked | 206 |
+| Average pixel diff | 2.11% |
+| Targets | 1426 |
+| Matched | 1396 |
+| Missing | 30 |
+| Flagged | 304 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -21,13 +21,17 @@ Generated: 2026-09-02T16:34:46.424Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
-| agent-panel-unconfigured | 1.98% | 8 | 8 | 0 | 0 | 0.7 px |
-| agent-panel-chat | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-unconfigured | 1.96% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-chat | 2.90% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-traffic-tools | 2.68% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools | 2.78% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools | 2.69% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools | 2.30% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result | 2.47% | 7 | 7 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 2.01% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat | 2.00% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped | 2.27% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed | 2.25% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -49,11 +53,15 @@ Generated: 2026-09-02T16:34:46.424Z
 | settings-agent-deepseek-dialog | 5.01% | 12 | 12 | 0 | 0 | 0.7 px |
 | settings-agent-custom-edit-dialog | 4.87% | 8 | 8 | 0 | 0 | 0.7 px |
 | settings-agent-remove-provider | 4.46% | 4 | 4 | 0 | 0 | 0.7 px |
-| agent-panel-unconfigured-dark | 1.96% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-traffic-tools-dark | 2.64% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools-dark | 2.75% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools-dark | 2.39% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result-dark | 2.51% | 7 | 7 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval-dark | 2.90% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
 | agent-panel-new-chat-dark | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
@@ -74,7 +82,7 @@ Generated: 2026-09-02T16:34:46.424Z
 | settings-mcp-regenerate-dark | 1.44% | 4 | 4 | 0 | 0 | 0.8 px |
 | mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 1 | 40.0 px |
+| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 0 | 0.7 px |
 | settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
 | settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
@@ -84,26 +92,26 @@ Generated: 2026-09-02T16:34:46.424Z
 | breakpoint-request-body-file-empty | 2.46% | 11 | 11 | 0 | 10 | 302.1 px |
 | breakpoint-request-body-file | 2.51% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-response-paused | 2.63% | 11 | 11 | 0 | 6 | 1.6 px |
-| breakpoint-response-body-loaded | 2.41% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-body-loaded | 2.71% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace | 2.66% | 12 | 11 | 1 | 6 | 2.0 px |
 | breakpoint-response-body-file-empty | 2.68% | 12 | 12 | 0 | 7 | 302.1 px |
 | breakpoint-response-body-file | 2.74% | 12 | 12 | 0 | 6 | 2.0 px |
-| breakpoint-request-paused-dark | 2.61% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-paused-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loaded-dark | 2.78% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-replace-dark | 2.73% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-request-body-file-empty-dark | 2.75% | 11 | 11 | 0 | 10 | 302.1 px |
-| breakpoint-request-body-file-dark | 2.81% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-replace-dark | 2.47% | 11 | 11 | 0 | 7 | 3.0 px |
+| breakpoint-request-body-file-empty-dark | 2.50% | 11 | 11 | 0 | 10 | 302.1 px |
+| breakpoint-request-body-file-dark | 2.55% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-response-paused-dark | 2.67% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-loaded-dark | 2.76% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace-dark | 2.70% | 12 | 11 | 1 | 6 | 2.0 px |
 | breakpoint-response-body-file-empty-dark | 2.73% | 12 | 12 | 0 | 7 | 302.1 px |
 | breakpoint-response-body-file-dark | 2.79% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
-| breakpoint-queue-queued | 2.52% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 2.56% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
-| breakpoint-queue-queued-dark | 2.63% | 3 | 3 | 0 | 0 | 0.0 px |
+| breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
 | breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
 | statusbar-upstream-down | 1.80% | 1 | 1 | 0 | 0 | 0.5 px |
@@ -162,11 +170,11 @@ Generated: 2026-09-02T16:34:46.424Z
 | rules-export-loading-dark | 0.07% | 1 | 1 | 0 | 0 | 0.1 px |
 | rules-action-tag-overflow-light | 2.77% | 9 | 9 | 0 | 0 | 0.3 px |
 | rules-action-tag-overflow-dark | 2.82% | 9 | 9 | 0 | 0 | 0.3 px |
-| rules-add-action | 3.60% | 1 | 1 | 0 | 0 | 0.6 px |
+| rules-add-action | 3.62% | 1 | 1 | 0 | 0 | 0.6 px |
 | rules-select-dropdown | 2.71% | 1 | 1 | 0 | 0 | 0.0 px |
 | composer | 1.59% | 9 | 9 | 0 | 2 | 0.9 px |
 | composer-import-confirm-light | 0.62% | 8 | 8 | 0 | 0 | 0.5 px |
-| composer-import-loading-light | 0.42% | 1 | 0 | 1 | 0 | 0.0 px |
+| composer-import-loading-light | 0.42% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-export-loading-light | 0.42% | 1 | 1 | 0 | 0 | 0.1 px |
 | composer-import-confirm-dark | 0.17% | 8 | 8 | 0 | 0 | 0.5 px |
 | composer-import-loading-dark | 0.08% | 1 | 1 | 0 | 0 | 0.1 px |
@@ -182,8 +190,8 @@ Generated: 2026-09-02T16:34:46.424Z
 | settings-app-container-enable-all-dark | 0.34% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
 | tls-compatibility-dialog-add | 1.13% | 2 | 2 | 0 | 0 | 0.4 px |
-| settings-tls-passthrough | 1.11% | 9 | 7 | 2 | 2 | 131.2 px |
-| settings-tls-passthrough-dark | 1.10% | 9 | 7 | 2 | 2 | 131.2 px |
+| settings-tls-passthrough | 1.11% | 9 | 9 | 0 | 2 | 1.1 px |
+| settings-tls-passthrough-dark | 1.10% | 9 | 9 | 0 | 2 | 1.1 px |
 | tls-compatibility-dialog | 0.76% | 8 | 8 | 0 | 1 | 1.7 px |
 | tls-compatibility-dialog-dark | 0.29% | 8 | 8 | 0 | 1 | 1.7 px |
 | settings-updates-checking | 1.59% | 13 | 13 | 0 | 3 | 13.8 px |
@@ -296,12 +304,44 @@ Generated: 2026-09-02T16:34:46.424Z
 | agent-panel-body-message-tools | gRPC Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools | Read the JSON response body, WebSocket messages, and gRPC response messages. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools | The JSON body is ready. WebSocket has 2 messages, and the gRPC response contains 1 message. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Breakpoints discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Pending list | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | HTTP disable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | HTTP enable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Breakpoint resolution | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | Inspect the waiting request, verify HTTP Breakpoint controls, then continue it. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools | One request was waiting. HTTP Breakpoints were verified and bp-agent-request continued. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Rules discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Rule tree result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Rule hits result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Read the current Rule tree and its real Capture hit counts. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools | Revision 1 contains 1 enabled Rule with 1 captured hit. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | apply_rules | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Revision 2 applied | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result | Revision 2 is now applied with the approved Rule effect. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-approval | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| agent-panel-tool-result | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | clear_capture | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result | Exchanges 0 · Bodies 0 · 4 KB | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto | Agent model selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -481,12 +521,44 @@ Generated: 2026-09-02T16:34:46.424Z
 | agent-panel-body-message-tools-dark | gRPC Tool Call | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools-dark | Read the JSON response body, WebSocket messages, and gRPC response messages. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-body-message-tools-dark | The JSON body is ready. WebSocket has 2 messages, and the gRPC response contains 1 message. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Breakpoints discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Pending list | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | HTTP disable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | HTTP enable | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Breakpoint resolution | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | Inspect the waiting request, verify HTTP Breakpoint controls, then continue it. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-breakpoint-tools-dark | One request was waiting. HTTP Breakpoints were verified and bp-agent-request continued. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Rules discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Rule tree result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Rule hits result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Read the current Rule tree and its real Capture hit counts. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-tools-dark | Revision 1 contains 1 enabled Rule with 1 captured hit. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | apply_rules | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Revision 2 applied | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-rules-result-dark | Revision 2 is now applied with the approved Rule effect. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
 | agent-panel-tool-approval-dark | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| agent-panel-tool-result-dark | Agent Tool result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | clear_capture | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-tool-result-dark | Exchanges 0 · Bodies 0 · 4 KB | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-auto-dark | Agent model selector | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -613,7 +685,7 @@ Generated: 2026-09-02T16:34:46.424Z
 | settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
 | settings-agent-deepseek-dialog-dark | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -1176,7 +1248,7 @@ Generated: 2026-09-02T16:34:46.424Z
 | composer-import-confirm-light | Skipped list | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | composer-import-confirm-light | Cancel | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
 | composer-import-confirm-light | Import 9 requests | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| composer-import-loading-light | File busy panel | n/a | n/a | n/a | n/a | n/a | none | app missing |
+| composer-import-loading-light | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | composer-export-loading-light | File busy panel | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | composer-import-confirm-dark | Import header | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
 | composer-import-confirm-dark | Import file name | 0.0 px | 0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
@@ -1270,24 +1342,24 @@ Generated: 2026-09-02T16:34:46.424Z
 | settings-app-container-disable-all-dark | Continue to Windows approval | -0.9 px | 0.0 px | 0.9 px | 0.0 px | 0.9 px | none | ok |
 | tls-compatibility-dialog-add | Passthrough host patterns | 0.0 px | 0.0 px | -0.4 px | -0.1 px | 0.4 px | none | ok |
 | tls-compatibility-dialog-add | TLS host rows | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-tls-passthrough | Hostname or wildcard | 0.0 px | 0.4 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
-| settings-tls-passthrough | Add | 0.1 px | -0.1 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough | Passthrough host patterns | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
-| settings-tls-passthrough | Matched before HTTPS interception | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough | *.wvd.microsoft.com | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
-| settings-tls-passthrough | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
-| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.4 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | Add | 0.1 px | -0.1 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
-| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough-dark | *.wvd.microsoft.com | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough-dark | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
-| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
+| settings-tls-passthrough | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-tls-passthrough | Hostname or wildcard | 0.0 px | 0.0 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
+| settings-tls-passthrough | Add | 0.1 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough | Passthrough host patterns | 0.0 px | 0.5 px | -0.4 px | -0.1 px | 0.5 px | none | ok |
+| settings-tls-passthrough | Matched before HTTPS interception | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough | *.wvd.microsoft.com | 0.0 px | -0.7 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
+| settings-tls-passthrough | Windows 365 · Recommended | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| settings-tls-passthrough | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| settings-tls-passthrough | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
+| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.0 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Add | 0.1 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.5 px | -0.4 px | -0.1 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | *.wvd.microsoft.com | 0.0 px | -0.7 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
+| settings-tls-passthrough-dark | Windows 365 · Recommended | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
 | tls-compatibility-dialog | TLS interception may be incompatible | 0.0 px | 0.1 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
 | tls-compatibility-dialog | The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-compatibility-dialog | rdweb.wvd.microsoft.com | 0.0 px | 0.0 px | 0.0 px | -0.9 px | 0.9 px | none | ok |

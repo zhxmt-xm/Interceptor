@@ -243,6 +243,13 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
+    variant: 'panel-breakpoint-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'auto', agentToolTrace: 'breakpoints' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
     variant: 'panel-rules-tools',
     appSize: { width: 1600, height: 900 },
     state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules' },

@@ -103,6 +103,11 @@ describe('McpToolRegistry', () => {
       destructiveHint: true,
     });
     expect(byName.get('send_request')?.annotations).toMatchObject({ openWorldHint: true });
+    expect(byName.get('list_breakpoints')?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(byName.get('drop_breakpoint')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+    });
   });
 
   it('never registers commands that touch trust roots, system proxy or the file system', () => {
@@ -303,6 +308,23 @@ describe('McpToolRegistry', () => {
 
   it('continues a breakpoint unchanged without fabricating an edit', async () => {
     const fakeHost = new FakeHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: 'bp1',
+            phase: 'request',
+            queueKey: 'http',
+            createdAt: 1,
+            ruleName: 'Pause API',
+            method: 'GET',
+            url: 'http://api.test/items',
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      },
       'breakpoint.resolve': {
         type: 'breakpoint.resolution',
         payload: { breakpointId: 'bp1', state: 'continued' },
@@ -312,9 +334,69 @@ describe('McpToolRegistry', () => {
 
     await call(mcpToolRegistry, 'continue_breakpoint', { breakpointId: 'bp1' });
 
+    expect(fakeHost.approvals).toHaveLength(1);
+    expect(fakeHost.approvals[0]?.diff).toContain('Breakpoint: bp1');
+    expect(fakeHost.commands[0]).toEqual({ type: 'breakpoint.list', payload: {} });
     const resolve = fakeHost.commands.find((command) => command.type === 'breakpoint.resolve');
     expect(resolve).toBeDefined();
     expect(resolve).not.toHaveProperty('payload.edit');
+  });
+
+  it('denies a current Breakpoint after showing its bounded dynamic impact', async () => {
+    const fakeHost = new FakeHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: 'bp1',
+            phase: 'request',
+            queueKey: 'http',
+            createdAt: 1,
+            ruleName: 'Pause API',
+            method: 'GET',
+            url: 'http://api.test/items',
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      },
+    }, 'rejected');
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
+
+    const outcome = await call(mcpToolRegistry, 'continue_breakpoint', {
+      breakpointId: 'bp1',
+    });
+
+    expect(outcome.ok).toBe(false);
+    expect(fakeHost.approvals[0]?.diff).toEqual([
+      'Breakpoint: bp1',
+      'Phase: request',
+      'Queue: http',
+      'Target: GET http://api.test/items',
+    ]);
+    expect(fakeHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
+  });
+
+  it('rejects a stale Breakpoint before creating an approval', async () => {
+    const fakeHost = new FakeHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: { enabled: true, breakpoints: [] },
+      },
+    });
+    const mcpToolRegistry = new McpToolRegistry(fakeHost);
+
+    const outcome = await call(mcpToolRegistry, 'drop_breakpoint', {
+      breakpointId: 'bp-stale',
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      payload: { error: expect.stringContaining('is no longer pending') },
+    });
+    expect(fakeHost.approvals).toEqual([]);
+    expect(fakeHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
   });
 
   it('enables a WebSocket breakpoint', async () => {

@@ -214,6 +214,238 @@ describe('AgentToolService', () => {
     expect(tool(snapshot, 'apply_rules').kind).toBe('change');
   });
 
+  it('discovers and discloses exactly the eight connected Breakpoints Tools', async () => {
+    const service = new AgentToolService(
+      new FakeCoreRuntime(),
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'breakpoints' },
+      { abortSignal: new AbortController().signal },
+    );
+    const names = [
+      'list_breakpoints',
+      'enable_http_breakpoints',
+      'disable_http_breakpoints',
+      'enable_websocket_breakpoint',
+      'disable_websocket_breakpoint',
+      'continue_breakpoint',
+      'forward_edited_breakpoint',
+      'drop_breakpoint',
+    ];
+
+    expect(discovery).toMatchObject({
+      ok: true,
+      value: {
+        matches: names.map((name) => ({ descriptor: { name } })),
+      },
+    });
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'breakpoints'));
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      ...names,
+    ]);
+    expect(tool(snapshot, 'list_breakpoints').kind).toBe('query');
+    for (const name of names.slice(1)) {
+      expect(tool(snapshot, name).kind).toBe('change');
+    }
+  });
+
+  it('executes all eight Breakpoints Tools through CoreRuntime', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('breakpoint.list', {
+      type: 'breakpoint.pending',
+      payload: {
+        enabled: true,
+        breakpoints: ['bp-1', 'bp-2'].map((id) => ({
+          id,
+          phase: 'request' as const,
+          queueKey: 'http' as const,
+          createdAt: 1,
+          ruleName: 'Pause API',
+          headers: [],
+          bodyAvailable: false,
+        })),
+      },
+    });
+    coreRuntime.results.set('breakpoint.configure', {
+      type: 'breakpoint.config',
+      payload: { enabled: true },
+    });
+    coreRuntime.results.set('websocket.breakpoint.enable', {
+      type: 'websocket.breakpoint.state',
+      payload: { enabled: true, settings: null },
+    });
+    coreRuntime.results.set('websocket.breakpoint.disable', {
+      type: 'websocket.breakpoint.state',
+      payload: { enabled: false, settings: null },
+    });
+    coreRuntime.results.set('breakpoint.resolve', {
+      type: 'breakpoint.resolution',
+      payload: { breakpointId: 'bp-1', state: 'continued' },
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'breakpoints' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'breakpoints'));
+    const abortController = new AbortController();
+
+    await tool(snapshot, 'list_breakpoints').execute({}, { abortSignal: abortController.signal });
+    await tool(snapshot, 'enable_http_breakpoints').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'disable_http_breakpoints').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'enable_websocket_breakpoint').execute(
+      { exchangeId: 'exchange-ws', frames: ['message'] },
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'disable_websocket_breakpoint').execute(
+      {},
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'continue_breakpoint').execute(
+      { breakpointId: 'bp-1' },
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'forward_edited_breakpoint').execute(
+      { breakpointId: 'bp-2', body: '' },
+      { abortSignal: abortController.signal },
+    );
+    await tool(snapshot, 'drop_breakpoint').execute(
+      { breakpointId: 'bp-3' },
+      { abortSignal: abortController.signal },
+    );
+
+    expect(coreRuntime.commands).toEqual([
+      { type: 'breakpoint.list', payload: {} },
+      { type: 'breakpoint.configure', payload: { enabled: true } },
+      { type: 'breakpoint.configure', payload: { enabled: false } },
+      {
+        type: 'websocket.breakpoint.enable',
+        payload: { exchangeId: 'exchange-ws', direction: 'both', frames: ['message'] },
+      },
+      { type: 'websocket.breakpoint.disable', payload: {} },
+      { type: 'breakpoint.resolve', payload: { breakpointId: 'bp-1', action: 'continue' } },
+      { type: 'breakpoint.list', payload: {} },
+      {
+        type: 'breakpoint.resolve',
+        payload: { breakpointId: 'bp-2', action: 'continue', edit: { body: '' } },
+      },
+      { type: 'breakpoint.resolve', payload: { breakpointId: 'bp-3', action: 'drop' } },
+    ]);
+    expect(coreRuntime.abortSignals).toEqual(Array(9).fill(abortController.signal));
+  });
+
+  it('rejects a Breakpoint Tool disabled after disclosure without invoking CoreRuntime', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    const settings = new FakeToolCapabilitySettingsService();
+    const service = new AgentToolService(
+      coreRuntime,
+      settings,
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'breakpoints' },
+      { abortSignal: new AbortController().signal },
+    );
+    const continueBreakpoint = tool(
+      service.snapshot(discoveredHistory(discovery, 'breakpoints')),
+      'continue_breakpoint',
+    );
+
+    settings.agentDisabledToolNames = ['continue_breakpoint'];
+    const result = await continueBreakpoint.execute(
+      { breakpointId: 'bp-1' },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'unknown_tool',
+        message: 'Unknown tool "continue_breakpoint".',
+      },
+    });
+    expect(coreRuntime.commands).toEqual([]);
+  });
+
+  it('describes one pending Breakpoint with bounded metadata and rejects stale IDs', async () => {
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('breakpoint.list', {
+      type: 'breakpoint.pending',
+      payload: {
+        enabled: true,
+        breakpoints: [{
+          id: 'bp-1',
+          phase: 'request',
+          queueKey: 'http',
+          exchangeId: 'exchange-1',
+          createdAt: 1,
+          ruleName: 'Pause API',
+          method: 'POST',
+          url: 'http://api.test/items',
+          headers: [],
+          bodyAvailable: true,
+          body: 'private-body',
+        }],
+      },
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'breakpoints' },
+      { abortSignal: new AbortController().signal },
+    );
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'breakpoints'));
+    const continueBreakpoint = tool(snapshot, 'continue_breakpoint');
+
+    const description = await continueBreakpoint.describeEffect?.(
+      { breakpointId: 'bp-1' },
+      { abortSignal: new AbortController().signal },
+    );
+    expect(description).toMatchObject({
+      metadata: {
+        breakpointId: 'bp-1',
+        phase: 'request',
+        queueKey: 'http',
+        exchangeId: 'exchange-1',
+      },
+    });
+    expect(description?.text).toContain('Target: POST http://api.test/items');
+    expect(JSON.stringify(description)).not.toContain('private-body');
+
+    coreRuntime.results.set('breakpoint.list', {
+      type: 'breakpoint.pending',
+      payload: { enabled: true, breakpoints: [] },
+    });
+    await expect(continueBreakpoint.describeEffect?.(
+      { breakpointId: 'bp-1' },
+      { abortSignal: new AbortController().signal },
+    )).rejects.toThrow('is no longer pending');
+  });
+
   it('executes body, WebSocket and gRPC queries through the shared registry', async () => {
     const coreRuntime = new FakeCoreRuntime();
     coreRuntime.results.set('sessions.detail', {

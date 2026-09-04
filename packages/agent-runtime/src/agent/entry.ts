@@ -25,6 +25,7 @@ import {
   isReplaySafeTransientModelError,
   type ModelRetryPolicy,
 } from '../models/retry';
+import { ToolExecutionError } from '../tools/entry';
 
 /**
  * Exposes the default visible checkpoint policy instead of hiding a hard limit.
@@ -413,36 +414,47 @@ export class AgentRunLoop {
     } else {
       let effect = tool.effect ?? tool.descriptor.description;
       let effectMetadata;
+      let descriptionError: ToolExecutionResult | undefined;
       if (tool.describeEffect !== undefined) {
         try {
           const description = await tool.describeEffect(toolCall.arguments, { abortSignal });
           effect = description.text;
           effectMetadata = description.metadata;
-        } catch {
+        } catch (error) {
           abortSignal.throwIfAborted();
+          if (error instanceof ToolExecutionError) {
+            descriptionError = {
+              ok: false,
+              error: { code: error.code, message: error.message },
+            };
+          }
         }
       }
-      const decision = await this.#authorizeToolCall({
-        toolCall: structuredClone(toolCall),
-        description: tool.descriptor.description,
-        effect,
-        ...(effectMetadata === undefined ? {} : { effectMetadata }),
-      }, { abortSignal });
-      abortSignal.throwIfAborted();
-      if (decision === 'deny') {
-        result = {
-          ok: false,
-          error: {
-            code: 'tool_denied',
-            message: `Tool "${toolCall.name}" was denied by the user.`,
-          },
-        };
+      if (descriptionError !== undefined) {
+        result = descriptionError;
       } else {
-        const approvedTool = this.#toolSnapshot(messages).tools
-          .find((candidate) => candidate.descriptor.name === toolCall.name);
-        result = approvedTool?.kind !== 'change'
-          ? unknownToolResult(toolCall.name)
-          : await approvedTool.execute(toolCall.arguments, { abortSignal });
+        const decision = await this.#authorizeToolCall({
+          toolCall: structuredClone(toolCall),
+          description: tool.descriptor.description,
+          effect,
+          ...(effectMetadata === undefined ? {} : { effectMetadata }),
+        }, { abortSignal });
+        abortSignal.throwIfAborted();
+        if (decision === 'deny') {
+          result = {
+            ok: false,
+            error: {
+              code: 'tool_denied',
+              message: `Tool "${toolCall.name}" was denied by the user.`,
+            },
+          };
+        } else {
+          const approvedTool = this.#toolSnapshot(messages).tools
+            .find((candidate) => candidate.descriptor.name === toolCall.name);
+          result = approvedTool?.kind !== 'change'
+            ? unknownToolResult(toolCall.name)
+            : await approvedTool.execute(toolCall.arguments, { abortSignal });
+        }
       }
     }
 

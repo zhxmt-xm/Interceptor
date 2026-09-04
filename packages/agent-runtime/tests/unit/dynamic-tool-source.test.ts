@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   defineTool,
+  ToolExecutionError,
   z,
   type AgentMessage,
   type AgentTool,
@@ -318,6 +319,51 @@ describe('AgentRunLoop dynamic Tool source', () => {
       { abortSignal: expect.any(AbortSignal) },
     );
     expect(authorizeToolCall.mock.calls[0]?.[0]).not.toHaveProperty('effectMetadata');
+  });
+
+  it('returns an explicit dynamic-description Tool error without requesting approval', async () => {
+    const execute = vi.fn(() => ({ state: 'continued' }));
+    const continueBreakpoint = defineTool({
+      kind: 'change',
+      name: 'continue_breakpoint',
+      description: 'Forward one suspended item unchanged.',
+      inputSchema: z.object({}).strict(),
+      describeEffect: async () => {
+        throw new ToolExecutionError(
+          'invalid_arguments',
+          'The Breakpoint is no longer pending.',
+        );
+      },
+      execute,
+    });
+    const authorizeToolCall = vi.fn(async () => 'allow' as const);
+    const runLoop = new AgentRunLoop({
+      model: new QueueModel([
+        toolResponse('continue_breakpoint', 'call-stale'),
+        finalResponse('The Breakpoint is stale.'),
+      ]),
+      toolSource: { snapshot: () => ({ systemMessages: [], tools: [continueBreakpoint] }) },
+      authorizeToolCall,
+    });
+
+    const result = await runLoop.run({
+      messages: [{ role: 'user', content: 'Continue the stale Breakpoint.' }],
+    });
+
+    expect(authorizeToolCall).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.messages).toContainEqual({
+      role: 'tool',
+      toolCallId: 'call-stale',
+      name: 'continue_breakpoint',
+      content: JSON.stringify({
+        ok: false,
+        error: {
+          code: 'invalid_arguments',
+          message: 'The Breakpoint is no longer pending.',
+        },
+      }),
+    });
   });
 
   it('does not request approval when cancellation interrupts dynamic description', async () => {

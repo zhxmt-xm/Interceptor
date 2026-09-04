@@ -1208,6 +1208,135 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: 15,
     };
+  } else if (agentSessionState === 'breakpoints') {
+    const turnId = 'turn-agent-breakpoints';
+    const agentStartedAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'call-discover-breakpoints',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'breakpoints' },
+        result: {
+          ok: true,
+          value: {
+            matches: [
+              'list_breakpoints',
+              'enable_http_breakpoints',
+              'disable_http_breakpoints',
+              'enable_websocket_breakpoint',
+              'disable_websocket_breakpoint',
+              'continue_breakpoint',
+              'forward_edited_breakpoint',
+              'drop_breakpoint',
+            ].map((name) => ({ descriptor: { name } })),
+          },
+        },
+      },
+      {
+        callId: 'call-list-breakpoints',
+        name: 'list_breakpoints',
+        arguments: {},
+        result: {
+          ok: true,
+          value: {
+            enabled: true,
+            breakpoints: [{ id: 'bp-agent-request', phase: 'request', queueKey: 'http' }],
+          },
+        },
+      },
+      {
+        callId: 'call-disable-http-breakpoints',
+        name: 'disable_http_breakpoints',
+        arguments: {},
+        result: { ok: true, value: { enabled: false } },
+      },
+      {
+        callId: 'call-enable-http-breakpoints',
+        name: 'enable_http_breakpoints',
+        arguments: {},
+        result: { ok: true, value: { enabled: true } },
+      },
+      {
+        callId: 'call-continue-breakpoint',
+        name: 'continue_breakpoint',
+        arguments: { breakpointId: 'bp-agent-request' },
+        result: {
+          ok: true,
+          value: { breakpointId: 'bp-agent-request', state: 'continued' },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-breakpoints',
+      turnId,
+      content: 'Inspect the waiting request, verify HTTP Breakpoint controls, then continue it.',
+      createdAt: agentStartedAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-breakpoints-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: agentStartedAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-breakpoints-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          approval: null,
+          createdAt: agentStartedAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-breakpoints-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: agentStartedAt + index * 3 + 3,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-breakpoints-final',
+      turnId,
+      content: 'One request was waiting. HTTP Breakpoints were verified and `bp-agent-request` continued.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: agentStartedAt + 17,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-breakpoints',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt: agentStartedAt,
+      updatedAt: agentStartedAt + 18,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      toolExecutionMode: 'auto',
+      summary: {
+        ...agentSessionSnapshot.summary,
+        itemCount: items.length,
+        updatedAt: agentStartedAt + 18,
+      },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: items.length,
+    };
   } else if (agentSessionState === 'rules' || agentSessionState === 'rules-result') {
     const applied = agentSessionState === 'rules-result';
     const turnId = 'turn-agent-rules';

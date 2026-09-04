@@ -23,6 +23,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
             ? 'Inspect Capture storage and the latest captured request, then summarize their status.'
             : toolTrace === 'body-messages'
               ? 'Read the JSON response body, WebSocket messages, and gRPC response messages.'
+              : toolTrace === 'breakpoints'
+                ? 'Inspect the waiting request, verify HTTP Breakpoint controls, then continue it.'
               : toolTrace === 'rules'
                 ? state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
                   ? 'Read the current Rule tree, then apply the approved replacement.'
@@ -42,6 +44,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                   ? <p>Capture storage is non-empty. The latest exchange is <code>GET /agent-e2e/traffic</code> with status <code>200</code>.</p>
                   : toolTrace === 'body-messages'
                     ? <p>The JSON body is ready. WebSocket has <code>2</code> messages, and the gRPC response contains <code>1</code> message.</p>
+                    : toolTrace === 'breakpoints'
+                      ? <p>One request was waiting. HTTP Breakpoints were verified and <code>bp-agent-request</code> continued.</p>
                     : state.agentToolApprovalName === 'apply_rules' && state.agentToolApproval === 'allowed'
                       ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
                       : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}

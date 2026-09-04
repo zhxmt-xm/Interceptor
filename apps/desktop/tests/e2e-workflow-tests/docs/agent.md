@@ -404,3 +404,41 @@ effect与查询结果一致。
 	8888/系统代理恢复。完整parity为`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`；
 	Rules新增query/result明暗4 views合计`30/30 matched / 0 missing / 0 flagged / 0px`。Windows package、artifact audit
 	（1,294 files / 392,804,000 bytes）、production audit 0漏洞与packaged smoke`1/1`通过。
+
+<a id="agent-tools-breakpoints"></a>
+## `agent.tools.breakpoints`
+
+**状态**：passed
+**策略**：privileged UI
+
+### Steps
+
+1. 真实UI创建并Apply只匹配POST的request Breakpoint Rule；经8888发送真实请求，等待公共pending行并取得动态ID。
+2. Agent discovery只披露八项Breakpoints Tool；`list_breakpoints`直接返回同一pending identity与typed snapshot。
+3. Ask调用Continue并Deny，确认客户端继续等待、origin零到达；再次Allow后请求原样完成。
+4. Ask调用Forward edited并Allow，确认真实origin只收到Tool声明的method/body文本改动；已解决ID在审批前返回
+	`invalid_arguments`且不影响其他pending，Core执行竞态仍以`conflict`为准。
+5. Auto调用Drop，确认无审批、客户端失败且origin零到达；HTTP disable/enable分别控制后续请求是否pending。
+6. 经真实WebSocket UI建立连接并取得exchangeId；Agent启用message断点，真实frame形成pending，再验证Continue、
+   edited text、Drop与disable的数据面结果，其他连接不受影响。
+7. Settings关闭八项Agent开关；discovery移除且逐项猜测调用返回`unknown_tool`。恢复开关与Ask后完整关闭第一代App。
+8. 同profile启动第二代App，确认Model请求和origin到达增量均为0，continued/edited/dropped Transcript结果恢复但
+	pending为0；再次正常Close并验证两代Main/Core/Worker、客户端、8888、journal与系统代理完整恢复。
+
+### 预期效果
+
+Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Auto。Deny、stale和关闭项零副作用，Allow/Auto
+只影响指定ID；HTTP与WebSocket真实对端结果和Capture状态一致。
+
+### Evidence
+
+- 最终workflow在修复前提交`32f2889a`的detached worktree精确Red：真实Agent discovery对`breakpoints`返回`[]`，
+	与预期八项不符；不是selector、fixture、构建或环境失败。
+- 当前同一workflow`1/1` Green：HTTP Ask Deny/Allow、stale、method/body编辑、Auto Drop与启停均由真实客户端/origin
+	验证；WebSocket覆盖连接隔离、Continue、文本编辑、Drop和Disable；八项关闭后均为`unknown_tool`。
+- 重启在ready后与关闭前两次确认Model、HTTP origin与WebSocket消息增量均为0；提示词、HTTP/WebSocket正文和动态
+	Rule/Breakpoint/exchange ID均通过trace与进程日志脱敏审计；最终两代Main/Core为`31388/16116`与
+	`29116/20280`，均
+	`gracefulDestroyVerified=true`，Renderer pageerror为0且8888、journal和系统代理恢复。
+- Breakpoints Agent明暗设计场景合计`22/22 matched / 0 missing / 0 flagged / 0px`；既有44张Agent设计图逐像素
+	不变。完整Parity为`206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。

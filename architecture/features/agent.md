@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-09-03
+> 最后更新：2026-09-04
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**阶段 0 Runtime基础层、阶段 1持久化Chat、Traffic十项与Rules三项Tool纵向流程已完成；其余业务Tool按后续阶段接入。**
+> 状态：**Runtime基础层、持久化Chat、Traffic十项、Rules三项与Breakpoints八项Tool纵向流程已完成；剩余Requests两项与Diagnostics一项。**
 
 ## 术语与关系
 
@@ -318,8 +318,15 @@ flowchart LR
 `packages/agent-runtime/` 不引用 Renderer 或 Electron API。`AgentRuntime` 接收窄平台能力并拥有其生命周期：
 数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
 所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
-Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source接入七个Traffic query Tool和
-`start_recording`、`stop_recording`、`clear_capture`三个change Tool。
+Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source已接入七个Traffic query Tool、
+`start_recording`、`stop_recording`、`clear_capture`三个change Tool、Rules三项与Breakpoints八项，共21/24。
+
+Breakpoints里程碑中，Agent先经`discover_tools(capabilityId:'breakpoints')`披露八项共享schema。
+`list_breakpoints`直接执行；其余七项服从Session `ask`/`auto`。Ask影响由当前pending动态生成，Deny不解除客户端，
+Allow/Auto只调用正式Core命令。`breakpointId`无revision且只在当前Core代际有效；审批前已知stale返回
+`invalid_arguments`，描述后才失效的执行竞态由Core返回`conflict`。Forward edited按phase只开放request的
+method/URL/body、response的status/body与WebSocket文本body，不允许Model提交跨phase字段或文件路径。关闭Tool后
+discovery与执行立即返回不可用，Agent重启不重放已完成或等待中的resolution。
 
 ## 6. Session History
 
@@ -1352,7 +1359,7 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 ### [阶段 2 · 进行中] 共享 Tool 目录与24项业务能力
 
 目标：先确定完整产品 Tool 目录和用户开关，再按能力组把24项共享Tool全部接入内置Agent。当前Agent代码为
-13/24、已验收真实Agent或MCP Tool Call为13/24，MCP adapter为24/24；已完成Traffic与Rules两组，
+21/24、已验收真实Agent或MCP Tool Call为21/24，MCP adapter为24/24；已完成Traffic、Rules与Breakpoints，
 不是Agent的永久只读边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
@@ -1370,13 +1377,15 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
   直接复用正式Core命令。pending跨Workspace/Chat保持，切换Mode不处置既有问询，取消/崩溃补失败Result；
 - [已完成] `start_recording`与`clear_capture`复用共享executor；动态删除影响在审批前读取真实usage，三种清理入口
   统一发布带`clearedBefore`的reset，Transcript显示typed结果摘要；
+- [已完成] Breakpoints八项复用共享executor与Core queue；query、Ask Deny/Allow、Auto、动态stale保护、HTTP/
+  WebSocket真实数据面、八项关闭、双入口取消边界及重启零重放均由Agent/MCP真实Electron workflow闭环；
 - 列表通过 summary → detail 渐进披露；分页只服务传输与 Context，提供完整遍历能力；
 - 真实 E2E 先由产品 UI 产生流量，再让 Agent 查询，不 seed Capture。
 - `agent.tools.traffic-discovery`扩展Storage前精确Red于`call-storage`状态为`failed`，当前源码`1/1` Green；最终一次
   真实`capture.status`为`1 session / 3 exchanges / 1 body / 92 B`，关闭后返回`unknown_tool`，恢复后重新进入discovery；
   两代Main/Core PID为`20596/42100`与`44412/12224`，均`gracefulDestroyVerified=true`且释放8888。
-- 后续固定顺序为：Breakpoints 8项、Requests 2项、
-  Diagnostics 1项；逐项矩阵、owning executor测试缺口和真实调用状态只在[Tool能力目录](tool-capabilities.md)维护。
+- 后续固定顺序为：Requests 2项、Diagnostics 1项；逐项矩阵、owning executor测试缺口和真实调用状态只在
+  [Tool能力目录](tool-capabilities.md)维护。
 - Tool主线完成后再执行Playground 24项Developer人工报告，最后将Capture对正式Playground场景的真实Electron覆盖
   从2/39按六组收敛到39/39；该收敛不替代每个Tool work item自己的真实E2E。
 

@@ -18,6 +18,13 @@ const TOOL_STEPS = {
     { name: 'list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },
     { name: 'list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
   ],
+  breakpoints: [
+    { name: 'discover_tools', arguments: 'capabilityId: breakpoints', result: '8 tools discovered' },
+    { name: 'list_breakpoints', arguments: 'No parameters', result: 'Pending breakpoints: 1 · Enabled' },
+    { name: 'disable_http_breakpoints', arguments: 'No parameters', result: 'Disabled' },
+    { name: 'enable_http_breakpoints', arguments: 'No parameters', result: 'Enabled' },
+    { name: 'continue_breakpoint', arguments: 'breakpointId: bp-agent-request', result: 'Continued · bp-agent-request' },
+  ],
   rules: [
     { name: 'discover_tools', arguments: 'capabilityId: rules', result: '3 tools discovered' },
     { name: 'get_rules', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },

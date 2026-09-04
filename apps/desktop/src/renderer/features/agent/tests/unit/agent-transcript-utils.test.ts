@@ -186,6 +186,22 @@ describe('Agent transcript utilities', () => {
       ok: true,
       value: { revision: 5 },
     })).toEqual({ kind: 'rulesApplied', revision: 5 });
+    expect(summarizeAgentToolResult('list_breakpoints', {
+      ok: true,
+      value: { enabled: true, breakpoints: [{ id: 'bp-1' }, { id: 'bp-2' }] },
+    })).toEqual({ kind: 'breakpoints', count: 2, enabled: true });
+    expect(summarizeAgentToolResult('disable_http_breakpoints', {
+      ok: true,
+      value: { enabled: false },
+    })).toEqual({ kind: 'breakpointConfig', enabled: false });
+    expect(summarizeAgentToolResult('continue_breakpoint', {
+      ok: true,
+      value: { breakpointId: 'bp-1', state: 'continued' },
+    })).toEqual({
+      kind: 'breakpointResolution',
+      breakpointId: 'bp-1',
+      state: 'continued',
+    });
   });
 
   it('keeps later Tool activity after visible assistant content', () => {

@@ -193,6 +193,21 @@ describe('Interceptor Tool registry', () => {
 
   it('maps continue, edited forward, and drop to distinct breakpoint actions', async () => {
     const fakeToolHost = new FakeToolHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: 'bp-2',
+            phase: 'request',
+            queueKey: 'http',
+            createdAt: 1,
+            ruleName: 'Pause request',
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      },
       'breakpoint.resolve': { type: 'breakpoint.resolution', payload: {} },
     });
 
@@ -202,6 +217,7 @@ describe('Interceptor Tool registry', () => {
 
     expect(fakeToolHost.commands).toEqual([
       { type: 'breakpoint.resolve', payload: { breakpointId: 'bp-1', action: 'continue' } },
+      { type: 'breakpoint.list', payload: {} },
       {
         type: 'breakpoint.resolve',
         payload: { breakpointId: 'bp-2', action: 'continue', edit: { body: '' } },
@@ -210,6 +226,239 @@ describe('Interceptor Tool registry', () => {
     ]);
     await expect(execute('forward_edited_breakpoint', { breakpointId: 'bp-4' }, fakeToolHost))
       .rejects.toThrow('at least one edit');
+  });
+
+  it('describes HTTP breakpoint configuration from current Core state', async () => {
+    const fakeToolHost = new FakeToolHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: { enabled: false, breakpoints: [{ id: 'bp-1' }, { id: 'bp-2' }] },
+      },
+    });
+    const context = {
+      host: fakeToolHost,
+      abortSignal: new AbortController().signal,
+    };
+
+    await expect(definition('enable_http_breakpoints').describeChange?.({}, context))
+      .resolves.toEqual({
+        lines: ['HTTP breakpoints: disabled → enabled', 'Currently pending: 2'],
+        metadata: { currentEnabled: false, nextEnabled: true, pendingCount: 2 },
+      });
+    await expect(definition('disable_http_breakpoints').describeChange?.({}, context))
+      .resolves.toEqual({
+        lines: ['HTTP breakpoints: disabled → disabled', 'Currently pending: 2'],
+        metadata: { currentEnabled: false, nextEnabled: false, pendingCount: 2 },
+      });
+    expect(fakeToolHost.commands).toEqual([
+      { type: 'breakpoint.list', payload: {} },
+      { type: 'breakpoint.list', payload: {} },
+    ]);
+  });
+
+  it('describes one current pending identity without exposing its body', async () => {
+    const fakeToolHost = new FakeToolHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: 'bp-1',
+            phase: 'request',
+            queueKey: 'http',
+            ruleId: 'rule-1',
+            exchangeId: 'exchange-1',
+            createdAt: 1,
+            ruleName: 'Pause API',
+            method: 'POST',
+            url: 'http://api.test/items',
+            headers: [],
+            bodyAvailable: true,
+            body: 'private-body',
+          }],
+        },
+      },
+    });
+    const context = {
+      host: fakeToolHost,
+      abortSignal: new AbortController().signal,
+    };
+
+    const continuation = await definition('continue_breakpoint').describeChange?.(
+      { breakpointId: 'bp-1' },
+      context,
+    );
+    const edited = await definition('forward_edited_breakpoint').describeChange?.(
+      { breakpointId: 'bp-1', method: 'PUT', body: '' },
+      context,
+    );
+    const dropped = await definition('drop_breakpoint').describeChange?.(
+      { breakpointId: 'bp-1' },
+      context,
+    );
+
+    expect(continuation).toEqual({
+      lines: [
+        'Breakpoint: bp-1',
+        'Phase: request',
+        'Queue: http',
+        'Target: POST http://api.test/items',
+      ],
+      metadata: {
+        breakpointId: 'bp-1',
+        phase: 'request',
+        queueKey: 'http',
+        ruleId: 'rule-1',
+        exchangeId: 'exchange-1',
+        target: 'POST http://api.test/items',
+      },
+    });
+    expect(edited?.lines).toEqual([
+      'Breakpoint: bp-1',
+      'Phase: request',
+      'Queue: http',
+      'Target: POST http://api.test/items',
+      'method → PUT',
+      'body → ',
+    ]);
+    expect(dropped).toEqual(continuation);
+    expect(JSON.stringify([continuation, edited, dropped])).not.toContain('private-body');
+    expect(fakeToolHost.commands).toEqual(Array(3).fill({
+      type: 'breakpoint.list',
+      payload: {},
+    }));
+  });
+
+  it.each([
+    ['request', { statusCode: 204 }, 'statusCode'],
+    ['response', { method: 'PUT' }, 'method'],
+    ['websocket', { url: 'ws://other.test/socket' }, 'url'],
+  ] as const)(
+    'rejects fields that do not apply to a %s breakpoint before approval or execution',
+    async (phase, invalidEdit, field) => {
+      const result = {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: `bp-${phase}`,
+            phase,
+            queueKey: phase === 'websocket' ? 'ws:exchange-1' : 'http',
+            createdAt: 1,
+            ruleName: `Pause ${phase}`,
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      };
+      const args = { breakpointId: `bp-${phase}`, ...invalidEdit };
+      const descriptionHost = new FakeToolHost({ 'breakpoint.list': result });
+      const executionHost = new FakeToolHost({ 'breakpoint.list': result });
+
+      await expect(definition('forward_edited_breakpoint').describeChange?.(
+        args,
+        { host: descriptionHost, abortSignal: new AbortController().signal },
+      )).rejects.toThrow(`"${field}" cannot edit a ${phase} breakpoint`);
+      await expect(execute('forward_edited_breakpoint', args, executionHost))
+        .rejects.toThrow(`"${field}" cannot edit a ${phase} breakpoint`);
+      expect(descriptionHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
+      expect(executionHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
+    },
+  );
+
+  it.each([
+    ['request', { method: 'PUT', url: 'http://api.test/next', body: 'request' }],
+    ['response', { statusCode: 204, body: 'response' }],
+    ['websocket', { body: 'frame' }],
+  ] as const)('forwards fields that apply to a %s breakpoint', async (phase, edit) => {
+    const breakpointId = `bp-${phase}`;
+    const fakeToolHost = new FakeToolHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: {
+          enabled: true,
+          breakpoints: [{
+            id: breakpointId,
+            phase,
+            queueKey: phase === 'websocket' ? 'ws:exchange-1' : 'http',
+            createdAt: 1,
+            ruleName: `Pause ${phase}`,
+            headers: [],
+            bodyAvailable: false,
+          }],
+        },
+      },
+      'breakpoint.resolve': {
+        type: 'breakpoint.resolution',
+        payload: { breakpointId, state: 'edited' },
+      },
+    });
+
+    await expect(execute('forward_edited_breakpoint', {
+      breakpointId,
+      ...edit,
+    }, fakeToolHost)).resolves.toEqual({ breakpointId, state: 'edited' });
+    expect(fakeToolHost.commands.at(-1)).toEqual({
+      type: 'breakpoint.resolve',
+      payload: { breakpointId, action: 'continue', edit },
+    });
+  });
+
+  it('rejects an empty WebSocket frame selection before approval or execution', async () => {
+    const descriptionHost = new FakeToolHost();
+    const executionHost = new FakeToolHost();
+    const args = { exchangeId: 'exchange-1', frames: [] };
+
+    await expect(definition('enable_websocket_breakpoint').describeChange?.(
+      args,
+      { host: descriptionHost, abortSignal: new AbortController().signal },
+    )).rejects.toThrow('"frames" must be a non-empty array');
+    await expect(execute('enable_websocket_breakpoint', args, executionHost))
+      .rejects.toThrow('"frames" must be a non-empty array');
+    expect(descriptionHost.commands).toEqual([]);
+    expect(executionHost.commands).toEqual([]);
+  });
+
+  it('rejects a stale breakpoint identity before approval', async () => {
+    const fakeToolHost = new FakeToolHost({
+      'breakpoint.list': {
+        type: 'breakpoint.pending',
+        payload: { enabled: true, breakpoints: [] },
+      },
+    });
+
+    await expect(definition('drop_breakpoint').describeChange?.(
+      { breakpointId: 'bp-stale' },
+      { host: fakeToolHost, abortSignal: new AbortController().signal },
+    )).rejects.toThrow('is no longer pending');
+    expect(fakeToolHost.commands).toEqual([{ type: 'breakpoint.list', payload: {} }]);
+  });
+
+  it('describes WebSocket breakpoint enable and disable without local paths', async () => {
+    const description = await definition('enable_websocket_breakpoint').describeChange?.({
+      exchangeId: 'exchange-ws',
+      direction: 'server-to-client',
+      frames: ['message', 'close'],
+    }, {
+      host: new FakeToolHost(),
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(description).toEqual({
+      lines: [
+        'Connection: exchange-ws',
+        'Direction: server-to-client',
+        'Frames: message, close',
+      ],
+      metadata: {
+        exchangeId: 'exchange-ws',
+        direction: 'server-to-client',
+        frameCount: 2,
+      },
+    });
+    expect(definition('disable_websocket_breakpoint').effectDescription)
+      .toBe('The active WebSocket breakpoint configuration will be disabled.');
+    expect(JSON.stringify(description)).not.toContain('path');
   });
 
   it('clears only the complete Capture and rejects the obsolete session scope', async () => {

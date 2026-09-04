@@ -83,6 +83,13 @@ export type AgentToolResultSummary =
     }
   | { readonly kind: 'ruleHits'; readonly ruleCount: number; readonly totalHits: number }
   | { readonly kind: 'rulesApplied'; readonly revision: number }
+  | { readonly kind: 'breakpoints'; readonly count: number; readonly enabled: boolean }
+  | { readonly kind: 'breakpointConfig'; readonly enabled: boolean }
+  | {
+      readonly kind: 'breakpointResolution';
+      readonly breakpointId: string;
+      readonly state: 'continued' | 'edited' | 'dropped';
+    }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'value'; readonly value: string };
 
@@ -247,6 +254,36 @@ export function summarizeAgentToolResult(
   }
   if (name === 'apply_rules' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
     return { kind: 'rulesApplied', revision: result.value['revision'] };
+  }
+  if (name === 'list_breakpoints'
+    && isRecord(result.value)
+    && Array.isArray(result.value['breakpoints'])
+    && typeof result.value['enabled'] === 'boolean') {
+    return {
+      kind: 'breakpoints',
+      count: result.value['breakpoints'].length,
+      enabled: result.value['enabled'],
+    };
+  }
+  if ([
+    'enable_http_breakpoints',
+    'disable_http_breakpoints',
+    'enable_websocket_breakpoint',
+    'disable_websocket_breakpoint',
+  ].includes(name) && isRecord(result.value) && typeof result.value['enabled'] === 'boolean') {
+    return { kind: 'breakpointConfig', enabled: result.value['enabled'] };
+  }
+  if ([
+    'continue_breakpoint',
+    'forward_edited_breakpoint',
+    'drop_breakpoint',
+  ].includes(name) && isRecord(result.value)) {
+    const breakpointId = result.value['breakpointId'];
+    const state = result.value['state'];
+    if (typeof breakpointId === 'string'
+      && (state === 'continued' || state === 'edited' || state === 'dropped')) {
+      return { kind: 'breakpointResolution', breakpointId, state };
+    }
   }
   return { kind: 'value', value: compactJson(result.value) };
 }

@@ -1,10 +1,10 @@
 # Feature: MCP Server
 
-> 最后更新：2026-09-02
+> 最后更新：2026-09-04
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
-> 状态：**loopback Streamable HTTP、Browser CORS与Web人工验收Playground已实现并通过自动门禁；24项Tool待Developer逐项人工验收；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
+> 状态：**loopback Streamable HTTP、Browser CORS、Breakpoints八项真实纵向流程与Web人工验收Playground已实现并通过自动门禁；24项Tool待Developer逐项人工验收；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
 
 ## 1. 职责与边界
 
@@ -23,8 +23,8 @@ MCP Server 把 Interceptor 的产品能力，以 [Model Context Protocol](https:
 **根本定位：MCP Server 是共享 Tool 的外部协议入口，不是第二套 Tool 或业务实现。** Tool 必须复用正式产品
 意图；产品缺少语义单一入口时先补产品入口，不在 MCP adapter 中实现 read-modify-write 或系统操作后门。
 
-内置 Agent 已实现 BYOK Provider、持久化 Session、Streaming Chat与恢复，并已接入四个Traffic query Tool、
-`stop_recording`及Session级`ask` / `auto`。
+内置 Agent 已实现 BYOK Provider、持久化 Session、Streaming Chat与恢复，并已接入Traffic十项、Rules三项、
+Breakpoints八项及Session级`ask` / `auto`。
 早期MCP Tool的通用descriptor、schema、参数边界、脱敏与执行函数已迁到`packages/interceptor-tools/`，
 三个多义入口已拆成24项。MCP只保留协议adapter；Desktop纵向接线已完成，内置Agent其余Tool按能力分组接入。
 
@@ -75,7 +75,7 @@ flowchart LR
 
 | 层 | 职责 | 归属 | 首期实现 |
 | --- | --- | --- | --- |
-| Transport | HTTP请求、JSON/SSE响应与在途交换关闭 | Main（未实现） | 官方SDK v2的loopback Streamable HTTP |
+| Transport | HTTP请求、JSON/SSE响应与在途交换关闭 | Main | 官方SDK v2的loopback Streamable HTTP |
 | Authentication | 识别调用方，产出`McpClientIdentity` | `packages/mcp-server/` | per-client Bearer token |
 | Tool Registry | 唯一Tool schema、参数边界、脱敏与执行函数 | `packages/interceptor-tools/` | Agent/MCP完全共用 |
 | MCP Adapter | MCP `tools/list`过滤、`tools/call`映射与Client执行模式 | `packages/mcp-server/` | transport-neutral |
@@ -126,8 +126,9 @@ MCP列使用独立`disableMcpTool` / `enableMcpTool` intent。当前关闭项在
 完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
 Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
-当前共享registry实现24个Tool：11个query、13个change。MCP Desktop纵向流程已实际接通`get_proxy_status`
-和`stop_recording`；其余Tool继续按[tool-capabilities.md](tool-capabilities.md)逐项完成正式产品入口与验收。
+当前共享registry实现24个Tool：11个query、13个change。MCP adapter完整接入24项；Agent/MCP真实调用已验收
+21/24，包含Traffic、Rules与Breakpoints，剩余Requests两项和Diagnostics一项继续按
+[tool-capabilities.md](tool-capabilities.md)完成正式产品入口与验收。
 三个原先用布尔值或action参数混合正反意图的入口已经拆开：
 
 - `set_recording(recording)` → `start_recording` / `stop_recording`；
@@ -176,6 +177,19 @@ sequenceDiagram
 
 `apply_rules` 复用产品完整 RuleSet 校验和乐观锁，不额外强制把合法规则改成 disabled。MCP Tool 开关决定
 该能力是否可达；`ask` / `auto` 决定执行前是否问询。
+
+### 4.3.1 Breakpoints八项并发约束 [已实现]
+
+MCP与Agent消费同一八项定义。`list_breakpoints`不问询；HTTP/WebSocket启停及Continue、Forward edited、Drop在
+Client `ask`时展示动态pending影响，在`auto`时直接执行。HTTP/WebSocket pending必须先经产品UI和真实流量产生，
+官方MCP Client只使用公开动态`breakpointId`/`exchangeId`。ID在abort、resolve或Core重启后失效；审批前已知stale
+直接返回参数错误，描述后才失效的竞态由Core返回`conflict`，两者都不影响其他pending。Client断开、撤销、
+credential轮换或Server关闭沿既有AbortSignal只取消该Client调用，不自动替它Continue或Drop业务流量。
+
+真实`mcp.desktop.streamable-http`通过产品UI自产HTTP/WebSocket pending，并覆盖八项`tools/list`、Ask Deny/Allow、
+Auto、method/URL/body编辑、Drop、HTTP/WebSocket启停与八项即时撤权。第二代App进一步验证旧Client在审批中断开和
+credential轮换都不解除同一pending，新Client必须显式Allow同一ID。修复前`32f2889a`精确Red于stale仍产生审批；
+当前同一workflow Green。
 
 ### 4.4 结果脱敏
 

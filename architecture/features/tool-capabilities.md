@@ -1,10 +1,10 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-03
+> 最后更新：2026-09-04
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入13/24，已验收真实Agent或MCP Tool Call覆盖13/24，owning package正向executor unit覆盖16/24；Playground
+> 代码已接入21/24，已验收真实Agent或MCP Tool Call覆盖21/24，owning package正向executor unit覆盖19/24；Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共77个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有77个实现；每行“当前进度”
@@ -74,8 +74,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入七个Traffic query Tool、三个Rules Tool与`start_recording`、
-   `stop_recording`、`clear_capture`；关闭项同时过滤Capability
+- Agent当前通过动态`AgentToolSource`接入七个Traffic query Tool、三个Traffic change Tool、三个Rules Tool与
+   八个Breakpoints Tool；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -119,18 +119,28 @@ interface ToolCapabilitySettingsRecord {
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `list_breakpoints` | query | `listBreakpoints` / `breakpoint.list` | 共享 registry + MCP adapter |
-| `enable_http_breakpoints` | change | `setBreakpointsEnabled(true)` | 共享 registry + MCP adapter |
-| `disable_http_breakpoints` | change | `setBreakpointsEnabled(false)` | 共享 registry + MCP adapter |
-| `enable_websocket_breakpoint` | change | `enableWebSocketBreakpoints` | 共享 registry + MCP adapter |
-| `disable_websocket_breakpoint` | change | `disableWebSocketBreakpoints` | 共享 registry + MCP adapter |
-| `continue_breakpoint` | change | `resolveBreakpoint(..., 'continue')` | 共享 registry + MCP adapter |
-| `forward_edited_breakpoint` | change | `resolveBreakpoint(..., 'continue', edit)` | 共享 registry + MCP adapter |
-| `drop_breakpoint` | change | `resolveBreakpoint(..., 'drop')` | 共享 registry + MCP adapter |
+| `list_breakpoints` | query | `listBreakpoints` / `breakpoint.list` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `enable_http_breakpoints` | change | `setBreakpointsEnabled(true)` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `disable_http_breakpoints` | change | `setBreakpointsEnabled(false)` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `enable_websocket_breakpoint` | change | `enableWebSocketBreakpoints` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `disable_websocket_breakpoint` | change | `disableWebSocketBreakpoints` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `continue_breakpoint` | change | `resolveBreakpoint(..., 'continue')` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `forward_edited_breakpoint` | change | `resolveBreakpoint(..., 'continue', edit)` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `drop_breakpoint` | change | `resolveBreakpoint(..., 'drop')` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `continue_breakpoint_queue` | change | `continueBreakpointQueue` | 产品已具备 |
 | `drop_breakpoint_queue` | change | `dropBreakpointQueue` | 产品已具备 |
 | `continue_rule_breakpoints` | change | `continueBreakpointRule` | 产品已具备 |
 | `probe_connection` | change | `probeTls` / `tls.probe` | 共享 registry + MCP adapter |
+
+本阶段只接入前八项Breakpoints Tool。`list_breakpoints`是唯一query；其余七项是change并服从Agent Session或
+MCP Client的`ask`/`auto`。pending identity只在当前Core代际内由`breakpointId`标识，没有revision；审批前读取
+当前pending生成动态影响，执行仍以Core `breakpoint.resolve`对已消失ID返回的`conflict`为最终并发保护。
+
+`forward_edited_breakpoint`按pending phase收窄：request接受`method`、`url`与文本`body`，response接受
+`statusCode`与文本`body`，WebSocket只接受文本`body`；跨phase字段在审批和执行前拒绝。至少一项编辑必须存在；
+不开放headers、`bodyFilePath`、`closeCode`或任意本地路径。文件编辑仍只经产品原生Dialog，Map Local占位不适用于Breakpoint。
+Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pending，再从公共DOM或Tool query取得动态ID；
+禁止直接seed Core queue。
 
 ### 3.4 TLS、证书与 AppContainer
 
@@ -213,14 +223,14 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `get_rules` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `get_rule_hits` | 已完成 | 已完成 | Agent已完成 |
 | `apply_rules` | 已完成 | 已完成 | Agent + MCP已完成 |
-| `list_breakpoints` | 待接入 | 待补 | 待完成 |
-| `enable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
-| `disable_http_breakpoints` | 待接入 | 已完成 | 待完成 |
-| `enable_websocket_breakpoint` | 待接入 | 待补 | 待完成 |
-| `disable_websocket_breakpoint` | 待接入 | 待补 | 待完成 |
-| `continue_breakpoint` | 待接入 | 已完成 | 待完成 |
-| `forward_edited_breakpoint` | 待接入 | 已完成 | 待完成 |
-| `drop_breakpoint` | 待接入 | 已完成 | 待完成 |
+| `list_breakpoints` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `enable_http_breakpoints` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `disable_http_breakpoints` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `enable_websocket_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `disable_websocket_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `continue_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `forward_edited_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `drop_breakpoint` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `send_request` | 待接入 | 已完成 | 待完成 |
 | `probe_connection` | 待接入 | 待补 | 待完成 |
 | `query_diagnostics` | 待接入 | 待补 | 待完成 |
@@ -249,8 +259,15 @@ Capture 39项真实Electron收敛：
    design interaction`68/68`与全workspace typecheck Green；真实Electron Agent Rules、MCP Rules与Rules Import
    联合`3/3` Green，共用Windows Dialog的Composer Import与Rules Body file回归`2/2` Green。Windows package、
    artifact audit（`1,294 files / 392,808,773 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。
-5. **[待实现] Breakpoints**：按HTTP与WebSocket拆分接入八项现有Tool，使用真实pending、队列、编辑、
-   Allow/Deny/Auto与origin事实验收。
+5. **[已完成] Breakpoints**：八项共享Tool已接入Agent并由Agent/MCP真实Electron共同验收。HTTP覆盖query、Ask
+   Deny/Allow、Auto、stale、method/URL/body编辑、Drop与启停；WebSocket覆盖真实连接、pending、Continue/Edit/
+   Drop/Disable及连接隔离。八项Settings撤权即时生效，Client断开与credential轮换不解队，Agent重启Model与origin
+   增量均为0。修复前`32f2889a`分别Red于Agent discovery为空和MCP stale仍请求审批；当前联合`2/2` Green。
+   最终Tools`54/54`、Runtime`122/122`、MCP`32/32`、Desktop`454/454`、Core focused`11/11`及全workspace
+   typecheck Green；明暗Breakpoints Agent parity合计`22/22`、0 missing、0 flagged、0px，完整Parity为
+   `206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。Windows package artifact
+   audit为`1,294 files / 392,817,170 bytes`、production audit 0漏洞、packaged smoke`1/1` Green。全仓unit仅保留
+   已登记的Proxy Core两项chunked framing债务失败。
 6. **[待实现] Requests**：接入`send_request`与`probe_connection`，验证真实origin/TLS、取消和网络结果。
 7. **[待实现] Diagnostics**：接入`query_diagnostics`，先由真实产品动作产生记录，再验证过滤、脱敏与稳定顺序。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
@@ -262,7 +279,7 @@ Capture 39项真实Electron收敛：
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Breakpoints八项。
+分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Requests两项。
 
 ## 6. 相关未完成验收
 

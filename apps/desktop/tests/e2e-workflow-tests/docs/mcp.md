@@ -95,3 +95,39 @@ Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则�
 - 最终两代Main/Core为`38740/43808`与`26768/39376`，均`gracefulDestroyVerified=true`、Renderer pageerror为0，
    MCP端口/8888释放且系统代理恢复。
 - trace、截图、日志与metadata不得包含Bearer token、加密Client记录、Capture敏感正文或Host配置绝对路径。
+
+<a id="mcp-tools-breakpoints"></a>
+## `mcp.tools.breakpoints`
+
+**状态**：passed
+**策略**：privileged UI；复用`streamable-http.workflow.ts`
+
+### Steps
+
+1. 延续真实官方MCP Client和产品UI配置；通过Rules UI及8888请求自产HTTP pending并取得动态ID。
+2. `tools/list`披露八项；query `list_breakpoints`直接返回，change在Ask下分别验证Deny/Allow，Auto下无审批。
+3. Continue、Forward edited与Drop由真实client/origin证明；已解除旧ID在审批前直接返回错误，执行竞态由Core
+   `conflict`收敛。
+4. HTTP enable/disable控制后续真实请求；真实WebSocket连接自产exchangeId与pending后验证enable/disable和帧结果。
+5. 关闭八项MCP Tool后立即从`tools/list`消失，逐项猜测调用均被官方SDK以`Tool <name> not found`拒绝。
+   重启后旧Client在Continue审批中断开只取消所属调用；随后轮换credential仍不解除同一业务pending，新Client
+   必须再次显式Allow才放行。
+6. 完成token脱敏审计、Main/Core/MCP/8888销毁和系统代理恢复。
+
+### 预期效果
+
+MCP Client与内置Agent共享同一Breakpoints schema、Ask/Auto和Core conflict语义；transport、认证或Client生命周期
+不会建立第二套queue，也不会在取消调用时替用户解决pending。
+
+### Evidence
+
+- 最终扩展workflow在修复前提交`32f2889a`的detached worktree精确Red：stale Breakpoint错误进入MCP审批，
+   `settleWithoutApproval`立即报告`Stale Breakpoint requested MCP approval instead of returning an error.`。
+- 当前同一`streamable-http.workflow.ts` `1/1` Green：`tools/list`严格披露八项；HTTP覆盖Ask Deny/Allow、stale、
+   method/URL/body编辑、Auto Drop和启停；WebSocket覆盖真实pending、Continue与Disable；关闭八项后协议层全部拒绝。
+- 两代App验证Client断开与credential轮换均不解除同一pending，新Token继续同一动态ID后origin才收到请求；协议
+   `2026-07-28`、旧Token为401、Rule最终revision 4，业务证据`breakpointToolCount=8`且数据面完成。
+- HTTP/WebSocket正文、编辑目标URL与动态Rule/Breakpoint/exchange ID全部登记为敏感值；业务操作段暂停trace，
+   两代关闭时连同前后Bearer Token一起审计trace和进程日志，evidence只保留Token hash、计数与布尔事实。
+- 最终两代Main/Core为`10760/20752`与`36460/9580`，均`gracefulDestroyVerified=true`，Renderer pageerror为0，
+   MCP端口、8888、journal与系统代理恢复；Token只保留SHA-256。

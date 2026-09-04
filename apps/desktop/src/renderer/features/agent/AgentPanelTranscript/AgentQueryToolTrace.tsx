@@ -88,6 +88,19 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-rule-total-hits={summary?.kind === 'ruleHits'
                     ? summary.totalHits
                     : undefined}
+                  data-breakpoint-count={summary?.kind === 'breakpoints'
+                    ? summary.count
+                    : undefined}
+                  data-breakpoint-enabled={summary?.kind === 'breakpoints'
+                    || summary?.kind === 'breakpointConfig'
+                    ? summary.enabled
+                    : undefined}
+                  data-breakpoint-id={summary?.kind === 'breakpointResolution'
+                    ? summary.breakpointId
+                    : undefined}
+                  data-breakpoint-state={summary?.kind === 'breakpointResolution'
+                    ? summary.state
+                    : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
                   {summary === null

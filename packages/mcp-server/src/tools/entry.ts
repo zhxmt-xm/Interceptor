@@ -158,7 +158,10 @@ export class McpToolRegistry {
     if (tool.describeChange !== undefined) {
       try {
         diff = (await tool.describeChange(args, context)).lines;
-      } catch {
+      } catch (error) {
+        if (error instanceof InterceptorToolArgumentError) {
+          throw error;
+        }
         diff = undefined;
       }
     }

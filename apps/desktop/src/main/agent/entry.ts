@@ -1,5 +1,6 @@
 import {
   defineTool,
+  ToolExecutionError,
   z,
   type AgentMessage,
   type AgentTool,
@@ -35,6 +36,14 @@ const CONNECTED_AGENT_TOOL_NAMES = [
   { name: 'get_rules', kind: 'query' },
   { name: 'get_rule_hits', kind: 'query' },
   { name: 'apply_rules', kind: 'change' },
+  { name: 'list_breakpoints', kind: 'query' },
+  { name: 'enable_http_breakpoints', kind: 'change' },
+  { name: 'disable_http_breakpoints', kind: 'change' },
+  { name: 'enable_websocket_breakpoint', kind: 'change' },
+  { name: 'disable_websocket_breakpoint', kind: 'change' },
+  { name: 'continue_breakpoint', kind: 'change' },
+  { name: 'forward_edited_breakpoint', kind: 'change' },
+  { name: 'drop_breakpoint', kind: 'change' },
 ] as const;
 
 const DISCOVER_TOOLS_NAME = 'discover_tools';
@@ -189,14 +198,23 @@ export class AgentToolService implements AgentToolSource {
       ...(describeChange === undefined ? {} : {
         describeEffect: async (input, context) => {
           if (!isRecord(input)) {
-            throw new InterceptorToolArgumentError(
+            throw new ToolExecutionError(
+              'invalid_arguments',
               `Invalid arguments for tool "${definition.name}".`,
             );
           }
-          const changeDescription = await describeChange(input, {
-            host: this.#interceptorToolHost,
-            abortSignal: context.abortSignal,
-          });
+          let changeDescription;
+          try {
+            changeDescription = await describeChange(input, {
+              host: this.#interceptorToolHost,
+              abortSignal: context.abortSignal,
+            });
+          } catch (error) {
+            if (error instanceof InterceptorToolArgumentError) {
+              throw new ToolExecutionError('invalid_arguments', error.message);
+            }
+            throw error;
+          }
           return {
             text: [definition.effectDescription, ...changeDescription.lines]
               .filter((line): line is string => line !== undefined)

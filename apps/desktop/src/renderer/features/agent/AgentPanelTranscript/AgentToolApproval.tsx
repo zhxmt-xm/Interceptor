@@ -68,6 +68,15 @@ export function AgentToolApproval({
           data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
           data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}
           data-rule-revision={summary?.kind === 'rulesApplied' ? summary.revision : undefined}
+          data-breakpoint-enabled={summary?.kind === 'breakpointConfig'
+            ? summary.enabled
+            : undefined}
+          data-breakpoint-id={summary?.kind === 'breakpointResolution'
+            ? summary.breakpointId
+            : undefined}
+          data-breakpoint-state={summary?.kind === 'breakpointResolution'
+            ? summary.state
+            : undefined}
         >
           <code>{call.name}</code>
           {allowed && summary !== null ? <AgentToolResultSummary summary={summary} /> : null}

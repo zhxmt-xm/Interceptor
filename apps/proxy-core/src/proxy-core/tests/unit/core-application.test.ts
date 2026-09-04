@@ -232,6 +232,64 @@ describe('CoreApplication', () => {
     expect(breakpointQueue.size).toBe(0);
   });
 
+  it('lists typed pending Breakpoints and rejects a stale identity as conflict', async () => {
+    const breakpointQueue = new BreakpointQueue();
+    const suspension = breakpointQueue.suspend(
+      'request',
+      'http',
+      'rule-a',
+      {
+        ruleName: 'Pause API',
+        exchangeId: 'exchange-1',
+        method: 'POST',
+        url: 'http://api.test/items',
+        bodyFormat: 'text',
+        headers: [{ name: 'content-type', value: 'application/json' }],
+        bodyAvailable: false,
+      },
+    )!;
+    const coreApplication = new CoreApplication(new FakeParentPort(), {
+      breakpointQueue,
+    });
+    const abortSignal = new AbortController().signal;
+
+    await expect(coreApplication.executeCommand({
+      type: 'breakpoint.list',
+      payload: {},
+    }, abortSignal)).resolves.toMatchObject({
+      type: 'breakpoint.pending',
+      payload: {
+        enabled: true,
+        breakpoints: [{
+          id: suspension.id,
+          phase: 'request',
+          queueKey: 'http',
+          ruleId: 'rule-a',
+          exchangeId: 'exchange-1',
+          ruleName: 'Pause API',
+          method: 'POST',
+          url: 'http://api.test/items',
+          bodyFormat: 'text',
+          headers: [{ name: 'content-type', value: 'application/json' }],
+          bodyAvailable: false,
+        }],
+      },
+    });
+    await expect(coreApplication.executeCommand({
+      type: 'breakpoint.resolve',
+      payload: { breakpointId: 'bp-stale', action: 'drop' },
+    }, abortSignal)).rejects.toMatchObject({
+      detail: {
+        code: 'conflict',
+        message: 'The breakpoint was not found or has already been resolved.',
+        retryable: false,
+      },
+    } satisfies Partial<CoreCommandError>);
+
+    breakpointQueue.resolve(suspension.id, 'continue');
+    await expect(suspension.outcome).resolves.toEqual({ state: 'continued' });
+  });
+
   it('returns an internal error for storage commands when storage is unavailable', async () => {
     const coreApplication = new CoreApplication(new FakeParentPort());
     await expect(

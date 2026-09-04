@@ -63,6 +63,21 @@ export function AgentToolResultSummary({
     case 'rulesApplied':
       content = t('agent.tools.rulesApplied', { revision: summary.revision });
       break;
+    case 'breakpoints':
+      content = `${t('agent.tools.breakpoints', { count: summary.count })} · ${t(summary.enabled
+        ? 'agent.tools.enabled'
+        : 'agent.tools.disabled')}`;
+      break;
+    case 'breakpointConfig':
+      content = t(summary.enabled ? 'agent.tools.enabled' : 'agent.tools.disabled');
+      break;
+    case 'breakpointResolution':
+      content = `${t(summary.state === 'continued'
+        ? 'agent.tools.continued'
+        : summary.state === 'edited'
+          ? 'agent.tools.edited'
+          : 'agent.tools.dropped')} · ${summary.breakpointId}`;
+      break;
     case 'error':
       content = summary.message;
       break;

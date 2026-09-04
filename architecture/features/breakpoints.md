@@ -250,6 +250,25 @@ interface BreakpointOutcome {
 | `websocket.breakpoint.enable` | 用完整配置启用 WebSocket 帧断点 |
 | `websocket.breakpoint.disable` | 停用 WebSocket 帧断点 |
 
+### 6.1 Agent / MCP Tool入口 [已实现]
+
+共享registry已定义`list_breakpoints`、HTTP启停、WebSocket启停以及单项Continue、Forward edited、Drop八项。
+Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Renderer与Agent/MCP看到同一pending集合。
+
+- `breakpointId`只标识当前Core pending；客户端abort、其他入口resolve或Core重启后即stale。审批前已知stale返回
+    参数错误，描述后才失效的执行竞态返回Core `conflict`；两者都不得按列表位置改动另一个pending。
+- Ask摘要先读取目标pending，只展示phase、queue、URL/frame等必要影响，不回传完整敏感正文；Allow/Auto执行时
+    Core再次按ID判定。
+- `forward_edited_breakpoint`按pending phase收窄字段：request只接受method、URL和文本body；response只接受status和
+    文本body；WebSocket只接受文本body。跨phase字段在审批和执行前均拒绝；不接受headers、文件路径或close code。
+- HTTP与WebSocket pending都必须由正式UI配置和真实客户端流量产生。Tool测试不得直接构造queue成员。
+- Agent/MCP开关只决定Tool是否可发现/调用，不改变产品HTTP全局开关或当前WebSocket连接配置。
+
+真实Electron验收分别由`agent.tools.breakpoints`与复用Streamable HTTP transport的`mcp.tools.breakpoints`承担。
+两者均从Rules UI和真实客户端自产pending；Agent覆盖WebSocket连接隔离、Continue/Edit/Drop/Disable与重启零重放，
+MCP覆盖官方Client Ask/Auto、URL编辑、即时撤权、Client断开和credential轮换不解队。修复前`32f2889a`分别Red于
+Agent discovery为空、MCP stale错误进入审批；当前联合Green并完整释放Main/Core/MCP/8888和系统代理。
+
 历史 request 右键菜单中，Breakpoint submenu 与 Block 同属于 Control group，并使用同一 icon / label
 起点；submenu 箭头与 hover 展开仍由 Ant Menu 原生管理。不能把 Breakpoint 作为 group 外的顶层 item，
 否则 Ant 的 group child 与 submenu title 两套 DOM 会产生不同水平缩进。
