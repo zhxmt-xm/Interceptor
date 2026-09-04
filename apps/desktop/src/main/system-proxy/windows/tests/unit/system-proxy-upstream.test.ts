@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { toUpstreamProxyConfig } from '../../system-proxy-upstream';
-import type { WinInetProxySettings } from '../../../interfaces';
+import type { WinInetProxySettings } from '../../../../interfaces';
 
 const SELF = '127.0.0.1:8888';
 

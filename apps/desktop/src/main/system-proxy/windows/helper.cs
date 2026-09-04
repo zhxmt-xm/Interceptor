@@ -6,45 +6,67 @@ using System.Text;
 
 internal static class Program
 {
+    // Broadcasts a WinINet settings refresh.
     private const int InternetOptionRefresh = 37;
+    // Broadcasts that WinINet settings changed.
     private const int InternetOptionSettingsChanged = 39;
+    // Reads or writes per-connection proxy options.
     private const int InternetOptionPerConnectionOption = 75;
+    // Identifies the per-connection flags option.
     private const int InternetPerConnFlags = 1;
+    // Identifies the explicit proxy server option.
     private const int InternetPerConnProxyServer = 2;
+    // Identifies the proxy bypass list option.
     private const int InternetPerConnProxyBypass = 3;
+    // Identifies the PAC URL option.
     private const int InternetPerConnAutoConfigUrl = 4;
+    // Indicates that an explicit proxy is enabled.
     private const int ProxyTypeProxy = 2;
+    // Indicates that automatic proxy discovery is enabled.
     private const int ProxyTypeAutoDetect = 8;
 
     private sealed class ProxySettings
     {
+        // Complete WinINet per-connection flags.
         internal int Flags;
+        // Explicit proxy server string.
         internal string ProxyServer;
+        // Proxy bypass list.
         internal string BypassList;
+        // PAC URL.
         internal string PacUrl;
     }
 
     [StructLayout(LayoutKind.Explicit)]
     private struct InternetPerConnOptionValue
     {
+        // Numeric option payload.
         [FieldOffset(0)] internal int DwordValue;
+        // String option payload.
         [FieldOffset(0)] internal IntPtr StringValue;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct InternetPerConnOption
     {
+        // WinINet option identifier.
         internal int Option;
+        // Value associated with the option identifier.
         internal InternetPerConnOptionValue Value;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct InternetPerConnOptionList
     {
+        // Native structure size.
         internal int Size;
+        // Null selects the default LAN connection.
         internal IntPtr Connection;
+        // Number of entries in Options.
         internal int OptionCount;
+        // WinINet error index populated on failure.
         internal int OptionError;
+        // Pointer to the contiguous option array.
         internal IntPtr Options;
     }
 

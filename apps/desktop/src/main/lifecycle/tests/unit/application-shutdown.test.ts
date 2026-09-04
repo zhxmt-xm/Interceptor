@@ -3,10 +3,37 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ApplicationActionGate,
   completeApplicationShutdown,
+  completeApplicationStartupFailure,
   resumeApplicationAfterShutdownFailure,
 } from '../../application-shutdown';
 
 describe('completeApplicationShutdown', () => {
+  it('restores system proxy before cleaning up a partially started application', async () => {
+    const actions: string[] = [];
+    const restoreError = new Error('proxy restore failed');
+    const reportStopFailure = vi.fn();
+
+    await completeApplicationStartupFailure({
+      restoreSystemProxy: async () => {
+        actions.push('restore-proxy');
+        throw restoreError;
+      },
+      tasks: [
+        {
+          name: 'core-runtime',
+          stop: () => {
+            actions.push('core-runtime');
+          },
+        },
+      ],
+      reportStopFailure,
+      complete: () => actions.push('quit'),
+    });
+
+    expect(actions).toEqual(['restore-proxy', 'core-runtime', 'quit']);
+    expect(reportStopFailure).toHaveBeenCalledWith('system-proxy', restoreError);
+  });
+
   it('attempts every stop and completes quitting when one stop fails', async () => {
     const actions: string[] = [];
     const agentStopError = new Error('agent stop failed');

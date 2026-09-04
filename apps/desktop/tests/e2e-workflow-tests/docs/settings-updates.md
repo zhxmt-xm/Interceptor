@@ -121,6 +121,34 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 
 Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Restore仅在current==owned时恢复original，不覆盖外部修改。
 
+<a id="settings-system-proxy-crash-recovery"></a>
+## `settings.system-proxy.crash-recovery`
+
+**状态**：passed
+**策略**：os-side-effect；headed；Windows；host-safety-guard
+
+### Steps
+
+1. 外层宿主 guard 在任何 Electron 启动前保存完整 WinINet 六字段快照，并确认共享 crash journal 路径、测试进程树和 8888 的初始状态。
+2. 使用 fresh profile A 启动 App A，等待真实 Core listener 和自动接管；断言共享 journal 仅包含 version、`original` 与 `owned`，其中 `original` 等于步骤1快照且 `owned` 等于当前 WinINet。
+3. 强制终止 App A 的真实进程树，不调用产品 Restore/Close；确认 A 的 Main/Core 全部退出且8888释放，WinINet与journal仍保持A的owned状态。
+4. 在 A 完全退出后，使用不同 fresh profile 启动 App B。Main 在创建 Renderer/Core 前读取共享 journal；`current == owned` 时直接加载同一份 `original/owned`，WinINet零写入。
+5. 断言 B 读取的 `original/owned` 与 A 完全相同，没有把8888记为`original`；等待 B 的真实 listener、Renderer readiness 和 Recording。
+6. 通过公共 `shell.window.close` 正常关闭 B；B 精确恢复 A 首次接管前的完整 WinINet 并清除共享 journal。
+7. 外层 guard 硬断言两代 Main/Core/Worker 全部退出、8888 可重新 bind、共享 crash journal 不存在、WinINet 六字段精确等于步骤1快照；保存脱敏 trace/evidence 后才删除两个 profile。
+8. 任一业务或 teardown 断言失败时立即停止套件；runner 先关闭归属于测试 Main 的原生 Dialog、杀死已知测试进程树，再按 journal 的 `current/original/owned` 三态恢复并重复全部宿主断言。原始业务错误与恢复错误必须同时保留。
+
+### 预期效果
+
+生产、开发和不同 E2E profile 共享唯一用户级 crash journal；产品只考虑顺序运行的单 App。异常退出不会丢失首次 `original`，下一次 App 直接加载快照，正常退出后完整恢复宿主；外部修改不得被覆盖。
+
+### 证据
+
+- Red 必须是修复前 App B 把遗留8888重记为 `original` 或无法加载首次快照的业务失败；selector、构建、Dialog或宿主清理失败不算 Red。
+- Green 必须同时包含A/B快照相同、首次original保持、完整WinINet恢复、共享journal清除、两代进程树销毁和8888释放。
+- 实现前 Red：同一 workflow 在 App B 启动后精确失败于首次 `original` 被改写为遗留 8888；外层宿主恢复成功，不是构建、selector 或 teardown 失败。
+- 当前 Green：单 App 三字段 journal 上同一 workflow `1/1`通过（16.2秒）。脱敏 evidence 的首次接管、A异常销毁、B加载相同`original/owned`、共享journal路径和B正常销毁六项均为`true`；A Main/Core PID为`30640/39876`，B为`8472/27844`。结束后完整WinINet等于启动前快照，`journal.json`、Electron进程和8888 listener均为0。
+
 <a id="settings-proxy-mitm-persistence"></a>
 ## `settings.proxy-mitm.persistence`
 
@@ -129,26 +157,29 @@ Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Resto
 
 ### Steps
 
-1. 创建 fresh profile 和第一份 evidence；启动第一代 Electron，等待 App/Core/8888/bootstrap 完成，确认 Recording、WinINet 等于第一份 ownership journal 的 `owned`，且 `original != owned`。快照只在内存比较，不进入 evidence。
+1. 创建 fresh profile 和第一份 evidence；启动第一代 Electron，等待 App/Core/8888/bootstrap 完成，确认 Recording、WinINet 等于第一份 crash journal 的 `owned`，且 `original != owned`。快照只在内存比较，不进入 evidence。
 2. 只通过 Settings UI 依次 Generate、Install CA 并完成真实 UAC；开启 MITM，在 Certificates 添加 `localhost` 例外，在 TLS passthrough 添加 `127.0.0.2`。
-3. 确认 journal 为 `phase=owned`；不打开会渲染原 proxy server、bypass 与 PAC 的 Proxy 面板。
-4. 由测试环境异常终止第一代 Main，不点击产品 Close/Restore；确认第一代 Main/Core 退出、8888 释放，journal 与 owned WinINet 仍保留。
-5. 使用同一 profile 启动第二代 Electron。Main 必须在创建 Renderer/Core 前消费旧 journal 并精确恢复 `original`；随后正常 bootstrap 再次接管并创建新 journal。新旧 journal 的 `createdAt` 必须不同，`original` 必须完全相同，最终 UI 为 Recording。
+3. 确认 journal 只包含 `version/original/owned`；不打开会渲染原 proxy server、bypass 与 PAC 的 Proxy 面板。
+4. 由测试环境异常终止第一代 Main，不点击产品 Close/Restore；确认第一代 Main/Core/Worker 退出、8888 释放，共享 journal 与 owned WinINet 仍保留。
+5. 在第一代完全退出后，使用同一 profile 启动第二代 Electron。Main 必须在创建 Renderer/Core 前读取共享 journal，保持当前8888不变并加载相同`original/owned`，最终UI为Recording。
 6. 确认证书文件仍为第一代生成的同一 SHA-1、当前处于有效期内，并由只读 `certutil -verifystore` 确认仍受 LocalMachine Root 信任。
 7. 进入 Certificates，确认 MITM switch 仍开启且 `localhost` 例外仍存在；进入 TLS passthrough，确认 `127.0.0.2` pattern 仍存在。断言只使用公共 automation ID、DOM 状态和只读 OS 比较。
 8. 通过 Settings UI 删除 `127.0.0.2` passthrough 与 `localhost` 例外，关闭 MITM，Uninstall 并 Delete CA；确认测试 CA 不再受信任且 profile 无 CA。
 9. 保存两代 trace、final screenshot、Main/Renderer 日志和脱敏 persistence evidence；点击第二代 `shell.window.close`。
-10. 验证第二代 Main/Core、8888 完整销毁，WinINet 仍精确等于步骤1快照，journal 不存在并删除 profile。
+10. 由外层宿主 guard 验证第二代 Main/Core/Worker、8888 完整销毁，WinINet 精确等于步骤1快照，共享 journal 不存在并删除 profile。
 
 ### 预期效果
 
-异常退出只留下可验证的 ownership journal；下次 Main 先安全交还原系统代理，再由新一代 bootstrap 正常接管，不把旧 owned 值误当作新的 original。CA身份、有效期、系统信任、MITM用户意图、TLS passthrough与源站例外均跨进程保持；本workflow不替代`capture.protocols.with-mitm`的数据面验收。
+异常退出只留下可验证的用户级 crash journal；下次 Main 直接加载首次 `original`
+与当前 `owned`，不把旧 `owned` 值误当作新的 `original`，也不做一次无意义的恢复再接管。
+CA 身份、有效期、系统信任、MITM 用户意图、TLS passthrough 与源站例外均跨进程保持；
+本 workflow 不替代 `capture.protocols.with-mitm` 的数据面验收。
 
 ### 证据
 
 - retrospective Red：修复前`c978915`第二代`settings.certificates.mitm-toggle`为`false`，而证书身份/有效期/信任、journal original与最终清理均已通过。
-- 当前Green：`1/1`通过；第一代Main/Core PID `44740/25312`为`abruptDestroyVerified=true`，第二代`24740/33656`为`gracefulDestroyVerified=true`。
-- Green脱敏证据中证书同一性、有效期、系统信任、MITM意图、insecure host、passthrough host、original恢复、journal清理与测试CA删除全部为`true`；结束后8888、Interceptor进程与本轮CA均为0，原系统代理与网络恢复。
+- 当前Green：单 App 三字段 journal 上同一 workflow `1/1`通过（27.3秒）；第一代Main/Core PID `27820/16504`为`abruptDestroyVerified=true`，第二代`39564/21692`为`gracefulDestroyVerified=true`。
+- Green脱敏证据中journal保留、B加载同一journal、首次original/owned保持、证书同一性、有效期、系统信任、MITM意图、insecure host、passthrough host、最终代理恢复、journal清理与测试CA删除16项全部为`true`；结束后8888、Electron进程与本轮CA均为0，完整WinINet恢复到workflow启动前快照。
 
 <a id="settings-certificates-generate-delete"></a>
 ## `settings.certificates.generate-delete`

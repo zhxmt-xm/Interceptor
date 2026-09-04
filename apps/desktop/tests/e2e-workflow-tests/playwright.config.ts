@@ -11,6 +11,7 @@ export default defineConfig({
   preserveOutput: 'always',
   fullyParallel: false,
   forbidOnly: true,
+  maxFailures: 1,
   retries: 0,
   workers: 1,
   timeout: 90_000,

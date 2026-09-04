@@ -21,7 +21,10 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/automation';
 import { expect, test } from '../../fixtures/local-electron-driver';
-import { submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import {
+  submitWindowsFileDialogPath,
+  type WindowsFileDialogOwner,
+} from '../../fixtures/windows-file-dialog';
 
 const IMPORT_IDS = {
   toolbar: 'composer.collection.import',
@@ -90,7 +93,7 @@ async function expandFolder(page: Page, folderId: string): Promise<void> {
 
 async function chooseFile(
   page: Page,
-  mainProcessId: number,
+  mainProcessOwner: WindowsFileDialogOwner,
   trigger: Locator,
   busyAutomationId: string,
   filePath: string,
@@ -98,7 +101,7 @@ async function chooseFile(
   await page.bringToFront();
   await trigger.click();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toBeVisible();
-  await submitWindowsFileDialogPath(mainProcessId, filePath);
+  await submitWindowsFileDialogPath(mainProcessOwner, filePath);
   await page.bringToFront();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toHaveCount(0);
 }
@@ -146,8 +149,7 @@ test('composer.collection.import appends product-exported requests with fresh id
   const transferDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-composer-import-'));
   const exportPath = path.join(transferDirectory, 'collection-roundtrip.json');
   const { page } = desktopApp;
-  const mainProcessId = desktopApp.application.process().pid;
-  expect(mainProcessId).toBeDefined();
+  const mainProcessOwner = desktopApp.windowsMainProcessOwner();
 
   try {
     // 先锁定新能力入口；旧提交必须在这里因真实产品缺口取得Red。
@@ -243,7 +245,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     // Export creates the only Import input through the real Save Dialog; the test only reads fields and hierarchy.
     await chooseFile(
       page,
-      mainProcessId!,
+      mainProcessOwner,
       getByAutomationId(page, AUTOMATION_IDS.composer.exportCollection),
       IMPORT_IDS.exportBusy,
       exportPath,
@@ -295,7 +297,7 @@ test('composer.collection.import appends product-exported requests with fresh id
       .click();
     await originalFolderTarget.click();
     await expect(originalFolderTarget).toHaveAttribute('aria-pressed', 'true');
-    await chooseFile(page, mainProcessId!, importCollection, IMPORT_IDS.busy, exportPath);
+    await chooseFile(page, mainProcessOwner, importCollection, IMPORT_IDS.busy, exportPath);
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toBeVisible();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.fileName))
       .toHaveText('collection-roundtrip.json');
@@ -311,7 +313,7 @@ test('composer.collection.import appends product-exported requests with fresh id
 
     // 确认Import后，节点与字段行ID全部重生成，内容与层级保留且当前文档/落点不变。
     // Confirm Import; regenerate every node and field-row ID while preserving content, hierarchy, active document, and target.
-    await chooseFile(page, mainProcessId!, importCollection, IMPORT_IDS.busy, exportPath);
+    await chooseFile(page, mainProcessOwner, importCollection, IMPORT_IDS.busy, exportPath);
     await getByPublicAutomationId(page, IMPORT_IDS.confirm).click();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toHaveCount(0);
     await expect(folderRows).toHaveCount(2);
@@ -362,7 +364,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     const persistedExportPath = path.join(transferDirectory, 'collection-persisted.json');
     await chooseFile(
       page,
-      mainProcessId!,
+      mainProcessOwner,
       getByAutomationId(page, AUTOMATION_IDS.composer.exportCollection),
       IMPORT_IDS.exportBusy,
       persistedExportPath,

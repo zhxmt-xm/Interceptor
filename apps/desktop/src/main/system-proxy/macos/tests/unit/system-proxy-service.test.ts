@@ -1,46 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { MacosSystemProxyService } from '../../macos-system-proxy-service';
-import { SystemProxyError } from '../../system-proxy-error';
+import { MacosSystemProxyService } from '../../entry';
+import { SystemProxyError } from '../../../system-proxy-error';
 import type {
   MacosSystemProxySnapshot,
   SystemProxyCommandResult,
   SystemProxyCommandRunner,
   SystemProxyJournalRecord,
   SystemProxyJournalStore,
-  SystemProxyPlatform,
-} from '../../../interfaces';
+} from '../../../../interfaces';
 
 class FakeJournal implements SystemProxyJournalStore {
   /** Current persisted record shared across simulated process generations. */
   record: SystemProxyJournalRecord | null = null;
 
-  /** Return the current persisted ownership record. */
+  /** Return the current persisted crash record. */
   read(): Promise<SystemProxyJournalRecord | null> {
     return Promise.resolve(this.record);
   }
 
   /** Persist original and intended values before the helper write. */
-  begin(platform: SystemProxyPlatform, original: unknown, owned: unknown): Promise<void> {
-    const timestamp = new Date().toISOString();
+  save(original: unknown, owned: unknown): Promise<void> {
     this.record = {
       version: 1,
-      platform,
-      phase: 'preparing',
       original,
       owned,
-      createdAt: timestamp,
-      updatedAt: timestamp,
     };
-    return Promise.resolve();
-  }
-
-  /** Advance the current record to verified ownership. */
-  markOwned(platform: SystemProxyPlatform): Promise<void> {
-    if (!this.record || this.record.platform !== platform) {
-      throw new Error('missing journal');
-    }
-    this.record = { ...this.record, phase: 'owned' };
     return Promise.resolve();
   }
 
@@ -231,16 +216,45 @@ describe('MacosSystemProxyService', () => {
     expect(fakeMacosHelperRunner.calls).toEqual([]);
   });
 
-  it('restores every service from a journal after the owner crashes', async () => {
+  it('loads every service from a crash journal and restores only on shutdown', async () => {
     const fakeMacosHelperRunner = new FakeMacosHelperRunner();
     const original = structuredClone(fakeMacosHelperRunner.snapshot);
     const fakeJournal = new FakeJournal();
     await createService(fakeMacosHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
+    const callCount = fakeMacosHelperRunner.calls.length;
+    const restartedService = createService(fakeMacosHelperRunner, fakeJournal);
 
-    const result = await createService(fakeMacosHelperRunner, fakeJournal).restore();
+    const recovery = await restartedService.recoverAfterCrash();
 
+    expect(recovery).toMatchObject({ restored: false, status: { owned: true } });
+    expect(fakeMacosHelperRunner.calls.slice(callCount).map((call) => call.args[0]))
+      .toEqual(['get']);
+    expect(fakeJournal.record).not.toBeNull();
+
+    const result = await restartedService.restore();
     expect(result.restored).toBe(true);
     expect(fakeMacosHelperRunner.snapshot).toEqual(original);
+    expect(fakeJournal.record).toBeNull();
+  });
+
+  it('clears a journal when a crash happened before SystemConfiguration changed', async () => {
+    const fakeMacosHelperRunner = new FakeMacosHelperRunner();
+    const original = structuredClone(fakeMacosHelperRunner.snapshot);
+    const fakeJournal = new FakeJournal();
+    await fakeJournal.save(original, {
+      services: original.services.map((service) => ({
+        ...service,
+        settings: { ...service.settings, HTTPEnable: 1, HTTPPort: 8888 },
+      })),
+    });
+
+    const result = await createService(
+      fakeMacosHelperRunner,
+      fakeJournal,
+    ).recoverAfterCrash();
+
+    expect(result).toMatchObject({ restored: false, reason: 'not-owned' });
+    expect(fakeMacosHelperRunner.calls.map((call) => call.args[0])).toEqual(['get']);
     expect(fakeJournal.record).toBeNull();
   });
 
@@ -257,7 +271,10 @@ describe('MacosSystemProxyService', () => {
     };
     const callCount = fakeMacosHelperRunner.calls.length;
 
-    const result = await createService(fakeMacosHelperRunner, fakeJournal).restore();
+    const result = await createService(
+      fakeMacosHelperRunner,
+      fakeJournal,
+    ).recoverAfterCrash();
 
     expect(result).toMatchObject({
       restored: false,
@@ -266,7 +283,7 @@ describe('MacosSystemProxyService', () => {
     });
     expect(fakeMacosHelperRunner.calls.slice(callCount).map((call) => call.args[0]))
       .toEqual(['get']);
-    expect(fakeJournal.record).not.toBeNull();
+    expect(fakeJournal.record).toBeNull();
   });
 });
 

@@ -441,8 +441,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
   await expect.poll(() => bodyPane.textContent()).toContain('breakpoint-file-final');
   const generatedFile = testInfo.outputPath('body-effect-response-file.json');
-  const mainProcessId = desktopApp.application.process().pid;
-  expect(mainProcessId).toBeDefined();
+  const mainProcessOwner = desktopApp.windowsMainProcessOwner();
   let responseBreakpointRuleId: string | null = null;
 
   try {
@@ -450,7 +449,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       page,
       AUTOMATION_IDS.capture.inspector.bodyAction.save,
     ).click();
-    await submitWindowsFileDialogPath(mainProcessId!, generatedFile);
+    await submitWindowsFileDialogPath(mainProcessOwner, generatedFile);
     await page.bringToFront();
     await expect.poll(async () => readFile(generatedFile).catch(() => null))
       .toEqual(responseFileBytes);
@@ -474,7 +473,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       AUTOMATION_IDS.breakpoints.replacement.file,
     ).click();
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.chooseFile).click();
-    await submitWindowsFileDialogPath(mainProcessId!, generatedFile);
+    await submitWindowsFileDialogPath(mainProcessOwner, generatedFile);
     await page.bringToFront();
     const selectedFile = getByAutomationId(
       page,

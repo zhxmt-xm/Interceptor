@@ -149,60 +149,91 @@ Main 组装的 `CertificateInfo` 含 `path` 与 `mitmEnabled`，**私钥不出 M
 
 ## 3. 系统代理
 
-### 3.1 Guarded ownership
+### 3.1 Guarded restoration
 
 ```mermaid
 stateDiagram-v2
     [*] --> unowned
-    unowned --> owned: enable 成功
-    owned --> unowned: restore 成功
+    unowned --> owned: 先保存 original/owned，再写入并验证
+    owned --> unowned: current == owned，恢复 original
+    owned --> unowned: current == original，只清 journal
     owned --> ownershipLost: 外部程序修改
-    ownershipLost --> unowned: 用户手工处理
+    ownershipLost --> unowned: 零 WinINet 写入并清 journal
     note right of ownershipLost
         current != owned
         零写入，绝不覆盖用户值
     end note
 ```
 
-**判定规则**：enable 前读取 original 并计算 owned；restore 时重新读取 current，只有 `current == owned` 才写回 original。
+**用户级唯一记录**：Windows 固定使用
+`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，不随 Electron `userData`、开发模式、
+packaged App 或 E2E `--user-data-dir` 改变。Electron 业务数据仍按各自 profile 隔离。
 
-**窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`。`restore` 先用内存快照，进程重启后回退到 journal；强杀残留由启动与 Core 失败两条自动路径恢复，Main 日志不包含 snapshot。
+产品只考虑同一时间存在一个 Interceptor App，不保存进程 owner，也不处理多实例竞争。Windows 与 macOS
+journal 都只包含 schema version、完整 `original` 和完整 `owned`；写入使用临时文件同步后原子 rename。
+Windows 使用上述用户级唯一路径；macOS 使用当前 `userData/system-proxy/journal.json`。
+
+**判定规则**：
+
+- 无记录时读取完整 WinINet `original`，计算 `owned`，先原子保存两份快照，再写入并验证 `owned`。
+- App 异常退出后，下一次启动若 `current == owned`，直接加载 journal 快照并继续使用当前8888，不恢复后重写。
+- `current == original` 表示设置已经恢复，只清 journal。
+- 其他 `current` 表示用户或外部程序已经修改代理；不写 WinINet，清除已失效 journal。
+- 正常退出仅在 `current == owned` 时精确恢复 `original`；恢复写入或读回验证失败时保留 journal。
+- Main 内的启动恢复、用户 Enable/Restore、Core 故障恢复与退出恢复通过同一 Promise 队列顺序执行，避免单 App 内事件交错；该队列不保存进程身份，也不是跨进程锁。
+
+**窄 Desktop API**：`getSystemProxyStatus`、`enableSystemProxy`、`restoreSystemProxy`。Main 在启动、
+Core 失败与应用退出时使用同一用户级记录和 guarded decision；Main 日志不包含 snapshot。
 
 ### 3.2 Startup journal
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Svc as SystemProxyService
+    participant A as App A
+    participant B as App B
     participant Journal as SystemProxyJournal
     participant OS as 操作系统
 
-    Note over Svc: 启用前
-    Svc->>OS: 读取 original
-    Svc->>Journal: 原子持久化 version/platform/phase/original/owned
+    Note over A: 首次接管
+    A->>OS: 读取 original
+    A->>Journal: 原子持久化 version / original / owned
     Note over Journal: 临时文件 fsync 后 rename
-    Svc->>OS: 写入 127.0.0.1:8888
+    A->>OS: 写入并验证 127.0.0.1:8888
+    Note over A: A 异常退出
 
-    Note over Svc: 下次启动
-    Svc->>OS: 读取 current
+    Note over B: 产品前提：A 已退出后才启动 B
+    B->>OS: 读取 current
     alt current == owned
-        Svc->>OS: 恢复 original
-        Svc->>Journal: 清除
+        B->>Journal: 加载 original / owned，WinINet 零写入
     else current == original
-        Svc->>Journal: 清除
-    else 其他
-        Svc->>Journal: 保留冲突记录
+        B->>Journal: 清除已完成恢复的记录
+    else current 为其他值
+        B->>Journal: 清除失效记录
+        B-->>OS: 零 WinINet 写入
+    end
+
+    Note over B: B 正常退出
+    B->>OS: 读取 current
+    alt current == owned
+        B->>OS: 精确恢复首次 original 并验证
+        B->>Journal: 清除
+    else current == original
+        B->>Journal: 清除
+    else 外部修改
+        B->>Journal: 零系统代理写入并清除失效记录
     end
 ```
 
-同一 guarded decision 复用于：Core 从 running 进入 unresponsive/restarting、停止 Capture、应用退出。
+同一快照判定复用于：App 启动时恢复 crash journal、Core 从 running 进入
+unresponsive/restarting、停止 Capture、应用退出和 E2E runner 的宿主恢复保护。
 
 ### 3.3 平台实现
 
 | 平台 | 机制 |
 | --- | --- |
-| Windows | `windows-helper.cs`，当前用户 WinINet per-connection API，读写 flags/Proxy Server/Bypass/PAC URL/Auto Detect，广播 settings changed |
-| macOS | `macos-helper.swift`，Authorization Services + SystemConfiguration，枚举当前 Network Set 全部活动 service，单 session 内 set/commit/apply |
+| Windows | `windows/helper.cs`，当前用户 WinINet per-connection API，读写 flags/Proxy Server/Bypass/PAC URL/Auto Detect，广播 settings changed |
+| macOS | `macos/helper.swift`，Authorization Services + SystemConfiguration，枚举当前 Network Set 全部活动 service，单 session 内 set/commit/apply |
 
 只允许 loopback listener。
 
@@ -221,7 +252,7 @@ sequenceDiagram
 
     UI->>Main: systemProxy:enable
     Main->>Svc: enable(host, port)
-    Svc->>Svc: 读 original，toUpstreamProxyConfig(original, self)
+    Svc->>Svc: 读取 original，toUpstreamProxyConfig(original, self)
     Svc-->>Main: status
     Main->>Core: proxy.setUpstream { upstream }
     Note over Core: 存进 ProxyService，不重启监听器
@@ -230,7 +261,7 @@ sequenceDiagram
     Up-->>Core: 200 Connection Established
 ```
 
-转换规则（`system-proxy-upstream.ts`，纯函数 + 14 项单测）：
+转换规则（`windows/system-proxy-upstream.ts`，纯函数 + 14 项单测）：
 
 | 原配置 | 上游 `proxyUrl` |
 | --- | --- |
@@ -350,10 +381,10 @@ macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi
 
 系统代理 ownership 与 TLS 用户配置使用两种不同的恢复语义：
 
-- 系统代理 journal 只保证异常退出后安全交还系统设置。下次 Main 启动必须在创建 Renderer 和 Core 前比较 `current` 与 `owned`；相等时精确恢复 `original` 并清除 journal，不把旧 ownership 延续到新进程。
+- Windows 系统代理 journal 在异常退出后保留首次 `original/owned`。产品只支持同一时间一个 App；下次 Main 在创建 Renderer 和 Core 前比较 `current`，等于 `owned` 时直接加载快照，等于 `original` 时清 journal，其他值保持零 WinINet 写入并清除失效 journal。正常退出时精确恢复首次 `original`。
 - TLS passthrough、源站证书例外与 HTTPS 解密开关是跨会话用户配置。新 Core 从 `workspace.sqlite` 读回配置；Main 在 Core ready 后读回解密意图，并按「CA 仍受信任且用户开启」重新下发 CA 与解密状态。
 
-真实 Electron 验收使用同一 profile 的两次 App 生命周期。第一次由正常 bootstrap 接管系统代理，再只能通过 Settings UI 生成并安装 CA、开启 MITM、添加 TLS passthrough 与源站例外，随后由测试环境异常终止 Main。第二次启动必须在创建 Renderer/Core 前消费旧 journal、恢复原系统代理；随后正常 bootstrap 会再次接管并写入新 journal，因此最终 UI 仍是 Recording/owned。测试以“新旧 journal 的 `createdAt` 不同且 `original` 完全相同”证明中间恢复确实发生，并验证CA文件SHA-1不变、仍在有效期内且受系统信任，以及Settings中的MITM意图和两份host配置恢复。流程结束前必须通过 UI 删除测试配置、关闭 MITM、卸载并删除 CA，再验证两代 Main/Core 全退、8888 释放且系统代理等于第一份 journal 的 `original`。测试只在内存比较 OS 与 journal 快照，不把原始 proxy server、bypass 或 PAC 写入 trace、日志或附件，也不打开会渲染这些字段的 Proxy 面板。实际MITM数据面归`capture.protocols.with-mitm`验收，不由本workflow代替。
+真实 Electron 验收顺序运行两次 App 生命周期。第一代由正常 bootstrap 接管系统代理，再只能通过 Settings UI 生成并安装 CA、开启 MITM、添加 TLS passthrough 与源站例外，随后由测试环境异常终止。第二代启动必须在创建 Renderer/Core 前消费共享 journal，并在不改写 WinINet 的情况下加载同一 `original/owned`，最终 UI 仍是 Recording/owned。流程结束前必须通过 UI 删除测试配置、关闭 MITM、卸载并删除 CA，再验证两代 Main/Core 全退、8888 释放且系统代理等于首次 `original`。测试只在内存比较 OS 与 journal 快照，不把原始 proxy server、bypass 或 PAC 写入 trace、日志或附件，也不打开会渲染这些字段的 Proxy 面板。实际MITM数据面归`capture.protocols.with-mitm`验收，不由本workflow代替。
 
 ## 4. 更新
 

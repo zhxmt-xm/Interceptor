@@ -8,8 +8,8 @@ if (process.platform !== 'darwin') {
   process.exit(0);
 }
 
-const desktopRoot = path.resolve(import.meta.dirname, '../../..');
-const source = path.join(import.meta.dirname, 'macos-helper.swift');
+const desktopRoot = path.resolve(import.meta.dirname, '../../../..');
+const source = path.join(import.meta.dirname, 'helper.swift');
 const outputDirectory = path.join(desktopRoot, 'dist/system-proxy');
 const output = path.join(outputDirectory, 'macos-proxy-helper');
 

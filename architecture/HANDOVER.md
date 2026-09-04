@@ -1,17 +1,16 @@
 # Interceptor Handover
 
-> Tracked commit: `1234ea9a`
+> Tracked commit: `8ff403d1`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-04
 
 ## Task List
 
-- [ ] **最高优先级 · 阻断所有App/E2E · 系统代理跨profile ownership修复**：2026-09-03真实Electron `rules.import-tree`卡在Windows原生Save Dialog后，至少一次teardown被残留Dialog阻塞；清理只强杀Electron/Core并检查8888 listener，没有恢复或核验WinINet。随后生产、开发、E2E实例各自从独立`<userData>/system-proxy/ownership.json`读取状态，把遗留的`127.0.0.1:8888`误记为`original`，所以重新启动本地App再正常关闭仍恢复到8888，最终由Developer手动关闭系统代理才恢复网络。保留的多个E2E profile已直接记录`original.proxyEnabled=true / original.proxyServer=...8888`且`owned`同为8888；系统代理产品源码本轮没有修改。
-    **目标契约**：生产、开发、E2E共享唯一的用户级代理ownership profile，但Electron业务`userData`继续隔离。首次接管保存完整WinINet `original`；旧owner异常退出后，新App启动时继续使用当前8888，只继承旧`original`并把owner转移给自己，不把8888重记为恢复目标；新App正常关闭后必须恢复第一次接管前的完整设置。用户或第三方已修改当前代理时不得覆盖用户设置。
-    **实现方案**：固定使用`%LOCALAPPDATA%/Interceptor/system-proxy/ownership.json`，不受`--user-data-dir`影响；记录原子写入的`original`、`owned`、`preparing/owned`阶段及PID、进程启动时间、实例ID；用跨进程锁串行接管、owner转移和恢复。旧owner仍存活时禁止第二实例覆盖记录；旧owner已死且当前等于`owned`时直接继承；当前owner正常关闭且当前仍等于`owned`时精确恢复`original`，验证成功后删除记录，失败则保留供下次启动继续处理。不引入常驻守护进程。
-    **TDD与安全门禁**：先更新`architecture/platform/processes.md`与owning E2E契约；Unit/Integration先锁定跨profile共享路径、首次接管、死亡owner直接继承、活owner拒绝、外部修改不覆盖、恢复失败保留记录和并发原子性。真实Electron专项流程为App A（profile A）接管→强杀A→App B（profile B）直接继承→正常关闭B→完整WinINet恢复到A启动前快照。E2E runner还必须在每条真实Electron结束后硬断言完整WinINet快照、ownership清除、Main/Core退出和8888无监听；任一失败立即停止套件，runner仍存活时在杀死已知测试进程后调用同一恢复逻辑。历史Red与当前Green都必须置于外层完整WinINet快照/恢复保护中，不能再只检查进程和端口。
-    **当前现场与后续提交顺序**：Developer已手动关闭代理；最后只读核查为`ProxyEnable=0`，`ProxyServer`仍保存8888字符串但不生效，无Interceptor/Electron进程且8888无listener。在本任务完整实现并验证前禁止启动本地App、packaged smoke或任何真实Electron E2E。2026-09-04先以一个明确标记的checkpoint commit保存当前全部tracked工作树；该checkpoint不表示Rules或代理work item完成。checkpoint push后，下一项代码改动必须是本代理修复；代理修复以独立完整commit立即push，完成后才继续Rules。代理涉及与Rules共用的`main.ts`、`architecture/platform/processes.md`、Handover等文件时逐hunk暂存，只提交代理契约、Red、实现、Green与证据。
-- [ ] **第二优先级 · checkpoint已保存，待安全E2E/完成提交 · Agent Rules三项收口**：基线仍为`1234ea9a`；2026-09-04 checkpoint纳入当前全部tracked Rules、Import并发与Dialog驱动现场，仅用于完整保存代码，不作为work item完成或验收证据。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不得修改、暂存或提交；`AgentQueryToolTrace.tsx`曾被用户或formatter改动，后续编辑前必须重读。
+- [x] **completed · 系统代理跨profile crash recovery**：2026-09-03真实Electron `rules.import-tree`卡在Windows原生Save Dialog后，teardown只检查进程与8888，没有恢复完整WinINet；后续独立profile又把遗留8888误记为`original`。Developer最终手工恢复网络。根因是journal跟随Electron `userData`，不同profile看不到同一份首次快照。
+    **当前契约**：产品只支持同一时间一个Interceptor App，不维护owner、PID、启动时间、instance ID、跨进程锁或多实例竞争。Windows固定使用`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`；macOS使用当前`userData/system-proxy/journal.json`。两平台journal都只包含`version/original/owned`。接管前先原子保存完整`original/owned`再修改系统代理；启动恢复时`current == owned`则加载快照且不重写系统代理，`current == original`则只删journal，其他值表示外部修改，零系统代理写入并删失效journal；正常退出仅在`current == owned`时恢复`original`，恢复失败保留journal。
+    **结构与安全门禁**：平台代码已拆为`system-proxy/windows/`与`system-proxy/macos/`，各自拥有`entry.ts`、`journal.ts`、helper、build脚本和tests；共享error、upstream probe与单App内操作队列留在模块根。Main将启动恢复、用户Enable/Restore、Core故障恢复和退出恢复顺序执行；该队列不保存进程身份，也不是跨进程锁。产品Windows helper只保留WinINet `get/set`。E2E runner自己的PowerShell边界按PID+启动时间清理测试进程、只对已登记前台Dialog发键，并在每条真实Electron结束后硬断言完整WinINet、`journal.json`、测试进程树与8888。
+    **最终证据**：`settings.system-proxy.crash-recovery`为`1/1` Green（16.2秒），A Main/Core `30640/39876`异常销毁，B `8472/27844`顺序启动并正常销毁，六项快照/路径/销毁证据全true。三字段journal上的`settings.proxy-mitm.persistence`为`1/1` Green（27.3秒），A `27820/16504`异常销毁，B `39564/21692`正常销毁，16项代理/CA/MITM/TLS证据全true。系统代理+fixture聚焦`76/76`、Desktop全量`445/445`、全workspace typecheck、native build、Windows package、artifact audit（`1,294 files / 392,808,773 bytes`）、离线production audit 0漏洞与packaged smoke`1/1`（39.1秒）全部Green；全workspace unit仍只有既有Proxy Core chunked framing两项失败。最终宿主保持Clash的`ProxyEnable=1 / ProxyServer=127.0.0.1:7890`，无`journal.json`、Electron或8888 listener。
+- [ ] **下一优先级 · 代理门禁已完成，待Rules Import E2E/完成提交 · Agent Rules三项收口**：基线为checkpoint `8ff403d1`；2026-09-04 checkpoint纳入当前全部tracked Rules、Import并发与Dialog驱动现场，仅用于完整保存代码，不作为work item完成或验收证据。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不得修改、暂存或提交；`AgentQueryToolTrace.tsx`曾被用户或formatter改动，后续编辑前必须重读。
     `get_rules`、`get_rule_hits`、`apply_rules`业务主体、严格递归Zod schema、Map Local路径隔离、typed摘要、Ask/Auto、stale revision、`rules:changed`跨Agent/MCP/窗口同步、Rules Store异步序列、15语言与design/parity已完成。后续复审还锁定：只有除真实路径外JSON语义完全不变的Rule可保留Map Local路径；`describeChange`与`execute`共用revision守卫；过旧外部响应结束loading并保持conflict；Import保存使用提交快照，保存期间编辑保留在draft且更高外部revision conflict不清除；设计与产品统一`data-approval-status`。
     最近自动验证为Tools`43/43`、Runtime`121/121`、MCP`30/30`、Desktop`411/411`、design interaction`68/68`和全workspace typecheck Green；Agent Rules与MCP Rules真实Electron在最新业务实现上联合`2/2` Green。此前完整parity为`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`，新增Rules query/result明暗4 views为`30/30`、0 missing、0 flagged、0px；最后一次package基线为`1,294 files / 392,804,000 bytes`、production audit 0漏洞、packaged smoke`1/1`，但这些发布门禁早于最新Import并发增量，收口时必须重跑。
     当前唯一业务收口阻塞是`rules.import-tree`：它在业务保存前卡于Windows原生Save Dialog。`windows-file-dialog.ts`现有约`+75/-16`的Win32置前、`Alt+N`与Electron进程后代筛选改动尚未形成可信Green；这些改动必须继续修正、完成验证并随所属work item提交，不能回退或丢弃。完成代理最高优先级任务后，在新的E2E代理硬门禁下继续小步完成Dialog驱动，使Rules Import真实workflow Green并证明完整WinINet恢复；再复跑Rules聚焦/全量、Agent/MCP/Import真实E2E、package/audit/smoke，更新最终证据，逐文件复审并重新暂存全部增量。共享Handover/TODO仍逐hunk暂存；最后提交`feat(agent): connect rules tools`并立即push。
@@ -33,7 +32,7 @@
 
 ## Constraints
 
-- 系统代理最高优先级任务完成前禁止启动本地App、packaged smoke或真实Electron E2E；不得以“进程已退出/8888无listener”替代完整WinINet恢复验证。
+- 本地App、packaged smoke与真实Electron E2E必须经过已实现的宿主guard；不得以“进程已退出/8888无listener”替代完整WinINet、共享crash journal与测试进程代际恢复验证。
 - 当前所有tracked代码改动都必须归入明确work item，完成实现、验证、commit和push；禁止任何会丢弃工作树内容的`restore`、`checkout`、`reset --hard`或文件重建。为调整提交顺序允许仅取消暂存或使用临时index，但操作前后必须核对工作树文件hash不变。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不是本轮代码改动，继续排除。
 - 系统代理由 Main 所有；开发实例与 packaged smoke 都使用 8888，不能并行。packaged smoke 在有开发实例监听 8888 时不运行，必须先安全结束会话。
 - 若进程强杀后遗留 `127.0.0.1:8888`，先恢复 WinINet。残留会让接管前读取到“自己”，`isSelf` 会视为无上游并可能静默丢失真实公司代理。

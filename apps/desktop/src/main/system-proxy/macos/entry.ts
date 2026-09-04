@@ -1,4 +1,4 @@
-import { SystemProxyError } from './system-proxy-error';
+import { SystemProxyError } from '../system-proxy-error';
 import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 import type {
   MacosSystemProxySnapshot,
@@ -9,8 +9,8 @@ import type {
   SystemProxyRestoreResult,
   SystemProxyService,
   SystemProxyStatus,
-} from '../interfaces';
-import { systemProxyCommandRunner } from '../utils';
+} from '../../interfaces';
+import { systemProxyCommandRunner } from '../../utils';
 
 /** macOS SystemConfiguration proxy ownership across all active network services. */
 export class MacosSystemProxyService implements SystemProxyService {
@@ -56,6 +56,54 @@ export class MacosSystemProxyService implements SystemProxyService {
     return MacosSystemProxyService.toStatus(current, owned, this.ownershipLost);
   }
 
+  /** Load the existing crash journal without rewriting an unchanged owned snapshot. */
+  async recoverAfterCrash(): Promise<SystemProxyRestoreResult> {
+    if (!this.supported()) {
+      return {
+        restored: false,
+        reason: 'not-owned',
+        status: MacosSystemProxyService.unsupportedStatus(),
+      };
+    }
+    const current = await this.readSnapshot();
+    const record = await this.journal?.read();
+    if (!record) {
+      return {
+        restored: false,
+        reason: 'not-owned',
+        status: MacosSystemProxyService.toStatus(current, false, false),
+      };
+    }
+    const original = MacosSystemProxyService.parseSnapshot(record.original);
+    const owned = MacosSystemProxyService.parseSnapshot(record.owned);
+    if (MacosSystemProxyService.equalSnapshots(current, owned)) {
+      this.originalSnapshot = original;
+      this.ownedSnapshot = owned;
+      this.ownershipLost = false;
+      return {
+        restored: false,
+        status: MacosSystemProxyService.toStatus(current, true, false),
+      };
+    }
+    await this.journal?.clear();
+    this.originalSnapshot = null;
+    this.ownedSnapshot = null;
+    if (MacosSystemProxyService.equalSnapshots(current, original)) {
+      this.ownershipLost = false;
+      return {
+        restored: false,
+        reason: 'not-owned',
+        status: MacosSystemProxyService.toStatus(current, false, false),
+      };
+    }
+    this.ownershipLost = true;
+    return {
+      restored: false,
+      reason: 'externally-modified',
+      status: MacosSystemProxyService.toStatus(current, false, true),
+    };
+  }
+
   /** Snapshot all active services, apply loopback HTTP/HTTPS and verify readback. */
   async enable(host: string, port: number): Promise<SystemProxyStatus> {
     this.assertSupported();
@@ -77,7 +125,7 @@ export class MacosSystemProxyService implements SystemProxyService {
 
     const target = MacosSystemProxyService.createOwnedSnapshot(current, host, port);
     this.originalSnapshot = current;
-    await this.journal?.begin('darwin', current, target);
+    await this.journal?.save(current, target);
     await this.writeSnapshot(target);
     const written = await this.readSnapshot();
     if (!MacosSystemProxyService.equalSnapshots(written, target)) {
@@ -87,7 +135,6 @@ export class MacosSystemProxyService implements SystemProxyService {
       );
     }
     this.ownedSnapshot = written;
-    await this.journal?.markOwned('darwin');
     this.ownershipLost = false;
     return MacosSystemProxyService.toStatus(written, true, false);
   }
@@ -130,9 +177,6 @@ export class MacosSystemProxyService implements SystemProxyService {
     if (!record) {
       return { restored: false, reason: 'not-owned', status: await this.status() };
     }
-    if (record.platform !== 'darwin') {
-      throw new SystemProxyError('System proxy journal belongs to another platform.');
-    }
     const original = MacosSystemProxyService.parseSnapshot(record.original);
     const owned = MacosSystemProxyService.parseSnapshot(record.owned);
     const current = await this.readSnapshot();
@@ -160,6 +204,9 @@ export class MacosSystemProxyService implements SystemProxyService {
   ): Promise<SystemProxyRestoreResult> {
     const current = knownCurrent ?? await this.readSnapshot();
     if (!MacosSystemProxyService.equalSnapshots(current, owned)) {
+      await this.journal?.clear();
+      this.originalSnapshot = null;
+      this.ownedSnapshot = null;
       this.ownershipLost = true;
       return {
         restored: false,

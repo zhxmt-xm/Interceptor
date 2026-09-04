@@ -9,6 +9,24 @@ interface ApplicationShutdownOptions {
   readonly complete: () => void;
 }
 
+interface ApplicationStartupFailureOptions extends ApplicationShutdownOptions {
+  readonly restoreSystemProxy: () => void | Promise<void>;
+}
+
+/** Restore host networking before tearing down a partially started application. */
+export function completeApplicationStartupFailure(
+  options: ApplicationStartupFailureOptions,
+): Promise<void> {
+  return completeApplicationShutdown({
+    tasks: [
+      { name: 'system-proxy', stop: options.restoreSystemProxy },
+      ...options.tasks,
+    ],
+    reportStopFailure: options.reportStopFailure,
+    complete: options.complete,
+  });
+}
+
 /** Stop every application service and finish the irreversible quit phase. */
 export async function completeApplicationShutdown(
   options: ApplicationShutdownOptions,

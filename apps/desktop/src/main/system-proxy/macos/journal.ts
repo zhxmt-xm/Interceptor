@@ -5,12 +5,11 @@ import path from 'node:path';
 import type {
   SystemProxyJournalRecord,
   SystemProxyJournalStore,
-  SystemProxyPlatform,
-} from '../interfaces';
-import { SystemProxyJournalError } from './system-proxy-journal-error';
+} from '../../interfaces';
+import { SystemProxyJournalError } from '../system-proxy-journal-error';
 
-/** Crash-safe ownership journal for guarded system-proxy restoration. */
-export class SystemProxyJournal implements SystemProxyJournalStore {
+/** Crash-safe journal for guarded system-proxy restoration. */
+export class MacosSystemProxyJournal implements SystemProxyJournalStore {
   /** Journal schema version. */
   private static readonly JOURNAL_VERSION = 1;
   /** Absolute journal path under Electron userData. */
@@ -27,7 +26,7 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     try {
       metadata = await lstat(this.journalPath);
     } catch (error) {
-      if (SystemProxyJournal.isMissing(error)) {
+      if (MacosSystemProxyJournal.isMissing(error)) {
         return null;
       }
       throw error;
@@ -41,37 +40,15 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     } catch {
       throw new SystemProxyJournalError('System proxy journal contains invalid JSON.');
     }
-    return SystemProxyJournal.parseRecord(value);
+    return MacosSystemProxyJournal.parseRecord(value);
   }
 
   /** Persist original and intended owned values before the native helper writes. */
-  async begin(
-    platform: SystemProxyPlatform,
-    original: unknown,
-    owned: unknown,
-  ): Promise<void> {
-    const timestamp = new Date().toISOString();
+  async save(original: unknown, owned: unknown): Promise<void> {
     await this.write({
-      version: SystemProxyJournal.JOURNAL_VERSION,
-      platform,
-      phase: 'preparing',
+      version: MacosSystemProxyJournal.JOURNAL_VERSION,
       original,
       owned,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
-  }
-
-  /** Mark a verified native write while retaining both guarded snapshots. */
-  async markOwned(platform: SystemProxyPlatform): Promise<void> {
-    const record = await this.read();
-    if (!record || record.platform !== platform) {
-      throw new SystemProxyJournalError('System proxy journal ownership does not match.');
-    }
-    await this.write({
-      ...record,
-      phase: 'owned',
-      updatedAt: new Date().toISOString(),
     });
   }
 
@@ -82,21 +59,20 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
 
   /** Atomically replace the journal after syncing its complete temporary file. */
   private async write(record: SystemProxyJournalRecord): Promise<void> {
-    const serialized = JSON.stringify(record);
     const directory = path.dirname(this.journalPath);
     const temporaryPath = path.join(
       directory,
       `.${path.basename(this.journalPath)}.${randomUUID()}.tmp`,
     );
     await mkdir(directory, { recursive: true });
-    const file = await open(temporaryPath, 'wx', 0o600);
     try {
-      await file.writeFile(serialized, 'utf8');
-      await file.sync();
-    } finally {
-      await file.close();
-    }
-    try {
+      const file = await open(temporaryPath, 'wx', 0o600);
+      try {
+        await file.writeFile(JSON.stringify(record), 'utf8');
+        await file.sync();
+      } finally {
+        await file.close();
+      }
       await rename(temporaryPath, this.journalPath);
     } catch (error) {
       await rm(temporaryPath, { force: true });
@@ -104,31 +80,24 @@ export class SystemProxyJournal implements SystemProxyJournalStore {
     }
   }
 
-  /** Validate the bounded platform-neutral journal envelope. */
+  /** Validate the exact minimal journal envelope. */
   private static parseRecord(value: unknown): SystemProxyJournalRecord {
     if (typeof value !== 'object' || value === null) {
       throw new SystemProxyJournalError('System proxy journal must be an object.');
     }
     const record = value as Record<string, unknown>;
     if (
-      record.version !== SystemProxyJournal.JOURNAL_VERSION ||
-      (record.platform !== 'win32' && record.platform !== 'darwin') ||
-      (record.phase !== 'preparing' && record.phase !== 'owned') ||
-      typeof record.createdAt !== 'string' ||
-      typeof record.updatedAt !== 'string' ||
+      record.version !== MacosSystemProxyJournal.JOURNAL_VERSION ||
+      Object.keys(record).sort().join(',') !== 'original,owned,version' ||
       !('original' in record) ||
       !('owned' in record)
     ) {
       throw new SystemProxyJournalError('System proxy journal fields are invalid.');
     }
     return {
-      version: SystemProxyJournal.JOURNAL_VERSION,
-      platform: record.platform,
-      phase: record.phase,
+      version: MacosSystemProxyJournal.JOURNAL_VERSION,
       original: record.original,
       owned: record.owned,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
     };
   }
 

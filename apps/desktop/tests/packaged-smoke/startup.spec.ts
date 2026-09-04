@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import {
   createServer as createHttpServer,
@@ -8,6 +8,7 @@ import {
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import {
   chromium,
@@ -19,9 +20,13 @@ import {
 } from '@playwright/test';
 
 import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
+import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/windows-file-dialog';
+import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/workflow-host-safety-guard';
+import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/windows-workflow-host-safety-operations';
 
 /** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
 const DEFAULT_CAPTURE_PORT = 8888;
+const execFileAsync = promisify(execFile);
 
 class ReleaseScreenshotMatrix {
   /** All implemented workspaces addressed through the production sidebar. */
@@ -340,6 +345,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
     true,
   );
+  const workflowHostSafetyGuard = await createPackagedWorkflowHostSafetyGuard(
+    executablePath,
+  );
+  await workflowHostSafetyGuard?.captureBaseline();
 
   const debuggingPort = await reservePort();
   const userDataPath = fs.mkdtempSync(
@@ -362,6 +371,13 @@ test('packaged app starts with an isolated renderer and running core', async ({
   let corePid: number | null = null;
 
   try {
+    if (workflowHostSafetyGuard) {
+      if (!appProcess.pid) {
+        throw new Error('Packaged Electron process did not expose a PID.');
+      }
+      workflowHostSafetyGuard.registerApplication(appProcess.pid, userDataPath);
+      await workflowHostSafetyGuard.captureProcessTrees();
+    }
     await expect
       .poll(async () => {
         if (appProcess.exitCode !== null) {
@@ -406,6 +422,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
     await settleProxyReadiness(page);
+    await workflowHostSafetyGuard?.captureProcessTrees();
 
     const nativeChromeHeight = await page.evaluate(() =>
       window.outerHeight - window.innerHeight);
@@ -614,6 +631,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
       .toBe('running');
 
     expect(corePid).not.toBeNull();
+    if (corePid !== null && workflowHostSafetyGuard) {
+      workflowHostSafetyGuard.registerProcessIdentity(
+        await readPackagedProcessIdentity(corePid),
+      );
+      await workflowHostSafetyGuard.registerCaptureListenerProcess();
+    }
     await expect(
       page.getByTitle(`Proxy Core · Running · PID ${corePid}`),
     ).toBeVisible();
@@ -645,7 +668,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
     if (previousCorePid === null) {
       throw new Error('Core PID was unavailable before restart test');
     }
-    process.kill(previousCorePid);
+    const previousCoreIdentity = await readPackagedProcessIdentity(
+      previousCorePid,
+    );
+    workflowHostSafetyGuard?.registerProcessIdentity(previousCoreIdentity);
+    await terminatePackagedProcess(previousCoreIdentity);
 
     await expect
       .poll(
@@ -666,6 +693,14 @@ test('packaged app starts with an isolated renderer and running core', async ({
         { message: 'Core did not restart with a new PID', timeout: 15_000 },
       )
       .toBe(true);
+
+    if (corePid !== null && workflowHostSafetyGuard) {
+      workflowHostSafetyGuard.registerProcessIdentity(
+        await readPackagedProcessIdentity(corePid),
+      );
+      await workflowHostSafetyGuard.captureProcessTrees();
+      await workflowHostSafetyGuard.registerCaptureListenerProcess();
+    }
 
     await expect
       .poll(() => isProcessAlive(previousCorePid), { timeout: 5_000 })
@@ -736,6 +771,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
       .not.toBeNull();
   } finally {
     let proxyCleanupError: unknown = null;
+    const hostSafetyErrors: unknown[] = [];
+    await workflowHostSafetyGuard?.captureProcessTrees().catch((error) => {
+      hostSafetyErrors.push(error);
+    });
     if (appProcess.exitCode === null && page) {
       try {
         await restoreProxyBeforeShutdown(page);
@@ -748,17 +787,38 @@ test('packaged app starts with an isolated renderer and running core', async ({
     }
     await browser?.close().catch(() => undefined);
     if (appProcess.exitCode === null) {
-      appProcess.kill();
+      if (workflowHostSafetyGuard) {
+        await workflowHostSafetyGuard.terminateRegisteredApplications().catch((error) => {
+          hostSafetyErrors.push(error);
+        });
+      } else {
+        appProcess.kill();
+      }
       await waitForExit(appProcess);
     }
-    fs.rmSync(userDataPath, {
-      recursive: true,
-      force: true,
-      maxRetries: 10,
-      retryDelay: 100,
+    await workflowHostSafetyGuard?.verifyRestored().catch((error) => {
+      hostSafetyErrors.push(error);
     });
-    if (proxyCleanupError) {
-      throw proxyCleanupError;
+    const cleanupErrors = [proxyCleanupError, ...hostSafetyErrors]
+      .filter((error) => error !== null);
+    if (cleanupErrors.length === 0) {
+      fs.rmSync(userDataPath, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      });
+    } else {
+      testInfo.annotations.push({
+        type: 'preserved-user-data',
+        description: userDataPath,
+      });
+    }
+    if (cleanupErrors.length === 1) {
+      throw cleanupErrors[0];
+    }
+    if (cleanupErrors.length > 1) {
+      throw new AggregateError(cleanupErrors, 'Packaged smoke cleanup failed.');
     }
   }
 
@@ -938,4 +998,95 @@ async function waitForExit(process: ChildProcess): Promise<void> {
       resolve();
     });
   });
+}
+
+/** Create the same Windows host guard around the final packaged executable. */
+async function createPackagedWorkflowHostSafetyGuard(
+  executablePath: string,
+): Promise<WorkflowHostSafetyGuard | null> {
+  if (process.platform !== 'win32') {
+    return null;
+  }
+  const localAppDataDirectory = process.env.LOCALAPPDATA;
+  if (!localAppDataDirectory) {
+    throw new Error('LOCALAPPDATA is required for packaged smoke host protection.');
+  }
+  const helperPath = resolvePackagedWinInetHelperPath(executablePath);
+  if (!fs.existsSync(helperPath)) {
+    throw new Error(`Packaged WinINet helper is missing: ${helperPath}`);
+  }
+  return new WorkflowHostSafetyGuard(new WindowsWorkflowHostSafetyOperations({
+    desktopDirectory: process.cwd(),
+    helperPath,
+    localAppDataDirectory,
+    dismissDialogs: dismissWindowsFileDialogs,
+  }));
+}
+
+/** Resolve the packaged helper used for WinINet and process-generation operations. */
+function resolvePackagedWinInetHelperPath(executablePath: string): string {
+  return path.join(
+    path.dirname(executablePath),
+    'resources',
+    'system-proxy',
+    'wininet-proxy-helper.exe',
+  );
+}
+
+/** Read one packaged process generation through a test-owned PowerShell query. */
+async function readPackagedProcessIdentity(
+  processId: number,
+): Promise<{ readonly processId: number; readonly processStartedAt: string }> {
+  const script = [
+    `$process = Get-Process -Id ${processId} -ErrorAction Stop;`,
+    '[pscustomobject]@{',
+    'processId = [int]$process.Id;',
+    "processStartedAt = $process.StartTime.ToUniversalTime().ToString('O', [Globalization.CultureInfo]::InvariantCulture)",
+    '} | ConvertTo-Json -Compress',
+  ].join(' ');
+  const { stdout } = await execFileAsync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  const value = JSON.parse(stdout) as {
+    readonly processId?: unknown;
+    readonly processStartedAt?: unknown;
+  };
+  if (value.processId !== processId || typeof value.processStartedAt !== 'string') {
+    throw new Error(`Packaged process ${processId} has no stable start token.`);
+  }
+  return { processId, processStartedAt: value.processStartedAt };
+}
+
+/** Terminate one exact packaged process generation without a reusable PID race. */
+async function terminatePackagedProcess(
+  processIdentity: { readonly processId: number; readonly processStartedAt: string },
+): Promise<void> {
+  const encodedIdentity = Buffer.from(
+    JSON.stringify(processIdentity),
+    'utf8',
+  ).toString('base64');
+  const script = String.raw`
+$identity = [System.Text.Encoding]::UTF8.GetString(
+  [System.Convert]::FromBase64String('${encodedIdentity}')
+) | ConvertFrom-Json
+$process = Get-Process -Id ([int]$identity.processId) -ErrorAction Stop
+$processStartedAt = $process.StartTime.ToUniversalTime().ToString(
+  'O',
+  [Globalization.CultureInfo]::InvariantCulture
+)
+if ($processStartedAt -ne [string]$identity.processStartedAt) {
+  throw 'Packaged Core process generation changed before termination.'
+}
+$process.Kill()
+if (-not $process.WaitForExit(5000)) {
+  throw 'Timed out terminating packaged Core.'
+}
+`;
+  await execFileAsync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    { encoding: 'utf8', windowsHide: true },
+  );
 }

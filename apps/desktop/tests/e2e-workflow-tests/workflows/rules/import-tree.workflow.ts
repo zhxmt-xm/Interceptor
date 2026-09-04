@@ -16,7 +16,10 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/automation';
 import { expect, test } from '../../fixtures/local-electron-driver';
-import { submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import {
+  submitWindowsFileDialogPath,
+  type WindowsFileDialogOwner,
+} from '../../fixtures/windows-file-dialog';
 
 const IMPORT_IDS = {
   toolbar: 'rules.toolbar.import',
@@ -98,7 +101,7 @@ async function expandRuleFolder(page: Page, folderId: string): Promise<void> {
 
 async function chooseFile(
   page: Page,
-  mainProcessId: number,
+  mainProcessOwner: WindowsFileDialogOwner,
   trigger: Locator,
   busyAutomationId: string,
   filePath: string,
@@ -106,7 +109,7 @@ async function chooseFile(
   await page.bringToFront();
   await trigger.click();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toBeVisible();
-  await submitWindowsFileDialogPath(mainProcessId, filePath);
+  await submitWindowsFileDialogPath(mainProcessOwner, filePath);
   await page.bringToFront();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toHaveCount(0);
 }
@@ -123,8 +126,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
   const transferDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-rules-import-'));
   const exportPath = path.join(transferDirectory, 'rules-roundtrip.json');
   const { page } = desktopApp;
-  const mainProcessId = desktopApp.application.process().pid;
-  expect(mainProcessId).toBeDefined();
+  const mainProcessOwner = desktopApp.windowsMainProcessOwner();
 
   try {
     // 先锁定新能力入口；旧提交必须在这里因真实产品缺口取得Red。
@@ -180,7 +182,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     // Export must write through the real Save Dialog; the test only reads the same JSON after the product writes it.
     await chooseFile(
       page,
-      mainProcessId!,
+      mainProcessOwner,
       getByAutomationId(page, AUTOMATION_IDS.rules.toolbar.exportRules),
       IMPORT_IDS.exportBusy,
       exportPath,
@@ -205,7 +207,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
 
     // 第一次Import在确认Dialog取消，树身份、顺序与Core revision必须保持不变。
     // Cancel the first Import preview; tree identity, ordering, and Core revision must remain unchanged.
-    await chooseFile(page, mainProcessId!, importRules, IMPORT_IDS.busy, exportPath);
+    await chooseFile(page, mainProcessOwner, importRules, IMPORT_IDS.busy, exportPath);
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toBeVisible();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.fileName))
       .toHaveText('rules-roundtrip.json');
@@ -226,7 +228,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
 
     // 再次Import并确认，验证追加位置、全新ID、enabled沿用、目录层级与原子持久化。
     // Import again and confirm, proving append order, fresh IDs, preserved enabled state, hierarchy, and atomic persistence.
-    await chooseFile(page, mainProcessId!, importRules, IMPORT_IDS.busy, exportPath);
+    await chooseFile(page, mainProcessOwner, importRules, IMPORT_IDS.busy, exportPath);
     await getByPublicAutomationId(page, IMPORT_IDS.confirm).click();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toHaveCount(0);
     await expect(folderRows).toHaveCount(2);
@@ -271,7 +273,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', '2');
 
-    await chooseFile(page, mainProcessId!, importRules, IMPORT_IDS.busy, exportPath);
+    await chooseFile(page, mainProcessOwner, importRules, IMPORT_IDS.busy, exportPath);
     await getByPublicAutomationId(page, IMPORT_IDS.confirm).click();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toHaveCount(0);
     await expect(folderRows).toHaveCount(3);

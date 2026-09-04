@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './tests/packaged-smoke',
   fullyParallel: false,
   forbidOnly: true,
+  maxFailures: 1,
   retries: 0,
   workers: 1,
   reporter: 'list',

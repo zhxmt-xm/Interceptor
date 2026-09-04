@@ -1,55 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { WindowsSystemProxyService } from '../../windows-system-proxy-service';
-import { SystemProxyError } from '../../system-proxy-error';
+import { WindowsSystemProxyService } from '../../entry';
+import { SystemProxyError } from '../../../system-proxy-error';
 import type {
   SystemProxyCommandResult,
   SystemProxyCommandRunner,
-  SystemProxyJournalRecord,
-  SystemProxyJournalStore,
-  SystemProxyPlatform,
   WinInetProxySettings,
-} from '../../../interfaces';
-
-class FakeJournal implements SystemProxyJournalStore {
-  /** Current persisted record shared across simulated process generations. */
-  record: SystemProxyJournalRecord | null = null;
-
-  /** Return the current persisted ownership record. */
-  read(): Promise<SystemProxyJournalRecord | null> {
-    return Promise.resolve(this.record);
-  }
-
-  /** Persist original and intended values before the helper write. */
-  begin(platform: SystemProxyPlatform, original: unknown, owned: unknown): Promise<void> {
-    const timestamp = new Date().toISOString();
-    this.record = {
-      version: 1,
-      platform,
-      phase: 'preparing',
-      original,
-      owned,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    return Promise.resolve();
-  }
-
-  /** Advance the current record to verified ownership. */
-  markOwned(platform: SystemProxyPlatform): Promise<void> {
-    if (!this.record || this.record.platform !== platform) {
-      throw new Error('missing journal');
-    }
-    this.record = { ...this.record, phase: 'owned' };
-    return Promise.resolve();
-  }
-
-  /** Remove the persisted record after restoration. */
-  clear(): Promise<void> {
-    this.record = null;
-    return Promise.resolve();
-  }
-}
+} from '../../../../interfaces';
 
 class FakeHelperRunner implements SystemProxyCommandRunner {
   readonly calls: { command: string; args: readonly string[] }[] = [];
@@ -200,53 +157,15 @@ describe('WindowsSystemProxyService', () => {
     expect(fakeHelperRunner.calls).toEqual([]);
   });
 
-  it('restores from a journal after the owning process crashes', async () => {
-    const fakeHelperRunner = new FakeHelperRunner();
-    const original = { ...fakeHelperRunner.settings };
-    const fakeJournal = new FakeJournal();
-    await createService(fakeHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
-
-    const result = await createService(fakeHelperRunner, fakeJournal).restore();
-
-    expect(result.restored).toBe(true);
-    expect(fakeHelperRunner.settings).toEqual(original);
-    expect(fakeJournal.record).toBeNull();
-  });
-
-  it('does not use a crash journal after an external proxy change', async () => {
-    const fakeHelperRunner = new FakeHelperRunner();
-    const fakeJournal = new FakeJournal();
-    await createService(fakeHelperRunner, fakeJournal).enable('127.0.0.1', 8888);
-    fakeHelperRunner.settings = settings({
-      flags: 3,
-      proxyEnabled: true,
-      proxyServer: 'http=127.0.0.1:9999;https=127.0.0.1:9999',
-      bypassList: 'localhost;127.*;[::1];<local>',
-    });
-    const callsBeforeRestore = fakeHelperRunner.calls.length;
-
-    const result = await createService(fakeHelperRunner, fakeJournal).restore();
-
-    expect(result).toMatchObject({
-      restored: false,
-      reason: 'externally-modified',
-      status: { ownershipLost: true },
-    });
-    expect(fakeHelperRunner.calls.slice(callsBeforeRestore).map((call) => call.args[0]))
-      .toEqual(['get']);
-    expect(fakeJournal.record).not.toBeNull();
-  });
 });
 
 function createService(
   runner: SystemProxyCommandRunner,
-  journal?: SystemProxyJournalStore,
 ): WindowsSystemProxyService {
   return new WindowsSystemProxyService({
     platform: 'win32',
     helperPath: 'helper.exe',
     runner,
-    journal,
   });
 }
 

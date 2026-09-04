@@ -9,8 +9,8 @@ if (process.platform !== 'win32') {
   process.exit(0);
 }
 
-const desktopRoot = path.resolve(import.meta.dirname, '../../..');
-const source = path.join(import.meta.dirname, 'windows-helper.cs');
+const desktopRoot = path.resolve(import.meta.dirname, '../../../..');
+const source = path.join(import.meta.dirname, 'helper.cs');
 const outputDirectory = path.join(desktopRoot, 'dist/system-proxy');
 const output = path.join(outputDirectory, 'wininet-proxy-helper.exe');
 const frameworkRoot = path.join(

@@ -30,10 +30,12 @@ interface WinInetProxySettings {
 }
 
 interface SystemProxyJournalRecord {
-  readonly phase: string;
+  /** Minimal crash journal schema version. */
+  readonly version: 1;
+  /** Complete WinINet snapshot captured before takeover. */
   readonly original: WinInetProxySettings;
+  /** Complete WinINet snapshot written by Interceptor. */
   readonly owned: WinInetProxySettings;
-  readonly createdAt: string;
 }
 
 interface PersistenceEvidence {
@@ -41,7 +43,7 @@ interface PersistenceEvidence {
   ownedSnapshotDiffered: boolean;
   journalPreservedAfterCrash: boolean;
   ownedSettingsPreservedAfterCrash: boolean;
-  relaunchCreatedNewJournal: boolean;
+  relaunchLoadedJournal: boolean;
   relaunchPreservedOriginal: boolean;
   relaunchOwnedSettingsObserved: boolean;
   certificateFilePreserved: boolean;
@@ -76,15 +78,18 @@ async function readWinInetSettings(
   }
 }
 
-/** Read one ownership journal for in-memory equality checks only. */
-async function readJournal(
-  userDataDirectory: string,
-): Promise<SystemProxyJournalRecord | null> {
+/** Read one crash journal for in-memory equality checks only. */
+async function readJournal(): Promise<SystemProxyJournalRecord | null> {
+  const localAppDataDirectory = process.env.LOCALAPPDATA;
+  if (!localAppDataDirectory) {
+    throw new Error('LOCALAPPDATA is required for system proxy ownership evidence.');
+  }
   try {
     return JSON.parse(await readFile(path.join(
-      userDataDirectory,
+      localAppDataDirectory,
+      'Interceptor',
       'system-proxy',
-      'ownership.json',
+      'journal.json',
     ), 'utf8')) as SystemProxyJournalRecord;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
@@ -311,8 +316,13 @@ test('restores proxy ownership and persists MITM settings across processes', asy
   try {
     // 准备：第一代冷启动已接管系统代理；快照只在内存比较。
     // Arrange: the first generation owns the system proxy; snapshots stay in memory only.
-    const firstJournal = await readJournal(desktopApp.userDataDirectory);
-    expect(firstJournal?.phase).toBe('owned');
+    const firstJournal = await readJournal();
+    expect(firstJournal?.version).toBe(1);
+    expect(Object.keys(firstJournal ?? {}).sort()).toEqual([
+      'original',
+      'owned',
+      'version',
+    ]);
     originalSettings = firstJournal!.original;
     evidence.initialOwnedSettingsObserved = JSON.stringify(
       await readWinInetSettings(desktopApp.desktopDirectory),
@@ -334,7 +344,7 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     await desktopApp.crashAbruptly(testInfo);
     initialCrashCompleted = true;
     evidence.journalPreservedAfterCrash = JSON.stringify(
-      await readJournal(desktopApp.userDataDirectory),
+      await readJournal(),
     ) === JSON.stringify(firstJournal);
     evidence.ownedSettingsPreservedAfterCrash = JSON.stringify(
       await readWinInetSettings(desktopApp.desktopDirectory),
@@ -342,22 +352,22 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     expect(evidence.journalPreservedAfterCrash).toBe(true);
     expect(evidence.ownedSettingsPreservedAfterCrash).toBe(true);
 
-    // 恢复：第二代先恢复旧original，再由正常bootstrap重新接管。
-    // Recovery: the second generation restores the old original before normal bootstrap owns again.
+    // 恢复：第一代完全退出后，第二代加载相同journal并保持owned WinINet。
+    // Recovery: after the first generation exits, the second loads the same journal and keeps owned WinINet.
     relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, {
       userDataDirectory: desktopApp.userDataDirectory,
       evidencePrefix: 'relaunch',
     });
     await relaunchedApp.waitUntilReady();
-    const secondJournal = await readJournal(desktopApp.userDataDirectory);
-    evidence.relaunchCreatedNewJournal = secondJournal?.createdAt
-      !== firstJournal?.createdAt;
+    const secondJournal = await readJournal();
+    evidence.relaunchLoadedJournal = JSON.stringify(secondJournal)
+      === JSON.stringify(firstJournal);
     evidence.relaunchPreservedOriginal = JSON.stringify(secondJournal?.original)
       === JSON.stringify(firstJournal?.original);
     evidence.relaunchOwnedSettingsObserved = JSON.stringify(
       await readWinInetSettings(desktopApp.desktopDirectory),
     ) === JSON.stringify(secondJournal?.owned);
-    expect(evidence.relaunchCreatedNewJournal).toBe(true);
+    expect(evidence.relaunchLoadedJournal).toBe(true);
     expect(evidence.relaunchPreservedOriginal).toBe(true);
     expect(evidence.relaunchOwnedSettingsObserved).toBe(true);
 
@@ -451,7 +461,7 @@ test('restores proxy ownership and persists MITM settings across processes', asy
       evidence.finalSystemProxyRestored = originalSettings !== null
         && JSON.stringify(await readWinInetSettings(desktopApp.desktopDirectory))
           === JSON.stringify(originalSettings);
-      evidence.finalJournalAbsent = await readJournal(desktopApp.userDataDirectory) === null;
+      evidence.finalJournalAbsent = await readJournal() === null;
       expect(evidence.finalSystemProxyRestored).toBe(true);
       expect(evidence.finalJournalAbsent).toBe(true);
       const evidencePath = testInfo.outputPath('proxy-mitm-persistence.json');

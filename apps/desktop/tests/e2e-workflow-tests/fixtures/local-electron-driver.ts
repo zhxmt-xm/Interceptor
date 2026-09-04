@@ -23,10 +23,17 @@ import { LoopbackLab } from './loopback-lab';
 import { OpenAiCompatibleLab } from './openai-compatible-lab';
 import { PlaygroundServer } from './playground-server';
 import { WebSocketLab } from './websocket-lab';
+import {
+  dismissWindowsFileDialogs,
+  type WindowsFileDialogOwner,
+} from './windows-file-dialog';
+import { WorkflowHostSafetyGuard } from './workflow-host-safety-guard';
+import { WindowsWorkflowHostSafetyOperations } from './windows-workflow-host-safety-operations';
 
 const DEFAULT_CAPTURE_PORT = 8888;
 const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
 const execFileAsync = promisify(execFile);
+const workflowHostSafetyGuardByTestInfo = new WeakMap<TestInfo, WorkflowHostSafetyGuard>();
 
 interface LocalWorkflowFixtures {
   /** Test-owned unpackaged Electron application and its real Renderer page. */
@@ -74,6 +81,9 @@ export class LocalElectronApplicationDriver {
   /** Main-process PID captured before Electron can close. */
   private readonly mainPid: number | null;
 
+  /** Exact Windows Main process generation used by native Dialog workflows. */
+  private readonly windowsMainOwner: WindowsFileDialogOwner | null;
+
   /** Main-process output retained as bounded diagnostic evidence. */
   private mainOutput = '';
 
@@ -116,13 +126,19 @@ export class LocalElectronApplicationDriver {
   /** Optional filename and attachment prefix for a later application generation. */
   private readonly evidencePrefix: string;
 
+  /** Outer host-state guard shared by every application generation in this workflow. */
+  private readonly workflowHostSafetyGuard: WorkflowHostSafetyGuard | null;
+
   /** Create one driver after Electron, its first window and evidence capture are ready. */
   private constructor(
     application: ElectronApplication,
     page: Page,
     desktopDirectory: string,
     userDataDirectory: string,
+    mainProcessId: number,
+    windowsMainOwner: WindowsFileDialogOwner | null,
     evidencePrefix: string,
+    workflowHostSafetyGuard: WorkflowHostSafetyGuard | null,
   ) {
     this.application = application;
     this.context = application.context();
@@ -130,7 +146,9 @@ export class LocalElectronApplicationDriver {
     this.desktopDirectory = desktopDirectory;
     this.userDataDirectory = userDataDirectory;
     this.evidencePrefix = evidencePrefix;
-    this.mainPid = application.process().pid ?? null;
+    this.workflowHostSafetyGuard = workflowHostSafetyGuard;
+    this.mainPid = mainProcessId;
+    this.windowsMainOwner = windowsMainOwner;
     application.once('close', () => {
       this.applicationClosed = true;
     });
@@ -143,9 +161,7 @@ export class LocalElectronApplicationDriver {
     testInfo: TestInfo,
     options: LocalElectronLaunchOptions = {},
   ): Promise<LocalElectronApplicationDriver> {
-    const desktopDirectory = process.env[E2E_DESKTOP_DIRECTORY_ENV]
-      ? path.resolve(process.env[E2E_DESKTOP_DIRECTORY_ENV])
-      : path.resolve(__dirname, '../../..');
+    const desktopDirectory = resolveDesktopDirectory();
     const ownsUserDataDirectory = options.userDataDirectory === undefined;
     const userDataDirectory = options.userDataDirectory
       ?? await LocalElectronApplicationDriver.createUserDataDirectory();
@@ -160,6 +176,26 @@ export class LocalElectronApplicationDriver {
         tracesDir: testInfo.outputDir,
         timeout: 30_000,
       });
+      const workflowHostSafetyGuard = workflowHostSafetyGuardByTestInfo.get(testInfo) ?? null;
+      const mainProcessId = await application.evaluate(() => process.pid);
+      const launchProcessId = application.process().pid;
+      const windowsMainOwner = process.platform === 'win32'
+        ? await this.readWindowsProcessIdentity(mainProcessId)
+        : null;
+      if (workflowHostSafetyGuard) {
+        const rootProcessIds = [...new Set([
+          launchProcessId,
+          mainProcessId,
+        ].filter((processId): processId is number => processId !== undefined))];
+        for (const rootProcessId of rootProcessIds) {
+          const processIdentity = rootProcessId === mainProcessId && windowsMainOwner
+            ? windowsMainOwner
+            : await this.readWindowsProcessIdentity(rootProcessId);
+          workflowHostSafetyGuard.registerProcessIdentity(processIdentity);
+          workflowHostSafetyGuard.registerApplication(rootProcessId, userDataDirectory);
+        }
+        await workflowHostSafetyGuard.captureProcessTrees();
+      }
       const context = application.context();
       await context.tracing.start({
         screenshots: true,
@@ -175,7 +211,10 @@ export class LocalElectronApplicationDriver {
         page,
         desktopDirectory,
         userDataDirectory,
+        mainProcessId,
+        windowsMainOwner,
         options.evidencePrefix ?? '',
+        workflowHostSafetyGuard,
       );
     } catch (error) {
       await application?.close().catch(() => undefined);
@@ -184,6 +223,14 @@ export class LocalElectronApplicationDriver {
       }
       throw error;
     }
+  }
+
+  /** Return the exact Windows Main generation accepted by native Dialog drivers. */
+  windowsMainProcessOwner(): WindowsFileDialogOwner {
+    if (!this.windowsMainOwner) {
+      throw new Error('Windows Main process identity is unavailable on this platform.');
+    }
+    return this.windowsMainOwner;
   }
 
   /** Wait until Renderer, Core and Capture bootstrap reach a stable workflow state. */
@@ -200,12 +247,26 @@ export class LocalElectronApplicationDriver {
     const coreTitle = await coreStatus.getAttribute('title');
     const corePid = coreTitle?.match(/PID (\d+)/)?.[1];
     this.corePid = corePid ? Number(corePid) : null;
+    if (
+      process.platform === 'win32'
+      && this.corePid !== null
+      && this.workflowHostSafetyGuard
+    ) {
+      this.workflowHostSafetyGuard.registerProcessIdentity(
+        await LocalElectronApplicationDriver.readWindowsProcessIdentity(
+          this.corePid,
+        ),
+      );
+    }
 
     this.listenerPort = DEFAULT_CAPTURE_PORT;
     await expect.poll(
       () => LocalElectronApplicationDriver.canConnectPort(DEFAULT_CAPTURE_PORT),
       { message: 'Capture listener did not start on 8888', timeout: 20_000 },
     ).toBe(true);
+
+    await this.workflowHostSafetyGuard?.registerCaptureListenerProcess();
+    await this.workflowHostSafetyGuard?.captureProcessTrees();
 
     await this.dismissProxyReadiness();
   }
@@ -299,11 +360,10 @@ export class LocalElectronApplicationDriver {
       throw new Error('Electron Main PID is unavailable for abrupt termination.');
     }
     if (process.platform === 'win32') {
-      await execFileAsync(
-        'taskkill.exe',
-        ['/PID', String(this.mainPid), '/T', '/F'],
-        { windowsHide: true },
-      ).catch(() => undefined);
+      if (!this.workflowHostSafetyGuard) {
+        throw new Error('Windows abrupt termination requires the workflow host guard.');
+      }
+      await this.workflowHostSafetyGuard.terminateRegisteredApplications();
     } else if (!this.application.process().kill('SIGKILL')) {
       throw new Error('Electron Main rejected the intentional abrupt termination.');
     }
@@ -461,7 +521,13 @@ export class LocalElectronApplicationDriver {
     if (!this.applicationClosed) {
       await this.application.close().catch(() => undefined);
     }
-    if (this.corePid !== null && LocalElectronApplicationDriver.isProcessAlive(this.corePid)) {
+    if (process.platform === 'win32' && this.workflowHostSafetyGuard) {
+      await this.workflowHostSafetyGuard.terminateRegisteredApplications()
+        .catch(() => undefined);
+    } else if (
+      this.corePid !== null
+      && LocalElectronApplicationDriver.isProcessAlive(this.corePid)
+    ) {
       process.kill(this.corePid);
     }
   }
@@ -523,14 +589,22 @@ export class LocalElectronApplicationDriver {
 
   /** Prove the known Main/Core processes exited and the listener can be rebound. */
   private async verifyProcessesAndListenerReleased(): Promise<void> {
-    if (this.mainPid !== null) {
+    if (process.platform === 'win32' && this.workflowHostSafetyGuard) {
+      await expect.poll(
+        () => this.workflowHostSafetyGuard!.listLiveRegisteredProcessIds(),
+        { message: 'Tracked Electron process generations did not exit', timeout: 10_000 },
+      ).toEqual([]);
+    } else if (this.mainPid !== null) {
       const mainPid = this.mainPid;
       await expect.poll(
         () => LocalElectronApplicationDriver.isProcessAlive(mainPid),
         { message: `Electron Main PID ${mainPid} did not exit`, timeout: 10_000 },
       ).toBe(false);
     }
-    if (this.corePid !== null) {
+    if (
+      (process.platform !== 'win32' || !this.workflowHostSafetyGuard)
+      && this.corePid !== null
+    ) {
       const corePid = this.corePid;
       await expect.poll(
         () => LocalElectronApplicationDriver.isProcessAlive(corePid),
@@ -635,50 +709,93 @@ export class LocalElectronApplicationDriver {
       });
     });
   }
+
+  /** Resolve one test process generation through a test-owned PowerShell query. */
+  private static async readWindowsProcessIdentity(
+    processId: number,
+  ): Promise<WindowsFileDialogOwner> {
+    const script = [
+      `$process = Get-Process -Id ${processId} -ErrorAction Stop;`,
+      '[pscustomobject]@{',
+      'processId = [int]$process.Id;',
+      "processStartedAt = $process.StartTime.ToUniversalTime().ToString('O', [Globalization.CultureInfo]::InvariantCulture)",
+      '} | ConvertTo-Json -Compress',
+    ].join(' ');
+    const { stdout } = await execFileAsync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', script],
+      { encoding: 'utf8', windowsHide: true },
+    );
+    const value = JSON.parse(stdout) as {
+      readonly processId?: unknown;
+      readonly processStartedAt?: unknown;
+    };
+    if (value.processId !== processId || typeof value.processStartedAt !== 'string') {
+      throw new Error('PowerShell could not identify the Electron process generation.');
+    }
+    return { processId, processStartedAt: value.processStartedAt };
+  }
 }
 
 export const test = base.extend<LocalWorkflowFixtures>({
   desktopApp: async ({}, use, testInfo) => {
-    const driver = await LocalElectronApplicationDriver.launch(testInfo);
+    const workflowHostSafetyGuard = await createWorkflowHostSafetyGuard();
+    if (workflowHostSafetyGuard) {
+      await workflowHostSafetyGuard.captureBaseline();
+      workflowHostSafetyGuardByTestInfo.set(testInfo, workflowHostSafetyGuard);
+    }
+    let driver: LocalElectronApplicationDriver | null = null;
     let workflowError: unknown;
     let cleanupError: unknown;
+    let hostSafetyError: unknown;
     try {
+      driver = await LocalElectronApplicationDriver.launch(testInfo);
       await driver.waitUntilReady();
       await use(driver);
       await driver.captureFinalScreenshot(testInfo);
     } catch (error) {
       workflowError = error;
     } finally {
-      try {
-        await driver.stopTrace(testInfo);
-        await driver.closeGracefully();
-      } catch (error) {
-        cleanupError = error;
+      if (driver) {
+        try {
+          await driver.stopTrace(testInfo);
+          await driver.closeGracefully();
+        } catch (error) {
+          cleanupError = error;
+        }
+        await driver.writeEvidence(testInfo).catch(() => undefined);
+        await driver.forceCleanup();
       }
-      await driver.writeEvidence(testInfo).catch(() => undefined);
-      await driver.forceCleanup();
-      const preserveUserData = cleanupError !== undefined
-        || (workflowError !== undefined && driver.shouldPreserveUserDataOnFailure());
-      if (!preserveUserData) {
-        await driver.removeUserData();
-      } else {
-        testInfo.annotations.push({
-          type: 'preserved-user-data',
-          description: driver.userDataDirectory,
-        });
+      if (workflowHostSafetyGuard) {
+        try {
+          await workflowHostSafetyGuard.verifyRestored();
+        } catch (error) {
+          hostSafetyError = error;
+        } finally {
+          workflowHostSafetyGuardByTestInfo.delete(testInfo);
+        }
       }
-      if (cleanupError) {
-        testInfo.annotations.push({
-          type: 'cleanup-failure-context',
-          description: String(cleanupError),
-        });
+      if (driver) {
+        const preserveUserData = cleanupError !== undefined
+          || hostSafetyError !== undefined
+          || (workflowError !== undefined && driver.shouldPreserveUserDataOnFailure());
+        if (!preserveUserData) {
+          await driver.removeUserData();
+        } else {
+          testInfo.annotations.push({
+            type: 'preserved-user-data',
+            description: driver.userDataDirectory,
+          });
+        }
       }
     }
-    if (workflowError) {
-      throw workflowError;
+    const errors = [workflowError, cleanupError, hostSafetyError]
+      .filter((error) => error !== undefined);
+    if (errors.length === 1) {
+      throw errors[0];
     }
-    if (cleanupError) {
-      throw cleanupError;
+    if (errors.length > 1) {
+      throw new AggregateError(errors, 'Workflow and host cleanup both failed.');
     }
   },
   loopbackLab: async ({}, use) => {
@@ -721,5 +838,28 @@ export const test = base.extend<LocalWorkflowFixtures>({
     if (cleanupError) throw cleanupError;
   },
 });
+
+/** Resolve the unpackaged desktop bundle shared by launch and host-safety operations. */
+function resolveDesktopDirectory(): string {
+  return process.env[E2E_DESKTOP_DIRECTORY_ENV]
+    ? path.resolve(process.env[E2E_DESKTOP_DIRECTORY_ENV])
+    : path.resolve(__dirname, '../../..');
+}
+
+/** Create the Windows-only outer guard before any real Electron process starts. */
+async function createWorkflowHostSafetyGuard(): Promise<WorkflowHostSafetyGuard | null> {
+  if (process.platform !== 'win32') {
+    return null;
+  }
+  const localAppDataDirectory = process.env.LOCALAPPDATA;
+  if (!localAppDataDirectory) {
+    throw new Error('LOCALAPPDATA is required for Windows workflow host protection.');
+  }
+  return new WorkflowHostSafetyGuard(new WindowsWorkflowHostSafetyOperations({
+    desktopDirectory: resolveDesktopDirectory(),
+    localAppDataDirectory,
+    dismissDialogs: dismissWindowsFileDialogs,
+  }));
+}
 
 export { expect };

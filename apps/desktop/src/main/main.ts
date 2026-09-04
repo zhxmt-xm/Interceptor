@@ -65,17 +65,23 @@ import { AgentToolService } from './agent/entry';
 import {
   ApplicationActionGate,
   completeApplicationShutdown,
+  completeApplicationStartupFailure,
   resumeApplicationAfterShutdownFailure,
 } from './lifecycle/application-shutdown';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
-import { MacosSystemProxyService } from './system-proxy/macos-system-proxy-service';
-import { SystemProxyJournal } from './system-proxy/system-proxy-journal';
-import { toUpstreamAuthority } from './system-proxy/system-proxy-upstream';
+import { MacosSystemProxyService } from './system-proxy/macos/entry';
+import { MacosSystemProxyJournal } from './system-proxy/macos/journal';
+import { SystemProxyOperationQueue } from './system-proxy/operation-queue';
+import { toUpstreamAuthority } from './system-proxy/windows/system-proxy-upstream';
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
-import { WindowsSystemProxyService } from './system-proxy/windows-system-proxy-service';
+import {
+  resolveWindowsSystemProxyJournalPath,
+  WindowsSystemProxyJournal,
+} from './system-proxy/windows/journal';
+import { WindowsSystemProxyService } from './system-proxy/windows/entry';
 import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
@@ -168,6 +174,8 @@ class DesktopApplication {
   private pendingCoreFailureDetail: string | null = null;
   /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
   private systemProxyRecovery: Promise<void> | null = null;
+  /** Orders every system-proxy mutation inside this App process. */
+  private readonly systemProxyOperationQueue = new SystemProxyOperationQueue();
   /** Rejects and drains Renderer IPC when guarded shutdown starts. */
   private readonly applicationActionGate = new ApplicationActionGate();
   /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
@@ -201,7 +209,7 @@ class DesktopApplication {
       secureStore: safeStorage,
     });
     this.systemProxyService = this.createSystemProxyService();
-    await this.restoreSystemProxyOnStartup();
+    await this.recoverSystemProxyOnStartup();
     this.appContainerService = new AppContainerService({
       helperPath: this.getAppContainerHelperPath(),
     });
@@ -345,13 +353,16 @@ class DesktopApplication {
     // 新 CoreProcess 就绪后恢复上次的解密意图并下发 CA 材料（若已生成）；
     // 上游代理同样保存在 Core 进程内，不重新下发会让重启后的企业环境断网。
     this.coreRuntime.onCoreProcessReady(async () => {
+      const detectedUpstream = this.systemProxyService?.detectedUpstream() ?? null;
+      this.detectedUpstreamProxy = detectedUpstream;
       await this.restoreDecryptionPreference();
       await Promise.all([
         this.syncCoreCertificate(true),
-        this.applyUpstreamProxy(
-          this.systemProxyService?.detectedUpstream() ?? null,
-        ),
+        this.applyUpstreamProxy(detectedUpstream),
       ]);
+      if (detectedUpstream) {
+        this.upstreamProbe.start(detectedUpstream.proxyUrl);
+      }
     });
     this.coreRuntime.start();
     this.createMainWindow();
@@ -450,15 +461,14 @@ class DesktopApplication {
 
   /** Stop partially initialized services and quit after an unrecoverable startup failure. */
   private async failStartup(error: unknown): Promise<void> {
+    let systemProxyRestoreFailed = false;
+    this.quitting = true;
     this.diagnostics.error('main.startup.failed', {
       outcome: 'failed',
       errorCode: readErrorName(error),
     });
-    dialog.showErrorBox(
-      'Interceptor could not start',
-      'Startup did not complete. Interceptor will close without changing the current system proxy settings.',
-    );
-    await completeApplicationShutdown({
+    await completeApplicationStartupFailure({
+      restoreSystemProxy: () => this.restoreSystemProxyBeforeShutdown(),
       tasks: [
         { name: 'update-service', stop: () => this.updateService?.stop() },
         { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
@@ -467,6 +477,9 @@ class DesktopApplication {
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
       ],
       reportStopFailure: (name, stopError) => {
+        if (name === 'system-proxy') {
+          systemProxyRestoreFailed = true;
+        }
         this.diagnostics.error('main.startup.cleanup-failed', {
           outcome: 'failed',
           errorCode: readErrorName(stopError),
@@ -475,6 +488,12 @@ class DesktopApplication {
       },
       complete: () => {
         this.shutdownComplete = true;
+        dialog.showErrorBox(
+          'Interceptor could not start',
+          systemProxyRestoreFailed
+            ? 'Startup did not complete, and Interceptor could not restore the system proxy. Check the operating system proxy settings before continuing.'
+            : 'Startup did not complete. Interceptor finished system proxy cleanup and will now close.',
+        );
         app.quit();
       },
     });
@@ -747,38 +766,40 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const proxy = await this.coreRuntime.request({
-        type: 'proxy.status',
-        payload: {},
-      });
-      const { listening, host, port } = proxy.payload;
-      if (!listening || !host || !port) {
-        throw new Error('Start capture before enabling the system proxy.');
-      }
-      return this.runMainAction('main.system-proxy.enable', async () => {
-        const service = this.requireSystemProxyService();
-        const status = await service.enable(host, port);
-        // 接管后所有流量都走 Interceptor，若仍直连源站，必须经公司 PAC / VPN /
-        // 认证代理才能出网的环境会在接管期间完全断网，因此把原有配置接到上游。
-        const detected = service.detectedUpstream();
-        this.detectedUpstreamProxy = detected;
-        await this.applyUpstreamProxy(detected);
-        if (detected) {
-          this.upstreamProbe.start(detected.proxyUrl);
-        }
-        return this.withUpstreamProxy(status);
-      });
+      return this.runMainAction('main.system-proxy.enable', () =>
+        this.systemProxyOperationQueue.run(async () => {
+          const proxy = await this.coreRuntime.request({
+            type: 'proxy.status',
+            payload: {},
+          });
+          const { listening, host, port } = proxy.payload;
+          if (!listening || !host || !port) {
+            throw new Error('Start capture before enabling the system proxy.');
+          }
+          const service = this.requireSystemProxyService();
+          const status = await service.enable(host, port);
+          // 接管后所有流量都走 Interceptor，若仍直连源站，必须经公司 PAC / VPN /
+          // 认证代理才能出网的环境会在接管期间完全断网，因此把原有配置接到上游。
+          const detected = service.detectedUpstream();
+          this.detectedUpstreamProxy = detected;
+          await this.applyUpstreamProxy(detected);
+          if (detected) {
+            this.upstreamProbe.start(detected.proxyUrl);
+          }
+          return this.withUpstreamProxy(status);
+        }));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRestore, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.system-proxy.restore', async () => {
-        const result = await this.requireSystemProxyService().restore();
-        this.upstreamProbe.stop();
-        this.detectedUpstreamProxy = null;
-        await this.applyUpstreamProxy(null);
-        return { ...result, status: this.withUpstreamProxy(result.status) };
-      });
+      return this.runMainAction('main.system-proxy.restore', () =>
+        this.systemProxyOperationQueue.run(async () => {
+          const result = await this.requireSystemProxyService().restore();
+          this.upstreamProbe.stop();
+          this.detectedUpstreamProxy = null;
+          await this.applyUpstreamProxy(null);
+          return { ...result, status: this.withUpstreamProxy(result.status) };
+        }));
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerList, async (event) => {
@@ -2416,11 +2437,12 @@ class DesktopApplication {
   }
 
   private async restoreSystemProxyBeforeShutdown(): Promise<void> {
-    if (!this.systemProxyService?.supported()) {
+    const service = this.systemProxyService;
+    if (!service?.supported()) {
       return;
     }
     try {
-      const result = await this.systemProxyService.restore();
+      const result = await this.systemProxyOperationQueue.run(() => service.restore());
       if (result.reason === 'externally-modified') {
         this.diagnostics.warn('main.system-proxy.ownership-lost', {
           outcome: 'failed',
@@ -2436,16 +2458,19 @@ class DesktopApplication {
     }
   }
 
-  /** Restore a stale journal before Core or Renderer starts, without blocking app access on failure. */
-  private async restoreSystemProxyOnStartup(): Promise<void> {
-    if (!this.systemProxyService?.supported()) {
+  /** Load a crash journal before Core or Renderer starts, without blocking app access on failure. */
+  private async recoverSystemProxyOnStartup(): Promise<void> {
+    const service = this.systemProxyService;
+    if (!service?.supported()) {
       return;
     }
     try {
-      const result = await this.systemProxyService.restore();
-      this.recordSystemProxyRecovery('main.system-proxy.startup-restore', result);
+      const result = await this.systemProxyOperationQueue.run(() =>
+        service.recoverAfterCrash());
+      this.detectedUpstreamProxy = service.detectedUpstream();
+      this.recordSystemProxyRecovery('main.system-proxy.startup-recovery', result);
     } catch (error) {
-      this.diagnostics.error('main.system-proxy.startup-restore-failed', {
+      this.diagnostics.error('main.system-proxy.startup-recovery-failed', {
         outcome: 'failed',
         errorCode: readErrorName(error),
         attributes: { message: readErrorMessage(error) },
@@ -2459,10 +2484,11 @@ class DesktopApplication {
 
   /** Serialize recovery triggered by duplicate Core failure state transitions. */
   private scheduleSystemProxyRecovery(phase: string): void {
-    if (this.systemProxyRecovery || !this.systemProxyService?.supported()) {
+    const service = this.systemProxyService;
+    if (this.quitting || this.systemProxyRecovery || !service?.supported()) {
       return;
     }
-    this.systemProxyRecovery = this.systemProxyService.restore()
+    this.systemProxyRecovery = this.systemProxyOperationQueue.run(() => service.restore())
       .then(async (result) => {
         this.recordSystemProxyRecovery(phase, result);
         // 代理已经交回用户，不广播会让 Renderer 继续显示“已接管”。
@@ -2493,6 +2519,8 @@ class DesktopApplication {
       this.diagnostics.warn(`${phase}.ownership-lost`, { outcome: 'failed' });
     } else if (result.restored) {
       this.diagnostics.info(`${phase}.completed`, { outcome: 'success' });
+    } else if (result.status.owned) {
+      this.diagnostics.info(`${phase}.journal-loaded`, { outcome: 'success' });
     }
   }
 
@@ -2566,20 +2594,27 @@ class DesktopApplication {
       : path.resolve(app.getAppPath(), 'assets/interceptor-icon.png');
   }
 
-  /** Create the native system-proxy owner for the current desktop platform. */
+  /** Create the native system-proxy service for the current desktop platform. */
   private createSystemProxyService(): SystemProxyService {
-    const systemProxyJournal = new SystemProxyJournal(
-      path.join(app.getPath('userData'), 'system-proxy/ownership.json'),
-    );
     if (process.platform === 'darwin') {
+      const macosSystemProxyJournal = new MacosSystemProxyJournal(
+        path.join(app.getPath('userData'), 'system-proxy/journal.json'),
+      );
       return new MacosSystemProxyService({
         helperPath: this.getMacosProxyHelperPath(),
-        journal: systemProxyJournal,
+        journal: macosSystemProxyJournal,
       });
     }
+    const localAppDataDirectory = process.env.LOCALAPPDATA;
+    if (!localAppDataDirectory) {
+      throw new Error('LOCALAPPDATA is required for Windows system proxy recovery.');
+    }
+    const windowsSystemProxyJournal = new WindowsSystemProxyJournal(
+      resolveWindowsSystemProxyJournalPath(localAppDataDirectory),
+    );
     return new WindowsSystemProxyService({
       helperPath: this.getWinInetProxyHelperPath(),
-      journal: systemProxyJournal,
+      journal: windowsSystemProxyJournal,
     });
   }
 

@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-09-02
+> 最后更新：2026-09-04
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -111,6 +111,13 @@ Streamable HTTP listener，不复用代理端口`8888`。每个Client的Bearer t
 不保留兼容路径。`apps/playground`是独立Web人工验收工具，不进入Desktop包；Browser直接访问MCP，Node
 Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 
+Windows 系统代理使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json` 的用户级唯一记录，
+不随 Electron `userData` 改变。产品只考虑同一时间一个 App；journal 仅保存 version、完整 `original` 和
+完整 `owned`。异常退出后新 App 若看到 `current == owned`，直接加载原快照；外部修改保持零 WinINet 写入。
+同一 App 内的启动、用户操作、Core 故障和退出恢复由 Promise 队列顺序执行；这不是跨进程锁。
+每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并
+复核完整 WinINet、crash journal、测试进程树和 8888 listener。
+
 ## 2. 两条独立通道
 
 Main 与 Core 之间有两条职责不重叠的通道，不能互相代偿。
@@ -165,7 +172,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 
 | # | Workflow | 发起方 → 接收方 | 数据/调用 | 代码位置 | 成功结果 | 失败与清理 |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 创建SystemProxyService后立即恢复异常退出遗留代理，再初始化Agent/更新/Core、配置IPC并创建窗口 | app 未 ready 前不创建 CoreProcess/窗口；后续业务初始化失败不会跳过启动期代理恢复，已启动服务会逐项清理并明确退出 |
+| 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 创建SystemProxyService后，按共享journal的`current/original/owned`三态加载异常退出快照或清理失效记录，再初始化Agent/更新/Core、配置IPC并创建窗口 | 外部修改零WinINet写入；app未ready前不创建CoreProcess/窗口；后续初始化失败先恢复当前系统代理接管，再逐项清理并明确退出 |
 | 2 | 配置安全边界 | `DesktopApplication` → Electron Session/WebContents | permission、webview、navigation、download + packaged protocol handlers | `main.ts`、`security/{trusted-renderer-url,packaged-renderer-protocol}.ts` | Renderer 只加载可信 Dev origin 或 `interceptor://app/index.html`；permission 仅放开 clipboard 读写供复制 | 非可信 authority/path/navigation/下载与其余权限被拒绝 |
 | 3 | 启动 CoreProcess | `DesktopApplication` → `CoreRuntime` | `start()` | `main.ts`、`core-runtime.ts` | CoreRuntime 调用 `startCoreProcess` | fork 抛错时进入退避重启 |
 | 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
@@ -183,7 +190,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 16 | explicit timeout/cancel | Caller → Main → Core | `cancel` + AbortController | `PendingRpcRequest`、`CoreRpcServer` | 只有调用方显式 timeout/abort 才取消；无默认业务 timeout | Cancel 发送失败时本地 Promise 仍清理 |
 | 17 | CoreProcess heartbeat 观测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat；首个 ready 前 30 秒启动期限 | `core-application.ts`、`core-runtime.ts` | ready 后只更新 lastHeartbeatAt | 运行期暂停 heartbeat 不改变状态或重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
-| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → CoreRuntime/CoreApplication | `app:quit`、`before-quit`、`shutdown`、`stopped` | `desktop-api.ts`、`preload.ts`、`main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | action gate同步拒绝新IPC并排空已接受命令，取消并等待Agent Turn，再恢复系统代理、逐项停服务/Core并退出；产品不再提供“重启应用”入口 | 重复quit仍被拦截；代理恢复失败则恢复命令和Agent，若最后窗口已销毁先重建窗口再报错；不可逆stop单项失败不阻止其余服务清理与最终退出 |
+| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → CoreRuntime/CoreApplication | `app:quit`、`before-quit`、`shutdown`、`stopped` | `desktop-api.ts`、`preload.ts`、`main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | action gate同步拒绝新IPC并排空已接受命令，取消并等待Agent Turn；确认WinINet仍等于owned后恢复首次original、验证并清journal，再逐项停服务/Core并退出 | 重复quit仍被拦截；外部修改保持零WinINet写入并清失效journal；恢复/验证失败保留journal并恢复命令和Agent，若最后窗口已销毁先重建窗口再报错 |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
 | 21 | GitHub Device Flow 与 token 刷新 | Renderer → Preload → Main → GitHub OAuth | get/signIn/open/signOut + auth status；启动 refresh；access 到期前 5 分钟 refresh | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-auth-service.ts`、Settings Updates | token/过期时间经 safeStorage 加密；每次成功轮换整组 token 并重排单 timer；Renderer 只见公开账号和设备码状态 | refresh token 缺失、过期或非退出刷新失败即删本地登录；退出取消 timer；无 client secret/private key |
 | 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |

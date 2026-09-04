@@ -1,6 +1,6 @@
 import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 
-import type { WinInetProxySettings } from '../interfaces';
+import type { WinInetProxySettings } from '../../interfaces';
 
 /** WinINet PROXY_TYPE 位标志：显式代理。 */
 const PROXY_TYPE_PROXY = 2;
