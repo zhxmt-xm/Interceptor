@@ -111,12 +111,29 @@ Streamable HTTP listener，不复用代理端口`8888`。每个Client的Bearer t
 不保留兼容路径。`apps/playground`是独立Web人工验收工具，不进入Desktop包；Browser直接访问MCP，Node
 Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 
-Windows 系统代理使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json` 的用户级唯一记录，
-不随 Electron `userData` 改变。产品只考虑同一时间一个 App；journal 仅保存 version、完整 `original` 和
-完整 `owned`。异常退出后新 App 若看到 `current == owned`，直接加载原快照；外部修改保持零 WinINet 写入。
-同一 App 内的启动、用户操作、Core 故障和退出恢复由 Promise 队列顺序执行；这不是跨进程锁。
-每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并
-复核完整 WinINet、crash journal、测试进程树和 8888 listener。
+### 1.1 系统代理进程边界
+
+| 进程或边界 | 允许的职责 | 禁止的职责 |
+| --- | --- | --- |
+| Renderer / Preload | 发送 Enable、Restore、Status 意图并显示结果 | 直接访问系统代理、journal 或 native helper |
+| Electron Main | 唯一产品编排者；顺序执行代理操作、维护 journal、同步 upstream、决定退出是否继续 | 把完整代理快照发给 Renderer 或日志 |
+| Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
+| native helper | 执行一次完整平台快照的 get/set | 保存产品状态、识别 App 或决定何时恢复 |
+| E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
+
+Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json` 的用户级唯一记录，不随 Electron
+`userData` 改变；macOS 使用当前 `userData/system-proxy/journal.json`。两平台 journal 都只保存 version、
+完整 `original` 和完整 `owned`。产品只考虑同一时间一个 App，不实现跨进程 owner 或 mutex。
+
+Main 内的 `SystemProxyOperationQueue` 只是一条内存 Promise FIFO：启动恢复、用户 Enable/Restore、Core
+故障恢复和退出恢复按入队顺序执行。Core 故障只登记一个自动恢复；正常退出先通过 Action Gate 拒绝新 IPC、
+排空已接受命令，再排入最终 Restore。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
+Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
+
+每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并复核完整 WinINet、crash
+journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
+E2E；当前只有 Windows 跨 profile 崩溃恢复主路径与 MITM 持久化取得真实 Electron 证据，Core 故障并发和
+macOS 实机流程仍待 E2E。
 
 ## 2. 两条独立通道
 
