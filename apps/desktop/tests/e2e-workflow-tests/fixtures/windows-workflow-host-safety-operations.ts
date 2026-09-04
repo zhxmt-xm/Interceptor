@@ -296,31 +296,50 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
     const rootProcessIdSet = new Set(rootProcessIds);
     await this.listLiveProcesses(rootProcessIds);
     const attemptedProcessIds = new Set<number>();
+    const failures: unknown[] = [];
     const registeredRoots = rootProcessIds
       .filter((processId, index) => rootProcessIds.indexOf(processId) === index)
       .map((processId) => this.registeredProcessIdentity(processId))
       .filter((processIdentity): processIdentity is WorkflowProcessIdentity =>
         processIdentity !== null);
-    await this.terminateProcessGenerations(registeredRoots);
+    try {
+      await this.terminateProcessGenerations(registeredRoots);
+    } catch (error) {
+      failures.push(error);
+    }
     registeredRoots.forEach((processIdentity) =>
       attemptedProcessIds.add(processIdentity.processId));
 
     const registeredDescendants = [...this.knownProcessCreationById]
       .filter(([processId]) => !rootProcessIdSet.has(processId))
       .map(([processId, processStartedAt]) => ({ processId, processStartedAt }));
-    await this.terminateProcessGenerations(registeredDescendants);
+    try {
+      await this.terminateProcessGenerations(registeredDescendants);
+    } catch (error) {
+      failures.push(error);
+    }
     registeredDescendants.forEach((processIdentity) =>
       attemptedProcessIds.add(processIdentity.processId));
 
-    const remainingProcesses = await this.listLiveProcesses(rootProcessIds);
-    await this.terminateProcessGenerations(
-      remainingProcesses
-        .filter((processEntry) => !attemptedProcessIds.has(processEntry.processId))
-        .map((processEntry) => ({
-          processId: processEntry.processId,
-          processStartedAt: processEntry.creationDate,
-        })),
-    );
+    try {
+      const remainingProcesses = await this.listLiveProcesses(rootProcessIds);
+      await this.terminateProcessGenerations(
+        remainingProcesses
+          .filter((processEntry) => !attemptedProcessIds.has(processEntry.processId))
+          .map((processEntry) => ({
+            processId: processEntry.processId,
+            processStartedAt: processEntry.creationDate,
+          })),
+      );
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length === 1) {
+      throw failures[0];
+    }
+    if (failures.length > 1) {
+      throw new AggregateError(failures, 'Workflow process cleanup failed.');
+    }
   }
 
   /** Terminate exact process objects after rechecking their immutable start tokens. */
@@ -328,6 +347,7 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
     processIdentities: readonly WorkflowProcessIdentity[],
     requireAlive = false,
   ): Promise<void> {
+    const failures: unknown[] = [];
     for (const processIdentity of processIdentities) {
       const encodedIdentity = Buffer.from(
         JSON.stringify(processIdentity),
@@ -355,12 +375,22 @@ if (-not $process.WaitForExit(5000)) {
   throw 'Timed out terminating the workflow-owned process.'
 }
 `;
-      await this.commandRunner.run('powershell.exe', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        script,
-      ]);
+      try {
+        await this.commandRunner.run('powershell.exe', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          script,
+        ]);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length === 1) {
+      throw failures[0];
+    }
+    if (failures.length > 1) {
+      throw new AggregateError(failures, 'Workflow process termination failed.');
     }
   }
 

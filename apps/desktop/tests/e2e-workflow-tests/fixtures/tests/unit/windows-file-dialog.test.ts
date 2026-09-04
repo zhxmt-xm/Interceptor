@@ -43,11 +43,15 @@ describe('dismissWindowsFileDialogs', () => {
       Buffer.from(JSON.stringify(owners), 'utf8').toString('base64'),
     );
     expect(script).toContain('Test-OwnerProcess');
-    expect(script).toContain('$processStartedAtByProcessId[$processId] -eq');
     expect(script).toContain(
-      'if (-not [NativeDialogTeardown]::SetForegroundWindow($windowHandle))',
+      '$ownerProcess = Get-Process -Id $processId -ErrorAction SilentlyContinue',
     );
-    expect(script).toContain("$shell.SendKeys('{ESC}')");
+    expect(script).toContain('$ownerProcess.StartTime.ToUniversalTime().ToString(');
+    expect(script).not.toContain('$_.CreationDate.ToUniversalTime().ToString(');
+    expect(script).toContain('$dialog.GetCurrentPattern(');
+    expect(script).toContain('[System.Windows.Automation.WindowPattern]::Pattern');
+    expect(script).toContain('$windowPattern.Close()');
+    expect(script).not.toContain('SendKeys');
   });
 
   it('never sends a global Escape when no owned submit dialog can be focused', async () => {
@@ -69,12 +73,27 @@ describe('dismissWindowsFileDialogs', () => {
     );
     expect(script).toContain('$ownerProcessStartedAt');
     expect(script).toContain('Test-OwnerProcessGeneration');
+    expect(script).toContain(
+      '$ownerProcess = Get-Process -Id $processId -ErrorAction SilentlyContinue',
+    );
+    expect(script).toContain('$ownerProcess.StartTime.ToUniversalTime().ToString(');
+    expect(script).not.toContain('$process.CreationDate.ToUniversalTime().ToString(');
     const missingDialogBranch = script.slice(
       script.indexOf('if (-not $fileDialog)'),
       script.indexOf('$dialogWindowHandle = $fileDialog.WindowHandle'),
     );
     expect(missingDialogBranch).not.toContain("SendKeys('{ESC}')");
     expect(script).toContain('function Close-FileDialog');
-    expect(script).not.toContain("} catch {\n  $shell.SendKeys('{ESC}')");
+    expect(script).toContain('$dialog.GetCurrentPattern(');
+    expect(script).toContain('[System.Windows.Automation.WindowPattern]::Pattern');
+    expect(script).toContain('$windowPattern.Close()');
+    expect(script).toContain('function Click-Control');
+    expect(script).toContain('SetWindowPos(windowHandle, HwndTopmost');
+    expect(script).toContain('SetWindowPos(windowHandle, HwndNotTopmost');
+    expect(script).toContain('Click-Control $fileNameBounds');
+    expect(script).toContain('Click-Control $submitBounds');
+    expect(script).not.toContain("SendKeys('%n')");
+    expect(script).not.toContain("SendKeys('{ENTER}')");
+    expect(script).not.toContain("SendKeys('{ESC}')");
   });
 });

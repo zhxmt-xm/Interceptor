@@ -245,6 +245,10 @@ Capture 39项真实Electron收敛：
 4. **[已完成] Rules**：同一Zod递归schema生成Model JSON Schema并严格解析folder/rule及全部matcher/action联合，
    校验三级目录与ID唯一性；三项已接入Agent。Map Local真实路径不进入Tool上下文且只可原位安全保留；typed摘要、
    动态影响、Ask Deny/Allow、Auto、stale revision、真实Rule effect、外部revision并发同步、关闭项与重启零重放均通过。
+   最终Tools`43/43`、Runtime`121/121`、MCP`30/30`、Desktop`450/450`、Proxy Rules Green`95/95`、
+   design interaction`68/68`与全workspace typecheck Green；真实Electron Agent Rules、MCP Rules与Rules Import
+   联合`3/3` Green，共用Windows Dialog的Composer Import与Rules Body file回归`2/2` Green。Windows package、
+   artifact audit（`1,294 files / 392,808,773 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。
 5. **[待实现] Breakpoints**：按HTTP与WebSocket拆分接入八项现有Tool，使用真实pending、队列、编辑、
    Allow/Deny/Auto与origin事实验收。
 6. **[待实现] Requests**：接入`send_request`与`probe_connection`，验证真实origin/TLS、取消和网络结果。

@@ -59,10 +59,20 @@ class FakeWorkflowHostCommandRunner implements WorkflowHostCommandRunner {
   listenerProcessIdentity: unknown = null;
   /** Every external command invoked by the adapter. */
   readonly calls: { command: string; args: readonly string[] }[] = [];
+  /** Whether the next exact process termination must fail. */
+  failNextTermination = false;
 
   /** Execute one fake helper, PowerShell or taskkill command. */
   run(command: string, args: readonly string[]): Promise<WorkflowHostCommandResult> {
     this.calls.push({ command, args: [...args] });
+    if (
+      command === 'powershell.exe'
+      && args.at(-1)?.includes('$process.Kill()')
+      && this.failNextTermination
+    ) {
+      this.failNextTermination = false;
+      return Promise.reject(new Error('termination denied'));
+    }
     if (command.endsWith('wininet-proxy-helper.exe')) {
       if (args[0] === 'get') {
         return Promise.resolve({ stdout: JSON.stringify(this.settings), stderr: '' });
@@ -390,6 +400,23 @@ describe('WindowsWorkflowHostSafetyOperations', () => {
     expectTerminationScripts(commandRunner, [
       { processId: 100, processStartedAt: 'registered-root-start' },
     ]);
+  });
+
+  it('attempts every registered root when one process termination fails', async () => {
+    const fileStore = new FakeWorkflowHostFileStore();
+    const commandRunner = new FakeWorkflowHostCommandRunner();
+    commandRunner.processTables = [[], []];
+    commandRunner.failNextTermination = true;
+    const operations = createOperations(fileStore, commandRunner);
+    const firstRoot = { processId: 100, processStartedAt: 'first-root-start' };
+    const secondRoot = { processId: 200, processStartedAt: 'second-root-start' };
+    operations.registerProcessIdentity(firstRoot);
+    operations.registerProcessIdentity(secondRoot);
+
+    await expect(operations.terminateProcessTrees([100, 200]))
+      .rejects.toThrow('termination denied');
+
+    expectTerminationScripts(commandRunner, [firstRoot, secondRoot]);
   });
 
   it('terminates one explicitly registered Core generation without its Main tree', async () => {

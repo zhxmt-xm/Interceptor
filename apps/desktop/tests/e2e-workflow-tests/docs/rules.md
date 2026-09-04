@@ -326,7 +326,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 
-**状态**：planned
+**状态**：passed
 **策略**：native-ui
 
 ### Steps
@@ -357,5 +357,5 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 ### TDD证据
 
 - Retrospective Red：最终workflow源码在`884dcc4`精确失败于`rules.toolbar.import`不存在；同环境`rules.root-toolbar`为Green，排除构建、listener与fixture失败。
-- Green：当前`1/1`通过。真实Save Dialog生成`rules-roundtrip.json`，三次真实Open Dialog覆盖取消、确认和重复确认；两条rule与一层目录依次扩展为4/2、6/3个节点，新增id不复用，enabled保持true/false，revision为`1→2→3`。
-- 销毁：Main PID `34724`、Core PID `20512`均退出，`gracefulDestroyVerified=true`，8888释放，系统代理恢复原值。
+- Green：最终`1/1`通过（21.8秒）。真实Save Dialog生成`rules-roundtrip.json`，三次真实Open Dialog覆盖取消、确认和重复确认；两条rule与一层目录依次扩展为4/2、6/3个节点，新增id不复用，enabled保持true/false，revision为`1→2→3`。
+- 销毁：Main PID `17228`、Core PID `11560`均退出，`gracefulDestroyVerified=true`；8888、crash journal与Electron均为0，完整WinINet恢复到workflow启动快照。

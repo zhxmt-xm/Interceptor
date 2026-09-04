@@ -45,18 +45,6 @@ export async function dismissWindowsFileDialogs(
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-
-public static class NativeDialogTeardown {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr windowHandle);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr windowHandle, int command);
-  [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr windowHandle);
-  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr windowHandle);
-}
-'@
 
 $ownerProcesses = [System.Text.Encoding]::UTF8.GetString(
   [System.Convert]::FromBase64String('${encodedOwners}')
@@ -66,23 +54,27 @@ foreach ($owner in @($ownerProcesses)) {
   $ownerStartedAtByProcessId[[int]$owner.processId] = [string]$owner.processStartedAt
 }
 $parentProcessIdByProcessId = @{}
-$processStartedAtByProcessId = @{}
 Get-CimInstance Win32_Process | ForEach-Object {
   $parentProcessIdByProcessId[[int]$_.ProcessId] = [int]$_.ParentProcessId
-  if ($null -ne $_.CreationDate) {
-    $processStartedAtByProcessId[[int]$_.ProcessId] = $_.CreationDate.ToUniversalTime().ToString(
-      'O',
-      [Globalization.CultureInfo]::InvariantCulture
-    )
-  }
 }
 
 function Test-OwnerProcess([int]$processId) {
   $visited = @{}
   while ($processId -gt 0 -and -not $visited.ContainsKey($processId)) {
     if ($ownerStartedAtByProcessId.ContainsKey($processId)) {
-      return $processStartedAtByProcessId.ContainsKey($processId) -and
-        $processStartedAtByProcessId[$processId] -eq $ownerStartedAtByProcessId[$processId]
+      $ownerProcess = Get-Process -Id $processId -ErrorAction SilentlyContinue
+      if ($null -eq $ownerProcess -or $ownerProcess.HasExited) {
+        return $false
+      }
+      try {
+        $ownerProcessStartedAt = $ownerProcess.StartTime.ToUniversalTime().ToString(
+          'O',
+          [Globalization.CultureInfo]::InvariantCulture
+        )
+        return $ownerProcessStartedAt -eq $ownerStartedAtByProcessId[$processId]
+      } catch {
+        return $false
+      }
     }
     $visited[$processId] = $true
     if (-not $parentProcessIdByProcessId.ContainsKey($processId)) {
@@ -101,25 +93,24 @@ $dialogs = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
   [System.Windows.Automation.TreeScope]::Children,
   $dialogCondition
 )
-$shell = New-Object -ComObject WScript.Shell
 foreach ($dialog in @($dialogs)) {
   $windowHandle = [IntPtr]$dialog.Current.NativeWindowHandle
   if (
     $windowHandle -eq [IntPtr]::Zero -or
     -not (Test-OwnerProcess $dialog.Current.ProcessId) -or
-    -not [NativeDialogTeardown]::IsWindowVisible($windowHandle) -or
-    -not [NativeDialogTeardown]::IsWindowEnabled($windowHandle)
+    $dialog.Current.IsOffscreen -or
+    -not $dialog.Current.IsEnabled
   ) {
     continue
   }
-  [void][NativeDialogTeardown]::ShowWindow($windowHandle, 5)
-  if (-not [NativeDialogTeardown]::SetForegroundWindow($windowHandle)) {
+  try {
+    $windowPattern = $dialog.GetCurrentPattern(
+      [System.Windows.Automation.WindowPattern]::Pattern
+    )
+    $windowPattern.Close()
+  } catch {
     continue
   }
-  if ([NativeDialogTeardown]::GetForegroundWindow() -ne $windowHandle) {
-    continue
-  }
-  $shell.SendKeys('{ESC}')
 }
 `;
 
@@ -151,23 +142,28 @@ using System;
 using System.Runtime.InteropServices;
 
 public static class NativeForegroundWindow {
-  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
-  [DllImport("user32.dll")] public static extern bool AttachThreadInput(
-    uint attachThreadId,
-    uint attachToThreadId,
-    bool attach
-  );
+  private static readonly IntPtr HwndTopmost = new IntPtr(-1);
+  private static readonly IntPtr HwndNotTopmost = new IntPtr(-2);
+  private const uint SwpNoSize = 0x0001;
+  private const uint SwpNoMove = 0x0002;
+  private const uint SwpShowWindow = 0x0040;
+
   [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(
-    IntPtr windowHandle,
-    IntPtr processId
-  );
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr windowHandle, int command);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr windowHandle);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(
+    IntPtr windowHandle,
+    IntPtr insertAfter,
+    int x,
+    int y,
+    int width,
+    int height,
+    uint flags
+  );
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(
     uint flags,
@@ -177,26 +173,15 @@ public static class NativeForegroundWindow {
     UIntPtr extraInfo
   );
 
-  public static bool FocusWindow(IntPtr windowHandle) {
-    uint currentThreadId = GetCurrentThreadId();
-    uint foregroundThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
-    uint targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
-    bool foregroundAttached = foregroundThreadId != 0
-      && foregroundThreadId != currentThreadId
-      && AttachThreadInput(currentThreadId, foregroundThreadId, true);
-    bool targetAttached = targetThreadId != 0
-      && targetThreadId != currentThreadId
-      && targetThreadId != foregroundThreadId
-      && AttachThreadInput(currentThreadId, targetThreadId, true);
-    try {
-      ShowWindow(windowHandle, 5);
-      BringWindowToTop(windowHandle);
-      SetForegroundWindow(windowHandle);
-      return GetForegroundWindow() == windowHandle;
-    } finally {
-      if (targetAttached) AttachThreadInput(currentThreadId, targetThreadId, false);
-      if (foregroundAttached) AttachThreadInput(currentThreadId, foregroundThreadId, false);
-    }
+  public static void RaiseWindow(IntPtr windowHandle) {
+    ShowWindow(windowHandle, 5);
+    SetWindowPos(windowHandle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpShowWindow);
+    BringWindowToTop(windowHandle);
+    SetForegroundWindow(windowHandle);
+  }
+
+  public static void ReleaseWindow(IntPtr windowHandle) {
+    SetWindowPos(windowHandle, HwndNotTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpShowWindow);
   }
 }
 '@
@@ -238,19 +223,27 @@ $dialogCondition = [System.Windows.Automation.PropertyCondition]::new(
 function Test-OwnerProcessGeneration([int]$processId) {
   $visited = @{}
   while ($processId -gt 0 -and -not $visited.ContainsKey($processId)) {
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId"
-    if ($null -eq $process -or $null -eq $process.CreationDate) {
+    $processEntry = Get-CimInstance Win32_Process -Filter "ProcessId = $processId"
+    if ($null -eq $processEntry) {
       return $false
     }
     if ($processId -eq $ownerProcessId) {
-      $processStartedAt = $process.CreationDate.ToUniversalTime().ToString(
-        'O',
-        [Globalization.CultureInfo]::InvariantCulture
-      )
-      return $processStartedAt -eq $ownerProcessStartedAt
+      $ownerProcess = Get-Process -Id $processId -ErrorAction SilentlyContinue
+      if ($null -eq $ownerProcess -or $ownerProcess.HasExited) {
+        return $false
+      }
+      try {
+        $processStartedAt = $ownerProcess.StartTime.ToUniversalTime().ToString(
+          'O',
+          [Globalization.CultureInfo]::InvariantCulture
+        )
+        return $processStartedAt -eq $ownerProcessStartedAt
+      } catch {
+        return $false
+      }
     }
     $visited[$processId] = $true
-    $processId = [int]$process.ParentProcessId
+    $processId = [int]$processEntry.ParentProcessId
   }
   return $false
 }
@@ -304,6 +297,7 @@ function Find-FileDialog {
         $submitButton.Current.NativeWindowHandle -ne 0
       ) {
         $candidates += [pscustomobject]@{
+          Dialog = $dialog
           FileNameField = $fileNameField
           SubmitButton = $submitButton
           WindowHandle = $windowHandle
@@ -320,17 +314,36 @@ function Find-FileDialog {
   return $null
 }
 
-function Close-FileDialog([IntPtr]$windowHandle, [int]$processId) {
+function Close-FileDialog(
+  $dialog,
+  [IntPtr]$windowHandle,
+  [int]$processId
+) {
   if (
     $windowHandle -ne [IntPtr]::Zero -and
     [NativeForegroundWindow]::IsWindow($windowHandle) -and
     [NativeForegroundWindow]::IsWindowVisible($windowHandle) -and
-    (Test-OwnerProcessGeneration $processId) -and
-    [NativeForegroundWindow]::FocusWindow($windowHandle) -and
-    (Test-FocusedOwnedDialog $windowHandle $processId)
+    (Test-OwnerProcessGeneration $processId)
   ) {
-    $shell.SendKeys('{ESC}')
+    try {
+      $windowPattern = $dialog.GetCurrentPattern(
+        [System.Windows.Automation.WindowPattern]::Pattern
+      )
+      $windowPattern.Close()
+    } catch {
+      return
+    }
   }
+}
+
+function Click-Control($bounds) {
+  [void][NativeForegroundWindow]::SetCursorPos(
+    [int]($bounds.Left + $bounds.Width / 2),
+    [int]($bounds.Top + $bounds.Height / 2)
+  )
+  [NativeForegroundWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+  [NativeForegroundWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  [System.Threading.Thread]::Sleep(100)
 }
 
 $deadline = [DateTime]::UtcNow.AddSeconds(15)
@@ -355,6 +368,7 @@ if (-not $fileDialog) {
 
 $dialogWindowHandle = $fileDialog.WindowHandle
 $dialogProcessId = $fileDialog.ProcessId
+$dialog = $fileDialog.Dialog
 $fileNameField = $fileDialog.FileNameField
 $submitButton = $fileDialog.SubmitButton
 $fileNameBounds = $fileNameField.Current.BoundingRectangle
@@ -365,19 +379,24 @@ if (
   $submitBounds.Width -le 0 -or
   $submitBounds.Height -le 0
 ) {
-  Close-FileDialog $dialogWindowHandle $dialogProcessId
+  Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw '真实文件对话框的文件名或提交控件没有可点击边界。'
 }
 
 try {
   if (
-    -not [NativeForegroundWindow]::FocusWindow($dialogWindowHandle) -or
-    -not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)
+    -not (Test-OwnerProcessGeneration $dialogProcessId) -or
+    -not [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle) -or
+    -not [NativeForegroundWindow]::IsWindowEnabled($dialogWindowHandle)
   ) {
-    throw '无法把真实文件对话框切换到前台。'
+    throw '真实文件对话框在输入前已失效。'
   }
-  $shell.SendKeys('%n')
-  [System.Threading.Thread]::Sleep(100)
+  [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
+  Click-Control $fileNameBounds
+  [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
+  if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+    throw '真实文件对话框在点击文件名字段后没有获得前台焦点。'
+  }
   $focusedElement = [System.Windows.Automation.AutomationElement]::FocusedElement
   if (
     -not $focusedElement -or
@@ -411,9 +430,10 @@ try {
   if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
     throw '真实文件对话框在提交前失去所有权或焦点。'
   }
-  $shell.SendKeys('{ENTER}')
+  Click-Control $submitBounds
 } catch {
-  Close-FileDialog $dialogWindowHandle $dialogProcessId
+  [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
+  Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw
 }
 
@@ -429,7 +449,7 @@ if (
   [NativeForegroundWindow]::IsWindow($dialogWindowHandle) -and
   [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle)
 ) {
-  Close-FileDialog $dialogWindowHandle $dialogProcessId
+  Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw '提交文件路径后，真实文件对话框没有关闭。'
 }
 `;
