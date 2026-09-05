@@ -494,6 +494,12 @@ Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，
 **状态**：passed
 **策略**：shared
 
+从仓库根目录复验，不可与其他占用8888的实例并行：
+
+```powershell
+npm run test:e2e:workflow --workspace @interceptor/desktop -- diagnostics.workflow.ts
+```
+
 ### Steps
 
 1. 创建独立profile/evidence和HTTP origin；通过产品Settings配置本地Provider，等待App/Core/8888 ready。

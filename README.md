@@ -2,16 +2,9 @@
 
 Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charles and Fiddler.
 
-## Status
+## Features
 
-M0–M13 are complete; production signing/notarization and real macOS release evidence remain external release checks. The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, upstream proxy chaining with health-probed automatic fallback, hardened installers, user-triggered GitHub Release downloads, and an encrypted persistent Agent Chat. Agent and MCP share the current 24-Tool registry; the browser Playground provides manual latest-protocol acceptance while the remaining target Tools continue as staged work.
-
-The next release action is a real signed tag build with repository-external Windows and Apple credentials, followed by native macOS download/open validation.
-
-首批24项Tool已全部接入Agent与MCP，owner正向测试与真实Agent/MCP调用覆盖均为24/24；完整目标为24/73，
-余下49项待实现，恢复开发先做Settings只读查询组。Playground首批24项Developer人工矩阵独立待验收；
-Capture Lab真实Electron覆盖仍为2/39，不等同于39/39的Lab集成测试。
-逐项状态、后续计划与证据见[Tool能力目录](architecture/features/tool-capabilities.md)。
+The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, upstream proxy chaining with health-probed automatic fallback, hardened installers, user-triggered GitHub Release downloads, and an encrypted persistent Agent Chat. Agent and MCP share a Tool registry; the browser Playground provides manual latest-protocol acceptance.
 
 Documentation is split to keep routine context small:
 
@@ -112,14 +105,6 @@ with 39 editable HTTP, body, encoding, WebSocket, gRPC, and TLS scenarios routed
 MCP page connects directly using configuration copied from Interceptor. It is a development tool under `apps/playground/`
 and is not included in Desktop packages. See
 [apps/playground/README.md](apps/playground/README.md) for the manual workflow and credential boundary.
-
-### 验证Agent Diagnostics
-
-```powershell
-npm run test:e2e:workflow --workspace @interceptor/desktop -- diagnostics.workflow.ts
-```
-
-该workflow由Composer UI产生真实记录，再验证Agent查询、脱敏、撤权、重启零重放及两代完整销毁；不可与其他占用8888的实例并行。
 
 ### Debug Renderer
 
