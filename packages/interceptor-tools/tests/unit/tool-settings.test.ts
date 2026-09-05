@@ -38,6 +38,10 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
   ['settings_enable_system_proxy', 'Enable system proxy', 'Route system traffic through Interceptor using the active proxy listener.'],
   ['settings_restore_system_proxy', 'Restore system proxy', 'Restore the system proxy configuration saved before Interceptor took ownership.'],
+  ['settings_replace_tls_insecure_hosts', 'Replace insecure TLS hosts', 'Replace hosts that skip upstream TLS certificate verification.'],
+  ['settings_replace_tls_passthrough', 'Replace TLS passthrough', 'Replace TLS passthrough patterns at the current revision.'],
+  ['settings_enable_https_decryption', 'Enable HTTPS decryption', 'Enable HTTPS decryption when the existing Root CA is trusted.'],
+  ['settings_disable_https_decryption', 'Disable HTTPS decryption', 'Disable HTTPS decryption without changing certificate trust.'],
 ] as const;
 
 describe('Tool Settings projection', () => {
@@ -54,7 +58,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(32);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(36);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

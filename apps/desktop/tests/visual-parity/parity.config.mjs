@@ -687,6 +687,37 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...[
+        'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
+        'settings_enable_https_decryption', 'settings_disable_https_decryption',
+      ].flatMap((name) => ['pending', 'allowed'].map((approval) => ({
+        id: `tls-tools-${name}-${approval}${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: `tls-settings-${name}-${approval}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'TLS approval', parity: 'agent-tool-approval' },
+          name,
+          {
+            name: 'TLS result or effect',
+            designSelector: approval === 'allowed'
+              ? '[data-parity="agent-tool-approval"] > span:last-child > span'
+              : '[data-parity="agent-tool-approval"] dl > div:last-child > dd',
+            appSelector: approval === 'allowed'
+              ? '[data-automation-id="agent.tools.result.call-tls-settings"] > span'
+              : '[data-parity="agent-tool-approval"] dl > div:last-child > dd',
+          },
+        ],
+      }))),
       ...['enable', 'restore'].flatMap((action) => ['pending', 'allowed'].map((approval) => ({
         id: `settings-system-proxy-${action}-${approval}${suffix}`,
         theme,

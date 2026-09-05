@@ -265,7 +265,12 @@ describe('Agent transcript utilities', () => {
     ['settings_restore_system_proxy', { restored: false, reason: 'not-owned', status: { owned: false } }, { kind: 'systemProxyRestore', restored: false, reason: 'not-owned' }],
     ['settings_get_certificate_status', { present: false, trusted: false, mitmEnabled: false }, { kind: 'certificateStatus', present: false, trusted: false, mitmEnabled: false }],
     ['settings_get_tls_insecure_hosts', { hosts: ['localhost'] }, { kind: 'tlsHosts', count: 1 }],
+    ['settings_replace_tls_insecure_hosts', { hosts: ['localhost'] }, { kind: 'tlsHosts', count: 1 }],
     ['settings_get_tls_passthrough', { revision: 2, hosts: ['*.example.test'] }, { kind: 'tlsPassthrough', revision: 2, count: 1 }],
+    ['settings_replace_tls_passthrough', { ok: true, settings: { revision: 2, hosts: ['*.example.test'] } }, { kind: 'tlsPassthrough', revision: 2, count: 1 }],
+    ['settings_replace_tls_passthrough', { ok: false, reason: 'conflict', message: 'Read latest revision.' }, { kind: 'error', message: 'Read latest revision.' }],
+    ['settings_enable_https_decryption', { trusted: false, mitmEnabled: true, decrypting: false }, { kind: 'decryption', trusted: false, mitmEnabled: true, decrypting: false }],
+    ['settings_disable_https_decryption', { trusted: true, mitmEnabled: false, decrypting: false }, { kind: 'decryption', trusted: true, mitmEnabled: false, decrypting: false }],
     ['settings_list_app_containers', { supported: true, containers: [{ exempt: true }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 1 }],
     ['settings_list_app_containers', { supported: false, containers: [] }, { kind: 'appContainers', supported: false, count: 0, exemptCount: 0 }],
   ])('summarizes %s as typed Settings state', (name, value, expected) => {

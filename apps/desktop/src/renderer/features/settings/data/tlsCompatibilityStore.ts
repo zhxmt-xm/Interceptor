@@ -85,8 +85,15 @@ export class TlsCompatibilityActions {
 
   /** Subscribe once to Main's deduplicated TLS compatibility events. */
   static subscribe(): () => void {
-    return window.interceptor.onTlsCompatibilityChange((event) => {
+    const unsubscribeCompatibility = window.interceptor.onTlsCompatibilityChange((event) => {
       useTlsCompatibilityStore.getState().apply(event);
     });
+    const unsubscribeSettings = window.interceptor.onTlsSettingsChanged(() => {
+      useTlsCompatibilityStore.getState().settingsChanged();
+    });
+    return () => {
+      unsubscribeCompatibility();
+      unsubscribeSettings();
+    };
   }
 }

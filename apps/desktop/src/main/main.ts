@@ -26,6 +26,7 @@ import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server'
 import type {
   InterceptorToolHost,
   MainToolCommand,
+  MainToolPayloadForType,
   MainToolResultForCommand,
   MainToolResultPayloads,
 } from '@interceptor/tools';
@@ -599,15 +600,15 @@ class DesktopApplication {
     app.on('open-url', (event) => event.preventDefault());
   }
 
-  private invokeMainTool<Command extends MainToolCommand>(
-    command: Command,
+  private invokeMainTool<CommandType extends keyof MainToolResultPayloads>(
+    command: MainToolCommand<CommandType>,
     abortSignal: AbortSignal,
-  ): Promise<MainToolResultForCommand<Command>> {
+  ): Promise<MainToolResultForCommand<MainToolCommand<CommandType>>> {
     return this.applicationActionGate.run(async () => {
       abortSignal.throwIfAborted();
       const commands: {
-        [CommandType in keyof MainToolResultPayloads]: () => (
-          MainToolResultPayloads[CommandType] | Promise<MainToolResultPayloads[CommandType]>
+        [CommandKey in keyof MainToolResultPayloads]: (payload: MainToolPayloadForType<CommandKey>) => (
+          MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
         'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
@@ -616,9 +617,13 @@ class DesktopApplication {
         'settings.system-proxy.restore': () => this.restoreSystemProxy(abortSignal),
         'settings.certificate.status': () => this.buildCertificateInfo(),
         'settings.app-containers.list': () => this.listAppContainers(),
+        'settings.tls-insecure-hosts.replace': async (payload) => ({ hosts: await this.replaceInsecureHosts(payload.hosts) }),
+        'settings.tls-passthrough.replace': (payload) => this.replaceTlsPassthroughSettings(payload.expectedRevision, payload.hosts),
+        'settings.https-decryption.enable': () => this.enableHttpsDecryption(),
+        'settings.https-decryption.disable': () => this.disableHttpsDecryption(),
       };
-      const commandType: Command['type'] = command.type;
-      const payload = await commands[commandType]();
+      const commandType = command.type;
+      const payload = await commands[commandType](command.payload);
       abortSignal.throwIfAborted();
       return { type: commandType, payload };
     });
@@ -1705,11 +1710,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.httpsSetInsecureHosts,
       async (event, hosts: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        const result = await this.coreRuntime.request({
-          type: 'tls.replaceInsecureHosts',
-          payload: { hosts: toInsecureHosts(hosts) },
-        });
-        return result.payload.hosts;
+        return this.replaceInsecureHosts(toInsecureHosts(hosts));
       },
     );
 
@@ -1719,13 +1720,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.httpsSetDecryption,
       async (event, enabled: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        this.mitmEnabled = enabled as boolean;
-        await this.coreRuntime.request({
-          type: 'tls.saveDecryptionPreference',
-          payload: { enabled: this.mitmEnabled },
-        });
-        await this.syncCoreDecryption();
-        return this.buildCertificateInfo();
+        return enabled ? this.enableHttpsDecryption() : this.disableHttpsDecryption();
       },
     );
 
@@ -1738,20 +1733,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.tlsPassthroughReplace,
       async (event, expectedRevision: unknown, hosts: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        try {
-          // Core 在同一条命令里完成持久化与生效，Main 不再重下发。
-          await this.coreRuntime.request({
-            type: 'tls-passthrough.replace',
-            payload: {
-              expectedRevision: expectedRevision as number,
-              hosts: hosts as string[],
-            },
-          });
-          const settings = await this.loadTlsPassthroughSettings();
-          return { ok: true, settings };
-        } catch (error) {
-          return DesktopApplication.toReplaceFailure(error);
-        }
+        return this.replaceTlsPassthroughSettings(expectedRevision as number, hosts as string[]);
       },
     );
 
@@ -2336,16 +2318,59 @@ class DesktopApplication {
     this.mitmEnabled = result.payload.enabled;
   }
 
-  /** 只切 Core 的解密开关；CA 未信任时即使用户开启也不解密。 */  private async syncCoreDecryption(): Promise<void> {
-    if (!this.certificateService) {
-      return;
-    }
+  /** 只切 Core 的解密开关；CA 未信任时即使用户开启也不解密。 */  private async syncCoreDecryption(): Promise<boolean> {
     const decrypting = (await this.isCaTrusted()) && this.mitmEnabled;
-    await this.coreRuntime.request(
+    const result = await this.coreRuntime.request(
       decrypting
         ? { type: 'tls.startDecryption', payload: {} }
         : { type: 'tls.stopDecryption', payload: {} },
     );
+    return result.payload.decrypting;
+  }
+
+  private async replaceInsecureHosts(hosts: string[]): Promise<string[]> {
+    const result = await this.coreRuntime.request({ type: 'tls.replaceInsecureHosts', payload: { hosts } });
+    this.broadcastTlsSettingsChanged();
+    return result.payload.hosts;
+  }
+
+  private async enableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
+    this.mitmEnabled = true;
+    await this.coreRuntime.request({ type: 'tls.saveDecryptionPreference', payload: { enabled: true } });
+    const decrypting = await this.syncCoreDecryption();
+    const certificateInfo = await this.buildCertificateInfo();
+    this.broadcastTlsSettingsChanged();
+    return { ...certificateInfo, decrypting };
+  }
+
+  private async disableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
+    this.mitmEnabled = false;
+    await this.coreRuntime.request({ type: 'tls.saveDecryptionPreference', payload: { enabled: false } });
+    const decrypting = await this.syncCoreDecryption();
+    const certificateInfo = await this.buildCertificateInfo();
+    this.broadcastTlsSettingsChanged();
+    return { ...certificateInfo, decrypting };
+  }
+
+  private async replaceTlsPassthroughSettings(
+    expectedRevision: number, hosts: string[],
+  ): Promise<MainToolResultPayloads['settings.tls-passthrough.replace']> {
+    try {
+      await this.coreRuntime.request({ type: 'tls-passthrough.replace', payload: { expectedRevision, hosts } });
+      const settings = await this.loadTlsPassthroughSettings();
+      this.broadcastTlsSettingsChanged();
+      return { ok: true, settings };
+    } catch (error) {
+      return DesktopApplication.toReplaceFailure(error);
+    }
+  }
+
+  private broadcastTlsSettingsChanged(): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.tlsSettingsChanged);
+      }
+    }
   }
 
   /** Read and cache the Core-owned persistent TLS passthrough document. */

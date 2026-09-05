@@ -608,6 +608,7 @@ export const DESKTOP_IPC_CHANNELS = {
   tlsPassthroughGet: 'tls-passthrough:get',
   tlsPassthroughReplace: 'tls-passthrough:replace',
   tlsCompatibility: 'tls:compatibility',
+  tlsSettingsChanged: 'tls:settings-changed',
   rulesGet: 'rules:get',
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
@@ -768,6 +769,7 @@ export interface InterceptorDesktopApi {
   onTlsCompatibilityChange(
     listener: (event: TlsCompatibilityEvent) => void,
   ): () => void;
+  onTlsSettingsChanged(listener: () => void): () => void;
   getRules(): Promise<RuleSet>;
   replaceRules(
     expectedRevision: number,

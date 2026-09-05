@@ -33,6 +33,7 @@ import {
   type WorkflowProcessIdentity,
 } from './workflow-host-safety-guard';
 import { WindowsWorkflowHostSafetyOperations } from './windows-workflow-host-safety-operations';
+import { shouldPreserveWorkflowProfile } from './workflow-profile-retention';
 
 const DEFAULT_CAPTURE_PORT = 8888;
 const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
@@ -869,9 +870,13 @@ export const test = base.extend<LocalWorkflowFixtures>({
         }
       }
       if (driver) {
-        const preserveUserData = cleanupError !== undefined
-          || hostSafetyError !== undefined
-          || (workflowError !== undefined && driver.shouldPreserveUserDataOnFailure());
+        const preserveUserData = shouldPreserveWorkflowProfile({
+          testStatus: testInfo.status,
+          preserveOnFailure: driver.shouldPreserveUserDataOnFailure(),
+          workflowError,
+          cleanupError,
+          hostSafetyError,
+        });
         if (!preserveUserData) {
           await driver.removeUserData();
         } else {

@@ -517,6 +517,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onRulesChanged',
         'onSystemProxyStatusChange',
         'onTlsCompatibilityChange',
+        'onTlsSettingsChanged',
         'onUpdateStatusChange',
         'openCertificateManager',
         'openDownloadedUpdate',

@@ -1,12 +1,17 @@
 # Interceptor Handover
 
-> Tracked commit: `b08291e9`
+> Tracked commit: `89028fdf`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-05
 
 ## Task List
 
-- [ ] **进行中 · 完整Tool交付32/73**：完整目录共73项，首批24项、Settings只读6项与系统代理启用/恢复2项已实现并通过真实自动验收，余下41项尚未实现；不要把当前已实现集合写成全部Tool完成。按feature的已完成/目标为Capture `10/17`、Rules `3/5`、Composer `2/6`、Breakpoints `8/11`、Diagnostics `1/4`、Settings `8/26`、Updates `0/4`。Settings授权开关与Settings业务Tool是不同能力。
+- [ ] **blocked · TLS四项Tool代码完成 · 待真实E2E最终清理验证**：在已推送`89028fdf`后，新增不安全名单替换、passthrough替换与解密启停四项；用户明确要求继续并提交当前代码，按未闭环进度保存，不计入当前32/73自动验收数。当前代码36/73、完整验收32/73，另37项尚未实现。真实workflow已验证名单规范化、revision冲突、已挂载面板即时刷新、Ask/Auto、未信任意图与Core实际状态、真实CA安装、撤权和重启零重放；最终一轮清理失败，不能标记flow完成。
+    阻塞事实：设置变更触发Certificates面板短暂重载，清理用瞬时`isVisible()`判断，跳过了重载期间不可见的Uninstall/Delete。两代Main/Core `9740/1936`、`23384/33672`均已正常退出、8888及系统代理恢复，但本轮LocalMachine Root CA仍残留，SHA-1为`8F5FD8BF6D49BE746862522F6AC616583ED152BB`，NotBefore为2026-09-05 20:45:32。其他六张Interceptor根证书是此前已有，不得删除。
+    `desktopApp.preserveUserDataOnFailure()`此前只判断`await use(driver)`捕获的异常，未结合Playwright实际失败状态，本轮profile已被删除；现已提取并修正判定，实际failed/timedOut/interrupted均触发特权profile保留，3项Red后9/9 Green。清理已按本轮证书指纹与真实信任状态等待Uninstall/Delete，不再因瞬时不可见跳过；新的清理仍待真实复验。TLS审批错误与中途取消补8项Red后executor32/32 Green，底层路径不进入审批结果。
+    本轮非特权验证：Desktop485/485、Tools142/142、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67、Core TLS integration12/12、全workspace typecheck、design interaction71/71通过；新增TLS明暗16 views共96/96、0 missing/0 flagged、最大0.5px，原完整parity报告保留未重跑。Windows package、artifact audit（1,294 files / 392,847,733 bytes）、production audit0漏洞、packaged smoke1/1通过；36项registry/recipe和72个开关预期已同步。TLS清理失败的trace与两代metadata已归档至TEMP下`interceptor-tls-cleanup-failure-preserved`，不以smoke或parity替代真实E2E。
+    唯一管理员操作仍为`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，须由Developer在管理员PowerShell执行；当前Agent终端非管理员，不得尝试自动提权。只读确认该指纹不存在后，复跑`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.tls"`，验证修复后的清理与profile保留路径，再补相邻workflow/完整视觉门禁和最终验收提交。代码可按本次明确要求先提交并push，状态不得提前改为passed。当前无本轮Electron残留，不再次运行涉及CA的测试直到完成上述恢复；随后继续证书组。
+- [ ] **进行中 · Tool代码36/73 · 完整验收32/73**：完整目录共73项，首批24项、Settings只读6项与系统代理启用/恢复2项已实现并通过真实自动验收；TLS四项代码完成待最终清理验证，另37项尚未实现。按feature的完成验收/目标为Capture `10/17`、Rules `3/5`、Composer `2/6`、Breakpoints `8/11`、Diagnostics `1/4`、Settings `8/26`（代码12/26）、Updates `0/4`。Settings授权开关与Settings业务Tool是不同能力。
     后续按[features/tool-capabilities.md](features/tool-capabilities.md#52-余下49项计划已完成8项剩余41项)逐组交付：Settings剩余18项 → Rules 2项 → Composer 4项 → Breakpoints 3项 → Diagnostics 3项 → Capture 7项 → Updates 4项。每组沿用契约文档 → unit/integration Red → 真实Electron E2E Red → 实现 → 同组Green → 销毁/证据 → 状态同步的门禁；原生Dialog、UAC、脱敏、取消与重启恢复均使用正式产品路径，不保留旧Tool alias，不重新增加GitHub Auth Tool。逐项闭环后独立commit并立即push，不混入无关任务。
     恢复基线：此前用户要求“保存进度和计划，我晚点开始”，`07649e79 feat(agent): connect diagnostics tool`已推送且与`origin/main`同步；2026-09-05用户明确“看下一步计划，然后开始所有任务”，暂停已解除。只读6项已完成并以`b08291e9`推送；系统代理启用/恢复两项现已完整验证。下一工作项为TLS名单替换与解密启停四项，具体证据与后续步骤见[features/tool-capabilities.md](features/tool-capabilities.md#53-恢复执行入口)。保持冷启动自动接管，不增加通用后门。
 - [x] **已完成 · 系统代理Tool自动验收**：`settings_enable_system_proxy`/`settings_restore_system_proxy`复用Main正式语义方法、FIFO与journal，OS写入前可取消，开始后完成原子编排和upstream同步；冷启动自动接管不变。unit13项缺失Tool Red→Green，真实workflow空发现Red→Green，摘要独立Red→Green；2次Deny、2次Allow、3次Auto、重复Restore `not-owned`、首次original保持、撤权零写入和同profile重启零重放通过。与只读/全局开关联合3/3，MCP Browser/Desktop回归2/2。两代Main/Core `37532/43864`、`41620/2448`均优雅销毁、8888释放、WinINet/journal恢复，证据提前归档。Tools110/110、Desktop470/470、Runtime122/122、Protocol25/25、MCP32/32、Playground67/67、design interaction71/71及全workspace typecheck通过；Proxy Core329/331仅既有两项framing债务。新增明暗8视图48/48、0 missing/0 flagged、最大0.5px；完整Parity222 views / 1,568 targets / 1,534 matched / 34 missing / 306 flagged，旧DeepSeek深色Dialog与HTTPS setup有波动。Windows package、artifact audit（1,294 files / 392,839,696 bytes）、production audit0漏洞、packaged smoke1/1通过。Playground recipe32/32，Developer人工结论仍0/32。

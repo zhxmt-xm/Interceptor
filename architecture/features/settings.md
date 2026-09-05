@@ -595,6 +595,36 @@ proxy snapshot或路径，不改变冷启动自动接管。
 验证两项逐一撤权、恢复结果摘要、正常退出与同profile重启Model零重放、Main/Core/Worker销毁、8888释放、
 完整宿主副作用恢复。已有只读六项workflow作为共享Main host和授权回归。
 
+### 7.3 TLS 配置与解密 Tool 契约（代码完成，最终E2E清理blocked）
+
+2026-09-05实现与聚焦测试已完成，按用户要求保存未闭环进度。最终真实workflow业务断言通过，但Certificates刷新期间
+清理跳过Uninstall，残留本轮CA `8F5FD8BF6D49BE746862522F6AC616583ED152BB`。fixture未依据实际测试失败状态
+保留profile，已删除测试材料；当前终端非管理员，先由Developer在管理员PowerShell执行
+`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，其他旧证书不得改动。
+本轮已修复清理等待条件与profile保留判定：fixture使用Playwright实际失败/超时/中断状态，9/9 unit通过；
+清理按本轮证书指纹和真实信任状态等待Uninstall/Delete，不再用瞬时不可见跳过。TLS executor32/32、
+Desktop485/485、Tools142/142、Core TLS integration12/12、全workspace typecheck、design interaction71/71、
+明暗parity96/96、Windows package/audit/smoke通过；上述管理员恢复及修复后的同一真实workflow仍待执行。
+重取最终CA清理与完整销毁Green前，本组不计入自动验收完成数。
+
+四项独立change意图为`settings_replace_tls_insecure_hosts`、`settings_replace_tls_passthrough`、
+`settings_enable_https_decryption`、`settings_disable_https_decryption`。前两项只接受完整`hosts`数组，
+passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，不表示停用解密。后两项只接受空对象。
+
+- 修改统一经Main正式意图进入Core持久化和即时生效；host规范化及passthrough乐观并发由现有Core owner
+    决定。Tool边界拒绝多余字段、非字符串名单和非法revision，不开放路径或任意RPC。
+- Main必须在passthrough成功后重读缓存；四项成功后发布窄`tls:settings-changed`事件，使已挂载的证书与
+    passthrough面板重读正式查询。UI和Tool复用同一意图，不能各自维护第二套配置或伪造TLS错误事件。
+- 解密启用只保存用户意图，实际生效仍要求CA已生成且受信任；不为Tool自动生成或安装CA。返回公开证书
+    身份及`mitmEnabled`，并复用Core正式启停返回的`decrypting`，两者不得混淆。停用不删除证书或更改信任库。
+- Ask展示当前/目标名单数量和解密状态，Deny不写配置；Auto只省略应用审批。取消在持久变更前拒绝，
+    已开始的配置持久化必须完成Core同步，不能留下Main缓存/用户意图和Core不一致。
+- 返回值沿正式查询形状，错误不泄露路径或私钥；revision冲突必须显式保留`conflict`，不覆盖新版本。
+- unit/integration Red → `settings.tools.tls`真实Electron Red → 实现 → 同组Green。E2E经UI产生CA，
+    必要时完成真实OS授权，并在finally经UI移除信任和删除测试CA；证书工作项本身仍独立交付。
+    需验证四项Ask/Auto、已挂载UI刷新、host规范化、stale revision、撤权、重启配置恢复及Model零重放，
+    最后验证CA信任、WinINet、journal、进程和8888全部恢复。
+
 ## 8. 安全边界汇总
 
 | 边界 | 保证 |

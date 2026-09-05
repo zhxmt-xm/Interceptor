@@ -87,6 +87,49 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 两代Main/Core为`37532/43864`、`41620/2448`，均`gracefulDestroyVerified=true`，8888释放且WinINet/journal
 恢复；证据在package/smoke前归档。新增明暗8视图48/48、最大0.5px，Windows package/audit/smoke通过。
 
+<a id="settings-tools-tls"></a>
+## `settings.tools.tls`
+
+**状态**：blocked；unit/integration及业务断言已通过，最终CA清理失败，尚未完成E2E验收
+**策略**：privileged UI；Windows；host-safety-guard；两代Electron
+
+### Steps
+
+1. 保存完整宿主状态，创建空profile并启动真实Electron；经UI配置本地Model Provider。四项TLS Tool
+	discovery必须可用，不得注入产品状态或直接修改配置文件。
+2. 保持Certificates面板打开，请求替换insecure hosts：Ask Deny保持空名单，Allow保存自产host且
+	当前面板立即显示；Auto替换/清空后再次验证Core查询与可见列表一致。
+3. 保持TLS passthrough面板打开，按当前revision完成Ask Deny/Allow与Auto替换；host被Core规范化、
+	当前面板即时刷新；用旧revision请求必须返回conflict且最新配置不变。
+4. 未信任CA时启用解密仅保存意图，实际decrypting保持false；经Certificates真实UI生成/安装测试CA，
+	如出现UAC由真实键鼠批准，不得重写返回值。确认公开指纹、用户意图和Core有效状态一致。
+5. 对启用/停用分别验证Ask Deny/Allow与Auto，证书身份和信任不变；面板开关在Tool成功后立即同步。
+	停用后重新启用，留下测试host配置与解密意图用于重启验证。
+6. 四项Agent撤权后旧Chat直接调用返回unknown_tool、配置不变；MCP开关独立保存。隐藏敏感文本后
+	正常退出第一代，验证Main/Core/Worker和8888销毁，WinINet/journal恢复。
+7. 使用同profile启动第二代，确认Model请求增量0、证书身份与TLS配置持久化、四项关闭状态保持，
+	历史Tool不重放。通过正式UI删除测试host、停用解密、卸载并删除测试CA。
+8. 保存脱敏证据与两代metadata，正常退出并验证测试CA信任已移除、所有进程与8888释放、完整宿主
+	状态恢复，最后删除profile。失败时必须保留profile并先经UI清理CA，不得留下系统信任副作用。
+
+### 证据
+
+Red必须精确指向四项缺失或行为缺口，Green记录审批、revision、同步状态、重启零重放与完整清理；
+证据不记录私钥、证书路径、完整系统代理配置或Model敏感文本。平台授权不可用时明确blocked及人工步骤。
+
+2026-09-05：四项发现缺失、摘要value与实际解密状态均已取得Red；executor24/24、刷新store18/18、
+摘要/i18n42/42 Green。最终业务断言通过，但面板重载期间清理跳过卸载，LocalMachine Root残留测试CA
+`8F5FD8BF6D49BE746862522F6AC616583ED152BB`。两代Main/Core `9740/1936`、`23384/33672`正常销毁，
+WinINet/journal恢复，profile因fixture失败识别缺陷被删除。先由Developer在管理员PowerShell运行
+`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，使用同一workflow重取完整Green；
+不得清除任何其他旧CA，不得在恢复前重复创建测试CA。
+
+续作已修复清理等待和profile保留：按本轮证书指纹与真实信任状态等待卸载/删除；Playwright实际
+`failed/timedOut/interrupted`在fixture use未抛错时也保留特权profile，unit9/9通过。TLS审批错误脱敏和
+取消边界补8项Red后executor32/32 Green。当前Desktop485/485、Tools142/142、typecheck、设计交互71/71、
+TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/audit/smoke通过。
+没有重新运行安装CA的workflow，新的清理等待与当前宿主恢复仍须真实复验；上述检查不替代E2E Green。
+
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 

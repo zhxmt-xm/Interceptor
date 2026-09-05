@@ -1,5 +1,5 @@
 import { Copy, FolderOpen, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -12,6 +12,7 @@ import {
 } from '../../../../shared/automation-ids';
 import { Button, cx, IconButton, StatusBadge, Switch } from '../../../components';
 import { formatDate } from '../utils';
+import { useTlsCompatibilityStore } from '../data/tlsCompatibilityStore';
 
 import styles from './CertificatesPanel.module.css';
 import { SettingsGroup as Group } from './SettingsGroup';
@@ -27,8 +28,11 @@ export function CertificatesPanel(): React.JSX.Element {
   const [state, setState] = useState<CertState>('loading');
   const [busy, setBusy] = useState(false);
   const [draftHost, setDraftHost] = useState('');
+  const loadGeneration = useRef(0);
+  const settingsChangeSequence = useTlsCompatibilityStore((value) => value.settingsChangeSequence);
 
   const load = useCallback((): void => {
+    const generation = ++loadGeneration.current;
     const api = window.interceptor;
     if (!api) {
       setState('error');
@@ -37,16 +41,20 @@ export function CertificatesPanel(): React.JSX.Element {
     setState('loading');
     void Promise.all([api.getCertificateStatus(), api.getInsecureHosts()])
       .then(([nextInfo, nextHosts]) => {
+        if (generation !== loadGeneration.current) return;
         setInfo(nextInfo);
         setHosts(nextHosts);
         setState('ready');
       })
-      .catch(() => setState('error'));
+      .catch(() => {
+        if (generation === loadGeneration.current) setState('error');
+      });
   }, []);
 
   useEffect(() => {
     load();
-  }, [load]);
+    return () => { loadGeneration.current += 1; };
+  }, [load, settingsChangeSequence]);
 
   // CA 操作直接用返回的 CertificateInfo 更新，避免重新 load 造成 loading 闪烁。
   const applyInfo = useCallback(

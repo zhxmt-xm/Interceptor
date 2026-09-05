@@ -40,6 +40,7 @@ export type AgentToolResultSummary =
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
   | { readonly kind: 'systemProxyRestore'; readonly restored: boolean; readonly reason?: string }
   | { readonly kind: 'certificateStatus'; readonly present: boolean; readonly trusted: boolean; readonly mitmEnabled: boolean }
+  | { readonly kind: 'decryption'; readonly trusted: boolean; readonly mitmEnabled: boolean; readonly decrypting: boolean }
   | { readonly kind: 'tlsHosts'; readonly count: number }
   | { readonly kind: 'tlsPassthrough'; readonly revision: number; readonly count: number }
   | { readonly kind: 'appContainers'; readonly supported: boolean; readonly count: number; readonly exemptCount: number }
@@ -215,12 +216,27 @@ export function summarizeAgentToolResult(
       && typeof value['mitmEnabled'] === 'boolean') {
       return { kind: 'certificateStatus', present: value['present'], trusted: value['trusted'], mitmEnabled: value['mitmEnabled'] };
     }
-    if (name === 'settings_get_tls_insecure_hosts' && Array.isArray(value['hosts'])) {
+    if ((name === 'settings_get_tls_insecure_hosts' || name === 'settings_replace_tls_insecure_hosts') && Array.isArray(value['hosts'])) {
       return { kind: 'tlsHosts', count: value['hosts'].length };
     }
     if (name === 'settings_get_tls_passthrough'
       && Array.isArray(value['hosts']) && typeof value['revision'] === 'number') {
       return { kind: 'tlsPassthrough', revision: value['revision'], count: value['hosts'].length };
+    }
+    if (name === 'settings_replace_tls_passthrough') {
+      if (value['ok'] === false && typeof value['message'] === 'string') {
+        return { kind: 'error', message: value['message'] };
+      }
+      const settings = value['settings'];
+      if (value['ok'] === true && isRecord(settings)
+        && typeof settings['revision'] === 'number' && Array.isArray(settings['hosts'])) {
+        return { kind: 'tlsPassthrough', revision: settings['revision'], count: settings['hosts'].length };
+      }
+    }
+    if ((name === 'settings_enable_https_decryption' || name === 'settings_disable_https_decryption')
+      && typeof value['trusted'] === 'boolean' && typeof value['mitmEnabled'] === 'boolean'
+      && typeof value['decrypting'] === 'boolean') {
+      return { kind: 'decryption', trusted: value['trusted'], mitmEnabled: value['mitmEnabled'], decrypting: value['decrypting'] };
     }
     if (name === 'settings_list_app_containers'
       && typeof value['supported'] === 'boolean' && Array.isArray(value['containers'])) {

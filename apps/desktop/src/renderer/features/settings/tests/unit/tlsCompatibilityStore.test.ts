@@ -89,6 +89,30 @@ const event = (
 });
 
 describe('TlsCompatibilityActions', () => {
+  it('refreshes mounted settings from Main without inventing compatibility events and unsubscribes both channels', () => {
+    let settingsChanged: (() => void) | undefined;
+    const unsubscribeCompatibility = vi.fn();
+    const unsubscribeSettings = vi.fn();
+    const interceptor = {
+      onTlsCompatibilityChange: vi.fn(() => unsubscribeCompatibility),
+      onTlsSettingsChanged: vi.fn((listener: () => void) => {
+        settingsChanged = listener;
+        return unsubscribeSettings;
+      }),
+    };
+    vi.stubGlobal('window', { interceptor });
+
+    const unsubscribe = TlsCompatibilityActions.subscribe();
+    expect(settingsChanged).toBeTypeOf('function');
+    settingsChanged!();
+    expect(useTlsCompatibilityStore.getState()).toMatchObject({
+      events: [], settingsChangeSequence: 1,
+    });
+    unsubscribe();
+    expect(unsubscribeCompatibility).toHaveBeenCalledOnce();
+    expect(unsubscribeSettings).toHaveBeenCalledOnce();
+  });
+
   it('batches all pending hosts into one replacement and publishes a refresh', async () => {
     const events = [
       event('rdweb.wvd.microsoft.com', 1_000),

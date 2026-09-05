@@ -45,14 +45,14 @@ test('Tool capabilities lists the complete initial shared registry with both tar
 
   const capabilities = page.locator('[data-parity="agent-tool-capabilities"]');
   await expect(capabilities).toBeVisible();
-  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(32);
+  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(36);
   await expect(capabilities.getByText('Capture', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Rules', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Composer', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Breakpoints', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Diagnostics', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Settings', { exact: true })).toBeVisible();
-  await expect(capabilities.getByRole('switch')).toHaveCount(64);
+  await expect(capabilities.getByRole('switch')).toHaveCount(72);
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' }))
     .toBeChecked();
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' }))
@@ -104,12 +104,12 @@ test('Complete Tool capability registry remains reachable through Settings scrol
     agentToolSearch: '',
   }));
 
-  const lastTool = page.locator('[data-tool-capability="settings_restore_system_proxy"]');
+  const lastTool = page.locator('[data-tool-capability="settings_disable_https_decryption"]');
   await lastTool.scrollIntoViewIfNeeded();
   await expect(lastTool).toBeVisible();
-  await expect(lastTool.getByRole('switch', { name: 'Enable settings_restore_system_proxy for Agent' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable settings_disable_https_decryption for Agent' }))
     .toBeChecked();
-  await expect(lastTool.getByRole('switch', { name: 'Enable settings_restore_system_proxy for MCP' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable settings_disable_https_decryption for MCP' }))
     .toBeChecked();
 });
 

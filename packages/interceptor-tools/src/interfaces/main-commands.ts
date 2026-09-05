@@ -1,4 +1,10 @@
 export interface MainToolResultPayloads {
+  'settings.tls-insecure-hosts.replace': { hosts: string[] };
+  'settings.tls-passthrough.replace':
+    | { ok: true; settings: { revision: number; hosts: string[] } }
+    | { ok: false; reason: 'conflict' | 'invalid' | 'error'; message: string };
+  'settings.https-decryption.enable': MainToolResultPayloads['settings.certificate.status'] & { decrypting: boolean };
+  'settings.https-decryption.disable': MainToolResultPayloads['settings.certificate.status'] & { decrypting: boolean };
   'settings.system-proxy.enable': MainToolResultPayloads['settings.system-proxy.status'];
   'settings.system-proxy.restore': {
     restored: boolean;
@@ -42,12 +48,20 @@ export interface MainToolResultPayloads {
   };
 }
 
-export type MainToolCommand = {
-  [CommandType in keyof MainToolResultPayloads]: {
-    readonly type: CommandType;
-    readonly payload: Record<string, never>;
-  };
-}[keyof MainToolResultPayloads];
+export interface MainToolCommandPayloads {
+  'settings.tls-insecure-hosts.replace': { hosts: string[] };
+  'settings.tls-passthrough.replace': { expectedRevision: number; hosts: string[] };
+}
+
+export type MainToolPayloadForType<CommandType extends keyof MainToolResultPayloads> =
+  CommandType extends keyof MainToolCommandPayloads
+    ? MainToolCommandPayloads[CommandType]
+    : Record<string, never>;
+
+export interface MainToolCommand<CommandType extends keyof MainToolResultPayloads = keyof MainToolResultPayloads> {
+  readonly type: CommandType;
+  readonly payload: MainToolPayloadForType<CommandType>;
+}
 
 export type MainToolResultForCommand<Command extends MainToolCommand> = {
   readonly type: Command['type'];

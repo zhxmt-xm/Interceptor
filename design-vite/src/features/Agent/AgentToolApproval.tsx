@@ -5,6 +5,28 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  settings_replace_tls_insecure_hosts: {
+    description: 'Replace hosts that skip upstream TLS certificate verification.',
+    effect: 'Replace hosts that skip upstream TLS certificate verification.\nInsecure host count: 0 -> 1',
+    arguments: 'hosts: ["localhost"]',
+    result: 'Hosts 1',
+  },
+  settings_replace_tls_passthrough: {
+    description: 'Replace TLS passthrough patterns at the current revision.',
+    effect: 'Replace TLS passthrough patterns at the current revision.\nRevision: 0; current: 0\nPassthrough host count: 0 -> 1',
+    arguments: 'hosts: ["*.example.test"] · expectedRevision: 0',
+    result: 'Revision 1 · Hosts 1',
+  },
+  settings_enable_https_decryption: {
+    description: 'Enable HTTPS decryption when the existing Root CA is trusted.',
+    effect: 'Enable HTTPS decryption when the existing Root CA is trusted.\nRoot CA trusted: true\nDecryption intent: false',
+    result: 'HTTPS Enabled · Intent Enabled · CA Trusted',
+  },
+  settings_disable_https_decryption: {
+    description: 'Disable HTTPS decryption without changing certificate trust.',
+    effect: 'Disable HTTPS decryption without changing certificate trust.\nRoot CA trusted: true\nDecryption intent: true',
+    result: 'HTTPS Disabled · Intent Disabled · CA Trusted',
+  },
   settings_enable_system_proxy: {
     description: 'Route system traffic through Interceptor using the active proxy listener.',
     effect: 'Route system traffic through Interceptor using the active proxy listener.\nSystem proxy supported: true\nSystem proxy enabled: false\nOwned by Interceptor: false',
@@ -92,7 +114,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') ? 'Arguments' : 'Parameters'}</dt><dd>No parameters</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

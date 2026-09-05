@@ -25,7 +25,7 @@ test('Capture Lab is the first page and MCP connection details stay on MCP', asy
   await expect(page.locator('.app')).toHaveAttribute('data-playground-section', 'mcp');
   await expect(playground.getByText('MCP 2026-07-28')).toBeVisible();
   await expect(playground.getByRole('button', { name: 'Refresh tools' })).toBeVisible();
-  await expect(playground.locator('[data-playground-tool]')).toHaveCount(32);
+  await expect(playground.locator('[data-playground-tool]')).toHaveCount(36);
 });
 
 test('Capture request draft is editable and resets to the selected scenario default', async ({ page }) => {

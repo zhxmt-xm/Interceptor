@@ -338,6 +338,11 @@ const api: InterceptorDesktopApi = {
       expectedRevision,
       hosts,
     ),
+  onTlsSettingsChanged: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.tlsSettingsChanged, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.tlsSettingsChanged, handler);
+  },
   onTlsCompatibilityChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

@@ -268,6 +268,23 @@ for (const theme of ['light', 'dark']) {
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolTrace: 'settings' },
   });
+  for (const tool of [
+    'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
+    'settings_enable_https_decryption', 'settings_disable_https_decryption',
+  ]) {
+    for (const approval of ['pending', 'allowed']) {
+      shots.push({
+        feature: 'agent-models', theme,
+        variant: `panel-${tool}-${approval}`,
+        appSize: { width: 1600, height: 900 },
+        state: {
+          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+          agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: approval,
+          agentToolApprovalName: tool,
+        },
+      });
+    }
+  }
   for (const action of ['enable', 'restore']) {
     for (const approval of ['pending', 'allowed']) {
       shots.push({

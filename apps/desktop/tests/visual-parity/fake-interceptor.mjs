@@ -858,6 +858,10 @@ export const fakeInterceptorFixture = {
             { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
             { name: 'settings_enable_system_proxy', title: 'Enable system proxy', description: 'Route system traffic through Interceptor using the active proxy listener.', kind: 'change' },
             { name: 'settings_restore_system_proxy', title: 'Restore system proxy', description: 'Restore the system proxy configuration saved before Interceptor took ownership.', kind: 'change' },
+            { name: 'settings_replace_tls_insecure_hosts', title: 'Replace insecure TLS hosts', description: 'Replace hosts that skip upstream TLS certificate verification.', kind: 'change' },
+            { name: 'settings_replace_tls_passthrough', title: 'Replace TLS passthrough', description: 'Replace TLS passthrough patterns at the current revision.', kind: 'change' },
+            { name: 'settings_enable_https_decryption', title: 'Enable HTTPS decryption', description: 'Enable HTTPS decryption when the existing Root CA is trusted.', kind: 'change' },
+            { name: 'settings_disable_https_decryption', title: 'Disable HTTPS decryption', description: 'Disable HTTPS decryption without changing certificate trust.', kind: 'change' },
           ],
         },
       ],
@@ -1815,6 +1819,8 @@ export function installFakeInterceptor({
       callId: 'settings-discover', name: 'discover_tools', arguments: { capabilityId: 'settings' },
       result: { ok: true, value: { matches: [
         ...queries.map((query) => query.name), 'settings_enable_system_proxy', 'settings_restore_system_proxy',
+        'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
+        'settings_enable_https_decryption', 'settings_disable_https_decryption',
       ].map((name) => ({ descriptor: { name } })) } },
     }, ...queries.map((query) => ({
       callId: query.name, name: query.name, arguments: {}, result: { ok: true, value: query.value },
@@ -1951,6 +1957,69 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('tls-settings-')) {
+    const match = /^tls-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
+    const name = match[1];
+    const allowed = match[2] === 'allowed';
+    const scenarios = {
+      settings_replace_tls_insecure_hosts: {
+        description: 'Replace hosts that skip upstream TLS certificate verification.',
+        effect: 'Insecure host count: 0 -> 1',
+        arguments: { hosts: ['localhost'] },
+        value: { hosts: ['localhost'] },
+      },
+      settings_replace_tls_passthrough: {
+        description: 'Replace TLS passthrough patterns at the current revision.',
+        effect: 'Revision: 0; current: 0\nPassthrough host count: 0 -> 1',
+        arguments: { hosts: ['*.example.test'], expectedRevision: 0 },
+        value: { ok: true, settings: { revision: 1, hosts: ['*.example.test'] } },
+      },
+      settings_enable_https_decryption: {
+        description: 'Enable HTTPS decryption when the existing Root CA is trusted.',
+        effect: 'Root CA trusted: true\nDecryption intent: false',
+        arguments: {},
+        value: { trusted: true, mitmEnabled: true, decrypting: true },
+      },
+      settings_disable_https_decryption: {
+        description: 'Disable HTTPS decryption without changing certificate trust.',
+        effect: 'Root CA trusted: true\nDecryption intent: true',
+        arguments: {},
+        value: { trusted: true, mitmEnabled: false, decrypting: false },
+      },
+    };
+    const scenario = scenarios[name];
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [
+      ...agentSessionSnapshot.items,
+      {
+        kind: 'assistant-message', itemId: 'item-assistant-tls-settings', turnId,
+        content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+      },
+      {
+        kind: 'tool-call', itemId: 'item-tool-call-tls-settings', turnId,
+        callId: 'call-tls-settings', name, arguments: scenario.arguments,
+        status: allowed ? 'completed' : 'running',
+        approval: {
+          approvalId: 'approval-tls-settings', status: allowed ? 'allowed' : 'pending',
+          description: scenario.description, effect: `${scenario.description}\n${scenario.effect}`,
+        },
+        createdAt: createdAt + 2,
+      },
+    ];
+    if (allowed) items.push({
+      kind: 'tool-result', itemId: 'item-tool-result-tls-settings', turnId,
+      callId: 'call-tls-settings', name, result: { ok: true, value: scenario.value }, createdAt: createdAt + 3,
+    });
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: allowed ? 'completed' : 'waiting-for-tool-approval', updatedAt: createdAt + 4,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('system-proxy-')) {
     const restoring = agentSessionState.includes('-restore-');
@@ -2878,6 +2947,7 @@ export function installFakeInterceptor({
       };
       return { ok: true, settings: tlsPassthroughSettings };
     },
+    onTlsSettingsChanged: () => () => {},
     onTlsCompatibilityChange: (listener) => {
       tlsCompatibilityListeners.add(listener);
       tlsCompatibilityEvents.forEach((event) => queueMicrotask(() => listener(event)));

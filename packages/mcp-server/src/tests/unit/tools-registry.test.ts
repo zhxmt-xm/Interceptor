@@ -107,6 +107,10 @@ describe('McpToolRegistry', () => {
       'settings_list_app_containers',
       'settings_enable_system_proxy',
       'settings_restore_system_proxy',
+      'settings_replace_tls_insecure_hosts',
+      'settings_replace_tls_passthrough',
+      'settings_enable_https_decryption',
+      'settings_disable_https_decryption',
     ]);
 
     expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });

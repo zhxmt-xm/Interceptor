@@ -136,6 +136,22 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Let Interceptor take system proxy ownership and keep this MCP Client in Ask mode.'],
     ['Deny keeps ownership unchanged.', 'Allow restores the original system proxy and removes the ownership journal.', 'A repeated call returns restored=false with reason=not-owned without changing system settings.'],
   ),
+  settings_replace_tls_insecure_hosts: recipe(
+    ['Read and retain the existing insecure host list.', 'Keep Settings > Certificates open and use an isolated test host.'],
+    ['Deny preserves the list; Allow updates the mounted panel.', 'Auto and an empty list use the same product path.', 'Restore the original list after inspection.'],
+  ),
+  settings_replace_tls_passthrough: recipe(
+    ['Read the current passthrough revision and retain the existing patterns.', 'Keep Settings > TLS passthrough open.'],
+    ['Allow saves normalized patterns and refreshes the mounted panel.', 'A stale revision returns conflict without overwriting the current list.', 'Restore the original patterns using the latest revision.'],
+  ),
+  settings_enable_https_decryption: recipe(
+    ['Note the existing CA trust and decryption intent.', 'Use the product Certificates UI for any required test CA generation and installation.'],
+    ['Without a trusted CA, intent may be enabled while decrypting remains false.', 'Deny changes nothing; Allow and Auto return the effective Core state and refresh the panel.', 'Restore the prior decryption intent and remove any test CA trust through the product UI.'],
+  ),
+  settings_disable_https_decryption: recipe(
+    ['Note the current decryption intent and certificate identity before the call.'],
+    ['Deny preserves the current state.', 'Allow and Auto disable effective decryption without changing certificate identity or trust.', 'Restore the original intent after inspection.'],
+  ),
 } satisfies Readonly<Record<CurrentToolName, AcceptanceRecipe>>;
 
 export const ACCEPTANCE_RECIPES: Readonly<Record<string, AcceptanceRecipe>> =

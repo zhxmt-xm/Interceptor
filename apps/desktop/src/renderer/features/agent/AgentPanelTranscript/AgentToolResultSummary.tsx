@@ -33,6 +33,13 @@ export function AgentToolResultSummary({
     case 'tlsHosts':
       content = t('agent.tools.tlsHosts', { count: summary.count });
       break;
+    case 'decryption':
+      content = t('agent.tools.decryption', {
+        effective: t(summary.decrypting ? 'agent.tools.enabled' : 'agent.tools.disabled'),
+        intent: t(summary.mitmEnabled ? 'agent.tools.enabled' : 'agent.tools.disabled'),
+        trust: t(summary.trusted ? 'settings.trusted' : 'settings.notInstalled'),
+      });
+      break;
     case 'tlsPassthrough':
       content = t('agent.tools.tlsPassthrough', { count: summary.count, revision: summary.revision });
       break;
