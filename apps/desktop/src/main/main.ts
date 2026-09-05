@@ -23,6 +23,12 @@ import type {
 } from '@interceptor/core-protocol';
 import { AgentRuntime, type AgentRuntimeEvent } from '@interceptor/agent-runtime';
 import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
+import type {
+  InterceptorToolHost,
+  MainToolCommand,
+  MainToolResultForCommand,
+  MainToolResultPayloads,
+} from '@interceptor/tools';
 
 import {
   DESKTOP_IPC_CHANNELS,
@@ -226,9 +232,13 @@ class DesktopApplication {
       path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
     );
     await this.toolCapabilitySettingsService.start();
+    const invokeMain: InterceptorToolHost['invokeMain'] = (command, abortSignal) => (
+      this.invokeMainTool(command, abortSignal)
+    );
     this.mcpDesktopService = new McpDesktopService({
       appVersion: app.getVersion(),
       coreRuntime: this.coreRuntime,
+      invokeMain,
       dataDirectory: path.join(app.getPath('userData'), 'mcp'),
       secureStore: safeStorage,
       toolCapabilitySettingsService: this.toolCapabilitySettingsService,
@@ -248,6 +258,7 @@ class DesktopApplication {
       (captureStatus) => this.broadcastCaptureStatus(captureStatus),
       (captureReset) => this.broadcastCaptureReset(captureReset),
       (change) => this.broadcastRulesChanged(change),
+      invokeMain,
     );
     this.agentRuntime = new AgentRuntime({
       dataDirectory: path.join(app.getPath('userData'), 'agent'),
@@ -587,6 +598,38 @@ class DesktopApplication {
     app.on('open-url', (event) => event.preventDefault());
   }
 
+  private invokeMainTool<Command extends MainToolCommand>(
+    command: Command,
+    abortSignal: AbortSignal,
+  ): Promise<MainToolResultForCommand<Command>> {
+    return this.applicationActionGate.run(async () => {
+      abortSignal.throwIfAborted();
+      const queries: {
+        [CommandType in keyof MainToolResultPayloads]: () => (
+          MainToolResultPayloads[CommandType] | Promise<MainToolResultPayloads[CommandType]>
+        );
+      } = {
+        'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
+        'settings.system-proxy.status': () => this.getSystemProxyStatus(),
+        'settings.certificate.status': () => this.buildCertificateInfo(),
+        'settings.app-containers.list': () => this.listAppContainers(),
+      };
+      const queryType: Command['type'] = command.type;
+      const payload = await queries[queryType]();
+      abortSignal.throwIfAborted();
+      return { type: queryType, payload };
+    });
+  }
+
+  private async getSystemProxyStatus(): Promise<DesktopSystemProxyStatus> {
+    return this.withUpstreamProxy(await this.requireSystemProxyService().status());
+  }
+
+  private async listAppContainers(): Promise<AppContainerAccessSnapshot> {
+    const snapshot = await this.requireAppContainerService().list();
+    return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+  }
+
   private configureRendererIpc(): void {
     const ipcMain = {
       handle: (
@@ -759,9 +802,7 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.requireSystemProxyService()
-        .status()
-        .then((status) => this.withUpstreamProxy(status));
+      return this.getSystemProxyStatus();
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
@@ -804,8 +845,7 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerList, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const snapshot = await this.requireAppContainerService().list();
-      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+      return this.listAppContainers();
     });
 
     ipcMain.handle(

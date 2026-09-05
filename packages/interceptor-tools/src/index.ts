@@ -23,6 +23,9 @@ export type {
   InterceptorToolJsonSchema,
   InterceptorToolJsonSchemaProperty,
   InterceptorToolKind,
+  MainToolCommand,
+  MainToolResultForCommand,
+  MainToolResultPayloads,
 } from './interfaces';
 export {
   buildInterceptorToolSettingsGroups,

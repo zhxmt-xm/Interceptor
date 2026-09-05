@@ -257,6 +257,18 @@ describe('Agent transcript utilities', () => {
     });
   });
 
+  it.each([
+    ['settings_get_core_process_status', { state: 'running', pid: 42 }, { kind: 'coreProcess', state: 'running', pid: 42 }],
+    ['settings_get_system_proxy_status', { supported: true, owned: true, enabled: true }, { kind: 'systemProxy', supported: true, owned: true, enabled: true }],
+    ['settings_get_certificate_status', { present: false, trusted: false, mitmEnabled: false }, { kind: 'certificateStatus', present: false, trusted: false, mitmEnabled: false }],
+    ['settings_get_tls_insecure_hosts', { hosts: ['localhost'] }, { kind: 'tlsHosts', count: 1 }],
+    ['settings_get_tls_passthrough', { revision: 2, hosts: ['*.example.test'] }, { kind: 'tlsPassthrough', revision: 2, count: 1 }],
+    ['settings_list_app_containers', { supported: true, containers: [{ exempt: true }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 1 }],
+    ['settings_list_app_containers', { supported: false, containers: [] }, { kind: 'appContainers', supported: false, count: 0, exemptCount: 0 }],
+  ])('summarizes %s as typed Settings state', (name, value, expected) => {
+    expect(summarizeAgentToolResult(String(name), { ok: true, value })).toEqual(expected);
+  });
+
   it('keeps later Tool activity after visible assistant content', () => {
     const currentSession = session();
     const items = [

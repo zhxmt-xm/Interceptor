@@ -104,6 +104,30 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Perform a known product action that writes a diagnostic record.'],
     ['Query returns that bounded redacted record in stable time order.', 'No approval appears.'],
   ),
+  settings_get_core_process_status: recipe(
+    ['Open Interceptor and note the Core process state and PID.'],
+    ['Lifecycle and PID match the running Core process, not a claim of listener health.', 'No approval or configuration change occurs.'],
+  ),
+  settings_get_system_proxy_status: recipe(
+    ['Open Settings > Proxy and note ownership and enabled state.'],
+    ['Ownership and upstream reachability match the product state.', 'No raw proxy server, bypass list, PAC URL or credential is returned.'],
+  ),
+  settings_get_certificate_status: recipe(
+    ['Open Settings > Certificates without generating or installing a CA.'],
+    ['Public identity, trust and decryption state match Settings.', 'No local path or private key is returned and no UAC appears.'],
+  ),
+  settings_get_tls_insecure_hosts: recipe(
+    ['Add one test host in Settings > Certificates and note the existing host list.'],
+    ['The returned host list matches Settings and stays unchanged after the query.', 'Remove the test host through Settings after inspection.'],
+  ),
+  settings_get_tls_passthrough: recipe(
+    ['Add one test pattern in Settings > TLS passthrough.'],
+    ['The pattern and revision are returned without changing configuration.', 'Remove the test pattern through Settings after inspection.'],
+  ),
+  settings_list_app_containers: recipe(
+    ['Open Settings > App Containers on Windows and note loopback access states.'],
+    ['SIDs, names and exemption states match Settings without paths.', 'No exemption changes or UAC occur; unsupported platforms report supported=false.'],
+  ),
 } satisfies Readonly<Record<CurrentToolName, AcceptanceRecipe>>;
 
 export const ACCEPTANCE_RECIPES: Readonly<Record<string, AcceptanceRecipe>> =

@@ -22,7 +22,7 @@ export function PlaygroundNavigation({ connectionState, scenarioCount, section, 
           <RadioTower aria-hidden="true" />
           <span><strong>Capture Lab</strong><small>{scenarioCount} scenarios</small></span>
         </button>
-        <button className={section === 'mcp' ? styles.active : ''} type="button" onClick={() => onSectionChange('mcp')}>
+        <button className={section === 'mcp' ? styles.active : ''} data-automation-id="playground.navigation.mcp" data-connection-state={connectionState} type="button" onClick={() => onSectionChange('mcp')}>
           <Braces aria-hidden="true" />
           <span><strong>MCP</strong><small>{connectionState}</small></span>
           <i aria-hidden="true" data-state={connectionState} />

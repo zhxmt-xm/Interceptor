@@ -39,6 +39,15 @@ const TOOL_STEPS = {
     { name: 'discover_tools', arguments: 'capabilityId: diagnostics', result: '1 tools discovered' },
     { name: 'diagnostics_query', arguments: 'process: core · command: composer.send · outcome: success · limit: 10', result: 'Records 4 · Completed · Dropped 0' },
   ],
+  settings: [
+    { name: 'discover_tools', arguments: 'capabilityId: settings', result: '6 tools discovered' },
+    { name: 'settings_get_core_process_status', arguments: 'No parameters', result: 'Core running · PID 42' },
+    { name: 'settings_get_system_proxy_status', arguments: 'No parameters', result: 'Owned by Interceptor' },
+    { name: 'settings_get_certificate_status', arguments: 'No parameters', result: 'Not generated · HTTPS Disabled' },
+    { name: 'settings_get_tls_insecure_hosts', arguments: 'No parameters', result: 'Hosts 1' },
+    { name: 'settings_get_tls_passthrough', arguments: 'No parameters', result: 'Revision 1 · Hosts 1' },
+    { name: 'settings_list_app_containers', arguments: 'No parameters', result: 'Apps 138 · Exempt 1' },
+  ],
 } as const;
 
 interface AgentQueryToolTraceProps {

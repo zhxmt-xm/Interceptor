@@ -29,6 +29,10 @@ class FakeMcpHostBridge implements McpHostBridge {
     throw new Error(`unexpected command ${command.type}`);
   }
 
+  async invokeMain(): Promise<never> {
+    throw new Error('Main queries are not used by the HTTP transport fixture.');
+  }
+
   /** Rejects unused change Tool approvals. */
   async requestApproval(_request: McpApprovalRequest): Promise<McpApprovalVerdict> {
     return 'rejected';

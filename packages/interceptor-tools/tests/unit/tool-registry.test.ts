@@ -36,6 +36,12 @@ const TOOL_NAMES = [
   'breakpoints_forward_edited',
   'breakpoints_drop',
   'diagnostics_query',
+  'settings_get_core_process_status',
+  'settings_get_system_proxy_status',
+  'settings_get_certificate_status',
+  'settings_get_tls_insecure_hosts',
+  'settings_get_tls_passthrough',
+  'settings_list_app_containers',
 ] as const;
 
 class FakeToolHost implements InterceptorToolHost {
@@ -51,6 +57,10 @@ class FakeToolHost implements InterceptorToolHost {
     const result = this.#results.get(command.type);
     if (result === undefined) throw new Error(`no fake result for ${command.type}`);
     return result as never;
+  }
+
+  async invokeMain(): Promise<never> {
+    throw new Error('Main queries use the Settings Tool fixture.');
   }
 }
 
@@ -137,11 +147,11 @@ async function execute(
 }
 
 describe('Interceptor Tool registry', () => {
-  it('registers the exact 24 transport-neutral Tools in stable order', () => {
+  it('registers the exact 30 transport-neutral Tools in stable order', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(24);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(30);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);
@@ -167,6 +177,7 @@ describe('Interceptor Tool registry', () => {
       'composer',
       'breakpoints',
       'diagnostics',
+      'settings',
     ]);
     const discovered = catalog.discover({ capabilityId: 'capture' });
     expect(discovered.map((match) => match.descriptor.name)).toEqual(

@@ -250,6 +250,7 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
+| `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |
 | `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |

@@ -28,7 +28,7 @@ export function PlaygroundCatalog({ section, selectedScenarioId, selectedToolNam
   return (
     <aside className={styles.playgroundCatalog}>
       <div className={styles.playgroundCatalogTitle}><strong>{section === 'mcp' ? 'Tools' : 'Scenarios'}</strong><span>{section === 'mcp' ? 'Live catalog' : 'Capture matrix'}</span></div>
-      <div className={`${styles.playgroundCatalogToolbar} ${section === 'mcp' ? styles.withCommand : ''}`}><label><Search aria-hidden="true" /><input aria-label="Search catalog" placeholder="Search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>{section === 'mcp' ? <button aria-label="Refresh tools" type="button" onClick={onRefreshTools}><RefreshCw aria-hidden="true" /></button> : null}</div>
+      <div className={`${styles.playgroundCatalogToolbar} ${section === 'mcp' ? styles.withCommand : ''}`}><label><Search aria-hidden="true" /><input aria-label="Search catalog" data-automation-id="playground.catalog.search" placeholder="Search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>{section === 'mcp' ? <button aria-label="Refresh tools" data-automation-id="playground.mcp.refresh" type="button" onClick={onRefreshTools}><RefreshCw aria-hidden="true" /></button> : null}</div>
       <div className={styles.playgroundCatalogScroll}>
         {section === 'mcp' ? <>{renderGroup('Queries', queryTools)}{renderGroup('Changes', changeTools)}</> : scenarioGroups.map((group) => (
           <section className={styles.playgroundGroup} key={group}>
@@ -47,6 +47,6 @@ export function PlaygroundCatalog({ section, selectedScenarioId, selectedToolNam
 
   function renderGroup(title: string, items: readonly PlaygroundMcpTool[]): React.JSX.Element | null {
     if (items.length === 0) return null;
-    return <section className={styles.playgroundGroup}><header><span>{title}</span><code>{items.length}</code></header>{items.map((tool) => <button className={selectedToolName === tool.name ? styles.selected : ''} key={tool.name} type="button" onClick={() => onSelectTool(tool.name)}><span><strong>{tool.title ?? tool.name}</strong><em data-kind={tool.annotations?.readOnlyHint ? 'query' : 'change'}>{tool.annotations?.readOnlyHint ? 'query' : 'change'}</em></span><code>{tool.name}</code></button>)}</section>;
+    return <section className={styles.playgroundGroup}><header><span>{title}</span><code>{items.length}</code></header>{items.map((tool) => <button className={selectedToolName === tool.name ? styles.selected : ''} data-automation-id={`playground.mcp.tool.${tool.name}`} key={tool.name} type="button" onClick={() => onSelectTool(tool.name)}><span><strong>{tool.title ?? tool.name}</strong><em data-kind={tool.annotations?.readOnlyHint ? 'query' : 'change'}>{tool.annotations?.readOnlyHint ? 'query' : 'change'}</em></span><code>{tool.name}</code></button>)}</section>;
   }
 }

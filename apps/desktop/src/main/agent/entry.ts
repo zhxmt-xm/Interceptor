@@ -22,33 +22,6 @@ import type { CaptureReset, CaptureStatus, RulesChanged } from '../../shared/des
 import type { CoreRuntime } from '../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../tool-capabilities/entry';
 
-const CONNECTED_AGENT_TOOL_NAMES = [
-  { name: 'capture_get_proxy_status', kind: 'query' },
-  { name: 'capture_get_storage_status', kind: 'query' },
-  { name: 'capture_start_recording', kind: 'change' },
-  { name: 'capture_stop_recording', kind: 'change' },
-  { name: 'capture_clear', kind: 'change' },
-  { name: 'capture_list_exchanges', kind: 'query' },
-  { name: 'capture_get_exchange', kind: 'query' },
-  { name: 'capture_get_exchange_body', kind: 'query' },
-  { name: 'capture_list_websocket_messages', kind: 'query' },
-  { name: 'capture_list_grpc_messages', kind: 'query' },
-  { name: 'rules_get_tree', kind: 'query' },
-  { name: 'rules_get_hits', kind: 'query' },
-  { name: 'rules_replace_tree', kind: 'change' },
-  { name: 'composer_send_request', kind: 'change' },
-  { name: 'composer_probe_connection', kind: 'change' },
-  { name: 'breakpoints_list', kind: 'query' },
-  { name: 'breakpoints_enable_http', kind: 'change' },
-  { name: 'breakpoints_disable_http', kind: 'change' },
-  { name: 'breakpoints_enable_websocket', kind: 'change' },
-  { name: 'breakpoints_disable_websocket', kind: 'change' },
-  { name: 'breakpoints_continue', kind: 'change' },
-  { name: 'breakpoints_forward_edited', kind: 'change' },
-  { name: 'breakpoints_drop', kind: 'change' },
-  { name: 'diagnostics_query', kind: 'query' },
-] as const;
-
 const DISCOVER_TOOLS_NAME = 'discover_tools';
 
 /** Adapts the shared Tool registry, Settings and CoreRuntime into Agent snapshots. */
@@ -68,28 +41,21 @@ export class AgentToolService implements AgentToolSource {
     captureStatusChanged: (captureStatus: CaptureStatus) => void,
     captureReset: (captureReset: CaptureReset) => void,
     rulesChanged: (change: RulesChanged) => void,
+    invokeMain: InterceptorToolHost['invokeMain'],
   ) {
     this.#coreRuntime = coreRuntime;
     this.#toolCapabilitySettingsService = toolCapabilitySettingsService;
     this.#captureStatusChanged = captureStatusChanged;
     this.#captureReset = captureReset;
     this.#rulesChanged = rulesChanged;
-    const definitionsByName = new Map(
-      buildInterceptorToolRegistry().map((definition) => [definition.name, definition]),
-    );
-    this.#definitions = CONNECTED_AGENT_TOOL_NAMES.map(({ name, kind }) => {
-      const definition = definitionsByName.get(name);
-      if (definition === undefined || definition.kind !== kind) {
-        throw new Error(`Agent Tool "${name}" must be an implemented ${kind} Tool.`);
-      }
-      return definition;
-    });
+    this.#definitions = buildInterceptorToolRegistry();
     this.#catalog = buildInterceptorToolCatalog(this.#definitions);
     this.#interceptorToolHost = {
       invoke: <T extends CoreCommand>(
         command: T,
         abortSignal: AbortSignal,
       ): Promise<CoreResultForCommand<T>> => this.#invokeCore(command, abortSignal),
+      invokeMain,
     };
   }
 

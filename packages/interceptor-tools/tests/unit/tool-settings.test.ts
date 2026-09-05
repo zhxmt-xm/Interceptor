@@ -30,10 +30,16 @@ const EXPECTED_SETTINGS_COPY = [
   ['breakpoints_forward_edited', 'Forward edited breakpoint', 'Forward one suspended item with explicit edits.'],
   ['breakpoints_drop', 'Drop breakpoint', 'Discard one suspended item.'],
   ['diagnostics_query', 'Query diagnostics', 'Read filtered structured diagnostic records.'],
+  ['settings_get_core_process_status', 'Core process status', 'Read the Core process lifecycle, not listener or upstream health.'],
+  ['settings_get_system_proxy_status', 'System proxy status', 'Read system proxy ownership and upstream reachability without raw OS configuration.'],
+  ['settings_get_certificate_status', 'Certificate status', 'Read public Root CA identity, trust, and HTTPS decryption state without local paths.'],
+  ['settings_get_tls_insecure_hosts', 'Insecure TLS hosts', 'Read configured hosts that skip upstream TLS certificate verification.'],
+  ['settings_get_tls_passthrough', 'TLS passthrough settings', 'Read TLS passthrough host patterns and their current revision.'],
+  ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
 ] as const;
 
 describe('Tool Settings projection', () => {
-  it('projects every executable Tool once into five feature Settings groups', () => {
+  it('projects every executable Tool once into six feature Settings groups', () => {
     const groups = buildInterceptorToolSettingsGroups();
 
     expect(groups.map((group) => [group.id, group.title])).toEqual([
@@ -42,10 +48,11 @@ describe('Tool Settings projection', () => {
       ['composer', 'Composer'],
       ['breakpoints', 'Breakpoints'],
       ['diagnostics', 'Diagnostics'],
+      ['settings', 'Settings'],
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(24);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(30);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

@@ -28,6 +28,7 @@ const SETTINGS_GROUP_DEFINITIONS: readonly SettingsGroupDefinition[] = [
   { id: 'composer', title: 'Composer', capabilityIds: ['composer'] },
   { id: 'breakpoints', title: 'Breakpoints', capabilityIds: ['breakpoints'] },
   { id: 'diagnostics', title: 'Diagnostics', capabilityIds: ['diagnostics'] },
+  { id: 'settings', title: 'Settings', capabilityIds: ['settings'] },
 ];
 
 /** Projects every executable Tool once into the Settings display groups. */

@@ -45,13 +45,14 @@ test('Tool capabilities lists the complete initial shared registry with both tar
 
   const capabilities = page.locator('[data-parity="agent-tool-capabilities"]');
   await expect(capabilities).toBeVisible();
-  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(24);
+  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(30);
   await expect(capabilities.getByText('Capture', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Rules', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Composer', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Breakpoints', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Diagnostics', { exact: true })).toBeVisible();
-  await expect(capabilities.getByRole('switch')).toHaveCount(48);
+  await expect(capabilities.getByText('Settings', { exact: true })).toBeVisible();
+  await expect(capabilities.getByRole('switch')).toHaveCount(60);
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' }))
     .toBeChecked();
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' }))
@@ -103,12 +104,12 @@ test('Complete Tool capability registry remains reachable through Settings scrol
     agentToolSearch: '',
   }));
 
-  const lastTool = page.locator('[data-tool-capability="diagnostics_query"]');
+  const lastTool = page.locator('[data-tool-capability="settings_list_app_containers"]');
   await lastTool.scrollIntoViewIfNeeded();
   await expect(lastTool).toBeVisible();
-  await expect(lastTool.getByRole('switch', { name: 'Enable diagnostics_query for Agent' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable settings_list_app_containers for Agent' }))
     .toBeChecked();
-  await expect(lastTool.getByRole('switch', { name: 'Enable diagnostics_query for MCP' }))
+  await expect(lastTool.getByRole('switch', { name: 'Enable settings_list_app_containers for MCP' }))
     .toBeChecked();
 });
 

@@ -25,7 +25,7 @@ test('Capture Lab is the first page and MCP connection details stay on MCP', asy
   await expect(page.locator('.app')).toHaveAttribute('data-playground-section', 'mcp');
   await expect(playground.getByText('MCP 2026-07-28')).toBeVisible();
   await expect(playground.getByRole('button', { name: 'Refresh tools' })).toBeVisible();
-  await expect(playground.locator('[data-playground-tool]')).toHaveCount(24);
+  await expect(playground.locator('[data-playground-tool]')).toHaveCount(30);
 });
 
 test('Capture request draft is editable and resets to the selected scenario default', async ({ page }) => {
@@ -99,6 +99,6 @@ test('MCP change Tool and manual result controls remain available on the MCP pag
   await expect(page.locator('.app')).toHaveAttribute('data-playground-call-state', 'approval');
   await expect(playground).toContainText('Waiting for approval in Interceptor');
 
-  await playground.getByRole('button', { name: 'Pass' }).click();
+  await playground.getByRole('button', { name: 'Pass', exact: true }).click();
   await expect(page.locator('.app')).toHaveAttribute('data-playground-manual-status', 'pass');
 });

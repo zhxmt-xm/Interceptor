@@ -1,5 +1,6 @@
 import type { McpClientRegistration, McpToolExecutionMode } from '@interceptor/mcp-server';
 import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
+import type { InterceptorToolHost } from '@interceptor/tools';
 
 import type { SecureStore } from '../../interfaces';
 import type { CaptureReset, CaptureStatus, RulesChanged } from '../../../shared/desktop-api';
@@ -59,6 +60,7 @@ export interface McpDesktopStatus {
 export interface McpDesktopServiceOptions {
   readonly appVersion: string;
   readonly coreRuntime: CoreRuntime;
+  readonly invokeMain: InterceptorToolHost['invokeMain'];
   readonly dataDirectory: string;
   readonly secureStore: SecureStore;
   readonly toolCapabilitySettingsService: ToolCapabilitySettingsService;

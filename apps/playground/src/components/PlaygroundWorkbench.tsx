@@ -38,13 +38,13 @@ export function PlaygroundWorkbench({ argumentsText, draftText, draftError, run,
   const recipe = acceptanceRecipe(tool.name);
   return (
     <section className={styles.playgroundWorkbench} data-playground-workbench>
-      <header className={styles.playgroundWorkbenchTitle}><div><span>LIVE TOOLS/LIST</span><h1>{tool.title ?? tool.name}<em data-kind={kind}>{kind}</em></h1><p>{tool.description}</p></div><button type="button" onClick={running ? onAbort : onCall}>{running ? <Square aria-hidden="true" /> : <Play aria-hidden="true" />}{running ? 'Abort' : 'Call Tool'}</button></header>
+      <header className={styles.playgroundWorkbenchTitle}><div><span>LIVE TOOLS/LIST</span><h1>{tool.title ?? tool.name}<em data-kind={kind}>{kind}</em></h1><p>{tool.description}</p></div><button data-automation-id="playground.mcp.call" type="button" onClick={running ? onAbort : onCall}>{running ? <Square aria-hidden="true" /> : <Play aria-hidden="true" />}{running ? 'Abort' : 'Call Tool'}</button></header>
       <section className={styles.playgroundAnnotations}><span>read only <strong>{String(tool.annotations?.readOnlyHint ?? false)}</strong></span><span>destructive <strong>{String(tool.annotations?.destructiveHint ?? false)}</strong></span><span>idempotent <strong>{String(tool.annotations?.idempotentHint ?? false)}</strong></span><span>open world <strong>{String(tool.annotations?.openWorldHint ?? false)}</strong></span></section>
-      <section className={styles.playgroundSection}><h2>Arguments</h2><textarea aria-label="Tool arguments" spellCheck={false} value={argumentsText} onChange={(event) => onArgumentsChange(event.target.value)} /></section>
+      <section className={styles.playgroundSection}><h2>Arguments</h2><textarea aria-label="Tool arguments" data-automation-id="playground.mcp.arguments" spellCheck={false} value={argumentsText} onChange={(event) => onArgumentsChange(event.target.value)} /></section>
       <section className={styles.playgroundSection}><h2>Input schema</h2><pre>{JSON.stringify(tool.inputSchema, null, 2)}</pre></section>
       {tool.outputSchema ? <section className={styles.playgroundSection}><h2>Output schema</h2><pre>{JSON.stringify(tool.outputSchema, null, 2)}</pre></section> : null}
       {recipe ? <section className={styles.playgroundRecipe}><div><h2>Setup manually</h2><ol>{recipe.setup.map((step) => <li key={step}>{step}</li>)}</ol></div><div><h2>Observe</h2><ol>{recipe.observations.map((step) => <li key={step}>{step}</li>)}</ol></div></section> : null}
-      {run.state !== 'idle' ? <div className={styles.playgroundActivity} data-state={run.state}>{run.state === 'running' ? <Clock3 aria-hidden="true" /> : run.state === 'complete' ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}<div><strong>{activityTitle(run.state)}</strong><span>{activityDetail(run)}</span></div></div> : null}
+      {run.state !== 'idle' ? <div className={styles.playgroundActivity} data-automation-id="playground.mcp.run" data-state={run.state}>{run.state === 'running' ? <Clock3 aria-hidden="true" /> : run.state === 'complete' ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}<div><strong>{activityTitle(run.state)}</strong><span>{activityDetail(run)}</span></div></div> : null}
     </section>
   );
 }

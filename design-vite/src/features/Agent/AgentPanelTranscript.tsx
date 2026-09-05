@@ -32,6 +32,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                 ? 'Send the approved request and probe the local TLS endpoint.'
               : toolTrace === 'diagnostics'
                 ? 'Inspect successful Composer diagnostics without exposing request secrets.'
+              : toolTrace === 'settings'
+                ? 'Inspect the six Settings states without changing any configuration.'
               : toolTrace === 'rules'
                 ? state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                   ? 'Read the current Rule tree, then apply the approved replacement.'
@@ -57,6 +59,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                       ? <p>The request returned <code>201</code>. TLS negotiated <code>h2</code> with one certificate.</p>
                     : toolTrace === 'diagnostics'
                       ? <p>Four successful Composer diagnostic records are available in newest-first order.</p>
+                    : toolTrace === 'settings'
+                      ? <p>The six Settings queries completed without changes.</p>
                     : state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                       ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
                       : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}

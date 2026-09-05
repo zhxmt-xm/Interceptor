@@ -2,6 +2,54 @@
 
 本文件定义 Settings 九个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
+<a id="settings-tools-readonly"></a>
+## `settings.tools.readonly`
+
+**状态**：passed；unit / integration 与真实 Electron Red/Green 已验证
+**策略**：shared；Windows；host-safety-guard；两代真实 Electron
+
+### Steps
+
+1. 创建空 profile/evidence，由宿主 guard 保存 WinINet/journal/进程代际；启动真实 Electron 与本地
+	Model/MCP lab，通过公共 automation ID 配置 Provider、创建 Agent Session 和 MCP Client。
+2. 通过 Settings 正式 UI 添加测试自产的 TLS insecure host 与 passthrough host；不生成证书、不安装
+	信任、不切换系统代理或 AppContainer 豁免。只读记录当前公开状态与系统 exemption 集合用于比较。
+3. 经真实 Agent 发送请求并 discovery `settings`，断言六项 query 精确披露；逐项真实调用 Core
+	进程、系统代理、证书、insecure hosts、passthrough 和 AppContainer 查询，不出现审批卡。
+4. 通过正式 Playground MCP 页面连接 UI 创建的 Client，确认相同六项 Tool 可枚举且逐项执行成功；
+	使用协议值、结构化结果与自产 host 验证 Main/Core 真实状态，不以翻译文案定位或判断。
+5. 比较查询前后 TLS 配置、证书身份、代理 ownership 与完整 exemption 集合，确认只读无副作用；
+	审计 Model 请求、Tool Result、Transcript、截图、trace 与日志，不包含凭据、私钥、本机路径或
+	完整系统代理快照。
+6. 在 Settings Tool capabilities 搜索并依次关闭六项 Agent 开关，确认后续 discovery 不再披露、
+	旧响应中的调用返回 `unknown_tool`，MCP 仍可调用；再关闭六项 MCP 开关，确认 `tools/list`
+	与执行入口同步撤权。不得直接改设置文件或注入产品状态。
+7. 保存第一代 evidence，通过 `shell.window.close` 正常退出并确认 Main/Core/Worker 全退、8888
+	释放、WinINet/journal 恢复；使用同一 profile 启动第二代。
+8. 通过正式 UI 确认六项双列关闭状态与 TLS 配置持久化、历史查询结果可读；Model 请求数没有因
+	重启增加，查询未自动重放。清除本 workflow 经 UI 产生的 TLS 配置。
+9. 保存第二代 evidence/trace/screenshot，正常退出；验证两代 `gracefulDestroyVerified=true`、
+	全部测试进程销毁、8888 释放及完整系统副作用恢复后删除 profile。
+
+### 预期效果
+
+Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner 和脱敏结果；查询不请求 Ask/UAC，
+不改变系统或配置。独立授权开关即时生效且跨进程恢复，历史结果不会触发重放。
+
+### 证据
+
+- unit Red 必须精确体现六项 registry/executor/adapter 缺失；E2E Red 必须在真实产品启动且 lab
+  正常后失败于 Settings discovery/调用缺口，构建、selector 或宿主清理错误不能冒充 Red。
+- Green 记录六项 Agent 与 MCP 实际调用、只读前后比较、双列撤权、重启零重放和脱敏审计结论。
+- 两代 metadata、trace 与宿主 guard 均须验证完整销毁；没有该证据不得把 Inventory 标为 passed。
+- 2026-09-05：实现前真实 Model 共8次请求后，discovery精确返回空数组而非六项；初代Main/Core
+	`14724/24236`正常销毁。摘要新增测试先Red于`value`，再由结构化摘要Green。
+- 最终同一workflow`1/1`（25.2秒）：Agent/MCP各执行6项；6项Agent旧披露返回`unknown_tool`，
+	6项MCP旧选择返回协议`-32602`，目录随后移除；系统代理/exemption逐项不变，TLS配置及双列撤权
+	跨重启保持，Model请求增量0，测试TLS配置经UI删除。
+- 最终两代Main/Core为`12888/21524`、`41644/22360`，均`gracefulDestroyVerified=true`、8888释放，
+	guard验证完整WinINet/journal恢复。证据已在运行package/smoke前独立归档。
+
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 

@@ -84,7 +84,10 @@ flowchart LR
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。
 `AgentToolService`把共享registry、Tool开关与`CoreRuntime`组合成Capability Index、`discover_tools`，以及按
-Capture、Rules、Composer、Breakpoints、Diagnostics所有权分组的业务Tool；当前已接入五个feature共24项。
+Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组的业务Tool；当前已接入六个feature共30项。
+共享host的`invoke`只执行Core命令，`invokeMain`只执行typed Main命令。Settings的四项Main状态查询经
+`DesktopApplication`既有Action Gate进入CoreRuntime/SystemProxy/Certificate/AppContainer正式owner，
+两项TLS查询沿用Core RPC；Tool结果白名单不包含本机路径、私钥或完整系统代理配置。
 每次Model Call与每项Tool执行前都重取
 快照；产生当前响应时披露的集合继续约束该响应，执行时已关闭的Tool返回`unknown_tool`，不触达Core。
 业务Tool的`AbortSignal`原样进入Core RPC取消链路。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI
@@ -97,7 +100,7 @@ clean Rules Store按最新revision重载，dirty/saving Store保留草稿并进�
 分别防止保存期间编辑被误判clean、低revision事件重入和旧异步响应回退。
 
 `ToolCapabilitySettingsService`是Main内全局Agent/MCP Tool开关owner，从`@interceptor/tools`的同一可执行registry
-投影五个feature Settings目录，只把两组关闭名称原子写入`<userData>/tool-capabilities/settings.json`。fresh profile与
+投影六个feature Settings目录，只把两组关闭名称原子写入`<userData>/tool-capabilities/settings.json`。fresh profile与
 全开状态不保留文件；当前快照已驱动Agent Capability Index、discovery、schema与执行前检查，MCP `tools/list`
 和`tools/call`也在每次请求前读取同一快照。
 

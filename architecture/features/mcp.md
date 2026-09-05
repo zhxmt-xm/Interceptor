@@ -4,7 +4,7 @@
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
-> 状态：**loopback Streamable HTTP、Browser CORS、Breakpoints八项真实纵向流程与Web人工验收Playground已实现并通过自动门禁；24项Tool待Developer逐项人工验收；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
+> 状态：**loopback Streamable HTTP、Browser CORS、首批24项及Settings只读6项真实纵向流程与Web人工验收Playground已实现；30项Tool待Developer逐项人工验收；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
 
 ## 1. 职责与边界
 
@@ -81,13 +81,14 @@ flowchart LR
 | MCP Adapter | MCP `tools/list`过滤、`tools/call`映射与Client执行模式 | `packages/mcp-server/` | transport-neutral |
 | Core Bridge | 映射到`core-protocol` command | Main实现`McpHostBridge` | 复用`CoreRuntime` |
 
-当前24项共享Tool只调用Core，因此`packages/mcp-server`向宿主要求以下三个能力。后续接入证书、系统代理或
-原生Dialog Tool时，由Main注入对应正式产品意图，不扩展`CoreCommand`表达不属于Core的能力。
+当前30项共享Tool通过`invoke`执行Core命令，通过`invokeMain`执行Main状态查询；两条路径均保留原始
+AbortSignal。Main注入对应正式产品意图，不扩展`CoreCommand`表达不属于Core的能力。
 
 ```ts
 interface McpHostBridge {
   /** 把工具调用下沉到 Core；宿主负责 CoreRpcClient 与超时。 */
   invoke<T extends CoreCommand>(command: T, signal: AbortSignal): Promise<CoreResultForCommand<T>>;
+    invokeMain<T extends MainToolCommand>(command: T, signal: AbortSignal): Promise<MainToolResultForCommand<T>>;
     /** ask 模式下请求用户确认 change Tool；宿主负责展示与窗口聚焦。 */
   requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict>;
   /** 记录审计事件；实现必须吞掉自身错误。 */
@@ -126,14 +127,14 @@ MCP列使用独立`disableMcpTool` / `enableMcpTool` intent。当前关闭项在
 完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
 Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
-MCP协议中的Tool名称按业务feature固定为`<feature>_<verb>[_<object>]`；当前五个前缀为`capture`、`rules`、
-`composer`、`breakpoints`与`diagnostics`。本轮是一次性协议切换，不注册旧名alias，也不为旧Client提供兼容目录。
+MCP协议中的Tool名称按业务feature固定为`<feature>_<verb>[_<object>]`；当前六个前缀为`capture`、`rules`、
+`composer`、`breakpoints`、`diagnostics`与`settings`。不注册旧名alias，也不为旧Client提供兼容目录。
 官方Client的`tools/list`必须只返回新名称，调用旧名称必须得到不存在结果且不得触达Core。
 
-当前共享registry实现24个Tool：11个query、13个change。MCP adapter完整接入24项；Agent/MCP真实调用已验收
-24/24，覆盖Capture、Rules、Composer、Breakpoints与Diagnostics，owner正向unit同为24/24。
-逐项证据见[tool-capabilities.md](tool-capabilities.md)。以上仅首批范围，完整目标为24/73，余下49项恢复后从Settings
-只读查询组开始；Playground首批24项Developer人工验收独立保留，不阻塞后续Tool开发。
+当前共享registry实现30个Tool：17个query、13个change。MCP adapter完整接入30项；Agent/MCP真实调用已验收
+30/30，覆盖Capture、Rules、Composer、Breakpoints、Diagnostics与Settings，owner正向unit同为30/30。
+逐项证据见[tool-capabilities.md](tool-capabilities.md)。完整目标为30/73，余下43项从Settings系统代理启用/恢复
+继续；Playground当前30项Developer人工验收独立保留，不阻塞后续Tool开发。
 三个原先用布尔值或action参数混合正反意图的入口已经拆开：
 
 - `set_recording(recording)` → `capture_start_recording` / `capture_stop_recording`；
@@ -499,8 +500,8 @@ flowchart TD
 
 ## 9. 当前实现
 
-**已落地**：`packages/interceptor-tools/`唯一拥有24个Tool（11 query + 13 change）、5个Capability、
-deterministic discovery、参数边界、脱敏与Core执行映射；`packages/mcp-server/`消费同一registry并拥有认证、
+**已落地**：`packages/interceptor-tools/`唯一拥有30个Tool（17 query + 13 change）、6个Capability、
+deterministic discovery、参数边界、脱敏与Main/Core执行映射；`packages/mcp-server/`消费同一registry并拥有认证、
 按Client `ask` / `auto`审批、审计、并发/结果上限与官方SDK v2 `2026-07-28` handler；旧协议请求被明确
 拒绝。`capture_clear`旧session scope和
 三个多义Tool已删除，不保留兼容路径；`rules_replace_tree`保留完整树与enabled并按revision compare-and-replace。
@@ -522,7 +523,7 @@ Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴�
 | `packages/mcp-server/` | 官方SDK v2、严格当前协议、可恢复认证器、动态Tool过滤、Ask/Auto、审计与取消 |
 | Main / Preload / shared API | 8.1节窄意图、脱敏状态与App级审批事件 |
 | Renderer / `design-vite/` | MCP开关、endpoint状态、通用Client接入、手动轮换、Tool开关、执行模式与审批Modal |
-| `packages/interceptor-tools/` | 24项共享Tool；后续按完整目录逐项增加正式产品能力 |
+| `packages/interceptor-tools/` | 30项共享Tool；后续按完整目录逐项增加正式产品能力 |
 
 共享Tool只复用正式产品入口。需要新增入口时，先以产品用户意图设计并验证，再由Agent/MCP共同复用。
 
@@ -530,8 +531,8 @@ Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴�
 
 **共享Tool与MCP adapter（已由单测覆盖）**
 
-- [x] 24个Tool使用稳定domain顺序；共享registry、Capability投影、参数/数值边界、脱敏与调用映射由`@interceptor/tools`测试覆盖。
-- [x] MCP精确列出同一24项，并保留query/change、destructive、open-world annotations与结构化错误。
+- [x] 30个Tool使用稳定domain顺序；共享registry、Capability投影、参数/数值边界、脱敏与调用映射由`@interceptor/tools`测试覆盖。
+- [x] MCP精确列出同一30项，并保留query/change、destructive、open-world annotations与结构化错误。
 - [x] `rules_replace_tree` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
 - [x] `rules_replace_tree`不改写folder或enabled；完整递归Rule schema仍归该Tool独立实现item，未达到Desktop接线门禁。
 - [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。

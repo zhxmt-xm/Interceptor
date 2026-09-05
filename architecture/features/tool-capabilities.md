@@ -3,10 +3,10 @@
 > 最后更新：2026-09-05
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，目前实现并自动验收24/73，剩余49项待实现；首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，目前实现并自动验收30/73，剩余43项待实现；首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
-> 不代表Settings业务Tool已实现，后者当前为0/26。Playground
-> recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> Settings只读六项已完成同组Agent/MCP真实验收，Settings业务Tool当前为6/26。Playground
+> recipe为30/30、Developer人工结论为0/30；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -18,9 +18,9 @@
 | Composer | 6 | 2 | 4 |
 | Breakpoints | 11 | 8 | 3 |
 | Diagnostics | 4 | 1 | 3 |
-| Settings | 26 | 0 | 26 |
+| Settings | 26 | 6 | 20 |
 | Updates | 4 | 0 | 4 |
-| 合计 | 73 | 24 | 49 |
+| 合计 | 73 | 30 | 43 |
 
 ## 1. 唯一目录
 
@@ -35,8 +35,8 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 ### 1.1 Feature命名契约
 
 Tool名称固定使用`<feature>_<verb>[_<object>]`，前缀等于拥有该业务能力的feature/capability，而不是当前UI页面。
-当前已实现目录只使用`capture`、`rules`、`composer`、`breakpoints`与`diagnostics`五个前缀；后续产品能力使用
-`settings`、`updates`等同样的所有权前缀。前缀已经表达对象时不重复，例如使用`breakpoints_continue`而不是
+当前已实现目录使用`capture`、`rules`、`composer`、`breakpoints`、`diagnostics`与`settings`六个前缀；后续产品能力使用
+`updates`等同样的所有权前缀。前缀已经表达对象时不重复，例如使用`breakpoints_continue`而不是
 `breakpoints_continue_breakpoint`，使用`rules_get_tree`而不是`rules_get_rules`。
 
 本轮把已有24项一次性切换到feature命名，同时把Capability ID的`traffic`改为`capture`、`requests`改为
@@ -83,8 +83,8 @@ Transcript内联问询卡；明暗基线见`design-vite/shots/*/agent-models/`�
    重读开关，已经进入executor的调用继续使用该次调用的`AbortSignal`完成。
 
 本阶段由Main中的`ToolCapabilitySettingsService`拥有全局设置，不归某个Workspace、Agent Session或MCP Client。
-它从同一可执行registry投影Settings专用的五组只读目录：`Capture`、`Rules`、`Composer`、`Breakpoints`与
-`Diagnostics`；分组与Model discovery的五个Capability边界完全一致。Renderer和Design不得再维护第二份Tool名称、
+它从同一可执行registry投影Settings专用的六组只读目录：`Capture`、`Rules`、`Composer`、`Breakpoints`、
+`Diagnostics`与`Settings`；分组与Model discovery的六个Capability边界完全一致。Renderer和Design不得再维护第二份Tool名称、
 类型或说明清单。
 
 落盘位置为`<userData>/tool-capabilities/settings.json`，只保存关闭项：
@@ -96,15 +96,15 @@ interface ToolCapabilitySettingsRecord {
 }
 ```
 
-- fresh profile或两组关闭项都为空时不保留文件，24项自然全部开启；
+- fresh profile或两组关闭项都为空时不保留文件，30项自然全部开启；
 - 读取时拒绝非法schema、重复名称和额外字段；合法数组中的未知/旧名称从内存快照丢弃，不改写文件、不映射到
    新名称；写入只保留当前registry名称并按registry顺序规范化；
-- `getToolCapabilitySettings`返回五组目录和两组关闭名称的完整快照；
+- `getToolCapabilitySettings`返回六组目录和两组关闭名称的完整快照；
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
 - Agent当前通过动态`AgentToolSource`接入十个Capture Tool、三个Rules Tool、两个Composer Tool、
-   八个Breakpoints Tool与一个Diagnostics Tool；关闭项同时过滤Capability
+   八个Breakpoints Tool、一个Diagnostics Tool与六个Settings query；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -191,11 +191,11 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `settings_get_core_process_status` | query | `getCoreProcessStatus` | 产品已具备 |
-| `settings_get_system_proxy_status` | query | `getSystemProxyStatus` | 产品已具备 |
+| `settings_get_core_process_status` | query | `getCoreProcessStatus` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `settings_get_system_proxy_status` | query | `getSystemProxyStatus` | 共享 registry + MCP adapter + Agent；仅公开状态，不返回OS配置 |
 | `settings_enable_system_proxy` | change | `enableSystemProxy` | 产品已具备 |
 | `settings_restore_system_proxy` | change | `restoreSystemProxy` | 产品已具备 |
-| `settings_get_certificate_status` | query | `getCertificateStatus` | 产品已具备 |
+| `settings_get_certificate_status` | query | `getCertificateStatus` | 共享 registry + MCP adapter + Agent；公开身份白名单，无路径/私钥 |
 | `settings_generate_certificate` | change | `generateCertificate` | 产品已具备 |
 | `settings_install_certificate` | change | `installCertificate` / UAC | 产品已具备 |
 | `settings_uninstall_certificate` | change | `uninstallCertificate` / UAC | 产品已具备 |
@@ -203,13 +203,13 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_reveal_certificate` | change | `revealCertificate` | 产品已具备 |
 | `settings_view_certificate` | change | `viewCertificate` | 产品已具备 |
 | `settings_open_certificate_manager` | change | `openCertificateManager` | 产品已具备 |
-| `settings_get_tls_insecure_hosts` | query | `getInsecureHosts` / `tls.getInsecureHosts` | 产品已具备 |
+| `settings_get_tls_insecure_hosts` | query | `getInsecureHosts` / `tls.getInsecureHosts` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `settings_replace_tls_insecure_hosts` | change | `setInsecureHosts` / `tls.replaceInsecureHosts` | 产品已具备 |
 | `settings_enable_https_decryption` | change | `setHttpsDecryption(true)` | 产品已具备 |
 | `settings_disable_https_decryption` | change | `setHttpsDecryption(false)` | 产品已具备 |
-| `settings_get_tls_passthrough` | query | `getTlsPassthroughSettings` | 产品已具备 |
+| `settings_get_tls_passthrough` | query | `getTlsPassthroughSettings` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `settings_replace_tls_passthrough` | change | `replaceTlsPassthroughSettings` | 产品已具备 |
-| `settings_list_app_containers` | query | `listAppContainers` | 产品已具备 |
+| `settings_list_app_containers` | query | `listAppContainers` | 共享 registry + MCP adapter + Agent；Windows真实枚举且不改豁免 |
 | `settings_enable_app_container` | change | `setAppContainerLoopbackExemption(sid, true)` / UAC | 产品已具备 |
 | `settings_disable_app_container` | change | `setAppContainerLoopbackExemption(sid, false)` / UAC | 产品已具备 |
 | `settings_enable_all_app_containers` | change | `enableAllAppContainers` / UAC | 产品已具备 |
@@ -227,7 +227,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `updates_download` | change | `downloadUpdate` | 产品已具备 |
 | `updates_open_downloaded` | change | `openDownloadedUpdate` | 产品已具备 |
 
-## 4. 首批24项交付矩阵
+## 4. 当前30项交付矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
 adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
@@ -259,11 +259,17 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `breakpoints_forward_edited` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_drop` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `diagnostics_query` | 已完成 | 已完成 | Agent已完成 |
+| `settings_get_core_process_status` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `settings_get_system_proxy_status` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `settings_get_certificate_status` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `settings_get_tls_insecure_hosts` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `settings_get_tls_passthrough` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `settings_list_app_containers` | 已完成 | 已完成 | Agent + MCP已完成 |
 
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户明确继续规划余下49项，随后要求保存进度并暂停，稍后再开始执行；当前不启动新实现或测试。
+2026-09-05用户恢复执行全部计划；Settings只读六项已完成，当前30/73，继续按工作项逐组交付。
 
 ### 5.1 首批24项与独立验收
 
@@ -313,7 +319,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前只有24项recipe、0项Developer结论，不把尚未实现的49项计入已验收范围。
+   目前有30项recipe、0项Developer结论，不把尚未实现的43项计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -321,16 +327,16 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。首批24项自动验收已完成，下一个开发工作项是Settings只读查询组。
+分别保留为外部阻塞或人工验收项。Settings只读查询组已完成，下一个开发工作项是Settings系统代理启用/恢复。
 
-### 5.2 余下49项计划（待启动）
+### 5.2 余下49项计划（已完成6项，剩余43项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
 
 | 顺序 | Feature | 剩余数量 | 交付范围与顺序 |
 | --- | --- | ---: | --- |
-| 1 | Settings | 26 | 只读查询6项 → 系统代理启用/恢复2项 → TLS配置与解密开关4项 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
+| 1 | Settings | 20 | 只读查询6项已完成；系统代理启用/恢复2项 → TLS配置与解密开关4项 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
 | 2 | Rules | 2 | Export后Import；先收敛Import正式intent，真实导入输入必须由同一workflow经UI导出产生 |
 | 3 | Composer | 4 | Collection查询/替换2项，再Export/Import 2项；Import先补正式intent，不复制Renderer解析编排 |
 | 4 | Breakpoints | 3 | Continue queue、Drop queue、Continue rule；以真实HTTP/WebSocket pending验证作用范围、Ask/Auto和并发失效 |
@@ -343,8 +349,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 
 ### 5.3 恢复执行入口
 
-暂停基线为已推送的`07649e79`；余下49项尚无新增业务代码、测试或Red证据。本轮只记录计划，不执行计划。
-用户恢复后先处理Settings只读查询组的六项：
+本轮从已推送的`07649e79`恢复，Settings只读查询组已完成以下六项：
 
 - `settings_get_core_process_status`
 - `settings_get_system_proxy_status`
@@ -353,11 +358,23 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 - `settings_get_tls_passthrough`
 - `settings_list_app_containers`
 
-先核对现有Main/Core owner与正式查询契约，再更新`architecture/features/settings.md`和对应真实E2E契约。
-Main拥有的状态继续由Main提供，Core已有查询复用Core命令；不因Tool接入复制业务逻辑或扩大Renderer权限。
-最先建立共享registry及Agent/MCP披露的聚焦测试，证明新名称当前缺失；随后建立真实Electron E2E Red，
-再实现共享executor、Agent/MCP接线和Settings第六个feature分组。验证只读无副作用、查询结果脱敏、撤权、
-重启恢复及销毁；若涉及可见UI，同步设计稿、15语言、截图和parity。这里只确定下一工作项，不预先锁定未验证的内部接口设计。
+Main状态使用受类型约束的`invokeMain`，Core TLS查询沿用`invoke`与原始`AbortSignal`；Agent移除重复接入名单，
+直接消费唯一registry。六项只接受空对象，白名单排除证书路径、私钥、原始proxy/bypass/PAC、helper输出与错误路径。
+owning unit精确Red于缺失六项；真实`settings.tools.readonly`先在8次Model请求后Red于空discovery；
+摘要追加unit与真实E2E Red于`value`，最终同一workflow完整Green。Agent/MCP各执行6项，分别撤权，MCP错误
+为`-32602`；UI产生TLS配置，查询前后OS代理/exemption不变，同profile重启Model增量0并删除测试配置。
+两代Main/Core为`12888/21524`、`41644/22360`，均`gracefulDestroyVerified=true`并释放8888。
+Tools`97/97`、Desktop`467/467`、Runtime`122/122`、Protocol`25/25`、MCP`32/32`、Playground`67/67`、
+全workspace typecheck通过；新增明暗4 views共44 targets全匹配、0 missing、0 flagged、0px。Windows package、
+artifact audit（1,294 files / 392,835,349 bytes）、production audit 0漏洞、packaged smoke`1/1`通过。
+完整设计交互曾69/71，修正两项旧目录/模糊selector断言后该文件5/5通过；Proxy Core仍329/331，仅保留既有framing债务。
+完整Parity已运行214 views / 1,520 targets / 1,486 matched / 34 missing / 304 flagged；新增四个视图仍为
+44/44、0px。相对上一报告的波动来自未改动的DeepSeek Dialog Endpoint与TLS passthrough深色旧视图，
+不把完整视觉债务标为Green。410张既有设计截图保留原基线，仅新增Settings查询/分组明暗四张。
+
+下一工作项为`settings_enable_system_proxy`与`settings_restore_system_proxy`：先把Renderer IPC中的正式编排
+收敛为共享语义入口，再建立Ask Deny/Allow、Auto、动态影响、撤权和完整WinINet/journal恢复的unit/E2E Red；
+不得改变冷启动自动接管，不增加代理配置后门，不复用查询命令表达写操作。
 
 ## 6. 相关未完成验收
 
@@ -365,7 +382,7 @@ Main拥有的状态继续由Main提供，Core已有查询复用Core命令；不�
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 已实现首批recipe 24/24；Developer结论0/24 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不阻塞余下49项开发 |
+| Playground人工矩阵 | 当前recipe 30/30；Developer结论0/30 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不阻塞余下43项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |
@@ -398,7 +415,7 @@ Main拥有的状态继续由Main提供，Core已有查询复用Core命令；不�
 - `packages/interceptor-tools/` registry 是 Settings 列表、Agent discovery 与 MCP `tools/list` 的唯一数据源；
 - 文档完整目录可以先于代码，产品 UI 只展示 registry 中已经实现的 Tool；
 - 新增、删除或改名 Tool 时，同一改动必须更新本文、registry、Settings、Agent/MCP 测试和对应 E2E Inventory；
-- 最终24项业务Tool必须逐项拥有共享executor测试，并在所属能力workflow中至少执行一次真实Agent或MCP Tool Call；
+- 全部业务Tool必须逐项拥有共享executor测试，并在所属能力workflow中至少执行一次真实Agent或MCP Tool Call；
    不把全部Tool塞入单个巨型workflow，按Capture、Rules、Composer、Breakpoints与Diagnostics feature定位失败；
 - Tool 的结果不得比正式产品入口拥有更多权限；文件路径、凭据与私钥继续遵守原有进程边界。
 

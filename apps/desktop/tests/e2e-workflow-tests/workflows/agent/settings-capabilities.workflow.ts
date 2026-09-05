@@ -51,9 +51,15 @@ const TOOL_NAMES = [
   'breakpoints_forward_edited',
   'breakpoints_drop',
   'diagnostics_query',
+  'settings_get_core_process_status',
+  'settings_get_system_proxy_status',
+  'settings_get_certificate_status',
+  'settings_get_tls_insecure_hosts',
+  'settings_get_tls_passthrough',
+  'settings_list_app_containers',
 ] as const;
 
-const TOOL_GROUP_IDS = ['capture', 'rules', 'composer', 'breakpoints', 'diagnostics'] as const;
+const TOOL_GROUP_IDS = ['capture', 'rules', 'composer', 'breakpoints', 'diagnostics', 'settings'] as const;
 const TOOL_GROUP_AUTOMATION_PREFIX = 'agent.tools.group.';
 
 /** Navigate through public UI to the global Agent settings section. */
@@ -162,7 +168,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(48);
+    await expect(switches).toHaveCount(60);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -231,7 +237,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
 
     // 重启二：空关闭集不依赖文件存在，24项必须再次全部开启。
-    // Restart two: an empty disabled set needs no file and all 24 Tools must return enabled.
+    // Restart two: an empty disabled set needs no file and all 30 Tools must return enabled.
     await closeGeneration(relaunchedApp, testInfo);
     activeApp = null;
     const secondRelaunch = await LocalElectronApplicationDriver.launch(testInfo, {
@@ -245,7 +251,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(48);
+    await expect(restoredSwitches).toHaveCount(60);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

@@ -549,6 +549,31 @@ Remove与新Chat默认Model；Provider registry和API Key由Main内`AgentRuntime
 [tool-capabilities.md](tool-capabilities.md)；Provider/Session/Tool Loop所有权见[agent.md](agent.md)，MCP接入见
 [mcp.md](mcp.md)。
 
+### 7.1 Settings 只读 Tool 契约（已实现）
+
+本工作项接入六项 query：`settings_get_core_process_status`、`settings_get_system_proxy_status`、
+`settings_get_certificate_status`、`settings_get_tls_insecure_hosts`、`settings_get_tls_passthrough`、
+`settings_list_app_containers`。六项共用唯一 registry，归 `settings` capability，均只接受空对象；
+Agent 与 MCP 默认开放，独立开关立即控制披露与执行，query 不进入 Ask 审批。
+
+- Core 进程状态、系统代理、证书与 AppContainer 查询复用 Main 的正式 owner；TLS 名单复用现有 Core 查询。
+    Main 查询不得为接入 Tool 下沉到 Core，也不得扩大 Renderer API 或调用通用 IPC。
+- Core 状态只描述进程生命周期，不把 `running` 解释为 listener、TLS 或上游健康。
+- 结果只包含公开状态、公开证书身份、配置 host 与 AppContainer SID/名称/豁免状态；不得包含私钥、
+    本机文件路径、完整系统代理快照、上游凭据或原生 helper 原始输出。错误同样经过脱敏。
+- 查询不得生成或安装证书、修改代理/TLS/豁免、写入配置、打开原生窗口或触发 UAC；AppContainer
+    的平台支持状态沿用正式产品契约，不伪造跨平台能力。
+- Main 与 Core 共用原始 `AbortSignal`；已取消的调用不得再进入 owner，退出沿现有 Action Gate 与
+    Agent/MCP 取消链路排空。关闭 Tool 后的新调用返回 `unknown_tool`，不触达 owner。
+- Settings 增加来自 registry 的第六个 feature 分组；名称、query 类型、说明、Agent/MCP 双开关与
+    Transcript 摘要同步设计稿、15 种语言、截图及 parity，不维护第二份能力清单。
+
+验证顺序固定为 owning executor/adapter unit Red → `settings.tools.readonly` 真实 Electron Red →
+实现 → 同组 unit Green → 同一 workflow Green。真实流程先经 UI 产生 TLS 配置并查询六项，再分别
+撤销 Agent/MCP 权限，正常退出重启检查持久化和零重放；证据必须包含查询前后设置不变、脱敏审计、
+Main/Core/Worker 销毁、8888 释放、完整 WinINet 与共享 journal 恢复。详见
+[Settings E2E 契约](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-readonly)。
+
 ## 8. 安全边界汇总
 
 | 边界 | 保证 |

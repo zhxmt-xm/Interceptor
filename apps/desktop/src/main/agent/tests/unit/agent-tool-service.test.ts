@@ -78,6 +78,65 @@ function discoveredHistory(
 }
 
 describe('AgentToolService', () => {
+  it('routes the six Settings queries through Main or Core and revokes disclosed calls', async () => {
+    const fakeCoreRuntime = new FakeCoreRuntime();
+    fakeCoreRuntime.results.set('tls.getInsecureHosts', {
+      type: 'tls.insecureHosts', payload: { hosts: ['localhost'] },
+    });
+    fakeCoreRuntime.results.set('tls-passthrough.get', {
+      type: 'tls-passthrough.settings', payload: { settings: { revision: 1, hosts: ['*.example.test'] } },
+    });
+    const fakeToolCapabilitySettingsService = new FakeToolCapabilitySettingsService();
+    const invokeMain = vi.fn(async (command: { type: string }, _abortSignal: AbortSignal) => ({
+      type: command.type,
+      payload: { state: 'running', supported: true, present: false, containers: [] },
+    }) as never);
+    const agentToolService = new AgentToolService(
+      fakeCoreRuntime,
+      fakeToolCapabilitySettingsService,
+      () => undefined,
+      () => undefined,
+      () => undefined,
+      invokeMain,
+    );
+    const abortSignal = new AbortController().signal;
+    const discovery = await tool(agentToolService.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'settings' }, { abortSignal },
+    );
+    const snapshot = agentToolService.snapshot(discoveredHistory(discovery, 'settings'));
+    const names = [
+      'settings_get_core_process_status',
+      'settings_get_system_proxy_status',
+      'settings_get_certificate_status',
+      'settings_get_tls_insecure_hosts',
+      'settings_get_tls_passthrough',
+      'settings_list_app_containers',
+    ];
+    expect(snapshot.tools.map((candidate) => candidate.descriptor.name))
+      .toEqual(['discover_tools', ...names]);
+    for (const name of names) {
+      const query = tool(snapshot, name);
+      expect(query.kind).toBe('query');
+      await expect(query.execute({}, { abortSignal })).resolves.toMatchObject({ ok: true });
+    }
+    expect(invokeMain).toHaveBeenCalledTimes(4);
+    expect(invokeMain.mock.calls.every((call) => call[1] === abortSignal)).toBe(true);
+    expect(fakeCoreRuntime.commands.map((command) => command.type))
+      .toEqual(['tls.getInsecureHosts', 'tls-passthrough.get']);
+    expect(fakeCoreRuntime.abortSignals).toEqual([abortSignal, abortSignal]);
+
+    fakeToolCapabilitySettingsService.agentDisabledToolNames = names;
+    expect(agentToolService.snapshot(discoveredHistory(discovery, 'settings')).tools
+      .map((candidate) => candidate.descriptor.name)).toEqual(['discover_tools']);
+    for (const name of names) {
+      await expect(tool(snapshot, name).execute({}, { abortSignal })).resolves.toMatchObject({
+        ok: false, error: { code: 'unknown_tool' },
+      });
+    }
+    expect(invokeMain).toHaveBeenCalledTimes(4);
+    expect(fakeCoreRuntime.commands).toHaveLength(2);
+  });
+
   it('initially exposes only enabled capabilities and discover_tools', () => {
     const settings = new FakeToolCapabilitySettingsService();
     const service = new AgentToolService(
@@ -86,6 +145,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
 
     const snapshot = service.snapshot([{ role: 'user', content: 'Inspect Capture.' }]);
@@ -103,6 +163,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const initial = service.snapshot([]);
 
@@ -155,6 +216,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -186,6 +248,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'rules' },
@@ -221,6 +284,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'breakpoints' },
@@ -293,6 +357,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'breakpoints' },
@@ -358,6 +423,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
 
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
@@ -411,6 +477,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
 
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
@@ -494,6 +561,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'composer' },
@@ -548,6 +616,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'breakpoints' },
@@ -601,6 +670,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'breakpoints' },
@@ -695,6 +765,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -768,6 +839,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -808,6 +880,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -839,6 +912,7 @@ describe('AgentToolService', () => {
       captureStatusChanged,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -900,6 +974,7 @@ describe('AgentToolService', () => {
       captureStatusChanged,
       captureReset,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -981,6 +1056,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       rulesChanged,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'rules' },
@@ -1042,6 +1118,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       rulesChanged,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'rules' },
@@ -1065,6 +1142,7 @@ describe('AgentToolService', () => {
       () => undefined,
       captureReset,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },
@@ -1088,6 +1166,7 @@ describe('AgentToolService', () => {
       () => undefined,
       () => undefined,
       () => undefined,
+      vi.fn(),
     );
     const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
       { capabilityId: 'capture' },

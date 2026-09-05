@@ -264,6 +264,20 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
+    variant: 'panel-settings-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolTrace: 'settings' },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
+    variant: 'settings-tool-capabilities-settings',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentToolSearch: 'settings_', agentDisabledTools: ['settings_get_certificate_status'], mcpDisabledTools: ['settings_get_tls_passthrough'] },
+  });
+  shots.push({
+    feature: 'agent-models',
+    theme,
     variant: 'panel-rules-tools',
     appSize: { width: 1600, height: 900 },
     state: { view: 'rules', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'rules' },

@@ -36,6 +36,12 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'coreProcess'; readonly state: string; readonly pid: number | null }
+  | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
+  | { readonly kind: 'certificateStatus'; readonly present: boolean; readonly trusted: boolean; readonly mitmEnabled: boolean }
+  | { readonly kind: 'tlsHosts'; readonly count: number }
+  | { readonly kind: 'tlsPassthrough'; readonly revision: number; readonly count: number }
+  | { readonly kind: 'appContainers'; readonly supported: boolean; readonly count: number; readonly exemptCount: number }
   | { readonly kind: 'discovery'; readonly count: number }
   | { readonly kind: 'proxy'; readonly recording: boolean; readonly address: string }
   | {
@@ -183,6 +189,40 @@ export function summarizeAgentToolResult(
   result: ToolExecutionResult,
 ): AgentToolResultSummary {
   if (!result.ok) return { kind: 'error', message: result.error.message };
+  if (name.startsWith('settings_') && isRecord(result.value)) {
+    const value = result.value;
+    if (name === 'settings_get_core_process_status'
+      && typeof value['state'] === 'string'
+      && (typeof value['pid'] === 'number' || value['pid'] === null)) {
+      return { kind: 'coreProcess', state: value['state'], pid: value['pid'] };
+    }
+    if (name === 'settings_get_system_proxy_status'
+      && typeof value['supported'] === 'boolean'
+      && typeof value['owned'] === 'boolean'
+      && typeof value['enabled'] === 'boolean') {
+      return { kind: 'systemProxy', supported: value['supported'], owned: value['owned'], enabled: value['enabled'] };
+    }
+    if (name === 'settings_get_certificate_status'
+      && typeof value['present'] === 'boolean'
+      && typeof value['trusted'] === 'boolean'
+      && typeof value['mitmEnabled'] === 'boolean') {
+      return { kind: 'certificateStatus', present: value['present'], trusted: value['trusted'], mitmEnabled: value['mitmEnabled'] };
+    }
+    if (name === 'settings_get_tls_insecure_hosts' && Array.isArray(value['hosts'])) {
+      return { kind: 'tlsHosts', count: value['hosts'].length };
+    }
+    if (name === 'settings_get_tls_passthrough'
+      && Array.isArray(value['hosts']) && typeof value['revision'] === 'number') {
+      return { kind: 'tlsPassthrough', revision: value['revision'], count: value['hosts'].length };
+    }
+    if (name === 'settings_list_app_containers'
+      && typeof value['supported'] === 'boolean' && Array.isArray(value['containers'])) {
+      return {
+        kind: 'appContainers', supported: value['supported'], count: value['containers'].length,
+        exemptCount: value['containers'].filter((container) => isRecord(container) && container['exempt'] === true).length,
+      };
+    }
+  }
   if (name === 'discover_tools' && isRecord(result.value) && Array.isArray(result.value['matches'])) {
     return { kind: 'discovery', count: result.value['matches'].length };
   }

@@ -846,6 +846,18 @@ export const fakeInterceptorFixture = {
             { name: 'diagnostics_query', title: 'Query diagnostics', description: 'Read filtered structured diagnostic records.', kind: 'query' },
           ],
         },
+        {
+          id: 'settings',
+          title: 'Settings',
+          tools: [
+            { name: 'settings_get_core_process_status', title: 'Core process status', description: 'Read the Core process lifecycle, not listener or upstream health.', kind: 'query' },
+            { name: 'settings_get_system_proxy_status', title: 'System proxy status', description: 'Read system proxy ownership and upstream reachability without raw OS configuration.', kind: 'query' },
+            { name: 'settings_get_certificate_status', title: 'Certificate status', description: 'Read public Root CA identity, trust, and HTTPS decryption state without local paths.', kind: 'query' },
+            { name: 'settings_get_tls_insecure_hosts', title: 'Insecure TLS hosts', description: 'Read configured hosts that skip upstream TLS certificate verification.', kind: 'query' },
+            { name: 'settings_get_tls_passthrough', title: 'TLS passthrough settings', description: 'Read TLS passthrough host patterns and their current revision.', kind: 'query' },
+            { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
+          ],
+        },
       ],
       agentDisabledToolNames: [],
       mcpDisabledToolNames: [],
@@ -1785,6 +1797,59 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: 15,
+    };
+  } else if (agentSessionState === 'settings') {
+    const turnId = 'turn-agent-settings';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const queries = [
+      { name: 'settings_get_core_process_status', value: { state: 'running', pid: 42 } },
+      { name: 'settings_get_system_proxy_status', value: { supported: true, owned: true, enabled: true } },
+      { name: 'settings_get_certificate_status', value: { present: false, trusted: false, mitmEnabled: false } },
+      { name: 'settings_get_tls_insecure_hosts', value: { hosts: ['localhost'] } },
+      { name: 'settings_get_tls_passthrough', value: { revision: 1, hosts: ['*.example.test'] } },
+      { name: 'settings_list_app_containers', value: { supported: true, containers: Array.from({ length: 138 }, (_, index) => ({ exempt: index === 0 })) } },
+    ];
+    const toolSteps = [{
+      callId: 'settings-discover', name: 'discover_tools', arguments: { capabilityId: 'settings' },
+      result: { ok: true, value: { matches: queries.map((query) => ({ descriptor: { name: query.name } })) } },
+    }, ...queries.map((query) => ({
+      callId: query.name, name: query.name, arguments: {}, result: { ok: true, value: query.value },
+    }))];
+    const items = [{
+      kind: 'user-message', itemId: 'item-user-agent-settings', turnId,
+      content: 'Inspect the six Settings states without changing any configuration.', createdAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message', itemId: `item-assistant-agent-settings-${index}`, turnId,
+          content: '', reasoningContent: '', partial: false, createdAt: createdAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call', itemId: `item-tool-call-agent-settings-${index}`, turnId,
+          callId: step.callId, name: step.name, arguments: step.arguments,
+          status: 'completed', approval: null, createdAt: createdAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result', itemId: `item-tool-result-agent-settings-${index}`, turnId,
+          callId: step.callId, name: step.name, result: step.result, createdAt: createdAt + index * 3 + 3,
+        },
+      );
+    }
+    const updatedAt = createdAt + toolSteps.length * 3 + 1;
+    items.push({
+      kind: 'assistant-message', itemId: 'item-assistant-agent-settings-final', turnId,
+      content: 'The six Settings queries completed without changes.',
+      reasoningContent: '', partial: false, createdAt: updatedAt,
+    });
+    const turn = {
+      turnId, userItemId: 'item-user-agent-settings', status: 'completed',
+      retryOfTurnId: null, error: null, createdAt, updatedAt,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState === 'diagnostics') {
     const turnId = 'turn-agent-diagnostics';

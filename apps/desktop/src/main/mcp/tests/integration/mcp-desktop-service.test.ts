@@ -191,6 +191,34 @@ describe('McpDesktopService', () => {
       .not.toContain('capture_get_proxy_status');
   });
 
+  it('executes Main Settings queries over MCP without approval and blocks revoked calls', async () => {
+    const fixture = await createFixture(roots, services);
+    await fixture.mcpDesktopService.enableServer();
+    const registration = await fixture.mcpDesktopService.createClient('Settings queries');
+    await fixture.mcpDesktopService.copyClientConfiguration(registration.clientId);
+    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()));
+    clients.push(client);
+    const names = [
+      'settings_get_core_process_status', 'settings_get_system_proxy_status',
+      'settings_get_certificate_status', 'settings_list_app_containers',
+    ];
+
+    for (const name of names) {
+      await expect(client.callTool({ name, arguments: {} })).resolves.not.toMatchObject({ isError: true });
+    }
+    expect(fixture.invokeMain).toHaveBeenCalledTimes(4);
+    expect(fixture.invokeMain.mock.calls.every((call) => call[1] instanceof AbortSignal)).toBe(true);
+    expect(fixture.approvals).toEqual([]);
+    expect(fixture.coreRuntime.commands).toEqual([]);
+
+    fixture.toolCapabilitySettingsService.mcpDisabledToolNames = names;
+    expect((await client.listTools()).tools.some((tool) => names.includes(tool.name))).toBe(false);
+    for (const name of names) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    }
+    expect(fixture.invokeMain).toHaveBeenCalledTimes(4);
+  });
+
   it('holds an Ask call for an app-level verdict and lets Auto bypass only the prompt', async () => {
     const fixture = await createFixture(roots, services);
     await fixture.mcpDesktopService.enableServer();
@@ -332,6 +360,7 @@ async function createFixture(
   copiedText: () => string;
   coreRuntime: FakeCoreRuntime;
   mcpDesktopService: McpDesktopService;
+  invokeMain: ReturnType<typeof vi.fn>;
   root: string;
   rulesChanged: ReturnType<typeof vi.fn>;
   toolCapabilitySettingsService: FakeToolCapabilitySettingsService;
@@ -343,6 +372,10 @@ async function createFixture(
   const approvals: McpApprovalRequest[] = [];
   const captureReset = vi.fn();
   const rulesChanged = vi.fn();
+  const invokeMain = vi.fn(async (command: { type: string }, _abortSignal: AbortSignal) => ({
+    type: command.type,
+    payload: { state: 'running', supported: true, present: false, containers: [] },
+  }) as never);
   const closedApprovalIds: string[] = [];
   let copiedText = '';
   const mcpDesktopService = new McpDesktopService({
@@ -356,6 +389,7 @@ async function createFixture(
     captureStatusChanged: () => undefined,
     captureReset,
     rulesChanged,
+    invokeMain,
     copyText: (value) => {
       copiedText = value;
     },
@@ -373,6 +407,7 @@ async function createFixture(
     copiedText: () => copiedText,
     coreRuntime,
     mcpDesktopService,
+    invokeMain,
     root,
     rulesChanged,
     toolCapabilitySettingsService,

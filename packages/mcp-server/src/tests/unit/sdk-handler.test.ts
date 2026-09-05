@@ -42,6 +42,10 @@ class FakeHost implements McpHostBridge {
     throw new Error(`unexpected command ${command.type}`);
   }
 
+  async invokeMain(): Promise<never> {
+    throw new Error('Main queries use the Desktop Settings fixture.');
+  }
+
   /** Records and resolves a user approval. */
   async requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict> {
     this.approvals.push(request);

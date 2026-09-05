@@ -14,6 +14,28 @@ export function AgentToolResultSummary({
   const { i18n, t } = useTranslation();
   let content: string;
   switch (summary.kind) {
+    case 'coreProcess':
+      content = t('agent.tools.coreProcess', { state: summary.state, pid: summary.pid ?? '-' });
+      break;
+    case 'systemProxy':
+      content = t(!summary.supported ? 'agent.tools.unsupported'
+        : summary.owned ? 'settings.ownedByInterceptor'
+          : summary.enabled ? 'agent.tools.enabled' : 'agent.tools.disabled');
+      break;
+    case 'certificateStatus':
+      content = `${t(!summary.present ? 'settings.notGenerated' : summary.trusted ? 'settings.trusted' : 'settings.notInstalled')} · HTTPS ${t(summary.mitmEnabled ? 'agent.tools.enabled' : 'agent.tools.disabled')}`;
+      break;
+    case 'tlsHosts':
+      content = t('agent.tools.tlsHosts', { count: summary.count });
+      break;
+    case 'tlsPassthrough':
+      content = t('agent.tools.tlsPassthrough', { count: summary.count, revision: summary.revision });
+      break;
+    case 'appContainers':
+      content = summary.supported
+        ? t('agent.tools.appContainers', { count: summary.count, exemptCount: summary.exemptCount })
+        : t('agent.tools.unsupported');
+      break;
     case 'discovery':
       content = t('agent.tools.discovered', { count: summary.count });
       break;

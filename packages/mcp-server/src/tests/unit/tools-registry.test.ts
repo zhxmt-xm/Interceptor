@@ -44,6 +44,10 @@ class FakeHost implements McpHostBridge {
     return result as never;
   }
 
+  async invokeMain(): Promise<never> {
+    throw new Error('Main queries use the Desktop Settings fixture.');
+  }
+
   /** 记录审批请求并返回固定裁决。 */
   async requestApproval(request: McpApprovalRequest): Promise<McpApprovalVerdict> {
     this.approvals.push(request);
@@ -95,6 +99,12 @@ describe('McpToolRegistry', () => {
       'breakpoints_forward_edited',
       'breakpoints_drop',
       'diagnostics_query',
+      'settings_get_core_process_status',
+      'settings_get_system_proxy_status',
+      'settings_get_certificate_status',
+      'settings_get_tls_insecure_hosts',
+      'settings_get_tls_passthrough',
+      'settings_list_app_containers',
     ]);
 
     expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });

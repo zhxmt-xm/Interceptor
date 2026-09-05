@@ -1,4 +1,7 @@
 import type { CoreCommand, CoreResultForCommand } from '@interceptor/core-protocol';
+import type { MainToolCommand, MainToolResultForCommand } from './main-commands';
+
+export type { MainToolCommand, MainToolResultForCommand, MainToolResultPayloads } from './main-commands';
 
 /** Classifies whether an enabled Tool reads data or changes product state. */
 export type InterceptorToolKind = 'query' | 'change';
@@ -33,6 +36,10 @@ export interface InterceptorToolHost {
     command: T,
     abortSignal: AbortSignal,
   ): Promise<CoreResultForCommand<T>>;
+  invokeMain<T extends MainToolCommand>(
+    command: T,
+    abortSignal: AbortSignal,
+  ): Promise<MainToolResultForCommand<T>>;
 }
 
 /** Execution context shared by internal Agent and MCP callers. */

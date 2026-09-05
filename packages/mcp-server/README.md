@@ -2,7 +2,7 @@
 
 把 Interceptor 的产品能力，以 [Model Context Protocol](https://modelcontextprotocol.io) Tool 的形式暴露给外部 AI Host（VS Code、Claude Desktop、Cursor 等）。
 
-**当前状态：Desktop Main已通过loopback Streamable HTTP接入本package与Core。** 24个Tool的descriptor、
+Desktop Main通过loopback Streamable HTTP接入本package与Main/Core业务owner。共享Tool的descriptor、
 schema、参数边界、脱敏和执行函数由`@interceptor/tools`唯一拥有；本package拥有MCP身份、官方SDK handler、
 审批、审计、并发/结果上限和Tool映射。Desktop按最新MCP开关过滤`tools/list` / `tools/call`，并按每个Client
 持久化的`ask` / `auto`模式执行change Tool。stdio + Bridge不在当前产品范围。
@@ -16,7 +16,7 @@ schema、参数边界、脱敏和执行函数由`@interceptor/tools`唯一拥有
 若产品缺少语义单一入口，先补产品入口，再由内置Agent与MCP共同复用。
 
 本package不监听端口，也不依赖Electron；它拥有认证与MCP adapter，消费共享Tool registry，并要求宿主实现
-Core bridge：
+Main/Core bridge：
 
 | 层 | 归属 | 说明 |
 | --- | --- | --- |
@@ -25,6 +25,7 @@ Core bridge：
 | Tool Registry | `@interceptor/tools` | 唯一Tool schema、参数边界、脱敏与执行函数。 |
 | MCP Adapter | 本package | MCP `tools/list` / `tools/call`映射、审批、审计与结果上限。 |
 | Core Bridge | **宿主（Main）** | 由宿主实现`McpHostBridge.invoke`，内部走既有`CoreRuntime`。 |
+| Main Bridge | **宿主（Main）** | `McpHostBridge.invokeMain`执行typed Main命令，复用正式owner与Action Gate。 |
 
 ## Transport决策
 
@@ -99,6 +100,7 @@ import { McpServer, type McpHostBridge } from '@interceptor/mcp-server';
 const host: McpHostBridge = {
   // 下沉到 Core；宿主负责 CoreRpcClient 与超时。
   invoke: (command, signal) => coreRpcClient.send(command, { signal }),
+  invokeMain,
   // 弹出确认 UI；宿主负责窗口聚焦与超时（超时须返回 'timeout'）。
   requestApproval: (request) => approvalGate.ask(request),
   // 写入 Diagnostics；实现必须吞掉自身错误。
@@ -114,17 +116,12 @@ server.authenticator.restore(persistedClients);
 官方SDK负责当前协议、JSON/SSE协商和HTTP语义；Main负责listener、Host/Origin guard、逐请求认证、请求体
 上限、关闭和Client级取消。
 
-## 当前工具
+## 工具目录
 
-24个共享Tool，分为11个query与13个change。类型通过`tools/list`的`annotations`告知Host。
-
-**只读（R，自动执行）**：`capture_list_exchanges`、`capture_get_exchange`、`capture_get_exchange_body`、`capture_list_websocket_messages`、`capture_list_grpc_messages`、`rules_get_tree`、`rules_get_hits`、`breakpoints_list`、`capture_get_proxy_status`、`capture_get_storage_status`、`diagnostics_query`
-
-**改动（W，当前MCP adapter逐次确认）**：`rules_replace_tree`、`capture_start_recording`、`capture_stop_recording`、`composer_send_request`、`breakpoints_enable_http`、`breakpoints_disable_http`、`breakpoints_enable_websocket`、`breakpoints_disable_websocket`、`breakpoints_continue`、`breakpoints_forward_edited`、`breakpoints_drop`、`capture_clear`、`composer_probe_connection`
-
-这24项不是最终范围。证书、系统代理、AppContainer、文件传输和更新等正式产品能力将按完整目录逐项实现；
-文件Tool只触发原生Open/Save Dialog，UAC与OS权限保持不变。Agent自身控制、MCP接入控制、纯UI导航和内部
-编排不注册为业务Tool。
+Tool名称、能力分组与实现范围由[唯一能力目录](../../architecture/features/tool-capabilities.md)维护，
+运行时通过`tools/list`读取当前授权集合。query自动执行，change按Client的`ask`/`auto`模式执行；类型与
+副作用由`annotations`告知Host。文件Tool只触发原生Open/Save Dialog，UAC与OS权限保持不变。
+Agent自身控制、MCP接入控制、纯UI导航和内部编排不注册为业务Tool。
 
 `capture_clear`只执行产品已有的全量清理，不保留早期`scope: session`；`rules_replace_tree`按`baseRevision`提交
 完整Rule树并保留folder与enabled值。Recording、HTTP Breakpoint和Breakpoint resolve已拆成语义单一Tool。

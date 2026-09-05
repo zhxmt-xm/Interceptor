@@ -539,6 +539,34 @@ export const views = [
         ],
       },
       {
+        id: `settings-tools-query${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: 'settings',
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open',
+          agentProvider: 'configured', agentChat: 'checkout', agentExecutionMode: 'ask', agentToolTrace: 'settings',
+        },
+        designShot: `${theme}/agent-models/panel-settings-tools.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent panel header', parity: 'agent-panel-header' },
+          { name: 'Agent Tool activity', parity: 'agent-query-tool-trace' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Settings discovery', appSelector: '[data-tool-call-id="settings-discover"]', designSelector: '[data-tool-name="discover_tools"]' },
+          ...[
+            'settings_get_core_process_status', 'settings_get_system_proxy_status',
+            'settings_get_certificate_status', 'settings_get_tls_insecure_hosts',
+            'settings_get_tls_passthrough', 'settings_list_app_containers',
+          ].map((name) => ({
+            name, appSelector: `[data-tool-call-id="${name}"]`, designSelector: `[data-tool-name="${name}"]`,
+          })),
+          'Inspect the six Settings states without changing any configuration.',
+          'The six Settings queries completed without changes.',
+        ],
+      },
+      {
         id: `agent-panel-diagnostics-tools${suffix}`,
         theme,
         agentModels: 'configured',
@@ -992,10 +1020,41 @@ export const views = [
             designSelector: '[data-tool-capability="capture_get_proxy_status"]',
             appSelector: '[data-automation-id="agent.tools.row.capture_get_proxy_status"]',
           },
-          ...['capture', 'rules', 'composer', 'breakpoints', 'diagnostics'].map((groupId) => ({
+          ...['capture', 'rules', 'composer', 'breakpoints', 'diagnostics', 'settings'].map((groupId) => ({
             name: `${groupId} Tool group`,
             designSelector: `[data-tool-group="${groupId}"]`,
             appSelector: `[data-automation-id="agent.tools.group.${groupId}"]`,
+          })),
+        ],
+      },
+      {
+        id: `settings-tools-capabilities${suffix}`,
+        theme,
+        rendererNav: 'Settings',
+        agentModels: 'configured',
+        designState: {
+          view: 'settings', theme, sidebar: 'expanded', settings: 'agent', agentProvider: 'configured',
+          agentToolSearch: 'settings_', agentDisabledTools: ['settings_get_certificate_status'],
+          mcpDisabledTools: ['settings_get_tls_passthrough'],
+        },
+        designShot: `${theme}/agent-models/settings-tool-capabilities-settings.png`,
+        rendererActions: [
+          { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+          { type: 'clickText', text: 'Agent' },
+          { type: 'fillAutomation', automationId: 'agent.tools.search', value: 'settings_' },
+          { type: 'clickAutomation', automationId: 'agent.tools.agent.settings_get_certificate_status' },
+          { type: 'clickAutomation', automationId: 'agent.tools.mcp.settings_get_tls_passthrough' },
+        ],
+        targets: [
+          { name: 'Agent settings', parity: 'agent-model-settings' },
+          { name: 'Tool capabilities', parity: 'agent-tool-capabilities' },
+          { name: 'Settings group', designSelector: '[data-tool-group="settings"]', appSelector: '[data-automation-id="agent.tools.group.settings"]' },
+          ...[
+            'settings_get_core_process_status', 'settings_get_system_proxy_status',
+            'settings_get_certificate_status', 'settings_get_tls_insecure_hosts',
+            'settings_get_tls_passthrough', 'settings_list_app_containers',
+          ].map((name) => ({
+            name, designSelector: `[data-tool-capability="${name}"]`, appSelector: `[data-automation-id="agent.tools.row.${name}"]`,
           })),
         ],
       },

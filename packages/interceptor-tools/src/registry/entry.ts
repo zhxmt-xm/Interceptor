@@ -44,6 +44,7 @@ import {
   restorePreservedRuleLocalPaths,
 } from '../rules/entry';
 import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
+import { buildSettingsQueryTools } from '../settings/queries';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -85,6 +86,11 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
     title: 'Diagnostics',
     description: 'Query structured application diagnostics.',
   },
+  {
+    id: 'settings',
+    title: 'Settings',
+    description: 'Read Core lifecycle, system proxy, certificates, TLS configuration, and AppContainer access.',
+  },
 ];
 
 /** Stable registry order grouped for Settings and discovery. */
@@ -113,6 +119,12 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'breakpoints_forward_edited',
   'breakpoints_drop',
   'diagnostics_query',
+  'settings_get_core_process_status',
+  'settings_get_system_proxy_status',
+  'settings_get_certificate_status',
+  'settings_get_tls_insecure_hosts',
+  'settings_get_tls_passthrough',
+  'settings_list_app_containers',
 ] as const;
 
 /** Builds the complete set of currently implemented transport-neutral Tools. */
@@ -122,6 +134,7 @@ export function buildInterceptorToolRegistry(
   const definitions = [
     ...buildQueryTools(interceptorToolRedactor),
     ...buildChangeTools(interceptorToolRedactor),
+    ...buildSettingsQueryTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

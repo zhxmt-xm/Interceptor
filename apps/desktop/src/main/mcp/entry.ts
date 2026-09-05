@@ -32,6 +32,7 @@ interface PendingApproval {
 
 /** Owns Desktop MCP settings, listener, Tool execution, approvals and lifecycle. */
 export class McpDesktopService implements McpHostBridge {
+  readonly invokeMain: McpDesktopServiceOptions['invokeMain'];
   /** Encrypted endpoint and Client settings. */
   readonly #mcpSettingsStore: McpSettingsStore;
   /** Existing Main/Core business owner. */
@@ -81,6 +82,7 @@ export class McpDesktopService implements McpHostBridge {
       secureStore: options.secureStore,
     });
     this.#coreRuntime = options.coreRuntime;
+    this.invokeMain = options.invokeMain;
     this.#toolCapabilitySettingsService = options.toolCapabilitySettingsService;
     this.#appVersion = options.appVersion;
     this.#approvalRequested = options.approvalRequested;
