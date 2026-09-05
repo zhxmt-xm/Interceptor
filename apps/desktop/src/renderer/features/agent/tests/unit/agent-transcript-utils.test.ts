@@ -242,6 +242,19 @@ describe('Agent transcript utilities', () => {
       ok: false,
       error: 'connect ECONNREFUSED',
     });
+    expect(summarizeAgentToolResult('diagnostics_query', {
+      ok: true,
+      value: {
+        records: [{ sequence: 2 }, { sequence: 1 }],
+        hasMore: false,
+        droppedCount: 3,
+      },
+    })).toEqual({
+      kind: 'diagnostics',
+      count: 2,
+      hasMore: false,
+      droppedCount: 3,
+    });
   });
 
   it('keeps later Tool activity after visible assistant content', () => {

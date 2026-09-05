@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-09-04
+> 最后更新：2026-09-05
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -84,7 +84,7 @@ flowchart LR
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。
 `AgentToolService`把共享registry、Tool开关与`CoreRuntime`组合成Capability Index、`discover_tools`，以及按
-Capture、Rules、Composer、Breakpoints、Diagnostics所有权分组的业务Tool；当前已接入前四个feature共23项。
+Capture、Rules、Composer、Breakpoints、Diagnostics所有权分组的业务Tool；当前已接入五个feature共24项。
 每次Model Call与每项Tool执行前都重取
 快照；产生当前响应时披露的集合继续约束该响应，执行时已关闭的Tool返回`unknown_tool`，不触达Core。
 业务Tool的`AbortSignal`原样进入Core RPC取消链路。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI

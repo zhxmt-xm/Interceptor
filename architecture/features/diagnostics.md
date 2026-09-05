@@ -1,6 +1,6 @@
 # Feature: Diagnostics
 
-> 最后更新：2026-07-26
+> 最后更新：2026-09-05
 > Core 模块：`apps/proxy-core/src/proxy-core/core-diagnostics.ts`、`apps/proxy-core/src/proxy-core/diagnostics/`
 > Renderer 模块：`apps/desktop/src/renderer/features/diagnostics/`
 
@@ -170,16 +170,40 @@ sequenceDiagram
 
 Renderer 只拿到 job 快照，没有路径。
 
-## 9. 性能约束
+## 9. Agent / MCP 查询 Tool
+
+`diagnostics_query`是Diagnostics feature唯一已实现Tool，复用正式`diagnostics.query`命令与共享registry
+schema，不增加Agent专用IPC、第二份日志存储或Renderer后门。它是只读query，在Agent Session的Ask与Auto模式下
+都直接执行，不显示change审批。
+
+- 支持`cursor`、`limit`、`process`、`level`、`outcome`、`traceId`、`command`、`minDurationMs`与
+    `maxDurationMs`过滤；参数边界只由共享Tool schema校验；
+- 结果保持Core返回的稳定顺序、`nextCursor`、`hasMore`与`droppedCount`，不在Agent层重新排序或补造记录；
+- `diagnostics.query`继续属于静默命令，Tool查询自身不得生成新的Diagnostics记录；
+- Model只能看到已由Core入库前脱敏的结构化记录。命令payload、请求URL、header与正文不得因Tool接入而进入结果；
+- Transcript使用typed摘要显示记录数、是否还有更早记录与丢弃数，不展开完整attributes。
+
+真实`agent.tools.diagnostics` workflow先经Composer UI发送两次带敏感query值的真实请求，等待Diagnostics UI
+确认两组`composer.send`成功记录，再由Agent discovery与`diagnostics_query`按`core + composer.send + success`
+过滤读取四条action/command记录。验收结果最新优先、敏感URL/query不进入Model结果、Ask模式无审批、Settings关闭后返回
+`unknown_tool`、恢复后可重新发现，并在同profile重启时保持Model与Tool零重放。
+
+## 10. 性能约束
 
 - 结构化日志的对象分配与 IPC 批次有成本，必须限制 attributes 数量。
 - 低优先级记录可采样。
 - 记录必须非阻塞。
 
-## 10. 验收要点
+## 11. 验收要点
 
 - [ ] Core 断开期间 Main 记录不丢，恢复后完整续传。
 - [ ] Diagnostics 写入失败不影响 Capture。
 - [ ] 敏感 attribute 与 URL query 在库中与导出文件中均已脱敏。
 - [ ] 轮询查询自身不产生新记录。
 - [ ] keyset 分页在大数据量下稳定，无重复无遗漏。
+- [x] Agent只通过共享`diagnostics_query`读取真实记录；过滤、稳定顺序、脱敏、撤权与重启零重放均通过真实Electron验收。
+
+2026-09-05验收：最终`agent.tools.diagnostics`在父提交`401af972`精确Red于Diagnostics schema缺失，Main/Core
+`11540/18252`优雅销毁；当前同一workflow `1/1` Green，两代Main/Core为`11444/35300`、`42312/18808`，
+均`gracefulDestroyVerified=true`且释放8888，宿主guard恢复系统副作用。Model与origin重启请求增量均为0，
+返回四条记录、两个trace、严格递减sequence；完整敏感文本审计通过。明暗parity共18个目标全部0px。

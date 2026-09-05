@@ -175,6 +175,110 @@ describe('Interceptor Tool registry', () => {
     expect(discovered[0]?.descriptor).not.toHaveProperty('execute');
   });
 
+  it('reads listener and recording state through the Capture proxy status Tool', async () => {
+    const status = { host: '127.0.0.1', port: 8888, recording: true };
+    const fakeToolHost = new FakeToolHost({
+      'proxy.status': { type: 'proxy.status', payload: status },
+    });
+
+    await expect(execute('capture_get_proxy_status', {}, fakeToolHost)).resolves.toEqual(status);
+    expect(fakeToolHost.commands).toEqual([{ type: 'proxy.status', payload: {} }]);
+  });
+
+  it('reads Capture usage without changing the stored counts', async () => {
+    const usage = { sessionCount: 1, exchangeCount: 3, bodyCount: 2, totalBytes: 512 };
+    const fakeToolHost = new FakeToolHost({
+      'capture.status': { type: 'capture.status', payload: usage },
+    });
+
+    await expect(execute('capture_get_storage_status', {}, fakeToolHost)).resolves.toEqual(usage);
+    expect(fakeToolHost.commands).toEqual([{ type: 'capture.status', payload: {} }]);
+  });
+
+  it('lists Capture exchanges with all filters and preserves pagination', async () => {
+    const page = {
+      items: [{ id: 'exchange-1', path: '/v1/items', host: 'api.test', method: 'POST' }],
+      nextCursor: 'cursor-2',
+      hasMore: true,
+    };
+    const filter = {
+      host: 'api.test',
+      method: 'POST',
+      status: 201,
+      mime: 'application/json',
+      appName: 'client',
+      search: 'items',
+      protocol: 'h2',
+    };
+    const fakeToolHost = new FakeToolHost({
+      'sessions.query': { type: 'sessions.page', payload: page },
+    });
+
+    await expect(execute('capture_list_exchanges', {
+      cursor: 'cursor-1',
+      limit: 25,
+      sort: 'started_asc',
+      ...filter,
+    }, fakeToolHost)).resolves.toEqual(page);
+    expect(fakeToolHost.commands).toEqual([{
+      type: 'sessions.query',
+      payload: { cursor: 'cursor-1', limit: 25, sort: 'started_asc', filter },
+    }]);
+  });
+
+  it('queries Diagnostics with every supported filter and preserves the Core page', async () => {
+    const page = {
+      records: [{
+        timestamp: '2026-09-05T00:00:00.000Z',
+        sequence: 12,
+        level: 'info',
+        process: 'core',
+        requestId: 'request-1',
+        command: 'composer.send',
+        phase: 'command.completed',
+        durationMs: 4,
+        outcome: 'success',
+        attributes: { resultType: 'composer.response' },
+      }],
+      nextCursor: 'cursor-1',
+      hasMore: true,
+      droppedCount: 2,
+    } as const;
+    const fakeToolHost = new FakeToolHost({
+      'diagnostics.query': { type: 'diagnostics.page', payload: page },
+    });
+    const abortController = new AbortController();
+
+    await expect(definition('diagnostics_query').execute({
+      cursor: 'cursor-0',
+      limit: 25,
+      process: 'core',
+      level: 'info',
+      outcome: 'success',
+      traceId: 'trace-1',
+      command: 'composer.send',
+      minDurationMs: 1,
+      maxDurationMs: 50,
+    }, {
+      host: fakeToolHost,
+      abortSignal: abortController.signal,
+    })).resolves.toEqual(page);
+    expect(fakeToolHost.commands).toEqual([{
+      type: 'diagnostics.query',
+      payload: {
+        cursor: 'cursor-0',
+        limit: 25,
+        process: 'core',
+        level: 'info',
+        outcome: 'success',
+        traceId: 'trace-1',
+        command: 'composer.send',
+        minDurationMs: 1,
+        maxDurationMs: 50,
+      },
+    }]);
+  });
+
   it('maps recording and HTTP breakpoint intents to separate Core commands', async () => {
     const fakeToolHost = new FakeToolHost({
       'proxy.start': { type: 'proxy.status', payload: {} },

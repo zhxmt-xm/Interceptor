@@ -106,6 +106,12 @@ export type AgentToolResultSummary =
       readonly certificateCount: number;
     }
   | { readonly kind: 'probe'; readonly ok: false; readonly error: string }
+  | {
+      readonly kind: 'diagnostics';
+      readonly count: number;
+      readonly hasMore: boolean;
+      readonly droppedCount: number;
+    }
   | { readonly kind: 'error'; readonly message: string }
   | { readonly kind: 'value'; readonly value: string };
 
@@ -339,6 +345,18 @@ export function summarizeAgentToolResult(
         certificateCount: certificates.length,
       };
     }
+  }
+  if (name === 'diagnostics_query'
+    && isRecord(result.value)
+    && Array.isArray(result.value['records'])
+    && typeof result.value['hasMore'] === 'boolean'
+    && typeof result.value['droppedCount'] === 'number') {
+    return {
+      kind: 'diagnostics',
+      count: result.value['records'].length,
+      hasMore: result.value['hasMore'],
+      droppedCount: result.value['droppedCount'],
+    };
   }
   return { kind: 'value', value: compactJson(result.value) };
 }

@@ -8,6 +8,10 @@ M0–M13 are complete; production signing/notarization and real macOS release ev
 
 The next release action is a real signed tag build with repository-external Windows and Apple credentials, followed by native macOS download/open validation.
 
+首批24项Tool已全部接入Agent与MCP，owner正向测试与真实Agent/MCP调用覆盖均为24/24。下一步是Playground
+24项Developer人工矩阵；Capture Lab真实Electron覆盖仍为2/39，不等同于39/39的Lab集成测试。
+逐项状态与证据见[Tool能力目录](architecture/features/tool-capabilities.md)。
+
 Documentation is split to keep routine context small:
 
 - [architecture/HANDOVER.md](architecture/HANDOVER.md) is the required first read and contains the current continuation state, code locations, remaining work, and next action.
@@ -107,6 +111,14 @@ with 39 editable HTTP, body, encoding, WebSocket, gRPC, and TLS scenarios routed
 MCP page connects directly using configuration copied from Interceptor. It is a development tool under `apps/playground/`
 and is not included in Desktop packages. See
 [apps/playground/README.md](apps/playground/README.md) for the manual workflow and credential boundary.
+
+### 验证Agent Diagnostics
+
+```powershell
+npm run test:e2e:workflow --workspace @interceptor/desktop -- diagnostics.workflow.ts
+```
+
+该workflow由Composer UI产生真实记录，再验证Agent查询、脱敏、撤权、重启零重放及两代完整销毁；不可与其他占用8888的实例并行。
 
 ### Debug Renderer
 

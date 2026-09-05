@@ -1,10 +1,10 @@
 # Feature: 内置 Agent
 
-> 最后更新：2026-09-04
+> 最后更新：2026-09-05
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**Runtime基础层、持久化Chat、Capture十项、Rules三项、Composer两项与Breakpoints八项Tool纵向流程已完成；剩余Diagnostics一项。**
+> 状态：**Runtime基础层、持久化Chat与首批24项Tool纵向流程已完成；下一阶段为Playground 24项Developer人工验收。**
 
 ## 术语与关系
 
@@ -319,7 +319,7 @@ flowchart LR
 数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
 所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
 Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source已接入Capture十项、Rules三项、
-Composer两项与Breakpoints八项，共23/24。
+Composer两项、Breakpoints八项与Diagnostics一项，共24/24。
 
 共享Tool协议按feature所有权命名：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`、`diagnostics_*`。
 Capability ID与前缀一致；不保留此前无前缀名称或`traffic`/`requests` Capability alias。旧Session中的Tool名称只作为
@@ -1295,7 +1295,7 @@ interface AgentToolSourceSnapshot {
 }
 ```
 
-Main的`AgentToolService`固定当前产品接入集合为Capture十项、Rules三项、Composer两项与Breakpoints八项，
+Main的`AgentToolService`固定当前产品接入集合为Capture十项、Rules三项、Composer两项、Breakpoints八项与Diagnostics一项，
 顺序与共享registry的feature目录一致，启动时断言名称与类型准确；
 它用`ToolCapabilitySettingsService`过滤Agent关闭项，用同一registry建立Catalog，并把executor的host收敛到
 `CoreRuntime.request(command, { abortSignal })`。不向Runtime、Model或Renderer暴露通用Core client。
@@ -1358,11 +1358,11 @@ Main的`AgentToolService`固定当前产品接入集合为Capture十项、Rules�
 真实 E2E 使用产品 Settings 配置 workflow 启动的本地 OpenAI-compatible lab，经真实
 Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不得注入 Session 或替换 Dialog 返回值。
 
-### [阶段 2 · 进行中] 共享 Tool 目录与24项业务能力
+### [阶段 2 · 已完成] 共享 Tool 目录与24项业务能力
 
 目标：先确定完整产品 Tool 目录和用户开关，再按能力组把24项共享Tool全部接入内置Agent。当前Agent代码为
-23/24、已验收真实Agent或MCP Tool Call为23/24，MCP adapter为24/24；已完成Capture、Rules、Composer与Breakpoints，
-不是Agent的永久只读边界。
+24/24、已验收真实Agent或MCP Tool Call与owner正向unit均为24/24，MCP adapter为24/24；Capture、Rules、Composer、
+Breakpoints与Diagnostics均已完成。这是首批交付范围，不是Agent的永久能力边界。
 
 - 完整目录、当前状态与逐项顺序以 [tool-capabilities.md](tool-capabilities.md) 为准；
 - `design-vite`已完成Settings能力列表、Agent/MCP双开关、会话级`Ask/Auto`与Transcript内联问询卡；
@@ -1383,12 +1383,14 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
   WebSocket真实数据面、八项关闭、双入口取消边界及重启零重放均由Agent/MCP真实Electron workflow闭环；
 - [已完成] Composer两项复用`composer.send`与`tls.probe`；Ask/Auto、真实HTTP/TLS、响应脱敏、Capture隔离、H1/H2/TLS
   socket取消、Settings关闭与双代零重放由owner integration和Agent真实Electron workflow闭环；
+- [已完成] Diagnostics query复用`diagnostics.query`；真实Composer请求产生记录，组合过滤、稳定顺序、敏感输入隔离、
+  Ask无审批、Settings关闭与恢复、重启零重放和完整销毁均通过；
 - 列表通过 summary → detail 渐进披露；分页只服务传输与 Context，提供完整遍历能力；
 - 真实 E2E 先由产品 UI 产生流量，再让 Agent 查询，不 seed Capture。
 - `agent.tools.capture-discovery`扩展Storage前精确Red于`call-storage`状态为`failed`，当前源码`1/1` Green；最终一次
   真实`capture.status`为`1 session / 3 exchanges / 1 body / 92 B`，关闭后返回`unknown_tool`，恢复后重新进入discovery；
   两代Main/Core PID为`20596/42100`与`44412/12224`，均`gracefulDestroyVerified=true`且释放8888。
-- 后续只剩Diagnostics 1项；逐项矩阵、owning executor测试缺口和真实调用状态只在
+- 首批24项自动验收完成；逐项矩阵、owning executor测试与真实调用状态只在
   [Tool能力目录](tool-capabilities.md)维护。
 - Tool主线完成后再执行Playground 24项Developer人工报告，最后将Capture对正式Playground场景的真实Electron覆盖
   从2/39按六组收敛到39/39；该收敛不替代每个Tool work item自己的真实E2E。
@@ -1485,6 +1487,21 @@ Renderer → Preload → Main → HTTP → Streaming 全链路发送消息；不
 - `agent.tools.composer`真实workflow使用测试拥有的HTTP/TLS origin，经产品Settings配置Provider；覆盖discovery、
   Ask Deny/Allow、Auto、真实网络结果、socket取消、两项关闭后的`unknown_tool`、恢复与双代完整销毁。
 
+#### Diagnostics一项 [已完成]
+
+- `diagnostics_query`复用共享registry与正式`diagnostics.query`命令；Agent不增加Diagnostics IPC、存储或查询实现。
+  `discover_tools(capabilityId:'diagnostics')`只披露这一项。
+- 该Tool是只读query，在Ask与Auto模式下都直接执行；支持Core已有的process、level、outcome、trace、command、
+  duration与cursor/limit过滤，并原样保留Core返回的稳定顺序和分页状态。
+- `diagnostics.query`自身继续静默，不因Agent查询递归产生记录。Model只能看到Core已脱敏的结构化字段，不得看到
+  Composer URL/query、headers、正文或完整Core command payload。
+- Transcript使用typed摘要显示记录数、是否还有更早记录与丢弃数；完整记录只存在于持久化Tool Result与发送给Model的
+  对应消息中，不在摘要展开attributes。
+- 独立`agent.tools.diagnostics`真实workflow由Composer UI先发送两次带敏感query值的请求，产生四条action/command记录，
+  再验证discovery、组合过滤、最新优先、脱敏、Ask零审批、Settings关闭后的`unknown_tool`、恢复、重启零重放与完整销毁。
+- 最终workflow在父提交`401af972`精确Red于Diagnostics schema缺失；当前同一文件`1/1` Green，明暗parity合计
+  `18/18 matched / 0 missing / 0 flagged / 0px`，15语言摘要已接入。完整证据见[Tool能力目录](tool-capabilities.md)。
+
 ### [阶段 5] 长 Session 与恢复
 
 目标：在真实使用数据证明上下文变长后，增加可靠性而非增加自主性。
@@ -1553,7 +1570,7 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
 - Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
 - `@interceptor/tools`已建立5个Capability、确定性discovery和24项共享Tool registry；descriptor、schema、
   参数/数值边界、脱敏与Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
-  `discover_tools`与Capture、Rules、Composer、Breakpoints共23项Tool；正文、WebSocket、gRPC与Capture控制真实E2E均已完成；
+  `discover_tools`与Capture、Rules、Composer、Breakpoints、Diagnostics共24项Tool；五个feature真实E2E均已完成；
 - `ToolCapabilitySettingsService`已从同一registry投影五个feature Settings目录，只原子持久化Agent/MCP关闭项；
   Settings在无Provider时也显示24行/48个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
   UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP关闭项已应用到外部`tools/list`

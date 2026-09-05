@@ -111,6 +111,9 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-probe-certificate-count={summary?.kind === 'probe' && summary.ok
                     ? summary.certificateCount
                     : undefined}
+                  data-diagnostics-count={summary?.kind === 'diagnostics' ? summary.count : undefined}
+                  data-diagnostics-has-more={summary?.kind === 'diagnostics' ? summary.hasMore : undefined}
+                  data-diagnostics-dropped-count={summary?.kind === 'diagnostics' ? summary.droppedCount : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
                   {summary === null

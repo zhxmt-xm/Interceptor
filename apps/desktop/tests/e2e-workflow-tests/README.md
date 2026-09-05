@@ -283,6 +283,7 @@ diagnostics.row.<traceKey>
 | `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
 | `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI | passed |
 | `agent.tools.composer` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI | passed |
+| `agent.tools.diagnostics` | Agent过滤读取真实Diagnostics记录并验证脱敏与稳定顺序 | shared | passed |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 

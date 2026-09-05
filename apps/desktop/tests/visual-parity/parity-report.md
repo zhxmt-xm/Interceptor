@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-09-04T17:06:20.361Z
+Generated: 2026-09-05T08:32:11.643Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 208 |
+| Views checked | 210 |
 | Average pixel diff | 2.13% |
-| Targets | 1456 |
-| Matched | 1422 |
-| Missing | 34 |
-| Flagged | 305 |
+| Targets | 1474 |
+| Matched | 1442 |
+| Missing | 32 |
+| Flagged | 303 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -21,51 +21,53 @@ Generated: 2026-09-04T17:06:20.361Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
-| agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-unconfigured | 1.98% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat | 2.90% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-capture-tools | 2.71% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-body-message-tools | 2.60% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools | 2.47% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-capture-tools | 2.72% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-body-message-tools | 2.82% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools | 2.69% | 11 | 11 | 0 | 0 | 0.0 px |
 | agent-panel-composer-tools | 2.72% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools | 2.28% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result | 2.43% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.76% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result | 2.53% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-diagnostics-tools | 2.47% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools | 2.31% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result | 2.48% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
 | agent-panel-new-chat | 2.01% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
-| agent-panel-turn-stopped | 2.26% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-stopped | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-usage | 2.57% | 4 | 4 | 0 | 0 | 0.1 px |
 | agent-panel-chat-menu | 2.41% | 5 | 5 | 0 | 0 | 0.1 px |
 | agent-panel-model-menu | 2.62% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat | 2.11% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat | 2.17% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
+| settings-agent-unconfigured | 1.64% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
 | settings-agent-configured | 1.63% | 19 | 19 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered | 2.03% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running | 1.67% | 6 | 6 | 0 | 0 | 0.7 px |
-| settings-mcp-conflict | 1.72% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client | 5.80% | 5 | 5 | 0 | 0 | 0.7 px |
-| settings-mcp-regenerate | 5.18% | 4 | 4 | 0 | 0 | 0.8 px |
-| mcp-tool-approval | 5.36% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog | 5.77% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog | 5.57% | 12 | 12 | 0 | 0 | 0.7 px |
-| settings-agent-custom-edit-dialog | 5.68% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider | 4.64% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-tool-capabilities-filtered | 1.98% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running | 1.66% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict | 1.70% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client | 5.47% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate | 5.00% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog | 4.88% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog | 5.05% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog | 4.89% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider | 4.50% | 4 | 4 | 0 | 0 | 0.7 px |
 | agent-panel-unconfigured-dark | 1.94% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-capture-tools-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-body-message-tools-dark | 2.58% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools-dark | 2.44% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-body-message-tools-dark | 2.79% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
 | agent-panel-composer-tools-dark | 2.63% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools-dark | 2.36% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result-dark | 2.47% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval-dark | 2.75% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result-dark | 2.45% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-diagnostics-tools-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools-dark | 2.40% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result-dark | 2.53% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval-dark | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat-dark | 1.96% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat-dark | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -76,30 +78,30 @@ Generated: 2026-09-04T17:06:20.361Z
 | agent-panel-delete-chat-dark | 1.97% | 4 | 4 | 0 | 0 | 0.7 px |
 | settings-agent-unconfigured-dark | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured-dark | 1.63% | 19 | 19 | 0 | 0 | 0.6 px |
-| settings-agent-tool-capabilities-filtered-dark | 2.18% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running-dark | 1.67% | 6 | 6 | 0 | 0 | 0.7 px |
-| settings-mcp-conflict-dark | 1.72% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client-dark | 1.67% | 5 | 5 | 0 | 0 | 0.7 px |
-| settings-mcp-regenerate-dark | 1.59% | 4 | 4 | 0 | 0 | 0.8 px |
-| mcp-tool-approval-dark | 1.40% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog-dark | 1.81% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.55% | 12 | 12 | 0 | 1 | 40.0 px |
-| settings-agent-custom-edit-dialog-dark | 1.83% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider-dark | 1.40% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-configured-dark | 1.60% | 19 | 19 | 0 | 0 | 0.6 px |
+| settings-agent-tool-capabilities-filtered-dark | 2.13% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running-dark | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict-dark | 1.67% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-mcp-add-client-dark | 1.35% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate-dark | 1.45% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 2.49% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-replace | 2.44% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-request-body-file-empty | 2.46% | 11 | 11 | 0 | 10 | 302.1 px |
 | breakpoint-request-body-file | 2.51% | 11 | 11 | 0 | 7 | 3.0 px |
-| breakpoint-response-paused | 2.33% | 11 | 11 | 0 | 6 | 1.6 px |
+| breakpoint-response-paused | 2.63% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-loaded | 2.71% | 11 | 11 | 0 | 6 | 1.6 px |
 | breakpoint-response-body-replace | 2.66% | 12 | 11 | 1 | 6 | 2.0 px |
 | breakpoint-response-body-file-empty | 2.68% | 12 | 12 | 0 | 7 | 302.1 px |
-| breakpoint-response-body-file | 2.44% | 12 | 12 | 0 | 6 | 2.0 px |
+| breakpoint-response-body-file | 2.74% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-request-paused-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
-| breakpoint-request-body-loading-dark | 2.61% | 10 | 10 | 0 | 6 | 3.0 px |
+| breakpoint-request-body-loading-dark | 2.36% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loaded-dark | 2.52% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-replace-dark | 2.47% | 11 | 11 | 0 | 7 | 3.0 px |
 | breakpoint-request-body-file-empty-dark | 2.50% | 11 | 11 | 0 | 10 | 302.1 px |
@@ -111,8 +113,8 @@ Generated: 2026-09-04T17:06:20.361Z
 | breakpoint-response-body-file-dark | 2.79% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
-| breakpoint-queue-head-dark | 2.51% | 2 | 2 | 0 | 0 | 0.5 px |
+| breakpoint-queue-menu | 2.53% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
 | breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
@@ -147,7 +149,7 @@ Generated: 2026-09-04T17:06:20.361Z
 | capture-tunnel-mitm-navigation | 2.36% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target-dark | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
-| https-setup | 4.78% | 9 | 9 | 0 | 2 | 44.3 px |
+| https-setup | 4.78% | 9 | 9 | 0 | 1 | 647.7 px |
 | https-setup-dark | 1.29% | 5 | 5 | 0 | 1 | 44.3 px |
 | https-setup-ready | 4.87% | 7 | 7 | 0 | 1 | 44.3 px |
 | import-export | 2.17% | 7 | 7 | 0 | 2 | 24.5 px |
@@ -193,7 +195,7 @@ Generated: 2026-09-04T17:06:20.361Z
 | settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
 | tls-compatibility-dialog-add | 1.13% | 2 | 2 | 0 | 0 | 0.4 px |
 | settings-tls-passthrough | 1.11% | 9 | 7 | 2 | 2 | 131.2 px |
-| settings-tls-passthrough-dark | 1.10% | 9 | 7 | 2 | 2 | 131.2 px |
+| settings-tls-passthrough-dark | 1.10% | 9 | 9 | 0 | 2 | 1.1 px |
 | tls-compatibility-dialog | 0.76% | 8 | 8 | 0 | 1 | 1.7 px |
 | tls-compatibility-dialog-dark | 0.29% | 8 | 8 | 0 | 1 | 1.7 px |
 | settings-updates-checking | 1.59% | 13 | 13 | 0 | 3 | 13.8 px |
@@ -327,6 +329,15 @@ Generated: 2026-09-04T17:06:20.361Z
 | agent-panel-composer-tools | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-composer-tools | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-composer-tools | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Diagnostics discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Diagnostics query | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Diagnostics result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Inspect successful Composer diagnostics without exposing request secrets. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools | Four successful Composer diagnostic records are available in newest-first order. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -559,6 +570,15 @@ Generated: 2026-09-04T17:06:20.361Z
 | agent-panel-composer-tools-dark | TLS probe failure | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-composer-tools-dark | Send the approved request and probe the local TLS endpoint. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-composer-tools-dark | The request returned 201. TLS negotiated h2 with one certificate. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Agent panel header | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Diagnostics discovery | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Diagnostics query | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Diagnostics result | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Inspect successful Composer diagnostics without exposing request secrets. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| agent-panel-diagnostics-tools-dark | Four successful Composer diagnostic records are available in newest-first order. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent Tool activity | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-rules-tools-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
@@ -717,7 +737,7 @@ Generated: 2026-09-04T17:06:20.361Z
 | settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
 | settings-agent-deepseek-dialog-dark | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -1151,15 +1171,15 @@ Generated: 2026-09-04T17:06:20.361Z
 | capture-tunnel-mitm-navigation | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target-dark | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| https-setup | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
-| https-setup | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup | No CA generated yet | 0.0 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
-| https-setup | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup | Install… | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | waiting for trust installation | 0.0 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| https-setup | Cancel | 1.0 px | 0.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
-| https-setup | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | Decrypt HTTPS (MITM) | 647.7 px | 138.2 px | -245.7 px | 16.0 px | 647.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
+| https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
+| https-setup | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup | Install… | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | waiting for trust installation | -0.3 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| https-setup | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | https-setup-dark | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
 | https-setup-dark | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
 | https-setup-dark | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
@@ -1383,15 +1403,15 @@ Generated: 2026-09-04T17:06:20.361Z
 | settings-tls-passthrough | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
 | settings-tls-passthrough | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
 | settings-tls-passthrough | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
-| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | 0.0 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
-| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.4 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
-| settings-tls-passthrough-dark | Add | 0.1 px | -0.1 px | -0.1 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.9 px | -0.4 px | -0.1 px | 0.9 px | none | ok |
-| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.1 px | 0.0 px | 0.0 px | 0.1 px | none | ok |
-| settings-tls-passthrough-dark | *.wvd.microsoft.com | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough-dark | Windows 365 · Recommended | n/a | n/a | n/a | n/a | n/a | none | design missing |
-| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 3.7 px | 0.0 px | 0.1 px | 3.7 px | none | flagged |
-| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | -131.2 px | 0.0 px | 0.0 px | 131.2 px | none | flagged |
+| settings-tls-passthrough-dark | Keep end-to-end TLS for clients that cannot use HTTPS interception while retaining tunnel metadata. | 0.0 px | -0.4 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
+| settings-tls-passthrough-dark | Hostname or wildcard | 0.0 px | 0.0 px | 0.1 px | -0.5 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Add | 0.1 px | -0.5 px | -0.1 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Passthrough host patterns | 0.0 px | 0.5 px | -0.4 px | -0.1 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | Matched before HTTPS interception | 0.0 px | -0.5 px | 0.0 px | 0.0 px | 0.5 px | none | ok |
+| settings-tls-passthrough-dark | *.wvd.microsoft.com | 0.0 px | -0.7 px | 0.0 px | 1.0 px | 1.0 px | none | flagged |
+| settings-tls-passthrough-dark | Windows 365 · Recommended | 0.0 px | 0.4 px | 0.0 px | -1.1 px | 1.1 px | none | flagged |
+| settings-tls-passthrough-dark | End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted. | 0.0 px | 0.3 px | 0.0 px | 0.1 px | 0.3 px | none | ok |
+| settings-tls-passthrough-dark | Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible. | 0.0 px | 0.4 px | 0.0 px | 0.0 px | 0.4 px | none | ok |
 | tls-compatibility-dialog | TLS interception may be incompatible | 0.0 px | 0.1 px | 0.0 px | -0.2 px | 0.2 px | none | ok |
 | tls-compatibility-dialog | The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-compatibility-dialog | rdweb.wvd.microsoft.com | 0.0 px | 0.0 px | 0.0 px | -0.9 px | 0.9 px | none | ok |

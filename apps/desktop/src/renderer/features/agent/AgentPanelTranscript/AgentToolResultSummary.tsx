@@ -88,6 +88,13 @@ export function AgentToolResultSummary({
         ? `${summary.protocol} · ${summary.alpn || '-'} · ${t('agent.tools.certificates', { count: summary.certificateCount })}`
         : `${t('agent.tools.probeFailed')} · ${summary.error}`;
       break;
+    case 'diagnostics':
+      content = t('agent.tools.diagnostics', {
+        count: summary.count,
+        state: t(summary.hasMore ? 'agent.tools.moreAvailable' : 'agent.tools.complete'),
+        droppedCount: summary.droppedCount,
+      });
+      break;
     case 'error':
       content = summary.message;
       break;

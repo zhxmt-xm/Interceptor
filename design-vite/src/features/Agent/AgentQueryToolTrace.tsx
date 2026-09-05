@@ -35,6 +35,10 @@ const TOOL_STEPS = {
     { name: 'rules_get_tree', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
     { name: 'rules_get_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
   ],
+  diagnostics: [
+    { name: 'discover_tools', arguments: 'capabilityId: diagnostics', result: '1 tools discovered' },
+    { name: 'diagnostics_query', arguments: 'process: core · command: composer.send · outcome: success · limit: 10', result: 'Records 4 · Completed · Dropped 0' },
+  ],
 } as const;
 
 interface AgentQueryToolTraceProps {

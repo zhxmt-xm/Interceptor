@@ -487,3 +487,42 @@ Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，
 	只在审计通过后attach，evidence只保存布尔、计数和Provider request hash。明暗Requests parity合计
 	`20/20 matched / 0 missing / 0 flagged / 0px`，既有46张Agent设计图逐像素
 	不变。完整Parity为`208 views / 1,446 targets / 1,412 matched / 34既有missing / 305既有flagged`。
+
+<a id="agent-tools-diagnostics"></a>
+## `agent.tools.diagnostics`
+
+**状态**：passed
+**策略**：shared
+
+### Steps
+
+1. 创建独立profile/evidence和HTTP origin；通过产品Settings配置本地Provider，等待App/Core/8888 ready。
+2. 经Composer UI分别新建并发送两次带不同敏感query值的真实请求；origin确认两次到达，Diagnostics UI确认出现两组
+	`core / composer.send / success`记录。不得seed Diagnostics或直接调用Core。
+3. 新建默认Ask Chat；Model先`discover_tools(capabilityId:'diagnostics')`，确认只披露`diagnostics_query`，下一次
+	Model request才包含该schema。
+4. Model调用`diagnostics_query({ process:'core', command:'composer.send', outcome:'success', limit:10 })`；确认返回四条
+	记录，每次请求各有`action.completed`与`command.completed`且共享trace；sequence严格递减，分页状态与dropped
+	count有效，结果不含请求URL或敏感query值。
+5. 确认query在Ask模式直接完成、没有审批卡；Transcript显示typed记录数与分页摘要。
+6. 完整关闭第一代App；同profile启动第二代，确认Model请求增量为0，已完成Tool轨迹与回答恢复但不重放查询或网络请求。
+7. 在Settings关闭`diagnostics_query`的Agent开关；新Chat discovery为空，直接猜测调用返回`unknown_tool`；重新开启后
+	再建Chat，确认discovery恢复唯一Diagnostics Tool。
+8. 保存仅含计数、顺序、协议字段与Provider request hash的脱敏evidence；关闭Panel后恢复trace，完整销毁第二代
+	Main/Core/Worker、释放8888并恢复系统副作用。
+
+### 预期效果
+
+Agent通过共享只读Tool查询真实Diagnostics存储，不建立旁路数据源。过滤与顺序由Core权威实现；查询自身不污染日志，
+Composer敏感输入不进入Model结果。Ask、Settings撤权、恢复和重启均保持既有Agent语义。
+
+### Evidence
+
+- Unit Red：Agent discovery返回空matches，Renderer摘要返回原始JSON；共享executor正向测试基线Green。
+- E2E Red：Agent接线前精确失败于第二次Model request没有`diagnostics_query`；最终修订workflow又在父提交
+	`401af972`的detached worktree得到同一行为Red，Main/Core `11540/18252`优雅销毁且释放8888。
+- 当前字节相同workflow `1/1` Green：四条action/command记录按sequence严格递减并归属两个trace，敏感URL/query
+	不进入Model结果；Ask无审批，关闭后`unknown_tool`，重新开启恢复discovery。重启Model与origin请求增量均为0。
+- 两代Main/Core `11444/35300`、`42312/18808`均`gracefulDestroyVerified=true`，Worker随Core退出，8888释放，
+	宿主guard恢复系统副作用。`agent-tool-diagnostics.json`、trace、截图与进程日志通过完整敏感文本审计后再attach。
+- 设计与产品明暗parity为`18/18 matched / 0 missing / 0 flagged / 0px`，不替代上述真实Electron证据。

@@ -1786,6 +1786,103 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: 15,
     };
+  } else if (agentSessionState === 'diagnostics') {
+    const turnId = 'turn-agent-diagnostics';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [
+      {
+        callId: 'diagnostics-discover',
+        name: 'discover_tools',
+        arguments: { capabilityId: 'diagnostics' },
+        result: { ok: true, value: { matches: [{ descriptor: { name: 'diagnostics_query' } }] } },
+      },
+      {
+        callId: 'diagnostics-query',
+        name: 'diagnostics_query',
+        arguments: { process: 'core', command: 'composer.send', outcome: 'success', limit: 10 },
+        result: {
+          ok: true,
+          value: {
+            records: [42, 41, 40, 39].map((sequence) => ({
+              sequence,
+              process: 'core',
+              command: 'composer.send',
+              outcome: 'success',
+              phase: sequence % 2 === 0 ? 'command.completed' : 'action.completed',
+            })),
+            nextCursor: null,
+            hasMore: false,
+            droppedCount: 0,
+          },
+        },
+      },
+    ];
+    const items = [{
+      kind: 'user-message',
+      itemId: 'item-user-agent-diagnostics',
+      turnId,
+      content: 'Inspect successful Composer diagnostics without exposing request secrets.',
+      createdAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push(
+        {
+          kind: 'assistant-message',
+          itemId: `item-assistant-agent-diagnostics-${index}`,
+          turnId,
+          content: '',
+          reasoningContent: '',
+          partial: false,
+          createdAt: createdAt + index * 3 + 1,
+        },
+        {
+          kind: 'tool-call',
+          itemId: `item-tool-call-agent-diagnostics-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          arguments: step.arguments,
+          status: 'completed',
+          approval: null,
+          createdAt: createdAt + index * 3 + 2,
+        },
+        {
+          kind: 'tool-result',
+          itemId: `item-tool-result-agent-diagnostics-${index}`,
+          turnId,
+          callId: step.callId,
+          name: step.name,
+          result: step.result,
+          createdAt: createdAt + index * 3 + 3,
+        },
+      );
+    }
+    items.push({
+      kind: 'assistant-message',
+      itemId: 'item-assistant-agent-diagnostics-final',
+      turnId,
+      content: 'Four successful Composer diagnostic records are available in newest-first order.',
+      reasoningContent: '',
+      partial: false,
+      createdAt: createdAt + 7,
+    });
+    const turn = {
+      turnId,
+      userItemId: 'item-user-agent-diagnostics',
+      status: 'completed',
+      retryOfTurnId: null,
+      error: null,
+      createdAt,
+      updatedAt: createdAt + 8,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot,
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 8 },
+      items,
+      turns: [turn],
+      currentTurn: turn,
+      sequence: items.length,
+    };
   } else if (agentSessionState === 'approval-result') {
     const turnId = agentSessionSnapshot.turns[0].turnId;
     const createdAt = agentSessionSnapshot.summary.createdAt;

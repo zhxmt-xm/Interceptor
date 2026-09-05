@@ -559,3 +559,23 @@ test('Agent Composer Tool activity summarizes direct HTTP and TLS results', asyn
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
+
+test('Agent Diagnostics Tool activity summarizes records without exposing attributes', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture',
+    sidebar: 'collapsed',
+    agentPanel: 'open',
+    agentProvider: 'configured',
+    agentExecutionMode: 'ask',
+    agentToolTrace: 'diagnostics',
+  }));
+
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(2);
+  await expect(trace.locator('[data-tool-name="diagnostics_query"]'))
+    .toContainText('Records 4 · Completed · Dropped 0');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
+  await expect(page.locator('[data-parity="agent-transcript"]'))
+    .toContainText('Four successful Composer diagnostic records are available in newest-first order.');
+  expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});

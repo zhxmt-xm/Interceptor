@@ -30,6 +30,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                 ? 'Inspect the waiting request, verify HTTP Breakpoint controls, then continue it.'
               : toolTrace === 'composer'
                 ? 'Send the approved request and probe the local TLS endpoint.'
+              : toolTrace === 'diagnostics'
+                ? 'Inspect successful Composer diagnostics without exposing request secrets.'
               : toolTrace === 'rules'
                 ? state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                   ? 'Read the current Rule tree, then apply the approved replacement.'
@@ -53,6 +55,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                       ? <p>One request was waiting. HTTP Breakpoints were verified and <code>bp-agent-request</code> continued.</p>
                     : toolTrace === 'composer'
                       ? <p>The request returned <code>201</code>. TLS negotiated <code>h2</code> with one certificate.</p>
+                    : toolTrace === 'diagnostics'
+                      ? <p>Four successful Composer diagnostic records are available in newest-first order.</p>
                     : state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
                       ? <p>Revision <code>2</code> is now applied with the approved Rule effect.</p>
                       : <p>Revision <code>1</code> contains <code>1</code> enabled Rule with <code>1</code> captured hit.</p>}

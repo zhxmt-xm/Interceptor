@@ -384,6 +384,73 @@ describe('AgentToolService', () => {
     expect(tool(snapshot, 'composer_probe_connection').kind).toBe('change');
   });
 
+  it('discovers, discloses, and executes the Diagnostics query Tool', async () => {
+    const page = {
+      records: [{
+        timestamp: '2026-09-05T00:00:00.000Z',
+        sequence: 8,
+        level: 'info' as const,
+        process: 'core' as const,
+        requestId: 'request-1',
+        command: 'composer.send' as const,
+        phase: 'command.completed',
+        durationMs: 3,
+        outcome: 'success' as const,
+      }],
+      hasMore: false,
+      droppedCount: 0,
+    };
+    const coreRuntime = new FakeCoreRuntime();
+    coreRuntime.results.set('diagnostics.query', {
+      type: 'diagnostics.page',
+      payload: page,
+    });
+    const service = new AgentToolService(
+      coreRuntime,
+      new FakeToolCapabilitySettingsService(),
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+
+    const discovery = await tool(service.snapshot([]), 'discover_tools').execute(
+      { capabilityId: 'diagnostics' },
+      { abortSignal: new AbortController().signal },
+    );
+    expect(discovery).toMatchObject({
+      ok: true,
+      value: { matches: [{ descriptor: { name: 'diagnostics_query' } }] },
+    });
+    const snapshot = service.snapshot(discoveredHistory(discovery, 'diagnostics'));
+    expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
+      'discover_tools',
+      'diagnostics_query',
+    ]);
+    expect(tool(snapshot, 'diagnostics_query').kind).toBe('query');
+    const abortController = new AbortController();
+    await expect(tool(snapshot, 'diagnostics_query').execute({
+      process: 'core',
+      command: 'composer.send',
+      outcome: 'success',
+      limit: 10,
+    }, { abortSignal: abortController.signal })).resolves.toEqual({ ok: true, value: page });
+    expect(coreRuntime.commands).toEqual([{
+      type: 'diagnostics.query',
+      payload: {
+        cursor: undefined,
+        limit: 10,
+        process: 'core',
+        level: undefined,
+        outcome: 'success',
+        traceId: undefined,
+        command: 'composer.send',
+        minDurationMs: undefined,
+        maxDurationMs: undefined,
+      },
+    }]);
+    expect(coreRuntime.abortSignals).toEqual([abortController.signal]);
+  });
+
   it('executes both Composer Tools through CoreRuntime with cancellation', async () => {
     const coreRuntime = new FakeCoreRuntime();
     coreRuntime.results.set('composer.send', {

@@ -1,10 +1,10 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-04
+> 最后更新：2026-09-05
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入23/24，已验收真实Agent或MCP Tool Call覆盖23/24，owning package正向executor unit覆盖20/24；Playground
+> 代码已接入24/24，已验收真实Agent或MCP Tool Call覆盖24/24，owning package正向executor unit覆盖24/24；Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
@@ -50,8 +50,8 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 尚未实现的目标 Tool 只保留在本文档，不在产品 UI 中显示不可用开关。
 
 设计稿已落地首批24项共享registry fixture、五个feature分组、搜索、Agent/MCP双Switch、会话级`Ask/Auto`与
-Transcript内联问询卡；明暗基线见`design-vite/shots/*/agent-models/`。这是产品实现基线，不表示这些
-Tool已全部接入Desktop。
+Transcript内联问询卡；明暗基线见`design-vite/shots/*/agent-models/`。首批24项Tool现已全部接入Desktop，
+后续目标Tool仍须逐项通过相同的设计和验收门禁。
 
 每个已实现 Tool 显示两个独立 Switch：
 
@@ -91,8 +91,8 @@ interface ToolCapabilitySettingsRecord {
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入十个Capture Tool、三个Rules Tool、两个Composer Tool与
-   八个Breakpoints Tool；关闭项同时过滤Capability
+- Agent当前通过动态`AgentToolSource`接入十个Capture Tool、三个Rules Tool、两个Composer Tool、
+   八个Breakpoints Tool与一个Diagnostics Tool；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -172,7 +172,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | --- | --- | --- | --- |
 | `diagnostics_get_trace` | query | `getCoreTrace` | 产品已具备 |
 | `diagnostics_get_recent` | query | `getRecentDiagnostics` | 产品已具备 |
-| `diagnostics_query` | query | `queryDiagnostics` / `diagnostics.query` | 共享 registry + MCP adapter |
+| `diagnostics_query` | query | `queryDiagnostics` / `diagnostics.query` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `diagnostics_export` | change | `startDiagnosticsExport` / 原生 Save Dialog | 产品已具备 |
 
 ### 3.6 Settings
@@ -223,12 +223,12 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 
 | Tool | Agent接入 | 正向executor unit | 真实Agent/MCP调用 |
 | --- | --- | --- | --- |
-| `capture_get_proxy_status` | 已完成 | 待补 | Agent + MCP已完成 |
-| `capture_get_storage_status` | 已完成 | 待补 | Agent已完成 |
+| `capture_get_proxy_status` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `capture_get_storage_status` | 已完成 | 已完成 | Agent已完成 |
 | `capture_start_recording` | 已完成 | 已完成 | Agent已完成 |
 | `capture_stop_recording` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `capture_clear` | 已完成 | 已完成 | Agent已完成 |
-| `capture_list_exchanges` | 已完成 | 待补 | Agent已完成 |
+| `capture_list_exchanges` | 已完成 | 已完成 | Agent已完成 |
 | `capture_get_exchange` | 已完成 | 已完成 | Agent已完成 |
 | `capture_get_exchange_body` | 已完成 | 已完成 | Agent已完成 |
 | `capture_list_websocket_messages` | 已完成 | 已完成 | Agent已完成 |
@@ -246,7 +246,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `breakpoints_continue` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_forward_edited` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_drop` | 已完成 | 已完成 | Agent + MCP已完成 |
-| `diagnostics_query` | 待接入 | 待补 | 待完成 |
+| `diagnostics_query` | 已完成 | 已完成 | Agent已完成 |
 
 ## 5. 实施顺序与阶段门禁
 
@@ -285,7 +285,16 @@ Capture 39项真实Electron收敛：
    HTTP method/query/header/body、响应脱敏、Capture隔离、TLS成功/失败、两项撤权与双代零重放；owner integration
    覆盖H1/H2/TLS真实socket取消、连接释放与H2目标完整性`8/8`，TLS预取消零连接unit `1/1`。修复前`ffaf323f`同一workflow精确Red于
    composer discovery为空，当前`1/1` Green。
-7. **[待实现] Diagnostics**：接入`diagnostics_query`，先由真实产品动作产生记录，再验证过滤、脱敏与稳定顺序。
+7. **[已完成] Diagnostics**：`diagnostics_query`复用共享executor，首批Agent接线、owner正向unit与真实调用均达到
+   `24/24`。真实Composer UI创建两次请求，Agent按`core + composer.send + success`查询四条action/command记录；
+   验证严格递减sequence、配对trace、敏感URL/query不进入结果、Ask无审批、Settings撤权与恢复、重启零重放。
+   最终同一workflow在`401af972`精确Red于Diagnostics schema缺失，当前`1/1` Green；Red及Green两代均优雅销毁
+   Main/Core、释放8888并由宿主guard恢复副作用。Tools`66/66`、Desktop`458/458`、Runtime`122/122`、Core Protocol
+   `25/25`、MCP`32/32`、Playground`67/67`、design interaction`71/71`与全workspace typecheck Green；Proxy Core
+   `329/331`仅保留两项已登记chunked framing失败。Diagnostics明暗parity`18/18 matched / 0 missing / 0 flagged / 0px`；
+   完整Parity为`210 views / 1,474 targets / 1,442 matched / 32既有missing / 303既有flagged`。本轮同时补齐前一命名重构
+   遗留的旧Tool名称设计截图。Windows package、artifact audit（`1,294 files / 392,826,512 bytes`）、production audit
+   0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
@@ -295,7 +304,7 @@ Capture 39项真实Electron收敛：
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项，不阻塞内置Agent按上述顺序接线。下一项为Diagnostics一项。
+分别保留为外部阻塞或人工验收项。24项自动主线已完成，下一项为Playground 24项Developer人工矩阵。
 
 ## 6. 相关未完成验收
 
@@ -339,3 +348,24 @@ Capture 39项真实Electron收敛：
 - 最终24项业务Tool必须逐项拥有共享executor测试，并在所属能力workflow中至少执行一次真实Agent或MCP Tool Call；
    不把全部Tool塞入单个巨型workflow，按Capture、Rules、Composer、Breakpoints与Diagnostics feature定位失败；
 - Tool 的结果不得比正式产品入口拥有更多权限；文件路径、凭据与私钥继续遵守原有进程边界。
+
+## 9. 历史阶段证据
+
+以下记录从Handover已交付主线条目完整归档，计数与PID描述各阶段当时的验收结果，不覆盖第4节当前矩阵。
+前一命名重构的部分设计图未进入提交，本轮Diagnostics阶段已补齐新名称基线；不能以当时截图文件推断当前名称。
+
+### 9.1 Feature命名重构
+
+Tool协议已一次性改为`<feature>_<verb>[_<object>]`，Capability与Settings严格按Capture、Rules、Composer、Breakpoints、Diagnostics五个feature分组；完整目标目录为73项，73个名称唯一且零错组，GitHub Auth四个候选已删除，Updates归`updates_*`。旧名称无alias，旧Settings名称只丢弃不迁移。父提交`97120203`运行同一Settings workflow精确Red于完整旧24项名称；当前Settings三代workflow、Agent Capture/Rules/Composer/Breakpoints四条、MCP Desktop/Browser两条共`7/7` Green。Tools`62/62`、Desktop`457/457`、Runtime`122/122`、Core Protocol`25/25`、MCP`32/32`、Playground`67/67`、design interaction`70/70`与全workspace typecheck Green；Capture/Composer改名后的明暗四个Agent场景合计`38/38 matched / 0 missing / 0 flagged / 0px`，五个Settings feature组明暗`38/38 matched / 0 missing / 0 flagged / 最大0.6px`。稳定独占完整Parity为`208 views / 1,456 targets / 1,422 matched / 34既有missing / 305既有flagged`；Windows package、artifact audit（`1,294 files / 392,824,445 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。
+
+### 9.2 Composer
+
+Composer最终Tools`62/62`、Desktop`456/456`、Proxy Composer owner`9/9`（integration `8/8` + unit `1/1`）、design interaction`70/70`及全workspace typecheck Green；修复前`ffaf323f`真实Electron精确Red于composer discovery为空，当前`agent.tools.composer` `1/1` Green。Ask Deny/Allow、真实HTTP request/response与脱敏、Capture隔离、TLS成功/失败、Stop关闭socket、撤权和双代零重放均通过；两代Main/Core为`11120/16796`、`29936/34788`且`gracefulDestroyVerified=true`。明暗新增parity合计`20/20 matched / 0 missing / 0 flagged / 0px`，既有46张Agent设计图逐像素不变；完整Parity为`208 views / 1,446 targets / 1,412 matched / 34既有missing / 305既有flagged`。final screenshot经可见状态审计后attach，Composer/Breakpoints/MCP敏感证据workflow联合`3/3` Green；Windows package、artifact audit（`1,294 files / 392,823,830 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green；Proxy Core全量只保留已登记两项chunked framing债务失败。
+
+### 9.3 Breakpoints
+
+Breakpoints最终Tools`54/54`、Runtime`122/122`、MCP`32/32`、Desktop`454/454`、Core focused`11/11`、design interaction`69/69`及全workspace typecheck Green；Agent/MCP真实Electron联合`2/2`，修复前`32f2889a`分别精确Red于Agent discovery为空与MCP stale错误进入审批。Agent两代Main/Core为`31388/16116`、`29116/20280`，重启Model/HTTP/WebSocket消息增量0；MCP敏感证据强化后两代为`10760/20752`、`36460/9580`，Client断开与credential轮换不解队；四代均`gracefulDestroyVerified=true`。明暗新增parity合计`22/22 matched / 0 missing / 0 flagged / 0px`，既有44张Agent设计图逐像素不变；完整Parity为`206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。Windows package、artifact audit（`1,294 files / 392,817,170 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green；全仓unit只保留已登记的两项chunked framing债务失败。
+
+### 9.4 Rules
+
+Rules milestone最终Tools`43/43`、Runtime`121/121`、MCP`30/30`、Desktop`450/450`、Proxy Rules Green`95/95`、design interaction`68/68`及全workspace typecheck Green；Agent Rules、MCP Rules与Rules Import真实Electron联合`3/3`，共用Dialog回归`2/2`；Windows package、artifact audit（`1,294 files / 392,808,773 bytes`）、production audit 0漏洞与packaged smoke`1/1`（44.6秒）Green。Proxy Core完整Rules集仍只有已登记的两项chunked framing债务失败。完整Parity沿用`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`，Rules新增4 views为`30/30`、0 missing、0 flagged、0px。
