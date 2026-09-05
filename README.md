@@ -8,9 +8,10 @@ M0–M13 are complete; production signing/notarization and real macOS release ev
 
 The next release action is a real signed tag build with repository-external Windows and Apple credentials, followed by native macOS download/open validation.
 
-首批24项Tool已全部接入Agent与MCP，owner正向测试与真实Agent/MCP调用覆盖均为24/24。下一步是Playground
-24项Developer人工矩阵；Capture Lab真实Electron覆盖仍为2/39，不等同于39/39的Lab集成测试。
-逐项状态与证据见[Tool能力目录](architecture/features/tool-capabilities.md)。
+首批24项Tool已全部接入Agent与MCP，owner正向测试与真实Agent/MCP调用覆盖均为24/24；完整目标为24/73，
+余下49项待实现，恢复开发先做Settings只读查询组。Playground首批24项Developer人工矩阵独立待验收；
+Capture Lab真实Electron覆盖仍为2/39，不等同于39/39的Lab集成测试。
+逐项状态、后续计划与证据见[Tool能力目录](architecture/features/tool-capabilities.md)。
 
 Documentation is split to keep routine context small:
 

@@ -4,7 +4,7 @@
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**Runtime基础层、持久化Chat与首批24项Tool纵向流程已完成；下一阶段为Playground 24项Developer人工验收。**
+> 状态：**Runtime基础层、持久化Chat与首批24项Tool纵向流程已完成；完整目标为24/73，余下49项待实现，恢复后先做Settings只读查询组。Developer人工验收独立待办。**
 
 ## 术语与关系
 

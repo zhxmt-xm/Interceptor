@@ -132,7 +132,8 @@ MCP协议中的Tool名称按业务feature固定为`<feature>_<verb>[_<object>]`�
 
 当前共享registry实现24个Tool：11个query、13个change。MCP adapter完整接入24项；Agent/MCP真实调用已验收
 24/24，覆盖Capture、Rules、Composer、Breakpoints与Diagnostics，owner正向unit同为24/24。
-逐项证据见[tool-capabilities.md](tool-capabilities.md)；下一阶段为Playground 24项Developer人工验收。
+逐项证据见[tool-capabilities.md](tool-capabilities.md)。以上仅首批范围，完整目标为24/73，余下49项恢复后从Settings
+只读查询组开始；Playground首批24项Developer人工验收独立保留，不阻塞后续Tool开发。
 三个原先用布尔值或action参数混合正反意图的入口已经拆开：
 
 - `set_recording(recording)` → `capture_start_recording` / `capture_stop_recording`；

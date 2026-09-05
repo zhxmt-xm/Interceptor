@@ -3,12 +3,24 @@
 > 最后更新：2026-09-05
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标目录、首批24项共享registry与MCP adapter、Settings开关持久化已完成；Desktop Agent
-> 代码已接入24/24，已验收真实Agent或MCP Tool Call覆盖24/24，owning package正向executor unit覆盖24/24；Playground
+> 当前状态：完整目标共73项，目前实现并自动验收24/73，剩余49项待实现；首批24项共享registry、MCP adapter、
+> Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
+> 不代表Settings业务Tool已实现，后者当前为0/26。Playground
 > recipe为24/24、Developer人工结论为0/24；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
+
+| Feature | 目标 | 已实现并自动验收 | 待实现 |
+| --- | ---: | ---: | ---: |
+| Capture | 17 | 10 | 7 |
+| Rules | 5 | 3 | 2 |
+| Composer | 6 | 2 | 4 |
+| Breakpoints | 11 | 8 | 3 |
+| Diagnostics | 4 | 1 | 3 |
+| Settings | 26 | 0 | 26 |
+| Updates | 4 | 0 | 4 |
+| 合计 | 73 | 24 | 49 |
 
 ## 1. 唯一目录
 
@@ -250,8 +262,12 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 
 ## 5. 实施顺序与阶段门禁
 
-Tool 不按“只读产品版”和“完整产品版”切成两套。当前主线先完成既定Tool能力，再进行Playground人工验收和
-Capture 39项真实Electron收敛：
+Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
+2026-09-05用户明确继续规划余下49项，随后要求保存进度并暂停，稍后再开始执行；当前不启动新实现或测试。
+
+### 5.1 首批24项与独立验收
+
+以下保留首批已完成阶段和独立验收欠账；人工矩阵不是余下49项开发的前置条件，也不代表全量Tool已交付。
 
 1. **[已完成] 基础层**：设计能力列表与`ask`问询；建立24项共享registry、MCP adapter、Settings持久化、
    Agent渐进discovery；接入首批Capture query和`capture_stop_recording`，完成首个query/change真实纵向流程。
@@ -296,23 +312,60 @@ Capture 39项真实Electron收敛：
    遗留的旧Tool名称设计截图。Windows package、artifact audit（`1,294 files / 392,826,512 bytes`）、production audit
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
-   recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。
+   recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
+   目前只有24项recipe、0项Developer结论，不把尚未实现的49项计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
 
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
-同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到第9步。没有正式产品入口的Tool先补产品intent，再复用
+同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。24项自动主线已完成，下一项为Playground 24项Developer人工矩阵。
+分别保留为外部阻塞或人工验收项。首批24项自动验收已完成，下一个开发工作项是Settings只读查询组。
+
+### 5.2 余下49项计划（待启动）
+
+按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
+同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
+
+| 顺序 | Feature | 剩余数量 | 交付范围与顺序 |
+| --- | --- | ---: | --- |
+| 1 | Settings | 26 | 只读查询6项 → 系统代理启用/恢复2项 → TLS配置与解密开关4项 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
+| 2 | Rules | 2 | Export后Import；先收敛Import正式intent，真实导入输入必须由同一workflow经UI导出产生 |
+| 3 | Composer | 4 | Collection查询/替换2项，再Export/Import 2项；Import先补正式intent，不复制Renderer解析编排 |
+| 4 | Breakpoints | 3 | Continue queue、Drop queue、Continue rule；以真实HTTP/WebSocket pending验证作用范围、Ask/Auto和并发失效 |
+| 5 | Diagnostics | 3 | Trace与Recent查询2项，再脱敏Export；保持查询静默与日志权限边界 |
+| 6 | Capture | 7 | Transfer任务查询/取消2项、Body导出1项、HAR与Archive各自Export/Import共4项；复用正式任务与原生Dialog流程 |
+| 7 | Updates | 4 | 状态、检查、下载、打开；保持下载校验和原生安装器边界，不重新引入GitHub Auth Tool |
+
+需要原生Dialog或UAC的工作项仍须真实键鼠交互；若环境或权限确实阻塞，记录具体人工操作和恢复命令，不能
+伪造返回值、跳过验收或标记完成。跨平台专属步骤分别记录平台证据，不把Windows结果当成macOS已验收。
+
+### 5.3 恢复执行入口
+
+暂停基线为已推送的`07649e79`；余下49项尚无新增业务代码、测试或Red证据。本轮只记录计划，不执行计划。
+用户恢复后先处理Settings只读查询组的六项：
+
+- `settings_get_core_process_status`
+- `settings_get_system_proxy_status`
+- `settings_get_certificate_status`
+- `settings_get_tls_insecure_hosts`
+- `settings_get_tls_passthrough`
+- `settings_list_app_containers`
+
+先核对现有Main/Core owner与正式查询契约，再更新`architecture/features/settings.md`和对应真实E2E契约。
+Main拥有的状态继续由Main提供，Core已有查询复用Core命令；不因Tool接入复制业务逻辑或扩大Renderer权限。
+最先建立共享registry及Agent/MCP披露的聚焦测试，证明新名称当前缺失；随后建立真实Electron E2E Red，
+再实现共享executor、Agent/MCP接线和Settings第六个feature分组。验证只读无副作用、查询结果脱敏、撤权、
+重启恢复及销毁；若涉及可见UI，同步设计稿、15语言、截图和parity。这里只确定下一工作项，不预先锁定未验证的内部接口设计。
 
 ## 6. 相关未完成验收
 
-这些事项与24项Tool主线相关，但不计入Agent接线或真实Tool Call完成数：
+这些事项与Tool交付相关，但不计入全量73项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground 24项人工矩阵 | recipe 24/24；Developer结论0/24 | Tool自动主线24/24后逐项Pass/Fail/Blocked并导出脱敏报告 |
+| Playground人工矩阵 | 已实现首批recipe 24/24；Developer结论0/24 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不阻塞余下49项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |
