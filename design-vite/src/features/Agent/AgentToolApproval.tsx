@@ -5,6 +5,16 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  settings_enable_system_proxy: {
+    description: 'Route system traffic through Interceptor using the active proxy listener.',
+    effect: 'Route system traffic through Interceptor using the active proxy listener.\nSystem proxy supported: true\nSystem proxy enabled: false\nOwned by Interceptor: false',
+    result: 'Owned by Interceptor',
+  },
+  settings_restore_system_proxy: {
+    description: 'Restore the system proxy configuration saved before Interceptor took ownership.',
+    effect: 'Restore the system proxy configuration saved before Interceptor took ownership.\nSystem proxy supported: true\nSystem proxy enabled: true\nOwned by Interceptor: true',
+    result: 'System proxy restored',
+  },
   capture_start_recording: {
     description: 'Resume capture in the current session.',
     effect: 'Recording resumes on 127.0.0.1:8888.',
@@ -82,7 +92,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>Parameters</dt><dd>No parameters</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') ? 'Arguments' : 'Parameters'}</dt><dd>No parameters</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

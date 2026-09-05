@@ -856,6 +856,8 @@ export const fakeInterceptorFixture = {
             { name: 'settings_get_tls_insecure_hosts', title: 'Insecure TLS hosts', description: 'Read configured hosts that skip upstream TLS certificate verification.', kind: 'query' },
             { name: 'settings_get_tls_passthrough', title: 'TLS passthrough settings', description: 'Read TLS passthrough host patterns and their current revision.', kind: 'query' },
             { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
+            { name: 'settings_enable_system_proxy', title: 'Enable system proxy', description: 'Route system traffic through Interceptor using the active proxy listener.', kind: 'change' },
+            { name: 'settings_restore_system_proxy', title: 'Restore system proxy', description: 'Restore the system proxy configuration saved before Interceptor took ownership.', kind: 'change' },
           ],
         },
       ],
@@ -1811,7 +1813,9 @@ export function installFakeInterceptor({
     ];
     const toolSteps = [{
       callId: 'settings-discover', name: 'discover_tools', arguments: { capabilityId: 'settings' },
-      result: { ok: true, value: { matches: queries.map((query) => ({ descriptor: { name: query.name } })) } },
+      result: { ok: true, value: { matches: [
+        ...queries.map((query) => query.name), 'settings_enable_system_proxy', 'settings_restore_system_proxy',
+      ].map((name) => ({ descriptor: { name } })) } },
     }, ...queries.map((query) => ({
       callId: query.name, name: query.name, arguments: {}, result: { ok: true, value: query.value },
     }))];
@@ -1947,6 +1951,52 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('system-proxy-')) {
+    const restoring = agentSessionState.includes('-restore-');
+    const allowed = agentSessionState.endsWith('-allowed');
+    const name = restoring ? 'settings_restore_system_proxy' : 'settings_enable_system_proxy';
+    const description = restoring
+      ? 'Restore the system proxy configuration saved before Interceptor took ownership.'
+      : 'Route system traffic through Interceptor using the active proxy listener.';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [
+      ...agentSessionSnapshot.items,
+      {
+        kind: 'assistant-message', itemId: 'item-assistant-system-proxy', turnId,
+        content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+      },
+      {
+        kind: 'tool-call', itemId: 'item-tool-call-system-proxy', turnId,
+        callId: 'call-system-proxy', name, arguments: {}, status: allowed ? 'completed' : 'running',
+        approval: {
+          approvalId: 'approval-system-proxy', status: allowed ? 'allowed' : 'pending', description,
+          effect: `${description}\nSystem proxy supported: true\nSystem proxy enabled: ${restoring}\nOwned by Interceptor: ${restoring}`,
+          effectMetadata: { supported: true, enabled: restoring, owned: restoring },
+        },
+        createdAt: createdAt + 2,
+      },
+    ];
+    if (allowed) items.push({
+      kind: 'tool-result', itemId: 'item-tool-result-system-proxy', turnId,
+      callId: 'call-system-proxy', name,
+      result: {
+        ok: true,
+        value: restoring
+          ? { restored: true, status: { supported: true, owned: false, enabled: false } }
+          : { supported: true, owned: true, enabled: true },
+      },
+      createdAt: createdAt + 3,
+    });
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: allowed ? 'completed' : 'waiting-for-tool-approval', updatedAt: createdAt + 4,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState === 'approval-result') {
     const turnId = agentSessionSnapshot.turns[0].turnId;

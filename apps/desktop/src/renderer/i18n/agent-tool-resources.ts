@@ -1,6 +1,8 @@
 import type { LanguageId } from './languages';
 
 export const agentToolEnglishMessages = {
+  'agent.tools.proxyRestored': 'System proxy restored',
+  'agent.tools.proxyRestoreSkipped': 'No change · {{reason}}',
   'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
   'agent.tools.tlsHosts': 'Hosts {{count}}',
   'agent.tools.tlsPassthrough': 'Revision {{revision}} · Hosts {{count}}',
@@ -52,6 +54,8 @@ export type AgentToolMessageCatalog = Record<AgentToolMessageKey, string>;
 export const agentToolMessages = {
   en: agentToolEnglishMessages,
   'zh-CN': {
+    'agent.tools.proxyRestored': '系统代理已恢复',
+    'agent.tools.proxyRestoreSkipped': '未更改 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '主机 {{count}} 个',
     'agent.tools.tlsPassthrough': '版本 {{revision}} · 主机 {{count}} 个',
@@ -97,6 +101,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': '不是 gRPC',
   },
   'zh-TW': {
+    'agent.tools.proxyRestored': '系統代理已還原',
+    'agent.tools.proxyRestoreSkipped': '未變更 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '主機 {{count}} 個',
     'agent.tools.tlsPassthrough': '版本 {{revision}} · 主機 {{count}} 個',
@@ -142,6 +148,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': '不是 gRPC',
   },
   ja: {
+    'agent.tools.proxyRestored': 'システムプロキシを復元しました',
+    'agent.tools.proxyRestoreSkipped': '変更なし · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'ホスト {{count}} 件',
     'agent.tools.tlsPassthrough': 'リビジョン {{revision}} · ホスト {{count}} 件',
@@ -187,6 +195,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'gRPC ではありません',
   },
   ko: {
+    'agent.tools.proxyRestored': '시스템 프록시 복원됨',
+    'agent.tools.proxyRestoreSkipped': '변경 없음 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '호스트 {{count}}개',
     'agent.tools.tlsPassthrough': '버전 {{revision}} · 호스트 {{count}}개',
@@ -232,6 +242,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'gRPC 아님',
   },
   de: {
+    'agent.tools.proxyRestored': 'Systemproxy wiederhergestellt',
+    'agent.tools.proxyRestoreSkipped': 'Keine Änderung · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
     'agent.tools.tlsPassthrough': 'Revision {{revision}} · Hosts {{count}}',
@@ -277,6 +289,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Kein gRPC',
   },
   fr: {
+    'agent.tools.proxyRestored': 'Proxy système restauré',
+    'agent.tools.proxyRestoreSkipped': 'Aucun changement · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hôtes {{count}}',
     'agent.tools.tlsPassthrough': 'Révision {{revision}} · Hôtes {{count}}',
@@ -322,6 +336,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Pas de gRPC',
   },
   es: {
+    'agent.tools.proxyRestored': 'Proxy del sistema restaurado',
+    'agent.tools.proxyRestoreSkipped': 'Sin cambios · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
     'agent.tools.tlsPassthrough': 'Revisión {{revision}} · Hosts {{count}}',
@@ -367,6 +383,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'No es gRPC',
   },
   it: {
+    'agent.tools.proxyRestored': 'Proxy di sistema ripristinato',
+    'agent.tools.proxyRestoreSkipped': 'Nessuna modifica · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Host {{count}}',
     'agent.tools.tlsPassthrough': 'Revisione {{revision}} · Host {{count}}',
@@ -412,6 +430,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Non è gRPC',
   },
   'pt-BR': {
+    'agent.tools.proxyRestored': 'Proxy do sistema restaurado',
+    'agent.tools.proxyRestoreSkipped': 'Sem alterações · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
     'agent.tools.tlsPassthrough': 'Revisão {{revision}} · Hosts {{count}}',
@@ -457,6 +477,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Não é gRPC',
   },
   ru: {
+    'agent.tools.proxyRestored': 'Системный прокси восстановлен',
+    'agent.tools.proxyRestoreSkipped': 'Без изменений · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Хосты {{count}}',
     'agent.tools.tlsPassthrough': 'Ревизия {{revision}} · Хосты {{count}}',
@@ -502,6 +524,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Не gRPC',
   },
   nl: {
+    'agent.tools.proxyRestored': 'Systeemproxy hersteld',
+    'agent.tools.proxyRestoreSkipped': 'Geen wijziging · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
     'agent.tools.tlsPassthrough': 'Revisie {{revision}} · Hosts {{count}}',
@@ -547,6 +571,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'Geen gRPC',
   },
   pl: {
+    'agent.tools.proxyRestored': 'Przywrócono serwer proxy systemu',
+    'agent.tools.proxyRestoreSkipped': 'Bez zmian · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosty {{count}}',
     'agent.tools.tlsPassthrough': 'Rewizja {{revision}} · Hosty {{count}}',
@@ -592,6 +618,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'To nie jest gRPC',
   },
   tr: {
+    'agent.tools.proxyRestored': 'Sistem proxy ayarları geri yüklendi',
+    'agent.tools.proxyRestoreSkipped': 'Değişiklik yok · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Ana bilgisayar {{count}}',
     'agent.tools.tlsPassthrough': 'Revizyon {{revision}} · Ana bilgisayar {{count}}',
@@ -637,6 +665,8 @@ export const agentToolMessages = {
     'agent.tools.notGrpc': 'gRPC değil',
   },
   uk: {
+    'agent.tools.proxyRestored': 'Системний проксі відновлено',
+    'agent.tools.proxyRestoreSkipped': 'Без змін · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Хости {{count}}',
     'agent.tools.tlsPassthrough': 'Ревізія {{revision}} · Хости {{count}}',

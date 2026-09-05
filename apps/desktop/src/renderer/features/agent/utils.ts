@@ -38,6 +38,7 @@ interface MutableAgentToolBlock {
 export type AgentToolResultSummary =
   | { readonly kind: 'coreProcess'; readonly state: string; readonly pid: number | null }
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
+  | { readonly kind: 'systemProxyRestore'; readonly restored: boolean; readonly reason?: string }
   | { readonly kind: 'certificateStatus'; readonly present: boolean; readonly trusted: boolean; readonly mitmEnabled: boolean }
   | { readonly kind: 'tlsHosts'; readonly count: number }
   | { readonly kind: 'tlsPassthrough'; readonly revision: number; readonly count: number }
@@ -196,11 +197,17 @@ export function summarizeAgentToolResult(
       && (typeof value['pid'] === 'number' || value['pid'] === null)) {
       return { kind: 'coreProcess', state: value['state'], pid: value['pid'] };
     }
-    if (name === 'settings_get_system_proxy_status'
+    if ((name === 'settings_get_system_proxy_status' || name === 'settings_enable_system_proxy')
       && typeof value['supported'] === 'boolean'
       && typeof value['owned'] === 'boolean'
       && typeof value['enabled'] === 'boolean') {
       return { kind: 'systemProxy', supported: value['supported'], owned: value['owned'], enabled: value['enabled'] };
+    }
+    if (name === 'settings_restore_system_proxy' && typeof value['restored'] === 'boolean') {
+      return {
+        kind: 'systemProxyRestore', restored: value['restored'],
+        ...(typeof value['reason'] === 'string' ? { reason: value['reason'] } : {}),
+      };
     }
     if (name === 'settings_get_certificate_status'
       && typeof value['present'] === 'boolean'

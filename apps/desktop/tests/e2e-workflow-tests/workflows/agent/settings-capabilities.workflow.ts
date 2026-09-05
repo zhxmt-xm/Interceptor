@@ -57,6 +57,8 @@ const TOOL_NAMES = [
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
+  'settings_enable_system_proxy',
+  'settings_restore_system_proxy',
 ] as const;
 
 const TOOL_GROUP_IDS = ['capture', 'rules', 'composer', 'breakpoints', 'diagnostics', 'settings'] as const;
@@ -168,7 +170,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(60);
+    await expect(switches).toHaveCount(64);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -237,7 +239,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
 
     // 重启二：空关闭集不依赖文件存在，24项必须再次全部开启。
-    // Restart two: an empty disabled set needs no file and all 30 Tools must return enabled.
+    // Restart two: an empty disabled set needs no file and all 32 Tools must return enabled.
     await closeGeneration(relaunchedApp, testInfo);
     activeApp = null;
     const secondRelaunch = await LocalElectronApplicationDriver.launch(testInfo, {
@@ -251,7 +253,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(60);
+    await expect(restoredSwitches).toHaveCount(64);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

@@ -230,7 +230,7 @@ function discoveredNames(result: Readonly<Record<string, unknown>>): string[] {
     isRecord(match) && isRecord(match.descriptor) && typeof match.descriptor.name === 'string'
       ? [match.descriptor.name]
       : []
-  ));
+  )).filter((name) => SETTINGS_QUERY_NAMES.some((expected) => expected === name));
 }
 
 test('settings.tools.readonly queries six real Settings owners without approval', async ({
@@ -307,7 +307,9 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await expect(getByAutomationId(browserPage, 'playground.navigation.mcp'))
       .toHaveAttribute('data-connection-state', 'connected');
     await getByAutomationId(browserPage, 'playground.catalog.search').fill('settings_');
-    await expect(browserPage.locator('[data-automation-id^="playground.mcp.tool.settings_"]')).toHaveCount(6);
+    const queryTools = browserPage.locator('[data-automation-id^="playground.mcp.tool.settings_"]')
+      .filter({ has: browserPage.locator('[data-kind="query"]') });
+    await expect(queryTools).toHaveCount(6);
     const mcpValues = new Map<string, Readonly<Record<string, unknown>>>();
     for (const name of SETTINGS_QUERY_NAMES) {
       mcpValues.set(name, await callPlaygroundTool(browserPage, name));
@@ -376,7 +378,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
       expect(rejectedResponse.error?.code).toBe(-32602);
     }
     await getByAutomationId(browserPage, 'playground.mcp.refresh').click();
-    await expect(browserPage.locator('[data-automation-id^="playground.mcp.tool.settings_"]')).toHaveCount(0);
+    await expect(queryTools).toHaveCount(0);
     await browser.close();
     browser = null;
     await playgroundServer.close();

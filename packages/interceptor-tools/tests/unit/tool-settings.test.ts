@@ -36,6 +36,8 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_get_tls_insecure_hosts', 'Insecure TLS hosts', 'Read configured hosts that skip upstream TLS certificate verification.'],
   ['settings_get_tls_passthrough', 'TLS passthrough settings', 'Read TLS passthrough host patterns and their current revision.'],
   ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
+  ['settings_enable_system_proxy', 'Enable system proxy', 'Route system traffic through Interceptor using the active proxy listener.'],
+  ['settings_restore_system_proxy', 'Restore system proxy', 'Restore the system proxy configuration saved before Interceptor took ownership.'],
 ] as const;
 
 describe('Tool Settings projection', () => {
@@ -52,7 +54,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(30);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(32);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

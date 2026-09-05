@@ -574,6 +574,27 @@ Agent 与 MCP 默认开放，独立开关立即控制披露与执行，query 不
 Main/Core/Worker 销毁、8888 释放、完整 WinINet 与共享 journal 恢复。详见
 [Settings E2E 契约](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-readonly)。
 
+### 7.2 系统代理 Tool 契约（已实现）
+
+`settings_enable_system_proxy`与`settings_restore_system_proxy`是两个独立change意图，只接受空对象。
+UI与Tool共用Main正式编排、SystemProxyOperationQueue和三字段journal；不接收Model提供的host、port、
+proxy snapshot或路径，不改变冷启动自动接管。
+
+- Enable先确认Core listener可用，再接管系统代理、同步检测到的upstream与探活；Restore按现有ownership
+    比较恢复首次original并同步直连状态。未owned或外部修改仍返回正式`restored/reason`，不反抢系统设置。
+- Ask执行前以公开supported/enabled/owned生成动态影响；Deny不执行写命令。Auto只省略应用审批，保留
+    OS权限。Agent/MCP开关分别控制披露与执行，关闭后旧披露不能绕过授权。
+- 结果沿用只读Tool的状态白名单；Restore额外返回`restored`与可选`reason`。审批、结果、错误、日志及
+    trace不记录完整WinINet、代理地址/凭据、bypass或PAC。
+- 排队尚未开始的操作可取消且不得写OS；开始OS变更后必须完成正式原子编排，不能在半途留下代理与Core
+    upstream不一致。退出仍先排空已接受操作，再执行最终Restore。
+- 验收通过真实Agent Ask Deny/Allow与Auto切换；比较完整WinINet与首次journal original只在内存中进行。
+    真正的Restore之后再Enable必须沿同一产品路径重建journal，不测试注入代理配置。
+
+执行顺序为unit/integration Red → `settings.tools.system-proxy`真实Electron Red → 实现 → 同组Green。
+验证两项逐一撤权、恢复结果摘要、正常退出与同profile重启Model零重放、Main/Core/Worker销毁、8888释放、
+完整宿主副作用恢复。已有只读六项workflow作为共享Main host和授权回归。
+
 ## 8. 安全边界汇总
 
 | 边界 | 保证 |

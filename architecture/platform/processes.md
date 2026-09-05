@@ -84,10 +84,12 @@ flowchart LR
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。
 `AgentToolService`把共享registry、Tool开关与`CoreRuntime`组合成Capability Index、`discover_tools`，以及按
-Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组的业务Tool；当前已接入六个feature共30项。
-共享host的`invoke`只执行Core命令，`invokeMain`只执行typed Main命令。Settings的四项Main状态查询经
+Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组的业务Tool；当前数量见
+[唯一能力目录](../features/tool-capabilities.md)。共享host的`invoke`只执行Core命令，`invokeMain`只执行typed Main命令。Settings的四项Main状态查询经
 `DesktopApplication`既有Action Gate进入CoreRuntime/SystemProxy/Certificate/AppContainer正式owner，
 两项TLS查询沿用Core RPC；Tool结果白名单不包含本机路径、私钥或完整系统代理配置。
+系统代理Enable/Restore由UI与Tool共用Main语义入口和SystemProxyOperationQueue，OS写入前检查取消，
+已开始的原子操作完成upstream同步后才退出。冷启动自动接管及退出恢复路径不变。
 每次Model Call与每项Tool执行前都重取
 快照；产生当前响应时披露的集合继续约束该响应，执行时已关闭的Tool返回`unknown_tool`，不触达Core。
 业务Tool的`AbortSignal`原样进入Core RPC取消链路。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI

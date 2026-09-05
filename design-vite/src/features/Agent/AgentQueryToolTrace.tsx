@@ -40,7 +40,7 @@ const TOOL_STEPS = {
     { name: 'diagnostics_query', arguments: 'process: core · command: composer.send · outcome: success · limit: 10', result: 'Records 4 · Completed · Dropped 0' },
   ],
   settings: [
-    { name: 'discover_tools', arguments: 'capabilityId: settings', result: '6 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: settings', result: '8 tools discovered' },
     { name: 'settings_get_core_process_status', arguments: 'No parameters', result: 'Core running · PID 42' },
     { name: 'settings_get_system_proxy_status', arguments: 'No parameters', result: 'Owned by Interceptor' },
     { name: 'settings_get_certificate_status', arguments: 'No parameters', result: 'Not generated · HTTPS Disabled' },

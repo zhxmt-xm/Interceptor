@@ -1,4 +1,10 @@
 export interface MainToolResultPayloads {
+  'settings.system-proxy.enable': MainToolResultPayloads['settings.system-proxy.status'];
+  'settings.system-proxy.restore': {
+    restored: boolean;
+    reason?: 'not-owned' | 'externally-modified';
+    status: MainToolResultPayloads['settings.system-proxy.status'];
+  };
   'settings.core-process.status': {
     state: 'stopped' | 'starting' | 'running' | 'unresponsive' | 'restarting' | 'stopping';
     pid: number | null;

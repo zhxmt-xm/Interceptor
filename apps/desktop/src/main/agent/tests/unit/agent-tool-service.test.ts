@@ -112,8 +112,8 @@ describe('AgentToolService', () => {
       'settings_get_tls_passthrough',
       'settings_list_app_containers',
     ];
-    expect(snapshot.tools.map((candidate) => candidate.descriptor.name))
-      .toEqual(['discover_tools', ...names]);
+    expect(snapshot.tools.map((candidate) => candidate.descriptor.name).filter((name) => names.includes(name)))
+      .toEqual(names);
     for (const name of names) {
       const query = tool(snapshot, name);
       expect(query.kind).toBe('query');
@@ -127,7 +127,7 @@ describe('AgentToolService', () => {
 
     fakeToolCapabilitySettingsService.agentDisabledToolNames = names;
     expect(agentToolService.snapshot(discoveredHistory(discovery, 'settings')).tools
-      .map((candidate) => candidate.descriptor.name)).toEqual(['discover_tools']);
+      .map((candidate) => candidate.descriptor.name).filter((name) => names.includes(name))).toEqual([]);
     for (const name of names) {
       await expect(tool(snapshot, name).execute({}, { abortSignal })).resolves.toMatchObject({
         ok: false, error: { code: 'unknown_tool' },

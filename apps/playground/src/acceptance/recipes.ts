@@ -128,6 +128,14 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Open Settings > App Containers on Windows and note loopback access states.'],
     ['SIDs, names and exemption states match Settings without paths.', 'No exemption changes or UAC occur; unsupported platforms report supported=false.'],
   ),
+  settings_enable_system_proxy: recipe(
+    ['Restore the system proxy through Settings > Proxy.', 'Keep this MCP Client in Ask mode.'],
+    ['Deny leaves the original system configuration unchanged.', 'Allow takes ownership through the same product command and updates Settings.', 'Auto skips only approval; restore the original settings after inspection.'],
+  ),
+  settings_restore_system_proxy: recipe(
+    ['Let Interceptor take system proxy ownership and keep this MCP Client in Ask mode.'],
+    ['Deny keeps ownership unchanged.', 'Allow restores the original system proxy and removes the ownership journal.', 'A repeated call returns restored=false with reason=not-owned without changing system settings.'],
+  ),
 } satisfies Readonly<Record<CurrentToolName, AcceptanceRecipe>>;
 
 export const ACCEPTANCE_RECIPES: Readonly<Record<string, AcceptanceRecipe>> =

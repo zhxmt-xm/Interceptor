@@ -12,9 +12,9 @@
 | Diagnostics | [diagnostics.md](diagnostics.md) | 5 |
 | Agent | [agent.md](agent.md) | 13 |
 | MCP | [mcp.md](mcp.md) | 3 |
-| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 16 |
+| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 17 |
 
-总计：104 条 workflow 契约。
+总计：105 条 workflow 契约。
 
 ## 文档约定
 

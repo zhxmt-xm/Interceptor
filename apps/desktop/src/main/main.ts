@@ -43,6 +43,7 @@ import {
   type McpDesktopStatus,
   type RulesChanged,
   type SystemProxyStatus as DesktopSystemProxyStatus,
+  type SystemProxyRestoreResult,
   type UpdateStatus,
   type BreakpointBodyFile,
 } from '../shared/desktop-api';
@@ -604,25 +605,61 @@ class DesktopApplication {
   ): Promise<MainToolResultForCommand<Command>> {
     return this.applicationActionGate.run(async () => {
       abortSignal.throwIfAborted();
-      const queries: {
+      const commands: {
         [CommandType in keyof MainToolResultPayloads]: () => (
           MainToolResultPayloads[CommandType] | Promise<MainToolResultPayloads[CommandType]>
         );
       } = {
         'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
         'settings.system-proxy.status': () => this.getSystemProxyStatus(),
+        'settings.system-proxy.enable': () => this.enableSystemProxy(abortSignal),
+        'settings.system-proxy.restore': () => this.restoreSystemProxy(abortSignal),
         'settings.certificate.status': () => this.buildCertificateInfo(),
         'settings.app-containers.list': () => this.listAppContainers(),
       };
-      const queryType: Command['type'] = command.type;
-      const payload = await queries[queryType]();
+      const commandType: Command['type'] = command.type;
+      const payload = await commands[commandType]();
       abortSignal.throwIfAborted();
-      return { type: queryType, payload };
+      return { type: commandType, payload };
     });
   }
 
   private async getSystemProxyStatus(): Promise<DesktopSystemProxyStatus> {
     return this.withUpstreamProxy(await this.requireSystemProxyService().status());
+  }
+
+  private enableSystemProxy(abortSignal?: AbortSignal): Promise<DesktopSystemProxyStatus> {
+    return this.runMainAction('main.system-proxy.enable', () =>
+      this.systemProxyOperationQueue.run(async () => {
+        abortSignal?.throwIfAborted();
+        const proxyStatus = await this.coreRuntime.request({
+          type: 'proxy.status', payload: {},
+        }, abortSignal === undefined ? {} : { abortSignal });
+        const { listening, host, port } = proxyStatus.payload;
+        if (!listening || !host || !port) {
+          throw new Error('Start capture before enabling the system proxy.');
+        }
+        abortSignal?.throwIfAborted();
+        const systemProxyService = this.requireSystemProxyService();
+        const systemProxyStatus = await systemProxyService.enable(host, port);
+        const detectedUpstream = systemProxyService.detectedUpstream();
+        this.detectedUpstreamProxy = detectedUpstream;
+        await this.applyUpstreamProxy(detectedUpstream);
+        if (detectedUpstream) this.upstreamProbe.start(detectedUpstream.proxyUrl);
+        return this.withUpstreamProxy(systemProxyStatus);
+      }));
+  }
+
+  private restoreSystemProxy(abortSignal?: AbortSignal): Promise<SystemProxyRestoreResult> {
+    return this.runMainAction('main.system-proxy.restore', () =>
+      this.systemProxyOperationQueue.run(async () => {
+        abortSignal?.throwIfAborted();
+        const result = await this.requireSystemProxyService().restore();
+        this.upstreamProbe.stop();
+        this.detectedUpstreamProxy = null;
+        await this.applyUpstreamProxy(null);
+        return { ...result, status: this.withUpstreamProxy(result.status) };
+      }));
   }
 
   private async listAppContainers(): Promise<AppContainerAccessSnapshot> {
@@ -807,40 +844,12 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.system-proxy.enable', () =>
-        this.systemProxyOperationQueue.run(async () => {
-          const proxy = await this.coreRuntime.request({
-            type: 'proxy.status',
-            payload: {},
-          });
-          const { listening, host, port } = proxy.payload;
-          if (!listening || !host || !port) {
-            throw new Error('Start capture before enabling the system proxy.');
-          }
-          const service = this.requireSystemProxyService();
-          const status = await service.enable(host, port);
-          // 接管后所有流量都走 Interceptor，若仍直连源站，必须经公司 PAC / VPN /
-          // 认证代理才能出网的环境会在接管期间完全断网，因此把原有配置接到上游。
-          const detected = service.detectedUpstream();
-          this.detectedUpstreamProxy = detected;
-          await this.applyUpstreamProxy(detected);
-          if (detected) {
-            this.upstreamProbe.start(detected.proxyUrl);
-          }
-          return this.withUpstreamProxy(status);
-        }));
+      return this.enableSystemProxy();
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyRestore, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.system-proxy.restore', () =>
-        this.systemProxyOperationQueue.run(async () => {
-          const result = await this.requireSystemProxyService().restore();
-          this.upstreamProbe.stop();
-          this.detectedUpstreamProxy = null;
-          await this.applyUpstreamProxy(null);
-          return { ...result, status: this.withUpstreamProxy(result.status) };
-        }));
+      return this.restoreSystemProxy();
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerList, async (event) => {

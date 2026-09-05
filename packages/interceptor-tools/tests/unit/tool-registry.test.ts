@@ -42,6 +42,8 @@ const TOOL_NAMES = [
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
+  'settings_enable_system_proxy',
+  'settings_restore_system_proxy',
 ] as const;
 
 class FakeToolHost implements InterceptorToolHost {
@@ -147,11 +149,11 @@ async function execute(
 }
 
 describe('Interceptor Tool registry', () => {
-  it('registers the exact 30 transport-neutral Tools in stable order', () => {
+  it('registers the exact 32 transport-neutral Tools in stable order', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(30);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(32);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

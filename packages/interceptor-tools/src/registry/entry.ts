@@ -45,6 +45,7 @@ import {
 } from '../rules/entry';
 import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
 import { buildSettingsQueryTools } from '../settings/queries';
+import { buildSystemProxyTools } from '../settings/system-proxy';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -89,7 +90,7 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
   {
     id: 'settings',
     title: 'Settings',
-    description: 'Read Core lifecycle, system proxy, certificates, TLS configuration, and AppContainer access.',
+    description: 'Inspect Core, certificates, TLS, and AppContainer access; enable or restore the system proxy.',
   },
 ];
 
@@ -125,6 +126,8 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
+  'settings_enable_system_proxy',
+  'settings_restore_system_proxy',
 ] as const;
 
 /** Builds the complete set of currently implemented transport-neutral Tools. */
@@ -135,6 +138,7 @@ export function buildInterceptorToolRegistry(
     ...buildQueryTools(interceptorToolRedactor),
     ...buildChangeTools(interceptorToolRedactor),
     ...buildSettingsQueryTools(),
+    ...buildSystemProxyTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

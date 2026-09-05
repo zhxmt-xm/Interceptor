@@ -27,9 +27,10 @@ describe('Settings read-only Tools', () => {
     const registry = buildInterceptorToolRegistry();
     const catalog = buildInterceptorToolCatalog(registry);
 
-    expect(registry.filter((tool) => tool.capabilityId === 'settings').map((tool) => tool.name))
+    expect(registry.filter((tool) => tool.capabilityId === 'settings' && tool.kind === 'query').map((tool) => tool.name))
       .toEqual(SETTINGS_QUERY_NAMES);
-    expect(catalog.discover({ capabilityId: 'settings' }).map((match) => match.descriptor.name))
+    expect(catalog.discover({ capabilityId: 'settings' }).map((match) => match.descriptor.name)
+      .filter((name) => SETTINGS_QUERY_NAMES.some((expected) => expected === name)))
       .toEqual(SETTINGS_QUERY_NAMES);
   });
 

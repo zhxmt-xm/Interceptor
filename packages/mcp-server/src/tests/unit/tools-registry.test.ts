@@ -105,6 +105,8 @@ describe('McpToolRegistry', () => {
       'settings_get_tls_insecure_hosts',
       'settings_get_tls_passthrough',
       'settings_list_app_containers',
+      'settings_enable_system_proxy',
+      'settings_restore_system_proxy',
     ]);
 
     expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });

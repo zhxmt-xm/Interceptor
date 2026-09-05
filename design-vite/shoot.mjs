@@ -268,6 +268,20 @@ for (const theme of ['light', 'dark']) {
     appSize: { width: 1600, height: 900 },
     state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentExecutionMode: 'ask', agentToolTrace: 'settings' },
   });
+  for (const action of ['enable', 'restore']) {
+    for (const approval of ['pending', 'allowed']) {
+      shots.push({
+        feature: 'agent-models', theme,
+        variant: `panel-system-proxy-${action}-${approval}`,
+        appSize: { width: 1600, height: 900 },
+        state: {
+          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+          agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: approval,
+          agentToolApprovalName: `settings_${action}_system_proxy`,
+        },
+      });
+    }
+  }
   shots.push({
     feature: 'agent-models',
     theme,

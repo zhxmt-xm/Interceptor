@@ -50,6 +50,43 @@ Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner �
 - 最终两代Main/Core为`12888/21524`、`41644/22360`，均`gracefulDestroyVerified=true`、8888释放，
 	guard验证完整WinINet/journal恢复。证据已在运行package/smoke前独立归档。
 
+<a id="settings-tools-system-proxy"></a>
+## `settings.tools.system-proxy`
+
+**状态**：passed；unit / integration 与真实 Electron Red/Green、销毁证据已验证
+**策略**：os-side-effect；Windows；host-safety-guard；两代真实 Electron
+
+### Steps
+
+1. 创建空profile与evidence，由外层guard保存宿主WinINet/journal/进程事实；启动真实Electron并确认
+	冷启动自动接管，首次journal original只在内存中用于后续比较。通过Settings UI配置本地Model Provider。
+2. 默认Ask Chat发现Settings两项系统代理Tool；请求Restore，确认动态影响与owned事实一致，Deny后
+	WinINet/journal逐字段不变，Tool Result为`tool_denied`。
+3. 再次请求Restore并Allow；返回`restored=true`，系统设置精确等于首次original，journal清除，产品UI
+	ownership同步为未接管。继续查询状态不能悄悄重新接管。
+4. 请求Enable并Deny，系统设置保持original；再次请求并Allow，确认proxy已owned、新journal.original
+	仍等于首次original，Core listener与upstream同步，公开结果不含原始系统配置。
+5. 切换Auto，依次Restore、再次Restore和Enable；两项均无审批，重复Restore返回`restored=false /
+	reason=not-owned`，最终恢复owned，不用null或同一布尔入口表达正反操作。
+6. 通过Settings分别关闭两项Agent开关，旧Chat直接请求两项均返回`unknown_tool`且OS/journal不变；
+	关闭两项MCP开关并确认两列独立状态保存，不改底层系统代理。
+7. 隐藏敏感Transcript，保存trace/evidence后正常退出第一代；检查全部进程和8888销毁、完整宿主恢复。
+	使用同profile启动第二代，冷启动仍自动接管，但Model请求增量0，历史Tool不重放，两项双列关闭状态保留。
+8. 保存第二代证据并正常退出，验证两代`gracefulDestroyVerified=true`、完整WinINet/journal恢复与8888释放；
+	清理profile。原始快照、Model文本与凭据不进入证据，只保留哈希、计数、协议值和布尔结论。
+
+### 预期效果与证据
+
+两项独立Tool复用正式Main编排，Ask拒绝不写系统，Allow/Auto执行结果与真实系统状态相符；授权、取消和
+重启不绕过ownership保护。Red必须精确来自缺少Tool或行为缺口，不接受selector、UAC或环境失败。
+Green必须包含审批裁决、两项真实执行、重复Restore、撤权零写入、重启零重放及完整宿主销毁。
+
+2026-09-05：unit13/13从缺失Tool精确Red转Green，真实workflow先Red于两项未披露；摘要随后Red于
+`value`再Green。最终与只读/权限workflow联合3/3通过，2次Deny、2次Allow、3次Auto、重复Restore
+`not-owned`、首次original哈希保持、两项撤权零写入、同profile冷启动自动接管且Model增量0均通过。
+两代Main/Core为`37532/43864`、`41620/2448`，均`gracefulDestroyVerified=true`，8888释放且WinINet/journal
+恢复；证据在package/smoke前归档。新增明暗8视图48/48、最大0.5px，Windows package/audit/smoke通过。
+
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 

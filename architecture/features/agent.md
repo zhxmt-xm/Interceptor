@@ -4,7 +4,7 @@
 > Runtime package：`packages/agent-runtime/`
 > 主类：`AgentRuntime`
 > 首个 Model Provider：DeepSeek
-> 状态：**Runtime基础层、持久化Chat、首批24项与Settings只读6项Tool纵向流程已完成；完整目标为30/73，余下43项待实现，下一组为系统代理启用/恢复。Developer人工验收独立待办。**
+> 状态：**Runtime基础层、持久化Chat与已接入Tool纵向流程已实现；当前数量、分组与下一步统一见[Tool能力目录](tool-capabilities.md)。Developer人工验收独立待办。**
 
 ## 术语与关系
 
@@ -319,7 +319,7 @@ flowchart LR
 数据目录、`AgentSecureStore`、动态`AgentToolSource`和可选`fetcher`。Main创建一次长期存活的`agentRuntime`，
 所有IPC只转发语义单一intent。`AgentToolService`在Main中适配共享registry、Settings和`CoreRuntime.request()`；
 Runtime只消费transport-neutral snapshot，不接触Electron或Core bridge。当前source已接入Capture十项、Rules三项、
-Composer两项、Breakpoints八项、Diagnostics一项与Settings只读六项，共30/30。
+Composer两项、Breakpoints八项、Diagnostics一项与Settings已交付Tool，当前矩阵见[Tool能力目录](tool-capabilities.md)。
 
 共享Tool协议按feature所有权命名：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`、`diagnostics_*`、`settings_*`。
 Capability ID与前缀一致；不保留此前无前缀名称或`traffic`/`requests` Capability alias。旧Session中的Tool名称只作为
@@ -1277,10 +1277,10 @@ packages/mcp-server/          MCP auth + JSON-RPC protocol adapter
 apps/desktop/src/main/agent/  IPC host 与 Electron/Core 平台能力适配
 ```
 
-`packages/interceptor-tools/`已拥有transport-neutral Capability Index、deterministic discovery与30项共享Tool
+`packages/interceptor-tools/`已拥有transport-neutral Capability Index、deterministic discovery与共享Tool
 的descriptor、schema、参数边界、脱敏和Main/Core executor。`packages/mcp-server/`只保留认证、审批、审计、并发/
 结果上限和协议适配。内置Agent首个纵向flow只接入`capture_get_proxy_status`、`capture_list_exchanges`和`capture_get_exchange`；
-`discover_tools`属于Runtime控制面，不计入30项业务目录，也不受单项Settings开关控制。
+`discover_tools`属于Runtime控制面，不计入业务Tool目录，也不受单项Settings开关控制。
 
 `AgentToolSource`是Runtime与Main之间的唯一动态契约：
 
@@ -1296,10 +1296,11 @@ interface AgentToolSourceSnapshot {
 ```
 
 Main的`AgentToolService`直接消费共享registry，不再维护第二份接入白名单；当前为Capture十项、Rules三项、
-Composer两项、Breakpoints八项、Diagnostics一项与Settings六项，顺序与唯一feature目录一致；
+Composer两项、Breakpoints八项、Diagnostics一项与Settings已实现项，顺序与唯一feature目录一致；
 它用`ToolCapabilitySettingsService`过滤Agent关闭项，用同一registry建立Catalog，并把executor的host收敛到
 `CoreRuntime.request(command, { abortSignal })`和typed Main `invokeMain`。后者经既有Action Gate执行四项
-Main只读owner，白名单结果不带路径/私钥/完整系统代理配置。不向Runtime、Model或Renderer暴露通用Core client。
+Main只读owner及系统代理Enable/Restore正式编排，白名单结果不带路径/私钥/完整系统代理配置。
+不向Runtime、Model或Renderer暴露通用Core client。
 
 抓包正文是完全不可信的数据，可能包含 Prompt Injection。Tool Gateway 必须区分“Model 请求了什么”和
 “用户允许什么”，但不维护永久能力 denylist。内置Agent按Session、MCP按Client选择执行模式：
@@ -1569,11 +1570,11 @@ Ollama 或其他 OpenAI-compatible Provider。Provider 差异通过 capability �
   network failure，遵守 `Retry-After` 或使用 capped exponential backoff + full jitter，退避可取消且不重复已完成 Tool；
   DeepSeek / Custom Provider已接入产品，但尚未设置非零production retry或attempt timeout policy；
 - Runtime已通过动态`AgentToolSource`实现Capability → discovery → schema渐进披露；每次Model Call和Tool执行前重取快照；
-- `@interceptor/tools`已建立6个Capability、确定性discovery和30项共享Tool registry；descriptor、schema、
+- `@interceptor/tools`已建立6个Capability、确定性discovery和共享Tool registry；当前交付矩阵见唯一能力目录。descriptor、schema、
   参数/数值边界、脱敏与Main/Core executor只有一份，MCP adapter已改为消费该registry。内置Agent已注册
-  `discover_tools`与Capture、Rules、Composer、Breakpoints、Diagnostics、Settings共30项Tool；六个feature真实E2E均已完成；
+  `discover_tools`与Capture、Rules、Composer、Breakpoints、Diagnostics、Settings的已实现Tool；各组真实E2E见目录证据；
 - `ToolCapabilitySettingsService`已从同一registry投影六个feature Settings目录，只原子持久化Agent/MCP关闭项；
-  Settings在无Provider时也显示30行/60个默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
+  Settings在无Provider时也显示当前registry的全部行与双列默认开启Switch，支持搜索、两列独立修改和跨重启恢复，15语言通用
   UI文案已接入。Agent关闭项已应用到discovery、schema与执行前检查；MCP关闭项已应用到外部`tools/list`
   与执行前检查；
 - 阶段1由`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`和

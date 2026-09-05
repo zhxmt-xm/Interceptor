@@ -687,6 +687,31 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...['enable', 'restore'].flatMap((action) => ['pending', 'allowed'].map((approval) => ({
+        id: `settings-system-proxy-${action}-${approval}${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: `system-proxy-${action}-${approval}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: approval,
+          agentToolApprovalName: `settings_${action}_system_proxy`, agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-system-proxy-${action}-${approval}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'System proxy approval', parity: 'agent-tool-approval' },
+          `settings_${action}_system_proxy`,
+          ...(approval === 'allowed'
+            ? [action === 'restore' ? 'System proxy restored' : 'Owned by Interceptor']
+            : [action === 'restore'
+              ? 'Restore the system proxy configuration saved before Interceptor took ownership.'
+              : 'Route system traffic through Interceptor using the active proxy listener.']),
+        ],
+      }))),
       {
         id: `agent-panel-tool-result${suffix}`,
         theme,

@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-09-05T11:15:31.524Z
+Generated: 2026-09-05T12:17:02.207Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 214 |
-| Average pixel diff | 2.13% |
-| Targets | 1520 |
-| Matched | 1486 |
+| Views checked | 222 |
+| Average pixel diff | 2.16% |
+| Targets | 1568 |
+| Matched | 1534 |
 | Missing | 34 |
-| Flagged | 304 |
+| Flagged | 306 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -25,19 +25,23 @@ Generated: 2026-09-05T11:15:31.524Z
 | agent-panel-chat | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-capture-tools | 2.72% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools | 2.82% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools | 2.68% | 11 | 11 | 0 | 0 | 0.0 px |
-| agent-panel-composer-tools | 2.71% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools | 2.66% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-composer-tools | 2.72% | 10 | 10 | 0 | 0 | 0.0 px |
 | settings-tools-query | 2.84% | 13 | 13 | 0 | 0 | 0.0 px |
-| agent-panel-diagnostics-tools | 2.47% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-diagnostics-tools | 2.46% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-rules-tools | 2.31% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-rules-result | 2.46% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.93% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-pending | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-pending | 3.09% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-tool-result | 2.66% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 2.01% | 5 | 5 | 0 | 0 | 0.4 px |
-| agent-panel-turn-running | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
-| agent-panel-turn-stopped | 2.27% | 6 | 6 | 0 | 0 | 0.0 px |
-| agent-panel-turn-failed | 2.25% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-new-chat | 2.00% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
+| agent-panel-turn-stopped | 2.26% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-usage | 2.57% | 4 | 4 | 0 | 0 | 0.1 px |
 | agent-panel-chat-menu | 2.41% | 5 | 5 | 0 | 0 | 0.1 px |
 | agent-panel-model-menu | 2.62% | 5 | 5 | 0 | 0 | 0.5 px |
@@ -46,11 +50,11 @@ Generated: 2026-09-05T11:15:31.524Z
 | settings-agent-unconfigured | 1.64% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
 | settings-agent-configured | 1.63% | 20 | 20 | 0 | 0 | 0.6 px |
-| settings-tools-capabilities | 2.18% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-tools-capabilities | 2.29% | 9 | 9 | 0 | 0 | 0.0 px |
 | settings-agent-tool-capabilities-filtered | 1.98% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-mcp-running | 1.66% | 6 | 6 | 0 | 0 | 0.7 px |
 | settings-mcp-conflict | 1.70% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client | 5.46% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-add-client | 5.47% | 5 | 5 | 0 | 0 | 0.7 px |
 | settings-mcp-regenerate | 5.00% | 4 | 4 | 0 | 0 | 0.8 px |
 | mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-agent-custom-dialog | 4.88% | 15 | 15 | 0 | 0 | 0.7 px |
@@ -61,16 +65,20 @@ Generated: 2026-09-05T11:15:31.524Z
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-capture-tools-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools-dark | 2.79% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.66% | 11 | 11 | 0 | 0 | 0.0 px |
 | agent-panel-composer-tools-dark | 2.63% | 10 | 10 | 0 | 0 | 0.0 px |
 | settings-tools-query-dark | 2.82% | 13 | 13 | 0 | 0 | 0.0 px |
 | agent-panel-diagnostics-tools-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-rules-tools-dark | 2.40% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result-dark | 2.53% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result-dark | 2.52% | 7 | 7 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval-dark | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-pending-dark | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-pending-dark | 3.08% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat-dark | 1.96% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat-dark | 1.97% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -82,7 +90,7 @@ Generated: 2026-09-05T11:15:31.524Z
 | settings-agent-unconfigured-dark | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
 | settings-agent-configured-dark | 1.60% | 20 | 20 | 0 | 0 | 0.6 px |
-| settings-tools-capabilities-dark | 2.26% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-tools-capabilities-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
 | settings-agent-tool-capabilities-filtered-dark | 2.13% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-mcp-running-dark | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
 | settings-mcp-conflict-dark | 1.67% | 4 | 4 | 0 | 0 | 0.5 px |
@@ -90,7 +98,7 @@ Generated: 2026-09-05T11:15:31.524Z
 | settings-mcp-regenerate-dark | 1.45% | 4 | 4 | 0 | 0 | 0.8 px |
 | mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 1 | 40.0 px |
 | settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
 | settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
@@ -117,10 +125,10 @@ Generated: 2026-09-05T11:15:31.524Z
 | breakpoint-response-body-file-dark | 2.79% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 2.55% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu-dark | 2.46% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
 | statusbar-upstream-down | 1.80% | 1 | 1 | 0 | 0 | 0.5 px |
 | statusbar-upstream-down-dark | 1.79% | 1 | 1 | 0 | 0 | 0.5 px |
@@ -153,8 +161,8 @@ Generated: 2026-09-05T11:15:31.524Z
 | capture-tunnel-mitm-navigation | 2.36% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target-dark | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
-| https-setup | 4.78% | 9 | 9 | 0 | 1 | 647.7 px |
-| https-setup-dark | 1.29% | 5 | 5 | 0 | 1 | 647.7 px |
+| https-setup | 4.78% | 9 | 9 | 0 | 2 | 44.3 px |
+| https-setup-dark | 1.29% | 5 | 5 | 0 | 1 | 44.3 px |
 | https-setup-ready | 4.87% | 7 | 7 | 0 | 1 | 44.3 px |
 | import-export | 2.17% | 7 | 7 | 0 | 2 | 24.5 px |
 | import-export-dark | 0.99% | 7 | 7 | 0 | 3 | 24.5 px |
@@ -193,7 +201,7 @@ Generated: 2026-09-05T11:15:31.524Z
 | settings-proxy-dark | 1.31% | 5 | 5 | 0 | 2 | 160.8 px |
 | settings-app-containers | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
 | settings-app-containers-dark | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-container-enable-all | 0.86% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-enable-all | 1.00% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all | 0.91% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-enable-all-dark | 0.34% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
@@ -376,6 +384,30 @@ Generated: 2026-09-05T11:15:31.524Z
 | agent-panel-tool-approval | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-enable-pending | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending | settings_enable_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending | Route system traffic through Interceptor using the active proxy listener. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-enable-allowed | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed | settings_enable_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed | Owned by Interceptor | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-restore-pending | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending | settings_restore_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending | Restore the system proxy configuration saved before Interceptor took ownership. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-restore-allowed | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed | settings_restore_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed | System proxy restored | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
@@ -640,6 +672,30 @@ Generated: 2026-09-05T11:15:31.524Z
 | agent-panel-tool-approval-dark | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-enable-pending-dark | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending-dark | settings_enable_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-pending-dark | Route system traffic through Interceptor using the active proxy listener. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | settings_enable_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-enable-allowed-dark | Owned by Interceptor | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-restore-pending-dark | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending-dark | settings_restore_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-pending-dark | Restore the system proxy configuration saved before Interceptor took ownership. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | System proxy approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | settings_restore_system_proxy | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| settings-system-proxy-restore-allowed-dark | System proxy restored | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-result-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
@@ -787,7 +843,7 @@ Generated: 2026-09-05T11:15:31.524Z
 | settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
 | settings-agent-deepseek-dialog-dark | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -1221,20 +1277,20 @@ Generated: 2026-09-05T11:15:31.524Z
 | capture-tunnel-mitm-navigation | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target-dark | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| https-setup | Decrypt HTTPS (MITM) | 647.7 px | 138.2 px | -245.7 px | 16.0 px | 647.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
-| https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
-| https-setup | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup | Install… | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | waiting for trust installation | -0.3 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| https-setup | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup-dark | Decrypt HTTPS (MITM) | 647.7 px | 138.2 px | -245.7 px | 16.0 px | 647.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(243, 244, 248)->rgb(255, 255, 255) | flagged |
-| https-setup-dark | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup-dark | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup-dark | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup-dark | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
+| https-setup | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup | No CA generated yet | 0.0 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
+| https-setup | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup | Install… | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | waiting for trust installation | 0.0 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| https-setup | Cancel | 1.0 px | 0.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
+| https-setup | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup-dark | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
+| https-setup-dark | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup-dark | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup-dark | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup-dark | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | https-setup-ready | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
 | https-setup-ready | Root Certificate Authority | 0.0 px | -0.2 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | https-setup-ready | Generated | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |
