@@ -507,12 +507,16 @@ describe('AgentToolService', () => {
     );
     expect(discovery).toMatchObject({
       ok: true,
-      value: { matches: [{ descriptor: { name: 'diagnostics_query' } }] },
+      value: { matches: ['diagnostics_query', 'diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export']
+        .map((name) => ({ descriptor: { name } })) },
     });
     const snapshot = service.snapshot(discoveredHistory(discovery, 'diagnostics'));
     expect(snapshot.tools.map((entry) => entry.descriptor.name)).toEqual([
       'discover_tools',
       'diagnostics_query',
+      'diagnostics_get_trace',
+      'diagnostics_get_recent',
+      'diagnostics_export',
     ]);
     expect(tool(snapshot, 'diagnostics_query').kind).toBe('query');
     const abortController = new AbortController();

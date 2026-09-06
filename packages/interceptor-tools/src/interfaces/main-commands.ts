@@ -1,6 +1,7 @@
-import type { CollectionNode } from '@interceptor/core-protocol';
+import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, TransferJobSnapshot } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'diagnostics.export': { job: TransferJobSnapshot | null };
   'composer.collection.export': { exported: boolean };
   'composer.collection.import':
     | { imported: false }
@@ -60,6 +61,7 @@ export interface MainToolResultPayloads {
 }
 
 export interface MainToolCommandPayloads {
+  'diagnostics.export': { process?: DiagnosticProcess; level?: DiagnosticLevel; outcome?: DiagnosticOutcome };
   'composer.collection.replace': { expectedRevision: number; nodes: CollectionNode[] };
   'settings.tls-insecure-hosts.replace': { hosts: string[] };
   'settings.tls-passthrough.replace': { expectedRevision: number; hosts: string[] };

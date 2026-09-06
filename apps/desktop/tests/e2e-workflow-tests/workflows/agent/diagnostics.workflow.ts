@@ -25,7 +25,7 @@ const DISABLED_PROMPT = phrase('Try the disabled', 'Diagnostics Tool.');
 const DISABLED_ANSWER = phrase('The Diagnostics Tool', 'is unavailable.');
 const RESTORED_PROMPT = phrase('Discover the restored', 'Diagnostics Tool.');
 const RESTORED_ANSWER = phrase('The Diagnostics Tool', 'is available again.');
-const DIAGNOSTICS_TOOL_NAMES = ['diagnostics_query'] as const;
+const DIAGNOSTICS_TOOL_NAMES = ['diagnostics_query', 'diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export'] as const;
 const SENSITIVE_TEXTS = [
   ...QUERY_SECRETS,
   ...REQUEST_PATHS,
@@ -360,15 +360,14 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
     await expect(relaunchedApp.page.locator('[data-agent-item-kind="assistant-message"]').last())
       .toContainText(FIRST_ANSWER);
 
-    // 用户操作：关闭唯一Diagnostics Tool后验证discovery与直接猜测都不可达，再重新开启并恢复discovery。
-    // User actions: disable the sole Diagnostics Tool, verify discovery and guessing cannot reach it, then restore discovery.
+    // 用户操作：关闭全部Diagnostics Tool后验证discovery与原查询不可达，再整组开启并恢复discovery。
+    // User actions: disable every Diagnostics Tool, verify discovery and the original query are inaccessible, then restore the entire group.
     await openAgentSettings(relaunchedApp.page);
-    const diagnosticsSwitch = getByAutomationId(
-      relaunchedApp.page,
-      AutomationIdFactory.agentToolAgentSwitch('diagnostics_query'),
-    );
-    await diagnosticsSwitch.click();
-    await expect(diagnosticsSwitch).toHaveAttribute('aria-checked', 'false');
+    for (const name of DIAGNOSTICS_TOOL_NAMES) {
+      const diagnosticsSwitch = getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch(name));
+      await diagnosticsSwitch.click();
+      await expect(diagnosticsSwitch).toHaveAttribute('aria-checked', 'false');
+    }
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueDisabledTurn(openAiCompatibleLab);
     await completeNewChat(relaunchedApp.page, DISABLED_PROMPT);
@@ -389,8 +388,11 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
       AutomationIdFactory.agentToolCall('disabled-query'),
     )).toHaveAttribute('data-tool-status', 'failed');
 
-    await diagnosticsSwitch.click();
-    await expect(diagnosticsSwitch).toHaveAttribute('aria-checked', 'true');
+    for (const name of DIAGNOSTICS_TOOL_NAMES) {
+      const diagnosticsSwitch = getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch(name));
+      await diagnosticsSwitch.click();
+      await expect(diagnosticsSwitch).toHaveAttribute('aria-checked', 'true');
+    }
     const restoredOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueRestoredTurn(openAiCompatibleLab);
     await completeNewChat(relaunchedApp.page, RESTORED_PROMPT);

@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、110条Inventory与110份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、111条Inventory与111份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -247,6 +247,7 @@ diagnostics.row.<traceKey>
 | `diagnostics.pagination` | Keyset分页与轮询合并 | shared | planned |
 | `diagnostics.export` | 筛选后的脱敏JSONL导出 | native-ui | planned |
 | `diagnostics.resize` | List/Detail splitter | shared | planned |
+| `diagnostics.tools.queries-export` | Agent/MCP当前快照查询、原生JSONL导出、脱敏与双代销毁 | native-ui | passed |
 
 详细步骤：[docs/diagnostics.md](docs/diagnostics.md)
 

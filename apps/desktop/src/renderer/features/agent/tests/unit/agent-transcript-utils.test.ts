@@ -278,6 +278,23 @@ describe('Agent transcript utilities', () => {
       .toEqual({ kind: 'collectionReplaced', revision: 4 });
   });
 
+  it.each(['diagnostics_get_trace', 'diagnostics_get_recent'])('%s只显示当前快照计数', (name) => {
+    expect(summarizeAgentToolResult(name, { ok: true, value: {
+      traceId: 'trace-one', records: [{ attributes: { privateValue: 'hidden' } }, { sequence: 2 }], droppedCount: 3,
+    } })).toEqual({ kind: 'diagnosticsSnapshot', count: 2, droppedCount: 3 });
+  });
+
+  it('原生取消的Diagnostics导出不显示已启动任务', () => {
+    expect(summarizeAgentToolResult('diagnostics_export', { ok: true, value: { started: false } }))
+      .toEqual({ kind: 'exportCanceled' });
+  });
+
+  it.each(['running', 'completed', 'failed', 'cancelled'])('Diagnostics导出摘要保留真实任务状态%s', (state) => {
+    expect(summarizeAgentToolResult('diagnostics_export', { ok: true, value: {
+      started: true, job: { id: 'transfer-one', state, processed: 0, total: 0, warningCount: 0, fileName: 'private.jsonl' },
+    } })).toEqual({ kind: 'diagnosticsExport', jobId: 'transfer-one', state });
+  });
+
   it.each([true, false])('summarizes Rules export completion without local paths: %s', (exported) => {
     expect(summarizeAgentToolResult('rules_export', {
       ok: true,

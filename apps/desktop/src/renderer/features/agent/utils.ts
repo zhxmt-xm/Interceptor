@@ -36,6 +36,9 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'diagnosticsSnapshot'; readonly count: number; readonly droppedCount: number }
+  | { readonly kind: 'diagnosticsExport'; readonly jobId: string; readonly state: 'running' | 'completed' | 'failed' | 'cancelled' }
+  | { readonly kind: 'exportCanceled' }
   | { readonly kind: 'collection'; readonly revision: number; readonly requestCount: number; readonly folderCount: number }
   | { readonly kind: 'collectionReplaced'; readonly revision: number }
   | { readonly kind: 'collectionImported'; readonly revision: number; readonly requestCount: number; readonly folderCount: number }
@@ -455,6 +458,21 @@ export function summarizeAgentToolResult(
         alpn,
         certificateCount: certificates.length,
       };
+    }
+  }
+  if (['diagnostics_get_trace', 'diagnostics_get_recent'].includes(name)
+    && isRecord(result.value) && Array.isArray(result.value['records'])
+    && typeof result.value['droppedCount'] === 'number') {
+    return { kind: 'diagnosticsSnapshot', count: result.value['records'].length, droppedCount: result.value['droppedCount'] };
+  }
+  if (name === 'diagnostics_export' && isRecord(result.value)) {
+    if (result.value['started'] === false) return { kind: 'exportCanceled' };
+    const job = result.value['job'];
+    if (result.value['started'] === true && isRecord(job) && typeof job['id'] === 'string') {
+      const state = job['state'];
+      if (state === 'running' || state === 'completed' || state === 'failed' || state === 'cancelled') {
+        return { kind: 'diagnosticsExport', jobId: job['id'], state };
+      }
     }
   }
   if (name === 'diagnostics_query'

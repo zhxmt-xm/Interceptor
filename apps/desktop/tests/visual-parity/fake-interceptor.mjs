@@ -853,6 +853,9 @@ export const fakeInterceptorFixture = {
           title: 'Diagnostics',
           tools: [
             { name: 'diagnostics_query', title: 'Query diagnostics', description: 'Read filtered structured diagnostic records.', kind: 'query' },
+            { name: 'diagnostics_get_trace', title: 'Get current Core trace', description: 'Read up to 200 records for one trace from the current Core process, in recorded order.', kind: 'query' },
+            { name: 'diagnostics_get_recent', title: 'Get recent Core diagnostics', description: 'Read recent records from the current Core process in recorded order, without querying persisted history.', kind: 'query' },
+            { name: 'diagnostics_export', title: 'Export Diagnostics', description: 'Start an atomic redacted JSONL export using the native Save Dialog and existing transfer service.', kind: 'change' },
           ],
         },
         {
@@ -2010,6 +2013,37 @@ export function installFakeInterceptor({
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
+  } else if (agentSessionState.startsWith('diagnostics-export-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const canceled = agentSessionState.endsWith('-canceled');
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [...agentSessionSnapshot.items, {
+      kind: 'assistant-message', itemId: 'diagnostics-export-assistant', turnId,
+      content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+    }, {
+      kind: 'tool-call', itemId: 'diagnostics-export-call', turnId, callId: 'call-diagnostics-export',
+      name: 'diagnostics_export', arguments: { process: 'core', level: 'info', outcome: 'success' }, status: pending ? 'running' : 'completed',
+      approval: {
+        approvalId: 'diagnostics-export-approval', status: pending ? 'pending' : 'allowed',
+        description: 'Start an atomic redacted JSONL export using the native Save Dialog and existing transfer service.',
+        effect: 'Choose a destination and start exporting persisted diagnostic records; starting a job does not mean the export has completed.\nProcess: core\nMinimum level: info\nOutcome: success',
+        effectMetadata: { process: 'core', level: 'info', outcome: 'success' },
+      }, createdAt: createdAt + 2,
+    }];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'diagnostics-export-result', turnId, callId: 'call-diagnostics-export', name: 'diagnostics_export',
+      result: { ok: true, value: canceled ? { started: false } : { started: true, job: {
+        id: 'transfer-diagnostics', kind: 'diagnostics-export', state: 'running', processed: 0, total: 0,
+        startedAt: '2026-09-06T12:00:00.000Z', warningCount: 0,
+      } } }, createdAt: createdAt + 3,
+    });
+    const turn = { ...agentSessionSnapshot.turns[0], status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
   } else if (agentSessionState === 'diagnostics') {
     const turnId = 'turn-agent-diagnostics';
     const createdAt = agentSessionSnapshot.summary.createdAt;
@@ -2018,7 +2052,7 @@ export function installFakeInterceptor({
         callId: 'diagnostics-discover',
         name: 'discover_tools',
         arguments: { capabilityId: 'diagnostics' },
-        result: { ok: true, value: { matches: [{ descriptor: { name: 'diagnostics_query' } }] } },
+        result: { ok: true, value: { matches: ['diagnostics_query', 'diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export'].map((name) => ({ descriptor: { name } })) } },
       },
       {
         callId: 'diagnostics-query',
@@ -2041,6 +2075,13 @@ export function installFakeInterceptor({
         },
       },
     ];
+    toolSteps.push({
+      callId: 'diagnostics-recent', name: 'diagnostics_get_recent', arguments: { limit: 200 },
+      result: { ok: true, value: { records: [39, 40, 41, 42].map((sequence) => ({ sequence })), droppedCount: 0 } },
+    }, {
+      callId: 'diagnostics-trace', name: 'diagnostics_get_trace', arguments: { traceId: 'trace-composer' },
+      result: { ok: true, value: { traceId: 'trace-composer', records: [39, 40].map((sequence) => ({ sequence, traceId: 'trace-composer' })), droppedCount: 0 } },
+    });
     const items = [{
       kind: 'user-message',
       itemId: 'item-user-agent-diagnostics',
@@ -2088,7 +2129,7 @@ export function installFakeInterceptor({
       content: 'Four successful Composer diagnostic records are available in newest-first order.',
       reasoningContent: '',
       partial: false,
-      createdAt: createdAt + 7,
+      createdAt: createdAt + toolSteps.length * 3 + 1,
     });
     const turn = {
       turnId,
@@ -2097,11 +2138,11 @@ export function installFakeInterceptor({
       retryOfTurnId: null,
       error: null,
       createdAt,
-      updatedAt: createdAt + 8,
+      updatedAt: createdAt + toolSteps.length * 3 + 2,
     };
     agentSessionSnapshot = {
       ...agentSessionSnapshot,
-      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 8 },
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + toolSteps.length * 3 + 2 },
       items,
       turns: [turn],
       currentTurn: turn,

@@ -639,6 +639,10 @@ export const views = [
           { name: 'Diagnostics discovery', appSelector: '[data-tool-call-id="diagnostics-discover"]', designSelector: '[data-tool-name="discover_tools"]' },
           { name: 'Diagnostics query', appSelector: '[data-tool-call-id="diagnostics-query"]', designSelector: '[data-tool-name="diagnostics_query"]' },
           { name: 'Diagnostics result', appSelector: '[data-summary-kind="diagnostics"]', designSelector: '[data-tool-name="diagnostics_query"] div > span:last-child' },
+          { name: 'Recent query', appSelector: '[data-tool-call-id="diagnostics-recent"]', designSelector: '[data-tool-name="diagnostics_get_recent"]' },
+          { name: 'Recent result', appSelector: '[data-automation-id="agent.tools.result.diagnostics-recent"]', designSelector: '[data-tool-name="diagnostics_get_recent"] div > span:last-child' },
+          { name: 'Trace query', appSelector: '[data-tool-call-id="diagnostics-trace"]', designSelector: '[data-tool-name="diagnostics_get_trace"]' },
+          { name: 'Trace result', appSelector: '[data-automation-id="agent.tools.result.diagnostics-trace"]', designSelector: '[data-tool-name="diagnostics_get_trace"] div > span:last-child' },
           'Inspect successful Composer diagnostics without exposing request secrets.',
           'Four successful Composer diagnostic records are available in newest-first order.',
         ],
@@ -733,6 +737,33 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `diagnostics-export-${stage}${suffix}`, theme, agentModels: 'configured',
+        agentSessionState: `diagnostics-export-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: 'diagnostics_export', agentDiagnosticsExportStarted: stage !== 'canceled', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-diagnostics-export-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Diagnostics export approval', parity: 'agent-tool-approval' },
+          'diagnostics_export',
+          {
+            name: 'Diagnostics export result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-diagnostics-export"] > span',
+          },
+        ],
+      })),
       ...['continue-queue', 'drop-queue', 'continue-rule'].flatMap((action) => ['pending', 'allowed'].map((stage) => ({
         id: `breakpoint-batch-${action}-${stage}${suffix}`, theme, agentModels: 'configured',
         agentSessionState: `breakpoint-batch-${action}-${stage}`,

@@ -715,11 +715,30 @@ test('Agent Diagnostics Tool activity summarizes records without exposing attrib
   }));
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
-  await expect(trace.locator('[data-tool-name]')).toHaveCount(2);
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(4);
+  await expect(trace.locator('[data-tool-name="discover_tools"]')).toContainText('4 tools discovered');
+  await expect(trace.locator('[data-tool-name="diagnostics_get_recent"]')).toContainText('Records 4 · Dropped 0');
+  await expect(trace.locator('[data-tool-name="diagnostics_get_trace"]')).toContainText('Records 2 · Dropped 0');
   await expect(trace.locator('[data-tool-name="diagnostics_query"]'))
     .toContainText('Records 4 · Completed · Dropped 0');
   await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('Four successful Composer diagnostic records are available in newest-first order.');
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
+test('Diagnostics export distinguishes a running job from native cancellation', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+    agentToolApprovalName: 'diagnostics_export', agentToolApproval: 'pending', agentToolTrace: '',
+    agentDiagnosticsExportStarted: true,
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('process: core · level: info · outcome: success');
+  await expect(approval).toContainText('starting a job does not mean the export has completed');
+  await approval.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+  await expect(approval).toContainText('Export job Running · transfer-diagnostics');
+  await page.evaluate(() => window.__setState?.({ agentDiagnosticsExportStarted: false }));
+  await expect(approval).toContainText('Export canceled');
+  await expect(approval).not.toContainText('transfer-diagnostics');
 });

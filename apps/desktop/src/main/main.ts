@@ -65,6 +65,7 @@ import {
 } from './constants';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
+import { startDiagnosticsExport } from './diagnostics/start-export';
 import type {
   SystemProxyService,
   SystemProxyStatus,
@@ -634,6 +635,9 @@ class DesktopApplication {
           MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
+        'diagnostics.export': async (payload) => ({
+          job: await startDiagnosticsExport(this.coreRuntime, payload, undefined, abortSignal),
+        }),
         'composer.collection.replace': async (payload) => {
           const result = await this.replaceCollection(payload.expectedRevision, payload.nodes, abortSignal);
           for (const mainWindow of BrowserWindow.getAllWindows()) {
@@ -1583,26 +1587,7 @@ class DesktopApplication {
       async (event, filter: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const parsedFilter = toDiagnosticsExportFilter(filter);
-        const selection = await dialog.showSaveDialog({
-          title: title as string,
-          defaultPath: `interceptor-diagnostics-${new Date().toISOString().slice(0, 10)}.jsonl`,
-          filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
-          properties: ['createDirectory', 'showOverwriteConfirmation'],
-        });
-        if (selection.canceled || !selection.filePath) {
-          return null;
-        }
-        const result = await this.coreRuntime.request({
-          type: 'diagnostics.export.start',
-          payload: {
-            jobId: `transfer-${randomUUID()}`,
-            filePath: selection.filePath,
-            ...(parsedFilter.process ? { process: parsedFilter.process } : {}),
-            ...(parsedFilter.level ? { level: parsedFilter.level } : {}),
-            ...(parsedFilter.outcome ? { outcome: parsedFilter.outcome } : {}),
-          },
-        });
-        return result.payload.job;
+        return startDiagnosticsExport(this.coreRuntime, parsedFilter, title as string);
       },
     );
 

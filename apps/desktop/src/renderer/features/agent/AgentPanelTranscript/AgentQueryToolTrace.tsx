@@ -66,6 +66,8 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                 <span
                   data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
                   data-summary-kind={summary?.kind}
+                  data-transfer-job-id={summary?.kind === 'diagnosticsExport' ? summary.jobId : undefined}
+                  data-transfer-job-state={summary?.kind === 'diagnosticsExport' ? summary.state : undefined}
                   data-resolved-count={summary?.kind === 'breakpointBatch' ? summary.count : undefined}
                   data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
                   data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
@@ -112,7 +114,7 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-probe-certificate-count={summary?.kind === 'probe' && summary.ok
                     ? summary.certificateCount
                     : undefined}
-                  data-diagnostics-count={summary?.kind === 'diagnostics' ? summary.count : undefined}
+                  data-diagnostics-count={summary?.kind === 'diagnostics' || summary?.kind === 'diagnosticsSnapshot' ? summary.count : undefined}
                   data-diagnostics-has-more={summary?.kind === 'diagnostics' ? summary.hasMore : undefined}
                   data-diagnostics-dropped-count={summary?.kind === 'diagnostics' ? summary.droppedCount : undefined}
                 >

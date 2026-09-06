@@ -140,6 +140,18 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Perform a known product action that writes a diagnostic record.'],
     ['Query returns that bounded redacted record in stable time order.', 'No approval appears.'],
   ),
+  diagnostics_get_trace: recipe(
+    ['Send a Composer request and obtain its traceId from a Diagnostics query in the current Core process.'],
+    ['At most 200 matching records are returned in recorded order without approval.', 'Unknown trace identities return an empty list without reading another trace.', 'The compact result shows counts, not raw attributes; credentials and request bodies remain absent.'],
+  ),
+  diagnostics_get_recent: recipe(
+    ['Perform a product action during the current Core process and note its Diagnostics records.'],
+    ['The requested 1..200 most recent records keep their original order; the default limit is 200.', 'Queries are silent, require no approval, and do not return persisted history from earlier Core processes.', 'The result preserves droppedCount and masks sensitive record fields.'],
+  ),
+  diagnostics_export: recipe(
+    ['Create real Diagnostics records through Composer and choose process, minimum level and outcome filters.', 'Keep the MCP Client in Ask mode and choose a test output destination.'],
+    ['Deny opens no file dialog; native Save cancellation returns started=false.', 'Allow and Auto retain the native Save Dialog and reuse the product atomic JSONL export.', 'started=true returns only a safe job identity, state, progress and warning count; it is not proof of completed export.', 'Inspect the completed JSONL for valid records, the selected filters and removal of credentials; paths and file names are not in Tool results.'],
+  ),
   settings_get_core_process_status: recipe(
     ['Open Interceptor and note the Core process state and PID.'],
     ['Lifecycle and PID match the running Core process, not a claim of listener health.', 'No approval or configuration change occurs.'],

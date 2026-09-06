@@ -60,6 +60,9 @@ const TOOL_NAMES = [
   'breakpoints_drop_queue',
   'breakpoints_continue_rule',
   'diagnostics_query',
+  'diagnostics_get_trace',
+  'diagnostics_get_recent',
+  'diagnostics_export',
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
   'settings_get_certificate_status',
@@ -183,7 +186,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(90);
+    await expect(switches).toHaveCount(96);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -213,7 +216,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AutomationIdFactory.agentToolRow('diagnostics_query'),
     )).toBeVisible();
-    expect(await toolNames(desktopApp.page)).toEqual(['diagnostics_query']);
+    expect(await toolNames(desktopApp.page)).toEqual(['diagnostics_query', 'diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export']);
     await search.fill('');
     expect(await toolNames(desktopApp.page)).toEqual(evidence.toolNames);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
@@ -266,7 +269,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(90);
+    await expect(restoredSwitches).toHaveCount(96);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

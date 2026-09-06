@@ -2,6 +2,58 @@
 
 本文件定义 Diagnostics 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 App 操作产生诊断记录。
 
+<a id="diagnostics-tools-queries-export"></a>
+## `diagnostics.tools.queries-export`
+
+**状态**：passed
+**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 使用独立profile启动真实Electron，通过Settings配置本地Provider；Chat discovery必须披露Trace、Recent
+	和Export三项。通过Composer UI发出两次带测试敏感query的本地请求，等Diagnostics UI出现自产记录。
+2. Agent在Ask模式查询Recent，确认有界records、顺序、droppedCount及无审批；从正式返回记录取得traceId，
+	查询Trace并逐项核对身份，不向Model返回原始URL凭据/正文。重复查询不能自行新增diagnostics记录。
+3. Ask请求Export并Deny，不开原生Dialog、不产生文件；Allow后真实Cancel，返回started=false。再次Allow
+	选路径并按process/level/outcome过滤启动任务，结果只有公开job、明确started而非completed；只读检查
+	实际JSONL输出存在、每行有效且满足过滤，敏感测试文本不出现在文件中。
+4. 切Auto再次真实Save并验证输出；打开/保存仍需真实键鼠，不改写Dialog返回值、不注入业务文件。
+	通过Settings分别关闭三项Agent权限，旧Chat拒绝调用；MCP权限保持独立。
+5. 通过产品UI创建官方MCP Client，执行两项静默查询并验证同一数据，按MCP Ask/Auto执行Export、Deny与
+	原生Cancel；撤销MCP三项权限后旧连接不能发现或执行，不重复打开文件Dialog。
+6. 正常退出首代，复用profile重启后授权保持、Model/origin/文件操作零重放；记录两代Main/Core/Worker销毁、
+	8888释放、完整WinINet/journal恢复和脱敏trace/evidence，再删除产品产生的输出及profile。
+
+### 预期与证据
+
+最小Red必须来自缺失Tool或正式行为缺口，不能来自环境、selector或原生Dialog驱动失败。Core只读与导出模块
+已有语义不改；空trace、有界参数、预取消/迟到选择与原子任务错误由对应unit/integration覆盖。Evidence仅保存
+记录身份、计数、文件hash与协议结论，不保存原始秘密。人工与macOS验收继续独立，不以Windows结果代替。
+
+2026-09-06：28项executor因缺失Tool取得Red，真实discovery Red代际`30472/44700`正常销毁；
+随后executor28/28、Main原生导出6/6 Green。当前快照与异步导出摘要另外取得7项unit及真实页面
+`diagnosticsSnapshot`预期为`value`的Red，补齐typed摘要后35/35 Green；15语言区分记录计数、任务状态和取消。
+
+暂停前首轮原生Cancel未取得焦点，Main/Core `29852/29444`正常销毁，证据保留于TEMP下
+`interceptor-diagnostics-tools-pre-pause-failure`；该环境失败不算产品Red。清理本会话设计测试服务后，
+同一流程1/1（38.4秒）与两代`13272/34096`、`18264/364`通过。最终带摘要断言的流程1/1（36.0秒），
+两代`3244/23680`、`14016/25676`均`gracefulDestroyVerified=true`，归档为
+`interceptor-diagnostics-summary-e2e-green`；摘要Red独立保留于`interceptor-diagnostics-summary-e2e-red`。
+
+真实Composer产生4条命令/action记录，指定trace返回2条；Recent保持当前Core代际的记录顺序，查询不自污染。
+Agent/MCP静默查询、Deny、原生Cancel、Ask/Auto真实Save、四个原子JSONL文件的过滤/脱敏、48项目录的独立撤权、
+重启Model/origin/文件操作零重放通过。导出结果只提供公开任务字段，页面明确显示running，不将started当作完成。
+
+旧Diagnostics、全局授权、MCP Browser/Desktop关联4/4（1.6分钟），八代分别为`28680/6380`、`42760/21408`、
+`13136/16336`、`42948/44204`、`43068/39472`、`39400/6800`、`24632/1240`、`43360/8372`；
+全部正常销毁、8888释放及完整WinINet/journal/进程树恢复，证据在`interceptor-diagnostics-related-e2e-green`。
+
+最终门禁：全workspace类型通过，Desktop592/592、Tools243/243、MCP32/32、Runtime122/122、Protocol25/25、
+Playground67/67及design interaction82/82；Core仅保留既有framing两项。完整parity286视图1,964目标，本组62/62
+最大0.5px，其他30 missing/304 flagged未冒充通过。最终标准Forge package、artifact audit
+（1,294 files / 392,896,554 bytes）、production audit0漏洞与packaged smoke1/1（41.8秒）通过。
+状态优先显示的摘要文字顺序由聚焦设计Red→Green及最终完整parity验证，不把任务启动改成同步导出完成。
+
 <a id="diagnostics-list-detail"></a>
 ## `diagnostics.list-detail`
 

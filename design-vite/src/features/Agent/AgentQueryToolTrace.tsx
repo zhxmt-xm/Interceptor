@@ -40,8 +40,10 @@ const TOOL_STEPS = {
     { name: 'rules_get_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
   ],
   diagnostics: [
-    { name: 'discover_tools', arguments: 'capabilityId: diagnostics', result: '1 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: diagnostics', result: '4 tools discovered' },
     { name: 'diagnostics_query', arguments: 'process: core · command: composer.send · outcome: success · limit: 10', result: 'Records 4 · Completed · Dropped 0' },
+    { name: 'diagnostics_get_recent', arguments: 'limit: 200', result: 'Records 4 · Dropped 0' },
+    { name: 'diagnostics_get_trace', arguments: 'traceId: trace-composer', result: 'Records 2 · Dropped 0' },
   ],
   settings: [
     { name: 'discover_tools', arguments: 'capabilityId: settings', result: '12 tools discovered' },
