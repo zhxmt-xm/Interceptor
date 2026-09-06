@@ -17,6 +17,7 @@ export interface FlyoutProps {
   className?: string;
   /** Container padding; menus use 7px, form popovers may request a roomier value. */
   padding?: number;
+  destroyOnHidden?: boolean;
   /** The trigger element the panel is anchored to. */
   children: ReactNode;
 }
@@ -34,6 +35,7 @@ export function Flyout({
   placement = 'bottomRight',
   className,
   padding = 7,
+  destroyOnHidden,
   children,
 }: FlyoutProps): React.JSX.Element {
   return (
@@ -41,6 +43,7 @@ export function Flyout({
       trigger="click"
       arrow={false}
       autoAdjustOverflow
+      destroyOnHidden={destroyOnHidden}
       open={open}
       onOpenChange={onOpenChange}
       placement={placement}

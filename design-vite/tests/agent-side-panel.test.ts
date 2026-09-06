@@ -1,3 +1,4 @@
+/// <reference path="../src/globals.d.ts" />
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -437,6 +438,59 @@ test('Chat selector supports keyboard navigation and Escape restores trigger foc
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-parity="agent-chat-menu"]')).toHaveCount(0);
   await expect(selector).toBeFocused();
+});
+
+test('Model menu closes on outside clicks without changing the selected model', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+    agentModelMenu: '', agentCurrentModel: 'deepseek',
+  }));
+  const trigger = page.locator('[data-parity="agent-model-select"]');
+  const menu = page.locator('[data-parity="agent-model-menu"]');
+  const input = page.getByRole('textbox', { name: 'Message', exact: true });
+  const originalModel = await trigger.innerText();
+
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  await input.click();
+  await expect(menu).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(input).toBeFocused();
+  await expect(trigger).toHaveText(originalModel);
+
+  await trigger.click();
+  await page.locator('.app').click({ position: { x: 500, y: 200 } });
+  await expect(menu).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toHaveText(originalModel);
+});
+
+test('Model menu preserves inside clicks, trigger toggling and keyboard focus on reopen', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+    agentModelMenu: '', agentCurrentModel: 'deepseek',
+  }));
+  const trigger = page.locator('[data-parity="agent-model-select"]');
+  const menu = page.locator('[data-parity="agent-model-menu"]');
+  await trigger.click();
+  await expect(menu.getByRole('option', { selected: true })).toBeFocused();
+  await menu.getByText('Model for this chat', { exact: true }).click();
+  await expect(menu).toBeVisible();
+  await menu.getByRole('option', { selected: true }).focus();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(menu.getByRole('option', { selected: true })).toBeFocused();
+  await trigger.click();
+  await expect(menu).toBeHidden();
+  await trigger.click();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('option', { name: /Qwen/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toContainText('Qwen');
+  await expect(trigger).toBeFocused();
 });
 
 test('Current chat can be renamed and deleted through explicit commands', async ({ page }) => {

@@ -1,11 +1,13 @@
 # Interceptor Handover
 
-> Tracked commit: `7834e648`
+> Tracked commit: `b2c7b080`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-06
 
 ## Task List
 
+- [x] **已完成 · Agent模型菜单外部点击关闭Bug**：按用户明确要求不新增workflow；模型菜单从手工绝对定位div改为共享`Flyout`（Ant Design Popover），开关由`onOpenChange`同步，关闭销毁内容以恢复重开焦点。外部点击输入框或工作区导航正常关闭且不吞掉原操作，内部点击、按钮切换、Escape、方向键及模型选择保持；内容溢出支持滚动。3项组件Red→Green、2项设计浏览器回归通过；真实Renderer（fake Preload）明暗10/10目标、0 missing/flagged、最大0.5px，880×560关闭/焦点/不越界断言通过。Desktop/设计及测试文件类型检查通过，只更新两张模型菜单基线；出图场景保留Ant动画与portal，避免隐藏菜单被截成基线。该结果仅覆盖本Bug，不替代此前Tool工作项的真实E2E。
+- [x] **已完成 · 集合传输提交推送恢复**：`b2c7b080`提交后曾遇默认HTTPS连接重置/超时；系统curl同样超时，官方SSH/443缺少可用publickey，当时系统没有正在运行的代理。未启动代理、未改持久网络配置，`main`一度领先`origin/main`一个提交。2026-09-06继续本地验证后，通过`git -c http.proxy= -c https.proxy= push origin main`成功推送，双方差异为0/0；未积攒第二个提交。此前用户研究文件与`stash@{0}`均未动。
 - [x] **已完成 · Composer Collection导出/导入自动验收**：`composer_export_collection`/`composer_import_collection`各自严格空参数change，经typed Main共用原生Save/JSON写入及App全局导入确认。Tool导出Core保存态，UI导出当前编辑态；导入读取/解析复用原函数，全部node/字段row ID新生成，等待进行中的自动保存后用最新revision原子追加。保存前取消不写，保存开始后完成原路径；结果只有成功标记/revision/计数，文件名、路径、正文、Auth和底层错误不进入Model。
     TDD：executor10项缺失Tool Red→Green，真实discovery在`7834e648`实现前代码上缺失两项而Red；Main文件/请求生命周期16/16、Renderer流程14/14、保存协调4/4、摘要28/28通过。最终八条关联真实workflow8/8（3.1分钟），14个Main/Core代际全部正常销毁、释放8888并恢复完整WinINet/journal/进程树；本workflow为`40224/19272`、`24620/11012`。Agent/MCP Ask/Auto、Deny、原生Cancel、预览取消/确认、三次追加/四份身份独立树、JSON/Form/Query/Auth/Header/URL凭据保真、两列撤权及重启零重放通过。证据在TEMP下`interceptor-composer-transfer-related-e2e-green`，Red在`interceptor-composer-transfer-e2e-red`，首轮及增强Green独立归档未覆盖。
     全workspace typecheck通过；Tools189/192、Desktop574/576、MCP31/32、Playground66/67中的旧目录断言修复后分别聚焦51/51、27/27、20/20、1/1 Green，Runtime122/122、Protocol25/25、design interaction76/76通过；Core329/331仍只保留两项既有framing债务。完整parity268 views / 1,848 targets / 1,814 matched / 34 missing / 305 flagged，平均2.27%；本次12个新视图72目标和原有六个文件弹窗视图20目标均0 missing/flagged、最大0.5px。相对上一报告的波动为旧TLS passthrough明暗各2项missing、旧DeepSeek深色Dialog1项flagged，不把全量视觉债务标为Green。

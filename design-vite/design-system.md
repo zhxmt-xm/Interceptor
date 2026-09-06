@@ -185,5 +185,6 @@
 ## 与落地代码的关系
 
 - 复杂交互(拖拽 Splitter、Popover/Dropdown 浮层、Tooltip、Tabs、Segmented)优先用 **Ant Design** 组件 + ConfigProvider token 承接。
+- Agent当前Chat模型菜单复用统一Flyout：`topLeft`锚定模型按钮，面板宽250px、padding 7px、圆角12px；点击外部关闭且不吞点击，Escape/选择后焦点回到触发按钮。菜单关闭后销毁内容，重开聚焦当前模型；内容超过60vh时内部滚动，不使用手工绝对定位或全局点击监听。
 - Ant 无法表达的产品视觉(list 行、method/status 徽标、omni 容器、活动栏、kv)用 **colocated CSS Modules + 上述 token** 一比一还原,不覆盖 `.ant-*` 私有 DOM。
 - 详见各阶段文档与 `AGENTS.md` 的样式优先级。

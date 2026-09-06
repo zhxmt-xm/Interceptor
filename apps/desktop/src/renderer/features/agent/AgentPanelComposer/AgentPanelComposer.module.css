@@ -21,6 +21,10 @@
   grid-area: mode;
 }
 
+.modelFlyout {
+  width: 250px;
+}
+
 .composer {
   display: flex;
   min-height: 64px;

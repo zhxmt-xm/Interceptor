@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { AgentModelSummary, AgentSessionSnapshot } from '../../../../shared/desktop-api';
-import { IconButton, Segmented } from '../../../components';
+import { Flyout, IconButton, Segmented } from '../../../components';
 import { AgentModelMenu } from '../AgentModelMenu/AgentModelMenu';
 import { AgentSessionUsage } from '../AgentSessionUsage/AgentSessionUsage';
 import { AgentSessionActions, useAgentSessionStore } from '../data/agentSessionStore';
@@ -49,33 +49,42 @@ export function AgentPanelComposer({
 
   return (
     <footer className={styles.footer}>
-      <AgentModelMenu
-        models={models}
-        onClose={() => setModelMenuOpen(false)}
-        onConfigure={onConfigure}
-        open={modelMenuOpen}
-        session={session}
-        triggerRef={modelSelectorRef}
-      />
       <div className={styles.metrics}>
-        <button
-          aria-expanded={modelMenuOpen}
-          aria-haspopup="listbox"
-          aria-label={currentModel?.profileName ?? t('agent.modelForChat')}
-          className={styles.modelButton}
-          data-parity="agent-model-select"
-          disabled={running || busy}
-          ref={modelSelectorRef}
-          type="button"
-          onClick={() => setModelMenuOpen((open) => !open)}
+        <Flyout
+          open={modelMenuOpen}
+          onOpenChange={setModelMenuOpen}
+          placement="topLeft"
+          className={styles.modelFlyout}
+          destroyOnHidden
+          content={
+            <AgentModelMenu
+              models={models}
+              onClose={() => setModelMenuOpen(false)}
+              onConfigure={onConfigure}
+              open={modelMenuOpen}
+              session={session}
+              triggerRef={modelSelectorRef}
+            />
+          }
         >
-          <ProviderLogo
-            active
-            brand={currentModel?.kind === 'deepseek' ? 'deepseek' : 'unknown'}
-          />
-          <span>{currentModel?.profileName ?? session.summary.modelId}</span>
-          {modelMenuOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
-        </button>
+          <button
+            aria-expanded={modelMenuOpen}
+            aria-haspopup="listbox"
+            aria-label={currentModel?.profileName ?? t('agent.modelForChat')}
+            className={styles.modelButton}
+            data-parity="agent-model-select"
+            disabled={running || busy}
+            ref={modelSelectorRef}
+            type="button"
+          >
+            <ProviderLogo
+              active
+              brand={currentModel?.kind === 'deepseek' ? 'deepseek' : 'unknown'}
+            />
+            <span>{currentModel?.profileName ?? session.summary.modelId}</span>
+            {modelMenuOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+          </button>
+        </Flyout>
         <span
           className={styles.executionMode}
           data-automation-id={AUTOMATION_IDS.agent.executionMode.root}

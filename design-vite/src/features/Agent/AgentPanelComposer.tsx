@@ -1,3 +1,4 @@
+import { Popover } from 'antd';
 import { ChevronDown, ChevronUp, Send, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -27,24 +28,41 @@ export function AgentPanelComposer(): React.JSX.Element {
   };
   return (
     <footer className={styles.agentComposerFooter}>
-      <AgentPanelModelMenu triggerRef={modelSelectorRef} />
       <div className={styles.agentComposerMetrics} data-parity="agent-composer-metrics">
-        <button
-          aria-expanded={state.agentModelMenu === 'open'}
-          aria-haspopup="listbox"
-          aria-label={currentModel.name}
-          className={styles.agentComposerModelButton}
-          data-parity="agent-model-select"
-          ref={modelSelectorRef}
-          type="button"
-          onClick={() => updateState({ agentModelMenu: state.agentModelMenu === 'open' ? '' : 'open' })}
+        <Popover
+          trigger="click"
+          placement="topLeft"
+          arrow={false}
+          autoAdjustOverflow
+          destroyOnHidden
+          open={state.agentModelMenu === 'open'}
+          onOpenChange={(open) => updateState({ agentModelMenu: open ? 'open' : '' })}
+          content={<AgentPanelModelMenu triggerRef={modelSelectorRef} />}
+          styles={{ container: {
+            width: 250,
+            padding: 7,
+            background: 'var(--panel)',
+            border: '1px solid var(--border-2)',
+            borderRadius: 12,
+            boxShadow: '0 18px 44px rgba(0, 0, 0, 0.2)',
+          } }}
         >
-          <ProviderLogo active brand={currentModel.brand} />
-          <span>{currentModel.name}</span>
-          {state.agentModelMenu === 'open'
-            ? <ChevronUp aria-hidden="true" />
-            : <ChevronDown aria-hidden="true" />}
-        </button>
+          <button
+            aria-expanded={state.agentModelMenu === 'open'}
+            aria-haspopup="listbox"
+            aria-label={currentModel.name}
+            className={styles.agentComposerModelButton}
+            data-parity="agent-model-select"
+            ref={modelSelectorRef}
+            type="button"
+          >
+            <ProviderLogo active brand={currentModel.brand} />
+            <span>{currentModel.name}</span>
+            {state.agentModelMenu === 'open'
+              ? <ChevronUp aria-hidden="true" />
+              : <ChevronDown aria-hidden="true" />}
+          </button>
+        </Popover>
         <span className={styles.agentExecutionMode} data-parity="agent-execution-mode">
           <SegmentedControl
             ariaLabel="Tool execution mode"

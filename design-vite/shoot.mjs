@@ -678,14 +678,15 @@ async function shoot(list) {
       await windowTitle.click();
       await page.waitForTimeout(120);
     }
-    await page.evaluate((interaction) => {
+    await page.evaluate(({ interaction, modelMenuOpen }) => {
       document.body.classList.toggle(
         'menu-interaction-shot',
         interaction === 'breakpoint-menu'
           || interaction === 'breakpoint-queue-menu'
-          || interaction === 'websocket-breakpoint-setup',
+          || interaction === 'websocket-breakpoint-setup'
+          || modelMenuOpen,
       );
-    }, s.interaction);
+    }, { interaction: s.interaction, modelMenuOpen: s.state.agentModelMenu === 'open' });
     await page.evaluate((st) => window.__setState({
       overlay: '',
       fileMenu: '',
@@ -803,6 +804,10 @@ async function shoot(list) {
     if (s.interaction === 'websocket-breakpoint-setup') {
       await page.waitForTimeout(300);
     }
+    if (s.state.agentModelMenu === 'open') {
+      await page.locator('[data-parity="agent-model-menu"]').waitFor({ state: 'visible' });
+      await page.waitForTimeout(300);
+    }
     if (s.interaction === 'breakpoint-queue-menu') {
       await page.getByRole('button', { name: 'Queue actions' }).click();
       await page.getByRole('menu', { name: 'Queue actions' }).waitFor();
@@ -833,6 +838,7 @@ async function shoot(list) {
       || s.interaction === 'breakpoint-menu'
       || s.interaction === 'websocket-breakpoint-setup'
       || s.interaction === 'breakpoint-queue-menu'
+      || s.state.agentModelMenu === 'open'
     ) {
       const clip = await app.boundingBox();
       if (!clip) throw new Error('Design app is not visible');
