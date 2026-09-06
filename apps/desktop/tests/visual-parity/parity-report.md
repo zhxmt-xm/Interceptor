@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-09-05T12:17:02.207Z
+Generated: 2026-09-05T17:42:50.605Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 222 |
-| Average pixel diff | 2.16% |
-| Targets | 1568 |
-| Matched | 1534 |
+| Views checked | 238 |
+| Average pixel diff | 2.21% |
+| Targets | 1664 |
+| Matched | 1630 |
 | Missing | 34 |
-| Flagged | 306 |
+| Flagged | 305 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -21,24 +21,32 @@ Generated: 2026-09-05T12:17:02.207Z
 | View | Pixel diff | Targets | Matched | Missing | Flagged | Max geometry delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
-| agent-panel-unconfigured | 1.98% | 8 | 8 | 0 | 0 | 0.7 px |
-| agent-panel-chat | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-capture-tools | 2.72% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-chat | 2.90% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-capture-tools | 2.71% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools | 2.82% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools | 2.66% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools | 2.68% | 11 | 11 | 0 | 0 | 0.0 px |
 | agent-panel-composer-tools | 2.72% | 10 | 10 | 0 | 0 | 0.0 px |
 | settings-tools-query | 2.84% | 13 | 13 | 0 | 0 | 0.0 px |
 | agent-panel-diagnostics-tools | 2.46% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-rules-tools | 2.31% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result | 2.46% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-rules-result | 2.48% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval | 2.93% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | 2.99% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-pending | 3.03% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-pending | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-pending | 3.01% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-pending | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-restore-pending | 3.09% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-restore-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result | 2.66% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 2.00% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat | 1.99% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped | 2.26% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -50,7 +58,7 @@ Generated: 2026-09-05T12:17:02.207Z
 | settings-agent-unconfigured | 1.64% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
 | settings-agent-configured | 1.63% | 20 | 20 | 0 | 0 | 0.6 px |
-| settings-tools-capabilities | 2.29% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-tools-capabilities | 2.52% | 9 | 9 | 0 | 0 | 0.0 px |
 | settings-agent-tool-capabilities-filtered | 1.98% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-mcp-running | 1.66% | 6 | 6 | 0 | 0 | 0.7 px |
 | settings-mcp-conflict | 1.70% | 4 | 4 | 0 | 0 | 0.5 px |
@@ -58,27 +66,35 @@ Generated: 2026-09-05T12:17:02.207Z
 | settings-mcp-regenerate | 5.00% | 4 | 4 | 0 | 0 | 0.8 px |
 | mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-agent-custom-dialog | 4.88% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog | 5.05% | 12 | 12 | 0 | 1 | 40.0 px |
+| settings-agent-deepseek-dialog | 5.05% | 12 | 12 | 0 | 0 | 0.7 px |
 | settings-agent-custom-edit-dialog | 4.89% | 8 | 8 | 0 | 0 | 0.7 px |
 | settings-agent-remove-provider | 4.50% | 4 | 4 | 0 | 0 | 0.7 px |
 | agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-capture-tools-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools-dark | 2.79% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools-dark | 2.66% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
 | agent-panel-composer-tools-dark | 2.63% | 10 | 10 | 0 | 0 | 0.0 px |
 | settings-tools-query-dark | 2.82% | 13 | 13 | 0 | 0 | 0.0 px |
 | agent-panel-diagnostics-tools-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-rules-tools-dark | 2.40% | 8 | 8 | 0 | 0 | 0.0 px |
 | agent-panel-rules-result-dark | 2.52% | 7 | 7 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval-dark | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | 2.97% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | 2.60% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | 3.02% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-pending-dark | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-allowed-dark | 2.60% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-pending-dark | 2.99% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-pending-dark | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-restore-pending-dark | 3.08% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-restore-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
 | agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat-dark | 1.97% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-new-chat-dark | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
 | agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
@@ -90,7 +106,7 @@ Generated: 2026-09-05T12:17:02.207Z
 | settings-agent-unconfigured-dark | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
 | settings-agent-configured-dark | 1.60% | 20 | 20 | 0 | 0 | 0.6 px |
-| settings-tools-capabilities-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-tools-capabilities-dark | 2.68% | 9 | 9 | 0 | 0 | 0.0 px |
 | settings-agent-tool-capabilities-filtered-dark | 2.13% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-mcp-running-dark | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
 | settings-mcp-conflict-dark | 1.67% | 4 | 4 | 0 | 0 | 0.5 px |
@@ -125,10 +141,10 @@ Generated: 2026-09-05T12:17:02.207Z
 | breakpoint-response-body-file-dark | 2.79% | 12 | 12 | 0 | 6 | 2.0 px |
 | breakpoint-queue-head | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued | 2.76% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu | 2.54% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu | 2.55% | 4 | 4 | 0 | 0 | 0.0 px |
 | breakpoint-queue-head-dark | 2.30% | 2 | 2 | 0 | 0 | 0.5 px |
 | breakpoint-queue-queued-dark | 2.91% | 3 | 3 | 0 | 0 | 0.0 px |
-| breakpoint-queue-menu-dark | 2.46% | 4 | 4 | 0 | 0 | 0.0 px |
+| breakpoint-queue-menu-dark | 2.48% | 4 | 4 | 0 | 0 | 0.0 px |
 | capture-websocket | 2.39% | 7 | 5 | 2 | 3 | 1281.7 px |
 | statusbar-upstream-down | 1.80% | 1 | 1 | 0 | 0 | 0.5 px |
 | statusbar-upstream-down-dark | 1.79% | 1 | 1 | 0 | 0 | 0.5 px |
@@ -201,7 +217,7 @@ Generated: 2026-09-05T12:17:02.207Z
 | settings-proxy-dark | 1.31% | 5 | 5 | 0 | 2 | 160.8 px |
 | settings-app-containers | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
 | settings-app-containers-dark | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-container-enable-all | 1.00% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-app-container-enable-all | 0.86% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all | 0.91% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-enable-all-dark | 0.34% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
@@ -384,6 +400,54 @@ Generated: 2026-09-05T12:17:02.207Z
 | agent-panel-tool-approval | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | settings_replace_tls_insecure_hosts | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | settings_replace_tls_insecure_hosts | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | settings_replace_tls_passthrough | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | settings_replace_tls_passthrough | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | settings_enable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | settings_enable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | settings_disable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | settings_disable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
@@ -555,7 +619,7 @@ Generated: 2026-09-05T12:17:02.207Z
 | settings-agent-deepseek-dialog | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
+| settings-agent-deepseek-dialog | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
 | settings-agent-deepseek-dialog | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -672,6 +736,54 @@ Generated: 2026-09-05T12:17:02.207Z
 | agent-panel-tool-approval-dark | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | settings_replace_tls_insecure_hosts | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | settings_replace_tls_insecure_hosts | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | settings_replace_tls_passthrough | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | settings_replace_tls_passthrough | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_replace_tls_passthrough-allowed-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | settings_enable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-pending-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | settings_enable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_enable_https_decryption-allowed-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | settings_disable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-pending-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | TLS approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | settings_disable_https_decryption | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| tls-tools-settings_disable_https_decryption-allowed-dark | TLS result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | settings-system-proxy-enable-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |

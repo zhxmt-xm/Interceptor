@@ -130,6 +130,12 @@ WinINet/journal恢复，profile因fixture失败识别缺陷被删除。先由Dev
 TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/audit/smoke通过。
 没有重新运行安装CA的workflow，新的清理等待与当前宿主恢复仍须真实复验；上述检查不替代E2E Green。
 
+2026-09-06恢复时已核对5条关联workflow（Settings只读、系统代理、权限持久化、MCP Browser、MCP Desktop）
+全部通过，十代Main/Core均`gracefulDestroyVerified=true`；证据归档在TEMP下
+`interceptor-tls-adjacent-e2e-20260906`。完整parity238 views / 1,664 targets / 1,630 matched /
+34 missing / 305 flagged；TLS专项96/96、0 missing/flagged、最大0.5px。以上不替代本条workflow的
+最终CA信任清理；本条状态仍为blocked，管理员移除残留指纹前不再生成测试CA。
+
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 

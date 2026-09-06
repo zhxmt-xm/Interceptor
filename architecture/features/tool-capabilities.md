@@ -1,6 +1,6 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-05
+> 最后更新：2026-09-06
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
 > 当前状态：完整目标共73项，代码已实现36/73，完整自动验收32/73；TLS四项代码完成但最终CA清理E2E blocked，另37项待实现。首批24项共享registry、MCP adapter、
@@ -404,6 +404,13 @@ audit（1,294 files / 392,847,733 bytes）、production audit0漏洞、packaged 
 修复前被删。Developer须在管理员PowerShell执行`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，
 只读确认移除后再复跑`settings.tools.tls`，验证修复后的实际信任销毁与profile保留路径。当前按用户要求保存
 未闭环进度，不将TLS Inventory标为passed；完成该组后再推进证书能力组。
+
+2026-09-06续作确认：`7bc809a1`已推送；Settings只读/系统代理/全局开关及MCP Browser/Desktop关联
+workflow共5/5、十代Main/Core全部优雅销毁，归档于TEMP下`interceptor-tls-adjacent-e2e-20260906`。
+完整parity238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged，TLS专项96/96、最大0.5px，
+报告与归档已核对；不用重复这些已完成检查。测试CA仍需管理员移除，最终TLS验收不变。
+用户再次要求持续推进，因此权限依赖组单独保留blocked，原计划内无该依赖的独立Tool组继续执行；
+后续每组仍取得自己的完整Red/Green与销毁证据，不用其他组结果代替。
 
 ## 6. 相关未完成验收
 
