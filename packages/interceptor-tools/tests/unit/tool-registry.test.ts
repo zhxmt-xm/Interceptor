@@ -22,6 +22,8 @@ const TOOL_NAMES = [
   'capture_get_exchange_body',
   'capture_list_websocket_messages',
   'capture_list_grpc_messages',
+  'capture_get_transfer_job',
+  'capture_cancel_transfer_job',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -165,11 +167,11 @@ async function execute(
 }
 
 describe('Interceptor Tool registry', () => {
-  it('registers the exact 40 transport-neutral Tools in stable order', () => {
+  it('registers the exact 50 transport-neutral Tools in stable order', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(48);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(50);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

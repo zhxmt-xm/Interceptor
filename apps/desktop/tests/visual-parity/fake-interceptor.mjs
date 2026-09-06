@@ -806,6 +806,8 @@ export const fakeInterceptorFixture = {
             { name: 'capture_get_exchange_body', title: 'Exchange body', description: 'Read a bounded body byte range.', kind: 'query' },
             { name: 'capture_list_websocket_messages', title: 'WebSocket messages', description: 'Page through captured WebSocket frames.', kind: 'query' },
             { name: 'capture_list_grpc_messages', title: 'gRPC messages', description: 'Page through decoded gRPC messages.', kind: 'query' },
+            { name: 'capture_get_transfer_job', title: 'Get file transfer job', description: 'Read one file transfer state and progress without revealing local file information.', kind: 'query' },
+            { name: 'capture_cancel_transfer_job', title: 'Cancel file transfer job', description: 'Cancel one running file transfer; completed, failed and cancelled jobs stay unchanged.', kind: 'change' },
           ],
         },
         {
@@ -1121,6 +1123,8 @@ export function installFakeInterceptor({
               'capture_get_exchange_body',
               'capture_list_websocket_messages',
               'capture_list_grpc_messages',
+              'capture_get_transfer_job',
+              'capture_cancel_transfer_job',
               'capture_start_recording',
               'capture_stop_recording',
               'capture_clear',
@@ -1838,6 +1842,8 @@ export function installFakeInterceptor({
               'capture_get_exchange_body',
               'capture_list_websocket_messages',
               'capture_list_grpc_messages',
+              'capture_get_transfer_job',
+              'capture_cancel_transfer_job',
               'capture_start_recording',
               'capture_stop_recording',
               'capture_clear',
@@ -2011,6 +2017,84 @@ export function installFakeInterceptor({
     agentSessionSnapshot = {
       ...agentSessionSnapshot,
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
+  } else if (agentSessionState === 'transfer-jobs') {
+    const turnId = 'turn-transfer-jobs';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const toolSteps = [{
+      callId: 'transfer-discover', name: 'discover_tools', arguments: { capabilityId: 'capture' },
+      result: { ok: true, value: { matches: [
+        'capture_get_proxy_status', 'capture_get_storage_status', 'capture_start_recording', 'capture_stop_recording',
+        'capture_clear', 'capture_list_exchanges', 'capture_get_exchange', 'capture_get_exchange_body',
+        'capture_list_websocket_messages', 'capture_list_grpc_messages', 'capture_get_transfer_job', 'capture_cancel_transfer_job',
+      ].map((name) => ({ descriptor: { name } })) } },
+    }, {
+      callId: 'transfer-get', name: 'capture_get_transfer_job', arguments: { jobId: 'transfer-archive' },
+      result: { ok: true, value: { job: {
+        id: 'transfer-archive', kind: 'archive-export', state: 'running', processed: 2, total: 5,
+        startedAt: '2026-09-07T12:00:00.000Z', warningCount: 0,
+      } } },
+    }, {
+      callId: 'transfer-missing', name: 'capture_get_transfer_job', arguments: { jobId: 'missing-job' },
+      result: { ok: true, value: { job: null } },
+    }];
+    const items = [{
+      kind: 'user-message', itemId: 'transfer-user', turnId,
+      content: 'Inspect the current transfer jobs without exposing local file information.', createdAt,
+    }];
+    for (const [index, step] of toolSteps.entries()) {
+      items.push({
+        kind: 'assistant-message', itemId: `transfer-assistant-${index}`, turnId,
+        content: '', reasoningContent: '', partial: false, createdAt: createdAt + index * 3 + 1,
+      }, {
+        kind: 'tool-call', itemId: `transfer-call-${index}`, turnId, callId: step.callId, name: step.name,
+        arguments: step.arguments, status: 'completed', approval: null, createdAt: createdAt + index * 3 + 2,
+      }, {
+        kind: 'tool-result', itemId: `transfer-result-${index}`, turnId, callId: step.callId, name: step.name,
+        result: step.result, createdAt: createdAt + index * 3 + 3,
+      });
+    }
+    const updatedAt = createdAt + toolSteps.length * 3 + 1;
+    items.push({
+      kind: 'assistant-message', itemId: 'transfer-assistant-final', turnId,
+      content: 'The Archive is running. The other job was not found in the current Core process.',
+      reasoningContent: '', partial: false, createdAt: updatedAt,
+    });
+    const turn = { turnId, userItemId: 'transfer-user', status: 'completed', retryOfTurnId: null, error: null, createdAt, updatedAt };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('transfer-cancel-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [...agentSessionSnapshot.items, {
+      kind: 'assistant-message', itemId: 'transfer-cancel-assistant', turnId,
+      content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+    }, {
+      kind: 'tool-call', itemId: 'transfer-cancel-call', turnId, callId: 'call-transfer-cancel',
+      name: 'capture_cancel_transfer_job', arguments: { jobId: 'transfer-archive' }, status: pending ? 'running' : 'completed',
+      approval: {
+        approvalId: 'transfer-cancel-approval', status: pending ? 'pending' : 'allowed',
+        description: 'Cancel one running file transfer; completed, failed and cancelled jobs stay unchanged.',
+        effect: 'Cancel only the selected running file transfer; existing saved files and other jobs are not removed.\nJob: transfer-archive\nKind: archive-export\nState: running\nProgress: 2/5',
+        effectMetadata: { jobId: 'transfer-archive', found: true, kind: 'archive-export', state: 'running', processed: 2, total: 5 },
+      }, createdAt: createdAt + 2,
+    }];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'transfer-cancel-result', turnId, callId: 'call-transfer-cancel', name: 'capture_cancel_transfer_job',
+      result: { ok: true, value: { job: {
+        id: 'transfer-archive', kind: 'archive-export', state: 'cancelled', processed: 2, total: 5,
+        startedAt: '2026-09-07T12:00:00.000Z', completedAt: '2026-09-07T12:00:01.000Z', warningCount: 0,
+      } } }, createdAt: createdAt + 3,
+    });
+    const turn = { ...agentSessionSnapshot.turns[0], status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('diagnostics-export-')) {

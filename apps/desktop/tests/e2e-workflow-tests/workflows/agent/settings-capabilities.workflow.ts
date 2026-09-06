@@ -37,6 +37,8 @@ const TOOL_NAMES = [
   'capture_get_exchange_body',
   'capture_list_websocket_messages',
   'capture_list_grpc_messages',
+  'capture_get_transfer_job',
+  'capture_cancel_transfer_job',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -180,13 +182,13 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     )), TOOL_GROUP_AUTOMATION_PREFIX);
     expect(groupIds).toEqual(TOOL_GROUP_IDS);
 
-    // 业务断言：fresh profile的24行、48个Agent/MCP开关必须全部开启。
-    // Business assertion: all 48 Agent/MCP switches across 24 fresh-profile rows start enabled.
+    // 业务断言：fresh profile的50行、100个Agent/MCP开关必须全部开启。
+    // Business assertion: all 100 Agent/MCP switches across 50 fresh-profile rows start enabled.
     const switches = getByAutomationId(
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(96);
+    await expect(switches).toHaveCount(100);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -254,8 +256,8 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', true);
     await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
 
-    // 重启二：空关闭集不依赖文件存在，24项必须再次全部开启。
-    // Restart two: an empty disabled set needs no file and all 36 Tools must return enabled.
+    // 重启二：空关闭集不依赖文件存在，50项必须再次全部开启。
+    // Restart two: an empty disabled set needs no file and all 50 Tools must return enabled.
     await closeGeneration(relaunchedApp, testInfo);
     activeApp = null;
     const secondRelaunch = await LocalElectronApplicationDriver.launch(testInfo, {
@@ -269,7 +271,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(96);
+    await expect(restoredSwitches).toHaveCount(100);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

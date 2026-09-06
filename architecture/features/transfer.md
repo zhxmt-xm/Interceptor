@@ -224,6 +224,38 @@ flowchart TD
 
 ## 9. 验收要点
 
+### 9.1 Capture任务Tool契约（代码完成，待交付验证）
+
+`capture_get_transfer_job`与`capture_cancel_transfer_job`分别复用正式`transfer.job.get`和
+`transfer.job.cancel`，只接受非空`jobId`。任务身份来自本代Core的产品文件操作，不是本地路径或外部任务队列。
+以下使用当前协议字段`id`与`completed`；上文旧示例中的`jobId/succeeded`不用于新的Tool contract。
+
+- Get是无审批query；Cancel是独立change，遵守Agent/MCP双列授权和Ask/Auto，Deny/预取消不执行取消命令。
+- Transcript共用紧凑任务摘要，先显示本地化状态与进度/警告数量，再显示jobId；不存在的任务有独立空结果，
+    不回退为包含文件信息的JSON。真实workflow通过公共摘要类型、任务身份与状态属性验证，不依赖界面语言。
+- 两项返回`{ job }`，未知或Core换代后不再存在的身份为`job:null`，不重建、重放或猜测其他任务。返回的job仅含
+    `id/kind/state/processed/total/startedAt/completedAt/warningCount`，不包含文件名、路径、任意message或warnings内容。
+- Cancel审批读取指定任务，只描述安全身份、种类、当前状态和进度；执行仍按同一jobId进入Core。
+    运行中任务进入cancelled并触发原AbortSignal；completed/failed/cancelled任务保持原终态，重复取消幂等。
+- Tool取消调用自身与取消文件任务是两种不同意图。执行前撤销Tool不能取消文件任务；已接受的正式取消按原路径
+    完成，不由Agent/MCP建立额外worker或假任务。任务查询不影响记录流量或其他并行任务。
+- 先取得executor缺失Tool Red及真实`capture.tools.transfer-jobs`发现Red，再接入实现；真实文件任务由产品导出
+    创建，验证静默查询、Deny/Allow/Auto、运行中取消与输出清理、完成任务幂等、其他任务隔离和双代销毁。
+    不用预造业务文件、state injection或仅终态取消代替运行中取消证据。
+
+2026-09-07进度保存：executor17项、任务进度属性4项、摘要37项及Archive服务7项通过。
+Archive最后Blob流和最后进度回调取消曾仍返回成功，两个真实文件Red后，snapshot/Blob流绑定AbortSignal，
+manifest与rename前检查取消；关联Archive/Transfer23项通过，原目标保持、临时文件清理。异步rename提交点
+竞态仍未完整定义，不把本次修复扩大为提交点验收。首次真实失败产物保留于TEMP下
+`interceptor-transfer-jobs-e2e-first-failure`，该代不能记为graceful。
+
+最终任务workflow1/1（49.7秒），Main/Core `38896/16496`、`42672/10272`均正常销毁，8888、WinINet与journal
+恢复，产物在TEMP下`interceptor-transfer-summary-e2e-green`。新增六视图parity40/40、最大0.5px、0 missing/flagged；
+全workspace类型、Tools260/260、Playground67/67、设计交互69/69通过。Desktop与MCP旧目录断言修正后分别
+相关21/21及20/20通过；原生Cancel驱动6项unit与Diagnostics关联真实流程通过，但最后MCP Browser仍有
+48/50旧数量断言，MCP Desktop未执行。按用户要求停止重试并提交进度，当前产物package/audit/smoke及最终
+交付复核未执行，完整交付数暂不增加；恢复时复用已有证据，只执行仍缺的检查。
+
 - [ ] 目标文件已存在、被占用、只读目录、磁盘满时旧文件永不丢失。
 - [ ] rename 失败后临时文件可回收。
 - [ ] Cancel 在提交点前后行为明确且一致。

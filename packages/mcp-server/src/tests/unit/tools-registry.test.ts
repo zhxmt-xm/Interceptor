@@ -85,6 +85,8 @@ describe('McpToolRegistry', () => {
       'capture_get_exchange_body',
       'capture_list_websocket_messages',
       'capture_list_grpc_messages',
+      'capture_get_transfer_job',
+      'capture_cancel_transfer_job',
       'rules_get_tree',
       'rules_get_hits',
       'rules_replace_tree',
@@ -126,6 +128,12 @@ describe('McpToolRegistry', () => {
     ]);
 
     expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(byName.get('capture_get_transfer_job')?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(byName.get('capture_cancel_transfer_job')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
     expect(byName.get('capture_clear')?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,

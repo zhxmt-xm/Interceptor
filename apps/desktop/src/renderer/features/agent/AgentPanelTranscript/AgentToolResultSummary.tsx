@@ -162,6 +162,20 @@ export function AgentToolResultSummary({
     case 'diagnosticsSnapshot':
       content = t('agent.tools.diagnosticsSnapshot', { count: summary.count, droppedCount: summary.droppedCount });
       break;
+    case 'transferJobMissing':
+      content = t('agent.tools.transferJobMissing');
+      break;
+    case 'transferJob':
+      content = t('agent.tools.transferJob', {
+        jobId: summary.jobId,
+        processed: summary.processed,
+        total: summary.total,
+        warningCount: summary.warningCount,
+        state: t(summary.state === 'running' ? 'agent.tools.running'
+          : summary.state === 'completed' ? 'agent.tools.complete'
+            : summary.state === 'failed' ? 'agent.tools.failed' : 'diagnostics.cancelled'),
+      });
+      break;
     case 'diagnosticsExport':
       content = t('agent.tools.exportJob', {
         jobId: summary.jobId,

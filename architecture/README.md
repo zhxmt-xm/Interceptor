@@ -14,7 +14,7 @@
 | [backlog/idea.md](backlog/idea.md) | 尚未成形的想法池（截图与它平级） | 待办 |
 | [backlog/research.md](backlog/research.md) | 已知缺口、长期候选与技术研究备忘 | 未承诺 |
 
-**新会话的阅读顺序**：[HANDOVER.md](HANDOVER.md) → [platform/processes.md](platform/processes.md) → 要改的那个 `features/*.md`。
+**开工阅读**：新会话和子代理必须先读 [HANDOVER.md](HANDOVER.md)，其余文档按任务读取相关章节，条件见 [../AGENTS.md](../AGENTS.md) 的“按需阅读”。
 
 feature 文档描述**架构应该是什么样**，每个章节用状态标记区分：
 

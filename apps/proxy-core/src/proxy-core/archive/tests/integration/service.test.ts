@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, open, rm } from 'node:fs/promises';
+import { mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -297,6 +297,45 @@ async function exportArchive(exchangeStore: ExchangeStore): Promise<string> {
 }
 
 describe('ArchiveService', () => {
+  it('preserves the original archive when cancelled during the final blob stream', async () => {
+    const directory = await tempDir();
+    const archivePath = path.join(directory, 'retained.iarchive');
+    const original = Buffer.from('previous archive');
+    await writeFile(archivePath, original);
+    const source = buildSourceCapture();
+    const blobs = new Map([[BODY_HASH, BODY_BYTES], [ORIGINAL_BODY_HASH, ORIGINAL_BODY_BYTES]]);
+    const captureService = new ExportFake(source, blobs);
+    const lastHash = source.createSnapshotSource(100).bodyHashes.at(-1)!;
+    const abortController = new AbortController();
+    vi.spyOn(captureService, 'openBlobStream').mockImplementation((hash) => Readable.from((async function* () {
+      const bytes = blobs.get(hash)!;
+      yield bytes.subarray(0, 1);
+      if (hash === lastHash) abortController.abort(new DOMException('Archive cancelled.', 'AbortError'));
+      yield bytes.subarray(1);
+    })()));
+    const archiveService = new ArchiveService(captureService, new TransferService());
+
+    await expect(archiveService.exportToFile(archivePath, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(await readFile(archivePath)).toEqual(original);
+    expect(await readdir(directory)).toEqual(['retained.iarchive']);
+  });
+
+  it('preserves the original archive when cancelled after the final progress update', async () => {
+    const directory = await tempDir();
+    const archivePath = path.join(directory, 'retained.iarchive');
+    const original = Buffer.from('previous archive');
+    await writeFile(archivePath, original);
+    const captureService = new ExportFake(buildSourceCapture(), new Map([[BODY_HASH, BODY_BYTES], [ORIGINAL_BODY_HASH, ORIGINAL_BODY_BYTES]]));
+    const archiveService = new ArchiveService(captureService, new TransferService());
+    const abortController = new AbortController();
+
+    await expect(archiveService.exportToFile(archivePath, abortController.signal, ({ processed, total }) => {
+      if (processed === total) abortController.abort(new DOMException('Archive cancelled.', 'AbortError'));
+    })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(await readFile(archivePath)).toEqual(original);
+    expect(await readdir(directory)).toEqual(['retained.iarchive']);
+  });
+
   it('round-trips a native archive preserving pseudo-headers, trailers, and bodies', async () => {
     const archivePath = await exportArchive(buildSourceCapture());
 

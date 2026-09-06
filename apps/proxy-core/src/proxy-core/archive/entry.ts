@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, open, readFile, rename, rm, stat } from 'node:fs/promis
 import type { FileHandle } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { addAbortSignal, type Readable } from 'node:stream';
 
 import type {
   TransferJobSnapshot,
@@ -104,7 +105,7 @@ export class ArchiveService {
 
       files.push(
         await this.addFileEntry(zipWriter, SNAPSHOT_ENTRY_NAME, () =>
-          createReadStream(snapshotPath)),
+          createReadStream(snapshotPath), abortSignal),
       );
       processed += 1;
       onProgress?.({ processed, total });
@@ -113,12 +114,13 @@ export class ArchiveService {
         ArchiveUtils.throwIfAborted(abortSignal);
         files.push(
           await this.addFileEntry(zipWriter, `${BLOB_ENTRY_PREFIX}${hash}`, () =>
-            this.captureService.openBlobStream(hash)),
+            this.captureService.openBlobStream(hash), abortSignal),
         );
         processed += 1;
         onProgress?.({ processed, total });
       }
 
+      ArchiveUtils.throwIfAborted(abortSignal);
       const manifest = ArchiveUtils.buildManifest(
         appVersion,
         files,
@@ -130,6 +132,7 @@ export class ArchiveService {
       await zipWriter.finalize();
       await handle.close();
       handle = undefined;
+      ArchiveUtils.throwIfAborted(abortSignal);
       // 直接 rename 覆盖，不留旧文件已删、新文件未就位的窗口。
       await rename(zipPath, filePath);
     } catch (error) {
@@ -204,12 +207,15 @@ export class ArchiveService {
   private async addFileEntry(
     zipWriter: ZipWriter,
     name: string,
-    openSource: () => AsyncIterable<Uint8Array>,
+    openSource: () => Readable,
+    abortSignal: AbortSignal,
   ): Promise<ArchiveManifestFile> {
     const hash = createHash('sha256');
     let size = 0;
     const source = (async function* (): AsyncGenerator<Uint8Array> {
-      for await (const chunk of openSource()) {
+      const stream = addAbortSignal(abortSignal, openSource());
+      for await (const chunk of stream) {
+        ArchiveUtils.throwIfAborted(abortSignal);
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         hash.update(buffer);
         size += buffer.length;

@@ -63,7 +63,7 @@ test('Agent Capture Tool activity includes a compact storage result', async ({ p
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
   await expect(trace.locator('[data-tool-name="discover_tools"]'))
-    .toContainText('10 tools discovered');
+    .toContainText('12 tools discovered');
   await expect(trace.locator('[data-tool-name="capture_get_storage_status"]'))
     .toContainText('Exchanges 1 · Bodies 2 · 184 B');
 });
@@ -702,6 +702,32 @@ test('Agent Composer Tool activity summarizes direct HTTP and TLS results', asyn
     .toContainText('TLS negotiated h2 with one certificate');
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
+test('File transfer queries show state and progress separately from a missing job', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+    agentToolTrace: 'transfer-jobs', agentToolApproval: '', agentExecutionMode: 'ask',
+  }));
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
+  await expect(trace).toContainText('12 tools discovered');
+  await expect(trace.locator('[data-tool-name="capture_get_transfer_job"]').first()).toContainText('Running · 2/5 · Warnings 0');
+  await expect(trace.locator('[data-tool-name="capture_get_transfer_job"]').last()).toContainText('Transfer job not found');
+  await expect(page.locator('[data-parity="agent-tool-approval"]')).toHaveCount(0);
+});
+
+test('File transfer cancellation preserves a bounded approval and actual job outcome', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout', agentToolTrace: '',
+    agentToolApprovalName: 'capture_cancel_transfer_job', agentToolApproval: 'pending',
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('Job: transfer-archive');
+  await expect(approval).toContainText('State: running');
+  await expect(approval).toContainText('Progress: 2/5');
+  await approval.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+  await expect(approval).toContainText('Cancelled · 2/5 · Warnings 0');
 });
 
 test('Agent Diagnostics Tool activity summarizes records without exposing attributes', async ({ page }) => {

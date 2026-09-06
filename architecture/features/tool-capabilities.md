@@ -3,24 +3,24 @@
 > 最后更新：2026-09-07
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现48/73，完整自动验收44/73；TLS四项代码完成但最终CA清理E2E blocked，另25项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项均已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，代码已实现50/73，完整自动验收44/73；TLS四项最终CA清理E2E blocked，Capture任务两项已取得目标真实Green但按用户要求保存进度、待交付验证，另23项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
 > Settings代码12/26、完整自动验收8/26；只读六项与系统代理启用/恢复两项已完成真实验收。Playground
-> recipe为48/48、Developer人工结论为0/48；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> recipe为50/50、Developer人工结论为0/50；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
 
 | Feature | 目标 | 已实现并自动验收 | 代码完成待验收 | 待实现 |
 | --- | ---: | ---: | ---: | ---: |
-| Capture | 17 | 10 | 0 | 7 |
+| Capture | 17 | 10 | 2 | 5 |
 | Rules | 5 | 5 | 0 | 0 |
 | Composer | 6 | 6 | 0 | 0 |
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
 | Settings | 26 | 8 | 4 | 14 |
 | Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 44 | 4 | 25 |
+| 合计 | 73 | 44 | 6 | 23 |
 
 ## 1. 唯一目录
 
@@ -128,8 +128,8 @@ interface ToolCapabilitySettingsRecord {
 | `capture_import_har` | change | `startHarImport` / 原生 Open Dialog | 产品已具备 |
 | `capture_export_archive` | change | `startArchiveExport` / 原生 Save Dialog | 产品已具备 |
 | `capture_import_archive` | change | `startArchiveImport` / 原生 Open Dialog | 产品已具备 |
-| `capture_get_transfer_job` | query | `getTransferJob` | 产品已具备 |
-| `capture_cancel_transfer_job` | change | `cancelTransferJob` | 产品已具备 |
+| `capture_get_transfer_job` | query | `transfer.job.get` | 共享registry + Agent/MCP；目标真实Green，进度已保存、待交付验证 |
+| `capture_cancel_transfer_job` | change | `transfer.job.cancel` | 共享registry + Agent/MCP；运行中取消/清理Green，进度已保存、待交付验证 |
 
 ### 3.2 Rules
 
@@ -597,7 +597,7 @@ registry/recipe48项、96个开关，Developer人工结论0/48。下一组Captur
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 48/48；Developer结论0/48 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下25项开发 |
+| Playground人工矩阵 | 当前recipe 50/50；Developer结论0/50 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E、Capture交付验证与余下23项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |

@@ -15,6 +15,9 @@
 
 Worker 不参与活动 Capture 数据面，因此 archive 任务再慢也不影响抓包。
 
+导出时，snapshot和Blob读取流绑定同一任务AbortSignal；最后一块数据完成后、最终rename前也检查取消。
+取消发生在提交前时关闭流和文件句柄、删除临时ZIP与snapshot，不覆盖原有目标；不更改ZIP格式或Worker快照内容。
+
 SQLite快照为Request/Response分别保存Body effect的`ruleId/effect/source/originalState`与可选
 Original body id；导入时为Final和Original重新分配当前Session内的body id，并严格校验
 `available`必须有Original、`empty/unavailable`不得伪造Original。标准HAR仍只导出Final，不承载这些

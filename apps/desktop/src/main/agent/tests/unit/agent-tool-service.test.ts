@@ -185,6 +185,8 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'capture_get_exchange_body' } },
           { descriptor: { name: 'capture_list_websocket_messages' } },
           { descriptor: { name: 'capture_list_grpc_messages' } },
+          { descriptor: { name: 'capture_get_transfer_job' } },
+          { descriptor: { name: 'capture_cancel_transfer_job' } },
         ],
       },
     });
@@ -202,6 +204,8 @@ describe('AgentToolService', () => {
       'capture_get_exchange_body',
       'capture_list_websocket_messages',
       'capture_list_grpc_messages',
+      'capture_get_transfer_job',
+      'capture_cancel_transfer_job',
     ]);
     expect(tool(disclosed, 'capture_start_recording').kind).toBe('change');
     expect(tool(disclosed, 'capture_stop_recording').kind).toBe('change');
@@ -238,6 +242,8 @@ describe('AgentToolService', () => {
       'capture_get_exchange_body',
       'capture_list_websocket_messages',
       'capture_list_grpc_messages',
+      'capture_get_transfer_job',
+      'capture_cancel_transfer_job',
     ]);
   });
 

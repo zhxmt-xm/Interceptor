@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { TransferJobSnapshot } from '../../../../shared/desktop-api';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { TRANSFER_HEADING_KEYS } from '../constants';
 
 import styles from './JobProgress.module.css';
@@ -23,7 +24,16 @@ export function JobProgress({ job, error }: JobProgressProps): React.JSX.Element
   const StatusIcon = job.state === 'completed' ? CheckCircle2 : XCircle;
 
   return (
-    <div className={styles.job} aria-live="polite">
+    <div
+      className={styles.job}
+      aria-live="polite"
+      data-automation-id={AUTOMATION_IDS.capture.transfer.progress}
+      data-transfer-job-id={job.id}
+      data-transfer-job-kind={job.kind}
+      data-transfer-job-state={job.state}
+      data-transfer-processed={job.processed}
+      data-transfer-total={job.total}
+    >
       <div className={styles.jobHeading}>
         {job.state === 'running' ? (
           <span className={styles.spinner} />

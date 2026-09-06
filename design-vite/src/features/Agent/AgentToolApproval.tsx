@@ -5,6 +5,12 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  capture_cancel_transfer_job: {
+    description: 'Cancel one running file transfer; completed, failed and cancelled jobs stay unchanged.',
+    effect: 'Cancel only the selected running file transfer; existing saved files and other jobs are not removed.\nJob: transfer-archive\nKind: archive-export\nState: running\nProgress: 2/5',
+    arguments: 'jobId: transfer-archive',
+    result: 'Cancelled · 2/5 · Warnings 0 · transfer-archive',
+  },
   diagnostics_export: {
     description: 'Start an atomic redacted JSONL export using the native Save Dialog and existing transfer service.',
     effect: 'Choose a destination and start exporting persisted diagnostic records; starting a job does not mean the export has completed.\nProcess: core\nMinimum level: info\nOutcome: success',
@@ -169,7 +175,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName.startsWith('breakpoints_') || state.agentToolApprovalName.startsWith('diagnostics_') || ['rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName.startsWith('breakpoints_') || state.agentToolApprovalName.startsWith('diagnostics_') || ['capture_cancel_transfer_job', 'rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

@@ -36,6 +36,8 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'transferJob'; readonly jobId: string; readonly state: 'running' | 'completed' | 'failed' | 'cancelled'; readonly processed: number; readonly total: number; readonly warningCount: number }
+  | { readonly kind: 'transferJobMissing' }
   | { readonly kind: 'diagnosticsSnapshot'; readonly count: number; readonly droppedCount: number }
   | { readonly kind: 'diagnosticsExport'; readonly jobId: string; readonly state: 'running' | 'completed' | 'failed' | 'cancelled' }
   | { readonly kind: 'exportCanceled' }
@@ -458,6 +460,18 @@ export function summarizeAgentToolResult(
         alpn,
         certificateCount: certificates.length,
       };
+    }
+  }
+  if (['capture_get_transfer_job', 'capture_cancel_transfer_job'].includes(name) && isRecord(result.value)) {
+    const job = result.value['job'];
+    if (job === null) return { kind: 'transferJobMissing' };
+    if (isRecord(job) && typeof job['id'] === 'string'
+      && typeof job['processed'] === 'number' && typeof job['total'] === 'number'
+      && typeof job['warningCount'] === 'number') {
+      const state = job['state'];
+      if (state === 'running' || state === 'completed' || state === 'failed' || state === 'cancelled') {
+        return { kind: 'transferJob', jobId: job['id'], state, processed: job['processed'], total: job['total'], warningCount: job['warningCount'] };
+      }
     }
   }
   if (['diagnostics_get_trace', 'diagnostics_get_recent'].includes(name)

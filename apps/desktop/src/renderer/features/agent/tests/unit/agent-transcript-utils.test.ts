@@ -284,6 +284,16 @@ describe('Agent transcript utilities', () => {
     } })).toEqual({ kind: 'diagnosticsSnapshot', count: 2, droppedCount: 3 });
   });
 
+  it.each(['capture_get_transfer_job', 'capture_cancel_transfer_job'])('%s只显示安全任务摘要并区分不存在', (name) => {
+    expect(summarizeAgentToolResult(name, { ok: true, value: { job: null } }))
+      .toEqual({ kind: 'transferJobMissing' });
+    for (const state of ['running', 'completed', 'failed', 'cancelled']) {
+      expect(summarizeAgentToolResult(name, { ok: true, value: { job: {
+        id: 'transfer-one', state, processed: 2, total: 5, warningCount: 1, fileName: 'private.har', message: 'private path',
+      } } })).toEqual({ kind: 'transferJob', jobId: 'transfer-one', state, processed: 2, total: 5, warningCount: 1 });
+    }
+  });
+
   it('原生取消的Diagnostics导出不显示已启动任务', () => {
     expect(summarizeAgentToolResult('diagnostics_export', { ok: true, value: { started: false } }))
       .toEqual({ kind: 'exportCanceled' });

@@ -89,6 +89,7 @@ export const AUTOMATION_IDS = {
     saveArchive: 'capture.transfer.archive-save',
     transfer: {
       dialog: 'capture.transfer.dialog',
+      progress: 'capture.transfer.progress',
       scopeAll: 'capture.transfer.scope.all',
       scopeFilter: 'capture.transfer.scope.filter',
       scopeSelected: 'capture.transfer.scope.selected',

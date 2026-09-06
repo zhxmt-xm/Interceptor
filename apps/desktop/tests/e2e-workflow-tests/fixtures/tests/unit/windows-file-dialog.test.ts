@@ -38,6 +38,25 @@ describe('dismissWindowsFileDialogs', () => {
     expect(script).not.toContain("SendKeys('{ESC}')");
   });
 
+  it('activates the owned dialog with a real click before checking Cancel focus', async () => {
+    const fakeWindowsFileDialogCommandRunner = new FakeWindowsFileDialogCommandRunner();
+    await cancelWindowsFileDialog({
+      processId: 101,
+      processStartedAt: '2026-09-07T01:00:00.0000000Z',
+    }, fakeWindowsFileDialogCommandRunner);
+    const script = fakeWindowsFileDialogCommandRunner.calls[0]?.args.at(-1) ?? '';
+    const cancelBranch = script.slice(
+      script.indexOf("if ($dialogAction -eq 'cancel')"),
+      script.indexOf('} else {\ntry {'),
+    );
+
+    expect(cancelBranch).toMatch(/RaiseWindow\(\$dialogWindowHandle\)\s+Click-Control \$fileNameBounds\s+if \(-not \(Test-FocusedOwnedDialog/);
+    const activationIndex = cancelBranch.indexOf('Click-Control $fileNameBounds');
+    expect(cancelBranch.indexOf('Test-OwnerProcessGeneration')).toBeGreaterThanOrEqual(0);
+    expect(cancelBranch.indexOf('Test-OwnerProcessGeneration')).toBeLessThan(activationIndex);
+    expect(cancelBranch.indexOf('Test-FocusedOwnedDialog')).toBeLessThan(cancelBranch.indexOf('Click-Control $cancelBounds'));
+  });
+
   it('does nothing when no workflow-owned Main process was launched', async () => {
     const commandRunner = new FakeWindowsFileDialogCommandRunner();
 

@@ -737,6 +737,50 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      {
+        id: `transfer-jobs${suffix}`, theme, agentModels: 'configured', agentSessionState: 'transfer-jobs',
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentChat: 'checkout', agentToolTrace: 'transfer-jobs', agentToolApproval: '', agentExecutionMode: 'ask',
+        },
+        designShot: `${theme}/agent-models/panel-transfer-jobs.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Transfer activity', parity: 'agent-query-tool-trace' },
+          { name: 'Transfer discovery', appSelector: '[data-tool-call-id="transfer-discover"]', designSelector: '[data-tool-name="discover_tools"]' },
+          { name: 'Running transfer', appSelector: '[data-tool-call-id="transfer-get"]', designSelector: '[data-tool-name="capture_get_transfer_job"]:nth-child(2)' },
+          { name: 'Missing transfer', appSelector: '[data-tool-call-id="transfer-missing"]', designSelector: '[data-tool-name="capture_get_transfer_job"]:nth-child(3)' },
+          'Inspect the current transfer jobs without exposing local file information.',
+          'The Archive is running. The other job was not found in the current Core process.',
+        ],
+      },
+      ...['pending', 'allowed'].map((stage) => ({
+        id: `transfer-cancel-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `transfer-cancel-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage, agentToolApprovalName: 'capture_cancel_transfer_job', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-transfer-cancel-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Transfer cancel approval', parity: 'agent-tool-approval' },
+          'capture_cancel_transfer_job',
+          {
+            name: 'Transfer cancel result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-transfer-cancel"] > span',
+          },
+        ],
+      })),
       ...['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `diagnostics-export-${stage}${suffix}`, theme, agentModels: 'configured',
         agentSessionState: `diagnostics-export-${stage}`,

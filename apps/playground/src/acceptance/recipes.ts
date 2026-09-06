@@ -48,6 +48,14 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Create a captured gRPC exchange with at least one message.'],
     ['Message direction, sequence and bounded payload agree with Capture.'],
   ),
+  capture_get_transfer_job: recipe(
+    ['Start a file export through the product UI or diagnostics_export and retain its jobId.'],
+    ['State, progress and warning count match the current job without approval.', 'The result does not reveal file names, paths or warning text.', 'Unknown identities and jobs from a previous Core process return job=null.'],
+  ),
+  capture_cancel_transfer_job: recipe(
+    ['Capture enough Traffic Lab data to keep an Archive export running, then start Export through the product UI.', 'Keep the MCP Client in Ask mode and retain the running jobId.'],
+    ['Deny leaves the task running.', 'Allow and Auto cancel only the selected task; confirm no destination file or temporary file is left.', 'Completed, failed and cancelled jobs keep their terminal state; existing saved files and other jobs remain unchanged.', 'The compact result shows actual state and progress, without local file information.'],
+  ),
   rules_get_tree: recipe(
     ['Create and Apply a small enabled Rule tree in the product UI.'],
     ['Returned revision, folders, rule order and enabled state match Rules.'],

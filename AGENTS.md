@@ -1,232 +1,221 @@
-# Interceptor Agent Guidelines
+# Interceptor 协作规范
 
-## 实现原则
+适用于全仓。前端与 Core 的专属规则仅约束对应 module。
 
-- **禁止 Agent 擅自停下**：只要用户任务尚未完整实现并验证，且仍有可执行步骤、后台命令、待确认结果或可自行排除的阻塞，就不得发送完成答复、放弃任务、把续作留给用户或等待用户再次催促。命令转入后台或按工具协议等待系统通知时，不得把等待表述为任务结束；通知到达后必须主动读取结果并继续执行。只有任务已完整完成、用户明确要求暂停/停止，或已穷尽所有可行路径且确实需要用户提供无法自行取得的信息、凭据或人工操作时才允许停下；此时必须明确说明阻塞事实与唯一所需动作。
-- Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
-- Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
-- Grow the system in layers. Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
-- Keep components modular and concerns clearly separated.
-- Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
-- Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
-- **第三方 patch 必须先获批准**：任何新增、修改或扩展 `patches/` 下的第三方补丁，以及任何直接修改 `node_modules` 三方行为的操作，都必须先向用户说明必要性、替代方案和影响范围，并取得用户明确同意；未获批准时只能调研和写验证测试，不得编辑第三方代码或补丁。
-- Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
-- 不要为不可能发生的场景添加错误处理；只在系统边界做校验。
-- **所有业务代码改动都走完整 TDD**：修改业务代码前必须先判断 test impact，确认预期行为/契约是否变化、现有测试是否已经完整表达该行为。若需要新增或修改测试，先完成最小 unit / integration test 并确认因预期缺口失败（Red），再写业务代码；若是行为不变的内部重构且现有测试已经充分覆盖，不机械改测试，先运行最聚焦的现有测试确认基线 Green，再写业务代码。完成后必须复跑同一组测试确认 Green；禁止先写实现、再补测试为既有结果背书。
-- **Flow 变更阶段门禁**：任何业务代码改动只要影响用户 flow，首先在 owning `architecture/features/*.md` 与 `apps/desktop/tests/e2e-workflow-tests/docs/*.md` 落地契约、完整 flow、预期效果和证据要求；随后分别判断 unit / integration 与 E2E 的 test impact。需要改测试时，按 unit / integration Red → E2E Red 的顺序完成；现有测试已充分覆盖时，按同一顺序确认基线 Green。只有这些前置测试事实建立后才允许修改业务代码。实现后按 unit / integration Green → E2E Green 的顺序验证；只有 E2E 销毁与证据验证也完成后，才能更新 Inventory、Handover 与完成状态。
-- **真实 E2E 定义（不得替代）**：本仓所称 E2E 仅指 `apps/desktop/tests/e2e-workflow-tests/workflows/*.workflow.ts` 启动真实 Electron，并经过真实 Renderer → Preload → Main → Core UtilityProcess → listener / storage / origin 的 workflow。`design-vite` Playwright、visual parity（fake Preload）、Renderer component/store test、Proxy Core integration、packaged smoke 都不是该产品 flow 的 E2E，不能作为 E2E Red/Green 或销毁证据的替代品。
-- **E2E 零 seed 与真实交互**：workflow 的每一步都必须是真实用户操作。产品内弹窗用真实点击，Open/Save Dialog、UAC 等原生 UI 用真实键鼠操作驱动，不得改写其返回值。业务输入不得由测试直接构造：导入类流程的输入文件必须由同一 workflow 先经产品 UI 真实产生（先 Export 再 Import）。产品路径无法产生的输入，例如结构非法的文件、越界层级或损坏字节，不属于 E2E 范畴，下沉到 owning 模块的 unit 测试；不得为制造这类场景在测试里写文件、注入状态或调用产品后门。
-- **E2E TDD 完成判据**：影响用户 flow 时，必须存在可执行 `.workflow.ts`，并在业务实现前于目标测试中观察到由预期行为缺口导致的失败（Red），不是 selector、fixture、UAC、构建或环境失败；实现后同一 workflow 必须 Green，并验证 trace/evidence、Main/Core/Worker 销毁、8888 释放及系统副作用恢复。若是补历史缺口，必须在临时 detached worktree 对修复前提交运行同一测试取得 retrospective Red，再在当前提交取得 Green；禁止用故障注入冒充历史 Red。
-- **E2E 与语言无关**：真实 Electron workflow 保持应用当前语言，不为测试自动切换语言。业务交互和断言只使用公共 `data-automation-id`、协议值、DOM 状态属性或测试自产数据；禁止用英文/中文显示文案、翻译后的 `aria-label` 或 CSS class 定位交互或判断 Green。翻译文本本身只允许在独立 i18n workflow 中验证。
-- **E2E workflow 双语注释**：可执行 `.workflow.ts` 必须在 setup / arrange、用户操作、业务断言、evidence / teardown 等逻辑分块前写简短的中英文成对注释，说明该分块验证什么、为何存在，方便不同语言的 reader 理解。注释用于解释步骤意图，不逐行复述代码；中英文必须表达同一语义。
-- **状态与文档约束**：只有 unit/integration Green 而缺真实 E2E Red/Green 时，只能标记“代码完成 · 待 E2E”，不得勾选“已完成”、更新 Inventory 为 passed，或在 Handover 宣称 flow 验收完成。若 E2E 暂因 UAC/凭据/平台条件阻塞，记录为 blocked，并写明需要的人工步骤与恢复命令。
-- **可读性优先于聪明**：命名直白、控制流线性、避免为省几行而牺牲可理解性。宁可多一个语义清晰的名字，不要一个塞满逻辑的表达式。
-- **命名用具体动词，不用泛化动词**：`apply` / `handle` / `process` / `manage` 这类词不说明做了什么。方法名要让调用点自解释；布尔参数尤其可疑，`setX(true)` 读者必须回看签名，拆成两个动词方法（`startX()` / `stopX()`）通常更好。
-- **相关方法相邻**：同一职责的方法排在一起；成对操作（start/stop、open/close、drain/restore）紧挨着；公开入口紧跟它自己的私有辅助。读者不应为了拼出一条完整流程在文件里来回跳。
+## 一、协作与授权
 
-## 交互与命令契约（全仓适用，不限于 Settings）
+### 沟通与暂停
 
-- **一个交互对应一个流程**
-	- UI 上每个按钮、开关和交互流程，都必须对应后端一条语义单一的命令或方法。
-	- 不同的用户意图不得合并进同一入口，即使它们最终改写同一份状态。
-	- 命令名直接说明它做什么；调用点读起来就应该等于用户在界面上做的那件事。
-- **分层边界：Main 收敛，Core 分派**
-	- Main / IPC / Preload 允许一个控件对应一条带 payload 的命令，开关控件本身就是一个交互。
-	- Core 的 `entry.ts` 必须按 payload 分派到语义单一的方法；禁止在一个方法里用 `if (enabled)` 兼顾正反两种语义。
-	- 分派写在 command handler 里，不写在 entry 方法内部。
-- **禁止隐式编码多重语义**
-	- 不用 `null`、空数组、可选参数或魔法值同时表达两件正交的事。
-	- 配置（configure）与开关（enable / disable）是不同语义，必须用各自的字段或命令表达。
-	- 参数命名描述**行为**而非调用场景；读者不应为了理解差异去回溯调用方。
-- **正交状态各自独立**
-	- 一个字段只表达一个维度；发现某字段需要「同时表示 A 和 B」时，拆成两个字段。
-	- 不要为绕开这种编码而引入影子字段去缓存被覆盖的值。
-- **只为真实产品能力保留代码路径**
-	- 产品不提供的操作不得在后端保留分支，也不得靠测试专用参数维持。
-	- 测试需要的能力要么提升为正式命令，要么改测试去用真实产品路径。
+- 对话、文档、计划、评审和工具说明使用连贯中文，保留 worktree、commit、diff、Renderer、Preload 等必要术语，不逐词替换成英文或堆砌名词。
+- 代码、命令、路径、API、协议值、配置键和引用日志保持原文；反引号用于代码标识与字面值，不用于强调普通术语。E2E 分块注释按下文要求使用双语。
+- 在授权范围内持续推进到实现与验证完成；后台命令须取得结果后继续，不能把等待当作完成。确需人工处理的阻塞，应说明事实、所需动作和恢复方式。
 
-## 语言
+### 开工与权限
 
-- **除代码本身外，一切产出默认使用中文**，不因工具字段名、模板或上游提示是英文就切换语言。覆盖范围包括但不限于：
-	- 对话正文、结论、澄清问题与选项；
-	- 思路讲解、推理与思考过程、方案权衡、取舍理由；
-	- 回合标题、阶段性进度摘要与总结；
-	- 计划、待办列表与任务状态说明；
-	- 工具调用中的说明性参数，例如 `explanation`、`goal`、`description`、子代理 prompt 与测试注解描述；
-	- 代码评审意见、错误诊断、验证结论与证据说明。
-- 保持原文、不做翻译的只有：代码、标识符、命令、文件路径、API 名称、automation ID、协议值、配置键、以及被引用的第三方日志与报错原文。
-- 中英文混排时只保留必要的技术原词，其余表述必须是完整中文句子；不得用中英夹杂的短语代替中文说明。
+- 新会话和子代理在规划或修改代码前，必须先阅读 [architecture/HANDOVER.md](architecture/HANDOVER.md)。
+- 保留用户和其他会话的修改，不擅自回滚、覆盖或清理 `worktree`。
+- 新增或修改 `patches/` 中的第三方补丁、直接改变 `node_modules` 的第三方行为，必须先说明必要性、替代方案和影响范围，并取得明确批准；批准前仅可调研、编写验证测试。
 
-## 命名（全仓适用：Main / Preload / Renderer / Proxy Core / packages）
+### 按需阅读
 
-- **类实例名与类名同步**
-	- 变量、字段、构造函数/方法参数、对象属性使用类名的 camelCase 全名，不用简称。
-	- `Core` 前缀不例外：`new CoreApplication()` → `coreApplication`。
-	- 测试 fixture、替身和局部变量同样适用：`new FakeRpcPort()` → `fakeRpcPort`。
-- **保留有意义的角色名**
-	- 名称若表达「哪一个 / 什么角色」而非类型，保留语义名，如 `mainWindow`、`downloadAbortController`。
-	- 同作用域的同类实例必须区分角色，如 `exportHost`/`importHost`、`requestWriter`/`responseWriter`。
-- **容器与数据字段按内容命名**
-	- `Map`/`Set`/`Promise`/`RegExp`/`TypedArray` 使用内容名，如 `zipByName`、`ruleIds`。
-	- DTO 和协议字段保持契约语义，如 `entries`、`query`、`options`；不套用实例命名。
-- **安全执行改名**
-	- 跨文件一律使用语言服务 rename，以同步 import、解构别名和 `{ signal }` 简写。
-	- 单文件正则的词边界须排除 `-`、`/`、`.`。
-	- 字符串或注释含同名文本时，逐处精确替换并用 grep 复核。
-	- 脚本化替换必须显式以 UTF-8 写入并校验；禁止使用会默认写入 ANSI 的 PowerShell `Set-Content`。
-- **测试目录与文件命名**
-	- 每个 owning 模块的 Vitest 测试统一放在 `tests/unit/` 或 `tests/integration/`；`tests/` 根目录不放可执行测试或测试 helper。
-	- `unit/` 只放不跨真实进程、网络、文件系统、数据库或 worker 边界的测试；跨任一真实边界的测试放 `integration/`。
-	- fixture、fake 与 helper 跟随使用它的测试层放置，不新增 `tests/shared/`；确有跨层复用时，优先拆成各层语义明确的 helper。
-	- 测试文件按行为命名为 `*.test.ts`，不再用 `.unit.test.ts` 或 `.integration.test.ts` 重复目录已经表达的层级。
-	- `e2e-workflow-tests/`、`packaged-smoke/`、`installer/`、`visual-parity/` 是独立测试套件，不归入 unit/integration 目录。
-	- `apps/desktop/tests/e2e-workflow-tests/workflows/` 下的可执行workflow必须按owning feature分目录，如`workflows/capture/*.workflow.ts`、`workflows/breakpoints/*.workflow.ts`；根目录不放可执行spec，不得把不同feature平铺混在一起。目录已表达feature，文件名只写行为（`capture/detail-body-fill.workflow.ts`），不再重复成`capture/capture-detail-body-fill.workflow.ts`。跨feature流程归主要用户入口的owning feature，公共driver/lab只放`fixtures/`。
+其余文档按下表的任务条件读取相关章节；同一会话内已读且未变化的内容不重复读取。
 
-## Frontend Styling
+| 文档 | 何时读取 |
+| --- | --- |
+| [architecture/README.md](architecture/README.md) | 任务归属不明确，需要定位功能或平台文档时 |
+| `architecture/features/*.md` 中的对应功能文档 | 新增、修改或修复功能行为、data contract 或用户流程时；跨功能改动分别读取相关章节 |
+| [architecture/platform/processes.md](architecture/platform/processes.md) | 涉及 Main、Preload、Core 的进程职责、通信、lifecycle 或安全边界时 |
+| [architecture/platform/renderer.md](architecture/platform/renderer.md) | 涉及 Renderer 外壳、导航、共享组件、主题、语言或公共 automation contract 时 |
+| [architecture/platform/storage.md](architecture/platform/storage.md) | 涉及存储归属、SQLite、正文文件，或录制数据的 lifecycle 与清理时 |
+| [architecture/platform/testing.md](architecture/platform/testing.md) | 新增或修改测试、选择验证层级、调整测试设施或执行验证任务时 |
+| [architecture/platform/release.md](architecture/platform/release.md) | 涉及构建、打包、runtime dependency、原生 helper、Fuses/CSP、安装器或发布时 |
+| [design-vite/design-system.md](design-vite/design-system.md) | 创建、修改或评审 UI 的布局、控件、颜色、字体、尺寸及交互状态时 |
+| [design-vite/README.md](design-vite/README.md) | 修改设计稿、添加设计场景或生成设计截图时 |
+| [apps/desktop/tests/e2e-workflow-tests/README.md](apps/desktop/tests/e2e-workflow-tests/README.md)、[规格索引](apps/desktop/tests/e2e-workflow-tests/docs/README.md)及对应功能规格 | 涉及用户流程的 contract、真实 E2E 前置证据、执行或验收时 |
+| [apps/desktop/tests/packaged-smoke/README.md](apps/desktop/tests/packaged-smoke/README.md) | 修改或执行最终打包产物的启动、安全、资源与退出验证时 |
+| [apps/desktop/tests/visual-parity/README.md](apps/desktop/tests/visual-parity/README.md) | 验证或修复产品 UI 与设计稿的几何、字体和像素差异时 |
+| 所属 module 的 README | 修改 Core 或 package 中的模块职责、entry point、依赖或内部结构时 |
+| [apps/playground/README.md](apps/playground/README.md) | 开发 Playground，或进行协议流量与 MCP 人工验收时 |
+| [README.md](README.md) | 配置开发环境、安装依赖、运行或调试应用、查找常用命令时 |
+| [architecture/backlog/TODO.md](architecture/backlog/TODO.md) | 查询或更新已确认缺陷、实现限制及验收欠账时 |
+| [architecture/backlog/idea.md](architecture/backlog/idea.md) | 整理想法、评审待办或更新工作项状态时 |
+| [architecture/backlog/research.md](architecture/backlog/research.md) | 进行技术调研、评估长期候选或记录未承诺方案时 |
 
-- **滚动不得被无故禁用**：除非用户明确要求，BodyViewer、编辑器、列表、树、菜单和详情面板等内容面必须在内容溢出时支持滚轮、触控板与键盘滚动；不得用 `overflow: hidden`、隐藏scrollbar或组件配置关闭其应有滚动。仅外壳裁切、图标、圆角clip和单行ellipsis可使用hidden，且不能吞掉内容面的滚动事件。
-- **嵌套滚动必须链式交接**：内层滚动到顶部/底部后，继续同方向滚动必须交给外层容器，不得永久消费wheel。Monaco等第三方编辑器必须显式关闭边界wheel吞噬（例如 `alwaysConsumeMouseWheel: false`），并用真实wheel交互测试验证内层滚动与边界后的外层滚动两段行为。
+## 二、实现与命名
 
-- **Design authority**
-	- `design-vite/` mockups and tokens are the **single source of truth**.
-	- `design-vite/design-system.md` is the authoritative token/component spec.
-	- Use `.github/skills/ui-design-mockup/` for every UI creation, change, or review; keep `design-vite/` and its `shots/` in sync.
-- **Existing designs**
-	- Reproduce every existing `design-vite/` view one-to-one in layout, spacing, color, typography, radii, and interaction states.
-	- The mockup outranks tool convenience; approximations are not acceptable.
-- **New designs**
-	- First verify whether Ant Design v6 can provide the interaction and exact styling.
-	- Customize in this order: official props → ConfigProvider tokens → semantic `classNames`/`styles` slots.
-	- If Ant Design can match exactly, design to what it can render and then implement it.
-	- Otherwise, self-build with colocated CSS Modules and design tokens; never hack `.ant-*` private DOM or accept visual compromise.
-	- Use Ant Design for hard-to-rebuild interactions (`Splitter`, `Popover`/`Dropdown`, `Tooltip`, `Tabs`, `Segmented`) only when exact matching remains possible.
-- **Tokens and CSS**
-	- Use shared ConfigProvider and `:root[data-theme]` tokens for colors, spacing, and radii; match `design-vite/design-system.md` exactly and do not hardcode drifting values.
-	- Vite-native CSS Modules plus design tokens are the default. Add Tailwind, Less, Sass, or another design system only with explicit user approval of a demonstrated need.
-	- Limit global CSS to reset, root design variables, typography, and accessibility media queries.
-	- Keep feature/component styles in colocated `*.module.css` files with semantic class names such as `.recording`, `.matchRow`, and `.methodChip`.
-- **Shared controls and assets**
-	- Reuse and extend primitives under `apps/desktop/src/renderer/components/` for repeated controls and rows: IconButton, Button, Switch, Select, InputBox, MethodBadge, StatusBadge, SectionHeader, StatItem, Count, MenuItem, Splitter, and NavItem.
-	- Each primitive uses its own `Component/Component.tsx` and `Component.module.css`; do not reimplement it inside a feature.
-	- Use Lucide or installed Ant Design icons for controls, not handwritten inline SVG.
-	- Custom SVG/PNG/ICO/ICNS is allowed for product identity.
+### 实现原则
 
-## Renderer Structure
+- 采用满足当前需求的最简单完整实现，逐层交付可用能力；不引入投机性抽象、配置、间接层或注定被替换的临时方案。
+- 删除过时路径，不为旧行为保留 compatibility layer、fallback 或 migration。
+- 优先复用现有依赖，先检查其文档和类型定义，再判断是否缺少所需能力；确有必要时采用成熟库，不重复实现通用功能。
+- 各 module 职责分离，控制流直白；仅在系统边界校验，不为不可能发生的场景添加错误处理。
+- 只保留正式产品能力，不用测试专用参数、隐藏分支或后门维持不存在的产品操作。
 
-- **目录所有权**
-	- `app/`：应用壳和导航。
-	- `features/`：Traffic 等产品工作区。
-	- `components/`：共享 UI primitives。
-	- `theme/`：Ant Design 主题配置。
-	- `styles/`：最小全局样式。
-- **进程边界**
-	- Renderer 组件不得访问 Electron/Node。
-	- 只能通过 typed `window.interceptor` Preload API 通信。
-- **组件文件**
-	- 一个 `.tsx` 只导出一个主组件。
-	- 子组件即使仅供父组件使用，也拆到同目录独立文件。
-	- 组件文件只包含 JSX 和自身 hooks。
-- **纯函数**
-	- 放在 feature 的 `utils.ts`，不留在组件文件底部。
-	- 只有跨 feature 复用时才提升到 `components/share/`。
-- **组件样式**
-	- CSS 与 `.tsx` 一一对应，每个组件使用同名 `*.module.css`。
-	- 本仓统一采用组件独立 CSS，不在同目录组件间共享样式文件。
-	- 少量重复优于多人共改的公共大文件。
-- **尺寸规则**
-	- 分栏宽度、面板高度等容器相关值只作初始值，并随 splitter 和窗口缩放 clamp。
-	- 行高、控件尺寸和弹层宽度等结构尺寸保持设计值。
-	- 拖拽上限由 `总宽 - 对侧最小宽 - 轨道宽` 推导，不设人为 max 常量。
+### 命名与改名
 
-## Proxy Core Module Structure
+- method 名应说明实际执行的动作，如 `saveRules()`、`deleteRule()`；避免 `handleRules()`、`processData()` 等看不出具体动作的名称，不按单词黑名单机械改名。
+- 相反的业务操作分别定义 method，如 `startCapture()`、`stopCapture()`；不用 `setCaptureEnabled(boolean)` 在同一业务方法中兼顾两种操作。
+	Main、IPC、Preload 可用一条带 payload 的命令承接同一个控件，由实际业务所属的 command handler 分派到独立业务方法：Main 业务在 Main 分派，Core 业务在 Core 分派。
+- 同一功能的 method 连续分组。每个 public method 后紧跟其专属 private helper，共用 helper 放在该功能组末尾；成对的 public method 不必直接相邻。
+- instance 引用按所属 class 的完整名称转为 camelCase 命名，如 `CoreApplication` → `coreApplication`；成员、参数、依赖注入和测试中的引用同样适用。
+- 名称已表达明确角色时保留；同一 class 有多个 instance 时按角色区分，如 `exportHost`、`importHost`。
+- Array、Map、Set 这类 collection 按内容命名，如 `ruleIds`、`requestsById`。
+- DTO 和协议字段沿用 contract 定义的名称，不套用 class 的命名规则。
+	例如，`RuleService` 的 instance 引用叫 `ruleService`；若 API 约定返回 `{ id, enabled }`，字段仍保留原名，不改成 `ruleServiceId`、`ruleServiceEnabled`。
+- 跨文件的代码符号改名使用语言服务 Rename Symbol（VS Code 中通常为 F2），按符号更新定义和引用，避免误改同名但无关的代码。
+- 字符串和注释中的名称逐处确认后精确修改，并搜索复核；文本替换不得误改文件路径、协议值或无关名称。
+- 脚本读写显式使用 UTF-8，不依赖默认 ANSI 编码；完成后检查 diff，确认没有乱码或非预期修改。
 
-- **Facade**
-	- Each domain lives under `apps/proxy-core/src/proxy-core/<module>/` and has a real `entry.ts`.
-	- `entry.ts` defines and exports exactly one `<ModuleName>Service` that owns the module.
-	- Do not move that class into `*-service.ts` and turn `entry.ts` into a barrel re-export.
-- **Ownership and module names**
-	- A module name states exactly what it owns; prefer a longer precise name over generic `storage`, `connection`, or `manager`.
-	- `capture/` → `CaptureService`: volatile Exchange/Body for the current recording.
-	- `workspace/` → `WorkspaceService`: low-frequency app and feature config in `workspace.sqlite`.
-	- `tls-probe/` → `TlsProbeService`: handshake probes only.
-	- Keep injected instance, field, and parameter names aligned with the class throughout the dependency chain.
-- **Module root**
-	- Contains only `entry.ts`, `README.md`, and subdirectories; no loose implementation files.
-	- `internal/`: owned implementation classes.
-	- `interfaces/index.ts`: explicit interface/type declarations.
-	- `utils/index.ts`: stateless functions.
-	- `tests/`: tests.
-	- `host/` and `worker/`: worker-thread code, each with its own `entry.ts`.
-- **Internal names**
-	- Do not repeat the module name in subdirectory filenames or classes.
-	- Use `capture/internal/exchange-store.ts` → `ExchangeStore`, not `CaptureExchangeStore`.
-	- Keep a qualifier only to avoid bare generic names such as `Store`, `Host`, or `Manager`; for example, `diagnostics/worker/record-store.ts` → `RecordStore`.
-- **Errors and constants**
-	- Put all module Error subclasses in one `internal/errors.ts`; never split them by file or define them inline.
-	- Keep Error names self-describing across modules because CoreApplication matches `error.name`.
-	- Omit `internal/errors.ts` when the module has no errors.
-	- Put module constants in `internal/constants.ts`; put cross-module constants in `proxy-core/constants.ts`.
-- **Class shape**
-	- Keep at most one class per TypeScript file.
-	- Add a concise responsibility comment to every property and method, including private members and test helper classes.
-- **Dependencies and test doubles**
-	- Depend on the concrete owning class, not a structural interface that mirrors it.
-	- Each module has one long-lived instance, so collaborators use types such as `CaptureService`, `CaptureEventQueue`, or `WorkspaceService`.
-	- Do not add narrowing mirrors such as `CaptureSink` or `GrpcStorageReader`; they break go-to-definition and hide the actual owner.
-	- Test doubles extend the real class and override only the behavior under assertion.
-	- Reserve interfaces for plain data shapes and capabilities with genuinely multiple production implementations.
-- **Documentation and entry renames**
-	- Every module has a `README.md` covering ownership, main class, internal structure, and dependencies.
-	- Update that README in the same change whenever module responsibility changes.
-	- A host/worker entry rename must also update the Proxy Core build script, runtime resolver, tests, and documented bundle paths.
-	- Run a real worker build/test after such a rename.
+## 三、分层与命令
 
-## Validation
+### 进程边界
 
-- **During implementation**
-	- Run the cheapest focused check that can falsify the current change.
-- **At feature or stage completion**
-	- Run the complete typecheck/unit/package/smoke/screenshot validation once.
-	- Do not run the complete suite after every small edit.
-- **At high-risk boundaries**
-	- Run package/security checks earlier only when Main, Preload, IPC, Fuses, CSP, or packaging boundaries change.
+- Renderer 不得访问 Electron 或 Node，只能通过 typed `window.interceptor` Preload API 通信。
 
-## Progress And Documentation
+### 意图与状态
 
-- **Session start**
-	- Every new session or agent MUST read `architecture/HANDOVER.md`, then `architecture/platform/processes.md`, before planning or editing code.
-- **Documentation ownership**
-	- `architecture/` is the single documentation root; `architecture/README.md` is its index.
-	- `HANDOVER.md`: tracked commit, one flat task list for completed and incomplete work, plus separate operational reference sections.
-	- `platform/`: implemented cross-feature architecture.
-	- `features/`: per-feature design.
-	- `backlog/`: `TODO.md`, `idea.md`, and `research.md` for known gaps and unpromised long-term candidates.
-- **Handover quality**
-	- Start `architecture/HANDOVER.md` with the tracked commit hash.
-	- Keep all completed and incomplete work in exactly one flat task list, using status labels such as completed, pending implementation, pending validation, pending acceptance, or blocked.
-	- Keep non-task material such as operational constraints, validation commands, and maintenance rules in separate sections; do not represent them as unchecked tasks.
-	- Flattening is structural only: preserve the complete existing information. Never shorten, merge away, or omit facts merely to make Handover smaller.
-	- A task item may contain multi-line details, evidence, commands, risks, links, and maintenance notes when needed for completeness.
-	- Do not add separate sections for completed work, pending work, working tree, handoff order, exact next action, or main task.
-	- Links to owning `platform/*.md`, `features/*.md`, or `backlog/*.md` supplement rather than replace required context.
-- **Current-state boundaries**
-	- Keep `architecture/platform/*.md` limited to implemented code and boundaries.
-	- Put unvalidated plans in `architecture/backlog/research.md` or the feature document's 与当前实现的差异 section.
-- **TODO table status model**
-	- `architecture/backlog/idea.md` 的 `Status` 只允许三种互斥状态与固定图标：`✅ 已完成`、`🔄 进行中`、`⏳ 未开始`；禁止再使用 checkbox、部分完成、代码完成、待验证、待设计等第二套顶层状态。
-	- `Description` 必须先描述目标，再以 `Steps:` 列出该 work item 相关阶段及当前状态。基础词汇包括：`待设计`、`设计完成`、`代码待完成`、`代码已完成`、`待自动验证`、`自动验证完成`、`待 Developer 人工验证`、`待 UAC 验证`、`已完成`；这不是封闭枚举，真实 flow 需要时可增加 `待协议设计`、`待安全审查`、`blocked by <reason>` 等具体、可验证的阶段。同一语义必须全表使用同一词汇，不得为了套用基础词汇而歪曲真实状态；不适用阶段不列出。
-	- `TDD` 只记录总体测试完成度及 `Code / Unit / Integration / E2E / Design/Parity` 矩阵，不在 `Status` 重复测试细节。`✅` 表示已完成，`🔄` 表示部分完成或待后续验证，`❌` 表示未完成，`➖` 表示当前 work item 不适用。
-	- 顶层 `✅ 已完成` 仅在 Description 的必要阶段与 TDD 的必要测试均完成时使用；仍缺真实 E2E、人工验收或 UAC 的条目必须为 `🔄 进行中`。尚未开始设计、实现和验证的条目使用 `⏳ 未开始`。
-	- TODO 使用带 `colgroup` 的 HTML table 固定列宽和最小总宽，窄预览允许横向滚动；`Description / TDD / Root cause / Solution` 单元格使用真正的 `<ul><li>`，不使用 `• + <br>` 模拟列表。图片只放在 `Description` 并限制宽度，避免撑坏列布局。
-- **Synchronization**
-	- At milestone boundaries, or when the user explicitly asks, update the tracked commit and task statuses in `architecture/HANDOVER.md`, affected `architecture/*.md`, and commands in `README.md`.
-	- If the stage boundary is unclear, ask before synchronizing these documents.
-- **Work item commit boundary**
-	- 默认一个完整 work item 对应一个自洽 commit，以提高 PR 可读性和 review 便利性；不同 work item 不混入同一 commit。
-	- 同一 work item 的契约文档、TDD Red、实现、Green、evidence 与完成状态在全部闭环后一起提交；不要为中间文档、测试骨架、Red 或 checkpoint 分别创建碎片 commit，除非用户明确要求保存中间进度。
-	- 每个 work item 的 commit 成功后必须立即 push 当前分支；不得在本地积攒多个 commit 后统一 push，除非用户明确要求暂缓推送。
-- **Before committing**
-	- **禁止大规模 diff / review**：不得一次展开、读取或审查整仓、整批 staged changes 或大量文件的 diff；这会导致 VS Code 卡顿或崩溃。任何 diff 与 code review 都必须限制为单个文件或少量职责一致的文件，并逐批完成。
-	- 普通规模改动在提交前按单文件或小文件组 review staged diff。改动规模已经可能影响 VS Code 稳定时，完成可执行验证与文档同步后先提交并立即 push，再按明确路径逐文件或小组 review；发现问题后用聚焦的后续提交修正，禁止为了 review 重新展开完整 diff。
-	- Update `architecture/HANDOVER.md`, affected `architecture/*.md`, and `README.md` as applicable.
-	- Commit only after the documentation matches the change.
+- 每个后端业务交互对应语义单一的命令；不同用户意图即使修改同一份数据，也不得合并到同一个 entry point。命令和参数名直接描述行为。
+- 配置与启用、停用分开表达，不同维度的 state 使用独立字段。不得用 `null`、空数组、可选参数或魔法值表达多重语义。
+- 不用影子字段弥补一个字段混合多个独立状态的设计；编辑前快照、撤销历史、系统代理恢复所需的 `original` 等具有明确业务用途的历史状态可以保留。
+
+## 四、测试与验收
+
+### 测试驱动开发
+
+- 业务代码修改前先判断行为、contract 和测试影响；禁止先实现，再补测试为结果背书。
+- 涉及用户流程时，先在 `architecture/features/*.md` 和 `apps/desktop/tests/e2e-workflow-tests/docs/*.md` 写明 contract、完整流程、预期效果和证据要求。
+
+| 改动类型 | 实现前要求 | 实现后要求 |
+| --- | --- | --- |
+| 新增行为、修改 contract 或修复故障 | 目标行为缺口导致的 Red | 同一组测试 Green |
+| 行为与 contract 不变、现有测试充分覆盖的内部重构 | 基线 Green，并指出对应测试及覆盖的行为 | 同一组测试 Green |
+| 行为与 contract 不变、现有测试不足的内部重构 | 先补充覆盖当前行为的测试并确认基线 Green，再重构 | 同一组测试 Green |
+
+- 涉及用户流程时，按 unit test / integration test → 真实 E2E 的顺序建立上述前置证据，再修改业务代码；实现后按同一顺序复跑。不能仅凭测试全绿认定重构已有充分覆盖，也不为行为不变的重构人为制造 Red。
+- Red 必须来自预期行为缺口，不能来自 selector、fixture、UAC、构建或环境故障。补录历史 Red 证据须在修复前提交的临时 detached worktree 运行同一测试，禁止故障注入冒充历史 Red。
+
+### 真实 E2E
+
+- 仅指 `apps/desktop/tests/e2e-workflow-tests/workflows/<feature>/*.workflow.ts` 启动真实 Electron，通过真实 UI 覆盖目标流程实际依赖的完整链路。涉及 Preload、Main、Core UtilityProcess、listener、storage 或 origin 时均走真实实现；纯 UI 操作不强行经过无关层。
+- 设计稿 Playwright、使用 fake Preload 的视觉一致性验证、Renderer 组件或 Store 测试、Core integration test、packaged smoke 均不能替代真实 E2E 或销毁证据。
+- 业务操作必须通过真实 UI；产品弹窗真实点击，Open/Save Dialog、UAC 等原生 UI 使用真实键鼠，不改写返回值，不使用 state injection、直接业务 API 或产品后门。
+- 禁止 seed 业务输入。导入文件必须由同一 workflow 先经产品 Export 产生，再 Import；非法结构、越界层级和损坏字节由对应模块的 unit test 覆盖，不在 E2E 中造文件或使用 state injection。
+- 保持应用当前语言，不为测试切换语言。业务定位和断言只用公共 `data-automation-id`、协议值、表示状态的 DOM attribute 或测试自产数据，不用显示文案、翻译后的 `aria-label` 或 CSS class；翻译文本仅在独立 i18n workflow 验证。
+- 每个 `.workflow.ts` 的准备、用户操作、业务断言、证据与清理分块前，写语义一致的简短中英文成对注释，说明意图而非逐行复述。
+
+### 验证与完成状态
+
+- 实现中按 TDD 运行最小相关检查，不在每次小改后跑全套。纯文档变更只核对条款、引用和格式。
+- 产品代码工作项交付前，按影响范围完成 typecheck、unit test / integration test；共享代码变更须覆盖依赖方，正式版本交付执行全 workspace 检查。不以无关测试通过代替目标行为验证。
+- 涉及进程、安全、打包、资源或 runtime dependency 的改动，提前执行 package → artifact audit → packaged smoke；正式版本交付前也必须完成这组检查，不要求每个局部逻辑改动都重新打包。
+- UI 改动运行受影响视图、主题和交互状态的 parity；共享外壳、全局样式或 design token 改动运行全量 parity。packaged smoke 使用已有截图矩阵，不重复维护另一套截图要求。
+- 已有结果仅在仍适用于当前代码、依赖、配置、环境和被测产物时复用；后续修改影响了验证结论，就重跑受影响检查。失败、跳过或环境阻塞须注明原因和未验证范围，不能当作通过。
+- 具体命令、截图矩阵和运行约束查阅 [architecture/platform/testing.md](architecture/platform/testing.md) 及对应测试套件的 README，不在本文件重复维护。
+- 用户流程的最终 Green 还须验证 trace/evidence、Main/Core/Worker 销毁、8888 释放及系统副作用恢复，之后才能更新 Inventory、Handover 和完成状态。
+- 缺少该改动类型要求的真实 E2E 前置证据、最终 Green 或销毁恢复证据时，只能记为“代码完成 · 待 E2E”，不能标记“已完成”或 Inventory `passed`。UAC、凭据或平台阻塞记为 `blocked`，写明人工动作与恢复命令。
+
+### 测试目录
+
+- Vitest 测试放在对应模块的 `tests/unit/` 或 `tests/integration/`，按行为命名为 `*.test.ts`。跨真实进程、网络、文件系统、数据库或 worker 任一边界的测试归入 `integration/`。
+- test helper、fixture 和 fake 跟随使用它们的测试层存放；`tests/` 根目录不放测试或辅助代码，不新增 `tests/shared/`。跨层需求优先按层拆分。
+- `e2e-workflow-tests/`、`packaged-smoke/`、`installer/`、`visual-parity/` 是独立套件，不放入上述 Vitest 目录。
+- 可执行 workflow 按功能放入 `workflows/<feature>/`，文件名只描述行为，不重复功能前缀；跨功能流程归主要用户入口，公共 driver/lab 只放 `fixtures/`，根目录不放可执行 workflow。
+
+## 五、前端规范
+
+### 设计来源与选型
+
+- `design-vite/` 是唯一设计稿，组件设计和 design token 以 [design-vite/design-system.md](design-vite/design-system.md) 为准。
+- 创建、修改或评审 UI 设计时使用 `.github/skills/ui-design-mockup/`；设计发生变化时同步设计稿与 `shots/`。
+- 实现既有设计、检查或修复产品 UI 的还原偏差时，使用 `.github/skills/ui-parity-check/` 核对还原度。设计未变化时不修改设计稿或基准截图，不通过修改基准掩盖实现偏差。
+- 已有设计按布局、间距、尺寸、颜色、字体、圆角和交互状态一比一还原，不以工具限制接受近似实现。
+- 新设计先检查 Ant Design v6，依次使用官方 props → ConfigProvider tokens → 语义 `classNames`/`styles`。只有能精确匹配时才采用；否则自行实现组件，并使用独立 CSS Modules，不修改 `.ant-*` 私有 DOM 或牺牲视觉一致性。
+- 通用按钮、输入、行和分栏复用 `apps/desktop/src/renderer/components/` 中的 shared primitives，不在功能内重新实现。控件图标使用 Lucide 或已安装的 Ant Design 图标；自定义 SVG/PNG/ICO/ICNS 仅用于产品标识。
+
+### 组件与样式
+
+- Renderer 目录：`app/` 管外壳导航，`features/` 管功能工作区，`components/` 管共享控件，`theme/` 管主题，`styles/` 管最小全局样式。
+- 每个 `.tsx` 只导出一个主 component，内容限于 JSX 和自身 hooks；即使只供父级使用，子组件也拆到同目录独立文件。
+- pure function 放在所属功能的 `utils.ts`；仅跨功能复用时提升到 `components/share/`。
+- 每个 component 使用独立、同名的 `*.module.css`，CSS class 按用途命名，不跨组件共享样式文件。默认使用 Vite 原生 CSS Modules；引入 Tailwind、Less、Sass 或其他设计系统须获批准。
+- 颜色、间距和圆角沿用共享 design token，通过 ConfigProvider 和 `:root[data-theme]` 下的 CSS custom properties 提供，不硬编码偏离设计的值。全局 CSS 仅包含重置、根级变量、字体和无障碍媒体查询。
+
+### 滚动与尺寸
+
+- 内容面溢出时必须支持滚轮、触控板和键盘滚动；未经用户要求，不隐藏滚动条或关闭滚动。`overflow: hidden` 仅用于外壳裁切、图标、圆角裁切和单行省略，不能吞掉内容滚动。
+- 内层滚动到边界后交给外层。Monaco 等编辑器显式关闭边界滚轮吞噬，如 `alwaysConsumeMouseWheel: false`，并用真实滚轮测试内层滚动与外层接续。
+- 分栏宽度和面板高度只设初始值，拖拽和窗口缩放时按 container 的可用空间调整；行高、控件和弹层维持设计尺寸。拖拽上限由 `总宽 - 对侧最小宽 - 轨道宽` 推导，不设人为最大值。
+
+## 六、Core module 规范
+
+### 目录与职责
+
+- 每个领域位于 `apps/proxy-core/src/proxy-core/<module>/`；`entry.ts` 直接定义并导出唯一的 `<ModuleName>Service`，不能只 re-export 在别处定义的 service class。
+- module 按职责准确命名，避免泛称；内部文件和 class 不重复模块前缀，仅为避免 `Store`、`Host`、`Manager` 等泛称保留必要限定。
+
+| module 与主 class | 职责 |
+| --- | --- |
+| `capture/` · `CaptureService` | 当前录制的临时 Exchange 和 Body |
+| `workspace/` · `WorkspaceService` | `workspace.sqlite` 中的低频应用与功能配置 |
+| `tls-probe/` · `TlsProbeService` | TLS 握手探测 |
+
+- module 根目录只放 `entry.ts`、README 和子目录；`host/`、`worker/` 各有自己的 `entry.ts`。
+- 实现放在 `internal/`，类型定义放在 `interfaces/index.ts`，无状态函数放在 `utils/index.ts`，测试放在 `tests/`。
+- 一个 module 可以定义多个自定义 Error subclass，统一放在该 module 的 `internal/errors.ts`，不分散或内联定义；没有自定义错误就不建文件。错误名在模块外也须能说明含义。
+- 模块内使用的 constant 放在 `internal/constants.ts`，跨模块使用的放在 `proxy-core/constants.ts`。
+
+### class 结构与依赖
+
+- 每个 TypeScript 文件最多定义一个 class，集中定义自定义错误的 `internal/errors.ts` 除外；所有 class 的属性和方法均写简短职责注释，包括私有成员和 test helper 中的 class。
+- 每个 module 只有一个长期 instance，协作者直接依赖负责该职责的具体 class。
+- 不新建 interface 重复列出同一个 class 的全部或部分成员；interface 仅用于数据结构或确有多个生产实现的能力。
+- test double 继承真实 class，只覆盖断言所需的行为。
+
+### 修改联动
+
+- 每个 module 的 README 写明职责归属、主 class、内部结构和依赖；职责变化时同步更新。
+- 改名 host 或 worker 的 entry point 时，同步构建脚本、运行时解析、测试和文档中的产物路径，并执行真实 worker 构建与测试。
+
+## 七、文档与状态
+
+### 文档分工
+
+架构和进度统一归入 `architecture/`，入口为 [architecture/README.md](architecture/README.md)。
+
+| 位置 | 内容 |
+| --- | --- |
+| `architecture/HANDOVER.md` | 跟踪提交、当前任务、阻塞与验证证据 |
+| `architecture/platform/` | 已实现并验证的跨功能架构，不写规划 |
+| `architecture/features/` | 功能设计与 contract；未验证目标放“与当前实现的差异” |
+| `architecture/backlog/` | 已知缺口、待办、想法和未承诺的长期研究 |
+
+### 交接文档
+
+- Handover 以跟踪的 commit hash 开头；所有已完成和未完成工作只放一份平铺任务列表，明确已完成、待实现、待验证、待验收或 `blocked`。
+- 运行约束、验证命令和维护规则单独成节，不写成待办；不另拆已完成、`worktree`、主任务或下一动作等任务章节。
+- 调整结构不得删除或省略既有事实、证据、命令、风险和维护说明；链接只作补充，不能替代必要上下文。
+
+### 待办表格
+
+- [architecture/backlog/idea.md](architecture/backlog/idea.md) 的 `Status` 仅用 `✅ 已完成`、`🔄 进行中`、`⏳ 未开始`，不混用另一套顶层状态。
+- `Description` 先写目标，再用 `Steps:` 列相关阶段与当前状态；同义阶段用词统一，不适用的不列。阶段可包含设计、代码、自动验证、开发者人工验收、UAC 或具体阻塞，不能用模糊状态掩盖缺口。
+- `TDD` 单独记录总体完成度及 `Code / Unit / Integration / E2E / Design/Parity` 矩阵：`✅` 已完成、`🔄` 部分完成或待验证、`❌` 未完成、`➖` 不适用。必要阶段与测试全部完成才能标顶层已完成；缺真实 E2E、人工验收或 UAC 时仍为进行中。
+- 使用带 `colgroup`、固定列宽和最小总宽的 HTML table，窄预览允许横向滚动。列表用 `<ul><li>`，不用字符与 `<br>` 模拟；图片只放 `Description` 并限制宽度。
+
+## 八、提交与交付
+
+### 文档同步
+
+- 在里程碑或用户要求时，同步 Handover 的跟踪提交与任务状态、相关架构文档；阶段边界不明确时先确认。
+- [README.md](README.md) 只保留稳定介绍、使用开发说明和导航，不写进度；命令或稳定说明变化时才更新。提交前确保文档与改动一致。
+
+### 提交边界
+
+- 提交须有用户授权，一个完整工作项对应一个自洽 commit，不混入其他工作项，不擅自创建分支。
+- 同一工作项的 contract、测试前置证据、实现、Green、验收证据和完成状态闭环后一起提交；仅用户明确要求时保存中间进度。
+- 每次 commit 成功后立即 push 当前分支，不积攒多个提交；用户明确要求暂缓推送时除外。
+
+### 差异审阅
+
+- `diff` 和代码评审仅限单个文件或少量职责一致的文件，禁止一次展开整仓、整批 `staged changes` 或大量文件，避免 VS Code 卡顿或崩溃。
+- 普通改动先逐文件审阅 `staged diff`；规模已影响稳定性时，完成验证与文档后先提交并推送，再逐文件复审，发现问题用聚焦提交修正，不重新展开完整 `diff`。

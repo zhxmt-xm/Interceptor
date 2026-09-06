@@ -286,6 +286,22 @@ for (const theme of ['light', 'dark']) {
     });
   }
   shots.push({
+    feature: 'agent-models', theme, variant: 'panel-transfer-jobs', appSize: { width: 1600, height: 900 },
+    state: {
+      view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+      agentExecutionMode: 'ask', agentToolTrace: 'transfer-jobs', agentToolApproval: '',
+    },
+  });
+  for (const stage of ['pending', 'allowed']) {
+    shots.push({
+      feature: 'agent-models', theme, variant: `panel-transfer-cancel-${stage}`, appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+        agentExecutionMode: 'ask', agentToolTrace: '', agentToolApprovalName: 'capture_cancel_transfer_job', agentToolApproval: stage,
+      },
+    });
+  }
+  shots.push({
     feature: 'agent-models',
     theme,
     variant: 'panel-settings-tools',

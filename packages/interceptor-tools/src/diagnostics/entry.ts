@@ -1,5 +1,6 @@
 import { InterceptorToolArgumentError, rejectUnknownKeys, requireEnum, requireIntegerInRange, requireString } from '../arguments/entry';
 import type { InterceptorToolDefinition, MainToolPayloadForType } from '../interfaces';
+import { redactTransferJob } from '../transfer/utils';
 
 const PROCESSES = ['core', 'main', 'renderer'] as const;
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const;
@@ -65,13 +66,7 @@ export function buildDiagnosticsTools(): readonly InterceptorToolDefinition[] {
         const { payload } = await context.host.invokeMain({ type: 'diagnostics.export', payload: filter }, context.abortSignal);
         context.abortSignal.throwIfAborted();
         if (payload.job === null) return { started: false };
-        const job = payload.job;
-        return { started: true, job: {
-          id: job.id, kind: job.kind, state: job.state, processed: job.processed, total: job.total,
-          startedAt: job.startedAt,
-          ...(job.completedAt === undefined ? {} : { completedAt: job.completedAt }),
-          warningCount: job.warnings.length,
-        } };
+        return { started: true, job: redactTransferJob(payload.job) };
       } catch {
         context.abortSignal.throwIfAborted();
         throw new Error('Unable to export Diagnostics.');

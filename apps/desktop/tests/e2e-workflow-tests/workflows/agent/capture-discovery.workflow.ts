@@ -45,6 +45,8 @@ const CAPTURE_TOOL_NAMES = [
   'capture_get_exchange_body',
   'capture_list_websocket_messages',
   'capture_list_grpc_messages',
+  'capture_get_transfer_job',
+  'capture_cancel_transfer_job',
 ] as const;
 const SENSITIVE_TEXTS = [
   FIRST_PROMPT,

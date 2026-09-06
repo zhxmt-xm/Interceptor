@@ -66,8 +66,11 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                 <span
                   data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
                   data-summary-kind={summary?.kind}
-                  data-transfer-job-id={summary?.kind === 'diagnosticsExport' ? summary.jobId : undefined}
-                  data-transfer-job-state={summary?.kind === 'diagnosticsExport' ? summary.state : undefined}
+                  data-transfer-job-id={summary?.kind === 'diagnosticsExport' || summary?.kind === 'transferJob' ? summary.jobId : undefined}
+                  data-transfer-job-state={summary?.kind === 'diagnosticsExport' || summary?.kind === 'transferJob' ? summary.state : undefined}
+                  data-transfer-job-processed={summary?.kind === 'transferJob' ? summary.processed : undefined}
+                  data-transfer-job-total={summary?.kind === 'transferJob' ? summary.total : undefined}
+                  data-transfer-job-warning-count={summary?.kind === 'transferJob' ? summary.warningCount : undefined}
                   data-resolved-count={summary?.kind === 'breakpointBatch' ? summary.count : undefined}
                   data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
                   data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}

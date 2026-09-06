@@ -652,6 +652,44 @@ Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tab
 Clear是唯一删除Capture入口；它删除Exchange、Body和spill，原子重置Renderer timeline与 facet snapshot，
 但保留活动Session壳，不影响Rules/Diagnostics。
 
+<a id="capture-tools-transfer-jobs"></a>
+## `capture.tools.transfer-jobs`
+
+**状态**：planned（代码完成，按用户要求保存进度）；目标workflow已有Red/Green与销毁证据，尚待关联回归及交付复核，不更新为passed
+**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron，通过Settings创建本地Provider和MCP Client，Ask Chat discovery必须披露
+	文件任务Get/Cancel两项；业务状态不注入。由产品Diagnostics Export经真实Save生成一个独立已完成任务，
+	其jobId来自正式Tool结果而不是猜测。
+2. Agent静默查询已完成任务，确认身份、种类、计数和终态，结果不含文件名/路径/message/warnings内容。
+	对同一任务执行Ask Deny、Allow及Auto取消，验证完成任务状态不变；未知身份返回job:null，不重放文件操作。
+3. 开启真实录制，用本地origin通过8888发送较大的非压缩响应，等待Capture记录完整；从产品Capture Export菜单
+	选择Archive并经真实Save启动文件任务。进度组件公开真实jobId/state/processed/total，不能从Store读取或seed。
+4. 当前Archive仍running时，MCP Get返回同一jobId及进度；MCP Cancel先Deny，再Allow取消。关闭进度弹窗后
+	通过UI把MCP切到Auto并启动第二个Archive，再取消第二个运行中任务。两轮确认Core状态cancelled、UI一致，
+	输出文件不存在、临时文件已清理，其他已完成任务不变。
+	测试不能把已完成任务取消当作本步通过，不向产品新增测试专用延迟或暂停入口。
+5. 通过Settings分别撤销两项Agent/MCP权限，旧Chat/连接均不可再调用；MCP独立权限不因Agent撤权被关闭。
+	操作中保持应用语言，使用公共automation ID、状态属性与测试自产标识进行断言。
+6. 正常退出后同profile重启，授权设置保留；旧代际jobId查询为null，无Model/origin/文件任务重放。
+	先验证两代Main/Core/Archive Worker销毁、8888释放及完整WinINet/journal恢复，再删除产品输出与profile。
+
+### 预期与证据
+
+Core的进度、运行中取消及终态幂等由unit/integration与同一真实流程交叉验证；取消必须触发真实文件任务的
+AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段安全job快照、文件hash/存在性、恢复与进程代际，
+不归档敏感文件名、完整原始正文或认证数据。原生窗口焦点、任务完成太快或selector失败不作为产品Red。
+
+2026-09-07已有证据：executor缺失Tool Red、进度属性Red、真实discovery Red与摘要value Red后Green。
+Archive最后Blob期间取消仍落盘的真实故障由两个文件integration Red锁定，修复后服务7/7、关联23/23通过。
+最终本workflow1/1（49.7秒），两代Main/Core `38896/16496`、`42672/10272`均`gracefulDestroyVerified=true`，
+完成进程树销毁、8888释放和WinINet/journal恢复；TEMP下`interceptor-transfer-summary-e2e-green`保存trace/evidence。
+首次取消落盘失败在`interceptor-transfer-jobs-e2e-first-failure`，不记为正常销毁。最后MCP Browser关联回归仍为
+旧48项目录断言失败、MCP Desktop未执行；当前产物package/audit/smoke未跑。用户要求停止重复回归并提交进度，
+恢复时只处理剩余检查，不重建已有Red或重跑仍适用的Green；取消提交点竞态继续保留为独立欠账。
+
 <a id="capture-transfer-har-roundtrip"></a>
 ## `capture.transfer.har-roundtrip`
 

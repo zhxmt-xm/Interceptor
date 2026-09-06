@@ -9,18 +9,23 @@ const TOOL_STEPS = {
     { name: 'composer_get_collection', arguments: 'No parameters', result: 'Revision 3 · Requests 2 · Folders 1' },
   ],
   capture: [
-    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '10 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '12 tools discovered' },
     { name: 'capture_get_storage_status', arguments: 'No parameters', result: 'Exchanges 1 · Bodies 2 · 184 B' },
     { name: 'capture_get_proxy_status', arguments: 'No parameters', result: 'Recording on · 127.0.0.1:8888' },
     { name: 'capture_list_exchanges', arguments: 'limit: 50', result: '1 matching exchange' },
     { name: 'capture_get_exchange', arguments: 'exchangeId: e2e-agent-traffic', result: 'GET /agent-e2e/traffic · 200' },
   ],
   'body-messages': [
-    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '10 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '12 tools discovered' },
     { name: 'capture_get_exchange', arguments: 'exchangeId: body-json', result: 'POST /playground/body/json · 200' },
     { name: 'capture_get_exchange_body', arguments: 'exchangeId: body-json · bodyId: body-1 · length: 65536', result: '14 B · complete' },
     { name: 'capture_list_websocket_messages', arguments: 'exchangeId: ws-bidirectional', result: '2 messages · complete' },
     { name: 'capture_list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
+  ],
+  'transfer-jobs': [
+    { name: 'discover_tools', arguments: 'capabilityId: capture', result: '12 tools discovered' },
+    { name: 'capture_get_transfer_job', arguments: 'jobId: transfer-archive', result: 'Running · 2/5 · Warnings 0 · transfer-archive' },
+    { name: 'capture_get_transfer_job', arguments: 'jobId: missing-job', result: 'Transfer job not found' },
   ],
   breakpoints: [
     { name: 'discover_tools', arguments: 'capabilityId: breakpoints', result: '11 tools discovered' },

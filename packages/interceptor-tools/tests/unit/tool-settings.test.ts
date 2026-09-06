@@ -16,6 +16,8 @@ const EXPECTED_SETTINGS_COPY = [
   ['capture_get_exchange_body', 'Exchange body', 'Read a bounded body byte range.'],
   ['capture_list_websocket_messages', 'WebSocket messages', 'Page through captured WebSocket frames.'],
   ['capture_list_grpc_messages', 'gRPC messages', 'Page through decoded gRPC messages.'],
+  ['capture_get_transfer_job', 'Get file transfer job', 'Read one file transfer state and progress without revealing local file information.'],
+  ['capture_cancel_transfer_job', 'Cancel file transfer job', 'Cancel one running file transfer; completed, failed and cancelled jobs stay unchanged.'],
   ['rules_get_tree', 'Rule set', 'Read the current rule tree and revision.'],
   ['rules_get_hits', 'Rule hits', 'Read match counts for current rules.'],
   ['rules_replace_tree', 'Apply rules', 'Replace the rule set with revision checking.'],
@@ -70,7 +72,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(48);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(50);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

@@ -424,7 +424,15 @@ if ($dialogAction -eq 'cancel') {
     if ($cancelBounds.Width -le 0 -or $cancelBounds.Height -le 0) {
       throw '真实文件对话框的取消按钮没有可点击边界。'
     }
+    if (
+      -not (Test-OwnerProcessGeneration $dialogProcessId) -or
+      -not [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle) -or
+      -not [NativeForegroundWindow]::IsWindowEnabled($dialogWindowHandle)
+    ) {
+      throw '真实文件对话框在取消前已失效。'
+    }
     [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
+    Click-Control $fileNameBounds
     if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
       throw '取消前真实文件对话框没有获得焦点或所有权。'
     }

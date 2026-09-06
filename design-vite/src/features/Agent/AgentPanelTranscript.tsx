@@ -34,6 +34,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                 ? 'Inspect the saved request Collection without sending any request.'
               : toolTrace === 'diagnostics'
                 ? 'Inspect successful Composer diagnostics without exposing request secrets.'
+              : toolTrace === 'transfer-jobs'
+                ? 'Inspect the current transfer jobs without exposing local file information.'
               : toolTrace === 'settings'
                 ? 'Inspect the six Settings states without changing any configuration.'
               : toolTrace === 'rules'
@@ -63,6 +65,8 @@ export function AgentPanelTranscript(): React.JSX.Element {
                       ? <p>Revision <code>3</code> contains <code>2</code> requests in <code>1</code> folder.</p>
                     : toolTrace === 'diagnostics'
                       ? <p>Four successful Composer diagnostic records are available in newest-first order.</p>
+                    : toolTrace === 'transfer-jobs'
+                      ? <p>The Archive is running. The other job was not found in the current Core process.</p>
                     : toolTrace === 'settings'
                       ? <p>The six Settings queries completed without changes.</p>
                     : state.agentToolApprovalName === 'rules_replace_tree' && state.agentToolApproval === 'allowed'
