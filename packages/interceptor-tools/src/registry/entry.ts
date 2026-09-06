@@ -47,6 +47,7 @@ import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
 import { buildSettingsQueryTools } from '../settings/queries';
 import { buildSystemProxyTools } from '../settings/system-proxy';
 import { buildTlsTools } from '../settings/tls';
+import { buildRulesExportTool } from '../rules/export';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -71,7 +72,7 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
   {
     id: 'rules',
     title: 'Rules',
-    description: 'Inspect Rule configuration and replace the complete Rule tree.',
+    description: 'Inspect, replace, and export the saved Rule tree.',
   },
   {
     id: 'composer',
@@ -110,6 +111,7 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
+  'rules_export',
   'composer_send_request',
   'composer_probe_connection',
   'breakpoints_list',
@@ -145,6 +147,7 @@ export function buildInterceptorToolRegistry(
     ...buildSettingsQueryTools(),
     ...buildSystemProxyTools(),
     ...buildTlsTools(),
+    buildRulesExportTool(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

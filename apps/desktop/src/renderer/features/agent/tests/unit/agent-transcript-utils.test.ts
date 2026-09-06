@@ -257,6 +257,13 @@ describe('Agent transcript utilities', () => {
     });
   });
 
+  it.each([true, false])('summarizes Rules export completion without local paths: %s', (exported) => {
+    expect(summarizeAgentToolResult('rules_export', {
+      ok: true,
+      value: { exported, path: 'C:\\private\\rules.json', nodes: ['private Rule content'] },
+    })).toEqual({ kind: 'rulesExport', exported });
+  });
+
   it.each([
     ['settings_get_core_process_status', { state: 'running', pid: 42 }, { kind: 'coreProcess', state: 'running', pid: 42 }],
     ['settings_get_system_proxy_status', { supported: true, owned: true, enabled: true }, { kind: 'systemProxy', supported: true, owned: true, enabled: true }],

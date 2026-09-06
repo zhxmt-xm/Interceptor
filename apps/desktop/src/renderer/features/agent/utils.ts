@@ -36,6 +36,7 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'rulesExport'; readonly exported: boolean }
   | { readonly kind: 'coreProcess'; readonly state: string; readonly pid: number | null }
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
   | { readonly kind: 'systemProxyRestore'; readonly restored: boolean; readonly reason?: string }
@@ -191,6 +192,9 @@ export function summarizeAgentToolResult(
   result: ToolExecutionResult,
 ): AgentToolResultSummary {
   if (!result.ok) return { kind: 'error', message: result.error.message };
+  if (name === 'rules_export' && isRecord(result.value) && typeof result.value['exported'] === 'boolean') {
+    return { kind: 'rulesExport', exported: result.value['exported'] };
+  }
   if (name.startsWith('settings_') && isRecord(result.value)) {
     const value = result.value;
     if (name === 'settings_get_core_process_status'

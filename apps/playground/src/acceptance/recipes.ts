@@ -60,6 +60,10 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Export or inspect the current Rule revision.', 'Keep a visible local draft for conflict checks.'],
     ['Deny preserves current rules.', 'Allow replaces only at the expected revision and preserves folder/enabled fields.'],
   ),
+  rules_export: recipe(
+    ['Create and Apply Rules with a folder and mixed enabled states through the product UI.', 'Keep this MCP Client in Ask mode and leave a distinguishable unapplied draft.'],
+    ['Deny opens no native dialog and writes nothing.', 'Allow opens the native Save Dialog; Cancel returns exported=false.', 'Saving and Auto export the persisted tree without changing the UI draft.', 'Only exported is returned; no file path or Rule content is disclosed.'],
+  ),
   breakpoints_list: recipe(
     ['Enable HTTP breakpoints and create at least one pending request.'],
     ['Queue order, ruleId, exchangeId and editable-head status match Capture.'],

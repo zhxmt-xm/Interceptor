@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  cancelWindowsFileDialog,
   dismissWindowsFileDialogs,
   submitWindowsFileDialogPath,
   type WindowsFileDialogCommandRunner,
@@ -18,6 +19,25 @@ class FakeWindowsFileDialogCommandRunner implements WindowsFileDialogCommandRunn
 }
 
 describe('dismissWindowsFileDialogs', () => {
+  it('clicks the native Cancel control only inside the exact owned file dialog', async () => {
+    const fakeWindowsFileDialogCommandRunner = new FakeWindowsFileDialogCommandRunner();
+    const owner = { processId: 101, processStartedAt: '2026-09-06T01:00:00.0000000Z' };
+
+    await cancelWindowsFileDialog(owner, fakeWindowsFileDialogCommandRunner);
+
+    expect(fakeWindowsFileDialogCommandRunner.calls).toHaveLength(1);
+    const script = fakeWindowsFileDialogCommandRunner.calls[0]?.args.at(-1) ?? '';
+    expect(script).toContain(Buffer.from(JSON.stringify(owner), 'utf8').toString('base64'));
+    expect(script).toContain('Test-OwnerProcessGeneration');
+    expect(script).toContain("$dialogAction = 'cancel'");
+    expect(script).toContain('Click-Control $cancelBounds');
+    const cancelSelector = script.slice(script.indexOf('$cancelCondition ='), script.indexOf('$cancelButton ='));
+    expect(cancelSelector).toContain('[System.Windows.Automation.AndCondition]::new(');
+    expect(cancelSelector).toContain('[System.Windows.Automation.AutomationElement]::ClassNameProperty');
+    expect(cancelSelector).toContain("'Button'");
+    expect(script).not.toContain("SendKeys('{ESC}')");
+  });
+
   it('does nothing when no workflow-owned Main process was launched', async () => {
     const commandRunner = new FakeWindowsFileDialogCommandRunner();
 

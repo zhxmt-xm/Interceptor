@@ -1,18 +1,18 @@
 # Visual Parity Report
 
-Generated: 2026-09-05T17:42:50.605Z
+Generated: 2026-09-06T03:16:08.771Z
 
 ## Overall Summary
 
 | Metric | Value |
 | --- | ---: |
 | Result | Review required |
-| Views checked | 238 |
-| Average pixel diff | 2.21% |
-| Targets | 1664 |
-| Matched | 1630 |
+| Views checked | 244 |
+| Average pixel diff | 2.22% |
+| Targets | 1700 |
+| Matched | 1666 |
 | Missing | 34 |
-| Flagged | 305 |
+| Flagged | 304 |
 | Largest geometry delta | 1476.8 px |
 | Worst element | settings-proxy / 127.0.0.1:8888 |
 
@@ -23,100 +23,106 @@ Generated: 2026-09-05T17:42:50.605Z
 | capture | 2.76% | 38 | 22 | 16 | 17 | 1281.7 px |
 | agent-panel-unconfigured | 1.97% | 8 | 8 | 0 | 0 | 0.7 px |
 | agent-panel-chat | 2.90% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-capture-tools | 2.71% | 9 | 9 | 0 | 0 | 0.0 px |
+| agent-panel-capture-tools | 2.72% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools | 2.82% | 10 | 10 | 0 | 0 | 0.0 px |
 | agent-panel-breakpoint-tools | 2.68% | 11 | 11 | 0 | 0 | 0.0 px |
-| agent-panel-composer-tools | 2.72% | 10 | 10 | 0 | 0 | 0.0 px |
+| agent-panel-composer-tools | 2.71% | 10 | 10 | 0 | 0 | 0.0 px |
 | settings-tools-query | 2.84% | 13 | 13 | 0 | 0 | 0.0 px |
 | agent-panel-diagnostics-tools | 2.46% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools | 2.31% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result | 2.48% | 7 | 7 | 0 | 0 | 0.0 px |
-| agent-panel-tool-approval | 2.93% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_replace_tls_insecure_hosts-pending | 2.99% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-rules-tools | 2.30% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result | 2.46% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-tool-approval | 2.92% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-pending | 3.02% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-allowed | 2.64% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-canceled | 2.65% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-pending | 2.97% | 6 | 6 | 0 | 0 | 0.5 px |
 | tls-tools-settings_replace_tls_insecure_hosts-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
 | tls-tools-settings_replace_tls_passthrough-pending | 3.03% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_replace_tls_passthrough-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_enable_https_decryption-pending | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_enable_https_decryption-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_disable_https_decryption-pending | 3.01% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-pending | 3.01% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-allowed | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-pending | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
 | tls-tools-settings_disable_https_decryption-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-enable-pending | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-pending | 3.07% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-restore-pending | 3.09% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-pending | 3.07% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-restore-allowed | 2.68% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result | 2.67% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-auto | 2.50% | 5 | 5 | 0 | 0 | 0.3 px |
-| agent-panel-new-chat | 1.99% | 5 | 5 | 0 | 0 | 0.4 px |
-| agent-panel-turn-running | 2.23% | 5 | 5 | 0 | 0 | 0.0 px |
+| agent-panel-tool-result | 2.66% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-auto | 2.49% | 5 | 5 | 0 | 0 | 0.3 px |
+| agent-panel-new-chat | 2.00% | 5 | 5 | 0 | 0 | 0.4 px |
+| agent-panel-turn-running | 2.21% | 5 | 5 | 0 | 0 | 0.0 px |
 | agent-panel-turn-stopped | 2.26% | 6 | 6 | 0 | 0 | 0.0 px |
 | agent-panel-turn-failed | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
-| agent-panel-usage | 2.57% | 4 | 4 | 0 | 0 | 0.1 px |
+| agent-panel-usage | 2.56% | 4 | 4 | 0 | 0 | 0.1 px |
 | agent-panel-chat-menu | 2.41% | 5 | 5 | 0 | 0 | 0.1 px |
 | agent-panel-model-menu | 2.62% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat | 2.11% | 4 | 4 | 0 | 0 | 0.5 px |
 | agent-panel-delete-chat | 2.17% | 4 | 4 | 0 | 0 | 0.7 px |
 | settings-agent-unconfigured | 1.64% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured | 1.63% | 20 | 20 | 0 | 0 | 0.6 px |
+| settings-agent-configured | 1.62% | 20 | 20 | 0 | 0 | 0.6 px |
 | settings-tools-capabilities | 2.52% | 9 | 9 | 0 | 0 | 0.0 px |
 | settings-agent-tool-capabilities-filtered | 1.98% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running | 1.66% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-running | 1.65% | 6 | 6 | 0 | 0 | 0.7 px |
 | settings-mcp-conflict | 1.70% | 4 | 4 | 0 | 0 | 0.5 px |
-| settings-mcp-add-client | 5.47% | 5 | 5 | 0 | 0 | 0.7 px |
-| settings-mcp-regenerate | 5.00% | 4 | 4 | 0 | 0 | 0.8 px |
-| mcp-tool-approval | 5.68% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog | 4.88% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog | 5.05% | 12 | 12 | 0 | 0 | 0.7 px |
-| settings-agent-custom-edit-dialog | 4.89% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider | 4.50% | 4 | 4 | 0 | 0 | 0.7 px |
-| agent-panel-unconfigured-dark | 1.95% | 8 | 8 | 0 | 0 | 0.7 px |
-| agent-panel-chat-dark | 2.91% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-capture-tools-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-mcp-add-client | 5.48% | 5 | 5 | 0 | 0 | 0.7 px |
+| settings-mcp-regenerate | 5.01% | 4 | 4 | 0 | 0 | 0.8 px |
+| mcp-tool-approval | 5.69% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-agent-custom-dialog | 4.89% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog | 5.06% | 12 | 12 | 0 | 1 | 40.0 px |
+| settings-agent-custom-edit-dialog | 4.90% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider | 4.51% | 4 | 4 | 0 | 0 | 0.7 px |
+| agent-panel-unconfigured-dark | 1.96% | 8 | 8 | 0 | 0 | 0.7 px |
+| agent-panel-chat-dark | 2.92% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-capture-tools-dark | 2.70% | 9 | 9 | 0 | 0 | 0.0 px |
 | agent-panel-body-message-tools-dark | 2.79% | 10 | 10 | 0 | 0 | 0.0 px |
-| agent-panel-breakpoint-tools-dark | 2.67% | 11 | 11 | 0 | 0 | 0.0 px |
-| agent-panel-composer-tools-dark | 2.63% | 10 | 10 | 0 | 0 | 0.0 px |
-| settings-tools-query-dark | 2.82% | 13 | 13 | 0 | 0 | 0.0 px |
+| agent-panel-breakpoint-tools-dark | 2.68% | 11 | 11 | 0 | 0 | 0.0 px |
+| agent-panel-composer-tools-dark | 2.64% | 10 | 10 | 0 | 0 | 0.0 px |
+| settings-tools-query-dark | 2.83% | 13 | 13 | 0 | 0 | 0.0 px |
 | agent-panel-diagnostics-tools-dark | 2.44% | 9 | 9 | 0 | 0 | 0.0 px |
-| agent-panel-rules-tools-dark | 2.40% | 8 | 8 | 0 | 0 | 0.0 px |
-| agent-panel-rules-result-dark | 2.52% | 7 | 7 | 0 | 0 | 0.0 px |
+| agent-panel-rules-tools-dark | 2.39% | 8 | 8 | 0 | 0 | 0.0 px |
+| agent-panel-rules-result-dark | 2.53% | 7 | 7 | 0 | 0 | 0.0 px |
 | agent-panel-tool-approval-dark | 2.91% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | 2.97% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | 2.60% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_replace_tls_passthrough-pending-dark | 3.02% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-pending-dark | 3.02% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-allowed-dark | 2.58% | 6 | 6 | 0 | 0 | 0.5 px |
+| rules-export-canceled-dark | 2.58% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-pending-dark | 2.98% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_insecure_hosts-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_replace_tls_passthrough-pending-dark | 3.03% | 6 | 6 | 0 | 0 | 0.5 px |
 | tls-tools-settings_replace_tls_passthrough-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
 | tls-tools-settings_enable_https_decryption-pending-dark | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_enable_https_decryption-allowed-dark | 2.60% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_disable_https_decryption-pending-dark | 2.99% | 6 | 6 | 0 | 0 | 0.5 px |
-| tls-tools-settings_disable_https_decryption-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-enable-pending-dark | 3.06% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_enable_https_decryption-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-pending-dark | 3.00% | 6 | 6 | 0 | 0 | 0.5 px |
+| tls-tools-settings_disable_https_decryption-allowed-dark | 2.62% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-enable-pending-dark | 3.07% | 6 | 6 | 0 | 0 | 0.5 px |
 | settings-system-proxy-enable-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-restore-pending-dark | 3.08% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-system-proxy-restore-allowed-dark | 2.61% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-tool-result-dark | 2.59% | 6 | 6 | 0 | 0 | 0.5 px |
-| agent-panel-auto-dark | 2.48% | 5 | 5 | 0 | 0 | 0.3 px |
+| settings-system-proxy-restore-pending-dark | 3.09% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-system-proxy-restore-allowed-dark | 2.62% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-tool-result-dark | 2.60% | 6 | 6 | 0 | 0 | 0.5 px |
+| agent-panel-auto-dark | 2.49% | 5 | 5 | 0 | 0 | 0.3 px |
 | agent-panel-new-chat-dark | 1.98% | 5 | 5 | 0 | 0 | 0.4 px |
-| agent-panel-turn-running-dark | 2.20% | 5 | 5 | 0 | 0 | 0.0 px |
-| agent-panel-turn-stopped-dark | 2.24% | 6 | 6 | 0 | 0 | 0.0 px |
-| agent-panel-turn-failed-dark | 2.21% | 6 | 6 | 0 | 0 | 0.0 px |
-| agent-panel-usage-dark | 2.55% | 4 | 4 | 0 | 0 | 0.1 px |
+| agent-panel-turn-running-dark | 2.21% | 5 | 5 | 0 | 0 | 0.0 px |
+| agent-panel-turn-stopped-dark | 2.25% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-turn-failed-dark | 2.22% | 6 | 6 | 0 | 0 | 0.0 px |
+| agent-panel-usage-dark | 2.56% | 4 | 4 | 0 | 0 | 0.1 px |
 | agent-panel-chat-menu-dark | 2.39% | 5 | 5 | 0 | 0 | 0.1 px |
 | agent-panel-model-menu-dark | 2.61% | 5 | 5 | 0 | 0 | 0.5 px |
 | agent-panel-rename-chat-dark | 1.93% | 4 | 4 | 0 | 0 | 0.5 px |
-| agent-panel-delete-chat-dark | 1.97% | 4 | 4 | 0 | 0 | 0.7 px |
-| settings-agent-unconfigured-dark | 1.61% | 9 | 9 | 0 | 0 | 0.4 px |
+| agent-panel-delete-chat-dark | 1.98% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-unconfigured-dark | 1.62% | 9 | 9 | 0 | 0 | 0.4 px |
 | settings-agent-provider-menu-dark | n/a | 3 | 3 | 0 | 0 | 0.0 px |
-| settings-agent-configured-dark | 1.60% | 20 | 20 | 0 | 0 | 0.6 px |
-| settings-tools-capabilities-dark | 2.68% | 9 | 9 | 0 | 0 | 0.0 px |
-| settings-agent-tool-capabilities-filtered-dark | 2.13% | 6 | 6 | 0 | 0 | 0.5 px |
-| settings-mcp-running-dark | 1.63% | 6 | 6 | 0 | 0 | 0.7 px |
-| settings-mcp-conflict-dark | 1.67% | 4 | 4 | 0 | 0 | 0.5 px |
+| settings-agent-configured-dark | 1.61% | 20 | 20 | 0 | 0 | 0.6 px |
+| settings-tools-capabilities-dark | 2.69% | 9 | 9 | 0 | 0 | 0.0 px |
+| settings-agent-tool-capabilities-filtered-dark | 2.14% | 6 | 6 | 0 | 0 | 0.5 px |
+| settings-mcp-running-dark | 1.64% | 6 | 6 | 0 | 0 | 0.7 px |
+| settings-mcp-conflict-dark | 1.68% | 4 | 4 | 0 | 0 | 0.5 px |
 | settings-mcp-add-client-dark | 1.35% | 5 | 5 | 0 | 0 | 0.7 px |
 | settings-mcp-regenerate-dark | 1.45% | 4 | 4 | 0 | 0 | 0.8 px |
 | mcp-tool-approval-dark | 1.51% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-agent-custom-dialog-dark | 1.35% | 15 | 15 | 0 | 0 | 0.7 px |
-| settings-agent-deepseek-dialog-dark | 1.31% | 12 | 12 | 0 | 1 | 40.0 px |
-| settings-agent-custom-edit-dialog-dark | 1.37% | 8 | 8 | 0 | 0 | 0.7 px |
-| settings-agent-remove-provider-dark | 1.31% | 4 | 4 | 0 | 0 | 0.7 px |
+| settings-agent-custom-dialog-dark | 1.36% | 15 | 15 | 0 | 0 | 0.7 px |
+| settings-agent-deepseek-dialog-dark | 1.32% | 12 | 12 | 0 | 0 | 0.7 px |
+| settings-agent-custom-edit-dialog-dark | 1.38% | 8 | 8 | 0 | 0 | 0.7 px |
+| settings-agent-remove-provider-dark | 1.32% | 4 | 4 | 0 | 0 | 0.7 px |
 | breakpoint-request-paused | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoint-request-body-loading | 2.33% | 10 | 10 | 0 | 6 | 3.0 px |
 | breakpoints | 2.49% | 10 | 10 | 0 | 6 | 3.0 px |
@@ -158,7 +164,7 @@ Generated: 2026-09-05T17:42:50.605Z
 | capture-websocket-breakpoint-paused-dark | 3.28% | 12 | 12 | 0 | 9 | 50.3 px |
 | capture-websocket-breakpoint-queue-head-dark | 3.24% | 3 | 3 | 0 | 1 | 25.0 px |
 | capture-websocket-breakpoint-queue-queued-dark | 2.27% | 3 | 3 | 0 | 0 | 0.0 px |
-| capture-body-effect-request-text | 2.28% | 4 | 4 | 0 | 1 | 10.0 px |
+| capture-body-effect-request-text | 2.27% | 4 | 4 | 0 | 1 | 10.0 px |
 | capture-body-effect-request-file | 2.28% | 4 | 4 | 0 | 1 | 10.0 px |
 | capture-body-effect-response-text | 2.33% | 5 | 5 | 0 | 1 | 10.0 px |
 | capture-body-effect-response-file | 2.33% | 5 | 5 | 0 | 1 | 10.0 px |
@@ -177,13 +183,13 @@ Generated: 2026-09-05T17:42:50.605Z
 | capture-tunnel-mitm-navigation | 2.36% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
 | capture-tls-passthrough-target-dark | 1.12% | 1 | 1 | 0 | 0 | 0.0 px |
-| https-setup | 4.78% | 9 | 9 | 0 | 2 | 44.3 px |
-| https-setup-dark | 1.29% | 5 | 5 | 0 | 1 | 44.3 px |
-| https-setup-ready | 4.87% | 7 | 7 | 0 | 1 | 44.3 px |
-| import-export | 2.17% | 7 | 7 | 0 | 2 | 24.5 px |
-| import-export-dark | 0.99% | 7 | 7 | 0 | 3 | 24.5 px |
-| capture-export-menu | 2.01% | 2 | 2 | 0 | 2 | 8.0 px |
-| capture-request-rule-menu | 2.37% | 4 | 4 | 0 | 0 | 0.8 px |
+| https-setup | 4.79% | 9 | 9 | 0 | 1 | 647.7 px |
+| https-setup-dark | 1.30% | 5 | 5 | 0 | 1 | 647.7 px |
+| https-setup-ready | 4.88% | 7 | 7 | 0 | 1 | 44.3 px |
+| import-export | 2.18% | 7 | 7 | 0 | 2 | 24.5 px |
+| import-export-dark | 1.00% | 7 | 7 | 0 | 3 | 24.5 px |
+| capture-export-menu | 2.00% | 2 | 2 | 0 | 2 | 8.0 px |
+| capture-request-rule-menu | 2.36% | 4 | 4 | 0 | 0 | 0.8 px |
 | capture-breakpoint-create-menu | 2.17% | 8 | 8 | 0 | 1 | 1.0 px |
 | capture-request-menu-dismiss | 1.81% | 1 | 1 | 0 | 1 | 0.3 px |
 | capture-rule-filter | 1.13% | 3 | 0 | 3 | 0 | 0.0 px |
@@ -214,34 +220,34 @@ Generated: 2026-09-05T17:42:50.605Z
 | composer-response-headers | 1.55% | 2 | 2 | 0 | 0 | 0.7 px |
 | settings | 1.56% | 10 | 10 | 0 | 5 | 161.0 px |
 | settings-proxy | 1.31% | 13 | 13 | 0 | 12 | 1476.8 px |
-| settings-proxy-dark | 1.31% | 5 | 5 | 0 | 2 | 160.8 px |
-| settings-app-containers | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-containers-dark | 1.98% | 15 | 15 | 0 | 5 | 3.8 px |
-| settings-app-container-enable-all | 0.86% | 5 | 5 | 0 | 0 | 0.9 px |
+| settings-proxy-dark | 1.32% | 5 | 5 | 0 | 2 | 160.8 px |
+| settings-app-containers | 1.97% | 15 | 15 | 0 | 5 | 3.8 px |
+| settings-app-containers-dark | 1.99% | 15 | 15 | 0 | 5 | 3.8 px |
+| settings-app-container-enable-all | 0.87% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-disable-all | 0.91% | 5 | 5 | 0 | 0 | 0.9 px |
 | settings-app-container-enable-all-dark | 0.34% | 5 | 5 | 0 | 0 | 0.9 px |
-| settings-app-container-disable-all-dark | 0.38% | 5 | 5 | 0 | 0 | 0.9 px |
-| tls-compatibility-dialog-add | 1.13% | 2 | 2 | 0 | 0 | 0.4 px |
-| settings-tls-passthrough | 1.11% | 9 | 7 | 2 | 2 | 131.2 px |
+| settings-app-container-disable-all-dark | 0.39% | 5 | 5 | 0 | 0 | 0.9 px |
+| tls-compatibility-dialog-add | 1.12% | 2 | 2 | 0 | 0 | 0.4 px |
+| settings-tls-passthrough | 1.10% | 9 | 7 | 2 | 2 | 131.2 px |
 | settings-tls-passthrough-dark | 1.10% | 9 | 7 | 2 | 2 | 131.2 px |
 | tls-compatibility-dialog | 0.76% | 8 | 8 | 0 | 1 | 1.7 px |
-| tls-compatibility-dialog-dark | 0.29% | 8 | 8 | 0 | 1 | 1.7 px |
-| settings-updates-checking | 1.59% | 13 | 13 | 0 | 3 | 13.8 px |
-| settings-updates-checking-dark | 1.56% | 13 | 13 | 0 | 3 | 13.8 px |
+| tls-compatibility-dialog-dark | 0.30% | 8 | 8 | 0 | 1 | 1.7 px |
+| settings-updates-checking | 1.58% | 13 | 13 | 0 | 3 | 13.8 px |
+| settings-updates-checking-dark | 1.57% | 13 | 13 | 0 | 3 | 13.8 px |
 | settings-updates-available | 1.88% | 14 | 14 | 0 | 1 | 5.7 px |
-| settings-updates-available-dark | 1.80% | 14 | 14 | 0 | 1 | 5.7 px |
+| settings-updates-available-dark | 1.81% | 14 | 14 | 0 | 1 | 5.7 px |
 | settings-updates-downloading | 1.74% | 14 | 14 | 0 | 3 | 13.8 px |
-| settings-updates-downloading-dark | 1.67% | 14 | 14 | 0 | 3 | 13.8 px |
+| settings-updates-downloading-dark | 1.68% | 14 | 14 | 0 | 3 | 13.8 px |
 | settings-updates-downloaded | 1.87% | 14 | 14 | 0 | 1 | 5.9 px |
-| settings-updates-downloaded-dark | 1.79% | 14 | 14 | 0 | 1 | 5.9 px |
+| settings-updates-downloaded-dark | 1.80% | 14 | 14 | 0 | 1 | 5.9 px |
 | settings-updates-up-to-date | 1.60% | 14 | 14 | 0 | 0 | 0.9 px |
-| settings-updates-up-to-date-dark | 1.57% | 14 | 14 | 0 | 0 | 0.9 px |
-| settings-updates-failed | 1.77% | 14 | 14 | 0 | 0 | 0.9 px |
-| settings-updates-failed-dark | 1.73% | 14 | 14 | 0 | 0 | 0.9 px |
+| settings-updates-up-to-date-dark | 1.58% | 14 | 14 | 0 | 0 | 0.9 px |
+| settings-updates-failed | 1.76% | 14 | 14 | 0 | 0 | 0.9 px |
+| settings-updates-failed-dark | 1.74% | 14 | 14 | 0 | 0 | 0.9 px |
 | settings-updates-unsupported | 1.61% | 14 | 14 | 0 | 0 | 0.9 px |
-| settings-updates-unsupported-dark | 1.58% | 14 | 14 | 0 | 0 | 0.9 px |
+| settings-updates-unsupported-dark | 1.59% | 14 | 14 | 0 | 0 | 0.9 px |
 | settings-updates-auth-signed-out | 1.51% | 6 | 6 | 0 | 0 | 0.6 px |
-| settings-updates-auth-signed-out-dark | 1.49% | 6 | 6 | 0 | 0 | 0.6 px |
+| settings-updates-auth-signed-out-dark | 1.50% | 6 | 6 | 0 | 0 | 0.6 px |
 | settings-updates-auth-authorizing | 1.57% | 7 | 7 | 0 | 0 | 0.4 px |
 | settings-updates-auth-authorizing-dark | 1.55% | 7 | 7 | 0 | 0 | 0.4 px |
 | settings-updates-auth-failed | 1.50% | 7 | 7 | 0 | 0 | 0.4 px |
@@ -400,6 +406,24 @@ Generated: 2026-09-05T17:42:50.605Z
 | agent-panel-tool-approval | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-pending | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-allowed | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-canceled | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
@@ -619,7 +643,7 @@ Generated: 2026-09-05T17:42:50.605Z
 | settings-agent-deepseek-dialog | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
+| settings-agent-deepseek-dialog | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
 | settings-agent-deepseek-dialog | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -736,6 +760,24 @@ Generated: 2026-09-05T17:42:50.605Z
 | agent-panel-tool-approval-dark | Agent Tool approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | capture_stop_recording | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | agent-panel-tool-approval-dark | Pause capture without stopping the proxy. | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-pending-dark | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending-dark | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-pending-dark | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-allowed-dark | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed-dark | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-allowed-dark | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
+| rules-export-canceled-dark | Rules export approval | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled-dark | rules_export | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
+| rules-export-canceled-dark | Rules export result or effect | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent panel | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent composer | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | tls-tools-settings_replace_tls_insecure_hosts-pending-dark | Agent execution mode | 0.4 px | 0.0 px | -0.5 px | 0.0 px | 0.5 px | none | ok |
@@ -955,7 +997,7 @@ Generated: 2026-09-05T17:42:50.605Z
 | settings-agent-deepseek-dialog-dark | Provider dialog footer | 0.0 px | -0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | DeepSeek | 0.0 px | 0.2 px | 0.0 px | 0.0 px | 0.2 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Profile name | 0.0 px | 0.2 px | 0.0 px | -0.1 px | 0.2 px | none | ok |
-| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 40.0 px | 0.7 px | 40.0 px | none | flagged |
+| settings-agent-deepseek-dialog-dark | Endpoint | 0.0 px | -0.3 px | 0.0 px | 0.7 px | 0.7 px | none | ok |
 | settings-agent-deepseek-dialog-dark | API key | 0.0 px | 0.0 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Model ID | 0.0 px | -0.1 px | 0.0 px | -0.1 px | 0.1 px | none | ok |
 | settings-agent-deepseek-dialog-dark | Test connection | 0.0 px | -0.2 px | -0.6 px | 0.0 px | 0.6 px | none | ok |
@@ -1389,20 +1431,20 @@ Generated: 2026-09-05T17:42:50.605Z
 | capture-tunnel-mitm-navigation | View passthrough pattern | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
 | capture-tls-passthrough-target-dark | TLS passthrough target row | 0.0 px | 0.0 px | 0.0 px | 0.0 px | 0.0 px | none | ok |
-| https-setup | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
-| https-setup | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup | No CA generated yet | 0.0 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
-| https-setup | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup | Install… | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup | waiting for trust installation | 0.0 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
-| https-setup | Cancel | 1.0 px | 0.0 px | -0.3 px | 0.0 px | 1.0 px | none | flagged |
-| https-setup | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
-| https-setup-dark | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
-| https-setup-dark | Root Certificate Authority | 0.0 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
-| https-setup-dark | Generate | 0.3 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
-| https-setup-dark | Install to local trust store | 0.0 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
-| https-setup-dark | Start decrypting | 0.7 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | Decrypt HTTPS (MITM) | 647.7 px | 138.2 px | -245.7 px | 16.0 px | 647.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(26, 27, 30)->rgb(255, 255, 255) | flagged |
+| https-setup | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup | No CA generated yet | -0.3 px | 0.1 px | 0.3 px | 0.1 px | 0.3 px | none | ok |
+| https-setup | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup | Install… | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | waiting for trust installation | -0.3 px | 0.4 px | 0.0 px | 0.1 px | 0.4 px | none | ok |
+| https-setup | Cancel | 0.7 px | 0.0 px | -0.3 px | 0.0 px | 0.7 px | none | ok |
+| https-setup | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
+| https-setup-dark | Decrypt HTTPS (MITM) | 647.7 px | 138.2 px | -245.7 px | 16.0 px | 647.7 px | fontSize 14.5px->12.5px; fontWeight 640->550; color rgb(243, 244, 248)->rgb(255, 255, 255) | flagged |
+| https-setup-dark | Root Certificate Authority | -0.3 px | -0.3 px | 0.3 px | 0.4 px | 0.4 px | none | ok |
+| https-setup-dark | Generate | 0.0 px | 0.0 px | -0.3 px | 0.0 px | 0.3 px | none | ok |
+| https-setup-dark | Install to local trust store | -0.3 px | -0.3 px | 0.7 px | 0.4 px | 0.7 px | none | ok |
+| https-setup-dark | Start decrypting | 0.4 px | 0.0 px | -0.7 px | 0.0 px | 0.7 px | none | ok |
 | https-setup-ready | Decrypt HTTPS (MITM) | 0.0 px | 44.3 px | -0.5 px | 0.0 px | 44.3 px | none | flagged |
 | https-setup-ready | Root Certificate Authority | 0.0 px | -0.2 px | 0.0 px | 0.4 px | 0.4 px | none | ok |
 | https-setup-ready | Generated | 0.0 px | 0.0 px | 0.0 px | 0.1 px | 0.1 px | none | ok |

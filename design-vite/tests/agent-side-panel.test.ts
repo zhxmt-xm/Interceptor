@@ -225,6 +225,23 @@ test('Ask mode keeps a change Tool pending until the user allows or denies it', 
   expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('Rules export approval distinguishes saved and canceled native dialogs', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentExecutionMode: 'ask',
+    agentToolApproval: 'pending', agentToolApprovalName: 'rules_export', agentRulesExported: true,
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('rules_export');
+  await expect(approval).toContainText('Saved Rules: 2');
+  await expect(approval).toContainText('Saved folders: 1');
+  await expect(approval).toContainText('No parameters');
+  await approval.getByRole('button', { name: 'Allow Tool' }).click();
+  await expect(approval).toContainText('Rules exported');
+  await page.evaluate(() => window.__setState?.({ agentRulesExported: false }));
+  await expect(approval).toContainText('Export canceled');
+  expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
@@ -494,6 +511,7 @@ test('Agent Rules Tool activity summarizes tree, hits and applied revision', asy
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('1 enabled Rule with 1 captured hit');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
+  await expect(trace.locator('[data-tool-name="discover_tools"]')).toContainText('4 tools discovered');
   await expect(trace.locator('[data-tool-name="rules_get_tree"]'))
     .toContainText('Revision 1 · Rules 1 · Enabled 1');
   await expect(trace.locator('[data-tool-name="rules_get_hits"]'))

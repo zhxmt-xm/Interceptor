@@ -19,6 +19,7 @@ const EXPECTED_SETTINGS_COPY = [
   ['rules_get_tree', 'Rule set', 'Read the current rule tree and revision.'],
   ['rules_get_hits', 'Rule hits', 'Read match counts for current rules.'],
   ['rules_replace_tree', 'Apply rules', 'Replace the rule set with revision checking.'],
+  ['rules_export', 'Export Rules', 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.'],
   ['composer_send_request', 'Send request', 'Send a Composer request from this machine.'],
   ['composer_probe_connection', 'Probe connection', 'Open a TLS probe to a host and port.'],
   ['breakpoints_list', 'Pending breakpoints', 'Read requests, responses, and frames waiting for action.'],
@@ -58,7 +59,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(36);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(37);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

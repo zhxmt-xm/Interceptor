@@ -323,6 +323,47 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 - 视觉：Request/Response × Text/File × light/dark 8个view均`0 missing / 0 flagged / 0px`；design interaction `13/13`。
 - 销毁：Green Main/Core PID为`45548/23816`，`gracefulDestroyVerified=true`；产品Save生成的临时文件已删除，8888无listener、无Interceptor/Electron残留，WinINet恢复`127.0.0.1:7890`。
 
+<a id="rules-tools-export"></a>
+## `rules.tools.export`
+
+**状态**：passed
+**策略**：native-ui；Windows；host-safety-guard；两代真实Electron
+
+### Steps
+
+1. 创建独立空profile和证据目录，由宿主guard保存系统状态；启动Electron并经Rules UI创建两条
+	enabled不同的规则及一层目录，Apply后记录公共ID、顺序和revision。通过Settings UI配置本地Provider。
+2. 默认Ask Chat发现`rules_export`；发起导出后在真实审批卡Deny，确认没有打开原生Dialog、没有输出
+	文件且RuleSet不变。
+3. 再次导出并Allow，取消真正的Save Dialog；返回`exported=false`，无输出文件，Core规则不变。
+4. 再次Allow并用真实键鼠选择本workflow输出位置；等待成功，测试只读解析产品生成的JSON，验证
+	完整`{ nodes }`、enabled、目录层级、ID和当前已保存规则一致。Model结果只含exported，不含路径或正文。
+5. 切换Auto再次导出，跳过应用审批但仍打开Save Dialog；保存并比较文件结构。编辑UI草稿不Apply后
+	再经Tool导出，确认导出已保存规则且用户草稿不被覆盖；UI自己的导出仍保留现有草稿语义。
+6. 通过Settings关闭Agent导出权限，旧Chat再调用得到unknown_tool且不打开Dialog；MCP开关独立。
+7. 经产品UI启用MCP、创建Ask Client并复制配置给官方Client；在Agent已关闭时仍可发现/调用导出。
+	Deny不写；Allow经真实Save Dialog保存与同一Core规则一致的JSON；切Auto后原生Cancel返回false。
+	关闭MCP授权后当前连接不再披露Tool，旧调用被拒绝。复制的Token必须注册脱敏审计，不进入证据。
+8. 正常关闭第一代并验证进程/8888/宿主恢复；使用同profile重启，Model请求增量0、历史导出不重放、
+	Agent/MCP关闭项保持。正常关闭第二代并保存两代gracefulDestroyVerified与脱敏trace/evidence。
+9. 只在完整销毁确认后删除本workflow生成的文件和profile。不得直接构造规则输入、覆写原生Dialog
+	返回值或把Browser/fake Preload测试当本条E2E。
+
+### 预期与证据
+
+导出不修改Core规则或UI草稿；取消、拒绝、撤权均不写文件。Red必须精确来自新Tool未披露/未实现，
+不是Dialog、selector或环境错误。Green保留文件结构比较、审批裁决、脱敏、重启零重放与完整销毁证据。
+
+2026-09-06：executor 10项缺失Tool Red→Green；Main导出6项、原生Dialog 4项与摘要21项Green。
+真实Red在`0206d12c`产品代码上发生于`export-discovery`缺少`rules_export`，Main/Core `35164/44980`
+仍正常销毁。最终Agent/MCP workflow `1/1` Green（39.6秒），两代Main/Core为`19112/8936`、
+`37364/40196`，metadata均`gracefulDestroyVerified=true`，释放8888并由host-safety-guard恢复完整系统状态。
+证据分别归档于TEMP下`interceptor-rules-export-e2e-red`和`interceptor-rules-export-agent-mcp-green`；
+后者`rules-tools-export.json`保留业务结论与产品文件哈希，不含文件正文或MCP Token。
+旧`rules.import-tree`、全局授权、MCP Browser/Desktop四条关联E2E `4/4`，旧Agent Rules流程`1/1`也通过；
+全部七代及两代销毁证据分别归档为`interceptor-rules-export-adjacent-e2e-green`和
+`interceptor-rules-export-existing-agent-rules-green`。
+
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 

@@ -126,11 +126,28 @@ export async function submitWindowsFileDialogPath(
   targetPath: string,
   commandRunner: WindowsFileDialogCommandRunner = windowsFileDialogCommandRunner,
 ): Promise<void> {
+  await runWindowsFileDialogAction(owner, { type: 'submit-path', targetPath }, commandRunner);
+}
+
+export async function cancelWindowsFileDialog(
+  owner: WindowsFileDialogOwner,
+  commandRunner: WindowsFileDialogCommandRunner = windowsFileDialogCommandRunner,
+): Promise<void> {
+  await runWindowsFileDialogAction(owner, { type: 'cancel' }, commandRunner);
+}
+
+async function runWindowsFileDialogAction(
+  owner: WindowsFileDialogOwner,
+  action: { type: 'submit-path'; targetPath: string } | { type: 'cancel' },
+  commandRunner: WindowsFileDialogCommandRunner,
+): Promise<void> {
   if (process.platform !== 'win32') {
     throw new Error('真实文件对话框驱动目前只支持 Windows。');
   }
 
-  const encodedPath = Buffer.from(targetPath, 'utf16le').toString('base64');
+  const encodedPath = action.type === 'submit-path'
+    ? Buffer.from(action.targetPath, 'utf16le').toString('base64')
+    : '';
   const encodedOwner = Buffer.from(JSON.stringify(owner), 'utf8').toString('base64');
   const script = String.raw`
 $ErrorActionPreference = 'Stop'
@@ -191,6 +208,7 @@ $owner = [System.Text.Encoding]::UTF8.GetString(
 ) | ConvertFrom-Json
 $ownerProcessId = [int]$owner.processId
 $ownerProcessStartedAt = [string]$owner.processStartedAt
+$dialogAction = '${action.type}'
 $targetPath = [System.Text.Encoding]::Unicode.GetString(
   [System.Convert]::FromBase64String('${encodedPath}')
 )
@@ -383,6 +401,38 @@ if (
   throw '真实文件对话框的文件名或提交控件没有可点击边界。'
 }
 
+if ($dialogAction -eq 'cancel') {
+  try {
+    $cancelCondition = [System.Windows.Automation.AndCondition]::new(
+      [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+        '2'
+      ),
+      [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::ClassNameProperty,
+        'Button'
+      )
+    )
+    $cancelButton = $dialog.FindFirst(
+      [System.Windows.Automation.TreeScope]::Descendants,
+      $cancelCondition
+    )
+    if (-not $cancelButton -or -not $cancelButton.Current.IsEnabled) {
+      throw '真实文件对话框没有可用的取消按钮。'
+    }
+    $cancelBounds = $cancelButton.Current.BoundingRectangle
+    if ($cancelBounds.Width -le 0 -or $cancelBounds.Height -le 0) {
+      throw '真实文件对话框的取消按钮没有可点击边界。'
+    }
+    [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
+    if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+      throw '取消前真实文件对话框没有获得焦点或所有权。'
+    }
+    Click-Control $cancelBounds
+  } finally {
+    [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
+  }
+} else {
 try {
   if (
     -not (Test-OwnerProcessGeneration $dialogProcessId) -or
@@ -436,6 +486,7 @@ try {
   Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw
 }
+}
 
 $closeDeadline = [DateTime]::UtcNow.AddSeconds(15)
 while (
@@ -450,7 +501,7 @@ if (
   [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle)
 ) {
   Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
-  throw '提交文件路径后，真实文件对话框没有关闭。'
+  throw '完成操作后，真实文件对话框没有关闭。'
 }
 `;
 

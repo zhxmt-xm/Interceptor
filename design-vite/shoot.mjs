@@ -299,6 +299,19 @@ for (const theme of ['light', 'dark']) {
       });
     }
   }
+  for (const stage of ['pending', 'allowed', 'canceled']) {
+    shots.push({
+      feature: 'agent-models', theme,
+      variant: `panel-rules-export-${stage}`,
+      appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+        agentPanel: 'open', agentExecutionMode: 'ask',
+        agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+        agentToolApprovalName: 'rules_export', agentRulesExported: stage !== 'canceled',
+      },
+    });
+  }
   shots.push({
     feature: 'agent-models',
     theme,
@@ -563,6 +576,7 @@ async function shoot(list) {
       ctxmenu: '',
       agentPanel: 'closed',
       agentProviderDialog: '',
+      agentRulesExported: true,
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',
       agentModelMenu: '',
@@ -671,6 +685,7 @@ async function shoot(list) {
       composerHistory: '',
       agentPanel: 'closed',
       agentProvider: 'configured',
+      agentRulesExported: true,
       agentProviderDialog: '',
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',

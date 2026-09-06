@@ -22,7 +22,7 @@ describe('ToolCapabilitySettingsService', () => {
       agentDisabledToolNames: [],
       mcpDisabledToolNames: [],
     });
-    expect(service.snapshot().groups.flatMap((group) => group.tools)).toHaveLength(36);
+    expect(service.snapshot().groups.flatMap((group) => group.tools)).toHaveLength(37);
     await expect(readFile(settingsPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 

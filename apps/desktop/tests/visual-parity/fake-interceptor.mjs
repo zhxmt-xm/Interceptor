@@ -815,6 +815,7 @@ export const fakeInterceptorFixture = {
             { name: 'rules_get_tree', title: 'Rule set', description: 'Read the current rule tree and revision.', kind: 'query' },
             { name: 'rules_get_hits', title: 'Rule hits', description: 'Read match counts for current rules.', kind: 'query' },
             { name: 'rules_replace_tree', title: 'Apply rules', description: 'Replace the rule set with revision checking.', kind: 'change' },
+            { name: 'rules_export', title: 'Export Rules', description: 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.', kind: 'change' },
           ],
         },
         {
@@ -1511,7 +1512,7 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree']
+            matches: ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export']
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1957,6 +1958,44 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('rules-export-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const exported = !agentSessionState.endsWith('-canceled');
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [
+      ...agentSessionSnapshot.items,
+      {
+        kind: 'assistant-message', itemId: 'item-assistant-rules-export', turnId,
+        content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+      },
+      {
+        kind: 'tool-call', itemId: 'item-tool-call-rules-export', turnId,
+        callId: 'call-rules-export', name: 'rules_export', arguments: {},
+        status: pending ? 'running' : 'completed',
+        approval: {
+          approvalId: 'approval-rules-export', status: pending ? 'pending' : 'allowed',
+          description: 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.',
+          effect: 'Save the persisted Rules to a JSON file without changing the Rule tree or unsaved drafts.\nSaved Rules: 2\nSaved folders: 1',
+          effectMetadata: { ruleCount: 2, folderCount: 1 },
+        },
+        createdAt: createdAt + 2,
+      },
+    ];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'item-tool-result-rules-export', turnId,
+      callId: 'call-rules-export', name: 'rules_export', result: { ok: true, value: { exported } },
+      createdAt: createdAt + 3,
+    });
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('tls-settings-')) {
     const match = /^tls-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);

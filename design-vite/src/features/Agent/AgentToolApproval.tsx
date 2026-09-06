@@ -5,6 +5,11 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  rules_export: {
+    description: 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.',
+    effect: 'Save the persisted Rules to a JSON file without changing the Rule tree or unsaved drafts.\nSaved Rules: 2\nSaved folders: 1',
+    result: 'Rules exported',
+  },
   settings_replace_tls_insecure_hosts: {
     description: 'Replace hosts that skip upstream TLS certificate verification.',
     effect: 'Replace hosts that skip upstream TLS certificate verification.\nInsecure host count: 0 -> 1',
@@ -91,7 +96,8 @@ export function AgentToolApproval(): React.JSX.Element | null {
         <strong>{allowed ? 'Allowed' : 'Denied'}</strong>
         <span className={styles.toolApprovalResultCopy}>
           <code>{state.agentToolApprovalName}</code>
-          {allowed ? <span>{tool.result}</span> : null}
+          {allowed ? <span>{state.agentToolApprovalName === 'rules_export' && !state.agentRulesExported
+            ? 'Export canceled' : tool.result}</span> : null}
         </span>
       </div>
     );
@@ -114,7 +120,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName === 'rules_export' ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

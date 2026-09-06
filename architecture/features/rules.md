@@ -25,6 +25,31 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 
 ## 2. 领域模型
 
+### 2.0 Rules Export Tool
+
+`rules_export`是独立change意图，严格接受空对象；Agent/MCP共享registry，按各自Ask/Auto执行。
+Tool读取Core已保存的完整RuleSet，经与UI共用的Main导出方法打开真实Save Dialog并写入`{ nodes }` JSON。
+UI继续导出当前Renderer草稿，不把导出变成Apply；Tool不读取或覆盖用户未保存草稿。
+
+- Ask前只提供已保存规则/目录数量，Deny不打开Save Dialog、不读写文件；Auto仅省略应用审批。
+- 目标路径只由原生Dialog选择，Tool不接受路径、文件名、节点内容或任意Main/Core命令。
+- 执行结果只返回`exported`，不含规则正文、凭据、Map Local路径、目标路径或文件内容；异常输出脱敏。
+- 原生Dialog取消返回`exported=false`且不产生文件。调用在Dialog完成前被取消时，选择结束后必须在
+    写文件前再次检查AbortSignal，不能因迟到的选择写入文件；已开始的文件写入按正式路径完成。
+- UI与Tool复用同一JSON序列化和Save Dialog编排，不复制第二套导出器，不改变已有Rules Import确认后
+    立即追加并持久化的语义。`rules_import`仍是后续独立工作项。
+- MCP使用相同正式命令与原生Dialog。Agent关闭不影响MCP；MCP的Ask Deny/Allow和Auto分别验证不写、
+    正常保存与原生取消，关闭MCP授权后当前连接也必须停止披露/执行该Tool。
+- owning unit Red → `rules.tools.export`真实Electron Red → 实现 → 同组unit/E2E Green。真实验证通过
+    Rules UI创建/Apply规则并比较导出文件的结构、enabled、层级和ID；覆盖Deny、原生Cancel、Allow、Auto、
+    撤权、同profile重启零重放、trace脱敏和完整进程/8888/WinINet/journal恢复。
+
+2026-09-06已完成自动验收：Tool executor 10项缺失Tool Red→Green，Main导出6项、原生Dialog 4项、
+摘要21项通过。真实`rules.tools.export`在`0206d12c`代码上Red于discovery缺失，当前Agent/MCP完整
+workflow Green；两代Main/Core `19112/8936`、`37364/40196`均正常销毁、8888释放并恢复完整WinINet/journal。
+审批、取消、保存、草稿隔离、双列撤权与重启零重放证据归档于TEMP下`interceptor-rules-export-agent-mcp-green`。
+新增明暗6视图36/36目标匹配，0 missing/flagged、最大0.5px；不代表既有完整parity债务已收敛。
+
 `RuleSet` 是可序列化纯数据，绝不包含 callback 或运行时句柄。
 
 ```ts

@@ -97,6 +97,9 @@ export function AgentToolResultSummary({
     case 'rulesApplied':
       content = t('agent.tools.rulesApplied', { revision: summary.revision });
       break;
+    case 'rulesExport':
+      content = t(summary.exported ? 'agent.tools.rulesExported' : 'agent.tools.exportCanceled');
+      break;
     case 'breakpoints':
       content = `${t('agent.tools.breakpoints', { count: summary.count })} · ${t(summary.enabled
         ? 'agent.tools.enabled'

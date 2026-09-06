@@ -85,6 +85,7 @@ import { toUpstreamAuthority } from './system-proxy/windows/system-proxy-upstrea
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
+import { exportRules } from './rules/export-rules';
 import {
   resolveWindowsSystemProxyJournalPath,
   WindowsSystemProxyJournal,
@@ -611,6 +612,7 @@ class DesktopApplication {
           MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
+        'rules.export': () => this.exportSavedRules(abortSignal),
         'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
         'settings.system-proxy.status': () => this.getSystemProxyStatus(),
         'settings.system-proxy.enable': () => this.enableSystemProxy(abortSignal),
@@ -627,6 +629,11 @@ class DesktopApplication {
       abortSignal.throwIfAborted();
       return { type: commandType, payload };
     });
+  }
+
+  private async exportSavedRules(abortSignal: AbortSignal): Promise<MainToolResultPayloads['rules.export']> {
+    const { payload } = await this.coreRuntime.request({ type: 'rules.get', payload: {} }, { abortSignal });
+    return { exported: await exportRules(payload.ruleSet.nodes, undefined, abortSignal) };
   }
 
   private async getSystemProxyStatus(): Promise<DesktopSystemProxyStatus> {
@@ -1843,22 +1850,7 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.rulesExport,
       async (event, nodes: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        const ruleNodes = toCoreRuleNodes(nodes);
-        const selection = await dialog.showSaveDialog({
-          title: title as string,
-          defaultPath: `interceptor-rules-${new Date().toISOString().slice(0, 10)}.json`,
-          filters: [{ name: 'JSON', extensions: ['json'] }],
-          properties: ['createDirectory', 'showOverwriteConfirmation'],
-        });
-        if (selection.canceled || !selection.filePath) {
-          return false;
-        }
-        await writeFile(
-          selection.filePath,
-          JSON.stringify({ nodes: ruleNodes }, null, 2),
-          'utf8',
-        );
-        return true;
+        return exportRules(toCoreRuleNodes(nodes), title as string);
       },
     );
 

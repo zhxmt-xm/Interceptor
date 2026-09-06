@@ -88,6 +88,7 @@ describe('McpToolRegistry', () => {
       'rules_get_tree',
       'rules_get_hits',
       'rules_replace_tree',
+      'rules_export',
       'composer_send_request',
       'composer_probe_connection',
       'breakpoints_list',
@@ -119,6 +120,11 @@ describe('McpToolRegistry', () => {
       destructiveHint: true,
     });
     expect(byName.get('composer_send_request')?.annotations).toMatchObject({ openWorldHint: true });
+    expect(byName.get('rules_export')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
     expect(byName.get('breakpoints_list')?.annotations).toMatchObject({ readOnlyHint: true });
     expect(byName.get('breakpoints_drop')?.annotations).toMatchObject({
       readOnlyHint: false,
@@ -126,7 +132,7 @@ describe('McpToolRegistry', () => {
     });
   });
 
-  it('never registers commands that touch trust roots, system proxy or the file system', () => {
+  it('does not expose obsolete or unrestricted internal commands', () => {
     const mcpToolRegistry = new McpToolRegistry(new FakeHost());
     const names = mcpToolRegistry.listTools().map((tool) => tool.name);
 

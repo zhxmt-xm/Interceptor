@@ -3,6 +3,8 @@ import type { LanguageId } from './languages';
 export const agentToolEnglishMessages = {
   'agent.tools.decryption': 'HTTPS {{effective}} · Intent {{intent}} · CA {{trust}}',
   'agent.tools.proxyRestored': 'System proxy restored',
+  'agent.tools.rulesExported': 'Rules exported',
+  'agent.tools.exportCanceled': 'Export canceled',
   'agent.tools.proxyRestoreSkipped': 'No change · {{reason}}',
   'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
   'agent.tools.tlsHosts': 'Hosts {{count}}',
@@ -57,6 +59,8 @@ export const agentToolMessages = {
   'zh-CN': {
     'agent.tools.decryption': 'HTTPS {{effective}} · 意图{{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '系统代理已恢复',
+    'agent.tools.rulesExported': '规则已导出',
+    'agent.tools.exportCanceled': '导出已取消',
     'agent.tools.proxyRestoreSkipped': '未更改 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '主机 {{count}} 个',
@@ -105,6 +109,8 @@ export const agentToolMessages = {
   'zh-TW': {
     'agent.tools.decryption': 'HTTPS {{effective}} · 意圖{{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '系統代理已還原',
+    'agent.tools.rulesExported': '規則已匯出',
+    'agent.tools.exportCanceled': '已取消匯出',
     'agent.tools.proxyRestoreSkipped': '未變更 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '主機 {{count}} 個',
@@ -153,6 +159,8 @@ export const agentToolMessages = {
   ja: {
     'agent.tools.decryption': 'HTTPS {{effective}} · 設定 {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'システムプロキシを復元しました',
+    'agent.tools.rulesExported': 'ルールをエクスポートしました',
+    'agent.tools.exportCanceled': 'エクスポートをキャンセルしました',
     'agent.tools.proxyRestoreSkipped': '変更なし · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'ホスト {{count}} 件',
@@ -201,6 +209,8 @@ export const agentToolMessages = {
   ko: {
     'agent.tools.decryption': 'HTTPS {{effective}} · 설정 {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '시스템 프록시 복원됨',
+    'agent.tools.rulesExported': '규칙 내보내기 완료',
+    'agent.tools.exportCanceled': '내보내기 취소됨',
     'agent.tools.proxyRestoreSkipped': '변경 없음 · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': '호스트 {{count}}개',
@@ -249,6 +259,8 @@ export const agentToolMessages = {
   de: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Einstellung {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Systemproxy wiederhergestellt',
+    'agent.tools.rulesExported': 'Regeln exportiert',
+    'agent.tools.exportCanceled': 'Export abgebrochen',
     'agent.tools.proxyRestoreSkipped': 'Keine Änderung · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
@@ -297,6 +309,8 @@ export const agentToolMessages = {
   fr: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Intention {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy système restauré',
+    'agent.tools.rulesExported': 'Règles exportées',
+    'agent.tools.exportCanceled': 'Export annulé',
     'agent.tools.proxyRestoreSkipped': 'Aucun changement · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hôtes {{count}}',
@@ -345,6 +359,8 @@ export const agentToolMessages = {
   es: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Intención {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy del sistema restaurado',
+    'agent.tools.rulesExported': 'Reglas exportadas',
+    'agent.tools.exportCanceled': 'Exportación cancelada',
     'agent.tools.proxyRestoreSkipped': 'Sin cambios · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
@@ -393,6 +409,8 @@ export const agentToolMessages = {
   it: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Impostazione {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy di sistema ripristinato',
+    'agent.tools.rulesExported': 'Regole esportate',
+    'agent.tools.exportCanceled': 'Esportazione annullata',
     'agent.tools.proxyRestoreSkipped': 'Nessuna modifica · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Host {{count}}',
@@ -441,6 +459,8 @@ export const agentToolMessages = {
   'pt-BR': {
     'agent.tools.decryption': 'HTTPS {{effective}} · Intenção {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy do sistema restaurado',
+    'agent.tools.rulesExported': 'Regras exportadas',
+    'agent.tools.exportCanceled': 'Exportação cancelada',
     'agent.tools.proxyRestoreSkipped': 'Sem alterações · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
@@ -489,6 +509,8 @@ export const agentToolMessages = {
   ru: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Настройка {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Системный прокси восстановлен',
+    'agent.tools.rulesExported': 'Правила экспортированы',
+    'agent.tools.exportCanceled': 'Экспорт отменён',
     'agent.tools.proxyRestoreSkipped': 'Без изменений · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Хосты {{count}}',
@@ -537,6 +559,8 @@ export const agentToolMessages = {
   nl: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Instelling {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Systeemproxy hersteld',
+    'agent.tools.rulesExported': 'Regels geëxporteerd',
+    'agent.tools.exportCanceled': 'Export geannuleerd',
     'agent.tools.proxyRestoreSkipped': 'Geen wijziging · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosts {{count}}',
@@ -585,6 +609,8 @@ export const agentToolMessages = {
   pl: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Ustawienie {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Przywrócono serwer proxy systemu',
+    'agent.tools.rulesExported': 'Reguły wyeksportowane',
+    'agent.tools.exportCanceled': 'Eksport anulowany',
     'agent.tools.proxyRestoreSkipped': 'Bez zmian · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Hosty {{count}}',
@@ -633,6 +659,8 @@ export const agentToolMessages = {
   tr: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Ayar {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Sistem proxy ayarları geri yüklendi',
+    'agent.tools.rulesExported': 'Kurallar dışa aktarıldı',
+    'agent.tools.exportCanceled': 'Dışa aktarma iptal edildi',
     'agent.tools.proxyRestoreSkipped': 'Değişiklik yok · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Ana bilgisayar {{count}}',
@@ -681,6 +709,8 @@ export const agentToolMessages = {
   uk: {
     'agent.tools.decryption': 'HTTPS {{effective}} · Налаштування {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Системний проксі відновлено',
+    'agent.tools.rulesExported': 'Правила експортовано',
+    'agent.tools.exportCanceled': 'Експорт скасовано',
     'agent.tools.proxyRestoreSkipped': 'Без змін · {{reason}}',
     'agent.tools.coreProcess': 'Core {{state}} · PID {{pid}}',
     'agent.tools.tlsHosts': 'Хости {{count}}',

@@ -687,6 +687,35 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `rules-export-${stage}${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: `rules-export-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: 'rules_export', agentRulesExported: stage !== 'canceled', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-rules-export-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Rules export approval', parity: 'agent-tool-approval' },
+          'rules_export',
+          {
+            name: 'Rules export result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-rules-export"] > span',
+          },
+        ],
+      })),
       ...[
         'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
         'settings_enable_https_decryption', 'settings_disable_https_decryption',

@@ -1,4 +1,5 @@
 export interface MainToolResultPayloads {
+  'rules.export': { exported: boolean };
   'settings.tls-insecure-hosts.replace': { hosts: string[] };
   'settings.tls-passthrough.replace':
     | { ok: true; settings: { revision: number; hosts: string[] } }
