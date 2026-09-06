@@ -49,6 +49,7 @@ import { buildSystemProxyTools } from '../settings/system-proxy';
 import { buildTlsTools } from '../settings/tls';
 import { buildRulesExportTool } from '../rules/export';
 import { buildRulesImportTool } from '../rules/import';
+import { buildCollectionTools } from '../composer/collection';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -78,7 +79,7 @@ export const INTERCEPTOR_TOOL_CAPABILITIES: readonly ToolCapability[] = [
   {
     id: 'composer',
     title: 'Composer',
-    description: 'Send Composer requests and probe TLS connections.',
+    description: 'Inspect and replace Composer Collections, send requests, and probe TLS connections.',
   },
   {
     id: 'breakpoints',
@@ -116,6 +117,8 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'rules_import',
   'composer_send_request',
   'composer_probe_connection',
+  'composer_get_collection',
+  'composer_replace_collection',
   'breakpoints_list',
   'breakpoints_enable_http',
   'breakpoints_disable_http',
@@ -151,6 +154,7 @@ export function buildInterceptorToolRegistry(
     ...buildTlsTools(),
     buildRulesExportTool(),
     buildRulesImportTool(),
+    ...buildCollectionTools(interceptorToolRedactor),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

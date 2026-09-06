@@ -92,6 +92,8 @@ describe('McpToolRegistry', () => {
       'rules_import',
       'composer_send_request',
       'composer_probe_connection',
+      'composer_get_collection',
+      'composer_replace_collection',
       'breakpoints_list',
       'breakpoints_enable_http',
       'breakpoints_disable_http',

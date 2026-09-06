@@ -49,6 +49,7 @@ interface ComposerStore {
   revision: number;
   /** 集合是否已从 Core 载入，未载入时不触发保存。 */
   loaded: boolean;
+  saving: boolean;
   /** 已展开的目录 ID。 */
   expandedFolders: string[];
   /** 新建请求/子目录的落点目录；null 表示根。 */
@@ -72,7 +73,7 @@ interface ComposerStore {
   /** 用 Core 返回的集合替换本地树，并丢弃指向已删除请求的文档。 */
   loadCollection(nodes: CollectionNode[], revision: number): void;
   /** 记录一次成功保存后的新版本。 */
-  markSaved(revision: number): void;
+  markSaved(revision: number, nodes: CollectionNode[]): void;
   /** 导入写入 Core 成功后，原子更新集合与 revision。 */
   importSucceeded(nodes: readonly CollectionNode[], revision: number): void;
 
@@ -136,6 +137,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
   savedNodes: [],
   revision: 0,
   loaded: false,
+  saving: false,
   expandedFolders: [],
   targetFolderId: null,
   collectionOpen: true,
@@ -149,6 +151,7 @@ export const useComposerStore = create<ComposerStore>((set) => ({
 
   loadCollection: (nodes, revision) =>
     set((state) => {
+      if (revision < state.revision) return state;
       const nextNodes = [...nodes];
       const alive = new Set(collectLeafIds(nextNodes));
       const openRequestIds = state.openRequestIds.filter((id) => alive.has(id));
@@ -173,14 +176,14 @@ export const useComposerStore = create<ComposerStore>((set) => ({
       };
     }),
 
-  markSaved: (revision) => set((state) => ({
-    revision,
-    savedNodes: state.nodes,
-  })),
+  markSaved: (revision, nodes) => set((state) => {
+    if (revision < state.revision) return state;
+    return { revision, savedNodes: nodes };
+  }),
 
   importSucceeded: (nodes, revision) => {
     const nextNodes = [...nodes];
-    set({ nodes: nextNodes, savedNodes: nextNodes, revision });
+    set((state) => revision < state.revision ? state : { nodes: nextNodes, savedNodes: nextNodes, revision });
   },
 
   updateRequest: (request) =>

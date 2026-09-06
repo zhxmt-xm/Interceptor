@@ -4,6 +4,10 @@ import type { AgentToolTraceState } from '../../state/types';
 import styles from './AgentQueryToolTrace.module.css';
 
 const TOOL_STEPS = {
+  collection: [
+    { name: 'discover_tools', arguments: 'capabilityId: composer', result: '4 tools discovered' },
+    { name: 'composer_get_collection', arguments: 'No parameters', result: 'Revision 3 · Requests 2 · Folders 1' },
+  ],
   capture: [
     { name: 'discover_tools', arguments: 'capabilityId: capture', result: '10 tools discovered' },
     { name: 'capture_get_storage_status', arguments: 'No parameters', result: 'Exchanges 1 · Bodies 2 · 184 B' },
@@ -26,7 +30,7 @@ const TOOL_STEPS = {
     { name: 'breakpoints_continue', arguments: 'breakpointId: bp-agent-request', result: 'Continued · bp-agent-request' },
   ],
   composer: [
-    { name: 'discover_tools', arguments: 'capabilityId: composer', result: '2 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: composer', result: '4 tools discovered' },
     { name: 'composer_probe_connection', arguments: 'host: 127.0.0.1 · port: 43128 · timeoutMs: 5000', result: 'TLSv1.3 · h2 · Certificates 1' },
     { name: 'composer_probe_connection', arguments: 'host: 127.0.0.1 · port: 43129 · timeoutMs: 2000', result: 'TLS probe failed · connect ECONNREFUSED' },
   ],

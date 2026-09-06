@@ -511,6 +511,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onCaptureReset',
         'onCaptureStatusChange',
         'onClientAppIcons',
+        'onCollectionChanged',
         'onCoreProcessStatusChange',
         'onGitHubAuthStatusChange',
         'onMcpApprovalRequest',

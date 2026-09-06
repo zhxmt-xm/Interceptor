@@ -422,7 +422,7 @@ describe('AgentToolService', () => {
     expect(coreRuntime.abortSignals).toEqual(Array(9).fill(abortController.signal));
   });
 
-  it('discovers and discloses exactly the two connected Composer Tools', async () => {
+  it('discovers and discloses exactly the four connected Composer Tools', async () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
@@ -443,6 +443,8 @@ describe('AgentToolService', () => {
         matches: expect.arrayContaining([
           expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_send_request' }) }),
           expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_probe_connection' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_get_collection' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_replace_collection' }) }),
         ]),
       },
     });
@@ -451,9 +453,13 @@ describe('AgentToolService', () => {
       'discover_tools',
       'composer_send_request',
       'composer_probe_connection',
+      'composer_get_collection',
+      'composer_replace_collection',
     ]);
     expect(tool(snapshot, 'composer_send_request').kind).toBe('change');
     expect(tool(snapshot, 'composer_probe_connection').kind).toBe('change');
+    expect(tool(snapshot, 'composer_get_collection').kind).toBe('query');
+    expect(tool(snapshot, 'composer_replace_collection').kind).toBe('change');
   });
 
   it('discovers, discloses, and executes the Diagnostics query Tool', async () => {

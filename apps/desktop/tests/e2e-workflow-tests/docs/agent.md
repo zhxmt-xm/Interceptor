@@ -470,7 +470,7 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 	与证书链。再探测未监听端口，返回稳定失败而不让Turn失败。
 5. Auto发送由origin暂缓响应的请求；origin收到request后点击`agent.turn.stop`，确认Turn取消、真实client socket关闭、
 	不产生后续Model Call；释放origin gate不得补写Tool Result或重放请求。
-6. Settings关闭两项Agent开关；discovery为空，逐项猜测调用均为`unknown_tool`且origin/TLS计数不变；恢复开关与Ask。
+6. Settings关闭当前全部四项Composer Agent开关；discovery为空，原两项网络调用均为`unknown_tool`且origin/TLS计数不变；恢复开关与Ask。Collection查询/替换的实际调用由`composer.tools.collection`独立验收。
 7. 完整关闭第一代App；同profile启动第二代，确认Model、HTTP origin和TLS握手增量均为0，已完成与已取消Transcript
 	恢复但网络操作不重放。再次关闭并验证两代Main/Core/Worker、8888、journal与系统代理完整恢复。
 

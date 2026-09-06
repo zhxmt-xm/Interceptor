@@ -33,6 +33,10 @@ export function CollectionPanel(): React.JSX.Element {
   const [importing, setImporting] = useState(false);
   const [fileOperation, setFileOperation] = useState<'import' | 'export' | null>(null);
   const nodes = useComposerStore((state) => state.nodes);
+  const savedNodes = useComposerStore((state) => state.savedNodes);
+  const loaded = useComposerStore((state) => state.loaded);
+  const saving = useComposerStore((state) => state.saving);
+  const revision = useComposerStore((state) => state.revision);
   const targetFolderId = useComposerStore((state) => state.targetFolderId);
   const createRequest = useComposerStore((state) => state.createRequest);
   const createFolder = useComposerStore((state) => state.createFolder);
@@ -84,6 +88,8 @@ export function CollectionPanel(): React.JSX.Element {
     <aside
       className={styles.panel}
       data-automation-id={AUTOMATION_IDS.composer.collection}
+      data-save-state={!loaded ? 'loading' : saving ? 'saving' : nodes === savedNodes ? 'saved' : 'pending'}
+      data-revision={revision}
     >
       <div className={styles.bar}>
         <label className={styles.search}>

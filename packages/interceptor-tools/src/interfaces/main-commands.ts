@@ -1,4 +1,7 @@
+import type { CollectionNode } from '@interceptor/core-protocol';
+
 export interface MainToolResultPayloads {
+  'composer.collection.replace': { revision: number };
   'rules.export': { exported: boolean };
   'rules.import':
     | { imported: false }
@@ -53,6 +56,7 @@ export interface MainToolResultPayloads {
 }
 
 export interface MainToolCommandPayloads {
+  'composer.collection.replace': { expectedRevision: number; nodes: CollectionNode[] };
   'settings.tls-insecure-hosts.replace': { hosts: string[] };
   'settings.tls-passthrough.replace': { expectedRevision: number; hosts: string[] };
 }

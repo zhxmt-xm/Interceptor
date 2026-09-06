@@ -16,6 +16,42 @@ import {
 
 import { useComposerStore } from './composerStore';
 
+let collectionLoadSequence = 0;
+
+export async function loadCollection(): Promise<void> {
+  const sequence = ++collectionLoadSequence;
+  try {
+    const collection = await window.interceptor.getCollection();
+    if (sequence !== collectionLoadSequence) return;
+    useComposerStore.getState().loadCollection([...collection.nodes], collection.revision);
+  } catch {
+    return;
+  }
+}
+
+export async function synchronizeExternalCollectionChange(change: { revision: number }): Promise<void> {
+  if (change.revision <= useComposerStore.getState().revision) return;
+  await loadCollection();
+}
+
+export async function saveCollection(nodes: CollectionNode[]): Promise<void> {
+  const store = useComposerStore.getState();
+  if (!store.loaded || store.saving || store.nodes !== nodes || store.savedNodes === nodes) return;
+  useComposerStore.setState({ saving: true });
+  try {
+    const result = await window.interceptor.replaceCollection(store.revision, nodes);
+    if (result.ok) {
+      useComposerStore.getState().markSaved(result.revision, nodes);
+    } else {
+      await loadCollection();
+    }
+  } catch {
+    return;
+  } finally {
+    useComposerStore.setState({ saving: false });
+  }
+}
+
 /**
  * 载入集合并把后续编辑节流写回 Core。
  *
@@ -23,58 +59,37 @@ import { useComposerStore } from './composerStore';
  * revision 冲突时以 Core 的版本为准重新载入，本地未保存的按键会被覆盖，
  * 这与规则集不同——集合没有草稿概念。
  */
-export function useCollection(): void {
+export function useCollection(readyToLoad: boolean): void {
   const nodes = useComposerStore((state) => state.nodes);
   const savedNodes = useComposerStore((state) => state.savedNodes);
   const loaded = useComposerStore((state) => state.loaded);
+  const saving = useComposerStore((state) => state.saving);
 
   useEffect(() => {
     const api = window.interceptor;
-    if (!api?.getCollection) {
+    if (!readyToLoad || !api?.getCollection) {
       return;
     }
-    let active = true;
-    void api
-      .getCollection()
-      .then((collection) => {
-        if (!active) {
-          return;
-        }
-        useComposerStore
-          .getState()
-          .loadCollection([...collection.nodes], collection.revision);
-      })
-      .catch(() => undefined);
+    void loadCollection();
+    const unsubscribe = api.onCollectionChanged((change) => {
+      void synchronizeExternalCollectionChange(change);
+    });
     return () => {
-      active = false;
+      collectionLoadSequence += 1;
+      unsubscribe();
     };
-  }, []);
+  }, [readyToLoad]);
 
   useEffect(() => {
     const api = window.interceptor;
-    if (!loaded || !api?.replaceCollection || nodes === savedNodes) {
+    if (!readyToLoad || !loaded || saving || !api?.replaceCollection || nodes === savedNodes) {
       return;
     }
     const timer = window.setTimeout(() => {
-      const pending = nodes;
-      void api
-        .replaceCollection(useComposerStore.getState().revision, pending)
-        .then((result) => {
-          if (result.ok) {
-            useComposerStore.getState().markSaved(result.revision);
-            return;
-          }
-          // 集合没有草稿概念：冲突时直接以 Core 的版本为准重新载入。
-          return api.getCollection().then((collection) => {
-            useComposerStore
-              .getState()
-              .loadCollection([...collection.nodes], collection.revision);
-          });
-        })
-        .catch(() => undefined);
+      void saveCollection(nodes);
     }, COLLECTION_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [nodes, savedNodes, loaded]);
+  }, [nodes, savedNodes, loaded, saving, readyToLoad]);
 }
 
 /** 把整棵集合导出成 JSON 文件；落盘路径由 Main 的系统对话框选择。 */

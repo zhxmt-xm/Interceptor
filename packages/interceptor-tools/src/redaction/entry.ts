@@ -28,6 +28,12 @@ export class InterceptorToolRedactor {
     ));
   }
 
+  redactQueryFields<T extends { name: string; value: string }>(fields: readonly T[]): T[] {
+    return fields.map((field) => this.#queryKeys.has(field.name.toLowerCase())
+      ? { ...field, value: TOOL_REDACTED_PLACEHOLDER }
+      : field);
+  }
+
   /** Masks credential query parameters in an absolute URL. */
   redactUrl(url: string): string {
     let parsed: URL;

@@ -97,6 +97,14 @@ export function AgentToolResultSummary({
     case 'rulesApplied':
       content = t('agent.tools.rulesApplied', { revision: summary.revision });
       break;
+    case 'collection':
+      content = t('agent.tools.collection', {
+        revision: summary.revision, requestCount: summary.requestCount, folderCount: summary.folderCount,
+      });
+      break;
+    case 'collectionReplaced':
+      content = t('agent.tools.collectionReplaced', { revision: summary.revision });
+      break;
     case 'rulesExport':
       content = t(summary.exported ? 'agent.tools.rulesExported' : 'agent.tools.exportCanceled');
       break;

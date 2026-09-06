@@ -87,7 +87,7 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
       </div>
 
       {isEditor ? (
-        <div className={styles.editor}>
+        <div className={styles.editor} data-automation-id={AUTOMATION_IDS.composer.body}>
           <CodeEditor
             value={request.bodyText}
             language={request.bodyType === 'json' ? 'json' : 'plaintext'}

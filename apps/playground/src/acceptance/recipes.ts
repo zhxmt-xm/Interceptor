@@ -108,6 +108,14 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Prepare a reachable Playground TLS endpoint and an unreachable port.'],
     ['Deny performs no probe.', 'Allow reports real handshake facts without changing TLS settings.'],
   ),
+  composer_get_collection: recipe(
+    ['Create two Composer requests and a folder through the UI, including test authentication fields.', 'Wait until the Collection has been saved.'],
+    ['The returned revision, identities, folders and request fields match the saved Collection.', 'Auth, sensitive headers and query values are masked; no request is sent and no approval appears.'],
+  ),
+  composer_replace_collection: recipe(
+    ['Read the current Collection and revision, then prepare a name change using that returned tree.', 'Keep Composer open and the MCP Client in Ask mode.'],
+    ['Deny preserves the tree and revision.', 'Allow and Auto update the mounted Collection without sending requests.', 'Unchanged masked fields retain their original credentials; stale revisions cannot overwrite newer data.', 'Restart the app and verify the saved Collection and permissions remain unchanged.'],
+  ),
   diagnostics_query: recipe(
     ['Perform a known product action that writes a diagnostic record.'],
     ['Query returns that bounded redacted record in stable time order.', 'No approval appears.'],

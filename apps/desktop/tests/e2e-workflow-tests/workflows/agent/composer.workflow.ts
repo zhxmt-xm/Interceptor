@@ -18,7 +18,7 @@ import {
 } from '../../fixtures/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
 
-const COMPOSER_TOOL_NAMES = ['composer_send_request', 'composer_probe_connection'] as const;
+const COMPOSER_TOOL_NAMES = ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection'] as const;
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const joined = (...parts: readonly string[]): string => parts.join('');
 const prompts = {
@@ -386,8 +386,8 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   expect(openAiCompatibleLab.evidence()).toHaveLength(modelRequestCountAtCancel);
   evidence.cancelledSocketVerified = true;
 
-  // Settings撤权：关闭两项后discovery为空，逐项猜测均unknown_tool且网络计数不变。
-  // Settings revocation: disabling both empties discovery; guessed calls are unknown and network counts stay unchanged.
+  // Settings撤权：关闭全部四项后discovery为空，旧网络调用均unknown_tool且网络计数不变。
+  // Settings revocation: disabling all four empties discovery; previous network calls are unknown and network counts stay unchanged.
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
   for (const toolName of COMPOSER_TOOL_NAMES) {

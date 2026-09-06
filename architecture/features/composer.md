@@ -2,7 +2,7 @@
 
 > Composer 发送时的 HTTP header/body KEEP/UPDATE、编码与 framing 契约统一见 [http-message-editing.md](http-message-editing.md)。
 
-> 最后更新：2026-08-05
+> 最后更新：2026-09-06
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
 > UI 设计：`design-vite/` 的 composer 视图（17 个场景 × 浅深共 34 张）与 `design-vite/design-system.md` 的「Composer 工作区」一节，**已落地**。
@@ -26,6 +26,44 @@ Composer 让用户手工构造并发送请求，Connection 提供独立的 TLS �
 这是刻意设计：Composer 是调试工具，需要可预期的纯净行为。
 
 ## 2. 调用流程
+
+### 2.0 Collection查询与替换Tool
+
+`composer_get_collection`为严格空参数query，经正式`collection.get`读取已保存的版本化集合；
+`composer_replace_collection`为独立change，接受`baseRevision`与完整节点树，只经正式`collection.replace`
+原子替换。两项共用Agent/MCP registry、独立授权和既有Ask/Auto，不发出网络请求或向Capture写流量。
+替换经typed `composer.collection.replace` Main命令复用UI的Core写入方法，并在成功后发布窄Collection变化事件；
+不在Agent和MCP分别复制界面同步逻辑。
+
+- 集合继续采用现有自动保存模型，不引入Rules式Apply或第二份草稿。外部替换成功后已挂载界面同步Core结果，
+    revision冲突沿用Core权威重载；旧节流任务和迟到响应不能把较新替换静默覆盖或标成已保存。
+    Collection公开`data-save-state`/`data-revision`反映真实写回状态，不靠固定等待时间验证已保存快照。
+    常驻同步hook在现有启动遮罩完成后首次读取集合，避免在Core业务初始化前查询失败后永久停留未加载状态；
+    不改变冷启动自动接管或把代理行为改为手动。
+- 快速输入正文并切换请求时，CodeEditor由Monaco按隐式Model所有权完成detach与销毁；包装器不得提前销毁仍被
+    编辑器观察的Model。该路径用unit Red和真实Collection workflow Red锁定，不修改第三方库或屏蔽错误。
+- 输出保留节点身份、目录层级、顺序、完整请求编辑字段和revision；Auth凭据、敏感Header/Query及URL凭据
+    必须在共享Tool边界脱敏。读取/替换往返不能把遮罩文本写成凭据，保留操作只作用于相同request/字段身份；
+    不存在的原字段不得靠遮罩凭空创建。错误和审批不泄露凭据或请求正文。
+- 替换前严格验证递归节点结构、唯一树ID、三级目录上限、protocol/body/auth联合、字段类型及revision；
+    校验不把尚在编辑的空URL等合法集合状态误当作发送请求。空节点树明确表示替换为空集合。
+- Ask审批展示当前/目标请求与目录计数；Deny无替换，stale revision无写入；Allow/Auto成功后UI、Core和重启
+    持久化结果一致。两个命令都沿原AbortSignal，在取消或授权关闭时不执行迟到的写入。
+- owning unit/integration Red → `composer.tools.collection`真实Electron Red → 最小实现 → 同组Green。
+    E2E所有业务输入由同workflow的真实Composer UI创建，Model替换使用真实查询返回的树，不直写storage或fixture。
+
+2026-09-06：executor最小11项缺失Tool/Query字段脱敏Red→Green，编辑态URL另1项Red→Green，边界扩充后20/20。
+集合同步9项、启动就绪2项、CodeEditor销毁1项分别先Red后Green；正文切换与首次载入也由同一真实workflow复现
+产品缺口后验证修复。完整树/旧导入/Store与同步测试30/30，摘要24/24。首次真实Green两代Main/Core
+`36256/36056`、`24452/27452`正常销毁；最终关联七条workflow全部Green，共12代正常销毁、8888释放和
+完整WinINet/journal恢复，其中本workflow为`32292/40736`、`44792/3792`。证据归档于TEMP下
+`interceptor-composer-collection-related-e2e-green`，缺失Tool与编辑器Red分别保留在
+`interceptor-composer-collection-e2e-red`、`interceptor-composer-editor-e2e-red`。
+全workspace typecheck、Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、
+Protocol25/25、Playground67/67及设计交互74/74通过；Proxy Core329/331仅既有两项framing债务。
+专项明暗六视图40/40、0 missing/flagged、最大0.5px；Windows package、产物审计（1,294 files / 392,872,268 bytes）、
+生产依赖0漏洞与packaged smoke1/1通过。完整parity为256视图、1,776目标，Collection相关40/40全部匹配；
+其余30 missing与304 flagged为既有视觉债务。完整设计输入及Renderer产物已归档，提交六张新图与四张目录更新。
 
 ### 2.1 发送请求
 

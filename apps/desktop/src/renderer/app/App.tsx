@@ -93,10 +93,11 @@ async function resolveExchangeUrl(summary: CaptureExchangeSummary): Promise<stri
 }
 
 export function App(): React.JSX.Element {
+  const booting = useBootStore((state) => !state.dismissed);
   useCaptureData();
   useRulesData();
   useBreakpoints();
-  useCollection();
+  useCollection(!booting);
   const { i18n, t } = useTranslation();
   const [view, setView] = useState<ViewId>('capture');
   const [collapsed, setCollapsed] = useState(true);
@@ -113,8 +114,6 @@ export function App(): React.JSX.Element {
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
   // The boot screen owns startup feedback, so the readiness dialog stays out of its way.
-  const booting = useBootStore((state) => !state.dismissed);
-
   const toggleCollapse = (): void => setCollapsed((value) => !value);
   const toggleAgentPanel = (): void => setAgentPanelOpen((value) => !value);
   const openAgentSettings = (): void => {

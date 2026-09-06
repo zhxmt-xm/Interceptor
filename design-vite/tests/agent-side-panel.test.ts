@@ -258,6 +258,23 @@ test('Rules import approval distinguishes confirmation from cancellation', async
   expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('Collection Tool query and replacement retain compact revision summaries', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'composer', agentPanel: 'open', agentToolTrace: 'collection', agentToolApproval: '',
+  }));
+  const trace = page.locator('[data-parity="agent-query-tool-trace"]');
+  await expect(trace).toContainText('4 tools discovered');
+  await expect(trace).toContainText('Revision 3 · Requests 2 · Folders 1');
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentToolTrace: '', agentToolApproval: 'pending', agentToolApprovalName: 'composer_replace_collection',
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('Request count: 2 -> 0');
+  await expect(approval).toContainText('Folder count: 1 -> 0');
+  await approval.getByRole('button', { name: 'Allow Tool' }).click();
+  await expect(approval).toContainText('Collection revision 4 applied');
+});
+
 test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',

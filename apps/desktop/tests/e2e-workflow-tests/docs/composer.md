@@ -4,6 +4,52 @@
 
 Composer 由 Core 直接出站，不依赖系统代理路由。因此这些 workflow 只验证 Proxy readiness 的相关默认态（listener=8888、System Proxy未owned、UI Paused），随后点击 `capture.readiness.cancel`，并确认未修改系统设置。它们不重复检查无关的 Capture rows、Rules、Breakpoints、Privacy、CA 或 Updates 状态。
 
+<a id="composer-tools-collection"></a>
+## `composer.tools.collection`
+
+**状态**：passed
+**策略**：shared；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 使用独立profile启动真实Electron；经Composer UI建立两条请求和一级目录，编辑URL、enabled字段行、正文
+	与测试自产Auth凭据，等待既有自动保存。经Settings UI配置本地Provider，敏感输入不进入trace或产物。
+2. Ask Chat先discovery再调用`composer_get_collection`，确认版本、完整树身份、层级、顺序与请求编辑状态；
+	无审批和网络请求，Auth/Header/Query/URL凭据已脱敏。
+3. 用查询所得树构造名称/字段修改，Ask调用`composer_replace_collection`；审批只显示请求/目录数量，Deny后
+	Core、UI和revision不变。再次Allow后当前已挂载Collection立即同步同一批身份与新内容。
+4. 切Auto再次替换，确认不出现审批；随后使用旧revision拒绝覆盖。读取/替换往返保持原凭据，不把遮罩落库；
+	从当前UI检查真实Auth与字段值，并确认没有隐式Send或Capture记录。
+5. 通过Settings关闭Agent两项权限，旧Chat调用被拒绝；MCP权限独立，产品UI创建的MCP Client可读取并在
+	自身Ask/Auto规则下替换。MCP撤权后当前连接不再披露或执行两项。
+6. 正常关闭首代并验证完整系统恢复；同profile重启后集合、revision和授权设置保持，Model/origin请求增量0。
+	记录两代Main/Core/Worker销毁、8888释放、WinINet/journal恢复与脱敏evidence。
+
+### 预期与证据
+
+Red必须来自新Tool缺失或外部替换UI未同步，不能来自selector、凭据或环境问题。完整结构/非法字段、重复ID、
+越界目录和不能由产品生成的输入归owning unit。真实流程证明查询静默、审批有效、原子替换、凭据保留、授权
+和重启零重放；不得以fake Preload或Core integration代替本条Electron workflow。
+
+2026-09-06证据：`8598b406`实现前代码上discovery缺少两项Collection Tool，先unit11项Red再真实Electron Red。
+随后编辑器快速输入/切换触发`Model is disposed!`，wrapper生命周期unit与同workflow分别Red，移除提前重复
+销毁隐式Model后Green；初次集合查询在Core业务初始化前失败，加入现有启动完成边界后载入/自动保存恢复。
+所有测试均等待公开保存状态，不用固定时间掩盖未保存或吞掉Renderer错误。
+
+最终七条关联真实workflow `7/7`：Collection本身、原集合树交互、原UI导入、原Composer网络Tool、Settings授权、
+MCP Browser和MCP Desktop。共12代Main/Core全部`gracefulDestroyVerified=true`，本workflow为
+`32292/40736`、`44792/3792`；持久化身份、正文、Auth/Header/Query凭据往返、Ask Deny/Allow/Auto、
+stale revision、已挂载UI同步、两列撤权、重启Model/origin增量0均通过。完整证据保留于TEMP下
+`interceptor-composer-collection-related-e2e-green`，Red见`interceptor-composer-collection-e2e-red`与
+`interceptor-composer-editor-e2e-red`。不得把旧Composer仅关闭两项的目录断言失败算成新产品Red。
+
+Collection executor20/20、同步/就绪11/11、编辑器生命周期1/1、摘要24/24；全workspace typecheck、
+Desktop538/538、Tools174/174后新增八项安全覆盖Green、MCP32/32、Runtime122/122、Protocol25/25、
+Playground67/67、design interaction74/74通过。Windows package、产物审计（1,294 files / 392,872,268 bytes）、
+production audit0漏洞、smoke1/1通过；新增事件`onCollectionChanged`是唯一增加的Preload允许项。
+最终完整parity为256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged；本组六视图
+40/40无缺失和差异、最大0.5px。该视觉结果不替代上面的真实Agent/MCP与正常销毁证据。
+
 <a id="composer-request-edit"></a>
 ## `composer.request-edit`
 

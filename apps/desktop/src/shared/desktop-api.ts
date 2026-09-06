@@ -389,6 +389,10 @@ export interface RulesChanged {
   revision: number;
 }
 
+export interface CollectionChanged {
+  revision: number;
+}
+
 export type RulesImportOutcome = MainToolResultPayloads['rules.import'];
 
 export type RulesImportResponse =
@@ -625,6 +629,7 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesImportCompleted: 'rules:import-completed',
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
+  collectionChanged: 'collection:changed',
   collectionExport: 'collection:export',
   importFileRead: 'import-file:read',
   rulesExport: 'rules:export',
@@ -792,6 +797,7 @@ export interface InterceptorDesktopApi {
   onRulesImportCanceled(listener: (requestId: string) => void): () => void;
   completeRulesImport(requestId: string, response: RulesImportResponse): Promise<void>;
   getCollection(): Promise<Collection>;
+  onCollectionChanged(listener: (change: CollectionChanged) => void): () => void;
   replaceCollection(
     expectedRevision: number,
     nodes: CollectionNode[],

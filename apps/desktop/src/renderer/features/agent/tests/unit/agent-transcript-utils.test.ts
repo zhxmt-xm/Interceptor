@@ -257,6 +257,17 @@ describe('Agent transcript utilities', () => {
     });
   });
 
+  it('将集合查询和替换显示为版本与计数摘要', () => {
+    expect(summarizeAgentToolResult('composer_get_collection', { ok: true, value: { collection: {
+      revision: 3, nodes: [
+        { kind: 'request', id: 'one', bodyText: 'private body' },
+        { kind: 'folder', id: 'group', children: [{ kind: 'request', id: 'two' }] },
+      ],
+    } } })).toEqual({ kind: 'collection', revision: 3, requestCount: 2, folderCount: 1 });
+    expect(summarizeAgentToolResult('composer_replace_collection', { ok: true, value: { revision: 4 } }))
+      .toEqual({ kind: 'collectionReplaced', revision: 4 });
+  });
+
   it.each([true, false])('summarizes Rules export completion without local paths: %s', (exported) => {
     expect(summarizeAgentToolResult('rules_export', {
       ok: true,

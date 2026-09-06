@@ -5,6 +5,12 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  composer_replace_collection: {
+    description: 'Replace the saved Composer Collection with revision checking.',
+    effect: 'Replace the complete Collection without sending requests; preserve unchanged masked credentials.\nRequest count: 2 -> 0\nFolder count: 1 -> 0',
+    arguments: 'baseRevision: 3 · nodes: []',
+    result: 'Collection revision 4 applied',
+  },
   rules_import: {
     description: 'Choose an exported Rule file and confirm appending it through the product import preview.',
     effect: 'Append Rules with new identities and persist them with the current Rule draft after confirmation.\nChoose a JSON file using the native Open Dialog.\nReview the import preview, then confirm to append Rules and persist the current draft.',
@@ -126,7 +132,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName === 'rules_export' || state.agentToolApprovalName === 'rules_import' ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || ['rules_export', 'rules_import', 'composer_replace_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

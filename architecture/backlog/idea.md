@@ -238,10 +238,46 @@
 <tr>
   <td><strong>🔄 进行中</strong></td>
   <td>Agent / MCP shared Tool capabilities</td>
-  <td><ul><li>用一份共享registry向内置Agent与外部MCP开放完整73项产品Tool目录，并由用户控制每项能力与change Tool执行方式；当前代码38/73、完整自动验收34/73，TLS四项待最终清理E2E，另35项待实现。</li><li><strong>Steps:</strong><ul><li>架构与73项目标目录设计完成</li><li>首批24项Tool按feature命名完成</li><li>Settings授权开关与问询交互设计完成</li><li>首批共享registry与MCP adapter 24/24完成</li><li>Tool开关持久化完成</li><li>首批Agent代码与已验收真实调用24/24完成</li><li>首批owning executor正向unit 24/24完成</li><li>Capture 10/17已完成，7项待实现</li><li>Rules 5/5自动验证完成：Export/Import已通过真实Agent/MCP，UI与Tool复用导入确认及原子追加</li><li>Composer 2/6已完成，4项待实现</li><li>Breakpoints 8/11已完成，3项待实现</li><li>Diagnostics 1/4已完成，3项待实现</li><li>Settings代码12/26、自动验收8/26：只读6项与系统代理2项已完成；TLS四项代码已完成，清理等待/profile保护已修，最终E2E blocked by 管理员移除残留测试CA</li><li>Updates业务Tool 0/4</li><li>用户要求继续并提交当前代码，以未闭环状态保存TLS进度；不依赖权限的独立任务持续执行</li><li>Playground当前recipe 38/38完成，Developer人工结论0/38；新增Tool随交付扩充recipe</li><li>Capture Lab integration 39/39完成，真实Electron 2/39</li><li>Developer人工验收独立待办，不作为开发前置条件</li><li>人工矩阵后待按六组收敛Capture真实Electron 39/39</li></ul></li></ul></td>
-  <td><strong>🔄 部分完成</strong><ul><li><strong>Code:</strong> 🔄 全量38/73；首批共享registry、Tool授权设置、Agent接线、MCP Desktop、Browser CORS与双页面Playground完成；Settings只读6项、系统代理2项与TLS4项复用typed Main owner；Rules Export复用Core已保存树与Main原生Save，Import共用Main请求生命周期与Renderer确认/原子追加，另35项尚未实现</li><li><strong>Unit:</strong> 🔄 全量owner正向覆盖38/73；Tools162/162、Desktop516/516、MCP32/32、Runtime122/122、Core Protocol25/25；Import executor10/10、Main生命周期/响应15/15、Renderer流程/桥接13/13、摘要23/23、原生Dialog5/5；Export executor10/10、Main导出6/6、TLS executor32/32、profile保留9/9通过；此前Desktop492/494目录修复27/27、MCP31/32修复20/20、Desktop485/485及Proxy Composer unit1/1、Proxy Rules聚焦95/95、Mockttp运行时2/2证据保持</li><li><strong>Integration:</strong> 🔄 Core TLS名单/revision12/12 Green；Main查询与MCP撤权、系统代理owner49/49证据保持；H1/H2/TLS取消、连接释放与H2目标完整性8/8，既有H2 6/6、Browser5/5与Traffic Lab39/39 Green；本轮Proxy Core全量329/331仍仅两项既有chunked framing失败</li><li><strong>E2E:</strong> 🔄 完整自动验收34/73；Rules Import真实discovery Red→Agent/MCP Green，原生Open/预览取消、确认新ID追加、草稿立即持久化、重复累加、独立撤权与重启零重放通过；最终与Export联合2/2、四代完整销毁。关联首轮五条通过、九代销毁；Export焦点失败代由guard紧急恢复但不记graceful，Cancel异常清理Red→Green后复跑通过，证据不删除。此前Export、旧Import/权限/MCP4/4、旧Rules Agent1/1证据保持。TLS四项最终CA清理仍blocked，不计完成；此前系统代理/只读/权限3/3、MCP2/2、Composer/Breakpoints/Diagnostics与首批Tool证据保持；Capture Playground仍2/39。当前package/artifact audit/smoke通过，不替代TLS E2E</li><li><strong>Design/Parity:</strong> 🔄 Import专项10视图56/56、0 missing/flagged、最大0.5px，读取遮罩行高按现有1.23修复；design interaction73/73。完整parity250 views / 1,736 targets / 1,704 matched / 32既有missing / 303既有flagged，平均2.24%；450张设计输入已归档，提交仅保留六张新Import图和六张内容更新，438张旧基准不变。此前Export36/36、TLS96/96、系统代理48/48、只读44/44、Diagnostics18/18保持；上一完整244 views / 1,700 targets / 1,666 matched / 34 missing / 304 flagged，平均2.22%，444张重绘已归档且只提交必要12图；更早238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged也保留，既有视觉债务不升级为通过</li></ul></td>
+  <td><ul>
+    <li>用一份共享registry向内置Agent与外部MCP开放完整73项产品Tool目录，并由用户控制每项能力与change执行方式；当前代码40/73、完整自动验收36/73，TLS四项待最终清理E2E，另33项待实现。</li>
+    <li><strong>Steps:</strong><ul>
+      <li>架构与73项目标目录设计完成</li>
+      <li>首批24项Tool按feature命名完成</li>
+      <li>Settings授权开关与问询交互设计完成</li>
+      <li>首批共享registry与MCP adapter 24/24完成</li>
+      <li>Tool开关持久化完成</li>
+      <li>首批Agent代码与已验收真实调用24/24完成</li>
+      <li>首批owning executor正向unit 24/24完成</li>
+      <li>Capture 10/17已完成，7项待实现</li>
+      <li>Rules 5/5自动验证完成：Export/Import通过真实Agent/MCP，UI与Tool复用导入确认及原子追加</li>
+      <li>Composer 4/6自动验证完成：Collection查询/替换已验收，Export/Import两项代码待完成</li>
+      <li>Breakpoints 8/11已完成，3项待实现</li>
+      <li>Diagnostics 1/4已完成，3项待实现</li>
+      <li>Settings代码12/26、自动验收8/26：只读6项与系统代理2项已完成；TLS四项代码已完成，清理等待/profile保护已修，最终E2E blocked by 管理员移除残留测试CA</li>
+      <li>Updates业务Tool 0/4</li>
+      <li>用户要求继续并提交当前代码，以未闭环状态保存TLS进度；不依赖权限的独立任务持续执行</li>
+      <li>Playground当前recipe 40/40完成，Developer人工结论0/40；新增Tool随交付扩充recipe</li>
+      <li>Capture Lab integration 39/39完成，真实Electron 2/39</li>
+      <li>Developer人工验收独立待办，不作为开发前置条件</li>
+      <li>人工矩阵后待按六组收敛Capture真实Electron 39/39</li>
+    </ul></li>
+  </ul></td>
+  <td><strong>🔄 部分完成</strong><ul>
+    <li><strong>Code:</strong> 🔄 全量40/73；Collection查询/替换共用Core保存态与Main正式写入，凭据脱敏/同身份保留，修复旧快照确认、首次载入时序和Monaco隐式Model重复销毁；首批registry/授权/Agent/MCP/Playground、Settings只读6项/系统代理2项/TLS4项、Rules原生导出及共享导入流程保持；另33项待实现。</li>
+    <li><strong>Unit:</strong> 🔄 owner正向覆盖40/73；Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、Protocol25/25。同步9/9、就绪2/2、编辑器生命周期1/1、摘要24/24。此前Tools162/162、Desktop516/516、Import10/10、Main15/15、Renderer13/13、摘要23/23、Dialog5/5、Export10/10、Main导出6/6、TLS32/32、profile9/9，以及Desktop492/494修复27/27、MCP31/32修复20/20、Desktop485/485、Proxy Composer1/1、Rules95/95、Mockttp2/2证据保持。</li>
+    <li><strong>Integration:</strong> 🔄 Core TLS名单/revision12/12、Main查询/MCP撤权、系统代理49/49、H1/H2/TLS取消/连接释放8/8、H2 6/6、Browser5/5、Traffic Lab39/39均保持；本轮Core329/331仍仅两项既有chunked framing失败。</li>
+    <li><strong>E2E:</strong> 🔄 完整自动验收36/73；Collection真实discovery Red→Agent/MCP Green，凭据往返、Ask/Auto、stale拒绝、挂载UI同步与双列撤权/重启零重放通过；七条关联7/7、12代正常销毁。Rules Import/Export联合2/2、四代销毁，首轮五条/九代通过与Export焦点失败/guard紧急恢复原始证据均保留；Cancel回归后复跑Green，不将紧急恢复算graceful。此前Export、旧Import/权限/MCP4/4、Rules Agent1/1、系统代理/只读/权限3/3、MCP2/2、Composer/Breakpoints/Diagnostics与首批证据保持；TLS最终CA清理blocked，Capture Playground2/39。当前package/audit/smoke通过，不替代TLS E2E。</li>
+    <li><strong>Design/Parity:</strong> 🔄 Collection六视图40/40、0 missing/flagged、最大0.5px，design interaction74/74；完整parity256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged、平均2.24%。456张设计输入已归档，提交六张新图/四张目录更新，446张旧基准不变。Import56/56及行高1.23修复、73/73设计交互保持；上一完整250 views / 1,736 targets / 1,704 matched / 32 missing / 303 flagged、2.24%，450图归档/12图提交/438旧基准不变；Export36/36、TLS96/96、系统代理48/48、只读44/44、Diagnostics18/18和更早244/238视图报告保持，既有视觉债务不升级为通过。</li>
+  </ul></td>
   <td><ul><li>此前将Traffic Lab 39项integration与真实Electron两项代表性纵向覆盖合并表述，掩盖了Capture仍为2/39。</li><li>首批24/24不等于完整73项完成，Settings里的授权开关不等于26项Settings业务Tool已开放。</li><li>Diagnostics原先未接入Agent且摘要退回原始JSON；当前已复用共享executor和结果组件闭环。</li><li>Tool旧名称没有feature所有权，Settings还把Composer与Diagnostics合并展示；当前已一次性切换五feature协议且不保留alias。</li><li>Composer已补审批前完整参数校验、响应脱敏、H1/H2/TLS真实socket取消、Capture隔离和双代零重放。</li><li>真实VS Code仍因旧协议在Tool发现前失败，产品决定不增加legacy。</li></ul></td>
-  <td><ul><li>完整目录、逐项测试与调用状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li><li>open-world网络Tool必须先经Ask/Auto，再沿Core RPC AbortSignal关闭真实socket；结果统一经过共享redactor。</li><li>TLS四项清理及权限依赖组保持blocked；Rules导入/导出已完成，继续Composer4项、Breakpoints3项、Diagnostics3项、Capture7项、Updates4项；Settings待实现14项仍按原计划保留，冷启动自动接管不变，完整TDD门禁不降级。</li><li>当前唯一管理员操作为移除测试CA <code>8F5FD8BF6D49BE746862522F6AC616583ED152BB</code>，恢复命令与证据见Handover；不能删除其他旧CA。</li><li><code>npm run playground</code>用于独立人工矩阵；新增Tool同步增加recipe，不能替Developer填写结论。Capture按六组收敛39/39仍是后续独立工作。</li><li>VS Code canary等待Host升级；每个后续work item独立commit并立即push。</li></ul></td>
+  <td><ul>
+    <li>完整目录、逐项测试与调用状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li>
+    <li>open-world网络Tool必须先经Ask/Auto，再沿Core RPC AbortSignal关闭真实socket；结果统一经过共享redactor。</li>
+    <li>TLS四项清理及权限依赖组保持blocked；继续Composer导出/导入2项、Breakpoints3项、Diagnostics3项、Capture7项、Updates4项；Settings待实现14项按原计划保留，冷启动自动接管与完整TDD门禁不变。</li>
+    <li>唯一管理员操作为移除测试CA <code>8F5FD8BF6D49BE746862522F6AC616583ED152BB</code>，恢复命令与证据见Handover；不能删除其他旧CA。</li>
+    <li><code>npm run playground</code>用于独立人工矩阵；新增Tool同步recipe，不能替Developer填写结论。Capture按六组收敛39/39是后续独立工作。</li>
+    <li>VS Code canary等待Host升级；每个后续work item独立commit并立即push。</li>
+  </ul></td>
 </tr>
 
 <tr>

@@ -50,7 +50,6 @@ export function CodeEditor({
     });
     return () => {
       changeListener.dispose();
-      editor.getModel()?.dispose();
       editor.dispose();
       editorRef.current = null;
     };

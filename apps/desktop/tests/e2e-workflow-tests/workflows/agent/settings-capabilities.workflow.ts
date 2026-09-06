@@ -44,6 +44,8 @@ const TOOL_NAMES = [
   'rules_import',
   'composer_send_request',
   'composer_probe_connection',
+  'composer_get_collection',
+  'composer_replace_collection',
   'breakpoints_list',
   'breakpoints_enable_http',
   'breakpoints_disable_http',
@@ -176,7 +178,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(76);
+    await expect(switches).toHaveCount(80);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -259,7 +261,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(76);
+    await expect(restoredSwitches).toHaveCount(80);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

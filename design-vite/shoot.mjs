@@ -328,6 +328,25 @@ for (const theme of ['light', 'dark']) {
   shots.push({
     feature: 'agent-models',
     theme,
+    variant: 'panel-collection-tools',
+    appSize: { width: 1600, height: 900 },
+    state: { view: 'composer', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open', agentToolTrace: 'collection' },
+  });
+  for (const approval of ['pending', 'allowed']) {
+    shots.push({
+      feature: 'agent-models', theme,
+      variant: `panel-collection-${approval}`,
+      appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+        agentPanel: 'open', agentExecutionMode: 'ask', agentToolApproval: approval,
+        agentToolApprovalName: 'composer_replace_collection',
+      },
+    });
+  }
+  shots.push({
+    feature: 'agent-models',
+    theme,
     variant: 'settings-tool-capabilities-settings',
     appSize: { width: 1600, height: 900 },
     state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'agent', agentToolSearch: 'settings_', agentDisabledTools: ['settings_get_certificate_status'], mcpDisabledTools: ['settings_get_tls_passthrough'] },

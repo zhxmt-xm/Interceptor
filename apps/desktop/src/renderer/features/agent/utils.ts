@@ -36,6 +36,8 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'collection'; readonly revision: number; readonly requestCount: number; readonly folderCount: number }
+  | { readonly kind: 'collectionReplaced'; readonly revision: number }
   | { readonly kind: 'rulesImported'; readonly revision: number; readonly ruleCount: number; readonly folderCount: number }
   | { readonly kind: 'importCanceled' }
   | { readonly kind: 'rulesExport'; readonly exported: boolean }
@@ -341,6 +343,16 @@ export function summarizeAgentToolResult(
       return { kind: 'rules', revision, ...counts };
     }
   }
+  if (name === 'composer_get_collection' && isRecord(result.value) && isRecord(result.value['collection'])) {
+    const collection = result.value['collection'];
+    const counts = countCollectionNodes(collection['nodes']);
+    if (typeof collection['revision'] === 'number' && counts !== null) {
+      return { kind: 'collection', revision: collection['revision'], ...counts };
+    }
+  }
+  if (name === 'composer_replace_collection' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
+    return { kind: 'collectionReplaced', revision: result.value['revision'] };
+  }
   if (name === 'rules_get_hits' && isRecord(result.value) && Array.isArray(result.value['counts'])) {
     let totalHits = 0;
     for (const count of result.value['counts']) {
@@ -449,6 +461,26 @@ function requestPath(url: string): string {
 }
 
 /** Counts trusted Rule leaves without assuming one concrete tree depth. */
+function countCollectionNodes(value: unknown): { requestCount: number; folderCount: number } | null {
+  if (!Array.isArray(value)) return null;
+  let requestCount = 0;
+  let folderCount = 0;
+  for (const node of value) {
+    if (!isRecord(node)) return null;
+    if (node['kind'] === 'request') {
+      requestCount += 1;
+    } else if (node['kind'] === 'folder') {
+      const children = countCollectionNodes(node['children']);
+      if (children === null) return null;
+      folderCount += 1 + children.folderCount;
+      requestCount += children.requestCount;
+    } else {
+      return null;
+    }
+  }
+  return { requestCount, folderCount };
+}
+
 function countRuleNodes(
   value: unknown,
 ): { readonly ruleCount: number; readonly enabledCount: number } | null {

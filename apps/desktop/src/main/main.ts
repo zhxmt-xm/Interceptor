@@ -17,6 +17,7 @@ import {
 import type {
   BreakpointQueueKey,
   ClientAppIdentity,
+  CollectionNode,
   TlsCompatibilityEvent,
   TlsPassthroughSettings,
   UpstreamProxyConfig,
@@ -620,6 +621,13 @@ class DesktopApplication {
           MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
+        'composer.collection.replace': async (payload) => {
+          const result = await this.replaceCollection(payload.expectedRevision, payload.nodes, abortSignal);
+          for (const mainWindow of BrowserWindow.getAllWindows()) {
+            if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionChanged, result);
+          }
+          return result;
+        },
         'rules.export': () => this.exportSavedRules(abortSignal),
         'rules.import': async () => {
           const response = await this.rulesImportService.startImport(abortSignal);
@@ -642,6 +650,17 @@ class DesktopApplication {
       abortSignal.throwIfAborted();
       return { type: commandType, payload };
     });
+  }
+
+  private async replaceCollection(
+    expectedRevision: number,
+    nodes: CollectionNode[],
+    abortSignal?: AbortSignal,
+  ): Promise<MainToolResultPayloads['composer.collection.replace']> {
+    const { payload } = await this.coreRuntime.request({
+      type: 'collection.replace', payload: { expectedRevision, nodes },
+    }, abortSignal === undefined ? {} : { abortSignal });
+    return payload;
   }
 
   private async exportSavedRules(abortSignal: AbortSignal): Promise<MainToolResultPayloads['rules.export']> {
@@ -1833,14 +1852,8 @@ class DesktopApplication {
         this.assertTrustedSender(event.senderFrame?.url);
         const collectionNodes = toCollectionNodes(nodes);
         try {
-          const result = await this.coreRuntime.request({
-            type: 'collection.replace',
-            payload: {
-              expectedRevision: expectedRevision as number,
-              nodes: collectionNodes,
-            },
-          });
-          return { ok: true, revision: result.payload.revision };
+          const result = await this.replaceCollection(expectedRevision as number, collectionNodes);
+          return { ok: true, revision: result.revision };
         } catch (error) {
           return DesktopApplication.toReplaceFailure(error);
         }

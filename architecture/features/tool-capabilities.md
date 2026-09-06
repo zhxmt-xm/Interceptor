@@ -3,10 +3,10 @@
 > 最后更新：2026-09-06
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现38/73，完整自动验收34/73；TLS四项代码完成但最终CA清理E2E blocked，另35项待实现。Rules五项均已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，代码已实现40/73，完整自动验收36/73；TLS四项代码完成但最终CA清理E2E blocked，另33项待实现。Rules五项与Composer Collection查询/替换均已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
 > Settings代码12/26、完整自动验收8/26；只读六项与系统代理启用/恢复两项已完成真实验收。Playground
-> recipe为38/38、Developer人工结论为0/38；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> recipe为40/40、Developer人工结论为0/40；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -15,12 +15,12 @@
 | --- | ---: | ---: | ---: | ---: |
 | Capture | 17 | 10 | 0 | 7 |
 | Rules | 5 | 5 | 0 | 0 |
-| Composer | 6 | 2 | 0 | 4 |
+| Composer | 6 | 4 | 0 | 2 |
 | Breakpoints | 11 | 8 | 0 | 3 |
 | Diagnostics | 4 | 1 | 0 | 3 |
 | Settings | 26 | 8 | 4 | 14 |
 | Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 34 | 4 | 35 |
+| 合计 | 73 | 36 | 4 | 33 |
 
 ## 1. 唯一目录
 
@@ -96,7 +96,7 @@ interface ToolCapabilitySettingsRecord {
 }
 ```
 
-- fresh profile或两组关闭项都为空时不保留文件，38项自然全部开启；
+- fresh profile或两组关闭项都为空时不保留文件，40项自然全部开启；
 - 读取时拒绝非法schema、重复名称和额外字段；合法数组中的未知/旧名称从内存快照丢弃，不改写文件、不映射到
    新名称；写入只保留当前registry名称并按registry顺序规范化；
 - `getToolCapabilitySettings`返回六组目录和两组关闭名称的完整快照；
@@ -145,8 +145,8 @@ interface ToolCapabilitySettingsRecord {
 
 | Tool | 类型 | 复用的产品入口 | 当前进度 |
 | --- | --- | --- | --- |
-| `composer_get_collection` | query | `getCollection` / `collection.get` | 产品已具备 |
-| `composer_replace_collection` | change | `replaceCollection` / `collection.replace` | 产品已具备 |
+| `composer_get_collection` | query | `getCollection` / `collection.get` | 共享 registry + MCP adapter + Agent |
+| `composer_replace_collection` | change | `composer.collection.replace` / Main共用`replaceCollection` / `collection.replace` | 共享 registry + MCP adapter + Agent |
 | `composer_import_collection` | change | 当前由Renderer串联`readImportFile`、解析确认与`replaceCollection` | 先补 intent |
 | `composer_export_collection` | change | `exportCollection` / 原生 Save Dialog | 产品已具备 |
 | `composer_send_request` | change | `sendComposerRequest` / `composer.send` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
@@ -227,7 +227,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `updates_download` | change | `downloadUpdate` | 产品已具备 |
 | `updates_open_downloaded` | change | `openDownloadedUpdate` | 产品已具备 |
 
-## 4. 当前38项实现矩阵
+## 4. 当前40项实现矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
 adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
@@ -252,6 +252,8 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `rules_import` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `composer_send_request` | 已完成 | 已完成 | Agent已完成 |
 | `composer_probe_connection` | 已完成 | 已完成 | Agent已完成 |
+| `composer_get_collection` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `composer_replace_collection` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_list` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_enable_http` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_disable_http` | 已完成 | 已完成 | Agent + MCP已完成 |
@@ -277,7 +279,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项与Rules导入/导出均已完成，当前34/73，继续按工作项逐组交付。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出及Collection查询/替换均已完成，当前36/73，继续按工作项逐组交付。
 
 ### 5.1 首批24项与独立验收
 
@@ -327,7 +329,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有38项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另35项尚未实现，不计入已验收范围。
+   目前有40项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另33项尚未实现，不计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -335,9 +337,9 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理与Rules五项已完成；TLS保留权限阻塞，下一个独立工作项是Composer Collection查询/替换。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项与Collection查询/替换已完成；TLS保留权限阻塞，下一个独立工作项是Composer Collection导出/导入。
 
-### 5.2 余下49项计划（已完成10项，剩余39项）
+### 5.2 余下49项计划（已完成12项，剩余37项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
@@ -346,7 +348,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 | --- | --- | ---: | --- |
 | 1 | Settings | 18 | 只读查询6项与系统代理启用/恢复2项已完成；TLS配置与解密开关4项代码完成待最终清理验收 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
 | 2 | Rules | 0 | Export/Import均已完成；Import复用UI预览确认与原子追加，真实输入来自同workflow产品Export |
-| 3 | Composer | 4 | Collection查询/替换2项，再Export/Import 2项；Import先补正式intent，不复制Renderer解析编排 |
+| 3 | Composer | 2 | Collection查询/替换已完成；继续Export/Import，Import复用正式确认流程，不复制Renderer解析编排 |
 | 4 | Breakpoints | 3 | Continue queue、Drop queue、Continue rule；以真实HTTP/WebSocket pending验证作用范围、Ask/Auto和并发失效 |
 | 5 | Diagnostics | 3 | Trace与Recent查询2项，再脱敏Export；保持查询静默与日志权限边界 |
 | 6 | Capture | 7 | Transfer任务查询/取消2项、Body导出1项、HAR与Archive各自Export/Import共4项；复用正式任务与原生Dialog流程 |
@@ -469,7 +471,34 @@ UI与Tool使用相同Main入口；App作用域的`RulesImportDialog`保留原确
 - 发布：Windows package、artifact audit（1,294 files / 392,861,936 bytes）、production audit0漏洞与正式smoke1/1
    通过。smoke只增加四个新窄Preload API允许项，隔离/CSP/销毁检查不变。recipe38/38，Developer人工结论0/38。
 
-下一独立工作项为Composer Collection查询/替换，再复用正式路径完成Collection Export/Import；权限依赖组仍blocked。
+Import闭环后进入Composer Collection查询/替换，下节记录该组交付；权限依赖组仍blocked。
+
+### 5.6 Collection查询与替换
+
+两项共享Tool现已通过真实Agent/MCP验收：query只读Core保存态，change经typed Main命令复用UI的
+`replaceCollection`并发布`collection:changed`。严格递归树schema、revision、ID/三级目录校验在Tool边界执行；
+Auth/Header/Query/Form/URL凭据在输出中脱敏，遮罩仅能恢复相同request/字段身份的既有值，不能转移秘密到新字段。
+编辑态空URL和未完成百分号编码可保存，不把Collection存储等同于网络Send。
+
+TDD由缺失Tool unit与真实discovery Red开始。集合同步九项与就绪两项先Red后Green：仅确认实际保存快照、
+忽略旧查询/响应、串行自动保存、首次载入等待现有Boot完成。正文输入切换的`Model is disposed!`经unit和
+同一真实workflow精确Red后，删除包装器提前销毁隐式Model的一行，交给Monaco自身detach/释放，不改第三方库。
+URL编辑边界追加Red→Green，executor扩充至20/20；摘要24/24，15语言完成。
+
+最终关联七条真实workflow `7/7`，12代Main/Core全部正常销毁、8888释放、WinINet/journal完整恢复。
+本workflow两代为`32292/40736`、`44792/3792`，测试自产凭据往返、Ask Deny/Allow/Auto、stale拒绝、已挂载UI同步、
+双列撤权及Model/origin重启零重放通过；归档TEMP下`interceptor-composer-collection-related-e2e-green`。
+缺失Tool与编辑器Red分别在`interceptor-composer-collection-e2e-red`、`interceptor-composer-editor-e2e-red`。
+
+全workspace typecheck、Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、
+Protocol25/25、Playground67/67与design interaction74/74通过；Core329/331仍仅两项既有framing债务。
+完整parity为256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged，平均2.24%；
+Collection六视图40/40、0 missing/flagged、最大0.5px。456张设计输入归档于`interceptor-composer-collection-design-generated`，
+Renderer图片归档于`interceptor-composer-collection-full-parity`；仅保留六张新图和四张目录内容更新，446张旧基准不变。Windows package、
+artifact audit（1,294 files / 392,872,268 bytes）、production audit0漏洞及smoke1/1通过，公开Preload只新增
+`onCollectionChanged`。registry/recipe40项、80个独立开关，Developer人工结论0/40。
+
+下一组Collection Export/Import保持“原生选择/取消、预览确认、输入由产品Export生成”，按独立工作项闭环提交。
 
 ## 6. 相关未完成验收
 
@@ -477,7 +506,7 @@ UI与Tool使用相同Main入口；App作用域的`RulesImportDialog`保留原确
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 38/38；Developer结论0/38 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下35项开发 |
+| Playground人工矩阵 | 当前recipe 40/40；Developer结论0/40 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下33项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |

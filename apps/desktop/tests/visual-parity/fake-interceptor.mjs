@@ -825,6 +825,8 @@ export const fakeInterceptorFixture = {
           tools: [
             { name: 'composer_send_request', title: 'Send request', description: 'Send a Composer request from this machine.', kind: 'change' },
             { name: 'composer_probe_connection', title: 'Probe connection', description: 'Open a TLS probe to a host and port.', kind: 'change' },
+            { name: 'composer_get_collection', title: 'Get Collection', description: 'Read the saved Composer Collection and revision with credentials redacted.', kind: 'query' },
+            { name: 'composer_replace_collection', title: 'Replace Collection', description: 'Replace the saved Composer Collection with revision checking.', kind: 'change' },
           ],
         },
         {
@@ -1363,6 +1365,71 @@ export function installFakeInterceptor({
       currentTurn: turn,
       sequence: items.length,
     };
+  } else if (agentSessionState === 'collection') {
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = 'turn-collection-query';
+    const request = {
+      kind: 'request', id: 'request-one', name: 'One', method: 'GET', url: 'https://example.test',
+      protocol: 'auto', headers: [], query: [], bodyType: 'none', bodyText: '', bodyForm: [],
+      auth: { type: 'none', token: '', username: '', password: '' },
+    };
+    const steps = [{
+      callId: 'collection-discover', name: 'discover_tools', arguments: { capabilityId: 'composer' },
+      value: { matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection']
+        .map((name) => ({ descriptor: { name } })) },
+    }, {
+      callId: 'collection-get', name: 'composer_get_collection', arguments: {},
+      value: { collection: { revision: 3, nodes: [request, {
+        kind: 'folder', id: 'folder-one', name: 'Group', children: [{ ...request, id: 'request-two', name: 'Two' }],
+      }] } },
+    }];
+    const items = [{
+      kind: 'user-message', itemId: 'collection-user', turnId,
+      content: 'Inspect the saved request Collection without sending any request.', createdAt,
+    }];
+    for (const [index, step] of steps.entries()) {
+      items.push({
+        kind: 'tool-call', itemId: `collection-call-${index}`, turnId, callId: step.callId,
+        name: step.name, arguments: step.arguments, status: 'completed', approval: null, createdAt: createdAt + index * 2 + 1,
+      }, {
+        kind: 'tool-result', itemId: `collection-result-${index}`, turnId, callId: step.callId,
+        name: step.name, result: { ok: true, value: step.value }, createdAt: createdAt + index * 2 + 2,
+      });
+    }
+    items.push({
+      kind: 'assistant-message', itemId: 'collection-answer', turnId,
+      content: 'Revision `3` contains `2` requests in `1` folder.', reasoningContent: '', partial: false, createdAt: createdAt + 5,
+    });
+    const turn = { turnId, userItemId: 'collection-user', status: 'completed', retryOfTurnId: null, error: null, createdAt, updatedAt: createdAt + 6 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 6 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('collection-replace-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [...agentSessionSnapshot.items, {
+      kind: 'tool-call', itemId: 'collection-replace-call', turnId, callId: 'collection-replace',
+      name: 'composer_replace_collection', arguments: { baseRevision: 3, nodes: [] }, status: pending ? 'running' : 'completed',
+      approval: {
+        approvalId: 'collection-replace-approval', status: pending ? 'pending' : 'allowed',
+        description: 'Replace the saved Composer Collection with revision checking.',
+        effect: 'Replace the complete Collection without sending requests; preserve unchanged masked credentials.\nRequest count: 2 -> 0\nFolder count: 1 -> 0',
+        effectMetadata: { beforeRequestCount: 2, afterRequestCount: 0, beforeFolderCount: 1, afterFolderCount: 0 },
+      }, createdAt: createdAt + 1,
+    }];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'collection-replace-result', turnId, callId: 'collection-replace',
+      name: 'composer_replace_collection', result: { ok: true, value: { revision: 4 } }, createdAt: createdAt + 2,
+    });
+    const turn = { ...agentSessionSnapshot.turns[0], status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 3 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 3 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
   } else if (agentSessionState === 'composer') {
     const turnId = 'turn-agent-composer';
     const agentStartedAt = agentSessionSnapshot.summary.createdAt;
@@ -1375,7 +1442,7 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['composer_send_request', 'composer_probe_connection']
+            matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection']
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -3268,6 +3335,7 @@ export function installFakeInterceptor({
       revision: collectionRevision,
       nodes: currentCollectionNodes,
     }),
+    onCollectionChanged: () => () => undefined,
     replaceCollection: async (_expectedRevision, nodes) => {
       collectionRevision += 1;
       currentCollectionNodes = nodes;
