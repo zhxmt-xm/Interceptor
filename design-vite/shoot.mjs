@@ -344,6 +344,22 @@ for (const theme of ['light', 'dark']) {
       },
     });
   }
+  for (const action of ['export', 'import']) {
+    for (const stage of ['pending', 'allowed', 'canceled']) {
+      shots.push({
+        feature: 'agent-models', theme,
+        variant: `panel-collection-${action}-${stage}`,
+        appSize: { width: 1600, height: 900 },
+        state: {
+          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+          agentPanel: 'open', agentExecutionMode: 'ask', agentToolTrace: '',
+          agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: `composer_${action}_collection`,
+          agentCollectionExported: stage !== 'canceled', agentCollectionImported: stage !== 'canceled',
+        },
+      });
+    }
+  }
   shots.push({
     feature: 'agent-models',
     theme,
@@ -610,6 +626,8 @@ async function shoot(list) {
       agentProviderDialog: '',
       agentRulesExported: true,
       agentRulesImported: true,
+      agentCollectionExported: true,
+      agentCollectionImported: true,
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',
       agentModelMenu: '',
@@ -720,6 +738,8 @@ async function shoot(list) {
       agentProvider: 'configured',
       agentRulesExported: true,
       agentRulesImported: true,
+      agentCollectionExported: true,
+      agentCollectionImported: true,
       agentProviderDialog: '',
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',

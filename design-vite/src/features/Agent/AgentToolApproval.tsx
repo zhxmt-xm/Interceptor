@@ -5,6 +5,16 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  composer_export_collection: {
+    description: 'Export the saved Collection to a JSON file chosen through the native Save Dialog.',
+    effect: 'Save the persisted Collection without sending requests or changing current edits.\nSaved requests: 2\nSaved folders: 1',
+    result: 'Collection exported',
+  },
+  composer_import_collection: {
+    description: 'Choose an exported Collection and confirm appending it through the product import preview.',
+    effect: 'Append requests and folders with new identities after confirmation, without sending requests.\nChoose a JSON file using the native Open Dialog.\nReview the import preview, then confirm to append and save the Collection.',
+    result: 'Imported requests 2 · Folders 1 · Revision 2',
+  },
   composer_replace_collection: {
     description: 'Replace the saved Composer Collection with revision checking.',
     effect: 'Replace the complete Collection without sending requests; preserve unchanged masked credentials.\nRequest count: 2 -> 0\nFolder count: 1 -> 0',
@@ -93,6 +103,10 @@ export function AgentToolApproval(): React.JSX.Element | null {
 
   if (state.agentToolApproval === 'allowed' || state.agentToolApproval === 'denied') {
     const allowed = state.agentToolApproval === 'allowed';
+    const exportCanceled = (state.agentToolApprovalName === 'rules_export' && !state.agentRulesExported)
+      || (state.agentToolApprovalName === 'composer_export_collection' && !state.agentCollectionExported);
+    const importCanceled = (state.agentToolApprovalName === 'rules_import' && !state.agentRulesImported)
+      || (state.agentToolApprovalName === 'composer_import_collection' && !state.agentCollectionImported);
     return (
       <div
         aria-live="polite"
@@ -107,9 +121,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
         <strong>{allowed ? 'Allowed' : 'Denied'}</strong>
         <span className={styles.toolApprovalResultCopy}>
           <code>{state.agentToolApprovalName}</code>
-          {allowed ? <span>{state.agentToolApprovalName === 'rules_export' && !state.agentRulesExported
-            ? 'Export canceled' : state.agentToolApprovalName === 'rules_import' && !state.agentRulesImported
-              ? 'Import canceled' : tool.result}</span> : null}
+          {allowed ? <span>{exportCanceled ? 'Export canceled' : importCanceled ? 'Import canceled' : tool.result}</span> : null}
         </span>
       </div>
     );
@@ -132,7 +144,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || ['rules_export', 'rules_import', 'composer_replace_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || ['rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

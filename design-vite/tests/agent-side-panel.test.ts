@@ -263,7 +263,7 @@ test('Collection Tool query and replacement retain compact revision summaries', 
     view: 'composer', agentPanel: 'open', agentToolTrace: 'collection', agentToolApproval: '',
   }));
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
-  await expect(trace).toContainText('4 tools discovered');
+  await expect(trace).toContainText('6 tools discovered');
   await expect(trace).toContainText('Revision 3 · Requests 2 · Folders 1');
   await page.evaluate(() => window.__setState?.({
     view: 'capture', agentToolTrace: '', agentToolApproval: 'pending', agentToolApprovalName: 'composer_replace_collection',
@@ -274,6 +274,24 @@ test('Collection Tool query and replacement retain compact revision summaries', 
   await approval.getByRole('button', { name: 'Allow Tool' }).click();
   await expect(approval).toContainText('Collection revision 4 applied');
 });
+
+for (const action of ['export', 'import'] as const) {
+  test(`Collection ${action}审批区分完成与取消`, async ({ page }) => {
+    await page.evaluate((action) => window.__setState?.({
+      view: 'capture', agentPanel: 'open', agentToolTrace: '',
+      agentToolApproval: 'pending',
+      agentToolApprovalName: action === 'export' ? 'composer_export_collection' : 'composer_import_collection',
+      agentCollectionExported: true, agentCollectionImported: true,
+    }), action);
+    const approval = page.locator('[data-parity="agent-tool-approval"]');
+    await expect(approval).toContainText(`composer_${action}_collection`);
+    await expect(approval).toContainText(action === 'export' ? 'Saved requests: 2' : 'Review the import preview');
+    await page.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+    await expect(approval).toContainText(action === 'export' ? 'Collection exported' : 'Imported requests 2 · Folders 1 · Revision 2');
+    await page.evaluate(() => window.__setState?.({ agentCollectionExported: false, agentCollectionImported: false }));
+    await expect(approval).toContainText(action === 'export' ? 'Export canceled' : 'Import canceled');
+  });
+}
 
 test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({

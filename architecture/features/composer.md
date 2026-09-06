@@ -65,6 +65,48 @@ Protocol25/25、Playground67/67及设计交互74/74通过；Proxy Core329/331仅
 生产依赖0漏洞与packaged smoke1/1通过。完整parity为256视图、1,776目标，Collection相关40/40全部匹配；
 其余30 missing与304 flagged为既有视觉债务。完整设计输入及Renderer产物已归档，提交六张新图与四张目录更新。
 
+### 2.0.1 Collection导出/导入Tool
+
+`composer_export_collection`与`composer_import_collection`各自是严格空参数change。导出读取Core已保存Collection，
+与UI草稿导出共用Main序列化/Save Dialog方法；Model只得到`exported`，不收到文件名、路径或请求内容。
+导入的UI与Tool共用单请求生命周期，Main传请求ID，Renderer统一读取、预览和确认，复用现有
+`parseImportedCollection`/`importCollection`，不复制第二套领域解析或存储逻辑。
+
+- Ask Deny不打开文件Dialog；Allow/Auto都保留真实Save/Open。导入还必须经过现有预览确认，Auto不能绕过确认。
+    原生取消或预览取消不写入，返回`exported=false`或`imported=false`。
+- 导出始终区分来源：UI保存其当前编辑树，Tool保存Core已落盘树，不把导出变成隐式自动保存或Send。
+    迟到文件选择在调用取消后不能写文件，已开始的正式写入完成原路径。
+- 导入只读一次文件，保持三级目录和节点顺序，重新生成全部node及字段row ID；确认把当前集合与导入节点一起
+    原子追加并更新revision。自动保存中的变化必须先完成，不能让导入与旧节流写入互相覆盖。
+- 结果仅含导入成功标记、revision、requestCount、folderCount、skippedCount；不返回Auth、Header、正文或本机路径。
+    同一时刻只允许运行一个实际导入预览，取消/退出后旧请求不能干扰下一请求。
+- unit/integration Red → `composer.tools.transfer`真实Electron Red → 实现 → 同组Green。唯一输入文件由同workflow
+    UI Export生成，验证Deny、原生Cancel、预览取消、重复导入、全新身份、凭据保留、独立授权和双代完整销毁。
+
+2026-09-06：两项Tool已接入共享registry，typed Main命令为`composer.collection.export/import`。
+Main `CollectionImportService`拥有唯一pending请求；App常驻`CollectionImportDialog`复用原确认组件，
+Renderer `CollectionImportActions`管理读取/预览/保存并按请求ID拒绝迟到结果。原生读取、解析、节点身份重生成
+仍由既有函数负责。确认先等待已发出的自动保存，再以最新revision原子追加；取消发生在等待期间则不再写入，
+正式写入已开始则完成原路径。Main退出、窗口关闭或Renderer退出时释放pending，不留下悬挂的Action Gate。
+
+executor10项缺失Tool Red与真实discovery Red均已观察；随后executor10/10、Main文件/请求生命周期16/16、
+Renderer流程14/14、自动保存协调4/4、摘要28/28通过。最终八条关联真实workflow8/8（3.1分钟），14个代际
+全部正常销毁，8888、完整WinINet/journal与进程树恢复；本workflow两代Main/Core为`40224/19272`、
+`24620/11012`，证据归档于TEMP下`interceptor-composer-transfer-related-e2e-green`。
+自产两请求/一目录先由UI Export生成唯一输入；导出逐字段保真，三次导入后四份树的全部node/字段row ID唯一，
+JSON、Form、Query、Auth、Header/URL凭据与层级顺序保持。Agent/MCP Ask/Auto、两层Cancel、撤权和重启零重放通过；
+测试只归档哈希、revision与协议结论，不把文件内容或路径写入Model/trace。
+
+设计交互76/76，新增12视图72目标与原有导入/导出弹窗六视图20目标共92/92，0 missing/flagged、最大0.5px。
+Windows package、artifact audit（1,294 files / 392,885,889 bytes）、production audit0漏洞、packaged smoke1/1
+（44.4秒）通过；Preload安全快照仅新增`importCollection`、`onCollectionImportRequested`、
+`onCollectionImportCanceled`与`completeCollectionImport`。完整parity已完成268 views / 1,848 targets / 1,814 matched /
+34 missing / 305 flagged，平均2.27%；本次92个目标在全量运行中仍0 missing/flagged、最大0.5px。
+波动来自旧TLS passthrough明暗各2项missing及旧DeepSeek深色Dialog1项flagged，不把旧视觉债务升级为通过。
+468张出图归档于TEMP下`interceptor-composer-transfer-design-generated`，完整Renderer产物与报告位于
+`interceptor-composer-transfer-full-parity`及同名`.md`；提交只保留12张新增传输图和两张Composer discovery数量更新，
+454张非目标图经SHA256核实与本工作项开始前一致。Composer六项Tool自动验收完成，Developer人工矩阵仍独立待办。
+
 ### 2.1 发送请求
 
 ```mermaid

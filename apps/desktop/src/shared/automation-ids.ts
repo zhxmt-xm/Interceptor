@@ -267,6 +267,7 @@ export const AUTOMATION_IDS = {
     exportCollection: 'composer.collection.export',
     importCollection: 'composer.collection.import',
     import: {
+      flow: 'composer.import.flow',
       dialog: 'composer.import.dialog',
       fileName: 'composer.import.file-name',
       requestCount: 'composer.import.request-count',
@@ -292,8 +293,10 @@ export const AUTOMATION_IDS = {
       auth: 'composer.tab.auth',
     },
     bodyType: 'composer.body-type',
+    bodyFormType: 'composer.body-type.form',
     addHeader: 'composer.header.add',
     addQuery: 'composer.query.add',
+    addForm: 'composer.form.add',
     headerDraft: {
       name: 'composer.header.draft.name',
       value: 'composer.header.draft.value',
@@ -301,6 +304,10 @@ export const AUTOMATION_IDS = {
     queryDraft: {
       name: 'composer.query.draft.name',
       value: 'composer.query.draft.value',
+    },
+    formDraft: {
+      name: 'composer.form.draft.name',
+      value: 'composer.form.draft.value',
     },
     body: 'composer.body',
     authType: 'composer.auth.type',

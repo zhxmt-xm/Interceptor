@@ -399,6 +399,10 @@ export type RulesImportResponse =
   | { status: 'completed'; result: RulesImportOutcome }
   | { status: 'failed' };
 
+export type CollectionImportResponse =
+  | { status: 'completed'; result: MainToolResultPayloads['composer.collection.import'] }
+  | { status: 'failed' };
+
 /** Composer 集合替换结果：语义与 RuleReplaceResult 一致。 */
 export type CollectionReplaceResult =
   | { ok: true; revision: number }
@@ -631,6 +635,10 @@ export const DESKTOP_IPC_CHANNELS = {
   collectionReplace: 'collection:replace',
   collectionChanged: 'collection:changed',
   collectionExport: 'collection:export',
+  collectionImport: 'collection:import',
+  collectionImportRequested: 'collection:import-requested',
+  collectionImportCanceled: 'collection:import-canceled',
+  collectionImportCompleted: 'collection:import-completed',
   importFileRead: 'import-file:read',
   rulesExport: 'rules:export',
   composerSend: 'composer:send',
@@ -804,6 +812,10 @@ export interface InterceptorDesktopApi {
   ): Promise<CollectionReplaceResult>;
   /** 把整棵集合写成 JSON 文件；路径由 Main 的系统对话框选择，取消时返回 false。 */
   exportCollection(nodes: CollectionNode[], title: string): Promise<boolean>;
+  importCollection(): Promise<void>;
+  onCollectionImportRequested(listener: (requestId: string) => void): () => void;
+  onCollectionImportCanceled(listener: (requestId: string) => void): () => void;
+  completeCollectionImport(requestId: string, response: CollectionImportResponse): Promise<void>;
   /** 把整棵规则树导出成 JSON；落盘路径由 Main 的系统对话框选择。 */
   exportRules(nodes: RuleNode[], title: string): Promise<boolean>;
   /**

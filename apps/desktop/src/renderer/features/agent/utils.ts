@@ -38,6 +38,8 @@ interface MutableAgentToolBlock {
 export type AgentToolResultSummary =
   | { readonly kind: 'collection'; readonly revision: number; readonly requestCount: number; readonly folderCount: number }
   | { readonly kind: 'collectionReplaced'; readonly revision: number }
+  | { readonly kind: 'collectionImported'; readonly revision: number; readonly requestCount: number; readonly folderCount: number }
+  | { readonly kind: 'collectionExport'; readonly exported: boolean }
   | { readonly kind: 'rulesImported'; readonly revision: number; readonly ruleCount: number; readonly folderCount: number }
   | { readonly kind: 'importCanceled' }
   | { readonly kind: 'rulesExport'; readonly exported: boolean }
@@ -196,6 +198,17 @@ export function summarizeAgentToolResult(
   result: ToolExecutionResult,
 ): AgentToolResultSummary {
   if (!result.ok) return { kind: 'error', message: result.error.message };
+  if (name === 'composer_export_collection' && isRecord(result.value) && typeof result.value['exported'] === 'boolean') {
+    return { kind: 'collectionExport', exported: result.value['exported'] };
+  }
+  if (name === 'composer_import_collection' && isRecord(result.value)) {
+    const value = result.value;
+    if (value['imported'] === false) return { kind: 'importCanceled' };
+    if (value['imported'] === true && typeof value['revision'] === 'number'
+      && typeof value['requestCount'] === 'number' && typeof value['folderCount'] === 'number') {
+      return { kind: 'collectionImported', revision: value['revision'], requestCount: value['requestCount'], folderCount: value['folderCount'] };
+    }
+  }
   if (name === 'rules_export' && isRecord(result.value) && typeof result.value['exported'] === 'boolean') {
     return { kind: 'rulesExport', exported: result.value['exported'] };
   }

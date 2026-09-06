@@ -25,6 +25,8 @@ const EXPECTED_SETTINGS_COPY = [
   ['composer_probe_connection', 'Probe connection', 'Open a TLS probe to a host and port.'],
   ['composer_get_collection', 'Get Collection', 'Read the saved Composer Collection and revision with credentials redacted.'],
   ['composer_replace_collection', 'Replace Collection', 'Replace the saved Composer Collection with revision checking.'],
+  ['composer_export_collection', 'Export Collection', 'Export the saved Collection to a JSON file chosen through the native Save Dialog.'],
+  ['composer_import_collection', 'Import Collection', 'Choose an exported Collection and confirm appending it through the product import preview.'],
   ['breakpoints_list', 'Pending breakpoints', 'Read requests, responses, and frames waiting for action.'],
   ['breakpoints_enable_http', 'Enable HTTP breakpoints', 'Start suspending matching HTTP traffic.'],
   ['breakpoints_disable_http', 'Disable HTTP breakpoints', 'Stop suspending matching HTTP traffic.'],
@@ -62,7 +64,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(40);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(42);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

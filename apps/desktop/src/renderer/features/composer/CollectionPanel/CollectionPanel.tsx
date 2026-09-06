@@ -9,17 +9,12 @@ import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import {
   FileTransferBusyOverlay,
   IconButton,
-  ImportConfirmDialog,
   searchTree,
 } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
+import { useCollectionImportStore } from '../data/collectionImportStore';
 import { useComposerStore } from '../data/composerStore';
-import {
-  analyzeCollectionImport,
-  exportCollection,
-  importCollection,
-} from '../data/useCollection';
-import type { CollectionImportPreview } from '../interfaces';
+import { exportCollection } from '../data/useCollection';
 
 import styles from './CollectionPanel.module.css';
 import { CollectionTreeNode } from './CollectionTreeNode';
@@ -29,9 +24,8 @@ export function CollectionPanel(): React.JSX.Element {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const [query, setQuery] = useState('');
-  const [importPreview, setImportPreview] = useState<CollectionImportPreview | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [fileOperation, setFileOperation] = useState<'import' | 'export' | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const importPhase = useCollectionImportStore((state) => state.phase);
   const nodes = useComposerStore((state) => state.nodes);
   const savedNodes = useComposerStore((state) => state.savedNodes);
   const loaded = useComposerStore((state) => state.loaded);
@@ -52,35 +46,14 @@ export function CollectionPanel(): React.JSX.Element {
   });
   const canCreateFolder = folderDepth(nodes, targetFolderId) < MAX_FOLDER_DEPTH;
 
-  const startImport = async (): Promise<void> => {
-    setFileOperation('import');
-    let preview: CollectionImportPreview | null;
-    try {
-      preview = await analyzeCollectionImport(t('composer.importCollection'));
-    } catch {
-      void message.error(t('composer.import.readFailed'));
-      return;
-    } finally {
-      setFileOperation(null);
-    }
-    if (!preview) {
-      return;
-    }
-    if (!preview.ok) {
-      void message.error(t(`import.reason.${preview.reason}`));
-      return;
-    }
-    setImportPreview(preview);
-  };
-
   const startExport = async (): Promise<void> => {
-    setFileOperation('export');
+    setExporting(true);
     try {
       await exportCollection(t('composer.exportCollection'));
     } catch {
       void message.error(t('composer.exportFailed'));
     } finally {
-      setFileOperation(null);
+      setExporting(false);
     }
   };
 
@@ -122,10 +95,12 @@ export function CollectionPanel(): React.JSX.Element {
             icon={Upload}
             label={t('composer.importCollection')}
             size="sm"
-            loading={fileOperation === 'import'}
-            disabled={fileOperation !== null}
+            loading={importPhase === 'reading'}
+            disabled={importPhase !== 'idle' || exporting}
             onClick={() => {
-              void startImport();
+              void window.interceptor.importCollection().catch(() => {
+                void message.error(t('composer.import.failed'));
+              });
             }}
             automationId={AUTOMATION_IDS.composer.importCollection}
           />
@@ -133,8 +108,8 @@ export function CollectionPanel(): React.JSX.Element {
             icon={Download}
             label={t('composer.exportCollection')}
             size="sm"
-            loading={fileOperation === 'export'}
-            disabled={nodes.length === 0 || fileOperation !== null}
+            loading={exporting}
+            disabled={nodes.length === 0 || importPhase !== 'idle' || exporting}
             onClick={() => {
               void startExport();
             }}
@@ -167,75 +142,11 @@ export function CollectionPanel(): React.JSX.Element {
         ) : null}
       </div>
 
-      {importPreview?.ok ? (
-        <ImportConfirmDialog
-          open
-          title={t('composer.import.title')}
-          summary={t('composer.import.summary', {
-            requests: importPreview.leafCount,
-            folders: importPreview.folderCount,
-          })}
-          fileName={importPreview.fileName}
-          stats={[
-            {
-              label: t('composer.import.requests'),
-              value: importPreview.leafCount,
-              automationId: AUTOMATION_IDS.composer.import.requestCount,
-            },
-            {
-              label: t('composer.import.folders'),
-              value: importPreview.folderCount,
-              automationId: AUTOMATION_IDS.composer.import.folderCount,
-            },
-            {
-              label: t('composer.import.skipped'),
-              value: importPreview.skipped.length,
-              emphasis: 'skipped',
-              automationId: AUTOMATION_IDS.composer.import.skippedCount,
-            },
-          ]}
-          skipped={importPreview.skipped}
-          skippedTitle={t('composer.import.skippedTitle', {
-            count: importPreview.skipped.length,
-          })}
-          skippedMore={(count) => t('import.skippedMore', { count })}
-          describeReason={(reason) => t(`import.reason.${reason}`)}
-          cancelLabel={t('composer.import.cancel')}
-          confirmLabel={t('composer.import.confirm', { count: importPreview.leafCount })}
-          confirmWidth={196}
-          confirmDisabled={importPreview.leafCount === 0 && importPreview.folderCount === 0}
-          busy={importing}
-          onCancel={() => setImportPreview(null)}
-          onConfirm={() => {
-            setImporting(true);
-            void importCollection(importPreview.nodes).then((imported) => {
-              if (imported) {
-                setImportPreview(null);
-              } else {
-                void message.error(t('composer.import.failed'));
-              }
-            }).finally(() => setImporting(false));
-          }}
-          automationIds={{
-            dialog: AUTOMATION_IDS.composer.import.dialog,
-            fileName: AUTOMATION_IDS.composer.import.fileName,
-            skippedList: AUTOMATION_IDS.composer.import.skippedList,
-            cancel: AUTOMATION_IDS.composer.import.cancel,
-            confirm: AUTOMATION_IDS.composer.import.confirm,
-          }}
-        />
-      ) : null}
       <FileTransferBusyOverlay
-        open={fileOperation !== null}
-        title={fileOperation === 'import'
-          ? t('composer.import.reading')
-          : t('composer.export.writing')}
-        detail={fileOperation === 'import'
-          ? t('composer.import.readingDetail')
-          : t('composer.export.writingDetail')}
-        automationId={fileOperation === 'import'
-          ? AUTOMATION_IDS.composer.import.busy
-          : AUTOMATION_IDS.composer.exportBusy}
+        open={exporting}
+        title={t('composer.export.writing')}
+        detail={t('composer.export.writingDetail')}
+        automationId={AUTOMATION_IDS.composer.exportBusy}
       />
     </aside>
   );

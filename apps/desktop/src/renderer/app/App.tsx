@@ -22,6 +22,7 @@ import { useCaptureStore } from '../features/capture/data/captureStore';
 import {
   ComposerMain,
   ComposerStatusbar,
+  CollectionImportDialog,
   useCollection,
 } from '../features/composer';
 import {
@@ -337,6 +338,7 @@ export function App(): React.JSX.Element {
         />
         <McpToolApprovalDialog />
         <RulesImportDialog />
+        <CollectionImportDialog />
         <BreakpointCreatedMessage
           ruleId={createdBreakpointRuleId}
           onDismiss={dismissBreakpointCreatedMessage}

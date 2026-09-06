@@ -86,6 +86,8 @@ import { toUpstreamAuthority } from './system-proxy/windows/system-proxy-upstrea
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
+import { exportCollection } from './composer/export-collection';
+import { CollectionImportService } from './composer/collection-import-service';
 import { exportRules } from './rules/export-rules';
 import { RulesImportService } from './rules/import-service';
 import {
@@ -189,6 +191,10 @@ class DesktopApplication {
   private readonly systemProxyOperationQueue = new SystemProxyOperationQueue();
   /** Rejects and drains Renderer IPC when guarded shutdown starts. */
   private readonly applicationActionGate = new ApplicationActionGate();
+  private readonly collectionImportService = new CollectionImportService(
+    (requestId) => this.requestRendererCollectionImport(requestId),
+    (requestId) => this.cancelRendererCollectionImport(requestId),
+  );
   private readonly rulesImportService = new RulesImportService(
     (requestId) => this.requestRendererRulesImport(requestId),
     (requestId) => this.cancelRendererRulesImport(requestId),
@@ -414,6 +420,7 @@ class DesktopApplication {
 
     // 先收敛 Agent Turn，再恢复系统代理；外层失败时 Agent 可恢复接收命令。
     this.quitting = true;
+    this.collectionImportService.cancelImport();
     this.rulesImportService.cancelImport();
     void this.applicationActionGate.stopAcceptingAndDrain()
       .then(() => this.requireAgentRuntime().beginShutdown())
@@ -548,8 +555,14 @@ class DesktopApplication {
     mainWindow.setContentSize(1600, 900);
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
-    mainWindow.once('closed', () => this.rulesImportService.cancelImport());
-    mainWindow.webContents.on('render-process-gone', () => this.rulesImportService.cancelImport());
+    mainWindow.once('closed', () => {
+      this.collectionImportService.cancelImport();
+      this.rulesImportService.cancelImport();
+    });
+    mainWindow.webContents.on('render-process-gone', () => {
+      this.collectionImportService.cancelImport();
+      this.rulesImportService.cancelImport();
+    });
     // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。
     mainWindow.webContents.on('did-finish-load', () => {
       this.broadcastClientAppIcons(
@@ -628,6 +641,12 @@ class DesktopApplication {
           }
           return result;
         },
+        'composer.collection.export': () => this.exportSavedCollection(abortSignal),
+        'composer.collection.import': async () => {
+          const response = await this.collectionImportService.startImport(abortSignal);
+          if (response.status === 'failed') throw new Error('Unable to import Collection.');
+          return response.result;
+        },
         'rules.export': () => this.exportSavedRules(abortSignal),
         'rules.import': async () => {
           const response = await this.rulesImportService.startImport(abortSignal);
@@ -661,6 +680,24 @@ class DesktopApplication {
       type: 'collection.replace', payload: { expectedRevision, nodes },
     }, abortSignal === undefined ? {} : { abortSignal });
     return payload;
+  }
+
+  private async exportSavedCollection(abortSignal: AbortSignal): Promise<MainToolResultPayloads['composer.collection.export']> {
+    const { payload } = await this.coreRuntime.request({ type: 'collection.get', payload: {} }, { abortSignal });
+    return { exported: await exportCollection(payload.collection.nodes, undefined, abortSignal) };
+  }
+
+  private requestRendererCollectionImport(requestId: string): void {
+    const mainWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed());
+    if (mainWindow === undefined) throw new Error('Open the Interceptor window before importing Collection.');
+    this.showAndFocusMainWindow();
+    mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionImportRequested, requestId);
+  }
+
+  private cancelRendererCollectionImport(requestId: string): void {
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionImportCanceled, requestId);
+    }
   }
 
   private async exportSavedRules(abortSignal: AbortSignal): Promise<MainToolResultPayloads['rules.export']> {
@@ -1865,22 +1902,20 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.collectionExport,
       async (event, nodes: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
-        const collectionNodes = toCollectionNodes(nodes);
-        const selection = await dialog.showSaveDialog({
-          title: title as string,
-          defaultPath: `interceptor-collection-${new Date().toISOString().slice(0, 10)}.json`,
-          filters: [{ name: 'JSON', extensions: ['json'] }],
-          properties: ['createDirectory', 'showOverwriteConfirmation'],
-        });
-        if (selection.canceled || !selection.filePath) {
-          return false;
-        }
-        await writeFile(
-          selection.filePath,
-          JSON.stringify({ nodes: collectionNodes }, null, 2),
-          'utf8',
-        );
-        return true;
+        return exportCollection(toCollectionNodes(nodes), title as string);
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.collectionImport, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      await this.collectionImportService.startImport(new AbortController().signal);
+    });
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.collectionImportCompleted,
+      (event, requestId: unknown, response: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(requestId, 'requestId');
+        this.collectionImportService.completeImport(requestId, response);
       },
     );
 

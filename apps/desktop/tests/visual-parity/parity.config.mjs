@@ -733,6 +733,34 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...['export', 'import'].flatMap((action) => ['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `collection-${action}-${stage}${suffix}`, theme, agentModels: 'configured',
+        agentSessionState: `collection-${action}-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: `composer_${action}_collection`, agentToolTrace: '',
+          agentCollectionExported: stage !== 'canceled', agentCollectionImported: stage !== 'canceled',
+        },
+        designShot: `${theme}/agent-models/panel-collection-${action}-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Collection file approval', parity: 'agent-tool-approval' },
+          `composer_${action}_collection`,
+          {
+            name: 'Collection file result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-collection-transfer"] > span',
+          },
+        ],
+      }))),
       ...['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `rules-import-${stage}${suffix}`,
         theme,

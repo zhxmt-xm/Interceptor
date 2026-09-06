@@ -1,6 +1,10 @@
 import type { CollectionNode } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'composer.collection.export': { exported: boolean };
+  'composer.collection.import':
+    | { imported: false }
+    | { imported: true; revision: number; requestCount: number; folderCount: number; skippedCount: number };
   'composer.collection.replace': { revision: number };
   'rules.export': { exported: boolean };
   'rules.import':

@@ -17,6 +17,7 @@ import {
 import { useComposerStore } from './composerStore';
 
 let collectionLoadSequence = 0;
+let collectionSave: Promise<void> | null = null;
 
 export async function loadCollection(): Promise<void> {
   const sequence = ++collectionLoadSequence;
@@ -34,12 +35,20 @@ export async function synchronizeExternalCollectionChange(change: { revision: nu
   await loadCollection();
 }
 
-export async function saveCollection(nodes: CollectionNode[]): Promise<void> {
+export function saveCollection(nodes: CollectionNode[]): Promise<void> {
   const store = useComposerStore.getState();
-  if (!store.loaded || store.saving || store.nodes !== nodes || store.savedNodes === nodes) return;
+  if (!store.loaded || store.saving || store.nodes !== nodes || store.savedNodes === nodes) return Promise.resolve();
+  const saving = writeCollection(nodes, store.revision);
+  collectionSave = saving;
+  return saving.finally(() => {
+    if (collectionSave === saving) collectionSave = null;
+  });
+}
+
+async function writeCollection(nodes: CollectionNode[], revision: number): Promise<void> {
   useComposerStore.setState({ saving: true });
   try {
-    const result = await window.interceptor.replaceCollection(store.revision, nodes);
+    const result = await window.interceptor.replaceCollection(revision, nodes);
     if (result.ok) {
       useComposerStore.getState().markSaved(result.revision, nodes);
     } else {
@@ -139,13 +148,18 @@ export async function analyzeCollectionImport(
 /** 追加并持久化已清洗的集合节点；失败时不改本地集合。 */
 export async function importCollection(
   nodes: readonly CollectionNode[],
+  abortSignal?: AbortSignal,
 ): Promise<boolean> {
   const api = window.interceptor;
   if (!api?.replaceCollection || nodes.length === 0) {
     return false;
   }
+  if (collectionSave !== null) await collectionSave;
+  if (abortSignal?.aborted) return false;
   const store = useComposerStore.getState();
+  if (store.saving) return false;
   const combined = [...store.nodes, ...nodes];
+  useComposerStore.setState({ saving: true });
   try {
     const result = await api.replaceCollection(store.revision, combined);
     if (!result.ok) {
@@ -155,6 +169,8 @@ export async function importCollection(
     return true;
   } catch {
     return false;
+  } finally {
+    useComposerStore.setState({ saving: false });
   }
 }
 

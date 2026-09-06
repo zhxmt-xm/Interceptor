@@ -116,6 +116,14 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Read the current Collection and revision, then prepare a name change using that returned tree.', 'Keep Composer open and the MCP Client in Ask mode.'],
     ['Deny preserves the tree and revision.', 'Allow and Auto update the mounted Collection without sending requests.', 'Unchanged masked fields retain their original credentials; stale revisions cannot overwrite newer data.', 'Restart the app and verify the saved Collection and permissions remain unchanged.'],
   ),
+  composer_export_collection: recipe(
+    ['Create a Composer folder and requests with Header, Query, JSON/Form and test Auth values.', 'Wait for autosave and keep this MCP Client in Ask mode.'],
+    ['Deny opens no file dialog and writes nothing.', 'Allow opens the native Save Dialog; Cancel returns exported=false.', 'Saving and Auto preserve the complete saved Collection without sending requests.', 'Only exported is returned; file paths and request content are not disclosed.'],
+  ),
+  composer_import_collection: recipe(
+    ['Create requests and a folder through Composer, then use product Export to produce the import file.', 'Keep this MCP Client in Ask mode.'],
+    ['Deny opens no file dialog; canceling Open or the preview changes nothing.', 'Allow and Auto both require native selection and the same import confirmation.', 'Confirmation appends fresh node and field IDs after any in-flight autosave, preserving all request content.', 'Repeated import appends another copy; only revision and counts are returned.', 'Restart and verify persistence without replaying file operations or sending requests.'],
+  ),
   diagnostics_query: recipe(
     ['Perform a known product action that writes a diagnostic record.'],
     ['Query returns that bounded redacted record in stable time order.', 'No approval appears.'],

@@ -31,6 +31,8 @@ const TOOL_NAMES = [
   'composer_probe_connection',
   'composer_get_collection',
   'composer_replace_collection',
+  'composer_export_collection',
+  'composer_import_collection',
   'breakpoints_list',
   'breakpoints_enable_http',
   'breakpoints_disable_http',
@@ -161,7 +163,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(40);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(42);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

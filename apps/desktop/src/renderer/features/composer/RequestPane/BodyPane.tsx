@@ -47,7 +47,7 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
             updateRequest({ ...request, bodyType: bodyType as ComposerBodyType })
           }
           ariaLabel={t('composer.bodyType')}
-          automationIds={{ json: AUTOMATION_IDS.composer.bodyType }}
+          automationIds={{ json: AUTOMATION_IDS.composer.bodyType, form: AUTOMATION_IDS.composer.bodyFormType }}
         />
         <span className={styles.spacer} />
         {request.bodyType === 'none' ? null : (
@@ -103,6 +103,11 @@ export function BodyPane({ request }: BodyPaneProps): React.JSX.Element {
           onChange={(bodyForm) => updateRequest({ ...request, bodyForm })}
           nameLabel={t('composer.name')}
           valueLabel={t('composer.value')}
+          draftAutomationIds={{
+            name: AUTOMATION_IDS.composer.formDraft.name,
+            value: AUTOMATION_IDS.composer.formDraft.value,
+            confirm: AUTOMATION_IDS.composer.addForm,
+          }}
         />
       ) : null}
 

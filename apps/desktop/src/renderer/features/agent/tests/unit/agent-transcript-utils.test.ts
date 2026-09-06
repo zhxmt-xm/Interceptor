@@ -275,6 +275,23 @@ describe('Agent transcript utilities', () => {
     })).toEqual({ kind: 'rulesExport', exported });
   });
 
+  it.each([true, false])('Collection导出结果只显示完成或取消：%s', (exported) => {
+    expect(summarizeAgentToolResult('composer_export_collection', {
+      ok: true,
+      value: { exported, path: 'C:\\private\\collection.json', nodes: ['private request content'] },
+    })).toEqual({ kind: 'collectionExport', exported });
+  });
+
+  it.each([
+    [{ imported: false }, { kind: 'importCanceled' }],
+    [{ imported: true, revision: 3, requestCount: 2, folderCount: 1, skippedCount: 0 },
+      { kind: 'collectionImported', revision: 3, requestCount: 2, folderCount: 1 }],
+  ])('Collection导入摘要只显示公开版本与计数：%j', (value, expected) => {
+    expect(summarizeAgentToolResult('composer_import_collection', {
+      ok: true, value: { ...value, path: 'C:\\private\\collection.json', nodes: ['private request content'] },
+    })).toEqual(expected);
+  });
+
   it.each([
     [{ imported: false }, { kind: 'importCanceled' }],
     [{ imported: true, revision: 2, ruleCount: 2, folderCount: 1, enabledCount: 1, skippedCount: 0 },

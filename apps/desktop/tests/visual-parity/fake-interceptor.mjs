@@ -827,6 +827,8 @@ export const fakeInterceptorFixture = {
             { name: 'composer_probe_connection', title: 'Probe connection', description: 'Open a TLS probe to a host and port.', kind: 'change' },
             { name: 'composer_get_collection', title: 'Get Collection', description: 'Read the saved Composer Collection and revision with credentials redacted.', kind: 'query' },
             { name: 'composer_replace_collection', title: 'Replace Collection', description: 'Replace the saved Composer Collection with revision checking.', kind: 'change' },
+            { name: 'composer_export_collection', title: 'Export Collection', description: 'Export the saved Collection to a JSON file chosen through the native Save Dialog.', kind: 'change' },
+            { name: 'composer_import_collection', title: 'Import Collection', description: 'Choose an exported Collection and confirm appending it through the product import preview.', kind: 'change' },
           ],
         },
         {
@@ -1375,7 +1377,7 @@ export function installFakeInterceptor({
     };
     const steps = [{
       callId: 'collection-discover', name: 'discover_tools', arguments: { capabilityId: 'composer' },
-      value: { matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection']
+      value: { matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection']
         .map((name) => ({ descriptor: { name } })) },
     }, {
       callId: 'collection-get', name: 'composer_get_collection', arguments: {},
@@ -1404,6 +1406,41 @@ export function installFakeInterceptor({
     agentSessionSnapshot = {
       ...agentSessionSnapshot, toolExecutionMode: 'ask',
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 6 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('collection-export-') || agentSessionState.startsWith('collection-import-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const canceled = agentSessionState.endsWith('-canceled');
+    const exporting = agentSessionState.startsWith('collection-export-');
+    const name = exporting ? 'composer_export_collection' : 'composer_import_collection';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [...agentSessionSnapshot.items, {
+      kind: 'assistant-message', itemId: 'collection-transfer-assistant', turnId,
+      content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+    }, {
+      kind: 'tool-call', itemId: 'collection-transfer-call', turnId, callId: 'call-collection-transfer',
+      name, arguments: {}, status: pending ? 'running' : 'completed',
+      approval: {
+        approvalId: 'collection-transfer-approval', status: pending ? 'pending' : 'allowed',
+        description: exporting
+          ? 'Export the saved Collection to a JSON file chosen through the native Save Dialog.'
+          : 'Choose an exported Collection and confirm appending it through the product import preview.',
+        effect: exporting
+          ? 'Save the persisted Collection without sending requests or changing current edits.\nSaved requests: 2\nSaved folders: 1'
+          : 'Append requests and folders with new identities after confirmation, without sending requests.\nChoose a JSON file using the native Open Dialog.\nReview the import preview, then confirm to append and save the Collection.',
+      }, createdAt: createdAt + 2,
+    }];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'collection-transfer-result', turnId, callId: 'call-collection-transfer', name,
+      result: { ok: true, value: exporting ? { exported: !canceled } : canceled ? { imported: false }
+        : { imported: true, revision: 2, requestCount: 2, folderCount: 1, skippedCount: 0 } },
+      createdAt: createdAt + 3,
+    });
+    const turn = { ...agentSessionSnapshot.turns[0], status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('collection-replace-')) {
@@ -1442,7 +1479,7 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection']
+            matches: ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection']
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -2781,6 +2818,8 @@ export function installFakeInterceptor({
   window.__emitCaptureEvents = (events) => captureEventsListener?.(events);
   const rulesImportRequestListeners = new Set();
   const pendingRulesImportCompletions = new Map();
+  const collectionImportRequestListeners = new Set();
+  const pendingCollectionImportCompletions = new Map();
 
   window.interceptor = {
     echoCore: async (value) => ({
@@ -3346,6 +3385,21 @@ export function installFakeInterceptor({
         await new Promise((resolve) => setTimeout(resolve, fileOperationDelayMs));
       }
       return true;
+    },
+    importCollection: () => new Promise((resolve) => {
+      const requestId = crypto.randomUUID();
+      pendingCollectionImportCompletions.set(requestId, resolve);
+      for (const listener of collectionImportRequestListeners) listener(requestId);
+    }),
+    onCollectionImportRequested: (listener) => {
+      collectionImportRequestListeners.add(listener);
+      return () => collectionImportRequestListeners.delete(listener);
+    },
+    onCollectionImportCanceled: () => () => undefined,
+    completeCollectionImport: async (requestId) => {
+      const complete = pendingCollectionImportCompletions.get(requestId);
+      pendingCollectionImportCompletions.delete(requestId);
+      complete?.();
     },
     exportRules: async () => {
       if (fileOperationDelayMs > 0) {

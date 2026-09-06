@@ -239,7 +239,7 @@
   <td><strong>🔄 进行中</strong></td>
   <td>Agent / MCP shared Tool capabilities</td>
   <td><ul>
-    <li>用一份共享registry向内置Agent与外部MCP开放完整73项产品Tool目录，并由用户控制每项能力与change执行方式；当前代码40/73、完整自动验收36/73，TLS四项待最终清理E2E，另33项待实现。</li>
+    <li>用一份共享registry向内置Agent与外部MCP开放完整73项产品Tool目录，并由用户控制每项能力与change执行方式；当前代码42/73、完整自动验收38/73，TLS四项待最终清理E2E，另31项待实现。</li>
     <li><strong>Steps:</strong><ul>
       <li>架构与73项目标目录设计完成</li>
       <li>首批24项Tool按feature命名完成</li>
@@ -250,30 +250,30 @@
       <li>首批owning executor正向unit 24/24完成</li>
       <li>Capture 10/17已完成，7项待实现</li>
       <li>Rules 5/5自动验证完成：Export/Import通过真实Agent/MCP，UI与Tool复用导入确认及原子追加</li>
-      <li>Composer 4/6自动验证完成：Collection查询/替换已验收，Export/Import两项代码待完成</li>
+      <li>Composer 6/6自动验证完成：Collection查询/替换及Export/Import均已通过真实Agent/MCP，原生选择与共享确认、自动保存协调和字段保真已验收</li>
       <li>Breakpoints 8/11已完成，3项待实现</li>
       <li>Diagnostics 1/4已完成，3项待实现</li>
       <li>Settings代码12/26、自动验收8/26：只读6项与系统代理2项已完成；TLS四项代码已完成，清理等待/profile保护已修，最终E2E blocked by 管理员移除残留测试CA</li>
       <li>Updates业务Tool 0/4</li>
       <li>用户要求继续并提交当前代码，以未闭环状态保存TLS进度；不依赖权限的独立任务持续执行</li>
-      <li>Playground当前recipe 40/40完成，Developer人工结论0/40；新增Tool随交付扩充recipe</li>
+      <li>Playground当前recipe 42/42完成，Developer人工结论0/42；新增Tool随交付扩充recipe</li>
       <li>Capture Lab integration 39/39完成，真实Electron 2/39</li>
       <li>Developer人工验收独立待办，不作为开发前置条件</li>
       <li>人工矩阵后待按六组收敛Capture真实Electron 39/39</li>
     </ul></li>
   </ul></td>
   <td><strong>🔄 部分完成</strong><ul>
-    <li><strong>Code:</strong> 🔄 全量40/73；Collection查询/替换共用Core保存态与Main正式写入，凭据脱敏/同身份保留，修复旧快照确认、首次载入时序和Monaco隐式Model重复销毁；首批registry/授权/Agent/MCP/Playground、Settings只读6项/系统代理2项/TLS4项、Rules原生导出及共享导入流程保持；另33项待实现。</li>
-    <li><strong>Unit:</strong> 🔄 owner正向覆盖40/73；Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、Protocol25/25。同步9/9、就绪2/2、编辑器生命周期1/1、摘要24/24。此前Tools162/162、Desktop516/516、Import10/10、Main15/15、Renderer13/13、摘要23/23、Dialog5/5、Export10/10、Main导出6/6、TLS32/32、profile9/9，以及Desktop492/494修复27/27、MCP31/32修复20/20、Desktop485/485、Proxy Composer1/1、Rules95/95、Mockttp2/2证据保持。</li>
+    <li><strong>Code:</strong> 🔄 全量42/73；Collection导出/导入共用typed Main及App全局确认，结果只含公开计数；导入等待自动保存并重建全部node/字段row ID。Collection查询/替换共用Core保存态与Main正式写入，凭据脱敏/同身份保留，修复旧快照确认、首次载入时序和Monaco隐式Model重复销毁；首批registry/授权/Agent/MCP/Playground、Settings只读6项/系统代理2项/TLS4项、Rules原生导出及共享导入流程保持；另31项待实现。</li>
+    <li><strong>Unit:</strong> 🔄 owner正向覆盖42/73；本轮transfer executor10/10、Main16/16、Renderer14/14、保存协调4/4、摘要28/28。Tools189/192、Desktop574/576、MCP31/32、Playground66/67旧目录断言修复后对应51/51、27/27、20/20、1/1通过。此前Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、Protocol25/25，同步9/9、就绪2/2、编辑器生命周期1/1、摘要24/24，以及Tools162/162、Desktop516/516、Import10/10、Main15/15、Renderer13/13、摘要23/23、Dialog5/5、Export10/10、Main导出6/6、TLS32/32、profile9/9、Desktop492/494修复27/27、MCP31/32修复20/20、Desktop485/485、Proxy Composer1/1、Rules95/95、Mockttp2/2证据保持。</li>
     <li><strong>Integration:</strong> 🔄 Core TLS名单/revision12/12、Main查询/MCP撤权、系统代理49/49、H1/H2/TLS取消/连接释放8/8、H2 6/6、Browser5/5、Traffic Lab39/39均保持；本轮Core329/331仍仅两项既有chunked framing失败。</li>
-    <li><strong>E2E:</strong> 🔄 完整自动验收36/73；Collection真实discovery Red→Agent/MCP Green，凭据往返、Ask/Auto、stale拒绝、挂载UI同步与双列撤权/重启零重放通过；七条关联7/7、12代正常销毁。Rules Import/Export联合2/2、四代销毁，首轮五条/九代通过与Export焦点失败/guard紧急恢复原始证据均保留；Cancel回归后复跑Green，不将紧急恢复算graceful。此前Export、旧Import/权限/MCP4/4、Rules Agent1/1、系统代理/只读/权限3/3、MCP2/2、Composer/Breakpoints/Diagnostics与首批证据保持；TLS最终CA清理blocked，Capture Playground2/39。当前package/audit/smoke通过，不替代TLS E2E。</li>
-    <li><strong>Design/Parity:</strong> 🔄 Collection六视图40/40、0 missing/flagged、最大0.5px，design interaction74/74；完整parity256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged、平均2.24%。456张设计输入已归档，提交六张新图/四张目录更新，446张旧基准不变。Import56/56及行高1.23修复、73/73设计交互保持；上一完整250 views / 1,736 targets / 1,704 matched / 32 missing / 303 flagged、2.24%，450图归档/12图提交/438旧基准不变；Export36/36、TLS96/96、系统代理48/48、只读44/44、Diagnostics18/18和更早244/238视图报告保持，既有视觉债务不升级为通过。</li>
+    <li><strong>E2E:</strong> 🔄 完整自动验收38/73；Collection导出/导入真实discovery Red→Agent/MCP Green，原生Cancel/预览确认、三次追加、全部身份新生成、JSON/Form/Query/Auth/Header/URL凭据保真、Ask/Auto、两列撤权和重启零重放通过；八条关联8/8、14代正常销毁、完整WinINet/journal/8888恢复。Collection查询/替换的真实discovery Red→Green、凭据往返、Ask/Auto、stale拒绝、挂载UI同步、双列撤权/重启零重放与七条关联7/7、12代正常销毁保持。Rules Import/Export联合2/2、四代销毁，首轮五条/九代通过与Export焦点失败/guard紧急恢复原始证据均保留；Cancel回归后复跑Green，不将紧急恢复算graceful。此前Export、旧Import/权限/MCP4/4、Rules Agent1/1、系统代理/只读/权限3/3、MCP2/2、Composer/Breakpoints/Diagnostics与首批证据保持；TLS最终CA清理blocked，Capture Playground2/39。当前package/audit/smoke通过，不替代TLS E2E。</li>
+    <li><strong>Design/Parity:</strong> 🔄 Collection传输18视图92/92、0 missing/flagged、最大0.5px，design interaction76/76；完整parity268 views / 1,848 targets / 1,814 matched / 34 missing / 305 flagged、平均2.27%，波动为旧TLS passthrough明暗各2项missing和旧DeepSeek深色Dialog1项flagged。468张出图归档，提交12张新图/两张discovery数量更新，454张旧基准按SHA256保持不变。查询/替换阶段六视图40/40、最大0.5px、design interaction74/74，以及完整256 views / 1,776 targets / 1,746 matched / 30 missing / 304 flagged、2.24%、456图归档/10图提交/446旧基准不变保持。Import56/56及行高1.23修复、73/73设计交互保持；上一完整250 views / 1,736 targets / 1,704 matched / 32 missing / 303 flagged、2.24%，450图归档/12图提交/438旧基准不变；Export36/36、TLS96/96、系统代理48/48、只读44/44、Diagnostics18/18和更早244/238视图报告保持，既有视觉债务不升级为通过。</li>
   </ul></td>
   <td><ul><li>此前将Traffic Lab 39项integration与真实Electron两项代表性纵向覆盖合并表述，掩盖了Capture仍为2/39。</li><li>首批24/24不等于完整73项完成，Settings里的授权开关不等于26项Settings业务Tool已开放。</li><li>Diagnostics原先未接入Agent且摘要退回原始JSON；当前已复用共享executor和结果组件闭环。</li><li>Tool旧名称没有feature所有权，Settings还把Composer与Diagnostics合并展示；当前已一次性切换五feature协议且不保留alias。</li><li>Composer已补审批前完整参数校验、响应脱敏、H1/H2/TLS真实socket取消、Capture隔离和双代零重放。</li><li>真实VS Code仍因旧协议在Tool发现前失败，产品决定不增加legacy。</li></ul></td>
   <td><ul>
     <li>完整目录、逐项测试与调用状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li>
     <li>open-world网络Tool必须先经Ask/Auto，再沿Core RPC AbortSignal关闭真实socket；结果统一经过共享redactor。</li>
-    <li>TLS四项清理及权限依赖组保持blocked；继续Composer导出/导入2项、Breakpoints3项、Diagnostics3项、Capture7项、Updates4项；Settings待实现14项按原计划保留，冷启动自动接管与完整TDD门禁不变。</li>
+    <li>TLS四项清理及权限依赖组保持blocked；继续Breakpoints3项、Diagnostics3项、Capture7项、Updates4项；Settings待实现14项按原计划保留，冷启动自动接管与完整TDD门禁不变。Breakpoints下一组契约与23项unit Red已准备，尚待真实E2E Red和实现，不纳入集合传输提交。</li>
     <li>唯一管理员操作为移除测试CA <code>8F5FD8BF6D49BE746862522F6AC616583ED152BB</code>，恢复命令与证据见Handover；不能删除其他旧CA。</li>
     <li><code>npm run playground</code>用于独立人工矩阵；新增Tool同步recipe，不能替Developer填写结论。Capture按六组收敛39/39是后续独立工作。</li>
     <li>VS Code canary等待Host升级；每个后续work item独立commit并立即push。</li>

@@ -50,6 +50,7 @@ import { buildTlsTools } from '../settings/tls';
 import { buildRulesExportTool } from '../rules/export';
 import { buildRulesImportTool } from '../rules/import';
 import { buildCollectionTools } from '../composer/collection';
+import { buildCollectionTransferTools } from '../composer/transfer';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -119,6 +120,8 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'composer_probe_connection',
   'composer_get_collection',
   'composer_replace_collection',
+  'composer_export_collection',
+  'composer_import_collection',
   'breakpoints_list',
   'breakpoints_enable_http',
   'breakpoints_disable_http',
@@ -155,6 +158,7 @@ export function buildInterceptorToolRegistry(
     buildRulesExportTool(),
     buildRulesImportTool(),
     ...buildCollectionTools(interceptorToolRedactor),
+    ...buildCollectionTransferTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

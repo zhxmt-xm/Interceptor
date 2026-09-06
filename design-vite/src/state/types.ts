@@ -89,7 +89,7 @@ export type AgentChatState = 'checkout' | 'new' | 'sent';
 export type AgentTurnState = 'idle' | 'running' | 'stopped' | 'failed';
 export type AgentExecutionMode = 'ask' | 'auto';
 export type AgentToolApprovalState = 'pending' | 'allowed' | 'denied' | '';
-export type AgentToolApprovalName = 'capture_start_recording' | 'capture_stop_recording' | 'capture_clear' | 'rules_replace_tree' | 'rules_export' | 'rules_import' | 'composer_send_request' | 'composer_replace_collection' | 'settings_enable_system_proxy' | 'settings_restore_system_proxy' | 'settings_replace_tls_insecure_hosts' | 'settings_replace_tls_passthrough' | 'settings_enable_https_decryption' | 'settings_disable_https_decryption';
+export type AgentToolApprovalName = 'capture_start_recording' | 'capture_stop_recording' | 'capture_clear' | 'rules_replace_tree' | 'rules_export' | 'rules_import' | 'composer_send_request' | 'composer_replace_collection' | 'composer_export_collection' | 'composer_import_collection' | 'settings_enable_system_proxy' | 'settings_restore_system_proxy' | 'settings_replace_tls_insecure_hosts' | 'settings_replace_tls_passthrough' | 'settings_enable_https_decryption' | 'settings_disable_https_decryption';
 export type AgentToolTraceState = 'body-messages' | 'breakpoints' | 'capture' | 'collection' | 'composer' | 'diagnostics' | 'rules' | 'settings' | '';
 export type McpServerState = 'disabled' | 'running' | 'conflict';
 export type McpClientDialogState = 'add' | 'regenerate' | 'revoke' | '';
@@ -149,6 +149,8 @@ export interface DesignState {
   readonly agentToolApprovalName: AgentToolApprovalName;
   readonly agentRulesExported: boolean;
   readonly agentRulesImported: boolean;
+  readonly agentCollectionExported: boolean;
+  readonly agentCollectionImported: boolean;
   readonly agentToolTrace: AgentToolTraceState;
   readonly agentCheckoutExecutionMode: AgentExecutionMode;
   readonly agentCheckoutToolApproval: AgentToolApprovalState;

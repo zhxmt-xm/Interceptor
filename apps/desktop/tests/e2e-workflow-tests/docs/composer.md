@@ -50,6 +50,57 @@ production audit0漏洞、smoke1/1通过；新增事件`onCollectionChanged`是�
 最终完整parity为256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged；本组六视图
 40/40无缺失和差异、最大0.5px。该视觉结果不替代上面的真实Agent/MCP与正常销毁证据。
 
+<a id="composer-tools-transfer"></a>
+## `composer.tools.transfer`
+
+**状态**：passed
+**策略**：native-ui；Windows；两代真实Electron
+
+### Steps
+
+1. 空profile启动真实Electron，经Settings配置Provider，Ask Chat发现导出/导入两项。通过Composer UI创建两条请求
+	及目录，编辑Header/Query/JSON/Form/Auth并等待自动保存；产品UI Export经真实Save Dialog产生唯一输入文件。
+	测试不得直接构造业务文件或写storage。
+2. Ask Deny不打开原生Dialog；Allow导出后真实Cancel不生成文件，
+	再次Allow选择路径保存，读取产品输出核对完整已保存树。结果仅含exported，不包含路径或内容。
+3. Allow导入先取消原生Open，再选同一产品文件并取消预览，均不改revision或集合。再次确认导入后立即追加，
+	节点ID与所有Header/Query/Form行ID全部新生成，层级、顺序及凭据保留，不隐式Send。
+4. Auto导出仍经真实Save，Auto导入仍经真实Open与预览确认。重复导入继续追加，不覆盖既有集合；自动保存与
+	导入确认不能竞态覆盖，前后revision正确推进。
+5. 关闭Agent两项权限后旧Chat被拒绝；MCP独立权限开启时使用产品UI创建的Client验证Deny、Allow、原生选择及
+	预览取消/确认，再关闭MCP权限并确认旧连接不能继续执行。
+6. 正常退出并复用profile重启，集合/授权保持、Model及文件操作零重放。两代Main/Core/Worker全退、8888释放、
+	WinINet/journal恢复，完成trace/evidence后才删除产品产生的临时文件和profile。
+
+### 预期与证据
+
+Red必须来自两项Tool尚未实现，不能使用原生Dialog定位失败作为产品Red。业务输入全部经同workflow产品UI
+产生；文件级非法输入与取消/保存竞态的内部边界由unit覆盖。所有结果与证据不包含路径、正文、Auth或Token。
+
+2026-09-06：在`7834e648`实现前代码上，executor 10项因缺失Tool Red，同一真实workflow在discovery中
+找不到两项而Red（expected true / received false），不是原生Dialog或selector失败。实现后executor10/10、
+Main导出与请求生命周期16/16、Renderer导入流程14/14、自动保存协调4/4、摘要28/28通过。
+
+最终八条关联真实workflow `8/8`（3.1分钟）：本workflow、Collection查询/替换、原UI导入、集合树操作、
+Composer网络Tool、全局授权、MCP Browser与MCP Desktop。14个Main/Core代际均
+`gracefulDestroyVerified=true`，8888释放、完整WinINet/journal与进程树恢复；本workflow两代为
+`40224/19272`、`24620/11012`。证据已归档于TEMP下`interceptor-composer-transfer-related-e2e-green`，
+Red在`interceptor-composer-transfer-e2e-red`，首轮与增强Green分别保留在
+`interceptor-composer-transfer-e2e-first-green`和`interceptor-composer-transfer-e2e-green`。
+
+原集合revision 1，三次实际导入后revision 4；四份树内容去除身份后完全相同，全部node及Header/Query/Form
+行ID唯一。JSON正文、Form、Query、Bearer Auth与敏感Header/URL逐值保留；原生Cancel、预览Cancel、
+Agent/MCP Ask/Auto、两列撤权、重启Model/文件操作零重放均通过，MCP Auto仍保留真实Open与确认。
+脱敏业务证据`composer-tools-transfer.json`只保留哈希、revision和布尔结论。目录断言同步为42项/84个开关，
+旧目录数量错误不计为产品Red。
+
+Windows package与artifact audit（1,294 files / 392,885,889 bytes）、production audit0漏洞、packaged smoke1/1
+（44.4秒）通过；安全快照仅增加四个正式集合导入Preload API。设计交互76/76，新增12视图72目标及原有
+导入/导出弹窗六视图20目标共92/92，0 missing/flagged、最大0.5px；这些结果不替代真实Electron销毁证据。
+最终完整parity为268 views / 1,848 targets / 1,814 matched / 34 missing / 305 flagged、平均2.27%，
+本次92个目标仍全匹配；缺失与flagged仅在既有视图，旧TLS passthrough与DeepSeek深色Dialog的波动单独保留。
+完整报告与Renderer产物位于TEMP下`interceptor-composer-transfer-full-parity`及同名`.md`，没有把旧债务算作通过。
+
 <a id="composer-request-edit"></a>
 ## `composer.request-edit`
 

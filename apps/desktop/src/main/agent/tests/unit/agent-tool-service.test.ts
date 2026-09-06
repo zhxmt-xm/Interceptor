@@ -445,6 +445,8 @@ describe('AgentToolService', () => {
           expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_probe_connection' }) }),
           expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_get_collection' }) }),
           expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_replace_collection' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_export_collection' }) }),
+          expect.objectContaining({ descriptor: expect.objectContaining({ name: 'composer_import_collection' }) }),
         ]),
       },
     });
@@ -455,11 +457,15 @@ describe('AgentToolService', () => {
       'composer_probe_connection',
       'composer_get_collection',
       'composer_replace_collection',
+      'composer_export_collection',
+      'composer_import_collection',
     ]);
     expect(tool(snapshot, 'composer_send_request').kind).toBe('change');
     expect(tool(snapshot, 'composer_probe_connection').kind).toBe('change');
     expect(tool(snapshot, 'composer_get_collection').kind).toBe('query');
     expect(tool(snapshot, 'composer_replace_collection').kind).toBe('change');
+    expect(tool(snapshot, 'composer_export_collection').kind).toBe('change');
+    expect(tool(snapshot, 'composer_import_collection').kind).toBe('change');
   });
 
   it('discovers, discloses, and executes the Diagnostics query Tool', async () => {
