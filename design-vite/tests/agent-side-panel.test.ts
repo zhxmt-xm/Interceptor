@@ -242,6 +242,22 @@ test('Rules export approval distinguishes saved and canceled native dialogs', as
   expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('Rules import approval distinguishes confirmation from cancellation', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentExecutionMode: 'ask',
+    agentToolApproval: 'pending', agentToolApprovalName: 'rules_import', agentRulesImported: true,
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('rules_import');
+  await expect(approval).toContainText('Review the import preview');
+  await expect(approval).toContainText('No parameters');
+  await approval.getByRole('button', { name: 'Allow Tool' }).click();
+  await expect(approval).toContainText('Imported rules 2 · Folders 1 · Revision 2');
+  await page.evaluate(() => window.__setState?.({ agentRulesImported: false }));
+  await expect(approval).toContainText('Import canceled');
+  expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test('Changing to Auto keeps an existing pending Tool available for a decision', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture',
@@ -511,7 +527,7 @@ test('Agent Rules Tool activity summarizes tree, hits and applied revision', asy
   await expect(page.locator('[data-parity="agent-transcript"]'))
     .toContainText('1 enabled Rule with 1 captured hit');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(3);
-  await expect(trace.locator('[data-tool-name="discover_tools"]')).toContainText('4 tools discovered');
+  await expect(trace.locator('[data-tool-name="discover_tools"]')).toContainText('5 tools discovered');
   await expect(trace.locator('[data-tool-name="rules_get_tree"]'))
     .toContainText('Revision 1 · Rules 1 · Enabled 1');
   await expect(trace.locator('[data-tool-name="rules_get_hits"]'))

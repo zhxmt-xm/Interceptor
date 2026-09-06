@@ -31,7 +31,7 @@ const TOOL_STEPS = {
     { name: 'composer_probe_connection', arguments: 'host: 127.0.0.1 · port: 43129 · timeoutMs: 2000', result: 'TLS probe failed · connect ECONNREFUSED' },
   ],
   rules: [
-    { name: 'discover_tools', arguments: 'capabilityId: rules', result: '4 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: rules', result: '5 tools discovered' },
     { name: 'rules_get_tree', arguments: 'No parameters', result: 'Revision 1 · Rules 1 · Enabled 1' },
     { name: 'rules_get_hits', arguments: 'No parameters', result: 'Rules 1 · Hits 1' },
   ],

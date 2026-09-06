@@ -816,6 +816,7 @@ export const fakeInterceptorFixture = {
             { name: 'rules_get_hits', title: 'Rule hits', description: 'Read match counts for current rules.', kind: 'query' },
             { name: 'rules_replace_tree', title: 'Apply rules', description: 'Replace the rule set with revision checking.', kind: 'change' },
             { name: 'rules_export', title: 'Export Rules', description: 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.', kind: 'change' },
+            { name: 'rules_import', title: 'Import Rules', description: 'Choose an exported Rule file and confirm appending it through the product import preview.', kind: 'change' },
           ],
         },
         {
@@ -1512,7 +1513,7 @@ export function installFakeInterceptor({
         result: {
           ok: true,
           value: {
-            matches: ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export']
+            matches: ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import']
               .map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1958,6 +1959,45 @@ export function installFakeInterceptor({
       turns: [turn],
       currentTurn: turn,
       sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('rules-import-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const imported = !agentSessionState.endsWith('-canceled');
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [
+      ...agentSessionSnapshot.items,
+      {
+        kind: 'assistant-message', itemId: 'item-assistant-rules-import', turnId,
+        content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+      },
+      {
+        kind: 'tool-call', itemId: 'item-tool-call-rules-import', turnId,
+        callId: 'call-rules-import', name: 'rules_import', arguments: {}, status: pending ? 'running' : 'completed',
+        approval: {
+          approvalId: 'approval-rules-import', status: pending ? 'pending' : 'allowed',
+          description: 'Choose an exported Rule file and confirm appending it through the product import preview.',
+          effect: 'Append Rules with new identities and persist them with the current Rule draft after confirmation.\nChoose a JSON file using the native Open Dialog.\nReview the import preview, then confirm to append Rules and persist the current draft.',
+        },
+        createdAt: createdAt + 2,
+      },
+    ];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'item-tool-result-rules-import', turnId,
+      callId: 'call-rules-import', name: 'rules_import',
+      result: { ok: true, value: imported
+        ? { imported: true, revision: 2, ruleCount: 2, folderCount: 1, enabledCount: 1, skippedCount: 0 }
+        : { imported: false } },
+      createdAt: createdAt + 3,
+    });
+    const turn = {
+      ...agentSessionSnapshot.turns[0],
+      status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4,
+    };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('rules-export-')) {
     const pending = agentSessionState.endsWith('-pending');
@@ -2672,6 +2712,9 @@ export function installFakeInterceptor({
             };
 
   window.__emitCaptureEvents = (events) => captureEventsListener?.(events);
+  const rulesImportRequestListeners = new Set();
+  const pendingRulesImportCompletions = new Map();
+
   window.interceptor = {
     echoCore: async (value) => ({
       value,
@@ -3206,6 +3249,21 @@ export function installFakeInterceptor({
     },
     getRuleHits: async () => fixture.rules.hits,
     onRulesChanged: () => () => undefined,
+    importRules: () => new Promise((resolve) => {
+      const requestId = crypto.randomUUID();
+      pendingRulesImportCompletions.set(requestId, resolve);
+      for (const listener of rulesImportRequestListeners) listener(requestId);
+    }),
+    onRulesImportRequested: (listener) => {
+      rulesImportRequestListeners.add(listener);
+      return () => rulesImportRequestListeners.delete(listener);
+    },
+    onRulesImportCanceled: () => () => undefined,
+    completeRulesImport: async (requestId) => {
+      const complete = pendingRulesImportCompletions.get(requestId);
+      pendingRulesImportCompletions.delete(requestId);
+      complete?.();
+    },
     getCollection: async () => ({
       revision: collectionRevision,
       nodes: currentCollectionNodes,

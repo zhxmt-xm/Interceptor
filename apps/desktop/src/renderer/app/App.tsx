@@ -36,6 +36,7 @@ import {
   addBreakpointRule,
   addRequestRuleDraft,
   RulesMain,
+  RulesImportDialog,
   RulesStatusbar,
   selectRuleDraft,
   useRulesData,
@@ -336,6 +337,7 @@ export function App(): React.JSX.Element {
           }}
         />
         <McpToolApprovalDialog />
+        <RulesImportDialog />
         <BreakpointCreatedMessage
           ruleId={createdBreakpointRuleId}
           onDismiss={dismissBreakpointCreatedMessage}

@@ -64,6 +64,10 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Create and Apply Rules with a folder and mixed enabled states through the product UI.', 'Keep this MCP Client in Ask mode and leave a distinguishable unapplied draft.'],
     ['Deny opens no native dialog and writes nothing.', 'Allow opens the native Save Dialog; Cancel returns exported=false.', 'Saving and Auto export the persisted tree without changing the UI draft.', 'Only exported is returned; no file path or Rule content is disclosed.'],
   ),
+  rules_import: recipe(
+    ['Create and Apply a Rule tree with a folder and mixed enabled states.', 'Use product Export to create the import file, then keep a distinguishable unapplied draft.'],
+    ['Deny opens no file dialog; canceling Open or the import preview changes no Rules.', 'Allow and Auto both require native selection and the existing import confirmation.', 'Confirmation appends fresh IDs and persists them together with the existing draft.', 'Repeated import appends another copy; only counts and revision are returned, without file content or paths.'],
+  ),
   breakpoints_list: recipe(
     ['Enable HTTP breakpoints and create at least one pending request.'],
     ['Queue order, ruleId, exchangeId and editable-head status match Capture.'],

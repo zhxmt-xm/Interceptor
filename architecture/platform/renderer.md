@@ -1,6 +1,6 @@
 # 平台架构：Renderer Shell
 
-> 最后更新：2026-08-30
+> 最后更新：2026-09-06
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
 > 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
 >
@@ -24,7 +24,12 @@ feature 业务命令不进入 Header；Agent toggle 属于全局 Shell 控件。
 
 ## 4. Feature workspaces
 
-`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。当前 Agent 已实现未配置态、Provider 配置、Chat selector、New/Rename/Delete、Streaming Transcript、reasoning 展开、Composer、Model selector、Context/Session Usage、Stop/Retry 与重启恢复；Configure 深链到 Settings > Agent，导航不会隐式关闭 Panel。当前尚无 Agent/MCP 业务 Tool，Settings capability 开关与 Tool Call/Result UI 属于下一阶段。`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。当前 Agent 已实现未配置态、Provider 配置、Chat selector、New/Rename/Delete、Streaming Transcript、reasoning 展开、Composer、Model selector、Context/Session Usage、Stop/Retry 与重启恢复；Configure 深链到 Settings > Agent，导航不会隐式关闭 Panel。Agent/MCP业务Tool共用registry，Settings提供独立授权开关，Tool Call/Result及Ask审批复用Transcript组件；具体能力契约见[../features/tool-capabilities.md](../features/tool-capabilities.md)。`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+
+Rules导入弹窗位于App作用域，使其他workspace中的Agent/MCP也能发起同一个用户流程，但业务所有权仍在
+`features/rules/`。Main通过窄Preload请求/取消事件传递requestId，`RulesImportActions`统一读取、预览与确认状态，
+`RulesImportDialog`复用共享确认组件；RuleList只发起正式导入入口，不再保存第二份预览。完成响应只含公开计数，
+Main在边界校验后返回Tool；原解析及确认后原子追加仍归Rules，窗口导航不会隐式丢失正在确认的导入。
 
 WebSocket 帧断点保留在连接自己的 Messages tab：setup 只配置当前 `exchangeId` 的方向、帧类别与超时；
 命中后 Inspector 自动切到 Messages，已转发历史帧继续显示，Core snapshot 作为黄色 paused row 追加在列表末尾。

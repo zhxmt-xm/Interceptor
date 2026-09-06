@@ -86,6 +86,7 @@ import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
 import { exportRules } from './rules/export-rules';
+import { RulesImportService } from './rules/import-service';
 import {
   resolveWindowsSystemProxyJournalPath,
   WindowsSystemProxyJournal,
@@ -187,6 +188,10 @@ class DesktopApplication {
   private readonly systemProxyOperationQueue = new SystemProxyOperationQueue();
   /** Rejects and drains Renderer IPC when guarded shutdown starts. */
   private readonly applicationActionGate = new ApplicationActionGate();
+  private readonly rulesImportService = new RulesImportService(
+    (requestId) => this.requestRendererRulesImport(requestId),
+    (requestId) => this.cancelRendererRulesImport(requestId),
+  );
   /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
   private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
@@ -408,6 +413,7 @@ class DesktopApplication {
 
     // 先收敛 Agent Turn，再恢复系统代理；外层失败时 Agent 可恢复接收命令。
     this.quitting = true;
+    this.rulesImportService.cancelImport();
     void this.applicationActionGate.stopAcceptingAndDrain()
       .then(() => this.requireAgentRuntime().beginShutdown())
       .then(() => this.restoreSystemProxyBeforeShutdown())
@@ -541,6 +547,8 @@ class DesktopApplication {
     mainWindow.setContentSize(1600, 900);
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
+    mainWindow.once('closed', () => this.rulesImportService.cancelImport());
+    mainWindow.webContents.on('render-process-gone', () => this.rulesImportService.cancelImport());
     // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。
     mainWindow.webContents.on('did-finish-load', () => {
       this.broadcastClientAppIcons(
@@ -613,6 +621,11 @@ class DesktopApplication {
         );
       } = {
         'rules.export': () => this.exportSavedRules(abortSignal),
+        'rules.import': async () => {
+          const response = await this.rulesImportService.startImport(abortSignal);
+          if (response.status === 'failed') throw new Error('Unable to import Rules.');
+          return response.result;
+        },
         'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
         'settings.system-proxy.status': () => this.getSystemProxyStatus(),
         'settings.system-proxy.enable': () => this.enableSystemProxy(abortSignal),
@@ -634,6 +647,19 @@ class DesktopApplication {
   private async exportSavedRules(abortSignal: AbortSignal): Promise<MainToolResultPayloads['rules.export']> {
     const { payload } = await this.coreRuntime.request({ type: 'rules.get', payload: {} }, { abortSignal });
     return { exported: await exportRules(payload.ruleSet.nodes, undefined, abortSignal) };
+  }
+
+  private requestRendererRulesImport(requestId: string): void {
+    const mainWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed());
+    if (mainWindow === undefined) throw new Error('Open the Interceptor window before importing Rules.');
+    this.showAndFocusMainWindow();
+    mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.rulesImportRequested, requestId);
+  }
+
+  private cancelRendererRulesImport(requestId: string): void {
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.rulesImportCanceled, requestId);
+    }
   }
 
   private async getSystemProxyStatus(): Promise<DesktopSystemProxyStatus> {
@@ -1842,6 +1868,19 @@ class DesktopApplication {
           'utf8',
         );
         return true;
+      },
+    );
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.rulesImport, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      await this.rulesImportService.startImport(new AbortController().signal);
+    });
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.rulesImportCompleted,
+      (event, requestId: unknown, response: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(requestId, 'requestId');
+        this.rulesImportService.completeImport(requestId, response);
       },
     );
 

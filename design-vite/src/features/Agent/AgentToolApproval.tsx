@@ -5,6 +5,11 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  rules_import: {
+    description: 'Choose an exported Rule file and confirm appending it through the product import preview.',
+    effect: 'Append Rules with new identities and persist them with the current Rule draft after confirmation.\nChoose a JSON file using the native Open Dialog.\nReview the import preview, then confirm to append Rules and persist the current draft.',
+    result: 'Imported rules 2 · Folders 1 · Revision 2',
+  },
   rules_export: {
     description: 'Export the saved Rule tree to a JSON file chosen through the native Save Dialog.',
     effect: 'Save the persisted Rules to a JSON file without changing the Rule tree or unsaved drafts.\nSaved Rules: 2\nSaved folders: 1',
@@ -97,7 +102,8 @@ export function AgentToolApproval(): React.JSX.Element | null {
         <span className={styles.toolApprovalResultCopy}>
           <code>{state.agentToolApprovalName}</code>
           {allowed ? <span>{state.agentToolApprovalName === 'rules_export' && !state.agentRulesExported
-            ? 'Export canceled' : tool.result}</span> : null}
+            ? 'Export canceled' : state.agentToolApprovalName === 'rules_import' && !state.agentRulesImported
+              ? 'Import canceled' : tool.result}</span> : null}
         </span>
       </div>
     );
@@ -120,7 +126,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName === 'rules_export' ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName === 'rules_export' || state.agentToolApprovalName === 'rules_import' ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

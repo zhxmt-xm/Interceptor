@@ -45,14 +45,14 @@ test('Tool capabilities lists the complete initial shared registry with both tar
 
   const capabilities = page.locator('[data-parity="agent-tool-capabilities"]');
   await expect(capabilities).toBeVisible();
-  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(37);
+  await expect(capabilities.locator('[data-tool-capability]')).toHaveCount(38);
   await expect(capabilities.getByText('Capture', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Rules', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Composer', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Breakpoints', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Diagnostics', { exact: true })).toBeVisible();
   await expect(capabilities.getByText('Settings', { exact: true })).toBeVisible();
-  await expect(capabilities.getByRole('switch')).toHaveCount(74);
+  await expect(capabilities.getByRole('switch')).toHaveCount(76);
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for Agent' }))
     .toBeChecked();
   await expect(capabilities.getByRole('switch', { name: 'Enable capture_get_exchange for MCP' }))

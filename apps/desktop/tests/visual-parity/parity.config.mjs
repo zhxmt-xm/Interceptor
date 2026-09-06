@@ -688,6 +688,35 @@ export const views = [
         ],
       },
       ...['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `rules-import-${stage}${suffix}`,
+        theme,
+        agentModels: 'configured',
+        agentSessionState: `rules-import-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: 'rules_import', agentRulesImported: stage !== 'canceled', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-rules-import-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Rules import approval', parity: 'agent-tool-approval' },
+          'rules_import',
+          {
+            name: 'Rules import result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-rules-import"] > span',
+          },
+        ],
+      })),
+      ...['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `rules-export-${stage}${suffix}`,
         theme,
         agentModels: 'configured',

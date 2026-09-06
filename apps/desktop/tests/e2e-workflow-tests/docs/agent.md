@@ -370,17 +370,17 @@ Renderer镜像，且不丢失清理开始后到达的新流量。
 1. 创建独立profile与脚本化Provider；通过真实Rules UI创建一级folder及其中一条启用的host/path + request-header
 	rule并Apply，记录公共rule/folder ID与revision。经8888发送匹配GET，确认origin收到初始header且Rule hit为1。
 2. 新建默认Ask Chat，先`discover_tools(capabilityId:'rules')`，再调用`rules_get_tree`与`rules_get_hits`；确认渐进schema包含
-	当前四项Rules Tool（含`rules_export`），结果中的嵌套folder/rule、revision、目标hit与typed摘要一致。
+	当前五项Rules Tool（含`rules_export`/`rules_import`），结果中的嵌套folder/rule、revision、目标hit与typed摘要一致。
 3. Ask调用`rules_replace_tree`把同一Rule header改为Deny候选；审批metadata精确显示当前/目标rule数、启用数与名称差异。
 	Deny后返回`tool_denied`，revision不变，真实GET仍得到初始header。
 4. 再以同一baseRevision调用并Allow；确认完整树经正式`rules.replace`写入、revision增加、结果摘要更新，真实GET得到
 	Allow header且新命中可由`rules_get_hits`读取。
 5. 切换Auto，用最新revision再次替换为Auto header；确认不出现问询、revision增加且真实GET得到Auto header。随后用
 	旧baseRevision调用，确认返回`invalid_arguments`、不推进revision且Auto effect保持。
-6. 在Settings关闭全部四项Agent开关；新discovery/schema不含Rules Tool，旧三项逐项猜测调用均返回`unknown_tool`且Rule tree/revision
+6. 在Settings关闭全部五项Agent开关；新discovery/schema不含Rules Tool，旧三项逐项猜测调用均返回`unknown_tool`且Rule tree/revision
 	不变。
-7. 正常关闭并用同一profile重启；确认Rule tree/revision、四项关闭状态及第一代审批metadata恢复，Model请求增量0。
-	重新开启四项并恢复Ask，完成Main/Core优雅销毁、8888释放、系统代理与lab副作用恢复。
+7. 正常关闭并用同一profile重启；确认Rule tree/revision、五项关闭状态及第一代审批metadata恢复，Model请求增量0。
+	重新开启五项并恢复Ask，完成Main/Core优雅销毁、8888释放、系统代理与lab副作用恢复。
 
 ### 预期效果
 
@@ -393,6 +393,8 @@ effect与查询结果一致。
 - 2026-09-06 Rules Export扩展后，同一workflow按四项目录、全组撤权与重启恢复复跑`1/1` Green；Main/Core
 	`2432/16356`、`4960/28640`均正常销毁、释放8888并恢复宿主。证据归档于TEMP下
 	`interceptor-rules-export-existing-agent-rules-green`；新导出自身的Agent/MCP实操见`rules.tools.export`。
+- 同日Rules Import扩展后，五项目录、全组撤权和恢复再通过`1/1`，Main/Core `44740/14364`、`26496/28060`
+	均正常销毁；证据保留于`interceptor-rules-import-combined-first-run`，该归档中的后续Export焦点失败不属于此workflow。
 - Owner Red精确失败于schema无`$defs`且7类非法树先触达`rules.get`；Agent Red为Rules discovery空数组与
 	`rules_replace_tree`不存在，摘要Red退化为原始JSON；Rules revision回调与Renderer同步分别Red于0次/入口不存在；
 	复审再Red于stale revision仍生成审批摘要及设计结果态使用错误DOM属性。

@@ -46,6 +46,22 @@ describe('dismissWindowsFileDialogs', () => {
     expect(commandRunner.calls).toEqual([]);
   });
 
+  it('取消操作失去焦点时关闭本轮Dialog后再传播错误', async () => {
+    const fakeWindowsFileDialogCommandRunner = new FakeWindowsFileDialogCommandRunner();
+    await cancelWindowsFileDialog({
+      processId: 101,
+      processStartedAt: '2026-09-06T01:00:00.0000000Z',
+    }, fakeWindowsFileDialogCommandRunner);
+    const script = fakeWindowsFileDialogCommandRunner.calls[0]?.args.at(-1) ?? '';
+    const cancelBranch = script.slice(
+      script.indexOf("if ($dialogAction -eq 'cancel')"),
+      script.indexOf('} else {\ntry {'),
+    );
+
+    expect(cancelBranch).toMatch(/} catch \{\s+Close-FileDialog \$dialog \$dialogWindowHandle \$dialogProcessId\s+throw/);
+    expect(cancelBranch).toContain('[NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)');
+  });
+
   it('passes every owner to a descendant-filtered dialog dismissal script', async () => {
     const commandRunner = new FakeWindowsFileDialogCommandRunner();
 

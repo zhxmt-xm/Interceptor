@@ -100,6 +100,14 @@ export function AgentToolResultSummary({
     case 'rulesExport':
       content = t(summary.exported ? 'agent.tools.rulesExported' : 'agent.tools.exportCanceled');
       break;
+    case 'rulesImported':
+      content = t('agent.tools.rulesImported', {
+        revision: summary.revision, ruleCount: summary.ruleCount, folderCount: summary.folderCount,
+      });
+      break;
+    case 'importCanceled':
+      content = t('agent.tools.importCanceled');
+      break;
     case 'breakpoints':
       content = `${t('agent.tools.breakpoints', { count: summary.count })} · ${t(summary.enabled
         ? 'agent.tools.enabled'

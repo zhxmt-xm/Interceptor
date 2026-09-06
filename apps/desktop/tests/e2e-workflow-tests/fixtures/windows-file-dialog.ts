@@ -429,6 +429,9 @@ if ($dialogAction -eq 'cancel') {
       throw '取消前真实文件对话框没有获得焦点或所有权。'
     }
     Click-Control $cancelBounds
+  } catch {
+    Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
+    throw
   } finally {
     [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
   }

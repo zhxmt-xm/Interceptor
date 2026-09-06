@@ -37,7 +37,7 @@ UI继续导出当前Renderer草稿，不把导出变成Apply；Tool不读取或�
 - 原生Dialog取消返回`exported=false`且不产生文件。调用在Dialog完成前被取消时，选择结束后必须在
     写文件前再次检查AbortSignal，不能因迟到的选择写入文件；已开始的文件写入按正式路径完成。
 - UI与Tool复用同一JSON序列化和Save Dialog编排，不复制第二套导出器，不改变已有Rules Import确认后
-    立即追加并持久化的语义。`rules_import`仍是后续独立工作项。
+    立即追加并持久化的语义。`rules_import`的独立正式入口与验收见下节。
 - MCP使用相同正式命令与原生Dialog。Agent关闭不影响MCP；MCP的Ask Deny/Allow和Auto分别验证不写、
     正常保存与原生取消，关闭MCP授权后当前连接也必须停止披露/执行该Tool。
 - owning unit Red → `rules.tools.export`真实Electron Red → 实现 → 同组unit/E2E Green。真实验证通过
@@ -49,6 +49,42 @@ UI继续导出当前Renderer草稿，不把导出变成Apply；Tool不读取或�
 workflow Green；两代Main/Core `19112/8936`、`37364/40196`均正常销毁、8888释放并恢复完整WinINet/journal。
 审批、取消、保存、草稿隔离、双列撤权与重启零重放证据归档于TEMP下`interceptor-rules-export-agent-mcp-green`。
 新增明暗6视图36/36目标匹配，0 missing/flagged、最大0.5px；不代表既有完整parity债务已收敛。
+
+### 2.1 Rules Import Tool
+
+`rules_import`是严格空参数的独立change意图，Agent/MCP共享同一个正式Main命令。Main只发起受类型约束的
+导入请求并等待结果，文件选择、解析预览、确认和追加仍复用Renderer owning导入控制器；UI Import按钮也
+调用该控制器，不保留第二套预览/导入实现。Main与Renderer之间的请求ID只表达生命周期，Model不能提交ID、
+路径、文件正文、Rule节点或任意命令。
+
+- Ask Deny不打开文件Dialog、不读文件也不写Core；Allow/Auto都经真实Open Dialog与现有ImportConfirmDialog。
+    Auto只省略Tool审批，不省略用户选择文件和确认导入。取消任一Dialog返回`imported=false`，不修改规则。
+- 文件只读取一次，复用`parseImportedRules`校验和预览；确认采用预览持有的同一批节点，全部生成新ID，
+    保留目录、enabled和顺序；被跳过节点仍在现有预览中列出，不向Model返回节点内容或文件名。
+- 确认沿用原UI语义：把当前草稿与导入节点一起按树顺序规范化priority，并通过正式`replaceRules`原子持久化；
+    不把Import改为仅写草稿，不丢弃用户已有草稿。外部revision变化仍进入既有conflict，不覆盖较新Core状态。
+- 从其他workspace发起时先确保规则基线已加载，保留已有dirty草稿；共享确认Dialog全局可用，不强制改变导航。
+- 结果只含`imported`及成功后的revision、ruleCount、folderCount、enabledCount、skippedCount；不含路径、
+    文件名、Rule正文或Map Local材料。Main桥接和Tool错误均脱敏。
+- 取消必须沿请求生命周期传至控制器：晚到的文件选择不能再展示预览或写入；预览取消后不能被旧确认重放。
+    已开始的原子保存完成原路径，不把取消变成回滚；同一时刻只允许一个实际导入流程，避免串用预览。
+- 契约先落地，unit/integration Red → `rules.tools.import`真实Electron Red → 实现 → 同组Green。
+    E2E输入只能由同workflow先经UI Export产生；验证两个Dialog取消、预览计数、Confirm立即持久化、全新ID、
+    重复导入累加、草稿保留、Agent/MCP授权、重启零重放与Main/Core/Worker/8888/系统副作用完整销毁。
+
+实现由Main `RulesImportService`维护单请求生命周期，经`rules:import-requested`/`rules:import-canceled`驱动
+Renderer `RulesImportActions`，UI和Tool都发起同一Main入口。`RulesImportDialog`在App作用域复用原确认组件；
+RuleList不再维护第二套导入状态。完成响应经`rules:import-completed`返回，Main校验严格结构和非负安全整数计数，
+丢弃迟到请求，不向Tool转发原始错误。App退出前取消未决请求，再排空IPC；Renderer销毁同样取消请求。
+
+2026-09-06：原解析与Store基线42/42；executor 10项缺失Tool Red→Green，Main生命周期/响应15/15、Renderer
+流程/桥接13/13、摘要23/23及原生Dialog5/5通过。真实Red在`4ce5acaa`代码上发生于Import discovery缺失；
+最终Import/Export联合2/2 Green，Import两代Main/Core为`12772/38364`、`23956/43500`，均正常销毁、释放8888，
+完整WinINet/journal恢复。证据归档于TEMP下`interceptor-rules-import-export-final-e2e`；输入全部来自同workflow
+UI Export，确认后revision按1→2→3→4推进，规则副本累加、ID全部独立、本地草稿被保留并持久化。
+专项parity共10视图56/56、0 missing/flagged、最大0.5px；全局读取遮罩显式沿用应用1.23行高，不增加尺寸补偿。
+完整parity为250视图、1,736目标，Import相关56/56全部匹配；其余32 missing与303 flagged是既有视觉债务，
+不随本工作项升级为通过。Windows正式包、产物审计、生产依赖审计与smoke均通过。
 
 `RuleSet` 是可序列化纯数据，绝不包含 callback 或运行时句柄。
 

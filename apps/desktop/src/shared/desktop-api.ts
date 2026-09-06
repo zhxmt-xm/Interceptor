@@ -54,7 +54,7 @@ import type {
   AgentToolCallTranscriptItem,
   AgentToolResultTranscriptItem,
 } from '@interceptor/agent-runtime';
-import type { InterceptorToolSettingsGroup } from '@interceptor/tools';
+import type { InterceptorToolSettingsGroup, MainToolResultPayloads } from '@interceptor/tools';
 import type {
   McpApprovalRequest as McpServerApprovalRequest,
   McpToolExecutionMode,
@@ -389,6 +389,12 @@ export interface RulesChanged {
   revision: number;
 }
 
+export type RulesImportOutcome = MainToolResultPayloads['rules.import'];
+
+export type RulesImportResponse =
+  | { status: 'completed'; result: RulesImportOutcome }
+  | { status: 'failed' };
+
 /** Composer 集合替换结果：语义与 RuleReplaceResult 一致。 */
 export type CollectionReplaceResult =
   | { ok: true; revision: number }
@@ -613,6 +619,10 @@ export const DESKTOP_IPC_CHANNELS = {
   rulesReplace: 'rules:replace',
   rulesHits: 'rules:hits',
   rulesChanged: 'rules:changed',
+  rulesImport: 'rules:import',
+  rulesImportRequested: 'rules:import-requested',
+  rulesImportCanceled: 'rules:import-canceled',
+  rulesImportCompleted: 'rules:import-completed',
   collectionGet: 'collection:get',
   collectionReplace: 'collection:replace',
   collectionExport: 'collection:export',
@@ -777,6 +787,10 @@ export interface InterceptorDesktopApi {
   ): Promise<RuleReplaceResult>;
   getRuleHits(): Promise<RuleHitCount[]>;
   onRulesChanged(listener: (change: RulesChanged) => void): () => void;
+  importRules(): Promise<void>;
+  onRulesImportRequested(listener: (requestId: string) => void): () => void;
+  onRulesImportCanceled(listener: (requestId: string) => void): () => void;
+  completeRulesImport(requestId: string, response: RulesImportResponse): Promise<void>;
   getCollection(): Promise<Collection>;
   replaceCollection(
     expectedRevision: number,

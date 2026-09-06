@@ -36,6 +36,8 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'rulesImported'; readonly revision: number; readonly ruleCount: number; readonly folderCount: number }
+  | { readonly kind: 'importCanceled' }
   | { readonly kind: 'rulesExport'; readonly exported: boolean }
   | { readonly kind: 'coreProcess'; readonly state: string; readonly pid: number | null }
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
@@ -194,6 +196,14 @@ export function summarizeAgentToolResult(
   if (!result.ok) return { kind: 'error', message: result.error.message };
   if (name === 'rules_export' && isRecord(result.value) && typeof result.value['exported'] === 'boolean') {
     return { kind: 'rulesExport', exported: result.value['exported'] };
+  }
+  if (name === 'rules_import' && isRecord(result.value)) {
+    const value = result.value;
+    if (value['imported'] === false) return { kind: 'importCanceled' };
+    if (value['imported'] === true && typeof value['revision'] === 'number'
+      && typeof value['ruleCount'] === 'number' && typeof value['folderCount'] === 'number') {
+      return { kind: 'rulesImported', revision: value['revision'], ruleCount: value['ruleCount'], folderCount: value['folderCount'] };
+    }
   }
   if (name.startsWith('settings_') && isRecord(result.value)) {
     const value = result.value;

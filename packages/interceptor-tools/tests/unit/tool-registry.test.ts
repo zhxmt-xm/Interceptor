@@ -26,6 +26,7 @@ const TOOL_NAMES = [
   'rules_get_hits',
   'rules_replace_tree',
   'rules_export',
+  'rules_import',
   'composer_send_request',
   'composer_probe_connection',
   'breakpoints_list',
@@ -154,11 +155,11 @@ async function execute(
 }
 
 describe('Interceptor Tool registry', () => {
-  it('registers the exact 37 transport-neutral Tools in stable order', () => {
+  it('registers the exact 38 transport-neutral Tools in stable order', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(37);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(38);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

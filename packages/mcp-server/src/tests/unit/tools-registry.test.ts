@@ -89,6 +89,7 @@ describe('McpToolRegistry', () => {
       'rules_get_hits',
       'rules_replace_tree',
       'rules_export',
+      'rules_import',
       'composer_send_request',
       'composer_probe_connection',
       'breakpoints_list',
@@ -121,6 +122,11 @@ describe('McpToolRegistry', () => {
     });
     expect(byName.get('composer_send_request')?.annotations).toMatchObject({ openWorldHint: true });
     expect(byName.get('rules_export')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    expect(byName.get('rules_import')?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: false,
       openWorldHint: false,

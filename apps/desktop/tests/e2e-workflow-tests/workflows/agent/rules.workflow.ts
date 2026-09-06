@@ -433,8 +433,8 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     await expect(sessionRoot).toHaveAttribute('data-tool-execution-mode', 'ask');
     await desktopApp.stopTrace(testInfo);
 
-    // 用户操作与业务断言：渐进发现四项Rules Tool，并读取真实嵌套树、revision、hit与typed摘要。
-    // User actions and assertions: progressively discover the four Rules Tools and read the real nested tree, revision, hit, and typed summaries.
+    // 用户操作与业务断言：渐进发现五项Rules Tool，并读取真实嵌套树、revision、hit与typed摘要。
+    // User actions and assertions: progressively discover the five Rules Tools and read the real nested tree, revision, hit, and typed summaries.
     const queryOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueRulesQuery(openAiCompatibleLab);
     await sendMessage(desktopApp.page, QUERY_PROMPT);
@@ -442,10 +442,10 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     const queryRequests = openAiCompatibleLab.requestsForAssertions().slice(queryOffset);
     expect(requestToolNames(queryRequests[0]!)).toEqual(['discover_tools']);
     expect(requestToolNames(queryRequests[1]!)).toEqual([
-      'discover_tools', 'rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export',
+      'discover_tools', 'rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import',
     ]);
     expect(discoveredNames(queryRequests, 'rules-discover')).toEqual([
-      'rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export',
+      'rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import',
     ]);
     const firstRuleSet = ruleSetFromResult(queryRequests, 'rules-get');
     expect(firstRuleSet.revision).toBe(firstRevision);
@@ -615,11 +615,11 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
       .toHaveAttribute('data-revision', String(latestRevision));
     await expectRuleEffect(desktopApp, loopbackLab, 'stale', AUTO_HEADER_VALUE);
 
-    // 用户操作：Settings关闭全部四项优先于Auto；schema移除、旧调用均unknown_tool且Rule保持。
-    // User action: disabling all four in Settings overrides Auto; schemas disappear, previous calls are unknown, and the Rule stays unchanged.
+    // 用户操作：Settings关闭全部五项优先于Auto；schema移除、旧调用均unknown_tool且Rule保持。
+    // User action: disabling all five in Settings overrides Auto; schemas disappear, previous calls are unknown, and the Rule stays unchanged.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export'] as const) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import'] as const) {
       await getByAutomationId(
         desktopApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),
@@ -643,7 +643,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     await sendMessage(desktopApp.page, DISABLED_PROMPT);
     await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
     const disabledRequests = openAiCompatibleLab.requestsForAssertions().slice(disabledOffset);
-    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export']) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import']) {
       expect(requestToolNames(disabledRequests[0]!)).not.toContain(toolName);
     }
     expect(discoveredNames(disabledRequests, 'disabled-discover-rules')).toEqual([]);
@@ -687,7 +687,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     )).toHaveAttribute('data-effect-metadata', JSON.stringify(deniedEffectMetadata));
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export'] as const) {
+    for (const toolName of ['rules_get_tree', 'rules_get_hits', 'rules_replace_tree', 'rules_export', 'rules_import'] as const) {
       const toolSwitch = getByAutomationId(
         relaunchedApp.page,
         AutomationIdFactory.agentToolAgentSwitch(toolName),

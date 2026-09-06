@@ -1,5 +1,8 @@
 export interface MainToolResultPayloads {
   'rules.export': { exported: boolean };
+  'rules.import':
+    | { imported: false }
+    | { imported: true; revision: number; ruleCount: number; folderCount: number; enabledCount: number; skippedCount: number };
   'settings.tls-insecure-hosts.replace': { hosts: string[] };
   'settings.tls-passthrough.replace':
     | { ok: true; settings: { revision: number; hosts: string[] } }

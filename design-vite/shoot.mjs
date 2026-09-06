@@ -312,6 +312,19 @@ for (const theme of ['light', 'dark']) {
       },
     });
   }
+  for (const stage of ['pending', 'allowed', 'canceled']) {
+    shots.push({
+      feature: 'agent-models', theme,
+      variant: `panel-rules-import-${stage}`,
+      appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '',
+        agentPanel: 'open', agentExecutionMode: 'ask',
+        agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+        agentToolApprovalName: 'rules_import', agentRulesImported: stage !== 'canceled',
+      },
+    });
+  }
   shots.push({
     feature: 'agent-models',
     theme,
@@ -577,6 +590,7 @@ async function shoot(list) {
       agentPanel: 'closed',
       agentProviderDialog: '',
       agentRulesExported: true,
+      agentRulesImported: true,
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',
       agentModelMenu: '',
@@ -686,6 +700,7 @@ async function shoot(list) {
       agentPanel: 'closed',
       agentProvider: 'configured',
       agentRulesExported: true,
+      agentRulesImported: true,
       agentProviderDialog: '',
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',

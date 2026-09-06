@@ -9,13 +9,12 @@ import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import {
   FileTransferBusyOverlay,
   IconButton,
-  ImportConfirmDialog,
   searchTree,
 } from '../../../components';
 import { useTreeDrag } from '../../../components/share/useTreeDrag';
 import { useRulesStore } from '../data/rulesStore';
-import { analyzeRuleImport, exportRules, importRules, loadRules } from '../data/useRulesData';
-import type { RuleImportPreview } from '../interfaces';
+import { useRulesImportStore } from '../data/rulesImportStore';
+import { exportRules, loadRules } from '../data/useRulesData';
 import { RuleTreeNode } from '../RuleTreeNode/RuleTreeNode';
 import { RuleRootMenu } from './RuleRootMenu';
 import styles from './RuleList.module.css';
@@ -30,9 +29,8 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
   const { message } = App.useApp();
   const [query, setQuery] = useState('');
   const [rootMenuOpen, setRootMenuOpen] = useState(false);
-  const [importPreview, setImportPreview] = useState<RuleImportPreview | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [fileOperation, setFileOperation] = useState<'import' | 'export' | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const importPhase = useRulesImportStore((state) => state.phase);
   const nodes = useRulesStore((state) => state.nodes);
   const conflict = useRulesStore((state) => state.conflict);
   const addRule = useRulesStore((state) => state.addRule);
@@ -42,35 +40,22 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
 
   const startImport = async (): Promise<void> => {
     setRootMenuOpen(false);
-    setFileOperation('import');
-    let preview: RuleImportPreview | null;
     try {
-      preview = await analyzeRuleImport(t('rules.importRules'));
+      await window.interceptor.importRules();
     } catch {
       void message.error(t('rules.import.readFailed'));
-      return;
-    } finally {
-      setFileOperation(null);
     }
-    if (!preview) {
-      return;
-    }
-    if (!preview.ok) {
-      void message.error(t(`import.reason.${preview.reason}`));
-      return;
-    }
-    setImportPreview(preview);
   };
 
   const startExport = async (): Promise<void> => {
     setRootMenuOpen(false);
-    setFileOperation('export');
+    setExporting(true);
     try {
       await exportRules(t('rules.exportRules'));
     } catch {
       void message.error(t('rules.exportFailed'));
     } finally {
-      setFileOperation(null);
+      setExporting(false);
     }
   };
 
@@ -116,8 +101,8 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
             icon={Upload}
             label={t('rules.importRules')}
             size="sm"
-            loading={fileOperation === 'import'}
-            disabled={fileOperation !== null}
+            loading={importPhase === 'reading'}
+            disabled={exporting || importPhase !== 'idle'}
             onClick={() => {
               void startImport();
             }}
@@ -127,8 +112,8 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
             icon={Download}
             label={t('rules.exportRules')}
             size="sm"
-            loading={fileOperation === 'export'}
-            disabled={nodes.length === 0 || fileOperation !== null}
+            loading={exporting}
+            disabled={nodes.length === 0 || exporting || importPhase !== 'idle'}
             onClick={() => {
               void startExport();
             }}
@@ -192,84 +177,11 @@ export function RuleList({ onShowRuleRequests }: RuleListProps): React.JSX.Eleme
         ) : null}
       </div>
 
-      {importPreview?.ok ? (
-        <ImportConfirmDialog
-          open
-          title={t('rules.import.title')}
-          summary={t('rules.import.summary', {
-            rules: importPreview.leafCount,
-            folders: importPreview.folderCount,
-          })}
-          fileName={importPreview.fileName}
-          stats={[
-            {
-              label: t('rules.import.rules'),
-              value: importPreview.leafCount,
-              automationId: AUTOMATION_IDS.rules.import.ruleCount,
-            },
-            {
-              label: t('rules.import.folders'),
-              value: importPreview.folderCount,
-              automationId: AUTOMATION_IDS.rules.import.folderCount,
-            },
-            {
-              label: t('rules.import.enabled'),
-              value: importPreview.enabledCount,
-              emphasis: 'enabled',
-              automationId: AUTOMATION_IDS.rules.import.enabledCount,
-            },
-            {
-              label: t('rules.import.skipped'),
-              value: importPreview.skipped.length,
-              emphasis: 'skipped',
-              automationId: AUTOMATION_IDS.rules.import.skippedCount,
-            },
-          ]}
-          skipped={importPreview.skipped}
-          skippedTitle={t('rules.import.skippedTitle', {
-            count: importPreview.skipped.length,
-          })}
-          skippedMore={(count) => t('import.skippedMore', { count })}
-          describeReason={(reason) => t(`import.reason.${reason}`)}
-          warning={importPreview.enabledCount > 0
-            ? t('rules.import.enabledWarning', { count: importPreview.enabledCount })
-            : undefined}
-          cancelLabel={t('rules.import.cancel')}
-          confirmLabel={t('rules.import.confirm', { count: importPreview.leafCount })}
-          confirmWidth={172}
-          confirmDisabled={importPreview.leafCount === 0 && importPreview.folderCount === 0}
-          busy={importing}
-          onCancel={() => setImportPreview(null)}
-          onConfirm={() => {
-            setImporting(true);
-            void importRules(importPreview.nodes).then((imported) => {
-              if (imported) {
-                setImportPreview(null);
-              } else {
-                void message.error(t('rules.import.failed'));
-              }
-            }).finally(() => setImporting(false));
-          }}
-          automationIds={{
-            dialog: AUTOMATION_IDS.rules.import.dialog,
-            fileName: AUTOMATION_IDS.rules.import.fileName,
-            skippedList: AUTOMATION_IDS.rules.import.skippedList,
-            cancel: AUTOMATION_IDS.rules.import.cancel,
-            confirm: AUTOMATION_IDS.rules.import.confirm,
-          }}
-        />
-      ) : null}
       <FileTransferBusyOverlay
-        open={fileOperation !== null}
-        title={fileOperation === 'import'
-          ? t('rules.import.reading')
-          : t('rules.export.writing')}
-        detail={fileOperation === 'import'
-          ? t('rules.import.readingDetail')
-          : t('rules.export.writingDetail')}
-        automationId={fileOperation === 'import'
-          ? AUTOMATION_IDS.rules.import.busy
-          : AUTOMATION_IDS.rules.exportBusy}
+        open={exporting}
+        title={t('rules.export.writing')}
+        detail={t('rules.export.writingDetail')}
+        automationId={AUTOMATION_IDS.rules.exportBusy}
       />
     </div>
   );

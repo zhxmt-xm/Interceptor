@@ -265,6 +265,16 @@ describe('Agent transcript utilities', () => {
   });
 
   it.each([
+    [{ imported: false }, { kind: 'importCanceled' }],
+    [{ imported: true, revision: 2, ruleCount: 2, folderCount: 1, enabledCount: 1, skippedCount: 0 },
+      { kind: 'rulesImported', revision: 2, ruleCount: 2, folderCount: 1 }],
+  ])('summarizes Rules import outcome without file content: %j', (value, expected) => {
+    expect(summarizeAgentToolResult('rules_import', {
+      ok: true, value: { ...value, path: 'C:\\private\\rules.json', nodes: ['private Rule content'] },
+    })).toEqual(expected);
+  });
+
+  it.each([
     ['settings_get_core_process_status', { state: 'running', pid: 42 }, { kind: 'coreProcess', state: 'running', pid: 42 }],
     ['settings_get_system_proxy_status', { supported: true, owned: true, enabled: true }, { kind: 'systemProxy', supported: true, owned: true, enabled: true }],
     ['settings_enable_system_proxy', { supported: true, owned: true, enabled: true }, { kind: 'systemProxy', supported: true, owned: true, enabled: true }],

@@ -364,6 +364,53 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 全部七代及两代销毁证据分别归档为`interceptor-rules-export-adjacent-e2e-green`和
 `interceptor-rules-export-existing-agent-rules-green`。
 
+<a id="rules-tools-import"></a>
+## `rules.tools.import`
+
+**状态**：passed
+**策略**：native-ui；Windows；host-safety-guard；两代真实Electron
+
+### Steps
+
+1. 使用独立空profile与证据目录启动Electron，通过Rules UI创建两条enabled不同的规则与一层目录，Apply。
+	经真实UI Export和Save Dialog生成本workflow唯一导入输入；测试只读比较输出，不直接构造业务文件。
+2. 经Settings UI配置Provider，Ask Chat发现`rules_import`；Deny后没有文件Dialog，树与revision不变。
+3. Allow后真实取消Open Dialog，结果`imported=false`；再次Allow选择产品导出的文件，预览中规则/目录/
+	enabled/skipped计数正确，取消预览后仍不写入。
+4. 再次Allow并选择同一文件，在原ImportConfirmDialog确认；导入节点追加在原树后、所有ID全新，层级、
+	enabled与顺序保留，revision立即增加且无需第二次Apply；结果只返回imported与计数/revision。
+5. 创建可辨识但未Apply的本地草稿修改；切Auto后再导入同一文件，仍须真实Open和确认。确认后原草稿内容
+	与新节点一起按原UI语义持久化，重复导入稳定累加、不覆盖旧节点、不复用旧ID。
+6. 关闭Agent导入权限，旧Chat调用unknown_tool且不打开Dialog。经产品UI创建的MCP Client在自身权限开启时
+	仍可独立导入；验证MCP Ask的拒绝/允许、原生选择与预览确认、Auto预览取消及MCP撤权不写入。
+7. 正常关闭第一代并验证系统恢复；同profile重启后树、revision与两列关闭项保持，Model请求与文件操作增量0。
+	正常关闭第二代，保留trace、文件来源哈希、节点身份断言及两代gracefulDestroyVerified证据。
+8. 完整销毁后移除本workflow输出和profile。非法JSON、非法节点或越界目录输入下沉unit，不在E2E写坏文件。
+
+### 预期与证据
+
+真实Red必须来自`rules_import`缺失而不是selector或fixture错误。UI和Tool使用同一导入流程与确认Dialog，
+取消不写、确认即原子持久化；现有草稿与规则不丢失，Model与证据不包含文件正文、本机路径或MCP Token。
+
+2026-09-06：executor 10项Red→Green；真实Red在`4ce5acaa`实现前代码上缺少`rules_import`，Main/Core
+`20092/17548`正常销毁，归档为TEMP下`interceptor-rules-import-e2e-red`。首次Import Agent/MCP Green为47.7秒，
+两代`2880/25960`、`3692/40240`销毁通过，归档`interceptor-rules-import-agent-mcp-green`。
+
+七条关联回归首轮5条通过、Export原生Cancel焦点失败、Import未执行；失败代`43084/34304`不能标为graceful。
+宿主guard紧急恢复后journal不存在、8888释放、WinINet不再指向Interceptor，首轮完整产物保留在
+`interceptor-rules-import-combined-first-run`。原生Cancel异常分支补owner限定的Dialog关闭回归，1 Red→5/5 Green；
+原生文件Dialog测试不再与设计浏览器并行争夺前台。Main未知响应的7项非法结构Red后15/15 Green。
+
+最终Export/Import独占前台联合2/2 Green（1.3分钟），四代Main/Core `17384/14908`、`24684/26240`、
+`12772/38364`、`23956/43500`全部`gracefulDestroyVerified=true`；trace与`rules-tools-import.json`归档于
+`interceptor-rules-import-export-final-e2e`。前五条关联workflow的九代销毁证据仍保留，不用紧急清理冒充正常退出。
+Main15/15、Renderer流程13/13、摘要23/23、原生Dialog5/5通过；Desktop全量516/516、Tools162/162、
+MCP32/32、Runtime122/122、Protocol25/25、Playground67/67和全workspace typecheck通过，随后边界补测独立Green。
+Windows package、artifact audit（1,294 files / 392,861,936 bytes）、production audit0漏洞与packaged smoke1/1通过；
+smoke仅同步四个新窄API允许清单，其余Renderer隔离、CSP及销毁断言保持不变。
+最终完整parity250 views / 1,736 targets / 1,704 matched / 32既有missing / 303既有flagged，Import相关
+10视图56/56匹配、0 missing/flagged、最大0.5px。该视觉证据不替代上面的真实Electron Red/Green与销毁证据。
+
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 

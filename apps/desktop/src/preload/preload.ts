@@ -375,6 +375,19 @@ const api: InterceptorDesktopApi = {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.rulesChanged, handler);
     };
   },
+  importRules: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesImport),
+  onRulesImportRequested: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, requestId: string): void => listener(requestId);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.rulesImportRequested, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.rulesImportRequested, handler);
+  },
+  onRulesImportCanceled: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, requestId: string): void => listener(requestId);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.rulesImportCanceled, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.rulesImportCanceled, handler);
+  },
+  completeRulesImport: (requestId, response) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rulesImportCompleted, requestId, response),
   getCollection: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.collectionGet),
   replaceCollection: (expectedRevision, nodes) =>
     ipcRenderer.invoke(

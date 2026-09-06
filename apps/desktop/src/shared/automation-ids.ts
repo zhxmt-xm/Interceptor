@@ -204,6 +204,7 @@ export const AUTOMATION_IDS = {
     exportRules: 'rules.export',
     import: {
       dialog: 'rules.import.dialog',
+      flow: 'rules.import.flow',
       fileName: 'rules.import.file-name',
       ruleCount: 'rules.import.rule-count',
       folderCount: 'rules.import.folder-count',

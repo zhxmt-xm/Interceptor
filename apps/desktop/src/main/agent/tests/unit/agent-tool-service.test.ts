@@ -241,7 +241,7 @@ describe('AgentToolService', () => {
     ]);
   });
 
-  it('discovers and discloses exactly the four connected Rules Tools', async () => {
+  it('discovers and discloses exactly the five connected Rules Tools', async () => {
     const service = new AgentToolService(
       new FakeCoreRuntime(),
       new FakeToolCapabilitySettingsService(),
@@ -263,6 +263,7 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'rules_get_hits' } },
           { descriptor: { name: 'rules_replace_tree' } },
           { descriptor: { name: 'rules_export' } },
+          { descriptor: { name: 'rules_import' } },
         ],
       },
     });
@@ -273,11 +274,13 @@ describe('AgentToolService', () => {
       'rules_get_hits',
       'rules_replace_tree',
       'rules_export',
+      'rules_import',
     ]);
     expect(tool(snapshot, 'rules_get_tree').kind).toBe('query');
     expect(tool(snapshot, 'rules_get_hits').kind).toBe('query');
     expect(tool(snapshot, 'rules_replace_tree').kind).toBe('change');
     expect(tool(snapshot, 'rules_export').kind).toBe('change');
+    expect(tool(snapshot, 'rules_import').kind).toBe('change');
   });
 
   it('discovers and discloses exactly the eight connected Breakpoints Tools', async () => {
