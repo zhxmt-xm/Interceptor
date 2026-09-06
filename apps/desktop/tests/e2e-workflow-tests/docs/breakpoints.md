@@ -2,6 +2,59 @@
 
 本文件定义 Capture 内嵌 Breakpoint 能力的完整 E2E 流程。产品没有独立 Breakpoints workspace：配置入口是 Capture workbar manager，命中与编辑入口是 paused Capture 行及其 Inspector。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 Rules breakpoint action、Core queue 和客户端连接验证。
 
+<a id="breakpoints-tools-batch"></a>
+## `breakpoints.tools.batch`
+
+**状态**：passed
+**策略**：shared；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron，通过Settings配置本地Provider；Ask Chat正式discovery必须披露三条批量Tool。
+	通过Rules UI创建并Apply两条不同匹配条件的request breakpoint Rule，通过真实客户端产生各自的HTTP pending。
+2. 通过产品UI先为真实WebSocket连接A启用message断点并挂起自产帧，再切到连接B启用并挂起自产帧。
+	保留原有单一活动配置，旧pending继续等待；从公开DOM或正式查询取得Rule、queue与pending身份，
+	不写storage或直接构造Core队列。
+3. Ask请求Continue queue并Deny，确认所有等待项和origin计数不变；Allow Continue rule只释放目标Rule成员，
+	原URL/body到达origin，其他Rule和两条WebSocket队列不变，返回实际resolvedCount。Transcript使用本地化
+	操作与数量摘要，公开`data-summary-kind`/`data-resolved-count`，不依赖翻译文案或原始JSON判断成功。
+4. Auto Drop HTTP queue只丢弃其剩余HTTP成员；分别Continue一条WebSocket queue与Drop另一条，验证帧转发及
+	连接隔离、目标数量和原始内容，不使用Renderer未提交编辑。清空后重复命令返回0，不影响其他队列。
+5. 通过Settings关闭Agent三项权限，旧Chat均unknown_tool且不解队。使用产品UI建立MCP Client，验证独立
+	Ask/Auto审批、三条实际命令及相同作用范围；撤销MCP权限后旧连接不能再发现或调用三项。
+6. 正常关闭并以同profile重启，权限保持、Model/origin零重放；关闭所有客户端，保存脱敏trace/evidence，
+	验证两代Main/Core/Worker销毁、8888释放及完整WinINet/journal恢复后删除profile。
+
+### 预期与证据
+
+Red必须发生于三条Tool缺失或正式业务效果缺口，不能来自selector、网络fixture或环境失败。空目标/客户端中止
+返回0是产品正式语义，不要求虚构stale错误。业务证据只保存目标身份、计数、内容哈希与协议结论；审批和Model
+结果不包含敏感URL/Header/正文。unit/integration与同一真实workflow分别按Red→Green闭环，不能用既有
+UI批量命令workflow替代本组Agent/MCP调用。
+
+2026-09-06：executor23项因三条Tool缺失Red，既有Core队列基线17/17；同一真实workflow在discovery缺失
+三项而Red，Main/Core `26832/37224`正常销毁。接入后23/23 Green；摘要unit随后从`value`精确Red，
+真实页面也在`data-summary-kind=value`取得Red，再实现本地化状态/数量摘要后28/28 Green。
+Red产物分别在TEMP下`interceptor-breakpoint-batch-e2e-red`、`interceptor-breakpoint-batch-summary-e2e-red`。
+
+最终本workflow1/1（35.3秒），Main/Core两代`42592/42636`、`25756/42356`均正常销毁；通过真实UI创建的
+两条Rule、多条HTTP请求与两条WebSocket连接验证Rule/queue隔离、原始body保留、未发送草稿不被使用、
+Deny/Allow/Auto、空目标返回0、Ask/Auto摘要、Agent/MCP独立撤权及重启零重放。origin最终6次请求、
+WebSocket4条已转发文本；归档只有计数、哈希和布尔结论，文件为`breakpoint-batch.json`。
+
+关联旧Agent断点流程1/1（43.4秒），两代`15836/27864`、`11372/12132`；全局授权、原UI queue命令、
+MCP Browser/Desktop四条4/4（1.6分钟），七代`9880/41232`、`27880/35316`、`23808/33460`、
+`16740/41760`、`3732/37300`、`14992/28452`、`27684/39564`。六条流程共11个代际均
+`gracefulDestroyVerified=true`，8888释放、完整WinINet/journal/进程树恢复；归档分别为
+`interceptor-breakpoint-batch-final-e2e-green`、`interceptor-breakpoint-batch-existing-agent-green`与
+`interceptor-breakpoint-batch-remaining-e2e-green`。
+
+中间测试前提修正不计为产品Red：先进入Capture再Recording；公开PendingBreakpoint是扁平DTO；WebSocket
+方向内串行所以两条连接各产生一个pending；已选Capture行不能重复点击关闭详情。原始失败证据均独立保留。
+旧Agent关联首轮将11项撤权塞进同一Turn导致失败，并在失败清理中遇到敏感可见内容审计；Main/Core
+`40148/16460`正常销毁不代表整条验收通过，证据在`interceptor-breakpoint-batch-related-first-run`。
+改为discovery与每项撤权独立Turn后同一流程Green，未提升产品步数上限、未删除任何撤权断言。
+
 <a id="breakpoints-toggle"></a>
 ## `breakpoints.toggle`
 

@@ -1,6 +1,6 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-08-25
+> 最后更新：2026-09-06
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
@@ -263,6 +263,38 @@ Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Rend
     文本body；WebSocket只接受文本body。跨phase字段在审批和执行前均拒绝；不接受headers、文件路径或close code。
 - HTTP与WebSocket pending都必须由正式UI配置和真实客户端流量产生。Tool测试不得直接构造queue成员。
 - Agent/MCP开关只决定Tool是否可发现/调用，不改变产品HTTP全局开关或当前WebSocket连接配置。
+
+### 6.2 Agent / MCP批量Tool契约（已实现）
+
+`breakpoints_continue_queue`、`breakpoints_drop_queue`分别接受严格的`queueKey`，
+`breakpoints_continue_rule`只接受`ruleId`，各自复用同名正式Core命令，不合并用户意图。
+`queueKey`沿用`http`或`ws:<exchangeId>`，Rule身份来自真实Rules/待处理快照；不接受列表位置、
+任意目标数组、编辑正文或文件路径。
+
+- 三项均为change，共用Agent/MCP独立授权及Ask/Auto。Drop明确声明丢弃后果；Deny、预取消或撤权不触达
+    mutation命令。取消信号原样进入Core RPC，不新增Tool专用队列。
+- 审批前读取`breakpoint.list`并只披露目标键及当前匹配数量，不把URL、Header、正文或Token写入影响摘要。
+    审批数量是当时的说明，不锁定成员；执行复用Core在命令开始时取得的成员快照，返回实际`resolvedCount`。
+- queue命令只作用于同一逻辑队列；rule命令只作用于相同Rule身份，不解除其他Rule或WebSocket队列。
+    目标已清空/客户端中止时返回0，不能按旧列表位置误操作其他目标。重复执行仍遵循同一正式空目标语义。
+- Transcript结果复用已有本地化“已放行/已丢弃”并显示实际数量（包括0），不退回原始JSON；公共摘要状态和
+    数量属性允许真实workflow在当前语言下验证结果，设计稿与Renderer使用相同紧凑布局。
+- Continue原样转发，Drop丢弃原目标，不隐式采用Renderer未提交草稿。新来的pending及其他队列保持自身状态；
+    Renderer通过既有`breakpoint.pending`刷新，不为Agent/MCP新增同步通道。
+- WebSocket继续只保存一份当前活动配置；验证多队列时先在连接A挂起帧，再通过正式UI切到连接B并挂起帧。
+    旧pending保持等待，由目标批量命令解除；不为测试新增多配置能力或后门。
+- 先取得最小executor缺失Tool Red和`breakpoints.tools.batch`真实Electron discovery Red，再接入实现并复跑
+    同组Green。真实流程用产品UI建立两条HTTP Rule和两条独立WebSocket连接，核实数量、数据面、Ask/Auto、
+    空目标、独立撤权、重启零重放、完整进程销毁及WinINet/journal恢复。不能由测试直接seed队列。
+
+2026-09-06：executor23项缺失Tool Red、真实discovery Red→Green；摘要另经unit与真实`value` Red后Green。
+六条关联真实流程、11个Main/Core代际均正常销毁并恢复8888/WinINet/journal；批量本身两代
+`42592/42636`、`25756/42356`，原始HTTP/body与WebSocket队列隔离、Deny/Allow/Auto、0数量和两列撤权/
+重启零重放通过，详细证据与中间测试失败归因见[Breakpoints规格](../../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md#breakpoints-tools-batch)。
+全workspace类型、Desktop579/579、Tools215/215、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67
+与设计交互81/81通过；Core329/331仅两项既有framing债务。新增12视图72/72、0 missing/flagged、最大0.5px；
+完整parity280视图/1,920目标/1,888匹配/32缺失/335 flagged保留既有界面波动，不算全绿。离线package、
+artifact audit（1,294 files / 392,889,491 bytes）、production audit0漏洞及smoke1/1通过。
 
 真实Electron验收分别由`agent.tools.breakpoints`与复用Streamable HTTP transport的`mcp.tools.breakpoints`承担。
 两者均从Rules UI和真实客户端自产pending；Agent覆盖WebSocket连接隔离、Continue/Edit/Drop/Disable与重启零重放，

@@ -98,6 +98,7 @@ export type AgentToolResultSummary =
     }
   | { readonly kind: 'ruleHits'; readonly ruleCount: number; readonly totalHits: number }
   | { readonly kind: 'rulesApplied'; readonly revision: number }
+  | { readonly kind: 'breakpointBatch'; readonly state: 'continued' | 'dropped'; readonly count: number }
   | { readonly kind: 'breakpoints'; readonly count: number; readonly enabled: boolean }
   | { readonly kind: 'breakpointConfig'; readonly enabled: boolean }
   | {
@@ -378,6 +379,14 @@ export function summarizeAgentToolResult(
   }
   if (name === 'rules_replace_tree' && isRecord(result.value) && typeof result.value['revision'] === 'number') {
     return { kind: 'rulesApplied', revision: result.value['revision'] };
+  }
+  if (['breakpoints_continue_queue', 'breakpoints_drop_queue', 'breakpoints_continue_rule'].includes(name)
+    && isRecord(result.value) && typeof result.value['resolvedCount'] === 'number') {
+    return {
+      kind: 'breakpointBatch',
+      state: name === 'breakpoints_drop_queue' ? 'dropped' : 'continued',
+      count: result.value['resolvedCount'],
+    };
   }
   if (name === 'breakpoints_list'
     && isRecord(result.value)

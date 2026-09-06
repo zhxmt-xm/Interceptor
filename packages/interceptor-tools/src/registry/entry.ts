@@ -51,6 +51,7 @@ import { buildRulesExportTool } from '../rules/export';
 import { buildRulesImportTool } from '../rules/import';
 import { buildCollectionTools } from '../composer/collection';
 import { buildCollectionTransferTools } from '../composer/transfer';
+import { buildBreakpointBatchTools } from '../breakpoints/batch';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -130,6 +131,9 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'breakpoints_continue',
   'breakpoints_forward_edited',
   'breakpoints_drop',
+  'breakpoints_continue_queue',
+  'breakpoints_drop_queue',
+  'breakpoints_continue_rule',
   'diagnostics_query',
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
@@ -159,6 +163,7 @@ export function buildInterceptorToolRegistry(
     buildRulesImportTool(),
     ...buildCollectionTools(interceptorToolRedactor),
     ...buildCollectionTransferTools(),
+    ...buildBreakpointBatchTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

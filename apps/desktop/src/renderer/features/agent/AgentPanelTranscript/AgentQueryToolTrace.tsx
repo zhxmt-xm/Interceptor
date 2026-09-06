@@ -66,6 +66,7 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                 <span
                   data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
                   data-summary-kind={summary?.kind}
+                  data-resolved-count={summary?.kind === 'breakpointBatch' ? summary.count : undefined}
                   data-storage-body-count={summary?.kind === 'storage' ? summary.bodyCount : undefined}
                   data-storage-exchange-count={summary?.kind === 'storage' ? summary.exchangeCount : undefined}
                   data-storage-total-bytes={summary?.kind === 'storage' ? summary.totalBytes : undefined}

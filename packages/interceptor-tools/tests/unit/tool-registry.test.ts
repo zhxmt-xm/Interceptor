@@ -41,6 +41,9 @@ const TOOL_NAMES = [
   'breakpoints_continue',
   'breakpoints_forward_edited',
   'breakpoints_drop',
+  'breakpoints_continue_queue',
+  'breakpoints_drop_queue',
+  'breakpoints_continue_rule',
   'diagnostics_query',
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
@@ -163,7 +166,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(42);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(45);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

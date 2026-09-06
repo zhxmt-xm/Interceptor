@@ -132,6 +132,9 @@ export function AgentToolResultSummary({
     case 'breakpointConfig':
       content = t(summary.enabled ? 'agent.tools.enabled' : 'agent.tools.disabled');
       break;
+    case 'breakpointBatch':
+      content = `${t(summary.state === 'continued' ? 'agent.tools.continued' : 'agent.tools.dropped')} · ${new Intl.NumberFormat(i18n.language).format(summary.count)}`;
+      break;
     case 'breakpointResolution':
       content = `${t(summary.state === 'continued'
         ? 'agent.tools.continued'

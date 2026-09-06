@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、109条Inventory与109份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、110条Inventory与110份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -228,6 +228,7 @@ diagnostics.row.<traceKey>
 | `breakpoints.queue-stepping` | HTTP队首、Queued、中间abort与不抢焦点 | privileged UI | passed |
 | `breakpoints.queue-isolation` | HTTP/WS隔离、同连接双向队列、独立草稿与精确frame去重 | privileged UI | passed |
 | `breakpoints.queue-commands` | queue/rule三条批量命令与原始数据面 | privileged UI | passed |
+| `breakpoints.tools.batch` | Agent/MCP三条批量Tool、Rule/queue隔离、原样数据面与双代销毁 | shared | passed |
 | `breakpoints.lifecycle-release` | 无timeout等待与Core生命周期aborted释放 | privileged UI | passed |
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |

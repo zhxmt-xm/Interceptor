@@ -259,6 +259,26 @@ test('Rules import approval distinguishes confirmation from cancellation', async
   expect(await approval.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+for (const [name, argument, result] of [
+  ['breakpoints_continue_queue', 'queueKey: http', 'Continued · 2'],
+  ['breakpoints_drop_queue', 'queueKey: http', 'Dropped · 2'],
+  ['breakpoints_continue_rule', 'ruleId: rule-checkout', 'Continued · 2'],
+] as const) {
+  test(`批量断点 ${name}审批保留目标和实际结果计数`, async ({ page }) => {
+    await page.evaluate((agentToolApprovalName) => window.__setState?.({
+      view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+      agentToolApprovalName, agentToolApproval: 'pending', agentToolTrace: '',
+    }), name);
+    const approval = page.locator('[data-parity="agent-tool-approval"]');
+    await expect(approval).toContainText(argument);
+    await expect(approval).toContainText('Currently pending: 2');
+    await approval.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+    await expect(approval).toHaveAttribute('data-approval-status', 'allowed');
+    await expect(approval).toContainText(name);
+    await expect(approval).toContainText(result);
+  });
+}
+
 test('Collection Tool query and replacement retain compact revision summaries', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'composer', agentPanel: 'open', agentToolTrace: 'collection', agentToolApproval: '',
@@ -646,6 +666,7 @@ test('Agent Breakpoints Tool activity keeps pending and resolution summaries sca
 
   const trace = page.locator('[data-parity="agent-query-tool-trace"]');
   await expect(trace.locator('[data-tool-name]')).toHaveCount(5);
+  await expect(trace.locator('[data-tool-name="discover_tools"]')).toContainText('11 tools discovered');
   await expect(trace.locator('[data-tool-name="breakpoints_list"]'))
     .toContainText('Pending breakpoints: 1 · Enabled');
   await expect(trace.locator('[data-tool-name="breakpoints_disable_http"]'))

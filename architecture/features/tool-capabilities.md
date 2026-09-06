@@ -3,10 +3,10 @@
 > 最后更新：2026-09-06
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现42/73，完整自动验收38/73；TLS四项代码完成但最终CA清理E2E blocked，另31项待实现。Rules五项与Composer六项均已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，代码已实现45/73，完整自动验收41/73；TLS四项代码完成但最终CA清理E2E blocked，另28项待实现。Rules五项、Composer六项与Breakpoints十一项均已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
 > Settings代码12/26、完整自动验收8/26；只读六项与系统代理启用/恢复两项已完成真实验收。Playground
-> recipe为42/42、Developer人工结论为0/42；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> recipe为45/45、Developer人工结论为0/45；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -16,11 +16,11 @@
 | Capture | 17 | 10 | 0 | 7 |
 | Rules | 5 | 5 | 0 | 0 |
 | Composer | 6 | 6 | 0 | 0 |
-| Breakpoints | 11 | 8 | 0 | 3 |
+| Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 1 | 0 | 3 |
 | Settings | 26 | 8 | 4 | 14 |
 | Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 38 | 4 | 31 |
+| 合计 | 73 | 41 | 4 | 28 |
 
 ## 1. 唯一目录
 
@@ -96,7 +96,7 @@ interface ToolCapabilitySettingsRecord {
 }
 ```
 
-- fresh profile或两组关闭项都为空时不保留文件，42项自然全部开启；
+- fresh profile或两组关闭项都为空时不保留文件，45项自然全部开启；
 - 读取时拒绝非法schema、重复名称和额外字段；合法数组中的未知/旧名称从内存快照丢弃，不改写文件、不映射到
    新名称；写入只保留当前registry名称并按registry顺序规范化；
 - `getToolCapabilitySettings`返回六组目录和两组关闭名称的完整快照；
@@ -104,7 +104,7 @@ interface ToolCapabilitySettingsRecord {
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
 - Agent当前通过动态`AgentToolSource`接入十个Capture Tool、五个Rules Tool、六个Composer Tool、
-   八个Breakpoints Tool、一个Diagnostics Tool与十二个Settings Tool；关闭项同时过滤Capability
+   十一个Breakpoints Tool、一个Diagnostics Tool与十二个Settings Tool；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
 ## 3. 完整 Tool 清单
@@ -164,13 +164,15 @@ interface ToolCapabilitySettingsRecord {
 | `breakpoints_continue` | change | `resolveBreakpoint(..., 'continue')` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `breakpoints_forward_edited` | change | `resolveBreakpoint(..., 'continue', edit)` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `breakpoints_drop` | change | `resolveBreakpoint(..., 'drop')` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
-| `breakpoints_continue_queue` | change | `continueBreakpointQueue` | 产品已具备 |
-| `breakpoints_drop_queue` | change | `dropBreakpointQueue` | 产品已具备 |
-| `breakpoints_continue_rule` | change | `continueBreakpointRule` | 产品已具备 |
+| `breakpoints_continue_queue` | change | `continueBreakpointQueue` / `breakpoint.continueQueue` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `breakpoints_drop_queue` | change | `dropBreakpointQueue` / `breakpoint.dropQueue` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
+| `breakpoints_continue_rule` | change | `continueBreakpointRule` / `breakpoint.continueRule` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 
-本阶段只接入前八项Breakpoints Tool。`breakpoints_list`是唯一query；其余七项是change并服从Agent Session或
+Breakpoints十一项已全部接入。`breakpoints_list`是唯一query；其余十项是change并服从Agent Session或
 MCP Client的`ask`/`auto`。pending identity只在当前Core代际内由`breakpointId`标识，没有revision；审批前读取
 当前pending生成动态影响，执行仍以Core `breakpoint.resolve`对已消失ID返回的`conflict`为最终并发保护。
+三条批量命令按正式queueKey/ruleId作用于命令开始时的匹配集合，返回实际`resolvedCount`；空目标返回0，
+不套用单项resolve的stale冲突语义，不采用Renderer未提交草稿。
 
 `breakpoints_forward_edited`按pending phase收窄：request接受`method`、`url`与文本`body`，response接受
 `statusCode`与文本`body`，WebSocket只接受文本`body`；跨phase字段在审批和执行前拒绝。至少一项编辑必须存在；
@@ -264,6 +266,9 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `breakpoints_continue` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_forward_edited` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `breakpoints_drop` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `breakpoints_continue_queue` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `breakpoints_drop_queue` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `breakpoints_continue_rule` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `diagnostics_query` | 已完成 | 已完成 | Agent已完成 |
 | `settings_get_core_process_status` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `settings_get_system_proxy_status` | 已完成 | 已完成 | Agent + MCP已完成 |
@@ -281,7 +286,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出及Collection四项均已完成，当前38/73，继续按工作项逐组交付。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出、Collection四项及Breakpoints批量三项均已完成，当前41/73，继续按工作项逐组交付。
 
 ### 5.1 首批24项与独立验收
 
@@ -331,7 +336,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有42项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另31项尚未实现，不计入已验收范围。
+   目前有45项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另28项尚未实现，不计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -339,9 +344,9 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项与Composer六项已完成；TLS保留权限阻塞，下一个独立工作项是Breakpoints三条批量Tool。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项与Breakpoints十一项已完成；TLS保留权限阻塞，下一个独立工作项是Diagnostics两项查询与导出。
 
-### 5.2 余下49项计划（已完成14项，剩余35项）
+### 5.2 余下49项计划（已完成17项，剩余32项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
@@ -351,7 +356,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 | 1 | Settings | 18 | 只读查询6项与系统代理启用/恢复2项已完成；TLS配置与解密开关4项代码完成待最终清理验收 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
 | 2 | Rules | 0 | Export/Import均已完成；Import复用UI预览确认与原子追加，真实输入来自同workflow产品Export |
 | 3 | Composer | 0 | Collection查询/替换与Export/Import均已完成；Import复用正式确认及自动保存协调，文件输入由同workflow产品Export生成 |
-| 4 | Breakpoints | 3 | Continue queue、Drop queue、Continue rule；以真实HTTP/WebSocket pending验证作用范围、Ask/Auto和并发失效 |
+| 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
 | 5 | Diagnostics | 3 | Trace与Recent查询2项，再脱敏Export；保持查询静默与日志权限边界 |
 | 6 | Capture | 7 | Transfer任务查询/取消2项、Body导出1项、HAR与Archive各自Export/Import共4项；复用正式任务与原生Dialog流程 |
 | 7 | Updates | 4 | 状态、检查、下载、打开；保持下载校验和原生安装器边界，不重新引入GitHub Auth Tool |
@@ -528,13 +533,41 @@ production audit0漏洞与packaged smoke1/1（44.4秒）通过，Preload允许�
 `interceptor-composer-transfer-full-parity`及同名`.md`。registry/recipe42项、84个独立开关，Developer人工结论0/42。
 下一独立工作项为Breakpoints批量三项；其契约与23项unit Red单独保留，不纳入集合传输提交。
 
+### 5.8 Breakpoints批量命令
+
+三条change共享正式Core命令与AbortSignal，严格校验`queueKey`/`ruleId`，审批仅披露目标及匹配计数；
+执行按命令开始时的集合处理，空目标返回0。Continue保留原始流量，Drop不触达origin，均不采用未提交草稿。
+Transcript复用已有15语言“已放行/已丢弃”与实际数量，Ask/Auto公开相同`breakpointBatch`/数量属性。
+
+executor23项缺失Tool Red→Green、Core队列基线17/17；真实discovery Red代际`26832/37224`正常销毁。
+摘要另经unit与真实页面`value` Red后28/28 Green。最终本workflow1/1（35.3秒），两代Main/Core为
+`42592/42636`、`25756/42356`；旧Agent断点1/1（43.4秒），两代`15836/27864`、`11372/12132`，
+原UI queue、Settings授权与MCP Browser/Desktop四条4/4（1.6分钟）。六条流程共11代均正常销毁，8888、
+WinINet/journal与进程树恢复，真实数据面6次HTTP与4条WebSocket文本，Model/origin重启增量0。
+归档为TEMP下`interceptor-breakpoint-batch-final-e2e-green`、`interceptor-breakpoint-batch-existing-agent-green`
+和`interceptor-breakpoint-batch-remaining-e2e-green`。旧Agent首轮整组撤权集中于单Turn失败并触发敏感可见
+内容审计，证据在`interceptor-breakpoint-batch-related-first-run`；改为分轮后Green，不提升产品循环上限。
+
+全workspace typecheck、Desktop579/579、Tools215/215、MCP32/32、Runtime122/122、Protocol25/25、
+Playground67/67通过；Core329/331仍仅既有framing两项。完整设计交互81/81，discovery旧8项文案追加
+Red→11项Green；新增12视图72/72、0 missing/flagged、最大0.5px。完整parity280 views / 1,920 targets /
+1,888 matched / 32 missing / 335 flagged、平均2.28%；新增批量72目标仍全匹配，其他既有Capture/TLS、
+文件弹窗和Settings视图几何波动未修复，不把完整报告标成全绿。480张出图已归档，提交保留12张新图及
+两张discovery更新，466张非目标图按SHA256保持基线；完整报告与Renderer产物在TEMP下
+`interceptor-breakpoint-batch-full-parity`及同名`.md`。
+
+本机Electron缓存经SHA256校验后`npm --offline run package`成功，artifact audit为1,294 files /
+392,889,491 bytes，production audit0漏洞，packaged smoke1/1（45.1秒）。registry/recipe45项、90开关，
+Developer人工结论0/45。下一组Diagnostics三项已取得28项unit Red和真实discovery Red（Main/Core
+`30472/44700`正常销毁），契约与测试保留在下一工作项，不纳入本次批量提交。
+
 ## 6. 相关未完成验收
 
 这些事项与Tool交付相关，但不计入全量73项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 42/42；Developer结论0/42 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下31项开发 |
+| Playground人工矩阵 | 当前recipe 45/45；Developer结论0/45 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下28项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |

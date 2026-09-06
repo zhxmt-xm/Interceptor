@@ -202,6 +202,16 @@ describe('Agent transcript utilities', () => {
       breakpointId: 'bp-1',
       state: 'continued',
     });
+    for (const [name, state] of [
+      ['breakpoints_continue_queue', 'continued'],
+      ['breakpoints_drop_queue', 'dropped'],
+      ['breakpoints_continue_rule', 'continued'],
+    ] as const) {
+      for (const count of [0, 2]) {
+        expect(summarizeAgentToolResult(name, { ok: true, value: { resolvedCount: count } }))
+          .toEqual({ kind: 'breakpointBatch', state, count });
+      }
+    }
     expect(summarizeAgentToolResult('composer_send_request', {
       ok: true,
       value: {

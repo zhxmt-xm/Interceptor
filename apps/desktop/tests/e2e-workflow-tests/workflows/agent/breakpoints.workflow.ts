@@ -30,6 +30,9 @@ const BREAKPOINT_TOOL_NAMES = [
   'breakpoints_continue',
   'breakpoints_forward_edited',
   'breakpoints_drop',
+  'breakpoints_continue_queue',
+  'breakpoints_drop_queue',
+  'breakpoints_continue_rule',
 ] as const;
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -292,8 +295,8 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   await getByAutomationId(page, AUTOMATION_IDS.agent.chat.new).click();
   await expect(sessionRoot).toHaveAttribute('data-tool-execution-mode', 'ask');
 
-  // Query：渐进发现严格八项，并直接读取与DOM相同的pending identity和typed摘要。
-  // Query: discover exactly eight Tools and directly read the same pending identity plus typed summary.
+  // Query：渐进发现严格十一项，并直接读取与DOM相同的pending identity和typed摘要。
+  // Query: discover exactly eleven Tools and directly read the same pending identity plus typed summary.
   openAiCompatibleLab.enqueueToolCall({
     callId: 'breakpoints-discover',
     name: 'discover_tools',
@@ -581,8 +584,8 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   ).filter({ hasText: afterDisable })).toHaveCount(0);
   evidence.webSocketConfiguration = true;
 
-  // Settings边界：关闭八项后discovery为空，逐项猜测均unknown_tool；最后恢复默认开关与Ask。
-  // Settings boundary: disabling all eight empties discovery and guessed calls are unknown; finally restore defaults and Ask.
+  // Settings边界：关闭十一项后分轮验证discovery与逐项unknown_tool，避免把整组失败塞进一个Turn；最后恢复默认开关与Ask。
+  // Settings boundary: verify empty discovery and each unknown Tool in separate turns, without packing every failure into one turn; finally restore defaults and Ask.
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
   for (const toolName of BREAKPOINT_TOOL_NAMES) {
@@ -596,6 +599,9 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     name: 'discover_tools',
     arguments: { capabilityId: 'breakpoints' },
   });
+  openAiCompatibleLab.enqueueTurn({ textChunks: [answers.disabled] });
+  await sendMessage(page, prompts.disabled);
+  await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   for (const toolName of BREAKPOINT_TOOL_NAMES) {
     const argumentsByName: Record<string, unknown> = toolName === 'breakpoints_enable_websocket'
       ? { exchangeId, frames: ['message'] }
@@ -609,15 +615,15 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
       name: toolName,
       arguments: argumentsByName,
     });
+    openAiCompatibleLab.enqueueTurn({ textChunks: [answers.disabled] });
+    await sendMessage(page, prompts.disabled);
+    await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   }
-  openAiCompatibleLab.enqueueTurn({ textChunks: [answers.disabled] });
-  await sendMessage(page, prompts.disabled);
-  await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   const finalRequests = openAiCompatibleLab.requestsForAssertions();
   expect(discoveredNames(finalRequests, 'disabled-breakpoints-discover')).toEqual([]);
   expect(BREAKPOINT_TOOL_NAMES.map((name) => errorCode(finalRequests, `disabled-${name}`)))
-    .toEqual(Array(8).fill('unknown_tool'));
-  evidence.disabledErrorCodes = Array(8).fill('unknown_tool');
+    .toEqual(Array(BREAKPOINT_TOOL_NAMES.length).fill('unknown_tool'));
+  evidence.disabledErrorCodes = Array(BREAKPOINT_TOOL_NAMES.length).fill('unknown_tool');
 
   for (const toolName of BREAKPOINT_TOOL_NAMES) {
     await getByAutomationId(

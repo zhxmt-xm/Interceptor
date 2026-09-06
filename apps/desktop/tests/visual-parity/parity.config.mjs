@@ -733,6 +733,33 @@ export const views = [
           'Pause capture without stopping the proxy.',
         ],
       },
+      ...['continue-queue', 'drop-queue', 'continue-rule'].flatMap((action) => ['pending', 'allowed'].map((stage) => ({
+        id: `breakpoint-batch-${action}-${stage}${suffix}`, theme, agentModels: 'configured',
+        agentSessionState: `breakpoint-batch-${action}-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage,
+          agentToolApprovalName: `breakpoints_${action.replaceAll('-', '_')}`, agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-breakpoints_${action.replaceAll('-', '_')}-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Breakpoint batch approval', parity: 'agent-tool-approval' },
+          `breakpoints_${action.replaceAll('-', '_')}`,
+          {
+            name: 'Breakpoint batch result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-breakpoint-batch"] > span',
+          },
+        ],
+      }))),
       ...['export', 'import'].flatMap((action) => ['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `collection-${action}-${stage}${suffix}`, theme, agentModels: 'configured',
         agentSessionState: `collection-${action}-${stage}`,

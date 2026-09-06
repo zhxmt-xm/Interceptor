@@ -46,6 +46,9 @@ const BREAKPOINT_TOOL_NAMES = [
   'breakpoints_continue',
   'breakpoints_forward_edited',
   'breakpoints_drop',
+  'breakpoints_continue_queue',
+  'breakpoints_drop_queue',
+  'breakpoints_continue_rule',
 ] as const;
 
 interface McpHostConfiguration {
@@ -375,7 +378,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     protocolVersion = client.getNegotiatedProtocolVersion() ?? null;
     expect(protocolVersion).toBe('2026-07-28');
     const initialToolNames = (await client.listTools()).tools.map((tool) => tool.name);
-    expect(initialToolNames).toHaveLength(42);
+    expect(initialToolNames).toHaveLength(45);
     expect(initialToolNames.every((name) => (
       /^(capture|rules|composer|breakpoints|diagnostics|settings)_/.test(name)
     ))).toBe(true);
@@ -733,8 +736,8 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     ).filter({ hasText: afterDisableMessage })).toHaveCount(0);
     await expect(approval).toHaveCount(0);
 
-    // Settings撤权：八项MCP开关关闭后立即从tools/list消失，逐项猜测调用均为unknown tool且不触发审批。
-    // Settings revocation: all eight disappear immediately from tools/list; every guessed call is unknown and never opens approval.
+    // Settings撤权：十一项MCP开关关闭后立即从tools/list消失，逐项猜测调用均为unknown tool且不触发审批。
+    // Settings revocation: all eleven disappear immediately from tools/list; every guessed call is unknown and never opens approval.
     await openMcpSettings(desktopApp.page);
     for (const toolName of BREAKPOINT_TOOL_NAMES) {
       await getByAutomationId(

@@ -23,7 +23,7 @@ const TOOL_STEPS = {
     { name: 'capture_list_grpc_messages', arguments: 'exchangeId: grpc-unary-json · side: response · limit: 200', result: 'response · 1 message · complete' },
   ],
   breakpoints: [
-    { name: 'discover_tools', arguments: 'capabilityId: breakpoints', result: '8 tools discovered' },
+    { name: 'discover_tools', arguments: 'capabilityId: breakpoints', result: '11 tools discovered' },
     { name: 'breakpoints_list', arguments: 'No parameters', result: 'Pending breakpoints: 1 · Enabled' },
     { name: 'breakpoints_disable_http', arguments: 'No parameters', result: 'Disabled' },
     { name: 'breakpoints_enable_http', arguments: 'No parameters', result: 'Enabled' },

@@ -843,6 +843,9 @@ export const fakeInterceptorFixture = {
             { name: 'breakpoints_continue', title: 'Continue breakpoint', description: 'Forward one suspended item unchanged.', kind: 'change' },
             { name: 'breakpoints_forward_edited', title: 'Forward edited breakpoint', description: 'Forward one suspended item with explicit edits.', kind: 'change' },
             { name: 'breakpoints_drop', title: 'Drop breakpoint', description: 'Discard one suspended item.', kind: 'change' },
+            { name: 'breakpoints_continue_queue', title: 'Continue breakpoint queue', description: 'Forward all currently pending items in one logical queue unchanged.', kind: 'change' },
+            { name: 'breakpoints_drop_queue', title: 'Drop breakpoint queue', description: 'Discard all currently pending items in one logical queue.', kind: 'change' },
+            { name: 'breakpoints_continue_rule', title: 'Continue breakpoints from one Rule', description: 'Forward all currently pending items from one Rule unchanged.', kind: 'change' },
           ],
         },
         {
@@ -1258,6 +1261,9 @@ export function installFakeInterceptor({
               'breakpoints_continue',
               'breakpoints_forward_edited',
               'breakpoints_drop',
+              'breakpoints_continue_queue',
+              'breakpoints_drop_queue',
+              'breakpoints_continue_rule',
             ].map((name) => ({ descriptor: { name } })),
           },
         },
@@ -1406,6 +1412,43 @@ export function installFakeInterceptor({
     agentSessionSnapshot = {
       ...agentSessionSnapshot, toolExecutionMode: 'ask',
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 6 },
+      items, turns: [turn], currentTurn: turn, sequence: items.length,
+    };
+  } else if (agentSessionState.startsWith('breakpoint-batch-')) {
+    const pending = agentSessionState.endsWith('-pending');
+    const action = agentSessionState.slice('breakpoint-batch-'.length).replace(/-(pending|allowed)$/, '');
+    const descriptors = {
+      'continue-queue': { name: 'breakpoints_continue_queue', description: 'Forward all currently pending items in one logical queue unchanged.' },
+      'drop-queue': { name: 'breakpoints_drop_queue', description: 'Discard all currently pending items in one logical queue.' },
+      'continue-rule': { name: 'breakpoints_continue_rule', description: 'Forward all currently pending items from one Rule unchanged.' },
+    };
+    const descriptor = descriptors[action];
+    const ruleTarget = action === 'continue-rule';
+    const args = ruleTarget ? { ruleId: 'rule-checkout' } : { queueKey: 'http' };
+    const effect = ruleTarget
+      ? 'Resolve the matching items present when the command starts; do not apply editor drafts.\nRule: rule-checkout\nCurrently pending: 2'
+      : 'Resolve only the target queue items present when the command starts; do not apply editor drafts.\nQueue: http\nCurrently pending: 2';
+    const createdAt = agentSessionSnapshot.summary.createdAt;
+    const turnId = agentSessionSnapshot.turns[0].turnId;
+    const items = [...agentSessionSnapshot.items, {
+      kind: 'assistant-message', itemId: 'breakpoint-batch-assistant', turnId,
+      content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
+    }, {
+      kind: 'tool-call', itemId: 'breakpoint-batch-call', turnId, callId: 'call-breakpoint-batch',
+      name: descriptor.name, arguments: args, status: pending ? 'running' : 'completed',
+      approval: {
+        approvalId: 'breakpoint-batch-approval', status: pending ? 'pending' : 'allowed',
+        description: descriptor.description, effect, effectMetadata: { ...args, pendingCount: 2 },
+      }, createdAt: createdAt + 2,
+    }];
+    if (!pending) items.push({
+      kind: 'tool-result', itemId: 'breakpoint-batch-result', turnId, callId: 'call-breakpoint-batch',
+      name: descriptor.name, result: { ok: true, value: { resolvedCount: 2 } }, createdAt: createdAt + 3,
+    });
+    const turn = { ...agentSessionSnapshot.turns[0], status: pending ? 'waiting-for-tool-approval' : 'completed', updatedAt: createdAt + 4 };
+    agentSessionSnapshot = {
+      ...agentSessionSnapshot, toolExecutionMode: 'ask',
+      summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
   } else if (agentSessionState.startsWith('collection-export-') || agentSessionState.startsWith('collection-import-')) {

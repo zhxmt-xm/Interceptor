@@ -35,6 +35,9 @@ const EXPECTED_SETTINGS_COPY = [
   ['breakpoints_continue', 'Continue breakpoint', 'Forward one suspended item unchanged.'],
   ['breakpoints_forward_edited', 'Forward edited breakpoint', 'Forward one suspended item with explicit edits.'],
   ['breakpoints_drop', 'Drop breakpoint', 'Discard one suspended item.'],
+  ['breakpoints_continue_queue', 'Continue breakpoint queue', 'Forward all currently pending items in one logical queue unchanged.'],
+  ['breakpoints_drop_queue', 'Drop breakpoint queue', 'Discard all currently pending items in one logical queue.'],
+  ['breakpoints_continue_rule', 'Continue breakpoints from one Rule', 'Forward all currently pending items from one Rule unchanged.'],
   ['diagnostics_query', 'Query diagnostics', 'Read filtered structured diagnostic records.'],
   ['settings_get_core_process_status', 'Core process status', 'Read the Core process lifecycle, not listener or upstream health.'],
   ['settings_get_system_proxy_status', 'System proxy status', 'Read system proxy ownership and upstream reachability without raw OS configuration.'],
@@ -64,7 +67,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(42);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(45);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

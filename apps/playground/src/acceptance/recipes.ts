@@ -100,6 +100,18 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Create a pending breakpoint and keep an origin observation ready.'],
     ['Deny keeps it pending.', 'Allow drops it once and origin does not receive forwarded data.'],
   ),
+  breakpoints_continue_queue: recipe(
+    ['Create multiple HTTP pending requests through applied breakpoint Rules and one pending WebSocket frame in another queue.', 'Read the target queueKey through breakpoints_list and keep an unsent editor draft.'],
+    ['Deny keeps all requests and frames pending.', 'Allow forwards only the target queue unchanged and ignores editor drafts.', 'The returned resolvedCount matches the invocation-time target count; other queues remain pending.', 'Auto uses the same command and an empty target returns zero.'],
+  ),
+  breakpoints_drop_queue: recipe(
+    ['Create multiple pending requests or frames and keep an independent queue pending.', 'Read the target queueKey and prepare an origin observation.'],
+    ['Deny keeps the queue unchanged.', 'Allow and Auto discard only the target queue without forwarding its contents.', 'Other queues remain pending and resolvedCount reports the actual count.', 'Repeating after the queue is empty returns zero.'],
+  ),
+  breakpoints_continue_rule: recipe(
+    ['Create two applied breakpoint Rules with different matchers and produce pending traffic for both.', 'Read one real ruleId from breakpoints_list.'],
+    ['Deny keeps every pending item unchanged.', 'Allow and Auto forward only items from the selected Rule, preserving original content.', 'Other Rules and WebSocket queues remain pending.', 'The result contains only resolvedCount; an empty Rule target returns zero.'],
+  ),
   composer_send_request: recipe(
     ['Prepare a Playground origin URL and explicit request fields.'],
     ['Deny sends nothing.', 'Allow returns the same response and timing as Composer direct-send semantics.'],

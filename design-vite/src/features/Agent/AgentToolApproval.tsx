@@ -5,6 +5,24 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  breakpoints_continue_queue: {
+    description: 'Forward all currently pending items in one logical queue unchanged.',
+    effect: 'Resolve only the target queue items present when the command starts; do not apply editor drafts.\nQueue: http\nCurrently pending: 2',
+    arguments: 'queueKey: http',
+    result: 'Continued · 2',
+  },
+  breakpoints_drop_queue: {
+    description: 'Discard all currently pending items in one logical queue.',
+    effect: 'Resolve only the target queue items present when the command starts; do not apply editor drafts.\nQueue: http\nCurrently pending: 2',
+    arguments: 'queueKey: http',
+    result: 'Dropped · 2',
+  },
+  breakpoints_continue_rule: {
+    description: 'Forward all currently pending items from one Rule unchanged.',
+    effect: 'Resolve the matching items present when the command starts; do not apply editor drafts.\nRule: rule-checkout\nCurrently pending: 2',
+    arguments: 'ruleId: rule-checkout',
+    result: 'Continued · 2',
+  },
   composer_export_collection: {
     description: 'Export the saved Collection to a JSON file chosen through the native Save Dialog.',
     effect: 'Save the persisted Collection without sending requests or changing current edits.\nSaved requests: 2\nSaved folders: 1',
@@ -144,7 +162,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || ['rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName.startsWith('breakpoints_') || ['rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

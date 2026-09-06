@@ -305,6 +305,9 @@ describe('AgentToolService', () => {
       'breakpoints_continue',
       'breakpoints_forward_edited',
       'breakpoints_drop',
+      'breakpoints_continue_queue',
+      'breakpoints_drop_queue',
+      'breakpoints_continue_rule',
     ];
 
     expect(discovery).toMatchObject({

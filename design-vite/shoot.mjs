@@ -31,6 +31,19 @@ for (const feature of FEATURES) {
   }
 }
 for (const theme of ['light', 'dark']) {
+  for (const agentToolApprovalName of ['breakpoints_continue_queue', 'breakpoints_drop_queue', 'breakpoints_continue_rule']) {
+    for (const agentToolApproval of ['pending', 'allowed']) {
+      shots.push({
+        feature: 'agent-models', theme, variant: `panel-${agentToolApprovalName}-${agentToolApproval}`,
+        appSize: { width: 1600, height: 900 },
+        state: {
+          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+          agentProvider: 'configured', agentChat: 'checkout', agentExecutionMode: 'ask',
+          agentToolApprovalName, agentToolApproval, agentToolTrace: '',
+        },
+      });
+    }
+  }
   shots.push({ feature: 'playground', theme, variant: 'tool-approval', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'mcp', playgroundSelectedTool: 'capture_stop_recording', playgroundCallState: 'approval' } });
   shots.push({ feature: 'playground', theme, variant: 'capture-h1-json', state: { view: 'playground', theme: TOKEN[theme], playgroundSection: 'capture', playgroundSelectedScenario: 'h1-json', playgroundRequestDraft: '{\n  "body": "",\n  "headers": {\n    "accept": "application/json"\n  },\n  "kind": "http",\n  "method": "GET",\n  "path": "/playground/h1-json",\n  "protocol": "h1"\n}', playgroundCaptureDetailWidth: 560, playgroundMcpDetailWidth: 560, playgroundCallState: 'complete' } });
   shots.push({ feature: 'capture', theme, variant: 'sidebar-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });

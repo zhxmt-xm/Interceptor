@@ -56,6 +56,9 @@ const TOOL_NAMES = [
   'breakpoints_continue',
   'breakpoints_forward_edited',
   'breakpoints_drop',
+  'breakpoints_continue_queue',
+  'breakpoints_drop_queue',
+  'breakpoints_continue_rule',
   'diagnostics_query',
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
@@ -180,7 +183,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(84);
+    await expect(switches).toHaveCount(90);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -263,7 +266,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(84);
+    await expect(restoredSwitches).toHaveCount(90);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));
