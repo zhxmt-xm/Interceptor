@@ -1,8 +1,8 @@
-import type { PlaygroundManualRecord } from '../interfaces';
+import type { PlaygroundManualRecord } from '../app/interfaces';
 import type { ObservedMcpExchange } from '../mcp/observed-fetch';
 import { redactSensitiveText } from '../mcp/redaction';
 import type { PlaygroundMcpConnection } from '../mcp/session';
-import type { TrafficScenarioResult } from '../../server/interfaces.ts';
+import type { TrafficScenarioResult } from '../../server/scenarios/interfaces.ts';
 import { acceptanceRecipe } from './recipes';
 
 export interface AcceptanceReportInput {

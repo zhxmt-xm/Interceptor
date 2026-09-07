@@ -57,3 +57,26 @@ Capture中对照同一请求，再记录人工结论。
 - Main只处理`/mcp`路由、preflight与Bearer；认证后的协议判断由官方SDK负责；
 - Playground不读取Interceptor内部Store，不构造Client记录，也不绕过Ask/Auto、Dialog、UAC或系统权限；
 - 自动测试覆盖39个协议场景、Browser交互及真实Electron中的H1/WebSocket Capture链路，但不能替代24项Tool逐项人工验收。
+
+## E2E协议复用
+
+[server/scenarios/traffic-lab.ts](server/scenarios/traffic-lab.ts) 同时是人工工作台与 E2E 共用的协议流量库。
+E2E 可以直接使用 Node API，不要求所有操作经过 Playground 页面；需要验证页面时仍从 Browser 公开控件运行。
+
+| 入口 | 保留的能力 |
+| --- | --- |
+| `TrafficLab.run()` | 原有39项 HTTP/Body/Encoding/WebSocket/H2/gRPC/TLS 场景及 Draft、wire 事实、timing、trailers |
+| `trafficLab.httpTrafficRunner` | 默认 echo/cookies、精确自定义响应与二进制、任意外部客户端、显式代理、挂起/释放、主动取消和 origin 证据 |
+| `trafficLab.webSocketTrafficRunner` | 持续连接、独立客户端、客户端消息、origin 广播、指定 close code、断开与消息证据 |
+| `trafficLab.getTlsTrafficRunner()` | 共享 HTTPS/H2/gRPC origin，TLS-only 探测、ALPN、握手次数和实际应用字节计数 |
+| `TrafficLab.close()` | 统一关闭协议服务、释放 HTTP 响应 gate、销毁 WS/TLS socket 与取消停滞 CONNECT |
+
+协议归属、共用 WebSocket 客户端的两种关闭操作和生命周期见 [服务端说明](server/README.md)。
+E2E fixture 分类与使用边界见 [fixtures说明](../desktop/tests/e2e-workflow-tests/fixtures/README.md)。
+OpenAI-compatible 模型模拟继续由 Agent fixture 所有，不并入不接 LLM 的 Playground。
+
+## 代码目录
+
+- [src/main.tsx](src/main.tsx) 是前端唯一启动文件；`app/` 管页面外壳、共享界面与样式，`capture/` 管协议 Draft，`mcp/` 管连接与调用，`acceptance/` 管人工 recipe 与报告。类型跟随所属功能，不在根目录散放。
+- [server/entry.ts](server/entry.ts) 是服务端唯一启动文件；`api/` 管输入解析，`scenarios/` 管场景和调度，`http/`、`tls/`、`websocket/` 管对应协议，`shared/` 管跨协议工具。
+- 不使用包住全部代码的 `internal/`。已有历史辅助测试保留，后续按实际 Playground 场景与已有真实 E2E 验证，不再扩充“测试的测试”。

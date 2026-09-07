@@ -10,9 +10,9 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 async function automationSuffix(locator: Locator, prefix: string): Promise<string> {
   const automationId = await locator.getAttribute('data-automation-id');
@@ -36,7 +36,7 @@ async function expandFolder(page: Page, folderId: string): Promise<void> {
 
 test('rules.hierarchy-menus-status keeps hierarchy, validation and effects coherent', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

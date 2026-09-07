@@ -2,8 +2,8 @@ import { writeFile } from 'node:fs/promises';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 interface PanelGeometryEvidence {
   readonly step: string;

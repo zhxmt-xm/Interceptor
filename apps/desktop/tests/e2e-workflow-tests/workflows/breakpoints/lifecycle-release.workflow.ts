@@ -5,15 +5,15 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { createRequestBreakpointRule } from '../../fixtures/breakpoint-workflow';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', async ({
   desktopApp,
-  loopbackLab,
-  webSocketLab,
+  httpTrafficRunner: loopbackLab,
+  webSocketTrafficRunner: webSocketLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

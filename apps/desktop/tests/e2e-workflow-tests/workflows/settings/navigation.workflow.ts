@@ -5,8 +5,8 @@ import {
   AUTOMATION_IDS,
   type AutomationId,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const SETTINGS_SECTION_IDS = [
   AUTOMATION_IDS.settings.section.proxy,

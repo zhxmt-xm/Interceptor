@@ -4,13 +4,13 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   type LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
+} from '../../fixtures/runtime/local-electron-driver';
 
 const CURRENT_MCP_PROTOCOL = '2026-07-28';
 
@@ -123,7 +123,7 @@ async function resumeRecording(desktopApp: LocalElectronApplicationDriver): Prom
 
 test('mcp.browser-playground-cors connects a current-protocol Browser client', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   test.setTimeout(150_000);
   testInfo.annotations.push({

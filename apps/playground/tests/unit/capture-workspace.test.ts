@@ -5,7 +5,7 @@ import {
   createTrafficRequestDraftJson,
   parseTrafficRequestDraftJson,
   protocolForTrafficRequestDraft,
-} from '../../src/capture-workspace';
+} from '../../src/capture/workspace';
 
 describe('Capture workspace', () => {
   it('clamps Response Detail from the live page width', () => {

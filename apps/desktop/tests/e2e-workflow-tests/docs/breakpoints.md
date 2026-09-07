@@ -365,12 +365,12 @@ Drop真实中止目标数据面；请求不继续转发；pending badge、client
 
 1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
 2. Fresh profile首次出现Proxy readiness时点击`capture.readiness.cancel`；点击`capture.recording.toggle`，在再次出现的readiness点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
-3. 测试lab在random loopback port启动真实`WebSocketServer`。Raw客户端连接8888，发送absolute-form `GET ws://127.0.0.1:<originPort>/e2e/websocket-close`、Upgrade headers与固定Sec-WebSocket-Key；必须收到真实`HTTP/1.1 101`才算连接建立。
+3. Playground的`WebSocketTrafficRunner`在random loopback port启动真实`WebSocketServer`。共用的`ProxiedWebSocketClient`经8888发送absolute-form HTTP Upgrade；Node解析响应，并校验真实`HTTP/1.1 101`和`Sec-WebSocket-Accept`后才算连接建立。
 4. 等待包含`/e2e/websocket-close`的动态`capture.request-row.<exchangeId>`并点击；点击`capture.inspector.tab.messages`。点击`capture.websocket.breakpoint.toggle`打开当前连接的setup。
 5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions，点击`capture.websocket.breakpoint.enable`。
-6. Raw客户端构造FIN+opcode8、mask bit、随机4字节mask和network-order code=1000的masked close frame并写入8888连接。等待`breakpoints.close-code`可见且value=1000，证明真实close帧已在Capture原行暂停。
+6. 客户端调用`sendCloseFrame(1000)`，由`ws.Sender`编码masked Close帧，不提前改变连接状态或开始关闭超时。等待`breakpoints.close-code`可见且value=1000，证明真实close帧已在Capture原行暂停。
 7. 只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001。
-8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁raw client与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
+8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁客户端与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
 
 ### 预期效果
 
@@ -380,6 +380,10 @@ closeCode与body是正交编辑；没有body replacement时仍必须转发用户
 
 - 修复前提交运行同一workflow：origin收到1000而非1001。
 - 当前提交运行同一workflow：origin收到1001，且完整销毁/恢复证据Green。fixture或selector失败不算Red。
+
+2026-09-07统一客户端重构前后，关闭码编辑、queue isolation和Playground Capture同组三条真实E2E均3/3。
+最终关闭码workflow Main/Core为`11808/44180`，trace齐全、`gracefulDestroyVerified=true`；证据在TEMP下
+`interceptor-websocket-client-green-20260907`。关闭码仍由用户在真实UI修改，不通过客户端改造绕过产品流程。
 
 <a id="breakpoints-resize"></a>
 ## `breakpoints.resize`

@@ -7,8 +7,8 @@ import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { WinInetProxySettings } from '../../fixtures/workflow-host-safety-guard';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { WinInetProxySettings } from '../../fixtures/safety/workflow-host-safety-guard';
 
 interface SystemProxyJournalRecord {
   /** Minimal crash journal schema version. */

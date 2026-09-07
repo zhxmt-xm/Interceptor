@@ -14,12 +14,12 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import {
   submitWindowsFileDialogPath,
   type WindowsFileDialogOwner,
-} from '../../fixtures/windows-file-dialog';
+} from '../../fixtures/ui/windows-file-dialog';
 
 const IMPORT_IDS = {
   toolbar: 'rules.toolbar.import',

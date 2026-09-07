@@ -5,14 +5,14 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const QUERY_SECRETS = ['one', 'two'].map((suffix) => ['diagnostics-secret', suffix].join('-'));
@@ -78,7 +78,7 @@ async function configureProvider(page: Page, lab: OpenAiCompatibleLab): Promise<
 /** Send one direct request through the real Composer UI and wait for the origin. */
 async function sendComposerRequest(
   page: Page,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   requestPath: string,
 ): Promise<void> {
   const send = getByAutomationId(page, AUTOMATION_IDS.composer.send);
@@ -232,7 +232,7 @@ async function closeGeneration(
 
 test('agent.tools.diagnostics queries real redacted records in stable order', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
 }, testInfo) => {
   test.setTimeout(180_000);

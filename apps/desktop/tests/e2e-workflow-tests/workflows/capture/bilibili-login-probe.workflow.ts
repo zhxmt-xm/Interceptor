@@ -10,9 +10,9 @@ import type { Page } from '@playwright/test';
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const execFileAsync = promisify(execFile);
 

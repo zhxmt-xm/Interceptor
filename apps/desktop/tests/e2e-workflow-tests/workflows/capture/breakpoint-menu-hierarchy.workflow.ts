@@ -9,9 +9,9 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 /** 从公开Capture row automation ID提取Core exchange ID。 */
 async function exchangeId(row: Locator): Promise<string> {
@@ -24,7 +24,7 @@ async function exchangeId(row: Locator): Promise<string> {
 
 test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

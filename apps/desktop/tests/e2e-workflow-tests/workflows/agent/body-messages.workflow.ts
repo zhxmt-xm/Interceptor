@@ -10,15 +10,15 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { runPlaygroundCaptureScenario } from '../../fixtures/playground-capture-workflow';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { runPlaygroundCaptureScenario } from '../../fixtures/ui/playground-capture-workflow';
 
 const HTTP_PATH = '/playground/body/json';
 const WEBSOCKET_PATH = '/playground/ws/bidirectional';

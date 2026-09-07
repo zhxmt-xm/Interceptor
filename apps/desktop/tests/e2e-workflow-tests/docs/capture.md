@@ -51,6 +51,30 @@
 
 Playground不是直接构造Core状态的测试后门；真实Browser点击自产流量进入产品Capture，H1正文与WebSocket消息均可在产品UI检查，退出不遗留listener或系统副作用。
 
+### 2026-09-07 协议合并回归
+
+本次是流量基础设施重构，以上产品流程与断言不变，不为重构人为制造产品Red。
+迁移前先补旧HTTP/WS/TLS控制的网络基线，与既有场景合计60/60；原有fixture辅助单测41/41。
+`capture.playground-traffic`、`breakpoints.queue-isolation`、`breakpoints.websocket-close`、`agent.tools.composer`
+迁移前后同组均4/4 Green，证据分别位于TEMP下`interceptor-playground-consolidation-baseline-20260907`
+和`interceptor-playground-consolidation-green-20260907`。
+
+TLS/H2应用字节观测补测精确暴露33字节被计为0，改为TLS stream计数后同组Green；最终Playground84/84、
+Browser5/5与Desktop/Playground typecheck通过。最终文件命名后额外复跑Capture与Composer两条2/2，证据在
+`interceptor-playground-consolidation-final-20260907`：Capture Main/Core `33088/33932`，Composer两代
+`37960/18576`、`36556/16396`，trace齐全且`gracefulDestroyVerified=true`；宿主guard验证进程代际、8888、
+WinINet与journal恢复。未受后续TLS命名影响的WS队列/关闭码证据沿用同组Green，不扩大为39项产品E2E全部通过。
+
+随后将普通场景与断点统一到一个WebSocket客户端，`sendCloseFrame()`与`closeGracefully()`分别表示单帧发送和
+完整关闭，删除手写帧编解码。关闭码、队列隔离与Playground Capture的真实E2E前后均3/3；最终Main/Core分别为
+`11808/44180`、`2532/40652`、`29228/12220`，trace与正常销毁证据位于TEMP下`interceptor-websocket-client-green-20260907`。
+
+最终按功能整理目录，前端根只保留`main.tsx`，服务端根只保留`entry.ts`和说明；代码分别归入页面功能及协议目录，
+不保留笼统的internal层。目录调整后直接复跑已有`capture.playground-traffic`，1/1 Green，Main/Core `12720/20536`，
+trace齐全且`gracefulDestroyVerified=true`，证据在TEMP下`interceptor-playground-feature-folders-20260907`。
+Desktop typecheck通过；当时完整Playground typecheck受并行HAR recipe缺项阻塞，不能将其记为全绿。
+按用户新增规范，后续Playground/E2E设施改动只运行实际场景、已有真实E2E及必要typecheck/build，不再扩充设施测试。
+
 <a id="capture-recording-pause-resume"></a>
 ## `capture.recording.pause-resume`
 

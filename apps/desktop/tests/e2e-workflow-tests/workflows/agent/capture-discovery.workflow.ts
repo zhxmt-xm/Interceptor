@@ -10,14 +10,14 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const REQUEST_PATH = '/agent-e2e/capture';
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -251,7 +251,7 @@ async function closeGeneration(
 
 test('agent.tools.capture-discovery discovers, executes and restores query Tools', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
 }, testInfo) => {
   test.setTimeout(180_000);

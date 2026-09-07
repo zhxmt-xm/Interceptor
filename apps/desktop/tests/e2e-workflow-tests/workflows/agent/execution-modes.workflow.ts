@@ -6,14 +6,14 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const DENY_PROMPT = phrase('Keep capture active', 'and ask before changing it.');

@@ -8,12 +8,12 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const TOOL_NAMES = ['capture_get_transfer_job', 'capture_cancel_transfer_job'] as const;
 const PROMPT = ['Inspect or cancel', 'the selected file transfer job.'].join(' ');
@@ -113,7 +113,7 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   return { client, clientId };
 }
 
-async function captureArchiveSource(desktopApp: LocalElectronApplicationDriver, loopbackLab: LoopbackLab, client: Client): Promise<void> {
+async function captureArchiveSource(desktopApp: LocalElectronApplicationDriver, loopbackLab: HttpTrafficRunner, client: Client): Promise<void> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
   await startRecording(desktopApp);
   const requestPath = '/e2e/transfer-jobs/large-source';
@@ -183,7 +183,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
   }
 }
 
-test('capture.tools.transfer-jobs queries and cancels real file jobs without exposing paths', async ({ desktopApp, loopbackLab, openAiCompatibleLab }, testInfo) => {
+test('capture.tools.transfer-jobs queries and cancels real file jobs without exposing paths', async ({ desktopApp, httpTrafficRunner: loopbackLab, openAiCompatibleLab }, testInfo) => {
   test.skip(process.platform !== 'win32', '原生文件Dialog目前在Windows验证。');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.transfer-jobs' });

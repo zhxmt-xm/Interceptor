@@ -9,8 +9,8 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const execFileAsync = promisify(execFile);
 

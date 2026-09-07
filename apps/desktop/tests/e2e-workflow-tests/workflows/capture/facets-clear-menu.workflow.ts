@@ -9,9 +9,9 @@ import { PENDING_FACET_VALUE } from '../../../../src/renderer/features/capture/c
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 /** Extract a Core-owned exchange ID from one public Capture row automation ID. */
 async function exchangeId(row: Locator): Promise<string> {
@@ -24,7 +24,7 @@ async function exchangeId(row: Locator): Promise<string> {
 
 test('capture facets, Clear and breakpoint menu stay stable end to end', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

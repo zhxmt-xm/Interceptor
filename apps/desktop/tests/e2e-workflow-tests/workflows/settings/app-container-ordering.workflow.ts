@@ -2,8 +2,8 @@ import { writeFile } from 'node:fs/promises';
 import type { Locator, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const APP_CONTAINER_ROW_PREFIX = 'settings.app-containers.row.';
 

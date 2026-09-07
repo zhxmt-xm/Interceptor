@@ -6,13 +6,13 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('capture facets keep first-seen order when a later count overtakes', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

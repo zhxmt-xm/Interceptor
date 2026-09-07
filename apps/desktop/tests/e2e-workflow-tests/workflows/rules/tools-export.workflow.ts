@@ -7,10 +7,10 @@ import type { RuleNode } from '@interceptor/core-protocol';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const PROMPT = ['Export the saved Rules', 'using the selected destination.'].join(' ');
 const ANSWER = ['The Rules export', 'step has finished.'].join(' ');

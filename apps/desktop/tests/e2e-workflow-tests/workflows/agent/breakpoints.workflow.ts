@@ -10,16 +10,16 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { createRequestBreakpointRule } from '../../fixtures/breakpoint-workflow';
-import { startRecording } from '../../fixtures/capture-workflow';
+} from '../../fixtures/ui/automation';
+import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const BREAKPOINT_TOOL_NAMES = [
   'breakpoints_list',
@@ -130,7 +130,7 @@ function enqueueTool(
 /** Start one real POST that remains waiting at the product Breakpoint. */
 async function startPendingRequest(
   page: Page,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   proxyPort: number,
   requestPath: string,
   body: string,
@@ -252,9 +252,9 @@ async function closeGeneration(
 
 test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
-  webSocketLab,
+  webSocketTrafficRunner: webSocketLab,
 }, testInfo) => {
   test.setTimeout(240_000);
   testInfo.annotations.push({

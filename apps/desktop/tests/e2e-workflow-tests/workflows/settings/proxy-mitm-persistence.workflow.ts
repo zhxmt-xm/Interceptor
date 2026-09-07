@@ -9,12 +9,12 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
+} from '../../fixtures/runtime/local-electron-driver';
 
 const execFileAsync = promisify(execFile);
 const INSECURE_HOST = 'localhost';

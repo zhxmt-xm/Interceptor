@@ -5,13 +5,13 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { createRequestBreakpointRule } from '../../fixtures/breakpoint-workflow';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import type { ProxiedWebSocketClient, WebSocketLab } from '../../fixtures/websocket-lab';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import type { ProxiedWebSocketClient, WebSocketTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 
 const TOOL_NAMES = ['breakpoints_continue_queue', 'breakpoints_drop_queue', 'breakpoints_continue_rule'] as const;
 const PROMPT = ['Execute the selected', 'Breakpoint batch operation.'].join(' ');
@@ -88,7 +88,7 @@ async function selectCaptureRow(page: Page, requestPath: string): Promise<string
 
 async function holdHttpRequest(
   desktopApp: LocalElectronApplicationDriver,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   label: string,
   method: 'POST' | 'PUT',
 ): Promise<HeldHttpRequest> {
@@ -104,14 +104,14 @@ async function holdHttpRequest(
   return { requestPath, body, outcome };
 }
 
-async function expectForwarded(loopbackLab: LoopbackLab, heldRequests: readonly HeldHttpRequest[]): Promise<void> {
+async function expectForwarded(loopbackLab: HttpTrafficRunner, heldRequests: readonly HeldHttpRequest[]): Promise<void> {
   for (const heldRequest of heldRequests) {
     await expect(heldRequest.outcome).resolves.toMatchObject({ result: { statusCode: 200 } });
     await expect.poll(() => loopbackLab.observation(heldRequest.requestPath)?.body.toString('utf8')).toBe(heldRequest.body);
   }
 }
 
-async function expectDropped(loopbackLab: LoopbackLab, heldRequest: HeldHttpRequest): Promise<void> {
+async function expectDropped(loopbackLab: HttpTrafficRunner, heldRequest: HeldHttpRequest): Promise<void> {
   await expect(heldRequest.outcome).resolves.toHaveProperty('error');
   expect(loopbackLab.observation(heldRequest.requestPath)).toBeUndefined();
 }
@@ -172,8 +172,8 @@ function mcpValue(result: unknown): unknown {
   return JSON.parse(content.text);
 }
 
-function webSocketMessageCount(webSocketLab: WebSocketLab): number {
-  return (webSocketLab.evidence() as { messages: string[] }).messages.length;
+function webSocketMessageCount(webSocketLab: WebSocketTrafficRunner): number {
+  return webSocketLab.evidence().messages.length;
 }
 
 async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testInfo: TestInfo): Promise<void> {
@@ -195,7 +195,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
   }
 }
 
-test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pending traffic', async ({ desktopApp, loopbackLab, webSocketLab, openAiCompatibleLab }, testInfo) => {
+test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pending traffic', async ({ desktopApp, httpTrafficRunner: loopbackLab, webSocketTrafficRunner: webSocketLab, openAiCompatibleLab }, testInfo) => {
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'breakpoints.tools.batch' });
   for (const text of [PROMPT, ANSWER, DRAFT]) desktopApp.registerSensitiveTextForEvidenceAudit(text);

@@ -5,13 +5,13 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('breakpoints.websocket-close forwards a close-code-only edit end to end', async ({
   desktopApp,
-  webSocketLab,
+  webSocketTrafficRunner: webSocketLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',
@@ -57,7 +57,7 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
     AUTOMATION_IDS.capture.websocket.breakpointEnable,
   ).click();
 
-  client.sendClose(1000);
+  client.sendCloseFrame(1000);
   const closeCode = getByAutomationId(page, AUTOMATION_IDS.breakpoints.closeCode);
   await expect(closeCode).toBeVisible();
   await expect(closeCode).toHaveValue('1000');

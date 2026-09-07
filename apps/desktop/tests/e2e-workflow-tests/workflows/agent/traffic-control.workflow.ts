@@ -10,14 +10,14 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { CaptureWorkflowFixture, startRecording } from '../../fixtures/capture-workflow';
+} from '../../fixtures/ui/automation';
+import { CaptureWorkflowFixture, startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const START_DENY_PROMPT = phrase('Keep recording paused', 'when asked to start it.');
@@ -249,7 +249,7 @@ async function closeGeneration(
 
 test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
 }, testInfo) => {
   test.setTimeout(240_000);

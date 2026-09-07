@@ -11,8 +11,8 @@ import { COLLECTION_SAVE_DELAY_MS } from '../../../../src/renderer/features/comp
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 async function automationSuffix(locator: Locator, prefix: string): Promise<string> {
   const automationId = await locator.getAttribute('data-automation-id');

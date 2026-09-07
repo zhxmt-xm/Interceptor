@@ -1,14 +1,14 @@
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   CaptureWorkflowFixture,
   startRecording,
-} from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('capture.inspector.section-collapse keeps sections independent and accessible', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

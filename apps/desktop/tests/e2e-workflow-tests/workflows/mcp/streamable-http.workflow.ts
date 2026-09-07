@@ -9,15 +9,15 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { createRequestBreakpointRule } from '../../fixtures/breakpoint-workflow';
-import { startRecording } from '../../fixtures/capture-workflow';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 
 const MCP_RULE_PATH = '/e2e/mcp/rules';
 const MCP_RULE_HEADER = 'x-mcp-rules';
@@ -219,7 +219,7 @@ function replaceMcpRule(nodes: readonly RuleNode[], ruleId: string): RuleNode[] 
 /** Send one real request and verify the current MCP-owned Rule effect at origin. */
 async function expectMcpRuleEffect(
   desktopApp: LocalElectronApplicationDriver,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   stage: string,
   expectedValue: string,
 ): Promise<void> {
@@ -233,7 +233,7 @@ async function expectMcpRuleEffect(
 /** Start one real POST that remains suspended by the product Breakpoint Rule. */
 async function startPendingMcpRequest(
   page: Page,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   proxyPort: number,
   requestPath: string,
   body: string,
@@ -304,8 +304,8 @@ async function closeGeneration(
 
 test('mcp.desktop.streamable-http connects external Hosts with stable manual credentials', async ({
   desktopApp,
-  loopbackLab,
-  webSocketLab,
+  httpTrafficRunner: loopbackLab,
+  webSocketTrafficRunner: webSocketLab,
 }, testInfo) => {
   test.setTimeout(180_000);
   testInfo.annotations.push({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AbortableAttempts } from '../../src/utils/abortable-attempts';
+import { AbortableAttempts } from '../../src/app/abortable-attempts';
 
 describe('AbortableAttempts', () => {
   it('aborts older attempts and lifecycle invalidation rejects late completion', () => {

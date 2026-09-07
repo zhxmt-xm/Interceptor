@@ -10,8 +10,8 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 async function dynamicId(locator: Locator, prefix: string): Promise<string> {
   const automationId = await locator.getAttribute('data-automation-id');

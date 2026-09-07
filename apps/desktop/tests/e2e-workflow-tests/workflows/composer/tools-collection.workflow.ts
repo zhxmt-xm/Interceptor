@@ -5,9 +5,9 @@ import type { Collection, CollectionNode, CollectionRequest } from '@interceptor
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = ['composer_get_collection', 'composer_replace_collection'] as const;
 const PROMPT = ['Inspect and update', 'the saved Composer collection.'].join(' ');
@@ -191,7 +191,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('composer.tools.collection reads and replaces the saved tree without disclosing credentials', async ({
-  desktopApp, openAiCompatibleLab, loopbackLab,
+  desktopApp, openAiCompatibleLab, httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   test.setTimeout(240_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'composer.tools.collection' });

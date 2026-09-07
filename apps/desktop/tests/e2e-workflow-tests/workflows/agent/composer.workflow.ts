@@ -9,14 +9,14 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const COMPOSER_TOOL_NAMES = ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'] as const;
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -188,9 +188,9 @@ async function closeGeneration(
 
 test('agent.tools.composer sends direct HTTP and probes TLS with real cancellation', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
-  tlsOriginLab,
+  tlsTrafficRunner: tlsOriginLab,
 }, testInfo) => {
   test.setTimeout(180_000);
   testInfo.annotations.push({

@@ -3,16 +3,16 @@ import { writeFile } from 'node:fs/promises';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
+} from '../../fixtures/runtime/local-electron-driver';
 import type {
   OpenAiCompatibleLab,
   OpenAiCompatibleObservation,
-} from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/agent/openai-compatible-lab';
 
 interface StreamingEvidence {
   readonly eventSequences: readonly number[];

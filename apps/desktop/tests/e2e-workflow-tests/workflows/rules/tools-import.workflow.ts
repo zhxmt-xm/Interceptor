@@ -7,10 +7,10 @@ import type { Page, TestInfo } from '@playwright/test';
 import type { RuleNode } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/automation';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const PROMPT = ['Import the selected Rules', 'and preserve the existing tree.'].join(' ');
 const ANSWER = ['The Rules import', 'step has finished.'].join(' ');

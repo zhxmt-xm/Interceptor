@@ -10,10 +10,10 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
-import type { LoopbackLab, LoopbackRequestObservation } from '../../fixtures/loopback-lab';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner, LoopbackRequestObservation } from '../../../../../playground/server/scenarios/traffic-lab';
 
 const BREAKPOINT_REPLACEMENT_TEXT = 'breakpoints.replacement.text';
 
@@ -164,7 +164,7 @@ async function addBreakpointHeader(
 
 /** Wait for and return the origin's observation for one request. */
 async function observe(
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   requestPath: string,
 ): Promise<LoopbackRequestObservation> {
   await expect.poll(() => loopbackLab.observation(requestPath)).toBeDefined();
@@ -177,7 +177,7 @@ async function observe(
 
 /** Attach the test-owned origin facts that support every wire assertion. */
 async function attachOriginEvidence(
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   testInfo: TestInfo,
 ): Promise<void> {
   await testInfo.attach('origin-observations', {
@@ -188,7 +188,7 @@ async function attachOriginEvidence(
 
 test('breakpoints.execute-edited preserves user intent end to end', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

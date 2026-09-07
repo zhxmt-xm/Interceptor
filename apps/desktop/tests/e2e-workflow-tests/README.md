@@ -75,6 +75,11 @@ apps/desktop/tests/e2e-workflow-tests/
 │  ├─ diagnostics.md
 │  └─ settings-updates.md
 ├─ fixtures/
+│  ├─ README.md
+│  ├─ runtime/
+│  ├─ ui/
+│  ├─ safety/
+│  └─ agent/
 ├─ workflows/
 │  ├─ capture/
 │  │  ├─ breakpoint-menu-hierarchy.workflow.ts
@@ -100,6 +105,8 @@ apps/desktop/tests/e2e-workflow-tests/
 ```
 
 详细文档索引见 [`docs/README.md`](docs/README.md)。
+fixture 职责与协议复用入口见 [fixtures/README.md](fixtures/README.md)。HTTP、HTTPS/H2、WebSocket、
+gRPC 与 TLS 流量统一由 [Playground TrafficLab](../../../playground/server/scenarios/traffic-lab.ts) 提供。
 
 ## Automation ID 契约
 
@@ -319,10 +326,11 @@ diagnostics.row.<traceKey>
 ## 测试写法
 
 ```ts
-import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
-import { getByAutomationId } from './fixtures/automation';
+import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { test, expect } from '../../fixtures/runtime/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 
-test('composer sends a request', async ({ desktopApp, loopbackLab }) => {
+test('composer sends a request', async ({ desktopApp, httpTrafficRunner }) => {
   const { page } = desktopApp;
 
   await getByAutomationId(
@@ -330,10 +338,10 @@ test('composer sends a request', async ({ desktopApp, loopbackLab }) => {
     AUTOMATION_IDS.shell.workspace.composer,
   ).click();
   await getByAutomationId(page, AUTOMATION_IDS.composer.url)
-    .fill(loopbackLab.url('/composer'));
+    .fill(httpTrafficRunner.url('/composer'));
   await getByAutomationId(page, AUTOMATION_IDS.composer.send).click();
 
-  await expect(page.getByText('200 OK')).toBeVisible();
+  await expect.poll(() => httpTrafficRunner.observation('/composer')?.method).toBe('GET');
 });
 ```
 

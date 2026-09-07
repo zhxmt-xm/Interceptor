@@ -3,9 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createServer as createViteServer } from 'vite';
-import type { TrafficScenarioId } from './interfaces.ts';
-import { TrafficLab } from './traffic-lab.ts';
-import { parseTrafficRequestDraft } from './traffic-request-draft.ts';
+import type { TrafficScenarioId } from './scenarios/interfaces.ts';
+import { TrafficLab } from './scenarios/traffic-lab.ts';
+import { parseTrafficRequestDraft } from './api/traffic-request-draft.ts';
 
 const playgroundRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PLAYGROUND_PORT ?? 4175);

@@ -35,20 +35,22 @@ apps/playground/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── server/
-│   ├── entry.ts                 # 一个本地Node进程：Vite + Lab API + 流量源
-│   ├── traffic-lab.ts           # 场景生命周期与显式代理客户端
-│   └── interfaces.ts            # Browser可见的Lab DTO
+│   ├── entry.ts                 # 唯一启动文件：Vite + Lab API
+│   ├── api/                     # HTTP API输入解析
+│   ├── scenarios/               # 场景、调度、生命周期与协议DTO
+│   ├── http/                    # 明文HTTP流量
+│   ├── tls/                     # TLS、HTTPS/H1、H2与gRPC
+│   ├── websocket/               # WS origin与共用客户端
+│   └── shared/                  # 跨协议网络工具
 ├── src/
-│   ├── main.tsx
-│   ├── App.tsx
-│   ├── App.module.css
-│   ├── acceptance/              # 24项人工recipe与脱敏报告
-│   ├── components/              # 一个组件一个文件与同名CSS Module
-│   ├── mcp/                     # 最新协议Client、配置解析、fetch观测与脱敏
-│   └── styles/                  # Playground局部tokens与reset
+│   ├── main.tsx                 # 唯一启动文件
+│   ├── app/                     # 页面外壳、共享界面、样式与状态类型
+│   ├── capture/                 # 协议Draft与Capture工作区辅助逻辑
+│   ├── mcp/                     # 连接界面、Client、配置与交换观测
+│   └── acceptance/              # 人工recipe与脱敏报告
 └── tests/
-  ├── unit/                    # 配置解析、脱敏、recipe与报告
-  └── integration/             # 真实socket Traffic Lab
+  ├── unit/                     # 历史辅助测试保留，不扩充设施测试
+  └── integration/              # 历史网络/Browser测试保留
 ```
 
 根命令最终为：
@@ -254,6 +256,33 @@ Developer在Interceptor UI和MCP Tool结果中对照事实。
 当前产品尚未实现的HTTP/3、H2 Extended CONNECT WebSocket、gRPC真正增量stream parser等能力不进入目录。
 后续产品能力落地时，同一work item增加对应场景，不预建未实现入口。
 
+### 7.3 与E2E共用协议库
+
+Capture协议流量的唯一实现归`apps/playground/server/`，共享Node流量库为`scenarios/traffic-lab.ts`，`entry.ts`只负责启动网页服务。
+E2E不再维护独立的HTTP、WebSocket或TLS origin lab；`trafficLab` fixture统一拥有协议实例，
+按需提供`httpTrafficRunner`、`webSocketTrafficRunner`、`tlsTrafficRunner`。
+
+原有39项场景继续保留，同时合并原fixture的细粒度控制能力：
+
+| 协议服务 | 场景之外保留的控制与证据 |
+| --- | --- |
+| HTTP | 默认echo/cookies、精确status/header/body、自定义二进制与重复headers、外部客户端、响应hold/release、主动取消、origin原始收包和断开事实 |
+| WebSocket | 持续连接、多个独立客户端、origin广播、跨UI步骤发帧、指定关闭码、消息和关闭证据 |
+| TLS | 自签名origin、H1/H2 ALPN、只握手探测、握手次数、活跃与已关闭连接的实际应用字节 |
+
+`TlsTrafficRunner`按TLS传输边界命名：HTTPS/H1、HTTPS/H2和gRPC共享一个origin，TLS-only场景只CONNECT和握手。
+H2原生parser直接消费TLS stream，应用字节从`TLSSocket.bytesRead`汇总，不能依赖`data`事件。
+
+`WebSocketTrafficRunner`拥有唯一origin和场景编排，普通场景与断点都使用`ProxiedWebSocketClient`。
+同一客户端使用`ws`的`Sender/Receiver`处理text/binary/ping/pong与分片，不维护手写帧编解码。
+`sendCloseFrame()`只发送Close而不改变连接状态，`closeGracefully()`执行完整关闭，两种操作不需要两套客户端。
+Node解析HTTP Upgrade并校验真实握手响应；原有持续连接、广播、消息证据与清理能力保持。完整职责见
+[协议服务说明](../../apps/playground/server/README.md)。
+
+E2E可以直接调用Node流量API，不要求每个workflow启动Browser；验证Playground页面或Browser MCP时仍使用真实页面。
+Node API只操作外部流量，不能绕过Interceptor真实UI执行产品业务。fixture按`runtime/ui/safety/agent`分类，
+原有辅助单测仅迁移目录与引用、保留测试逻辑；OpenAI模型模拟仍由Agent fixture所有，不加入Playground。
+
 ## 8. 24项Tool人工矩阵
 
 Playground动态列出当前24项Tool。每项至少手工执行：
@@ -279,7 +308,7 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 - Token解析与日志/报告脱敏；
 - Node Traffic Lab启动、端口释放，以及HTTP/Body/Encoding/WebSocket/H2/gRPC/TLS全部39项场景；
 - Browser默认Capture页、39项目录、页面专属Header、原生Draft、Reset、splitter与窄窗访问；
-- WebSocket与CONNECT详情只返回两端实际握手事实；Secure runner并发首跑复用同一实例，关闭Lab会取消停滞CONNECT；
+- WebSocket与CONNECT详情只返回两端实际握手事实；TLS runner并发首跑复用同一实例，关闭Lab会取消停滞CONNECT；
 - 场景transport与Draft discriminator保持一致；切场景/Tool会使旧操作代际失效，Capture与MCP各自保存Detail宽度；
 - build、typecheck与关闭后无listener。
 
@@ -287,9 +316,10 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 真实Electron workflow仍负责证明Browser → Main → Core链路和退出销毁；Playground自身不伪装成产品E2E。
 
 Tool自动主线完成后先执行24项Developer人工矩阵；随后另立Capture E2E收敛阶段，按HTTP、Bodies、Encoding、
-WebSocket、gRPC、TLS六组单向启动正式Playground并通过公开UI运行同一场景目录。E2E复用场景ID、默认Draft与
-流量发生器，但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个
-39项巨型workflow。当前下面的`capture.playground-traffic`只证明其中2/39的代表性纵向链路。
+WebSocket、gRPC、TLS六组复用正式Playground的同一场景目录和流量库，不强制每条workflow经过Browser。
+验证Playground页面时通过公开UI运行；其余可直接使用Node流量API。E2E复用场景ID、默认Draft与流量发生器，
+但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个39项巨型workflow。
+当前下面的`capture.playground-traffic`只证明其中2/39的代表性纵向链路。
 
 ### 9.1 `capture.playground-traffic`真实E2E
 

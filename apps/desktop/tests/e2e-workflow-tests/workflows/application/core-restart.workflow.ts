@@ -10,13 +10,13 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
+} from '../../fixtures/ui/automation';
 import {
   CaptureWorkflowFixture,
   startRecording,
-} from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
-import type { WinInetProxySettings } from '../../fixtures/workflow-host-safety-guard';
+} from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import type { WinInetProxySettings } from '../../fixtures/safety/workflow-host-safety-guard';
 
 const execFileAsync = promisify(execFile);
 
@@ -132,7 +132,7 @@ async function waitForJournal(
 
 test('application.lifecycle.core-restart restores Core and system proxy ordering', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   test.setTimeout(150_000);
   testInfo.annotations.push({

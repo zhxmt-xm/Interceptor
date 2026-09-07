@@ -7,11 +7,11 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const TOOL_NAMES = ['diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export'] as const;
 const PROMPT = ['Inspect or export', 'the requested Diagnostics records.'].join(' ');
@@ -86,7 +86,7 @@ async function finishAgentCall(page: Page, openAiCompatibleLab: OpenAiCompatible
   return resultForCall(openAiCompatibleLab, callId);
 }
 
-async function createDiagnosticRecords(page: Page, loopbackLab: LoopbackLab): Promise<void> {
+async function createDiagnosticRecords(page: Page, loopbackLab: HttpTrafficRunner): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
   for (const index of [1, 2]) {
     const requestPath = `/e2e/diagnostics-transfer/${index}?access_token=${SECRET}`;
@@ -180,7 +180,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
   }
 }
 
-test('diagnostics.tools.queries-export reads current traces and exports redacted persisted records', async ({ desktopApp, loopbackLab, openAiCompatibleLab }, testInfo) => {
+test('diagnostics.tools.queries-export reads current traces and exports redacted persisted records', async ({ desktopApp, httpTrafficRunner: loopbackLab, openAiCompatibleLab }, testInfo) => {
   test.skip(process.platform !== 'win32', '原生Save Dialog当前在Windows验证。');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'diagnostics.tools.queries-export' });

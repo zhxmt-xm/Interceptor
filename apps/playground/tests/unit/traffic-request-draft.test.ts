@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseTrafficRequestDraft } from '../../server/traffic-request-draft';
+import { parseTrafficRequestDraft } from '../../server/api/traffic-request-draft';
 
 describe('parseTrafficRequestDraft', () => {
   it('accepts an HTTP request with an empty body', () => {

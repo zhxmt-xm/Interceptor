@@ -10,8 +10,8 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 interface ClipboardSummary {
   readonly length: number;
@@ -47,7 +47,7 @@ async function activeRequestId(page: Page): Promise<string> {
 
 test('composer.response.body-formatting formats by language and preserves failures', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

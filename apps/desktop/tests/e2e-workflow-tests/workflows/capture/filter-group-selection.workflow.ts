@@ -1,7 +1,7 @@
 import { AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { PENDING_FACET_VALUE } from '../../../../src/renderer/features/capture/constants';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, test } from '../../fixtures/local-electron-driver';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('capture.filter-group-selection keeps option selection independent from expansion', async ({
   desktopApp,

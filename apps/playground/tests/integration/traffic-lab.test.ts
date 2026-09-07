@@ -4,8 +4,8 @@ import type { Duplex } from 'node:stream';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SecureTrafficRunner } from '../../server/internal/secure-traffic';
-import { TrafficLab } from '../../server/traffic-lab';
+import { TlsTrafficRunner } from '../../server/tls/traffic';
+import { TrafficLab } from '../../server/scenarios/traffic-lab';
 
 describe('TrafficLab', () => {
   const closeables: Array<() => Promise<void>> = [];
@@ -46,11 +46,70 @@ describe('TrafficLab', () => {
     );
   });
 
-  it('shares one Secure runner when the first secure scenarios start concurrently', async () => {
+  it('shares one HTTP origin between scenarios and programmable response controls', async () => {
     const proxy = await startForwardProxy();
     closeables.push(proxy.close);
-    const secureTrafficRunner = await SecureTrafficRunner.start();
-    const startSpy = vi.spyOn(SecureTrafficRunner, 'start').mockResolvedValue(secureTrafficRunner);
+    const trafficLab = await TrafficLab.start();
+    closeables.push(() => trafficLab.close());
+    const httpTrafficRunner = trafficLab.httpTrafficRunner;
+    httpTrafficRunner.respondWith('/shared-http', { statusCode: 202, body: 'configured response' });
+
+    const result = await trafficLab.run('h1-json', {
+      body: 'shared request',
+      headers: { 'content-type': 'text/plain' },
+      kind: 'http',
+      method: 'POST',
+      path: '/shared-http',
+      protocol: 'h1',
+    }, proxy.port);
+
+    expect(result.response).toMatchObject({ statusCode: 202, body: 'configured response' });
+    expect(result.attempt.url).toBe(httpTrafficRunner.url('/shared-http'));
+    expect(httpTrafficRunner.observation('/shared-http')?.body.toString('utf8')).toBe('shared request');
+  });
+
+  it('shares one WebSocket origin between scenarios and persistent clients', async () => {
+    const proxy = await startForwardProxy();
+    closeables.push(proxy.close);
+    const trafficLab = await TrafficLab.start();
+    closeables.push(() => trafficLab.close());
+    const webSocketTrafficRunner = trafficLab.webSocketTrafficRunner;
+    const client = await webSocketTrafficRunner.openThroughProxy(proxy.port, '/persistent');
+    const scenario = trafficLab.scenarios().find((item) => item.id === 'ws-text');
+    if (scenario === undefined) throw new Error('WebSocket text scenario is missing.');
+
+    const result = await trafficLab.run(scenario.id, scenario.defaultDraft, proxy.port);
+    webSocketTrafficRunner.sendFromOrigin('after scenario');
+    await client.waitForText('after scenario');
+
+    expect(result.state).toBe('complete');
+    expect(new URL(result.attempt.url).port).toBe(String(webSocketTrafficRunner.port));
+    expect(webSocketTrafficRunner.hasMessage('hello from client')).toBe(true);
+    expect(client.isClosed()).toBe(false);
+  });
+
+  it('shares one secure origin between scenarios and handshake observations', async () => {
+    const proxy = await startForwardProxy();
+    closeables.push(proxy.close);
+    const trafficLab = await TrafficLab.start();
+    closeables.push(() => trafficLab.close());
+    const tlsTrafficRunner = await trafficLab.getTlsTrafficRunner();
+    const scenario = trafficLab.scenarios().find((item) => item.id === 'h2-json');
+    if (scenario === undefined) throw new Error('H2 JSON scenario is missing.');
+
+    const result = await trafficLab.run(scenario.id, scenario.defaultDraft, proxy.port);
+
+    expect(result.state).toBe('complete');
+    expect(await trafficLab.getTlsTrafficRunner()).toBe(tlsTrafficRunner);
+    expect(new URL(result.attempt.url).port).toBe(String(tlsTrafficRunner.port));
+    expect(tlsTrafficRunner.handshakeCount()).toBe(1);
+  });
+
+  it('shares one TLS runner when the first TLS scenarios start concurrently', async () => {
+    const proxy = await startForwardProxy();
+    closeables.push(proxy.close);
+    const tlsTrafficRunner = await TlsTrafficRunner.start();
+    const startSpy = vi.spyOn(TlsTrafficRunner, 'start').mockResolvedValue(tlsTrafficRunner);
     const trafficLab = await TrafficLab.start();
     try {
       const h2Scenario = trafficLab.scenarios().find((scenario) => scenario.id === 'h2-json');

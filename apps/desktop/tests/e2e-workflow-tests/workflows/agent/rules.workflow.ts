@@ -11,15 +11,15 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const RULE_PATH_PREFIX = '/e2e/agent/rules';
 const RULE_HEADER = 'x-agent-rules';
@@ -153,7 +153,7 @@ async function createInitialRule(page: Page): Promise<{
 /** Send one real request through 8888 and verify the active Rule at the origin. */
 async function expectRuleEffect(
   desktopApp: LocalElectronApplicationDriver,
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   stage: string,
   expectedValue: string,
 ): Promise<void> {
@@ -387,7 +387,7 @@ async function closeGeneration(
 
 test('agent.tools.rules reads hits and replaces the complete Rule tree', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
   openAiCompatibleLab,
 }, testInfo) => {
   test.setTimeout(240_000);

@@ -6,16 +6,16 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
+import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
-} from '../../fixtures/local-electron-driver';
+} from '../../fixtures/runtime/local-electron-driver';
 import type {
   OpenAiCompatibleLab,
   OpenAiCompatibleObservation,
-} from '../../fixtures/openai-compatible-lab';
+} from '../../fixtures/agent/openai-compatible-lab';
 
 interface ProviderEvidence {
   readonly firstGenerationProviderIds: readonly string[];

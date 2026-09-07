@@ -6,10 +6,10 @@ import { promisify } from 'node:util';
 import { chromium, type Browser, type Page, type TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/automation';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/local-electron-driver';
-import type { OpenAiCompatibleLab } from '../../fixtures/openai-compatible-lab';
-import { PlaygroundServer } from '../../fixtures/playground-server';
+import { getByAutomationId } from '../../fixtures/ui/automation';
+import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { PlaygroundServer } from '../../fixtures/runtime/playground-server';
 
 const SETTINGS_QUERY_NAMES = [
   'settings_get_core_process_status',

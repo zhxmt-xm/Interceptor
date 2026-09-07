@@ -5,15 +5,15 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { createRequestBreakpointRule } from '../../fixtures/breakpoint-workflow';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
+} from '../../fixtures/ui/automation';
+import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent', async ({
   desktopApp,
-  loopbackLab,
-  webSocketLab,
+  httpTrafficRunner: loopbackLab,
+  webSocketTrafficRunner: webSocketLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',

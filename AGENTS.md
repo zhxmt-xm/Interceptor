@@ -114,15 +114,17 @@
 
 ## 四、测试与验收
 
-### Playground 与 E2E 辅助代码
+### Playground、E2E 与设计辅助代码
 
-- Playground、E2E、fixture、driver、lab 和测试辅助代码是测试工具，不是正式产品代码。
-- 不为这些代码新增或扩充 unit、integration、Browser 等测试。
+- Playground、E2E、`design-vite`、fixture、driver、lab、截图脚本及测试和设计辅助代码是验收工具，不是正式产品代码。
+- 不为这些工具代码或设计稿新增或扩充 unit、integration、Browser 等“测试的测试”。
 - 重构、合并、共享代码或补覆盖率都不能作为例外。
-- 修改它们时，直接跑受影响的 Playground 场景或已有真实 E2E。
+- 修改 Playground、E2E 及其辅助代码时，直接跑受影响的 Playground 场景或已有真实 E2E。
+- 修改设计稿时，直接预览受影响场景、生成设计截图并检查布局和交互状态，不另写设计稿或截图工具的测试。
 - 核对实际协议流量、产品行为和退出恢复；按需执行 typecheck 或 build。
-- 下文 TDD、前置 Red 和补测试要求只用于正式产品代码。
+- 下文 TDD、前置 Red 和补测试要求只用于正式产品代码，不用于测试设施或设计稿。
 - 产品的业务测试、真实 E2E 和退出恢复要求不变。
+- 产品 Renderer 与设计稿之间的 parity 验收保留，不扩展为设计工具自身的测试。
 - 不因本条规则批量删除已有辅助测试。
 
 ### 测试驱动开发

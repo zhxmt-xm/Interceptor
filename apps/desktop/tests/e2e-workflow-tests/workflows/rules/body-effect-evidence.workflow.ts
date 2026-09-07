@@ -10,11 +10,11 @@ import {
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
-} from '../../fixtures/automation';
-import { startRecording } from '../../fixtures/capture-workflow';
-import { expect, test } from '../../fixtures/local-electron-driver';
-import type { LoopbackLab } from '../../fixtures/loopback-lab';
-import { submitWindowsFileDialogPath } from '../../fixtures/windows-file-dialog';
+} from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
+import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const BREAKPOINT_REPLACEMENT_TEXT = 'breakpoints.replacement.text';
 
@@ -199,9 +199,9 @@ async function addBreakpointHeader(
 
 /** Wait for the origin observation proving that edited bytes crossed the real proxy. */
 async function observe(
-  loopbackLab: LoopbackLab,
+  loopbackLab: HttpTrafficRunner,
   requestPath: string,
-): Promise<NonNullable<ReturnType<LoopbackLab['observation']>>> {
+): Promise<NonNullable<ReturnType<HttpTrafficRunner['observation']>>> {
   await expect.poll(() => loopbackLab.observation(requestPath)).toBeDefined();
   const observation = loopbackLab.observation(requestPath);
   if (!observation) {
@@ -212,7 +212,7 @@ async function observe(
 
 test('rules.body-effect-evidence exposes the final body writer', async ({
   desktopApp,
-  loopbackLab,
+  httpTrafficRunner: loopbackLab,
 }, testInfo: TestInfo) => {
   test.skip(process.platform !== 'win32', '真实文件对话框 workflow 目前只在 Windows 执行。');
   testInfo.annotations.push({
