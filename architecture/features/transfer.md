@@ -128,6 +128,14 @@ sequenceDiagram
 文件路径、建议文件名、MIME、编码或由Model指定的jobId。Main意图`capture.body.export`复用现有
 Body保存入口与原生Save Dialog，不在Tool层读取正文或实现第二套文件写入。
 
+- Main共享保存方法：IPC与Tool都调用`startBodyExport`，只维护一份原生Dialog、取消和文件任务流程。
+    - UI传入已有正文引用，继续支持HTTP、WebSocket、gRPC和断点原文。
+    - Tool传入Exchange正文身份，保留对话框前后的归属与Core代际检查。
+    - 两种正文目标用明确的`kind`区分，不靠调用来源或缺失字段猜测，不改变Preload API。
+
+- 2026-09-07共享保存整理：Body与Capture保护前后同组36/36，真实Body workflow前后Green。
+    - 最终两代Main/Core为`22592/26460`、`41812/3536`，文件结果、原生取消与完整退出恢复保持；类型检查和打包等证据见[Main方法整理验收](tool-capabilities.md#shared-main-actions-acceptance)。
+
 - 这是独立的Capture change，遵守Agent/MCP双列授权及Ask/Auto。审批前只从Core读取并验证正文归属，
     影响说明只包含安全身份与存储字节数，不包含完整URL、正文、文件名或本机路径。
 - Main在打开Save Dialog前验证当前Exchange与Body归属；选择目标后再次确认身份与Core代际仍有效，

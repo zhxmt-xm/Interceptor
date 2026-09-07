@@ -35,6 +35,16 @@ Composer 让用户手工构造并发送请求，Connection 提供独立的 TLS �
 替换经typed `composer.collection.replace` Main命令复用UI的Core写入方法，并在成功后发布窄Collection变化事件；
 不在Agent和MCP分别复制界面同步逻辑。
 
+- Main共享保存：IPC、MCP、Agent共用`replaceCollection`保存和`collectionChanged`通知。
+    - 保存成功后通知其他Renderer；失败或取消不发送成功通知。
+    - IPC不把通知回送给发起保存的Renderer，它继续使用IPC返回值确认实际保存的快照。
+    - MCP/Agent仍通知所有Renderer；不改现有revision冲突、自动保存和后续编辑保护。
+    - 重构前后复跑Collection同步测试与`composer.tools.collection`真实流程，不为行为不变的重构制造Red。
+
+- 2026-09-07整理验收：前后Collection同步相关15/15；最终同一构建四条真实流程4/4。
+    - Collection保存两代Main/Core为`21292/3120`、`41164/30620`；Collection Transfer为`39056/18028`、`3880/5804`，全部正常销毁并恢复宿主。
+    - Desktop typecheck、相关70项测试、package/artifact audit/packaged smoke通过，完整证据见[Main方法整理验收](tool-capabilities.md#shared-main-actions-acceptance)。
+
 - 集合继续采用现有自动保存模型，不引入Rules式Apply或第二份草稿。外部替换成功后已挂载界面同步Core结果，
     revision冲突沿用Core权威重载；旧节流任务和迟到响应不能把较新替换静默覆盖或标成已保存。
     Collection公开`data-save-state`/`data-revision`反映真实写回状态，不靠固定等待时间验证已保存快照。
@@ -71,6 +81,10 @@ Protocol25/25、Playground67/67及设计交互74/74通过；Proxy Core329/331仅
 与UI草稿导出共用Main序列化/Save Dialog方法；Model只得到`exported`，不收到文件名、路径或请求内容。
 导入的UI与Tool共用单请求生命周期，Main传请求ID，Renderer统一读取、预览和确认，复用现有
 `parseImportedCollection`/`importCollection`，不复制第二套领域解析或存储逻辑。
+
+- `exportSavedCollection`在Collection导出文件中读取Core树，再调用IPC也使用的`exportCollection`。
+    - Main Tool分派只转换`exported`结果；原生Dialog、取消检查、序列化和写入只有一份。
+    - 保留“导出当前编辑树”和“导出已保存树”这两个明确来源，不把导出变成隐式保存。
 
 - Ask Deny不打开文件Dialog；Allow/Auto都保留真实Save/Open。导入还必须经过现有预览确认，Auto不能绕过确认。
     原生取消或预览取消不写入，返回`exported=false`或`imported=false`。

@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exportCollection } from '../../export-collection';
+import { CoreRuntime } from '../../../core/core-runtime';
+import { exportCollection, exportSavedCollection } from '../../export-collection';
 
-const { showSaveDialog, writeFile } = vi.hoisted(() => ({ showSaveDialog: vi.fn(), writeFile: vi.fn() }));
+const { request, showSaveDialog, writeFile } = vi.hoisted(() => ({ request: vi.fn(), showSaveDialog: vi.fn(), writeFile: vi.fn() }));
 vi.mock('electron', () => ({ dialog: { showSaveDialog } }));
 vi.mock('node:fs/promises', () => ({ writeFile }));
+vi.mock('../../../core/core-runtime', () => ({ CoreRuntime: vi.fn(function () { return { request }; }) }));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -13,6 +15,42 @@ beforeEach(() => {
 });
 
 describe('Collection文件导出', () => {
+  it('exports the saved Core Collection through the existing native writer', async () => {
+    const nodes = [{ kind: 'folder' as const, id: 'saved-group', name: 'Saved group', children: [] }];
+    request.mockResolvedValue({ payload: { collection: { nodes } } });
+    const abortSignal = new AbortController().signal;
+    await expect(exportSavedCollection(new CoreRuntime(), abortSignal)).resolves.toBe(true);
+    expect(request).toHaveBeenCalledExactlyOnceWith({ type: 'collection.get', payload: {} }, { abortSignal });
+    expect(showSaveDialog).toHaveBeenCalledOnce();
+    expect(writeFile).toHaveBeenCalledExactlyOnceWith('C:\\exports\\collection.json', JSON.stringify({ nodes }, null, 2), 'utf8');
+  });
+
+  it('does not open a dialog when the saved Collection cannot be loaded', async () => {
+    request.mockRejectedValue(new Error('Core unavailable'));
+    await expect(exportSavedCollection(new CoreRuntime(), new AbortController().signal)).rejects.toThrow('Core unavailable');
+    expect(showSaveDialog).not.toHaveBeenCalled();
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('does not open a dialog when cancellation occurs while reading the saved Collection', async () => {
+    const abortController = new AbortController();
+    request.mockImplementation(async () => {
+      abortController.abort();
+      return { payload: { collection: { nodes: [] } } };
+    });
+    await expect(exportSavedCollection(new CoreRuntime(), abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(showSaveDialog).not.toHaveBeenCalled();
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('does not query Core after the saved Collection export was cancelled', async () => {
+    const abortController = new AbortController();
+    abortController.abort();
+    await expect(exportSavedCollection(new CoreRuntime(), abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(request).not.toHaveBeenCalled();
+    expect(showSaveDialog).not.toHaveBeenCalled();
+  });
+
   it('只写入原生选择路径并保留JSON树结构', async () => {
     const nodes = [{ kind: 'folder' as const, id: 'group', name: 'Group', children: [] }];
     await expect(exportCollection(nodes, 'Export title')).resolves.toBe(true);

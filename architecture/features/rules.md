@@ -31,6 +31,13 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 Tool读取Core已保存的完整RuleSet，经与UI共用的Main导出方法打开真实Save Dialog并写入`{ nodes }` JSON。
 UI继续导出当前Renderer草稿，不把导出变成Apply；Tool不读取或覆盖用户未保存草稿。
 
+- Main共享导出方法：`exportSavedRules`负责读取Core树，再调用IPC也使用的`exportRules`。
+    - 两个方法均放在Rules导出文件；Main Tool分派只转换`exported`返回值，不另外编排文件步骤。
+    - UI当前树与Core已保存树仍是两个明确来源，不用缺失参数或调用来源暗中切换。
+
+- 2026-09-07整理验收：两项树导出现有基线11/11、补充Core读取/失败/取消后19/19；真实Rules Export与Collection Transfer前后同组Green。
+    - 最终Rules Export两代Main/Core为`14452/10048`、`43604/25040`，全部正常退出并恢复宿主；打包等完整证据见[Main方法整理验收](tool-capabilities.md#shared-main-actions-acceptance)。
+
 - Ask前只提供已保存规则/目录数量，Deny不打开Save Dialog、不读写文件；Auto仅省略应用审批。
 - 目标路径只由原生Dialog选择，Tool不接受路径、文件名、节点内容或任意Main/Core命令。
 - 执行结果只返回`exported`，不含规则正文、凭据、Map Local路径、目标路径或文件内容；异常输出脱敏。

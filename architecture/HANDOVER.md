@@ -1,16 +1,15 @@
 # Interceptor Handover
 
-> Tracked commit: `2260f64b`
+> Tracked commit: `add743b`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-07
 
 ## Task List
 
-- [ ] **待实现 · Main共享业务方法统一**：HAR两项已按共享入口原则验收通过，接着整理已实现方法，最后继续未实现Tool。
-    - 19个Main命令中15项已共用业务方法/Service；Body导出、Rules导出、Collection导出和Collection替换4项待整理。
-    - [Tool能力目录](features/tool-capabilities.md#main共享入口审计2026-09-07)列出当前调用关系；保留UI草稿导出与已保存树导出的实际区别。
-    - 行为不变的部分先取得基线Green；不要为统一方法删掉既有UI能力或扩大MCP权限。
-    - 每组验收通过后立即commit、push，再继续下一项。
+- [ ] **blocked · 已验收提交推送**：Capture代码、测试、设计图与验收文档已提交到本地`add743b`；本轮Main方法整理也已验收，按独立工作项保存。
+    - push多次失败：`curl 55 Send failure: Connection was reset`、无法连接`github.com:443`；本轮再次重试仍为`Recv failure: Connection was reset`。
+    - 网络恢复后执行`git -c http.proxy= -c https.proxy= push origin main`；不要重新提交同一改动。
+    - 当前没有启动代理客户端或修改网络设置。其他已授权任务继续本地检查，恢复网络后优先推送此提交。
 - [ ] **blocked · TLS四项Tool代码完成 · 待真实E2E最终清理验证**：在已推送`89028fdf`后，新增不安全名单替换、passthrough替换与解密启停四项；用户明确要求继续并提交当前代码，按未闭环进度保存，不计入完整自动验收数。TLS阶段保存时为代码36/73、完整验收32/73，另37项尚未实现。真实workflow已验证名单规范化、revision冲突、已挂载面板即时刷新、Ask/Auto、未信任意图与Core实际状态、真实CA安装、撤权和重启零重放；最终一轮清理失败，不能标记flow完成。
     阻塞事实：设置变更触发Certificates面板短暂重载，清理用瞬时`isVisible()`判断，跳过了重载期间不可见的Uninstall/Delete。两代Main/Core `9740/1936`、`23384/33672`均已正常退出、8888及系统代理恢复，但本轮LocalMachine Root CA仍残留，SHA-1为`8F5FD8BF6D49BE746862522F6AC616583ED152BB`，NotBefore为2026-09-05 20:45:32。其他六张Interceptor根证书是此前已有，不得删除。
     `desktopApp.preserveUserDataOnFailure()`此前只判断`await use(driver)`捕获的异常，未结合Playwright实际失败状态，本轮profile已被删除；现已提取并修正判定，实际failed/timedOut/interrupted均触发特权profile保留，3项Red后9/9 Green。清理已按本轮证书指纹与真实信任状态等待Uninstall/Delete，不再因瞬时不可见跳过；新的清理仍待真实复验。TLS审批错误与中途取消补8项Red后executor32/32 Green，底层路径不进入审批结果。
@@ -22,8 +21,8 @@
     - 已验收/目标：Capture `15/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `8/26`、Updates `0/4`。
     - Settings代码12/26；授权开关不是Settings业务Tool。registry/recipe53项、106个开关，Developer人工结论0/53。
     - 本轮HAR真实流程1/1、关联5/5、parity130/130、package/artifact audit/smoke通过，production audit零漏洞。
-    - 详细证据见[HAR验收](features/transfer.md#har-tool-acceptance)，此前Body及任务查询/取消证据也保留在同文档；代码正在分组提交。
-    - 后续先整理上述4项Main方法，再做Archive两项、Settings剩余项和Updates四项，见[能力计划](features/tool-capabilities.md)。
+    - 详细证据见[HAR验收](features/transfer.md#har-tool-acceptance)，此前Body及任务查询/取消证据也保留在同文档；本地提交为`add743b`，push失败见上述记录。
+    - 19个Main命令已整理完毕；下一组先做Archive两项，再做Settings剩余项和Updates四项，见[能力计划](features/tool-capabilities.md)。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
     - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
     - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
@@ -57,6 +56,8 @@
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation
+
+- 2026-09-07：Main共享方法整理验收通过，Tool数量保持代码53/73、完整自动验收49/73。Collection保存统一通知、Body唯一保存编排、Rules/Collection已保存树导出归属各功能；保留IPC当前树和Tool已保存树的差异。行为不变部分先取得unit/E2E基线Green，最终相关70/70、Desktop typecheck、四条真实workflow4/4，八代Main/Core均`gracefulDestroyVerified=true`、8888及完整WinINet/journal恢复。Windows package、artifact audit（1,294 files / 392,912,221 bytes）及packaged smoke1/1通过；未改依赖与UI，复用仍适用的production audit零漏洞结果。证据在TEMP下`interceptor-main-shared-actions-green-20260907-191814`、`interceptor-main-shared-actions-smoke-20260907-192158`及同名前缀package/artifact日志；基线和PID详见[Main方法整理验收](features/tool-capabilities.md#shared-main-actions-acceptance)。网络推送阻塞单独保留。
 
 - 2026-09-07：产品首页整理为 [English](../README.md) / [简体中文](../README.zh-CN.md)，开发命令迁入 [中文开发指南](development.md)。开发版 Main 开启 inspector 后，Core 跟随开启独立 loopback 随机端口，普通启动和正式包不开启；不继承 Main 的首行暂停。启动参数 unit 前置 Red 为 3 failed / 3 passed，修改后 6/6，连同原有 CoreRuntime 生命周期共 16/16；Desktop typecheck、文档链接与格式检查通过。临时双进程 Inspector 检查最终 1/1，Main/Core `34976/24580`，暂停/恢复、trace 保存、`gracefulDestroyVerified=true` 与宿主恢复均通过；最初先关窗口再保存 trace 的检查错误已修复，临时 workflow 全部删除，不加入 Inventory。Windows package、artifact audit（1,294 files / 392,910,631 bytes）及 packaged smoke 1/1 通过。证据位于 TEMP 下 `interceptor-core-inspector-complete-20260907`、`interceptor-core-inspector-package-20260907.log`、`interceptor-core-inspector-artifact-audit-20260907.log` 与 `interceptor-core-inspector-packaged-smoke-20260907`；仅记录本次范围，不替代并行 HAR / Playground 工作项的验收。
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CoreRuntime } from '../../../core/core-runtime';
-import { exportCapturedBody, startBodyExport } from '../../start-body-export';
+import { startBodyExport } from '../../start-body-export';
 
 const { request, showSaveDialog, getCoreProcessStatus } = vi.hoisted(() => ({
   request: vi.fn(), showSaveDialog: vi.fn(), getCoreProcessStatus: vi.fn(),
@@ -9,7 +9,7 @@ const { request, showSaveDialog, getCoreProcessStatus } = vi.hoisted(() => ({
 vi.mock('electron', () => ({ dialog: { showSaveDialog } }));
 vi.mock('../../../core/core-runtime', () => ({ CoreRuntime: vi.fn(function () { return { request, getCoreProcessStatus }; }) }));
 
-const identity = { exchangeId: 'exchange-one', bodyId: 'body-one' };
+const identity = { kind: 'exchange-body' as const, exchangeId: 'exchange-one', bodyId: 'body-one' };
 const detail = {
   url: 'https://example.test/recording.bin?token=private',
   responseBody: { bodyHash: 'body-one', encodedSize: 2_097_152, mediaType: 'application/octet-stream', contentEncoding: 'gzip' },
@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe('Capture native body export', () => {
   it('preserves the existing UI save intent and sanitizes only the filename suggestion', async () => {
-    await expect(startBodyExport(new CoreRuntime(), { bodyId: 'body-one', suggestedName: '../recording.bin' }, 'Save body')).resolves.toEqual(job);
+    await expect(startBodyExport(new CoreRuntime(), { kind: 'body-reference', bodyId: 'body-one', suggestedName: '../recording.bin' }, 'Save body')).resolves.toEqual(job);
     expect(showSaveDialog).toHaveBeenCalledExactlyOnceWith({
       title: 'Save body', defaultPath: 'recording.bin', properties: ['createDirectory', 'showOverwriteConfirmation'],
     });
@@ -41,7 +41,7 @@ describe('Capture native body export', () => {
 
   it('revalidates body ownership after the dialog and starts the existing raw-byte job', async () => {
     const abortSignal = new AbortController().signal;
-    await expect(exportCapturedBody(new CoreRuntime(), identity, abortSignal)).resolves.toEqual(job);
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, abortSignal)).resolves.toEqual(job);
     expect(showSaveDialog).toHaveBeenCalledExactlyOnceWith({
       defaultPath: 'recording.bin', properties: ['createDirectory', 'showOverwriteConfirmation'],
     });
@@ -53,14 +53,14 @@ describe('Capture native body export', () => {
 
   it.each([null, { ...detail, responseBody: { bodyHash: 'different-body' } }])('rejects unavailable bodies before opening a dialog: %j', async (currentDetail) => {
     request.mockResolvedValue({ payload: { detail: currentDetail } });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
     expect(showSaveDialog).not.toHaveBeenCalled();
     expect(request).toHaveBeenCalledOnce();
   });
 
   it('does not start a job after native cancellation', async () => {
     showSaveDialog.mockResolvedValue({ canceled: true });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, new AbortController().signal)).resolves.toBeNull();
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, new AbortController().signal)).resolves.toBeNull();
     expect(request).toHaveBeenCalledOnce();
   });
 
@@ -69,7 +69,7 @@ describe('Capture native body export', () => {
       request.mockResolvedValue({ payload: { detail: null } });
       return { canceled: false, filePath: 'C:\\exports\\recording.bin' };
     });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
     expect(request.mock.calls.map(([command]) => command.type)).toEqual(['sessions.detail', 'sessions.detail']);
   });
 
@@ -78,14 +78,14 @@ describe('Capture native body export', () => {
       getCoreProcessStatus.mockReturnValue({ pid: 200, startedAt: '2026-09-07T06:01:00.000Z' });
       return { canceled: false, filePath: 'C:\\exports\\recording.bin' };
     });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, new AbortController().signal)).rejects.toThrow('The captured body is no longer available.');
     expect(request.mock.calls.map(([command]) => command.type)).toEqual(['sessions.detail', 'sessions.detail']);
   });
 
   it('does not read metadata or show a dialog after pre-cancellation', async () => {
     const abortController = new AbortController();
     abortController.abort();
-    await expect(exportCapturedBody(new CoreRuntime(), identity, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
     expect(request).not.toHaveBeenCalled();
     expect(showSaveDialog).not.toHaveBeenCalled();
   });
@@ -96,7 +96,7 @@ describe('Capture native body export', () => {
       abortController.abort();
       return { canceled: false, filePath: 'C:\\exports\\recording.bin' };
     });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
     expect(request).toHaveBeenCalledOnce();
   });
 
@@ -104,7 +104,7 @@ describe('Capture native body export', () => {
     request.mockImplementation(async (command) => command.type === 'sessions.detail'
       ? { payload: { detail: { url: 'https://example.test/', requestBodyEffect: { originalBody: { bodyHash: 'body-one', encodedSize: 5, mediaType: 'audio/mpeg' } } } } }
       : { payload: { job } });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, new AbortController().signal)).resolves.toEqual(job);
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, new AbortController().signal)).resolves.toEqual(job);
     expect(showSaveDialog).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: 'request-body.mp3' }));
   });
 
@@ -115,7 +115,7 @@ describe('Capture native body export', () => {
       abortController.abort();
       return { payload: { job } };
     });
-    await expect(exportCapturedBody(new CoreRuntime(), identity, abortController.signal)).resolves.toEqual(job);
+    await expect(startBodyExport(new CoreRuntime(), identity, undefined, abortController.signal)).resolves.toEqual(job);
     expect(request.mock.calls.map(([command]) => command.type)).toEqual(['sessions.detail', 'sessions.detail', 'body.export.start']);
   });
 });

@@ -3,6 +3,14 @@ import { writeFile } from 'node:fs/promises';
 import type { CollectionNode } from '@interceptor/core-protocol';
 import { dialog } from 'electron';
 
+import type { CoreRuntime } from '../core/core-runtime';
+
+export async function exportSavedCollection(coreRuntime: CoreRuntime, abortSignal: AbortSignal): Promise<boolean> {
+  abortSignal.throwIfAborted();
+  const { payload } = await coreRuntime.request({ type: 'collection.get', payload: {} }, { abortSignal });
+  return exportCollection(payload.collection.nodes, undefined, abortSignal);
+}
+
 export async function exportCollection(nodes: readonly CollectionNode[], title?: string, abortSignal?: AbortSignal): Promise<boolean> {
   abortSignal?.throwIfAborted();
   const selection = await dialog.showSaveDialog({

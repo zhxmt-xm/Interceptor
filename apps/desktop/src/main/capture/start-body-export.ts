@@ -8,44 +8,39 @@ import { suggestedBodyFileName } from '../../shared/body-file-name';
 import type { BodyExportRequest } from '../../shared/desktop-api';
 import type { CoreRuntime } from '../core/core-runtime';
 import { toSafeBodyFileName } from '../utils';
+import type { BodyExportTarget } from './interfaces';
 
 export async function startBodyExport(
   coreRuntime: CoreRuntime,
-  request: BodyExportRequest,
+  target: BodyExportTarget,
   title?: string,
   abortSignal?: AbortSignal,
 ): Promise<TransferJobSnapshot | null> {
+  abortSignal?.throwIfAborted();
+  const generation = coreRuntime.getCoreProcessStatus();
+  const request = target.kind === 'exchange-body'
+    ? await readCapturedBodyExportRequest(coreRuntime, target, abortSignal)
+    : target;
+  if (target.kind === 'exchange-body') assertCoreGeneration(coreRuntime, generation);
   const filePath = await chooseBodyDestination(request.suggestedName, title, abortSignal);
   if (filePath === null) return null;
-  return startBodyExportJob(coreRuntime, request.bodyId, filePath, abortSignal);
-}
-
-export async function exportCapturedBody(
-  coreRuntime: CoreRuntime,
-  identity: MainToolPayloadForType<'capture.body.export'>,
-  abortSignal: AbortSignal,
-): Promise<TransferJobSnapshot | null> {
-  abortSignal.throwIfAborted();
-  const generation = coreRuntime.getCoreProcessStatus();
-  const request = await readCapturedBodyExportRequest(coreRuntime, identity, abortSignal);
-  assertCoreGeneration(coreRuntime, generation);
-  const filePath = await chooseBodyDestination(request.suggestedName, undefined, abortSignal);
-  if (filePath === null) return null;
-  await readCapturedBodyExportRequest(coreRuntime, identity, abortSignal);
-  assertCoreGeneration(coreRuntime, generation);
+  if (target.kind === 'exchange-body') {
+    await readCapturedBodyExportRequest(coreRuntime, target, abortSignal);
+    assertCoreGeneration(coreRuntime, generation);
+  }
   return startBodyExportJob(coreRuntime, request.bodyId, filePath, abortSignal);
 }
 
 async function readCapturedBodyExportRequest(
   coreRuntime: CoreRuntime,
   identity: MainToolPayloadForType<'capture.body.export'>,
-  abortSignal: AbortSignal,
+  abortSignal?: AbortSignal,
 ): Promise<BodyExportRequest> {
-  abortSignal.throwIfAborted();
+  abortSignal?.throwIfAborted();
   const { payload } = await coreRuntime.request({
     type: 'sessions.detail', payload: { exchangeId: identity.exchangeId },
-  }, { abortSignal });
-  abortSignal.throwIfAborted();
+  }, abortSignal === undefined ? {} : { abortSignal });
+  abortSignal?.throwIfAborted();
   const detail = payload.detail;
   if (detail === null) throw new Error('The captured body is no longer available.');
   const match = ([

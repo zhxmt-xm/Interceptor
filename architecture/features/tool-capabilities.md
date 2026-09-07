@@ -61,7 +61,7 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 ### Main共享入口审计（2026-09-07）
 
 - `invokeMainTool`注册19个Main命令，Agent与MCP共用，IPC单独注册handler。
-- 15项已共用业务方法或Service，4项仍需整理；函数相同不等于所有用户流程均已验收。
+- 19项已共用业务方法或Service；本次整理不新增Tool，代码53/73、完整自动验收49/73保持不变。
 - HAR导入/导出本轮已通过完整自动验收，不要求所有IPC都开放为Tool。
 
 | 类别 | Main命令 | 当前业务入口 |
@@ -71,12 +71,12 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 | 已共享，4项 | `settings.tls-insecure-hosts.replace`、`settings.tls-passthrough.replace`、`settings.https-decryption.enable`、`settings.https-decryption.disable` | 同一Main配置/启停方法；TLS真实清理验收仍blocked |
 | 已共享，2项 | `rules.import`、`composer.collection.import` | 同一导入Service与产品预览确认生命周期；Tool适配安全结果 |
 | 已共享，2项 | `diagnostics.export`、`capture.har.export` | 同一原生Save与Core任务启动函数，HAR真实验收已通过 |
-| 部分共享，1项 | `capture.body.export` | 共用选路径与写入helper，但UI正文引用与Tool的Exchange归属校验分属两个编排函数 |
-| 部分共享，2项 | `rules.export`、`composer.collection.export` | 共用写文件函数；IPC传入Renderer树，Tool从Core读取已保存树，需保留或明确区分这两种实际意图 |
-| 部分共享，1项 | `composer.collection.replace` | 共用Core替换方法，但Collection变更广播目前仅在Tool分派中 |
+| 已共享，1项 | `capture.body.export` | 唯一`startBodyExport`编排Dialog、取消与任务启动；明确区分UI正文引用和Exchange正文身份，后者保留归属与Core代际复核 |
+| 已共享，2项 | `rules.export`、`composer.collection.export` | 各功能的`exportSavedRules`/`exportSavedCollection`读取Core已保存树，再调用IPC共用导出函数；UI仍导出当前编辑树，不隐式Apply或Save |
+| 已共享，1项 | `composer.collection.replace` | 同一`replaceCollection`负责Core保存和变更通知；IPC排除发起窗口，由返回值确认快照，Tool通知全部Renderer |
 | 已共享，1项 | `capture.har.import` | 共用原生Open与任务启动；Core成功导入后统一通知Renderer重新查询，不依赖导入弹窗 |
 
-- 后续先整理剩余4项Main方法，再实现未完成Tool。
+- 后续Archive等未实现Tool继续遵守已统一的规则。
    - IPC handler、MCP Tool和Agent Tool调用同一业务方法，Main/Core统一发出状态通知。
    - 保留原生Dialog、独立授权、取消和结果脱敏。
    - Body UI仍须支持HTTP、WebSocket、gRPC和断点原文，不能为了统一而删除能力。
@@ -84,6 +84,24 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 
 HAR同步故障已有真实证据：`interceptor-har-tools-e2e-green-20260907-162943`精确失败于已导入Exchange的
 公共Capture行不可见。已用统一导入通知和Clear后查询修复，同一真实流程Green，见[HAR验收](transfer.md#har-tool-acceptance)。
+
+<a id="shared-main-actions-acceptance"></a>
+### Main方法整理验收（2026-09-07）
+
+- 行为不变的重构先取得现有基线Green，不人为制造Red。
+   - Collection同步/就绪/导入保存15/15，真实`composer.tools.collection`为1/1；证据`interceptor-collection-shared-save-baseline-20260907-190511`。
+   - Body与Capture保护36/36，真实`capture.tools.body-export`为1/1；证据`interceptor-body-shared-save-baseline-20260907-190921`。
+   - 两项树导出11/11，真实`rules.tools.export`与`composer.tools.transfer`为2/2；证据`interceptor-tree-export-shared-baseline-20260907-191441`。
+- 同一最终构建上，四条真实流程4/4（2.3分钟）；七个受影响业务测试文件70/70，Desktop typecheck通过。
+   - 新增八项已保存树读取、Core失败与取消测试通过，不把补充覆盖率当作历史Red。
+   - 证据和trace位于TEMP下`interceptor-main-shared-actions-green-20260907-191814`。
+   - Body两代Main/Core为`22592/26460`、`41812/3536`；Collection保存为`21292/3120`、`41164/30620`。
+   - Collection Transfer为`39056/18028`、`3880/5804`；Rules Export为`14452/10048`、`43604/25040`。
+   - 八代均`gracefulDestroyVerified=true`，Main/Core/Worker退出、8888释放、完整WinINet/journal恢复。
+- Windows package、artifact audit（1,294 files / 392,912,221 bytes）与packaged smoke1/1（43.2秒）通过。
+   - 完整日志为TEMP下`interceptor-main-shared-actions-package-20260907.log`、`interceptor-main-shared-actions-artifact-audit-20260907.log`；smoke证据为`interceptor-main-shared-actions-smoke-20260907-192158`。
+   - 本次未改依赖、UI、Preload或Core协议；复用HAR阶段仍适用的production audit零漏洞结果，不新增设计或parity范围。
+   - TLS清理、其他既有视觉债务和Developer人工结论仍独立保留，不能由本次重构验收替代。
 
 `Settings > Agent > Tool capabilities` 从**已实现的共享 Tool registry**渲染，不维护第二份手写清单。
 尚未实现的目标 Tool 只保留在本文档，不在产品 UI 中显示不可用开关。
@@ -379,7 +397,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture文件任务查询/取消、Body及HAR已完成；TLS保留权限阻塞。先统一剩余Main方法，再继续Archive等未实现Tool。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture文件任务查询/取消、Body及HAR已完成；TLS保留权限阻塞。Main方法整理已验收，继续Archive等未实现Tool。
 
 ### 5.2 余下49项计划（已完成25项，剩余24项）
 

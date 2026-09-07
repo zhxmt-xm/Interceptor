@@ -66,7 +66,7 @@ import {
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { startDiagnosticsExport } from './diagnostics/start-export';
-import { exportCapturedBody, startBodyExport } from './capture/start-body-export';
+import { startBodyExport } from './capture/start-body-export';
 import { startHarExport, startHarImport } from './capture/start-har-transfer';
 import type {
   SystemProxyService,
@@ -89,9 +89,9 @@ import { toUpstreamAuthority } from './system-proxy/windows/system-proxy-upstrea
 import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
-import { exportCollection } from './composer/export-collection';
+import { exportCollection, exportSavedCollection } from './composer/export-collection';
 import { CollectionImportService } from './composer/collection-import-service';
-import { exportRules } from './rules/export-rules';
+import { exportRules, exportSavedRules } from './rules/export-rules';
 import { RulesImportService } from './rules/import-service';
 import {
   resolveWindowsSystemProxyJournalPath,
@@ -644,25 +644,19 @@ class DesktopApplication {
         'capture.har.export': async (payload) => ({ job: await startHarExport(this.coreRuntime, payload, undefined, abortSignal) }),
         'capture.har.import': async () => ({ job: await startHarImport(this.coreRuntime, undefined, abortSignal) }),
         'capture.body.export': async (payload) => ({
-          job: await exportCapturedBody(this.coreRuntime, payload, abortSignal),
+          job: await startBodyExport(this.coreRuntime, { kind: 'exchange-body', ...payload }, undefined, abortSignal),
         }),
         'diagnostics.export': async (payload) => ({
           job: await startDiagnosticsExport(this.coreRuntime, payload, undefined, abortSignal),
         }),
-        'composer.collection.replace': async (payload) => {
-          const result = await this.replaceCollection(payload.expectedRevision, payload.nodes, abortSignal);
-          for (const mainWindow of BrowserWindow.getAllWindows()) {
-            if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionChanged, result);
-          }
-          return result;
-        },
-        'composer.collection.export': () => this.exportSavedCollection(abortSignal),
+        'composer.collection.replace': (payload) => this.replaceCollection(payload.expectedRevision, payload.nodes, abortSignal),
+        'composer.collection.export': async () => ({ exported: await exportSavedCollection(this.coreRuntime, abortSignal) }),
         'composer.collection.import': async () => {
           const response = await this.collectionImportService.startImport(abortSignal);
           if (response.status === 'failed') throw new Error('Unable to import Collection.');
           return response.result;
         },
-        'rules.export': () => this.exportSavedRules(abortSignal),
+        'rules.export': async () => ({ exported: await exportSavedRules(this.coreRuntime, abortSignal) }),
         'rules.import': async () => {
           const response = await this.rulesImportService.startImport(abortSignal);
           if (response.status === 'failed') throw new Error('Unable to import Rules.');
@@ -690,16 +684,19 @@ class DesktopApplication {
     expectedRevision: number,
     nodes: CollectionNode[],
     abortSignal?: AbortSignal,
+    excludedWebContentsId?: number,
   ): Promise<MainToolResultPayloads['composer.collection.replace']> {
     const { payload } = await this.coreRuntime.request({
       type: 'collection.replace', payload: { expectedRevision, nodes },
     }, abortSignal === undefined ? {} : { abortSignal });
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed()
+        && !mainWindow.webContents.isDestroyed()
+        && mainWindow.webContents.id !== excludedWebContentsId) {
+        mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionChanged, payload);
+      }
+    }
     return payload;
-  }
-
-  private async exportSavedCollection(abortSignal: AbortSignal): Promise<MainToolResultPayloads['composer.collection.export']> {
-    const { payload } = await this.coreRuntime.request({ type: 'collection.get', payload: {} }, { abortSignal });
-    return { exported: await exportCollection(payload.collection.nodes, undefined, abortSignal) };
   }
 
   private requestRendererCollectionImport(requestId: string): void {
@@ -713,11 +710,6 @@ class DesktopApplication {
     for (const mainWindow of BrowserWindow.getAllWindows()) {
       if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.collectionImportCanceled, requestId);
     }
-  }
-
-  private async exportSavedRules(abortSignal: AbortSignal): Promise<MainToolResultPayloads['rules.export']> {
-    const { payload } = await this.coreRuntime.request({ type: 'rules.get', payload: {} }, { abortSignal });
-    return { exported: await exportRules(payload.ruleSet.nodes, undefined, abortSignal) };
   }
 
   private requestRendererRulesImport(requestId: string): void {
@@ -1631,7 +1623,7 @@ class DesktopApplication {
       async (event, value: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const request = toBodyExportRequest(value);
-        return startBodyExport(this.coreRuntime, request, title as string);
+        return startBodyExport(this.coreRuntime, { kind: 'body-reference', ...request }, title as string);
       },
     );
 
@@ -1835,7 +1827,7 @@ class DesktopApplication {
         this.assertTrustedSender(event.senderFrame?.url);
         const collectionNodes = toCollectionNodes(nodes);
         try {
-          const result = await this.replaceCollection(expectedRevision as number, collectionNodes);
+          const result = await this.replaceCollection(expectedRevision as number, collectionNodes, undefined, event.sender.id);
           return { ok: true, revision: result.revision };
         } catch (error) {
           return DesktopApplication.toReplaceFailure(error);

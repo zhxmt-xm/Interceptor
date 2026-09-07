@@ -31,6 +31,15 @@ Red必须来自新Tool缺失或外部替换UI未同步，不能来自selector、
 越界目录和不能由产品生成的输入归owning unit。真实流程证明查询静默、审批有效、原子替换、凭据保留、授权
 和重启零重放；不得以fake Preload或Core integration代替本条Electron workflow。
 
+- Main保存方法重构保持以上流程不变，前后均须取得同一workflow Green。
+	- UI保存通过IPC返回值确认快照，不因自己的变更通知重新加载正在编辑的内容。
+	- Tool保存完成后由同一Main方法通知Renderer；不在Tool分派中另写广播步骤。
+
+- 2026-09-07保存/导出方法整理：Collection同步相关测试前后15/15，两项树导出现有11/11、补充覆盖后19/19。
+	- `composer.tools.collection`基线1/1，`composer.tools.transfer`与Rules Export联合基线2/2；最终同一构建四条受影响真实流程4/4。
+	- 本workflow两代Main/Core为`21292/3120`、`41164/30620`；Collection Transfer为`39056/18028`、`3880/5804`，均`gracefulDestroyVerified=true`。
+	- trace/evidence位于TEMP下`interceptor-main-shared-actions-green-20260907-191814`；完整宿主恢复及打包验收见[Main方法整理验收](../../../../../architecture/features/tool-capabilities.md#shared-main-actions-acceptance)。
+
 2026-09-06证据：`8598b406`实现前代码上discovery缺少两项Collection Tool，先unit11项Red再真实Electron Red。
 随后编辑器快速输入/切换触发`Model is disposed!`，wrapper生命周期unit与同workflow分别Red，移除提前重复
 销毁隐式Model后Green；初次集合查询在Core业务初始化前失败，加入现有启动完成边界后载入/自动保存恢复。
