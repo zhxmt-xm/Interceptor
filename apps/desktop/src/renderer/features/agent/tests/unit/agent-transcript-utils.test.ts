@@ -60,6 +60,18 @@ function session(): AgentSessionSnapshot {
 }
 
 describe('Agent transcript utilities', () => {
+  it.each([
+    { name: 'settings_set_language', value: { language: 'fr' }, summary: { kind: 'uiLanguage', language: 'fr' } },
+    { name: 'settings_set_theme', value: { theme: 'ember' }, summary: { kind: 'uiTheme', theme: 'ember' } },
+    {
+      name: 'settings_set_export_privacy_defaults',
+      value: { maskAuthorization: true, maskCookies: false, warnBeforeUnmasked: true },
+      summary: { kind: 'exportPrivacyDefaults', maskAuthorization: true, maskCookies: false, warnBeforeUnmasked: true },
+    },
+  ])('uses a compact preference summary without local metadata for $name', ({ name, value, summary }) => {
+    expect(summarizeAgentToolResult(name, { ok: true, value: { ...value, path: 'private', token: 'private' } })).toEqual(summary);
+  });
+
   it('groups all assistant and Tool items from one Turn into one response entry', () => {
     const entries = buildAgentTranscriptEntries(session());
 

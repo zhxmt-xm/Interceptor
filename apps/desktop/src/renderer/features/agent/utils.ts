@@ -36,6 +36,9 @@ interface MutableAgentToolBlock {
 }
 
 export type AgentToolResultSummary =
+  | { readonly kind: 'uiLanguage'; readonly language: string }
+  | { readonly kind: 'uiTheme'; readonly theme: 'light' | 'dark' | 'warm' | 'ember' }
+  | { readonly kind: 'exportPrivacyDefaults'; readonly maskAuthorization: boolean; readonly maskCookies: boolean; readonly warnBeforeUnmasked: boolean }
   | { readonly kind: 'transferJob'; readonly jobId: string; readonly state: 'running' | 'completed' | 'failed' | 'cancelled'; readonly processed: number; readonly total: number; readonly warningCount: number }
   | { readonly kind: 'transferJobMissing' }
   | { readonly kind: 'diagnosticsSnapshot'; readonly count: number; readonly droppedCount: number }
@@ -228,6 +231,20 @@ export function summarizeAgentToolResult(
   }
   if (name.startsWith('settings_') && isRecord(result.value)) {
     const value = result.value;
+    if (name === 'settings_set_language' && typeof value['language'] === 'string') {
+      return { kind: 'uiLanguage', language: value['language'] };
+    }
+    if (name === 'settings_set_theme') {
+      const theme = value['theme'];
+      if (theme === 'light' || theme === 'dark' || theme === 'warm' || theme === 'ember') {
+        return { kind: 'uiTheme', theme };
+      }
+    }
+    if (name === 'settings_set_export_privacy_defaults'
+      && typeof value['maskAuthorization'] === 'boolean' && typeof value['maskCookies'] === 'boolean'
+      && typeof value['warnBeforeUnmasked'] === 'boolean') {
+      return { kind: 'exportPrivacyDefaults', maskAuthorization: value['maskAuthorization'], maskCookies: value['maskCookies'], warnBeforeUnmasked: value['warnBeforeUnmasked'] };
+    }
     if (name === 'settings_get_core_process_status'
       && typeof value['state'] === 'string'
       && (typeof value['pid'] === 'number' || value['pid'] === null)) {

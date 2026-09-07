@@ -55,6 +55,7 @@ import {
 } from '../features/settings';
 import type { TlsPassthroughNavigationTarget } from '../features/settings/interfaces';
 import { tlsPassthroughCoveringPattern } from '../features/settings/utils';
+import { UiPreferencesActions } from '../features/settings/data/uiPreferencesActions';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
@@ -130,13 +131,11 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
-    window.localStorage.setItem('interceptor.theme', themeMode);
   }, [themeMode]);
 
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = 'ltr';
-    window.localStorage.setItem('interceptor.language', language);
     window.localStorage.removeItem('interceptor.lang');
   }, [language]);
 
@@ -149,6 +148,7 @@ export function App(): React.JSX.Element {
   }, [t]);
 
   useEffect(() => UpdateActions.subscribe(), []);
+  useEffect(() => new UiPreferencesActions(setThemeMode).subscribe(), []);
   useEffect(() => GitHubAuthActions.subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
   useEffect(() => McpSettingsActions.subscribe(), []);
@@ -198,7 +198,11 @@ export function App(): React.JSX.Element {
   }, [t]);
 
   const changeLanguage = (nextLanguage: LanguageId): void => {
-    void i18n.changeLanguage(nextLanguage);
+    void window.interceptor.setUiLanguage(nextLanguage).catch(() => undefined);
+  };
+
+  const changeTheme = (nextTheme: ThemeMode): void => {
+    void window.interceptor.setUiTheme(nextTheme).catch(() => undefined);
   };
 
   const actions: FeatureActions = {
@@ -273,7 +277,7 @@ export function App(): React.JSX.Element {
         collapsed={collapsed}
         onSelect={setView}
         theme={themeMode}
-        onThemeChange={setThemeMode}
+        onThemeChange={changeTheme}
         lang={language}
         onLangChange={changeLanguage}
         coreStatus={coreStatus}

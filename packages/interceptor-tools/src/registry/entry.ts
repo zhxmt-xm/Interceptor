@@ -47,6 +47,7 @@ import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
 import { buildSettingsQueryTools } from '../settings/queries';
 import { buildSystemProxyTools } from '../settings/system-proxy';
 import { buildTlsTools } from '../settings/tls';
+import { buildPreferenceTools } from '../settings/preferences';
 import { buildRulesExportTool } from '../rules/export';
 import { buildRulesImportTool } from '../rules/import';
 import { buildCollectionTools } from '../composer/collection';
@@ -162,6 +163,9 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'settings_replace_tls_passthrough',
   'settings_enable_https_decryption',
   'settings_disable_https_decryption',
+  'settings_set_language',
+  'settings_set_theme',
+  'settings_set_export_privacy_defaults',
 ] as const;
 
 /** Builds the complete set of currently implemented transport-neutral Tools. */
@@ -174,6 +178,7 @@ export function buildInterceptorToolRegistry(
     ...buildSettingsQueryTools(),
     ...buildSystemProxyTools(),
     ...buildTlsTools(),
+    ...buildPreferenceTools(),
     buildRulesExportTool(),
     buildRulesImportTool(),
     ...buildCollectionTools(interceptorToolRedactor),

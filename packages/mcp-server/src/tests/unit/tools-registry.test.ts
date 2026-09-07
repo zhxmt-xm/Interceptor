@@ -130,6 +130,9 @@ describe('McpToolRegistry', () => {
       'settings_replace_tls_passthrough',
       'settings_enable_https_decryption',
       'settings_disable_https_decryption',
+      'settings_set_language',
+      'settings_set_theme',
+      'settings_set_export_privacy_defaults',
     ]);
 
     expect(byName.get('capture_list_exchanges')?.annotations).toMatchObject({ readOnlyHint: true });

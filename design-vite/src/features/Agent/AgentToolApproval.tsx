@@ -110,6 +110,24 @@ const TOOL_CONTENT = {
     effect: 'Disable HTTPS decryption without changing certificate trust.\nRoot CA trusted: true\nDecryption intent: true',
     result: 'HTTPS Disabled · Intent Disabled · CA Trusted',
   },
+  settings_set_language: {
+    description: 'Apply and remember the selected UI language without changing other settings.',
+    effect: 'Apply and remember the selected UI language without changing other settings.\nlanguage: fr',
+    arguments: 'language: fr',
+    result: 'Language: fr',
+  },
+  settings_set_theme: {
+    description: 'Apply and remember the selected UI theme without changing other settings.',
+    effect: 'Apply and remember the selected UI theme without changing other settings.\ntheme: warm',
+    arguments: 'theme: warm',
+    result: 'Theme: Warm',
+  },
+  settings_set_export_privacy_defaults: {
+    description: 'Save default masking and warning choices for future exports without modifying open export drafts or existing files.',
+    effect: 'Save default masking and warning choices for future exports without modifying open export drafts or existing files.\nmaskAuthorization: true\nmaskCookies: false\nwarnBeforeUnmasked: true',
+    arguments: 'maskAuthorization: true · maskCookies: false · warnBeforeUnmasked: true',
+    result: 'Mask authorization & URL tokens: Enabled · Mask cookies: Disabled · Warn before unmasked export: Enabled',
+  },
   settings_enable_system_proxy: {
     description: 'Route system traffic through Interceptor using the active proxy listener.',
     effect: 'Route system traffic through Interceptor using the active proxy listener.\nSystem proxy supported: true\nSystem proxy enabled: false\nOwned by Interceptor: false',

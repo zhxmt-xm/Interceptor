@@ -14,6 +14,19 @@ export function AgentToolResultSummary({
   const { i18n, t } = useTranslation();
   let content: string;
   switch (summary.kind) {
+    case 'uiLanguage':
+      content = `${t('common.language')}: ${summary.language}`;
+      break;
+    case 'uiTheme':
+      content = `${t('common.theme')}: ${t(`theme.${summary.theme}`)}`;
+      break;
+    case 'exportPrivacyDefaults':
+      content = [
+        `${t('settings.maskAuthorization')}: ${t(summary.maskAuthorization ? 'agent.tools.enabled' : 'agent.tools.disabled')}`,
+        `${t('settings.maskCookies')}: ${t(summary.maskCookies ? 'agent.tools.enabled' : 'agent.tools.disabled')}`,
+        `${t('settings.warnUnmasked')}: ${t(summary.warnBeforeUnmasked ? 'agent.tools.enabled' : 'agent.tools.disabled')}`,
+      ].join(' · ');
+      break;
     case 'coreProcess':
       content = t('agent.tools.coreProcess', { state: summary.state, pid: summary.pid ?? '-' });
       break;

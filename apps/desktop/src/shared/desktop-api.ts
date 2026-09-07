@@ -59,6 +59,7 @@ import type {
   McpApprovalRequest as McpServerApprovalRequest,
   McpToolExecutionMode,
 } from '@interceptor/mcp-server';
+import type { DesktopUiTheme, ExportPrivacyDefaults, UiPreferenceAppliedChange, UiPreferenceChange, UiPreferenceResponse } from './ui-preferences';
 
 export {
   BODY_PREVIEW_MAX_BYTES,
@@ -524,6 +525,13 @@ export const DESKTOP_UI_LANGUAGES = [
 export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 
 export const DESKTOP_IPC_CHANNELS = {
+  uiLanguageSet: 'settings:language:set',
+  uiThemeSet: 'settings:theme:set',
+  exportPrivacyDefaultsSet: 'settings:export-privacy-defaults:set',
+  uiPreferenceChangeRequested: 'settings:preference:requested',
+  uiPreferenceChangeClaim: 'settings:preference:claim',
+  uiPreferenceChangeComplete: 'settings:preference:complete',
+  uiPreferenceChanged: 'settings:preference:changed',
   coreEcho: 'core:echo',
   appQuit: 'app:quit',
   windowMinimize: 'window:minimize',
@@ -663,6 +671,13 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  setUiLanguage(language: DesktopUiLanguage): Promise<{ language: DesktopUiLanguage }>;
+  setUiTheme(theme: DesktopUiTheme): Promise<{ theme: DesktopUiTheme }>;
+  setExportPrivacyDefaults(preferences: Partial<ExportPrivacyDefaults>): Promise<ExportPrivacyDefaults>;
+  claimUiPreferenceChange(requestId: string): Promise<UiPreferenceChange | null>;
+  completeUiPreferenceChange(requestId: string, response: UiPreferenceResponse): Promise<void>;
+  onUiPreferenceChangeRequested(listener: (requestId: string) => void): () => void;
+  onUiPreferenceChanged(listener: (change: UiPreferenceAppliedChange) => void): () => void;
   echoCore(value: string): Promise<CoreEchoResult>;
   closeApplication(): Promise<void>;
   minimizeWindow(): Promise<void>;

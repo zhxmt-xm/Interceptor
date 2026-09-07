@@ -82,6 +82,9 @@ const TOOL_NAMES = [
   'settings_replace_tls_passthrough',
   'settings_enable_https_decryption',
   'settings_disable_https_decryption',
+  'settings_set_language',
+  'settings_set_theme',
+  'settings_set_export_privacy_defaults',
 ] as const;
 
 const TOOL_GROUP_IDS = ['capture', 'rules', 'composer', 'breakpoints', 'diagnostics', 'settings'] as const;
@@ -193,7 +196,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(110);
+    await expect(switches).toHaveCount(116);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -276,7 +279,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(110);
+    await expect(restoredSwitches).toHaveCount(116);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

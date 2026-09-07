@@ -881,6 +881,9 @@ export const fakeInterceptorFixture = {
             { name: 'settings_replace_tls_passthrough', title: 'Replace TLS passthrough', description: 'Replace TLS passthrough patterns at the current revision.', kind: 'change' },
             { name: 'settings_enable_https_decryption', title: 'Enable HTTPS decryption', description: 'Enable HTTPS decryption when the existing Root CA is trusted.', kind: 'change' },
             { name: 'settings_disable_https_decryption', title: 'Disable HTTPS decryption', description: 'Disable HTTPS decryption without changing certificate trust.', kind: 'change' },
+            { name: 'settings_set_language', title: 'Change language', description: 'Apply and remember the selected UI language without changing other settings.', kind: 'change' },
+            { name: 'settings_set_theme', title: 'Change theme', description: 'Apply and remember the selected UI theme without changing other settings.', kind: 'change' },
+            { name: 'settings_set_export_privacy_defaults', title: 'Set export privacy defaults', description: 'Save default masking and warning choices for future exports without modifying open export drafts or existing files.', kind: 'change' },
           ],
         },
       ],
@@ -2396,11 +2399,26 @@ export function installFakeInterceptor({
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
-  } else if (agentSessionState.startsWith('tls-settings-')) {
-    const match = /^tls-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
+  } else if (/^(tls|preferences)-settings-/.test(agentSessionState)) {
+    const match = /^(?:tls|preferences)-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
+    const group = agentSessionState.startsWith('preferences-') ? 'preferences-settings' : 'tls-settings';
     const name = match[1];
     const allowed = match[2] === 'allowed';
     const scenarios = {
+      settings_set_language: {
+        description: 'Apply and remember the selected UI language without changing other settings.',
+        effect: 'language: fr', arguments: { language: 'fr' }, value: { language: 'fr' },
+      },
+      settings_set_theme: {
+        description: 'Apply and remember the selected UI theme without changing other settings.',
+        effect: 'theme: warm', arguments: { theme: 'warm' }, value: { theme: 'warm' },
+      },
+      settings_set_export_privacy_defaults: {
+        description: 'Save default masking and warning choices for future exports without modifying open export drafts or existing files.',
+        effect: 'maskAuthorization: true\nmaskCookies: false\nwarnBeforeUnmasked: true',
+        arguments: { maskAuthorization: true, maskCookies: false, warnBeforeUnmasked: true },
+        value: { maskAuthorization: true, maskCookies: false, warnBeforeUnmasked: true },
+      },
       settings_replace_tls_insecure_hosts: {
         description: 'Replace hosts that skip upstream TLS certificate verification.',
         effect: 'Insecure host count: 0 -> 1',
@@ -2432,23 +2450,23 @@ export function installFakeInterceptor({
     const items = [
       ...agentSessionSnapshot.items,
       {
-        kind: 'assistant-message', itemId: 'item-assistant-tls-settings', turnId,
+        kind: 'assistant-message', itemId: `item-assistant-${group}`, turnId,
         content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
       },
       {
-        kind: 'tool-call', itemId: 'item-tool-call-tls-settings', turnId,
-        callId: 'call-tls-settings', name, arguments: scenario.arguments,
+        kind: 'tool-call', itemId: `item-tool-call-${group}`, turnId,
+        callId: `call-${group}`, name, arguments: scenario.arguments,
         status: allowed ? 'completed' : 'running',
         approval: {
-          approvalId: 'approval-tls-settings', status: allowed ? 'allowed' : 'pending',
+          approvalId: `approval-${group}`, status: allowed ? 'allowed' : 'pending',
           description: scenario.description, effect: `${scenario.description}\n${scenario.effect}`,
         },
         createdAt: createdAt + 2,
       },
     ];
     if (allowed) items.push({
-      kind: 'tool-result', itemId: 'item-tool-result-tls-settings', turnId,
-      callId: 'call-tls-settings', name, result: { ok: true, value: scenario.value }, createdAt: createdAt + 3,
+      kind: 'tool-result', itemId: `item-tool-result-${group}`, turnId,
+      callId: `call-${group}`, name, result: { ok: true, value: scenario.value }, createdAt: createdAt + 3,
     });
     const turn = {
       ...agentSessionSnapshot.turns[0],
@@ -3075,8 +3093,41 @@ export function installFakeInterceptor({
   const pendingRulesImportCompletions = new Map();
   const collectionImportRequestListeners = new Set();
   const pendingCollectionImportCompletions = new Map();
+  const preferenceRequestListeners = new Set();
+  const pendingPreferences = new Map();
+  function requestPreference(change) {
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      pendingPreferences.set(requestId, { change, resolve, reject });
+      for (const listener of preferenceRequestListeners) listener(requestId);
+    });
+  }
 
   window.interceptor = {
+    setUiLanguage: (language) => requestPreference({ kind: 'language', language }),
+    setUiTheme: (theme) => requestPreference({ kind: 'theme', theme }),
+    setExportPrivacyDefaults: (values) => requestPreference({ kind: 'export-privacy-defaults', ...values }),
+    onUiPreferenceChangeRequested: (listener) => {
+      preferenceRequestListeners.add(listener);
+      return () => preferenceRequestListeners.delete(listener);
+    },
+    onUiPreferenceChanged: () => () => undefined,
+    claimUiPreferenceChange: async (requestId) => {
+      const pending = pendingPreferences.get(requestId);
+      if (!pending || pending.claimed) return null;
+      pending.claimed = true;
+      return pending.change;
+    },
+    completeUiPreferenceChange: async (requestId, response) => {
+      const pending = pendingPreferences.get(requestId);
+      if (!pending) return;
+      pendingPreferences.delete(requestId);
+      if (response.status === 'failed') pending.reject(new Error('Unable to change preference.'));
+      else {
+        const { kind, ...values } = response.change;
+        pending.resolve(values);
+      }
+    },
     echoCore: async (value) => ({
       value,
       handledAt: '2026-07-16T12:00:00.000Z',

@@ -2,6 +2,53 @@
 
 本文件定义 Settings 九个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
+<a id="settings-tools-language"></a>
+## `settings.tools.language`
+
+**状态**：passed
+**策略**：shared；专属i18n流程；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron，保留当前系统匹配语言并从DOM读取当前`lang`；通过Settings配置Provider和MCP Client。
+2. Agent Ask discovery必须披露`settings_set_language`；使用不同于初始语言的正式ID，Deny不改变语言，Allow更新当前已挂载页面与`html lang`。
+3. Agent Auto切换到另一正式语言，结果只含生效language ID；从Sidebar原语言菜单切换，验证同一Main方法和常驻Renderer应用路径。
+4. 关闭Agent权限，旧Chat调用被拒绝且语言不变；MCP独立验证Ask Deny/Allow与Auto，当前页面不需重开或刷新。
+5. 关闭MCP权限，旧连接不再披露/执行Tool；正常退出，同profile重启验证最后语言和双列授权保留、Model请求零重放。
+6. 经原UI恢复本流程初始语言，保存脱敏trace/evidence；两代Main/Core/Worker退出、8888释放、完整WinINet/journal恢复后清理profile。
+
+### 预期与证据
+
+- 本流程专门验证语言设置，不把切换语言当作其他业务workflow的定位手段；所有selector使用公共automation ID。
+- 15个合法ID、非法值、取消与Renderer退出由所属产品测试覆盖；不得通过localStorage/Store注入设置。
+- 前置Red在`5e4fbc31`构建上discovery缺失，证据`interceptor-settings-preferences-e2e-red-20260907-203104`，Main/Core `6352/27056`正常退出。
+- 最终Green与偏好流程联合2/2，证据`interceptor-preferences-persistence-green-20260907-211527`；本流程Main/Core `38236/34080`、`42568/18792`全部`gracefulDestroyVerified=true`，8888与完整WinINet/journal恢复。
+- 原UI/Agent/MCP改变语言、撤权、重启与恢复初始语言通过；类型、unit、parity和产物证据见[偏好验收](../../../../../architecture/features/settings.md#ui-preferences-acceptance)。
+
+<a id="settings-tools-preferences"></a>
+## `settings.tools.preferences`
+
+**状态**：passed
+**策略**：shared；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron，保持应用当前语言；经Settings配置Provider与MCP Client，记录当前主题和三个隐私默认值。
+2. Agent Ask发现`settings_set_theme`和`settings_set_export_privacy_defaults`；Deny后值不变，Allow后当前主题/已挂载Privacy Switch立即匹配结果。
+3. Agent Auto应用另一主题和三项显式boolean，随后打开HAR Export检查默认值；已打开草稿和运行中文件任务不被设置修改。
+4. 通过Sidebar原主题菜单及Privacy原Switch修改，验证同一Main流程；连续切换两个独立Privacy字段，不能因迟到确认丢失任一修改。
+5. 关闭Agent两项权限，旧Chat无法更改；MCP独立验证Ask Deny/Allow、Auto和跨workspace已挂载UI更新。
+6. 关闭MCP权限，旧连接不再披露/执行；正常退出并重启，主题、隐私默认值与权限保持，Model请求和设置操作零重放。
+7. 通过原UI恢复初始偏好；保存trace/evidence并正常退出，验证两代Main/Core/Worker全退、8888释放和完整宿主恢复。
+
+### 预期与证据
+
+- Theme只允许四个既有ID；三个Privacy字段独立，Tool要求全量显式boolean。不修改Capture数据、证书或系统代理配置。
+- 新Main请求/Renderer应用的取消、失败和退出覆盖属于产品测试，不为workflow/helper新增测试的测试。
+- 前置Red在`5e4fbc31`构建上discovery缺失，证据`interceptor-settings-preferences-e2e-red-20260907-203104`，Main/Core `37204/20232`正常退出。
+- 最终Green与语言流程联合2/2，证据`interceptor-preferences-persistence-green-20260907-211527`；本流程Main/Core `20840/34860`、`25464/28872`全部`gracefulDestroyVerified=true`，8888与完整WinINet/journal恢复。
+- 连续Privacy字段、已开HAR遮罩草稿/下次默认值、原UI与Agent/MCP、撤权及重启持久化通过；详细证据见[偏好验收](../../../../../architecture/features/settings.md#ui-preferences-acceptance)。
+
 <a id="settings-tools-readonly"></a>
 ## `settings.tools.readonly`
 

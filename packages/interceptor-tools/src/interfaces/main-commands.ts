@@ -1,6 +1,9 @@
 import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, HarExportStartCommand, TransferJobSnapshot } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'settings.language.set': { language: string };
+  'settings.theme.set': { theme: 'warm' | 'light' | 'ember' | 'dark' };
+  'settings.export-privacy-defaults.set': { maskAuthorization: boolean; maskCookies: boolean; warnBeforeUnmasked: boolean };
   'capture.archive.export': { job: TransferJobSnapshot | null };
   'capture.archive.import': { job: TransferJobSnapshot | null };
   'capture.har.export': { job: TransferJobSnapshot | null };
@@ -66,6 +69,9 @@ export interface MainToolResultPayloads {
 }
 
 export interface MainToolCommandPayloads {
+  'settings.language.set': { language: string };
+  'settings.theme.set': MainToolResultPayloads['settings.theme.set'];
+  'settings.export-privacy-defaults.set': MainToolResultPayloads['settings.export-privacy-defaults.set'];
   'capture.har.export': Omit<HarExportStartCommand['payload'], 'jobId' | 'filePath'>;
   'capture.body.export': { exchangeId: string; bodyId: string };
   'diagnostics.export': { process?: DiagnosticProcess; level?: DiagnosticLevel; outcome?: DiagnosticOutcome };

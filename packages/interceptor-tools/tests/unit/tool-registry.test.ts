@@ -67,6 +67,9 @@ const TOOL_NAMES = [
   'settings_replace_tls_passthrough',
   'settings_enable_https_decryption',
   'settings_disable_https_decryption',
+  'settings_set_language',
+  'settings_set_theme',
+  'settings_set_export_privacy_defaults',
 ] as const;
 
 class FakeToolHost implements InterceptorToolHost {
@@ -176,7 +179,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(55);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(58);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

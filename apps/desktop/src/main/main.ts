@@ -94,6 +94,8 @@ import { exportCollection, exportSavedCollection } from './composer/export-colle
 import { CollectionImportService } from './composer/collection-import-service';
 import { exportRules, exportSavedRules } from './rules/export-rules';
 import { RulesImportService } from './rules/import-service';
+import { UiPreferencesService } from './settings/ui-preferences-service';
+import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 import {
   resolveWindowsSystemProxyJournalPath,
   WindowsSystemProxyJournal,
@@ -201,6 +203,10 @@ class DesktopApplication {
   private readonly rulesImportService = new RulesImportService(
     (requestId) => this.requestRendererRulesImport(requestId),
     (requestId) => this.cancelRendererRulesImport(requestId),
+  );
+  private readonly uiPreferencesService = new UiPreferencesService(
+    (requestId) => this.requestRendererUiPreferenceChange(requestId),
+    (change, senderId) => this.publishUiPreferenceChange(change, senderId),
   );
   /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
   private readonly clientAppIcons = new Map<string, string | null>();
@@ -430,6 +436,7 @@ class DesktopApplication {
     this.quitting = true;
     this.collectionImportService.cancelImport();
     this.rulesImportService.cancelImport();
+    this.uiPreferencesService.cancelChanges();
     void this.applicationActionGate.stopAcceptingAndDrain()
       .then(() => this.requireAgentRuntime().beginShutdown())
       .then(() => this.restoreSystemProxyBeforeShutdown())
@@ -566,10 +573,12 @@ class DesktopApplication {
     mainWindow.once('closed', () => {
       this.collectionImportService.cancelImport();
       this.rulesImportService.cancelImport();
+      this.uiPreferencesService.cancelChanges();
     });
     mainWindow.webContents.on('render-process-gone', () => {
       this.collectionImportService.cancelImport();
       this.rulesImportService.cancelImport();
+      this.uiPreferencesService.cancelChanges();
     });
     // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。
     mainWindow.webContents.on('did-finish-load', () => {
@@ -642,6 +651,9 @@ class DesktopApplication {
           MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
+        'settings.language.set': (payload) => this.uiPreferencesService.setLanguage(payload.language, abortSignal),
+        'settings.theme.set': (payload) => this.uiPreferencesService.setTheme(payload.theme, abortSignal),
+        'settings.export-privacy-defaults.set': (payload) => this.uiPreferencesService.setExportPrivacyDefaults(payload, abortSignal),
         'capture.har.export': async (payload) => ({ job: await startHarExport(this.coreRuntime, payload, undefined, abortSignal) }),
         'capture.har.import': async () => ({ job: await startHarImport(this.coreRuntime, undefined, abortSignal) }),
         'capture.archive.export': async () => ({ job: await startArchiveExport(this.coreRuntime, undefined, abortSignal) }),
@@ -771,6 +783,20 @@ class DesktopApplication {
     return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
   }
 
+  private requestRendererUiPreferenceChange(requestId: string): void {
+    const mainWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed() && !window.webContents.isDestroyed());
+    if (mainWindow === undefined) throw new Error('Open the Interceptor window before changing preferences.');
+    mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.uiPreferenceChangeRequested, requestId);
+  }
+
+  private publishUiPreferenceChange(change: UiPreferenceAppliedChange, senderId: number): void {
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed() && mainWindow.webContents.id !== senderId) {
+        mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.uiPreferenceChanged, change);
+      }
+    }
+  }
+
   private configureRendererIpc(): void {
     const ipcMain = {
       handle: (
@@ -798,6 +824,29 @@ class DesktopApplication {
         });
       },
     };
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiLanguageSet, (event, language: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.uiPreferencesService.setLanguage(language);
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiThemeSet, (event, theme: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.uiPreferencesService.setTheme(theme);
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.exportPrivacyDefaultsSet, (event, preferences: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.uiPreferencesService.setExportPrivacyDefaults(preferences);
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiPreferenceChangeClaim, (event, requestId: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof requestId !== 'string') throw new Error('Invalid preference request identity.');
+      return this.uiPreferencesService.claimChange(requestId);
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.uiPreferenceChangeComplete, (event, requestId: unknown, response: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (typeof requestId !== 'string') throw new Error('Invalid preference request identity.');
+      this.uiPreferencesService.completeChange(requestId, response, event.sender.id);
+    });
 
     // 自绘窗口栏的窗口控制：退出走 guarded shutdown，最小化/最大化只作用于发起窗口。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appQuit, (event) => {

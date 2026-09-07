@@ -61,6 +61,9 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_replace_tls_passthrough', 'Replace TLS passthrough', 'Replace TLS passthrough patterns at the current revision.'],
   ['settings_enable_https_decryption', 'Enable HTTPS decryption', 'Enable HTTPS decryption when the existing Root CA is trusted.'],
   ['settings_disable_https_decryption', 'Disable HTTPS decryption', 'Disable HTTPS decryption without changing certificate trust.'],
+  ['settings_set_language', 'Change language', 'Apply and remember the selected UI language without changing other settings.'],
+  ['settings_set_theme', 'Change theme', 'Apply and remember the selected UI theme without changing other settings.'],
+  ['settings_set_export_privacy_defaults', 'Set export privacy defaults', 'Save default masking and warning choices for future exports without modifying open export drafts or existing files.'],
 ] as const;
 
 describe('Tool Settings projection', () => {
@@ -77,7 +80,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(55);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(58);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

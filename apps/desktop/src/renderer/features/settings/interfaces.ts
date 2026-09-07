@@ -18,7 +18,7 @@ export interface TlsPassthroughNavigationTarget {
  * 全局隐私偏好（持久化到 localStorage）。
  *
  * 导出对话框以此为默认脱敏项，并据 `warnBeforeUnmasked` 决定是否在导出未脱敏数据前
- * 提示确认。隐私偏好只是 Renderer 视图状态，不放宽 Preload 面，也不进入捕获数据面。
+ * 提示确认。Main管理设置请求，Renderer应用并持久化，不进入捕获数据面。
  */
 export interface PrivacyPreferences {
   /** 导出默认遮罩 Authorization / Proxy-Authorization 与 URL 令牌。 */

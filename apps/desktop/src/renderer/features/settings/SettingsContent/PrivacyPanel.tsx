@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { StatusBadge, Switch } from '../../../components';
 import { usePrivacyStore } from '../data/privacyStore';
 
@@ -47,6 +48,7 @@ export function PrivacyPanel(): React.JSX.Element {
         >
           <Switch
             checked={maskAuthorization}
+            automationId={AUTOMATION_IDS.settings.privacy.maskAuthorization}
             onChange={(value) => setPreference('maskAuthorization', value)}
           />
         </Row>
@@ -56,6 +58,7 @@ export function PrivacyPanel(): React.JSX.Element {
         >
           <Switch
             checked={maskCookies}
+            automationId={AUTOMATION_IDS.settings.privacy.maskCookies}
             onChange={(value) => setPreference('maskCookies', value)}
           />
         </Row>
@@ -65,6 +68,7 @@ export function PrivacyPanel(): React.JSX.Element {
         >
           <Switch
             checked={warnBeforeUnmasked}
+            automationId={AUTOMATION_IDS.settings.privacy.warnUnmasked}
             onChange={(value) => setPreference('warnBeforeUnmasked', value)}
           />
         </Row>

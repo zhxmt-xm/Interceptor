@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { usePrivacyStore } from '../../data/privacyStore';
 
@@ -10,6 +10,7 @@ afterEach(() => {
     maskCookies: initial.maskCookies,
     warnBeforeUnmasked: initial.warnBeforeUnmasked,
   });
+  vi.unstubAllGlobals();
 });
 
 describe('usePrivacyStore', () => {
@@ -20,9 +21,12 @@ describe('usePrivacyStore', () => {
     expect(state.warnBeforeUnmasked).toBe(true);
   });
 
-  it('updates a single preference through setPreference', () => {
+  it('submits only the selected field to the shared Main preference method', () => {
+    const setExportPrivacyDefaults = vi.fn().mockResolvedValue({ maskAuthorization: true, maskCookies: false, warnBeforeUnmasked: true });
+    vi.stubGlobal('window', { interceptor: { setExportPrivacyDefaults } });
     usePrivacyStore.getState().setPreference('maskCookies', false);
-    expect(usePrivacyStore.getState().maskCookies).toBe(false);
+    expect(setExportPrivacyDefaults).toHaveBeenCalledExactlyOnceWith({ maskCookies: false });
+    expect(usePrivacyStore.getState().maskCookies).toBe(true);
     expect(usePrivacyStore.getState().maskAuthorization).toBe(true);
   });
 });

@@ -104,9 +104,11 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 
 `renderer/i18n/` 用 `i18next` + `react-i18next` 注册 15 个本地静态完整 catalog。**首次启动由 `matchSystemLanguage(navigator.languages)` 跟随系统语言**（中文按 Hans/Hant 分流、`pt*` 统一到 `pt-BR`、其余按基础语言降级），匹配不到才回退英语；用户手选后的值写入 `localStorage` 并由 `resolveLanguageId` 精确解析。切换同步 Ant `ConfigProvider.locale`、`html lang`、localStorage 与 `Intl` 格式。
 
-当前语言只由Renderer与`localStorage`持有；Desktop API没有`setUiLanguage`意图。Main拥有的原生文件Dialog
-目前不从Renderer接收语言设置。若以后把语言开放为Tool，必须先建立正式typed intent，不能让Tool直接写
-Renderer存储或暴露通用IPC。
+语言、主题和导出隐私仍由Renderer与`localStorage`持有；显式修改通过`setUiLanguage`、`setUiTheme`、
+`setExportPrivacyDefaults`进入Main的`UiPreferencesService`，与Agent/MCP共用方法。常驻
+`UiPreferencesActions`串行领取请求，调用i18n/主题setter并成功持久化后确认；Main广播已应用值到其他Renderer。
+App只更新DOM属性，不在确认之后重复写存储。隐私单字段patch按最新已应用值合并，不覆盖连续的独立修改。
+原生文件Dialog继续由既有调用提供标题，本组没有把语言配置传到Core或新建Main存储。
 
 ## 9. 验收要点
 

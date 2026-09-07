@@ -15,7 +15,7 @@ Settings 聚合所有需要**操作系统权限**或**跨会话持久化**的配
 | 系统代理 | Main | 接管、恢复、紧急修复、ownership 展示 |
 | 更新 | Main | 检查、changelog、手动下载、打开安装器 |
 | 存储 | Core | 用量状态、清理 |
-| 语言与主题 | Renderer | 15 种语言、4 套主题 |
+| 语言、主题与导出隐私 | Main + Renderer | Main管理设置请求；Renderer应用15种语言、4套主题和3项默认值并保存到localStorage |
 | Agent | Main + Renderer | Provider/Credential、持久化Chat、Streaming、Usage、恢复与24项Tool capability双列配置均已实现 |
 
 **核心边界：所有 OS 级操作只在 Main。** Core 不读写系统设置，Renderer 只表达意图。
@@ -40,6 +40,51 @@ TLS passthrough settings，并从当前host的所有覆盖项中选择最具体p
 最长的leading wildcard；没有覆盖项时不伪造目标。App一次性切到Settings / TLS passthrough并携带该
 pattern，列表加载后将目标滚入可见区域，以accent背景和边框高亮3秒；重复跳转重新计时。高亮只是
 Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core持有。
+
+### 1.1 语言、主题与导出隐私Tool
+
+- `settings_set_language`接受`{ language }`，只允许既有15个语言ID；`settings_set_theme`接受`{ theme }`，只允许`warm/light/ember/dark`。
+    - 不增加`auto/system`等模式，不改变首次启动的系统语言匹配、默认主题或现有`localStorage`键。
+    - UI与Tool共用明确的Main方法，不在Tool里执行JavaScript、写Renderer Store或直接访问存储。
+- `settings_set_export_privacy_defaults`要求显式提供`maskAuthorization`、`maskCookies`、`warnBeforeUnmasked`三个boolean。
+    - 只改变后续导出的默认值，不修改已经打开的导出草稿、运行中的任务或既有文件；Archive仍保留完整原生存档。
+    - UI单项Switch继续只改变自己的字段，连续操作不能因异步确认丢掉另一个字段。
+- Main通过有类型的Preload请求关联一次设置操作，Renderer常驻订阅应用并确认；界面导航不决定是否接收变更。
+    - Main处理参数校验、取消、Renderer退出及完成通知；结果只含已应用设置，不含存储路径、请求内部ID或任意错误内容。
+    - `UiPreferencesService`登记请求；`UiPreferencesActions`常驻订阅，串行领取并应用，成功写入原localStorage后确认，Main再广播给其他Renderer。
+    - 不新建配置文件、双写副本或迁移路径。App只把语言/主题映射到DOM，不再晚于确认重复写存储；持久化失败返回安全失败响应。
+    - Deny与预取消无写入；未开始的请求被取消后不能迟到应用。已开始提交的设置完成原操作，不用取消回滚用户状态。
+- 三项均为独立Settings change，Agent/MCP各自授权并遵守Ask/Auto。
+    - 先取得executor和真实Electron缺失Tool Red；新增Main生命周期与Renderer应用逻辑先由产品测试锁定目标行为。
+    - 语言变更在专属`settings.tools.language`验证；主题与隐私在`settings.tools.preferences`验证，其他workflow不为定位控件切换语言。
+    - 最终验收覆盖UI原入口、当前已挂载界面、取消/失败、双列撤权、重启持久化和零重放；设置操作不修改系统代理或证书配置。
+
+<a id="ui-preferences-acceptance"></a>
+### 1.2 偏好Tool验收（2026-09-07）
+
+- 前置结果：executor21项缺失Tool Red，日志为TEMP下`interceptor-settings-preferences-executor-red-20260907.log`。
+    - 真实语言/偏好两条workflow在`5e4fbc31`构建上discovery Red，证据`interceptor-settings-preferences-e2e-red-20260907-203104`；Main/Core `6352/27056`、`37204/20232`均正常退出并恢复宿主。
+    - Main测试先于Service创建；首次因模块不存在没有执行任何用例，不能把该日志当作29项行为Red。实现后生命周期29/29。
+    - Renderer原Privacy入口未调用Main而Red；新增Actions测试初始模块缺失。摘要3项Red后53/53；保存确认另5项Red后Renderer应用10/10，与Privacy2项和Main合计41/41。
+    - 对应日志为`interceptor-ui-preferences-owner-red-20260907.log`、`interceptor-ui-preferences-renderer-red-20260907.log`、`interceptor-settings-preferences-summary-red-20260907.log`、`interceptor-preferences-persistence-red-20260907.log`。
+- 五条关联真实流程5/5（2.0分钟），证据`interceptor-preferences-related-green-20260907-210510`。
+    - 包含语言、主题/隐私、Settings双列授权、MCP Browser与MCP Desktop；十代Main/Core全部`gracefulDestroyVerified=true`。
+    - Settings授权三代为`12772/4696`、`9308/30292`、`4360/23364`；MCP Browser为`43212/27372`；MCP Desktop为`6540/44540`、`13236/24084`。
+    - 偏好两代为`8228/36200`、`16740/12028`；语言为`6020/44436`、`41780/16864`。Main/Core/Worker退出、8888释放、完整WinINet/journal恢复。
+- 保存确认修正后两条目标流程再跑2/2（52.3秒），最终证据`interceptor-preferences-persistence-green-20260907-211527`。
+    - 偏好Main/Core `20840/34860`、`25464/28872`；语言`38236/34080`、`42568/18792`，四代正常销毁及宿主恢复通过。
+    - 原Sidebar/Privacy UI、Agent/MCP Ask Deny/Allow/Auto、已挂载界面、连续单字段修改、HAR已开草稿遮罩不变/下次读取新默认值、撤权、重启持久化与Model零重放通过。
+    - 语言只在专属流程中改变；两条流程都通过原UI恢复初始偏好。`preferences.json`只保存公开Tool名称和布尔结论。
+- 全workspace typecheck、Desktop707/707、Tools347/347、MCP32/32通过。
+    - 偏好明暗12视图72 targets、共用TLS fixture16视图96 targets、Settings目录6视图76 targets合计244/244，0 missing/flagged，最大0.6px。
+    - 报告位于TEMP，前缀`interceptor-preferences-final-parity-20260907-211811`、`interceptor-preferences-settings-parity-20260907-212106`；保留旧全量parity报告，不扩充设计工具测试。
+    - 三项设置生成12张审批/完成设计图；Settings筛选目录2张有实际变化，其余重新生成图保持不变。
+- Windows package、artifact audit（1,294 files / 392,925,601 bytes）、packaged smoke1/1（41.5秒）通过。
+    - 日志`interceptor-preferences-package-20260907.log`、`interceptor-preferences-artifact-audit-20260907.log`；smoke证据`interceptor-preferences-smoke-20260907-211651`。
+    - 新增7个窄Preload API均列入安全白名单；设置请求/确认不注册为业务Tool，只有三项明确设置命令对外。
+    - 依赖及锁文件未变，复用`interceptor-har-delivery-production-audit-20260907.json`零漏洞结果，不声称本轮重新查询。
+- 本组后代码58/73、完整自动验收54/73；Settings代码15/26、完整11/26，registry/recipe58项、116个开关，Developer人工结论0/58。
+    - TLS清理、证书/AppContainer特权步骤、Updates和macOS独立原生验收仍未完成，不由上述结果替代。
 
 ## 2. 证书与 HTTPS MITM
 

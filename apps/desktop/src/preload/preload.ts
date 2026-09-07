@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 
 import {
   DESKTOP_IPC_CHANNELS,
@@ -20,6 +21,21 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  setUiLanguage: (language) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiLanguageSet, language),
+  setUiTheme: (theme) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiThemeSet, theme),
+  setExportPrivacyDefaults: (preferences) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.exportPrivacyDefaultsSet, preferences),
+  claimUiPreferenceChange: (requestId) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiPreferenceChangeClaim, requestId),
+  completeUiPreferenceChange: (requestId, response) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiPreferenceChangeComplete, requestId, response),
+  onUiPreferenceChangeRequested: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, requestId: string): void => listener(requestId);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.uiPreferenceChangeRequested, handler);
+    return () => { ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.uiPreferenceChangeRequested, handler); };
+  },
+  onUiPreferenceChanged: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, change: UiPreferenceAppliedChange): void => listener(change);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.uiPreferenceChanged, handler);
+    return () => { ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.uiPreferenceChanged, handler); };
+  },
   echoCore: (value) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.coreEcho, value),
   closeApplication: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appQuit),
   minimizeWindow: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.windowMinimize),

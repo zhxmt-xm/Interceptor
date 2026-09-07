@@ -228,6 +228,18 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Note the current decryption intent and certificate identity before the call.'],
     ['Deny preserves the current state.', 'Allow and Auto disable effective decryption without changing certificate identity or trust.', 'Restore the original intent after inspection.'],
   ),
+  settings_set_language: recipe(
+    ['Record the current language ID; use a dedicated language acceptance session.', 'Choose one of the fifteen supported language IDs.'],
+    ['Deny preserves the language.', 'Allow and Auto update the mounted UI and return only the applied language ID.', 'The original Sidebar selector uses the same request; the last language survives restart.', 'Restore the original language through the product UI.'],
+  ),
+  settings_set_theme: recipe(
+    ['Record the current theme ID and keep the application language unchanged.'],
+    ['Deny preserves the theme; Allow and Auto apply warm, light, ember or dark.', 'The original Sidebar selector and Tool share the same setting flow.', 'The applied theme survives restart; restore the original theme through the UI.'],
+  ),
+  settings_set_export_privacy_defaults: recipe(
+    ['Record the three current Privacy defaults and provide all three boolean values.', 'Capture a Playground request and open HAR Export.'],
+    ['Deny preserves defaults; Allow and Auto update the mounted Privacy switches.', 'An open export draft retains its masking choices; the next draft uses the new defaults.', 'Rapid changes to separate Privacy switches are both preserved.', 'Restart retains the values; restore the original defaults through the UI.'],
+  ),
 } satisfies Readonly<Record<CurrentToolName, AcceptanceRecipe>>;
 
 export const ACCEPTANCE_RECIPES: Readonly<Record<string, AcceptanceRecipe>> =

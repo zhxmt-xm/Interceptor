@@ -93,6 +93,10 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。
 
 - HAR的IPC、MCP和Agent调用同一`startHarExport`或`startHarImport`，路径只来自原生Save/Open Dialog。
+- 语言、主题和导出隐私的IPC/Agent/MCP共用`UiPreferencesService.setLanguage/setTheme/setExportPrivacyDefaults`。
+  - Main只保存待执行请求及生命周期；Renderer的`UiPreferencesActions`常驻串行领取、应用并写入既有localStorage，再回传窄确认，Main通知其他Renderer。
+  - 领取前取消使晚到请求无效，领取后完成已开始的提交；窗口关闭/Renderer退出清理所有pending。请求与响应都在Main校验，不暴露执行脚本、任意Store或存储路径接口。
+  - 新增`setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件7个Preload API，只有前三项设置意图注册为Tool。验收见[偏好Tool](../features/settings.md#ui-preferences-acceptance)。
 - `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
   - Main和Preload转发给`onCaptureImported`，Renderer常驻`useCaptureData`重新查询summaries。
   - 发送失败时Core保留待发送信号；失败、取消的文件任务不发成功通知。

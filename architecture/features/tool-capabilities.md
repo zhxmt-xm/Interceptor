@@ -3,10 +3,10 @@
 > 最后更新：2026-09-07
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现55/73，完整自动验收51/73；TLS四项最终CA清理E2E blocked，Capture17项含Archive导入/导出均已完成真实E2E与当前产物验证，另18项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，代码已实现58/73，完整自动验收54/73；TLS四项最终CA清理E2E blocked，Capture17项与Settings语言/主题/导出隐私均已完成真实E2E与当前产物验证，另15项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
-> Settings代码12/26、完整自动验收8/26；只读六项与系统代理启用/恢复两项已完成真实验收。Playground
-> recipe为55/55、Developer人工结论为0/55；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> Settings代码15/26、完整自动验收11/26；只读六项、系统代理两项及偏好三项已完成真实验收。Playground
+> recipe为58/58、Developer人工结论为0/58；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
@@ -18,9 +18,9 @@
 | Composer | 6 | 6 | 0 | 0 |
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
-| Settings | 26 | 8 | 4 | 14 |
+| Settings | 26 | 11 | 4 | 11 |
 | Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 51 | 4 | 18 |
+| 合计 | 73 | 54 | 4 | 15 |
 
 ## 1. 唯一目录
 
@@ -60,8 +60,8 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 
 ### Main共享入口审计（2026-09-07）
 
-- `invokeMainTool`注册21个Main命令，Agent与MCP共用，IPC单独注册handler。
-- 原19项已完成共享方法整理；Archive新增2项沿同一规则实现，当前代码55/73、完整自动验收51/73。
+- `invokeMainTool`注册24个Main命令，Agent与MCP共用，IPC单独注册handler。
+- 原19项已完成共享方法整理；Archive新增2项、Settings偏好新增3项沿同一规则实现，当前代码58/73、完整自动验收54/73。
 - HAR与Archive导入/导出已通过完整自动验收，不要求所有IPC都开放为Tool。
 
 | 类别 | Main命令 | 当前业务入口 |
@@ -76,6 +76,7 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 | 已共享，1项 | `composer.collection.replace` | 同一`replaceCollection`负责Core保存和变更通知；IPC排除发起窗口，由返回值确认快照，Tool通知全部Renderer |
 | 已共享，1项 | `capture.har.import` | 共用原生Open与任务启动；Core成功导入后统一通知Renderer重新查询，不依赖导入弹窗 |
 | 已共享，2项 | `capture.archive.export`、`capture.archive.import` | IPC/Agent/MCP共用`startArchiveExport`/`startArchiveImport`；整库快照与追加导入沿原Core任务，复用完成通知 |
+| 已共享，3项 | `settings.language.set`、`settings.theme.set`、`settings.export-privacy-defaults.set` | `UiPreferencesService`管理请求/取消/确认；常驻Renderer串行应用并持久化，Main完成后广播 |
 
 - 后续Settings和Updates未实现Tool继续遵守已统一的规则。
    - IPC handler、MCP Tool和Agent Tool调用同一业务方法，Main/Core统一发出状态通知。
@@ -142,7 +143,7 @@ interface ToolCapabilitySettingsRecord {
 }
 ```
 
-- fresh profile或两组关闭项都为空时不保留文件，当前55项自然全部开启；
+- fresh profile或两组关闭项都为空时不保留文件，当前58项自然全部开启；
 - 读取时拒绝非法schema、重复名称和额外字段；合法数组中的未知/旧名称从内存快照丢弃，不改写文件、不映射到
    新名称；写入只保留当前registry名称并按registry顺序规范化；
 - `getToolCapabilitySettings`返回六组目录和两组关闭名称的完整快照；
@@ -262,9 +263,9 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_disable_app_container` | change | `setAppContainerLoopbackExemption(sid, false)` / UAC | 产品已具备 |
 | `settings_enable_all_app_containers` | change | `enableAllAppContainers` / UAC | 产品已具备 |
 | `settings_disable_all_app_containers` | change | `disableAllAppContainers` / UAC | 产品已具备 |
-| `settings_set_language` | change | 当前仅 Renderer 状态 | 先补 intent |
-| `settings_set_theme` | change | 当前仅 Renderer 状态 | 先补 intent |
-| `settings_set_export_privacy_defaults` | change | 当前仅 Renderer 状态 | 先补 intent |
+| `settings_set_language` | change | `setUiLanguage` / `UiPreferencesService.setLanguage` | 已完成；15个正式ID、原UI/Agent/MCP及专属语言流程 |
+| `settings_set_theme` | change | `setUiTheme` / `UiPreferencesService.setTheme` | 已完成；四主题、原UI/Agent/MCP和重启持久化 |
+| `settings_set_export_privacy_defaults` | change | `setExportPrivacyDefaults` / `UiPreferencesService.setExportPrivacyDefaults` | 已完成；三个显式boolean、连续单字段合并与已开HAR草稿隔离 |
 
 ### 3.7 Updates
 
@@ -275,7 +276,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `updates_download` | change | `downloadUpdate` | 产品已具备 |
 | `updates_open_downloaded` | change | `openDownloadedUpdate` | 产品已具备 |
 
-## 4. 当前55项实现矩阵
+## 4. 当前58项实现矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
 adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
@@ -338,11 +339,14 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `settings_replace_tls_passthrough` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
 | `settings_enable_https_decryption` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
 | `settings_disable_https_decryption` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
+| `settings_set_language` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
+| `settings_set_theme` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
+| `settings_set_export_privacy_defaults` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
 
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前51/73。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、偏好三项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前54/73。
 
 ### 5.1 首批24项与独立验收
 
@@ -392,7 +396,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有55项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另18项尚未实现，不计入已验收范围。
+   目前有58项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另15项尚未实现，不计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -402,14 +406,14 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
 分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成；TLS保留权限阻塞。Main方法整理已验收，继续Settings和Updates未实现Tool。
 
-### 5.2 余下49项计划（已完成27项，剩余22项）
+### 5.2 余下49项计划（已完成30项，剩余19项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
 
 | 顺序 | Feature | 尚未完成验收 | 交付范围与顺序 |
 | --- | --- | ---: | --- |
-| 1 | Settings | 18 | 只读查询6项与系统代理启用/恢复2项已完成；TLS配置与解密开关4项代码完成待最终清理验收 → 证书生成/信任/查看7项 → AppContainer豁免4项 → 语言/主题/导出隐私默认值3项；最后3项先补正式产品intent |
+| 1 | Settings | 15 | 只读6项、系统代理2项、语言/主题/隐私3项已完成；TLS4项代码完成待清理验收，证书7项与AppContainer4项待实现及特权验收 |
 | 2 | Rules | 0 | Export/Import均已完成；Import复用UI预览确认与原子追加，真实输入来自同workflow产品Export |
 | 3 | Composer | 0 | Collection查询/替换与Export/Import均已完成；Import复用正式确认及自动保存协调，文件输入由同workflow产品Export生成 |
 | 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
@@ -700,13 +704,21 @@ TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留�
 - package、artifact audit（1,294 files / 392,914,820 bytes）、packaged smoke1/1（47.0秒）通过；依赖未变，复用HAR阶段production audit零漏洞结果。
 - 当前代码55/73、完整自动验收51/73；recipe55项、110个开关，Developer人工结论0/55；详细前置和最终证据见[Archive验收](transfer.md#archive-tool-acceptance)。
 
+### 5.14 语言、主题与导出隐私
+
+- 三项严格参数change共用`UiPreferencesService`，Renderer串行领取、应用、保存后确认，不直接在Tool写Store或配置。
+- executor21项缺失Tool Red、真实语言/偏好discovery Red、Privacy原入口Red、摘要3项Red、保存确认5项Red均保留。
+- 最终相关真实5/5，保存确认修正后目标两条再跑2/2；原UI、Agent/MCP、HAR遮罩草稿隔离、独立撤权、重启持久化和完整宿主恢复通过。
+- Desktop707/707、Tools347/347、MCP32/32、全workspace类型、parity244/244通过；package/artifact audit（1,294 files / 392,925,601 bytes）与smoke1/1通过。
+- 当前代码58/73、完整自动验收54/73，Settings完整11/26；recipe58项、116个开关、人工0/58。前置测试缺口和完整证据见[偏好验收](settings.md#ui-preferences-acceptance)。
+
 ## 6. 相关未完成验收
 
 这些事项与Tool交付相关，但不计入全量73项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 55/55；Developer结论0/55 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下18项开发 |
+| Playground人工矩阵 | 当前recipe 58/58；Developer结论0/58 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下15项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |

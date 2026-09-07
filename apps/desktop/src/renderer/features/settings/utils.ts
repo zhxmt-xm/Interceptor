@@ -25,13 +25,8 @@ export function loadPreferences(): PrivacyPreferences {
   }
 }
 
-/** 持久化偏好；写入失败静默忽略（隐私偏好丢失不影响功能）。 */
 export function persistPreferences(preferences: PrivacyPreferences): void {
-  try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  } catch {
-    // localStorage 不可用时忽略。
-  }
+  globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
 }
 
 /** 字节数按本地化的 B / KB / MB / GB / TB 折算。 */
