@@ -493,6 +493,8 @@ macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi
 
 ## 4. 更新
 
+Updates仅保留现有产品UI和Main更新流程，不注册为Agent/MCP Tool，也不列入Tool开发计划。
+
 ```mermaid
 sequenceDiagram
     autonumber

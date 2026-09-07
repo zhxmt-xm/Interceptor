@@ -1,15 +1,11 @@
 # Interceptor Handover
 
-> Tracked commit: `5e4fbc31`
+> Tracked commit: `e57909e6`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-09-07
+> 最后更新：2026-09-08
 
 ## Task List
 
-- [ ] **blocked · 已验收提交推送**：Capture为`add743b`，Main方法整理为`45ab56a1`，已授权workspace Autopilot设置为`b59c5adb`，Archive为`5e4fbc31`；四项均已本地提交。
-    - push多次失败：`curl 55 Send failure: Connection was reset`、无法连接`github.com:443`；本轮再次重试仍为`Recv failure: Connection was reset`。
-    - 网络恢复后执行`git -c http.proxy= -c https.proxy= push origin main`；不要重新提交同一改动。
-    - 当前没有启动代理客户端或修改网络设置。其他已授权任务继续本地检查，恢复网络后优先推送此提交。
 - [ ] **blocked · TLS四项Tool代码完成 · 待真实E2E最终清理验证**：在已推送`89028fdf`后，新增不安全名单替换、passthrough替换与解密启停四项；用户明确要求继续并提交当前代码，按未闭环进度保存，不计入完整自动验收数。TLS阶段保存时为代码36/73、完整验收32/73，另37项尚未实现。真实workflow已验证名单规范化、revision冲突、已挂载面板即时刷新、Ask/Auto、未信任意图与Core实际状态、真实CA安装、撤权和重启零重放；最终一轮清理失败，不能标记flow完成。
     阻塞事实：设置变更触发Certificates面板短暂重载，清理用瞬时`isVisible()`判断，跳过了重载期间不可见的Uninstall/Delete。两代Main/Core `9740/1936`、`23384/33672`均已正常退出、8888及系统代理恢复，但本轮LocalMachine Root CA仍残留，SHA-1为`8F5FD8BF6D49BE746862522F6AC616583ED152BB`，NotBefore为2026-09-05 20:45:32。其他六张Interceptor根证书是此前已有，不得删除。
     `desktopApp.preserveUserDataOnFailure()`此前只判断`await use(driver)`捕获的异常，未结合Playwright实际失败状态，本轮profile已被删除；现已提取并修正判定，实际failed/timedOut/interrupted均触发特权profile保留，3项Red后9/9 Green。清理已按本轮证书指纹与真实信任状态等待Uninstall/Delete，不再因瞬时不可见跳过；新的清理仍待真实复验。TLS审批错误与中途取消补8项Red后executor32/32 Green，底层路径不进入审批结果。
@@ -17,12 +13,12 @@
     唯一管理员操作仍为`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，须由Developer在管理员PowerShell执行；当前Agent终端非管理员，不得尝试自动提权。只读确认该指纹不存在后，复跑`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.tls"`，验证修复后的清理与profile保留路径和最终验收提交。代码已由`7bc809a1`提交并推送，状态不得提前改为passed。当前无本轮Electron残留，不再次运行涉及CA的测试直到完成上述恢复。
     2026-09-06中断恢复核验：Settings只读、系统代理、全局权限、MCP Browser和MCP Desktop共5条关联真实workflow为5/5；十代Main/Core分别为`25388/8092`、`25492/23872`、`24712/41188`、`34436/18700`、`20492/24624`、`23584/35316`、`37440/43160`、`24472/43296`、`43156/13096`、`11332/23576`，全部`gracefulDestroyVerified=true`。证据归档于TEMP下`interceptor-tls-adjacent-e2e-20260906`。完整parity已完成238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged；TLS新增16视图96/96、0 missing/flagged、最大0.5px，既有视觉债务仍保留。输出图片在TEMP下`interceptor-tls-full-parity-20260906`，仓库报告已更新；不要重复长跑。最新只读核对CA仍在、8888无listener、共享journal不存在、分支已同步。
     用户于2026-09-06再次要求“不要停下，一直跑任务”；保留TLS及依赖证书权限的工作项blocked，不把阻塞冒充完成，继续推进原计划内不依赖该权限的独立Tool组。每个后续组仍执行契约、unit/E2E Red/Green、销毁证据、独立commit/push，不放宽验收门禁。
-- [ ] **进行中 · Tool代码58/73 · 完整自动验收54/73**：TLS四项待最终清理，另15项未实现。
-    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `11/26`、Updates `0/4`。
+- [ ] **进行中 · Tool代码58/69 · 完整自动验收54/69**：TLS四项待最终清理，另11项未实现；Updates不属于Tool范围。
+    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `11/26`。
     - Settings代码15/26；授权开关不是Settings业务Tool。registry/recipe58项、116个开关，Developer人工结论0/58。
     - 偏好真实关联5/5、最后目标2/2、parity244/244、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
-    - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；网络push阻塞见上述记录。
-    - Main共享方法当前24项；继续证书7项、AppContainer4项及Updates4项。特权和外部服务阻塞如实记录，不触碰残留CA、不自动提权，见[能力计划](features/tool-capabilities.md)。
+    - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；上述提交已推送至`e57909e6`。
+    - Main共享方法当前24项；后续仅保留证书7项与AppContainer4项。特权阻塞如实记录，不触碰残留CA、不自动提权，见[能力计划](features/tool-capabilities.md)。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
     - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
     - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
@@ -56,6 +52,13 @@
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation
+
+- 2026-09-08：按用户决定撤销Updates全部Tool实现、专属测试与规划，保留原Updates产品UI、Main检查/下载/打开安装器流程；当前目标69项、代码58/69、完整自动验收54/69。
+    - 产品、测试和设计代码与已推送`e57909e6`一致，源码和本地Main bundle均无Updates Tool标识；本次提交只调整功能边界与待办文档。
+    - 暂停前`interceptor-remove-updates-tools-green-20260907-220204`只完成构建，未取得E2E最终结果，不计Green。续跑`agent.tools.settings-capabilities`为1/1（29.1秒），验证58项能力、116个开关及跨重启授权。
+    - 三代Main/Core为`41684/22244`、`46000/36988`、`49292/33736`，均`gracefulDestroyVerified=true`，Main/Core/Worker退出、8888释放、完整WinINet/journal恢复；trace/evidence位于TEMP下`interceptor-remove-updates-tools-verified-20260908-005219`。
+
+- 2026-09-07：此前网络推送阻塞已解除；`add743b`、`45ab56a1`、`b59c5adb`、`5e4fbc31`和偏好提交`e57909e6`均已推送，`main`与`origin/main`一致。未启动代理客户端或改动网络配置。
 
 - 2026-09-07：Settings语言/主题/导出隐私三项已验收，总计代码58/73、完整54/73。
     - `UiPreferencesService`与常驻Renderer共用设置请求，成功持久化后确认；领取前取消、连续Privacy修改、HAR遮罩草稿保持、原UI/Agent/MCP和重启通过。

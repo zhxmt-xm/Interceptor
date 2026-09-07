@@ -1,15 +1,17 @@
 # Feature: Agent / MCP Tool 能力目录
 
-> 最后更新：2026-09-07
+> 最后更新：2026-09-08
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现58/73，完整自动验收54/73；TLS四项最终CA清理E2E blocked，Capture17项与Settings语言/主题/导出隐私均已完成真实E2E与当前产物验证，另15项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共69项，代码已实现58/69，完整自动验收54/69；TLS四项最终CA清理E2E blocked，Capture17项与Settings语言/主题/导出隐私均已完成真实E2E与当前产物验证，另11项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
 > Settings代码15/26、完整自动验收11/26；只读六项、系统代理两项及偏好三项已完成真实验收。Playground
 > recipe为58/58、Developer人工结论为0/58；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
-当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
+当前目录共69个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有69个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
+
+2026-09-07按用户决定移除Updates四项目标；Updates仅保留产品功能，不注册为Tool。此前验收记录中的73项目标为历史口径。
 
 | Feature | 目标 | 已实现并自动验收 | 代码完成待验收 | 待实现 |
 | --- | ---: | ---: | ---: | ---: |
@@ -19,8 +21,7 @@
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
 | Settings | 26 | 11 | 4 | 11 |
-| Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 54 | 4 | 15 |
+| 合计 | 69 | 54 | 4 | 11 |
 
 ## 1. 唯一目录
 
@@ -35,8 +36,8 @@ Agent 自身 Session/Provider 控制、MCP 接入控制、窗口导航、事件�
 ### 1.1 Feature命名契约
 
 Tool名称固定使用`<feature>_<verb>[_<object>]`，前缀等于拥有该业务能力的feature/capability，而不是当前UI页面。
-当前已实现目录使用`capture`、`rules`、`composer`、`breakpoints`、`diagnostics`与`settings`六个前缀；后续产品能力使用
-`updates`等同样的所有权前缀。前缀已经表达对象时不重复，例如使用`breakpoints_continue`而不是
+当前目录使用`capture`、`rules`、`composer`、`breakpoints`、`diagnostics`与`settings`六个前缀。
+前缀已经表达对象时不重复，例如使用`breakpoints_continue`而不是
 `breakpoints_continue_breakpoint`，使用`rules_get_tree`而不是`rules_get_rules`。
 
 本轮把已有24项一次性切换到feature命名，同时把Capability ID的`traffic`改为`capture`、`requests`改为
@@ -45,8 +46,7 @@ Tool名称固定使用`<feature>_<verb>[_<object>]`，前缀等于拥有该业�
 只使用新名称。
 
 GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get_github_auth_status`、`start_github_sign_in`、
-`open_github_authorization`与`sign_out_github`四个候选。产品已有GitHub Auth代码不属于本次Tool目录重构；更新能力
-归`updates_*`，不再以GitHub身份建模。
+`open_github_authorization`与`sign_out_github`四个候选。产品已有GitHub Auth与Updates代码不属于Tool目录，保留原产品流程。
 
 状态含义：
 
@@ -61,7 +61,7 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 ### Main共享入口审计（2026-09-07）
 
 - `invokeMainTool`注册24个Main命令，Agent与MCP共用，IPC单独注册handler。
-- 原19项已完成共享方法整理；Archive新增2项、Settings偏好新增3项沿同一规则实现，当前代码58/73、完整自动验收54/73。
+- 原19项已完成共享方法整理；Archive新增2项、Settings偏好新增3项沿同一规则实现，当前代码58/69、完整自动验收54/69。
 - HAR与Archive导入/导出已通过完整自动验收，不要求所有IPC都开放为Tool。
 
 | 类别 | Main命令 | 当前业务入口 |
@@ -78,7 +78,7 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 | 已共享，2项 | `capture.archive.export`、`capture.archive.import` | IPC/Agent/MCP共用`startArchiveExport`/`startArchiveImport`；整库快照与追加导入沿原Core任务，复用完成通知 |
 | 已共享，3项 | `settings.language.set`、`settings.theme.set`、`settings.export-privacy-defaults.set` | `UiPreferencesService`管理请求/取消/确认；常驻Renderer串行应用并持久化，Main完成后广播 |
 
-- 后续Settings和Updates未实现Tool继续遵守已统一的规则。
+- 后续Settings未实现Tool继续遵守已统一的规则。
    - IPC handler、MCP Tool和Agent Tool调用同一业务方法，Main/Core统一发出状态通知。
    - 保留原生Dialog、独立授权、取消和结果脱敏。
    - Body UI仍须支持HTTP、WebSocket、gRPC和断点原文，不能为了统一而删除能力。
@@ -267,15 +267,6 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_set_theme` | change | `setUiTheme` / `UiPreferencesService.setTheme` | 已完成；四主题、原UI/Agent/MCP和重启持久化 |
 | `settings_set_export_privacy_defaults` | change | `setExportPrivacyDefaults` / `UiPreferencesService.setExportPrivacyDefaults` | 已完成；三个显式boolean、连续单字段合并与已开HAR草稿隔离 |
 
-### 3.7 Updates
-
-| Tool | 类型 | 复用的产品入口 | 当前进度 |
-| --- | --- | --- | --- |
-| `updates_get_status` | query | `getUpdateStatus` | 产品已具备 |
-| `updates_check` | change | `checkForUpdates` | 产品已具备 |
-| `updates_download` | change | `downloadUpdate` | 产品已具备 |
-| `updates_open_downloaded` | change | `openDownloadedUpdate` | 产品已具备 |
-
 ## 4. 当前58项实现矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
@@ -345,12 +336,12 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 
 ## 5. 实施顺序与阶段门禁
 
-Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、偏好三项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前54/73。
+Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是69项，首批24项完成只代表一个阶段完成。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、偏好三项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前54/69。
 
 ### 5.1 首批24项与独立验收
 
-以下保留首批已完成阶段和独立验收欠账；人工矩阵不是余下49项开发的前置条件，也不代表全量Tool已交付。
+以下保留首批已完成阶段和独立验收欠账；人工矩阵不是后续Tool开发的前置条件，也不代表全量Tool已交付。
 
 1. **[已完成] 基础层**：设计能力列表与`ask`问询；建立24项共享registry、MCP adapter、Settings持久化、
    Agent渐进discovery；接入首批Capture query和`capture_stop_recording`，完成首个query/change真实纵向流程。
@@ -396,7 +387,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有58项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另15项尚未实现，不计入已验收范围。
+   目前有58项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另11项尚未实现，不计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -404,11 +395,11 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成；TLS保留权限阻塞。Main方法整理已验收，继续Settings和Updates未实现Tool。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成；TLS保留权限阻塞。Main方法整理已验收，继续Settings未实现Tool。
 
-### 5.2 余下49项计划（已完成30项，剩余19项）
+### 5.2 后续45项计划（已完成30项，剩余15项）
 
-按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
+按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
 
 | 顺序 | Feature | 尚未完成验收 | 交付范围与顺序 |
@@ -419,7 +410,6 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 | 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
 | 5 | Diagnostics | 0 | Trace/Recent当前Core快照与原生JSONL导出均已完成；查询静默、异步任务状态及文件脱敏已验收 |
 | 6 | Capture | 0 | Transfer任务查询/取消、Body、HAR与Archive导入/导出均已完成，复用正式任务、完成通知与原生Dialog流程 |
-| 7 | Updates | 4 | 状态、检查、下载、打开；保持下载校验和原生安装器边界，不重新引入GitHub Auth Tool |
 
 需要原生Dialog或UAC的工作项仍须真实键鼠交互；若环境或权限确实阻塞，记录具体人工操作和恢复命令，不能
 伪造返回值、跳过验收或标记完成。跨平台专属步骤分别记录平台证据，不把Windows结果当成macOS已验收。
@@ -714,11 +704,11 @@ TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留�
 
 ## 6. 相关未完成验收
 
-这些事项与Tool交付相关，但不计入全量73项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
+这些事项与Tool交付相关，但不计入全量69项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 58/58；Developer结论0/58 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下15项开发 |
+| Playground人工矩阵 | 当前recipe 58/58；Developer结论0/58 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下11项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |
@@ -731,6 +721,7 @@ TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留�
 
 | 类别 | 入口 | 原因 |
 | --- | --- | --- |
+| Updates | `getUpdateStatus`、`checkForUpdates`、`downloadUpdate`、`openDownloadedUpdate` | 仅保留产品UI和Main更新流程，不注册为Agent/MCP Tool |
 | Agent 自身控制 | `getAgentModels`、`testAgentProviderConnection`、`saveVerifiedAgentProvider`、`removeAgentProvider`、`setDefaultAgentModel`、`listAgentSessions`、`createAgentSession`、`selectAgentSession`、`getAgentSession`、`renameAgentSession`、`deleteAgentSession`、`setAgentSessionModel`、`requireAgentToolApproval`、`automaticallyExecuteAgentTools`、`sendAgentMessage`、`cancelAgentTurn`、`retryAgentTurn`、`allowAgentToolCall`、`denyAgentToolCall` | 由用户直接控制当前Agent；自调用会递归或改写自身会话 |
 | Tool 能力设置 | Agent/MCP Tool 开关、`ask` / `auto` 模式 | 这是 Tool 的授权来源，不能由被授权 Tool 自行修改 |
 | MCP 接入控制 | MCP Server 开关、Client 新增/撤销、Host 配置 | 这是外部调用方的认证与接入边界 |
@@ -762,7 +753,7 @@ TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留�
 
 ### 9.1 Feature命名重构
 
-Tool协议已一次性改为`<feature>_<verb>[_<object>]`，Capability与Settings严格按Capture、Rules、Composer、Breakpoints、Diagnostics五个feature分组；完整目标目录为73项，73个名称唯一且零错组，GitHub Auth四个候选已删除，Updates归`updates_*`。旧名称无alias，旧Settings名称只丢弃不迁移。父提交`97120203`运行同一Settings workflow精确Red于完整旧24项名称；当前Settings三代workflow、Agent Capture/Rules/Composer/Breakpoints四条、MCP Desktop/Browser两条共`7/7` Green。Tools`62/62`、Desktop`457/457`、Runtime`122/122`、Core Protocol`25/25`、MCP`32/32`、Playground`67/67`、design interaction`70/70`与全workspace typecheck Green；Capture/Composer改名后的明暗四个Agent场景合计`38/38 matched / 0 missing / 0 flagged / 0px`，五个Settings feature组明暗`38/38 matched / 0 missing / 0 flagged / 最大0.6px`。稳定独占完整Parity为`208 views / 1,456 targets / 1,422 matched / 34既有missing / 305既有flagged`；Windows package、artifact audit（`1,294 files / 392,824,445 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。
+Tool协议已一次性改为`<feature>_<verb>[_<object>]`，Capability与Settings严格按Capture、Rules、Composer、Breakpoints、Diagnostics五个feature分组；完整目标目录为73项，73个名称唯一且零错组，GitHub Auth四个候选已删除。旧名称无alias，旧Settings名称只丢弃不迁移。父提交`97120203`运行同一Settings workflow精确Red于完整旧24项名称；当前Settings三代workflow、Agent Capture/Rules/Composer/Breakpoints四条、MCP Desktop/Browser两条共`7/7` Green。Tools`62/62`、Desktop`457/457`、Runtime`122/122`、Core Protocol`25/25`、MCP`32/32`、Playground`67/67`、design interaction`70/70`与全workspace typecheck Green；Capture/Composer改名后的明暗四个Agent场景合计`38/38 matched / 0 missing / 0 flagged / 0px`，五个Settings feature组明暗`38/38 matched / 0 missing / 0 flagged / 最大0.6px`。稳定独占完整Parity为`208 views / 1,456 targets / 1,422 matched / 34既有missing / 305既有flagged`；Windows package、artifact audit（`1,294 files / 392,824,445 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。
 
 ### 9.2 Composer
 
