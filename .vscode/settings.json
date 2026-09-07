@@ -1,3 +1,4 @@
 {
-  "chat.agent.maxRequests": 9007199254740991
+  "chat.agent.maxRequests": 9007199254740991,
+  "chat.autopilot.advanced.enabled": false
 }
