@@ -18,6 +18,9 @@ const EXPECTED_SETTINGS_COPY = [
   ['capture_list_grpc_messages', 'gRPC messages', 'Page through decoded gRPC messages.'],
   ['capture_get_transfer_job', 'Get file transfer job', 'Read one file transfer state and progress without revealing local file information.'],
   ['capture_cancel_transfer_job', 'Cancel file transfer job', 'Cancel one running file transfer; completed, failed and cancelled jobs stay unchanged.'],
+  ['capture_export_body', 'Export captured body', 'Save a captured body in full through the native Save Dialog, without exposing body bytes or local file information.'],
+  ['capture_export_har', 'Export HAR', 'Export captured HTTP exchanges as HAR 1.2 through the native Save Dialog.'],
+  ['capture_import_har', 'Import HAR', 'Import a HAR file chosen through the native Open Dialog into a separate Capture session.'],
   ['rules_get_tree', 'Rule set', 'Read the current rule tree and revision.'],
   ['rules_get_hits', 'Rule hits', 'Read match counts for current rules.'],
   ['rules_replace_tree', 'Apply rules', 'Replace the rule set with revision checking.'],
@@ -72,7 +75,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(50);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(53);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

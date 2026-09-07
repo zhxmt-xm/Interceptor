@@ -1278,6 +1278,8 @@ export interface CoreEventBatch {
   protocolVersion: typeof CORE_PROTOCOL_VERSION;
   batchSequence: number;
   events: CaptureExchangeEvent[];
+  /** Capture导入已完成；接收方重新查询summaries，不传文件信息。 */
+  captureImported?: boolean;
   /** TLS compatibility signals are global settings events, not Capture exchanges. */
   tlsCompatibilityEvents?: TlsCompatibilityEvent[];
   /**

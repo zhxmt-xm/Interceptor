@@ -56,6 +56,18 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Capture enough Traffic Lab data to keep an Archive export running, then start Export through the product UI.', 'Keep the MCP Client in Ask mode and retain the running jobId.'],
     ['Deny leaves the task running.', 'Allow and Auto cancel only the selected task; confirm no destination file or temporary file is left.', 'Completed, failed and cancelled jobs keep their terminal state; existing saved files and other jobs remain unchanged.', 'The compact result shows actual state and progress, without local file information.'],
   ),
+  capture_export_body: recipe(
+    ['Capture a response larger than the preview limit and retain its exchangeId and bodyId from capture_get_exchange.', 'Use Ask mode first; also try a request body and an encoded response.'],
+    ['Deny opens no file dialog; native Cancel returns started=false without a task.', 'Allow and Auto both use the native Save Dialog and return only a safe job summary.', 'Wait for capture_get_transfer_job to report completed, then verify full saved length and original encoded bytes.', 'A mismatched or cleared body cannot be exported; disabling Agent does not disable MCP.'],
+  ),
+  capture_export_har: recipe(
+    ['Capture two HTTP exchanges, then choose all, filter or selected scope.', 'Provide explicit authorization, cookies and bodies redaction choices.'],
+    ['Deny and native Cancel create no file job.', 'Allow and Auto both use the native Save Dialog.', 'Wait for completion and verify the saved HAR scope, redacted headers and body bytes.', 'Tool results include only safe job information.'],
+  ),
+  capture_import_har: recipe(
+    ['Export a HAR through the product first, then keep that file for Import.', 'Keep existing Capture rows to verify that Import appends.'],
+    ['Deny and native Open cancellation leave Capture unchanged.', 'Allow and Auto both use the native Open Dialog.', 'After the job completes, imported rows appear without reopening Capture or refreshing manually.', 'Only safe job status is returned; the file path and contents stay out of Tool results.'],
+  ),
   rules_get_tree: recipe(
     ['Create and Apply a small enabled Rule tree in the product UI.'],
     ['Returned revision, folders, rule order and enabled state match Rules.'],

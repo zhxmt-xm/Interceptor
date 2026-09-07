@@ -331,6 +331,10 @@ export function useCaptureData(): void {
   // 产品按钮与外部Tool都由Main发布同一个提交后的清理事实。
   useEffect(() => window.interceptor.onCaptureReset(resetCaptureData), []);
 
+  useEffect(() => window.interceptor.onCaptureImported(() => {
+    void refetchSessions();
+  }), []);
+
   // 实时事件订阅：无论当前 feature/filter/live 状态都合并进全量 summary 镜像。
   useEffect(() => {
     const api = window.interceptor;

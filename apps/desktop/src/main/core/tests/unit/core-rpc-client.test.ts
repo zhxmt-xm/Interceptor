@@ -343,6 +343,51 @@ describe('CoreRpcClient', () => {
     expect(breakpointListener).not.toHaveBeenCalled();
   });
 
+  it('delivers and acknowledges a Capture import notice without live traffic', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const imported = vi.fn();
+    coreRpcClient.onCaptureImported(imported);
+
+    fakeRpcPort.receive({
+      kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 9, events: [], captureImported: true,
+    });
+
+    expect(imported).toHaveBeenCalledExactlyOnceWith();
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
+      kind: 'event-ack', protocolVersion: CORE_PROTOCOL_VERSION, batchSequence: 9,
+    });
+  });
+
+  it('does not report an import for an ordinary Capture batch', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const imported = vi.fn();
+    coreRpcClient.onCaptureImported(imported);
+
+    fakeRpcPort.receive({
+      kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 10, events: [],
+    });
+
+    expect(imported).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges an import notice when a Renderer consumer fails', () => {
+    const { coreRpcClient, fakeRpcPort } = connectedClient();
+    const issue = vi.fn();
+    coreRpcClient.onProtocolIssue(issue);
+    coreRpcClient.onCaptureImported(() => { throw new Error('window was destroyed'); });
+
+    fakeRpcPort.receive({
+      kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 11, events: [], captureImported: true,
+    });
+
+    expect(issue).toHaveBeenCalledWith('Capture import consumer failed: window was destroyed');
+    expect(fakeRpcPort.sent.at(-1)).toMatchObject({ kind: 'event-ack', batchSequence: 11 });
+    expect(fakeRpcPort.closed).toBe(false);
+  });
+
   it('cleans up when attaching or posting fails', async () => {
     const coreRpcClient = new CoreRpcClient();
     const attachFailure = new FakeRpcPort();

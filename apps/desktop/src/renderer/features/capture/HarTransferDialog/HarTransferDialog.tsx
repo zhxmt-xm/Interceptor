@@ -19,7 +19,6 @@ import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation
 import { Button, Checkbox, cx } from '../../../components';
 import { usePrivacyStore } from '../../settings/data/privacyStore';
 import { useCaptureStore } from '../data/captureStore';
-import { refetchSessions } from '../data/useCaptureData';
 import { visibleCaptureRows } from '../utils';
 import { buildScope, describeError, formatFilter } from '../utils';
 
@@ -98,9 +97,6 @@ export function HarTransferDialog({
         if (next.state === 'running') {
           timeout = setTimeout(() => void poll(), JOB_POLL_MS);
         } else if (next.state === 'completed') {
-          if (next.kind === 'har-import' || next.kind === 'archive-import') {
-            await refetchSessions();
-          }
           setAction(null);
         }
       } catch (reason) {

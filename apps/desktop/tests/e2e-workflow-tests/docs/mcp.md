@@ -15,7 +15,8 @@ Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品�
 1. 通过真实产品UI开启MCP并创建默认Ask的Client；暂停trace后Copy config，只在测试内存保留Token。
 2. 从真实Browser origin向`/mcp`发送preflight，确认`204`、原样允许Browser声明的method/header且不要求Bearer。
 3. Browser使用无Token和错误Token发送实际请求，均确认`401`且Browser可读取状态，Core无业务命令。
-4. Browser使用正确Bearer和固定`2026-07-28`官方Client完成discover与`tools/list`，确认当前24项可见。
+4. Browser使用正确Bearer和固定`2026-07-28`协议完成discover与`tools/list`，确认当前53项可见，
+   包含`capture_get_transfer_job`、`capture_cancel_transfer_job`、`capture_export_body`及HAR导入/导出。
 5. Browser调用`capture_get_proxy_status`并读取真实Core状态；调用`capture_stop_recording`后在Interceptor真实Modal中Deny，
    再次调用并Allow，分别确认无副作用与正式Recording停止。
 6. 关闭Browser与App，确认在途调用、审批、MCP端口、8888、Main/Core/Worker与系统代理全部收敛。
@@ -28,7 +29,7 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
 ### Evidence
 
 - 实现前真实系统Edge在`server/discover`的preflight后以`TypeError: Failed to fetch`取得有效Red；当前同一workflow Green；
-- integration锁定CORS preflight与实际response headers；真实Browser锁定最新协议、24项Tool、query、Deny/Allow及Recording前后态；
+- integration锁定CORS preflight与实际response headers；初始真实Browser基线锁定最新协议、24项Tool、query、Deny/Allow及Recording前后态；
 - Token只保存hash，trace、截图与日志不含明文；
 - Main/Core PID、MCP/8888释放、系统代理恢复与`gracefulDestroyVerified=true`。
 
@@ -48,7 +49,8 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
    从系统剪贴板读取标准HTTP MCP配置并恢复trace；只保存URL、token SHA-256与配置结构，不保存token明文。
 4. 测试侧使用正确Bearer和固定当前`2026-07-28`协议的官方Client连接；无Token、错误Token、Browser CORS与
    Main auth-only边界由integration及`mcp.browser-playground-cors`覆盖。Server不提供旧协议兼容路径。
-5. 在Settings关闭`capture_get_proxy_status`的MCP开关，经已连接Client调用`tools/list`，确认24项共享registry中只缺该项，
+5. 首次`tools/list`确认53项共享registry可见，包含Capture任务查询/取消、Body导出及HAR导入/导出。
+   在Settings关闭`capture_get_proxy_status`的MCP开关，经Client调用`tools/list`，确认该项不可见，
    Agent开关不变；猜测调用同名Tool得到不存在结果且Core未执行。重新开启后再次`tools/list`，确认该项恢复。
 6. 用产品UI开始Recording；真实MCP Client调用query Tool `capture_get_proxy_status`，确认同一个POST直接返回JSON，结果
    来自当前Core且不出现审批。调用change Tool `capture_stop_recording`，保持HTTP请求在途，确认Main显示App级审批弹层，
@@ -76,8 +78,8 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
 `ask`/`auto`相互正交；app重启不轮换token，只有用户显式重新生成或撤销才让旧凭据失效。MCP失败、断连、
 认证拒绝和审批等待都不影响抓包转发，关闭MCP不会关闭Proxy Core或修改系统代理。
 
-`tools/list`只披露按feature命名的24项：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`与
-`diagnostics_*`。所有旧无前缀名称都必须不存在，逐项调用旧名由协议层拒绝且Core零命令；不提供alias或迁移期双目录。
+`tools/list`只披露按feature命名的53项：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`、
+`diagnostics_*`与`settings_*`。所有旧无前缀名称都必须不存在，逐项调用旧名由协议层拒绝且Core零命令；不提供alias或迁移期双目录。
 
 本workflow保留原生Host链路；Browser CORS由`mcp.browser-playground-cors`独立覆盖。SSE响应形态由独立transport
 integration test覆盖进度/多消息分帧，本workflow至少验证一个等待审批的在途HTTP调用能够在用户裁决后返回最终结果。
@@ -98,6 +100,23 @@ Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则�
 - 最终两代Main/Core为`38740/43808`与`26768/39376`，均`gracefulDestroyVerified=true`、Renderer pageerror为0，
    MCP端口/8888释放且系统代理恢复。
 - trace、截图、日志与metadata不得包含Bearer token、加密Client记录、Capture敏感正文或Host配置绝对路径。
+
+2026-09-07 Capture任务Tool关联回归：Browser/Desktop两条workflow均由旧48项目录更新为50项，并显式验证
+Get/Cancel两个Tool可发现；联合`2/2`（1.0分钟）。Main/Core `18380/31780`、`25100/19176`、`27328/7696`
+均`gracefulDestroyVerified=true`，宿主guard完成进程树、8888、WinINet与共享journal恢复检查。
+trace/evidence在TEMP下`interceptor-transfer-delivery-mcp-20260907-130205`。
+
+同日Body导出关联回归将目录更新为51项并明确包含`capture_export_body`，Browser/Desktop两条均通过；
+Main/Core `5000/35248`、`29228/44320`、`8700/36904`全部正常销毁，MCP端口/8888、WinINet与journal恢复。
+证据在TEMP下`interceptor-body-export-adjacent-e2e-20260907-142551`；Body原生Save/Cancel及数据完整性由
+独立的[`capture.tools.body-export`](capture.md#capture-tools-body-export)验证，不以discovery代替执行覆盖。
+
+### HAR关联回归
+
+- 2026-09-07 Browser/Desktop两条均通过，确认53项目录，包含两项HAR Tool。
+- Main/Core `36540/7992`、`22048/34376`、`28280/14724`全部正常退出，MCP/8888、WinINet与journal恢复。
+- 证据在TEMP下`interceptor-har-adjacent-rerun-20260907-182534`。
+- HAR实际Save/Open与文件结果由[`capture.tools.har-transfer`](capture.md#capture-tools-har-transfer)覆盖，不用发现目录代替执行验证。
 
 <a id="mcp-tools-breakpoints"></a>
 ## `mcp.tools.breakpoints`

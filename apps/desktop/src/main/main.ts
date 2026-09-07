@@ -66,6 +66,8 @@ import {
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { startDiagnosticsExport } from './diagnostics/start-export';
+import { exportCapturedBody, startBodyExport } from './capture/start-body-export';
+import { startHarExport, startHarImport } from './capture/start-har-transfer';
 import type {
   SystemProxyService,
   SystemProxyStatus,
@@ -120,7 +122,6 @@ import {
   toRendererCaptureStatus,
   toRendererDiagnosticRecord,
   toRendererCaptureUsage,
-  toSafeBodyFileName,
   toWebSocketBreakpointSettings,
   toWebSocketFrameQuery,
 } from './utils';
@@ -362,6 +363,11 @@ class DesktopApplication {
     this.coreRuntime.onCaptureEvents((events, clientApps) => {
       this.broadcastCaptureEvents(events);
       this.loadClientAppIcons(clientApps);
+    });
+    this.coreRuntime.onCaptureImported(() => {
+      for (const mainWindow of BrowserWindow.getAllWindows()) {
+        if (!mainWindow.isDestroyed()) mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.captureImported);
+      }
     });
     this.coreRuntime.onTlsCompatibilityEvents((events) => {
       for (const event of events) {
@@ -635,6 +641,11 @@ class DesktopApplication {
           MainToolResultPayloads[CommandKey] | Promise<MainToolResultPayloads[CommandKey]>
         );
       } = {
+        'capture.har.export': async (payload) => ({ job: await startHarExport(this.coreRuntime, payload, undefined, abortSignal) }),
+        'capture.har.import': async () => ({ job: await startHarImport(this.coreRuntime, undefined, abortSignal) }),
+        'capture.body.export': async (payload) => ({
+          job: await exportCapturedBody(this.coreRuntime, payload, abortSignal),
+        }),
         'diagnostics.export': async (payload) => ({
           job: await startDiagnosticsExport(this.coreRuntime, payload, undefined, abortSignal),
         }),
@@ -1493,48 +1504,14 @@ class DesktopApplication {
       async (event, request: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const options = toHarExportRequest(request);
-        const selection = await dialog.showSaveDialog({
-          title: title as string,
-          defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.har`,
-          filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
-          properties: ['createDirectory', 'showOverwriteConfirmation'],
-        });
-        if (selection.canceled || !selection.filePath) {
-          return null;
-        }
-        const result = await this.coreRuntime.request({
-          type: 'har.export.start',
-          payload: {
-            jobId: `transfer-${randomUUID()}`,
-            filePath: selection.filePath,
-            scope: options.scope,
-            redaction: options.redaction,
-          },
-        });
-        return result.payload.job;
+        return startHarExport(this.coreRuntime, options, title as string);
       },
     );
 
     // HAR 导入：系统对话框仅允许选择一个 .har，Renderer 不接触真实路径或文件内容。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.harImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const selection = await dialog.showOpenDialog({
-        title: title as string,
-        filters: [{ name: 'HTTP Archive', extensions: ['har'] }],
-        properties: ['openFile'],
-      });
-      const [filePath] = selection.filePaths;
-      if (selection.canceled || !filePath) {
-        return null;
-      }
-      const result = await this.coreRuntime.request({
-        type: 'har.import.start',
-        payload: {
-          jobId: `transfer-${randomUUID()}`,
-          filePath,
-        },
-      });
-      return result.payload.job;
+      return startHarImport(this.coreRuntime, title as string);
     });
 
     // 原生 archive 导出：整库快照，无需 Renderer 提交 scope/redaction；路径由 Main 生成。
@@ -1654,23 +1631,7 @@ class DesktopApplication {
       async (event, value: unknown, title: unknown) => {
         this.assertTrustedSender(event.senderFrame?.url);
         const request = toBodyExportRequest(value);
-        const selection = await dialog.showSaveDialog({
-          title: title as string,
-          defaultPath: toSafeBodyFileName(request.suggestedName),
-          properties: ['createDirectory', 'showOverwriteConfirmation'],
-        });
-        if (selection.canceled || !selection.filePath) {
-          return null;
-        }
-        const result = await this.coreRuntime.request({
-          type: 'body.export.start',
-          payload: {
-            jobId: `transfer-${randomUUID()}`,
-            filePath: selection.filePath,
-            bodyId: request.bodyId,
-          },
-        });
-        return result.payload.job;
+        return startBodyExport(this.coreRuntime, request, title as string);
       },
     );
 

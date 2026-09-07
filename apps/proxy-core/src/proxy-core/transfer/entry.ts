@@ -17,6 +17,13 @@ import type {
 export class TransferService {
   /** 保存当前 Core 代际创建的全部任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
+  /** 成功任务的业务通知接收者；不传递文件信息。 */
+  private completedListener: ((kind: TransferJobSnapshot['kind']) => void) | null = null;
+
+  /** 注册当前Core业务owner，在任务成功提交后接收一次通知。 */
+  onCompleted(listener: (kind: TransferJobSnapshot['kind']) => void): void {
+    this.completedListener = listener;
+  }
 
   /**
    * 校验 ID 唯一性并异步启动一个可取消、可汇报进度的文件任务。
@@ -105,6 +112,7 @@ export class TransferService {
       job.total = result.total;
       job.warnings = [...result.warnings];
       job.completedAt = new Date().toISOString();
+      this.completedListener?.(job.kind);
     } catch (error) {
       if (job.state === 'cancelled' || job.abortController.signal.aborted) {
         job.state = 'cancelled';

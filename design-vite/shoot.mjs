@@ -292,6 +292,30 @@ for (const theme of ['light', 'dark']) {
       agentExecutionMode: 'ask', agentToolTrace: 'transfer-jobs', agentToolApproval: '',
     },
   });
+  for (const direction of ['export', 'import']) {
+    for (const stage of ['pending', 'allowed', 'canceled']) {
+      shots.push({
+        feature: 'agent-models', theme, variant: `panel-har-${direction}-${stage}`, appSize: { width: 1600, height: 900 },
+        state: {
+          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+          agentExecutionMode: 'ask', agentToolTrace: '',
+          agentToolApprovalName: direction === 'export' ? 'capture_export_har' : 'capture_import_har',
+          agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled',
+        },
+      });
+    }
+  }
+  for (const stage of ['pending', 'allowed', 'canceled']) {
+    shots.push({
+      feature: 'agent-models', theme, variant: `panel-body-export-${stage}`, appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+        agentExecutionMode: 'ask', agentToolTrace: '', agentToolApprovalName: 'capture_export_body',
+        agentToolApproval: stage === 'pending' ? 'pending' : 'allowed', agentBodyExportStarted: stage !== 'canceled',
+      },
+    });
+  }
   for (const stage of ['pending', 'allowed']) {
     shots.push({
       feature: 'agent-models', theme, variant: `panel-transfer-cancel-${stage}`, appSize: { width: 1600, height: 900 },
@@ -669,6 +693,9 @@ async function shoot(list) {
       agentCollectionExported: true,
       agentCollectionImported: true,
       agentDiagnosticsExportStarted: true,
+      agentBodyExportStarted: true,
+      agentHarExportStarted: true,
+      agentHarImportStarted: true,
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',
       agentModelMenu: '',
@@ -783,6 +810,9 @@ async function shoot(list) {
       agentCollectionExported: true,
       agentCollectionImported: true,
       agentDiagnosticsExportStarted: true,
+      agentBodyExportStarted: true,
+      agentHarExportStarted: true,
+      agentHarImportStarted: true,
       agentProviderDialog: '',
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',

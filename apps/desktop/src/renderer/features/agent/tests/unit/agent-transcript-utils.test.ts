@@ -294,6 +294,30 @@ describe('Agent transcript utilities', () => {
     }
   });
 
+  it('Body export native cancellation uses the existing cancelled summary', () => {
+    expect(summarizeAgentToolResult('capture_export_body', { ok: true, value: { started: false } }))
+      .toEqual({ kind: 'exportCanceled' });
+  });
+
+  it.each(['capture_export_har', 'capture_import_har'])('HAR native cancellation distinguishes the intent for %s', (name) => {
+    expect(summarizeAgentToolResult(name, { ok: true, value: { started: false } }))
+      .toEqual({ kind: name === 'capture_import_har' ? 'importCanceled' : 'exportCanceled' });
+  });
+
+  it.each(['capture_export_har', 'capture_import_har'])('HAR results only show safe transfer states for %s', (name) => {
+    for (const state of ['running', 'completed', 'failed', 'cancelled']) {
+      expect(summarizeAgentToolResult(name, { ok: true, value: {
+        started: true, job: { id: 'har-job', state, processed: 1, total: 2, warningCount: 1, fileName: 'private.har' },
+      } })).toEqual({ kind: 'transferJob', jobId: 'har-job', state, processed: 1, total: 2, warningCount: 1 });
+    }
+  });
+
+  it.each(['running', 'completed', 'failed', 'cancelled'])('Body export uses a safe transfer summary for %s', (state) => {
+    expect(summarizeAgentToolResult('capture_export_body', { ok: true, value: {
+      started: true, job: { id: 'body-export-one', state, processed: 20, total: 30, warningCount: 0, fileName: 'private.bin' },
+    } })).toEqual({ kind: 'transferJob', jobId: 'body-export-one', state, processed: 20, total: 30, warningCount: 0 });
+  });
+
   it('原生取消的Diagnostics导出不显示已启动任务', () => {
     expect(summarizeAgentToolResult('diagnostics_export', { ok: true, value: { started: false } }))
       .toEqual({ kind: 'exportCanceled' });

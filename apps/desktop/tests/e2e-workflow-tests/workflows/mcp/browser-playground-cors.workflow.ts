@@ -165,8 +165,13 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     const toolList = await sendBrowserMcpRequest(browserPage, configuration, 2, 'tools/list');
     const toolNames = JSON.parse(toolList.body).result.tools
       .map((tool: { name: string }) => tool.name) as string[];
-    expect(toolNames).toHaveLength(48);
+    expect(toolNames).toHaveLength(53);
     expect(toolNames).toContain('capture_get_proxy_status');
+    expect(toolNames).toContain('capture_get_transfer_job');
+    expect(toolNames).toContain('capture_cancel_transfer_job');
+    expect(toolNames).toContain('capture_export_body');
+    expect(toolNames).toContain('capture_export_har');
+    expect(toolNames).toContain('capture_import_har');
 
     // 业务断言：query直接读取Core；change在Ask下分别由Developer拒绝和允许。
     // Business assertion: query reads Core directly; Ask-mode change is rejected and approved by the Developer.

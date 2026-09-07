@@ -3,24 +3,24 @@
 > 最后更新：2026-09-07
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共73项，代码已实现50/73，完整自动验收44/73；TLS四项最终CA清理E2E blocked，Capture任务两项已取得目标真实Green但按用户要求保存进度、待交付验证，另23项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共73项，代码已实现53/73，完整自动验收49/73；TLS四项最终CA清理E2E blocked，Capture任务、Body及HAR导入/导出已完成真实E2E与当前产物验证，另20项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
 > Settings代码12/26、完整自动验收8/26；只读六项与系统代理启用/恢复两项已完成真实验收。Playground
-> recipe为50/50、Developer人工结论为0/50；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> recipe为53/53、Developer人工结论为0/53；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共73个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有73个实现；每行“当前进度”
 才是实现事实。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
 
 | Feature | 目标 | 已实现并自动验收 | 代码完成待验收 | 待实现 |
 | --- | ---: | ---: | ---: | ---: |
-| Capture | 17 | 10 | 2 | 5 |
+| Capture | 17 | 15 | 0 | 2 |
 | Rules | 5 | 5 | 0 | 0 |
 | Composer | 6 | 6 | 0 | 0 |
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
 | Settings | 26 | 8 | 4 | 14 |
 | Updates | 4 | 0 | 0 | 4 |
-| 合计 | 73 | 44 | 6 | 23 |
+| 合计 | 73 | 49 | 4 | 20 |
 
 ## 1. 唯一目录
 
@@ -57,6 +57,33 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 - **待产品实现**：产品本身尚无该能力，不先为 Tool 新建后门。
 
 ## 2. Settings 开关与执行模式
+
+### Main共享入口审计（2026-09-07）
+
+- `invokeMainTool`注册19个Main命令，Agent与MCP共用，IPC单独注册handler。
+- 15项已共用业务方法或Service，4项仍需整理；函数相同不等于所有用户流程均已验收。
+- HAR导入/导出本轮已通过完整自动验收，不要求所有IPC都开放为Tool。
+
+| 类别 | Main命令 | 当前业务入口 |
+| --- | --- | --- |
+| 已共享，4项 | `settings.core-process.status`、`settings.system-proxy.status`、`settings.certificate.status`、`settings.app-containers.list` | 同一CoreRuntime或Main只读方法；Tool侧仅投影允许的返回字段 |
+| 已共享，2项 | `settings.system-proxy.enable`、`settings.system-proxy.restore` | 同一系统代理操作队列与启用/恢复方法，冷启动语义不变 |
+| 已共享，4项 | `settings.tls-insecure-hosts.replace`、`settings.tls-passthrough.replace`、`settings.https-decryption.enable`、`settings.https-decryption.disable` | 同一Main配置/启停方法；TLS真实清理验收仍blocked |
+| 已共享，2项 | `rules.import`、`composer.collection.import` | 同一导入Service与产品预览确认生命周期；Tool适配安全结果 |
+| 已共享，2项 | `diagnostics.export`、`capture.har.export` | 同一原生Save与Core任务启动函数，HAR真实验收已通过 |
+| 部分共享，1项 | `capture.body.export` | 共用选路径与写入helper，但UI正文引用与Tool的Exchange归属校验分属两个编排函数 |
+| 部分共享，2项 | `rules.export`、`composer.collection.export` | 共用写文件函数；IPC传入Renderer树，Tool从Core读取已保存树，需保留或明确区分这两种实际意图 |
+| 部分共享，1项 | `composer.collection.replace` | 共用Core替换方法，但Collection变更广播目前仅在Tool分派中 |
+| 已共享，1项 | `capture.har.import` | 共用原生Open与任务启动；Core成功导入后统一通知Renderer重新查询，不依赖导入弹窗 |
+
+- 后续先整理剩余4项Main方法，再实现未完成Tool。
+   - IPC handler、MCP Tool和Agent Tool调用同一业务方法，Main/Core统一发出状态通知。
+   - 保留原生Dialog、独立授权、取消和结果脱敏。
+   - Body UI仍须支持HTTP、WebSocket、gRPC和断点原文，不能为了统一而删除能力。
+   - 导出当前树和已保存树若是不同操作，使用明确的独立方法，不用调用来源暗中切换。
+
+HAR同步故障已有真实证据：`interceptor-har-tools-e2e-green-20260907-162943`精确失败于已导入Exchange的
+公共Capture行不可见。已用统一导入通知和Clear后查询修复，同一真实流程Green，见[HAR验收](transfer.md#har-tool-acceptance)。
 
 `Settings > Agent > Tool capabilities` 从**已实现的共享 Tool registry**渲染，不维护第二份手写清单。
 尚未实现的目标 Tool 只保留在本文档，不在产品 UI 中显示不可用开关。
@@ -96,14 +123,14 @@ interface ToolCapabilitySettingsRecord {
 }
 ```
 
-- fresh profile或两组关闭项都为空时不保留文件，48项自然全部开启；
+- fresh profile或两组关闭项都为空时不保留文件，当前53项自然全部开启；
 - 读取时拒绝非法schema、重复名称和额外字段；合法数组中的未知/旧名称从内存快照丢弃，不改写文件、不映射到
    新名称；写入只保留当前registry名称并按registry顺序规范化；
 - `getToolCapabilitySettings`返回六组目录和两组关闭名称的完整快照；
 - `disableAgentTool`、`enableAgentTool`、`disableMcpTool`、`enableMcpTool`是四条语义单一intent；
 - mutation在Main串行执行、原子替换文件并返回最新完整快照；未知Tool名称在写入前拒绝；
 - Renderer搜索词只属于当前Settings视图内存，不持久化，也不改变开关状态；
-- Agent当前通过动态`AgentToolSource`接入十个Capture Tool、五个Rules Tool、六个Composer Tool、
+- Agent当前通过动态`AgentToolSource`接入十五个Capture Tool、五个Rules Tool、六个Composer Tool、
    十一个Breakpoints Tool、四个Diagnostics Tool与十二个Settings Tool；关闭项同时过滤Capability
    Index、discovery、schema与执行入口。MCP Desktop已接入同一registry。
 
@@ -123,13 +150,13 @@ interface ToolCapabilitySettingsRecord {
 | `capture_get_exchange_body` | query | `getExchangeDetail` + `readBody` / `sessions.detail` + `body.read-range` | 共享 registry + MCP adapter + Agent；用`exchangeId + bodyId`回查可信MIME/encoding，真实E2E完成 |
 | `capture_list_websocket_messages` | query | `queryWebSocketFrames` / `websocket.frames` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `capture_list_grpc_messages` | query | `queryGrpcMessages` / `grpc.messages` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
-| `capture_export_body` | change | `startBodyExport` / 原生 Save Dialog | 产品已具备 |
-| `capture_export_har` | change | `startHarExport` / 原生 Save Dialog | 产品已具备 |
-| `capture_import_har` | change | `startHarImport` / 原生 Open Dialog | 产品已具备 |
+| `capture_export_body` | change | `capture.body.export` / `startBodyExport` / 原生 Save Dialog | 已完成；正文归属、完整编码字节、Ask/Auto、原生取消及交付验证 |
+| `capture_export_har` | change | `capture.har.export` / `startHarExport` / 原生 Save Dialog | 已完成；三种范围、显式脱敏、完整正文、取消和共享入口验收 |
+| `capture_import_har` | change | `capture.har.import` / `startHarImport` / 原生 Open Dialog | 已完成；同流程导出再导入、追加、统一刷新和取消验收 |
 | `capture_export_archive` | change | `startArchiveExport` / 原生 Save Dialog | 产品已具备 |
 | `capture_import_archive` | change | `startArchiveImport` / 原生 Open Dialog | 产品已具备 |
-| `capture_get_transfer_job` | query | `transfer.job.get` | 共享registry + Agent/MCP；目标真实Green，进度已保存、待交付验证 |
-| `capture_cancel_transfer_job` | change | `transfer.job.cancel` | 共享registry + Agent/MCP；运行中取消/清理Green，进度已保存、待交付验证 |
+| `capture_get_transfer_job` | query | `transfer.job.get` | 已完成；Agent/MCP静默查询、安全摘要与交付验证 |
+| `capture_cancel_transfer_job` | change | `transfer.job.cancel` | 已完成；Agent/MCP运行中取消、清理、终态幂等与交付验证 |
 
 ### 3.2 Rules
 
@@ -229,7 +256,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `updates_download` | change | `downloadUpdate` | 产品已具备 |
 | `updates_open_downloaded` | change | `openDownloadedUpdate` | 产品已具备 |
 
-## 4. 当前40项实现矩阵
+## 4. 当前53项实现矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
 adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
@@ -247,6 +274,11 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `capture_get_exchange_body` | 已完成 | 已完成 | Agent已完成 |
 | `capture_list_websocket_messages` | 已完成 | 已完成 | Agent已完成 |
 | `capture_list_grpc_messages` | 已完成 | 已完成 | Agent已完成 |
+| `capture_get_transfer_job` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `capture_cancel_transfer_job` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `capture_export_body` | 已完成 | 已完成 | Agent + MCP已完成 |
+| `capture_export_har` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
+| `capture_import_har` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
 | `rules_get_tree` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `rules_get_hits` | 已完成 | 已完成 | Agent已完成 |
 | `rules_replace_tree` | 已完成 | 已完成 | Agent + MCP已完成 |
@@ -289,7 +321,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是73项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出、Collection四项、Breakpoints批量三项及Diagnostics三项均已完成，当前44/73，继续按工作项逐组交付。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR两项均已完成，当前49/73。
 
 ### 5.1 首批24项与独立验收
 
@@ -339,7 +371,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有48项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另25项尚未实现，不计入已验收范围。
+   目前有53项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另20项尚未实现，不计入已验收范围。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -347,9 +379,9 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项和Diagnostics四项已完成；TLS保留权限阻塞，下一个独立工作项是Capture文件任务查询与取消。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture文件任务查询/取消、Body及HAR已完成；TLS保留权限阻塞。先统一剩余Main方法，再继续Archive等未实现Tool。
 
-### 5.2 余下49项计划（已完成20项，剩余29项）
+### 5.2 余下49项计划（已完成25项，剩余24项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设49项空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
@@ -361,7 +393,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 | 3 | Composer | 0 | Collection查询/替换与Export/Import均已完成；Import复用正式确认及自动保存协调，文件输入由同workflow产品Export生成 |
 | 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
 | 5 | Diagnostics | 0 | Trace/Recent当前Core快照与原生JSONL导出均已完成；查询静默、异步任务状态及文件脱敏已验收 |
-| 6 | Capture | 7 | Transfer任务查询/取消2项、Body导出1项、HAR与Archive各自Export/Import共4项；复用正式任务与原生Dialog流程 |
+| 6 | Capture | 2 | Transfer任务查询/取消、Body及HAR两项已完成；Archive Export/Import共2项待实现，复用正式任务与原生Dialog流程 |
 | 7 | Updates | 4 | 状态、检查、下载、打开；保持下载校验和原生安装器边界，不重新引入GitHub Auth Tool |
 
 需要原生Dialog或UAC的工作项仍须真实键鼠交互；若环境或权限确实阻塞，记录具体人工操作和恢复命令，不能
@@ -591,13 +623,58 @@ executor28项缺失Tool Red与真实discovery Red（`30472/44700`正常销毁）
 registry/recipe48项、96个开关，Developer人工结论0/48。下一组Capture任务Tool17项、进度组件4项Red已准备，
 真实workflow尚待执行，不纳入Diagnostics提交。
 
+### 5.10 Capture任务查询与取消
+
+`capture_get_transfer_job`与`capture_cancel_transfer_job`复用正式任务入口，已完成安全结果、Ask/Auto、
+运行中取消及文件清理、终态幂等、独立撤权与重启零重放。目标workflow `1/1`、两代销毁证据与相关Red/Green沿用
+`interceptor-transfer-summary-e2e-green`；两项代码随`6a1679e2`保存，本轮完成交付补验。
+MCP Browser/Desktop旧48项目录断言更新为50项并显式覆盖两项新Tool，真实回归`2/2`，三代均正常销毁，
+8888、WinINet与共享journal恢复；证据在TEMP下`interceptor-transfer-delivery-mcp-20260907-130205`。
+Desktop typecheck、当前Windows package、artifact audit（1,294 files / 392,903,421 bytes）与packaged smoke
+`1/1`（48.7秒）通过。线上production audit本轮被执行策略拦截，核对依赖/锁文件/npm配置/补丁不变后复用
+同日Diagnostics零漏洞结果，不记为重新执行。完整证据见[Transfer](transfer.md#9-验收要点)。
+该阶段代码50/73、完整自动验收46/73，registry/recipe50项、100个Agent/MCP开关；Developer人工结论为0/50，
+TLS最终清理及Cancel/rename提交点竞态仍各自保留，不因本组闭环而标记完成。
+
+### 5.11 Capture Body导出
+
+`capture_export_body`已完成Agent/MCP接入；Main在原生Save Dialog前后验证正文归属与Core代际，UI与Tool
+共用文件名推导和`body.export.start`，只返回安全任务摘要，不把原始正文、文件路径或文件名发送给Model。
+前置executor13项和真实discovery Red成立；最终Body owner17/17、Main11/11、摘要42/42，目标真实workflow
+`1/1`（33.8秒）并完成双代销毁、WinINet/journal恢复与重启零重放。真实gzip、请求正文和独立响应的四次导出
+均经长度/hash核验，原UI保存入口保持可用；MCP模式等待缺失导致的首次fixture失败已修正，不计为产品Red。
+
+关联Capture discovery、Settings授权、MCP Browser/Desktop `4/4`，八代销毁均通过；最终全workspace typecheck、
+Tools277/277、Desktop615/615、MCP32/32、Playground84/84、Runtime122/122、Protocol25/25与Core正文导出
+integration6/6通过。设计交互70/70，Body/Settings十视图94/94 targets、0 missing/flagged、最大0.6px；
+新增六张Body设计图、更新六张目录图，264张旧图SHA-256不变。当前Windows package、artifact audit
+（1,294 files / 392,907,153 bytes）、实际production audit0漏洞与packaged smoke1/1（49.2秒）通过。
+完整日志、trace、PID及失败保留位置见[Transfer验收](transfer.md#92-capture-body导出验收)。
+当前代码51/73、完整自动验收47/73，registry/recipe51项、102个开关，Developer人工结论0/51；
+TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留，未以本组Green代替。
+
+### 5.12 HAR导入与导出
+
+- IPC、MCP和Agent共用`startHarExport`、`startHarImport`；Core完成导入后统一通知Renderer。
+   - 不在Tool中读写文件，不依赖弹窗刷新，不把任务启动当作完成。
+   - Clear前发起的旧查询仍作废，当前查询可显示保留历史请求时间的导入记录。
+- 前置结果：executor33项Red、真实discovery Red、摘要4项Red、导入信号与历史时间过滤Red。
+- 最终真实流程1/1（40.8秒），覆盖三种导出范围、显式脱敏、完整正文、原生取消、追加导入和IPC菜单操作。
+   - Main/Core两代`33040/33692`、`40140/24544`正常退出，证据在TEMP下`interceptor-har-shared-entry-green-20260907`。
+   - 关联五条E2E为5/5（1.8分钟），九代正常退出，证据在`interceptor-har-adjacent-rerun-20260907-182534`。
+- 全workspace类型、Tools310/310、Desktop639/639、MCP32/32、Core相关35/35、设计交互72/72通过。
+- HAR和Settings共16个parity视图130/130 targets、0 missing/flagged，最大0.6px。
+- 当前package、artifact audit（1,294 files / 392,912,120 bytes）、production audit零漏洞、smoke1/1（44.3秒）通过。
+- 当前代码53/73、完整自动验收49/73；recipe53项、106个开关，Developer人工结论仍为0/53。
+   - 完整证据与已知限制见[HAR验收](transfer.md#har-tool-acceptance)。
+
 ## 6. 相关未完成验收
 
 这些事项与Tool交付相关，但不计入全量73项的Agent接线或真实Tool Call完成数，也不替代每个工作项的自动验收：
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 50/50；Developer结论0/50 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E、Capture交付验证与余下23项开发 |
+| Playground人工矩阵 | 当前recipe 53/53；Developer结论0/53 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下20项开发 |
 | Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |

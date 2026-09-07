@@ -102,6 +102,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly grpcService: GrpcService | null;
   /** HAR 与原生 archive 共用的异步文件任务管理器。 */
   private readonly transferService = new TransferService();
+  /** 尚未成功发给Main的Capture导入通知。 */
+  private captureImportPending = false;
   /** HAR 文件转换与异步任务门面；无抓包数据时不可用。 */
   private readonly harService: HarService | null;
   /** 原生 archive 文件转换门面；无抓包数据时不可用。 */
@@ -191,6 +193,12 @@ export class CoreApplication implements CoreRpcHost {
     this.ruleService?.attachDiagnostics(this.coreDiagnostics);
     this.clientAppService.attachDiagnostics(this.coreDiagnostics);
     this.coreRpcServer = new CoreRpcServer(this);
+    this.transferService.onCompleted((kind) => {
+      if (kind === 'har-import' || kind === 'archive-import') {
+        this.captureImportPending = true;
+        this.flushCaptureEvents();
+      }
+    });
   }
 
   /**
@@ -218,7 +226,7 @@ export class CoreApplication implements CoreRpcHost {
       () => this.sendHeartbeat(),
       HEARTBEAT_INTERVAL_MS,
     );
-    if (this.captureEventQueue || this.proxyService) {
+    if (this.captureEventQueue || this.proxyService || this.captureService) {
       this.eventFlushTimer = setInterval(
         () => this.flushCaptureEvents(),
         EVENT_FLUSH_INTERVAL_MS,
@@ -1067,7 +1075,7 @@ export class CoreApplication implements CoreRpcHost {
   private flushCaptureEvents(): void {
     const queue = this.captureEventQueue;
     const proxyService = this.proxyService;
-    if ((!queue && !proxyService) || !this.coreRpcServer.hasActiveConnection) {
+    if ((!queue && !proxyService && !this.captureImportPending) || !this.coreRpcServer.hasActiveConnection) {
       return;
     }
     while (this.inFlightEventBatches.size < EVENT_INFLIGHT_WINDOW_SIZE) {
@@ -1075,10 +1083,12 @@ export class CoreApplication implements CoreRpcHost {
       const tlsCompatibilityEvents =
         proxyService?.drainTlsCompatibilityEvents(EVENT_DRAIN_BATCH) ?? [];
       const breakpointsChanged = this.breakpointQueue?.drainChangeNotice() ?? false;
+      const captureImported = this.captureImportPending;
       if (
         batch.length === 0
         && tlsCompatibilityEvents.length === 0
         && !breakpointsChanged
+        && !captureImported
       ) {
         return;
       }
@@ -1095,6 +1105,7 @@ export class CoreApplication implements CoreRpcHost {
         clientApps,
         tlsCompatibilityEvents,
         breakpointsChanged,
+        captureImported,
       );
       if (batchSequence === null) {
         for (const event of events) {
@@ -1107,6 +1118,7 @@ export class CoreApplication implements CoreRpcHost {
         return;
       }
       this.clientAppService.markAppsDelivered(clientApps);
+      this.captureImportPending = false;
       this.inFlightEventBatches.add(batchSequence);
     }
   }

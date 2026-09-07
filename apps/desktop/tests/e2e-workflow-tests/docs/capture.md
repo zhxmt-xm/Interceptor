@@ -676,10 +676,56 @@ Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tab
 Clear是唯一删除Capture入口；它删除Exchange、Body和spill，原子重置Renderer timeline与 facet snapshot，
 但保留活动Session壳，不影响Rules/Diagnostics。
 
+<a id="capture-tools-body-export"></a>
+## `capture.tools.body-export`
+
+**状态**：passed；executor/真实discovery Red、同组Green、关联回归与销毁恢复已闭环
+**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron，使用正式Settings配置本地Provider和MCP Client；保留应用当前语言。
+	Agent与MCP discovery必须披露`capture_export_body`，不通过Store或内部API注入状态。
+2. 经真实UI开启Recording，通过测试拥有的origin/client产生可核验的正文；通过正式Capture查询取得
+	Exchange与Body身份。数据包含超过预览上限的正文及需要按原始存储字节保存的正文，不预造导入文件。
+3. Agent Ask请求保存正文，先Deny，确认没有Save Dialog或文件任务；再次请求并Allow，在真实原生Dialog
+	点击Cancel，确认`started: false`且不伪造job。审批只显示可信身份和元数据，不显示完整URL、正文或路径。
+4. 再次Allow并在真实Save Dialog选择测试拥有的目标，取得安全任务摘要；用正式任务查询确认completed，
+	只读核对导出文件的长度/hash与真实网络正文一致，不能只校验有限预览或认为任务启动即完成。
+5. MCP Auto执行同一Tool仍须弹出真实Save Dialog；验证原生取消及成功保存，Agent/MCP返回均无本地文件
+	信息。错配的已知Exchange/Body，以及Clear后的旧身份，不得打开Dialog或创建导出任务。
+6. 分别关闭Agent与MCP的Body导出开关，旧Chat/连接不可继续调用；一列撤权不改变另一列。
+	原有Capture正文保存入口仍能使用同一正式保存逻辑，不新增测试后门或绕过原生Dialog。
+7. 正常关闭后同profile重启，授权保持；Model、origin和文件任务增量为0，旧任务身份不重放。
+8. 保存脱敏trace、文件长度/hash、摘要与两代metadata；经产品Close验证Main/Core/Worker全部退出、8888
+	释放、完整WinINet与共享journal恢复，再删除本workflow拥有的输出文件与profile。
+
+### 预期与证据
+
+Tool只能导出当前Exchange实际拥有的正文，路径仅由用户在原生Dialog决定。文件数据走Core流式保存，不进入
+Renderer或Tool上下文；大正文与编码正文必须以真实文件字节作为证据。审批、执行、Clear竞态与取消边界由
+owning unit/integration覆盖，真实Electron锁定用户流程；原生焦点、fixture迁移或构建问题不作为产品Red。
+
+2026-09-07证据：executor13项缺失Tool Red后，当前owner17/17；摘要5项Red后完整42/42。真实discovery Red在
+TEMP下`interceptor-body-export-e2e-red-confirmed-20260907`，Main/Core `22608/14492`正常销毁。
+同一workflow最终`1/1`（33.8秒），Main/Core `11352/34776`、`5696/10056`均`gracefulDestroyVerified=true`，
+trace脱敏、完整进程树、8888、WinINet与journal恢复通过；产物在`interceptor-body-export-e2e-green-mode-20260907`。
+文件证据为2,097,815字节gzip响应、256字节请求及32,768字节独立响应，四次导出长度/hash一致，原UI保存入口通过；
+撤权、Clear后旧身份拒绝与重启零重放均完成。首次实现后因MCP模式保存未完成而没有原生Dialog，不算产品Red或Green；
+等待Client行的公开模式并同时等待原生操作/调用后通过，失败保留在`interceptor-body-export-e2e-green-20260907-140655`。
+
+Capture discovery、Settings双列授权、MCP Browser/Desktop关联真实`4/4`，八代销毁均通过，证据在
+`interceptor-body-export-adjacent-e2e-20260907-142551`。最终Desktop615/615、Tools277/277、MCP32/32、
+全workspace typecheck与Core正文导出integration6/6通过；设计交互70/70、Body/Settings十视图94/94 targets，
+0 missing/flagged、最大0.6px。当前Windows package、artifact audit（1,294 files / 392,907,153 bytes）、
+实际production audit0漏洞与packaged smoke1/1（49.2秒）通过；smoke证据在`interceptor-body-export-smoke-20260907-142942`。
+全部日志及相关测试明细见[Transfer验收](../../../../../architecture/features/transfer.md#92-capture-body导出验收)。
+本组不覆盖已启动导出与Clear的lease/snapshot和Cancel/rename提交点债务。
+
 <a id="capture-tools-transfer-jobs"></a>
 ## `capture.tools.transfer-jobs`
 
-**状态**：planned（代码完成，按用户要求保存进度）；目标workflow已有Red/Green与销毁证据，尚待关联回归及交付复核，不更新为passed
+**状态**：passed；目标Red/Green、关联回归、销毁恢复与当前产物交付验证闭环；不包含取消提交点竞态
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -710,9 +756,55 @@ AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段
 Archive最后Blob期间取消仍落盘的真实故障由两个文件integration Red锁定，修复后服务7/7、关联23/23通过。
 最终本workflow1/1（49.7秒），两代Main/Core `38896/16496`、`42672/10272`均`gracefulDestroyVerified=true`，
 完成进程树销毁、8888释放和WinINet/journal恢复；TEMP下`interceptor-transfer-summary-e2e-green`保存trace/evidence。
-首次取消落盘失败在`interceptor-transfer-jobs-e2e-first-failure`，不记为正常销毁。最后MCP Browser关联回归仍为
-旧48项目录断言失败、MCP Desktop未执行；当前产物package/audit/smoke未跑。用户要求停止重复回归并提交进度，
-恢复时只处理剩余检查，不重建已有Red或重跑仍适用的Green；取消提交点竞态继续保留为独立欠账。
+首次取消落盘失败在`interceptor-transfer-jobs-e2e-first-failure`，不记为正常销毁。此前按用户要求保存进度时，
+MCP Browser因旧48项目录断言失败，MCP Desktop与当前产物交付验证尚未执行。
+2026-09-07恢复后仅补剩余门禁：MCP Browser/Desktop更新50项目录并显式断言两项Transfer Tool，真实关联流程
+`2/2`（1.0分钟），三代Main/Core `18380/31780`、`25100/19176`、`27328/7696`全部正常销毁，
+8888、WinINet与共享journal由宿主guard验证恢复；证据在TEMP下
+`interceptor-transfer-delivery-mcp-20260907-130205`。Desktop typecheck、当前Windows package、artifact audit
+（1,294 files / 392,903,421 bytes）及packaged smoke `1/1`（48.7秒）通过；smoke证据在TEMP下
+`interceptor-transfer-delivery-smoke-20260907-130801`。线上production audit本轮被执行策略拦截，
+经锁文件、依赖清单、npm配置和补丁不变核对后，明确复用同日Diagnostics的零漏洞结果，不计为重新执行。
+已有Red/Green未重复长跑；取消提交点竞态继续保留为独立欠账。
+
+<a id="capture-tools-har-transfer"></a>
+## `capture.tools.har-transfer`
+
+**状态**：passed；共享IPC/Agent/MCP流程、前置Red、最终Green及退出恢复已验证
+**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile与trace启动真实Electron，经Settings配置本地Provider和MCP Client，保持应用语言；
+	通过正式discovery确认`capture_export_har`和`capture_import_har`可见。
+2. UI开始Recording，通过真实origin/client产生两条可区分HTTP记录，含文本/二进制正文、Authorization
+	和Cookie；身份来自正式Capture查询。记录产品自产字节与计数，不写HAR业务输入或注入Store。
+3. Agent Ask Export先Deny，再Allow后原生Cancel，确认无文件/任务；随后Allow在Save Dialog选定目标，
+	等正式任务completed，只读核对HAR 1.2、范围、最终headers与完整正文，Tool只返回安全任务摘要。
+4. Agent Auto Export仍经Save；覆盖filter/selected范围、遮罩Authorization/Cookie与strip bodies，
+	对照同workflow真实流量验证输出，不用空结果冒充筛选成功。
+5. Agent Ask Import先Deny，再Allow后原生Cancel；通过产品Clear清空后，从Open Dialog选择步骤3生成
+	的HAR，等待import completed并验证Capture恢复可表达的记录与正文。导入本身不隐式Clear或覆盖已有数据。
+6. MCP Auto分别执行Export/Import，仍经真实Save/Open，选择同workflow产品生成的HAR，验证追加与安全结果。
+	关闭两项Agent权限不影响MCP，随后关闭MCP权限使旧连接不可发现/执行，两列均保持独立。
+7. 同profile正常关闭并重启，确认授权保持，Model/origin/文件操作无重放；旧代际任务查询为null。
+8. 保存脱敏trace、文件hash与安全统计、两代metadata；产品Close后验证Main/Core/Worker全退、8888释放、
+	WinINet与共享journal恢复，再删除本workflow拥有的输出/profile。首次失败产物保留，不用强制清理冒充Green。
+
+### 预期与证据
+
+标准HAR文件只能由产品真实Export产生再Import，Core执行正式格式映射及隔离Session追加；Tool不操作路径或
+读取文件内容。任务摘要不宣称开始即完成；范围、脱敏和正文完整性分别以输出文件和实际Capture结果交叉证明。
+- 2026-09-07前置结果：executor33项Red、真实discovery Red、导入通知与Clear历史记录过滤Red。
+- 最终共享流程1/1（40.8秒），证据在TEMP下`interceptor-har-shared-entry-green-20260907`。
+	- Main/Core `33040/33692`、`40140/24544`正常退出，trace、8888、WinINet和journal恢复已核验。
+	- Agent导入2条，MCP追加后4条；Capture菜单再导出4条、导入后6条，IPC使用同一完成通知自动刷新。
+	- all/filter/selected、正文和脱敏、原生Save/Open取消、独立撤权、重启零重放全部通过。
+- 关联五条E2E 5/5，九代正常退出；证据在`interceptor-har-adjacent-rerun-20260907-182534`。
+- 类型检查、Tools310/310、Desktop639/639、MCP32/32、Core相关35/35通过。
+- HAR/Settings parity共130/130 targets，0 missing/flagged；当前package/audit/smoke通过，production audit零漏洞。
+- 完整证据见[HAR验收](../../../../../architecture/features/transfer.md#har-tool-acceptance)。
+	- 损坏HAR、流式内存及提交点竞态不在本workflow造故障验收。
 
 <a id="capture-transfer-har-roundtrip"></a>
 ## `capture.transfer.har-roundtrip`

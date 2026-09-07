@@ -18,6 +18,11 @@
 | `get(jobId)` | 不可变公开快照；未知 ID 返回 `null` |
 | `cancel(jobId)` | 触发 AbortSignal 并立即更新状态 |
 | `cancelAll()` | Core 关闭时调用 |
+| `onCompleted(listener)` | 成功任务结束后通知 CoreApplication，只传任务种类 |
+
+- `har-import` 或 `archive-import` 成功后，CoreApplication 向 Main 发布 `captureImported`。
+- Main 转给 Renderer，Capture 常驻订阅重新查询 summaries。
+- 失败、取消不发成功通知；文件路径与正文不进入通知。
 
 ## 依赖
 

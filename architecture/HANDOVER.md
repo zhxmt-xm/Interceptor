@@ -1,16 +1,16 @@
 # Interceptor Handover
 
-> Tracked commit: `06f62b26`
+> Tracked commit: `2260f64b`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-07
 
 ## Task List
 
-- [ ] **进度已保存 · Capture文件任务两项 · 待交付验证**：`capture_get_transfer_job`/`capture_cancel_transfer_job`已接入共享registry、Agent/MCP独立授权与Ask/Auto；只返回安全任务状态、进度、警告计数，不返回本地文件信息。目录/recipe为50项、100个开关，Developer人工结论0/50。按2026-09-07用户明确要求停止重复回归，保存当前进度，不标记完整验收完成。
-    Archive真实取消曾只改变状态而仍落盘；两个真实文件integration Red后，读取流绑定AbortSignal，并在manifest与rename前检查取消。7项Archive服务集成和23项Archive/Transfer关联测试通过；最终任务workflow1/1（49.7秒），Main/Core `38896/16496`、`42672/10272`均正常销毁、8888/WinINet/journal恢复，证据在TEMP下`interceptor-transfer-summary-e2e-green`。已验证运行中Ask/Auto取消、文件及临时文件清理、终态幂等、独立撤权、重启零重放和安全摘要；首次落盘失败仍保留于`interceptor-transfer-jobs-e2e-first-failure`，不算正常销毁。
-    已有检查：全workspace类型、Tools260/260、摘要37/37、Playground67/67、设计交互69/69通过；Desktop全量596通过/2个旧目录断言失败，修正后Agent相关21/21；MCP全量31通过/1个旧目录断言失败，修正后相关20/20。新增六视图parity40/40、0 missing/flagged、最大0.5px，旧Capture视图9/9。完整日志与截图在TEMP下`interceptor-transfer-*`，不因保存进度再次长跑。
-    关联真实Capture discovery、Settings双列授权已有Green；Diagnostics原生Cancel焦点两次失败后，驱动补真实输入框点击并保留所有权/焦点保护，6项unit及Diagnostics真实流程Green。最后MCP Browser仍为旧48项预期与实际50项不符，MCP Desktop尚未执行；本次不再修正或重跑。尚未完成当前产物package/artifact audit/smoke和最终交付复核，已有旧产物结果不能替代。Cancel与异步rename提交点竞态仍是已知缺口，本次只证明提交前取消，不声称提交点已完整定义。
-    续作先读[features/transfer.md](features/transfer.md#91-capture任务tool契约代码完成待交付验证)及[Capture规格](../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-tools-transfer-jobs)，复用仍适用的结果，只处理剩余检查；未经重新授权不继续下一组Tool。用户随后明确要求全部文件提交，因此本次包含规范、架构入口、研究文件及当前截图改动；不恢复或清理工作树，stash保持不动。
+- [ ] **待实现 · Main共享业务方法统一**：HAR两项已按共享入口原则验收通过，接着整理已实现方法，最后继续未实现Tool。
+    - 19个Main命令中15项已共用业务方法/Service；Body导出、Rules导出、Collection导出和Collection替换4项待整理。
+    - [Tool能力目录](features/tool-capabilities.md#main共享入口审计2026-09-07)列出当前调用关系；保留UI草稿导出与已保存树导出的实际区别。
+    - 行为不变的部分先取得基线Green；不要为统一方法删掉既有UI能力或扩大MCP权限。
+    - 每组验收通过后立即commit、push，再继续下一项。
 - [ ] **blocked · TLS四项Tool代码完成 · 待真实E2E最终清理验证**：在已推送`89028fdf`后，新增不安全名单替换、passthrough替换与解密启停四项；用户明确要求继续并提交当前代码，按未闭环进度保存，不计入完整自动验收数。TLS阶段保存时为代码36/73、完整验收32/73，另37项尚未实现。真实workflow已验证名单规范化、revision冲突、已挂载面板即时刷新、Ask/Auto、未信任意图与Core实际状态、真实CA安装、撤权和重启零重放；最终一轮清理失败，不能标记flow完成。
     阻塞事实：设置变更触发Certificates面板短暂重载，清理用瞬时`isVisible()`判断，跳过了重载期间不可见的Uninstall/Delete。两代Main/Core `9740/1936`、`23384/33672`均已正常退出、8888及系统代理恢复，但本轮LocalMachine Root CA仍残留，SHA-1为`8F5FD8BF6D49BE746862522F6AC616583ED152BB`，NotBefore为2026-09-05 20:45:32。其他六张Interceptor根证书是此前已有，不得删除。
     `desktopApp.preserveUserDataOnFailure()`此前只判断`await use(driver)`捕获的异常，未结合Playwright实际失败状态，本轮profile已被删除；现已提取并修正判定，实际failed/timedOut/interrupted均触发特权profile保留，3项Red后9/9 Green。清理已按本轮证书指纹与真实信任状态等待Uninstall/Delete，不再因瞬时不可见跳过；新的清理仍待真实复验。TLS审批错误与中途取消补8项Red后executor32/32 Green，底层路径不进入审批结果。
@@ -18,9 +18,15 @@
     唯一管理员操作仍为`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，须由Developer在管理员PowerShell执行；当前Agent终端非管理员，不得尝试自动提权。只读确认该指纹不存在后，复跑`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.tls"`，验证修复后的清理与profile保留路径和最终验收提交。代码已由`7bc809a1`提交并推送，状态不得提前改为passed。当前无本轮Electron残留，不再次运行涉及CA的测试直到完成上述恢复。
     2026-09-06中断恢复核验：Settings只读、系统代理、全局权限、MCP Browser和MCP Desktop共5条关联真实workflow为5/5；十代Main/Core分别为`25388/8092`、`25492/23872`、`24712/41188`、`34436/18700`、`20492/24624`、`23584/35316`、`37440/43160`、`24472/43296`、`43156/13096`、`11332/23576`，全部`gracefulDestroyVerified=true`。证据归档于TEMP下`interceptor-tls-adjacent-e2e-20260906`。完整parity已完成238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged；TLS新增16视图96/96、0 missing/flagged、最大0.5px，既有视觉债务仍保留。输出图片在TEMP下`interceptor-tls-full-parity-20260906`，仓库报告已更新；不要重复长跑。最新只读核对CA仍在、8888无listener、共享journal不存在、分支已同步。
     用户于2026-09-06再次要求“不要停下，一直跑任务”；保留TLS及依赖证书权限的工作项blocked，不把阻塞冒充完成，继续推进原计划内不依赖该权限的独立Tool组。每个后续组仍执行契约、unit/E2E Red/Green、销毁证据、独立commit/push，不放宽验收门禁。
-- [ ] **进行中 · Tool代码50/73 · 完整验收44/73**：完整目录共73项；TLS四项待最终清理验证，Capture任务两项按用户授权保存进度、待交付验证，另23项尚未实现。按feature的验收/目标为Capture `10/17`（代码12/17）、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `8/26`（代码12/26）、Updates `0/4`。Settings授权开关与Settings业务Tool不同。
-    剩余计划见[features/tool-capabilities.md](features/tool-capabilities.md)：Settings尚未完整验收18项（含TLS四项blocked）、Capture七项（含当前两项待交付）、Updates四项。当前按用户要求保存进度并停止扩展；恢复后仍沿用契约 → unit/integration Red → 真实Electron Red → 实现 → 同组Green → 销毁/证据门禁，但复用仍适用的已有结果，不反复全量回归。冷启动自动接管、原生Dialog、UAC和脱敏边界不变。
-    已完成阶段从Handover移除，事实和证据保留在[Tool能力目录](features/tool-capabilities.md)、所属feature与E2E规格及Git历史；最新完整交付基线是Diagnostics提交`e9634c46`。
+- [ ] **进行中 · Tool代码53/73 · 完整自动验收49/73**：TLS四项待最终清理，另20项未实现。
+    - 已验收/目标：Capture `15/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `8/26`、Updates `0/4`。
+    - Settings代码12/26；授权开关不是Settings业务Tool。registry/recipe53项、106个开关，Developer人工结论0/53。
+    - 本轮HAR真实流程1/1、关联5/5、parity130/130、package/artifact audit/smoke通过，production audit零漏洞。
+    - 详细证据见[HAR验收](features/transfer.md#har-tool-acceptance)，此前Body及任务查询/取消证据也保留在同文档；代码正在分组提交。
+    - 后续先整理上述4项Main方法，再做Archive两项、Settings剩余项和Updates四项，见[能力计划](features/tool-capabilities.md)。
+    - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
+    - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
+    - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **代码完成 · 待Developer人工验收 · Web Playground**：唯一方案与使用流程见[features/playground.md](features/playground.md)和[../apps/playground/README.md](../apps/playground/README.md)。`apps/playground/`默认进入App式Capture Lab，提供39项HTTP/Body/Encoding/WebSocket/H2/gRPC/TLS真实场景、可编辑/Reset的协议Draft、场景专属Setup/Observe、分页面可拖拽560px Response Detail与窄窗水平访问；MCP独立页继续提供最新协议直连、在线Tool目录、Raw JSON、Call/Abort、脱敏交换、24项recipe、人工结论与报告导出。Main只保留`/mcp`路由、反射式CORS preflight与Bearer，认证后交SDK。Traffic Lab integration覆盖39/39；当前真实Electron + 系统Edge只代表性执行`h1-json`与`ws-text`两项，即2/39，验证H1正文与WebSocket双向frame进入真实Capture并完整销毁，不表示39项均已经过产品E2E。提交前复审再精确Red于WebSocket握手事实重组、Secure首跑竞态、CONNECT停滞无法取消、跨transport Draft错配、Traffic/MCP旧结果回写和两页共享Detail宽度，当前全部Green。最终Playground Vitest`67/67`、Browser`5/5`、设计专项`5/5`、全workspace typecheck、两边build、Windows package、artifact audit（`1,294 files / 392,778,609 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。完整design长跑为`61/65`，末4项仅`beforeEach page.goto`超时且独立复跑`4/4` Green；全仓unit仅Proxy Core两项既有Mockttp chunked framing债务失败，同一`570c5447`基线精确复现`2 failed / 6 passed`。代码未替Developer勾选任何Tool；Tool自动主线完成后仍需逐项人工点击24项并保存脱敏报告，随后Capture E2E按六组从2/39收敛到39/39。
     首批Tool自动主线已完成：Agent接线、owner正向unit与真实Agent/MCP调用均24/24。Diagnostics最终真实workflow在`401af972`精确Red、当前`1/1` Green，两代Main/Core `11444/35300`、`42312/18808`均优雅销毁、释放8888并恢复系统副作用，重启Model/origin增量0；Tools`66/66`、Desktop`458/458`、Runtime`122/122`、Core Protocol`25/25`、MCP`32/32`、Playground`67/67`、design interaction`71/71`与全workspace typecheck Green。Diagnostics明暗parity`18/18`、0 missing、0 flagged、0px；完整Parity为`210 views / 1,474 targets / 1,442 matched / 32既有missing / 303既有flagged`，Windows package、artifact audit（`1,294 files / 392,826,512 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green；Proxy Core`329/331`仅保留两项既有chunked framing失败。Developer逐项人工矩阵独立待验收，不替用户填写结论，也不作为剩余43项Tool开发的前置条件；Settings只读六项本轮已闭环，接着实施系统代理启用/恢复组。首批自动验收历史证据见[features/tool-capabilities.md](features/tool-capabilities.md#9-历史阶段证据)。

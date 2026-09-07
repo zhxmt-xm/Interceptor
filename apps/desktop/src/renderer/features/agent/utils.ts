@@ -462,7 +462,9 @@ export function summarizeAgentToolResult(
       };
     }
   }
-  if (['capture_get_transfer_job', 'capture_cancel_transfer_job'].includes(name) && isRecord(result.value)) {
+  if (['capture_get_transfer_job', 'capture_cancel_transfer_job', 'capture_export_body', 'capture_export_har', 'capture_import_har'].includes(name) && isRecord(result.value)) {
+    if (name === 'capture_import_har' && result.value['started'] === false) return { kind: 'importCanceled' };
+    if (['capture_export_body', 'capture_export_har'].includes(name) && result.value['started'] === false) return { kind: 'exportCanceled' };
     const job = result.value['job'];
     if (job === null) return { kind: 'transferJobMissing' };
     if (isRecord(job) && typeof job['id'] === 'string'

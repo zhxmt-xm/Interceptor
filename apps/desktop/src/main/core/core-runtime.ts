@@ -174,6 +174,11 @@ export class CoreRuntime {
     this.coreRpcClient.onBreakpointsChanged(listener);
   }
 
+  /** 将Core成功导入通知交给Main，跨Core重启保留。 */
+  onCaptureImported(listener: () => void): void {
+    this.coreRpcClient.onCaptureImported(listener);
+  }
+
   /**
    * 注册 CoreProcess 就绪监听器（每代 CoreProcess 收到 ready 时触发一次），
    * 用于在新 Core 启动后下发 TLS 配置等初始化。调用方：DesktopApplication。

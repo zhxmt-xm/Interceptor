@@ -88,6 +88,17 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 [唯一能力目录](../features/tool-capabilities.md)。共享host的`invoke`只执行Core命令，`invokeMain`只执行typed Main命令。Settings的四项Main状态查询经
 `DesktopApplication`既有Action Gate进入CoreRuntime/SystemProxy/Certificate/AppContainer正式owner，
 两项TLS查询沿用Core RPC；Tool结果白名单不包含本机路径、私钥或完整系统代理配置。
+`capture.body.export`由Main验证当前Exchange/Body归属与Core代际，再经原生Save Dialog和既有
+`body.export.start`保存完整编码字节；对话框返回后重新确认身份，路径只在Main/Core内流转。UI与Tool共用
+文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。
+
+- HAR的IPC、MCP和Agent调用同一`startHarExport`或`startHarImport`，路径只来自原生Save/Open Dialog。
+- `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
+  - Main和Preload转发给`onCaptureImported`，Renderer常驻`useCaptureData`重新查询summaries。
+  - 发送失败时Core保留待发送信号；失败、取消的文件任务不发成功通知。
+  - 导入弹窗不再负责刷新，通知不含文件内容或路径。
+- Clear前的旧查询仍由`syncRevision`拒绝，迟到实时事件仍由`clearedBefore`拒绝；当前Core查询允许返回历史时间的导入记录。
+
 系统代理Enable/Restore由UI与Tool共用Main语义入口和SystemProxyOperationQueue，OS写入前检查取消，
 已开始的原子操作完成upstream同步后才退出。冷启动自动接管及退出恢复路径不变。
 每次Model Call与每项Tool执行前都重取

@@ -24,6 +24,9 @@ const TOOL_NAMES = [
   'capture_list_grpc_messages',
   'capture_get_transfer_job',
   'capture_cancel_transfer_job',
+  'capture_export_body',
+  'capture_export_har',
+  'capture_import_har',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -171,7 +174,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(50);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(53);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

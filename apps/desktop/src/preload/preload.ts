@@ -265,6 +265,11 @@ const api: InterceptorDesktopApi = {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureReset, handler);
     };
   },
+  onCaptureImported: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.captureImported, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.captureImported, handler);
+  },
   querySessions: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.sessionsQuery, request),
   getExchangeDetail: (exchangeId) =>

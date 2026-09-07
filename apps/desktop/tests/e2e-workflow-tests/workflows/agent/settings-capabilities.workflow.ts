@@ -39,6 +39,9 @@ const TOOL_NAMES = [
   'capture_list_grpc_messages',
   'capture_get_transfer_job',
   'capture_cancel_transfer_job',
+  'capture_export_body',
+  'capture_export_har',
+  'capture_import_har',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -188,7 +191,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(100);
+    await expect(switches).toHaveCount(106);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -271,7 +274,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(100);
+    await expect(restoredSwitches).toHaveCount(106);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

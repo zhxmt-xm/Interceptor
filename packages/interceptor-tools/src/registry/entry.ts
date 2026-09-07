@@ -54,6 +54,8 @@ import { buildCollectionTransferTools } from '../composer/transfer';
 import { buildBreakpointBatchTools } from '../breakpoints/batch';
 import { buildDiagnosticsTools } from '../diagnostics/entry';
 import { buildTransferJobTools } from '../transfer/entry';
+import { buildBodyExportTool } from '../transfer/body-export';
+import { buildHarTransferTools } from '../transfer/har';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -116,6 +118,9 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'capture_list_grpc_messages',
   'capture_get_transfer_job',
   'capture_cancel_transfer_job',
+  'capture_export_body',
+  'capture_export_har',
+  'capture_import_har',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -173,6 +178,8 @@ export function buildInterceptorToolRegistry(
     ...buildBreakpointBatchTools(),
     ...buildDiagnosticsTools(),
     ...buildTransferJobTools(),
+    buildBodyExportTool(),
+    ...buildHarTransferTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

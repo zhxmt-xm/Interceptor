@@ -378,11 +378,16 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     protocolVersion = client.getNegotiatedProtocolVersion() ?? null;
     expect(protocolVersion).toBe('2026-07-28');
     const initialToolNames = (await client.listTools()).tools.map((tool) => tool.name);
-    expect(initialToolNames).toHaveLength(48);
+    expect(initialToolNames).toHaveLength(53);
     expect(initialToolNames.every((name) => (
       /^(capture|rules|composer|breakpoints|diagnostics|settings)_/.test(name)
     ))).toBe(true);
     expect(initialToolNames).toContain('capture_get_proxy_status');
+    expect(initialToolNames).toContain('capture_get_transfer_job');
+    expect(initialToolNames).toContain('capture_cancel_transfer_job');
+    expect(initialToolNames).toContain('capture_export_body');
+    expect(initialToolNames).toContain('capture_export_har');
+    expect(initialToolNames).toContain('capture_import_har');
     expect(initialToolNames).not.toContain('get_proxy_status');
     await expect(client.callTool({ name: 'get_proxy_status', arguments: {} }))
       .rejects.toThrow('Tool get_proxy_status not found');

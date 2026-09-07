@@ -599,6 +599,7 @@ export const DESKTOP_IPC_CHANNELS = {
   captureGetStatus: 'capture:get-status',
   captureStatus: 'capture:status-changed',
   captureReset: 'capture:reset',
+  captureImported: 'capture:imported',
   captureEvents: 'capture:events',
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
@@ -747,6 +748,7 @@ export interface InterceptorDesktopApi {
   getCaptureStatus(): Promise<CaptureStatus>;
   onCaptureStatusChange(listener: (status: CaptureStatus) => void): () => void;
   onCaptureReset(listener: (reset: CaptureReset) => void): () => void;
+  onCaptureImported(listener: () => void): () => void;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;

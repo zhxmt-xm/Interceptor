@@ -47,6 +47,9 @@ const CAPTURE_TOOL_NAMES = [
   'capture_list_grpc_messages',
   'capture_get_transfer_job',
   'capture_cancel_transfer_job',
+  'capture_export_body',
+  'capture_export_har',
+  'capture_import_har',
 ] as const;
 const SENSITIVE_TEXTS = [
   FIRST_PROMPT,

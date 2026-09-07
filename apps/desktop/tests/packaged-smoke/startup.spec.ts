@@ -20,9 +20,9 @@ import {
 } from '@playwright/test';
 
 import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
-import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/windows-file-dialog';
-import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/workflow-host-safety-guard';
-import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/windows-workflow-host-safety-operations';
+import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/ui/windows-file-dialog';
+import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/safety/workflow-host-safety-guard';
+import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/windows-workflow-host-safety-operations';
 
 /** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -510,6 +510,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onAgentSessionEvent',
         'onBreakpointsChange',
         'onCaptureEvents',
+        'onCaptureImported',
         'onCaptureReset',
         'onCaptureStatusChange',
         'onClientAppIcons',

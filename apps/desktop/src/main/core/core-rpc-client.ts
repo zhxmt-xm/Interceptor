@@ -96,6 +96,8 @@ export class CoreRpcClient {
       | null = null;
   /** 断点集合变更信号；Renderer 据此立即重取，不必等下一次轮询。 */
   private breakpointsChangedListener: (() => void) | null = null;
+  /** Capture成功导入后通知Main刷新所有Renderer。 */
+  private captureImportedListener: (() => void) | null = null;
   /** 单条 Core 消息无法关联/解析时的诊断监听器；不代表连接失效。 */
   private protocolIssueListener: CoreRpcProtocolIssueListener | null = null;
 
@@ -151,6 +153,11 @@ export class CoreRpcClient {
   /** 注册断点集合变更通知；只是信号，快照由 Renderer 自己拉。 */
   onBreakpointsChanged(listener: () => void): void {
     this.breakpointsChangedListener = listener;
+  }
+
+  /** 注册Capture导入通知，跨Core重启保留订阅。 */
+  onCaptureImported(listener: () => void): void {
+    this.captureImportedListener = listener;
   }
 
   /** 注册单消息协议问题监听器；问题只影响该消息或对应 request。 */
@@ -288,6 +295,13 @@ export class CoreRpcClient {
     } catch (error) {
       this.reportProtocolIssue(
         `Breakpoint change consumer failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    try {
+      if (batch.captureImported) this.captureImportedListener?.();
+    } catch (error) {
+      this.reportProtocolIssue(
+        `Capture import consumer failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     try {

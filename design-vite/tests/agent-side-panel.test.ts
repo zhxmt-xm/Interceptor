@@ -753,6 +753,39 @@ test('Agent Diagnostics Tool activity summarizes records without exposing attrib
   expect(await trace.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+for (const direction of ['export', 'import'] as const) {
+  test(`HAR ${direction} preserves approval, task progress and native cancellation`, async ({ page }) => {
+    await page.evaluate((operation) => window.__setState?.({
+      view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+      agentToolApprovalName: operation === 'export' ? 'capture_export_har' : 'capture_import_har',
+      agentToolApproval: 'pending', agentToolTrace: '', agentHarExportStarted: true, agentHarImportStarted: true,
+    }), direction);
+    const approval = page.locator('[data-parity="agent-tool-approval"]');
+    await expect(approval).toContainText(direction === 'export' ? 'Mask authorization: true' : 'Existing Capture data is preserved.');
+    await approval.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+    await expect(approval).toContainText(`Running · 0/2 · Warnings 0 · transfer-har-${direction}`);
+    await page.evaluate(() => window.__setState?.({ agentHarExportStarted: false, agentHarImportStarted: false }));
+    await expect(approval).toContainText(direction === 'export' ? 'Export canceled' : 'Import canceled');
+    await expect(approval).not.toContainText('transfer-har-');
+  });
+}
+
+test('Body export preserves approval and native cancellation states', async ({ page }) => {
+  await page.evaluate(() => window.__setState?.({
+    view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',
+    agentToolApprovalName: 'capture_export_body', agentToolApproval: 'pending', agentToolTrace: '',
+    agentBodyExportStarted: true,
+  }));
+  const approval = page.locator('[data-parity="agent-tool-approval"]');
+  await expect(approval).toContainText('exchangeId: exchange-one · bodyId: body-one');
+  await expect(approval).toContainText('Stored bytes: 2097152');
+  await approval.getByRole('button', { name: 'Allow Tool', exact: true }).click();
+  await expect(approval).toContainText('Running · 0/2097152 · Warnings 0 · transfer-body');
+  await page.evaluate(() => window.__setState?.({ agentBodyExportStarted: false }));
+  await expect(approval).toContainText('Export canceled');
+  await expect(approval).not.toContainText('transfer-body');
+});
+
 test('Diagnostics export distinguishes a running job from native cancellation', async ({ page }) => {
   await page.evaluate(() => window.__setState?.({
     view: 'capture', agentPanel: 'open', agentProvider: 'configured', agentChat: 'checkout',

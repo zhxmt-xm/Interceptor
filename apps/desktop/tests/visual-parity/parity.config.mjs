@@ -781,6 +781,59 @@ export const views = [
           },
         ],
       })),
+      ...['export', 'import'].flatMap((direction) => ['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `har-${direction}-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `har-${direction}-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: direction === 'export' ? 'capture_export_har' : 'capture_import_har',
+          agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-har-${direction}-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'HAR approval', parity: 'agent-tool-approval' },
+          direction === 'export' ? 'capture_export_har' : 'capture_import_har',
+          {
+            name: 'HAR result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : `[data-automation-id="agent.tools.result.call-har-${direction}"] > span`,
+          },
+        ],
+      }))),
+      ...['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `body-export-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `body-export-${stage}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+          agentToolApprovalName: 'capture_export_body', agentBodyExportStarted: stage !== 'canceled', agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-body-export-${stage}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'Body export approval', parity: 'agent-tool-approval' },
+          'capture_export_body',
+          {
+            name: 'Body export result or effect',
+            designSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-parity="agent-tool-approval"] > span:last-child > span',
+            appSelector: stage === 'pending'
+              ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
+              : '[data-automation-id="agent.tools.result.call-body-export"] > span',
+          },
+        ],
+      })),
       ...['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `diagnostics-export-${stage}${suffix}`, theme, agentModels: 'configured',
         agentSessionState: `diagnostics-export-${stage}`,

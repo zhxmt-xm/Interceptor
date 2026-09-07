@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { suggestedBodyFileName } from '../../../../../shared/body-file-name';
 import type {
   CaptureExchangeEvent,
   CaptureExchangeSummary,
@@ -16,7 +17,6 @@ import type { CaptureFilter } from '../../interfaces';
 import {
   allFacetOptions,
   hasActiveFilter,
-  suggestedBodyFileName,
   visibleCaptureRows,
 } from '../../utils';
 
@@ -169,20 +169,33 @@ describe('captureStore clear timeline', () => {
     expect(useCaptureStore.getState().loading).toBe(false);
   });
 
-  it('filters rows at or before the clear boundary from a new full sync', () => {
+  it('accepts historical imports from a new Core query while rejecting late live events', () => {
     const store = useCaptureStore.getState();
     store.clearView(200);
     const revision = useCaptureStore.getState().beginLoad();
 
     useCaptureStore.getState().replaceAllRows([
-      captureEvent('before-clear', 199).summary,
-      captureEvent('at-clear', 200).summary,
+      captureEvent('imported-before-clear', 199).summary,
+      captureEvent('imported-at-clear', 200).summary,
       captureEvent('after-clear', 201).summary,
     ], revision);
+    useCaptureStore.getState().applyEvents([captureEvent('late-old-event', 198)]);
 
     const state = useCaptureStore.getState();
-    expect(state.rows.map((row) => row.id)).toEqual(['after-clear']);
-    expect(state.indexById).toEqual(new Map([['after-clear', 0]]));
+    expect(state.rows.map((row) => row.id)).toEqual(['imported-before-clear', 'imported-at-clear', 'after-clear']);
+    expect(state.indexById).toEqual(new Map([['imported-before-clear', 0], ['imported-at-clear', 1], ['after-clear', 2]]));
+    expect(state.clearedBefore).toBe(200);
+  });
+
+  it('keeps imported rows when an overlapping current-generation query finishes later', () => {
+    const store = useCaptureStore.getState();
+    store.clearView(200);
+    const earlierQuery = store.beginLoad();
+    const importQuery = store.beginLoad();
+    store.replaceAllRows([captureEvent('imported', 50).summary], importQuery);
+    store.replaceAllRows([], earlierQuery);
+
+    expect(useCaptureStore.getState().rows.map((row) => row.id)).toEqual(['imported']);
   });
 
   it('tracks one explicit file transfer action at a time', () => {

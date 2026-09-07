@@ -149,14 +149,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     }
     set((state) => {
       const byId = new Map(
-        loadedRows
-          .filter((row) => row.startedAt > state.clearedBefore)
-          .map((row) => [row.id, row] as const),
+        loadedRows.map((row) => [row.id, row] as const),
       );
       for (const row of state.rows) {
-        if (row.startedAt > state.clearedBefore) {
-          byId.set(row.id, row);
-        }
+        byId.set(row.id, row);
       }
       const rows = Array.from(byId.values()).sort(
         (left, right) => left.startedAt - right.startedAt,

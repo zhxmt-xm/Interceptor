@@ -12,7 +12,8 @@ import type {
   CaptureBodyRuleEffect,
 } from '../../../../shared/desktop-api';
 import { Segmented, sizeLabel } from '../../../components';
-import { suggestedBodyFileName, typeLabel } from '../utils';
+import { suggestedBodyFileName } from '../../../../shared/body-file-name';
+import { typeLabel } from '../utils';
 
 import styles from './BodySection.module.css';
 import { BodyView } from './BodyView';

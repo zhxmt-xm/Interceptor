@@ -1,6 +1,9 @@
-import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, TransferJobSnapshot } from '@interceptor/core-protocol';
+import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, HarExportStartCommand, TransferJobSnapshot } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'capture.har.export': { job: TransferJobSnapshot | null };
+  'capture.har.import': { job: TransferJobSnapshot | null };
+  'capture.body.export': { job: TransferJobSnapshot | null };
   'diagnostics.export': { job: TransferJobSnapshot | null };
   'composer.collection.export': { exported: boolean };
   'composer.collection.import':
@@ -61,6 +64,8 @@ export interface MainToolResultPayloads {
 }
 
 export interface MainToolCommandPayloads {
+  'capture.har.export': Omit<HarExportStartCommand['payload'], 'jobId' | 'filePath'>;
+  'capture.body.export': { exchangeId: string; bodyId: string };
   'diagnostics.export': { process?: DiagnosticProcess; level?: DiagnosticLevel; outcome?: DiagnosticOutcome };
   'composer.collection.replace': { expectedRevision: number; nodes: CollectionNode[] };
   'settings.tls-insecure-hosts.replace': { hosts: string[] };

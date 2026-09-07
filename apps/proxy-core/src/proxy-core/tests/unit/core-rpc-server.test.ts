@@ -262,6 +262,18 @@ describe('CoreRpcServer', () => {
     });
   });
 
+  it('sends a Capture import notice without live traffic or file information', () => {
+    const server = createServer(echoCommandHandler(), vi.fn());
+    const fakeRpcPort = new FakeRpcPort();
+    server.attach(fakeRpcPort);
+
+    expect(server.sendEventBatch([], [], [], false, true)).toBe(1);
+    expect(fakeRpcPort.sent.at(-1)).toEqual({
+      kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1, events: [], captureImported: true,
+    });
+  });
+
   it('skips an empty batch that carries no breakpoint change either', () => {
     const server = createServer(echoCommandHandler(), vi.fn());
     const fakeRpcPort = new FakeRpcPort();
