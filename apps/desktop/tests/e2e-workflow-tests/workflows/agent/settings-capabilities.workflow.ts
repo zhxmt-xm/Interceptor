@@ -42,6 +42,8 @@ const TOOL_NAMES = [
   'capture_export_body',
   'capture_export_har',
   'capture_import_har',
+  'capture_export_archive',
+  'capture_import_archive',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -191,7 +193,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(106);
+    await expect(switches).toHaveCount(110);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -274,7 +276,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(106);
+    await expect(restoredSwitches).toHaveCount(110);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

@@ -68,6 +68,7 @@ import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { startDiagnosticsExport } from './diagnostics/start-export';
 import { startBodyExport } from './capture/start-body-export';
 import { startHarExport, startHarImport } from './capture/start-har-transfer';
+import { startArchiveExport, startArchiveImport } from './capture/start-archive-transfer';
 import type {
   SystemProxyService,
   SystemProxyStatus,
@@ -643,6 +644,8 @@ class DesktopApplication {
       } = {
         'capture.har.export': async (payload) => ({ job: await startHarExport(this.coreRuntime, payload, undefined, abortSignal) }),
         'capture.har.import': async () => ({ job: await startHarImport(this.coreRuntime, undefined, abortSignal) }),
+        'capture.archive.export': async () => ({ job: await startArchiveExport(this.coreRuntime, undefined, abortSignal) }),
+        'capture.archive.import': async () => ({ job: await startArchiveImport(this.coreRuntime, undefined, abortSignal) }),
         'capture.body.export': async (payload) => ({
           job: await startBodyExport(this.coreRuntime, { kind: 'exchange-body', ...payload }, undefined, abortSignal),
         }),
@@ -1509,45 +1512,13 @@ class DesktopApplication {
     // 原生 archive 导出：整库快照，无需 Renderer 提交 scope/redaction；路径由 Main 生成。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveExportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const selection = await dialog.showSaveDialog({
-        title: title as string,
-        defaultPath: `interceptor-${new Date().toISOString().slice(0, 10)}.iarchive`,
-        filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
-        properties: ['createDirectory', 'showOverwriteConfirmation'],
-      });
-      if (selection.canceled || !selection.filePath) {
-        return null;
-      }
-      const result = await this.coreRuntime.request({
-        type: 'archive.export.start',
-        payload: {
-          jobId: `transfer-${randomUUID()}`,
-          filePath: selection.filePath,
-        },
-      });
-      return result.payload.job;
+      return startArchiveExport(this.coreRuntime, title as string);
     });
 
     // 原生 archive 导入：系统对话框仅允许选择一个 .iarchive，Renderer 不接触真实路径。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.archiveImportStart, async (event, title: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const selection = await dialog.showOpenDialog({
-        title: title as string,
-        filters: [{ name: 'Interceptor Archive', extensions: ['iarchive'] }],
-        properties: ['openFile'],
-      });
-      const [filePath] = selection.filePaths;
-      if (selection.canceled || !filePath) {
-        return null;
-      }
-      const result = await this.coreRuntime.request({
-        type: 'archive.import.start',
-        payload: {
-          jobId: `transfer-${randomUUID()}`,
-          filePath,
-        },
-      });
-      return result.payload.job;
+      return startArchiveImport(this.coreRuntime, title as string);
     });
 
     // 诊断 JSONL 导出：Renderer 只提交 process/level/outcome 过滤；路径由 Main 生成。

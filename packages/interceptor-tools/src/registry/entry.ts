@@ -56,6 +56,7 @@ import { buildDiagnosticsTools } from '../diagnostics/entry';
 import { buildTransferJobTools } from '../transfer/entry';
 import { buildBodyExportTool } from '../transfer/body-export';
 import { buildHarTransferTools } from '../transfer/har';
+import { buildArchiveTransferTools } from '../transfer/archive';
 
 const WEBSOCKET_DIRECTIONS: readonly WebSocketBreakpointDirection[] = [
   'both',
@@ -121,6 +122,8 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'capture_export_body',
   'capture_export_har',
   'capture_import_har',
+  'capture_export_archive',
+  'capture_import_archive',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -180,6 +183,7 @@ export function buildInterceptorToolRegistry(
     ...buildTransferJobTools(),
     buildBodyExportTool(),
     ...buildHarTransferTools(),
+    ...buildArchiveTransferTools(),
   ];
   const definitionsByName = new Map(definitions.map((tool) => [tool.name, tool]));
   if (definitionsByName.size !== definitions.length) {

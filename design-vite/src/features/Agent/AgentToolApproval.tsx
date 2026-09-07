@@ -5,6 +5,16 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  capture_export_archive: {
+    description: 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.',
+    effect: 'Save a complete Capture snapshot including bodies, credentials and native evidence without redaction; starting the job does not mean it has completed.\nExport the complete Capture snapshot, including bodies, credentials and native evidence without redaction.\nChoose the destination using the native Save Dialog.',
+    result: 'Running · 0/2 · Warnings 0 · transfer-archive-export',
+  },
+  capture_import_archive: {
+    description: 'Import a native Interceptor Archive chosen through the native Open Dialog into Capture.',
+    effect: 'Append the selected Archive to Capture without clearing existing exchanges; starting the job does not mean it has completed.\nChoose an Interceptor Archive using the native Open Dialog.\nExisting Capture data is preserved.',
+    result: 'Running · 0/2 · Warnings 0 · transfer-archive-import',
+  },
   capture_export_har: {
     description: 'Export captured HTTP exchanges as HAR 1.2 through the native Save Dialog.',
     effect: 'Save the selected Capture scope using the explicit redaction choices; starting the file job does not mean it has completed.\nScope: selected\nSelected exchanges: 2\nMask authorization: true\nMask cookies: true\nStrip bodies: false\nChoose the destination using the native Save Dialog.',
@@ -154,9 +164,11 @@ export function AgentToolApproval(): React.JSX.Element | null {
       || (state.agentToolApprovalName === 'composer_export_collection' && !state.agentCollectionExported)
       || (state.agentToolApprovalName === 'capture_export_body' && !state.agentBodyExportStarted)
       || (state.agentToolApprovalName === 'capture_export_har' && !state.agentHarExportStarted)
+      || (state.agentToolApprovalName === 'capture_export_archive' && !state.agentArchiveExportStarted)
       || (state.agentToolApprovalName === 'diagnostics_export' && !state.agentDiagnosticsExportStarted);
     const importCanceled = (state.agentToolApprovalName === 'rules_import' && !state.agentRulesImported)
       || (state.agentToolApprovalName === 'capture_import_har' && !state.agentHarImportStarted)
+      || (state.agentToolApprovalName === 'capture_import_archive' && !state.agentArchiveImportStarted)
       || (state.agentToolApprovalName === 'composer_import_collection' && !state.agentCollectionImported);
     return (
       <div
@@ -195,7 +207,7 @@ export function AgentToolApproval(): React.JSX.Element | null {
       <div className={styles.toolApprovalBody}>
         <p>{tool.description}</p>
         <dl>
-          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName.startsWith('breakpoints_') || state.agentToolApprovalName.startsWith('diagnostics_') || ['capture_export_har', 'capture_import_har', 'capture_export_body', 'capture_cancel_transfer_job', 'rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
+          <div><dt>{state.agentToolApprovalName.startsWith('settings_') || state.agentToolApprovalName.startsWith('breakpoints_') || state.agentToolApprovalName.startsWith('diagnostics_') || ['capture_export_archive', 'capture_import_archive', 'capture_export_har', 'capture_import_har', 'capture_export_body', 'capture_cancel_transfer_job', 'rules_export', 'rules_import', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'].includes(state.agentToolApprovalName) ? 'Arguments' : 'Parameters'}</dt><dd>{'arguments' in tool ? tool.arguments : 'No parameters'}</dd></div>
           <div><dt>Effect</dt><dd>{tool.effect}</dd></div>
         </dl>
       </div>

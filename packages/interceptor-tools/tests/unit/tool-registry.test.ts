@@ -27,6 +27,8 @@ const TOOL_NAMES = [
   'capture_export_body',
   'capture_export_har',
   'capture_import_har',
+  'capture_export_archive',
+  'capture_import_archive',
   'rules_get_tree',
   'rules_get_hits',
   'rules_replace_tree',
@@ -174,7 +176,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(53);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(55);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

@@ -190,6 +190,8 @@ describe('AgentToolService', () => {
           { descriptor: { name: 'capture_export_body' } },
           { descriptor: { name: 'capture_export_har' } },
           { descriptor: { name: 'capture_import_har' } },
+          { descriptor: { name: 'capture_export_archive' } },
+          { descriptor: { name: 'capture_import_archive' } },
         ],
       },
     });
@@ -212,6 +214,8 @@ describe('AgentToolService', () => {
       'capture_export_body',
       'capture_export_har',
       'capture_import_har',
+      'capture_export_archive',
+      'capture_import_archive',
     ]);
     expect(tool(disclosed, 'capture_start_recording').kind).toBe('change');
     expect(tool(disclosed, 'capture_stop_recording').kind).toBe('change');
@@ -253,6 +257,8 @@ describe('AgentToolService', () => {
       'capture_export_body',
       'capture_export_har',
       'capture_import_har',
+      'capture_export_archive',
+      'capture_import_archive',
     ]);
   });
 

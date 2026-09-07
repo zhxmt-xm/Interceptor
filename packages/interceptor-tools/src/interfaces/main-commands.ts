@@ -1,6 +1,8 @@
 import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, HarExportStartCommand, TransferJobSnapshot } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'capture.archive.export': { job: TransferJobSnapshot | null };
+  'capture.archive.import': { job: TransferJobSnapshot | null };
   'capture.har.export': { job: TransferJobSnapshot | null };
   'capture.har.import': { job: TransferJobSnapshot | null };
   'capture.body.export': { job: TransferJobSnapshot | null };

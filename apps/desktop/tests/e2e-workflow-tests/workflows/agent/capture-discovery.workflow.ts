@@ -50,6 +50,8 @@ const CAPTURE_TOOL_NAMES = [
   'capture_export_body',
   'capture_export_har',
   'capture_import_har',
+  'capture_export_archive',
+  'capture_import_archive',
 ] as const;
 const SENSITIVE_TEXTS = [
   FIRST_PROMPT,

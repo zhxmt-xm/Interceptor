@@ -68,6 +68,14 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Export a HAR through the product first, then keep that file for Import.', 'Keep existing Capture rows to verify that Import appends.'],
     ['Deny and native Open cancellation leave Capture unchanged.', 'Allow and Auto both use the native Open Dialog.', 'After the job completes, imported rows appear without reopening Capture or refreshing manually.', 'Only safe job status is returned; the file path and contents stay out of Tool results.'],
   ),
+  capture_export_archive: recipe(
+    ['Capture HTTP bodies and WebSocket messages through the Playground.', 'Use Ask mode first; Archive always exports the complete snapshot without redaction.'],
+    ['Deny opens no dialog; native Cancel returns started=false.', 'Allow and Auto use the native Save Dialog and return only safe job fields.', 'Wait for the job to complete, then retain this product-generated archive for Import.', 'The archive preserves full bodies, credentials and native evidence; none of its content is returned to the Model.'],
+  ),
+  capture_import_archive: recipe(
+    ['Export an Archive through the product in this acceptance session.', 'Keep existing Capture rows and use the same file for Import.'],
+    ['Deny and native Open cancellation preserve Capture.', 'Allow and Auto use the native Open Dialog.', 'Completion appends records and updates the mounted Capture view.', 'HTTP bodies and WebSocket messages match the exported snapshot; no file information appears in Tool results.'],
+  ),
   rules_get_tree: recipe(
     ['Create and Apply a small enabled Rule tree in the product UI.'],
     ['Returned revision, folders, rule order and enabled state match Rules.'],

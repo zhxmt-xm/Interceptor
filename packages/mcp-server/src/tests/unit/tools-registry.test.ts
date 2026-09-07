@@ -90,6 +90,8 @@ describe('McpToolRegistry', () => {
       'capture_export_body',
       'capture_export_har',
       'capture_import_har',
+      'capture_export_archive',
+      'capture_import_archive',
       'rules_get_tree',
       'rules_get_hits',
       'rules_replace_tree',

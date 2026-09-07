@@ -19,6 +19,34 @@
 - H2 path：`/e2e/mitm/h2?source=workflow`，response trailer `x-interceptor-e2e-trailer: h2-complete`；
 - gRPC path：`/interceptor.e2e.WorkflowService/Stream`；一个 request envelope、两个 response envelope，第二个 compressed flag=true；trailers=`grpc-status: 0`、`grpc-message: OK`。
 
+<a id="capture-tools-archive-transfer"></a>
+## `capture.tools.archive-transfer`
+
+**状态**：passed
+**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+
+### Steps
+
+1. 独立profile启动真实Electron并开启Recording；loopback HTTP与WebSocket流量经8888进入Capture，UI确认完整正文和双向消息。
+2. 通过Settings配置本地Provider；Ask Chat发现`capture_export_archive`与`capture_import_archive`，二者只接受空参数。
+3. Agent Ask Deny不打开原生Dialog；Allow导出先真实Cancel，再Allow选择路径，查询任务到成功并核对产品输出归档，不能测试预造文件。
+4. UI Clear之后通过Agent Allow导入同一产品文件，先取消原生Open，再确认导入；已挂载Capture自动恢复HTTP正文与WebSocket消息，不依赖切换页面。
+5. Agent Auto导出仍显示Save，Auto导入仍显示Open；再导入时追加完整数据，已有Capture不被清空。结果和Transcript只含安全任务字段或取消摘要。
+6. 关闭Agent两项权限，旧Chat无法调用；产品UI创建MCP Client，独立开启MCP权限并验证Ask Deny/Allow、原生取消、Auto导出及追加导入。
+7. 原UI Archive Export/Import也完成同组操作，使用同一Main方法；MCP撤权后旧连接不能披露或执行两项Tool。
+8. 正常关闭并保存trace/evidence；同profile重启，权限保持，Model/origin/文件操作零重放。两代Main/Core/Worker全部退出，8888释放，完整WinINet/journal恢复后清理产品文件。
+
+### 预期与证据
+
+- 前置Red必须来自缺失Tool或目标行为未实现，不能用selector、原生Dialog、构建或环境失败替代。
+- 文件内容只在测试本地核对完整性；审批、Tool结果、Transcript及脱敏证据不含凭据、正文、本机路径或文件名。
+- Export保存全量原生证据而不是HAR转换；Import保留WebSocket消息与完整正文，追加数据并通过正式通知刷新UI。
+- 前置executor16项缺失Tool Red，真实discovery在`b59c5adb`构建上Red；Main/Core `32984/11512`正常退出，证据`interceptor-archive-tools-e2e-red-20260907-193654`。
+- 最终1/1（49.0秒），两代Main/Core `6960/19908`、`18620/20208`均`gracefulDestroyVerified=true`，Main/Core/Worker、8888及完整WinINet/journal恢复通过。
+	- 证据及trace为TEMP下`interceptor-archive-tools-complete-green-20260907-195117`，HTTP正文和WebSocket消息在Clear后完整恢复，导入数量依次2、4、6、8、10。
+	- Agent/MCP Ask/Auto、原生取消、独立撤权、原IPC菜单、共享通知及重启零重放通过；`archive-transfer.json`仅含hash、计数和布尔结论。
+- Desktop665/665、Tools326/326、MCP32/32、Archive Core20/20、全workspace类型、parity202/202、package/artifact audit与smoke1/1通过；关联流程与失败记录见[Archive验收](../../../../../architecture/features/transfer.md#archive-tool-acceptance)。
+
 <a id="capture-playground-traffic"></a>
 ## `capture.playground-traffic`
 

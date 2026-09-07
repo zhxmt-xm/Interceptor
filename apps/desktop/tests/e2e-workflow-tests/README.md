@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、114条Inventory与115份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、115条Inventory与116份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -186,6 +186,7 @@ diagnostics.row.<traceKey>
 | `capture.tools.transfer-jobs` | Agent/MCP文件任务查询、运行中取消、脱敏与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.body-export` | Agent/MCP原生正文保存、编码字节完整性、撤权与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.har-transfer` | Agent/MCP原生HAR导出再导入、范围脱敏、追加与双代销毁 | native-ui + os-side-effect | passed |
+| `capture.tools.archive-transfer` | Agent/MCP/IPC原生Archive往返、HTTP正文/WS消息、追加与双代销毁 | native-ui + os-side-effect | passed |
 
 详细步骤与协议字段矩阵：[docs/capture.md](docs/capture.md)
 

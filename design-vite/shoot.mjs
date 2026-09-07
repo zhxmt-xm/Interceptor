@@ -292,18 +292,20 @@ for (const theme of ['light', 'dark']) {
       agentExecutionMode: 'ask', agentToolTrace: 'transfer-jobs', agentToolApproval: '',
     },
   });
-  for (const direction of ['export', 'import']) {
-    for (const stage of ['pending', 'allowed', 'canceled']) {
-      shots.push({
-        feature: 'agent-models', theme, variant: `panel-har-${direction}-${stage}`, appSize: { width: 1600, height: 900 },
-        state: {
-          view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
-          agentExecutionMode: 'ask', agentToolTrace: '',
-          agentToolApprovalName: direction === 'export' ? 'capture_export_har' : 'capture_import_har',
-          agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
-          agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled',
-        },
-      });
+  for (const format of ['har', 'archive']) {
+    for (const direction of ['export', 'import']) {
+      for (const stage of ['pending', 'allowed', 'canceled']) {
+        shots.push({
+          feature: 'agent-models', theme, variant: `panel-${format}-${direction}-${stage}`, appSize: { width: 1600, height: 900 },
+          state: {
+            view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', agentPanel: 'open',
+            agentExecutionMode: 'ask', agentToolTrace: '', agentToolApprovalName: `capture_${direction}_${format}`,
+            agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
+            agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled',
+            agentArchiveExportStarted: stage !== 'canceled', agentArchiveImportStarted: stage !== 'canceled',
+          },
+        });
+      }
     }
   }
   for (const stage of ['pending', 'allowed', 'canceled']) {
@@ -696,6 +698,8 @@ async function shoot(list) {
       agentBodyExportStarted: true,
       agentHarExportStarted: true,
       agentHarImportStarted: true,
+      agentArchiveExportStarted: true,
+      agentArchiveImportStarted: true,
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',
       agentModelMenu: '',
@@ -813,6 +817,8 @@ async function shoot(list) {
       agentBodyExportStarted: true,
       agentHarExportStarted: true,
       agentHarImportStarted: true,
+      agentArchiveExportStarted: true,
+      agentArchiveImportStarted: true,
       agentProviderDialog: '',
       agentProviderDialogMode: 'add',
       agentProviderDialogTarget: '',

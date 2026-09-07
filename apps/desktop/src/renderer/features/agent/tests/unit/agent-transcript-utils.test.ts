@@ -312,6 +312,19 @@ describe('Agent transcript utilities', () => {
     }
   });
 
+  it.each(['capture_export_archive', 'capture_import_archive'])('Archive native cancellation distinguishes the intent for %s', (name) => {
+    expect(summarizeAgentToolResult(name, { ok: true, value: { started: false } }))
+      .toEqual({ kind: name === 'capture_import_archive' ? 'importCanceled' : 'exportCanceled' });
+  });
+
+  it.each(['capture_export_archive', 'capture_import_archive'])('Archive results only show safe transfer states for %s', (name) => {
+    for (const state of ['running', 'completed', 'failed', 'cancelled']) {
+      expect(summarizeAgentToolResult(name, { ok: true, value: {
+        started: true, job: { id: 'archive-job', state, processed: 2, total: 4, warningCount: 1, fileName: 'private.iarchive', message: 'private path' },
+      } })).toEqual({ kind: 'transferJob', jobId: 'archive-job', state, processed: 2, total: 4, warningCount: 1 });
+    }
+  });
+
   it.each(['running', 'completed', 'failed', 'cancelled'])('Body export uses a safe transfer summary for %s', (state) => {
     expect(summarizeAgentToolResult('capture_export_body', { ok: true, value: {
       started: true, job: { id: 'body-export-one', state, processed: 20, total: 30, warningCount: 0, fileName: 'private.bin' },

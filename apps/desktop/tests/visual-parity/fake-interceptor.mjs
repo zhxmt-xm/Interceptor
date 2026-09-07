@@ -811,6 +811,8 @@ export const fakeInterceptorFixture = {
             { name: 'capture_export_body', title: 'Export captured body', description: 'Save a captured body in full through the native Save Dialog, without exposing body bytes or local file information.', kind: 'change' },
             { name: 'capture_export_har', title: 'Export HAR', description: 'Export captured HTTP exchanges as HAR 1.2 through the native Save Dialog.', kind: 'change' },
             { name: 'capture_import_har', title: 'Import HAR', description: 'Import a HAR file chosen through the native Open Dialog into a separate Capture session.', kind: 'change' },
+            { name: 'capture_export_archive', title: 'Export Archive', description: 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.', kind: 'change' },
+            { name: 'capture_import_archive', title: 'Import Archive', description: 'Import a native Interceptor Archive chosen through the native Open Dialog into Capture.', kind: 'change' },
           ],
         },
         {
@@ -2100,39 +2102,48 @@ export function installFakeInterceptor({
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
-  } else if (agentSessionState.startsWith('har-export-') || agentSessionState.startsWith('har-import-')) {
-    const exporting = agentSessionState.startsWith('har-export-');
-    const direction = exporting ? 'export' : 'import';
-    const name = exporting ? 'capture_export_har' : 'capture_import_har';
+  } else if (/^(har|archive)-(export|import)-/.test(agentSessionState)) {
+    const [format, direction] = agentSessionState.split('-');
+    const exporting = direction === 'export';
+    const name = `capture_${direction}_${format}`;
+    const harExport = format === 'har' && exporting;
     const pending = agentSessionState.endsWith('-pending');
     const canceled = agentSessionState.endsWith('-canceled');
     const createdAt = agentSessionSnapshot.summary.createdAt;
     const turnId = agentSessionSnapshot.turns[0].turnId;
     const items = [...agentSessionSnapshot.items, {
-      kind: 'assistant-message', itemId: `har-${direction}-assistant`, turnId,
+      kind: 'assistant-message', itemId: `${format}-${direction}-assistant`, turnId,
       content: '', reasoningContent: '', partial: false, createdAt: createdAt + 1,
     }, {
-      kind: 'tool-call', itemId: `har-${direction}-call`, turnId, callId: `call-har-${direction}`, name,
-      arguments: exporting ? {
+      kind: 'tool-call', itemId: `${format}-${direction}-call`, turnId, callId: `call-${format}-${direction}`, name,
+      arguments: harExport ? {
         scope: { kind: 'selected', exchangeIds: ['exchange-one', 'exchange-two'] },
         redaction: { authorization: true, cookies: true, bodies: false },
       } : {},
       status: pending ? 'running' : 'completed',
       approval: {
-        approvalId: `har-${direction}-approval`, status: pending ? 'pending' : 'allowed',
-        description: exporting
-          ? 'Export captured HTTP exchanges as HAR 1.2 through the native Save Dialog.'
-          : 'Import a HAR file chosen through the native Open Dialog into a separate Capture session.',
-        effect: exporting
-          ? 'Save the selected Capture scope using the explicit redaction choices; starting the file job does not mean it has completed.\nScope: selected\nSelected exchanges: 2\nMask authorization: true\nMask cookies: true\nStrip bodies: false\nChoose the destination using the native Save Dialog.'
-          : 'Append the selected HAR to Capture without clearing existing exchanges; starting the file job does not mean it has completed.\nChoose a HAR file using the native Open Dialog.\nExisting Capture data is preserved.',
-        effectMetadata: exporting ? { scopeKind: 'selected', authorization: true, cookies: true, bodies: false } : {},
+        approvalId: `${format}-${direction}-approval`, status: pending ? 'pending' : 'allowed',
+        description: format === 'archive'
+          ? exporting
+            ? 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.'
+            : 'Import a native Interceptor Archive chosen through the native Open Dialog into Capture.'
+          : exporting
+            ? 'Export captured HTTP exchanges as HAR 1.2 through the native Save Dialog.'
+            : 'Import a HAR file chosen through the native Open Dialog into a separate Capture session.',
+        effect: format === 'archive'
+          ? exporting
+            ? 'Save a complete Capture snapshot including bodies, credentials and native evidence without redaction; starting the job does not mean it has completed.\nExport the complete Capture snapshot, including bodies, credentials and native evidence without redaction.\nChoose the destination using the native Save Dialog.'
+            : 'Append the selected Archive to Capture without clearing existing exchanges; starting the job does not mean it has completed.\nChoose an Interceptor Archive using the native Open Dialog.\nExisting Capture data is preserved.'
+          : exporting
+            ? 'Save the selected Capture scope using the explicit redaction choices; starting the file job does not mean it has completed.\nScope: selected\nSelected exchanges: 2\nMask authorization: true\nMask cookies: true\nStrip bodies: false\nChoose the destination using the native Save Dialog.'
+            : 'Append the selected HAR to Capture without clearing existing exchanges; starting the file job does not mean it has completed.\nChoose a HAR file using the native Open Dialog.\nExisting Capture data is preserved.',
+        effectMetadata: harExport ? { scopeKind: 'selected', authorization: true, cookies: true, bodies: false } : {},
       }, createdAt: createdAt + 2,
     }];
     if (!pending) items.push({
-      kind: 'tool-result', itemId: `har-${direction}-result`, turnId, callId: `call-har-${direction}`, name,
+      kind: 'tool-result', itemId: `${format}-${direction}-result`, turnId, callId: `call-${format}-${direction}`, name,
       result: { ok: true, value: canceled ? { started: false } : { started: true, job: {
-        id: `transfer-har-${direction}`, kind: `har-${direction}`, state: 'running', processed: 0, total: 2,
+        id: `transfer-${format}-${direction}`, kind: `${format}-${direction}`, state: 'running', processed: 0, total: 2,
         startedAt: '2026-09-07T12:00:00.000Z', warningCount: 0,
       } } }, createdAt: createdAt + 3,
     });

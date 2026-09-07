@@ -149,6 +149,51 @@ Body保存入口与原生Save Dialog，不在Tool层读取正文或实现第二�
 - 已取得共享executor和真实`capture.tools.body-export`发现Red及同组Green；完整证据见§9.2。
     已启动导出与Clear的lease/snapshot，以及Cancel/rename提交点债务仍是独立欠账，不扩入本组。
 
+### 3.5 Capture Archive Tool
+
+- `capture_export_archive`与`capture_import_archive`均为严格空参数change，分别调用typed Main命令`capture.archive.export`与`capture.archive.import`。
+    - 不接受路径、文件名、文件内容、jobId、scope、redaction、replace或Clear参数。
+    - Export沿现有整库快照语义保留正文、凭据与原生证据，审批明确提示完整存档不脱敏；不把文件内容发送给Model。
+    - Import追加到当前Capture，不覆盖或清空已有数据，不修改现有`.iarchive`格式。
+- IPC、Agent、MCP共用`startArchiveExport`/`startArchiveImport`，Main唯一负责原生Save/Open、取消检查及Core任务启动。
+    - Deny和预取消不打开Dialog；Allow/Auto仍需原生选择，路径只留在Main/Core。
+    - 原生Cancel返回`{ started: false }`；启动返回`{ started: true, job }`，仅含既有安全任务字段，不含文件名、路径、任意message或warnings内容。
+    - 调用取消不能隐式取消已接受的文件任务；任务查询/取消仍用`capture_get_transfer_job`与`capture_cancel_transfer_job`。
+- Archive导入完成复用既有`captureImported`通知，已挂载Renderer重新查询，不依赖弹窗轮询刷新。
+    - Transcript复用`transferJob`、`exportCanceled`和`importCanceled`，不回退原始JSON。
+    - Agent/MCP双列授权、Ask Deny/Allow/Auto、撤权及重启零重放分别验收。
+- executor和真实`capture.tools.archive-transfer`先取得缺失Tool Red，再实现并复跑同组Green。
+    - E2E归档输入必须由同workflow的真实产品Export生成；验证完整正文、至少一条WebSocket消息、追加导入、UI同步与原生取消。
+    - 格式损坏、超限及非法路径归现有Archive模块测试；不为E2E或设计辅助代码新增测试的测试。
+
+<a id="archive-tool-acceptance"></a>
+### 3.6 Archive Tool验收（2026-09-07）
+
+- 前置Red：executor16项因两项Tool缺失失败，日志为TEMP下`interceptor-archive-tools-executor-red-20260907.log`。
+    - 真实discovery在`b59c5adb`构建上失败于`capture_export_archive`未披露，证据`interceptor-archive-tools-e2e-red-20260907-193654`；Main/Core `32984/11512`正常退出、宿主恢复通过。
+    - Renderer摘要新增4项Red，日志`interceptor-archive-tools-summary-red-20260907.log`；映射后完整摘要50/50。
+- 最终真实流程1/1（49.0秒），证据及trace为`interceptor-archive-tools-complete-green-20260907-195117`。
+    - 两代Main/Core `6960/19908`、`18620/20208`均`gracefulDestroyVerified=true`，Main/Core/Worker退出、8888释放、完整WinINet/journal恢复。
+    - 产品Export生成全部输入文件；HTTP request/response正文和WebSocket双向消息在Clear后恢复，新身份与原身份不重合。
+    - 导入数量依次为2、4、6、8、10；Agent/MCP Ask Deny/Allow、Auto、原生Cancel、原IPC菜单、独立撤权、已挂载UI通知与重启零重放通过。
+    - 脱敏`archive-transfer.json`只记录计数、SHA-256和布尔结论；不包含正文、凭据、文件名或路径。
+- 关联流程最终4/4：Capture discovery、Settings权限、MCP Browser和MCP Desktop。
+    - `interceptor-archive-related-e2e-20260907-195455`中前三条有效Green分别为Capture、MCP Browser、MCP Desktop；Settings仍断言106个开关，实际110，属于测试计数失败，不是产品Red。
+    - 三条Green的Main/Core为`35328/42596`、`40252/1932`、`14864/21988`、`30432/14976`、`41624/42668`，均正常退出。
+    - Settings修正后1/1（27.6秒），证据`interceptor-archive-settings-green-20260907-195651`；三代`28588/38496`、`42220/35244`、`28592/40084`全部正常退出并恢复宿主。
+- 类型与业务测试：全workspace typecheck、Desktop665/665、Tools326/326、MCP32/32、Archive Core integration20/20通过；Main原生入口14/14、Archive executor16/16包含在内。
+    - 设计稿直接预览并生成12张Archive状态图和6张受影响Settings图，没有扩充设计工具测试。
+    - HAR/Archive明暗24视图144/144 targets、Settings四视图58/58，合计202/202、0 missing/flagged，最大0.6px。
+    - 专项报告前缀为`interceptor-archive-har-parity-20260907-200245`及`interceptor-archive-settings-parity-20260907-200635`，均在TEMP；既有全量parity报告未覆盖。
+- Windows package、artifact audit（1,294 files / 392,914,820 bytes）与packaged smoke1/1（47.0秒）通过。
+    - 日志为`interceptor-archive-package-20260907.log`、`interceptor-archive-artifact-audit-20260907.log`；smoke证据`interceptor-archive-smoke-20260907-200800`，宿主guard通过。
+    - 依赖与锁文件未变，复用`interceptor-har-delivery-production-audit-20260907.json`的production audit零漏洞结果；不声称重新查询漏洞数据库。
+- 非产品失败分别保留：首轮按summary不存在的`url`字段定位、源码明文常量触发trace审计；第二轮等待未挂载的Dialog ID导致读文件过早。
+    - 两轮证据为`interceptor-archive-tools-e2e-green-20260907-194733`与`interceptor-archive-tools-workflow-green-20260907-194931`，名称含green不代表通过。
+    - 修正workflow使用正式`path`、分段测试文本和实际显示的关闭按钮，未改产品、关闭trace审计或增加后门。
+- 当前代码55/73、完整自动验收51/73；Capture17/17，registry/recipe55项、110个授权开关，Developer人工结论0/55。
+    - TLS最终清理、macOS原生验收、运行中导出与Clear的lease/snapshot和Cancel/rename提交点仍独立保留。
+
 ## 4. 原子写入
 
 所有导出遵循同一模式：

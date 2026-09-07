@@ -781,33 +781,34 @@ export const views = [
           },
         ],
       })),
-      ...['export', 'import'].flatMap((direction) => ['pending', 'allowed', 'canceled'].map((stage) => ({
-        id: `har-${direction}-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `har-${direction}-${stage}`,
+      ...['har', 'archive'].flatMap((format) => ['export', 'import'].flatMap((direction) => ['pending', 'allowed', 'canceled'].map((stage) => ({
+        id: `${format}-${direction}-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `${format}-${direction}-${stage}`,
         designState: {
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
-          agentToolApprovalName: direction === 'export' ? 'capture_export_har' : 'capture_import_har',
+          agentToolApprovalName: `capture_${direction}_${format}`,
           agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled', agentToolTrace: '',
+          agentArchiveExportStarted: stage !== 'canceled', agentArchiveImportStarted: stage !== 'canceled',
         },
-        designShot: `${theme}/agent-models/panel-har-${direction}-${stage}.png`,
+        designShot: `${theme}/agent-models/panel-${format}-${direction}-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
           { name: 'Agent composer', parity: 'agent-composer' },
           { name: 'Agent execution mode', parity: 'agent-execution-mode' },
-          { name: 'HAR approval', parity: 'agent-tool-approval' },
-          direction === 'export' ? 'capture_export_har' : 'capture_import_har',
+          { name: `${format} approval`, parity: 'agent-tool-approval' },
+          `capture_${direction}_${format}`,
           {
-            name: 'HAR result or effect',
+            name: `${format} result or effect`,
             designSelector: stage === 'pending'
               ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
               : '[data-parity="agent-tool-approval"] > span:last-child > span',
             appSelector: stage === 'pending'
               ? '[data-parity="agent-tool-approval"] dl > div:last-child > dd'
-              : `[data-automation-id="agent.tools.result.call-har-${direction}"] > span`,
+              : `[data-automation-id="agent.tools.result.call-${format}-${direction}"] > span`,
           },
         ],
-      }))),
+      })))),
       ...['pending', 'allowed', 'canceled'].map((stage) => ({
         id: `body-export-${stage}${suffix}`, theme, agentModels: 'configured', agentSessionState: `body-export-${stage}`,
         designState: {

@@ -1,12 +1,12 @@
 # Interceptor Handover
 
-> Tracked commit: `add743b`
+> Tracked commit: `b59c5adb`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-07
 
 ## Task List
 
-- [ ] **blocked · 已验收提交推送**：Capture代码、测试、设计图与验收文档已提交到本地`add743b`；本轮Main方法整理也已验收，按独立工作项保存。
+- [ ] **blocked · 已验收提交推送**：Capture为`add743b`，Main方法整理为`45ab56a1`，已授权workspace Autopilot设置为`b59c5adb`；三项均已本地提交。
     - push多次失败：`curl 55 Send failure: Connection was reset`、无法连接`github.com:443`；本轮再次重试仍为`Recv failure: Connection was reset`。
     - 网络恢复后执行`git -c http.proxy= -c https.proxy= push origin main`；不要重新提交同一改动。
     - 当前没有启动代理客户端或修改网络设置。其他已授权任务继续本地检查，恢复网络后优先推送此提交。
@@ -17,12 +17,12 @@
     唯一管理员操作仍为`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，须由Developer在管理员PowerShell执行；当前Agent终端非管理员，不得尝试自动提权。只读确认该指纹不存在后，复跑`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.tls"`，验证修复后的清理与profile保留路径和最终验收提交。代码已由`7bc809a1`提交并推送，状态不得提前改为passed。当前无本轮Electron残留，不再次运行涉及CA的测试直到完成上述恢复。
     2026-09-06中断恢复核验：Settings只读、系统代理、全局权限、MCP Browser和MCP Desktop共5条关联真实workflow为5/5；十代Main/Core分别为`25388/8092`、`25492/23872`、`24712/41188`、`34436/18700`、`20492/24624`、`23584/35316`、`37440/43160`、`24472/43296`、`43156/13096`、`11332/23576`，全部`gracefulDestroyVerified=true`。证据归档于TEMP下`interceptor-tls-adjacent-e2e-20260906`。完整parity已完成238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged；TLS新增16视图96/96、0 missing/flagged、最大0.5px，既有视觉债务仍保留。输出图片在TEMP下`interceptor-tls-full-parity-20260906`，仓库报告已更新；不要重复长跑。最新只读核对CA仍在、8888无listener、共享journal不存在、分支已同步。
     用户于2026-09-06再次要求“不要停下，一直跑任务”；保留TLS及依赖证书权限的工作项blocked，不把阻塞冒充完成，继续推进原计划内不依赖该权限的独立Tool组。每个后续组仍执行契约、unit/E2E Red/Green、销毁证据、独立commit/push，不放宽验收门禁。
-- [ ] **进行中 · Tool代码53/73 · 完整自动验收49/73**：TLS四项待最终清理，另20项未实现。
-    - 已验收/目标：Capture `15/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `8/26`、Updates `0/4`。
-    - Settings代码12/26；授权开关不是Settings业务Tool。registry/recipe53项、106个开关，Developer人工结论0/53。
-    - 本轮HAR真实流程1/1、关联5/5、parity130/130、package/artifact audit/smoke通过，production audit零漏洞。
-    - 详细证据见[HAR验收](features/transfer.md#har-tool-acceptance)，此前Body及任务查询/取消证据也保留在同文档；本地提交为`add743b`，push失败见上述记录。
-    - 19个Main命令已整理完毕；下一组先做Archive两项，再做Settings剩余项和Updates四项，见[能力计划](features/tool-capabilities.md)。
+- [ ] **进行中 · Tool代码55/73 · 完整自动验收51/73**：TLS四项待最终清理，另18项未实现。
+    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `8/26`、Updates `0/4`。
+    - Settings代码12/26；授权开关不是Settings业务Tool。registry/recipe55项、110个开关，Developer人工结论0/55。
+    - Archive真实流程1/1、关联四条最终Green、parity202/202、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
+    - 详细证据见[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body及任务查询/取消证据保留；网络push阻塞见上述记录。
+    - Main共享方法当前21项；继续Settings剩余项和Updates四项，权限阻塞项保留事实，先推进可独立验收的工作，见[能力计划](features/tool-capabilities.md)。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
     - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
     - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
@@ -56,6 +56,12 @@
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation
+
+- 2026-09-07：Archive两项已自动验收，Capture达到17/17，总计代码55/73、完整自动验收51/73。
+    - 前置executor16项、真实discovery、摘要4项Red均保存；最终真实1/1，Main/Core `6960/19908`、`18620/20208`正常退出、8888与完整WinINet/journal恢复。
+    - HTTP正文/WS消息往返、2→10条追加导入、Agent/MCP Ask/Auto、原生取消、IPC菜单、撤权及重启零重放通过；关联四条最终Green。
+    - Desktop665/665、Tools326/326、MCP32/32、Archive Core20/20、全workspace类型、parity202/202通过；Windows package、artifact audit（1,294 files / 392,914,820 bytes）与smoke1/1通过。
+    - 证据为TEMP下`interceptor-archive-tools-complete-green-20260907-195117`、`interceptor-archive-smoke-20260907-200800`及[Archive验收](features/transfer.md#archive-tool-acceptance)所列关联日志；没有覆盖旧全量parity报告或代填Developer人工结论。
 
 - 2026-09-07：Main共享方法整理验收通过，Tool数量保持代码53/73、完整自动验收49/73。Collection保存统一通知、Body唯一保存编排、Rules/Collection已保存树导出归属各功能；保留IPC当前树和Tool已保存树的差异。行为不变部分先取得unit/E2E基线Green，最终相关70/70、Desktop typecheck、四条真实workflow4/4，八代Main/Core均`gracefulDestroyVerified=true`、8888及完整WinINet/journal恢复。Windows package、artifact audit（1,294 files / 392,912,221 bytes）及packaged smoke1/1通过；未改依赖与UI，复用仍适用的production audit零漏洞结果。证据在TEMP下`interceptor-main-shared-actions-green-20260907-191814`、`interceptor-main-shared-actions-smoke-20260907-192158`及同名前缀package/artifact日志；基线和PID详见[Main方法整理验收](features/tool-capabilities.md#shared-main-actions-acceptance)。网络推送阻塞单独保留。
 
