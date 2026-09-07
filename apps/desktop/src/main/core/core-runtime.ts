@@ -1,3 +1,4 @@
+import { url as inspectorUrl } from 'node:inspector';
 import path from 'node:path';
 
 import {
@@ -304,6 +305,10 @@ export class CoreRuntime {
       {
         serviceName: 'Interceptor Proxy Core',
         stdio: ['ignore', 'pipe', 'pipe'],
+        execArgv:
+          !app.isPackaged && inspectorUrl()
+            ? ['--inspect=127.0.0.1:0']
+            : [],
       },
     );
 

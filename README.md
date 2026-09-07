@@ -1,448 +1,100 @@
+<p align="center">
+  <img src="apps/desktop/assets/interceptor-icon.png" width="80" height="80" alt="Interceptor logo">
+</p>
+
 # Interceptor
 
-Cross-platform desktop HTTP debugging proxy, designed as an alternative to Charles and Fiddler.
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+**A desktop HTTP(S) debugging proxy for Windows and macOS.**
+
+Interceptor brings traffic inspection, request replay, response mocking and AI-assisted debugging into one workspace. Understand what an application sends, reproduce an API failure, or change a response without changing the server.
+
+[Downloads](https://github.com/zhxmt-xm/Interceptor/releases) | [Features](#features) | [Quick Start](#quick-start) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="design-vite/shots/dark/capture/framed.png">
+  <img src="design-vite/shots/light/capture/framed.png" alt="Interceptor Capture workspace with application filters and HTTP traffic" width="1600">
+</picture>
+
+*Capture workspace design preview with sample traffic, not a screenshot of a released build.*
 
 ## Features
 
-The application provides the secure Electron shell, a modular Ant Design UI (six feature views, four time-of-day themes, and 15 fully translated interface languages), managed Proxy Core lifecycle, typed Main/Core MessagePort RPC, structured diagnostics, on-disk storage (`node:sqlite` + worker threads and a content-addressed blob store), HTTP/1.1/HTTP/2 capture, HTTPS interception, rules, Composer, breakpoints, WebSocket/gRPC inspection, import/export, guarded system-proxy recovery, upstream proxy chaining with health-probed automatic fallback, hardened installers, user-triggered GitHub Release downloads, and an encrypted persistent Agent Chat. Agent and MCP share a Tool registry; the browser Playground provides manual latest-protocol acceptance.
+### Capture and Understand
 
-Documentation is split to keep routine context small:
+- **HTTP and HTTPS inspection.** Capture HTTP/1.1 and HTTP/2 traffic; inspect headers, cookies, bodies, timing and TLS details. Filter by application, host, method, status and protocol.
+- **Readable content.** Explore JSON trees, formatted text, images and hexadecimal data without leaving the request inspector.
+- **WebSocket and gRPC inspection.** Inspect WebSocket frames and gRPC messages alongside HTTP exchanges.
 
-- [architecture/HANDOVER.md](architecture/HANDOVER.md) is the required first read and contains the current continuation state, code locations, remaining work, and next action.
-- [architecture/README.md](architecture/README.md) indexes everything else: `platform-*.md` describe cross-feature architecture that is already implemented, `feature-*.md` describe per-feature design.
-- [architecture/backlog/research.md](architecture/backlog/research.md) lists known gaps and unpromised long-term candidates.
+### Modify and Reproduce
 
-## Prerequisites
+| Tool | What you can do |
+| --- | --- |
+| Rules | Match requests or responses; rewrite headers, query parameters, bodies and status codes. Mock a response, serve a local file, redirect to another server, block traffic or add a delay. |
+| Breakpoints | Pause HTTP requests, responses or WebSocket frames, inspect and edit them, then decide whether to forward or drop them. |
+| Composer | Build and resend requests, edit parameters, headers and bodies, and organize reusable requests into collections. |
 
-- Node.js 24.18.0 LTS
-- npm 11.16.0
-- Windows or macOS
+### Save, Share and Extend
 
-The required versions are also pinned in `.nvmrc`, `.npmrc`, and `package.json`.
+- **Import and export.** Exchange HAR files, save native capture archives, export individual bodies, and share Rules or Composer collections.
+- **Agent and MCP.** Use an optional built-in Agent or connect a compatible external AI client, with explicit Tool permissions and approval modes.
+- **Network controls.** Manage the system proxy, chain an upstream proxy, configure TLS passthrough and inspect diagnostic logs.
+- **A configurable workspace.** Choose from four time-of-day themes and 15 interface languages, with resizable panels for detailed inspection.
 
-## Local Commands
+## Get Interceptor
 
-All examples below use Windows PowerShell from the repository root.
+Published builds and their compatibility notes are listed in [GitHub Releases](https://github.com/zhxmt-xm/Interceptor/releases).
 
-### Verify Toolchain
+| Platform | Package | Installation |
+| --- | --- | --- |
+| Windows x64 | MSI | Run the per-user installer. |
+| macOS | DMG / ZIP | Use the build matching your Mac and follow its release notes. |
 
-```powershell
-node --version
-npm --version
-npx --version
-```
+Availability is determined by the assets actually attached to each release. For a platform without a published build, see the [source build guide (Chinese)](architecture/development.md).
 
-Expected project baseline: Node.js `24.18.0`, npm/npx `11.16.0`.
+Application updates also come from GitHub Releases. You review the release notes, choose when to download, and open the installer when ready; downloads do not start automatically. Access to a private release repository requires GitHub authorization.
 
-### Install Dependencies
+## Quick Start
 
-```powershell
-npm install
-```
+1. **Launch Interceptor.** The app starts a local proxy at `127.0.0.1:8888` and automatically takes over the system proxy.
+2. **Route the application you want to inspect.** Applications that follow the system proxy use it automatically. For other proxy-aware clients, configure the same address explicitly.
+3. **Enable HTTPS inspection when needed.** Open HTTPS Setup, generate a local CA, install and trust it through the operating system prompt, then enable decryption. Certificate trust requires administrator authorization.
+4. **Reproduce the request.** Select an exchange in Capture to inspect it; use Composer to resend it, Rules to change future traffic, or Breakpoints to intervene before forwarding.
+5. **Keep the evidence you need.** Export a HAR or native archive for later inspection. Close the app normally when finished so it can restore the system proxy settings it owns.
 
-If GitHub release downloads are unreliable during install, development startup, or packaging, set a temporary Electron mirror in the current PowerShell session:
+Applications with certificate pinning or their own trust store may need additional setup or TLS passthrough. Passthrough preserves the encrypted connection; it does not expose decrypted HTTP content. Interceptor cannot capture a client that bypasses the proxy entirely.
 
-```powershell
-$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-npm install
-```
+## Agent and MCP
 
-Remove the temporary override when it is no longer needed:
+AI is optional. Traffic capture, Rules, Breakpoints and Composer do not require a model API key.
 
-```powershell
-Remove-Item Env:ELECTRON_MIRROR -ErrorAction SilentlyContinue
-```
+| Entry point | Setup |
+| --- | --- |
+| Built-in Agent | Add a DeepSeek model and your own API key in Settings, then open the Agent side panel. Conversation history is stored locally with encryption. |
+| External MCP client | Enable MCP in Settings, create a client, and copy its connection configuration to a compatible host. The listener is loopback-only and uses a separate Bearer token for each client. |
+| Tool permissions | Agent and MCP have separate per-Tool switches. `Ask` requests approval before a Tool runs; `Auto` runs enabled Tools without per-call approval. Native file dialogs and OS authorization still apply. |
 
-Packager validates Electron artifacts against the official SHA-256 checksums bundled with the locked `electron` npm package. The mirror is not hard-coded into the repository.
+MCP is disabled by default. Client compatibility depends on the supported Streamable HTTP protocol version, not just the presence of an MCP option; see the [MCP compatibility reference](architecture/features/mcp.md).
 
-### Start Development Mode
+## Privacy and Safety
 
-```powershell
-npm run dev
-```
+- **Capture storage is local.** Treat recordings, exported files and diagnostic logs as sensitive: they can contain cookies, credentials or personal data.
+- **AI introduces an external data boundary.** Using Agent sends conversation context and Tool results to the configured model provider; an authorized MCP client can receive the data exposed by its enabled Tools. Review permissions before connecting either.
+- **Certificate trust affects the whole machine.** Turning off decryption or quitting does not uninstall the CA. Remove its trust through Settings when it is no longer needed.
+- **System settings need orderly cleanup.** Close Interceptor normally. If another application changes the system proxy during a session, Interceptor avoids overwriting that application's settings.
+- **Inspect only traffic you are authorized to access.** Review and redact exported material before sharing it in an issue or with another person.
 
-This builds Proxy Core and the native system-proxy helper for the current platform, starts the Vite renderer server, launches Electron, and enables Renderer HMR. In the running Forge terminal, type `rs` and press Enter to restart Electron Main and Proxy Core.
+## Feedback and Contributing
 
-The Main process allows same-application Renderer reloads while rejecting external navigation, so a cold `npm run dev` launch can complete Vite's dependency update without a manual reload.
+Report reproducible problems or suggest improvements through [GitHub Issues](https://github.com/zhxmt-xm/Interceptor/issues). Include the app version, operating system, relevant protocol and reproduction steps, without private traffic, API keys or certificate material.
 
-To start only the Desktop workspace after Core has already been built:
+Code, documentation, translations and focused bug reports are welcome. Start with the [development guide (Chinese)](architecture/development.md) for setup, module responsibilities, debugging, validation and packaging. The [architecture index (Chinese)](architecture/README.md) links to feature contracts and platform documentation.
 
-```powershell
-npm run build:core
-npm run start --workspace @interceptor/desktop
-```
+## Acknowledgements
 
-When the Electron binary has not been downloaded yet:
+Interceptor builds on [Electron](https://www.electronjs.org/), [Mockttp](https://github.com/httptoolkit/mockttp), [React](https://react.dev/) and [Monaco Editor](https://microsoft.github.io/monaco-editor/), alongside the other libraries used in this repository.
 
-```powershell
-$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-npm run dev
-```
+## License
 
-If a development window remains blank after dependency or Vite configuration changes, stop the current Forge process, clear only the generated Vite optimizer cache, and restart:
-
-```powershell
-Remove-Item -Recurse -Force .\apps\desktop\node_modules\.vite -ErrorAction SilentlyContinue
-npm run dev
-```
-
-Do not delete `node_modules` for this check; `.vite` is generated cache and is already ignored by Git.
-
-The Main process must allow reloads within the exact Vite origin while denying all external navigation. If the page only appears after pressing reload, verify the trusted Renderer URL policy before changing Vite dependency settings:
-
-```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/security/tests/unit/trusted-renderer-url.test.ts
-```
-
-### Start Manual Acceptance Playground
-
-```powershell
-npm run playground
-```
-
-This starts the browser-based manual acceptance workspace at `http://127.0.0.1:4175`. It opens Capture Lab by default
-with 39 editable HTTP, body, encoding, WebSocket, gRPC, and TLS scenarios routed through `127.0.0.1:8888`; the separate
-MCP page connects directly using configuration copied from Interceptor. It is a development tool under `apps/playground/`
-and is not included in Desktop packages. See
-[apps/playground/README.md](apps/playground/README.md) for the manual workflow and credential boundary.
-
-### Debug Renderer
-
-Start development mode, then press `Ctrl+Shift+I` in the Electron window to open Chromium DevTools:
-
-```powershell
-npm run dev
-```
-
-Changes to these files should update through Vite HMR without restarting Electron:
-
-```text
-apps/desktop/src/renderer/app/App.tsx
-apps/desktop/src/renderer/components/
-apps/desktop/src/renderer/features/capture/
-apps/desktop/src/renderer/features/rules/
-apps/desktop/src/renderer/theme/theme.ts
-apps/desktop/src/renderer/styles/global.css
-```
-
-For a test-only Chrome DevTools Protocol endpoint:
-
-```powershell
-npm run build:core
-Push-Location apps/desktop
-& '..\..\node_modules\.bin\electron-forge.cmd' start -- --remote-debugging-port=9333
-Pop-Location
-```
-
-Inspect available targets at `http://127.0.0.1:9333/json` or through `chrome://inspect`.
-
-### Debug Electron Main
-
-```powershell
-npm run build:core
-npm run start --workspace @interceptor/desktop -- --inspect-electron
-```
-
-For a breakpoint before Main executes application code:
-
-```powershell
-npm run build:core
-npm run start --workspace @interceptor/desktop -- --inspect-brk-electron
-```
-
-Attach with VS Code's **Debug: Attach to Node Process** command or connect to the inspector endpoint printed in the terminal.
-
-### Debug Proxy Core
-
-Build Core independently:
-
-```powershell
-npm run build:core
-```
-
-Then run the managed Desktop process:
-
-```powershell
-npm run dev
-```
-
-Proxy Core stdout/stderr, including structured M1 diagnostics, is forwarded to the Forge terminal with a `[proxy-core]` prefix. Core requires Electron `UtilityProcess.parentPort`, so running `entry.cjs` directly with Node is intentionally unsupported. A dedicated Core inspector launch path has not been added yet.
-
-Run the CoreRuntime lifecycle tests while editing CoreProcess management:
-
-```powershell
-npm run test:watch --workspace @interceptor/desktop -- src/main/core/tests/unit/core-runtime.test.ts
-```
-
-Run that test once:
-
-```powershell
-npm run test --workspace @interceptor/desktop -- --run src/main/core/tests/unit/core-runtime.test.ts
-```
-
-### Type Checking
-
-```powershell
-npm run typecheck
-```
-
-Check one workspace:
-
-```powershell
-npm run typecheck --workspace @interceptor/desktop
-npm run typecheck --workspace @interceptor/proxy-core
-npm run typecheck --workspace @interceptor/core-protocol
-npm run typecheck --workspace @interceptor/mcp-server
-```
-
-### Unit Tests
-
-```powershell
-npm run test:unit
-```
-
-The root command runs Desktop, Proxy Core, and Protocol tests.
-
-Watch unit tests:
-
-```powershell
-npm run test:watch --workspace @interceptor/desktop
-```
-
-### Local Workflow E2E
-
-Build the unpackaged production Main, Preload, Renderer, Core, and native helper bundles used by the local Electron driver:
-
-```powershell
-npm run e2e:prepare-local --workspace @interceptor/desktop
-```
-
-This reuses the Forge Vite configuration but does not run Electron Packager. The local driver launches the resulting application through Playwright `_electron.launch()` and the same `interceptor://app` Renderer origin used by production.
-
-Once at least one workflow implementation exists, run the suite from the repository root:
-
-```powershell
-npm run test:e2e:workflow
-```
-
-The workflow inventory and implementation status live in [apps/desktop/tests/e2e-workflow-tests/README.md](apps/desktop/tests/e2e-workflow-tests/README.md). The `workflows/` directory is currently reset and empty, so the full command has no executable tests yet and must not be reported as passing workflow coverage. The bundle preparation command remains the infrastructure check while workflows are rebuilt.
-
-### Package Application
-
-```powershell
-npm run package
-```
-
-`npm run package` validates/builds the Protocol package, bundles Proxy Core and its protocol runtime into CommonJS files, builds the current platform's system-proxy helper, then creates the Electron artifact. On Windows the output is `apps/desktop/out/Interceptor-win32-x64`; native helpers are under `resources/system-proxy/`. macOS helper builds require Xcode Command Line Tools (`xcrun swiftc`).
-
-Create release installers/artifacts:
-
-```powershell
-# Windows: prepare portable WiX 3.14.1 once for this terminal
-.\scripts\prepare-wix.ps1
-npm run make
-
-# Audit the existing packaged artifact
-npm run test:package-audit
-```
-
-Windows produces an x64 per-user MSI under `apps/desktop/out/make/wix/x64/`. macOS produces DMG and ZIP artifacts under `apps/desktop/out/make/`. `WINDOWS_CERTIFICATE_FILE`/`WINDOWS_CERTIFICATE_PASSWORD` enable Authenticode; `APPLE_SIGN_IDENTITY` enables Developer ID signing, while `APPLE_ID`/`APPLE_ID_PASSWORD`/`APPLE_TEAM_ID` additionally enable notarization and staple. Never commit these values.
-
-### GitHub Release Updates
-
-Public GitHub Releases are the only update backend; no self-hosted update service or app-store integration is required. A `v<semver>` tag runs `.github/workflows/release-artifacts.yml`, requires platform signing credentials, validates both native builds, and publishes exactly one Windows MSI, one macOS DMG, and one macOS ZIP. GitHub-generated release notes become the changelog shown in the app.
-
-Packaged Windows and macOS builds check the latest stable Release at launch and every hour. The app never downloads automatically: an available update shows its complete plain-text changelog, and `Download update` starts a user-requested installer download with progress. Completed installers are stored under the application `userData/updates/downloads` directory; `Open installer` hands the verified MSI/DMG to the operating system. Renderer code never receives the asset URL or local path.
-
-The update client rejects drafts, prereleases, non-SemVer tags, foreign URLs, path escapes, explicit architecture mismatches, incomplete assets, and mismatched GitHub SHA-256 digests. The macOS ZIP remains a direct-download release artifact but is not selected by the in-app installer flow.
-
-If the Electron release download is unreliable:
-
-```powershell
-$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-npm run package
-```
-
-Run the packaged application:
-
-```powershell
-& .\apps\desktop\out\Interceptor-win32-x64\Interceptor.exe
-```
-
-Run the packaged application with a test-only Renderer CDP endpoint:
-
-```powershell
-& .\apps\desktop\out\Interceptor-win32-x64\Interceptor.exe --remote-debugging-port=9333
-```
-
-### Regenerate Application Icons
-
-The editable identity source is `apps/desktop/assets/interceptor-icon.svg`. Regenerate the packaged PNG, ICO, and ICNS assets from the repository root with:
-
-```powershell
-.\scripts\generate-icon.ps1
-```
-
-Forge selects ICO on Windows and ICNS on macOS, and ships the PNG for the BrowserWindow and Renderer brand mark. Review all generated formats before committing an icon change.
-
-### Packaged Smoke Test
-
-Run against an existing package:
-
-```powershell
-npm run test:smoke --workspace @interceptor/desktop
-```
-
-Build a fresh package and then run smoke:
-
-```powershell
-npm run test:smoke
-```
-
-The smoke test validates the hardened final executable, `interceptor://app` origin, Renderer isolation, narrow Preload API, production CSP, real explicit-proxy capture and detail, Composer/Rules/Breakpoints/Diagnostics, forced CoreProcess restart, Storage, 42 release screenshots (all views × themes/minimum size/language states), overflow, and cleanup.
-
-Release-specific checks:
-
-```powershell
-npm run test:package-audit
-npm run test:installer:windows
-npm run test:release:macos
-```
-
-The Windows installer smoke requires WiX 3.14.1 on `PATH` (the preparation script adds it for the current shell). It builds two isolated MSI versions, installs, launches, upgrades, launches again, and uninstalls. The macOS command explicitly skips elsewhere; on macOS it validates the Swift helper, nested signature, DMG/ZIP and any configured Gatekeeper/notarization credentials.
-
-### Inspect Packaged Security
-
-Read Electron Fuses from the final executable:
-
-```powershell
-& .\node_modules\.bin\electron-fuses.cmd read --app .\apps\desktop\out\Interceptor-win32-x64\Interceptor.exe
-```
-
-List ASAR contents:
-
-```powershell
-& .\node_modules\.bin\asar.cmd list .\apps\desktop\out\Interceptor-win32-x64\resources\app.asar
-```
-
-Audit production dependencies:
-
-```powershell
-npm audit --omit=dev
-```
-
-Inspect the complete development dependency audit separately:
-
-```powershell
-npm audit
-```
-
-### Diagnose Forge Packaging
-
-Enable detailed Forge, Packager, and Electron download logs for one PowerShell session:
-
-```powershell
-$env:DEBUG = 'electron-forge:*,electron-packager,@electron/get*'
-$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-npm run package
-```
-
-Clear diagnostic environment variables afterward:
-
-```powershell
-Remove-Item Env:DEBUG -ErrorAction SilentlyContinue
-Remove-Item Env:ELECTRON_MIRROR -ErrorAction SilentlyContinue
-```
-
-### Chromium Winsock 10108 Startup Log
-
-On some Windows systems, Electron may print this message once for Main, Network Service, and Proxy Core UtilityProcess:
-
-```text
-ERROR:net\base\network_change_notifier_win.cc:213
-WSALookupServiceBegin failed with: 10108
-```
-
-Windows defines `10108` as `WSASERVICE_NOT_FOUND`. Chromium attempted to query the legacy Network Location Awareness (`NS_NLA`) Winsock namespace, then falls back to an unknown connection type and continues startup. It is not a Proxy Core JavaScript exception.
-
-No action is required when:
-
-- the Electron window opens;
-- the status bar shows `Core Running`;
-- the Vite page is reachable in development mode; and
-- normal DNS/network access works.
-
-Check the active processes and development page:
-
-```powershell
-Get-Process -Name electron,Interceptor -ErrorAction SilentlyContinue |
-	Select-Object Id, ProcessName, StartTime, Path
-
-Invoke-WebRequest 'http://localhost:5173/' -UseBasicParsing -TimeoutSec 5 |
-	Select-Object StatusCode
-```
-
-Vite may listen only on IPv6 localhost. Check the actual listener before treating an IPv4 test as a failure:
-
-```powershell
-Get-NetTCPConnection -State Listen -LocalPort 5173 -ErrorAction SilentlyContinue |
-	Select-Object LocalAddress, LocalPort, OwningProcess
-
-Test-NetConnection ::1 -Port 5173
-```
-
-Check Windows network services and DNS only if the UI or real network requests also fail:
-
-```powershell
-Get-Service NlaSvc,nsi,Dnscache -ErrorAction SilentlyContinue |
-	Select-Object Name, Status, StartType
-
-Resolve-DnsName nodejs.org
-netsh winsock show catalog
-```
-
-Do not run `netsh winsock reset` for this startup log alone. It changes the machine-wide network stack and is only appropriate when Windows networking is genuinely broken outside Interceptor as well.
-
-### Full Stage Regression Sequence
-
-```powershell
-npm run typecheck
-npm run test:unit
-$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-npm run package
-npm run test:package-audit
-npm run test:smoke --workspace @interceptor/desktop
-npm audit --omit=dev
-git diff --check
-```
-
-## Structure
-
-```text
-apps/desktop/                         Electron main, preload, Renderer, assets, tests
-apps/desktop/src/renderer/app/        Application shell and navigation
-apps/desktop/src/renderer/features/   Product workspaces such as Traffic
-apps/desktop/src/renderer/components/ Shared Renderer controls
-apps/desktop/src/renderer/theme/      Ant Design theme configuration
-apps/desktop/src/renderer/styles/     Minimal global reset and design variables
-apps/desktop/src/main/system-proxy/   System proxy services, native helpers, journal, builders, tests
-apps/proxy-core/                      Independent Node.js Proxy Core process
-packages/core-protocol/               Typed Main/Core messages and runtime validation
-packages/mcp-server/                  MCP tool layer for external AI hosts (not yet wired into Main)
-scripts/                              Repeatable repository asset tooling
-```
-
-Future shared domain, rules, storage, and inspector packages will be added under `packages/` as their milestones begin.
-
-## Security Baseline
-
-- Renderer sandbox and context isolation enabled
-- Node integration disabled
-- Narrow, typed Preload API
-- Environment-specific CSP with no production network access
-- Permissions, navigation, popups, downloads, and webviews denied by default
-- Same-application Renderer reloads allowed only for the exact development origin or `interceptor://app/index.html`
-- Packaged Renderer served by a bounded secure custom protocol; `file://` extra privileges disabled
-- ASAR integrity and all nine Electron 43 Fuses explicitly locked before code signing
-- Proxy Core shipped as a separate UtilityProcess resource
-- Main transfers a private business MessagePort to Core; Renderer never receives it
+This repository does not currently declare a license. Confirm licensing with the maintainer before reusing or redistributing the source; public access alone does not grant an open-source license.

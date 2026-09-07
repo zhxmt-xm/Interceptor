@@ -153,6 +153,8 @@ Main 与 Core 之间有两条职责不重叠的通道，不能互相代偿。
 
 heartbeat 只更新最后活跃时间供诊断观察，**不触发状态变化、kill 或重启**，避免长请求、大正文或 GC 被误判为进程死亡。首个 `ready` 前保留 30 秒启动窗口；ready 后只有真实进程退出或 MessagePort remote-close 会进入恢复。`CoreProcessStatus.running` 不代表 HTTP Listener 等业务一定健康。
 
+开发版启动 Core 时，若 Main 的 Node.js inspector 已开启，`CoreRuntime` 通过 `execArgv: ['--inspect=127.0.0.1:0']` 为 Core 开启独立的本机调试端口；端口由系统分配，并通过 `[proxy-core]` 日志输出。Main 与 Core 可同时使用浏览器 DevTools 或编辑器附加，不复用端口，也不向 Core 传递 `--inspect-brk`。普通启动和 packaged Core 不开启 inspector；ready、重启与退出流程不变。使用命令见 [开发指南](../development.md#调试)。
+
 ### 2.2 RPC 通道：专用 `MessagePort`
 
 只承载：

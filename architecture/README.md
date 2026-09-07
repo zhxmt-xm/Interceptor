@@ -1,12 +1,15 @@
 # Interceptor 架构设计索引
 
-> 最后更新：2026-09-01
-> 范围：本目录是架构文档的唯一入口——feature 设计、跨 feature 平台架构、当前交接状态与待办全部在此。
+> 最后更新：2026-09-07
+> 范围：本目录是源码开发与架构文档的入口，包含开发指南、功能契约、平台架构、交接状态与待办。
+
+产品介绍见 [简体中文](../README.zh-CN.md) / [English](../README.md)。环境初始化、各模块开发、调试、验证和打包发布，从 [开发指南](development.md) 开始。
 
 ## 文档分工
 
 | 文档 | 内容 | 时态 |
 | --- | --- | --- |
+| [development.md](development.md) | 初始化、模块分工、开发调试、验证、打包发布与常见问题 | 稳定操作指南 |
 | [HANDOVER.md](HANDOVER.md) | 当前里程碑、工作树状态、验证记录、精确的下一动作 | 现状 |
 | `platform/` | 跨 feature 的进程、Renderer 外壳、存储、打包与测试架构 | 现状 |
 | `features/` | 单个 feature 的完整架构设计、调用流程、数据契约 | 目标设计（含状态标记） |
@@ -48,7 +51,7 @@ feature 文档描述**架构应该是什么样**，每个章节用状态标记�
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
 | [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP 共用的完整 Tool 目录、Settings 开关、`ask`/`auto` 与逐项状态 | 复用既有 command；共享 registry 位于 `packages/interceptor-tools/` | Settings > Agent Tool capabilities |
-| [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增业务实现；transport 待接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |
+| [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增 Core 业务；transport 已接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |
 | [features/playground.md](features/playground.md) | Web人工验收工作台、Browser MCP/CORS、Traffic Lab与手工证据 | 复用正式MCP与Proxy入口；开发代码位于`apps/playground/` | 独立Browser UI，不进入产品包 |
 | [features/agent.md](features/agent.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History 与 Tool Loop | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings > Agent |
 

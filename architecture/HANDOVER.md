@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `e9634c46`
+> Tracked commit: `06f62b26`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-07
 
@@ -51,6 +51,8 @@
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation
+
+- 2026-09-07：产品首页整理为 [English](../README.md) / [简体中文](../README.zh-CN.md)，开发命令迁入 [中文开发指南](development.md)。开发版 Main 开启 inspector 后，Core 跟随开启独立 loopback 随机端口，普通启动和正式包不开启；不继承 Main 的首行暂停。启动参数 unit 前置 Red 为 3 failed / 3 passed，修改后 6/6，连同原有 CoreRuntime 生命周期共 16/16；Desktop typecheck、文档链接与格式检查通过。临时双进程 Inspector 检查最终 1/1，Main/Core `34976/24580`，暂停/恢复、trace 保存、`gracefulDestroyVerified=true` 与宿主恢复均通过；最初先关窗口再保存 trace 的检查错误已修复，临时 workflow 全部删除，不加入 Inventory。Windows package、artifact audit（1,294 files / 392,910,631 bytes）及 packaged smoke 1/1 通过。证据位于 TEMP 下 `interceptor-core-inspector-complete-20260907`、`interceptor-core-inspector-package-20260907.log`、`interceptor-core-inspector-artifact-audit-20260907.log` 与 `interceptor-core-inspector-packaged-smoke-20260907`；仅记录本次范围，不替代并行 HAR / Playground 工作项的验收。
 
 - 常规完成检查：
 
