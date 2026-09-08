@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `e57909e6`
+> Tracked commit: `4df5224d`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-08
 
@@ -19,6 +19,10 @@
     - 偏好真实关联5/5、最后目标2/2、parity244/244、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
     - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；上述提交已推送至`e57909e6`。
     - Main共享方法当前24项；后续仅保留证书7项与AppContainer4项。特权阻塞如实记录，不触碰残留CA、不自动提权，见[能力计划](features/tool-capabilities.md)。
+    - 2026-09-08续跑只读核验：指定CA `8F5FD8BF6D49BE746862522F6AC616583ED152BB`仍存在，当前终端不是管理员；未恢复证书测试。
+        - 证书7项：先由Developer按上述命令清理本轮残留CA，保留其他证书。
+        - AppContainer4项：`AppContainerService`的单项启停、全部启停都会调用`SUDO_PROMPT_RUNNER`，真实写入和恢复需要Developer确认Windows UAC；本轮未触发。
+        - 11项仍未实现；不以仅通过参数测试、取消测试或只读查询替代真实写入和退出恢复验收。等待人工操作，不重新加入已撤销的Updates Tool。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
     - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
     - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
@@ -48,33 +52,10 @@
 - Forge Vite Plugin 仍为 Experimental；修改 Main、Preload、IPC、Fuses、CSP、Core 生命周期、native helper 或打包路径后，必须重跑 package、artifact audit 与真实 smoke。
 - Renderer 只能通过 `window.interceptor` 窄意图 API 访问 Main，正文留在 Core，通过有限 range / chunk 读取；`UtilityProcess.parentPort` 只承载 lifecycle 与 MessagePort transfer，业务 RPC 只走专用 MessagePort。
 - design SPA 尚未完全组件化，仍有全局 CSS / 手写 DOM 串扰风险；小改优先定向 DOM / geometry 检查，不用反复全量截图掩盖状态错误。
-- 不要删除或覆盖 `backlog/idea.md`、`backlog/image-13.png`、`backlog/image-14.png` 与 `apps/desktop/tests/visual-parity/parity-report.md`。Agent Runtime stash已恢复并删除；当前唯一`stash@{0}: wip: Windows App WVD gateway bypass`必须保留，不得apply、drop或覆盖。
+- 保留 `backlog/idea.md` 中的未完成任务及其引用图片，不覆盖 `apps/desktop/tests/visual-parity/parity-report.md`。Agent Runtime stash已恢复并删除；当前唯一`stash@{0}: wip: Windows App WVD gateway bypass`必须保留，不得apply、drop或覆盖。
 - 仓库为 CRLF 工作区，使用 `git -c core.whitespace=cr-at-eol diff --check`；不要提交 `.vite/`、`out/`、`playwright-report/`、`test-results/` 或未跟踪的 `renderer-shots/*.png`。`design-vite/shots/` 与 visual parity report 是保留的验收资产，不得清理。
 
 ## Validation
-
-- 2026-09-08：按用户决定撤销Updates全部Tool实现、专属测试与规划，保留原Updates产品UI、Main检查/下载/打开安装器流程；当前目标69项、代码58/69、完整自动验收54/69。
-    - 产品、测试和设计代码与已推送`e57909e6`一致，源码和本地Main bundle均无Updates Tool标识；本次提交只调整功能边界与待办文档。
-    - 暂停前`interceptor-remove-updates-tools-green-20260907-220204`只完成构建，未取得E2E最终结果，不计Green。续跑`agent.tools.settings-capabilities`为1/1（29.1秒），验证58项能力、116个开关及跨重启授权。
-    - 三代Main/Core为`41684/22244`、`46000/36988`、`49292/33736`，均`gracefulDestroyVerified=true`，Main/Core/Worker退出、8888释放、完整WinINet/journal恢复；trace/evidence位于TEMP下`interceptor-remove-updates-tools-verified-20260908-005219`。
-
-- 2026-09-07：此前网络推送阻塞已解除；`add743b`、`45ab56a1`、`b59c5adb`、`5e4fbc31`和偏好提交`e57909e6`均已推送，`main`与`origin/main`一致。未启动代理客户端或改动网络配置。
-
-- 2026-09-07：Settings语言/主题/导出隐私三项已验收，总计代码58/73、完整54/73。
-    - `UiPreferencesService`与常驻Renderer共用设置请求，成功持久化后确认；领取前取消、连续Privacy修改、HAR遮罩草稿保持、原UI/Agent/MCP和重启通过。
-    - 前置executor21项和真实两条discovery Red保存，最终相关5/5、保存确认修正后目标2/2，Main/Core `20840/34860`、`25464/28872`、`38236/34080`、`42568/18792`正常退出且完整宿主恢复。
-    - Desktop707/707、Tools347/347、MCP32/32、全workspace类型、parity244/244、package/artifact audit（1,294 files / 392,925,601 bytes）和smoke1/1通过。
-    - 证据`interceptor-preferences-persistence-green-20260907-211527`、`interceptor-preferences-smoke-20260907-211651`；详细前置测试缺口、关联PID和日志见[偏好验收](features/settings.md#ui-preferences-acceptance)。
-
-- 2026-09-07：Archive两项已自动验收，Capture达到17/17，总计代码55/73、完整自动验收51/73。
-    - 前置executor16项、真实discovery、摘要4项Red均保存；最终真实1/1，Main/Core `6960/19908`、`18620/20208`正常退出、8888与完整WinINet/journal恢复。
-    - HTTP正文/WS消息往返、2→10条追加导入、Agent/MCP Ask/Auto、原生取消、IPC菜单、撤权及重启零重放通过；关联四条最终Green。
-    - Desktop665/665、Tools326/326、MCP32/32、Archive Core20/20、全workspace类型、parity202/202通过；Windows package、artifact audit（1,294 files / 392,914,820 bytes）与smoke1/1通过。
-    - 证据为TEMP下`interceptor-archive-tools-complete-green-20260907-195117`、`interceptor-archive-smoke-20260907-200800`及[Archive验收](features/transfer.md#archive-tool-acceptance)所列关联日志；没有覆盖旧全量parity报告或代填Developer人工结论。
-
-- 2026-09-07：Main共享方法整理验收通过，Tool数量保持代码53/73、完整自动验收49/73。Collection保存统一通知、Body唯一保存编排、Rules/Collection已保存树导出归属各功能；保留IPC当前树和Tool已保存树的差异。行为不变部分先取得unit/E2E基线Green，最终相关70/70、Desktop typecheck、四条真实workflow4/4，八代Main/Core均`gracefulDestroyVerified=true`、8888及完整WinINet/journal恢复。Windows package、artifact audit（1,294 files / 392,912,221 bytes）及packaged smoke1/1通过；未改依赖与UI，复用仍适用的production audit零漏洞结果。证据在TEMP下`interceptor-main-shared-actions-green-20260907-191814`、`interceptor-main-shared-actions-smoke-20260907-192158`及同名前缀package/artifact日志；基线和PID详见[Main方法整理验收](features/tool-capabilities.md#shared-main-actions-acceptance)。网络推送阻塞单独保留。
-
-- 2026-09-07：产品首页整理为 [English](../README.md) / [简体中文](../README.zh-CN.md)，开发命令迁入 [中文开发指南](development.md)。开发版 Main 开启 inspector 后，Core 跟随开启独立 loopback 随机端口，普通启动和正式包不开启；不继承 Main 的首行暂停。启动参数 unit 前置 Red 为 3 failed / 3 passed，修改后 6/6，连同原有 CoreRuntime 生命周期共 16/16；Desktop typecheck、文档链接与格式检查通过。临时双进程 Inspector 检查最终 1/1，Main/Core `34976/24580`，暂停/恢复、trace 保存、`gracefulDestroyVerified=true` 与宿主恢复均通过；最初先关窗口再保存 trace 的检查错误已修复，临时 workflow 全部删除，不加入 Inventory。Windows package、artifact audit（1,294 files / 392,910,631 bytes）及 packaged smoke 1/1 通过。证据位于 TEMP 下 `interceptor-core-inspector-complete-20260907`、`interceptor-core-inspector-package-20260907.log`、`interceptor-core-inspector-artifact-audit-20260907.log` 与 `interceptor-core-inspector-packaged-smoke-20260907`；仅记录本次范围，不替代并行 HAR / Playground 工作项的验收。
 
 - 常规完成检查：
 
