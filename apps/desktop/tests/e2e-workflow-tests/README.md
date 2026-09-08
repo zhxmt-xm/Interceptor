@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、117条Inventory与118份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、118条Inventory与119份详细workflow规格已建立；已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -270,6 +270,7 @@ diagnostics.row.<traceKey>
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
 | `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed |
+| `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
 | `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
 | `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
 | `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |

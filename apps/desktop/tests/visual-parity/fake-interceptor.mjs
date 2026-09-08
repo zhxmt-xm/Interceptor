@@ -875,6 +875,10 @@ export const fakeInterceptorFixture = {
             { name: 'settings_get_tls_insecure_hosts', title: 'Insecure TLS hosts', description: 'Read configured hosts that skip upstream TLS certificate verification.', kind: 'query' },
             { name: 'settings_get_tls_passthrough', title: 'TLS passthrough settings', description: 'Read TLS passthrough host patterns and their current revision.', kind: 'query' },
             { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
+            { name: 'settings_enable_app_container', title: 'Enable AppContainer access', description: 'Allow one AppContainer to access all local loopback services; this exemption persists after Interceptor exits.', kind: 'change' },
+            { name: 'settings_disable_app_container', title: 'Disable AppContainer access', description: 'Remove one AppContainer loopback exemption; this change persists after Interceptor exits.', kind: 'change' },
+            { name: 'settings_enable_all_app_containers', title: 'Enable all AppContainers', description: 'Allow every currently listed AppContainer to access all local loopback services; preserve exemptions outside this list.', kind: 'change' },
+            { name: 'settings_disable_all_app_containers', title: 'Disable all AppContainers', description: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.', kind: 'change' },
             { name: 'settings_enable_system_proxy', title: 'Enable system proxy', description: 'Route system traffic through Interceptor using the active proxy listener.', kind: 'change' },
             { name: 'settings_restore_system_proxy', title: 'Restore system proxy', description: 'Restore the system proxy configuration saved before Interceptor took ownership.', kind: 'change' },
             { name: 'settings_replace_tls_insecure_hosts', title: 'Replace insecure TLS hosts', description: 'Replace hosts that skip upstream TLS certificate verification.', kind: 'change' },
@@ -2399,12 +2403,32 @@ export function installFakeInterceptor({
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
-  } else if (/^(tls|preferences)-settings-/.test(agentSessionState)) {
-    const match = /^(?:tls|preferences)-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
-    const group = agentSessionState.startsWith('preferences-') ? 'preferences-settings' : 'tls-settings';
-    const name = match[1];
-    const allowed = match[2] === 'allowed';
+  } else if (/^(tls|preferences|app-containers)-settings-/.test(agentSessionState)) {
+    const match = /^(tls|preferences|app-containers)-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
+    const group = `${match[1]}-settings`;
+    const name = match[2];
+    const allowed = match[3] === 'allowed';
     const scenarios = {
+      settings_enable_app_container: {
+        description: 'Allow one AppContainer to access all local loopback services; this exemption persists after Interceptor exits.',
+        effect: 'AppContainers affected: 1\nCurrently exempt: 0\nChanges persist after Interceptor exits.',
+        arguments: { appContainerSid: 'S-1-15-2-123' }, value: { supported: true, containers: [{ exempt: true }, { exempt: false }] },
+      },
+      settings_disable_app_container: {
+        description: 'Remove one AppContainer loopback exemption; this change persists after Interceptor exits.',
+        effect: 'AppContainers affected: 1\nCurrently exempt: 1\nChanges persist after Interceptor exits.',
+        arguments: { appContainerSid: 'S-1-15-2-123' }, value: { supported: true, containers: [{ exempt: false }, { exempt: false }] },
+      },
+      settings_enable_all_app_containers: {
+        description: 'Allow every currently listed AppContainer to access all local loopback services; preserve exemptions outside this list.',
+        effect: 'AppContainers affected: 2\nCurrently exempt: 1\nChanges persist after Interceptor exits.',
+        arguments: {}, value: { supported: true, containers: [{ exempt: true }, { exempt: true }] },
+      },
+      settings_disable_all_app_containers: {
+        description: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.',
+        effect: 'AppContainers affected: 2\nCurrently exempt: 2\nChanges persist after Interceptor exits.',
+        arguments: {}, value: { supported: true, containers: [{ exempt: false }, { exempt: false }] },
+      },
       settings_set_language: {
         description: 'Apply and remember the selected UI language without changing other settings.',
         effect: 'language: fr', arguments: { language: 'fr' }, value: { language: 'fr' },
@@ -2988,6 +3012,7 @@ export function installFakeInterceptor({
     hosts: [...(tlsPassthroughHosts ?? fixture.tlsPassthroughSettings.hosts)],
   };
   const tlsCompatibilityListeners = new Set();
+  const appContainersChangedListeners = new Set();
   window.__emitTlsCompatibility = (events) => {
     events.forEach((event) => {
       tlsCompatibilityListeners.forEach((listener) => listener(event));
@@ -3398,6 +3423,10 @@ export function installFakeInterceptor({
       }),
     }),
     listAppContainers: async () => appContainerSnapshot,
+    onAppContainersChanged: (listener) => {
+      appContainersChangedListeners.add(listener);
+      return () => appContainersChangedListeners.delete(listener);
+    },
     setAppContainerLoopbackExemption: async (appContainerSid, enabled) => {
       appContainerSnapshot = {
         ...appContainerSnapshot,
@@ -3406,6 +3435,7 @@ export function installFakeInterceptor({
             ? { ...appContainer, exempt: enabled }
             : appContainer),
       };
+      for (const listener of appContainersChangedListeners) listener();
       return appContainerSnapshot;
     },
     enableAllAppContainers: async () => {
@@ -3417,6 +3447,7 @@ export function installFakeInterceptor({
           exempt: true,
         })),
       };
+      for (const listener of appContainersChangedListeners) listener();
       return appContainerSnapshot;
     },
     disableAllAppContainers: async () => {
@@ -3428,6 +3459,7 @@ export function installFakeInterceptor({
           exempt: false,
         })),
       };
+      for (const listener of appContainersChangedListeners) listener();
       return appContainerSnapshot;
     },
     getTlsPassthroughSettings: async () => tlsPassthroughSettings,

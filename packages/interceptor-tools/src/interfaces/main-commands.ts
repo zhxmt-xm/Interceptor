@@ -1,6 +1,10 @@
 import type { CollectionNode, DiagnosticLevel, DiagnosticOutcome, DiagnosticProcess, HarExportStartCommand, TransferJobSnapshot } from '@interceptor/core-protocol';
 
 export interface MainToolResultPayloads {
+  'settings.app-container.enable': MainToolResultPayloads['settings.app-containers.list'];
+  'settings.app-container.disable': MainToolResultPayloads['settings.app-containers.list'];
+  'settings.app-containers.enable-all': MainToolResultPayloads['settings.app-containers.list'];
+  'settings.app-containers.disable-all': MainToolResultPayloads['settings.app-containers.list'];
   'settings.language.set': { language: string };
   'settings.theme.set': { theme: 'warm' | 'light' | 'ember' | 'dark' };
   'settings.export-privacy-defaults.set': { maskAuthorization: boolean; maskCookies: boolean; warnBeforeUnmasked: boolean };
@@ -69,6 +73,8 @@ export interface MainToolResultPayloads {
 }
 
 export interface MainToolCommandPayloads {
+  'settings.app-container.enable': { appContainerSid: string };
+  'settings.app-container.disable': { appContainerSid: string };
   'settings.language.set': { language: string };
   'settings.theme.set': MainToolResultPayloads['settings.theme.set'];
   'settings.export-privacy-defaults.set': MainToolResultPayloads['settings.export-privacy-defaults.set'];

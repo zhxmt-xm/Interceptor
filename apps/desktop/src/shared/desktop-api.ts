@@ -550,6 +550,7 @@ export const DESKTOP_IPC_CHANNELS = {
   appContainerSetExemption: 'app-container:set-exemption',
   appContainerEnableAll: 'app-container:enable-all',
   appContainerDisableAll: 'app-container:disable-all',
+  appContainersChanged: 'app-container:changed',
   agentModelsGet: 'agent-models:get',
   agentProviderTest: 'agent-provider:test',
   agentProviderSaveVerified: 'agent-provider:save-verified',
@@ -697,6 +698,7 @@ export interface InterceptorDesktopApi {
   ): Promise<AppContainerAccessSnapshot>;
   enableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
   disableAllAppContainers(): Promise<AppContainerAccessSnapshot>;
+  onAppContainersChanged(listener: () => void): () => void;
   getAgentModels(): Promise<AgentModelsSnapshot>;
   testAgentProviderConnection(
     draft: AgentProviderDraft,

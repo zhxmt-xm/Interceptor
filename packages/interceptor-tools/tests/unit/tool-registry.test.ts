@@ -61,6 +61,10 @@ const TOOL_NAMES = [
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
+  'settings_enable_app_container',
+  'settings_disable_app_container',
+  'settings_enable_all_app_containers',
+  'settings_disable_all_app_containers',
   'settings_enable_system_proxy',
   'settings_restore_system_proxy',
   'settings_replace_tls_insecure_hosts',
@@ -179,7 +183,7 @@ describe('Interceptor Tool registry', () => {
     const tools = buildInterceptorToolRegistry();
 
     expect(tools.map((tool) => tool.name)).toEqual(TOOL_NAMES);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(58);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(62);
     expect(tools.every((tool) => tool.capabilityId.length > 0)).toBe(true);
     expect(tools.every((tool) => tool.name.startsWith(`${tool.capabilityId}_`))).toBe(true);
     expect(tools.every((tool) => tool.kind === 'query' || tool.kind === 'change')).toBe(true);

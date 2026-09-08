@@ -683,6 +683,42 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
     需验证四项Ask/Auto、已挂载UI刷新、host规范化、stale revision、撤权、重启配置恢复及Model零重放，
     最后验证CA信任、WinINet、journal、进程和8888全部恢复。
 
+<a id="app-container-tool-acceptance"></a>
+### 7.4 AppContainer Tool 契约（自动验收完成）
+
+- 四项均为独立`change`，复用`AppContainerService`及现有helper，不改Windows权限策略。
+
+| Tool | Main命令 | 参数 |
+| --- | --- | --- |
+| `settings_enable_app_container` | `settings.app-container.enable` | `{ appContainerSid: string }` |
+| `settings_disable_app_container` | `settings.app-container.disable` | `{ appContainerSid: string }` |
+| `settings_enable_all_app_containers` | `settings.app-containers.enable-all` | `{}` |
+| `settings_disable_all_app_containers` | `settings.app-containers.disable-all` | `{}` |
+
+- 单项SID必须是`S-1-15-2-...`数字子项格式；拒绝非容器SID、任意命令或额外`enabled`字段。启用/停用不是同一条Tool的boolean参数。
+- Tool返回`{ supported, containers: [{ appContainerSid, packageFamilyName, displayName, exempt }] }`，不返回helper路径、原始完整exemption集合、binaries或workingDirectory。
+- IPC、Agent和MCP调用同一Main方法；Main完成后统一发`app-container:changed`，所有已挂载面板重读正式列表，不只刷新调用方弹窗。
+- Ask展示目标数、当前已豁免数及允许访问全部本机loopback、退出后仍保留的影响；Deny、审批前取消和撤权不请求UAC、不写OS。
+- Auto只省略应用内审批，仍经正式原生授权。开始写入前检查取消，写入开始后完成helper读回与状态通知，不伪造撤销。
+- 批量启停各调用一次helper，保留当前枚举之外的既有SID；单项只修改所选SID。系统状态必须由真实workflow在finally经产品UI恢复到测试前完整集合。
+- 实施门禁：owner unit Red、真实`settings.tools.app-containers` Red后实现；Green覆盖Agent/MCP四项、挂载UI、Ask/Auto、撤权与重启零重放、完整exemption/WinINet/journal/进程恢复。
+
+#### 验收证据（2026-09-08）
+
+- 前置owner34/34 Red，真实workflow精确Red于缺少四项Tool；日志分别在TEMP下`interceptor-app-container-owner-red-20260908.log`及`interceptor-app-container-e2e-red-20260908.log`，真实证据归档`interceptor-app-container-discovery-red-20260908.zip`。
+- 同组owner34/34 Green，摘要新增4条Red后64/64 Green；当前Tools431/431、Desktop721/721、MCP32/32、全workspace typecheck及Playground Browser5/5通过。
+- 最终真实workflow与原批量UI、排序、Settings只读、TLS、全局授权、MCP Browser/Desktop合计8/8 Green。
+    - AppContainer两代Main/Core为`49008/19980`、`16136/46764`；8条流程共14代均`gracefulDestroyVerified=true`。
+    - 四项Agent/MCP分别覆盖Ask Deny/Allow及Auto、原生授权、单项/批量范围、即时面板同步和数量摘要；两列撤权独立、重启Model增量0。
+    - 初始及最终完整exemption集合hash一致，枚举外既有SID保留；WinINet/journal恢复、8888释放，成功profile删除。
+    - 归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`，SHA-256为`CA646E05D6C3C0D4F096E5C573331E0AEA21579C4286A538524BDDC6B2D0B7D7`。
+- 新Tool parity16 views / 96 targets全匹配、0 missing/flagged、最大0.5px；能力表及Settings查询明暗4 views / 66 targets全匹配、0px。
+    - 原面板与批量确认一并复跑；面板保留原报告中相同的明暗各5项flagged、最大3.8px，批量确认0 missing/flagged。未修改CSS，不把既有视觉债务改记为通过。
+    - 图片及结构化报告在TEMP下`interceptor-app-container-parity-20260908`与`interceptor-settings-capability-parity-20260908`；16张Tool图随本组提交；两张Settings目录图同时包含未提交证书行，保留在worktree随证书工作项处理。
+- Windows package、artifact audit（1,294 files / 392,939,357 bytes）、production audit 0漏洞与packaged smoke1/1通过；新增`onAppContainersChanged`已进入Preload精确白名单。
+- 初轮Auto因长Chat与模拟Provider回复未完成失败；改为经真实UI创建独立Auto Chat并重新discovery，同流程Green，未改变产品上下文限制。该失败不是产品Red。
+- 上述8条在69项registry的当前worktree验证，未提交的证书七项仍有独立MMC权限阻塞；本组Green不代替证书、人工矩阵或Capture39项的验收。
+
 ## 8. 安全边界汇总
 
 | 边界 | 保证 |

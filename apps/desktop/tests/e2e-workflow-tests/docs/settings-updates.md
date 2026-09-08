@@ -195,6 +195,34 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 34 missing / 305 flagged；TLS专项96/96、0 missing/flagged、最大0.5px。以上不替代本条workflow的
 最终CA信任清理；该阶段保持blocked，直到2026-09-08恢复旧残留并取得上述最终Green。
 
+<a id="settings-tools-app-containers"></a>
+## `settings.tools.app-containers`
+
+**状态**：passed；owner及真实discovery Red后Green，四项Agent/MCP、面板同步、摘要和双代精确恢复已完成
+**策略**：privileged UI；Windows；host-safety-guard；两代Electron
+
+### Steps
+
+1. 保存宿主基线和helper只读返回的完整exemption集合，创建空profile并启动真实Electron；通过UI配置本地Model Provider。
+2. Agent发现四项Tool，打开AppContainer面板；单项SID取自产品真实枚举，不伪造SID或预置豁免。
+3. Ask逐项Deny保持完整OS集合；Allow分别执行单项启用/停用、全部启用/停用，当前面板不用手动Refresh即显示结果。
+4. Agent Auto逐项重复，确认单项不影响其他SID，批量只操作当前枚举且保留枚举外既有豁免；真实原生授权不注入返回值。
+5. 通过产品UI创建MCP Client，真实SDK连接；独立覆盖四项Ask Deny/Allow与Auto，结果仅含公开字段，不返回原始helper输出。
+6. 关闭四项Agent授权，旧Chat返回unknown_tool而MCP仍可发现；再关闭MCP授权，旧Client调用返回-32602，OS集合不变。
+7. 通过正式批量/单项UI恢复初始完整exemption集合，正常退出第一代，验证Main/Core/Worker、8888及WinINet/journal恢复。
+8. 同profile启动第二代；四项Agent/MCP开关保持关闭，Model请求增量0，OS豁免集合仍为初始值，没有重放写入或UAC。
+9. 保存两代trace、metadata和仅含数量/hash的exemption证据；finally再次经真实UI恢复任何本轮变更，正常退出并验证宿主完全恢复，成功后删除profile。
+
+### 证据
+
+- 2026-09-08最终关联8/8 Green，共14代`gracefulDestroyVerified=true`；本条两代Main/Core为`49008/19980`、`16136/46764`。
+- Agent/MCP四项Ask Deny/Allow与Auto、单项/批量范围、独立撤权、挂载UI和typed摘要均通过；每轮Auto使用真实新Chat并重新发现，未修改产品上下文规则。
+- 完整exemption集合hash在finally恢复，枚举外SID不变；重启Model请求增量0、WinINet/journal及8888恢复，成功profile删除。证据归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`。
+- 本轮在含未提交证书改动的69项worktree验证138个授权开关；证书MMC workflow仍独立blocked，不由本条或packaged smoke代替。
+- Red只能来自四项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
+- Green记录四项Agent/MCP调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
+- 初始与最终完整exemption集合hash必须相同，枚举外SID保持不变；不保存完整机器SID清单、helper路径、凭据或代理配置。
+
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 

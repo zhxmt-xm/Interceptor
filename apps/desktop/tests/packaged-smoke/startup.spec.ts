@@ -510,6 +510,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'listBreakpoints',
         'minimizeWindow',
         'onAgentSessionEvent',
+        'onAppContainersChanged',
         'onBreakpointsChange',
         'onCaptureEvents',
         'onCaptureImported',

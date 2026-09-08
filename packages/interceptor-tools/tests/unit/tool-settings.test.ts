@@ -55,6 +55,10 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_get_tls_insecure_hosts', 'Insecure TLS hosts', 'Read configured hosts that skip upstream TLS certificate verification.'],
   ['settings_get_tls_passthrough', 'TLS passthrough settings', 'Read TLS passthrough host patterns and their current revision.'],
   ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
+  ['settings_enable_app_container', 'Enable AppContainer access', 'Allow one AppContainer to access all local loopback services; this exemption persists after Interceptor exits.'],
+  ['settings_disable_app_container', 'Disable AppContainer access', 'Remove one AppContainer loopback exemption; this change persists after Interceptor exits.'],
+  ['settings_enable_all_app_containers', 'Enable all AppContainers', 'Allow every currently listed AppContainer to access all local loopback services; preserve exemptions outside this list.'],
+  ['settings_disable_all_app_containers', 'Disable all AppContainers', 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.'],
   ['settings_enable_system_proxy', 'Enable system proxy', 'Route system traffic through Interceptor using the active proxy listener.'],
   ['settings_restore_system_proxy', 'Restore system proxy', 'Restore the system proxy configuration saved before Interceptor took ownership.'],
   ['settings_replace_tls_insecure_hosts', 'Replace insecure TLS hosts', 'Replace hosts that skip upstream TLS certificate verification.'],
@@ -80,7 +84,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(58);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(62);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

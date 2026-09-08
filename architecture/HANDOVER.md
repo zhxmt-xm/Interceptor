@@ -1,20 +1,22 @@
 # Interceptor Handover
 
-> Tracked commit: `889eda59`
+> Tracked commit: `e535a200`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-08
 
 ## Task List
 
-- [ ] **进行中 · Tool代码58/69 · 完整自动验收58/69**：TLS四项已完成最终清理验收，剩余证书7项与AppContainer4项未实现；Updates不属于Tool范围。
-    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `15/26`。
-    - Settings代码15/26；授权开关不是Settings业务Tool。registry/recipe58项、116个开关，Developer人工结论0/58。
+- [ ] **进行中 · Tool代码62/69 · 完整自动验收62/69**：TLS四项及AppContainer四项已完成验收，剩余证书7项未交付；Updates不属于Tool范围。
+    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `19/26`。
+    - Settings代码19/26；授权开关不是Settings业务Tool。已提交registry/recipe62项、124个开关，Developer人工结论0/62。
     - 偏好真实关联5/5、最后目标2/2、parity244/244、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
     - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；上述提交已推送至`e57909e6`。
     - 2026-09-08 TLS最终复验：真实workflow `1/1` Green（30.2s），两代Main/Core `11608/44884`、`34820/2212`均正常销毁；CA自动安装、卸载、删除，根证书库、WinINet/journal及8888恢复。
         - 旧孤立CA已由Developer删除。本轮只修正E2E盘符断言误匹配schema URL，产品、依赖和设计未改；不重复全量回归。
         - Green证据归档在TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`；旧失败和修复过程见[TLS验收](features/settings.md#tls-tool-acceptance)。
-    - 下一步：按[能力计划](features/tool-capabilities.md)推进证书7项，再推进AppContainer4项；Main共享方法当前24项。
+    - AppContainer四项已闭环：owner34/34、最终关联真实E2E8/8、14代正常销毁，完整exemption/WinINet/journal恢复；详见[AppContainer验收](features/settings.md#app-container-tool-acceptance)。
+    - 最终证据在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`；该次在包含未提交证书改动的69项worktree验证，Tools431/431、Desktop721/721、MCP32/32、全workspace typecheck与package/audit/smoke通过。
+    - 下一步：按[能力计划](features/tool-capabilities.md)收尾证书7项；其进行中修改保留在worktree，本次不混入，Main已提交共享方法28项。
         - 每组保持契约、unit/integration及真实E2E Red/Green、原生授权和退出恢复门禁，通过后独立commit并立即push。
         - 不以参数测试或只读查询代替真实写入，不模拟UAC，不重新加入已撤销的Updates Tool。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。

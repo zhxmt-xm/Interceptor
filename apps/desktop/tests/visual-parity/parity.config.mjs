@@ -976,6 +976,34 @@ export const views = [
         ],
       })),
       ...[
+        'settings_enable_app_container', 'settings_disable_app_container', 'settings_enable_all_app_containers', 'settings_disable_all_app_containers',
+      ].flatMap((name) => ['pending', 'allowed'].map((approval) => ({
+        id: `app-container-tools-${name}-${approval}${suffix}`,
+        theme, agentModels: 'configured', agentSessionState: `app-containers-settings-${name}-${approval}`,
+        designState: {
+          view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
+          agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
+        },
+        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
+        rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
+        targets: [
+          { name: 'Agent panel', parity: 'agent-panel' },
+          { name: 'Agent composer', parity: 'agent-composer' },
+          { name: 'Agent execution mode', parity: 'agent-execution-mode' },
+          { name: 'AppContainer approval', parity: 'agent-tool-approval' },
+          name,
+          {
+            name: 'AppContainer result or effect',
+            designSelector: approval === 'allowed'
+              ? '[data-parity="agent-tool-approval"] > span:last-child > span'
+              : '[data-parity="agent-tool-approval"] dl > div:last-child > dd',
+            appSelector: approval === 'allowed'
+              ? '[data-automation-id="agent.tools.result.call-app-containers-settings"] > span'
+              : '[data-parity="agent-tool-approval"] dl > div:last-child > dd',
+          },
+        ],
+      }))),
+      ...[
         'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
         'settings_enable_https_decryption', 'settings_disable_https_decryption',
       ].flatMap((name) => ['pending', 'allowed'].map((approval) => ({
@@ -1438,7 +1466,8 @@ export const views = [
           ...[
             'settings_get_core_process_status', 'settings_get_system_proxy_status',
             'settings_get_certificate_status', 'settings_get_tls_insecure_hosts',
-            'settings_get_tls_passthrough', 'settings_list_app_containers',
+            'settings_get_tls_passthrough', 'settings_list_app_containers', 'settings_enable_app_container',
+            'settings_disable_app_container', 'settings_enable_all_app_containers', 'settings_disable_all_app_containers',
           ].map((name) => ({
             name, designSelector: `[data-tool-capability="${name}"]`, appSelector: `[data-automation-id="agent.tools.row.${name}"]`,
           })),

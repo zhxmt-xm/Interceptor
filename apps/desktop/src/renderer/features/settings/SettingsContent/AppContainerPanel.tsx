@@ -9,7 +9,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -51,25 +51,34 @@ export function AppContainerPanel(): React.JSX.Element {
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const snapshotSequence = useRef(0);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     let active = true;
-    void window.interceptor.listAppContainers()
-      .then((nextSnapshot) => {
-        if (active) {
-          setSnapshot(nextSnapshot);
-          setState('ready');
-        }
-      })
-      .catch((reason: unknown) => {
-        if (active) {
-          setError(describeError(reason));
-          setState('error');
-        }
-      });
+    const reload = (): void => {
+      const sequence = ++snapshotSequence.current;
+      void window.interceptor.listAppContainers()
+        .then((nextSnapshot) => {
+          if (active && sequence === snapshotSequence.current) {
+            setSnapshot(nextSnapshot);
+            setState('ready');
+            setError(null);
+          }
+        })
+        .catch((reason: unknown) => {
+          if (active && sequence === snapshotSequence.current) {
+            setError(describeError(reason));
+            setState('error');
+          }
+        });
+    };
+    const unsubscribe = window.interceptor.onAppContainersChanged(reload);
+    reload();
     return () => {
       active = false;
+      snapshotSequence.current += 1;
+      unsubscribe();
     };
   }, []);
 
@@ -79,12 +88,17 @@ export function AppContainerPanel(): React.JSX.Element {
     }
     setRefreshing(true);
     setError(null);
+    const sequence = ++snapshotSequence.current;
     void window.interceptor.listAppContainers()
       .then((nextSnapshot) => {
-        setSnapshot(nextSnapshot);
-        setState('ready');
+        if (sequence === snapshotSequence.current) {
+          setSnapshot(nextSnapshot);
+          setState('ready');
+        }
       })
-      .catch((reason: unknown) => setError(describeError(reason)))
+      .catch((reason: unknown) => {
+        if (sequence === snapshotSequence.current) setError(describeError(reason));
+      })
       .finally(() => setRefreshing(false));
   };
 
@@ -94,12 +108,13 @@ export function AppContainerPanel(): React.JSX.Element {
     }
     setChanging(true);
     setError(null);
+    const sequence = ++snapshotSequence.current;
     void window.interceptor.setAppContainerLoopbackExemption(
       pendingChange.appContainer.appContainerSid,
       pendingChange.enabled,
     )
       .then((nextSnapshot) => {
-        setSnapshot(nextSnapshot);
+        if (sequence === snapshotSequence.current) setSnapshot(nextSnapshot);
         setPendingChange(null);
       })
       .catch((reason: unknown) => setError(describeError(reason)))
@@ -112,9 +127,10 @@ export function AppContainerPanel(): React.JSX.Element {
     }
     setChanging(true);
     setError(null);
+    const sequence = ++snapshotSequence.current;
     void window.interceptor.enableAllAppContainers()
       .then((nextSnapshot) => {
-        setSnapshot(nextSnapshot);
+        if (sequence === snapshotSequence.current) setSnapshot(nextSnapshot);
         setBulkAction(null);
       })
       .catch((reason: unknown) => setError(describeError(reason)))
@@ -127,9 +143,10 @@ export function AppContainerPanel(): React.JSX.Element {
     }
     setChanging(true);
     setError(null);
+    const sequence = ++snapshotSequence.current;
     void window.interceptor.disableAllAppContainers()
       .then((nextSnapshot) => {
-        setSnapshot(nextSnapshot);
+        if (sequence === snapshotSequence.current) setSnapshot(nextSnapshot);
         setBulkAction(null);
       })
       .catch((reason: unknown) => setError(describeError(reason)))

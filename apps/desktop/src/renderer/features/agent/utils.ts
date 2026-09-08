@@ -290,7 +290,8 @@ export function summarizeAgentToolResult(
       && typeof value['decrypting'] === 'boolean') {
       return { kind: 'decryption', trusted: value['trusted'], mitmEnabled: value['mitmEnabled'], decrypting: value['decrypting'] };
     }
-    if (name === 'settings_list_app_containers'
+    if (['settings_list_app_containers', 'settings_enable_app_container', 'settings_disable_app_container',
+      'settings_enable_all_app_containers', 'settings_disable_all_app_containers'].includes(name)
       && typeof value['supported'] === 'boolean' && Array.isArray(value['containers'])) {
       return {
         kind: 'appContainers', supported: value['supported'], count: value['containers'].length,

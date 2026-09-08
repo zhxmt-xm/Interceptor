@@ -5,6 +5,28 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './AgentToolApproval.module.css';
 
 const TOOL_CONTENT = {
+  settings_enable_app_container: {
+    description: 'Allow one AppContainer to access all local loopback services; this exemption persists after Interceptor exits.',
+    effect: 'Allow one AppContainer to access all local loopback services; this exemption persists after Interceptor exits.\nAppContainers affected: 1\nCurrently exempt: 0\nChanges persist after Interceptor exits.',
+    arguments: 'appContainerSid: S-1-15-2-123',
+    result: 'Apps 2 · Exempt 1',
+  },
+  settings_disable_app_container: {
+    description: 'Remove one AppContainer loopback exemption; this change persists after Interceptor exits.',
+    effect: 'Remove one AppContainer loopback exemption; this change persists after Interceptor exits.\nAppContainers affected: 1\nCurrently exempt: 1\nChanges persist after Interceptor exits.',
+    arguments: 'appContainerSid: S-1-15-2-123',
+    result: 'Apps 2 · Exempt 0',
+  },
+  settings_enable_all_app_containers: {
+    description: 'Allow every currently listed AppContainer to access all local loopback services; preserve exemptions outside this list.',
+    effect: 'Allow every currently listed AppContainer to access all local loopback services; preserve exemptions outside this list.\nAppContainers affected: 2\nCurrently exempt: 1\nChanges persist after Interceptor exits.',
+    result: 'Apps 2 · Exempt 2',
+  },
+  settings_disable_all_app_containers: {
+    description: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.',
+    effect: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.\nAppContainers affected: 2\nCurrently exempt: 2\nChanges persist after Interceptor exits.',
+    result: 'Apps 2 · Exempt 0',
+  },
   capture_export_archive: {
     description: 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.',
     effect: 'Save a complete Capture snapshot including bodies, credentials and native evidence without redaction; starting the job does not mean it has completed.\nExport the complete Capture snapshot, including bodies, credentials and native evidence without redaction.\nChoose the destination using the native Save Dialog.',

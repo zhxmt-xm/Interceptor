@@ -683,6 +683,10 @@ class DesktopApplication {
         'settings.system-proxy.restore': () => this.restoreSystemProxy(abortSignal),
         'settings.certificate.status': () => this.buildCertificateInfo(),
         'settings.app-containers.list': () => this.listAppContainers(),
+        'settings.app-container.enable': (payload) => this.enableAppContainer(payload.appContainerSid, abortSignal),
+        'settings.app-container.disable': (payload) => this.disableAppContainer(payload.appContainerSid, abortSignal),
+        'settings.app-containers.enable-all': () => this.enableAllAppContainers(abortSignal),
+        'settings.app-containers.disable-all': () => this.disableAllAppContainers(abortSignal),
         'settings.tls-insecure-hosts.replace': async (payload) => ({ hosts: await this.replaceInsecureHosts(payload.hosts) }),
         'settings.tls-passthrough.replace': (payload) => this.replaceTlsPassthroughSettings(payload.expectedRevision, payload.hosts),
         'settings.https-decryption.enable': () => this.enableHttpsDecryption(),
@@ -781,6 +785,50 @@ class DesktopApplication {
   private async listAppContainers(): Promise<AppContainerAccessSnapshot> {
     const snapshot = await this.requireAppContainerService().list();
     return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+  }
+
+  private enableAppContainer(appContainerSid: string, abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.set-exemption', async () => {
+      abortSignal?.throwIfAborted();
+      const snapshot = await this.requireAppContainerService().setLoopbackExemption(appContainerSid, true);
+      this.broadcastAppContainersChanged();
+      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    });
+  }
+
+  private disableAppContainer(appContainerSid: string, abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.set-exemption', async () => {
+      abortSignal?.throwIfAborted();
+      const snapshot = await this.requireAppContainerService().setLoopbackExemption(appContainerSid, false);
+      this.broadcastAppContainersChanged();
+      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    });
+  }
+
+  private enableAllAppContainers(abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.enable-all', async () => {
+      abortSignal?.throwIfAborted();
+      const snapshot = await this.requireAppContainerService().enableAllLoopbackExemptions();
+      this.broadcastAppContainersChanged();
+      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    });
+  }
+
+  private disableAllAppContainers(abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.disable-all', async () => {
+      abortSignal?.throwIfAborted();
+      const snapshot = await this.requireAppContainerService().disableAllLoopbackExemptions();
+      this.broadcastAppContainersChanged();
+      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    });
+  }
+
+  private broadcastAppContainersChanged(): void {
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.appContainersChanged);
+      }
+    }
   }
 
   private requestRendererUiPreferenceChange(requestId: string): void {
@@ -1017,30 +1065,18 @@ class DesktopApplication {
         if (typeof appContainerSid !== 'string' || typeof enabled !== 'boolean') {
           throw new Error('AppContainer exemption request is invalid.');
         }
-        return this.runMainAction('main.app-container.set-exemption', async () => {
-          const snapshot = await this.requireAppContainerService()
-            .setLoopbackExemption(appContainerSid, enabled);
-          return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-        });
+        return enabled ? this.enableAppContainer(appContainerSid) : this.disableAppContainer(appContainerSid);
       },
     );
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerEnableAll, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.app-container.enable-all', async () => {
-        const snapshot = await this.requireAppContainerService()
-          .enableAllLoopbackExemptions();
-        return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-      });
+      return this.enableAllAppContainers();
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.appContainerDisableAll, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.app-container.disable-all', async () => {
-        const snapshot = await this.requireAppContainerService()
-          .disableAllLoopbackExemptions();
-        return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-      });
+      return this.disableAllAppContainers();
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.agentModelsGet, (event) => {

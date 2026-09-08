@@ -97,6 +97,10 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
   - Main只保存待执行请求及生命周期；Renderer的`UiPreferencesActions`常驻串行领取、应用并写入既有localStorage，再回传窄确认，Main通知其他Renderer。
   - 领取前取消使晚到请求无效，领取后完成已开始的提交；窗口关闭/Renderer退出清理所有pending。请求与响应都在Main校验，不暴露执行脚本、任意Store或存储路径接口。
   - 新增`setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件7个Preload API，只有前三项设置意图注册为Tool。验收见[偏好Tool](../features/settings.md#ui-preferences-acceptance)。
+- AppContainer单项/批量启停的IPC/Agent/MCP共用`DesktopApplication.enableAppContainer/disableAppContainer/enableAllAppContainers/disableAllAppContainers`。
+  - Main在写入前检查取消，调用现有`AppContainerService`及真实提权helper；开始的写入完成读回验证后广播`app-container:changed`。
+  - `onAppContainersChanged`只提供变更订阅；Renderer重读正式列表并按请求序号拒绝迟到结果，原生授权、退出后保留exemption的语义不变。
+  - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合；真实恢复证据见[AppContainer验收](../features/settings.md#app-container-tool-acceptance)。
 - `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
   - Main和Preload转发给`onCaptureImported`，Renderer常驻`useCaptureData`重新查询summaries。
   - 发送失败时Core保留待发送信号；失败、取消的文件任务不发成功通知。

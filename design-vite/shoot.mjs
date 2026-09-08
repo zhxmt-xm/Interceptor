@@ -338,6 +338,7 @@ for (const theme of ['light', 'dark']) {
     'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
     'settings_enable_https_decryption', 'settings_disable_https_decryption',
     'settings_set_language', 'settings_set_theme', 'settings_set_export_privacy_defaults',
+    'settings_enable_app_container', 'settings_disable_app_container', 'settings_enable_all_app_containers', 'settings_disable_all_app_containers',
   ]) {
     for (const approval of ['pending', 'allowed']) {
       shots.push({

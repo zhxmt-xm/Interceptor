@@ -204,6 +204,22 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Open Settings > App Containers on Windows and note loopback access states.'],
     ['SIDs, names and exemption states match Settings without paths.', 'No exemption changes or UAC occur; unsupported platforms report supported=false.'],
   ),
+  settings_enable_app_container: recipe(
+    ['Read a real AppContainer SID from the product list and record its original exemption state.', 'Keep the AppContainer panel visible and the Client in Ask mode.'],
+    ['Deny changes nothing; Allow and Auto use real native authorization to enable only that SID.', 'The mounted row updates without Refresh and the result contains only public list fields.', 'This grants access to every local loopback service and persists after exit; restore the original state through the UI.'],
+  ),
+  settings_disable_app_container: recipe(
+    ['Select a real AppContainer SID and retain the original access state before disabling it.'],
+    ['Deny preserves access; Allow and Auto remove only the selected exemption through native authorization.', 'Other SIDs remain unchanged and the mounted row updates immediately.', 'Restore the selected container to its original state through the product UI.'],
+  ),
+  settings_enable_all_app_containers: recipe(
+    ['Record the original complete exemption set, including entries outside the current product list.', 'Use an isolated acceptance session with no concurrent AppContainer changes.'],
+    ['Deny produces no system write; Allow and Auto each use one native helper operation.', 'Every listed container becomes exempt, with outside exemptions preserved and the panel updated.', 'Access to all local loopback services persists after exit; restore the original set through product bulk and single-item controls.'],
+  ),
+  settings_disable_all_app_containers: recipe(
+    ['Record the original complete exemption set before changing current containers.'],
+    ['Deny preserves all access; Allow and Auto remove only exemptions for currently listed containers.', 'Outside exemptions remain unchanged and every visible row updates without Refresh.', 'Apps may lose loopback access; restore the exact original set using product controls after inspection.'],
+  ),
   settings_enable_system_proxy: recipe(
     ['Restore the system proxy through Settings > Proxy.', 'Keep this MCP Client in Ask mode.'],
     ['Deny leaves the original system configuration unchanged.', 'Allow takes ownership through the same product command and updates Settings.', 'Auto skips only approval; restore the original settings after inspection.'],

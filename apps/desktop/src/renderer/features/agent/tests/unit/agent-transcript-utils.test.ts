@@ -403,6 +403,10 @@ describe('Agent transcript utilities', () => {
     ['settings_enable_https_decryption', { trusted: false, mitmEnabled: true, decrypting: false }, { kind: 'decryption', trusted: false, mitmEnabled: true, decrypting: false }],
     ['settings_disable_https_decryption', { trusted: true, mitmEnabled: false, decrypting: false }, { kind: 'decryption', trusted: true, mitmEnabled: false, decrypting: false }],
     ['settings_list_app_containers', { supported: true, containers: [{ exempt: true }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 1 }],
+    ['settings_enable_app_container', { supported: true, containers: [{ exempt: true }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 1 }],
+    ['settings_disable_app_container', { supported: true, containers: [{ exempt: false }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 0 }],
+    ['settings_enable_all_app_containers', { supported: true, containers: [{ exempt: true }, { exempt: true }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 2 }],
+    ['settings_disable_all_app_containers', { supported: true, containers: [{ exempt: false }, { exempt: false }] }, { kind: 'appContainers', supported: true, count: 2, exemptCount: 0 }],
     ['settings_list_app_containers', { supported: false, containers: [] }, { kind: 'appContainers', supported: false, count: 0, exemptCount: 0 }],
   ])('summarizes %s as typed Settings state', (name, value, expected) => {
     expect(summarizeAgentToolResult(String(name), { ok: true, value })).toEqual(expected);

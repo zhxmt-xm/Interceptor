@@ -69,6 +69,11 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerEnableAll),
   disableAllAppContainers: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appContainerDisableAll),
+  onAppContainersChanged: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.appContainersChanged, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.appContainersChanged, handler);
+  },
   getAgentModels: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.agentModelsGet),
   testAgentProviderConnection: (draft) =>
