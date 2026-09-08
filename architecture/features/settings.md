@@ -642,17 +642,28 @@ proxy snapshot或路径，不改变冷启动自动接管。
 验证两项逐一撤权、恢复结果摘要、正常退出与同profile重启Model零重放、Main/Core/Worker销毁、8888释放、
 完整宿主副作用恢复。已有只读六项workflow作为共享Main host和授权回归。
 
-### 7.3 TLS 配置与解密 Tool 契约（代码完成，最终E2E清理blocked）
+<a id="tls-tool-acceptance"></a>
+### 7.3 TLS 配置与解密 Tool 契约（真实E2E已完成）
+
+- 2026-09-08最终复验：`settings.tools.tls`真实Electron workflow `1/1` Green（30.2s）。
+    - 测试经正式UI自动生成、安装、卸载和删除CA；测试前后LocalMachine Root指纹集合完全一致，旧残留CA已不存在。
+    - 两代Main/Core为`11608/44884`、`34820/2212`，均`gracefulDestroyVerified=true`；宿主guard验证WinINet/journal和全部注册进程恢复，8888释放，profile删除。
+    - 四项Ask/Auto、名单规范化、revision冲突、挂载面板刷新、意图/实际解密状态、撤权及重启零重放均通过。
+- Green trace、两代metadata及日志已归档至TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`。
+- 本轮只修正workflow的Windows盘符正则边界，避免把schema URL的`https://`误判为本地路径；初轮断言失败不是产品Red，证据在TEMP下`interceptor-tls-discovery-failure-20260908-160436.zip`。
+- 产品代码、依赖和设计未改，复用此前仍适用的unit/integration、parity和package/audit/smoke结果；完整Tool自动验收更新为58/69，Settings为15/26。
+
+历史恢复过程：
 
 2026-09-05实现与聚焦测试已完成，按用户要求保存未闭环进度。最终真实workflow业务断言通过，但Certificates刷新期间
 清理跳过Uninstall，残留本轮CA `8F5FD8BF6D49BE746862522F6AC616583ED152BB`。fixture未依据实际测试失败状态
-保留profile，已删除测试材料；当前终端非管理员，先由Developer在管理员PowerShell执行
-`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，其他旧证书不得改动。
-本轮已修复清理等待条件与profile保留判定：fixture使用Playwright实际失败/超时/中断状态，9/9 unit通过；
+保留profile，误删了测试材料；该旧残留已于2026-09-08由Developer通过
+`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`清除，其他旧证书未改动。
+原失败trace与两代metadata仍保留在TEMP下`interceptor-tls-cleanup-failure-preserved`。
+此前已修复清理等待条件与profile保留判定：fixture使用Playwright实际失败/超时/中断状态，9/9 unit通过；
 清理按本轮证书指纹和真实信任状态等待Uninstall/Delete，不再用瞬时不可见跳过。TLS executor32/32、
 Desktop485/485、Tools142/142、Core TLS integration12/12、全workspace typecheck、design interaction71/71、
-明暗parity96/96、Windows package/audit/smoke通过；上述管理员恢复及修复后的同一真实workflow仍待执行。
-重取最终CA清理与完整销毁Green前，本组不计入自动验收完成数。
+明暗parity96/96、Windows package/audit/smoke通过；当时未完成的最终CA清理及销毁验收现已由上述真实Green闭环。
 
 四项独立change意图为`settings_replace_tls_insecure_hosts`、`settings_replace_tls_passthrough`、
 `settings_enable_https_decryption`、`settings_disable_https_decryption`。前两项只接受完整`hosts`数组，

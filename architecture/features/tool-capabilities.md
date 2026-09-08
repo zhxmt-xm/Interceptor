@@ -3,9 +3,9 @@
 > 最后更新：2026-09-08
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共69项，代码已实现58/69，完整自动验收54/69；TLS四项最终CA清理E2E blocked，Capture17项与Settings语言/主题/导出隐私均已完成真实E2E与当前产物验证，另11项待实现。Rules五项、Composer六项、Breakpoints十一项与Diagnostics四项已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共69项，代码已实现58/69，完整自动验收58/69；TLS四项已完成最终CA清理、双代销毁与宿主恢复，另11项待实现。Capture17项、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项与Settings十五项均已完成真实自动验收。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
-> Settings代码15/26、完整自动验收11/26；只读六项、系统代理两项及偏好三项已完成真实验收。Playground
+> Settings代码15/26、完整自动验收15/26；只读六项、系统代理两项、TLS四项及偏好三项已完成真实验收。Playground
 > recipe为58/58、Developer人工结论为0/58；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
 
 当前目录共69个目标Tool，名称全部唯一。该数字描述完整产品目标，不代表已有69个实现；每行“当前进度”
@@ -20,8 +20,8 @@
 | Composer | 6 | 6 | 0 | 0 |
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
-| Settings | 26 | 11 | 4 | 11 |
-| 合计 | 69 | 54 | 4 | 11 |
+| Settings | 26 | 15 | 0 | 11 |
+| 合计 | 69 | 58 | 0 | 11 |
 
 ## 1. 唯一目录
 
@@ -61,14 +61,14 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 ### Main共享入口审计（2026-09-07）
 
 - `invokeMainTool`注册24个Main命令，Agent与MCP共用，IPC单独注册handler。
-- 原19项已完成共享方法整理；Archive新增2项、Settings偏好新增3项沿同一规则实现，当前代码58/69、完整自动验收54/69。
+- 原19项已完成共享方法整理；Archive新增2项、Settings偏好新增3项沿同一规则实现，当前代码58/69、完整自动验收58/69。
 - HAR与Archive导入/导出已通过完整自动验收，不要求所有IPC都开放为Tool。
 
 | 类别 | Main命令 | 当前业务入口 |
 | --- | --- | --- |
 | 已共享，4项 | `settings.core-process.status`、`settings.system-proxy.status`、`settings.certificate.status`、`settings.app-containers.list` | 同一CoreRuntime或Main只读方法；Tool侧仅投影允许的返回字段 |
 | 已共享，2项 | `settings.system-proxy.enable`、`settings.system-proxy.restore` | 同一系统代理操作队列与启用/恢复方法，冷启动语义不变 |
-| 已共享，4项 | `settings.tls-insecure-hosts.replace`、`settings.tls-passthrough.replace`、`settings.https-decryption.enable`、`settings.https-decryption.disable` | 同一Main配置/启停方法；TLS真实清理验收仍blocked |
+| 已共享，4项 | `settings.tls-insecure-hosts.replace`、`settings.tls-passthrough.replace`、`settings.https-decryption.enable`、`settings.https-decryption.disable` | 同一Main配置/启停方法；TLS真实清理及宿主恢复已验收 |
 | 已共享，2项 | `rules.import`、`composer.collection.import` | 同一导入Service与产品预览确认生命周期；Tool适配安全结果 |
 | 已共享，2项 | `diagnostics.export`、`capture.har.export` | 同一原生Save与Core任务启动函数，HAR真实验收已通过 |
 | 已共享，1项 | `capture.body.export` | 唯一`startBodyExport`编排Dialog、取消与任务启动；明确区分UI正文引用和Exchange正文身份，后者保留归属与Core代际复核 |
@@ -253,11 +253,11 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_view_certificate` | change | `viewCertificate` | 产品已具备 |
 | `settings_open_certificate_manager` | change | `openCertificateManager` | 产品已具备 |
 | `settings_get_tls_insecure_hosts` | query | `getInsecureHosts` / `tls.getInsecureHosts` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
-| `settings_replace_tls_insecure_hosts` | change | `setInsecureHosts` / `tls.replaceInsecureHosts` | 代码完成 · 待最终E2E清理验收 |
-| `settings_enable_https_decryption` | change | `setHttpsDecryption(true)` | 代码完成 · 待最终E2E清理验收 |
-| `settings_disable_https_decryption` | change | `setHttpsDecryption(false)` | 代码完成 · 待最终E2E清理验收 |
+| `settings_replace_tls_insecure_hosts` | change | `setInsecureHosts` / `tls.replaceInsecureHosts` | 真实E2E及最终CA清理已完成 |
+| `settings_enable_https_decryption` | change | `setHttpsDecryption(true)` | 真实E2E及最终CA清理已完成 |
+| `settings_disable_https_decryption` | change | `setHttpsDecryption(false)` | 真实E2E及最终CA清理已完成 |
 | `settings_get_tls_passthrough` | query | `getTlsPassthroughSettings` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
-| `settings_replace_tls_passthrough` | change | `replaceTlsPassthroughSettings` | 代码完成 · 待最终E2E清理验收 |
+| `settings_replace_tls_passthrough` | change | `replaceTlsPassthroughSettings` | 真实E2E及最终CA清理已完成 |
 | `settings_list_app_containers` | query | `listAppContainers` | 共享 registry + MCP adapter + Agent；Windows真实枚举且不改豁免 |
 | `settings_enable_app_container` | change | `setAppContainerLoopbackExemption(sid, true)` / UAC | 产品已具备 |
 | `settings_disable_app_container` | change | `setAppContainerLoopbackExemption(sid, false)` / UAC | 产品已具备 |
@@ -326,10 +326,10 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `settings_list_app_containers` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `settings_enable_system_proxy` | 已完成 | 已完成 | Agent已完成 |
 | `settings_restore_system_proxy` | 已完成 | 已完成 | Agent已完成 |
-| `settings_replace_tls_insecure_hosts` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
-| `settings_replace_tls_passthrough` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
-| `settings_enable_https_decryption` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
-| `settings_disable_https_decryption` | 已完成 | 已完成 | 已执行；最终清理blocked，不计入已验收 |
+| `settings_replace_tls_insecure_hosts` | 已完成 | 已完成 | Agent已完成，最终CA清理通过 |
+| `settings_replace_tls_passthrough` | 已完成 | 已完成 | Agent已完成，最终CA清理通过 |
+| `settings_enable_https_decryption` | 已完成 | 已完成 | Agent已完成，最终CA清理通过 |
+| `settings_disable_https_decryption` | 已完成 | 已完成 | Agent已完成，最终CA清理通过 |
 | `settings_set_language` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
 | `settings_set_theme` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
 | `settings_set_export_privacy_defaults` | 已完成 | 已完成 | Agent + MCP + IPC已完成 |
@@ -337,7 +337,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是69项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、偏好三项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前54/69。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、TLS四项、偏好三项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前58/69。
 
 ### 5.1 首批24项与独立验收
 
@@ -387,7 +387,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    0漏洞与packaged smoke`1/1` Green。
 8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
    recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前有58项recipe、0项Developer结论；其中TLS四项仍待最终E2E清理，另11项尚未实现，不计入已验收范围。
+   目前有58项recipe、0项Developer结论；58项已完成自动验收，另11项尚未实现，人工结论独立记录。
 9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
@@ -395,16 +395,16 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
 同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成；TLS保留权限阻塞。Main方法整理已验收，继续Settings未实现Tool。
+分别保留为外部阻塞或人工验收项。Settings只读、系统代理、TLS、偏好、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成。Main方法整理已验收，继续Settings证书及AppContainer Tool。
 
-### 5.2 后续45项计划（已完成30项，剩余15项）
+### 5.2 后续45项计划（已完成34项，剩余11项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
 
 | 顺序 | Feature | 尚未完成验收 | 交付范围与顺序 |
 | --- | --- | ---: | --- |
-| 1 | Settings | 15 | 只读6项、系统代理2项、语言/主题/隐私3项已完成；TLS4项代码完成待清理验收，证书7项与AppContainer4项待实现及特权验收 |
+| 1 | Settings | 11 | 只读6项、系统代理2项、TLS4项、语言/主题/隐私3项已完成；证书7项与AppContainer4项待实现及真实原生授权、退出恢复验收 |
 | 2 | Rules | 0 | Export/Import均已完成；Import复用UI预览确认与原子追加，真实输入来自同workflow产品Export |
 | 3 | Composer | 0 | Collection查询/替换与Export/Import均已完成；Import复用正式确认及自动保存协调，文件输入由同workflow产品Export生成 |
 | 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
@@ -415,6 +415,8 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 伪造返回值、跳过验收或标记完成。跨平台专属步骤分别记录平台证据，不把Windows结果当成macOS已验收。
 
 ### 5.3 恢复执行入口
+
+2026-09-08：TLS四项最终workflow `1/1` Green，两代Main/Core正常销毁、测试CA自动卸载删除、根证书库与WinINet/journal恢复。证据见[TLS验收](settings.md#tls-tool-acceptance)。以下保留各组恢复时的历史记录。
 
 本轮从已推送的`07649e79`恢复，Settings只读查询组已完成以下六项：
 

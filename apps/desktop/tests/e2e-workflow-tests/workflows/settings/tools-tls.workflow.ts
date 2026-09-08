@@ -95,7 +95,7 @@ async function callTool(
   const result = resultForCall(lab, callId);
   if (verdict === 'deny') expect(result).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
   else expect(result.ok).toBe(true);
-  expect(/[A-Za-z]:[\\/]|"(?:privateKey|path)"/.test(JSON.stringify(result))).toBe(false);
+  expect(/\b[A-Za-z]:[\\/]|"(?:privateKey|path)"/.test(JSON.stringify(result))).toBe(false);
   return result;
 }
 

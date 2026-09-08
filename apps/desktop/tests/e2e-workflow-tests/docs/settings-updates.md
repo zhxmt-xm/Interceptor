@@ -137,7 +137,7 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 <a id="settings-tools-tls"></a>
 ## `settings.tools.tls`
 
-**状态**：blocked；unit/integration及业务断言已通过，最终CA清理失败，尚未完成E2E验收
+**状态**：passed；2026-09-08真实E2E及最终CA清理、双代销毁和宿主恢复全部通过
 **策略**：privileged UI；Windows；host-safety-guard；两代Electron
 
 ### Steps
@@ -164,12 +164,24 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 Red必须精确指向四项缺失或行为缺口，Green记录审批、revision、同步状态、重启零重放与完整清理；
 证据不记录私钥、证书路径、完整系统代理配置或Model敏感文本。平台授权不可用时明确blocked及人工步骤。
 
+2026-09-08最终Green：同一workflow `1/1`通过（30.2s），CA生成、安装、卸载和删除均由正式UI自动完成。
+两代Main/Core为`11608/44884`、`34820/2212`，两份metadata均`gracefulDestroyVerified=true`；宿主guard
+验证完整WinINet/journal与注册进程恢复，8888释放、profile删除。测试前后LocalMachine Root指纹集合完全一致，
+没有新增或删除其他证书。trace、两代metadata与日志归档在TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`。
+本机账户属于Administrators，但Runner token未提权；UAC策略为`EnableLUA=1 / ConsentPromptBehaviorAdmin=0 /
+PromptOnSecureDesktop=0`。产品仍经`TrustStoreService`的正式提权路径执行，未改策略或伪造授权结果。
+本轮初次运行停在discovery的路径脱敏断言：旧正则把schema URL中的`s:/`误判为Windows盘符。
+补充单词边界后同一workflow Green；原失败不算产品Red，证据已归档至TEMP下
+`interceptor-tls-discovery-failure-20260908-160436.zip`。
+
+以下保留历史阻塞与修复证据，不代表当前仍受阻。
+
 2026-09-05：四项发现缺失、摘要value与实际解密状态均已取得Red；executor24/24、刷新store18/18、
 摘要/i18n42/42 Green。最终业务断言通过，但面板重载期间清理跳过卸载，LocalMachine Root残留测试CA
 `8F5FD8BF6D49BE746862522F6AC616583ED152BB`。两代Main/Core `9740/1936`、`23384/33672`正常销毁，
-WinINet/journal恢复，profile因fixture失败识别缺陷被删除。先由Developer在管理员PowerShell运行
-`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，使用同一workflow重取完整Green；
-不得清除任何其他旧CA，不得在恢复前重复创建测试CA。
+WinINet/journal恢复，profile因fixture失败识别缺陷被删除。该残留于2026-09-08由Developer在管理员PowerShell运行
+`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`清除，再由同一workflow取得上述完整Green；
+没有清除其他旧CA，也没有在恢复前重复创建测试CA。
 
 续作已修复清理等待和profile保留：按本轮证书指纹与真实信任状态等待卸载/删除；Playwright实际
 `failed/timedOut/interrupted`在fixture use未抛错时也保留特权profile，unit9/9通过。TLS审批错误脱敏和
@@ -181,7 +193,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 全部通过，十代Main/Core均`gracefulDestroyVerified=true`；证据归档在TEMP下
 `interceptor-tls-adjacent-e2e-20260906`。完整parity238 views / 1,664 targets / 1,630 matched /
 34 missing / 305 flagged；TLS专项96/96、0 missing/flagged、最大0.5px。以上不替代本条workflow的
-最终CA信任清理；本条状态仍为blocked，管理员移除残留指纹前不再生成测试CA。
+最终CA信任清理；该阶段保持blocked，直到2026-09-08恢复旧残留并取得上述最终Green。
 
 <a id="settings-navigation"></a>
 ## `settings.navigation`

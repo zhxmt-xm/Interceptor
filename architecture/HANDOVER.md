@@ -1,28 +1,22 @@
 # Interceptor Handover
 
-> Tracked commit: `4df5224d`
+> Tracked commit: `889eda59`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-08
 
 ## Task List
 
-- [ ] **blocked · TLS四项Tool代码完成 · 待真实E2E最终清理验证**：在已推送`89028fdf`后，新增不安全名单替换、passthrough替换与解密启停四项；用户明确要求继续并提交当前代码，按未闭环进度保存，不计入完整自动验收数。TLS阶段保存时为代码36/73、完整验收32/73，另37项尚未实现。真实workflow已验证名单规范化、revision冲突、已挂载面板即时刷新、Ask/Auto、未信任意图与Core实际状态、真实CA安装、撤权和重启零重放；最终一轮清理失败，不能标记flow完成。
-    阻塞事实：设置变更触发Certificates面板短暂重载，清理用瞬时`isVisible()`判断，跳过了重载期间不可见的Uninstall/Delete。两代Main/Core `9740/1936`、`23384/33672`均已正常退出、8888及系统代理恢复，但本轮LocalMachine Root CA仍残留，SHA-1为`8F5FD8BF6D49BE746862522F6AC616583ED152BB`，NotBefore为2026-09-05 20:45:32。其他六张Interceptor根证书是此前已有，不得删除。
-    `desktopApp.preserveUserDataOnFailure()`此前只判断`await use(driver)`捕获的异常，未结合Playwright实际失败状态，本轮profile已被删除；现已提取并修正判定，实际failed/timedOut/interrupted均触发特权profile保留，3项Red后9/9 Green。清理已按本轮证书指纹与真实信任状态等待Uninstall/Delete，不再因瞬时不可见跳过；新的清理仍待真实复验。TLS审批错误与中途取消补8项Red后executor32/32 Green，底层路径不进入审批结果。
-    本轮非特权验证：Desktop485/485、Tools142/142、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67、Core TLS integration12/12、全workspace typecheck、design interaction71/71通过；新增TLS明暗16 views共96/96、0 missing/0 flagged、最大0.5px，原完整parity报告保留未重跑。Windows package、artifact audit（1,294 files / 392,847,733 bytes）、production audit0漏洞、packaged smoke1/1通过；36项registry/recipe和72个开关预期已同步。TLS清理失败的trace与两代metadata已归档至TEMP下`interceptor-tls-cleanup-failure-preserved`，不以smoke或parity替代真实E2E。
-    唯一管理员操作仍为`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`，须由Developer在管理员PowerShell执行；当前Agent终端非管理员，不得尝试自动提权。只读确认该指纹不存在后，复跑`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.tls"`，验证修复后的清理与profile保留路径和最终验收提交。代码已由`7bc809a1`提交并推送，状态不得提前改为passed。当前无本轮Electron残留，不再次运行涉及CA的测试直到完成上述恢复。
-    2026-09-06中断恢复核验：Settings只读、系统代理、全局权限、MCP Browser和MCP Desktop共5条关联真实workflow为5/5；十代Main/Core分别为`25388/8092`、`25492/23872`、`24712/41188`、`34436/18700`、`20492/24624`、`23584/35316`、`37440/43160`、`24472/43296`、`43156/13096`、`11332/23576`，全部`gracefulDestroyVerified=true`。证据归档于TEMP下`interceptor-tls-adjacent-e2e-20260906`。完整parity已完成238 views / 1,664 targets / 1,630 matched / 34 missing / 305 flagged；TLS新增16视图96/96、0 missing/flagged、最大0.5px，既有视觉债务仍保留。输出图片在TEMP下`interceptor-tls-full-parity-20260906`，仓库报告已更新；不要重复长跑。最新只读核对CA仍在、8888无listener、共享journal不存在、分支已同步。
-    用户于2026-09-06再次要求“不要停下，一直跑任务”；保留TLS及依赖证书权限的工作项blocked，不把阻塞冒充完成，继续推进原计划内不依赖该权限的独立Tool组。每个后续组仍执行契约、unit/E2E Red/Green、销毁证据、独立commit/push，不放宽验收门禁。
-- [ ] **进行中 · Tool代码58/69 · 完整自动验收54/69**：TLS四项待最终清理，另11项未实现；Updates不属于Tool范围。
-    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `11/26`。
+- [ ] **进行中 · Tool代码58/69 · 完整自动验收58/69**：TLS四项已完成最终清理验收，剩余证书7项与AppContainer4项未实现；Updates不属于Tool范围。
+    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `15/26`。
     - Settings代码15/26；授权开关不是Settings业务Tool。registry/recipe58项、116个开关，Developer人工结论0/58。
     - 偏好真实关联5/5、最后目标2/2、parity244/244、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
     - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；上述提交已推送至`e57909e6`。
-    - Main共享方法当前24项；后续仅保留证书7项与AppContainer4项。特权阻塞如实记录，不触碰残留CA、不自动提权，见[能力计划](features/tool-capabilities.md)。
-    - 2026-09-08续跑只读核验：指定CA `8F5FD8BF6D49BE746862522F6AC616583ED152BB`仍存在，当前终端不是管理员；未恢复证书测试。
-        - 证书7项：先由Developer按上述命令清理本轮残留CA，保留其他证书。
-        - AppContainer4项：`AppContainerService`的单项启停、全部启停都会调用`SUDO_PROMPT_RUNNER`，真实写入和恢复需要Developer确认Windows UAC；本轮未触发。
-        - 11项仍未实现；不以仅通过参数测试、取消测试或只读查询替代真实写入和退出恢复验收。等待人工操作，不重新加入已撤销的Updates Tool。
+    - 2026-09-08 TLS最终复验：真实workflow `1/1` Green（30.2s），两代Main/Core `11608/44884`、`34820/2212`均正常销毁；CA自动安装、卸载、删除，根证书库、WinINet/journal及8888恢复。
+        - 旧孤立CA已由Developer删除。本轮只修正E2E盘符断言误匹配schema URL，产品、依赖和设计未改；不重复全量回归。
+        - Green证据归档在TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`；旧失败和修复过程见[TLS验收](features/settings.md#tls-tool-acceptance)。
+    - 下一步：按[能力计划](features/tool-capabilities.md)推进证书7项，再推进AppContainer4项；Main共享方法当前24项。
+        - 每组保持契约、unit/integration及真实E2E Red/Green、原生授权和退出恢复门禁，通过后独立commit并立即push。
+        - 不以参数测试或只读查询代替真实写入，不模拟UAC，不重新加入已撤销的Updates Tool。
     - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
     - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
     - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
@@ -44,6 +38,7 @@
 ## Constraints
 
 - 本地App、packaged smoke与真实Electron E2E必须经过已实现的宿主guard；不得以“进程已退出/8888无listener”替代完整WinINet、共享crash journal与测试进程代际恢复验证。
+- Windows当前token未提权不等于账户不属于Administrators；不得给workflow另加管理员启动门禁。安装/卸载CA仍由产品正式请求Windows授权，不修改UAC策略；出现真实授权提示时由Developer在本机处理。
 - 当前所有tracked代码改动都必须归入明确work item，完成实现、验证、commit和push；禁止任何会丢弃工作树内容的`restore`、`checkout`、`reset --hard`或文件重建。为调整提交顺序允许仅取消暂存或使用临时index，但操作前后必须核对工作树文件hash不变。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不是本轮代码改动，继续排除。
 - 系统代理由 Main 所有；开发实例与 packaged smoke 都使用 8888，不能并行。packaged smoke 在有开发实例监听 8888 时不运行，必须先安全结束会话。
 - 若进程强杀后遗留 `127.0.0.1:8888`，先恢复 WinINet。残留会让接管前读取到“自己”，`isSelf` 会视为无上游并可能静默丢失真实公司代理。
