@@ -25,6 +25,8 @@ Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmedi
 
 每条 Exchange 用自己的 `tail` Promise 串行化存储写入，保证顺序且不阻塞事件回调。
 
+请求与响应正文独立finalize，正常提前响应不会丢弃后续上传。413仅在完整响应结束后保存当时已捕获的上传并结束Capture记录，迟到上传不再追加；不关闭真实连接或修改Mockttp。终态保留`completedAt`，应用归属晚到时不得覆盖终态和耗时。
+
 正文规则结果与`request-body-data`同样可能乱序。`ExchangeTracker`把RuleService的最终replacement
 写为主Request/Response Body ref；客户端request stream另作为Original保存到
 `requestBodyEffect.originalBody`。Request空原文记`empty`，Response在headers-stage替换时不缓冲

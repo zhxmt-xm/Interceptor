@@ -140,6 +140,8 @@ export interface TrackedExchange {
   responsePhase: ResponsePhase;
   /** 是否已进入终态，终态不可回退。 */
   terminal: boolean;
+  /** 记录收尾时间，后续应用归属更新沿用同一耗时。 */
+  completedAt?: number;
   /** 请求正文增量写入器；无正文时为 null。 */
   requestWriter: BodyWriter | null;
   /** 响应正文增量写入器。 */

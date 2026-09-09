@@ -250,7 +250,7 @@ export class ExchangeTracker {
   /** 请求正文增量：写入 writer 并更新已观察字节数。 */
   appendRequestBody(data: BodyData): void {
     const entry = this.entries.get(data.id);
-    if (!entry || entry.generation !== this.generation) {
+    if (!entry || entry.generation !== this.generation || entry.requestPhase === 'complete') {
       return;
     }
     if (data.content.byteLength > 0) {
@@ -266,6 +266,9 @@ export class ExchangeTracker {
       entry.requestPhase = 'complete';
     }
     this.finalizeRequestBody(entry);
+    if (entry.responsePhase === 'complete') {
+      this.completeExchange(data.id, entry);
+    }
   }
 
   /** 响应头到达：更新状态并转入 response-streaming。 */
@@ -322,10 +325,10 @@ export class ExchangeTracker {
     });
   }
 
-  /** 响应正文增量：写入 writer；结束时 finalize 并进入终态。 */
+  /** 响应正文增量：413在完整响应后收尾，其余等待双向结束。 */
   appendResponseBody(data: BodyData): void {
     const entry = this.entries.get(data.id);
-    if (!entry || entry.generation !== this.generation) {
+    if (!entry || entry.generation !== this.generation || entry.responsePhase === 'complete') {
       return;
     }
     if (data.content.byteLength > 0) {
@@ -341,7 +344,13 @@ export class ExchangeTracker {
       return;
     }
     entry.responsePhase = 'complete';
-    this.completeExchange(data.id, entry);
+    this.finalizeResponseBody(entry);
+    if (entry.requestPhase === 'complete' || entry.statusCode === 413) {
+      if (entry.requestPhase !== 'complete') {
+        this.finalizeRequestBody(entry);
+      }
+      this.completeExchange(data.id, entry);
+    }
   }
 
   /** 请求中断：记录终态与原因。 */
@@ -741,30 +750,12 @@ export class ExchangeTracker {
     this.enqueue(entry, 'exchange-updated');
   }
 
-  /** 响应正文结束：finalize writer、绑定 body 引用并进入终态。 */
-  private completeExchange(requestId: string, entry: TrackedExchange): void {
-    // 早期响应（401/413/417）时请求体可能仍在上传：请求侧 writer 必须一并收尾，
-    // 否则已上传部分既不会绑定 body 引用，其 spill 临时文件也失去引用无法清理。
-    const requestWriter = entry.requestWriter;
+  /** 响应正文结束后立即绑定引用，不提前关闭仍在上传的请求writer。 */
+  private finalizeResponseBody(entry: TrackedExchange): void {
     const writer = entry.responseWriter;
-    entry.requestWriter = null;
     entry.responseWriter = null;
-    const completedAt = Date.now();
-    entry.terminal = true;
-    this.entries.delete(requestId);
     this.schedule(entry, async () => {
-      const requestResult = requestWriter ? await requestWriter.finalize() : null;
       const result = writer ? await writer.finalize() : null;
-      const requestBody = this.capturedBodyRef(
-        requestResult,
-        entry.requestMime,
-        entry.requestEncoding,
-      );
-      const completedRequestOriginal = entry.requestOriginalState === undefined;
-      if (completedRequestOriginal) {
-        entry.requestOriginalState = requestBody ? 'available' : 'empty';
-        entry.requestOriginalBody = requestBody;
-      }
       const responseBody = result
         ? this.capturedBodyRef(
             result,
@@ -776,8 +767,6 @@ export class ExchangeTracker {
           : undefined;
       await this.captureService.updateExchange({
         id: entry.exchangeId,
-        state: 'completed',
-        completedAt,
         responseBytes: entry.responseBytes,
         ...(responseBody
           ? { responseBody, responseBodyId: responseBody.id }
@@ -790,22 +779,24 @@ export class ExchangeTracker {
               ),
             }
           : {}),
-        ...(entry.requestBodyEffect
-          ? {
-              requestBytes: entry.requestBytes,
-              requestBodyEffect: this.bodyEffectInput(
-                entry.requestBodyEffect,
-                entry.requestOriginalState ?? 'empty',
-                entry.requestOriginalBody,
-              ),
-            }
-          : completedRequestOriginal && requestBody
-            ? {
-                requestBytes: entry.requestBytes,
-                requestBody,
-                requestBodyId: requestBody.id,
-              }
-            : {}),
+      });
+    });
+    this.enqueue(entry, 'exchange-updated');
+  }
+
+  /** 两侧正文均已排入写入队列后，记录完整Exchange的终态。 */
+  private completeExchange(requestId: string, entry: TrackedExchange): void {
+    const completedAt = Date.now();
+    entry.terminal = true;
+    entry.completedAt = completedAt;
+    this.entries.delete(requestId);
+    this.schedule(entry, async () => {
+      await this.captureService.updateExchange({
+        id: entry.exchangeId,
+        state: 'completed',
+        completedAt,
+        requestBytes: entry.requestBytes,
+        responseBytes: entry.responseBytes,
       });
     });
     this.captureEventQueue.enqueue('exchange-updated', {
@@ -828,6 +819,7 @@ export class ExchangeTracker {
       return;
     }
     entry.terminal = true;
+    entry.completedAt = completedAt;
     this.entries.delete(requestId);
     const requestWriter = entry.requestWriter;
     const responseWriter = entry.responseWriter;
@@ -985,6 +977,9 @@ export class ExchangeTracker {
         : {}),
       state: this.toState(entry),
       startedAt: entry.startedAt,
+      ...(entry.completedAt !== undefined
+        ? { durationMs: Math.max(0, entry.completedAt - entry.startedAt) }
+        : {}),
       requestBytes: entry.requestBytes,
       responseBytes: entry.responseBytes,
       ...(entry.appId !== undefined ? { appId: entry.appId } : {}),
@@ -999,10 +994,10 @@ export class ExchangeTracker {
     if (entry.responsePhase === 'aborted' || entry.requestPhase === 'aborted') {
       return 'aborted';
     }
-    if (entry.responsePhase === 'complete') {
+    if (entry.terminal || (entry.responsePhase === 'complete' && entry.requestPhase === 'complete')) {
       return 'completed';
     }
-    if (entry.responsePhase === 'headers' || entry.responsePhase === 'body') {
+    if (entry.responsePhase === 'headers' || entry.responsePhase === 'body' || entry.responsePhase === 'complete') {
       return 'response-streaming';
     }
     if (entry.requestPhase === 'complete') {

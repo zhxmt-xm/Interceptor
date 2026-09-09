@@ -19,6 +19,46 @@
 - H2 path：`/e2e/mitm/h2?source=workflow`，response trailer `x-interceptor-e2e-trailer: h2-complete`；
 - gRPC path：`/interceptor.e2e.WorkflowService/Stream`；一个 request envelope、两个 response envelope，第二个 compressed flag=true；trailers=`grpc-status: 0`、`grpc-message: OK`。
 
+<a id="capture-scenarios-http"></a>
+## `capture.scenarios.http`
+
+**状态**：passed；五个H1场景及额外413边界真实Green，owner/终态摘要Red后Green，Mockttp与patch不变
+**策略**：真实Electron；复用Playground流量库；不启动Playground页面，不新增流量工具的测试
+
+### Steps
+
+1. fresh profile启动真实Electron，经公开Recording控件开始抓包；使用现有`trafficLab`创建真实origin/client。
+2. `TrafficLab.run()`运行已有场景默认Draft，所有流量经产品`8888`，不注入Store或直接调用Preload/Main/Core业务API。
+3. `h1-json`验证H1/GET/200及固定JSON；`h1-upload`验证完整45字节上传和实际接收计数；`h1-stream`保留三个JSON分块；`h1-early-response`响应先完成仍保留38字节完整上传。
+4. 真实检查Request/Response Headers、Raw正文；`h1-abort`源站断开后请求仍保留，不显示200或等待状态。H2由独立workflow验证。
+5. 额外413边界使用workflow拥有的真实origin/client：先发送一段上传，再返回分段413响应。收到413响应头时继续接收正文；完整响应结束后，Capture保留413状态、完整响应正文和当时已捕获的上传片段，不要求客户端先断开。此项不新增Playground场景或修改第三方。
+6. 保存场景结果、公共行身份、trace与截图；fixtures关闭origin及Electron，核验Main/Core/Worker、8888、完整WinINet和共享journal恢复。
+
+### 证据要求
+
+- 测试对象是Interceptor抓取与展示，不是Playground场景实现；网络返回值只证明流量已产生，产品期望独立写在workflow中。
+- 只新增现有产品行为的E2E覆盖，不人为制造Red；若发现产品故障，先保存真实失败证据并补所属模块测试，再修改产品。
+- 通过一个场景不提升整组或39项总量；逐场景记录实际Green及退出恢复证据。
+- early response必须在Request区块显示38字节并可读完整`{"request":"continues-after-response"}`；响应为`sent-before-request-completed`。2026-09-09已有owner及真实UI Red，双向结束修复后owner3/3及五场景E2E Green；新413例外单独取得前置Red和最终Green，不能用普通提前200场景的通过替代。
+- 413验收不以中断事件为前提，也不把所有错误状态视为同一规则；完整413响应接收后可读取已捕获上传正文，迟到事件不改写终态。真实请求是否继续发送或关闭仍由客户端和origin决定，Core只调整Capture记录。
+- 2026-09-09最终HTTP1/1（19.4s）与矩阵8/8通过，Proxy module102/102、Core/Desktop typecheck通过；应用归属迟到不得覆盖终态/耗时，原`h1-abort`等待占位断言保留。
+- HTTP Green归档`interceptor-http-item-green-20260909-201206.zip`（Main/Core `45688/44448`正常退出）；完整矩阵为`interceptor-capture-http-final-green-20260909-201525.zip`，SHA256 `2A4274974D3C90F087ED7236C6866613CDDF617485CF2143DE8BD53F253201DD`。八代进程、8888、CA及完整WinINet/journal恢复；前置Red详见[Capture功能证据](../../../../../architecture/features/capture.md#http收尾与验证)。
+
+<a id="capture-scenarios-http2"></a>
+## `capture.scenarios.http2`
+
+**状态**：passed；独立H2场景与最终矩阵均Green，CA及宿主恢复
+**策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
+
+### Steps
+
+1. 保存完整Root指纹基线，在fresh profile通过Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM；不调用Manager。
+2. 经UI开启Recording，使用现有`h2-json`默认Draft，经CONNECT/TLS/ALPN向真实origin发请求。
+3. 客户端完成H2/200和`x-playground-trailer: h2-complete`；Capture只显示一条自产H2/GET/200行。
+4. 真实点击Headers，核对Request `accept: application/json`、Response `content-type: application/json`和trailer；Response Raw正文包含`"protocol": "h2"`与`"path": "/playground/h2-json"`。
+5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，按本轮CA指纹卸载、删除材料并比较完整Root集合。
+6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
+
 <a id="capture-scenarios-bodies"></a>
 ## `capture.scenarios.bodies`
 
@@ -79,21 +119,6 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 5. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
 
 `ws-control`另保存`websocket-control-empty-state.png`，用于核对真实Messages空态；该场景只有控制帧，0条数据消息符合当前产品边界。原空态CSS缺失另记录为UI问题，不改正文或帧断言掩盖。
-
-<a id="capture-scenarios-http2"></a>
-## `capture.scenarios.http2`
-
-**状态**：passed；独立H2场景与最终矩阵均Green，CA及宿主恢复
-**策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
-
-### Steps
-
-1. 保存完整Root指纹基线，在fresh profile通过Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM；不调用Manager。
-2. 经UI开启Recording，使用现有`h2-json`默认Draft，经CONNECT/TLS/ALPN向真实origin发请求。
-3. 客户端完成H2/200和`x-playground-trailer: h2-complete`；Capture只显示一条自产H2/GET/200行。
-4. 真实点击Headers，核对Request `accept: application/json`、Response `content-type: application/json`和trailer；Response Raw正文包含`"protocol": "h2"`与`"path": "/playground/h2-json"`。
-5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，按本轮CA指纹卸载、删除材料并比较完整Root集合。
-6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
 
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`

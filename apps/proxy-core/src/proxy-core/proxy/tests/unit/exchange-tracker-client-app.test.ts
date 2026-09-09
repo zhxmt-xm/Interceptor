@@ -4,7 +4,7 @@ import type {
   CaptureExchangeEventKind,
   CaptureExchangeSummary,
 } from '@interceptor/core-protocol';
-import type { InitiatedRequest } from 'mockttp';
+import type { AbortedRequest, InitiatedRequest, InitiatedResponse } from 'mockttp';
 
 import { CaptureService } from '../../../capture/entry';
 import type { ExchangeInput, ExchangePatch } from '../../../capture/interfaces';
@@ -194,6 +194,52 @@ describe('ExchangeTracker client application attribution', () => {
     expect(recordingCaptureEventQueue.events).toHaveLength(2);
     expect(recordingCaptureEventQueue.events[1]?.kind).toBe('exchange-updated');
     expect(recordingCaptureEventQueue.events[1]?.summary.appName).toBe('Google Chrome');
+  });
+
+  it.each([200, 413, 'aborted'] as const)('preserves the %s terminal state and duration when application lookup finishes late', async (outcome) => {
+    for (const lookupResult of ['50000\t4242\tGoogle Chrome\tC:\\Chrome\\chrome.exe\n', '']) {
+      let resolveLookup!: (result: string) => void;
+      const runner: ClientAppLookupRunner = () => new Promise<string>((resolve) => {
+        resolveLookup = resolve;
+      });
+      const clientAppService = new ClientAppService({ helperPath: 'helper.exe', runner });
+      clientAppService.setProxyPort(8888);
+      const recordingCaptureEventQueue = new RecordingCaptureEventQueue();
+      const exchangeTracker = new ExchangeTracker(new RecordingExchangeCaptureService(), recordingCaptureEventQueue, clientAppService);
+      exchangeTracker.setSession('session-1');
+      const request = loopbackRequest();
+      exchangeTracker.beginRequest(request);
+      await nextTick();
+
+      if (outcome === 'aborted') {
+        exchangeTracker.abortExchange({
+          ...request,
+          timingEvents: { ...request.timingEvents, startTimestamp: 0, abortedTimestamp: 1 },
+        } as AbortedRequest);
+      } else {
+        if (outcome === 200) {
+          exchangeTracker.appendRequestBody({ id: request.id, content: Buffer.alloc(0), isEnded: true, eventTimestamp: Date.now() });
+        }
+        exchangeTracker.beginResponse({
+          id: request.id, statusCode: outcome, statusMessage: outcome === 413 ? 'Content Too Large' : 'OK',
+          headers: {}, rawHeaders: [], timingEvents: request.timingEvents, tags: [],
+        } satisfies InitiatedResponse);
+        exchangeTracker.appendResponseBody({ id: request.id, content: Buffer.alloc(0), isEnded: true, eventTimestamp: Date.now() });
+      }
+      const terminalSummary = recordingCaptureEventQueue.events.at(-1)!.summary;
+      const expectedState = outcome === 'aborted' ? 'aborted' : 'completed';
+      expect(terminalSummary).toMatchObject({ state: expectedState, durationMs: expect.any(Number) });
+      expect(Number.isFinite(terminalSummary.durationMs)).toBe(true);
+
+      resolveLookup(lookupResult);
+      await nextTick();
+      await nextTick();
+      const updatedSummary = recordingCaptureEventQueue.events.at(-1)!.summary;
+      expect(updatedSummary).toMatchObject({ state: expectedState, durationMs: terminalSummary.durationMs });
+      expect(updatedSummary.appPending).toBeUndefined();
+      expect(exchangeTracker.activeCount).toBe(0);
+      await exchangeTracker.settle();
+    }
   });
 
   it('never looks up remote clients such as phones on the proxy', async () => {

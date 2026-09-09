@@ -225,7 +225,7 @@ stateDiagram-v2
 | `pending` | 已收到请求头，尚无响应头 |
 | `request-complete` | 请求已完整，等待响应（WebSocket 101 后也用此值） |
 | `response-streaming` | 已收到响应头，正文传输中 |
-| `completed` | 双向完成 |
+| `completed` | 双向完成；413拒绝上传时，完整响应结束后保存当时已捕获正文并收尾记录 |
 | `aborted` | 客户端中断，或上游连接失败（DNS/TCP/TLS）被镜像为客户端连接错误 |
 | `failed` | Capture 持久化失败或协议错误 |
 
@@ -234,14 +234,17 @@ stateDiagram-v2
 1. 终态（`completed`/`aborted`/`failed`）不可回退。
 2. 迟到或重复事件不得重复累加 bytes，使用 observed 计数覆盖而非累加。
 3. `abort` 可以从任意非终态直接进入。
+4. 413仅在`response-body-data.isEnded`后结束Capture记录，不在响应头到达时结束，不关闭真实请求或连接；此后迟到的上传/中断事件不再改写该记录。其他状态码保持双向结束规则。
+5. 应用归属异步解析可以补充已结束记录的应用信息，但必须保留原终态和耗时；不得将413完成记录推回`response-streaming`或丢失正常/中断请求的耗时。
 
 ### 4.1 多协议产品E2E覆盖
 
-- 当前已交付场景覆盖35/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
-- 本轮相关场景均已取得真实Green和完整进程/8888/WinINet/journal/CA恢复证据；测试来自本轮工作树。Core early response修复未纳入这些提交，仍有独立413后中断回归待第三方授权。
+- 使用Playground已有流量库，经真实8888进入Capture，从产品UI验证结果；不是为测试工具补测试。2026-09-09最终8条workflow、39个场景及额外413边界合跑Green，HTTP收尾的Proxy module102/102通过。
+- 按item交付：`6617961c`交付Body/Encoding，`fadcda96`交付WebSocket，`135c4ba7`交付H2/gRPC/TLS；最后HTTP item补齐四个H1场景与Core early response修复，现有39种场景全部取得产品UI和退出恢复证据。
 
 | 组 | 场景数 | Workflow | 当前结果 |
 | --- | ---: | --- | --- |
+| HTTP/H1 | 5 | `capture.scenarios.http` | Green，完整上传、流式、提前200、普通中断及额外413收尾边界 |
 | HTTP/H2 | 1 | `capture.scenarios.http2` | Green，Headers/trailer/正文及CA恢复 |
 | Body | 16 | `capture.scenarios.bodies`、`capture.scenarios.body-media` | Green，模式、图片、Hex及媒体原生保存 |
 | Encoding | 5 | `capture.scenarios.encoding` | Green，解压及损坏数据保留 |
@@ -249,8 +252,9 @@ stateDiagram-v2
 | gRPC | 5 | `capture.scenarios.grpc` | Green，原始载荷、压缩、错误trailer与截断 |
 | TLS | 3 | `capture.scenarios.tls` | Green，tunnel与解密H1/H2 |
 
-- 最终工作树矩阵证据：TEMP/interceptor-capture-39-green-20260909-161253.zip，SHA256 959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB。只按本节已交付场景声明覆盖，不把未提交HTTP修复标完成。
-- 完整操作见[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。
+- 最新证据：TEMP下`interceptor-capture-http-final-green-20260909-201525.zip`，SHA256 `2A4274974D3C90F087ED7236C6866613CDDF617485CF2143DE8BD53F253201DD`；8条workflow/8代Main/Core正常退出，8888、WinINet/journal及CA恢复，Mockttp与patch的SHA256和开工基线一致。Core/Desktop typecheck与Proxy module102/102通过；本item未改运行时依赖、打包或进程边界，不新增package门禁。
+- 前次场景矩阵证据`interceptor-capture-39-green-20260909-161253.zip`继续保留，SHA256 `959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB`；该次HTTP额外owner失败不算最终Green，以上述最新结果为准。
+- 操作与证据契约见[Capture场景规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。本统计只覆盖39个现有场景，不把它当所有协议边界已验证。
 
 #### 正文修复
 
@@ -264,6 +268,18 @@ stateDiagram-v2
 - `TlsTrafficRunner`的HTTPS/H1原先用`agent:false`导致Node忽略已有隧道的`createConnection`并另开直连；改用Node HTTP客户端在已握手的同一个TLSSocket中发送HTTP字节。直接跑受影响真实TLS场景，不为流量工具新增测试。
 - TLS兼容提示会遮住Settings导航，CA清理须先真实点击dismiss。首次失败遗留的本轮CA `F924C643186525C49881EFB8B337C261C3968ECB`已通过保留profile和正式UI卸载/删除，恢复1/1 Green；归档`interceptor-tls-profile-recovery-green-20260909-160512.zip`，Main/Core `20160/40716`正常退出。
 - TLS最终三场景Green，归档`interceptor-tls-green-20260909-160714.zip`，Main/Core `15424/31980`正常退出；不调用MMC、不修改系统权限、不覆盖用户已有CA。
+
+#### HTTP收尾与验证
+
+- 2026-09-09真实HTTP场景发现：early response已结束但上传仍在继续时，旧`ExchangeTracker.completeExchange()`提前移除在途记录，导致后续请求正文丢失，取消也可能被错误保留为`completed`。现已拆开两侧正文finalize，正常提前响应正文可立即读取，记录等待双向结束；收到实际中断事件则保留已捕获正文并进入`aborted`。
+- 用户确认413例外：完整接收413响应后保存当时已捕获的上传片段并以`completed`收尾Capture记录，状态码仍为413，不再等待上传结束或中断；收尾后的上传片段不再追加，不声称其为完整上传。只调整Core记录，不修改Mockttp、连接或转发行为。
+- 原有效owner及真实UI Red为`interceptor-capture-early-response-red-20260909-151821.zip`，SHA256 `DEDFC9DDE26C61A7FC4CC29F96362C90FEA9ECC73932CC91B2FF93086F56EB3D`，Main/Core `39388/23176`正常退出；新413 owner及真实UI Red为`interceptor-http413-valid-red-20260909-200057.zip`，SHA256 `361B8326A92250C93CA2D55CC55923F70C8A8230336D9032D207314341226FE3`，Main/Core `31460/48696`正常退出。
+- 同一真实HTTP流程还暴露迟到应用归属更新丢失耗时、413终态回退；owner三项及UI Red归档`interceptor-capture-terminal-summary-red-20260909-200755.zip`，SHA256 `5EEA9E45C7CF18E4FAE4FB2E35C6A562C77527C7D6813605827D409B6E681510`。`TrackedExchange.completedAt`保留收尾时间，后续摘要沿用终态/耗时，不再显示等待。
+- 最终owner early-response7/7、应用归属9/9、整个Proxy module102/102，HTTP真实workflow1/1（19.4s）、完整矩阵8/8。HTTP单项证据`interceptor-http-item-green-20260909-201206.zip`，SHA256 `A805FCAD46DA468F5FA02A8528A0A54041C6E4EB4EAB19724B9BBC6548F3AF1A`，Main/Core `45688/44448`正常退出；其他协议共用收尾以上方八条矩阵验证，不将413规则扩大到其他状态码。
+
+#### 与当前实现的差异
+
+- WebSocket Messages空态引用`styles.empty`，但`WebSocketMessages.module.css`缺少`.empty`规则，导致默认黑字贴边；本轮仅保存真实`ws-control`空态截图确认，未改UI设计。纯控制帧不属于数据消息，0条Messages不是采集失败。
 
 ## 5. 调用流程
 
@@ -521,7 +537,8 @@ Mockttp 在 Upgrade 阶段给 socket 装 `_write` / `_writev` 钩子，因此 Br
 
 | 场景 | Mockttp 发出的事件 | Capture 结果 |
 | --- | --- | --- |
-| HTTP 早期响应（401/413/417） | `response-initiated` → `response-body-data isEnded` | `completed`，已上传正文保留 |
+| HTTP 413拒绝上传 | `response-initiated` → `response-body-data isEnded` | 完整413响应后`completed`，保留收尾时已捕获上传正文 |
+| 其他HTTP早期响应 | 两侧`*-body-data isEnded`，或实际`abort` | 双向结束后`completed`；真实中断则`aborted`并保留已捕获正文 |
 | HTTP 请求中断 | `abort` | `aborted` + `errorCode` |
 | HTTP 上游连接失败（DNS/TCP/TLS） | `abort`（`simulateConnectionErrors` 镜像为客户端连接错误） | `aborted` + 真实 `errorCode` |
 | WebSocket 升级前连接直接断开 | `abort`（`data` 为空分支） | `aborted` |
@@ -586,31 +603,31 @@ sequenceDiagram
     Origin-->>Mockttp: 响应体并结束
     Mockttp-->>Client: 响应体并结束
     Mockttp-->>Proxy: response-body-data isEnded
-    Proxy->>Proxy: completeExchange
-    Note over Proxy: finalize 请求与响应两个 writer，<br/>terminal 置真并从 entries 移除
-    Proxy->>Storage: state completed 并绑定两侧 bodyRef
-    Proxy->>Queue: enqueue exchange-updated
-    Queue-->>UI: 行转 completed
-
-    alt 客户端继续上传
-        Client->>Mockttp: 后续请求体分块
-        Mockttp-->>Proxy: request-body-data
-    else 客户端放弃上传
-        Client--xMockttp: 断开连接
-        Mockttp-->>Proxy: abort
+    Proxy->>Proxy: finalizeResponseBody
+    Proxy->>Storage: 绑定responseBody，响应可读
+    alt 413响应或上传已经完整结束
+        Proxy->>Proxy: 413时finalize仍在写入的requestWriter
+        Proxy->>Proxy: completeExchange
+        Proxy->>Storage: state completed并保留已捕获正文
+        Proxy->>Queue: enqueue终态与耗时
+        Queue-->>UI: 更新记录，后续归属更新保持终态
+        Note over Proxy: entry已移除，迟到上传/中断不再追加
+    else 非413且上传仍在继续
+        Client->>Mockttp: 后续请求体分块并结束
+        Mockttp-->>Proxy: request-body-data isEnded
+        Proxy->>Proxy: finalizeRequestBody + completeExchange
+        Proxy->>Storage: 完整上传正文及state completed
     end
-    Note over Proxy: 两种情况都已查不到 entry，<br/>直接丢弃，不再改终态
 ```
 
 **响应与上传是并行的两条通道。** 早期响应头一到就会被 Mockttp 转发给客户端，Capture 也立刻
 `patch` 出 `response-streaming` 并入队推给 Renderer——**不需要等上传结束**。此时客户端的上传通道
 仍然开着，继续发还是放弃完全由客户端决定（很多 HTTP 客户端收到 4xx 后仍会把已排队的分块发完）。
-两种选择在 Capture 侧结果相同：`completeExchange` 已把 entry 移除，后续事件一律丢弃。
+413完整响应后Capture按用户确认范围收尾，后续事件不再追加；其他状态码保留仍在上传的entry，直至上传结束或收到真实中断事件。
 
-**终态由先到达的一侧决定。** 请求侧与响应侧独立推进，但 `completeExchange` 与 `finishExchange`
-都会把 `entry.terminal` 置真并从 `entries` 移除，之后同 `request.id` 的任何事件都查不到 entry
-而被丢弃。因此早期响应场景下，响应体先结束就把整条 Exchange 定为 `completed`，客户端后续的
-停止上传或 `abort` **不会**再把它改成 `aborted`。
+**终态不会因迟到事件回退。** `completeExchange`与`finishExchange`都会保存收尾时间并移除entry。
+普通请求必须等两侧正文结束；413例外只要求完整响应及当时已捕获上传保存完毕。它表示Capture记录已结束，
+不表示客户端全部上传都到达origin，也不主动关闭真实连接。后续应用归属摘要仍保留终态和同一耗时。
 
 **关键修复点**：早期实现只在 completed `request` 事件建立 `pending` 映射，若 `response` 先到会找不到请求而**直接丢弃整条记录**。改用 `request-initiated` 后，Exchange 在请求头阶段就已存在，早期响应可以正常合并。
 
@@ -621,8 +638,9 @@ sequenceDiagram
 1. 已上传的那部分请求正文不绑定 `requestBodyId`，Inspector 里出现「有字节数但没有正文」。
 2. 跳过 `BodyWriter.abort()` 会把 spill 临时文件留到 Core 代际结束（`tracker.reset()` 只遍历 `entries`，此时已删除，也兜不住）。
 
-现已改为与 `finishExchange` 一致地收尾两个 writer。回归用例：
-`proxy/tests/integration/service.test.ts` 的 *keeps the uploaded request body when the origin responds early*。
+现由两侧独立finalize；413响应完整结束时补finalize仍在写入的请求writer。真实socket回归用例：
+`proxy/tests/integration/service.test.ts` 的 *finishes an early 413 capture with the observed upload before the client disconnects*；
+正常继续上传与迟到事件另由`early-response.test.ts`验证。
 
 ### 5.5 中断（abort）
 

@@ -1,7 +1,7 @@
 # Feature: Manual Acceptance Playground
 
 > 最后更新：2026-09-09
-> 状态：**Playground既定功能与自动验证保持；Interceptor Capture已交付场景覆盖35/39，其余边界单独跟踪。用户自行查看，不另列人工验收待办或门禁。**
+> 状态：**App式双页面与既定自动验证已完成；39个Capture场景/8条真实workflow及额外413边界均Green，HTTP收尾在Core内完成，未修改Mockttp。用户自行查看，不另列人工验收待办或门禁。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -321,7 +321,9 @@ WebSocket、gRPC、TLS六组复用正式Playground的同一场景目录和流量
 但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个39项巨型workflow。
 当前下面的`capture.playground-traffic`只证明其中2/39的代表性纵向链路。
 
-HTTPS/H1场景现用Node HTTP客户端把HTTP字节发送到既有TLS隧道socket，不再使用会忽略createConnection的agent:false直连配置；实际TLS三场景已通过，不新增工具测试。
+2026-09-09独立Capture场景workflow覆盖39个场景及额外413边界，最终合跑8/8 Green，Proxy module102/102通过；这是产品UI对协议/正文的验证，不是Playground工具测试扩张。HTTP收尾采用用户确认的413例外，无第三方改动；完整证据见[Capture覆盖](capture.md#41-多协议产品e2e覆盖)。
+
+本轮真实TLS验收发现并修复HTTPS/H1场景的客户端配置：`agent:false`使Node忽略既有`createConnection`并直连origin；现在用Node HTTP客户端把HTTP字节写入同一个已完成TLS的代理隧道socket。H2客户端保持不变；通过实际TLS场景验证，不为工具新增测试。
 
 ### 9.1 `capture.playground-traffic`真实E2E
 
@@ -360,6 +362,6 @@ Main/Renderer日志、PID/listener销毁metadata，以及Playground子进程输�
 
 ## 11. 与当前实现的差异
 
-- Capture产品E2E覆盖35/39，未交付部分及HTTP额外中断边界见[Capture覆盖](capture.md#41-多协议产品e2e覆盖)；不能以用户自行查看替代自动证据。
+- 现有39个Capture场景和额外413边界已取得真实E2E Green及退出恢复证据，不代表所有协议边界已穷尽验证；用户自行查看不替代自动测试结论。
 - 当前VS Code `1.135.0`仍使用`2025-11-25`，产品决定不支持legacy；真实Host canary等待Host升级，
   不阻塞最新协议Playground建设。

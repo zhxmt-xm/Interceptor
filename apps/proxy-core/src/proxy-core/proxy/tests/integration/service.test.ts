@@ -1205,9 +1205,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
-  it('keeps the uploaded request body when the origin responds early', async () => {
-    // 源站收到部分正文后立即返回 413 并结束响应，此时客户端仍在上传：
-    // 响应侧先进入终态，请求侧 writer 仍在写，必须一并收尾。
+  it('finishes an early 413 capture with the observed upload before the client disconnects', async () => {
     const origin = await startOrigin((req, res) => {
       req.once('data', () => {
         // 等 Mockttp 的 body-data 攒批（20ms）投递到 Capture 后再结束响应。
@@ -1239,15 +1237,17 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       });
       expect(status).toBe(413);
 
-      await expect
-        .poll(() => recordingCaptureService.exchanges[0]?.state, { timeout: 5_000 })
-        .toBe('completed');
+      await expect.poll(() => recordingCaptureService.exchanges[0]?.responseBody?.blobHash).toBeDefined();
+      await expect.poll(() => recordingCaptureService.exchanges[0]?.state).toBe('completed');
+      expect(request!.writableEnded).toBe(false);
+      expect(request!.destroyed).toBe(false);
       const exchange = recordingCaptureService.exchanges[0];
       // 前提：确实观察到了已上传的字节，否则本用例没有覆盖到目标路径。
       expect(exchange?.requestBytes).toBeGreaterThan(0);
       // 回归点：已上传的部分必须 finalize 并绑定 body 引用，而不是被丢弃。
       expect(exchange?.requestBodyId).toBeDefined();
       expect(exchange?.requestBody?.blobHash).toBeDefined();
+      expect(exchange?.statusCode).toBe(413);
     } finally {
       request?.destroy();
       await origin.close();
