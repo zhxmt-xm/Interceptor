@@ -1,7 +1,7 @@
 # Feature: Manual Acceptance Playground
 
-> 最后更新：2026-09-02
-> 状态：**[代码完成 · 待Developer人工验收] App式双页面、39项Capture Lab integration、Browser CORS、MCP人工工作台与自动防回归已完成；Capture真实Electron为代表性2/39，24项Tool人工结论为0/24。**
+> 最后更新：2026-09-09
+> 状态：**App式双页面、39项Capture Lab integration、Browser CORS、MCP人工工作台与既定自动验证已完成；Capture真实Electron为代表性2/39，其余自动覆盖单独跟踪。用户后续自行查看，不另列人工验收待办或交付门禁。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -315,7 +315,7 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 自动测试不得把Tool标记为人工Pass，也不替代Developer逐项点击、查看完整详情和验证产品副作用。
 真实Electron workflow仍负责证明Browser → Main → Core链路和退出销毁；Playground自身不伪装成产品E2E。
 
-Tool自动主线完成后先执行24项Developer人工矩阵；随后另立Capture E2E收敛阶段，按HTTP、Bodies、Encoding、
+Capture E2E收敛是独立自动验证工作，不依赖人工矩阵；按HTTP、Bodies、Encoding、
 WebSocket、gRPC、TLS六组复用正式Playground的同一场景目录和流量库，不强制每条workflow经过Browser。
 验证Playground页面时通过公开UI运行；其余可直接使用Node流量API。E2E复用场景ID、默认Draft与流量发生器，
 但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个39项巨型workflow。
@@ -354,11 +354,10 @@ Main/Renderer日志、PID/listener销毁metadata，以及Playground子进程输�
 8. **[已完成]** 将Capture Lab扩展到当前完整协议、正文、编码、WebSocket、gRPC、TLS与生命周期场景；
 9. **[已完成]** 增加24项人工recipe、手工状态与脱敏证据导出；
 10. **[已完成]** 完成typecheck/build、Browser CORS integration、MCP与Capture Lab真实Electron E2E及销毁检查；
-11. **[已完成]** 同步platform现状、Inventory、Handover和根README命令；
-12. **[待Developer人工验收]** 按页面recipe逐项执行24项Tool并导出脱敏报告。
+11. **[已完成]** 同步platform现状、Inventory、Handover和根README命令。
 
 ## 11. 与当前实现的差异
 
-- 24项Tool尚未由Developer逐项完成Ask/Auto、invalid、disabled、cancellation与产品副作用人工矩阵；
+- Capture真实Electron覆盖2/39，其余37项尚未取得逐场景自动验证证据；用户自行查看不替代或新增自动测试结论。
 - 当前VS Code `1.135.0`仍使用`2025-11-25`，产品决定不支持legacy；真实Host canary等待Host升级，
   不阻塞最新协议Playground建设。

@@ -684,21 +684,21 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
     最后验证CA信任、WinINet、journal、进程和8888全部恢复。
 
 <a id="certificate-tool-acceptance"></a>
-### 7.4 证书 Tool 契约（六项已验收，Manager blocked）
+### 7.4 证书 Tool 契约（保留七项Tool，管理员MMC原生验收排除）
 
-- 2026-09-09：六项证书生命周期/查看已完成真实Agent/MCP、Explorer/Viewer关窗与双代恢复；仅Manager的独立原生流程仍blocked。
+- 2026-09-09：六项证书生命周期/查看已完成真实Agent/MCP、Explorer/Viewer关窗与双代恢复；Manager实现、逻辑测试与UI/parity保留，管理员MMC原生验收按用户明确要求排除，不再阻塞。
     - `settings.tools.certificates`为1/1 Green（54.2s，Runner总计55.9s）；两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
     - 六项Agent/MCP成功调用、各六次Deny、受信任重生成拒绝、四次原生窗口打开/关闭、十二项入口撤权及重启Model请求增量0通过。
     - 完整Root指纹集合恢复，测试CA信任和材料自动清理；WinINet/journal恢复、8888释放、成功profile删除，无MMC残留。
     - trace、两代metadata与日志归档在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`，SHA-256为`B7939C70D90485DB94E61BB943BBD520C4E00CAF7393AE3E92A2DF9261F401EC`。
     - 关窗时保持置顶直到确认句柄消失，再在finally释放；旧实现过早释放置顶。空目录Explorer三次连续验证及上述真实流程均通过，一次性脚本已删除。
-- 本提交包含六项registry、Main命令与IPC共用方法；Manager接线仍保留在worktree。此前owner50/50、摘要64/64、Tools431/431、Desktop721/721、MCP32/32与全workspace类型结果仍适用，本轮Desktop typecheck再次通过。
+- 七项registry、Main命令与IPC共用方法已接线；此前owner50/50、摘要64/64、Tools431/431、Desktop721/721、MCP32/32与全workspace类型结果仍适用，本轮Desktop typecheck再次通过。
     - 前置unit日志在TEMP下`interceptor-certificates-owner-red-20260908.log`；真实Red证据在`interceptor-certificates-discovery-red-20260908.zip`。
     - Explorer与系统证书查看器已在真实Agent流程打开、鼠标关闭并验证句柄消失；Win11 Explorer未暴露`AutomationId="Close"`，驱动使用系统标题栏Close几何，按本轮句柄/进程代际确认所有权，不依赖证书文件在清理后仍存在。
     - MMC的标题栏查询返回Win32 `5`（Access denied），窗口enabled但关闭按钮坐标全0；单独Manager真实调用同样复现，日志在TEMP下`interceptor-certificates-mmc-inspection-20260908.log`。需要具备目标窗口访问权限的E2E Runner，不能绕过权限或跳过原生窗口验收。
-    - 窗口与CA清理分别执行；六项已完成最终恢复。Manager不生成CA，其MCP、双代重启及原生关闭仍待有权限的Runner执行，不计入完整自动验收。
+    - 窗口与CA清理分别执行；六项已完成最终恢复。旧Manager脚本在关窗失败后未执行后续MCP及双代重启；2026-09-09用户确认按下方Manager专属范围调整，原失败证据保留，不计入已完成验收。
     - 七项摘要经历7条Red后Green，三条窗口请求文案经历3条Red后15语言完整；与AppContainer合并后的摘要64/64、Tools431/431、Desktop721/721、MCP32/32及全workspace typecheck通过。
-    - 证书专项parity28 views / 168 targets全部匹配、0 missing/flagged、最大0.5px；其中六项为24 views / 144 targets，随本提交保留24张新图；Manager四张及含Manager行的两张能力表图留在worktree。此前Windows package、artifact audit及smoke仍适用，产品和设计未再变化；这些结果不替代Manager独立E2E。
+    - 证书专项parity28 views / 168 targets全部匹配、0 missing/flagged、最大0.5px；其中六项为24 views / 144 targets。此前Windows package、artifact audit及smoke仍适用，产品和设计未再变化；这些结果不替代Manager独立E2E。
 - 七项均为`change`，只接受空对象，拒绝路径、证书字节、私钥、指纹覆盖或任意外部程序参数；不增加Preload API。
 
 | Tool | Main命令与共用方法 | 结果 |
@@ -709,7 +709,7 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 | `settings_delete_certificate` | `settings.certificate.delete` / `deleteCertificate()` | 公开证书状态 |
 | `settings_reveal_certificate` | `settings.certificate.reveal` / `revealCertificate()` | `{ requested: true }` |
 | `settings_view_certificate` | `settings.certificate.view` / `viewCertificate()` | `{ requested: true }` |
-| `settings_open_certificate_manager` | 产品入口已有，Tool接线未提交，MMC权限验收blocked | 目标为`{ requested: true }` |
+| `settings_open_certificate_manager` | `settings.certificate-manager.open` / `openCertificateManager()` | `{ requested: true }` |
 
 - 公开证书状态固定为`present/trusted/supported/mitmEnabled/fingerprint/subject/createdAt/expiresAt`；不返回`path`、私钥或helper输出。
 - IPC、Agent与MCP调用同一个Main业务方法；四项状态操作完成后同步Core并广播既有`tlsSettingsChanged`，已挂载Certificates面板必须即时更新。
@@ -718,8 +718,21 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 - Reveal/View要求当前证书存在；Manager不依赖当前CA。三项只请求正式系统窗口，`requested`不冒充已完成窗口交互或信任修改。
 - Generate与Delete标记为destructive；七项均不开放任意网络或程序执行。Ask摘要只使用操作名和公开状态，Deny、审批前取消及撤权不产生副作用。
 - Windows UAC或macOS Authorization沿产品现有路径；不改授权策略。开始写入前检查取消，已开始的操作完成Core同步与通知，不伪造回滚成功。
-- 真实验收分为`settings.tools.certificates`六项生命周期/查看与`settings.tools.certificate-manager`单项MMC，两者各自覆盖Agent/MCP、Ask/Auto、撤权、重启零重放及完整宿主恢复；只有前者生成/安装测试CA。
-- Manager的权限阻塞不阻止六项独立验证，但必须继续保留Manager完整验收，不能将其移除或计为通过。
+- `settings.tools.certificates`六项生命周期/查看继续保留Agent/MCP、Ask/Auto、撤权、重启零重放及完整CA/宿主恢复的真实E2E；Manager仅排除下方明确的管理员MMC原生验收，不改变其他功能门禁。
+
+<a id="certificate-manager-acceptance"></a>
+#### Manager验收范围（2026-09-09用户明确排除管理员MMC）
+
+- 职责仅为通过`openCertificateManager()`请求打开外部系统管理器；Windows为`certmgr.msc`，macOS为Keychain Access。`{ requested: true }`表示启动请求成功，不表示读写证书或窗口清理成功。
+- 单元/集成测试覆盖空参数与非法输入、Agent/MCP授权和审批、撤权、取消、共用Main方法调用、启动错误与安全返回值。
+- 不做需要管理员权限的MMC原生打开、关闭和进程清理验收；不再要求“至少一次”或管理员终端。删除`settings.tools.certificate-manager`原生workflow及专用辅助代码，不测试MMC内部功能。
+- Manager Tool、Main/IPC/Agent/MCP调用、UI摘要、语言、设计/parity及Playground recipe全部保留。其他六项证书完整真实E2E，以及通用Agent/MCP授权、取消、持久化和重启测试全部保留。
+- MMC原生专项是用户明确排除项，不记为passed，也不再作为blocked或交付前置条件；不能把其余逻辑测试改称MMC真实E2E通过。
+- 生产保持`asInvoker`，不修改UAC或token、不自动提权，不增加人工等待模式；取消的是测试要求，不是产品打开系统管理器的行为。
+- 2026-09-09相关逻辑回归通过：证书owner50/50、MCP专项及registry31/31、Agent适配器22/22、动态授权10/10、Session审批/Auto/取消与持久化integration36/36；Tools、MCP、Desktop typecheck通过。MCP新增11项Manager适配器用例，Agent新增Manager发现/撤权用例；历史发现缺失的Red和其他六项真实E2E证据保持。
+- 删除MMC专项后，六项真实E2E复跑1/1 Green：两代Main/Core `14248/2888`、`39644/4212`均正常销毁，CA/Root/WinINet/journal恢复，8888释放、MMC无残留。证据为TEMP下`interceptor-certificates-keep-six-green-20260909-142011.zip`，SHA256 `C433C0B4A6A61821F3A437FF22740F6E3F30CDD3784ACBB41CD899A700BC3F7B`。
+- 按用户约定范围，Tool主线69/69已验证：68项保留真实E2E，Manager原生专项排除；用户后续自行查看，不另列人工验收待办或交付门禁。逻辑日志在TEMP下`interceptor-manager-logic-20260909.log`、`interceptor-manager-focused-regression-20260909.log`和`interceptor-manager-session-approval-20260909.log`。
+- 历史权限证据保留：Runner为Medium（8192）、MMC为High（12288），UIAccess=0；归档`interceptor-manager-integrity-evidence-20260909-132627.zip`及`interceptor-certificates-mmc-access-denied-20260908.zip`不代表新的通过结果。旧MMC进程`26600`随后已退出，旧CA残留已通过正式UI恢复，详见前一节历史证据。
 
 <a id="app-container-tool-acceptance"></a>
 ### 7.5 AppContainer Tool 契约（自动验收完成）

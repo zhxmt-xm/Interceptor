@@ -878,6 +878,7 @@ export const fakeInterceptorFixture = {
             { name: 'settings_delete_certificate', title: 'Delete Root CA', description: 'Uninstall any current Root CA trust, then delete its local certificate material.', kind: 'change' },
             { name: 'settings_reveal_certificate', title: 'Reveal Root CA', description: 'Reveal the existing public Root CA in the system file manager.', kind: 'change' },
             { name: 'settings_view_certificate', title: 'View Root CA', description: 'Open the existing public Root CA in the system certificate viewer.', kind: 'change' },
+            { name: 'settings_open_certificate_manager', title: 'Open certificate manager', description: 'Open the system certificate manager without changing certificate trust.', kind: 'change' },
             { name: 'settings_get_tls_insecure_hosts', title: 'Insecure TLS hosts', description: 'Read configured hosts that skip upstream TLS certificate verification.', kind: 'query' },
             { name: 'settings_get_tls_passthrough', title: 'TLS passthrough settings', description: 'Read TLS passthrough host patterns and their current revision.', kind: 'query' },
             { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
@@ -2462,6 +2463,10 @@ export function installFakeInterceptor({
       settings_view_certificate: {
         description: 'Open the existing public Root CA in the system certificate viewer.',
         effect: 'View Root CA\nRoot CA present: true\nRoot CA trusted: false', arguments: {}, value: { requested: true },
+      },
+      settings_open_certificate_manager: {
+        description: 'Open the system certificate manager without changing certificate trust.',
+        effect: 'Open certificate manager\nRoot CA present: false\nRoot CA trusted: false', arguments: {}, value: { requested: true },
       },
       settings_set_language: {
         description: 'Apply and remember the selected UI language without changing other settings.',

@@ -198,7 +198,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 <a id="settings-tools-certificates"></a>
 ## `settings.tools.certificates`
 
-**状态**：passed；六项Agent/MCP、Explorer/Viewer真实关窗及双代清理通过；Manager单项仍待原生权限验收
+**状态**：passed；六项Agent/MCP、Explorer/Viewer真实关窗及双代清理通过；Manager管理员MMC原生专项按用户要求排除
 **策略**：native-ui + privileged UI；Windows；host-safety-guard；两代Electron
 
 ### Steps
@@ -224,16 +224,47 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 
 ### 证据
 
+- 2026-09-09删除MMC原生专项后，本条复跑1/1 Green；两代Main/Core `14248/2888`、`39644/4212`均`gracefulDestroyVerified=true`，Root/CA/WinINet/journal恢复，8888释放、MMC无残留。最新归档为TEMP下`interceptor-certificates-keep-six-green-20260909-142011.zip`，SHA256 `C433C0B4A6A61821F3A437FF22740F6E3F30CDD3784ACBB41CD899A700BC3F7B`。
 - 2026-09-09最终Green：本条1/1（54.2s，Runner总计55.9s），两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
 - 六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Explorer/Viewer打开关闭、十二项入口撤权及重启零重放通过；Root集合、WinINet/journal恢复、8888释放，成功profile删除。
 - 原关窗驱动在鼠标事件处理前立即释放置顶；改为等待句柄消失后释放，空目录三次连续关窗与真实流程均通过。一次性检查脚本已删除，未修改产品或Windows权限。
-- 完整证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`；Manager的Win32访问拒绝继续由未提交的独立workflow验收，不以本条通过替代。
-- 2026-09-08：原合并workflow在MMC关闭处被Win32权限拒绝，后面的MCP及重启尚未执行。现将六项生命周期/查看与Manager独立验收，原始Red和失败证据继续保留，不减少任何Tool的要求。
+- 前次完整证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`；Manager管理员MMC原生要求现已由用户排除，不以本条通过冒充该专项通过。
+- 2026-09-08历史：原合并workflow在MMC关闭处被Win32权限拒绝，后面的MCP及重启当时尚未执行，随后拆分验收；原始Red和失败证据继续保留，当前边界以下方用户最新约定为准。
 - 原生窗口失败与CA清理已隔离，最新完整尝试Root指纹集合恢复、8888释放；此前一次CA残留通过保留profile及正式UI自动恢复1/1，证据在TEMP下`interceptor-certificates-profile-recovery-20260908.zip`。一次性辅助诊断/恢复流程已删除，不作为永久测试。
 - 原七项发现缺失的Red覆盖本六项；不能把selector、UAC、构建或环境失败算产品Red。
 - Green记录六项Agent/MCP调用、公开身份、受信任重生成拒绝、面板同步、Explorer/Viewer及其关闭、撤权和重启零重放。
 - 保留两代`gracefulDestroyVerified=true`及Root指纹集合前后相同的证据；不记录私钥、Token、实际证书路径或完整代理配置。
 - 外部授权或原生窗口交互若确实不可用，记录具体失败和人工恢复方式，不把只读查询或单元测试当成完整验收。
+
+<a id="settings-tools-certificate-manager"></a>
+## MMC 原生验收排除说明
+
+**状态**：用户明确排除管理员MMC原生验收；不是passed，不再blocked
+**策略**：保留Tool与逻辑测试，不注册MMC原生workflow
+
+### 逻辑验证
+
+- 单元/集成测试覆盖参数、Agent/MCP授权、Ask/Auto审批、撤权、取消、共用Main调用、启动错误和`{ requested: true }`返回值。
+- 当前相关回归为证书owner50/50、MCP专项及registry31/31、Agent适配器22/22、动态授权10/10、Session审批/Auto/取消与持久化integration36/36；Tools、MCP、Desktop typecheck通过。
+- 以上逻辑不要求逐分支打开真实MMC；通用Agent/MCP持久化、重启和零重放覆盖继续保留。
+- 本条不测MMC自身功能，不读写证书；生成、安装、卸载、删除证书的完整真实E2E不变。
+
+### 排除边界
+
+- 2026-09-09用户明确：需要管理员权限的MMC就不做了，其他keep。不再安排一次或多次真实MMC打开、关闭和进程清理，也不要求管理员终端或人工等待。
+- `settings.tools.certificate-manager`原生workflow和专用MMC输入/进程辅助代码已删除；不使用`test.skip`冒充通过。
+- Manager Tool、Main/IPC/Agent/MCP调用、公开结果、UI摘要、语言、parity和recipe全部保留。
+- `settings.tools.certificates`六项真实Agent/MCP流程、Reveal/View原生窗口与完整退出恢复，以及通用授权/重启测试全部保留。
+
+### 证据
+
+- 原生MMC要求已明确排除，不登记新的原生Green；历史失败证据保留，但不再作为Manager交付门禁。
+- 逻辑日志在TEMP下`interceptor-manager-logic-20260909.log`、`interceptor-manager-focused-regression-20260909.log`及`interceptor-manager-session-approval-20260909.log`；不冒充新原生Green。
+- 原七项发现缺失的真实Red继续保留，不回滚或伪造新的Red；范围调整不改变产品API或Windows授权。
+- MMC的`WM_GETTITLEBARINFOEX`返回`messageError=5`、`enabled=true`、Close bounds全0，独立Manager诊断已复现。原trace和日志在TEMP下`interceptor-certificates-mmc-access-denied-20260908.zip`。
+- 2026-09-09实测Runner为Medium、MMC为High且Runner UIAccess=0；DWM可读取按钮区域，但不能据此绕过UIPI模拟输入限制。
+- 不修改UAC或token、不自动提权、不删除Tool；取消的是管理员MMC专项要求，不把其余六项Green冒充本条原生验收。
+- 不再提供或执行管理员MMC恢复命令；保留的六项入口为`npm.cmd run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.certificates "`。
 
 <a id="settings-tools-app-containers"></a>
 ## `settings.tools.app-containers`
@@ -258,7 +289,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 - 2026-09-08最终关联8/8 Green，共14代`gracefulDestroyVerified=true`；本条两代Main/Core为`49008/19980`、`16136/46764`。
 - Agent/MCP四项Ask Deny/Allow与Auto、单项/批量范围、独立撤权、挂载UI和typed摘要均通过；每轮Auto使用真实新Chat并重新发现，未修改产品上下文规则。
 - 完整exemption集合hash在finally恢复，枚举外SID不变；重启Model请求增量0、WinINet/journal及8888恢复，成功profile删除。证据归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`。
-- 这次2026-09-08关联运行使用69项registry、138个授权开关的worktree，记录不等于已提交数量；Manager的独立MMC验收仍blocked，不由本条或packaged smoke代替。
+- 这次2026-09-08关联运行使用69项registry、138个授权开关的worktree，记录不等于当时已提交数量；Manager管理员MMC专项随后由用户明确排除，不由本条或packaged smoke冒充通过。
 - Red只能来自四项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
 - Green记录四项Agent/MCP调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
 - 初始与最终完整exemption集合hash必须相同，枚举外SID保持不变；不保存完整机器SID清单、helper路径、凭据或代理配置。

@@ -11,6 +11,7 @@ export interface MainToolResultPayloads {
   'settings.certificate.delete': MainToolResultPayloads['settings.certificate.status'];
   'settings.certificate.reveal': { requested: true };
   'settings.certificate.view': { requested: true };
+  'settings.certificate-manager.open': { requested: true };
   'settings.language.set': { language: string };
   'settings.theme.set': { theme: 'warm' | 'light' | 'ember' | 'dark' };
   'settings.export-privacy-defaults.set': { maskAuthorization: boolean; maskCookies: boolean; warnBeforeUnmasked: boolean };

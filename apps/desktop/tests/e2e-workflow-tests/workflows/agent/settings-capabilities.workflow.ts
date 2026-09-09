@@ -79,6 +79,7 @@ const TOOL_NAMES = [
   'settings_delete_certificate',
   'settings_reveal_certificate',
   'settings_view_certificate',
+  'settings_open_certificate_manager',
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
@@ -200,13 +201,13 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     )), TOOL_GROUP_AUTOMATION_PREFIX);
     expect(groupIds).toEqual(TOOL_GROUP_IDS);
 
-    // 业务断言：fresh profile的68行、136个Agent/MCP开关必须全部开启。
-    // Business assertion: all 136 Agent/MCP switches across 68 fresh-profile rows start enabled.
+    // 业务断言：fresh profile的69行、138个Agent/MCP开关必须全部开启。
+    // Business assertion: all 138 Agent/MCP switches across 69 fresh-profile rows start enabled.
     const switches = getByAutomationId(
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(136);
+    await expect(switches).toHaveCount(138);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -289,7 +290,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(136);
+    await expect(restoredSwitches).toHaveCount(138);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

@@ -57,6 +57,11 @@ const TOOL_CONTENT = {
     effect: 'Open the existing public Root CA in the system certificate viewer.\nView Root CA\nRoot CA present: true\nRoot CA trusted: false',
     result: 'Certificate viewer requested',
   },
+  settings_open_certificate_manager: {
+    description: 'Open the system certificate manager without changing certificate trust.',
+    effect: 'Open the system certificate manager without changing certificate trust.\nOpen certificate manager\nRoot CA present: false\nRoot CA trusted: false',
+    result: 'Certificate manager requested',
+  },
   capture_export_archive: {
     description: 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.',
     effect: 'Save a complete Capture snapshot including bodies, credentials and native evidence without redaction; starting the job does not mean it has completed.\nExport the complete Capture snapshot, including bodies, credentials and native evidence without redaction.\nChoose the destination using the native Save Dialog.',

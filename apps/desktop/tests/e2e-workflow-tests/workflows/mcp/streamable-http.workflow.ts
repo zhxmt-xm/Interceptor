@@ -378,7 +378,7 @@ test('mcp.desktop.streamable-http connects external Hosts with stable manual cre
     protocolVersion = client.getNegotiatedProtocolVersion() ?? null;
     expect(protocolVersion).toBe('2026-07-28');
     const initialToolNames = (await client.listTools()).tools.map((tool) => tool.name);
-    expect(initialToolNames).toHaveLength(68);
+    expect(initialToolNames).toHaveLength(69);
     expect(initialToolNames.every((name) => (
       /^(capture|rules|composer|breakpoints|diagnostics|settings)_/.test(name)
     ))).toBe(true);

@@ -78,6 +78,33 @@ function discoveredHistory(
 }
 
 describe('AgentToolService', () => {
+  it('routes the disclosed certificate manager to Main and rejects the same Tool after revocation', async () => {
+    const fakeCoreRuntime = new FakeCoreRuntime();
+    const fakeToolCapabilitySettingsService = new FakeToolCapabilitySettingsService();
+    const invokeMain = vi.fn(async (command: { type: string }, _abortSignal: AbortSignal) => ({
+      type: command.type, payload: { requested: true, path: 'C:\\private\\certmgr.msc' },
+    }) as never);
+    const agentToolService = new AgentToolService(
+      fakeCoreRuntime, fakeToolCapabilitySettingsService, () => undefined, () => undefined, () => undefined, invokeMain,
+    );
+    const abortSignal = new AbortController().signal;
+    const discovery = await tool(agentToolService.snapshot([]), 'discover_tools')
+      .execute({ capabilityId: 'settings' }, { abortSignal });
+    const history = discoveredHistory(discovery, 'settings');
+    const manager = tool(agentToolService.snapshot(history), 'settings_open_certificate_manager');
+    expect(manager.kind).toBe('change');
+
+    await expect(manager.execute({}, { abortSignal })).resolves.toEqual({ ok: true, value: { requested: true } });
+    expect(invokeMain).toHaveBeenCalledExactlyOnceWith({ type: 'settings.certificate-manager.open', payload: {} }, abortSignal);
+    expect(fakeCoreRuntime.commands).toEqual([]);
+
+    fakeToolCapabilitySettingsService.agentDisabledToolNames = ['settings_open_certificate_manager'];
+    expect(agentToolService.snapshot(history).tools.some((entry) => entry.descriptor.name === 'settings_open_certificate_manager'))
+      .toBe(false);
+    await expect(manager.execute({}, { abortSignal })).resolves.toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
+    expect(invokeMain).toHaveBeenCalledTimes(1);
+  });
+
   it('routes the six Settings queries through Main or Core and revokes disclosed calls', async () => {
     const fakeCoreRuntime = new FakeCoreRuntime();
     fakeCoreRuntime.results.set('tls.getInsecureHosts', {

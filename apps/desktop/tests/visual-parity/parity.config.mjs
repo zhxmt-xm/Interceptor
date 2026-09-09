@@ -1005,7 +1005,7 @@ export const views = [
       }))),
       ...[
         'settings_generate_certificate', 'settings_install_certificate', 'settings_uninstall_certificate',
-        'settings_delete_certificate', 'settings_reveal_certificate', 'settings_view_certificate',
+        'settings_delete_certificate', 'settings_reveal_certificate', 'settings_view_certificate', 'settings_open_certificate_manager',
       ].flatMap((name) => ['pending', 'allowed'].map((approval) => ({
         id: `certificate-tools-${name}-${approval}${suffix}`,
         theme, agentModels: 'configured', agentSessionState: `certificates-settings-${name}-${approval}`,
@@ -1496,7 +1496,7 @@ export const views = [
             'settings_get_core_process_status', 'settings_get_system_proxy_status',
             'settings_get_certificate_status', 'settings_generate_certificate', 'settings_install_certificate',
             'settings_uninstall_certificate', 'settings_delete_certificate', 'settings_reveal_certificate',
-            'settings_view_certificate', 'settings_get_tls_insecure_hosts',
+            'settings_view_certificate', 'settings_open_certificate_manager', 'settings_get_tls_insecure_hosts',
             'settings_get_tls_passthrough', 'settings_list_app_containers', 'settings_enable_app_container',
             'settings_disable_app_container', 'settings_enable_all_app_containers', 'settings_disable_all_app_containers',
           ].map((name) => ({

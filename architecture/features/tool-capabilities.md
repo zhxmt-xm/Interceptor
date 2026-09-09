@@ -3,12 +3,12 @@
 > 最后更新：2026-09-09
 > 代码所有者：`packages/interceptor-tools/`
 > 使用方：内置 `AgentRuntime`、外部 MCP Server
-> 当前状态：完整目标共69项，已提交代码68/69，完整自动验收68/69；六项证书生命周期/查看已完成真实Agent/MCP与双代清理，仅证书Manager的MMC原生关闭权限仍blocked。Capture17项、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项与Settings二十五项已完成真实自动验收。首批24项共享registry、MCP adapter、
+> 当前状态：完整目标共69项，代码及用户约定范围验证69/69；68项完整真实E2E保持，Manager需要管理员权限的MMC原生验收明确排除，Tool、逻辑测试及UI/parity保留，不再因MMC阻塞。Capture17项、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项与Settings二十五项已完成真实自动验收；人工查看由用户自行安排，不列待办或交付门禁。首批24项共享registry、MCP adapter、
 > Desktop Agent接线、owning executor正向unit与真实Agent/MCP调用均为24/24。Settings中的Tool授权开关已完成，
-> 已提交Settings代码25/26、完整自动验收25/26；Manager不以unit或parity替代原生E2E。Playground
-> 已提交recipe为68/68、Developer人工结论为0/68；Capture Lab integration覆盖39/39，真实Electron覆盖2/39。
+> Settings代码26/26、完整自动验收25/26；Manager不以unit或parity替代原生E2E。Playground
+> recipe为69/69；不代填人工结论。Capture Lab integration覆盖39/39，真实Electron覆盖2/39，剩余自动覆盖单独跟踪。
 
-当前目录共69个目标Tool，名称全部唯一。已提交registry为68项且均完成自动验收，Manager单项代码留在worktree；每行“当前进度”
+当前目录共69个目标Tool，名称全部唯一。当前worktree已注册69项，其中68项完成自动验收；每行“当前进度”
 区分代码接线与验收结果。新增、删除或拆分Tool时必须同步更新数量并重新检查重名。
 
 2026-09-07按用户决定移除Updates四项目标；Updates仅保留产品功能，不注册为Tool。此前验收记录中的73项目标为历史口径。
@@ -20,8 +20,8 @@
 | Composer | 6 | 6 | 0 | 0 |
 | Breakpoints | 11 | 11 | 0 | 0 |
 | Diagnostics | 4 | 4 | 0 | 0 |
-| Settings | 26 | 25 | 0 | 1 |
-| 合计 | 69 | 68 | 0 | 1 |
+| Settings | 26 | 25 | 1 | 0 |
+| 合计 | 69 | 68 | 1 | 0 |
 
 ## 1. 唯一目录
 
@@ -60,8 +60,8 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 
 ### Main共享入口审计（2026-09-07）
 
-- 已提交的`invokeMainTool`注册34个Main命令，Agent与MCP共用，IPC单独注册handler。
-- 原24项共享方法保持；证书新增6项、AppContainer新增4项沿同一规则实现，当前已提交代码68/69、完整自动验收68/69。
+- 当前worktree的`invokeMainTool`注册35个Main命令，Agent与MCP共用，IPC单独注册handler。
+- 原24项共享方法保持；证书新增7项、AppContainer新增4项沿同一规则实现，当前代码及约定范围验证69/69，包含68项真实E2E和排除管理员MMC原生专项的Manager。
 - HAR与Archive导入/导出已通过完整自动验收，不要求所有IPC都开放为Tool。
 
 | 类别 | Main命令 | 当前业务入口 |
@@ -70,6 +70,7 @@ GitHub公开后不再需要GitHub身份Tool，因此完整目标目录删除`get
 | 已共享，2项 | `settings.system-proxy.enable`、`settings.system-proxy.restore` | 同一系统代理操作队列与启用/恢复方法，冷启动语义不变 |
 | 已共享，4项 | `settings.tls-insecure-hosts.replace`、`settings.tls-passthrough.replace`、`settings.https-decryption.enable`、`settings.https-decryption.disable` | 同一Main配置/启停方法；TLS真实清理及宿主恢复已验收 |
 | 已共享，6项 | `settings.certificate.generate/install/uninstall/delete/reveal/view` | IPC/Agent/MCP共用证书生命周期及查看方法；真实调用、原生关闭与双代清理已验收 |
+| 已接线并验证，1项 | `settings.certificate-manager.open` | Manager实现、逻辑测试及UI/parity通过；管理员MMC原生专项按用户要求排除 |
 | 已共享，4项 | `settings.app-container.enable/disable`、`settings.app-containers.enable-all/disable-all` | 同一Main单项/批量方法、原生helper和全局变更通知；真实Agent/MCP与双代恢复已验收 |
 | 已共享，2项 | `rules.import`、`composer.collection.import` | 同一导入Service与产品预览确认生命周期；Tool适配安全结果 |
 | 已共享，2项 | `diagnostics.export`、`capture.har.export` | 同一原生Save与Core任务启动函数，HAR真实验收已通过 |
@@ -253,7 +254,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_delete_certificate` | change | `deleteCertificate` / 必要时 UAC | Agent/MCP、先卸载信任再删除材料已验收 |
 | `settings_reveal_certificate` | change | `revealCertificate` | Agent/MCP、Explorer真实打开关闭及重启零重放已验收 |
 | `settings_view_certificate` | change | `viewCertificate` | Agent/MCP、Viewer真实打开关闭及重启零重放已验收 |
-| `settings_open_certificate_manager` | change | `openCertificateManager` | 产品入口保留；Tool接线未提交，MMC原生关闭权限blocked |
+| `settings_open_certificate_manager` | change | `openCertificateManager` | 代码、逻辑覆盖与UI/parity保留；管理员MMC原生专项明确排除 |
 | `settings_get_tls_insecure_hosts` | query | `getInsecureHosts` / `tls.getInsecureHosts` | 共享 registry + MCP adapter + Agent；真实E2E完成 |
 | `settings_replace_tls_insecure_hosts` | change | `setInsecureHosts` / `tls.replaceInsecureHosts` | 真实E2E及最终CA清理已完成 |
 | `settings_enable_https_decryption` | change | `setHttpsDecryption(true)` | 真实E2E及最终CA清理已完成 |
@@ -269,7 +270,7 @@ Agent与MCP E2E必须先用Rules/WebSocket正式UI和真实客户端产生pendin
 | `settings_set_theme` | change | `setUiTheme` / `UiPreferencesService.setTheme` | 已完成；四主题、原UI/Agent/MCP和重启持久化 |
 | `settings_set_export_privacy_defaults` | change | `setExportPrivacyDefaults` / `UiPreferencesService.setExportPrivacyDefaults` | 已完成；三个显式boolean、连续单字段合并与已开HAR草稿隔离 |
 
-## 4. 当前68项实现矩阵
+## 4. 当前69项实现矩阵
 
 这里的“正向executor unit”只计算`packages/interceptor-tools` owning test真实执行该Tool的成功路径；MCP或Agent
 adapter测试不能代替owner测试。“真实调用”必须经过真实Electron中的Agent或MCP入口、共享executor与Core，
@@ -329,6 +330,7 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 | `settings_delete_certificate` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `settings_reveal_certificate` | 已完成 | 已完成 | Agent + MCP及原生关闭已完成 |
 | `settings_view_certificate` | 已完成 | 已完成 | Agent + MCP及原生关闭已完成 |
+| `settings_open_certificate_manager` | 已完成 | 已完成 | 管理员MMC原生专项由用户排除；Agent/MCP逻辑覆盖通过，不冒充真实开关窗Green |
 | `settings_get_tls_insecure_hosts` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `settings_get_tls_passthrough` | 已完成 | 已完成 | Agent + MCP已完成 |
 | `settings_list_app_containers` | 已完成 | 已完成 | Agent + MCP已完成 |
@@ -349,11 +351,11 @@ adapter测试不能代替owner测试。“真实调用”必须经过真实Elect
 ## 5. 实施顺序与阶段门禁
 
 Tool不按“只读产品版”和“完整产品版”切成两套。完整交付目标是69项，首批24项完成只代表一个阶段完成。
-2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、TLS四项、偏好三项、AppContainer四项、证书生命周期/查看六项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成，当前68/69。
+2026-09-05用户恢复执行全部计划；Settings只读六项、系统代理两项、TLS四项、偏好三项、AppContainer四项、证书生命周期/查看六项、Rules导入/导出、Collection四项、Breakpoints批量三项、Diagnostics三项、Capture任务两项、Body导出及HAR/Archive各两项均已完成真实E2E。2026-09-09 Manager保留实现与逻辑/UI验证，管理员MMC原生专项由用户明确排除，按约定范围完成69/69。
 
 ### 5.1 首批24项与独立验收
 
-以下保留首批已完成阶段和独立验收欠账；人工矩阵不是后续Tool开发的前置条件，也不代表全量Tool已交付。
+以下保留首批已完成阶段和独立自动验证欠账；用户后续自行查看，不另列人工矩阵任务或前置条件。
 
 1. **[已完成] 基础层**：设计能力列表与`ask`问询；建立24项共享registry、MCP adapter、Settings持久化、
    Agent渐进discovery；接入首批Capture query和`capture_stop_recording`，完成首个query/change真实纵向流程。
@@ -397,26 +399,25 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
    完整Parity为`210 views / 1,474 targets / 1,442 matched / 32既有missing / 303既有flagged`。本轮同时补齐前一命名重构
    遗留的旧Tool名称设计截图。Windows package、artifact audit（`1,294 files / 392,826,512 bytes`）、production audit
    0漏洞与packaged smoke`1/1` Green。
-8. **[待人工验收] Playground Tool矩阵**：自动Tool达到24/24后，Developer通过正式Playground逐项执行24项
-   recipe并导出脱敏Pass/Fail/Blocked报告；自动测试不得替代人工结论。新增Tool随各自交付同步增加recipe，
-   目前已提交68项recipe、0项Developer结论；68项已完成自动验收，仅Manager独立E2E仍blocked，人工结论独立记录。
-9. **[待实现] Capture 39项收敛**：在Tool主线与人工矩阵之后，真实Electron按HTTP、Bodies、Encoding、
+8. **[待实现] Capture 39项收敛**：作为Tool主线之外的独立自动验证工作，真实Electron按HTTP、Bodies、Encoding、
    WebSocket、gRPC、TLS六组单向启动并操作正式Playground；复用场景目录、Draft和流量发生器，Capture断言独立，
    从当前2/39收敛到39/39，不建立一个巨型workflow。
 
 每个Tool能力组都必须先更新owning feature与E2E契约，再取得unit/integration Red和真实E2E Red，随后实现并复跑
-同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到后续人工矩阵或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
+同组Green；Tool自身的真实E2E是该组完成条件，不能推迟到用户自行查看或Capture 39项收敛。没有正式产品入口的Tool先补产品intent，再复用
 该入口，不在Tool层实现第二套业务逻辑。VS Code MCP协议升级、双Host一致性、MCP进度SSE和DeepSeek线上兼容
-分别保留为外部阻塞或人工验收项。Settings只读、系统代理、TLS、偏好、AppContainer、六项证书生命周期/查看、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成。仅Manager保留真实MMC权限阻塞，不移除Tool或跳过验收。
+分别记录实际验证范围和外部限制，不再列用户人工验收任务。Settings只读、系统代理、TLS、偏好、AppContainer、六项证书生命周期/查看、Rules五项、Composer六项、Breakpoints十一项、Diagnostics四项和Capture17项已完成。Manager按下方用户明确的排除范围交付，不移除Tool，不把排除项写成真实E2E通过。
 
-### 5.2 后续45项计划（已完成44项，剩余1项）
+**Manager单项验收约定（2026-09-09用户明确排除管理员MMC）**：`settings_open_certificate_manager`及Main/Agent/MCP接线、参数/审批/撤权/取消/返回值逻辑测试、UI/parity和recipe全部保留。需要管理员权限的MMC原生打开、关闭及进程清理专项不做，已移除对应workflow和专用辅助代码，不再要求至少一次或管理员终端。该项记为用户明确排除，不冒充真实E2E passed，也不再阻塞交付；其他六项证书完整真实E2E及通用授权/重启门禁不变。详见[Manager验收范围](settings.md#certificate-manager-acceptance)。
+
+### 5.2 后续45项计划（已按约定范围完成45项）
 
 按feature逐组交付，每个工作项完成契约、测试、实现、证据和状态同步后再进入下一项；不一次性铺设空壳。
 同一feature内可按正式用户流程拆分多个工作项，不改变第3节的feature所有权和Tool名称。
 
 | 顺序 | Feature | 尚未完成验收 | 交付范围与顺序 |
 | --- | --- | ---: | --- |
-| 1 | Settings | 1 | 只读6项、系统代理2项、TLS4项、语言/主题/隐私3项、AppContainer4项及证书生命周期/查看6项已完成；Manager单项MMC原生关闭权限阻塞最终验收 |
+| 1 | Settings | 0 | 25项真实E2E完成；Manager实现、逻辑与UI/parity验证保留，管理员MMC原生专项明确排除 |
 | 2 | Rules | 0 | Export/Import均已完成；Import复用UI预览确认与原子追加，真实输入来自同workflow产品Export |
 | 3 | Composer | 0 | Collection查询/替换与Export/Import均已完成；Import复用正式确认及自动保存协调，文件输入由同workflow产品Export生成 |
 | 4 | Breakpoints | 0 | Continue queue、Drop queue、Continue rule已完成；真实HTTP/WebSocket作用范围、Ask/Auto、空目标与重启验证闭环 |
@@ -428,7 +429,7 @@ Tool不按“只读产品版”和“完整产品版”切成两套。完整交�
 
 ### 5.3 恢复执行入口
 
-2026-09-09：六项证书真实workflow `1/1` Green，两代Main/Core `47704/19820`、`35384/17472`均正常销毁，四次Explorer/Viewer开关、Agent/MCP、撤权、Root/WinINet/journal恢复通过。证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`，详见[证书验收](settings.md#certificate-tool-acceptance)。Manager已拆成独立workflow继续blocked；以下是历史阶段状态。
+2026-09-09：用户明确排除管理员MMC原生专项后，对应workflow及专用辅助代码已删除；其他实现和测试保留。149项相关逻辑测试与Tools/MCP/Desktop类型检查通过，六项证书真实E2E复跑1/1 Green，两代Main/Core `14248/2888`、`39644/4212`正常销毁，CA/Root/WinINet/journal恢复、8888释放且MMC无残留；证据为TEMP下`interceptor-certificates-keep-six-green-20260909-142011.zip`，详见[Manager验收范围](settings.md#certificate-manager-acceptance)。此前六项Green归档`interceptor-certificates-six-e2e-green-20260909-002441.zip`继续保留；以下是历史阶段状态，不代表当前仍有MMC阻塞。
 
 2026-09-08：AppContainer四项真实Agent/MCP与双代恢复完成，最终关联8/8、14代正常销毁，详见[AppContainer验收](settings.md#app-container-tool-acceptance)。证书七项代码、owner50/50、摘要与28-view parity完成；`settings.tools.certificates`仍因MMC Win32 5关闭权限blocked，详见[证书验收](settings.md#certificate-tool-acceptance)。
 
@@ -726,12 +727,12 @@ TLS清理、已启动导出与Clear及Cancel/rename提交点债务继续保留�
 
 | 事项 | 当前进度 | 顺序/解除条件 |
 | --- | --- | --- |
-| Playground人工矩阵 | 当前recipe 58/58；Developer结论0/58 | 逐项Pass/Fail/Blocked并导出脱敏报告；新增Tool同步扩充recipe，不替代TLS最终E2E与余下11项开发 |
-| Capture 39项真实Electron | Traffic Lab integration 39/39；产品E2E 2/39 | 人工Tool矩阵后按六组消费正式Playground并独立断言Capture |
+| Interceptor Capture多协议E2E | Playground已有39种流量场景，其自身integration 39/39；产品抓取/展示E2E 2/39 | 按六组产生流量并独立断言Interceptor Capture，不依赖用户人工查看，也不为流量生成器新增测试 |
 | VS Code/Copilot MCP互操作 | blocked于Host协议`2025-11-25`，产品固定`2026-07-28` | 等待VS Code升级，不增加legacy兼容 |
 | VS Code + Claude双Host一致性 | 待验收 | 当前协议Host可用后验证同时读取同一Capture |
 | MCP Streamable HTTP进度SSE | 待真实flow | 只有出现需要中间进度的正式Tool后实现并验收 |
-| DeepSeek线上兼容 | 待Developer BYOK人工验收 | 自动开发继续使用本地OpenAI-compatible lab，Key只在产品Settings输入 |
+
+人工查看由用户自行安排，不另列Playground矩阵或BYOK待办。DeepSeek线上兼容尚无真实验证证据；自动开发使用本地OpenAI-compatible lab，Key只在产品Settings输入，不代填线上通过结论。
 
 ## 7. 不注册为业务 Tool 的控制面
 

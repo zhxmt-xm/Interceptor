@@ -92,7 +92,7 @@ export type AgentToolApprovalState = 'pending' | 'allowed' | 'denied' | '';
 export type AgentToolApprovalName = 'capture_export_archive' | 'capture_import_archive' | 'capture_export_har' | 'capture_import_har' | 'capture_export_body' | 'capture_start_recording' | 'capture_stop_recording' | 'capture_clear' | 'capture_cancel_transfer_job' | 'rules_replace_tree' | 'rules_export' | 'rules_import' | 'composer_send_request' | 'composer_replace_collection' | 'composer_export_collection' | 'composer_import_collection' | 'breakpoints_continue_queue' | 'breakpoints_drop_queue' | 'breakpoints_continue_rule' | 'diagnostics_export' | 'settings_enable_system_proxy' | 'settings_restore_system_proxy' | 'settings_replace_tls_insecure_hosts' | 'settings_replace_tls_passthrough' | 'settings_enable_https_decryption' | 'settings_disable_https_decryption'
   | 'settings_set_language' | 'settings_set_theme' | 'settings_set_export_privacy_defaults'
   | 'settings_generate_certificate' | 'settings_install_certificate' | 'settings_uninstall_certificate'
-  | 'settings_delete_certificate' | 'settings_reveal_certificate' | 'settings_view_certificate'
+  | 'settings_delete_certificate' | 'settings_reveal_certificate' | 'settings_view_certificate' | 'settings_open_certificate_manager'
   | 'settings_enable_app_container' | 'settings_disable_app_container' | 'settings_enable_all_app_containers' | 'settings_disable_all_app_containers';
 export type AgentToolTraceState = 'body-messages' | 'breakpoints' | 'capture' | 'collection' | 'composer' | 'diagnostics' | 'transfer-jobs' | 'rules' | 'settings' | '';
 export type McpServerState = 'disabled' | 'running' | 'conflict';

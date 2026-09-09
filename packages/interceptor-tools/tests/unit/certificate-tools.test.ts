@@ -14,6 +14,7 @@ const CERTIFICATE_OPERATIONS = [
   { name: 'settings_delete_certificate', command: 'settings.certificate.delete', destructive: true, returnsState: true },
   { name: 'settings_reveal_certificate', command: 'settings.certificate.reveal', destructive: false, returnsState: false },
   { name: 'settings_view_certificate', command: 'settings.certificate.view', destructive: false, returnsState: false },
+  { name: 'settings_open_certificate_manager', command: 'settings.certificate-manager.open', destructive: false, returnsState: false },
 ] as const;
 
 const PUBLIC_STATE = {
@@ -29,7 +30,7 @@ function certificateTool(name: string): InterceptorToolDefinition {
 }
 
 describe('Settings certificate Tools', () => {
-  it('discovers all six certificate operations from the Settings capability', () => {
+  it('discovers all seven certificate operations from the Settings capability', () => {
     const catalog = buildInterceptorToolCatalog(buildInterceptorToolRegistry());
     const names = CERTIFICATE_OPERATIONS.map((operation) => operation.name);
 

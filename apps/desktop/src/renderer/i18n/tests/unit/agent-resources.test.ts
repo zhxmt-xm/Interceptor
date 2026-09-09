@@ -75,7 +75,7 @@ describe('Agent messages', () => {
     expect(agentToolMessages['zh-CN']['agent.tools.noParameters']).toBe('无参数');
   });
 
-  it.each(['folder', 'viewer'])('localizes the certificate %s request in every language', (target) => {
+  it.each(['folder', 'viewer', 'manager'])('localizes the certificate %s request in every language', (target) => {
     const key = `agent.tools.certificateWindow.${target}`;
     for (const language of LANGUAGE_IDS) {
       const catalog: Readonly<Record<string, string>> = agentToolMessages[language];

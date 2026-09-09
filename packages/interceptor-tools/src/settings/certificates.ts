@@ -14,6 +14,8 @@ const CERTIFICATE_OPERATIONS = [
     description: 'Reveal the existing public Root CA in the system file manager.', destructive: false },
   { name: 'settings_view_certificate', command: 'settings.certificate.view', title: 'View Root CA',
     description: 'Open the existing public Root CA in the system certificate viewer.', destructive: false },
+  { name: 'settings_open_certificate_manager', command: 'settings.certificate-manager.open', title: 'Open certificate manager',
+    description: 'Open the system certificate manager without changing certificate trust.', destructive: false },
 ] as const;
 
 export function buildCertificateTools(): readonly InterceptorToolDefinition[] {

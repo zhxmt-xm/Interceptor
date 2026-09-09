@@ -694,6 +694,10 @@ class DesktopApplication {
           await this.viewCertificate(abortSignal);
           return { requested: true };
         },
+        'settings.certificate-manager.open': async () => {
+          await this.openCertificateManager(abortSignal);
+          return { requested: true };
+        },
         'settings.app-containers.list': () => this.listAppContainers(),
         'settings.app-container.enable': (payload) => this.enableAppContainer(payload.appContainerSid, abortSignal),
         'settings.app-container.disable': (payload) => this.disableAppContainer(payload.appContainerSid, abortSignal),
@@ -1745,13 +1749,7 @@ class DesktopApplication {
     // 下按名称/指纹查找；直接查看本 CA 详情用 ca:view。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caOpenManager, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      if (process.platform === 'win32') {
-        execFile('cmd.exe', ['/c', 'start', '', 'certmgr.msc'], {
-          windowsHide: true,
-        });
-        return;
-      }
-      execFile('open', ['-a', 'Keychain Access']);
+      return this.openCertificateManager();
     });
 
     // 读取持久化的 per-host 不安全例外名单。
@@ -2719,6 +2717,18 @@ class DesktopApplication {
     await writeFile(cerPath, new X509Certificate(pem).raw);
     const error = await shell.openPath(cerPath);
     if (error && await shell.openPath(certPath)) throw new Error('Unable to open the system certificate viewer.');
+  }
+
+  private async openCertificateManager(abortSignal?: AbortSignal): Promise<void> {
+    abortSignal?.throwIfAborted();
+    await new Promise<void>((resolve, reject) => {
+      const command = process.platform === 'win32' ? 'cmd.exe' : 'open';
+      const args = process.platform === 'win32' ? ['/c', 'start', '', 'certmgr.msc'] : ['-a', 'Keychain Access'];
+      execFile(command, args, { windowsHide: true }, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
   }
 
   private async isCaTrusted(): Promise<boolean> {

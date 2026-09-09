@@ -216,6 +216,10 @@ const CURRENT_ACCEPTANCE_RECIPES = {
     ['Generate a test CA through Certificates and retain its public identity.'],
     ['Deny opens no window; Allow and Auto open the real certificate viewer for that identity.', 'The result only confirms requested=true; no private key or path is disclosed.', 'Close the test viewer, then remove test material through the product UI.'],
   ),
+  settings_open_certificate_manager: recipe(
+    ['Note any existing certificate-manager windows; no test CA is required.'],
+    ['Deny opens no window; Allow and Auto request the real system certificate manager.', 'The Tool does not modify trust and returns only requested=true.', 'Close only the manager opened by this call; an inaccessible native window is blocked, not a passed cleanup.'],
+  ),
   settings_get_tls_insecure_hosts: recipe(
     ['Add one test host in Settings > Certificates and note the existing host list.'],
     ['The returned host list matches Settings and stays unchanged after the query.', 'Remove the test host through Settings after inspection.'],

@@ -127,6 +127,7 @@ describe('McpToolRegistry', () => {
       'settings_delete_certificate',
       'settings_reveal_certificate',
       'settings_view_certificate',
+      'settings_open_certificate_manager',
       'settings_get_tls_insecure_hosts',
       'settings_get_tls_passthrough',
       'settings_list_app_containers',

@@ -401,6 +401,7 @@ describe('Agent transcript utilities', () => {
     ['settings_delete_certificate', { present: false, trusted: false, mitmEnabled: true }, { kind: 'certificateStatus', present: false, trusted: false, mitmEnabled: true }],
     ['settings_reveal_certificate', { requested: true }, { kind: 'certificateWindow', target: 'folder' }],
     ['settings_view_certificate', { requested: true }, { kind: 'certificateWindow', target: 'viewer' }],
+    ['settings_open_certificate_manager', { requested: true }, { kind: 'certificateWindow', target: 'manager' }],
     ['settings_get_tls_insecure_hosts', { hosts: ['localhost'] }, { kind: 'tlsHosts', count: 1 }],
     ['settings_replace_tls_insecure_hosts', { hosts: ['localhost'] }, { kind: 'tlsHosts', count: 1 }],
     ['settings_get_tls_passthrough', { revision: 2, hosts: ['*.example.test'] }, { kind: 'tlsPassthrough', revision: 2, count: 1 }],

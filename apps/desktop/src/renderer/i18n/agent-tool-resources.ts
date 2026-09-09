@@ -3,6 +3,7 @@ import type { LanguageId } from './languages';
 export const agentToolEnglishMessages = {
   'agent.tools.certificateWindow.folder': 'Certificate folder requested',
   'agent.tools.certificateWindow.viewer': 'Certificate viewer requested',
+  'agent.tools.certificateWindow.manager': 'Certificate manager requested',
   'agent.tools.decryption': 'HTTPS {{effective}} · Intent {{intent}} · CA {{trust}}',
   'agent.tools.proxyRestored': 'System proxy restored',
   'agent.tools.rulesExported': 'Rules exported',
@@ -71,6 +72,7 @@ export const agentToolMessages = {
   'zh-CN': {
     'agent.tools.certificateWindow.folder': '已请求打开证书目录',
     'agent.tools.certificateWindow.viewer': '已请求查看证书',
+    'agent.tools.certificateWindow.manager': '已请求打开证书管理器',
     'agent.tools.decryption': 'HTTPS {{effective}} · 意图{{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '系统代理已恢复',
     'agent.tools.rulesExported': '规则已导出',
@@ -133,6 +135,7 @@ export const agentToolMessages = {
   'zh-TW': {
     'agent.tools.certificateWindow.folder': '已要求開啟憑證目錄',
     'agent.tools.certificateWindow.viewer': '已要求檢視憑證',
+    'agent.tools.certificateWindow.manager': '已要求開啟憑證管理員',
     'agent.tools.decryption': 'HTTPS {{effective}} · 意圖{{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '系統代理已還原',
     'agent.tools.rulesExported': '規則已匯出',
@@ -195,6 +198,7 @@ export const agentToolMessages = {
   ja: {
     'agent.tools.certificateWindow.folder': '証明書フォルダーを開くよう要求しました',
     'agent.tools.certificateWindow.viewer': '証明書の表示を要求しました',
+    'agent.tools.certificateWindow.manager': '証明書マネージャーを開くよう要求しました',
     'agent.tools.decryption': 'HTTPS {{effective}} · 設定 {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'システムプロキシを復元しました',
     'agent.tools.rulesExported': 'ルールをエクスポートしました',
@@ -257,6 +261,7 @@ export const agentToolMessages = {
   ko: {
     'agent.tools.certificateWindow.folder': '인증서 폴더 열기를 요청했습니다',
     'agent.tools.certificateWindow.viewer': '인증서 보기를 요청했습니다',
+    'agent.tools.certificateWindow.manager': '인증서 관리자 열기를 요청했습니다',
     'agent.tools.decryption': 'HTTPS {{effective}} · 설정 {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': '시스템 프록시 복원됨',
     'agent.tools.rulesExported': '규칙 내보내기 완료',
@@ -319,6 +324,7 @@ export const agentToolMessages = {
   de: {
     'agent.tools.certificateWindow.folder': 'Öffnen des Zertifikatordners angefordert',
     'agent.tools.certificateWindow.viewer': 'Zertifikatanzeige angefordert',
+    'agent.tools.certificateWindow.manager': 'Öffnen der Zertifikatverwaltung angefordert',
     'agent.tools.decryption': 'HTTPS {{effective}} · Einstellung {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Systemproxy wiederhergestellt',
     'agent.tools.rulesExported': 'Regeln exportiert',
@@ -381,6 +387,7 @@ export const agentToolMessages = {
   fr: {
     'agent.tools.certificateWindow.folder': 'Ouverture du dossier de certificat demandée',
     'agent.tools.certificateWindow.viewer': 'Affichage du certificat demandé',
+    'agent.tools.certificateWindow.manager': 'Ouverture du gestionnaire de certificats demandée',
     'agent.tools.decryption': 'HTTPS {{effective}} · Intention {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy système restauré',
     'agent.tools.rulesExported': 'Règles exportées',
@@ -443,6 +450,7 @@ export const agentToolMessages = {
   es: {
     'agent.tools.certificateWindow.folder': 'Apertura de la carpeta de certificados solicitada',
     'agent.tools.certificateWindow.viewer': 'Visualización del certificado solicitada',
+    'agent.tools.certificateWindow.manager': 'Apertura del administrador de certificados solicitada',
     'agent.tools.decryption': 'HTTPS {{effective}} · Intención {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy del sistema restaurado',
     'agent.tools.rulesExported': 'Reglas exportadas',
@@ -505,6 +513,7 @@ export const agentToolMessages = {
   it: {
     'agent.tools.certificateWindow.folder': 'Apertura della cartella dei certificati richiesta',
     'agent.tools.certificateWindow.viewer': 'Visualizzazione del certificato richiesta',
+    'agent.tools.certificateWindow.manager': 'Apertura del gestore certificati richiesta',
     'agent.tools.decryption': 'HTTPS {{effective}} · Impostazione {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy di sistema ripristinato',
     'agent.tools.rulesExported': 'Regole esportate',
@@ -567,6 +576,7 @@ export const agentToolMessages = {
   'pt-BR': {
     'agent.tools.certificateWindow.folder': 'Abertura da pasta de certificados solicitada',
     'agent.tools.certificateWindow.viewer': 'Visualização do certificado solicitada',
+    'agent.tools.certificateWindow.manager': 'Abertura do gerenciador de certificados solicitada',
     'agent.tools.decryption': 'HTTPS {{effective}} · Intenção {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Proxy do sistema restaurado',
     'agent.tools.rulesExported': 'Regras exportadas',
@@ -629,6 +639,7 @@ export const agentToolMessages = {
   ru: {
     'agent.tools.certificateWindow.folder': 'Запрошено открытие папки сертификатов',
     'agent.tools.certificateWindow.viewer': 'Запрошен просмотр сертификата',
+    'agent.tools.certificateWindow.manager': 'Запрошено открытие диспетчера сертификатов',
     'agent.tools.decryption': 'HTTPS {{effective}} · Настройка {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Системный прокси восстановлен',
     'agent.tools.rulesExported': 'Правила экспортированы',
@@ -691,6 +702,7 @@ export const agentToolMessages = {
   nl: {
     'agent.tools.certificateWindow.folder': 'Openen van certificaatmap aangevraagd',
     'agent.tools.certificateWindow.viewer': 'Certificaatweergave aangevraagd',
+    'agent.tools.certificateWindow.manager': 'Openen van certificaatbeheer aangevraagd',
     'agent.tools.decryption': 'HTTPS {{effective}} · Instelling {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Systeemproxy hersteld',
     'agent.tools.rulesExported': 'Regels geëxporteerd',
@@ -753,6 +765,7 @@ export const agentToolMessages = {
   pl: {
     'agent.tools.certificateWindow.folder': 'Zażądano otwarcia folderu certyfikatów',
     'agent.tools.certificateWindow.viewer': 'Zażądano wyświetlenia certyfikatu',
+    'agent.tools.certificateWindow.manager': 'Zażądano otwarcia menedżera certyfikatów',
     'agent.tools.decryption': 'HTTPS {{effective}} · Ustawienie {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Przywrócono serwer proxy systemu',
     'agent.tools.rulesExported': 'Reguły wyeksportowane',
@@ -815,6 +828,7 @@ export const agentToolMessages = {
   tr: {
     'agent.tools.certificateWindow.folder': 'Sertifika klasörünün açılması istendi',
     'agent.tools.certificateWindow.viewer': 'Sertifikanın görüntülenmesi istendi',
+    'agent.tools.certificateWindow.manager': 'Sertifika yöneticisinin açılması istendi',
     'agent.tools.decryption': 'HTTPS {{effective}} · Ayar {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Sistem proxy ayarları geri yüklendi',
     'agent.tools.rulesExported': 'Kurallar dışa aktarıldı',
@@ -877,6 +891,7 @@ export const agentToolMessages = {
   uk: {
     'agent.tools.certificateWindow.folder': 'Запитано відкриття папки сертифікатів',
     'agent.tools.certificateWindow.viewer': 'Запитано перегляд сертифіката',
+    'agent.tools.certificateWindow.manager': 'Запитано відкриття диспетчера сертифікатів',
     'agent.tools.decryption': 'HTTPS {{effective}} · Налаштування {{intent}} · CA {{trust}}',
     'agent.tools.proxyRestored': 'Системний проксі відновлено',
     'agent.tools.rulesExported': 'Правила експортовано',

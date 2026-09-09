@@ -58,6 +58,7 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_delete_certificate', 'Delete Root CA', 'Uninstall any current Root CA trust, then delete its local certificate material.'],
   ['settings_reveal_certificate', 'Reveal Root CA', 'Reveal the existing public Root CA in the system file manager.'],
   ['settings_view_certificate', 'View Root CA', 'Open the existing public Root CA in the system certificate viewer.'],
+  ['settings_open_certificate_manager', 'Open certificate manager', 'Open the system certificate manager without changing certificate trust.'],
   ['settings_get_tls_insecure_hosts', 'Insecure TLS hosts', 'Read configured hosts that skip upstream TLS certificate verification.'],
   ['settings_get_tls_passthrough', 'TLS passthrough settings', 'Read TLS passthrough host patterns and their current revision.'],
   ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
@@ -90,7 +91,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(68);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(69);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

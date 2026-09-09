@@ -55,7 +55,7 @@ export type AgentToolResultSummary =
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
   | { readonly kind: 'systemProxyRestore'; readonly restored: boolean; readonly reason?: string }
   | { readonly kind: 'certificateStatus'; readonly present: boolean; readonly trusted: boolean; readonly mitmEnabled: boolean }
-  | { readonly kind: 'certificateWindow'; readonly target: 'folder' | 'viewer' }
+  | { readonly kind: 'certificateWindow'; readonly target: 'folder' | 'viewer' | 'manager' }
   | { readonly kind: 'decryption'; readonly trusted: boolean; readonly mitmEnabled: boolean; readonly decrypting: boolean }
   | { readonly kind: 'tlsHosts'; readonly count: number }
   | { readonly kind: 'tlsPassthrough'; readonly revision: number; readonly count: number }
@@ -273,6 +273,7 @@ export function summarizeAgentToolResult(
     if (value['requested'] === true) {
       if (name === 'settings_reveal_certificate') return { kind: 'certificateWindow', target: 'folder' };
       if (name === 'settings_view_certificate') return { kind: 'certificateWindow', target: 'viewer' };
+      if (name === 'settings_open_certificate_manager') return { kind: 'certificateWindow', target: 'manager' };
     }
     if ((name === 'settings_get_tls_insecure_hosts' || name === 'settings_replace_tls_insecure_hosts') && Array.isArray(value['hosts'])) {
       return { kind: 'tlsHosts', count: value['hosts'].length };

@@ -14,7 +14,7 @@
 | MCP | [mcp.md](mcp.md) | 3 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 22 |
 
-总计：120 条 workflow 契约。
+总计：120 条 workflow 契约。管理员MMC原生专项另保留排除说明，不计入workflow数量。
 
 ## 文档约定
 
