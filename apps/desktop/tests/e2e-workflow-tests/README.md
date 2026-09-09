@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、122条Inventory与123份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、123条Inventory与124份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory中只有实际取得Red/Green与销毁证据的条目才能标为passed。
 
 ## 零 Mock 硬性原则
 
@@ -179,6 +179,7 @@ diagnostics.row.<traceKey>
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
 | `capture.protocols.with-mitm` | Trust/MITM前后对比，HTTPS/WSS/H2/gRPC解密 | privileged UI | planned |
 | `capture.playground-traffic` | Playground UI自产H1与WebSocket流量进入真实Capture | os-side-effect | passed |
+| `capture.scenarios.websocket` | 四种WebSocket的方向、载荷与控制连接 | os-side-effect | passed |
 | `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect | passed |
 | `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
 | `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |

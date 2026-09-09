@@ -1,7 +1,7 @@
 # Feature: Manual Acceptance Playground
 
 > 最后更新：2026-09-09
-> 状态：**Playground既定功能与自动验证保持；Interceptor Capture已交付场景覆盖23/39，其余边界单独跟踪。用户自行查看，不另列人工验收待办或门禁。**
+> 状态：**Playground既定功能与自动验证保持；Interceptor Capture已交付场景覆盖26/39，其余边界单独跟踪。用户自行查看，不另列人工验收待办或门禁。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -358,6 +358,6 @@ Main/Renderer日志、PID/listener销毁metadata，以及Playground子进程输�
 
 ## 11. 与当前实现的差异
 
-- Capture产品E2E覆盖23/39，未交付部分及HTTP额外中断边界见[Capture覆盖](capture.md#41-多协议产品e2e覆盖)；不能以用户自行查看替代自动证据。
+- Capture产品E2E覆盖26/39，未交付部分及HTTP额外中断边界见[Capture覆盖](capture.md#41-多协议产品e2e覆盖)；不能以用户自行查看替代自动证据。
 - 当前VS Code `1.135.0`仍使用`2025-11-25`，产品决定不支持legacy；真实Host canary等待Host升级，
   不阻塞最新协议Playground建设。

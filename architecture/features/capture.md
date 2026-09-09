@@ -237,13 +237,14 @@ stateDiagram-v2
 
 ### 4.1 多协议产品E2E覆盖
 
-- 当前已交付场景覆盖23/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
+- 当前已交付场景覆盖26/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
 - 本轮相关场景均已取得真实Green和完整进程/8888/WinINet/journal/CA恢复证据；测试来自本轮工作树。Core early response修复未纳入这些提交，仍有独立413后中断回归待第三方授权。
 
 | 组 | 场景数 | Workflow | 当前结果 |
 | --- | ---: | --- | --- |
 | Body | 16 | `capture.scenarios.bodies`、`capture.scenarios.body-media` | Green，模式、图片、Hex及媒体原生保存 |
 | Encoding | 5 | `capture.scenarios.encoding` | Green，解压及损坏数据保留 |
+| WebSocket | 4 | `capture.scenarios.websocket` | Green，方向/载荷与控制连接 |
 
 - 最终工作树矩阵证据：TEMP/interceptor-capture-39-green-20260909-161253.zip，SHA256 959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB。只按本节已交付场景声明覆盖，不把未提交HTTP修复标完成。
 - 完整操作见[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。

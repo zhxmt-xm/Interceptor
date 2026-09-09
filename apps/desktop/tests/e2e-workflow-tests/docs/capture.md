@@ -64,6 +64,22 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 4. 不改变应用语言、不用本地化文案定位；每场景关闭Inspector，避免旧正文控件竞态。
 5. 保存逐场景、trace和截图，要求Renderer无page error；fixture验证origin及Main/Core/Worker退出、8888/WinINet/journal恢复。
 
+<a id="capture-scenarios-websocket"></a>
+## `capture.scenarios.websocket`
+
+**状态**：passed；四场景Green，真实载荷复制、方向隔离和origin关闭码1000
+**策略**：真实Capture Messages；现有WebSocket流量库；方向/载荷/连接隔离
+
+### Steps
+
+1. fresh profile经UI开启Recording，依次运行已有Text、Binary、Bidirectional和Control默认场景，每个独立WebSocket经8888产生真实101握手并以1000关闭。
+2. 选择自产Capture行，进入Messages并切换Sent/Received/All；Text各方向1条，Binary各方向1条，双向场景Sent 1条/Received 2条。
+3. 文本载荷分别为`hello from client`、`client message`、`origin message`；Binary为`00 01 02 03 ff`，逐行展开并用真实Copy验证完整值。
+4. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。
+5. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
+
+`ws-control`另保存`websocket-control-empty-state.png`，用于核对真实Messages空态；该场景只有控制帧，0条数据消息符合当前产品边界。原空态CSS缺失另记录为UI问题，不改正文或帧断言掩盖。
+
 <a id="capture-tools-archive-transfer"></a>
 ## `capture.tools.archive-transfer`
 
