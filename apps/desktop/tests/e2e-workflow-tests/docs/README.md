@@ -5,7 +5,7 @@
 | 分类 | 详细文档 | Workflow 数量 |
 | --- | --- | ---: |
 | Application 与 Shell | [application-shell.md](application-shell.md) | 9 |
-| Capture 与协议 | [capture.md](capture.md) | 33 |
+| Capture 与协议 | [capture.md](capture.md) | 36 |
 | Rules | [rules.md](rules.md) | 15 |
 | Composer | [composer.md](composer.md) | 11 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 12 |
@@ -14,7 +14,7 @@
 | MCP | [mcp.md](mcp.md) | 3 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 22 |
 
-总计：124 条 workflow 契约。管理员MMC原生专项另保留排除说明，不计入workflow数量。
+总计：127 条 workflow 契约。管理员MMC原生专项另保留排除说明，不计入workflow数量。
 
 ## 文档约定
 

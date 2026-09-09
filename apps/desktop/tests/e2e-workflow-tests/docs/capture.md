@@ -80,6 +80,60 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 
 `ws-control`另保存`websocket-control-empty-state.png`，用于核对真实Messages空态；该场景只有控制帧，0条数据消息符合当前产品边界。原空态CSS缺失另记录为UI问题，不改正文或帧断言掩盖。
 
+<a id="capture-scenarios-http2"></a>
+## `capture.scenarios.http2`
+
+**状态**：passed；独立H2场景与最终矩阵均Green，CA及宿主恢复
+**策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
+
+### Steps
+
+1. 保存完整Root指纹基线，在fresh profile通过Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM；不调用Manager。
+2. 经UI开启Recording，使用现有`h2-json`默认Draft，经CONNECT/TLS/ALPN向真实origin发请求。
+3. 客户端完成H2/200和`x-playground-trailer: h2-complete`；Capture只显示一条自产H2/GET/200行。
+4. 真实点击Headers，核对Request `accept: application/json`、Response `content-type: application/json`和trailer；Response Raw正文包含`"protocol": "h2"`与`"path": "/playground/h2-json"`。
+5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，按本轮CA指纹卸载、删除材料并比较完整Root集合。
+6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
+
+<a id="capture-scenarios-grpc"></a>
+## `capture.scenarios.grpc`
+
+**状态**：passed；五场景Green，逐侧消息、压缩/截断载荷及13错误trailer正确
+**策略**：真实gRPC Inspector；正式CA/MITM UI；现有H2流量库
+
+### Steps
+
+1. fresh profile通过Certificates UI生成/安装本轮CA、添加localhost源站例外并启用MITM；经UI启用Recording。
+2. 逐个运行Unary proto、Unary JSON、Trailers error、Compressed及Malformed场景，确认实际H2/200和grpc-status为0/13；不将HTTP 200当gRPC业务成功。
+3. 真实选择Capture H2行并打开gRPC；逐侧切换Request/Response，校验消息数、声明载荷长度和`@ 0x0005`偏移。
+4. 用真实Copy核对proto Hex、JSON文本及gzip原始压缩字节；Malformed仅响应末尾少两个字节，请求保持完整，UI声明长度保留，Copy只返回实际字节。
+5. status 13的Response消息为0，UI显示`grpc-status: 13`和`grpc-message: Playground failure`，不制造响应消息。
+6. 保存逐场景身份、trace与截图，Renderer无page error；finally通过UI停用MITM、移除例外、卸载/删除本轮CA并比较Root集合，fixture验证Main/Core/Worker、8888、WinINet/journal恢复。
+
+<a id="capture-scenarios-tls"></a>
+## `capture.scenarios.tls`
+
+**状态**：passed；三场景Green，HTTPS/H1客户端实际使用代理隧道，CA完整恢复
+**策略**：真实TLS/CONNECT；正式Certificates UI；同代解密前后对比
+
+### Steps
+
+1. fresh profile只开启Recording，运行`tls-passthrough`；真实TLS握手完成但不发HTTP应用字节，Capture仅显示localhost的CONNECT/TLS行。
+2. 打开Tunnel，核对目标和端口；没有Response标签或正文预览，不能伪造加密HTTP内容。
+3. 经真实Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM，不调用Manager。
+4. 依次运行`tls-mitm-h1`与`tls-mitm-h2`，分别验证实际ALPN为http/1.1与h2、Capture显示对应GET/200行，Response Raw显示mode与secure字段。
+5. TLS页显示https、localhost、本轮端口和TLS事实；保存三个场景证据，Renderer无page error。
+6. finally经UI停用MITM、移除源站例外、按本轮身份卸载/删除CA；Root集合完全恢复，fixture验证origin及Main/Core/Worker、8888、WinINet/journal恢复。
+
+### 2026-09-09 场景矩阵证据
+
+- 最终8条workflow/39场景合跑8/8 Green，8代Main/Core均`gracefulDestroyVerified=true`；8888、WinINet/journal及CA恢复。
+- TEMP归档`interceptor-capture-39-green-20260909-161253.zip`，SHA256 `959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB`；该矩阵来自当前工作树，不替代HTTP修复尚未通过的额外owner回归。
+- Body前置Red：`interceptor-body-mode-red-20260909-153356.zip`、`interceptor-viewer-lifecycle-red-20260909-154133.zip`；相关owner22/22 Green。
+- Desktop/Core/Playground typecheck通过；Body九视图parity与仓库旧报告相同，保留11 flagged/1 missing，不改基准。
+- 其余场景是给既有产品补覆盖，不人为造Red；首次原生焦点、Header大小写和控件时序错误不算产品Red。
+- TLS首轮CA恢复已单独真实UI验收1/1，证据`interceptor-tls-profile-recovery-green-20260909-160512.zip`；恢复用临时workflow已删除，不进入长期套件。
+
 <a id="capture-tools-archive-transfer"></a>
 ## `capture.tools.archive-transfer`
 

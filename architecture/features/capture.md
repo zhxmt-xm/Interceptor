@@ -237,14 +237,17 @@ stateDiagram-v2
 
 ### 4.1 多协议产品E2E覆盖
 
-- 当前已交付场景覆盖26/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
+- 当前已交付场景覆盖35/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
 - 本轮相关场景均已取得真实Green和完整进程/8888/WinINet/journal/CA恢复证据；测试来自本轮工作树。Core early response修复未纳入这些提交，仍有独立413后中断回归待第三方授权。
 
 | 组 | 场景数 | Workflow | 当前结果 |
 | --- | ---: | --- | --- |
+| HTTP/H2 | 1 | `capture.scenarios.http2` | Green，Headers/trailer/正文及CA恢复 |
 | Body | 16 | `capture.scenarios.bodies`、`capture.scenarios.body-media` | Green，模式、图片、Hex及媒体原生保存 |
 | Encoding | 5 | `capture.scenarios.encoding` | Green，解压及损坏数据保留 |
 | WebSocket | 4 | `capture.scenarios.websocket` | Green，方向/载荷与控制连接 |
+| gRPC | 5 | `capture.scenarios.grpc` | Green，原始载荷、压缩、错误trailer与截断 |
+| TLS | 3 | `capture.scenarios.tls` | Green，tunnel与解密H1/H2 |
 
 - 最终工作树矩阵证据：TEMP/interceptor-capture-39-green-20260909-161253.zip，SHA256 959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB。只按本节已交付场景声明覆盖，不把未提交HTTP修复标完成。
 - 完整操作见[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。
@@ -255,6 +258,12 @@ stateDiagram-v2
 - 有效owner及真实Red分别保存于TEMP下`interceptor-body-mode-red-20260909-153356.zip`、`interceptor-viewer-lifecycle-red-20260909-154133.zip`；最终Body归档`interceptor-bodies-sixteen-green-20260909-154736.zip`，两代Main/Core `18540/48608`、`5084/16272`正常销毁。
 - 九个既有Capture正文parity视图与仓库旧报告逐项核对一致，保留11个flagged和1个missing、未增加最大几何偏差；报告为TEMP下`interceptor-body-viewer-parity-20260909.json`及同名`.md`，不覆盖设计基准或完整报告。
 - 真实Monaco通过全选/复制核对当前模型，只有Windows剪贴板CRLF归一；每场景关闭Inspector，下一条先等正文长度和radio选中状态，避免旧正文控件竞态。
+
+#### TLS流量与恢复
+
+- `TlsTrafficRunner`的HTTPS/H1原先用`agent:false`导致Node忽略已有隧道的`createConnection`并另开直连；改用Node HTTP客户端在已握手的同一个TLSSocket中发送HTTP字节。直接跑受影响真实TLS场景，不为流量工具新增测试。
+- TLS兼容提示会遮住Settings导航，CA清理须先真实点击dismiss。首次失败遗留的本轮CA `F924C643186525C49881EFB8B337C261C3968ECB`已通过保留profile和正式UI卸载/删除，恢复1/1 Green；归档`interceptor-tls-profile-recovery-green-20260909-160512.zip`，Main/Core `20160/40716`正常退出。
+- TLS最终三场景Green，归档`interceptor-tls-green-20260909-160714.zip`，Main/Core `15424/31980`正常退出；不调用MMC、不修改系统权限、不覆盖用户已有CA。
 
 ## 5. 调用流程
 

@@ -3,7 +3,7 @@ import http2, {
   type Http2ServerRequest,
   type Http2ServerResponse,
 } from 'node:http2';
-import { request } from 'node:https';
+import { request } from 'node:http';
 import net from 'node:net';
 import tls from 'node:tls';
 import { gzipSync } from 'node:zlib';
@@ -347,7 +347,7 @@ export class TlsTrafficRunner {
     });
   }
 
-  /** 在 CONNECT 隧道内协商 http/1.1，再用 Node HTTPS 客户端完成请求并收集响应事实。 */
+  /** 在 CONNECT 隧道内完成TLS，再将HTTP/1.1字节写入同一个加密socket。 */
   async #requestHttp1(
     proxyPort: number,
     targetHost: string,
@@ -369,14 +369,12 @@ export class TlsTrafficRunner {
     try {
       response = await new Promise<TrafficResponseFact>((resolve, reject) => {
         const outgoing = request({
-          agent: false,
           createConnection: () => tlsSocket,
           headers: { connection: 'close', ...headers },
           host: targetHostName(targetHost),
           method,
           path,
           port: targetHostPort(targetHost),
-          rejectUnauthorized: false,
         }, (incoming) => {
           const chunks: Buffer[] = [];
           const chunkTimingsMs: number[] = [];
