@@ -695,19 +695,14 @@ export class ProxyService {
     return operation;
   }
 
-  /** 单 stream Promise 链保持 Mockttp 事件顺序，并等待 101 Exchange 先落库。 */
+  /** 按 stream 顺序保存已关联 Exchange 的 WebSocket 消息。 */
   private captureWebSocketMessage(
     message: WebSocketBridgeMessage,
-    knownExchangeId?: string,
+    exchangeId: string,
   ): Promise<number | undefined> {
     const tail = this.webSocketTails.get(message.streamId) ?? Promise.resolve();
     const capture = this.trackCapture(tail
       .then(async () => {
-        const exchangeId = knownExchangeId
-          ?? await this.exchangeTracker.whenExchangeReady(message.streamId);
-        if (!exchangeId) {
-          return undefined;
-        }
         const payload = await this.persistBody(
           message.content,
           message.isBinary
@@ -743,15 +738,15 @@ export class ProxyService {
       ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
     };
     const settings = this.webSocketBreakpoint;
-    const exchangeId = this.exchangeTracker.exchangeIdFor(message.streamId);
+    const exchangeId = await this.exchangeTracker.whenExchangeReady(message.streamId);
     if (
       !settings
       || !this.ruleService
-      || exchangeId === undefined
+      || exchangeId === null
       || settings.exchangeId !== exchangeId
       || !ProxyUtils.matchesWebSocketBreakpoint(settings, message)
     ) {
-      if (message.frame === 'message') {
+      if (message.frame === 'message' && exchangeId !== null) {
         void this.captureWebSocketMessage(message, exchangeId);
       }
       return forwardUnchanged;
@@ -765,7 +760,7 @@ export class ProxyService {
       : message.content.toString('utf8');
     const outcome = await this.ruleService.pauseWebSocketMessage({
       ruleName: WEBSOCKET_BREAKPOINT_RULE_NAME[message.frame],
-      ...(exchangeId !== undefined ? { exchangeId } : {}),
+      exchangeId,
       url: message.url,
       direction: message.direction,
       frame: message.frame,

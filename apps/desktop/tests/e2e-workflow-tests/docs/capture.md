@@ -268,25 +268,30 @@ Desktop typecheck通过；当时完整Playground typecheck受并行HAR recipe缺
 <a id="capture-recording-pause-resume"></a>
 ## `capture.recording.pause-resume`
 
-**状态**：planned
+**状态**：passed；owner/真实socket/真实UI Red后Green，完整退出恢复通过
 **策略**：os-side-effect
 
 ### Steps
 
-1. 创建空 profile、evidence 和 HTTP loopback origin；启动 trace与新 Electron。
-2. 等待 App root、Core Running、8888 和 Proxy readiness modal；确认工作栏 Paused、statusbar Not recording。
-3. 点击 `capture.readiness.open-proxy-settings`，确认 Listener=Listening、Address=8888、System Proxy 尚未 Owned。
-4. 点击 `shell.workspace.capture`；点击 `capture.recording.toggle` 重新触发 readiness，再点击 `capture.readiness.enable`，由 App真实调用平台 helper并完成原生授权。
-5. 等待 modal 关闭和 Recording；进入 Proxy page确认 Owned by Interceptor，再回 Capture。
-6. 测试客户端通过8888发送请求A，等待并确认对应动态 request row。
-7. 点击 `capture.recording.toggle` 暂停；确认 Paused/Not recording；通过8888发送请求B并确认客户端仍得到200。
-8. 确认A仍保留、B未出现在列表；再次点击 recording toggle恢复，必要时通过 readiness Enable；发送请求C并确认A/C出现。
-9. 进入 Proxy page点击 `settings.proxy.restore`，等待不再Owned；保存 evidence，返回 Capture并点击 `shell.window.close`。
-10. 验证 Main/Core/Worker全退、8888释放、系统代理恢复、profile删除。
+1. 创建空profile、evidence与本轮HTTP/WebSocket loopback origin；启动trace和真实Electron，等待App/Core/8888。通过公开Recording/readiness控件开始录制，不切换语言。
+2. 通过8888发送HTTP请求A并建立WebSocket连接A；发送自产文本并检查origin收到、客户端echo和Messages双向记录。记录Capture行与Storage的Exchange/Body计数。
+3. 点击`capture.recording.toggle`暂停，`aria-pressed=false`；发送HTTP请求B并确认仍得到200但无对应行；在已录制连接A发送第二条文本，双向消息继续完整记录。
+4. 暂停期间建立WebSocket连接B并发送自产文本；origin和客户端双向成功，但Capture不得创建B的行、消息或正文。通过Settings Storage导航和Refresh取得暂停后的计数快照。
+5. 回Capture点击Recording恢复，`aria-pressed=true`；在B继续发送不同文本，真实echo必须成功，B仍没有Capture行。再次进入Storage点击Refresh，Exchange/Body引用数及正文占用字节必须与上一步相同，不能留下无主正文；真实ExchangeStore会拒绝不存在的Exchange，不能仅靠引用数为零判定没有写入。
+6. 恢复后发送HTTP请求C并建立WebSocket连接C，确认新Capture行和C的双向消息可见；A/B/C都用真实Close握手结束，origin关闭码为1000。
+7. 保存自产请求路径、消息、公开行身份、Storage前后计数、trace与截图；Renderer无page error，Main/Core无`websocket.persist-failed`。
+8. fixture点击`shell.window.close`，由Main退出流程恢复仍owned的系统代理；确认Main/Core/Worker全部退出、8888释放、WinINet与共享journal恢复，再删除本轮profile和网络fixture。不主动Restore代替退出恢复验证。
 
 ### 预期效果
 
-Stop只暂停记录，不停止listener或系统代理，不删除旧记录；暂停期间流量继续转发但不落Capture；恢复后继续在同一Core代际追加；退出前系统代理恢复。
+Stop只暂停记录，不停止listener或系统代理，不删除旧记录；录制决定以HTTP请求/WebSocket握手开始时状态为准。暂停期间流量继续转发，Resume不能为旧的未录制连接创建孤立消息、正文或等待者；恢复后的新请求继续在同一Core代际追加。退出必须恢复系统代理及进程资源。
+
+### 验证证据
+
+- 2026-09-09修复前真实UI Red：Exchange/Body引用数未变，正文占用151增加到191字节；owner和真实socket同样Red，无测试清理ECONNRESET。有效Red Main/Core `31924/42384`正常退出；第一次Refresh locator失败不计产品Red。
+- 修复后Proxy122/122、Core/Desktop typecheck、当前workflow1/1（19.1s）通过；Storage恢复前后均2 Exchange、5正文引用、151字节，旧录制连接在Pause期间继续记录，新连接在Resume后正常追加。Main/Core `45884/37752`正常退出，host guard确认8888、WinINet/journal与登记进程恢复。
+- 相邻`breakpoints.queue-isolation`1/1（19.0s），Main/Core `20252/28136`正常退出，完整host guard通过。gRPC streaming及压力验证不属于该workflow通过范围；非目标Main日志错误保留。
+- 三层Red、Green、相邻回归的TEMP归档及SHA256见[Capture录制验证](../../../../../architecture/features/capture.md#73-pauseresume验证证据)，不得用该Green替代其他未验收用户流程。
 
 <a id="capture-proxy-readiness-resolve"></a>
 ## `capture.proxy-readiness.resolve`

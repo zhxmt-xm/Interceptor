@@ -2,6 +2,7 @@ import { RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { CaptureUsage } from '../../../../shared/desktop-api';
 import { Button, StatusBadge } from '../../../components';
 import { formatBytes } from '../utils';
@@ -92,7 +93,11 @@ export function StoragePanel(): React.JSX.Element {
               <span className={styles.mono}>{value(usage?.databaseBytes)}</span>
             </Row>
             <Row label={t('settings.responseBodies')}>
-              <span className={styles.mono}>{value(usage?.blobBytes)}</span>
+              <span
+                className={styles.mono}
+                data-automation-id={AUTOMATION_IDS.settings.storage.blobBytes}
+                data-bytes={state === 'ready' ? usage?.blobBytes : undefined}
+              >{value(usage?.blobBytes)}</span>
             </Row>
           </Group>
 
@@ -101,10 +106,18 @@ export function StoragePanel(): React.JSX.Element {
               <span className={styles.mono}>{count(usage?.sessionCount)}</span>
             </Row>
             <Row label={t('settings.exchanges')}>
-              <span className={styles.mono}>{count(usage?.exchangeCount)}</span>
+              <span
+                className={styles.mono}
+                data-automation-id={AUTOMATION_IDS.settings.storage.exchangeCount}
+                data-count={state === 'ready' ? usage?.exchangeCount : undefined}
+              >{count(usage?.exchangeCount)}</span>
             </Row>
             <Row label={t('settings.storedBodies')}>
-              <span className={styles.mono}>{count(usage?.bodyCount)}</span>
+              <span
+                className={styles.mono}
+                data-automation-id={AUTOMATION_IDS.settings.storage.bodyCount}
+                data-count={state === 'ready' ? usage?.bodyCount : undefined}
+              >{count(usage?.bodyCount)}</span>
             </Row>
           </Group>
         </>
@@ -112,7 +125,7 @@ export function StoragePanel(): React.JSX.Element {
 
       <Group title={t('settings.maintenance')}>
         <Row label={t('settings.refreshUsage')} hint={t('settings.refreshUsageHint')}>
-          <Button icon={RefreshCw} onClick={load}>
+          <Button icon={RefreshCw} onClick={load} automationId={AUTOMATION_IDS.settings.storage.refresh}>
             {t('settings.refresh')}
           </Button>
         </Row>

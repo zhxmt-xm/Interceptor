@@ -159,7 +159,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `capture.recording.pause-resume` | 暂停只停止记录，恢复后继续追加 | os-side-effect | planned |
+| `capture.recording.pause-resume` | 按请求/握手开始时决定录制，Resume不产生孤立正文 | os-side-effect | passed |
 | `capture.proxy-readiness.resolve` | Cancel、Proxy settings、Enable 的授权语义 | os-side-effect | planned |
 | `capture.traffic.capture-select` | 真实请求进入列表并按需加载Inspector | shared | planned |
 | `capture.inspector.section-collapse` | Inspector详情区独立折叠并暴露正确ARIA关系 | privileged UI | passed |

@@ -914,6 +914,234 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it.each(['download', 'sse'] as const)(
+    'keeps an in-flight %s capture complete when recording is paused',
+    async (streamType) => {
+      const firstChunk = streamType === 'sse' ? 'data: before-pause\n\n' : 'before-pause:';
+      const lastChunk = streamType === 'sse' ? 'data: after-pause\n\n' : 'after-pause';
+      const expectedBody = firstChunk + lastChunk;
+      let pendingResponse: http.ServerResponse | undefined;
+      const origin = await startOrigin((_request, response) => {
+        pendingResponse = response;
+        response.writeHead(200, {
+          'content-type': streamType === 'sse' ? 'text/event-stream' : 'application/octet-stream',
+        });
+        response.write(firstChunk);
+      });
+
+      try {
+        const incoming = proxiedGetStreaming(address, `http://127.0.0.1:${origin.port}/${streamType}`);
+        await expect(incoming.head).resolves.toBe(200);
+        await expect.poll(() => recordingCaptureService.exchanges.length).toBe(1);
+
+        proxyService.pauseRecording();
+        expect(proxyService.status()).toMatchObject({ listening: true, recording: false });
+        pendingResponse!.end(lastChunk);
+
+        await expect(incoming.body).resolves.toBe(expectedBody);
+        await expect.poll(() => recordingCaptureService.exchanges[0]?.state).toBe('completed');
+        expect(recordingCaptureService.exchanges).toHaveLength(1);
+        expect(recordingCaptureService.exchanges[0]).toMatchObject({
+          path: `/${streamType}`,
+          statusCode: 200,
+          responseBytes: Buffer.byteLength(expectedBody),
+        });
+        expect(recordingCaptureService.bodies).toEqual([Buffer.from(expectedBody)]);
+      } finally {
+        pendingResponse?.end();
+        await origin.close();
+      }
+    },
+  );
+
+  it.each(['download', 'sse'] as const)(
+    'does not capture a %s started while recording is paused when it completes after resume',
+    async (streamType) => {
+      const firstChunk = streamType === 'sse' ? 'data: while-paused\n\n' : 'while-paused:';
+      const lastChunk = streamType === 'sse' ? 'data: after-resume\n\n' : 'after-resume';
+      let pendingResponse: http.ServerResponse | undefined;
+      const origin = await startOrigin((request, response) => {
+        if (request.url === '/new-after-resume') {
+          response.end('new-request');
+          return;
+        }
+        pendingResponse = response;
+        response.writeHead(200, {
+          'content-type': streamType === 'sse' ? 'text/event-stream' : 'application/octet-stream',
+        });
+        response.write(firstChunk);
+      });
+
+      try {
+        proxyService.pauseRecording();
+        const incoming = proxiedGetStreaming(address, `http://127.0.0.1:${origin.port}/${streamType}`);
+        await expect(incoming.head).resolves.toBe(200);
+        expect(recordingCaptureService.exchanges).toEqual([]);
+
+        proxyService.resumeRecording();
+        pendingResponse!.end(lastChunk);
+        await expect(incoming.body).resolves.toBe(firstChunk + lastChunk);
+        await expect(
+          proxiedGet(address, `http://127.0.0.1:${origin.port}/new-after-resume`),
+        ).resolves.toMatchObject({ status: 200, body: 'new-request' });
+
+        await expect.poll(() => recordingCaptureService.exchanges[0]?.state).toBe('completed');
+        expect(recordingCaptureService.exchanges.map((exchange) => exchange.path)).toEqual(['/new-after-resume']);
+        expect(recordingCaptureService.bodies).toEqual([Buffer.from('new-request')]);
+      } finally {
+        pendingResponse?.end();
+        await origin.close();
+      }
+    },
+  );
+
+  it.each([true, false])(
+    'fixes the upload capture decision at request start (recording=%s)',
+    async (initiallyRecording) => {
+      const firstChunk = Buffer.alloc(32 * 1024, 0x61);
+      const lastChunk = Buffer.alloc(32 * 1024, 0x62);
+      const expectedBody = Buffer.concat([firstChunk, lastChunk]);
+      const originChunks: Buffer[] = [];
+      let receivedBytes = 0;
+      let resolveFirstChunk!: () => void;
+      const firstChunkReceived = new Promise<void>((resolve) => {
+        resolveFirstChunk = resolve;
+      });
+      const origin = await startOrigin((request, response) => {
+        request.on('data', (chunk: Buffer) => {
+          originChunks.push(chunk);
+          receivedBytes += chunk.byteLength;
+          if (receivedBytes >= firstChunk.byteLength) {
+            resolveFirstChunk();
+          }
+        });
+        request.on('end', () => response.end('upload-ok'));
+      });
+      let upload: http.ClientRequest | undefined;
+
+      try {
+        if (!initiallyRecording) {
+          proxyService.pauseRecording();
+        }
+        const completed = new Promise<{ status: number | undefined; body: string }>((resolve, reject) => {
+          upload = http.request({
+            host: address.host,
+            port: address.port,
+            method: 'POST',
+            path: `http://127.0.0.1:${origin.port}/streaming-upload`,
+            agent: false,
+            headers: { 'content-type': 'application/octet-stream' },
+          }, (response) => {
+            let body = '';
+            response.setEncoding('utf8');
+            response.on('data', (chunk: string) => { body += chunk; });
+            response.on('end', () => resolve({ status: response.statusCode, body }));
+            response.on('error', reject);
+          });
+          upload.on('error', reject);
+        });
+        upload!.write(firstChunk);
+        await firstChunkReceived;
+
+        if (initiallyRecording) {
+          await expect.poll(() => recordingCaptureService.exchanges.length).toBe(1);
+          proxyService.pauseRecording();
+        } else {
+          expect(recordingCaptureService.exchanges).toEqual([]);
+          proxyService.resumeRecording();
+        }
+        upload!.end(lastChunk);
+
+        await expect(completed).resolves.toEqual({ status: 200, body: 'upload-ok' });
+        expect(Buffer.concat(originChunks)).toEqual(expectedBody);
+        expect(proxyService.status()).toMatchObject({ listening: true, recording: !initiallyRecording });
+        if (initiallyRecording) {
+          await expect.poll(() => recordingCaptureService.exchanges[0]?.state).toBe('completed');
+          expect(recordingCaptureService.exchanges).toHaveLength(1);
+          expect(recordingCaptureService.exchanges[0]).toMatchObject({
+            method: 'POST',
+            path: '/streaming-upload',
+            requestBytes: expectedBody.byteLength,
+            responseBytes: Buffer.byteLength('upload-ok'),
+          });
+          expect(recordingCaptureService.bodies).toContainEqual(expectedBody);
+          expect(recordingCaptureService.bodies).toContainEqual(Buffer.from('upload-ok'));
+        } else {
+          await expect(
+            proxiedGet(address, `http://127.0.0.1:${origin.port}/new-after-upload`),
+          ).resolves.toMatchObject({ status: 200 });
+          await expect.poll(() => recordingCaptureService.exchanges[0]?.state).toBe('completed');
+          expect(recordingCaptureService.exchanges.map((exchange) => exchange.path)).toEqual(['/new-after-upload']);
+          expect(recordingCaptureService.bodies).toEqual([Buffer.from('upload-ok')]);
+        }
+      } finally {
+        upload?.destroy();
+        await origin.close();
+      }
+    },
+  );
+
+  it.each([true, false])(
+    'keeps WebSocket recording fixed at upgrade across pause and resume (recording=%s)',
+    async (initiallyRecording) => {
+      const origin = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+      origin.on('connection', (socket) => {
+        socket.on('message', (data, isBinary) => socket.send(data, { binary: isBinary }));
+      });
+      await new Promise<void>((resolve) => origin.once('listening', resolve));
+      const originPort = (origin.address() as AddressInfo).port;
+      let clientSocket: net.Socket | undefined;
+
+      try {
+        if (!initiallyRecording) {
+          proxyService.pauseRecording();
+        }
+        clientSocket = await openProxiedWebSocket(address, `ws://127.0.0.1:${originPort}/recording-boundary`);
+        const beforePayload = Buffer.from('before-toggle');
+        const beforeEcho = readWebSocketFrames(clientSocket, 1);
+        sendWebSocketFrame(clientSocket, 1, beforePayload);
+        await expect(beforeEcho).resolves.toEqual([{ opcode: 1, payload: beforePayload }]);
+
+        if (initiallyRecording) {
+          await expect.poll(() => recordingCaptureService.webSocketFrames.length).toBe(2);
+          proxyService.pauseRecording();
+        } else {
+          expect(recordingCaptureService.exchanges).toEqual([]);
+          proxyService.resumeRecording();
+        }
+        const afterPayload = Buffer.from('after-toggle');
+        const afterEcho = readWebSocketFrames(clientSocket, 1);
+        sendWebSocketFrame(clientSocket, 1, afterPayload);
+        await expect(afterEcho).resolves.toEqual([{ opcode: 1, payload: afterPayload }]);
+        const clientClosed = new Promise<void>((resolve, reject) => {
+          clientSocket!.once('close', () => resolve());
+          clientSocket!.once('error', reject);
+        });
+        sendWebSocketFrame(clientSocket, 8, Buffer.from([0x03, 0xe8]));
+        await clientClosed;
+        await proxyService.stop();
+
+        if (initiallyRecording) {
+          expect(recordingCaptureService.exchanges).toHaveLength(1);
+          const exchangeId = recordingCaptureService.exchanges[0]!.id;
+          expect(recordingCaptureService.webSocketFrames).toHaveLength(4);
+          expect(recordingCaptureService.webSocketFrames.every((message) => message.exchangeId === exchangeId)).toBe(true);
+          expect(recordingCaptureService.bodies).toEqual([beforePayload, beforePayload, afterPayload, afterPayload]);
+        } else {
+          expect(recordingCaptureService.exchanges).toEqual([]);
+          expect(recordingCaptureService.webSocketFrames).toEqual([]);
+          expect(recordingCaptureService.bodies).toEqual([]);
+        }
+      } finally {
+        clientSocket?.destroy();
+        for (const originSocket of origin.clients) {
+          originSocket.terminate();
+        }
+        await new Promise<void>((resolve) => origin.close(() => resolve()));
+      }
+    },
+  );
+
   it('forwards an absolute-form request and captures a canonical exchange', async () => {
     const origin = await startOrigin((_req, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });

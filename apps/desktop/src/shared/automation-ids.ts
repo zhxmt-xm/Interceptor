@@ -509,6 +509,9 @@ export const AUTOMATION_IDS = {
       insecureHostAdd: 'settings.certificates.insecure-host-add',
     },
     storage: {
+      exchangeCount: 'settings.storage.exchange-count',
+      bodyCount: 'settings.storage.body-count',
+      blobBytes: 'settings.storage.blob-bytes',
       refresh: 'settings.storage.refresh',
       clear: 'settings.storage.clear',
       clearCancel: 'settings.storage.clear-cancel',

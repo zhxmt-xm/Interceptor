@@ -96,6 +96,8 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 
 `apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell、Agent Panel、Settings Agent、Capture、Rules 目录树与 Composer Collection 已接线到同一公共契约。
 
+Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引用数分别通过`settings.storage.exchange-count`、`settings.storage.body-count`及`data-count`暴露原始计数，正文占用通过`settings.storage.blob-bytes`及`data-bytes`暴露原始字节数。属性只在读取成功时存在，显示文本仍按当前语言格式化；不增加业务入口，也不允许以零代替加载失败。真实Pause/Resume workflow使用这些属性验证未录制连接不产生孤立正文。
+
 **禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。**
 
 ## 8. 主题与语言

@@ -457,7 +457,7 @@ export class ExchangeTracker {
     if (existing) {
       return existing.promise;
     }
-    if (!this.sessionId || !this.recording && !this.entries.has(requestId)) {
+    if (!this.sessionId || !this.entries.has(requestId)) {
       return Promise.resolve(null);
     }
     let resolve!: (id: string | null) => void;

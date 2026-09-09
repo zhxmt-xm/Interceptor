@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `8f27496c`
+> Tracked commit: `9ebed1eb`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-09-09
+> 最后更新：2026-09-10
 
 ## Task List
 
@@ -20,6 +20,7 @@
 
 ## Constraints
 
+- 2026-09-09用户已明确恢复E2E授权，继续按item执行真实Electron验证；原生窗口流程独占前台。之前暂停期间E2E/浏览器运行均为0的记录是历史证据，不能改写为通过；需要最终E2E的item在取得Green与完整退出恢复前仍保持“代码完成 · 待 E2E”。
 - 本地App、packaged smoke与真实Electron E2E必须经过已实现的宿主guard；不得以“进程已退出/8888无listener”替代完整WinINet、共享crash journal与测试进程代际恢复验证。
 - Windows当前token未提权不等于账户不属于Administrators；不得给workflow另加管理员启动门禁。安装/卸载CA仍由产品正式请求Windows授权，不修改UAC策略；出现真实授权提示时由Developer在本机处理。
 - 当前所有tracked代码改动都必须归入明确work item，完成实现、验证、commit和push；禁止任何会丢弃工作树内容的`restore`、`checkout`、`reset --hard`或文件重建。为调整提交顺序允许仅取消暂存或使用临时index，但操作前后必须核对工作树文件hash不变。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不是本轮代码改动，继续排除。

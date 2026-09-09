@@ -111,7 +111,7 @@
 - [x] 已定义为“请求开始时固定 capture generation”：`request-initiated` 时判定 `recording` 并固定 generation，后续事件沿用。
 - [x] 录制中开始、暂停后才完成的长请求继续完成记录；暂停期间开始的请求始终不建记录。
 - [x] Stop 仍只暂停记录，不停止转发或系统代理。
-- [ ] 补充进行中 upload/download/SSE/WebSocket/gRPC 跨 Pause/Resume 的测试。
+- [ ] 继续补gRPC streaming及压力场景跨Pause/Resume验证；2026-09-09已补upload/download/SSE六个本地时序用例，修复WebSocket恢复后孤立正文，Proxy122/122与真实Pause/Resume、队列隔离2/2 Green。证据及实际范围见[Capture录制验证](../features/capture.md#73-pauseresume验证证据)，不将未跑的gRPC一并标记完成。
 
 ### 11. Clear 与迟到事件 / 文件任务竞态（部分解决）
 

@@ -1175,6 +1175,16 @@ scope 随之收窄为 `all-except-session`——Exchange 与 Body 全部归零�
     Clear或Core退出的无主waiter。
 - Clear 后旧 generation 的所有 request/body/response/trailer/rule hit 全部拒绝，不得重新创建行。
 
+### 7.3 Pause/Resume验证证据
+
+- 2026-09-09本地HTTP上传、下载和SSE跨Pause/Resume的六个新增集成用例通过，流量完整转发且录制决定以开始时状态为准。
+- 修复前WebSocket在Resume后通过`exchangeIdFor()`预留不存在的Exchange ID，先写BodyStore再被真实ExchangeStore拒绝，留下孤立正文。干净集成Red为8通过/1失败，owner Red为10通过/1失败；真实UI Red的Exchange/Body引用数未变，正文占用151增加到191字节。
+- 修复后消息只通过`whenExchangeReady()`关联握手时已录制的Exchange，未录制连接立即返回null；暂停期间建立的连接始终不记录，Resume后的新连接正常记录，Pause前已记录连接继续保存双向消息。HTTP Rule钩子提前预留ID保持原行为。
+- Proxy模块12文件122/122、Core/Desktop typecheck通过；真实`capture.recording.pause-resume`1/1（19.1s）和既有`breakpoints.queue-isolation`1/1（19.0s）Green。Storage恢复前后均2 Exchange、5正文引用、151字节。Storage只补现有控件/计数的公开automation属性，无外观或业务变化。
+- 两轮Main/Core `45884/37752`、`20252/28136`正常退出，host guard在workflow结束时确认全部登记进程、8888、WinINet/journal恢复。录制流程Main日志仍有非目标`rules:get internal`和退出阶段`breakpoint:list`拒绝，不声明日志零错误。gRPC streaming边界和压力场景未扩展。
+- TEMP三层Red归档`interceptor-websocket-recording-valid-red-20260909-234524.zip`，SHA256 `08093659DECF1D4A20519161FD897DED4BF0DBF04B642964C74BE520797D824B`；包含owner、真实socket、真实UI失败、源码hash与trace，Red Main/Core `31924/42384`正常退出。
+- TEMP Green归档`interceptor-recording-boundary-green-20260909-235505.zip`，SHA256 `937C238B078DB278DE6A637D28CBD8CD528F2BDEDD8ECD3BAC9FF8B5153B85C4`；相邻队列回归归档`interceptor-recording-queue-green-20260909-235735.zip`，SHA256 `2C25226D68A26E914E200A77371124D6FC95DA80FD2426782A96B5E34E85E131`。
+
 ## 8. 客户端应用归属 [已实现·仅 Windows]
 
 Capture 在创建 Exchange 时同时记录**发起这条请求的本机应用**，用于列表图标与 Inspector 展示。
