@@ -16,6 +16,17 @@ interface StoppableServer {
   close(): Promise<void>;
 }
 
+const UPSTREAM_USERNAME = 'proxy-user';
+const UPSTREAM_PASSWORD = 'test@password:with%encoding';
+const UPSTREAM_AUTHORIZATION = `Basic ${Buffer.from(`${UPSTREAM_USERNAME}:${UPSTREAM_PASSWORD}`).toString('base64')}`;
+
+function authenticatedProxyUrl(port: number, password = UPSTREAM_PASSWORD): string {
+  const url = new URL(`http://127.0.0.1:${port}`);
+  url.username = encodeURIComponent(UPSTREAM_USERNAME);
+  url.password = encodeURIComponent(password);
+  return url.toString();
+}
+
 function startOrigin(handler: http.RequestListener): Promise<StoppableServer> {
   const server = http.createServer(handler);
   return new Promise((resolve) => {
@@ -32,12 +43,25 @@ function startOrigin(handler: http.RequestListener): Promise<StoppableServer> {
  * 最小上游 HTTP 代理：转发普通请求并支持 CONNECT 隧道，记录经过它的目标。
  * 用来证明流量确实走了上游，而不是被 Interceptor 直连源站。
  */
-function startUpstreamProxy(): Promise<StoppableServer & { seen: string[] }> {
+function startUpstreamProxy(expectedAuthorization?: string): Promise<StoppableServer & {
+  seen: string[];
+  authorizationHeaders: Array<string | undefined>;
+  rejected: string[];
+}> {
   const seen: string[] = [];
+  const authorizationHeaders: Array<string | undefined> = [];
+  const rejected: string[] = [];
   // CONNECT 事件回调里的 socket 类型是 Duplex，这里只需要能 destroy。
   const sockets = new Set<Duplex>();
   const server = http.createServer((request, response) => {
     seen.push(`${request.method ?? ''} ${request.url ?? ''}`);
+    authorizationHeaders.push(request.headers['proxy-authorization']);
+    if (expectedAuthorization !== undefined && request.headers['proxy-authorization'] !== expectedAuthorization) {
+      rejected.push(request.url ?? '');
+      response.writeHead(407, { 'proxy-authenticate': 'Basic realm="upstream-fixture"', 'content-length': '0' });
+      response.end();
+      return;
+    }
     const target = new URL(request.url ?? '');
     const forwarded = http.request(
       {
@@ -57,6 +81,12 @@ function startUpstreamProxy(): Promise<StoppableServer & { seen: string[] }> {
   });
   server.on('connect', (request, clientSocket, head) => {
     seen.push(`CONNECT ${request.url ?? ''}`);
+    authorizationHeaders.push(request.headers['proxy-authorization']);
+    if (expectedAuthorization !== undefined && request.headers['proxy-authorization'] !== expectedAuthorization) {
+      rejected.push(request.url ?? '');
+      clientSocket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="upstream-fixture"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+      return;
+    }
     const [host, port] = (request.url ?? '').split(':');
     const originSocket = net.connect(Number(port), host, () => {
       clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
@@ -76,6 +106,8 @@ function startUpstreamProxy(): Promise<StoppableServer & { seen: string[] }> {
       resolve({
         port: (server.address() as AddressInfo).port,
         seen,
+        authorizationHeaders,
+        rejected,
         close: () =>
           new Promise<void>((done) => {
             for (const socket of sockets) {
@@ -118,14 +150,19 @@ describe('ProxyService upstream proxy chaining', () => {
   let upstream: Awaited<ReturnType<typeof startUpstreamProxy>>;
   let proxyService: ProxyService;
   let proxyPort: number;
+  let recordingCaptureService: RecordingCaptureService;
+  let originHeaders: http.IncomingHttpHeaders[];
 
   beforeEach(async () => {
-    origin = await startOrigin((_request, response) => {
+    originHeaders = [];
+    origin = await startOrigin((request, response) => {
+      originHeaders.push({ ...request.headers });
       response.writeHead(200, { 'content-type': 'text/plain' });
       response.end('origin-body');
     });
     upstream = await startUpstreamProxy();
-    proxyService = new ProxyService(new RecordingCaptureService(), new CaptureEventQueue());
+    recordingCaptureService = new RecordingCaptureService();
+    proxyService = new ProxyService(recordingCaptureService, new CaptureEventQueue());
     proxyPort = (await proxyService.start()).port;
   });
 
@@ -169,14 +206,62 @@ describe('ProxyService upstream proxy chaining', () => {
     expect(body).toBe('origin-body');
     expect(upstream.seen).toEqual([]);
   });
+
+  it('authenticates the upstream CONNECT without sending credentials to the HTTP origin or Capture', async () => {
+    await upstream.close();
+    upstream = await startUpstreamProxy(UPSTREAM_AUTHORIZATION);
+    proxyService.setUpstreamProxy({ proxyUrl: authenticatedProxyUrl(upstream.port) });
+
+    await expect(proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/authenticated`)).resolves.toBe('origin-body');
+    expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+    expect(upstream.authorizationHeaders).toEqual([UPSTREAM_AUTHORIZATION]);
+    expect(upstream.rejected).toEqual([]);
+    expect(originHeaders).toHaveLength(1);
+    expect(originHeaders[0]).not.toHaveProperty('proxy-authorization');
+    await vi.waitFor(() => expect(recordingCaptureService.exchanges).toHaveLength(1));
+    const capture = JSON.stringify(recordingCaptureService.exchanges);
+    expect(capture).not.toContain(UPSTREAM_USERNAME);
+    expect(capture).not.toContain(UPSTREAM_PASSWORD);
+    expect(capture).not.toContain(UPSTREAM_AUTHORIZATION);
+  });
+
+  it.each(['missing', 'incorrect'] as const)('does not reach the origin or fall back to direct with %s credentials', async (credentialState) => {
+    await upstream.close();
+    upstream = await startUpstreamProxy(UPSTREAM_AUTHORIZATION);
+    proxyService.setUpstreamProxy({
+      proxyUrl: credentialState === 'missing'
+        ? `http://127.0.0.1:${upstream.port}`
+        : authenticatedProxyUrl(upstream.port, 'wrong-password'),
+    });
+
+    const response = await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/unauthorized`)
+      .catch(() => null);
+    expect(response).not.toBe('origin-body');
+    expect(upstream.rejected).toEqual([`127.0.0.1:${origin.port}`]);
+    expect(originHeaders).toEqual([]);
+  });
+
+  it('keeps authenticated proxy credentials out of a noProxy request', async () => {
+    await upstream.close();
+    upstream = await startUpstreamProxy(UPSTREAM_AUTHORIZATION);
+    proxyService.setUpstreamProxy({ proxyUrl: authenticatedProxyUrl(upstream.port), noProxy: ['127.0.0.1'] });
+
+    await expect(proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/bypassed-auth`)).resolves.toBe('origin-body');
+    expect(upstream.seen).toEqual([]);
+    expect(upstream.authorizationHeaders).toEqual([]);
+    expect(originHeaders).toHaveLength(1);
+    expect(originHeaders[0]).not.toHaveProperty('proxy-authorization');
+  });
 });
 
 /** HTTPS 源站；证书自签，客户端与 Interceptor 均按不安全例外处理。 */
-async function startTlsOrigin(): Promise<StoppableServer> {
+async function startTlsOrigin(): Promise<StoppableServer & { headers: http.IncomingHttpHeaders[] }> {
   const certificate = await generateCACertificate();
+  const headers: http.IncomingHttpHeaders[] = [];
   const server = https.createServer(
     { key: certificate.key, cert: certificate.cert },
-    (_request, response) => {
+    (request, response) => {
+      headers.push({ ...request.headers });
       response.writeHead(200, { 'content-type': 'text/plain' });
       response.end('tls-origin-body');
     },
@@ -187,6 +272,7 @@ async function startTlsOrigin(): Promise<StoppableServer> {
     server.listen(0, '127.0.0.1', () => {
       resolve({
         port: (server.address() as AddressInfo).port,
+        headers,
         close: () =>
           new Promise<void>((done) => {
             for (const socket of sockets) {
@@ -242,7 +328,7 @@ function tunnelledHttpsGet(
 // 经上游转发，否则接管系统代理后所有 HTTPS 都会直连源站——在只有代理才能出网的
 // 网络里等同于整机断网，而 HTTP 却仍然正常，故障表现极具迷惑性。
 describe('ProxyService upstream proxy chaining without MITM', () => {
-  let tlsOrigin: StoppableServer;
+  let tlsOrigin: Awaited<ReturnType<typeof startTlsOrigin>>;
   let upstream: Awaited<ReturnType<typeof startUpstreamProxy>>;
   let recordingCaptureService: RecordingCaptureService;
   let proxyService: ProxyService;
@@ -267,6 +353,29 @@ describe('ProxyService upstream proxy chaining without MITM', () => {
     const raw = await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/tunnelled');
     expect(raw).toContain('tls-origin-body');
     expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+  });
+
+  it.each([false, true])('authenticates HTTPS upstream CONNECT without origin credential leakage (MITM=%s)', async (mitmEnabled) => {
+    await upstream.close();
+    upstream = await startUpstreamProxy(UPSTREAM_AUTHORIZATION);
+    if (mitmEnabled) {
+      const certificate = await generateCACertificate();
+      await decryptWithCertificate(proxyService, certificate, ['localhost']);
+    }
+    proxyService.setUpstreamProxy({ proxyUrl: authenticatedProxyUrl(upstream.port) });
+
+    const raw = await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/authenticated-tls');
+    expect(raw).toContain('tls-origin-body');
+    expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+    expect(upstream.authorizationHeaders).toEqual([UPSTREAM_AUTHORIZATION]);
+    expect(upstream.rejected).toEqual([]);
+    expect(tlsOrigin.headers).toHaveLength(1);
+    expect(tlsOrigin.headers[0]).not.toHaveProperty('proxy-authorization');
+    await vi.waitFor(() => expect(recordingCaptureService.exchanges).toHaveLength(1));
+    const capture = JSON.stringify(recordingCaptureService.exchanges);
+    expect(capture).not.toContain(UPSTREAM_USERNAME);
+    expect(capture).not.toContain(UPSTREAM_PASSWORD);
+    expect(capture).not.toContain(UPSTREAM_AUTHORIZATION);
   });
 
   it('keeps configured passthrough hosts on upstream CONNECT while MITM is enabled', async () => {

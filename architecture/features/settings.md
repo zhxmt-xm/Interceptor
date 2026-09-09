@@ -417,6 +417,14 @@ Clash 等本机代理应在 Interceptor 接管前启动并启用系统代理，I
 
 实测（`proxy/tests/integration/upstream.test.ts` / `proxy/tests/integration/websocket-upstream.test.ts`，真实上游代理 + 真实源站）：无上游时直连、配置后经上游 CONNECT 隧道、切换即时生效、`noProxy` 命中时绕过上游、MITM 关闭时直通流量仍走上游隧道、上游不可达时仍正常关闭隧道记录、WebSocket 经上游握手。Mockttp 经上游时统一用 CONNECT 隧道，即使目标是明文 HTTP。
 
+2026-09-09补充现有HTTP Basic能力的本地集成覆盖，未修改产品行为：
+
+- HTTP、HTTPS passthrough、HTTPS MITM和WebSocketBridge均通过带userinfo的`proxyUrl`向上游CONNECT发送Basic认证，包含密码中的URL转义字符。
+- HTTP和WebSocket在缺失或错误凭据时被上游拒绝，源站未收到请求，没有直连回退；`noProxy`命中时仍直连且不携带上游认证头。
+- 成功认证的源站请求与Capture记录未包含上游凭据；没有连接公司网络、修改WinINet或安装系统证书。
+- 两份既有集成测试共22/22 Green（新增10例），Core typecheck通过；这是Node loopback网络验证，真实Electron E2E和浏览器运行均为0，不代表SSO或用户凭据配置流程已验证。
+- TEMP证据：`interceptor-upstream-basic-local-green-20260909-230438.zip`，SHA256 `61E4AC2244F12FB0ACC50555F9BB78198C160E53EE2E9CB78AAC8AA6FFC29F9E`；包含三份运行日志、类型结果与四份源码hash。
+
 ### 3.5 Windows AppContainer 与 TLS passthrough [已实现，待真实 Windows App 验收]
 
 Windows owned `ProxyOverride` 不再加入 `*.wvd.microsoft.com`，避免 RDP gateway 完全跳过
@@ -480,7 +488,7 @@ macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi
 
 覆盖范围限制：Windows 只接管 WinINet，自带网络栈、WinHTTP、Java、curl、容器、WSL 可能不走 Capture。`<local>` bypass 会让 localhost 绕过。
 
-认证代理（需要 `Proxy-Authorization`）尚未验证：`proxyUrl` 支持 `http://user:pass@host:port` 形式，但 WinINet 不保存凭据，需要用户手工提供。
+HTTP Basic的`Proxy-Authorization`已按§3.4通过本地集成验证；公司SSO、真实认证环境与用户凭据配置流程仍未验证。`proxyUrl`支持`http://user:pass@host:port`形式，但WinINet不保存凭据，产品凭据入口及安全保存方式仍待设计，不能把Core支持userinfo视为该流程已实现。
 
 ### 3.7 Proxy 与 MITM 跨进程恢复契约
 
