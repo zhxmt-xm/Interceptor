@@ -113,7 +113,6 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
     }
     return () => {
       sizeListener?.dispose();
-      editor.getModel()?.dispose();
       editor.dispose();
       editorRef.current = null;
     };

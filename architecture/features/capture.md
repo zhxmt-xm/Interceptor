@@ -235,6 +235,26 @@ stateDiagram-v2
 2. 迟到或重复事件不得重复累加 bytes，使用 observed 计数覆盖而非累加。
 3. `abort` 可以从任意非终态直接进入。
 
+### 4.1 多协议产品E2E覆盖
+
+- 当前已交付场景覆盖23/39，包含既有h1-json/ws-text及下表；复用Playground流量，验证对象是Interceptor UI和数据，不为测试工具新增测试。
+- 本轮相关场景均已取得真实Green和完整进程/8888/WinINet/journal/CA恢复证据；测试来自本轮工作树。Core early response修复未纳入这些提交，仍有独立413后中断回归待第三方授权。
+
+| 组 | 场景数 | Workflow | 当前结果 |
+| --- | ---: | --- | --- |
+| Body | 16 | `capture.scenarios.bodies`、`capture.scenarios.body-media` | Green，模式、图片、Hex及媒体原生保存 |
+| Encoding | 5 | `capture.scenarios.encoding` | Green，解压及损坏数据保留 |
+
+- 最终工作树矩阵证据：TEMP/interceptor-capture-39-green-20260909-161253.zip，SHA256 959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB。只按本节已交付场景声明覆盖，不把未提交HTTP修复标完成。
+- 完整操作见[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。
+
+#### 正文修复
+
+- BodyViewer按模式给CodeViewer独立身份，Code自动格式化不能污染Raw；CodeViewer仅调用`editor.dispose()`，不提前销毁仍绑定的隐式模型。正文/格式化/生命周期owner22/22 Green，真实Body两条workflow16场景通过且Renderer无page error。
+- 有效owner及真实Red分别保存于TEMP下`interceptor-body-mode-red-20260909-153356.zip`、`interceptor-viewer-lifecycle-red-20260909-154133.zip`；最终Body归档`interceptor-bodies-sixteen-green-20260909-154736.zip`，两代Main/Core `18540/48608`、`5084/16272`正常销毁。
+- 九个既有Capture正文parity视图与仓库旧报告逐项核对一致，保留11个flagged和1个missing、未增加最大几何偏差；报告为TEMP下`interceptor-body-viewer-parity-20260909.json`及同名`.md`，不覆盖设计基准或完整报告。
+- 真实Monaco通过全选/复制核对当前模型，只有Windows剪贴板CRLF归一；每场景关闭Inspector，下一条先等正文长度和radio选中状态，避免旧正文控件竞态。
+
 ## 5. 调用流程
 
 ### 5.1 HTTP/HTTPS 常规请求（主路径）

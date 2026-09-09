@@ -1,13 +1,15 @@
 # Interceptor Handover
 
-> Tracked commit: `b8139204`
+> Tracked commit: `2eb218b7`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-09
 
 ## Task List
 
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
-- [ ] **待验证 · Interceptor Capture多协议E2E覆盖**：Playground已有39种流量场景，其自身integration为39/39；其中仅`h1-json`与`ws-text`两种已通过真实Interceptor UI验证抓取、展示和退出恢复。其余37种缺少同层产品E2E证据，不代表Playground功能缺失，也不为流量生成器新增测试。后续按协议分组验证Interceptor Capture；既有证据见[features/playground.md](features/playground.md)。
+- [ ] **进行中 · Interceptor Capture多协议E2E覆盖**：已交付23/39场景，真实UI/正文/协议及退出恢复按[Capture覆盖](features/capture.md#41-多协议产品e2e覆盖)核验；人工查看不是待办或门禁。
+    - 已交付workflow：`capture.scenarios.bodies`、`capture.scenarios.body-media`、`capture.scenarios.encoding`。本轮Green及进程恢复证据：TEMP/interceptor-capture-39-green-20260909-161253.zip（SHA256 959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB）。
+    - 独立HTTP修复仍blocked：Mockttp在413响应已结束后不再报告上传abort，需明确批准修改现有第三方patch；未批准前不修改patch/node_modules，也不提交尚有owner失败的Core代码。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [ ] **验收进行中 · Breakpoint parity 几何收敛**：HTTP request/response旧场景仍有既有差异：常规状态最大约1.6–3.3px，response text明暗各有1个target missing，file-empty按钮仍有302.1px层级差。本轮已删除不存在的queue-full明暗场景并消除Original body重复外框；HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗14 views全部`0 missing / 0 flagged`，最大0.8px。2026-08-25当前完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`；Rules overflow高度修正后明暗18个target仍为0 missing / 0 flagged，最大0.3px，详见visual parity report。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。

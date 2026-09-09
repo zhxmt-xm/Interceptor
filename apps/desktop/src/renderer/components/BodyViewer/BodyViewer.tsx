@@ -259,6 +259,7 @@ export function BodyViewer({
     }
     return (
       <CodeViewer
+        key={mode}
         ref={viewerRef}
         value={
           mode === 'default' && format.kind === 'code'

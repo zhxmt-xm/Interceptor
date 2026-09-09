@@ -19,6 +19,51 @@
 - H2 path：`/e2e/mitm/h2?source=workflow`，response trailer `x-interceptor-e2e-trailer: h2-complete`；
 - gRPC path：`/interceptor.e2e.WorkflowService/Stream`；一个 request envelope、两个 response envelope，第二个 compressed flag=true；trailers=`grpc-status: 0`、`grpc-message: OK`。
 
+<a id="capture-scenarios-bodies"></a>
+## `capture.scenarios.bodies`
+
+**状态**：passed；十一种文本类场景Green，模式/生命周期修复owner22/22、Renderer零异常
+**策略**：真实Electron；现有TrafficLab；不新增Playground工具测试
+
+### Steps
+
+1. fresh profile经真实UI开启Recording；逐次运行现有Body默认Draft，所有字节经8888进入Capture。
+2. 选择自产路径的单条200请求；有上传内容时在Request Text/Raw核对完整正文。
+3. 在Response按既有模式检查JSON、Text、HTML、CSS、JavaScript、XML、YAML、SVG、Markdown、Form及Unknown text；同时核对正文长度。
+4. 期望正文在workflow独立定义，不从origin结果生成；HTML/SVG保持代码文本不执行，Markdown Preview显示标题及两项列表。
+5. 保存逐场景身份、trace和截图；fixture关闭origin及真实Electron，验证Main/Core/Worker、8888和完整WinINet/journal恢复。
+
+Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式化后的缩进；2026-09-09真实HTML场景发现该故障，先补BodyViewer模式隔离owner测试与真实UI Red，再修复。
+每场景独立关闭并重开Inspector，先确认正文长度和radio选中状态；代码模型经真实全选/复制校验，仅归一Windows剪贴板CRLF。模式卸载不得重复销毁Monaco模型，最终Renderer page error必须为0。
+
+<a id="capture-scenarios-body-media"></a>
+## `capture.scenarios.body-media`
+
+**状态**：passed；五场景Green，PNG真实解码、Hex及音视频原生保存已核验
+**策略**：真实Capture UI；Windows原生Save Dialog；现有流量库
+
+### Steps
+
+1. fresh profile启用Recording，分别运行`body-png`、`body-binary`、`body-unknown-binary`、`body-audio`和`body-video`；每次从空Inspector打开自产200行。
+2. Response区块长度分别为68、8、5、48、24字节；PNG须实际解码为1x1并保存预览截图；二进制Hex精确显示固定字节序列。
+3. 音视频保持现有不读取Renderer正文的边界，显示MIME且无audio/video/iframe播放器；点击唯一Save并用真实键鼠操作Save Dialog。
+4. 只读核对同workflow经产品导出的WAV/MP4文件与独立固定字节一致，不预造导入文件或调用内部API。
+5. 保存逐场景证据及trace，Renderer page error为0；fixture正常关闭产品，验证原生窗口、进程、8888、WinINet/journal恢复。
+
+<a id="capture-scenarios-encoding"></a>
+## `capture.scenarios.encoding`
+
+**状态**：passed；五种编码/损坏场景Green，原始字节与错误信息均保留
+**策略**：真实Capture UI；现有压缩/损坏场景；host-safety-guard
+
+### Steps
+
+1. fresh profile经UI启用Recording；依次经真实8888执行gzip、deflate、brotli、损坏gzip及无效PNG场景。
+2. 每种流量显示唯一自产200行和实际编码字节数；正常编码在Response Raw分别显示独立预期`{"encoding":"gzip"}`、`{"encoding":"deflate"}`、`{"encoding":"br"}`。
+3. 损坏gzip显示包含协议值gzip的解码错误信息，Hex保留`1f 8b 08 00 01 02 03`；无效PNG显示`image/png`不可预览占位，不保留损坏img元素。
+4. 不改变应用语言、不用本地化文案定位；每场景关闭Inspector，避免旧正文控件竞态。
+5. 保存逐场景、trace和截图，要求Renderer无page error；fixture验证origin及Main/Core/Worker退出、8888/WinINet/journal恢复。
+
 <a id="capture-tools-archive-transfer"></a>
 ## `capture.tools.archive-transfer`
 
